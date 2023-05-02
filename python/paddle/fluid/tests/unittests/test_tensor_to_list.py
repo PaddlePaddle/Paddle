@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
 import unittest
+
 import numpy as np
-import six
+
 import paddle
+from paddle import fluid
 
 
 class TensorToListTest(unittest.TestCase):
@@ -31,7 +32,8 @@ class TensorToListTest(unittest.TestCase):
 
         for p in places:
             np_arr = np.reshape(
-                np.array(six.moves.range(np.prod(self.shape))), self.shape)
+                np.array(range(np.prod(self.shape))), self.shape
+            )
             expectlist = np_arr.tolist()
 
             t = paddle.to_tensor(np_arr, place=p)

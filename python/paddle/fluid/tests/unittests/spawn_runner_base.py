@@ -12,19 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function, division
-
-import numpy as np
 import unittest
 
-import paddle
+import numpy as np
 
 # used by model.run_trainer in test_dist_base
 from test_dist_base import RUN_STEP
 
+import paddle
+
 
 # NOTE: compatible TestParallelDyGraphRunnerBase args
-class SpawnAssistTestArgs(object):
+class SpawnAssistTestArgs:
     update_method = "local"
     trainer_id = 0
     find_unused_parameters = False
@@ -44,15 +43,21 @@ class TestDistSpawnRunner(unittest.TestCase):
         args.update_method = "nccl2"
         context = paddle.distributed.spawn(
             func=model.run_trainer_with_spawn,
-            args=(args, ),
+            args=(args,),
             nprocs=self.nprocs,
-            join=True)
+            join=True,
+        )
         result_list = []
         for res_queue in context.return_queues:
             result_list.append(res_queue.get())
         return result_list
 
     def check_dist_result_with_spawn(self, test_class, delta=1e-3):
+        self.check_dist_result_with_spawn_func(
+            test_class=test_class, delta=delta
+        )
+
+    def check_dist_result_with_spawn_func(self, test_class, delta=1e-3):
         # 0. prepare model and args
         model = test_class()
         args = SpawnAssistTestArgs()
@@ -78,5 +83,7 @@ class TestDistSpawnRunner(unittest.TestCase):
                 dist_loss,
                 delta=delta,
                 msg="The results of single-card execution and multi-card execution are inconsistent."
-                "signal-card loss is:\n{}\nmulti-card average loss is:\n{}\n".
-                format(loss, dist_loss))
+                "signal-card loss is:\n{}\nmulti-card average loss is:\n{}\n".format(
+                    loss, dist_loss
+                ),
+            )

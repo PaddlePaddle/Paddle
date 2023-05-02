@@ -15,33 +15,33 @@
 #pragma once
 
 #include <iostream>
+
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/tree2col.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {
-using Tensor = framework::Tensor;
 using DDim = framework::DDim;
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class TreeConvKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     math::Tree2ColFunctor<DeviceContext, T> tree2col;
-    math::SetConstant<DeviceContext, T> constant;
+    phi::funcs::SetConstant<DeviceContext, T> constant;
 
-    auto *Edges = ctx.Input<Tensor>("EdgeSet");
-    auto *Embeddings = ctx.Input<Tensor>("NodesVector");
-    auto *Filter = ctx.Input<Tensor>("Filter");
-    auto *output_emb = ctx.Output<Tensor>("Out");
+    auto *Edges = ctx.Input<phi::DenseTensor>("EdgeSet");
+    auto *Embeddings = ctx.Input<phi::DenseTensor>("NodesVector");
+    auto *Filter = ctx.Input<phi::DenseTensor>("Filter");
+    auto *output_emb = ctx.Output<phi::DenseTensor>("Out");
     int max_depth = ctx.Attr<int>("max_depth");
 
     auto &dev_ctx = ctx.template device_context<DeviceContext>();
-    auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
 
-    Tensor W;
+    phi::DenseTensor W;
     W.ShareDataWith(*Filter);
-    W.Resize(framework::flatten_to_2d(Filter->dims(), 2));
+    W.Resize(phi::flatten_to_2d(Filter->dims(), 2));
 
     int batch_size = static_cast<int>(Edges->dims()[0]);
     int n = static_cast<int>(Embeddings->dims()[1]);
@@ -50,66 +50,68 @@ class TreeConvKernel : public framework::OpKernel<T> {
     output_emb->mutable_data<T>({batch_size, n, out_size, num_filters},
                                 ctx.GetPlace());
 
-    auto edge_set_slicedim = framework::slice_ddim(
+    auto edge_set_slicedim = phi::slice_ddim(
         Edges->dims(), 1, static_cast<int>(Edges->dims().size()));
 
-    auto embedding_slicedim = framework::slice_ddim(
+    auto embedding_slicedim = phi::slice_ddim(
         Embeddings->dims(), 1, static_cast<int>(Embeddings->dims().size()));
 
-    auto output_slicedim = framework::slice_ddim(
+    auto output_slicedim = phi::slice_ddim(
         output_emb->dims(), 1, static_cast<int>(output_emb->dims().size()));
 
-    output_slicedim = framework::flatten_to_2d(output_slicedim, 1);
+    output_slicedim = phi::flatten_to_2d(output_slicedim, 1);
 
     for (int idx = 0; idx < batch_size; idx++) {
       auto edge_set = Edges->Slice(idx, idx + 1).Resize(edge_set_slicedim);
       auto embeddings =
           Embeddings->Slice(idx, idx + 1).Resize(embedding_slicedim);
       auto out_vec = output_emb->Slice(idx, idx + 1).Resize(output_slicedim);
-      Tensor patch;
+      phi::DenseTensor patch;
       tree2col(dev_ctx, edge_set, embeddings, &patch, max_depth);
       constant(dev_ctx, &out_vec, 0);
       blas.MatMul(patch, W, &out_vec);
     }
   }
 };
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class TreeConvGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *out_g = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto *in_g = ctx.Output<Tensor>(framework::GradVarName("NodesVector"));
-    auto *filter_g = ctx.Output<Tensor>(framework::GradVarName("Filter"));
+    auto *out_g = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto *in_g =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("NodesVector"));
+    auto *filter_g =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Filter"));
     int max_depth = ctx.Attr<int>("max_depth");
-    auto *Embeddings = ctx.Input<Tensor>("NodesVector");
-    auto *edges = ctx.Input<Tensor>("EdgeSet");
-    auto *Filter = ctx.Input<Tensor>("Filter");
+    auto *Embeddings = ctx.Input<phi::DenseTensor>("NodesVector");
+    auto *edges = ctx.Input<phi::DenseTensor>("EdgeSet");
+    auto *Filter = ctx.Input<phi::DenseTensor>("Filter");
     math::Tree2ColFunctor<DeviceContext, T> tree2col;
     math::Col2TreeFunctor<DeviceContext, T> col2tree;
-    math::SetConstant<DeviceContext, T> constant;
+    phi::funcs::SetConstant<DeviceContext, T> constant;
     auto &dev_ctx = ctx.template device_context<DeviceContext>();
-    auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
 
-    Tensor W;
+    phi::DenseTensor W;
     W.ShareDataWith(*Filter);
-    W.Resize(framework::flatten_to_2d(Filter->dims(), 1));
+    W.Resize(phi::flatten_to_2d(Filter->dims(), 1));
 
     int batch_size = static_cast<int>(Embeddings->dims()[0]);
 
-    auto edge_set_slicedim = framework::slice_ddim(
+    auto edge_set_slicedim = phi::slice_ddim(
         edges->dims(), 1, static_cast<int>(edges->dims().size()));
 
-    auto embedding_slicedim = framework::slice_ddim(
+    auto embedding_slicedim = phi::slice_ddim(
         Embeddings->dims(), 1, static_cast<int>(Embeddings->dims().size()));
 
-    auto out_grad_dims = framework::slice_ddim(
+    auto out_grad_dims = phi::slice_ddim(
         out_g->dims(), 1, static_cast<int>(out_g->dims().size()));
-    out_grad_dims = framework::flatten_to_2d(out_grad_dims, 1);
+    out_grad_dims = phi::flatten_to_2d(out_grad_dims, 1);
     if (filter_g) {
       filter_g->mutable_data<T>(Filter->dims(), ctx.GetPlace());
-      Tensor f_g;
+      phi::DenseTensor f_g;
       f_g.ShareDataWith(*filter_g);
-      f_g.Resize(framework::flatten_to_2d(Filter->dims(), 2));
+      f_g.Resize(phi::flatten_to_2d(Filter->dims(), 2));
       constant(dev_ctx, filter_g, 0);
       for (int batch_id = 0; batch_id < batch_size; batch_id++) {
         auto edge_set =
@@ -118,13 +120,13 @@ class TreeConvGradKernel : public framework::OpKernel<T> {
                               .Resize(embedding_slicedim);
         auto out_grad =
             out_g->Slice(batch_id, batch_id + 1).Resize(out_grad_dims);
-        Tensor patch;
+        phi::DenseTensor patch;
         tree2col(dev_ctx, edge_set, embeddings, &patch, max_depth);
         blas.MatMul(patch, true, out_grad, false, T(1.0), &f_g, T(1.0));
       }
     }
     if (in_g) {
-      auto input_grad_dims = framework::slice_ddim(
+      auto input_grad_dims = phi::slice_ddim(
           in_g->dims(), 1, static_cast<int>(in_g->dims().size()));
       in_g->mutable_data<T>(Embeddings->dims(), ctx.GetPlace());
       constant(dev_ctx, in_g, 0);
@@ -135,7 +137,7 @@ class TreeConvGradKernel : public framework::OpKernel<T> {
             out_g->Slice(batch_id, batch_id + 1).Resize(out_grad_dims);
         auto in_grad =
             in_g->Slice(batch_id, batch_id + 1).Resize(input_grad_dims);
-        Tensor in_grad_temp;
+        phi::DenseTensor in_grad_temp;
         col2tree(dev_ctx, edge_set, out_grad, &in_grad_temp, max_depth);
         blas.MatMul(in_grad_temp, false, W, true, &in_grad);
       }

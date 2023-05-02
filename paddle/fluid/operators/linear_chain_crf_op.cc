@@ -23,23 +23,24 @@ class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Emission",
-             "(LoDTensor/Tensor<float>). When a LoDTensor input,A 2-D LoDTensor"
+             "(phi::DenseTensor<float>). When a phi::DenseTensor "
+             "input,A 2-D phi::DenseTensor"
              " with shape [N x D], where N is the size of the "
              "mini-batch and D is the total tag number. The unscaled emission "
              "weight matrix for the linear chain CRF. When a Tensor input,"
              "A Tensor with shape [N x S x D], where N is batch number,"
              "S is max length of sequences, D is the total tag number."
-             "A LoDTensor or Tensor with type float32, float64.");
+             "A phi::DenseTensor with type float32, float64.");
     AddInput("Transition",
              "(Tensor, default Tensor<float>) A 2-D Tensor with shape "
              "[(D + 2) x D]. The learnable parameter for the linear_chain_crf "
              "operator. See more details in the operator's comments.");
     AddInput("Label",
-             "(LoDTensor/Tensor<int64_t>), when a LoDTensor input,  "
+             "(phi::DenseTensor<int64_t>), when a phi::DenseTensor input,  "
              "[N x 1], where N is the total element number in a mini-batch. "
              "when a Tensor input, [N x S], where N is batch number. "
              "S is max length of sequences. The ground truth."
-             "A  LoDTensor or Tensor with int64.");
+             "A  phi::DenseTensor with int64.");
     AddInput("Length",
              "(Tensor, default Tensor<int64_t>) A Tensor with shape "
              "[M x 1], where M is the sequence number in a mini-batch."
@@ -51,8 +52,8 @@ class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
         "The forward vectors for the entire batch. Denote it as $\alpha$. "
         "$\alpha$ is a memo table used to calculate the normalization "
         "factor in CRF. $\alpha[k, v]$ stores the unnormalized "
-        "probabilites of all possible unfinished sequences of tags that end at "
-        "position $k$ with tag $v$. For each $k$, "
+        "probabilities of all possible unfinished sequences of tags that end "
+        "at position $k$ with tag $v$. For each $k$, "
         "$\alpha[k, v]$ is a vector of length $D$ with a component for "
         "each tag value $v$. This vector is called a forward vecotr and "
         "will also be used in backward computations.")
@@ -63,7 +64,7 @@ class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
         "The exponentials of Input(Emission). This is an intermediate "
         "computational result in forward computation, and will be reused in "
         "backward computation."
-        "A LoDTensor or Tensor with type float32, float64.")
+        "A phi::DenseTensor with type float32, float64.")
         .AsIntermediate();
     AddOutput(
         "TransitionExps",
@@ -71,7 +72,7 @@ class LinearChainCRFOpMaker : public framework::OpProtoAndCheckerMaker {
         "[(D + 2) x D]. The exponentials of Input(Transition). This is an "
         "intermediate computational result in forward computation, and "
         "will be reused in backward computation."
-        "A LoDTensor or Tensor with type float32, float64.")
+        "A phi::DenseTensor with type float32, float64.")
         .AsIntermediate();
     AddOutput(
         "LogLikelihood",
@@ -142,27 +143,35 @@ class LinearChainCRFOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Emission"), "Input", "Emission",
-                   "LinearChainCRF");
-    OP_INOUT_CHECK(ctx->HasInput("Transition"), "Input", "Transition",
-                   "LinearChainCRF");
+    OP_INOUT_CHECK(
+        ctx->HasInput("Emission"), "Input", "Emission", "LinearChainCRF");
+    OP_INOUT_CHECK(
+        ctx->HasInput("Transition"), "Input", "Transition", "LinearChainCRF");
     OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label", "LinearChainCRF");
 
-    OP_INOUT_CHECK(ctx->HasOutput("Alpha"), "Output", "Alpha",
+    OP_INOUT_CHECK(
+        ctx->HasOutput("Alpha"), "Output", "Alpha", "LinearChainCRF");
+    OP_INOUT_CHECK(ctx->HasOutput("EmissionExps"),
+                   "Output",
+                   "EmissionExps",
                    "LinearChainCRF");
-    OP_INOUT_CHECK(ctx->HasOutput("EmissionExps"), "Output", "EmissionExps",
+    OP_INOUT_CHECK(ctx->HasOutput("TransitionExps"),
+                   "Output",
+                   "TransitionExps",
                    "LinearChainCRF");
-    OP_INOUT_CHECK(ctx->HasOutput("TransitionExps"), "Output", "TransitionExps",
-                   "LinearChainCRF");
-    OP_INOUT_CHECK(ctx->HasOutput("LogLikelihood"), "Output", "LogLikelihood",
+    OP_INOUT_CHECK(ctx->HasOutput("LogLikelihood"),
+                   "Output",
+                   "LogLikelihood",
                    "LinearChainCRF");
 
     auto transition_dims = ctx->GetInputDim("Transition");
-    PADDLE_ENFORCE_EQ(transition_dims.size(), 2UL,
+    PADDLE_ENFORCE_EQ(transition_dims.size(),
+                      2UL,
                       platform::errors::InvalidArgument(
                           "The Input(Transition) should be a 2-D tensor. But "
                           "received: input rank %u, input shape [%s].",
-                          transition_dims.size(), transition_dims));
+                          transition_dims.size(),
+                          transition_dims));
     bool check = true;
     if ((!ctx->IsRuntime()) &&
         (transition_dims[0] <= 0 || transition_dims[1] <= 0)) {
@@ -170,21 +179,25 @@ class LinearChainCRFOp : public framework::OperatorWithKernel {
     }
     if (check) {
       PADDLE_ENFORCE_EQ(
-          transition_dims[0] - 2, transition_dims[1],
+          transition_dims[0] - 2,
+          transition_dims[1],
           platform::errors::InvalidArgument(
               "An invalid dimension for the Input(Transition), which should "
               "be a 2-D tensor with shape [(D + 2) x D]. But received: input "
               "rank %u, "
               "input shape [%s].",
-              transition_dims.size(), transition_dims));
+              transition_dims.size(),
+              transition_dims));
     }
     auto emission_dims = ctx->GetInputDim("Emission");
     if (ctx->HasInput("Length")) {
-      PADDLE_ENFORCE_EQ(emission_dims.size(), 3,
+      PADDLE_ENFORCE_EQ(emission_dims.size(),
+                        3,
                         platform::errors::InvalidArgument(
                             "The Input(Emission) should be a 3-D tensor. But "
                             "received: input rank %u, input shape [%s].",
-                            emission_dims.size(), emission_dims));
+                            emission_dims.size(),
+                            emission_dims));
       auto label_dims = ctx->GetInputDim("Label");
       PADDLE_ENFORCE_EQ(
           (label_dims.size() == 3UL && label_dims[2] == 1) ||
@@ -194,36 +207,46 @@ class LinearChainCRFOp : public framework::OperatorWithKernel {
               "The Input(Label) should be a 3-D tensor with last dimension "
               "fixed to 1 or a 2-D tensor in padding mode. But received: input "
               "rank %u, input shape [%s].",
-              label_dims.size(), label_dims));
+              label_dims.size(),
+              label_dims));
       if (ctx->IsRuntime()) {
-        PADDLE_ENFORCE_EQ(emission_dims[0], label_dims[0],
+        PADDLE_ENFORCE_EQ(emission_dims[0],
+                          label_dims[0],
                           platform::errors::InvalidArgument(
                               "The batch size of Input(Emission) "
                               "and Input(Label) should be the same. But "
                               "received Input(Emission): "
                               "rank %u, shape [%s]; received Input(Label): "
                               "rank %u, shape [%s].",
-                              emission_dims.size(), emission_dims,
-                              label_dims.size(), label_dims));
-        PADDLE_ENFORCE_EQ(emission_dims[1], label_dims[1],
+                              emission_dims.size(),
+                              emission_dims,
+                              label_dims.size(),
+                              label_dims));
+        PADDLE_ENFORCE_EQ(emission_dims[1],
+                          label_dims[1],
                           platform::errors::InvalidArgument(
                               "The max length of Input(Emission) "
                               "and Input(Label) should be the same. But "
                               "received Input(Emission): "
                               "rank %u, shape [%s]; received Input(Label): "
                               "rank %u, shape [%s].",
-                              emission_dims.size(), emission_dims,
-                              label_dims.size(), label_dims));
+                              emission_dims.size(),
+                              emission_dims,
+                              label_dims.size(),
+                              label_dims));
       }
     } else {
       PADDLE_ENFORCE_EQ(
-          emission_dims.size(), 2,
+          emission_dims.size(),
+          2,
           platform::errors::InvalidArgument(
               "The Input(Emission) should be a 2-D tensor. But received: "
               "input rank %u, input shape [%s].",
-              emission_dims.size(), emission_dims));
+              emission_dims.size(),
+              emission_dims));
       if (ctx->IsRuntime()) {
-        PADDLE_ENFORCE_EQ(emission_dims[1], transition_dims[1],
+        PADDLE_ENFORCE_EQ(emission_dims[1],
+                          transition_dims[1],
                           platform::errors::InvalidArgument(
                               "The 2nd dimension of the Input(Emission) and "
                               "the Input(Transition) "
@@ -231,27 +254,34 @@ class LinearChainCRFOp : public framework::OperatorWithKernel {
                               "Input(Emission): rank "
                               "%u, shape [%s]; received Input(Transition): "
                               "rank %u, shape [%s].",
-                              emission_dims.size(), emission_dims,
-                              transition_dims.size(), transition_dims));
+                              emission_dims.size(),
+                              emission_dims,
+                              transition_dims.size(),
+                              transition_dims));
       }
 
       auto label_dims = ctx->GetInputDim("Label");
       PADDLE_ENFORCE_EQ(
-          label_dims.size(), 2,
+          label_dims.size(),
+          2,
           platform::errors::InvalidArgument(
               "The Input(Label) should be a 2-D tensor with the 2nd "
               "dimensions fixed to 1. But received: input rank %u, "
               "input shape [%s].",
-              label_dims.size(), label_dims));
+              label_dims.size(),
+              label_dims));
       if (ctx->IsRuntime()) {
         PADDLE_ENFORCE_EQ(
-            emission_dims[0], label_dims[0],
+            emission_dims[0],
+            label_dims[0],
             platform::errors::InvalidArgument(
                 "The first dimension of Input(Emission) and Input(Label) "
                 "should be the same. But received Input(Emission): rank %u, "
                 "shape "
                 "[%s]; received Input(Label): rank %u, shape [%s].",
-                emission_dims.size(), emission_dims, label_dims.size(),
+                emission_dims.size(),
+                emission_dims,
+                label_dims.size(),
                 label_dims));
       }
     }
@@ -268,9 +298,9 @@ class LinearChainCRFOp : public framework::OperatorWithKernel {
  protected:
   // Explicitly set that the data type of computation kernel of linear_chain_crf
   // is determined by its input "Emission".
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
+    return phi::KernelKey(
         OperatorWithKernel::IndicateVarDataType(ctx, "Emission"),
         platform::CPUPlace());
   }
@@ -281,12 +311,17 @@ class LinearChainCRFGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("EmissionExps"), "Input", "EmissionExps",
+    OP_INOUT_CHECK(ctx->HasInput("EmissionExps"),
+                   "Input",
+                   "EmissionExps",
                    "LinearChainCRFGrad");
-    OP_INOUT_CHECK(ctx->HasInput("TransitionExps"), "Input", "TransitionExps",
+    OP_INOUT_CHECK(ctx->HasInput("TransitionExps"),
+                   "Input",
+                   "TransitionExps",
                    "LinearChainCRFGrad");
     OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("LogLikelihood")),
-                   "Input", framework::GradVarName("LogLikelihood"),
+                   "Input",
+                   framework::GradVarName("LogLikelihood"),
                    "LinearChainCRFGrad");
 
     auto transition_exps_dims = ctx->GetInputDim("TransitionExps");
@@ -308,12 +343,11 @@ class LinearChainCRFGradOp : public framework::OperatorWithKernel {
  protected:
   // Explicitly set that the data type of output of the linear_chain_crf_grad
   // operator is determined by its input: gradients of LogLikelihood.
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(
-            ctx, framework::GradVarName("LogLikelihood")),
-        platform::CPUPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("LogLikelihood")),
+                          platform::CPUPlace());
   }
 };
 
@@ -346,24 +380,31 @@ class LinearChainCRFGradMaker : public framework::SingleGradOpMaker<T> {
 };
 
 DECLARE_NO_NEED_BUFFER_VARS_INFERER(LinearChainCRFGradNoNeedBufferVarsInferer,
-                                    "Transition", "Emission");
+                                    "Transition",
+                                    "Emission");
 
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(linear_chain_crf, ops::LinearChainCRFOp,
+REGISTER_OPERATOR(linear_chain_crf,
+                  ops::LinearChainCRFOp,
                   ops::LinearChainCRFOpMaker,
                   ops::LinearChainCRFGradMaker<paddle::framework::OpDesc>,
                   ops::LinearChainCRFGradMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(linear_chain_crf_grad, ops::LinearChainCRFGradOp,
+REGISTER_OPERATOR(linear_chain_crf_grad,
+                  ops::LinearChainCRFGradOp,
                   ops::LinearChainCRFGradNoNeedBufferVarsInferer);
-REGISTER_OP_CPU_KERNEL(
-    linear_chain_crf,
-    ops::LinearChainCRFOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::LinearChainCRFOpKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    linear_chain_crf_grad,
-    ops::LinearChainCRFGradOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::LinearChainCRFGradOpKernel<paddle::platform::CPUDeviceContext,
-                                    double>);
+
+PD_REGISTER_STRUCT_KERNEL(linear_chain_crf,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::LinearChainCRFOpKernel,
+                          float,
+                          double) {}
+PD_REGISTER_STRUCT_KERNEL(linear_chain_crf_grad,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::LinearChainCRFGradOpKernel,
+                          float,
+                          double) {}

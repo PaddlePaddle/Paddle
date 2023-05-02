@@ -13,9 +13,11 @@
 # limitations under the License.
 
 import unittest
-import paddle
-import paddle.fluid as fluid
+
 import numpy as np
+
+import paddle
+from paddle import fluid
 
 
 class TestUniformRandomInplaceOpDtype(unittest.TestCase):
@@ -91,8 +93,9 @@ class TestUniformRandomInplaceOpWithinRange(unittest.TestCase):
         tensor = paddle.ones(self.shape)
         tensor.uniform_(min=self.min, max=self.max, seed=self.seed)
         tensor_data = tensor.numpy()
-        self.assertTrue((tensor_data > self.min).all() and
-                        (tensor_data < self.max).all())
+        self.assertTrue(
+            (tensor_data > self.min).all() and (tensor_data < self.max).all()
+        )
 
 
 class TestUniformRandomInplaceOpShape(unittest.TestCase):
@@ -121,8 +124,8 @@ class TestUniformRandomInplaceOpDistribution(unittest.TestCase):
 
         hist, _ = np.histogram(tensor.numpy()[0], bins=self.bins)
         prob = hist / float(self.shape[0])
-        prob_expect = np.ones((self.bins, )) / float(self.bins)
-        self.assertTrue(np.allclose(prob, prob_expect, rtol=0, atol=1e-2))
+        prob_expect = np.ones((self.bins,)) / float(self.bins)
+        np.testing.assert_allclose(prob, prob_expect, rtol=0, atol=0.01)
 
 
 class TestUniformRandomInplaceOpError(unittest.TestCase):
@@ -157,11 +160,12 @@ class TestUniformRandomInplaceGrad(unittest.TestCase):
     def setUp(self):
         self.shape = (1000, 784)
 
-    def test_uniform_random_inplace_grad(self):
+    def run_(self):
         def test_grad():
             tensor_a = paddle.ones(self.shape)
             tensor_a.stop_gradient = False
             tensor_b = tensor_a * 0.5
+            tensor_b.retain_grads()
             tensor_b.uniform_(min=-2, max=2)
             loss = tensor_b.sum()
             loss.backward()
@@ -174,6 +178,9 @@ class TestUniformRandomInplaceGrad(unittest.TestCase):
         for place in places:
             paddle.set_device(place)
             test_grad()
+
+    def test_uniform_random_inplace_grad(self):
+        self.run_()
 
 
 if __name__ == '__main__':

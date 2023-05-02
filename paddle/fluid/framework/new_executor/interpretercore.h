@@ -19,101 +19,181 @@
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/framework/new_executor/interpretercore_util.h"
+#include "paddle/fluid/framework/details/exception_holder.h"
+#include "paddle/fluid/framework/new_executor/garbage_collector/garbage_collector.h"
+#include "paddle/fluid/framework/new_executor/interpreter/dependency_builder.h"
+#include "paddle/fluid/framework/new_executor/interpreter/execution_config.h"
+#include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
+#include "paddle/fluid/framework/new_executor/interpreter/stream_analyzer.h"
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/framework/new_executor/profiler.h"
-#include "paddle/fluid/framework/new_executor/workqueue.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/memory/allocation/spin_lock.h"
 #include "paddle/fluid/platform/device_event.h"
+
+DECLARE_bool(new_executor_use_local_scope);
 
 namespace paddle {
 namespace framework {
 
 class InterpreterCore {
+  using ExecutionConfig = interpreter::ExecutionConfig;
+  using InstructionSchedulingPriorityLess = std::function<bool(size_t, size_t)>;
+  using SchedulingQueue =
+      std::priority_queue<size_t,
+                          std::vector<size_t>,
+                          InstructionSchedulingPriorityLess>;
+
  public:
-  using GarbageQueue = std::deque<std::shared_ptr<memory::Allocation>>;
-  InterpreterCore(const platform::Place& place, const ProgramDesc& main_prog,
-                  VariableScope* global_scope,
-                  const std::vector<std::string>& feed_names,
-                  const std::vector<std::string>& fetch_names);
+  InterpreterCore(const platform::Place& place,
+                  const BlockDesc& block,
+                  Scope* scope,
+                  const ExecutionConfig& execution_config = ExecutionConfig());
+
+  ~InterpreterCore();
+
+  interpreter::CostInfo DryRun(
+      const std::vector<std::string>& feed_names,
+      const std::vector<phi::DenseTensor>& feed_tensors);
 
   paddle::framework::FetchList Run(
-      const std::vector<framework::Tensor>& feed_tensors);
+      const std::vector<std::string>& feed_names,
+      const std::vector<phi::DenseTensor>& feed_tensors);
 
-  const CostInfo& DryRun(const std::vector<framework::Tensor>& feed_tensors);
+  paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
+                                   bool need_fetch = true);
 
-  static void BuildOpFuncList(const platform::Place& place,
-                              const framework::ProgramDesc& pdesc,
-                              std::vector<OperatorBase*>* op_list,
-                              std::vector<OpFuncNode>* vec_func_list,
-                              VariableScope* var_scope);
+  void ShareWorkQueueFrom(std::shared_ptr<InterpreterCore> src);
+
+  void SetCopyProgram(std::shared_ptr<ProgramDesc> prog);
+
+  void SetSkipGcVars(const std::set<std::string>& skip_gc_vars);
+
+  const std::set<std::string>& JitInputVars() const;
+
+  void SetJitInputVars(const std::set<std::string>& jit_input_vars);
+
+  const VariableScope* GetVariableScope() const;
+
+  void reset_scope(Scope* new_scope);
+
+  const platform::Place& GetPlace() const { return place_; }
 
  private:
-  void Convert();
+  DISABLE_COPY_AND_ASSIGN(InterpreterCore);
+  // build graph
+  void Convert(std::vector<paddle::framework::OpFuncNode>* op_func_nodes);
+  void BuildOperatorDependences();
+  void BuildAndCacheInstructionCtx(Instruction* instr_node);
+  void BuildSkipShareLoDInfo();
+  void UpdateSyncOpNum();
+  void AnalyseExecuteOrderForTrace();
 
-  void BuildInstructionCtx(Instruction* instr_node,
-                           const VariableScope& var_scope,
-                           const platform::Place& place);
+  // inplace
+  void BuildInplace();
+  bool BuildInplaceCheckVarIsOnlyInput(
+      const std::vector<std::vector<size_t>>& input_var2op, size_t var_index);
+  void SetFeedVarsInplaceSkip(const std::vector<std::string>& feed_names);
 
+  // cuda graph
+  void CheckCUDAGraphBeforeRun(const std::vector<std::string>& feed_names);
+  void PrepareForCUDAGraphCapture();
+
+  // execution
+  void RunImpl();
+  void ExecuteInstructionList(const std::vector<Instruction>& vec_instr);
+  void RunInstructionAsync(size_t instr_id);
   void RunInstruction(const Instruction& instr_node);
+  void RunNextInstructions(const Instruction& instr_id,
+                           SchedulingQueue* reserved_next_ops);
+  void RunOperator(const Instruction& instr_node);
+  // Trace
+  void TraceInstructionList(const std::vector<Instruction>& vec_instr);
 
-  void ExecuteInstructionList(const std::vector<Instruction>& vec_instr,
-                              const VariableScope& var_scope,
-                              const platform::Place& place,
-                              bool is_dry_run = false);
+  // only used when program contains no feed op
+  void Prepare(const std::vector<std::string>& feed_names,
+               const std::vector<phi::DenseTensor>& feed_tensors,
+               bool prepare_feed);
 
-  std::vector<size_t> MergeVector(const std::vector<size_t>& first,
-                                  const std::vector<size_t>& second);
+  void RecordMemcpyD2H(const Instruction& instr_node);
 
-  void BuildVariableScope(const framework::ProgramDesc& pdesc,
-                          VariableScope* var_scope);
+  // gc
+  void RecordStreamForGC(const Instruction& instr);
+  void CheckGC(const Instruction& instr);
+  void ClearLoDTensorArrayInLocalScope();
 
-  void Prepare(const std::vector<framework::Tensor>& feed_tensors);
+  // workqueue
+  std::shared_ptr<interpreter::AsyncWorkQueue> GetWorkQueue();
 
-  void CheckGC(size_t instr_id, const std::vector<size_t>& gc_check_list,
-               const VariableScope& var_scope, const platform::Place& place,
-               std::vector<VariableMetaInfo>& working_var_ref);  // NOLINT
+  // scope
+  bool HasLocalScope() const;
 
-  platform::DeviceContext* ParseDeviceContextForInstruction(
-      const OpFuncNode& op_func_node, const OperatorBase& op_base);
+ private:
+  bool is_build_{false};
+  bool static_build_{false};
 
-  void RecordEventInstruction(const Instruction& instruction,
-                              const OpFuncNode& op_func_node);
+  const platform::Place place_;
+  const BlockDesc& block_;  // not owned
 
-  void WaitOrSync(const std::vector<EventInter>& events,
-                  const platform::DeviceContext* dev_ctx);
+  interpreter::DependencyBuilder dependency_builder_;
+  interpreter::StreamAnalyzer stream_analyzer_;
 
-  void StreamWaitEventOrSync(const Instruction& instruction);
+  // NOTE(zhiqiu): when add fetch ops in GetInterpreterCore, we will
+  // copy a new program and block, the copy_program_ here is used to
+  // hold the program, otherwise block_ maybe not valid after the
+  // new program is deleted.
+  std::shared_ptr<ProgramDesc> copy_program_{nullptr};
 
-  const platform::Place& place_;
-  ProgramDesc main_program_;
-  VariableScope* global_scope_;
-  platform::DeviceContextPool d2h_ctx_pool_;
-  platform::DeviceContextPool h2d_ctx_pool_;
+  // from variable scope
+  std::vector<Variable*> var_list_;
+  std::map<std::string, int> name2id_;
   std::vector<VariableMetaInfo> vec_meta_info_;
 
-  std::vector<paddle::framework::OpFuncNode> vec_func_list_;
-  std::vector<paddle::framework::OperatorBase*> op_list_;
+  std::vector<Instruction> vec_instruction_;  // deconstruct before OpFuncNode
 
-  std::vector<Instruction> vec_instruction_;
-  InstructionInfo instruction_info_;
+  std::atomic<size_t> unfinished_op_number_{0};
+
+  ExecutionConfig execution_config_;
+
+  VariableScope var_scope_;
+  Scope* local_scope_{nullptr};  // not owned
+
+  EventsWaiter main_thread_blocker_;
+  std::shared_ptr<interpreter::AsyncWorkQueue> async_work_queue_;
+
+  details::ExceptionHolder exception_holder_;
+  std::shared_ptr<EventsWaiter::EventNotifier> exception_notifier_{nullptr};
+  std::shared_ptr<EventsWaiter::EventNotifier> completion_notifier_{nullptr};
+
+  std::unique_ptr<InterpreterCoreGarbageCollector> gc_;
+
+  // last_live_ops_[i] contains the id of operators that last access the i-th
+  // var
+  std::map<size_t, std::set<size_t>> last_live_ops_;
+
+  // dependecy_count_[i] contains the number of dependencies that the i-th op
+  // need to wait
   std::vector<size_t> dependecy_count_;
-  std::vector<VariableMetaInfo> ref_coun_info_;
-  std::vector<std::vector<size_t>> input_var2op_info_;
 
-  bool is_build_;
+  std::vector<std::shared_ptr<interpreter::OpDepInfo>> deps_;
+  std::vector<std::shared_ptr<interpreter::VarRefInfo>> refs_;
 
-  std::vector<std::string> feed_names_;
-  InterpreterProfiler profiler_;
-  std::map<size_t, std::shared_ptr<platform::DeviceEvent>> var_id2event_;
+  // used for Trace
+  int64_t sync_op_num_{-1};
+  std::vector<size_t> trace_execute_order_;
 
-  std::vector<paddle::platform::DeviceEvent> gc_event_;
-  std::unique_ptr<GarbageQueue> garbages_;
-  size_t max_memory_size_;
-  size_t cur_memory_size_;
-  std::unique_ptr<WorkQueue> gc_queue_;
+  InstructionSchedulingPriorityLess instruction_scheduling_priority_less;
 };
+
+std::shared_ptr<InterpreterCore> CreateInterpreterCore(
+    const platform::Place& place,
+    const ProgramDesc& prog,
+    Scope* scope,
+    const std::vector<std::string>& fetch_names = {},
+    const interpreter::ExecutionConfig& execution_config =
+        interpreter::ExecutionConfig());
+
 }  // namespace framework
 }  // namespace paddle

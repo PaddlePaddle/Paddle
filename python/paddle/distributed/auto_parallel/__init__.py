@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .interface import shard_tensor  # noqa: F401
-from .interface import shard_op  # noqa: F401
-from .interface import set_shard_mask  # noqa: F401
-from .interface import set_offload_device  # noqa: F401
-from .interface import set_pipeline_stage  # noqa: F401
-from .interface import ProcessMesh  # noqa: F401
-from .completion import complete_annotation  # noqa: F401
+from .strategy import Strategy
+from .process_mesh import ProcessMesh
+from .engine import Engine
+from .interface import shard_tensor
+from .interface import shard_op
+from .interface import recompute
+from .interface import fetch
+from .random import parallel_manual_seed
 
 __all__ = []

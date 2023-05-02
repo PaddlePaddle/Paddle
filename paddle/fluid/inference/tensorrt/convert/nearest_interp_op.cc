@@ -13,42 +13,37 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 namespace paddle {
-namespace framework {
-class Scope;
-namespace proto {
-class OpDesc;
-}  // namespace proto
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
 namespace inference {
 namespace tensorrt {
 
 class NearestInterpolateOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
-                  const framework::Scope& scope, bool test_mode) override {
-    VLOG(3) << "convert a fluid nearest_interp op";
+                  const framework::Scope& scope,
+                  bool test_mode) override {
+    VLOG(3) << "convert a nearest_interp op to tensorrt op";
 
     framework::OpDesc op_desc(op, nullptr);
 
+    auto inputs = op_desc.Inputs();
     std::string input_name = op_desc.Input("X").front();
     std::string output_name = op_desc.Output("Out").front();
 
     auto input = engine_->GetITensor(input_name);
 
-    auto data_layout = framework::StringToDataLayout(
-        BOOST_GET_CONST(std::string, op_desc.GetAttr("data_layout")));
+    auto data_layout = !op_desc.HasAttr("data_layout")
+                           ? phi::DataLayout::kNCHW
+                           : phi::StringToDataLayout(PADDLE_GET_CONST(
+                                 std::string, op_desc.GetAttr("data_layout")));
     auto interp_method =
-        BOOST_GET_CONST(std::string, op_desc.GetAttr("interp_method"));
+        PADDLE_GET_CONST(std::string, op_desc.GetAttr("interp_method"));
     bool align_corners =
-        BOOST_GET_CONST(bool, op_desc.GetAttr("align_corners"));
+        PADDLE_GET_CONST(bool, op_desc.GetAttr("align_corners"));
 
     auto input_names = op_desc.Input("X");
-    auto scale = BOOST_GET_CONST(float, op_desc.GetAttr("scale"));
-    auto out_h = BOOST_GET_CONST(int, op_desc.GetAttr("out_h"));
-    auto out_w = BOOST_GET_CONST(int, op_desc.GetAttr("out_w"));
+    auto scale = PADDLE_GET_CONST(float, op_desc.GetAttr("scale"));
+    auto out_h = PADDLE_GET_CONST(int, op_desc.GetAttr("out_h"));
+    auto out_w = PADDLE_GET_CONST(int, op_desc.GetAttr("out_w"));
 
     auto layer = TRT_ENGINE_ADD_LAYER(engine_, Resize, *input);
     layer->setAlignCorners(align_corners);
@@ -59,33 +54,33 @@ class NearestInterpolateOpConverter : public OpConverter {
     float scale_w = 1.f;
 
     std::vector<float> scales;
-
-    if (scale > 0.f && (out_h <= 0 && out_w <= 0)) {
+    if (scale > 0.f) {
       scale_h = scale;
       scale_w = scale;
     } else {
       // axis are different in static/dynamic mode
       bool with_dynamic = engine_->with_dynamic_shape();
 
-      int h_axis = (data_layout == framework::DataLayout::kNCHW) + with_dynamic;
-      int w_axis =
-          (data_layout == framework::DataLayout::kNCHW) + 1 + with_dynamic;
+      if (!with_dynamic) {
+        int h_axis = (data_layout == phi::DataLayout::kNCHW) + with_dynamic;
+        int w_axis = (data_layout == phi::DataLayout::kNCHW) + 1 + with_dynamic;
 
-      scale_h =
-          static_cast<float>(out_h) / static_cast<float>(in_dim.d[h_axis]);
-      scale_w =
-          static_cast<float>(out_w) / static_cast<float>(in_dim.d[w_axis]);
+        scale_h =
+            static_cast<float>(out_h) / static_cast<float>(in_dim.d[h_axis]);
+        scale_w =
+            static_cast<float>(out_w) / static_cast<float>(in_dim.d[w_axis]);
+      }
     }
 
     if (engine_->with_dynamic_shape()) {
       scales.push_back(1.f);
     }
 
-    if (data_layout == framework::DataLayout::kNCHW) {
+    if (data_layout == phi::DataLayout::kNCHW) {
       scales.push_back(1.f);
       scales.push_back(scale_h);
       scales.push_back(scale_w);
-    } else if (data_layout == framework::DataLayout::kNHWC) {
+    } else if (data_layout == phi::DataLayout::kNHWC) {
       // NHWC
       scales.push_back(scale_h);
       scales.push_back(scale_w);

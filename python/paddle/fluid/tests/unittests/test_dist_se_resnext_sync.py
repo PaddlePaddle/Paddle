@@ -12,12 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
+import os
 import unittest
-from test_dist_base import TestDistBase
-import os
 
-import os
+from test_dist_base import TestDistBase
+
 flag_name = os.path.splitext(__file__)[0]
 
 
@@ -32,7 +31,8 @@ class TestDistSeResneXt2x2(TestDistBase):
             "dist_se_resnext.py",
             delta=1e-7,
             check_error_log=True,
-            log_name=flag_name)
+            log_name=flag_name,
+        )
 
 
 if __name__ == "__main__":

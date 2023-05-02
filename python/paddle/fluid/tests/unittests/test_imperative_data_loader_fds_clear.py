@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import unittest
+
 import numpy as np
-import paddle.fluid as fluid
-from paddle.fluid import core
-from paddle.io import Dataset, DataLoader
+
+import paddle.nn.functional as F
+from paddle import fluid
+from paddle.io import DataLoader, Dataset
 
 
 def get_random_images_and_labels(image_shape, label_shape):
@@ -30,7 +31,8 @@ def batch_generator_creator(batch_size, batch_num):
     def __reader__():
         for _ in range(batch_num):
             batch_image, batch_label = get_random_images_and_labels(
-                [batch_size, 784], [batch_size, 1])
+                [batch_size, 784], [batch_size, 1]
+            )
             yield batch_image, batch_label
 
     return __reader__
@@ -43,7 +45,7 @@ class RandomDataset(Dataset):
     def __getitem__(self, idx):
         np.random.seed(idx)
         image = np.random.random([784]).astype('float32')
-        label = np.random.randint(0, 9, (1, )).astype('int64')
+        label = np.random.randint(0, 9, (1,)).astype('int64')
         return image, label
 
     def __len__(self):
@@ -59,16 +61,18 @@ class TestDygraphDataLoaderMmapFdsClear(unittest.TestCase):
 
     def prepare_data_loader(self):
         loader = fluid.io.DataLoader.from_generator(
-            capacity=self.capacity, use_multiprocess=True)
+            capacity=self.capacity, use_multiprocess=True
+        )
         loader.set_batch_generator(
             batch_generator_creator(self.batch_size, self.batch_num),
-            places=fluid.CPUPlace())
+            places=fluid.CPUPlace(),
+        )
         return loader
 
     def run_one_epoch_with_break(self, loader):
         for step_id, data in enumerate(loader()):
             image, label = data
-            relu = fluid.layers.relu(image)
+            relu = F.relu(image)
             self.assertEqual(image.shape, [self.batch_size, 784])
             self.assertEqual(label.shape, [self.batch_size, 1])
             self.assertEqual(relu.shape, [self.batch_size, 784])
@@ -99,7 +103,8 @@ class TestMultiProcessDataLoaderMmapFdsClear(TestDygraphDataLoaderMmapFdsClear):
                 places=place,
                 batch_size=self.batch_size,
                 drop_last=True,
-                num_workers=2)
+                num_workers=2,
+            )
             return loader
 
 

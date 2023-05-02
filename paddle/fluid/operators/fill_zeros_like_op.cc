@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/fill_zeros_like_op.h"
 
+#include "paddle/fluid/platform/complex.h"
+
 namespace paddle {
 namespace operators {
 
@@ -53,9 +55,9 @@ class FillZerosLikeOp2 : public FillZerosLikeOp {
   using FillZerosLikeOp::FillZerosLikeOp;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
+    return phi::KernelKey(
         static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype")),
         ctx.GetPlace());
   }
@@ -78,27 +80,40 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(FillZerosLikeOp2NoNeedBufferVarsInferer,
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(fill_zeros_like, ops::FillZerosLikeOp,
+namespace plat = paddle::platform;
+
+REGISTER_OP_WITHOUT_GRADIENT(fill_zeros_like,
+                             ops::FillZerosLikeOp,
                              ops::FillZerosLikeOpMaker);
 
 REGISTER_OPERATOR(
-    fill_zeros_like2, ops::FillZerosLikeOp2, ops::FillZerosLikeOp2Maker,
+    fill_zeros_like2,
+    ops::FillZerosLikeOp2,
+    ops::FillZerosLikeOp2Maker,
     ops::FillZerosLikeOp2NoNeedBufferVarsInferer,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OP_CPU_KERNEL(
-    fill_zeros_like,
-    ops::FillZerosLikeKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::FillZerosLikeKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::FillZerosLikeKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::FillZerosLikeKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::FillZerosLikeKernel<paddle::platform::CPUDeviceContext, bool>);
+PD_REGISTER_STRUCT_KERNEL(fill_zeros_like,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::FillZerosLikeKernel,
+                          int,
+                          int64_t,
+                          float,
+                          double,
+                          bool,
+                          plat::complex<float>,
+                          plat::complex<double>) {}
 
-REGISTER_OP_CPU_KERNEL(
-    fill_zeros_like2,
-    ops::FillZerosLikeKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::FillZerosLikeKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::FillZerosLikeKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::FillZerosLikeKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::FillZerosLikeKernel<paddle::platform::CPUDeviceContext, bool>);
+PD_REGISTER_STRUCT_KERNEL(fill_zeros_like2,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::FillZerosLikeKernel2,
+                          int,
+                          int64_t,
+                          float,
+                          double,
+                          bool,
+                          plat::complex<float>,
+                          plat::complex<double>) {}

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/bpr_loss_op.h"
+
 #include <memory>
 
 namespace paddle {
@@ -31,15 +32,16 @@ class BprLossOp : public framework::OperatorWithKernel {
     auto label_dims = ctx->GetInputDim("Label");
     int rank = x_dims.size();
     PADDLE_ENFORCE_EQ(
-        rank, label_dims.size(),
+        rank,
+        label_dims.size(),
         platform::errors::InvalidArgument(
             "Input(X) and Input(Label) shall have the same rank."));
 
-    if (ctx->IsRuntime() || (framework::product(x_dims) > 0 &&
-                             framework::product(label_dims) > 0)) {
+    if (ctx->IsRuntime() ||
+        (phi::product(x_dims) > 0 && phi::product(label_dims) > 0)) {
       PADDLE_ENFORCE_EQ(
-          framework::slice_ddim(x_dims, 0, rank - 1),
-          framework::slice_ddim(label_dims, 0, rank - 1),
+          phi::slice_ddim(x_dims, 0, rank - 1),
+          phi::slice_ddim(label_dims, 0, rank - 1),
           platform::errors::InvalidArgument(
               "Input(X) and Input(Label) shall have the same shape "
               "except the last dimension."));
@@ -54,11 +56,10 @@ class BprLossOp : public framework::OperatorWithKernel {
  protected:
   // Explicitly set that the data type of computation kernel of Seq-bpr
   // is determined by its input "X".
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        platform::CPUPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          platform::CPUPlace());
   }
 };
 
@@ -69,37 +70,45 @@ class BprLossGradientOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "BprLossGradient");
     OP_INOUT_CHECK(ctx->HasInput("Label"), "Input", "Label", "BprLossGradient");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Y")), "Input",
-                   framework::GradVarName("Y"), "BprLossGradient");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
-                   framework::GradVarName("X"), "BprLossGradient");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Y")),
+                   "Input",
+                   framework::GradVarName("Y"),
+                   "BprLossGradient");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")),
+                   "Output",
+                   framework::GradVarName("X"),
+                   "BprLossGradient");
 
     auto x_dims = ctx->GetInputDim("X");
     auto label_dims = ctx->GetInputDim("Label");
     auto dy_dims = ctx->GetInputDim(framework::GradVarName("Y"));
     int rank = x_dims.size();
     PADDLE_ENFORCE_EQ(
-        dy_dims.size(), rank,
+        dy_dims.size(),
+        rank,
         platform::errors::InvalidArgument(
             "Input(Y@Grad) and Input(X) should have the same rank."));
     PADDLE_ENFORCE_EQ(
-        label_dims.size(), rank,
+        label_dims.size(),
+        rank,
         platform::errors::InvalidArgument(
             "Input(Label) and Input(X) should have the same rank."));
-    PADDLE_ENFORCE_EQ(framework::slice_ddim(x_dims, 0, rank - 1),
-                      framework::slice_ddim(label_dims, 0, rank - 1),
+    PADDLE_ENFORCE_EQ(phi::slice_ddim(x_dims, 0, rank - 1),
+                      phi::slice_ddim(label_dims, 0, rank - 1),
                       platform::errors::InvalidArgument(
                           "The Input(X) and Input(Label) should have the same "
                           "shape except the last dimension."));
-    PADDLE_ENFORCE_EQ(framework::slice_ddim(x_dims, 0, rank - 1),
-                      framework::slice_ddim(dy_dims, 0, rank - 1),
+    PADDLE_ENFORCE_EQ(phi::slice_ddim(x_dims, 0, rank - 1),
+                      phi::slice_ddim(dy_dims, 0, rank - 1),
                       platform::errors::InvalidArgument(
                           "The Input(X) and Input(Y@Grad) should have the same "
                           "shape except the last dimension."));
-    PADDLE_ENFORCE_EQ(dy_dims[rank - 1], 1,
+    PADDLE_ENFORCE_EQ(dy_dims[rank - 1],
+                      1,
                       platform::errors::InvalidArgument(
                           "The last dimension of Input(Y@Grad) should be 1."));
-    PADDLE_ENFORCE_EQ(label_dims[rank - 1], 1,
+    PADDLE_ENFORCE_EQ(label_dims[rank - 1],
+                      1,
                       platform::errors::InvalidArgument(
                           " the last dimension of Input(Label) should be 1."));
     ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
@@ -109,11 +118,10 @@ class BprLossGradientOp : public framework::OperatorWithKernel {
  protected:
   // Explicitly set that the data type of computation kernel of cross_entropy
   // is determined by its input "X".
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        platform::CPUPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          platform::CPUPlace());
   }
 };
 
@@ -166,14 +174,19 @@ class BprLossGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CPUCtx = paddle::platform::CPUDeviceContext;
 
-REGISTER_OPERATOR(bpr_loss, ops::BprLossOp, ops::BprLossOpMaker,
+REGISTER_OPERATOR(bpr_loss,
+                  ops::BprLossOp,
+                  ops::BprLossOpMaker,
                   ops::BprLossGradMaker<paddle::framework::OpDesc>,
                   ops::BprLossGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(bpr_loss_grad, ops::BprLossGradientOp);
-REGISTER_OP_CPU_KERNEL(bpr_loss, ops::BprLossOpKernel<CPUCtx, float>,
-                       ops::BprLossOpKernel<CPUCtx, double>);
-REGISTER_OP_CPU_KERNEL(bpr_loss_grad,
-                       ops::BprLossGradientOpKernel<CPUCtx, float>,
-                       ops::BprLossGradientOpKernel<CPUCtx, double>);
+
+PD_REGISTER_STRUCT_KERNEL(
+    bpr_loss, CPU, ALL_LAYOUT, ops::BprLossOpKernel, float, double) {}
+PD_REGISTER_STRUCT_KERNEL(bpr_loss_grad,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::BprLossGradientOpKernel,
+                          float,
+                          double) {}

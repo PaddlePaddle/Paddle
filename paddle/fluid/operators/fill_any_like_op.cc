@@ -12,8 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/fill_any_like_op.h"
 #include <string>
+
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -30,22 +31,24 @@ class FillAnyLikeOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    framework::OpKernelType kt = OperatorWithKernel::GetExpectedKernelType(ctx);
+    phi::KernelKey kt = OperatorWithKernel::GetExpectedKernelType(ctx);
     const auto &data_type = ctx.Attr<int>("dtype");
     if (data_type >= 0) {
-      kt.data_type_ = static_cast<framework::proto::VarType::Type>(data_type);
+      kt.set_dtype(phi::TransToPhiDataType(
+          static_cast<framework::proto::VarType::Type>(data_type)));
     }
     return kt;
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const framework::Tensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const override {
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   expected_kernel_type.place_,
-                                   tensor.layout());
+  phi::KernelKey GetKernelTypeForVar(
+      const std::string &var_name,
+      const phi::DenseTensor &tensor,
+      const phi::KernelKey &expected_kernel_type) const override {
+    return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                          tensor.layout(),
+                          expected_kernel_type.dtype());
   }
 };
 
@@ -56,7 +59,7 @@ class FillAnyLikeOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "The variable will be filled up with specified value.");
     AddAttr<float>("value", "The filled value").SetDefault(0.0);
     AddAttr<int>("dtype",
-                 "Output tensor data type. defalut value is -1,"
+                 "Output tensor data type. default value is -1,"
                  "according to the input dtype.")
         .SetDefault(-1);
     AddComment(R"DOC(
@@ -73,7 +76,7 @@ class FillAnyLikeVarTypeInference : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
     auto var_data_type = static_cast<framework::proto::VarType::Type>(
-        BOOST_GET_CONST(int, ctx->GetAttr("dtype")));
+        PADDLE_GET_CONST(int, ctx->GetAttr("dtype")));
     if (var_data_type < 0) {
       ctx->SetOutputDataType("Out", ctx->GetInputDataType("X"));
     } else {
@@ -87,17 +90,9 @@ class FillAnyLikeVarTypeInference : public framework::VarTypeInference {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    fill_any_like, ops::FillAnyLikeOp, ops::FillAnyLikeOpMaker,
+    fill_any_like,
+    ops::FillAnyLikeOp,
+    ops::FillAnyLikeOpMaker,
     ::paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     ::paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::FillAnyLikeVarTypeInference)
-
-REGISTER_OP_CPU_KERNEL(
-    fill_any_like,
-    ops::FillAnyLikeKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::FillAnyLikeKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::FillAnyLikeKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::FillAnyLikeKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::FillAnyLikeKernel<paddle::platform::CPUDeviceContext,
-                           paddle::platform::float16>,
-    ops::FillAnyLikeKernel<paddle::platform::CPUDeviceContext, bool>);

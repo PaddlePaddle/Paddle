@@ -14,11 +14,15 @@ limitations under the License. */
 
 #pragma once
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/math_function.h"
-#include "paddle/fluid/operators/math/pooling.h"
+#include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/flatten_grad_kernel.h"
+#include "paddle/phi/kernels/flatten_kernel.h"
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -27,22 +31,28 @@ template <typename DeviceContext, typename T>
 class FlattenKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *in = context.Input<framework::LoDTensor>("X");
-    auto *out = context.Output<framework::LoDTensor>("Out");
+    auto *in = context.Input<phi::DenseTensor>("X");
+    auto *out = context.Output<phi::DenseTensor>("Out");
 
     auto &axes = context.Attr<int>("axis");
     auto x_dims = in->dims();
-    auto out_dims = framework::make_ddim(GetOutputShape(axes, x_dims));
+    auto out_dims = phi::make_ddim(GetOutputShape(axes, x_dims));
 
     out->mutable_data(context.GetPlace(), in->type());
     framework::TensorCopy(
-        *in, context.GetPlace(),
-        context.template device_context<platform::DeviceContext>(), out);
+        *in,
+        context.GetPlace(),
+        context.template device_context<platform::DeviceContext>(),
+        out);
     out->Resize(out_dims);
   }
 
   static std::vector<int32_t> GetOutputShape(const int axis,
                                              const framework::DDim &in_dims) {
+    if (in_dims.size() == 0) {
+      return {1};
+    }
+
     int64_t outer = 1, inner = 1;
     for (int i = 0; i < in_dims.size(); ++i) {
       if (i < axis) {
@@ -62,15 +72,16 @@ template <typename DeviceContext, typename T>
 class FlattenGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *d_x = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
-    auto *d_out =
-        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
-    auto in_dims = ctx.Input<framework::LoDTensor>("X")->dims();
+    auto *d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto *d_out = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto in_dims = ctx.Input<phi::DenseTensor>("X")->dims();
 
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
     framework::TensorCopy(
-        *d_out, ctx.GetPlace(),
-        ctx.template device_context<platform::DeviceContext>(), d_x);
+        *d_out,
+        ctx.GetPlace(),
+        ctx.template device_context<platform::DeviceContext>(),
+        d_x);
     d_x->Resize(in_dims);
   }
 };
@@ -81,18 +92,20 @@ class Flatten2Kernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &context) const override {
     auto &axes = context.Attr<int>("axis");
 
-    auto *in = context.Input<framework::LoDTensor>("X");
+    auto *in = context.Input<phi::DenseTensor>("X");
     auto x_dims = in->dims();
 
-    auto *out = context.Output<framework::LoDTensor>("Out");
+    auto *out = context.Output<phi::DenseTensor>("Out");
 
-    auto out_dims = framework::make_ddim(
+    auto out_dims = phi::make_ddim(
         FlattenKernel<DeviceContext, T>::GetOutputShape(axes, x_dims));
 
     out->mutable_data(context.GetPlace(), in->type());
     framework::TensorCopy(
-        *in, context.GetPlace(),
-        context.template device_context<platform::DeviceContext>(), out);
+        *in,
+        context.GetPlace(),
+        context.template device_context<platform::DeviceContext>(),
+        out);
     out->Resize(out_dims);
   }
 };
@@ -101,52 +114,18 @@ template <typename DeviceContext, typename T>
 class Flatten2GradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *d_x = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
-    auto *d_out =
-        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
+    auto *d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto *d_out = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
 
-    auto xshape_dims = ctx.Input<framework::LoDTensor>("XShape")->dims();
-    auto x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
-
-    d_x->mutable_data(ctx.GetPlace(), d_out->type());
-    framework::TensorCopy(
-        *d_out, ctx.GetPlace(),
-        ctx.template device_context<platform::DeviceContext>(), d_x);
-    d_x->Resize(x_dims);
-  }
-};
-
-template <typename DeviceContext, typename T>
-class FlattenContiguousRangeKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext &context) const override {
-    auto *in = context.Input<framework::LoDTensor>("X");
-    auto *out = context.Output<framework::LoDTensor>("Out");
-    auto out_dims = out->dims();
-
-    out->mutable_data(context.GetPlace(), in->type());
-    framework::TensorCopy(
-        *in, context.GetPlace(),
-        context.template device_context<platform::DeviceContext>(), out);
-    out->Resize(out_dims);
-  }
-};
-
-template <typename DeviceContext, typename T>
-class FlattenContiguousRangeGradKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *d_x = ctx.Output<framework::LoDTensor>(framework::GradVarName("X"));
-    auto *d_out =
-        ctx.Input<framework::LoDTensor>(framework::GradVarName("Out"));
-
-    auto xshape_dims = ctx.Input<framework::LoDTensor>("XShape")->dims();
-    auto x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
+    auto xshape_dims = ctx.Input<phi::DenseTensor>("XShape")->dims();
+    auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
 
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
     framework::TensorCopy(
-        *d_out, ctx.GetPlace(),
-        ctx.template device_context<platform::DeviceContext>(), d_x);
+        *d_out,
+        ctx.GetPlace(),
+        ctx.template device_context<platform::DeviceContext>(),
+        d_x);
     d_x->Resize(x_dims);
   }
 };

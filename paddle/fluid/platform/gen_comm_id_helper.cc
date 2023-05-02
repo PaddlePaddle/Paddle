@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_ASCEND_CL)
+    defined(PADDLE_WITH_XPU_BKCL)
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
 
 #include <arpa/inet.h>
@@ -21,6 +21,7 @@ limitations under the License. */
 #include <netinet/in.h>
 #include <stdlib.h>
 #include <sys/socket.h>
+
 #include <algorithm>
 #include <string>
 #include <thread>  // NOLINT
@@ -28,16 +29,12 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/string/split.h"
-
+#include "paddle/phi/core/flags.h"
 #if defined(PADDLE_WITH_XPU_BKCL)
 #include "xpu/bkcl.h"
 #endif
 
-#if defined(PADDLE_WITH_ASCEND_CL)
-#include "paddle/fluid/platform/collective_helper.h"
-#endif
-
-DECLARE_int32(get_host_by_name_time);
+PHI_DECLARE_int32(get_host_by_name_time);
 
 namespace paddle {
 namespace platform {
@@ -56,13 +53,13 @@ struct CommHead {
     CHECK_SYS_CALL_VAL(call, name, retval); \
   } while (false)
 
-#define CHECK_SYS_CALL_VAL(call, name, retval)                            \
-  do {                                                                    \
-    RETRY_SYS_CALL_VAL(call, name, retval);                               \
-    if (retval == -1) {                                                   \
-      PADDLE_THROW(platform::errors::Unavailable("Call to %s failed: %s", \
-                                                 name, strerror(errno))); \
-    }                                                                     \
+#define CHECK_SYS_CALL_VAL(call, name, retval)              \
+  do {                                                      \
+    RETRY_SYS_CALL_VAL(call, name, retval);                 \
+    if (retval == -1) {                                     \
+      PADDLE_THROW(platform::errors::Unavailable(           \
+          "Call to %s failed: %s", name, strerror(errno))); \
+    }                                                       \
   } while (false)
 
 #define RETRY_SYS_CALL_VAL(call, name, retval)                           \
@@ -116,12 +113,18 @@ static int SocketRecv(int fd, char* buffer, int size) {
   return offset;
 }
 
-static void BindOrConnectFailed(int timeout, int* try_times, int* total_time,
-                                const char* op, const std::string& ep) {
+static void BindOrConnectFailed(int timeout,
+                                int* try_times,
+                                int* total_time,
+                                const char* op,
+                                const std::string& ep) {
   PADDLE_ENFORCE_LT(
-      *total_time, timeout,
-      platform::errors::Unavailable("%s addr=%s timeout, failed reason: %s", op,
-                                    ep.c_str(), strerror(errno)));
+      *total_time,
+      timeout,
+      platform::errors::Unavailable("%s addr=%s timeout, failed reason: %s",
+                                    op,
+                                    ep.c_str(),
+                                    strerror(errno)));
   ++(*try_times);
   int retry_time = std::min(*try_times * 500, 3000);  // max 3 seconds
   *total_time += retry_time;
@@ -135,7 +138,8 @@ static void BindOrConnectFailed(int timeout, int* try_times, int* total_time,
 int CreateListenSocket(const std::string& ep) {
   auto addr = paddle::string::Split(ep, ':');
   PADDLE_ENFORCE_EQ(
-      addr.size(), 2UL,
+      addr.size(),
+      2UL,
       platform::errors::InvalidArgument(
           "The endpoint should contain host and port, but got %s.", ep));
   std::string host = addr[0];
@@ -153,10 +157,23 @@ int CreateListenSocket(const std::string& ep) {
   // not enter the TIME-WAIT state. But this is obviously not as convenient
   // as the reuse method.
   int opt = 1;
+
+  // NOTE. The linger is used for skipping TIME-WAIT status forcefully.
+  linger ling;
+  ling.l_onoff = 1;
+  ling.l_linger = 0;
+
+  CHECK_SYS_CALL(
+      setsockopt(server_fd, SOL_SOCKET, SO_LINGER, &ling, sizeof(ling)),
+      "setsockopt set linger");
+
 #if defined(SO_REUSEPORT)
   // since Linux kernel 3.9
-  CHECK_SYS_CALL(setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT,
-                            &opt, sizeof(opt)),
+  CHECK_SYS_CALL(setsockopt(server_fd,
+                            SOL_SOCKET,
+                            SO_REUSEADDR | SO_REUSEPORT,
+                            &opt,
+                            sizeof(opt)),
                  "setsockopt");
 #else
   CHECK_SYS_CALL(
@@ -176,7 +193,8 @@ int CreateListenSocket(const std::string& ep) {
   while (true) {
     int ret_val = -1;
     RETRY_SYS_CALL_VAL(
-        bind(server_fd, (struct sockaddr*)&address, sizeof(address)), "bind",
+        bind(server_fd, (struct sockaddr*)&address, sizeof(address)),
+        "bind",
         ret_val);
 
     if (ret_val == -1) {
@@ -204,10 +222,11 @@ static int SocketAccept(int server_fd, const CommHead head) {
   const char* phead = reinterpret_cast<const char*>(&head);
 
   while (true) {
-    CHECK_SYS_CALL_VAL(
-        accept(server_fd, reinterpret_cast<struct sockaddr*>(&client_addr),
-               &addr_length),
-        "accept", conn);
+    CHECK_SYS_CALL_VAL(accept(server_fd,
+                              reinterpret_cast<struct sockaddr*>(&client_addr),
+                              &addr_length),
+                       "accept",
+                       conn);
 
     int ret_val = SocketRecv(conn, buffer, sizeof(head));
     if (ret_val > 0 && memcmp(buffer, phead, sizeof(head)) == 0) {
@@ -225,7 +244,8 @@ static int SocketAccept(int server_fd, const CommHead head) {
 static int ConnectAddr(const std::string& ep, const CommHead head) {
   auto addr = paddle::string::Split(ep, ':');
   PADDLE_ENFORCE_EQ(
-      addr.size(), 2UL,
+      addr.size(),
+      2UL,
       platform::errors::InvalidArgument(
           "The endpoint should contain host and port, but got %s.", ep));
   std::string host = addr[0];
@@ -248,8 +268,9 @@ static int ConnectAddr(const std::string& ep, const CommHead head) {
     std::this_thread::sleep_for(std::chrono::seconds(2));
     LOG(WARNING) << "gethostbyname " << host.c_str() << " error!";
   }
-  PADDLE_ENFORCE_NOT_NULL(hp, platform::errors::InvalidArgument(
-                                  "Fail to get host by name %s.", host));
+  PADDLE_ENFORCE_NOT_NULL(
+      hp,
+      platform::errors::InvalidArgument("Fail to get host by name %s.", host));
 
   int i = 0;
   while (hp->h_addr_list[i] != NULL) {
@@ -258,9 +279,10 @@ static int ConnectAddr(const std::string& ep, const CommHead head) {
     break;
   }
 
-  PADDLE_ENFORCE_GT(inet_pton(AF_INET, ip, &server_addr.sin_addr), 0,
-                    platform::errors::Unavailable("Open address %s failed: %s",
-                                                  ep, strerror(errno)));
+  PADDLE_ENFORCE_GT(inet_pton(AF_INET, ip, &server_addr.sin_addr),
+                    0,
+                    platform::errors::Unavailable(
+                        "Open address %s failed: %s", ep, strerror(errno)));
 
   static_assert(sizeof(CommHead) <= 1024,
                 "sizeof(CommHead) must <= buffer size");
@@ -278,7 +300,8 @@ static int ConnectAddr(const std::string& ep, const CommHead head) {
     int ret_val = -1;
     RETRY_SYS_CALL_VAL(
         connect(sock, (struct sockaddr*)&server_addr, sizeof(server_addr)),
-        "connect", ret_val);
+        "connect",
+        ret_val);
 
     if (ret_val == -1) {
       BindOrConnectFailed(timeout, &try_times, &total_time, "connect", ep);
@@ -303,11 +326,7 @@ static int ConnectAddr(const std::string& ep, const CommHead head) {
 }
 
 // TODO(WANGXI): maybe need to unify this hard code
-#ifdef PADDLE_WITH_ASCEND_CL
-#define MAX_COMMUNIQUEID_LEN 4108
-#else
 #define MAX_COMMUNIQUEID_LEN 1024
-#endif
 
 template <typename CommUniqueId>
 static void RecvCommID(int conn, CommUniqueId* nccl_id) {
@@ -331,7 +350,8 @@ static void SendCommID(int conn, CommUniqueId* nccl_id) {
 
 template <typename CommUniqueId>
 void SendBroadCastCommID(std::vector<std::string> servers,
-                         std::vector<CommUniqueId>* nccl_ids, int ring_id) {
+                         std::vector<CommUniqueId>* nccl_ids,
+                         int ring_id) {
   CommHead head;
   head.ring_id = ring_id;
 
@@ -361,15 +381,18 @@ void SendBroadCastCommID(std::vector<std::string> servers,
 
 template <typename CommUniqueId>
 void RecvBroadCastCommID(std::string endpoint,
-                         std::vector<CommUniqueId>* nccl_ids, int ring_id) {
+                         std::vector<CommUniqueId>* nccl_ids,
+                         int ring_id) {
   int server = CreateListenSocket(endpoint);
   RecvBroadCastCommID(server, endpoint, nccl_ids, ring_id);
   CloseSocket(server);
 }
 
 template <typename CommUniqueId>
-void RecvBroadCastCommID(int server_fd, std::string endpoint,
-                         std::vector<CommUniqueId>* nccl_ids, int ring_id) {
+void RecvBroadCastCommID(int server_fd,
+                         std::string endpoint,
+                         std::vector<CommUniqueId>* nccl_ids,
+                         int ring_id) {
   CommHead head;
   head.ring_id = ring_id;
   int client = SocketAccept(server_fd, head);
@@ -390,25 +413,29 @@ SocketServer& SocketServer::GetInstance(const std::string& end_point) {
     instance.server_fd_ = CreateListenSocket(end_point);
     instance.end_point_ = end_point;
   });
-  PADDLE_ENFORCE_NE(instance.server_fd_, -1,
+  PADDLE_ENFORCE_NE(instance.server_fd_,
+                    -1,
                     platform::errors::Unavailable(
                         "listen socket failed with end_point=%s", end_point));
-  PADDLE_ENFORCE_EQ(instance.end_point_, end_point,
+  PADDLE_ENFORCE_EQ(instance.end_point_,
+                    end_point,
                     platform::errors::InvalidArgument(
                         "old end_point=%s must equal with new end_point=%s",
-                        instance.end_point_, end_point));
+                        instance.end_point_,
+                        end_point));
   return instance;
 }
 
 /// template instantiation
-#define INSTANT_TEMPLATE(Type)                                                 \
-  template void SendBroadCastCommID<Type>(std::vector<std::string> servers,    \
-                                          std::vector<Type> * nccl_ids,        \
-                                          int ring_id = 0);                    \
-  template void RecvBroadCastCommID<Type>(                                     \
-      std::string endpoint, std::vector<Type> * nccl_ids, int ring_id = 0);    \
-  template void RecvBroadCastCommID<Type>(int server_fd, std::string endpoint, \
-                                          std::vector<Type>* nccl_ids,         \
+#define INSTANT_TEMPLATE(Type)                                              \
+  template void SendBroadCastCommID<Type>(std::vector<std::string> servers, \
+                                          std::vector<Type> * nccl_ids,     \
+                                          int ring_id = 0);                 \
+  template void RecvBroadCastCommID<Type>(                                  \
+      std::string endpoint, std::vector<Type> * nccl_ids, int ring_id = 0); \
+  template void RecvBroadCastCommID<Type>(int server_fd,                    \
+                                          std::string endpoint,             \
+                                          std::vector<Type>* nccl_ids,      \
                                           int ring_id = 0);
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -416,9 +443,6 @@ INSTANT_TEMPLATE(ncclUniqueId)
 #endif
 #ifdef PADDLE_WITH_XPU_BKCL
 INSTANT_TEMPLATE(BKCLUniqueId)
-#endif
-#ifdef PADDLE_WITH_ASCEND_CL
-INSTANT_TEMPLATE(HcclRootInfo)
 #endif
 }  // namespace platform
 }  // namespace paddle

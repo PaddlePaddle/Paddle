@@ -12,12 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 __all__ = []
 
 
-class EntryAttr(object):
+class EntryAttr:
     """
     Entry Config for paddle.static.nn.sparse_embedding with Parameter Server.
 
@@ -82,7 +80,7 @@ class ProbabilityEntry(EntryAttr):
     """
 
     def __init__(self, probability):
-        super(ProbabilityEntry, self).__init__()
+        super().__init__()
 
         if not isinstance(probability, float):
             raise ValueError("probability must be a float in (0,1)")
@@ -122,18 +120,62 @@ class CountFilterEntry(EntryAttr):
     """
 
     def __init__(self, count_filter):
-        super(CountFilterEntry, self).__init__()
+        super().__init__()
 
         if not isinstance(count_filter, int):
             raise ValueError(
-                "count_filter must be a valid integer greater than 0")
+                "count_filter must be a valid integer greater than 0"
+            )
 
         if count_filter < 0:
             raise ValueError(
-                "count_filter must be a valid integer greater or equal than 0")
+                "count_filter must be a valid integer greater or equal than 0"
+            )
 
         self._name = "count_filter_entry"
         self._count_filter = count_filter
 
     def _to_attr(self):
         return ":".join([self._name, str(self._count_filter)])
+
+
+class ShowClickEntry(EntryAttr):
+    """
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            paddle.enable_static()
+
+            sparse_feature_dim = 1024
+            embedding_size = 64
+
+            shows = paddle.static.data(name='show', shape=[1], dtype='int64')
+            clicks = paddle.static.data(name='click', shape=[1], dtype='int64')
+            input = paddle.static.data(name='ins', shape=[1], dtype='int64')
+
+            entry = paddle.distributed.ShowClickEntry("show", "click")
+
+            emb = paddle.static.nn.sparse_embedding(
+                input=input,
+                size=[sparse_feature_dim, embedding_size],
+                is_test=False,
+                entry=entry,
+                param_attr=paddle.ParamAttr(name="SparseFeatFactors",
+                                           initializer=paddle.nn.initializer.Uniform()))
+
+
+    """
+
+    def __init__(self, show_name, click_name):
+        super().__init__()
+
+        if not isinstance(show_name, str) or not isinstance(click_name, str):
+            raise ValueError("show_name click_name must be a str")
+
+        self._name = "show_click_entry"
+        self._show_name = show_name
+        self._click_name = click_name
+
+    def _to_attr(self):
+        return ":".join([self._name, self._show_name, self._click_name])

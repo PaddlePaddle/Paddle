@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
-import paddle
-import numpy as np
 import unittest
-import six
+
+import numpy as np
+
+import paddle
+from paddle import fluid
 
 
 class TestClass(unittest.TestCase):
@@ -31,14 +32,15 @@ class TestClass(unittest.TestCase):
         batch_num = 10
 
         def fake_reader():
-            for _ in six.moves.range(batch_size * batch_num):
+            for _ in range(batch_size * batch_num):
                 img = np.random.random(size=img_shape).astype('float32')
                 label = np.random.random_integers(
-                    low=0, high=9, size=label_shape).astype('int64')
+                    low=0, high=9, size=label_shape
+                ).astype('int64')
                 yield img, label
 
         reader = paddle.reader.cache(fake_reader)
-        batch_reader = fluid.io.batch(reader, batch_size=batch_size)
+        batch_reader = paddle.batch(reader, batch_size=batch_size)
 
         places = [fluid.CPUPlace()]
         if fluid.core.is_compiled_with_cuda():
@@ -48,16 +50,20 @@ class TestClass(unittest.TestCase):
             main_prog = fluid.Program()
             startup_prog = fluid.Program()
             with fluid.program_guard(main_prog, startup_prog):
-                img = fluid.layers.data(
-                    shape=img_shape, dtype='float32', name='image')
-                label = fluid.layers.data(
-                    shape=label_shape, dtype='int64', name='label')
+                img = paddle.static.data(
+                    shape=[-1] + img_shape, dtype='float32', name='image'
+                )
+                label = paddle.static.data(
+                    shape=[-1] + label_shape, dtype='int64', name='label'
+                )
 
                 feeder = fluid.DataFeeder(feed_list=[img, label], place=p)
 
                 use_double_buffer = self.use_double_buffer
-                if p._type() != fluid.CPUPlace()._type(
-                ) and not use_double_buffer:
+                if (
+                    p._type() != fluid.CPUPlace()._type()
+                    and not use_double_buffer
+                ):
                     use_double_buffer = True
 
                 if self.use_py_reader:
@@ -65,20 +71,21 @@ class TestClass(unittest.TestCase):
                         feed_list=[img, label],
                         capacity=4,
                         iterable=True,
-                        use_double_buffer=use_double_buffer)
+                        use_double_buffer=use_double_buffer,
+                    )
                     py_reader.decorate_sample_list_generator(
-                        batch_reader, places=p)
+                        batch_reader, places=p
+                    )
                 else:
                     py_reader = fluid.io.DataLoader.from_generator(
                         feed_list=[img, label],
                         capacity=4,
                         iterable=True,
-                        use_double_buffer=use_double_buffer
-                    ).set_sample_list_generator(
-                        batch_reader, places=p)
+                        use_double_buffer=use_double_buffer,
+                    ).set_sample_list_generator(batch_reader, places=p)
 
                 for break_beforehand in [True, False]:
-                    for epoch_id in six.moves.range(10):
+                    for epoch_id in range(10):
                         gen = batch_reader()
                         batch_id = 0
                         for d in py_reader():
@@ -91,18 +98,19 @@ class TestClass(unittest.TestCase):
                             L1 = np.array(L1)
                             L2 = np.array(L2)
 
-                            self.assertTrue(np.array_equal(I1, I2))
-                            self.assertTrue(np.array_equal(L1, L2))
+                            np.testing.assert_array_equal(I1, I2)
+                            np.testing.assert_array_equal(L1, L2)
 
                             batch_id += 1
-                            if break_beforehand and batch_id >= int(batch_num /
-                                                                    2):
+                            if break_beforehand and batch_id >= int(
+                                batch_num / 2
+                            ):
                                 break
 
                         if break_beforehand:
-                            self.assertTrue(next(gen, None) is not None)
+                            self.assertIsNotNone(next(gen, None))
                         else:
-                            self.assertTrue(next(gen, None) is None)
+                            self.assertIsNone(next(gen, None))
 
 
 class TestClass2(TestClass):

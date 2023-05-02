@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
+import os
 import unittest
+
 from test_dist_base import TestDistBase
 
-import os
 import paddle
 
 paddle.enable_static()
@@ -32,13 +32,15 @@ class TestDistMnistNCCL2MultiNCCLComm(TestDistBase):
         self._nccl_comm_num = 3
 
     def test_dist_train(self):
-        import paddle.fluid as fluid
+        from paddle import fluid
+
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(
                 "dist_mnist.py",
                 delta=1e-5,
                 check_error_log=True,
-                log_name=flag_name)
+                log_name=flag_name,
+            )
 
 
 if __name__ == "__main__":

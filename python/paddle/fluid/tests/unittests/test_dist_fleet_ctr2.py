@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
-import unittest
 import tempfile
+import unittest
+
 from test_dist_fleet_base import TestFleetBase
 
 
@@ -27,11 +26,9 @@ class TestDistMnistSync2x2(TestFleetBase):
         self._reader = "pyreader"
         self._need_test = 1
 
-    def check_with_place(self,
-                         model_file,
-                         delta=1e-3,
-                         check_error_log=False,
-                         need_envs={}):
+    def check_with_place(
+        self, model_file, delta=1e-3, check_error_log=False, need_envs={}
+    ):
         required_envs = {
             "PATH": os.getenv("PATH", ""),
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),
@@ -53,7 +50,8 @@ class TestDistMnistSync2x2(TestFleetBase):
 
     def test_dist_train(self):
         self.check_with_place(
-            "dist_fleet_ctr.py", delta=1e-5, check_error_log=False)
+            "dist_fleet_ctr.py", delta=1e-5, check_error_log=False
+        )
 
 
 # @unittest.skip(reason="Skip unstable ut, reader need to be rewrite")
@@ -62,11 +60,9 @@ class TestDistMnistAsyncDataset2x2(TestFleetBase):
         self._mode = "async"
         self._reader = "dataset"
 
-    def check_with_place(self,
-                         model_file,
-                         delta=1e-3,
-                         check_error_log=False,
-                         need_envs={}):
+    def check_with_place(
+        self, model_file, delta=1e-3, check_error_log=False, need_envs={}
+    ):
         required_envs = {
             "PATH": os.getenv("PATH", ""),
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),
@@ -92,7 +88,8 @@ class TestDistMnistAsyncDataset2x2(TestFleetBase):
 
     def test_dist_train(self):
         self.check_with_place(
-            "dist_fleet_ctr.py", delta=1e-5, check_error_log=False)
+            "dist_fleet_ctr.py", delta=1e-5, check_error_log=False
+        )
 
 
 if __name__ == "__main__":

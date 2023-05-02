@@ -16,28 +16,23 @@
 #include <string>
 
 #include "gtest/gtest.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/tensor.h"
-
-namespace paddle {
-namespace platform {
-struct bfloat16;
-struct float16;
-}  // namespace platform
-}  // namespace paddle
+#include "paddle/fluid/platform/place.h"
 
 TEST(DataType, float16) {
-  using paddle::framework::Tensor;
   using paddle::platform::CPUPlace;
   using paddle::platform::float16;
   namespace f = paddle::framework;
   f::proto::VarType::Type dtype = f::proto::VarType::FP16;
 
-  Tensor tensor;
+  phi::DenseTensor tensor;
   CPUPlace cpu;
-  tensor.mutable_data(cpu, dtype);
+  tensor.mutable_data(cpu, f::TransToPhiDataType(dtype));
 
   // test fp16 tensor
-  EXPECT_EQ(tensor.type(), f::ToDataType(typeid(float16)));
+  EXPECT_EQ(f::TransToProtoVarType(tensor.dtype()),
+            f::ToDataType(typeid(float16)));
 
   // test fp16 size
   EXPECT_EQ(f::SizeOfType(dtype), 2u);
@@ -48,18 +43,18 @@ TEST(DataType, float16) {
 }
 
 TEST(DataType, bfloat16) {
-  using paddle::framework::Tensor;
-  using paddle::platform::CPUPlace;
   using paddle::platform::bfloat16;
+  using paddle::platform::CPUPlace;
   namespace f = paddle::framework;
   f::proto::VarType::Type dtype = f::proto::VarType::BF16;
 
-  Tensor tensor;
+  phi::DenseTensor tensor;
   CPUPlace cpu;
-  tensor.mutable_data(cpu, dtype);
+  tensor.mutable_data(cpu, f::TransToPhiDataType(dtype));
 
   // test bf16 tensor
-  EXPECT_EQ(tensor.type(), f::ToDataType(typeid(bfloat16)));
+  EXPECT_EQ(f::TransToProtoVarType(tensor.dtype()),
+            f::ToDataType(typeid(bfloat16)));
 
   // test bf16 size
   EXPECT_EQ(f::SizeOfType(dtype), 2u);

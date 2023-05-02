@@ -48,6 +48,82 @@ namespace paddle {
 class AnalysisPredictor;
 struct MkldnnQuantizerConfig;
 
+struct LiteNNAdapterConfig {
+  bool use_nnadapter{false};
+  std::string nnadapter_model_cache_dir;
+  std::map<std::string, std::vector<char>> nnadapter_model_cache_buffers;
+  std::vector<std::string> nnadapter_device_names;
+  std::string nnadapter_context_properties;
+  std::string nnadapter_subgraph_partition_config_path;
+  std::string nnadapter_subgraph_partition_config_buffer;
+
+  LiteNNAdapterConfig& SetDeviceNames(const std::vector<std::string>& names);
+
+  LiteNNAdapterConfig& SetContextProperties(const std::string& properties);
+
+  LiteNNAdapterConfig& SetModelCacheDir(const std::string& dir);
+
+  LiteNNAdapterConfig& SetModelCacheBuffers(
+      const std::string& model_cache_token,
+      const std::vector<char>& model_cache_buffer);
+
+  LiteNNAdapterConfig& SetSubgraphPartitionConfigPath(const std::string& path);
+
+  LiteNNAdapterConfig& SetSubgraphPartitionConfigBuffer(
+      const std::string& buffer);
+
+  LiteNNAdapterConfig& Enable();
+  LiteNNAdapterConfig& Disable();
+};
+
+struct DistConfig {
+  bool use_dist_model() const { return use_dist_model_; }
+  void EnableDistModel(bool use_dist_model) {
+    use_dist_model_ = use_dist_model;
+  }
+
+  std::vector<std::string> trainer_endpoints() const {
+    return trainer_endpoints_;
+  }
+
+  std::string current_endpoint() const { return current_endpoint_; }
+
+  void SetEndpoints(const std::vector<std::string>& trainer_endpoints,
+                    const std::string& current_endpoint) {
+    trainer_endpoints_ = trainer_endpoints;
+    current_endpoint_ = current_endpoint;
+  }
+
+  int64_t nranks() const { return nranks_; }
+
+  int64_t rank() const { return rank_; }
+
+  void SetRanks(int64_t nranks, int64_t rank) {
+    nranks_ = nranks;
+    rank_ = rank;
+  }
+
+  std::string comm_init_config() const { return comm_init_config_; }
+
+  void SetCommInitConfig(const std::string& comm_init_config) {
+    comm_init_config_ = comm_init_config;
+  }
+
+  void SetCarrierId(const std::string& carrier_id) { carrier_id_ = carrier_id; }
+
+  std::string carrier_id() const { return carrier_id_; }
+
+ protected:
+  // DistModel Inference related
+  bool use_dist_model_{false};  // whether use DistModel or not
+  std::vector<std::string> trainer_endpoints_{};  // all trainers' endpoints
+  std::string current_endpoint_{};                // current trainer's endpoint
+  int64_t nranks_{1};               // total ranks (number of trainers)
+  int64_t rank_{0};                 // rank
+  std::string comm_init_config_{};  // converter config path
+  std::string carrier_id_{"inference"};
+};
+
 ///
 /// \brief configuration manager for AnalysisPredictor.
 /// \since 1.7.0
@@ -62,14 +138,14 @@ struct MkldnnQuantizerConfig;
 /// and loading it into AnalysisPredictor.
 ///
 struct PD_INFER_DECL AnalysisConfig {
-  AnalysisConfig() = default;
+  AnalysisConfig();
   ///
   /// \brief Construct a new AnalysisConfig from another
   /// AnalysisConfig.
   ///
   /// \param[in] other another AnalysisConfig
   ///
-  explicit AnalysisConfig(const AnalysisConfig& other);
+  AnalysisConfig(const AnalysisConfig& other);
   ///
   /// \brief Construct a new AnalysisConfig from a no-combined model.
   ///
@@ -85,12 +161,13 @@ struct PD_INFER_DECL AnalysisConfig {
   explicit AnalysisConfig(const std::string& prog_file,
                           const std::string& params_file);
   ///
-  /// \brief Precision of inference in TensorRT.
+  /// \brief Precision of inference.
   ///
   enum class Precision {
     kFloat32 = 0,  ///< fp32
     kInt8,         ///< int8
     kHalf,         ///< fp16
+    kBf16,         ///< bf16
   };
 
   ///
@@ -170,8 +247,12 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \param memory_pool_init_size_mb initial size of the GPU memory pool in MB.
   /// \param device_id device_id the GPU card to use (default is 0).
+  /// \param precision the precision used in Paddle-GPU inference.
   ///
-  void EnableUseGpu(uint64_t memory_pool_init_size_mb, int device_id = 0);
+  void EnableUseGpu(uint64_t memory_pool_init_size_mb,
+                    int device_id = 0,
+                    Precision precision_mode = Precision::kFloat32);
+
   ///
   /// \brief Turn off GPU.
   ///
@@ -197,23 +278,136 @@ struct PD_INFER_DECL AnalysisConfig {
   ///       file will be used and autotune will not be performed again.
   /// \param precision Calculation accuracy of multi_encoder
   /// \param adaptive_seqlen Is the input of multi_encoder variable length
+  /// \param enable_multi_stream Whether to enable the multi stream of xpu.
   ///
-  void EnableXpu(int l3_workspace_size = 0xfffc00, bool locked = false,
-                 bool autotune = true, const std::string& autotune_file = "",
+  void EnableXpu(int l3_workspace_size = 0xfffc00,
+                 bool locked = false,
+                 bool autotune = true,
+                 const std::string& autotune_file = "",
                  const std::string& precision = "int16",
-                 bool adaptive_seqlen = false);
+                 bool adaptive_seqlen = false,
+                 bool enable_multi_stream = false);
+
   ///
-  /// \brief Turn on NPU.
+  /// \brief configs of XPU
   ///
-  /// \param device_id device_id the NPU card to use (default is 0).
+  /// \param quant_post_dynamic_weight_bits Weight bits used in dynamic post
+  /// quantization. Optional value: -1, 8, 16. Default value is -1, means using
+  /// the recommended way. \param quant_post_dynamic_op_types Ops used in
+  /// dynamic post quantization.
   ///
-  void EnableNpu(int device_id = 0);
+  void SetXpuConfig(
+      int quant_post_dynamic_weight_bits = -1,
+      const std::vector<std::string>& quant_post_dynamic_op_types = {});
+
+  ///
+  /// \brief configs of IPU
+  ///
+  enum class ipu_config_code {
+    ipu_device_num,
+    ipu_micro_batch_size,
+    ipu_enable_pipelining,
+    ipu_batches_per_step,
+    ipu_enable_fp16,
+    ipu_replica_num,
+    ipu_available_memory_proportion,
+    ipu_enable_half_partial,
+    ipu_custom_ops_info,
+    ipu_custom_patterns,
+    ipu_enable_model_runtime_executor,
+  };
+
+  ///
+  /// \brief Turn on IPU.
+  ///
+  /// \param ipu_device_num the number of IPUs.
+  /// \param ipu_micro_batch_size the batch size in the graph, only work with
+  /// mutable input shapes.
+  /// \param ipu_enable_pipelining enable pipelining.
+  /// \param ipu_batches_per_step the number of batches per run in pipelining.
+  ///
+  void EnableIpu(int ipu_device_num = 1,
+                 int ipu_micro_batch_size = 1,
+                 bool ipu_enable_pipelining = false,
+                 int ipu_batches_per_step = 1);
+
+  ///
+  /// \brief Set IPU config.
+  ///
+  /// \param ipu_enable_fp16 enable fp16.
+  /// \param ipu_replica_num the number of graph replication.
+  /// \param ipu_available_memory_proportion the available memory proportion for
+  /// matmul/conv.
+  /// \param ipu_enable_half_partial enable fp16 partial for matmul, only work
+  /// with fp16.
+  /// \param ipu_enable_model_runtime_executor whether to use model_runtime
+  /// executor.
+  ///
+  void SetIpuConfig(bool ipu_enable_fp16 = false,
+                    int ipu_replica_num = 1,
+                    float ipu_available_memory_proportion = 1.0,
+                    bool ipu_enable_half_partial = false,
+                    bool ipu_enable_model_runtime_executor = false);
+
+  ///
+  /// \brief Set IPU custom ops and patterns.
+  ///
+  /// \param custom_ops_info the mapper of paddle custom ops and popart ops.
+  /// e.g. {{paddle_op_name, popart_op_name, op_domain, op_version}}.
+  /// \param custom_patterns the names of popart patterns. e.g. {{pattern_name,
+  /// enable_pattern}}}
+  ///
+  void SetIpuCustomInfo(
+      const std::vector<std::vector<std::string>>& ipu_custom_ops_info = {},
+      const std::map<std::string, bool>& ipu_custom_patterns = {});
+
+  ///
+  /// \brief Load IPU config from configuration file.
+  ///
+  /// \param config_path configure file path for ipu.
+  ///
+  void LoadIpuConfig(const std::string& config_path);
+
+  ///
+  /// \brief Set XPU device id.
+  ///
+  /// \param device_id the XPU card to use (default is 0).
+  ///
+  void SetXpuDeviceId(int device_id = 0);
+  ///
+  /// \brief Turn on CustomDevice.
+  ///
+  /// \param device_type device_type the custom device to use.
+  ///
+  /// \param device_id device_id the custom device to use (default is 0).
+  ///
+  void EnableCustomDevice(const std::string& device_type,
+                          int device_id = 0,
+                          Precision precision_mode = Precision::kFloat32);
+  ///
+  /// \brief Turn on ONNXRuntime.
+  ///
+  void EnableONNXRuntime();
+  ///
+  /// \brief Turn off ONNXRuntime.
+  ///
+  void DisableONNXRuntime();
+  ///
+  /// \brief Turn on ONNXRuntime Optimization.
+  ///
+  void EnableORTOptimization();
   ///
   /// \brief A boolean state telling whether the GPU is turned on.
   ///
   /// \return bool Whether the GPU is turned on.
   ///
   bool use_gpu() const { return use_gpu_; }
+  ///
+  /// \brief When running the fp16 model on Nvidia GPU, you can also try running
+  /// your model on cutlass.
+  ///
+  void Exp_EnableUseCutlass();
+  ///
   ///
   /// \brief A boolean state telling whether the XPU is turned on.
   ///
@@ -226,6 +420,35 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \return bool Whether the NPU is turned on.
   ///
   bool use_npu() const { return use_npu_; }
+  /// \brief A boolean state telling whether the IPU is turned on.
+  ///
+  /// \return bool Whether the IPU is turned on.
+  ///
+  bool use_ipu() const { return use_ipu_; }
+  /// \brief A boolean state telling whether the CustomDevice is turned on.
+  ///
+  /// \return bool Whether the CustomDevice is turned on.
+  ///
+  bool use_custom_device() const { return use_custom_device_; }
+  ///
+  /// \brief A boolean state telling whether the ONNXRuntime is turned on.
+  ///
+  /// \return bool Whether the ONNXRuntime is turned on.
+  ///
+  bool use_onnxruntime() const { return use_onnxruntime_; }
+  ///
+  /// \brief A boolean state telling whether the Lite OpenCL is turned on.
+  ///
+  /// \return bool Whether the Lite OpenCL is turned on.
+  ///
+  bool use_opencl() const { return use_opencl_; }
+  ///
+  /// \brief A boolean state telling whether the ONNXRuntime Optimization is
+  /// turned on.
+  ///
+  /// \return bool Whether the ONNXRuntime Optimization is turned on.
+  ///
+  bool ort_optimization_enabled() const { return enable_ort_optimization_; }
   ///
   /// \brief Get the GPU device id.
   ///
@@ -244,6 +467,29 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \return int The NPU device id.
   ///
   int npu_device_id() const { return npu_device_id_; }
+  /// \brief Get the number of IPU device .
+  ///
+  /// \return int The number of IPU device.
+  ///
+  int ipu_device_num() const { return ipu_device_num_; }
+  ///
+  /// \brief Get the custom device id.
+  ///
+  /// \return int The custom device id.
+  ///
+  int custom_device_id() const { return custom_device_id_; }
+  /// \brief Get the custom device type.
+  ///
+  /// \return string The custom device type.
+  ///
+  std::string custom_device_type() const { return custom_device_type_; }
+  /// \brief Get whether the custom device mixed preicsion is enabled.
+  ///
+  /// \return bool custom device mixed is enabled.
+  ///
+  bool enable_custom_device_mixed() const {
+    return enable_custom_device_mixed_;
+  }
   ///
   /// \brief Get the initial size in MB of the GPU memory pool.
   ///
@@ -342,8 +588,9 @@ struct PD_INFER_DECL AnalysisConfig {
   /// quantization).
   ///
   ///
-  void EnableTensorRtEngine(int workspace_size = 1 << 20,
-                            int max_batch_size = 1, int min_subgraph_size = 3,
+  void EnableTensorRtEngine(int64_t workspace_size = 1 << 30,
+                            int max_batch_size = 1,
+                            int min_subgraph_size = 3,
                             Precision precision = Precision::kFloat32,
                             bool use_static = false,
                             bool use_calib_mode = true);
@@ -353,6 +600,27 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \return bool Whether the TensorRT engine is used.
   ///
   bool tensorrt_engine_enabled() const { return use_tensorrt_; }
+  ///
+  /// \brief Turn on the TensorRT memory optimization.
+  ///
+  /// \param engine_memory_sharing Whether to enable TensorRT memory
+  /// optimization.
+  /// \param sharing_identifier This parameter can be set if TensorRT memory
+  /// optimization is enabled, and the value must be greater than 0. If you have
+  /// multiple predictors that want to share memory, you can specify a
+  /// same value for these predictors. NOTE: The predictors specified with the
+  /// same value must be guaranteed to be executed serially, otherwise undefined
+  /// behavior will occur.
+  ///
+  void EnableTensorRTMemoryOptim(bool engine_memory_sharing = true,
+                                 int sharing_identifier = 0);
+  ///
+  /// \brief A boolean state telling whether the tensorrt engine memory sharing
+  /// is activated.
+  ///
+  /// \return bool Whether the tensorrt engine memory sharing is activated.
+  ///
+  bool trt_engine_memory_sharing() const;
   ///
   /// \brief  Get the TensorRT engine precision.
   ///
@@ -381,6 +649,70 @@ struct PD_INFER_DECL AnalysisConfig {
     return !min_input_shape_.empty();
   }
   ///
+  /// \brief Enable tuned tensorrt dynamic shape.
+  ///
+  /// \param shape_range_info_path the path to shape_info file got in
+  /// CollectShapeInfo
+  /// mode.
+  /// \param allow_build_at_runtime allow build trt engine at runtime.
+  ///
+  void EnableTunedTensorRtDynamicShape(
+      const std::string& shape_range_info_path = "",
+      bool allow_build_at_runtime = true);
+
+  ///
+  /// \brief A boolean state telling whether to use tuned tensorrt dynamic
+  /// shape.
+  ///
+  bool tuned_tensorrt_dynamic_shape() const;
+
+  ///
+  /// \brief A boolean state telling whether to allow building trt engine at
+  /// runtime.
+  ///
+  bool trt_allow_build_at_runtime() const;
+
+  ///
+  /// \brief Set execution stream. If not set a stream will be created
+  /// internally.
+  ///
+  void SetExecStream(void* stream);
+
+  ///
+  /// \brief Get execution stream. The user needs to explicitly cast into a
+  /// stream type such as cudaStream_t, hipStream_t, etc.
+  ///
+  void* GetExecStream() const;
+
+  ///
+  /// \brief Whether the external stream is used, if True, the predictor clone
+  /// operation must use the external stream, otherwise the framework manages
+  /// the stream internally.
+  ///
+  bool external_stream_enabled() const;
+
+  ///
+  /// \brief Collect shape info of all tensors in compute graph.
+  ///
+  /// \param shape_range_info_path the path to save shape info.
+  ///
+  void CollectShapeRangeInfo(const std::string& shape_range_info_path);
+
+  ///
+  /// \brief the shape info path in CollectShapeInfo mode.
+  ///
+  /// \return the shape info path.
+  ///
+  const std::string& shape_range_info_path() const;
+
+  ///
+  /// \brief A boolean state telling whether to collect shape info.
+  ///
+  /// \return bool Whether to collect shape info.
+  ///
+  bool shape_range_info_collected() const;
+
+  ///
   /// \brief Prevent ops running in Paddle-TRT
   /// NOTE: just experimental, not an official stable API, easy to be broken.
   ///
@@ -392,14 +724,14 @@ struct PD_INFER_DECL AnalysisConfig {
   /// may be more high-performance. Libnvinfer_plugin.so greater than
   /// V7.2.1 is needed.
   ///
-  void EnableTensorRtOSS();
+  void EnableVarseqlen();
 
   ///
   /// \brief A boolean state telling whether to use the TensorRT OSS.
   ///
   /// \return bool Whether to use the TensorRT OSS.
   ///
-  bool tensorrt_oss_enabled() { return trt_use_oss_; }
+  bool tensorrt_varseqlen_enabled() { return trt_use_varseqlen_; }
 
   ///
   /// \brief Enable TensorRT DLA
@@ -415,7 +747,18 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   bool tensorrt_dla_enabled() { return trt_use_dla_; }
 
-  void EnableDlnne(int min_subgraph_size = 3);
+  void EnableTensorRtInspector();
+  bool tensorrt_inspector_enabled() { return trt_use_inspector_; }
+
+  void EnableDlnne(
+      int min_subgraph_size = 3,
+      int max_batch_size = 1,
+      bool use_static_batch = false,
+      std::string weight_share_mode = "0",
+      std::unordered_set<std::string> disable_nodes_by_outputs = {},
+      std::map<std::string, std::vector<int64_t>> input_dict = {},
+      bool use_calib_mode = false,
+      AnalysisConfig::Precision precision_mode = Precision::kFloat32);
   bool dlnne_enabled() const { return use_dlnne_; }
 
   ///
@@ -430,6 +773,11 @@ struct PD_INFER_DECL AnalysisConfig {
       bool zero_copy = false,
       const std::vector<std::string>& passes_filter = {},
       const std::vector<std::string>& ops_filter = {});
+
+  ///
+  /// \brief Turn on the usage of Lite sub-graph engine with opencl.
+  ///
+  void EnableOpenCL();
 
   ///
   /// \brief A boolean state indicating whether the Lite sub-graph engine is
@@ -508,10 +856,36 @@ struct PD_INFER_DECL AnalysisConfig {
   void EnableMkldnnQuantizer();
 
   ///
+  /// \brief Turn on MKLDNN int8.
+  ///
+  /// \param op_list The operator type list.
+  ///
+  void EnableMkldnnInt8(const std::unordered_set<std::string>& op_list = {});
+
+  ///
+  /// \brief A boolean state telling whether to use the MKLDNN Int8.
+  ///
+  /// \return bool Whether to use the MKLDNN Int8.
+  ///
+  bool mkldnn_int8_enabled() const { return use_mkldnn_int8_; }
+
+  ///
   /// \brief Turn on MKLDNN bfloat16.
   ///
   ///
   void EnableMkldnnBfloat16();
+
+  ///
+  /// \brief Turn off MKLDNN fc passes.
+  ///
+  void DisableMkldnnFcPasses();
+
+  ///
+  /// \brief A boolean state telling whether to disable the MKLDNN Fc passes.
+  ///
+  /// \return bool Whether to disable the MKLDNN Fc passes.
+  ///
+  bool mkldnn_fc_passes_disabled() const { return disable_mkldnn_fc_passes_; }
 
   ///
   /// \brief A boolean state telling whether to use the MKLDNN Bfloat16.
@@ -559,8 +933,10 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \param params_buffer The memory buffer of the combined parameters file.
   /// \param params_buffer_size The size of the combined parameters data.
   ///
-  void SetModelBuffer(const char* prog_buffer, size_t prog_buffer_size,
-                      const char* params_buffer, size_t params_buffer_size);
+  void SetModelBuffer(const char* prog_buffer,
+                      size_t prog_buffer_size,
+                      const char* params_buffer,
+                      size_t params_buffer_size);
   ///
   /// \brief A boolean state telling whether the model is set from the CPU
   /// memory.
@@ -573,7 +949,9 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \brief Turn on memory optimize
   /// NOTE still in development.
   ///
-  void EnableMemoryOptim();
+  /// \param x Whether to enable memory optimize.
+  ///
+  void EnableMemoryOptim(bool x = true);
   ///
   /// \brief A boolean state telling whether the memory optimization is
   /// activated.
@@ -640,6 +1018,39 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   std::string Summary();
 
+  LiteNNAdapterConfig& NNAdapter() { return nnadapter_config_; }
+
+  void SetDistConfig(const DistConfig& dist_config) {
+    dist_config_ = dist_config;
+  }
+
+  const DistConfig& dist_config() const { return dist_config_; }
+
+  ///
+  /// \brief Set a list of operators that do not support mixed precision. This
+  /// interface is in the experimental stage and may change in the future. Note
+  /// that the blacklist must be the same as the model conversion blacklist.
+  ///
+  void Exp_DisableMixedPrecisionOps(
+      const std::unordered_set<std::string>& black_list);
+
+  void SetApplyOptim(bool value) { apply_optim_ = value; }
+
+  void SetSkipLoadParams(bool value) { skip_load_params_ = value; }
+
+  ///
+  /// \brief Enable use cinn compiler optimization.
+  ///
+  void Exp_EnableCINNCompiler();
+
+  ///
+  /// \brief A boolean state telling whether the CINN compiler optimization is
+  /// turned on.
+  ///
+  /// \return bool Whether the CINN compiler optimization is turned on.
+  ///
+  bool cinn_compiler_enabled() const;
+
  protected:
   // Update the config.
   void Update();
@@ -652,17 +1063,35 @@ struct PD_INFER_DECL AnalysisConfig {
   mutable std::string prog_file_;
   mutable std::string params_file_;
 
+  // Mixed precision related.
+  Precision mixed_precision_mode_{Precision::kFloat32};
+  std::unordered_set<std::string> mixed_black_list_;
+
   // GPU related.
   bool use_gpu_{false};
+  bool use_cutlass_{false};
   int gpu_device_id_{0};
   uint64_t memory_pool_init_size_mb_{100};  // initial size is 100MB.
+  bool enable_gpu_mixed_{false};
   bool thread_local_stream_{false};
 
   bool use_cudnn_{false};
+  bool use_external_stream_{false};
+  void* exec_stream_{nullptr};
 
   // NPU related
   bool use_npu_{false};
   int npu_device_id_{0};
+
+  // CustomDevice related
+  bool use_custom_device_{false};
+  int custom_device_id_{0};
+  std::string custom_device_type_;
+  bool enable_custom_device_mixed_{false};
+
+  // ONNXRuntime related
+  bool use_onnxruntime_{false};
+  bool enable_ort_optimization_{false};
 
   // Padding related
   bool use_fc_padding_{true};
@@ -671,7 +1100,7 @@ struct PD_INFER_DECL AnalysisConfig {
   bool use_tensorrt_{false};
   // For workspace_size, refer it from here:
   // https://docs.nvidia.com/deeplearning/sdk/tensorrt-developer-guide/index.html#troubleshooting
-  int tensorrt_workspace_size_{1 << 30};
+  int64_t tensorrt_workspace_size_{1 << 30};
   // While TensorRT allows an engine optimized for a given max batch size
   // to run at any smaller size, the performance for those smaller
   // sizes may not be as well-optimized. Therefore, Max batch is best
@@ -685,7 +1114,10 @@ struct PD_INFER_DECL AnalysisConfig {
   Precision tensorrt_precision_mode_{Precision::kFloat32};
   bool trt_use_static_engine_{false};
   bool trt_use_calib_mode_{true};
-  bool trt_use_oss_{false};
+  bool trt_use_varseqlen_{false};
+  bool trt_with_interleaved_{false};
+  std::string tensorrt_transformer_posid_{""};
+  std::string tensorrt_transformer_maskid_{""};
   bool trt_use_dla_{false};
   int trt_dla_core_{0};
   std::map<std::string, std::vector<int>> min_input_shape_{};
@@ -693,13 +1125,32 @@ struct PD_INFER_DECL AnalysisConfig {
   std::map<std::string, std::vector<int>> optim_input_shape_{};
   std::vector<std::string> trt_disabled_ops_{};
   bool disable_trt_plugin_fp16_{false};
+  bool trt_allow_build_at_runtime_{false};
+  // tune to get dynamic_shape info.
+  bool trt_tuned_dynamic_shape_{false};
+  bool trt_use_inspector_{false};
+
+  // In CollectShapeInfo mode, we will collect the shape information of
+  // all intermediate tensors in the compute graph and calculate the
+  // min_shape, max_shape and opt_shape and save in shape_range_info_path_;
+  bool collect_shape_range_info_{false};
+  std::string shape_range_info_path_;
 
   // dlnne related.
   bool use_dlnne_{false};
   int dlnne_min_subgraph_size_{3};
+  int dlnne_max_batchsize_{1};
+  std::unordered_set<std::string> dlnne_disable_nodes_by_outputs_;
+  bool dlnne_use_static_batch_{true};
+  std::string dlnne_weight_share_mode_;
+  std::map<std::string, std::vector<int64_t>> dlnne_input_shape_dict_{};
+  bool dlnne_use_calib_mode_{false};
+  Precision dlnne_precision_mode_{Precision::kFloat32};
 
   // memory reuse related.
   bool enable_memory_optim_{false};
+  bool trt_engine_memory_sharing_{false};
+  int trt_engine_memory_sharing_identifier_{0};
 
   bool use_mkldnn_{false};
   std::unordered_set<std::string> mkldnn_enabled_op_types_;
@@ -729,15 +1180,27 @@ struct PD_INFER_DECL AnalysisConfig {
   Precision lite_precision_mode_;
   bool lite_zero_copy_;
 
+  // CINN compiler related.
+  bool use_cinn_compiler_{false};
+
   // XPU related.
   bool use_xpu_{false};
   int xpu_device_id_{0};
-  int xpu_l3_workspace_size_;
+  int xpu_l3_workspace_size_{0};
   bool xpu_locked_;
   bool xpu_autotune_;
   std::string xpu_autotune_file_;
   std::string xpu_precision_;
   bool xpu_adaptive_seqlen_;
+  bool xpu_enable_multi_stream_;
+  int xpu_quant_post_dynamic_weight_bits_{-1};
+  std::vector<std::string> xpu_quant_post_dynamic_op_types_;
+
+  // LITE OPENCL SETTINGS
+  bool use_opencl_{false};
+
+  // NNAdapter related
+  LiteNNAdapterConfig nnadapter_config_;
 
   // mkldnn related.
   int mkldnn_cache_capacity_{10};
@@ -745,6 +1208,42 @@ struct PD_INFER_DECL AnalysisConfig {
   std::shared_ptr<MkldnnQuantizerConfig> mkldnn_quantizer_config_;
   bool use_mkldnn_bfloat16_{false};
   std::unordered_set<std::string> bfloat16_enabled_op_types_;
+  bool use_mkldnn_int8_{false};
+  std::unordered_set<int> quantize_excluded_op_ids_{};
+  std::unordered_set<std::string> quantize_enabled_op_types_{};
+
+  bool disable_mkldnn_fc_passes_{false};
+
+  // ipu related.
+  bool use_ipu_{false};
+  int ipu_device_num_{1};
+  int ipu_micro_batch_size_{1};
+  bool ipu_enable_pipelining_{false};
+  int ipu_batches_per_step_{1};
+
+  bool ipu_enable_fp16_{false};
+  int ipu_replica_num_{1};
+  float ipu_available_memory_proportion_{1.0};
+  bool ipu_enable_half_partial_{false};
+  bool ipu_enable_model_runtime_executor_{false};
+
+  std::vector<std::vector<std::string>> ipu_custom_ops_info_;
+  std::vector<std::vector<std::string>> ipu_custom_patterns_;
+
+  const std::unordered_map<std::string, ipu_config_code> ipu_config_mapper_ = {
+      {"ipu_device_num", ipu_config_code::ipu_device_num},
+      {"ipu_micro_batch_size", ipu_config_code::ipu_micro_batch_size},
+      {"ipu_enable_pipelining", ipu_config_code::ipu_enable_pipelining},
+      {"ipu_batches_per_step", ipu_config_code::ipu_batches_per_step},
+      {"ipu_enable_fp16", ipu_config_code::ipu_enable_fp16},
+      {"ipu_replica_num", ipu_config_code::ipu_replica_num},
+      {"ipu_available_memory_proportion",
+       ipu_config_code::ipu_available_memory_proportion},
+      {"ipu_enable_half_partial", ipu_config_code::ipu_enable_half_partial},
+      {"ipu_enable_model_runtime_executor",
+       ipu_config_code::ipu_enable_model_runtime_executor},
+      {"ipu_custom_ops_info", ipu_config_code::ipu_custom_ops_info},
+      {"ipu_custom_patterns", ipu_config_code::ipu_custom_patterns}};
 
   // If the config is already used on a predictor, it becomes invalid.
   // Any config can only be used with one predictor.
@@ -752,6 +1251,17 @@ struct PD_INFER_DECL AnalysisConfig {
   // So we release the memory when the predictor is set up.
   mutable bool is_valid_{true};
   std::string opt_cache_dir_;
+  friend class paddle_infer::experimental::InternalUtils;
+
+  // fleet exe related
+  DistConfig dist_config_{};
+
+  // jit engine related
+  // NOTE(Aureliue84): In case of Predictor in JITLayer, program is from outer
+  // which means Predictor should apply optimization by calling
+  // PrepareProgram(). So we add this flag to control the process.
+  bool apply_optim_{false};
+  bool skip_load_params_{false};
 };
 
 }  // namespace paddle

@@ -11,15 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from paddle.fluid.framework import _dygraph_guard
-import paddle.fluid as fluid
-from paddle.fluid.framework import Variable
-import paddle.fluid.dygraph.jit as jit
-from paddle.fluid.dygraph.jit import extract_vars
 import numpy as np
-import os
-import time
+
+import paddle
+from paddle import fluid
+from paddle.fluid.framework import _dygraph_guard
 
 __all__ = ['DyGraphProgramDescTracerTestHelper', 'is_equal_program']
 
@@ -98,7 +94,8 @@ def load_dygraph_vars_to_scope(model_path, scope, place):
             dst_t.set(np.array(src_t), place)
             dst_t.set_lod(src_t.lod())
 
-    param_dict, opti_dict = fluid.load_dygraph(model_path)
+    param_dict = paddle.load(model_path + '.pdparams')
+    opti_dict = paddle.load(model_path + '.pdopt')
     if param_dict:
         load_dict_to_scope(scope, param_dict)
 
@@ -106,7 +103,7 @@ def load_dygraph_vars_to_scope(model_path, scope, place):
         load_dict_to_scope(scope, opti_dict)
 
 
-class DyGraphProgramDescTracerTestHelper(object):
+class DyGraphProgramDescTracerTestHelper:
     def __init__(self, unittest_obj):
         self.unittest_obj = unittest_obj
 

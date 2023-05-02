@@ -13,11 +13,11 @@
 :: limitations under the License.
 ::
 :: ===============================
-:: Build Paddle compile enviroment
+:: Build Paddle compile environment
 :: ===============================
 :: Description:
 ::   
-::   Install compile enviroment for xly CI.
+::   Install compile environment for xly CI.
 ::
 ::   Include:
 ::     1. CMake 3.17.0

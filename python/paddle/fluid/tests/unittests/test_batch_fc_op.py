@@ -13,13 +13,11 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-import random
-from op_test import OpTest
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
-from op_test import OpTest, skip_check_grad_ci
-import paddle.fluid.core as core
+from eager_op_test import OpTest
+
+from paddle.fluid import core
 
 
 def np_cal_batchfc(input, w, bias):
@@ -44,12 +42,15 @@ class TestBatchFCOp(OpTest):
 
     def setUp(self):
         self.config()
-        self.input = np.random.random((self.slot_pairs_num, self.batch_size,
-                                       self.in_dim)).astype(self.dtype)
-        self.w = np.random.random((self.slot_pairs_num, self.in_dim,
-                                   self.out_dim)).astype(self.dtype)
-        self.bias = np.random.random((self.slot_pairs_num,
-                                      self.out_dim)).astype(self.dtype)
+        self.input = np.random.random(
+            (self.slot_pairs_num, self.batch_size, self.in_dim)
+        ).astype(self.dtype)
+        self.w = np.random.random(
+            (self.slot_pairs_num, self.in_dim, self.out_dim)
+        ).astype(self.dtype)
+        self.bias = np.random.random(
+            (self.slot_pairs_num, self.out_dim)
+        ).astype(self.dtype)
         self.op_type = "batch_fc"
         np_out = np_cal_batchfc(self.input, self.w, self.bias)
         np_out = np_out.astype(self.dtype)
@@ -63,7 +64,8 @@ class TestBatchFCOp(OpTest):
     def test_check_grad_gpu(self):
         if core.is_compiled_with_cuda():
             self.check_grad_with_place(
-                core.CUDAPlace(0), ["Bias", "W", "Input"], "Out")
+                core.CUDAPlace(0), ["Bias", "W", "Input"], "Out"
+            )
 
 
 class TestBatchFCOp1(OpTest):
@@ -76,12 +78,15 @@ class TestBatchFCOp1(OpTest):
 
     def setUp(self):
         self.config()
-        self.input = np.random.random((self.slot_pairs_num, self.batch_size,
-                                       self.in_dim)).astype(self.dtype)
-        self.w = np.random.random((self.slot_pairs_num, self.in_dim,
-                                   self.out_dim)).astype(self.dtype)
-        self.bias = np.random.random((self.slot_pairs_num,
-                                      self.out_dim)).astype(self.dtype)
+        self.input = np.random.random(
+            (self.slot_pairs_num, self.batch_size, self.in_dim)
+        ).astype(self.dtype)
+        self.w = np.random.random(
+            (self.slot_pairs_num, self.in_dim, self.out_dim)
+        ).astype(self.dtype)
+        self.bias = np.random.random(
+            (self.slot_pairs_num, self.out_dim)
+        ).astype(self.dtype)
         self.op_type = "batch_fc"
         np_out = np_cal_batchfc(self.input, self.w, self.bias)
         np_out = np_out.astype(self.dtype)
@@ -96,8 +101,9 @@ class TestBatchFCOp1(OpTest):
 
     def test_check_grad_cpu(self):
         try:
-            self.check_grad_with_place(core.CPUPlace(), ["Bias", "W", "Input"],
-                                       "Out")
+            self.check_grad_with_place(
+                core.CPUPlace(), ["Bias", "W", "Input"], "Out"
+            )
         except:
             print("do not support cpu test, skip")
 

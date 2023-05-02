@@ -12,47 +12,49 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
+import subprocess
 import sys
 import time
-import threading
-import subprocess
 import unittest
+
 import numpy
 
 import paddle
-import paddle.fluid as fluid
-
-import paddle.distributed.fleet.base.role_maker as role_maker
-import paddle.distributed.fleet as fleet
-
-from paddle.distributed.utils import find_free_ports
+from paddle import fluid
+from paddle.distributed import fleet
+from paddle.distributed.fleet.base import role_maker
+from paddle.distributed.utils.launch_utils import find_free_ports
 
 paddle.enable_static()
 
 
 class TestCommunicatorGeoEnd2End(unittest.TestCase):
     def net(self):
-        x = fluid.layers.data(name='x', shape=[13], dtype='float32')
-        x1 = fluid.layers.data(name='x1', shape=[1], dtype='int64', lod_level=1)
+        x = paddle.static.data(name='x', shape=[-1, 13], dtype='float32')
+        x1 = paddle.static.data(
+            name='x1', shape=[-1, 1], dtype='int64', lod_level=1
+        )
 
         emb = fluid.layers.embedding(
             input=x1,
             size=[10000, 10],
             param_attr=fluid.ParamAttr(
                 name="embedding",
-                initializer=fluid.initializer.Constant(value=0.01)),
-            is_sparse=True)
+                initializer=paddle.nn.initializer.Constant(value=0.01),
+            ),
+            is_sparse=True,
+        )
 
-        pool = fluid.layers.sequence_pool(input=emb, pool_type="sum")
-        z = fluid.layers.concat(input=[x, pool], axis=1)
-        y_predict = fluid.layers.fc(input=z, size=1, act=None)
-        y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+        pool = paddle.static.nn.sequence_lod.sequence_pool(
+            input=emb, pool_type="sum"
+        )
+        z = paddle.concat([x, pool], axis=1)
 
-        cost = fluid.layers.square_error_cost(input=y_predict, label=y)
-        avg_cost = fluid.layers.mean(cost)
+        y_predict = paddle.static.nn.fc(x=z, size=1)
+        y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
+        cost = paddle.nn.functional.square_error_cost(input=y_predict, label=y)
+        avg_cost = paddle.mean(cost)
         return avg_cost, x, x1, y
 
     def fake_reader(self):
@@ -92,9 +94,11 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
         feeder = fluid.DataFeeder(place=place, feed_list=[x, z, y])
 
         for batch_id, data in enumerate(train_reader()):
-            exe.run(fluid.default_main_program(),
-                    feed=feeder.feed(data),
-                    fetch_list=[])
+            exe.run(
+                fluid.default_main_program(),
+                feed=feeder.feed(data),
+                fetch_list=[],
+            )
 
         fleet.stop_worker()
 
@@ -121,7 +125,6 @@ class TestCommunicatorGeoEnd2End(unittest.TestCase):
 
     def test_communicator(self):
         run_server_cmd = """
-from __future__ import print_function
 
 import sys
 import os
@@ -135,9 +138,9 @@ import numpy
 import paddle
 import paddle.fluid as fluid
 
-from paddle.fluid.communicator import Communicator
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-from paddle.fluid.incubate.fleet.parameter_server.mode import DistributedMode
+from paddle.distributed.communicator import Communicator
+import paddle.incubate.distributed.fleet.role_maker as role_maker
+from paddle.incubate.distributed.fleet.parameter_server.mode import DistributedMode
 import paddle.distributed.fleet as fleet
 
 from test_communicator_geo import TestCommunicatorGeoEnd2End
@@ -162,16 +165,17 @@ half_run_server.run_ut()
 
         os.environ["TRAINING_ROLE"] = "PSERVER"
         os.environ["PADDLE_PORT"] = str(port)
-        os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:{}".format(port)
+        os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = f"127.0.0.1:{port}"
 
         _python = sys.executable
 
-        ps_cmd = "{} {}".format(_python, server_file)
+        ps_cmd = f"{_python} {server_file}"
 
         ps_proc = subprocess.Popen(
             ps_cmd.strip().split(" "),
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE)
+            stderr=subprocess.PIPE,
+        )
 
         time.sleep(5)
 

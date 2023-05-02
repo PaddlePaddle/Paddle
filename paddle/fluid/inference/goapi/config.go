@@ -157,7 +157,37 @@ func (config *Config) UseFcPadding() bool {
 /// \param deviceId the GPU card to use.
 ///
 func (config *Config) EnableUseGpu(memorySize uint64, deviceId int32) {
-	C.PD_ConfigEnableUseGpu(config.c, C.uint64_t(memorySize), C.int32_t(deviceId))
+	C.PD_ConfigEnableUseGpu(config.c, C.uint64_t(memorySize), C.int32_t(deviceId), 0)
+}
+
+///
+/// \brief Turn on ONNXRuntime.
+///
+func (config *Config) EnableONNXRuntime() {
+	C.PD_ConfigEnableONNXRuntime(config.c)
+}
+
+///
+/// \brief Turn off ONNXRuntime.
+///
+func (config *Config) DisableONNXRuntime() {
+	C.PD_ConfigDisableONNXRuntime(config.c)
+}
+
+///
+/// \brief A boolean state telling whether the ONNXRuntime is turned on.
+///
+/// \return bool Whether the ONNXRuntime is turned on.
+///
+func (config *Config) ONNXRuntimeEnabled() bool {
+	return cvtPDBoolToGo(C.PD_ConfigONNXRuntimeEnabled(config.c))
+}
+
+///
+/// \brief Turn on ONNXRuntime Optimization.
+///
+func (config *Config) EnableORTOptimization() {
+	C.PD_ConfigEnableORTOptimization(config.c)
 }
 
 ///
@@ -169,8 +199,9 @@ func (config *Config) EnableUseGpu(memorySize uint64, deviceId int32) {
 /// \param autotune_file Specify the path of the autotune file. If autotune_file is specified, the algorithm specified in the file will be used and autotune will not be performed again.
 /// \param precision Calculation accuracy of multi_encoder
 /// \param adaptive_seqlen Is the input of multi_encoder variable length
+/// \param enable_multi_stream Whether to enable the multi stream of xpu
 ///
-func (config *Config) EnableXpu(l3WorkspaceSize int32, locked bool, autotune bool, autotuneFile string, precision string, adaptiveSeqlen bool) {
+func (config *Config) EnableXpu(l3WorkspaceSize int32, locked bool, autotune bool, autotuneFile string, precision string, adaptiveSeqlen bool, enableMultiStream bool) {
 	cAutotuneFile := C.CString(autotuneFile)
 	cPrecision := C.CString(precision)
 	defer func() {
@@ -178,16 +209,7 @@ func (config *Config) EnableXpu(l3WorkspaceSize int32, locked bool, autotune boo
 		C.free(unsafe.Pointer(cPrecision))
 	}()
 	C.PD_ConfigEnableXpu(config.c, C.int32_t(l3WorkspaceSize), cvtGoBoolToPD(locked), cvtGoBoolToPD(autotune),
-		cAutotuneFile, cPrecision, cvtGoBoolToPD(adaptiveSeqlen))
-}
-
-///
-/// \brief Turn on NPU.
-///
-/// \param deviceId the NPU card to use.
-///
-func (config *Config) EnableNpu(deviceId int32) {
-	C.PD_ConfigEnableNpu(config.c, C.int32_t(deviceId))
+		cAutotuneFile, cPrecision, cvtGoBoolToPD(adaptiveSeqlen), cvtGoBoolToPD(enableMultiStream))
 }
 
 ///
@@ -302,9 +324,9 @@ func (config *Config) IrOptim() bool {
 /// \param useCalibMode Use TRT int8 calibration(post training
 /// quantization).
 ///
-func (config *Config) EnableTensorRtEngine(workspaceSize int32, maxBatchSize int32, minSubgraphSize int32,
+func (config *Config) EnableTensorRtEngine(workspaceSize int64, maxBatchSize int32, minSubgraphSize int32,
 	precision Precision, useStatic bool, useCalibMode bool) {
-	C.PD_ConfigEnableTensorRtEngine(config.c, C.int32_t(workspaceSize), C.int32_t(maxBatchSize), C.int32_t(minSubgraphSize), C.int32_t(precision), cvtGoBoolToPD(useStatic), cvtGoBoolToPD(useCalibMode))
+	C.PD_ConfigEnableTensorRtEngine(config.c, C.int64_t(workspaceSize), C.int32_t(maxBatchSize), C.int32_t(minSubgraphSize), C.int32_t(precision), cvtGoBoolToPD(useStatic), cvtGoBoolToPD(useCalibMode))
 }
 
 ///
@@ -384,6 +406,71 @@ func (config *Config) SetTRTDynamicShapeInfo(minInputShape map[string][]int32, m
 }
 
 ///
+/// \brief A boolean state telling whether the trt dynamic_shape is used.
+///
+func (config *Config) TensorRtDynamicShapeEnabled() bool {
+	return cvtPDBoolToGo(C.PD_ConfigTensorRtDynamicShapeEnabled(config.c))
+}
+
+///
+/// \brief Enable tuned tensorrt dynamic shape.
+///
+/// \param shapeRangeInfoPath the path to shape_info file got in
+/// CollectShapeInfo mode.
+/// \param allowBuildAtRuntime allow build trt engine at runtime.
+///
+func (config *Config) EnableTunedTensorRtDynamicShape(shapeRangeInfoPath string, allowBuildAtRuntime bool) {
+	cstr := C.CString(shapeRangeInfoPath)
+	C.PD_ConfigEnableTunedTensorRtDynamicShape(config.c, cstr, cvtGoBoolToPD(allowBuildAtRuntime))
+	defer C.free(unsafe.Pointer(cstr))
+}
+
+///
+/// \brief A boolean state telling whether to use tuned tensorrt dynamic
+/// shape.
+///
+func (config *Config) TunedTensorRtDynamicShape() bool {
+	return cvtPDBoolToGo(C.PD_ConfigTunedTensorRtDynamicShape(config.c))
+}
+
+///
+/// \brief A boolean state telling whether to allow building trt engine at
+/// runtime.
+///
+func (config *Config) TrtAllowBuildAtRuntime() bool {
+	return cvtPDBoolToGo(C.PD_ConfigTrtAllowBuildAtRuntime(config.c))
+}
+
+///
+/// \brief Collect shape info of all tensors in compute graph.
+///
+/// \param shapeRangeInfoPath the path to save shape info.
+///
+func (config *Config) CollectShapeRangeInfo(shapeRangeInfoPath string) {
+	cstr := C.CString(shapeRangeInfoPath)
+	C.PD_ConfigCollectShapeRangeInfo(config.c, cstr)
+	defer C.free(unsafe.Pointer(cstr))
+}
+
+///
+/// \brief the shape info path in CollectShapeInfo mode.
+/// Attention, Please release the string manually.
+///
+func (config *Config) ShapeRangeInfoPath() string {
+	cstr := C.PD_ConfigShapeRangeInfoPath(config.c)
+	str := C.GoString(cstr)
+	C.free(unsafe.Pointer(cstr))
+	return str
+}
+
+///
+/// \brief A boolean state telling whether to collect shape info.
+///
+func (config *Config) ShapeRangeInfoCollected() bool {
+	return cvtPDBoolToGo(C.PD_ConfigShapeRangeInfoCollected(config.c))
+}
+
+///
 /// \brief Prevent ops running in Paddle-TRT
 /// NOTE: just experimental, not an official stable API, easy to be broken.
 ///
@@ -405,8 +492,8 @@ func (config *Config) DisableTensorRtOPs(ops []string) {
 /// may be more high-performance. Libnvinfer_plugin.so greater than
 /// V7.2.1 is needed.
 ///
-func (config *Config) EnableTensorRtOSS() {
-	C.PD_ConfigEnableTensorRtOSS(config.c)
+func (config *Config) EnableVarseqlen() {
+	C.PD_ConfigEnableVarseqlen(config.c)
 }
 
 ///
@@ -649,8 +736,8 @@ func (config *Config) ModelFromMemory() bool {
 /// \brief Turn on memory optimize
 /// NOTE still in development.
 ///
-func (config *Config) EnableMemoryOptim() {
-	C.PD_ConfigEnableMemoryOptim(config.c)
+func (config *Config) EnableMemoryOptim(x bool) {
+	C.PD_ConfigEnableMemoryOptim(config.c, cvtGoBoolToPD(x))
 }
 
 ///
@@ -768,7 +855,7 @@ func (config *Config) AllPasses() []string {
 ///
 func (config *Config) Summary() string {
 	cSummary := C.PD_ConfigSummary(config.c)
-	summary := C.GoString(cSummary)
-	C.free(unsafe.Pointer(cSummary))
+	summary := C.GoString(cSummary.data)
+	C.PD_CstrDestroy(cSummary)
 	return summary
 }

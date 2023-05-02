@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/operators/reader/py_reader.h"
 #include "paddle/fluid/operators/reader/reader_op_registry.h"
+#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 namespace operators {
@@ -68,7 +68,7 @@ class CreatePyReaderOp : public framework::OperatorBase {
       int shape_end_index = shape_start_index + ranks[i];
       auto shape = std::vector<int>(shape_concat.begin() + shape_start_index,
                                     shape_concat.begin() + shape_end_index);
-      dims.push_back(framework::make_ddim(shape));
+      dims.push_back(phi::make_ddim(shape));
       shape_start_index = shape_end_index;
     }
 
@@ -109,7 +109,7 @@ class CreatePyReaderOpMaker : public FileReaderMakerBase {
         .SetDefault(1);
 
     AddComment(R"DOC(
-      Create PyReader to support LoDTensor data feeding in Python side.
+      Create PyReader to support phi::DenseTensor data feeding in Python side.
       )DOC");
   }
 };
@@ -120,5 +120,6 @@ class CreatePyReaderOpMaker : public FileReaderMakerBase {
 
 namespace reader = ::paddle::operators::reader;
 
-REGISTER_FILE_READER_OPERATOR(create_py_reader, reader::CreatePyReaderOp,
+REGISTER_FILE_READER_OPERATOR(create_py_reader,
+                              reader::CreatePyReaderOp,
                               reader::CreatePyReaderOpMaker);

@@ -12,16 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
+import os
 import unittest
 
-import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.distributed.fleet as fleet
 import numpy as np
-import os
+
+import paddle
+from paddle import fluid
+from paddle.distributed import fleet
 
 
 class TestRawProgramOptimizer(unittest.TestCase):
@@ -32,19 +30,19 @@ class TestRawProgramOptimizer(unittest.TestCase):
     def mlp(self, input_x, input_y, hid_dim=128, label_dim=2):
         fc_1 = paddle.static.nn.fc(x=input_x, size=hid_dim, activation='tanh')
         fc_2 = paddle.static.nn.fc(x=fc_1, size=hid_dim, activation='tanh')
-        prediction = paddle.static.nn.fc(x=[fc_2],
-                                         size=label_dim,
-                                         activation='softmax')
+        prediction = paddle.static.nn.fc(
+            x=[fc_2], size=label_dim, activation='softmax'
+        )
         cost = paddle.nn.functional.cross_entropy(
-            input=prediction, label=input_y)
+            input=prediction, label=input_y
+        )
         avg_cost = paddle.mean(x=cost)
         return avg_cost
 
     def gen_data(self):
         return {
             "x": np.random.random(size=(128, 32)).astype('float32'),
-            "y": np.random.randint(
-                2, size=(128, 1)).astype('int64')
+            "y": np.random.randint(2, size=(128, 1)).astype('int64'),
         }
 
     def test_single_gpu(self):
@@ -57,13 +55,16 @@ class TestRawProgramOptimizer(unittest.TestCase):
         with fluid.program_guard(sharding_program, sharding_startup_program):
             with fluid.unique_name.guard():
                 input_x = paddle.static.data(
-                    name="x", shape=[None, 32], dtype='float32')
+                    name="x", shape=[None, 32], dtype='float32'
+                )
                 input_y = paddle.static.data(
-                    name="y", shape=[None, 1], dtype='int64')
+                    name="y", shape=[None, 1], dtype='int64'
+                )
                 cost = self.mlp(input_x=input_x, input_y=input_y)
                 output_name = cost.name
-                optimizer = fleet.distributed_optimizer(fluid.optimizer.Adam(),
-                                                        strategy)
+                optimizer = fleet.distributed_optimizer(
+                    fluid.optimizer.Adam(), strategy
+                )
                 optimizer.minimize(cost)
 
         trainer_id = fleet.worker_index()

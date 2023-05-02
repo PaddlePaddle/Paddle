@@ -15,6 +15,7 @@
 #pragma once
 
 #include <string>
+
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
 
@@ -31,6 +32,7 @@ namespace ir {
 class MultiGRUFusePass : public FusePassBase {
  public:
   virtual ~MultiGRUFusePass() {}
+  MultiGRUFusePass();
 
  protected:
   void ApplyImpl(ir::Graph* graph) const override;

@@ -13,18 +13,18 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/data_layout_transform.h"
+#include "paddle/fluid/framework/op_kernel_type.h"
 
-#include "paddle/fluid/operators/math/math_function.h"
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_reuse.h"
-#endif
+#include "paddle/phi/core/utils/data_type.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace framework {
 
 std::vector<int> GetAxis(const DataLayout& from, const DataLayout& to) {
   PADDLE_ENFORCE_NE(
-      from, to,
+      from,
+      to,
       platform::errors::InvalidArgument(
           "Layout transform should transform between different layout."));
   if (from == DataLayout::kNCHW && to == DataLayout::kNHWC) {
@@ -37,42 +37,46 @@ std::vector<int> GetAxis(const DataLayout& from, const DataLayout& to) {
   }
 }
 
-struct CastDataLayout {
-  CastDataLayout(const platform::DeviceContext* ctx,
-                 const std::vector<int>& axis, const framework::Tensor& in,
-                 framework::Tensor* out)
-      : in_(in), out_(out), ctx_(ctx), axis_(axis) {}
-  const framework::Tensor in_;
-  framework::Tensor* out_;
-  const platform::DeviceContext* ctx_;
-  const std::vector<int> axis_;
+template <typename T>
+void CastDataLayout::apply() {
+  auto place = ctx_->GetPlace();
 
-  template <typename T>
-  void apply() {
-    auto place = ctx_->GetPlace();
-
-    if (platform::is_cpu_place(place)) {
-      operators::math::Transpose<platform::CPUDeviceContext, T, 4> trans4;
-      auto* context = static_cast<const platform::CPUDeviceContext*>(ctx_);
-      trans4(*context, in_, out_, axis_);
-    } else {
-      PADDLE_THROW(platform::errors::PreconditionNotMet(
-          "Unsupported data layout cast from CPU to GPU."));
-    }
+  if (platform::is_cpu_place(place)) {
+    phi::funcs::Transpose<phi::CPUContext, T, 4> trans4;
+    auto* context = static_cast<const phi::CPUContext*>(ctx_);
+    trans4(*context, in_, out_, axis_);
+  } else {
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "Unsupported data layout cast from CPU to GPU."));
   }
-};
+}
 
-void TransDataLayout(const OpKernelType& kernel_type_for_var,
-                     const OpKernelType& expected_kernel_type, const Tensor& in,
-                     Tensor* out) {
+void TransDataLayout(const phi::KernelKey& kernel_type_for_var,
+                     const phi::KernelKey& expected_kernel_type,
+                     const phi::DenseTensor& in,
+                     phi::DenseTensor* out,
+                     const phi::Place& place) {
   PADDLE_ENFORCE(
-      platform::places_are_same_class(kernel_type_for_var.place_,
-                                      expected_kernel_type.place_),
+      backends_are_same_class(kernel_type_for_var.backend(),
+                              expected_kernel_type.backend()),
       platform::errors::PreconditionNotMet(
           "TransDataLayout only support DataLayout transform on same place."));
 
+  TransDataLayout(kernel_type_for_var.layout(),
+                  expected_kernel_type.layout(),
+                  place,
+                  in,
+                  out);
+}
+
+void TransDataLayout(DataLayout from_layout,
+                     DataLayout to_layout,
+                     phi::Place place,
+                     const phi::DenseTensor& in,
+                     phi::DenseTensor* out) {
   PADDLE_ENFORCE_EQ(
-      arity(in.dims()), 4,
+      arity(in.dims()),
+      4,
       platform::errors::InvalidArgument(
           "Input dimension arity only can be 4, the input dimension is %s.",
           in.dims()));
@@ -82,132 +86,21 @@ void TransDataLayout(const OpKernelType& kernel_type_for_var,
   auto src_dim = in.dims();
   std::vector<int64_t> dst_dim;
 
-  auto axis = GetAxis(kernel_type_for_var.data_layout_,
-                      expected_kernel_type.data_layout_);
+  auto axis = GetAxis(from_layout, to_layout);
   dst_dim.resize(axis.size());
   for (size_t i = 0; i < axis.size(); i++) {
     dst_dim[i] = src_dim[axis[i]];
   }
 
-  out->Resize(make_ddim(dst_dim));
-  out->mutable_data(expected_kernel_type.place_, in.type());
+  out->Resize(phi::make_ddim(dst_dim));
+  out->mutable_data(place, in.dtype());
 
   framework::VisitDataType(
-      in.type(),
-      CastDataLayout(pool.Get(expected_kernel_type.place_), axis, in, out));
+      static_cast<proto::VarType::Type>(phi::TransToProtoVarType(in.dtype())),
+      CastDataLayout(pool.Get(place), axis, in, out));
 
-  out->set_layout(expected_kernel_type.data_layout_);
+  out->set_layout(to_layout);
 }
-
-#ifdef PADDLE_WITH_MKLDNN
-using mkldnn::memory;
-using mkldnn::primitive;
-using mkldnn::reorder;
-
-void* GetDataFromTensor(const Tensor& tensor, mkldnn::memory::data_type type) {
-  switch (type) {
-    case mkldnn::memory::data_type::f32:
-      return platform::to_void_cast(tensor.data<float>());
-    case mkldnn::memory::data_type::s8:
-      return platform::to_void_cast(tensor.data<int8_t>());
-    case mkldnn::memory::data_type::u8:
-      return platform::to_void_cast(tensor.data<unsigned char>());
-    case mkldnn::memory::data_type::s32:
-      return platform::to_void_cast(tensor.data<int32_t>());
-    case mkldnn::memory::data_type::bf16:
-      return platform::to_void_cast(tensor.data<paddle::platform::bfloat16>());
-    default:
-      PADDLE_THROW(
-          platform::errors::InvalidArgument("Wrong mkldnn type provided."));
-  }
-}
-
-void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
-                               const OpKernelType& expected_kernel_type,
-                               const Tensor& in, Tensor* out) {
-  auto in_layout = kernel_type_for_var.data_layout_;
-  auto out_layout = expected_kernel_type.data_layout_;
-  auto place = expected_kernel_type.place_;
-
-  PADDLE_ENFORCE(
-      in_layout == DataLayout::kMKLDNN && out_layout != DataLayout::kMKLDNN,
-      platform::errors::InvalidArgument(
-          "TransDataLayoutFromMKLDNN only supports transform from MKLDNN to "
-          "non-MKLDNN"));
-
-  innerTransDataLayoutFromMKLDNN(
-      in_layout,
-      paddle::platform::MKLDNNDeviceContext::tls().get_cur_paddle_data_layout(),
-      in, out, place);
-}
-
-void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
-                                    const Tensor& in, Tensor* out,
-                                    platform::Place place, bool always_copy) {
-  PADDLE_ENFORCE_NE(in.format(), MKLDNNMemoryFormat::undef,
-                    platform::errors::InvalidArgument(
-                        "Input tensor format is invalid. Input tensor should "
-                        "have specified memory format."));
-  PADDLE_ENFORCE_NE(in.format(), MKLDNNMemoryFormat::any,
-                    platform::errors::InvalidArgument(
-                        "Input tensor format is invalid. Input tensor should "
-                        "have specified memory format."));
-
-  // Set default as NCHW in case not specified
-  out_layout =
-      out_layout == DataLayout::kAnyLayout ? DataLayout::kNCHW : out_layout;
-
-  auto& pool = platform::DeviceContextPool::Instance();
-  auto* dev_ctx = dynamic_cast<platform::MKLDNNDeviceContext*>(pool.Get(place));
-  auto& cpu_engine = dev_ctx->GetEngine();
-
-  auto in_tz = paddle::framework::vectorize<int64_t>(in.dims());
-  auto out_tz = in_tz;
-
-  memory::data_type in_type = ToMKLDNNDataType(in.type());
-  PADDLE_ENFORCE_NE(in_type, memory::data_type::undef,
-                    platform::errors::InvalidArgument(
-                        "Input tensor type (%s) is not supported.",
-                        DataTypeToString(in.type())));
-
-  auto in_format = platform::MKLDNNFormatForSize(in_tz.size(), in.format());
-  auto out_format =
-      platform::MKLDNNFormatForSize(in_tz.size(), ToMKLDNNFormat(out_layout));
-
-  // output tensor has the same dims as input. Reorder don't change dims
-  out->Resize(in.dims());
-
-  if ((in_format != out_format) || always_copy) {
-    void* in_data = GetDataFromTensor(in, in_type);
-    std::string key =
-        platform::CreateKey(*dev_ctx, in_tz, in_format, out_format, in_type);
-
-    platform::ReorderMKLDNNHandler handler(in_tz, in.type(), in_type, *dev_ctx,
-                                           cpu_engine, key);
-
-    auto reorder_src_memory_p = handler.AcquireSrcMemory(in_format, in_data);
-    auto reorder_dst_memory_p =
-        handler.AcquireDstMemory(out, out_format, place);
-    auto reorder_p =
-        handler.AcquireReorder(reorder_dst_memory_p, reorder_src_memory_p);
-
-    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
-    platform::RecordEvent record_reorder("ext_reorder",
-                                         platform::EventRole::kUniqueOp);
-    reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
-    astream.wait();
-  } else {
-    out->ShareDataWith(in);
-  }
-  // For exepected NHWC data format we need to reshape the Output tensor
-  // As MKL-DNN description was in NCHW and paddle is expecting NHWC
-  platform::MatchShapeToLayout(out, in_layout, out_layout);
-
-  out->set_layout(DataLayout::kNCHW);
-  // reset format since the out tensor will be feed to non-MKLDNN OPkernel
-  out->set_format(MKLDNNMemoryFormat::undef);
-}
-#endif
 
 }  // namespace framework
 }  // namespace paddle

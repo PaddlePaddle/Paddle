@@ -13,15 +13,19 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <string>
-#include "paddle/fluid/framework/device_worker_factory.h"
-#include "paddle/fluid/framework/trainer.h"
 
+#include "paddle/fluid/framework/device_worker_factory.h"
+#include "paddle/fluid/framework/threadpool.h"
+#include "paddle/fluid/framework/trainer.h"
+#include "paddle/fluid/platform/lodtensor_printer.h"
 #if defined PADDLE_WITH_PSCORE
-#include "paddle/fluid/distributed/service/communicator.h"
+#include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
 #endif
 
 namespace paddle {
 namespace framework {
+
+extern Barrier g_barrier;
 
 void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
                               Dataset* dataset) {
@@ -32,7 +36,6 @@ void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
   mpi_rank_ = trainer_desc.mpi_rank();
   mpi_size_ = trainer_desc.mpi_size();
   dump_file_num_ = trainer_desc.dump_file_num();
-
   for (int i = 0; i < trainer_desc.downpour_param().stat_var_names_size();
        i++) {
     need_merge_var_names_.push_back(
@@ -45,6 +48,7 @@ void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
     places_.push_back(place);
   }
 #endif
+  user_define_dump_filename_ = trainer_desc.user_define_dump_filename();
   // get filelist from trainer_desc here
   const std::vector<paddle::framework::DataFeed*> readers =
       dataset->GetReaders();
@@ -60,7 +64,7 @@ void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
         thread_num_);
   }
 #endif
-
+  g_barrier.reset(thread_num_);
   for (int i = 0; i < thread_num_; ++i) {
     workers_[i] = DeviceWorkerFactory::CreateDeviceWorker(
         trainer_desc.device_worker_name());
@@ -72,6 +76,7 @@ void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
     workers_[i]->Initialize(trainer_desc);
     workers_[i]->SetDeviceIndex(i);
     workers_[i]->SetDataFeed(readers[i]);
+    workers_[i]->SetThreadNum(thread_num_);
   }
 
   // set debug here
@@ -80,11 +85,13 @@ void MultiTrainer::Initialize(const TrainerDesc& trainer_desc,
 
 std::string MultiTrainer::GetDumpPath(int tid) {
   if (user_define_dump_filename_ != "") {
-    return string::format_string("%s/part-%s-%05d", dump_fields_path_.c_str(),
-                                 user_define_dump_filename_.c_str(), tid);
+    return string::format_string("%s/part-%s-%05d",
+                                 dump_fields_path_.c_str(),
+                                 user_define_dump_filename_.c_str(),
+                                 tid);
   }
-  return string::format_string("%s/part-%03d-%05d", dump_fields_path_.c_str(),
-                               mpi_rank_, tid);
+  return string::format_string(
+      "%s/part-%03d-%05d", dump_fields_path_.c_str(), mpi_rank_, tid);
 }
 
 void MultiTrainer::InitDumpEnv() {
@@ -135,61 +142,115 @@ void MultiTrainer::InitTrainerEnv(const ProgramDesc& main_program,
         if (!root_var) {
           continue;
         }
-        if (root_var->IsType<SelectedRows>()) {
+        if (root_var->IsType<phi::SelectedRows>()) {
           continue;
         }
-        LoDTensor* root_tensor = root_var->GetMutable<LoDTensor>();
+        phi::DenseTensor* root_tensor =
+            root_var->GetMutable<phi::DenseTensor>();
         auto* ptr = scope->Var(name);
         InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
-        LoDTensor* thread_tensor = ptr->GetMutable<LoDTensor>();
+        phi::DenseTensor* thread_tensor = ptr->GetMutable<phi::DenseTensor>();
         TensorCopy(*root_tensor, place, thread_tensor);
       }
     }
   }
 #endif
+  for (auto& var : main_program.Block(0).AllVars()) {
+    if (var->Persistable()) {
+      auto it = std::find(need_merge_var_names_.begin(),
+                          need_merge_var_names_.end(),
+                          var->Name());
+      if (it == need_merge_var_names_.end() &&
+          var->GetType() != proto::VarType::SELECTED_ROWS) {
+        VLOG(2) << "train param: " << var->Name();
+        trainable_param_.push_back(var->Name());
+      }
+    }
+  }
 }
 
 void MultiTrainer::InitOtherEnv(const ProgramDesc& main_program) {
   if (need_dump_field_ || need_dump_param_) {
     InitDumpEnv();
   }
-  VLOG(3) << "init other env done.";
+
+#ifdef PADDLE_WITH_PSCORE
+  // pull dense param first
+  auto communicator = paddle::distributed::Communicator::GetInstance();
+  // for unittest which call train_from_dataset but does not call
+  // fleet.init_worker() first
+  if (communicator == nullptr) {
+    VLOG(1) << "MultiTrainer::InitOtherEnv Communicator is null!";
+  } else {
+    auto& recv_ctx = communicator->GetRecvCtxMap();
+    communicator->PullDense(recv_ctx);
+    VLOG(3) << "init other env done.";
+  }
+#endif
 }
 
 Scope* MultiTrainer::GetWorkerScope(int thread_id) {
   return workers_[thread_id]->GetThreadScope();
 }
-
+inline std::vector<std::shared_ptr<paddle::framework::ThreadPool>>&
+GetThreadPool(int thread_num) {
+  static std::vector<std::shared_ptr<paddle::framework::ThreadPool>>
+      thread_pools;
+  if (!thread_pools.empty()) {
+    return thread_pools;
+  }
+  thread_pools.resize(thread_num);
+  for (int i = 0; i < thread_num; ++i) {
+    thread_pools[i].reset(new paddle::framework::ThreadPool(1));
+  }
+  return thread_pools;
+}
 void MultiTrainer::Run() {
   VLOG(3) << "Going to run";
-  for (int thidx = 0; thidx < thread_num_; ++thidx) {
+  auto pool = GetThreadPool(thread_num_);
+  std::vector<std::future<void>> wait_futures;
+  CHECK_EQ(static_cast<int>(pool.size()), thread_num_);
+  for (int i = 0; i < thread_num_; ++i) {
     if (!debug_) {
-      threads_.push_back(
-          std::thread(&DeviceWorker::TrainFiles, workers_[thidx].get()));
+      wait_futures.emplace_back(
+          pool[i]->Run([this, i]() { workers_[i]->TrainFiles(); }));
     } else {
-      threads_.push_back(std::thread(&DeviceWorker::TrainFilesWithProfiler,
-                                     workers_[thidx].get()));
+      wait_futures.emplace_back(
+          pool[i]->Run([this, i]() { workers_[i]->TrainFilesWithProfiler(); }));
     }
   }
-  for (auto& th : threads_) {
-    th.join();
+  for (auto& th : wait_futures) {
+    th.get();
   }
 }
 
 #ifdef PADDLE_WITH_HETERPS
 void MultiTrainer::MergeDenseParam() {
-#ifdef PADDLE_WTIH_PSCORE
+#ifdef PADDLE_WITH_PSCORE
   auto communicator = paddle::distributed::Communicator::GetInstance();
-  auto& recv_ctx = communicator->GetRecvCtxMap();
-  Scope* thread_scope = workers_[0]->GetThreadScope();
-  for (auto& iter : recv_ctx) {
-    auto& varnames = iter.second;
-    for (auto& name : varnames) {
+  auto thread_scope = workers_[0]->GetThreadScope();
+  if (communicator == nullptr) {
+    for (auto& name : trainable_param_) {
+      VLOG(2) << "merge var " << name << " to root scope";
       Variable* root_var = root_scope_->FindVar(name);
-      LoDTensor* root_tensor = root_var->GetMutable<LoDTensor>();
+      phi::DenseTensor* root_tensor = root_var->GetMutable<phi::DenseTensor>();
       Variable* var = thread_scope->FindVar(name);
-      LoDTensor* tensor = var->GetMutable<LoDTensor>();
-      TensorCopy((*tensor), root_tensor->place(), root_tensor);
+      phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+      TensorCopySync((*tensor), root_tensor->place(), root_tensor);
+    }
+  } else {
+    auto& recv_ctx = communicator->GetRecvCtxMap();
+    for (auto& iter : recv_ctx) {
+      auto& varnames = iter.second;
+      for (auto& name : varnames) {
+        VLOG(2) << "merge var " << name << " to root scope";
+        Variable* root_var = root_scope_->FindVar(name);
+        phi::DenseTensor* root_tensor =
+            root_var->GetMutable<phi::DenseTensor>();
+        Variable* var = thread_scope->FindVar(name);
+        phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+        TensorCopySync((*tensor), root_tensor->place(), root_tensor);
+      }
     }
   }
 #endif
@@ -197,11 +258,12 @@ void MultiTrainer::MergeDenseParam() {
 #endif
 
 template <typename T>
-void MultiTrainer::MergeToRootScope(LoDTensor* root_tensor, LoDTensor* tensor) {
-  LoDTensor tmp_root;
+void MultiTrainer::MergeToRootScope(phi::DenseTensor* root_tensor,
+                                    phi::DenseTensor* tensor) {
+  phi::DenseTensor tmp_root;
   TensorCopy(*root_tensor, platform::CPUPlace(), &tmp_root);
   T* tmp_root_data = tmp_root.data<T>();
-  LoDTensor tmp_tensor;
+  phi::DenseTensor tmp_tensor;
   TensorCopy(*tensor, platform::CPUPlace(), &tmp_tensor);
   T* data = tmp_tensor.data<T>();
   for (int i = 0; i < tmp_tensor.numel(); i++) {
@@ -214,30 +276,31 @@ void MultiTrainer::Finalize() {
   if (need_dump_field_ || need_dump_param_) {
     FinalizeDumpEnv();
   }
-#ifdef PADDLE_WITH_HETERPS
   for (size_t i = 0; i < need_merge_var_names_.size(); i++) {
     Variable* root_var = root_scope_->FindVar(need_merge_var_names_[i]);
     if (root_var == nullptr) {
       continue;
     }
-    LoDTensor* root_tensor = root_var->GetMutable<LoDTensor>();
+    phi::DenseTensor* root_tensor = root_var->GetMutable<phi::DenseTensor>();
 
-    for (size_t j = 0; j < places_.size(); j++) {
+    for (int j = 1; j < thread_num_; j++) {
       Scope* cur_thread_scope = workers_[j]->GetThreadScope();
       Variable* thread_var =
           cur_thread_scope->FindVar(need_merge_var_names_[i]);
       if (thread_var == nullptr) {
         continue;
       }
-      LoDTensor* thread_tensor = thread_var->GetMutable<LoDTensor>();
+      phi::DenseTensor* thread_tensor =
+          thread_var->GetMutable<phi::DenseTensor>();
 #define MergeCallback(cpp_type, proto_type)                                    \
   do {                                                                         \
-    if (root_tensor->type() == proto_type) {                                   \
-      if (thread_tensor->type() != proto_type) {                               \
+    if (framework::TransToProtoVarType(root_tensor->dtype()) == proto_type) {  \
+      if (framework::TransToProtoVarType(thread_tensor->dtype()) !=            \
+          proto_type) {                                                        \
         VLOG(0) << "Error: thread id=" << j << ", need_merge_var_names_[" << i \
                 << "] " << need_merge_var_names_[i]                            \
-                << ", root tensor type=" << root_tensor->type()                \
-                << ", thread tensor type=" << thread_tensor->type();           \
+                << ", root tensor type=" << root_tensor->dtype()               \
+                << ", thread tensor type=" << thread_tensor->dtype();          \
         exit(-1);                                                              \
       }                                                                        \
       MergeToRootScope<cpp_type>(root_tensor, thread_tensor);                  \
@@ -246,8 +309,23 @@ void MultiTrainer::Finalize() {
       _ForEachDataType_(MergeCallback);
     }
   }
+#ifdef PADDLE_WITH_HETERPS
   MergeDenseParam();
+#endif
 
+#if defined PADDLE_WITH_PSCORE
+  auto communicator = paddle::distributed::Communicator::GetInstance();
+  // for unittest which does not call fleet.init_worker() first
+  if (communicator == nullptr) {
+    VLOG(1) << "MultiTrainer::Finalize communicator is null!";
+  } else {
+    if (communicator->_worker_ptr != nullptr) {
+      communicator->_worker_ptr->Flush();
+      VLOG(1) << "MultiTrainer::Finalize ps client flush done";
+    } else {
+      VLOG(1) << "communicator->_worker_ptr is null";
+    }
+  }
 #endif
   root_scope_->DropKids();
 }

@@ -26,11 +26,18 @@ class CAllGatherOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "AllGather");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Input", "Out", "AllGather");
     int nranks = ctx->Attrs().Get<int>("nranks");
-    PADDLE_ENFORCE_GE(nranks, 2, platform::errors::InvalidArgument(
-                                     "The value of nranks should be >=2."));
+    PADDLE_ENFORCE_GE(nranks,
+                      2,
+                      platform::errors::InvalidArgument(
+                          "The value of nranks should be >=2."));
     framework::DDim dim = ctx->GetInputDim("X");
-    dim[0] = dim[0] * nranks;
-    if (dim[0] < 0) dim[0] = -1;
+    // 0D use stack/unstack while others use concat/split
+    if (dim.size() == 0) {
+      dim = phi::make_ddim({nranks});
+    } else {
+      dim[0] = dim[0] * nranks;
+      if (dim[0] < 0) dim[0] = -1;
+    }
     ctx->SetOutputDim("Out", dim);
   }
 };
@@ -42,10 +49,6 @@ class CAllGatherOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "(Tensor) the allgather result");
     AddAttr<int>("ring_id", "(int default 0) communication ring id.")
         .SetDefault(0);
-#if defined(PADDLE_WITH_ASCEND_CL)
-    AddAttr<std::string>("tag", "(string default tag) tag for all gather.")
-        .SetDefault("tag");
-#endif
     AddAttr<bool>(
         "use_calc_stream",
         "(bool default false) eject CUDA operations to calculation stream.")
@@ -61,33 +64,25 @@ reference: https://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/docs/us
   }
 };
 
-template <typename T>
-class CAllGatherOpGradMaker : public framework::SingleGradOpMaker<T> {
- public:
-  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
-
- protected:
-  void Apply(GradOpPtr<T> retv) const override {
-    retv->SetType("c_reducescatter");
-    retv->SetInput("X", this->OutputGrad("Out"));
-    retv->SetOutput("Out", this->InputGrad("X"));
-    retv->SetAttrMap(this->Attrs());
-  }
-};
-
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OPERATOR(c_allgather, ops::CAllGatherOp,
-                  ops::CAllGatherOpGradMaker<paddle::framework::OpDesc>,
-                  ops::CAllGatherOpGradMaker<paddle::imperative::OpBase>,
-                  ops::CAllGatherOpMaker);
+REGISTER_OP_WITHOUT_GRADIENT(c_allgather,
+                             ops::CAllGatherOp,
+                             ops::CAllGatherOpMaker);
 
-REGISTER_OP_CPU_KERNEL(c_allgather, ops::CAllGatherOpCPUKernel<float>,
-                       ops::CAllGatherOpCPUKernel<double>,
-                       ops::CAllGatherOpCPUKernel<int>,
-                       ops::CAllGatherOpCPUKernel<int64_t>,
-                       ops::CAllGatherOpCPUKernel<plat::float16>);
+PD_REGISTER_STRUCT_KERNEL(c_allgather,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::CAllGatherOpCPUKernel,
+                          float,
+                          double,
+                          int,
+                          int8_t,
+                          int64_t,
+                          uint8_t,
+                          bool,
+                          plat::float16) {}

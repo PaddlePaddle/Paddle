@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
 # Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,7 +20,7 @@ PADDLE_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}")/../../" && pwd )"
 
 # install lcov
 if [ ! -f "/root/.cache/lcov-1.14.tar.gz" ];then
-    wget -P /home https://paddle-ci.gz.bcebos.com/coverage/lcov-1.14.tar.gz --no-proxy --no-check-certificate || exit 101 
+    wget -P /home https://paddle-ci.gz.bcebos.com/coverage/lcov-1.14.tar.gz --no-proxy --no-check-certificate || exit 101
     cp /home/lcov-1.14.tar.gz /root/.cache/lcov-1.14.tar.gz
 else
     cp /root/.cache/lcov-1.14.tar.gz /home/lcov-1.14.tar.gz
@@ -48,6 +48,9 @@ function gen_full_html_report() {
         '/paddle/paddle/fluid/operators/*' \
         '/paddle/paddle/fluid/recordio/*' \
         '/paddle/paddle/fluid/string/*' \
+        '/paddle/paddle/fluid/eager/*' \
+        '/paddle/paddle/phi/*' \
+        '/paddle/paddle/utils/*' \
         -o coverage-full.tmp \
         --rc lcov_branch_coverage=0
 
@@ -59,6 +62,8 @@ function gen_full_html_report() {
         '/paddle/paddle/fluid/*/*/*test*' \
         '/paddle/paddle/fluid/inference/tests/*' \
         '/paddle/paddle/fluid/inference/api/demo_ci/*' \
+        '/paddle/paddle/fluid/eager/tests/*' \
+        '/paddle/paddle/phi/tests/*' \
         -o coverage-full.tmp \
         --rc lcov_branch_coverage=0
 
@@ -68,6 +73,7 @@ function gen_full_html_report() {
 function gen_full_html_report_xpu() {
     lcov --extract coverage.info \
         '/paddle/paddle/fluid/operators/*xpu*' \
+        '/paddle/paddle/phi/kernels/xpu/*' \
         -o coverage-full.tmp \
         --rc lcov_branch_coverage=0
 
@@ -107,8 +113,6 @@ function gen_full_html_report_npu() {
 
 if [ ${WITH_XPU:-OFF} == "ON" ]; then
     gen_full_html_report_xpu || true
-elif [ ${WITH_ASCEND_CL:-OFF} == "ON" ]; then
-    gen_full_html_report_npu || true
 else
     gen_full_html_report || true
 fi
@@ -144,6 +148,8 @@ export COVERAGE_FILE=/paddle/build/python-coverage.data
 coverage combine `$(ls python-coverage.data.*)` || NO_PYTHON_COVERAGE_DATA=1
 
 `$(coverage xml -i -o python-coverage.xml)` || [[ "${NO_PYTHON_COVERAGE_DATA}" == "1" ]]
+
+sed -i 's/mnt\/paddle/paddle/g' python-coverage.xml
 
 `$(python3.7 ${PADDLE_ROOT}/tools/coverage/python_coverage.py > python-coverage.info)` || [[ "${NO_PYTHON_COVERAGE_DATA}" == "1" ]]
 
@@ -205,8 +211,6 @@ echo "Assert Python Diff Coverage"
 
 if [ ${WITH_XPU:-OFF} == "ON" ]; then
     echo "XPU has no python coverage!"
-elif [ ${WITH_ASCEND_CL:-OFF} == "ON" ]; then
-    echo "NPU has no python coverage!"
 else
     if [[ "${NO_PYTHON_COVERAGE_DATA}" != "1" ]];then
         python3.7 ${PADDLE_ROOT}/tools/coverage/coverage_lines.py python-coverage-diff.info 0.9 || PYTHON_COVERAGE_LINES_ASSERT=1

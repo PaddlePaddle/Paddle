@@ -118,8 +118,11 @@ struct VarHandle : public VarHandleBase {
 
   std::string DebugString() const override;
 
-  VarHandle(ir::Node* node, size_t version, size_t scope_index,
-            std::string name, platform::Place place)
+  VarHandle(ir::Node* node,
+            size_t version,
+            size_t scope_index,
+            std::string name,
+            platform::Place place)
       : VarHandleBase(node),
         version_(version),
         scope_idx_(scope_index),
@@ -131,7 +134,8 @@ struct VarHandle : public VarHandleBase {
 
   const gpuEvent_t& GetEvent() {
     PADDLE_ENFORCE_EQ(
-        HasEvent(), true,
+        HasEvent(),
+        true,
         platform::errors::PreconditionNotMet(
             "The cuda event is not set, maybe InitCUDA() is not called."));
     return event_;

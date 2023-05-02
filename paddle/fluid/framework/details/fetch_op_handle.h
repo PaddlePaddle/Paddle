@@ -28,9 +28,6 @@ namespace ir {
 class Node;
 }  // namespace ir
 }  // namespace framework
-namespace platform {
-class DeviceContext;
-}  // namespace platform
 }  // namespace paddle
 
 namespace paddle {
@@ -39,9 +36,12 @@ namespace details {
 
 struct FetchOpHandle : public OpHandleBase {
  public:
-  FetchOpHandle(ir::Node *node, FetchResultType *data, size_t offset,
+  FetchOpHandle(ir::Node *node,
+                FetchResultType *data,
+                size_t offset,
                 std::vector<Scope *> *local_scopes,
-                std::vector<Scope *> *local_exec_scopes, bool return_merged);
+                std::vector<Scope *> *local_exec_scopes,
+                bool return_merged);
 
   ~FetchOpHandle();
 

@@ -13,16 +13,16 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/imperative/infer_shape_context.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/operators/common_infer_shape_functions.h"
+#include "paddle/phi/core/ddim.h"
 
-USE_OP(relu);
-USE_OP(elementwise_add);
-USE_OP(softmax);
+USE_OP_ITSELF(relu);
+USE_OP_ITSELF(elementwise_add);
+USE_OP_ITSELF(softmax);
 
 namespace paddle {
 namespace operators {
@@ -33,14 +33,13 @@ class DygraphInferShapeTest {
   void AddInput(const std::string& name, const framework::DDim& dim) {
     std::shared_ptr<imperative::VarBase> vin(
         new imperative::VarBase(false, name));
-    vin->MutableVar()->GetMutable<framework::LoDTensor>()->Resize(dim);
+    vin->MutableVar()->GetMutable<phi::DenseTensor>()->Resize(dim);
     ins_[name] = {vin};
   }
   void AddOutput(const std::string& name, const framework::DDim& expected_dim) {
     std::shared_ptr<imperative::VarBase> vout(
         new imperative::VarBase(false, name));
-    vout->MutableVar()
-        ->GetMutable<framework::LoDTensor>();  // InitializeVariable
+    vout->MutableVar()->GetMutable<phi::DenseTensor>();  // InitializeVariable
     outs_[name] = {vout};
     expected_dims_[name] = expected_dim;
   }
@@ -53,7 +52,7 @@ class DygraphInferShapeTest {
     for (const auto& pair : expected_dims_) {
       auto out = outs_[pair.first][0];
       ASSERT_EQ(pair.second,
-                out->MutableVar()->GetMutable<framework::LoDTensor>()->dims());
+                out->MutableVar()->GetMutable<phi::DenseTensor>()->dims());
     }
   }
 

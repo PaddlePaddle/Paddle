@@ -45,7 +45,8 @@ class TracedVarList : public std::vector<std::shared_ptr<T>> {
 class GradOpBaseMakerBase {
  public:
   explicit GradOpBaseMakerBase(
-      const std::string& type, const NameVarBaseMap& var_base_map_in,
+      const std::string& type,
+      const NameVarBaseMap& var_base_map_in,
       const NameVarBaseMap& var_base_map_out,
       const framework::AttributeMap& attrs,
       const std::map<std::string, std::string>& inplace_map)
@@ -60,7 +61,7 @@ class GradOpBaseMakerBase {
   virtual std::shared_ptr<GradOpNode> operator()() const = 0;
 
   TracedVarList<VarBase, TracedVarRole::kBackward> InputGrad(
-      const std::string& name, bool drop_empty_grad = true) const {
+      const std::string& name, bool drop_empty_grad UNUSED = true) const {
     return GetVarBaseList<TracedVarRole::kBackward>(name, /*is_input=*/true);
   }
 
@@ -127,7 +128,8 @@ class GradOpBaseMakerBase {
   virtual const framework::Attribute& GetAttr(const std::string& name) const {
     auto it = attrs_.find(name);
     PADDLE_ENFORCE_EQ(
-        it != attrs_.end(), true,
+        it != attrs_.end(),
+        true,
         platform::errors::NotFound(
             "Cannot find attribute [%s] in operator [%s]", name, type_));
     return it->second;
@@ -135,7 +137,7 @@ class GradOpBaseMakerBase {
 
   template <typename T>
   inline const T& Attr(const std::string& name) const {
-    return BOOST_GET_CONST(T, GetAttr(name));
+    return PADDLE_GET_CONST(T, GetAttr(name));
   }
 
   const std::string& ForwardOpType() const { return type_; }
@@ -183,10 +185,9 @@ class GradOpBaseMakerBase {
           auto grad_var_base_tmp = var_base_temp->GradVarBase();
 
           if (!is_input) {
-            auto* tensor = grad_var_base_tmp->MutableVar()
-                               ->GetMutable<framework::LoDTensor>();
-            tensor->Resize(
-                var_base_temp->Var().Get<framework::LoDTensor>().dims());
+            auto* tensor =
+                grad_var_base_tmp->MutableVar()->GetMutable<phi::DenseTensor>();
+            tensor->Resize(var_base_temp->Var().Get<phi::DenseTensor>().dims());
           }
           vec_temp.emplace_back(grad_var_base_tmp);
         } else {
@@ -208,7 +209,7 @@ class GradOpBaseMakerBase {
   const NameVarBaseMap& var_base_map_in_;
   const NameVarBaseMap& var_base_map_out_;
   const framework::AttributeMap& attrs_;
-  const framework::AttributeMap* default_attrs_;
+  const framework::AttributeMap* default_attrs_ = nullptr;
   const std::map<std::string, std::string>& inplace_map_;
 };
 
@@ -236,6 +237,7 @@ class TracedGradOp {
 
     if (kRole == TracedVarRole::kBackward) {
       for (auto& var : vars) {
+        VLOG(6) << "SetInput var name: " << var->Name();
         if (var && !var->OverridedStopGradient()) {
           var->SetGraphIsFreed(false);
           auto dirty_grad_node = var->GradNode();
@@ -250,8 +252,8 @@ class TracedGradOp {
     auto var_wrappers = ToVarWrapperList<kRole>(vars);
 
     if (!var_wrappers.empty()) {
-      op_->SetInput(name, std::move(var_wrappers),
-                    kRole == TracedVarRole::kBackward);
+      op_->SetInput(
+          name, std::move(var_wrappers), kRole == TracedVarRole::kBackward);
     }
   }
 
@@ -268,9 +270,18 @@ class TracedGradOp {
       } else {
         for (auto& var : vars) {
           if (var && !var->OverridedStopGradient() && var->GradNode()) {
+            VLOG(6) << "SetOutput var name: " << var->Name();
             if (map_dirty_grad_node_.find(var) != map_dirty_grad_node_.end()) {
+              // Because inplace var isn't a leaf var, it should have
+              // dirty_grad_node.
               node_->InsertGradPendingNode(map_dirty_grad_node_[var]);
-            } else {
+              VLOG(6) << (*node_.get())[0].Type() << " insertGradPendingNode "
+                      << (*(map_dirty_grad_node_[var].get()))[0].Type();
+            } else if (node_ != var->GradNode()) {
+              // For non-inplace var.
+              // Special case: `set_value` is inplace op, and it can change
+              // the var with `stop_gradient=True` to the var with
+              // `stop_gradient=False`.
               node_->InsertGradPendingNode(var->GradNode());
             }
           }
@@ -280,8 +291,8 @@ class TracedGradOp {
 
     auto var_wrappers = ToVarWrapperList<kRole>(vars);
     if (!var_wrappers.empty()) {
-      op_->SetOutput(name, std::move(var_wrappers),
-                     kRole == TracedVarRole::kBackward);
+      op_->SetOutput(
+          name, std::move(var_wrappers), kRole == TracedVarRole::kBackward);
     }
   }
 
@@ -340,22 +351,35 @@ class TracedGradOp {
 
   // Get a snapshot of VariableWrapper at a certain inplace version.
   // The inplace version number of VariableWrapper is used for inplace
-  // detection in gradient compution.
+  // detection in gradient computation.
   static const std::shared_ptr<VariableWrapper> SnapshotVarWrapper(
       const std::shared_ptr<VariableWrapper>& var_wrapper) {
     // NOTE(liym27):
     //  Use original var_wrapper if its inplace_version is not
     //  changed. Otherwise, it will affect the accuracy of the model
     //  results and affect double grad.
-    if (!var_wrapper->MutableVar()->IsInitialized() ||
-        var_wrapper->InplaceVersionSnapshot() ==
-            var_wrapper->MutableVar()->CurrentInplaceVersion()) {
+    if (!var_wrapper->MutableVar()->IsInitialized()) {
       return var_wrapper;
-    } else {
-      VariableWrapper new_var_wrapper = *var_wrapper.get();
-      new_var_wrapper.ResetInplaceVersion();
-      return std::make_shared<VariableWrapper>(new_var_wrapper);
+    } else if (var_wrapper->InplaceVersionSnapshot() ==
+               var_wrapper->MutableVar()->CurrentInplaceVersion()) {
+      return var_wrapper;
+    } else if (var_wrapper->MutableVar()->IsType<phi::DenseTensor>() ||
+               var_wrapper->MutableVar()->IsType<phi::SelectedRows>()) {
+      auto* tensor =
+          var_wrapper->MutableVar()->IsType<phi::DenseTensor>()
+              ? var_wrapper->MutableVar()->GetMutable<phi::DenseTensor>()
+              : var_wrapper->MutableVar()
+                    ->GetMutable<phi::SelectedRows>()
+                    ->mutable_value();
+      if (!tensor->IsInitialized()) {
+        return var_wrapper;
+      }
     }
+
+    auto new_var_wrapper =
+        std::make_shared<VariableWrapper>(*var_wrapper.get());
+    new_var_wrapper->ResetInplaceVersion();
+    return new_var_wrapper;
   }
 
  private:

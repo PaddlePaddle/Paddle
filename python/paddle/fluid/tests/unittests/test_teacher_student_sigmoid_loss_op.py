@@ -12,19 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from math import exp, log
+
 import numpy as np
-from math import log
-from math import exp
-from op_test import OpTest
+from eager_op_test import OpTest
 from scipy.special import logit
-from scipy.special import expit
-import unittest
-import paddle.fluid as fluid
 
 
 class TestTeacherStudentSigmoidLossOp(OpTest):
     """
-        Test teacher_student_sigmoid_loss with discrete one-hot labels.
+    Test teacher_student_sigmoid_loss with discrete one-hot labels.
     """
 
     def setUp(self):
@@ -33,10 +30,13 @@ class TestTeacherStudentSigmoidLossOp(OpTest):
         num_classes = 1
         self.inputs = {
             'X': logit(
-                np.random.uniform(0, 1, (batch_size, num_classes))
-                .astype("float64")),
-            'Label': np.random.uniform(0, 2, (batch_size, num_classes))
-            .astype("float64")
+                np.random.uniform(0, 1, (batch_size, num_classes)).astype(
+                    "float64"
+                )
+            ),
+            'Label': np.random.uniform(0, 2, (batch_size, num_classes)).astype(
+                "float64"
+            ),
         }
         outs = []
         for index, label in enumerate(self.inputs["Label"]):
@@ -46,11 +46,22 @@ class TestTeacherStudentSigmoidLossOp(OpTest):
             elif label < 0.0:
                 outs.append(max(x, 0.0) - x + log(1.0 + exp(-abs(x))))
             elif label < 1.0:
-                outs.append(max(x, 0.0) + log(1.0 + exp(-abs(x))) + \
-                            max(x, 0.0) - x * label + log(1.0 + exp(-abs(x))))
+                outs.append(
+                    max(x, 0.0)
+                    + log(1.0 + exp(-abs(x)))
+                    + max(x, 0.0)
+                    - x * label
+                    + log(1.0 + exp(-abs(x)))
+                )
             else:
-                outs.append(max(x, 0.0) - x + log(1.0 + exp(-abs(x))) + \
-                            max(x, 0.0) - x * (label - 1.0) + log(1.0 + exp(-abs(x))))
+                outs.append(
+                    max(x, 0.0)
+                    - x
+                    + log(1.0 + exp(-abs(x)))
+                    + max(x, 0.0)
+                    - x * (label - 1.0)
+                    + log(1.0 + exp(-abs(x)))
+                )
         self.outputs = {'Y': np.array(outs)}
 
     def test_check_output(self):
@@ -58,20 +69,3 @@ class TestTeacherStudentSigmoidLossOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(["X"], "Y", numeric_grad_delta=0.005)
-
-
-class TestTeacherStudentSigmoidLossInvalidInput(unittest.TestCase):
-    def test_error(self):
-        def test_invalid_input():
-            input = [512, 1]
-            label = fluid.data(name='label', shape=[None, 1], dtype='float32')
-            loss = fluid.layers.teacher_student_sigmoid_loss(input, label)
-
-        self.assertRaises(TypeError, test_invalid_input)
-
-        def test_invalid_label():
-            input = fluid.data(name='input1', shape=[None, 1], dtype='float32')
-            label = [512, 1]
-            loss = fluid.layers.teacher_student_sigmoid_loss(input, label)
-
-        self.assertRaises(TypeError, test_invalid_label)

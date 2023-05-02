@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
+
 import paddle
 from paddle.static import Program, program_guard
 
@@ -32,13 +32,11 @@ class TestMedian(unittest.TestCase):
         paddle.enable_static()
         x, axis, keepdims = lis_test
         res_np = np.median(x, axis=axis, keepdims=keepdims)
-        if not isinstance(res_np, np.ndarray):
-            res_np = np.array([res_np])
         main_program = Program()
         startup_program = Program()
         exe = paddle.static.Executor()
         with program_guard(main_program, startup_program):
-            x_in = paddle.fluid.data(shape=x.shape, dtype=x.dtype, name='x')
+            x_in = paddle.static.data(shape=x.shape, dtype=x.dtype, name='x')
             y = paddle.median(x_in, axis, keepdims)
             [res_pd] = exe.run(feed={'x': x}, fetch_list=[y])
             self.check_numpy_res(res_pd, res_np)
@@ -47,19 +45,19 @@ class TestMedian(unittest.TestCase):
     def dygraph_single_test_median(self, lis_test):
         x, axis, keepdims = lis_test
         res_np = np.median(x, axis=axis, keepdims=keepdims)
-        if not isinstance(res_np, np.ndarray):
-            res_np = np.array([res_np])
         res_pd = paddle.median(paddle.to_tensor(x), axis, keepdims)
-        self.check_numpy_res(res_pd.numpy(), res_np)
+        self.check_numpy_res(res_pd.numpy(False), res_np)
 
     def test_median_static(self):
         h = 3
         w = 4
         l = 2
         x = np.arange(h * w * l).reshape([h, w, l])
-        lis_tests = [[x, axis, keepdims]
-                     for axis in [-1, 0, 1, 2, None]
-                     for keepdims in [False, True]]
+        lis_tests = [
+            [x, axis, keepdims]
+            for axis in [-1, 0, 1, 2, None]
+            for keepdims in [False, True]
+        ]
         for lis_test in lis_tests:
             self.static_single_test_median(lis_test)
 
@@ -69,9 +67,11 @@ class TestMedian(unittest.TestCase):
         w = 4
         l = 2
         x = np.arange(h * w * l).reshape([h, w, l])
-        lis_tests = [[x, axis, keepdims]
-                     for axis in [-1, 0, 1, 2, None]
-                     for keepdims in [False, True]]
+        lis_tests = [
+            [x, axis, keepdims]
+            for axis in [-1, 0, 1, 2, None]
+            for keepdims in [False, True]
+        ]
         for lis_test in lis_tests:
             self.dygraph_single_test_median(lis_test)
 
@@ -82,6 +82,7 @@ class TestMedian(unittest.TestCase):
         x = paddle.arange(12).reshape([3, 4])
         self.assertRaises(ValueError, paddle.median, x, 1.0)
         self.assertRaises(ValueError, paddle.median, x, 2)
+        self.assertRaises(ValueError, paddle.median, paddle.to_tensor([]))
 
 
 if __name__ == '__main__':

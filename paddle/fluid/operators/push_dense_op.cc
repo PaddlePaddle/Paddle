@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/push_dense_op.h"
+
 #include <string>
 
 namespace paddle {
@@ -22,16 +23,16 @@ class PushDenseOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_GE(ctx->Inputs("Ids").size(), 1UL,
+    PADDLE_ENFORCE_GE(ctx->Inputs("Ids").size(),
+                      1UL,
                       platform::errors::InvalidArgument(
                           "Input(Ids) of PushDenseOp can not be null."));
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(framework::proto::VarType::FP32,
-                                   ctx.device_context());
+    return phi::KernelKey(framework::proto::VarType::FP32, ctx.GetPlace());
   }
 };
 
@@ -63,8 +64,11 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(PushDenseNoNeedBufferVarsInferer, "Ids");
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    push_dense, ops::PushDenseOp, ops::PushDenseOpMaker,
+    push_dense,
+    ops::PushDenseOp,
+    ops::PushDenseOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::PushDenseNoNeedBufferVarsInferer);
-REGISTER_OP_CPU_KERNEL(push_dense, ops::PushDenseCPUKernel<float>)
+PD_REGISTER_STRUCT_KERNEL(
+    push_dense, CPU, ALL_LAYOUT, ops::PushDenseCPUKernel, float) {}

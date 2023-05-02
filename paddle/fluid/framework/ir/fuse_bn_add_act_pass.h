@@ -49,25 +49,35 @@ class FuseBatchNormAddActPass : public FusePassBase {
       const std::unordered_set<std::string> &act_grad_types) const;
 
   void LinkOutputsToFuseOp(
-      Node *op_1, Node *op_2, Node *fused_op,
+      Node *op_1,
+      Node *op_2,
+      Node *fused_op,
       std::unordered_set<const Node *> *nodes2delete) const;
 
-  void LinkInputsToFuseOp(Node *op, Node *fused_op,
+  void LinkInputsToFuseOp(Node *op,
+                          Node *fused_op,
                           std::unordered_set<const Node *> *nodes2delete) const;
 
-  std::vector<Node *> ReplaceNode(Node *cur_node, Node *new_node,
+  std::vector<Node *> ReplaceNode(Node *cur_node,
+                                  Node *new_node,
                                   const std::vector<Node *> &nodes) const;
 
-  void ReLinkNodes(Graph *graph, Node *op_1, Node *op_2, Node *op_3,
-                   Node *fused_op) const;
-  Node *CreateFusedBatchNormAddActNode(
-      Graph *g, const Node *act, const Node *add, const Node *bn,
-      const std::string &bn_x_n, const std::string &add_y_n,
-      const std::string &bn_scale_n, const std::string &bn_bias_n,
-      const std::string &bn_mean_out_n, const std::string &bn_variance_out_n,
-      const std::string &bn_saved_variance_n,
-      const std::string &bn_saved_mean_n, const std::string &bn_reserve_space_n,
-      const std::string &act_out_n) const;
+  void ReLinkNodes(
+      Graph *graph, Node *op_1, Node *op_2, Node *op_3, Node *fused_op) const;
+  Node *CreateFusedBatchNormAddActNode(Graph *g,
+                                       const Node *act,
+                                       const Node *add,
+                                       const Node *bn,
+                                       const std::string &bn_x_n,
+                                       const std::string &add_y_n,
+                                       const std::string &bn_scale_n,
+                                       const std::string &bn_bias_n,
+                                       const std::string &bn_mean_out_n,
+                                       const std::string &bn_variance_out_n,
+                                       const std::string &bn_saved_variance_n,
+                                       const std::string &bn_saved_mean_n,
+                                       const std::string &bn_reserve_space_n,
+                                       const std::string &act_out_n) const;
 };
 
 }  // namespace ir

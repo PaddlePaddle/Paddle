@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import glob
+import json
+import logging
 import os
 import time
-import json
-import glob
-import logging
-import pandas as pd
-from multiprocessing import Process, Lock
+from multiprocessing import Lock
+
 """ Some terms to clarify the code
-    in most case, one or more paremeters may be set as input args for a class or a function
+    in most case, one or more parameters may be set as input args for a class or a function
     in form of single variable or k-v dict
 
     1.  trainerId
@@ -43,10 +43,17 @@ dcgmMetricParameterMap = {
     "02_gpuUtility": [("GPUTL", "GPUTL"), ("GRACT", "GRACT")],
     "03_smUtility": [("SMACT", "SMACT"), ("SMOCC", "SMOCC")],
     "04_memUtility": [("FB_USED_RATIO", "FB_USED_RATIO"), ("DRAMA", "DRAMA")],
-    "05_txUtility": [("NVLTX", "NVLTX"), ("NVLRX", "NVLRX"), ("PCITX", "PCITX"),
-                     ("PCIRX", "PCIRX")],
-    "06_calUtility":
-    [("FP32A", "FP32A"), ("FP16A", "FP16A"), ("TENSO", "TENSO")]
+    "05_txUtility": [
+        ("NVLTX", "NVLTX"),
+        ("NVLRX", "NVLRX"),
+        ("PCITX", "PCITX"),
+        ("PCIRX", "PCIRX"),
+    ],
+    "06_calUtility": [
+        ("FP32A", "FP32A"),
+        ("FP16A", "FP16A"),
+        ("TENSO", "TENSO"),
+    ],
 }
 DCGMINFO_TRACE_NUM = len(dcgmMetricParameterMap.keys())
 NETINFO_TRACE_NUM = 2
@@ -60,12 +67,13 @@ FILEORGANIZEFORM_BYRANK = "byRank"
 FILEORGANIZEFORM_BYTRAINER = "byTrainer"
 FILEORGANIZEFORM_BYOTHER = "other"
 FILEORGANIZEFORM = [
-    FILEORGANIZEFORM_BYRANK, FILEORGANIZEFORM_BYTRAINER,
-    FILEORGANIZEFORM_BYOTHER
+    FILEORGANIZEFORM_BYRANK,
+    FILEORGANIZEFORM_BYTRAINER,
+    FILEORGANIZEFORM_BYOTHER,
 ]
 
 
-class FileReader(object):
+class FileReader:
     def __init__(self, logger, args):
         self._logger = logger
         self._args = args
@@ -99,15 +107,16 @@ class FileReader(object):
         self._logger.info(self._minTimeStamp)
 
     def _checkArgsKey(self, key, type):
-        if not self._args.has_key(key):
+        if key not in self._args:
             raise KeyError("args should has key [%s]!" % key)
 
         if not isinstance(self._args[key], type):
             raise TypeError(
-                "Invalid type of key [%s] in args dict, it should be a %s!" %
-                (key, type))
+                "Invalid type of key [%s] in args dict, it should be a %s!"
+                % (key, type)
+            )
 
-        exec("self._%s = self._args[\"%s\"]" % (key, key))
+        exec(f"self._{key} = self._args[\"{key}\"]")
 
     def _align_ts(self, ts):
         return ts - self._minTimeStamp
@@ -117,18 +126,22 @@ class FileReader(object):
             raise TypeError("Invalid type of args, it should be a dict!")
 
         self._checkArgsKey("organizeForm", str)
-        if self._organizeForm not in FILEORGANIZEFORM or \
-            self._organizeForm == FILEORGANIZEFORM_BYOTHER:
+        if (
+            self._organizeForm not in FILEORGANIZEFORM
+            or self._organizeForm == FILEORGANIZEFORM_BYOTHER
+        ):
             raise NotImplementedError(
-                "we have not known how to process this form of file [%s]!" %
-                self._organizeForm)
+                "we have not known how to process this form of file [%s]!"
+                % self._organizeForm
+            )
 
         self._checkArgsKey("gpuPerTrainer", int)
 
         self._checkArgsKey("dataPath", str)
         if not os.path.exists(self._dataPath):
-            raise IOError("input data path [%s] not existed!" %
-                          (self._dataPath))
+            raise OSError(
+                "input data path [%s] not existed!" % (self._dataPath)
+            )
 
         self._checkArgsKey("groupSize", int)
         self._checkArgsKey("displaySize", int)
@@ -155,7 +168,8 @@ class FileReader(object):
 
     def _cmp(self, x, y):
         return self._getId(x, self._organizeForm) - self._getId(
-            y, self._organizeForm)
+            y, self._organizeForm
+        )
 
     def _getFileList(self):
         self._fileList = glob.glob(os.path.join(self._dataPath, "*.*"))
@@ -170,13 +184,16 @@ class FileReader(object):
                 newFileList.append(file)
             else:
                 raise NotImplementedError(
-                    "[%s] is repeated by id, we don not how to process it!" %
-                    file)
+                    "[%s] is repeated by id, we don not how to process it!"
+                    % file
+                )
 
         if not self._fileList:
-            if (self._getId(self._fileList[-1]) - self._getId(self._fileList[0])
-                ) != len(self._fileList) - 1:
-                raise Exception("The file id should be countious!")
+            if (
+                self._getId(self._fileList[-1]) - self._getId(self._fileList[0])
+            ) != len(self._fileList) - 1:
+                raise Exception("The file id should be continuous!")
+
         # sort
         def _sortBySuffix(elem):
             return int(elem.split(".")[-1])
@@ -184,35 +201,41 @@ class FileReader(object):
         self._fileList.sort(key=_sortBySuffix)
 
         if not self._fileList:
-            self._logger.warning("we can not find any file in dir [%s]!" %
-                                 self._dataPath)
+            self._logger.warning(
+                "we can not find any file in dir [%s]!" % self._dataPath
+            )
         else:
-            self._logger.info("file list in dir [%s] is : %s !" %
-                              (self._dataPath, ',  '.join(self._fileList)))
+            self._logger.info(
+                "file list in dir [%s] is : %s !"
+                % (self._dataPath, ',  '.join(self._fileList))
+            )
 
         return self._fileList
 
     def _getId(self, fileName, organizeForm, sed="."):
         if self._organizeForm != organizeForm:
-            raise TypeError("Can not get rank id when organizer form is not %s!"
-                            % organizeForm)
+            raise TypeError(
+                "Can not get rank id when organizer form is not %s!"
+                % organizeForm
+            )
 
         if not os.path.isfile(fileName):
-            raise IOError("[%s] is not a valid file!" % (fileName))
+            raise OSError("[%s] is not a valid file!" % (fileName))
 
         try:
             prefix_str = fileName.split(sed)[-1]
             try:
                 return int(prefix_str)
-            except ValueError, Argument:
-                print(Argument)
+            except ValueError as e:
+                print(e)
                 raise TypeError("invalid fileName [%s]" % fileName)
 
-        except IndexError, Argument:
-            print(Argument)
+        except IndexError as e:
+            print(e)
             raise TypeError(
-                "invalid fileName [%s], the prefix should be a number!" %
-                fileName)
+                "invalid fileName [%s], the prefix should be a number!"
+                % fileName
+            )
 
     def getRankId(self, fileName, sed="."):
         return self._getId(fileName, FILEORGANIZEFORM_BYRANK, sed)
@@ -249,7 +272,7 @@ class FileReader(object):
             end = 0
             for i in range(0, (n) * j, j):
                 if i < len(ls) and (i + j) < len(ls):
-                    ls_return.append(ls[i:i + j])
+                    ls_return.append(ls[i : i + j])
                     end = i + j
             ls_return.append(ls[end:])
             return ls_return
@@ -275,39 +298,36 @@ class FileReader(object):
     def getDict(self, name, groupId, gpuId, tmpPath="./tmp"):
         fileName = self.getFileName(name, groupId, gpuId, tmpPath)
         if not os.path.isfile(fileName):
-            raise IOError("[%s] is not existed!" % fileName)
+            raise OSError("[%s] is not existed!" % fileName)
 
         data = {}
         with open(fileName, "r") as rf:
             try:
                 data = json.load(rf)
             except Exception:
-                self._logger.error("read [%s] error. not a json file!" %
-                                   (fileName))
-                raise TypeError("read [%s] error. not a json file!" %
-                                (fileName))
+                self._logger.error(
+                    "read [%s] error. not a json file!" % (fileName)
+                )
+                raise TypeError(
+                    "read [%s] error. not a json file!" % (fileName)
+                )
         return data
 
-    def dumpOpInfoDict(self,
-                       data,
-                       groupId,
-                       gpuId,
-                       pretty=False,
-                       tmpPath="./tmp"):
+    def dumpOpInfoDict(
+        self, data, groupId, gpuId, pretty=False, tmpPath="./tmp"
+    ):
         return self.dumpDict(
-            data, "opinfo", groupId, gpuId, pretty=False, tmpPath="./tmp")
+            data, "opinfo", groupId, gpuId, pretty=False, tmpPath="./tmp"
+        )
 
     def dumpDCGMDict(self, data, groupId, gpuId, pretty=False, tmpPath="./tmp"):
         return self.dumpDict(
-            data, "dcgm", groupId, gpuId, pretty=False, tmpPath="./tmp")
+            data, "dcgm", groupId, gpuId, pretty=False, tmpPath="./tmp"
+        )
 
-    def dumpDict(self,
-                 data,
-                 name,
-                 groupId,
-                 gpuId,
-                 pretty=False,
-                 tmpPath="./tmp"):
+    def dumpDict(
+        self, data, name, groupId, gpuId, pretty=False, tmpPath="./tmp"
+    ):
         self._lock.acquire()
         if not os.path.exists(tmpPath):
             os.makedirs(tmpPath)
@@ -324,7 +344,7 @@ class FileReader(object):
         fileObject = open(fileName, 'w')
         fileObject.write(jsObj)
         fileObject.close()
-        self._logger.info("dump [%s] sucessfully!" % fileName)
+        self._logger.info("dump [%s] successfully!" % fileName)
 
 
 def getLogger():
@@ -353,8 +373,8 @@ def getLogger():
 def test_FileReader(args):
     try:
         testReader = FileReader(None, args)
-    except Exception, Argument:
-        print(Argument)
+    except Exception as e:
+        print(e)
     else:
         testReader.printArgs()
 

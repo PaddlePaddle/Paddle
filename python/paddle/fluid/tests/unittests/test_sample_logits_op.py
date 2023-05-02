@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
 import collections
+import unittest
+
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 
 class TestSampleLogitsOp(OpTest):
@@ -45,33 +46,49 @@ class TestSampleLogitsOp(OpTest):
 
         self.inputs = {"Logits": self.Logits, "Labels": self.Labels}
         self.fetch_list = [
-            'Samples', 'Probabilities', 'SampledLogits', 'SampledLabels'
+            'Samples',
+            'Probabilities',
+            'SampledLogits',
+            'SampledLabels',
         ]
         self.outputs = collections.OrderedDict(
-            (('Samples', Samples), ('Probabilities', Probabilities),
-             ('LogitsDim', LogitsDim), ('LabelsDim', LabelsDim),
-             ('SampledLogits', SampledLogits), ('SampledLabels',
-                                                SampledLabels)))
+            (
+                ('Samples', Samples),
+                ('Probabilities', Probabilities),
+                ('LogitsDim', LogitsDim),
+                ('LabelsDim', LabelsDim),
+                ('SampledLogits', SampledLogits),
+                ('SampledLabels', SampledLabels),
+            )
+        )
 
         self.attrs = {'num_samples': self.S}
 
     def test_check_output(self):
         places = self._get_places()
         for p in places:
-            (Samples, Probabilities, SampledLogits,
-             SampledLabels) = [np.array(o) for o in self.calc_output(p)]
+            (Samples, Probabilities, SampledLogits, SampledLabels) = (
+                np.array(o) for o in self.calc_output(p)
+            )
 
-            assert Samples.dtype == np.int64, \
-                "Samples dtype is {}, not int64".format(Samples.dtype)
-            assert Probabilities.dtype == np.float64, \
-                "Probabilities dtype is {}, not float64".format(
-                    Probabilities.dtype)
-            assert SampledLogits.dtype == np.float64, \
-                "SampledLogits dtype is {}, not float64".format(
-                    SampledLogits.dtype)
-            assert SampledLabels.dtype == np.int64, \
-                "SampledLabels dtype is {}, not int64".format(
-                    SampledLabels.dtype)
+            assert (
+                Samples.dtype == np.int64
+            ), f"Samples dtype is {Samples.dtype}, not int64"
+            assert (
+                Probabilities.dtype == np.float64
+            ), "Probabilities dtype is {}, not float64".format(
+                Probabilities.dtype
+            )
+            assert (
+                SampledLogits.dtype == np.float64
+            ), "SampledLogits dtype is {}, not float64".format(
+                SampledLogits.dtype
+            )
+            assert (
+                SampledLabels.dtype == np.int64
+            ), "SampledLabels dtype is {}, not int64".format(
+                SampledLabels.dtype
+            )
 
             assert Samples.shape == (self.bs, self.NT + self.S)
             assert Probabilities.shape == (self.bs, self.NT + self.S)
@@ -79,27 +96,28 @@ class TestSampleLogitsOp(OpTest):
             assert SampledLabels.shape == (self.bs, self.NT)
 
             assert (SampledLabels == self.Labels).all()
-            sampled_logits = self.Logits[:, Samples[0][:self.NT]]
-            sampled_logits -= np.log(Probabilities[:, :self.NT])
-            np.testing.assert_almost_equal(sampled_logits,
-                                           SampledLogits[:, :self.NT])
+            sampled_logits = self.Logits[:, Samples[0][: self.NT]]
+            sampled_logits -= np.log(Probabilities[:, : self.NT])
+            np.testing.assert_almost_equal(
+                sampled_logits, SampledLogits[:, : self.NT]
+            )
 
     def test_check_grad(self):
         self._check_grad_helper()
         for p in self._get_places():
             grads = self._get_gradient(['Logits'], p, ['SampledLogits'], [])
-            np.testing.assert_almost_equal(grads[0].sum(), np.array([1.]))
+            np.testing.assert_almost_equal(grads[0].sum(), np.array([1.0]))
 
 
 class TestSampleLogitsOpNoUniq(TestSampleLogitsOp):
     def setUp(self):
-        super(TestSampleLogitsOpNoUniq, self).setUp()
+        super().setUp()
         self.attrs = {'num_samples': self.S, 'uniq': False}
 
 
 class TestSampleLogitsOpWithAccidentalHits(TestSampleLogitsOp):
     def setUp(self):
-        super(TestSampleLogitsOpWithAccidentalHits, self).setUp()
+        super().setUp()
         self.attrs = {'num_samples': self.S, 'remove_accidental_hits': False}
 
 

@@ -13,17 +13,20 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from eager_op_test import OpTest
+
 import paddle
-from op_test import OpTest
+from paddle import fluid
+from paddle.fluid import core
 
 
 class TestInverseOp(OpTest):
     def config(self):
         self.matrix_shape = [10, 10]
         self.dtype = "float64"
+        self.python_api = paddle.tensor.math.inverse
 
     def setUp(self):
         self.op_type = "inverse"
@@ -47,12 +50,14 @@ class TestInverseOpBatched(TestInverseOp):
     def config(self):
         self.matrix_shape = [8, 4, 4]
         self.dtype = "float64"
+        self.python_api = paddle.tensor.math.inverse
 
 
 class TestInverseOpLarge(TestInverseOp):
     def config(self):
         self.matrix_shape = [32, 32]
         self.dtype = "float64"
+        self.python_api = paddle.tensor.math.inverse
 
     def test_grad(self):
         self.check_grad(['Input'], 'Output', max_relative_error=1e-6)
@@ -62,6 +67,7 @@ class TestInverseOpFP32(TestInverseOp):
     def config(self):
         self.matrix_shape = [10, 10]
         self.dtype = "float32"
+        self.python_api = paddle.tensor.math.inverse
 
     def test_grad(self):
         self.check_grad(['Input'], 'Output', max_relative_error=1e-2)
@@ -71,12 +77,14 @@ class TestInverseOpBatchedFP32(TestInverseOpFP32):
     def config(self):
         self.matrix_shape = [8, 4, 4]
         self.dtype = "float32"
+        self.python_api = paddle.tensor.math.inverse
 
 
 class TestInverseOpLargeFP32(TestInverseOpFP32):
     def config(self):
         self.matrix_shape = [32, 32]
         self.dtype = "float32"
+        self.python_api = paddle.tensor.math.inverse
 
 
 class TestInverseAPI(unittest.TestCase):
@@ -88,16 +96,22 @@ class TestInverseAPI(unittest.TestCase):
 
     def check_static_result(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input = fluid.data(name="input", shape=[4, 4], dtype="float64")
+            input = paddle.static.data(
+                name="input", shape=[4, 4], dtype="float64"
+            )
             result = paddle.inverse(x=input)
             input_np = np.random.random([4, 4]).astype("float64")
             result_np = np.linalg.inv(input_np)
 
             exe = fluid.Executor(place)
-            fetches = exe.run(fluid.default_main_program(),
-                              feed={"input": input_np},
-                              fetch_list=[result])
-            self.assertTrue(np.allclose(fetches[0], np.linalg.inv(input_np)))
+            fetches = exe.run(
+                fluid.default_main_program(),
+                feed={"input": input_np},
+                fetch_list=[result],
+            )
+            np.testing.assert_allclose(
+                fetches[0], np.linalg.inv(input_np), rtol=1e-05
+            )
 
     def test_static(self):
         for place in self.places:
@@ -109,8 +123,9 @@ class TestInverseAPI(unittest.TestCase):
                 input_np = np.random.random([4, 4]).astype("float64")
                 input = fluid.dygraph.to_variable(input_np)
                 result = paddle.inverse(input)
-                self.assertTrue(
-                    np.allclose(result.numpy(), np.linalg.inv(input_np)))
+                np.testing.assert_allclose(
+                    result.numpy(), np.linalg.inv(input_np), rtol=1e-05
+                )
 
 
 class TestInverseAPIError(unittest.TestCase):
@@ -122,16 +137,20 @@ class TestInverseAPIError(unittest.TestCase):
 
         # The data type of input must be float32 or float64.
         for dtype in ["bool", "int32", "int64", "float16"]:
-            input = fluid.data(name='input_' + dtype, shape=[4, 4], dtype=dtype)
+            input = paddle.static.data(
+                name='input_' + dtype, shape=[4, 4], dtype=dtype
+            )
             self.assertRaises(TypeError, paddle.inverse, input)
 
         # When out is set, the data type must be the same as input.
-        input = fluid.data(name='input_1', shape=[4, 4], dtype="float32")
-        out = fluid.data(name='output', shape=[4, 4], dtype="float64")
+        input = paddle.static.data(
+            name='input_1', shape=[4, 4], dtype="float32"
+        )
+        out = paddle.static.data(name='output', shape=[4, 4], dtype="float64")
         self.assertRaises(TypeError, paddle.inverse, input, out)
 
         # The number of dimensions of input must be >= 2.
-        input = fluid.data(name='input_2', shape=[4], dtype="float32")
+        input = paddle.static.data(name='input_2', shape=[4], dtype="float32")
         self.assertRaises(ValueError, paddle.inverse, input)
 
 
@@ -143,22 +162,24 @@ class TestInverseSingularAPI(unittest.TestCase):
 
     def check_static_result(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input = fluid.data(name="input", shape=[4, 4], dtype="float64")
+            input = paddle.static.data(
+                name="input", shape=[4, 4], dtype="float64"
+            )
             result = paddle.inverse(x=input)
 
             input_np = np.zeros([4, 4]).astype("float64")
 
             exe = fluid.Executor(place)
             try:
-                fetches = exe.run(fluid.default_main_program(),
-                                  feed={"input": input_np},
-                                  fetch_list=[result])
+                fetches = exe.run(
+                    fluid.default_main_program(),
+                    feed={"input": input_np},
+                    fetch_list=[result],
+                )
             except RuntimeError as ex:
                 print("The mat is singular")
-                pass
             except ValueError as ex:
                 print("The mat is singular")
-                pass
 
     def test_static(self):
         for place in self.places:
@@ -173,10 +194,8 @@ class TestInverseSingularAPI(unittest.TestCase):
                     result = paddle.inverse(input)
                 except RuntimeError as ex:
                     print("The mat is singular")
-                    pass
                 except ValueError as ex:
                     print("The mat is singular")
-                    pass
 
 
 if __name__ == "__main__":

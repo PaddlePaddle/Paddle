@@ -12,16 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
-from op_test import OpTest, randomize_probability
+from eager_op_test import OpTest, randomize_probability
+
+import paddle
 
 
 class TestBprLossOp1(OpTest):
-    """Test BprLoss with discrete one-hot labels.
-    """
+    """Test BprLoss with discrete one-hot labels."""
 
     def setUp(self):
         self.op_type = "bpr_loss"
@@ -35,18 +35,23 @@ class TestBprLossOp1(OpTest):
             for j in range(class_num):
                 if j == label[i][0]:
                     continue
-                sum += (-np.log(1.0 + np.exp(X[i][j] - X[i][label[i][0]])))
+                sum += -np.log(1.0 + np.exp(X[i][j] - X[i][label[i][0]]))
             bpr_loss_result.append(-sum / (class_num - 1))
         bpr_loss = np.asmatrix([[x] for x in bpr_loss_result], dtype="float64")
         self.inputs = {"X": X, "Label": label}
         self.outputs = {"Y": bpr_loss}
 
     def test_check_output(self):
-        self.check_output()
+        paddle.enable_static()
+        self.check_output(check_dygraph=False)
+        paddle.disable_static()
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Y", numeric_grad_delta=0.001)
+        self.check_grad(
+            ["X"], "Y", numeric_grad_delta=0.001, check_dygraph=False
+        )
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

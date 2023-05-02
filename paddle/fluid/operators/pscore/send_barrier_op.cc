@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/distributed/service/communicator.h"
+#include "paddle/fluid/distributed/ps/service/communicator/communicator.h"
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -84,7 +84,9 @@ class SendBarrierOpShapeInference : public framework::InferShapeBase {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(
-    send_barrier, ops::SendBarrierOp,
+    send_barrier,
+    ops::SendBarrierOp,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
-    ops::SendBarrierOpMaker, ops::SendBarrierOpShapeInference);
+    ops::SendBarrierOpMaker,
+    ops::SendBarrierOpShapeInference);

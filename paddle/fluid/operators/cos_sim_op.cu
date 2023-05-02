@@ -14,8 +14,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/cos_sim_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    cos_sim, ops::CosSimKernel<paddle::platform::CUDADeviceContext, float>);
-REGISTER_OP_CUDA_KERNEL(
-    cos_sim_grad,
-    ops::CosSimGradKernel<paddle::platform::CUDADeviceContext, float>);
+
+PD_REGISTER_STRUCT_KERNEL(cos_sim, GPU, ALL_LAYOUT, ops::CosSimKernel, float) {}
+PD_REGISTER_STRUCT_KERNEL(
+    cos_sim_grad, GPU, ALL_LAYOUT, ops::CosSimGradKernel, float) {}

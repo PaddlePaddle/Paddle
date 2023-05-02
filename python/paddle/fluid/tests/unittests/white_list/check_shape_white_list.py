@@ -28,4 +28,9 @@ NEED_TO_FIX_OP_LIST = [
     'cvm',
     'cudnn_lstm',
     'rnn',
+    'multi_dot',
+    'index_add',
+    'reshape2',
+    'squeeze',
+    'squeeze2',
 ]

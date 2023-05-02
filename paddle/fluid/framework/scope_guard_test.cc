@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/scope_guard.h"
+
 #include "gtest/gtest.h"
 
 namespace paddle {

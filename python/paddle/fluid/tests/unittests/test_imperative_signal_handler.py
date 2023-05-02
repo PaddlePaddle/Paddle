@@ -12,19 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import sys
-import signal
-import unittest
 import multiprocessing
+import os
+import signal
+import sys
 import time
+import unittest
 
-import paddle.compat as cpt
 from paddle.fluid import core
 
 
 def set_child_signal_handler(self, child_pid):
-    core._set_process_pids(id(self), tuple([child_pid]))
+    core._set_process_pids(id(self), (child_pid,))
     current_handler = signal.getsignal(signal.SIGCHLD)
     if not callable(current_handler):
         current_handler = None
@@ -37,7 +36,7 @@ def set_child_signal_handler(self, child_pid):
     signal.signal(signal.SIGCHLD, __handler__)
 
 
-class TestDygraphDataLoaderSingalHandler(unittest.TestCase):
+class DygraphDataLoaderSingalHandler(unittest.TestCase):
     def test_child_process_exit_with_error(self):
         def __test_process__():
             core._set_process_signal_handler()
@@ -52,7 +51,7 @@ class TestDygraphDataLoaderSingalHandler(unittest.TestCase):
                 set_child_signal_handler(id(self), test_process.pid)
                 time.sleep(5)
             except SystemError as ex:
-                self.assertIn("Fatal", cpt.get_exception_message(ex))
+                self.assertIn("Fatal", str(ex))
                 exception = ex
             return exception
 
@@ -79,8 +78,7 @@ class TestDygraphDataLoaderSingalHandler(unittest.TestCase):
                 set_child_signal_handler(id(self), test_process.pid)
                 time.sleep(5)
             except SystemError as ex:
-                self.assertIn("Segmentation fault",
-                              cpt.get_exception_message(ex))
+                self.assertIn("Segmentation fault", str(ex))
                 exception = ex
             return exception
 
@@ -107,7 +105,7 @@ class TestDygraphDataLoaderSingalHandler(unittest.TestCase):
                 set_child_signal_handler(id(self), test_process.pid)
                 time.sleep(5)
             except SystemError as ex:
-                self.assertIn("Bus error", cpt.get_exception_message(ex))
+                self.assertIn("Bus error", str(ex))
                 exception = ex
             return exception
 

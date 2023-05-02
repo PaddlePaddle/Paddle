@@ -12,15 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
+
 import paddle
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
 
 paddle.enable_static()
 
@@ -28,7 +25,8 @@ paddle.enable_static()
 class TestTruncOp(OpTest):
     def setUp(self):
         self.op_type = "trunc"
-        self.dtype = np.float64
+        self.python_api = paddle.trunc
+        self.init_dtype_type()
         np.random.seed(2021)
         self.inputs = {'X': np.random.random((20, 20)).astype(self.dtype)}
         self.outputs = {'Out': (np.trunc(self.inputs['X']))}
@@ -46,11 +44,19 @@ class TestTruncOp(OpTest):
 class TestFloatTruncOp(TestTruncOp):
     def init_dtype_type(self):
         self.dtype = np.float32
+        self.__class__.exist_fp64_check_grad = True
+
+    def test_check_grad(self):
+        pass
 
 
 class TestIntTruncOp(TestTruncOp):
     def init_dtype_type(self):
         self.dtype = np.int32
+        self.__class__.exist_fp64_check_grad = True
+
+    def test_check_grad(self):
+        pass
 
 
 class TestTruncAPI(unittest.TestCase):
@@ -62,25 +68,25 @@ class TestTruncAPI(unittest.TestCase):
     def test_api_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('X', self.shape)
+            x = paddle.static.data('X', self.shape)
             out = paddle.trunc(x)
             exe = paddle.static.Executor(self.place)
             res = exe.run(feed={'X': self.x}, fetch_list=[out])
         out_ref = np.trunc(self.x)
         for out in res:
-            self.assertEqual(np.allclose(out, out_ref, rtol=1e-08), True)
+            np.testing.assert_allclose(out, out_ref, rtol=1e-08)
 
     def test_api_dygraph(self):
         paddle.disable_static(self.place)
         x_tensor = paddle.to_tensor(self.x)
         out = paddle.trunc(x_tensor)
         out_ref = np.trunc(self.x)
-        self.assertEqual(np.allclose(out.numpy(), out_ref, rtol=1e-08), True)
+        np.testing.assert_allclose(out.numpy(), out_ref, rtol=1e-08)
         paddle.enable_static()
 
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('X', [20, 20], 'bool')
+            x = paddle.static.data('X', [20, 20], 'bool')
             self.assertRaises(TypeError, paddle.trunc, x)
 
 

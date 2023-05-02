@@ -1,4 +1,5 @@
 /* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+Copyright (c) 2022 NVIDIA Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,12 +16,16 @@ limitations under the License. */
 #include "paddle/fluid/framework/details/build_strategy.h"
 
 #include <glog/logging.h>
+
 #include "paddle/fluid/framework/details/reduce_op_handle.h"
 #include "paddle/fluid/framework/ir/graph_printer.h"
 #include "paddle/fluid/framework/ir/multi_devices_graph_pass/multi_devices_graph_pass.h"
 
-DECLARE_bool(use_mkldnn);
 DECLARE_bool(convert_all_blocks);
+DECLARE_bool(use_mkldnn);
+#ifdef PADDLE_WITH_CINN
+DECLARE_bool(use_cinn);
+#endif
 
 namespace paddle {
 namespace framework {
@@ -49,6 +54,18 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     ResolveOptionConfliction();
 
     AppendPrintGraphPass("graph_viz_pass", "_original_graph");
+
+#ifdef PADDLE_WITH_CINN
+    if (FLAGS_use_cinn || strategy.build_cinn_pass_) {
+      // Note: This is a trick to support 0D-Tensor for CINN. This pass will be
+      // removed in the near future.
+      AppendPass("cinn_zero_tensor_trick_pass");
+      // Note: This pass is used to enable cinn.
+      AppendPass("build_cinn_pass");
+      AppendPrintGraphPass("graph_viz_pass", "_build_cinn_graph");
+    }
+#endif
+
     AppendPassWithCheck(strategy_.enable_sequential_execution_,
                         "sequential_execution_pass");
     AppendPassWithCheck(strategy_.sync_batch_norm_, "sync_batch_norm_pass");
@@ -155,6 +172,15 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
   }
 
   void AppendOpFusePasses() {
+    // 1. infernce pass if enabled.
+    AppendPassWithCheck(
+        strategy_.enable_inference_pass_ && strategy_.delete_dropout_,
+        "delete_dropout_op_x_pass");
+    AppendPassWithCheck(
+        strategy_.enable_inference_pass_ && strategy_.use_mkldnn_,
+        "mkldnn_placement_pass");
+
+    // 2. trainning pass
     AppendPassWithCheck(strategy_.fuse_relu_depthwise_conv_,
                         "fuse_relu_depthwise_conv_pass");
     AppendPassWithCheck(strategy_.fuse_bn_act_ops_, "fuse_bn_act_pass");
@@ -162,6 +188,16 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
     !defined(_WIN32) && !defined(__APPLE__)
     AppendPassWithCheck(strategy_.enable_auto_fusion_, "fusion_group_pass");
+#endif
+
+#ifdef PADDLE_WITH_CUDA
+    AppendPassWithCheck(strategy_.fused_attention_, "fused_attention_pass");
+    AppendPassWithCheck(strategy_.fuse_adamw_, "fuse_adamw_op_pass");
+#endif
+
+#if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060)
+    AppendPassWithCheck(strategy_.fuse_gemm_epilogue_,
+                        "fuse_gemm_epilogue_pass");
 #endif
     AppendPassWithCheck(strategy_.fuse_elewise_add_act_ops_,
                         "fuse_elewise_add_act_pass");
@@ -178,6 +214,9 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
       AppendPass("fuse_sgd_op_pass");
       AppendPass("fuse_momentum_op_pass");
     }
+#ifdef PADDLE_WITH_CUDA
+    AppendPassWithCheck(strategy_.fused_feedforward_, "fused_feedforward_pass");
+#endif
   }
 
   void SetCollectiveContext() const {
@@ -185,7 +224,8 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
     context->endpoints_ = strategy_.trainers_endpoints_;
     context->trainer_id_ = strategy_.trainer_id_;
     PADDLE_ENFORCE_GE(
-        strategy_.trainer_id_, 0,
+        strategy_.trainer_id_,
+        0,
         platform::errors::InvalidArgument(
             "The trainer_id_ of strategy_ must be greater than or equal to 0, "
             "but received strategy_.trainer_id_ = %d.",
@@ -226,6 +266,9 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
         case BuildStrategy::ReduceStrategy::kReduce:
           multi_devices_pass =
               AppendPass("reduce_mode_multi_devices_pass").get();
+          break;
+        case BuildStrategy::ReduceStrategy::kNoReduce:
+          multi_devices_pass = AppendPass("no_reduce_multi_devices_pass").get();
           break;
         default:
           PADDLE_THROW(
@@ -270,7 +313,8 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
                  "FLAGS_use_mkldnn=false.";
     }
 #else
-    PADDLE_ENFORCE_NE(FLAGS_use_mkldnn, true,
+    PADDLE_ENFORCE_NE(FLAGS_use_mkldnn,
+                      true,
                       platform::errors::PreconditionNotMet(
                           "FLAGS_use_mkldnn has been set to True, but "
                           "PaddlePaddle is compiled without MKLDNN. "
@@ -315,7 +359,8 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
   VLOG(1) << "apply all passes";
   if (FLAGS_convert_all_blocks) {
     PADDLE_ENFORCE_EQ(
-        graph->IsMainGraph(), true,
+        graph->IsMainGraph(),
+        true,
         platform::errors::InvalidArgument("This graph is not main_graph"));
   }
   // Create a default one if not finalized by user.
@@ -368,7 +413,8 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       pass->Erase(kBKCLCtxs);
       pass->SetNotOwned<platform::BKCLCommunicator>(kBKCLCtxs, nctx);
       pass->Erase(kUseHierarchicalAllReduce);
-      PADDLE_ENFORCE_EQ(use_hierarchical_allreduce_, false,
+      PADDLE_ENFORCE_EQ(use_hierarchical_allreduce_,
+                        false,
                         platform::errors::Unimplemented(
                             "xpu doesn't support hierarchical_allreduce"));
       pass->Set<bool>(kUseHierarchicalAllReduce,
@@ -395,7 +441,8 @@ ir::Graph *BuildStrategy::Apply(ir::Graph *graph,
       pass->Erase(kBKCLCtxs);
       pass->SetNotOwned<platform::BKCLCommunicator>(kBKCLCtxs, nctx);
       pass->Erase(kUseHierarchicalAllReduce);
-      PADDLE_ENFORCE_EQ(use_hierarchical_allreduce_, false,
+      PADDLE_ENFORCE_EQ(use_hierarchical_allreduce_,
+                        false,
                         platform::errors::Unimplemented(
                             "xpu doesn't support hierarchical_allreduce"));
       pass->Set<bool>(kUseHierarchicalAllReduce,
@@ -463,6 +510,7 @@ USE_PASS(fuse_bn_act_pass);
 USE_PASS(fuse_bn_add_act_pass);
 USE_PASS(graph_viz_pass);
 USE_PASS(multi_batch_merge_pass);
+USE_PASS(no_reduce_multi_devices_pass);
 USE_PASS(reduce_mode_multi_devices_pass);
 USE_PASS(all_reduce_mode_multi_devices_pass);
 USE_PASS(dist_multi_devices_pass);
@@ -481,10 +529,25 @@ USE_PASS(fuse_momentum_op_pass);
 USE_PASS(fuse_all_reduce_op_pass);
 USE_PASS(runtime_context_cache_pass);
 USE_PASS(add_reader_dependency_pass);
+USE_PASS(delete_dropout_op_x_pass);
+#ifdef PADDLE_WITH_CUDA
+USE_PASS(fused_attention_pass);
+USE_PASS(fuse_adamw_op_pass);
+#endif
+#ifdef PADDLE_WITH_CINN
+USE_PASS(cinn_zero_tensor_trick_pass);
+USE_PASS(build_cinn_pass);
+#endif
+#ifdef PADDLE_WITH_CUDA
+USE_PASS(fused_feedforward_pass);
+#endif
 #ifdef PADDLE_WITH_MKLDNN
 USE_PASS(mkldnn_placement_pass);
 #endif
 #if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
     !defined(_WIN32) && !defined(__APPLE__)
 USE_PASS(fusion_group_pass);
+#endif
+#if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060)
+USE_PASS(fuse_gemm_epilogue_pass);
 #endif

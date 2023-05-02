@@ -14,6 +14,7 @@
 
 #pragma once
 #include <ThreadPool.h>
+
 #include <algorithm>
 #include <iostream>
 #include <map>
@@ -29,15 +30,10 @@
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
-namespace platform {
-class DeviceContext;
-
-}  // namespace platform
-
 namespace imperative {
 class ParallelContext;
 class VarBase;
@@ -49,7 +45,7 @@ namespace paddle {
 namespace imperative {
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_XPU_BKCL)
+    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_GLOO)
 
 template <typename T>
 struct DivNRanksFunctor {
@@ -64,10 +60,11 @@ struct DivNRanksFunctor {
 
 template <typename Dex>
 struct DivNRanksForAllReduce {
-  framework::Tensor* in_;
+  phi::DenseTensor* in_;
   int64_t nranks_;
   const platform::DeviceContext& ctx_;
-  DivNRanksForAllReduce(framework::Tensor* in, int64_t nranks,
+  DivNRanksForAllReduce(phi::DenseTensor* in,
+                        int64_t nranks,
                         const platform::DeviceContext& ctx)
       : in_(in), nranks_(nranks), ctx_(ctx) {}
 
@@ -91,7 +88,7 @@ class Group {
   bool is_sparse_ = false;
 
   // for concat kernel
-  std::vector<framework::Tensor> dense_tensors_;
+  std::vector<phi::DenseTensor> dense_tensors_;
 
   std::vector<size_t> length_;
 
@@ -113,7 +110,8 @@ class Group {
   void SplitTensors(const platform::DeviceContext& context);
 
   // use it in CUDA
-  void DivNRanks(framework::Tensor* tensor, int64_t nranks,
+  void DivNRanks(phi::DenseTensor* tensor,
+                 int64_t nranks,
                  const platform::DeviceContext& context);
 
   void DivNRanks(const platform::DeviceContext& context, int64_t nranks);
@@ -134,7 +132,8 @@ class Reducer {
       const std::vector<std::vector<size_t>>& group_indices,
       const std::vector<bool>& is_sparse_gradient,
       std::shared_ptr<imperative::ParallelContext> parallel_ctx,
-      const std::vector<size_t>& group_size_limits, bool find_unused_vars);
+      const std::vector<size_t>& group_size_limits,
+      bool find_unused_vars);
 
   virtual ~Reducer() {}
 
@@ -154,7 +153,8 @@ class Reducer {
 
   void MarkGroupReady(size_t group_index);
 
-  void FusedAllReduceSchedule(const int run_order, Group& group,  // NOLINT
+  void FusedAllReduceSchedule(const int run_order,
+                              Group& group,  // NOLINT
                               const int curr_group_index);
 
   void FinalizeBackward();

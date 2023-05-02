@@ -13,9 +13,15 @@
 # limitations under the License.
 
 import paddle
+
 from ..fluid.core import LoDTensor
-from ..fluid.framework import in_dygraph_mode
-from ..fluid.data_feeder import check_type, check_dtype, convert_dtype
+from ..fluid.data_feeder import check_type
+from ..fluid.framework import _non_static_mode
+
+__all__ = [
+    'to_dlpack',
+    'from_dlpack',
+]
 
 
 def to_dlpack(x):
@@ -23,11 +29,13 @@ def to_dlpack(x):
     Encodes a tensor to DLPack.
 
     Args:
-        x (Tensor): A tensor, and the data type is bool, float32, float64, int32, int64.
+        x (Tensor): The input tensor, and the data type can be `bool`, `float16`, `float32`,
+                    `float64`, `int8`, `int16`, `int32`, `int64`, `uint8`, `complex64`,
+                    `complex128`.
 
     Returns:
         dltensor, and the data type is PyCapsule.
-    
+
     Examples:
         .. code-block:: python
 
@@ -40,36 +48,30 @@ def to_dlpack(x):
             # <capsule object "dltensor" at 0x7f6103c681b0>
     """
 
-    if in_dygraph_mode():
-        if not isinstance(x, paddle.Tensor):
+    if _non_static_mode():
+        if not isinstance(x, (paddle.Tensor, paddle.fluid.core.eager.Tensor)):
             raise TypeError(
                 "The type of 'x' in to_dlpack must be paddle.Tensor,"
-                " but received {}.".format(type(x)))
-
-        dtype = convert_dtype(x.dtype)
-
-        if dtype not in ['bool', 'int32', 'int64', 'float32', 'float64']:
-            raise TypeError(
-                "the dtype of 'x' in to_dlpack must be any of [bool, int32, int64, "
-                "float32, float64], but received {}.".format(dtype))
+                " but received {}.".format(type(x))
+            )
 
         return x.value().get_tensor()._to_dlpack()
 
     check_type(x, 'x', (LoDTensor), 'to_dlpack')
-    check_dtype(x._dtype(), 'x',
-                ['bool', 'int32', 'int64', 'float32', 'float64'], 'to_dlpack')
-
     return x._to_dlpack()
 
 
 def from_dlpack(dlpack):
-    """Decodes a DLPack to a tensor.
-    
+    """
+    Decodes a DLPack to a tensor.
+
     Args:
         dlpack (PyCapsule): a PyCapsule object with the dltensor.
 
     Returns:
-        out (Tensor): a tensor decoded from DLPack.
+        out (Tensor), a tensor decoded from DLPack. One thing to be noted, if we get
+                      an input dltensor with data type as `bool`, we return the decoded
+                      tensor as `uint8`.
 
     Examples:
         .. code-block:: python
@@ -82,18 +84,19 @@ def from_dlpack(dlpack):
             x = paddle.utils.dlpack.from_dlpack(dlpack)
             print(x)
             # Tensor(shape=[2, 4], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-              [[0.20000000, 0.30000001, 0.50000000, 0.89999998],
-              [0.10000000, 0.20000000, 0.60000002, 0.69999999]]) 
+            #  [[0.20000000, 0.30000001, 0.50000000, 0.89999998],
+            #  [0.10000000, 0.20000000, 0.60000002, 0.69999999]])
     """
 
     t = type(dlpack)
-    dlpack_flag = (t.__module__ == 'builtins' and t.__name__ == 'PyCapsule')
+    dlpack_flag = t.__module__ == 'builtins' and t.__name__ == 'PyCapsule'
     if not dlpack_flag:
         raise TypeError(
             "The type of 'dlpack' in from_dlpack must be PyCapsule object,"
-            " but received {}.".format(type(dlpack)))
+            " but received {}.".format(type(dlpack))
+        )
 
-    if in_dygraph_mode():
+    if _non_static_mode():
         out = paddle.fluid.core.from_dlpack(dlpack)
         out = paddle.to_tensor(out)
         return out

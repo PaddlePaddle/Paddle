@@ -53,7 +53,8 @@ class FuseOptimizerOpPass : public ir::Pass {
       std::vector<ir::Node *> *ops) const;
 
   void InsertInputAndOutputForFusedOpNode(
-      const std::vector<ir::Node *> &opt_ops, ir::Graph *graph,
+      const std::vector<ir::Node *> &opt_ops,
+      ir::Graph *graph,
       ir::Node *opt_node) const;
 
  private:
@@ -64,7 +65,8 @@ class FuseOptimizerOpPass : public ir::Pass {
   virtual ir::Node *FuseOptimizerOps(
       const std::unordered_map<std::string, std::vector<std::string>> &vars_set,
       const std::unordered_map<std::string, std::string> &fused_vars_name,
-      const std::vector<ir::Node *> &adam_ops, ir::Graph *graph) const = 0;
+      const std::vector<ir::Node *> &adam_ops,
+      ir::Graph *graph) const = 0;
 
   void GetFusingVarNamesMap(
       const std::vector<std::string> &aux_vars_name,
@@ -76,7 +78,8 @@ class FuseOptimizerOpPass : public ir::Pass {
                               const std::vector<std::string> &out_args,
                               const std::string &fused_out_arg,
                               const proto::VarType::Type &dtype,
-                              BlockDesc *global_block, bool copy_data,
+                              BlockDesc *global_block,
+                              bool copy_data,
                               bool check_name = true) const;
 
   void FuseGradientsToContinuousSpace(const std::vector<std::string> &params,
@@ -90,7 +93,8 @@ class FuseOptimizerOpPass : public ir::Pass {
       const std::unordered_map<std::string, std::vector<std::string>>
           &aux_var_set,
       const std::unordered_map<std::string, std::string> &fused_vars_name,
-      const proto::VarType::Type &dtype, ir::Graph *result) const;
+      const proto::VarType::Type &dtype,
+      ir::Graph *result) const;
 
   std::unordered_map<std::string, std::vector<Node *>> GetVarInfo(
       const Graph &result) const;

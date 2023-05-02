@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import ssl
+import sys
+
 import requests
+
 import paddle
 
 
@@ -29,9 +31,6 @@ def download_file():
 
     if paddle.is_compiled_with_rocm():
         url = "https://sys-p0.bj.bcebos.com/prec/{}".format('disable_ut_rocm')
-
-    if paddle.is_compiled_with_npu():
-        url = "https://sys-p0.bj.bcebos.com/prec/{}".format('disable_ut_npu')
 
     f = requests.get(url)
     data = f.text

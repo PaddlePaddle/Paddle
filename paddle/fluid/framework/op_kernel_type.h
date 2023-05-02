@@ -19,11 +19,16 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/library_type.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/device_context.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/kernel_factory.h"
 
 namespace paddle {
 namespace framework {
+
+using DataLayout = phi::DataLayout;
 
 class OpKernelType {
  public:
@@ -36,7 +41,8 @@ class OpKernelType {
   constexpr static int kLibBits = 4;
   constexpr static int kCustomizeBits = 4;
 
-  OpKernelType(proto::VarType::Type data_type, platform::Place place,
+  OpKernelType(proto::VarType::Type data_type,
+               platform::Place place,
                DataLayout data_layout = DataLayout::kAnyLayout,
                LibraryType library_type = LibraryType::kPlain,
                int customized_type_value = kDefaultCustomizedTypeValue)
@@ -47,7 +53,7 @@ class OpKernelType {
         customized_type_value_(customized_type_value) {}
 
   OpKernelType(proto::VarType::Type data_type,
-               const platform::DeviceContext& dev_ctx,
+               const phi::DeviceContext& dev_ctx,
                DataLayout data_layout = DataLayout::kAnyLayout,
                LibraryType library_type = LibraryType::kPlain,
                int customized_type_value = kDefaultCustomizedTypeValue)
@@ -82,9 +88,9 @@ class OpKernelType {
 
 inline std::ostream& operator<<(std::ostream& os,
                                 const OpKernelType& kernel_key) {
-  os << "data_type[" << kernel_key.data_type_ << "]:data_layout["
-     << kernel_key.data_layout_ << "]:place[" << kernel_key.place_
-     << "]:library_type[" << kernel_key.library_type_ << "]";
+  os << "{data_type[" << kernel_key.data_type_ << "]; data_layout["
+     << kernel_key.data_layout_ << "]; place[" << kernel_key.place_
+     << "]; library_type[" << kernel_key.library_type_ << "]}";
   return os;
 }
 
@@ -99,21 +105,59 @@ inline bool NeedTransformLayout(const DataLayout& l, const DataLayout& r) {
       (l != DataLayout::kAnyLayout && r != DataLayout::kAnyLayout && l != r);
 #ifdef PADDLE_WITH_MKLDNN
   // Layout transform needed for either non-MKLDNN to MKLDNN or vice versa
-  ret |= (l != DataLayout::kMKLDNN && r == DataLayout::kMKLDNN);
-  ret |= (l == DataLayout::kMKLDNN && r != DataLayout::kMKLDNN);
+  ret |= (l != DataLayout::ONEDNN && r == DataLayout::ONEDNN);
+  ret |= (l == DataLayout::ONEDNN && r != DataLayout::ONEDNN);
 #endif
   return ret;
 }
 
-inline bool NeedTransformDataType(const OpKernelType& l,
-                                  const OpKernelType& r) {
-  return (l.data_type_ != r.data_type_);
+inline bool NeedTransformDataType(const phi::KernelKey& l,
+                                  const phi::KernelKey& r) {
+  return l.dtype() != phi::DataType::ALL_DTYPE &&
+         r.dtype() != phi::DataType::ALL_DTYPE && l.dtype() != r.dtype();
 }
 
-inline bool NeedTransform(const OpKernelType& l, const OpKernelType& r) {
-  return (!platform::places_are_same_class(l.place_, r.place_)) ||
-         (l.data_type_ != r.data_type_) ||
-         NeedTransformLayout(l.data_layout_, r.data_layout_);
+inline bool backends_are_same_class(const phi::Backend& l,
+                                    const phi::Backend& r) {
+  if (l == phi::Backend::ALL_BACKEND || r == phi::Backend::ALL_BACKEND) {
+    return true;
+  }
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  size_t num_backends = static_cast<size_t>(phi::Backend::NUM_BACKENDS);
+  if (static_cast<size_t>(l) > num_backends &&
+      static_cast<size_t>(r) > num_backends) {
+    return phi::TransToPhiPlace(l).GetDeviceType() ==
+           phi::TransToPhiPlace(r).GetDeviceType();
+  }
+#endif
+  return phi::TransToPhiPlace(l) == phi::TransToPhiPlace(r);
+}
+
+inline bool NeedTransformBackend(const phi::Backend& type_for_var_backend,
+                                 const phi::Backend& expected_backend,
+                                 const phi::DenseTensor& tensor) {
+  // NOTE(jiahongyu): KernelKey does not hold place information, so we need to
+  // explicitly transform CUDAPinnedPlace->CUDAPlace
+  if (type_for_var_backend != phi::Backend::ALL_BACKEND &&
+      paddle::platform::is_cuda_pinned_place(tensor.place()) &&
+      expected_backend != phi::Backend::CPU) {
+    VLOG(3) << "Transform Variable " << tensor.name() << " from "
+            << tensor.place() << " to "
+            << phi::TransToPhiPlace(expected_backend);
+    return true;
+  }
+  return !backends_are_same_class(type_for_var_backend, expected_backend);
+}
+
+inline bool NeedTransform(const phi::KernelKey& kernel_type_for_var,
+                          const phi::KernelKey& expected_kernel_key,
+                          const phi::DenseTensor& tensor) {
+  return NeedTransformBackend(kernel_type_for_var.backend(),
+                              expected_kernel_key.backend(),
+                              tensor) ||
+         NeedTransformDataType(kernel_type_for_var, expected_kernel_key) ||
+         NeedTransformLayout(kernel_type_for_var.layout(),
+                             expected_kernel_key.layout());
 }
 
 }  // namespace framework

@@ -17,6 +17,7 @@ limitations under the License. */
 #include <unordered_set>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/distributed/index_dataset/index_dataset.pb.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -75,7 +76,8 @@ class IndexWrapper {
   void clear_tree() { tree_map.clear(); }
 
   TreePtr get_tree_index(const std::string name) {
-    PADDLE_ENFORCE_NE(tree_map.find(name), tree_map.end(),
+    PADDLE_ENFORCE_NE(tree_map.find(name),
+                      tree_map.end(),
                       paddle::platform::errors::InvalidArgument(
                           "tree [%s] doesn't exist. Please insert it firstly "
                           "by API[\' insert_tree_index \'].",
@@ -90,10 +92,13 @@ class IndexWrapper {
     }
     TreePtr tree = std::make_shared<TreeIndex>();
     int ret = tree->Load(tree_path);
-    PADDLE_ENFORCE_EQ(ret, 0, paddle::platform::errors::InvalidArgument(
-                                  "Load tree[%s] from path[%s] failed. Please "
-                                  "check whether the file exists.",
-                                  name, tree_path));
+    PADDLE_ENFORCE_EQ(ret,
+                      0,
+                      paddle::platform::errors::InvalidArgument(
+                          "Load tree[%s] from path[%s] failed. Please "
+                          "check whether the file exists.",
+                          name,
+                          tree_path));
     tree_map.insert(std::pair<std::string, TreePtr>{name, tree});
   }
 

@@ -15,12 +15,12 @@ limitations under the License. */
 #pragma once
 
 #include <glog/logging.h>
+
 #include <map>
 #include <memory>
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/naive_executor.h"
@@ -31,11 +31,11 @@ limitations under the License. */
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/phi/core/ddim.h"
 
 namespace paddle {
 
 namespace framework {
-class LoDTensor;
 class Scope;
 }  // namespace framework
 
@@ -51,7 +51,7 @@ class NativePaddlePredictor : public PaddlePredictor {
            std::vector<PaddleTensor> *output_data,
            int batch_size = -1) override;
 
-  std::unique_ptr<PaddlePredictor> Clone() override;
+  std::unique_ptr<PaddlePredictor> Clone(void *stream = nullptr) override;
 
   ~NativePaddlePredictor() override;
 
@@ -63,8 +63,7 @@ class NativePaddlePredictor : public PaddlePredictor {
   bool GetFetch(std::vector<PaddleTensor> *output_data,
                 framework::Scope *scope);
   template <typename T>
-  void GetFetchOne(const framework::LoDTensor &fetchs,
-                   PaddleTensor *output_data);
+  void GetFetchOne(const phi::DenseTensor &fetchs, PaddleTensor *output_data);
   void PrepareFeedFetch();
 
   NativeConfig config_;
@@ -78,7 +77,7 @@ class NativePaddlePredictor : public PaddlePredictor {
   std::vector<framework::OpDesc *> fetchs_;
   // Memory buffer for feed inputs. The temporary LoDTensor will cause serious
   // concurrency problems, wrong results and memory leak, so cache them.
-  std::vector<framework::LoDTensor> feed_tensors_;
+  std::vector<phi::DenseTensor> feed_tensors_;
   // Do not use unique_ptr, use parent scope to delete
   framework::Scope *sub_scope_{nullptr};
   details::TensorArrayBatchCleaner tensor_array_batch_cleaner_;

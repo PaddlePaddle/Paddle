@@ -26,7 +26,8 @@ class CIdentityOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "c_identity");
     int ring_id = ctx->Attrs().Get<int>("ring_id");
     PADDLE_ENFORCE_GE(
-        ring_id, 0,
+        ring_id,
+        0,
         platform::errors::InvalidArgument(
             "The ring_id (%d) for c_identity must be non-negative.", ring_id));
     framework::DDim dim = ctx->GetInputDim("X");
@@ -34,10 +35,10 @@ class CIdentityOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 
@@ -80,13 +81,18 @@ class CIdentityOpGradMaker : public framework::SingleGradOpMaker<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OPERATOR(c_identity, ops::CIdentityOp,
+REGISTER_OPERATOR(c_identity,
+                  ops::CIdentityOp,
                   ops::CIdentityOpGradMaker<paddle::framework::OpDesc>,
                   ops::CIdentityOpGradMaker<paddle::imperative::OpBase>,
                   ops::CIdentityOpMaker);
 
-REGISTER_OP_CPU_KERNEL(c_identity, ops::CIdentityOpCPUKernel<float>,
-                       ops::CIdentityOpCPUKernel<double>,
-                       ops::CIdentityOpCPUKernel<int>,
-                       ops::CIdentityOpCPUKernel<int64_t>,
-                       ops::CIdentityOpCPUKernel<plat::float16>);
+PD_REGISTER_STRUCT_KERNEL(c_identity,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::CIdentityOpCPUKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t,
+                          plat::float16) {}

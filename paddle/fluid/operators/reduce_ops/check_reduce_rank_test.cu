@@ -13,14 +13,15 @@
 // limitations under the License.
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/operators/reduce_ops/cub_reduce.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/phi/kernels/gpu/reduce.h"
 
 namespace paddle {
 namespace operators {
-namespace detail {
+namespace details {
 
 TEST(test_reduce_rank_check, all) {
-  using EnforceNotMet = paddle::platform::EnforceNotMet;
+  using EnforceNotMet = phi::EnforceNotMet;
   constexpr int kMaxRank = framework::DDim::kMaxRank;
 
   for (int rank = 0; rank < kMaxRank; rank++) {
@@ -39,15 +40,15 @@ TEST(test_reduce_rank_check, all) {
       }
 
       if (is_valid) {
-        CheckReduceRankIsValid(reduce_rank, rank);
+        phi::funcs::details::CheckReduceRank(reduce_rank, rank);
       } else {
-        ASSERT_THROW(CheckReduceRankIsValid(reduce_rank, rank),
-                     paddle::platform::EnforceNotMet);
+        ASSERT_THROW(phi::funcs::details::CheckReduceRank(reduce_rank, rank),
+                     EnforceNotMet);
       }
     }
   }
 }
 
-}  // namespace detail
+}  // namespace details
 }  // namespace operators
 }  // namespace paddle

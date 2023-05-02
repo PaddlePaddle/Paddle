@@ -19,15 +19,15 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class AddPositionEncodingKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* X = context.Input<framework::LoDTensor>("X");
+    auto* X = context.Input<phi::DenseTensor>("X");
     auto& x_lod = X->lod();
     auto* src_ptr = X->data<T>();
 
-    auto* Out = context.Output<framework::LoDTensor>("Out");
+    auto* Out = context.Output<phi::DenseTensor>("Out");
     auto* dst_ptr = Out->mutable_data<T>(context.GetPlace());
 
     float alpha = context.Attr<float>("alpha");
@@ -39,7 +39,8 @@ class AddPositionEncodingKernel : public framework::OpKernel<T> {
     int enc_size = 0;
 
     if (x_lod.empty()) {
-      PADDLE_ENFORCE_EQ(x_dim.size(), 3,
+      PADDLE_ENFORCE_EQ(x_dim.size(),
+                        3,
                         platform::errors::InvalidArgument(
                             "The input(X)'s dimension of AddPositionEncodingOp "
                             "should be equal to "
@@ -49,13 +50,15 @@ class AddPositionEncodingKernel : public framework::OpKernel<T> {
       max_seq_len = x_dim[1];
       enc_size = x_dim[2];
     } else {
-      PADDLE_ENFORCE_EQ(x_dim.size(), 2,
+      PADDLE_ENFORCE_EQ(x_dim.size(),
+                        2,
                         platform::errors::InvalidArgument(
                             "The input(X)'s dimension of AddPositionEncodingOp "
                             "should be equal to "
                             "2, but received %d. ",
                             x_dim.size()));
-      PADDLE_ENFORCE_EQ(x_lod.size(), 1,
+      PADDLE_ENFORCE_EQ(x_lod.size(),
+                        1,
                         platform::errors::InvalidArgument(
                             "The input(X)'s lod level of AddPositionEncodingOp "
                             "should be equal to "
@@ -67,7 +70,8 @@ class AddPositionEncodingKernel : public framework::OpKernel<T> {
       enc_size = x_dim[1];
     }
 
-    PADDLE_ENFORCE_EQ(enc_size % 2, 0,
+    PADDLE_ENFORCE_EQ(enc_size % 2,
+                      0,
                       platform::errors::InvalidArgument(
                           "The input(X)'s feature size of "
                           "AddPositionEncodingOp only support even, "
@@ -95,16 +99,14 @@ class AddPositionEncodingKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class AddPositionEncodingGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* dOut =
-        context.Input<framework::LoDTensor>(framework::GradVarName("Out"));
+    auto* dOut = context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto dout = framework::EigenVector<T>::Flatten(*dOut);
 
-    auto* dX =
-        context.Output<framework::LoDTensor>(framework::GradVarName("X"));
+    auto* dX = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
     dX->mutable_data<T>(context.GetPlace());
     auto dx = framework::EigenVector<T>::Flatten(*dX);
 

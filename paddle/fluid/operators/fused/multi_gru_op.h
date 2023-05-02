@@ -19,8 +19,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using framework::LoDTensor;
-using framework::Tensor;
 using framework::ExecutionContext;
 
 class MultiGRUOp : public framework::OperatorWithKernel {
@@ -30,7 +28,7 @@ class MultiGRUOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const ExecutionContext& ctx) const override;
 };
 

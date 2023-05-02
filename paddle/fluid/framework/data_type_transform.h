@@ -25,13 +25,16 @@ namespace paddle {
 namespace framework {
 
 class OpKernelType;
-class Tensor;
 
 using KernelTypePair = std::pair<OpKernelType, OpKernelType>;
 
-void TransDataType(const OpKernelType& kernel_type_for_var,
-                   const OpKernelType& expected_kernel_type, const Tensor& in,
-                   Tensor* out);
+void TransDataType(const phi::KernelKey& kernel_type_for_var,
+                   const phi::KernelKey& expected_kernel_type,
+                   const phi::DenseTensor& in,
+                   phi::DenseTensor* out);
+void TransDataType(const phi::DenseTensor& in,
+                   const paddle::framework::proto::VarType::Type& type,
+                   phi::DenseTensor* out);
 
 /**
  * Transform complex gradient to real data type.
@@ -45,8 +48,9 @@ void TransDataType(const OpKernelType& kernel_type_for_var,
  * src_type is complex
  */
 void TransComplexToReal(const proto::VarType::Type& dst_type,
-                        const proto::VarType::Type& src_type, const Tensor& in,
-                        Tensor* out);
+                        const proto::VarType::Type& src_type,
+                        const phi::DenseTensor& in,
+                        phi::DenseTensor* out);
 
 }  // namespace framework
 }  // namespace paddle

@@ -16,15 +16,15 @@
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/generator.h"
 
 namespace paddle {
 namespace operators {
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class CPUReadFileKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -36,9 +36,9 @@ class CPUReadFileKernel : public framework::OpKernel<T> {
 
     input.seekg(0, std::ios::beg);
 
-    auto* out = ctx.Output<framework::LoDTensor>("Out");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
     std::vector<int64_t> out_shape = {file_size};
-    out->Resize(framework::make_ddim(out_shape));
+    out->Resize(phi::make_ddim(out_shape));
 
     uint8_t* data = out->mutable_data<T>(ctx.GetPlace());
 
@@ -51,19 +51,20 @@ class ReadFileOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Output(Out) of ReadFileOp is null."));
 
     auto out_dims = std::vector<int>(1, -1);
-    ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
+    ctx->SetOutputDim("Out", phi::make_ddim(out_dims));
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(framework::proto::VarType::UINT8,
-                                   platform::CPUPlace());
+    return phi::KernelKey(framework::proto::VarType::UINT8,
+                          platform::CPUPlace());
   }
 };
 
@@ -85,8 +86,11 @@ This operator read a file.
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(
-    read_file, ops::ReadFileOp, ops::ReadFileOpMaker,
+    read_file,
+    ops::ReadFileOp,
+    ops::ReadFileOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>)
 
-REGISTER_OP_CPU_KERNEL(read_file, ops::CPUReadFileKernel<uint8_t>)
+PD_REGISTER_STRUCT_KERNEL(
+    read_file, CPU, ALL_LAYOUT, ops::CPUReadFileKernel, uint8_t) {}

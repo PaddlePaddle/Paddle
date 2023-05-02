@@ -21,7 +21,8 @@ class CRFDecodingOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput(
         "Emission",
-        "(Tensor/LoDTensor). For a LoDTensor input, its shape is [N x D] "
+        "(Tensor/phi::DenseTensor). For a phi::DenseTensor input, its shape is "
+        "[N x D] "
         "where N is the total sequence length of the mini-batch and D is "
         "the total tag number. While for a tensor input, its shape is "
         "[B X S X D] with B the batch size and S the sequence length of each "
@@ -39,14 +40,14 @@ class CRFDecodingOpMaker : public framework::OpProtoAndCheckerMaker {
         "The data type is the same as Input(Emission).");
     AddInput(
         "Label",
-        "(Tensor/LoDTensor). The ground truth with shape "
-        "[N x 1] (for LoDTensor) or [B x S] (for Tensor). This input is "
+        "(phi::DenseTensor). The ground truth with shape "
+        "[N x 1] (for phi::DenseTensor) or [B x S] (for Tensor). This input is "
         "optional. See more details in the operator's comments. The data type "
         "is int64.")
         .AsDispensable();
     AddOutput(
         "ViterbiPath",
-        "(Tensor/LoDTensor). The decoding results. What to "
+        "(phi::DenseTensor). The decoding results. What to "
         "return changes depending on whether the Input(Label) (the ground "
         "truth) is given. See more details in the operator's comment. "
         "The data type is int64.");
@@ -58,9 +59,9 @@ class CRFDecodingOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDispensable();
     AddComment(R"DOC(
 The crf_decoding operator reads the emission feature weights and the transition
-feature weights learned by the linear_chain_crf operator and performs decoding. 
-It implements the Viterbi algorithm which is a dynamic programming algorithm 
-for finding the most likely sequence of hidden states, called the Viterbi path, 
+feature weights learned by the linear_chain_crf operator and performs decoding.
+It implements the Viterbi algorithm which is a dynamic programming algorithm
+for finding the most likely sequence of hidden states, called the Viterbi path,
 that results in a sequence of observed tags.
 
 The output of this operator changes according to whether Input(Label) is given:
@@ -68,15 +69,15 @@ The output of this operator changes according to whether Input(Label) is given:
 1. Input(Label) is given:
    This happens in training. This operator is used to co-work with the chunk_eval
    operator.
-   When Input(Label) is given, the crf_decoding operator returns tensor with the 
-   sampe shape as Input(Label) whose values are fixed to be 0, indicating an 
-   incorrect prediction, or 1 indicating a tag is correctly predicted. Such an 
+   When Input(Label) is given, the crf_decoding operator returns tensor with the
+   sampe shape as Input(Label) whose values are fixed to be 0, indicating an
+   incorrect prediction, or 1 indicating a tag is correctly predicted. Such an
    output is the input to chunk_eval operator.
 
 2. Input(Label) is not given:
    This is the standard decoding process.
 
-The crf_decoding operator returns a row vector with shape [N x 1]/[B x S], here 
+The crf_decoding operator returns a row vector with shape [N x 1]/[B x S], here
 the shape depends on the inputs are LoDTensors or common tensors, whose values
 range from 0 to maximum tag number - 1, Each element indicates an index of a
 predicted tag.
@@ -89,44 +90,52 @@ class CRFDecodingOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Emission"), "Input", "Emission",
-                   "CRFDecoding");
-    OP_INOUT_CHECK(ctx->HasInput("Transition"), "Input", "Transition",
-                   "CRFDecoding");
-    OP_INOUT_CHECK(ctx->HasOutput("ViterbiPath"), "Output", "ViterbiPath",
-                   "CRFDecoding");
+    OP_INOUT_CHECK(
+        ctx->HasInput("Emission"), "Input", "Emission", "CRFDecoding");
+    OP_INOUT_CHECK(
+        ctx->HasInput("Transition"), "Input", "Transition", "CRFDecoding");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("ViterbiPath"), "Output", "ViterbiPath", "CRFDecoding");
 
     auto emission_dims = ctx->GetInputDim("Emission");
     bool has_length = ctx->HasInput("Length");
 
     if (has_length) {
-      PADDLE_ENFORCE_EQ(emission_dims.size(), 3,
+      PADDLE_ENFORCE_EQ(emission_dims.size(),
+                        3,
                         platform::errors::InvalidArgument(
                             "The Input(Emission) should be a 3-D tensor. But "
                             "received: input rank %u, input shape [%s]. ",
-                            emission_dims.size(), emission_dims));
+                            emission_dims.size(),
+                            emission_dims));
     } else {
-      PADDLE_ENFORCE_EQ(emission_dims.size(), 2,
+      PADDLE_ENFORCE_EQ(emission_dims.size(),
+                        2,
                         platform::errors::InvalidArgument(
                             "The Input(Emission) should be a 2-D tensor. But "
                             "received: input rank %u, input shape [%s].",
-                            emission_dims.size(), emission_dims));
+                            emission_dims.size(),
+                            emission_dims));
     }
 
     auto transition_dims = ctx->GetInputDim("Transition");
-    PADDLE_ENFORCE_EQ(transition_dims.size(), 2UL,
+    PADDLE_ENFORCE_EQ(transition_dims.size(),
+                      2UL,
                       platform::errors::InvalidArgument(
                           "The Input(Transition) should be a 2-D tensor. But "
                           "received: input rank %u, input shape [%s].",
-                          transition_dims.size(), transition_dims));
+                          transition_dims.size(),
+                          transition_dims));
     PADDLE_ENFORCE_EQ(
-        transition_dims[0] - 2, transition_dims[1],
+        transition_dims[0] - 2,
+        transition_dims[1],
         platform::errors::InvalidArgument(
             "An invalid dimension for the Input(Transition), which should "
             "be a 2-D tensor with shape [(D + 2) x D]. But received: input "
             "rank %u, "
             "input shape [%s].",
-            transition_dims.size(), transition_dims));
+            transition_dims.size(),
+            transition_dims));
     if (ctx->IsRuntime() || (emission_dims[emission_dims.size() - 1] > 0 &&
                              transition_dims[transition_dims.size() - 1] > 0)) {
       PADDLE_ENFORCE_EQ(emission_dims[emission_dims.size() - 1],
@@ -138,8 +147,10 @@ class CRFDecodingOp : public framework::OperatorWithKernel {
                             "Input(Emission): rank "
                             "%u, shape [%s]; received Input(Transition): rank "
                             "%u, shape [%s].",
-                            emission_dims.size(), emission_dims,
-                            transition_dims.size(), transition_dims));
+                            emission_dims.size(),
+                            emission_dims,
+                            transition_dims.size(),
+                            transition_dims));
     }
     if (ctx->HasInput("Label")) {
       auto label_dims = ctx->GetInputDim("Label");
@@ -153,25 +164,31 @@ class CRFDecodingOp : public framework::OperatorWithKernel {
                 "fixed to 1 or a 2-D tensor in padding mode. But received: "
                 "input "
                 "rank %u, input shape [%s].",
-                label_dims.size(), label_dims));
+                label_dims.size(),
+                label_dims));
       } else {
         PADDLE_ENFORCE_EQ(
             (label_dims.size() == 2UL && label_dims[1] == 1) ||
                 label_dims.size() == 1UL,
-            true, platform::errors::InvalidArgument(
-                      "The Input(Label) should be a 2-D tensor with last "
-                      "dimension fixed to 1 or a 1-D tensor. But received: "
-                      "input rank %u, input shape [%s].",
-                      label_dims.size(), label_dims));
+            true,
+            platform::errors::InvalidArgument(
+                "The Input(Label) should be a 2-D tensor with last "
+                "dimension fixed to 1 or a 1-D tensor. But received: "
+                "input rank %u, input shape [%s].",
+                label_dims.size(),
+                label_dims));
       }
       if (ctx->IsRuntime() || (emission_dims[0] > 0 && label_dims[0] > 0)) {
         PADDLE_ENFORCE_EQ(
-            emission_dims[0], label_dims[0],
+            emission_dims[0],
+            label_dims[0],
             platform::errors::InvalidArgument(
                 "The first dimension of Input(Emission) and Input(Label) "
                 "should be the same. But received Input(Emission): rank %u, "
                 "shape [%s]; received Input(Label): rank %u, shape [%s].",
-                emission_dims.size(), emission_dims, label_dims.size(),
+                emission_dims.size(),
+                emission_dims,
+                label_dims.size(),
                 label_dims));
       }
     }
@@ -185,9 +202,9 @@ class CRFDecodingOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
+    return phi::KernelKey(
         OperatorWithKernel::IndicateVarDataType(ctx, "Emission"),
         platform::CPUPlace());
   }
@@ -196,9 +213,9 @@ class CRFDecodingOp : public framework::OperatorWithKernel {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(crf_decoding, ops::CRFDecodingOp,
+REGISTER_OP_WITHOUT_GRADIENT(crf_decoding,
+                             ops::CRFDecodingOp,
                              ops::CRFDecodingOpMaker);
-REGISTER_OP_CPU_KERNEL(
-    crf_decoding,
-    ops::CRFDecodingOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::CRFDecodingOpKernel<paddle::platform::CPUDeviceContext, double>);
+
+PD_REGISTER_STRUCT_KERNEL(
+    crf_decoding, CPU, ALL_LAYOUT, ops::CRFDecodingOpKernel, float, double) {}

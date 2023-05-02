@@ -12,17 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
-import unittest
-import paddle
-import paddle.fluid as fluid
-import paddle.distributed.fleet as fleet
-import paddle.distributed.fleet.base.role_maker as role_maker
 
-from test_dist_fleet_base import TestFleetBase
+os.environ["WITH_DISTRIBUTE"] = "ON"
+import unittest
+
 from dist_fleet_simnet_bow import train_network
+from test_dist_fleet_base import TestFleetBase
+
+import paddle
+from paddle import fluid
+from paddle.distributed import fleet
+from paddle.distributed.fleet.base import role_maker
+
 paddle.enable_static()
 
 
@@ -32,11 +34,9 @@ class TestDistGeoCtr_2x2(TestFleetBase):
         self._reader = "pyreader"
         self._geo_sgd_need_push_nums = 5
 
-    def check_with_place(self,
-                         model_file,
-                         delta=1e-3,
-                         check_error_log=False,
-                         need_envs={}):
+    def check_with_place(
+        self, model_file, delta=1e-3, check_error_log=False, need_envs={}
+    ):
         required_envs = {
             "PATH": os.getenv("PATH", ""),
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),
@@ -57,7 +57,8 @@ class TestDistGeoCtr_2x2(TestFleetBase):
 
     def test_dist_train(self):
         self.check_with_place(
-            "dist_fleet_ctr.py", delta=1e-5, check_error_log=False)
+            "dist_fleet_ctr.py", delta=1e-5, check_error_log=False
+        )
 
 
 class TestGeoSgdTranspiler(unittest.TestCase):
@@ -66,7 +67,8 @@ class TestGeoSgdTranspiler(unittest.TestCase):
             current_id=0,
             role=role_maker.Role.SERVER,
             worker_num=2,
-            server_endpoints=["127.0.0.1:36011", "127.0.0.1:36012"])
+            server_endpoints=["127.0.0.1:36011", "127.0.0.1:36012"],
+        )
 
         fleet.init(role)
 

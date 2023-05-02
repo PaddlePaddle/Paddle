@@ -23,9 +23,9 @@ ThreadLocalAllocatorImpl::ThreadLocalAllocatorImpl(const platform::Place& p)
   if (platform::is_gpu_place(place_)) {
     buddy_allocator_.reset(new memory::detail::BuddyAllocator(
         std::unique_ptr<memory::detail::SystemAllocator>(
-            new memory::detail::GPUAllocator(
-                BOOST_GET_CONST(platform::CUDAPlace, place_).device)),
-        platform::GpuMinChunkSize(), platform::GpuMaxChunkSize()));
+            new memory::detail::GPUAllocator(place_.device)),
+        platform::GpuMinChunkSize(),
+        platform::GpuMaxChunkSize()));
   } else {
     PADDLE_THROW(platform::errors::Unavailable(
         "Thread local allocator only supports CUDAPlace now."));
@@ -37,7 +37,8 @@ std::shared_ptr<ThreadLocalAllocatorImpl> ThreadLocalCUDAAllocatorPool::Get(
   auto pos = std::distance(devices_.begin(),
                            std::find(devices_.begin(), devices_.end(), gpu_id));
   PADDLE_ENFORCE_LT(
-      pos, devices_.size(),
+      pos,
+      devices_.size(),
       platform::errors::InvalidArgument(
           "The position of device should be less than the size of devices."));
   std::call_once(*init_flags_[pos], [this, pos, gpu_id] {

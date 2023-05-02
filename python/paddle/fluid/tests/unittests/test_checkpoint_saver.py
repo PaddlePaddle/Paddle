@@ -13,15 +13,8 @@
 # limitations under the License.
 
 import unittest
-import paddle.fluid as fluid
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
-from paddle.fluid.incubate.fleet.collective import CollectiveOptimizer, fleet
-from paddle.fluid.incubate.checkpoint.auto_checkpoint import ExeTrainStatus
-from paddle.fluid.incubate.checkpoint.checkpoint_saver import CheckpointSaver
-import os
-import sys
 
-from paddle.distributed.fleet.utils.fs import LocalFS, HDFSClient
+from paddle.distributed.fleet.utils.fs import HDFSClient
 from paddle.fluid.incubate.checkpoint.checkpoint_saver import CheckpointSaver
 
 
@@ -33,15 +26,15 @@ class CheckpointerSaverTest(unittest.TestCase):
 
         s = CheckpointSaver(fs)
 
-        fs.mkdirs("{}/exe.exe".format(dir_path))
-        fs.mkdirs("{}/exe.1".format(dir_path))
-        fs.mkdirs("{}/exe".format(dir_path))
+        fs.mkdirs(f"{dir_path}/exe.exe")
+        fs.mkdirs(f"{dir_path}/exe.1")
+        fs.mkdirs(f"{dir_path}/exe")
 
         a = s.get_checkpoint_no(dir_path)
         self.assertEqual(len(a), 0)
 
-        fs.mkdirs("{}/__paddle_checkpoint__.0".format(dir_path))
-        fs.mkdirs("{}/__paddle_checkpoint__.exe".format(dir_path))
+        fs.mkdirs(f"{dir_path}/__paddle_checkpoint__.0")
+        fs.mkdirs(f"{dir_path}/__paddle_checkpoint__.exe")
 
         a = s.get_checkpoint_no(dir_path)
         self.assertEqual(len(a), 1)

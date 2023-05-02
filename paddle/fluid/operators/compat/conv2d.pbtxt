@@ -6,12 +6,6 @@ def {
   inputs {
     name: "Filter"
   }
-  inputs {
-    name: "Bias"
-  }
-  inputs {
-    name: "ResidualData"
-  }
   outputs {
     name: "Output"
   }
@@ -70,59 +64,7 @@ extra {
     type: BOOLEAN
   }
   attrs {
-    name: "fuse_relu_before_depthwise_conv"
-    type: BOOLEAN
-  }
-  attrs {
-    name: "fuse_relu"
-    type: BOOLEAN
-  }
-  attrs {
-    name: "fuse_brelu"
-    type: BOOLEAN
-  }
-  attrs {
-    name: "fuse_brelu_threshold"
-    type: FLOAT
-  }
-  attrs {
-    name: "fuse_activation"
-    type: STRING
-  }
-  attrs {
-    name: "fuse_alpha"
-    type: FLOAT
-  }
-  attrs {
-    name: "fuse_beta"
-    type: FLOAT
-  }
-  attrs {
     name: "use_addto"
-    type: BOOLEAN
-  }
-  attrs {
-    name: "fuse_residual_connection"
-    type: BOOLEAN
-  }
-  attrs {
-    name: "Scale_in"
-    type: FLOAT
-  }
-  attrs {
-    name: "Scale_out"
-    type: FLOAT
-  }
-  attrs {
-    name: "Scale_in_eltwise"
-    type: FLOAT
-  }
-  attrs {
-    name: "Scale_weights"
-    type: FLOATS
-  }
-  attrs {
-    name: "force_fp32_output"
     type: BOOLEAN
   }
   attrs {
@@ -134,4 +76,3 @@ extra {
     type: BOOLEAN
   }
 }
-

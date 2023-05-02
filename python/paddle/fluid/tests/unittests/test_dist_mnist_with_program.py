@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
+
 from test_dist_base import TestDistBase
+
 import paddle
 
 paddle.enable_static()
@@ -30,7 +31,8 @@ class TestDistMnistLocalSGDFleetApi(TestDistBase):
         self._use_local_sgd = True
 
     def test_dist_train(self):
-        import paddle.fluid as fluid
+        from paddle import fluid
+
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place("dist_mnist.py", delta=1e-5)
 
@@ -45,7 +47,8 @@ class TestDistMnistGradAllReduceFleetApi(TestDistBase):
         self._ut4grad_allreduce = True
 
     def test_dist_train(self):
-        import paddle.fluid as fluid
+        from paddle import fluid
+
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place("dist_mnist.py", delta=1e-5)
 

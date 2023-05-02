@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -26,37 +27,42 @@ class BeamSearchOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     // inputs and outputs stored in proto
     AddInput("pre_ids",
-             "(LoDTensor) The LoDTensor containing the selected ids at the "
+             "(phi::DenseTensor) The phi::DenseTensor containing the selected "
+             "ids at the "
              "previous step. It should be a tensor with shape (batch_size, 1) "
              "and lod `[[0, 1, ... , batch_size], [0, 1, ..., batch_size]]` at "
              "the first step.");
-    AddInput("pre_scores",
-             "(LoDTensor) The LoDTensor containing the accumulated "
-             "scores corresponding to the selected ids at the previous step.");
+    AddInput(
+        "pre_scores",
+        "(phi::DenseTensor) The phi::DenseTensor containing the accumulated "
+        "scores corresponding to the selected ids at the previous step.");
     AddInput("ids",
-             "(LoDTensor) The LoDTensor containing the candidates ids. Its "
+             "(phi::DenseTensor) The phi::DenseTensor containing the "
+             "candidates ids. Its "
              "shape should be (batch_size * beam_size, W). If not set, it will "
              "be calculated out according to Input(scores) in this operator.")
         .AsDispensable();
-    AddInput("scores",
-             "(LoDTensor) The LoDTensor containing the current scores "
-             "corresponding to Input(ids). If Input(ids) is not nullptr, its "
-             "shape is the same as that of Input(ids)."
-             "If is_accumulated is true, Input(scores) is accumulated scores "
-             "and will be used derectedly. Else, each score will be "
-             "transformed to the log field and accumulate Input(pre_sores) "
-             "first.");
+    AddInput(
+        "scores",
+        "(phi::DenseTensor) The phi::DenseTensor containing the current scores "
+        "corresponding to Input(ids). If Input(ids) is not nullptr, its "
+        "shape is the same as that of Input(ids)."
+        "If is_accumulated is true, Input(scores) is accumulated scores "
+        "and will be used derectedly. Else, each score will be "
+        "transformed to the log field and accumulate Input(pre_sores) "
+        "first.");
     AddOutput("selected_ids",
               "A LodTensor that stores the IDs selected by beam search.");
-    AddOutput("selected_scores",
-              "A LoDTensor containing the accumulated scores corresponding to "
-              "Output(selected_ids).");
+    AddOutput(
+        "selected_scores",
+        "A phi::DenseTensor containing the accumulated scores corresponding to "
+        "Output(selected_ids).");
     AddOutput("parent_idx",
               "A Tensor preserving the selected_ids' parent index in pre_ids.")
         .AsDispensable();
 
     // Attributes stored in AttributeMap
-    AddAttr<int>("level", "the level of LoDTensor");
+    AddAttr<int>("level", "the level of phi::DenseTensor");
     AddAttr<int>("beam_size", "beam size for beam search");
     AddAttr<int>("end_id",
                  "the token id which indicates the end of a sequence");
@@ -102,19 +108,19 @@ class BeamSearchOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto *scores = ctx.Input<framework::LoDTensor>("scores");
+    auto *scores = ctx.Input<phi::DenseTensor>("scores");
     size_t level = ctx.Attr<int>("level");
     size_t batch_size = scores->lod()[level].size() - 1;
     // The current CUDA kernel only support cases with batch_size < 4.
     // Compute on CPU for cases with batch_size > 4.
     if (batch_size <= 4) {
-      return framework::OpKernelType(
+      return phi::KernelKey(
           OperatorWithKernel::IndicateVarDataType(ctx, "pre_ids"),
           ctx.GetPlace());
     } else {
-      return framework::OpKernelType(
+      return phi::KernelKey(
           OperatorWithKernel::IndicateVarDataType(ctx, "pre_ids"),
           platform::CPUPlace());
     }
@@ -124,9 +130,11 @@ class BeamSearchOp : public framework::OperatorWithKernel {
 class BeamSearchInferVarType : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
-    ctx->SetOutputType("selected_ids", framework::proto::VarType::LOD_TENSOR,
+    ctx->SetOutputType("selected_ids",
+                       framework::proto::VarType::LOD_TENSOR,
                        framework::ALL_ELEMENTS);
-    ctx->SetOutputType("selected_scores", framework::proto::VarType::LOD_TENSOR,
+    ctx->SetOutputType("selected_scores",
+                       framework::proto::VarType::LOD_TENSOR,
                        framework::ALL_ELEMENTS);
   }
 };
@@ -136,11 +144,16 @@ class BeamSearchInferVarType : public framework::VarTypeInference {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(beam_search, ops::BeamSearchOp, ops::BeamSearchOpMaker,
+REGISTER_OPERATOR(beam_search,
+                  ops::BeamSearchOp,
+                  ops::BeamSearchOpMaker,
                   ops::BeamSearchInferVarType);
-REGISTER_OP_CPU_KERNEL(
-    beam_search,
-    ops::BeamSearchOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::BeamSearchOpKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::BeamSearchOpKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::BeamSearchOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
+
+PD_REGISTER_STRUCT_KERNEL(beam_search,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::BeamSearchOpKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}

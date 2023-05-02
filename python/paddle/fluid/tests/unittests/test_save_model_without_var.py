@@ -12,22 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import warnings
 import unittest
+import warnings
+
 import paddle
-import paddle.fluid as fluid
-from paddle.fluid.layers.device import get_places
-from paddle.fluid.executor import as_numpy
+from paddle import fluid
 
 
 class TestSaveModelWithoutVar(unittest.TestCase):
     def test_no_var_save(self):
-        data = fluid.layers.data(
-            name='data',
-            shape=[-1, 1],
-            dtype='float32',
-            append_batch_size=False)
+        data = paddle.static.data(name='data', shape=[-1, 1], dtype='float32')
         data_plus = data + 1
 
         if fluid.core.is_compiled_with_cuda():
@@ -47,7 +41,8 @@ class TestSaveModelWithoutVar(unittest.TestCase):
                 target_vars=[data_plus],
                 executor=exe,
                 model_filename='model',
-                params_filename='params')
+                params_filename='params',
+            )
             expected_warn = "no variable in your model, please ensure there are any variables in your model to save"
             self.assertTrue(len(w) > 0)
             self.assertTrue(expected_warn == str(w[-1].message))

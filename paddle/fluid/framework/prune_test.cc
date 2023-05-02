@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/prune.h"
 
 #include <gtest/gtest.h>
+
 #include <string>
 
 #include "paddle/fluid/framework/block_desc.h"
@@ -23,8 +24,10 @@ limitations under the License. */
 
 namespace f = paddle::framework;
 
-void AddOp(const std::string &type, const f::VariableNameMap &inputs,
-           const f::VariableNameMap &outputs, f::AttributeMap attrs,
+void AddOp(const std::string &type,
+           const f::VariableNameMap &inputs,
+           const f::VariableNameMap &outputs,
+           f::AttributeMap attrs,
            paddle::framework::BlockDesc *block) {
   // insert output
   for (auto kv : outputs) {
@@ -50,7 +53,10 @@ TEST(Prune, one_operator) {
   f::ProgramDesc program;
   f::BlockDesc *block = program.MutableBlock(0);
 
-  AddOp("one_one", {{"input", {"a"}}}, {{"output", {"b"}}}, f::AttributeMap{},
+  AddOp("one_one",
+        {{"input", {"a"}}},
+        {{"output", {"b"}}},
+        f::AttributeMap{},
         block);
 
   f::proto::ProgramDesc *pdesc = program.Proto();
@@ -69,13 +75,25 @@ TEST(Prune, forward) {
   f::ProgramDesc program;
   f::BlockDesc *block = program.MutableBlock(0);
 
-  AddOp("one_one", {{"input", {"a"}}}, {{"output", {"b"}}}, f::AttributeMap{},
+  AddOp("one_one",
+        {{"input", {"a"}}},
+        {{"output", {"b"}}},
+        f::AttributeMap{},
         block);
-  AddOp("one_one", {{"input", {"b"}}}, {{"output", {"c"}}}, f::AttributeMap{},
+  AddOp("one_one",
+        {{"input", {"b"}}},
+        {{"output", {"c"}}},
+        f::AttributeMap{},
         block);
-  AddOp("one_one", {{"input", {"c"}}}, {{"output", {"d"}}}, f::AttributeMap{},
+  AddOp("one_one",
+        {{"input", {"c"}}},
+        {{"output", {"d"}}},
+        f::AttributeMap{},
         block);
-  AddOp("one_one", {{"input", {"d"}}}, {{"output", {"e"}}}, f::AttributeMap{},
+  AddOp("one_one",
+        {{"input", {"d"}}},
+        {{"output", {"e"}}},
+        f::AttributeMap{},
         block);
 
   f::proto::ProgramDesc *pdesc = program.Proto();
@@ -92,14 +110,26 @@ TEST(Prune, multi_input_op) {
   f::ProgramDesc program;
   f::BlockDesc *block = program.MutableBlock(0);
 
-  AddOp("one_one", {{"input", {"a0"}}}, {{"output", {"b0"}}}, f::AttributeMap{},
+  AddOp("one_one",
+        {{"input", {"a0"}}},
+        {{"output", {"b0"}}},
+        f::AttributeMap{},
         block);
-  AddOp("one_one", {{"input", {"a1"}}}, {{"output", {"b1"}}}, f::AttributeMap{},
+  AddOp("one_one",
+        {{"input", {"a1"}}},
+        {{"output", {"b1"}}},
+        f::AttributeMap{},
         block);
-  AddOp("one_one", {{"input", {"a2"}}}, {{"output", {"b2"}}}, f::AttributeMap{},
+  AddOp("one_one",
+        {{"input", {"a2"}}},
+        {{"output", {"b2"}}},
+        f::AttributeMap{},
         block);
-  AddOp("three_one", {{"input", {"b0", "b1", "b2"}}}, {{"output", {"c"}}},
-        f::AttributeMap{}, block);
+  AddOp("three_one",
+        {{"input", {"b0", "b1", "b2"}}},
+        {{"output", {"c"}}},
+        f::AttributeMap{},
+        block);
 
   f::proto::ProgramDesc *pdesc = program.Proto();
   pdesc->mutable_blocks(0)->mutable_ops(3)->set_is_target(true);
@@ -114,11 +144,20 @@ TEST(Prune, multi_output_op) {
   f::ProgramDesc program;
   f::BlockDesc *block = program.MutableBlock(0);
 
-  AddOp("one_two", {{"input", {"a"}}}, {{"output", {"b", "c"}}},
-        f::AttributeMap{}, block);
-  AddOp("one_one", {{"input", {"b"}}}, {{"output", {"b1"}}}, f::AttributeMap{},
+  AddOp("one_two",
+        {{"input", {"a"}}},
+        {{"output", {"b", "c"}}},
+        f::AttributeMap{},
         block);
-  AddOp("one_one", {{"input", {"c"}}}, {{"output", {"c1"}}}, f::AttributeMap{},
+  AddOp("one_one",
+        {{"input", {"b"}}},
+        {{"output", {"b1"}}},
+        f::AttributeMap{},
+        block);
+  AddOp("one_one",
+        {{"input", {"c"}}},
+        {{"output", {"c1"}}},
+        f::AttributeMap{},
         block);
 
   f::proto::ProgramDesc *pdesc = program.Proto();
@@ -134,11 +173,20 @@ TEST(Prune, multi_target) {
   f::ProgramDesc program;
   f::BlockDesc *block = program.MutableBlock(0);
 
-  AddOp("one_two", {{"input", {"a"}}}, {{"output", {"b", "c"}}},
-        f::AttributeMap{}, block);
-  AddOp("one_one", {{"input", {"b"}}}, {{"output", {"b1"}}}, f::AttributeMap{},
+  AddOp("one_two",
+        {{"input", {"a"}}},
+        {{"output", {"b", "c"}}},
+        f::AttributeMap{},
         block);
-  AddOp("one_one", {{"input", {"c"}}}, {{"output", {"c1"}}}, f::AttributeMap{},
+  AddOp("one_one",
+        {{"input", {"b"}}},
+        {{"output", {"b1"}}},
+        f::AttributeMap{},
+        block);
+  AddOp("one_one",
+        {{"input", {"c"}}},
+        {{"output", {"c1"}}},
+        f::AttributeMap{},
         block);
 
   f::proto::ProgramDesc *pdesc = program.Proto();
@@ -155,19 +203,27 @@ TEST(Prune, recurrrent_op) {
   f::ProgramDesc program;
   f::BlockDesc *block = program.MutableBlock(0);
   f::BlockDesc *sub_block = program.AppendBlock(*block);
-  AddOp("one_two", {{"input", {"a"}}}, {{"output", {"b", "c"}}},
-        f::AttributeMap{}, block);
+  AddOp("one_two",
+        {{"input", {"a"}}},
+        {{"output", {"b", "c"}}},
+        f::AttributeMap{},
+        block);
 
   std::vector<std::string> state_var_name(1, "y");
-  AddOp("recurrent", {{"input", {"b", "c"}}}, {{"output", {"b1, c1"}}},
+  AddOp("recurrent",
+        {{"input", {"b", "c"}}},
+        {{"output", {"b1, c1"}}},
         {{"ex_states", state_var_name},
          {"states", state_var_name},
          {"sub_block", sub_block}},
         block);
 
   EXPECT_TRUE(sub_block != nullptr);
-  AddOp("rnn_memory_helper", {{"input", {"x"}}}, {{"output", {"y"}}},
-        f::AttributeMap{}, sub_block);
+  AddOp("rnn_memory_helper",
+        {{"input", {"x"}}},
+        {{"output", {"y"}}},
+        f::AttributeMap{},
+        sub_block);
 
   f::proto::ProgramDesc *pdesc = program.Proto();
   pdesc->mutable_blocks(0)->mutable_ops(1)->set_is_target(true);
@@ -186,19 +242,27 @@ TEST(Prune, recurrrent_op_2) {
   f::ProgramDesc program;
   f::BlockDesc *block = program.MutableBlock(0);
   f::BlockDesc *sub_block = program.AppendBlock(*block);
-  AddOp("one_two", {{"input", {"a"}}}, {{"output", {"b", "c"}}},
-        f::AttributeMap{}, block);
+  AddOp("one_two",
+        {{"input", {"a"}}},
+        {{"output", {"b", "c"}}},
+        f::AttributeMap{},
+        block);
 
   std::vector<std::string> state_var_name(1, "y");
-  AddOp("recurrent", {{"input", {"b", "c"}}}, {{"output", {"b1, c1"}}},
+  AddOp("recurrent",
+        {{"input", {"b", "c"}}},
+        {{"output", {"b1, c1"}}},
         {{"ex_states", state_var_name},
          {"states", state_var_name},
          {"sub_block", sub_block}},
         block);
 
   EXPECT_TRUE(sub_block != nullptr);
-  AddOp("rnn_memory_helper", {{"input", {"x"}}}, {{"output", {"a"}}},
-        f::AttributeMap{}, sub_block);
+  AddOp("rnn_memory_helper",
+        {{"input", {"x"}}},
+        {{"output", {"a"}}},
+        f::AttributeMap{},
+        sub_block);
 
   f::proto::ProgramDesc *pdesc = program.Proto();
   pdesc->mutable_blocks(0)->mutable_ops(1)->set_is_target(true);

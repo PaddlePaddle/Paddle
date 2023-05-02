@@ -12,17 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
+
 import numpy as np
 
-import paddle.fluid.core as core
-import paddle.fluid as fluid
+from paddle import fluid
+from paddle.fluid import core
 
 
 class TestElementWiseAddOp(unittest.TestCase):
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
-        self.assertTrue(np.allclose(np.array(tensor), np_array, atol=atol), msg)
+        np.testing.assert_allclose(
+            np.array(tensor), np_array, rtol=1e-05, atol=atol, err_msg=msg
+        )
 
     def check_forward_backward(self):
         def test_with_place(place):
@@ -50,19 +52,26 @@ class TestElementWiseAddOp(unittest.TestCase):
                     block.create_var(
                         name=name,
                         dtype='float32',
-                        shape=ground_truth[name].shape)
+                        shape=ground_truth[name].shape,
+                    )
                 elementwise_add_op = block.append_op(
                     type="elementwise_add",
                     inputs={
                         "X": block.var('x'),
                         "Y": block.var('y'),
                     },
-                    outputs={"Out": block.var('out'), },
-                    attrs={"axis": self.axis, })
+                    outputs={
+                        "Out": block.var('out'),
+                    },
+                    attrs={
+                        "axis": self.axis,
+                    },
+                )
 
                 # generate backward op_desc
                 grad_op_desc_list, op_grad_to_var = core.get_grad_op_desc(
-                    elementwise_add_op.desc, set(), [])
+                    elementwise_add_op.desc, set(), []
+                )
                 grad_op_desc = grad_op_desc_list[0]
                 new_op_desc = block.desc.append_op()
                 new_op_desc.copy_from(grad_op_desc)
@@ -75,18 +84,20 @@ class TestElementWiseAddOp(unittest.TestCase):
                     grad_var.set_dtype(core.VarDesc.VarType.FP32)
 
                 exe = fluid.Executor(place)
-                out = exe.run(program,
-                              feed={
-                                  name: var_dict[name]
-                                  for name in ['x', 'y', 'out@GRAD']
-                              },
-                              fetch_list=['x@GRAD', 'y@GRAD'])
+                out = exe.run(
+                    program,
+                    feed={
+                        name: var_dict[name] for name in ['x', 'y', 'out@GRAD']
+                    },
+                    fetch_list=['x@GRAD', 'y@GRAD'],
+                )
                 self.__assert_close(x_grad, out[0], "x@GRAD")
                 self.__assert_close(y_grad, out[1], "y@GRAD", atol=1.4)
 
         places = [core.CPUPlace()]
         if core.is_compiled_with_cuda() and core.op_support_gpu(
-                "elementwise_add"):
+            "elementwise_add"
+        ):
             places.append(core.CUDAPlace(0))
 
         for place in places:
@@ -95,7 +106,7 @@ class TestElementWiseAddOp(unittest.TestCase):
     def test_check_forward_backward_with_scale_and_bias(self):
         np.random.seed(123)
         self.x = np.random.random((4, 32, 220, 220)).astype(np.float32)
-        self.y = np.random.random((32)).astype(np.float32)
+        self.y = np.random.random(32).astype(np.float32)
         self.out = self.x + self.y.reshape(1, 32, 1, 1)
         self.axis = 1
         self.check_forward_backward()

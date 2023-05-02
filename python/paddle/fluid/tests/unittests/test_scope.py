@@ -12,11 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
+import unittest
 
 import paddle.fluid.core
-import unittest
-import six
 
 
 class TestScope(unittest.TestCase):
@@ -54,10 +52,18 @@ class TestScope(unittest.TestCase):
         scope = paddle_c.Scope()
         # Delete the scope.
         scope._remove_from_pool()
-        with self.assertRaisesRegexp(
-                Exception, "Deleting a nonexistent scope is not allowed*"):
+        with self.assertRaisesRegex(
+            Exception, "Deleting a nonexistent scope is not allowed*"
+        ):
             # It is not allowed to delete a nonexistent scope.
             scope._remove_from_pool()
+
+    def test_size(self):
+        paddle_c = paddle.fluid.core
+        scope = paddle_c.Scope()
+        var_a = scope.var("var_a")
+        self.assertEqual(scope.size(), 1)
+        self.assertIsNotNone(scope.find_var('var_a'))
 
 
 if __name__ == '__main__':

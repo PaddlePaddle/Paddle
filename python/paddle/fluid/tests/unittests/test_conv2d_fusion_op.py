@@ -12,15 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
-
-import paddle.fluid.core as core
-from op_test import OpTest
-
+from eager_op_test import OpTest
 from test_conv2d_op import conv2d_forward_naive
+
+from paddle.fluid import core
 
 
 def create_test_padding_SAME_class(parent):
@@ -29,7 +27,7 @@ def create_test_padding_SAME_class(parent):
             self.pad = [0, 0]
             self.padding_algorithm = "SAME"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "PaddingSAMEOp")
+    cls_name = "{}_{}".format(parent.__name__, "PaddingSAMEOp")
     TestPaddingSAMECase.__name__ = cls_name
     globals()[cls_name] = TestPaddingSAMECase
 
@@ -40,9 +38,35 @@ def create_test_padding_VALID_class(parent):
             self.pad = [1, 1]
             self.padding_algorithm = "VALID"
 
-    cls_name = "{0}_{1}".format(parent.__name__, "PaddingVALIDOp")
+    cls_name = "{}_{}".format(parent.__name__, "PaddingVALIDOp")
     TestPaddingVALIDCase.__name__ = cls_name
     globals()[cls_name] = TestPaddingVALIDCase
+
+
+def create_test_cudnn_channel_last_class(parent):
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    )
+    class TestCudnnChannelLastCase(parent):
+        def init_test_case(self):
+            super().init_test_case()
+            self.data_format = "NHWC"
+            N, C, H, W = self.input_size
+            self.input_size = [N, H, W, C]
+            K1, K2, R, S = self.filter_size
+            self.filter_size = [K1, R, S, K2]
+
+        def test_check_output(self):
+            print(self.attrs)
+            if self.has_cuda():
+                place = core.CUDAPlace(0)
+                self.check_output_with_place(
+                    place, atol=1e-5, check_dygraph=False
+                )
+
+    cls_name = "{}_{}".format(parent.__name__, "CudnnChannelLast")
+    TestCudnnChannelLastCase.__name__ = cls_name
+    globals()[cls_name] = TestCudnnChannelLastCase
 
 
 class TestConv2DFusionOp(OpTest):
@@ -68,34 +92,49 @@ class TestConv2DFusionOp(OpTest):
         conv2d_param = {
             'stride': self.stride,
             'pad': self.pad,
-            'dilation': self.dilations
+            'dilation': self.dilations,
         }
 
         input = np.random.random(self.input_size).astype(self.dtype)
         filter = np.random.random(self.filter_size).astype(self.dtype)
         bias = np.random.random(self.filter_size[0]).astype(self.dtype)
 
+        if self.data_format == "NHWC":
+            filter_nchw = np.transpose(filter, [0, 3, 1, 2])
+        else:
+            filter_nchw = filter
+
         self.output, _, _, _, _ = conv2d_forward_naive(
-            input, filter, self.groups, conv2d_param, self.padding_algorithm,
-            self.data_format)
+            input,
+            filter_nchw,
+            self.groups,
+            conv2d_param,
+            self.padding_algorithm,
+            self.data_format,
+        )
 
         self.output = self.output.astype(self.dtype)
 
         self.inputs = {
             'Input': OpTest.np_dtype_to_fluid_dtype(input),
             'Filter': OpTest.np_dtype_to_fluid_dtype(filter),
-            'Bias': OpTest.np_dtype_to_fluid_dtype(bias)
+            'Bias': OpTest.np_dtype_to_fluid_dtype(bias),
         }
 
         if self.add_residual_data:
             residual_data = np.random.random(self.output.shape).astype(
-                self.dtype)
+                self.dtype
+            )
             self.inputs['ResidualData'] = OpTest.np_dtype_to_fluid_dtype(
-                residual_data)
+                residual_data
+            )
             self.output += residual_data
 
         # Add bias
-        self.output = self.output + bias.reshape((1, bias.size, 1, 1))
+        if self.data_format == "NCHW":
+            self.output = self.output + bias.reshape((1, bias.size, 1, 1))
+        else:
+            self.output = self.output + bias.reshape((1, 1, 1, bias.size))
 
         assert self.activation in ['relu', 'identity']
         if self.activation == 'relu':
@@ -109,7 +148,7 @@ class TestConv2DFusionOp(OpTest):
             'data_format': self.data_format,
             'exhaustive_search': self.exhaustive_search,
             'activation': self.activation,
-            'padding_algorithm': self.padding_algorithm
+            'padding_algorithm': self.padding_algorithm,
         }
         if self.split_channels is not None:
             self.attrs['split_channels'] = self.split_channels
@@ -124,7 +163,7 @@ class TestConv2DFusionOp(OpTest):
     def test_check_output(self):
         if self.has_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-5)
+            self.check_output_with_place(place, atol=1e-5, check_dygraph=False)
 
     def init_test_case(self):
         self.pad = [0, 0]
@@ -354,6 +393,23 @@ class TestWithInput1x1Filter1x1_AsyPadding(TestConv2DFusionOp):
         self.padding_algorithm = "EXPLICIT"
 
 
+class TestSimpleNHWC(TestConv2DFusionOp):
+    def init_test_case(self):
+        self.stride = [1, 1]
+        self.input_size = [3, 5, 5, 2]  # NHWC
+        self.data_format = "NHWC"
+        assert np.mod(self.input_size[3], self.groups) == 0
+        f_c = self.input_size[3] // self.groups
+        self.filter_size = [4, 3, 3, f_c]
+
+    def init_group(self):
+        self.groups = 1
+
+    def init_paddings(self):
+        self.pad = [1, 1]
+        self.padding_algorithm = "EXPLICIT"
+
+
 create_test_padding_SAME_class(TestAsyPadding)
 create_test_padding_SAME_class(TestWithPad_AsyPadding)
 create_test_padding_SAME_class(TestWithStride_AsyPadding)
@@ -365,6 +421,12 @@ create_test_padding_VALID_class(TestWithPad_AsyPadding)
 create_test_padding_VALID_class(TestWithStride_AsyPadding)
 create_test_padding_VALID_class(TestWithGroup_AsyPadding)
 create_test_padding_VALID_class(TestWithInput1x1Filter1x1_AsyPadding)
+
+create_test_cudnn_channel_last_class(TestAsyPadding)
+create_test_cudnn_channel_last_class(TestWithPad_AsyPadding)
+create_test_cudnn_channel_last_class(TestWithStride_AsyPadding)
+create_test_cudnn_channel_last_class(TestWithGroup_AsyPadding)
+create_test_cudnn_channel_last_class(TestWithInput1x1Filter1x1_AsyPadding)
 
 if __name__ == '__main__':
     unittest.main()

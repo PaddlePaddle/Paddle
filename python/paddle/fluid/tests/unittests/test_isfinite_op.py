@@ -13,12 +13,11 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from op_test import OpTest
-from paddle.fluid import compiler, Program, program_guard
+from eager_op_test import OpTest, convert_float_to_uint16
+
+from paddle.fluid import core
 
 
 class TestInf(OpTest):
@@ -41,25 +40,34 @@ class TestInf(OpTest):
         self.check_output()
 
 
-class TestRaiseError(unittest.TestCase):
-    def test_errors(self):
-        def test_type():
-            fluid.layers.isfinite([10])
-
-        self.assertRaises(TypeError, test_type)
-
-        def test_dtype():
-            data = fluid.data(shape=[10], dtype="float16", name="input")
-            fluid.layers.isfinite(data)
-
-        self.assertRaises(TypeError, test_dtype)
-
-
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestFP16Inf(TestInf):
     def init_dtype(self):
         self.dtype = np.float16
+
+
+# BFP16 isinf Test
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestInfBF16(OpTest):
+    def setUp(self):
+        self.op_type = "isinf"
+        self.dtype = np.uint16
+        x = np.random.uniform(0.1, 1, [11, 17]).astype(np.float32)
+        x[0] = np.inf
+        x[-1] = np.inf
+
+        out = np.array(True)
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.outputs = {'Out': out}
+
+    def test_output(self):
+        self.check_output_with_place(core.CUDAPlace(0))
 
 
 class TestNAN(OpTest):
@@ -82,11 +90,34 @@ class TestNAN(OpTest):
         self.check_output()
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestFP16NAN(TestNAN):
     def init_dtype(self):
         self.dtype = np.float16
+
+
+# BFP16 isnan Test
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestNANBF16(OpTest):
+    def setUp(self):
+        self.op_type = "isnan"
+        self.dtype = np.uint16
+        x = np.random.uniform(0.1, 1, [11, 17]).astype(np.float32)
+        x[0] = np.nan
+        x[-1] = np.nan
+
+        out = np.array(True)
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.outputs = {'Out': out}
+
+    def test_output(self):
+        self.check_output_with_place(core.CUDAPlace(0))
 
 
 class TestIsfinite(OpTest):
@@ -110,36 +141,34 @@ class TestIsfinite(OpTest):
         self.check_output()
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestFP16Isfinite(TestIsfinite):
     def init_dtype(self):
         self.dtype = np.float16
 
 
-class BadInputTest(unittest.TestCase):
-    def test_error(self):
-        with fluid.program_guard(fluid.Program()):
+# BFP16 isfinite Test
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestIsfiniteBF16(OpTest):
+    def setUp(self):
+        self.op_type = "isfinite"
+        self.dtype = np.uint16
+        x = np.random.uniform(0.1, 1, [11, 17]).astype(np.float32)
+        x[0] = np.inf
+        x[-1] = np.nan
 
-            def test_has_inf_bad_x():
-                data = [1, 2, 3]
-                result = fluid.layers.has_inf(data)
+        out = np.array(False)
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.outputs = {'Out': out}
 
-            self.assertRaises(TypeError, test_has_inf_bad_x)
-
-            def test_has_nan_bad_x():
-                data = [1, 2, 3]
-                result = fluid.layers.has_nan(data)
-
-            self.assertRaises(TypeError, test_has_nan_bad_x)
-
-        with fluid.dygraph.guard():
-            data = paddle.zeros([2, 3])
-            result = paddle.fluid.layers.has_inf(data)
-            expect_value = np.array([False])
-            self.assertEqual((result.numpy() == expect_value).all(), True)
-            result = paddle.fluid.layers.has_nan(data)
-            self.assertEqual((result.numpy() == expect_value).all(), True)
+    def test_output(self):
+        self.check_output_with_place(core.CUDAPlace(0))
 
 
 if __name__ == '__main__':

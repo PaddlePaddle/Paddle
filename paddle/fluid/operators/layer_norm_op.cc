@@ -12,21 +12,21 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/layer_norm_op.h"
-
 #include <memory>
 #include <string>
 
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
-#endif
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
+#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
+#include "paddle/fluid/prim/utils/static/desc_tensor.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/ternary.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
-using DataLayout = framework::DataLayout;
+using DataLayout = phi::DataLayout;
 
 class LayerNormOp : public framework::OperatorWithKernel {
  public:
@@ -36,24 +36,27 @@ class LayerNormOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "LayerNorm");
     OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Y", "LayerNorm");
     OP_INOUT_CHECK(ctx->HasOutput("Mean"), "Output", "Mean", "LayerNorm");
-    OP_INOUT_CHECK(ctx->HasOutput("Variance"), "Output", "Variance",
-                   "LayerNorm");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("Variance"), "Output", "Variance", "LayerNorm");
 
     auto x_dim = ctx->GetInputDim("X");
     auto begin_norm_axis = ctx->Attrs().Get<int>("begin_norm_axis");
     PADDLE_ENFORCE_LT(
-        begin_norm_axis, x_dim.size(),
+        begin_norm_axis,
+        x_dim.size(),
         platform::errors::InvalidArgument(
             "'begin_norm_axis' must be less than the dimensions of X,"
             "But received 'begin_norm_axis' is [%d],"
             "received the dimensions of X is [%d].",
-            begin_norm_axis, x_dim.size()));
+            begin_norm_axis,
+            x_dim.size()));
 
-    auto matrix_dim = framework::flatten_to_2d(x_dim, begin_norm_axis);
+    auto matrix_dim = phi::flatten_to_2d(x_dim, begin_norm_axis);
     int left = static_cast<int>(matrix_dim[0]);
     int right = static_cast<int>(matrix_dim[1]);
     if (ctx->HasInput("Scale")) {
-      PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale").size(), 1,
+      PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale").size(),
+                        1,
                         platform::errors::InvalidArgument(
                             "The dimensions of Input(Scale) must be 1, but "
                             "received dimensions of"
@@ -62,18 +65,21 @@ class LayerNormOp : public framework::OperatorWithKernel {
 
       if (ctx->IsRuntime()) {
         PADDLE_ENFORCE_EQ(
-            ctx->GetInputDim("Scale")[0], right,
+            ctx->GetInputDim("Scale")[0],
+            right,
             platform::errors::InvalidArgument(
                 "The first dimension value of Input(Scale) must equal to be the"
                 "second dimension value of the flattened 2D matrix of Input(X),"
                 "But received the first dimension value of Input(Scale) is"
                 "[%d], the second dimension value of the flattened 2D matrix of"
                 " Input(Scale) is [%d].",
-                ctx->GetInputDim("Scale")[0], right));
+                ctx->GetInputDim("Scale")[0],
+                right));
       }
     }
     if (ctx->HasInput("Bias")) {
-      PADDLE_ENFORCE_EQ(ctx->GetInputDim("Bias").size(), 1,
+      PADDLE_ENFORCE_EQ(ctx->GetInputDim("Bias").size(),
+                        1,
                         platform::errors::InvalidArgument(
                             "The dimensions of Input(Bias) must be 1, but "
                             "received dimensions of"
@@ -81,14 +87,16 @@ class LayerNormOp : public framework::OperatorWithKernel {
                             ctx->GetInputDim("Bias").size()));
       if (ctx->IsRuntime()) {
         PADDLE_ENFORCE_EQ(
-            ctx->GetInputDim("Bias")[0], right,
+            ctx->GetInputDim("Bias")[0],
+            right,
             platform::errors::InvalidArgument(
                 "The first dimension value of Input(Bias) must equal to be the"
                 "second dimension value of the flattened 2D matrix of Input(X),"
                 "But received the first dimension value of Input(Bias) is"
                 "[%d], the second dimension value of the flattened 2D matrix of"
                 " Input(Bias) is [%d].",
-                ctx->GetInputDim("Scale")[0], right));
+                ctx->GetInputDim("Scale")[0],
+                right));
       }
     }
 
@@ -99,40 +107,19 @@ class LayerNormOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    // By default, the type of the scale, bias, mean,
-    // and var tensors should both be float. (For float or float16 input tensor)
-    // or double (For double input tensor).
-    auto ln_param_type = framework::proto::VarType::FP32;
-    if (input_data_type == framework::proto::VarType::FP64) {
-      ln_param_type = framework::proto::VarType::FP64;
-    }
-    if (ctx.HasInput("Scale")) {
-      PADDLE_ENFORCE_EQ(ln_param_type, ctx.Input<Tensor>("Scale")->type(),
-                        platform::errors::InvalidArgument(
-                            "Scale input should be of float type"));
-    }
-    if (ctx.HasInput("Bias")) {
-      PADDLE_ENFORCE_EQ(ln_param_type, ctx.Input<Tensor>("Bias")->type(),
-                        platform::errors::InvalidArgument(
-                            "Bias input should be of float type"));
-    }
 
-    framework::LibraryType library = framework::LibraryType::kPlain;
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
-
-#ifdef PADDLE_WITH_MKLDNN
-    if (library == framework::LibraryType::kPlain &&
-        this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      library = framework::LibraryType::kMKLDNN;
-      layout = framework::DataLayout::kMKLDNN;
+    // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
+    int begin_norm_axis = ctx.Attr<int>("begin_norm_axis");
+    if (begin_norm_axis !=
+        ctx.Input<phi::DenseTensor>("X")->dims().size() - 1) {
+      this->SetDnnFallback(true);
     }
-#endif
+    // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
 
-    return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
-                                   library);
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -159,7 +146,8 @@ class LayerNormOpMaker : public framework::OpProtoAndCheckerMaker {
                    "Constant for numerical stability [default 1e-5].")
         .SetDefault(1e-5)
         .AddCustomChecker([](const float &epsilon) {
-          PADDLE_ENFORCE_EQ(epsilon >= 0.0f && epsilon <= 0.001f, true,
+          PADDLE_ENFORCE_EQ(epsilon >= 0.0f && epsilon <= 0.001f,
+                            true,
                             platform::errors::InvalidArgument(
                                 "'epsilon' in Op(LayerNorm) should be between"
                                 "0.0 and 0.001, But received [%s].",
@@ -171,28 +159,13 @@ class LayerNormOpMaker : public framework::OpProtoAndCheckerMaker {
                  "matrix [N,H]. [default 1].")
         .SetDefault(1)
         .AddCustomChecker([](const int &begin_norm_axis) {
-          PADDLE_ENFORCE_GT(begin_norm_axis, 0,
+          PADDLE_ENFORCE_GT(begin_norm_axis,
+                            0,
                             platform::errors::InvalidArgument(
                                 "'begin_norm_axis' in Op(LayerNorm) should be"
                                 "greater than zero. But received [%d].",
                                 begin_norm_axis));
         });
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
-    AddAttr<std::string>(
-        "mkldnn_data_type",
-        "(string, default \"float32\"). Data type of mkldnn kernel")
-        .SetDefault("float32")
-        .InEnum({"float32", "bfloat16"})
-        .AsExtra();
-    AddAttr<bool>("is_test",
-                  "(bool, default false) Set to true for inference only, false "
-                  "for training. Some layers may run faster when this is true.")
-        .SetDefault(false)
-        .AsExtra();
-
     AddComment(R"DOC(
 Assume feature vectors exist on dimensions
 :attr:`begin_norm_axis ... rank(input)` and calculate the moment statistics
@@ -214,10 +187,12 @@ class LayerNormGradOp : public framework::OperatorWithKernel {
     // check input
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "LayerNormGrad");
     OP_INOUT_CHECK(ctx->HasInput("Mean"), "Input", "Mean", "LayerNormGrad");
-    OP_INOUT_CHECK(ctx->HasInput("Variance"), "Input", "Variance",
+    OP_INOUT_CHECK(
+        ctx->HasInput("Variance"), "Input", "Variance", "LayerNormGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Y")),
+                   "Input",
+                   framework::GradVarName("Y"),
                    "LayerNormGrad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Y")), "Input",
-                   framework::GradVarName("Y"), "LayerNormGrad");
 
     // check output
     if (ctx->HasOutput(framework::GradVarName("X"))) {
@@ -234,26 +209,23 @@ class LayerNormGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     const auto *var = ctx.InputVar(framework::GradVarName("Y"));
-    PADDLE_ENFORCE_NOT_NULL(var, platform::errors::NotFound(
-                                     "Y@GRAD of LayerNorm Op is not found."));
-    const Tensor *t = nullptr;
-    if (var->IsType<Tensor>()) {
-      t = &var->Get<Tensor>();
-    } else if (var->IsType<LoDTensor>()) {
-      t = &var->Get<LoDTensor>();
+    PADDLE_ENFORCE_NOT_NULL(
+        var,
+        platform::errors::NotFound("Y@GRAD of LayerNorm Op is not found."));
+    const phi::DenseTensor *t = nullptr;
+    if (var->IsType<phi::DenseTensor>()) {
+      t = &var->Get<phi::DenseTensor>();
+    } else if (var->IsType<phi::DenseTensor>()) {
+      t = &var->Get<phi::DenseTensor>();
     }
     PADDLE_ENFORCE_NOT_NULL(
         t, platform::errors::NotFound("Y@GRAD of LayerNorm Op is not found."));
 
-    framework::LibraryType library = framework::LibraryType::kPlain;
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
-
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace(),
-        layout, library);
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 
@@ -287,19 +259,78 @@ class LayerNormGradOpMaker : public framework::SingleGradOpMaker<T> {
 DECLARE_NO_NEED_BUFFER_VARS_INFERER(LayerNormGradNoNeedBufferVarInferer,
                                     "Bias");
 
+class LayerNormCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
+ public:
+  void Apply() override {
+    // get inputs
+    paddle::Tensor x = this->GetSingleForwardInput("X");
+    paddle::Tensor mean = this->GetSingleForwardOutput("Mean");
+    paddle::Tensor var = this->GetSingleForwardOutput("Variance");
+    paddle::Tensor y_grad = this->GetSingleOutputGrad("Y");
+    paddle::optional<paddle::Tensor> scale =
+        this->GetOptionalSingleForwardInput("Scale");
+    paddle::optional<paddle::Tensor> bias =
+        this->GetOptionalSingleForwardInput("Bias");
+
+    // get Attrs
+    auto epsilon = this->Attr<float>("epsilon");
+    auto begin_norm_axis = this->Attr<int>("begin_norm_axis");
+
+    // get outputs
+    paddle::Tensor x_grad = this->GetSingleInputGrad("X");
+    paddle::Tensor scale_grad = this->GetSingleInputGrad("Scale");
+    paddle::Tensor bias_grad = this->GetSingleInputGrad("Bias");
+
+    auto dx_ptr = this->GetOutputPtr(&x_grad);
+    std::string dx_name = this->GetOutputName(x_grad);
+    auto dscale_ptr = this->GetOutputPtr(&scale_grad);
+    std::string dscale_name = this->GetOutputName(scale_grad);
+    auto dbias_ptr = this->GetOutputPtr(&bias_grad);
+    std::string dbias_name = this->GetOutputName(bias_grad);
+
+    VLOG(6) << "Runing layer_norm_grad composite func";
+    prim::layer_norm_grad<prim::DescTensor>(x,
+                                            scale,
+                                            bias,
+                                            mean,
+                                            var,
+                                            y_grad,
+                                            epsilon,
+                                            begin_norm_axis,
+                                            dx_ptr,
+                                            dscale_ptr,
+                                            dbias_ptr);
+
+    this->RecoverOutputName(x_grad, dx_name);
+    this->RecoverOutputName(scale_grad, dscale_name);
+    this->RecoverOutputName(bias_grad, dbias_name);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(layer_norm, ops::LayerNormOp, ops::LayerNormOpMaker,
+
+DECLARE_INFER_SHAPE_FUNCTOR(layer_norm,
+                            LayerNormInferShapeFunctor,
+                            PD_INFER_META(phi::LayerNormInferMeta));
+
+REGISTER_OPERATOR(layer_norm,
+                  ops::LayerNormOp,
+                  ops::LayerNormOpMaker,
                   ops::LayerNormGradOpMaker<paddle::framework::OpDesc>,
-                  ops::LayerNormGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(layer_norm_grad, ops::LayerNormGradOp,
-                  ops::LayerNormGradNoNeedBufferVarInferer);
-REGISTER_OP_CPU_KERNEL(
-    layer_norm, ops::LayerNormKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::LayerNormKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    layer_norm_grad,
-    ops::LayerNormGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::LayerNormGradKernel<paddle::platform::CPUDeviceContext, double>);
+                  ops::LayerNormGradOpMaker<paddle::imperative::OpBase>,
+                  ops::LayerNormCompositeGradOpMaker,
+                  LayerNormInferShapeFunctor);
+
+DECLARE_INFER_SHAPE_FUNCTOR(layer_norm_grad,
+                            LayerNormGradInferShapeFunctor,
+                            PD_INFER_META(phi::LayerNormGradInferMeta));
+
+REGISTER_OPERATOR(layer_norm_grad,
+                  ops::LayerNormGradOp,
+                  ops::LayerNormGradNoNeedBufferVarInferer,
+                  LayerNormGradInferShapeFunctor);

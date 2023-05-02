@@ -58,4 +58,8 @@ extra {
     name: "op_device"
     type: STRING
   }
+  attrs {
+    name: "use_mkldnn"
+    type: BOOLEAN
+  }
 }

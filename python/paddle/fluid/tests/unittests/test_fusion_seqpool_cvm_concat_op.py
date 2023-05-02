@@ -12,14 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
+import sys
 import unittest
+
 import numpy as np
-from op_test import OpTest
-from test_reorder_lod_tensor import convert_to_offset
-from sequence.test_sequence_pool import compute_seqpool_sum, compute_seqpool_avg, compute_seqpool_sqrt
+from eager_op_test import OpTest
+
+sys.path.append("../../../../../test/sequence")
 from test_cvm_op import cvm_compute
+from test_sequence_pool import (
+    compute_seqpool_avg,
+    compute_seqpool_sqrt,
+    compute_seqpool_sum,
+)
+
+
+def convert_to_offset(lod):
+    offset = [[0] for i in lod]
+    for i, level in enumerate(lod):
+        for seq_len in level:
+            offset[i].append(offset[i][-1] + seq_len)
+    return offset
 
 
 class TestFusionSeqPoolCVMConcatOp(OpTest):
@@ -39,8 +52,9 @@ class TestFusionSeqPoolCVMConcatOp(OpTest):
         i = 0
         for lod in self.lods:
             assert bs == len(lod[0]), 'All lod size should be equal'
-            x = np.random.uniform(0.1, 1,
-                                  [sum(lod[0]), self.w]).astype('float32')
+            x = np.random.uniform(0.1, 1, [sum(lod[0]), self.w]).astype(
+                'float32'
+            )
             offset = convert_to_offset(lod)
             out = np.zeros((bs, self.w)).astype('float32')
             if self.pooltype == "SUM":
@@ -54,7 +68,7 @@ class TestFusionSeqPoolCVMConcatOp(OpTest):
                 out = cvm_compute(out, self.w, self.use_cvm)
             else:
                 raise Exception("Unsupported pool type!")
-            inputs.append(('x_{0}'.format(i), (x, lod)))
+            inputs.append((f'x_{i}', (x, lod)))
             outs.append(out)
             i = i + 1
 
@@ -97,7 +111,7 @@ class TestFusionSeqPoolCVMConcatOpCase4(TestFusionSeqPoolCVMConcatOp):
         self.w = 3
 
 
-## test avg pool and sqrt
+# test avg pool and sqrt
 def create_test_avg_sqrt_class(parent):
     class TestSeqPoolAvgCase(parent):
         def set_pooltype(self):
@@ -107,8 +121,8 @@ def create_test_avg_sqrt_class(parent):
         def set_pooltype(self):
             self.pooltype = "SQRT"
 
-    cls_name_avg = "{0}_{1}".format(parent.__name__, "avg")
-    cls_name_sqrt = "{0}_{1}".format(parent.__name__, "sqrt")
+    cls_name_avg = "{}_{}".format(parent.__name__, "avg")
+    cls_name_sqrt = "{}_{}".format(parent.__name__, "sqrt")
     TestSeqPoolAvgCase.__name__ = cls_name_avg
     TestSeqPoolSqrtCase.__name__ = cls_name_sqrt
     globals()[cls_name_avg] = TestSeqPoolAvgCase

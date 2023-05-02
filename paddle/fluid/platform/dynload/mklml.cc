@@ -18,9 +18,6 @@ namespace paddle {
 namespace platform {
 namespace dynload {
 
-std::once_flag mklml_dso_flag;
-void* mklml_dso_handle = nullptr;
-
 #define DEFINE_WRAP(__name) DynLoad__##__name __name
 
 MKLML_ROUTINE_EACH(DEFINE_WRAP);

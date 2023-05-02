@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/details/computation_op_handle.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
+#include "paddle/fluid/framework/details/scale_loss_grad_op_handle.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/memory_optimize_pass/op_graph_view.h"
 
@@ -21,14 +22,23 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+template <typename T>
+static bool IsMatchedPlaceSingleDeviceOp(details::OpHandleBase *op_base,
+                                         const platform::Place &place) {
+  auto *op = dynamic_cast<T *>(op_base);
+  return op && op->GetPlace() == place;
+}
+
 static bool IsLockAndRecordEventFreeComputationOpHandle(
     details::ComputationOpHandle *op, const OpGraphView &graph_view) {
   if (!platform::is_gpu_place(op->GetPlace()) &&
       !platform::is_xpu_place(op->GetPlace()))
     return false;
   for (auto &pending_op : graph_view.PendingOps(op)) {
-    auto *tmp = dynamic_cast<details::ComputationOpHandle *>(pending_op);
-    if (tmp == nullptr || !(tmp->GetPlace() == op->GetPlace())) {
+    if (!IsMatchedPlaceSingleDeviceOp<details::ComputationOpHandle>(
+            pending_op, op->GetPlace()) &&
+        !IsMatchedPlaceSingleDeviceOp<details::ScaleLossGradOpHandle>(
+            pending_op, op->GetPlace())) {
       return false;
     }
   }

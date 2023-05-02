@@ -22,12 +22,7 @@
 
 #include "gflags/gflags.h"
 #include "paddle/fluid/platform/device_context.h"
-
-namespace paddle {
-namespace platform {
-class DeviceContext;
-}  // namespace platform
-}  // namespace paddle
+#include "paddle/fluid/platform/stream_callback_manager.h"
 
 namespace paddle {
 namespace framework {
@@ -74,6 +69,16 @@ class CPUGarbageCollector : public GarbageCollector {
 class XPUGarbageCollector : public GarbageCollector {
  public:
   XPUGarbageCollector(const platform::XPUPlace &place, size_t max_memory_size);
+
+ protected:
+  void ClearCallback(const std::function<void()> &callback) override;
+};
+#endif
+
+#ifdef PADDLE_WITH_IPU
+class IPUGarbageCollector : public GarbageCollector {
+ public:
+  IPUGarbageCollector(const platform::IPUPlace &place, size_t max_memory_size);
 
  protected:
   void ClearCallback(const std::function<void()> &callback) override;
@@ -131,11 +136,11 @@ class CUDAPinnedGarbageCollector : public GarbageCollector {
 };
 #endif
 
-#ifdef PADDLE_WITH_ASCEND_CL
-class NPUDefaultStreamGarbageCollector : public GarbageCollector {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+class CustomDefaultStreamGarbageCollector : public GarbageCollector {
  public:
-  NPUDefaultStreamGarbageCollector(const platform::NPUPlace &place,
-                                   size_t max_memory_size);
+  CustomDefaultStreamGarbageCollector(const platform::CustomPlace &place,
+                                      size_t max_memory_size);
 
   void Wait() const override;
 
@@ -143,13 +148,32 @@ class NPUDefaultStreamGarbageCollector : public GarbageCollector {
   void ClearCallback(const std::function<void()> &callback) override;
 };
 
-class NPUUnsafeFastGarbageCollector : public GarbageCollector {
+class CustomDeviceUnsafeFastGarbageCollector : public GarbageCollector {
  public:
-  NPUUnsafeFastGarbageCollector(const platform::NPUPlace &place,
-                                size_t max_memory_size);
+  CustomDeviceUnsafeFastGarbageCollector(const platform::CustomPlace &place,
+                                         size_t max_memory_size);
 
  protected:
   void ClearCallback(const std::function<void()> &callback) override;
+};
+
+class CustomStreamGarbageCollector : public GarbageCollector {
+ public:
+  CustomStreamGarbageCollector(const platform::CustomPlace &place,
+                               size_t max_memory_size);
+
+  ~CustomStreamGarbageCollector();
+
+  void Wait() const override;
+
+  phi::stream::Stream *stream() const;
+
+ protected:
+  void ClearCallback(const std::function<void()> &callback) override;
+
+ private:
+  std::unique_ptr<phi::stream::Stream> stream_;
+  std::unique_ptr<phi::CallbackManager> callback_manager_;
 };
 #endif
 

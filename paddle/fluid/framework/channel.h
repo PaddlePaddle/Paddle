@@ -20,6 +20,7 @@
 #endif
 
 #include <glog/logging.h>
+
 #include <algorithm>
 #include <condition_variable>  // NOLINT
 #include <deque>
@@ -28,7 +29,8 @@
 #include <mutex>  // NOLINT
 #include <utility>
 #include <vector>
-#include "paddle/fluid/framework/expect.h"
+
+#include "paddle/phi/core/expect.h"
 
 namespace paddle {
 namespace framework {
@@ -157,7 +159,19 @@ class ChannelObject {
     p.resize(finished);
     return finished;
   }
+  // read once only
+  size_t ReadOnce(std::vector<T>& p, size_t size) {  // NOLINT
+    if (size == 0) {
+      return 0;
+    }
+    std::unique_lock<std::mutex> lock(mutex_);
+    p.resize(size);
+    size_t finished = Read(size, &p[0], lock, true);
+    p.resize(finished);
+    Notify();
 
+    return finished;
+  }
   size_t ReadAll(std::vector<T>& p) {  // NOLINT
     p.clear();
     size_t finished = 0;
@@ -241,17 +255,23 @@ class ChannelObject {
     return !closed_;
   }
 
-  size_t Read(size_t n, T* p, std::unique_lock<std::mutex>& lock) {  // NOLINT
+  size_t Read(size_t n,
+              T* p,
+              std::unique_lock<std::mutex>& lock,  // NOLINT
+              bool once = false) {                 // NOLINT
     size_t finished = 0;
     CHECK(n <= MaxCapacity() - reading_count_);
     reading_count_ += n;
     while (finished < n && WaitForRead(lock)) {
-      size_t m = std::min(n - finished, data_.size());
+      size_t m = (std::min)(n - finished, data_.size());
       for (size_t i = 0; i < m; i++) {
         p[finished++] = std::move(data_.front());
         data_.pop_front();
       }
       reading_count_ -= m;
+      if (once && m > 0) {
+        break;
+      }
     }
     reading_count_ -= n - finished;
     return finished;
@@ -333,7 +353,7 @@ class ChannelReader {
     }
     if (cursor_ >= buffer_.size()) {
       cursor_ = 0;
-      if (channel_->read(buffer_) == 0) {
+      if (channel_->Read(buffer_) == 0) {
         failed_ = true;
         return *this;
       }

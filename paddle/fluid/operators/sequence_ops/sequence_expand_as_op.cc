@@ -13,13 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/sequence_ops/sequence_expand_as_op.h"
+
 #include <memory>
 #include <string>
 
 namespace paddle {
 namespace operators {
-
-using framework::LoDTensor;
 
 class SequenceExpandAsOp : public framework::OperatorWithKernel {
  public:
@@ -34,33 +33,38 @@ class SequenceExpandAsOp : public framework::OperatorWithKernel {
     auto x_dims = ctx->GetInputDim("X");
     auto out_dims = x_dims;
 
-    PADDLE_ENFORCE_GE(x_dims.size(), 2,
+    PADDLE_ENFORCE_GE(x_dims.size(),
+                      2,
                       platform::errors::InvalidArgument(
                           "Dimension number of Input(X) should be at least 2. "
                           "But received X's dimensions = %d, X's shape = [%s].",
-                          x_dims.size(), x_dims));
+                          x_dims.size(),
+                          x_dims));
 
     if (ctx->IsRuntime()) {
       framework::Variable* x_var =
-          BOOST_GET(framework::Variable*, ctx->GetInputVarPtrs("X")[0]);
+          PADDLE_GET(framework::Variable*, ctx->GetInputVarPtrs("X")[0]);
       framework::Variable* y_var =
-          BOOST_GET(framework::Variable*, ctx->GetInputVarPtrs("Y")[0]);
+          PADDLE_GET(framework::Variable*, ctx->GetInputVarPtrs("Y")[0]);
 
-      auto& x_dim = x_var->Get<LoDTensor>().dims();
-      auto& y_lod = y_var->Get<LoDTensor>().lod();
+      auto& x_dim = x_var->Get<phi::DenseTensor>().dims();
+      auto& y_lod = y_var->Get<phi::DenseTensor>().lod();
 
-      PADDLE_ENFORCE_EQ(y_lod.size(), 1,
+      PADDLE_ENFORCE_EQ(y_lod.size(),
+                        1,
                         platform::errors::InvalidArgument(
                             "Level number of Input(Y)'s lod should be 1. But "
                             "received Y's lod level = %d.",
                             y_lod.size()));
 
-      PADDLE_ENFORCE_EQ(static_cast<size_t>(x_dim[0]), y_lod[0].size() - 1,
+      PADDLE_ENFORCE_EQ(static_cast<size_t>(x_dim[0]),
+                        y_lod[0].size() - 1,
                         platform::errors::InvalidArgument(
                             "The first dimension of Input(X) should be one "
                             "less than the size of Input(Y)'s 0 level lod. But "
                             "received X's shape[0] = %d, Y's lod[0].size = %d.",
-                            x_dim[0], y_lod[0].size()));
+                            x_dim[0],
+                            y_lod[0].size()));
 
       int64_t out_first_dim = 0;
       if (y_lod[0].size() <= 1) {
@@ -79,10 +83,10 @@ class SequenceExpandAsOp : public framework::OperatorWithKernel {
     ctx->ShareLoD("Y", /*->*/ "Out");
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 
@@ -90,13 +94,16 @@ class SequenceExpandAsOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(LoDTensor, default LoDTensor<float>) A 2-D LoDTensor whose lod "
+             "(phi::DenseTensor, default phi::DenseTensor<float>) A 2-D "
+             "phi::DenseTensor whose lod "
              "level is at most 1.");
     AddInput("Y",
-             "(LoDTensor, default LoDTensor<float>) Referred LoDTensor whose "
+             "(phi::DenseTensor, default phi::DenseTensor<float>) Referred "
+             "phi::DenseTensor whose "
              "lod (specified level) is referred by Input(X).");
     AddOutput("Out",
-              "(LodTensor, default LoDTensor<float>) Output LoDTensor which is "
+              "(phi::DenseTensor, default phi::DenseTensor<float>) Output "
+              "phi::DenseTensor which is "
               "generated from Input(X) by referring lod of Input(Y).");
     AddComment(R"DOC(
 Sequence Expand As Operator.
@@ -110,26 +117,26 @@ Following are cases to better explain how this works:
 
 Case 1:
 
-Given a 1-level LoDTensor input(X)
+Given a 1-level phi::DenseTensor input(X)
     X.data = [[a], [b], [c], [d]]
     X.dims = [4, 1]
 and input(Y)
     Y.lod = [[0, 3, 6, 7, 8]]
 ref_level: 0
-then we get 1-level LoDTensor
+then we get 1-level phi::DenseTensor
     Out.lod =  [[0,            3,              6,  7,  8]]
     Out.data = [[a], [a], [a], [b], [b], [b], [c], [d]]
     Out.dims = [8, 1]
 
 Case 2:
 
-Given a common Tensor input(X)
+Given a common phi::DenseTensor input(X)
     X.data = [[a, b], [c, d], [e, f]]
     X.dims = [3, 2]
 and input(Y)
     Y.lod = [[0, 2, 3, 6]]
 ref_level: 0
-then we get a common LoDTensor
+then we get a common phi::DenseTensor
     Out.lod =  [[0,             2,     3,                    6]]
     Out.data = [[a, b], [a, b] [c, d], [e, f], [e, f], [e, f]]
     Out.dims = [6, 2]
@@ -145,8 +152,10 @@ class SequenceExpandAsOpGrad : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInputs("X"), "Input", "X", "SequenceExpandAsGrad");
-    OP_INOUT_CHECK(ctx->HasInputs(framework::GradVarName("Out")), "Input",
-                   "Out@GRAD", "SequenceExpandAsGrad");
+    OP_INOUT_CHECK(ctx->HasInputs(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@GRAD",
+                   "SequenceExpandAsGrad");
 
     auto x_dims = ctx->GetInputDim("X");
     auto x_grad_name = framework::GradVarName("X");
@@ -157,11 +166,11 @@ class SequenceExpandAsOpGrad : public framework::OperatorWithKernel {
     }
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("Out")),
+                          ctx.GetPlace());
   }
 };
 
@@ -191,22 +200,28 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    sequence_expand_as, ops::SequenceExpandAsOp, ops::SequenceExpandAsOpMaker,
+    sequence_expand_as,
+    ops::SequenceExpandAsOp,
+    ops::SequenceExpandAsOpMaker,
     ops::SequenceExpandAsOpGradOpMaker<paddle::framework::OpDesc>,
     ops::SequenceExpandAsOpGradOpMaker<paddle::imperative::OpBase>,
     ops::SequenceExpandAsOpNoNeedBufferVarsInferer);
-REGISTER_OPERATOR(sequence_expand_as_grad, ops::SequenceExpandAsOpGrad,
+REGISTER_OPERATOR(sequence_expand_as_grad,
+                  ops::SequenceExpandAsOpGrad,
                   ops::SequenceExpandAsGradOpNoNeedBufferVarsInferer);
-REGISTER_OP_CPU_KERNEL(
-    sequence_expand_as,
-    ops::SequenceExpandAsKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SequenceExpandAsKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SequenceExpandAsKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SequenceExpandAsKernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
-    sequence_expand_as_grad,
-    ops::SequenceExpandAsGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SequenceExpandAsGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SequenceExpandAsGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SequenceExpandAsGradKernel<paddle::platform::CPUDeviceContext,
-                                    int64_t>);
+PD_REGISTER_STRUCT_KERNEL(sequence_expand_as,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::SequenceExpandAsKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}
+PD_REGISTER_STRUCT_KERNEL(sequence_expand_as_grad,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::SequenceExpandAsGradKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}

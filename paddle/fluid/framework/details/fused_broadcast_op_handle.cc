@@ -15,14 +15,15 @@
 #include "paddle/fluid/framework/details/fused_broadcast_op_handle.h"
 
 #include "paddle/fluid/framework/details/container_cast.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace paddle {
 namespace framework {
 namespace details {
 
 void FusedBroadcastOpHandle::RunImpl() {
-  platform::RecordEvent record_event(Name());
+  platform::RecordEvent record_event(
+      Name(), platform::TracerEventType::Communication, 1);
 
   if (places_.size() == 1UL) return;
 
@@ -33,14 +34,17 @@ void FusedBroadcastOpHandle::RunImpl() {
 
   size_t place_num = places_.size();
   PADDLE_ENFORCE_EQ(
-      in_var_handles.size() * place_num, out_var_handles.size(),
+      in_var_handles.size() * place_num,
+      out_var_handles.size(),
       platform::errors::PreconditionNotMet(
           "The number of input variable handles plus the number "
           "of places should be equal to the number of output variable handles, "
           "but got the number of input variable handles is %d, the "
           "number of places is %d, and the number of output variable handles "
           "is %d.",
-          in_var_handles.size(), place_num, out_var_handles.size()));
+          in_var_handles.size(),
+          place_num,
+          out_var_handles.size()));
 
   for (size_t i = 0; i < in_var_handles.size(); ++i) {
     BroadcastOneVar(

@@ -15,5 +15,9 @@
 #include "paddle/fluid/operators/sampling_id_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(sampling_id, paddle::operators::SamplingIdKernel<float>,
-                        paddle::operators::SamplingIdKernel<double>);
+PD_REGISTER_STRUCT_KERNEL(sampling_id,
+                          GPU,
+                          ALL_LAYOUT,
+                          paddle::operators::SamplingIdKernel,
+                          float,
+                          double) {}

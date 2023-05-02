@@ -12,19 +12,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/elementwise/elementwise_sub_op.h"
-
 #include <string>
 
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
-
-namespace paddle {
-namespace platform {
-template <typename T>
-struct complex;
-}  // namespace platform
-}  // namespace paddle
-
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
+#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
+#include "paddle/fluid/prim/utils/static/desc_tensor.h"
 namespace paddle {
 namespace framework {
 class OpDesc;
@@ -32,61 +25,61 @@ class OpDesc;
 namespace imperative {
 class OpBase;
 }  // namespace imperative
-namespace platform {
-class CPUDeviceContext;
-struct CPUPlace;
-}  // namespace platform
 }  // namespace paddle
 
 namespace paddle {
 namespace operators {
 
-template <typename T>
-struct SameDimsElemwiseSub<
-    platform::CPUDeviceContext, T,
-    typename std::enable_if<std::is_floating_point<T>::value>::type> {
-  void operator()(const framework::ExecutionContext &ctx,
-                  const framework::Tensor *x, const framework::Tensor *y,
-                  framework::Tensor *z) {
-    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(ctx);
-    blas.VSUB(x->numel(), x->data<T>(), y->data<T>(), z->data<T>());
-  }
-};
-
-template <typename T>
-struct SameDimsElemwiseSub<
-    platform::CPUDeviceContext, T,
-    typename std::enable_if<!std::is_floating_point<T>::value>::type> {
-  void operator()(const framework::ExecutionContext &ctx,
-                  const framework::Tensor *x, const framework::Tensor *y,
-                  framework::Tensor *z) {
-    auto eigen_x = framework::EigenVector<T>::Flatten(*x);
-    auto eigen_y = framework::EigenVector<T>::Flatten(*y);
-    auto eigen_z = framework::EigenVector<T>::Flatten(*z);
-    auto &place = *ctx.template device_context<platform::CPUDeviceContext>()
-                       .eigen_device();
-    eigen_z.device(place) = eigen_x - eigen_y;
-  }
-};
 class ElementwiseSubOpMaker : public ElementwiseOpMaker {
  protected:
   std::string GetName() const override { return "Sub"; }
   std::string GetEquation() const override { return "Out = X - Y"; }
 
   void AddInputX() override {
-    AddInput("X",
-             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
-             "should be int32, int64, float32, float64.");
+    AddInput(
+        "X",
+        "(Variable), Tensor or phi::DenseTensor of any dimensions. Its dtype "
+        "should be int32, int64, float32, float64.");
   }
 
   void AddInputY() override {
-    AddInput("Y",
-             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
-             "should be int32, int64, float32, float64.");
+    AddInput(
+        "Y",
+        "(Variable), Tensor or phi::DenseTensor of any dimensions. Its dtype "
+        "should be int32, int64, float32, float64.");
   }
 
   std::string GetOpFuntionality() const override {
     return "Substract two tensors element-wise";
+  }
+};
+
+class ElementwiseSubCompositeGradOpMaker
+    : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
+ public:
+  void Apply() override {
+    paddle::Tensor x = this->GetSingleForwardInput("X");
+    paddle::Tensor y = this->GetSingleForwardInput("Y");
+    paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
+    paddle::Tensor dx = this->GetSingleInputGrad("X");
+    auto dx_ptr = this->GetOutputPtr(&dx);
+    std::string dx_name = this->GetOutputName(dx);
+    paddle::Tensor dy = this->GetSingleInputGrad("Y");
+    auto dy_ptr = this->GetOutputPtr(&dy);
+    std::string dy_name = this->GetOutputName(dy);
+    int axis = static_cast<int>(this->Attr<int>("axis"));
+    PADDLE_ENFORCE_EQ(
+        axis,
+        -1,
+        phi::errors::InvalidArgument(
+            "We only support axis = -1 in composite sub_grad but we got: ",
+            axis));
+    VLOG(6) << "Runing sub_grad composite func";
+    prim::subtract_grad<prim::DescTensor>(x, y, out_grad, axis, dx_ptr, dy_ptr);
+    this->RecoverOutputName(dx, dx_name);
+    this->RecoverOutputName(dy, dy_name);
   }
 };
 
@@ -109,58 +102,71 @@ class ElementwiseSubDoubleGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+class ElementwiseSubCompositeDoubleGradOpMaker
+    : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
+ public:
+  void Apply() override {
+    // get input
+    paddle::Tensor y = this->GetSingleForwardInput("Y");
+    paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
+    paddle::optional<paddle::Tensor> ddx =
+        this->GetOptionalSingleOutputGrad(framework::GradVarName("X"));
+    paddle::optional<paddle::Tensor> ddy =
+        this->GetOptionalSingleOutputGrad(framework::GradVarName("Y"));
+    // get output
+    paddle::Tensor grad_out_grad_t =
+        this->GetSingleInputGrad(framework::GradVarName("Out"));
+
+    // get attr
+    int axis = static_cast<int>(this->Attr<int>("axis"));
+    PADDLE_ENFORCE_EQ(
+        axis,
+        -1,
+        phi::errors::InvalidArgument("We only support axis = -1 in composite "
+                                     "subtract_doubel_grad but we got: ",
+                                     axis));
+
+    paddle::Tensor* grad_out_grad = this->GetOutputPtr(&grad_out_grad_t);
+    std::string grad_out_grad_name = this->GetOutputName(grad_out_grad_t);
+
+    VLOG(6) << "Runing subtract_double_grad composite func";
+    prim::subtract_double_grad<prim::DescTensor>(
+        y, out_grad, ddx, ddy, axis, grad_out_grad);
+    this->RecoverOutputName(grad_out_grad_t, grad_out_grad_name);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 REGISTER_ELEMWISE_GRAD_MAKER(elementwise_sub, Sub);
-REGISTER_ELEMWISE_EXPLICIT_OP_WITHOUT_GRAD(elementwise_sub, Sub);
 
 namespace ops = paddle::operators;
 
+REGISTER_OPERATOR(elementwise_sub,
+                  ::paddle::operators::ElementwiseOp,
+                  ::paddle::operators::ElementwiseSubOpMaker,
+                  ::paddle::operators::ElementwiseOpInferVarType,
+                  elementwise_subGradMaker<::paddle::framework::OpDesc>,
+                  elementwise_subGradMaker<::paddle::imperative::OpBase>,
+                  ::paddle::operators::ElementwiseSubCompositeGradOpMaker,
+                  ::paddle::operators::ElementwiseOpInplaceInferer);
+
 REGISTER_OPERATOR(
-    elementwise_sub_grad, ops::ElementwiseOpGrad,
-    ops::ElementwiseGradOpInplaceInferer, ops::ElementwiseGradNoBufVarsInferer,
+    elementwise_sub_grad,
+    ops::ElementwiseOpGrad,
+    ops::ElementwiseGradOpInplaceInferer,
+    ops::ElementwiseGradNoBufVarsInferer,
     ops::ElementwiseSubDoubleGradMaker<paddle::framework::OpDesc>,
-    ops::ElementwiseSubDoubleGradMaker<paddle::imperative::OpBase>);
+    ops::ElementwiseSubDoubleGradMaker<paddle::imperative::OpBase>,
+    ops::ElementwiseSubCompositeDoubleGradOpMaker);
+
 REGISTER_OPERATOR(elementwise_sub_grad_grad,
                   ops::ElementwiseOpDoubleGradWithoutDXDY,
                   ops::ElementwiseDoubleGradOpInplaceInferer,
                   ops::ElementwiseDoubleGradNoBufVarsInferer);
-
-REGISTER_OP_CPU_KERNEL(
-    elementwise_sub,
-    ops::ElementwiseSubKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ElementwiseSubKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ElementwiseSubKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseSubKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::ElementwiseSubKernel<paddle::platform::CPUDeviceContext,
-                              paddle::platform::complex<float>>,
-    ops::ElementwiseSubKernel<paddle::platform::CPUDeviceContext,
-                              paddle::platform::complex<double>>);
-REGISTER_OP_CPU_KERNEL(
-    elementwise_sub_grad,
-    ops::ElementwiseSubGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ElementwiseSubGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ElementwiseSubGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseSubGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::ElementwiseSubGradKernel<paddle::platform::CPUDeviceContext,
-                                  paddle::platform::complex<float>>,
-    ops::ElementwiseSubGradKernel<paddle::platform::CPUDeviceContext,
-                                  paddle::platform::complex<double>>);
-REGISTER_OP_CPU_KERNEL(
-    elementwise_sub_grad_grad,
-    ops::ElementwiseSubDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        float>,
-    ops::ElementwiseSubDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        double>,
-    ops::ElementwiseSubDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        int>,
-    ops::ElementwiseSubDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        int64_t>,
-    ops::ElementwiseSubDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        paddle::platform::complex<float>>,
-    ops::ElementwiseSubDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                                        paddle::platform::complex<double>>);
 
 REGISTER_OP_VERSION(elementwise_sub)
     .AddCheckpoint(

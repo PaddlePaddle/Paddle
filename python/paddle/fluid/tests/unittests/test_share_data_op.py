@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
+from op import Operator
+
 from paddle.fluid import core
-from paddle.fluid.op import Operator
 
 
 class TestShareDataOp(OpTest):
@@ -48,7 +50,7 @@ class TestShareDataOpOnDifferentPlaces(unittest.TestCase):
 
         op = Operator("share_data", X="X", Out="Out")
         op.run(scope, place)
-        self.assertTrue(np.allclose(np_array, out))
+        np.testing.assert_allclose(np_array, out, rtol=1e-05)
 
     def check_with_selected_rows(self, place):
         scope = core.Scope()
@@ -73,7 +75,7 @@ class TestShareDataOpOnDifferentPlaces(unittest.TestCase):
 
         out_height = out.height()
         out_rows = out.rows()
-        self.assertTrue(np.allclose(np_array, out_tensor))
+        np.testing.assert_allclose(np_array, out_tensor, rtol=1e-05)
         self.assertEqual(x_height, out_height)
         self.assertEqual(x_rows, out_rows)
 

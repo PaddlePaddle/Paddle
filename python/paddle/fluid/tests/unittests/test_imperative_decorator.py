@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.fluid as fluid
-import paddle.fluid.framework as framework
-import unittest
 import inspect
+import unittest
 
 from test_imperative_base import new_program_scope
+
+import paddle
+from paddle import fluid
+from paddle.fluid import framework
 
 
 class TestTracerMode(unittest.TestCase):
@@ -26,7 +27,7 @@ class TestTracerMode(unittest.TestCase):
         self.init_mode = True
 
     def get_tracer_mode(self):
-        assert fluid.in_dygraph_mode(), "Dygraph mode must be enabled"
+        assert fluid._non_static_mode(), "Dygraph mode must be enabled"
 
     @fluid.dygraph.no_grad
     def no_grad_func(self, a):
@@ -58,8 +59,9 @@ class TestTracerMode(unittest.TestCase):
 
             decorated_func = fluid.dygraph.no_grad(need_no_grad_func)
             self.assertTrue(
-                str(inspect.getargspec(decorated_func)) ==
-                str(inspect.getargspec(need_no_grad_func)))
+                str(inspect.getfullargspec(decorated_func))
+                == str(inspect.getfullargspec(need_no_grad_func))
+            )
 
             self.assertEqual(self.tracer._train_mode, self.init_mode)
 
@@ -88,6 +90,7 @@ class TestNoGradClass(unittest.TestCase):
 
         self.tracer = framework._dygraph_tracer()
         self.tracer._train_mode = True
+        self.tracer._has_grad = True
 
         self.assertEqual(self.no_grad_func(1), 1)
         self.assertEqual(self.no_grad_func.__name__, "no_grad_func")
@@ -97,12 +100,12 @@ class TestNoGradClass(unittest.TestCase):
 
         decorated_func = paddle.no_grad()(need_no_grad_func)
         self.assertEqual(
-            str(inspect.getargspec(decorated_func)),
-            str(inspect.getargspec(need_no_grad_func)))
+            str(inspect.getfullargspec(decorated_func)),
+            str(inspect.getfullargspec(need_no_grad_func)),
+        )
 
         def test_gen():
-            for i in range(3):
-                yield i
+            yield from range(3)
 
         a = 0
         for i in test_gen():
@@ -110,14 +113,155 @@ class TestNoGradClass(unittest.TestCase):
 
         @paddle.no_grad()
         def test_wrapped_gen():
-            for i in range(3):
-                yield i
+            yield from range(3)
 
         b = 0
         for i in test_wrapped_gen():
             b += i
 
         self.assertEqual(a, b)
+
+
+class TestEnableGradClass(unittest.TestCase):
+    @paddle.enable_grad()
+    def enable_grad_func(self, a):
+        self.assertEqual(self.tracer._train_mode, True)
+        self.assertEqual(self.tracer._has_grad, True)
+        return a
+
+    def test_main(self):
+        paddle.disable_static()
+
+        self.tracer = framework._dygraph_tracer()
+        self.tracer._train_mode = True
+        self.tracer._has_grad = False
+
+        self.assertEqual(self.enable_grad_func(1), 1)
+        self.assertEqual(self.enable_grad_func.__name__, "enable_grad_func")
+
+        def need_enable_grad_func(a, b=1):
+            return a + b
+
+        decorated_func = paddle.enable_grad()(need_enable_grad_func)
+        self.assertEqual(
+            str(inspect.getfullargspec(decorated_func)),
+            str(inspect.getfullargspec(need_enable_grad_func)),
+        )
+
+        def test_gen():
+            yield from range(3)
+
+        a = 0
+        for i in test_gen():
+            a += i
+
+        @paddle.enable_grad()
+        def test_wrapped_gen():
+            yield from range(3)
+
+        b = 0
+        for i in test_wrapped_gen():
+            b += i
+
+        self.assertEqual(a, b)
+
+    def test_stop_gradient(self):
+        x = paddle.to_tensor([1.0], stop_gradient=False)
+        with paddle.no_grad():
+            with paddle.enable_grad():
+                y = x * 2
+        self.assertTrue(y.stop_gradient is False)
+        y.backward()
+        self.assertTrue(x.grad is not None)
+
+        # use as decorator
+        @paddle.enable_grad()
+        def double(x):
+            return x * 2
+
+        with paddle.no_grad():
+            z = double(x)
+
+        self.assertTrue(z.stop_gradient is False)
+
+
+class TestSetGradEnabledClass(unittest.TestCase):
+    @paddle.set_grad_enabled(True)
+    def enable_grad_func(self, a):
+        self.assertEqual(self.tracer._train_mode, True)
+        self.assertEqual(self.tracer._has_grad, True)
+        return a
+
+    def test_main(self):
+        paddle.disable_static()
+
+        self.tracer = framework._dygraph_tracer()
+        self.tracer._train_mode = True
+
+        self.assertEqual(self.enable_grad_func(1), 1)
+        self.assertEqual(self.enable_grad_func.__name__, "enable_grad_func")
+
+        def need_enable_grad_func(a, b=1):
+            return a + b
+
+        decorated_func = paddle.set_grad_enabled(True)(need_enable_grad_func)
+        self.assertEqual(
+            str(inspect.getfullargspec(decorated_func)),
+            str(inspect.getfullargspec(need_enable_grad_func)),
+        )
+
+        def test_gen():
+            yield from range(3)
+
+        a = 0
+        for i in test_gen():
+            a += i
+
+        @paddle.set_grad_enabled(True)
+        def test_wrapped_gen():
+            yield from range(3)
+
+        b = 0
+        for i in test_wrapped_gen():
+            b += i
+
+        self.assertEqual(a, b)
+
+    def test_stop_gradient(self):
+        x = paddle.to_tensor([1.0], stop_gradient=False)
+        is_train = False
+        with paddle.set_grad_enabled(is_train):
+            y = x * 2
+        self.assertTrue(y.stop_gradient is True)
+
+        paddle.set_grad_enabled(True)
+        y = x * 2
+        self.assertTrue(y.stop_gradient is False)
+
+        paddle.set_grad_enabled(False)
+        y = x * 2
+        self.assertTrue(y.stop_gradient is True)
+
+
+class TestIsGradEnabledClass(unittest.TestCase):
+    def test_main(self):
+        paddle.disable_static()
+
+        self.tracer = framework._dygraph_tracer()
+        self.tracer._train_mode = True
+        self.tracer._has_grad = True
+
+        # Dygraph gradient calculation mode is enabled by default.
+        flag = paddle.is_grad_enabled()
+        self.assertTrue(flag is True)
+
+        with paddle.set_grad_enabled(False):
+            flag = paddle.is_grad_enabled()
+            self.assertTrue(flag is False)
+
+        flag = paddle.is_grad_enabled()
+        self.assertTrue(flag is True)
+        paddle.enable_static()
 
 
 if __name__ == '__main__':

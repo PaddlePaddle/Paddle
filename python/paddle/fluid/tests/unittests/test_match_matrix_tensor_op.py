@@ -12,12 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
-from op_test import OpTest
-import paddle.fluid as fluid
+from eager_op_test import OpTest
 
 
 class TestMatchMatrixTensorOp(OpTest):
@@ -57,8 +55,8 @@ class TestMatchMatrixTensorOp(OpTest):
         for idx in range(len(x_lod[0])):
             x_len = x_lod[0][idx]
             y_len = y_lod[0][idx]
-            x_sub = x_data[x_offset:(x_offset + x_len), :]
-            y_sub = y_data[y_offset:(y_offset + y_len), :]
+            x_sub = x_data[x_offset : (x_offset + x_len), :]
+            y_sub = y_data[y_offset : (y_offset + y_len), :]
             tmp_sub = np.dot(x_sub, w_data)
             tmp = np.vstack((tmp, tmp_sub.reshape(tmp_sub.size, 1)))
 
@@ -107,25 +105,6 @@ class TestMatchMatrixTensorOpCase4(TestMatchMatrixTensorOp):
         x_lod = [[1, 2, 3, 1, 1]]
         y_lod = [[3, 2, 4, 1, 2]]
         self.init_data(ix, x_lod, iy, y_lod, h, dim_t)
-
-    def test_api(self):
-        x_lod_tensor = fluid.layers.data(name='x', shape=[10], lod_level=1)
-        y_lod_tensor = fluid.layers.data(name='y', shape=[10], lod_level=1)
-        out, out_tmp = fluid.contrib.match_matrix_tensor(
-            x=x_lod_tensor, y=y_lod_tensor, channel_num=3)
-
-        place = fluid.CPUPlace()
-        x_data = np.random.rand(7, 10).astype('float32')
-        y_data = np.random.rand(9, 10).astype('float32')
-        x = fluid.create_lod_tensor(x_data, [[2, 5]], place)
-        y = fluid.create_lod_tensor(y_data, [[3, 6]], place)
-
-        exe = fluid.Executor(place=place)
-        exe.run(fluid.default_startup_program())
-        ret = exe.run(feed={'x': x,
-                            'y': y},
-                      fetch_list=[out],
-                      return_numpy=False)
 
 
 if __name__ == '__main__':

@@ -14,8 +14,10 @@ limitations under the License. */
 #pragma once
 
 #include <string>
+
 #include "glog/logging.h"
 #include "paddle/fluid/framework/attribute.h"
+#include "paddle/fluid/framework/attribute_checker.h"
 namespace paddle {
 namespace framework {
 
@@ -48,6 +50,7 @@ class OpProtoAndCheckerMaker {
   static const char *OpNamescopeAttrName() { return "op_namescope"; }
   static const char *OpCreationCallstackAttrName() { return "op_callstack"; }
   static const char *OpDeviceAttrName() { return "op_device"; }
+  static const char *OpWithQuantAttrName() { return "with_quant_attr"; }
 
   void operator()(proto::OpProto *proto, OpAttrChecker *attr_checker);
 
@@ -94,12 +97,10 @@ class OpProtoAndCheckerMaker {
 
   template <typename T>
   TypedAttrChecker<T> &AddAttr(const std::string &name,
-                               const std::string &comment,
-                               bool generated = false) {
+                               const std::string &comment) {
     auto *attr = proto_->add_attrs();
     attr->set_name(name);
     attr->set_comment(comment);
-    attr->set_generated(generated);
     attr->set_type(AttrTypeID<T>());
     return op_checker_->AddAttrChecker<T>(name, attr);
   }

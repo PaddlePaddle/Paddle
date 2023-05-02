@@ -31,28 +31,44 @@ class CEmbeddingOp : public framework::OperatorWithKernel {
     int ids_rank = ids_dims.size();
 
     VLOG(5) << "ids rank is " << ids_rank << std::endl;
-    PADDLE_ENFORCE_EQ(table_dims.size(), 2,
+    PADDLE_ENFORCE_EQ(table_dims.size(),
+                      2,
                       platform::errors::InvalidArgument(
                           "The dimensions of the 'c_embedding' must be 2. "
                           "But received c_embedding's dimensions = %d, "
                           "c_embedding's shape = [%s].",
-                          table_dims.size(), table_dims));
+                          table_dims.size(),
+                          table_dims));
 
-    auto output_dims = framework::vectorize(ids_dims);
+    auto output_dims = phi::vectorize(ids_dims);
     output_dims.push_back(table_dims[1]);
-    ctx->SetOutputDim("Out", framework::make_ddim(output_dims));
+    ctx->SetOutputDim("Out", phi::make_ddim(output_dims));
 
     if (ctx->GetOutputsVarType("Out")[0] ==
         framework::proto::VarType::LOD_TENSOR) {
       ctx->ShareLoD("Ids", /*->*/ "Out");
     }
+
+    // check valid
+    const int64_t height = table_dims[0];
+    const int64_t width = table_dims[1];
+    const int64_t start_idx = ctx->Attrs().Get<int64_t>("start_index");
+
+    PADDLE_ENFORCE_EQ(
+        (height > 0 && width > 0 && start_idx >= 0),
+        true,
+        platform::errors::InvalidArgument(
+            "height:%ld width:%ld start_idx:%ld must not have negtive values",
+            height,
+            width,
+            start_idx));
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "W");
-    return framework::OpKernelType(data_type, ctx.device_context());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -63,7 +79,7 @@ class CEmbeddingOpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor) The input represents embedding tensors, "
              "which is a learnable parameter.");
     AddInput("Ids",
-             "An input with type int64 "
+             "An input with type int32 or int64 in CPU and GPU, int32 in NPU "
              "contains the ids to be looked up in W.");
     AddOutput("Out", "The lookup results, which have the same type as W.");
 
@@ -111,14 +127,33 @@ class CEmbeddingOpGrad : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     auto table_dims = ctx->GetInputDim("W");
     ctx->SetOutputDim(framework::GradVarName("W"), table_dims);
+
+    // check valid
+    PADDLE_ENFORCE_EQ(table_dims.size(),
+                      2,
+                      platform::errors::InvalidArgument(
+                          "Only accept the dims of table_t == 2"));
+
+    const int64_t start_idx = ctx->Attrs().Get<int64_t>("start_index");
+    const int64_t height = table_dims[0];
+    const int64_t width = table_dims[1];
+
+    PADDLE_ENFORCE_EQ(
+        (height > 0 && width > 0 && start_idx >= 0),
+        true,
+        platform::errors::InvalidArgument(
+            "height:%ld width:%ld start_idx:%ld must not have negtive values",
+            height,
+            width,
+            start_idx));
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
-    return framework::OpKernelType(data_type, ctx.device_context());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -127,7 +162,7 @@ class CEmbeddingOpGradVarTypeInference : public framework::VarTypeInference {
   void operator()(framework::InferVarTypeContext* ctx) const override {
     auto out_var_name = framework::GradVarName("W");
     VLOG(3) << "c_embedding_grad op " << framework::GradVarName("W")
-            << " is set to LoDTensor";
+            << " is set to phi::DenseTensor";
     ctx->SetOutputType(out_var_name, framework::proto::VarType::LOD_TENSOR);
     ctx->SetOutputDataType(out_var_name, ctx->GetInputDataType("W"));
   }
@@ -137,13 +172,29 @@ class CEmbeddingOpGradVarTypeInference : public framework::VarTypeInference {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(c_embedding, ops::CEmbeddingOp, ops::CEmbeddingOpMaker,
+namespace plat = paddle::platform;
+REGISTER_OPERATOR(c_embedding,
+                  ops::CEmbeddingOp,
+                  ops::CEmbeddingOpMaker,
                   ops::CEmbeddingGradOpMaker<paddle::framework::OpDesc>,
                   ops::CEmbeddingGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(c_embedding_grad, ops::CEmbeddingOpGrad,
+REGISTER_OPERATOR(c_embedding_grad,
+                  ops::CEmbeddingOpGrad,
                   ops::CEmbeddingGradOpNoBufferVarsInferer,
                   ops::CEmbeddingOpGradVarTypeInference);
 
-REGISTER_OP_CPU_KERNEL(c_embedding, ops::CEmbeddingOpCPUKernel<float>,
-                       ops::CEmbeddingOpCPUKernel<double>);
+PD_REGISTER_STRUCT_KERNEL(c_embedding,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::CEmbeddingOpCPUKernel,
+                          float,
+                          double,
+                          plat::float16) {}
+PD_REGISTER_STRUCT_KERNEL(c_embedding_grad,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::CEmbeddingGradOpCPUKernel,
+                          float,
+                          double,
+                          plat::float16) {}

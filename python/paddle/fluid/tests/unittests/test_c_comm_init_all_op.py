@@ -12,12 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import paddle
-import paddle.fluid.core as core
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 class TestCCommInitAllOp(unittest.TestCase):
@@ -42,8 +40,8 @@ class TestCCommInitAllOp(unittest.TestCase):
         program = fluid.Program()
         block = program.global_block()
         block.append_op(
-            type='c_comm_init_all', attrs={'devices': [0],
-                                           'ring_id': 1})
+            type='c_comm_init_all', attrs={'devices': [0], 'ring_id': 1}
+        )
         self.exe.run(program)
 
 

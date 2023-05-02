@@ -18,9 +18,11 @@
 
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/common/pstring.h"
 
 using float16 = paddle::platform::float16;
 using bfloat16 = paddle::platform::bfloat16;
+using pstring = phi::dtype::pstring;
 
 namespace paddle {
 namespace framework {
@@ -58,7 +60,8 @@ static DataTypeMap* InitDataTypeMap() {
   RegisterType<cc_type>(retv, proto_type, #cc_type)
 
   _ForEachDataType_(RegType);
-
+  // Register pstring individually
+  RegType(pstring, proto::VarType::PSTRING);
 #undef RegType
   return retv;
 }
@@ -106,8 +109,8 @@ size_t SizeOfType(proto::VarType::Type type) {
 }
 
 // Now only supports promotion of complex type
-bool NeedPromoteTypes(const proto::VarType::Type a,
-                      const proto::VarType::Type b) {
+inline bool NeedPromoteTypes(const proto::VarType::Type& a,
+                             const proto::VarType::Type& b) {
   return (IsComplexType(a) || IsComplexType(b));
 }
 

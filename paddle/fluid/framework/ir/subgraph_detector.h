@@ -68,8 +68,10 @@ class SubGraphFuser {
  public:
   using NodeInsideSubgraphTeller = SubgraphDetector::NodeInsideSubgraphTeller;
 
-  SubGraphFuser(Graph *graph, const NodeInsideSubgraphTeller &teller,
-                int min_subgraph_size, std::string name = "tensorrt_engine")
+  SubGraphFuser(Graph *graph,
+                const NodeInsideSubgraphTeller &teller,
+                int min_subgraph_size,
+                std::string name = "tensorrt_engine")
       : graph_(graph),
         node_inside_subgraph_teller_(teller),
         min_subgraph_size_{min_subgraph_size},
@@ -144,7 +146,8 @@ static std::vector<Node *> ExtractStartPoints(const Graph &g) {
 static iterator_range<NodesTSIterator> TopologicalSort(const Graph &g) {
   auto start_points = ExtractStartPoints(g);
   PADDLE_ENFORCE_GT(
-      start_points.size(), 0U,
+      start_points.size(),
+      0U,
       platform::errors::InvalidArgument(
           "Expected the number of graph's start points >= 1. Expected %d.",
           start_points.size()));

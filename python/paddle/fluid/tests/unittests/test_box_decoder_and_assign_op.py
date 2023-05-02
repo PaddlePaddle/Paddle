@@ -12,13 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
-import sys
-import math
-from op_test import OpTest
+from eager_op_test import OpTest
 
 
 def box_decoder_and_assign(deltas, weights, boxes, box_score, box_clip):
@@ -65,7 +62,8 @@ def box_decoder_and_assign(deltas, weights, boxes, box_score, box_clip):
 
 class TestBoxDecoderAndAssignOpWithLoD(OpTest):
     def test_check_output(self):
-        self.check_output()
+        # NODE(yjjiang11): This op will be deprecated.
+        self.check_output(check_dygraph=False)
 
     def setUp(self):
         self.op_type = "box_decoder_and_assign"
@@ -77,7 +75,8 @@ class TestBoxDecoderAndAssignOpWithLoD(OpTest):
         box_score = np.random.random((20, num_classes)).astype('float32')
         box_clip = 4.135
         output_box, output_assign_box = box_decoder_and_assign(
-            target_box, prior_box_var, prior_box, box_score, box_clip)
+            target_box, prior_box_var, prior_box, box_score, box_clip
+        )
 
         self.inputs = {
             'PriorBox': (prior_box, lod),
@@ -88,7 +87,7 @@ class TestBoxDecoderAndAssignOpWithLoD(OpTest):
         self.attrs = {'box_clip': box_clip}
         self.outputs = {
             'DecodeBox': output_box,
-            'OutputAssignBox': output_assign_box
+            'OutputAssignBox': output_assign_box,
         }
 
 

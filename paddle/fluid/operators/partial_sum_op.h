@@ -14,21 +14,22 @@ limitations under the License. */
 #include <string>
 #include <utility>
 #include <vector>
+
+#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class PartialSumKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto ins = ctx.MultiInput<Tensor>("X");
-    Tensor* out = ctx.Output<Tensor>("Out");
+    auto ins = ctx.MultiInput<phi::DenseTensor>("X");
+    phi::DenseTensor* out = ctx.Output<phi::DenseTensor>("Out");
     PADDLE_ENFORCE_EQ(
-        ins[0] != nullptr, true,
+        ins[0] != nullptr,
+        true,
         platform::errors::InvalidArgument("The input should not be null."));
 
     auto place = ctx.GetPlace();  // CPUPlace only now
@@ -56,17 +57,17 @@ class PartialSumKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class PartialSumGradientOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* out_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto ins = ctx.MultiInput<framework::LoDTensor>("X");
-    auto outs =
-        ctx.MultiOutput<framework::LoDTensor>(framework::GradVarName("X"));
+    auto* out_grad = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto ins = ctx.MultiInput<phi::DenseTensor>("X");
+    auto outs = ctx.MultiOutput<phi::DenseTensor>(framework::GradVarName("X"));
 
     PADDLE_ENFORCE_EQ(
-        ins[0] != nullptr, true,
+        ins[0] != nullptr,
+        true,
         platform::errors::InvalidArgument("The input should not be null."));
     auto start_index = ctx.Attr<int>("start_index");
     auto length = ctx.Attr<int>("length");
@@ -76,8 +77,8 @@ class PartialSumGradientOpKernel : public framework::OpKernel<T> {
     }
 
     // initialize
-    auto& place = *ctx.template device_context<platform::CPUDeviceContext>()
-                       .eigen_device();
+    auto& place =
+        *ctx.template device_context<phi::CPUContext>().eigen_device();
     for (size_t i = 0; i < outs.size(); ++i) {
       outs[i]->mutable_data<T>(ctx.GetPlace());
       auto dxt = framework::EigenVector<T>::Flatten(*outs[i]);

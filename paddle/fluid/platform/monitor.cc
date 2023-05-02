@@ -19,6 +19,7 @@ namespace platform {}  // namespace platform
 }  // namespace paddle
 
 DEFINE_INT_STATUS(STAT_total_feasign_num_in_mem)
+DEFINE_INT_STATUS(STAT_epoch_finish)
 DEFINE_INT_STATUS(STAT_gpu0_mem_size)
 DEFINE_INT_STATUS(STAT_gpu1_mem_size)
 DEFINE_INT_STATUS(STAT_gpu2_mem_size)
@@ -35,13 +36,3 @@ DEFINE_INT_STATUS(STAT_gpu12_mem_size)
 DEFINE_INT_STATUS(STAT_gpu13_mem_size)
 DEFINE_INT_STATUS(STAT_gpu14_mem_size)
 DEFINE_INT_STATUS(STAT_gpu15_mem_size)
-
-// For Ascend NPU
-DEFINE_INT_STATUS(STAT_npu0_mem_size)
-DEFINE_INT_STATUS(STAT_npu1_mem_size)
-DEFINE_INT_STATUS(STAT_npu2_mem_size)
-DEFINE_INT_STATUS(STAT_npu3_mem_size)
-DEFINE_INT_STATUS(STAT_npu4_mem_size)
-DEFINE_INT_STATUS(STAT_npu5_mem_size)
-DEFINE_INT_STATUS(STAT_npu6_mem_size)
-DEFINE_INT_STATUS(STAT_npu7_mem_size)

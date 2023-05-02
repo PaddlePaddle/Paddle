@@ -38,12 +38,12 @@ inline void HashOutputSize(const framework::DDim& in_dims,
   out_dims.emplace_back(1);
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class HashKernel : public framework::OpKernel<T> {
  public:
   virtual void Compute(const framework::ExecutionContext& context) const {
-    auto* out_t = context.Output<framework::LoDTensor>("Out");
-    auto* in_t = context.Input<framework::LoDTensor>("X");
+    auto* out_t = context.Output<phi::DenseTensor>("Out");
+    auto* in_t = context.Input<phi::DenseTensor>("X");
     int64_t mod_by = context.Attr<int64_t>("mod_by");
     int num_hash = context.Attr<int>("num_hash");
 
@@ -51,7 +51,7 @@ class HashKernel : public framework::OpKernel<T> {
 
     std::vector<int64_t> out_dims;
     HashOutputSize(in_dims, out_dims, num_hash);
-    out_t->Resize(framework::make_ddim(out_dims));
+    out_t->Resize(phi::make_ddim(out_dims));
     auto* output = out_t->mutable_data<T>(context.GetPlace());
 
     auto seq_length = in_dims[0];

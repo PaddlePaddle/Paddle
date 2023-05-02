@@ -14,13 +14,12 @@
 
 #include "paddle/fluid/operators/sequence_ops/sequence_mask_op.h"
 
-REGISTER_OP_CUDA_KERNEL(
-    sequence_mask,
-    paddle::operators::SequenceMaskKernel<paddle::platform::CUDADeviceContext,
-                                          int>,
-    paddle::operators::SequenceMaskKernel<paddle::platform::CUDADeviceContext,
-                                          int64_t>,
-    paddle::operators::SequenceMaskKernel<paddle::platform::CUDADeviceContext,
-                                          float>,
-    paddle::operators::SequenceMaskKernel<paddle::platform::CUDADeviceContext,
-                                          double>);
+namespace ops = paddle::operators;
+PD_REGISTER_STRUCT_KERNEL(sequence_mask,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::SequenceMaskKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}

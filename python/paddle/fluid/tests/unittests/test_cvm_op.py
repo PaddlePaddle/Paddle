@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-from math import log
-from math import exp
-from op_test import OpTest
 import unittest
+from math import log
+
+import numpy as np
+from eager_op_test import OpTest
 
 
 def cvm_compute(X, item_width, use_cvm):
@@ -53,7 +53,7 @@ def cvm_grad_compute(DY, CVM, item_width, use_cvm):
 
 class TestCVMOpWithLodTensor(OpTest):
     """
-        Test cvm op with discrete one-hot labels.
+    Test cvm op with discrete one-hot labels.
     """
 
     def setUp(self):
@@ -65,9 +65,12 @@ class TestCVMOpWithLodTensor(OpTest):
 
         lod = [[1]]
         self.inputs = {
-            'X': (np.random.uniform(
-                0, 1, [self.batch_size, self.item_width]).astype("float32"),
-                  lod),
+            'X': (
+                np.random.uniform(
+                    0, 1, [self.batch_size, self.item_width]
+                ).astype("float32"),
+                lod,
+            ),
             'CVM': np.array([[0.6, 0.4]]).astype("float32"),
         }
         self.attrs = {'use_cvm': False}
@@ -80,13 +83,16 @@ class TestCVMOpWithLodTensor(OpTest):
         self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        user_grads = np.array(
-            [1.0 / (self.item_width - 2)] * self.item_width).reshape(
-                (self.batch_size, self.item_width)).astype("float32")
+        user_grads = (
+            np.array([1.0 / (self.item_width - 2)] * self.item_width)
+            .reshape((self.batch_size, self.item_width))
+            .astype("float32")
+        )
         user_grads[:, :2] = self.inputs['CVM'].reshape(self.batch_size, 2)
         user_grads = [user_grads]
         self.check_grad(
-            ['X'], 'Y', user_defined_grads=user_grads, check_dygraph=False)
+            ['X'], 'Y', user_defined_grads=user_grads, check_dygraph=False
+        )
 
 
 class TestCVMOpWithOutLodTensor1(OpTest):
@@ -102,10 +108,14 @@ class TestCVMOpWithOutLodTensor1(OpTest):
         self.item_width = 11
 
         input = np.random.uniform(
-            0, 1, (self.batch_size, self.item_width)).astype('float32')
+            0, 1, (self.batch_size, self.item_width)
+        ).astype('float32')
         output = cvm_compute(input, self.item_width, self.use_cvm)
-        cvm = np.array([[0.6, 0.4] * self.batch_size]).reshape(
-            (self.batch_size, 2)).astype("float32")
+        cvm = (
+            np.array([[0.6, 0.4] * self.batch_size])
+            .reshape((self.batch_size, 2))
+            .astype("float32")
+        )
 
         self.inputs = {'X': input, 'CVM': cvm}
         self.attrs = {'use_cvm': self.use_cvm}
@@ -116,12 +126,16 @@ class TestCVMOpWithOutLodTensor1(OpTest):
 
     def test_check_grad(self):
         numel = self.batch_size * self.item_width
-        user_grads = np.array([1.0 / numel] * numel).reshape(
-            (self.batch_size, self.item_width)).astype("float32")
+        user_grads = (
+            np.array([1.0 / numel] * numel)
+            .reshape((self.batch_size, self.item_width))
+            .astype("float32")
+        )
         user_grads[:, :2] = self.inputs['CVM'].reshape(self.batch_size, 2)
         user_grads = [user_grads]
         self.check_grad(
-            ['X'], 'Y', user_defined_grads=user_grads, check_dygraph=False)
+            ['X'], 'Y', user_defined_grads=user_grads, check_dygraph=False
+        )
 
 
 class TestCVMOpWithOutLodTensor2(OpTest):
@@ -137,10 +151,14 @@ class TestCVMOpWithOutLodTensor2(OpTest):
         self.item_width = 11
 
         input = np.random.uniform(
-            0, 1, (self.batch_size, self.item_width)).astype('float32')
+            0, 1, (self.batch_size, self.item_width)
+        ).astype('float32')
         output = cvm_compute(input, self.item_width, self.use_cvm)
-        cvm = np.array([[0.6, 0.4] * self.batch_size]).reshape(
-            (self.batch_size, 2)).astype("float32")
+        cvm = (
+            np.array([[0.6, 0.4] * self.batch_size])
+            .reshape((self.batch_size, 2))
+            .astype("float32")
+        )
 
         self.inputs = {'X': input, 'CVM': cvm}
         self.attrs = {'use_cvm': self.use_cvm}
@@ -151,13 +169,16 @@ class TestCVMOpWithOutLodTensor2(OpTest):
 
     def test_check_grad(self):
         numel = self.batch_size * self.item_width
-        user_grads = np.array(
-            [1.0 / (self.batch_size * (self.item_width - 2))] * numel).reshape(
-                (self.batch_size, self.item_width)).astype("float32")
+        user_grads = (
+            np.array([1.0 / (self.batch_size * (self.item_width - 2))] * numel)
+            .reshape((self.batch_size, self.item_width))
+            .astype("float32")
+        )
         user_grads[:, :2] = self.inputs['CVM'].reshape(self.batch_size, 2)
         user_grads = [user_grads]
         self.check_grad(
-            ['X'], 'Y', user_defined_grads=user_grads, check_dygraph=False)
+            ['X'], 'Y', user_defined_grads=user_grads, check_dygraph=False
+        )
 
 
 if __name__ == '__main__':

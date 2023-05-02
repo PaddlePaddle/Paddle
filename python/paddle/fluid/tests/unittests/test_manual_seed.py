@@ -12,14 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 
-import paddle
-import paddle.fluid as fluid
-from paddle.framework import seed
-from paddle.fluid.framework import Program, default_main_program, default_startup_program
 import numpy as np
+
+import paddle
+from paddle import fluid
+from paddle.tensor import random
 
 
 class TestManualSeed(unittest.TestCase):
@@ -27,21 +26,21 @@ class TestManualSeed(unittest.TestCase):
         fluid.enable_dygraph()
 
         gen = paddle.seed(12312321111)
-        x = fluid.layers.gaussian_random([10], dtype="float32")
+        x = random.gaussian([10], dtype="float32")
         st1 = gen.get_state()
-        x1 = fluid.layers.gaussian_random([10], dtype="float32")
+        x1 = random.gaussian([10], dtype="float32")
         gen.set_state(st1)
-        x2 = fluid.layers.gaussian_random([10], dtype="float32")
+        x2 = random.gaussian([10], dtype="float32")
         gen.manual_seed(12312321111)
-        x3 = fluid.layers.gaussian_random([10], dtype="float32")
+        x3 = random.gaussian([10], dtype="float32")
         x_np = x.numpy()
         x1_np = x1.numpy()
         x2_np = x2.numpy()
         x3_np = x3.numpy()
 
         if not fluid.core.is_compiled_with_cuda():
-            self.assertTrue(np.allclose(x1_np, x2_np))
-            self.assertTrue(np.allclose(x_np, x3_np))
+            np.testing.assert_allclose(x1_np, x2_np, rtol=1e-05)
+            np.testing.assert_allclose(x_np, x3_np, rtol=1e-05)
 
 
 if __name__ == '__main__':

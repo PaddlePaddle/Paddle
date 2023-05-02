@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import paddle
-import paddle.distributed.fleet as fleet
-import paddle.distributed.fleet.base.role_maker as role_maker
 import os
-import paddle.fluid as fluid
-import paddle.nn as nn
+import unittest
+
 import numpy as np
+
+import paddle
+from paddle import fluid
+from paddle.distributed import fleet
+from paddle.distributed.fleet.base import role_maker
 
 
 class TestFleetBase(unittest.TestCase):
@@ -27,8 +28,9 @@ class TestFleetBase(unittest.TestCase):
         os.environ["POD_IP"] = "127.0.0.1"
         os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36000"
         os.environ["PADDLE_TRAINERS_NUM"] = "2"
-        os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = \
-            "127.0.0.1:36001,127.0.0.2:36002"
+        os.environ[
+            "PADDLE_PSERVERS_IP_PORT_LIST"
+        ] = "127.0.0.1:36001,127.0.0.2:36002"
 
     def test_init(self):
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
@@ -60,7 +62,8 @@ class TestFleetBase(unittest.TestCase):
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
         self.assertEqual(
-            "127.0.0.1:36000", fleet.worker_endpoints(to_string=True))
+            "127.0.0.1:36000", fleet.worker_endpoints(to_string=True)
+        )
         self.assertEqual(["127.0.0.1:36000"], fleet.worker_endpoints())
 
     def test_server_num(self):
@@ -92,9 +95,11 @@ class TestFleetBase(unittest.TestCase):
         if fleet.is_server():
             self.assertEqual(
                 "127.0.0.1:36001,127.0.0.2:36002",
-                fleet.server_endpoints(to_string=True))
-            self.assertEqual(["127.0.0.1:36001", "127.0.0.2:36002"],
-                             fleet.server_endpoints())
+                fleet.server_endpoints(to_string=True),
+            )
+            self.assertEqual(
+                ["127.0.0.1:36001", "127.0.0.2:36002"], fleet.server_endpoints()
+            )
 
     def test_is_server(self):
         os.environ["TRAINING_ROLE"] = "PSERVER"
@@ -108,7 +113,7 @@ class TestFleetBase(unittest.TestCase):
     def test_util(self):
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
-        self.assertNotEqual(fleet.util, None)
+        self.assertIsNotNone(fleet.util)
 
     def test_barrier_worker(self):
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
@@ -139,14 +144,16 @@ class TestFleetBase(unittest.TestCase):
         optimizer = fleet.distributed_optimizer(optimizer)
 
     def test_exception(self):
-        import paddle.distributed.fleet as fleet
+        from paddle.distributed import fleet
+
         self.assertRaises(Exception, fleet.init_worker)
 
 
 class TestFleetDygraph(unittest.TestCase):
     def setUp(self):
         os.environ[
-            "PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36213,127.0.0.1:36214"
+            "PADDLE_TRAINER_ENDPOINTS"
+        ] = "127.0.0.1:36213,127.0.0.1:36214"
         os.environ["PADDLE_CURRENT_ENDPOINTS"] = "127.0.0.1:36213"
         os.environ["PADDLE_TRAINERS_NUM"] = "2"
         os.environ["PADDLE_TRAINER_ID"] = "0"
@@ -157,19 +164,20 @@ class TestFleetDygraph(unittest.TestCase):
         a = fluid.dygraph.to_variable(value)
         layer = paddle.nn.Linear(13, 5)
         adam = paddle.optimizer.Adam(
-            learning_rate=0.01, parameters=layer.parameters())
+            learning_rate=0.01, parameters=layer.parameters()
+        )
         # remove init cause this UT cannot launch distributed task
         adam = fleet.distributed_optimizer(adam)
         try:
             dp_layer = fleet.distributed_model(layer)
         except Exception as e:
-            # This is just for testing the interface, 
-            # and will not actually be called. Therefore, 
+            # This is just for testing the interface,
+            # and will not actually be called. Therefore,
             # use "try-except" to avoid errors.
             lr = 0.001
             adam.set_lr(lr)
             cur_lr = adam.get_lr()
-            assert (lr == cur_lr)
+            assert lr == cur_lr
             state_dict = adam.state_dict()
             adam.set_state_dict(state_dict)
 
@@ -183,25 +191,34 @@ class TestFleetBaseSingleError(unittest.TestCase):
     def gen_data(self):
         return {
             "x": np.random.random(size=(128, 32)).astype('float32'),
-            "y": np.random.randint(
-                2, size=(128, 1)).astype('int64')
+            "y": np.random.randint(2, size=(128, 1)).astype('int64'),
         }
 
     def test_single_run_collective_minimize(self):
         def test_single_error():
             input_x = paddle.static.data(
-                name="x", shape=[-1, 32], dtype='float32')
+                name="x", shape=[-1, 32], dtype='float32'
+            )
             input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
 
-            fc_1 = fluid.layers.fc(input=input_x, size=64, act='tanh')
-            prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
-            cost = fluid.layers.cross_entropy(input=prediction, label=input_y)
+            fc_1 = paddle.static.nn.fc(x=input_x, size=64, activation='tanh')
+            prediction = paddle.static.nn.fc(
+                x=fc_1, size=2, activation='softmax'
+            )
+            cost = paddle.nn.functional.cross_entropy(
+                input=prediction,
+                label=input_y,
+                reduction='none',
+                use_softmax=False,
+            )
             avg_cost = paddle.mean(x=cost)
             fleet.init(is_collective=True)
 
         # in non_distributed mode(use `python` to launch), raise error if has multi cards
-        if fluid.core.is_compiled_with_cuda(
-        ) and fluid.core.get_cuda_device_count() > 1:
+        if (
+            fluid.core.is_compiled_with_cuda()
+            and fluid.core.get_cuda_device_count() > 1
+        ):
             self.assertRaises(ValueError, test_single_error)
         else:
             test_single_error()

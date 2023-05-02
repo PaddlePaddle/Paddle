@@ -32,11 +32,13 @@ namespace paddle {
 namespace operators {
 
 void PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
-    const framework::ProgramDesc &program, int block_id,
+    const framework::ProgramDesc &program,
+    int block_id,
     const std::vector<std::unique_ptr<framework::OperatorBase>> &all_ops);
 
 void PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
-    const framework::ProgramDesc &program, int block_id,
+    const framework::ProgramDesc &program,
+    int block_id,
     const std::vector<framework::OperatorBase *> &all_ops);
 
 void PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(

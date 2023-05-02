@@ -13,12 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/l1_norm_op.h"
+
 #include <memory>
 
 namespace paddle {
 namespace operators {
-
-using framework::Tensor;
 
 class L1NormOp : public framework::OperatorWithKernel {
  public:
@@ -38,10 +37,14 @@ class L1NormGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "L1NormGradOp");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@GRAD", "L1NormGradOp");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
-                   "X@GRAD", "L1NormGradOp");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@GRAD",
+                   "L1NormGradOp");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")),
+                   "Output",
+                   "X@GRAD",
+                   "L1NormGradOp");
 
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
   }
@@ -82,18 +85,19 @@ class L1NormGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(l1_norm, ops::L1NormOp, ops::L1NormOpMaker,
+REGISTER_OPERATOR(l1_norm,
+                  ops::L1NormOp,
+                  ops::L1NormOpMaker,
                   ops::L1NormGradMaker<paddle::framework::OpDesc>,
                   ops::L1NormGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(l1_norm_grad, ops::L1NormGradOp);
-REGISTER_OP_CPU_KERNEL(
-    l1_norm, ops::L1NormKernel<paddle::platform::CPUDeviceContext, float>);
-REGISTER_OP_CPU_KERNEL(
-    l1_norm_grad,
-    ops::L1NormGradKernel<paddle::platform::CPUDeviceContext, float>);
 
-REGISTER_OP_CUDA_KERNEL(
-    l1_norm, ops::L1NormKernel<paddle::platform::CUDADeviceContext, float>);
-REGISTER_OP_CUDA_KERNEL(
-    l1_norm_grad,
-    ops::L1NormGradKernel<paddle::platform::CUDADeviceContext, float>);
+PD_REGISTER_STRUCT_KERNEL(l1_norm, CPU, ALL_LAYOUT, ops::L1NormKernel, float) {}
+PD_REGISTER_STRUCT_KERNEL(
+    l1_norm_grad, CPU, ALL_LAYOUT, ops::L1NormGradKernel, float) {}
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_REGISTER_STRUCT_KERNEL(l1_norm, GPU, ALL_LAYOUT, ops::L1NormKernel, float) {}
+PD_REGISTER_STRUCT_KERNEL(
+    l1_norm_grad, GPU, ALL_LAYOUT, ops::L1NormGradKernel, float) {}
+#endif

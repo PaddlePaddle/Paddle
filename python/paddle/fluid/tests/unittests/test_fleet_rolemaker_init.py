@@ -13,14 +13,10 @@
 # limitations under the License.
 """Test cloud role maker."""
 
-from __future__ import print_function
 import os
-import platform
-import shutil
-import tempfile
 import unittest
-import paddle
-import paddle.distributed.fleet.base.role_maker as role_maker
+
+from paddle.distributed.fleet.base import role_maker
 
 
 class TestPSCloudRoleMakerCase1(unittest.TestCase):
@@ -30,7 +26,8 @@ class TestPSCloudRoleMakerCase1(unittest.TestCase):
 
     def setUp(self):
         os.environ[
-            "PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:4001,127.0.0.1:4002"
+            "PADDLE_PSERVERS_IP_PORT_LIST"
+        ] = "127.0.0.1:4001,127.0.0.1:4002"
 
     def test_paddle_trainers_num(self):
         # PADDLE_TRAINERS_NUM
@@ -45,7 +42,8 @@ class TestPSCloudRoleMakerCase2(unittest.TestCase):
 
     def setUp(self):
         os.environ[
-            "PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:4001,127.0.0.1:4002"
+            "PADDLE_PSERVERS_IP_PORT_LIST"
+        ] = "127.0.0.1:4001,127.0.0.1:4002"
         os.environ["PADDLE_TRAINERS_NUM"] = str(2)
 
     def test_training_role(self):
@@ -61,7 +59,8 @@ class TestPSCloudRoleMakerCase3(unittest.TestCase):
 
     def setUp(self):
         os.environ[
-            "PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:4001,127.0.0.1:4002"
+            "PADDLE_PSERVERS_IP_PORT_LIST"
+        ] = "127.0.0.1:4001,127.0.0.1:4002"
         os.environ["PADDLE_TRAINERS_NUM"] = str(2)
         os.environ["TRAINING_ROLE"] = 'TRAINER'
 
@@ -78,7 +77,8 @@ class TestPSCloudRoleMakerCase4(unittest.TestCase):
 
     def setUp(self):
         os.environ[
-            "PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:4001,127.0.0.1:4002"
+            "PADDLE_PSERVERS_IP_PORT_LIST"
+        ] = "127.0.0.1:4001,127.0.0.1:4002"
         os.environ["PADDLE_TRAINERS_NUM"] = str(2)
         os.environ["TRAINING_ROLE"] = 'PSERVER'
 
@@ -95,7 +95,8 @@ class TestPSCloudRoleMakerCase5(unittest.TestCase):
 
     def setUp(self):
         os.environ[
-            "PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:4001,127.0.0.1:4002"
+            "PADDLE_PSERVERS_IP_PORT_LIST"
+        ] = "127.0.0.1:4001,127.0.0.1:4002"
         os.environ["PADDLE_TRAINERS_NUM"] = str(2)
         os.environ["TRAINING_ROLE"] = 'PSERVER'
         os.environ["PADDLE_PORT"] = str(4001)
@@ -113,9 +114,11 @@ class TestPSCloudRoleMakerCase6(unittest.TestCase):
 
     def setUp(self):
         os.environ[
-            "PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:4001,127.0.0.1:4002"
+            "PADDLE_PSERVERS_IP_PORT_LIST"
+        ] = "127.0.0.1:4001,127.0.0.1:4002"
         os.environ[
-            "PADDLE_HETER_TRAINER_IP_PORT_LIST"] = "127.0.0.1:4003,127.0.0.1:4004"
+            "PADDLE_HETER_TRAINER_IP_PORT_LIST"
+        ] = "127.0.0.1:4003,127.0.0.1:4004"
         os.environ["PADDLE_TRAINERS_NUM"] = str(2)
         os.environ["TRAINING_ROLE"] = 'HETER_TRAINER'
 
@@ -132,9 +135,11 @@ class TestPSCloudRoleMakerCase7(unittest.TestCase):
 
     def setUp(self):
         os.environ[
-            "PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:4001,127.0.0.1:4002"
+            "PADDLE_PSERVERS_IP_PORT_LIST"
+        ] = "127.0.0.1:4001,127.0.0.1:4002"
         os.environ[
-            "PADDLE_HETER_TRAINER_IP_PORT_LIST"] = "127.0.0.1:4003,127.0.0.1:4004"
+            "PADDLE_HETER_TRAINER_IP_PORT_LIST"
+        ] = "127.0.0.1:4003,127.0.0.1:4004"
         os.environ["PADDLE_TRAINERS_NUM"] = str(2)
         os.environ["TRAINING_ROLE"] = 'HETER_TRAINER'
         os.environ["PADDLE_PORT"] = str(4003)

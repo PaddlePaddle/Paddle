@@ -38,28 +38,37 @@ class SequenceConvOp : public framework::OperatorWithKernel {
     auto in_dims = ctx->GetInputDim("X");
     auto filter_dims = ctx->GetInputDim("Filter");
     PADDLE_ENFORCE_EQ(
-        ctx->Attrs().Get<int>("contextStride"), 1,
+        ctx->Attrs().Get<int>("contextStride"),
+        1,
         platform::errors::InvalidArgument(
             "Currently, SequenceConvOp only supports contextStride=1. But "
             "received contextStride = %u.",
             ctx->Attrs().Get<int>("contextStride")));
     PADDLE_ENFORCE_EQ(
-        in_dims.size() == 2 && filter_dims.size() == 2, true,
+        in_dims.size() == 2 && filter_dims.size() == 2,
+        true,
         platform::errors::InvalidArgument(
             "Input(X, Filter) should be 2-D tensor. But received Input(X): "
             "input rank %u, input shape [%s]; received Input(Filter): "
             "input rank %u, input shape [%s].",
-            in_dims.size(), in_dims, filter_dims.size(), filter_dims));
+            in_dims.size(),
+            in_dims,
+            filter_dims.size(),
+            filter_dims));
     PADDLE_ENFORCE_EQ(
-        filter_dims[0], context_length * in_dims[1],
+        filter_dims[0],
+        context_length * in_dims[1],
         platform::errors::InvalidArgument(
             "Filter's height should be context_length * "
             "input_hidden_size. But received: filter's height = %d, "
             "context_length * input_hidden_size = %d.",
-            filter_dims[0], context_length * in_dims[1]));
+            filter_dims[0],
+            context_length * in_dims[1]));
 
     if (ctx->Attrs().Get<bool>("paddingTrainable")) {
-      OP_INOUT_CHECK(ctx->HasInput("PaddingData"), "Input", "PaddingData",
+      OP_INOUT_CHECK(ctx->HasInput("PaddingData"),
+                     "Input",
+                     "PaddingData",
                      "sequence_conv");
       framework::DDim padding_dim = ctx->GetInputDim("PaddingData");
       int up_pad = std::max(0, -context_start);
@@ -71,25 +80,30 @@ class SequenceConvOp : public framework::OperatorWithKernel {
       bool start_length = start_equals_zero && length_equals_one;
 
       PADDLE_ENFORCE_EQ(
-          start_length, false,
+          start_length,
+          false,
           platform::errors::InvalidArgument(
               "If context_start is 0 and context_length is 1, paddingTrainable "
               "should be false."));
       PADDLE_ENFORCE_EQ(
-          padding_dim.size(), 2,
+          padding_dim.size(),
+          2,
           platform::errors::InvalidArgument(
               "Input(PaddingData) should be 2-D tensor. But received: "
               "input rank %u, input shape [%s].",
-              padding_dim.size(), padding_dim));
+              padding_dim.size(),
+              padding_dim));
       PADDLE_ENFORCE_EQ(
-          padding_dim[0] == total_pad && padding_dim[1] == input_width, true,
+          padding_dim[0] == total_pad && padding_dim[1] == input_width,
+          true,
           platform::errors::InvalidArgument("Input(PaddingData)'s shape is not "
                                             "consistent with 'context_start' "
                                             "and 'context_length'. Received "
                                             "Input(PaddingData): input rank "
                                             "%u, "
                                             "input shape [%s].",
-                                            padding_dim.size(), padding_dim));
+                                            padding_dim.size(),
+                                            padding_dim));
     }
 
     in_dims[1] = filter_dims[1];
@@ -104,8 +118,10 @@ class SequenceConvGradOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "SequenceConvGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   framework::GradVarName("Out"),
+                   "SequenceConvGrad");
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "SequenceConvGrad");
 
     if (ctx->Attrs().Get<bool>("paddingTrainable") &&
@@ -129,30 +145,31 @@ class SequenceConvOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput(
         "X",
-        "(LoDTensor) the input(X) is a LodTensor, which supports "
+        "(phi::DenseTensor) the input(X) is a LodTensor, which supports "
         "variable-time length input sequence. The underlying tensor in "
-        "this LoDTensor is a matrix with shape (T, N), where T is the "
+        "this phi::DenseTensor is a matrix with shape (T, N), where T is the "
         "total time steps in this mini-batch and N is the input_hidden_size.");
-    AddInput("PaddingData",
-             "(Tensor, optional) the input(PaddingData) is an optional "
-             "parameter, and it is learnable. "
-             "This is a tensor with shape (P, N), where P is the "
-             "top_pad + bottom_pad, N is the input_hidden_size. In order to "
-             "ensure the equal length of sequence before and after "
-             "convolution, it is necessary to fill the top and bottom of each "
-             "sequence according to context_length, context_stride and "
-             "context_start")
+    AddInput(
+        "PaddingData",
+        "(phi::DenseTensor, optional) the input(PaddingData) is an optional "
+        "parameter, and it is learnable. "
+        "This is a tensor with shape (P, N), where P is the "
+        "top_pad + bottom_pad, N is the input_hidden_size. In order to "
+        "ensure the equal length of sequence before and after "
+        "convolution, it is necessary to fill the top and bottom of each "
+        "sequence according to context_length, context_stride and "
+        "context_start")
         .AsDispensable();
     AddInput(
         "Filter",
-        "(Tensor) the input(Filter) is an learnable parameter."
+        "(phi::DenseTensor) the input(Filter) is an learnable parameter."
         "This is a tensor with shape (K, M), where K is the "
         "context_length * input_hidden_size, M is the output feature size.");
     AddOutput(
         "Out",
-        "(LoDTensor) the output(Out) is a LodTensor, which support "
+        "(phi::DenseTensor) the output(Out) is a LodTensor, which support "
         "variable-time length output sequence. The underlying tensor in "
-        "this LoDTensor is a matrix with shape (T, M), where, T is the "
+        "this phi::DenseTensor is a matrix with shape (T, M), where, T is the "
         "total time steps in this mini-batch, M is the output feature size.");
 
     AddAttr<bool>("paddingTrainable",
@@ -206,7 +223,7 @@ class SequenceConvGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetAttrMap(this->Attrs());
 
     if (op->HasAttr("paddingTrainable") &&
-        BOOST_GET_CONST(bool, op->GetAttr("paddingTrainable")) &&
+        PADDLE_GET_CONST(bool, op->GetAttr("paddingTrainable")) &&
         this->HasInput("PaddingData")) {
       op->SetInput("PaddingData", this->Input("PaddingData"));
       op->SetOutput(framework::GradVarName("PaddingData"),
@@ -230,7 +247,7 @@ class SequenceConvGradNoNeedBufferVarsInference
   const std::unordered_set<std::string> &operator()(
       const framework::InferNoNeedBufferVarsContext &ctx) const final {
     static const std::unordered_set<std::string> kPaddingData({"PaddingData"});
-    if (!BOOST_GET_CONST(bool, ctx.GetAttr("paddingTrainable"))) {
+    if (!PADDLE_GET_CONST(bool, ctx.GetAttr("paddingTrainable"))) {
       return kPaddingData;
     } else {
       return Empty();
@@ -242,18 +259,21 @@ class SequenceConvGradNoNeedBufferVarsInference
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(sequence_conv, ops::SequenceConvOp, ops::SequenceConvOpMaker,
+REGISTER_OPERATOR(sequence_conv,
+                  ops::SequenceConvOp,
+                  ops::SequenceConvOpMaker,
                   ops::SequenceConvGradOpMaker<paddle::framework::OpDesc>,
                   ops::SequenceConvGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(sequence_conv_grad, ops::SequenceConvGradOp,
+REGISTER_OPERATOR(sequence_conv_grad,
+                  ops::SequenceConvGradOp,
                   ops::SequenceConvGradNoNeedBufferVarsInference);
 
-REGISTER_OP_CPU_KERNEL(
-    sequence_conv,
-    ops::SequenceConvKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SequenceConvKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    sequence_conv_grad,
-    ops::SequenceConvGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SequenceConvGradKernel<paddle::platform::CPUDeviceContext, double>);
+PD_REGISTER_STRUCT_KERNEL(
+    sequence_conv, CPU, ALL_LAYOUT, ops::SequenceConvKernel, float, double) {}
+PD_REGISTER_STRUCT_KERNEL(sequence_conv_grad,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::SequenceConvGradKernel,
+                          float,
+                          double) {}

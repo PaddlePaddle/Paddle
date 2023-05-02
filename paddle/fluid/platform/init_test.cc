@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/platform/init.h"
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/platform/device_context.h"
 
@@ -23,7 +24,7 @@ TEST(InitDevices, CPU) {
     !defined(PADDLE_WITH_HIP)
   InitDevices();
   DeviceContextPool& pool = DeviceContextPool::Instance();
-  ASSERT_EQ(pool.size(), 1U);
+  ASSERT_EQ(pool.Size(), 1U);
 #endif
 }
 
@@ -32,10 +33,10 @@ TEST(InitDevices, CUDA) {
   using paddle::platform::DeviceContextPool;
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  int count = paddle::platform::GetCUDADeviceCount();
+  int count = paddle::platform::GetGPUDeviceCount();
   InitDevices();
   DeviceContextPool& pool = DeviceContextPool::Instance();
-  ASSERT_EQ(pool.size(), 2U + static_cast<unsigned>(count));
+  ASSERT_EQ(pool.Size(), 2U + static_cast<unsigned>(count));
 #endif
 }
 
@@ -47,7 +48,7 @@ TEST(InitDevices, XPU) {
   int count = paddle::platform::GetXPUDeviceCount();
   InitDevices();
   DeviceContextPool& pool = DeviceContextPool::Instance();
-  ASSERT_EQ(pool.size(), 1U + static_cast<unsigned>(count));
+  ASSERT_EQ(pool.Size(), 1U + static_cast<unsigned>(count));
 #endif
 }
 

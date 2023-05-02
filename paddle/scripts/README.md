@@ -15,7 +15,7 @@ PaddlePaddle applications directly in docker or on Kubernetes clusters.
 
 To achieve this, we maintain a dockerhub repo:https://hub.docker.com/r/paddlepaddle/paddle
 which provides pre-built environment images to build PaddlePaddle and generate corresponding `whl`
-binaries.(**We strongly recommend building paddlepaddle in our pre-specified Docker environment.**) 
+binaries.(**We strongly recommend building paddlepaddle in our pre-specified Docker environment.**)
 
 ## Development Workflow
 
@@ -35,7 +35,7 @@ A principle here is that source code lies on the development computer (host) so 
 
 ### Build Environments
 
-The lastest pre-built build environment images are:
+The latest pre-built build environment images are:
 
 | Image | Tag |
 | ----- | --- |
@@ -52,8 +52,8 @@ cd Paddle
 After the build finishes, you can get output `whl` package under
 `build/python/dist`.
 
-This command will download the most recent dev image from docker hub, start a container in the backend and then run the build script `/paddle/paddle/scripts/paddle_build.sh build` in the container. 
-The container mounts the source directory on the host into `/paddle`. 
+This command will download the most recent dev image from docker hub, start a container in the backend and then run the build script `/paddle/paddle/scripts/paddle_build.sh build` in the container.
+The container mounts the source directory on the host into `/paddle`.
 When it writes to `/paddle/build` in the container, it writes to `$PWD/build` on the host indeed.
 
 ### Build Options

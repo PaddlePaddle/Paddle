@@ -15,13 +15,10 @@
 import paddle
 import numbers
 import numpy as np
-from ..framework import in_dygraph_mode
+from ..framework import _non_static_mode
 from .. import core, layers
 
-try:
-    from collections.abc import Sequence, Mapping
-except:
-    from collections import Sequence, Mapping
+from collections.abc import Sequence, Mapping
 
 
 def default_collate_fn(batch):
@@ -38,17 +35,17 @@ def default_collate_fn(batch):
      {'image': np.array(shape=[3, 224, 224]), 'label': 3},
      {'image': np.array(shape=[3, 224, 224]), 'label': 4},
      {'image': np.array(shape=[3, 224, 224]), 'label': 5},]
-    
-    
+
+
     This default collate function zipped each number and numpy array
     field together and stack each field as the batch field as follows:
 
     {'image': np.array(shape=[4, 3, 224, 224]), 'label': np.array([1, 3, 4, 5])}
 
 
-    Args:  
+    Args:
         batch(list of sample data): batch should be a list of sample data.
-    
+
     Returns:
         Batched data: batched each number, numpy array and paddle.Tensor
                       in input data.
@@ -57,8 +54,8 @@ def default_collate_fn(batch):
     if isinstance(sample, np.ndarray):
         batch = np.stack(batch, axis=0)
         return batch
-    elif isinstance(sample, paddle.Tensor):
-        return layers.stack(batch, axis=0)
+    elif isinstance(sample, (paddle.Tensor, core.eager.Tensor)):
+        return paddle.stack(batch, axis=0)
     elif isinstance(sample, numbers.Number):
         batch = np.array(batch)
         return batch
@@ -66,18 +63,20 @@ def default_collate_fn(batch):
         return batch
     elif isinstance(sample, Mapping):
         return {
-            key: default_collate_fn([d[key] for d in batch])
-            for key in sample
+            key: default_collate_fn([d[key] for d in batch]) for key in sample
         }
     elif isinstance(sample, Sequence):
         sample_fields_num = len(sample)
         if not all(len(sample) == sample_fields_num for sample in iter(batch)):
             raise RuntimeError(
-                "fileds number not same among samples in a batch")
+                "fileds number not same among samples in a batch"
+            )
         return [default_collate_fn(fields) for fields in zip(*batch)]
 
-    raise TypeError("batch data con only contains: tensor, numpy.ndarray, "
-                    "dict, list, number, but got {}".format(type(sample)))
+    raise TypeError(
+        "batch data con only contains: tensor, numpy.ndarray, "
+        "dict, list, number, but got {}".format(type(sample))
+    )
 
 
 def default_convert_fn(batch):
@@ -92,14 +91,14 @@ def default_convert_fn(batch):
         automatic batching** mode, for **Distable automatic batching**
         mode, please ses :attr:`paddle.io.DataLoader`
 
-    Args:  
+    Args:
         batch(list of sample data): batch should be a list of sample data.
-    
+
     Returns:
         Batched data: batched each number, numpy array and paddle.Tensor
                       in input data.
     """
-    if isinstance(batch, (paddle.Tensor, np.ndarray)):
+    if isinstance(batch, (paddle.Tensor, np.ndarray, core.eager.Tensor)):
         return batch
     elif isinstance(batch, (str, bytes)):
         return batch

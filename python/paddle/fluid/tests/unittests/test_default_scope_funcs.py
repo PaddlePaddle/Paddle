@@ -12,10 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-from paddle.fluid.default_scope_funcs import *
 import unittest
+
+from paddle.fluid.default_scope_funcs import (
+    enter_local_scope,
+    find_var,
+    get_cur_scope,
+    leave_local_scope,
+    scoped_function,
+    var,
+)
 
 
 class TestDefaultScopeFuncs(unittest.TestCase):

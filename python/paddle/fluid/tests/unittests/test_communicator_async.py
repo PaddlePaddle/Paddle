@@ -12,29 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
-import unittest
 import time
-import threading
-import numpy
+import unittest
 
 import paddle
+
 paddle.enable_static()
 
-import paddle.fluid as fluid
-import paddle.distributed.fleet.base.role_maker as role_maker
-import paddle.distributed.fleet as fleet
+from paddle import fluid
+from paddle.distributed import fleet
+from paddle.distributed.fleet.base import role_maker
 
 
 class TestCommunicator(unittest.TestCase):
     def net(self):
-        x = fluid.layers.data(name='x', shape=[1], dtype='float32')
-        y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+        x = paddle.static.data(name='x', shape=[-1, 1], dtype='float32')
+        y = paddle.static.data(name='y', shape=[-1, 1], dtype='float32')
 
-        cost = fluid.layers.square_error_cost(input=x, label=y)
-        avg_cost = fluid.layers.mean(cost)
+        cost = paddle.nn.functional.square_error_cost(input=x, label=y)
+        avg_cost = paddle.mean(cost)
         return avg_cost
 
     def test_communicator_async(self):
@@ -42,7 +39,8 @@ class TestCommunicator(unittest.TestCase):
             current_id=0,
             role=role_maker.Role.WORKER,
             worker_num=2,
-            server_endpoints=["127.0.0.1:6001", "127.0.0.1:6002"])
+            server_endpoints=["127.0.0.1:6001", "127.0.0.1:6002"],
+        )
 
         fleet.init(role)
         avg_cost = self.net()

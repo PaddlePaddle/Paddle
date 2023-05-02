@@ -12,12 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
-from op_test import OpTest
-import paddle.fluid as fluid
+from eager_op_test import OpTest
 
 
 def smooth_l1_loss_forward(val, sigma2):
@@ -34,7 +32,7 @@ class TestSmoothL1LossOp1(OpTest):
         dims = (5, 20)
         self.inputs = {
             'X': np.random.random(dims).astype("float32"),
-            'Y': np.random.random(dims).astype("float32")
+            'Y': np.random.random(dims).astype("float32"),
         }
         sigma = 3.0
         self.attrs = {'sigma': sigma}
@@ -44,7 +42,7 @@ class TestSmoothL1LossOp1(OpTest):
         loss = loss.reshape((dims[0], 1))
         self.outputs = {
             'Diff': diff.astype('float32'),
-            'Out': loss.astype('float32')
+            'Out': loss.astype('float32'),
         }
 
     def test_check_output(self):
@@ -55,11 +53,19 @@ class TestSmoothL1LossOp1(OpTest):
 
     def test_check_grad_ingore_x(self):
         self.check_grad(
-            ['Y'], 'Out', max_relative_error=0.03, no_grad_set=set("X"))
+            ['Y'],
+            'Out',
+            max_relative_error=0.03,
+            no_grad_set=set("X"),
+        )
 
     def test_check_grad_ingore_y(self):
         self.check_grad(
-            ['X'], 'Out', max_relative_error=0.03, no_grad_set=set('Y'))
+            ['X'],
+            'Out',
+            max_relative_error=0.03,
+            no_grad_set=set('Y'),
+        )
 
 
 class TestSmoothL1LossOp2(OpTest):
@@ -70,7 +76,7 @@ class TestSmoothL1LossOp2(OpTest):
             'X': np.random.random(dims).astype("float32"),
             'Y': np.random.random(dims).astype("float32"),
             'InsideWeight': np.random.random(dims).astype("float32"),
-            'OutsideWeight': np.random.random(dims).astype("float32")
+            'OutsideWeight': np.random.random(dims).astype("float32"),
         }
         sigma = 3.0
         self.attrs = {'sigma': sigma}
@@ -82,7 +88,7 @@ class TestSmoothL1LossOp2(OpTest):
         loss = loss.sum(1).reshape((dims[0], 1))
         self.outputs = {
             'Diff': diff.astype('float32'),
-            'Out': loss.astype('float32')
+            'Out': loss.astype('float32'),
         }
 
     def test_check_output(self):
@@ -96,29 +102,16 @@ class TestSmoothL1LossOp2(OpTest):
             ['Y'],
             'Out',
             max_relative_error=0.03,
-            no_grad_set=set(['X', 'InsideWeight', 'OutsideWeight']))
+            no_grad_set={'X', 'InsideWeight', 'OutsideWeight'},
+        )
 
     def test_check_grad_ingore_y(self):
         self.check_grad(
             ['X'],
             'Out',
             max_relative_error=0.03,
-            no_grad_set=set(['Y', 'InsideWeight', 'OutsideWeight']))
-
-
-class TestSmoothL1LossOpError(unittest.TestCase):
-    def test_errors(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            # The input type of accuracy_op must be Variable.
-            x1 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], fluid.CPUPlace())
-            y1 = fluid.create_lod_tensor(
-                np.array([[-1]]), [[1]], fluid.CPUPlace())
-            self.assertRaises(TypeError, fluid.layers.smooth_l1, x1, y1)
-            # The input dtype of accuracy_op must be float32 or float64.
-            x2 = fluid.layers.data(name='x2', shape=[4], dtype="int32")
-            y2 = fluid.layers.data(name='x2', shape=[4], dtype="int32")
-            self.assertRaises(TypeError, fluid.layers.smooth_l1, x2, y2)
+            no_grad_set={'Y', 'InsideWeight', 'OutsideWeight'},
+        )
 
 
 if __name__ == '__main__':

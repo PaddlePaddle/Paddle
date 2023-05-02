@@ -13,17 +13,16 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/concat_and_split.h"
+#include "paddle/fluid/platform/device_context.h"
 
-namespace paddle {
-namespace framework {
-class Tensor;
-}  // namespace framework
-namespace platform {
-class CPUDeviceContext;
-struct bfloat16;
-struct float16;
-}  // namespace platform
-}  // namespace paddle
+#include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
+
+#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/float16.h"
+
+namespace phi {
+class DenseTensor;
+}  // namespace phi
 
 namespace paddle {
 namespace operators {
@@ -34,41 +33,14 @@ namespace math {
  * each dimension must be the same, except the axis dimension.
  */
 template <typename T>
-class ConcatFunctor<platform::CPUDeviceContext, T> {
+class ConcatFunctor<phi::CPUContext, T> {
  public:
-  void operator()(const platform::CPUDeviceContext& context,
-                  const std::vector<framework::Tensor>& input, int axis,
-                  framework::Tensor* output) {
-    // TODO(zcd): Add input data validity checking
-    size_t num = input.size();
-
-    int64_t rows = 1;
-    auto dim_0 = input[0].dims();
-    for (int i = 0; i < axis; ++i) {
-      rows *= dim_0[i];
-    }
-    int64_t out_rows = rows, out_cols = 0;
-
-    std::vector<int64_t> input_cols(input.size());
-    for (size_t i = 0; i < num; ++i) {
-      int64_t t_cols = input[i].numel() / rows;
-      out_cols += t_cols;
-      input_cols[i] = t_cols;
-    }
-    auto cpu_place = BOOST_GET_CONST(platform::CPUPlace, context.GetPlace());
-
-    // computation
-    auto output_data = output->data<T>();
-    int64_t col_idx = 0;
-    for (size_t j = 0; j < num; ++j) {
-      int64_t col_len = input_cols[j];
-      auto input_data = input[j].data<T>();
-      for (int64_t k = 0; k < out_rows; ++k) {
-        memory::Copy(cpu_place, output_data + k * out_cols + col_idx, cpu_place,
-                     input_data + k * col_len, sizeof(T) * col_len);
-      }
-      col_idx += col_len;
-    }
+  void operator()(const phi::CPUContext& context,
+                  const std::vector<phi::DenseTensor>& input,
+                  int axis,
+                  phi::DenseTensor* output) {
+    phi::funcs::ConcatFunctor<phi::CPUContext, T> functor;
+    functor(context, input, axis, output);
   }
 };
 
@@ -77,52 +49,15 @@ class ConcatFunctor<platform::CPUDeviceContext, T> {
  * each dimension must be the same, except the axis dimension.
  */
 template <typename T>
-class SplitFunctor<platform::CPUDeviceContext, T> {
+class SplitFunctor<phi::CPUContext, T> {
  public:
-  void operator()(const platform::CPUDeviceContext& context,
-                  const framework::Tensor& input,
-                  const std::vector<const framework::Tensor*>& ref_inputs,
-                  const int axis, std::vector<framework::Tensor*>* outputs) {
-    // NOTE(zhiqiu): split a tensor of shape [0,3,4] at axis=1, result in 3
-    // tensors of shape [0,1,4]
-    if (input.numel() == 0) {
-      return;
-    }
-
-    // TODO(zcd): Add input data validity checking
-    size_t num = outputs->size();
-
-    int input_rows = 1;
-    auto dim_0 = ref_inputs[0]->dims();
-    for (int i = 0; i < axis; ++i) {
-      input_rows *= dim_0[i];
-    }
-
-    int input_cols = 0;
-
-    std::vector<int64_t> output_cols(outputs->size());
-    for (size_t i = 0; i < num; ++i) {
-      int t_cols = ref_inputs[i]->numel() / input_rows;
-      input_cols += t_cols;
-      output_cols[i] = t_cols;
-    }
-    auto cpu_place = BOOST_GET_CONST(platform::CPUPlace, context.GetPlace());
-
-    // computation
-    for (int k = 0; k < input_rows; ++k) {
-      const T* src_ptr = input.data<T>() + k * input_cols;
-      int col_idx = 0;
-      for (size_t j = 0; j < num; ++j) {
-        int col_len = output_cols[j];
-        auto* out_tensor = outputs->at(j);
-        if (out_tensor != nullptr) {
-          T* dst_ptr = out_tensor->data<T>() + k * col_len;
-          memory::Copy(cpu_place, dst_ptr, cpu_place, src_ptr + col_idx,
-                       sizeof(T) * col_len);
-        }
-        col_idx += col_len;
-      }
-    }
+  void operator()(const phi::CPUContext& context,
+                  const phi::DenseTensor& input,
+                  const std::vector<const phi::DenseTensor*>& ref_inputs,
+                  const int axis,
+                  std::vector<phi::DenseTensor*>* outputs) {
+    phi::funcs::SplitFunctor<phi::CPUContext, T> functor;
+    functor(context, input, ref_inputs, axis, outputs);
   }
 };
 
@@ -135,10 +70,11 @@ template <typename T>
 class ConcatFunctor<platform::XPUDeviceContext, T> {
  public:
   void operator()(const platform::XPUDeviceContext& context,
-                  const std::vector<framework::Tensor>& input, int axis,
-                  framework::Tensor* output) {
-    int dev_id =
-        BOOST_GET_CONST(platform::XPUPlace, context.GetPlace()).GetDeviceId();
+                  const std::vector<phi::DenseTensor>& input,
+                  int axis,
+                  phi::DenseTensor* output) {
+    using XPUType = typename XPUTypeTrait<T>::Type;
+    int dev_id = context.GetPlace().GetDeviceId();
     platform::XPUDeviceGuard guard(dev_id);
 
     int num = input.size();
@@ -153,19 +89,32 @@ class ConcatFunctor<platform::XPUDeviceContext, T> {
       xdims_list[i] = tmp_dims;
     }
 
-    std::vector<const T*> ptrs;
+    std::vector<const XPUType*> ptrs;
     for (int i = 0; i < num; ++i) {
-      ptrs.push_back(input[i].data<T>());
+      if (input[i].place() != context.GetPlace()) {
+        // data not on xpu, probably on cpu. move it now
+        phi::DenseTensor tmp_data = input[i];
+        context.template Alloc<T>(&tmp_data);
+        ptrs.push_back(reinterpret_cast<const XPUType*>(tmp_data.data<T>()));
+      } else {
+        ptrs.push_back(reinterpret_cast<const XPUType*>(input[i].data<T>()));
+      }
     }
+    context.template Alloc<T>(output);
 
-    auto r = xpu::concat<T>(context.x_context(), ptrs, output->data<T>(),
-                            xdims_list, axis);
+    auto r = xpu::concat<XPUType>(context.x_context(),
+                                  ptrs,
+                                  reinterpret_cast<XPUType*>(output->data<T>()),
+                                  xdims_list,
+                                  axis);
     PADDLE_ENFORCE_EQ(
-        r, XPU_SUCCESS,
+        r,
+        XPU_SUCCESS,
         platform::errors::External(
             "XPU API return wrong value[%d %s], please check whether "
             "Baidu Kunlun Card is properly installed.",
-            r, XPUAPIErrorMsg[r]));
+            r,
+            XPUAPIErrorMsg[r]));
   }
 };
 
@@ -173,11 +122,12 @@ template <typename T>
 class SplitFunctor<platform::XPUDeviceContext, T> {
  public:
   void operator()(const platform::XPUDeviceContext& context,
-                  const framework::Tensor& input,
-                  const std::vector<const framework::Tensor*>& ref_inputs,
-                  const int axis, std::vector<framework::Tensor*>* outputs) {
-    int dev_id =
-        BOOST_GET_CONST(platform::XPUPlace, context.GetPlace()).GetDeviceId();
+                  const phi::DenseTensor& input,
+                  const std::vector<const phi::DenseTensor*>& ref_inputs,
+                  const int axis,
+                  std::vector<phi::DenseTensor*>* outputs) {
+    using XPUType = typename XPUTypeTrait<T>::Type;
+    int dev_id = context.GetPlace().GetDeviceId();
     platform::XPUDeviceGuard guard(dev_id);
 
     auto& ins = ref_inputs;
@@ -198,26 +148,39 @@ class SplitFunctor<platform::XPUDeviceContext, T> {
     }
     xdims_list[axis] = total_length;
 
-    std::vector<T*> ptrs(num);
+    std::vector<XPUType*> ptrs(num);
     for (int i = 0; i < num; ++i) {
-      ptrs[i] = outputs->at(i)->data<T>();
+      context.template Alloc<T>(outputs->at(i));
+      ptrs[i] = reinterpret_cast<XPUType*>(outputs->at(i)->data<T>());
+    }
+    phi::DenseTensor tmp_data = input;
+    if (input.place() != context.GetPlace()) {
+      // data not on xpu, probably on cpu. move it now
+      context.template Alloc<T>(&tmp_data);
     }
 
-    auto r = xpu::split<T>(context.x_context(), input.data<T>(), ptrs,
-                           xdims_list, split_list, axis);
+    auto r = xpu::split<XPUType>(
+        context.x_context(),
+        reinterpret_cast<const XPUType*>(tmp_data.data<T>()),
+        ptrs,
+        xdims_list,
+        split_list,
+        axis);
     PADDLE_ENFORCE_EQ(
-        r, XPU_SUCCESS,
+        r,
+        XPU_SUCCESS,
         platform::errors::External(
             "XPU API return wrong value[%d %s], please check whether "
             "Baidu Kunlun Card is properly installed.",
-            r, XPUAPIErrorMsg[r]));
+            r,
+            XPUAPIErrorMsg[r]));
   }
 };
 #endif
 
-#define DEFINE_FUNCTOR(type)                                      \
-  template class ConcatFunctor<platform::CPUDeviceContext, type>; \
-  template class SplitFunctor<platform::CPUDeviceContext, type>;
+#define DEFINE_FUNCTOR(type)                           \
+  template class ConcatFunctor<phi::CPUContext, type>; \
+  template class SplitFunctor<phi::CPUContext, type>;
 
 FOR_ALL_TYPES(DEFINE_FUNCTOR);
 
@@ -227,8 +190,8 @@ FOR_ALL_TYPES(DEFINE_FUNCTOR);
   template class SplitFunctor<platform::XPUDeviceContext, type>;
 
 DEFINE_XPU_FUNCTOR(float)
+DEFINE_XPU_FUNCTOR(platform::float16)
 #endif
-
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

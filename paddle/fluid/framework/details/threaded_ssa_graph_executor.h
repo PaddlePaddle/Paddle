@@ -77,7 +77,9 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
   std::vector<Scope *> local_exec_scopes_;
 
   std::vector<platform::Place> places_;
-  platform::DeviceContextPool fetch_ctxs_;
+  std::map<Place, std::shared_future<std::unique_ptr<platform::DeviceContext>>>
+      fetch_ctxs_;
+
   ExceptionHolder exception_holder_;
   std::unique_ptr<OpDependentData> op_deps_;
   std::future<std::unique_ptr<OpDependentData>> op_deps_futures_;
@@ -101,7 +103,8 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
                       std::unordered_set<OpHandleBase *> *ready_ops,
                       std::unordered_map<OpHandleBase *, size_t> *pending_ops,
                       std::unordered_set<VarHandleBase *> *pending_vars,
-                      FetchResultType *fetch_data, bool return_merged);
+                      FetchResultType *fetch_data,
+                      bool return_merged);
 
   void PrepareOpDeps();
 

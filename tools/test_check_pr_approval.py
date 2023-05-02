@@ -1,13 +1,13 @@
 #! /usr/bin/env python
 
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,9 +16,9 @@
 """
 TestCases for check_pr_approval.py
 """
-import unittest
 import subprocess
 import sys
+import unittest
 
 
 class Test_check_approval(unittest.TestCase):
@@ -67,7 +67,9 @@ class Test_check_approval(unittest.TestCase):
     "author_association": "CONTRIBUTOR"
   }
 ]
-""".encode(self.codeset)
+""".encode(
+            self.codeset
+        )
 
     def test_ids(self):
         cmd = [sys.executable, 'check_pr_approval.py', '1', '26408901']
@@ -75,7 +77,8 @@ class Test_check_approval(unittest.TestCase):
             cmd,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE)
+            stderr=subprocess.PIPE,
+        )
         output, error = subprc.communicate(input=self.jsonstr)
         self.assertEqual('TRUE', output.decode(self.codeset).rstrip())
 
@@ -85,33 +88,43 @@ class Test_check_approval(unittest.TestCase):
             cmd,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE)
+            stderr=subprocess.PIPE,
+        )
         output, error = subprc.communicate(input=self.jsonstr)
         self.assertEqual('TRUE', output.decode(self.codeset).rstrip())
 
     def test_ids_and_logins(self):
         cmd = [
-            sys.executable, 'check_pr_approval.py', '2', 'pangyoki', '13469016'
+            sys.executable,
+            'check_pr_approval.py',
+            '2',
+            'pangyoki',
+            '13469016',
         ]
         subprc = subprocess.Popen(
             cmd,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE)
+            stderr=subprocess.PIPE,
+        )
         output, error = subprc.communicate(input=self.jsonstr)
-        #self.assertEqual('', error.rstrip())
+        # self.assertEqual('', error.rstrip())
         self.assertEqual('TRUE', output.decode(self.codeset).rstrip())
 
     def test_check_with_required_reviewer_not_approved(self):
         cmd = [
-            sys.executable, 'check_pr_approval.py', '2', 'wadefelix',
-            ' 13469016'
+            sys.executable,
+            'check_pr_approval.py',
+            '2',
+            'wadefelix',
+            ' 13469016',
         ]
         subprc = subprocess.Popen(
             cmd,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE)
+            stderr=subprocess.PIPE,
+        )
         output, error = subprc.communicate(input=self.jsonstr)
         self.assertEqual('FALSE', output.decode(self.codeset).rstrip())
 

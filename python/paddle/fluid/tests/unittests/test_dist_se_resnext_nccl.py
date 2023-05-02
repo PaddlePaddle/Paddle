@@ -12,12 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
+import os
 import unittest
-from test_dist_base import TestDistBase
-import os
 
-import os
+from test_dist_base import TestDistBase
+
 import paddle
 
 paddle.enable_static()
@@ -31,13 +30,15 @@ class TestDistSeResneXtNCCL(TestDistBase):
         self._nccl2_mode = True
 
     def test_dist_train(self):
-        import paddle.fluid as fluid
+        from paddle import fluid
+
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(
                 "dist_se_resnext.py",
                 delta=1e-5,
                 check_error_log=True,
-                log_name=flag_name)
+                log_name=flag_name,
+            )
 
 
 class TestDistSeResneXtNCCLMP(TestDistBase):
@@ -48,14 +49,16 @@ class TestDistSeResneXtNCCLMP(TestDistBase):
         self._mp_mode = True
 
     def test_dist_train(self):
-        import paddle.fluid as fluid
+        from paddle import fluid
+
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(
                 "dist_se_resnext.py",
                 delta=1e-5,
                 check_error_log=True,
                 need_envs={"NCCL_P2P_DISABLE": "1"},
-                log_name=flag_name)
+                log_name=flag_name,
+            )
 
 
 if __name__ == "__main__":

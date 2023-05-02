@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import unittest
-import numpy as np
 import collections
+import unittest
+
+import numpy as np
+
 import paddle
-import paddle.nn as nn
+from paddle import nn
 from paddle.nn.utils import spectral_norm
 
 
@@ -29,7 +29,7 @@ class TestDygraphSpectralNorm(unittest.TestCase):
 
     def init_test_case(self):
         self.batch_size = 3
-        self.data_desc = (['x', [2, 12, 12]], )
+        self.data_desc = (['x', [2, 12, 12]],)
         self.n_power_iterations = 1
         self.eps = 1e-12
         self.dim = None
@@ -40,7 +40,8 @@ class TestDygraphSpectralNorm(unittest.TestCase):
             data_name = desc[0]
             data_shape = desc[1]
             data_value = np.random.random(
-                size=[self.batch_size] + data_shape).astype('float32')
+                size=[self.batch_size] + data_shape
+            ).astype('float32')
             self.data[data_name] = data_value
 
     def spectral_normalize(self, weight, u, v, dim, power_iters, eps):
@@ -68,9 +69,16 @@ class TestDygraphSpectralNorm(unittest.TestCase):
     def test_check_output(self):
         linear = paddle.nn.Conv2D(2, 1, 3)
         before_weight = linear.weight.numpy().copy()
-        if self.dim == None:
-            if isinstance(linear, (nn.Conv1DTranspose, nn.Conv2DTranspose,
-                                   nn.Conv3DTranspose, nn.Linear)):
+        if self.dim is None:
+            if isinstance(
+                linear,
+                (
+                    nn.Conv1DTranspose,
+                    nn.Conv2DTranspose,
+                    nn.Conv3DTranspose,
+                    nn.Linear,
+                ),
+            ):
                 self.dim = 1
             else:
                 self.dim = 0
@@ -81,7 +89,8 @@ class TestDygraphSpectralNorm(unittest.TestCase):
             linear,
             n_power_iterations=self.n_power_iterations,
             eps=self.eps,
-            dim=self.dim)
+            dim=self.dim,
+        )
         u = sn.weight_u.numpy().copy()
         v = sn.weight_v.numpy().copy()
         outputs = []
@@ -91,18 +100,19 @@ class TestDygraphSpectralNorm(unittest.TestCase):
         self.actual_outputs = linear.weight.numpy()
 
         expect_output = self.spectral_normalize(
-            before_weight, u, v, self.dim, self.n_power_iterations, self.eps)
+            before_weight, u, v, self.dim, self.n_power_iterations, self.eps
+        )
 
         for expect, actual in zip(expect_output, self.actual_outputs):
-            self.assertTrue(
-                np.allclose(
-                    np.array(actual), np.array(expect), atol=0.001))
+            np.testing.assert_allclose(
+                np.array(actual), np.array(expect), rtol=1e-05, atol=0.001
+            )
 
 
 class TestDygraphWeightNormCase(TestDygraphSpectralNorm):
     def init_test_case(self):
         self.batch_size = 3
-        self.data_desc = (['x', [2, 3, 3]], )
+        self.data_desc = (['x', [2, 3, 3]],)
         self.n_power_iterations = 1
         self.eps = 1e-12
         self.dim = None
@@ -111,7 +121,7 @@ class TestDygraphWeightNormCase(TestDygraphSpectralNorm):
 class TestDygraphWeightNormWithIterations(TestDygraphSpectralNorm):
     def init_test_case(self):
         self.batch_size = 3
-        self.data_desc = (['x', [2, 3, 3]], )
+        self.data_desc = (['x', [2, 3, 3]],)
         self.n_power_iterations = 2
         self.eps = 1e-12
         self.dim = None
@@ -120,7 +130,7 @@ class TestDygraphWeightNormWithIterations(TestDygraphSpectralNorm):
 class TestDygraphWeightNormWithDim(TestDygraphSpectralNorm):
     def init_test_case(self):
         self.batch_size = 3
-        self.data_desc = (['x', [2, 3, 3]], )
+        self.data_desc = (['x', [2, 3, 3]],)
         self.n_power_iterations = 1
         self.eps = 1e-12
         self.dim = 1
@@ -129,7 +139,7 @@ class TestDygraphWeightNormWithDim(TestDygraphSpectralNorm):
 class TestDygraphWeightNormWithEps(TestDygraphSpectralNorm):
     def init_test_case(self):
         self.batch_size = 3
-        self.data_desc = (['x', [2, 3, 3]], )
+        self.data_desc = (['x', [2, 3, 3]],)
         self.n_power_iterations = 1
         self.eps = 1e-10
         self.dim = None

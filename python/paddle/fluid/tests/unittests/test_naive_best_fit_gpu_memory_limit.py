@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
 import unittest
+
 import numpy as np
+
+from paddle import fluid
 
 fluid.core.globals()['FLAGS_allocator_strategy'] = 'naive_best_fit'
 
@@ -35,9 +37,10 @@ class TestBase(unittest.TestCase):
 
         place = fluid.CUDAPlace(0)
         t = fluid.LoDTensor()
-        t.set(np.ndarray(
-            [int(self._limit / 2), other_dim], dtype='float32'),
-              place)
+        t.set(
+            np.ndarray([int(self._limit / 2), other_dim], dtype='float32'),
+            place,
+        )
         del t
 
         t = fluid.LoDTensor()

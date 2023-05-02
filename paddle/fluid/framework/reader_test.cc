@@ -24,7 +24,7 @@ class StubDecoratedReader : public paddle::framework::DecoratedReader {
   explicit StubDecoratedReader(const std::shared_ptr<ReaderBase> &reader)
       : DecoratedReader(reader) {}
 
-  void ReadNextImpl(std::vector<paddle::framework::LoDTensor> *out) override {}
+  void ReadNextImpl(paddle::framework::LoDTensorArray *out) override {}
 };
 
 class StubRootReader : public paddle::framework::ReaderBase {
@@ -34,13 +34,13 @@ class StubRootReader : public paddle::framework::ReaderBase {
       const std::vector<paddle::framework::proto::VarType::Type> &var_types,
       const std::vector<bool> &need_check_feed)
       : paddle::framework::ReaderBase(dims, var_types, need_check_feed) {}
-  void ReadNextImpl(std::vector<paddle::framework::LoDTensor> *out) override {}
+  void ReadNextImpl(paddle::framework::LoDTensorArray *out) override {}
 };
 
 TEST(READER, decorate_chain) {
   paddle::framework::proto::VarType::Type dtype =
       paddle::framework::proto::VarType::FP32;
-  paddle::framework::DDim dim = paddle::framework::make_ddim({5, 7});
+  paddle::framework::DDim dim = phi::make_ddim({5, 7});
   std::vector<paddle::framework::DDim> init_dims(4, dim);
   std::vector<paddle::framework::proto::VarType::Type> init_types(4, dtype);
   std::vector<bool> init_need_check(4, true);

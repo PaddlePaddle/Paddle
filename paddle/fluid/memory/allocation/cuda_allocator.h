@@ -14,6 +14,7 @@
 
 #pragma once
 #include <mutex>  // NOLINT
+
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/place.h"
 
@@ -28,8 +29,8 @@ class CUDAAllocator : public Allocator {
   bool IsAllocThreadSafe() const override;
 
  protected:
-  void FreeImpl(Allocation* allocation) override;
-  Allocation* AllocateImpl(size_t size) override;
+  void FreeImpl(phi::Allocation* allocation) override;
+  phi::Allocation* AllocateImpl(size_t size) override;
 
  private:
   platform::CUDAPlace place_;

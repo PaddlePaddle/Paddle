@@ -6,7 +6,7 @@ The APIs are described in `paddle_inference_api.h`, just one header file, and tw
 ## PaddleTensor
 We provide the `PaddleTensor` data structure to give a general tensor interface.
 
-The definition is 
+The definition is
 
 ```c++
 struct PaddleTensor {
@@ -17,8 +17,8 @@ struct PaddleTensor {
 };
 ```
 
-The data is stored in a continuous memory `PaddleBuf,` and a `PaddleDType` specifies tensor's data type. 
-The `name` field is used to specify the name of an input variable, 
+The data is stored in a continuous memory `PaddleBuf,` and a `PaddleDType` specifies tensor's data type.
+The `name` field is used to specify the name of an input variable,
 that is important when there are multiple inputs and need to distinguish which variable to set.
 
 ## engine
@@ -38,7 +38,7 @@ enum class PaddleEngineKind {
 ```
 
 ## PaddlePredictor and how to create one
-The main interface is `PaddlePredictor,` there are following methods 
+The main interface is `PaddlePredictor,` there are following methods
 
 - `bool Run(const std::vector<PaddleTensor>& inputs, std::vector<PaddleTensor>* output_data)`
   - take inputs and output `output_data.`

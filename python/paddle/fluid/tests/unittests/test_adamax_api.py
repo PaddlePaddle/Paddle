@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
-from op_test import OpTest
+
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 class TestAdamaxAPI(unittest.TestCase):
@@ -30,7 +29,8 @@ class TestAdamaxAPI(unittest.TestCase):
         adam = paddle.optimizer.Adamax(
             learning_rate=0.01,
             parameters=linear.parameters(),
-            weight_decay=0.01)
+            weight_decay=0.01,
+        )
         out = linear(a)
         out.backward()
         adam.step()
@@ -45,8 +45,8 @@ class TestAdamaxAPI(unittest.TestCase):
         startup = fluid.Program()
         with fluid.program_guard(train_prog, startup):
             with fluid.unique_name.guard():
-                data = fluid.data(name="data", shape=shape)
-                conv = fluid.layers.conv2d(data, 8, 3)
+                data = paddle.static.data(name="data", shape=shape)
+                conv = paddle.static.nn.conv2d(data, 8, 3)
                 loss = paddle.mean(conv)
                 beta1 = 0.85
                 beta2 = 0.95
@@ -55,7 +55,8 @@ class TestAdamaxAPI(unittest.TestCase):
                     beta1=beta1,
                     beta2=beta2,
                     weight_decay=0.01,
-                    epsilon=1e-8)
+                    epsilon=1e-8,
+                )
                 opt.minimize(loss)
 
         exe.run(startup)
@@ -74,15 +75,17 @@ class TestAdamaxAPIGroup(TestAdamaxAPI):
         # This can be any optimizer supported by dygraph.
         adam = paddle.optimizer.Adamax(
             learning_rate=0.01,
-            parameters=[{
-                'params': linear_1.parameters()
-            }, {
-                'params': linear_2.parameters(),
-                'weight_decay': 0.001,
-                'beta1': 0.1,
-                'beta2': 0.99
-            }],
-            weight_decay=0.1)
+            parameters=[
+                {'params': linear_1.parameters()},
+                {
+                    'params': linear_2.parameters(),
+                    'weight_decay': 0.001,
+                    'beta1': 0.1,
+                    'beta2': 0.99,
+                },
+            ],
+            weight_decay=0.1,
+        )
         out = linear_1(a)
         out = linear_2(out)
         out.backward()

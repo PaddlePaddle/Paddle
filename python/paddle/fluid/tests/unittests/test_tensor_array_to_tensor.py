@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
-import numpy
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid.op import Operator
-from paddle.fluid.executor import Executor
-from paddle.fluid import Program, program_guard
+
+import numpy as np
+
+import paddle
+from paddle import fluid
+from paddle.fluid import Program, core, program_guard
+from paddle.tensor.manipulation import tensor_array_to_tensor
+
+paddle.enable_static()
 
 
 class TestTensorArrayToTensorError(unittest.TestCase):
@@ -28,15 +29,15 @@ class TestTensorArrayToTensorError(unittest.TestCase):
 
     def test_errors(self):
         with program_guard(Program()):
-            input_data = numpy.random.random((2, 4)).astype("float32")
+            input_data = np.random.random((2, 4)).astype("float32")
 
             def test_Variable():
-                fluid.layers.tensor_array_to_tensor(input=input_data)
+                tensor_array_to_tensor(input=input_data)
 
             self.assertRaises(TypeError, test_Variable)
 
             def test_list_Variable():
-                fluid.layers.tensor_array_to_tensor(input=[input_data])
+                tensor_array_to_tensor(input=[input_data])
 
             self.assertRaises(TypeError, test_list_Variable)
 
@@ -56,7 +57,8 @@ class TestLoDTensorArrayConcat(unittest.TestCase):
 
         input_arr = block.create_var(
             name="tmp_lod_tensor_array",
-            type=core.VarDesc.VarType.LOD_TENSOR_ARRAY)
+            type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+        )
         input_arr.persistable = True
         input_arr_var = scope.var('tmp_lod_tensor_array')
         input_tensor_array = input_arr_var.get_lod_tensor_array()
@@ -66,14 +68,14 @@ class TestLoDTensorArrayConcat(unittest.TestCase):
         for i in range(10):
             t = core.LoDTensor()
             if i == 0:
-                t.set(numpy.array([[i], [i]], dtype='float32'), cpu)
+                t.set(np.array([[i], [i]], dtype='float32'), cpu)
             else:
-                t.set(numpy.array([[i]], dtype='float32'), cpu)
+                t.set(np.array([[i]], dtype='float32'), cpu)
             input_tensor_array.append(t)
 
         self.assertEqual(10, len(input_tensor_array))
 
-        random_grad = numpy.random.random_sample([11]).astype(numpy.float32)
+        random_grad = np.random.random_sample([11]).astype(np.float32)
 
         y_out = block.create_var(name="Out")
         y_out.persistable = True
@@ -81,7 +83,8 @@ class TestLoDTensorArrayConcat(unittest.TestCase):
         y_out_index.persistable = True
 
         y_grad_arr = block.create_var(
-            name='Out@GRAD', dtype='float32', shape=[11])
+            name='Out@GRAD', dtype='float32', shape=[11]
+        )
         y_grad_arr.persistable = True
         y_grad = scope.var('Out@GRAD')
         y_grad_tensor = y_grad.get_tensor()
@@ -90,17 +93,19 @@ class TestLoDTensorArrayConcat(unittest.TestCase):
         op = block.append_op(
             type=self.op_type,
             inputs={"X": input_arr},
-            outputs={"Out": y_out,
-                     "OutIndex": y_out_index},
-            attrs=self.attrs)
+            outputs={"Out": y_out, "OutIndex": y_out_index},
+            attrs=self.attrs,
+        )
 
         out_grad = block.create_var(
             name="tmp_lod_tensor_array@GRAD",
-            type=core.VarDesc.VarType.LOD_TENSOR_ARRAY)
+            type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
+        )
         out_grad.persistable = True
 
-        grad_op_desc_list, op_grad_to_var = core.get_grad_op_desc(op.desc,
-                                                                  set(), [])
+        grad_op_desc_list, op_grad_to_var = core.get_grad_op_desc(
+            op.desc, set(), []
+        )
         grad_op_desc = grad_op_desc_list[0]
         new_op_desc = block.desc.append_op()
         new_op_desc.copy_from(grad_op_desc)
@@ -119,13 +124,14 @@ class TestLoDTensorArrayConcat(unittest.TestCase):
 
         exe = fluid.Executor(fluid.CPUPlace())
         out = exe.run(program, fetch_list=fetch_list, scope=scope)
-        #print ("index: ", numpy.array(out[1]))
+        # print ("index: ", np.array(out[1]))
 
         # test forward
-        tensor_res = numpy.array(out[0])
-        tensor_res_out_idx = numpy.array(out[1])
-        tensor_gt = numpy.array(
-            [0] + [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], dtype='float32')
+        tensor_res = np.array(out[0])
+        tensor_res_out_idx = np.array(out[1])
+        tensor_gt = np.array(
+            [0] + [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], dtype='float32'
+        )
 
         self.assertEqual(len(tensor_res), len(tensor_gt))
         self.assertEqual(len(tensor_res_out_idx), 10)
@@ -148,15 +154,16 @@ class TestLoDTensorArrayConcat(unittest.TestCase):
         for i in range(len(grad_tensor_array)):
             if i == 0:
                 self.assertEqual(
-                    numpy.array(grad_tensor_array[i])[0],
-                    numpy.array(random_grad[i]))
+                    np.array(grad_tensor_array[i])[0], np.array(random_grad[i])
+                )
                 self.assertEqual(
-                    numpy.array(grad_tensor_array[i])[1],
-                    numpy.array(random_grad[i + 1]))
+                    np.array(grad_tensor_array[i])[1],
+                    np.array(random_grad[i + 1]),
+                )
             if i == 1:
                 self.assertEqual(
-                    numpy.array(grad_tensor_array[i]),
-                    numpy.array(random_grad[i + 1]))
+                    np.array(grad_tensor_array[i]), np.array(random_grad[i + 1])
+                )
 
 
 class TestLoDTensorArrayStack(unittest.TestCase):
@@ -166,17 +173,18 @@ class TestLoDTensorArrayStack(unittest.TestCase):
         self.op_type = "tensor_array_to_tensor"
         self.attrs = {"axis": 1, "use_stack": True}
         self.inputs = [
-            numpy.random.rand(2, 3, 4).astype("float32"),
-            numpy.random.rand(2, 3, 4).astype("float32"),
-            numpy.random.rand(2, 3, 4).astype("float32")
+            np.random.rand(2, 3, 4).astype("float32"),
+            np.random.rand(2, 3, 4).astype("float32"),
+            np.random.rand(2, 3, 4).astype("float32"),
         ]
         self.outputs = [
-            numpy.stack(
-                self.inputs, axis=self.attrs["axis"]), numpy.array(
-                    [x.shape[self.attrs["axis"]] for x in self.inputs],
-                    dtype="int32")
+            np.stack(self.inputs, axis=self.attrs["axis"]),
+            np.array(
+                [x.shape[self.attrs["axis"]] for x in self.inputs],
+                dtype="int32",
+            ),
         ]
-        self.input_grads = [numpy.ones_like(x) for x in self.inputs]
+        self.input_grads = [np.ones_like(x) for x in self.inputs]
         self.set_program()
         for var in self.program.list_vars():
             # to avoid scope clearing after execution
@@ -185,28 +193,29 @@ class TestLoDTensorArrayStack(unittest.TestCase):
     def set_program(self):
         self.program = fluid.Program()
         with fluid.program_guard(self.program):
-            self.array = array = fluid.layers.create_array(dtype='float32')
-            idx = fluid.layers.fill_constant(shape=[1], dtype="int64", value=0)
+            self.array = array = paddle.tensor.create_array(dtype='float32')
+            idx = paddle.tensor.fill_constant(shape=[1], dtype="int64", value=0)
             for i, x in enumerate(self.inputs):
-                x = fluid.layers.assign(x)
-                fluid.layers.array_write(x, idx + i, array)
-            output, output_index = fluid.layers.tensor_array_to_tensor(
-                input=array, **self.attrs)
-            loss = fluid.layers.reduce_sum(output)
+                x = paddle.assign(x)
+                paddle.tensor.array_write(x, idx + i, array)
+            output, output_index = tensor_array_to_tensor(
+                input=array, **self.attrs
+            )
+            loss = paddle.sum(output)
             fluid.backward.append_backward(loss)
         self.output_vars = [output, output_index]
 
     def run_check(self, executor, scope):
         executor.run(self.program, scope=scope)
         for i, output in enumerate(self.outputs):
-            numpy.allclose(
-                numpy.array(scope.var(self.output_vars[i].name).get_tensor()),
+            np.allclose(
+                np.array(scope.var(self.output_vars[i].name).get_tensor()),
                 output,
-                atol=0)
+                atol=0,
+            )
         tensor_array_grad = scope.var(self.array.name).get_lod_tensor_array()
         for i, input_grad in enumerate(self.input_grads):
-            numpy.allclose(
-                numpy.array(tensor_array_grad[i]), input_grad, atol=0)
+            np.allclose(np.array(tensor_array_grad[i]), input_grad, atol=0)
 
     def test_cpu(self):
         scope = core.Scope()
@@ -224,23 +233,31 @@ class TestLoDTensorArrayStack(unittest.TestCase):
 
 class TestTensorArrayToTensorAPI(unittest.TestCase):
     def _test_case(self, inp1, inp2):
-        x0 = fluid.layers.assign(inp1)
+        x0 = paddle.assign(inp1)
         x0.stop_gradient = False
-        x1 = fluid.layers.assign(inp2)
+        x1 = paddle.assign(inp2)
         x1.stop_gradient = False
-        i = fluid.layers.fill_constant(shape=[1], dtype="int64", value=0)
-        array = fluid.layers.create_array(dtype='float32')
-        fluid.layers.array_write(x0, i, array)
-        fluid.layers.array_write(x1, i + 1, array)
-        output_stack, output_index_stack = fluid.layers.tensor_array_to_tensor(
-            input=array, axis=1, use_stack=True)
-        output_concat, output_index_concat = fluid.layers.tensor_array_to_tensor(
-            input=array, axis=1, use_stack=False)
-        return output_stack, output_index_stack, output_concat, output_index_concat
+        i = paddle.tensor.fill_constant(shape=[1], dtype="int64", value=0)
+        array = paddle.tensor.create_array(dtype='float32')
+        paddle.tensor.array_write(x0, i, array)
+        paddle.tensor.array_write(x1, i + 1, array)
+        output_stack, output_index_stack = tensor_array_to_tensor(
+            input=array, axis=1, use_stack=True
+        )
+        (
+            output_concat,
+            output_index_concat,
+        ) = tensor_array_to_tensor(input=array, axis=1, use_stack=False)
+        return (
+            output_stack,
+            output_index_stack,
+            output_concat,
+            output_index_concat,
+        )
 
     def test_case(self):
-        inp0 = numpy.random.rand(2, 3, 4).astype("float32")
-        inp1 = numpy.random.rand(2, 3, 4).astype("float32")
+        inp0 = np.random.rand(2, 3, 4).astype("float32")
+        inp1 = np.random.rand(2, 3, 4).astype("float32")
 
         _outs_static = self._test_case(inp0, inp1)
         place = fluid.CPUPlace()
@@ -251,33 +268,41 @@ class TestTensorArrayToTensorAPI(unittest.TestCase):
             outs_dynamic = self._test_case(inp0, inp1)
 
         for s, d in zip(outs_static, outs_dynamic):
-            self.assertTrue(numpy.array_equal(s, d.numpy()))
+            np.testing.assert_array_equal(s, d.numpy())
 
     def test_while_loop_case(self):
         with fluid.dygraph.guard():
-            zero = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
-            i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=1)
-            ten = fluid.layers.fill_constant(shape=[1], dtype='int64', value=10)
-            array = fluid.layers.create_array(dtype='float32')
-            inp0 = numpy.random.rand(2, 3, 4).astype("float32")
-            x0 = fluid.layers.assign(inp0)
-            fluid.layers.array_write(x0, zero, array)
+            zero = paddle.tensor.fill_constant(
+                shape=[1], dtype='int64', value=0
+            )
+            i = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=1)
+            ten = paddle.tensor.fill_constant(
+                shape=[1], dtype='int64', value=10
+            )
+            array = paddle.tensor.create_array(dtype='float32')
+            inp0 = np.random.rand(2, 3, 4).astype("float32")
+            x0 = paddle.assign(inp0)
+            paddle.tensor.array_write(x0, zero, array)
 
             def cond(i, end, array):
-                return fluid.layers.less_than(i, end)
+                return paddle.less_than(i, end)
 
             def body(i, end, array):
-                prev = fluid.layers.array_read(array, i - 1)
-                fluid.layers.array_write(prev, i, array)
+                prev = paddle.tensor.array_read(array, i - 1)
+                paddle.tensor.array_write(prev, i, array)
                 return i + 1, end, array
 
-            _, _, array = fluid.layers.while_loop(cond, body, [i, ten, array])
+            _, _, array = paddle.static.nn.while_loop(
+                cond, body, [i, ten, array]
+            )
 
-            self.assertTrue(fluid.layers.array_length(array), 10)
-            last = fluid.layers.fill_constant(shape=[1], dtype='int64', value=9)
-            self.assertTrue(
-                numpy.array_equal(
-                    fluid.layers.array_read(array, last).numpy(), inp0))
+            self.assertTrue(paddle.tensor.array_length(array), 10)
+            last = paddle.tensor.fill_constant(
+                shape=[1], dtype='int64', value=9
+            )
+            np.testing.assert_array_equal(
+                paddle.tensor.array_read(array, last).numpy(), inp0
+            )
 
 
 if __name__ == '__main__':

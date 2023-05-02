@@ -12,24 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
 import unittest
-from paddle.fluid.dygraph import to_variable, Embedding, guard
+
 import numpy as np
+
+import paddle
+from paddle import fluid
+from paddle.fluid.dygraph import guard, to_variable
 
 
 class TestImperativeUsingNonZeroGpu(unittest.TestCase):
     def run_main(self, np_arr, place):
         with guard(place):
             var = to_variable(np_arr)
-            self.assertTrue(np.array_equal(np_arr, var.numpy()))
+            np.testing.assert_array_equal(np_arr, var.numpy())
 
     def test_non_zero_gpu(self):
         if not fluid.is_compiled_with_cuda():
             return
 
         np_arr = np.random.random([11, 13]).astype('float32')
-        self.run_main(np_arr, fluid.CUDAPlace(0))
+        if paddle.device.cuda.device_count() > 1:
+            # should use non zero gpu if there are more than 1 gpu
+            self.run_main(np_arr, fluid.CUDAPlace(1))
+        else:
+            self.run_main(np_arr, fluid.CUDAPlace(0))
 
 
 if __name__ == '__main__':

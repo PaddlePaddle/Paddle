@@ -13,11 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/fused/fusion_group_op.h"
+
 #include "paddle/fluid/platform/float16.h"
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_CUDA_KERNEL(
-    fusion_group, ops::FusionGroupKernel<plat::CUDADeviceContext, float>,
-    ops::FusionGroupKernel<plat::CUDADeviceContext, double>,
-    ops::FusionGroupKernel<plat::CUDADeviceContext, plat::float16>);
+PD_REGISTER_STRUCT_KERNEL(fusion_group,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::FusionGroupKernel,
+                          float,
+                          double,
+                          plat::float16) {}

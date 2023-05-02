@@ -16,6 +16,7 @@
 #include <atomic>
 #include <condition_variable>
 #include <mutex>
+
 #include "paddle/fluid/platform/device_event_base.h"
 
 namespace paddle {
@@ -26,7 +27,8 @@ struct CPUDeviceEventWrapper {
                                  unsigned int flag = 0)
       : status_(EventStatus::INITIALIZED) {
     PADDLE_ENFORCE_EQ(
-        platform::is_cpu_place(place), true,
+        platform::is_cpu_place(place),
+        true,
         platform::errors::PreconditionNotMet(
             "Required device shall be CPUAPlace, but received %d. ", place));
   }
@@ -37,7 +39,8 @@ struct CPUDeviceEventWrapper {
 
 void DeviceEventCreateCPU(DeviceEvent* event, const platform::Place& place);
 
-void DeviceEventRecordCPU(DeviceEvent* event, const platform::Place& place,
+void DeviceEventRecordCPU(DeviceEvent* event,
+                          const platform::Place& place,
                           const DeviceContext* context);
 
 bool DeviceEventQueryCPU(const DeviceEvent* event);

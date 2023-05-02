@@ -18,7 +18,9 @@ Print all ops desc in dict:
             {input_name1:
                 {DISPENSABLE: bool,
                  INTERMEDIATE: bool,
-                 DUPLICABLE: bool
+                 DUPLICABLE: bool,
+                 EXTRA: bool,
+                 QUANT: bool,
                 },
             input_name2:{}
             },
@@ -28,6 +30,8 @@ Print all ops desc in dict:
                 {TYPE: int,
                  GENERATED: bool,
                  DEFAULT_VALUE: int/str/etc,
+                 EXTRA: bool,
+                 QUANT: bool,
                 }
             }
         }
@@ -38,10 +42,9 @@ Usage:
     python print_op_desc.py > op_desc.spec
 """
 
-import paddle.fluid.framework as framework
-from paddle.fluid import core
 import json
-from paddle import compat as cpt
+
+from paddle.fluid import core, framework
 
 INPUTS = "Inputs"
 OUTPUTS = "Outputs"
@@ -55,9 +58,12 @@ TYPE = "type"
 GENERATED = "generated"
 DEFAULT_VALUE = "default_value"
 
+EXTRA = "extra"
+QUANT = "quant"
+
 
 def get_attr_default_value(op_name):
-    return core.get_op_attrs_default_value(cpt.to_bytes(op_name))
+    return core.get_op_attrs_default_value(op_name.encode())
 
 
 def get_vars_info(op_vars_proto):
@@ -68,6 +74,8 @@ def get_vars_info(op_vars_proto):
         vars_info[name][DUPLICABLE] = var_proto.duplicable
         vars_info[name][DISPENSABLE] = var_proto.dispensable
         vars_info[name][INTERMEDIATE] = var_proto.intermediate
+        vars_info[name][EXTRA] = var_proto.extra
+        vars_info[name][QUANT] = var_proto.quant
     return vars_info
 
 
@@ -79,8 +87,13 @@ def get_attrs_info(op_proto, op_attrs_proto):
         attrs_info[attr_name] = {}
         attrs_info[attr_name][TYPE] = attr_proto.type
         attrs_info[attr_name][GENERATED] = attr_proto.generated
-        attrs_info[attr_name][DEFAULT_VALUE] = attrs_default_values[
-            attr_name] if attr_name in attrs_default_values else None
+        attrs_info[attr_name][DEFAULT_VALUE] = (
+            attrs_default_values[attr_name]
+            if attr_name in attrs_default_values
+            else None
+        )
+        attrs_info[attr_name][EXTRA] = attr_proto.extra
+        attrs_info[attr_name][QUANT] = attr_proto.quant
     return attrs_info
 
 

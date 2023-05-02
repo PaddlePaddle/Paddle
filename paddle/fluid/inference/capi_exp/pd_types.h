@@ -29,12 +29,33 @@ typedef struct PD_OneDimArraySize {
   size_t* data;
 } PD_OneDimArraySize;  // std::vector<size_t>
 
+typedef struct PD_OneDimArrayInt64 {
+  size_t size;
+  int64_t* data;
+} PD_OneDimArrayInt64;  // std::vector<int64_t>
+
 typedef struct PD_OneDimArrayCstr {
   size_t size;
   char** data;
 } PD_OneDimArrayCstr;  // std::vector<std::string>
 
+typedef struct PD_Cstr {
+  size_t size;
+  char* data;
+} PD_Cstr;  // std::string
+
 typedef struct PD_TwoDimArraySize {
   size_t size;
   PD_OneDimArraySize** data;
 } PD_TwoDimArraySize;  // std::vector<std::vector<size_t>>
+
+typedef struct PD_IOInfo {
+  PD_Cstr* name;
+  PD_OneDimArrayInt64* shape;
+  PD_DataType dtype;
+} PD_IOInfo;  // input or output info
+
+typedef struct PD_IOInfos {
+  size_t size;
+  PD_IOInfo** io_info;
+} PD_IOInfos;  // inputs or outputs info

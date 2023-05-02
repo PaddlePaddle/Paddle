@@ -14,14 +14,12 @@
 
 #include <gtest/gtest.h>
 
-#include "paddle/fluid/inference/utils/singleton.h"
-
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
-
 #include "paddle/fluid/inference/lite/engine.h"
+#include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/operators/lite/ut_helper.h"
 
 namespace paddle {
@@ -29,9 +27,9 @@ namespace inference {
 namespace lite {
 
 using inference::lite::AddTensorToBlockDesc;
-using paddle::inference::lite::AddFetchListToBlockDesc;
 using inference::lite::CreateTensor;
 using inference::lite::serialize_params;
+using paddle::inference::lite::AddFetchListToBlockDesc;
 
 void make_fake_model(std::string* model, std::string* param) {
   framework::ProgramDesc program;
@@ -74,13 +72,8 @@ void make_fake_model(std::string* model, std::string* param) {
   *block_->add_ops() = *fetch->Proto();
 
   framework::Scope scope;
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  platform::CUDAPlace place;
-  platform::CUDADeviceContext ctx(place);
-#else
   platform::CPUPlace place;
-  platform::CPUDeviceContext ctx(place);
-#endif
+  phi::CPUContext ctx(place);
   // Prepare variables.
   std::vector<std::string> repetitive_params{"x", "y"};
   CreateTensor(&scope, "x", std::vector<int64_t>({2, 4}));
@@ -102,14 +95,16 @@ TEST(EngineManager, engine) {
   const std::string unique_key("engine_0");
   config.model_from_memory = true;
   config.valid_places = {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    paddle::lite_api::Place({TARGET(kCUDA), PRECISION(kFloat)}),
-#endif
+#if defined(PADDLE_WITH_ARM)
+    paddle::lite_api::Place({TARGET(kARM), PRECISION(kFloat)}),
+#else
     paddle::lite_api::Place({TARGET(kX86), PRECISION(kFloat)}),
+#endif
     paddle::lite_api::Place({TARGET(kHost), PRECISION(kAny)}),
   };
 
   LOG(INFO) << "Create EngineManager";
+  // TODO(wilber): The ut is out of date, we need to a new lite subgraph test.
   inference::Singleton<inference::lite::EngineManager>::Global().Create(
       unique_key, config);
   LOG(INFO) << "Create EngineManager done";

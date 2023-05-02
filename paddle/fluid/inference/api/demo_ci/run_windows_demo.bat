@@ -101,7 +101,7 @@ if NOT EXIST "%source_path%\%model_name%.tar.gz" (
 
 if EXIST "%source_path%\%model_name%.tar.gz" (
   if NOT EXIST "%source_path%\%model_name%" (
-    SET /P python_path="Please input the path of python.exe, such as C:\Python35\python.exe, C:\Python35\python3.exe   =======>"
+    SET /P python_path="Please input the path of python.exe, such as C:\Python37\python.exe =======>"
     set tmp_var=!python_path!
     call:remove_space
     set python_path=!tmp_var!   

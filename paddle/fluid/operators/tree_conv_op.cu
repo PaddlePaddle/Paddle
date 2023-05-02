@@ -15,10 +15,8 @@
 #include "paddle/fluid/operators/tree_conv_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    tree_conv, ops::TreeConvKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::TreeConvKernel<paddle::platform::CUDADeviceContext, double>);
-REGISTER_OP_CUDA_KERNEL(
-    tree_conv_grad,
-    ops::TreeConvGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::TreeConvGradKernel<paddle::platform::CUDADeviceContext, double>);
+
+PD_REGISTER_STRUCT_KERNEL(
+    tree_conv, GPU, ALL_LAYOUT, ops::TreeConvKernel, float, double) {}
+PD_REGISTER_STRUCT_KERNEL(
+    tree_conv_grad, GPU, ALL_LAYOUT, ops::TreeConvGradKernel, float, double) {}

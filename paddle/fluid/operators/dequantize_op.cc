@@ -13,22 +13,20 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/dequantize_op.h"
+
 #include "paddle/fluid/framework/op_version_registry.h"
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
-#endif
 
 namespace paddle {
 namespace operators {
 
-framework::OpKernelType DeQuantOp::GetExpectedKernelType(
+phi::KernelKey DeQuantOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  framework::LibraryType library_ = framework::LibraryType::kMKLDNN;
-  framework::DataLayout layout_ = framework::DataLayout::kMKLDNN;
+  auto input_data_type =
+      framework::OperatorWithKernel::IndicateVarDataType(ctx, "Input");
 
-  return framework::OpKernelType(
-      OperatorWithKernel::IndicateVarDataType(ctx, "Input"), ctx.GetPlace(),
-      layout_, library_);
+  return phi::KernelKey(phi::Backend::ONEDNN,
+                        phi::DataLayout::ONEDNN,
+                        phi::TransToPhiDataType(input_data_type));
 }
 
 void DeQuantOpMaker::Make() {
@@ -47,8 +45,8 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(dequantize, ops::DeQuantOp, ops::DeQuantOpMaker);
 
 REGISTER_OP_VERSION(dequantize)
-    .AddCheckpoint(
-        R"ROC( Add a new attribute [Shift])ROC",
-        paddle::framework::compatible::OpVersionDesc().NewAttr(
-            "Shift", "Dequantize data to uint8 if provided non-zero value.",
-            0.0f));
+    .AddCheckpoint(R"ROC( Add a new attribute [Shift])ROC",
+                   paddle::framework::compatible::OpVersionDesc().NewAttr(
+                       "Shift",
+                       "Dequantize data to uint8 if provided non-zero value.",
+                       0.0f));

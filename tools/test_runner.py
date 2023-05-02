@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import unittest
+import importlib
 import os
 import sys
+import unittest
+from io import StringIO
+
 import paddle
-import paddle.fluid as fluid
-import importlib
-from six.moves import cStringIO
+from paddle import fluid
+from paddle.fluid import core
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 import static_mode_white_list
@@ -28,13 +28,18 @@ import static_mode_white_list
 
 def main():
     sys.path.append(os.getcwd())
+    if core.is_compiled_with_cuda() or core.is_compiled_with_rocm():
+        if os.getenv('FLAGS_enable_gpu_memory_usage_log') is None:
+            os.environ['FLAGS_enable_gpu_memory_usage_log'] = 'true'
+            os.environ['FLAGS_enable_gpu_memory_usage_log_mb'] = 'false'
+
     some_test_failed = False
     for module_name in sys.argv[1:]:
         flag_need_static_mode = False
         if module_name in static_mode_white_list.STATIC_MODE_TESTING_LIST:
             flag_need_static_mode = True
             paddle.enable_static()
-        buffer = cStringIO()
+        buffer = StringIO()
         main = fluid.Program()
         startup = fluid.Program()
         scope = fluid.core.Scope()
@@ -45,18 +50,20 @@ def main():
                     module = importlib.import_module(module_name)
                     tests = test_loader.loadTestsFromModule(module)
                     res = unittest.TextTestRunner(stream=buffer).run(tests)
+
                     if not res.wasSuccessful():
                         some_test_failed = True
                         print(
                             module_name,
                             'failed\n',
                             buffer.getvalue(),
-                            file=sys.stderr)
+                            file=sys.stderr,
+                        )
         if flag_need_static_mode:
             paddle.disable_static()
 
     if some_test_failed:
-        exit(1)
+        sys.exit(1)
 
 
 if __name__ == '__main__':

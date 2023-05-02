@@ -15,7 +15,7 @@
 __all__ = []
 
 
-class ProgramDeps(object):
+class ProgramDeps:
     def __init__(self, block, start_vars, end_vars):
         self._block = block
         # vars where to start to build the deps
@@ -44,7 +44,9 @@ class ProgramDeps(object):
         else:
             return None
 
-    def _build_deps(self, ):
+    def _build_deps(
+        self,
+    ):
 
         for var_name in self._start_vars:
             self._var_to_use_op[var_name] = []
@@ -52,8 +54,9 @@ class ProgramDeps(object):
 
         for idx, op in enumerate(self._block.ops):
             if op.type in [
-                    "c_allreduce_sum", "c_sync_comm_stream",
-                    "c_calc_comm_stream"
+                "c_allreduce_sum",
+                "c_sync_comm_stream",
+                "c_calc_comm_stream",
             ]:
                 continue
             input_vars = op.desc.input_arg_names()
@@ -76,11 +79,13 @@ class ProgramDeps(object):
                     self._var_to_generate_op[output_name].append(idx)
             if op.type == "conditional_block":
                 # subblock
-                assert (op.desc.has_attr("sub_block"))
+                assert op.desc.has_attr("sub_block")
                 subblock_idx = op.desc.attr("sub_block").id
                 subblock_deps = ProgramDeps(
                     self._block.program.block(subblock_idx),
-                    op.desc.input_arg_names(), op.desc.output_arg_names())
+                    op.desc.input_arg_names(),
+                    op.desc.output_arg_names(),
+                )
                 self._sub_block_deps[subblock_idx] = subblock_deps
                 subblock_deps._father_block_deps = self
 
@@ -92,17 +97,24 @@ class ProgramDeps(object):
                     raise ValueError(
                         "op_idx: {} is not in self._var_to_use_op[{}], "
                         "self._var_to_use_op[{}] is {}".format(
-                            op_idx, var_name, var_name, self._var_to_use_op[
-                                var_name]))
+                            op_idx,
+                            var_name,
+                            var_name,
+                            self._var_to_use_op[var_name],
+                        )
+                    )
                 self._var_to_use_op[var_name].remove(op_idx)
             # update _should_removed_var
             if var_name in self._start_vars:
                 self._should_removed_var.discard(var_name)
-            elif self._var_to_use_op[
-                    var_name] == []:  # no more deps of this var
+            elif (
+                self._var_to_use_op[var_name] == []
+            ):  # no more deps of this var
                 self._should_removed_var.add(var_name)
-            elif self._var_to_generate_op[var_name][-1] >= self._var_to_use_op[
-                    var_name][-1]:
+            elif (
+                self._var_to_generate_op[var_name][-1]
+                >= self._var_to_use_op[var_name][-1]
+            ):
                 # there are circle in the graph
                 self._should_removed_var.add(var_name)
             else:  # input_name should not be deleted
@@ -110,28 +122,37 @@ class ProgramDeps(object):
 
     def crop_output_var_from_op(self, op_idx, var_name):
         if var_name in self._var_to_generate_op:
-            assert (op_idx in self._var_to_generate_op[var_name])
+            assert op_idx in self._var_to_generate_op[var_name]
             self._var_to_generate_op[var_name].remove(op_idx)
         if self._block.has_var(var_name):
-            if var_name not in self._var_to_generate_op or self._var_to_generate_op[
-                    var_name] == []:
+            if (
+                var_name not in self._var_to_generate_op
+                or self._var_to_generate_op[var_name] == []
+            ):
                 self._block._remove_var(var_name, sync=False)
 
-    def remove_op(self, op_idx):
+    def remove_op(self, op_idx, reserved_vars=None):
         # update deps
         op = self._block.ops[op_idx]
         for input_name in op.desc.input_arg_names():
+            if reserved_vars is not None and input_name in reserved_vars:
+                continue
             self.crop_input_var_from_op(op_idx, input_name)
         for output_name in op.desc.output_arg_names():
+            if reserved_vars is not None and output_name in reserved_vars:
+                continue
             self.crop_output_var_from_op(op_idx, output_name)
         self._block._remove_op(op_idx, sync=False)
 
     def should_remove_op(self, op_idx):
         op = self._block.ops[op_idx]
-        # TODO (JZ-LIANG) revise this for uniform mixed parallelism
-        # remove check_finite_and_unscale op if its input 'X' is empty
-        if op.type == 'check_finite_and_unscale' and len(op.input('X')) == 0:
-            return True
+
+        # NOTE: At present, it is found that the OP without output is
+        # only send_v2 and partial_send op, which will be used in
+        # all device
+        if len(op.desc.output_arg_names()) == 0:
+            return False
+
         for output_name in op.desc.output_arg_names():
             if output_name not in self._should_removed_var:
                 return False

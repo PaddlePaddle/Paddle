@@ -40,7 +40,7 @@ class LoDRankTableOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
-    auto x = scope.FindVar(Input("X"))->Get<framework::LoDTensor>();
+    auto x = scope.FindVar(Input("X"))->Get<phi::DenseTensor>();
     auto *out =
         scope.FindVar(Output("Out"))->GetMutable<framework::LoDRankTable>();
     VLOG(10) << "Level = " << static_cast<size_t>(Attr<int>("level"));
@@ -52,13 +52,14 @@ class LoDRankTableOp : public framework::OperatorBase {
 class LoDRankTableOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X",
-             "(LoDTensor) input lod tensor, must contain lod information.");
+    AddInput(
+        "X",
+        "(phi::DenseTensor) input lod tensor, must contain lod information.");
     AddOutput("Out", "(LoDRankTable) The rank table of specific level.");
     AddAttr<int>("level", "(int) the specific lod level to rank.")
         .SetDefault(0)
         .EqualGreaterThan(0);
-    AddComment(R"DOC(Create LoDRanTable by LoDTensor
+    AddComment(R"DOC(Create LoDRanTable by phi::DenseTensor
 
 LoD Rank Table stores the `level` of `lod` which is ordered by sequence
 length in descending order. It is useful when implement dynamic RNN and is
@@ -72,7 +73,8 @@ class LoDRankTableInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
     PADDLE_ENFORCE_EQ(
-        context->HasInput("X"), true,
+        context->HasInput("X"),
+        true,
         platform::errors::NotFound("LoDRankTable must have input X."));
   }
 };
@@ -80,7 +82,8 @@ class LoDRankTableInferShape : public framework::InferShapeBase {
 class LoDRankTableInferVarType : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext *ctx) const override {
-    ctx->SetOutputType("Out", framework::proto::VarType::LOD_RANK_TABLE,
+    ctx->SetOutputType("Out",
+                       framework::proto::VarType::LOD_RANK_TABLE,
                        framework::ALL_ELEMENTS);
   }
 };
@@ -89,7 +92,8 @@ class LoDRankTableInferVarType : public framework::VarTypeInference {
 }  // namespace paddle
 
 REGISTER_OPERATOR(
-    lod_rank_table, paddle::operators::LoDRankTableOp,
+    lod_rank_table,
+    paddle::operators::LoDRankTableOp,
     paddle::operators::LoDRankTableOpProtoMaker,
     paddle::operators::LoDRankTableInferShape,
     paddle::operators::LoDRankTableInferVarType,

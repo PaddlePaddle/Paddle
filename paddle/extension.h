@@ -15,4 +15,12 @@ limitations under the License. */
 #pragma once
 
 // All paddle apis in C++ frontend
-#include "paddle/extension/include/ext_all.h"
+#include "paddle/phi/api/all.h"
+#if !defined(PADDLE_ON_INFERENCE) && !defined(PADDLE_NO_PYTHON)
+// Python bindings for the C++ frontend (includes Python.h)
+#include "paddle/utils/pybind.h"
+#endif
+// For initialization of DeviceContextPool and MemoryMethod
+#include "paddle/fluid/platform/init_phi.h"
+
+static paddle::InitPhi g_init_phi;

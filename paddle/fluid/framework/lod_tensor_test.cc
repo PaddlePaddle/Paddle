@@ -12,23 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/framework/lod_tensor.h"
+
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
-#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/phi/core/lod_utils.h"
 
 namespace paddle {
 namespace framework {
 
 TEST(LoD, PrintLoDTensor) {
-  LoDTensor tensor1;
+  phi::DenseTensor tensor1;
   tensor1.Resize({2});
   tensor1.mutable_data<float>(platform::CPUPlace());
   tensor1.data<float>()[0] = 0.2;
   tensor1.data<float>()[1] = 0.5;
   LOG(INFO) << tensor1;
 
-  LoDTensor tensor2;
+  phi::DenseTensor tensor2;
   tensor2.Resize({2});
   tensor2.mutable_data<int64_t>(platform::CPUPlace());
   tensor2.data<int64_t>()[0] = 1;
@@ -49,7 +51,7 @@ TEST(LoD, data) {
 
 TEST(LoD, ExpandLoD) {
   LoD lod{{0, 2}};
-  LoDTensor tensor;
+  phi::DenseTensor tensor;
   tensor.set_lod(lod);
   tensor.Resize({2, 1});
   tensor.mutable_data<float>(platform::CPUPlace());
@@ -98,7 +100,7 @@ TEST(LoD, AppendLoD) {
   origin.push_back(std::vector<size_t>({0, 1, 6}));
   origin.push_back(std::vector<size_t>({0, 2, 5, 7, 10, 12, 15}));
 
-  paddle::framework::AppendLoD(&origin, lod_lens);
+  phi::AppendLoD(&origin, lod_lens);
 
   LoD expected;
   expected.push_back(std::vector<size_t>({0, 2, 4}));
@@ -130,7 +132,7 @@ TEST(LoD, SplitLoDTensor) {
   lod.push_back(std::vector<size_t>({0, 1, 6, 8, 13, 15, 20}));
 
   platform::CPUPlace place;
-  LoDTensor lod_tensor;
+  phi::DenseTensor lod_tensor;
   lod_tensor.Resize({20, 1});
   float* dst_ptr = lod_tensor.mutable_data<float>(place);
   for (int i = 0; i < lod_tensor.numel(); ++i) {
@@ -147,7 +149,7 @@ TEST(LoD, SplitLoDTensor) {
   lod1.push_back(std::vector<size_t>({0, 1, 2}));
   lod1.push_back(std::vector<size_t>({0, 2, 7}));
 
-  auto lods = lod_tensor.SplitLoDTensor(places);
+  auto lods = SplitLoDTensor(lod_tensor, places);
   EXPECT_EQ(lods[0].lod(), lod0);
   EXPECT_EQ(lods[1].lod(), lod1);
 }
@@ -157,7 +159,7 @@ TEST(LoD, SplitLoDTensorWithZeroBatchSize) {
   lod.push_back(std::vector<size_t>({0}));
 
   platform::CPUPlace place;
-  LoDTensor lod_tensor;
+  phi::DenseTensor lod_tensor;
   lod_tensor.Resize({0, 5});
   lod_tensor.mutable_data<float>(place);
   lod_tensor.set_lod(lod);
@@ -167,7 +169,7 @@ TEST(LoD, SplitLoDTensorWithZeroBatchSize) {
   LoD lod_res;
   lod_res.push_back(std::vector<size_t>({0}));
 
-  auto lods = lod_tensor.SplitLoDTensor(places);
+  auto lods = SplitLoDTensor(lod_tensor, places);
   EXPECT_EQ(lods[0].lod(), lod_res);
   EXPECT_EQ(lods[1].lod(), lod_res);
 }
@@ -179,7 +181,7 @@ TEST(LoD, MergeLoDTensor) {
 
   platform::CPUPlace place;
 
-  LoDTensor lod_tensor0;
+  phi::DenseTensor lod_tensor0;
   LoD lod0;
   lod0.push_back(std::vector<size_t>({0, 2, 4}));
   lod0.push_back(std::vector<size_t>({0, 1, 6, 8, 13}));
@@ -191,7 +193,7 @@ TEST(LoD, MergeLoDTensor) {
     dst_ptr[i] = i;
   }
 
-  LoDTensor lod_tensor1;
+  phi::DenseTensor lod_tensor1;
   LoD lod1;
   lod1.push_back(std::vector<size_t>({0, 1, 2}));
   lod1.push_back(std::vector<size_t>({0, 2, 7}));
@@ -202,7 +204,7 @@ TEST(LoD, MergeLoDTensor) {
     dst_ptr[i] = i;
   }
 
-  LoDTensor lod_tensor2;
+  phi::DenseTensor lod_tensor2;
   LoD lod2;
   lod2.push_back(std::vector<size_t>({0}));
   lod2.push_back(std::vector<size_t>({0}));
@@ -210,10 +212,11 @@ TEST(LoD, MergeLoDTensor) {
   lod_tensor2.Resize({0});
   dst_ptr = lod_tensor2.mutable_data<float>(place);
 
-  std::vector<const LoDTensor*> lods{&lod_tensor0, &lod_tensor1, &lod_tensor2};
+  std::vector<const phi::DenseTensor*> lods{
+      &lod_tensor0, &lod_tensor1, &lod_tensor2};
 
-  LoDTensor lod_tensor;
-  lod_tensor.MergeLoDTensor(lods, place);
+  phi::DenseTensor lod_tensor;
+  MergeLoDTensor(&lod_tensor, lods, place);
   EXPECT_EQ(lod_tensor.lod(), lod);
 }
 
@@ -277,7 +280,7 @@ TEST(LoD, ConvertToLengthBasedLoD) {
   offset_lod.push_back(std::vector<size_t>({0, 1, 3}));
   offset_lod.push_back(std::vector<size_t>({0, 2, 4, 5}));
 
-  LoD length_lod = ConvertToLengthBasedLoD(offset_lod);
+  LoD length_lod = phi::ConvertToLengthBasedLoD(offset_lod);
 
   LoD expected;
   expected.push_back(std::vector<size_t>({2}));

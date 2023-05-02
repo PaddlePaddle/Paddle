@@ -13,12 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-import paddle
 from numpy.random import random as rand
-from paddle import tensor
-import paddle.fluid as fluid
+
 import paddle.fluid.dygraph as dg
+from paddle import fluid, tensor
 
 
 class TestComplexTraceLayer(unittest.TestCase):
@@ -31,14 +31,16 @@ class TestComplexTraceLayer(unittest.TestCase):
     def test_basic_api(self):
         for dtype in self._dtypes:
             input = rand([2, 20, 2, 3]).astype(dtype) + 1j * rand(
-                [2, 20, 2, 3]).astype(dtype)
+                [2, 20, 2, 3]
+            ).astype(dtype)
             for place in self._places:
                 with dg.guard(place):
                     var_x = dg.to_variable(input)
                     result = tensor.trace(
-                        var_x, offset=1, axis1=0, axis2=2).numpy()
+                        var_x, offset=1, axis1=0, axis2=2
+                    ).numpy()
                     target = np.trace(input, offset=1, axis1=0, axis2=2)
-                    self.assertTrue(np.allclose(result, target))
+                    np.testing.assert_allclose(result, target, rtol=1e-05)
 
 
 if __name__ == '__main__':

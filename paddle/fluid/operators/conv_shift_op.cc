@@ -13,14 +13,16 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/conv_shift_op.h"
+
 #include <memory>
+
 #include "paddle/fluid/framework/eigen.h"
 
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-template <typename T, int MajorType = Eigen::RowMajor,
+template <typename T,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
@@ -36,42 +38,56 @@ class ConvShiftOp : public framework::OperatorWithKernel {
     auto x_dims = ctx->GetInputDim("X");
     auto y_dims = ctx->GetInputDim("Y");
     PADDLE_ENFORCE_EQ(
-        x_dims.size(), 2,
+        x_dims.size(),
+        2,
         platform::errors::InvalidArgument(
             "Input(X)'s dimensions of ConvShiftOp should be 2. "
             "But received X's shape = [%s] and the dimension is %d.",
-            x_dims, x_dims.size()));
+            x_dims,
+            x_dims.size()));
     PADDLE_ENFORCE_EQ(
-        y_dims.size(), 2,
+        y_dims.size(),
+        2,
         platform::errors::InvalidArgument(
             "Input(Y)'s dimensions of ConvShiftOp should be 2. "
             "But received Y's shape = [%s] and the dimension is %d.",
-            y_dims, y_dims.size()));
+            y_dims,
+            y_dims.size()));
     if (ctx->IsRuntime() || (x_dims[0] > 0 && y_dims[0] > 0))
       PADDLE_ENFORCE_EQ(
-          x_dims[0], y_dims[0],
+          x_dims[0],
+          y_dims[0],
           platform::errors::InvalidArgument(
               "The first dimension of Input(X) and Input(Y) of ConvShiftOp "
               "should be equal. "
               "But received X's shape = [%s], Y's shape = [%s], "
               "and the first dimensions are %d and %d respectively.",
-              x_dims, y_dims, x_dims[0], y_dims[0]));
+              x_dims,
+              y_dims,
+              x_dims[0],
+              y_dims[0]));
     if (ctx->IsRuntime() || y_dims[1] > 0)
       PADDLE_ENFORCE_EQ(
-          y_dims[1] % 2, 1,
+          y_dims[1] % 2,
+          1,
           platform::errors::InvalidArgument(
               "The second dimension of Input(Y) of ConvShiftOp should be odd."
               "But received Y's shape = [%s] and the second dimension is %d.",
-              y_dims, y_dims[1]));
+              y_dims,
+              y_dims[1]));
     if (ctx->IsRuntime() || (x_dims[1] > 0 && y_dims[1] > 0))
       PADDLE_ENFORCE_LE(
-          y_dims[1], x_dims[1],
+          y_dims[1],
+          x_dims[1],
           platform::errors::InvalidArgument(
               "The second dimension of Input(Y) of ConvShiftOp should be less "
               "than or equal to the 2nd dimension of Input(X)."
               "But received X's shape = [%s], Y's shape = [%s], "
               "and the second dimensions are %d and %d respectively.",
-              x_dims, y_dims, x_dims[1], y_dims[1]));
+              x_dims,
+              y_dims,
+              x_dims[1],
+              y_dims[1]));
     ctx->ShareDim("X", /*->*/ "Out");
     ctx->ShareLoD("X", /*->*/ "Out");
   }
@@ -84,8 +100,10 @@ class ConvShiftGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ConvShiftGradOp");
     OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "ConvShiftGradOp");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@GRAD", "ConvShiftGradOp");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@GRAD",
+                   "ConvShiftGradOp");
 
     auto x_grad_name = framework::GradVarName("X");
     if (ctx->HasOutput(x_grad_name)) {
@@ -134,12 +152,12 @@ However, the output only shares the LoD information with input X.
 };
 
 template <typename T>
-class ConvShiftKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
+class ConvShiftKernel<T, phi::CPUContext> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *X = context.Input<Tensor>("X");
-    auto *Y = context.Input<Tensor>("Y");
-    auto *Out = context.Output<Tensor>("Out");
+    auto *X = context.Input<phi::DenseTensor>("X");
+    auto *Y = context.Input<phi::DenseTensor>("Y");
+    auto *Out = context.Output<phi::DenseTensor>("Out");
     Out->mutable_data<T>(context.GetPlace());
 
     auto x = EigenMatrix<T>::From(*X);
@@ -164,15 +182,14 @@ class ConvShiftKernel<platform::CPUPlace, T> : public framework::OpKernel<T> {
 };
 
 template <typename T>
-class ConvShiftGradKernel<platform::CPUPlace, T>
-    : public framework::OpKernel<T> {
+class ConvShiftGradKernel<T, phi::CPUContext> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *X = context.Input<Tensor>("X");
-    auto *Y = context.Input<Tensor>("Y");
-    auto *dOut = context.Input<Tensor>(framework::GradVarName("Out"));
-    auto *dX = context.Output<Tensor>(framework::GradVarName("X"));
-    auto *dY = context.Output<Tensor>(framework::GradVarName("Y"));
+    auto *X = context.Input<phi::DenseTensor>("X");
+    auto *Y = context.Input<phi::DenseTensor>("Y");
+    auto *dOut = context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto *dX = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto *dY = context.Output<phi::DenseTensor>(framework::GradVarName("Y"));
 
     auto x = EigenMatrix<T>::From(*X);
     auto y = EigenMatrix<T>::From(*Y);
@@ -238,12 +255,13 @@ class ConvShiftGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(conv_shift, ops::ConvShiftOp, ops::ConvShiftOpMaker,
+REGISTER_OPERATOR(conv_shift,
+                  ops::ConvShiftOp,
+                  ops::ConvShiftOpMaker,
                   ops::ConvShiftGradOpMaker<paddle::framework::OpDesc>,
                   ops::ConvShiftGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(conv_shift_grad, ops::ConvShiftGradOp);
-REGISTER_OP_CPU_KERNEL(conv_shift,
-                       ops::ConvShiftKernel<paddle::platform::CPUPlace, float>);
-REGISTER_OP_CPU_KERNEL(
-    conv_shift_grad,
-    ops::ConvShiftGradKernel<paddle::platform::CPUPlace, float>);
+PD_REGISTER_STRUCT_KERNEL(
+    conv_shift, CPU, ALL_LAYOUT, ops::ConvShiftKernel, float) {}
+PD_REGISTER_STRUCT_KERNEL(
+    conv_shift_grad, CPU, ALL_LAYOUT, ops::ConvShiftGradKernel, float) {}

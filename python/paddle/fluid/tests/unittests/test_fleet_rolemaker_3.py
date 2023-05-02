@@ -13,10 +13,10 @@
 # limitations under the License.
 """Test cloud role maker."""
 
-from __future__ import print_function
 import os
 import unittest
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+
+import paddle
 
 
 class TestCloudRoleMaker(unittest.TestCase):
@@ -28,14 +28,18 @@ class TestCloudRoleMaker(unittest.TestCase):
         """Set up, set envs."""
         os.environ["PADDLE_TRAINERS_NUM"] = "2"
         os.environ[
-            "PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:36001,127.0.0.2:36001"
+            "PADDLE_PSERVERS_IP_PORT_LIST"
+        ] = "127.0.0.1:36001,127.0.0.2:36001"
 
     def test_pslib_1(self):
         """Test cases for pslib."""
-        import paddle.fluid as fluid
-        from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
-        from paddle.fluid.incubate.fleet.parameter_server.pslib import PSLib
-        from paddle.fluid.incubate.fleet.base.role_maker import GeneralRoleMaker
+        from paddle import fluid
+        from paddle.incubate.distributed.fleet.parameter_server.pslib import (
+            fleet,
+        )
+        from paddle.incubate.distributed.fleet.role_maker import (
+            GeneralRoleMaker,
+        )
 
         os.environ["POD_IP"] = "127.0.0.1"
         os.environ["PADDLE_PORT"] = "36001"
@@ -46,22 +50,25 @@ class TestCloudRoleMaker(unittest.TestCase):
         role_maker = GeneralRoleMaker(
             init_timeout_seconds=100,
             run_timeout_seconds=100,
-            http_ip_port="127.0.0.1:36003")
-        #role_maker.generate_role()
+            http_ip_port="127.0.0.1:36003",
+        )
+        # role_maker.generate_role()
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
-        #fleet.init(role_maker)
+        # fleet.init(role_maker)
         train_program = fluid.Program()
         startup_program = fluid.Program()
         scope = fluid.Scope()
         with fluid.program_guard(train_program, startup_program):
-            show = fluid.layers.data(name="show", shape=[-1, 1], \
-                dtype="float32", lod_level=1, append_batch_size=False)
-            fc = fluid.layers.fc(input=show, size=1, act=None)
-            label = fluid.layers.data(name="click", shape=[-1, 1], \
-                dtype="int64", lod_level=1, append_batch_size=False)
-            label_cast = fluid.layers.cast(label, dtype='float32')
-            cost = fluid.layers.log_loss(fc, label_cast)
+            show = paddle.static.data(
+                name="show", shape=[-1, 1], dtype="float32", lod_level=1
+            )
+            fc = paddle.static.nn.fc(x=show, size=1, activation=None)
+            label = paddle.static.data(
+                name="click", shape=[-1, 1], dtype="int64", lod_level=1
+            )
+            label_cast = paddle.cast(label, dtype='float32')
+            cost = paddle.nn.functional.log_loss(fc, label_cast)
         try:
             adam = fluid.optimizer.Adam(learning_rate=0.000005)
             adam = fleet.distributed_optimizer(adam)
@@ -75,7 +82,8 @@ class TestCloudRoleMaker(unittest.TestCase):
             print("do not support pslib test, skip")
             return
 
-        from paddle.fluid.incubate.fleet.base.role_maker import MockBarrier
+        from paddle.incubate.distributed.fleet.role_maker import MockBarrier
+
         mb = MockBarrier()
         mb.barrier()
         mb.barrier_all()

@@ -13,11 +13,9 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-from op_test import OpTest
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-from paddle.fluid import compiler, Program, program_guard
+from eager_op_test import OpTest
 
 
 def fsp_matrix(a, b):
@@ -29,11 +27,14 @@ def fsp_matrix(a, b):
     a_t = a.transpose([0, 2, 3, 1])
     a_t = a_t.reshape([batch, h * w, a_channel])
     b_t = b.transpose([0, 2, 3, 1]).reshape([batch, h * w, b_channel])
-    a_r = a_t.repeat(
-        b_channel, axis=1).reshape(
-            [batch, h * w, b_channel, a_channel]).transpose([0, 1, 3, 2])
-    b_r = b_t.repeat(
-        a_channel, axis=1).reshape([batch, h * w, a_channel, b_channel])
+    a_r = (
+        a_t.repeat(b_channel, axis=1)
+        .reshape([batch, h * w, b_channel, a_channel])
+        .transpose([0, 1, 3, 2])
+    )
+    b_r = b_t.repeat(a_channel, axis=1).reshape(
+        [batch, h * w, a_channel, b_channel]
+    )
     return np.mean(a_r * b_r, axis=1)
 
 
@@ -57,29 +58,6 @@ class TestFSPOp(OpTest):
 
     def test_check_grad_normal(self):
         self.check_grad(['X', 'Y'], 'Out')
-
-
-class BadInputTest(unittest.TestCase):
-    def test_error(self):
-        with fluid.program_guard(fluid.Program()):
-
-            def test_bad_x():
-                data = fluid.layers.data(name='data', shape=[3, 32, 32])
-                feature_map_0 = [1, 2, 3]
-                feature_map_1 = fluid.layers.conv2d(
-                    data, num_filters=2, filter_size=3)
-                loss = fluid.layers.fsp_matrix(feature_map_0, feature_map_1)
-
-            self.assertRaises(TypeError, test_bad_x)
-
-            def test_bad_y():
-                data = fluid.layers.data(name='data', shape=[3, 32, 32])
-                feature_map_0 = fluid.layers.conv2d(
-                    data, num_filters=2, filter_size=3)
-                feature_map_1 = [1, 2, 3]
-                loss = fluid.layers.fsp_matrix(feature_map_0, feature_map_1)
-
-            self.assertRaises(TypeError, test_bad_y)
 
 
 if __name__ == '__main__':

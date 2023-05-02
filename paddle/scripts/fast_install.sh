@@ -920,7 +920,7 @@ function checkMacPip(){
             if [[ "$version_list" != "" ]];then
                return 0
              else
-               red "未找到可用的pip或pip3。PaddlePaddle目前支持：Python2.7/3.5/3.6/3.7及其对应的pip, 请重新输入，或使用ctrl + c退出"
+               red "未找到可用的pip或pip3。PaddlePaddle目前支持：Python >= 3.7及其对应的pip, 请重新输入，或使用ctrl + c退出"
                echo
                clearMacPythonEnv
                return 1

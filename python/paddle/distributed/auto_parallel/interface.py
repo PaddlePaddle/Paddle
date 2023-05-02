@@ -12,469 +12,269 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy
-import copy
 import paddle
-import paddle.fluid.core as core
-from paddle.fluid.framework import Variable
-from paddle.fluid.framework import in_dygraph_mode
 
-__all__ = []
+from .dist_context import get_default_distributed_context
+from .dist_op import DistributedOperatorHelper
+from .dist_tensor import DistributedTensor
+from .process_mesh import ProcessMesh, get_current_process_mesh
+from .utils import (
+    __no_shape_var_type__,
+    convert_to_dims_mapping,
+    verify_shard_spec,
+)
 
-# a map from ProcessMesh ids to the ProcessMesh instances
-_g_process_mesh_map = dict()
 
-# user defined map from logical process ids to physical ones
-_user_defined_physical_map = None
-
-
-def _append_attr_suffix(name):
+def shard_tensor(x, process_mesh=None, shard_spec=None):
     """
-    Append auto parallel suffix for distributed attribute name.
-    """
-    return name + core.kAutoParallelSuffix()
-
-
-def _remove_attr_suffix(name):
-    """
-    Remove auto parallel suffix from distributed attribute name.
-    """
-    return name.strip(core.kAutoParallelSuffix())
-
-
-def _static_mode_check():
-    if in_dygraph_mode():
-        raise RuntimeError("Auto-parallel only supports static mode, "
-                           "please use paddle.enable_static().")
-
-
-def _get_nested_list_shape(nested_list):
-    """
-    Get the shape of a nested_list.
-    """
-    result = []
-    while isinstance(nested_list, list):
-        result.append(len(nested_list))
-        nested_list = nested_list[0]
-    return result
-
-
-def _flatten_nested_list(nested_list):
-    """
-    Get a list of all items in a nested_list.
-    Ref: https://stackoverflow.com/questions/952914/how-to-make-a-flat-list-out-of-a-list-of-lists
-    """
-    result = numpy.array(nested_list).flatten().tolist()
-    return result
-
-
-class ProcessMesh(object):
-    r"""
-    The class `Processmesh` describes the topology of logical processes. 
-    A mesh is an N-dimensional array. The shape of the N-dimensional
-    array represents the topology of logical processes and every
-    element of the N-dimensional array represent a logical process. For
-    example, the 2-dimensional array [[2, 4, 5], [0, 1, 3]]
-    illustrates six logical processes organized as the topology [2, 3],
-    i.e., the shape of the 2-dimensional array. With the above topology,
-    there are two parallel groups, where the first parallel group has a
-    parallel degree of 2 and the second one has a parallel degree of 3.
-    And the first logical process is the one with id=2.
+    Shard a tensor on a process mesh according to the shard specification.
 
     Args:
-        mesh (list): an N-dimensional array (nested list) describes the toplogy
-            of logical processes. The shape of the N-dimensional array
-            represents the topology of logical processes and every 
-            element of the N-dimensional array represents a logical process.
-        parent (ProcessMesh, optional): the parent ProcessMesh. None means
-            the ProcessMesh is the root one without parent ProcessMesh.
+        x (Tensor): the tensor to be sharded.
+        process_mesh (ProcessMesh, optional): An instance of ProcessMesh describes a mesh
+            topology of the used logical processes where the tensor is sharded. If it is None,
+            the found current process mesh will be used. And an error will be raised if the
+            current process mesh cannot be found. Default: None.
+        shard_spec (list, optional): a list to describe the sharding mapping between `x` and `process_mesh`,
+            which means the dimension `i` of `x` is split across the dimension `shard_spec[i]` of `process_mesh`,
+            where `None` means that tensor dimension is not split. For example, given a tensor wih
+            the shape [6, 12] and a process mesh with the shape [2, 3] and the dimension names ["x", "y"]:
+                If `shard_spec=["x", "y"]`, each shard of the tensor will have a shape [3, 4];
+                If `shard_spec=["y", "x"]`, each shard of the tensor will have a shape [2, 6];
+                If `shard_spec=["x", None]`, each shard of the tensor will have a shape [3, 12];
+                If `shard_spec=[None, "x"]`, each shard of the tensor will have a shape [6, 4];
+                If `shard_spec=["y", None]`, each shard of the tensor will have a shape [2, 12];
+                If `shard_spec=[None, "y"]`, each shard of the tensor will have a shape [6, 4];
+                If `shard_spec=[None, None]`, each shard of the tensor will have a shape [6, 12];
+        If the `shard_spec` is None, the tensor will be replicated across all the processes of `process_mesh`.
+        In the above example, the `shard_spec=None` is same as 'shard_spec=[None, None]'. Defaults: None.
+
+    Returns:
+        Tensor: the tensor `x` annotated with sharding information.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            from paddle.distributed.fleet import auto
+
+            mesh = auto.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
+            x = paddle.ones([4, 6])
+            shard_spec = ["x", "y"]
+            auto.shard_tensor(x, mesh, shard_spec)
+
+    """
+
+    if process_mesh is not None:
+        assert isinstance(
+            process_mesh, ProcessMesh
+        ), "Argument process_mesh {} is not an instance of ProcessMesh".format(
+            process_mesh
+        )
+    else:
+        process_mesh = get_current_process_mesh()
+        assert (
+            process_mesh is not None
+        ), "Specify the process mesh argument or use ProcessMesh context manager first."
+    assert isinstance(
+        shard_spec, list
+    ), f"Argument shard_spec {shard_spec} is not an instance of list"
+    if isinstance(x, str):
+        x = (
+            paddle.static.default_main_program()
+            .global_block()
+            ._var_recursive(x)
+        )
+        dist_tensor = DistributedTensor(x)
+    else:
+        dist_tensor = DistributedTensor(x)
+    serial_tensor = dist_tensor.serial_tensor
+    dist_tensor.dist_attr.process_mesh = process_mesh
+    if serial_tensor.type in __no_shape_var_type__:
+        tensor_shape = []
+    else:
+        tensor_shape = serial_tensor.shape
+    if shard_spec is not None:
+        assert verify_shard_spec(
+            shard_spec, tensor_shape, process_mesh
+        ), "For tensor {}, shard_spec {} is invalid with tensor_shape {} and process_mesh {}.".format(
+            serial_tensor.name, shard_spec, tensor_shape, process_mesh
+        )
+        dist_tensor.dist_attr.dims_mapping = convert_to_dims_mapping(
+            shard_spec, process_mesh
+        )
+    if process_mesh is not None:
+        dist_tensor.dist_attr.mark_annotated("process_mesh")
+    if shard_spec is not None:
+        dist_tensor.dist_attr.mark_annotated("dims_mapping")
+    default_dist_ctx = get_default_distributed_context()
+    default_dist_ctx.add_dist_tensor_for_program(dist_tensor)
+    dist_tensor = default_dist_ctx.get_dist_tensor_for_program(x)
+    default_dist_ctx.add_process_mesh(process_mesh)
+    return x
+
+
+def shard_op(op, process_mesh=None, in_shard_specs=None, out_shard_specs=None):
+    """
+    Shard an operation on a process mesh according to its input and output shard specification.
+
+    Args:
+        op (Callable): a callable operator or module to be sharded.
+        process_mesh (ProcessMesh, optional): An instance of ProcessMesh describes a mesh
+            topology of the used logical processes where the op is sharded. All of its inputs and
+            outputs are sharded by this process mesh. If it is None, the found current process mesh
+            will be used. And an error will be raised if the current process mesh cannot be found.
             Default: None.
-    
-    Returns:
-        None
+        in_shard_specs (list of list, optional): a list of list to describe the sharding specifications
+            for the inputs. Each item of `in_shard_specs` is a `shard_spec` between the corresponding input
+            and `process_mesh`. If one item is None, the corresponding input is replicated across all processes
+            If it is None, all inputs are replicated across all processes. Note that the length of the
+            `in_shard_specs` should be equal to the actual number of inputs when calling this operation.
+            Default: None.
+        out_shard_specs (list of list, optional): a list of list to describe the sharding specifications
+            for the outputs. Each item of `out_shard_specs` is a `shard_spec` between the corresponding output
+            and `process_mesh`. If one item is None, the corresponding output is replicated across all processes
+            If it is None, all outputs are replicated across all processes. Note that the length of the
+            `in_shard_specs` should be equal to the actual number of inputs when calling this operation.
+            Default: None. Default: None.
 
-    Raises:
-        ValueError: If `mesh` is not an instance of list.
+    Returns:
+        Outputs of `op`, each of which is annotated with sharding information.
 
     Examples:
         .. code-block:: python
 
             import paddle
-            import paddle.distributed as dist
-            
-            paddle.enable_static()
-            
-            mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]])
-            assert mesh.parent is None
-            assert mesh.topology == [2, 3]
-            assert mesh.process_group == [2, 4, 5, 0, 1, 3]
-            mesh.set_placement([0, 1, 2, 3, 4, 5])
+            from paddle.distributed.fleet import auto
 
-    """
-
-    def __init__(self, mesh, parent=None):
-        _static_mode_check()
-        if mesh is None or not isinstance(mesh, list):
-            raise ValueError('mesh must be an instance of list.')
-
-        self._topology = _get_nested_list_shape(mesh)
-        self._processes = _flatten_nested_list(mesh)
-
-        # Every element of mesh must be >= 0.
-        assert min(self._processes) >= 0, ('All elements of mesh must be >= 0.')
-
-        unique_ids = set(self._processes)
-        assert len(unique_ids) == len(self._processes), (
-            'All elements of mesh must be unique.')
-
-        if parent is None:
-            # For root ProcessMesh, the ids of logical processes must be range
-            # from 0 to N-1, where N is the number of logical processes. 
-            assert max(self._processes) == len(self._processes) - 1, (
-                'For root ProcessMesh, ids of logical processes must be range '
-                'from 0 to N-1, where N is the number of logical processes.')
-
-            parent_id = core.kNoneProcessMeshIndex()
-            assert len(_g_process_mesh_map.keys()) == 0, (
-                'The first ProcessMesh must be the root, which has no parent.')
-        else:
-            assert len(_g_process_mesh_map.keys()) > 0, (
-                'All ProcessMesh must have a parent except the root one.')
-
-            assert isinstance(parent, ProcessMesh), (
-                'parent must be an instance of ProcessMesh.')
-            parent_id = parent._desc.id
-
-            # All elements in mesh must belong to its parent
-            parent_ids = set(parent.process_group)
-            assert unique_ids <= parent_ids, (
-                'All elements in mesh must belong to its parent.')
-
-        self._desc = core.ProcessMeshDesc(self._topology, self._processes,
-                                          parent_id)
-
-        self._id = self._desc.id
-        self._parent_id = parent_id
-        assert self._id not in _g_process_mesh_map, (
-            "The ProcessMesh with id %d already exists." % self._id)
-        _g_process_mesh_map[self._id] = self
-
-    @property
-    def topology(self):
-        r"""
-        Get the topology of logical processes belonging to this ProcessMesh.
-        This is the shape of `mesh` used to initialized this ProcessMesh.
-        """
-        return self._topology
-
-    @property
-    def process_group(self):
-        r"""
-        Get a list of all processes belonging to this ProcessMesh.
-        """
-        return self._processes
-
-    @property
-    def parent(self):
-        r"""
-        Get the parent ProcessMesh.
-        """
-        if self._parent_id == core.kNoneProcessMeshIndex(): return None
-        assert self._parent_id in _g_process_mesh_map, (
-            "parent with id %d does not exist." % self._parent_id)
-        return _g_process_mesh_map[self._parent_id]
-
-    @property
-    def ndim(self):
-        r"""
-        Get the number of dimension of ProcessMesh.
-        """
-        return len(self._topology)
-
-    def set_placement(self, order):
-        """
-        Set the map from logical processes to physical ones using the
-        user defined order.
-
-        Args:
-            order (list): order of the physical process ids.
-        
-        Returns:
-            None
-
-        Examples:
-            .. code-block:: python
-
-                import paddle
-                import paddle.distributed as dist
-                
-                paddle.enable_static()
-                
-                mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]])
-                mesh.set_placement([0, 1, 2, 3, 4, 5])
-
-        """
-        assert self.parent is None, (
-            "This function can only be called by the root ProcessMesh.")
-        unique_ids = set(order)
-        assert isinstance(order, list)
-
-        assert len(unique_ids) == len(order), (
-            "All elements in order must be unique.")
-        assert min(order) == 0
-        assert max(order) == len(order) - 1, (
-            "All elements in order must be from 0 to N - 1, where N "
-            "is the number of physical processes.")
-
-        logical_order = self.process_group
-        global _user_defined_physical_map
-        assert _user_defined_physical_map is None, (
-            "This function can only be called once.")
-        _user_defined_physical_map = dict()
-
-        assert len(logical_order) == len(order)
-        for idx, l_id in enumerate(logical_order):
-            _user_defined_physical_map[l_id] = order[idx]
-
-    def _reset_global_process_mesh_map(self):
-        """
-        Remove all process mesh in _g_process_mesh_map, make it empty.
-        """
-
-        _g_process_mesh_map = dict()
-
-    def __eq__(self, other):
-        assert other and isinstance(other, ProcessMesh)
-        if self.topology != other.topology or self.process_group != other.process_group:
-            return False
-        return True
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
-
-    def __str__(self):
-        str = "shape {} and process group {}".format(self.topology,
-                                                     self.process_group)
-        return str
-
-    def __deepcopy__(self, memo):
-        cls = self.__class__
-        result = cls.__new__(cls)
-        memo[id(self)] = result
-        for k, v in self.__dict__.items():
-            # No need to copy the owner tensor and context
-            if k == "_desc":
-                setattr(result, k, v)
-            else:
-                setattr(result, k, copy.deepcopy(v, memo))
-        return result
-
-
-def _dim_mapping_checker(tensor, mesh, dim_mapping):
-    assert len(tensor.shape) == len(dim_mapping)
-    mesh_dim = len(mesh.topology)
-    dim_set = set()
-    for i in range(len(dim_mapping)):
-        assert dim_mapping[i] == -1 or (dim_mapping[i] < mesh_dim and
-                                        dim_mapping[i] >= 0)
-        if dim_mapping[i] >= 0:
-            assert dim_mapping[i] not in dim_set
-            dim_set.add(dim_mapping[i])
-
-
-def shard_tensor(x, mesh, dim_mapping):
-    """
-    Add distributed attributes for a tensors.
-
-    Args:
-        x (Tensor): the tensor to process.
-        mesh (ProcessMesh): an instance of ProcessMesh to describe the topology of logical processes.
-        dim_mapping (list): a list to describe the mapping between `x` and `mesh`,
-            the dimension `i` of `x` is split across the dimension `dims_mapping[i]`, where -1 means
-            without parition along the corresponding dimension.
-
-    Returns:
-        Tensor: the tensor `x` itself.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            import paddle.distributed as dist
-            
-            paddle.enable_static()
-
-            mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]])
-            x = paddle.ones([4, 6])
-            dist.shard_tensor(x, mesh, [0, -1])
-
-    """
-    _static_mode_check()
-    _dim_mapping_checker(x, mesh, dim_mapping)
-    attr_name = _append_attr_suffix('mesh_id')
-    x._set_attr(attr_name, mesh._id)
-    attr_name = _append_attr_suffix('dim_mapping')
-    x._set_attr(attr_name, dim_mapping)
-    return x
-
-
-def set_shard_mask(x, mask):
-    """
-    Set the mask for a tensor which mask out the tensor from some processes in its mesh.
-
-    Args:
-        x (Tensor): the tensor to process.
-        mask (list): a nested list. The shape of `mask` must be the same as the ProcessMesh belonging to
-            the tensor `x`. Every value of `mask` must be one or zero, where one means 
-            the tenor `x` will be put on the corresponding logical process and zero means the tensor `x`
-            will not be put on the corresponding logical process.
-            For example, for a ProcessMesh represented by the 2-dimensional
-            array [[2, 4, 5], [0, 1, 3]], and a `mask` given by the
-            2-dimensional [[1, 0, 1], [0, 1, 0]],
-            then the tensor `x` will only be put on logical processes 2, 5 and 1.
-
-    Returns:
-        Tensor: the tensor `x` itself.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            import paddle.distributed as dist
-
-            paddle.enable_static()
-            
-            mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]])
-            mask = [[1, 0, 1], [0, 1, 0]]
-            x = paddle.ones([4, 6])
-            dist.set_shard_mask(x, mask)
-
-    """
-    _static_mode_check()
-    assert isinstance(mask, list)
-    np_mask = numpy.array(mask)
-    min_ele = numpy.min(np_mask)
-    max_ele = numpy.max(np_mask)
-    assert min_ele >= 0 and max_ele <= 1, "Elements in mask must be 0 or 1."
-    x_mesh = x.process_mesh
-    assert x_mesh, "Please set process mesh for the variable firstly."
-    assert x_mesh.topology == list(np_mask.shape), (
-        "The shape of mask "
-        "must be the same as the shape of its Process Mesh.")
-    attr_name = _append_attr_suffix('mask')
-    x._set_attr(attr_name, _flatten_nested_list(mask))
-    return x
-
-
-def shard_op(op_fn, mesh, dim_mapping_dict, **kwargs):
-    """
-    Call a functioin and add distributed attributes for ops added by the function.
-
-    Args:
-        op_fn (callable): a callable object of an API.
-        mesh (ProcessMesh): an instance of ProcessMesh specifies the topology of logical processes.
-        dim_mapping_dict (dict): a mapping from tensor's name to its dims_mapping.
-            The dim_mapping is a list to describe the mapping between a tensor and `mesh`,
-            the dimension `i` of the tensor is split across the dimension `dim_mapping[i]`,
-            where -1 means without parition along the corresponding dimension.
-        kwargs (dict): a dict of parameter passed to the function `op_fn`.
-
-    Returns:
-        list: the outputs of the function `op_fn`.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            import paddle.distributed as dist
-
-            paddle.enable_static()
-            
-            mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]])
             x = paddle.ones([4, 6])
             y = paddle.zeros([4, 6])
-            kwargs = {'x': x, 'y': y}
-            dist.shard_op(paddle.add, mesh, None, **kwargs)
+            mesh = auto.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
+            dist_add = auto.shard_op(paddle.add,
+                                     in_shard_specs=[["x", "y"], ["y", None]],
+                                     out_shard_specs=[[None, "x"]])
+            dist_add(x, y)
 
     """
-    _static_mode_check()
-    main_prog = paddle.fluid.default_main_program()
-    main_block = main_prog.global_block()
-    op_size = len(main_block.ops)
-    output = op_fn(**kwargs)
-    new_op_size = len(main_block.ops)
-    if dim_mapping_dict is None: dim_mapping_dict = dict()
-    for idx in range(op_size, new_op_size):
-        op = main_block.ops[idx]
-        attr_name = _append_attr_suffix('mesh_id')
-        op._set_attr(attr_name, mesh._id)
-        for var_name in dim_mapping_dict.keys():
-            assert var_name in op.output_arg_names + op.input_arg_names
-            attr_name = _append_attr_suffix(var_name)
-            if var_name in op.input_arg_names:
-                # we use the prefix "IN_" to indicates an input argument name
-                attr_name = "IN_" + attr_name
+
+    if process_mesh is not None:
+        assert isinstance(
+            process_mesh, ProcessMesh
+        ), "Argument process_mesh {} is not an instance of ProcessMesh".format(
+            process_mesh
+        )
+    else:
+        process_mesh = get_current_process_mesh()
+        assert (
+            process_mesh is not None
+        ), "Specify the process mesh argument or use ProcessMesh context manager first."
+    in_dims_mappings = []
+    if in_shard_specs is not None:
+        assert all(
+            (isinstance(shard_spec, list) or shard_spec is None)
+            for shard_spec in in_shard_specs
+        ), "in_shard_spec {} is not a list of list or None".format(
+            in_shard_specs
+        )
+        for shard_spec in in_shard_specs:
+            if shard_spec is not None:
+                in_dims_mappings.append(
+                    convert_to_dims_mapping(shard_spec, process_mesh)
+                )
             else:
-                # we use the prefix "OUT_" to indicates an input argument name
-                attr_name = "OUT_" + attr_name
-            op._set_attr(attr_name, dim_mapping_dict[var_name])
-
-    if isinstance(output, Variable):
-        output = [output]
-    return list(output)
-
-
-def set_offload_device(x, device):
-    """
-    Set the device that the tensor `x` will be put on.
-
-    Args:
-        x (tensor): the tensor to process.
-        device (str): the device that the tensor `x` will be put on, e.g., 'cpu'.
-
-    Returns:
-        Tensor: the tensor `x` itself.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            import paddle.distributed as dist
-
-            paddle.enable_static()
-            
-            x = paddle.ones([4, 6])
-            dist.set_offload_device(x, 'cpu')
-
-    """
-    _static_mode_check()
-    assert device == "cpu", "Only 'cpu' is supported for destination device."
-    attr_name = _append_attr_suffix("offload_device")
-    x._set_attr(attr_name, device)
-    return x
+                in_dims_mappings.append(None)
+    out_dims_mappings = []
+    if out_shard_specs is not None:
+        assert all(
+            (isinstance(shard_spec, list) or shard_spec is None)
+            for shard_spec in out_shard_specs
+        ), "out_shard_spec {} is not a list of list or None".format(
+            out_shard_specs
+        )
+        for shard_spec in out_shard_specs:
+            if shard_spec is not None:
+                out_dims_mappings.append(
+                    convert_to_dims_mapping(shard_spec, process_mesh)
+                )
+            else:
+                out_dims_mappings.append(None)
+    op = DistributedOperatorHelper(
+        op, process_mesh, in_dims_mappings, out_dims_mappings
+    )
+    return op
 
 
-def set_pipeline_stage(stage):
-    """
-    Set the pipeline stage of the following ops.
+_g_recompute_idx = -1
 
-    Args:
-        stage (int): the pipeline stage the following ops belonging to.
 
-    Returns:
-        None.
+def recompute(op):
+    global _g_recompute_idx
+    _g_recompute_idx += 1
 
-    Examples:
-        .. code-block:: python
+    class RecomputeOperator:
+        def __init__(self, op):
+            self._op = op
 
-            import paddle
-            import paddle.distributed as dist
+        def __call__(self, *args, **kwargs):
+            default_prog = paddle.static.default_main_program()
+            cur_block = default_prog.current_block()
+            op_size = len(cur_block.ops)
+            output = self._op(*args, **kwargs)
+            new_op_size = len(cur_block.ops)
 
-            paddle.enable_static()
-            
-            dist.set_pipeline_stage(0)
+            for idx in range(op_size, new_op_size):
+                op = cur_block.ops[idx]
+                op._set_attr(
+                    'op_namescope', "/auto_parallel/rc_" + str(_g_recompute_idx)
+                )
 
-    """
-    from paddle.fluid.framework import _set_pipeline_stage
-    _static_mode_check()
-    _set_pipeline_stage(stage)
+            return output
+
+    return RecomputeOperator(op)
+
+
+_g_collections = {}
+
+
+class CollectionNames:
+    FETCHES = "fetches"
+    LOGGING = "logging"
+
+
+def get_collection(name):
+    collection = _g_collections.get(name, None)
+    if collection is None:
+        collection = []
+        _g_collections[name] = collection
+    return _g_collections[name]
+
+
+def add_to_collection(collection_name, value, name=None):
+    if collection_name not in _g_collections:
+        _g_collections[collection_name] = []
+    if name is not None:
+        for _, v in _g_collections[collection_name]:
+            if v == value:
+                return
+        _g_collections[collection_name].append((name, value))
+    else:
+        for _, v in _g_collections[collection_name]:
+            if v == value:
+                return
+        _g_collections[collection_name].append((None, value))
+
+
+def fetch(tensor, name=None, logging=False):
+    if isinstance(tensor, paddle.static.Variable):
+        tensor = tensor.name
+    elif isinstance(tensor, str):
+        tensor = tensor
+    else:
+        raise TypeError(
+            "Only support fetch `Variable` or `str`[`Variable`'s name], but got `{}`".format(
+                type(tensor)
+            )
+        )
+    add_to_collection(CollectionNames.FETCHES, tensor, name)
+    if logging:
+        add_to_collection(CollectionNames.LOGGING, tensor, name)

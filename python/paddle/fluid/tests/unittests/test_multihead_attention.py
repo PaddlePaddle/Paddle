@@ -12,37 +12,36 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+
 import numpy as np
+
+import paddle
+from paddle import fluid
+from paddle.fluid import core
 
 
 class TestMultiheadAttention(unittest.TestCase):
     def gen_random_input(self):
-        """Generate random input data.
-        """
+        """Generate random input data."""
         # batch_size, max_sequence_length, hidden dimension
         self.input_shape = (3, 13, 16)
         self.queries = np.random.random(size=self.input_shape).astype("float32")
         self.keys = np.random.random(size=self.input_shape).astype("float32")
 
     def set_program(self):
-        """Build the test program.
-        """
-        queries = fluid.layers.data(
+        """Build the test program."""
+        queries = paddle.static.data(
             name="queries",
             shape=self.input_shape,
             dtype="float32",
-            append_batch_size=False)
+        )
         queries.stop_gradient = False
-        keys = fluid.layers.data(
+        keys = paddle.static.data(
             name="keys",
             shape=self.input_shape,
             dtype="float32",
-            append_batch_size=False)
+        )
         keys.stop_gradient = False
 
         contexts = fluid.nets.scaled_dot_product_attention(
@@ -50,15 +49,15 @@ class TestMultiheadAttention(unittest.TestCase):
             keys=keys,
             values=keys,
             num_heads=8,
-            dropout_rate=0.)
-        out = fluid.layers.reduce_sum(contexts, dim=None)
+            dropout_rate=0.0,
+        )
+        out = paddle.sum(contexts, axis=None)
         fluid.backward.append_backward(loss=out)
 
         self.fetch_list = [contexts]
 
     def run_program(self):
-        """Run the test program.
-        """
+        """Run the test program."""
         places = [core.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
@@ -68,15 +67,16 @@ class TestMultiheadAttention(unittest.TestCase):
             exe = fluid.Executor(place)
 
             exe.run(fluid.default_startup_program())
-            output = exe.run(fluid.default_main_program(),
-                             feed=self.inputs,
-                             fetch_list=self.fetch_list,
-                             return_numpy=True)
+            output = exe.run(
+                fluid.default_main_program(),
+                feed=self.inputs,
+                fetch_list=self.fetch_list,
+                return_numpy=True,
+            )
             self.op_output = output
 
     def set_inputs(self, place):
-        """Set the randomly generated data to the test program.
-        """
+        """Set the randomly generated data to the test program."""
         self.inputs = {}
         queries = fluid.Tensor()
         queries.set(self.queries, place)
@@ -93,7 +93,7 @@ class TestMultiheadAttention(unittest.TestCase):
         self.set_program()
         self.run_program()
 
-        #fixme(caoying) add more meaningfull unittest.
+        # fixme(caoying) add more meaningfull unittest.
 
 
 if __name__ == '__main__':

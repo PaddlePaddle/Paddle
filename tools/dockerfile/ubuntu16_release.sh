@@ -63,9 +63,9 @@ function ref_whl(){
   elif [[ ${PADDLE_VERSION} == "develop" && ${WITH_GPU} != "ON" ]]; then
     ref_paddle37_whl=paddlepaddle${install_gpu}-${ref_dev}-cp37-cp37m-linux_x86_64.whl
   elif [[ ${PADDLE_VERSION} != "develop" && ${WITH_GPU} == "ON" ]]; then
-    ref_paddle37_whl=paddlepaddle${install_gpu}-${PADDLE_VERSION}${ref_version}-cp37-cp37m-linux_x86_64.whl
+    ref_paddle37_whl=paddlepaddle${install_gpu}-${PADDLE_VERSION/-/}${ref_version}-cp37-cp37m-linux_x86_64.whl
   else
-    ref_paddle37_whl=paddlepaddle${install_gpu}-${PADDLE_VERSION}-cp37-cp37m-linux_x86_64.whl
+    ref_paddle37_whl=paddlepaddle${install_gpu}-${PADDLE_VERSION/-/}-cp37-cp37m-linux_x86_64.whl
   fi
 }
 

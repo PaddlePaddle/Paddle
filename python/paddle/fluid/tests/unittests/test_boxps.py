@@ -12,26 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-import numpy as np
-import os
-import shutil
-import paddle.fluid.core as core
 import unittest
-from paddle.fluid.layers.nn import _pull_box_sparse
-from paddle.fluid.transpiler import collective
+
+import paddle
+from paddle import fluid
+from paddle.distributed.transpiler import collective
+from paddle.fluid import core
+from paddle.incubate.layers.nn import _pull_box_sparse
 
 
 class TestTranspile(unittest.TestCase):
-    """  TestCases for BoxPS Preload """
+    """TestCases for BoxPS Preload"""
 
     def get_transpile(self, mode, trainers="127.0.0.1:6174"):
-        config = fluid.DistributeTranspilerConfig()
+        config = paddle.distributed.transpiler.DistributeTranspilerConfig()
         config.mode = 'collective'
         config.collective_mode = mode
-        t = fluid.DistributeTranspiler(config=config)
+        t = paddle.distributed.transpiler.DistributeTranspiler(config=config)
         return t
 
     def test_transpile(self):
@@ -42,14 +39,16 @@ class TestTranspile(unittest.TestCase):
             trainer_id=0,
             startup_program=startup_program,
             trainers="127.0.0.1:6174",
-            program=main_program)
+            program=main_program,
+        )
         t = self.get_transpile("grad_allreduce")
         try:
             t.transpile(
                 trainer_id=0,
                 startup_program=startup_program,
                 trainers="127.0.0.1:6174",
-                program=main_program)
+                program=main_program,
+            )
         except ValueError as e:
             print(e)
 
@@ -62,7 +61,8 @@ class TestTranspile(unittest.TestCase):
                 rank=1,
                 endpoints="127.0.0.1:6174",
                 current_endpoint="127.0.0.1:6174",
-                wait_port="6174")
+                wait_port="6174",
+            )
         except ValueError as e:
             print(e)
         transpiler = collective.LocalSGD(0)
@@ -73,13 +73,14 @@ class TestTranspile(unittest.TestCase):
                 rank=1,
                 endpoints="127.0.0.1:6174",
                 current_endpoint="127.0.0.1:6174",
-                wait_port="6174")
+                wait_port="6174",
+            )
         except ValueError as e:
             print(e)
 
 
 class TestRunCmd(unittest.TestCase):
-    """ TestCases for run_cmd"""
+    """TestCases for run_cmd"""
 
     def test_run_cmd(self):
         ret1 = int(core.run_cmd("ls; echo $?").strip().split('\n')[-1])
@@ -89,16 +90,18 @@ class TestRunCmd(unittest.TestCase):
 
 
 class TestPullBoxSparseOP(unittest.TestCase):
-    """ TestCases for _pull_box_sparse op"""
+    """TestCases for _pull_box_sparse op"""
 
     def test_pull_box_sparse_op(self):
         paddle.enable_static()
         program = fluid.Program()
         with fluid.program_guard(program):
-            x = fluid.layers.data(
-                name='x', shape=[1], dtype='int64', lod_level=0)
-            y = fluid.layers.data(
-                name='y', shape=[1], dtype='int64', lod_level=0)
+            x = paddle.static.data(
+                name='x', shape=[-1, 1], dtype='int64', lod_level=0
+            )
+            y = paddle.static.data(
+                name='y', shape=[-1, 1], dtype='int64', lod_level=0
+            )
             emb_x, emb_y = _pull_box_sparse([x, y], size=1)
 
 
