@@ -17,13 +17,72 @@
 #include "paddle/fluid/framework/details/nan_inf_utils_detail.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/selected_rows.h"
 
+PHI_DECLARE_int32(check_nan_inf_level);
 namespace egr {
 
+static std::unordered_set<std::string>& nan_inf_check_op_list() {
+  static std::unordered_set<std::string> _check_op_list = {};
+  return _check_op_list;
+}
+
+static std::unordered_set<std::string>& nan_inf_skip_op_list() {
+  static std::unordered_set<std::string> _skip_op_list = {};
+  return _skip_op_list;
+}
+
+void SetCheckOpList(const std::string& check_op_list = "") {
+  nan_inf_check_op_list();
+  if (check_op_list.size() != 0) {
+    std::stringstream ss(check_op_list);
+    std::string op_type;
+    LOG(INFO) << "Please set op's name according to the "
+                 "paddle.amp.low_precision_op_list()";
+    while (std::getline(ss, op_type, ',')) {
+      nan_inf_check_op_list().emplace(op_type);
+      VLOG(4) << "Check nan inf op list: " << op_type;
+    }
+  }
+}
+
+void SetSkipOpList(const std::string& skip_op_list = "") {
+  nan_inf_skip_op_list();
+  if (skip_op_list.size() != 0) {
+    std::stringstream ss(skip_op_list);
+    std::string op_type;
+    LOG(INFO) << "Please set op's name according to the "
+                 "paddle.amp.low_precision_op_list()";
+    while (std::getline(ss, op_type, ',')) {
+      nan_inf_skip_op_list().emplace(op_type);
+      VLOG(4) << "Skip nan inf op list: " << op_type;
+    }
+  }
+}
+
+bool CheckOp(const std::string& api_name) {
+  if (nan_inf_skip_op_list().count("all") ||
+      nan_inf_skip_op_list().count(api_name)) {
+    VLOG(4) << "Current op is in skipped_op_list : " << api_name;
+    return false;
+  }
+
+  if (nan_inf_check_op_list().size() != 0 &&
+      (!nan_inf_check_op_list().count(api_name))) {
+    VLOG(4) << "Current op isn't in checked_op_list : " << api_name;
+    return false;
+  }
+
+  VLOG(6) << "Current check nan inf Op is : " << api_name;
+  return true;
+}
+
 void CheckTensorHasNanOrInf(const std::string& api_name, const Tensor& tensor) {
-  if (tensor.initialized()) {
+  auto op_name = phi::TransToFluidOpName(api_name);
+  if (tensor.initialized() && CheckOp(op_name)) {
     auto& tensor_name = tensor.name();
     const phi::DenseTensor* dense_tensor{nullptr};
     if (tensor.is_dense_tensor()) {
@@ -52,6 +111,11 @@ void CheckTensorHasNanOrInf(const std::string& api_name, const Tensor& tensor) {
     paddle::framework::details::tensor_check<phi::CPUContext>(
         api_name, tensor_name, *dense_tensor, place);
   }
+}
+
+void CheckTensorHasNanOrInf(const std::string& api_name,
+                            const paddle::optional<Tensor>& tensor) {
+  CheckTensorHasNanOrInf(api_name, tensor.get());
 }
 
 void CheckTensorHasNanOrInf(const std::string& api_name,
@@ -98,6 +162,14 @@ void CheckTensorHasNanOrInf(const std::string& api_name,
                             const std::vector<Tensor>& tensors) {
   for (auto& tensor : tensors) {
     CheckTensorHasNanOrInf(api_name, tensor);
+  }
+}
+
+void CheckTensorHasNanOrInf(
+    const std::string& api_name,
+    const paddle::optional<std::vector<Tensor>>& tensors) {
+  if (tensors) {
+    CheckTensorHasNanOrInf(api_name, tensors.get());
   }
 }
 

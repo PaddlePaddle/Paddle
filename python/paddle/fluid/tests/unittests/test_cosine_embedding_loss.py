@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.static as static
+from paddle import static
 
 
 def cosine_embedding_loss(input1, input2, label, margin=0.5, reduction='mean'):
@@ -64,7 +64,7 @@ class TestFunctionCosineEmbeddingLoss(unittest.TestCase):
             reduction='mean',
         )
         np.testing.assert_allclose(dy_result.numpy(), expected1, rtol=1e-05)
-        self.assertTrue(dy_result.shape, [1])
+        self.assertEqual(dy_result.shape, [])
 
         dy_result = paddle.nn.functional.cosine_embedding_loss(
             input1, input2, label, margin=0.5, reduction='sum'
@@ -78,7 +78,7 @@ class TestFunctionCosineEmbeddingLoss(unittest.TestCase):
         )
 
         np.testing.assert_allclose(dy_result.numpy(), expected2, rtol=1e-05)
-        self.assertTrue(dy_result.shape, [1])
+        self.assertEqual(dy_result.shape, [])
 
         dy_result = paddle.nn.functional.cosine_embedding_loss(
             input1, input2, label, margin=0.5, reduction='none'
@@ -92,7 +92,7 @@ class TestFunctionCosineEmbeddingLoss(unittest.TestCase):
         )
 
         np.testing.assert_allclose(dy_result.numpy(), expected3, rtol=1e-05)
-        self.assertTrue(dy_result.shape, [5])
+        self.assertEqual(dy_result.shape, [5])
 
     def run_static(self, use_gpu=False):
         input1 = static.data(name='input1', shape=[5, 3], dtype='float64')
@@ -257,7 +257,7 @@ class TestClassCosineEmbeddingLoss(unittest.TestCase):
             reduction='mean',
         )
         np.testing.assert_allclose(dy_result.numpy(), expected1, rtol=1e-05)
-        self.assertTrue(dy_result.shape, [1])
+        self.assertEqual(dy_result.shape, [])
 
         input1_1D = paddle.to_tensor(self.input1_np_1D)
         input2_1D = paddle.to_tensor(self.input2_np_1D)

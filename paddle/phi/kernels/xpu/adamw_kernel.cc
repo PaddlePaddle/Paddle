@@ -16,6 +16,8 @@
 
 #include <vector>
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -67,8 +69,10 @@ void AdamwDenseKernel(const Context& dev_ctx,
     phi::Copy(dev_ctx, param, dev_ctx.GetPlace(), false, param_out);
     phi::Copy(dev_ctx, moment1, dev_ctx.GetPlace(), false, moment1_out);
     phi::Copy(dev_ctx, moment2, dev_ctx.GetPlace(), false, moment2_out);
-    phi::Copy(dev_ctx, beta1_pow, beta1_pow.place(), false, beta1_pow_out);
-    phi::Copy(dev_ctx, beta2_pow, beta2_pow.place(), false, beta2_pow_out);
+    if (!use_global_beta_pow) {
+      phi::Copy(dev_ctx, beta1_pow, beta1_pow.place(), false, beta1_pow_out);
+      phi::Copy(dev_ctx, beta2_pow, beta2_pow.place(), false, beta2_pow_out);
+    }
     return;
   }
 
@@ -163,4 +167,11 @@ PD_REGISTER_KERNEL(
   kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(8).SetBackend(phi::Backend::ALL_BACKEND);
+  // Skip beta1_pow, beta2_pow, skip_update data transform
+  kernel->OutputAt(3)
+      .SetBackend(phi::Backend::UNDEFINED)
+      .SetDataType(phi::DataType::FLOAT32);
+  kernel->OutputAt(4)
+      .SetBackend(phi::Backend::UNDEFINED)
+      .SetDataType(phi::DataType::FLOAT32);
 }

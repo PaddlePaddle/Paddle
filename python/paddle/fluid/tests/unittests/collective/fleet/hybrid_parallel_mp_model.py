@@ -19,8 +19,7 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
-import paddle.distributed.fleet as fleet
-import paddle.fluid as fluid
+from paddle.distributed import fleet
 
 
 def set_random_seed(seed, dp_id, rank_id):
@@ -62,7 +61,7 @@ def parallel_matmul(lm_output, logit_weights, parallel_output):
         return logits
 
 
-class SimpleMPNet(fluid.dygraph.Layer):
+class SimpleMPNet(paddle.nn.Layer):
     def __init__(
         self,
         vocab_size,
@@ -128,7 +127,7 @@ class SimpleMPNet(fluid.dygraph.Layer):
         return x
 
 
-class SimpleDPNet(fluid.dygraph.Layer):
+class SimpleDPNet(paddle.nn.Layer):
     def __init__(
         self, vocab_size, hidden_size, inner_size, output_size, np_fc1, np_fc2
     ):
@@ -180,6 +179,194 @@ class SimpleDPNet(fluid.dygraph.Layer):
         x = self.linear3(x)
         x = paddle.matmul(x, self.embedding.weight, transpose_y=True)
         return x
+
+
+class TestDistMPSyncTraning(unittest.TestCase):
+    def setUp(self):
+        strategy = fleet.DistributedStrategy()
+        self.model_parallel_size = 2
+        self.data_parallel_size = 1
+        strategy.hybrid_configs = {
+            "dp_degree": self.data_parallel_size,
+            "mp_degree": self.model_parallel_size,
+            "pp_degree": 1,
+            "mp_configs": {
+                "sync_param": False,
+                "sync_grad": False,
+                "sync_moment": False,
+            },
+        }
+        fleet.init(is_collective=True, strategy=strategy)
+
+    def build_model_optimizer_train(
+        self,
+        batchs,
+        fp16=False,
+        amp_level="O1",
+        mp_sync_param=False,
+        mp_sync_grad=False,
+        mp_sync_moment=False,
+    ):
+        hcg = fleet.get_hybrid_communicate_group()
+        word_size = hcg.get_model_parallel_world_size()
+        mp_id = hcg.get_model_parallel_rank()
+        dp_id = hcg.get_data_parallel_rank()
+        rank_id = dist.get_rank()
+        paddle.seed(2023)
+        np.random.seed(2023)
+        random.seed(2023)
+        set_random_seed(1024, dp_id, rank_id)
+
+        np_fc1 = np.random.random_sample((hidden_size, inner_size))
+        np_fc2 = np.random.random_sample((inner_size, hidden_size))
+
+        model = SimpleMPNet(
+            vocab_size,
+            hidden_size,
+            inner_size,
+            output_size,
+            np_fc1,
+            np_fc2,
+            mp_id,
+        )
+        optimizer = paddle.optimizer.AdamW(
+            learning_rate=0.1, parameters=model.parameters()
+        )
+
+        if fp16 and amp_level == "O2":
+            model, optimizer = paddle.amp.decorate(
+                models=model, optimizers=optimizer, level='O2'
+            )
+
+        strategy = fleet.fleet._user_defined_strategy
+        strategy.hybrid_configs = {
+            "dp_degree": self.data_parallel_size,
+            "mp_degree": self.model_parallel_size,
+            "pp_degree": 1,
+            "mp_configs": {
+                "sync_param": mp_sync_param,
+                "sync_grad": mp_sync_grad,
+                "sync_moment": mp_sync_moment,
+            },
+        }
+
+        model = fleet.distributed_model(model)
+        optimizer = fleet.distributed_optimizer(optimizer)
+        return self.train_batch(batchs, model, optimizer, fp16, amp_level)
+
+    def train_batch(self, batchs, model, optimizer, fp16=False, amp_level="O1"):
+        losses = []
+        if fp16:
+            scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+            scaler = fleet.distributed_scaler(scaler)
+        for batch in batchs:
+            with paddle.amp.auto_cast(enable=fp16, level=amp_level):
+                output = model(batch)
+                loss = output.mean()
+                losses.append(loss.numpy())
+            if fp16:
+                scaled = scaler.scale(loss)
+                scaled.backward()
+                scaler.step(optimizer)
+                scaler.update()
+            else:
+                loss.backward()
+                optimizer.step()
+                optimizer.clear_grad()
+        return losses
+
+    def mp_sync_base(
+        self, mp_sync_param=False, mp_sync_grad=False, mp_sync_moment=False
+    ):
+        batchs = []
+        for _ in range(5):
+            np_data = np.random.randint(
+                0,
+                vocab_size,
+                (
+                    batch_size,
+                    seq_length,
+                ),
+            )
+            batchs.append(paddle.to_tensor(np_data))
+
+        losses = self.build_model_optimizer_train(batchs)
+        losses_sync = self.build_model_optimizer_train(
+            batchs,
+            mp_sync_param=mp_sync_param,
+            mp_sync_grad=mp_sync_grad,
+            mp_sync_moment=mp_sync_moment,
+        )
+
+        for i in range(len(losses)):
+            np.testing.assert_allclose(losses[i], losses_sync[i], rtol=1e-6)
+
+        # test fp16 O1
+        losses_fp16 = self.build_model_optimizer_train(batchs, fp16=True)
+        losses_sync_fp16 = self.build_model_optimizer_train(
+            batchs,
+            fp16=True,
+            mp_sync_param=mp_sync_param,
+            mp_sync_grad=mp_sync_grad,
+            mp_sync_moment=mp_sync_moment,
+        )
+
+        for i in range(len(losses_fp16)):
+            np.testing.assert_allclose(
+                losses_fp16[i], losses_sync_fp16[i], rtol=1e-6
+            )
+
+        # test fp16 O2
+        losses_fp16_O2 = self.build_model_optimizer_train(
+            batchs, fp16=True, amp_level="O2"
+        )
+        losses_sync_fp16_O2 = self.build_model_optimizer_train(
+            batchs,
+            fp16=True,
+            amp_level="O2",
+            mp_sync_param=mp_sync_param,
+            mp_sync_grad=mp_sync_grad,
+            mp_sync_moment=mp_sync_moment,
+        )
+
+        for i in range(len(losses_fp16_O2)):
+            np.testing.assert_allclose(
+                losses_fp16_O2[i], losses_sync_fp16_O2[i], rtol=1e-6
+            )
+
+    def test_mp_sync_param(self):
+        self.mp_sync_base(mp_sync_param=True)
+
+    def test_mp_sync_grad(self):
+        self.mp_sync_base(mp_sync_grad=True)
+
+    def test_mp_sync_moment(self):
+        self.mp_sync_base(mp_sync_moment=True)
+
+    def test_mp_sync_all(self):
+        self.mp_sync_base(
+            mp_sync_param=True, mp_sync_grad=True, mp_sync_moment=True
+        )
+
+
+class TestDistMPSyncModelTraning(TestDistMPSyncTraning):
+    def setUp(self):
+        strategy = fleet.DistributedStrategy()
+        self.model_parallel_size = 2
+        self.data_parallel_size = 1
+        strategy.hybrid_configs = {
+            "dp_degree": self.data_parallel_size,
+            "mp_degree": self.model_parallel_size,
+            "pp_degree": 1,
+            "mp_configs": {
+                "sync_param": False,
+                "sync_grad": False,
+                "sync_moment": False,
+                "sync_mode": "average",
+                "sync_param_name": ["embedding", "layer_norm", ".b_"],
+            },
+        }
+        fleet.init(is_collective=True, strategy=strategy)
 
 
 class TestDistMPTraning(unittest.TestCase):

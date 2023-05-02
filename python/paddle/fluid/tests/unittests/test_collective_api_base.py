@@ -26,7 +26,7 @@ from paddle_bfloat import bfloat16
 
 import paddle
 import paddle.distributed as dist
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.distributed.utils.nccl_utils import get_nccl_version_str
 from paddle.fluid import core
 
@@ -65,7 +65,7 @@ def create_pyobject_test_data(shape=None, seed=None):
         np.random.seed(seed)
     list_shape = np.random.randint(0, high=100, size=(2)).tolist()
     list_data = np.random.random(shape).tolist()
-    dict_key = [i for i in range(0, shape[0])]
+    dict_key = list(range(0, shape[0]))
     dict_val = np.random.random(shape).tolist()
     dict_data = dict(zip(dict_key, dict_val))
     return [list_data, dict_data]
@@ -133,7 +133,7 @@ class TestCollectiveAPIRunnerBase:
                     train_prog,
                     startup_prog,
                     rank,
-                    dtype=args["dtype"],
+                    dtype=args['dtype'],
                     reduce_type=args['reduce_type'],
                 )
                 if args["use_comm_context"]
@@ -174,7 +174,7 @@ class TestDistBase(unittest.TestCase):
     def setUp(self):
         self._port_set = set()
         self._trainers = 2
-        self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
+        self._ps_endpoints = "127.0.0.1:{},127.0.0.1:{}".format(
             self._find_free_port(),
             self._find_free_port(),
         )
@@ -373,7 +373,6 @@ class TestDistBase(unittest.TestCase):
                 need_result = np.amin([input1, input2], 0)
             elif reduce_type == dist.ReduceOp.PROD:
                 need_result = np.prod([input1, input2], 0)
-            need_result = input1 + input2
             # bfloat16 precision loss comes from truncating the last 16 bits of float32,
             # which sums (\sum_{i=-23}^{-8}2^{i}) to about 0.0078
             if dtype == "bfloat16":
@@ -393,6 +392,14 @@ class TestDistBase(unittest.TestCase):
             need_result2 = [need_result[len(need_result) // 2 :]]
             self.assertEqual(need_result1, tr0_out)
             self.assertEqual(need_result2, tr1_out)
+        elif col_type == "gather":
+            # rank 0 gather all tensor
+            self.assertEqual(len(tr0_out), 2)
+            # rank 1 get nothing
+            self.assertEqual(len(tr1_out), 0)
+            # check values
+            np.testing.assert_equal(input1, tr0_out[0])
+            np.testing.assert_equal(input2, tr0_out[1])
         elif col_type == "reduce_scatter":
             need_result = input1 + input2
             need_result1 = need_result[0 : need_result.shape[0] // 2]

@@ -31,6 +31,7 @@ enum class AmpLevel {
   O1,      // amp, mixed fp32-fp16
   O2,      // almost fp16
   O3,      // fp16
+  OD,      // only conv and matmul use low precison.
 };
 
 std::tuple<std::unordered_set<std::string>,
@@ -55,7 +56,7 @@ class AmpOperators {
   std::shared_ptr<std::unordered_set<std::string>> GetMutableBlockOps();
 
   std::shared_ptr<std::unordered_set<std::string>> GetMutableUnsupportedOps(
-      const paddle::experimental::DataType& data_type);
+      const phi::DataType& data_type);
 
   std::shared_ptr<std::unordered_set<std::string>>
   GetMutableUnsupportedFp16Ops();

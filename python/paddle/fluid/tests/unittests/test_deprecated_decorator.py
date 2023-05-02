@@ -19,9 +19,8 @@ import warnings
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.utils.deprecated as deprecated
 from paddle import _legacy_C_ops
+from paddle.utils import deprecated
 
 LOWEST_WARNING_POSTION = 3
 ERROR_WARNING_POSTION = sys.maxsize
@@ -64,29 +63,9 @@ def get_warning_index(api):
 class TestDeprecatedDocorator(unittest.TestCase):
     """
     tests for paddle's Deprecated Docorator.
-    test_fluid_data: test for old fluid.data API.
     test_new_multiply: test for new api, which should not insert warning information.
     test_ops_elementwise_mul: test for C++ elementwise_mul op, which should not insert warning information.
     """
-
-    def test_fluid_data(self):
-        """
-        test old fluid elementwise_mul api, it should fire Warinng function,
-        which insert the Warinng info on top of API's doc string.
-        """
-        paddle.enable_static()
-        # Initialization
-        x = fluid.data(name='x', shape=[3, 2, 1], dtype='float32')
-
-        # expected
-        expected = LOWEST_WARNING_POSTION
-
-        # captured
-        captured = get_warning_index(fluid.data)
-        paddle.disable_static()
-
-        # testting
-        self.assertGreater(expected, captured)
 
     def test_new_multiply(self):
         """
@@ -132,14 +111,14 @@ class TestDeprecatedDocorator(unittest.TestCase):
     def test_tensor_gradient(self):
         paddle.__version__ = '2.1.0'
 
-        x = paddle.to_tensor(5.0, stop_gradient=False)
+        x = paddle.to_tensor([5.0], stop_gradient=False)
         y = paddle.pow(x, 4.0)
         y.backward()
 
         with warnings.catch_warnings(record=True) as w:
             grad = x.gradient()
             assert (
-                'API "paddle.fluid.dygraph.varbase_patch_methods.gradient" is '
+                'API "paddle.fluid.dygraph.tensor_patch_methods.gradient" is '
                 'deprecated since 2.1.0'
             ) in str(w[-1].message)
 

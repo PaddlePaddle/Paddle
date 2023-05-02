@@ -28,7 +28,6 @@ limitations under the License. */
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/elementwise/elementwise_functor.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/phi/api/lib/utils/tensor_utils.h"
 #include "paddle/phi/common/transform.h"
 #include "paddle/phi/kernels/cpu/elementwise.h"
 #include "paddle/phi/kernels/cpu/elementwise_grad.h"
@@ -189,7 +188,7 @@ void ElementwiseComputeEx(const framework::ExecutionContext &ctx,
   z->mutable_data<OutType>(ctx.GetPlace());
   const auto &dev_ctx = ctx.template device_context<DeviceContext>();
   phi::funcs::ElementwiseCompute<Functor, T, OutType>(
-      dev_ctx, *x, *y, axis, func, z);
+      dev_ctx, *x, *y, func, z, axis);
 }
 
 // FusedElemwiseAndAct
@@ -642,13 +641,13 @@ template <typename DeviceContext,
 void FusedElemwiseAndActGradComputeNoBroadcast(
     const framework::ExecutionContext &ctx,
     const framework::DDim &x_dim,
-    const framework::DDim &y_dim,
+    const framework::DDim &y_dim UNUSED,
     const phi::DenseTensor *x,
     const phi::DenseTensor *y,
     const phi::DenseTensor *intermediate_out,
     const phi::DenseTensor *out,
     const phi::DenseTensor *dout,
-    int axis,
+    int axis UNUSED,
     phi::DenseTensor *dx,
     phi::DenseTensor *dy,
     phi::DenseTensor *dintermediate,
@@ -1597,7 +1596,7 @@ static inline std::vector<int> GetReduceDim(const framework::DDim &in,
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 
-template <ElementwiseType ET, typename T, typename Functor>
+template <typename T, typename Functor>
 void GetGradXAndYOut(const phi::GPUContext &dev_ctx,
                      const platform::Place &place,
                      int axis,
@@ -1606,11 +1605,11 @@ void GetGradXAndYOut(const phi::GPUContext &dev_ctx,
                      phi::DenseTensor *dx,
                      phi::DenseTensor *dy,
                      Functor func) {
-  phi::GetGradXAndYOut<ET, T, Functor>(
+  phi::GetGradXAndYOut<T, Functor>(
       dev_ctx, place, axis, ins, *dout, dx, dy, func);
 }
 
-template <ElementwiseType ET, typename T, typename Functor>
+template <typename T, typename Functor>
 void GetGradXOrYOut(const phi::GPUContext &dev_ctx,
                     const platform::Place &place,
                     int axis,
@@ -1618,8 +1617,7 @@ void GetGradXOrYOut(const phi::GPUContext &dev_ctx,
                     const phi::DenseTensor *dout,
                     phi::DenseTensor *dxy,
                     Functor func) {
-  phi::GetGradXOrYOut<ET, T, Functor>(
-      dev_ctx, place, axis, ins, *dout, dxy, func);
+  phi::GetGradXOrYOut<T, Functor>(dev_ctx, place, axis, ins, *dout, dxy, func);
 }
 
 #endif

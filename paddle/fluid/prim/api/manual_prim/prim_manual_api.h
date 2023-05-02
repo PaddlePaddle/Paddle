@@ -27,10 +27,7 @@ namespace prim {
 using Tensor = paddle::Tensor;
 using Scalar = paddle::experimental::Scalar;
 using IntArray = paddle::experimental::IntArray;
-using DataType = paddle::experimental::DataType;
-
-template <typename T>
-Tensor reshape(const Tensor& x, const IntArray& shape);
+using DataType = phi::DataType;
 
 template <typename T>
 Tensor full(const IntArray& shape,
@@ -39,12 +36,15 @@ Tensor full(const IntArray& shape,
             const Place& place = CPUPlace());
 
 template <typename T>
-std::vector<Tensor> split(const Tensor& x,
-                          const IntArray& sections,
-                          const Scalar& axis);
+Tensor cast(const Tensor& x, DataType dtype);
 
 template <typename T>
-Tensor cast(const Tensor& x, DataType dtype);
+Tensor slice(const Tensor& input,
+             const std::vector<int64_t>& axes,
+             const IntArray& starts,
+             const IntArray& ends,
+             const std::vector<int64_t>& infer_flags,
+             const std::vector<int64_t>& decrease_axis);
 
 }  // namespace prim
 }  // namespace paddle

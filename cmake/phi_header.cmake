@@ -25,6 +25,9 @@ function(phi_header_path_compat TARGET_PATH)
         file(READ ${header} HEADER_CONTENT)
         string(REPLACE "paddle/phi/" "paddle/include/experimental/phi/"
                        HEADER_CONTENT "${HEADER_CONTENT}")
+        string(REPLACE "paddle/fluid/platform/"
+                       "paddle/include/experimental/phi/" HEADER_CONTENT
+                       "${HEADER_CONTENT}")
         string(REPLACE "paddle/utils/" "paddle/include/experimental/utils/"
                        HEADER_CONTENT "${HEADER_CONTENT}")
         file(WRITE ${header} "${HEADER_CONTENT}")
@@ -37,6 +40,8 @@ endfunction()
 phi_header_path_compat(
   ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental)
 phi_header_path_compat(
+  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi)
+phi_header_path_compat(
   ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/api)
 phi_header_path_compat(
   ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/api/ext)
@@ -47,7 +52,22 @@ phi_header_path_compat(
 phi_header_path_compat(
   ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/core)
 
+# NOTE(liuyuanle): In inference lib, no need include paddle/utils/pybind.h, so we delete this.
+file(READ
+     ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/extension.h
+     HEADER_CONTENT)
+string(REGEX REPLACE "#if !defined\\(PADDLE_ON_INFERENCE\\).*#endif" ""
+                     HEADER_CONTENT "${HEADER_CONTENT}")
+file(WRITE
+     ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/extension.h
+     "${HEADER_CONTENT}")
+
 # In order to be compatible with the original behavior, the header file name needs to be changed
 file(RENAME
      ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/extension.h
      ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/ext_all.h)
+# Included header file of training and inference can be unified as single file: paddle/extension.h
+file(COPY ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/ext_all.h
+     DESTINATION ${PADDLE_INFERENCE_INSTALL_DIR}/paddle)
+file(RENAME ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/ext_all.h
+     ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/extension.h)

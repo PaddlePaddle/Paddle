@@ -392,8 +392,14 @@ void CompatMetaTensor::share_lod(const MetaTensor& meta_tensor) {
     }
   } else {
     auto* var = PADDLE_GET(VarDesc*, var_);
-    if (!meta_tensor.is_dense() && !meta_tensor.is_tensor_array()) {
-      VLOG(3) << "input metatensor is not phi::DenseTensor or LoDTensorArray.";
+    // NOTE(lizhiyu): If var is select_rows and meta_tensor is dense,
+    // 'var->SetLodLevel' will fail. This case will happen when execute
+    // 'test_hsigmoid_op.py'. So it is needed to assert 'var' type.
+    if ((var && (var->GetType() != proto::VarType::LOD_TENSOR &&
+                 var->GetType() != proto::VarType::LOD_TENSOR_ARRAY)) ||
+        (!meta_tensor.is_dense() && !meta_tensor.is_tensor_array())) {
+      VLOG(3) << "this tensor or input metatensor is not phi::DenseTensor or "
+                 "LoDTensorArray.";
       return;
     }
     if (var) {
@@ -410,7 +416,9 @@ void CompatMetaTensor::share_dims(const MetaTensor& meta_tensor) {
   if (is_runtime_) {
     auto* var = PADDLE_GET(Variable*, var_);
     if (var == nullptr) return;
-    if (var->IsType<phi::SelectedRows>()) {
+    // NOTE(lizhiyu): If var is select_rows and meta_tensor is dense,
+    // `var->GetMutable<phi::SelectedRows>()` will failed.
+    if (var->IsType<phi::SelectedRows>() && meta_tensor.is_selected_rows()) {
       auto* selected_rows = var->GetMutable<phi::SelectedRows>();
       auto& input_selected_rows =
           static_cast<const CompatMetaTensor&>(meta_tensor).GetSelectedRows();
@@ -581,6 +589,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
       case phi::AttributeType::SCALAR:
         if (attr_ptr && !is_attr_var) {
           auto& attr = *attr_ptr;
+          VLOG(6) << "type: " << AttrTypeID(attr);
           switch (AttrTypeID(attr)) {
             case framework::proto::AttrType::FLOAT:
               infer_meta_context.EmplaceBackAttr(
@@ -605,6 +614,10 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
             case framework::proto::AttrType::BOOLEAN:
               infer_meta_context.EmplaceBackAttr(
                   phi::Scalar(PADDLE_GET_CONST(bool, attr)));
+              break;
+            case framework::proto::AttrType::SCALAR:
+              infer_meta_context.EmplaceBackAttr(phi::Scalar(
+                  PADDLE_GET_CONST(paddle::experimental::Scalar, attr)));
               break;
             default:
               PADDLE_THROW(platform::errors::Unimplemented(
@@ -744,6 +757,12 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
               for (const auto& val : vec) {
                 scalar_list.emplace_back(val);
               }
+              infer_meta_context.EmplaceBackAttr(std::move(scalar_list));
+            } break;
+            case proto::AttrType::SCALARS: {
+              const auto& vec = PADDLE_GET_CONST(
+                  std::vector<paddle::experimental::Scalar>, attr);
+              std::vector<phi::Scalar> scalar_list{vec.begin(), vec.end()};
               infer_meta_context.EmplaceBackAttr(std::move(scalar_list));
             } break;
             default:

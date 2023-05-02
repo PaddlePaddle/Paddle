@@ -19,51 +19,55 @@ import yaml
 ####################
 # Global Variables #
 ####################
-ops_to_fill_zero_for_empty_grads = set(
-    [
-        "split_grad",
-        "split_with_num_grad",
-        "rnn_grad",
-        "matmul_double_grad",
-        "matmul_triple_grad",
-        "sigmoid_double_grad",
-        "sigmoid_triple_grad",
-        "add_double_grad",
-        "add_triple_grad",
-        "multiply_grad",
-        "multiply_double_grad",
-        "multiply_triple_grad",
-        "conv2d_grad_grad",
-        "conv2d_transpose_double_grad",
-        "batch_norm_double_grad",
-        "tanh_grad",
-        "tanh_double_grad",
-        "tanh_triple_grad",
-        "sin_double_grad",
-        "sin_triple_grad",
-        "cos_double_grad",
-        "cos_triple_grad",
-        "subtract_double_grad",
-        "divide_double_grad",
-        "log_double_grad",
-        "elu_double_grad",
-        "leaky_relu_double_grad",
-        "sqrt_double_grad",
-        "rsqrt_double_grad",
-        "square_double_grad",
-        "celu_double_grad",
-        "pad_double_grad",
-        "pad3d_double_grad",
-        "squeeze_double_grad",
-        "unsqueeze_double_grad",
-        "instance_norm_double_grad",
-        "conv3d_double_grad",
-        "depthwise_conv2d_grad_grad",
-        "concat_double_grad",
-        "expand_grad",
-        "argsort_grad",
-    ]
-)
+ops_to_fill_zero_for_empty_grads = {
+    "split_grad",
+    "split_with_num_grad",
+    "rnn_grad",
+    "matmul_double_grad",
+    "matmul_triple_grad",
+    "sigmoid_double_grad",
+    "sigmoid_triple_grad",
+    "add_double_grad",
+    "add_triple_grad",
+    "multiply_grad",
+    "multiply_double_grad",
+    "multiply_triple_grad",
+    "conv2d_grad_grad",
+    "conv2d_transpose_double_grad",
+    "batch_norm_double_grad",
+    "tanh_grad",
+    "tanh_double_grad",
+    "tanh_triple_grad",
+    "sin_double_grad",
+    "sin_triple_grad",
+    "cos_double_grad",
+    "cos_triple_grad",
+    "subtract_double_grad",
+    "divide_double_grad",
+    "log_double_grad",
+    "elu_double_grad",
+    "leaky_relu_double_grad",
+    "sqrt_double_grad",
+    "rsqrt_double_grad",
+    "square_double_grad",
+    "celu_double_grad",
+    "pad_double_grad",
+    "pad3d_double_grad",
+    "squeeze_double_grad",
+    "unsqueeze_double_grad",
+    "instance_norm_double_grad",
+    "conv3d_double_grad",
+    "depthwise_conv2d_grad_grad",
+    "concat_double_grad",
+    "expand_grad",
+    "argsort_grad",
+    "eigh_grad",
+    "add_grad",
+    "subtract_grad",
+    "multiply_grad",
+    "divide_grad",
+    "matmul_grad",
+}
 
 # For API dispatch used at python-level
 # { op_name : [arg_name, ...] }
@@ -85,7 +89,7 @@ yaml_types_mapping = {
     'bool[]': 'std::vector<bool>',
     'Place': 'paddle::Place',
     'DataLayout': 'phi::DataLayout',
-    'DataType': 'paddle::experimental::DataType',
+    'DataType': 'phi::DataType',
     'int64_t[]': 'std::vector<int64_t>',
     'int[]': 'std::vector<int>',
     'Tensor': 'Tensor',
@@ -113,12 +117,31 @@ def ReadFwdFile(filepath):
     # empty file loaded by yaml is None
     contents = yaml.load(f, Loader=yaml.FullLoader)
     f.close()
+    # not all fused ops supoort dygraph
+    if filepath.endswith("fused_ops.yaml") is True:
+        new_apis = [
+            api
+            for api in contents
+            if "support_dygraph_mode" in api
+            and api["support_dygraph_mode"] is True
+        ]
+        contents = new_apis
     return contents if contents is not None else []
 
 
 def ReadBwdFile(filepath):
     f = open(filepath, 'r')
     contents = yaml.load(f, Loader=yaml.FullLoader)
+    # not all fused ops supoort dygraph
+    if filepath.endswith("fused_backward.yaml") is True:
+        new_apis = [
+            api
+            for api in contents
+            if "support_dygraph_mode" in api
+            and api["support_dygraph_mode"] is True
+        ]
+        contents = new_apis
+
     ret = {}
     if contents is not None:
         for content in contents:
@@ -269,7 +292,9 @@ def ParseYamlArgs(string):
     # attrs_list = [ [arg_name, arg_type, default_value, orig_position], ...]
     attrs_list = []
 
-    args = [x.strip() for x in string.strip().split(",")]
+    patten = re.compile(r',(?![^{]*\})')  # support int[] a={1,3}
+    args = re.split(patten, string.strip())
+    args = [x.strip() for x in args]
     atype = r'((const )?\S+) '
     aname = r'(.*)'
     pattern = f'{atype}{aname}'
@@ -287,8 +312,10 @@ def ParseYamlArgs(string):
         assert (
             arg_type in yaml_types_mapping.keys()
         ), f"The argument type {arg_type} in yaml config is not supported in yaml_types_mapping."
-        if arg_type in ["DataType", "DataLayout"] and default_value is not None:
+        if arg_type in ["DataLayout"] and default_value is not None:
             default_value = f"paddle::experimental::{default_value}"
+        if arg_type in ["DataType"] and default_value is not None:
+            default_value = f"phi::{default_value}"
         arg_type = yaml_types_mapping[arg_type]
 
         arg_name = RemoveSpecialSymbolsInName(arg_name)
@@ -554,7 +581,7 @@ class FunctionGeneratorBase:
                 if len(forward_returns_list) == 1:
                     return_name = "out"
                 else:
-                    return_name = "out_{}".format(i + 1)
+                    return_name = f"out_{i + 1}"
             else:
                 return_name = forward_return[0]
             return_type = forward_return[1]

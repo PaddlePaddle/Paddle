@@ -21,7 +21,7 @@ from parallel_dygraph_no_sync_unused_params import TestNoSyncUnusedParam
 from spawn_runner_base import TestDistSpawnRunner
 from test_dist_base import TestDistBase
 
-import paddle.fluid as fluid
+from paddle import fluid
 
 flag_name = os.path.splitext(__file__)[0]
 

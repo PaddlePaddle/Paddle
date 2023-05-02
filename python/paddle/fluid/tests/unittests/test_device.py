@@ -15,9 +15,8 @@
 import unittest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.fluid.framework as framework
+from paddle import fluid
+from paddle.fluid import core, framework
 
 
 class TestStaticDeviceManage(unittest.TestCase):
@@ -46,10 +45,6 @@ class TestStaticDeviceManage(unittest.TestCase):
     def test_xpu_device(self):
         if core.is_compiled_with_xpu():
             self._test_device("xpu:0", core.XPUPlace)
-
-    def test_npu_device(self):
-        if core.is_compiled_with_npu():
-            self._test_device("npu:0", core.NPUPlace)
 
 
 class TestImperativeDeviceManage(unittest.TestCase):
@@ -95,25 +90,6 @@ class TestImperativeDeviceManage(unittest.TestCase):
                 )
                 self.assertTrue(out.place.is_xpu_place())
                 self.assertEqual(device, "xpu:0")
-
-    def test_npu(self):
-        if core.is_compiled_with_npu():
-            with fluid.dygraph.guard():
-                paddle.set_device('npu:0')
-                out1 = paddle.zeros(shape=[1, 3], dtype='float32')
-                out2 = paddle.ones(shape=[1, 3], dtype='float32')
-                out3 = paddle.concat(x=[out1, out2], axis=0)
-                device = paddle.get_device()
-                self.assertEqual(
-                    isinstance(
-                        framework._current_expected_place(), core.NPUPlace
-                    ),
-                    True,
-                )
-                self.assertTrue(out1.place.is_npu_place())
-                self.assertTrue(out2.place.is_npu_place())
-                self.assertTrue(out3.place.is_npu_place())
-                self.assertEqual(device, "npu:0")
 
 
 if __name__ == '__main__':

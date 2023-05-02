@@ -36,8 +36,7 @@ struct BeamSearchDecodeFunctor {
     tensor_on_gpu_ = false;
     tensor_on_npu_ = false;
     // First make a copy of GPU data on CPU
-    if (platform::is_gpu_place(step_ids_origin_[0].place()) ||
-        platform::is_npu_place(step_ids_origin_[0].place())) {
+    if (platform::is_gpu_place(step_ids_origin_[0].place())) {
       if (platform::is_gpu_place(step_ids_origin_[0].place())) {
         tensor_on_gpu_ = true;
       } else {
@@ -61,8 +60,7 @@ struct BeamSearchDecodeFunctor {
         step_ids_.push_back(out);
       }
     }
-    if (platform::is_gpu_place(step_scores_origin_[0].place()) ||
-        platform::is_npu_place(step_scores_origin_[0].place())) {
+    if (platform::is_gpu_place(step_scores_origin_[0].place())) {
       if (platform::is_gpu_place(step_scores_origin_[0].place())) {
         tensor_on_gpu_ = true;
       } else {
@@ -123,7 +121,7 @@ struct BeamSearchDecodeFunctor {
   phi::DenseTensor* score_tensor_;
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class BeamSearchDecodeOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.incubate.passes.ir as ir
+from paddle.incubate.passes import ir
 
 
 def set_resnet_unit_attrs(resnet_unit, has_shortcut):

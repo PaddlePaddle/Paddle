@@ -32,8 +32,7 @@ static bool ReduceOpHasOptimizedOneDNNKernel(
     const framework::ExecutionContext& ctx) {
   // native reduce kernels don't support bf16
   // so oneDNN kernel is enforced in that case
-  if (ctx.Input<phi::DenseTensor>("X")->dtype() ==
-      experimental::DataType::BFLOAT16)
+  if (ctx.Input<phi::DenseTensor>("X")->dtype() == phi::DataType::BFLOAT16)
     return true;
 
   if (!ctx.HasAttr("dim") || !ctx.HasAttr("reduce_all")) {
@@ -76,13 +75,11 @@ phi::KernelKey GetReduceExpectedKernelType(
   if (input_data_type == framework::proto::VarType::FP16) {
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(ctx.GetPlace()) ||
-            platform::is_npu_place(ctx.GetPlace()) ||
-            platform::is_mlu_place(ctx.GetPlace()) ||
             platform::is_xpu_place(ctx.GetPlace()) ||
             platform::is_custom_place(ctx.GetPlace()),
         true,
         platform::errors::InvalidArgument(
-            "float16 can only be used on GPU or NPU or MLU or XPU place"));
+            "float16 can only be used on GPU or NPU or XPU place"));
   }
   return phi::KernelKey(input_data_type, ctx.GetPlace());
 }
@@ -100,6 +97,81 @@ phi::KernelKey GetReduceGradExpectedKernelType(
   }
 
   return phi::KernelKey(input_data_type, ctx.GetPlace());
+}
+
+phi::KernelKey GetAssignExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  const framework::Variable* var = ctx.InputVar("X");
+  if (var->IsType<framework::LoDTensorArray>()) {
+    auto t_arr = var->Get<framework::LoDTensorArray>();
+    // NOTE(liym27): Support an empty tensor array as Input.
+    // And set the kernel type is float.
+    if (t_arr.size() == 0) {
+      return phi::KernelKey(framework::proto::VarType::FP32,
+                            ctx.device_context().GetPlace());
+    }
+  }
+  return phi::KernelKey(
+      op_ptr->OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+      ctx.device_context().GetPlace());
+}
+
+phi::KernelKey GetSgdExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  auto data_type = op_ptr->IndicateVarDataType(ctx, "Param");
+
+  // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
+  const auto* param_var = ctx.InputVar("Param");
+  const auto* grad_var = ctx.InputVar("Grad");
+
+  // supported cases
+  bool dense_param_sparse_grad = param_var->IsType<phi::DenseTensor>() &&
+                                 grad_var->IsType<phi::SelectedRows>();
+  bool dense_param_and_grad = param_var->IsType<phi::DenseTensor>() &&
+                              grad_var->IsType<phi::DenseTensor>();
+  if (!(dense_param_sparse_grad || dense_param_and_grad)) {
+    op_ptr->SetDnnFallback(true);
+  }
+  // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
+
+  return phi::KernelKey(data_type, ctx.GetPlace());
+}
+
+phi::KernelKey GetUpdateLossScalingExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  auto dtype = framework::proto::VarType::FP32;
+  if (ctx.MultiInputVar("X").size() >= 1) {
+    dtype = op_ptr->IndicateVarDataType(ctx, "X");
+  }
+  return phi::KernelKey(dtype, ctx.GetPlace());
+}
+
+phi::KernelKey GetMatrixNmsExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  return phi::KernelKey(op_ptr->IndicateVarDataType(ctx, "Scores"),
+                        platform::CPUPlace());
+}
+
+phi::KernelKey GetUniqueExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  (void)ctx;
+  // Return CPUPlace when Attr("is_sorted") is false. Because it means
+  // that fluid.layers.unique is called, but there is no cuda kernel.
+  if (!ctx.Attr<bool>("is_sorted")) {
+    return phi::KernelKey(
+        op_ptr->OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        platform::CPUPlace());
+  } else {
+    // new version paddle.unique is called.
+    return phi::KernelKey(
+        op_ptr->OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.GetPlace());
+  }
 }
 
 }  // namespace operators

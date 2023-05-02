@@ -59,8 +59,9 @@ void SetOp(ProgramDesc* prog,
       op->SetAttr("fuse_residual_connection", false);
     }
     op->SetOutput("Output", {outputs[0]});
-  } else if (type == "pool2d" || type == "transpose2" || type == "reshape2" ||
-             type == "nearest_interp" || type == "nearest_interp_v2") {
+  } else if (type == "pool2d" || type == "fused_transpose" ||
+             type == "reshape2" || type == "nearest_interp" ||
+             type == "nearest_interp_v2") {
     op->SetInput("X", {inputs[0]});
     op->SetOutput("Out", {outputs[0]});
   } else if (type == "slice") {
@@ -558,7 +559,7 @@ void TestImmutableOpWithManyOutputs(const std::string tested_op) {
 }
 
 const std::vector<std::string> immutables = {"reshape2",
-                                             "transpose2",
+                                             "fused_transpose",
                                              "slice",
                                              "nearest_interp",
                                              "nearest_interp_v2",

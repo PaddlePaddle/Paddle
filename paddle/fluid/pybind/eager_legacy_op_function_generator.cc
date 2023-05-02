@@ -26,12 +26,10 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/operators/custom_device_common_op_registry.h"
+#include "paddle/fluid/pybind/eager_generator.h"
 #include "paddle/fluid/pybind/pybind.h"
 #include "paddle/fluid/string/string_helper.h"
-#ifdef PADDLE_WITH_ASCEND_CL
-#include "paddle/fluid/framework/fleet/ascend_wrapper.h"
-#endif
-#include "paddle/fluid/pybind/eager_generator.h"
 
 // phi
 #include "paddle/phi/kernels/declarations.h"
@@ -484,10 +482,10 @@ int main(int argc, char* argv[]) {
     std::cerr << "argc must be 2" << std::endl;
     return -1;
   }
-
-#ifdef PADDLE_WITH_ASCEND_CL
-  auto ascend_ptr = paddle::framework::AscendInstance::GetInstance();
-  ascend_ptr->InitGEForUT();
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  // We need a fake device to trigger the registration of the common kernel and
+  // generate api
+  paddle::operators::RegisterCustomDeviceCommonKernel("fake_device");
 #endif
 
   std::vector<std::string> headers{
@@ -556,10 +554,6 @@ int main(int argc, char* argv[]) {
       << "} // namespace paddle\n";
 
   out.close();
-
-#ifdef PADDLE_WITH_ASCEND_CL
-  ge::GEFinalize();
-#endif
 
   return 0;
 }

@@ -15,15 +15,15 @@
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/macros.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/meshgrid_grad_kernel.h"
-
 namespace phi {
 
 template <typename T, typename Context, int Rank>
 void MeshgridBackward(const Context& ctx,
-                      const std::vector<const DenseTensor*>& ins,
+                      const std::vector<const DenseTensor*>& ins UNUSED,
                       const std::vector<const DenseTensor*>& out_grad,
                       std::vector<DenseTensor*> outs) {
   int n = out_grad.size();

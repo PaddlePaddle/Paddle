@@ -16,7 +16,7 @@
 import unittest
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 class TestFloorModOp(unittest.TestCase):

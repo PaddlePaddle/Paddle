@@ -23,10 +23,11 @@
 #include "paddle/fluid/operators/fused/fused_bn_activation_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/norm_utils.h"
 
-DECLARE_bool(cudnn_batchnorm_spatial_persistent);
+PHI_DECLARE_bool(cudnn_batchnorm_spatial_persistent);
 
 namespace paddle {
 namespace operators {
@@ -36,10 +37,15 @@ template <typename T>
 using BatchNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 
 template <typename T>
-class FusedBatchNormActKernel<phi::GPUContext, T>
+class FusedBatchNormActKernel<T, phi::GPUContext>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+#if CUDNN_VERSION < 7401
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "The fused_batch_norm_act operator is not supported on GPU "
+        "when CUDNN version < 7.4.1"));
+#endif
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(ctx.GetPlace()),
         true,
@@ -177,13 +183,13 @@ class FusedBatchNormActKernel<phi::GPUContext, T>
             /*sizeInBytes=*/&reserve_space_size));
 
     reserve_space->Resize({static_cast<int64_t>(
-        (reserve_space_size + experimental::SizeOf(x->dtype()) - 1) /
-        experimental::SizeOf(x->dtype()))});
+        (reserve_space_size + phi::SizeOf(x->dtype()) - 1) /
+        phi::SizeOf(x->dtype()))});
     reserve_space_ptr =
         dev_ctx.Alloc<T>(reserve_space, reserve_space->numel() * sizeof(T));
-    workspace_tensor.Resize({static_cast<int64_t>(
-        (workspace_size + experimental::SizeOf(x->dtype()) - 1) /
-        experimental::SizeOf(x->dtype()))});
+    workspace_tensor.Resize(
+        {static_cast<int64_t>((workspace_size + phi::SizeOf(x->dtype()) - 1) /
+                              phi::SizeOf(x->dtype()))});
     workspace_ptr = dev_ctx.Alloc<T>(&workspace_tensor,
                                      workspace_tensor.numel() * sizeof(T));
 
@@ -231,10 +237,15 @@ class FusedBatchNormActKernel<phi::GPUContext, T>
 };
 
 template <typename T>
-class FusedBatchNormActGradKernel<phi::GPUContext, T>
+class FusedBatchNormActGradKernel<T, phi::GPUContext>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+#if CUDNN_VERSION < 7401
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "The fused_batch_norm_act operator is not supported on GPU "
+        "when CUDNN version < 7.4.1"));
+#endif
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(ctx.GetPlace()),
         true,
@@ -360,9 +371,9 @@ class FusedBatchNormActGradKernel<phi::GPUContext, T>
             /*activationDesc=*/activation_desc_,
             /*sizeInBytes=*/&workspace_size));
 
-    workspace_tensor.Resize({static_cast<int64_t>(
-        (workspace_size + experimental::SizeOf(x->dtype()) - 1) /
-        experimental::SizeOf(x->dtype()))});
+    workspace_tensor.Resize(
+        {static_cast<int64_t>((workspace_size + phi::SizeOf(x->dtype()) - 1) /
+                              phi::SizeOf(x->dtype()))});
     workspace_ptr = dev_ctx.Alloc<T>(&workspace_tensor,
                                      workspace_tensor.numel() * sizeof(T));
 
@@ -415,17 +426,19 @@ class FusedBatchNormActGradKernel<phi::GPUContext, T>
 }  // namespace operators
 }  // namespace paddle
 
-#if CUDNN_VERSION >= 7401
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_CUDA_KERNEL(
-    fused_batch_norm_act,
-    ops::FusedBatchNormActKernel<phi::GPUContext, float>,
-    ops::FusedBatchNormActKernel<phi::GPUContext, double>,
-    ops::FusedBatchNormActKernel<phi::GPUContext, plat::float16>);
-REGISTER_OP_CUDA_KERNEL(
-    fused_batch_norm_act_grad,
-    ops::FusedBatchNormActGradKernel<phi::GPUContext, float>,
-    ops::FusedBatchNormActGradKernel<phi::GPUContext, double>,
-    ops::FusedBatchNormActGradKernel<phi::GPUContext, plat::float16>);
-#endif
+PD_REGISTER_STRUCT_KERNEL(fused_batch_norm_act,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::FusedBatchNormActKernel,
+                          float,
+                          double,
+                          plat::float16) {}
+PD_REGISTER_STRUCT_KERNEL(fused_batch_norm_act_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::FusedBatchNormActGradKernel,
+                          float,
+                          double,
+                          plat::float16) {}

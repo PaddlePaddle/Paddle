@@ -315,7 +315,7 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
     dist_attr = ctx.get_op_dist_attr_for_program(backward_op)
     assert (
         dist_attr is not None
-    ), "backward op [{}] don't have dist attribute !".format(str(backward_op))
+    ), f"backward op [{str(backward_op)}] don't have dist attribute !"
 
     # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
     if rank_id not in dist_attr.process_mesh.process_ids:
@@ -651,7 +651,7 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
             backward_op.input("X")[0]
         )
         mesh_shape = process_mesh.shape
-        batch_size_axis = var_dim_mapping[0]
+        batch_size_axis = var_dim_mapping[0] if len(var_dim_mapping) > 0 else -1
         if (
             batch_size_axis > -1
             and mesh_shape[batch_size_axis] > 1
@@ -765,7 +765,7 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         assert (
             op_dist_attr is not None
-        ), "backward op [{}] don't have dist attribute !".format(str(src_op))
+        ), f"backward op [{str(src_op)}] don't have dist attribute !"
 
         # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
         if rank_id not in op_dist_attr.process_mesh.process_ids:
@@ -780,7 +780,7 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
             )
             assert len(kwargs[input_name]) == len(
                 src_op.desc.input(input_name)
-            ), "number of tensor for input [{}] is not match".format(input_name)
+            ), f"number of tensor for input [{input_name}] is not match"
         for output_name in src_op.desc.output_names():
             assert output_name in kwargs, "input [{}] is not given".format(
                 output_name
@@ -1028,7 +1028,7 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
             backward_op.input("X")[0]
         )
         mesh_shape = process_mesh.shape
-        batch_size_axis = var_dim_mapping[0]
+        batch_size_axis = var_dim_mapping[0] if len(var_dim_mapping) > 0 else -1
         if (
             batch_size_axis > -1
             and mesh_shape[batch_size_axis] > 1
@@ -1150,7 +1150,7 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         assert (
             op_dist_attr is not None
-        ), "backward op [{}] don't have dist attribute !".format(str(src_op))
+        ), f"backward op [{str(src_op)}] don't have dist attribute !"
 
         # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
         if rank_id not in op_dist_attr.process_mesh.process_ids:
@@ -1165,7 +1165,7 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
             )
             assert len(kwargs[input_name]) == len(
                 src_op.desc.input(input_name)
-            ), "number of tensor for input [{}] is not match".format(input_name)
+            ), f"number of tensor for input [{input_name}] is not match"
         for output_name in src_op.desc.output_names():
             assert output_name in kwargs, "input [{}] is not given".format(
                 output_name
@@ -1365,7 +1365,7 @@ class DistributedMatmulImpl2(DistributedOperatorImpl):
             backward_op.input("X")[0]
         )
         mesh_shape = process_mesh.shape
-        batch_size_axis = var_dim_mapping[0]
+        batch_size_axis = var_dim_mapping[0] if len(var_dim_mapping) > 0 else -1
         if (
             batch_size_axis > -1
             and mesh_shape[batch_size_axis] > 1
@@ -1507,7 +1507,7 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
         processes = process_mesh.process_ids
         # col parallel: matmul + allreduce
         if backward_op.attr("trans_y"):
-            Y_var_dim_mapping.reverse()
+            Y_var_dim_mapping = list(reversed(Y_var_dim_mapping))
         assert Y_var_dim_mapping[0] < 0
         parallel_axis = Y_var_dim_mapping[1]
 
@@ -1552,7 +1552,7 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
             backward_op.input("X")[0]
         )
         mesh_shape = process_mesh.shape
-        batch_size_axis = var_dim_mapping[0]
+        batch_size_axis = var_dim_mapping[0] if len(var_dim_mapping) > 0 else -1
         if (
             batch_size_axis > -1
             and mesh_shape[batch_size_axis] > 1
@@ -1667,7 +1667,7 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         assert (
             op_dist_attr is not None
-        ), "backward op [{}] don't have dist attribute !".format(str(src_op))
+        ), f"backward op [{str(src_op)}] don't have dist attribute !"
 
         # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
         if rank_id not in op_dist_attr.process_mesh.process_ids:
@@ -1682,7 +1682,7 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
             )
             assert len(kwargs[input_name]) == len(
                 src_op.desc.input(input_name)
-            ), "number of tensor for input [{}] is not match".format(input_name)
+            ), f"number of tensor for input [{input_name}] is not match"
         for output_name in src_op.desc.output_names():
             assert output_name in kwargs, "input [{}] is not given".format(
                 output_name
@@ -1929,7 +1929,7 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
             backward_op.input("X")[0]
         )
         mesh_shape = process_mesh.shape
-        batch_size_axis = var_dim_mapping[0]
+        batch_size_axis = var_dim_mapping[0] if len(var_dim_mapping) > 0 else -1
         if (
             batch_size_axis > -1
             and mesh_shape[batch_size_axis] > 1
@@ -2050,7 +2050,7 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         assert (
             op_dist_attr is not None
-        ), "backward op [{}] don't have dist attribute !".format(str(src_op))
+        ), f"backward op [{str(src_op)}] don't have dist attribute !"
 
         # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
         if rank_id not in op_dist_attr.process_mesh.process_ids:
@@ -2065,7 +2065,7 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
             )
             assert len(kwargs[input_name]) == len(
                 src_op.desc.input(input_name)
-            ), "number of tensor for input [{}] is not match".format(input_name)
+            ), f"number of tensor for input [{input_name}] is not match"
         for output_name in src_op.desc.output_names():
             assert output_name in kwargs, "input [{}] is not given".format(
                 output_name
@@ -2264,7 +2264,7 @@ class DistributedMatmulV2Impl2(DistributedOperatorImpl):
             backward_op.input("X")[0]
         )
         mesh_shape = process_mesh.shape
-        batch_size_axis = var_dim_mapping[0]
+        batch_size_axis = var_dim_mapping[0] if len(var_dim_mapping) > 0 else -1
         if (
             batch_size_axis > -1
             and mesh_shape[batch_size_axis] > 1
@@ -2449,7 +2449,7 @@ class DistributedMulImpl0(DistributedOperatorImpl):
             backward_op.input("X")[0]
         )
         mesh_shape = process_mesh.shape
-        batch_size_axis = var_dim_mapping[0]
+        batch_size_axis = var_dim_mapping[0] if len(var_dim_mapping) > 0 else -1
         if (
             batch_size_axis > -1
             and mesh_shape[batch_size_axis] > 1
@@ -2558,7 +2558,7 @@ class DistributedMulImpl0(DistributedOperatorImpl):
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         assert (
             op_dist_attr is not None
-        ), "backward op [{}] don't have dist attribute !".format(str(src_op))
+        ), f"backward op [{str(src_op)}] don't have dist attribute !"
 
         # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
         if rank_id not in op_dist_attr.process_mesh.process_ids:
@@ -2573,7 +2573,7 @@ class DistributedMulImpl0(DistributedOperatorImpl):
             )
             assert len(kwargs[input_name]) == len(
                 src_op.desc.input(input_name)
-            ), "number of tensor for input [{}] is not match".format(input_name)
+            ), f"number of tensor for input [{input_name}] is not match"
         for output_name in src_op.desc.output_names():
             assert output_name in kwargs, "input [{}] is not given".format(
                 output_name
@@ -2832,7 +2832,7 @@ class DistributedMulImpl1(DistributedOperatorImpl):
             backward_op.input("X")[0]
         )
         mesh_shape = process_mesh.shape
-        batch_size_axis = var_dim_mapping[0]
+        batch_size_axis = var_dim_mapping[0] if len(var_dim_mapping) > 0 else -1
         if (
             batch_size_axis > -1
             and mesh_shape[batch_size_axis] > 1
@@ -2949,7 +2949,7 @@ class DistributedMulImpl1(DistributedOperatorImpl):
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         assert (
             op_dist_attr is not None
-        ), "backward op [{}] don't have dist attribute !".format(str(src_op))
+        ), f"backward op [{str(src_op)}] don't have dist attribute !"
 
         # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
         if rank_id not in op_dist_attr.process_mesh.process_ids:
@@ -2964,7 +2964,7 @@ class DistributedMulImpl1(DistributedOperatorImpl):
             )
             assert len(kwargs[input_name]) == len(
                 src_op.desc.input(input_name)
-            ), "number of tensor for input [{}] is not match".format(input_name)
+            ), f"number of tensor for input [{input_name}] is not match"
         for output_name in src_op.desc.output_names():
             assert output_name in kwargs, "input [{}] is not given".format(
                 output_name
@@ -3178,7 +3178,7 @@ class DistributedMulImpl2(DistributedOperatorImpl):
             backward_op.input("X")[0]
         )
         mesh_shape = process_mesh.shape
-        batch_size_axis = var_dim_mapping[0]
+        batch_size_axis = var_dim_mapping[0] if len(var_dim_mapping) > 0 else -1
         if (
             batch_size_axis > -1
             and mesh_shape[batch_size_axis] > 1

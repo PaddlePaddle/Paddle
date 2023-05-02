@@ -103,7 +103,7 @@ class TestResnet50Accuracy(unittest.TestCase):
                     fetch_list=[loss],
                     return_numpy=True,
                 )
-                loss_vals.append(loss_v[0][0])
+                loss_vals.append(loss_v[0])
         return loss_vals
 
     def test_check_resnet50_accuracy(self):
@@ -134,6 +134,7 @@ class TestResnet50Accuracy(unittest.TestCase):
         loop_num = 10
         feed = self.generate_random_data(loop_num)
         core._set_prim_backward_enabled(True)
+        core._add_skip_comp_ops("batch_norm")
         loss_c = self.train(place, loop_num, feed, use_cinn=True)
         core._set_prim_backward_enabled(False)
         loss_p = self.train(place, loop_num, feed, use_cinn=True)

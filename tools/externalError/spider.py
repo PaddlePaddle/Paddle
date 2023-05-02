@@ -80,7 +80,7 @@ def parsing(externalErrorDesc):
                 _Messages.code = int(m_type[1], 16)
             else:
                 raise ValueError
-        _Messages.message = "'%s'. %s" % (m_type[0], m_message)
+        _Messages.message = f"'{m_type[0]}'. {m_message}"
     print("End crawling errorMessage for nvidia CUDA API!\n")
 
     # ***********************************************************************************************#
@@ -111,7 +111,7 @@ def parsing(externalErrorDesc):
                 _Messages.code = int(m_type[1], 16)
             else:
                 raise ValueError
-        _Messages.message = "'%s'. %s" % (m_type[0], m_message)
+        _Messages.message = f"'{m_type[0]}'. {m_message}"
     print("End crawling errorMessage for nvidia CURAND API!\n")
 
     # **************************************************************************************************#
@@ -189,7 +189,7 @@ def parsing(externalErrorDesc):
 
         _Messages = allMessageDesc.messages.add()
         _Messages.code = int(cudnnStatus_t[error[0]])
-        _Messages.message = "'%s'. %s" % (error[0], m_message)
+        _Messages.message = f"'{error[0]}'. {m_message}"
     print("End crawling errorMessage for nvidia CUDNN API!\n")
 
     # *************************************************************************************************#
@@ -243,7 +243,7 @@ def parsing(externalErrorDesc):
 
         _Messages = allMessageDesc.messages.add()
         _Messages.code = int(cublasStatus_t[error[0]])
-        _Messages.message = "'%s'. %s" % (error[0], m_message)
+        _Messages.message = f"'{error[0]}'. {m_message}"
     print("End crawling errorMessage for nvidia CUBLAS API!\n")
 
     # *************************************************************************************************#
@@ -320,7 +320,7 @@ def parsing(externalErrorDesc):
 
         _Messages = allMessageDesc.messages.add()
         _Messages.code = int(cusolverStatus_t[error[0]])
-        _Messages.message = "'%s'. %s" % (error[0], m_message)
+        _Messages.message = f"'{error[0]}'. {m_message}"
     print("End crawling errorMessage for nvidia CUSOLVER API!\n")
 
     # **********************************************************************************************#
@@ -339,7 +339,7 @@ def parsing(externalErrorDesc):
         m_message = re.sub(r'\n', '', error[2])
         _Messages = allMessageDesc.messages.add()
         _Messages.code = int(error[1])
-        _Messages.message = "'%s'. %s" % (error[0], m_message)
+        _Messages.message = f"'{error[0]}'. {m_message}"
     print("End crawling errorMessage for nvidia NCCL API!\n")
 
     # *************************************************************************************************#
@@ -361,7 +361,7 @@ def parsing(externalErrorDesc):
                     status, code, desc = re.split('=|//', line.strip())
                     _Messages = allMessageDesc.messages.add()
                     _Messages.code = int(code.strip(' ,'))
-                    _Messages.message = "'%s'. %s" % (
+                    _Messages.message = "'{}'. {}".format(
                         status.strip(),
                         desc.strip(),
                     )

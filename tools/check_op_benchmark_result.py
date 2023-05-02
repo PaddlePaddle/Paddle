@@ -16,6 +16,7 @@ import argparse
 import json
 import logging
 import os
+import sys
 
 
 def check_path_exists(path):
@@ -28,7 +29,7 @@ def parse_case_name(log_file_name):
     case_id, case_info = log_file_name.split("-")
     direction = case_info.split(".")[0].split("_")[-1]
 
-    return "%s (%s)" % (case_id, direction)
+    return f"{case_id} ({direction})"
 
 
 def parse_log_file(log_file):
@@ -73,7 +74,7 @@ def check_speed_result(case_name, develop_data, pr_data, pr_result):
         gpu_time_diff = (pr_gpu_time - develop_gpu_time) / develop_gpu_time
         gpu_time_diff_str = "{:.5f}".format(gpu_time_diff * 100)
     else:
-        gpu_time_diff = None
+        gpu_time_diff = 0
         gpu_time_diff_str = ""
 
     pr_total_time = pr_data.get("total")
@@ -137,13 +138,13 @@ def update_api_info_file(fail_case_list, api_info_file):
     fail_case_dict = dict(map(parse_case_id_f, fail_case_list))
 
     # list of api infos for performance check failures
-    api_info_list = list()
+    api_info_list = []
     with open(api_info_file) as f:
         for line in f:
             line_list = line.split(',')
             case = line_list[0].split(':')[0]
             if case in fail_case_dict:
-                line_list[0] = "%s:%s" % (case, fail_case_dict[case])
+                line_list[0] = f"{case}:{fail_case_dict[case]}"
                 api_info_list.append(','.join(line_list))
 
     # update api info file
@@ -153,7 +154,7 @@ def update_api_info_file(fail_case_list, api_info_file):
 
 
 def summary_results(check_results, api_info_file):
-    """Summary results and return exit code."""
+    """Summary results and return sys.exit code."""
     for case_name in check_results["speed"]:
         logging.error("Check speed result with case \"%s\" failed." % case_name)
 
@@ -199,7 +200,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    check_results = dict(accuracy=list(), speed=list())
+    check_results = {"accuracy": [], "speed": []}
 
     develop_result_dict = load_benchmark_result_from_logs_dir(
         args.develop_logs_dir
@@ -217,4 +218,4 @@ if __name__ == "__main__":
             case_name, develop_result, pr_result, check_results
         )
 
-    exit(summary_results(check_results, args.api_info_file))
+    sys.exit(summary_results(check_results, args.api_info_file))

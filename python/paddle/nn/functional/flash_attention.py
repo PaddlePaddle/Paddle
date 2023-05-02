@@ -24,6 +24,10 @@ def flash_attention(
     dropout=0.0,
     causal=False,
     return_softmax=False,
+    *,
+    fixed_seed_offset=None,
+    rng_name="",
+    training=True,
     name=None,
 ):
     r"""
@@ -54,8 +58,11 @@ def flash_attention(
                         [batch_size, seq_len, num_heads, head_dim].
                         The dtype can be float61 or bfloat16.
         dropout(float): The dropout ratio.
-        causal(bool): Wether enable causal mode.
-        return_softmax(bool): Wether to return softmax.
+        causal(bool): Whether enable causal mode.
+        return_softmax(bool): Whether to return softmax.
+        fixed_seed_offset(Tensor, optional): With fixed seed, offset for dropout mask.
+        training(bool): Whether it is in the training phase.
+        rng_name(str): The name to select Generator.
         name(str, optional): The default value is None. Normally there is no need for user
                         to set this property. For more information, please refer to
                         :ref:`api_guide_Name`.
@@ -78,20 +85,18 @@ def flash_attention(
             print(output)
     """
     if in_dynamic_mode():
-        (
-            result_attention,
-            result_softmax_lse,
-            result_softmax,
-            seed_offset,
-        ) = _C_ops.flash_attn(
+        (result_attention, result_softmax,) = _C_ops.flash_attn(
             query,
             key,
             value,
+            fixed_seed_offset,
             dropout,
             causal,
             return_softmax,
+            not training,
+            rng_name,
         )
-        return result_attention, result_softmax
+        return result_attention, result_softmax if return_softmax else None
 
     helper = LayerHelper('flash_attn', **locals())
     dtype = helper.input_dtype(input_param_name='q')
@@ -103,6 +108,7 @@ def flash_attention(
         'q': query,
         'k': key,
         'v': value,
+        'fixed_seed_offset': fixed_seed_offset,
     }
     outputs = {
         'out': out,
@@ -118,6 +124,143 @@ def flash_attention(
             'dropout': dropout,
             'causal': causal,
             'return_softmax': return_softmax,
+            'is_test': not training,
+            'rng_name': rng_name,
         },
     )
-    return out, softmax
+    return out, softmax if return_softmax else None
+
+
+def flash_attn_unpadded(
+    query,
+    key,
+    value,
+    cu_seqlens_q,
+    cu_seqlens_k,
+    max_seqlen_q,
+    max_seqlen_k,
+    scale,
+    dropout=0.0,
+    causal=False,
+    return_softmax=False,
+    fixed_seed_offset=None,
+    rng_name="",
+    training=True,
+    name=None,
+):
+    r"""
+    The equation is:
+
+    .. math::
+
+        result=softmax(\frac{ Q * K^T }{\sqrt{d}}) * V
+
+    where : ``Q``, ``K``, and ``V`` represent the three input parameters of the attention module.
+    The dimensions of the three parameters are the same.
+    ``d`` represents the size of the last dimension of the three parameters.
+
+    Warning:
+        This API is only support inputs with dtype float16 and bfloat16.
+
+    Args:
+        query(Tensor): The query tensor in the Attention module.
+                        3-D tensor with shape:
+                        [total_seq_len, num_heads, head_dim].
+                        The dtype can be float61 or bfloat16.
+        key(Tensor): The key tensor in the Attention module.
+                        3-D tensor with shape:
+                        [total_seq_len, num_heads, head_dim].
+                        The dtype can be float61 or bfloat16.
+        value(Tensor): The value tensor in the Attention module.
+                        3-D tensor with shape:
+                        [total_seq_len, num_heads, head_dim].
+                        The dtype can be float61 or bfloat16.
+        cu_seqlens_q(Tensor): The cumulative sequence lengths of the sequences in the batch,
+                        used to index query.
+        cu_seqlens_k(Tensor): The cumulative sequence lengths of the sequences in the batch,
+                        used to index key and value.
+        max_seqlen_q(int): Maximum sequence length of query in the batch.
+        max_seqlen_k(int): Maximum sequence length of key/value in the batch.
+        scale(float): The scaling of QK^T before applying softmax.
+        dropout(float): The dropout ratio.
+        causal(bool): Whether enable causal mode.
+        return_softmax(bool): Whether to return softmax.
+        fixed_seed_offset(Tensor, optional): With fixed seed, offset for dropout mask.
+        rng_name(str): The name to select Generator.
+        training(bool): Whether it is in the training phase.
+        name(str, optional): The default value is None. Normally there is no need for user
+                        to set this property. For more information, please refer to
+                        :ref:`api_guide_Name`.
+
+    Returns:
+        out(Tensor): The attention tensor.
+                    4-D tensor with shape: [batch_size, seq_len, num_heads, head_dim].
+                    The dtype can be float16 or bfloat16.
+        softmax(Tensor): The softmax tensor. None if return_softmax is False.
+
+    Examples:
+        .. code-block:: python
+
+            # required: skiptest
+            import paddle
+
+            q = paddle.rand((1, 128, 2, 16), dtype=paddle.float16)
+
+            output = paddle.nn.functional.flash_attn_unpadded(q, q, q, 0.9, False, False)
+            print(output)
+    """
+    if in_dynamic_mode():
+        (result_attention, result_softmax,) = _C_ops.flash_attn_unpadded(
+            query,
+            key,
+            value,
+            cu_seqlens_q,
+            cu_seqlens_k,
+            fixed_seed_offset,
+            max_seqlen_q,
+            max_seqlen_k,
+            scale,
+            dropout,
+            causal,
+            return_softmax,
+            not training,
+            rng_name,
+        )
+        return result_attention, result_softmax if return_softmax else None
+
+    helper = LayerHelper('flash_attn_unpadded', **locals())
+    dtype = helper.input_dtype(input_param_name='q')
+    out = helper.create_variable_for_type_inference(dtype)
+    softmax = helper.create_variable_for_type_inference(dtype)
+    softmax_lse = helper.create_variable_for_type_inference(paddle.float32)
+    seed_offset = helper.create_variable_for_type_inference(paddle.int64)
+    inputs = {
+        'q': query,
+        'k': key,
+        'v': value,
+        'cu_seqlens_q': cu_seqlens_q,
+        'cu_seqlens_k': cu_seqlens_k,
+        'fixed_seed_offset': fixed_seed_offset,
+    }
+    outputs = {
+        'out': out,
+        'softmax': softmax,
+        'softmax_lse': softmax_lse,
+        'seed_offset': seed_offset,
+    }
+    helper.append_op(
+        type='flash_attn_unpadded',
+        inputs=inputs,
+        outputs=outputs,
+        attrs={
+            'max_seqlen_q': max_seqlen_q,
+            'max_seqlen_k': max_seqlen_k,
+            'scale': scale,
+            'dropout': dropout,
+            'causal': causal,
+            'return_softmax': return_softmax,
+            'is_test': not training,
+            'rng_name': rng_name,
+        },
+    )
+    return out, softmax if return_softmax else None

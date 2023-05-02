@@ -24,6 +24,7 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/utils/string/split.h"
 
 #ifdef PADDLE_WITH_TENSORRT
@@ -31,7 +32,7 @@
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-DECLARE_uint64(initial_gpu_memory_in_mb);
+PHI_DECLARE_uint64(initial_gpu_memory_in_mb);
 #endif
 
 namespace paddle {
@@ -59,6 +60,9 @@ PassStrategy *AnalysisConfig::pass_builder() const {
     } else if (use_ipu_) {
       LOG(INFO) << "Create IPU IR passes";
       pass_builder_.reset(new IpuPassStrategy);
+    } else if (use_custom_device_) {
+      LOG(INFO) << "Create CUSTOM DEVICE IR passes";
+      pass_builder_.reset(new CustomDevicePassStrategy);
     } else {
       LOG(INFO) << "Create CPU IR passes";
       pass_builder_.reset(new CpuPassStrategy);
@@ -192,27 +196,34 @@ void AnalysisConfig::SetXpuDeviceId(int device_id) {
   Update();
 }
 
-void AnalysisConfig::EnableNpu(int device_id) {
-#if defined(PADDLE_WITH_ASCEND_CL)
-  use_npu_ = true;
-  npu_device_id_ = device_id;
-#elif defined(PADDLE_WITH_CUSTOM_DEVICE)
-  use_custom_device_ = true;
-  custom_device_id_ = device_id;
-  custom_device_type_ = "npu";
-#else
-  LOG(ERROR) << "Please compile with npu to EnableNpu()";
-  use_npu_ = false;
-#endif
+void AnalysisConfig::SetXpuConfig(
+    int quant_post_dynamic_weight_bits,
+    const std::vector<std::string> &quant_post_dynamic_op_types) {
+  xpu_quant_post_dynamic_weight_bits_ = quant_post_dynamic_weight_bits;
+  xpu_quant_post_dynamic_op_types_ = quant_post_dynamic_op_types;
   Update();
 }
 
 void AnalysisConfig::EnableCustomDevice(const std::string &device_type,
-                                        int device_id) {
+                                        int device_id,
+                                        Precision precision_mode) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   use_custom_device_ = true;
   custom_device_id_ = device_id;
   custom_device_type_ = device_type;
+  mixed_precision_mode_ = precision_mode;
+  if (precision_mode == Precision::kFloat32) {
+    // default
+  } else if (precision_mode == Precision::kHalf ||
+             precision_mode == Precision::kBf16) {
+    enable_custom_device_mixed_ = true;
+    LOG(INFO) << "enable_custom_device_mixed_";
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "The Paddle-CustomDevice inference currently only supports "
+        "float32/float16/bfloat16 precision. Please check the parameters "
+        "you specified in EnableCustomDevice function."));
+  }
 #else
   LOG(ERROR) << "Please compile with CustomDevice to EnableCustomDevice()";
   use_custom_device_ = false;
@@ -486,6 +497,8 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(xpu_precision_);
   CP_MEMBER(xpu_adaptive_seqlen_);
   CP_MEMBER(xpu_enable_multi_stream_);
+  CP_MEMBER(xpu_quant_post_dynamic_weight_bits_);
+  CP_MEMBER(xpu_quant_post_dynamic_op_types_);
 
   // Lite OpenCL Related
   CP_MEMBER(use_opencl_);
@@ -537,6 +550,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(use_custom_device_);
   CP_MEMBER(custom_device_type_);
   CP_MEMBER(custom_device_id_);
+  CP_MEMBER(enable_custom_device_mixed_);
 
   // JITLayer relate
   CP_MEMBER(apply_optim_);
@@ -555,6 +569,9 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   } else if (use_xpu_) {
     pass_builder_.reset(new XpuPassStrategy(
         *static_cast<XpuPassStrategy *>(other.pass_builder())));
+  } else if (use_custom_device_) {
+    pass_builder_.reset(new CustomDevicePassStrategy(
+        *static_cast<CustomDevicePassStrategy *>(other.pass_builder())));
   } else if (use_npu_) {
     pass_builder_.reset(new NpuPassStrategy(
         *static_cast<NpuPassStrategy *>(other.pass_builder())));
@@ -1002,20 +1019,6 @@ void AnalysisConfig::Update() {
         "with XPU-runtime."));
 #endif
   }
-
-  if (use_npu_) {
-#if defined(PADDLE_WITH_ASCEND_CL) || defined(LITE_SUBGRAPH_WITH_NPU)
-    PADDLE_ENFORCE_EQ(use_gpu_,
-                      false,
-                      platform::errors::Unavailable(
-                          "Currently, NPU and GPU cannot be enabled in the "
-                          "same analysis configuration."));
-#else
-    PADDLE_THROW(platform::errors::Unavailable(
-        "You tried to use an NPU device, but Paddle was not compiled "
-        "with NPU-runtime."));
-#endif
-  }
   if (use_ipu_) {
 #ifndef PADDLE_WITH_IPU
     PADDLE_THROW(platform::errors::Unavailable(
@@ -1098,6 +1101,10 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << xpu_precision_;
   ss << xpu_adaptive_seqlen_;
   ss << xpu_enable_multi_stream_;
+  ss << xpu_quant_post_dynamic_weight_bits_;
+  for (auto op_type : xpu_quant_post_dynamic_op_types_) {
+    ss << op_type;
+  }
 
   ss << use_npu_;
   ss << npu_device_id_;
@@ -1338,6 +1345,13 @@ std::string AnalysisConfig::Summary() {
     os.InsertRow({"xpu_device_id", std::to_string(xpu_device_id_)});
     os.InsertRow(
         {"xpu_l3_workspace_size", std::to_string(xpu_l3_workspace_size_)});
+    os.InsertRow({"xpu_quant_post_dynamic_weight_bits",
+                  std::to_string(xpu_quant_post_dynamic_weight_bits_)});
+    std::vector<std::string> op_types{"xpu_quant_post_dynamic_op_types"};
+    for (auto op_type : xpu_quant_post_dynamic_op_types_) {
+      op_types.push_back(op_type);
+    }
+    os.InsertRow(op_types);
   }
   os.InsetDivider();
 

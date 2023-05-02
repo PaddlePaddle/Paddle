@@ -15,7 +15,7 @@
 import numpy as np
 
 import paddle
-import paddle.framework as framework
+from paddle import framework
 
 from ...utils.log_util import logger
 from .utils import number_2_dtype, paddle_2_number
@@ -23,6 +23,26 @@ from .utils import number_2_dtype, paddle_2_number
 _hcg = None
 _use_cache = False
 _enable_partial_send_recv = True
+
+_xpu_comm_group_started = False
+
+
+def _xpu_comm_group_start():
+    if not paddle.is_compiled_with_xpu():
+        return
+    global _xpu_comm_group_started
+    assert not _xpu_comm_group_started
+    framework.core.ProcessGroupBKCL.group_start()
+    _xpu_comm_group_started = True
+
+
+def _xpu_comm_group_end():
+    if not paddle.is_compiled_with_xpu():
+        return
+    global _xpu_comm_group_started
+    if _xpu_comm_group_started:
+        framework.core.ProcessGroupBKCL.group_end()
+        _xpu_comm_group_started = False
 
 
 def initialize_p2p_groups(hcg, use_cache=True, enable_partial_send_recv=True):
@@ -83,7 +103,7 @@ class SendRecvMeta:
         # recv stop_gradient
         stop_grad = paddle.to_tensor([0])
         paddle.distributed.recv(stop_grad, src=src_rank, group=group)
-        return shape.numpy().tolist(), dtype.item(), stop_grad.item()
+        return shape.tolist(), dtype.item(), stop_grad.item()
 
     def recv_meta(self, group):
         tensor_type = paddle.to_tensor([0])
@@ -117,7 +137,7 @@ class SendRecvMeta:
 
     def _send_dims_shape_dtype(self, tensor, group):
         # send len(shape)
-        dims = paddle.to_tensor(len(tensor.shape))
+        dims = paddle.to_tensor([len(tensor.shape)])
         dst_rank = _hcg._get_p2p_next_rank()
 
         paddle.distributed.send(dims, dst=dst_rank, group=group)
@@ -127,11 +147,11 @@ class SendRecvMeta:
         paddle.distributed.send(shape, dst=dst_rank, group=group)
 
         # send dtype
-        dtype = paddle.to_tensor(paddle_2_number(tensor.dtype))
+        dtype = paddle.to_tensor([paddle_2_number(tensor.dtype)])
         paddle.distributed.send(dtype, dst=dst_rank, group=group)
 
         # send trainable
-        stop_grad = paddle.to_tensor(int(tensor.stop_gradient))
+        stop_grad = paddle.to_tensor([int(tensor.stop_gradient)])
         paddle.distributed.send(stop_grad, dst=dst_rank, group=group)
 
     def send_meta(self, tensor, group):
@@ -148,7 +168,7 @@ class SendRecvMeta:
             # send tensor type
             paddle.distributed.send(tensor_type, dst=dst_rank, group=group)
 
-            nums = paddle.to_tensor(len(tensor))
+            nums = paddle.to_tensor([len(tensor)])
             paddle.distributed.send(nums, dst=dst_rank, group=group)
 
             for d in tensor:
@@ -350,9 +370,8 @@ def _p2p_helper(
 
     # TODO(Yuang Liu): use batch_isend_irecv replace all these comm ops
     tasks = []
-    if paddle.is_compiled_with_xpu():
-        framework.core.ProcessGroupBKCL.group_start()
     # start to p2p communicate
+    _xpu_comm_group_start()
     if tensor_send_prev is not None:
         if isinstance(tensor_send_prev, tuple):
             for d in tensor_send_prev:
@@ -388,6 +407,7 @@ def _p2p_helper(
                     use_calc_stream=sync_recv,
                 )
                 if sync_recv:
+                    _xpu_comm_group_end()
                     allgather_partial(
                         d,
                         nranks=mp_degree,
@@ -406,7 +426,9 @@ def _p2p_helper(
                 group=_hcg.recv_prev_group,
                 use_calc_stream=sync_recv,
             )
+
             if sync_recv:
+                _xpu_comm_group_end()
                 allgather_partial(
                     tensor_recv_prev,
                     nranks=mp_degree,
@@ -451,7 +473,9 @@ def _p2p_helper(
                     group=_hcg.recv_next_group,
                     use_calc_stream=sync_recv,
                 )
+
                 if sync_recv:
+                    _xpu_comm_group_end()
                     allgather_partial(
                         d,
                         nranks=mp_degree,
@@ -472,6 +496,7 @@ def _p2p_helper(
                 use_calc_stream=sync_recv,
             )
             if sync_recv:
+                _xpu_comm_group_end()
                 allgather_partial(
                     tensor_recv_next,
                     nranks=mp_degree,
@@ -481,9 +506,7 @@ def _p2p_helper(
                 )
             else:
                 tasks.append(task)
-    if paddle.is_compiled_with_xpu():
-        framework.core.ProcessGroupBKCL.group_end()
-
+    _xpu_comm_group_end()
     if not sync_recv:
         if framework.in_dygraph_mode():
             # wait irecv tasks in eager dygraph mode with new comm library

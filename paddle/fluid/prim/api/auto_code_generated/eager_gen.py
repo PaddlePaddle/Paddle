@@ -28,7 +28,7 @@ inplace_optional_out_type_map = {
 
 
 class BaseAPI:
-    def __init__(self, api_item_yaml, prims=tuple()):
+    def __init__(self, api_item_yaml, prims=()):
         # self.api = api_item_yaml['op']
         self.api = api_item_yaml['name']
 
@@ -225,14 +225,20 @@ class BaseAPI:
         return inputs, attrs
 
     def parse_output(self, outputs_list):
-
+        output_types_map = {
+            'Tensor[]': 'std::vector<Tensor>',
+        }
         out_type_list = []
         out_name_list = []
         out_size_expr_list = []
         for output_dict in outputs_list:
             if output_dict['intermediate']:
                 continue
-            out_type_list.append(output_dict['typename'])
+            out_type_list.append(
+                output_types_map.get(
+                    output_dict['typename'], output_dict['typename']
+                )
+            )
             out_name_list.append(output_dict['name'])
             if 'size' in output_dict.keys():
                 out_size_expr_list.append(output_dict['size'])
@@ -242,7 +248,7 @@ class BaseAPI:
 
 
 class EagerPrimAPI(BaseAPI):
-    def __init__(self, api_item_yaml, prims=tuple()):
+    def __init__(self, api_item_yaml, prims=()):
         super().__init__(api_item_yaml, prims)
 
     def get_api__func_name(self):
@@ -359,7 +365,7 @@ namespace prim {
 using Tensor = paddle::Tensor;
 using Scalar = paddle::experimental::Scalar;
 using IntArray = paddle::experimental::IntArray;
-using DataType = paddle::experimental::DataType;
+using DataType = phi::DataType;
 """,
         """
 }  // namespace prim

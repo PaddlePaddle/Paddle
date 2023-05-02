@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/framework/var_desc.h"
+#include "paddle/phi/core/macros.h"
 
 namespace paddle {
 namespace framework {
@@ -75,6 +76,8 @@ class OpDesc {
   const std::vector<std::string> &Output(const std::string &name) const;
 
   bool HasOutput(const std::string &name) const;
+
+  bool HasInput(const std::string &name) const;
 
   std::vector<std::string> OutputArgumentNames() const;
 
@@ -148,7 +151,7 @@ class OpDesc {
 
   const AttributeMap &GetRuntimeAttrMap() const;
 
-  std::vector<std::string> InputNames(bool with_attr_var = false) const {
+  std::vector<std::string> InputNames(bool with_attr_var UNUSED = false) const {
     return MapKeys(inputs_);
   }
   std::vector<std::string> OutputNames() const { return MapKeys(outputs_); }

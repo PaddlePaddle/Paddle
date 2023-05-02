@@ -232,7 +232,7 @@ def build_global_view(nop_labels, rhs, n_bcast_dims):
 
     g_labels_sum = ''.join(labels)
     g_labels = g_labels_out + g_labels_sum
-    g_view = list(map(lambda i: build_view(i, g_labels), nop_labels))
+    g_view = [build_view(i, g_labels) for i in nop_labels]
     g_nout = len(g_labels_out)
     g_count = count
 
@@ -337,7 +337,7 @@ def plan_matmul(plan, g_view, op1, op2, g_supports, g_shape, I, J1, J2, K):
     # Then apply matmul(x, y, transpose_x=False, tranpose_y=True)
     var1, var2 = f'op{op1}', f'op{op2}'
 
-    op1_view, op2_view = [g_view[op] for op in (op1, op2)]
+    op1_view, op2_view = (g_view[op] for op in (op1, op2))
 
     I1 = [idx for idx in I if op1_view[idx] >= 0]
     I2 = [idx for idx in I if op2_view[idx] >= 0]
@@ -347,7 +347,7 @@ def plan_matmul(plan, g_view, op1, op2, g_supports, g_shape, I, J1, J2, K):
     op2_view = np.array(op2_view)
     op2_dims = op2_view[I2 + J2 + K]
 
-    op1_mask, op2_mask = [g_supports[op] for op in (op1, op2)]
+    op1_mask, op2_mask = (g_supports[op] for op in (op1, op2))
     op1_vshape = np.array([s if m else 1 for s, m in zip(g_shape, op1_mask)])
     op2_vshape = np.array([s if m else 1 for s, m in zip(g_shape, op2_mask)])
     vshape = np.maximum(op1_vshape, op2_vshape)
@@ -741,7 +741,7 @@ def parse_fake_shape(equation, operands, labels):
     list of shape
 
     """
-    origin_labels = map(lambda x: x.strip(), equation.split(','))
+    origin_labels = (x.strip() for x in equation.split(','))
     shaped = collections.namedtuple('shaped', ['shape'])
 
     def fake_shape(ori_label, label, op):
@@ -844,7 +844,7 @@ def gen_einsum_op(equation, *operands):
         check_type(equation, 'equation', str, 'einsum')
         helper = LayerHelper('einsum', **locals())
         out = helper.create_variable_for_type_inference(dtype=operands[0].dtype)
-        attrs = dict()
+        attrs = {}
         attrs['equation'] = equation
         caches = [
             helper.create_variable_for_type_inference(dtype=operands[0].dtype)
@@ -966,8 +966,8 @@ def einsum(equation, *operands):
 
             # dot
             print(paddle.einsum('i,i->', x, x))
-            # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #   [1.45936954])
+            # Tensor(shape=[], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #   1.45936954)
 
             # outer
             print(paddle.einsum("i,j->ij", x, y))
@@ -1047,7 +1047,7 @@ def einsum(equation, *operands):
     # To handle broadcasting, we should first know how many dimensions are there
     # We need to use that number to generate output labels
     # e.g. 1 for ['ij', 'i.', '.k']
-    n_bcast_dims = max(map(lambda s: s.count('.'), nop_labels))
+    n_bcast_dims = max(s.count('.') for s in nop_labels)
 
     # Build the data structures for planning. It's helpful to think of all the operands
     # broadcasting together from a global view. In this view, dimensions from multiple

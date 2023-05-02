@@ -71,7 +71,7 @@ class TestIRGraph(unittest.TestCase):
 
     def test_create_control_dep_var(self):
         graph = build_graph()
-        name = "__control_var@{}".format(len(graph.nodes()))
+        name = f"__control_var@{len(graph.nodes())}"
         node = graph.create_control_dep_var()
         self.assertTrue(node.name() == name)
 

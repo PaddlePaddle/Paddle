@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
+
 import google.protobuf
 import google.protobuf.text_format
 
@@ -21,12 +23,6 @@ from paddle.distributed.fleet.proto import distributed_strategy_pb2
 from paddle.distributed.fleet.utils.log_util import logger
 from paddle.fluid.framework import _global_flags
 from paddle.fluid.wrapped_decorator import wrap_decorator
-
-protobuf_version = google.protobuf.__version__
-if protobuf_version >= "4.21.0":
-    import google._upb._message as _message
-else:
-    import google.protobuf.pyext._message as _message
 
 __all__ = []
 
@@ -71,7 +67,7 @@ def assign_configs_value(msg, config):
 def check_configs_key(msg, config, field_name):
     key_list = msg.DESCRIPTOR.fields_by_name.keys()
     for key in config:
-        assert key in key_list, "key:{} not in {}".format(key, field_name)
+        assert key in key_list, f"key:{key} not in {field_name}"
 
 
 class DistributedJobInfo:
@@ -149,13 +145,16 @@ class DistributedStrategy:
         if _global_flags().is_public(key):
             self.strategy.sync_nccl_allreduce = bool(_global_flags()[key])
 
+        self.hybrid_parallel_order = ['dp', 'pp', 'sharding', 'mp']
+        self.sync_param_name = ["embedding", "layer_norm", ".b_"]
+
         self.__lock_attr = True
         logger.info("distributed strategy initialized")
 
     def __setattr__(self, key, value):
         if self.__lock_attr and not hasattr(self, key):
             raise TypeError(
-                "%s is not a attribute of %s" % (key, self.__class__.__name__)
+                f"{key} is not a attribute of {self.__class__.__name__}"
             )
         object.__setattr__(self, key, value)
 
@@ -543,7 +542,7 @@ class DistributedStrategy:
                             getattr(msg, field.name), name, configs
                         )
                 else:
-                    logger.debug("not message:", name)
+                    logger.debug("not message: %s", name)
                     if name not in configs:
                         continue
                     if field.label == FieldDescriptor.LABEL_REPEATED:
@@ -1673,6 +1672,8 @@ class DistributedStrategy:
 
             **pp_degree(int)**: set number of GPUs in a pipeline parallel group. Default 1
 
+            **order(list(string))**: set hybrid parallel dimensions, the order is from outside to inside. Default ['dp','pp','sharding','mp']
+
         Examples:
             .. code-block:: python
 
@@ -1681,16 +1682,38 @@ class DistributedStrategy:
                 strategy.hybrid_configs = {
                     "dp_degree": 1,
                     "mp_degree": 2,
-                    "pp_degree": 1}
+                    "pp_degree": 1,
+                    "order":['dp','pp','sharding','mp']}
 
         """
         return get_msg_dict(self.strategy.hybrid_configs)
 
     @hybrid_configs.setter
     def hybrid_configs(self, configs):
+        hybrid_config = copy.deepcopy(configs)
+        if "order" in hybrid_config:
+            self.hybrid_parallel_order = hybrid_config["order"]
+            hybrid_config.pop('order')
+
         check_configs_key(
-            self.strategy.hybrid_configs, configs, "hybrid_configs"
+            self.strategy.hybrid_configs, hybrid_config, "hybrid_configs"
         )
+
+        if "mp_configs" in configs:
+            if "sync_param_name" in configs["mp_configs"]:
+                self.sync_param_name = configs["mp_configs"]["sync_param_name"]
+                configs["mp_configs"].pop("sync_param_name")
+
+            assign_configs_value(
+                self.strategy.hybrid_configs.mp_configs, configs["mp_configs"]
+            )
+            configs.pop("mp_configs")
+        if "pp_configs" in configs:
+            assign_configs_value(
+                self.strategy.hybrid_configs.pp_configs, configs["pp_configs"]
+            )
+            configs.pop("pp_configs")
+
         assign_configs_value(self.strategy.hybrid_configs, configs)
 
     @property
@@ -2466,7 +2489,7 @@ class DistributedStrategy:
 
         length = max_k + max_v + spacing
 
-        h1_format = "    " + "|{{:^{}s}}|\n".format(length)
+        h1_format = "    " + f"|{{:^{length}s}}|\n"
         h2_format = "    " + "|{{:>{}s}}{}{{:^{}s}}|\n".format(
             max_k, " " * spacing, max_v
         )
@@ -2494,17 +2517,26 @@ class DistributedStrategy:
                         if getattr(self.strategy, f.name):
                             draws += border + "\n"
                             draws += h1_format.format(
-                                "{}=True <-> {}_configs".format(f.name, f.name)
+                                f"{f.name}=True <-> {f.name}_configs"
                             )
                             draws += line + "\n"
                             my_configs = getattr(
                                 self.strategy, f.name + "_configs"
                             )
                             config_fields = my_configs.DESCRIPTOR.fields
+                            protobuf_version = google.protobuf.__version__
+                            if protobuf_version >= "4.21.0":
+                                RepeatedScalarContainer = (
+                                    google._upb._message.RepeatedScalarContainer
+                                )
+                            else:
+                                RepeatedScalarContainer = (
+                                    google.protobuf.pyext._message.RepeatedScalarContainer
+                                )
                             for ff in config_fields:
                                 if isinstance(
                                     getattr(my_configs, ff.name),
-                                    _message.RepeatedScalarContainer,
+                                    RepeatedScalarContainer,
                                 ):
                                     values = getattr(my_configs, ff.name)
                                     for i, v in enumerate(values):

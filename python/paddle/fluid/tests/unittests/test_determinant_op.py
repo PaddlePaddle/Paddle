@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 
@@ -30,10 +30,10 @@ class TestDeterminantOp(OpTest):
         self.outputs = {'Out': self.target}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['Input'], ['Out'], check_eager=True)
+        self.check_grad(['Input'], ['Out'])
 
     def init_data(self):
         np.random.seed(0)
@@ -50,6 +50,14 @@ class TestDeterminantOpCase1(TestDeterminantOp):
         self.target = np.linalg.det(self.case)
 
 
+class TestDeterminantOpCase1FP16(TestDeterminantOp):
+    def init_data(self):
+        np.random.seed(0)
+        self.case = np.random.rand(10, 10).astype(np.float16)
+        self.inputs = {'Input': self.case}
+        self.target = np.linalg.det(self.case.astype(np.float32))
+
+
 class TestDeterminantOpCase2(TestDeterminantOp):
     def init_data(self):
         np.random.seed(0)
@@ -57,6 +65,17 @@ class TestDeterminantOpCase2(TestDeterminantOp):
         self.case = np.ones([4, 2, 4, 4]).astype('float64')
         self.inputs = {'Input': self.case}
         self.target = np.linalg.det(self.case)
+
+
+class TestDeterminantOpCase2FP16(TestDeterminantOp):
+    def init_data(self):
+        np.random.seed(0)
+        # not invertible matrix
+        self.case = np.ones([4, 2, 4, 4]).astype(np.float16)
+        self.inputs = {'Input': self.case}
+        self.target = np.linalg.det(self.case.astype(np.float32)).astype(
+            np.float16
+        )
 
 
 class TestDeterminantAPI(unittest.TestCase):
@@ -69,7 +88,7 @@ class TestDeterminantAPI(unittest.TestCase):
     def test_api_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('X', self.shape)
+            x = paddle.static.data('X', self.shape)
             out = paddle.linalg.det(x)
             exe = paddle.static.Executor(self.place)
             res = exe.run(feed={'X': self.x}, fetch_list=[out])
@@ -95,13 +114,11 @@ class TestSlogDeterminantOp(OpTest):
         self.outputs = {'Out': self.target}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
         # the slog det's grad value is always huge
-        self.check_grad(
-            ['Input'], ['Out'], max_relative_error=0.1, check_eager=True
-        )
+        self.check_grad(['Input'], ['Out'], max_relative_error=0.1)
 
     def init_data(self):
         np.random.seed(0)
@@ -128,7 +145,7 @@ class TestSlogDeterminantAPI(unittest.TestCase):
     def test_api_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('X', self.shape)
+            x = paddle.static.data('X', self.shape)
             out = paddle.linalg.slogdet(x)
             exe = paddle.static.Executor(self.place)
             res = exe.run(feed={'X': self.x}, fetch_list=[out])

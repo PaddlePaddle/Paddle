@@ -18,10 +18,8 @@ import numpy as np
 from simple_nets import batchnorm_fc_with_inputs, simple_fc_net_with_inputs
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.fluid.framework as framework
-import paddle.fluid.layers as layers
+from paddle import fluid
+from paddle.fluid import core, framework
 from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import Program, program_guard
 
@@ -42,16 +40,24 @@ class TestCondInputOutput(unittest.TestCase):
         paddle.enable_static()
 
         def true_func():
-            return layers.fill_constant(shape=[2, 3], dtype='int32', value=2)
+            return paddle.tensor.fill_constant(
+                shape=[2, 3], dtype='int32', value=2
+            )
 
         def false_func():
-            return layers.fill_constant(shape=[3, 2], dtype='int32', value=-1)
+            return paddle.tensor.fill_constant(
+                shape=[3, 2], dtype='int32', value=-1
+            )
 
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program, startup_program):
-            x = layers.fill_constant(shape=[1], dtype='float32', value=0.1)
-            y = layers.fill_constant(shape=[1], dtype='float32', value=0.23)
+            x = paddle.tensor.fill_constant(
+                shape=[1], dtype='float32', value=0.1
+            )
+            y = paddle.tensor.fill_constant(
+                shape=[1], dtype='float32', value=0.23
+            )
             pred = paddle.less_than(y, x)
             out = paddle.static.nn.cond(pred, true_func, false_func)
             # out is one tensor
@@ -217,19 +223,23 @@ class TestCondInputOutput(unittest.TestCase):
         paddle.enable_static()
 
         def true_func():
-            return layers.fill_constant(
+            return paddle.tensor.fill_constant(
                 shape=[1, 2], dtype='int32', value=1
-            ), layers.fill_constant(shape=[2, 3], dtype='bool', value=True)
+            ), paddle.tensor.fill_constant(
+                shape=[2, 3], dtype='bool', value=True
+            )
 
         def false_func():
-            return layers.fill_constant(
+            return paddle.tensor.fill_constant(
                 shape=[3, 4], dtype='float32', value=3
-            ), layers.fill_constant(shape=[4, 5], dtype='int64', value=2)
+            ), paddle.tensor.fill_constant(shape=[4, 5], dtype='int64', value=2)
 
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program, startup_program):
-            pred = layers.fill_constant(shape=[1], dtype='bool', value=True)
+            pred = paddle.tensor.fill_constant(
+                shape=[1], dtype='bool', value=True
+            )
             out = paddle.static.nn.cond(pred, true_func, false_func)
             # out is a tuple containing 2 tensors
 
@@ -271,8 +281,10 @@ class TestCondInputOutput(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program, startup_program):
-            a = layers.fill_constant(shape=[3, 2, 1], dtype='int32', value=7)
-            i = fluid.data(name="i", shape=[1], dtype='int32')
+            a = paddle.tensor.fill_constant(
+                shape=[3, 2, 1], dtype='int32', value=7
+            )
+            i = paddle.static.data(name="i", shape=[1], dtype='int32')
             pred = (i % 2) == 0
             a = paddle.static.nn.cond(
                 pred, lambda: true_func(a, i), lambda: false_func(a, i)
@@ -317,7 +329,7 @@ class TestCondInputOutput(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program, startup_program):
-            i = fluid.data(name="i", shape=[1], dtype='int32')
+            i = paddle.static.data(name="i", shape=[1], dtype='int32')
             pred = (i % 2) == 0
             out1 = paddle.static.nn.cond(pred, true_func, false_func)
             out2 = paddle.static.nn.cond(pred, None, false_func)
@@ -346,17 +358,19 @@ class TestCondInputOutput(unittest.TestCase):
             return None
 
         def func_return_one_tensor():
-            return layers.fill_constant(shape=[2, 7], dtype='int32', value=3)
+            return paddle.tensor.fill_constant(
+                shape=[2, 7], dtype='int32', value=3
+            )
 
         def func_return_two_tensors():
-            return layers.fill_constant(
+            return paddle.tensor.fill_constant(
                 shape=[3, 1], dtype='int32', value=7
-            ), layers.fill_constant(shape=[3, 1], dtype='int32', value=8)
+            ), paddle.tensor.fill_constant(shape=[3, 1], dtype='int32', value=8)
 
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program, startup_program):
-            i = fluid.data(name="i", shape=[1], dtype='int32')
+            i = paddle.static.data(name="i", shape=[1], dtype='int32')
             pred = (i % 2) == 0
             with self.assertRaises(TypeError):
                 out = paddle.static.nn.cond(pred, i, func_return_one_tensor)
@@ -398,11 +412,11 @@ class TestCondInputOutput(unittest.TestCase):
         main_program = fluid.Program()
         startup_program = fluid.Program()
         with fluid.program_guard(main_program, startup_program):
-            a = fluid.layers.fill_constant(
+            a = paddle.tensor.fill_constant(
                 shape=[1], dtype='float32', value=1.23
             )
             a.stop_gradient = False
-            b = fluid.layers.fill_constant(
+            b = paddle.tensor.fill_constant(
                 shape=[1], dtype='float32', value=1.25
             )
             b.stop_gradient = False
@@ -462,7 +476,7 @@ class TestCondNestedControlFlow(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program, startup_program):
-            i = fluid.data(name="i", shape=[1], dtype='float32')
+            i = paddle.static.data(name="i", shape=[1], dtype='float32')
             i.stop_gradient = False
             a = 2.0 * i
             out = paddle.static.nn.cond(
@@ -567,11 +581,11 @@ class TestCondNestedControlFlow(unittest.TestCase):
         startup_program = fluid.Program()
 
         with fluid.program_guard(main_program, startup_program):
-            a = fluid.layers.fill_constant(
+            a = paddle.tensor.fill_constant(
                 shape=[1], dtype='float32', value=1.23
             )
             a.stop_gradient = False
-            b = fluid.layers.fill_constant(
+            b = paddle.tensor.fill_constant(
                 shape=[1], dtype='float32', value=1.24
             )
             b.stop_gradient = False
@@ -614,10 +628,14 @@ class TestCondBackward(unittest.TestCase):
         startup_program = Program()
         startup_program.random_seed = 123
         with program_guard(main_program, startup_program):
-            img = fluid.data(name='image', shape=[-1, 9], dtype='float32')
+            img = paddle.static.data(
+                name='image', shape=[-1, 9], dtype='float32'
+            )
             img.stop_gradient = False
-            label = fluid.data(name='label', shape=[-1, 1], dtype='int64')
-            i = fluid.data(name="i", shape=[1], dtype='int32')
+            label = paddle.static.data(
+                name='label', shape=[-1, 1], dtype='int64'
+            )
+            i = paddle.static.data(name="i", shape=[1], dtype='int32')
             loss = cond_func(i, img, label)
             append_backward(loss)
         place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
@@ -656,7 +674,7 @@ class TestCondBackward(unittest.TestCase):
                     },
                     fetch_list=[loss.name],
                 )
-                numerical_grad[0][j] = (loss_delta[0] - loss_value[0]) / delta
+                numerical_grad[0][j] = (loss_delta - loss_value) / delta
                 feed_img_delta[0][j] = feed_img[0][j]
             np.testing.assert_allclose(
                 img_grad, numerical_grad, rtol=0.05, atol=0.05
@@ -669,9 +687,13 @@ class TestCondBackward(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program, startup_program):
-            img = fluid.data(name='image', shape=[-1, 784], dtype='float32')
-            label = fluid.data(name='label', shape=[-1, 1], dtype='int64')
-            i = fluid.data(name="i", shape=[1], dtype='int32')
+            img = paddle.static.data(
+                name='image', shape=[-1, 784], dtype='float32'
+            )
+            label = paddle.static.data(
+                name='label', shape=[-1, 1], dtype='int64'
+            )
+            i = paddle.static.data(name="i", shape=[1], dtype='int32')
             loss = cond_func(i, img, label)
             optimizer = fluid.optimizer.SGD(learning_rate=0.1)
             optimizer.minimize(loss)
@@ -778,7 +800,7 @@ class TestCondWithError(unittest.TestCase):
         main_program = framework.Program()
         startup_program = framework.Program()
         with framework.program_guard(main_program, startup_program):
-            pred = fluid.data(name='y', shape=[1], dtype='bool')
+            pred = paddle.static.data(name='y', shape=[1], dtype='bool')
 
             def func():
                 return pred

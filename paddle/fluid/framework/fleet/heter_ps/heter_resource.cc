@@ -23,10 +23,11 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/xpu/enforce_xpu.h"
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #endif
+#include "paddle/phi/core/flags.h"
 #include "paddle/utils/string/string_helper.h"
 
-DECLARE_bool(enable_auto_detect_gpu_topo);
-DECLARE_bool(enable_auto_rdma_trans);
+PHI_DECLARE_bool(enable_auto_detect_gpu_topo);
+PHI_DECLARE_bool(enable_auto_rdma_trans);
 
 namespace paddle {
 namespace framework {
@@ -55,13 +56,13 @@ GPUResource::GPUResource(std::vector<int> &dev_ids, int index) {
 GPUResource::~GPUResource() {
   platform::CUDADeviceGuard guard(dev_id_);
   for (size_t i = 0; i < local_streams_.size(); ++i) {
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(local_streams_[i]));
+    PADDLE_WARN_GPU_SUCCESS(cudaStreamDestroy(local_streams_[i]));
   }
   for (size_t i = 0; i < comm_streams_.size(); ++i) {
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(comm_streams_[i]));
+    PADDLE_WARN_GPU_SUCCESS(cudaStreamDestroy(comm_streams_[i]));
   }
   for (size_t i = 0; i < remote_streams_.size(); ++i) {
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamDestroy(remote_streams_[i]));
+    PADDLE_WARN_GPU_SUCCESS(cudaStreamDestroy(remote_streams_[i]));
   }
 }
 

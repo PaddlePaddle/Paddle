@@ -33,3 +33,21 @@ PD_REGISTER_KERNEL(numel,
                    bool) {
   kernel->OutputAt(0).SetDataType(phi::DataType::INT64);
 }
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+PD_REGISTER_KERNEL(numel,
+                   Custom,
+                   ALL_LAYOUT,
+                   phi::NumelKernel,
+                   uint8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   float,
+                   double,
+                   bool) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::INT64);
+}
+#endif

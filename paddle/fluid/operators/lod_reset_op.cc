@@ -235,6 +235,7 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(LoDResetGradNoNeedBufferVarInferer, "X");
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 REGISTER_OPERATOR(lod_reset,
                   ops::LoDResetOp,
                   ops::LoDResetOpMaker,
@@ -247,15 +248,34 @@ REGISTER_OPERATOR(lod_reset_grad,
                   ops::LoDResetGradNoNeedBufferVarInferer,
                   ops::LoDResetGradInplaceInferer);
 
-REGISTER_OP_CPU_KERNEL(
-    lod_reset,
-    ops::LoDResetKernel<paddle::platform::CPUPlace, float>,
-    ops::LoDResetKernel<paddle::platform::CPUPlace, double>,
-    ops::LoDResetKernel<paddle::platform::CPUPlace, int>,
-    ops::LoDResetKernel<paddle::platform::CPUPlace, int64_t>);
-REGISTER_OP_CPU_KERNEL(
-    lod_reset_grad,
-    ops::LoDResetGradKernel<paddle::platform::CPUPlace, float>,
-    ops::LoDResetGradKernel<paddle::platform::CPUPlace, double>,
-    ops::LoDResetGradKernel<paddle::platform::CPUPlace, int>,
-    ops::LoDResetGradKernel<paddle::platform::CPUPlace, int64_t>);
+PD_REGISTER_STRUCT_KERNEL(lod_reset,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::LoDResetKernel,
+                          plat::float16,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}
+
+#ifdef PADDLE_WITH_XPU
+PD_REGISTER_STRUCT_KERNEL(lod_reset,
+                          XPU,
+                          ALL_LAYOUT,
+                          ops::LoDResetKernel,
+                          plat::float16,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}
+#endif
+
+PD_REGISTER_STRUCT_KERNEL(lod_reset_grad,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::LoDResetGradKernel,
+                          plat::float16,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}

@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.executor import Executor
 
 
@@ -30,8 +30,12 @@ class TestMseLoss(unittest.TestCase):
         sub = input_val - label_val
         np_result = np.mean(sub * sub)
 
-        input_var = fluid.data(name="input", shape=[-1, 3], dtype="float32")
-        label_var = fluid.data(name="label", shape=[-1, 3], dtype="float32")
+        input_var = paddle.static.data(
+            name="input", shape=[-1, 3], dtype="float32"
+        )
+        label_var = paddle.static.data(
+            name="label", shape=[-1, 3], dtype="float32"
+        )
 
         output = paddle.nn.functional.mse_loss(input=input_var, label=label_var)
         for use_cuda in (
@@ -52,13 +56,17 @@ class TestMseInvalidInput(unittest.TestCase):
     def test_error(self):
         def test_invalid_input():
             input = [256, 3]
-            label = fluid.data(name='label1', shape=[None, 3], dtype='float32')
+            label = paddle.static.data(
+                name='label1', shape=[None, 3], dtype='float32'
+            )
             loss = paddle.nn.functional.mse_loss(input, label)
 
         self.assertRaises(TypeError, test_invalid_input)
 
         def test_invalid_label():
-            input = fluid.data(name='input1', shape=[None, 3], dtype='float32')
+            input = paddle.static.data(
+                name='input1', shape=[None, 3], dtype='float32'
+            )
             label = [256, 3]
             loss = paddle.nn.functional.mse_loss(input, label)
 
@@ -110,7 +118,7 @@ class TestNNMseLoss(unittest.TestCase):
             np.testing.assert_allclose(static_result, expected, rtol=1e-05)
             np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
             np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
-            self.assertTrue(dy_result.shape, [1])
+            self.assertEqual(dy_result.shape, ())
 
     def test_NNMseLoss_sum(self):
         for dim in [[10, 10], [2, 10, 10], [3, 3, 10, 10]]:
@@ -156,7 +164,7 @@ class TestNNMseLoss(unittest.TestCase):
             np.testing.assert_allclose(static_result, expected, rtol=1e-05)
             np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
             np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
-            self.assertTrue(dy_result.shape, [1])
+            self.assertEqual(dy_result.shape, ())
 
     def test_NNMseLoss_none(self):
         for dim in [[10, 10], [2, 10, 10], [3, 3, 10, 10]]:
@@ -202,7 +210,7 @@ class TestNNMseLoss(unittest.TestCase):
             np.testing.assert_allclose(static_result, expected, rtol=1e-05)
             np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
             np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
-            self.assertTrue(dy_result.shape, [1])
+            self.assertEqual(dy_result.shape, tuple(dim))
 
 
 class TestNNFunctionalMseLoss(unittest.TestCase):
@@ -219,10 +227,10 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
                 else paddle.CPUPlace()
             )
             with paddle.static.program_guard(prog, startup_prog):
-                input = paddle.fluid.data(
+                input = paddle.static.data(
                     name='input', shape=dim, dtype='float32'
                 )
-                target = paddle.fluid.data(
+                target = paddle.static.data(
                     name='target', shape=dim, dtype='float32'
                 )
                 mse_loss = paddle.nn.functional.mse_loss(input, target, 'mean')
@@ -246,7 +254,7 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
             np.testing.assert_allclose(static_result, expected, rtol=1e-05)
             np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
             np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
-            self.assertTrue(dy_result.shape, [1])
+            self.assertEqual(dy_result.shape, ())
 
     def test_NNFunctionalMseLoss_sum(self):
         for dim in [[10, 10], [2, 10, 10], [3, 3, 10, 10]]:
@@ -261,10 +269,10 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
                 else paddle.CPUPlace()
             )
             with paddle.static.program_guard(prog, startup_prog):
-                input = paddle.fluid.data(
+                input = paddle.static.data(
                     name='input', shape=dim, dtype='float32'
                 )
-                target = paddle.fluid.data(
+                target = paddle.static.data(
                     name='target', shape=dim, dtype='float32'
                 )
                 mse_loss = paddle.nn.functional.mse_loss(input, target, 'sum')
@@ -288,7 +296,7 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
             np.testing.assert_allclose(static_result, expected, rtol=1e-05)
             np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
             np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
-            self.assertTrue(dy_result.shape, [1])
+            self.assertEqual(dy_result.shape, ())
 
     def test_NNFunctionalMseLoss_none(self):
         for dim in [[10, 10], [2, 10, 10], [3, 3, 10, 10]]:
@@ -303,10 +311,10 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
                 else paddle.CPUPlace()
             )
             with paddle.static.program_guard(prog, startup_prog):
-                input = paddle.fluid.data(
+                input = paddle.static.data(
                     name='input', shape=dim, dtype='float32'
                 )
-                target = paddle.fluid.data(
+                target = paddle.static.data(
                     name='target', shape=dim, dtype='float32'
                 )
                 mse_loss = paddle.nn.functional.mse_loss(input, target, 'none')
@@ -330,7 +338,7 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
             np.testing.assert_allclose(static_result, expected, rtol=1e-05)
             np.testing.assert_allclose(static_result, dy_result, rtol=1e-05)
             np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
-            self.assertTrue(dy_result.shape, [1])
+            self.assertEqual(dy_result.shape, tuple(dim))
 
 
 if __name__ == "__main__":

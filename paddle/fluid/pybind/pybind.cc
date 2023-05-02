@@ -88,27 +88,13 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/init.h"
+#include "paddle/fluid/platform/init_phi.h"
 #include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/profiler/event_python.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/profiler.h"
-#include "paddle/fluid/pybind/cuda_streams_py.h"
-#include "paddle/fluid/pybind/custom_device_py.h"
-#include "paddle/fluid/pybind/distributed_py.h"
-#include "paddle/fluid/pybind/eager.h"
-#include "paddle/fluid/pybind/imperative.h"
-#include "paddle/fluid/pybind/io.h"
-#include "paddle/fluid/pybind/jit.h"
-#include "paddle/fluid/pybind/xpu_streams_py.h"
-#include "paddle/phi/backends/cpu/cpu_info.h"
-#include "paddle/phi/core/compat/convert_utils.h"
-#include "paddle/phi/core/lod_utils.h"
-#include "paddle/utils/none.h"
-#ifdef PADDLE_WITH_ASCEND
-#include "paddle/fluid/pybind/ascend_wrapper_py.h"
-#endif
 #include "paddle/fluid/pybind/auto_parallel_py.h"
 #include "paddle/fluid/pybind/bind_cost_model.h"
 #include "paddle/fluid/pybind/bind_fleet_executor.h"
@@ -116,7 +102,11 @@ limitations under the License. */
 #include "paddle/fluid/pybind/communication.h"
 #include "paddle/fluid/pybind/compatible.h"
 #include "paddle/fluid/pybind/const_value.h"
+#include "paddle/fluid/pybind/cuda_streams_py.h"
+#include "paddle/fluid/pybind/custom_device_py.h"
 #include "paddle/fluid/pybind/data_set_py.h"
+#include "paddle/fluid/pybind/distributed_py.h"
+#include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/exception.h"
 #include "paddle/fluid/pybind/fleet_wrapper_py.h"
 #include "paddle/fluid/pybind/generator_py.h"
@@ -124,12 +114,20 @@ limitations under the License. */
 #include "paddle/fluid/pybind/gloo_context_py.h"
 #include "paddle/fluid/pybind/gloo_wrapper_py.h"
 #include "paddle/fluid/pybind/heter_wrapper_py.h"
+#include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
+#include "paddle/fluid/pybind/io.h"
 #include "paddle/fluid/pybind/ir.h"
+#include "paddle/fluid/pybind/jit.h"
 #include "paddle/fluid/pybind/metrics_py.h"
 #include "paddle/fluid/pybind/ps_gpu_wrapper_py.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
+#include "paddle/fluid/pybind/xpu_streams_py.h"
+#include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/backends/device_manager.h"
+#include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/core/lod_utils.h"
+#include "paddle/utils/none.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/pybind/nccl_wrapper_py.h"
@@ -153,12 +151,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
 
-#ifdef PADDLE_WITH_ASCEND_CL
-#include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/device/npu/npu_info.h"
-#include "paddle/fluid/platform/device/npu/npu_profiler.h"
-#endif
-
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
@@ -174,10 +166,6 @@ limitations under the License. */
 #ifdef PADDLE_WITH_IPU
 #include "paddle/fluid/platform/device/ipu/ipu_backend.h"
 #include "paddle/fluid/platform/device/ipu/ipu_info.h"
-#endif
-
-#ifdef PADDLE_WITH_MLU
-#include "paddle/fluid/platform/device/mlu/mlu_info.h"
 #endif
 
 #ifdef PADDLE_WITH_CRYPTO
@@ -197,6 +185,7 @@ limitations under the License. */
 #endif
 
 #include "paddle/fluid/eager/api/utils/global_utils.h"
+#include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
 #include "paddle/fluid/prim/utils/eager/eager_tensor_operants.h"
 #include "paddle/fluid/prim/utils/static/static_tensor_operants.h"
@@ -204,11 +193,12 @@ limitations under the License. */
 #include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/phi/api/include/operants_manager.h"
 #include "paddle/phi/api/include/tensor_operants.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 #include "pybind11/stl.h"
 
-DECLARE_bool(use_mkldnn);
+PHI_DECLARE_bool(use_mkldnn);
 
 // disable auto conversion to list in Python
 PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
@@ -216,6 +206,7 @@ PYBIND11_MAKE_OPAQUE(paddle::framework::FetchUnmergedList);
 PYBIND11_MAKE_OPAQUE(paddle::framework::FetchList);
 PYBIND11_MAKE_OPAQUE(paddle::framework::FetchType);
 
+DECLARE_FILE_SYMBOLS(init_phi);
 namespace paddle {
 namespace pybind {
 
@@ -272,24 +263,8 @@ bool IsCompiledWithROCM() {
 #endif
 }
 
-bool IsCompiledWithAscend() {
-#ifndef PADDLE_WITH_ASCEND
-  return false;
-#else
-  return true;
-#endif
-}
-
 bool IsCompiledWithXPU() {
 #ifndef PADDLE_WITH_XPU
-  return false;
-#else
-  return true;
-#endif
-}
-
-bool IsCompiledWithNPU() {
-#ifndef PADDLE_WITH_ASCEND_CL
   return false;
 #else
   return true;
@@ -328,14 +303,6 @@ bool IsCompiledWithMKLDNN() {
 
 bool IsCompiledWithCINN() {
 #ifndef PADDLE_WITH_CINN
-  return false;
-#else
-  return true;
-#endif
-}
-
-bool IsCompiledWithMLU() {
-#ifndef PADDLE_WITH_MLU
   return false;
 #else
   return true;
@@ -1047,66 +1014,6 @@ PYBIND11_MODULE(libpaddle, m) {
   m.def("_promote_types_if_complex_exists",
         &paddle::framework::PromoteTypesIfComplexExists);
 
-  py::class_<paddle::CustomOpKernelContext> custom_op_kernel_ctx(
-      m, "CustomOpKernelContext", R"DOC()DOC");
-  g_custom_op_kernel_ctx_pytype =
-      reinterpret_cast<PyTypeObject *>(custom_op_kernel_ctx.ptr());
-  custom_op_kernel_ctx.def(py::init<>())
-      .def("add_inputs",
-           [](paddle::CustomOpKernelContext &self, const py::handle &input) {
-             PyObject *obj = input.ptr();
-             if (PyList_Check(obj) || PyTuple_Check(obj)) {
-               self.EmplaceBackInputs(
-                   std::move(CastPyArg2VectorOfTensor(obj, 1)));
-             } else {
-               self.EmplaceBackInput(std::move(CastPyArg2Tensor(obj, 1)));
-             }
-           })
-      .def("add_outputs",
-           [](paddle::CustomOpKernelContext &self, py::handle &outputs) {
-             PyObject *obj = outputs.ptr();
-             if (PyList_Check(obj) || PyTuple_Check(obj)) {
-               self.EmplaceBackOutputs(
-                   std::move(CastPyArg2VectorOfTensor(obj, 1)));
-             } else {
-               self.EmplaceBackOutput(std::move(CastPyArg2Tensor(obj, 1)));
-             }
-           })
-      .def("add_attr",
-           [](paddle::CustomOpKernelContext &self, bool attr) {
-             self.EmplaceBackAttr(attr);
-           })
-      .def("add_attr",
-           [](paddle::CustomOpKernelContext &self, int attr) {
-             self.EmplaceBackAttr(attr);
-           })
-      .def("add_attr",
-           [](paddle::CustomOpKernelContext &self, float attr) {
-             self.EmplaceBackAttr(attr);
-           })
-      .def("add_attr",
-           [](paddle::CustomOpKernelContext &self, int64_t attr) {
-             self.EmplaceBackAttr(attr);
-           })
-      .def("add_attr",
-           [](paddle::CustomOpKernelContext &self, const std::string &attr) {
-             self.EmplaceBackAttr(attr);
-           })
-      .def("add_attr",
-           [](paddle::CustomOpKernelContext &self,
-              const std::vector<int> &attr) { self.EmplaceBackAttr(attr); })
-      .def("add_attr",
-           [](paddle::CustomOpKernelContext &self,
-              const std::vector<float> &attr) { self.EmplaceBackAttr(attr); })
-      .def("add_attr",
-           [](paddle::CustomOpKernelContext &self,
-              const std::vector<int64_t> &attr) { self.EmplaceBackAttr(attr); })
-      .def("add_attr",
-           [](paddle::CustomOpKernelContext &self,
-              const std::vector<std::string> &attr) {
-             self.EmplaceBackAttr(attr);
-           });
-
   py::class_<Variable>(m, "Variable", R"DOC(Variable Class.
 
 All parameter, weight, gradient are variables in Paddle.
@@ -1609,30 +1516,6 @@ All parameter, weight, gradient are variables in Paddle.
       return context;
 #endif
           })
-      .def_static(
-          "create",
-          [](paddle::platform::MLUPlace &place)
-              -> paddle::platform::DeviceContext * {
-#ifndef PADDLE_WITH_MLU
-            PADDLE_THROW(platform::errors::PermissionDenied(
-                "Cannot use MLUPlace in CPU/GPU version, "
-                "Please recompile or reinstall Paddle with MLU support."));
-#else
-                    return new paddle::platform::MLUDeviceContext(place);
-#endif
-          })
-      .def_static(
-          "create",
-          [](paddle::platform::NPUPlace &place)
-              -> paddle::platform::DeviceContext * {
-#ifndef PADDLE_WITH_ASCEND_CL
-            PADDLE_THROW(platform::errors::PermissionDenied(
-                "Cannot use NPUPlace in CPU/GPU/XPU version, "
-                "Please recompile or reinstall Paddle with NPU support."));
-#else
-                return new paddle::platform::NPUDeviceContext(place);
-#endif
-          })
       .def_static("create",
                   [](paddle::platform::CustomPlace &place)
                       -> paddle::platform::DeviceContext * {
@@ -1805,13 +1688,6 @@ All parameter, weight, gradient are variables in Paddle.
       .def("run",
            [](OperatorBase &self,
               const Scope &scope,
-              const platform::NPUPlace &place) {
-             pybind11::gil_scoped_release release;
-             self.Run(scope, place);
-           })
-      .def("run",
-           [](OperatorBase &self,
-              const Scope &scope,
               const platform::CUDAPlace &place) {
              pybind11::gil_scoped_release release;
              self.Run(scope, place);
@@ -1820,13 +1696,6 @@ All parameter, weight, gradient are variables in Paddle.
            [](OperatorBase &self,
               const Scope &scope,
               const platform::CUDAPinnedPlace &place) {
-             pybind11::gil_scoped_release release;
-             self.Run(scope, place);
-           })
-      .def("run",
-           [](OperatorBase &self,
-              const Scope &scope,
-              const platform::MLUPlace &place) {
              pybind11::gil_scoped_release release;
              self.Run(scope, place);
            })
@@ -2025,9 +1894,7 @@ All parameter, weight, gradient are variables in Paddle.
   });
   m.def("is_compiled_with_avx", IsCompiledWithAVX);
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
-  m.def("is_compiled_with_ascend", IsCompiledWithAscend);
   m.def("is_compiled_with_rocm", IsCompiledWithROCM);
-  m.def("is_compiled_with_npu", IsCompiledWithNPU);
   m.def("is_compiled_with_custom_device", IsCompiledWithCustomDevice);
   m.def("is_compiled_with_ipu", IsCompiledWithIPU);
   m.def("is_compiled_with_xpu", IsCompiledWithXPU);
@@ -2036,7 +1903,6 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_mpi", IsCompiledWithMPI);
   m.def("is_compiled_with_mpi_aware", IsCompiledWithMPIAWARE);
   m.def("is_compiled_with_cinn", IsCompiledWithCINN);
-  m.def("is_compiled_with_mlu", IsCompiledWithMLU);
   m.def("_is_compiled_with_heterps", IsCompiledWithHETERPS);
   m.def("supports_bfloat16", SupportsBfloat16);
   m.def("supports_bfloat16_fast_performance", SupportsBfloat16FastPerformance);
@@ -2094,17 +1960,6 @@ All parameter, weight, gradient are variables in Paddle.
       py::arg("time_out") = 0,
       py::arg("sleep_inter") = 0,
       py::arg("redirect_stderr") = false);
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  m.def("is_float16_supported", [](const platform::CUDAPlace &place) -> bool {
-    // Only GPUs with Compute Capability >= 53 support float16
-    return platform::GetGPUComputeCapability(place.device) >= 53;
-  });
-  m.def("is_bfloat16_supported", [](const platform::CUDAPlace &place) -> bool {
-    // Only GPUs with Compute Capability >= 80 support bfloat16
-    return platform::GetGPUComputeCapability(place.device) >= 80;
-  });
-#endif
 
   m.def("set_feed_variable",
         static_cast<void (*)(  // NOLINT
@@ -2365,45 +2220,8 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
 #endif
 
-#ifdef PADDLE_WITH_ASCEND_CL
-  m.def("get_npu_device_count", platform::GetNPUDeviceCount);
-  m.def("npu_finalize", []() {
-    platform::HCCLCommContext::Instance().ReleaseHCCLComms();
-
-    auto &pool = platform::DeviceContextPool::Instance();
-    auto devices = platform::GetSelectedNPUDevices();
-    for (size_t i = 0; i < devices.size(); ++i) {
-      platform::NPUDeviceGuard guard(devices[i]);
-      pool.Get(platform::NPUPlace(devices[i]))->Wait();
-    }
-    platform::AclInstance::Instance().Finalize();
-  });
-
-  py::class_<platform::NPUProfConfigWrapper>(m, "NPUProfConfigWrapper");
-
-  m.def("npu_prof_init", platform::NPUProfilerInit);
-  m.def("npu_prof_start", [](platform::NPUProfConfigWrapper c) {
-    platform::NPUProfilerStart(c.ptr());
-  });
-  m.def("npu_prof_stop", [](platform::NPUProfConfigWrapper c) {
-    platform::NPUProfilerStop(c.ptr());
-  });
-  m.def("npu_prof_finalize", platform::NPUProfilerFinalize);
-  m.def("npu_prof_create_config", []() {
-    return platform::NPUProfConfigWrapper(platform::NPUProfilerCreateConfig());
-  });
-
-  m.def("npu_prof_destropy_config", [](platform::NPUProfConfigWrapper c) {
-    platform::NPUProfilerDestroyConfig(c.ptr());
-  });
-#endif
-
 #ifdef PADDLE_WITH_IPU
   m.def("get_ipu_device_count", platform::GetIPUDeviceCount);
-#endif
-
-#ifdef PADDLE_WITH_MLU
-  m.def("get_mlu_device_count", platform::GetMLUDeviceCount);
 #endif
 
   py::enum_<platform::TracerOption>(m, "TracerOption", py::arithmetic())
@@ -2801,6 +2619,23 @@ All parameter, weight, gradient are variables in Paddle.
       .def("is_pattern_enabled", &platform::ipu::IpuStrategy::IsPatternEnabled);
 #endif
 
+  m.def("get_low_precision_op_list", [] {
+    py::dict op_list;
+    auto list_op = phi::KernelFactory::Instance().GetLowPrecisionKernelList();
+    for (auto iter = list_op.begin(); iter != list_op.end(); iter++) {
+      auto op_name = (iter->first).c_str();
+      auto counts = iter->second;
+      op_list[op_name] = std::to_string(counts.fp16_called_) + "," +
+                         std::to_string(counts.bf16_called_) + "," +
+                         std::to_string(counts.fp32_called_) + "," +
+                         std::to_string(counts.other_called_);
+    }
+    return op_list;
+  });
+
+  m.def("clear_low_precision_op_list",
+        [] { phi::KernelFactory::Instance().ClearLowPrecisionKernelList(); });
+
   m.def("enable_autotune", [] {
     return phi::autotune::AutoTuneStatus::Instance().EnableAutoTune();
   });
@@ -2816,20 +2651,6 @@ All parameter, weight, gradient are variables in Paddle.
 
   m.def("update_autotune_status",
         [] { return phi::autotune::AutoTuneStatus::Instance().Update(); });
-
-  m.def("get_low_precision_op_list", [] {
-    py::dict op_list;
-    auto list_op = phi::KernelFactory::Instance().GetLowPrecisionKernelList();
-    for (auto iter = list_op.begin(); iter != list_op.end(); iter++) {
-      auto op_name = (iter->first).c_str();
-      auto counts = iter->second;
-      op_list[op_name] = std::to_string(counts.fp16_called_) + "," +
-                         std::to_string(counts.bf16_called_) + "," +
-                         std::to_string(counts.fp32_called_) + "," +
-                         std::to_string(counts.other_called_);
-    }
-    return op_list;
-  });
 
   m.def("autotune_status", [] {
     py::dict res;
@@ -2850,8 +2671,26 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("use_layout_autotune",
         [] { return egr::Controller::Instance().UseLayoutAutoTune(); });
   // Add the api for nan op debug
+  m.def("set_nan_inf_stack_limit",
+        &paddle::framework::details::SetNanInfStackLimit);
+
+  // Add the api for nan op debug
   m.def("set_nan_inf_debug_path",
         &paddle::framework::details::SetNanInfDebugPath);
+
+  // Add check op lost
+  m.def("set_checked_op_list",
+        [](const std::string &op_list) { egr::SetCheckOpList(op_list); });
+
+  // Add skipped op list
+  m.def("set_skipped_op_list",
+        [](const std::string &op_list) { egr::SetSkipOpList(op_list); });
+
+  m.def("check_numerics",
+        [](const std::string &op_name, const paddle::Tensor &tensor) {
+          VLOG(4) << "Check tensor whether has nan or inf.";
+          egr::CheckTensorHasNanOrInf(op_name, tensor);
+        });
 
   BindFleetWrapper(&m);
   BindIO(&m);
@@ -2889,11 +2728,6 @@ All parameter, weight, gradient are variables in Paddle.
   BindGenerator(&m);
 #ifndef PADDLE_NO_PYTHON
   BindDistributed(&m);
-#endif
-#ifdef PADDLE_WITH_ASCEND
-  BindAscendWrapper(&m);
-  BindAscendGraph(&m);
-  BindAscendDevice(&m);
 #endif
 #ifdef PADDLE_WITH_CRYPTO
   BindCrypto(&m);

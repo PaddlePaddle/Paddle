@@ -15,19 +15,29 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
+from op import Operator
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid.op import Operator
+from paddle import fluid
+from paddle.fluid import core
 
 paddle.enable_static()
+
+
+def sgd_wrapper(
+    param, learning_rate, grad, master_param=None, multi_precision=False
+):
+    paddle._C_ops.sgd_(
+        param, learning_rate, grad, master_param, multi_precision
+    )
 
 
 class TestSGDOp(OpTest):
     def setUp(self):
         self.op_type = "sgd"
+        self.python_api = sgd_wrapper
+        self.python_out_sig = ['Out']
         self.conf()
         w = np.random.random((self.h, self.w)).astype("float32")
         g = np.random.random((self.h, self.w)).astype("float32")
@@ -196,8 +206,8 @@ class TestSGDOpOptimizeSelectedRows(unittest.TestCase):
 class TestSGDOpWithLargeInput(unittest.TestCase):
     def runTest(self):
         paddle.enable_static()
-        data = fluid.layers.fill_constant(shape=[1], value=128, dtype='int64')
-        label = fluid.layers.fill_constant(
+        data = paddle.tensor.fill_constant(shape=[1], value=128, dtype='int64')
+        label = paddle.tensor.fill_constant(
             shape=[1, 150], value=0.5, dtype='float32'
         )
         emb = paddle.static.nn.embedding(
@@ -372,7 +382,9 @@ class TestSGDMultiPrecision2_0(unittest.TestCase):
         exe.run(startup_program)
 
         if mp:
-            optimizer.amp_init(place='gpu', scope=paddle.static.global_scope())
+            optimizer.amp_init(
+                place=paddle.CUDAPlace(0), scope=paddle.static.global_scope()
+            )
             x = np.random.random(size=(2, 2)).astype('float16')
         else:
             x = np.random.random(size=(2, 2)).astype('float32')
@@ -482,7 +494,9 @@ class TestSGDMultiPrecision1_0(unittest.TestCase):
         exe.run(startup_program)
 
         if mp:
-            optimizer.amp_init(place='gpu', scope=paddle.static.global_scope())
+            optimizer.amp_init(
+                place=paddle.CUDAPlace(0), scope=paddle.static.global_scope()
+            )
             x = np.random.random(size=(2, 2)).astype('float16')
         else:
             x = np.random.random(size=(2, 2)).astype('float32')

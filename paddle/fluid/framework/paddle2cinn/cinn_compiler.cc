@@ -31,6 +31,7 @@
 #include "cinn/frontend/syntax.h"
 #include "cinn/hlir/framework/graph.h"
 #include "cinn/hlir/framework/graph_compiler.h"
+#include "cinn/hlir/framework/visualize_helper.h"
 #include "gflags/gflags.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/ir/graph.h"
@@ -46,9 +47,11 @@
 #include "paddle/fluid/operators/cinn/cinn_launch_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/phi/core/flags.h"
 
-DECLARE_bool(enable_pe_launch_cinn);
-DECLARE_bool(enable_cinn_auto_tune);
+PHI_DECLARE_bool(enable_pe_launch_cinn);
+PHI_DECLARE_bool(enable_cinn_auto_tune);
+PHI_DECLARE_string(cinn_subgraph_graphviz_dir);
 namespace paddle {
 namespace framework {
 namespace paddle2cinn {
@@ -73,7 +76,6 @@ const CinnCompiledObject &CinnCompiler::Compile(
     const std::map<std::string, const phi::DenseTensor *> &input_tensors,
     const Target &target,
     void *stream) {
-  VLOG(4) << "-- The graph to be compiled is:\n" << VizGraph(graph);
   CinnCacheKeyByAddress cur_key_by_address(
       graph, input_tensors, target.arch_str());
   CinnCacheKeyByStructure cur_key_by_struct;
@@ -85,6 +87,26 @@ const CinnCompiledObject &CinnCompiler::Compile(
     if (!cache_by_struct_.count(cur_key_by_struct)) {
       VLOG(4) << "Not found CinnCompiledObject in cache_by_struct_.";
       std::int64_t compiled_num = real_compiled_num_.fetch_add(1);
+
+      if (!FLAGS_cinn_subgraph_graphviz_dir.empty()) {
+        const std::string &viz_path = FLAGS_cinn_subgraph_graphviz_dir +
+                                      "/fusion_groups_" +
+                                      std::to_string(compiled_num) + "/";
+        if (!::cinn::hlir::framework::MakeDirectory(
+                viz_path, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH)) {
+          LOG_IF(WARNING, compiled_num == 0)
+              << "Failed to make directory: \"" << viz_path
+              << "\", the CINN subgraph's graphviz dot file will not print.";
+        } else {
+          LOG_IF(INFO, compiled_num == 0)
+              << "The CINN subgraph's graphviz dot file will writing into "
+                 "path: \""
+              << FLAGS_cinn_subgraph_graphviz_dir << "\"";
+          ::cinn::hlir::framework::WriteToFile(viz_path + "cinn_subgraph.dot",
+                                               VizGraph(graph));
+        }
+      }
+
       auto compiled_res =
           CompileGraph(graph, input_tensors, target, compiled_num, stream);
       std::unique_lock<std::mutex> guard(lock_);
