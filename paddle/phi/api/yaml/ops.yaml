@@ -1195,7 +1195,7 @@
   backward : logsigmoid_grad
 
 - op : lstsq
-  args : (Tensor x, Tensor y, Scalar rcond, str driver)
+  args : (Tensor x, Tensor y, Scalar rcond=0.0f, str driver="gels")
   output : Tensor(solution), Tensor(residuals), Tensor(rank), Tensor(singular_values)
   infer_meta :
     func : LstsqInferMeta
