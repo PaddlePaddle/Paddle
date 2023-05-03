@@ -1137,8 +1137,6 @@
     saved_variance : SavedVariance
   get_expected_kernel_type:
     instance_norm: GetInstanceNormExpectedKernelType
-    instance_norm_grad: GetInstanceNormGradExpectedKernelType
-    instance_norm_grad_grad: GetInstanceNormDoubleGradExpectedKernelType
 
 - op : inverse
   inputs :
