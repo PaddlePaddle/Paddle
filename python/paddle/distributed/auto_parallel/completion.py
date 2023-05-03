@@ -1688,7 +1688,7 @@ class Completer:
                                 world_ranks
                             )
                             out_dist_attr.dims_mapping = [
-                                -1 for _ in range(len(out_var.shape))
+                                -1 for _ in out_var.shape
                             ]
                             self._dist_context.set_tensor_dist_attr_for_program(
                                 out_var, out_dist_attr
@@ -1732,7 +1732,9 @@ class Completer:
                                 len(out_var.shape) == 1
                                 and out_var.shape[0] == 1
                             )
-                            out_dist_attr.dims_mapping = [-1]
+                            out_dist_attr.dims_mapping = [
+                                -1 for _ in out_var.shape
+                            ]
                         self._dist_context.set_tensor_dist_attr_for_program(
                             out_var, out_dist_attr
                         )
@@ -1802,16 +1804,20 @@ class Completer:
                         param.name, ref_dims_mapping
                     )
                     learning_var = vars[op.input("LearningRate")[0]]
-                    op_dist_attr.set_input_dims_mapping(learning_var.name, [-1])
+                    op_dist_attr.set_input_dims_mapping(
+                        learning_var.name, [-1 for _ in learning_var.shape]
+                    )
                     op_dist_attr.set_output_dims_mapping(
-                        learning_var.name, [-1]
+                        learning_var.name, [-1 for _ in learning_var.shape]
                     )
 
                     if not learning_rate_completed:
                         learning_rate_completed = True
                         var_dist_attr = TensorDistAttr()
                         var_dist_attr.process_mesh = ProcessMesh(world_ranks)
-                        var_dist_attr.dims_mapping = [-1]
+                        var_dist_attr.dims_mapping = [
+                            -1 for _ in learning_var.shape
+                        ]
                         self._dist_context.set_tensor_dist_attr_for_program(
                             learning_var, var_dist_attr
                         )
@@ -1841,10 +1847,10 @@ class Completer:
                         ):
                             input_var_attr.dims_mapping = [-1]
                             op_dist_attr.set_input_dims_mapping(
-                                input_var.name, [-1]
+                                input_var.name, [-1 for _ in input_var.shape]
                             )
                             op_dist_attr.set_output_dims_mapping(
-                                input_var.name, [-1]
+                                input_var.name, [-1 for _ in input_var.shape]
                             )
                         else:
                             input_var_attr.dims_mapping = ref_dims_mapping

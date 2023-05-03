@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/benchmark/op_tester.h"
+#include "test/cpp/fluid/benchmark/op_tester.h"
 
 #include <fstream>
 
