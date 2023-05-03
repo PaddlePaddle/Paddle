@@ -24,6 +24,8 @@ template <typename Context>
 void AssignKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   DenseTensor* out) {
+  std::cout<<"{function_name : assign, inputs: { { x, type: <class 'paddle.Tensor'>, shape: "<<x.dims()<<" }, ";
+  std::cout<<"}, }"<<", params: [ ]}"<<std::endl;
   phi::Copy(dev_ctx, x, x.place(), false, out);
 }
 
