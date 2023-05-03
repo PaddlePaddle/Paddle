@@ -1120,7 +1120,7 @@ class Resharder:
         """Compute the index of process_shape corresponding to the process."""
         relative_process = process_group.index(process)
         process_index = []
-        product = reduce(lambda x, y: x * y, process_shape)
+        product = reduce(lambda x, y: x * y, process_shape, 1)
 
         for i in range(len(process_shape)):
             idx = relative_process // (product // process_shape[i])
