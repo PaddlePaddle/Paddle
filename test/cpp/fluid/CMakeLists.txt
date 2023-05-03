@@ -22,6 +22,8 @@ endif()
 # add_subdirectory(reduce_ops)
 # add_subdirectory(tensorrt)
 
+set(COMMON_OP_DEPS ${COMMON_OP_DEPS} executor)
+
 if(WITH_XPU)
   cc_test(
     beam_search_decode_op_xpu_test
