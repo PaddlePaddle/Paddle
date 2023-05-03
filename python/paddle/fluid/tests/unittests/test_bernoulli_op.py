@@ -127,11 +127,15 @@ class TestBernoulliBF16Op(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place_customized(self.verify_output, place)
 
     def init_test_case(self):
         self.x = np.random.uniform(size=(1000, 784)).astype("float32")
         self.out = np.zeros((1000, 784)).astype("float32")
+
+    def verify_output(self, outs):
+        hist, prob = output_hist(np.array(outs[0]))
+        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
 
 
 if __name__ == "__main__":

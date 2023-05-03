@@ -103,17 +103,14 @@ class TestTruncFP16OP(TestTruncOp):
 )
 class TestTruncBF16OP(OpTest):
     def setUp(self):
-        self.op_type = "trunc"
         self.python_api = paddle.trunc
-        self.init_dtype_type()
+        self.op_type = "trunc"
+        self.dtype = np.uint16
         np.random.seed(2021)
-        x = np.random.random((20, 20)).astype(np.float64)
+        x = np.random.random((20, 20)).astype("float32")
         out = np.trunc(x)
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.outputs = {'Out': convert_float_to_uint16(out)}
-
-    def init_dtype_type(self):
-        self.dtype = np.uint16
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
@@ -121,7 +118,7 @@ class TestTruncBF16OP(OpTest):
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out')
+        self.check_grad_with_place(place, ['X'], 'Out', numeric_grad_delta=1e-5)
 
 
 if __name__ == "__main__":
