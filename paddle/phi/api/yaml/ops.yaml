@@ -1202,6 +1202,7 @@
   kernel :
     func : lstsq
     data_type : x
+  optional : residuals
 
 - op : lu
   args : (Tensor x, bool pivot = true)
