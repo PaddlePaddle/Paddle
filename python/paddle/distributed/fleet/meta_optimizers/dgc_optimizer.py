@@ -24,6 +24,7 @@ from paddle.fluid.dygraph import base as imperative_base
 from paddle.fluid.optimizer import Momentum, Optimizer
 from paddle.framework import core, in_dygraph_mode
 from paddle.nn.clip import ClipGradByNorm, append_gradient_clip_ops
+from paddle.regularizer import L1Decay, L2Decay
 from paddle.static import create_global_var
 
 
@@ -100,7 +101,6 @@ class DGCMomentumOptimizer(Optimizer):
 
         if regularization is not None:
             regular_coeff = regularization._regularization_coeff
-            from paddle.regularizer import L1Decay, L2Decay
 
             if isinstance(regularization, L1Decay):
                 regular_type = 1
