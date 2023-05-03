@@ -42,19 +42,19 @@ class TestNanInf(unittest.TestCase):
 
         out, err = proc.communicate()
         returncode = proc.returncode
-
-        print(out)
-        print(err)
-
         # in python3, type(out+err) is 'bytes', need use encode
         assert (out + err).find(b'There are NAN or INF') != -1
 
     def test_nan_inf_in_static_mode(self):
-        self._python_interp += " check_nan_inf_base.py"
+        self._python_interp += (
+            " " + os.path.dirname(__file__) + "/check_nan_inf_base.py"
+        )
         self.check_nan_inf()
 
     def test_nan_inf_in_dynamic_mode(self):
-        self._python_interp += " check_nan_inf_base_dygraph.py"
+        self._python_interp += (
+            " " + os.path.dirname(__file__) + "/check_nan_inf_base_dygraph.py"
+        )
         self.check_nan_inf()
 
 
@@ -78,6 +78,13 @@ class TestCheckSkipEnv(TestNanInf):
 
 
 class TestNanInfCheckResult(unittest.TestCase):
+    def setUp(self):
+        self._python_interp = sys.executable
+        if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
+            self._python_interp += " -m coverage run --branch -p"
+
+        self.env = os.environ.copy()
+
     def generate_inputs(self, shape, dtype="float32"):
         data = np.random.random(size=shape).astype(dtype)
         # [-10, 10)
@@ -140,6 +147,25 @@ class TestNanInfCheckResult(unittest.TestCase):
         _check_num_nan_inf(use_cuda=False)
         if paddle.fluid.core.is_compiled_with_cuda():
             _check_num_nan_inf(use_cuda=True)
+
+    def test_check_stack(self):
+        self._python_interp += " check_nan_inf_backward_stack.py"
+        cmd = self._python_interp
+        proc = subprocess.Popen(
+            cmd.split(" "),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env=self.env,
+        )
+
+        out, err = proc.communicate()
+        returncode = proc.returncode
+
+        print(out)
+        print(err)
+
+        # in python3, type(out+err) is 'bytes', need use encode
+        assert (out + err).find(b' z = paddle.pow(x, y)') != -1
 
     def check_nan_inf_level(self, use_cuda, dtype):
         shape = [8, 8]

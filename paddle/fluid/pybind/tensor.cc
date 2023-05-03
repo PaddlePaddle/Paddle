@@ -170,12 +170,13 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/tensor.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 #include "pybind11/stl.h"
 
-DECLARE_bool(use_mkldnn);
-DECLARE_bool(use_shm_cache);
+PHI_DECLARE_bool(use_mkldnn);
+PHI_DECLARE_bool(use_shm_cache);
 
 // disable auto conversion to list in Python
 PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
@@ -401,7 +402,7 @@ void BindTensor(pybind11::module &m) {  // NOLINT
 
         Args:
           lod (numpy.ndarray): The data to set.
-          place (CPUPlace|CUDAPlace|XPUPlace|IPUPlace|CUDAPinnedPlace|NPUPlace|MLUPlace): The place where the
+          place (CPUPlace|CUDAPlace|XPUPlace|IPUPlace|CUDAPinnedPlace|NPUPlace): The place where the
           Tensor is to be set.
           zero_copy (bool, optional): Whether to share memory with the input numpy array.
           This parameter only works with CPUPlace. Default: False.

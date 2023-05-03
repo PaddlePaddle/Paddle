@@ -108,8 +108,6 @@ def _get_default_nprocs():
         return core.get_cuda_device_count()
     elif 'xpu' in device:
         return core.get_xpu_device_count()
-    elif 'mlu' in device:
-        return core.get_custom_device_count('mlu')
     elif 'cpu' in device:
         return multiprocessing.cpu_count()
     else:
@@ -430,9 +428,9 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
     Start multiple processes with ``spawn`` method for parallel training.
 
     .. note::
-        ``spawn`` now only supports GPU or XPU or MLU collective mode. The collective mode
-        of GPU and XPU and MLU cannot be started at the same time, so the option `gpus` and
-        `xpus` and 'mlus' cannot be configured at the same time.
+        ``spawn`` now only supports GPU or XPU collective mode. The collective mode
+        of GPU and XPU cannot be started at the same time, so the option `gpus` and
+        `xpus` cannot be configured at the same time.
 
     Args:
         func (function): The target function is called by spawned process.
@@ -459,8 +457,6 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
             selected gpus, such as "0,1,2,3". Default: None;
             (3) xpus (string): The training process will run on the
             selected xpus, such as "0,1,2,3". Default: None;
-            (4) mlus (string): The training process will run on the
-            selected mlus, such as "0,1,2,3". Default: None;
             (5) ips (string): Paddle cluster nodes ips, such as
             "192.168.0.16,192.168.0.17". Default: "127.0.0.1" .
 

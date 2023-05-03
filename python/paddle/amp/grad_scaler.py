@@ -24,6 +24,8 @@ from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.framework import _dygraph_tracer, dygraph_only
 
+from .auto_cast import amp_global_state
+
 
 class OptimizerState(Enum):
     INIT = 0
@@ -108,7 +110,7 @@ class AmpScaler:
             or tracer._expected_place.is_custom_place()
         ):
             warnings.warn(
-                'AmpScaler can only be enabled on CUDAPlace, XPUPlace, MLUPlace and CustomPlace, current place is %s, so it makes no effect.'
+                'AmpScaler can only be enabled on CUDAPlace, XPUPlace and CustomPlace, current place is %s, so it makes no effect.'
                 % tracer._expected_place
             )
             enable = False
@@ -178,6 +180,18 @@ class AmpScaler:
                     scaler.minimize(optimizer, scaled)
         """
         check_type(var, "var", core.eager.Tensor, 'AmpScaler.scale()')
+
+        if (
+            self._enable
+            and amp_global_state().amp_dtype != 'float16'
+            and self._use_dynamic_loss_scaling
+        ):
+            self._enable = False
+            self._use_dynamic_loss_scaling = False
+            warnings.warn(
+                'It is not recommended to use dynamic loss scaling for %s, so GradScaler is disable by default.'
+                % (amp_global_state().amp_dtype)
+            )
 
         if not self._enable:
             return var

@@ -14,9 +14,10 @@
 
 import itertools
 import os
+import sys
 import time
 import warnings
-from collections import OrderedDict
+from collections import OrderedDict, namedtuple
 from contextlib import contextmanager
 from multiprocessing import Manager  # noqa: F401
 from multiprocessing import Process  # noqa: F401
@@ -46,7 +47,7 @@ from paddle.distributed.fleet.launch_utils import check_backend
 # (TODO: GhostScreaming) It will be removed later.
 from paddle.framework import _set_expected_place
 from paddle.framework import base as imperative_base
-from paddle.framework import core, in_dygraph_mode, to_variable
+from paddle.framework import core, in_dygraph_mode
 from paddle.nn.layer import layers
 from paddle.utils import deprecated
 
@@ -89,7 +90,7 @@ def _coalesce_tensors(var_groups):
 
 @framework.dygraph_only
 def _reshape_inplace(x, shape):
-    x_shape = framework._varbase_creator(dtype=x.dtype)
+    x_shape = framework._create_tensor(dtype=x.dtype)
     framework._dygraph_tracer().trace_op(
         type="reshape2",
         inputs={'X': x},
@@ -114,21 +115,6 @@ def _split_tensors(coalesced_grads_and_grad_vars):
             for g_var, g_shape in zip(origin_grad_vars, grad_shapes):
                 g_var.reshape_(shape=g_shape)
                 assert g_var.shape == g_shape
-
-
-def scale_loss(loss):
-    # TODO(liuyuhui) Currently only for xpu. Will be removed in the future.
-    if not paddle.distributed.ParallelEnv().world_size > 1:
-        return loss
-
-    loss_scale = to_variable(
-        np.array([paddle.distributed.ParallelEnv().world_size]).astype(
-            "float32"
-        )
-    )
-    loss_scale.stop_gradient = True
-    scaled_loss = loss / loss_scale
-    return scaled_loss
 
 
 @imperative_base.no_grad
@@ -160,20 +146,18 @@ def sync_params_buffers(
     for _, param in model._obtain_parameters_buffers().items():
         if not isinstance(param, core.eager.Tensor):
             raise TypeError(
-                "The data type of '%s' must be Varbase or eager.Tensor"
-                % param.name
+                "The data type of '%s' must be core.eager.Tensor" % param.name
             )
 
-        # is_distributed param not need to sync when in mp mode
-        if isinstance(param, core.eager.Tensor):
-            if is_model_parallel:
-                if hasattr(param, "is_distributed") and param.is_distributed:
-                    continue
-
-            # NOTE(shenliang03): Support situations that do not require synchronization parameters,
-            # such as moe's expert parameters
-            if getattr(param, "no_sync", False):
+        if is_model_parallel:
+            if hasattr(param, "is_distributed") and param.is_distributed:
                 continue
+
+        # NOTE(shenliang03): Support situations that do not require synchronization parameters,
+        # such as moe's expert parameters
+        if getattr(param, "no_sync", False):
+            continue
+
         if param.type == core.VarDesc.VarType.VOCAB:
             continue
 
@@ -488,14 +472,14 @@ class DataParallel(layers.Layer):
                 self.find_unused_parameters,
             )
 
-    def _find_varbase(self, obj):
+    def _find_tensor(self, obj):
         var_type = core.eager.Tensor
         if isinstance(obj, var_type):
             return [obj]
         if isinstance(obj, (list, tuple)):
-            return itertools.chain(*map(self._find_varbase, obj))
+            return itertools.chain(*map(self._find_tensor, obj))
         if isinstance(obj, dict):
-            return itertools.chain(*map(self._find_varbase, obj.values()))
+            return itertools.chain(*map(self._find_tensor, obj.values()))
         return []
 
     @contextmanager
@@ -550,9 +534,7 @@ class DataParallel(layers.Layer):
             and framework._dygraph_tracer()._has_grad
             and self.grad_need_sync
         ):
-            self._reducer.prepare_for_backward(
-                list(self._find_varbase(outputs))
-            )
+            self._reducer.prepare_for_backward(list(self._find_tensor(outputs)))
         return outputs
 
     @deprecated(
@@ -905,6 +887,31 @@ def _check_var_exists(var_name):
         )
 
 
+def _get_modified_flags():
+    ret = []
+    FLAGS = namedtuple('FLAGS', ['name', 'current_value', 'default_value'])
+    global_flags = core.globals()
+    for key in global_flags.keys():
+        value = global_flags.get(key)
+        default_value = global_flags.get_default(key)
+        if not value == default_value:
+            ret.append(FLAGS(key, value, default_value))
+    return ret
+
+
+def _print_modified_flags(modified_flags):
+    if len(modified_flags) > 0:
+        sys.stderr.write(
+            "======================= Modified FLAGS detected =======================\n"
+        )
+        for flag in modified_flags:
+            sys.stderr.write(str(flag))
+            sys.stderr.write("\n")
+        sys.stderr.write(
+            "=======================================================================\n"
+        )
+
+
 def init_parallel_env():
     """
 
@@ -966,6 +973,9 @@ def init_parallel_env():
                 dist.spawn(train)
 
     """
+
+    modified_flags = _get_modified_flags()
+    _print_modified_flags(modified_flags)
 
     # 0. get env & check world size
     global _global_parallel_env

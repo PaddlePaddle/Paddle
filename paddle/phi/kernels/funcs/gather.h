@@ -21,8 +21,8 @@ limitations under the License. */
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/macros.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-
 namespace phi {
 namespace funcs {
 
@@ -34,7 +34,7 @@ namespace funcs {
  * return: output tensor
  */
 template <typename T, typename IndexT = int>
-void CPUGather(const phi::CPUContext& ctx,
+void CPUGather(const phi::CPUContext& ctx UNUSED,
                const DenseTensor& src,
                const DenseTensor& index,
                DenseTensor* output) {
@@ -95,7 +95,7 @@ void CPUGather(const phi::CPUContext& ctx,
 }
 
 template <typename T, typename IndexT = int>
-void CPUGatherNd(const phi::CPUContext& ctx,
+void CPUGatherNd(const phi::CPUContext& ctx UNUSED,
                  const DenseTensor& input,
                  const DenseTensor& index,
                  DenseTensor* output) {

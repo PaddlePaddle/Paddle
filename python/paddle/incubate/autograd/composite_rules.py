@@ -164,10 +164,12 @@ def layernorm_composite(x, scale, bias, epsilon, begin_norm_axis):
     out = difference * rsqrt_var
 
     if scale is not None:
-        scale = reshape(scale, x.shape[begin_norm_axis:])
+        if x.shape[begin_norm_axis:] is not scale.shape:
+            scale = reshape(scale, x.shape[begin_norm_axis:])
         out = out * scale
     if bias is not None:
-        bias = reshape(bias, x.shape[begin_norm_axis:])
+        if x.shape[begin_norm_axis:] is not bias.shape:
+            bias = reshape(bias, x.shape[begin_norm_axis:])
         out = out + bias
 
     mean_ = reshape(mean_, [-1])
@@ -192,7 +194,7 @@ def instancenorm_composite(x, scale, bias, epsilon):
     var_tmp1 = difference * difference
     variance = mean(var_tmp1, axis=axis, keepdim=True)
     var_tmp3 = variance + epsilon
-    sqrt_var = pow(var_tmp3, full([], 0.5, dtype=var_tmp3.dtype))
+    sqrt_var = pow(var_tmp3, full([1], 0.5, dtype=var_tmp3.dtype))
     out = difference / sqrt_var
 
     if scale is not None:
@@ -250,7 +252,7 @@ def mean_composite(x, axis, keepdim):
         operator.mul, [x.shape[axis] for axis in axes]
     )
     norm = fill_constant(
-        shape=x.shape if len(x.shape) == 0 else [1],
+        shape=[],
         value=value_to_fill,
         dtype=sum_x.dtype,
     )
@@ -675,3 +677,20 @@ def group_norm_composite(x, scale, bias, epsilon, groups, data_layout):
     if is_amp:
         out = cast(out, "float16")
     return out, ret_mean_, ret_var_
+
+
+@REGISTER_COMPOSITE('sum')
+def sum_composite(x):
+    ans = 0
+    for xi in x:
+        ans += xi
+    return ans
+
+
+@REGISTER_COMPOSITE('leaky_relu')
+def leaky_relu_composite(x, negative_slope):
+    """define composite rule of op leaky_relu."""
+    if negative_slope < 1.0:
+        return maximum(x, negative_slope * x)
+    else:
+        return minimum(x, negative_slope * x)

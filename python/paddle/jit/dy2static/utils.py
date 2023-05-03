@@ -32,13 +32,13 @@ import numpy as np
 
 import paddle
 from paddle import fluid  # noqa: F401
-from paddle.fluid import core, unique_name
+from paddle.fluid import backward, core, framework, unique_name
 from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 from paddle.utils import gast
 
-from .ast_utils import ast_to_source_code
+from .ast_utils import ast_to_source_code, modify_function_code
 from .static_analysis import StaticAnalysisVisitor
 from .utils_helper import DYGRAPH_MODULE_PREFIX  # noqa: F401
 from .utils_helper import DYGRAPH_TO_STATIC_MODULE_PREFIX  # noqa: F401
@@ -643,15 +643,20 @@ def func_to_source_code(function, dedent=True):
                 type(function).__name__
             )
         )
-    source_code_list, _ = inspect.getsourcelines(function)
-    # Replace comments with blank lines so that error messages are not misplaced
-    source_code_list = [
-        line if not line.lstrip().startswith('#') else '\n'
-        for line in source_code_list
-    ]
-    source_code = ''.join(source_code_list)
-    if dedent:
-        source_code = textwrap.dedent(source_code)
+    # return modified function source code if there is 'register_hook', otherwise return None
+    source_code = modify_function_code(function)
+
+    if source_code is None:
+        source_code_list, _ = inspect.getsourcelines(function)
+        # Replace comments with blank lines so that error messages are not misplaced
+        source_code_list = [
+            line if not line.lstrip().startswith('#') else '\n'
+            for line in source_code_list
+        ]
+        source_code = ''.join(source_code_list)
+
+        if dedent:
+            source_code = textwrap.dedent(source_code)
 
     return source_code
 
@@ -1457,61 +1462,6 @@ def create_name_str(name_ids):
     return "(%s, )" % ','.join(names_str)
 
 
-def _param_grad_names(program_desc, params):
-    """
-    Parse PARAM@GARD name from original train and infer program.
-    """
-    names = []
-    # NOTE: `names` and `params` must be in the same order so that
-    # the param grad name can be set correctly in the run_program.
-    for param in params:
-        candidate = []
-        for var in program_desc.block(0).all_vars():
-            var_name = var.name()
-            if param.name not in var_name:
-                continue
-            suf_count = var_name.count(GRAD_SUFFIX)
-            if suf_count > 0:
-                suffix = param.name + GRAD_SUFFIX * suf_count
-                pre_count = var_name.count(GRAD_PREFIX)
-                if GRAD_PREFIX * pre_count + suffix == var_name:
-                    candidate.append(var_name)
-
-        if candidate:
-            names.append(
-                max(
-                    candidate,
-                    key=lambda name: name.count(GRAD_PREFIX)
-                    if GRAD_PREFIX in name
-                    else name.count(GRAD_SUFFIX),
-                )
-            )
-        else:
-            names.append(param.name + GRAD_SUFFIX)
-    return names
-
-
-def _out_grad_names(program_desc, fwd_end_op_index, out_size):
-    """
-    Parse Out@GARD name from original train and infer program.
-    """
-    names = []
-    for i in range(
-        fwd_end_op_index,
-        min(fwd_end_op_index + out_size, program_desc.block(0).op_size()),
-    ):
-        op = program_desc.block(0).op(i)
-        # If prim forward op, fill_any_like will be decomposite as fill_constant.
-        if core._is_fwd_prim_enabled():
-            target = ('fill_any_like', 'fill_constant')
-        else:
-            target = 'fill_any_like'
-        if op.type() in target:
-            var_name = op.output('Out')[0]
-            names.append(var_name)
-    return names
-
-
 def prim_or_cinn_is_enabled(build_strategy, backend):
     if backend == 'CINN':
         return True
@@ -1566,3 +1516,19 @@ def backend_guard(backend):
     finally:
         core._set_prim_forward_enabled(orign_fwd)
         core._set_prim_backward_enabled(orign_bwd)
+
+
+def construct_grad_names(grad_info_map, x_vars, param_vars, out_vars):
+    grad_var_names = {}
+    fn = (
+        lambda grad_var: grad_var.name
+        if isinstance(grad_var, framework.Variable)
+        else framework.EMPTY_VAR_NAME
+    )
+    x_grad_vars = backward._get_grad_vars(grad_info_map, x_vars)
+    grad_var_names['x'] = list(map(fn, x_grad_vars))
+    param_grad_vars = backward._get_grad_vars(grad_info_map, param_vars)
+    grad_var_names['param'] = list(map(fn, param_grad_vars))
+    out_grad_vars = backward._get_grad_vars(grad_info_map, out_vars)
+    grad_var_names['out'] = list(map(fn, out_grad_vars))
+    return grad_var_names
