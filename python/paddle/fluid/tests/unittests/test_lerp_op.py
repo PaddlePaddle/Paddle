@@ -229,11 +229,13 @@ class TestLerpBF16(TestLerp):
     def setUp(self):
         self.op_type = "lerp"
         self.python_api = paddle.lerp
-        self.init_dtype()
+        self.dtype = np.uint16
         self.init_shape()
-        x = np.arange(1.0, 101.0).astype(np.float32).reshape(self.shape)
-        y = np.full(100, 10.0).astype(np.float32).reshape(self.shape)
-        w = np.asarray([0.5]).astype(np.float32)
+        self.init_xyshape()
+        self.init_wshape()
+        x = np.arange(1.0, 101.0).astype(np.float32).reshape(self.xshape)
+        y = np.full(100, 10.0).astype(np.float32).reshape(self.yshape)
+        w = np.random.random(self.wshape).astype(np.float32)
         self.inputs = {
             'X': convert_float_to_uint16(x),
             'Y': convert_float_to_uint16(y),
@@ -241,11 +243,15 @@ class TestLerpBF16(TestLerp):
         }
         self.outputs = {'Out': convert_float_to_uint16(x + w * (y - x))}
 
-    def init_dtype(self):
-        self.dtype = np.uint16
-
     def init_shape(self):
         self.shape = [100]
+
+    def init_xyshape(self):
+        self.xshape = self.shape
+        self.yshape = self.shape
+
+    def init_wshape(self):
+        self.wshape = [1]
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
