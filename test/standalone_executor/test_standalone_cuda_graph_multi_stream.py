@@ -126,7 +126,7 @@ class TestCustomStream(unittest.TestCase):
 
         for out in outs:
             for baseline, result in zip(outs[0], out):
-                self.assertEqual(baseline[0], result[0])
+                self.assertEqual(baseline, result)
 
 
 if __name__ == "__main__":
