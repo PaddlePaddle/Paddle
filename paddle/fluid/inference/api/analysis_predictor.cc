@@ -1151,10 +1151,15 @@ bool AnalysisPredictor::SetFeed(const std::vector<paddle::Tensor> &inputs,
                         feeds_.size(),
                         inputs.size()));
   for (size_t i = 0; i < inputs.size(); ++i) {
-    PADDLE_ENFORCE_EQ(inputs[i].initialized(),
+    PADDLE_ENFORCE_EQ(inputs[i].defined(),
                       true,
                       paddle::platform::errors::InvalidArgument(
-                          "The input Tensor expected to be initialized."));
+                          "The input Tensor expected to be defined."));
+    PADDLE_ENFORCE_EQ(
+        inputs[i].is_dense_tensor(),
+        true,
+        paddle::platform::errors::InvalidArgument(
+            "The input Tensor expected to be type of dense tensor."));
   }
 
   if (std::all_of(inputs.cbegin(), inputs.cend(), [&](const paddle::Tensor &t) {
