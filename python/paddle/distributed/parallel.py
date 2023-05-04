@@ -146,20 +146,18 @@ def sync_params_buffers(
     for _, param in model._obtain_parameters_buffers().items():
         if not isinstance(param, core.eager.Tensor):
             raise TypeError(
-                "The data type of '%s' must be Varbase or eager.Tensor"
-                % param.name
+                "The data type of '%s' must be core.eager.Tensor" % param.name
             )
 
-        # is_distributed param not need to sync when in mp mode
-        if isinstance(param, core.eager.Tensor):
-            if is_model_parallel:
-                if hasattr(param, "is_distributed") and param.is_distributed:
-                    continue
-
-            # NOTE(shenliang03): Support situations that do not require synchronization parameters,
-            # such as moe's expert parameters
-            if getattr(param, "no_sync", False):
+        if is_model_parallel:
+            if hasattr(param, "is_distributed") and param.is_distributed:
                 continue
+
+        # NOTE(shenliang03): Support situations that do not require synchronization parameters,
+        # such as moe's expert parameters
+        if getattr(param, "no_sync", False):
+            continue
+
         if param.type == core.VarDesc.VarType.VOCAB:
             continue
 
@@ -474,14 +472,14 @@ class DataParallel(layers.Layer):
                 self.find_unused_parameters,
             )
 
-    def _find_varbase(self, obj):
+    def _find_tensor(self, obj):
         var_type = core.eager.Tensor
         if isinstance(obj, var_type):
             return [obj]
         if isinstance(obj, (list, tuple)):
-            return itertools.chain(*map(self._find_varbase, obj))
+            return itertools.chain(*map(self._find_tensor, obj))
         if isinstance(obj, dict):
-            return itertools.chain(*map(self._find_varbase, obj.values()))
+            return itertools.chain(*map(self._find_tensor, obj.values()))
         return []
 
     @contextmanager
@@ -536,9 +534,7 @@ class DataParallel(layers.Layer):
             and framework._dygraph_tracer()._has_grad
             and self.grad_need_sync
         ):
-            self._reducer.prepare_for_backward(
-                list(self._find_varbase(outputs))
-            )
+            self._reducer.prepare_for_backward(list(self._find_tensor(outputs)))
         return outputs
 
     @deprecated(
