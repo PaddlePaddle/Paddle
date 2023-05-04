@@ -718,7 +718,8 @@ def is_compiled_with_cinn():
     """
     Whether this whl package can be used to run the model on CINN.
 
-    Returns (bool): `True` if CINN is currently available, otherwise `False`.
+    Returns:
+        Bool: `True` if CINN is currently available, otherwise `False`.
 
     Examples:
         .. code-block:: python
@@ -733,7 +734,8 @@ def is_compiled_with_cuda():
     """
     Whether this whl package can be used to run the model on GPU.
 
-    Returns (bool): `True` if CUDA is currently available, otherwise `False`.
+    Returns:
+        Bool: `True` if CUDA is currently available, otherwise `False`.
 
     Examples:
         .. code-block:: python
@@ -748,7 +750,8 @@ def is_compiled_with_rocm():
     """
     Whether this whl package can be used to run the model on AMD or Hygon GPU(ROCm).
 
-    Returns (bool): `True` if ROCm is currently available, otherwise `False`.
+    Returns:
+        Bool: `True` if ROCm is currently available, otherwise `False`.
 
     Examples:
         .. code-block:: python
@@ -1637,9 +1640,26 @@ class Variable(metaclass=VariableMetaClass):
         """
         pass
 
-    @fake_interface_only
     def register_hook(self, hook):
-        pass
+        import paddle
+
+        def backward_hook_wrapper(dy):
+            """call the backward hook in ."""
+            import numpy as np
+
+            return hook(np.array(dy))
+
+        def forward_hook_wrapper(x):
+            """do nothing but return a new variable."""
+            return x
+
+        paddle.static.py_func(
+            func=forward_hook_wrapper,
+            x=self,
+            out=self,
+            backward_func=backward_hook_wrapper,
+            skip_vars_in_backward_input=[self],
+        )
 
     def __str__(self):
         return self._to_readable_code()
