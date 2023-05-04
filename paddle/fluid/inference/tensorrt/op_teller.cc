@@ -128,8 +128,14 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
 #endif
+#if !IS_TRT_VERSION_GE(8600)
+      if (x_shape.size() == 0 && unary_list.find(op_type) != unary_list.end()) {
+        VLOG(3) << op_type
+                << " op does not support 0 dim input when TensorRT < 8.6.";
+        return false;
+      }
+#endif
     }
-
     // In static shape in Paddle-TRT, we can't allow that one op has a
     // 1D intermediate tensor as input.
     if (!with_dynamic_shape) {
