@@ -365,7 +365,7 @@ void sum_grad(const Tensor& x,
     if (!keepdim) {
       auto axis_ = std::vector<int64_t>();
       if (reduce_all) {
-        for (int64_t i = 1; i < x_dim_size; i++) {
+        for (int64_t i = 0; i < x_dim_size; i++) {
           axis_.push_back(i);
         }
       } else {
@@ -541,7 +541,7 @@ void concat_grad(const std::vector<Tensor>& x,
     sections.push_back(x[i].dims()[axis_value]);
   }
   std::vector<Tensor> x_grad_tmp =
-      split<T>(out_grad, phi::IntArray(sections), axis);
+      split<T>(out_grad, phi::IntArray(sections), axis_value);
   for (int i = 0; i < x_num; ++i) {
     set_output<T>(x_grad_tmp.at(i), x_grad.at(i));
   }

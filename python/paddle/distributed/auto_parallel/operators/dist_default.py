@@ -159,7 +159,9 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                 ):
                     var_dim_mapping = dist_attr.get_input_dims_mapping(varname)
                     mesh_shape = process_mesh.shape
-                    batch_size_axis = var_dim_mapping[0]
+                    batch_size_axis = (
+                        var_dim_mapping[0] if len(var_dim_mapping) > 0 else -1
+                    )
                     if batch_size_axis > -1 and mesh_shape[batch_size_axis] > 1:
                         need_gradient_allreduce = True
                         break

@@ -280,6 +280,8 @@ int FusedMultiTransformerXPUQuantPass::ApplyImpl(ir::Graph* graph,
                                                  with_time_step,
                                                  with_seq_lengths,
                                                  with_src_mask);
+  int quant_weight_bits =
+      Has("quant_weight_bits") ? Get<int>("quant_weight_bits") : -1;
 
   int found_subgraph_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
@@ -312,36 +314,39 @@ int FusedMultiTransformerXPUQuantPass::ApplyImpl(ir::Graph* graph,
     // quant weight nodes
     // w_nodes_vec: [QKVW, OutLinearW, FFN1Weight, FFN2Weight]
     std::vector<std::vector<Node*>> w_nodes_vec(4);
-    std::vector<std::vector<Node*>> w_int16_nodes_vec(4);
+    std::vector<std::vector<Node*>> w_intx_nodes_vec(4);
     std::vector<std::vector<Node*>> w_max_nodes_vec(4);
-    std::vector<std::vector<std::string>> w_int16_names_vec(4);
+    std::vector<std::vector<std::string>> w_intx_names_vec(4);
     std::vector<std::vector<std::string>> w_max_names_vec(4);
     auto quant_func = [&](const std::string& input_name,
                           std::vector<Node*>* w_nodes,
-                          std::vector<Node*>* w_int16_nodes,
+                          std::vector<Node*>* w_intx_nodes,
                           std::vector<Node*>* w_max_nodes,
-                          std::vector<std::string>* w_int16_names,
+                          std::vector<std::string>* w_intx_names,
                           std::vector<std::string>* w_max_names,
                           bool need_transpose) {
-      typedef int16_t TW;
-
       auto w_names = fused_mt->Op()->Input(input_name);
       for (auto w_name : w_names) {
         Node* w_node = FindNodeWithName(graph, w_name);
-        Node* w_int16 = nullptr;
+        Node* w_intx = nullptr;
         Node* w_max = nullptr;
         PADDLE_ENFORCE_NE(
             w_node,
             nullptr,
             platform::errors::Fatal("w node should not be nullptr"));
-        PrepareWeight<TW>(
-            graph, scope, block, w_node, &w_int16, &w_max, need_transpose);
+        if (quant_weight_bits == 8) {
+          PrepareWeight<int8_t>(
+              graph, scope, block, w_node, &w_intx, &w_max, need_transpose);
+        } else {
+          PrepareWeight<int16_t>(
+              graph, scope, block, w_node, &w_intx, &w_max, need_transpose);
+        }
         w_nodes->push_back(w_node);
-        w_int16_nodes->push_back(w_int16);
+        w_intx_nodes->push_back(w_intx);
         w_max_nodes->push_back(w_max);
       }
       for (size_t i = 0; i < w_names.size(); ++i) {
-        w_int16_names->push_back(w_int16_nodes->at(i)->Name());
+        w_intx_names->push_back(w_intx_nodes->at(i)->Name());
         w_max_names->push_back(w_max_nodes->at(i)->Name());
       }
       PADDLE_ENFORCE_EQ(
@@ -353,11 +358,11 @@ int FusedMultiTransformerXPUQuantPass::ApplyImpl(ir::Graph* graph,
               static_cast<int>(w_nodes->size())));
       PADDLE_ENFORCE_EQ(
           w_names.size(),
-          w_int16_nodes->size(),
+          w_intx_nodes->size(),
           platform::errors::Fatal(
-              "The size of w_names(%d) should be equal to w_int16_nodes(%d)",
+              "The size of w_names(%d) should be equal to w_intx_nodes(%d)",
               static_cast<int>(w_names.size()),
-              static_cast<int>(w_int16_nodes->size())));
+              static_cast<int>(w_intx_nodes->size())));
       PADDLE_ENFORCE_EQ(
           w_names.size(),
           w_max_nodes->size(),
@@ -367,11 +372,11 @@ int FusedMultiTransformerXPUQuantPass::ApplyImpl(ir::Graph* graph,
               static_cast<int>(w_max_nodes->size())));
       PADDLE_ENFORCE_EQ(
           w_names.size(),
-          w_int16_names->size(),
+          w_intx_names->size(),
           platform::errors::Fatal(
-              "The size of w_names(%d) should be equal to w_int16_names(%d)",
+              "The size of w_names(%d) should be equal to w_intx_names(%d)",
               static_cast<int>(w_names.size()),
-              static_cast<int>(w_int16_names->size())));
+              static_cast<int>(w_intx_names->size())));
       PADDLE_ENFORCE_EQ(
           w_names.size(),
           w_max_names->size(),
@@ -382,30 +387,30 @@ int FusedMultiTransformerXPUQuantPass::ApplyImpl(ir::Graph* graph,
     };
     quant_func("QKVW",
                &(w_nodes_vec[0]),
-               &(w_int16_nodes_vec[0]),
+               &(w_intx_nodes_vec[0]),
                &(w_max_nodes_vec[0]),
-               &(w_int16_names_vec[0]),
+               &(w_intx_names_vec[0]),
                &(w_max_names_vec[0]),
                false);
     quant_func("OutLinearW",
                &(w_nodes_vec[1]),
-               &(w_int16_nodes_vec[1]),
+               &(w_intx_nodes_vec[1]),
                &(w_max_nodes_vec[1]),
-               &(w_int16_names_vec[1]),
+               &(w_intx_names_vec[1]),
                &(w_max_names_vec[1]),
                true);
     quant_func("FFN1Weight",
                &(w_nodes_vec[2]),
-               &(w_int16_nodes_vec[2]),
+               &(w_intx_nodes_vec[2]),
                &(w_max_nodes_vec[2]),
-               &(w_int16_names_vec[2]),
+               &(w_intx_names_vec[2]),
                &(w_max_names_vec[2]),
                true);
     quant_func("FFN2Weight",
                &(w_nodes_vec[3]),
-               &(w_int16_nodes_vec[3]),
+               &(w_intx_nodes_vec[3]),
                &(w_max_nodes_vec[3]),
-               &(w_int16_names_vec[3]),
+               &(w_intx_names_vec[3]),
                &(w_max_names_vec[3]),
                true);
 
@@ -482,13 +487,13 @@ int FusedMultiTransformerXPUQuantPass::ApplyImpl(ir::Graph* graph,
                                     name_caches.at("CacheKVOut"));
     fused_mt_xpu_op_desc->SetOutput("out", name_caches.at("Out"));
 
-    fused_mt_xpu_op_desc->SetInput("qkvw", w_int16_names_vec[0]);
+    fused_mt_xpu_op_desc->SetInput("qkvw", w_intx_names_vec[0]);
     fused_mt_xpu_op_desc->SetInput("qkvw_max", w_max_names_vec[0]);
-    fused_mt_xpu_op_desc->SetInput("out_linear_w", w_int16_names_vec[1]);
+    fused_mt_xpu_op_desc->SetInput("out_linear_w", w_intx_names_vec[1]);
     fused_mt_xpu_op_desc->SetInput("out_linear_wmax", w_max_names_vec[1]);
-    fused_mt_xpu_op_desc->SetInput("ffn1_weight", w_int16_names_vec[2]);
+    fused_mt_xpu_op_desc->SetInput("ffn1_weight", w_intx_names_vec[2]);
     fused_mt_xpu_op_desc->SetInput("ffn1_weight_max", w_max_names_vec[2]);
-    fused_mt_xpu_op_desc->SetInput("ffn2_weight", w_int16_names_vec[3]);
+    fused_mt_xpu_op_desc->SetInput("ffn2_weight", w_intx_names_vec[3]);
     fused_mt_xpu_op_desc->SetInput("ffn2_weight_max", w_max_names_vec[3]);
     if (!fused_mt_xpu_op_desc->HasAttr("rotary_emb_dims")) {
       fused_mt_xpu_op_desc->SetAttr("rotary_emb_dims", 0);
@@ -501,7 +506,7 @@ int FusedMultiTransformerXPUQuantPass::ApplyImpl(ir::Graph* graph,
     }
     // link int16 format of QKVW/OutLinearW/FFN1Weight/FFN2Weight to
     // fused_mt_xpu
-    for (auto nodes : w_int16_nodes_vec) {
+    for (auto nodes : w_intx_nodes_vec) {
       for (auto node : nodes) {
         IR_NODE_LINK_TO(node, fused_mt);
       }

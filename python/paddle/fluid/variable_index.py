@@ -574,6 +574,13 @@ def _getitem_impl_(var, item):
 
         out = reverse(out, axis=reverse_axes)
 
+    # NOTE(zoooo0820): When all axes are decreased, the output will be 1-D
+    # with FLAGS_set_to_1d=True. In this case, one `None` should be pop out,
+    # otherwise the output shape will be not correct.
+    set_to_1d = paddle.get_flags('FLAGS_set_to_1d')['FLAGS_set_to_1d']
+    if set_to_1d and len(decrease_axes) == len(var.shape):
+        none_axes = none_axes[1:]
+
     if len(none_axes) > 0:
         # Deal with cases that decrease_axes is not empty
         # For example:
