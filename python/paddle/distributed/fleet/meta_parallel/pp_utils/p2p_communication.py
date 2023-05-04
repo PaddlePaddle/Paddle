@@ -13,6 +13,8 @@
 # limitations under the License.
 
 
+import os
+
 import numpy as np
 
 import paddle
@@ -24,6 +26,9 @@ from .utils import number_2_dtype, paddle_2_number
 _hcg = None
 _use_cache = False
 _enable_partial_send_recv = True
+
+_sync_send = os.environ.get("PADDLE_P2P_SYNC_SEND", "0")
+_sync_send = _sync_send.lower() in ['1', 'true']
 
 
 def initialize_p2p_groups(hcg, use_cache=True, enable_partial_send_recv=True):
@@ -352,7 +357,7 @@ def _p2p_helper(
     # TODO(Yuang Liu): use batch_isend_irecv replace all these comm ops
     tasks = []
     # start to p2p communicate
-    if framework.core.is_compiled_with_custom_device("npu"):
+    if _sync_send:
         # NPU does not support asynchronized send op, So the order is
         # recv_prev -> send_next -> recv_next -> send_prev
         if tensor_recv_prev is not None:
