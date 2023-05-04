@@ -127,11 +127,11 @@ struct EmbeddingGradCUDAFunctor {
       T* d_table = dev_ctx_.template Alloc<T>(d_table_t);
 
 #ifdef PADDLE_WITH_HIP
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          hipMemsetAsync(d_table, 0, N * D * sizeof(T), dev_ctx_.stream()));
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            hipMemsetAsync(d_table, 0, N * D * sizeof(T), dev_ctx_.stream()));
 #else
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          cudaMemsetAsync(d_table, 0, N * D * sizeof(T), dev_ctx_.stream()));
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            cudaMemsetAsync(d_table, 0, N * D * sizeof(T), dev_ctx_.stream()));
 #endif
 
       if (FLAGS_embedding_deterministic == 1) {
@@ -151,9 +151,9 @@ struct EmbeddingGradCUDAFunctor {
             EmbeddingGrad<T, IdT><<<grids, threads, 0, dev_ctx_.stream()>>>(
                 d_table, d_output, ids, N, K, D);
           } else {
-            DenseTensor tmp_table = phi::Cast<phi::dtype::float16, Context>(
-                                        dev_ctx_, *weight_grad_,
-                                            DataType::FLOAT32);
+            DenseTensor tmp_table = 
+                phi::Cast<phi::dtype::float16, Context>(
+                    dev_ctx_, *weight_grad_, DataType::FLOAT32);
             float* d_table_tmpf = tmp_table.template data<float>();
   #ifdef PADDLE_WITH_HIP
             PADDLE_ENFORCE_GPU_SUCCESS(
@@ -172,8 +172,13 @@ struct EmbeddingGradCUDAFunctor {
                       dev_ctx_, tmp_table, DataType::FLOAT16);
             phi::dtype::float16 *d_table_tmph =
                 tmp_table_back.template data<phi::dtype::float16>();
-            cudaMemcpy(d_table, d_table_tmph,
-                sizeof(phi::dtype::float16) * N * D, cudaMemcpyDeviceToDevice);
+
+            PADDLE_ENFORCE_GPU_SUCCESS(
+                cudaMemcpyAsync(d_table, 
+                                d_table_tmph,
+                                sizeof(phi::dtype::float16) * N * D,
+                                cudaMemcpyDeviceToDevice,
+                                dev_ctx_.stream()));
           }
           } else {
           EmbeddingGrad<T, IdT><<<grids, threads, 0, dev_ctx_.stream()>>>(
