@@ -60,6 +60,7 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                     "sin",
                     "cos",
                     "tan",
+                    "tanh",
                     "sinh",
                     "cosh",
                     "asin",
@@ -177,6 +178,15 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                     not dynamic_shape
                     or ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 < 8200
                 )
+            ):
+                return 0, 3
+            runtime_version = paddle_infer.get_trt_runtime_version()
+            if (
+                runtime_version[0] * 1000
+                + runtime_version[1] * 100
+                + runtime_version[2] * 10
+                < 8600
+                and self.dims == 0
             ):
                 return 0, 3
             return 1, 2

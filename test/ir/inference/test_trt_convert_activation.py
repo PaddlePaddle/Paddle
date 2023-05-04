@@ -49,7 +49,6 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                 for op_type in [
                     "relu",
                     "sigmoid",
-                    "tanh",
                     "relu6",
                     "elu",
                     "selu",
@@ -145,6 +144,15 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
             if not dynamic_shape and (self.dims == 1 or self.dims == 0):
+                return 0, 3
+            runtime_version = paddle_infer.get_trt_runtime_version()
+            if (
+                runtime_version[0] * 1000
+                + runtime_version[1] * 100
+                + runtime_version[2] * 10
+                < 8600
+                and self.dims == 0
+            ) and program_config.ops[0].type in ["celu", "logsigmoid"]:
                 return 0, 3
             return 1, 2
 
