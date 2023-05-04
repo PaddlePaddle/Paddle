@@ -36,6 +36,7 @@ void I0GradKernel(const Context& ctx,
   for_range(functor);
 }
 
-} // namespace phi
+}  // namespace phi
 
-PD_REGISTER_KERNEL(i0_grad, CPU, ALL_LAYOUT, phi::I0GradKernel, float, double) {}
+PD_REGISTER_KERNEL(i0_grad, CPU, ALL_LAYOUT, phi::I0GradKernel, float, double) {
+}

@@ -20,7 +20,7 @@
 #include "paddle/phi/kernels/impl/bessel_grad_kernel_impl.h"
 
 namespace phi {
-    
+
 template <typename T, typename Context>
 void I0eGradKernel(const Context& ctx,
                    const DenseTensor& x,
@@ -34,11 +34,12 @@ void I0eGradKernel(const Context& ctx,
   auto* x_gard_data = ctx.template Alloc<T>(x_grad);
 
   phi::funcs::ForRange<Context> for_range(ctx, numel);
-  I0eGradFunctor<T> functor(x_data, out_data, out_grad_data, x_gard_data, numel);
+  I0eGradFunctor<T> functor(
+      x_data, out_data, out_grad_data, x_gard_data, numel);
   for_range(functor);
 }
 
-} // namespace phi
+}  // namespace phi
 
 PD_REGISTER_KERNEL(
     i0e_grad, CPU, ALL_LAYOUT, phi::I0eGradKernel, float, double) {}

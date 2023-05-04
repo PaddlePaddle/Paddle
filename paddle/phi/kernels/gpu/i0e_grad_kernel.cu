@@ -34,7 +34,7 @@ void I0eGradKernel(const Context& ctx,
   phi::funcs::ElementwiseKernel<T>(ctx, ins, &outs, functor);
 }
 
-} // namespace phi
+}  // namespace phi
 
 PD_REGISTER_KERNEL(
     i0e_grad, GPU, ALL_LAYOUT, phi::I0eGradKernel, float, double) {}

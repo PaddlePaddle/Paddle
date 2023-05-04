@@ -5589,11 +5589,11 @@ def nextafter(x, y, name=None):
 def i0(x, name=None):
     """
     The function used to calculate modified bessel function of order 0.
-    
+
     Equation:
         ..  math::
 
-            I_0(x)=\sum^{\infty}_{k=0}\frac{(x^2/4)^k}{(k!)^2}
+            I_0(x) = \sum^{\infty}_{k=0}\frac{(x^2/4)^k}{(k!)^2}
 
     Args:
         x (Tensor): The input tensor, it's data type should be float32, float64.
@@ -5625,12 +5625,12 @@ def i0(x, name=None):
 def i0e(x, name=None):
     """
     The function used to calculate exponentially scaled modified Bessel function of order 0.
-    
+
     Equation:
         ..  math::
-        
-            I_0(x)=\sum^{\infty}_{k=0}\frac{(x^2/4)^k}{(k!)^2} \\
-            I_{0e}(x)=e^{-\lvert x\rvert}I_0(x)
+
+            I_0(x) = \sum^{\infty}_{k=0}\frac{(x^2/4)^k}{(k!)^2} \\
+            I_{0e}(x) = e^{-|x|}I_0(x)
 
     Args:
         x (Tensor): The input tensor, it's data type should be float32, float64.
