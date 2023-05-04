@@ -37,7 +37,7 @@ class Parallelizer:
         assert self._dist_context._is_initialized
         self._pass_context = self._dist_context.pass_context
         self._strategy = self._dist_context.strategy
-        self._logger = get_logger(logging.DEBUG)
+        self._logger = get_logger(logging.INFO)
 
     def parallel_all(self):
         world_process_group = get_world_process_group()
