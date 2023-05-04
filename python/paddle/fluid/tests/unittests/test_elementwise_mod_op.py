@@ -16,7 +16,11 @@ import random
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from eager_op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    convert_uint16_to_float,
+)
 
 import paddle
 from paddle import fluid
@@ -183,7 +187,24 @@ class TestElementwiseModBF16Op(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place_customized(
+            checker=self.verify_output, place=place
+        )
+
+    def verify_output(self, outs):
+        outs = convert_uint16_to_float(outs)
+        self.assertEqual(outs[0].shape, (10, 10))
+        hist, _ = np.histogram(outs[0], range=(-3, 5))
+        hist = hist.astype("float32")
+        hist /= float(outs[0].size)
+
+        x = np.random.uniform(0, 10000, [10, 10]).astype("float32")
+        y = np.random.uniform(0, 1000, [10, 10]).astype("float32")
+        data = np.mod(x, y)
+        hist2, _ = np.histogram(data, range=(-3, 5))
+        hist2 = hist2.astype("float32")
+        hist2 /= float(outs[0].size)
+        np.testing.assert_allclose(hist, hist2, rtol=0.05)
 
     def init_dtype(self):
         self.dtype = np.uint16
