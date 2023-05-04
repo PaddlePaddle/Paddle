@@ -26,10 +26,14 @@ def skip_unit_test():
     return (
         not paddle.is_compiled_with_cuda()
         or paddle.device.cuda.get_device_capability()[0] < 8
+        or paddle.get_cudnn_version() < 8800
     )
 
 
-skip_msg = "only support with cuda and Ampere or later devices"
+skip_msg = (
+    "only support with cuda and CUDNN 8.8 or later,"
+    " and only Ampere or later devices are supported"
+)
 
 
 def verify_node_count(graph, node_name, target_count):
