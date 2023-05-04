@@ -1466,7 +1466,8 @@ def update_op_dims_mapping_by_default_dist_impl(dist_op):
                 ), "{} only the batch dimension (0-dim) can be sharded, but the dimension {} is sharded by {} part.".format(
                     op_desc.type(), idx, mapping
                 )
-        batch_dim_mappings.append(dims_mapping[0])
+        if len(dims_mapping) >= 1:
+            batch_dim_mappings.append(dims_mapping[0])
     for arg_name in op_desc.output_arg_names():
         serial_tensor = dist_op.get_serial_output(arg_name)
         if serial_tensor.is_parameter:
@@ -1480,7 +1481,8 @@ def update_op_dims_mapping_by_default_dist_impl(dist_op):
                     ), "{} only the batch dimension (0-dim) can be sharded, but the dimension {} is sharded by {} part.".format(
                         op_desc.type(), idx, mapping
                     )
-            batch_dim_mappings.append(dims_mapping[0])
+            if len(dims_mapping) >= 1:
+                batch_dim_mappings.append(dims_mapping[0])
         else:
             assert (
                 dims_mapping[0] == -1
@@ -1505,7 +1507,7 @@ def update_op_dims_mapping_by_default_dist_impl(dist_op):
         if serial_tensor.is_parameter:
             continue
         dims_mapping = op_dist_attr.get_input_dims_mapping(arg_name)
-        if compatible_dim_mapping != dims_mapping[0]:
+        if len(dims_mapping) >= 1 and compatible_dim_mapping != dims_mapping[0]:
             dims_mapping[0] = compatible_dim_mapping
             changed = True
     for arg_name in op_desc.output_arg_names():
@@ -1514,7 +1516,10 @@ def update_op_dims_mapping_by_default_dist_impl(dist_op):
             continue
         dims_mapping = op_dist_attr.get_output_dims_mapping(arg_name)
         if arg_name not in xshape_arg_names:
-            if compatible_dim_mapping != dims_mapping[0]:
+            if (
+                len(dims_mapping) >= 1
+                and compatible_dim_mapping != dims_mapping[0]
+            ):
                 dims_mapping[0] = compatible_dim_mapping
                 changed = True
         else:
