@@ -548,7 +548,7 @@ struct RemainderFunctor<dtype::bfloat16> {
 
     // Accoding to #PR26732: in dividen % divsor
     // remainder shall have the same sign as divsor.
-    if ((res != 0) && ((res < 0) != (b_float < 0))) res += b_float;
+    if ((res != 0.0f) && ((res < 0.0f) != (b_float < 0.0f))) res += b_float;
     return static_cast<dtype::bfloat16>(res);
   }
 };

@@ -148,12 +148,9 @@ class TestElementwiseModFP16Op_ZeroDim3(TestElementwiseModFP16Op):
 
 
 @unittest.skipIf(
-    core.is_compiled_with_cuda()
-    and (
-        core.cudnn_version() < 8100
-        or paddle.device.cuda.get_device_capability()[0] < 8
-    ),
-    "run test when gpu is availble and the minimum cudnn version is 8.1.0 and gpu's compute capability is at least 8.0.",
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
 )
 class TestElementwiseModBF16Op(OpTest):
     def init_kernel_type(self):
