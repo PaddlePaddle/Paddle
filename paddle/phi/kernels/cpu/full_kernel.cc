@@ -45,6 +45,8 @@ void FullLikeKernel(const Context& dev_ctx,
                     DataType dtype,
                     DenseTensor* out) {
   auto value = val.to<double>();
+  std::cout<<"{function_name : full_like, inputs: { { x, type: <class 'paddle.Tensor'>, shape: "<<x.dims()<<" } },";
+  std::cout<<" params: [ val: "<<value<<"]}"<<std::endl;
   using CommonType = typename std::common_type<
       float,
       typename std::conditional<std::is_same<T, phi::dtype::float16>::value,
