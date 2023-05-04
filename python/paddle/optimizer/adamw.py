@@ -90,7 +90,7 @@ class AdamW(Optimizer):
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
-    **Notes**:
+    Notes:
         **Currently, AdamW doesn't support sparse parameter optimization.**
 
     Examples:
@@ -111,7 +111,7 @@ class AdamW(Optimizer):
                     beta1=beta1,
                     beta2=beta2,
                     weight_decay=0.01)
-            out.backward()
+            loss.backward()
             opt.step()
             opt.clear_grad()
 
@@ -135,7 +135,7 @@ class AdamW(Optimizer):
                 }],
                 weight_decay=0.01,
                 beta1=0.9)
-            out.backward()
+            loss.backward()
             opt.step()
             opt.clear_grad()
 
