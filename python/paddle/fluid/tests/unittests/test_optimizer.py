@@ -249,7 +249,7 @@ class TestMomentumOptimizer(unittest.TestCase):
 
 
 class TestAdagradOptimizer(unittest.TestCase):
-    class MockAdagrad(optimizer.AdagradOptimizer):
+    class MockAdagrad(paddle.optimizer.Adagrad):
         def get_accumulators(self):
             return self._accumulators
 
