@@ -27,7 +27,11 @@ _extra_black_list = {
     'lookup_table',
     'lookup_table_v2',
     'scatter',
-    'scatter_grad',
+    'linear_interp_v2',
+    'nearest_interp_v2',
+    'bilinear_interp_v2',
+    'bicubic_interp_v2',
+    'trilinear_interp_v2',
 }
 
 
@@ -159,14 +163,6 @@ black_list = {
     'c_softmax_with_cross_entropy',
     'cross_entropy',
     'cross_entropy2',
-    # fp16 is slower than fp32, though fp16 is supported.
-    'lookup_table',
-    'lookup_table_v2',
-    'linear_interp_v2',
-    'nearest_interp_v2',
-    'bilinear_interp_v2',
-    'bicubic_interp_v2',
-    'trilinear_interp_v2',
     # default fp32 can avoid return inf when the sum value large than 65504
     'reduce_sum',
 }
@@ -236,6 +232,7 @@ class AutoMixedPrecisionLists:
                 elif op_name in self.gray_list:
                     self.gray_list.remove(op_name)
                 self.black_list.add(op_name)
+                self.unsupported_list.add(op_name)
         device, sys_unsupported_list = _get_sys_unsupported_list(self.amp_dtype)
         actual_unsupported_list = []
         for op_name in sys_unsupported_list:

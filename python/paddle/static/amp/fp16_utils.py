@@ -23,7 +23,7 @@ from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 
 from .fp16_lists import (
     AutoMixedPrecisionLists,
-    _get_black_list,
+    black_list,
     get_low_precision_dtypestr,
 )
 
@@ -433,6 +433,13 @@ def set_param_dtype(program, dtype, amp_lists, use_fp16_guard, level):
         all_parameters.extend(block.all_parameters())
         ops = block.ops
         for op in ops:
+            # Currently, lookup_table is in black_list and unsupport_list, it's weight will be
+            # set to fp32 in setp 1 of cast_model_tp_fp16. But the weight may be used as matmul's
+            # input in transformer, so the weight is also in to_fp16_var_names.
+            # TODO(zhangting2020): consider fix auto_parallel_fp16 and remove lookup_table
+            # from black_list and unsupport_list.
+            if op in ['lookup_table', 'lookup_table_v2']:
+                continue
             if _need_keep_fp32(op, amp_lists.unsupported_list, use_fp16_guard):
                 for in_name in op.input_names:
                     keep_fp32_var_names = keep_fp32_var_names.union(
@@ -602,7 +609,7 @@ def cast_model_to_fp16(
 
     # For amp o2 there is no blacklist by default.
     if level == 'O2':
-        amp_lists.black_list = amp_lists.black_list - _get_black_list()
+        amp_lists.black_list = amp_lists.black_list - black_list
 
     global_block = program.global_block()
     keep_fp32_ops = set()
@@ -722,6 +729,7 @@ def cast_model_to_fp16(
             idx += num_cast_ops + 1
     _logger.debug("---- after cast model to fp16 ----")
     _logger.debug(program)
+
     to_fp16_var_names.difference_update(keep_fp32_var_names)
     return to_fp16_var_names
 
