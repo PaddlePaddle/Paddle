@@ -115,24 +115,6 @@ def is_compiled_with_xpu():
     return core.is_compiled_with_xpu()
 
 
-def XPUPlace(dev_id):
-    """
-    Return a Baidu Kunlun Place
-
-    Parameters:
-        dev_id(int): Baidu Kunlun device id
-
-    Examples:
-        .. code-block:: python
-
-            # required: xpu
-
-            import paddle
-            place = paddle.device.XPUPlace(0)
-    """
-    return core.XPUPlace(dev_id)
-
-
 def get_cudnn_version():
     """
     This funciton return the version of cudnn. the retuen value is int which represents the
