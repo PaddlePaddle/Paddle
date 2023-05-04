@@ -17,6 +17,7 @@
 #include <vector>
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/funcs/fft.h"
 #include "paddle/phi/kernels/funcs/fft_fill_conj.h"
@@ -51,7 +52,7 @@ void StftKernel(const Context& ctx,
   frames_dims.at(axes.back()) = n_fft;
   frames.mutable_data<T>(frames_dims, ctx.GetPlace());
   phi::funcs::FrameFunctor<Context, T>()(ctx,
-                                         x,
+                                         &x,
                                          &frames,
                                          seq_length,
                                          n_fft,
@@ -62,8 +63,14 @@ void StftKernel(const Context& ctx,
   // Window
   phi::DenseTensor frames_w;
   frames_w.mutable_data<T>(frames_dims, ctx.GetPlace());
-  ElementwiseComputeEx<phi::funcs::MultiplyFunctor<T>, Context, T>(
-      ctx, &frames, window, axes.back(), MulFunctor<T>(), &frames_w);
+  frames_w.mutable_data<T>(ctx.GetPlace());
+  phi::funcs::ElementwiseCompute<phi::funcs::MultiplyFunctor<T>, T, T>(
+      ctx,
+      frames,
+      window,
+      phi::funcs::MultiplyFunctor<T>(),
+      &frames_w,
+      axes.back());
 
   // FFTR2C
   phi::funcs::FFTNormMode normalization;
