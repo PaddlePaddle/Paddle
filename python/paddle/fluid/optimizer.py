@@ -1982,6 +1982,7 @@ class LarsMomentumOptimizer(Optimizer):
 
             return momentum_op
 
+
 class AdamOptimizer(Optimizer):
     r"""
     The Adam optimizer uses an optimization described at the end
