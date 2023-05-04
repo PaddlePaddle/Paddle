@@ -14,7 +14,6 @@
 - bitwise_not
 - bitwise_or
 - bitwise_xor
-- unsqueeze
 - exp
 - scale
 - matmul

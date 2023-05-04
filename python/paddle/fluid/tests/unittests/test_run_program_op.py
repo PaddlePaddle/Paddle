@@ -254,6 +254,8 @@ class RunProgramOpTest(unittest.TestCase):
                     [p.name + '@GRAD' for p in inputs['Params']],
                     'out_grad_names',
                     [out.name + '@GRAD' for out in outputs['Out']],
+                    'x_grad_names',
+                    [p.name + '@GRAD' for p in inputs['X']],
                 )
             )
 
@@ -303,6 +305,8 @@ class RunProgramOpTest(unittest.TestCase):
                     [p.name + '@GRAD' for p in inputs['Params']],
                     'out_grad_names',
                     [out.name + '@GRAD' for out in outputs['Out']],
+                    'x_grad_names',
+                    [p.name + '@GRAD' for p in inputs['X']],
                 )
             )
 
@@ -510,7 +514,7 @@ class TestParametersWithStopGradient(unittest.TestCase):
 
         dy_loss = self.train(to_static=False)
         st_loss = self.train(to_static=True)
-        self.assertEqual(dy_loss[0], st_loss[0])
+        self.assertEqual(dy_loss, st_loss)
 
         paddle.enable_static()
 

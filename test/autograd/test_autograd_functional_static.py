@@ -41,14 +41,14 @@ paddle.enable_static()
             'v_not_none',
             utils.reduce,
             np.random.rand(2, 3),
-            np.random.rand(1),
+            np.array(np.random.rand()),
             False,
         ),
         (
             'xs_stop_gradient',
             utils.reduce,
             np.random.rand(2, 3),
-            np.random.rand(1),
+            np.array(np.random.rand()),
             True,
         ),
         (
