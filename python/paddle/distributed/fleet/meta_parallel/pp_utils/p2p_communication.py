@@ -358,8 +358,10 @@ def _p2p_helper(
     tasks = []
     # start to p2p communicate
     if _sync_send:
-        # NPU does not support asynchronized send op, So the order is
+        # Some devices(NPU for example) do not support asynchronized send op, So the order is
         # recv_prev -> send_next -> recv_next -> send_prev
+        # When using this order, the environment variable
+        # 'PADDLE_P2P_SYNC_SEND' should be set True
         if tensor_recv_prev is not None:
             if isinstance(tensor_recv_prev, tuple):
                 for d in tensor_recv_prev:
