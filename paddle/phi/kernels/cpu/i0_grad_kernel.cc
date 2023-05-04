@@ -14,7 +14,28 @@
 
 #include "paddle/phi/kernels/i0_grad_kernel.h"
 
+#include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/impl/bessel_grad_kernel_impl.h"
+
+namespace phi {
+
+template <typename T, typename Context>
+void I0GradKernel(const Context& ctx,
+                  const DenseTensor& x,
+                  const DenseTensor& out_grad,
+                  DenseTensor* x_grad) {
+  auto numel = out_grad.numel();
+  auto* x_data = x.data<T>();
+  auto* out_grad_data = out_grad.data<T>();
+  auto* x_grad_data = ctx.template Alloc<T>(x_grad);
+
+  phi::funcs::ForRange<Context> for_range(ctx, numel);
+  I0GradFunctor<T> functor(x_data, out_grad_data, x_grad_data, numel);
+  for_range(functor);
+}
+
+} // namespace phi
 
 PD_REGISTER_KERNEL(i0_grad, CPU, ALL_LAYOUT, phi::I0GradKernel, float, double) {}

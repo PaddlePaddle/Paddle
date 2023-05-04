@@ -23,95 +23,189 @@ limitations under the License. */
 namespace phi {
 
 template <typename T>
-struct I0eGradFunctor {
-  I0eGradFunctor(const T* dout, const T* x, const T* y, T* output, int64_t numel)
-      : dout_(dout), x_(x), y_(y), output_(output), numel_(numel) {}
+struct I0GradFunctor {
+  I0GradFunctor(const T* x, const T* out_grad, T* x_grad, int64_t numel)
+      : inp_x_(x),
+        inp_out_grad_(out_grad),
+        output_x_grad_(x_grad), 
+        numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
     using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-    const MT mp_dout = static_cast<MT>(dout_[idx]);
-    // const MT mp_x = static_cast<MT>(x_[idx]);
-    // const MT mp_y = static_cast<MT>(y_[idx]);
-    // const MT mp_i1e_data = static_cast<MT>(i1e_data_[idx]);
-    // todo: grad implementation
-    // auto partial_x = mp_i1e_data - std::signbit(mp_x) * mp_y;
-    // output_[idx] = static_cast<T>(mp_dout * partial_x);
-    output_[idx] = static_cast<T>(mp_dout);
+    const MT mp_x = static_cast<MT>(inp_x_[idx]);
+    const MT mp_out_grad = static_cast<MT>(inp_out_grad_[idx]);
+
+    MT x = std::abs(mp_x);
+    if (x <= T{8.0}) {
+      auto coeff_pair_A = ChebyshevCoefficientsI1e_A<T>();
+      auto A = std::get<0>(coeff_pair_A);
+      auto len = std::get<1>(coeff_pair_A);
+      MT y = (x / T{2.0}) - T{2.0};
+
+      const MT i1_out = std::exp(x) * x * Chbevl(y, A, len);
+      const MT i1_data = (mp_x < T{0.0}) ? -i1_out : i1_out;
+      output_x_grad_[idx] = static_cast<T>(i1_data * mp_out_grad);
+    } else {
+      auto coeff_pair_B = ChebyshevCoefficientsI1e_B<T>();
+      auto B = std::get<0>(coeff_pair_B);
+      auto len = std::get<1>(coeff_pair_B);
+      MT y = (T{32.0} / x) - T{2.0};
+
+      const T i1_out = (std::exp(x) * Chbevl(y, B, len)) / std::sqrt(x);
+      const T i1_data = (mp_x < T{0.0}) ? -i1_out : i1_out;
+      output_x_grad_[idx] = static_cast<T>(i1_data * mp_out_grad);
+    }
   }
 
  private:
-  const T* dout_;
-  const T* x_;
-  const T* y_;
-  T* output_;
+  const T* inp_x_;
+  const T* inp_out_grad_;
+  T* output_x_grad_;
   int64_t numel_;
 };
 
 template <typename T>
-struct I0GradFunctor {
-  I0GradFunctor(const T* dout, const T* x, T* output, int64_t numel)
-      : dout_(dout), x_(x), output_(output), numel_(numel) {}
+struct I0eGradFunctor {
+  I0eGradFunctor(const T* x, const T* out, const T* out_grad, T* x_grad, int64_t numel)
+      : inp_x_(x),
+        inp_out_(out),
+        inp_out_grad_(out_grad),
+        output_x_grad_(x_grad),
+        numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
     using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-    const MT mp_dout = static_cast<MT>(dout_[idx]);
-    // const MT mp_x = static_cast<MT>(x_[idx]);
-    // const MT mp_i1_data = static_cast<MT>(i1_data_[idx]);
-    // todo: grad implementation
-    // output_[idx] = static_cast<T>(mp_dout * mp_i1_data);
-    output_[idx] = static_cast<T>(mp_dout);
+    const MT mp_x = static_cast<MT>(inp_x_[idx]);
+    const MT mp_out = static_cast<MT>(inp_out_[idx]);
+    const MT mp_out_grad = static_cast<MT>(inp_out_grad_[idx]);
+
+    T x = std::abs(mp_x);
+    if (x <= MT{8.0}) {
+      auto coeff_pair_A = ChebyshevCoefficientsI1e_A<MT>();
+      auto A = std::get<0>(coeff_pair_A);
+      auto len = std::get<1>(coeff_pair_A);
+      MT y = (x / T{2.0}) - T{2.0};
+
+      const MT i1e_out = Chbevl<MT>(y, A, len) * x;
+      const MT i1e_data = (mp_x < T{0.0}) ? -i1e_out : i1e_out;
+      output_x_grad_[idx] = static_cast<T>(i1e_data - std::copysign(MT{1.0}, mp_x) * mp_out * mp_out_grad);
+    } else {
+      auto coeff_pair_B = ChebyshevCoefficientsI1e_B<T>();
+      auto B = std::get<0>(coeff_pair_B);
+      auto len = std::get<1>(coeff_pair_B);
+      MT y = (T{32.0} / x) - T{2.0};
+
+      const MT i1e_out = Chbevl<T>(y, B, len) / std::sqrt(x);
+      const MT i1e_data = (mp_x < T{0.0}) ? -i1e_out : i1e_out;
+      output_x_grad_[idx] = static_cast<T>(i1e_data - std::copysign(MT{1.0}, mp_x) * mp_out * mp_out_grad);
+    }
   }
 
  private:
-  const T* dout_;
-  const T* x_;
-  T* output_;
+  const T* inp_x_;
+  const T* inp_out_;
+  const T* inp_out_grad_;
+  T* output_x_grad_;
   int64_t numel_;
 };
 
-template <typename T, typename Context>
-void I0eGradKernel(const Context& ctx,
-                   const DenseTensor& x,
-                   const DenseTensor& out_grad,
-                   DenseTensor* x_grad) {
-  auto numel = out_grad.numel();
-  auto* dout_data = out_grad.data<T>();
-  auto* x_data = x.data<T>();
-  auto* dx_data = ctx.template Alloc<T>(x_grad, static_cast<size_t>(numel * sizeof(T)));
-  auto* y_data = ctx.template Alloc<T>(x, static_cast<size_t>(numel * sizeof(T)));
+template <typename T>
+struct I1GradFunctor {
+  I1GradFunctor(
+      const T* x, const T* out, const T* out_grad, T* x_grad, int64_t numel)
+      : input_x_(x),
+        input_out_(out),
+        input_out_grad_(out_grad),
+        output_x_grad_(x_grad),
+        numel_(numel) {}
 
-  // get the output of i0e for computing i0e gradient.
-  phi::funcs::ForRange<Context> for_range(ctx, numel);
-  I0eFunctor<T> i0e_functor(x_data, y_data, numel);
-  for_range(i0e_functor);
+  HOSTDEVICE void operator()(int64_t idx) const {
+    T x = std::abs(input_x_[idx]);
+    T x_ = input_x_[idx];
+    T out_ = input_out_[idx];
+    T out_grad_ = input_out_grad_[idx];
+    if (x <= T{8.0}) {
+      auto coeff_pair_A = ChebyshevCoefficientsI0e_A<T>();
+      auto A = std::get<0>(coeff_pair_A);
+      auto len = std::get<1>(coeff_pair_A);
+      T y = (x / T{2.0}) - T{2.0};
+      T eps = std::numeric_limits<T>::epsilon();
 
-  // get the output of i1e for computing i0e gradient.
-  // phi::funcs::ForRange<Context> for_range(ctx, numel);
-  // I1eFunctor<T> i1e_functor(x_data, i1e_data, numel);
-  // for_range(i1e_functor);
+      if (x <= eps) {
+        output_x_grad_[idx] = static_cast<T>(T{0.5} * out_grad_);
+      } else {
+        output_x_grad_[idx] = static_cast<T>(
+            (std::exp(x) * Chbevl<T>(y, A, len) - out_ / x_) * out_grad_);
+      }
+    } else {
+      auto coeff_pair_B = ChebyshevCoefficientsI0e_B<T>();
+      auto B = std::get<0>(coeff_pair_B);
+      auto len = std::get<1>(coeff_pair_B);
+      T y = (T{32.0} / x) - T{2.0};
 
-  I0eGradFunctor<T> functor(dout_data, x_data, y_data, dx_data, numel);
-  for_range(functor);
-}
+      output_x_grad_[idx] = static_cast<T>(
+          (std::exp(x) * Chbevl<T>(y, B, len) / std::sqrt(x) - out_ / x_) *
+          out_grad_);
+    }
+  }
 
-template <typename T, typename Context>
-void I0GradKernel(const Context& ctx,
-                  const DenseTensor& x,
-                  const DenseTensor& out_grad,
-                  DenseTensor* x_grad) {
-  auto numel = out_grad.numel();
-  auto* dout_data = out_grad.data<T>();
-  auto* x_data = x.data<T>();
-  auto* dx_data = ctx.template Alloc<T>(x_grad, static_cast<size_t>(numel * sizeof(T)));
+ private:
+  const T* input_x_;
+  const T* input_out_;
+  const T* input_out_grad_;
+  T* output_x_grad_;
+  int64_t numel_;
+};
 
-  // get the output of i1 for computing i0e gradient.
-  // phi::funcs::ForRange<Context> for_range(ctx, numel);
-  // I1Functor<T> i1_functor(x_data, i1_data, numel);
-  // for_range(i1_functor);
+template <typename T>
+struct I1eGradFunctor {
+  I1eGradFunctor(
+      const T* x, const T* out, const T* out_grad, T* x_grad, int64_t numel)
+      : input_x_(x),
+        input_out_(out),
+        input_out_grad_(out_grad),
+        output_x_grad_(x_grad),
+        numel_(numel) {}
 
-  phi::funcs::ForRange<Context> for_range(ctx, numel);
-  I0GradFunctor<T> functor(dout_data, x_data, dx_data, numel);
-  for_range(functor);
-}
+  HOSTDEVICE void operator()(int64_t idx) const {
+    T x = std::abs(input_x_[idx]);
+    T x_ = input_x_[idx];
+    T out_ = input_out_[idx];
+    T out_grad_ = input_out_grad_[idx];
+    if (x <= T{8.0}) {
+      auto coeff_pair_A = ChebyshevCoefficientsI0e_A<T>();
+      auto A = std::get<0>(coeff_pair_A);
+      auto len = std::get<1>(coeff_pair_A);
+      T y = (x / T{2.0}) - T{2.0};
+      T eps = std::numeric_limits<T>::epsilon();
+
+      if (x <= eps) {
+        output_x_grad_[idx] = static_cast<T>(T{0.5} * out_grad_);
+      } else {
+        output_x_grad_[idx] =
+            static_cast<T>((Chbevl<T>(y, A, len) -
+                            out_ * (std::copysign(T{1.0}, x_) + T{1.0} / x_)) *
+                           out_grad_);
+      }
+    } else {
+      auto coeff_pair_B = ChebyshevCoefficientsI0e_B<T>();
+      auto B = std::get<0>(coeff_pair_B);
+      auto len = std::get<1>(coeff_pair_B);
+      T y = (T{32.0} / x) - T{2.0};
+
+      output_x_grad_[idx] =
+          static_cast<T>((Chbevl<T>(y, B, len) / std::sqrt(x) -
+                          out_ * (std::copysign(T{1.0}, x_) + T{1.0} / x_)) *
+                         out_grad_);
+    }
+  }
+
+ private:
+  const T* input_x_;
+  const T* input_out_;
+  const T* input_out_grad_;
+  T* output_x_grad_;
+  int64_t numel_;
+};
 
 }  // namespace phi

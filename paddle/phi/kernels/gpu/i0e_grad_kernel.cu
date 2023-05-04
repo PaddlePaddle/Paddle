@@ -14,8 +14,27 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/i0e_grad_kernel.h"
 
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/bessel_grad_kernel_impl.h"
+#include "paddle/phi/kernels/funcs/elementwise_base.h"
+#include "paddle/phi/kernels/impl/bessel_grad_kernel_cuda_impl.h"
+
+namespace phi {
+
+template <typename T, typename Context>
+void I0eGradKernel(const Context& ctx,
+                   const DenseTensor& x,
+                   const DenseTensor& out,
+                   const DenseTensor& out_grad,
+                   DenseTensor* x_grad) {
+  ctx.template Alloc<T>(x_grad);
+  std::vector<const DenseTensor*> ins = {&x, &out, &out_grad};
+  std::vector<DenseTensor*> outs = {x_grad};
+  auto functor = CudaI0eGradFunctor<T>();
+  phi::funcs::ElementwiseKernel<T>(ctx, ins, &outs, functor);
+}
+
+} // namespace phi
 
 PD_REGISTER_KERNEL(
     i0e_grad, GPU, ALL_LAYOUT, phi::I0eGradKernel, float, double) {}

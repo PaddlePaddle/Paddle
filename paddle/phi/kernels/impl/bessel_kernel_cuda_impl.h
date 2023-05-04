@@ -14,18 +14,14 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
 
 template <typename T>
-static inline std::tuple<const T*, size_t> ChebyshevCoefficientsI0e_A() {
-  /* Chebyshev coefficients for exp(-x) I0(x)
-   * in the interval [0,8].
-   *
-   * lim(x->0) { exp(-x) I0(x) } = 1.
-   */
+__host__ __device__ std::tuple<const T*, size_t> ChebyshevCoefficientsI0e_A() {
+  /* Chebyshev coefficients for I0e(x) in the interval [0,8]. */
   static const T coeff[] = {
       -4.41534164647933937950E-18, 3.33079451882223809783E-17,
       -2.43127984654795469359E-16, 1.71539128555513303061E-15,
@@ -46,12 +42,8 @@ static inline std::tuple<const T*, size_t> ChebyshevCoefficientsI0e_A() {
 }
 
 template <typename T>
-static inline std::tuple<const T*, size_t> ChebyshevCoefficientsI0e_B() {
-  /* Chebyshev coefficients for exp(-x) sqrt(x) I0(x)
-   * in the inverted interval [8,infinity].
-   *
-   * lim(x->inf){ exp(-x) sqrt(x) I0(x) } = 1/sqrt(2pi).
-   */
+__host__ __device__ std::tuple<const T*, size_t> ChebyshevCoefficientsI0e_B() {
+  /* Chebyshev coefficients for I0e(x) in the inverted interval [8,infinity]. */
   static const T coeff[] = {
       -7.23318048787475395456E-18, -4.83050448594418207126E-18,
       4.46562142029675999901E-17,  3.46122286769746109310E-17,
@@ -71,7 +63,7 @@ static inline std::tuple<const T*, size_t> ChebyshevCoefficientsI0e_B() {
 }
 
 template <typename T>
-static inline T Chbevl(T x, const T array[], size_t len) {
+__host__ __device__ T Chbevl(T x, const T array[], size_t len) {
   T b0, b1, b2;
 
   b0 = array[0];
@@ -87,68 +79,54 @@ static inline T Chbevl(T x, const T array[], size_t len) {
 }
 
 template <typename T>
-struct I0eFunctor {
-  I0eFunctor(const T* input, T* output, int64_t numel)
-      : input_(input), output_(output), numel_(numel) {}
-
-  HOSTDEVICE void operator()(int64_t idx) const {
-    T x = std::abs(input_[idx]);
-    if (x <= T{8.0}) {
-      auto coeff_pair_A = ChebyshevCoefficientsI0e_A<T>();
+struct CudaI0Functor {
+  __device__ __forceinline__ T operator()(const T _x) const {
+    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+    const MT mp_x = static_cast<MT>(_x);
+    MT x = std::abs(mp_x);
+    if (x <= MT{8.0}) {
+      auto coeff_pair_A = ChebyshevCoefficientsI0e_A<MT>();
       auto A = std::get<0>(coeff_pair_A);
       auto len = std::get<1>(coeff_pair_A);
-      T y = (x / T{2.0}) - T{2.0};
+      MT y = (x / MT{2.0}) - MT{2.0};
 
-      output_[idx] = static_cast<T>(Chbevl<T>(y, A, len));
-    } else {
-      auto coeff_pair_B = ChebyshevCoefficientsI0e_B<T>();
-      auto B = std::get<0>(coeff_pair_B);
-      auto len = std::get<1>(coeff_pair_B);
-      T y = (T{32.0} / x) - T{2.0};
-
-      output_[idx] = static_cast<T>(Chbevl<T>(y, B, len) / std::sqrt(x));
+      return static_cast<T>(std::exp(x) * Chbevl<MT>(y, A, len));
     }
-  }
+    auto coeff_pair_B = ChebyshevCoefficientsI0e_B<MT>();
+    auto B = std::get<0>(coeff_pair_B);
+    auto len = std::get<1>(coeff_pair_B);
+    MT y = (MT{32.0} / x) - MT{2.0};
 
- private:
-  const T* input_;
-  T* output_;
-  int64_t numel_;
+    return static_cast<T>(std::exp(x) * Chbevl<T>(y, B, len) / std::sqrt(x));
+  }
 };
 
 template <typename T>
-struct I0Functor {
-  I0Functor(const T* input, T* output, int64_t numel)
-      : input_(input), output_(output), numel_(numel) {}
-
-  HOSTDEVICE void operator()(int64_t idx) const {
-    T x = std::abs(input_[idx]);
-    if (x <= T{8.0}) {
-      auto coeff_pair_A = ChebyshevCoefficientsI0e_A<T>();
+struct CudaI0eFunctor {
+  __device__ __forceinline__ T operator()(const T _x) const {
+    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+    const MT mp_x = static_cast<MT>(_x);
+    MT x = std::abs(mp_x);
+    if (x <= MT{8.0}) {
+      auto coeff_pair_A = ChebyshevCoefficientsI0e_A<MT>();
       auto A = std::get<0>(coeff_pair_A);
       auto len = std::get<1>(coeff_pair_A);
-      T y = (x / T{2.0}) - T{2.0};
+      MT y = (x / MT{2.0}) - MT{2.0};
 
-      output_[idx] = static_cast<T>(std::exp(x) * Chbevl<T>(y, A, len));
-    } else {
-      auto coeff_pair_B = ChebyshevCoefficientsI0e_B<T>();
-      auto B = std::get<0>(coeff_pair_B);
-      auto len = std::get<1>(coeff_pair_B);
-      T y = (T{32.0} / x) - T{2.0};
-
-      output_[idx] = static_cast<T>(std::exp(x) * Chbevl<T>(y, B, len) / std::sqrt(x));
+      return static_cast<T>(Chbevl<MT>(y, A, len));
     }
-  }
+    auto coeff_pair_B = ChebyshevCoefficientsI0e_B<MT>();
+    auto B = std::get<0>(coeff_pair_B);
+    auto len = std::get<1>(coeff_pair_B);
+    MT y = (MT{32.0} / x) - MT{2.0};
 
- private:
-  const T* input_;
-  T* output_;
-  int64_t numel_;
+    return static_cast<T>(Chbevl<T>(y, B, len) / std::sqrt(x));
+  }
 };
 
 template <typename T>
-static inline typename std::enable_if<std::is_same<double, T>::value,
-                                      std::tuple<const T*, size_t>>::type
+__host__ __device__ typename std::enable_if<std::is_same<double, T>::value,
+                                            std::tuple<const T*, size_t>>::type
 ChebyshevCoefficientsI1e_A() {
   /* Chebyshev coefficients for exp(-x) I1(x)
    * in the interval [0,8].
@@ -175,8 +153,8 @@ ChebyshevCoefficientsI1e_A() {
 }
 
 template <typename T>
-static inline typename std::enable_if<std::is_same<float, T>::value,
-                                      std::tuple<const T*, size_t>>::type
+__host__ __device__ typename std::enable_if<std::is_same<float, T>::value,
+                                            std::tuple<const T*, size_t>>::type
 ChebyshevCoefficientsI1e_A() {
   /* Chebyshev coefficients for exp(-x) I1(x)
    * in the interval [0,8].
@@ -204,8 +182,8 @@ ChebyshevCoefficientsI1e_A() {
 }
 
 template <typename T>
-static inline typename std::enable_if<std::is_same<double, T>::value,
-                                      std::tuple<const T*, size_t>>::type
+__host__ __device__ typename std::enable_if<std::is_same<double, T>::value,
+                                            std::tuple<const T*, size_t>>::type
 ChebyshevCoefficientsI1e_B() {
   /* Chebyshev coefficients for exp(-x) sqrt(x) I1(x)
    * in the inverted interval [8,infinity].
@@ -231,8 +209,8 @@ ChebyshevCoefficientsI1e_B() {
 }
 
 template <typename T>
-static inline typename std::enable_if<std::is_same<float, T>::value,
-                                      std::tuple<const T*, size_t>>::type
+__host__ __device__ typename std::enable_if<std::is_same<float, T>::value,
+                                            std::tuple<const T*, size_t>>::type
 ChebyshevCoefficientsI1e_B() {
   /* Chebyshev coefficients for exp(-x) sqrt(x) I1(x)
    * in the inverted interval [8,infinity].
@@ -251,64 +229,51 @@ ChebyshevCoefficientsI1e_B() {
 }
 
 template <typename T>
-struct I1Functor {
-  I1Functor(const T* input, T* output, int64_t numel)
-      : input_(input), output_(output), numel_(numel) {}
-
-  HOSTDEVICE void operator()(int64_t idx) const {
-    T x = std::abs(input_[idx]);
-    if (x <= T{8.0}) {
-      auto coeff_pair_A = ChebyshevCoefficientsI1e_A<T>();
+struct CudaI1Functor {
+  __device__ __forceinline__ T operator()(const T _x) const {
+    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+    const MT mp_x = static_cast<MT>(_x);
+    MT x = std::abs(mp_x);
+    if (x <= MT{8.0}) {
+      auto coeff_pair_A = ChebyshevCoefficientsI1e_A<MT>();
       auto A = std::get<0>(coeff_pair_A);
       auto len = std::get<1>(coeff_pair_A);
-      T y = (x / T{2.0}) - T{2.0};
-      const T out = std::exp(x) * x * Chbevl(y, A, len);
-      output_[idx] = (input_[idx] < T{0.0}) ? -out : out;
-    } else {
-      auto coeff_pair_B = ChebyshevCoefficientsI1e_B<T>();
-      auto B = std::get<0>(coeff_pair_B);
-      auto len = std::get<1>(coeff_pair_B);
-      T y = (T{32.0} / x) - T{2.0};
-      const T out = (std::exp(x) * Chbevl(y, B, len)) / std::sqrt(x);
-      output_[idx] = (input_[idx] < T{0.0}) ? -out : out;
+      MT y = (x / MT{2.0}) - MT{2.0};
+      const T out = std::exp(x) * x * Chbevl<MT>(y, A, len);
+      return (mp_x < MT{0.0}) ? -out : out;
     }
+    auto coeff_pair_B = ChebyshevCoefficientsI1e_B<MT>();
+    auto B = std::get<0>(coeff_pair_B);
+    auto len = std::get<1>(coeff_pair_B);
+    MT y = (MT{32.0} / x) - MT{2.0};
+    const T out = (std::exp(x) * Chbevl<MT>(y, B, len)) / std::sqrt(x);
+    return (mp_x < MT{0.0}) ? -out : out;
   }
-
- private:
-  const T* input_;
-  T* output_;
-  int64_t numel_;
 };
 
 template <typename T>
-struct I1eFunctor {
-  I1eFunctor(const T* input, T* output, int64_t numel)
-      : input_(input), output_(output), numel_(numel) {}
-
-  HOSTDEVICE void operator()(int64_t idx) const {
-    T x = std::abs(input_[idx]);
-    if (x <= T{8.0}) {
-      auto coeff_pair_A = ChebyshevCoefficientsI1e_A<T>();
+struct CudaI1eFunctor {
+  __device__ __forceinline__ T operator()(const T _x) const {
+    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+    const MT mp_x = static_cast<MT>(_x);
+    MT x = std::abs(mp_x);
+    if (x <= MT{8.0}) {
+      auto coeff_pair_A = ChebyshevCoefficientsI1e_A<MT>();
       auto A = std::get<0>(coeff_pair_A);
       auto len = std::get<1>(coeff_pair_A);
-      T y = (x / T{2.0}) - T{2.0};
-      const T out = Chbevl<T>(y, A, len) * x;
-      output_[idx] = (input_[idx] < T{0.0}) ? -out : out;
-    } else {
-      auto coeff_pair_B = ChebyshevCoefficientsI1e_B<T>();
-      auto B = std::get<0>(coeff_pair_B);
-      auto len = std::get<1>(coeff_pair_B);
-      T y = (T{32.0} / x) - T{2.0};
+      MT y = (x / MT{2.0}) - MT{2.0};
 
-      const T out = Chbevl<T>(y, B, len) / std::sqrt(x);
-      output_[idx] = (input_[idx] < T{0.0}) ? -out : out;
+      const T out = static_cast<T>(Chbevl<T>(y, A, len) * x);
+      return (mp_x < MT{0.0}) ? -out : out;
     }
-  }
+    auto coeff_pair_B = ChebyshevCoefficientsI1e_B<MT>();
+    auto B = std::get<0>(coeff_pair_B);
+    auto len = std::get<1>(coeff_pair_B);
+    MT y = (MT{32.0} / x) - MT{2.0};
 
- private:
-  const T* input_;
-  T* output_;
-  int64_t numel_;
+    const T out = static_cast<T>(Chbevl<T>(y, B, len) / std::sqrt(x));
+    return (mp_x < MT{0.0}) ? -out : out;
+  }
 };
 
 }  // namespace phi
