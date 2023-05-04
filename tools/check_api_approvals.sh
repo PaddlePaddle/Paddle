@@ -116,7 +116,6 @@ if [ "${ADDED_OP_USE_DEFAULT_GRAD_MAKER}" != "" ]; then
   check_approval 1 6888866 7913861
 fi
 
-
 if [ -n "${echo_list}" ];then
   echo "**************************************************************"
   echo "Please find RD for approval first, and then find TPM for approval."
