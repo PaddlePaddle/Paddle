@@ -105,6 +105,13 @@ struct SimpleOpTypeSetTeller : public Teller {
         "erf",        "floor",       "round",
         "sign",       "silu",        "logical_not",
         "reciprocal", "tanh_shrink", "logsigmoid"};
+    std::unordered_set<std::string> unary_list = {
+        "exp",        "log",  "sqrt",        "abs",        "sin",
+        "cos",        "tan",  "tanh",        "sinh",       "cosh",
+        "asin",       "acos", "atan",        "asinh",      "acosh",
+        "atanh",      "ceil", "celu",        "floor",      "round",
+        "sign",       "silu", "logical_not", "reciprocal", "tanh_shrink",
+        "logsigmoid", "erf",  "bitwise_not", "equal",      "not_equal"};
     if (act_op_list.find(op_type) != act_op_list.end()) {
       auto* block = desc.Block();
       if (block == nullptr) {
