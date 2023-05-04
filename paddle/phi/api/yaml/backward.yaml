@@ -2048,3 +2048,9 @@
   kernel :
     func : where_grad
   no_need_buffer : x, y
+
+- backward_op: silu_double_grad
+  forward: silu_grad (Tensor x, Tensor out_grad) -> Tensor(x_grad)
+  args: (Tensor x, Tensor out_grad, Tensor x_grad_grad)
+  output: Tensor(grad_x), Tensor(grad_out_grad)
+  composite: silu_double_grad(x, out_grad, x_grad_grad, grad_x, grad_out_grad)
