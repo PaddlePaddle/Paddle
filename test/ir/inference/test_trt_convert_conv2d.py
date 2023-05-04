@@ -339,7 +339,7 @@ class TrtConvertConv2dPluginTest(TrtLayerAutoScanTest):
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
-            input_groups = attrs[0]['groups'] * 3
+            input_groups = attrs[1]['groups'] * 3
             self.dynamic_shape.min_input_shape = {
                 "input_data": [1, input_groups, 32, 32],
             }
