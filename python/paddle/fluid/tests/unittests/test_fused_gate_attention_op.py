@@ -477,6 +477,9 @@ class TestFusedGateAttentionApi(unittest.TestCase):
         ]
 
     def test_api(self):
+        if not core.is_compiled_with_cuda():
+            pass
+
         query = paddle.rand(shape=self.query_shape, dtype="float32")
         qkv_weight = paddle.rand(shape=self.qkv_weight_shape, dtype="float32")
 
