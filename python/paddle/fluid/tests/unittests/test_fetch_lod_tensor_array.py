@@ -69,9 +69,10 @@ class TestFetchLoDTensorArray(unittest.TestCase):
             loss_v, array_v = exe.run(
                 binary, feed=feed_dict, fetch_list=[loss, array]
             )
-            self.assertEqual(np.array(loss_v).shape, (1,))
-            self.assertEqual(np.array(array_v[0]).shape, (batch_size, 784))
-            self.assertEqual(np.array(array_v[1]).shape, (batch_size, 1))
+            self.assertEqual(loss_v.shape, ())
+            self.assertEqual(array_v[0].shape, (batch_size, 784))
+            self.assertEqual(array_v[1].shape, (batch_size, 1))
+            self.assertEqual(array_v[2].shape, ())
             np.testing.assert_allclose(loss_v, array_v[2], rtol=1e-05)
 
     def test_fetch_lod_tensor_array(self):
@@ -81,4 +82,5 @@ class TestFetchLoDTensorArray(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()
