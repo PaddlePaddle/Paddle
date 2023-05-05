@@ -12,19 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/test_leaky_relu_grad_grad_functor.h"
+#include "test/cpp/fluid/test_leaky_relu_grad_grad_functor.h"
 
 namespace paddle {
 namespace operators {
 
-TEST(leaky_relu_grad_grad, test_gpu) {
+TEST(leaky_relu_grad_grad, test_cpu) {
   ASSERT_TRUE(
-      TestLeakyReluGradGradMain<float>({32, 64}, platform::CUDAPlace(0), 0.15));
+      TestLeakyReluGradGradMain<float>({32, 64}, platform::CPUPlace(), 0.02));
 }
 
-TEST(leaky_relu_grad_grad, test_gpu_zero_alpha) {
+TEST(leaky_relu_grad_grad, test_cpu_zero_alpha) {
   ASSERT_TRUE(
-      TestLeakyReluGradGradMain<float>({32, 64}, platform::CUDAPlace(0), 0.0));
+      TestLeakyReluGradGradMain<float>({32, 64}, platform::CPUPlace(), 0.0));
 }
 
 }  // namespace operators

@@ -1317,6 +1317,74 @@ inline void Blas<phi::GPUContext>::GEMM(bool transA,
 }
 
 template <>
+template <>
+inline void Blas<phi::GPUContext>::GEMM(bool transA,
+                                        bool transB,
+                                        int M,
+                                        int N,
+                                        int K,
+                                        phi::dtype::bfloat16 alpha,
+                                        const phi::dtype::bfloat16 *A,
+                                        int lda,
+                                        const phi::dtype::bfloat16 *B,
+                                        int ldb,
+                                        phi::dtype::bfloat16 beta,
+                                        phi::dtype::bfloat16 *C,
+                                        int ldc) const {
+#if CUDA_VERSION >= 11000
+  // Note that cublas follows fortran order, so the order is different from
+  // the cblas convention.
+  cublasOperation_t cuTransA = transA ? CUBLAS_OP_T : CUBLAS_OP_N;
+  cublasOperation_t cuTransB = transB ? CUBLAS_OP_T : CUBLAS_OP_N;
+
+  PADDLE_ENFORCE_GE(
+      context_.GetComputeCapability(),
+      80,
+      phi::errors::InvalidArgument(
+          "cublas bf16 gemm requires GPU compute capability >= 80,"
+          "but received %d",
+          context_.GetComputeCapability()));
+
+  float h_alpha = static_cast<float>(alpha);
+  float h_beta = static_cast<float>(beta);
+
+  cublasGemmAlgo_t algo = CUBLAS_GEMM_DEFAULT;
+  bool use_tensor_op_math = context_.tensor_core_available();
+  if (use_tensor_op_math) {
+    algo = CUBLAS_GEMM_DFALT_TENSOR_OP;
+  }
+  VLOG(5) << "use_tensor_op_math: " << (use_tensor_op_math ? "True" : "False");
+
+  context_.TensorCoreCublasCallIfAvailable([&](cublasHandle_t handle) {
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cublasGemmEx(handle,
+                                                          cuTransB,
+                                                          cuTransA,
+                                                          N,
+                                                          M,
+                                                          K,
+                                                          &h_alpha,
+                                                          B,
+                                                          CUDA_R_16BF,
+                                                          ldb,
+                                                          A,
+                                                          CUDA_R_16BF,
+                                                          lda,
+                                                          &h_beta,
+                                                          C,
+                                                          CUDA_R_16BF,
+                                                          ldc,
+                                                          CUDA_R_32F,
+                                                          algo));
+  });
+#else
+  // raise error
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "cublasGemmEx with bfloat16 is not supported on cuda <= 11"));
+
+#endif  // CUDA_VERSION >= 11000
+}
+
+template <>
 template <typename T>
 void Blas<phi::GPUContext>::AXPY(int n, T alpha, const T *x, T *y) const {
   context_.CublasCall([&](cublasHandle_t handle) {
