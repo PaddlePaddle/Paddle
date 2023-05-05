@@ -153,7 +153,7 @@ if(NOT APPLE AND NOT WIN32)
       "-Wl,--version-script ${CMAKE_CURRENT_SOURCE_DIR}/paddle_inference.map")
   # temporarily fix brpc double link issue(52842)
   if(WITH_INFERENCE_API_TEST
-     AND CMAKE_COMPILER_IS_GNUCC
+     AND (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
      AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 10.4)
     set(LINK_FLAGS "${LINK_FLAGS} -Wl,-Bsymbolic")
   endif()
