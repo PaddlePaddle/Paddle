@@ -20,6 +20,8 @@
 
 paddle::Tensor custom_sub(paddle::Tensor x, paddle::Tensor y);
 
+paddle::Tensor relu_cuda_forward(const paddle::Tensor& x);
+
 paddle::Tensor custom_add(const paddle::Tensor& x, const paddle::Tensor& y) {
   return x.exp() + y.exp();
 }
@@ -46,6 +48,7 @@ PYBIND11_MODULE(custom_cpp_extension, m) {
   m.def("nullable_tensor", &nullable_tensor, "returned Tensor might be None");
   m.def(
       "optional_tensor", &optional_tensor, "returned Tensor might be optional");
+  m.def("relu_cuda_forward", &relu_cuda_forward, "relu(x)");
 
   py::class_<Power>(m, "Power")
       .def(py::init<int, int>())

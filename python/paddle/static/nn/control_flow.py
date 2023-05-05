@@ -395,6 +395,10 @@ def assign_skip_lod_tensor_array(input, output):
                     input.shape, output.shape
                 )
             )
+        # NOTE(dev): Avoid assign if input is output in Variable level which means
+        # input is not generated in While sub block and modified by in-place and only
+        # belong to inplace ops in constructing program process, because in-place pass
+        # is only available in Graph level.
         paddle.assign(input, output)
 
 
