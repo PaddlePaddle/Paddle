@@ -195,9 +195,7 @@ def _reduce_lodtensor_fd(lodtensor):
                 # Empty tensors have nothing be mmapped.
                 return (_rebuild_lodtensor_empty, (type(lodtensor),))
 
-        metadata = [
-            lodtensor._file_descriptor()
-        ]  # fd, size, type_idx, dims, lod
+        metadata = list(lodtensor._file_descriptor()) # fd, size, type_idx, dims, lod
         metadata[0] = multiprocessing.reduction.DupFd(
             metadata[0]
         )  # 利用multiprocessing传输fd
