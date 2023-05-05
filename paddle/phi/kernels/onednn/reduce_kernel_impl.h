@@ -102,8 +102,10 @@ void ReduceKernel(const Context& dev_ctx,
     reduction_p->execute(astream, reduction_args);
     astream.wait();
 
-    out->set_mem_desc(
-        dst_memory_p->get_desc().reshape(vectorize<int64_t>(out->dims())));
+    const auto reshape_dims = out->dims().size() != 0
+                                  ? vectorize<int64_t>(out->dims())
+                                  : std::vector<int64_t>{1};
+    out->set_mem_desc(dst_memory_p->get_desc().reshape(reshape_dims));
   }
 }
 

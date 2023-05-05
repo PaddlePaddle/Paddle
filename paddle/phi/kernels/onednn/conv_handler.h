@@ -17,8 +17,8 @@
 #include "paddle/phi/backends/onednn/onednn_helper.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/phi/core/expect.h"
+#include "paddle/phi/core/macros.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
-
 namespace phi {
 namespace onednn {
 
@@ -50,7 +50,7 @@ class ConvOneDNNHandlerT
                      const std::string& padding_algorithm,
                      const std::vector<int>& dilations_in,
                      int groups,
-                     const std::string& data_format,
+                     const std::string& data_format UNUSED,
                      bool is_test,
                      bool is_BFLOAT16,
                      const std::string& fuse_activation,

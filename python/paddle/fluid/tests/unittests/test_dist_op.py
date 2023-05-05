@@ -158,6 +158,46 @@ class TestDistOpCase5(TestDistOp):
         self.p = 1.5
 
 
+class TestDistFP16Op(OpTest):
+    def init_data_type(self):
+        self.data_type = 'float16'
+
+
+class TestDistFP16OpCase1(TestDistFP16Op):
+    def init_case(self):
+        self.x_shape = (3, 5, 5, 6)
+        self.y_shape = (5, 5, 6)
+        self.p = 1.0
+
+
+class TestDistFP16OpCase2(TestDistFP16Op):
+    def init_case(self):
+        self.x_shape = (10, 10)
+        self.y_shape = (4, 10, 10)
+        self.p = 2.0
+
+
+class TestDistFP16OpCase3(TestDistFP16Op):
+    def init_case(self):
+        self.x_shape = (15, 10)
+        self.y_shape = (15, 10)
+        self.p = float("inf")
+
+
+class TestDistFP16OpCase4(TestDistFP16Op):
+    def init_case(self):
+        self.x_shape = (2, 3, 4, 5, 8)
+        self.y_shape = (3, 1, 5, 8)
+        self.p = float("-inf")
+
+
+class TestDistFP16OpCase5(TestDistFP16Op):
+    def init_case(self):
+        self.x_shape = (4, 1, 4, 8)
+        self.y_shape = (2, 2, 1, 4, 4, 8)
+        self.p = 1.5
+
+
 class TestDistAPI(unittest.TestCase):
     def init_data_type(self):
         self.data_type = (
@@ -191,6 +231,15 @@ class TestDistAPI(unittest.TestCase):
                 fetch_list=[result],
             )
             np.testing.assert_allclose(dist(x_i, y_i, p), out[0], rtol=1e-05)
+
+    def test_grad_x(self):
+        paddle.disable_static()
+        a = paddle.rand([2, 2, 3, 2])
+        b = paddle.rand([1, 1, 3, 1])
+        a.stop_gradient = False
+        c = paddle.dist(a, b, 2)
+        c.backward()
+        paddle.enable_static()
 
 
 if __name__ == '__main__':

@@ -77,7 +77,7 @@ class FCMKLDNNHandler
                   const phi::DenseTensor* x,
                   const phi::DenseTensor* weights,
                   const phi::DenseTensor* bias,
-                  phi::DenseTensor* out,
+                  phi::DenseTensor* out UNUSED,
                   const int in_num_col_dims,
                   dnnl::engine onednn_engine,
                   platform::Place cpu_place)

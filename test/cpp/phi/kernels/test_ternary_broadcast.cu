@@ -89,8 +89,7 @@ void TestCase(const phi::GPUContext& dev_ctx,
       d_in1.get(), d_in2.get(), d_in3.get()};
   std::vector<phi::DenseTensor*> outputs{d_out.get()};
   for (int i = 0; i < times; ++i) {
-    phi::funcs::BroadcastKernel<phi::ElementwiseType::kTernary, T, T>(
-        dev_ctx, inputs, &outputs, -1, compute);
+    phi::funcs::BroadcastKernel<T>(dev_ctx, inputs, &outputs, compute);
   }
   dev_ctx.Wait();
 }

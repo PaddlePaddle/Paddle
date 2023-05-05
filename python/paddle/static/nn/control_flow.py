@@ -24,7 +24,7 @@ from paddle.common_ops_import import (
     convert_dtype,
 )
 from paddle.fluid import core
-from paddle.fluid.framework import Operator, Program, Variable
+from paddle.fluid.framework import Operator, Program, Variable, static_only
 
 # Temporary solution, it will be deleted later
 from paddle.fluid.layers.control_flow import ConditionalBlock, select_input
@@ -395,6 +395,10 @@ def assign_skip_lod_tensor_array(input, output):
                     input.shape, output.shape
                 )
             )
+        # NOTE(dev): Avoid assign if input is output in Variable level which means
+        # input is not generated in While sub block and modified by in-place and only
+        # belong to inplace ops in constructing program process, because in-place pass
+        # is only available in Graph level.
         paddle.assign(input, output)
 
 
@@ -1329,3 +1333,101 @@ def change_none_to_undefinedvar(nest1, nest2):
     nest1_out = pack_sequence_as(nest1, list(map(map_fn, flatten(nest1))))
     nest2_out = pack_sequence_as(nest2, list(map(map_fn, flatten(nest2))))
     return nest1_out, nest2_out
+
+
+@static_only
+def Print(
+    input,
+    first_n=-1,
+    message=None,
+    summarize=20,
+    print_tensor_name=True,
+    print_tensor_type=True,
+    print_tensor_shape=True,
+    print_tensor_layout=True,
+    print_tensor_lod=True,
+    print_phase='both',
+):
+    '''
+    :api_attr: Static Graph
+
+    **Print operator**
+
+    This creates a print op that will print when a tensor is accessed.
+
+    Wraps the tensor passed in so that whenever that a tensor is accessed,
+    the message `message` is printed, along with the current value of the
+    tensor `t`.
+
+    Args:
+        input (Tensor): A Tensor to print.
+        first_n (int, optional): Only log `first_n` number of times. Default: -1.
+        message (str, optional): A string message to print as a prefix. Default: None.
+        summarize (int, optional): Number of elements in the tensor to be print. If
+                it's value is -1, then all elements in the tensor will be print.
+        print_tensor_name (bool, optional): Print the tensor name. Default: True.
+        print_tensor_type (bool, optional): Print the tensor type. Defaultt: True.
+        print_tensor_shape (bool, optional): Print the tensor shape. Default: True.
+        print_tensor_layout (bool, optional): Print the tensor layout. Default: True.
+        print_tensor_lod (bool, optional): Print the tensor lod. Default: True.
+        print_phase (str, optional): Which phase to displace, including 'forward',
+                'backward' and 'both'. Default: 'both'. If set to 'backward', will
+                only print the gradients of input tensor; If set to 'both', will
+                both print the input tensor itself and the gradients of input tensor.
+
+    Returns:
+        Tensor: Output tensor.
+
+    NOTES:
+        The input and output are two different Tensor, and in the
+        following process, you should use the output Tensor but not the input,
+        otherwise, the print layer doesn't have backward.
+
+    Examples:
+        .. code-block:: python
+
+           import paddle
+
+           paddle.enable_static()
+
+           x = paddle.full(shape=[2, 3], fill_value=3, dtype='int64')
+           out = paddle.static.Print(x, message="The content of input layer:")
+
+           main_program = paddle.static.default_main_program()
+           exe = paddle.static.Executor(place=paddle.CPUPlace())
+           res = exe.run(main_program, fetch_list=[out])
+           # Variable: fill_constant_1.tmp_0
+           #   - message: The content of input layer:
+           #   - lod: {}
+           #   - place: CPUPlace
+           #   - shape: [2, 3]
+           #   - layout: NCHW
+           #   - dtype: long
+           #   - data: [3 3 3 3 3 3]
+    '''
+    check_variable_and_dtype(
+        input,
+        'input',
+        ['float32', 'float64', 'int32', 'int64', 'bool'],
+        'paddle.static.Print',
+    )
+
+    helper = LayerHelper('print' + "_" + input.name, **locals())
+    output = helper.create_variable_for_type_inference(input.dtype)
+    helper.append_op(
+        type='print',
+        inputs={'In': input},
+        outputs={'Out': output},
+        attrs={
+            'first_n': first_n,
+            'summarize': summarize,
+            'message': message or "",
+            'print_tensor_name': print_tensor_name,
+            'print_tensor_type': print_tensor_type,
+            'print_tensor_shape': print_tensor_shape,
+            'print_tensor_layout': print_tensor_layout,
+            'print_tensor_lod': print_tensor_lod,
+            'print_phase': print_phase.upper(),
+        },
+    )
+    return output

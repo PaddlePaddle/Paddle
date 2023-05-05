@@ -56,8 +56,9 @@ class OpConverter {
 
     OpConverter* it{nullptr};
 
-    auto op_converter_type_map = OpTeller::Global().GetOpConverterTypeMap();
-    switch (op_converter_type_map.at(op_desc.Type())) {
+    auto converter_type = static_cast<OpConverterType>(
+        PADDLE_GET_CONST(int, op_desc.GetAttr("converter_type")));
+    switch (converter_type) {
       case OpConverterType::Default:
         if (op_desc.Type().find("elementwise") != std::string::npos) {
           static std::unordered_set<std::string> add_tensor_op_set{
@@ -305,13 +306,15 @@ class OpConverter {
         auto max_input_shape = engine->max_input_shape()[input];
         auto optim_input_shape = engine->optim_input_shape()[input];
         size_t ranks = min_input_shape.size();
-        if (ranks == 0) {
-          all_dynamic_shape_set = false;
-          LOG(INFO) << "trt input [" << input.c_str()
-                    << "] dynamic shape info not set, please check and retry.";
-          // check other input
-          continue;
-        }
+        // allow 0 dim for dynamic shape input
+        // if (ranks == 0) {
+        //   all_dynamic_shape_set = false;
+        //   LOG(INFO) << "trt input [" << input.c_str()
+        //             << "] dynamic shape info not set, please check and
+        //             retry.";
+        //   // check other input
+        //   continue;
+        // }
         std::vector<int64_t> input_shape;
         // input_shape.push_back(-1);
         for (size_t i = 0; i < ranks; i++) {
