@@ -136,18 +136,17 @@ static PyObject* tensor_method_numpy(TensorObject* self,
       }
     }
     if (set_to_1d) {
-      // 0D Tensor hack process to 1D numpy, will remove in release 2.6
+      // 0D Tensor hack process to 1D numpy, will remove in future
       VLOG(0)
           << "Warning:: 0D Tensor cannot be used as 'Tensor.numpy()[0]' . In "
              "order to avoid this problem, "
              "0D Tensor will be changed to 1D numpy currently, but it's not "
              "correct and will be "
-             "removed in release 2.6. For Tensor contain only one element, "
-             "Please "
+             "removed in future. For Tensor contain only one element, Please "
              "modify "
              " 'Tensor.numpy()[0]' to 'float(Tensor)' as soon as "
              "possible, "
-             "otherwise 'Tensor.numpy()[0]' will raise error in release 2.6.";
+             "otherwise 'Tensor.numpy()[0]' will raise error in future.";
       py_rank = 1;
       py_dims[0] = 1;
       py_strides[0] = sizeof_dtype * numel;
@@ -924,16 +923,7 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
     }
   }
 
-  bool set_to_1d = FLAGS_set_to_1d;
   if (!none_axes.empty()) {
-    if (set_to_1d) {
-      // NOTE(zoooo0820): When all axes are decreased, the output will be 1-D
-      // with FLAGS_set_to_1d=True. In this case, one `None` should be pop out,
-      // otherwise the output shape will be not correct.
-      if (static_cast<int>(decrease_axis.size()) == tensor->dims().size()) {
-        none_axes.pop_back();
-      }
-    }
     if (!none_axes.empty()) {
       paddle::Tensor new_out;
       {
