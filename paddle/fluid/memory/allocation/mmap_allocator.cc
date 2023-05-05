@@ -71,20 +71,16 @@ void AllocateMemoryMap(
     file_flags &= ~O_CREAT;
   }
 
-  if (!(flags & MAPPED_FROMFD)) {
-    if (flags & MAPPED_SHAREDMEM) {
-      fd = shm_open(filename.c_str(), file_flags, (mode_t)0600);
-      PADDLE_ENFORCE_NE(
-          fd,
-          -1,
-          platform::errors::Unavailable(
-              "File descriptor %s open failed, unable in read-write mode",
-              filename.c_str()));
-      VLOG(6) << "shm_open: " << filename;
-      MemoryMapFdSet::Instance().Insert(filename);
-    }
-  } else {
-    fd = -1;
+  if (flags & MAPPED_SHAREDMEM) {
+    fd = shm_open(filename.c_str(), file_flags, (mode_t)0600);
+    PADDLE_ENFORCE_NE(
+        fd,
+        -1,
+        platform::errors::Unavailable(
+            "File descriptor %s open failed, unable in read-write mode",
+            filename.c_str()));
+    VLOG(6) << "shm_open: " << filename;
+    MemoryMapFdSet::Instance().Insert(filename);
   }
 
   PADDLE_ENFORCE_EQ(ftruncate(fd, size),
@@ -113,6 +109,14 @@ void AllocateMemoryMap(
 
     *fd_ = -1;
   }
+
+  if (flags & MAPPED_FROMFD) {
+    PADDLE_ENFORCE_NE(
+        shm_unlink(filename.c_str()),
+        -1,
+        platform::errors::Unavailable(
+            "Could not unlink the shared memory file <", filename, ">"));
+  }
 }
 
 std::shared_ptr<RefcountedMemoryMapAllocation>
@@ -133,6 +137,19 @@ AllocateRefcountedMemoryMapAllocation(std::string filename,
       static_cast<void *>(static_cast<char *>(base_ptr) + mmap_alignment);
   return std::make_shared<RefcountedMemoryMapAllocation>(
       aliged_base_ptr, size, filename, flags, fd, buffer_id);
+}
+
+std::shared_ptr<MemoryMapAllocation> AllocateMemoryMapAllocationAndUnlink(
+    int flags, size_t size, int fd) {
+  void *ptr = nullptr;
+  if (-1 == fd) {
+    std::string handle = memory::allocation::GetIPCName();
+    AllocateMemoryMap(handle, flags, size, &ptr, &fd);
+  } else {
+    AllocateMemoryMap("", flags, size, &ptr, &fd);
+  }
+  // 构造1个shmem的wapper
+  return std::make_shared<MemoryMapAllocation>(ptr, size, "", flags, fd);
 }
 
 RefcountedMemoryMapAllocation::RefcountedMemoryMapAllocation(

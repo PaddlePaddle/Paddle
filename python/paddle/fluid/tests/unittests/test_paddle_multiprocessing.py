@@ -209,5 +209,31 @@ class TestMultiprocessingGpu(TestMultiprocessingBase):
         self.func_test_pass_tensor()
 
 
+class TestMultiprocessingFd(TestMultiprocessingBase):
+    def __init__(self):
+        mp.set_sharing_strategy("file_descriptor")
+
+    def func_test_pass_tensor(self):
+        paddle.set_device("cpu")
+        self._test_sharing(repeat=REPEAT)
+
+    def test_pass_tensor(self):
+        self.func_test_pass_tensor()
+
+    def func_test_pass_parambase(self):
+        paddle.set_device("cpu")
+        self._test_sharing(repeat=1, param=True)
+
+    def test_pass_parambase(self):
+        self.func_test_pass_parambase()
+
+    def func_test_pass_empty(self):
+        paddle.set_device("cpu")
+        self._test_empty()
+
+    def test_pass_empty(self):
+        self.func_test_pass_empty()
+
+
 if __name__ == "__main__":
     unittest.main()

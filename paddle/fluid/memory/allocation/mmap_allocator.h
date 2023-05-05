@@ -60,6 +60,8 @@ class MemoryMapAllocation : public Allocation {
 
   inline const std::string &ipc_name() const { return ipc_name_; }
 
+  inline const int &fd() const { return fd_; }
+
   virtual void close();
 
   ~MemoryMapAllocation() override;
@@ -140,6 +142,8 @@ std::shared_ptr<MemoryMapWriterAllocation> AllocateMemoryMapWriterAllocation(
 std::shared_ptr<MemoryMapReaderAllocation> RebuildMemoryMapReaderAllocation(
     const std::string &ipc_name, size_t size);
 
+std::shared_ptr<MemoryMapAllocation> AllocateMemoryMapAllocationAndUnlink(
+    int flags, size_t size, int fd);
 class MemoryMapFdSet {
  public:
   static MemoryMapFdSet &Instance();  // NOLINT

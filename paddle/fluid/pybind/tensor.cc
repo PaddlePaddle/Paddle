@@ -968,6 +968,85 @@ void BindTensor(pybind11::module &m) {  // NOLINT
                  tensor_from_shared = paddle.to_tensor(paddle.fluid.core.LoDTensor._new_shared_filename(metainfo))
 
         )DOC")
+      .def("_file_descriptor",
+        [](phi::DenseTensor &self) {
+            if (!self.IsInitialized() || self.numel() == 0)
+               throw std::runtime_error(
+                   "Tensor not initialized or numel is 0. could not pass to "
+                   "shared memory. ");
+
+             auto holder = self.Holder();
+             PADDLE_ENFORCE_EQ(
+                 platform::is_cpu_place(holder->place()) ||
+                     platform::is_cuda_pinned_place(holder->place()),
+                 true, platform::errors::InvalidArgument(
+                           "Tensor is not on CPU. file_descriptor only "
+                           "support CPU Tensor."));
+
+            auto *mmap_allocation = dynamic_cast<
+                memory::allocation::MemoryMapAllocation *>(
+                holder.get());
+
+            // 如果这个tensor已经被共享过, 就可以直接返回它的metadata
+            // 否则, 要在shmem上新开辟一块地方
+            if (mmap_allocation == nullptr) {
+              void *data_ptr = self.data();
+               size_t data_size =
+                   self.numel() *
+                   framework::SizeOfType(
+                       framework::TransToProtoVarType(self.type()));
+
+                int flags = memory::allocation::MAPPED_SHAREDMEM |
+                    memory::allocation::MAPPED_EXCLUSIVE|
+                    memory::allocation::MAPPED_FROMFD|
+                    memory::allocation::MAPPED_KEEPFD;
+
+                auto shared_holder =
+                    memory::allocation::AllocateMemoryMapAllocationAndUnlink(
+                    flags, data_size, -1);
+
+                memory::Copy(platform::CPUPlace(), shared_holder->ptr(),
+                             platform::CPUPlace(), data_ptr, data_size);
+                self.ResetHolder(shared_holder);
+                mmap_allocation = shared_holder.get();
+            }
+            int type_idx = static_cast<int>(self.type());
+
+            return py::make_tuple(mmap_allocation->fd(),
+                                  mmap_allocation->size(), type_idx,
+                                  vectorize(self.dims()), self.lod());
+        },
+        R"DOC(
+            aaa.
+      )DOC")
+        .def("_new_file_descriptor",
+              [](py::tuple t) {
+                if (t.size() != 5)
+                  throw std::runtime_error("Invalid Tensor meta info state!");
+
+                phi::DenseTensor tensor;
+
+                const int &fd = t[0].cast<int>();
+                size_t size = t[1].cast<size_t>();
+                int flags = memory::allocation::MAPPED_SHAREDMEM |
+                            memory::allocation::MAPPED_NOCREATE|
+                            memory::allocation::MAPPED_FROMFD;
+
+                auto shared_holder =
+                    memory::allocation::AllocateMemoryMapAllocationAndUnlink(
+                        flags, size, fd);
+
+                tensor.ResetHolderWithType(
+                    shared_holder,
+                    static_cast<phi::DataType>(t[2].cast<int>()));
+                tensor.Resize(phi::make_ddim(t[3].cast<std::vector<int>>()));
+                tensor.set_lod(t[4].cast<framework::LoD>());
+
+                return tensor;
+              },
+              R"DOC(
+            bbb.
+        )DOC")
       .def("_shared_incref",
            [](phi::DenseTensor &self) {
              auto *mmap_allocation = dynamic_cast<

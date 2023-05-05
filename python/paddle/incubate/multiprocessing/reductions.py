@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import copy
+import multiprocessing
+import os
 
 # TODO: check the hooks of tensor
 # TODO: check serializing named tensor
@@ -152,7 +154,7 @@ def _rebuild_lodtensor_empty(cls):
     return cls()
 
 
-def _reduce_lodtensor(lodtensor):
+def _reduce_lodtensor_fs(lodtensor):
     if (
         lodtensor._place().is_cpu_place()
         or lodtensor._place().is_cuda_pinned_place()
@@ -179,7 +181,36 @@ def _reduce_lodtensor(lodtensor):
     return (rebuild, (type(lodtensor),) + metadata)
 
 
-def init_reductions():
+def _rebuild_lodtensor_fd(cls, df, size, type_idx, dims, lod):
+    fd = df.detach()
+    lodtensor = cls._new_file_descriptor((fd, size, type_idx, dims, lod))
+    os.close(fd)
+    return lodtensor
+
+
+def _reduce_lodtensor_fd(lodtensor):
+    if lodtensor._place().is_cpu_place():
+        for dim in lodtensor.shape():
+            if dim == 0:
+                # Empty tensors have nothing be mmapped.
+                return (_rebuild_lodtensor_empty, (type(lodtensor),))
+
+        metadata = [
+            lodtensor._file_descriptor()
+        ]  # fd, size, type_idx, dims, lod
+        metadata[0] = multiprocessing.reduction.DupFd(
+            metadata[0]
+        )  # 利用multiprocessing传输fd
+        metadata = tuple(metadata)
+    else:
+        raise RuntimeError(
+            "We only support pass cpu lodtensor using file_descriptor stratege for now!"
+        )
+
+    return (_rebuild_lodtensor_fd, (type(lodtensor),) + metadata)
+
+
+def init_reductions(_sharing_strategy):
     if not _supported_check():
         return
 
@@ -188,4 +219,11 @@ def init_reductions():
     ForkingPickler.register(
         paddle.fluid.framework.EagerParamBase, _reduce_tensor
     )
-    ForkingPickler.register(paddle.fluid.core.LoDTensor, _reduce_lodtensor)
+    if _sharing_strategy == "file_descriptor":
+        ForkingPickler.register(
+            paddle.fluid.core.LoDTensor, _reduce_lodtensor_fd
+        )
+    else:
+        ForkingPickler.register(
+            paddle.fluid.core.LoDTensor, _reduce_lodtensor_fs
+        )

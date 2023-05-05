@@ -14,12 +14,33 @@
 
 from .reductions import init_reductions
 import multiprocessing
+import sys
 
 __all__ = []
 
 from multiprocessing import *  # noqa: F403
 
 # Only support linux for now
-# Only support file_system sharing strategy.
+if sys.platform == 'darwin' or sys.platform == 'win32':
+    _sharing_strategy = 'file_system'
+else:
+    _sharing_strategy = 'file_descriptor'
 
-init_reductions()
+init_reductions(_sharing_strategy)
+
+
+def set_sharing_strategy(sharing_strategy):
+    if (
+        sharing_strategy != "file_descriptor"
+        and sharing_strategy != "file_system"
+    ):
+        raise RuntimeError(
+            "We only support file_system mode and file_descriptor mode"
+        )
+    else:
+        _sharing_strategy = sharing_strategy
+        init_reductions(_sharing_strategy)
+
+
+def get_sharing_strategy():
+    return _sharing_strategy
