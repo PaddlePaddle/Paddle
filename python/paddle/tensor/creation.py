@@ -655,11 +655,11 @@ def _to_tensor_static(data, dtype=None, stop_gradient=None):
             elif isinstance(data, (list, tuple)):
                 try:
                     '''
-                        In numpy version >= 1.24.0, case like: 
-                            np.array(Variable, 1, 2) 
-                        is not supported, it will raise error (numpy returns an numpy array with dtype='object' in version <= 1.23.5)
+                    In numpy version >= 1.24.0, case like:
+                        np.array([Variable, 1, 2])
+                    is not supported, it will raise error (numpy returns an numpy array with dtype='object' in version <= 1.23.5)
 
-                        Thus, process nested structure in except block
+                    Thus, process nested structure in except block
                     '''
                     data = np.array(data)
 
@@ -675,19 +675,27 @@ def _to_tensor_static(data, dtype=None, stop_gradient=None):
 
                 except:
                     if not all(
-                        [x.shape == (1,) for x in data if isinstance(x, Variable)]
+                        [
+                            x.shape == (1,)
+                            for x in data
+                            if isinstance(x, Variable)
+                        ]
                     ):
                         raise TypeError(
                             "Unsupport paddle.to_tensor([Variable, Variable...]) with non-scalar variable."
                         )
                     to_stack_list = [None] * len(data)
                     for idx, d in enumerate(data):
-                        to_stack_list[idx] = _to_tensor_static(d, dtype, stop_gradient)
+                        to_stack_list[idx] = _to_tensor_static(
+                            d, dtype, stop_gradient
+                        )
                     data = paddle.stack(to_stack_list)
                     data = paddle.squeeze(data, -1)
 
             else:
-                raise RuntimeError(f"Do not support transform type `{type(data)}` to tensor")
+                raise RuntimeError(
+                    f"Do not support transform type `{type(data)}` to tensor"
+                )
 
         if dtype:
             target_dtype = dtype
@@ -696,7 +704,7 @@ def _to_tensor_static(data, dtype=None, stop_gradient=None):
         else:
             target_dtype = paddle.get_default_dtype()
         target_dtype = convert_dtype(target_dtype)
-    
+
         output = assign(data)
 
         if convert_dtype(output.dtype) != target_dtype:
@@ -705,7 +713,6 @@ def _to_tensor_static(data, dtype=None, stop_gradient=None):
     output.stop_gradient = stop_gradient
 
     return output
-
 
 
 def to_tensor(data, dtype=None, place=None, stop_gradient=True):
