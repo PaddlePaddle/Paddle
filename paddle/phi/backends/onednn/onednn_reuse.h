@@ -1178,7 +1178,7 @@ class ReductionOneDNNHandler
                          const dnnl::engine engine,
                          Place cpu_place,
                          const DenseTensor* x,
-                         const DenseTensor* out,
+                         const DenseTensor* out UNUSED,
                          std::vector<int64_t> out_tz,
                          const dnnl::primitive_attr& attrs = NULL)
       : OneDNNHandlerNoCachingT<T, dnnl::reduction>(engine, cpu_place) {

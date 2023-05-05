@@ -32,7 +32,7 @@ template <typename T, typename Context>
 void FullKernel(const Context& dev_ctx,
                 const IntArray& shape,
                 const Scalar& val,
-                DataType dtype,
+                DataType dtype UNUSED,
                 DenseTensor* out) {
   out->Resize(phi::make_ddim(shape.GetData()));
   FullValue<T>(dev_ctx, out, val.to<T>());
@@ -40,9 +40,9 @@ void FullKernel(const Context& dev_ctx,
 
 template <typename T, typename Context>
 void FullLikeKernel(const Context& dev_ctx,
-                    const DenseTensor& x,
+                    const DenseTensor& x UNUSED,
                     const Scalar& val,
-                    DataType dtype,
+                    DataType dtype UNUSED,
                     DenseTensor* out) {
   auto value = val.to<double>();
   using CommonType = typename std::common_type<

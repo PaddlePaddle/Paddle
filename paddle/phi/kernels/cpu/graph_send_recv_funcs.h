@@ -25,7 +25,7 @@ namespace phi {
 
 template <typename T>
 struct GraphSendRecvSumFunctor {
-  void operator()(const bool& first_flag,
+  void operator()(const bool& first_flag UNUSED,
                   const DenseTensor& src_slice,
                   DenseTensor* dst_slice) {
     auto eigen_src = phi::EigenVector<T>::Flatten(src_slice);
