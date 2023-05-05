@@ -1214,3 +1214,72 @@ set_tests_properties(
   test_buffer_shared_memory_reuse_pass
   test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
   PROPERTIES ENVIRONMENT FLAGS_CONVERT_GRAPH_TO_PROGRAM=true)
+
+# These UTs are to temporarily test static build for standalone_executor, will be removed after static build is enabled by default.
+set(STATIC_BUILD_TESTS
+    test_adagrad_op
+    test_adamw_op
+    test_arg_min_max_op
+    test_bincount_op
+    test_decoupled_py_reader
+    test_eig_op
+    test_eigh_op
+    test_fake_quantize_op
+    test_fetch_lod_tensor_array
+    test_fused_attention_op
+    test_fused_attention_op_api
+    test_fused_feedforward_op
+    test_fused_feedforward_pass
+    test_imperative_optimizer
+    test_lamb_op
+    test_layer_norm_op
+    test_lookup_table_bf16_op
+    test_lookup_table_v2_op
+    test_matmul_op
+    test_matmul_v2_op
+    test_merged_adam_op
+    test_momentum_op
+    test_nce
+    test_paddle_save_load_binary
+    test_reduce_op
+    test_segment_ops
+    test_sparse_momentum_op
+    test_sgd_op_bf16
+    test_softmax_mask_fuse_upper_triangle_op
+    test_sparse_conv_op
+    test_sparse_norm_op
+    test_sparse_pooling_op
+    test_sync_batch_norm_op
+    test_tensor_array_to_tensor
+    test_unique
+    test_update_loss_scaling_op
+    test_while_op
+    test_one_hot_v2_op)
+
+if(NOT WITH_GPU)
+  list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_attention_op)
+  list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_attention_op_api)
+  list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_feedforward_op)
+  list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_feedforward_op_pass)
+endif()
+
+foreach(STATIC_BUILD_TEST ${STATIC_BUILD_TESTS})
+  py_test_modules(
+    ${STATIC_BUILD_TEST}_static_build MODULES ${STATIC_BUILD_TEST} ENVS
+    FLAGS_new_executor_static_build=true)
+endforeach()
+
+set_tests_properties(test_decoupled_py_reader_static_build PROPERTIES TIMEOUT
+                                                                      120)
+set_tests_properties(test_imperative_optimizer_static_build PROPERTIES TIMEOUT
+                                                                       250)
+set_tests_properties(test_matmul_op_static_build PROPERTIES TIMEOUT 120)
+set_tests_properties(test_matmul_v2_op_static_build PROPERTIES TIMEOUT 120)
+set_tests_properties(test_layer_norm_op_static_build PROPERTIES TIMEOUT 1500)
+set_tests_properties(test_paddle_save_load_binary_static_build
+                     PROPERTIES TIMEOUT 120)
+set_tests_properties(test_reduce_op_static_build PROPERTIES TIMEOUT 500)
+set_tests_properties(test_sync_batch_norm_op_static_build
+                     PROPERTIES LABELS "RUN_TYPE=DIST")
+set_tests_properties(test_sync_batch_norm_op_static_build PROPERTIES TIMEOUT
+                                                                     120)
