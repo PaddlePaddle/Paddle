@@ -1380,7 +1380,7 @@
     attrs : [bool use_mkldnn = false, bool is_test = false]
 
 - op : lstsq
-  input :
+  inputs :
     {x : X, y : Y}
   output :
     {solution : Solution, residuals : Residuals, rank : Rank, singular_values : SingularValues}
