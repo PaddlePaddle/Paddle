@@ -24,11 +24,10 @@
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/mixed_vector.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/embedding_util.h"
-#include "paddle/phi/kernels/cast_kernel.h"
 
-#define TH 0.5
 DECLARE_int64(embedding_deterministic);
 
 namespace phi {
@@ -67,14 +66,13 @@ __global__ void EmbeddingGrad(T* table,
   }
 }
 
-
 template <typename T, typename IdT>
 __global__ void EmbeddingGrad_fp16(float* table,
-                               T* output,
-                              const IdT* ids,
-                              const int64_t N,
-                              const int64_t K,
-                              const int64_t D) {
+                                   T* output,
+                                   const IdT* ids,
+                                   const int64_t N,
+                                   const int64_t K,
+                                   const int64_t D) {
   int idx = threadIdx.x;
   int idy = blockIdx.x + threadIdx.y * gridDim.x;
 
@@ -127,11 +125,11 @@ struct EmbeddingGradCUDAFunctor {
       T* d_table = dev_ctx_.template Alloc<T>(d_table_t);
 
 #ifdef PADDLE_WITH_HIP
-        PADDLE_ENFORCE_GPU_SUCCESS(
-            hipMemsetAsync(d_table, 0, N * D * sizeof(T), dev_ctx_.stream()));
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          hipMemsetAsync(d_table, 0, N * D * sizeof(T), dev_ctx_.stream()));
 #else
-        PADDLE_ENFORCE_GPU_SUCCESS(
-            cudaMemsetAsync(d_table, 0, N * D * sizeof(T), dev_ctx_.stream()));
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          cudaMemsetAsync(d_table, 0, N * D * sizeof(T), dev_ctx_.stream()));
 #endif
 
       if (FLAGS_embedding_deterministic == 1) {
@@ -147,40 +145,45 @@ struct EmbeddingGradCUDAFunctor {
           threads.y = 1;
         }
         if (std::is_same<T, phi::dtype::float16>::value) {
-          if (1.0 * K / N < TH) {
+          if (1.0 * K / N < 0.5) {
             EmbeddingGrad<T, IdT><<<grids, threads, 0, dev_ctx_.stream()>>>(
                 d_table, d_output, ids, N, K, D);
           } else {
-            DenseTensor tmp_table = 
-                phi::Cast<phi::dtype::float16, Context>(
-                    dev_ctx_, *weight_grad_, DataType::FLOAT32);
+            DenseTensor tmp_table = phi::Cast<phi::dtype::float16, Context>(
+                dev_ctx_, *weight_grad_, DataType::FLOAT32);
             float* d_table_tmpf = tmp_table.template data<float>();
-  #ifdef PADDLE_WITH_HIP
-            PADDLE_ENFORCE_GPU_SUCCESS(
-                hipMemsetAsync(
-                    d_table_tmpf, 0, N * D * sizeof(float), dev_ctx_.stream()));
-  #else
-            PADDLE_ENFORCE_GPU_SUCCESS(
-                cudaMemsetAsync(
-                    d_table_tmpf, 0, N * D * sizeof(float), dev_ctx_.stream()));
-  #endif
-            EmbeddingGrad_fp16<T, IdT><<<
-                grids, threads, 0, dev_ctx_.stream()>>>(
-                      d_table_tmpf, d_output, ids, N, K, D);
-            DenseTensor tmp_table_back =
-                phi::Cast<float, Context>(
-                      dev_ctx_, tmp_table, DataType::FLOAT16);
-            phi::dtype::float16 *d_table_tmph =
+#ifdef PADDLE_WITH_HIP
+            PADDLE_ENFORCE_GPU_SUCCESS(hipMemsetAsync(
+                d_table_tmpf, 0, N * D * sizeof(float), dev_ctx_.stream()));
+#else
+            PADDLE_ENFORCE_GPU_SUCCESS(cudaMemsetAsync(
+                d_table_tmpf, 0, N * D * sizeof(float), dev_ctx_.stream()));
+#endif
+            EmbeddingGrad_fp16<T, IdT>
+                <<<grids, threads, 0, dev_ctx_.stream()>>>(
+                    d_table_tmpf, d_output, ids, N, K, D);
+            DenseTensor tmp_table_back = phi::Cast<float, Context>(
+                dev_ctx_, tmp_table, DataType::FLOAT16);
+            phi::dtype::float16* d_table_tmph =
                 tmp_table_back.template data<phi::dtype::float16>();
 
+#ifdef PADDLE_WITH_HIP
             PADDLE_ENFORCE_GPU_SUCCESS(
-                cudaMemcpyAsync(d_table, 
+                hipMemcpyAsync(d_table,
+                               d_table_tmph,
+                               sizeof(phi::dtype::float16) * N * D,
+                               hipMemcpyDeviceToDevice,
+                               dev_ctx_.stream()));
+#else
+            PADDLE_ENFORCE_GPU_SUCCESS(
+                cudaMemcpyAsync(d_table,
                                 d_table_tmph,
                                 sizeof(phi::dtype::float16) * N * D,
                                 cudaMemcpyDeviceToDevice,
                                 dev_ctx_.stream()));
+#endif
           }
-          } else {
+        } else {
           EmbeddingGrad<T, IdT><<<grids, threads, 0, dev_ctx_.stream()>>>(
               d_table, d_output, ids, N, K, D);
         }
