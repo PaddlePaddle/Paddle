@@ -39,7 +39,7 @@ namespace funcs {
 // While kMatmul, kMatmulGrad, kMatmulGradWithoutBias share the same
 // enum value, but if all elements for MatmulPlanner->GetKey() is same,
 // no matter forward or backward, they could share the same descriptor
-// cache, in that the descritpor is for decription of matmul operation.
+// cache, in that the descriptor is for description of matmul operation.
 enum MatmulFusedType {
   kMatmul = CUBLASLT_EPILOGUE_DEFAULT,
   kMatmulGrad = CUBLASLT_EPILOGUE_DEFAULT,
@@ -216,7 +216,7 @@ struct MatmulDescriptor {
     cudaDataType_t scale_type = phi::backends::gpu::ToCudaDataType<MT>();
     cublasComputeType_t compute_type = GetCudaComputeType<T>();
 
-    // Create operation desciriptor; see cublasLtMatmulDescAttributes_t for
+    // Create operation descriptor; see cublasLtMatmulDescAttributes_t for
     // details about defaults; just need to set the transforms for A and B
     PADDLE_ENFORCE_GPU_SUCCESS(
         dynload::cublasLtMatmulDescCreate(&op_desc, compute_type, scale_type));
@@ -787,7 +787,7 @@ struct LinearGradWithCublasLt : public CublasLtBase<T> {
   }
 };
 #else
-// A void structure just for successfully complile.
+// A void structure just for successfully compile.
 struct MatmulPlanner {};
 #endif  // (PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
 
