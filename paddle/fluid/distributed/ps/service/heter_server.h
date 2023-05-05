@@ -38,6 +38,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/phi/core/flags.h"
 
 namespace google {
 namespace protobuf {
@@ -52,7 +53,7 @@ class ProgramDesc;
 class Scope;
 }  // namespace framework
 }  // namespace paddle
-DECLARE_double(eager_delete_tensor_gb);
+PHI_DECLARE_double(eager_delete_tensor_gb);
 namespace paddle {
 namespace distributed {
 

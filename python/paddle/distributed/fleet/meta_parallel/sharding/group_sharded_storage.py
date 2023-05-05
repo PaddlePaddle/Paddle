@@ -78,7 +78,7 @@ class InternalStorage:
         if self._device != device:
             tmp_buffer = (
                 cvt_to_device(self.buffer, self.dev_id)
-                if device in ["gpu", "xpu", "npu"]
+                if device in ["gpu", "xpu"]
                 else self.buffer.cpu()
             )
             for param in self._params:
@@ -125,7 +125,7 @@ class ParamStorage(InternalStorage):
 
         self.param2align = param2align
 
-        cpu_param_shape = list()
+        cpu_param_shape = []
         for param in trainable_params:
             p_shape = self._add_param_as_view(
                 param, param2align[param.name], convert_gpu

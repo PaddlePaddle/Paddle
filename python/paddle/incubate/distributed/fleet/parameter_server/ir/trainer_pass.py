@@ -19,7 +19,7 @@ import warnings
 from functools import reduce
 
 import paddle
-import paddle.framework as framework
+from paddle import framework
 from paddle.distributed.transpiler.details.program_utils import delete_ops
 from paddle.framework import core
 from paddle.incubate.distributed.fleet.parameter_server.ir.public import (
@@ -93,7 +93,7 @@ def delete_optimizer_pass(program, config):
     optimizer_ops.extend(lr_ops)
     _delete_optimizer_op_and_vars(program, optimizer_ops)
 
-    if hasattr(config.origin_main_program, 'lr_sheduler'):
+    if hasattr(config.origin_main_program, 'lr_scheduler'):
         _add_lr_var(program, config)
 
     return program
@@ -179,7 +179,7 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
                     if input_indexes[i] == 1:
                         move_ops.append((global_block.ops[i], i))
                 for i, op in enumerate(move_ops):
-                    queue = list()
+                    queue = []
                     visited = set()
                     queue.append(op[1])
                     visited.add(op[0])
@@ -1484,9 +1484,9 @@ def get_communicate_var_info(
         #     raise ValueError(
         #         "Variable {} not support heter training. its shape is {}".
         #         format(name, shape))
-        recv_var_dim = -1 * reduce(lambda x, y: x * y, shape)
+        recv_var_dim = -1 * reduce(lambda x, y: x * y, shape, 1)
         input_var_reshape_dim.append(recv_var_dim)
-        input_var_reshape_name.append("{}.input_reshape@Heter".format(name))
+        input_var_reshape_name.append(f"{name}.input_reshape@Heter")
 
     # output
     # var -> reshape -> var@Heter_SERVER_BLOCK@INPUT_RESHAPE_VAR -> concat -> Heter_SERVER_BLOCK_index@JOINT_VAR
@@ -1497,7 +1497,7 @@ def get_communicate_var_info(
     #    #     raise ValueError(
     #    #         "Variable {} not support heter training. its shape is {}".
     #    #         format(var_name, shape))
-    #    send_reshape_dim = -1 * reduce(lambda x, y: x * y, shape)
+    #    send_reshape_dim = -1 * reduce(lambda x, y: x * y, shape, 1)
     #    output_var_reshape_dim.append(send_reshape_dim)
     #    output_var_reshape_name.append("{}.output_reshape@Heter".format(
     #        var_name))
@@ -1847,7 +1847,7 @@ def insert_reshape_op(
         new_var_shape = out.shape
 
     x_shape = block.create_var(
-        name="{}.xshape@Heter".format(var_name), dtype=input_var.dtype
+        name=f"{var_name}.xshape@Heter", dtype=input_var.dtype
     )
     block._insert_op(
         index=index,
@@ -2087,7 +2087,7 @@ def find_op_input_output(program, block, op):
 
 def get_vars_name_in_block(block):
     vars_list = block.vars.keys()
-    vars_name_list = [var_name for var_name in vars_list]
+    vars_name_list = list(vars_list)
     return vars_name_list
 
 

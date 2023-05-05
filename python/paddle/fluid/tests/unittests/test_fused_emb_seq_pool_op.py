@@ -20,6 +20,7 @@ from eager_op_test import OpTest, paddle_static_guard, skip_check_grad_ci
 
 import paddle
 import paddle.version as ver
+from paddle.incubate.layers.nn import fused_embedding_seq_pool
 
 
 @skip_check_grad_ci(
@@ -70,7 +71,7 @@ class TestLookupTableOpWithPadding(TestFusedEmbeddingSeqPoolOp):
         if ver.mkl() == "ON" and 'Linux' in platform.platform():
             ids = np.squeeze(self.ids, axis=2)
             padding_idx = np.random.choice(ids.flatten(), 1)[0]
-            output = list()
+            output = []
             index = 0
             for count in self.lod[0]:
                 arr = ids[index : count + index]
@@ -107,14 +108,14 @@ class TestFusedEmbeddingSeqPoolApi(unittest.TestCase):
     def test_api(self):
         with paddle_static_guard():
             if ver.mkl() == "ON" and 'Linux' in platform.platform():
-                import paddle.fluid as fluid
+                from paddle import fluid
 
                 dict_size = 20
                 data_t = paddle.static.data(
                     name='word', shape=[-1, 1], dtype='int64', lod_level=1
                 )
                 padding_idx = np.random.randint(1, 10)
-                out = fluid.contrib.fused_embedding_seq_pool(
+                out = fused_embedding_seq_pool(
                     input=data_t,
                     size=[dict_size, 32],
                     param_attr='w',

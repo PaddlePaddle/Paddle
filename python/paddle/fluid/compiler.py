@@ -245,7 +245,7 @@ class CompiledProgram:
             )
             self._exec_strategy.num_threads = 1
 
-        # TODO(wuyi): trainer endpoings should be passed in through
+        # TODO(wuyi): trainer endpoints should be passed in through
         # build_strategy, not program.xxx.
         # TODO(gongwb): let user to set them once.
         if (
@@ -548,7 +548,9 @@ class IpuDynamicPatcher:
 
                 self._caches[item_id] = (
                     concrete_program,
-                    partial_program_from(concrete_program),
+                    partial_program_from(
+                        concrete_program, item.class_instance is not None
+                    ),
                 )
                 # Note: raise warnings if number of traced program is more than `max_tracing_count`
                 current_tracing_count = len(self._caches)
@@ -1235,15 +1237,15 @@ class IpuCompiledProgram:
         convert_pass.apply(self._graph)
         program = framework.Program._construct_from_desc(desc)
 
-        if hasattr(self._program, 'lr_sheduler'):
+        if hasattr(self._program, 'lr_scheduler'):
             # how to share var between two different block ?
-            lr_var_name = self._program.lr_sheduler._var_name
+            lr_var_name = self._program.lr_scheduler._var_name
 
-            program.lr_sheduler = self._program.lr_sheduler
-            # Program.clone will clone lr_sheduler, so i set lr_var as
-            # lr_sheduler attribute
+            program.lr_scheduler = self._program.lr_scheduler
+            # Program.clone will clone lr_scheduler, so i set lr_var as
+            # lr_scheduler attribute
             global_block = self._program.global_block()
-            program.lr_sheduler.lr_var = global_block.vars[lr_var_name]
+            program.lr_scheduler.lr_var = global_block.vars[lr_var_name]
 
         # with popart, we need to support batches_per_step, what means
         # the shape of feed_var and feed_tensor(maybe numpy array) will

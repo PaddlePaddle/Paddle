@@ -18,16 +18,20 @@ import unittest
 from site import getsitepackages
 
 import numpy as np
+from utils import check_output
 
 import paddle
 from paddle.utils.cpp_extension import load
 
 if os.name == 'nt' or sys.platform.startswith('darwin'):
     # only support Linux now
-    exit()
+    sys.exit()
 
 # Compile and load cpp extension Just-In-Time.
 sources = ["custom_extension.cc", "custom_sub.cc"]
+if paddle.is_compiled_with_cuda():
+    sources.append("custom_relu_forward.cu")
+
 paddle_includes = []
 for site_packages_path in getsitepackages():
     paddle_includes.append(
@@ -67,8 +71,11 @@ class TestCppExtensionJITInstall(unittest.TestCase):
     def test_cpp_extension(self):
         self._test_extension_function()
         self._test_extension_class()
+        self._test_vector_tensor()
         self._test_nullable_tensor()
         self._test_optional_tensor()
+        if paddle.is_compiled_with_cuda():
+            self._test_cuda_relu()
 
     def _test_extension_function(self):
         for dtype in self.dtypes:
@@ -106,6 +113,20 @@ class TestCppExtensionJITInstall(unittest.TestCase):
                 atol=1e-5,
             )
 
+    def _test_vector_tensor(self):
+        for dtype in self.dtypes:
+            np_inputs = [
+                np.random.uniform(-1, 1, [4, 8]).astype(dtype) for _ in range(3)
+            ]
+            inputs = [paddle.to_tensor(np_x, dtype=dtype) for np_x in np_inputs]
+
+            out = custom_cpp_extension.custom_tensor(inputs)
+            target_out = [x + 1.0 for x in inputs]
+            for i in range(3):
+                np.testing.assert_allclose(
+                    out[i].numpy(), target_out[i].numpy(), atol=1e-5
+                )
+
     def _test_nullable_tensor(self):
         x = custom_cpp_extension.nullable_tensor(True)
         assert x is None, "Return None when input parameter return_none = True"
@@ -114,7 +135,7 @@ class TestCppExtensionJITInstall(unittest.TestCase):
         np.testing.assert_array_equal(
             x,
             x_np,
-            err_msg='extension out: {},\n numpy out: {}'.format(x, x_np),
+            err_msg=f'extension out: {x},\n numpy out: {x_np}',
         )
 
     def _test_optional_tensor(self):
@@ -127,8 +148,16 @@ class TestCppExtensionJITInstall(unittest.TestCase):
         np.testing.assert_array_equal(
             x,
             x_np,
-            err_msg='extension out: {},\n numpy out: {}'.format(x, x_np),
+            err_msg=f'extension out: {x},\n numpy out: {x_np}',
         )
+
+    def _test_cuda_relu(self):
+        paddle.set_device('gpu')
+        x = np.random.uniform(-1, 1, [4, 8]).astype('float32')
+        x = paddle.to_tensor(x, dtype='float32')
+        out = custom_cpp_extension.relu_cuda_forward(x)
+        pd_out = paddle.nn.functional.relu(x)
+        check_output(out, pd_out, "out")
 
 
 if __name__ == '__main__':

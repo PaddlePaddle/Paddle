@@ -21,9 +21,7 @@ limitations under the License. */
 
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/unary.h"
-#ifdef PADDLE_WITH_MLU
-#include "paddle/fluid/operators/mlu/mlu_baseop.h"
-#endif
+
 #include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
 #include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
 #include "paddle/fluid/prim/utils/static/desc_tensor.h"
@@ -74,15 +72,18 @@ class CastCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
   using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
 
   void Apply() override {
-    paddle::Tensor out_grad = paddle::Tensor(
-        std::make_shared<prim::DescTensor>(this->SingleOutputGrad("Out")));
-    paddle::Tensor x_grad = paddle::Tensor(
-        std::make_shared<prim::DescTensor>(this->SingleInputGrad("X")));
-    auto dx_ptr = this->GetOutputPtr(&x_grad);
-    std::string dx_name = this->GetOutputName(x_grad);
-    auto dtype = phi::TransToPhiDataType((this->Attr<int>("in_dtype")));
-    prim::cast_grad<prim::DescTensor>(out_grad, dtype, dx_ptr);
-    this->RecoverOutputName(x_grad, dx_name);
+    paddle::Tensor x = this->GetSingleForwardInput("X");
+    paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
+
+    // get outputs
+    paddle::Tensor x_grad_t = this->GetSingleInputGrad("X");
+    paddle::Tensor *x_grad = this->GetOutputPtr(&x_grad_t);
+    std::string x_grad_name = this->GetOutputName(x_grad_t);
+
+    VLOG(6) << "Runing cast_grad composite func";
+    prim::cast_grad<prim::DescTensor>(x, out_grad, x_grad);
+
+    this->RecoverOutputName(x_grad_t, x_grad_name);
   }
 };
 
@@ -119,21 +120,6 @@ class CastOp : public framework::OperatorWithKernel {
     }
     // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
 
-#ifdef PADDLE_WITH_MLU
-    auto src_type = static_cast<VT::Type>(ctx.Attr<int>("in_dtype"));
-    auto dst_type = static_cast<VT::Type>(ctx.Attr<int>("out_dtype"));
-    if (src_type == dst_type || MLUSupportsCast(src_type, dst_type)) {
-      return phi::KernelKey(framework::TransToProtoVarType(tensor->dtype()),
-                            tensor_place);
-    } else {
-      VLOG(3) << "MLU not support cast type: "
-              << framework::DataTypeToString(src_type)
-              << " to type: " << framework::DataTypeToString(dst_type)
-              << ", fallbacking to CPU one!";
-      return phi::KernelKey(framework::TransToProtoVarType(tensor->dtype()),
-                            platform::CPUPlace());
-    }
-#endif
     return phi::KernelKey(framework::TransToProtoVarType(tensor->dtype()),
                           tensor_place);
   }

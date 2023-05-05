@@ -16,8 +16,7 @@ import numbers
 
 # TODO: define normalization api
 import paddle
-import paddle.fluid as fluid
-from paddle import _C_ops, in_dynamic_mode
+from paddle import _C_ops, fluid, in_dynamic_mode
 from paddle.fluid.framework import in_dygraph_mode
 
 from ...fluid.data_feeder import check_type, check_variable_and_dtype
@@ -214,7 +213,7 @@ def batch_norm(
 
     else:
         check_variable_and_dtype(
-            x, 'input', ['float16', 'float32', 'float64'], 'BatchNorm'
+            x, 'input', ['float16', 'uint16', 'float32', 'float64'], 'BatchNorm'
         )
 
         # for static need dict
@@ -281,7 +280,7 @@ def layer_norm(
     For more information, please refer to :ref:`api_paddle_nn_LayerNorm` .
 
     Parameters:
-        x(Tensor): Input Tensor. It's data type should be float32, float64.
+        x(Tensor): Input Tensor. It's data type should be bfloat16, float16, float32, float64.
         normalized_shape(int|list|tuple): Input shape from an expected input of
             size :math:`[*, normalized_shape[0], normalized_shape[1], ..., normalized_shape[-1]]`.
             If it is a single integer, this module will normalize over the last dimension
@@ -338,10 +337,10 @@ def layer_norm(
 
     else:
         check_variable_and_dtype(
-            x, 'input', ['float16', 'float32', 'float64'], 'LayerNorm'
+            x, 'input', ['uint16', 'float16', 'float32', 'float64'], 'LayerNorm'
         )
 
-        inputs = dict()
+        inputs = {}
         inputs['X'] = [x]
         if weight:
             inputs['Scale'] = [weight]
@@ -427,7 +426,10 @@ def instance_norm(
         return out
     else:
         check_variable_and_dtype(
-            x, 'input', ['float32', 'float64'], "InstanceNorm"
+            x,
+            'input',
+            ['float32', 'float64', 'float16', 'uint16'],
+            "InstanceNorm",
         )
 
         attrs = {
@@ -544,7 +546,7 @@ def local_response_norm(
 
     from functools import reduce
 
-    sum_sizes = reduce(lambda x, y: x * y, sizes[1:])
+    sum_sizes = reduce(lambda x, y: x * y, sizes[1:], 1)
 
     div = paddle.unsqueeze(paddle.multiply(x, x), axis=1)
     if not channel_last:

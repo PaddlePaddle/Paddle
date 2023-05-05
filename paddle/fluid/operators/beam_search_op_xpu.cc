@@ -18,10 +18,12 @@ limitations under the License. */
 #include "paddle/fluid/operators/beam_search_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_XPU_KERNEL(
-    beam_search,
-    ops::BeamSearchOpKernel<paddle::platform::XPUDeviceContext, float>,
-    ops::BeamSearchOpKernel<paddle::platform::XPUDeviceContext, double>,
-    ops::BeamSearchOpKernel<paddle::platform::XPUDeviceContext, int>,
-    ops::BeamSearchOpKernel<paddle::platform::XPUDeviceContext, int64_t>);
+PD_REGISTER_STRUCT_KERNEL(beam_search,
+                          XPU,
+                          ALL_LAYOUT,
+                          ops::BeamSearchOpKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}
 #endif

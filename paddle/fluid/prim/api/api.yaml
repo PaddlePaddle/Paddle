@@ -12,7 +12,6 @@
 - bitwise_not
 - bitwise_or
 - bitwise_xor
-- unsqueeze
 - exp
 - scale
 - matmul
@@ -23,6 +22,7 @@
 - concat
 - elementwise_pow
 - floor
+- gather
 - gather_nd
 - log
 - max
@@ -38,10 +38,13 @@
 - sqrt
 - cumsum
 - put_along_axis
+- equal
 - greater_than
 - less_equal
 - sin
 - cos
 - where
-- reshape
 - split
+- reshape
+- erf
+- tanh

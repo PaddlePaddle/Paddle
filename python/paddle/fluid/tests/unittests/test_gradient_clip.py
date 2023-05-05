@@ -18,8 +18,8 @@ import numpy as np
 from fake_reader import fake_imdb_reader
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 from paddle.nn.clip import _allow_pure_fp16_global_norm_clip
 
 paddle.enable_static()
@@ -152,7 +152,7 @@ class TestGradientClip(unittest.TestCase):
 
         data = next(self.train_data())
         val = exe.run(prog, feed=feeder.feed(data), fetch_list=[cost])[0]
-        self.assertEqual((1,), val.shape)
+        self.assertEqual(val.shape, ())
         self.assertFalse(np.isnan(val))
 
     def backward_and_optimize(self, cost):

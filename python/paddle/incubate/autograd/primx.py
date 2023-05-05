@@ -17,7 +17,7 @@ import typing
 from collections import OrderedDict
 
 import paddle
-from paddle.fluid import framework as framework
+from paddle.fluid import framework
 from paddle.fluid.core import prim_config
 from paddle.fluid.framework import Operator, default_main_program
 from paddle.incubate.autograd.utils import as_tensors
@@ -543,15 +543,29 @@ def _lower(block, reverse, blacklist):
     for var_name in sorted(vars_to_remove):
         assert (
             var_name in to_bind_rev
-        ), 'var_name "{}" is not in to_bind_rev.'.format(var_name)
+        ), f'var_name "{var_name}" is not in to_bind_rev.'
         if var_name != to_bind_rev[var_name]:
             block.desc._remove_var(var_name.encode())
             del block.vars[var_name]
     block._sync_with_cpp()
 
 
+# In some case, inputs and outputs of composite op or its replaced composite rule might be None.
+# It means such arg will be no longer required in processed program by composite mechanism.
+# Therefore, such special ops should be recorded in advance and be released in args check.
+ops_contain_none = (
+    "batch_norm",
+    "flatten_contiguous_range",
+    "squeeze2",
+    "unsqueeze2",
+)
+
+
 def _lower_composite(
-    block, filter_: typing.Callable[[framework.Operator], bool] = lambda x: True
+    block,
+    filter_: typing.Callable[[framework.Operator], bool] = lambda x: True,
+    start_idx=-1,
+    backward_length=-1,
 ):
     """The operators in block wich satisfy the filter conditon will be decomposite into primitives."""
 
@@ -602,13 +616,53 @@ def _lower_composite(
         none_vars_to_remove = set()
 
         change = None
+
+        # Only process required sliced block
+        # If given start_idx, only ops[start_idx:] will be processed.
+        # If given backward_length, only ops[:-backward_length] will be processed.
+        # Note, start_idx and backward_length cannot be both given, because the length of non-processed part must be kept unchanged.
+        length = len(block.ops)
+        idx_list = range(length)
+        assert (
+            -1 <= backward_length <= length
+        ), f'expect -1 <= backward_length <= {length}, but got backward_length: {backward_length}'
+        assert (
+            -1 <= start_idx <= length
+        ), f'expect -1 <= start_idx <= {length}, but got start_idx: {start_idx}'
+        assert not (
+            backward_length > -1 and start_idx > -1
+        ), f'got start_idx: {start_idx} and backward_length: {backward_length}'
+        if backward_length > -1:
+            idx_list = range(length - backward_length)
+        if start_idx > -1:
+            idx_list = range(start_idx, length)
+
+        lower = lower_pre = False  # Flag of routing to lower or copy branch
         # Step2: Process all ops in the target block
-        for op_idx in range(len(block.ops)):
+        for op_idx in range(length):
             op = block.ops[op_idx]
             ops_to_remove.append(op_idx)
-            if lookup_fn(op.type) is not None and filter_(op):
+            op_name = op.type
+
+            # NOTE: why need _sync_with_cpp here
+            # _sync_wich_cpp after every copied operator is very slow.
+            # However, _sync_wich_cpp only support continuous block currently.
+            # The lowering transformation will generate program which is
+            # crossed combination of copy block and lower block, such as
+            # op1(copy) -> op2(copy) -> op3(lower) -> op4(lower) -> op5(copy) -> op6(copy)
+            # It will cause _sync_wich_cpp error.
+            # So, _sync_with_cpp will be executed only once after every continuous copy block.
+            lower = (
+                (lookup_fn(op_name) is not None)
+                and filter_(op)
+                and op_idx in idx_list
+            )
+            if not lower_pre and lower:
+                block._sync_with_cpp()
+            lower_pre = lower
+
+            if lower:
                 change = True
-                op_name = op.type
                 prim_config["composite_ops_record"].add(op_name)
                 input_args = prepare_python_api_arguments(op)
                 bind(input_args, to_bind, value_table)
@@ -621,10 +675,17 @@ def _lower_composite(
                     f'when replace origin op {op_name} with composite rule, num of origin outs should be equal to new outs, '
                     f'but len(orig_outs) = {len(orig_outs)} and len(new_outs) = {len(new_outs)}'
                 )
+
                 for orig_out, new_out in zip(
                     orig_outs,
                     new_outs,
                 ):
+                    if (orig_out is None or new_out is None) and (
+                        op_name not in ops_contain_none
+                    ):
+                        raise ValueError(
+                            f"op {op_name} should not contain any None value. original outs={orig_outs} and its composite rule outs={new_outs}"
+                        )
                     if orig_out is None:
                         # to keep same as phi op definition, orig_out may receive None
                         continue
@@ -633,14 +694,13 @@ def _lower_composite(
                             f'when replace origin op {op_name} with composite rule, origin out dtype should be equal to new out dtype, '
                             f'but orig_out: {orig_out.name}.dtype={orig_out.dtype} and new_out: {new_out.name}.dtype={new_out.dtype}'
                         )
-                        if orig_out.shape and new_out.shape:
-                            assert (
-                                -1 not in new_out.shape
-                            ), f'when replace origin op {op_name} with composite rule, composite out shape has -1.'
-                            assert orig_out.shape == new_out.shape, (
-                                f'when replace origin op {op_name} with composite rule, origin out shape should be equal to new out shape, '
-                                f'but orig_out: {orig_out.name}.shape={orig_out.shape} and new_out: {new_out.name}.shape={new_out.shape}'
-                            )
+                        assert (
+                            -1 not in new_out.shape
+                        ), f'when replace origin op {op_name} with composite rule, composite out shape has -1.'
+                        assert orig_out.shape == new_out.shape, (
+                            f'when replace origin op {op_name} with composite rule, origin out shape should be equal to new out shape, '
+                            f'but orig_out: {orig_out.name}.shape={orig_out.shape} and new_out: {new_out.name}.shape={new_out.shape}'
+                        )
                         assert not (orig_out is None) ^ (
                             new_out is None
                         ), "orig_out and new_out should match."
@@ -653,8 +713,8 @@ def _lower_composite(
             else:
                 op_desc = block.desc.append_op()
                 op_desc.copy_from(op.desc)
-                block._sync_with_cpp()
 
+        block._sync_with_cpp()
         # Step3: Do some post-processing work
         for op_idx in reversed(ops_to_remove):
             block.desc._remove_op(op_idx, op_idx + 1)
@@ -674,7 +734,7 @@ def _lower_composite(
         for var_name in sorted(vars_to_remove):
             assert (
                 var_name in to_bind_rev
-            ), 'var_name "{}" is not in to_bind_rev.'.format(var_name)
+            ), f'var_name "{var_name}" is not in to_bind_rev.'
             if var_name != to_bind_rev[var_name]:
                 block.desc._remove_var(var_name.encode())
                 del block.vars[var_name]
@@ -685,14 +745,28 @@ def _lower_composite(
             del block.vars[var_name]
         block._sync_with_cpp()
 
+        for op in block.ops:
+            if op._has_kernel(op.desc.type()):
+                op.desc.infer_var_type(block.desc)
+                op.desc.infer_shape(block.desc)
         # composite ops may contain other composite ops, thus, call _lower_composite again.
         if change:
-            _lower_composite(block, filter_)
+            _lower_composite(
+                block,
+                filter_,
+                start_idx=start_idx,
+                backward_length=backward_length,
+            )
         return
 
     elif isinstance(block, typing.Sequence):
         for item in block:
-            _lower_composite(item, filter_)
+            _lower_composite(
+                item,
+                filter_,
+                start_idx=start_idx,
+                backward_length=backward_length,
+            )
         return
     else:
         raise TypeError

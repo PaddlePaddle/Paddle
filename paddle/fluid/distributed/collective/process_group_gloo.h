@@ -132,6 +132,14 @@ class ProcessGroupGloo : public ProcessGroupWithoutStream {
       const BroadcastOptions& opts,
       bool sync_op) override;
 
+  std::shared_ptr<ProcessGroup::Task> Send(const phi::DenseTensor& tensor,
+                                           int dst_rank,
+                                           bool sync_op) override;
+
+  std::shared_ptr<ProcessGroup::Task> Recv(phi::DenseTensor* tensor,
+                                           int src_rank,
+                                           bool sync_op) override;
+
   std::shared_ptr<ProcessGroup::Task> Reduce(phi::DenseTensor* out_tensor,
                                              const phi::DenseTensor& in_tensor,
                                              const ReduceOptions& opts,
@@ -141,6 +149,12 @@ class ProcessGroupGloo : public ProcessGroupWithoutStream {
                                               const phi::DenseTensor& in_tensor,
                                               const ScatterOptions& opts,
                                               bool sync_op) override;
+
+  std::shared_ptr<ProcessGroup::Task> Gather(phi::DenseTensor* out_tensor,
+                                             const phi::DenseTensor& in_tensor,
+                                             const GatherOptions& opts,
+                                             bool sync_op,
+                                             bool use_calc_stream) override;
 
   // TODO(sunyilun): methods below will be removed later
   std::shared_ptr<ProcessGroup::Task> Broadcast(
@@ -153,6 +167,12 @@ class ProcessGroupGloo : public ProcessGroupWithoutStream {
       std::vector<phi::DenseTensor>& outputs,
       const BroadcastOptions& opts,
       bool sync_op) override;
+
+  std::shared_ptr<ProcessGroup::Task> Send(
+      std::vector<phi::DenseTensor>& inputs, int dst_rank) override;
+
+  std::shared_ptr<ProcessGroup::Task> Recv(
+      std::vector<phi::DenseTensor>& outputs, int src_rank) override;
 
   std::shared_ptr<ProcessGroup::Task> AllReduce(
       std::vector<phi::DenseTensor>& inputs,
@@ -194,6 +214,15 @@ class ProcessGroupGloo : public ProcessGroupWithoutStream {
 
   phi::DeviceContext* GetDeviceContext(const Place& place) const override {
     return platform::DeviceContextPool::Instance().Get(place);
+  }
+
+  phi::DeviceContext* GetDeviceContext(const Place& place,
+                                       bool use_calc_stream) const override {
+    PADDLE_ENFORCE_NE(
+        use_calc_stream,
+        true,
+        platform::errors::InvalidArgument("Gloo cannot use use_calc_stream."));
+    return GetDeviceContext(place);
   }
 
   // Helper functions for Gloo.

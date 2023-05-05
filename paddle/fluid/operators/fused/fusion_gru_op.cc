@@ -249,7 +249,7 @@ more details can refer to GRU op.
 )DOC");
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class FusionGRUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -303,7 +303,6 @@ class FusionGRUKernel : public framework::OpKernel<T> {
   T* xx_data = xx->mutable_data<T>(place)
 
   void SeqCompute(const framework::ExecutionContext& ctx) const {
-    using DeviceContext = phi::CPUContext;
     INIT_BASE_DEFINES;
     INIT_OTHER_DEFINES;
     const int N = x_lod[0].size() - 1;
@@ -394,7 +393,6 @@ class FusionGRUKernel : public framework::OpKernel<T> {
   }
 
   void BatchCompute(const framework::ExecutionContext& ctx) const {
-    using DeviceContext = phi::CPUContext;
     INIT_BASE_DEFINES;
     if (x_lod[0].size() == 2) {
       xx->Resize({total_T, D3});
@@ -551,9 +549,8 @@ class FusionGRUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(fusion_gru, ops::FusionGRUOp, ops::FusionGRUOpMaker);
 
-REGISTER_OP_CPU_KERNEL(fusion_gru,
-                       ops::FusionGRUKernel<float>,
-                       ops::FusionGRUKernel<double>);
+PD_REGISTER_STRUCT_KERNEL(
+    fusion_gru, CPU, ALL_LAYOUT, ops::FusionGRUKernel, float, double) {}
 
 /* ==========================  register checkpoint ===========================*/
 REGISTER_OP_VERSION(fusion_gru)

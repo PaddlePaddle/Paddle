@@ -24,7 +24,7 @@ import warnings
 from collections import OrderedDict
 import inspect
 import threading
-from typing import Any, List
+from typing import Any
 
 import paddle
 from paddle.fluid import core, dygraph
@@ -59,7 +59,6 @@ from paddle.nn import Layer
 from paddle.fluid.executor import Executor, scope_guard
 from paddle.fluid.framework import (
     Block,
-    ParamBase,
     Program,
     Variable,
     Parameter,
@@ -191,7 +190,7 @@ def copy_decorator_attrs(original_func, decorated_obj):
     return decorated_obj
 
 
-def ignore_module(modules: List[Any]):
+def ignore_module(modules: list[Any]):
     """
     Adds modules that ignore transcription.
     Builtin modules that have been ignored are collections, pdb, copy, inspect, re, numpy, logging, six
@@ -219,8 +218,23 @@ def ignore_module(modules: List[Any]):
     add_ignore_module(modules)
 
 
+def _check_and_set_backend(backend, build_strategy):
+    if backend not in ['CINN', None]:
+        raise ValueError(
+            "The backend of to_static should be 'CINN' or None, but received {}.".format(
+                backend
+            )
+        )
+    if backend == 'CINN':
+        build_strategy.build_cinn_pass = True
+
+
 def to_static(
-    function=None, input_spec=None, build_strategy=None, property=False
+    function=None,
+    input_spec=None,
+    build_strategy=None,
+    backend=None,
+    **kwargs,
 ):
     """
     Converts imperative dygraph APIs into declarative function APIs. Decorator
@@ -229,7 +243,6 @@ def to_static(
     Tensor(s) to do imperative training, inference, or other operations. If the
     decorated function calls other imperative function, the called one will be
     converted into declarative function as well.
-
     Args:
         function (callable): callable imperative function.
         input_spec(list[InputSpec]|tuple[InputSpec]): list/tuple of InputSpec to specific the shape/dtype/name
@@ -239,7 +252,8 @@ def to_static(
             in the computational graph and memory optimization during the execution
             of the computational graph. For more information about build_strategy,
             please refer to :code:`paddle.static.BuildStrategy`. The default is None.
-        property(bool, Optional): whether the fucntion is python property. The default is False.
+        backend(str, Optional): Specifies compilation backend, which can be `CINN` or None. When backend is `CINN`, CINN compiler will be used to speed up training and inference.
+        kwargs: Support keys including `property`, set `property` to True if the fucntion is python property.
 
 
     Returns:
@@ -264,6 +278,7 @@ def to_static(
             print(x_v) # [[2. 2.]]
 
     """
+    property = kwargs.get("property", False)
 
     def decorated(python_func):
         """
@@ -280,6 +295,7 @@ def to_static(
                 input_spec=input_spec,
                 build_strategy=build_strategy,
                 property=property,
+                backend=backend,
             ),
         )
 
@@ -292,6 +308,7 @@ def to_static(
                 type(build_strategy).__name__
             )
         )
+    _check_and_set_backend(backend, build_strategy)
 
     # for usage: `to_static(foo, ...)`
     if function is not None:
@@ -390,7 +407,7 @@ class _SaveLoadConfig:
                 % type(input)
             )
             for var in spec:
-                if not isinstance(var, core.VarBase):
+                if not isinstance(var, core.eager.Tensor):
                     raise TypeError(
                         "The element in config `output_spec` list should be 'Variable', but received element's type is %s."
                         % type(var)
@@ -543,7 +560,7 @@ def _get_input_var_names(inputs, input_spec):
                 # name is None, the input_spec only can be InputSpec
                 raise ValueError(name_none_error % spec)
             elif spec.name not in input_var_names:
-                # the input_spec can be `InputSpec` or `VarBase`
+                # the input_spec can be `InputSpec` or `Tensor`
                 raise ValueError(name_no_exists_error % spec.name)
             else:
                 result_list.append(spec.name)
@@ -602,9 +619,9 @@ def _build_load_path_and_config(path, config):
     directory_format_exist = os.path.isdir(path)
     if prefix_format_exist and directory_format_exist:
         raise ValueError(
-            "The %s.pdmodel and %s directory exist at the same time, "
+            "The {}.pdmodel and {} directory exist at the same time, "
             "don't know which one to load, please make sure that the specified target "
-            "of ``path`` is unique." % (path, path)
+            "of ``path`` is unique.".format(path, path)
         )
     elif not prefix_format_exist and not directory_format_exist:
         raise ValueError(
@@ -909,15 +926,14 @@ def save(layer, path, input_spec=None, **configs):
 
     # 1. input build & check
     prog_translator = ProgramTranslator()
+    is_prim_infer = core._is_fwd_prim_enabled() and core._is_bwd_prim_enabled()
     if not prog_translator.enable_to_static:
         raise RuntimeError(
             "The paddle.jit.save doesn't work when setting 'paddle.jit.enable_to_static' to False."
         )
 
     if not (
-        isinstance(layer, Layer)
-        or inspect.isfunction(layer)
-        or isinstance(layer, StaticFunction)
+        isinstance(layer, (Layer, StaticFunction)) or inspect.isfunction(layer)
     ):
         raise TypeError(
             "The input of paddle.jit.save should be 'Layer' or 'Function', but received input type is %s."
@@ -975,7 +991,7 @@ def save(layer, path, input_spec=None, **configs):
         for var in paddle.utils.flatten(input_spec):
             if isinstance(var, paddle.static.InputSpec):
                 inner_input_spec.append(var)
-            elif isinstance(var, (core.VarBase, core.eager.Tensor, Variable)):
+            elif isinstance(var, (core.eager.Tensor, Variable)):
                 inner_input_spec.append(
                     paddle.static.InputSpec.from_tensor(var)
                 )
@@ -993,7 +1009,7 @@ def save(layer, path, input_spec=None, **configs):
         configs._program_only = True
 
     scope = core.Scope()
-    extra_var_info = dict()
+    extra_var_info = {}
     if isinstance(layer, Layer):
         functions = dir(inner_layer)
         if inner_layer._forward_pre_hooks or inner_layer._forward_post_hooks:
@@ -1024,7 +1040,9 @@ def save(layer, path, input_spec=None, **configs):
 
                 concrete_program = (
                     static_func.concrete_program_specify_input_spec(
-                        inner_input_spec, with_hook=with_hook
+                        inner_input_spec,
+                        with_hook=with_hook,
+                        is_prim_infer=is_prim_infer,
                     )
                 )
             elif 'forward' == attr_func:
@@ -1044,7 +1062,7 @@ def save(layer, path, input_spec=None, **configs):
                 )
                 concrete_program = (
                     static_forward.concrete_program_specify_input_spec(
-                        with_hook=with_hook
+                        with_hook=with_hook, is_prim_infer=is_prim_infer
                     )
                 )
                 # the input_spec has been used in declarative, which is equal to
@@ -1064,7 +1082,7 @@ def save(layer, path, input_spec=None, **configs):
 
                 concrete_program = (
                     attr_func.concrete_program_specify_input_spec(
-                        inner_input_spec
+                        inner_input_spec, is_prim_infer=is_prim_infer
                     )
                 )
             else:
@@ -1099,8 +1117,8 @@ def save(layer, path, input_spec=None, **configs):
             # structured name, the buffer variable (non-persistable)
             # saved to inference program may not need by dygraph Layer,
             # we only record the state_dict variable's structured name
-            state_names_dict = dict()
-            state_var_dict = dict()
+            state_names_dict = {}
+            state_var_dict = {}
             for structured_name, var in dygraph_state_dict.items():
                 state_names_dict[var.name] = structured_name
                 state_var_dict[var.name] = var
@@ -1126,7 +1144,7 @@ def save(layer, path, input_spec=None, **configs):
                     param_or_buffer_tensor._share_data_with(src_tensor)
                 # record var info
                 if param_or_buffer.name not in extra_var_info:
-                    extra_info_dict = dict()
+                    extra_info_dict = {}
                     if param_or_buffer.name in state_names_dict:
                         extra_info_dict['structured_name'] = state_names_dict[
                             param_or_buffer.name
@@ -1134,7 +1152,7 @@ def save(layer, path, input_spec=None, **configs):
                     extra_info_dict[
                         'stop_gradient'
                     ] = param_or_buffer.stop_gradient
-                    if isinstance(param_or_buffer, (ParamBase, EagerParamBase)):
+                    if isinstance(param_or_buffer, EagerParamBase):
                         extra_info_dict['trainable'] = param_or_buffer.trainable
                     extra_var_info[param_or_buffer.name] = extra_info_dict
 
@@ -1153,7 +1171,7 @@ def save(layer, path, input_spec=None, **configs):
 
         # NOTE(chenweihang): [ Get output variables ]
         # the rule is like [ Get input variables name ]. For output var,
-        # we only support VarBase spec, and actually, we only need the
+        # we only support Tensor spec, and actually, we only need the
         # var name of output, and we don't recommended to use output_spec
         # print(concrete_program.main_program)
         # print(concrete_program.outputs, configs.output_spec)
@@ -1734,7 +1752,9 @@ class TracedLayer:
                 saved inference model. If None, all output variables of the
                 TracedLayer object would be the outputs of the saved inference
                 model. Default None.
-            kwargs: Supported keys including 'clip_extra'.set to True if you want to clip extra information for every operator.
+            kwargs: Supported keys including
+                - clip_extra(bool): whether to clip extra information for every operator. Defaults to True.
+                - legacy_format(bool): whether to save program in legacy format. Default to False.
 
         Returns:
             None
@@ -1830,12 +1850,13 @@ class TracedLayer:
             target_vars = []
             for name in target_var_names:
                 target_var = self._program.global_block().vars.get(name, None)
-                assert target_var is not None, "{} cannot be found".format(name)
+                assert target_var is not None, f"{name} cannot be found"
                 target_vars.append(target_var)
 
             model_filename = file_prefix + INFER_MODEL_SUFFIX
             params_filename = file_prefix + INFER_PARAMS_SUFFIX
 
+            legacy_format = kwargs.get('legacy_format', False)
             save_inference_model(
                 dirname=dirname,
                 feeded_var_names=feeded_var_names,
@@ -1845,4 +1866,5 @@ class TracedLayer:
                 model_filename=model_filename,
                 params_filename=params_filename,
                 clip_extra=clip_extra,
+                legacy_format=legacy_format,
             )

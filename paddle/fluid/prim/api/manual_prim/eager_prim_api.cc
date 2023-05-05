@@ -32,5 +32,17 @@ template <>
 Tensor cast<Tensor>(const Tensor& x, DataType dtype) {
   return ::cast_ad_func(x, dtype);
 }
+
+template <>
+Tensor slice<Tensor>(const Tensor& input,
+                     const std::vector<int64_t>& axes,
+                     const IntArray& starts,
+                     const IntArray& ends,
+                     const std::vector<int64_t>& infer_flags,
+                     const std::vector<int64_t>& decrease_axis) {
+  VLOG(4) << "Eager Prim API slice_ad_func call";
+  return ::slice_ad_func(input, axes, starts, ends, infer_flags, decrease_axis);
+}
+
 }  // namespace prim
 }  // namespace paddle

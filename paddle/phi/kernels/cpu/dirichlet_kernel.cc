@@ -91,8 +91,8 @@ struct DirichletSampler<CPUContext, T> {
         true,
         false);
 
-    funcs::ElementwiseCompute<funcs::DivideFunctor<T>, T, T>(
-        dev_ctx, gamma_samples, gamma_sum, -1, funcs::DivideFunctor<T>(), out);
+    funcs::ElementwiseCompute<funcs::DivideFunctor<T>, T>(
+        dev_ctx, gamma_samples, gamma_sum, funcs::DivideFunctor<T>(), out);
   }
 };
 

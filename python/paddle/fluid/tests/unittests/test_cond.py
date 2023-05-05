@@ -18,9 +18,8 @@ import numpy as np
 from simple_nets import batchnorm_fc_with_inputs, simple_fc_net_with_inputs
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.fluid.framework as framework
+from paddle import fluid
+from paddle.fluid import core, framework
 from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import Program, program_guard
 
@@ -675,7 +674,7 @@ class TestCondBackward(unittest.TestCase):
                     },
                     fetch_list=[loss.name],
                 )
-                numerical_grad[0][j] = (loss_delta[0] - loss_value[0]) / delta
+                numerical_grad[0][j] = (loss_delta - loss_value) / delta
                 feed_img_delta[0][j] = feed_img[0][j]
             np.testing.assert_allclose(
                 img_grad, numerical_grad, rtol=0.05, atol=0.05

@@ -17,8 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.nn as nn
+from paddle import fluid, nn
 
 
 class TestModelAverage(unittest.TestCase):

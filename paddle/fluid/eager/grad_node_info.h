@@ -225,6 +225,9 @@ class GradNodeBase {
   void SetGradOutMeta(const std::vector<const paddle::Tensor*>& fwd_in,
                       size_t slot_rank);
   void SetGradOutMeta(const paddle::Tensor& fwd_in, size_t slot_rank);
+  void SetGradOutMeta(const paddle::Tensor& fwd_in,
+                      const AutogradMeta* fwd_in_other,
+                      size_t slot_rank);
   /**
    * Default setters for Grad in/out meta this should be used for same special
    * Node which will not create by user
@@ -289,6 +292,10 @@ class GradNodeBase {
     is_tensor_wrappers_cleared_ = is_tensor_wrappers_cleared;
   }
 
+  void SetForwardTrace(std::string trace) { forward_trace_ = trace; }
+
+  std::string GetForwardTrace() { return forward_trace_; }
+
  private:
   // bwd_out_meta_ is used to record Grad output info for backward
   paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>
@@ -314,6 +321,8 @@ class GradNodeBase {
   bool need_complex_to_real_ = false;
 
   bool is_tensor_wrappers_cleared_ = false;
+  // The trace of forward function
+  std::string forward_trace_ = "";
 };
 
 }  // namespace egr

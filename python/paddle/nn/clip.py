@@ -63,7 +63,9 @@ def clip_by_norm(x, max_norm, name=None):
         return _legacy_C_ops.clip_by_norm(x, 'max_norm', max_norm)
 
     helper = LayerHelper("clip_by_norm", **locals())
-    check_variable_and_dtype(x, 'X', ['float32', 'float16'], 'clip_by_norm')
+    check_variable_and_dtype(
+        x, 'X', ['float16', 'float32', 'uint16'], 'clip_by_norm'
+    )
     check_type(max_norm, 'max_norm', (float), 'clip_by_norm')
 
     if name is None:
@@ -290,7 +292,7 @@ class ErrorClipByValue(BaseErrorClipAttr):
         self.min = min
 
     def __str__(self):
-        return "ByValue, min=%f, max=%f" % (self.min, self.max)
+        return f"ByValue, min={self.min:f}, max={self.max:f}"
 
     def _append_clip_op(self, block, grad_name):
         clip_op_desc = block.desc.append_op()
@@ -403,7 +405,7 @@ class ClipGradByValue(ClipGradBase):
         self.min = float(min)
 
     def __str__(self):
-        return "Clip Gradient By Value, min = %f, max=%f" % (self.min, self.max)
+        return f"Clip Gradient By Value, min = {self.min:f}, max={self.max:f}"
 
     @imperative_base.no_grad()
     def _dygraph_clip(self, params_grads):
@@ -420,7 +422,7 @@ class ClipGradByValue(ClipGradBase):
 
     def _static_clip(self, params_grads):
         params_and_grads = []
-        param_new_grad_name_dict = dict()
+        param_new_grad_name_dict = {}
         with framework.name_scope('gradient_clip'):
             for p, g in params_grads:
                 if g is None:
@@ -523,7 +525,7 @@ class ClipGradByNorm(ClipGradBase):
     def _static_clip(self, params_grads):
         params_and_grads = []
         with framework.name_scope('gradient_clip'):
-            param_new_grad_name_dict = dict()
+            param_new_grad_name_dict = {}
             for p, g in params_grads:
                 if g is None:
                     continue
@@ -698,7 +700,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
         global_norm_var = paddle.add_n(global_norm_var)
         global_norm_var = paddle.sqrt(global_norm_var)
         max_global_norm = paddle.full(
-            shape=[1], dtype=global_norm_var.dtype, fill_value=self.clip_norm
+            shape=[], dtype=global_norm_var.dtype, fill_value=self.clip_norm
         )
 
         need_clip = False
@@ -835,7 +837,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     x=max_global_norm,
                     y=paddle.maximum(x=max_global_norm, y=global_norm_var),
                 )
-            param_new_grad_name_dict = dict()
+            param_new_grad_name_dict = {}
             for p, g in params_grads:
                 if g is None:
                     continue
@@ -1062,7 +1064,7 @@ def set_gradient_clip(clip, param_list=None, program=None):
 
 
 def append_gradient_clip_ops(param_grads):
-    context = dict()
+    context = {}
     for p, g in param_grads:
         if g is None:
             continue
@@ -1080,7 +1082,7 @@ def append_gradient_clip_ops(param_grads):
             clip_attr._process_context(context=context, param=p, grad=g)
 
     res = []
-    param_new_grad_name_dict = dict()
+    param_new_grad_name_dict = {}
     for p, g in param_grads:
         if g is None:
             continue

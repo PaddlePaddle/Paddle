@@ -20,8 +20,8 @@ from eager_op_test import OpTest, skip_check_grad_ci
 from gradient_checker import grad_check
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 
 @skip_check_grad_ci(
@@ -104,7 +104,7 @@ class TestDygraph(unittest.TestCase):
         a = np.random.rand(3, 3)
         a_t = np.transpose(a, [1, 0])
         x_data = np.matmul(a, a_t) + 1e-03
-        x = paddle.to_tensor(x_data)
+        x = paddle.to_tensor([x_data])
         out = paddle.cholesky(x, upper=False)
 
 

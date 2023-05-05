@@ -17,10 +17,10 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import Program, core, program_guard
 
 
@@ -30,9 +30,9 @@ class TestConcatOp(OpTest):
         self.python_api = paddle.concat
         self.public_python_api = paddle.concat
         self.prim_op_type = "prim"
-        self.enable_cinn = False
         self.dtype = self.get_dtype()
         self.init_test_data()
+        self.if_enable_cinn()
         self.inputs = {'X': [('x0', self.x0), ('x1', self.x1), ('x2', self.x2)]}
         self.attrs = {'axis': self.axis}
         if self.axis < 0:
@@ -81,6 +81,9 @@ class TestConcatOp(OpTest):
             self.x1 = np.random.random((5, 2, 4, 5)).astype(self.dtype)
             self.x2 = np.random.random((5, 3, 4, 5)).astype(self.dtype)
         self.axis = 1
+
+    def if_enable_cinn(self):
+        pass
 
 
 class TestConcatOp2(TestConcatOp):
@@ -133,7 +136,6 @@ class TestConcatOp6(TestConcatOp):
         self.dtype = self.get_dtype()
         self.python_api = paddle.concat
         self.public_python_api = paddle.concat
-        self.prim_op_type = "prim"
         self.enable_cinn = False
         self.init_test_data()
         self.lod = [[20, 80]]
@@ -224,11 +226,9 @@ def create_test_AxisTensor(parent):
             self.op_type = "concat"
             self.python_api = paddle.concat
             self.public_python_api = paddle.concat
+            self.enable_cinn = False
             self.dtype = self.get_dtype()
             self.init_test_data()
-
-            self.prim_op_type = "prim"
-            self.enable_cinn = False
             self.inputs = {
                 'X': [('x0', self.x0), ('x1', self.x1), ('x2', self.x2)],
                 'AxisTensor': np.array([self.axis]).astype("int32"),
@@ -249,7 +249,23 @@ def create_test_AxisTensor(parent):
                 )
             }
 
-    cls_name = "{0}_{1}".format(parent.__name__, "AxisTensor")
+        def test_check_grad(self):
+            if (
+                parent.__name__ == 'TestConcatOp4'
+                or parent.__name__ == 'TestConcatOp3'
+            ):
+                return
+            if self.dtype == np.uint16:
+                place = core.CUDAPlace(0)
+                self.check_grad_with_place(place, ['x0'], 'Out')
+                self.check_grad_with_place(place, ['x1'], 'Out')
+                self.check_grad_with_place(place, ['x2'], 'Out')
+            else:
+                self.check_grad(['x0'], 'Out')
+                self.check_grad(['x1'], 'Out')
+                self.check_grad(['x2'], 'Out')
+
+    cls_name = "{}_{}".format(parent.__name__, "AxisTensor")
     TestConcatAxisTensor.__name__ = cls_name
     globals()[cls_name] = TestConcatAxisTensor
 
@@ -266,10 +282,51 @@ create_test_AxisTensor(TestConcatOp6)
 
 def create_test_fp16(parent):
     class TestConcatFp16(parent):
+        def setUp(self):
+            self.op_type = "concat"
+            self.python_api = paddle.concat
+            self.public_python_api = paddle.concat
+            self.enable_cinn = False
+            self.dtype = self.get_dtype()
+            self.init_test_data()
+            self.inputs = {
+                'X': [('x0', self.x0), ('x1', self.x1), ('x2', self.x2)]
+            }
+            self.attrs = {'axis': self.axis}
+            if self.axis < 0:
+                self.actual_axis = self.axis + len(self.x0.shape)
+                self.actual_axis = (
+                    self.actual_axis if self.actual_axis > 0 else 0
+                )
+            else:
+                self.actual_axis = self.axis
+
+            self.outputs = {
+                'Out': np.concatenate(
+                    (self.x0, self.x1, self.x2), axis=self.actual_axis
+                )
+            }
+
+        def test_check_grad(self):
+            if (
+                parent.__name__ == 'TestConcatOp4'
+                or parent.__name__ == 'TestConcatOp3'
+            ):
+                return
+            if self.dtype == np.uint16:
+                place = core.CUDAPlace(0)
+                self.check_grad_with_place(place, ['x0'], 'Out')
+                self.check_grad_with_place(place, ['x1'], 'Out')
+                self.check_grad_with_place(place, ['x2'], 'Out')
+            else:
+                self.check_grad(['x0'], 'Out')
+                self.check_grad(['x1'], 'Out')
+                self.check_grad(['x2'], 'Out')
+
         def get_dtype(self):
             return np.float16
 
-    cls_name = "{0}_{1}".format(parent.__name__, "Fp16")
+    cls_name = "{}_{}".format(parent.__name__, "Fp16")
     TestConcatFp16.__name__ = cls_name
     globals()[cls_name] = TestConcatFp16
 
@@ -288,15 +345,65 @@ def create_test_bf16(parent):
         not paddle.is_compiled_with_cuda(), "core is not compiled with CUDA"
     )
     class TestConcatBf16(parent):
+        def setUp(self):
+            self.op_type = "concat"
+            self.python_api = paddle.concat
+            self.public_python_api = paddle.concat
+            self.enable_cinn = False
+            self.dtype = self.get_dtype()
+            self.init_test_data()
+            self.inputs = {
+                'X': [('x0', self.x0), ('x1', self.x1), ('x2', self.x2)]
+            }
+            self.attrs = {'axis': self.axis}
+            if self.axis < 0:
+                self.actual_axis = self.axis + len(self.x0.shape)
+                self.actual_axis = (
+                    self.actual_axis if self.actual_axis > 0 else 0
+                )
+            else:
+                self.actual_axis = self.axis
+
+            self.outputs = {
+                'Out': np.concatenate(
+                    (self.x0, self.x1, self.x2), axis=self.actual_axis
+                )
+            }
+
+        def test_check_grad(self):
+            if (
+                parent.__name__ == 'TestConcatOp4'
+                or parent.__name__ == 'TestConcatOp3'
+            ):
+                return
+            if self.dtype == np.uint16:
+                place = core.CUDAPlace(0)
+                self.check_grad_with_place(place, ['x0'], 'Out')
+                self.check_grad_with_place(place, ['x1'], 'Out')
+                self.check_grad_with_place(place, ['x2'], 'Out')
+            else:
+                self.check_grad(['x0'], 'Out')
+                self.check_grad(['x1'], 'Out')
+                self.check_grad(['x2'], 'Out')
+
         def get_dtype(self):
             return np.uint16
 
-    cls_name = "{0}_{1}".format(parent.__name__, "Bf16")
+        def if_enable_cinn(self):
+            self.enable_cinn = False
+
+    cls_name = "{}_{}".format(parent.__name__, "Bf16")
     TestConcatBf16.__name__ = cls_name
     globals()[cls_name] = TestConcatBf16
 
 
+# add all unit test maybe timeout.
 create_test_bf16(TestConcatOp)
+create_test_bf16(TestConcatOp2)
+# create_test_bf16(TestConcatOp3)
+create_test_bf16(TestConcatOp4)
+# create_test_bf16(TestConcatOp5)
+# create_test_bf16(TestConcatOp6)
 
 
 class TestConcatOpError(unittest.TestCase):

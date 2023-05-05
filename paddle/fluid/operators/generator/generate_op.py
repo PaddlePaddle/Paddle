@@ -19,7 +19,11 @@ from pathlib import Path
 
 import yaml
 from filters import (
+    assert_dense_or_sr,
     cartesian_prod_mapping,
+    delete_last_underline,
+    find_optinal_inputs_name,
+    get_infer_var_type_func,
     to_composite_grad_opmaker_name,
     to_input_name,
     to_int_array_tensor_name,
@@ -63,6 +67,9 @@ env.filters["to_opmaker_name_cstr"] = to_opmaker_name_cstr
 env.filters["cartesian_prod_mapping"] = cartesian_prod_mapping
 env.filters["to_composite_grad_opmaker_name"] = to_composite_grad_opmaker_name
 env.filters["to_variable_names"] = to_variable_names
+env.filters["get_infer_var_type_func"] = get_infer_var_type_func
+env.filters["assert_dense_or_sr"] = assert_dense_or_sr
+env.filters["find_optinal_inputs_name"] = find_optinal_inputs_name
 env.tests["base_op"] = is_base_op
 env.tests["composite_op"] = is_composite_op
 env.tests["vec"] = is_vec
@@ -472,25 +479,35 @@ def parse_get_expected_kerneltype(
     for op_comp_map in op_fluid_list:
         if 'get_expected_kernel_type' in op_comp_map:
             fw_name = op_comp_map['op'].split('(')[0].strip()
+            # deal the last underline of function name in op_comp_map['get_expected_kernel_type']
+            new_get_expected_kernel_type_func_map = {}
+            for (key, value) in op_comp_map['get_expected_kernel_type'].items():
+                new_get_expected_kernel_type_func_map[
+                    delete_last_underline(key)
+                ] = value
+            op_comp_map[
+                'get_expected_kernel_type'
+            ] = new_get_expected_kernel_type_func_map
             if fw_name in op_comp_map['get_expected_kernel_type']:
                 # static_ops.yaml and ops.yaml use the common op_compat.yaml
                 if fw_name in fw_op_dict:
                     fw_op_dict[fw_name][
                         "get_expected_kernel_type"
                     ] = op_comp_map['get_expected_kernel_type'][fw_name]
-            bw_names = [
-                bw_name.split('(')[0].strip()
-                for bw_name in op_comp_map['backward'].split(',')
-            ]
-            for bw_name in bw_names:
-                # static_ops.yaml and ops.yaml use the common op_compat.yaml
-                if (
-                    bw_name in bw_op_dict
-                    and bw_name in op_comp_map['get_expected_kernel_type']
-                ):
-                    bw_op_dict[bw_name][
-                        "get_expected_kernel_type"
-                    ] = op_comp_map['get_expected_kernel_type'][bw_name]
+            if "backward" in op_comp_map:
+                bw_names = [
+                    bw_name.split('(')[0].strip()
+                    for bw_name in op_comp_map['backward'].split(',')
+                ]
+                for bw_name in bw_names:
+                    # static_ops.yaml and ops.yaml use the common op_compat.yaml
+                    if (
+                        bw_name in bw_op_dict
+                        and bw_name in op_comp_map['get_expected_kernel_type']
+                    ):
+                        bw_op_dict[bw_name][
+                            "get_expected_kernel_type"
+                        ] = op_comp_map['get_expected_kernel_type'][bw_name]
 
 
 def parse_keep_signature(
@@ -499,10 +516,15 @@ def parse_keep_signature(
     for op_comp_map in op_fluid_list:
         if 'manual_signature' in op_comp_map:
             for op_name in op_comp_map['manual_signature']:
-                if op_name in fw_op_dict:
-                    fw_op_dict[op_name]["manual_signature"] = True
-                elif op_name in bw_op_dict:
-                    bw_op_dict[op_name]["manual_signature"] = True
+                op_name_without_last_underline = delete_last_underline(op_name)
+                if op_name_without_last_underline in fw_op_dict:
+                    fw_op_dict[op_name_without_last_underline][
+                        "manual_signature"
+                    ] = True
+                elif op_name_without_last_underline in bw_op_dict:
+                    bw_op_dict[op_name_without_last_underline][
+                        "manual_signature"
+                    ] = True
 
 
 def split_ops_list(ops, backward_op_dict, split_num):
@@ -528,6 +550,20 @@ def split_ops_list(ops, backward_op_dict, split_num):
     return new_ops_list, new_bw_ops_list
 
 
+def to_phi_and_fluid_op_name_without_underline(op_item):
+    '''
+    If the op_name ends with '_', delete the last '_'. For an example, 'sgd_' becomes 'sgd
+    '''
+    names = op_item.split('(')
+    if len(names) == 1:
+        op_kernel_name = delete_last_underline(names[0].strip())
+        return op_kernel_name
+    else:
+        op_name = delete_last_underline(names[0].strip())
+        kernel_name = delete_last_underline(names[1].split(')')[0].strip())
+        return op_name + '(' + kernel_name + ')'
+
+
 def main(
     ops_yaml_path,
     backward_yaml_path,
@@ -539,11 +575,11 @@ def main(
     with open(ops_yaml_path, "rt") as f:
         ops = yaml.safe_load(f)
         ops = [restruct_io(op) for op in ops]
-    forward_op_dict = to_named_dict(ops)
+    forward_op_dict = to_named_dict(ops, True)
     with open(backward_yaml_path, "rt") as f:
         backward_ops = yaml.safe_load(f)
         backward_ops = [restruct_io(op) for op in backward_ops]
-    backward_op_dict = to_named_dict(backward_ops)
+    backward_op_dict = to_named_dict(backward_ops, True)
     with open(op_version_yaml_path, "rt") as f:
         op_versions = yaml.safe_load(f)
     # add op version info into op
@@ -553,6 +589,10 @@ def main(
 
     with open(op_compat_yaml_path, "rt") as f:
         op_fluid_map_list = yaml.safe_load(f)
+        for op_args in op_fluid_map_list:
+            op_args["op"] = to_phi_and_fluid_op_name_without_underline(
+                op_args["op"]
+            )
 
     for op in ops:
         op['op_name'] = op['name']

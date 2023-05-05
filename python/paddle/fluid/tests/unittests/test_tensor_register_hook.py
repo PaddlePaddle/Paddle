@@ -17,9 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.nn as nn
+from paddle import fluid, nn
+from paddle.fluid import core
 
 
 class SimpleNet(nn.Layer):
@@ -46,9 +45,10 @@ class SimpleNetForStatic(nn.Layer):
         self.linear1 = nn.Linear(in_size, in_size)
         self.linear2 = nn.Linear(in_size, out_size)
 
-    def forward(self, x):
+    def forward(self, x, hook=False):
         ret1 = self.linear1(x)
-        ret1.register_hook(lambda grad: grad * 2)
+        if hook:
+            ret1.register_hook(lambda grad: grad * 2)
 
         ret2 = self.linear2(ret1)
         out = paddle.mean(ret2, axis=-1)
@@ -513,8 +513,7 @@ class TestTensorRegisterHook(unittest.TestCase):
                 )
 
                 net = SimpleNetForStatic(self.in_size, self.out_size)
-                with self.assertRaises(AssertionError):
-                    out = net(x)
+                out = net(x)
 
         paddle.disable_static()
 
@@ -528,9 +527,17 @@ class TestTensorRegisterHook(unittest.TestCase):
             'float32'
         )
         data_t = paddle.to_tensor(data)
+        data_t2 = paddle.to_tensor(data)
+        data_t.stop_gradient = False
+        data_t2.stop_gradient = False
 
-        with self.assertRaises(AssertionError):
-            out = jit_net(data_t)
+        out1 = jit_net(data_t)
+        out2 = jit_net(data_t2, True)
+        out1.backward()
+        out2.backward()
+        np.testing.assert_array_equal(
+            2 * data_t.grad.numpy(), data_t2.grad.numpy()
+        )
 
 
 HOOK_INIT_VALUE = 10
@@ -554,7 +561,7 @@ class TestTensorRegisterBackwardHook(unittest.TestCase):
         global HOOK_INIT_VALUE
         global HOOK_IS_CALLED
         for device in self.devices:
-            x = paddle.to_tensor(5.0, stop_gradient=False)
+            x = paddle.to_tensor([5.0], stop_gradient=False)
             x._register_backward_hook(global_void_hook)
             for i in range(5):
                 y = paddle.pow(x, 4.0)
@@ -568,14 +575,14 @@ class TestTensorRegisterBackwardHook(unittest.TestCase):
             HOOK_IS_CALLED = False
 
     def test_register_backward_hook_for_interior_var(self):
-        x = paddle.to_tensor(5.0, stop_gradient=False)
+        x = paddle.to_tensor([5.0], stop_gradient=False)
         y = paddle.pow(x, 4.0)
 
         with self.assertRaises(ValueError):
             y._register_backward_hook(global_void_hook)
 
     def test_register_backward_hook_for_var_without_gradient(self):
-        x = paddle.to_tensor(5.0)
+        x = paddle.to_tensor([5.0])
         y = paddle.pow(x, 4.0)
 
         with self.assertRaises(ValueError):

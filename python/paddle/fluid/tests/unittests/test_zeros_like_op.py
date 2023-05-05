@@ -17,8 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-from paddle import _C_ops, zeros_like
+from paddle import _C_ops, fluid, zeros_like
 from paddle.fluid import Program, core, program_guard
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
 

@@ -15,12 +15,12 @@
 import unittest
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 from paddle.fluid.framework import in_dygraph_mode
 
 
 class TestDataParallelGroup(unittest.TestCase):
-    def create_varbase(self, dtype, shape):
+    def _create_var(self, dtype, shape):
         return paddle.rand(shape=shape, dtype=dtype)
 
     def assign_group_by_size(self, *args):
@@ -30,10 +30,10 @@ class TestDataParallelGroup(unittest.TestCase):
     def test_construct_group0(self):
         # one dtype & one limit capability
         var_list = []
-        var_list.append(self.create_varbase("float32", [2, 50]))
-        var_list.append(self.create_varbase("float32", [2, 100]))
-        var_list.append(self.create_varbase("float32", [2, 50]))
-        var_list.append(self.create_varbase("float32", [2, 25]))
+        var_list.append(self._create_var("float32", [2, 50]))
+        var_list.append(self._create_var("float32", [2, 100]))
+        var_list.append(self._create_var("float32", [2, 50]))
+        var_list.append(self._create_var("float32", [2, 25]))
         res = self.assign_group_by_size(
             var_list, [False, False, False, False], [400]
         )
@@ -42,12 +42,12 @@ class TestDataParallelGroup(unittest.TestCase):
     def test_construct_group1(self):
         # multi dtype & one limit capability
         var_list = []
-        var_list.append(self.create_varbase("float32", [1, 50]))
-        var_list.append(self.create_varbase("float64", [1, 25]))
-        var_list.append(self.create_varbase("float32", [1, 50]))
-        var_list.append(self.create_varbase("float64", [1, 25]))
-        var_list.append(self.create_varbase("float32", [1, 50]))
-        var_list.append(self.create_varbase("float64", [1, 25]))
+        var_list.append(self._create_var("float32", [1, 50]))
+        var_list.append(self._create_var("float64", [1, 25]))
+        var_list.append(self._create_var("float32", [1, 50]))
+        var_list.append(self._create_var("float64", [1, 25]))
+        var_list.append(self._create_var("float32", [1, 50]))
+        var_list.append(self._create_var("float64", [1, 25]))
         res = self.assign_group_by_size(
             var_list, [False, False, False, False, False, False], [400]
         )
@@ -56,10 +56,10 @@ class TestDataParallelGroup(unittest.TestCase):
     def test_construct_group2(self):
         # one dtype & multi limit capability
         var_list = []
-        var_list.append(self.create_varbase("float32", [2, 50]))
-        var_list.append(self.create_varbase("float32", [2, 50]))
-        var_list.append(self.create_varbase("float32", [2, 50]))
-        var_list.append(self.create_varbase("float32", [2, 50]))
+        var_list.append(self._create_var("float32", [2, 50]))
+        var_list.append(self._create_var("float32", [2, 50]))
+        var_list.append(self._create_var("float32", [2, 50]))
+        var_list.append(self._create_var("float32", [2, 50]))
         res = self.assign_group_by_size(
             var_list, [False, False, False, False], [400, 800]
         )
@@ -68,12 +68,12 @@ class TestDataParallelGroup(unittest.TestCase):
     def test_construct_group3(self):
         # multi dtype & multi limit capability
         var_list = []
-        var_list.append(self.create_varbase("float32", [1, 50]))
-        var_list.append(self.create_varbase("float64", [1, 25]))
-        var_list.append(self.create_varbase("float32", [1, 50]))
-        var_list.append(self.create_varbase("float64", [1, 25]))
-        var_list.append(self.create_varbase("float32", [1, 50]))
-        var_list.append(self.create_varbase("float64", [1, 25]))
+        var_list.append(self._create_var("float32", [1, 50]))
+        var_list.append(self._create_var("float64", [1, 25]))
+        var_list.append(self._create_var("float32", [1, 50]))
+        var_list.append(self._create_var("float64", [1, 25]))
+        var_list.append(self._create_var("float32", [1, 50]))
+        var_list.append(self._create_var("float64", [1, 25]))
         res = self.assign_group_by_size(
             var_list, [False, False, False, False, False, False], [200, 400]
         )
@@ -82,12 +82,12 @@ class TestDataParallelGroup(unittest.TestCase):
     def test_construct_group4(self):
         # multi dtype & zero limit capability
         var_list = []
-        var_list.append(self.create_varbase("float32", [1, 50]))
-        var_list.append(self.create_varbase("float64", [1, 25]))
-        var_list.append(self.create_varbase("float32", [1, 50]))
-        var_list.append(self.create_varbase("float64", [1, 25]))
-        var_list.append(self.create_varbase("float32", [1, 50]))
-        var_list.append(self.create_varbase("float64", [1, 25]))
+        var_list.append(self._create_var("float32", [1, 50]))
+        var_list.append(self._create_var("float64", [1, 25]))
+        var_list.append(self._create_var("float32", [1, 50]))
+        var_list.append(self._create_var("float64", [1, 25]))
+        var_list.append(self._create_var("float32", [1, 50]))
+        var_list.append(self._create_var("float64", [1, 25]))
         res = self.assign_group_by_size(
             var_list, [False, False, False, False, False, False], [0]
         )
@@ -96,12 +96,12 @@ class TestDataParallelGroup(unittest.TestCase):
     def test_construct_group5(self):
         # multi dtype & infinite capability
         var_list = []
-        var_list.append(self.create_varbase("float32", [1, 50]))
-        var_list.append(self.create_varbase("float64", [1, 25]))
-        var_list.append(self.create_varbase("float32", [1, 50]))
-        var_list.append(self.create_varbase("float64", [1, 25]))
-        var_list.append(self.create_varbase("float32", [1, 50]))
-        var_list.append(self.create_varbase("float64", [1, 25]))
+        var_list.append(self._create_var("float32", [1, 50]))
+        var_list.append(self._create_var("float64", [1, 25]))
+        var_list.append(self._create_var("float32", [1, 50]))
+        var_list.append(self._create_var("float64", [1, 25]))
+        var_list.append(self._create_var("float32", [1, 50]))
+        var_list.append(self._create_var("float64", [1, 25]))
         res = self.assign_group_by_size(
             var_list, [False, False, False, False, False, False], [10000]
         )
@@ -111,16 +111,16 @@ class TestDataParallelGroup(unittest.TestCase):
         # multi dtype & limit capability & multi tensor type
         var_list = []
         var_list.append(
-            self.create_varbase(
+            self._create_var(
                 "float32",
                 [1, 50],
             )
         )
-        var_list.append(self.create_varbase("float64", [1, 25]))
-        var_list.append(self.create_varbase("float32", [1, 50]))
-        var_list.append(self.create_varbase("float64", [1, 25]))
-        var_list.append(self.create_varbase("float32", [1, 50]))
-        var_list.append(self.create_varbase("float64", [1, 25]))
+        var_list.append(self._create_var("float64", [1, 25]))
+        var_list.append(self._create_var("float32", [1, 50]))
+        var_list.append(self._create_var("float64", [1, 25]))
+        var_list.append(self._create_var("float32", [1, 50]))
+        var_list.append(self._create_var("float64", [1, 25]))
         res = self.assign_group_by_size(
             var_list, [True, False, False, False, False, True], [400]
         )
@@ -129,12 +129,12 @@ class TestDataParallelGroup(unittest.TestCase):
     def test_construct_group7(self):
         # multi dtype & multi limit capability & multi tensor type
         var_list = []
-        var_list.append(self.create_varbase("float32", [1, 50]))
-        var_list.append(self.create_varbase("float64", [1, 25]))
-        var_list.append(self.create_varbase("float32", [1, 50]))
-        var_list.append(self.create_varbase("float64", [1, 25]))
-        var_list.append(self.create_varbase("float32", [1, 50]))
-        var_list.append(self.create_varbase("float64", [1, 25]))
+        var_list.append(self._create_var("float32", [1, 50]))
+        var_list.append(self._create_var("float64", [1, 25]))
+        var_list.append(self._create_var("float32", [1, 50]))
+        var_list.append(self._create_var("float64", [1, 25]))
+        var_list.append(self._create_var("float32", [1, 50]))
+        var_list.append(self._create_var("float64", [1, 25]))
         res = self.assign_group_by_size(
             var_list, [True, False, False, False, False, True], [200, 400]
         )
@@ -143,10 +143,10 @@ class TestDataParallelGroup(unittest.TestCase):
     def test_construct_group8(self):
         # one dtype & one limit capability & have tensor_indices
         var_list = []
-        var_list.append(self.create_varbase("float32", [2, 25]))
-        var_list.append(self.create_varbase("float32", [2, 100]))
-        var_list.append(self.create_varbase("float32", [2, 50]))
-        var_list.append(self.create_varbase("float32", [2, 25]))
+        var_list.append(self._create_var("float32", [2, 25]))
+        var_list.append(self._create_var("float32", [2, 100]))
+        var_list.append(self._create_var("float32", [2, 50]))
+        var_list.append(self._create_var("float32", [2, 25]))
         res = self.assign_group_by_size(
             var_list, [False, False, False, False], [400], [3, 0, 1, 2]
         )
@@ -155,10 +155,10 @@ class TestDataParallelGroup(unittest.TestCase):
     def test_construct_group9(self):
         # one dtype & one limit capability & have tensor_indices
         var_list = []
-        var_list.append(self.create_varbase("float32", [2, 25]))
-        var_list.append(self.create_varbase("float32", [2, 25]))
-        var_list.append(self.create_varbase("float32", [2, 25]))
-        var_list.append(self.create_varbase("float32", [2, 1000]))
+        var_list.append(self._create_var("float32", [2, 25]))
+        var_list.append(self._create_var("float32", [2, 25]))
+        var_list.append(self._create_var("float32", [2, 25]))
+        var_list.append(self._create_var("float32", [2, 1000]))
         res = self.assign_group_by_size(
             var_list, [False, False, False, True], [300], [1, 0, 2, 3]
         )

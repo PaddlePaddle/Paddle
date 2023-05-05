@@ -18,10 +18,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.fluid.layers as layers
-from paddle.fluid import ParamAttr
+from paddle import fluid
+from paddle.fluid import ParamAttr, core, layers
 from paddle.fluid.backward import append_backward
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, grad_var_name
@@ -44,7 +42,7 @@ class PyRNNBase:
     def forward(self):
         for step_id in range(self.x.shape[0]):
             self.step(step_id, self.x[step_id])
-        return np.array([np.mean(self.y)])
+        return np.mean(self.y)
 
     def segment_inputs(self):
         return [self.x[i] for i in range(self.x.shape[0])]
@@ -253,7 +251,7 @@ class EagerDeletionRecurrentOpTest1(unittest.TestCase):
 
                 f[...] = o
                 dout_dfeed = (y_pos - y_neg) / (delta * 2)
-                g[...] = dout_dfeed[0]
+                g[...] = dout_dfeed
 
         return grad_list
 
