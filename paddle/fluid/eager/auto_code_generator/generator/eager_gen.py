@@ -72,8 +72,6 @@ prim_white_list = [
     "multiply_double_grad",
     "subtract_double_grad",
     "cast_grad",
-    "split_grad",
-    "split_with_num_grad",
 ]
 
 # dict of special api that forward api's output will affect backward api's output

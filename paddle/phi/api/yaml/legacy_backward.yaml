@@ -884,12 +884,14 @@
   forward : split (Tensor x, IntArray num_or_sections, Scalar axis) -> Tensor[](out)
   args : (Tensor[] out_grad, Scalar axis = -1)
   output : Tensor(x_grad)
+  invoke : concat( out_grad, axis)
   composite : split_grad(out_grad, axis, x_grad)
 
 - backward_op : split_with_num_grad
   forward : split_with_num (Tensor x, int num, Scalar axis) -> Tensor[](out)
   args : (Tensor[] out_grad, Scalar axis = -1)
   output : Tensor(x_grad)
+  invoke : concat( out_grad, axis)
   composite : split_grad(out_grad, axis, x_grad)
 
 - backward_op : strided_slice_grad
