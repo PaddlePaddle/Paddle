@@ -951,27 +951,8 @@ class FlashAttnWithGating {
     AllocAndInitSeqQK(seq_batch_size, step, &cu_seq_q, &cu_seq_k);
 
     // 3. Dealing with mask and bias for flash_attn.
-    phi::DenseTensor temp_mask, temp_bias;
-    auto dims_merge_func = [&](const phi::DenseTensor* src_tensor,
-                               phi::DenseTensor* dst_tensor,
-                               const std::string& prefix) {
-      if (src_tensor) {
-        int64_t first_dim = 1;
-        dst_tensor->ShareDataWith(*src_tensor);
-        auto dims_ = src_tensor->dims();
-        for (int i = 0; i < dims_.size() - 3; ++i) {
-          first_dim *= dims_[i];
-        }
-        auto dims_rank = dims_.size();
-        dst_tensor->Resize({first_dim,
-                            dims_[dims_rank - 3],
-                            dims_[dims_rank - 2],
-                            dims_[dims_rank - 1]});
-        VLOG(6) << prefix << ": " << TensorDebugString(dst_tensor);
-      }
-    };
-    dims_merge_func(src_mask, &temp_mask, "temp_mask");
-    dims_merge_func(nonbatched_bias, &temp_bias, "temp_bias");
+    std::vector<int64_t> temp_mask_dim = GetCompressedDim(src_mask);
+    std::vector<int64_t> temp_bias_dim = GetCompressedDim(nonbatched_bias);
 
     // 4. flash_attn parameter setting.
     InitFlashAttnArguments(config);
@@ -984,8 +965,6 @@ class FlashAttnWithGating {
     if (VLOG_IS_ON(6)) {
       VLOG(6) << TensorDebugString(&cu_seq_q, "cu_seq_q");
       VLOG(6) << TensorDebugString(&cu_seq_k, "cu_seq_k");
-      VLOG(6) << TensorDebugString(&temp_bias, "temp_bias");
-      VLOG(6) << TensorDebugString(&temp_mask, "temp_mask");
       VLOG(6) << TensorDebugString(nonbatched_bias, "nonbatched_bias");
       VLOG(6) << TensorDebugString(src_mask, "src_mask");
       VLOG(6) << TensorDebugString(qkv_transpose_out, "qkv_transpose_out");
@@ -1024,10 +1003,10 @@ class FlashAttnWithGating {
         stream,
         fa_seed_,
         fa_offset_,
-        src_mask ? temp_mask.data() : nullptr,
-        nonbatched_bias ? temp_bias.data() : nullptr,
-        src_mask ? temp_mask.dims().Get() : nullptr,
-        nonbatched_bias ? temp_bias.dims().Get() : nullptr);
+        src_mask ? src_mask->data() : nullptr,
+        nonbatched_bias ? nonbatched_bias->data() : nullptr,
+        src_mask ? temp_mask_dim.data() : nullptr,
+        nonbatched_bias ? temp_bias_dim.data() : nullptr);
     if (!succ) {
       PADDLE_THROW(phi::errors::External(phi::dynload::flash_attn_error()));
     }
@@ -1048,7 +1027,7 @@ class FlashAttnWithGating {
         fa_head_size_,
         fa_max_seqlen_q_,
         fa_max_seqlen_k_,
-        fa_dropout_probs_,
+        fa_dropout_prob_,
         fa_softmax_scale_,
         fa_zero_tensors_,
         fa_is_causal_,
@@ -1061,10 +1040,10 @@ class FlashAttnWithGating {
         stream,
         fa_seed_,
         fa_offset_,
-        src_mask ? temp_mask.data() : nullptr,
-        nonbatched_bias ? temp_bias.data() : nullptr,
-        src_mask ? temp_mask.dims().Get() : nullptr,
-        nonbatched_bias ? temp_bias.dims().Get() : nullptr);
+        src_mask ? src_mask->data() : nullptr,
+        nonbatched_bias ? nonbatched_bias->data() : nullptr,
+        src_mask ? temp_mask_dim.data() : nullptr,
+        nonbatched_bias ? temp_bias_dim.data() : nullptr);
     if (!succ) {
       PADDLE_THROW(phi::errors::External(phi::dynload::flash_attn_error()));
     }
@@ -1107,7 +1086,7 @@ class FlashAttnWithGating {
     T* q_grad_ptr = qkv_transpose_out_grad.data<T>();
     T* k_grad_ptr = q_grad_ptr + q_size;
     T* v_grad_ptr = k_grad_ptr + q_size;
-    VLOG(5) << WaitWithDebugInfo(dev_ctx_);
+    WaitWithDebugInfo(dev_ctx_);
 
     // 2. Init with cu_seq_q and cu_seq_k for flash_attn.
     phi::DenseTensor cu_seq_q, cu_seq_k;
@@ -1115,29 +1094,12 @@ class FlashAttnWithGating {
                          static_cast<int>(config->seq_len_m);
     int64_t step = static_cast<int64_t>(config->seq_len_r);
     AllocAndInitSeqQK(seq_batch_size, step, &cu_seq_q, &cu_seq_k);
+    const int32_t* cu_seq_q_ptr = cu_seq_q.data<int32_t>();
+    const int32_t* cu_seq_k_ptr = cu_seq_k.data<int32_t>();
 
     // 3. Dealing with mask and bias for flash_attn.
-    phi::DenseTensor temp_mask, temp_bias;
-    auto dims_merge_func = [&](const phi::DenseTensor* src_tensor,
-                               phi::DenseTensor* dst_tensor,
-                               const std::string& prefix) {
-      if (src_tensor) {
-        int64_t first_dim = 1;
-        dst_tensor->ShareDataWith(*src_tensor);
-        auto dims_ = src_tensor->dims();
-        for (int i = 0; i < dims_.size() - 3; ++i) {
-          first_dim *= dims_[i];
-        }
-        auto dims_rank = dims_.size();
-        dst_tensor->Resize({first_dim,
-                            dims_[dims_rank - 3],
-                            dims_[dims_rank - 2],
-                            dims_[dims_rank - 1]});
-        VLOG(6) << TensorDebugString(dst_tensor, prefix);
-      }
-    };
-    dims_merge_func(src_mask, &temp_mask, "temp_mask");
-    dims_merge_func(nonbatched_bias, &temp_bias, "temp_bias");
+    std::vector<int64_t> temp_mask_dim = GetCompressedDim(src_mask);
+    std::vector<int64_t> temp_bias_dim = GetCompressedDim(nonbatched_bias);
 
     // 4. flash_attn parameter setting.
     InitFlashAttnArguments(config);
@@ -1175,8 +1137,8 @@ class FlashAttnWithGating {
         static_cast<void*>(v_grad_ptr),
         nullptr,  // set out to nullptr to calculate workspace size
         static_cast<const void*>(fmha_out_grad->data()),
-        cu_seq_q.data<int32_t>(),
-        cu_seq_k.data<int32_t>(),
+        cu_seq_q_ptr,
+        cu_seq_k_ptr,
         fa_total_q_,
         fa_total_k_,
         fa_batch_size_,
@@ -1198,10 +1160,10 @@ class FlashAttnWithGating {
         stream,
         fa_seed_,
         fa_offset_,
-        src_mask ? temp_mask.data() : nullptr,
-        nonbatched_bias ? temp_bias.data() : nullptr,
-        src_mask ? temp_mask.dims().Get() : nullptr,
-        nonbatched_bias ? temp_bias.dims().Get() : nullptr);
+        src_mask ? src_mask->data() : nullptr,
+        nonbatched_bias ? nonbatched_bias->data() : nullptr,
+        src_mask ? temp_mask_dim.data() : nullptr,
+        nonbatched_bias ? temp_bias_dim.data() : nullptr);
     if (!succ) {
       PADDLE_THROW(phi::errors::External(phi::dynload::flash_attn_error()));
     }
@@ -1216,8 +1178,8 @@ class FlashAttnWithGating {
         static_cast<void*>(v_grad_ptr),
         static_cast<const void*>(fmha_out->data()),
         static_cast<const void*>(fmha_out_grad->data()),
-        cu_seq_q.data<int32_t>(),
-        cu_seq_k.data<int32_t>(),
+        cu_seq_q_ptr,
+        cu_seq_k_ptr,
         fa_total_q_,
         fa_total_k_,
         fa_batch_size_,
@@ -1239,10 +1201,10 @@ class FlashAttnWithGating {
         stream,
         fa_seed_,
         fa_offset_,
-        src_mask ? temp_mask.data() : nullptr,
-        nonbatched_bias ? temp_bias.data() : nullptr,
-        src_mask ? temp_mask.dims().Get() : nullptr,
-        nonbatched_bias ? temp_bias.dims().Get() : nullptr);
+        src_mask ? src_mask->data() : nullptr,
+        nonbatched_bias ? nonbatched_bias->data() : nullptr,
+        src_mask ? temp_mask_dim.data() : nullptr,
+        nonbatched_bias ? temp_bias_dim.data() : nullptr);
     if (!succ) {
       PADDLE_THROW(phi::errors::External(phi::dynload::flash_attn_error()));
     }
@@ -1251,14 +1213,12 @@ class FlashAttnWithGating {
 
     if (nonbatched_bias) {
       // compare block reduce
-      const auto temp_bias_num = temp_bias.numel();
-      const auto bias_d_num = bias_d.numel();
-      auto dbias_first_dim = bias_d_num / temp_bias_num;
+      auto dbias_first_dim = nonbatched_bias->numel() / bias_d.numel();
       bias_d.Resize({dbias_first_dim,
-                     temp_bias.dims()[0],
-                     temp_bias.dims()[1],
-                     temp_bias.dims()[2],
-                     temp_bias.dims()[3]});
+                     temp_bias_dim[0],
+                     temp_bias_dim[1],
+                     temp_bias_dim[2],
+                     temp_bias_dim[3]});
       phi::funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
           dev_ctx_,
           bias_d,
@@ -1293,6 +1253,23 @@ class FlashAttnWithGating {
         start, step, end, cu_seq_q->data<int32_t>(), cu_seq_k->data<int32_t>());
     VLOG(5) << "AllocAndInit cu_seq_q and cu_seq_k: start=" << start
             << ", step=" << step << ", end=" << end;
+  }
+
+  std::vector<int64_t> GetCompressedDim(const phi::DenseTensor* tensor) {
+    std::vector<int64_t> compressed_dims;
+    if (tensor) {
+      int64_t first_dim = 1;
+      const auto& origin_dims = tensor->dims();
+      auto rank = origin_dims.size();
+      for (int i = 0; i < rank - 3; ++i) {
+        first_dim *= origin_dims[i];
+      }
+      compressed_dims = {first_dim,
+                         origin_dims[rank - 3],
+                         origin_dims[rank - 2],
+                         origin_dims[rank - 1]};
+    }
+    return compressed_dims;
   }
 
   phi::DenseTensor CreateWorkspace(uint64_t workspace_size) {
@@ -1380,7 +1357,7 @@ class FlashAttnWithGating {
   int fa_max_seqlen_k_;
   int fa_num_splits_;
   float fa_softmax_scale_{1.0f};
-  float fa_dropout_prob_(0.0f);
+  float fa_dropout_prob_{0.0f};
   uint64_t fa_seed_{0};
   uint64_t fa_offset_{0};
   bool fa_zero_tensors_{false};
