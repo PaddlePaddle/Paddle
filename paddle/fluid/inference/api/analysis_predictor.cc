@@ -555,10 +555,14 @@ void *AnalysisPredictor::GetExecStream() const {
 #endif
 #if defined(PADDLE_WITH_XPU)
   if (place_.GetType() == phi::AllocationType::XPU) {
-    paddle::platform::DeviceContextPool &pool =
-        paddle::platform::DeviceContextPool::Instance();
-    return reinterpret_cast<const phi::XPUContext *>(pool.Get(place_))
-        ->stream();
+    if (private_context_) {
+      return predictor_stream_;
+    } else {
+      paddle::platform::DeviceContextPool &pool =
+          paddle::platform::DeviceContextPool::Instance();
+      return reinterpret_cast<const phi::XPUContext *>(pool.Get(place_))
+          ->stream();
+    }
   }
 #endif
   // TODO(inference): Support other backends.
@@ -2480,7 +2484,12 @@ AnalysisPredictor::~AnalysisPredictor() {
   if (predictor_stream_ != nullptr) {
     ResourceManager::Instance().DestroyGPUResource(predictor_stream_);
   }
+#elif defined(PADDLE_WITH_XPU)
+  if (predictor_stream_ != nullptr) {
+    ResourceManager::Instance().DestroyXPUResource(predictor_stream_);
+  }
 #endif
+
   if (place_.GetType() != phi::AllocationType::UNDEFINED) {
     memory::Release(place_);
   }

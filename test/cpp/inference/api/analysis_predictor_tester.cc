@@ -17,6 +17,10 @@
 #if defined(PADDLE_WITH_CUDA)
 #include <cuda_runtime.h>
 #endif
+#if defined(PADDLE_WITH_XPU)
+#include "xpu/runtime.h"
+#include "xpu/xdnn.h"
+#endif
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
@@ -650,6 +654,57 @@ TEST(Predictor, Streams) {
     CHECK_EQ(paddle::ResourceManager::Instance().RefCount(stream2), 1);
 
     CHECK_NE(stream, stream2);
+  }
+}
+#endif
+
+#if defined(PADDLE_WITH_XPU)
+TEST(Predictor, XPUStreams) {
+  // external stream
+  {
+    auto context = baidu::xpu::api::create_context();
+    xpu_stream_create(&context->xpu_stream);
+
+    Config config;
+    config.SetModel(FLAGS_dirname);
+    config.EnableXpu();
+    config.SetExecStream(static_cast<void*>(context->xpu_stream));
+    CHECK_EQ(config.external_stream_enabled(), true);
+
+    auto predictor = CreatePredictor(config);
+    auto stream = predictor->GetExecStream();
+    CHECK_EQ(static_cast<void*>(context->xpu_stream), stream);
+    CHECK_NOTNULL(paddle::ResourceManager::Instance().GetXPUResource(stream));
+    CHECK_EQ(paddle::ResourceManager::Instance().RefCount(stream), 1);
+  }
+
+  // 2 predictor on 2 stream
+  {
+    auto context1 = baidu::xpu::api::create_context();
+    xpu_stream_create(&context1->xpu_stream);
+
+    Config config;
+    config.SetModel(FLAGS_dirname);
+    config.EnableXpu();
+    config.SetExecStream(static_cast<void*>(context1->xpu_stream));
+    auto predictor = CreatePredictor(config);
+    auto stream1 = predictor->GetExecStream();
+    CHECK_NOTNULL(paddle::ResourceManager::Instance().GetXPUResource(stream1));
+    CHECK_EQ(paddle::ResourceManager::Instance().RefCount(stream1), 1);
+
+    auto context2 = baidu::xpu::api::create_context();
+    xpu_stream_create(&context2->xpu_stream);
+
+    Config config2;
+    config2.SetModel(FLAGS_dirname);
+    config2.EnableXpu();
+    config2.SetExecStream(static_cast<void*>(context2->xpu_stream));
+    auto predictor2 = CreatePredictor(config2);
+    auto stream2 = predictor2->GetExecStream();
+    CHECK_NOTNULL(paddle::ResourceManager::Instance().GetXPUResource(stream2));
+    CHECK_EQ(paddle::ResourceManager::Instance().RefCount(stream2), 1);
+
+    CHECK_NE(stream1, stream2);
   }
 }
 #endif

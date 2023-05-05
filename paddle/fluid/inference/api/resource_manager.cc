@@ -559,7 +559,7 @@ XPUContextResource::~XPUContextResource() {}
 
 void XPUContextResource::InitXPUResource(void* stream) {
   phi::backends::xpu::XPUDeviceGuard guard(place_.device);
-  if (!stream) {
+  if (stream) {
     owned_stream_ = false;
     stream_ = stream;
   }
@@ -656,6 +656,11 @@ void ResourceManager::Increase(void* stream) {
                     platform::errors::InvalidArgument(
                         "The stream[%p] not found in ref_count.", stream));
   ++ref_count_[stream];
+}
+
+int ResourceManager::RefCount(void* stream) const {
+  if (ref_count_.count(stream) == 0) return 0;
+  return ref_count_.at(stream);
 }
 // Resource Manager End.
 
