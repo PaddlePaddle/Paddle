@@ -112,17 +112,19 @@ void AddmmKernel(const Context& dev_ctx,
   funcs::EigenBroadcast<std::decay_t<decltype(place)>, T, 2>::Eval(
       place, eigen_out, eigen_input, bcast_dims);
 
+  T t_alpha = static_cast<T>(alpha);
+  T t_beta = static_cast<T>(beta);
   blas.GEMM(false,
             false,
             x_dims[0],
             y_dims[1],
             x_dims[1],
-            alpha,
+            t_alpha,
             x.data<T>(),
             x_dims[1],
             y.data<T>(),
             y_dims[1],
-            beta,
+            t_beta,
             out->data<T>(),
             y_dims[1]);
 }
