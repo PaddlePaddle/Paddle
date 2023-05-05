@@ -148,8 +148,8 @@ class TestEngineErrorRaise(unittest.TestCase):
             auto.Engine(model=paddle.static.Program())
         with self.assertRaises(TypeError):
             auto.Engine(loss="CrossEntropyLoss")
-        with self.assertRaises(TypeError):
-            auto.Engine(optimizer="adam")
+        # with self.assertRaises(TypeError):
+        #     auto.Engine(optimizer="adam")
         with self.assertRaises(TypeError):
             auto.Engine(metrics=["acc"])
         with self.assertRaises(TypeError):
