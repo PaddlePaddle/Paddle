@@ -71,6 +71,9 @@ prim_white_list = [
     "add_double_grad",
     "multiply_double_grad",
     "subtract_double_grad",
+    "cast_grad",
+    "split_grad",
+    "split_with_num_grad",
 ]
 
 # dict of special api that forward api's output will affect backward api's output
@@ -2317,7 +2320,6 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
         elif is_composite_grad_api:
             if composite_grad_api_name in prim_white_list:
                 grad_function_call_str = f"""
-
 {indent}bool original_global_grad = egr::Controller::Instance().HasGrad();
 {indent}if(!create_graph){{
 {indent}{indent}egr::Controller::Instance().SetHasGrad(create_graph);

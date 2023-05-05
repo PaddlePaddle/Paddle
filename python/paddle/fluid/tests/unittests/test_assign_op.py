@@ -295,7 +295,6 @@ class TestAssignDoubleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.
-
         eps = 0.005
         dtype = np.float32
 
@@ -307,7 +306,6 @@ class TestAssignDoubleGradCheck(unittest.TestCase):
         gradient_checker.double_grad_check(
             [data], out, x_init=[data_arr], place=place, eps=eps
         )
-
         gradient_checker.double_grad_check_for_dygraph(
             self.assign_wrapper, [data], out, x_init=[data_arr], place=place
         )

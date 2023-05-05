@@ -4,8 +4,8 @@
   forward : assign (Tensor x) -> Tensor(out)
   args : (Tensor out_grad)
   output : Tensor(x_grad)
-  invoke : assign(out_grad)
   composite: assign_grad(out_grad, x_grad)
+  invoke : assign(out_grad)
 
 - backward_op : deformable_conv_grad
   forward : deformable_conv (Tensor x, Tensor offset, Tensor filter, Tensor mask, int[] strides={1, 1}, int[] paddings={0, 0}, int[] dilations={1, 1}, int deformable_groups=1, int groups=1, int im2col_step=64) -> Tensor(out)
