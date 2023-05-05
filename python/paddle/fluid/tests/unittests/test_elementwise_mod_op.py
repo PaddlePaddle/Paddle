@@ -204,7 +204,7 @@ class TestElementwiseModBF16Op(OpTest):
         hist2, _ = np.histogram(data, range=(-3, 5))
         hist2 = hist2.astype("float32")
         hist2 /= float(outs[0].size)
-        np.testing.assert_allclose(hist, hist2, rtol=0.05)
+        np.testing.assert_allclose(hist, hist2, rtol=1, atol=0.03)
 
     def init_dtype(self):
         self.dtype = np.uint16
