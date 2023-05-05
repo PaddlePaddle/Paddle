@@ -18,5 +18,11 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/addmm_grad_kernel_impl.h"
 
-PD_REGISTER_KERNEL(
-    addmm_grad, GPU, ALL_LAYOUT, phi::AddmmGradKernel, float, double) {}
+PD_REGISTER_KERNEL(addmm_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::AddmmGradKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
