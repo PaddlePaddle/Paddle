@@ -1098,10 +1098,13 @@ class TrtConvertPowOp(TrtLayerAutoScanTest):
 
     def sample_program_configs(self):
         def generate_input(shape):
+            if len(shape) == 0:
+                return np.random.random([]).astype(np.float32)
             return np.random.random(shape).astype(np.float32)
 
         for batch in [1, 4]:
             for shape in [
+                [],
                 [32],
                 [batch, 32],
                 [batch, 32, 32],
@@ -1140,8 +1143,11 @@ class TrtConvertPowOp(TrtLayerAutoScanTest):
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
-            # The input.dims[1] must be equal to the weight's length.
-            if self.dims == 1:
+            if self.dims == 0:
+                self.dynamic_shape.min_input_shape = {"input_data": []}
+                self.dynamic_shape.max_input_shape = {"input_data": []}
+                self.dynamic_shape.opt_input_shape = {"input_data": []}
+            elif self.dims == 1:
                 self.dynamic_shape.min_input_shape = {"input_data": [4]}
                 self.dynamic_shape.max_input_shape = {"input_data": [32]}
                 self.dynamic_shape.opt_input_shape = {"input_data": [16]}
@@ -1170,7 +1176,7 @@ class TrtConvertPowOp(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            if self.dims == 1 and not dynamic_shape:
+            if (self.dims == 1 or self.dims == 0) and not dynamic_shape:
                 return 0, 3
             return 1, 2
 

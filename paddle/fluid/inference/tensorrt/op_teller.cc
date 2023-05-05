@@ -1508,9 +1508,10 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
       auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
       const auto x_shape = x_var_desc->GetShape();
-      if (!with_dynamic_shape && x_shape.size() == 1) {
-        VLOG(3) << "Static shape in trt not support x is a 1D "
-                   "tensor in pow op.";
+      if (!with_dynamic_shape && (x_shape.size() == 1 || x_shape.size() == 0)) {
+        VLOG(3) << op_type
+                << " op does not support input's dim is 1 or 0 in tensorrt "
+                   "static shape mode.";
         return false;
       }
       // the same as `elementwise_pow`.
