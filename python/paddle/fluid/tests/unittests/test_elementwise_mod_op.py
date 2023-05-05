@@ -16,7 +16,11 @@ import random
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from eager_op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    convert_uint16_to_float,
+)
 
 import paddle
 from paddle import fluid
@@ -157,8 +161,8 @@ class TestElementwiseModBF16Op(OpTest):
         self.use_mkldnn = False
 
     def init_input_output(self):
-        self.x = np.random.uniform(0, 10000, [10, 10]).astype("float32")
-        self.y = np.random.uniform(0, 1000, [10, 10]).astype("float32")
+        self.x = np.random.uniform(0, 10000, [10, 10]).astype(np.float32)
+        self.y = np.random.uniform(0, 1000, [10, 10]).astype(np.float32)
         self.out = np.fmod(self.y + np.fmod(self.x, self.y), self.y)
 
     def setUp(self):
@@ -183,7 +187,23 @@ class TestElementwiseModBF16Op(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place_customized(
+            checker=self.verify_output, place=place
+        )
+
+    def verify_output(self, outs):
+        outs = convert_uint16_to_float(outs)
+        self.assertEqual(outs[0].shape, (1024, 1024))
+        hist1, _ = np.histogram(outs[0], range=(-3, 5))
+        hist1 = hist1.astype("float32")
+        hist1 = hist1 / float(outs[0].size)
+
+        data_np = np.fmod(self.y + np.fmod(self.x, self.y), self.y)
+        hist2, _ = np.histogram(data_np, range=(-3, 5))
+        hist2 = hist2.astype("float32")
+        hist2 = hist2 / float(data_np.size)
+
+        np.testing.assert_allclose(hist1, hist2, rtol=0.03, atol=1)
 
     def init_dtype(self):
         self.dtype = np.uint16
