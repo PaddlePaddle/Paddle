@@ -2767,7 +2767,6 @@ void PNormInferMeta(const MetaTensor& x,
     if (reduce_dims.size() == 0) {
       reduce_dims.emplace_back(1);
     }
-
     x_dim[axis] = 1;
   }
 
@@ -3761,6 +3760,9 @@ void SqueezeInferMeta(const MetaTensor& x,
   if (!config.is_runtime && axes.FromTensor()) {
     // compile time infershape, set all elements to -1.
     int output_size = x.dims().size() - axes.GetData().size();
+    if (x.dims().size() == 0 && output_size == -1) {
+      output_size = 0;
+    }
     std::vector<int64_t> vec_out_dims(output_size, -1);
     out->set_dims(phi::make_ddim(vec_out_dims));
   } else {
@@ -4002,9 +4004,6 @@ DDim OriginReduceInferDim(const MetaTensor& x,
       out_dim_vector.push_back(x.dims().at(i));
     }
   }
-  if (x_rank > 0 && out_dim_vector.size() == 0) {
-    out_dim_vector.push_back(1);
-  }
 
   DDim out_dim = phi::make_ddim(out_dim_vector);
   return out_dim;
@@ -4021,14 +4020,14 @@ DDim OriginReduceInferDimForIntArrayAxis(const MetaTensor& x,
     if (keep_dim) {
       vec_dim = std::vector<int64_t>(x.dims().size(), 1);
     } else {
-      vec_dim = {1};
+      vec_dim = {};
     }
   } else {
     if (keep_dim) {
       vec_dim = std::vector<int64_t>(x.dims().size(), -1);
     } else {
       auto x_rank = static_cast<size_t>(x.dims().size());
-      if (vec_axis.size() >= x_rank) {
+      if (vec_axis.size() > x_rank) {
         vec_dim = {-1};
       } else {
         vec_dim = std::vector<int64_t>(x.dims().size() - vec_axis.size(), -1);

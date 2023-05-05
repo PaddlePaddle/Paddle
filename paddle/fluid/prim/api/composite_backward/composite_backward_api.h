@@ -110,12 +110,13 @@ void softmax_grad(const Tensor& out,
 }
 
 template <typename T>
-void cast_grad(const Tensor& out_grad, DataType dtype, Tensor* x_grad) {
+void cast_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
-    auto res = cast<T>(out_grad, dtype);
+    auto res = cast<T>(out_grad, x.dtype());
     set_output<T>(res, x_grad);
   }
 }
+
 template <typename T>
 void gather_grad(const Tensor& x,
                  const Tensor& index,
@@ -365,7 +366,7 @@ void sum_grad(const Tensor& x,
     if (!keepdim) {
       auto axis_ = std::vector<int64_t>();
       if (reduce_all) {
-        for (int64_t i = 1; i < x_dim_size; i++) {
+        for (int64_t i = 0; i < x_dim_size; i++) {
           axis_.push_back(i);
         }
       } else {

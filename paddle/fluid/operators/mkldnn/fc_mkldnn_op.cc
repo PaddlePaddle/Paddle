@@ -192,7 +192,9 @@ class FCMKLDNNHandler
     } else {
       auto scale_in_data = ctx.Attr<float>("Scale_in");
       auto scale_weights_data = ctx.Attr<std::vector<float>>("Scale_weights");
-      bool has_activation = !ctx.Attr<std::string>("activation_type").empty();
+      bool has_activation = !ctx.Attr<std::string>("activation_type").empty() ||
+                            (ctx.HasAttr("fuse_activation") &&
+                             !ctx.Attr<std::string>("fuse_activation").empty());
       bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
       bool fuse_residual_conn = ctx.HasAttr("fuse_residual_connection") &&
                                 ctx.Attr<bool>("fuse_residual_connection");
