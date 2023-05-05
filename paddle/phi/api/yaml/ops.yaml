@@ -339,6 +339,16 @@
     data_type : input
   backward: broadcast_tensors_grad
 
+- op : cast
+  args : (Tensor x, DataType dtype)
+  output : Tensor(out)
+  infer_meta :
+    func : CastInferMeta
+  kernel :
+    func : cast
+    data_type : x
+  backward : cast_grad
+
 - op : ceil
   args : (Tensor x)
   output : Tensor(out)

@@ -174,5 +174,37 @@ phi::KernelKey GetUniqueExpectedKernelType(
   }
 }
 
+phi::KernelKey GetCastExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  auto* tensor = ctx.Input<phi::DenseTensor>("X");
+  PADDLE_ENFORCE_EQ(tensor->IsInitialized(),
+                    true,
+                    platform::errors::PreconditionNotMet(
+                        "The tensor of Input(X) is not initialized."));
+  auto& tensor_place = tensor->place();
+  // NOTE: cuda pinned tensor need to copy its data to target place
+  if (platform::is_cuda_pinned_place(tensor_place)) {
+    return phi::KernelKey(framework::TransToProtoVarType(tensor->dtype()),
+                          ctx.device_context().GetPlace());
+  }
+
+  // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
+  int in_dtype = ctx.Attr<int>("in_dtype");
+  int out_dtype = ctx.Attr<int>("out_dtype");
+
+  int dtype_fp32 = static_cast<int>(framework::proto::VarType::FP32);
+  int dtype_bf16 = static_cast<int>(framework::proto::VarType::BF16);
+
+  if ((in_dtype != dtype_fp32 && in_dtype != dtype_bf16) ||
+      (out_dtype != dtype_fp32 && out_dtype != dtype_bf16)) {
+    this->SetDnnFallback(true);
+  }
+  // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
+
+  return phi::KernelKey(framework::TransToProtoVarType(tensor->dtype()),
+                        tensor_place);
+}
+
 }  // namespace operators
 }  // namespace paddle

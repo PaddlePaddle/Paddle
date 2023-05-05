@@ -148,17 +148,6 @@
     func : box_coder
   optional : prior_box_var
 
-- op : cast
-  args : (Tensor x, DataType dtype)
-  output : Tensor
-  infer_meta :
-    func : CastInferMeta
-  kernel :
-    func : cast
-    param : [x, dtype]
-    data_type : x
-  backward : cast_grad
-
 - op : channel_shuffle
   args : (Tensor x, int groups, str data_format="NCHW")
   output : Tensor(out)

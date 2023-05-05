@@ -351,6 +351,16 @@
     out : Out
   drop_empty_grad : [input_grad]
 
+- op : cast(transfer_dtype)
+  backward : cast_grad
+  inputs :
+    x : X
+    dtype : out_dtype
+  outputs :
+    out : Out
+  extra :
+    attrs : [bool use_mkldnn = false]
+
 - op : ceil
   backward : ceil_grad
   inputs :
