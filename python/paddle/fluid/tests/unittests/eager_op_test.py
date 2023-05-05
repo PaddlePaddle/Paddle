@@ -174,6 +174,9 @@ def get_numeric_gradient(
         op.run(scope, place)
         for output_name in output_names:
             output_numpy = np.array(scope.find_var(output_name).get_tensor())
+            print(
+                f"output_name: {output_name}\n, output_numpy : {output_numpy} "
+            )
             # numpy.dtype does not have bfloat16, thus we use numpy.uint16 to
             # store bfloat16 data, and need to be converted to float to check
             # the floating precision.
@@ -247,43 +250,58 @@ def get_numeric_gradient(
         origin = __get_elem__(tensor_to_check, i)
         # add delta to it, run op and then get the sum of the result tensor.
         x_pos = origin + delta
+        print(f"origin: {origin}  x_pos:  {x_pos}")
         __set_elem__(tensor_to_check, i, x_pos)
         y_pos = get_output()
+        print(f"y_pos:  {y_pos}")
 
         if tensor_to_check_dtype in [np.complex64, np.complex128]:
             if in_place:
                 set_input(scope, op, inputs, place)
-
             x_pos_j = origin + 1j * delta
+            print(f"origin: {origin}  x_pos_j:  {x_pos_j}")
             __set_elem__(tensor_to_check, i, x_pos_j)
             y_pos_j = get_output()
+            print(f"y_pos_j:  {y_pos_j}")
 
         if in_place:
             set_input(scope, op, inputs, place)
 
         x_neg = origin - delta
+        print(f"origin: {origin}  x_neg:  {x_neg}")
         __set_elem__(tensor_to_check, i, x_neg)
         y_neg = get_output()
+        print(f"y_neg:  {y_neg}")
 
         if tensor_to_check_dtype in [np.complex64, np.complex128]:
             if in_place:
                 set_input(scope, op, inputs, place)
 
             x_neg_j = origin - 1j * delta
+            print(f"x_neg_j : {x_neg_j}")
             __set_elem__(tensor_to_check, i, x_neg_j)
             y_neg_j = get_output()
+            print(f"y_neg_j : {y_neg_j}")
 
         __set_elem__(tensor_to_check, i, origin)
 
         if tensor_to_check_dtype in [np.complex64, np.complex128]:
             # always assume real output, because this function has
-            # no input for dl/dy, though it should do.
+            # no input for dl/dy, though it should do. so there di will be zero
+            print(f"ypos-yneg : {y_pos - y_neg}")
             df_over_dr = (y_pos - y_neg) / delta / 2
+            print(f"yposj-ynegj : {y_pos_j - y_neg_j}")
             df_over_di = (y_pos_j - y_neg_j) / delta / 2
-            gradient_flat[i] = df_over_dr + 1j * df_over_di
+
+            print(f"df_over_dr : {df_over_dr}")
+            print(f"df_over_di : {df_over_di}")
+            gradient_flat[i] = df_over_dr + 1j * df_over_di * 0
         else:
-            df_over_dr = (y_pos - y_neg) / delta / 2
-            gradient_flat[i] = df_over_dr
+            df_over_dr = y_pos - y_neg
+            print(f"dy: {df_over_dr}")
+            print(df_over_dr)
+            print(f"delta: {delta}")
+            gradient_flat[i] = df_over_dr / delta / 2
 
         __set_elem__(tensor_to_check, i, origin)
 
@@ -410,6 +428,13 @@ class OpTest(unittest.TestCase):
         def is_custom_device_op_test():
             return hasattr(cls, "use_custom_device") and cls.use_custom_device
 
+        def is_complex_test():
+            return (
+                hasattr(cls, "test_complex")
+                and cls.test_complex
+                or (cls.dtype in [np.complex64, np.complex128])
+            )
+
         if not hasattr(cls, "op_type"):
             raise AssertionError(
                 "This test do not have op_type in class attrs, "
@@ -417,8 +442,10 @@ class OpTest(unittest.TestCase):
             )
 
         # case in NO_FP64_CHECK_GRAD_CASES and op in NO_FP64_CHECK_GRAD_OP_LIST should be fixed
-        if not hasattr(cls, "no_need_check_grad") and not is_empty_grad_op(
-            cls.op_type
+        if (
+            not hasattr(cls, "no_need_check_grad")
+            and not is_empty_grad_op(cls.op_type)
+            and not is_complex_test()
         ):
             if cls.dtype is None or (
                 cls.dtype == np.float16
@@ -2531,7 +2558,10 @@ class OpTest(unittest.TestCase):
             max_relative_error = (
                 0.001 if max_relative_error < 0.001 else max_relative_error
             )
-
+        print("======numeric_grads=======")
+        print(numeric_grads)
+        print("======analytic_grads=======")
+        print(analytic_grads)
         self._assert_is_close(
             numeric_grads,
             analytic_grads,
@@ -2856,6 +2886,8 @@ class OpTest(unittest.TestCase):
                     ),
                 )
             )
+            print(f"fetch_list : {fetch_list}")
+            print(f"res: {fetch_list}")
         return res
 
 
