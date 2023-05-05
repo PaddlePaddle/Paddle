@@ -2094,6 +2094,15 @@ class OpTest(unittest.TestCase):
                     return []
             else:
                 return []
+        if self.dtype == np.uint16 or self.dtype == "uint16":
+            if (
+                core.is_compiled_with_cuda()
+                and core.is_bfloat16_supported(core.CUDAPlace(0))
+                and core.op_support_gpu(self.op_type)
+            ):
+                return [core.CUDAPlace(0)]
+            else:
+                return []
         places = [fluid.CPUPlace()]
         cpu_only = self._cpu_only if hasattr(self, '_cpu_only') else False
         if (

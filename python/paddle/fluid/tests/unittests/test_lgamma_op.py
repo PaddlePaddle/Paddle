@@ -20,7 +20,6 @@ from eager_op_test import OpTest, convert_float_to_uint16
 from scipy import special
 
 import paddle
-from paddle.fluid import core
 
 paddle.enable_static()
 
@@ -65,11 +64,6 @@ class TestLgammaFP16Op(TestLgammaOp):
         self.check_grad(['X'], 'Out')
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA or not support bfloat16",
-)
 class TestLgammaBF16Op(OpTest):
     def setUp(self):
         self.op_type = 'lgamma'
@@ -85,11 +79,10 @@ class TestLgammaBF16Op(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(result)}
 
     def test_check_output(self):
-        # After testing, bfloat16 needs to set the parameter place
-        self.check_output_with_place(core.CUDAPlace(0))
+        self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad_with_place(core.CUDAPlace(0), ['X'], 'Out')
+        self.check_grad(['X'], 'Out')
 
 
 class TestLgammaOpApi(unittest.TestCase):
