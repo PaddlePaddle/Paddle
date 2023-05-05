@@ -341,22 +341,8 @@ class PowOpConverter : public OpConverter {
       trt_dims_y.d[i] = 1;
     }
 
-    auto create_weights = [&](float data) -> float* {
-      std::unique_ptr<phi::DenseTensor> tmp_tensor(new phi::DenseTensor());
-      tmp_tensor->Resize({1});
-      auto* tmp_data = tmp_tensor->mutable_data<float>(platform::CPUPlace());
-      tmp_data[0] = data;
-      engine_->SetWeights(output_name + "_pow_op_factor",
-                          std::move(tmp_tensor));
-      return tmp_data;
-    };
-
-    nvinfer1::Weights w;
-    w.count = 1;
-    w.type = nvinfer1::DataType::kFLOAT;
-    w.values = create_weights(factor);
-    auto* Y =
-        TRT_ENGINE_ADD_LAYER(engine_, Constant, trt_dims_y, w)->getOutput(0);
+    std::vector<float> w_data{factor};
+    auto* Y = AddConstantLayer(w_data.data(), trt_dims_y);
 
     auto* layer = TRT_ENGINE_ADD_LAYER(
         engine_, ElementWise, *X, *Y, nvinfer1::ElementWiseOperation::kPOW);
