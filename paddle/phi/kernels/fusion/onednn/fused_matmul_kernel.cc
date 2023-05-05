@@ -142,7 +142,7 @@ class FusedMatmulOneDNNHandler
   float ComputeOutputScale(float matmul_alpha,
                            const float scale_x,
                            const float scale_y,
-                           const float scale_in_eltwise,
+                           const float scale_in_eltwise UNUSED,
                            const float scale_out,
                            const bool force_fp32_output) {
     float f_scale_out = force_fp32_output ? 1.0f : scale_out;

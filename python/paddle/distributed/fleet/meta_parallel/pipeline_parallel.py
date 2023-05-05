@@ -75,6 +75,9 @@ class PipelineParallel(MetaParallelBase):
         ].dp_comm_overlap
         self._dp_comm_buffers = []
 
+        if self._dp_comm_overlap:
+            assert self.use_data_parallel and self.num_stages > 1
+
         p2p.initialize_p2p_groups(
             hcg, self._using_cache, self._enable_partial_send_recv
         )

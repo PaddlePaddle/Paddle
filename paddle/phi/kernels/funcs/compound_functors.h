@@ -247,7 +247,7 @@ struct UnaryCompoundGradDIntermediateFunctor {
     }
   }
 
-  inline HOSTDEVICE T UseIntermediateOut(T x,
+  inline HOSTDEVICE T UseIntermediateOut(T x UNUSED,
                                          T intermediate_out,
                                          T out,
                                          T dout) {

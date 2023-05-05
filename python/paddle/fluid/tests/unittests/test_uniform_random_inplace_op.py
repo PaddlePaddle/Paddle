@@ -15,9 +15,19 @@
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest, convert_uint16_to_float
 
 import paddle
 from paddle import fluid
+from paddle.fluid import core
+
+
+def output_hist(out):
+    hist, _ = np.histogram(out, range=(-1, 1))
+    hist = hist.astype("float32")
+    hist /= float(out.size)
+    prob = 0.1 * np.ones(10)
+    return hist, prob
 
 
 class TestUniformRandomInplaceOpDtype(unittest.TestCase):
@@ -42,6 +52,72 @@ class TestUniformRandomInplaceOpDtype(unittest.TestCase):
             paddle.set_device(place)
             test_fp32()
             test_fp64()
+
+
+class TestUniformRandomInplaceFP16Op(OpTest):
+    def setUp(self):
+        self.op_type = "uniform_random_inplace"
+        self.dtype = np.float16
+        self.shape = (1000, 784)
+        x = np.random.random(self.shape).astype(self.dtype)
+        y = np.random.random(self.shape).astype(self.dtype)
+        self.inputs = {"X": x}
+        self.outputs = {"Out": y}
+        self.init_attrs()
+
+    def init_attrs(self):
+        self.output_hist = output_hist
+
+    def test_check_output(self):
+        self.check_output_customized(self.verify_output)
+
+    def verify_output(self, outs):
+        hist, prob = self.output_hist(np.array(outs[0]))
+        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.001)
+
+    # TODO: Due to the lack of the self.python_api=paddle.uniform_random_inplace setting, the dynamic graph is temporarily turned off, set check_dygraph=False
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_dygraph=False)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support bfloat16",
+)
+class TestUniformRandomInplaceBF16Op(OpTest):
+    def setUp(self):
+        self.op_type = "uniform_random_inplace"
+        self.dtype = np.uint16
+        self.shape = (1000, 784)
+        x = np.random.random(self.shape).astype(self.dtype)
+        y = np.random.random(self.shape).astype(self.dtype)
+        self.inputs = {'X': x}
+        self.outputs = {'Out': y}
+        self.init_attrs()
+        self.place = core.CUDAPlace(0)
+
+    def init_attrs(self):
+        self.output_hist = output_hist
+
+    def test_check_output(self):
+        self.check_output_with_place_customized(self.verify_output, self.place)
+
+    def verify_output(self, outs):
+        result = convert_uint16_to_float(np.array(outs[0]))
+        hist, prob = self.output_hist(result)
+        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.002)
+
+    # TODO: Due to the lack of the self.python_api=paddle.uniform_random_inplace setting, the dynamic graph is temporarily turned off, set check_dygraph=False
+    def test_check_grad(self):
+        grads = [paddle.zeros(self.shape, dtype=self.dtype)]
+        self.check_grad_with_place(
+            self.place,
+            ['X'],
+            'Out',
+            check_dygraph=False,
+            user_defined_grads=grads,
+        )
 
 
 class TestUniformRandomInplaceOpIsInplace(unittest.TestCase):
