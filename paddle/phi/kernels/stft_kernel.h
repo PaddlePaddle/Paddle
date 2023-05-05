@@ -17,7 +17,7 @@ namespace phi {
 template <typename T, typename Context>
 void StftKernel(const Context& ctx,
                 const DenseTensor& x,
-                const DenseTensor& Window,
+                const DenseTensor& window,
                 int n_fft,
                 int hop_length,
                 bool normalized,
