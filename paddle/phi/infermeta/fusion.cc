@@ -158,7 +158,7 @@ void Conv2dXPUInferMeta(const MetaTensor& x,
   }
   // set output and output max dims
   out->set_dims(DDim(out_shape.data(), out_shape.size()));
-  out_max->set_dims(phi::make_ddim({4}));
+  out_max->set_dims(phi::make_ddim({6}));
 }
 
 void EmbeddingWithEltwiseAddXPUInferMeta(
@@ -204,7 +204,7 @@ void FcXPUInferMeta(const MetaTensor& x,
   out->set_dims(DDim(out_shape.data(), out_shape.size()));
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
-  out_max->set_dims(w_max.dims());
+  out_max->set_dims(phi::make_ddim({6}));
   out_max->set_dtype(x.dtype());
   out_max->set_layout(x.layout());
 }
