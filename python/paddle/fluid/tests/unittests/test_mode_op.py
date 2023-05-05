@@ -195,7 +195,10 @@ class TestModeBF16Op(OpTest):
         place = core.CUDAPlace(0)
         paddle.enable_static()
         grad = init_numeric_grads(
-            self.input_data.shape, self.outputs['Indices'], self.axis
+            self.input_data.shape,
+            self.outputs['Indices'],
+            self.axis,
+            np.float32,
         )
         if core.is_bfloat16_supported(place):
             self.check_grad_with_place(
@@ -203,7 +206,7 @@ class TestModeBF16Op(OpTest):
             )
 
 
-class TestModeOpLastdim(OpTest):
+class TestModeOpLastdim(TestModeOp):
     def init_args(self):
         self.axis = -1
 
@@ -217,20 +220,6 @@ class TestModeOpLastdim(OpTest):
         self.attrs = {'axis': self.axis}
         output, indices = cal_mode(self.input_data, axis=self.axis)
         self.outputs = {'Out': output, 'Indices': indices}
-
-    def test_check_output(self):
-        paddle.enable_static()
-        self.check_output()
-
-    def test_check_grad(self):
-        paddle.enable_static()
-        grad = init_numeric_grads(
-            self.input_data.shape,
-            self.outputs['Indices'],
-            self.axis,
-            np.float64,
-        )
-        self.check_grad({'X'}, 'Out', user_defined_grads=[grad])
 
 
 @unittest.skipIf(
