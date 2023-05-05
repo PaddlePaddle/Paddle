@@ -428,7 +428,6 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
     // 2. FMHA
     if (config.CanUseFlashAttn()) {
       auto *softmax_lse = ctx.Output<phi::DenseTensor>("SoftmaxLse");
-
       auto fmha_compute = FlashAttnWithGating<T>(dev_ctx, merge_qkv);
       fmha_compute.ComputeForward(nonbatched_bias,
                                   src_mask,
