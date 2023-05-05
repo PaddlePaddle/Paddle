@@ -24,15 +24,15 @@ limitations under the License. */
 
 namespace phi {
 
-#define DEFINE_BITWISE_KERNEL(op_type)                                    \
-  template <typename T, typename Context>                                 \
-  void Bitwise##op_type##Kernel(const Context& dev_ctx,                   \
-                                const DenseTensor& x,                     \
-                                const DenseTensor& y,                     \
-                                DenseTensor* out) {                       \
-    funcs::Bitwise##op_type##Functor<T> func;                             \
-    funcs::ElementwiseCompute<funcs::Bitwise##op_type##Functor<T>, T, T>( \
-        dev_ctx, x, y, -1, func, out);                                    \
+#define DEFINE_BITWISE_KERNEL(op_type)                                 \
+  template <typename T, typename Context>                              \
+  void Bitwise##op_type##Kernel(const Context& dev_ctx,                \
+                                const DenseTensor& x,                  \
+                                const DenseTensor& y,                  \
+                                DenseTensor* out) {                    \
+    funcs::Bitwise##op_type##Functor<T> func;                          \
+    funcs::ElementwiseCompute<funcs::Bitwise##op_type##Functor<T>, T>( \
+        dev_ctx, x, y, func, out);                                     \
   }
 
 DEFINE_BITWISE_KERNEL(And)

@@ -45,9 +45,10 @@ class SimpleNetForStatic(nn.Layer):
         self.linear1 = nn.Linear(in_size, in_size)
         self.linear2 = nn.Linear(in_size, out_size)
 
-    def forward(self, x):
+    def forward(self, x, hook=False):
         ret1 = self.linear1(x)
-        ret1.register_hook(lambda grad: grad * 2)
+        if hook:
+            ret1.register_hook(lambda grad: grad * 2)
 
         ret2 = self.linear2(ret1)
         out = paddle.mean(ret2, axis=-1)
@@ -512,8 +513,7 @@ class TestTensorRegisterHook(unittest.TestCase):
                 )
 
                 net = SimpleNetForStatic(self.in_size, self.out_size)
-                with self.assertRaises(AssertionError):
-                    out = net(x)
+                out = net(x)
 
         paddle.disable_static()
 
@@ -527,9 +527,17 @@ class TestTensorRegisterHook(unittest.TestCase):
             'float32'
         )
         data_t = paddle.to_tensor(data)
+        data_t2 = paddle.to_tensor(data)
+        data_t.stop_gradient = False
+        data_t2.stop_gradient = False
 
-        with self.assertRaises(AssertionError):
-            out = jit_net(data_t)
+        out1 = jit_net(data_t)
+        out2 = jit_net(data_t2, True)
+        out1.backward()
+        out2.backward()
+        np.testing.assert_array_equal(
+            2 * data_t.grad.numpy(), data_t2.grad.numpy()
+        )
 
 
 HOOK_INIT_VALUE = 10

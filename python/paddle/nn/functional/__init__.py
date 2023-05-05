@@ -134,6 +134,8 @@ from .extension import gather_tree  # noqa: F401
 from .extension import temporal_shift  # noqa: F401
 
 from .sparse_attention import sparse_attention
+from .flash_attention import scaled_dot_product_attention
+from .flash_attention import sdp_kernel
 
 __all__ = [  # noqa
     'celu',

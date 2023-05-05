@@ -23,7 +23,7 @@ template <typename T, typename Context>
 void SqueezeGradKernel(const Context& dev_ctx,
                        const DenseTensor& xshape,
                        const DenseTensor& dout,
-                       const IntArray& axes,
+                       const IntArray& axes UNUSED,
                        DenseTensor* dx) {
   auto xshape_dims = xshape.dims();
   auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
