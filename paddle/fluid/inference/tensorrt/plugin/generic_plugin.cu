@@ -354,6 +354,19 @@ bool GenericPlugin::supportsFormatCombination(
     if (pos == 3)
       return in_out[0].type == in_out[pos].type &&
              in_out[0].format == in_out[pos].format;
+  } else if (op_desc_.Type() == "lookup_table_v2") {
+    if (pos == 0)
+      return (in_out[pos].type == nvinfer1::DataType::kINT32 &&
+              (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR));
+    if (pos == 1)
+      return (in_out[pos].type == nvinfer1::DataType::kFLOAT) ||
+             ((isFp16Supported() &&
+               in_out[pos].type == nvinfer1::DataType::kHALF)) &&
+                 (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
+    // output
+    if (pos == 2)
+      return in_out[1].type == in_out[pos].type &&
+             in_out[1].format == in_out[pos].format;
   } else {
     return (in_out[pos].type == nvinfer1::DataType::kFLOAT ||
             (isFp16Supported() &&
@@ -367,6 +380,9 @@ nvinfer1::DataType GenericPlugin::getOutputDataType(
     int index,
     const nvinfer1::DataType* input_types,
     int nb_inputs) const TRT_NOEXCEPT {
+  if (op_desc_.Type() == "lookup_table_v2") {
+    return input_types[1];
+  }
   return input_types[0];
 }
 
@@ -472,7 +488,7 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
                            cudaStream_t stream) TRT_NOEXCEPT {
   platform::CUDAPlace place(platform::GetCurrentDeviceId());
 
-  // [TODO]now generic plugin do not support INT8 precision
+  // TODO(inference): generic plugin do not support INT8 precision now.
   auto protoType2PhiType =
       [&](int proto_type,
           nvinfer1::DataType nv_dtype) -> std::pair<phi::DataType, int> {

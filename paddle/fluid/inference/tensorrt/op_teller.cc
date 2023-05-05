@@ -2537,13 +2537,13 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
     }
-    if (op_type == "lookup_table") {
-      if (!with_dynamic_shape) {
-        VLOG(3) << "the lookup_table does not support "
-                   "static shape yet";
-        return false;
-      }
-    }
+    // if (op_type == "lookup_table") {
+    //   if (!with_dynamic_shape) {
+    //     VLOG(3) << "the lookup_table does not support "
+    //                "static shape yet";
+    //     return false;
+    //   }
+    // }
 
     if (op_type == "expand_as_v2" || op_type == "expand_v2") {
       if (!with_dynamic_shape) {
@@ -2827,11 +2827,11 @@ struct SimpleOpTypeSetTeller : public Teller {
       "tanh_shrink",
       "logsigmoid",
       "preln_layernorm_shift_partition",
-      "lookup_table",
+      // "lookup_table",
       "trans_layernorm",
       "merge_layernorm",
       "skip_merge_layernorm",
-      "lookup_table_v2",
+      // "lookup_table_v2",
       "expand_v2",
       "expand_as_v2",
       "fuse_eleadd_transpose",
@@ -2987,8 +2987,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "trans_layernorm",
       "merge_layernorm",
       "skip_merge_layernorm",
-      "lookup_table",
-      "lookup_table_v2",
+      // "lookup_table",
+      // "lookup_table_v2",
       "expand_v2",
       "expand_as_v2",
       "fuse_eleadd_transpose",
@@ -3101,6 +3101,7 @@ OpTeller::OpTeller() {
   tellers_.emplace_back(new tensorrt::GenericPluginTeller);
   tellers_.emplace_back(new tensorrt::CustomPluginTeller);
 }
+
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle

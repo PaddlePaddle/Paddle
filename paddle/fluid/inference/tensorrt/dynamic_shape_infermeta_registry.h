@@ -29,6 +29,7 @@ USE_TRT_DYNAMIC_INFER_META_FN(pad3d);
 USE_TRT_DYNAMIC_INFER_META_FN(inverse);
 USE_TRT_DYNAMIC_INFER_META_FN(grid_sampler);
 USE_TRT_DYNAMIC_INFER_META_FN(p_norm);
+USE_TRT_DYNAMIC_INFER_META_FN(lookup_table_v2);
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
