@@ -35,6 +35,8 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
         self.trt_param.workspace_size = 1073741824
 
         def generate_input1(dims, batch, attrs: List[Dict[str, Any]]):
+            if dims == 0:
+                return np.random.random([]).astype(np.float32)
             if dims == 2:
                 return np.random.random([3, 32]).astype(np.float32)
             elif dims == 3:
@@ -43,6 +45,8 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                 return np.random.random([batch, 3, 32, 32]).astype(np.float32)
 
         def generate_int_input(dims, batch, attrs: List[Dict[str, Any]]):
+            if dims == 0:
+                return np.random.random([]).astype(np.int32)
             if dims == 2:
                 return np.random.random([3, 32]).astype(np.int32)
             elif dims == 3:
@@ -50,7 +54,7 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
             else:
                 return np.random.random([batch, 3, 32, 32]).astype(np.int32)
 
-        for dims in [2, 3, 4]:
+        for dims in [0, 2, 3, 4]:
             for batch in [1, 4]:
                 for op_type in [
                     "exp",
