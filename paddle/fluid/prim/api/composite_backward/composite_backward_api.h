@@ -116,6 +116,7 @@ void cast_grad(const Tensor& out_grad, DataType dtype, Tensor* x_grad) {
     set_output<T>(res, x_grad);
   }
 }
+
 template <typename T>
 void gather_grad(const Tensor& x,
                  const Tensor& index,
