@@ -18,10 +18,12 @@ from functools import reduce
 
 import paddle
 from paddle.optimizer import Optimizer
+from paddle.utils import deprecated
 
 from .line_search_dygraph import _strong_wolfe
 
 
+@deprecated(since="2.5.0", update_to="paddle.optimizer.LBFGS", level=1)
 class LBFGS(Optimizer):
     r"""
     The L-BFGS is a quasi-Newton method for solving an unconstrained optimization problem over a differentiable function.
@@ -40,7 +42,7 @@ class LBFGS(Optimizer):
         Jorge Nocedal, Stephen J. Wright, Numerical Optimization, Second Edition, 2006. pp179: Algorithm 7.5 (L-BFGS).
 
     Args:
-        lr (float, optional): learning rate .The default value is 1.
+        learning_rate (float, optional): learning rate .The default value is 1.
         max_iter (int, optional): maximal number of iterations per optimization step.
             The default value is 20.
         max_eval (int, optional): maximal number of function evaluations per optimization
@@ -97,7 +99,7 @@ class LBFGS(Optimizer):
                     return self.w * x
 
             net = Net()
-            opt = LBFGS(lr=1, max_iter=1, max_eval=None, tolerance_grad=1e-07, tolerance_change=1e-09, history_size=100, line_search_fn='strong_wolfe', parameters=net.parameters())
+            opt = LBFGS(learning_rate=1, max_iter=1, max_eval=None, tolerance_grad=1e-07, tolerance_change=1e-09, history_size=100, line_search_fn='strong_wolfe', parameters=net.parameters())
             def train_step(inputs, targets):
                 def closure():
                     outputs = net(inputs)
@@ -118,7 +120,7 @@ class LBFGS(Optimizer):
 
     def __init__(
         self,
-        lr=1.0,
+        learning_rate=1.0,
         max_iter=20,
         max_eval=None,
         tolerance_grad=1e-7,
@@ -133,7 +135,7 @@ class LBFGS(Optimizer):
         if max_eval is None:
             max_eval = max_iter * 5 // 4
 
-        self.lr = lr
+        self.learning_rate = learning_rate
         self.max_iter = max_iter
         self.max_eval = max_eval
         self.tolerance_grad = tolerance_grad
@@ -202,7 +204,7 @@ class LBFGS(Optimizer):
     def _add_grad(self, alpha, direction):
         offset = 0
         for p in self._params:
-            numel = p.numel().item()
+            numel = reduce(lambda x, y: x * y, p.shape)
             p = paddle.assign(
                 p.add(
                     direction[offset : offset + numel].reshape(p.shape) * alpha
@@ -234,11 +236,10 @@ class LBFGS(Optimizer):
         """
 
         with paddle.no_grad():
-
             # Make sure the closure is always called with grad enabled
             closure = paddle.enable_grad()(closure)
 
-            lr = self.lr
+            learning_rate = self.learning_rate
             max_iter = self.max_iter
             max_eval = self.max_eval
             tolerance_grad = self.tolerance_grad
@@ -342,9 +343,11 @@ class LBFGS(Optimizer):
                 ############################################################
                 # reset initial guess for step size
                 if state['n_iter'] == 1:
-                    alpha = min(1.0, 1.0 / flat_grad.abs().sum()) * lr
+                    alpha = (
+                        min(1.0, 1.0 / flat_grad.abs().sum()) * learning_rate
+                    )
                 else:
-                    alpha = lr
+                    alpha = learning_rate
 
                 # directional derivative
                 gtd = flat_grad.dot(d)

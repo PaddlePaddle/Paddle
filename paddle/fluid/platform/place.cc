@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/place.h"
-
+#include "paddle/fluid/platform/flags.h"
 PADDLE_DEFINE_EXPORTED_bool(
     benchmark,
     false,
@@ -45,10 +45,6 @@ bool is_cuda_pinned_place(const Place &p) {
   return p.GetType() == phi::AllocationType::GPUPINNED;
 }
 
-bool is_npu_pinned_place(const Place &p) {
-  return p.GetType() == phi::AllocationType::NPUPINNED;
-}
-
 bool is_custom_place(const Place &p) {
   return p.GetType() == phi::AllocationType::CUSTOM;
 }
@@ -64,8 +60,7 @@ bool places_are_same_class(const Place &p1, const Place &p2) {
 
 bool is_same_place(const Place &p1, const Place &p2) {
   if (places_are_same_class(p1, p2)) {
-    if (is_cpu_place(p1) || is_cuda_pinned_place(p1) ||
-        is_npu_pinned_place(p1)) {
+    if (is_cpu_place(p1) || is_cuda_pinned_place(p1)) {
       return true;
     } else if (is_xpu_place(p1)) {
       return p1 == p2;

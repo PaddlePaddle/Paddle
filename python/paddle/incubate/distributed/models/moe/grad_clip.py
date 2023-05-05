@@ -142,22 +142,18 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
 
         global_norm_var = []
         if len(sum_square_list_fp16) > 0:
-            global_norm_var_fp16 = paddle.concat(sum_square_list_fp16)
-            global_norm_var_fp16 = paddle.sum(global_norm_var_fp16)
+            global_norm_var_fp16 = paddle.add_n(sum_square_list_fp16)
             global_norm_var.append(global_norm_var_fp16.astype(sum_dtype))
         if len(sum_square_list_fp32) > 0:
-            global_norm_var_fp32 = paddle.concat(sum_square_list_fp32)
-            global_norm_var_fp32 = paddle.sum(global_norm_var_fp32)
+            global_norm_var_fp32 = paddle.add_n(sum_square_list_fp32)
             if sum_dtype == 'float32':
                 global_norm_var.append(global_norm_var_fp32)
             else:
                 global_norm_var.append(global_norm_var_fp32.astype(sum_dtype))
         if len(sum_square_list) > 0:
-            global_norm_var_fp64 = paddle.concat(sum_square_list)
-            global_norm_var_fp64 = paddle.sum(global_norm_var_fp64)
+            global_norm_var_fp64 = paddle.add_n(sum_square_list)
             global_norm_var.append(global_norm_var_fp64)
-        global_norm_var = paddle.concat(global_norm_var)
-        global_norm_var = paddle.sum(global_norm_var)
+        global_norm_var = paddle.add_n(global_norm_var)
         return global_norm_var, sum_dtype
 
     @no_grad()
