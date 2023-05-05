@@ -188,7 +188,7 @@ def init_communicator(
         paddle.distributed.ParallelEnv().device_type
         in paddle.device.get_all_custom_device_type()
     ):
-        bkcl_id_var = block.create_var(
+        xccl_id_var = block.create_var(
             name=fluid.unique_name.generate('xccl_id'),
             persistable=True,
             type=fluid.core.VarDesc.VarType.RAW,
@@ -197,7 +197,7 @@ def init_communicator(
         block.append_op(
             type='c_gen_xccl_id',
             inputs={},
-            outputs={'Out': bkcl_id_var},
+            outputs={'Out': xccl_id_var},
             attrs={
                 'rank': rank,
                 'endpoint': current_endpoint,
@@ -207,7 +207,7 @@ def init_communicator(
 
         block.append_op(
             type='c_comm_init',
-            inputs={'X': bkcl_id_var},
+            inputs={'X': xccl_id_var},
             outputs={},
             attrs={
                 'nranks': nranks,
