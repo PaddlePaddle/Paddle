@@ -18,6 +18,7 @@
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/inference/tensorrt/dynamic_shape_infermeta_registry.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/op_utils.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
@@ -519,8 +520,13 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
     }
   };
 
+  nvinfer1::DataType data_type;
   // input
-  auto data_type = input_desc[0].type;
+  if (op_desc_.Type() == "lookup_table_v2") {
+    data_type = input_desc[1].type;
+  } else {
+    data_type = input_desc[0].type;
+  }
   CHECK((data_type == nvinfer1::DataType::kFLOAT) ||
         (data_type == nvinfer1::DataType::kHALF));
 

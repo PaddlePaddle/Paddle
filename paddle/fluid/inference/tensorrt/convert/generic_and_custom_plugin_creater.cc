@@ -183,7 +183,7 @@ class GenericPluginCreater : public OpConverter {
       phi_kernel_signature =
           phi::DefaultKernelSignatureMap::Instance().Get(op_desc.Type());
     }
-    LOG(INFO) << "Signature: " << phi_kernel_signature;
+    VLOG(3) << phi_kernel_signature;
     PADDLE_ENFORCE_EQ(
         phi_kernel_signature.input_names.empty() ||
             phi_kernel_signature.output_names.empty(),
