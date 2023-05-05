@@ -651,7 +651,7 @@ def _to_tensor_static(data, dtype=None, stop_gradient=None):
 
         if not isinstance(data, np.ndarray):
             if np.isscalar(data) and not isinstance(data, str):
-                data = np.array([data])
+                data = np.array(data)
             elif isinstance(data, (list, tuple)):
                 try:
                     '''
