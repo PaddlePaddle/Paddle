@@ -33,7 +33,7 @@ class TensorBase;
  * All kernels must access the interfaces provided by the backend through
  * DeviceContext.
  */
-class PADDLE_API DeviceContext {
+class DeviceContext {
  public:
   /**
    * @brief Default construct.
@@ -205,7 +205,7 @@ class PADDLE_API DeviceContext {
    *
    * @return The type information of the derived class.
    */
-  TypeInfo<DeviceContext> type_info() const { return type_info_; }
+  TypeInfo<DeviceContext> type_info() const;
 
   /**
    * @brief Set the comm context point.

@@ -57,7 +57,7 @@ std::vector<std::string> ParseAttrStr(const std::string& attr) {
   return rlt;
 }
 
-PADDLE_API void AssignTensorImpl(const Tensor& src, Tensor* dst) {
+void AssignTensorImpl(const Tensor& src, Tensor* dst) {
   if (!src.initialized() || !dst->defined()) {
     VLOG(3) << "Custom operator assigns non-initialized tensor, this only "
                "happens when handling inplace optional inputs & outputs.";
@@ -119,6 +119,11 @@ void CustomOpKernelContext::EmplaceBackAttr(paddle::any attr) {
           << " has value of type: " << attrs_[attrs_.size() - 1].type().name();
 }
 
+void CustomOpKernelContext::EmplaceBackAttrs(
+    const std::vector<paddle::any>& attrs) {
+  attrs_ = std::move(attrs);
+}
+
 const Tensor& CustomOpKernelContext::InputAt(size_t idx) const {
   return inputs_.at(idx);
 }
@@ -130,6 +135,10 @@ std::vector<Tensor> CustomOpKernelContext::InputsBetween(size_t start,
     rlt.emplace_back(inputs_.at(i));
   }
   return rlt;
+}
+
+const std::vector<paddle::any>& CustomOpKernelContext::Attrs() const {
+  return attrs_;
 }
 
 Tensor& CustomOpKernelContext::MutableInputAt(size_t idx) {

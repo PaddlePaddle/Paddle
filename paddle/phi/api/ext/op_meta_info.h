@@ -99,11 +99,11 @@ inline std::string Optional(const std::string& t_name) {
 
 std::vector<std::string> ParseAttrStr(const std::string& attr);
 
-PADDLE_API void AssignTensorImpl(const Tensor& src, Tensor* dst);
+void AssignTensorImpl(const Tensor& src, Tensor* dst);
 
 ////////////////////// Kernel Context ////////////////////////
 
-class PADDLE_API CustomOpKernelContext {
+class CustomOpKernelContext {
  public:
   CustomOpKernelContext() = default;
 
@@ -112,9 +112,7 @@ class PADDLE_API CustomOpKernelContext {
   void EmplaceBackOutput(Tensor&& output);
   void EmplaceBackOutputs(const std::vector<Tensor>& outputs);
   void EmplaceBackAttr(paddle::any attr);
-  void EmplaceBackAttrs(const std::vector<paddle::any>& attrs) {
-    attrs_ = std::move(attrs);
-  }
+  void EmplaceBackAttrs(const std::vector<paddle::any>& attrs);
   const std::pair<size_t, size_t>& InputRangeAt(size_t idx) const;
   const std::pair<size_t, size_t>& OutputRangeAt(size_t idx) const;
 
@@ -125,7 +123,7 @@ class PADDLE_API CustomOpKernelContext {
   paddle::optional<Tensor> OptionalInputAt(size_t idx);
   paddle::optional<std::vector<Tensor>> OptionalInputsBetween(size_t start,
                                                               size_t end);
-  const std::vector<paddle::any>& Attrs() const { return attrs_; }
+  const std::vector<paddle::any>& Attrs() const;
   const std::vector<std::pair<size_t, size_t>>& InputRange();
   const std::vector<std::pair<size_t, size_t>>& OutputRange();
   Tensor* MutableOutputAt(size_t idx);
@@ -761,7 +759,7 @@ struct InferDtypeFuncImpl<Return (*)(Args...), impl_fn> {
 
 ////////////////////// Op Meta Info //////////////////////
 
-class PADDLE_API OpMetaInfo {
+class OpMetaInfo {
  public:
   explicit OpMetaInfo(const std::string& op_name) : name_(op_name) {}
 
@@ -825,7 +823,7 @@ class OpMetaInfoHelper {
 
 //////////////// Op Meta Info Map /////////////////
 
-class PADDLE_API OpMetaInfoMap {
+class OpMetaInfoMap {
  public:
   // this function's impl should keep in header file.
   // if move to cc file, meta info can not be added
@@ -849,7 +847,7 @@ class PADDLE_API OpMetaInfoMap {
 
 //////////////// Op Meta Info Builder /////////////////
 
-class PADDLE_API OpMetaInfoBuilder {
+class OpMetaInfoBuilder {
  public:
   explicit OpMetaInfoBuilder(std::string&& name, size_t index);
   OpMetaInfoBuilder& Inputs(std::vector<std::string>&& inputs);
