@@ -689,15 +689,26 @@ class GradNodeRunProgram : public egr::GradNodeBase {
  protected:
   void ConstructXGradTensors(const std::vector<paddle::Tensor> &x,
                              std::vector<paddle::Tensor> *x_grad) {
+    auto x_grad_names =
+        PADDLE_GET_CONST(std::vector<std::string>, attrs_.at("x_grad_names"));
+    PADDLE_ENFORCE_EQ(
+        x.size(),
+        x_grad_names.size(),
+        paddle::platform::errors::InvalidArgument(
+            "The x.size() and x_grad_names.size() should be equal. "
+            "But received x.size() = %d, x_grad_names.size() = %d",
+            x.size(),
+            x_grad_names.size()));
+
     // TODO(dev): Need an elegant way to determine inforamtion of grad_tensor,
     // such as: name, tensor type(DenseTensor or SelectedRows).
-    for (auto &t : x) {
-      if (t.is_dense_tensor()) {
+    for (size_t i = 0; i < x.size(); i++) {
+      if (x[i].is_dense_tensor()) {
         x_grad->emplace_back(std::make_shared<phi::DenseTensor>());
-      } else if (t.is_selected_rows()) {
+      } else if (x[i].is_selected_rows()) {
         x_grad->emplace_back(std::make_shared<phi::SelectedRows>());
       }
-      x_grad->back().set_name(t.name() + "@GRAD");
+      x_grad->back().set_name(x_grad_names[i]);
     }
   }
 

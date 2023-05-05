@@ -72,7 +72,6 @@ class CastCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
   using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
 
   void Apply() override {
-    // get inputs
     paddle::Tensor x = this->GetSingleForwardInput("X");
     paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
 

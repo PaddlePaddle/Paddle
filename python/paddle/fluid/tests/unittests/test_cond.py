@@ -674,7 +674,7 @@ class TestCondBackward(unittest.TestCase):
                     },
                     fetch_list=[loss.name],
                 )
-                numerical_grad[0][j] = (loss_delta[0] - loss_value[0]) / delta
+                numerical_grad[0][j] = (loss_delta - loss_value) / delta
                 feed_img_delta[0][j] = feed_img[0][j]
             np.testing.assert_allclose(
                 img_grad, numerical_grad, rtol=0.05, atol=0.05
