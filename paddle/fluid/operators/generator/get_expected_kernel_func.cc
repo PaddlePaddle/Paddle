@@ -198,7 +198,7 @@ phi::KernelKey GetCastExpectedKernelType(
 
   if ((in_dtype != dtype_fp32 && in_dtype != dtype_bf16) ||
       (out_dtype != dtype_fp32 && out_dtype != dtype_bf16)) {
-    this->SetDnnFallback(true);
+    op_ptr->SetDnnFallback(true);
   }
   // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
 

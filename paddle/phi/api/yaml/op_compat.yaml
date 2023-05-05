@@ -363,15 +363,18 @@
     out : Out
   drop_empty_grad : [input_grad]
 
-- op : cast(transfer_dtype)
+- op : cast (transfer_dtype)
   backward : cast_grad
   inputs :
     x : X
+  attrs :
     dtype : out_dtype
   outputs :
     out : Out
   extra :
     attrs : [bool use_mkldnn = false]
+  get_expected_kernel_type :
+    cast : GetCastExpectedKernelType
 
 - op : ceil
   backward : ceil_grad
