@@ -193,12 +193,14 @@ class TestElementwiseModBF16Op(OpTest):
 
     def verify_output(self, outs):
         outs = convert_uint16_to_float(outs)
-        self.assertEqual(outs[0].shape, (1024, 1024))
+        self.assertEqual(outs[0].shape, (10, 10))
         hist1, _ = np.histogram(outs[0], range=(-3, 5))
         hist1 = hist1.astype("float32")
         hist1 = hist1 / float(outs[0].size)
 
-        data_np = np.fmod(self.y + np.fmod(self.x, self.y), self.y)
+        x = np.random.uniform(0, 10000, [10, 10]).astype(np.float32)
+        y = np.random.uniform(0, 1000, [10, 10]).astype(np.float32)
+        data_np = np.fmod(y + np.fmod(x, y), y)
         hist2, _ = np.histogram(data_np, range=(-3, 5))
         hist2 = hist2.astype("float32")
         hist2 = hist2 / float(data_np.size)
