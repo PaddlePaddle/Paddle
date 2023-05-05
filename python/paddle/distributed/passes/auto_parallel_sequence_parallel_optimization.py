@@ -226,7 +226,7 @@ class SequenceParallelOptimization(PassBase):
         # Replace c_identity with c_allgather.
         # SP has split the sequence dim for layer norm and dropout etc.
         # Here we re-combine the sequence dim for the coming core attn or ffn.
-        suffix = ""
+        suffix = "_forward"
         if recompute:
             suffix = "_recompute"
         elif not forward:
@@ -270,7 +270,7 @@ class SequenceParallelOptimization(PassBase):
         forward=True,
         recompute=False,
     ):
-        suffix = ""
+        suffix = "_forward"
         if recompute:
             suffix = "_recompute"
         elif not forward:
@@ -363,7 +363,7 @@ class SequenceParallelOptimization(PassBase):
         else:
             assert op.type == 'elementwise_add_grad'
 
-        suffix = ""
+        suffix = "_forward"
         if recompute:
             suffix = "_recompute"
         elif not forward:
@@ -458,7 +458,7 @@ class SequenceParallelOptimization(PassBase):
                 next_op.type == 'dropout_grad'
             ), "The sequence parallel pass only support transformer structure with hidden dropout."
 
-        suffix = "" if forward else "_backward"
+        suffix = "_forward" if forward else "_backward"
         prefix = "sp_last_block_" if forward else "sp_first_block_"
 
         all_gather_input_var = block.var(op.output("Out")[0])
@@ -582,7 +582,9 @@ class SequenceParallelOptimization(PassBase):
         for idx in range(len(self._recompute_locations)):
             for new_op_idx in self._extra_op_idx:
                 if new_op_idx < self._recompute_locations[idx][0]:
-                    # each new op idx will insert two new ops
+                    # The inserted op is before the recompute section,
+                    # each new op idx will insert two new ops:
+                    # transpose + split or transpose + allgather.
                     self._recompute_locations[idx][0] += 2
                     self._recompute_locations[idx][1] += 2
                 elif new_op_idx == self._recompute_locations[idx][0] or (
@@ -590,8 +592,10 @@ class SequenceParallelOptimization(PassBase):
                     < new_op_idx
                     <= self._recompute_locations[idx][1]
                 ):
+                    # The inserted op is inside the recompute section,
                     # only need to update the end of the section
                     self._recompute_locations[idx][1] += 2
+
         block = main_prog.block(0)
         ops = list(block.ops)
         for idx, op in enumerate(ops):
