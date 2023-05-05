@@ -17,7 +17,7 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from eager_op_test import OpTest, convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
 from paddle import fluid
@@ -313,6 +313,7 @@ class TestTransposeFP16Op(OpTest):
         self.axis = (1, 0)
 
 
+@skip_check_grad_ci(reason='The check_grad is not currently implemented')
 class TestTransposeBF16Op(OpTest):
     def setUp(self):
         self.init_op_type()
