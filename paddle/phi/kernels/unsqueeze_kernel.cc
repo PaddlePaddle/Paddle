@@ -32,6 +32,9 @@ void UnsqueezeInferKernel(const Context& dev_ctx,
   }
   out->Resize(out_dims);
   dev_ctx.template Alloc<T>(out);
+  if (x.Holder() == out->Holder()) {
+    return;
+  }
   phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
   out->Resize(out_dims);  // copy will reset the dims.
 }
@@ -41,7 +44,7 @@ void UnsqueezeKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const IntArray& axes,
                      DenseTensor* out,
-                     DenseTensor* xshape) {
+                     DenseTensor* xshape UNUSED) {
   UnsqueezeInferKernel<T, Context>(dev_ctx, x, axes, out);
 }
 }  // namespace phi

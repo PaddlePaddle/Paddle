@@ -53,8 +53,8 @@ void ReduceMeanGradKernel(const Context& dev_ctx,
   std::vector<DenseTensor*> outputs = {x_grad};
 
   using MPType = typename kps::details::MPTypeTrait<T>::Type;
-  funcs::BroadcastKernel<phi::ElementwiseType::kUnary, T, T>(
-      dev_ctx, inputs, &outputs, 0, kps::DivideFunctor<T, MPType>(reduce_num));
+  funcs::BroadcastKernel<T>(
+      dev_ctx, inputs, &outputs, kps::DivideFunctor<T, MPType>(reduce_num), 0);
 }
 
 }  // namespace phi

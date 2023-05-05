@@ -17,10 +17,10 @@ import unittest
 
 import numpy as np
 from eager_op_test import OpTest
+from op import Operator
 
 import paddle
 from paddle.fluid import core
-from paddle.fluid.op import Operator
 
 
 def adamgrad_wrapper(
@@ -322,7 +322,9 @@ class TestAdagradMultiPrecision2_0(unittest.TestCase):
         exe.run(startup_program)
 
         if use_amp:
-            optimizer.amp_init(place='gpu', scope=paddle.static.global_scope())
+            optimizer.amp_init(
+                place=paddle.CUDAPlace(0), scope=paddle.static.global_scope()
+            )
             x = np.random.random(size=(2, 2)).astype('float16')
         else:
             x = np.random.random(size=(2, 2)).astype('float32')
@@ -431,7 +433,9 @@ class TestAdagradMultiPrecision1_0(unittest.TestCase):
         exe.run(startup_program)
 
         if use_amp:
-            optimizer.amp_init(place='gpu', scope=paddle.static.global_scope())
+            optimizer.amp_init(
+                place=paddle.CUDAPlace(0), scope=paddle.static.global_scope()
+            )
             x = np.random.random(size=(2, 2)).astype('float16')
         else:
             x = np.random.random(size=(2, 2)).astype('float32')

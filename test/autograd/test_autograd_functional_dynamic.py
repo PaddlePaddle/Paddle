@@ -256,7 +256,10 @@ def jac(grad_fn, f, inputs):
             _vs = vs.copy()
             _vs[i] = _v
             _, grads = grad_fn(f, inputs, _vs)
-            d_outs = paddle.concat([d_out.flatten() for d_out in grads])
+            if isinstance(grads, typing.Sequence):
+                d_outs = paddle.concat([d_out.flatten() for d_out in grads])
+            else:
+                d_outs = grads.flatten()
             JJ_cols.append(d_outs)
     # JJ is the fully unrolled jacobian
     JJ = paddle.stack(JJ_cols)
@@ -636,7 +639,7 @@ class TestHessianBatchFirst(unittest.TestCase):
             np.array(expected),
             (xs_len, xs_len, self.nrow, self.nbatch, self.nrow),
         )
-        expected = [[n for n in row] for row in expected]
+        expected = [list(row) for row in expected]
         expected = utils._np_concat_matrix_sequence(expected)
 
         self.x.stop_gradient = False
@@ -662,7 +665,7 @@ class TestHessianBatchFirst(unittest.TestCase):
             np.array(expected),
             (xs_len, xs_len, self.nrow, self.nbatch, self.nrow),
         )
-        expected = [[n for n in row] for row in expected]
+        expected = [list(row) for row in expected]
         expected = utils._np_concat_matrix_sequence(expected)
         expected = utils._np_transpose_matrix_format(
             expected, utils.MatrixFormat.NBM, utils.MatrixFormat.BNM

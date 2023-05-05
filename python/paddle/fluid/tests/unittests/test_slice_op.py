@@ -172,7 +172,7 @@ class TestSliceOp_starts_ListTensor(OpTest):
         starts_tensor = []
         for index, ele in enumerate(self.starts):
             starts_tensor.append(
-                ("x" + str(index), np.ones((1)).astype('int64') * ele)
+                ("x" + str(index), np.ones(1).astype('int64') * ele)
             )
 
         self.inputs = {'Input': self.input, 'StartsTensorList': starts_tensor}
@@ -212,7 +212,7 @@ class TestSliceOp_decs_dim_starts_ListTensor(OpTest):
         starts_tensor = []
         for index, ele in enumerate(self.starts):
             starts_tensor.append(
-                ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                ("x" + str(index), np.ones(1).astype('int32') * ele)
             )
 
         self.inputs = {'Input': self.input, 'StartsTensorList': starts_tensor}
@@ -379,7 +379,7 @@ class TestSliceOp_starts_OneTensor_ends_ListTensor(OpTest):
         ends_tensor = []
         for index, ele in enumerate(self.ends):
             ends_tensor.append(
-                ("y" + str(index), np.ones((1)).astype('int32') * ele)
+                ("y" + str(index), np.ones(1).astype('int32') * ele)
             )
 
         self.inputs = {
@@ -541,8 +541,8 @@ class TestSliceAPI(unittest.TestCase):
     def test_1(self):
         with paddle_static_guard():
             input = np.random.random([3, 4, 5, 6]).astype("float64")
-            minus_1 = paddle.tensor.fill_constant([1], "int32", -1)
-            minus_3 = paddle.tensor.fill_constant([1], "int64", -3)
+            minus_1 = paddle.tensor.fill_constant([], "int32", -1)
+            minus_3 = paddle.tensor.fill_constant([], "int64", -3)
             starts = paddle.static.data(
                 name='starts', shape=[1, 3], dtype="float32"
             )

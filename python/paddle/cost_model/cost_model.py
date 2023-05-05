@@ -41,7 +41,7 @@ class CostModel:
             loss = paddle.mean(hidden)
             paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
 
-        print("main program is: {}".format(main_program))
+        print(f"main program is: {main_program}")
 
         return startup_program, main_program
 
@@ -58,7 +58,8 @@ class CostModel:
         exe = paddle.static.Executor(place)
 
         exe.run(startup_program)
-        paddle.fluid.profiler.start_profiler("All")
+        p = paddle.profiler.Profiler()
+        p.start()
         exe.run(main_program, feed={"X": x}, fetch_list=[])
 
         cost_model = core.CostModel()

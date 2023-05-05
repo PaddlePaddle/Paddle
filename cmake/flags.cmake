@@ -144,14 +144,10 @@ if(NOT WIN32)
       -Werror
       -Wall
       -Wextra
-      -Wnon-virtual-dtor
-      -Wdelete-non-virtual-dtor
       -Wno-unused-parameter
       -Wno-unused-function
-      -Wno-error=literal-suffix
       -Wno-error=array-bounds #Warning in Eigen, gcc 12.2
       -Wno-error=ignored-attributes # Warnings in Eigen, gcc 6.3
-      -Wno-error=terminate # Warning in PADDLE_ENFORCE
       -Wno-error=int-in-bool-context # Warning in Eigen gcc 7.2
       -Wimplicit-fallthrough=0 # Warning in tinyformat.h
       ${fsanitize})
@@ -165,10 +161,6 @@ if(NOT WIN32)
   if(WITH_CUDNN_FRONTEND)
     # flags from https://github.com/NVIDIA/cudnn-frontend/blob/v0.7.1/CMakeLists.txt
     set(COMMON_FLAGS ${COMMON_FLAGS} -Wno-sign-compare -Wno-non-virtual-dtor)
-  endif()
-
-  if(WITH_ASCEND_CL AND WITH_ARM_BRPC)
-    set(COMMON_FLAGS ${COMMON_FLAGS} -faligned-new)
   endif()
 
   if(NOT APPLE)

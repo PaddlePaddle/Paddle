@@ -29,7 +29,7 @@ def parse_case_name(log_file_name):
     case_id, case_info = log_file_name.split("-")
     direction = case_info.split(".")[0].split("_")[-1]
 
-    return "%s (%s)" % (case_id, direction)
+    return f"{case_id} ({direction})"
 
 
 def parse_log_file(log_file):
@@ -74,7 +74,7 @@ def check_speed_result(case_name, develop_data, pr_data, pr_result):
         gpu_time_diff = (pr_gpu_time - develop_gpu_time) / develop_gpu_time
         gpu_time_diff_str = "{:.5f}".format(gpu_time_diff * 100)
     else:
-        gpu_time_diff = None
+        gpu_time_diff = 0
         gpu_time_diff_str = ""
 
     pr_total_time = pr_data.get("total")
@@ -144,7 +144,7 @@ def update_api_info_file(fail_case_list, api_info_file):
             line_list = line.split(',')
             case = line_list[0].split(':')[0]
             if case in fail_case_dict:
-                line_list[0] = "%s:%s" % (case, fail_case_dict[case])
+                line_list[0] = f"{case}:{fail_case_dict[case]}"
                 api_info_list.append(','.join(line_list))
 
     # update api info file

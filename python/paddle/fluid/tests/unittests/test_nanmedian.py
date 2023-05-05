@@ -189,7 +189,7 @@ class TestNanmedian(unittest.TestCase):
         x_np[2, 3:] = np.nan
         x_np_sorted = np.sort(x_np)
         nan_counts = np.count_nonzero(np.isnan(x_np).astype(np.int32), axis=1)
-        np_grad = np.zeros((shape))
+        np_grad = np.zeros(shape)
         for i in range(shape[0]):
             valid_cnts = shape[1] - nan_counts[i]
             if valid_cnts == 0:

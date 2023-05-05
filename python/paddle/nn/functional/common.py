@@ -437,7 +437,7 @@ def interpolate(
             return paddle.nn.functional.adaptive_avg_pool2d(x, size)
         elif len(x.shape) == 5:
             return paddle.nn.functional.adaptive_avg_pool3d(x, size)
-    helper = LayerHelper('{}_interp_v2'.format(resample_type), **locals())
+    helper = LayerHelper(f'{resample_type}_interp_v2', **locals())
     if len(x.shape) == 3 and data_format not in ['NCW', 'NWC']:
         raise ValueError(
             "Got wrong value for param `data_format`: "
@@ -490,7 +490,7 @@ def interpolate(
         else:
             if in_dynamic_mode():
                 if isinstance(out_shape, Variable):
-                    out_shape = list(out_shape.numpy())
+                    out_shape = list(out_shape.numpy(False))
                 else:
                     out_shape = list(out_shape)
 
@@ -700,7 +700,7 @@ def interpolate(
 
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
-        type='{}_interp_v2'.format(resample_type),
+        type=f'{resample_type}_interp_v2',
         inputs=inputs,
         outputs={"Out": out},
         attrs=attrs,
@@ -942,7 +942,7 @@ def bilinear(x1, x2, weight, bias=None, name=None):
     """
 
     if in_dygraph_mode():
-        return _C_ops.bilinear_tensor_product(x1, x2, weight, bias)
+        return _C_ops.bilinear(x1, x2, weight, bias)
     else:
         check_variable_and_dtype(x1, 'x1', ['float32', 'float64'], 'bilinear')
         check_variable_and_dtype(x2, 'x2', ['float32', 'float64'], 'bilinear')
@@ -1150,7 +1150,7 @@ def dropout(
         else:
             helper = LayerHelper('dropout', **locals())
             check_variable_and_dtype(
-                x, 'x', ['float16', 'float32', 'float64'], 'dropout'
+                x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'dropout'
             )
 
             out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -1191,7 +1191,7 @@ def dropout(
     else:  # sometimes called dropout_nd #TODO: optimize with c++
         if not in_dynamic_mode():
             check_variable_and_dtype(
-                x, 'x', ['float16', 'float32', 'float64'], 'dropout'
+                x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'dropout'
             )
         dtype = x.dtype
         keep_prob = 1 - p
@@ -1407,7 +1407,7 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
 
     if not in_dynamic_mode():
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'alpha_dropout'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'alpha_dropout'
         )
 
     if training:
@@ -1598,6 +1598,7 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
                 'int64',
                 'complex64',
                 'complex128',
+                'uint16',
             ],
             "pad",
         )
@@ -1621,7 +1622,7 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
         3,
         4,
         5,
-    ], "input tesor dimension must be in [3, 4, 5] but got {}".format(x_dim)
+    ], f"input tesor dimension must be in [3, 4, 5] but got {x_dim}"
 
     supported_format_map = {
         3: ["NCL", "NLC"],
@@ -1822,7 +1823,7 @@ def linear(x, weight, bias=None, name=None):
     :math:`[out\_features]` and will be added to the output.
 
     Parameters:
-        x (Tensor): Input tensor. The data type should be float16, float32 or float64.
+        x (Tensor): Input tensor. The data type should be bfloat16, float16, float32 or float64.
         weight (Tensor): Weight tensor. The data type should be float16, float32 or float64.
         bias (Tensor, optional): Bias tensor. The data type should be float16, float32 or float64.
                                  If it is set to None, no bias will be added to the output units.
@@ -1860,9 +1861,14 @@ def linear(x, weight, bias=None, name=None):
         dtype = x.dtype
 
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'linear'
+            x, 'x', ["uint16", 'float16', 'float32', 'float64'], 'linear'
         )
-        check_dtype(dtype, 'dtype', ['float16', 'float32', 'float64'], 'linear')
+        check_dtype(
+            dtype,
+            'dtype',
+            ["uint16", 'float16', 'float32', 'float64'],
+            'linear',
+        )
 
         inputs = {'X': [x], 'Y': [weight]}
         attrs = {'trans_x': False, 'trans_y': False}

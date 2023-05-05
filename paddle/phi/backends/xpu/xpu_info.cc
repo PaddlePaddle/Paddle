@@ -14,6 +14,8 @@ limitations under the License. */
 #include <cstdlib>
 #include <string>
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/backends/xpu/xpu_header.h"
@@ -23,7 +25,7 @@ limitations under the License. */
 // flags.
 #include "paddle/phi/core/flags.h"
 
-PADDLE_DEFINE_EXPORTED_string(
+PHI_DEFINE_EXPORTED_string(
     selected_xpus,
     "",
     "A list of device ids separated by comma, like: 0,1,2,3. "

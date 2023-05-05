@@ -105,6 +105,9 @@ void IRPassManager::CreatePasses(Argument *argument,
               new int(argument->mixed_precision_mode()));
     pass->Set("model_precision", new int(argument->model_precision()));
 
+    // "use_xpu" is used for passes in subgraphs.
+    pass->Set("use_xpu", new bool(argument->use_xpu()));
+
     if (pass_name == "graph_viz_pass") {
       std::string optim_cache_dir = argument->optim_cache_dir();
       std::string dot_file_path;
@@ -196,7 +199,7 @@ void IRPassManager::CreatePasses(Argument *argument,
                   optim_cache_dir));
         }
         pass->Set("model_opt_cache_dir", new std::string(optim_cache_dir));
-      } else if (use_static_engine || enable_int8) {
+      } else if (use_static_engine || enable_int8 || with_dynamic_shape) {
         std::string model_opt_cache_dir =
             argument->Has("model_dir")
                 ? argument->model_dir()
@@ -260,7 +263,6 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("enable_int8", new bool(lite_enable_int8));
       pass->Set("use_gpu", new bool(argument->use_gpu()));
       pass->Set("zero_copy", new bool(argument->lite_zero_copy()));
-      pass->Set("use_xpu", new bool(argument->use_xpu()));
       pass->Set("xpu_l3_workspace_size",
                 new int(argument->xpu_l3_workspace_size()));
       pass->Set("use_opencl", new bool(argument->use_opencl()));
@@ -306,6 +308,14 @@ void IRPassManager::CreatePasses(Argument *argument,
       }
       bool use_fc_padding = !fc_mkldnn_pass && argument->use_fc_padding();
       pass->Set("use_fc_padding", new bool(use_fc_padding));
+    } else if (pass_name == "fused_multi_transformer_xpu_quant_pass") {
+      auto op_types = argument->xpu_quant_post_dynamic_op_types();
+      if (std::count(op_types.begin(),
+                     op_types.end(),
+                     "fused_multi_transformer") > 0) {
+        pass->Set("quant_weight_bits",
+                  new int(argument->xpu_quant_post_dynamic_weight_bits()));
+      }
     }
     pre_pass = pass_name;
 

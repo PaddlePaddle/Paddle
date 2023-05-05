@@ -26,10 +26,7 @@ from paddle.incubate.autograd.utils import as_tensors
 # Finite Difference Utils
 ##########################################################
 def _product(t):
-    if isinstance(t, int):
-        return t
-    else:
-        return np.product(t)
+    return int(np.product(t))
 
 
 def _get_item(t, idx):
@@ -131,7 +128,7 @@ def concat_to_matrix(xs, is_batched=False):
     """Concats a tuple of tuple of Jacobian/Hessian matrix into one matrix"""
     rows = []
     for i in range(len(xs)):
-        rows.append(np.concatenate([x for x in xs[i]], -1))
+        rows.append(np.concatenate(list(xs[i]), -1))
     return np.concatenate(rows, 1) if is_batched else np.concatenate(rows, 0)
 
 

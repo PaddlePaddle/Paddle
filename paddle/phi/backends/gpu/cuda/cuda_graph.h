@@ -26,6 +26,8 @@
 #include "cuda.h"          // NOLINT
 #include "cuda_runtime.h"  // NOLINT
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/memory_utils.h"

@@ -178,7 +178,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
                     fetch_list=[scaled_loss, avg_cost],
                 )
                 print(
-                    'PassID {0:1}, BatchID {1:04}, train loss {2:2.4}, scaled train closs {3:2.4}'.format(
+                    'PassID {:1}, BatchID {:04}, train loss {:2.4}, scaled train closs {:2.4}'.format(
                         pass_id,
                         batch_id + 1,
                         float(loss),
@@ -204,7 +204,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
                     avg_loss_value = numpy.array(avg_loss_list).mean()
 
                     print(
-                        'PassID {0:1}, BatchID {1:04}, test loss {2:2.2}, acc {3:2.2}'.format(
+                        'PassID {:1}, BatchID {:04}, test loss {:2.2}, acc {:2.2}'.format(
                             pass_id,
                             batch_id + 1,
                             float(avg_loss_value),
@@ -314,7 +314,10 @@ class TestImageClassification(unittest.TestCase):
         # infer(use_cuda, save_dirname)
 
     def test_amp_lists(self):
-        white_list = copy.copy(paddle.static.amp.fp16_lists.white_list)
+        white_list = (
+            copy.copy(paddle.static.amp.fp16_lists.white_list)
+            | paddle.static.amp.fp16_lists._only_supported_fp16_list
+        )
         black_list = copy.copy(paddle.static.amp.fp16_lists.black_list)
         gray_list = copy.copy(paddle.static.amp.fp16_lists.gray_list)
 
@@ -324,7 +327,10 @@ class TestImageClassification(unittest.TestCase):
         self.assertEqual(amp_lists.gray_list, gray_list)
 
     def test_amp_lists_1(self):
-        white_list = copy.copy(paddle.static.amp.fp16_lists.white_list)
+        white_list = (
+            copy.copy(paddle.static.amp.fp16_lists.white_list)
+            | paddle.static.amp.fp16_lists._only_supported_fp16_list
+        )
         black_list = copy.copy(paddle.static.amp.fp16_lists.black_list)
         gray_list = copy.copy(paddle.static.amp.fp16_lists.gray_list)
 
@@ -338,7 +344,10 @@ class TestImageClassification(unittest.TestCase):
         self.assertEqual(amp_lists.gray_list, gray_list)
 
     def test_amp_lists_2(self):
-        white_list = copy.copy(paddle.static.amp.fp16_lists.white_list)
+        white_list = (
+            copy.copy(paddle.static.amp.fp16_lists.white_list)
+            | paddle.static.amp.fp16_lists._only_supported_fp16_list
+        )
         black_list = copy.copy(paddle.static.amp.fp16_lists.black_list)
         gray_list = copy.copy(paddle.static.amp.fp16_lists.gray_list)
 
@@ -352,7 +361,10 @@ class TestImageClassification(unittest.TestCase):
         self.assertEqual(amp_lists.gray_list, gray_list)
 
     def test_amp_lists_3(self):
-        white_list = copy.copy(paddle.static.amp.fp16_lists.white_list)
+        white_list = (
+            copy.copy(paddle.static.amp.fp16_lists.white_list)
+            | paddle.static.amp.fp16_lists._only_supported_fp16_list
+        )
         black_list = copy.copy(paddle.static.amp.fp16_lists.black_list)
         gray_list = copy.copy(paddle.static.amp.fp16_lists.gray_list)
 
@@ -365,7 +377,10 @@ class TestImageClassification(unittest.TestCase):
         self.assertEqual(amp_lists.gray_list, gray_list)
 
     def test_amp_lists_4(self):
-        white_list = copy.copy(paddle.static.amp.fp16_lists.white_list)
+        white_list = (
+            copy.copy(paddle.static.amp.fp16_lists.white_list)
+            | paddle.static.amp.fp16_lists._only_supported_fp16_list
+        )
         black_list = copy.copy(paddle.static.amp.fp16_lists.black_list)
         gray_list = copy.copy(paddle.static.amp.fp16_lists.gray_list)
 
@@ -381,7 +396,10 @@ class TestImageClassification(unittest.TestCase):
         self.assertEqual(amp_lists.gray_list, gray_list)
 
     def test_amp_lists_5(self):
-        white_list = copy.copy(paddle.static.amp.fp16_lists.white_list)
+        white_list = (
+            copy.copy(paddle.static.amp.fp16_lists.white_list)
+            | paddle.static.amp.fp16_lists._only_supported_fp16_list
+        )
         black_list = copy.copy(paddle.static.amp.fp16_lists.black_list)
         gray_list = copy.copy(paddle.static.amp.fp16_lists.gray_list)
 
@@ -397,7 +415,10 @@ class TestImageClassification(unittest.TestCase):
         self.assertEqual(amp_lists.gray_list, gray_list)
 
     def test_amp_lists_6(self):
-        white_list = copy.copy(paddle.static.amp.fp16_lists.white_list)
+        white_list = (
+            copy.copy(paddle.static.amp.fp16_lists.white_list)
+            | paddle.static.amp.fp16_lists._only_supported_fp16_list
+        )
         black_list = copy.copy(paddle.static.amp.fp16_lists.black_list)
         gray_list = copy.copy(paddle.static.amp.fp16_lists.gray_list)
 

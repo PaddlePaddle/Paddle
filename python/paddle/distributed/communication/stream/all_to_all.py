@@ -78,7 +78,12 @@ def _all_to_all_in_static_mode(
     if isinstance(in_tensor_or_tensor_list, list):
         if len(in_tensor_or_tensor_list) == 0:
             raise RuntimeError("The input tensor_list should not be empty.")
-        in_tensor = paddle.concat(in_tensor_or_tensor_list, axis=0)
+        # 0D use stack/unstack while others use concat/split
+        if len(in_tensor_or_tensor_list[0].shape) == 0:
+            in_tensor = paddle.stack(in_tensor_or_tensor_list, axis=0)
+        else:
+            in_tensor = paddle.concat(in_tensor_or_tensor_list, axis=0)
+
     out_tensor = out_tensor_or_tensor_list
     if isinstance(out_tensor_or_tensor_list, list):
         if len(out_tensor_or_tensor_list) != 0:
@@ -110,7 +115,13 @@ def _all_to_all_in_static_mode(
     if isinstance(out_tensor_or_tensor_list, list):
         if not sync_op:
             dist.wait(out_tensor, use_calc_stream=False)
-        out_tensor_or_tensor_list.extend(paddle.split(out_tensor, nranks, 0))
+        # 0D use stack/unstack while others use concat/split
+        if len(in_tensor_or_tensor_list[0].shape) == 0:
+            out_tensor_or_tensor_list.extend(paddle.unstack(out_tensor, 0))
+        else:
+            out_tensor_or_tensor_list.extend(
+                paddle.split(out_tensor, nranks, 0)
+            )
 
     return None
 
@@ -220,7 +231,7 @@ def _alltoall_single_in_dygraph(
     sync_op,
     use_calc_stream,
 ):
-    world_size = dist.get_world_size()
+    world_size = dist.get_world_size(group)
     if out_split_sizes is None:
         out_split_sizes = [
             out_tensor.shape[0] // world_size for _ in range(world_size)

@@ -40,6 +40,10 @@ class Container:
         self._shell = False
 
     @property
+    def env(self):
+        return self._env
+
+    @property
     def entrypoint(self):
         return self._entrypoint
 
@@ -90,7 +94,7 @@ class Container:
         for k, v in self._env.items():
             assert isinstance(k, str) and isinstance(
                 v, str
-            ), 'env {}:{} must be str'.format(k, v)
+            ), f'env {k}:{v} must be str'
 
     def _get_fd(self, pth):
         if not pth:

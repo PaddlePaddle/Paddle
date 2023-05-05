@@ -31,8 +31,13 @@ class CAllGatherOp : public framework::OperatorWithKernel {
                       platform::errors::InvalidArgument(
                           "The value of nranks should be >=2."));
     framework::DDim dim = ctx->GetInputDim("X");
-    dim[0] = dim[0] * nranks;
-    if (dim[0] < 0) dim[0] = -1;
+    // 0D use stack/unstack while others use concat/split
+    if (dim.size() == 0) {
+      dim = phi::make_ddim({nranks});
+    } else {
+      dim[0] = dim[0] * nranks;
+      if (dim[0] < 0) dim[0] = -1;
+    }
     ctx->SetOutputDim("Out", dim);
   }
 };
@@ -44,10 +49,6 @@ class CAllGatherOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "(Tensor) the allgather result");
     AddAttr<int>("ring_id", "(int default 0) communication ring id.")
         .SetDefault(0);
-#if defined(PADDLE_WITH_ASCEND_CL)
-    AddAttr<std::string>("tag", "(string default tag) tag for all gather.")
-        .SetDefault("tag");
-#endif
     AddAttr<bool>(
         "use_calc_stream",
         "(bool default false) eject CUDA operations to calculation stream.")
@@ -73,12 +74,15 @@ REGISTER_OP_WITHOUT_GRADIENT(c_allgather,
                              ops::CAllGatherOp,
                              ops::CAllGatherOpMaker);
 
-REGISTER_OP_CPU_KERNEL(c_allgather,
-                       ops::CAllGatherOpCPUKernel<float>,
-                       ops::CAllGatherOpCPUKernel<double>,
-                       ops::CAllGatherOpCPUKernel<int>,
-                       ops::CAllGatherOpCPUKernel<int64_t>,
-                       ops::CAllGatherOpCPUKernel<uint8_t>,
-                       ops::CAllGatherOpCPUKernel<int8_t>,
-                       ops::CAllGatherOpCPUKernel<bool>,
-                       ops::CAllGatherOpCPUKernel<plat::float16>);
+PD_REGISTER_STRUCT_KERNEL(c_allgather,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::CAllGatherOpCPUKernel,
+                          float,
+                          double,
+                          int,
+                          int8_t,
+                          int64_t,
+                          uint8_t,
+                          bool,
+                          plat::float16) {}

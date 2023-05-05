@@ -232,7 +232,7 @@ def build_global_view(nop_labels, rhs, n_bcast_dims):
 
     g_labels_sum = ''.join(labels)
     g_labels = g_labels_out + g_labels_sum
-    g_view = list(map(lambda i: build_view(i, g_labels), nop_labels))
+    g_view = [build_view(i, g_labels) for i in nop_labels]
     g_nout = len(g_labels_out)
     g_count = count
 
@@ -741,7 +741,7 @@ def parse_fake_shape(equation, operands, labels):
     list of shape
 
     """
-    origin_labels = map(lambda x: x.strip(), equation.split(','))
+    origin_labels = (x.strip() for x in equation.split(','))
     shaped = collections.namedtuple('shaped', ['shape'])
 
     def fake_shape(ori_label, label, op):
@@ -966,8 +966,8 @@ def einsum(equation, *operands):
 
             # dot
             print(paddle.einsum('i,i->', x, x))
-            # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #   [1.45936954])
+            # Tensor(shape=[], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #   1.45936954)
 
             # outer
             print(paddle.einsum("i,j->ij", x, y))
@@ -1047,7 +1047,7 @@ def einsum(equation, *operands):
     # To handle broadcasting, we should first know how many dimensions are there
     # We need to use that number to generate output labels
     # e.g. 1 for ['ij', 'i.', '.k']
-    n_bcast_dims = max(map(lambda s: s.count('.'), nop_labels))
+    n_bcast_dims = max(s.count('.') for s in nop_labels)
 
     # Build the data structures for planning. It's helpful to think of all the operands
     # broadcasting together from a global view. In this view, dimensions from multiple

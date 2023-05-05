@@ -44,6 +44,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/timer.h"
 #include "paddle/phi/backends/dynload/port.h"
+#include "paddle/phi/core/macros.h"
 
 namespace paddle {
 namespace framework {
@@ -179,14 +180,14 @@ class DeviceWorker {
   virtual void BindingDataFeedMemory() = 0;
   virtual void SetRootScope(Scope* root_scope);
   virtual void SetDataFeed(DataFeed* data_feed);
-  virtual void SetWorkerNum(int num) {}
-  virtual void CacheProgram(const ProgramDesc& main_program) {}
+  virtual void SetWorkerNum(int num UNUSED) {}
+  virtual void CacheProgram(const ProgramDesc& main_program UNUSED) {}
   virtual void ProduceTasks() {}
   virtual void GetXpuOpIndex() {}
-  virtual void Schedule(int taskid) {}
+  virtual void Schedule(int taskid UNUSED) {}
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  virtual void SetStream(const gpuStream_t stream) {}
-  virtual void SetEvent(const gpuEvent_t event) {}
+  virtual void SetStream(const gpuStream_t stream UNUSED) {}
+  virtual void SetEvent(const gpuEvent_t event UNUSED) {}
 #endif
   virtual void SetNeedDumpField(bool need_dump_field) {
     need_dump_field_ = need_dump_field;
@@ -256,7 +257,7 @@ class CPUWorkerBase : public DeviceWorker {
   virtual void TrainFiles() = 0;
   virtual void TrainFilesWithProfiler() {}
   virtual void PrintFetchVars() {}
-  virtual void CreateDeviceResource(const ProgramDesc& main_prog) {}
+  virtual void CreateDeviceResource(const ProgramDesc& main_prog UNUSED) {}
 
  protected:
   int thread_id_;
@@ -550,7 +551,7 @@ class HeterCpuWorker : public HogwildWorker {
 class PSGPUWorker : public HogwildWorker {
  public:
   PSGPUWorker() {}
-  virtual ~PSGPUWorker() {}
+  virtual ~PSGPUWorker();
   virtual void Initialize(const TrainerDesc& desc);
   virtual void TrainFiles();
   virtual void TrainFilesWithProfiler();
@@ -566,11 +567,26 @@ class PSGPUWorker : public HogwildWorker {
 #endif
   void ResetStat();
 
+  // async infershape
+  virtual void CreateDeviceResource(const ProgramDesc& main_prog);
+  virtual void BindingDataFeedMemory();
+
  protected:
   void PushGradients();
   void CopySparseTable();
   void CopyDenseTable();
   void CopyDenseVars();
+
+  struct InferShapeCheckData {
+    std::vector<std::vector<DDim>> pre_dims;
+    std::vector<std::vector<LoD>> pre_lods;
+    std::vector<std::vector<DDim>> after_dims;
+    std::vector<std::vector<LoD>> after_lods;
+  };
+
+  int OpRunAndShapeCheck(OperatorBase& op,  // NOLINT
+                         const Scope& scope,
+                         const platform::Place& place);
 
  private:
   int mpi_rank_;
@@ -634,11 +650,32 @@ class PSGPUWorker : public HogwildWorker {
   double gpu_2_cpu_time_;
   double cpu_2_gpu_time_;
   uint64_t total_inst_;
+
+  // async infershape
+  int task_threads_num_{6};
+  int scope_num_{task_threads_num_ + 1};
+  std::atomic<int> thread_count_{0};
+  std::atomic<bool> stop_token_{false};
+  std::atomic<bool> pack_is_end_{false};
+  std::vector<std::thread> task_threads_;
+  std::vector<Scope*> thread_scope_vec_;
+  std::map<Scope*, std::vector<Variable*>> need_reuse_var_vec_;
+  std::vector<Variable*> need_reuse_var_;
+
+  struct TaskData {
+    int ins_num;
+    Scope* scope;
+    MiniBatchGpuPack* pack;
+  };
+  paddle::framework::BlockingQueue<TaskData> free_task_queue_;
+  paddle::framework::BlockingQueue<TaskData> using_task_queue_;
+
+  static std::atomic<int> shape_check_count_;
+  static std::atomic<bool> shape_check_flag_;
 };
 #endif
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_ASCEND_CL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 class SectionWorker : public DeviceWorker {
  public:
   SectionWorker() {}
@@ -648,7 +685,7 @@ class SectionWorker : public DeviceWorker {
   void PrepareUnusedVar();
 
   void BindingDataFeedMemory() override {}
-  void CreateDeviceResource(const ProgramDesc& main_prog) override{};
+  void CreateDeviceResource(const ProgramDesc& main_prog UNUSED) override{};
 
   void TrainFiles() override;
   void TrainFilesWithProfiler() override{};
@@ -657,7 +694,7 @@ class SectionWorker : public DeviceWorker {
 
   const platform::Place& place() const { return place_; }
 
-  void SetDeviceIndex(int tid) override {}
+  void SetDeviceIndex(int tid UNUSED) override {}
   void SetThreadIndex(int thread_id) { thread_id_ = thread_id; }
   void SetMicrobatchNum(int num) { num_microbatches_ = num; }
   void SetPipelineStageNum(int num) { num_pipeline_stages_ = num; }
@@ -719,7 +756,7 @@ class HeterSectionWorker : public DeviceWorker {
   ~HeterSectionWorker() override {}
 
   void Initialize(const TrainerDesc& desc) override;
-  void CreateDeviceResource(const ProgramDesc& main_prog) override{};
+  void CreateDeviceResource(const ProgramDesc& main_prog UNUSED) override{};
 
   void TrainFiles() override;
   void TrainFilesWithProfiler() override;

@@ -36,7 +36,7 @@ struct DequantizeFunctor {
                   phi::DenseTensor* out);
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class DequantizeMaxAbsKernel : public framework::OpKernel<T> {
  public:
   virtual void Compute(const framework::ExecutionContext& ctx) const {

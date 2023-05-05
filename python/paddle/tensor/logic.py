@@ -18,13 +18,9 @@ import paddle
 
 from ..common_ops_import import Variable
 from ..fluid.data_feeder import check_type, check_variable_and_dtype
-from ..fluid.framework import global_var
 from .layer_function_generator import templatedoc
 
-if global_var._in_eager_mode_:
-    Tensor = paddle.fluid.framework.core.eager.Tensor
-else:
-    from ..framework import VarBase as Tensor
+Tensor = paddle.fluid.framework.core.eager.Tensor
 
 from paddle import _C_ops
 from paddle.tensor.creation import full
@@ -54,6 +50,7 @@ def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
                 "float16",
                 "float32",
                 "float64",
+                "uint16",
             ],
             op_name,
         )
@@ -70,6 +67,7 @@ def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
                     "float16",
                     "float32",
                     "float64",
+                    "uint16",
                 ],
                 op_name,
             )
@@ -230,7 +228,6 @@ def logical_xor(x, y, out=None, name=None):
     )
 
 
-@templatedoc()
 def logical_not(x, out=None, name=None):
     """
 
@@ -252,7 +249,7 @@ def logical_not(x, out=None, name=None):
         name(str|None): The default value is None. Normally there is no need for users to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: ${out_comment}
+        N-D Tensor. A location into which the result is stored. It's dimension equals with ``x``.
 
     Examples:
         .. code-block:: python

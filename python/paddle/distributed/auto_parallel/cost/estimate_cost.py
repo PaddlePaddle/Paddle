@@ -103,7 +103,7 @@ class CostEstimator:
     def _check_mode(self, mode):
         if mode not in ["modeling", "profiling"]:
             raise ValueError(
-                "Just support modeling and profiling, but got {}".format(mode)
+                f"Just support modeling and profiling, but got {mode}"
             )
 
     def _is_special_var_name(self, var_name):
@@ -252,7 +252,7 @@ class CostEstimator:
 
     def _calculate_bytes(self, sizes, dtype):
         if sizes:
-            total_count = reduce(lambda x, y: x * y, sizes)
+            total_count = reduce(lambda x, y: x * y, sizes, 1)
         else:
             total_count = 0
 
@@ -606,8 +606,8 @@ def get_cost_from_engine(engine, mode):
     )
 
     serial_startup_prog = (
-        engine._serial_startup_progs[mode].clone()
-        if mode in engine._serial_startup_progs
+        engine._fwd_dist_contexts[mode]._original_serial_main_program.clone()
+        if mode in engine._fwd_dist_contexts
         else engine._orig_startup_prog.clone()
     )
     losses = (

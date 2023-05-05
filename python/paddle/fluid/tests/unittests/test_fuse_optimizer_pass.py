@@ -70,10 +70,12 @@ class TestFuseOptimizationOps(TestParallelExecutorBase):
             optimizer=optimizer,
         )
 
-        for loss in zip(not_fuse_op_first_loss, fuse_op_first_loss):
-            self.assertAlmostEqual(loss[0], loss[1], delta=1e-6)
-        for loss in zip(not_fuse_op_last_loss, fuse_op_last_loss):
-            self.assertAlmostEqual(loss[0], loss[1], delta=1e-6)
+        self.assertAlmostEqual(
+            not_fuse_op_first_loss, fuse_op_first_loss, delta=1e-6
+        )
+        self.assertAlmostEqual(
+            not_fuse_op_last_loss, fuse_op_last_loss, delta=1e-6
+        )
 
     def _decorate_compare_fused_optimizer_ops(
         self, model, use_device, optimizer
