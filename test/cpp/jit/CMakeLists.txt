@@ -26,7 +26,7 @@ if(WITH_TESTING AND NOT WIN32)
 
   cc_test(
     layer_test_new
-    SRCS layer_test_new.cc
+    SRCS layer_test.cc
     DEPS ${JIT_DEPS})
   # add_dependencies(layer_test_new jit_download_program)
   # set_tests_properties(layer_test_new PROPERTIES ENVIRONMENT
