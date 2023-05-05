@@ -43,7 +43,7 @@ inline std::vector<paddle::Tensor> AmpAutoCasts(
     const std::string& inputs_name,
     const std::vector<paddle::Tensor>& inputs,
     const phi::DataType& dst_dtype,
-    std::string op_name) {
+    std::string op_name UNUSED) {
   VLOG(6) << "AMP AmpAutoCasts:"
           << " inputs(" << inputs_name << ") dst_dtype("
           << phi::DataTypeToString(dst_dtype) << ").";
