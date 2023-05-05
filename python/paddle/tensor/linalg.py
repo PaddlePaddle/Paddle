@@ -675,8 +675,8 @@ def dist(x, y, p=2, name=None):
         ||z||_{p}=(\sum_{i=1}^{m}|z_i|^p)^{\\frac{1}{p}}
 
     Args:
-        x (Tensor): 1-D to 6-D Tensor, its data type is float16, float32 or float64.
-        y (Tensor): 1-D to 6-D Tensor, its data type is float16, float32 or float64.
+        x (Tensor): 1-D to 6-D Tensor, its data type is float32 or float64.
+        y (Tensor): 1-D to 6-D Tensor, its data type is float32 or float64.
         p (float, optional): The norm to be computed, its data type is float32 or float64. Default: 2.
         name (str, optional): The default value is `None`. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
@@ -706,12 +706,8 @@ def dist(x, y, p=2, name=None):
     if in_dygraph_mode():
         return _C_ops.dist(x, y, p)
 
-    check_variable_and_dtype(
-        x, 'dtype', ['float16', 'float32', 'float64'], 'dist'
-    )
-    check_variable_and_dtype(
-        y, 'dtype', ['float16', 'float32', 'float64'], 'dist'
-    )
+    check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'dist')
+    check_variable_and_dtype(y, 'dtype', ['float32', 'float64'], 'dist')
     check_type(p, 'p', (float, int), 'dist')
     helper = LayerHelper("dist", **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
