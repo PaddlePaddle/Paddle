@@ -1382,7 +1382,7 @@
 - op : lstsq
   inputs :
     {x : X, y : Y}
-  output :
+  outputs :
     {solution : Solution, residuals : Residuals, rank : Rank, singular_values : SingularValues}
 
 - op : lu_unpack
