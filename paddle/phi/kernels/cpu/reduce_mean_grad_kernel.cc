@@ -47,4 +47,6 @@ PD_REGISTER_KERNEL(mean_grad,
                    phi::ReduceMeanGradKernel,
                    bool,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

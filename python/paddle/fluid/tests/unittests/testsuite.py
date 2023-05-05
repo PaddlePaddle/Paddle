@@ -157,6 +157,7 @@ def append_input_output(
 
 def append_loss_ops(block, output_names):
     mean_inputs = list(map(block.var, output_names))
+    print(f"mean_inputs : {mean_inputs}")
 
     if len(mean_inputs) == 1:
         loss = block.create_var(dtype=mean_inputs[0].dtype, shape=[1])
