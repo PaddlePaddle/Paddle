@@ -75,8 +75,8 @@ def _get_dpmp_topology(origin_topology, sharding_group):
         sharding_axis = 0
         dp_sharding_topology = dp_sharding_topology[1:]
 
-    product_dp_sharding = reduce(lambda x, y: x * y, dp_sharding_topology)
-    product_topology = reduce(lambda x, y: x * y, origin_topology)
+    product_dp_sharding = reduce(lambda x, y: x * y, dp_sharding_topology, 1)
+    product_topology = reduce(lambda x, y: x * y, origin_topology, 1)
 
     if product_topology == product_dp_sharding:
         dpmp_topology = dp_sharding_topology
@@ -221,7 +221,7 @@ class ClipHelper:
             in_var = self.block.vars[in_name]
             in_dist_attr = TensorDistAttr()
             in_dist_attr.process_mesh = ProcessMesh(self.world_ranks)
-            in_dist_attr.dims_mapping = [-1]
+            in_dist_attr.dims_mapping = [-1 for i in in_var.shape]
             self.dist_context.set_tensor_dist_attr_for_program(
                 in_var, in_dist_attr
             )
@@ -230,7 +230,7 @@ class ClipHelper:
             out_var = self.block.vars[out_name]
             out_dist_attr = TensorDistAttr()
             out_dist_attr.process_mesh = ProcessMesh(self.world_ranks)
-            out_dist_attr.dims_mapping = [-1]
+            out_dist_attr.dims_mapping = [-1 for i in out_var.shape]
             self.dist_context.set_tensor_dist_attr_for_program(
                 out_var, out_dist_attr
             )
@@ -274,7 +274,7 @@ class ClipHelper:
             for param in params:
                 rank = sizes.index(min(sizes))
                 mapping[rank].append(param.name)
-                numel = reduce(lambda x, y: x * y, param.shape)
+                numel = reduce(lambda x, y: x * y, param.shape, 1)
                 assert (
                     numel > 0
                 ), "param [{}] should larger than 0, but it is [{}]".format(

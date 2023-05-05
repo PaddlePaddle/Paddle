@@ -28,6 +28,7 @@ from ..fluid.data_feeder import (
     check_type,
     check_variable_and_dtype,
     convert_dtype,
+    convert_float_to_uint16,
 )
 from ..fluid.framework import (
     Variable,
@@ -554,7 +555,7 @@ def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
             return data
 
         if np.isscalar(data) and not isinstance(data, str):
-            data = np.array([data])
+            data = np.array(data)
         elif isinstance(data, (list, tuple)):
             data = np.array(data)
             if data.dtype == np.object_:
@@ -613,7 +614,11 @@ def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
                 data = data.astype(default_type)
 
     if dtype and convert_dtype(dtype) != data.dtype:
-        data = data.astype(convert_dtype(dtype))
+        if convert_dtype(dtype) in ['uint16']:
+            # should not ndarray.astype('uint16') directly, data bits is wrong
+            data = convert_float_to_uint16(data.astype('float32'))
+        else:
+            data = data.astype(convert_dtype(dtype))
 
     if _in_eager_without_dygraph_check() and isinstance(data, np.ndarray):
         return core.eager.Tensor(
@@ -644,7 +649,7 @@ def _to_tensor_static(data, dtype=None, stop_gradient=None):
 
         if not isinstance(data, np.ndarray):
             if np.isscalar(data) and not isinstance(data, str):
-                data = np.array([data])
+                data = np.array(data)
             elif isinstance(data, (list, tuple)):
                 data = np.array(data)
 
@@ -672,12 +677,6 @@ def _to_tensor_static(data, dtype=None, stop_gradient=None):
             and len(data.shape) > 0
             and any(isinstance(x, Variable) for x in data)
         ):
-            if not all(
-                [x.shape == (1,) for x in data if isinstance(x, Variable)]
-            ):
-                raise TypeError(
-                    "Unsupport paddle.to_tensor([Variable, Variable...]) with non-scalar variable."
-                )
             to_stack_list = [None] * data.shape[0]
             for idx, d in enumerate(data):
                 to_stack_list[idx] = _to_tensor_static(d, dtype, stop_gradient)
@@ -712,7 +711,7 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
                                 (0D-Tensor)
                     default_dtype
         Python Number ───────────────► paddle.Tensor
-                                        (1D-Tensor)
+                                        (0D-Tensor)
                     Keep dtype
         np.ndarray ───────────► paddle.Tensor
 
@@ -741,17 +740,17 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
         # <class 'paddle.Tensor'>
 
         paddle.to_tensor(1)
-        # Tensor(shape=[1], dtype=int64, place=CPUPlace, stop_gradient=True,
-        #        [1])
+        # Tensor(shape=[], dtype=int64, place=CPUPlace, stop_gradient=True,
+        #        1)
 
         x = paddle.to_tensor(1, stop_gradient=False)
         print(x)
-        # Tensor(shape=[1], dtype=int64, place=CPUPlace, stop_gradient=False,
-        #        [1])
+        # Tensor(shape=[], dtype=int64, place=CPUPlace, stop_gradient=False,
+        #        1)
 
         paddle.to_tensor(x)  # A new tensor will be created with default stop_gradient=True
-        # Tensor(shape=[1], dtype=int64, place=CPUPlace, stop_gradient=True,
-        #        [1])
+        # Tensor(shape=[], dtype=int64, place=CPUPlace, stop_gradient=True,
+        #        1)
 
         paddle.to_tensor([[0.1, 0.2], [0.3, 0.4]], place=paddle.CPUPlace(), stop_gradient=False)
         # Tensor(shape=[2, 2], dtype=float32, place=CPUPlace, stop_gradient=False,
@@ -1354,7 +1353,7 @@ def _tril_triu_op(helper):
     check_variable_and_dtype(
         x,
         'x',
-        ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
+        ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64', 'bool'],
         op_type,
     )
     if len(x.shape) < 2:
@@ -1513,7 +1512,7 @@ def meshgrid(*args, **kwargs):
 
     Args:
         *args(Tensor|list of Tensor) : tensors (tuple(list) of tensor): the shapes of input k tensors are (N1,),
-            (N2,),..., (Nk,). Support data types: ``float64``, ``float32``, ``int32``, ``int64``.
+            (N2,),..., (Nk,). Support data types: ``float64``, ``float16``, ``float32``, ``int32``, ``int64``.
         **kwargs (optional): Currently, only accept name in **kwargs
             The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
@@ -2030,6 +2029,10 @@ def assign(x, output=None):
             result2 = paddle.assign(data)  # result2 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
             result3 = paddle.assign(np.array([[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]], dtype='float32')) # result3 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
     """
+    # speed up
+    if x is output and isinstance(x, Variable):
+        return x
+
     input = x
     helper = LayerHelper('assign', **locals())
     check_type(
@@ -2038,7 +2041,6 @@ def assign(x, output=None):
         (Variable, np.ndarray, list, tuple, float, int, bool),
         'assign',
     )
-    is_inplace = True if output is not None else False
 
     if np.isscalar(input) and not isinstance(input, str):
         input = np.array([input])

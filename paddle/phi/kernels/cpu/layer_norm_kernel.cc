@@ -67,30 +67,30 @@ void LayerNormKernel(const Context& dev_ctx,
 
   // get variance
 
-  phi::funcs::ElementwiseCompute<funcs::SubAndSquareFunctor<T>, T, T>(
-      dev_ctx, x_tmp, *mean, 0, funcs::SubAndSquareFunctor<T>(), &out);
+  phi::funcs::ElementwiseCompute<funcs::SubAndSquareFunctor<T>, T>(
+      dev_ctx, x_tmp, *mean, funcs::SubAndSquareFunctor<T>(), &out, 0);
 
   row_mean(dev_ctx, out, var);
 
   // get x_norm
-  phi::funcs::ElementwiseCompute<funcs::SubtractFunctor<T>, T, T>(
-      dev_ctx, x_tmp, *mean, 0, funcs::SubtractFunctor<T>(), &out);
+  phi::funcs::ElementwiseCompute<funcs::SubtractFunctor<T>, T>(
+      dev_ctx, x_tmp, *mean, funcs::SubtractFunctor<T>(), &out, 0);
 
-  phi::funcs::ElementwiseCompute<funcs::DivAndSqrtFunctor<T>, T, T>(
+  phi::funcs::ElementwiseCompute<funcs::DivAndSqrtFunctor<T>, T>(
       dev_ctx,
       out,
       *var,
-      0,
       funcs::DivAndSqrtFunctor<T>(static_cast<T>(epsilon)),
-      &out);
+      &out,
+      0);
 
   if (scale) {
-    phi::funcs::ElementwiseCompute<funcs::MultiplyFunctor<T>, T, T>(
-        dev_ctx, out, *scale, 1, funcs::MultiplyFunctor<T>(), &out);
+    phi::funcs::ElementwiseCompute<funcs::MultiplyFunctor<T>, T>(
+        dev_ctx, out, *scale, funcs::MultiplyFunctor<T>(), &out, 1);
   }
   if (bias) {
-    phi::funcs::ElementwiseCompute<funcs::AddFunctor<T>, T, T>(
-        dev_ctx, out, *bias, 1, funcs::AddFunctor<T>(), &out);
+    phi::funcs::ElementwiseCompute<funcs::AddFunctor<T>, T>(
+        dev_ctx, out, *bias, funcs::AddFunctor<T>(), &out, 1);
   }
 #else
   PADDLE_ENFORCE_EQ(mean->numel(),

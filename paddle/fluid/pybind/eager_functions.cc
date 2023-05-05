@@ -62,11 +62,11 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/pybind/cuda_streams_py.h"
 #endif
 
-#include "gflags/gflags.h"
 #include "paddle/phi/api/include/operants_manager.h"
 #include "paddle/phi/api/include/tensor_operants.h"
+#include "paddle/phi/core/flags.h"
 
-DECLARE_string(tensor_operants_mode);
+PHI_DECLARE_string(tensor_operants_mode);
 
 namespace paddle {
 namespace pybind {
@@ -567,8 +567,7 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
     int attr_start_idx = 1 + inputs.size();
     for (size_t i = 0; i < attrs.size(); ++i) {
       const auto& attr = attrs.at(i);
-      std::vector<std::string> attr_name_and_type =
-          paddle::framework::detail::ParseAttrStr(attr);
+      std::vector<std::string> attr_name_and_type = paddle::ParseAttrStr(attr);
       auto attr_type_str = attr_name_and_type[1];
       VLOG(7) << "Custom operator add attrs " << attr_name_and_type[0]
               << " to CustomOpKernelContext. Attribute type = "
@@ -1371,7 +1370,7 @@ PyMethodDef variable_functions[] = {
 void BindFunctions(PyObject* module) {
   if (PyModule_AddFunctions(module, variable_functions) < 0) {
     PADDLE_THROW(platform::errors::Fatal(
-        "Init Paddle erroe in BindFunctions(PyModule_AddFunctions)."));
+        "Init Paddle error in BindFunctions(PyModule_AddFunctions)."));
     return;
   }
 }
