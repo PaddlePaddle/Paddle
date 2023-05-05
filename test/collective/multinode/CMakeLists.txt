@@ -10,8 +10,6 @@ if(WITH_MULTINODE_TESTING)
       test_multinode_dygraph_hybrid_dpppmp
       START_BASH
       multinode_dist_test.sh
-      TIMEOUT
-      "120"
       LABELS
       "RUN_TYPE=DIST"
       ENVS
@@ -26,8 +24,6 @@ if(WITH_MULTINODE_TESTING)
       test_multinode_dygraph_hybrid_dp
       START_BASH
       multinode_dist_test.sh
-      TIMEOUT
-      "120"
       LABELS
       "RUN_TYPE=DIST"
       ENVS
@@ -42,8 +38,6 @@ if(WITH_MULTINODE_TESTING)
       test_multinode_dygraph_sharding
       START_BASH
       multinode_dist_test.sh
-      TIMEOUT
-      "120"
       LABELS
       "RUN_TYPE=DIST"
       ENVS
