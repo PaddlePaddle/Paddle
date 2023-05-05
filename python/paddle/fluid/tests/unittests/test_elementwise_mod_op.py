@@ -16,11 +16,7 @@ import random
 import unittest
 
 import numpy as np
-from eager_op_test import (
-    OpTest,
-    convert_float_to_uint16,
-    convert_uint16_to_float,
-)
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle import fluid
@@ -121,7 +117,7 @@ class TestElementwiseModFP16Op(TestElementwiseModOp):
     def init_input_output(self):
         self.x = np.random.uniform(-1000, 1000, [10, 10]).astype(self.dtype)
         self.y = np.random.uniform(-100, 100, [10, 10]).astype(self.dtype)
-        self.out = np.mod(self.x, self.y)
+        self.out = np.fmod(self.y + np.fmod(self.x, self.y), self.y)
 
     def test_check_output(self):
         if self.attrs['axis'] == -1:
@@ -134,21 +130,21 @@ class TestElementwiseModFP16Op_ZeroDim1(TestElementwiseModFP16Op):
     def init_input_output(self):
         self.x = np.random.uniform(0, 10000, []).astype(np.float16)
         self.y = np.random.uniform(0, 1000, []).astype(np.float16)
-        self.out = np.mod(self.x, self.y)
+        self.out = np.fmod(self.y + np.fmod(self.x, self.y), self.y)
 
 
 class TestElementwiseModFP16Op_ZeroDim2(TestElementwiseModFP16Op):
     def init_input_output(self):
         self.x = np.random.uniform(0, 10000, [10, 10]).astype(np.float16)
         self.y = np.random.uniform(0, 1000, []).astype(np.float16)
-        self.out = np.mod(self.x, self.y)
+        self.out = np.fmod(self.y + np.fmod(self.x, self.y), self.y)
 
 
 class TestElementwiseModFP16Op_ZeroDim3(TestElementwiseModFP16Op):
     def init_input_output(self):
         self.x = np.random.uniform(0, 10000, []).astype(np.float16)
         self.y = np.random.uniform(0, 1000, [10, 10]).astype(np.float16)
-        self.out = np.mod(self.x, self.y)
+        self.out = np.fmod(self.y + np.fmod(self.x, self.y), self.y)
 
 
 @unittest.skipIf(
@@ -163,7 +159,7 @@ class TestElementwiseModBF16Op(OpTest):
     def init_input_output(self):
         self.x = np.random.uniform(0, 10000, [10, 10]).astype("float32")
         self.y = np.random.uniform(0, 1000, [10, 10]).astype("float32")
-        self.out = np.mod(self.x, self.y)
+        self.out = np.fmod(self.y + np.fmod(self.x, self.y), self.y)
 
     def setUp(self):
         self.op_type = "elementwise_mod"
@@ -187,24 +183,7 @@ class TestElementwiseModBF16Op(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place_customized(
-            checker=self.verify_output, place=place
-        )
-
-    def verify_output(self, outs):
-        outs = convert_uint16_to_float(outs)
-        self.assertEqual(outs[0].shape, (10, 10))
-        hist, _ = np.histogram(outs[0], range=(-3, 5))
-        hist = hist.astype("float32")
-        hist /= float(outs[0].size)
-
-        x = np.random.uniform(0, 10000, [10, 10]).astype("float32")
-        y = np.random.uniform(0, 1000, [10, 10]).astype("float32")
-        data = np.mod(x, y)
-        hist2, _ = np.histogram(data, range=(-3, 5))
-        hist2 = hist2.astype("float32")
-        hist2 /= float(outs[0].size)
-        np.testing.assert_allclose(hist, hist2, rtol=1, atol=0.03)
+        self.check_output_with_place(place)
 
     def init_dtype(self):
         self.dtype = np.uint16
@@ -217,7 +196,7 @@ class TestElementwiseModBF16Op_ZeroDim1(TestElementwiseModBF16Op):
     def init_input(self):
         self.x = np.random.uniform(0, 10000, []).astype("float32")
         self.y = np.random.uniform(0, 1000, []).astype("float32")
-        self.out = np.mod(self.x, self.y)
+        self.out = np.fmod(self.y + np.fmod(self.x, self.y), self.y)
 
 
 class TestElementwiseModOpDouble(TestElementwiseModOpFloat):
