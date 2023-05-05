@@ -1596,6 +1596,7 @@
   kernel :
     func : silu_grad
   composite : silu_grad(x, out_grad, x_grad)
+  backward : silu_double_grad
   inplace : (out_grad -> x_grad)
 
 - backward_op : sin_double_grad
@@ -2066,10 +2067,10 @@
   no_need_buffer : x, y
 
 - backward_op: silu_double_grad
-  forward: silu_grad (Tensor x, Tensor out_grad) -> Tensor(x_grad)
-  args: (Tensor x, Tensor out_grad, Tensor x_grad_grad)
-  output: Tensor(grad_x), Tensor(grad_out_grad)
-  composite: silu_double_grad(x, out_grad, x_grad_grad, grad_x, grad_out_grad)
+  forward: silu_grad (Tensor x, Tensor grad_out) -> Tensor(grad_x)
+  args: (Tensor x, Tensor grad_out, Tensor grad_x_grad)
+  output: Tensor(x_grad), Tensor(grad_out_grad)
+  composite: silu_double_grad(x, grad_out, grad_x_grad, x_grad, grad_out_grad)
 
 - backward_op: unpool_grad
   forward: unpool (Tensor x, Tensor indices, int[] ksize, int[] strides = {1,1}, int[] paddings ={0,0} ,IntArray output_size = {0,0}, str data_format="NCHW") -> Tensor(out)

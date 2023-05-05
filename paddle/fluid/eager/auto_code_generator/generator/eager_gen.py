@@ -70,6 +70,7 @@ prim_white_list = [
     "add_double_grad",
     "multiply_double_grad",
     "subtract_double_grad",
+    "silu_double_grad",
 ]
 
 # dict of special api that forward api's output will affect bacward api's output

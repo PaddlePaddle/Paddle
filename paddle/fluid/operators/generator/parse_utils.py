@@ -498,8 +498,12 @@ def parse_op_entry(op_entry: Dict[str, Any], name_field="op"):
         "data_transform": data_trans,
     }
 
-    # invokes another op ?
-    is_base_op = "invoke" not in op_entry
+    # op should be is_base_op or is_invoke_op or is_only_composite_op
+    is_base_op = True
+    if "invoke" in op_entry:
+        is_base_op = False
+    if "composite" in op_entry and "kernel" not in op_entry:
+        is_base_op = False
 
     if is_base_op:
         # kernel
@@ -524,10 +528,11 @@ def parse_op_entry(op_entry: Dict[str, Any], name_field="op"):
                 "inplace": inplace_pairs,
             }
         )
-    else:
-        # invoke
-        invoke = parse_invoke(op_name, op_entry["invoke"])
-        op["invoke"] = invoke
+
+    # has invoke ?
+    if "invoke" in op_entry:
+        invoke_dict = parse_invoke(op_name, op_entry["invoke"])
+        op.update({"invoke": invoke_dict})
 
     # has composite ?
     if "composite" in op_entry:

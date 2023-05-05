@@ -40,6 +40,7 @@ from tests_utils import (
     is_base_op,
     is_composite_op,
     is_initializer_list,
+    is_only_composite_op,
     is_scalar,
     is_vec,
     supports_inplace,
@@ -71,6 +72,7 @@ env.filters["to_variable_names"] = to_variable_names
 env.filters["get_infer_var_type_func"] = get_infer_var_type_func
 env.tests["base_op"] = is_base_op
 env.tests["composite_op"] = is_composite_op
+env.tests["only_composite_op"] = is_only_composite_op
 env.tests["vec"] = is_vec
 env.tests["scalar"] = is_scalar
 env.tests["initializer_list"] = is_initializer_list
