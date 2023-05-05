@@ -32,7 +32,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/flags.h"
 
-DECLARE_string(tensor_operants_mode);
+PHI_DECLARE_string(tensor_operants_mode);
 
 namespace paddle {
 namespace prim {
@@ -405,15 +405,6 @@ class CompositeGradOpMakerBase {
       }
     }
     return input_grads;
-    PADDLE_ENFORCE_LE(
-        var_names.size(),
-        1UL,
-        platform::errors::Unavailable(
-            "BUG from operator developer:"
-            " for input argument with a list of variables, "
-            " drop_empty_grad is not allowed because it makes"
-            " the correspondence bewteen a variable and its gradient"
-            " ambiguous."));
   }
 
   std::vector<framework::VarDesc*> MultiOutputGrad(

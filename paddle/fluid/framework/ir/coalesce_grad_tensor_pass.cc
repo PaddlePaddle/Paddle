@@ -19,7 +19,7 @@
 
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
-
+#include "paddle/fluid/platform/flags.h"
 namespace paddle {
 namespace framework {
 class ProgramDesc;

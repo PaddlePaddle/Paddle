@@ -1269,10 +1269,11 @@ class TestSundryAPI(unittest.TestCase):
             out0.numpy(),
             out1.numpy(),
         )
+        self.assertEqual(out0.shape, [])
 
         out0.retain_grads()
         out0.backward()
-        self.assertEqual(out0.grad.shape, [1])
+        self.assertEqual(out0.grad.shape, [])
         self.assertEqual(logit.grad.shape, [2, 3])
 
     def test_allclose(self):
