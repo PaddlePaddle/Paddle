@@ -834,12 +834,11 @@ class ReduceCudaGradKernel : public framework::OpKernel<T> {
     }
 
     using MPType = typename kps::details::MPTypeTrait<T>::Type;
-    phi::ReduceGrad<T, TransformOp<T, MPType>>(
-        dev_ctx,
-        pt_d_out.get(),
-        pt_d_x.get(),
-        pt_out_dtype,
-        TransformOp<T, MPType>(reduce_num));
+    phi::ReduceGrad<TransformOp<T, MPType>>(dev_ctx,
+                                            pt_d_out.get(),
+                                            pt_d_x.get(),
+                                            pt_out_dtype,
+                                            TransformOp<T, MPType>(reduce_num));
   }
 };
 

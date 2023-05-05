@@ -76,15 +76,15 @@ void AddDoubleGradImpl(const Context& dev_ctx,
     auto ddy_dims = ddy_safe.dims();
     if (ddx_dims.size() >= ddy_dims.size()) {
       funcs::ElementwiseCompute<funcs::AddFunctor<T>, T>(
-          dev_ctx, ddx_safe, ddy_safe, axis, funcs::AddFunctor<T>(), ddout);
+          dev_ctx, ddx_safe, ddy_safe, funcs::AddFunctor<T>(), ddout, axis);
     } else {
       funcs::ElementwiseCompute<funcs::InverseAddFunctor<T>, T>(
           dev_ctx,
           ddx_safe,
           ddy_safe,
-          axis,
           funcs::InverseAddFunctor<T>(),
-          ddout);
+          ddout,
+          axis);
     }
   }
 }
@@ -107,7 +107,7 @@ void SubtractDoubleGradImpl(const Context& dev_ctx,
 
     dev_ctx.template Alloc<T>(ddout);
     funcs::ElementwiseCompute<funcs::SubtractFunctor<T>, T>(
-        dev_ctx, ddx_safe, ddy_safe, axis, funcs::SubtractFunctor<T>(), ddout);
+        dev_ctx, ddx_safe, ddy_safe, funcs::SubtractFunctor<T>(), ddout, axis);
   }
 }
 

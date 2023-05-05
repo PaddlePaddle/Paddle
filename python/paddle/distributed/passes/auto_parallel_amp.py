@@ -955,7 +955,7 @@ class AMPPass(PassBase):
 
             loss_op._set_attr(OP_ROLE_KEY, OpRole.Forward)
             naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
-                cast_op, ref_mesh, [-1], self.dist_context
+                cast_op, ref_mesh, [-1 for i in loss.shape], self.dist_context
             )
 
             # backward
@@ -970,12 +970,20 @@ class AMPPass(PassBase):
                 dtype=core.VarDesc.VarType.FP32,
                 persistable=loss.persistable,
             )
-            set_var_dist_attr(self.dist_context, cast_loss_grad, [-1], ref_mesh)
+            set_var_dist_attr(
+                self.dist_context,
+                cast_loss_grad,
+                [-1 for i in loss.shape],
+                ref_mesh,
+            )
 
             pre_grad_name = first_backward_op.output_arg_names[0]
             first_backward_op._rename_output(pre_grad_name, cast_loss_grad.name)
             naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
-                first_backward_op, ref_mesh, [-1], self.dist_context
+                first_backward_op,
+                ref_mesh,
+                [-1 for i in loss.shape],
+                self.dist_context,
             )
             cast_grad_op = main_block._insert_op(
                 loss_op_idx + 3,
@@ -989,7 +997,10 @@ class AMPPass(PassBase):
                 },
             )
             naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
-                cast_grad_op, ref_mesh, [-1], self.dist_context
+                cast_grad_op,
+                ref_mesh,
+                [-1 for i in loss.shape],
+                self.dist_context,
             )
             loss_op = cast_op
             loss = cast_loss
@@ -1021,7 +1032,12 @@ class AMPPass(PassBase):
                 dtype=loss.dtype,
                 persistable=loss.persistable,
             )
-            set_var_dist_attr(self.dist_context, scaled_loss, [-1], ref_mesh)
+            set_var_dist_attr(
+                self.dist_context,
+                scaled_loss,
+                [-1 for i in loss.shape],
+                ref_mesh,
+            )
 
             elementwise_mul_op = main_block._insert_op(
                 loss_op_idx + 1,
@@ -1034,7 +1050,10 @@ class AMPPass(PassBase):
             )
             loss_op._set_attr(OP_ROLE_KEY, OpRole.Forward)
             naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
-                elementwise_mul_op, ref_mesh, [-1], self.dist_context
+                elementwise_mul_op,
+                ref_mesh,
+                [-1 for i in loss.shape],
+                self.dist_context,
             )
 
             # backward
@@ -1050,14 +1069,20 @@ class AMPPass(PassBase):
                 persistable=loss.persistable,
             )
             set_var_dist_attr(
-                self.dist_context, scaled_loss_grad, [-1], ref_mesh
+                self.dist_context,
+                scaled_loss_grad,
+                [-1 for i in loss.shape],
+                ref_mesh,
             )
             pre_grad_name = first_backward_op.output_arg_names[0]
             first_backward_op._rename_output(
                 pre_grad_name, scaled_loss_grad.name
             )
             naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
-                first_backward_op, ref_mesh, [-1], self.dist_context
+                first_backward_op,
+                ref_mesh,
+                [-1 for i in loss.shape],
+                self.dist_context,
             )
             scaled_loss_grad.op = first_backward_op
             # FIXME(JZ-LIANG) a trick to insert backward op
@@ -1085,7 +1110,10 @@ class AMPPass(PassBase):
             elementwise_mul_grad_op = main_block.ops[loss_op_idx + 3]
             assert elementwise_mul_grad_op.type == "elementwise_mul_grad"
             naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
-                elementwise_mul_grad_op, ref_mesh, [-1], self.dist_context
+                elementwise_mul_grad_op,
+                ref_mesh,
+                [-1 for i in loss.shape],
+                self.dist_context,
             )
         else:
             scaled_loss = loss

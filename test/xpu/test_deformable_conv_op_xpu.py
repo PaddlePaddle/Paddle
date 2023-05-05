@@ -138,6 +138,8 @@ class XPUTestModulatedDeformableConvOp(XPUOpTestWrapper):
     class TestModulatedDeformableConvOp(XPUOpTest):
         def setUp(self):
             self.op_type = "deformable_conv"
+            # set to e-6 because of atomic add in XPU
+            self.epsilon_xpu2xpu = 0.000001
             self.dtype = self.in_type
             self.place = paddle.XPUPlace(0)
             self.init_group()
