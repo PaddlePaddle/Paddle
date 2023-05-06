@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,25 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/randint_kernel.h"
-
 #include <random>
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void RandintKernel(const Context& dev_ctx,
-                   int low,
-                   int high,
-                   const IntArray& shape,
-                   DataType dtype,
-                   DenseTensor* out) {
-  int seed = 0;
+void RandintWithSeedKernel(const Context& dev_ctx,
+                           int low,
+                           int high,
+                           const IntArray& shape,
+                           DataType dtype,
+                           int seed,
+                           DenseTensor* out) {
   out->Resize(phi::make_ddim(shape.GetData()));
   T* data = dev_ctx.template Alloc<T>(out);
   funcs::uniform_distribution<uint32_t> dist;
@@ -40,5 +40,9 @@ void RandintKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(randint, GPU, ALL_LAYOUT, phi::RandintKernel, int, int64_t) {
-}
+PD_REGISTER_KERNEL(randint_with_seed,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::RandintWithSeedKernel,
+                   int,
+                   int64_t) {}
