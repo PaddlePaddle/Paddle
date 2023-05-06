@@ -363,10 +363,6 @@ struct Argument {
                       IpuEnableModelRuntimeExecutor,
                       bool);
 
-  // npu related
-  DECL_ARGUMENT_FIELD(use_npu, UseNpu, bool);
-  DECL_ARGUMENT_FIELD(npu_device_id, NPUDeviceId, int);
-
   // mixed precision related
   DECL_ARGUMENT_FIELD(model_precision, ModelPrecision, int);
   DECL_ARGUMENT_FIELD(mixed_black_list,
