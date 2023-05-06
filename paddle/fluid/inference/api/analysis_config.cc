@@ -805,6 +805,8 @@ void AnalysisConfig::EnableTensorRtDLA(int dla_core) {
 
 void AnalysisConfig::EnableTensorRtInspector() { trt_use_inspector_ = true; }
 
+void AnalysisConfig::EnableTensorRtSparseWeights() { trt_use_sparse_weights_ = true; }
+
 void AnalysisConfig::Exp_DisableTensorRtOPs(
     const std::vector<std::string> &ops) {
   trt_disabled_ops_.insert(trt_disabled_ops_.end(), ops.begin(), ops.end());
