@@ -148,95 +148,31 @@ void IndexPutKernel(const Context& dev_ctx,
   std::vector<const phi::DenseTensor*> res_indices_v(x.dims().size(), nullptr);
   std::vector<DenseTensor> tmp_res_indices_v;
   std::vector<DenseTensor> tmp_value_v;
+  std::vector<DenseTensor> range_tensor_v;
   const DenseTensor* ptr_value = nullptr;
 
-  if (int_indices_v.size() < total_dims) {
-    std::vector<int64_t> tmp_x_dims = phi::vectorize(x.dims());
-    int len_bd_dim = bd_dim.size();
-    res_dim_v.insert(res_dim_v.end(),
-                     tmp_x_dims.begin() + int_indices_v.size(),
-                     tmp_x_dims.end());
+  for (int i = indices_v.size(); i < x.dims().size(); ++i) {
+    range_tensor_v.emplace_back(GetRangeCudaTensor<int64_t, Context>(
+        dev_ctx, x.dims()[i], phi::DataType::INT64));
+  }
 
-    std::vector<DenseTensor> reshaped_indices_v;
-    for (size_t i = 0; i < int_indices_v.size(); ++i) {
-      if (int_indices_v[i]->dtype() == phi::DataType::INT32) {
-        reshaped_indices_v.emplace_back(phi::Cast<int, Context>(
-            dev_ctx, *int_indices_v[i], phi::DataType::INT64));
-      } else {
-        reshaped_indices_v.emplace_back(*int_indices_v[i]);
-      }
-    }
+  DealWithIndices<T, Context>(dev_ctx,
+                              x,
+                              int_indices_v,
+                              &res_indices_v,
+                              &tmp_res_indices_v,
+                              range_tensor_v,
+                              bd_dim,
+                              &res_dim_v);
 
-    for (size_t i = len_bd_dim; i < res_dim_v.size(); ++i) {
-      reshaped_indices_v.emplace_back(GetRangeCudaTensor<int64_t, Context>(
-          dev_ctx, res_dim_v[i], phi::DataType::INT64));
-    }
-    phi::DDim res_dim = phi::make_ddim(res_dim_v);
-
-    for (size_t i = 0; i < reshaped_indices_v.size(); ++i) {
-      tmp_res_indices_v.emplace_back(
-          GetReshapeAndExpandTensor<int64_t, Context>(
-              dev_ctx,
-              reshaped_indices_v[i],
-              res_dim,
-              bd_dim,
-              ((i < int_indices_v.size())
-                   ? 0
-                   : i - int_indices_v.size() + len_bd_dim)));
-    }
-    for (size_t i = 0; i < res_indices_v.size(); ++i) {
-      res_indices_v[i] = &tmp_res_indices_v[i];
-    }
-
-    if (value.numel() != 1) {
-      tmp_value_v.emplace_back(DenseTensor(value.dtype()).Resize(res_dim));
-      ExpandKernel<T, Context>(dev_ctx,
-                               value,
-                               IntArray(phi::vectorize<int64_t>(res_dim)),
-                               &tmp_value_v[0]);
-      ptr_value = &tmp_value_v[0];
-    } else {
-      ptr_value = &value;
-    }
+  if (value.numel() != 1) {
+    tmp_value_v.emplace_back(
+        DenseTensor(value.dtype()).Resize(phi::make_ddim(res_dim_v)));
+    ExpandKernel<T, Context>(
+        dev_ctx, value, IntArray(res_dim_v), &tmp_value_v[0]);
+    ptr_value = &tmp_value_v[0];
   } else {
-    std::vector<DenseTensor> int_indices_v_tmp;
-
-    for (size_t i = 0; i < int_indices_v.size(); ++i) {
-      if (int_indices_v[i]->dtype() == phi::DataType::INT32) {
-        int_indices_v_tmp.emplace_back(phi::Cast<int, Context>(
-            dev_ctx, *int_indices_v[i], phi::DataType::INT64));
-      } else {
-        int_indices_v_tmp.emplace_back(*int_indices_v[i]);
-      }
-    }
-    for (size_t i = 0; i < int_indices_v.size(); ++i) {
-      if (bd_dim != int_indices_v[i]->dims()) {
-        tmp_res_indices_v.emplace_back(
-            DenseTensor(phi::DataType::INT64).Resize(bd_dim));
-        ExpandKernel<int64_t, Context>(
-            dev_ctx,
-            int_indices_v_tmp[i],
-            IntArray(phi::vectorize<int64_t>(bd_dim)),
-            &tmp_res_indices_v[i]);
-      } else {
-        tmp_res_indices_v.emplace_back(int_indices_v_tmp[i]);
-      }
-    }
-
-    for (size_t i = 0; i < res_indices_v.size(); ++i) {
-      res_indices_v[i] = &tmp_res_indices_v[i];
-    }
-
-    if (value.numel() != 1) {
-      tmp_value_v.emplace_back(DenseTensor(value.dtype()).Resize(bd_dim));
-      ExpandKernel<T, Context>(dev_ctx,
-                               value,
-                               IntArray(phi::vectorize<int64_t>(bd_dim)),
-                               &tmp_value_v[0]);
-      ptr_value = &tmp_value_v[0];
-    } else {
-      ptr_value = &value;
-    }
+    ptr_value = &value;
   }
 
   switch (total_dims) {

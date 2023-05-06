@@ -20,6 +20,7 @@
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/utils/array.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/expand_kernel.h"
 #include "paddle/phi/kernels/nonzero_kernel.h"
 #include "paddle/phi/kernels/reshape_kernel.h"
@@ -97,8 +98,6 @@ static std::vector<const phi::DenseTensor*> DealWithBoolIndices(
 
     std::vector<phi::DenseTensor*> integer_indices(rank, nullptr);
     for (int i = 0; i < rank; ++i) {
-      // here should be
-      // tmp_indices_v.emplace_back(DenseTensor(phi::DataType::INT64).Resize(phi::make_ddim({nonzero_indices.dims()[0],1})));
       tmp_indices_v->emplace_back(
           DenseTensor(phi::DataType::INT64)
               .Resize(phi::make_ddim({nonzero_indices.dims()[0]})));
@@ -176,6 +175,118 @@ T** GetDevicePointerArray(const Context& ctx,
                           h_indices_v.size() * sizeof(T*),
                           ctx.stream());
   return reinterpret_cast<T**>(d_indices_data->ptr());
+}
+
+template <typename T, typename Context>
+static void DealWithIndices(
+    const Context& dev_ctx,
+    const DenseTensor& x,
+    const std::vector<const phi::DenseTensor*>& int_indices_v,
+    std::vector<const phi::DenseTensor*>* res_indices_v,
+    std::vector<DenseTensor>* tmp_res_indices_v,
+    const std::vector<DenseTensor>& range_tensor_v,
+    const phi::DDim& bd_dim,
+    std::vector<int64_t>* res_dim_v) {
+  size_t total_dims = x.dims().size();
+  if (int_indices_v.size() < total_dims) {
+    std::vector<int64_t> tmp_x_dims = phi::vectorize(x.dims());
+    int len_bd_dim = bd_dim.size();
+    res_dim_v->insert(res_dim_v->end(),
+                      tmp_x_dims.begin() + int_indices_v.size(),
+                      tmp_x_dims.end());
+
+    std::vector<DenseTensor> reshaped_indices_v;
+    for (size_t i = 0; i < int_indices_v.size(); ++i) {
+      if (int_indices_v[i]->dtype() == phi::DataType::INT32) {
+        reshaped_indices_v.emplace_back(phi::Cast<int, Context>(
+            dev_ctx, *int_indices_v[i], phi::DataType::INT64));
+      } else {
+        reshaped_indices_v.emplace_back(*int_indices_v[i]);
+      }
+    }
+    reshaped_indices_v.insert(
+        reshaped_indices_v.end(), range_tensor_v.begin(), range_tensor_v.end());
+
+    phi::DDim res_dim = phi::make_ddim(*res_dim_v);
+
+    for (size_t i = 0; i < reshaped_indices_v.size(); ++i) {
+      tmp_res_indices_v->emplace_back(
+          GetReshapeAndExpandTensor<int64_t, Context>(
+              dev_ctx,
+              reshaped_indices_v[i],
+              res_dim,
+              bd_dim,
+              ((i < int_indices_v.size())
+                   ? 0
+                   : i - int_indices_v.size() + len_bd_dim)));
+    }
+    for (size_t i = 0; i < res_indices_v->size(); ++i) {
+      (*res_indices_v)[i] = &(*tmp_res_indices_v)[i];
+    }
+
+  } else {
+    std::vector<DenseTensor> int_indices_v_tmp;
+
+    for (size_t i = 0; i < int_indices_v.size(); ++i) {
+      if (int_indices_v[i]->dtype() == phi::DataType::INT32) {
+        int_indices_v_tmp.emplace_back(phi::Cast<int, Context>(
+            dev_ctx, *int_indices_v[i], phi::DataType::INT64));
+      } else {
+        int_indices_v_tmp.emplace_back(*int_indices_v[i]);
+      }
+    }
+
+    for (size_t i = 0; i < int_indices_v.size(); ++i) {
+      if (bd_dim != int_indices_v[i]->dims()) {
+        tmp_res_indices_v->emplace_back(
+            DenseTensor(phi::DataType::INT64).Resize(bd_dim));
+        ExpandKernel<int64_t, Context>(
+            dev_ctx,
+            int_indices_v_tmp[i],
+            IntArray(phi::vectorize<int64_t>(bd_dim)),
+            &(*tmp_res_indices_v)[i]);
+      } else {
+        tmp_res_indices_v->emplace_back(int_indices_v_tmp[i]);
+      }
+    }
+
+    for (size_t i = 0; i < res_indices_v->size(); ++i) {
+      (*res_indices_v)[i] = &(*tmp_res_indices_v)[i];
+    }
+  }
+}
+
+static void CalCompressedDimsWith1AndWithout1(
+    std::vector<int64_t>* after_dims,
+    std::vector<int64_t>* before_dims,
+    std::vector<int64_t>* compress_dims,
+    std::vector<int64_t>* dims_without_1) {
+  int i = static_cast<int>(after_dims->size()) - 1;
+  int j = static_cast<int>(before_dims->size()) - 1;
+  if (i < j) {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "shape of value can't not be broadcast to shape of x[indices]"));
+  }
+
+  while ((i >= 0) && (j >= 0)) {
+    if ((*after_dims)[i] == (*before_dims)[j]) {
+      dims_without_1->push_back((*before_dims)[j]);
+      i--;
+      j--;
+      continue;
+    } else if ((*before_dims)[j] == 1) {
+      compress_dims->push_back(i);
+      i--;
+      j--;
+    } else {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "shape of value can't not be broadcast to shape of x[indices]"));
+    }
+  }
+  while (i >= 0) {
+    compress_dims->push_back(i);
+    i--;
+  }
 }
 
 }  // namespace phi
