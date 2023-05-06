@@ -565,6 +565,16 @@
     data_type : x
   backward : dot_grad
 
+- op : edit_distance
+  args : (Tensor hyps, Tensor refs, Tensor hypslength, Tensor refslength, bool normalized = false)
+  output : Tensor(sequencenum), Tensor(out)
+  infer_meta :
+    func : EditDistanceInferMeta
+  kernel :
+    func : edit_distance
+    data_type : DataType::FLOAT32
+  optional : hypslength, refslength
+
 - op : eig
   args: (Tensor x)
   output: Tensor(out_w), Tensor(out_v)
@@ -2132,6 +2142,16 @@
     func : unique_consecutive
     data_type : x
   optional : index, counts
+
+- op : unpool
+  args: (Tensor x, Tensor indices, int[] ksize, int[] strides = {1,1}, int[] paddings ={0,0} ,IntArray output_size = {0,0}, str data_format="NCHW")
+  output: Tensor(out)
+  infer_meta:
+    func: UnpoolInferMeta
+  kernel:
+    func: unpool
+    data_type: x
+  backward: unpool_grad
 
 - op : unsqueeze
   args : (Tensor x, IntArray axis = {})

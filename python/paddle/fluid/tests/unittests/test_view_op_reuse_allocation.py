@@ -21,8 +21,8 @@ import paddle
 
 # NOTE(pangyoki): Tensor View Strategy.
 # Refer to `op_function_generator.py`.
-# For view op, a new output varbase will be created, and this varbase will
-# reuse the input varbase's allocation.
+# For view op, a new output tensor will be created, and this tensor will
+# reuse the input tensor's allocation.
 # View APIs include: `squeeze`, `unsqueeze`, `reshape`, `flatten`, `detach`
 class TestDygraphViewReuseAllocation(unittest.TestCase):
     def setUp(self):

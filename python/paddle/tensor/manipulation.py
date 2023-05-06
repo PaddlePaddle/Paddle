@@ -1240,7 +1240,15 @@ def broadcast_tensors(input, name=None):
             check_variable_and_dtype(
                 x,
                 'input[' + str(id) + ']',
-                ['bool', 'float32', 'float64', 'int32', 'int64'],
+                [
+                    'bool',
+                    'float16',
+                    'float32',
+                    'float64',
+                    'int32',
+                    'int64',
+                    'uint16',
+                ],
                 'broadcast_tensors',
             )
             if x.dtype != input[0].dtype:
