@@ -4840,7 +4840,6 @@ def index_put_(x, indices, value, accumulate=False, name=None):
 
 
     """
-    assert len(indices) != 0, "indices can't be empty"
     return _C_ops.index_put_(x, indices, value, accumulate)
 
 
@@ -4872,8 +4871,6 @@ def index_put(x, indices, value, accumulate=False, name=None):
             #         [0., 0., 1.],
             #         [0., 1., 0.]])
     """
-
-    assert len(indices) != 0, "indices can't be empty"
     if in_dygraph_mode():
         return _C_ops.index_put(x, indices, value, accumulate)
 

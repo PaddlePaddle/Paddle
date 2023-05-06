@@ -14,15 +14,11 @@
 
 #include "paddle/phi/kernels/index_put_grad_kernel.h"
 #include <numeric>
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/core/utils/array.h"
 #include "paddle/phi/kernels/cast_kernel.h"
-#include "paddle/phi/kernels/expand_kernel.h"
-#include "paddle/phi/kernels/index_put_utils.h"
+#include "paddle/phi/kernels/funcs/index_put_utils.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
-#include "paddle/phi/kernels/reshape_kernel.h"
+
 namespace phi {
 
 template <typename T>
@@ -44,11 +40,11 @@ phi::DenseTensor GetRangeTensor(const Context& dev_ctx,
   return res;
 }
 
-template <typename T, size_t Rank>
+template <typename T>
 void set_zero_kernel(const int64_t N,
                      const int64_t** indices,
-                     phi::Array<int64_t, Rank> stride,
-                     phi::Array<int64_t, Rank> shape,
+                     const phi::DDim& stride,
+                     const phi::DDim& shape,
                      T* out) {
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
@@ -57,8 +53,8 @@ void set_zero_kernel(const int64_t N,
     int64_t cur_ix = 0;
     int64_t offset = 0;
 
-    for (size_t i = 0; i < Rank; ++i) {
-      cur_ix = (int64_t(*(indices[i] + idx)));
+    for (int i = 0; i < shape.size(); ++i) {
+      cur_ix = (static_cast<int64_t>(*(indices[i] + idx)));
       if (cur_ix < 0) {
         cur_ix += shape[i];
       }
@@ -68,12 +64,12 @@ void set_zero_kernel(const int64_t N,
   }
 }
 
-template <typename T, size_t Rank>
+template <typename T>
 void index_put_grad_kernel(const int64_t N,
                            const T* out_grad,
                            const int64_t** indices,
-                           phi::Array<int64_t, Rank> stride,
-                           phi::Array<int64_t, Rank> shape,
+                           const phi::DDim& stride,
+                           const phi::DDim& shape,
                            T* value_grad) {
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
@@ -82,8 +78,8 @@ void index_put_grad_kernel(const int64_t N,
     int64_t cur_ix = 0;
     int64_t offset = 0;
 
-    for (size_t i = 0; i < Rank; ++i) {
-      cur_ix = (int64_t(*(indices[i] + idx)));
+    for (int i = 0; i < shape.size(); ++i) {
+      cur_ix = (static_cast<int64_t>(*(indices[i] + idx)));
       if (cur_ix < 0) {
         cur_ix += shape[i];
       }
@@ -93,7 +89,7 @@ void index_put_grad_kernel(const int64_t N,
   }
 }
 
-template <typename T, typename Context, size_t Rank>
+template <typename T, typename Context>
 void LaunchIndexPutGradKernel(const Context& dev_ctx,
                               const std::vector<const DenseTensor*>& indices_v,
                               const DenseTensor& out_grad,
@@ -109,20 +105,12 @@ void LaunchIndexPutGradKernel(const Context& dev_ctx,
       const int64_t numel = indices_v[0]->numel();
       auto x_grad_stride = phi::stride(x_grad_dims);
 
-      phi::Array<int64_t, Rank> stride_a;
-      phi::Array<int64_t, Rank> shape_a;
-
-      for (size_t idx = 0; idx < Rank; ++idx) {
-        stride_a[idx] = x_grad_stride[idx];
-        shape_a[idx] = x_grad_dims[idx];
-      }
-
-      const int64_t* pd_indices[Rank];
-      for (size_t i = 0; i < Rank; ++i) {
+      const int64_t* pd_indices[7];
+      for (size_t i = 0; i < indices_v.size(); ++i) {
         pd_indices[i] = indices_v[i]->data<int64_t>();
       }
-      set_zero_kernel<T, Rank>(
-          numel, pd_indices, stride_a, shape_a, x_grad_data);
+      set_zero_kernel<T>(
+          numel, pd_indices, x_grad_stride, x_grad_dims, x_grad_data);
     }
   }
   if (value_grad) {
@@ -137,24 +125,16 @@ void LaunchIndexPutGradKernel(const Context& dev_ctx,
       const int64_t numel = indices_v[0]->numel();
       auto out_grad_stride = phi::stride(out_grad_dims);
 
-      phi::Array<int64_t, Rank> stride_a;
-      phi::Array<int64_t, Rank> shape_a;
-
-      for (size_t idx = 0; idx < Rank; ++idx) {
-        stride_a[idx] = out_grad_stride[idx];
-        shape_a[idx] = out_grad_dims[idx];
-      }
-
-      const int64_t* pd_indices[Rank];
-      for (size_t i = 0; i < Rank; ++i) {
+      const int64_t* pd_indices[7];
+      for (size_t i = 0; i < indices_v.size(); ++i) {
         pd_indices[i] = indices_v[i]->data<int64_t>();
       }
-      index_put_grad_kernel<T, Rank>(numel,
-                                     out_grad_data,
-                                     pd_indices,
-                                     stride_a,
-                                     shape_a,
-                                     tmp_value_grad_data);
+      index_put_grad_kernel<T>(numel,
+                               out_grad_data,
+                               pd_indices,
+                               out_grad_stride,
+                               out_grad_dims,
+                               tmp_value_grad_data);
 
       std::vector<int> v_dims(tmp_value_grad.dims().size());
       std::iota(v_dims.begin(), v_dims.end(), 0);
@@ -173,20 +153,16 @@ void LaunchIndexPutGradKernel(const Context& dev_ctx,
       const int64_t numel = indices_v[0]->numel();
       auto out_grad_stride = phi::stride(out_grad_dims);
 
-      phi::Array<int64_t, Rank> stride_a;
-      phi::Array<int64_t, Rank> shape_a;
-
-      for (size_t idx = 0; idx < Rank; ++idx) {
-        stride_a[idx] = out_grad_stride[idx];
-        shape_a[idx] = out_grad_dims[idx];
-      }
-
-      const int64_t* pd_indices[Rank];
-      for (size_t i = 0; i < Rank; ++i) {
+      const int64_t* pd_indices[7];
+      for (size_t i = 0; i < indices_v.size(); ++i) {
         pd_indices[i] = indices_v[i]->data<int64_t>();
       }
-      index_put_grad_kernel<T, Rank>(
-          numel, out_grad_data, pd_indices, stride_a, shape_a, value_grad_data);
+      index_put_grad_kernel<T>(numel,
+                               out_grad_data,
+                               pd_indices,
+                               out_grad_stride,
+                               out_grad_dims,
+                               value_grad_data);
     } else {
       DenseTensor tmp_value_grad(value_grad->dtype());
       tmp_value_grad.Resize(indices_v[0]->dims());
@@ -198,24 +174,16 @@ void LaunchIndexPutGradKernel(const Context& dev_ctx,
       const int64_t numel = indices_v[0]->numel();
       auto out_grad_stride = phi::stride(out_grad_dims);
 
-      phi::Array<int64_t, Rank> stride_a;
-      phi::Array<int64_t, Rank> shape_a;
-
-      for (size_t idx = 0; idx < Rank; ++idx) {
-        stride_a[idx] = out_grad_stride[idx];
-        shape_a[idx] = out_grad_dims[idx];
-      }
-
-      const int64_t* pd_indices[Rank];
-      for (size_t i = 0; i < Rank; ++i) {
+      const int64_t* pd_indices[7];
+      for (size_t i = 0; i < indices_v.size(); ++i) {
         pd_indices[i] = indices_v[i]->data<int64_t>();
       }
-      index_put_grad_kernel<T, Rank>(numel,
-                                     out_grad_data,
-                                     pd_indices,
-                                     stride_a,
-                                     shape_a,
-                                     tmp_value_grad_data);
+      index_put_grad_kernel<T>(numel,
+                               out_grad_data,
+                               pd_indices,
+                               out_grad_stride,
+                               out_grad_dims,
+                               tmp_value_grad_data);
 
       std::vector<int64_t> after_dims = phi::vectorize(tmp_value_grad.dims());
       std::vector<int64_t> before_dims = phi::vectorize(value_grad->dims());
@@ -290,6 +258,7 @@ void IndexPutGradKernel(const Context& dev_ctx,
   std::vector<int64_t> res_dim_v(phi::vectorize(bd_dim));
   std::vector<const phi::DenseTensor*> res_indices_v(x.dims().size(), nullptr);
   std::vector<DenseTensor> tmp_res_indices_v;
+  std::vector<DenseTensor> range_tensor_v;
 
   if (int_indices_v.size() < total_dims) {
     std::vector<int64_t> tmp_x_dims = phi::vectorize(x.dims());
@@ -359,37 +328,8 @@ void IndexPutGradKernel(const Context& dev_ctx,
     }
   }
 
-  switch (total_dims) {
-    case 1:
-      LaunchIndexPutGradKernel<T, Context, 1>(
-          dev_ctx, res_indices_v, out_grad, accumulate, value_grad, x_grad);
-      break;
-    case 2:
-      LaunchIndexPutGradKernel<T, Context, 2>(
-          dev_ctx, res_indices_v, out_grad, accumulate, value_grad, x_grad);
-      break;
-    case 3:
-      LaunchIndexPutGradKernel<T, Context, 3>(
-          dev_ctx, res_indices_v, out_grad, accumulate, value_grad, x_grad);
-      break;
-    case 4:
-      LaunchIndexPutGradKernel<T, Context, 4>(
-          dev_ctx, res_indices_v, out_grad, accumulate, value_grad, x_grad);
-      break;
-    case 5:
-      LaunchIndexPutGradKernel<T, Context, 5>(
-          dev_ctx, res_indices_v, out_grad, accumulate, value_grad, x_grad);
-      break;
-    case 6:
-      LaunchIndexPutGradKernel<T, Context, 6>(
-          dev_ctx, res_indices_v, out_grad, accumulate, value_grad, x_grad);
-      break;
-    default:
-      PADDLE_THROW(phi::errors::InvalidArgument(
-          "dims of input tensor should be less than 7, But received"
-          "%d",
-          x.dims().size()));
-  }
+  LaunchIndexPutGradKernel<T, Context>(
+      dev_ctx, res_indices_v, out_grad, accumulate, value_grad, x_grad);
 }
 }  // namespace phi
 

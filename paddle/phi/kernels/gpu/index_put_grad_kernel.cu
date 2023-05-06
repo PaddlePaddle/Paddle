@@ -17,12 +17,9 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/core/utils/array.h"
 #include "paddle/phi/kernels/cast_kernel.h"
-#include "paddle/phi/kernels/expand_kernel.h"
-#include "paddle/phi/kernels/index_put_utils.h"
+#include "paddle/phi/kernels/funcs/index_put_utils.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
-#include "paddle/phi/kernels/reshape_kernel.h"
 
 namespace phi {
 
@@ -65,7 +62,7 @@ __global__ void set_zero_cuda_kernel(const int64_t N,
   }
   int64_t offset = 0;
   for (int i = 0; i < Rank; ++i) {
-    cur_ix = (int64_t(*(indices[i] + idx)));
+    cur_ix = (static_cast<int64_t>(*(indices[i] + idx)));
     if (cur_ix < 0) {
       cur_ix += shape[i];
     }
@@ -90,7 +87,7 @@ __global__ void index_put_grad_cuda_kernel(const int64_t N,
   }
   int64_t offset = 0;
   for (int i = 0; i < Rank; ++i) {
-    cur_ix = (int64_t(*(indices[i] + idx)));
+    cur_ix = (static_cast<int64_t>(*(indices[i] + idx)));
     if (cur_ix < 0) {
       cur_ix += shape[i];
     }

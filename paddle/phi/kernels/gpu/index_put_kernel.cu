@@ -16,12 +16,8 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/core/utils/array.h"
 #include "paddle/phi/kernels/cast_kernel.h"
-#include "paddle/phi/kernels/expand_kernel.h"
-#include "paddle/phi/kernels/index_put_utils.h"
-#include "paddle/phi/kernels/nonzero_kernel.h"
-#include "paddle/phi/kernels/split_kernel.h"
+#include "paddle/phi/kernels/funcs/index_put_utils.h"
 
 namespace phi {
 template <typename T>
@@ -67,13 +63,13 @@ __global__ void index_put_cuda_kernel(const int64_t N,
   }
   int64_t offset = 0;
   for (int i = 0; i < Rank; ++i) {
-    cur_ix = (int64_t(*(indices[i] + idx)));
+    cur_ix = (static_cast<int64_t>(*(indices[i] + idx)));
     if (cur_ix < 0) {
       cur_ix += shape[i];
     }
     offset += stride[i] * cur_ix;
   }
-  // 能不能加到模板里面去
+
   if (accumulate) {
     *(out + offset) += *(vals + (idx & isSingleValTensor));
   } else {
@@ -139,6 +135,9 @@ void IndexPutKernel(const Context& dev_ctx,
       phi::errors::InvalidArgument(
           "The data type of tensor in indices must be same to the data type "
           "of tensor x."));
+  PADDLE_ENFORCE_EQ(indices_v.empty(),
+                    false,
+                    phi::errors::InvalidArgument("Indices cannot be empty."));
   std::vector<DenseTensor> tmp_args;
   std::vector<const phi::DenseTensor*> int_indices_v =
       DealWithBoolIndices<T, Context>(dev_ctx, indices_v, &tmp_args);

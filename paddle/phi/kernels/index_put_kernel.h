@@ -15,16 +15,8 @@
 #pragma once
 
 #include <vector>
-#include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/memory/memcpy.h"
-#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/utils/array.h"
-#include "paddle/phi/kernels/expand_kernel.h"
-#include "paddle/phi/kernels/nonzero_kernel.h"
-#include "paddle/phi/kernels/reshape_kernel.h"
-#include "paddle/phi/kernels/split_kernel.h"
 
 namespace phi {
 template <typename T, typename Context>

@@ -15,9 +15,8 @@
 #pragma once
 
 #include <vector>
-#include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/common/int_array.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/utils/array.h"
@@ -166,16 +165,17 @@ T** GetDevicePointerArray(const Context& ctx,
   for (int i = 0; i < indices_v.size(); ++i) {
     h_indices_v[i] = indices_v[i]->data<T>();
   }
-  auto d_indices_data = paddle::memory::Alloc(
+  auto d_indices_data = phi::memory_utils::Alloc(
       ctx.GetPlace(),
       h_indices_v.size() * sizeof(T*),
       phi::Stream(reinterpret_cast<phi::StreamId>(ctx.stream())));
-  paddle::memory::Copy(ctx.GetPlace(),
-                       d_indices_data->ptr(),
-                       phi::CPUPlace(),
-                       reinterpret_cast<void*>(h_indices_v.data()),
-                       h_indices_v.size() * sizeof(T*),
-                       ctx.stream());
+  phi::memory_utils::Copy(ctx.GetPlace(),
+                          d_indices_data->ptr(),
+                          phi::CPUPlace(),
+                          reinterpret_cast<void*>(h_indices_v.data()),
+                          h_indices_v.size() * sizeof(T*),
+                          ctx.stream());
   return reinterpret_cast<T**>(d_indices_data->ptr());
 }
+
 }  // namespace phi

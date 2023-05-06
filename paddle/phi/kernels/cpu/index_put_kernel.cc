@@ -15,10 +15,8 @@
 #include "paddle/phi/kernels/index_put_kernel.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/core/utils/array.h"
 #include "paddle/phi/kernels/cast_kernel.h"
-#include "paddle/phi/kernels/expand_kernel.h"
-#include "paddle/phi/kernels/index_put_utils.h"
+#include "paddle/phi/kernels/funcs/index_put_utils.h"
 
 namespace phi {
 
@@ -41,13 +39,13 @@ phi::DenseTensor GetRangeTensor(const Context& dev_ctx,
   return res;
 }
 
-template <typename T, size_t Rank>
+template <typename T>
 void index_put_kernel(const int64_t N,
                       const T* x,
                       const T* vals,
                       const int64_t** indices,
-                      phi::Array<int64_t, Rank> stride,
-                      phi::Array<int64_t, Rank> shape,
+                      const phi::DDim& stride,
+                      const phi::DDim& shape,
                       int64_t isSingleValTensor,
                       bool accumulate,
                       T* out) {
@@ -58,8 +56,8 @@ void index_put_kernel(const int64_t N,
     int64_t cur_ix = 0;
     int64_t offset = 0;
 
-    for (size_t i = 0; i < Rank; ++i) {
-      cur_ix = (int64_t(*(indices[i] + idx)));
+    for (int i = 0; i < shape.size(); ++i) {
+      cur_ix = (static_cast<int64_t>(*(indices[i] + idx)));
       if (cur_ix < 0) {
         cur_ix += shape[i];
       }
@@ -74,7 +72,7 @@ void index_put_kernel(const int64_t N,
   }
 }
 
-template <typename T, typename Context, size_t Rank>
+template <typename T, typename Context>
 void LaunchIndexPutKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const std::vector<const DenseTensor*>& indices_v,
@@ -94,30 +92,22 @@ void LaunchIndexPutKernel(const Context& dev_ctx,
   const int64_t numel = indices_v[0]->numel();
   auto x_stride = phi::stride(x_dims);
 
-  phi::Array<int64_t, Rank> stride_a;
-  phi::Array<int64_t, Rank> shape_a;
-
-  for (size_t idx = 0; idx < Rank; ++idx) {
-    stride_a[idx] = x_stride[idx];
-    shape_a[idx] = x_dims[idx];
-  }
-
   int64_t isSingleValTensor = (value.numel() == 1) ? 0 : INT64_MAX;
 
-  const int64_t* pd_indices[Rank];
-  for (size_t i = 0; i < Rank; ++i) {
+  const int64_t* pd_indices[7];
+  for (size_t i = 0; i < indices_v.size(); ++i) {
     pd_indices[i] = indices_v[i]->data<int64_t>();
   }
 
-  index_put_kernel<T, Rank>(numel,
-                            x_data,
-                            val_data,
-                            pd_indices,
-                            stride_a,
-                            shape_a,
-                            isSingleValTensor,
-                            accumulate,
-                            out_data);
+  index_put_kernel<T>(numel,
+                      x_data,
+                      val_data,
+                      pd_indices,
+                      x_stride,
+                      x_dims,
+                      isSingleValTensor,
+                      accumulate,
+                      out_data);
 }
 
 template <typename T, typename Context>
@@ -133,10 +123,20 @@ void IndexPutKernel(const Context& dev_ctx,
       phi::errors::InvalidArgument(
           "The data type of tensor in indices must be same to the data type "
           "of tensor x."));
+  PADDLE_ENFORCE_EQ(indices_v.empty(),
+                    false,
+                    phi::errors::InvalidArgument("Indices cannot be empty."));
+
+  const size_t total_dims = x.dims().size();
+  PADDLE_ENFORCE_LE(total_dims,
+                    6,
+                    phi::errors::InvalidArgument(
+                        "Dims of input tensor should be less than 7."));
+
   std::vector<DenseTensor> tmp_args;
   std::vector<const phi::DenseTensor*> int_indices_v =
       DealWithBoolIndices<T, Context>(dev_ctx, indices_v, &tmp_args);
-  const size_t total_dims = x.dims().size();
+
   auto bd_dim = BroadCastTensorsDims(int_indices_v);
 
   std::vector<int64_t> res_dim_v(phi::vectorize(bd_dim));
@@ -181,7 +181,7 @@ void IndexPutKernel(const Context& dev_ctx,
     for (size_t i = 0; i < res_indices_v.size(); ++i) {
       res_indices_v[i] = &tmp_res_indices_v[i];
     }
-    // value至少需要满足与已有的indices为可broadcast_to关系
+
     if (value.numel() != 1) {
       tmp_value_v.emplace_back(DenseTensor(value.dtype()).Resize(res_dim));
       ExpandKernel<T, Context>(dev_ctx,
@@ -234,37 +234,8 @@ void IndexPutKernel(const Context& dev_ctx,
     }
   }
 
-  switch (total_dims) {
-    case 1:
-      LaunchIndexPutKernel<T, Context, 1>(
-          dev_ctx, x, res_indices_v, *ptr_value, accumulate, out);
-      break;
-    case 2:
-      LaunchIndexPutKernel<T, Context, 2>(
-          dev_ctx, x, res_indices_v, *ptr_value, accumulate, out);
-      break;
-    case 3:
-      LaunchIndexPutKernel<T, Context, 3>(
-          dev_ctx, x, res_indices_v, *ptr_value, accumulate, out);
-      break;
-    case 4:
-      LaunchIndexPutKernel<T, Context, 4>(
-          dev_ctx, x, res_indices_v, *ptr_value, accumulate, out);
-      break;
-    case 5:
-      LaunchIndexPutKernel<T, Context, 5>(
-          dev_ctx, x, res_indices_v, *ptr_value, accumulate, out);
-      break;
-    case 6:
-      LaunchIndexPutKernel<T, Context, 6>(
-          dev_ctx, x, res_indices_v, *ptr_value, accumulate, out);
-      break;
-    default:
-      PADDLE_THROW(phi::errors::InvalidArgument(
-          "dims of input tensor should be less than 7, But received"
-          "%d",
-          x.dims().size()));
-  }
+  LaunchIndexPutKernel<T, Context>(
+      dev_ctx, x, res_indices_v, *ptr_value, accumulate, out);
 }
 }  // namespace phi
 
