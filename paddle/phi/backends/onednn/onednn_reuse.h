@@ -1066,6 +1066,10 @@ class BinaryOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
     return Get_SRC_Scale_Memory(scale_1_);
   }
 
+  bool Has_SRC_0_Scale() { return std::fabs(scale_0_ - 1.0f) > 1e-6f; }
+
+  bool Has_SRC_1_Scale() { return std::fabs(scale_1_ - 1.0f) > 1e-6f; }
+
  private:
   dnnl::memory Get_SRC_Scale_Memory(float scale) {
     auto scale_md = dnnl::memory::desc(

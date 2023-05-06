@@ -109,10 +109,12 @@ void ElementwiseKernel(const OneDNNContext& dev_ctx,
                                                 {DNNL_ARG_SRC_1, *src_y_memory},
                                                 {DNNL_ARG_DST, *dst_memory}};
 
-  if (std::fabs(scale_x - 1.0f) > 1e-6f || std::fabs(scale_y - 1.0f) > 1e-6f ||
-      std::fabs(scale_out - 1.0f) > 1e-6f) {
+  if (handler.Has_SRC_0_Scale()) {
     args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC_0,
                  handler.Get_SRC_0_Scale_Memory()});
+  }
+
+  if (handler.Has_SRC_1_Scale()) {
     args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC_1,
                  handler.Get_SRC_1_Scale_Memory()});
   }
