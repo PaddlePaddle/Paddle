@@ -3319,11 +3319,11 @@ def cummax(x, axis=None, dtype='int64', name=None):
     Args:
         x (Tensor): The input tensor needed to be cummaxed.
         axis (int, optional): The dimension to accumulate along. -1 means the last dimension. The default (None) is to compute the cummax over the flattened array.
-        dtype (str, optional): The data type of the output tensor, can be float16, float32, float64, int32, int64. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. The default value is None.
+        dtype (str, optional): The data type of the indices tensor, can be int32, int64. The default value is int64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor, the result of cummax operator.
+        tuple(Tensor, Tensor), the first value is the result of cummax operator. the second value is the index of cummax result.
 
     Examples:
         .. code-block:: python
@@ -3354,20 +3354,14 @@ def cummax(x, axis=None, dtype='int64', name=None):
             # indcies type: paddle.float64
     """
     if axis is None:
-        flatten = True
-    else:
-        flatten = False
+        axis = -1
+        x = x.flatten(0, len(x.shape)-1)
     
-    if dtype is not None:
-        check_dtype(dtype, 'dtype', ['int32', 'int64'], 'cummax')
-    
-    indices_type = convert_np_dtype_to_dtype_(dtype)
-
-    if axis is None:
-            axis = -1
+    check_dtype(dtype, 'dtype', ['int32', 'int64'], 'cummax')
+    dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dygraph_mode():
-        return _C_ops.cummax(x, axis, indices_type, flatten)
+        return _C_ops.cummax(x, axis, dtype)
     else:
         check_variable_and_dtype(
             x,
@@ -3378,12 +3372,12 @@ def cummax(x, axis=None, dtype='int64', name=None):
         check_type(x, 'x', (Variable), 'cummax')
         helper = LayerHelper('cummax', **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
-        indices = helper.create_variable_for_type_inference(indices_type)
+        indices = helper.create_variable_for_type_inference(dtype='int64')
         helper.append_op(
             type='cummax',
             inputs={'x': x},
             outputs={'out': out, 'indices': indices},
-            attrs={'axis': axis, 'dtype': indices_type, 'flatten': flatten},
+            attrs={'axis': axis, 'dtype': dtype},
         )
         return out, indices
 
@@ -3391,56 +3385,46 @@ def cummax(x, axis=None, dtype='int64', name=None):
 def cummin(x, axis=None, dtype='int64', name=None):
     """
     The cumulative min of the elements along a given axis.
-
     Note:
         The first element of the result is the same as the first element of the input.
-
     Args:
         x (Tensor): The input tensor needed to be cummined.
         axis (int, optional): The dimension to accumulate along. -1 means the last dimension. The default (None) is to compute the cummin over the flattened array.
-        dtype (str, optional): The data type of the output tensor, can be float16, float32, float64, int32, int64. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. The default value is None.
+        dtype (str, optional): The data type of the indices tensor, can be int32, int64. The default value is int64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
     Returns:
-        Tensor, the result of cummin operator.
-
+        tuple(Tensor, Tensor), the first value is the result of cummin operator. the second value is the index of cummin result.
     Examples:
         .. code-block:: python
-
             import paddle
-
             data = paddle.to_tensor([-1, 5, 0, -2, -3, 2])
             data = paddle.reshape(data, (2, 3))
-
             y = paddle.cummin(data)
             # value: [-1, -1, -1, -2, -3, -3]
             # indcies: [0, 0, 0, 3, 4, 4]
-
             y = paddle.cummin(data, axis=0)
             # value: [[-1, 5, 0]
             #         [-2, -3, 0]]
             # indcies: [[0, 0, 0]
             #           [1, 1, 0]]
-
             y = paddle.cummin(data, axis=-1)
             # value: [[-1, -1, -1]
             #         [-2, -3, -3]]
             # indcies: [[0, 0, 0]
             #           [0, 1, 1]]
-
             y = paddle.cummin(data, dtype='float64')
             print(y[1].dtype)
             # indcies type: paddle.float64
     """
     if axis is None:
-        flatten = True
-    else:
-        flatten = False
+        axis = -1
+        x = x.flatten(0, len(x.shape)-1)
+    
+    check_dtype(dtype, 'dtype', ['int32', 'int64'], 'cummin')
+    dtype = convert_np_dtype_to_dtype_(dtype)
 
     if in_dygraph_mode():
-        if axis is None:
-            axis = -1
-        return _C_ops.cummin(x, axis, dtype, flatten)
+        return _C_ops.cummin(x, axis, dtype)
     else:
         check_variable_and_dtype(
             x,
@@ -3449,14 +3433,16 @@ def cummin(x, axis=None, dtype='int64', name=None):
             'cummin',
         )
         check_type(x, 'x', (Variable), 'cummin')
-        locals_var = locals().copy()
-        kwargs = dict()
-        for name, val in locals_var.items():
-            if val is not None:
-                kwargs[name] = val
-        print(kwargs)
-        _cum_min_ = generate_layer_fn('cummin')
-        return _cum_min_(**kwargs)
+        helper = LayerHelper('cummin', **locals())
+        out = helper.create_variable_for_type_inference(x.dtype)
+        indices = helper.create_variable_for_type_inference(dtype='int64')
+        helper.append_op(
+            type='cummin',
+            inputs={'x': x},
+            outputs={'out': out, 'indices': indices},
+            attrs={'axis': axis, 'dtype': dtype},
+        )
+        return out, indices
 
 
 def logcumsumexp(x, axis=None, dtype=None, name=None):

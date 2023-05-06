@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@
 
 namespace phi {
 
-//如果stop是4，result是[0, 1, 2, 3]
 std::vector<int> build_range(int stop) {
     std::vector<int> result(stop);
     for (int i = 0; i < stop; i++) {
@@ -51,22 +50,12 @@ void ComputeImp(const DenseTensor& x, DenseTensor* out, DenseTensor* indices, in
   int64_t indices_stride = compute_stride<int64_t>(axis, indices->dims());
   auto x_dim_vec = phi::vectorize<int>(x.dims());
   int x_dim_size = x_dim_vec[axis];
-
-  while(!finished) {
-    BinaryFunction op;
+  BinaryFunction op;
+  
+  while(!finished) { 
     T1 max = *reinterpret_cast<const T1*>(x_data);
     int idx = 0;
-    //赋值
     for (const auto i : build_range(x_dim_size)) {
-
-      // auto shape = build_range(x_dim_size);
-      // int len = shape.size();
-      // std::cout<<"range x_dim_size: "<<std::endl;
-      // for(int i = 0; i<len; i++){
-      //   std::cout<<shape[i]<<",";
-      // }
-      // std::cout<<std::endl;
-
       if (axis == -2) {std::cout<<"stop point 1"<<std::endl;}
       T1 curr_elem = *reinterpret_cast<const T1*>(&x_data[i*x_stride]);
       if(std::isnan(curr_elem) || (!std::isnan(max) && op(curr_elem, max))) {
@@ -78,17 +67,7 @@ void ComputeImp(const DenseTensor& x, DenseTensor* out, DenseTensor* indices, in
     }
     if(ndims == 1)
         break;
-    //更新下标
     for (const auto dim_i : build_range(ndims)) {
-
-      // auto shape = build_range(ndims);
-      // int len = shape.size();
-      // std::cout<<"range ndims: "<<std::endl;
-      // for(int i = 0; i<len; i++){
-      //   std::cout<<shape[i]<<",";
-      // }
-      // std::cout<<std::endl;
-
       if (axis == -2) {std::cout<<"stop point 2"<<std::endl;}
       if(dim_i == axis) {
         if(dim_i == (ndims - 1)) {
@@ -164,18 +143,14 @@ void CummaxKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   int axis,
                   int dtype,
-                  bool flatten,
                   DenseTensor* out,
                   DenseTensor* indices) {
   auto indices_type = phi::TransToPhiDataType(dtype);
   if (indices_type == DataType::INT32) {
-    ScanWithIndicesKernel<T, int32_t, std::greater_equal<T>, Context>(
-        dev_ctx, x, axis, out, indices);
+    ScanWithIndicesKernel<T, int32_t, std::greater_equal<T>, Context>(dev_ctx, x, axis, out, indices);
   } else if (indices_type == DataType::INT64) {
-    ScanWithIndicesKernel<T, int64_t, std::greater_equal<T>, Context>(
-        dev_ctx, x, axis, out, indices);
+    ScanWithIndicesKernel<T, int64_t, std::greater_equal<T>, Context>(dev_ctx, x, axis, out, indices);
   }
-
 }
 
 template <typename T, typename Context>
@@ -183,35 +158,20 @@ void CumminKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   int axis,
                   int dtype,
-                  bool flatten,
                   DenseTensor* out,
                   DenseTensor* indices) {
   auto indices_type = phi::TransToPhiDataType(dtype);
   if (indices_type == DataType::INT32) {
-    ScanWithIndicesKernel<T, int32_t, std::less_equal<T>, Context>(
-        dev_ctx, x, axis, out, indices);
+    ScanWithIndicesKernel<T, int32_t, std::less_equal<T>, Context>(dev_ctx, x, axis, out, indices);
   } else if (indices_type == DataType::INT64) {
-    ScanWithIndicesKernel<T, int64_t, std::less_equal<T>, Context>(
-        dev_ctx, x, axis, out, indices);
+    ScanWithIndicesKernel<T, int64_t, std::less_equal<T>, Context>(dev_ctx, x, axis, out, indices);
   }
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(cummax,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::CummaxKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t) {}
+PD_REGISTER_KERNEL(
+    cummax, CPU, ALL_LAYOUT, phi::CummaxKernel, float, double, int32_t, int64_t) {}
 
-PD_REGISTER_KERNEL(cummin,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::CumminKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t) {}
+PD_REGISTER_KERNEL(
+    cummin, CPU, ALL_LAYOUT, phi::CumminKernel, float, double, int32_t, int64_t) {}

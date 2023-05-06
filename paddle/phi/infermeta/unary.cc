@@ -509,7 +509,6 @@ void CumScalarAxisInferMeta(const MetaTensor& x,
 void CumWithIndicesInferMeta(const MetaTensor& x,
                              int axis,
                              int dtype,
-                             bool flatten,
                              MetaTensor* out,
                              MetaTensor* indices) {
   auto x_dims = x.dims();
@@ -518,65 +517,55 @@ void CumWithIndicesInferMeta(const MetaTensor& x,
       (indices_type==DataType::INT32 || indices_type==DataType::INT64),
       true,
       phi::errors::InvalidArgument("dtype of indices must be int32 or int64"));
-  if (flatten) {
-    out->set_dims(phi::make_ddim({phi::product(x_dims)}));
-    out->set_dtype(x.dtype());
-    indices->set_dims(phi::make_ddim({phi::product(x_dims)}));
-    // indices->set_dtype(indices_type);
-    // indices->set_dtype(x.dtype());
 
-    //打印flatten的情况
-    std::cout<<"flatten is activated"<<flatten<<std::endl;
-
-  } else {
-    if (x_dims.size() > 0) {
-      PADDLE_ENFORCE_GE(
-          axis,
-          -x_dims.size(),
-          phi::errors::OutOfRange(
-              "axis is out of range (expected to be in range of [%ld, "
-              "%ld), but got %ld).",
-              -(x_dims.size()),
-              x_dims.size(),
-              axis));
-      PADDLE_ENFORCE_LT(
-          axis,
-          x_dims.size(),
-          phi::errors::OutOfRange(
-              "axis is out of range (expected to be in range of [%ld, "
-              "%ld), but got %ld).",
-              -(x_dims.size()),
-              x_dims.size(),
-              axis));
+  if (indices_type==DataType::INT32) {
+    int _axis;
+    if (axis < 0) {
+      _axis = axis + x_dims.size();
     } else {
-      PADDLE_ENFORCE_EQ(
-          (axis == 0 || axis == -1),
-          true,
-          errors::InvalidArgument("The axis must be -1 or 0 in 0D Tensor, "
-                                  "but the value given is %d.",
-                                  axis));
+      _axis = axis;
     }
-    
-    //打印当前所有信息
-    std::cout<<"x dim:";
-    auto shape = phi::vectorize<int>(x_dims);
-    int len = shape.size();
-    for(int i = 0; i<len; i++){
-      std::cout<<shape[i]<<",";
-    }
-    std::cout<<std::endl;
-    std::cout<<"axis:"<<axis<<std::endl;
-    if (x.dtype() == DataType::FLOAT64) {std::cout<<"x dtype: float32"<<std::endl;}
-    if (x.dtype() == DataType::FLOAT32) {std::cout<<"x dtype: float64"<<std::endl;}
-
-    out->set_dims(x_dims);
-    out->set_dtype(x.dtype());
-    indices->set_dims(x_dims);
-    // indices->set_dtype(indices_type);
-    // indices->set_dtype(x.dtype());
+    PADDLE_ENFORCE_LT(
+        phi::vectorize(x_dims)[_axis],
+        INT32_MAX,
+        phi::errors::OutOfRange(
+            "cummax with axis %ld may be overflow, set dtype int64 to continue",
+            axis));
   }
 
+  if (x_dims.size() > 0) {
+    PADDLE_ENFORCE_GE(
+        axis,
+        -x_dims.size(),
+        phi::errors::OutOfRange(
+            "axis is out of range (expected to be in range of [%ld, "
+            "%ld), but got %ld).",
+            -(x_dims.size()),
+            x_dims.size(),
+            axis));
+    PADDLE_ENFORCE_LT(
+        axis,
+        x_dims.size(),
+        phi::errors::OutOfRange(
+            "axis is out of range (expected to be in range of [%ld, "
+            "%ld), but got %ld).",
+            -(x_dims.size()),
+            x_dims.size(),
+            axis));
+  } else {
+    PADDLE_ENFORCE_EQ(
+        (axis == 0 || axis == -1),
+        true,
+        errors::InvalidArgument("The axis must be -1 or 0 in 0D Tensor, "
+                                "but the value given is %d.",
+                                axis));
+  }
+
+  out->set_dims(x_dims);
+  out->set_dtype(x.dtype());
   out->share_lod(x);
+  indices->set_dims(x_dims);
+  indices->set_dtype(indices_type);
   indices->share_lod(x);
 }
 

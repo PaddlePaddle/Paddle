@@ -29,9 +29,7 @@ void CummaxGradKernel(const Context& dev_ctx,
                       const DenseTensor& out_grad,
                       int axis,
                       int dtype,
-                      bool flatten,
                       DenseTensor* x_grad) {
-  x_grad->Resize(x.dims()); //测试能否删除
   dev_ctx.template Alloc<T>(x_grad);
   phi::funcs::SetConstant<Context, T> functor;
   functor(dev_ctx, x_grad, static_cast<T>(0));
@@ -39,7 +37,6 @@ void CummaxGradKernel(const Context& dev_ctx,
     axis = axis + x.dims().size();
   }
   auto indices_type = phi::TransToPhiDataType(dtype);
-  // auto indices_type = indices.dtype();
   if (indices_type == DataType::INT32) {
     phi::funcs::gpu_scatter_add_kernel<T, int32_t>(*x_grad, axis, indices, out_grad, dev_ctx);
   } else if (indices_type == DataType::INT64) {
@@ -54,9 +51,7 @@ void CumminGradKernel(const Context& dev_ctx,
                       const DenseTensor& out_grad,
                       int axis,
                       int dtype,
-                      bool flatten,
                       DenseTensor* x_grad) {
-  x_grad->Resize(x.dims()); //测试能否删除
   dev_ctx.template Alloc<T>(x_grad);
   phi::funcs::SetConstant<Context, T> functor;
   functor(dev_ctx, x_grad, static_cast<T>(0));
@@ -79,14 +74,14 @@ PD_REGISTER_KERNEL(cummax_grad,
                    phi::CummaxGradKernel,
                    float,
                    double,
-                   int,
+                   int32_t,
                    int64_t) {}
-                  
+
 PD_REGISTER_KERNEL(cummin_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::CumminGradKernel,
                    float,
                    double,
-                   int,
+                   int32_t,
                    int64_t) {}

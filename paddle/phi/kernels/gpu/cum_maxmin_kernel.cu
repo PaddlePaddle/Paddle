@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -52,7 +52,6 @@ __global__ void KernelScanInnerWithIndices(const T1 *x_data, T1 *values_data, T2
           row_idx_buf[threadIdx.x] = col1;
         } else {
           row_buf[threadIdx.x] = init;
-          // No need to set the index here as the value in init will never be selected
         }
 
         if (col2 < row_size) {
@@ -60,7 +59,6 @@ __global__ void KernelScanInnerWithIndices(const T1 *x_data, T1 *values_data, T2
           row_idx_buf[num_threads_x + threadIdx.x] = col2;
         } else {
           row_buf[num_threads_x + threadIdx.x] = init;
-          // No need to set the index here as the value in init will never be selected
         }
 
         // Add the total value of all previous blocks to the first value of this block.
@@ -151,7 +149,7 @@ void ScanWithIndicesKernel(const Context& dev_ctx,
                            DenseTensor* out,
                            DenseTensor* indices) {
   dev_ctx.template Alloc<T1>(out);
-  dev_ctx.template Alloc<T1>(indices);
+  dev_ctx.template Alloc<T2>(indices);
   // For 0D Tensor
   if (out->numel() == 1) {
     auto raw_dims = out->dims();
@@ -179,16 +177,23 @@ void ScanWithIndicesKernel(const Context& dev_ctx,
   if (axis < 0) {
     axis += out_dims.size();
   }
-
+  
   const T1* x_data = x.data<T1>();
   T1* values_data = out->data<T1>();
   T2* indices_data = indices->data<T2>();
-
   if (axis == out_dims.size() - 1) {
     int ndim = x.dims().size();
-    // Treat all outer dimensions as a single dimension.
     int row_size = x.dims()[ndim - 1];
     int num_rows = x.numel() / row_size;
+
+    // dim3 threads(16, 32);
+    // dim3 grid(std::min(dev_ctx.GetCUDAMaxGridDimSize()[0], static_cast<int>(std::ceil(num_rows/int(threads.y)))));
+    // std::cout<<"threads "<<int(threads.x)<<" "<<int(threads.y)<<std::endl;
+    // std::cout<<"grid 1 "<<dev_ctx.GetCUDAMaxGridDimSize()[0]<<std::endl;
+    // std::cout<<"grid 2 "<<static_cast<int>(std::ceil(num_rows/int(threads.y)))<<std::endl;
+    // std::cout<<"grid 3 "<<num_rows<<std::endl;
+    // std::cout<<"grid 4 "<<std::ceil(num_rows/int(threads.y))<<std::endl;
+    // std::cout<<"grid 5 "<<num_rows/int(threads.y)<<std::endl;
 
     KernelScanInnerWithIndices<T1, T2, 16, 32><<<128, 128, 0, dev_ctx.stream()>>>(
       x_data, values_data, indices_data, num_rows, row_size, init, op);
@@ -196,13 +201,15 @@ void ScanWithIndicesKernel(const Context& dev_ctx,
     int64_t row_size = x.dims()[axis];
     auto sizes = phi::vectorize(x.dims());
 
-    // Treat all outer dimensions (i.e. dim_ < dim) as one.
     const int64_t num_orows = std::accumulate(sizes.begin(), sizes.begin() + axis, int64_t(1), [](int64_t &a, int64_t &b) { return a * b; });
-    // Treat all inner dimensions (i.e. dim > dimension) as one.
     const int64_t num_irows = std::accumulate(sizes.begin() + axis + 1, sizes.end(), int64_t(1), [](int64_t &a, int64_t &b) { return a * b; });
-    //for performance reasons, cuda kernels use uint32_t for loops over irows, orows and row,
-    //make sure that input is not bigger than supported by uint32_t
 
+    // dim3 threads(std::min(512, int(num_irows)));
+    // int64_t maxGridDim = dev_ctx.GetCUDAMaxGridDimSize()[1];
+    // dim3 grid(std::min(maxGridDim, num_orows), std::min(maxGridDim, static_cast<int64_t>(std::ceil(num_irows/int64_t{threads.x}))));
+    // std::cout<<"threads "<<std::min(512, int(num_irows))<<std::endl;
+    // std::cout<<"grid "<<std::min(maxGridDim, num_orows)<<" "<<std::min(maxGridDim, static_cast<int64_t>(std::ceil(num_irows/int64_t{threads.x})))<<std::endl;
+    
     KernelScanOuterWithIndices<T1, T2><<<128, 128, 0, dev_ctx.stream()>>>(
       x_data, values_data, indices_data, num_orows, num_irows, row_size, init, op);
   }
@@ -213,17 +220,14 @@ void CummaxKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   int axis,
                   int dtype,
-                  bool flatten,
                   DenseTensor* out,
                   DenseTensor* indices) {
   auto indices_type = phi::TransToPhiDataType(dtype);
   T init = std::is_floating_point<T>::value ? (-1*std::numeric_limits<T>::infinity()) : std::numeric_limits<T>::lowest();
   if (indices_type == DataType::INT32) {
-    ScanWithIndicesKernel<T, int32_t, std::greater_equal<T>, Context>(
-      dev_ctx, x, axis, init, out, indices);
+    ScanWithIndicesKernel<T, int32_t, std::greater_equal<T>, Context>(dev_ctx, x, axis, init, out, indices);
   } else if (indices_type == DataType::INT64) {
-    ScanWithIndicesKernel<T, int64_t, std::greater_equal<T>, Context>(
-      dev_ctx, x, axis, init, out, indices);
+    ScanWithIndicesKernel<T, int64_t, std::greater_equal<T>, Context>(dev_ctx, x, axis, init, out, indices);
   }
 }
 
@@ -232,36 +236,21 @@ void CumminKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   int axis,
                   int dtype,
-                  bool flatten,
                   DenseTensor* out,
                   DenseTensor* indices) {
   auto indices_type = phi::TransToPhiDataType(dtype);
   T init = std::is_floating_point<T>::value ? std::numeric_limits<T>::infinity() : std::numeric_limits<T>::max();
   if (indices_type == DataType::INT32) {
-    ScanWithIndicesKernel<T, int32_t, std::less_equal<T>, Context>(
-        dev_ctx, x, axis, init, out, indices);
+    ScanWithIndicesKernel<T, int32_t, std::less_equal<T>, Context>(dev_ctx, x, axis, init, out, indices);
   } else if (indices_type == DataType::INT64) {
-    ScanWithIndicesKernel<T, int64_t, std::less_equal<T>, Context>(
-        dev_ctx, x, axis, init, out, indices);
+    ScanWithIndicesKernel<T, int64_t, std::less_equal<T>, Context>(dev_ctx, x, axis, init, out, indices);
   }
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(cummax,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::CummaxKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t) {}
+PD_REGISTER_KERNEL(
+    cummax, GPU, ALL_LAYOUT, phi::CummaxKernel, float, double, int32_t, int64_t) {}
 
-PD_REGISTER_KERNEL(cummin,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::CumminKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t) {}
+PD_REGISTER_KERNEL(
+    cummin, GPU, ALL_LAYOUT, phi::CumminKernel, float, double, int32_t, int64_t) {}

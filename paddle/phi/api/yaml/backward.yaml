@@ -1010,22 +1010,22 @@
     data_type : out_grad
 
 - backward_op : cummax_grad
-  forward : cummax(Tensor x, int axis=-1, int dtype=3, bool flatten=false) -> Tensor(out), Tensor(indices)
+  forward : cummax(Tensor x, int axis=-1, int dtype=3) -> Tensor(out), Tensor(indices)
+  args : (Tensor x, Tensor indices, Tensor out_grad, int axis, int dtype)
+  output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
-    param : [x]
-  args : (Tensor x, Tensor indices, Tensor out_grad, int axis=-1, int dtype=3, bool flatten=false)
-  output : Tensor(x_grad)
+    param: [x]
   kernel :
     func : cummax_grad
 
 - backward_op : cummin_grad
-  forward : cummin(Tensor x, int axis=-1, int dtype=3, bool flatten=false) -> Tensor(out), Tensor(indices)
+  forward : cummin(Tensor x, int axis=-1, int dtype=3) -> Tensor(out), Tensor(indices)
+  args : (Tensor x, Tensor indices, Tensor out_grad, int axis, int dtype)
+  output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
-    param : [x]
-  args : (Tensor x, Tensor indices, Tensor out_grad, int axis=-1, int dtype=3, bool flatten=false)
-  output : Tensor(x_grad)
+    param: [x]
   kernel :
     func : cummin_grad
 
