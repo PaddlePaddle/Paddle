@@ -137,10 +137,10 @@ void SaveOptimizedModelPass::SaveModel() {
     framework::Executor exe(platform::CPUPlace{});
     exe.Run(save_program, &scope_, 0, true, true);
   };
-
+  // TODO(shentanyue01): Setting hardware and version identification for
+  // optimized models.
   auto SerializeProg = [&](const std::string& path) {
-    // TODO(shentanyue01): Setting hardware and version identification for
-    // optimized models. All persistable var need to be moved to global block
+    // All persistable var need to be moved to global block
     auto* global_block = optimized_program_desc.MutableBlock(0);
     for (size_t i = 1; i < optimized_program_desc.Size(); ++i) {
       const auto& sub_block = optimized_program_desc.Block(i);
