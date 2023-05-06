@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,16 +15,22 @@
 #pragma once
 
 #include "paddle/phi/common/int_array.h"
+#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/device_context.h"
 
 namespace phi {
 
 template <typename T, typename Context>
-void RandintKernel(const Context& dev_ctx,
-                   int low,
-                   int high,
-                   const IntArray& shape,
-                   DataType dtype,
-                   DenseTensor* out);
+void UniformRawKernel(const Context& dev_ctx,
+                      const IntArray& shape,
+                      DataType dtype,
+                      const Scalar& min,
+                      const Scalar& max,
+                      int seed,
+                      int diag_num,
+                      int diag_step,
+                      float diag_val,
+                      DenseTensor* out);
 
 }  // namespace phi
