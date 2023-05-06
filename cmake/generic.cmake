@@ -475,7 +475,7 @@ function(cc_test_build TARGET_NAME)
       memory
       gtest
       gflags
-      glog) # HACK (replace with decent fix)
+      glog)
     common_link(${TARGET_NAME})
     if(WITH_ROCM)
       target_link_libraries(${TARGET_NAME} ${ROCM_HIPRTC_LIB})
