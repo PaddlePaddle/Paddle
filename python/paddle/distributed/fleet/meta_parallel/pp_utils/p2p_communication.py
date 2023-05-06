@@ -694,7 +694,7 @@ def recv_forward(pp_first_stage, sync_recv=True):
         input_tensor = None
     else:
         if not _send_recv_meta.has_recv_meta:
-            _send_recv_meta.recv_meta(_hcg.recv_prev_group)
+            _send_recv_meta.recv_meta(_hcg.get_pipe_parallel_group())
             _send_recv_meta.has_recv_meta = _use_cache
 
         input_tensor, _ = _p2p_helper(
@@ -735,7 +735,9 @@ def send_forward(output_tensor, pp_last_stage):
     if not pp_last_stage:
         if not _send_recv_meta.has_send_meta:
             _send_recv_meta.set_send_message(output_tensor)
-            _send_recv_meta.send_meta(output_tensor, _hcg.send_next_group)
+            _send_recv_meta.send_meta(
+                output_tensor, _hcg.get_pipe_parallel_group()
+            )
             _send_recv_meta.has_send_meta = _use_cache
 
         _p2p_helper(
@@ -808,10 +810,10 @@ def send_forward_backward_recv_forward_backward(
         _timers("send_forward_backward_recv_forward_backward").start()
     if not _send_recv_meta.has_send_meta:
         _send_recv_meta.set_send_message(output_tensor)
-        _send_recv_meta.send_meta(output_tensor, _hcg.send_next_group)
+        _send_recv_meta.send_meta(output_tensor, _hcg.get_pipe_parallel_group())
         _send_recv_meta.has_send_meta = _use_cache
     if recv_prev and not _send_recv_meta.has_recv_meta:
-        _send_recv_meta.recv_meta(_hcg.recv_prev_group)
+        _send_recv_meta.recv_meta(_hcg.get_pipe_parallel_group())
         _send_recv_meta.has_recv_meta = _use_cache
     input_tensor, output_tensor_grad = _p2p_helper(
         tensor_send_next=output_tensor,
@@ -832,10 +834,10 @@ def send_forward_recv_forward(output_tensor, recv_prev):
         _timers("send_forward_recv_forward").start()
     if not _send_recv_meta.has_send_meta:
         _send_recv_meta.set_send_message(output_tensor)
-        _send_recv_meta.send_meta(output_tensor, _hcg.send_next_group)
+        _send_recv_meta.send_meta(output_tensor, _hcg.get_pipe_parallel_group())
         _send_recv_meta.has_send_meta = _use_cache
     if recv_prev and not _send_recv_meta.has_recv_meta:
-        _send_recv_meta.recv_meta(_hcg.recv_prev_group)
+        _send_recv_meta.recv_meta(_hcg.get_pipe_parallel_group())
         _send_recv_meta.has_recv_meta = _use_cache
 
     input_tensor, _ = _p2p_helper(
