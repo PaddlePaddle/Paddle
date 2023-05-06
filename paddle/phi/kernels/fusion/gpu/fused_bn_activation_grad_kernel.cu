@@ -19,9 +19,9 @@
 
 #ifdef __NVCC__
 #include "cub/cub.cuh"
+#include "paddle/phi/backends/gpu/cuda/cudnn_helper.h"
 #endif
 
-#include "paddle/phi/backends/gpu/cuda/cudnn_helper.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
