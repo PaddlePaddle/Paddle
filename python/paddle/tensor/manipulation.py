@@ -2098,7 +2098,7 @@ def vsplit(x, num_or_sections, name=None):
 
             # x is a Tensor of shape [8, 6, 7]
             x = paddle.rand([8, 6, 7])
-            out0, out1, out2 = paddle.vsplit(x, num_or_sections=2)
+            out0, out1 = paddle.vsplit(x, num_or_sections=2)
             print(out0.shape)  # [4, 6, 7]
             print(out1.shape)  # [4, 6, 7]
             out0, out1, out2 = paddle.vsplit(x, num_or_sections=[1, 3, 4])
