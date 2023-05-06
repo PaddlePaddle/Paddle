@@ -2193,7 +2193,8 @@ struct SimpleOpTypeSetTeller : public Teller {
 
     if (op_type == "reduce_sum" || op_type == "reduce_mean" ||
         op_type == "reduce_max" || op_type == "reduce_min" ||
-        op_type == "reduce_prod") {
+        op_type == "reduce_prod" || op_type == "reduce_any" ||
+        op_type == "reduce_all") {
       if (!desc.HasAttr("dim", /*with_attr_var=*/false)) {
         VLOG(3) << "Skip to convert into TRT while found Attribute('dim') is "
                    "Variable type in "
@@ -2234,14 +2235,28 @@ struct SimpleOpTypeSetTeller : public Teller {
           return false;
       }
 
-#if IS_TRT_VERSION_LT(7000)
       auto dtype = x_var_desc->GetDataType();
-      if (dtype != framework::proto::VarType::FP32) {
-        VLOG(3) << "reduce op input data type must be float32 using TensorRT "
-                   "< 7.0";
-        return false;
-      }
+      if (op_type == "reduce_all" || op_type == "reduce_any") {
+        if (dtype != framework::proto::VarType::BOOL) {
+          VLOG(3)
+              << "reduce_all and reduce_any op input data type must be bool";
+          return false;
+        }
+      } else {
+#if IS_TRT_VERSION_GE(7000)
+        if (dtype != framework::proto::VarType::INT32 &&
+            dtype != framework::proto::VarType::FP32) {
+          VLOG(3) << "reduce op input data type must be int32 or float32";
+          return false;
+        }
+#else
+        if (dtype != framework::proto::VarType::FP32) {
+          VLOG(3) << "reduce op input data type must be float32 using TensorRT "
+                     "< 7.0";
+          return false;
+        }
 #endif
+      }
     }
 #if IS_TRT_VERSION_GE(7000)
     if (op_type == "tile") {
@@ -2804,8 +2819,12 @@ struct SimpleOpTypeSetTeller : public Teller {
       "nearest_interp",
       "anchor_generator",
       "reduce_max",
+      "reduce_min",
       "reduce_mean",
       "reduce_sum",
+      "reduce_prod",
+      "reduce_any",
+      "reduce_all",
       "conv3d",
       "conv3d_transpose",
       "mish",
@@ -2961,8 +2980,12 @@ struct SimpleOpTypeSetTeller : public Teller {
       "nearest_interp",
       "anchor_generator",
       "reduce_max",
+      "reduce_min",
       "reduce_mean",
       "reduce_sum",
+      "reduce_prod",
+      "reduce_any",
+      "reduce_all",
       "conv3d",
       "conv3d_transpose",
       "mish",
