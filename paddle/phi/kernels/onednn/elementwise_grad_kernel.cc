@@ -147,10 +147,8 @@ void ElementwiseGradKernel(const OneDNNContext& dev_ctx,
   std::shared_ptr<dnnl::memory> broadcast_src_memory = reorder_src_memory;
 
   auto& astream = OneDNNContext::tls().get_stream();
-  auto scales_md =
-      dnnl::memory::desc({1},
-                         dnnl::memory::data_type::f32,
-                         dnnl::memory::format_tag::x);
+  auto scales_md = dnnl::memory::desc(
+      {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
   auto scales_mem = dnnl::memory(scales_md, onednn_engine);
   auto scale_memory_buf = static_cast<float*>(scales_mem.get_data_handle());
   *scale_memory_buf = scale;
