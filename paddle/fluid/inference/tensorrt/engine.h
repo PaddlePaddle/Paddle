@@ -84,9 +84,10 @@ class TrtCudaGraph {
     // be used.
     const auto ret = cudaStreamEndCapture(stream, &cuda_graph_);
     if (ret == cudaErrorStreamCaptureInvalidated) {
-      // PADDLE_ENFORCE(cuda_graph_ == nullptr,
-      // platform::errors::PreconditionNotMet("CudaGraph capture stream
-      // failed."));
+      PADDLE_ENFORCE_EQ(cuda_graph_ == nullptr,
+                        true,
+                        platform::errors::PreconditionNotMet(
+                            "CudaGraph capture stream failed."));
     } else {
       PADDLE_ENFORCE_GPU_SUCCESS(ret);
       PADDLE_ENFORCE_NOT_NULL(

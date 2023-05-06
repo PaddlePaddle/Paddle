@@ -616,6 +616,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
     LOG_FIRST_N(WARNING, 1)
         << "You have enabled CudaGraph, but not the entire graph offload to "
            "trt, now return to normal mode.";
+    use_cuda_graph = false;
   }
 
   // Setting the disable_trt_plugin_fp16 to true means that TRT plugin will not
