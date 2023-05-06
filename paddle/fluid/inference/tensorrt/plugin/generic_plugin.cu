@@ -577,8 +577,6 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
                             output_numel * data_type_and_size.second,
                             place));
 
-    phi::DenseTensor output_densetonsor(output_alloc, output_meta);
-
     (*dense_tensor_outputs_)[i] =
         std::move(phi::DenseTensor(output_alloc, output_meta));
 
