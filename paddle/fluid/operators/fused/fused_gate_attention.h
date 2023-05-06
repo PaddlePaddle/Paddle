@@ -1213,7 +1213,7 @@ class FlashAttnWithGating {
 
     if (nonbatched_bias) {
       // compare block reduce
-      auto dbias_first_dim = nonbatched_bias->numel() / bias_d.numel();
+      auto dbias_first_dim = bias_d.numel() / nonbatched_bias->numel();
       bias_d.Resize({dbias_first_dim,
                      temp_bias_dim[0],
                      temp_bias_dim[1],
