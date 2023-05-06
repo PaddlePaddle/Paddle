@@ -64,7 +64,62 @@ Scope* CreateParamScope() {
   return param_scope;
 }
 
-TEST(FusedMultiTransformerXPUQuantPass, context_stage) {
+VarDesc* Data(paddle::framework::BlockDesc* block,
+              std::string name,
+              std::vector<int64_t> shape = {},
+              bool is_persistable = false,
+              proto::VarType::Type data_type = proto::VarType::FP32) {
+  auto* var = block->Var(name);
+  var->SetType(proto::VarType::LOD_TENSOR);
+  var->SetDataType(data_type);
+  var->SetShape(shape);
+  var->SetPersistable(is_persistable);
+  return var;
+}
+
+TEST(RemoveAssignGather, basic) {
+  paddle::framework::ProgramDesc program;
+  auto* block = program.MutableBlock(0);
+
+  auto* x = Data(block, "fused_multi_transformer_x", {1, 1, 1536});
+  auto* cache_kv =
+      Data(block, "fused_multi_transformer_cache_kv", {2, 1, 24, 512, 64});
+  OpDesc* fused_multi_transformer_op = block->AppendOp();
+  fused_multi_transformer_op->SetType("fused_multi_transformer");
+  fused_multi_transformer_op->SetInput("X", {x->Name()});
+  fused_multi_transformer_op->SetInput("CacheKV", {cache_kv->Name()});
+  fused_multi_transformer_op->SetOutput("CacheKVOut", {cache_kv->Name()});
+
+  auto* assign_out = Data(block, "assign_out", cache_kv->GetShape());
+  OpDesc* assign_op = block->AppendOp();
+  assign_op->SetType("assign");
+  assign_op->SetInput("X", {cache_kv->Name()});
+  assign_op->SetOutput("Out", {assign_out->Name()});
+
+  OpDesc* gather_op = block->AppendOp();
+  auto gather_index = Data(block, "gather_index", {10});
+  gather_op->SetType("gather");
+  gather_op->SetInput("X", {assign_out->Name()});
+  gather_op->SetInput("Index", {gather_index->Name()});
+  gather_op->SetAttr("axis", {1});
+  gather_op->SetOutput("Out", {cache_kv->Name()});
+
+  std::unique_ptr<ir::Graph> graph(new ir::Graph(program));
+  auto pass = PassRegistry::Instance().Get("fused_multi_transformer_xpu_pass");
+  pass->Apply(graph.get());
+  auto assign_num = GetNumOpNodes(graph, "assign");
+  auto gather_num = GetNumOpNodes(graph, "gather");
+  PADDLE_ENFORCE_EQ(assign_num,
+                    0,
+                    platform::errors::PreconditionNotMet(
+                        "assign op should be removed from the graph."));
+  PADDLE_ENFORCE_EQ(gather_num,
+                    0,
+                    platform::errors::PreconditionNotMet(
+                        "gather op should be removed from the graph."));
+}
+
+TEST(FusedMultiTransformerXPUPass, context_stage) {
   DEF_INPUT_DATA
 
   auto* cache_kv = layers.fill_constant_batch_size_like(
@@ -95,10 +150,9 @@ TEST(FusedMultiTransformerXPUQuantPass, context_stage) {
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
   graph->Set("__param_scope__", CreateParamScope());
 
-  auto pass =
-      PassRegistry::Instance().Get("fused_multi_transformer_xpu_quant_pass");
+  auto pass = PassRegistry::Instance().Get("fused_multi_transformer_xpu_pass");
   if (pass.get() == nullptr) {
-    LOG(INFO) << "get fused_multi_transformer_xpu_quant_pass failed";
+    LOG(INFO) << "get fused_multi_transformer_xpu_pass failed";
   }
 
   graph.reset(pass->Apply(graph.release()));
@@ -114,7 +168,7 @@ TEST(FusedMultiTransformerXPUQuantPass, context_stage) {
           num_nodes_after));
 }
 
-TEST(FusedMultiTransformerXPUQuantPass, decoder_stage) {
+TEST(FusedMultiTransformerXPUPass, decoder_stage) {
   DEF_INPUT_DATA
 
   auto* cache_kv = layers.fill_constant_batch_size_like(
@@ -146,10 +200,9 @@ TEST(FusedMultiTransformerXPUQuantPass, decoder_stage) {
   std::unique_ptr<ir::Graph> graph(new ir::Graph(layers.main_program()));
   graph->Set("__param_scope__", CreateParamScope());
 
-  auto pass =
-      PassRegistry::Instance().Get("fused_multi_transformer_xpu_quant_pass");
+  auto pass = PassRegistry::Instance().Get("fused_multi_transformer_xpu_pass");
   if (pass.get() == nullptr) {
-    LOG(INFO) << "get fused_multi_transformer_xpu_quant_pass failed";
+    LOG(INFO) << "get fused_multi_transformer_xpu_pass failed";
   }
 
   graph.reset(pass->Apply(graph.release()));
@@ -169,4 +222,4 @@ TEST(FusedMultiTransformerXPUQuantPass, decoder_stage) {
 }  // namespace framework
 }  // namespace paddle
 
-USE_PASS(fused_multi_transformer_xpu_quant_pass);
+USE_PASS(fused_multi_transformer_xpu_pass);
