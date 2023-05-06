@@ -1,4 +1,4 @@
-/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,16 +24,16 @@ limitations under the License. */
 namespace phi {
 
 template <typename T, typename Context>
-void UniformKernel(const Context &dev_ctx,
-                   const IntArray &shape,
-                   DataType dtype,
-                   const Scalar &min,
-                   const Scalar &max,
-                   int seed,
-                   DenseTensor *out) {
-  int diag_num = 0;
-  int diag_step = 0;
-  float diag_val = 0.0f;
+void UniformRawKernel(const Context &dev_ctx,
+                      const IntArray &shape,
+                      DataType dtype,
+                      const Scalar &min,
+                      const Scalar &max,
+                      int seed,
+                      int diag_num,
+                      int diag_step,
+                      float diag_val,
+                      DenseTensor *out) {
   out->Resize(phi::make_ddim(shape.GetData()));
   T *data = dev_ctx.template Alloc<T>(out);
   int64_t size = out->numel();
@@ -76,4 +76,5 @@ void UniformKernel(const Context &dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(uniform, XPU, ALL_LAYOUT, phi::UniformKernel, float) {}
+PD_REGISTER_KERNEL(uniform_raw, XPU, ALL_LAYOUT, phi::UniformRawKernel, float) {
+}
