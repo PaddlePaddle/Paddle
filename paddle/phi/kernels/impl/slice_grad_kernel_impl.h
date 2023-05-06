@@ -357,7 +357,7 @@ void SliceArrayGradKernel(const Context& dev_ctx,
                           const TensorArray& input,
                           const TensorArray& out_grad,
                           const IntArray& starts,
-                          const IntArray& ends,
+                          const IntArray& ends UNUSED,
                           TensorArray* input_grad) {
   int64_t d_in_size = input.size();
   input_grad->resize(d_in_size);

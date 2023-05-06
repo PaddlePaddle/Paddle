@@ -51,6 +51,9 @@ int ConvertActivationType(std::string act_type);
 
 Node* FindNodeWithName(Graph* graph, std::string name);
 
+std::vector<Node*> FindOpNodeByInputName(Graph* graph,
+                                         const std::string& var_name);
+
 template <typename T>
 size_t HashTensor(const phi::DenseTensor& in);
 

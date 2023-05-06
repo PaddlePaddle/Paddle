@@ -207,7 +207,7 @@ class EmitGatherGemmScatterConfigurationLibrary(EmitGemmConfigurationLibrary):
     def __init__(self, operation_path, configuration_name):
         self.configuration_name = configuration_name
         self.configuration_path = os.path.join(
-            operation_path, "%s.h" % configuration_name
+            operation_path, "configurations.h.tmp"
         ).replace('\\', '/')
 
         self.instance_emitter = {
@@ -246,9 +246,7 @@ namespace sparse {
 """
 
     def __enter__(self):
-        self.configuration_file = open(self.configuration_path, "w")
-        self.configuration_file.write(self.header_template)
-        self.configuration_file.write(self.separator)
+        self.configuration_file = open(self.configuration_path, "a")
 
         self.includes = collections.OrderedDict([])
         self.instance_definitions = []
@@ -259,22 +257,10 @@ namespace sparse {
 
     def __exit__(self, exception_type, exception_value, traceback):
 
-        # Write includes
-        for incl, _ in self.includes.items():
-            include_statement = "#include \"%s\"\n" % incl
-            self.configuration_file.write(include_statement)
-
-        self.configuration_file.write(self.separator)
-        self.configuration_file.write(self.namespace_template)
-
         # Write instance definitions in top-level namespace
         for instance_definition in self.instance_definitions:
             self.configuration_file.write(instance_definition)
 
-        for instance_wrapper in self.instance_wrappers:
-            self.configuration_file.write(instance_wrapper)
-
-        self.configuration_file.write(self.epilogue_template)
         self.configuration_file.close()
 
 
