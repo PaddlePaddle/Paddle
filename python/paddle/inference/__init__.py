@@ -20,6 +20,7 @@ from .wrapper import (
     Tensor,
     Predictor,
     convert_to_mixed_precision,
+    save_optimized_model,
 )
 
 from paddle.fluid.core import (
@@ -44,6 +45,7 @@ __all__ = [  # noqa
     '_get_phi_kernel_name',
     'get_trt_compile_version',
     'convert_to_mixed_precision',
+    'save_optimized_model',
     'get_trt_runtime_version',
     'get_num_bytes_of_data_type',
     'PredictorPool',

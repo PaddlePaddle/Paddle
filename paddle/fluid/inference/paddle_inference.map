@@ -11,6 +11,7 @@
 			*paddle_infer::GetTrtRuntimeVersion*;
 			*paddle_infer::GetNumBytesOfDataType*;
 			*paddle_infer::ConvertToMixedPrecision*;
+			*paddle_infer::SaveOptimizedModel*;
 			*paddle_infer::contrib::TensorUtils*;
 			*paddle_infer::contrib::Status*;
 			*paddle_infer::services::PredictorPool*;

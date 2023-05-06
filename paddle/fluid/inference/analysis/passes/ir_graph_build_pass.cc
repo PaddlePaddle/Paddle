@@ -47,6 +47,11 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
   if (argument->model_dir_valid()) {
     auto program =
         LoadModel(argument->model_dir(), argument->scope_ptr(), place);
+    std::cout << "argument->main_program().Version(): " << program->Version()
+              << std::endl;
+    if (program->Version() == -1) {
+      argument->SetEnableIrOptim(false);
+    }
     argument->SetMainProgram(program.release());
   } else if (argument->model_program_path_valid() &&
              argument->model_params_path_valid()) {
@@ -57,6 +62,11 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
         place,
         argument->model_from_memory_valid() && argument->model_from_memory(),
         argument->skip_load_params());
+    std::cout << "argument->main_program().Version(): " << program->Version()
+              << std::endl;
+    if (program->Version() == -1) {
+      argument->SetEnableIrOptim(false);
+    }
     argument->SetMainProgram(program.release());
   } else {
     PADDLE_THROW(platform::errors::PreconditionNotMet(

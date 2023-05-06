@@ -41,6 +41,7 @@
 #include "paddle/fluid/inference/analysis/pass_result_info.h"
 #include "paddle/fluid/inference/analysis/passes/convert_to_mixed_precision.h"
 #include "paddle/fluid/inference/analysis/passes/memory_optimize_pass.h"
+#include "paddle/fluid/inference/analysis/passes/save_optimized_model_pass.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/infer_context.h"
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
@@ -2847,6 +2848,21 @@ void ConvertToMixedPrecision(const std::string &model_file,
                                                        phi_backend,
                                                        keep_io_types,
                                                        black_list);
+}
+
+void SaveOptimizedModel(const std::string &model_file,
+                        const std::string &params_file,
+                        const std::string &output_model_file,
+                        const std::string &output_params_file,
+                        paddle_infer::PlaceType backend,
+                        std::unordered_set<std::string> black_list) {
+  auto phi_backend = paddle::ConvertBackend(backend);
+  paddle::inference::analysis::SaveOptimizedModel(model_file,
+                                                  params_file,
+                                                  output_model_file,
+                                                  output_params_file,
+                                                  phi_backend,
+                                                  black_list);
 }
 
 }  // namespace paddle_infer

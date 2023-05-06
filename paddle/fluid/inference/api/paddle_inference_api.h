@@ -243,6 +243,14 @@ PD_INFER_DECL void ConvertToMixedPrecision(
     bool keep_io_types = true,
     std::unordered_set<std::string> black_list = {});
 
+PD_INFER_DECL void SaveOptimizedModel(
+    const std::string& model_file,
+    const std::string& params_file,
+    const std::string& output_model_file,
+    const std::string& output_params_file,
+    PlaceType backend,
+    std::unordered_set<std::string> black_list = {});
+
 namespace services {
 ///
 /// \class PredictorPool

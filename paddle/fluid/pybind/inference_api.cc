@@ -521,6 +521,14 @@ void BindInferenceApi(py::module *m) {
          py::arg("backend"),
          py::arg("keep_io_types") = true,
          py::arg("black_list") = std::unordered_set<std::string>());
+  m->def("save_optimized_model_bind",
+         &paddle_infer::SaveOptimizedModel,
+         py::arg("model_file"),
+         py::arg("params_file"),
+         py::arg("output_model_file"),
+         py::arg("output_params_file"),
+         py::arg("backend"),
+         py::arg("black_list") = std::unordered_set<std::string>());
 }
 
 namespace {

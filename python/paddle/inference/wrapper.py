@@ -26,6 +26,7 @@ from paddle.fluid.core import (
     PaddleInferTensor,
     PaddlePlace,
     convert_to_mixed_precision_bind,
+    save_optimized_model_bind,
 )
 
 DataType = PaddleDType
@@ -112,6 +113,46 @@ def convert_to_mixed_precision(
         mixed_precision,
         backend,
         keep_io_types,
+        black_list,
+    )
+
+
+def save_optimized_model(
+    model_file: str,
+    params_file: str,
+    output_model_file: str,
+    output_params_file: str,
+    backend: PlaceType,
+    black_list: Set = set(),
+):
+    '''
+    Save the model optimized by IR pass.
+
+    Args:
+        model_file: fp32 model file, e.g. inference.pdmodel.
+        params_file: fp32 params file, e.g. inference.pdiparams.
+        output_model_file: The storage path of the converted mixed-precision model.
+        output_params_file: The storage path of the converted mixed-precision params.
+        backend: The backend, e.g. PlaceType.XPU.
+        black_list: IR pass that do not run.
+    '''
+    output_model_dirname = os.path.dirname(output_model_file)
+    # Support output_params_file is empty, because some models don't have params, but save_optimized_model will call
+    # constant_folding_pass, it will generate a new params file to save persistable vars, which is saved in the same
+    # level file directory as the model file by default and ends in pdiparams.
+    output_params_dirname = (
+        os.path.dirname(output_params_file)
+        if len(output_params_file) != 0
+        else output_model_dirname
+    )
+    if not os.path.exists(output_params_dirname):
+        os.makedirs(output_params_dirname)
+    save_optimized_model_bind(
+        model_file,
+        params_file,
+        output_model_file,
+        output_params_file,
+        backend,
         black_list,
     )
 

@@ -16,6 +16,10 @@ cc_library(
   DEPS analysis_pass ir_graph_build_pass auto_mixed_precision_pass
        constant_folding_pass)
 cc_library(
+  save_optimized_model_pass
+  SRCS save_optimized_model_pass.cc
+  DEPS analysis_pass ir_graph_build_pass)
+cc_library(
   ir_params_sync_among_devices_pass
   SRCS ir_params_sync_among_devices_pass.cc
   DEPS analysis_pass argument ir_pass_manager)
@@ -41,6 +45,7 @@ cc_library(
        adjust_cudnn_workspace_size_pass
        memory_optim_pass
        convert_to_mixed_precision
+       save_optimized_model_pass
        inference_op_replace_pass
        ir_graph_to_program_pass)
 

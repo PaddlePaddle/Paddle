@@ -39,6 +39,38 @@ constexpr char kStartupProgramDescs[] = "startup_program_descs";
 namespace ir {
 class Graph;
 
+static const std::vector<std::string> support_subgraph_passes = {
+    "simplify_with_basic_ops_pass",
+    "fused_multi_transformer_encoder_pass",
+    "fused_multi_transformer_decoder_pass",
+    "fused_multi_transformer_encoder_fuse_qkv_pass",
+    "fused_multi_transformer_decoder_fuse_qkv_pass",
+    "multi_devices_fused_multi_transformer_encoder_fuse_qkv_pass",
+    "multi_devices_fused_multi_transformer_decoder_fuse_qkv_pass",
+    "fuse_multi_transformer_layer_pass",
+    "delete_quant_dequant_linear_op_pass",
+    "delete_weight_dequant_linear_op_pass",
+};
+
+static const std::vector<std::string> xpu_support_subgraph_passes = {
+    "delete_dropout_op_pass",
+    "delete_concat_op_pass",
+    "identity_scale_op_clean_pass",
+    "delete_op_device_pass",
+    "constant_folding_pass",
+    "delete_elementwise_mul_op_pass",
+    "generate_sequence_xpu_fuse_pass",
+    "embedding_with_eltwise_add_xpu_fuse_pass",
+    "multi_encoder_xpu_fuse_pass",
+    "multi_encoder_xpu_slice_fuse_pass",
+    "fused_multi_transformer_cachekv_layout_trans_pass",
+    "one_beam_size_fuse_pass",
+    "stack_fuse_pass",
+    "fused_multi_transformer_xpu_quant_pass",
+    "fc_xpu_fuse_pass",
+    "link_xpu_op_max_pass",
+};
+
 template <typename PassType>
 struct PassRegistrar;
 
