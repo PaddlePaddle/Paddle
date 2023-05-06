@@ -169,11 +169,12 @@ def add_composite_info(ops, backward_ops, backward_op_dict):
         # add whether only composite
         if (
             op["backward_composite"] is not None
+            and "invoke" not in backward_op_dict[op["backward"]]
             and "kernel" not in backward_op_dict[op["backward"]]
         ):
-            op["only_composite"] = True
+            op["only_backward_composite"] = True
         else:
-            op["only_composite"] = False
+            op["only_backward_composite"] = False
 
 
 # add fluid name in ops and backward ops info
