@@ -129,12 +129,14 @@ if(WIN32)
     VERBATIM)
   add_custom_target(mkldnn_cmd ALL DEPENDS ${MKLDNN_LIB})
 else()
-  set(MKLDNN_SHARED_LIB ${MKLDNN_INSTALL_DIR}/libdnnl.so.3)
+  set(MKLDNN_SHARED_LIB ${MKLDNN_INSTALL_DIR}/libdnnl.so.0)
+  set(MKLDNN_SHARED_LIB_3 ${MKLDNN_INSTALL_DIR}/libdnnl.so.3)
   add_custom_command(
-    OUTPUT ${MKLDNN_SHARED_LIB}
+    OUTPUT ${MKLDNN_SHARED_LIB_3}
     COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_LIB} ${MKLDNN_SHARED_LIB}
+    COMMAND ${CMAKE_COMMAND} -E copy ${MKLDNN_LIB} ${MKLDNN_SHARED_LIB_3}
     DEPENDS ${MKLDNN_PROJECT})
-  add_custom_target(mkldnn_cmd ALL DEPENDS ${MKLDNN_SHARED_LIB})
+  add_custom_target(mkldnn_cmd ALL DEPENDS ${MKLDNN_SHARED_LIB_3})
 endif()
 
 # generate a static dummy target to track mkldnn dependencies
