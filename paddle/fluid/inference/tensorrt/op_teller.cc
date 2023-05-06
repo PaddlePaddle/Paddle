@@ -1521,6 +1521,31 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
+    if (op_type == "pow") {
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+      auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
+      const auto x_shape = x_var_desc->GetShape();
+      if (!with_dynamic_shape && (x_shape.size() == 1 || x_shape.size() == 0)) {
+        VLOG(3) << op_type
+                << " op does not support input's dim is 1 or 0 in tensorrt "
+                   "static shape mode.";
+        return false;
+      }
+      // the same as `elementwise_pow`.
+      if (x_var_desc->GetDataType() ==
+          paddle::framework::proto::VarType_Type::VarType_Type_INT32) {
+        VLOG(3) << "These operations (pow) do not support int32 "
+                   "datatype.";
+        return false;
+      }
+    }
+
     if (op_type == "stack") {
       if (!with_dynamic_shape) {
         VLOG(3)
@@ -2939,6 +2964,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "elementwise_mul",
       "elementwise_div",
       "elementwise_pow",
+      "pow",
       "elementwise_min",
       "elementwise_max",
       "elementwise_floordiv",
