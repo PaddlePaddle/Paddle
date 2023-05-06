@@ -16,7 +16,7 @@ import copy
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.framework import core
@@ -28,19 +28,18 @@ class TestPutAlongAxisOp(OpTest):
     def setUp(self):
         self.init_data()
         self.reduce_op = "assign"
-        self.dtype = 'float64'
         self.op_type = "put_along_axis"
         self.python_api = paddle.tensor.put_along_axis
         self.xnp = np.random.random(self.x_shape).astype(self.x_type)
-        # numpy put_along_axis is an inplace opearion.
+        # numpy put_along_axis is an inplace operation.
         self.xnp_result = copy.deepcopy(self.xnp)
         np.put_along_axis(self.xnp_result, self.index, self.value, self.axis)
         self.target = self.xnp_result
         broadcast_shape_list = list(self.x_shape)
         broadcast_shape_list[self.axis] = 1
-        self.braodcast_shape = tuple(broadcast_shape_list)
-        self.index_broadcast = np.broadcast_to(self.index, self.braodcast_shape)
-        self.value_broadcast = np.broadcast_to(self.value, self.braodcast_shape)
+        self.broadcast_shape = tuple(broadcast_shape_list)
+        self.index_broadcast = np.broadcast_to(self.index, self.broadcast_shape)
+        self.value_broadcast = np.broadcast_to(self.value, self.broadcast_shape)
         self.inputs = {
             'Input': self.xnp,
             'Index': self.index_broadcast,
@@ -56,9 +55,75 @@ class TestPutAlongAxisOp(OpTest):
         self.check_grad(["Input", "Value"], "Result")
 
     def init_data(self):
+        self.dtype = 'float64'
         self.x_type = "float64"
         self.x_shape = (10, 10, 10)
         self.value_type = "float64"
+        self.value = np.array([99]).astype(self.value_type)
+        self.index_type = "int32"
+        self.index = np.array([[[0]]]).astype(self.index_type)
+        self.axis = 1
+        self.axis_type = "int64"
+
+
+class TestPutAlongAxisFP16Op(TestPutAlongAxisOp):
+    def init_data(self):
+        self.dtype = np.float16
+        self.x_type = "float16"
+        self.x_shape = (10, 10, 10)
+        self.value_type = "float16"
+        self.value = np.array([99]).astype(self.value_type)
+        self.index_type = "int32"
+        self.index = np.array([[[0]]]).astype(self.index_type)
+        self.axis = 1
+        self.axis_type = "int64"
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestPutAlongAxisBF16Op(OpTest):
+    def setUp(self):
+        self.init_data()
+        self.reduce_op = "assign"
+        self.op_type = "put_along_axis"
+        self.python_api = paddle.tensor.put_along_axis
+        self.xnp = np.random.random(self.x_shape).astype(self.x_type)
+        # numpy put_along_axis is an inplace operation.
+        self.xnp_result = copy.deepcopy(self.xnp)
+        np.put_along_axis(self.xnp_result, self.index, self.value, self.axis)
+        self.target = self.xnp_result
+        broadcast_shape_list = list(self.x_shape)
+        broadcast_shape_list[self.axis] = 1
+        self.broadcast_shape = tuple(broadcast_shape_list)
+        self.index_broadcast = np.broadcast_to(self.index, self.broadcast_shape)
+        self.value_broadcast = np.broadcast_to(self.value, self.broadcast_shape)
+        self.inputs = {
+            'Input': self.xnp,
+            'Index': self.index_broadcast,
+            'Value': self.value_broadcast,
+        }
+        self.attrs = {'Axis': self.axis, 'Reduce': self.reduce_op}
+        self.outputs = {'Result': self.target}
+
+        self.inputs['Input'] = convert_float_to_uint16(self.inputs['Input'])
+        self.inputs['Value'] = convert_float_to_uint16(self.inputs['Value'])
+        self.outputs['Result'] = convert_float_to_uint16(self.outputs['Result'])
+        self.place = core.CUDAPlace(0)
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place)
+
+    def test_check_grad(self):
+        self.check_grad_with_place(self.place, ["Input", "Value"], "Result")
+
+    def init_data(self):
+        self.dtype = np.uint16
+        self.x_type = "float32"
+        self.x_shape = (10, 10, 10)
+        self.value_type = "float32"
         self.value = np.array([99]).astype(self.value_type)
         self.index_type = "int32"
         self.index = np.array([[[0]]]).astype(self.index_type)

@@ -1958,10 +1958,14 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
 
         helper = LayerHelper("addmm", **locals())
         check_variable_and_dtype(
-            input, 'Input', ['float32', 'float64'], 'addmm'
+            input, 'Input', ['float16', 'float32', 'float64', 'uint16'], 'addmm'
         )
-        check_variable_and_dtype(x, 'X', ['float32', 'float64'], 'addmm')
-        check_variable_and_dtype(y, 'Y', ['float32', 'float64'], 'addmm')
+        check_variable_and_dtype(
+            x, 'X', ['float16', 'float32', 'float64', 'uint16'], 'addmm'
+        )
+        check_variable_and_dtype(
+            y, 'Y', ['float16', 'float32', 'float64', 'uint16'], 'addmm'
+        )
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
         helper.append_op(
@@ -2456,7 +2460,10 @@ def min(x, axis=None, keepdim=False, name=None):
         reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
         helper = LayerHelper('min', **locals())
         check_variable_and_dtype(
-            x, 'x', ['float32', 'float64', 'int32', 'int64'], 'min'
+            x,
+            'x',
+            ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
+            'min',
         )
 
         out = helper.create_variable_for_type_inference(dtype=x.dtype)

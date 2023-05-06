@@ -68,4 +68,5 @@ PD_REGISTER_KERNEL(take_along_axis_grad,
                    double,
                    int64_t,
                    int,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

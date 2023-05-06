@@ -1240,7 +1240,15 @@ def broadcast_tensors(input, name=None):
             check_variable_and_dtype(
                 x,
                 'input[' + str(id) + ']',
-                ['bool', 'float32', 'float64', 'int32', 'int64'],
+                [
+                    'bool',
+                    'float16',
+                    'float32',
+                    'float64',
+                    'int32',
+                    'int64',
+                    'uint16',
+                ],
                 'broadcast_tensors',
             )
             if x.dtype != input[0].dtype:
@@ -1977,6 +1985,7 @@ def split(x, num_or_sections, axis=0, name=None):
                 'int32',
                 'int64',
                 'uint8',
+                'uint16',
                 'int8',
             ],
             'split',
@@ -4559,7 +4568,15 @@ def take_along_axis(arr, indices, axis):
         check_variable_and_dtype(
             arr,
             'x',
-            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint8'],
+            [
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'uint8',
+                'uint16',
+            ],
             'take_along_axis',
         )
         check_variable_and_dtype(
@@ -4631,7 +4648,15 @@ def put_along_axis(arr, indices, values, axis, reduce='assign'):
         check_variable_and_dtype(
             arr,
             'x',
-            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint8'],
+            [
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'uint8',
+                'uint16',
+            ],
             'put_along_axis',
         )
         check_variable_and_dtype(
@@ -4713,7 +4738,7 @@ def index_add(x, index, axis, value, name=None):
     check_variable_and_dtype(
         x,
         'x',
-        ['float16', 'float32', 'float64', 'int32', 'int64'],
+        ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
         'paddle.tensor.manipulation.index_add',
     )
     check_variable_and_dtype(
@@ -4725,7 +4750,7 @@ def index_add(x, index, axis, value, name=None):
     check_variable_and_dtype(
         value,
         'add_value',
-        ['float16', 'float32', 'float64', 'int32', 'int64'],
+        ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
         'paddle.tensor.manipulation.index_add',
     )
 
