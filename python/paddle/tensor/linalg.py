@@ -838,10 +838,7 @@ def cond(x, p=None, name=None):
         else:
             reduce_all = True if axis is None or axis == [] else False
             axis = axis if axis is not None and axis != [] else [0]
-            block = LayerHelper(
-                'x = paddle.to_tensor([[1., 0, -1], [0, 1, 0], [1, 0, 1]])',
-                **locals(),
-            )
+            block = LayerHelper('norm', **locals())
             abs_out = block.create_variable_for_type_inference(
                 dtype=block.input_dtype()
             )

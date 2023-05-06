@@ -90,7 +90,7 @@ void DeterminantGradKernel(const Context& dev_ctx,
             " input tensor's, but here differ %d",
             input_dims_size - out_grad.dims().size()));
   } else if (input_dims_size == 2) {
-    // input dims size 2 and grad dims size 1 is possible
+    // input dims size 2 and grad dims size 0 is possible
     PADDLE_ENFORCE_EQ(
         out_grad.dims().size(),
         0,
