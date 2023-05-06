@@ -29,6 +29,11 @@ def output_i0(x):
     return special.i0(x)
 
 
+def ref_i0_grad(x, dout):
+    gradx = special.i1(x)
+    return dout * gradx
+
+
 class TestI0API(unittest.TestCase):
     DTYPE = "float64"
     DATA = [0, 1, 2, 3, 4, 5]
@@ -110,7 +115,15 @@ class TestI0Op(OpTest):
 
     def init_config(self):
         self.dtype = np.float64
-        self.case = np.random.randint(2, 10, size=(2, 60)).astype(self.dtype)
+        zero_case = np.zeros(1).astype(self.dtype)
+        rand_case = np.random.randn(100).astype(self.dtype)
+        one2eight_case = np.random.uniform(low=1, high=8, size=100).astype(
+            self.dtype
+        )
+        over_eight_case = np.random.uniform(low=9, high=15, size=100).astype(
+            self.dtype
+        )
+        self.case = np.concatenate([zero_case, rand_case, one2eight_case, over_eight_case])
         self.inputs = {'x': self.case}
         self.target = output_i0(self.inputs['x'])
 
@@ -118,7 +131,7 @@ class TestI0Op(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['x'], 'out')
+        self.check_grad(['x'], 'out', user_defined_grads=[ref_i0_grad(self.case, 1 / self.case.size)])
 
 
 if __name__ == "__main__":

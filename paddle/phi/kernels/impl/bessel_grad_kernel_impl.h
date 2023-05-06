@@ -37,22 +37,22 @@ struct I0GradFunctor {
 
     MT x = std::abs(mp_x);
     if (x <= T{8.0}) {
-      auto coeff_pair_A = ChebyshevCoefficientsI1e_A<T>();
+      auto coeff_pair_A = ChebyshevCoefficientsI1e_A<MT>();
       auto A = std::get<0>(coeff_pair_A);
       auto len = std::get<1>(coeff_pair_A);
-      MT y = (x / T{2.0}) - T{2.0};
+      MT y = (x / MT{2.0}) - MT{2.0};
 
-      const MT i1_out = std::exp(x) * x * Chbevl(y, A, len);
+      const MT i1_out = std::exp(x) * x * Chbevl<MT>(y, A, len);
       const MT i1_data = (mp_x < T{0.0}) ? -i1_out : i1_out;
       output_x_grad_[idx] = static_cast<T>(i1_data * mp_out_grad);
     } else {
-      auto coeff_pair_B = ChebyshevCoefficientsI1e_B<T>();
+      auto coeff_pair_B = ChebyshevCoefficientsI1e_B<MT>();
       auto B = std::get<0>(coeff_pair_B);
       auto len = std::get<1>(coeff_pair_B);
-      MT y = (T{32.0} / x) - T{2.0};
+      MT y = (MT{32.0} / x) - MT{2.0};
 
-      const T i1_out = (std::exp(x) * Chbevl(y, B, len)) / std::sqrt(x);
-      const T i1_data = (mp_x < T{0.0}) ? -i1_out : i1_out;
+      const MT i1_out = (std::exp(x) * Chbevl<MT>(y, B, len)) / std::sqrt(x);
+      const MT i1_data = (mp_x < MT{0.0}) ? -i1_out : i1_out;
       output_x_grad_[idx] = static_cast<T>(i1_data * mp_out_grad);
     }
   }
@@ -74,31 +74,57 @@ struct I0eGradFunctor {
         numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-    const MT mp_x = static_cast<MT>(inp_x_[idx]);
-    const MT mp_out = static_cast<MT>(inp_out_[idx]);
-    const MT mp_out_grad = static_cast<MT>(inp_out_grad_[idx]);
-
-    T x = std::abs(mp_x);
-    if (x <= MT{8.0}) {
-      auto coeff_pair_A = ChebyshevCoefficientsI1e_A<MT>();
+    T x = std::abs(inp_x_[idx]);
+    if (x <= T{8.0}) {
+      auto coeff_pair_A = ChebyshevCoefficientsI1e_A<T>();
       auto A = std::get<0>(coeff_pair_A);
       auto len = std::get<1>(coeff_pair_A);
-      MT y = (x / T{2.0}) - T{2.0};
+      T y = (x / T{2.0}) - T{2.0};
 
-      const MT i1e_out = Chbevl<MT>(y, A, len) * x;
-      const MT i1e_data = (mp_x < T{0.0}) ? -i1e_out : i1e_out;
-      output_x_grad_[idx] = static_cast<T>(i1e_data - std::copysign(MT{1.0}, mp_x) * mp_out * mp_out_grad);
+      const T out = Chbevl<T>(y, A, len) * x;
+      const T i1e_out = (inp_x_[idx] < T{0.0}) ? -out : out;
+      const T sign_x = (x == T{0.0}) ? T{0.0} : std::copysign(T{1.0}, x);
+      output_x_grad_[idx] = (i1e_out - sign_x * inp_out_[idx]) * inp_out_grad_[idx];
     } else {
       auto coeff_pair_B = ChebyshevCoefficientsI1e_B<T>();
       auto B = std::get<0>(coeff_pair_B);
       auto len = std::get<1>(coeff_pair_B);
-      MT y = (T{32.0} / x) - T{2.0};
+      T y = (T{32.0} / x) - T{2.0};
 
-      const MT i1e_out = Chbevl<T>(y, B, len) / std::sqrt(x);
-      const MT i1e_data = (mp_x < T{0.0}) ? -i1e_out : i1e_out;
-      output_x_grad_[idx] = static_cast<T>(i1e_data - std::copysign(MT{1.0}, mp_x) * mp_out * mp_out_grad);
+      const T out = Chbevl<T>(y, B, len) / std::sqrt(x);
+      const T i1e_out = (inp_x_[idx] < T{0.0}) ? -out : out;
+      const T sign_x = (x == T{0.0}) ? T{0.0} : std::copysign(T{1.0}, x);
+      output_x_grad_[idx] = (i1e_out - sign_x * inp_out_[idx]) * inp_out_grad_[idx];
     }
+    // using MT = typename phi::dtype::MPTypeTrait<T>::Type;
+    // const MT mp_x = static_cast<MT>(inp_x_[idx]);
+    // const MT mp_out = static_cast<MT>(inp_out_[idx]);
+    // const MT mp_out_grad = static_cast<MT>(inp_out_grad_[idx]);
+
+    // MT x = std::abs(mp_x);
+    // if (x <= MT{8.0}) {
+    //   auto coeff_pair_A = ChebyshevCoefficientsI1e_A<MT>();
+    //   auto A = std::get<0>(coeff_pair_A);
+    //   auto len = std::get<1>(coeff_pair_A);
+    //   MT y = (x / MT{2.0}) - MT{2.0};
+
+    //   const MT i1e_out = Chbevl<MT>(y, A, len) * x;
+    //   const MT i1e_data = (mp_x < T{0.0}) ? -i1e_out : i1e_out;
+
+    //   const MT partial_x = i1e_data - std::copysign(MT{1.0}, mp_x) * mp_out;
+    //   output_x_grad_[idx] = static_cast<T>(partial_x * mp_out_grad);
+    // } else {
+    //   auto coeff_pair_B = ChebyshevCoefficientsI1e_B<MT>();
+    //   auto B = std::get<0>(coeff_pair_B);
+    //   auto len = std::get<1>(coeff_pair_B);
+    //   MT y = (MT{32.0} / x) - MT{2.0};
+
+    //   const MT i1e_out = Chbevl<MT>(y, B, len) / std::sqrt(x);
+    //   const MT i1e_data = (mp_x < MT{0.0}) ? -i1e_out : i1e_out;
+    //   const MT partial_x = i1e_data - std::copysign(MT{1.0}, mp_x) * mp_out;
+      
+    //   output_x_grad_[idx] = static_cast<T>(partial_x * mp_out_grad);
+    // }
   }
 
  private:

@@ -27,15 +27,15 @@ void I0eGradKernel(const Context& ctx,
                    const DenseTensor& out,
                    const DenseTensor& out_grad,
                    DenseTensor* x_grad) {
-  auto numel = out_grad.numel();
+  auto size = x.numel();
   auto* x_data = x.data<T>();
   auto* out_data = out.data<T>();
   auto* out_grad_data = out_grad.data<T>();
   auto* x_gard_data = ctx.template Alloc<T>(x_grad);
 
-  phi::funcs::ForRange<Context> for_range(ctx, numel);
+  phi::funcs::ForRange<Context> for_range(ctx, size);
   I0eGradFunctor<T> functor(
-      x_data, out_data, out_grad_data, x_gard_data, numel);
+      x_data, out_data, out_grad_data, x_gard_data, size);
   for_range(functor);
 }
 
