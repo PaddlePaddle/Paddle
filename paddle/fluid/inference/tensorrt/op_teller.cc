@@ -104,7 +104,8 @@ struct SimpleOpTypeSetTeller : public Teller {
         "atanh",      "ceil",        "celu",
         "erf",        "floor",       "round",
         "sign",       "silu",        "logical_not",
-        "reciprocal", "tanh_shrink", "logsigmoid"};
+        "reciprocal", "tanh_shrink", "logsigmoid",
+        "rsqrt"};
     std::unordered_set<std::string> unary_list = {
         "exp",        "log",  "sqrt",        "abs",        "sin",
         "cos",        "tan",  "tanh",        "sinh",       "cosh",
