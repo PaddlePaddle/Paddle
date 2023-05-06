@@ -674,16 +674,6 @@ def _to_tensor_static(data, dtype=None, stop_gradient=None):
                             data = data.astype('int64')
 
                 except:
-                    if not all(
-                        [
-                            x.shape == (1,)
-                            for x in data
-                            if isinstance(x, Variable)
-                        ]
-                    ):
-                        raise TypeError(
-                            "Unsupport paddle.to_tensor([Variable, Variable...]) with non-scalar variable."
-                        )
                     to_stack_list = [None] * len(data)
                     for idx, d in enumerate(data):
                         to_stack_list[idx] = _to_tensor_static(
