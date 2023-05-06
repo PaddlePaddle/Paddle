@@ -60,7 +60,7 @@ size_t CalcCubSortPairsWorkspaceSize(int num_items, int num_segments) {
 }
 
 template <typename T>
-size_t Calc_detectionForwardBBoxDataSize(int N, int C1) {
+size_t CalcDetectionForwardBBoxDataSize(int N, int C1) {
   return N * C1 * sizeof(T);
 }
 
@@ -79,7 +79,7 @@ size_t CalcDetectionForwardPostNMSSize(int N, int num_classes, int top_k) {
   return N * num_classes * top_k * sizeof(T);
 }
 
-size_t CalTotalWorkspaceSize(size_t* workspaces, int count) {
+size_t CalcTotalWorkspaceSize(size_t* workspaces, int count) {
   size_t total = 0;
   for (int i = 0; i < count; i++) {
     total += workspaces[i];
@@ -102,7 +102,7 @@ size_t CalcSortScoresPerClassWorkspaceSize(const int num,
   wss[3] = CalcCubSortPairsWorkspaceSize<T, int>(
       array_len, num * num_classes);  // cub workspace
 
-  return CalTotalWorkspaceSize(wss, 4);
+  return CalcTotalWorkspaceSize(wss, 4);
 }
 
 template <typename T>
@@ -114,7 +114,7 @@ size_t CalcSortScoresPerImageWorkspaceSize(const int num_images,
   wss[1] = CalcCubSortPairsWorkspaceSize<T, int>(array_len,
                                                  num_images);  // cub workspace
 
-  return CalTotalWorkspaceSize(wss, 2);
+  return CalcTotalWorkspaceSize(wss, 2);
 }
 
 template <typename T>
@@ -126,7 +126,7 @@ size_t CalcDetectionInferenceWorkspaceSize(bool share_location,
                                            int num_preds_per_class,
                                            int top_k) {
   size_t wss[6];
-  wss[0] = Calc_detectionForwardBBoxDataSize<T>(N, C1);
+  wss[0] = CalcDetectionForwardBBoxDataSize<T>(N, C1);
   wss[1] = CalcDetectionForwardPreNMSSize<T>(N, C2);
   wss[2] = CalcDetectionForwardPreNMSSize<int>(N, C2);
   wss[3] = CalcDetectionForwardPostNMSSize<T>(N, num_classes, top_k);
@@ -135,7 +135,7 @@ size_t CalcDetectionInferenceWorkspaceSize(bool share_location,
       std::max(CalcSortScoresPerClassWorkspaceSize<T>(
                    N, num_classes, num_preds_per_class),
                CalcSortScoresPerImageWorkspaceSize<T>(N, num_classes * top_k));
-  return CalTotalWorkspaceSize(wss, 6);
+  return CalcTotalWorkspaceSize(wss, 6);
 }
 
 // ALIGNPTR
@@ -355,6 +355,16 @@ __device__ Bbox<T_BBOX> GetDiagonalMinMaxSortedBox(const Bbox<T_BBOX>& bbox1) {
 }
 
 template <typename T_BBOX>
+__device__ void GetFlippedBox(const T_BBOX* bbox1,
+                              bool flip_xy,
+                              Bbox<T_BBOX>* result) {
+  result->xmin = flip_xy ? bbox1[1] : bbox1[0];
+  result->ymin = flip_xy ? bbox1[0] : bbox1[1];
+  result->xmax = flip_xy ? bbox1[3] : bbox1[2];
+  result->ymax = flip_xy ? bbox1[2] : bbox1[3];
+}
+
+template <typename T_BBOX>
 __device__ float CalcJaccardOverlap(const Bbox<T_BBOX>& bbox1,
                                     const Bbox<T_BBOX>& bbox2,
                                     const bool normalized,
@@ -449,15 +459,7 @@ __global__ void AllClassNMSKernel(
               share_location
                   ? (loc_bboxIndex[t] % num_preds_per_class + bbox_idx_offset)
                   : loc_bboxIndex[t];
-
-          loc_bbox[t].xmin = flip_xy ? bbox_data[bbox_data_idx * 4 + 1]
-                                     : bbox_data[bbox_data_idx * 4 + 0];
-          loc_bbox[t].ymin = flip_xy ? bbox_data[bbox_data_idx * 4 + 0]
-                                     : bbox_data[bbox_data_idx * 4 + 1];
-          loc_bbox[t].xmax = flip_xy ? bbox_data[bbox_data_idx * 4 + 3]
-                                     : bbox_data[bbox_data_idx * 4 + 2];
-          loc_bbox[t].ymax = flip_xy ? bbox_data[bbox_data_idx * 4 + 2]
-                                     : bbox_data[bbox_data_idx * 4 + 3];
+          GetFlippedBox(&bbox_data[bbox_data_idx * 4], flip_xy, &loc_bbox[t]);
           kept_bboxinfo_flag[cur_idx] = true;
         } else {
           kept_bboxinfo_flag[cur_idx] = false;
@@ -480,14 +482,7 @@ __global__ void AllClassNMSKernel(
     }
     while ((ref_bbox_idx != -1) && ref_item_idx < max_read_idx) {
       Bbox<T_BBOX> ref_bbox;
-      ref_bbox.xmin = flip_xy ? bbox_data[ref_bbox_idx * 4 + 1]
-                              : bbox_data[ref_bbox_idx * 4 + 0];
-      ref_bbox.ymin = flip_xy ? bbox_data[ref_bbox_idx * 4 + 0]
-                              : bbox_data[ref_bbox_idx * 4 + 1];
-      ref_bbox.xmax = flip_xy ? bbox_data[ref_bbox_idx * 4 + 3]
-                              : bbox_data[ref_bbox_idx * 4 + 2];
-      ref_bbox.ymax = flip_xy ? bbox_data[ref_bbox_idx * 4 + 2]
-                              : bbox_data[ref_bbox_idx * 4 + 3];
+      GetFlippedBox(&bbox_data[ref_bbox_idx * 4], flip_xy, &ref_bbox);
 
       // Eliminate shared memory RAW hazard
       __syncthreads();
@@ -832,37 +827,42 @@ void InferNMS(cudaStream_t stream,
       share_location,
       true,
       phi::errors::Unimplemented("share_location=false is not supported."));
-  size_t bbox_dataSize =
-      Calc_detectionForwardBBoxDataSize<T>(N, per_batch_boxes_size);
-  void* bbox_dataRaw = workspace;
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(
-      bbox_dataRaw, loc_data, bbox_dataSize, cudaMemcpyDeviceToDevice, stream));
-  void* bbox_data = bbox_dataRaw;
 
-  const int numScores = N * per_batch_scores_size;
-  size_t totalScoresSize =
+  // Prepare workspaces
+  size_t bbox_data_size =
+      CalcDetectionForwardBBoxDataSize<T>(N, per_batch_boxes_size);
+  void* bbox_data_raw = workspace;
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(bbox_data_raw,
+                                             loc_data,
+                                             bbox_data_size,
+                                             cudaMemcpyDeviceToDevice,
+                                             stream));
+  void* bbox_data = bbox_data_raw;
+
+  const int num_scores = N * per_batch_scores_size;
+  size_t total_scores_size =
       CalcDetectionForwardPreNMSSize<T>(N, per_batch_scores_size);
   void* scores =
-      GetNextWorkspacePtr(reinterpret_cast<int8_t*>(bbox_data), bbox_dataSize);
+      GetNextWorkspacePtr(reinterpret_cast<int8_t*>(bbox_data), bbox_data_size);
   PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(
-      scores, conf_data, totalScoresSize, cudaMemcpyDeviceToDevice, stream));
+      scores, conf_data, total_scores_size, cudaMemcpyDeviceToDevice, stream));
 
-  size_t indicesSize =
+  size_t indices_size =
       CalcDetectionForwardPreNMSSize<int>(N, per_batch_scores_size);
   void* indices =
-      GetNextWorkspacePtr(reinterpret_cast<int8_t*>(scores), totalScoresSize);
+      GetNextWorkspacePtr(reinterpret_cast<int8_t*>(scores), total_scores_size);
 
-  size_t postNMSScoresSize =
+  size_t post_nms_scores_size =
       CalcDetectionForwardPostNMSSize<T>(N, num_classes, top_k);
-  size_t postNMSIndicesSize = CalcDetectionForwardPostNMSSize<int>(
+  size_t post_nms_indices_size = CalcDetectionForwardPostNMSSize<int>(
       N, num_classes, top_k);  // indices are full int32
-  void* postNMSScores =
-      GetNextWorkspacePtr(reinterpret_cast<int8_t*>(indices), indicesSize);
-  void* postNMSIndices = GetNextWorkspacePtr(
-      reinterpret_cast<int8_t*>(postNMSScores), postNMSScoresSize);
+  void* post_nms_scores =
+      GetNextWorkspacePtr(reinterpret_cast<int8_t*>(indices), indices_size);
+  void* post_nms_indices = GetNextWorkspacePtr(
+      reinterpret_cast<int8_t*>(post_nms_scores), post_nms_scores_size);
 
-  void* sortingWorkspace = GetNextWorkspacePtr(
-      reinterpret_cast<int8_t*>(postNMSIndices), postNMSIndicesSize);
+  void* sorting_workspace = GetNextWorkspacePtr(
+      reinterpret_cast<int8_t*>(post_nms_indices), post_nms_indices_size);
   // Sort the scores so that the following NMS could be applied.
   float score_shift = 0.f;
   SortScoresPerClassGPU<T>(stream,
@@ -873,7 +873,7 @@ void InferNMS(cudaStream_t stream,
                            score_threshold,
                            scores,
                            indices,
-                           sortingWorkspace,
+                           sorting_workspace,
                            score_bits,
                            score_shift);
 
@@ -893,8 +893,8 @@ void InferNMS(cudaStream_t stream,
                        bbox_data,
                        scores,
                        indices,
-                       postNMSScores,
-                       postNMSIndices,
+                       post_nms_scores,
+                       post_nms_indices,
                        flip_xy,
                        score_shift,
                        caffe_semantics);
@@ -903,11 +903,11 @@ void InferNMS(cudaStream_t stream,
   SortScoresPerImageGPU<T>(stream,
                            N,
                            num_classes * top_k,
-                           postNMSScores,
-                           postNMSIndices,
+                           post_nms_scores,
+                           post_nms_indices,
                            scores,
                            indices,
-                           sortingWorkspace,
+                           sorting_workspace,
                            score_bits);
 
   // Gather data from the sorted bounding boxes after NMS
@@ -1003,10 +1003,8 @@ void MultiClassNMSKernel(const Context& ctx,
     return;
   }
 
+  // Calculate input shapes
   int64_t batch_size = score_dims[0];
-  int64_t box_dim = bboxes.dims()[2];
-  int64_t out_dim = box_dim + 2;
-
   const int64_t per_batch_boxes_size =
       bboxes.dims()[1] * bboxes.dims()[2];  // M * 4
   const int64_t per_batch_scores_size =
@@ -1015,7 +1013,7 @@ void MultiClassNMSKernel(const Context& ctx,
   const int64_t num_classes = scores.dims()[1];  // C
   const bool share_location = true;
   auto stream = reinterpret_cast<const Context&>(ctx).stream();
-
+  // Sanity check
   PADDLE_ENFORCE_LE(
       nms_top_k,
       num_priors,
@@ -1030,6 +1028,7 @@ void MultiClassNMSKernel(const Context& ctx,
                                                  keep_top_k,
                                                  nms_top_k));
 
+  // Transform the layout of bboxes and scores
   // bboxes: [N,M,4] -> [N,1,M,4]
   DenseTensor transformed_bboxes(bboxes.type());
   transformed_bboxes.ShareDataWith(bboxes).Resize(
@@ -1039,6 +1038,7 @@ void MultiClassNMSKernel(const Context& ctx,
   transformed_scores.ShareDataWith(scores).Resize(
       {scores.dims()[0], scores.dims()[1], scores.dims()[2], 1});
 
+  // Prepare intermediate outputs for NMS kernels
   DenseTensor keep_count(DataType::INT32);
   keep_count.Resize({batch_size});
   if (nms_rois_num != nullptr) {
@@ -1080,6 +1080,7 @@ void MultiClassNMSKernel(const Context& ctx,
   workspace.Resize({static_cast<int64_t>(workspace_size)});
   T* workspace_ptr = ctx.template Alloc<T>(&workspace);
 
+  // Launch the NMS kernel
   InferNMS<T>(stream,
               batch_size,
               per_batch_boxes_size,
@@ -1107,18 +1108,23 @@ void MultiClassNMSKernel(const Context& ctx,
               0,
               true);
 
-  // concat
-  // out [N * M, 6]
+  // Post-processing to get the final outputs
+  // Concat the individual class, score and boxes outputs
+  // into a [N * M, 6] tensor.
   DenseTensor raw_out;
   raw_out.Resize({batch_size * keep_top_k, 6});
   ctx.template Alloc<T>(&raw_out);
   phi::funcs::ConcatFunctor<Context, T> concat;
   concat(ctx, {nmsed_classes, nmsed_scores, nmsed_boxes}, 1, &raw_out);
 
-  // get valid indices
+  // Output of NMS kernel may include invalid entries, which is
+  // marked by nmsed_valid_mask. Eliminate the invalid entries
+  // by gathering the valid ones.
+
+  // 1. Get valid indices
   DenseTensor valid_indices;
   NonZeroKernel<int, Context>(ctx, nmsed_valid_mask, &valid_indices);
-
+  // 2. Perform gathering
   const int64_t valid_samples = valid_indices.dims()[0];
   out->Resize({valid_samples, 6});
   ctx.template Alloc<T>(out);
