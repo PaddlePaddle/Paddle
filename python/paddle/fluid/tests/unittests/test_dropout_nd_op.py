@@ -199,7 +199,7 @@ class TestDropoutNdAPI(unittest.TestCase):
 
     def test_error(self):
         def _run_illegal_type_p():
-            dropout = paddle.incubate.nn.FusedDropout(p=True)
+            dropout = paddle.incubate.nn.FusedDropout(p="test")
 
         self.assertRaises(TypeError, _run_illegal_type_p)
 
@@ -209,12 +209,12 @@ class TestDropoutNdAPI(unittest.TestCase):
         self.assertRaises(ValueError, _run_illegal_value_p)
 
         def _run_illegal_mode():
-            dropout = paddle.incubate.nn.FusedDropout(p=0.5, mode="debug")
+            dropout = paddle.incubate.nn.FusedDropout(p=0.5, mode="test")
 
         self.assertRaises(ValueError, _run_illegal_mode)
 
         def _run_illegal_type_axis():
-            dropout = paddle.incubate.nn.FusedDropout(p=0.5, axis=True)
+            dropout = paddle.incubate.nn.FusedDropout(p=0.5, axis="test")
 
         self.assertRaises(TypeError, _run_illegal_type_axis)
 
