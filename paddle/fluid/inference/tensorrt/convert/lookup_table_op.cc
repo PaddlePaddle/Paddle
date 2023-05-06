@@ -24,7 +24,8 @@ class LookupTableOpConverter : public OpConverter {
                   const framework::Scope& scope,
                   bool test_mode) override {
     framework::OpDesc op_desc(op, nullptr);
-    VLOG(3) << "convert lookup_table(lookup_table_v2) op to trt gather layer";
+    VLOG(3)
+        << "convert lookup_table(lookup_table_v2) op to TensorRT IGatherLayer";
 
     auto ids_name = op_desc.Input("Ids").front();
     auto w_name = op_desc.Input("W").front();
