@@ -17,11 +17,12 @@
 #include "paddle/fluid/framework/details/nan_inf_utils_detail.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/selected_rows.h"
 
-#include "paddle/phi/core/compat/convert_utils.h"
-DECLARE_int32(check_nan_inf_level);
+PHI_DECLARE_int32(check_nan_inf_level);
 namespace egr {
 
 static std::unordered_set<std::string>& nan_inf_check_op_list() {

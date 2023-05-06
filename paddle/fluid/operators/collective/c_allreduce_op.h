@@ -223,6 +223,10 @@ class CAllReduceOpXPUKernel : public framework::OpKernel<T> {
   }
 };
 
+#define DEFINE_C_ALLREDUCE_XPU_KERNEL(op_name, red_type) \
+  template <typename T, typename DeviceContext>          \
+  class op_name##XPUKernel : public CAllReduceOpXPUKernel<red_type, T> {};
+
 template <ReduceType red_type, typename T>
 class CAllReduceOpCUDAKernel : public framework::OpKernel<T> {
  public:

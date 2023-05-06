@@ -44,11 +44,12 @@ limitations under the License. */
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
+#include "paddle/fluid/platform/flags.h"
 
-DECLARE_double(eager_delete_tensor_gb);
+PHI_DECLARE_double(eager_delete_tensor_gb);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-DECLARE_bool(sync_nccl_allreduce);
+PHI_DECLARE_bool(sync_nccl_allreduce);
 #endif
 
 #ifdef WITH_GPERFTOOLS

@@ -1152,10 +1152,15 @@ bool AnalysisPredictor::SetFeed(const std::vector<paddle::Tensor> &inputs,
                         feeds_.size(),
                         inputs.size()));
   for (size_t i = 0; i < inputs.size(); ++i) {
-    PADDLE_ENFORCE_EQ(inputs[i].initialized(),
+    PADDLE_ENFORCE_EQ(inputs[i].defined(),
                       true,
                       paddle::platform::errors::InvalidArgument(
-                          "The input Tensor expected to be initialized."));
+                          "The input Tensor expected to be defined."));
+    PADDLE_ENFORCE_EQ(
+        inputs[i].is_dense_tensor(),
+        true,
+        paddle::platform::errors::InvalidArgument(
+            "The input Tensor expected to be type of dense tensor."));
   }
 
   if (std::all_of(inputs.cbegin(), inputs.cend(), [&](const paddle::Tensor &t) {
@@ -1427,6 +1432,10 @@ void AnalysisPredictor::PrepareArgument() {
   argument_->SetXpuAdaptiveSeqlen(config_.xpu_adaptive_seqlen_);
   argument_->SetXpuDeviceId(config_.xpu_device_id_);
   argument_->SetXpuEnableMultiStream(config_.xpu_enable_multi_stream_);
+  argument_->SetXpuQuantPostDynamicWeightBits(
+      config_.xpu_quant_post_dynamic_weight_bits_);
+  argument_->SetXpuQuantPostDynamicOpTypss(
+      config_.xpu_quant_post_dynamic_op_types_);
 #endif
 
   auto *pass_builder = config_.pass_builder();
@@ -2607,6 +2616,8 @@ USE_TRT_CONVERTER(reduce_max);
 USE_TRT_CONVERTER(reduce_min);
 USE_TRT_CONVERTER(reduce_sum);
 USE_TRT_CONVERTER(reduce_prod);
+USE_TRT_CONVERTER(reduce_any);
+USE_TRT_CONVERTER(reduce_all);
 USE_TRT_CONVERTER(tile);
 USE_TRT_CONVERTER(conv3d);
 USE_TRT_CONVERTER(conv3d_transpose);

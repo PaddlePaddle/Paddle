@@ -1809,7 +1809,7 @@ def det(x, name=None):
     if in_dygraph_mode():
         return _C_ops.det(x)
     else:
-        check_dtype(x.dtype, 'Input', ['float32', 'float64'], 'det')
+        check_dtype(x.dtype, 'Input', ['float16', 'float32', 'float64'], 'det')
 
         input_shape = list(x.shape)
         assert len(input_shape) >= 2, (

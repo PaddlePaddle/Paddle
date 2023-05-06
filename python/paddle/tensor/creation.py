@@ -1512,7 +1512,7 @@ def meshgrid(*args, **kwargs):
 
     Args:
         *args(Tensor|list of Tensor) : tensors (tuple(list) of tensor): the shapes of input k tensors are (N1,),
-            (N2,),..., (Nk,). Support data types: ``float64``, ``float32``, ``int32``, ``int64``.
+            (N2,),..., (Nk,). Support data types: ``float64``, ``float16``, ``float32``, ``int32``, ``int64``.
         **kwargs (optional): Currently, only accept name in **kwargs
             The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
@@ -2029,6 +2029,10 @@ def assign(x, output=None):
             result2 = paddle.assign(data)  # result2 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
             result3 = paddle.assign(np.array([[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]], dtype='float32')) # result3 = [[2.5, 2.5], [2.5, 2.5], [2.5, 2.5]]
     """
+    # speed up
+    if x is output and isinstance(x, Variable):
+        return x
+
     input = x
     helper = LayerHelper('assign', **locals())
     check_type(
@@ -2037,7 +2041,6 @@ def assign(x, output=None):
         (Variable, np.ndarray, list, tuple, float, int, bool),
         'assign',
     )
-    is_inplace = True if output is not None else False
 
     if np.isscalar(input) and not isinstance(input, str):
         input = np.array([input])

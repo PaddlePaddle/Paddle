@@ -53,10 +53,11 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/memory/memory.h"
+#include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/custom_kernel.h"
 
-DECLARE_int32(paddle_num_threads);
+PHI_DECLARE_int32(paddle_num_threads);
 PADDLE_DEFINE_EXPORTED_int32(
     multiple_of_cupti_buffer_size,
     1,
