@@ -18,6 +18,8 @@
 #include <iostream>
 #include <thread>
 
+#include "glog/logging.h"
+
 #include "paddle/phi/core/distributed/store/tcp_utils.h"
 #include "paddle/phi/core/flags.h"
 

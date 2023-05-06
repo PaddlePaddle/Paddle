@@ -72,6 +72,7 @@ from .loss import CrossEntropyLoss  # noqa: F401
 from .loss import MSELoss  # noqa: F401
 from .loss import L1Loss  # noqa: F401
 from .loss import NLLLoss  # noqa: F401
+from .loss import PoissonNLLLoss  # noqa: F401
 from .loss import BCELoss  # noqa: F401
 from .loss import KLDivLoss  # noqa: F401
 from .loss import MarginRankingLoss  # noqa: F401
@@ -84,6 +85,8 @@ from .loss import TripletMarginWithDistanceLoss
 from .loss import TripletMarginLoss
 from .loss import SoftMarginLoss
 from .loss import MultiMarginLoss
+from .loss import GaussianNLLLoss
+
 from .norm import BatchNorm1D  # noqa: F401
 from .norm import BatchNorm2D  # noqa: F401
 from .norm import BatchNorm3D  # noqa: F401

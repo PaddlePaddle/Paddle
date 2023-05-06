@@ -41,7 +41,7 @@ namespace funcs {
 template <typename T>
 struct DstFunctor {
   using MT = typename phi::kps::details::MPTypeTrait<T>::Type;
-  MT factor;
+
   HOSTDEVICE inline DstFunctor(const float retain_prob,
                                const bool is_upscale_in_train,
                                const int64_t num)
@@ -67,17 +67,12 @@ struct DstFunctor {
   const float retain_prob_;
   const bool is_upscale_in_train_;
   const int64_t num_;
+  MT factor;
 };
 
 template <typename T>
 struct MaskFunctor {
-  const float retain_prob_;
-  using MT = typename phi::kps::details::MPTypeTrait<T>::Type;
-  MT factor;
-  HOSTDEVICE inline MaskFunctor(const float retain_prob)
-      : retain_prob_(retain_prob) {
-    factor = static_cast<MT>(1.0f / retain_prob_);
-  }
+  explicit MaskFunctor(const float retain_prob) : retain_prob_(retain_prob) {}
 
   HOSTDEVICE inline void operator()(T* dst, const float* rand, int num) const {
     static constexpr int kCount =
@@ -88,14 +83,14 @@ struct MaskFunctor {
       dst[i] = rand[i] < retain_prob_ ? static_cast<T>(1) : static_cast<T>(0);
     }
   }
+
+ private:
+  float retain_prob_;
 };
 
 template <typename T>
 struct DstMaskFunctor {
-  const float retain_prob_;
-  const bool is_upscale_in_train_;
   using MT = typename phi::kps::details::MPTypeTrait<T>::Type;
-  MT factor;
   HOSTDEVICE inline DstMaskFunctor(const float retain_prob,
                                    const bool is_upscale_in_train)
       : retain_prob_(retain_prob), is_upscale_in_train_(is_upscale_in_train) {
@@ -122,6 +117,11 @@ struct DstMaskFunctor {
       }
     }
   }
+
+ private:
+  MT factor;
+  float retain_prob_;
+  bool is_upscale_in_train_;
 };
 
 template <typename T>
@@ -172,9 +172,6 @@ __global__ void VectorizedRandomGenerator(const size_t n,
         &mask_result[0], &dst_mask[kCount], Cast());
     kps::WriteData<uint8_t, kCount, 1, false>(
         mask + fix, &mask_result[0], deal_size);
-    if (fix > idx * kCount + 1) {
-      __syncthreads();
-    }
   }
   int remainder = n - fix;
   if (remainder > 0) {
@@ -190,25 +187,24 @@ __global__ void VectorizedRandomGenerator(const size_t n,
         &mask_result[0], &dst_mask[kCount], Cast());
     kps::WriteData<uint8_t, kCount, 1, true>(
         mask + fix, &mask_result[0], remainder);
-    __syncthreads();
   }
 }
 
 template <typename T>
-__global__ void DropOutNdForwardKernel(
-    const size_t n,
-    uint64_t seed,
-    const float dropout_prob,
-    const T* src,
-    uint8_t* mask,
-    uint64_t increment,
-    size_t main_offset,
-    DstFunctor<T> dst_functor,
-    T* y,
-    int64_t N,
-    kps::details::BroadcastConfig broadcast_config) {
+__global__ void VectorizedGeneratorMask(const size_t n,
+                                        uint64_t seed,
+                                        const float dropout_prob,
+                                        const T* src,
+                                        uint8_t* mask,
+                                        uint64_t increment,
+                                        size_t main_offset,
+                                        MaskFunctor<T> mask_functor,
+
+                                        const uint64_t* seed_ptr) {
   // Vectorized Generate Mask
   // kCount is 4 for curand_uniform4 is used
+  if (seed_ptr) seed = seed_ptr[0];
+
   constexpr int kCount = phi::funcs::uniform_distribution<float>::kReturnsCount;
   size_t idx = static_cast<size_t>(BLOCK_ID_X * BLOCK_NUM_X);
   size_t stride = BLOCK_NUM_X * GRID_NUM_X * kCount;
@@ -229,8 +225,6 @@ __global__ void DropOutNdForwardKernel(
   int deal_size = BLOCK_NUM_X * kCount;
 
   size_t fix = idx * kCount;
-
-  auto mask_functor = MaskFunctor<T>(1.0f - dropout_prob);
   for (; fix < main_offset; fix += stride) {
     kps::ReadData<T, kCount, 1, false>(&dst_mask[0], src + fix, deal_size);
     kps::ElementwiseRandom<SType, float, kCount, Rand>(
@@ -244,9 +238,6 @@ __global__ void DropOutNdForwardKernel(
         &mask_result[0], &dst_mask[0], Cast());
     kps::WriteData<uint8_t, kCount, 1, false>(
         mask + fix, &mask_result[0], deal_size);
-    if (fix > idx * kCount + 1) {
-      __syncthreads();
-    }
   }
   int remainder = n - fix;
   if (remainder > 0) {
@@ -261,22 +252,6 @@ __global__ void DropOutNdForwardKernel(
         &mask_result[0], &dst_mask[0], Cast());
     kps::WriteData<uint8_t, kCount, 1, true>(
         mask + fix, &mask_result[0], remainder);
-    __syncthreads();
-  }
-  // Broadcast mask data and do elementwise operaiton with DstFunctor
-  CUDA_KERNEL_LOOP(i, N) {
-    uint32_t offset = 0u;
-    uint32_t idx = i;
-    // Use (j < phi::DDim::kMaxRank) conditiion rather than
-    // (j < broadcast_config.rank) for (#pragma unroll)
-#pragma unroll
-    for (int j = 0; j < phi::DDim::kMaxRank; ++j) {
-      if (j == broadcast_config.rank) break;
-      auto fast_divmoder = broadcast_config.divmoders[j].Divmod(idx);
-      idx = fast_divmoder.val[0];
-      offset += broadcast_config.strides[j] * fast_divmoder.val[1];
-    }
-    y[i] = dst_functor(src[i], mask[offset]);
   }
 }
 
@@ -347,37 +322,42 @@ void DropoutFwGPUKernelDriver(
 
     auto offset =
         ((x_numel - 1) / (grid_size * block_size * kVecSize) + 1) * kVecSize;
-    GetSeedDataAndIncrement(
-        dev_ctx, seed, is_fix_seed, seed_val, offset, &seed_data, &increment);
     size_t main_offset =
         size / (block_size * kVecSize) * (block_size * kVecSize);
 
     if (is_dropout_nd) {
-      auto dst_functor =
-          DstFunctor<T>(1.0f - dropout_prob, upscale_in_train, x_numel);
+      auto mask_functor = MaskFunctor<T>(1.0f - dropout_prob);
+      bool copy_in_kernel = GetSeedDataAndIncrement(dev_ctx,
+                                                    seed,
+                                                    is_fix_seed,
+                                                    seed_val,
+                                                    offset,
+                                                    &seed_data,
+                                                    &increment,
+                                                    true);
+      const uint64_t* seed_ptr =
+          copy_in_kernel ? seed->data<uint64_t>() : nullptr;
 
-      auto input_x_dims = x.dims();
-      auto mask_dims = mask->dims();
-      std::vector<int64_t> out_dims = phi::vectorize<int64_t>(input_x_dims);
-      std::vector<int64_t> in_dims = phi::vectorize<int64_t>(mask_dims);
-      reverse(out_dims.begin(), out_dims.end());
-      reverse(in_dims.begin(), in_dims.end());
-      kps::details::BroadcastConfig broadcast_config(
-          out_dims, in_dims, x.dims().size());
-
-      DropOutNdForwardKernel<T>
+      VectorizedGeneratorMask<T>
           <<<grid_size, block_size, 0, stream>>>(size,
                                                  seed_data,
                                                  dropout_prob,
                                                  x_data,
                                                  mask_data,
+
                                                  increment,
                                                  main_offset,
-                                                 dst_functor,
-                                                 y_data,
-                                                 y->numel(),
-                                                 broadcast_config);
+                                                 mask_functor,
+                                                 seed_ptr);
+      auto dst_functor =
+          DstFunctor<T>(1.0f - dropout_prob, upscale_in_train, x_numel);
+      std::vector<const phi::DenseTensor*> ins = {&x, mask};
+      std::vector<phi::DenseTensor*> outs = {y};
+      phi::funcs::BroadcastKernel<T>(dev_ctx, ins, &outs, dst_functor);
     } else {
+      bool copy_in_kernel = GetSeedDataAndIncrement(
+          dev_ctx, seed, is_fix_seed, seed_val, offset, &seed_data, &increment);
+
 #define PD_DROPOUT_KERNEL_NAME VectorizedRandomGenerator<T>
       PD_RECORD_CUDA_GRAPH_RANDOM_KERNEL(!is_fix_seed,
                                          PD_DROPOUT_KERNEL_NAME,
@@ -399,6 +379,8 @@ void DropoutFwGPUKernelDriver(
                                          main_offset);
 #undef PD_DROPOUT_KERNEL_NAME
     }
+    VLOG(4) << "Dropout seed: " << seed << ", offset: " << offset
+            << ", seed_data:" << seed_data;
   } else {
     if (upscale_in_train) {
       // y = x
@@ -445,41 +427,26 @@ void DropoutGradGPUKernelDriver(const phi::GPUContext& dev_ctx,
     // y = factor * x
     ScaleByDropoutFactor<T, MT>(dev_ctx, grad_y, grad_x, factor);
   } else {
-    phi::DenseTensor broadcasted_mask;
-    if (is_dropout_nd) {
-      broadcasted_mask.Resize(grad_y.dims());
-      dev_ctx.template Alloc<uint8_t>(&broadcasted_mask);
-
-      std::vector<const phi::DenseTensor*> broadcast_ins = {&mask};
-      std::vector<phi::DenseTensor*> broadcast_outs = {&broadcasted_mask};
-      phi::funcs::BroadcastKernel<phi::ElementwiseType::kUnary,
-                                  uint8_t,
-                                  uint8_t>(dev_ctx,
-                                           broadcast_ins,
-                                           &broadcast_outs,
-                                           -1,
-                                           kps::IdentityFunctor<uint8_t>());
-    }
-
-    std::vector<const phi::DenseTensor*> ins = {
-        &grad_y, is_dropout_nd ? &broadcasted_mask : &mask};
-    std::vector<phi::DenseTensor*> outs = {grad_x};
-    if (upscale_in_train) {
-      if (dropout_prob == 1.0f) {
+    if (upscale_in_train && dropout_prob == 1.0f) {
 #ifdef PADDLE_WITH_HIP
-        hipMemset(grad_x->data<T>(), 0, grad_x->numel() * sizeof(T));
+      hipMemset(grad_x->data<T>(), 0, grad_x->numel() * sizeof(T));
 #else
-        cudaMemset(grad_x->data<T>(), 0, grad_x->numel() * sizeof(T));
+      cudaMemset(grad_x->data<T>(), 0, grad_x->numel() * sizeof(T));
 #endif
+    } else {
+      MT factor = upscale_in_train
+                      ? static_cast<MT>(1.0f / (1.0f - dropout_prob))
+                      : static_cast<MT>(1.0f);
+
+      std::vector<const phi::DenseTensor*> ins = {&grad_y, &mask};
+      std::vector<phi::DenseTensor*> outs = {grad_x};
+      if (is_dropout_nd) {
+        phi::funcs::BroadcastKernel<T>(
+            dev_ctx, ins, &outs, CudaDropoutGradFunctor<T>(factor));
       } else {
-        MT factor = static_cast<MT>(1.0f / (1.0f - dropout_prob));
         phi::funcs::ElementwiseKernel<T>(
             dev_ctx, ins, &outs, CudaDropoutGradFunctor<T>(factor));
       }
-    } else {
-      MT factor = static_cast<MT>(1.0f);
-      phi::funcs::ElementwiseKernel<T>(
-          dev_ctx, ins, &outs, CudaDropoutGradFunctor<T>(factor));
     }
   }
 }

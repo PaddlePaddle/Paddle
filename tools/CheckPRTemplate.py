@@ -21,7 +21,7 @@ import requests
 PR_checkTemplate = ['Paddle']
 
 REPO_TEMPLATE = {
-    "Paddle": r'''### PR types(.*[^\s].*)### PR changes(.*[^\s].*)### Describe(.*[^\s].*)'''
+    "Paddle": r'''### PR types(.*[^\s].*)### PR changes(.*[^\s].*)### Description(.*[^\s].*)'''
 }
 
 
@@ -44,7 +44,7 @@ def parameter_accuracy(body):
     PR_changes = ['OPs', 'APIs', 'Docs', 'Others']
     body = re.sub("\r\n", "", body)
     type_end = body.find('### PR changes')
-    changes_end = body.find('### Describe')
+    changes_end = body.find('### Description')
     PR_dic['PR types'] = body[len('### PR types') : type_end]
     PR_dic['PR changes'] = body[type_end + 14 : changes_end]
     message = ''
@@ -54,14 +54,14 @@ def parameter_accuracy(body):
         value = PR_dic[key].strip().split(',')
         single_mess = ''
         if len(value) == 1 and value[0] == '':
-            message += '%s should be in %s. but now is None.' % (key, test_list)
+            message += f'{key} should be in {test_list}. but now is None.'
         else:
             for i in value:
                 i = i.strip().lower()
                 if i not in test_list_lower:
                     single_mess += '%s.' % i
             if len(single_mess) != 0:
-                message += '%s should be in %s. but now is [%s].' % (
+                message += '{} should be in {}. but now is [{}].'.format(
                     key,
                     test_list,
                     single_mess,
@@ -87,7 +87,7 @@ def checkPRTemplate(repo, body, CHECK_TEMPLATE):
         res: True or False
     """
     res = False
-    note = r'<!-- Demo: https://github.com/PaddlePaddle/Paddle/pull/24810 -->\r\n|<!-- One of \[ New features \| Bug fixes \| Function optimization \| Performance optimization \| Breaking changes \| Others \] -->|<!-- One of \[ OPs \| APIs \| Docs \| Others \] -->|<!-- Describe what this PR does -->'
+    note = r'<!-- Demo: https://github.com/PaddlePaddle/Paddle/pull/24810 -->\r\n|<!-- One of \[ New features \| Bug fixes \| Function optimization \| Performance optimization \| Breaking changes \| Others \] -->|<!-- One of \[ OPs \| APIs \| Docs \| Others \] -->|<!-- Describe what you’ve done -->'
     if body is None:
         body = ''
     body = re.sub(note, "", body)
@@ -120,7 +120,7 @@ def pull_request_event_template(event, repo, *args, **kwargs):
         check_pr_template, check_pr_template_message = checkPRTemplate(
             repo, BODY, CHECK_TEMPLATE
         )
-        print("check_pr_template: %s pr: %s" % (check_pr_template, pr_num))
+        print(f"check_pr_template: {check_pr_template} pr: {pr_num}")
         if check_pr_template is False:
             print("ERROR MESSAGE:", check_pr_template_message)
             sys.exit(7)

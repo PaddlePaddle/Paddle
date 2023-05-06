@@ -242,4 +242,4 @@ def remove_weight_norm(layer, name='weight'):
             del layer._forward_pre_hooks[k]
             return layer
 
-    raise ValueError("weight_norm of '{}' not found in {}".format(name, layer))
+    raise ValueError(f"weight_norm of '{name}' not found in {layer}")

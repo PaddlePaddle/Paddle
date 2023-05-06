@@ -26,7 +26,7 @@ from codegen_utils import (
 #########################
 # Global Configurations #
 #########################
-skipped_forward_api_names = set([])
+skipped_forward_api_names = set()
 
 
 def SkipAPIGeneration(forward_api_name):
@@ -58,7 +58,9 @@ atype_to_parsing_function = {
 
 def FindParsingFunctionFromAttributeType(atype):
     if atype not in atype_to_parsing_function.keys():
-        assert False, f"Unable to find {atype} in atype_to_parsing_function."
+        raise AssertionError(
+            f"Unable to find {atype} in atype_to_parsing_function."
+        )
 
     return atype_to_parsing_function[atype]
 
@@ -90,6 +92,8 @@ static PyObject * eager_api_{}(PyObject *self, PyObject *args, PyObject *kwargs)
   PyThreadState *tstate = nullptr;
   try {{
     VLOG(6) << "Running Eager Final State API: {}";
+
+    VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
     // Get EagerTensors from args
 {}
     // Parse Attributes if needed
@@ -117,7 +121,9 @@ static PyObject * eager_api_{}(PyObject *self, PyObject *args, PyObject *kwargs)
 NOAMP_DYGRAPH_FUNCTION_TEMPLATE = "decltype({}({})) out = {}({});"
 
 
-FUNCTION_SET_DEVICE_TEMPLATE = """{}    if (paddle::platform::is_gpu_place(place)) {{
+FUNCTION_SET_DEVICE_TEMPLATE = """{}
+    SetPythonStack();
+    if (paddle::platform::is_gpu_place(place)) {{
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       phi::backends::gpu::SetDeviceId(place.device);
       VLOG(4) <<"CurrentDeviceId: " << phi::backends::gpu::GetCurrentDeviceId() << " from " << (int)place.device;
@@ -166,7 +172,6 @@ PYTHON_C_WRAPPER_TEMPLATE = """
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/eager/amp_utils.h"
 #include "paddle/fluid/eager/eager_amp_auto_cast.h"
-
 namespace paddle {{
 namespace pybind {{
 

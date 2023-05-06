@@ -96,9 +96,6 @@ inline phi::DataType GetDtypeWithPlace(
       is_right_place = (paddle::platform::is_gpu_place(place) ||
                         paddle::platform::is_cuda_pinned_place(place) ||
                         paddle::platform::is_xpu_place(place) ||
-                        paddle::platform::is_mlu_place(place) ||
-                        paddle::platform::is_npu_place(place) ||
-                        paddle::platform::is_npu_pinned_place(place) ||
                         paddle::platform::is_custom_place(place));
       if (is_right_place) {
         break;
@@ -122,23 +119,19 @@ inline phi::DataType GetAmpDestDtype(
   auto amp_setting_dtype =
       egr::Controller::Instance().GetCurrentTracer()->GetAmpPhiDtype();
   auto dst_type = amp_setting_dtype;
-  if (amp_level == paddle::imperative::AmpLevel::O1) {
-    if (paddle::imperative::AmpOperators::Instance()
-            .GetMutableAllowOps()
-            ->count(op_name)) {
-      dst_type = amp_setting_dtype;
-    } else if (paddle::imperative::AmpOperators::Instance()
-                   .GetMutableBlockOps()
-                   ->count(op_name)) {
+
+  if (paddle::imperative::AmpOperators::Instance().GetMutableAllowOps()->count(
+          op_name)) {
+    dst_type = amp_setting_dtype;
+  } else if (paddle::imperative::AmpOperators::Instance()
+                 .GetMutableBlockOps()
+                 ->count(op_name)) {
+    dst_type = phi::DataType::FLOAT32;
+  } else {
+    if (amp_level == paddle::imperative::AmpLevel::OD) {
       dst_type = phi::DataType::FLOAT32;
     } else {
       dst_type = GetPromoteType(op_name, amp_tensors_vector, amp_setting_dtype);
-    }
-  } else if (amp_level == paddle::imperative::AmpLevel::O2) {
-    if (paddle::imperative::AmpOperators::Instance()
-            .GetMutableBlockOps()
-            ->count(op_name)) {
-      dst_type = phi::DataType::FLOAT32;
     }
   }
 

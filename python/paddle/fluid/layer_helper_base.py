@@ -88,25 +88,15 @@ class LayerHelperBase:
 
         """
         if isinstance(value, np.ndarray):
-            if _in_eager_without_dygraph_check():
-                return core.eager.Tensor(
-                    value,
-                    _current_expected_place(),
-                    False,
-                    False,
-                    name if name else None,
-                    True,
-                )
-            else:
-                py_var = core.VarBase(
-                    value=value,
-                    name=name if name else '',
-                    persistable=False,
-                    place=_current_expected_place(),
-                    zero_copy=False,
-                )
-                return py_var
-        elif isinstance(value, (core.VarBase, Variable, core.eager.Tensor)):
+            return core.eager.Tensor(
+                value,
+                _current_expected_place(),
+                False,
+                False,
+                name if name else None,
+                True,
+            )
+        elif isinstance(value, (Variable, core.eager.Tensor)):
             return value
         else:
             raise TypeError(

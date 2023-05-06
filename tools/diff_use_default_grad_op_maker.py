@@ -18,7 +18,7 @@ os.environ['CUDA_VISIBLE_DEVICES'] = ''
 
 import sys
 
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 def generate_spec(filename):
@@ -30,7 +30,7 @@ def generate_spec(filename):
 
 def read_spec(filename):
     with open(filename, 'r') as f:
-        return set([line.strip() for line in f.readlines()])
+        return {line.strip() for line in f.readlines()}
 
 
 def get_spec_diff(dev_filename, pr_filename):

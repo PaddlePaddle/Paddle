@@ -315,7 +315,7 @@ def rsqrt_orig2prim(op, x):
 @REGISTER_ORIG2PRIM('matmul_v2')
 def matmul_v2_orig2prim(op, x, y):
     def trans(shape):
-        ret = [i for i in range(len(shape))]
+        ret = list(range(len(shape)))
         ret[-1], ret[-2] = ret[-2], ret[-1]
         return ret
 

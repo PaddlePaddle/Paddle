@@ -12,17 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 import numpy
 import numpy as np
-from rnn.rnn_numpy import LSTMCell
-from rnn.rnn_numpy import rnn as numpy_rnn
+
+sys.path.append("../../../../../test/rnn")
+from rnn_numpy import LSTMCell
+from rnn_numpy import rnn as numpy_rnn
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import framework
+from paddle import fluid
+from paddle.fluid import core, framework
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, program_guard
 from paddle.nn.layer.rnn import rnn as dynamic_rnn
@@ -121,7 +123,7 @@ class TestRnnError(unittest.TestCase):
             self.assertRaises(TypeError, test_initial_states_type)
 
             def test_sequence_length_type():
-                np_sequence_length = np.random.random((batch_size)).astype(
+                np_sequence_length = np.random.random(batch_size).astype(
                     "float32"
                 )
                 dynamic_rnn(

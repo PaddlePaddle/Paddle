@@ -14,12 +14,16 @@
 
 #include "paddle/phi/kernels/top_k_kernel.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/gather.cu.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/top_k_function_cuda.h"
+
 namespace phi {
 
 #define FIXED_BLOCK_DIM_BASE(dim, ...) \
@@ -348,6 +352,7 @@ PD_REGISTER_KERNEL(topk,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16) {
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
   kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
 }

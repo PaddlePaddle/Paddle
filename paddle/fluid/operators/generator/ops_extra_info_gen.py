@@ -16,6 +16,7 @@ import argparse
 import re
 
 import yaml
+from filters import delete_last_underline
 
 
 def map_code_template(attrs_str, attrs_checker_str):
@@ -77,9 +78,9 @@ def generate_extra_info(op_compat_yaml_path, ops_extra_info_path):
     def get_op_name(api_item):
         names = api_item.split('(')
         if len(names) == 1:
-            return names[0].strip()
+            return delete_last_underline(names[0].strip())
         else:
-            return names[1].split(')')[0].strip()
+            return delete_last_underline(names[1].split(')')[0].strip())
 
     extra_map_str_list = []
     extra_checker_str_list = []

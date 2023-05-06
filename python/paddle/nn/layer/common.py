@@ -177,7 +177,7 @@ class Linear(Layer):
         return out
 
     def extra_repr(self):
-        name_str = ', name={}'.format(self.name) if self.name else ''
+        name_str = f', name={self.name}' if self.name else ''
         return 'in_features={}, out_features={}, dtype={}{}'.format(
             self.weight.shape[0], self.weight.shape[1], self._dtype, name_str
         )
@@ -409,10 +409,10 @@ class Upsample(Layer):
 
     def extra_repr(self):
         if self.scale_factor is not None:
-            main_str = 'scale_factor={}'.format(self.scale_factor)
+            main_str = f'scale_factor={self.scale_factor}'
         else:
-            main_str = 'size={}'.format(self.size)
-        name_str = ', name={}'.format(self.name) if self.name else ''
+            main_str = f'size={self.size}'
+        name_str = f', name={self.name}' if self.name else ''
         return '{}, mode={}, align_corners={}, align_mode={}, data_format={}{}'.format(
             main_str,
             self.mode,
@@ -499,10 +499,10 @@ class UpsamplingNearest2D(Layer):
 
     def extra_repr(self):
         if self.scale_factor is not None:
-            main_str = 'scale_factor={}'.format(self.scale_factor)
+            main_str = f'scale_factor={self.scale_factor}'
         else:
-            main_str = 'size={}'.format(self.size)
-        name_str = ', name={}'.format(self.name) if self.name else ''
+            main_str = f'size={self.size}'
+        name_str = f', name={self.name}' if self.name else ''
         return '{}, data_format={}{}'.format(
             main_str, self.data_format, name_str
         )
@@ -585,10 +585,10 @@ class UpsamplingBilinear2D(Layer):
 
     def extra_repr(self):
         if self.scale_factor is not None:
-            main_str = 'scale_factor={}'.format(self.scale_factor)
+            main_str = f'scale_factor={self.scale_factor}'
         else:
-            main_str = 'size={}'.format(self.size)
-        name_str = ', name={}'.format(self.name) if self.name else ''
+            main_str = f'size={self.size}'
+        name_str = f', name={self.name}' if self.name else ''
         return '{}, data_format={}{}'.format(
             main_str, self.data_format, name_str
         )
@@ -687,7 +687,7 @@ class Bilinear(Layer):
         return F.bilinear(x1, x2, self.weight, self.bias, self._name)
 
     def extra_repr(self):
-        name_str = ', name={}'.format(self._name) if self._name else ''
+        name_str = f', name={self._name}' if self._name else ''
         return 'in1_features={}, in2_features={}, out_features={}, dtype={}{}'.format(
             self._in1_features,
             self._in2_features,
@@ -772,7 +772,7 @@ class Dropout(Layer):
         return out
 
     def extra_repr(self):
-        name_str = ', name={}'.format(self.name) if self.name else ''
+        name_str = f', name={self.name}' if self.name else ''
         return 'p={}, axis={}, mode={}{}'.format(
             self.p, self.axis, self.mode, name_str
         )
@@ -853,7 +853,7 @@ class Dropout2D(Layer):
         return out
 
     def extra_repr(self):
-        name_str = ', name={}'.format(self.name) if self.name else ''
+        name_str = f', name={self.name}' if self.name else ''
         return 'p={}, data_format={}{}'.format(
             self.p, self.data_format, name_str
         )
@@ -946,7 +946,7 @@ class Dropout3D(Layer):
         return out
 
     def extra_repr(self):
-        name_str = ', name={}'.format(self.name) if self.name else ''
+        name_str = f', name={self.name}' if self.name else ''
         return 'p={}, data_format={}{}'.format(
             self.p, self.data_format, name_str
         )
@@ -1005,8 +1005,8 @@ class AlphaDropout(Layer):
         return out
 
     def extra_repr(self):
-        name_str = ', name={}'.format(self.name) if self.name else ''
-        return 'p={}{}'.format(self.p, name_str)
+        name_str = f', name={self.name}' if self.name else ''
+        return f'p={self.p}{name_str}'
 
 
 class Pad1D(Layer):
@@ -1072,7 +1072,7 @@ class Pad1D(Layer):
         )
 
     def extra_repr(self):
-        name_str = ', name={}'.format(self._name) if self._name else ''
+        name_str = f', name={self._name}' if self._name else ''
         return 'padding={}, mode={}, value={}, data_format={}{}'.format(
             self._pad, self._mode, self._value, self._data_format, name_str
         )
@@ -1145,7 +1145,7 @@ class Pad2D(Layer):
         )
 
     def extra_repr(self):
-        name_str = ', name={}'.format(self._name) if self._name else ''
+        name_str = f', name={self._name}' if self._name else ''
         return 'padding={}, mode={}, value={}, data_format={}{}'.format(
             self._pad, self._mode, self._value, self._data_format, name_str
         )
@@ -1213,7 +1213,7 @@ class ZeroPad2D(Layer):
         )
 
     def extra_repr(self):
-        name_str = ', name={}'.format(self._name) if self._name else ''
+        name_str = f', name={self._name}' if self._name else ''
         return 'padding={}, data_format={}{}'.format(
             self._pad, self._data_format, name_str
         )
@@ -1291,7 +1291,7 @@ class Pad3D(Layer):
         )
 
     def extra_repr(self):
-        name_str = ', name={}'.format(self._name) if self._name else ''
+        name_str = f', name={self._name}' if self._name else ''
         return 'padding={}, mode={}, value={}, data_format={}{}'.format(
             self._pad, self._mode, self._value, self._data_format, name_str
         )
@@ -1598,7 +1598,7 @@ class Unfold(Layer):
         )
 
     def extra_repr(self):
-        name_str = ', name={}'.format(self.name) if self.name else ''
+        name_str = f', name={self.name}' if self.name else ''
         return 'kernel_size={}, dilation={}, padding={}, stride={}{}'.format(
             self.kernel_sizes,
             self.dilations,
@@ -1695,7 +1695,7 @@ class Fold(Layer):
         )
 
     def extra_repr(self):
-        name_str = ', name={}'.format(self.name) if self.name else ''
+        name_str = f', name={self.name}' if self.name else ''
         return 'kernel_size={}, dilation={}, padding={}, stride={}{}'.format(
             self.kernel_sizes,
             self.dilations,

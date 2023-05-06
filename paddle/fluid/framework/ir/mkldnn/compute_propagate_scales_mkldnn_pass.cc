@@ -37,7 +37,7 @@ void ComputePropagateScalesMkldnnPass::GetTensorFromVector(
 void ComputePropagateScalesMkldnnPass::GetQuantInfo(
     ir::Graph* graph, StringPairMap* var_quant_scales) const {
   std::unordered_map<std::string, std::vector<float>> info_map{};
-  GetInfoFromTheFirstOp(graph, "has_quant_info", "var_quant_scales", &info_map);
+  GetInfoFromTheTmpOp(graph, "has_quant_info", "var_quant_scales", &info_map);
 
   for (auto iter = info_map.begin(); iter != info_map.end(); iter++) {
     phi::DenseTensor tensor;
@@ -492,6 +492,7 @@ void ComputePropagateScalesMkldnnPass::ApplyImpl(ir::Graph* graph) const {
   FusePassBase::Init(pattern_name, graph);
 
   const std::unordered_set<std::string> scale_immutable_ops = {
+      "fused_transpose"
       "transpose2",
       "reshape2",
       "pool2d",
@@ -509,9 +510,9 @@ void ComputePropagateScalesMkldnnPass::ApplyImpl(ir::Graph* graph) const {
   UpdateReluOutputScales(graph, &var_quant_scales);
   PropagateScales(graph, &var_quant_scales, scale_immutable_ops);
 
-  // save var_quant_scales in the first op's attr
+  // save var_quant_scales in the temporary save op's attr
   // for cpu_quantize_pass
-  SaveInfoInTheFirstOp(
+  SaveInfoInTheTmpOp(
       graph, "has_quant_info", "var_quant_scales", var_quant_scales);
 }
 

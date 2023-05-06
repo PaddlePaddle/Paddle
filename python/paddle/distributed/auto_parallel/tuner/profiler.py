@@ -16,6 +16,7 @@ import argparse
 import json
 import os
 import pickle
+import sys
 import time
 import traceback
 
@@ -90,7 +91,7 @@ def init_process_groups(group_map, rank):
     # TODO should instantiate global group first
     all_process_groups = get_all_process_groups()
     for process_group in all_process_groups:
-        if rank not in process_group.ranks:
+        if process_group.id == 0 or rank not in process_group.ranks:
             continue
         print(process_group)
         process_group.instantiate()
@@ -218,7 +219,7 @@ def profiler(args):
     # load ctx
     if not os.path.isfile(args.ctx_filename):
         raise ValueError(
-            "There is no profile context named {}.".format(args.ctx_filename)
+            f"There is no profile context named {args.ctx_filename}."
         )
     with open(args.ctx_filename, 'rb') as f:
         profile_ctx = pickle.load(f, encoding='latin1')
@@ -269,7 +270,7 @@ def profiler(args):
             with open(result_path, 'w') as fp:
                 json.dump(result_dict, fp)
 
-        print("profile done! avg speed : {} step / s.".format((avg_tput)))
+        print(f"profile done! avg speed : {avg_tput} step / s.")
 
     except paddle.framework.core.EOFException:
         data_loader._inner_dataloader.reset()
@@ -285,13 +286,13 @@ def profiler(args):
             with open(result_path, 'w') as fp:
                 json.dump(result_dict, fp)
 
-        print("profile failed with error: [{}]".format(error_type))
+        print(f"profile failed with error: [{error_type}]")
         print(e)
         print(traceback.format_exc())
 
         data_loader._inner_dataloader.reset()
         del data_loader._inner_dataloader
-        exit(1)
+        sys.exit(1)
 
     data_loader._inner_dataloader.reset()
     del data_loader._inner_dataloader

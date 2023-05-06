@@ -18,13 +18,14 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.backward import append_backward
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, grad_var_name
 
 np.random.seed(123)
+paddle.enable_static()
 
 
 class PyArgsort:
@@ -53,7 +54,7 @@ class PyArgsort:
         out = (
             np.array(self.indices, dtype=self.indices.dtype),
             np.array(self.sorted_x, dtype=self.sorted_x.dtype),
-            np.array([self.loss], dtype=self.loss.dtype),
+            np.array(self.loss, dtype=self.loss.dtype),
         )
         return out
 
@@ -179,7 +180,7 @@ class TestArgsortOpCPU(unittest.TestCase):
 
                 f[...] = o
                 dout_dfeed = (y_pos - y_neg) / (delta * 2)
-                g[...] = dout_dfeed[0]
+                g[...] = dout_dfeed
 
         return grad_list
 

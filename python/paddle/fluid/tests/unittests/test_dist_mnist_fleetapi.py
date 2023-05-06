@@ -31,7 +31,7 @@ class TestDistMnistNCCL2FleetApi(TestDistBase):
         self._sync_batch_norm = True
 
     def test_dist_train(self):
-        import paddle.fluid as fluid
+        from paddle import fluid
 
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(
@@ -44,8 +44,8 @@ class TestDistMnistNCCL2FleetApi(TestDistBase):
 
 class FleetCollectiveTest(unittest.TestCase):
     def test_open_sync_batch_norm(self):
-        import paddle.fluid as fluid
-        import paddle.incubate.distributed.fleet.role_maker as role_maker
+        from paddle import fluid
+        from paddle.incubate.distributed.fleet import role_maker
         from paddle.incubate.distributed.fleet.collective import (
             DistributedStrategy,
             fleet,

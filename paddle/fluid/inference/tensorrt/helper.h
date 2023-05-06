@@ -190,6 +190,10 @@ inline void PrintITensorShape(nvinfer1::ITensor* X) {
 template <typename T>
 inline std::string Vec2Str(const std::vector<T>& vec) {
   std::ostringstream os;
+  if (vec.empty()) {
+    os << "()";
+    return os.str();
+  }
   os << "(";
   for (size_t i = 0; i < vec.size() - 1; ++i) {
     os << vec[i] << ",";

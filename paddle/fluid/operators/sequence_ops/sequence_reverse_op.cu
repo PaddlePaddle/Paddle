@@ -15,10 +15,12 @@
 #include "paddle/fluid/operators/sequence_ops/sequence_reverse_op.h"
 
 namespace ops = paddle::operators;
-
-REGISTER_OP_CUDA_KERNEL(sequence_reverse,
-                        ops::SequenceReverseOpKernel<phi::GPUContext, uint8_t>,
-                        ops::SequenceReverseOpKernel<phi::GPUContext, int>,
-                        ops::SequenceReverseOpKernel<phi::GPUContext, int64_t>,
-                        ops::SequenceReverseOpKernel<phi::GPUContext, float>,
-                        ops::SequenceReverseOpKernel<phi::GPUContext, double>);
+PD_REGISTER_STRUCT_KERNEL(sequence_reverse,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::SequenceReverseOpKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t,
+                          uint8_t) {}

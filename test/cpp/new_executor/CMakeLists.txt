@@ -30,7 +30,7 @@ if(WITH_GPU
       sum_op
       elementwise_max_op
       elementwise_div_op
-      sgd_op
+      generated_op
       squared_l2_norm_op
       memcpy_h2d_op
       memcpy_d2h_op

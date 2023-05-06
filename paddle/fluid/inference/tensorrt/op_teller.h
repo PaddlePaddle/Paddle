@@ -82,12 +82,8 @@ class OpTeller {
 
   std::unique_ptr<Teller>& GetCustomPluginTeller() { return tellers_.at(2); }
 
-  void SetOpConverterType(std::string name, OpConverterType type) {
-    op_converter_type_map_[name] = type;
-  }
-
-  const std::map<std::string, OpConverterType>& GetOpConverterTypeMap() const {
-    return op_converter_type_map_;
+  void SetOpConverterType(framework::OpDesc* op_desc, OpConverterType type) {
+    op_desc->SetAttr("converter_type", static_cast<int>(type));
   }
 
  private:
@@ -95,7 +91,6 @@ class OpTeller {
 
  private:
   std::vector<std::unique_ptr<Teller>> tellers_;
-  std::map<std::string, OpConverterType> op_converter_type_map_;
 };
 
 }  // namespace tensorrt

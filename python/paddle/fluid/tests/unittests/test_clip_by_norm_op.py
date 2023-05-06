@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
+from op import Operator
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle.fluid import core
 from paddle.nn import clip
 
 
@@ -102,6 +102,48 @@ class TestClipByNormOpFp16Case3(TestClipByNormOpFp16):
         self.max_norm = 1.0
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support bfloat16",
+)
+class TestClipByNormBF16Op(OpTest):
+    def setUp(self):
+        self.max_relative_error = 0.006
+        self.python_api = clip.clip_by_norm
+        self.init_dtype()
+        self.initTestCase()
+        input = np.random.random(self.shape).astype(self.np_dtype)
+        input[np.abs(input) < self.max_relative_error] = 0.5
+        self.op_type = "clip_by_norm"
+        self.inputs = {
+            'X': input,
+        }
+        self.attrs = {}
+        self.attrs['max_norm'] = self.max_norm
+        norm = np.sqrt(np.sum(np.square(input)))
+        if norm > self.max_norm:
+            output = self.max_norm * input / norm
+        else:
+            output = input
+        self.outputs = {'Out': output}
+
+        self.inputs['X'] = convert_float_to_uint16(self.inputs['X'])
+        self.outputs['Out'] = convert_float_to_uint16(self.outputs['Out'])
+        self.place = core.CUDAPlace(0)
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place)
+
+    def initTestCase(self):
+        self.shape = (100,)
+        self.max_norm = 1.0
+
+    def init_dtype(self):
+        self.dtype = np.uint16
+        self.np_dtype = np.float32
+
+
 class TestClipByNormOpWithSelectedRows(unittest.TestCase):
     def check_with_place(self, place):
         self.config_test_case()
@@ -119,7 +161,7 @@ class TestClipByNormOpWithSelectedRows(unittest.TestCase):
         out_selected_rows = scope.var('Out').get_selected_rows()
 
         # run clip_by_norm_op
-        clip_by_norm_op = fluid.op.Operator(
+        clip_by_norm_op = Operator(
             "clip_by_norm", max_norm=self.max_norm, X='X', Out='Out'
         )
         clip_by_norm_op.run(scope, place)

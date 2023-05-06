@@ -23,6 +23,9 @@ limitations under the License. */
 
 #include <algorithm>
 
+#include "paddle/phi/backends/gpu/gpu_device_function.h"
+#include "paddle/phi/common/data_type.h"
+
 namespace phi {
 namespace funcs {
 
@@ -170,11 +173,7 @@ struct KeyValuePair<half> {
 template <typename T>
 __inline__ __device__ T WarpReduceSum(T val, unsigned lane_mask) {
   for (int mask = HALF_WARP; mask > 0; mask >>= 1)
-#if defined(PADDLE_WITH_CUDA) && (__CUDA_ARCH__ >= 350 && CUDA_VERSION >= 9000)
-    val += __shfl_xor_sync(lane_mask, val, mask, warpSize);
-#else
-    val += __shfl_xor(val, mask, warpSize);
-#endif
+    val += phi::backends::gpu::CudaShuffleXorSync(lane_mask, val, mask);
   return val;
 }
 
@@ -243,11 +242,8 @@ __inline__ __device__ T BlockReduceSumV2(T *val) {
 template <typename T>
 __inline__ __device__ T WarpReduceMax(T val, unsigned lane_mask) {
   for (int mask = HALF_WARP; mask > 0; mask >>= 1)
-#if defined(PADDLE_WITH_CUDA) && (__CUDA_ARCH__ >= 350 && CUDA_VERSION >= 9000)
-    val = max(val, __shfl_xor_sync(lane_mask, val, mask, warpSize));
-#else
-    val = max(val, __shfl_xor(val, mask, warpSize));
-#endif
+    val = std::max(
+        val, phi::backends::gpu::CudaShuffleXorSync(lane_mask, val, mask));
   return val;
 }
 
@@ -265,11 +261,8 @@ __inline__ __device__ T WarpReduceMaxV2(T *val) {
 template <typename T>
 __inline__ __device__ T WarpReduceMin(T val, unsigned lane_mask) {
   for (int mask = HALF_WARP; mask > 0; mask >>= 1)
-#if defined(PADDLE_WITH_CUDA) && (__CUDA_ARCH__ >= 350 && CUDA_VERSION >= 9000)
-    val = min(val, __shfl_xor_sync(lane_mask, val, mask, warpSize));
-#else
-    val = min(val, __shfl_xor(val, mask, warpSize));
-#endif
+    val = std::min(
+        val, phi::backends::gpu::CudaShuffleXorSync(lane_mask, val, mask));
   return val;
 }
 
@@ -310,7 +303,7 @@ __inline__ __device__ T BlockReduceMax(T val, unsigned mask) {
 
   // align block_span to warpSize
   int block_span = (blockDim.x + warpSize - 1) >> 5;
-  val = (lane < block_span) ? shared[lane] : -1e10f;
+  val = (lane < block_span) ? shared[lane] : std::numeric_limits<T>::min();
   val = WarpReduceMax(val, mask);
 
   return val;
@@ -358,7 +351,7 @@ __inline__ __device__ T BlockReduceMin(T val, unsigned mask) {
 
   // align block_span to warpSize
   int block_span = (blockDim.x + warpSize - 1) >> 5;
-  val = (lane < block_span) ? shared[lane] : 1e10f;
+  val = (lane < block_span) ? shared[lane] : std::numeric_limits<T>::max();
   val = WarpReduceMin(val, mask);
 
   return val;

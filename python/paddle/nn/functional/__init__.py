@@ -83,6 +83,7 @@ from .loss import log_loss  # noqa: F401
 from .loss import margin_ranking_loss  # noqa: F401
 from .loss import mse_loss  # noqa: F401
 from .loss import nll_loss  # noqa: F401
+from .loss import poisson_nll_loss  # noqa: F401
 from .loss import npair_loss  # noqa: F401
 from .loss import sigmoid_focal_loss  # noqa: F401
 from .loss import smooth_l1_loss  # noqa: F401
@@ -98,6 +99,8 @@ from .loss import multi_label_soft_margin_loss
 from .loss import triplet_margin_with_distance_loss
 from .loss import triplet_margin_loss
 from .loss import soft_margin_loss
+from .loss import gaussian_nll_loss
+
 from .norm import batch_norm  # noqa: F401
 from .norm import instance_norm  # noqa: F401
 from .norm import layer_norm  # noqa: F401
@@ -131,6 +134,8 @@ from .extension import gather_tree  # noqa: F401
 from .extension import temporal_shift  # noqa: F401
 
 from .sparse_attention import sparse_attention
+from .flash_attention import scaled_dot_product_attention
+from .flash_attention import sdp_kernel
 
 __all__ = [  # noqa
     'celu',
@@ -214,6 +219,7 @@ __all__ = [  # noqa
     'margin_ranking_loss',
     'multi_label_soft_margin_loss',
     'nll_loss',
+    'poisson_nll_loss',
     'npair_loss',
     'sigmoid_focal_loss',
     'smooth_l1_loss',
@@ -246,4 +252,5 @@ __all__ = [  # noqa
     'triplet_margin_loss',
     'multi_margin_loss',
     'soft_margin_loss',
+    'gaussian_nll_loss',
 ]

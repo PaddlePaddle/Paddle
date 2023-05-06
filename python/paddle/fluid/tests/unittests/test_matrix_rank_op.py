@@ -17,16 +17,16 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid.tests.unittests.op_test import OpTest
+from paddle import fluid
+from paddle.fluid import core
+from paddle.fluid.tests.unittests.eager_op_test import OpTest
 
 paddle.enable_static()
 SEED = 2049
 np.random.seed(SEED)
 
 
-def matrix_rank_wraper(x, tol=None, hermitian=False, use_default_tol=True):
+def matrix_rank_wraper(x, tol=None, use_default_tol=True, hermitian=False):
     return paddle.linalg.matrix_rank(x, tol, hermitian)
 
 
@@ -45,7 +45,7 @@ class TestMatrixRankOP(OpTest):
         self.outputs = {'Out': self.out}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def init_data(self):
         self.x = np.eye(3, dtype=np.float32)

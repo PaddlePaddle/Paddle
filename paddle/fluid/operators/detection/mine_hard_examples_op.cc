@@ -49,7 +49,7 @@ inline MiningType GetMiningType(std::string str) {
   }
 }
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class MineHardExamplesKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -403,6 +403,9 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OP_CPU_KERNEL(mine_hard_examples,
-                       ops::MineHardExamplesKernel<phi::CPUContext, float>,
-                       ops::MineHardExamplesKernel<phi::CPUContext, double>);
+PD_REGISTER_STRUCT_KERNEL(mine_hard_examples,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::MineHardExamplesKernel,
+                          float,
+                          double) {}

@@ -559,7 +559,7 @@ __global__ void WarpSoftmaxForwardSoftLabel(T* loss,
     // max index to read
     int idx_max = (i < local_batches) ? element_count : 0;
     int idx_max_v = idx_max / kVSize;
-
+#pragma unroll
     // read data
     for (int it = 0; it < kIterationsV; ++it) {
       int src_idx = threadIdx.x + it * kWarpSize;
@@ -659,7 +659,7 @@ __global__ void WarpSoftmaxForwardSoftLabel(T* loss,
 
   // loss
   phi::WarpReduceSum<AccT, kBatchSize, kWarpSize>(sumloss);
-
+#pragma unroll
   for (int i = 0; i < kBatchSize; i++) {
     if (i >= local_batches) break;
     loss[first_batch + i] = sumloss[i];

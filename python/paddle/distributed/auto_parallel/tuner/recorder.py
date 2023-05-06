@@ -59,7 +59,7 @@ class MetricRecord:
         return other.value == self.value and other.step == self.step
 
     def __repr__(self):
-        return "MetricRecord(value={}, step={})".format(self.value, self.step)
+        return f"MetricRecord(value={self.value}, step={self.step})"
 
 
 class MetricRecords:
@@ -166,7 +166,7 @@ class MetricsRecorder:
 
     def register(self, name, direction=None):
         if self.exists(name):
-            raise ValueError("Metric {} have been registered.".format(name))
+            raise ValueError(f"Metric {name} have been registered.")
         if direction is None:
             direction = "min"
         self._records[name] = MetricRecords(direction)

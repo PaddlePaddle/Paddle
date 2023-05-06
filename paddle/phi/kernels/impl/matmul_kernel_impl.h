@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include "glog/logging.h"
+
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/autotune/cache_base.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"

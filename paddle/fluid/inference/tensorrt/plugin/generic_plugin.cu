@@ -55,16 +55,28 @@ void BuildPhiKernelContextAttr(const framework::OpDesc& op_desc,
           auto& attr = *attr_ptr;
           switch (AttrTypeID(attr)) {
             case framework::proto::AttrType::FLOAT:
-              return kernel_context->EmplaceBackAttr(
+              kernel_context->EmplaceBackAttr(
                   phi::Scalar(PADDLE_GET_CONST(float, attr)));
               break;
+            case framework::proto::AttrType::FLOAT64:
+              kernel_context->EmplaceBackAttr(
+                  phi::Scalar(PADDLE_GET_CONST(double, attr)));
+              break;
             case framework::proto::AttrType::INT:
-              return kernel_context->EmplaceBackAttr(
+              kernel_context->EmplaceBackAttr(
                   phi::Scalar(PADDLE_GET_CONST(int, attr)));
               break;
+            case framework::proto::AttrType::LONG:
+              kernel_context->EmplaceBackAttr(
+                  phi::Scalar(PADDLE_GET_CONST(int64_t, attr)));
+              break;
             case framework::proto::AttrType::STRING:
-              return kernel_context->EmplaceBackAttr(
+              kernel_context->EmplaceBackAttr(
                   phi::Scalar(PADDLE_GET_CONST(std::string, attr)));
+              break;
+            case framework::proto::AttrType::SCALAR:
+              kernel_context->EmplaceBackAttr(phi::Scalar(
+                  PADDLE_GET_CONST(paddle::experimental::Scalar, attr)));
               break;
             default:
               PADDLE_THROW(platform::errors::Unimplemented(
@@ -129,6 +141,16 @@ void BuildPhiKernelContextAttr(const framework::OpDesc& op_desc,
             } break;
             case framework::proto::AttrType::FLOAT64S: {
               const auto& vec = PADDLE_GET_CONST(std::vector<double>, attr);
+              std::vector<phi::Scalar> scalar_list;
+              scalar_list.reserve(vec.size());
+              for (const auto& val : vec) {
+                scalar_list.emplace_back(val);
+              }
+              kernel_context->EmplaceBackAttr(std::move(scalar_list));
+            } break;
+            case framework::proto::AttrType::SCALARS: {
+              const auto& vec = PADDLE_GET_CONST(
+                  std::vector<paddle::experimental::Scalar>, attr);
               std::vector<phi::Scalar> scalar_list;
               scalar_list.reserve(vec.size());
               for (const auto& val : vec) {
@@ -450,7 +472,7 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
                            cudaStream_t stream) TRT_NOEXCEPT {
   platform::CUDAPlace place(platform::GetCurrentDeviceId());
 
-  // [TODO]now generic plugin do not support FP16 and INT8 precision
+  // [TODO]now generic plugin do not support INT8 precision
   auto protoType2PhiType =
       [&](int proto_type,
           nvinfer1::DataType nv_dtype) -> std::pair<phi::DataType, int> {

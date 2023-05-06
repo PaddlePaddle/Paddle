@@ -17,10 +17,15 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid.core as core
-import paddle.nn as nn
 import paddle.nn.functional as F
-from paddle.fluid import Executor, Program, default_main_program, program_guard
+from paddle import nn
+from paddle.fluid import (
+    Executor,
+    Program,
+    core,
+    default_main_program,
+    program_guard,
+)
 
 
 class TestCosineSimilarityAPI(unittest.TestCase):

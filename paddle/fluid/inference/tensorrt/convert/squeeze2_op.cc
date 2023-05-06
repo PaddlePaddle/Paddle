@@ -23,7 +23,7 @@ class Squeeze2OpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(4) << "convert a fluid squeeze2 op to tensorrt shuffle layer";
+    VLOG(4) << "convert a squeeze2 op to tensorrt shuffle layer";
 
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs

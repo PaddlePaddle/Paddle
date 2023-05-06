@@ -899,9 +899,9 @@ def load(
     # ensure to use abs path
     build_directory = os.path.abspath(build_directory)
 
-    log_v("build_directory: {}".format(build_directory), verbose)
+    log_v(f"build_directory: {build_directory}", verbose)
 
-    file_path = os.path.join(build_directory, "{}_setup.py".format(name))
+    file_path = os.path.join(build_directory, f"{name}_setup.py")
     sources = [os.path.abspath(source) for source in sources]
 
     if extra_cxx_cflags is None:

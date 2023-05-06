@@ -95,7 +95,7 @@ phi::DenseTensor& GetVariableTensor(const Scope& scope,
   PADDLE_ENFORCE_EQ(var->IsType<phi::DenseTensor>(),
                     true,
                     platform::errors::InvalidArgument(
-                        "Only support lod tensor in GetVariableTensor now."));
+                        "Only support DenseTensor in GetVariableTensor now."));
   return *var->GetMutable<phi::DenseTensor>();
 }
 

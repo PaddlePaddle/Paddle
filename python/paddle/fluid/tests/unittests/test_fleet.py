@@ -33,7 +33,7 @@ class TestFleet1(unittest.TestCase):
     def test_pslib_1(self):
         """Test cases for pslib."""
         import paddle
-        import paddle.fluid as fluid
+        from paddle import fluid
         from paddle.incubate.distributed.fleet.parameter_server.pslib import (
             fleet,
         )

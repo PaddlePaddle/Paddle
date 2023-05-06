@@ -15,7 +15,7 @@
 # TODO: define statistical functions of a tensor
 
 import paddle
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _C_ops
 from paddle.fluid.framework import in_dygraph_mode
 
 from ..common_ops_import import Variable
@@ -332,10 +332,7 @@ def nanmedian(x, axis=None, keepdim=True, name=None):
         raise ValueError("Axis has duplicated elements.")
 
     if in_dygraph_mode():
-        median_index, out = _legacy_C_ops.nanmedian(
-            x, 'axis', axis, 'keepdim', keepdim
-        )
-        return out
+        return _C_ops.nanmedian(x, axis, keepdim)
     else:
         check_variable_and_dtype(
             x,

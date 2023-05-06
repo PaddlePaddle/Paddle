@@ -86,7 +86,7 @@ class DygraphToStaticAst(BaseTransformer):
 
     def transfer_from_node_type(self, node_wrapper):
         self.translator_logger.log(
-            1, "Source code: \n{}".format(ast_to_source_code(self.root))
+            1, f"Source code: \n{ast_to_source_code(self.root)}"
         )
         # Generic transformation
         self.visit(node_wrapper.node)

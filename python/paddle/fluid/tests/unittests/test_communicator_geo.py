@@ -21,9 +21,9 @@ import unittest
 import numpy
 
 import paddle
-import paddle.distributed.fleet as fleet
-import paddle.distributed.fleet.base.role_maker as role_maker
-import paddle.fluid as fluid
+from paddle import fluid
+from paddle.distributed import fleet
+from paddle.distributed.fleet.base import role_maker
 from paddle.distributed.utils.launch_utils import find_free_ports
 
 paddle.enable_static()
@@ -165,11 +165,11 @@ half_run_server.run_ut()
 
         os.environ["TRAINING_ROLE"] = "PSERVER"
         os.environ["PADDLE_PORT"] = str(port)
-        os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:{}".format(port)
+        os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = f"127.0.0.1:{port}"
 
         _python = sys.executable
 
-        ps_cmd = "{} {}".format(_python, server_file)
+        ps_cmd = f"{_python} {server_file}"
 
         ps_proc = subprocess.Popen(
             ps_cmd.strip().split(" "),

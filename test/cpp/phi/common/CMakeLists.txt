@@ -18,6 +18,10 @@ cc_test(
   phi_test_int_array
   SRCS test_int_array.cc
   DEPS int_array api_int_array phi phi_api)
+cc_test(
+  phi_test_scalar_cpu
+  SRCS test_scalar.cc
+  DEPS scalar api_scalar)
 if(WITH_GPU)
   nv_test(
     phi_test_scalar

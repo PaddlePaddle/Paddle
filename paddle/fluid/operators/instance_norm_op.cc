@@ -21,6 +21,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
+#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
+#include "paddle/fluid/prim/utils/static/desc_tensor.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/infermeta/ternary.h"
@@ -140,6 +143,48 @@ phi::KernelKey InstanceNormDoubleGradOp::GetExpectedKernelType(
                         ctx.GetPlace());
 }
 
+class InstanceNormCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
+ public:
+  void Apply() override {
+    // inputs and outputs of batch_norm
+    paddle::Tensor x = this->GetSingleForwardInput("X");
+    paddle::Tensor scale = this->GetSingleForwardInput("Scale");
+    paddle::Tensor saved_mean = this->GetSingleForwardOutput("SavedMean");
+    paddle::Tensor saved_variance =
+        this->GetSingleForwardOutput("SavedVariance");
+
+    paddle::Tensor y_grad = this->GetSingleOutputGrad("Y");
+    paddle::Tensor x_grad = this->GetSingleInputGrad("X");
+    paddle::Tensor scale_grad = this->GetSingleInputGrad("Scale");
+    paddle::Tensor bias_grad = this->GetSingleInputGrad("Bias");
+
+    auto x_grad_ptr = this->GetOutputPtr(&x_grad);
+    std::string x_grad_name = this->GetOutputName(x_grad);
+    auto scale_grad_ptr = this->GetOutputPtr(&scale_grad);
+    std::string scale_grad_name = this->GetOutputName(scale_grad);
+    auto bias_grad_ptr = this->GetOutputPtr(&bias_grad);
+    std::string bias_grad_name = this->GetOutputName(bias_grad);
+
+    auto epsilon = this->Attr<float>("epsilon");
+
+    VLOG(3) << "Runing instance_norm composite func";
+    prim::instance_norm_grad<prim::DescTensor>(x,
+                                               scale,
+                                               saved_mean,
+                                               saved_variance,
+                                               y_grad,
+                                               epsilon,
+                                               x_grad_ptr,
+                                               scale_grad_ptr,
+                                               bias_grad_ptr);
+    this->RecoverOutputName(x_grad, x_grad_name);
+    this->RecoverOutputName(scale_grad, scale_grad_name);
+    this->RecoverOutputName(bias_grad, bias_grad_name);
+  }
+};
+
 DECLARE_INPLACE_OP_INFERER(InstanceNormDoubleGradOpInplaceInferer,
                            {"DY", "DDY"});
 
@@ -163,7 +208,8 @@ REGISTER_OPERATOR(instance_norm,
                   ops::InstanceNormOpInferVarType,
                   ops::InstanceNormGradMaker<paddle::framework::OpDesc>,
                   ops::InstanceNormGradMaker<paddle::imperative::OpBase>,
-                  InstanceNormInferShapeFunctor);
+                  InstanceNormInferShapeFunctor,
+                  ops::InstanceNormCompositeGradOpMaker);
 REGISTER_OPERATOR(instance_norm_grad,
                   ops::InstanceNormGradOp,
                   ops::InstanceNormDoubleGradMaker<paddle::framework::OpDesc>,

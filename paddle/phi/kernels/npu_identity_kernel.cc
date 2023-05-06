@@ -14,6 +14,8 @@
 
 #include "paddle/phi/kernels/npu_identity_kernel.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 

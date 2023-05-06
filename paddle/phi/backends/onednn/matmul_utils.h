@@ -93,23 +93,7 @@ class MatmulOneDNNHandler : public OneDNNHandlerNoCachingT<XT, dnnl::matmul> {
     auto y_md = memory::desc(y_dims, OneDNNGetDataType<YT>(), y_strides);
     auto out_md = memory::desc(out_ddims, OneDNNGetDataType<OT>(), out_strides);
 
-    const auto matmul_attrs = CreateMatmulAttrs(dev_ctx);
-
-    this->AcquireForwardPrimitiveDescriptor(matmul_attrs, x_md, y_md, out_md);
-  }
-
-  dnnl::primitive_attr CreateMatmulAttrs(const OneDNNContext& dev_ctx) {
-    dnnl::primitive_attr matmul_attrs;
-    dnnl::post_ops post_operations;
-
-    float scale_out = dev_ctx.HasDnnAttr("alpha")
-                          ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("alpha"))
-                          : 1.0f;
-    if (scale_out != 1.0f) {
-      matmul_attrs.set_output_scales(0, {scale_out});
-    }
-    matmul_attrs.set_post_ops(post_operations);
-    return matmul_attrs;
+    this->AcquireForwardPrimitiveDescriptor(x_md, y_md, out_md);
   }
 
   std::shared_ptr<memory> AcquireWeightsMemory(const DenseTensor* input) {
@@ -175,27 +159,6 @@ inline void ExecuteMatmul(const OneDNNContext& dev_ctx,
                           bool trans_x,
                           bool trans_y,
                           DenseTensor* out) {
-  auto shape_x = dev_ctx.HasDnnAttr("fused_reshape_X")
-                     ? PADDLE_GET_CONST(std::vector<int>,
-                                        dev_ctx.GetDnnAttr("fused_reshape_X"))
-                     : std::vector<int>();
-  auto axis_x = dev_ctx.HasDnnAttr("fused_transpose_X")
-                    ? PADDLE_GET_CONST(std::vector<int>,
-                                       dev_ctx.GetDnnAttr("fused_transpose_X"))
-                    : std::vector<int>();
-  auto shape_y = dev_ctx.HasDnnAttr("fused_reshape_Y")
-                     ? PADDLE_GET_CONST(std::vector<int>,
-                                        dev_ctx.GetDnnAttr("fused_reshape_Y"))
-                     : std::vector<int>();
-  auto axis_y = dev_ctx.HasDnnAttr("fused_transpose_Y")
-                    ? PADDLE_GET_CONST(std::vector<int>,
-                                       dev_ctx.GetDnnAttr("fused_transpose_Y"))
-                    : std::vector<int>();
-
-  auto x_strides_override =
-      GetInputStrides("X", x.dims(), trans_x, shape_x, shape_x);
-  auto y_strides_override =
-      GetInputStrides("Y", y.dims(), trans_y, shape_y, axis_y);
   MatmulOneDNNHandler<T, T, T_out> handler(
       dev_ctx, x_dims, y_dims, trans_x, trans_y);
 

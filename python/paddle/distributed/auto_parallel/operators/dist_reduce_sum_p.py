@@ -92,7 +92,7 @@ class DistributedReduceSumPrimtiveImpl0(DistributedOperatorImpl):
             )
             assert len(kwargs[input_name]) == len(
                 src_op.desc.input(input_name)
-            ), "number of tensor for input [{}] is not match".format(input_name)
+            ), f"number of tensor for input [{input_name}] is not match"
         for output_name in src_op.desc.output_names():
             assert output_name in kwargs, "input [{}] is not given".format(
                 output_name

@@ -21,9 +21,8 @@ import unittest
 import numpy
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.fluid.layers as layers
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.executor import Executor
 
 paddle.enable_static()
@@ -57,10 +56,10 @@ class TestEagerDeletionWhileOpBase(unittest.TestCase):
         d1 = paddle.static.data("d1", shape=[-1, 10], dtype='float32')
         d2 = paddle.static.data("d2", shape=[-1, 10], dtype='float32')
 
-        i = layers.zeros(shape=[1], dtype='int64')
+        i = paddle.zeros(shape=[1], dtype='int64')
         i.stop_gradient = True
 
-        init = layers.zeros(shape=[10], dtype='float32')
+        init = paddle.zeros(shape=[10], dtype='float32')
         mem_array = paddle.tensor.array_write(x=init, i=i)
         data_array = paddle.tensor.array_write(x=d0, i=i)
 
@@ -70,7 +69,7 @@ class TestEagerDeletionWhileOpBase(unittest.TestCase):
         i = paddle.increment(i)
         paddle.tensor.array_write(d2, i, array=data_array)
 
-        i = layers.zeros(shape=[1], dtype='int64')
+        i = paddle.zeros(shape=[1], dtype='int64')
         i.stop_gradient = True
 
         array_len = paddle.tensor.fill_constant(

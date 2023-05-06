@@ -34,26 +34,6 @@ namespace phi {
 namespace funcs {
 
 template <typename T>
-class CumTypeTrait {
- public:
-  using Type = T;
-};
-
-template <>
-class CumTypeTrait<phi::dtype::float16> {
- public:
-  using Type = __half;
-};
-
-#if defined(__CUDACC__) && CUDA_VERSION >= 11000
-template <>
-class CumTypeTrait<phi::dtype::bfloat16> {
- public:
-  using Type = __nv_bfloat16;
-};
-#endif
-
-template <typename T>
 struct IsComplex : public std::false_type {};
 
 template <>
@@ -265,8 +245,8 @@ void InclusiveScan(const T *x,
 
   if (outer_dim == 1 && inner_dim == 1) {
     if (reverse) {
-      auto x_reverse_iter = MakeThrustReverseIterator(x + mid_dim);
-      auto y_reverse_iter = MakeThrustReverseIterator(y + mid_dim);
+      auto x_reverse_iter = thrust::make_reverse_iterator(x + mid_dim);
+      auto y_reverse_iter = thrust::make_reverse_iterator(y + mid_dim);
       CubInclusiveScan(x_reverse_iter, y_reverse_iter, mid_dim, op, dev_ctx);
     } else {
       CubInclusiveScan(x, y, mid_dim, op, dev_ctx);

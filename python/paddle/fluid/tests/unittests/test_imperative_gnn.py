@@ -19,9 +19,9 @@ import numpy as np
 from test_imperative_base import new_program_scope
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 import paddle.nn.functional as F
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
 from paddle.fluid.optimizer import AdamOptimizer
 
@@ -176,7 +176,7 @@ class TestDygraphGNN(unittest.TestCase):
         np.testing.assert_allclose(
             static_weight, model2_gc_weight_value, rtol=1e-05
         )
-        sys.stderr.write('%s %s\n' % (static_loss, loss_value))
+        sys.stderr.write(f'{static_loss} {loss_value}\n')
 
 
 if __name__ == '__main__':

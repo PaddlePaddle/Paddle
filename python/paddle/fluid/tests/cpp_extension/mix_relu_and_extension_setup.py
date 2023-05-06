@@ -21,7 +21,7 @@ from paddle.utils.cpp_extension import CppExtension, setup
 setup(
     name='mix_relu_extension',
     ext_modules=CppExtension(
-        sources=["mix_relu_and_extension.cc", "custom_sub.cc"],
+        sources=["mix_relu_and_extension.cc"],
         include_dirs=paddle_includes
         + [os.path.dirname(os.path.abspath(__file__))],
         extra_compile_args={'cc': ['-w', '-g']},

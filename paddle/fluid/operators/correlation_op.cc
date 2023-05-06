@@ -165,7 +165,7 @@ class CorrelationOpGrad : public framework::OperatorWithKernel {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class CorrelationKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -186,6 +186,6 @@ REGISTER_OPERATOR(correlation,
                   ops::CorrelationOpGradMaker<paddle::framework::OpDesc>,
                   ops::CorrelationOpGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(correlation_grad, ops::CorrelationOpGrad);
-REGISTER_OP_CPU_KERNEL(correlation,
-                       ops::CorrelationKernel<float>,
-                       ops::CorrelationKernel<double>);
+
+PD_REGISTER_STRUCT_KERNEL(
+    correlation, CPU, ALL_LAYOUT, ops::CorrelationKernel, float, double) {}

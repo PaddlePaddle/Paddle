@@ -69,8 +69,24 @@ inline bool FoundPhiOneDNNKernelWithCorrectDataType(
 
 bool MKLDNNPlacementPass::IsSupport(const Node* op) const {
   if (FoundOneDNNKernelWithCorrectDataType(op) ||
-      FoundPhiOneDNNKernelWithCorrectDataType(op))
-    return true;
+      FoundPhiOneDNNKernelWithCorrectDataType(op)) {
+    // For interpolate ops, there's a little difference between Paddle and
+    // DNNL.
+    // If run DNNL interpolate ops, manual set AnalysisConfig and apply
+    // the corresponding pass.
+    const std::vector<std::string> not_default_op_types = {"bilinear_interp",
+                                                           "nearest_interp",
+                                                           "trilinear_interp",
+                                                           "bicubic_interp",
+                                                           "linear_interp",
+                                                           "bilinear_interp_v2",
+                                                           "linear_interp_v2"};
+    bool is_interpolate_op =
+        std::find(not_default_op_types.begin(),
+                  not_default_op_types.end(),
+                  op->Op()->Type()) != not_default_op_types.end();
+    return !is_interpolate_op;
+  }
   return false;
 }
 

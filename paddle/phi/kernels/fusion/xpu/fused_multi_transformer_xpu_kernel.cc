@@ -13,6 +13,9 @@
 // limitations under the License.
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
+
+#include "glog/logging.h"
+
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/memcpy_kernel.h"
 #ifdef PADDLE_WITH_XPU_XFT

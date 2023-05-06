@@ -54,13 +54,13 @@ def combine_abs_max_and_hist(
         return origin_max, origin_hist
     elif origin_max == 0.0:
         new_hist, _ = np.histogram(
-            paddle.abs(tensor).numpy(), range=(0, new_max), bins=bins
+            paddle.abs(tensor).numpy(False), range=(0, new_max), bins=bins
         )
         new_hist = new_hist.astype(np.float32)
         return new_max, new_hist
     elif new_max <= origin_max:
         new_hist, _ = np.histogram(
-            paddle.abs(tensor).numpy(), range=(0, origin_max), bins=bins
+            paddle.abs(tensor).numpy(False), range=(0, origin_max), bins=bins
         )
         new_hist = new_hist.astype(np.float32)
         new_hist += origin_hist
@@ -84,7 +84,7 @@ def combine_abs_max_and_hist(
         sampled_hist = sampled_hist.astype(np.float32)
 
         new_hist, _ = np.histogram(
-            paddle.abs(tensor).numpy(), range=(0, new_max), bins=bins
+            paddle.abs(tensor).numpy(False), range=(0, new_max), bins=bins
         )
         new_hist = new_hist.astype(np.float32)
         new_hist += sampled_hist
@@ -189,7 +189,7 @@ class BaseHistQuantizer(BaseQuantizer, metaclass=abc.ABCMeta):
                     self.hists.append(None)
                 else:
                     hist, _ = np.histogram(
-                        paddle.abs(tensor).numpy(),
+                        paddle.abs(tensor).numpy(False),
                         range=(0.0, abs_max_vals[idx]),
                         bins=self.bins,
                     )

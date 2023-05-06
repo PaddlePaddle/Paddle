@@ -87,43 +87,9 @@ void ReshapeKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_GENERAL_KERNEL(reshape_infer,
-                           CPU,
-                           ALL_LAYOUT,
-                           phi::ReshapeInferKernel<phi::CPUContext>,
-                           ALL_DTYPE) {}
-PD_REGISTER_GENERAL_KERNEL(
-    reshape, CPU, ALL_LAYOUT, phi::ReshapeKernel<phi::CPUContext>, ALL_DTYPE) {}
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_REGISTER_GENERAL_KERNEL(reshape_infer,
-                           GPU,
-                           ALL_LAYOUT,
-                           phi::ReshapeInferKernel<phi::GPUContext>,
-                           ALL_DTYPE) {}
-PD_REGISTER_GENERAL_KERNEL(
-    reshape, GPU, ALL_LAYOUT, phi::ReshapeKernel<phi::GPUContext>, ALL_DTYPE) {}
-#endif
-
-#ifdef PADDLE_WITH_XPU
-PD_REGISTER_GENERAL_KERNEL(reshape_infer,
-                           XPU,
-                           ALL_LAYOUT,
-                           phi::ReshapeInferKernel<phi::XPUContext>,
-                           ALL_DTYPE) {}
-PD_REGISTER_GENERAL_KERNEL(
-    reshape, XPU, ALL_LAYOUT, phi::ReshapeKernel<phi::XPUContext>, ALL_DTYPE) {}
-#endif
-
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-PD_REGISTER_GENERAL_KERNEL(reshape_infer,
-                           Custom,
-                           ALL_LAYOUT,
-                           phi::ReshapeInferKernel<phi::CustomContext>,
-                           ALL_DTYPE) {}
-PD_REGISTER_GENERAL_KERNEL(reshape,
-                           Custom,
-                           ALL_LAYOUT,
-                           phi::ReshapeKernel<phi::CustomContext>,
-                           ALL_DTYPE) {}
-#endif
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(reshape_infer,
+                                         ALL_LAYOUT,
+                                         phi::ReshapeInferKernel) {}
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(reshape,
+                                         ALL_LAYOUT,
+                                         phi::ReshapeKernel) {}

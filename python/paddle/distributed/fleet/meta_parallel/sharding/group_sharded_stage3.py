@@ -53,7 +53,7 @@ align = {
 }
 
 global CHECK_LAYER
-CHECK_LAYER = dict()  # Help to check layer's id -> layer's name
+CHECK_LAYER = {}  # Help to check layer's id -> layer's name
 
 
 class GroupShardedStage3(nn.Layer):
@@ -120,7 +120,7 @@ class GroupShardedStage3(nn.Layer):
             else int(paddle.get_device().split(":")[1])
         )
         global param2dtype
-        param2dtype = dict()
+        param2dtype = {}
 
         # Communication group establishment
         self._group = (
@@ -140,14 +140,14 @@ class GroupShardedStage3(nn.Layer):
 
         # Parameter segmentation for global ranks
         # After flatten -> self._param2buffer_size, self._param2buffer, self._trainable_params
-        self._param2buffer_size = dict()  # {param.name: size}
+        self._param2buffer_size = {}  # {param.name: size}
         self._param2buffer = (
-            dict()
+            {}
         )  # {param.name: [(start0, end0),(start1, end1), ...]}
-        self._trainable_params = dict()  # {id(layer): [trainable_params]}
+        self._trainable_params = {}  # {id(layer): [trainable_params]}
         self._unslice_params = set()  # param's numel <= segment_size
-        self._unslice_params2align = dict()  # {param.name: param's align}
-        self._grad_storages = dict()  # {param.dtype: GradStorage}
+        self._unslice_params2align = {}  # {param.name: param's align}
+        self._grad_storages = {}  # {param.dtype: GradStorage}
 
         assert not isinstance(
             optimizer, list
@@ -185,7 +185,7 @@ class GroupShardedStage3(nn.Layer):
         # In the first step, record the execution order of the layer
         self._order_tracer = OrderedDict()
         self._order_tracer["order"] = 0
-        self._order_tracer["layer"] = list()
+        self._order_tracer["layer"] = []
 
         # Register task flow
         self._task_flow = TaskFlow()
@@ -231,7 +231,7 @@ class GroupShardedStage3(nn.Layer):
         for param in trainable_params:
             assert hasattr(
                 param, "fw_storage"
-            ), "Find {} don't have fw_storage attribute.".format(param.name)
+            ), f"Find {param.name} don't have fw_storage attribute."
 
             param.fw_storage.clear_gradient(False)
             param.bw_storage._clear()
@@ -315,7 +315,7 @@ class GroupShardedStage3(nn.Layer):
         )
 
     def _handle_unslice_params(self):
-        buffer_size = dict()
+        buffer_size = {}
         buffer_size[Type.bf16.value] = 0
         buffer_size[Type.fp32.value] = 0
         buffer_size[Type.fp16.value] = 0
@@ -335,7 +335,7 @@ class GroupShardedStage3(nn.Layer):
             buffer_size[param.dtype] += param._numel() + p_align
 
         # Create unslice_params'grad
-        for param in sorted(list(self._unslice_params), key=lambda p: p.name):
+        for param in sorted(self._unslice_params, key=lambda p: p.name):
             if param.dtype not in self._grad_storages.keys():
                 self._grad_storages[param.dtype] = GradStorage(
                     buffer_size[param.dtype],
@@ -381,7 +381,7 @@ class GroupShardedStage3(nn.Layer):
         def _add_manage_info(trainable_param):
             return _PartitionParam(trainable_param)
 
-        current_params = list()
+        current_params = []
         for p in current_layer_params:
             if p._numel() > self._segment_size:
                 current_params.append(_add_manage_info(p))
@@ -582,9 +582,9 @@ class GroupShardedStage3(nn.Layer):
         for param in trainable_params:
             assert hasattr(
                 param, "fw_storage"
-            ), "Find {} don't have fw_storage attribute".format(param.name)
+            ), f"Find {param.name} don't have fw_storage attribute"
 
-            param.fw_storage = _VarBaseWrapper(param)
+            param.fw_storage = _TensorWrapper(param)
             assert param.fw_storage.grad is None
             param.fw_storage._copy_gradient_from(param.bw_storage)
             update_list.append(param)
@@ -911,9 +911,9 @@ class TaskFlow:
 
     def __init__(
         self,
-        full_param=dict(),
-        full_grad=dict(),
-        use_calc=dict(),
+        full_param={},
+        full_grad={},
+        use_calc={},
         callback=None,
     ):
         self.full_param = full_param
@@ -1062,17 +1062,17 @@ def _UnsliceParam(param):
     return param
 
 
-def _VarBaseWrapper(param):
-    varbase = param.fw_storage
+def _TensorWrapper(param):
+    var = param.fw_storage
     tmp_param = EagerParamBase(
-        shape=varbase.shape, dtype=varbase.dtype, name="slice@" + param.name
+        shape=var.shape, dtype=var.dtype, name="slice@" + param.name
     )
-    varbase._share_buffer_to(tmp_param)
+    var._share_buffer_to(tmp_param)
     tmp_param.regularizer = param.regularizer
     tmp_param.optimize_attr['learning_rate'] = param.optimize_attr[
         'learning_rate'
     ]
-    varbase._clear()
+    var._clear()
     return tmp_param
 
 

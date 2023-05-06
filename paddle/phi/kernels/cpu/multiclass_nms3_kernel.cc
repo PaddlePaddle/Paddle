@@ -628,4 +628,6 @@ void MultiClassNMSKernel(const Context& ctx,
 
 PD_REGISTER_KERNEL(
     multiclass_nms3, CPU, ALL_LAYOUT, phi::MultiClassNMSKernel, float, double) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT32);
+  kernel->OutputAt(2).SetDataType(phi::DataType::INT32);
 }

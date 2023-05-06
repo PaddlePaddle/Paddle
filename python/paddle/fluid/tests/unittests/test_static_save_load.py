@@ -23,9 +23,8 @@ import numpy as np
 from test_imperative_base import new_program_scope
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.fluid.framework as framework
+from paddle import fluid
+from paddle.fluid import core, framework
 from paddle.fluid.optimizer import Adam
 
 paddle.enable_static()
@@ -300,8 +299,8 @@ class TestSaveLoadBase(unittest.TestCase):
                 x, y, init_hidden, init_cell
             )
             sgd.minimize(static_loss)
-            static_param_updated = dict()
-            static_param_init = dict()
+            static_param_updated = {}
+            static_param_init = {}
 
             out = exe.run(framework.default_startup_program())
 
@@ -441,8 +440,8 @@ class TestSaveLoadPartial(unittest.TestCase):
             )
 
             sgd.minimize(static_loss)
-            static_param_updated = dict()
-            static_param_init = dict()
+            static_param_updated = {}
+            static_param_init = {}
 
             out = exe.run(framework.default_startup_program())
 
@@ -575,8 +574,8 @@ class TestSaveLoadSetStateDict(unittest.TestCase):
                 x, y, init_hidden, init_cell
             )
             sgd.minimize(static_loss)
-            static_param_updated = dict()
-            static_param_init = dict()
+            static_param_updated = {}
+            static_param_init = {}
 
             out = exe.run(framework.default_startup_program())
 
@@ -714,8 +713,8 @@ class TestProgramStatePartial(unittest.TestCase):
             )
 
             sgd.minimize(static_loss)
-            static_param_updated = dict()
-            static_param_init = dict()
+            static_param_updated = {}
+            static_param_init = {}
 
             out = exe.run(framework.default_startup_program())
 
@@ -1042,8 +1041,8 @@ class TestLoadFromOldInterface(unittest.TestCase):
 
             test_clone_program = fluid.default_main_program().clone()
             sgd.minimize(static_loss)
-            static_param_updated = dict()
-            static_param_init = dict()
+            static_param_updated = {}
+            static_param_init = {}
 
             out = exe.run(framework.default_startup_program())
 
@@ -1184,8 +1183,8 @@ class TestLoadFromOldInterface(unittest.TestCase):
 
             test_clone_program = fluid.default_main_program().clone()
             sgd.minimize(static_loss)
-            static_param_updated = dict()
-            static_param_init = dict()
+            static_param_updated = {}
+            static_param_init = {}
 
             out = exe.run(framework.default_startup_program())
 
@@ -1326,8 +1325,8 @@ class TestLoadFromOldInterfaceSingleFile(unittest.TestCase):
                 x, y, init_hidden, init_cell
             )
             sgd.minimize(static_loss)
-            static_param_updated = dict()
-            static_param_init = dict()
+            static_param_updated = {}
+            static_param_init = {}
 
             out = exe.run(framework.default_startup_program())
 
@@ -1528,8 +1527,8 @@ class TestProgramStateOldSave(unittest.TestCase):
             )
 
             sgd.minimize(static_loss)
-            static_param_updated = dict()
-            static_param_init = dict()
+            static_param_updated = {}
+            static_param_init = {}
 
             out = exe.run(framework.default_startup_program())
 
@@ -1704,8 +1703,8 @@ class TestProgramStateOldSaveSingleModel(unittest.TestCase):
             )
 
             sgd.minimize(static_loss)
-            static_param_updated = dict()
-            static_param_init = dict()
+            static_param_updated = {}
+            static_param_init = {}
 
             out = exe.run(framework.default_startup_program())
 

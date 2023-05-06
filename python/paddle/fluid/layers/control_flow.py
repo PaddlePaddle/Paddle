@@ -50,7 +50,6 @@ from paddle import _C_ops, _legacy_C_ops
 __all__ = [
     'Switch',
     'StaticRNN',
-    'Print',
     'while_loop',
 ]
 
@@ -139,104 +138,6 @@ def select_input(inputs, mask):
         outputs={'Out': out},
     )
     return out
-
-
-@static_only
-def Print(
-    input,
-    first_n=-1,
-    message=None,
-    summarize=20,
-    print_tensor_name=True,
-    print_tensor_type=True,
-    print_tensor_shape=True,
-    print_tensor_layout=True,
-    print_tensor_lod=True,
-    print_phase='both',
-):
-    '''
-    :api_attr: Static Graph
-
-    **Print operator**
-
-    This creates a print op that will print when a tensor is accessed.
-
-    Wraps the tensor passed in so that whenever that a tensor is accessed,
-    the message `message` is printed, along with the current value of the
-    tensor `t`.
-
-    Args:
-        input (Tensor): A Tensor to print.
-        first_n (int, optional): Only log `first_n` number of times. Default: -1.
-        message (str, optional): A string message to print as a prefix. Default: None.
-        summarize (int, optional): Number of elements in the tensor to be print. If
-                it's value is -1, then all elements in the tensor will be print.
-        print_tensor_name (bool, optional): Print the tensor name. Default: True.
-        print_tensor_type (bool, optional): Print the tensor type. Defaultt: True.
-        print_tensor_shape (bool, optional): Print the tensor shape. Default: True.
-        print_tensor_layout (bool, optional): Print the tensor layout. Default: True.
-        print_tensor_lod (bool, optional): Print the tensor lod. Default: True.
-        print_phase (str, optional): Which phase to displace, including 'forward',
-                'backward' and 'both'. Default: 'both'. If set to 'backward', will
-                only print the gradients of input tensor; If set to 'both', will
-                both print the input tensor itself and the gradients of input tensor.
-
-    Returns:
-        Tensor: Output tensor.
-
-    NOTES:
-        The input and output are two different Tensor, and in the
-        following process, you should use the output Tensor but not the input,
-        otherwise, the print layer doesn't have backward.
-
-    Examples:
-        .. code-block:: python
-
-           import paddle
-
-           paddle.enable_static()
-
-           x = paddle.full(shape=[2, 3], fill_value=3, dtype='int64')
-           out = paddle.static.Print(x, message="The content of input layer:")
-
-           main_program = paddle.static.default_main_program()
-           exe = paddle.static.Executor(place=paddle.CPUPlace())
-           res = exe.run(main_program, fetch_list=[out])
-           # Variable: fill_constant_1.tmp_0
-           #   - message: The content of input layer:
-           #   - lod: {}
-           #   - place: CPUPlace
-           #   - shape: [2, 3]
-           #   - layout: NCHW
-           #   - dtype: long
-           #   - data: [3 3 3 3 3 3]
-    '''
-    check_variable_and_dtype(
-        input,
-        'input',
-        ['float32', 'float64', 'int32', 'int64', 'bool'],
-        'fluid.layers.Print',
-    )
-
-    helper = LayerHelper('print' + "_" + input.name, **locals())
-    output = helper.create_variable_for_type_inference(input.dtype)
-    helper.append_op(
-        type='print',
-        inputs={'In': input},
-        outputs={'Out': output},
-        attrs={
-            'first_n': first_n,
-            'summarize': summarize,
-            'message': message or "",
-            'print_tensor_name': print_tensor_name,
-            'print_tensor_type': print_tensor_type,
-            'print_tensor_shape': print_tensor_shape,
-            'print_tensor_layout': print_tensor_layout,
-            'print_tensor_lod': print_tensor_lod,
-            'print_phase': print_phase.upper(),
-        },
-    )
-    return output
 
 
 # (TODO: Mine) There exists dependency. It will be removed later.
@@ -1053,7 +954,7 @@ def assign_skip_lod_tensor_array(input, output):
                 return True
         return False
 
-    if not isinstance(input, (Variable, core.VarBase)):
+    if not isinstance(input, (Variable, core.eager.Tensor)):
         if isinstance(output, Variable) and isinstance(
             input, support_ret_buildin_type
         ):
@@ -1150,7 +1051,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
         )
 
     if in_dygraph_mode():
-        now_cond = pre_cond.numpy().item()
+        now_cond = pre_cond.item()
         while now_cond:
             output_vars = body(*loop_vars)
             if not isinstance(output_vars, (list, tuple)):
@@ -1160,7 +1061,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
                     "body in while_loop should return the same arity "
                     "(length and structure) and types as loop_vars"
                 )
-            now_cond = cond(*output_vars).numpy().item()
+            now_cond = cond(*output_vars).item()
             map_structure(assign_skip_lod_tensor_array, output_vars, loop_vars)
         return loop_vars
     else:
@@ -1512,6 +1413,7 @@ def expand_undefined_var(nest1, nest2, names):
     return nest1_out, nest2_out
 
 
+# TODO: It will be deleted later.
 class Switch:
     """
     :api_attr: Static Graph

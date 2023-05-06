@@ -23,8 +23,8 @@ import os
 import tempfile
 import unittest
 
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 
 class TestDatasetWithStat(unittest.TestCase):

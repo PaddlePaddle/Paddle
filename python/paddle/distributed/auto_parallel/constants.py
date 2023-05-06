@@ -75,11 +75,6 @@ set_field_default_config(AMP, "custom_white_list", [])
 set_field_default_config(AMP, "custom_black_list", [])
 set_field_default_config(AMP, "custom_black_varnames", [])
 set_field_default_config(AMP, "use_fp16_guard", False)
-set_field_default_config(AMP, "use_optimizer_fp16", False)
-
-set_field_default_config(AMP, "custom_bf16_list", [])
-set_field_default_config(AMP, "custom_fp32_list", [])
-set_field_default_config(AMP, "custom_fp32_varnames", [])
 set_field_default_config(AMP, "use_bf16_guard", False)
 
 #########################################
@@ -106,6 +101,16 @@ GRADIENT_MERGE = "gradient_merge"
 set_field_default_config(GRADIENT_MERGE, "enable", False)
 set_field_default_config(GRADIENT_MERGE, "k_steps", 1)
 set_field_default_config(GRADIENT_MERGE, "avg", True)
+
+#########################################
+# pipeline configuration
+#########################################
+PIPELINE = "pipeline"
+set_field_default_config(PIPELINE, "enable", False)
+set_field_default_config(PIPELINE, "schedule_mode", "1F1B")
+set_field_default_config(PIPELINE, "micro_batch_size", 1)
+set_field_default_config(PIPELINE, "accumulate_steps", 1)
+set_field_default_config(PIPELINE, "generation_batch_size", 1)
 
 #########################################
 # quantization configuration
