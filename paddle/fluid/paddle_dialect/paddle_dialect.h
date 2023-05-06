@@ -16,25 +16,17 @@
 
 #include "paddle/ir/dialect.h"
 
-namespace ir {
-///
-/// \brief Built-in Dialect: automatically registered into global IrContext,
-/// all built-in types defined in builtin_type.h will be registered in this
-/// Dialect.
-///
-class BuiltinDialect : public ir::Dialect {
+namespace paddle {
+namespace dialect {
+class PaddleDialect : public ir::Dialect {
  public:
-  explicit BuiltinDialect(ir::IrContext *context);
-  ///
-  /// \brief Each Dialect needs to provide a name function to return the name of
-  /// the Dialect.
-  ///
-  /// \return The name of this Dialect.
-  ///
-  static const char *name() { return "Builtin"; }
+  explicit PaddleDialect(ir::IrContext *context);
+
+  static const char *name() { return "Paddle"; }
 
  private:
   void initialize();
 };
 
-}  // namespace ir
+}  // namespace dialect
+}  // namespace paddle

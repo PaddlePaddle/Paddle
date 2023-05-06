@@ -90,4 +90,11 @@ struct hash<ir::NamedAttribute> {
                             std::hash<ir::Attribute>()(obj.value_));
   }
 };
+
+template <>
+struct hash<ir::StrAttribute> {
+  std::size_t operator()(const ir::StrAttribute &obj) const {
+    return std::hash<const ir::StrAttribute::Storage *>()(obj.storage());
+  }
+};
 }  // namespace std

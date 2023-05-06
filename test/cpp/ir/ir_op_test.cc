@@ -138,7 +138,8 @@ TEST(op_test, op_test) {
       ir::Operation::create(op_inputs,
                             op_output_types,
                             CreateAttribute("op1_name", "op1_attr"),
-                            op2_info);
+                            op2_info,
+                            nullptr);
 
   if (op->HasTrait<ReadOnlyTrait>()) {
     ReadOnlyTrait trait = op->dyn_cast<ReadOnlyTrait>();

@@ -35,4 +35,17 @@ void Dialect::RegisterAttribute(ir::AbstractAttribute &&abstract_attribute) {
 void Dialect::RegisterOp(const std::string &name, OpInfoImpl *op_info) {
   this->ir_context()->RegisterOpInfo(name, op_info);
 }
+
+void Dialect::RegisterInterface(std::unique_ptr<DialectInterface> interface) {
+  auto it = registered_interfaces_.emplace(interface->interface_id(),
+                                           std::move(interface));
+  (void)it;
+}
+
+DialectInterface::~DialectInterface() = default;
+
+IrContext *DialectInterface::ir_context() const {
+  return dialect_->ir_context();
+}
+
 }  // namespace ir
