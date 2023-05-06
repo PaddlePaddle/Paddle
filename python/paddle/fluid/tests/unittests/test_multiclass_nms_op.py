@@ -747,7 +747,7 @@ class TestMulticlassNMS3Op(TestMulticlassNMS2Op):
         background = 0
         nms_threshold = 0.3
         nms_top_k = 400
-        keep_top_k = 200
+        keep_top_k = 200 if not hasattr(self, 'keep_top_k') else self.keep_top_k
         score_threshold = self.score_threshold
 
         scores = np.random.random((N * M, C)).astype('float32')
@@ -798,7 +798,7 @@ class TestMulticlassNMS3Op(TestMulticlassNMS2Op):
 
     def test_check_output(self):
         place = paddle.CPUPlace()
-        self.check_output_with_place(place, atol=1e-5)
+        self.check_output_with_place(place)
 
 
 class TestMulticlassNMS3OpNoOutput(TestMulticlassNMS3Op):
@@ -890,6 +890,16 @@ class TestMulticlassNMS3OpGPUNoOutput(TestMulticlassNMS3OpGPU):
         # Here set 2.0 to test the case there is no outputs.
         # In practical use, 0.0 < score_threshold < 1.0
         self.score_threshold = 2.0
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestMulticlassNMS3OpGPUFallback(TestMulticlassNMS3OpGPU):
+    def set_argument(self):
+        # Setting keep_top_k < 0 will fall back to CPU kernel
+        self.score_threshold = 0.01
+        self.keep_top_k = -1
 
 
 if __name__ == '__main__':

@@ -20,7 +20,7 @@ limitations under the License. */
 #include <cub/cub.cuh>
 #include "cuda.h"  // NOLINT
 
-#include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -830,7 +830,7 @@ void nmsInference(cudaStream_t stream,
   PADDLE_ENFORCE_EQ(
       shareLocation,
       true,
-      paddle::platform::errors::Fatal("shareLocation=false is not supported."));
+      phi::errors::Fatal("shareLocation=false is not supported."));
   size_t bboxDataSize = detectionForwardBBoxDataSize<T>(N, perBatchBoxesSize);
   void* bboxDataRaw = workspace;
   PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(
@@ -965,19 +965,18 @@ void MultiClassNMSKernel(const Context& ctx,
     DenseTensor out_cpu, index_cpu, nms_rois_num_cpu;
     paddle::optional<DenseTensor> rois_num_cpu(paddle::none);
     auto cpu_place = phi::CPUPlace();
-    const auto gpu_place = ctx.GetPlace();
+    auto gpu_place = ctx.GetPlace();
 
     // copy from GPU to CPU
-    paddle::framework::TensorCopy(bboxes, cpu_place, &bboxes_cpu);
-    paddle::framework::TensorCopy(scores, cpu_place, &scores_cpu);
+    phi::Copy(ctx, bboxes, cpu_place, false, &bboxes_cpu);
+    phi::Copy(ctx, scores, cpu_place, false, &scores_cpu);
     if (has_roisnum) {
-      paddle::framework::TensorCopy(
-          *rois_num.get_ptr(), cpu_place, &rois_num_cpu_tenor);
+      phi::Copy(
+          ctx, *rois_num.get_ptr(), cpu_place, false, &rois_num_cpu_tenor);
       rois_num_cpu = paddle::optional<DenseTensor>(rois_num_cpu_tenor);
     }
     ctx.Wait();
-    paddle::platform::DeviceContextPool& pool =
-        paddle::platform::DeviceContextPool::Instance();
+    phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     auto* cpu_ctx = static_cast<phi::CPUContext*>(pool.Get(cpu_place));
     MultiClassNMSCPUKernel<T, phi::CPUContext>(*cpu_ctx,
                                                bboxes_cpu,
@@ -994,9 +993,9 @@ void MultiClassNMSKernel(const Context& ctx,
                                                &index_cpu,
                                                &nms_rois_num_cpu);
     // copy back
-    paddle::framework::TensorCopy(out_cpu, gpu_place, out);
-    paddle::framework::TensorCopy(index_cpu, gpu_place, index);
-    paddle::framework::TensorCopy(nms_rois_num_cpu, gpu_place, nms_rois_num);
+    phi::Copy(ctx, out_cpu, gpu_place, false, out);
+    phi::Copy(ctx, index_cpu, gpu_place, false, index);
+    phi::Copy(ctx, nms_rois_num_cpu, gpu_place, false, nms_rois_num);
     return;
   }
 
@@ -1013,20 +1012,19 @@ void MultiClassNMSKernel(const Context& ctx,
   const bool share_location = true;
   auto stream = reinterpret_cast<const Context&>(ctx).stream();
 
-  PADDLE_ENFORCE_LE(nms_top_k,
-                    num_priors,
-                    paddle::platform::errors::InvalidArgument(
-                        "Expect nms_top_k (%d)"
-                        " <= num of boxes per batch (%d).",
-                        nms_top_k,
-                        num_priors));
   PADDLE_ENFORCE_LE(
-      keep_top_k,
       nms_top_k,
-      paddle::platform::errors::InvalidArgument("Expect keep_top_k (%d)"
-                                                " <= nms_top_k (%d).",
-                                                keep_top_k,
-                                                nms_top_k));
+      num_priors,
+      phi::errors::InvalidArgument("Expect nms_top_k (%d)"
+                                   " <= num of boxes per batch (%d).",
+                                   nms_top_k,
+                                   num_priors));
+  PADDLE_ENFORCE_LE(keep_top_k,
+                    nms_top_k,
+                    phi::errors::InvalidArgument("Expect keep_top_k (%d)"
+                                                 " <= nms_top_k (%d).",
+                                                 keep_top_k,
+                                                 nms_top_k));
 
   // bboxes: [N,M,4] -> [N,1,M,4]
   DenseTensor transformed_bboxes(bboxes.type());
