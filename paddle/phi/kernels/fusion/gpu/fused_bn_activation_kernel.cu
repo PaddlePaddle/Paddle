@@ -51,8 +51,8 @@ void FusedBatchNormActKernel(const Context &dev_ctx,
                              DenseTensor *saved_mean,
                              DenseTensor *saved_variance,
                              DenseTensor *reserve_space) {
-using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
-using BatchNormParamType = typename CudnnDataType<T>::BatchNormParamType;
+  using CudnnDataType = phi::backends::gpu::CudnnDataType;
+  using BatchNormParamType = typename CudnnDataType::BatchNormParamType;
 #if CUDNN_VERSION < 7401
   PADDLE_THROW(phi::errors::Unimplemented(
       "The fused_batch_norm_act operator is not supported on GPU "
@@ -82,11 +82,11 @@ using BatchNormParamType = typename CudnnDataType<T>::BatchNormParamType;
   // Run training mode.
   // obtain running mean and running inv var, and see if we need to
   // initialize them.
-  dev_ctx.template Alloc<BatchNormParamType<T>>(mean_out);
-  dev_ctx.template Alloc<BatchNormParamType<T>>(variance_out);
+  dev_ctx.template Alloc<BatchNormParamType>(mean_out);
+  dev_ctx.template Alloc<BatchNormParamType>(variance_out);
 
-  dev_ctx.template Alloc<BatchNormParamType<T>>(saved_mean);
-  dev_ctx.template Alloc<BatchNormParamType<T>>(saved_variance);
+  dev_ctx.template Alloc<BatchNormParamType>(saved_mean);
+  dev_ctx.template Alloc<BatchNormParamType>(saved_variance);
 
   dev_ctx.template Alloc<T>(y);
 
@@ -125,7 +125,7 @@ using BatchNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 
   PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetTensorNdDescriptor(
       data_desc_,
-      CudnnDataType<T>::type,
+      CudnnDataType::type,
       x_dims.size() > 3 ? x_dims.size() : 4,
       dims.data(),
       strides.data()));
@@ -185,8 +185,8 @@ using BatchNormParamType = typename CudnnDataType<T>::BatchNormParamType;
           handle,
           mode_,
           bnOps_,
-          CudnnDataType<T>::kOne(),
-          CudnnDataType<T>::kZero(),
+          CudnnDataType::kOne(),
+          CudnnDataType::kZero(),
           data_desc_,
           x.template data<T>(),
           nullptr,
@@ -194,14 +194,14 @@ using BatchNormParamType = typename CudnnDataType<T>::BatchNormParamType;
           data_desc_,
           y->template data<T>(),
           bn_param_desc_,
-          scale.template data<BatchNormParamType<T>>(),
-          bias.template data<BatchNormParamType<T>>(),
+          scale.template data<BatchNormParamType>(),
+          bias.template data<BatchNormParamType>(),
           this_factor,
-          dev_ctx.template Alloc<BatchNormParamType<T>>(mean_out),
-          dev_ctx.template Alloc<BatchNormParamType<T>>(variance_out),
+          dev_ctx.template Alloc<BatchNormParamType>(mean_out),
+          dev_ctx.template Alloc<BatchNormParamType>(variance_out),
           epsilon1,
-          dev_ctx.template Alloc<BatchNormParamType<T>>(saved_mean),
-          dev_ctx.template Alloc<BatchNormParamType<T>>(saved_variance),
+          dev_ctx.template Alloc<BatchNormParamType>(saved_mean),
+          dev_ctx.template Alloc<BatchNormParamType>(saved_variance),
           activation_desc_,
           workspace_ptr,
           workspace_size,

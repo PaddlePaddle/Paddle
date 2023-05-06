@@ -52,8 +52,8 @@ void FusedBatchNormActGradKernel(const Context &dev_ctx,
                                  DenseTensor *x_grad,
                                  DenseTensor *scale_grad,
                                  DenseTensor *bias_grad) {
-using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
-using BatchNormParamType = typename CudnnDataType<T>::BatchNormParamType;
+  using CudnnDataType = phi::backends::gpu::CudnnDataType;
+  using BatchNormParamType = typename CudnnDataType::BatchNormParamType;
 #if CUDNN_VERSION < 7401
   PADDLE_THROW(phi::errors::Unimplemented(
       "The fused_batch_norm_act operator is not supported on GPU "
@@ -88,8 +88,8 @@ using BatchNormParamType = typename CudnnDataType<T>::BatchNormParamType;
       true,
       phi::errors::PreconditionNotMet(
           "Both the scale grad and the bias grad must not be null."));
-  dev_ctx.template Alloc<BatchNormParamType<T>>(d_scale);
-  dev_ctx.template Alloc<BatchNormParamType<T>>(d_bias);
+  dev_ctx.template Alloc<BatchNormParamType>(d_scale);
+  dev_ctx.template Alloc<BatchNormParamType>(d_bias);
   PADDLE_ENFORCE_EQ(
       scale.dims().size(),
       1UL,
@@ -111,9 +111,9 @@ using BatchNormParamType = typename CudnnDataType<T>::BatchNormParamType;
     } else {
       PADDLE_THROW(phi::errors::Unimplemented("Unsupported activation type"));
     }
-    phi::funcs::SetConstant<phi::GPUContext, BatchNormParamType<T>> functor;
-    functor(dev_ctx, d_scale, static_cast<BatchNormParamType<T>>(0));
-    functor(dev_ctx, d_bias, static_cast<BatchNormParamType<T>>(0));
+    phi::funcs::SetConstant<phi::GPUContext, BatchNormParamType> functor;
+    functor(dev_ctx, d_scale, static_cast<BatchNormParamType>(0));
+    functor(dev_ctx, d_bias, static_cast<BatchNormParamType>(0));
     return;
   }
 
@@ -137,17 +137,16 @@ using BatchNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 
   PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetTensorNdDescriptor(
       data_desc_,
-      CudnnDataType<T>::type,
+      CudnnDataType::type,
       x_dims.size() > 3 ? x_dims.size() : 4,
       dims.data(),
       strides.data()));
   PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnDeriveBNTensorDescriptor(
       bn_param_desc_, data_desc_, mode_));
 
-  const auto *saved_mean_data =
-      saved_mean.template data<BatchNormParamType<T>>();
+  const auto *saved_mean_data = saved_mean.template data<BatchNormParamType>();
   const auto *saved_var_data =
-      saved_variance.template data<BatchNormParamType<T>>();
+      saved_variance.template data<BatchNormParamType>();
 
   size_t workspace_size = 0;
   void *workspace_ptr = nullptr;
@@ -180,10 +179,10 @@ using BatchNormParamType = typename CudnnDataType<T>::BatchNormParamType;
       /*handle=*/dev_ctx.cudnn_handle(),
       /*mode=*/mode_,
       /*bnOps=*/bnOps_,
-      /*alphaDataDiff=*/CudnnDataType<T>::kOne(),
-      /*betaDataDiff=*/CudnnDataType<T>::kZero(),
-      /*alphaParamDiff=*/CudnnDataType<T>::kOne(),
-      /*betaParamDiff=*/CudnnDataType<T>::kZero(),
+      /*alphaDataDiff=*/CudnnDataType::kOne(),
+      /*betaDataDiff=*/CudnnDataType::kZero(),
+      /*alphaParamDiff=*/CudnnDataType::kOne(),
+      /*betaParamDiff=*/CudnnDataType::kZero(),
       /*xDesc=*/data_desc_,
       /*xData=*/x.template data<T>(),
       /*yDesc=*/data_desc_,
@@ -196,12 +195,12 @@ using BatchNormParamType = typename CudnnDataType<T>::BatchNormParamType;
       /*dxData=*/
       dev_ctx.template Alloc<T>(d_x, d_x->numel() * sizeof(T)),
       /*dBnScaleBiasDesc=*/bn_param_desc_,
-      /*bnScaleData=*/scale.template data<BatchNormParamType<T>>(),
-      /*bnBiasData=*/bias.template data<BatchNormParamType<T>>(),
+      /*bnScaleData=*/scale.template data<BatchNormParamType>(),
+      /*bnBiasData=*/bias.template data<BatchNormParamType>(),
       /*dBnScaleData=*/
-      dev_ctx.template Alloc<BatchNormParamType<T>>(d_scale),
+      dev_ctx.template Alloc<BatchNormParamType>(d_scale),
       /*dBnBiasData=*/
-      dev_ctx.template Alloc<BatchNormParamType<T>>(d_bias),
+      dev_ctx.template Alloc<BatchNormParamType>(d_bias),
       /*epsilon=*/epsilon1,
       /*savedMean=*/saved_mean_data,
       /*savedInvVariance=*/saved_var_data,
