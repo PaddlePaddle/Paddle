@@ -336,25 +336,25 @@ bool AnalysisPredictor::Init(
   }
 #endif
 #if defined(PADDLE_WITH_XPU)
-  if (config_.use_xpu_ && config_.use_external_stream_) {
+  if (config_.use_xpu_) {
     private_context_ = true;
   }
   if (private_context_) {
-    if (!status_is_cloned_) {
+    if (!status_is_cloned_ && config_.external_stream_enabled()) {
       predictor_stream_ = config_.GetExecStream();
     }
-    // NOTE: If the external_stream equals to global_device_contexts's stream,
-    // then fallback.
     auto global_stream =
         static_cast<phi::XPUContext *>(
             platform::DeviceContextPool::Instance().Get(place_))
             ->stream();
-    if (predictor_stream_ != global_stream) {
-      InitResourceManager(predictor_stream_);
-      InitDeviceContexts();
+    if (predictor_stream_ == nullptr) {
+      predictor_stream_ = global_stream;
     }
+    InitResourceManager(predictor_stream_);
+    InitDeviceContexts();
   }
 #endif
+
   inference::DisplayMemoryInfo(place_, "Init predictor");
   return true;
 }
@@ -445,8 +445,8 @@ void AnalysisPredictor::InitResourceManager(void *stream) {
 }
 
 void AnalysisPredictor::InitDeviceContexts() {
-// Init GPUContext.
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  // Init GPUContext.
   if (place_.GetType() == phi::AllocationType::GPU) {
     device_contexts_.emplace(
         place_, std::async(std::launch::deferred, [=] {
@@ -511,7 +511,7 @@ void AnalysisPredictor::InitDeviceContexts() {
         }));
   }
 #endif
-#if defined(PADDLE_WITH_XPU)
+#ifdef PADDLE_WITH_XPU
   if (place_.GetType() == phi::AllocationType::XPU) {
     device_contexts_.emplace(
         place_, std::async(std::launch::deferred, [=] {
@@ -537,7 +537,6 @@ void AnalysisPredictor::InitDeviceContexts() {
         }));
   }
 #endif
-  // TODO(Inference): Support other backends.
 }
 
 void *AnalysisPredictor::GetExecStream() const {
@@ -1474,6 +1473,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_->SetCustomDeviceId(config_.custom_device_id());
   }
 #endif
+
 #ifdef PADDLE_WITH_XPU
   argument_->SetUseXpu(config_.use_xpu_);
   argument_->SetXpuL3WorkspaceSize(config_.xpu_l3_workspace_size_);
@@ -1486,7 +1486,7 @@ void AnalysisPredictor::PrepareArgument() {
   argument_->SetXpuEnableMultiStream(config_.xpu_enable_multi_stream_);
   argument_->SetXpuQuantPostDynamicWeightBits(
       config_.xpu_quant_post_dynamic_weight_bits_);
-  argument_->SetXpuQuantPostDynamicOpTypss(
+  argument_->SetXpuQuantPostDynamicOpTypes(
       config_.xpu_quant_post_dynamic_op_types_);
 #endif
 
@@ -2126,6 +2126,51 @@ bool AnalysisPredictor::ExpRunWithExternalStream(void *stream) {
     dev_ctx->SetStream(stream);
   }
   return ZeroCopyRun();
+#endif
+  return false;
+}
+
+bool AnalysisPredictor::ExpRunWithExternalConfig(void *config) {
+#ifdef PADDLE_WITH_XPU
+  PADDLE_ENFORCE(
+      private_context_,
+      paddle::platform::errors::Fatal(
+          "Must use private context if run predictor with external config."));
+
+  auto *dev_ctxs = reinterpret_cast<const std::map<
+      phi::Place,
+      std::shared_future<std::unique_ptr<phi::DeviceContext>>> *>(
+      this->GetDeviceContexts());
+  auto *dev_ctx =
+      static_cast<InferXPUContext *>(dev_ctxs->at(place_).get().get());
+
+  auto xpu_external_config =
+      reinterpret_cast<paddle_infer::experimental::XpuExternalConfig *>(config);
+  auto *stream = xpu_external_config->stream;
+  if (stream != nullptr && stream != predictor_stream_) {
+    paddle::platform::XPUStreamSync(
+        static_cast<paddle::xpuStream>(predictor_stream_));
+    ResourceManager::Instance().XpuResourceReBindStream(predictor_stream_,
+                                                        stream);
+    predictor_stream_ = stream;
+    dev_ctx->SetStream(stream);
+  }
+
+  size_t l3_size = xpu_external_config->l3_size;
+  void *l3_ptr = xpu_external_config->l3_ptr;
+  size_t l3_autotune_size = xpu_external_config->l3_autotune_size;
+  PADDLE_ENFORCE_LE(
+      l3_autotune_size,
+      l3_size,
+      phi::errors::InvalidArgument(
+          "l3_autotune_size(%zu) should be less than or equal to l3_size(%zu).",
+          l3_autotune_size,
+          l3_size));
+  dev_ctx->SetL3Info(l3_size, l3_ptr, l3_autotune_size);
+
+  bool ret = ZeroCopyRun();
+  dev_ctx->L3CacheAutotune();
+  return ret;
 #endif
   return false;
 }
@@ -3011,6 +3056,12 @@ bool InternalUtils::RunWithExternalStream(paddle_infer::Predictor *p,
                                           void *stream) {
   auto pred = dynamic_cast<paddle::AnalysisPredictor *>(p->predictor_.get());
   return pred->ExpRunWithExternalStream(stream);
+}
+
+bool InternalUtils::RunWithExternalConfig(paddle_infer::Predictor *p,
+                                          void *config) {
+  auto pred = dynamic_cast<paddle::AnalysisPredictor *>(p->predictor_.get());
+  return pred->ExpRunWithExternalConfig(config);
 }
 
 void InternalUtils::UpdateConfigInterleaved(paddle_infer::Config *c,

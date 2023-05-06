@@ -293,7 +293,7 @@ struct Argument {
                       XpuQuantPostDynamicWeightBits,
                       int);
   DECL_ARGUMENT_FIELD(xpu_quant_post_dynamic_op_types,
-                      XpuQuantPostDynamicOpTypss,
+                      XpuQuantPostDynamicOpTypes,
                       std::vector<std::string>);
 
   DECL_ARGUMENT_FIELD(use_opencl, UseOpenCL, bool);

@@ -472,6 +472,13 @@ class Predictor;
 class Tensor;
 using Config = paddle::AnalysisConfig;
 namespace experimental {
+struct XpuExternalConfig {
+  void* stream{nullptr};
+  size_t l3_size{16773120};
+  void* l3_ptr{nullptr};
+  size_t l3_autotune_size{0};
+};
+
 // Unstable interface, may be modified or deleted in the future.
 class PD_INFER_DECL InternalUtils {
  public:
@@ -482,6 +489,9 @@ class PD_INFER_DECL InternalUtils {
                                     hipStream_t stream);
   static bool RunWithExternalStream(paddle_infer::Predictor* pred,
                                     void* stream);
+  static bool RunWithExternalConfig(paddle_infer::Predictor* pred,
+                                    void* config);
+
   static void UpdateConfigInterleaved(paddle_infer::Config* c,
                                       bool with_interleaved);
 

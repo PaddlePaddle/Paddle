@@ -106,7 +106,7 @@ void* DenseTensor::AllocateFrom(Allocator* allocator,
       phi::errors::InvalidArgument(
           "Required allocator shall not be nullptr, but received nullptr."));
   if (this->dtype() != dtype) {
-    VLOG(10) << "change data type in mutbale_data, target dtype - " << dtype;
+    VLOG(10) << "change data type in mutable_data, target dtype - " << dtype;
     meta_.dtype = dtype;
   }
 
@@ -138,7 +138,7 @@ void* DenseTensor::AllocateFrom(Allocator* allocator,
     meta_.offset = 0;
     VLOG(10) << "Allocate data with bytes: " << bytes;
     auto holder = allocator->Allocate(bytes);
-    if (holder_) {
+    if (holder) {
       PADDLE_ENFORCE_LE(
           numel() * static_cast<int64_t>(SizeOf(dtype)) +
               static_cast<int64_t>(meta_.offset),
