@@ -62,7 +62,7 @@ def celu(x, alpha=1.0, name=None):
         return _C_ops.celu(x, alpha)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'celu'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'celu'
         )
         helper = LayerHelper("celu", **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
@@ -114,7 +114,7 @@ def elu(x, alpha=1.0, name=None):
 
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'elu'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'elu'
         )
         helper = LayerHelper("elu", **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
@@ -184,7 +184,7 @@ def gelu(x, approximate=False, name=None):
         return _C_ops.gelu(x, approximate)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'gelu'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'gelu'
         )
         helper = LayerHelper("gelu", **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
@@ -234,7 +234,7 @@ def hardshrink(x, threshold=0.5, name=None):
         return _C_ops.hardshrink(x, threshold)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'hardshrink'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'hardshrink'
         )
         helper = LayerHelper('hardshrink', **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
@@ -339,7 +339,7 @@ def hardsigmoid(x, slope=0.1666667, offset=0.5, name=None):
         return _C_ops.hardsigmoid(x, slope, offset)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'hardsigmoid'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'hardsigmoid'
         )
 
         helper = LayerHelper('hardsigmoid', **locals())
@@ -390,7 +390,7 @@ def hardswish(x, name=None):
         return _C_ops.hardswish(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'hardswish'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'hardswish'
         )
 
         helper = LayerHelper('hardswish', **locals())
@@ -439,7 +439,7 @@ def leaky_relu(x, negative_slope=0.01, name=None):
         return _C_ops.leaky_relu(x, negative_slope)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'leaky_relu'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'leaky_relu'
         )
         helper = LayerHelper('leaky_relu', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -538,10 +538,13 @@ def prelu(x, weight, data_format="NCHW", name=None):
         return _C_ops.prelu(x, weight, data_format, mode)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'prelu'
+            x, 'x', ['float16', 'float32', 'float64', 'uint16'], 'prelu'
         )
         check_variable_and_dtype(
-            weight, 'weight', ['float16', 'float32', 'float64'], 'prelu'
+            weight,
+            'weight',
+            ['float16', 'float32', 'float64', 'uint16'],
+            'prelu',
         )
         helper = LayerHelper('prelu', **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
@@ -658,7 +661,7 @@ def rrelu(x, lower=1.0 / 8.0, upper=1.0 / 3.0, training=True, name=None):
         return _C_ops.rrelu(x, lower, upper, is_test)
     else:
         check_variable_and_dtype(
-            x, 'X', ['float16', 'float32', 'float64'], 'rrelu'
+            x, 'X', ['float16', 'uint16', 'float32', 'float64'], 'rrelu'
         )
         helper = LayerHelper('rrelu', **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
@@ -706,7 +709,7 @@ def relu(x, name=None):
         return _C_ops.relu(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'relu'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'relu'
         )
         helper = LayerHelper('relu', **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
@@ -784,7 +787,7 @@ def maxout(x, groups, axis=1, name=None):
 
     Parameters:
         x (Tensor): The input is 4-D Tensor with shape [N, C, H, W] or [N, H, W, C], the data type
-            of input is float32 or float64.
+            of input is float16, float32 or float64.
         groups (int): The groups number of maxout. `groups` specifies the
             index of channel dimension where maxout will be performed. This must be
             a factor of number of features.
@@ -819,7 +822,9 @@ def maxout(x, groups, axis=1, name=None):
     if in_dygraph_mode():
         return _C_ops.maxout(x, groups, axis)
     else:
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'maxout')
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64'], 'maxout'
+        )
         if axis not in [1, -1, 3]:
             raise ValueError(
                 "Attr(axis) should be 1 when data format is NCHW, -1 or 3 when data format is NHWC. Received "
@@ -871,7 +876,9 @@ def relu6(x, name=None):
     if in_dynamic_mode():
         return _legacy_C_ops.relu6(x, 'threshold', threshold)
 
-    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'relu6')
+    check_variable_and_dtype(
+        x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'relu6'
+    )
     helper = LayerHelper('relu6', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
     helper.append_op(
@@ -924,12 +931,12 @@ def selu(
     """
     if scale <= 1.0:
         raise ValueError(
-            "The scale must be greater than 1.0. Received: {}.".format(scale)
+            f"The scale must be greater than 1.0. Received: {scale}."
         )
 
     if alpha < 0:
         raise ValueError(
-            "The alpha must be no less than zero. Received: {}.".format(alpha)
+            f"The alpha must be no less than zero. Received: {alpha}."
         )
 
     if in_dygraph_mode():
@@ -960,7 +967,7 @@ def silu(x, name=None):
     Where :math:`x` is the input Tensor.
 
     Parameters:
-        x (Tensor): The input Tensor with data type float32, float64.
+        x (Tensor): The input Tensor with data type bfloat16, float16, float32, float64.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -980,7 +987,7 @@ def silu(x, name=None):
         return _C_ops.silu(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'silu'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'silu'
         )
         helper = LayerHelper("silu", **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
@@ -1065,12 +1072,12 @@ def softmax(x, axis=-1, dtype=None, name=None):
                          [0.72747516, 0.72747516, 0.72747516, 0.72747516]]]
 
     Parameters:
-        x (Tensor): The input Tensor with data type float32, float64.
+        x (Tensor): The input Tensor with data type bfloat16, float16, float32, float64.
         axis (int, optional): The axis along which to perform softmax
             calculations. It should be in range [-D, D), where D is the
             rank of ``x`` . If ``axis`` < 0, it works the same way as
             :math:`axis + D` . Default is -1.
-        dtype (str, optional): The data type of the output tensor, can be float32, float64.
+        dtype (str, optional): The data type of the output tensor, can be bfloat16, float16, float32, float64.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -1110,15 +1117,15 @@ def softmax(x, axis=-1, dtype=None, name=None):
         use_cudnn = True
         if dtype is None:
             check_variable_and_dtype(
-                x, 'x', ['float16', 'float32', 'float64'], 'softmax'
+                x, 'x', ['uint16', 'float16', 'float32', 'float64'], 'softmax'
             )
         else:
             check_dtype(
                 dtype,
                 'dtype',
-                ['float32', 'float64'],
+                ['uint16', 'float16', 'float32', 'float64'],
                 'softmax',
-                'If dtype is not None, it only support float32 or float64.',
+                'If dtype is not None, it only support uint16, float16, float32 or float64.',
             )
 
         helper = LayerHelper("softmax", **locals())
@@ -1194,7 +1201,7 @@ def softplus(x, beta=1, threshold=20, name=None):
         return _C_ops.softplus(x, beta, threshold)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'softplus'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'softplus'
         )
         helper = LayerHelper('softplus', **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
@@ -1253,7 +1260,7 @@ def softshrink(x, threshold=0.5, name=None):
         return _C_ops.softshrink(x, threshold)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'softshrink'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'softshrink'
         )
         helper = LayerHelper('softshrink', **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
@@ -1299,7 +1306,7 @@ def softsign(x, name=None):
         return _legacy_C_ops.softsign(x)
 
     check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64'], 'softsign'
+        x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'softsign'
     )
     helper = LayerHelper('softsign', **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
@@ -1338,7 +1345,7 @@ def swish(x, name=None):
         return _C_ops.swish(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'swish'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'swish'
         )
         helper = LayerHelper('swish', **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
@@ -1384,7 +1391,7 @@ def mish(x, name=None):
         return _C_ops.mish(x, 20)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'mish'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'mish'
         )
         helper = LayerHelper('mish', **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
@@ -1423,7 +1430,7 @@ def tanhshrink(x, name=None):
         return _C_ops.tanh_shrink(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'tanhshrink'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'tanhshrink'
         )
         helper = LayerHelper('tanh_shrink', **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
@@ -1473,7 +1480,10 @@ def thresholded_relu(x, threshold=1.0, name=None):
         return _C_ops.thresholded_relu(x, threshold)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'thresholded_relu'
+            x,
+            'x',
+            ['float16', 'uint16', 'float32', 'float64'],
+            'thresholded_relu',
         )
         helper = LayerHelper('thresholded_relu', **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
@@ -1551,7 +1561,10 @@ def log_softmax(x, axis=-1, dtype=None, name=None):
     else:
         if dtype is None:
             check_variable_and_dtype(
-                x, 'x', ['float16', 'float32', 'float64'], 'log_softmax'
+                x,
+                'x',
+                ['float16', 'uint16', 'float32', 'float64'],
+                'log_softmax',
             )
         else:
             check_dtype(
@@ -1664,7 +1677,7 @@ def gumbel_softmax(x, temperature=1.0, hard=False, axis=-1, name=None):
     Parameters:
         x (Tensor): An N-D Tensor, the first N - 1 dimensions index into a batch
             of independent distributions and the last dimension represents
-            a vector of probabilities with datatype float32, float64.
+            a vector of probabilities with datatype float16, float32, float64.
         temperature (float, optional): non-negative scalar temperature.
             Default is 1.0.
         hard (bool, optional): if True, the returned samples will be discretized as
@@ -1705,7 +1718,9 @@ def gumbel_softmax(x, temperature=1.0, hard=False, axis=-1, name=None):
         )
 
     helper = LayerHelper("gumbel_softmax", **locals())
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'gumbel_softmax')
+    check_variable_and_dtype(
+        x, 'x', ['float16', 'float32', 'float64'], 'gumbel_softmax'
+    )
     out = helper.create_variable_for_type_inference(x.dtype)
     helper.append_op(
         type='gumbel_softmax',

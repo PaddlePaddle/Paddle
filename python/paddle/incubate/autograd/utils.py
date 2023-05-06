@@ -15,7 +15,7 @@ import typing
 
 import paddle
 import paddle.framework.dtype as dtypes
-from paddle.fluid import framework as framework
+from paddle.fluid import framework
 
 from .phi_ops_map import op_info, op_map
 

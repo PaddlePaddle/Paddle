@@ -15,7 +15,7 @@
 import logging
 
 from . import framework
-from .framework import _non_static_mode, _varbase_creator, in_dygraph_mode
+from .framework import _non_static_mode, in_dygraph_mode
 from . import core
 from paddle import _C_ops, _legacy_C_ops
 

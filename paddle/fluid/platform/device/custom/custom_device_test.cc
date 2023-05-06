@@ -17,10 +17,12 @@
 #include <string>
 
 #include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/phi/backends/custom/fake_cpu_device.h"
 #include "paddle/phi/backends/device_manager.h"
+#include "paddle/phi/common/memory_utils.h"
 
 void RegisterDevice() {
   CustomRuntimeParams runtime_params;
@@ -54,8 +56,7 @@ void InitDevice() {
   }
   EXPECT_GT(static_cast<int>(places.size()), 0);
 
-  paddle::platform::DeviceContextPool::Init(
-      places, paddle::platform::EmplaceExternalContext);
+  paddle::platform::DeviceContextPool::Init(places);
 }
 
 void TestDeviceInterface(const paddle::platform::Place& place) {
@@ -240,8 +241,8 @@ void TestCustomCCL(const paddle::platform::Place& place) {
 }
 
 TEST(CustomDevice, Tensor) {
-  InitDevice();
   paddle::framework::InitMemoryMethod();
+  InitDevice();
   auto dev_types = phi::DeviceManager::GetAllDeviceTypes();
   for (const auto& dev_type : dev_types) {
     std::cout << "Test on " << dev_type << std::endl;

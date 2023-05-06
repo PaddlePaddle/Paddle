@@ -245,8 +245,8 @@ void InclusiveScan(const T *x,
 
   if (outer_dim == 1 && inner_dim == 1) {
     if (reverse) {
-      auto x_reverse_iter = MakeThrustReverseIterator(x + mid_dim);
-      auto y_reverse_iter = MakeThrustReverseIterator(y + mid_dim);
+      auto x_reverse_iter = thrust::make_reverse_iterator(x + mid_dim);
+      auto y_reverse_iter = thrust::make_reverse_iterator(y + mid_dim);
       CubInclusiveScan(x_reverse_iter, y_reverse_iter, mid_dim, op, dev_ctx);
     } else {
       CubInclusiveScan(x, y, mid_dim, op, dev_ctx);

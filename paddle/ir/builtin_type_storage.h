@@ -17,6 +17,7 @@
 #include <type_traits>
 
 #include "paddle/ir/type.h"
+#include "paddle/ir/utils.h"
 
 namespace std {
 ///
@@ -109,20 +110,22 @@ struct DenseTensorTypeStorage : public ir::TypeStorage {
     std::size_t hash_value = 0;
     // hash dtype
     hash_value =
-        hash_combine(hash_value, std::hash<ir::Type>()(std::get<0>(key)));
+        ir::hash_combine(hash_value, std::hash<ir::Type>()(std::get<0>(key)));
     // hash dims
-    hash_value = hash_combine(hash_value, std::hash<Dim>()(std::get<1>(key)));
-    // hash layout
     hash_value =
-        hash_combine(hash_value,
-                     std::hash<std::underlying_type<DataLayout>::type>()(
-                         static_cast<std::underlying_type<DataLayout>::type>(
-                             std::get<2>(key))));
+        ir::hash_combine(hash_value, std::hash<Dim>()(std::get<1>(key)));
+    // hash layout
+    hash_value = ir::hash_combine(
+        hash_value,
+        std::hash<std::underlying_type<DataLayout>::type>()(
+            static_cast<std::underlying_type<DataLayout>::type>(
+                std::get<2>(key))));
     // hash lod
-    hash_value = hash_combine(hash_value, std::hash<LoD>()(std::get<3>(key)));
+    hash_value =
+        ir::hash_combine(hash_value, std::hash<LoD>()(std::get<3>(key)));
     // hash offset
     hash_value =
-        hash_combine(hash_value, std::hash<size_t>()(std::get<4>(key)));
+        ir::hash_combine(hash_value, std::hash<size_t>()(std::get<4>(key)));
     return hash_value;
   }
 
@@ -146,11 +149,6 @@ struct DenseTensorTypeStorage : public ir::TypeStorage {
   DataLayout layout_;
   LoD lod_;
   size_t offset_;
-
- private:
-  static std::size_t hash_combine(std::size_t lhs, std::size_t rhs) {
-    return lhs ^= rhs + 0x9e3779b9 + (lhs << 6) + (lhs >> 2);
-  }
 };
 
 }  // namespace ir

@@ -22,7 +22,7 @@ const std::string& GetKernelTypeForVarContext::GetVarName(void) const {
       var_name_,
       nullptr,
       errors::InvalidArgument(
-          "Variablle name is null. The context hasn't been initialized. "));
+          "Variable name is null. The context hasn't been initialized. "));
   return *var_name_;
 }
 

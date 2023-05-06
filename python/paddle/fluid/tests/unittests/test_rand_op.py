@@ -17,10 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle import rand
-from paddle.fluid import Program, program_guard
+from paddle import fluid, rand
+from paddle.fluid import Program, core, program_guard
 
 
 class TestRandOpError(unittest.TestCase):
@@ -42,8 +40,8 @@ class TestRandOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_Variable)
 
             def test_dtype():
-                dim_1 = fluid.layers.fill_constant([1], "int64", 3)
-                dim_2 = fluid.layers.fill_constant([1], "int32", 5)
+                dim_1 = paddle.tensor.fill_constant([1], "int64", 3)
+                dim_2 = paddle.tensor.fill_constant([1], "int32", 5)
                 rand(shape=[dim_1, dim_2], dtype='int32')
 
             self.assertRaises(TypeError, test_dtype)
@@ -64,14 +62,16 @@ class TestRandOp(unittest.TestCase):
             result_0 = rand([3, 4])
             result_1 = rand([3, 4], 'float64')
 
-            dim_1 = fluid.layers.fill_constant([1], "int64", 3)
-            dim_2 = fluid.layers.fill_constant([1], "int32", 5)
+            dim_1 = paddle.tensor.fill_constant([1], "int64", 3)
+            dim_2 = paddle.tensor.fill_constant([1], "int32", 5)
             result_2 = rand(shape=[dim_1, dim_2])
 
-            var_shape = fluid.data(name='var_shape', shape=[2], dtype="int64")
+            var_shape = paddle.static.data(
+                name='var_shape', shape=[2], dtype="int64"
+            )
             result_3 = rand(var_shape)
 
-            var_shape_int32 = fluid.data(
+            var_shape_int32 = paddle.static.data(
                 name='var_shape_int32', shape=[2], dtype="int32"
             )
             result_4 = rand(var_shape_int32)
@@ -104,11 +104,11 @@ class TestRandOpForDygraph(unittest.TestCase):
 
             rand([3, 4], 'float64')
 
-            dim_1 = fluid.layers.fill_constant([1], "int64", 3)
-            dim_2 = fluid.layers.fill_constant([1], "int32", 5)
+            dim_1 = paddle.tensor.fill_constant([1], "int64", 3)
+            dim_2 = paddle.tensor.fill_constant([1], "int32", 5)
             rand(shape=[dim_1, dim_2])
 
-            var_shape = fluid.dygraph.to_variable(np.array([3, 4]))
+            var_shape = paddle.to_tensor(np.array([3, 4]))
             rand(var_shape)
 
     def test_run(self):
@@ -123,9 +123,8 @@ class TestRandDtype(unittest.TestCase):
 
         def test_default_fp16():
             paddle.framework.set_default_dtype('float16')
-            paddle.tensor.random.rand([2, 3])
-
-        self.assertRaises(TypeError, test_default_fp16)
+            out = paddle.tensor.random.rand([2, 3])
+            self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP16)
 
         def test_default_fp32():
             paddle.framework.set_default_dtype('float32')
@@ -137,6 +136,9 @@ class TestRandDtype(unittest.TestCase):
             out = paddle.tensor.random.rand([2, 3])
             self.assertEqual(out.dtype, fluid.core.VarDesc.VarType.FP64)
 
+        if paddle.is_compiled_with_cuda():
+            paddle.set_device('gpu')
+            test_default_fp16()
         test_default_fp64()
         test_default_fp32()
 

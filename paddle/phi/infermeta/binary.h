@@ -222,6 +222,11 @@ void FillDiagonalTensorInferMeta(const MetaTensor& x,
                                  int dim2,
                                  MetaTensor* out);
 
+void FusedDropoutAddInferMeta(const MetaTensor& x,
+                              const MetaTensor& y,
+                              MetaTensor* out,
+                              MetaTensor* seed_offset);
+
 void FusedMatmulInferMeta(const MetaTensor& x,
                           const MetaTensor& y,
                           const MetaTensor& residual_data,
@@ -348,6 +353,12 @@ void MatrixNMSInferMeta(const MetaTensor& bboxes,
                         MetaTensor* roisnum,
                         MetaConfig config = MetaConfig());
 
+void MatrixRankStaticInferMeta(const MetaTensor& x,
+                               const MetaTensor& atol_tensor,
+                               bool use_default_tol,
+                               bool hermitian,
+                               MetaTensor* out);
+
 void MatrixRankTolInferMeta(const MetaTensor& x,
                             const MetaTensor& atol_tensor,
                             bool use_default_tol,
@@ -370,9 +381,9 @@ void RepeatInterleaveWithTensorIndexInferMeta(const MetaTensor& x,
 void PriorBoxInferMeta(const MetaTensor& input,
                        const MetaTensor& image,
                        const std::vector<float>& min_sizes,
+                       const std::vector<float>& max_sizes,
                        const std::vector<float>& aspect_ratios,
                        const std::vector<float>& variances,
-                       const std::vector<float>& max_sizes,
                        bool flip,
                        bool clip,
                        float step_w,

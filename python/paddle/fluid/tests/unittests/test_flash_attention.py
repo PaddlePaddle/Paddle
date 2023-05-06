@@ -19,10 +19,13 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 import paddle.nn.functional as F
-from paddle.nn.functional.flash_attention import flash_attention
+from paddle import fluid
+from paddle.fluid import core
+from paddle.nn.functional.flash_attention import (
+    flash_attention,
+    flash_attn_unpadded,
+)
 
 
 def get_cuda_version():
@@ -65,10 +68,11 @@ class TestFlashAttentionAPI(unittest.TestCase):
         self.dropout = 0.0
         self.causal = False
         self.return_softmax = False
+        self.use_sdp_kernel = False
 
-    def test_raw(self):
+    def test_unpadded(self):
         print(
-            f"Test Raw case shape {self.shape} dtype {self.dtype} causal {self.causal}"
+            f"Test unpadded case shape {self.shape} dtype {self.dtype} causal {self.causal}"
         )
 
         paddle.disable_static()
@@ -92,7 +96,7 @@ class TestFlashAttentionAPI(unittest.TestCase):
         cu_q = paddle.arange(0, (bs + 1) * ms, ms, dtype='int32')
 
         qq = paddle.reshape(q, [bs * ms, nh, hd])
-        out, _, _, _ = paddle._C_ops.flash_attn_raw(
+        out, _ = flash_attn_unpadded(
             qq,
             qq,
             qq,
@@ -115,6 +119,45 @@ class TestFlashAttentionAPI(unittest.TestCase):
         np.testing.assert_allclose(
             q.grad.numpy(), q_.grad.numpy(), rtol=5e-03, atol=1e-03
         )
+
+        # test static
+        paddle.enable_static()
+
+        with paddle.static.program_guard(paddle.static.Program()):
+            qs = paddle.static.data(
+                name="q", shape=self.shape, dtype=self.dtype
+            )
+
+            cu_q = paddle.arange(0, (bs + 1) * ms, ms, dtype='int32')
+            qs = paddle.reshape(qs, [bs * ms, nh, hd])
+
+            outs, softmax = flash_attn_unpadded(
+                qs,
+                qs,
+                qs,
+                cu_q,
+                cu_q,
+                ms,
+                ms,
+                scale,
+                self.dropout,
+                self.causal,
+                self.return_softmax,
+            )
+
+            exe = fluid.Executor(self.place)
+            fetches_result = exe.run(
+                feed={
+                    "q": query.astype('float16'),
+                    "k": query.astype('float16'),
+                    "v": query.astype('float16'),
+                },
+                fetch_list=[outs],
+            )
+
+            np.testing.assert_allclose(
+                fetches_result[0], out_, rtol=5e-03, atol=1e-03
+            )
 
     def test_all(self):
         print(
@@ -147,9 +190,19 @@ class TestFlashAttentionAPI(unittest.TestCase):
             value, place=self.place, dtype=self.dtype, stop_gradient=False
         )
 
-        out, _ = flash_attention(
-            q, k, v, self.dropout, self.causal, self.return_softmax
-        )
+        if self.use_sdp_kernel:
+            with paddle.nn.functional.sdp_kernel(
+                enable_math=self.enable_math,
+                enable_flash=self.enable_flash,
+                enable_mem_efficient=self.enable_mem_efficient,
+            ):
+                out, _ = flash_attention(
+                    q, k, v, self.dropout, self.causal, self.return_softmax
+                )
+        else:
+            out, _ = flash_attention(
+                q, k, v, self.dropout, self.causal, self.return_softmax
+            )
         out_ = attention_naive(q_, k_, v_, self.causal)
 
         out.backward()
@@ -178,9 +231,24 @@ class TestFlashAttentionAPI(unittest.TestCase):
                 name="v", shape=self.shape, dtype=self.dtype
             )
 
-            outs, softmax = flash_attention(
-                qs, ks, vs, self.dropout, self.causal, self.return_softmax
-            )
+            if self.use_sdp_kernel:
+                with paddle.nn.functional.sdp_kernel(
+                    enable_math=self.enable_math,
+                    enable_flash=self.enable_flash,
+                    enable_mem_efficient=self.enable_mem_efficient,
+                ):
+                    outs, softmax = flash_attention(
+                        qs,
+                        ks,
+                        vs,
+                        self.dropout,
+                        self.causal,
+                        self.return_softmax,
+                    )
+            else:
+                outs, softmax = flash_attention(
+                    qs, ks, vs, self.dropout, self.causal, self.return_softmax
+                )
 
             exe = fluid.Executor(self.place)
             fetches_result = exe.run(
@@ -205,6 +273,7 @@ class TestFlashAttentionAPITest1(TestFlashAttentionAPI):
         self.dropout = 0.0
         self.causal = False
         self.return_softmax = False
+        self.use_sdp_kernel = False
 
 
 class TestFlashAttentionAPITest2(TestFlashAttentionAPI):
@@ -215,6 +284,7 @@ class TestFlashAttentionAPITest2(TestFlashAttentionAPI):
         self.dropout = 0.0
         self.causal = False
         self.return_softmax = True
+        self.use_sdp_kernel = False
 
 
 class TestFlashAttentionAPITest3(TestFlashAttentionAPI):
@@ -225,6 +295,7 @@ class TestFlashAttentionAPITest3(TestFlashAttentionAPI):
         self.dropout = 0.0
         self.causal = True
         self.return_softmax = False
+        self.use_sdp_kernel = False
 
 
 class TestFlashAttentionAPITest4(TestFlashAttentionAPI):
@@ -235,6 +306,21 @@ class TestFlashAttentionAPITest4(TestFlashAttentionAPI):
         self.dropout = 0.0
         self.causal = False
         self.return_softmax = False
+        self.use_sdp_kernel = False
+
+
+class TestMathAttentionAPITest(TestFlashAttentionAPI):
+    def setUp(self):
+        self.place = paddle.CUDAPlace(0)
+        self.shape = (8, 1024, 16, 128)
+        self.dtype = paddle.float16
+        self.dropout = 0.0
+        self.causal = False
+        self.return_softmax = False
+        self.use_sdp_kernel = True
+        self.enable_math = True
+        self.enable_flash = False
+        self.enable_mem_efficient = False
 
 
 if __name__ == '__main__':

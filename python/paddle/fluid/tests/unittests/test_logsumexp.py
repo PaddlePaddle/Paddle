@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 
 def ref_logsumexp(x, axis=None, keepdim=False, reduce_all=False):
@@ -87,7 +87,7 @@ class TestLogsumexp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(
@@ -95,7 +95,6 @@ class TestLogsumexp(OpTest):
             ['Out'],
             user_defined_grads=self.user_defined_grads,
             user_defined_grad_outputs=self.user_defined_grad_outputs,
-            check_eager=True,
         )
 
     def calc_grad(self):
@@ -185,11 +184,52 @@ class TestLogsumexp_FP16(TestLogsumexp):
         np.testing.assert_allclose(x_grad, ref_x_grad, rtol=1e-03, atol=1e-05)
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestLogsumexpBF16Op(TestLogsumexp):
+    def setUp(self):
+        self.op_type = 'logsumexp'
+        self.python_api = logsumexp_wrapper
+        self.dtype = np.uint16
+        self.shape = [2, 3, 4, 5]
+        self.axis = [-1]
+        self.keepdim = False
+        self.reduce_all = False
+        self.set_attrs()
+        x = np.random.uniform(-1, 1, self.shape).astype(np.float64)
+        out = ref_logsumexp(x, self.axis, self.keepdim, self.reduce_all)
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.outputs = {'Out': convert_float_to_uint16(out)}
+        self.attrs = {
+            'axis': self.axis,
+            'keepdim': self.keepdim,
+            'reduce_all': self.reduce_all,
+        }
+        self.set_attrs_addition()
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X'], 'Out')
+
+    def set_attrs(self):
+        pass
+
+    def set_attrs_addition(self):
+        pass
+
+
 class TestLogsumexpError(unittest.TestCase):
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):
             self.assertRaises(TypeError, paddle.logsumexp, 1)
-            x1 = paddle.fluid.data(name='x1', shape=[120], dtype="int32")
+            x1 = paddle.static.data(name='x1', shape=[120], dtype="int32")
             self.assertRaises(TypeError, paddle.logsumexp, x1)
 
 
@@ -206,7 +246,7 @@ class TestLogsumexpAPI(unittest.TestCase):
     def api_case(self, axis=None, keepdim=False):
         out_ref = ref_logsumexp(self.x, axis, keepdim)
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('X', self.shape)
+            x = paddle.static.data('X', self.shape)
             out = paddle.logsumexp(x, axis, keepdim)
             exe = paddle.static.Executor(self.place)
             res = exe.run(feed={'X': self.x}, fetch_list=[out])

@@ -59,8 +59,11 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/pybind/tensor_py.h"
 #include "paddle/phi/core/ddim.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+
+PHI_DECLARE_bool(set_to_1d);
 
 namespace paddle {
 namespace pybind {
@@ -123,15 +126,32 @@ static PyObject* tensor_method_numpy(TensorObject* self,
   size_t py_rank = tensor_dims.size();
   size_t numel = 1;
   if (py_rank == 0) {
-    // 0D Tensor hack process to 1D numpy, will remove in future
-    VLOG(0) << "Warning:: 0D Tensor cannot be used as Tensor.numpy()[0], Now "
-               "0D will be changed to 1D numpy to avoid this problem, but it's "
-               "not correct and will be removed in future. Please change "
-               "'Tensor.numpy()[0]' to 'float(Tensor)' or "
-               "'Tensor.numpy().item()' as soon as possible.";
-    py_rank = 1;
-    py_dims[0] = 1;
-    py_strides[0] = sizeof_dtype * numel;
+    Py_ssize_t args_num = PyTuple_Size(args);
+    // true by default
+    bool set_to_1d = FLAGS_set_to_1d;
+    if (args_num == (Py_ssize_t)1) {
+      PyObject* obj = PyTuple_GET_ITEM(args, 0);
+      if (obj == Py_False) {
+        set_to_1d = false;
+      }
+    }
+    if (set_to_1d) {
+      // 0D Tensor hack process to 1D numpy, will remove in release 2.6
+      VLOG(0)
+          << "Warning:: 0D Tensor cannot be used as 'Tensor.numpy()[0]' . In "
+             "order to avoid this problem, "
+             "0D Tensor will be changed to 1D numpy currently, but it's not "
+             "correct and will be "
+             "removed in release 2.6. For Tensor contain only one element, "
+             "Please "
+             "modify "
+             " 'Tensor.numpy()[0]' to 'float(Tensor)' as soon as "
+             "possible, "
+             "otherwise 'Tensor.numpy()[0]' will raise error in release 2.6.";
+      py_rank = 1;
+      py_dims[0] = 1;
+      py_strides[0] = sizeof_dtype * numel;
+    }
   } else {
     for (int i = tensor_dims.size() - 1; i >= 0; --i) {
       py_dims[i] = static_cast<size_t>(tensor_dims[i]);
@@ -143,7 +163,7 @@ static PyObject* tensor_method_numpy(TensorObject* self,
   PyObject* array = api.PyArray_NewFromDescr_(
       api.PyArray_Type_,
       api.PyArray_DescrFromType_(numpy_dtype),
-      tensor_dims.size(),
+      py_rank,
       py_dims,
       py_strides,
       nullptr,
@@ -904,17 +924,15 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
     }
   }
 
+  bool set_to_1d = FLAGS_set_to_1d;
   if (!none_axes.empty()) {
-    // Deal with cases when all axes are decreased.
-    // After slice, the shape of out is [1], which should have been
-    // [], but Paddle doesn't support scalar.
-    // In order to ensure the correctness of the final shape of out,
-    // one dimension of out needs to be decreased.
-    // For example:
-    // # x.shape: (2,3,4)
-    // out = x[0, 1, 1, None] # out.shape : (1)
-    if (static_cast<int>(decrease_axis.size()) == tensor->dims().size()) {
-      none_axes.pop_back();
+    if (set_to_1d) {
+      // NOTE(zoooo0820): When all axes are decreased, the output will be 1-D
+      // with FLAGS_set_to_1d=True. In this case, one `None` should be pop out,
+      // otherwise the output shape will be not correct.
+      if (static_cast<int>(decrease_axis.size()) == tensor->dims().size()) {
+        none_axes.pop_back();
+      }
     }
     if (!none_axes.empty()) {
       paddle::Tensor new_out;
@@ -962,7 +980,14 @@ static PyObject* tensor__getitem_from_offset(TensorObject* self,
                                              PyObject* args,
                                              PyObject* kwargs) {
   EAGER_TRY
-  auto ptr = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
+  phi::DenseTensor* ptr = nullptr;
+  if (self->tensor.is_selected_rows()) {
+    auto* selected_rows =
+        static_cast<phi::SelectedRows*>(self->tensor.impl().get());
+    ptr = static_cast<phi::DenseTensor*>(selected_rows->mutable_value());
+  } else {
+    ptr = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
+  }
   PADDLE_ENFORCE_NOT_NULL(ptr,
                           platform::errors::InvalidArgument(
                               "%s is not a DenseTensor.", self->tensor.name()));
@@ -1152,34 +1177,41 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
           egr::Controller::Instance().GenerateUniqueName());
       py::object value_obj_tmp(py::handle(value_obj), true);
       py::object value = value_obj_tmp;
-      if (self->tensor.dtype() == paddle::experimental::DataType::FLOAT32) {
+      if (self->tensor.dtype() == phi::DataType::FLOAT32) {
         if (!py::isinstance<py::array_t<float>>(value_obj_tmp)) {
           value = pybind11::detail::CastNumpyArray<float>(value_obj_tmp);
         }
-      } else if (self->tensor.dtype() ==
-                 paddle::experimental::DataType::FLOAT64) {
+      } else if (self->tensor.dtype() == phi::DataType::FLOAT64) {
         if (!py::isinstance<py::array_t<double>>(value_obj_tmp)) {
           value = pybind11::detail::CastNumpyArray<double>(value_obj_tmp);
         }
-      } else if (self->tensor.dtype() ==
-                 paddle::experimental::DataType::INT32) {
+      } else if (self->tensor.dtype() == phi::DataType::INT32) {
         if (!py::isinstance<py::array_t<int32_t>>(value_obj_tmp)) {
           value = pybind11::detail::CastNumpyArray<int32_t>(value_obj_tmp);
         }
-      } else if (self->tensor.dtype() ==
-                 paddle::experimental::DataType::INT64) {
+      } else if (self->tensor.dtype() == phi::DataType::INT64) {
         if (!py::isinstance<py::array_t<int64_t>>(value_obj_tmp)) {
           value = pybind11::detail::CastNumpyArray<int64_t>(value_obj_tmp);
         }
-      } else if (self->tensor.dtype() == paddle::experimental::DataType::BOOL) {
+      } else if (self->tensor.dtype() == phi::DataType::BOOL) {
         if (!py::isinstance<py::array_t<bool>>(value_obj_tmp)) {
           value = pybind11::detail::CastNumpyArray<bool>(value_obj_tmp);
+        }
+      } else if (self->tensor.dtype() == phi::DataType::COMPLEX64) {
+        if (!py::isinstance<py::array_t<std::complex<float>>>(value_obj_tmp)) {
+          value = pybind11::detail::CastNumpyArray<std::complex<float>>(
+              value_obj_tmp);
+        }
+      } else if (self->tensor.dtype() == phi::DataType::COMPLEX128) {
+        if (!py::isinstance<py::array_t<std::complex<double>>>(value_obj_tmp)) {
+          value = pybind11::detail::CastNumpyArray<std::complex<double>>(
+              value_obj_tmp);
         }
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "When assign a numpy.np value to a paddle.Tensor, "
             "the data type of the paddle.Tensor must be bool, "
-            "float32, int32 or int64, "
+            "float32, float64, complex64, complex128, int32 or int64, "
             "please check the type of tensor."));
       }
 
@@ -1195,34 +1227,38 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
       // convert the value to self data type
       if (py::isinstance<py::float_>(value_obj_tmp) ||
           py::isinstance<py::int_>(value_obj_tmp) ||
-          py::isinstance<py::bool_>(value_obj_tmp)) {
-        if (self->tensor.dtype() == paddle::experimental::DataType::FLOAT32) {
-          attrs["fp32_values"] =
-              std::vector<float>{value_obj_tmp.cast<float>()};
-        } else if (self->tensor.dtype() ==
-                   paddle::experimental::DataType::FLOAT64) {
-          attrs["fp64_values"] =
-              std::vector<double>{value_obj_tmp.cast<double>()};
-        } else if (self->tensor.dtype() ==
-                   paddle::experimental::DataType::INT32) {
-          attrs["int32_values"] =
-              std::vector<int32_t>{value_obj_tmp.cast<int32_t>()};
-        } else if (self->tensor.dtype() ==
-                   paddle::experimental::DataType::INT64) {
-          attrs["int64_values"] =
-              std::vector<int64_t>{value_obj_tmp.cast<int64_t>()};
-        } else if (self->tensor.dtype() ==
-                   paddle::experimental::DataType::BOOL) {
-          attrs["bool_values"] = std::vector<int>{value_obj_tmp.cast<bool>()};
-        } else if (self->tensor.dtype() ==
-                   paddle::experimental::DataType::FLOAT16) {
-          attrs["fp16_values"] =
-              std::vector<float>{value_obj_tmp.cast<float>()};
+          py::isinstance<py::bool_>(value_obj_tmp) ||
+          PyComplex_Check(value_obj)) {
+        if (self->tensor.dtype() == phi::DataType::FLOAT32) {
+          attrs["values"] = std::vector<paddle::experimental::Scalar>{
+              value_obj_tmp.cast<float>()};
+        } else if (self->tensor.dtype() == phi::DataType::FLOAT64) {
+          attrs["values"] = std::vector<paddle::experimental::Scalar>{
+              value_obj_tmp.cast<double>()};
+        } else if (self->tensor.dtype() == phi::DataType::INT32) {
+          attrs["values"] = std::vector<paddle::experimental::Scalar>{
+              value_obj_tmp.cast<int32_t>()};
+        } else if (self->tensor.dtype() == phi::DataType::INT64) {
+          attrs["values"] = std::vector<paddle::experimental::Scalar>{
+              value_obj_tmp.cast<int64_t>()};
+        } else if (self->tensor.dtype() == phi::DataType::BOOL) {
+          attrs["values"] = std::vector<paddle::experimental::Scalar>{
+              value_obj_tmp.cast<bool>()};
+        } else if (self->tensor.dtype() == phi::DataType::FLOAT16) {
+          attrs["values"] = std::vector<paddle::experimental::Scalar>{
+              value_obj_tmp.cast<float>()};
+        } else if (self->tensor.dtype() == phi::DataType::COMPLEX64) {
+          attrs["values"] = std::vector<paddle::experimental::Scalar>{
+              value_obj_tmp.cast<std::complex<float>>()};
+        } else if (self->tensor.dtype() == phi::DataType::COMPLEX128) {
+          attrs["values"] = std::vector<paddle::experimental::Scalar>{
+              value_obj_tmp.cast<std::complex<double>>()};
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
               "When assign a value to a paddle.Tensor, "
               "the data type of the paddle.Tensor must be bool, "
-              "float32, int32, int64 or float16, "
+              "float32, float64, complex64, complex128, int32, int64 or "
+              "float16, "
               "please check the type of tensor."));
         }
         attrs["shape"] = std::vector<int64_t>{1};
@@ -1230,7 +1266,7 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
       } else {
         PADDLE_THROW(platform::errors::InvalidArgument(
             "Value type error. The assign value allows "
-            "numpy.ndarray, integer, float or bool, "
+            "numpy.ndarray, integer, float, complex  or bool, "
             "but received %s.",
             Py_TYPE(value_obj)));
       }

@@ -25,7 +25,7 @@ class TestDistMnist2x2FP16AllReduce(TestDistBase):
         self._nccl2_reduce_layer = True
 
     def test_dist_train(self):
-        import paddle.fluid as fluid
+        from paddle import fluid
 
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(

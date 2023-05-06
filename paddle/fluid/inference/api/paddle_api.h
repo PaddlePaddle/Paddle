@@ -221,6 +221,16 @@ class PD_INFER_DECL PaddlePredictor {
                    std::vector<PaddleTensor>* output_data,
                    int batch_size = -1) = 0;
 
+  /// \brief This interface takes input and runs the network (Recommended).
+  /// \param[in] inputs An list of Tensor as the input to the network.
+  /// \param[out] output_data Pointer to the tensor list, which holds the output
+  /// Tensor
+  /// \return Whether the run is successful
+  virtual bool Run(const std::vector<paddle::Tensor>& inputs,
+                   std::vector<paddle::Tensor>* outputs) {
+    return false;
+  }
+
   /// \brief  Used to get the name of the network input.
   /// Be inherited by AnalysisPredictor, Only used in ZeroCopy scenarios.
   /// \return Input tensor names.

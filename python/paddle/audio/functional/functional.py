@@ -250,7 +250,7 @@ def compute_fbank_matrix(
     if norm == 'slaney':
         enorm = 2.0 / (mel_f[2 : n_mels + 2] - mel_f[:n_mels])
         weights *= enorm.unsqueeze(1)
-    elif isinstance(norm, int) or isinstance(norm, float):
+    elif isinstance(norm, (int, float)):
         weights = paddle.nn.functional.normalize(weights, p=norm, axis=-1)
 
     return weights

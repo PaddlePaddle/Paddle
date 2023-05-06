@@ -15,9 +15,9 @@
 import os
 
 import paddle
-import paddle.nn.quant.quant_layers as quant_layers
 from paddle.fluid.framework import IrGraph
 from paddle.framework import core
+from paddle.nn.quant import quant_layers
 
 from ...static.quantization.quantization_pass import (
     QuantWeightPass,
@@ -530,6 +530,8 @@ class ImperativeQuantizeOutputs:
             model, paddle.nn.Layer
         ), "The model must be the instance of paddle.nn.Layer."
 
+        if input_spec:
+            paddle.jit.to_static(model, input_spec=input_spec)
         paddle.jit.save(layer=model, path=path, input_spec=input_spec, **config)
 
         is_dynamic_mode = False

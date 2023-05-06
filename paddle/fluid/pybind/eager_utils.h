@@ -57,8 +57,6 @@ int64_t CastPyArg2AttrLong(PyObject* obj, ssize_t arg_pos);
 size_t CastPyArg2AttrSize_t(PyObject* obj, ssize_t arg_pos);
 float CastPyArg2AttrFloat(PyObject* obj, ssize_t arg_pos);
 std::string CastPyArg2AttrString(PyObject* obj, ssize_t arg_pos);
-paddle::CustomOpKernelContext CastPyArg2CustomOpKernelContext(PyObject* obj,
-                                                              ssize_t arg_pos);
 std::shared_ptr<imperative::VarBase> CastPyArg2VarBase(PyObject* obj,
                                                        ssize_t arg_pos);
 std::vector<paddle::Tensor> CastPyArg2VectorOfTensor(PyObject* obj,
@@ -70,6 +68,7 @@ std::vector<phi::DenseTensor> CastPyArg2VectorOfTensorBase(PyObject* obj,
 std::vector<int> CastPyArg2VectorOfInt(PyObject* obj, size_t arg_pos);
 std::vector<int64_t> CastPyArg2VectorOfInt64(PyObject* obj, size_t arg_pos);
 std::vector<size_t> CastPyArg2VectorOfSize_t(PyObject* obj, size_t arg_pos);
+std::vector<float> CastPyArg2VectorOfFloat(PyObject* obj, size_t arg_pos);
 std::vector<std::vector<size_t>> CastPyArg2VectorOfVectorOfSize_t(
     PyObject* obj, size_t arg_pos);
 framework::proto::VarType::Type CastPyArg2ProtoType(PyObject* obj,
@@ -79,6 +78,7 @@ std::vector<std::string> CastPyArg2VectorOfString(PyObject* obj,
                                                   ssize_t arg_pos);
 std::shared_ptr<jit::Function> CastPyArg2JitFunction(PyObject* obj,
                                                      ssize_t arg_pos);
+void SetPythonStack();
 
 PyObject* ToPyObject(int value);
 PyObject* ToPyObject(uint32_t value);
@@ -110,6 +110,7 @@ PyObject* ToPyObject(const phi::SelectedRows* value);
 PyObject* ToPyObject(const paddle::framework::proto::VarType::Type& dtype);
 PyObject* ToPyObject(const paddle::framework::proto::VarType& type);
 PyObject* ToPyObject(const void* value);
+PyObject* ToPyObject(const std::unordered_map<int, int>& value);
 PyObject* ToPyObject(
     const std::unordered_map<std::string, std::vector<std::string>>& value);
 PyObject* ToPyObject(const paddle::framework::Vocab& value);
@@ -327,9 +328,9 @@ std::vector<paddle::Tensor*> GetTensorPtrListFromArgs(
 
 std::vector<paddle::Tensor*> GetTensorPtrListFromPyObject(PyObject* obj);
 
-std::vector<paddle::Tensor> GetTensorListFromPyObject(PyObject* obj);
-
-paddle::Tensor& GetTensorFromPyObject(PyObject* obj);
+std::vector<paddle::Tensor> GetTensorListFromPyObject(PyObject* obj,
+                                                      bool allow_none = false);
+paddle::Tensor& UnSafeGetTensorFromPyObject(PyObject* obj);
 
 // end of Slice related methods
 

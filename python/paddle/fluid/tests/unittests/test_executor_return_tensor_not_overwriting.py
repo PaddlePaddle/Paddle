@@ -15,10 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
+from eager_op_test import OpTest, skip_check_grad_ci
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
+
+paddle.enable_static()
 
 
 @skip_check_grad_ci(reason="Not op test but call the method of class OpTest.")
@@ -104,4 +106,5 @@ class TestExecutorReturnTensorNotOverOverwritingWithLayers(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

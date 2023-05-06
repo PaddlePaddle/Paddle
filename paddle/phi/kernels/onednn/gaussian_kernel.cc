@@ -42,10 +42,8 @@ void GaussianKernel(const Context& ctx,
   }
 
   out->Resize(phi::make_ddim(shape.GetData()));
-  dnnl::memory::desc out_mem_desc(
-      vectorize(out->dims()),
-      funcs::ToOneDNNDataType(out->dtype()),
-      funcs::GetPlainOneDNNFormat(out->dims().size()));
+  dnnl::memory::desc out_mem_desc =
+      phi::funcs::make_memory_desc(*out, DataLayout::NCHW);
   out->set_mem_desc(out_mem_desc);
 }
 

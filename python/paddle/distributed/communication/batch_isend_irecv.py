@@ -15,7 +15,7 @@
 import contextlib
 
 import paddle.distributed as dist
-import paddle.framework as framework
+from paddle import framework
 from paddle.distributed.communication.group import (
     _get_global_group,
     _warn_cur_rank_not_in_group,

@@ -25,6 +25,7 @@ math_library(maxouting)
 math_library(matrix_bit_code)
 math_library(sequence_scale)
 math_library(sequence_padding DEPS lod_utils)
+math_library(sequence_pooling DEPS math_function jit_kernel_helper)
 
 cc_library(
   phi_data_layout_transform

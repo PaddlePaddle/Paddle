@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 
@@ -172,7 +172,7 @@ class TestFusedAdamOp(OpTest):
     def test_check_output(self):
         paddle.enable_static()
         if paddle.is_compiled_with_cuda():
-            self.check_output()
+            self.check_output(check_dygraph=False)
 
 
 if __name__ == "__main__":

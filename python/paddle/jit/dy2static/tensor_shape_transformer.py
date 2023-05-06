@@ -44,7 +44,7 @@ class TensorShapeTransformer(BaseTransformer):
             # NOTE(dev): we can deal with paddle.shape in this case, but it's
             # not pretty to modify into 'convert_shape(paddle)(x)[0]'.
             if args != 'paddle':
-                convert_shape_func = "_jst.Shape({})".format(args)
+                convert_shape_func = f"_jst.Shape({args})"
                 shape_node = gast.parse(convert_shape_func).body[0].value
                 return shape_node
         return node

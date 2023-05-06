@@ -25,6 +25,15 @@ void StackKernel(const Context& dev_ctx,
                  int axis,
                  DenseTensor* out) {
   if (axis < 0) axis += (x[0]->dims().size() + 1);
+
+  auto x_dims = x[0]->dims();
+  for (int i = 0; i < x_dims.size(); i++) {
+    PADDLE_ENFORCE_GT(x_dims[i],
+                      0,
+                      phi::errors::InvalidArgument(
+                          "The dims of Input(X) should be greater than 0"));
+  }
+
   int n = static_cast<int>(x.size());
   T* y_data = dev_ctx.template Alloc<T>(out);
   std::vector<const T*> x_datas(n);

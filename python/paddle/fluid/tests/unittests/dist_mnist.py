@@ -17,7 +17,7 @@ from functools import reduce
 from test_dist_base import TestDistRunnerBase, runtime_main
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.incubate.distributed.fleet.collective import fleet
 
 paddle.enable_static()

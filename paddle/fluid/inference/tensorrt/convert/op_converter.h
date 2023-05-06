@@ -56,22 +56,10 @@ class OpConverter {
 
     OpConverter* it{nullptr};
 
-    auto op_converter_type_map = OpTeller::Global().GetOpConverterTypeMap();
-    switch (op_converter_type_map.at(op_desc.Type())) {
+    auto converter_type = static_cast<OpConverterType>(
+        PADDLE_GET_CONST(int, op_desc.GetAttr("converter_type")));
+    switch (converter_type) {
       case OpConverterType::Default:
-        if (op_desc.Type() == "mul") {
-          PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(),
-                            1UL,
-                            platform::errors::InvalidArgument(
-                                "The input op mul's Input(\"Y\")."
-                                "size() should equal to 1, but reveceid "
-                                "Input(\"Y\").size() = %u.",
-                                op_desc.Input("Y").size()));
-          std::string Y = op_desc.Input("Y")[0];
-          if (parameters.count(Y)) {
-            it = Registry<OpConverter>::Global().Lookup("fc");
-          }
-        }
         if (op_desc.Type().find("elementwise") != std::string::npos) {
           static std::unordered_set<std::string> add_tensor_op_set{
               "add", "mul", "sub", "div", "max", "min", "pow", "mod"};
@@ -318,13 +306,15 @@ class OpConverter {
         auto max_input_shape = engine->max_input_shape()[input];
         auto optim_input_shape = engine->optim_input_shape()[input];
         size_t ranks = min_input_shape.size();
-        if (ranks == 0) {
-          all_dynamic_shape_set = false;
-          LOG(INFO) << "trt input [" << input.c_str()
-                    << "] dynamic shape info not set, please check and retry.";
-          // check other input
-          continue;
-        }
+        // allow 0 dim for dynamic shape input
+        // if (ranks == 0) {
+        //   all_dynamic_shape_set = false;
+        //   LOG(INFO) << "trt input [" << input.c_str()
+        //             << "] dynamic shape info not set, please check and
+        //             retry.";
+        //   // check other input
+        //   continue;
+        // }
         std::vector<int64_t> input_shape;
         // input_shape.push_back(-1);
         for (size_t i = 0; i < ranks; i++) {
@@ -414,6 +404,52 @@ class OpConverter {
 
   nvinfer1::ITensor* Shape(nvinfer1::ITensor* input) {
     return TRT_ENGINE_ADD_LAYER(engine_, Shape, *input)->getOutput(0);
+  }
+
+  nvinfer1::ITensor* Reshape(nvinfer1::ITensor* input,
+                             nvinfer1::ITensor* newShape) {
+    nvinfer1::ITensor* oldShape = Shape(input);
+    if (oldShape == newShape) {
+      return input;
+    }
+    auto* shuffle = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
+    shuffle->setInput(1, *newShape);
+    return shuffle->getOutput(0);
+  }
+
+  nvinfer1::ITensor* BroadcastTensor(nvinfer1::ITensor* input,
+                                     const int nbDims) {
+    auto oldShape = Shape(input);
+    auto oldShapeDims = oldShape->getDimensions();
+    const int rank = oldShapeDims.nbDims;
+    if (rank > nbDims) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Cannot broadcast a higher rank tensor to a lower rank tensor."));
+    }
+    if (rank < nbDims) {
+      nvinfer1::ITensor* concat_shape_tensor;
+      auto* one_rank_tensor =
+          Add1DConstantLayer(std::vector<int32_t>(nbDims - rank, 1));
+      std::vector<nvinfer1::ITensor*> itensors;
+      itensors.push_back(one_rank_tensor);
+      itensors.push_back(oldShape);
+      concat_shape_tensor = Concat(itensors);
+      input = Reshape(input, concat_shape_tensor);
+    }
+    return input;
+  }
+
+  nvinfer1::ITensor* BroadcastTensors(nvinfer1::ITensor* a,
+                                      nvinfer1::ITensor* b) {
+    const int aDims = a->getDimensions().nbDims;
+    const int bDims = b->getDimensions().nbDims;
+    if (aDims == bDims) {
+      VLOG(3) << "Broadcast two equal rank tensors";
+    }
+    if (aDims > bDims) {
+      return BroadcastTensor(b, aDims);
+    }
+    return BroadcastTensor(a, bDims);
   }
 
   // Concat not make rank changed

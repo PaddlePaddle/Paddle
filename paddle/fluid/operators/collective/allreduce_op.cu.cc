@@ -17,9 +17,12 @@ limitations under the License. */
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_CUDA_KERNEL(allreduce,
-                        ops::AllReduceOpKernel<phi::GPUContext, float>,
-                        ops::AllReduceOpKernel<phi::GPUContext, double>,
-                        ops::AllReduceOpKernel<phi::GPUContext, int>,
-                        ops::AllReduceOpKernel<phi::GPUContext, int64_t>,
-                        ops::AllReduceOpKernel<phi::GPUContext, plat::float16>);
+PD_REGISTER_STRUCT_KERNEL(allreduce,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::AllReduceOpKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t,
+                          plat::float16) {}

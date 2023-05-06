@@ -17,7 +17,7 @@ import unittest
 from fleet_meta_optimizer_base import TestFleetMetaOptimizer
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 paddle.enable_static()
 

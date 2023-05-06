@@ -43,7 +43,7 @@ struct JitKernelRegistrarFunctor;
 
 template <typename Pool, typename PlaceType, size_t I, typename... KernelImpls>
 struct JitKernelRegistrarFunctor<Pool, PlaceType, true, I, KernelImpls...> {
-  void operator()(KernelType kt) const {}
+  void operator()(KernelType kt UNUSED) const {}
 };
 
 template <typename Pool, typename PlaceType, size_t I, typename... KernelImpls>

@@ -76,7 +76,7 @@ opmaker_attr_types_map = {
     'int64_t[]': 'std::vector<int64_t>',
     'float[]': 'std::vector<float>',
     'double[]': 'std::vector<double>',
-    'str[]': 'std::vector<<std::string>',
+    'str[]': 'std::vector<std::string>',
 }
 
 output_type_map = {'Tensor': 'Tensor', 'Tensor[]': 'std::vector<Tensor>'}

@@ -18,8 +18,8 @@ from functools import reduce
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.framework import (
     Program,
     convert_np_dtype_to_dtype_,
@@ -132,8 +132,7 @@ class TestVariable(unittest.TestCase):
 
         nw = w[1, 1, 1]
 
-        self.assertEqual(len(nw.shape), 1)
-        self.assertEqual(nw.shape[0], 1)
+        self.assertEqual(len(nw.shape), 0)
 
         nw = w[:, :, :-1]
         self.assertEqual((784, 100, 99), nw.shape)
@@ -173,7 +172,7 @@ class TestVariable(unittest.TestCase):
             y_1 = y[:, 0]
             feeder = fluid.DataFeeder(place=place, feed_list=[x])
             data = []
-            data.append((np.random.randint(10, size=[13]).astype('float32')))
+            data.append(np.random.randint(10, size=[13]).astype('float32'))
             exe.run(fluid.default_startup_program())
 
             local_out = exe.run(
@@ -613,7 +612,7 @@ class TestListIndex(unittest.TestCase):
         np.random.seed(2022)
 
     def numel(self, shape):
-        return reduce(lambda x, y: x * y, shape)
+        return reduce(lambda x, y: x * y, shape, 1)
 
     def test_static_graph_list_index(self):
         paddle.enable_static()
@@ -753,7 +752,7 @@ class TestListIndex(unittest.TestCase):
             np.testing.assert_array_equal(
                 y2,
                 getitem_pp[0],
-                err_msg='\n numpy:{},\n paddle:{}'.format(y2, getitem_pp[0]),
+                err_msg=f'\n numpy:{y2},\n paddle:{getitem_pp[0]}',
             )
 
     def test_dygraph_list_index_muti_dim(self):
@@ -1216,7 +1215,7 @@ class TestListIndex(unittest.TestCase):
             np.testing.assert_array_equal(
                 y_t1.numpy(),
                 y_np1,
-                err_msg='\n numpy:{},\n paddle:{}'.format(y_np1, y_t1.numpy()),
+                err_msg=f'\n numpy:{y_np1},\n paddle:{y_t1.numpy()}',
             )
             # 1 dim getitem
             array2 = array.copy()
@@ -1227,7 +1226,7 @@ class TestListIndex(unittest.TestCase):
             np.testing.assert_array_equal(
                 y_t2.numpy(),
                 y_np2,
-                err_msg='\n numpy:{},\n paddle:{}'.format(y_np2, y_t2.numpy()),
+                err_msg=f'\n numpy:{y_np2},\n paddle:{y_t2.numpy()}',
             )
 
             # 2 dim setitem

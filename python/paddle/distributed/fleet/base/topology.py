@@ -62,7 +62,7 @@ class CommunicateTopology:
         self.coordinate = collections.namedtuple(
             'Coordinate', self._parallel_names
         )
-        self._world_size = reduce(lambda x, y: x * y, self._dims)
+        self._world_size = reduce(lambda x, y: x * y, self._dims, 1)
 
         ranges = [range(d) for d in self._dims]
         all_coordinate = [self.coordinate(*x) for x in product(*ranges)]
@@ -421,7 +421,7 @@ class _CommunicateGroup:
     def __init__(self):
         global _HYBRID_PARALLEL_GROUP
         _HYBRID_PARALLEL_GROUP = self
-        self.groups = dict()
+        self.groups = {}
 
     def set_comm_group(
         self, group_name, group_rank, group_size, ring_id, group_ranks

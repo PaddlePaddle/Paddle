@@ -34,10 +34,15 @@ using ScalingParamType = typename platform::CudnnDataType<T>::ScalingParamType;
 template <typename T>
 using CudnnDataType = platform::CudnnDataType<T>;
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class CUDNNConvInceptionFusionOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+#if CUDNN_VERSION < 7100
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "The conv2d_inception_fusion operator is not supported on GPU "
+        "when CUDNN version < 7.1.0"));
+#endif
     auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
     auto* input = ctx.Input<phi::DenseTensor>("Input");
     auto filters = ctx.MultiInput<phi::DenseTensor>("Filter");
@@ -336,9 +341,10 @@ class CUDNNConvInceptionFusionOpKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-#if CUDNN_VERSION >= 7100
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(conv2d_inception_fusion,
-                        ops::CUDNNConvInceptionFusionOpKernel<float>,
-                        ops::CUDNNConvInceptionFusionOpKernel<double>);
-#endif
+PD_REGISTER_STRUCT_KERNEL(conv2d_inception_fusion,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::CUDNNConvInceptionFusionOpKernel,
+                          float,
+                          double) {}

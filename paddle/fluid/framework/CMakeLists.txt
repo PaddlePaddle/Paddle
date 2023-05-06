@@ -362,7 +362,10 @@ cc_test(
   program_desc_test
   SRCS program_desc_test.cc
   DEPS proto_desc device_context)
-
+cc_test(
+  op_desc_test
+  SRCS op_desc_test.cc
+  DEPS proto_desc)
 cc_library(
   op_version_proto
   SRCS op_version_proto.cc
@@ -380,7 +383,7 @@ cc_test(
 cc_library(
   op_proto_maker
   SRCS op_proto_maker.cc
-  DEPS framework_proto attribute ops_extra_info glog)
+  DEPS framework_proto attribute ops_extra_info glog auto_parallel_proto)
 cc_test(
   op_proto_maker_test
   SRCS op_proto_maker_test.cc
@@ -431,13 +434,14 @@ if(WITH_XPU)
     DEPS lod_tensor
          dense_tensor
          selected_rows_utils
+         int_array
+         scalar
          place
          phi
          var_type_traits
          op_info
          xpu_op_list
-         convert_utils
-         phi_api_utils)
+         convert_utils)
 else()
   cc_library(
     phi_utils
@@ -445,12 +449,13 @@ else()
     DEPS lod_tensor
          dense_tensor
          selected_rows_utils
+         int_array
+         scalar
          place
          phi
          var_type_traits
          op_info
-         convert_utils
-         phi_api_utils)
+         convert_utils)
 endif()
 
 if(WITH_XPU)
@@ -527,7 +532,7 @@ cc_test(
 
 cc_library(
   proto_desc
-  SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc
+  SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc program_converter.cc
   DEPS attribute
        ops_extra_info
        shape_inference
@@ -536,7 +541,10 @@ cc_library(
        glog
        version
        xxhash
-       dist_attr)
+       dist_attr
+       scalar
+       op_version_proto
+       op_version_registry)
 
 cc_library(
   op_registry
@@ -613,7 +621,7 @@ if(WITH_PYTHON)
     if(NOT WITH_ROCM)
       add_custom_target(
         fleet_executor_proto_init ALL
-        DEPENDS fleet_executor_desc_py_proto
+        DEPENDS fleet_proto_init fleet_executor_desc_py_proto
         COMMAND
           cp
           ${PADDLE_BINARY_DIR}/paddle/fluid/distributed/fleet_executor/fleet_executor_*.py
@@ -645,7 +653,7 @@ endif()
 if(WITH_PSCORE)
   add_custom_target(
     index_dataset_proto_init ALL
-    DEPENDS index_dataset_py_proto
+    DEPENDS fleet_proto_init index_dataset_py_proto
     COMMAND
       cp
       ${PADDLE_BINARY_DIR}/paddle/fluid/distributed/index_dataset/index_dataset_*.py

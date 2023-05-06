@@ -33,7 +33,7 @@ class TestDistMnistNCCL2HAllreduce(TestDistBase):
         self._use_hallreduce = True
 
     def test_dist_train(self):
-        import paddle.fluid as fluid
+        from paddle import fluid
 
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(

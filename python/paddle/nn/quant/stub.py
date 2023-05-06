@@ -36,7 +36,7 @@ class Stub(Layer):
             quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.9)
             class Model(paddle.nn.Layer):
                 def __init__(self, num_classes=10):
-                    super(Model, self).__init__()
+                    super().__init__()
                     self.conv = Conv2D(3, 6, 3, stride=1, padding=1)
                     self.quant = Stub(quanter)
                 def forward(self, inputs):
@@ -51,7 +51,7 @@ class Stub(Layer):
     """
 
     def __init__(self, observer=None):
-        super(Stub, self).__init__()
+        super().__init__()
         self._observer = observer
 
     def forward(self, input):
@@ -71,7 +71,7 @@ class QuanterStub(Layer):
     """
 
     def __init__(self, layer: Stub, q_config):
-        super(QuanterStub, self).__init__()
+        super().__init__()
         self._observer = None
         if layer._observer is not None:
             self._observer = layer._observer._instance(layer)

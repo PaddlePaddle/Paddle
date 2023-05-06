@@ -289,6 +289,18 @@ struct PD_INFER_DECL AnalysisConfig {
                  bool enable_multi_stream = false);
 
   ///
+  /// \brief configs of XPU
+  ///
+  /// \param quant_post_dynamic_weight_bits Weight bits used in dynamic post
+  /// quantization. Optional value: -1, 8, 16. Default value is -1, means using
+  /// the recommended way. \param quant_post_dynamic_op_types Ops used in
+  /// dynamic post quantization.
+  ///
+  void SetXpuConfig(
+      int quant_post_dynamic_weight_bits = -1,
+      const std::vector<std::string>& quant_post_dynamic_op_types = {});
+
+  ///
   /// \brief configs of IPU
   ///
   enum class ipu_config_code {
@@ -363,19 +375,15 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   void SetXpuDeviceId(int device_id = 0);
   ///
-  /// \brief Turn on NPU.
-  ///
-  /// \param device_id device_id the NPU card to use (default is 0).
-  ///
-  void EnableNpu(int device_id = 0);
-  ///
   /// \brief Turn on CustomDevice.
   ///
   /// \param device_type device_type the custom device to use.
   ///
   /// \param device_id device_id the custom device to use (default is 0).
   ///
-  void EnableCustomDevice(const std::string& device_type, int device_id = 0);
+  void EnableCustomDevice(const std::string& device_type,
+                          int device_id = 0,
+                          Precision precision_mode = Precision::kFloat32);
   ///
   /// \brief Turn on ONNXRuntime.
   ///
@@ -475,6 +483,13 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \return string The custom device type.
   ///
   std::string custom_device_type() const { return custom_device_type_; }
+  /// \brief Get whether the custom device mixed preicsion is enabled.
+  ///
+  /// \return bool custom device mixed is enabled.
+  ///
+  bool enable_custom_device_mixed() const {
+    return enable_custom_device_mixed_;
+  }
   ///
   /// \brief Get the initial size in MB of the GPU memory pool.
   ///
@@ -641,8 +656,9 @@ struct PD_INFER_DECL AnalysisConfig {
   /// mode.
   /// \param allow_build_at_runtime allow build trt engine at runtime.
   ///
-  void EnableTunedTensorRtDynamicShape(const std::string& shape_range_info_path,
-                                       bool allow_build_at_runtime = true);
+  void EnableTunedTensorRtDynamicShape(
+      const std::string& shape_range_info_path = "",
+      bool allow_build_at_runtime = true);
 
   ///
   /// \brief A boolean state telling whether to use tuned tensorrt dynamic
@@ -1071,6 +1087,7 @@ struct PD_INFER_DECL AnalysisConfig {
   bool use_custom_device_{false};
   int custom_device_id_{0};
   std::string custom_device_type_;
+  bool enable_custom_device_mixed_{false};
 
   // ONNXRuntime related
   bool use_onnxruntime_{false};
@@ -1176,6 +1193,8 @@ struct PD_INFER_DECL AnalysisConfig {
   std::string xpu_precision_;
   bool xpu_adaptive_seqlen_;
   bool xpu_enable_multi_stream_;
+  int xpu_quant_post_dynamic_weight_bits_{-1};
+  std::vector<std::string> xpu_quant_post_dynamic_op_types_;
 
   // LITE OPENCL SETTINGS
   bool use_opencl_{false};

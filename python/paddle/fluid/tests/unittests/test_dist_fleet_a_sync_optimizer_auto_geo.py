@@ -17,7 +17,7 @@ os.environ["WITH_DISTRIBUTE"] = "ON"
 import unittest
 
 import paddle
-import paddle.distributed.fleet.base.role_maker as role_maker
+from paddle.distributed.fleet.base import role_maker
 
 paddle.enable_static()
 
@@ -36,7 +36,7 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
 
     def test_a_sync_optimizer2(self):
         os.environ["TRAINING_ROLE"] = "TRAINER"
-        import paddle.distributed.fleet as fleet
+        from paddle.distributed import fleet
 
         main_program = paddle.fluid.Program()
         startup_program = paddle.fluid.Program()

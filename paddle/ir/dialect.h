@@ -14,16 +14,17 @@
 
 #pragma once
 
+#include "paddle/ir/attribute_base.h"
 #include "paddle/ir/ir_context.h"
 #include "paddle/ir/type_base.h"
 
 namespace ir {
 ///
 /// \brief Dialect can basically be understood as a namespace. In Dialect, we
-/// can define a series of types, operations, etc. An instance of the dialect
-/// object will be loaded into the global IrContext. Specific compilers only
-/// need to combine existing dialects and add their own extensions or
-/// customizations.
+/// can define a series of types, attributes, operations, etc. An instance of
+/// the dialect object will be loaded into the global IrContext. Specific
+/// compilers only need to combine existing dialects and add their own
+/// extensions or customizations.
 ///
 class Dialect {
  public:
@@ -66,6 +67,35 @@ class Dialect {
   /// RegisterType<T>() is recommended to use.
   ///
   void RegisterType(ir::AbstractType &&abstract_type);
+
+  ///
+  /// \brief Register all attributes contained in the template parameter Args.
+  /// To register only one Attribute, you can use the RegisterAttribute template
+  /// function.
+  ///
+  template <typename... Args>
+  void RegisterAttributes() {
+    (void)std::initializer_list<int>{0, (RegisterAttribute<Args>(), 0)...};
+  }
+
+  ///
+  /// \brief Register attribute of class T.
+  ///
+  template <typename T>
+  void RegisterAttribute() {
+    VLOG(4) << "Attribute registered into Dialect. --->";
+    ir::AbstractAttribute *abstract_attribute = new ir::AbstractAttribute(
+        std::move(ir::AbstractAttribute::get<T>(*this)));
+    this->ir_context()->RegisterAbstractAttribute(ir::TypeId::get<T>(),
+                                                  abstract_attribute);
+    ir::AttributeManager::RegisterAttribute<T>(this->ir_context());
+    VLOG(4) << "----------------------------------";
+  }
+
+  ///
+  /// \brief Register abstract_attribute into context.
+  ///
+  void RegisterAttribute(ir::AbstractAttribute &&abstract_attribute);
 
  private:
   std::string name_;

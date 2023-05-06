@@ -15,7 +15,7 @@
 import paddle
 from paddle import _legacy_C_ops
 from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.fluid.framework import _varbase_creator
+from paddle.fluid.framework import _create_tensor
 from paddle.framework import ParamAttr, core
 from paddle.nn.initializer import Constant
 from paddle.utils import unique_name
@@ -82,7 +82,7 @@ class FakeQuanterWithAbsMaxObserver(QuanterFactory):
         dtype='float32',
         name=None,
     ):
-        super(FakeQuanterWithAbsMaxObserver, self).__init__(
+        super().__init__(
             name=name,
             moving_rate=moving_rate,
             bit_length=bit_length,
@@ -102,12 +102,10 @@ class FakeQuanterWithAbsMaxObserverLayer(BaseQuanter):
         bit_length=8,
         dtype='float32',
     ):
-        super(FakeQuanterWithAbsMaxObserverLayer, self).__init__()
+        super().__init__()
         self._moving_rate = moving_rate
         self._bit_length = bit_length
-        scale_prefix = (
-            "{}.scale".format(name) if name else 'quant_dequant.scale'
-        )
+        scale_prefix = f"{name}.scale" if name else 'quant_dequant.scale'
         scale_attr = ParamAttr(
             name=unique_name.generate(scale_prefix),
             initializer=Constant(0.001),
@@ -118,9 +116,7 @@ class FakeQuanterWithAbsMaxObserverLayer(BaseQuanter):
         )
         self._scale.stop_gradient = True
 
-        state_prefix = (
-            "{}.state".format(name) if name else 'quant_dequant.state'
-        )
+        state_prefix = f"{name}.state" if name else 'quant_dequant.state'
         state_attr = ParamAttr(
             name=unique_name.generate(state_prefix),
             initializer=Constant(1),
@@ -131,9 +127,7 @@ class FakeQuanterWithAbsMaxObserverLayer(BaseQuanter):
         )
         self._state.stop_gradient = True
 
-        accum_prefix = (
-            "{}.accum".format(name) if name else 'quant_dequant.accum'
-        )
+        accum_prefix = f"{name}.accum" if name else 'quant_dequant.accum'
         accum_attr = ParamAttr(
             name=unique_name.generate(accum_prefix),
             initializer=Constant(1),
@@ -153,9 +147,9 @@ class FakeQuanterWithAbsMaxObserverLayer(BaseQuanter):
             'is_test',
             not self.training,
         )
-        quant_out = _varbase_creator(
+        quant_out = _create_tensor(
             type=input.type,
-            name="{}.quantized.dequantized".format(input.name),
+            name=f"{input.name}.quantized.dequantized",
             shape=input.shape,
             dtype=input.dtype,
             persistable=False,
@@ -178,7 +172,7 @@ class FakeQuanterWithAbsMaxObserverLayer(BaseQuanter):
             self._scale,
             state,
             accum,
-            *attrs
+            *attrs,
         )
 
         return out
@@ -194,7 +188,7 @@ class FakeQuanterWithAbsMaxObserverLayer(BaseQuanter):
         }
         inputs = {"X": [input], "InScale": [self._scale]}
         quant_out = self._helper.create_variable(
-            name="{}.quantized.dequantized".format(input.name),
+            name=f"{input.name}.quantized.dequantized",
             dtype=input.dtype,
             type=core.VarDesc.VarType.LOD_TENSOR,
             persistable=False,

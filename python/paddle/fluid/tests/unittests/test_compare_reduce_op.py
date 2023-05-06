@@ -14,14 +14,14 @@
 
 import unittest
 
+import eager_op_test
 import numpy as np
-import op_test
 
 import paddle
 
 
 def create_test_not_equal_class(op_type, typename, callback):
-    class Cls(op_test.OpTest):
+    class Cls(eager_op_test.OpTest):
         def setUp(self):
             x = np.random.random(size=(10, 7)).astype(typename)
             y = np.random.random(size=(10, 7)).astype(typename)
@@ -32,15 +32,15 @@ def create_test_not_equal_class(op_type, typename, callback):
             self.op_type = op_type
 
         def test_output(self):
-            self.check_output(check_eager=True)
+            self.check_output()
 
-    cls_name = "{0}_{1}_{2}".format(op_type, typename, 'not_equal_all')
+    cls_name = "{}_{}_{}".format(op_type, typename, 'not_equal_all')
     Cls.__name__ = cls_name
     globals()[cls_name] = Cls
 
 
 def create_test_not_shape_equal_class(op_type, typename, callback):
-    class Cls(op_test.OpTest):
+    class Cls(eager_op_test.OpTest):
         def setUp(self):
             x = np.random.random(size=(10, 7)).astype(typename)
             y = np.random.random(size=(10)).astype(typename)
@@ -51,15 +51,15 @@ def create_test_not_shape_equal_class(op_type, typename, callback):
             self.op_type = op_type
 
         def test_output(self):
-            self.check_output(check_eager=True)
+            self.check_output()
 
-    cls_name = "{0}_{1}_{2}".format(op_type, typename, 'not_shape_equal_all')
+    cls_name = "{}_{}_{}".format(op_type, typename, 'not_shape_equal_all')
     Cls.__name__ = cls_name
     globals()[cls_name] = Cls
 
 
 def create_test_equal_class(op_type, typename, callback):
-    class Cls(op_test.OpTest):
+    class Cls(eager_op_test.OpTest):
         def setUp(self):
             x = y = np.random.random(size=(10, 7)).astype(typename)
             z = callback(x, y)
@@ -69,15 +69,15 @@ def create_test_equal_class(op_type, typename, callback):
             self.op_type = op_type
 
         def test_output(self):
-            self.check_output(check_eager=True)
+            self.check_output()
 
-    cls_name = "{0}_{1}_{2}".format(op_type, typename, 'equal_all')
+    cls_name = "{}_{}_{}".format(op_type, typename, 'equal_all')
     Cls.__name__ = cls_name
     globals()[cls_name] = Cls
 
 
 def create_test_dim1_class(op_type, typename, callback):
-    class Cls(op_test.OpTest):
+    class Cls(eager_op_test.OpTest):
         def setUp(self):
             x = y = np.random.random(size=(1)).astype(typename)
             x = np.array([True, False, True]).astype(typename)
@@ -89,9 +89,9 @@ def create_test_dim1_class(op_type, typename, callback):
             self.op_type = op_type
 
         def test_output(self):
-            self.check_output(check_eager=True)
+            self.check_output()
 
-    cls_name = "{0}_{1}_{2}".format(op_type, typename, 'equal_all')
+    cls_name = "{}_{}_{}".format(op_type, typename, 'equal_all')
     Cls.__name__ = cls_name
     globals()[cls_name] = Cls
 
@@ -105,18 +105,12 @@ for _type_name in {'float32', 'float64', 'int32', 'int64', 'bool'}:
 
 
 class TestEqualReduceAPI(unittest.TestCase):
-    def test_name(self):
-        x = paddle.assign(np.array([3, 4], dtype="int32"))
-        y = paddle.assign(np.array([3, 4], dtype="int32"))
-        out = paddle.equal_all(x, y, name='equal_res')
-        assert 'equal_res' in out.name
-
     def test_dynamic_api(self):
         paddle.disable_static()
         x = paddle.ones(shape=[10, 10], dtype="int32")
         y = paddle.ones(shape=[10, 10], dtype="int32")
         out = paddle.equal_all(x, y)
-        assert out.numpy()[0] is np.True_
+        assert out.item() is True
         paddle.enable_static()
 
 

@@ -20,7 +20,7 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.framework import core
 
 
@@ -252,7 +252,7 @@ class TestAdamWOp(unittest.TestCase):
         startup = fluid.Program()
         with fluid.program_guard(train_prog, startup):
             with fluid.unique_name.guard():
-                data = fluid.data(name="data", shape=shape)
+                data = paddle.static.data(name="data", shape=shape)
                 conv = paddle.static.nn.conv2d(data, 8, 3)
                 loss = paddle.mean(conv)
 
@@ -318,6 +318,145 @@ class TestAdamWOpGroup(TestAdamWOp):
             out.backward()
             adam.step()
             adam.clear_gradients()
+
+
+class TestAdamWOpMultiPrecisonWithMainGrad(unittest.TestCase):
+    def _test_adamw_op_dygraph_place_amp_with_maingrad(
+        self, place, shape, use_main_grad
+    ):
+        paddle.disable_static()
+        paddle.seed(10)
+        paddle.set_device(place)
+
+        found_inf = None
+
+        _weight_decay = 0.1
+        with_decay = True
+        _lazy_mode = False
+        find_master = True
+
+        _epsilon = 1e-8
+
+        _beta1 = 0.9
+        _beta2 = 0.99
+        lr_ratio_ = 1.0
+
+        lr_rate = 1e-8
+
+        param = paddle.randn(shape).astype(paddle.bfloat16)
+        master_weight = param.astype(paddle.float32)
+        grad = paddle.randn(shape).astype(paddle.bfloat16)
+        main_grad = grad.astype(paddle.float32)
+        moment1 = paddle.randn(shape).astype(paddle.float32)
+        moment2 = paddle.randn(shape).astype(paddle.float32).abs()
+        lr = paddle.zeros([1]).astype(paddle.float32)
+        lr[0] = lr_rate
+        beta1_pow_acc = paddle.ones([1]).astype(paddle.float32)
+        beta1_pow_acc[0] = _beta1**10
+        beta2_pow_acc = paddle.ones([1]).astype(paddle.float32)
+        beta2_pow_acc[0] = _beta2**10
+
+        ref_param = param.astype(paddle.float32)
+        ref_beta1_pow_acc = beta1_pow_acc.astype(paddle.float32)
+        ref_beta2_pow_acc = beta2_pow_acc.astype(paddle.float32)
+        ref_moment_1 = moment1.astype(paddle.float32)
+        ref_moment_2 = moment2.astype(paddle.float32)
+
+        # reference code
+        _, _, _, _, _, _ = paddle._C_ops.adamw_(
+            ref_param,
+            main_grad,
+            lr,
+            ref_moment_1,
+            ref_moment_2,
+            ref_beta1_pow_acc,
+            ref_beta2_pow_acc,
+            master_weight,
+            found_inf,
+            _beta1,
+            _beta2,
+            _epsilon,
+            lr_ratio_,
+            _weight_decay,
+            with_decay,
+            _lazy_mode,
+            1000,
+            False,
+            False,
+        )
+
+        if use_main_grad:
+            _, _, _, _, _, _ = paddle._C_ops.adamw_(
+                param,
+                main_grad,
+                lr,
+                moment1,
+                moment2,
+                beta1_pow_acc,
+                beta2_pow_acc,
+                master_weight,
+                found_inf,
+                _beta1,
+                _beta2,
+                _epsilon,
+                lr_ratio_,
+                _weight_decay,
+                with_decay,
+                _lazy_mode,
+                1000,
+                find_master,
+                False,
+            )
+            np.testing.assert_allclose(
+                param.astype("float32").numpy(), ref_param.numpy(), rtol=1e-2
+            )
+            np.testing.assert_allclose(
+                master_weight.numpy(), ref_param.numpy(), rtol=1e-6
+            )
+        else:
+            _, _, _, _, _, _ = paddle._C_ops.adamw_(
+                param,
+                grad,
+                lr,
+                moment1,
+                moment2,
+                beta1_pow_acc,
+                beta2_pow_acc,
+                master_weight,
+                found_inf,
+                _beta1,
+                _beta2,
+                _epsilon,
+                lr_ratio_,
+                _weight_decay,
+                with_decay,
+                _lazy_mode,
+                1000,
+                find_master,
+                False,
+            )
+            np.testing.assert_allclose(
+                param.astype("float32").numpy(), ref_param.numpy(), rtol=1e-2
+            )
+            np.testing.assert_allclose(
+                master_weight.numpy(), ref_param.numpy(), rtol=1e-6
+            )
+
+    def _get_places(self):
+        places = []
+        if paddle.is_compiled_with_cuda():
+            places.append('gpu')
+        return places
+
+    def test_main(self):
+        for _ in range(10):
+            shape = paddle.randint(1, 1024, [2])
+            for place in self._get_places():
+                use_main_grad_list = [True, False]
+                for use_main_grad in use_main_grad_list:
+                    self._test_adamw_op_dygraph_place_amp_with_maingrad(
+                        place, shape, use_main_grad
+                    )
 
 
 class TestAdamWOpMultiPrecison(unittest.TestCase):
@@ -628,8 +767,12 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
         startup = fluid.Program()
         with fluid.program_guard(train_prog, startup):
             with fluid.unique_name.guard():
-                x = fluid.data(name='x', shape=[None, 10], dtype='float32')
-                y = fluid.data(name='y', shape=[None, 1], dtype='float32')
+                x = paddle.static.data(
+                    name='x', shape=[None, 10], dtype='float32'
+                )
+                y = paddle.static.data(
+                    name='y', shape=[None, 1], dtype='float32'
+                )
 
                 weight_attr1 = paddle.framework.ParamAttr(name="linear_0.w_0")
                 bias_attr1 = paddle.framework.ParamAttr(
@@ -651,14 +794,14 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
                 out = linear1(x)
                 out = linear2(out)
 
-                fc1_w_mon1 = np.zeros((linear1.weight.shape)).astype("float32")
-                fc1_w_mon2 = np.zeros((linear1.weight.shape)).astype("float32")
-                fc1_b_mon1 = np.zeros((linear1.bias.shape)).astype("float32")
-                fc1_b_mon2 = np.zeros((linear1.bias.shape)).astype("float32")
-                fc2_w_mon1 = np.zeros((linear2.weight.shape)).astype("float32")
-                fc2_w_mon2 = np.zeros((linear2.weight.shape)).astype("float32")
-                fc2_b_mon1 = np.zeros((linear2.bias.shape)).astype("float32")
-                fc2_b_mon2 = np.zeros((linear2.bias.shape)).astype("float32")
+                fc1_w_mon1 = np.zeros(linear1.weight.shape).astype("float32")
+                fc1_w_mon2 = np.zeros(linear1.weight.shape).astype("float32")
+                fc1_b_mon1 = np.zeros(linear1.bias.shape).astype("float32")
+                fc1_b_mon2 = np.zeros(linear1.bias.shape).astype("float32")
+                fc2_w_mon1 = np.zeros(linear2.weight.shape).astype("float32")
+                fc2_w_mon2 = np.zeros(linear2.weight.shape).astype("float32")
+                fc2_b_mon1 = np.zeros(linear2.bias.shape).astype("float32")
+                fc2_b_mon2 = np.zeros(linear2.bias.shape).astype("float32")
 
                 cost = paddle.nn.functional.square_error_cost(
                     input=out, label=y

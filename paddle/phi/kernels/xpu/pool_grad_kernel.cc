@@ -114,10 +114,7 @@ void Pool2dGradKernel(const Context& ctx,
     } else if (pooling_type == "avg") {
       // When output dim is 1 * 1 (1 * 1 * 1 in pool_3d), use scale
       // and broadcast kernels to get same output, but better performance.
-      // Since the dim is special in particular models,
-      // use 'export XPU_POOLING_GRAD_SPECIAL=1' to open this path
-      if (out_h == 1 && out_w == 1 && std::is_same<T, float>::value &&
-          std::getenv("XPU_POOLING_GRAD_SPECIAL") != nullptr) {
+      if (out_h == 1 && out_w == 1 && std::is_same<T, float>::value) {
         xpu::ctx_guard RAII_GUARD(ctx.x_context());
         float scale = 1.0 / (in_h * in_w);
         float* scaled_dy = RAII_GUARD.alloc_l3_or_gm<float>(n * c);
@@ -157,6 +154,12 @@ void Pool2dGradKernel(const Context& ctx,
 
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "adaptive_pool2d_grad");
   } else {
+    if (kernel_size[0] > (in_h + paddings[0] + paddings[1])) {
+      kernel_size[0] = in_h + paddings[0] + paddings[1];
+    }
+    if (kernel_size[1] > (in_w + paddings[2] + paddings[3])) {
+      kernel_size[1] = in_w + paddings[2] + paddings[3];
+    }
     if (pooling_type == "max") {
       // TODO(zhanghuan05) to bind max_pool2d_grad_indices xpu api
       r = xpu::max_pool2d_grad<XPUType>(
@@ -295,8 +298,7 @@ void Pool3dGradKernel(const Context& ctx,
 
     } else if (pooling_type == "avg") {
       if (out_d == 1 && out_h == 1 && out_w == 1 &&
-          std::is_same<T, float>::value &&
-          std::getenv("XPU_POOLING_GRAD_SPECIAL") != nullptr) {
+          std::is_same<T, float>::value) {
         xpu::ctx_guard RAII_GUARD(ctx.x_context());
         float scale = 1.0 / (in_d * in_h * in_w);
         float* scaled_dy = RAII_GUARD.alloc_l3_or_gm<float>(n * c);
@@ -340,22 +342,41 @@ void Pool3dGradKernel(const Context& ctx,
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "adaptive_pool3d_grad");
   } else {
     if (pooling_type == "max") {
-      r = xpu::max_pool3d_grad<XPUType>(
-          ctx.x_context(),
-          reinterpret_cast<const XPUType*>(x.data<T>()),
-          reinterpret_cast<const XPUType*>(out.data<T>()),
-          index_data,
-          reinterpret_cast<const XPUType*>(dout.data<T>()),
-          reinterpret_cast<XPUType*>(dx->data<T>()),
-          n,
-          c,
-          in_d,
-          in_h,
-          in_w,
-          kernel_size,
-          strides,
-          paddings,
-          !channel_last);
+      if (kernel_size[0] == 1 && kernel_size.size() == 3 &&
+          strides.size() == 3 && paddings.size() == 6) {
+        r = xpu::max_pool2d_grad<XPUType>(
+            ctx.x_context(),
+            reinterpret_cast<const XPUType*>(x.data<T>()),
+            reinterpret_cast<const XPUType*>(out.data<T>()),
+            index_data,
+            reinterpret_cast<const XPUType*>(dout.data<T>()),
+            reinterpret_cast<XPUType*>(dx->data<T>()),
+            n,
+            c * in_d,
+            in_h,
+            in_w,
+            {kernel_size[1], kernel_size[2]},
+            {strides[1], strides[2]},
+            {paddings[2], paddings[3], paddings[4], paddings[5]},
+            !channel_last);
+      } else {
+        r = xpu::max_pool3d_grad<XPUType>(
+            ctx.x_context(),
+            reinterpret_cast<const XPUType*>(x.data<T>()),
+            reinterpret_cast<const XPUType*>(out.data<T>()),
+            index_data,
+            reinterpret_cast<const XPUType*>(dout.data<T>()),
+            reinterpret_cast<XPUType*>(dx->data<T>()),
+            n,
+            c,
+            in_d,
+            in_h,
+            in_w,
+            kernel_size,
+            strides,
+            paddings,
+            !channel_last);
+      }
     } else if (pooling_type == "avg") {
       r = xpu::avg_pool3d_grad<XPUType>(
           ctx.x_context(),

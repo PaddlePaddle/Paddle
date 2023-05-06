@@ -145,19 +145,3 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     MemcpyInferShapeFunctor);
-
-#ifdef PADDLE_WITH_ASCEND_CL
-REGISTER_OP_NPU_KERNEL_FUNCTOR(memcpy,
-                               float,
-                               ops::MemcpyKernel,
-                               double,
-                               ops::MemcpyKernel,
-                               int,
-                               ops::MemcpyKernel,
-                               int64_t,
-                               ops::MemcpyKernel,
-                               bool,
-                               ops::MemcpyKernel,
-                               plat::float16,
-                               ops::MemcpyKernel);
-#endif

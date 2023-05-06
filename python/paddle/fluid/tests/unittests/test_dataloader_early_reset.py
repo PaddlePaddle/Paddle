@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 def infinite_reader():
@@ -46,7 +46,7 @@ class TestDataLoaderEarlyReset(unittest.TestCase):
             return fluid.CPUPlace()
 
     def create_data_loader(self):
-        self.x = fluid.data(name='x', shape=[None, 32], dtype='float32')
+        self.x = paddle.static.data(name='x', shape=[None, 32], dtype='float32')
         return fluid.io.DataLoader.from_generator(
             feed_list=[self.x], capacity=10, iterable=self.iterable
         )

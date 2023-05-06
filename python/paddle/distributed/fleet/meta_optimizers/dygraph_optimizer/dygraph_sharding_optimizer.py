@@ -111,7 +111,7 @@ class DygraphShardingOptimizer:
         for param in self._parameter_list:
             rank = sizes.index(min(sizes))
             mapping[rank].append(param)
-            numel = reduce(lambda x, y: x * y, param.shape)
+            numel = reduce(lambda x, y: x * y, param.shape, 1)
             assert (
                 numel > 0
             ), "param [{}] should larger than 0, but it is [{}]".format(
@@ -176,7 +176,7 @@ class DygraphShardingOptimizer:
         # NOTE in dygraph mode, the only different between step and minimize is that minimize
         # allow user to customize the parameters for updating on each step
 
-        input_param_names = set([param.name for param in parameters])
+        input_param_names = {param.name for param in parameters}
         parameters = list(
             filter(
                 lambda x: x.name in input_param_names,

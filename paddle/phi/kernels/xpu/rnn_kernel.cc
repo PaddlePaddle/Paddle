@@ -224,4 +224,6 @@ void RnnKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(rnn, XPU, ALL_LAYOUT, phi::RnnKernel, float) {}
+PD_REGISTER_KERNEL(rnn, XPU, ALL_LAYOUT, phi::RnnKernel, float) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::UINT8);
+}

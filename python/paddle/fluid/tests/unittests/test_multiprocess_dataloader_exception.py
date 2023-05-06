@@ -17,8 +17,8 @@ import unittest
 
 import numpy as np
 
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.dataloader.dataloader_iter import _worker_loop
 from paddle.io import BatchSampler, DataLoader, Dataset, IterableDataset
 

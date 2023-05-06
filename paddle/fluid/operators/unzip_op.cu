@@ -42,7 +42,7 @@ __global__ void unzipKernel(
   }
 }
 
-template <typename T, typename LodType>
+template <typename T, typename DeviceContext, typename LodType = int64_t>
 class unzipCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -69,7 +69,7 @@ class unzipCUDAKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class unzipGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -81,25 +81,24 @@ class unzipGradCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    unzip,
-    ops::unzipCUDAKernel<float, int>,
-    ops::unzipCUDAKernel<double, int>,
-    ops::unzipCUDAKernel<paddle::platform::float16, int>,
-    ops::unzipCUDAKernel<int, int>,
-    ops::unzipCUDAKernel<bool, int>,
-    ops::unzipCUDAKernel<int64_t, int>,
-    ops::unzipCUDAKernel<float, int64_t>,
-    ops::unzipCUDAKernel<double, int64_t>,
-    ops::unzipCUDAKernel<paddle::platform::float16, int64_t>,
-    ops::unzipCUDAKernel<int, int64_t>,
-    ops::unzipCUDAKernel<bool, int64_t>,
-    ops::unzipCUDAKernel<int64_t, int64_t>);
-
-REGISTER_OP_CUDA_KERNEL(unzip_grad,
-                        ops::unzipGradCUDAKernel<float>,
-                        ops::unzipGradCUDAKernel<double>,
-                        ops::unzipGradCUDAKernel<paddle::platform::float16>,
-                        ops::unzipGradCUDAKernel<int>,
-                        ops::unzipGradCUDAKernel<bool>,
-                        ops::unzipGradCUDAKernel<int64_t>);
+namespace plat = paddle::platform;
+PD_REGISTER_STRUCT_KERNEL(unzip,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::unzipCUDAKernel,
+                          float,
+                          double,
+                          plat::float16,
+                          bool,
+                          int,
+                          int64_t) {}
+PD_REGISTER_STRUCT_KERNEL(unzip_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::unzipGradCUDAKernel,
+                          float,
+                          double,
+                          plat::float16,
+                          bool,
+                          int,
+                          int64_t) {}

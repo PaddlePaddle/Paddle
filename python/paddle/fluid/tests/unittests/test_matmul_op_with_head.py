@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 
 def generate_compatible_shapes_mul_head(dim_X, dim_Y, transpose_X, transpose_Y):
@@ -180,7 +180,7 @@ def matmul_head2(X, Y, head_number=1):
             z.append(np.matmul(x[i], y[i]))
         Z = np.concatenate((z), axis=2)
     else:
-        assert False, "ERROR: Not supported dimension!"
+        raise AssertionError("ERROR: Not supported dimension!")
     return Z
 
 

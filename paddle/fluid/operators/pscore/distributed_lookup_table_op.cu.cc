@@ -17,6 +17,8 @@
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_CUDA_KERNEL(
-    distributed_lookup_table,
-    ops::DistributedLookupTableKernel<phi::GPUContext, float>);
+PD_REGISTER_STRUCT_KERNEL(distributed_lookup_table,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::DistributedLookupTableKernel,
+                          float) {}

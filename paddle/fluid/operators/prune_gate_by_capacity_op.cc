@@ -126,7 +126,9 @@ REGISTER_OP_WITHOUT_GRADIENT(prune_gate_by_capacity,
                              ops::PruneGateByCapacityOp,
                              ops::PruneGateByCapacityOpMaker);
 
-REGISTER_OP_CPU_KERNEL(
-    prune_gate_by_capacity,
-    ops::PruneGateByCapacityCPUKernel<phi::CPUContext, int>,
-    ops::PruneGateByCapacityCPUKernel<phi::CPUContext, int64_t>);
+PD_REGISTER_STRUCT_KERNEL(prune_gate_by_capacity,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::PruneGateByCapacityCPUKernel,
+                          int,
+                          int64_t) {}

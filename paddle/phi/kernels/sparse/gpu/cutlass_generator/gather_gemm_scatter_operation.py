@@ -52,6 +52,8 @@ class EmitGatherGemmScatterInstance(EmitGemmInstance):
 """
         self.gemm_template = """
 // Gemm operator ${operation_name}
+template<cutlass::gemm::GemmUniversalMode Mode_ =
+             cutlass::gemm::GemmUniversalMode::kGemm>
 struct ${operation_name} {
   using Gemm =
     cutlass::gemm::device::GemmUniversal<
@@ -75,10 +77,11 @@ struct ${operation_name} {
       ${math_operation},
       ${transform_a},
       ${transform_b},
-      true, // gather a
-      false, // gather b
-      true // scatter d
+      ${gather_a}, // gather a
+      ${gather_b}, // gather b
+      ${scatter_d} // scatter d
     >;
+  static const cutlass::gemm::GemmUniversalMode Mode = Mode_;
 };
 """
 
@@ -192,6 +195,9 @@ struct ${operation_name} {
             'math_operation': MathOperationTag[
                 operation.tile_description.math_instruction.math_operation
             ],
+            'gather_a': 'true',
+            'gather_b': str(operation.layout_name() == 'tn').lower(),
+            'scatter_d': str(operation.layout_name() != 'tn').lower(),
         }
 
         return SubstituteTemplate(gemm_template, values)
@@ -295,8 +301,8 @@ class GatherGemmScatterOperation(GemmOperation):
             B,
             C,
             element_epilogue,
-            epilogue_functor=EpilogueFunctor.LinearCombination,
-            swizzling_functor=SwizzlingFunctor.Identity8,
+            epilogue_functor,
+            swizzling_functor,
         )
         self.ShortLayoutTypeNames = {
             LayoutType.ColumnMajor: 't',
@@ -318,7 +324,7 @@ class GatherGemmScatterOperation(GemmOperation):
         }
 
     def layout_name(self):
-        return "%s%s" % (
+        return "{}{}".format(
             self.ShortLayoutTypeNames[self.A.layout],
             self.ShortLayoutTypeNames[self.B.layout],
         )

@@ -20,9 +20,9 @@ from parallel_executor_test_base import DeviceType, TestParallelExecutorBase
 from simple_nets import fc_with_batchnorm, init_data, simple_fc_net
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 import paddle.nn.functional as F
+from paddle import fluid
+from paddle.fluid import core
 
 
 class TestMNIST(TestParallelExecutorBase):
@@ -74,10 +74,12 @@ class TestMNIST(TestParallelExecutorBase):
             optimizer=_optimizer,
         )
 
-        for loss in zip(not_fuse_op_first_loss, fuse_op_first_loss):
-            self.assertAlmostEqual(loss[0], loss[1], delta=1e-6)
-        for loss in zip(not_fuse_op_last_loss, fuse_op_last_loss):
-            self.assertAlmostEqual(loss[0], loss[1], delta=1e-6)
+        self.assertAlmostEqual(
+            not_fuse_op_first_loss, fuse_op_first_loss, delta=1e-6
+        )
+        self.assertAlmostEqual(
+            not_fuse_op_last_loss, fuse_op_last_loss, delta=1e-6
+        )
 
     def test_simple_fc_with_fuse_op(self):
         self._compare_fuse_elewise_add_act_ops(simple_fc_net, DeviceType.CUDA)
@@ -95,8 +97,8 @@ class TestMNIST(TestParallelExecutorBase):
 class TestFuseActElewiseAddInplaceGradPass(unittest.TestCase):
     def build_program(self, main_program, startup_program):
         with paddle.static.program_guard(main_program, startup_program):
-            X = fluid.data(name="X", shape=[3, 3], dtype='float32')
-            Y = fluid.data(name="Y", shape=[3, 3], dtype='float32')
+            X = paddle.static.data(name="X", shape=[3, 3], dtype='float32')
+            Y = paddle.static.data(name="Y", shape=[3, 3], dtype='float32')
             Out1 = X * 5
             Out2 = F.relu(Out1)
             prediction = paddle.tensor.math._add_with_axis(Y, Out2, axis=1)

@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 
 class ApiFMaxTest(unittest.TestCase):
@@ -145,11 +145,11 @@ class TestElementwiseFmaxOp(OpTest):
 
     def test_check_output(self):
         """test_check_output"""
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
         """test_check_grad_normal"""
-        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
+        self.check_grad(['X', 'Y'], 'Out')
 
     def test_check_grad_ingore_x(self):
         """test_check_grad_ingore_x"""
@@ -158,7 +158,6 @@ class TestElementwiseFmaxOp(OpTest):
             'Out',
             max_relative_error=0.005,
             no_grad_set=set("X"),
-            check_eager=True,
         )
 
     def test_check_grad_ingore_y(self):
@@ -168,7 +167,6 @@ class TestElementwiseFmaxOp(OpTest):
             'Out',
             max_relative_error=0.005,
             no_grad_set=set('Y'),
-            check_eager=True,
         )
 
 
@@ -192,11 +190,11 @@ class TestElementwiseFmax2Op(OpTest):
 
     def test_check_output(self):
         """test_check_output"""
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
         """test_check_grad_normal"""
-        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
+        self.check_grad(['X', 'Y'], 'Out')
 
     def test_check_grad_ingore_x(self):
         """test_check_grad_ingore_x"""
@@ -205,7 +203,6 @@ class TestElementwiseFmax2Op(OpTest):
             'Out',
             max_relative_error=0.005,
             no_grad_set=set("X"),
-            check_eager=True,
         )
 
     def test_check_grad_ingore_y(self):
@@ -215,7 +212,6 @@ class TestElementwiseFmax2Op(OpTest):
             'Out',
             max_relative_error=0.005,
             no_grad_set=set('Y'),
-            check_eager=True,
         )
 
 
@@ -238,11 +234,40 @@ class TestElementwiseFmax3Op(OpTest):
 
     def test_check_output(self):
         """test_check_output"""
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
         """test_check_grad_normal"""
-        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
+        self.check_grad(['X', 'Y'], 'Out')
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA and not support the bfloat16",
+)
+class TestFmaxBF16OP(OpTest):
+    def setUp(self):
+        self.op_type = "elementwise_fmax"
+        self.python_api = paddle.fmax
+        self.dtype = np.uint16
+        x = np.random.uniform(0.1, 1, [13, 17]).astype("float32")
+        sgn = np.random.choice([-1, 1], [13, 17]).astype("float32")
+        y = x + sgn * np.random.uniform(0.1, 1, [13, 17]).astype("float32")
+        out = np.fmax(x, y)
+        self.inputs = {
+            'X': convert_float_to_uint16(x),
+            'Y': convert_float_to_uint16(y),
+        }
+        self.outputs = {'Out': convert_float_to_uint16(out)}
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X', 'Y'], 'Out')
 
 
 if __name__ == "__main__":

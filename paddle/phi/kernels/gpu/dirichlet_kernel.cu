@@ -106,11 +106,17 @@ struct DirichletSampler<GPUContext, T> {
         {new_shape.size() - 1},
         true,
         false);
-    funcs::ElementwiseCompute<funcs::DivideFunctor<T>, T, T>(
-        dev_ctx, gamma_samples, gamma_sum, -1, funcs::DivideFunctor<T>(), out);
+    funcs::ElementwiseCompute<funcs::DivideFunctor<T>, T>(
+        dev_ctx, gamma_samples, gamma_sum, funcs::DivideFunctor<T>(), out);
   }
 };
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    dirichlet, GPU, ALL_LAYOUT, phi::Dirichletkernel, float, double) {}
+PD_REGISTER_KERNEL(dirichlet,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::Dirichletkernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

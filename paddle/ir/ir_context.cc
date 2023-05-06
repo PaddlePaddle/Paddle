@@ -16,6 +16,7 @@
 
 #include <unordered_map>
 
+#include "paddle/ir/attribute_base.h"
 #include "paddle/ir/builtin_dialect.h"
 #include "paddle/ir/builtin_type.h"
 #include "paddle/ir/dialect.h"
@@ -24,7 +25,7 @@
 
 namespace ir {
 // The implementation class of the IrContext class, cache registered
-// AbstractType, TypeStorage, Dialect.
+// AbstractType, TypeStorage, AbstractAttribute, AttributeStorage, Dialect.
 class IrContextImpl {
  public:
   IrContextImpl() {}
@@ -35,6 +36,11 @@ class IrContextImpl {
       delete abstract_type_map.second;
     }
     registed_abstract_types_.clear();
+
+    for (auto &abstract_attribute_map : registed_abstract_attributes_) {
+      delete abstract_attribute_map.second;
+    }
+    registed_abstract_attributes_.clear();
 
     for (auto &dialect_map : registed_dialect_) {
       delete dialect_map.second;
@@ -64,6 +70,29 @@ class IrContextImpl {
     return nullptr;
   }
 
+  void RegisterAbstractAttribute(ir::TypeId type_id,
+                                 AbstractAttribute *abstract_attribute) {
+    std::lock_guard<ir::SpinLock> guard(registed_abstract_attributes_lock_);
+    VLOG(4) << "Register an abstract_attribute of: [TypeId_hash="
+            << std::hash<ir::TypeId>()(type_id)
+            << ", AbstractAttribute_ptr=" << abstract_attribute << "].";
+    registed_abstract_attributes_.emplace(type_id, abstract_attribute);
+  }
+
+  AbstractAttribute *GetAbstractAttribute(ir::TypeId type_id) {
+    std::lock_guard<ir::SpinLock> guard(registed_abstract_attributes_lock_);
+    auto iter = registed_abstract_attributes_.find(type_id);
+    if (iter != registed_abstract_attributes_.end()) {
+      VLOG(4) << "Fonund a cached abstract_attribute of: [TypeId_hash="
+              << std::hash<ir::TypeId>()(type_id)
+              << ", AbstractAttribute_ptr=" << iter->second << "].";
+      return iter->second;
+    }
+    LOG(WARNING) << "No cache found abstract_attribute of: [TypeId_hash="
+                 << std::hash<ir::TypeId>()(type_id) << "].";
+    return nullptr;
+  }
+
   void RegisterDialect(std::string name, Dialect *dialect) {
     std::lock_guard<ir::SpinLock> guard(registed_dialect_lock_);
     VLOG(4) << "Register a dialect of: [name=" << name
@@ -86,14 +115,8 @@ class IrContextImpl {
   // Cached AbstractType instances.
   std::unordered_map<TypeId, AbstractType *> registed_abstract_types_;
   ir::SpinLock registed_abstract_types_lock_;
-
   // TypeStorage uniquer and cache instances.
-  StorageManager registed_storage_manager_;
-
-  // The dialcet registered in the context.
-  std::unordered_map<std::string, Dialect *> registed_dialect_;
-  ir::SpinLock registed_dialect_lock_;
-
+  StorageManager registed_type_storage_manager_;
   // Cache some built-in type objects.
   Float16Type fp16_type;
   Float32Type fp32_type;
@@ -101,6 +124,16 @@ class IrContextImpl {
   Int16Type int16_type;
   Int32Type int32_type;
   Int64Type int64_type;
+
+  // Cached AbstractAttribute instances.
+  std::unordered_map<TypeId, AbstractAttribute *> registed_abstract_attributes_;
+  ir::SpinLock registed_abstract_attributes_lock_;
+  // AttributeStorage uniquer and cache instances.
+  StorageManager registed_attribute_storage_manager_;
+
+  // The dialcet registered in the context.
+  std::unordered_map<std::string, Dialect *> registed_dialect_;
+  ir::SpinLock registed_dialect_lock_;
 
   ir::SpinLock destructor_lock_;
 };
@@ -128,13 +161,27 @@ void IrContext::RegisterAbstractType(ir::TypeId type_id,
   impl().RegisterAbstractType(type_id, abstract_type);
 }
 
-StorageManager &IrContext::storage_manager() {
-  return impl().registed_storage_manager_;
+StorageManager &IrContext::type_storage_manager() {
+  return impl().registed_type_storage_manager_;
 }
 
 std::unordered_map<TypeId, AbstractType *>
     &IrContext::registed_abstracted_type() {
   return impl().registed_abstract_types_;
+}
+
+void IrContext::RegisterAbstractAttribute(
+    ir::TypeId type_id, AbstractAttribute *abstract_attribute) {
+  impl().RegisterAbstractAttribute(type_id, abstract_attribute);
+}
+
+StorageManager &IrContext::attribute_storage_manager() {
+  return impl().registed_attribute_storage_manager_;
+}
+
+std::unordered_map<TypeId, AbstractAttribute *>
+    &IrContext::registed_abstracted_attribute() {
+  return impl().registed_abstract_attributes_;
 }
 
 Dialect *IrContext::GetOrRegisterDialect(
@@ -176,6 +223,17 @@ const AbstractType &AbstractType::lookup(TypeId type_id, IrContext *ctx) {
     return *abstract_type;
   } else {
     throw("Abstract type not found in IrContext.");
+  }
+}
+
+const AbstractAttribute &AbstractAttribute::lookup(TypeId type_id,
+                                                   IrContext *ctx) {
+  auto &impl = ctx->impl();
+  AbstractAttribute *abstract_attribute = impl.GetAbstractAttribute(type_id);
+  if (abstract_attribute) {
+    return *abstract_attribute;
+  } else {
+    throw("Abstract attribute not found in IrContext.");
   }
 }
 
