@@ -73,8 +73,7 @@ void LerpKernel(const Context &ctx,
     inputs.emplace_back(&x);
     inputs.emplace_back(&y);
     auto functor = LerpScalarDirectCUDAFunctor<T>(weight_ptr);
-    funcs::BroadcastKernel<ElementwiseType::kBinary, T, T>(
-        ctx, inputs, &outputs, -1, functor);
+    phi::funcs::BroadcastKernel<T>(ctx, inputs, &outputs, functor);
   } else {
     inputs.reserve(3);
     auto functor = LerpElementWiseDirectCUDAFunctor<T>();
@@ -89,34 +88,28 @@ void LerpKernel(const Context &ctx,
       if (x.dims().size() < y.dims().size() &&
           x.dims().size() < weight.dims().size()) {
         broadcast_min_inputs.emplace_back(&x);
-        funcs::BroadcastKernel<ElementwiseType::kUnary, T, T>(
-            ctx,
-            broadcast_min_inputs,
-            &broadcast_min_outputs,
-            -1,
-            broadcast_min_functor);
+        phi::funcs::BroadcastKernel<T>(ctx,
+                                       broadcast_min_inputs,
+                                       &broadcast_min_outputs,
+                                       broadcast_min_functor);
         inputs.emplace_back(&b_min);
         inputs.emplace_back(&y);
         inputs.emplace_back(&weight);
       } else if (y.dims().size() < weight.dims().size()) {
         broadcast_min_inputs.emplace_back(&y);
-        funcs::BroadcastKernel<ElementwiseType::kUnary, T, T>(
-            ctx,
-            broadcast_min_inputs,
-            &broadcast_min_outputs,
-            -1,
-            broadcast_min_functor);
+        phi::funcs::BroadcastKernel<T>(ctx,
+                                       broadcast_min_inputs,
+                                       &broadcast_min_outputs,
+                                       broadcast_min_functor);
         inputs.emplace_back(&x);
         inputs.emplace_back(&b_min);
         inputs.emplace_back(&weight);
       } else {
         broadcast_min_inputs.emplace_back(&weight);
-        funcs::BroadcastKernel<ElementwiseType::kUnary, T, T>(
-            ctx,
-            broadcast_min_inputs,
-            &broadcast_min_outputs,
-            -1,
-            broadcast_min_functor);
+        phi::funcs::BroadcastKernel<T>(ctx,
+                                       broadcast_min_inputs,
+                                       &broadcast_min_outputs,
+                                       broadcast_min_functor);
         inputs.emplace_back(&x);
         inputs.emplace_back(&y);
         inputs.emplace_back(&b_min);
@@ -126,8 +119,7 @@ void LerpKernel(const Context &ctx,
       inputs.emplace_back(&y);
       inputs.emplace_back(&weight);
     }
-    funcs::BroadcastKernel<ElementwiseType::kTernary, T, T>(
-        ctx, inputs, &outputs, -1, functor);
+    phi::funcs::BroadcastKernel<T>(ctx, inputs, &outputs, functor);
   }
 }
 

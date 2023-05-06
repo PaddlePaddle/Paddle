@@ -102,6 +102,7 @@ if(WITH_TESTING)
   add_subdirectory(custom_op)
   add_subdirectory(custom_runtime)
   add_subdirectory(dataset)
+  add_subdirectory(cpp_extension)
   if(WITH_DISTRIBUTE)
     add_subdirectory(collective)
     add_subdirectory(auto_parallel)
@@ -132,6 +133,15 @@ if(WITH_TESTING)
   # add_subdirectory(white_list)
   if(WITH_XPU)
     add_subdirectory(xpu)
+  endif()
+endif()
+
+if(WITH_CPP_DIST)
+  add_test(NAME test_paddle_lib
+           COMMAND ${PADDLE_BINARY_DIR}/test/paddle_lib/test_paddle_lib)
+  if(WITH_GPU)
+    add_test(NAME test_paddle_lib_gpu
+             COMMAND ${PADDLE_BINARY_DIR}/test/paddle_lib/test_paddle_lib_gpu)
   endif()
 endif()
 
