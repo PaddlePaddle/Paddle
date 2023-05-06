@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -54,13 +54,16 @@ struct UniformGenerator {
 };
 
 template <typename T, typename Context>
-void UniformKernel(const Context& dev_ctx,
-                   const IntArray& shape,
-                   DataType dtype,
-                   const Scalar& min,
-                   const Scalar& max,
-                   int seed,
-                   DenseTensor* out) {
+void UniformRawKernel(const Context& dev_ctx,
+                      const IntArray& shape,
+                      DataType dtype,
+                      const Scalar& min,
+                      const Scalar& max,
+                      int seed,
+                      int diag_num,
+                      int diag_step,
+                      float diag_val,
+                      DenseTensor* out) {
   out->Resize(phi::make_ddim(shape.GetData()));
   dev_ctx.template Alloc<T>(out);
   if (seed == 0) {
@@ -74,19 +77,19 @@ void UniformKernel(const Context& dev_ctx,
     auto func = UniformGenerator<T>(static_cast<T>(min.to<float>()),
                                     static_cast<T>(max.to<float>()),
                                     seed,
-                                    0,
-                                    0,
-                                    static_cast<T>(0.0));
+                                    diag_num,
+                                    diag_step,
+                                    static_cast<T>(diag_val));
     IndexKernel<T, UniformGenerator<T>>(dev_ctx, out, func);
   }
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(uniform,
+PD_REGISTER_KERNEL(uniform_raw,
                    GPU,
                    ALL_LAYOUT,
-                   phi::UniformKernel,
+                   phi::UniformRawKernel,
                    float,
                    double,
                    phi::dtype::float16,
