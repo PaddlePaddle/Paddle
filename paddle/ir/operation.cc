@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/ir/operation.h"
+#include <iostream>
 #include "paddle/ir/dialect.h"
 #include "paddle/ir/program.h"
 #include "paddle/ir/utils.h"
@@ -126,7 +127,7 @@ Operation::Operation(uint32_t num_results,
                      ir::DictionaryAttribute attribute,
                      ir::OpInfo op_info,
                      ir::Program *parent_program) {
-  if (op_info.impl()->AttributeNum() != 0 && !attribute) {
+  if (op_info && op_info.impl()->AttributeNum() != 0 && !attribute) {
     throw("unexpected null attribute dictionary");
   }
   num_results_ = num_results;

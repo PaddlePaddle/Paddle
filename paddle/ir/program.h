@@ -32,22 +32,24 @@ namespace ir {
 ///
 class Program {
  public:
+  ~Program();
+
   std::list<Operation*> ops() const { return ops_; }
 
   void InsertOp(Operation* op);
 
-  std::unordered_map<StrAttribute, std::unique_ptr<Parameter>> parameters()
-      const {
+  std::unordered_map<StrAttribute, Parameter*> parameters() const {
     return parameters_;
   }
 
   Parameter* GetParameter(std::string name) const;
 
-  void SetParameter(std::string name, std::unique_ptr<Parameter> parameter);
+  void SetParameter(std::string name, Parameter* parameter);
 
  private:
   std::list<Operation*> ops_;
-  std::unordered_map<StrAttribute, std::unique_ptr<Parameter>> parameters_;
+
+  std::unordered_map<StrAttribute, Parameter*> parameters_;
 };
 
 }  // namespace ir

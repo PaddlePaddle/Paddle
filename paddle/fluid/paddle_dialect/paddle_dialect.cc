@@ -26,14 +26,20 @@ class ParameterConvertInterface
   explicit ParameterConvertInterface(ir::Dialect* dialect) : Base(dialect) {}
 
   paddle::framework::Variable* ParameterToVariable(ir::Parameter* parameter) {
-    // switch parameter.type()
-    // new 一个 DenseTensor, 初始化一个 Variable并返回
+    // if (parameter.type == ir::DenseTensorType) {
+    //   new 一个 DenseTensor, 初始化一个 Variable并返回
+    // } else {
+    //   return nullptr;
+    // }
     return nullptr;
   }
 
-  ir::Parameter* VariableToParameter(paddle::framework::Variable* variable) {
-    // switch Variable.type
-    // new 一个 Parameter，返回这个指针
+  ir::Parameter* VariableToParameter(paddle::framework::Variable* var) {
+    // if (var->IsType<phi::DenseTensor>()) {
+    //   new 一个 Parameter，返回这个指针
+    // } else {
+    //   return nullptr;
+    // }
     return nullptr;
   }
 };
