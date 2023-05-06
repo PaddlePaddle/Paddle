@@ -445,7 +445,6 @@ PD_REGISTER_DYNAMIC_INFER_META_FN(moe, MoeInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(pad3d, Pad3dInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(grid_sampler, GridSamplerInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(p_norm, PNormInferMeta);
-PD_REGISTER_DYNAMIC_INFER_META_FN(lookup_table_v2, LookupTableV2InferMeta);
 
 }  // namespace tensorrt
 }  // namespace inference
