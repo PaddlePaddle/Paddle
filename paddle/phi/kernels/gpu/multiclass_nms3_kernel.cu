@@ -43,7 +43,7 @@ struct Bbox {
 };
 
 template <typename KeyT, typename ValueT>
-size_t cubSortPairsWorkspaceSize(int num_items, int num_segments) {
+size_t CalcCubSortPairsWorkspaceSize(int num_items, int num_segments) {
   size_t temp_storage_bytes = 0;
   cub::DeviceSegmentedRadixSort::SortPairsDescending(
       reinterpret_cast<void*>(NULL),
@@ -60,26 +60,26 @@ size_t cubSortPairsWorkspaceSize(int num_items, int num_segments) {
 }
 
 template <typename T>
-size_t detectionForwardBBoxDataSize(int N, int C1) {
+size_t Calc_detectionForwardBBoxDataSize(int N, int C1) {
   return N * C1 * sizeof(T);
 }
 
 template <typename T>
-size_t detectionForwardBBoxPermuteSize(bool shareLocation, int N, int C1) {
-  return shareLocation ? 0 : N * C1 * sizeof(T);
+size_t CalcDetectionForwardBBoxPermuteSize(bool share_location, int N, int C1) {
+  return share_location ? 0 : N * C1 * sizeof(T);
 }
 
 template <typename T>
-size_t detectionForwardPreNMSSize(int N, int C2) {
+size_t CalcDetectionForwardPreNMSSize(int N, int C2) {
   return N * C2 * sizeof(T);
 }
 
 template <typename T>
-size_t detectionForwardPostNMSSize(int N, int numClasses, int topK) {
-  return N * numClasses * topK * sizeof(T);
+size_t CalcDetectionForwardPostNMSSize(int N, int num_classes, int top_k) {
+  return N * num_classes * top_k * sizeof(T);
 }
 
-size_t calculateTotalWorkspaceSize(size_t* workspaces, int count) {
+size_t CalTotalWorkspaceSize(size_t* workspaces, int count) {
   size_t total = 0;
   for (int i = 0; i < count; i++) {
     total += workspaces[i];
@@ -91,54 +91,55 @@ size_t calculateTotalWorkspaceSize(size_t* workspaces, int count) {
 }
 
 template <typename T>
-size_t sortScoresPerClassWorkspaceSize(const int num,
-                                       const int num_classes,
-                                       const int num_preds_per_class) {
+size_t CalcSortScoresPerClassWorkspaceSize(const int num,
+                                           const int num_classes,
+                                           const int num_preds_per_class) {
   size_t wss[4];
-  const int arrayLen = num * num_classes * num_preds_per_class;
-  wss[0] = arrayLen * sizeof(T);                   // temp scores
-  wss[1] = arrayLen * sizeof(int);                 // temp indices
+  const int array_len = num * num_classes * num_preds_per_class;
+  wss[0] = array_len * sizeof(T);                  // temp scores
+  wss[1] = array_len * sizeof(int);                // temp indices
   wss[2] = (num * num_classes + 1) * sizeof(int);  // offsets
-  wss[3] = cubSortPairsWorkspaceSize<T, int>(
-      arrayLen, num * num_classes);  // cub workspace
+  wss[3] = CalcCubSortPairsWorkspaceSize<T, int>(
+      array_len, num * num_classes);  // cub workspace
 
-  return calculateTotalWorkspaceSize(wss, 4);
+  return CalTotalWorkspaceSize(wss, 4);
 }
 
 template <typename T>
-size_t sortScoresPerImageWorkspaceSize(const int num_images,
-                                       const int num_items_per_image) {
-  const int arrayLen = num_images * num_items_per_image;
+size_t CalcSortScoresPerImageWorkspaceSize(const int num_images,
+                                           const int num_items_per_image) {
+  const int array_len = num_images * num_items_per_image;
   size_t wss[2];
   wss[0] = (num_images + 1) * sizeof(int);  // offsets
-  wss[1] =
-      cubSortPairsWorkspaceSize<T, int>(arrayLen, num_images);  // cub workspace
+  wss[1] = CalcCubSortPairsWorkspaceSize<T, int>(array_len,
+                                                 num_images);  // cub workspace
 
-  return calculateTotalWorkspaceSize(wss, 2);
+  return CalTotalWorkspaceSize(wss, 2);
 }
 
 template <typename T>
-size_t detectionInferenceWorkspaceSize(bool shareLocation,
-                                       int N,
-                                       int C1,
-                                       int C2,
-                                       int numClasses,
-                                       int numPredsPerClass,
-                                       int topK) {
+size_t CalcDetectionInferenceWorkspaceSize(bool share_location,
+                                           int N,
+                                           int C1,
+                                           int C2,
+                                           int num_classes,
+                                           int num_preds_per_class,
+                                           int top_k) {
   size_t wss[6];
-  wss[0] = detectionForwardBBoxDataSize<T>(N, C1);
-  wss[1] = detectionForwardPreNMSSize<T>(N, C2);
-  wss[2] = detectionForwardPreNMSSize<int>(N, C2);
-  wss[3] = detectionForwardPostNMSSize<T>(N, numClasses, topK);
-  wss[4] = detectionForwardPostNMSSize<int>(N, numClasses, topK);
-  wss[5] = std::max(
-      sortScoresPerClassWorkspaceSize<T>(N, numClasses, numPredsPerClass),
-      sortScoresPerImageWorkspaceSize<T>(N, numClasses * topK));
-  return calculateTotalWorkspaceSize(wss, 6);
+  wss[0] = Calc_detectionForwardBBoxDataSize<T>(N, C1);
+  wss[1] = CalcDetectionForwardPreNMSSize<T>(N, C2);
+  wss[2] = CalcDetectionForwardPreNMSSize<int>(N, C2);
+  wss[3] = CalcDetectionForwardPostNMSSize<T>(N, num_classes, top_k);
+  wss[4] = CalcDetectionForwardPostNMSSize<int>(N, num_classes, top_k);
+  wss[5] =
+      std::max(CalcSortScoresPerClassWorkspaceSize<T>(
+                   N, num_classes, num_preds_per_class),
+               CalcSortScoresPerImageWorkspaceSize<T>(N, num_classes * top_k));
+  return CalTotalWorkspaceSize(wss, 6);
 }
 
 // ALIGNPTR
-int8_t* alignPtr(int8_t* ptr, uintptr_t to) {
+int8_t* AlignPtr(int8_t* ptr, uintptr_t to) {
   uintptr_t addr = (uintptr_t)ptr;
   if (addr % to) {
     addr += to - addr % to;
@@ -146,11 +147,11 @@ int8_t* alignPtr(int8_t* ptr, uintptr_t to) {
   return reinterpret_cast<int8_t*>(addr);
 }
 
-// NEXTWORKSPACEPTR
-int8_t* nextWorkspacePtr(int8_t* ptr, uintptr_t previousWorkspaceSize) {
+// GetNEXTWORKSPACEPTR
+int8_t* GetNextWorkspacePtr(int8_t* ptr, uintptr_t previous_workspace_size) {
   uintptr_t addr = (uintptr_t)ptr;
-  addr += previousWorkspaceSize;
-  return alignPtr(reinterpret_cast<int8_t*>(addr), CUDA_MEM_ALIGN);
+  addr += previous_workspace_size;
+  return AlignPtr(reinterpret_cast<int8_t*>(addr), CUDA_MEM_ALIGN);
 }
 
 /* ==================
@@ -158,7 +159,7 @@ int8_t* nextWorkspacePtr(int8_t* ptr, uintptr_t previousWorkspaceSize) {
  * ================== */
 template <typename T_SCORE, unsigned nthds_per_cta>
 __launch_bounds__(nthds_per_cta) __global__
-    void prepareSortData(const int num,
+    void PrepareSortData(const int num,
                          const int num_classes,
                          const int num_preds_per_class,
                          const int background_label_id,
@@ -170,14 +171,14 @@ __launch_bounds__(nthds_per_cta) __global__
                          int* d_offsets) {
   // Prepare scores data for sort
   const int cur_idx = blockIdx.x * nthds_per_cta + threadIdx.x;
-  const int numPredsPerBatch = num_classes * num_preds_per_class;
+  const int num_preds_per_batch = num_classes * num_preds_per_class;
   T_SCORE clip_val =
       T_SCORE(static_cast<float>(score_shift) + 1.f - 1.f / 1024.f);
-  if (cur_idx < numPredsPerBatch) {
+  if (cur_idx < num_preds_per_batch) {
     const int class_idx = cur_idx / num_preds_per_class;
     for (int i = 0; i < num; i++) {
-      const int targetIdx = i * numPredsPerBatch + cur_idx;
-      const T_SCORE score = conf_scores_gpu[targetIdx];
+      const int target_idx = i * num_preds_per_batch + cur_idx;
+      const T_SCORE score = conf_scores_gpu[target_idx];
 
       // "Clear" background labeled score and index
       // Because we do not care about background
@@ -190,9 +191,9 @@ __launch_bounds__(nthds_per_cta) __global__
         // result, but will help reduce the computation because
         // we only need to sort the mantissa part of the floating-point
         // numbers
-        temp_scores[targetIdx] = score_shift;
-        temp_idx[targetIdx] = -1;
-        conf_scores_gpu[targetIdx] = score_shift;
+        temp_scores[target_idx] = score_shift;
+        temp_idx[target_idx] = -1;
+        conf_scores_gpu[target_idx] = score_shift;
       } else {  // "Clear" scores lower than threshold
         if (static_cast<float>(score) > confidence_threshold) {
           // add shift of 1.0 to normalize the score values
@@ -201,11 +202,11 @@ __launch_bounds__(nthds_per_cta) __global__
           // result, but will help reduce the computation because
           // we only need to sort the mantissa part of the floating-point
           // numbers
-          temp_scores[targetIdx] = score + score_shift;
+          temp_scores[target_idx] = score + score_shift;
           if (static_cast<float>(score_shift) > 0.f &&
-              (temp_scores[targetIdx] >= clip_val))
-            temp_scores[targetIdx] = clip_val;
-          temp_idx[targetIdx] = cur_idx + i * numPredsPerBatch;
+              (temp_scores[target_idx] >= clip_val))
+            temp_scores[target_idx] = clip_val;
+          temp_idx[target_idx] = cur_idx + i * num_preds_per_batch;
         } else {
           // Set scores to 0
           // Set label = -1
@@ -215,9 +216,9 @@ __launch_bounds__(nthds_per_cta) __global__
           // result, but will help reduce the computation because
           // we only need to sort the mantissa part of the floating-point
           // numbers
-          temp_scores[targetIdx] = score_shift;
-          temp_idx[targetIdx] = -1;
-          conf_scores_gpu[targetIdx] = score_shift;
+          temp_scores[target_idx] = score_shift;
+          temp_idx[target_idx] = -1;
+          conf_scores_gpu[target_idx] = score_shift;
           // TODO(tizheng): HERE writing memory too many times
         }
       }
@@ -227,34 +228,34 @@ __launch_bounds__(nthds_per_cta) __global__
         d_offsets[offset_ct] = offset_ct * num_preds_per_class;
         // set the last element in d_offset
         if (blockIdx.x == 0 && threadIdx.x == 0)
-          d_offsets[num * num_classes] = num * numPredsPerBatch;
+          d_offsets[num * num_classes] = num * num_preds_per_batch;
       }
     }
   }
 }
 
 template <typename T_SCORE>
-void sortScoresPerClass_gpu(cudaStream_t stream,
-                            const int num,
-                            const int num_classes,
-                            const int num_preds_per_class,
-                            const int background_label_id,
-                            const float confidence_threshold,
-                            void* conf_scores_gpu,
-                            void* index_array_gpu,
-                            void* workspace,
-                            const int score_bits,
-                            const float score_shift) {
+void SortScoresPerClassGPU(cudaStream_t stream,
+                           const int num,
+                           const int num_classes,
+                           const int num_preds_per_class,
+                           const int background_label_id,
+                           const float confidence_threshold,
+                           void* conf_scores_gpu,
+                           void* index_array_gpu,
+                           void* workspace,
+                           const int score_bits,
+                           const float score_shift) {
   const int num_segments = num * num_classes;
   void* temp_scores = workspace;
-  const int arrayLen = num * num_classes * num_preds_per_class;
-  void* temp_idx = nextWorkspacePtr(reinterpret_cast<int8_t*>(temp_scores),
-                                    arrayLen * sizeof(T_SCORE));
-  void* d_offsets = nextWorkspacePtr(reinterpret_cast<int8_t*>(temp_idx),
-                                     arrayLen * sizeof(int));
+  const int array_len = num * num_classes * num_preds_per_class;
+  void* temp_idx = GetNextWorkspacePtr(reinterpret_cast<int8_t*>(temp_scores),
+                                       array_len * sizeof(T_SCORE));
+  void* d_offsets = GetNextWorkspacePtr(reinterpret_cast<int8_t*>(temp_idx),
+                                        array_len * sizeof(int));
   size_t cubOffsetSize = (num_segments + 1) * sizeof(int);
   void* cubWorkspace =
-      nextWorkspacePtr(reinterpret_cast<int8_t*>(d_offsets), cubOffsetSize);
+      GetNextWorkspacePtr(reinterpret_cast<int8_t*>(d_offsets), cubOffsetSize);
 
   const int BS = 512;
   const int GS = (num_classes * num_preds_per_class + BS - 1) / BS;
@@ -263,7 +264,7 @@ void sortScoresPerClass_gpu(cudaStream_t stream,
   // so we only need to sort the mantissa of floating-point numbers
   // since their sign bit and exponential bits are identical
   // we will subtract the 1.0 shift in gatherTopDetections()
-  prepareSortData<T_SCORE, BS>
+  PrepareSortData<T_SCORE, BS>
       <<<GS, BS, 0, stream>>>(num,
                               num_classes,
                               num_preds_per_class,
@@ -276,7 +277,7 @@ void sortScoresPerClass_gpu(cudaStream_t stream,
                               reinterpret_cast<int*>(d_offsets));
 
   size_t temp_storage_bytes =
-      cubSortPairsWorkspaceSize<T_SCORE, int>(arrayLen, num_segments);
+      CalcCubSortPairsWorkspaceSize<T_SCORE, int>(array_len, num_segments);
   size_t begin_bit = 0;
   size_t end_bit = sizeof(T_SCORE) * 8;
   if (sizeof(T_SCORE) == 2 && score_bits > 0 && score_bits <= 10) {
@@ -291,7 +292,7 @@ void sortScoresPerClass_gpu(cudaStream_t stream,
       reinterpret_cast<T_SCORE*>(conf_scores_gpu),
       reinterpret_cast<int*>(temp_idx),
       reinterpret_cast<int*>(index_array_gpu),
-      arrayLen,
+      array_len,
       num_segments,
       reinterpret_cast<int*>(d_offsets),
       reinterpret_cast<int*>(d_offsets) + 1,
@@ -305,7 +306,7 @@ void sortScoresPerClass_gpu(cudaStream_t stream,
  * allClassNMS
  * =========== */
 template <typename T_BBOX>
-__device__ float bboxSize(const Bbox<T_BBOX>& bbox, const bool normalized) {
+__device__ float CalcBboxSize(const Bbox<T_BBOX>& bbox, const bool normalized) {
   if (static_cast<float>(bbox.xmax) < static_cast<float>(bbox.xmin) ||
       static_cast<float>(bbox.ymax) < static_cast<float>(bbox.ymin)) {
     // If bbox is invalid (e.g. xmax < xmin or ymax < ymin), return 0.
@@ -324,9 +325,9 @@ __device__ float bboxSize(const Bbox<T_BBOX>& bbox, const bool normalized) {
 }
 
 template <typename T_BBOX>
-__device__ void intersectBbox(const Bbox<T_BBOX>& bbox1,
-                              const Bbox<T_BBOX>& bbox2,
-                              Bbox<T_BBOX>* intersect_bbox) {
+__device__ void CalcIntersectBbox(const Bbox<T_BBOX>& bbox1,
+                                  const Bbox<T_BBOX>& bbox2,
+                                  Bbox<T_BBOX>* intersect_bbox) {
   if (bbox2.xmin > bbox1.xmax || bbox2.xmax < bbox1.xmin ||
       bbox2.ymin > bbox1.ymax || bbox2.ymax < bbox1.ymin) {
     // Return [0, 0, 0, 0] if there is no intersection.
@@ -343,7 +344,7 @@ __device__ void intersectBbox(const Bbox<T_BBOX>& bbox1,
 }
 
 template <typename T_BBOX>
-__device__ Bbox<T_BBOX> getDiagonalMinMaxSortedBox(const Bbox<T_BBOX>& bbox1) {
+__device__ Bbox<T_BBOX> GetDiagonalMinMaxSortedBox(const Bbox<T_BBOX>& bbox1) {
   Bbox<T_BBOX> result;
   result.xmin = min(bbox1.xmin, bbox1.xmax);
   result.xmax = max(bbox1.xmin, bbox1.xmax);
@@ -354,22 +355,22 @@ __device__ Bbox<T_BBOX> getDiagonalMinMaxSortedBox(const Bbox<T_BBOX>& bbox1) {
 }
 
 template <typename T_BBOX>
-__device__ float jaccardOverlap(const Bbox<T_BBOX>& bbox1,
-                                const Bbox<T_BBOX>& bbox2,
-                                const bool normalized,
-                                const bool caffeSemantics) {
+__device__ float CalcJaccardOverlap(const Bbox<T_BBOX>& bbox1,
+                                    const Bbox<T_BBOX>& bbox2,
+                                    const bool normalized,
+                                    const bool caffe_semantics) {
   Bbox<T_BBOX> intersect_bbox;
 
-  Bbox<T_BBOX> localbbox1 = getDiagonalMinMaxSortedBox(bbox1);
-  Bbox<T_BBOX> localbbox2 = getDiagonalMinMaxSortedBox(bbox2);
+  Bbox<T_BBOX> localbbox1 = GetDiagonalMinMaxSortedBox(bbox1);
+  Bbox<T_BBOX> localbbox2 = GetDiagonalMinMaxSortedBox(bbox2);
 
-  intersectBbox(localbbox1, localbbox2, &intersect_bbox);
+  CalcIntersectBbox(localbbox1, localbbox2, &intersect_bbox);
 
   float intersect_width, intersect_height;
   // Only when using Caffe semantics, IOU calculation adds "1" to width and
   // height if bbox is not normalized.
   // https://github.com/weiliu89/caffe/blob/ssd/src/caffe/util/bbox_util.cpp#L92-L97
-  if (normalized || !caffeSemantics) {
+  if (normalized || !caffe_semantics) {
     intersect_width = static_cast<float>(intersect_bbox.xmax) -
                       static_cast<float>(intersect_bbox.xmin);
     intersect_height = static_cast<float>(intersect_bbox.ymax) -
@@ -384,8 +385,8 @@ __device__ float jaccardOverlap(const Bbox<T_BBOX>& bbox1,
   }
   if (intersect_width > 0 && intersect_height > 0) {
     float intersect_size = intersect_width * intersect_height;
-    float bbox1_size = bboxSize(localbbox1, normalized);
-    float bbox2_size = bboxSize(localbbox2, normalized);
+    float bbox1_size = CalcBboxSize(localbbox1, normalized);
+    float bbox2_size = CalcBboxSize(localbbox2, normalized);
     return intersect_size / (bbox1_size + bbox2_size - intersect_size);
   } else {
     return 0.;
@@ -393,23 +394,23 @@ __device__ float jaccardOverlap(const Bbox<T_BBOX>& bbox1,
 }
 
 template <typename T_SCORE, typename T_BBOX, int TSIZE>
-__global__ void allClassNMS_kernel(
+__global__ void AllClassNMSKernel(
     const int num,
     const int num_classes,
     const int num_preds_per_class,
     const int top_k,
     const float nms_threshold,
     const bool share_location,
-    const bool isNormalized,
+    const bool is_normalized,
     T_BBOX* bbox_data,  // bbox_data should be float to preserve location
                         // information
-    T_SCORE* beforeNMS_scores,
-    int* beforeNMS_index_array,
-    T_SCORE* afterNMS_scores,
-    int* afterNMS_index_array,
-    bool flipXY,
+    T_SCORE* before_nms_scores,
+    int* before_nms_index_array,
+    T_SCORE* after_nms_scores,
+    int* after_nms_index_array,
+    bool flip_xy,
     const float score_shift,
-    bool caffeSemantics) {
+    bool caffe_semantics) {
   // __shared__ bool kept_bboxinfo_flag[CAFFE_CUDA_NUM_THREADS * TSIZE];
   extern __shared__ bool kept_bboxinfo_flag[];
 
@@ -438,7 +439,7 @@ __global__ void allClassNMS_kernel(
       if (item_idx < max_idx) {
         // Do not access data if it exceeds read boundary
         if (item_idx < max_read_idx) {
-          loc_bboxIndex[t] = beforeNMS_index_array[item_idx];
+          loc_bboxIndex[t] = before_nms_index_array[item_idx];
         } else {
           loc_bboxIndex[t] = -1;
         }
@@ -449,14 +450,14 @@ __global__ void allClassNMS_kernel(
                   ? (loc_bboxIndex[t] % num_preds_per_class + bbox_idx_offset)
                   : loc_bboxIndex[t];
 
-          loc_bbox[t].xmin = flipXY ? bbox_data[bbox_data_idx * 4 + 1]
-                                    : bbox_data[bbox_data_idx * 4 + 0];
-          loc_bbox[t].ymin = flipXY ? bbox_data[bbox_data_idx * 4 + 0]
-                                    : bbox_data[bbox_data_idx * 4 + 1];
-          loc_bbox[t].xmax = flipXY ? bbox_data[bbox_data_idx * 4 + 3]
-                                    : bbox_data[bbox_data_idx * 4 + 2];
-          loc_bbox[t].ymax = flipXY ? bbox_data[bbox_data_idx * 4 + 2]
-                                    : bbox_data[bbox_data_idx * 4 + 3];
+          loc_bbox[t].xmin = flip_xy ? bbox_data[bbox_data_idx * 4 + 1]
+                                     : bbox_data[bbox_data_idx * 4 + 0];
+          loc_bbox[t].ymin = flip_xy ? bbox_data[bbox_data_idx * 4 + 0]
+                                     : bbox_data[bbox_data_idx * 4 + 1];
+          loc_bbox[t].xmax = flip_xy ? bbox_data[bbox_data_idx * 4 + 3]
+                                     : bbox_data[bbox_data_idx * 4 + 2];
+          loc_bbox[t].ymax = flip_xy ? bbox_data[bbox_data_idx * 4 + 2]
+                                     : bbox_data[bbox_data_idx * 4 + 3];
           kept_bboxinfo_flag[cur_idx] = true;
         } else {
           kept_bboxinfo_flag[cur_idx] = false;
@@ -473,20 +474,20 @@ __global__ void allClassNMS_kernel(
     if (ref_item_idx < max_read_idx) {
       ref_bbox_idx =
           share_location
-              ? (beforeNMS_index_array[ref_item_idx] % num_preds_per_class +
+              ? (before_nms_index_array[ref_item_idx] % num_preds_per_class +
                  bbox_idx_offset)
-              : beforeNMS_index_array[ref_item_idx];
+              : before_nms_index_array[ref_item_idx];
     }
     while ((ref_bbox_idx != -1) && ref_item_idx < max_read_idx) {
       Bbox<T_BBOX> ref_bbox;
-      ref_bbox.xmin = flipXY ? bbox_data[ref_bbox_idx * 4 + 1]
-                             : bbox_data[ref_bbox_idx * 4 + 0];
-      ref_bbox.ymin = flipXY ? bbox_data[ref_bbox_idx * 4 + 0]
-                             : bbox_data[ref_bbox_idx * 4 + 1];
-      ref_bbox.xmax = flipXY ? bbox_data[ref_bbox_idx * 4 + 3]
-                             : bbox_data[ref_bbox_idx * 4 + 2];
-      ref_bbox.ymax = flipXY ? bbox_data[ref_bbox_idx * 4 + 2]
-                             : bbox_data[ref_bbox_idx * 4 + 3];
+      ref_bbox.xmin = flip_xy ? bbox_data[ref_bbox_idx * 4 + 1]
+                              : bbox_data[ref_bbox_idx * 4 + 0];
+      ref_bbox.ymin = flip_xy ? bbox_data[ref_bbox_idx * 4 + 0]
+                              : bbox_data[ref_bbox_idx * 4 + 1];
+      ref_bbox.xmax = flip_xy ? bbox_data[ref_bbox_idx * 4 + 3]
+                              : bbox_data[ref_bbox_idx * 4 + 2];
+      ref_bbox.ymax = flip_xy ? bbox_data[ref_bbox_idx * 4 + 2]
+                              : bbox_data[ref_bbox_idx * 4 + 3];
 
       // Eliminate shared memory RAW hazard
       __syncthreads();
@@ -496,8 +497,8 @@ __global__ void allClassNMS_kernel(
         const int item_idx = offset + cur_idx;
 
         if ((kept_bboxinfo_flag[cur_idx]) && (item_idx > ref_item_idx)) {
-          if (jaccardOverlap(
-                  ref_bbox, loc_bbox[t], isNormalized, caffeSemantics) >
+          if (CalcJaccardOverlap(
+                  ref_bbox, loc_bbox[t], is_normalized, caffe_semantics) >
               nms_threshold) {
             kept_bboxinfo_flag[cur_idx] = false;
           }
@@ -514,9 +515,9 @@ __global__ void allClassNMS_kernel(
       if (ref_item_idx < max_read_idx) {
         ref_bbox_idx =
             share_location
-                ? (beforeNMS_index_array[ref_item_idx] % num_preds_per_class +
+                ? (before_nms_index_array[ref_item_idx] % num_preds_per_class +
                    bbox_idx_offset)
-                : beforeNMS_index_array[ref_item_idx];
+                : before_nms_index_array[ref_item_idx];
       }
     }
 
@@ -532,11 +533,11 @@ __global__ void allClassNMS_kernel(
        * Set the bounding box index to -1
        */
       if (read_item_idx < max_idx) {
-        afterNMS_scores[write_item_idx] =
+        after_nms_scores[write_item_idx] =
             kept_bboxinfo_flag[cur_idx]
-                ? T_SCORE(beforeNMS_scores[read_item_idx])
+                ? T_SCORE(before_nms_scores[read_item_idx])
                 : T_SCORE(score_shift);
-        afterNMS_index_array[write_item_idx] =
+        after_nms_index_array[write_item_idx] =
             kept_bboxinfo_flag[cur_idx] ? loc_bboxIndex[t] : -1;
       }
     }
@@ -544,23 +545,23 @@ __global__ void allClassNMS_kernel(
 }
 
 template <typename T_SCORE, typename T_BBOX>
-void allClassNMS_gpu(cudaStream_t stream,
-                     const int num,
-                     const int num_classes,
-                     const int num_preds_per_class,
-                     const int top_k,
-                     const float nms_threshold,
-                     const bool share_location,
-                     const bool isNormalized,
-                     void* bbox_data,
-                     void* beforeNMS_scores,
-                     void* beforeNMS_index_array,
-                     void* afterNMS_scores,
-                     void* afterNMS_index_array,
-                     bool flipXY,
-                     const float score_shift,
-                     bool caffeSemantics) {
-#define P(tsize) allClassNMS_kernel<T_SCORE, T_BBOX, (tsize)>
+void AllClassNMSGPU(cudaStream_t stream,
+                    const int num,
+                    const int num_classes,
+                    const int num_preds_per_class,
+                    const int top_k,
+                    const float nms_threshold,
+                    const bool share_location,
+                    const bool is_normalized,
+                    void* bbox_data,
+                    void* before_nms_scores,
+                    void* before_nms_index_array,
+                    void* after_nms_scores,
+                    void* after_nms_index_array,
+                    bool flip_xy,
+                    const float score_shift,
+                    bool caffe_semantics) {
+#define P(tsize) AllClassNMSKernel<T_SCORE, T_BBOX, (tsize)>
 
   void (*kernel[8])(const int,
                     const int,
@@ -598,15 +599,15 @@ void allClassNMS_gpu(cudaStream_t stream,
       top_k,
       nms_threshold,
       share_location,
-      isNormalized,
+      is_normalized,
       reinterpret_cast<T_BBOX*>(bbox_data),
-      reinterpret_cast<T_SCORE*>(beforeNMS_scores),
-      reinterpret_cast<int*>(beforeNMS_index_array),
-      reinterpret_cast<T_SCORE*>(afterNMS_scores),
-      reinterpret_cast<int*>(afterNMS_index_array),
-      flipXY,
+      reinterpret_cast<T_SCORE*>(before_nms_scores),
+      reinterpret_cast<int*>(before_nms_index_array),
+      reinterpret_cast<T_SCORE*>(after_nms_scores),
+      reinterpret_cast<int*>(after_nms_index_array),
+      flip_xy,
       score_shift,
-      caffeSemantics);
+      caffe_semantics);
 
   PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
 }
@@ -616,20 +617,20 @@ void allClassNMS_gpu(cudaStream_t stream,
  * ================== */
 template <unsigned nthds_per_cta>
 __launch_bounds__(nthds_per_cta) __global__
-    void setUniformOffsets_kernel(const int num_segments,
-                                  const int offset,
-                                  int* d_offsets) {
+    void SetUniformOffsetsKernel(const int num_segments,
+                                 const int offset,
+                                 int* d_offsets) {
   const int idx = blockIdx.x * nthds_per_cta + threadIdx.x;
   if (idx <= num_segments) d_offsets[idx] = idx * offset;
 }
 
-void setUniformOffsets(cudaStream_t stream,
+void SetUniformOffsets(cudaStream_t stream,
                        const int num_segments,
                        const int offset,
                        int* d_offsets) {
   const int BS = 32;
   const int GS = (num_segments + 1 + BS - 1) / BS;
-  setUniformOffsets_kernel<BS>
+  SetUniformOffsetsKernel<BS>
       <<<GS, BS, 0, stream>>>(num_segments, offset, d_offsets);
 }
 
@@ -643,140 +644,140 @@ __device__ T_BBOX saturate(T_BBOX v) {
 
 template <typename T_BBOX, typename T_SCORE, unsigned nthds_per_cta>
 __launch_bounds__(nthds_per_cta) __global__
-    void gatherNMSOutputs_kernel(const bool shareLocation,
-                                 const int numImages,
-                                 const int numPredsPerClass,
-                                 const int numClasses,
-                                 const int topK,
-                                 const int keepTopK,
-                                 const int* indices,
-                                 const T_SCORE* scores,
-                                 const T_BBOX* bboxData,
-                                 int* numDetections,
-                                 T_BBOX* nmsedBoxes,
-                                 T_BBOX* nmsedScores,
-                                 T_BBOX* nmsedClasses,
-                                 int* nmsedIndices,
-                                 int* nmsedValidMask,
-                                 bool clipBoxes,
-                                 const T_SCORE scoreShift) {
-  if (keepTopK > topK) return;
+    void GatherNMSOutputsKernel(const bool share_location,
+                                const int num_images,
+                                const int num_preds_per_class,
+                                const int num_classes,
+                                const int top_k,
+                                const int keep_top_k,
+                                const int* indices,
+                                const T_SCORE* scores,
+                                const T_BBOX* bbox_data,
+                                int* num_detections,
+                                T_BBOX* nmsed_boxes,
+                                T_BBOX* nmsed_scores,
+                                T_BBOX* nmsed_classes,
+                                int* nmsed_indices,
+                                int* nmsed_valid_mask,
+                                bool clip_boxes,
+                                const T_SCORE score_shift) {
+  if (keep_top_k > top_k) return;
   for (int i = blockIdx.x * nthds_per_cta + threadIdx.x;
-       i < numImages * keepTopK;
+       i < num_images * keep_top_k;
        i += gridDim.x * nthds_per_cta) {
-    const int imgId = i / keepTopK;
-    const int detId = i % keepTopK;
-    const int offset = imgId * numClasses * topK;
+    const int imgId = i / keep_top_k;
+    const int detId = i % keep_top_k;
+    const int offset = imgId * num_classes * top_k;
     const int index = indices[offset + detId];
     const T_SCORE score = scores[offset + detId];
     if (index == -1) {
-      nmsedClasses[i] = -1;
-      nmsedScores[i] = 0;
-      nmsedBoxes[i * 4] = 0;
-      nmsedBoxes[i * 4 + 1] = 0;
-      nmsedBoxes[i * 4 + 2] = 0;
-      nmsedBoxes[i * 4 + 3] = 0;
-      nmsedIndices[i] = -1;
-      nmsedValidMask[i] = 0;
+      nmsed_classes[i] = -1;
+      nmsed_scores[i] = 0;
+      nmsed_boxes[i * 4] = 0;
+      nmsed_boxes[i * 4 + 1] = 0;
+      nmsed_boxes[i * 4 + 2] = 0;
+      nmsed_boxes[i * 4 + 3] = 0;
+      nmsed_indices[i] = -1;
+      nmsed_valid_mask[i] = 0;
     } else {
-      const int bboxOffset =
-          imgId *
-          (shareLocation ? numPredsPerClass : (numClasses * numPredsPerClass));
-      const int bboxId =
-          ((shareLocation ? (index % numPredsPerClass)
-                          : index % (numClasses * numPredsPerClass)) +
-           bboxOffset) *
+      const int bbox_offset =
+          imgId * (share_location ? num_preds_per_class
+                                  : (num_classes * num_preds_per_class));
+      const int bbox_id =
+          ((share_location ? (index % num_preds_per_class)
+                           : index % (num_classes * num_preds_per_class)) +
+           bbox_offset) *
           4;
-      nmsedClasses[i] = (index % (numClasses * numPredsPerClass)) /
-                        numPredsPerClass;  // label
-      nmsedScores[i] = score;              // confidence score
-      nmsedScores[i] = nmsedScores[i] - scoreShift;
-      const T_BBOX xMin = bboxData[bboxId];
-      const T_BBOX yMin = bboxData[bboxId + 1];
-      const T_BBOX xMax = bboxData[bboxId + 2];
-      const T_BBOX yMax = bboxData[bboxId + 3];
+      nmsed_classes[i] = (index % (num_classes * num_preds_per_class)) /
+                         num_preds_per_class;  // label
+      nmsed_scores[i] = score;                 // confidence score
+      nmsed_scores[i] = nmsed_scores[i] - score_shift;
+      const T_BBOX xMin = bbox_data[bbox_id];
+      const T_BBOX yMin = bbox_data[bbox_id + 1];
+      const T_BBOX xMax = bbox_data[bbox_id + 2];
+      const T_BBOX yMax = bbox_data[bbox_id + 3];
       // clipped bbox xmin
-      nmsedBoxes[i * 4] = clipBoxes ? saturate(xMin) : xMin;
+      nmsed_boxes[i * 4] = clip_boxes ? saturate(xMin) : xMin;
       // clipped bbox ymin
-      nmsedBoxes[i * 4 + 1] = clipBoxes ? saturate(yMin) : yMin;
+      nmsed_boxes[i * 4 + 1] = clip_boxes ? saturate(yMin) : yMin;
       // clipped bbox xmax
-      nmsedBoxes[i * 4 + 2] = clipBoxes ? saturate(xMax) : xMax;
+      nmsed_boxes[i * 4 + 2] = clip_boxes ? saturate(xMax) : xMax;
       // clipped bbox ymax
-      nmsedBoxes[i * 4 + 3] = clipBoxes ? saturate(yMax) : yMax;
-      nmsedIndices[i] = bboxId >> 2;
-      nmsedValidMask[i] = 1;
-      atomicAdd(&numDetections[i / keepTopK], 1);
+      nmsed_boxes[i * 4 + 3] = clip_boxes ? saturate(yMax) : yMax;
+      nmsed_indices[i] = bbox_id >> 2;
+      nmsed_valid_mask[i] = 1;
+      atomicAdd(&num_detections[i / keep_top_k], 1);
     }
   }
 }
 
 template <typename T_BBOX, typename T_SCORE>
-void gatherNMSOutputs_gpu(cudaStream_t stream,
-                          const bool shareLocation,
-                          const int numImages,
-                          const int numPredsPerClass,
-                          const int numClasses,
-                          const int topK,
-                          const int keepTopK,
-                          const void* indices,
-                          const void* scores,
-                          const void* bboxData,
-                          void* numDetections,
-                          void* nmsedBoxes,
-                          void* nmsedScores,
-                          void* nmsedClasses,
-                          void* nmsedIndices,
-                          void* nmsedValidMask,
-                          bool clipBoxes,
-                          const float scoreShift) {
+void GatherNMSOutputsGPU(cudaStream_t stream,
+                         const bool share_location,
+                         const int num_images,
+                         const int num_preds_per_class,
+                         const int num_classes,
+                         const int top_k,
+                         const int keep_top_k,
+                         const void* indices,
+                         const void* scores,
+                         const void* bbox_data,
+                         void* num_detections,
+                         void* nmsed_boxes,
+                         void* nmsed_scores,
+                         void* nmsed_classes,
+                         void* nmsed_indices,
+                         void* nmsed_valid_mask,
+                         bool clip_boxes,
+                         const float score_shift) {
   PADDLE_ENFORCE_GPU_SUCCESS(
-      cudaMemsetAsync(numDetections, 0, numImages * sizeof(int), stream));
+      cudaMemsetAsync(num_detections, 0, num_images * sizeof(int), stream));
   const int BS = 32;
   const int GS = 32;
-  gatherNMSOutputs_kernel<T_BBOX, T_SCORE, BS>
-      <<<GS, BS, 0, stream>>>(shareLocation,
-                              numImages,
-                              numPredsPerClass,
-                              numClasses,
-                              topK,
-                              keepTopK,
+  GatherNMSOutputsKernel<T_BBOX, T_SCORE, BS>
+      <<<GS, BS, 0, stream>>>(share_location,
+                              num_images,
+                              num_preds_per_class,
+                              num_classes,
+                              top_k,
+                              keep_top_k,
                               reinterpret_cast<const int*>(indices),
                               reinterpret_cast<const T_SCORE*>(scores),
-                              reinterpret_cast<const T_BBOX*>(bboxData),
-                              reinterpret_cast<int*>(numDetections),
-                              reinterpret_cast<T_BBOX*>(nmsedBoxes),
-                              reinterpret_cast<T_BBOX*>(nmsedScores),
-                              reinterpret_cast<T_BBOX*>(nmsedClasses),
-                              reinterpret_cast<int*>(nmsedIndices),
-                              reinterpret_cast<int*>(nmsedValidMask),
-                              clipBoxes,
-                              T_SCORE(scoreShift));
+                              reinterpret_cast<const T_BBOX*>(bbox_data),
+                              reinterpret_cast<int*>(num_detections),
+                              reinterpret_cast<T_BBOX*>(nmsed_boxes),
+                              reinterpret_cast<T_BBOX*>(nmsed_scores),
+                              reinterpret_cast<T_BBOX*>(nmsed_classes),
+                              reinterpret_cast<int*>(nmsed_indices),
+                              reinterpret_cast<int*>(nmsed_valid_mask),
+                              clip_boxes,
+                              T_SCORE(score_shift));
 
   PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
 }
 
 template <typename T_SCORE>
-void sortScoresPerImage_gpu(cudaStream_t stream,
-                            const int num_images,
-                            const int num_items_per_image,
-                            void* unsorted_scores,
-                            void* unsorted_bbox_indices,
-                            void* sorted_scores,
-                            void* sorted_bbox_indices,
-                            void* workspace,
-                            int score_bits) {
+void SortScoresPerImageGPU(cudaStream_t stream,
+                           const int num_images,
+                           const int num_items_per_image,
+                           void* unsorted_scores,
+                           void* unsorted_bbox_indices,
+                           void* sorted_scores,
+                           void* sorted_bbox_indices,
+                           void* workspace,
+                           int score_bits) {
   void* d_offsets = workspace;
-  void* cubWorkspace = nextWorkspacePtr(reinterpret_cast<int8_t*>(d_offsets),
-                                        (num_images + 1) * sizeof(int));
+  void* cubWorkspace = GetNextWorkspacePtr(reinterpret_cast<int8_t*>(d_offsets),
+                                           (num_images + 1) * sizeof(int));
 
-  setUniformOffsets(stream,
+  SetUniformOffsets(stream,
                     num_images,
                     num_items_per_image,
                     reinterpret_cast<int*>(d_offsets));
 
-  const int arrayLen = num_images * num_items_per_image;
+  const int array_len = num_images * num_items_per_image;
   size_t temp_storage_bytes =
-      cubSortPairsWorkspaceSize<T_SCORE, int>(arrayLen, num_images);
+      CalcCubSortPairsWorkspaceSize<T_SCORE, int>(array_len, num_images);
   size_t begin_bit = 0;
   size_t end_bit = sizeof(T_SCORE) * 8;
   if (sizeof(T_SCORE) == 2 && score_bits > 0 && score_bits <= 10) {
@@ -790,7 +791,7 @@ void sortScoresPerImage_gpu(cudaStream_t stream,
       reinterpret_cast<T_SCORE*>(sorted_scores),
       reinterpret_cast<int*>(unsorted_bbox_indices),
       reinterpret_cast<int*>(sorted_bbox_indices),
-      arrayLen,
+      array_len,
       num_images,
       reinterpret_cast<int*>(d_offsets),
       reinterpret_cast<int*>(d_offsets) + 1,
@@ -801,130 +802,133 @@ void sortScoresPerImage_gpu(cudaStream_t stream,
 }
 
 template <typename T>
-void nmsInference(cudaStream_t stream,
-                  const int N,
-                  const int perBatchBoxesSize,
-                  const int perBatchScoresSize,
-                  const bool shareLocation,
-                  const int backgroundLabelId,
-                  const int numPredsPerClass,
-                  const int numClasses,
-                  const int topK,
-                  const int keepTopK,
-                  const float scoreThreshold,
-                  const float iouThreshold,
-                  const void* locData,
-                  const void* confData,
-                  void* keepCount,
-                  void* nmsedBoxes,
-                  void* nmsedScores,
-                  void* nmsedClasses,
-                  void* nmsedIndices,
-                  void* nmsedValidMask,
-                  void* workspace,
-                  bool isNormalized,
-                  bool confSigmoid,
-                  bool clipBoxes,
-                  int scoreBits,
-                  bool caffeSemantics) {
+void InferNMS(cudaStream_t stream,
+              const int N,
+              const int per_batch_boxes_size,
+              const int per_batch_scores_size,
+              const bool share_location,
+              const int background_label_id,
+              const int num_preds_per_class,
+              const int num_classes,
+              const int top_k,
+              const int keep_top_k,
+              const float score_threshold,
+              const float iou_threshold,
+              const void* loc_data,
+              const void* conf_data,
+              void* keep_count,
+              void* nmsed_boxes,
+              void* nmsed_scores,
+              void* nmsed_classes,
+              void* nmsed_indices,
+              void* nmsed_valid_mask,
+              void* workspace,
+              bool is_normalized,
+              bool conf_sigmoid,
+              bool clip_boxes,
+              int score_bits,
+              bool caffe_semantics) {
   PADDLE_ENFORCE_EQ(
-      shareLocation,
+      share_location,
       true,
-      phi::errors::Fatal("shareLocation=false is not supported."));
-  size_t bboxDataSize = detectionForwardBBoxDataSize<T>(N, perBatchBoxesSize);
-  void* bboxDataRaw = workspace;
+      phi::errors::Unimplemented("share_location=false is not supported."));
+  size_t bbox_dataSize =
+      Calc_detectionForwardBBoxDataSize<T>(N, per_batch_boxes_size);
+  void* bbox_dataRaw = workspace;
   PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(
-      bboxDataRaw, locData, bboxDataSize, cudaMemcpyDeviceToDevice, stream));
-  void* bboxData = bboxDataRaw;
+      bbox_dataRaw, loc_data, bbox_dataSize, cudaMemcpyDeviceToDevice, stream));
+  void* bbox_data = bbox_dataRaw;
 
-  const int numScores = N * perBatchScoresSize;
-  size_t totalScoresSize = detectionForwardPreNMSSize<T>(N, perBatchScoresSize);
+  const int numScores = N * per_batch_scores_size;
+  size_t totalScoresSize =
+      CalcDetectionForwardPreNMSSize<T>(N, per_batch_scores_size);
   void* scores =
-      nextWorkspacePtr(reinterpret_cast<int8_t*>(bboxData), bboxDataSize);
+      GetNextWorkspacePtr(reinterpret_cast<int8_t*>(bbox_data), bbox_dataSize);
   PADDLE_ENFORCE_GPU_SUCCESS(cudaMemcpyAsync(
-      scores, confData, totalScoresSize, cudaMemcpyDeviceToDevice, stream));
+      scores, conf_data, totalScoresSize, cudaMemcpyDeviceToDevice, stream));
 
-  size_t indicesSize = detectionForwardPreNMSSize<int>(N, perBatchScoresSize);
+  size_t indicesSize =
+      CalcDetectionForwardPreNMSSize<int>(N, per_batch_scores_size);
   void* indices =
-      nextWorkspacePtr(reinterpret_cast<int8_t*>(scores), totalScoresSize);
+      GetNextWorkspacePtr(reinterpret_cast<int8_t*>(scores), totalScoresSize);
 
   size_t postNMSScoresSize =
-      detectionForwardPostNMSSize<T>(N, numClasses, topK);
-  size_t postNMSIndicesSize = detectionForwardPostNMSSize<int>(
-      N, numClasses, topK);  // indices are full int32
+      CalcDetectionForwardPostNMSSize<T>(N, num_classes, top_k);
+  size_t postNMSIndicesSize = CalcDetectionForwardPostNMSSize<int>(
+      N, num_classes, top_k);  // indices are full int32
   void* postNMSScores =
-      nextWorkspacePtr(reinterpret_cast<int8_t*>(indices), indicesSize);
-  void* postNMSIndices = nextWorkspacePtr(
+      GetNextWorkspacePtr(reinterpret_cast<int8_t*>(indices), indicesSize);
+  void* postNMSIndices = GetNextWorkspacePtr(
       reinterpret_cast<int8_t*>(postNMSScores), postNMSScoresSize);
 
-  void* sortingWorkspace = nextWorkspacePtr(
+  void* sortingWorkspace = GetNextWorkspacePtr(
       reinterpret_cast<int8_t*>(postNMSIndices), postNMSIndicesSize);
   // Sort the scores so that the following NMS could be applied.
-  float scoreShift = 0.f;
-  sortScoresPerClass_gpu<T>(stream,
-                            N,
-                            numClasses,
-                            numPredsPerClass,
-                            backgroundLabelId,
-                            scoreThreshold,
-                            scores,
-                            indices,
-                            sortingWorkspace,
-                            scoreBits,
-                            scoreShift);
+  float score_shift = 0.f;
+  SortScoresPerClassGPU<T>(stream,
+                           N,
+                           num_classes,
+                           num_preds_per_class,
+                           background_label_id,
+                           score_threshold,
+                           scores,
+                           indices,
+                           sortingWorkspace,
+                           score_bits,
+                           score_shift);
 
   // This is set to true as the input bounding boxes are of the format [ymin,
   // xmin, ymax, xmax]. The default implementation assumes [xmin, ymin, xmax,
   // ymax]
-  bool flipXY = true;
+  bool flip_xy = true;
   // NMS
-  allClassNMS_gpu<T, T>(stream,
-                        N,
-                        numClasses,
-                        numPredsPerClass,
-                        topK,
-                        iouThreshold,
-                        shareLocation,
-                        isNormalized,
-                        bboxData,
-                        scores,
-                        indices,
-                        postNMSScores,
-                        postNMSIndices,
-                        flipXY,
-                        scoreShift,
-                        caffeSemantics);
+  AllClassNMSGPU<T, T>(stream,
+                       N,
+                       num_classes,
+                       num_preds_per_class,
+                       top_k,
+                       iou_threshold,
+                       share_location,
+                       is_normalized,
+                       bbox_data,
+                       scores,
+                       indices,
+                       postNMSScores,
+                       postNMSIndices,
+                       flip_xy,
+                       score_shift,
+                       caffe_semantics);
 
   // Sort the bounding boxes after NMS using scores
-  sortScoresPerImage_gpu<T>(stream,
-                            N,
-                            numClasses * topK,
-                            postNMSScores,
-                            postNMSIndices,
-                            scores,
-                            indices,
-                            sortingWorkspace,
-                            scoreBits);
+  SortScoresPerImageGPU<T>(stream,
+                           N,
+                           num_classes * top_k,
+                           postNMSScores,
+                           postNMSIndices,
+                           scores,
+                           indices,
+                           sortingWorkspace,
+                           score_bits);
 
   // Gather data from the sorted bounding boxes after NMS
-  gatherNMSOutputs_gpu<T, T>(stream,
-                             shareLocation,
-                             N,
-                             numPredsPerClass,
-                             numClasses,
-                             topK,
-                             keepTopK,
-                             indices,
-                             scores,
-                             bboxData,
-                             keepCount,
-                             nmsedBoxes,
-                             nmsedScores,
-                             nmsedClasses,
-                             nmsedIndices,
-                             nmsedValidMask,
-                             clipBoxes,
-                             scoreShift);
+  GatherNMSOutputsGPU<T, T>(stream,
+                            share_location,
+                            N,
+                            num_preds_per_class,
+                            num_classes,
+                            top_k,
+                            keep_top_k,
+                            indices,
+                            scores,
+                            bbox_data,
+                            keep_count,
+                            nmsed_boxes,
+                            nmsed_scores,
+                            nmsed_classes,
+                            nmsed_indices,
+                            nmsed_valid_mask,
+                            clip_boxes,
+                            score_shift);
 }
 
 template <typename T, typename Context>
@@ -951,7 +955,7 @@ void MultiClassNMSKernel(const Context& ctx,
                       (nms_top_k <= 4096) && (keep_top_k >= 0) &&
                       (nms_eta == 1.0) && !has_roisnum;
   if (!is_supported) {
-    VLOG(3)
+    VLOG(6)
         << "This configuration is not supported by GPU kernel. Falling back to "
            "CPU kernel. "
            "Expect (score_size == 3) && (nms_top_k >= 0) && (nms_top_k <= 4096)"
@@ -1064,44 +1068,44 @@ void MultiClassNMSKernel(const Context& ctx,
   ctx.template Alloc<T>(&nmsed_classes);
 
   auto workspace_size =
-      detectionInferenceWorkspaceSize<T>(share_location,
-                                         batch_size,
-                                         per_batch_boxes_size,
-                                         per_batch_scores_size,
-                                         num_classes,
-                                         num_priors,
-                                         nms_top_k);
+      CalcDetectionInferenceWorkspaceSize<T>(share_location,
+                                             batch_size,
+                                             per_batch_boxes_size,
+                                             per_batch_scores_size,
+                                             num_classes,
+                                             num_priors,
+                                             nms_top_k);
 
   DenseTensor workspace = DenseTensor();
   workspace.Resize({static_cast<int64_t>(workspace_size)});
   T* workspace_ptr = ctx.template Alloc<T>(&workspace);
 
-  nmsInference<T>(stream,
-                  batch_size,
-                  per_batch_boxes_size,
-                  per_batch_scores_size,
-                  share_location,
-                  background_label,
-                  num_priors,
-                  num_classes,
-                  nms_top_k,
-                  keep_top_k,
-                  score_threshold,
-                  nms_threshold,
-                  transformed_bboxes.data<T>(),
-                  transformed_scores.data<T>(),
-                  keep_count.data<int>(),
-                  nmsed_boxes.data<T>(),
-                  nmsed_scores.data<T>(),
-                  nmsed_classes.data<T>(),
-                  nmsed_indices.data<int>(),
-                  nmsed_valid_mask.data<int>(),
-                  workspace_ptr,
-                  normalized,
-                  false,
-                  false,
-                  0,
-                  true);
+  InferNMS<T>(stream,
+              batch_size,
+              per_batch_boxes_size,
+              per_batch_scores_size,
+              share_location,
+              background_label,
+              num_priors,
+              num_classes,
+              nms_top_k,
+              keep_top_k,
+              score_threshold,
+              nms_threshold,
+              transformed_bboxes.data<T>(),
+              transformed_scores.data<T>(),
+              keep_count.data<int>(),
+              nmsed_boxes.data<T>(),
+              nmsed_scores.data<T>(),
+              nmsed_classes.data<T>(),
+              nmsed_indices.data<int>(),
+              nmsed_valid_mask.data<int>(),
+              workspace_ptr,
+              normalized,
+              false,
+              false,
+              0,
+              true);
 
   // concat
   // out [N * M, 6]
