@@ -35,11 +35,6 @@ PHI_DECLARE_bool(cudnn_batchnorm_spatial_persistent);
 namespace phi {
 namespace fusion {
 
-template <typename T>
-using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
-template <typename T>
-using BatchNormParamType = typename CudnnDataType<T>::BatchNormParamType;
-
 template <typename T, typename Context>
 void FusedBatchNormActKernel(const Context &dev_ctx,
                              const DenseTensor &x,
@@ -56,6 +51,8 @@ void FusedBatchNormActKernel(const Context &dev_ctx,
                              DenseTensor *saved_mean,
                              DenseTensor *saved_variance,
                              DenseTensor *reserve_space) {
+using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
+using BatchNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 #if CUDNN_VERSION < 7401
   PADDLE_THROW(phi::errors::Unimplemented(
       "The fused_batch_norm_act operator is not supported on GPU "
