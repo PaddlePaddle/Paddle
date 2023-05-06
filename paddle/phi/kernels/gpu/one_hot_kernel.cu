@@ -40,43 +40,11 @@ __global__ void FillOutputKernel(const InT* p_in_data,
   }
 }
 
-template <typename DeviceContext, typename InT>
-struct OneHotV2OpCUDAFunctor {
-  const DenseTensor* in_;
-  DenseTensor* out_;
-  const DeviceContext& ctx_;
-  int depth_;
-
-  OneHotV2OpCUDAFunctor(const DenseTensor* in,
-                        DenseTensor* out,
-                        int depth,
-                        const DeviceContext& ctx)
-      : in_(in), out_(out), depth_(depth), ctx_(ctx) {}
-
-  template <typename OutT>
-  void apply() const {
-    auto* p_in_data = in_->data<InT>();
-    auto numel = in_->numel();
-    auto* p_out_data = ctx_.template Alloc<OutT>(out_);
-    auto stream = ctx_.stream();
-    funcs::set_constant(ctx_, out_, 0.0);
-
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx_, numel);
-
-    FillOutputKernel<<<config.block_per_grid,
-                       config.thread_per_block,
-                       0,
-                       stream>>>(p_in_data, p_out_data, numel, depth_);
-  }
-};
-
 template <typename T, typename Context>
 void OneHotKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   const Scalar& depth,
                   DenseTensor* out) {
-  DataType dtype = phi::DataType::FLOAT32;
-  bool allow_out_of_range = false;
   auto depth_v = depth.to<int>();
   auto out_dims = out->dims();
   if (out_dims[out_dims.size() - 1] == -1) {
@@ -84,8 +52,18 @@ void OneHotKernel(const Context& dev_ctx,
     out->Resize(out_dims);
   }
 
-  phi::VisitDataType(
-      dtype, OneHotV2OpCUDAFunctor<Context, T>(&x, out, depth_v, dev_ctx));
+  auto* p_in_data = x.data<T>();
+  auto numel = x.numel();
+  auto* p_out_data = dev_ctx.template Alloc<float>(out);
+  auto stream = dev_ctx.stream();
+  funcs::set_constant(dev_ctx, out, 0.0);
+
+  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);
+
+  FillOutputKernel<<<config.block_per_grid,
+                     config.thread_per_block,
+                     0,
+                     stream>>>(p_in_data, p_out_data, numel, depth_v);
 }
 
 }  // namespace phi

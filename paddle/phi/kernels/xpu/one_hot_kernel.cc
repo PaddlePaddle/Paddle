@@ -19,45 +19,23 @@
 #include "paddle/phi/core/utils/data_type.h"
 
 namespace phi {
-template <typename Context, typename InT>
-struct OneHotV2OpFunctor {
-  const DenseTensor* in_;
-  DenseTensor* out_;
-  int depth_;
-  const Context& ctx_;
-
-  OneHotV2OpFunctor(const DenseTensor* in,
-                    DenseTensor* out,
-                    int depth,
-                    const Context& ctx)
-      : in_(in), out_(out), depth_(depth), ctx_(ctx) {}
-
-  template <typename OutT>
-  void apply() const {
-    auto* p_in_data = in_->data<InT>();
-    auto numel = in_->numel();
-    auto* p_out_data = ctx_.template Alloc<float>(out_);
-    int r = xpu::one_hot<InT>(
-        ctx_.x_context(), p_in_data, p_out_data, numel, depth_, 1.0, 0.0);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "one_hot");
-  }
-};
-
 template <typename T, typename Context>
 void OneHotKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   const Scalar& depth,
                   DenseTensor* out) {
-  DataType dtype = phi::DataType::FLOAT32;
-  bool allow_out_of_range = false;
   auto depth_v = depth.to<int>();
   auto out_dims = out->dims();
   if (out_dims[out_dims.size() - 1] == -1) {
     out_dims[out_dims.size() - 1] = depth_v;
     out->Resize(out_dims);
   }
-  phi::VisitDataType(dtype,
-                     OneHotV2OpFunctor<Context, T>(&x, out, depth_v, dev_ctx));
+  auto* p_in_data = x.data<T>();
+  auto numel = x.numel();
+  auto* p_out_data = dev_ctx.template Alloc<float>(out);
+  int r = xpu::one_hot<T>(
+      dev_ctx.x_context(), p_in_data, p_out_data, numel, depth_v, 1.0, 0.0);
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "one_hot");
 }
 }  // namespace phi
 
