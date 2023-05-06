@@ -2337,6 +2337,8 @@ def _find_op_path_(
                     for name in op.desc.output_arg_names():
                         if name not in no_grad_set:
                             input_names.add(name)
+                else:
+                    relevant_op_flags[i] = False
             else:
                 relevant_op_flags[i] = False
 
@@ -2357,6 +2359,8 @@ def _find_op_path_(
                 for name in op.desc.input_arg_names():
                     if name not in no_grad_set:
                         output_names.add(name)
+            else:
+                relevant_op_flags[i] = False
         else:
             relevant_op_flags[i] = False
 
