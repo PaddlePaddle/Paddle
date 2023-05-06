@@ -50,7 +50,7 @@ void ExpandKernel(const Context& dev_ctx,
 
   out->Resize(make_ddim(out_new_dims));
   const float scale_0 = 0.0f;
-  const float scale_1 = 0.0f;
+  const float scale_1 = 1.0f;
   funcs::BroadcastDataOneDNNHandler<T> handler(dnnl::algorithm::binary_add,
                                                onednn_engine,
                                                dev_ctx.GetPlace(),
