@@ -24,6 +24,7 @@ template <class ConcreteTrait>
 class OpTraitBase;
 template <typename ConcreteInterface>
 class OpInterfaceBase;
+class Program;
 
 class alignas(8) Operation final {
  public:
@@ -34,7 +35,8 @@ class alignas(8) Operation final {
   static Operation *create(const std::vector<ir::OpResult> &inputs,
                            const std::vector<ir::Type> &output_types,
                            ir::DictionaryAttribute attribute,
-                           ir::OpInfo op_info);
+                           ir::OpInfo op_info,
+                           ir::Program *parent_program);
 
   void destroy();
 
@@ -49,6 +51,8 @@ class alignas(8) Operation final {
   uint32_t num_results() const { return num_results_; }
 
   uint32_t num_operands() const { return num_operands_; }
+
+  std::string op_name() const;
 
   template <typename T>
   T dyn_cast() const {
@@ -65,11 +69,14 @@ class alignas(8) Operation final {
     return op_info_.HasInterface<Interface>();
   }
 
+  Program *parent_program() const { return parent_program_; }
+
  private:
   Operation(uint32_t num_results,
             uint32_t num_operands,
             ir::DictionaryAttribute attribute,
-            ir::OpInfo op_info);
+            ir::OpInfo op_info,
+            ir::Program *parent_program);
 
   template <typename T, typename Enabler = void>
   struct CastUtil {
@@ -99,6 +106,8 @@ class alignas(8) Operation final {
   uint32_t num_results_ = 0;
 
   uint32_t num_operands_ = 0;
+
+  ir::Program *parent_program_{nullptr};
 };
 
 }  // namespace ir

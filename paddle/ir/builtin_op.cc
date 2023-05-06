@@ -12,29 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include "paddle/ir/dialect.h"
+#include "paddle/ir/builtin_op.h"
 
 namespace ir {
-///
-/// \brief Built-in Dialect: automatically registered into global IrContext,
-/// all built-in types defined in builtin_type.h will be registered in this
-/// Dialect.
-///
-class BuiltinDialect : public ir::Dialect {
- public:
-  explicit BuiltinDialect(ir::IrContext *context);
-  ///
-  /// \brief Each Dialect needs to provide a name function to return the name of
-  /// the Dialect.
-  ///
-  /// \return The name of this Dialect.
-  ///
-  static const char *name() { return "Builtin"; }
+const char *GetParameterOp::attributes_name_[] = {"parameter_name"};
 
- private:
-  void initialize();
-};
+const char *SetParameterOp::attributes_name_[] = {"parameter_name"};
 
 }  // namespace ir

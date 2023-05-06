@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/ir/operation.h"
+#include "paddle/ir/dialect.h"
+#include "paddle/ir/program.h"
 #include "paddle/ir/utils.h"
 
 namespace ir {
@@ -22,7 +24,8 @@ namespace ir {
 Operation *Operation::create(const std::vector<ir::OpResult> &inputs,
                              const std::vector<ir::Type> &output_types,
                              ir::DictionaryAttribute attribute,
-                             ir::OpInfo op_info) {
+                             ir::OpInfo op_info,
+                             ir::Program *parent_program = nullptr) {
   // 1. Calculate the required memory size for OpResults + Operation +
   // OpOperands.
   uint32_t num_results = output_types.size();
@@ -52,8 +55,8 @@ Operation *Operation::create(const std::vector<ir::OpResult> &inputs,
     }
   }
   // 3.2. Construct Operation.
-  Operation *op =
-      new (base_ptr) Operation(num_results, num_operands, attribute, op_info);
+  Operation *op = new (base_ptr)
+      Operation(num_results, num_operands, attribute, op_info, parent_program);
   base_ptr += sizeof(Operation);
   // 3.3. Construct OpOperands.
   if ((reinterpret_cast<uintptr_t>(base_ptr) & 0x7) != 0) {
@@ -64,6 +67,9 @@ Operation *Operation::create(const std::vector<ir::OpResult> &inputs,
     base_ptr += sizeof(detail::OpOperandImpl);
   }
   VLOG(4) << "Construct an Operation: " << op->print();
+  if (parent_program) {
+    parent_program->InsertOp(op);
+  }
   return op;
 }
 
@@ -118,14 +124,16 @@ void Operation::destroy() {
 Operation::Operation(uint32_t num_results,
                      uint32_t num_operands,
                      ir::DictionaryAttribute attribute,
-                     ir::OpInfo op_info) {
-  if (!attribute) {
+                     ir::OpInfo op_info,
+                     ir::Program *parent_program) {
+  if (op_info.impl()->AttributeNum() != 0 && !attribute) {
     throw("unexpected null attribute dictionary");
   }
   num_results_ = num_results;
   num_operands_ = num_operands;
   attribute_ = attribute;
   op_info_ = op_info;
+  parent_program_ = parent_program;
 }
 
 ir::OpResult Operation::GetResultByIndex(uint32_t index) {
@@ -171,6 +179,11 @@ std::string Operation::print() {
   }
   result << ")";
   return result.str();
+}
+
+std::string Operation::op_name() const {
+  return op_info_.impl()->dialect()->name() + "." +
+         std::string(op_info_.impl()->name());
 }
 
 }  // namespace ir
