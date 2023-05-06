@@ -750,6 +750,9 @@ struct PD_INFER_DECL AnalysisConfig {
   void EnableTensorRtInspector();
   bool tensorrt_inspector_enabled() { return trt_use_inspector_; }
 
+  void EnableTensorRtSparseWeights();
+  bool tensorrt_sparse_weights_enabled() { return trt_use_sparse_weights_; }
+
   void EnableDlnne(
       int min_subgraph_size = 3,
       int max_batch_size = 1,

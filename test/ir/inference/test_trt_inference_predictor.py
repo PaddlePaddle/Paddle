@@ -308,6 +308,13 @@ def run_infer(model_path):
     backend.load(conf)
     backend.predict()
 
+    # run inference predictor, enable trt sparse weights
+    conf.enable_tune = False
+    conf.enable_trt_sparse_weight = True
+    backend = BackendPaddle()
+    backend.load(conf)
+    backend.predict()
+
 
 class ConvBNLayer(paddle.nn.Layer):
     def __init__(

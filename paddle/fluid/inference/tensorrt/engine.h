@@ -754,6 +754,7 @@ class TensorRTEngine {
 #endif
   std::mutex mutex_;
   bool use_inspector_;
+  bool use_sparse_weights_{false};
 
  public:
   thread_local static int predictor_id_per_thread;
