@@ -1266,7 +1266,7 @@ __device__ __forceinline__ void ReadDataBc(
   }
 #pragma unroll
   for (int idx = 0; idx < read_lens; ++idx) {
-    std::get<Index>(dst[idx]) = in_temp[idx];
+    std::get<Index>(dst[idx]) = in_temp[0];
   }
 }
 
