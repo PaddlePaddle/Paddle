@@ -123,14 +123,21 @@ static std::vector<int64_t> get_unsqueeze_dims(
   auto origin_dims = origin.shape();
   auto total_shape_size = origin_dims.size() + axis.size();
   std::vector<int64_t> result;
-  int j = 0, k = 0;
+  size_t j = 0, k = 0;
   for (size_t i = 0; i < total_shape_size; ++i) {
     std::cout << "i = " << i << std::endl;
-    if (axis[j] == int64_t(i)) {
+    if (j < axis.size() && axis[j] == int64_t(i)) {
       std::cout << "axis[" << j << "] = " << axis[j] << std::endl;
       result.push_back(1);
       j++;
     } else {
+      PADDLE_ENFORCE_LT(
+          k,
+          origin_dims.size(),
+          platform::errors::OutOfRange("Your index [%lu] exceeds the number of "
+                                       "elements in origin_dims[%lu].",
+                                       k,
+                                       origin_dims.size()));
       std::cout << "origin_dims[" << k << "]" << origin_dims[k] << std::endl;
       result.push_back(origin_dims[k]);
       k++;
