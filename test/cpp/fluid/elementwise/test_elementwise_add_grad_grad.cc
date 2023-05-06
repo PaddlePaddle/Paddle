@@ -14,10 +14,10 @@
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/elementwise/test_elementwise_op_grad_grad.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "test/cpp/fluid/elementwise/test_elementwise_op_grad_grad.h"
 
 USE_OP_ITSELF(elementwise_add);
 PD_DECLARE_KERNEL(add_double_grad, CPU, ALL_LAYOUT);
