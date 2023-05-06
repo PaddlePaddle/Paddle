@@ -1032,10 +1032,10 @@ class TestStrideSliceFP16Op(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_dygraph=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad({'Input'}, 'Out', check_dygraph=True)
+        self.check_grad({'Input'}, 'Out')
 
     def initTestCase(self):
         self.input = np.random.rand(100)
@@ -1069,10 +1069,10 @@ class TestStrideSliceBF16Op(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_dygraph=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad({'Input'}, 'Out', check_dygraph=True)
+        self.check_grad({'Input'}, 'Out')
 
     def initTestCase(self):
         self.input = np.random.rand(100)
