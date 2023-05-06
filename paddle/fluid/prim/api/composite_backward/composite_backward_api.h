@@ -377,29 +377,7 @@ void sum_grad(const Tensor& x,
         }
       }
       auto out_grad_shape = get_unsqueeze_dims(out_grad, axis_);
-      std::cout << "out_grad = [";
-      for (size_t i = 0; i < phi::vectorize<int64_t>(out_grad.dims()).size();
-           ++i) {
-        std::cout << out_grad.dims()[i] << ",";
-      }
-      std::cout << "]" << std::endl;
-      std::cout << "shape = [";
-      for (size_t i = 0; i < out_grad_shape.size(); ++i) {
-        std::cout << out_grad_shape[i] << ",";
-      }
-      std::cout << "]" << std::endl;
       auto out_grad_ = reshape<T>(out_grad, out_grad_shape);
-      std::cout << "out_grad_ = [";
-      for (size_t i = 0; i < phi::vectorize<int64_t>(out_grad_.dims()).size();
-           ++i) {
-        std::cout << out_grad_.dims()[i] << ",";
-      }
-      std::cout << "]" << std::endl;
-      std::cout << "x_dim = [";
-      for (size_t i = 0; i < x_dim.size(); ++i) {
-        std::cout << x_dim[i] << ",";
-      }
-      std::cout << "]" << std::endl;
       x_grad_tmp = out_grad_.expand(IntArray(x_dim));
     } else {
       x_grad_tmp = out_grad.expand(IntArray(x_dim));
