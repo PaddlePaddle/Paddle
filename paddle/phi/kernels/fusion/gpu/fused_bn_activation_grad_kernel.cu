@@ -52,8 +52,8 @@ void FusedBatchNormActGradKernel(const Context &dev_ctx,
                                  DenseTensor *x_grad,
                                  DenseTensor *scale_grad,
                                  DenseTensor *bias_grad) {
-  using CudnnDataType = phi::backends::gpu::CudnnDataType;
-  using BatchNormParamType = typename CudnnDataType::BatchNormParamType;
+  using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
+  using BatchNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 #if CUDNN_VERSION < 7401
   PADDLE_THROW(phi::errors::Unimplemented(
       "The fused_batch_norm_act operator is not supported on GPU "
