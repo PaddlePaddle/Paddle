@@ -100,6 +100,7 @@ list(
   skip_merge_layernorm_op.cc
   generic_and_custom_plugin_creater.cc
   fused_lookup_tables_op.cc
+  lookup_table_op.cc
   elementwiseadd_transpose_op.cc
   skip_groupnorm_act_op.cc
   preln_groupnorm_act_op.cc

@@ -24,16 +24,16 @@ limitations under the License. */
 namespace phi {
 
 template <typename T, typename Context>
-void UniformRawKernel(const Context &dev_ctx,
-                      const IntArray &shape,
-                      DataType dtype,
-                      const Scalar &min,
-                      const Scalar &max,
-                      int seed,
-                      int diag_num,
-                      int diag_step,
-                      float diag_val,
-                      DenseTensor *out) {
+void UniformKernel(const Context &dev_ctx,
+                   const IntArray &shape,
+                   DataType dtype,
+                   const Scalar &min,
+                   const Scalar &max,
+                   int seed,
+                   DenseTensor *out) {
+  int diag_num = 0;
+  int diag_step = 0;
+  float diag_val = 0.0f;
   out->Resize(phi::make_ddim(shape.GetData()));
   T *data = dev_ctx.template Alloc<T>(out);
   int64_t size = out->numel();
@@ -76,5 +76,4 @@ void UniformRawKernel(const Context &dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(uniform_raw, XPU, ALL_LAYOUT, phi::UniformRawKernel, float) {
-}
+PD_REGISTER_KERNEL(uniform, XPU, ALL_LAYOUT, phi::UniformKernel, float) {}

@@ -39,6 +39,32 @@ namespace framework {
 namespace ir {
 namespace patterns {
 
+struct FusedMultiTransformerAssignPattern : public PatternBase {
+  FusedMultiTransformerAssignPattern(PDPattern* pattern,
+                                     const std::string& name_scope);
+  // declare operator node's name
+  PATTERN_DECL_NODE(assign);
+  // declare variable node's name
+  PATTERN_DECL_NODE(assign_out);
+};
+
+FusedMultiTransformerAssignPattern::FusedMultiTransformerAssignPattern(
+    PDPattern* pattern, const std::string& name_scope)
+    : PatternBase(pattern, name_scope, name_scope) {
+  auto* assign =
+      pattern->NewNode(assign_repr())
+          ->assert_is_op("assign")
+          ->assert_more([&](Node* node) {
+            auto pre_op_nodes = node->inputs[0]->inputs;
+            return pre_op_nodes.size() == 1 &&
+                   pre_op_nodes[0]->Op()->Type() == "fused_multi_transformer";
+          });
+  auto* assign_out =
+      pattern->NewNode(assign_out_repr())->assert_is_op_output("assign", "Out");
+
+  assign->LinksTo({assign_out});
+}
+
 struct FusedMultiTransformerPattern : public PatternBase {
   FusedMultiTransformerPattern(PDPattern* pattern,
                                const std::string& name_scope,
@@ -47,7 +73,6 @@ struct FusedMultiTransformerPattern : public PatternBase {
                                bool with_time_step,
                                bool with_seq_lengths,
                                bool with_src_mask);
-
   // declare operator node's name
   PATTERN_DECL_NODE(fused_mt);
   // declare variable node's name
@@ -234,44 +259,106 @@ FusedMultiTransformerPattern::FusedMultiTransformerPattern(
 }  // namespace patterns
 
 /*
-1. transpose and quantify the weights of fused_multi_transformer op from fp32 to
+1. Remove gather and assign op to reduce graphics memory consumption
+2. transpose and quantify the weights of fused_multi_transformer op from fp32 to
 int16
 */
-class FusedMultiTransformerXPUQuantPass : public FusePassBase {
+class FusedMultiTransformerXPUPass : public FusePassBase {
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
 
  private:
-  int ApplyImpl(ir::Graph* graph,
-                bool with_pre_caches,
-                bool with_rotary_pos_emb,
-                bool with_time_step,
-                bool with_seq_lengths,
-                bool with_src_mask) const;
+  /*
+  Origin subgraph:
+              fused_multi_transformer
+               |        |        |
+             assign   assign    ...
+               |        |        |
+             gather   gather    ...
 
-  const std::string name_scope_{"fused_multi_transformer_xpu_quant_pass"};
+  Fused subgraph:
+              fused_multi_transformer
+ */
+  void RemoveAssignGather(ir::Graph* graph) const;
+
+  /*
+  Origin subgraph:
+              fused_multi_transformer
+
+  Fused subgraph:
+              fused_multi_transformer_xpu
+ */
+  int FusedMultiTransformerXPUQuant(ir::Graph* graph,
+                                    bool with_pre_caches,
+                                    bool with_rotary_pos_emb,
+                                    bool with_time_step,
+                                    bool with_seq_lengths,
+                                    bool with_src_mask) const;
+
+  const std::string name_scope_{"fused_multi_transformer_xpu_pass"};
 };
 
-void FusedMultiTransformerXPUQuantPass::ApplyImpl(ir::Graph* graph) const {
+void FusedMultiTransformerXPUPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
-  VLOG(3) << "in FusedMultiTransformerXPUQuantPass::ApplyImpl";
+  VLOG(3) << "in FusedMultiTransformerXPUPass::ApplyImpl";
 
   int found_subgraph_count = 0;
+  RemoveAssignGather(graph);
   for (bool with_time_step : {true, false}) {
-    found_subgraph_count +=
-        ApplyImpl(graph, false, false, with_time_step, false, true);
+    found_subgraph_count += FusedMultiTransformerXPUQuant(
+        graph, false, false, with_time_step, false, true);
   }
   AddStatis(found_subgraph_count);
 }
 
-int FusedMultiTransformerXPUQuantPass::ApplyImpl(ir::Graph* graph,
-                                                 bool with_pre_caches,
-                                                 bool with_rotary_pos_emb,
-                                                 bool with_time_step,
-                                                 bool with_seq_lengths,
-                                                 bool with_src_mask) const {
+void FusedMultiTransformerXPUPass::RemoveAssignGather(ir::Graph* graph) const {
+  // detect assign + gather
+  GraphPatternDetector gpd;
+  patterns::FusedMultiTransformerAssignPattern pattern(gpd.mutable_pattern(),
+                                                       name_scope_);
+  int found_subgraph_count = 0;
+
+  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
+                     Graph* graph) {
+    VLOG(1) << "handle RemoveAssignGather";
+    GET_IR_NODE(assign);
+    GET_IR_NODE(assign_out);
+    // Assign_out may not link to gather, so we find gather by input name.
+    auto next_ops = FindOpNodeByInputName(graph, assign_out->Name());
+    if (next_ops.size() != 1 || next_ops[0]->Name() != "gather") return;
+    auto* gather = next_ops[0];
+
+    // "assign_out" is used in multi blocks. "assign_out" should be reserved.
+    auto* gather_index = gather->inputs[0];
+    auto* assign_in = assign->inputs[0];
+    auto* fused_multi_transformer = assign_in->inputs[0];
+    fused_multi_transformer->Op()->Rename(assign_in->Name(),
+                                          assign_out->Name());
+    fused_multi_transformer->Op()->SetInput("gather_index",
+                                            gather->Op()->Input("Index"));
+    fused_multi_transformer->Op()->SetAttr("gather_axis",
+                                           gather->Op()->GetAttr("axis"));
+    IR_NODE_LINK_TO(gather_index, fused_multi_transformer);
+    IR_NODE_LINK_TO(fused_multi_transformer, assign_out);
+
+    std::unordered_set<const Node*> delete_nodes{assign, assign_in, gather};
+    GraphSafeRemoveNodes(graph, delete_nodes);
+    found_subgraph_count++;
+  };
+
+  gpd(graph, handler);
+  AddStatis(found_subgraph_count);
+}
+
+int FusedMultiTransformerXPUPass::FusedMultiTransformerXPUQuant(
+    ir::Graph* graph,
+    bool with_pre_caches,
+    bool with_rotary_pos_emb,
+    bool with_time_step,
+    bool with_seq_lengths,
+    bool with_src_mask) const {
   GraphPatternDetector gpd;
   patterns::FusedMultiTransformerPattern pattern(gpd.mutable_pattern(),
                                                  name_scope_,
@@ -286,7 +373,7 @@ int FusedMultiTransformerXPUQuantPass::ApplyImpl(ir::Graph* graph,
   int found_subgraph_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* graph) {
-    VLOG(4) << "handle FusedMultiTransformerXPUQuantPass fuse";
+    VLOG(4) << "handle FusedMultiTransformerXPUQuant";
 
     GET_IR_NODE(x);
     GET_IR_NODE(ln_scale);
@@ -459,6 +546,13 @@ int FusedMultiTransformerXPUQuantPass::ApplyImpl(ir::Graph* graph,
     if (name_caches.count("CacheKV") > 0) {
       fused_mt_xpu_op_desc->SetInput("cache_kv", name_caches.at("CacheKV"));
     }
+    if (name_caches.count("gather_index") > 0) {
+      fused_mt_xpu_op_desc->SetInput("gather_index",
+                                     name_caches.at("gather_index"));
+    }
+    if (!fused_mt_xpu_op_desc->HasAttr("gather_axis")) {
+      fused_mt_xpu_op_desc->SetAttr("gather_axis", 0);
+    }
     if (pre_caches) {
       fused_mt_xpu_op_desc->SetInput("pre_caches", name_caches.at("PreCaches"));
     }
@@ -529,5 +623,5 @@ int FusedMultiTransformerXPUQuantPass::ApplyImpl(ir::Graph* graph,
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(fused_multi_transformer_xpu_quant_pass,
-              paddle::framework::ir::FusedMultiTransformerXPUQuantPass);
+REGISTER_PASS(fused_multi_transformer_xpu_pass,
+              paddle::framework::ir::FusedMultiTransformerXPUPass);

@@ -684,15 +684,37 @@ class PostTrainingQuantization:
                             op._set_attr("op_namescope", "skip_quant")
 
                 op_type = op.type
+                # skip quant form simular conv1d_transpose
+                if op_type == 'conv2d_transpose':
+                    in_name = op.input("Filter")[0]
+                    for _op in self._program.blocks[block_id].ops:
+                        var_name = utils._get_op_output_var_names(_op)
+                        if in_name in var_name:
+                            for name in utils._get_op_input_var_names(_op):
+                                if name not in persistable_var_names:
+                                    op._set_attr("op_namescope", "skip_quant")
+                                    _op._set_attr("op_namescope", "skip_quant")
                 if self._is_full_quantize and op_type not in list(
                     SUPPORT_QUANTIZATION_OP_DICT.keys()
                 ):
                     _logger.warning(
                         op_type + " is not supported for quantization."
                     )
-                is_conv1d_quant = (op_type == "unsqueeze2") and (
-                    utils._get_op_input_var_names(op)[0]
-                    in persistable_var_names
+                conv1d_persistable_var_names = []
+                for opname in persistable_var_names:
+                    if 'conv1d' in opname:
+                        conv1d_persistable_var_names.append(opname)
+
+                is_conv1d_quant = (
+                    (op_type == "unsqueeze2")
+                    and (
+                        utils._get_op_input_var_names(op)[0]
+                        in conv1d_persistable_var_names
+                    )
+                    and (
+                        utils._get_op_input_var_names(op)[0]
+                        in conv1d_persistable_var_names
+                    )
                 )
                 # For quantized ops, sample inputs and outputs
                 if (

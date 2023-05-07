@@ -45,6 +45,12 @@ class TypeId {
     return TypeId(&instance);
   }
 
+  TypeId(const TypeId &other) = default;
+
+  TypeId &operator=(const TypeId &other) = default;
+
+  const Storage *storage() const { return storage_; }
+
   ///
   /// \brief Comparison operations.
   ///
@@ -53,6 +59,9 @@ class TypeId {
   }
   inline bool operator!=(const TypeId &other) const {
     return !(*this == other);
+  }
+  inline bool operator<(const TypeId &other) const {
+    return storage_ < other.storage_;
   }
 
   ///

@@ -187,24 +187,14 @@ if(${len} GREATER_EQUAL 1)
       if(WITH_XPU)
         target_link_libraries(${test_name} xpulib)
       endif()
-      if(NOT
-         ("${test_name}" STREQUAL "c_broadcast_op_npu_test"
-          OR "${test_name}" STREQUAL "c_allreduce_sum_op_npu_test"
-          OR "${test_name}" STREQUAL "c_allreduce_max_op_npu_test"
-          OR "${test_name}" STREQUAL "c_reducescatter_op_npu_test"
-          OR "${test_name}" STREQUAL "c_allgather_op_npu_test"
-          OR "${test_name}" STREQUAL "send_v2_op_npu_test"
-          OR "${test_name}" STREQUAL "c_reduce_sum_op_npu_test"
-          OR "${test_name}" STREQUAL "recv_v2_op_npu_test"))
-        cc_test_run(
-          ${test_name}
-          COMMAND
-          ${test_name}
-          ARGS
-          ${test_arg}
-          DIR
-          ${CC_TESTS_DIR})
-      endif()
+      cc_test_run(
+        ${test_name}
+        COMMAND
+        ${test_name}
+        ARGS
+        ${test_arg}
+        DIR
+        ${CC_TESTS_DIR})
     elseif(WITH_TESTING AND NOT TEST ${test_name})
       add_test(NAME ${test_name} COMMAND ${CMAKE_COMMAND} -E echo CI skip
                                          ${test_name}.)
