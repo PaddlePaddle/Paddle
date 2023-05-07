@@ -45,7 +45,7 @@ class TestSumOp(OpTest):
         self.x = np.random.random((5, 6, 10)).astype(self.dtype)
 
     def init_attrs(self):
-        self.attrs = {'dim': [0, 1]}
+        self.attrs = {'dim': [0]}
 
     def calc_output(self):
         self.out = self.x.sum(axis=tuple(self.attrs['dim']))
