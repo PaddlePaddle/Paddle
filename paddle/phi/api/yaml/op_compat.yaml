@@ -419,6 +419,12 @@
   outputs :
     out : Out
 
+- op : coalesce_tensor
+  inputs :
+    {input : Input}
+  outputs :
+    {output : Output, fused_output : FusedOutput}
+
 - op : complex
   backward : complex_grad
   inputs :
