@@ -80,6 +80,8 @@ class TestCumprod(OpTest):
         self.x = (
             np.random.uniform(0.0, 0.5, self.shape).astype(self.val_dtype) + 0.5
         )
+        if self.dtype in [np.complex128, np.complex64]:
+            self.x = self.x + np.random.uniform(0.0, 0.5, self.shape) * 1j
         if zero_num > 0:
             zero_num = min(zero_num, self.x.size)
             shape = self.x.shape
@@ -97,28 +99,6 @@ class TestCumprod(OpTest):
             self.outputs = {'Out': self.out}
         self.attrs = {'dim': dim}
 
-    def init_grad_input_output(self, dim):
-        reshape_x = self.x.reshape(self.x.size)
-        self.grad_out = np.ones(self.x.size, self.val_dtype)
-        self.grad_x = np.zeros(self.x.size, self.val_dtype)
-        out_data = self.out.reshape(self.x.size)
-        if self.dtype == np.complex128 or self.dtype == np.complex64:
-            reshape_x = np.conj(reshape_x)
-            out_data = np.conj(out_data)
-        cumprod_grad(
-            reshape_x, out_data, self.grad_out, self.grad_x, self.shape, dim
-        )
-        if self.dtype == np.uint16:
-            self.grad_x = convert_float_to_uint16(
-                self.grad_x.reshape(self.shape)
-            )
-            self.grad_out = convert_float_to_uint16(
-                self.grad_out.reshape(self.shape)
-            )
-        else:
-            self.grad_x = self.grad_x.reshape(self.shape)
-            self.grad_out = self.grad_out.reshape(self.shape)
-
     # test forward.
     def test_check_output(self):
         for dim in range(-len(self.shape), len(self.shape)):
@@ -131,15 +111,12 @@ class TestCumprod(OpTest):
         for dim in range(-len(self.shape), len(self.shape)):
             for zero_num in self.zero_nums:
                 self.prepare_inputs_outputs_attrs(dim, zero_num)
-                self.init_grad_input_output(dim)
                 if self.dtype == np.float64:
                     self.check_grad(['X'], 'Out')
                 else:
                     self.check_grad(
                         ['X'],
                         'Out',
-                        user_defined_grads=[self.grad_x],
-                        user_defined_grad_outputs=[self.grad_out],
                     )
 
 
