@@ -406,8 +406,3 @@ class CoalesceTensorOp : public framework::OperatorWithKernel {
 DECLARE_INFER_SHAPE_FUNCTOR(coalesce_tensor,
                             CoalesceTensorInferShapeFunctor,
                             PD_INFER_META(phi::CoalesceTensorInferMeta));
-
-REGISTER_OPERATOR(coalesce_tensor,
-                  paddle::operators::CoalesceTensorOp,
-                  paddle::operators::CoalesceTensorOpMaker,
-                  CoalesceTensorInferShapeFunctor);
