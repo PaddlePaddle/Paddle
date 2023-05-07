@@ -117,7 +117,7 @@ class SliceInfo:
         return s
 
     def numel(self, shape):
-        return reduce(lambda x, y: x * y, shape)
+        return reduce(lambda x, y: x * y, shape, 1)
 
     def get_offset_stride(self, tensor_shape):
         for index in self.indexes:
@@ -185,7 +185,8 @@ class SliceInfo:
 
         for i in range(len(gather_tensor_shape)):
             if not (
-                value_dims_bd[i] == gather_tensor_shape[i]
+                len(value_dims_bd) == 0
+                or value_dims_bd[i] == gather_tensor_shape[i]
                 or value_dims_bd[i] == 1
             ):
                 raise ValueError(
@@ -282,7 +283,7 @@ def is_integer_or_scalar_tensor(ele):
     if isinstance(ele, int):
         return True
     elif isinstance(ele, Variable):
-        if len(ele.shape) == 1 and ele.shape[0] == 1:
+        if len(ele.shape) == 0:
             return True
     return False
 
@@ -573,13 +574,11 @@ def _getitem_impl_(var, item):
 
         out = reverse(out, axis=reverse_axes)
 
-    # Deal with cases when all axes are decreased.
-    # After slice, the shape of out is [1], which should have been [], but Paddle doesn't support scalar.
-    # In order to ensure the correctness of the final shape of out, one dimension of out needs to be decreased.
-    # For example:
-    # # x.shape: (2,3,4)
-    # out = x[0, 1, 1, None] # out.shape : (1)
-    if len(decrease_axes) == len(var.shape):
+    # NOTE(zoooo0820): When all axes are decreased, the output will be 1-D
+    # with FLAGS_set_to_1d=True. In this case, one `None` should be pop out,
+    # otherwise the output shape will be not correct.
+    set_to_1d = paddle.get_flags('FLAGS_set_to_1d')['FLAGS_set_to_1d']
+    if set_to_1d and len(decrease_axes) == len(var.shape):
         none_axes = none_axes[1:]
 
     if len(none_axes) > 0:
@@ -591,13 +590,6 @@ def _getitem_impl_(var, item):
             l = len([i for i in decrease_axes if i < axis])
             new_axis = axis - l
             none_axes[idx] = new_axis
-
-        # Deal with cases when all axes are decreased.
-        # After slice, the shape of out is [1], which should have been [], but Paddle doesn't support scalar.
-        # In order to ensure the correctness of the final shape of out, one dimension of out needs to be decreased.
-        # For example:
-        # # x.shape: (2,3,4)
-        # out = x[0, 1, 1, None] # out.shape : (1)
 
         from ..tensor import unsqueeze
 

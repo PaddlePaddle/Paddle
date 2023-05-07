@@ -20,6 +20,7 @@
 // Phi deps
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/core/macros.h"
 
 namespace egr {
 
@@ -133,10 +134,10 @@ class VariableCompatTensor
 
   bool initialized() const override { return IsInitialized(); }
 
-  void* AllocateFrom(phi::Allocator* allocator,
-                     phi::DataType dtype,
-                     size_t requested_size = 0,
-                     bool fake_alloc = false) override {
+  void* AllocateFrom(phi::Allocator* allocator UNUSED,
+                     phi::DataType dtype UNUSED,
+                     size_t requested_size UNUSED = 0,
+                     bool fake_alloc UNUSED = false) override {
     PADDLE_THROW(paddle::platform::errors::Unavailable(
         "VariableCompatTensor does not support `AllocateFrom` method."));
   }

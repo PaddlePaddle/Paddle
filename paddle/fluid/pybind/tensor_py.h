@@ -844,7 +844,7 @@ void _sliceDapper(const phi::DenseTensor *in,
 template <typename T>
 inline phi::DenseTensor *_sliceWrapper(const phi::DenseTensor &self,
                                        const phi::CPUContext &ctx,
-                                       py::object obj,
+                                       py::object obj UNUSED,
                                        int dim,
                                        int64_t start,
                                        int64_t slicelength) {
@@ -960,7 +960,6 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
   }
   bool is_gpu_tensor = platform::is_gpu_place(tensor.place());
   bool is_xpu_tensor = platform::is_xpu_place(tensor.place());
-  bool is_npu_tensor = platform::is_npu_place(tensor.place());
   bool is_custom_device_tensor = platform::is_custom_place(tensor.place());
   const auto &tensor_dims = tensor.dims();
   auto tensor_dtype = framework::TransToProtoVarType(tensor.dtype());
@@ -981,8 +980,7 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
   std::string py_dtype_str = details::TensorDTypeToPyDTypeStr(
       framework::TransToProtoVarType(tensor.dtype()));
 
-  if (!is_gpu_tensor && !is_xpu_tensor && !is_npu_tensor &&
-      !is_custom_device_tensor) {
+  if (!is_gpu_tensor && !is_xpu_tensor && !is_custom_device_tensor) {
     if (!need_deep_copy) {
       auto base = py::cast(std::move(tensor));
       return py::array(py::dtype(py_dtype_str.c_str()),

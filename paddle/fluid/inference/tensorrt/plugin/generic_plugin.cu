@@ -472,7 +472,7 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
                            cudaStream_t stream) TRT_NOEXCEPT {
   platform::CUDAPlace place(platform::GetCurrentDeviceId());
 
-  // [TODO]now generic plugin do not support FP16 and INT8 precision
+  // [TODO]now generic plugin do not support INT8 precision
   auto protoType2PhiType =
       [&](int proto_type,
           nvinfer1::DataType nv_dtype) -> std::pair<phi::DataType, int> {

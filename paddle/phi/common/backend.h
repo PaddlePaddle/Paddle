@@ -53,7 +53,6 @@ enum class Backend : uint8_t {
   // various acceleration devices' backends
   XPU,  // XPU currently does not exist at the same time as CUDA
   NPU,  // NPU currently does not exist at the same time as CUDA
-  MLU,  // MLU currently does not exist at the same time as CUDA
   IPU,
 
   // paddle kernel primitives backend

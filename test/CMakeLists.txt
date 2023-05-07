@@ -135,6 +135,15 @@ if(WITH_TESTING)
   endif()
 endif()
 
+if(WITH_CPP_DIST)
+  add_test(NAME test_paddle_lib
+           COMMAND ${PADDLE_BINARY_DIR}/test/paddle_lib/test_paddle_lib)
+  if(WITH_GPU)
+    add_test(NAME test_paddle_lib_gpu
+             COMMAND ${PADDLE_BINARY_DIR}/test/paddle_lib/test_paddle_lib_gpu)
+  endif()
+endif()
+
 get_property(test_srcs GLOBAL PROPERTY TEST_SRCS)
 get_property(test_names GLOBAL PROPERTY TEST_NAMES)
 

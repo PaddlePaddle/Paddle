@@ -457,6 +457,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
 
         for i in range(self._num_workers):
             indices_queue = multiprocessing.Queue()
+            indices_queue.cancel_join_thread()
             self._indices_queues.append(indices_queue)
             worker = multiprocessing.Process(
                 target=_worker_loop,

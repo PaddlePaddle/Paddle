@@ -51,9 +51,10 @@ if(CMAKE_COMPILER_IS_GNUCC)
   if(GCC_VERSION GREATER_EQUAL "12.0")
     file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/eigen/Complex.h.patch
          complex_header)
+    # See: [Why calling some `git` commands before `patch`?]
     set(EIGEN_PATCH_COMMAND
-        patch -d ${EIGEN_SOURCE_DIR}/Eigen/src/Core/arch/SSE/ <
-        ${complex_header})
+        git checkout -- . && git checkout ${EIGEN_TAG} && patch -Nd
+        ${EIGEN_SOURCE_DIR}/Eigen/src/Core/arch/SSE/ < ${complex_header})
   endif()
 endif()
 

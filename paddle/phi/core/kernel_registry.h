@@ -474,7 +474,7 @@ struct KernelRegistrar {
       variadic_kernel_unfold_marco,                                         \
       __VA_ARGS__);                                                         \
   void __PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout(        \
-      const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel)
+      const ::phi::KernelKey& kernel_key UNUSED, ::phi::Kernel* kernel UNUSED)
 #else
 /**
  * `template decltype(fn) fn` can work on gcc and clang,
@@ -1365,7 +1365,7 @@ struct KernelRegistrar {
     return 0;                                                               \
   }                                                                         \
   void __PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout(        \
-      const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel)
+      const ::phi::KernelKey& kernel_key UNUSED, ::phi::Kernel* kernel UNUSED)
 #else
 #define __PD_REGISTER_KERNEL_FOR_ALL_DTYPE(                                 \
     reg_type, kernel_name, backend, layout, kernel_fn)                      \

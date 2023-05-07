@@ -111,6 +111,7 @@ file(
   "gpu/*.cu.cc"
   "gpudnn/*.cu"
   "kps/*.cu"
+  "legacy/kps/*.cu"
   "selected_rows/gpu/*.cu"
   "sparse/gpu/*.cu"
   "strings/gpu/*.cu"
@@ -152,6 +153,8 @@ if(WITH_MKLDNN)
     kernel_cc
     "*.cc"
     "cpu/*.cc"
+    "legacy/*.cc"
+    "legacy/cpu/*.cc"
     "selected_rows/*.cc"
     "selected_rows/cpu/*.cc"
     "sparse/*.cc"
@@ -168,6 +171,8 @@ else()
     kernel_cc
     "*.cc"
     "cpu/*.cc"
+    "legacy/*.cc"
+    "legacy/cpu/*.cc"
     "selected_rows/*.cc"
     "selected_rows/cpu/*.cc"
     "sparse/*.cc"
@@ -178,7 +183,8 @@ else()
     "fusion/cpu/*.cc")
 endif()
 
-file(GLOB kernel_xpu "xpu/*.cc" "selected_rows/xpu/*.cc" "fusion/xpu/*.cc")
+file(GLOB kernel_xpu "xpu/*.cc" "legacy/xpu/*.cc" "selected_rows/xpu/*.cc"
+     "fusion/xpu/*.cc")
 
 if(WITH_MKLDNN)
   set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} get_kerneltype_forvar_utils)
@@ -201,6 +207,8 @@ elseif(WITH_XPU)
   if(WITH_XPU_KP)
     file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/kps/
          DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/kps/)
+    file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/legacy/kps/
+         DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/kps/)
     file(GLOB kernel_xpu_kps "${CMAKE_CURRENT_BINARY_DIR}/kps/*.cu")
     foreach(kernel ${kernel_xpu_kps})
       get_filename_component(name ${kernel} NAME_WE)
@@ -212,6 +220,8 @@ elseif(WITH_XPU)
       RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
       "*.cc"
       "cpu/*.cc"
+      "legacy/*.cc"
+      "legacy/cpu/*.cc"
       "selected_rows/*.cc"
       "selected_rows/cpu/*.cc"
       "sparse/*.cc"

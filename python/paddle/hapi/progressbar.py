@@ -81,8 +81,13 @@ class ProgressBar:
 
         for i, (k, val) in enumerate(values):
             if k == "loss":
-                val = val if isinstance(val, (list, np.ndarray)) else [val]
-                if isinstance(val[0], np.uint16):
+                if isinstance(val, list):
+                    scalar_val = val[0]
+                elif isinstance(val, np.ndarray):
+                    scalar_val = val.item()
+                else:
+                    scalar_val = val
+                if isinstance(scalar_val, np.uint16):
                     values[i] = ("loss", list(convert_uint16_to_float(val)))
 
         if current_num:

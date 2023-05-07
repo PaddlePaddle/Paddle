@@ -24,6 +24,9 @@ endif()
 # https://cmake.org/cmake/help/v3.0/policy/CMP0026.html?highlight=cmp0026
 cmake_policy(SET CMP0026 OLD)
 cmake_policy(SET CMP0079 NEW)
+if(${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.18)
+  cmake_policy(SET CMP0104 OLD)
+endif()
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 set(PADDLE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(PADDLE_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
@@ -243,6 +246,7 @@ option(WITH_DISTRIBUTE "Compile with distributed support" OFF)
 option(WITH_BRPC_RDMA "Use brpc rdma as the rpc protocal" OFF)
 option(ON_INFER "Turn on inference optimization and inference-lib generation"
        ON)
+option(WITH_CPP_DIST "Install PaddlePaddle C++ distribution" OFF)
 ################################ Internal Configurations #######################################
 option(WITH_NV_JETSON "Compile PaddlePaddle with NV JETSON" OFF)
 option(WITH_PROFILER "Compile PaddlePaddle with GPU profiler and gperftools"
@@ -656,6 +660,21 @@ if(WITH_STRIP)
         OFF
         CACHE STRING "Command strip is only used on Linux when it exists."
               FORCE)
+  endif()
+endif()
+
+if(WITH_CPP_DIST)
+  # TODO(huangjiyi): Separate installing C++ distribution from python package
+  # installation and support for installing C++ distribution on more platforms.
+  if(NOT LINUX OR NOT WITH_PYTHON)
+    set(WITH_CPP_DIST
+        OFF
+        CACHE
+          STRING
+          "Currently C++ Distribution Generation is only available on Linux and compiling WITH_PYTHON=ON."
+          FORCE)
+  else()
+    include(paddle_lib)
   endif()
 endif()
 

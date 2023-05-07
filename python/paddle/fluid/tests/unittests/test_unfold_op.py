@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle import fluid
@@ -42,7 +42,11 @@ class TestUnfoldOp(OpTest):
             self.input_height,
             self.input_width,
         ]
-        self.x = np.random.rand(*input_shape).astype(np.float64)
+        if self.dtype == np.uint16:
+            as_type = self.np_dtype
+        else:
+            as_type = self.dtype
+        self.x = np.random.rand(*input_shape).astype(as_type)
 
     def calc_unfold(self):
         output_shape = [0] * 3
@@ -77,7 +81,11 @@ class TestUnfoldOp(OpTest):
             + 1
         )
         output_shape[2] = out_height * out_width
-        output = np.zeros(output_shape).astype(np.float64)
+        if self.dtype == np.uint16:
+            as_type = self.np_dtype
+        else:
+            as_type = self.dtype
+        output = np.zeros(output_shape).astype(as_type)
         # ------------ calculate output -------------- #
         for i in range(output_shape[0]):
             for j in range(output_shape[1]):
@@ -123,14 +131,67 @@ class TestUnfoldOp(OpTest):
 
     def setUp(self):
         self.op_type = 'unfold'
+        self.init_dtype()
         self.python_api = paddle.nn.functional.unfold
         self.set_data()
+
+    def init_dtype(self):
+        self.dtype = np.float64
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Y')
+
+
+class TestUnfoldFP16Op(TestUnfoldOp):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support bfloat16",
+)
+class TestUnfoldBF16Op(TestUnfoldOp):
+    # Notice: The test is time consuming, may cause timeout, modify the parameters to reduce the time
+    def init_data(self):
+        self.batch_size = 3
+        self.input_channels = 3
+        self.input_height = 5
+        self.input_width = 5
+        self.kernel_sizes = [3, 3]
+        self.strides = [1, 1]
+        self.paddings = [1, 1, 1, 1]
+        self.dilations = [1, 1]
+        input_shape = [
+            self.batch_size,
+            self.input_channels,
+            self.input_height,
+            self.input_width,
+        ]
+        self.x = np.random.rand(*input_shape).astype(self.np_dtype)
+
+    def init_dtype(self):
+        self.dtype = np.uint16
+        self.np_dtype = np.float32
+
+    def setUp(self):
+        self.op_type = 'unfold'
+        self.init_dtype()
+        self.python_api = paddle.nn.functional.unfold
+        self.set_data()
+        self.inputs['X'] = convert_float_to_uint16(self.inputs['X'])
+        self.outputs['Y'] = convert_float_to_uint16(self.outputs['Y'])
+        self.place = core.CUDAPlace(0)
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place)
+
+    def test_check_grad(self):
+        self.check_grad_with_place(self.place, ['X'], 'Y')
 
 
 class TestUnfoldAPI(TestUnfoldOp):

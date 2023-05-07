@@ -774,7 +774,7 @@ class Optimizer:
                 ), "Optimizer set error, {} should in state dict".format(
                     var_name
                 )
-                var.set_value(self._accumulators_holder[var_name])
+                var.set_value(self._accumulators_holder.pop(var_name))
 
         self._accumulators[name][param.name] = var
         return var

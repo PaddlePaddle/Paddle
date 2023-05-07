@@ -225,7 +225,6 @@ bool GetCondData(const phi::DenseTensor &cond) {
     return cond.data<bool>()[0];
   }
   // when platform::is_gpu_place(cond.place()) or
-  // platform::is_npu_place(cond.place()) or
   // platform::is_xpu_place(cond.place()) is true
   std::unique_ptr<phi::DenseTensor> cpu_cond{new phi::DenseTensor()};
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \

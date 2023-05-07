@@ -1,5 +1,12 @@
-py_test(test_cpp_extension_setup SRCS test_cpp_extension_setup.py)
-py_test(test_cpp_extension_jit SRCS test_cpp_extension_jit.py)
+if(WITH_TESTING)
+  if(WITH_GPU)
+    py_test(test_cpp_extension_setup SRCS test_cpp_extension_setup.py)
+    py_test(test_cpp_extension_jit SRCS test_cpp_extension_jit.py)
 
-set_tests_properties(test_cpp_extension_setup PROPERTIES TIMEOUT 120)
-set_tests_properties(test_cpp_extension_jit PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_cpp_extension_setup PROPERTIES TIMEOUT 120)
+    set_tests_properties(test_cpp_extension_jit PROPERTIES TIMEOUT 120)
+  endif()
+endif()
+
+py_test(test_mixed_extension_setup SRCS test_mixed_extension_setup.py)
+set_tests_properties(test_mixed_extension_setup PROPERTIES TIMEOUT 120)
