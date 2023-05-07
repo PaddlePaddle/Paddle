@@ -251,17 +251,6 @@
     param : [x, mode]
     backend : place
 
-- op : deformable_conv
-  args : (Tensor x, Tensor offset, Tensor filter, Tensor mask, int[] strides, int[] paddings, int[] dilations, int deformable_groups, int groups, int im2col_step)
-  output : Tensor(out)
-  infer_meta :
-    func : DeformableConvInferMeta
-  kernel :
-    func : deformable_conv
-    data_type : x
-  optional : mask
-  backward : deformable_conv_grad
-
 - op : depthwise_conv2d
   args : (Tensor x, Tensor filter, int[] strides, int[] paddings, str padding_algorithm, int groups, int[] dilations, str data_format)
   output : Tensor(out)

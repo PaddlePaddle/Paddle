@@ -576,6 +576,13 @@
   outputs :
     out : Output
 
+- op : deformable_conv_v1
+  backward : deformable_conv_v1_grad
+  inputs :
+    {x : Input, offset : Offset, filter : Filter}
+  outputs :
+    out : Output
+
 - op : depthwise_conv2d
   backward : depthwise_conv2d_grad
   extra :

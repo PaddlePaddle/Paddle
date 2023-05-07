@@ -17,6 +17,16 @@
     func : deformable_conv_grad
     data_type : x
 
+- backward_op : deformable_conv_v1_grad
+  forward : deformable_conv_v1 (Tensor x, Tensor offset, Tensor filter,  int[] strides={1, 1}, int[] paddings={0, 0}, int[] dilations={1, 1}, int deformable_groups=1, int groups=1, int im2col_step=64) -> Tensor(out)
+  args : (Tensor x, Tensor offset, Tensor filter,Tensor out_grad, int[] strides, int[] paddings, int[] dilations, int deformable_groups, int groups, int im2col_step)
+  output : Tensor(x_grad), Tensor(offset_grad), Tensor(filter_grad)
+  infer_meta :
+    func : DeformableConvGradInferMeta
+  kernel :
+    func : deformable_conv_v1_grad
+    data_type : x
+
 - backward_op : embedding_grad
   forward : embedding (Tensor x, Tensor weight, int64_t padding_idx=-1) -> Tensor(out)
   args : (Tensor x, Tensor weight, Tensor out_grad, int64_t padding_idx=-1)
