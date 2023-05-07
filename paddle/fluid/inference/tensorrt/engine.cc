@@ -151,18 +151,18 @@ void TensorRTEngine::FreezeNetwork() {
   if (!with_dynamic_shape_) {
     infer_builder_->setMaxBatchSize(max_batch_);
   }
-  const int trt_runtime_version = tensorrt::GetInferLibVersion();
-  if (trt_runtime_version >= 8300) {
-    infer_builder_config_->setMemoryPoolLimit(
-        nvinfer1::MemoryPoolType::kWORKSPACE, max_workspace_);
-  } else {
-    infer_builder_config_->setMaxWorkspaceSize(max_workspace_);
-  }
+#if IS_TRT_VERSION_GE(8300)
+  infer_builder_config_->setMemoryPoolLimit(
+      nvinfer1::MemoryPoolType::kWORKSPACE, max_workspace_);
+#else
+  infer_builder_config_->setMaxWorkspaceSize(max_workspace_);
+#endif
 
-  if (trt_runtime_version >= 8500) {
-    infer_builder_config_->setPreviewFeature(
-        nvinfer1::PreviewFeature::kFASTER_DYNAMIC_SHAPES_0805, true);
-  }
+#if IS_TRT_VERSION_GE(8500)
+  infer_builder_config_->setPreviewFeature(
+      nvinfer1::PreviewFeature::kFASTER_DYNAMIC_SHAPES_0805, true);
+#else
+#endif
 
   bool enable_fp16 = (precision_ == AnalysisConfig::Precision::kHalf);
   if (enable_fp16) {
@@ -315,24 +315,24 @@ void TensorRTEngine::FreezeNetwork() {
     }
   }
 
-  if (trt_runtime_version >= 8200 && use_inspector_) {
+#if IS_TRT_VERSION_GE(8200)
+  if (use_inspector_) {
     infer_builder_config_->setProfilingVerbosity(
         nvinfer1::ProfilingVerbosity::kDETAILED);
   }
+#endif
 
-  if (trt_runtime_version < 8000) {
-    infer_engine_.reset(infer_builder_->buildEngineWithConfig(
-        *network(), *infer_builder_config_));
-  } else {
-    if (use_sparse_weights_) {
-      infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kSPARSE_WEIGHTS);
-    }
-    ihost_memory_.reset(infer_builder_->buildSerializedNetwork(
-        *network(), *infer_builder_config_));
-    infer_ptr<nvinfer1::IRuntime> runtime(createInferRuntime(&logger_));
-    infer_engine_.reset(runtime->deserializeCudaEngine(ihost_memory_->data(),
-                                                       ihost_memory_->size()));
-  }
+#if IS_TRT_VERSION_LT(8000)
+  infer_engine_.reset(infer_builder_->buildEngineWithConfig(
+      *network(), *infer_builder_config_));
+#else
+  infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kSPARSE_WEIGHTS);
+  ihost_memory_.reset(infer_builder_->buildSerializedNetwork(
+      *network(), *infer_builder_config_));
+  infer_ptr<nvinfer1::IRuntime> runtime(createInferRuntime(&logger_));
+  infer_engine_.reset(runtime->deserializeCudaEngine(ihost_memory_->data(),
+                                                     ihost_memory_->size()));
+#endif
 
   PADDLE_ENFORCE_NOT_NULL(
       infer_engine_,
@@ -823,19 +823,18 @@ void TensorRTEngine::freshDeviceId() {
 }
 
 void TensorRTEngine::GetEngineInfo() {
-  const int trt_runtime_version = tensorrt::GetInferLibVersion();
-  if (trt_runtime_version >= 8200) {
-    LOG(INFO) << "====== engine info ======";
-    std::unique_ptr<nvinfer1::IEngineInspector> infer_inspector(
-        infer_engine_->createEngineInspector());
-    auto *infer_context = context();
-    infer_inspector->setExecutionContext(infer_context);
-    LOG(INFO) << infer_inspector->getEngineInformation(
-        nvinfer1::LayerInformationFormat::kJSON);
-    LOG(INFO) << "====== engine info end ======";
-  } else {
-    LOG(INFO) << "Inspector needs TensorRT version 8.2 and after.";
-  }
+#if IS_TRT_VERSION_GE(8200)
+  LOG(INFO) << "====== engine info ======";
+  std::unique_ptr<nvinfer1::IEngineInspector> infer_inspector(
+      infer_engine_->createEngineInspector());
+  auto *infer_context = context();
+  infer_inspector->setExecutionContext(infer_context);
+  LOG(INFO) << infer_inspector->getEngineInformation(
+      nvinfer1::LayerInformationFormat::kJSON);
+  LOG(INFO) << "====== engine info end ======";
+#else
+  LOG(INFO) << "Inspector needs TensorRT version 8.2 and after.";
+#endif
 }
 
 }  // namespace tensorrt
