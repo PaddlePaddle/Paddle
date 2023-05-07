@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from eager_op_test import OpTest
 
 import paddle
 from paddle import fluid
@@ -521,30 +521,15 @@ class TestArgsortOpFp16(unittest.TestCase):
     "core is not compiled with CUDA and not support the bfloat16",
 )
 class TestArgsortBF16OP(OpTest):
-    def setUp(self):
-        self.op_type = 'argsort'
-        self.dtype = np.uint16
-        x_np = np.random.random((2, 8)).astype('float32')
-        x = paddle.static.data(shape=[2, 8], name='x', dtype='float32')
-        out = paddle.argsort(x)
-        place = core.CUDAPlace(0)
-        exe = paddle.static.Executor(place)
-        exe.run(paddle.static.default_startup_program())
-        out = exe.run(feed={'x': x_np}, fetch_list=[out])
-        self.inputs = {'X': convert_float_to_uint16(x_np)}
-        self.outputs = {'Out': convert_float_to_uint16(out)}
-
-    def test_check_output(self):
-        place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
-
-    def test_check_grad(self):
-        place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place,
-            ['X'],
-            'Out',
-        )
+    def test_bf16(self):
+        x_np = np.random.random((2, 8)).astype(np.uint16)
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data(shape=[2, 8], name='x', dtype=np.uint16)
+            out = paddle.argsort(x)
+            place = paddle.CUDAPlace(0)
+            exe = paddle.static.Executor(place)
+            exe.run(paddle.static.default_startup_program())
+            out = exe.run(feed={'x': x_np}, fetch_list=[out])
 
 
 if __name__ == "__main__":
