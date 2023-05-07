@@ -1747,12 +1747,16 @@ class Unflatten(Layer):
     """
     This interface is used to construct a callable object of the ``Unflatten`` class.
     For more details, refer to code examples.
-    It expands a certain dimension of the input x Tensor into multiple dimensions.
+    It a certain dimension of the input x Tensor into a desired shape.
 
     Parameters:
-        shape (list|tuple|Tensor): Unflatten :attr:`shape` on the specified :attr:`axis`. At most one dimension of the target :attr:`shape` can be -1. The data type is `int32` . If :attr:`shape` is a list or tuple, the elements of it should be integers or Tensors with shape []. If shape is an Tensor, it should be an 1-D Tensor
-        axis (int): Dimension to be unflattened, specified as an index into `x.shape`.
+        shape (list|tuple|Tensor): Unflatten :attr:`shape` on the specified :attr:`axis`. At most one dimension of the target :attr:`shape` can be -1.
+            If the input :attr:`shape` does not contain -1 , the product should be equal to ``x.shape[axis]`` size.
+            The data type is `int` . If :attr:`shape` is a list or tuple, the elements of it should be integers or Tensors with shape [].
+            If :attr:`shape` is an Tensor, it should be an 1-D Tensor.
+        axis (int): :attr:`axis` to be unflattened, specified as an index into `x.shape`.
         name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
     Returns:
         None
 
