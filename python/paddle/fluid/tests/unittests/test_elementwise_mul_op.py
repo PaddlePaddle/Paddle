@@ -109,8 +109,8 @@ class TestComplexElementwiseMulOp(ElementwiseMulOp):
         self.attrs = {'axis': self.axis}
 
     def init_input_output(self):
-        self.x = np.array([3 + 4j]).astype(self.dtype)
-        self.y = np.array([1 + 3j]).astype(self.dtype)
+        self.x = np.array([3 + 4j, 1 + 2j]).astype(self.dtype)
+        self.y = np.array([3 + 4j, 5 + 6j]).astype(self.dtype)
         self.out = np.multiply(self.x, self.y)
 
     def if_enable_cinn(self):
