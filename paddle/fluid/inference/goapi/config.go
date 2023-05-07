@@ -249,15 +249,6 @@ func (config *Config) XpuDeviceId() int32 {
 }
 
 ///
-/// \brief Get the NPU device id.
-///
-/// \return int32 The NPU device id.
-///
-func (config *Config) NpuDeviceId() int32 {
-	return int32(C.PD_ConfigNpuDeviceId(config.c))
-}
-
-///
 /// \brief Get the initial size in MB of the GPU memory pool.
 ///
 /// \return int32 The initial size in MB of the GPU memory pool.
