@@ -52,7 +52,7 @@ message ShardingConfig {
 
 // for dygraph
 message MpConfig {
-    optional bool sync_param= 1 [ default = false ];
+    optional bool sync_param= 1 [ default = true ];
     optional bool sync_grad= 2 [ default = false ];
     optional bool sync_moment= 3 [ default = false ];
     optional string sync_mode= 4 [ default = 'broadcast' ];

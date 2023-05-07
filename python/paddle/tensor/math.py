@@ -1959,10 +1959,14 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
 
         helper = LayerHelper("addmm", **locals())
         check_variable_and_dtype(
-            input, 'Input', ['float32', 'float64'], 'addmm'
+            input, 'Input', ['float16', 'float32', 'float64', 'uint16'], 'addmm'
         )
-        check_variable_and_dtype(x, 'X', ['float32', 'float64'], 'addmm')
-        check_variable_and_dtype(y, 'Y', ['float32', 'float64'], 'addmm')
+        check_variable_and_dtype(
+            x, 'X', ['float16', 'float32', 'float64', 'uint16'], 'addmm'
+        )
+        check_variable_and_dtype(
+            y, 'Y', ['float16', 'float32', 'float64', 'uint16'], 'addmm'
+        )
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
         helper.append_op(
@@ -5486,3 +5490,39 @@ def vander(x, n=None, increasing=False, name=None):
         res[:, 1:] = paddle.cumprod(res[:, 1:], dim=-1)
     res = res[:, ::-1] if not increasing else res
     return res
+
+
+def nextafter(x, y, name=None):
+    r"""
+    Return the next floating-point value after input towards other, elementwise.
+    The shapes of input and other must be broadcastable.
+
+    Args:
+        x (Tensor): An N-D Tensor, the data type is float32, float64.
+        y (Tensor): An N-D Tensor, the data type is float32, float64.
+        name(str, optional):Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor): An N-D Tensor, the shape and data type is the same with input.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            out = paddle.nextafter(paddle.to_tensor([1.0,2.0]),paddle.to_tensor([2.0,1.0]))
+            print(out)
+            #Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #       [1.00000012, 1.99999988])
+    """
+    if in_dygraph_mode():
+        return _C_ops.nextafter(x, y)
+    else:
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'nextafter')
+        check_variable_and_dtype(y, 'y', ['float32', 'float64'], 'nextafter')
+        op_type = "nextafter"
+        helper = LayerHelper(op_type, **locals())
+        inputs = {"x": x, "y": y}
+        out = helper.create_variable_for_type_inference(dtype=paddle.float32)
+        outputs = {"out": out}
+        helper.append_op(type=op_type, inputs=inputs, outputs=outputs)
+    return out

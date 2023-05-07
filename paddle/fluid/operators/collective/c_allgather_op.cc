@@ -31,8 +31,13 @@ class CAllGatherOp : public framework::OperatorWithKernel {
                       platform::errors::InvalidArgument(
                           "The value of nranks should be >=2."));
     framework::DDim dim = ctx->GetInputDim("X");
-    dim[0] = dim[0] * nranks;
-    if (dim[0] < 0) dim[0] = -1;
+    // 0D use stack/unstack while others use concat/split
+    if (dim.size() == 0) {
+      dim = phi::make_ddim({nranks});
+    } else {
+      dim[0] = dim[0] * nranks;
+      if (dim[0] < 0) dim[0] = -1;
+    }
     ctx->SetOutputDim("Out", dim);
   }
 };

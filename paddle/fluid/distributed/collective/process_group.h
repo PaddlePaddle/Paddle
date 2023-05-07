@@ -486,7 +486,7 @@ class ProcessGroup {
   virtual std::shared_ptr<ProcessGroup::Task> Reduce(
       std::vector<phi::DenseTensor>&,  // NOLINT
       std::vector<phi::DenseTensor>&,  // NOLINT
-      const ReduceOptions& opts) {
+      const ReduceOptions& opts UNUSED) {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "ProcessGroup%s does not support reduce", GetBackendName()));
   }

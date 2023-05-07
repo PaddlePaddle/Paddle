@@ -30,7 +30,7 @@ void EmptyKernel(const Context& dev_ctx,
 
 template <typename T, typename Context>
 void EmptyLikeKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
+                     const DenseTensor& x UNUSED,
                      DataType dtype UNUSED,
                      DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);

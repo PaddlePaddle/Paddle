@@ -95,6 +95,12 @@
     attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
+- op : add_n (sum)
+  inputs:
+    {inputs : X}
+  outputs:
+    {out : Out}
+
 - op : addmm
   backward : addmm_grad
   inputs :
@@ -676,6 +682,16 @@
   backward : dropout_nd_grad
   extra :
     attrs : [bool fix_seed = false, int seed = 0]
+
+- op : edit_distance
+  inputs :
+    hyps : Hyps
+    refs : Refs
+    hypslength : HypsLength
+    refslength : RefsLength
+  outputs :
+    sequencenum : SequenceNum
+    out : Out
 
 - op : eig
   inputs :
@@ -1462,6 +1478,22 @@
       data_type : int
   extra :
     attrs : [bool use_mkldnn = false]
+
+- op : max_pool2d_with_index
+  inputs :
+    {x : X}
+  outputs :
+    {out : Out, mask : Mask}
+  attrs :
+    kernel_size : ksize
+
+- op : max_pool3d_with_index
+  inputs :
+    {x : X}
+  outputs :
+    {out : Out, mask : Mask}
+  attrs :
+    kernel_size : ksize
 
 - op : maximum (elementwise_max)
   backward : maximum_grad (elementwise_max_grad)
@@ -2257,7 +2289,7 @@
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : tanh
-  backward : tanh_grad, tanh_double_grad (tanh_grad_grad), tanh_triple_grad
+  backward : tanh_grad, tanh_double_grad (tanh_grad_grad)
   inputs :
     x : X
   outputs :
@@ -2316,6 +2348,13 @@
   extra :
     outputs : [XShape]
     attrs : [bool use_mkldnn = false, str data_format = "AnyLayout", str mkldnn_data_type = "float32"]
+
+- op : triangular_solve
+  backward : triangular_solve_grad
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
 
 - op : trilinear_interp (trilinear_interp_v2)
   backward : trilinear_interp_grad (trilinear_interp_v2_grad)
@@ -2386,6 +2425,16 @@
     x : X
   outputs :
     {out : Out, index : Index, counts : Counts}
+
+- op : unpool
+  inputs :
+    {x : X, indices: Indices}
+  outputs :
+    out : Out
+  int_array :
+    output_size:
+      data_type : int
+      support_tensor : true
 
 - op : unsqueeze (unsqueeze2)
   backward : unsqueeze_grad (unsqueeze2_grad), unsqueeze_double_grad(unsqueeze2_double_grad)

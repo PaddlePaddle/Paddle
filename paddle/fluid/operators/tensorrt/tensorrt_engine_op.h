@@ -39,6 +39,7 @@
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
+#include "paddle/utils/string/string_helper.h"
 
 namespace paddle {
 namespace inference {
@@ -64,19 +65,10 @@ using inference::tensorrt::TRTInt8Calibrator;
 
 static void RuntimeStaticShapeCheck(std::vector<int64_t> runtime_input_shape,
                                     std::vector<int64_t> model_input_shape) {
-  auto comma_fold = [](std::string a, int b) {
-    return std::move(a) + ", " + std::to_string(b);
-  };
   std::string model_input_shape_str =
-      std::accumulate(std::next(model_input_shape.begin()),
-                      model_input_shape.end(),
-                      std::to_string(model_input_shape[0]),
-                      comma_fold);
+      string::join_strings(model_input_shape, ',');
   std::string runtime_input_shape_str =
-      std::accumulate(std::next(runtime_input_shape.begin()),
-                      runtime_input_shape.end(),
-                      std::to_string(runtime_input_shape[0]),
-                      comma_fold);
+      string::join_strings(runtime_input_shape, ',');
   PADDLE_ENFORCE_EQ(
       model_input_shape == runtime_input_shape,
       true,
@@ -137,24 +129,10 @@ static void RuntimeDynamicShapeCheck(
     }
     return true;
   };
-  auto comma_fold = [](std::string a, int b) {
-    return std::move(a) + ", " + std::to_string(b);
-  };
   std::string runtime_input_shape_str =
-      std::accumulate(std::next(runtime_input_shape.begin()),
-                      runtime_input_shape.end(),
-                      std::to_string(runtime_input_shape[0]),
-                      comma_fold);
-  std::string min_input_shape_str =
-      std::accumulate(std::next(min_input_shape.begin()),
-                      min_input_shape.end(),
-                      std::to_string(min_input_shape[0]),
-                      comma_fold);
-  std::string max_input_shape_str =
-      std::accumulate(std::next(max_input_shape.begin()),
-                      max_input_shape.end(),
-                      std::to_string(max_input_shape[0]),
-                      comma_fold);
+      string::join_strings(runtime_input_shape, ',');
+  std::string min_input_shape_str = string::join_strings(min_input_shape, ',');
+  std::string max_input_shape_str = string::join_strings(max_input_shape, ',');
   PADDLE_ENFORCE_EQ(is_input_shape_valid(
                         runtime_input_shape, min_input_shape, max_input_shape),
                     true,
@@ -551,7 +529,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
     auto stream = reinterpret_cast<const phi::GPUContext &>(dev_ctx).stream();
-
     std::vector<std::string> output_maps =
         Attr<std::vector<std::string>>("output_name_mapping");
 
@@ -566,7 +543,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
       trt_context = engine->context();
       binding_offset = engine->GetBindingsOffset();
     }
-
     // Bind input tensor to TRT.
     for (const auto &x : runtime_input_names_) {
 #if IS_TRT_VERSION_LT(8000)
