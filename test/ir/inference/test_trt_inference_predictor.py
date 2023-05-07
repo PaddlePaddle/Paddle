@@ -84,6 +84,8 @@ class BackendPaddle:
         # enable memory optim
         if not self.args.enable_tune:
             config.enable_memory_optim()
+        if self.enable_trt_sparse_weights:
+            config.enable_tensorrt_sparse_weights()
 
         config.set_cpu_math_library_num_threads(self.args.cpu_threads)
         config.switch_ir_optim(True)
@@ -258,6 +260,9 @@ def parse_args():
     parser.add_argument('--enable_dynamic_shape', type=str2bool, default=True)
     parser.add_argument('--enable_tune', type=str2bool, default=False)
     parser.add_argument('--enable_profile', type=str2bool, default=False)
+    parser.add_argument(
+        '--enable_trt_sparse_weights', type=str2bool, default=False
+    )
     parser.add_argument('--enable_benchmark', type=str2bool, default=True)
     parser.add_argument('--save_result', type=str2bool, default=False)
     parser.add_argument('--return_result', type=str2bool, default=False)
@@ -310,7 +315,7 @@ def run_infer(model_path):
 
     # run inference predictor, enable trt sparse weights
     conf.enable_tune = False
-    conf.enable_trt_sparse_weight = True
+    conf.enable_trt_sparse_weights = True
     backend = BackendPaddle()
     backend.load(conf)
     backend.predict()
