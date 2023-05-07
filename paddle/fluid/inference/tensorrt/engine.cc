@@ -151,8 +151,7 @@ void TensorRTEngine::FreezeNetwork() {
   if (!with_dynamic_shape_) {
     infer_builder_->setMaxBatchSize(max_batch_);
   }
-  const int trt_runtime_version =
-      tensorrt::GetInferLibVersion());
+  const int trt_runtime_version = tensorrt::GetInferLibVersion();
   if (trt_runtime_version >= 8300) {
     infer_builder_config_->setMemoryPoolLimit(
         nvinfer1::MemoryPoolType::kWORKSPACE, max_workspace_);
@@ -321,7 +320,7 @@ void TensorRTEngine::FreezeNetwork() {
         nvinfer1::ProfilingVerbosity::kDETAILED);
   }
 
-  if (trt_engine_version < 8000) {
+  if (trt_runtime_version < 8000) {
     infer_engine_.reset(infer_builder_->buildEngineWithConfig(
         *network(), *infer_builder_config_));
   } else {
@@ -824,8 +823,7 @@ void TensorRTEngine::freshDeviceId() {
 }
 
 void TensorRTEngine::GetEngineInfo() {
-  const int trt_runtime_version =
-      tensorrt::GetInferLibVersion());
+  const int trt_runtime_version = tensorrt::GetInferLibVersion();
   if (trt_runtime_version >= 8200) {
     LOG(INFO) << "====== engine info ======";
     std::unique_ptr<nvinfer1::IEngineInspector> infer_inspector(
