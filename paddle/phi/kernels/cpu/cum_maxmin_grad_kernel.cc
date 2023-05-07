@@ -38,9 +38,11 @@ void CummaxGradKernel(const Context& dev_ctx,
   }
   auto indices_type = phi::TransToPhiDataType(dtype);
   if (indices_type == DataType::INT32) {
-    phi::funcs::cpu_scatter_add_kernel<T, int32_t>(*x_grad, axis, indices, out_grad, dev_ctx);
+    phi::funcs::cpu_scatter_add_kernel<T, int32_t>(
+        *x_grad, axis, indices, out_grad, dev_ctx);
   } else if (indices_type == DataType::INT64) {
-    phi::funcs::cpu_scatter_add_kernel<T, int64_t>(*x_grad, axis, indices, out_grad, dev_ctx);
+    phi::funcs::cpu_scatter_add_kernel<T, int64_t>(
+        *x_grad, axis, indices, out_grad, dev_ctx);
   }
 }
 
@@ -60,9 +62,11 @@ void CumminGradKernel(const Context& dev_ctx,
   }
   auto indices_type = phi::TransToPhiDataType(dtype);
   if (indices_type == DataType::INT32) {
-    phi::funcs::cpu_scatter_add_kernel<T, int32_t>(*x_grad, axis, indices, out_grad, dev_ctx);
+    phi::funcs::cpu_scatter_add_kernel<T, int32_t>(
+        *x_grad, axis, indices, out_grad, dev_ctx);
   } else if (indices_type == DataType::INT64) {
-    phi::funcs::cpu_scatter_add_kernel<T, int64_t>(*x_grad, axis, indices, out_grad, dev_ctx);
+    phi::funcs::cpu_scatter_add_kernel<T, int64_t>(
+        *x_grad, axis, indices, out_grad, dev_ctx);
   }
 }
 

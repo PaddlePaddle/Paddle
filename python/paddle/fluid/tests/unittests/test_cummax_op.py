@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
-import sys
 import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 
 def cummax_dim2(arr, axis=None):
@@ -42,7 +42,8 @@ def cummax_dim2(arr, axis=None):
         cummax = np.maximum.accumulate(arr, axis)
         shape = arr.shape
         indices = np.zeros(shape).astype('int32')
-        if axis < 0: axis = axis + len(shape)
+        if axis < 0:
+            axis = axis + len(shape)
         if axis == 0:
             for j in range(shape[1]):
                 max_ind = 0
@@ -84,7 +85,7 @@ class TestCummaxOp(OpTest):
         self.attrs = {'axis': self.axis, 'dtype': self.indices_type}
         self.np_res, self.np_ind = cummax_dim2(self.input_data, axis=self.axis)
         self.outputs = {'out': self.np_res, 'indices': self.np_ind}
-    
+
     def set_attrs(self):
         pass
 
@@ -163,7 +164,7 @@ class TestCummaxAPI(unittest.TestCase):
             y2, indices2 = paddle.cummax(x, axis=0)
             y3, indices3 = paddle.cummax(x, axis=-1)
             y4, indices4 = paddle.cummax(x, axis=-2)
-            y5, indices5 = paddle.cummax(x, axis=-2, dtype=np.int64)
+            y5, indices5 = paddle.cummax(x, axis=-2, dtype=np.int32)
 
             place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
             exe = fluid.Executor(place)
@@ -217,6 +218,27 @@ class TestCummaxAPI(unittest.TestCase):
         self.run_cases()
         paddle.enable_static()
         self.run_static(use_gpu=True)
+
+    def test_errors(self):
+        paddle.enable_static()
+        with fluid.program_guard(fluid.Program()):
+            def test_x_type():
+                data = [1, 2, 3]
+                y, indices = paddle.cummax(data, axis=0)
+            self.assertRaises(TypeError, test_x_type)
+        paddle.disable_static()
+
+        def test_indices_type():
+            data_np = np.random.random((10, 10)).astype(np.float32)
+            data = paddle.to_tensor(data_np)
+            y, indices = paddle.cummax(data, dtype='float32')
+        self.assertRaises(ValueError, test_indices_type)
+
+        def test_axis_outrange():
+            data_np = np.random.random((100)).astype(np.float32)
+            data = paddle.to_tensor(data_np)
+            y, indices = paddle.cummax(data, axis=-2)
+        self.assertRaises(ValueError, test_indices_type)
 
 
 if __name__ == '__main__':

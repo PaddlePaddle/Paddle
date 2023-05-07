@@ -186,16 +186,10 @@ void ScanWithIndicesKernel(const Context& dev_ctx,
     int row_size = x.dims()[ndim - 1];
     int num_rows = x.numel() / row_size;
 
-    // dim3 threads(16, 32);
-    // dim3 grid(std::min(dev_ctx.GetCUDAMaxGridDimSize()[0], static_cast<int>(std::ceil(num_rows/int(threads.y)))));
-    // std::cout<<"threads "<<int(threads.x)<<" "<<int(threads.y)<<std::endl;
-    // std::cout<<"grid 1 "<<dev_ctx.GetCUDAMaxGridDimSize()[0]<<std::endl;
-    // std::cout<<"grid 2 "<<static_cast<int>(std::ceil(num_rows/int(threads.y)))<<std::endl;
-    // std::cout<<"grid 3 "<<num_rows<<std::endl;
-    // std::cout<<"grid 4 "<<std::ceil(num_rows/int(threads.y))<<std::endl;
-    // std::cout<<"grid 5 "<<num_rows/int(threads.y)<<std::endl;
+    dim3 threads(16, 32);
+    dim3 grid(std::min(dev_ctx.GetCUDAMaxGridDimSize()[0], static_cast<int>(std::ceil(float(num_rows)/float(threads.y)))));
 
-    KernelScanInnerWithIndices<T1, T2, 16, 32><<<128, 128, 0, dev_ctx.stream()>>>(
+    KernelScanInnerWithIndices<T1, T2, 16, 32><<<grid, threads, 0, dev_ctx.stream()>>>(
       x_data, values_data, indices_data, num_rows, row_size, init, op);
   } else {
     int64_t row_size = x.dims()[axis];
@@ -204,13 +198,11 @@ void ScanWithIndicesKernel(const Context& dev_ctx,
     const int64_t num_orows = std::accumulate(sizes.begin(), sizes.begin() + axis, int64_t(1), [](int64_t &a, int64_t &b) { return a * b; });
     const int64_t num_irows = std::accumulate(sizes.begin() + axis + 1, sizes.end(), int64_t(1), [](int64_t &a, int64_t &b) { return a * b; });
 
-    // dim3 threads(std::min(512, int(num_irows)));
-    // int64_t maxGridDim = dev_ctx.GetCUDAMaxGridDimSize()[1];
-    // dim3 grid(std::min(maxGridDim, num_orows), std::min(maxGridDim, static_cast<int64_t>(std::ceil(num_irows/int64_t{threads.x}))));
-    // std::cout<<"threads "<<std::min(512, int(num_irows))<<std::endl;
-    // std::cout<<"grid "<<std::min(maxGridDim, num_orows)<<" "<<std::min(maxGridDim, static_cast<int64_t>(std::ceil(num_irows/int64_t{threads.x})))<<std::endl;
+    dim3 threads(std::min(512, int(num_irows)));
+    int64_t maxGridDim = dev_ctx.GetCUDAMaxGridDimSize()[1];
+    dim3 grid(std::min(maxGridDim, num_orows), std::min(maxGridDim, static_cast<int64_t>(std::ceil(double{num_irows}/double{threads.x}))));
     
-    KernelScanOuterWithIndices<T1, T2><<<128, 128, 0, dev_ctx.stream()>>>(
+    KernelScanOuterWithIndices<T1, T2><<<grid, threads, 0, dev_ctx.stream()>>>(
       x_data, values_data, indices_data, num_orows, num_irows, row_size, init, op);
   }
 }
@@ -249,8 +241,20 @@ void CumminKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    cummax, GPU, ALL_LAYOUT, phi::CummaxKernel, float, double, int32_t, int64_t) {}
+PD_REGISTER_KERNEL(cummax,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::CummaxKernel,
+                   float,
+                   double,
+                   int32_t,
+                   int64_t) {}
 
-PD_REGISTER_KERNEL(
-    cummin, GPU, ALL_LAYOUT, phi::CumminKernel, float, double, int32_t, int64_t) {}
+PD_REGISTER_KERNEL(cummin,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::CumminKernel,
+                   float,
+                   double,
+                   int32_t,
+                   int64_t) {}

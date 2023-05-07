@@ -514,11 +514,11 @@ void CumWithIndicesInferMeta(const MetaTensor& x,
   auto x_dims = x.dims();
   auto indices_type = phi::TransToPhiDataType(dtype);
   PADDLE_ENFORCE_EQ(
-      (indices_type==DataType::INT32 || indices_type==DataType::INT64),
+      (indices_type == DataType::INT32 || indices_type == DataType::INT64),
       true,
       phi::errors::InvalidArgument("dtype of indices must be int32 or int64"));
 
-  if (indices_type==DataType::INT32) {
+  if (indices_type == DataType::INT32) {
     int _axis;
     if (axis < 0) {
       _axis = axis + x_dims.size();

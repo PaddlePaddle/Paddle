@@ -485,6 +485,24 @@
     data_type : input
   backward : cross_entropy_with_softmax_grad
 
+- op : cummax
+  args : (Tensor x, int axis=-1, int dtype=3)
+  output : Tensor(out), Tensor(indices)
+  infer_meta :
+    func : CumWithIndicesInferMeta
+  kernel :
+    func : cummax
+  backward : cummax_grad
+
+- op : cummin
+  args : (Tensor x, int axis=-1, int dtype=3)
+  output : Tensor(out), Tensor(indices)
+  infer_meta :
+    func : CumWithIndicesInferMeta
+  kernel :
+    func : cummin
+  backward : cummin_grad
+
 - op : cumprod
   args : (Tensor x,  int dim)
   output : Tensor(out)
@@ -1153,24 +1171,6 @@
     func : log_softmax
     data_type : x
   backward : log_softmax_grad
-
-- op : cummax
-  args : (Tensor x, int axis=-1, int dtype=3)
-  output : Tensor(out), Tensor(indices)
-  infer_meta :
-    func : CumWithIndicesInferMeta
-  kernel :
-    func : cummax
-  backward : cummax_grad
-
-- op : cummin
-  args : (Tensor x, int axis=-1, int dtype=3)
-  output : Tensor(out), Tensor(indices)
-  infer_meta :
-    func : CumWithIndicesInferMeta
-  kernel :
-    func : cummin
-  backward : cummin_grad
 
 - op : logcumsumexp
   args : (Tensor x, int axis=-1, bool flatten=false, bool exclusive=false, bool reverse=false)

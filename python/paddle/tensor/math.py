@@ -3323,7 +3323,7 @@ def cummax(x, axis=None, dtype='int64', name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        tuple(Tensor, Tensor), the first value is the result of cummax operator. the second value is the index of cummax result.
+        out (tuple), Return the result of cummin operation and the corresponding index results. The dtype of cummin result is same with input x.
 
     Examples:
         .. code-block:: python
@@ -3355,7 +3355,7 @@ def cummax(x, axis=None, dtype='int64', name=None):
     """
     if axis is None:
         axis = -1
-        x = x.flatten(0, len(x.shape)-1)
+        x = x.flatten(0, len(x.shape) - 1)
     
     check_dtype(dtype, 'dtype', ['int32', 'int64'], 'cummax')
     dtype = convert_np_dtype_to_dtype_(dtype)
@@ -3393,7 +3393,7 @@ def cummin(x, axis=None, dtype='int64', name=None):
         dtype (str, optional): The data type of the indices tensor, can be int32, int64. The default value is int64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
     Returns:
-        tuple(Tensor, Tensor), the first value is the result of cummin operator. the second value is the index of cummin result.
+        out (tuple), Return the result of cummin operation and the corresponding index results. The dtype of cummin result is same with input x.
     Examples:
         .. code-block:: python
             import paddle
@@ -3418,7 +3418,7 @@ def cummin(x, axis=None, dtype='int64', name=None):
     """
     if axis is None:
         axis = -1
-        x = x.flatten(0, len(x.shape)-1)
+        x = x.flatten(0, len(x.shape) - 1)
     
     check_dtype(dtype, 'dtype', ['int32', 'int64'], 'cummin')
     dtype = convert_np_dtype_to_dtype_(dtype)
