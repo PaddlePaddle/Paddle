@@ -683,6 +683,16 @@
   extra :
     attrs : [bool fix_seed = false, int seed = 0]
 
+- op : edit_distance
+  inputs :
+    hyps : Hyps
+    refs : Refs
+    hypslength : HypsLength
+    refslength : RefsLength
+  outputs :
+    sequencenum : SequenceNum
+    out : Out
+
 - op : eig
   inputs :
     x : X
@@ -2274,7 +2284,7 @@
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : tanh
-  backward : tanh_grad, tanh_double_grad (tanh_grad_grad), tanh_triple_grad
+  backward : tanh_grad, tanh_double_grad (tanh_grad_grad)
   inputs :
     x : X
   outputs :
@@ -2410,6 +2420,16 @@
     x : X
   outputs :
     {out : Out, index : Index, counts : Counts}
+
+- op : unpool
+  inputs :
+    {x : X, indices: Indices}
+  outputs :
+    out : Out
+  int_array :
+    output_size:
+      data_type : int
+      support_tensor : true
 
 - op : unsqueeze (unsqueeze2)
   backward : unsqueeze_grad (unsqueeze2_grad), unsqueeze_double_grad(unsqueeze2_double_grad)
