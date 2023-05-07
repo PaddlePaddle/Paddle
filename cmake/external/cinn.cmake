@@ -19,6 +19,7 @@ endif()
 if(NOT CINN_GIT_TAG)
   set(CINN_GIT_TAG develop)
 endif()
+set(CINN_GIT_TAG optimize_nhwc_reduce)
 
 message(STATUS "CINN  version: " ${CINN_GIT_TAG})
 
@@ -52,7 +53,7 @@ set(CINN_LIB "${CINN_LIB_LOCATION}/${CINN_LIB_NAME}")
 ExternalProject_Add(
   external_cinn
   ${EXTERNAL_PROJECT_LOG_ARGS}
-  GIT_REPOSITORY "${GIT_URL}/PaddlePaddle/CINN.git"
+  GIT_REPOSITORY "https://github.com/SunNy820828449/CINN.git"
   GIT_TAG ${CINN_GIT_TAG}
   PREFIX ${CINN_PREFIX_DIR}
   BUILD_COMMAND ${CINN_BUILD_COMMAND}

@@ -239,6 +239,7 @@ class TestResnet(unittest.TestCase):
     )
     def test_cinn(self):
         dy2st_cinn = train(to_static=True, enable_prim=False, enable_cinn=True)
+        print("dy2st_cinn", dy2st_cinn)
         np.testing.assert_allclose(dy2st_cinn, DY2ST_CINN_GT, rtol=1e-5)
 
     @unittest.skipIf(
@@ -249,6 +250,7 @@ class TestResnet(unittest.TestCase):
         dy2st_prim_cinn = train(
             to_static=True, enable_prim=True, enable_cinn=True
         )
+        print("dy2st_prim_cinn", dy2st_prim_cinn)
         np.testing.assert_allclose(
             dy2st_prim_cinn, DY2ST_PRIM_CINN_GT, rtol=1e-5
         )
