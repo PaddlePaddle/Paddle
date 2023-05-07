@@ -93,7 +93,7 @@ class ElementwiseMulOp(OpTest):
         pass
 
 
-class TestComplexElementwiseMulOp(ElementwiseMulOp):
+class TestComplexElementwiseMulOpWithCheckGrad(ElementwiseMulOp):
     def setUp(self):
         self.op_type = "elementwise_mul"
         self.python_api = paddle.multiply
@@ -120,6 +120,26 @@ class TestComplexElementwiseMulOp(ElementwiseMulOp):
 
     def if_enable_cinn(self):
         self.enable_cinn = False
+
+    def test_check_grad_normal(self):
+        self.check_grad(
+            ['X', 'Y'],
+            'Out',
+        )
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad(
+            ['Y'],
+            'Out',
+            no_grad_set=set("X"),
+        )
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            no_grad_set=set('Y'),
+        )
 
 
 class TestElementwiseMulOp_ZeroDim1(ElementwiseMulOp):
@@ -477,7 +497,7 @@ class TestElementwiseMulOp_xsize_lessthan_ysize(ElementwiseMulOp):
         self.init_kernel_type()
 
 
-class TestComplexElementwiseMulOpWithCheckGrad(OpTest):
+class TestComplexElementwiseMulOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_mul"
         self.python_api = paddle.multiply
