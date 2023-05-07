@@ -55,6 +55,7 @@ class ElementwiseMulOp(OpTest):
             ['X', 'Y'],
             'Out',
             check_dygraph=(not self.use_mkldnn),
+            check_prim=True,
         )
 
     def test_check_grad_ingore_x(self):
@@ -64,6 +65,7 @@ class ElementwiseMulOp(OpTest):
             'Out',
             no_grad_set=set("X"),
             check_dygraph=(not self.use_mkldnn),
+            check_prim=True,
         )
 
     def test_check_grad_ingore_y(self):
@@ -73,6 +75,7 @@ class ElementwiseMulOp(OpTest):
             'Out',
             no_grad_set=set('Y'),
             check_dygraph=(not self.use_mkldnn),
+            check_prim=True,
         )
 
     def init_input_output(self):
