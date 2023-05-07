@@ -467,5 +467,7 @@ const std::vector<std::string>& OneDNNContext::GetOutputsName(
   return impl_->GetOutputsName(output);
 }
 
+const char* OneDNNContext::name() { return "OneDNNContext"; }
+
 }  // namespace phi
 #endif

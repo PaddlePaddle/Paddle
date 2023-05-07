@@ -10,6 +10,7 @@ set(core_srcs CACHE INTERNAL "" FORCE)
 set(backends_srcs CACHE INTERNAL "" FORCE)
 set(kernels_srcs CACHE INTERNAL "" FORCE)
 set(infermeta_srcs CACHE INTERNAL "" FORCE)
+#set(excluded_srcs CACHE INTERNAL "" FORCE)
 
 # paddle experimental common components
 add_subdirectory(common)
@@ -83,10 +84,6 @@ if(WITH_XPU)
   list(APPEND PHI_DEPS xpulib)
 endif()
 
-if(WIN32)
-  list(APPEND PHI_DEPS shlwapi.lib)
-endif()
-
 set(PHI_SRCS
     ${common_srcs}
     ${api_srcs}
@@ -109,10 +106,8 @@ if(WITH_GPU)
     SRCS ${PHI_SRCS}
     DEPS ${PHI_DEPS})
 elseif(WITH_ROCM)
-  hip_library(
-    phi ${PHI_BUILD_TYPE}
-    SRCS ${PHI_SRCS}
-    DEPS ${PHI_DEPS})
+  hip_add_library(phi ${PHI_BUILD_TYPE} ${PHI_SRCS})
+  target_link_libraries(phi ${PHI_DEPS})
 elseif(WITH_XPU_KP)
   xpu_library(
     phi ${PHI_BUILD_TYPE}
@@ -123,6 +118,10 @@ else()
     phi ${PHI_BUILD_TYPE}
     SRCS ${PHI_SRCS}
     DEPS ${PHI_DEPS})
+endif()
+
+if(WIN32)
+  target_link_libraries(phi shlwapi.lib)
 endif()
 
 set_target_properties(phi PROPERTIES COMPILE_OPTIONS ${BUILD_PHI_SHARED})

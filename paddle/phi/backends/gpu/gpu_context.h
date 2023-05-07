@@ -78,8 +78,8 @@ class DnnWorkspaceHandle {
   std::unique_ptr<std::mutex> mtx_;
 };
 
-class PADDLE_API GPUContext : public DeviceContext,
-                              public TypeInfoTraits<DeviceContext, GPUContext> {
+class GPUContext : public DeviceContext,
+                   public TypeInfoTraits<DeviceContext, GPUContext> {
  public:
   explicit GPUContext(const GPUPlace& place,
                       bool init = true,
@@ -176,7 +176,7 @@ class PADDLE_API GPUContext : public DeviceContext,
   void SetDnnAttr(const std::string& attr_name, Attribute attr);
   void ClearDnnAttr();
 
-  static const char* name() { return "GPUContext"; }
+  static const char* name();
 
  public:
   /*! \brief  Return nccl communicators. */

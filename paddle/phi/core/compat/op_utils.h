@@ -210,18 +210,12 @@ class OpUtilsMap {
 };
 
 struct BaseKernelNameRegistrar {
-  BaseKernelNameRegistrar(const char* op_type, const char* base_kernel_name) {
-    OpUtilsMap::Instance().InsertBaseKernelName(op_type, base_kernel_name);
-    OpUtilsMap::Instance().InsertFluidOplName(op_type, base_kernel_name);
-  }
+  BaseKernelNameRegistrar(const char* op_type, const char* base_kernel_name);
 };
 
 struct ArgumentMappingFnRegistrar {
   ArgumentMappingFnRegistrar(const char* op_type,
-                             ArgumentMappingFn arg_mapping_fn) {
-    OpUtilsMap::Instance().InsertArgumentMappingFn(op_type,
-                                                   std::move(arg_mapping_fn));
-  }
+                             ArgumentMappingFn arg_mapping_fn);
 };
 
 #define PD_REGISTER_BASE_KERNEL_NAME(op_type, base_kernel_name)               \

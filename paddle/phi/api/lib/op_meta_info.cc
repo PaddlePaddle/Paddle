@@ -227,8 +227,9 @@ void CustomOpKernelContext::ConstructInplaceIndex(
       continue;
     }
     auto out_iter = find(outputs.begin(), outputs.end(), inplace_map.at(input));
-    PADDLE_ENFORCE(
-        out_iter != outputs.end(),
+    PADDLE_ENFORCE_NE(
+        out_iter,
+        outputs.end(),
         phi::errors::NotFound("Can't find the mapped value of %s, please check "
                               "the input of `Inplace` again and make "
                               "sure you registered your op accurately. ",
@@ -272,8 +273,9 @@ void CustomOpKernelContext::AssignInplaceOutputs() {
     size_t out_start_idx = output_range_[pair.second].first;
     size_t out_end_idx = output_range_[pair.second].second;
     size_t assign_tensor_size = in_end_idx - in_start_idx;
-    PADDLE_ENFORCE(
-        assign_tensor_size == out_end_idx - out_start_idx,
+    PADDLE_ENFORCE_EQ(
+        assign_tensor_size,
+        out_end_idx - out_start_idx,
         phi::errors::OutOfRange("When assigning inplaced tensor, Input vector "
                                 "size %d mismatch output vector size %d",
                                 in_end_idx - in_start_idx,
@@ -470,21 +472,23 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::SetInplaceMap(
   const std::vector<std::string>& outputs =
       OpMetaInfoHelper::GetOutputs(*info_ptr_);
   for (const auto& pair : inplace_map) {
-    PADDLE_ENFORCE(
-        std::find(inputs.begin(), inputs.end(), pair.first) != inputs.cend(),
+    PADDLE_ENFORCE_NE(
+        std::find(inputs.begin(), inputs.end(), pair.first),
+        inputs.cend(),
         phi::errors::PreconditionNotMet(
             "The register of operator %s's `SetInplaceMap` failed. "
             "Please make sure: 1. Call `Inputs` and `Outputs` before "
             "`SetInplaceMap`; 2. The keys of inplace_map are inside `Inputs`",
             name_));
-    PADDLE_ENFORCE(std::find(outputs.begin(), outputs.end(), pair.second) !=
-                       outputs.cend(),
-                   phi::errors::PreconditionNotMet(
-                       "The register of operator %s's `SetInplaceMap` failed. "
-                       "Please make sure: 1. Call `Inputs` and `Outputs` "
-                       "before `SetInplaceMap`; 2. The values of inplace_map "
-                       "are inside `Outputs`",
-                       name_));
+    PADDLE_ENFORCE_NE(
+        std::find(outputs.begin(), outputs.end(), pair.second),
+        outputs.cend(),
+        phi::errors::PreconditionNotMet(
+            "The register of operator %s's `SetInplaceMap` failed. "
+            "Please make sure: 1. Call `Inputs` and `Outputs` "
+            "before `SetInplaceMap`; 2. The values of inplace_map "
+            "are inside `Outputs`",
+            name_));
   }
   info_ptr_->SetInplaceMap(
       std::forward<std::unordered_map<std::string, std::string>>(inplace_map));

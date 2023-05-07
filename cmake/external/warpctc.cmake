@@ -126,4 +126,8 @@ include_directories(${WARPCTC_INCLUDE_DIR}
 
 add_library(warpctc SHARED IMPORTED GLOBAL)
 set_property(TARGET warpctc PROPERTY IMPORTED_LOCATION ${WARPCTC_LIBRARIES})
+if(WIN32)
+  set_property(TARGET warpctc PROPERTY IMPORTED_IMPLIB
+                                       "${WARPCTC_INSTALL_DIR}/lib/warpctc.lib")
+endif()
 add_dependencies(warpctc extern_warpctc)

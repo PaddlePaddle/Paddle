@@ -54,46 +54,28 @@ class CustomRegisteredDeviceMap {
 const char* AllocationTypeStr(AllocationType type);
 
 /// \brief The place is used to specify where the data is stored.
-class PADDLE_API Place {
+class Place {
  public:
-  Place() : device(0), alloc_type_(AllocationType::UNDEFINED) {}
+  Place();
 
   explicit Place(AllocationType type,
                  int8_t id,
-                 const std::string& dev_type = "")
-      : device(id),
-        alloc_type_(type),
-        device_type_id_(phi::CustomRegisteredDeviceMap::Instance()
-                            .GetOrRegisterGlobalDeviceTypeId(dev_type)) {}
+                 const std::string& dev_type = "");
 
-  explicit Place(AllocationType type, const std::string& dev_type = "")
-      : device(0),
-        alloc_type_(type),
-        device_type_id_(phi::CustomRegisteredDeviceMap::Instance()
-                            .GetOrRegisterGlobalDeviceTypeId(dev_type)) {}
+  explicit Place(AllocationType type, const std::string& dev_type = "");
 
   // See NOTE [ Why need to temporarily adapt to PlaceType? ]
   Place(paddle::PlaceType type);  // NOLINT
 
   void Reset(AllocationType type,
              int8_t device_id = 0,
-             const std::string& dev_type = "") noexcept {
-    alloc_type_ = type;
-    device = device_id;
-    if (!dev_type.empty()) {
-      device_type_id_ = phi::CustomRegisteredDeviceMap::Instance()
-                            .GetOrRegisterGlobalDeviceTypeId(dev_type);
-    }
-  }
+             const std::string& dev_type = "") noexcept;
 
-  AllocationType GetType() const { return alloc_type_; }
+  AllocationType GetType() const;
 
-  int8_t GetDeviceId() const { return device; }
+  int8_t GetDeviceId() const;
 
-  std::string GetDeviceType() const {
-    return phi::CustomRegisteredDeviceMap::Instance().GetGlobalDeviceType(
-        device_type_id_);
-  }
+  std::string GetDeviceType() const;
 
   std::string DebugString() const;
 
@@ -104,7 +86,7 @@ class PADDLE_API Place {
     uint32_t operator()(const Place& place) const;
   };
 
-  uint32_t HashValue() const { return Hash()(*this); }
+  uint32_t HashValue() const;
 
   inline bool operator==(const Place& rhs) const {
     return HashValue() == rhs.HashValue();

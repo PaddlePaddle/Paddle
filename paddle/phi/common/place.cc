@@ -154,6 +154,42 @@ Place::Place(paddle::PlaceType type)
          "`paddle::CPUPlace()/DefaultGPUPlace()` to represent the place type.";
 }
 
+Place::Place() : device(0), alloc_type_(AllocationType::UNDEFINED) {}
+
+Place::Place(AllocationType type, int8_t id, const std::string &dev_type)
+    : device(id),
+      alloc_type_(type),
+      device_type_id_(phi::CustomRegisteredDeviceMap::Instance()
+                          .GetOrRegisterGlobalDeviceTypeId(dev_type)) {}
+
+Place::Place(AllocationType type, const std::string &dev_type)
+    : device(0),
+      alloc_type_(type),
+      device_type_id_(phi::CustomRegisteredDeviceMap::Instance()
+                          .GetOrRegisterGlobalDeviceTypeId(dev_type)) {}
+
+void Place::Reset(AllocationType type,
+                  int8_t device_id,
+                  const std::string &dev_type) noexcept {
+  alloc_type_ = type;
+  device = device_id;
+  if (!dev_type.empty()) {
+    device_type_id_ = phi::CustomRegisteredDeviceMap::Instance()
+                          .GetOrRegisterGlobalDeviceTypeId(dev_type);
+  }
+}
+
+AllocationType Place::GetType() const { return alloc_type_; }
+
+int8_t Place::GetDeviceId() const { return device; }
+
+std::string Place::GetDeviceType() const {
+  return phi::CustomRegisteredDeviceMap::Instance().GetGlobalDeviceType(
+      device_type_id_);
+}
+
+uint32_t Place::HashValue() const { return Hash()(*this); }
+
 }  // namespace phi
 
 namespace paddle {

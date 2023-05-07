@@ -79,4 +79,6 @@ void CPUContext::SetEigenDevice(Eigen::DefaultDevice* device) {
   impl_->eigen_device_ = device;
 }
 
+const char* CPUContext::name() { return "CPUContext"; }
+
 }  // namespace phi

@@ -2088,10 +2088,12 @@ void MaxPoolWithIndexInferMeta(const MetaTensor& x,
 
   auto x_dims = x.dims();
 
-  PADDLE_ENFORCE(x_dims.size() == 4 || x_dims.size() == 5,
-                 errors::InvalidArgument("Pooling intput should be 4-D or "
-                                         "5-D tensor but received %dD-Tensor",
-                                         x_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      (x_dims.size() == 4 || x_dims.size() == 5),
+      true,
+      errors::InvalidArgument("Pooling intput should be 4-D or "
+                              "5-D tensor but received %dD-Tensor",
+                              x_dims.size()));
 
   if (global_pooling) {
     kernel_size_.resize(static_cast<size_t>(x_dims.size()) - 2);
