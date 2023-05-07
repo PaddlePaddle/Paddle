@@ -176,6 +176,7 @@ class TestDropoutNdBF16Op(OpTest):
 
 class TestDropoutNdAPI(unittest.TestCase):
     def setUp(self):
+        paddle.seed(123)
         np.random.seed(123)
         self.places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
@@ -187,10 +188,35 @@ class TestDropoutNdAPI(unittest.TestCase):
             with fluid.dygraph.guard(place):
                 in_np = np.random.random([4, 32, 16]).astype("float32")
                 input = paddle.to_tensor(in_np)
-                res1 = dropout_nd(x=input, p=0.0, axis=[0, 1])
-                res2 = dropout_nd(x=input, p=0.5, axis=[0, 1])
+                dropout_1 = paddle.incubate.nn.FusedDropout(p=0.0, axis=[0, 1])
+                dropout_2 = paddle.incubate.nn.FusedDropout(p=0.5, axis=[0, 1])
+                print(dropout_1)
+                print(dropout_2)
+                res1 = dropout_1(input)
+                res2 = dropout_2(input)
             np.testing.assert_allclose(res1.numpy(), in_np, rtol=1e-05)
         paddle.enable_static()
+
+    def test_error(self):
+        def _run_illegal_type_p():
+            dropout = paddle.incubate.nn.FusedDropout(p="test")
+
+        self.assertRaises(TypeError, _run_illegal_type_p)
+
+        def _run_illegal_value_p():
+            dropout = paddle.incubate.nn.FusedDropout(p=2)
+
+        self.assertRaises(ValueError, _run_illegal_value_p)
+
+        def _run_illegal_mode():
+            dropout = paddle.incubate.nn.FusedDropout(p=0.5, mode="test")
+
+        self.assertRaises(ValueError, _run_illegal_mode)
+
+        def _run_illegal_type_axis():
+            dropout = paddle.incubate.nn.FusedDropout(p=0.5, axis="test")
+
+        self.assertRaises(TypeError, _run_illegal_type_axis)
 
 
 if __name__ == '__main__':

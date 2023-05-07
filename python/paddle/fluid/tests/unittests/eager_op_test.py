@@ -2745,6 +2745,26 @@ class OpTest(unittest.TestCase):
     def np_value_to_fluid_value(input):
         return input
 
+    def cast_bf16_output(self, block, cast_inputs):
+        output_names = []
+        for i in range(0, len(cast_inputs)):
+            cast_output = block.create_var(
+                dtype="float32", shape=cast_inputs[i].shape
+            )
+            cast_op = block.append_op(
+                inputs={"X": cast_inputs[i]},
+                outputs={"Out": cast_output},
+                type="cast",
+                attrs={
+                    "in_dtype": core.VarDesc.VarType.BF16,
+                    "out_dtype": core.VarDesc.VarType.FP32,
+                },
+            )
+            cast_op.desc.infer_var_type(block.desc)
+            cast_op.desc.infer_shape(block.desc)
+            output_names.append(cast_output.name)
+        return output_names
+
     def _get_gradient(
         self,
         input_to_check,
@@ -2768,21 +2788,24 @@ class OpTest(unittest.TestCase):
             if user_defined_grad_outputs is None:
                 if self.dtype == np.uint16:
                     cast_inputs = list(map(block.var, output_names))
-                    cast_outputs = block.create_var(
-                        dtype="float32", shape=cast_inputs[0].shape
-                    )
-                    cast_op = block.append_op(
-                        inputs={"X": cast_inputs},
-                        outputs={"Out": cast_outputs},
-                        type="cast",
-                        attrs={
-                            "in_dtype": core.VarDesc.VarType.BF16,
-                            "out_dtype": core.VarDesc.VarType.FP32,
-                        },
-                    )
-                    cast_op.desc.infer_var_type(block.desc)
-                    cast_op.desc.infer_shape(block.desc)
-                    output_names = [cast_outputs.name]
+                    if self.op_type == "broadcast_tensors":
+                        output_names = self.cast_bf16_output(block, cast_inputs)
+                    else:
+                        cast_outputs = block.create_var(
+                            dtype="float32", shape=cast_inputs[0].shape
+                        )
+                        cast_op = block.append_op(
+                            inputs={"X": cast_inputs},
+                            outputs={"Out": cast_outputs},
+                            type="cast",
+                            attrs={
+                                "in_dtype": core.VarDesc.VarType.BF16,
+                                "out_dtype": core.VarDesc.VarType.FP32,
+                            },
+                        )
+                        cast_op.desc.infer_var_type(block.desc)
+                        cast_op.desc.infer_shape(block.desc)
+                        output_names = [cast_outputs.name]
                 loss = append_loss_ops(block, output_names)
                 param_grad_list = append_backward(
                     loss=loss,

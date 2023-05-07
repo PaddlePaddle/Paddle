@@ -206,7 +206,7 @@ def get_program():
         auto.shard_tensor(error_cost, _g_process_mesh, [None, None, None])
 
         loss = paddle.mean(error_cost)
-        auto.shard_tensor(loss, _g_process_mesh, [None])
+        auto.shard_tensor(loss, _g_process_mesh, [])
 
     return train_program, start_program, dataloader, i, loss
 

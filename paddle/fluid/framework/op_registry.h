@@ -148,7 +148,7 @@ class OpRegistry {
 };
 
 template <typename PlaceType>
-inline void CheckKernelLaunch(const char* op_type) {}
+inline void CheckKernelLaunch(const char* op_type UNUSED) {}
 
 #ifdef PADDLE_WITH_CUDA
 template <>
