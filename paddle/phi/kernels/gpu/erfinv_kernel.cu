@@ -25,6 +25,14 @@ struct ErfinvFunctor {
   HOSTDEVICE inline T operator()(const T x) const { return erfinv(x); }
 };
 
+template <>
+struct ErfinvFunctor<float16> {
+  HOSTDEVICE inline float16 operator()(const float16 x) const {
+    auto x_ = static_cast<float>(x);
+    return static_cast<float16>(std::erfinv(x_));
+  }
+};
+
 template <typename T, typename Context>
 void ErfinvKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
   ctx.template Alloc<T>(out);
