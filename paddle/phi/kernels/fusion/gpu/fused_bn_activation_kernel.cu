@@ -51,7 +51,7 @@ void FusedBatchNormActKernel(const Context &dev_ctx,
                              DenseTensor *saved_mean,
                              DenseTensor *saved_variance,
                              DenseTensor *reserve_space) {
-  using CudnnDataType = phi::backends::gpu::CudnnDataType;
+  using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
   using BatchNormParamType = typename CudnnDataType::BatchNormParamType;
 #if CUDNN_VERSION < 7401
   PADDLE_THROW(phi::errors::Unimplemented(
