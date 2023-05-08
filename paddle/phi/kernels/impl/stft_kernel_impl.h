@@ -17,6 +17,7 @@
 #include <vector>
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/cpu/elementwise.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/funcs/fft.h"
