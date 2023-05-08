@@ -2214,7 +2214,7 @@ def _memcpy(input, place=None, output=None):
     """
 
     The OP copies the :attr:`input` to the :attr:`output`.
-    NOTE: currently, only support CUDAPlace <-> CUDAPinnedPlace or NPUPlace <-> CPUPlace.
+    NOTE: currently, only support CUDAPlace <-> CUDAPinnedPlace.
 
     Parameters:
         input (Tensor): A tensor. Its data type supports float16, float32, float64, int32, int64, and bool.
