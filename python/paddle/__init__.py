@@ -440,6 +440,7 @@ __all__ = [  # noqa
     'eye',
     'cumsum',
     'cumprod',
+    'logaddexp',
     'logcumsumexp',
     'logit',
     'LazyGuard',

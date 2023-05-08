@@ -340,6 +340,7 @@ tensor_method_func = [  # noqa
     'floor',
     'floor_',
     'increment',
+    'logaddexp',
     'log',
     'log2',
     'log10',
