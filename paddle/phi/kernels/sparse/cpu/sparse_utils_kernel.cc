@@ -434,7 +434,6 @@ PD_REGISTER_KERNEL(values_csr,
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
 
-#if !defined(PADDLE_WITH_XPU)
 PD_REGISTER_KERNEL(sparse_coo_tensor,
                    CPU,
                    ALL_LAYOUT,
@@ -446,4 +445,3 @@ PD_REGISTER_KERNEL(sparse_coo_tensor,
                    int16_t,
                    int,
                    int64_t) {}
-#endif
