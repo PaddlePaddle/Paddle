@@ -23,9 +23,9 @@ endif()
 add_subdirectory(prim_ops)
 add_subdirectory(reader)
 add_subdirectory(reduce_ops)
-if(WITH_GPU AND TENSORRT_FOUND)
-  add_subdirectory(tensorrt)
-endif()
+# if(WITH_GPU AND TENSORRT_FOUND)
+#   add_subdirectory(tensorrt)
+# endif()
 
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} executor)
 
