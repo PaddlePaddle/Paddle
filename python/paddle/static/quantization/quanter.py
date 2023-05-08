@@ -18,30 +18,26 @@ import collections
 import numpy as np
 
 import paddle
-from paddle.framework import core
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.framework import IrGraph
-from paddle.static.quantization import WeightQuantization
-from paddle.static.quantization import QuantizationTransformPass
-from paddle.static.quantization import QuantizationFreezePass
-from paddle.static.quantization import ConvertToInt8Pass
-from paddle.static.quantization import PostTrainingQuantization
-from paddle.static.quantization import AddQuantDequantPass
-from paddle.static.quantization import OutScaleForTrainingPass
-from paddle.static.quantization import OutScaleForInferencePass
-from ..common import get_logger
-from ..common.patterns import get_patterns
-from ..common.patterns_common import has_trainable_var, get_weight
-from ..core.graph_wrapper import GraphWrapper
+from ...fluid.framework import core
+from ...fluid.layer_helper import LayerHelper
+from ...fluid.framework import IrGraph
+from .quantization_pass import QuantizationTransformPass
+from .quantization_pass import QuantizationFreezePass
+from .quantization_pass import ConvertToInt8Pass
+from .post_training_quantization import PostTrainingQuantization
+from .quantization_pass import AddQuantDequantPass
+from .quantization_pass import OutScaleForTrainingPass
+from .quantization_pass import OutScaleForInferencePass
+from ..log_helper import get_logger
 _logger = get_logger(__name__, level=logging.INFO)
 
 try:
-    from paddle.static.quantization import QuantizationTransformPassV2
-    from paddle.static.quantization import QuantWeightPass
-    from paddle.static.quantization import AddQuantDequantPassV2
-    from paddle.static.quantization import PostTrainingQuantizationProgram
-    from paddle.static.quantization import AddQuantDequantForInferencePass
-    from paddle.static.quantization import quant_config
+    from .quantization_pass import QuantizationTransformPassV2
+    from .quantization_pass import QuantWeightPass
+    from .quantization_pass import AddQuantDequantPassV2
+    from .post_training_quantization import PostTrainingQuantizationProgram
+    from .quantization_pass import AddQuantDequantForInferencePass
+    from . import quant_config
 except:
     _logger.warning(
         "Some functions failed to import, better to update PaddlePaddle to the latest develop version."
@@ -67,7 +63,7 @@ try:
     QUANT_DEQUANT_PASS_OP_TYPES = list(
         quant_config.SUPPORT_ACT_QUANTIZATION_OP_DICT.keys())
 except:
-    from paddle.static.quantization import utils
+    from . import utils
     TRANSFORM_PASS_OP_TYPES = utils._weight_supported_quantizable_op_type
     QUANT_DEQUANT_PASS_OP_TYPES = utils._act_supported_quantizable_op_type
 
@@ -310,90 +306,8 @@ def quant_aware(program,
         config = _parse_configs(config)
     _logger.info("quant_aware config {}".format(config))
 
-    def find_next_ops(program, var_name):
-        """
-        Find all followed ops for the input variable.
-        """
-        block = program.global_block()
-        res_ops = []
-        for op in block.ops:
-            if var_name in op.input_arg_names:
-                res_ops.append(op)
-        return res_ops
-
-    def find_pre_ops(program, var_name):
-        """
-        Find all followed ops for the input variable.
-        """
-        block = program.global_block()
-        res_ops = []
-        for op in block.ops:
-            if var_name in op.output_arg_names:
-                res_ops.append(op)
-        return res_ops
-
-    def _is_skip_layernorm(program, op):
-        if get_weight(op) is not None:
-            return False
-
-        output_names = op._op.output_arg_names
-        for output_name in output_names:
-            for next_op in find_next_ops(program, output_name):
-                if next_op.type == 'layer_norm':
-                    return True
-        return False
-
     skip_tensor_list = []
     same_scale_tensor_list = []
-    if model_type == 'transformer' and pattern_ops is None:
-        pattern_ops, model_type = get_patterns(program)
-        if model_type != 'transformer':
-            _logger.info(
-                'Warning! After analysis, the real model type is not transformer! If you encounter this situation, please raise an issue let us know in which case "get_patterns" determines model type is not transformer.'
-            )
-    if model_type == 'transformer':
-        not_skip_quant_list = []
-        for part_name, ops in pattern_ops.items():
-            if 'MHA' in part_name:
-                qkv_weight_tensor = []
-                qkv_output_tensor = []
-                ### get qkv
-                output_names = ops[0]._op.output_arg_names
-                for output_name in output_names:
-                    for next_op in find_next_ops(program, output_name):
-                        if next_op.type in ['mul', 'matmul_v2']:
-                            qkv_weight_tensor.append(next_op.input('Y')[0])
-
-                same_scale_tensor_list.append(qkv_weight_tensor)
-
-                for op in ops:
-                    if op._op.type in ['matmul', 'matmul_v2'] and (
-                            not has_trainable_var(op)):
-                        input_names = op._op.input_arg_names
-                        for input_name in input_names:
-                            pre_op = find_pre_ops(program, input_name)[0]
-                            if pre_op.type == 'softmax' or pre_op.type == 'dropout':
-                                continue
-                            elif pre_op.type == 'scale':
-                                qkv_output_tensor.append(
-                                    input_name + '#/#{}'.format(
-                                        pre_op.attr('scale')))
-                            else:
-                                qkv_output_tensor.append(input_name)
-                    elif op._op.type == 'elementwise_add':
-                        if _is_skip_layernorm(program, op):
-                            not_skip_quant_list.append(op)
-                same_scale_tensor_list.append(qkv_output_tensor)
-            elif 'FFN' in part_name:
-                for op in ops:
-                    if op._op.type == 'elementwise_add':
-                        if _is_skip_layernorm(program, op):
-                            not_skip_quant_list.append(op)
-        tmp_graph = GraphWrapper(program)
-        for op in tmp_graph.ops():
-            ### find elementwise_add in skip layernorm
-            if op._op.type == 'elementwise_add' and op not in not_skip_quant_list:
-                op._op._set_attr("op_namescope", "skip_quant")
 
     is_test = True if for_test else not config['scale_trainable']
     if config['quant_post_first'] and for_test:
@@ -504,179 +418,6 @@ def quant_aware(program,
         return quant_program
 
 
-def quant_post_static(executor,
-                      model_dir,
-                      quantize_model_path,
-                      batch_generator=None,
-                      sample_generator=None,
-                      data_loader=None,
-                      model_filename=None,
-                      params_filename=None,
-                      save_model_filename='model.pdmodel',
-                      save_params_filename='model.pdiparams',
-                      batch_size=1,
-                      batch_nums=None,
-                      scope=None,
-                      algo='hist',
-                      round_type='round',
-                      hist_percent=0.9999,
-                      bias_correction=False,
-                      quantizable_op_type=[
-                          "conv2d", "depthwise_conv2d", "conv2d_transpose",
-                          "mul", "matmul", "matmul_v2"
-                      ],
-                      is_full_quantize=False,
-                      weight_bits=8,
-                      activation_bits=8,
-                      activation_quantize_type='range_abs_max',
-                      weight_quantize_type='channel_wise_abs_max',
-                      optimize_model=False,
-                      onnx_format=True,
-                      skip_tensor_list=None,
-                      deploy_backend=None):
-    """
-    The function utilizes static post training quantization method to
-    quantize the fp32 model. It uses calibrate data to calculate the
-    scale factor of quantized variables, and inserts fake quantization
-    and dequantization operators to obtain the quantized model.
-    Args:
-        executor(paddle.static.Executor): The executor to load, run and save the 
-            quantized model.
-        model_dir(str): The path of fp32 model that will be quantized, and 
-            the model and params that saved by ``paddle.static.io.save_inference_model`` 
-            are under the path.
-        quantize_model_path(str): The path to save quantized model using api
-            ``paddle.static.io.save_inference_model``.
-        batch_generator(Python Generator): The batch generator provides 
-                calibrate data for DataLoader, and it returns a batch every
-                time. For sample_generator and batch_generator, only one
-                can be set. Beisdes, batch_generator supports lod tensor.
-        sample_generator(Python Generator): The sample generator provides 
-            calibrate data for DataLoader, and it only returns a sample every time.
-        data_loader(Python Generator, Paddle.io.DataLoader, optional): The
-            Generator or Dataloader provides calibrate data, and it could
-            return a batch every time.
-        model_filename(str, optional): The name of model file. If parameters 
-            are saved in separate files, set it as 'None'. Default: 'None'.
-        params_filename(str, optional): The name of params file.
-                When all parameters are saved in a single file, set it 
-                as filename. If parameters are saved in separate files, 
-                set it as 'None'. Default : 'None'.
-        save_model_filename(str): The name of model file to save the quantized inference program.  Default: 'model.pdmodel'.
-        save_params_filename(str): The name of file to save all related parameters. 
-                If it is set None, parameters will be saved in separate files. Default: 'model.pdiparams'.
-        batch_size(int, optional): The batch size of DataLoader, default is 1.
-        batch_nums(int, optional): If batch_nums is not None, the number of calibrate 
-                        data is 'batch_size*batch_nums'. If batch_nums is None, use all data
-                        generated by sample_generator  as calibrate data.
-        scope(paddle.static.Scope, optional): The scope to run program, use it to load 
-                        and save variables. If scope is None, will use paddle.static.global_scope().
-        algo(str, optional): If algo='KL', use KL-divergenc method to 
-                        get the scale factor. If algo='hist', use the hist_percent of histogram 
-                        to get the scale factor. If algo='mse', search for the best scale factor which
-                        makes the mse loss minimal. Use one batch of data for mse is enough. If 
-                        algo='avg', use the average of abs_max values  to get the scale factor. If 
-                        algo='abs_max', use abs_max method to get the scale factor. Default: 'hist'.
-        round_type(str, optional): The method of converting the quantized weights value
-                        from float to int. Currently supports ['round', 'adaround'] methods.
-                        Default is `round`, which is rounding nearest to the nearest whole number.
-        hist_percent(float, optional): The percentile of histogram for algo hist.Default:0.9999.
-        bias_correction(bool, optional): Bias correction method of https://arxiv.org/abs/1810.05723.
-                        Default: False.
-        quantizable_op_type(list[str], optional): The list of op types
-                        that will be quantized. Default: ["conv2d", "depthwise_conv2d", 
-                        "mul"].
-        weight_bits(int, optional): quantization bit number for weights.
-        activation_bits(int): quantization bit number for activation.
-	activation_quantize_type(str): quantization type for activation,
-                now support 'range_abs_max', 'moving_average_abs_max' and 'abs_max'.
-                This parameter only specifies the fake ops in quantized model.
-                If it is 'range_abs_max' or 'moving_average_abs_max', we save the scale
-                obtained by post training quantization in fake ops. If it
-                is 'abs_max', the scale will not be saved in fake ops.
-        weight_quantize_type(str): quantization type for weights,
-                support 'abs_max' and 'channel_wise_abs_max'. Compared to 'abs_max',
-                the model accuracy is usually higher when using 'channel_wise_abs_max'.
-        is_full_quantize(bool): if True, apply quantization to all supported quantizable op type.
-                        If False, only apply quantization to the input quantizable_op_type. Default is False.
-        optimize_model(bool, optional): If set optimize_model as True, it applies some 
-                passes to optimize the model before quantization. So far, the place of
-                executor must be cpu it supports fusing batch_norm into convs.
-        onnx_format(bool): Whether to export the quantized model with format of ONNX. Default is True.
-        skip_tensor_list(list): List of skip quant tensor name.
-        deploy_backend(str): Deploy backend, it could be None, TensorRT, MKLDNN, ARM.
-                Other backends will continue to expand, the default is None, which means to
-                use the default general quantization configuration.
-    
-    Returns:
-        None
-    """
-    try:
-        post_training_quantization = PostTrainingQuantization(
-            executor=executor,
-            sample_generator=sample_generator,
-            batch_generator=batch_generator,
-            data_loader=data_loader,
-            model_dir=model_dir.rstrip('/'),
-            model_filename=model_filename,
-            params_filename=params_filename,
-            batch_size=batch_size,
-            batch_nums=batch_nums,
-            scope=scope,
-            algo=algo,
-            round_type=round_type,
-            hist_percent=hist_percent,
-            bias_correction=bias_correction,
-            quantizable_op_type=quantizable_op_type,
-            is_full_quantize=is_full_quantize,
-            weight_bits=weight_bits,
-            activation_bits=activation_bits,
-            activation_quantize_type=activation_quantize_type,
-            weight_quantize_type=weight_quantize_type,
-            onnx_format=onnx_format,
-            skip_tensor_list=skip_tensor_list,
-            optimize_model=optimize_model,
-            deploy_backend=deploy_backend,  # support at Paddle develop
-        )
-    except:
-        post_training_quantization = PostTrainingQuantization(
-            executor=executor,
-            sample_generator=sample_generator,
-            batch_generator=batch_generator,
-            data_loader=data_loader,
-            model_dir=model_dir.rstrip('/'),
-            model_filename=model_filename,
-            params_filename=params_filename,
-            batch_size=batch_size,
-            batch_nums=batch_nums,
-            scope=scope,
-            algo=algo,
-            round_type=round_type,
-            hist_percent=hist_percent,
-            bias_correction=bias_correction,
-            quantizable_op_type=quantizable_op_type,
-            is_full_quantize=is_full_quantize,
-            weight_bits=weight_bits,
-            activation_bits=activation_bits,
-            activation_quantize_type=activation_quantize_type,
-            weight_quantize_type=weight_quantize_type,
-            onnx_format=onnx_format,
-            skip_tensor_list=skip_tensor_list,
-            optimize_model=optimize_model)
-
-    post_training_quantization.quantize()
-    post_training_quantization.save_quantized_model(
-        quantize_model_path,
-        model_filename=save_model_filename,
-        params_filename=save_params_filename)
-
-
-# We have changed the quant_post to quant_post_static.
-# For compatibility, we keep quant_post api for now, and it will be
-# deprecated in the future.
-quant_post = quant_post_static
-
-
 def convert(program, place, config=None, scope=None, save_int8=False):
     """
     convert quantized and well-trained ``program`` to final  quantized
@@ -774,87 +515,3 @@ def convert(program, place, config=None, scope=None, save_int8=False):
         return freezed_program, freezed_program_int8
     else:
         return freezed_program
-
-
-def quant_post_dynamic(model_dir,
-                       save_model_dir,
-                       model_filename,
-                       params_filename,
-                       save_model_filename='model.pdmodel',
-                       save_params_filename='model.pdiparams',
-                       quantizable_op_type=["conv2d", "mul"],
-                       weight_bits=8,
-                       generate_test_model=False):
-    '''
-    The function utilizes static post training quantization method to
-    quantize the fp32 model. In details, it quantizes the weight of some
-    ops from float32 to int8/16. For the quantized model, there are two
-    kinds of calculation method in the reference stage. Firstly, the
-    quantized weight will be dequantized to float32, and then apply the
-    float32 calculation. Secondly, collect the quantized scales of the
-    inputs, and then apply the int8 calculation.
-        
-    Args:
-        model_dir(str): The path of the fp32 model that will be quantized,
-                and the model and params files are under the path.
-        save_model_dir(str): The path to save the quantized model.
-        model_filename(str): The name of file used to load the
-                inference program. 
-        params_filename(str): The name of file used to load all
-                parameters.
-        save_model_dir(str): The path used to save the quantized model.
-        save_model_filename(str, optional): The name of file to 
-                save the inference program. Default is 'model.pdmodel'.
-        save_params_filename(str, optional): The name of file to 
-                save all parameters. Default is 'model.pdiparams'.
-        quantizable_op_type(list[str], optional): The list of ops 
-                that will be quantized, and the quantized ops should be
-                contained in ["conv2d", "depthwise_conv2d", "mul"]. 
-                Default is ["conv2d", "depthwise_conv2d", "mul"].
-        weight_bits(int, optional): The bits for the quantized weight, 
-                and it should be 8 or 16. Default is 8.
-        generate_test_model(bool, optional): If set generate_test_model 
-                as True, it saves a fake quantized model, in which the weights 
-                are quantized and dequantized. We can use PaddlePaddle to load 
-                the fake quantized model and test the accuracy on GPU or CPU.
-    '''
-
-    weight_quant = WeightQuantization(
-        model_dir=model_dir,
-        model_filename=model_filename,
-        params_filename=params_filename)
-
-    weight_quant.quantize_weight_to_int(
-        save_model_dir=save_model_dir,
-        save_model_filename=save_model_filename,
-        save_params_filename=save_params_filename,
-        quantizable_op_type=quantizable_op_type,
-        weight_bits=weight_bits,
-        generate_test_model=generate_test_model)
-
-
-# We have changed the quant_post_only_weight to quant_post_dynamic.
-# For compatibility, we keep quant_post_only_weight api for now,
-# and it will be deprecated in the future.
-quant_post_only_weight = quant_post_dynamic
-
-
-def pact(x, name=None):
-    helper = LayerHelper("pact", **locals())
-    dtype = 'float32'
-    init_thres = 20
-    u_param_attr = paddle.ParamAttr(
-        name=x.name + '_pact',
-        initializer=paddle.nn.initializer.Constant(value=init_thres),
-        regularizer=paddle.regularizer.L2Decay(0.0001),
-        learning_rate=1)
-    u_param = helper.create_parameter(attr=u_param_attr, shape=[1], dtype=dtype)
-    x = paddle.subtract(x,
-                        paddle.nn.functional.relu(paddle.subtract(x, u_param)))
-    x = paddle.add(x, paddle.nn.functional.relu(paddle.subtract(-u_param, x)))
-
-    return x
-
-
-def get_pact_optimizer():
-    return paddle.optimizer.Momentum(0.0001, 0.9)

@@ -227,6 +227,7 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_imperative_qat_amp)
   list(REMOVE_ITEM TEST_OPS test_imperative_qat_lsq)
   list(REMOVE_ITEM TEST_OPS test_imperative_qat_matmul)
+  list(REMOVE_ITEM TEST_OPS test_quant_aware)
 
 endif()
 
@@ -514,6 +515,7 @@ if(LINUX AND WITH_MKLDNN)
   set_tests_properties(test_quant_int8_googlenet_mkldnn PROPERTIES TIMEOUT 120)
   set_tests_properties(test_quant2_int8_resnet50_mkldnn PROPERTIES TIMEOUT 200)
   set_tests_properties(test_quant2_int8_lstm_mkldnn PROPERTIES TIMEOUT 120)
+  set_tests_properties(test_quant_aware PROPERTIES TIMEOUT 120)
 endif()
 
 if(APPLE)
