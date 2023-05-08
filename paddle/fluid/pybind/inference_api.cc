@@ -753,6 +753,7 @@ void BindAnalysisConfig(py::module *m) {
            [](AnalysisConfig &self, phi::CUDAStream &stream) {
              self.SetExecStream(stream.raw_stream());
            })
+      .def("enable_memory_limit", &AnalysisConfig::EnableMemoryLimit)
 #endif
       .def("enable_xpu",
            &AnalysisConfig::EnableXpu,

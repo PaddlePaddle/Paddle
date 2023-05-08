@@ -386,6 +386,11 @@ struct Argument {
                       EnableCustomDeviceMixed,
                       bool);
 
+  // memory limit filed
+  DECL_ARGUMENT_FIELD(memory_limit, MemoryLimit, int64_t);
+  DECL_ARGUMENT_FIELD(pin_memory, UsePinMemory, bool);
+  DECL_ARGUMENT_FIELD(fixedlayer_algorithm, FixedLayerAlgorithm, int);
+
  private:
   std::unordered_set<std::string> valid_fields_;
 };

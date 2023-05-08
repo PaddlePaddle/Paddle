@@ -82,6 +82,14 @@ void PaddlePassBuilder::AppendAnalysisPass(const std::string &pass) {
   analysis_passes_.push_back(pass);
 }
 
+void PaddlePassBuilder::ReplaceAnalysisPass(const std::string &old_pass,
+                                            const std::string &new_pass) {
+  auto find =
+      std::find(analysis_passes_.begin(), analysis_passes_.end(), old_pass);
+  if (find == analysis_passes_.end()) return;
+  *find = new_pass;
+}
+
 void PaddlePassBuilder::ClearPasses() { passes_.clear(); }
 
 const std::vector<std::string> kTRTSubgraphPasses({

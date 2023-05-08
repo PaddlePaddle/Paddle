@@ -87,6 +87,12 @@ class PD_INFER_DECL PaddlePassBuilder {
   /// \param[in] pass the type of the new analysis pass.
   void AppendAnalysisPass(const std::string &pass);
 
+  /// \brief Replace an analysis pass.
+  /// \param[in] old_pass the type of the replaced analysis pass.
+  /// \param[in] new_pass the type of the new analysis pass.
+  void ReplaceAnalysisPass(const std::string &old_pass,
+                           const std::string &new_pass);
+
   /// \brief Visualize the computation graph after each pass by generating a DOT
   /// language file, one can draw them with the Graphviz toolkit.
   void TurnOnDebug();

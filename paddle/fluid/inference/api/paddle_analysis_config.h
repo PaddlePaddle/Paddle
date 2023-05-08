@@ -1051,6 +1051,10 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   bool cinn_compiler_enabled() const;
 
+  void EnableMemoryLimit(int64_t limit_byte_size,
+                         int fixedlayer_algorithm = 1,
+                         bool pin_momery = true);
+
  protected:
   // Update the config.
   void Update();
@@ -1262,6 +1266,12 @@ struct PD_INFER_DECL AnalysisConfig {
   // PrepareProgram(). So we add this flag to control the process.
   bool apply_optim_{false};
   bool skip_load_params_{false};
+
+  // limit the size of gpu memory occupied by params data
+  bool enable_memory_limit_{false};
+  int64_t memory_limit_{0};
+  bool pin_memory_{true};
+  int fixedlayer_algorithm_{0};
 };
 
 }  // namespace paddle

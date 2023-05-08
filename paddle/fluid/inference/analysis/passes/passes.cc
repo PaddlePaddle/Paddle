@@ -21,6 +21,7 @@
 #include "paddle/fluid/inference/analysis/passes/ir_graph_to_program_pass.h"
 #include "paddle/fluid/inference/analysis/passes/ir_params_sync_among_devices_pass.h"
 #include "paddle/fluid/inference/analysis/passes/memory_optimize_pass.h"
+#include "paddle/fluid/inference/analysis/passes/offload_params_pass.h"
 
 namespace paddle {
 namespace inference {
@@ -45,6 +46,9 @@ PassRegistry::PassRegistry() {
   passes_.emplace(
       "ir_graph_to_program_pass",
       std::unique_ptr<IrGraphToProgramPass>(new IrGraphToProgramPass));
+
+  passes_.emplace("offload_params_pass",
+                  std::unique_ptr<OffLoadParamsPass>(new OffLoadParamsPass));
 }
 
 }  // namespace analysis

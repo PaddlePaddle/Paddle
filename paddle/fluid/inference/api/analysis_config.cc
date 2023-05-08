@@ -556,6 +556,12 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(apply_optim_);
   CP_MEMBER(skip_load_params_);
 
+  // limit memory
+  CP_MEMBER(enable_memory_limit_);
+  CP_MEMBER(memory_limit_);
+  CP_MEMBER(fixedlayer_algorithm_);
+  CP_MEMBER(pin_memory_);
+
   if (use_gpu_) {
     PADDLE_ENFORCE_EQ(use_xpu_,
                       false,
@@ -1033,6 +1039,10 @@ void AnalysisConfig::Update() {
         "but did not have the option -DWITH_CUSTOM_DEVICE compiled."));
 #endif
   }
+  if (enable_memory_limit_) {
+    pass_builder()->ReplaceAnalysisPass("ir_params_sync_among_devices_pass",
+                                        "offload_params_pass");
+  }
 }
 
 std::string AnalysisConfig::SerializeInfoCache() {
@@ -1199,6 +1209,16 @@ void AnalysisConfig::SwitchIrDebug(int x) {
 
 void AnalysisConfig::EnableProfile() {
   with_profile_ = true;
+  Update();
+}
+
+void AnalysisConfig::EnableMemoryLimit(int64_t limit_byte_size,
+                                       int fixedlayer_algorithm,
+                                       bool pin_momery) {
+  enable_memory_limit_ = true;
+  memory_limit_ = limit_byte_size;
+  pin_memory_ = pin_momery;
+  fixedlayer_algorithm_ = fixedlayer_algorithm;
   Update();
 }
 

@@ -57,7 +57,12 @@ void NaiveExecutor::Run() {
 #ifdef PADDLE_WITH_INFERENCE_NVTX
   platform::CudaNvtxRangePush("model", platform::NvtxRangeColor::Yellow);
 #endif
-  for (auto &op : ops_) {
+#if defined(PADDLE_WITH_CUDA)
+  if (sched_layer_pools_->Get(kRootBlockIndex).IsValid()) sched_layer_pools_->Get(kRootBlockIndex).FillPool();
+#endif
+  for (size_t idx = 0; idx < ops_.size(); idx++) {
+    auto &op = ops_[idx];
+    // LOG(INFO) << "Run i: " << idx << ", " << op->Type();
     VLOG(4) << std::this_thread::get_id() << " run "
             << op->DebugStringEx(scope_) << " on scope " << scope_;
     op->SetIsCalledByExecutor(false);
@@ -73,7 +78,30 @@ void NaiveExecutor::Run() {
       }
     }
 
+#if defined(PADDLE_WITH_CUDA)
+    if (sched_layer_pools_->Get(kRootBlockIndex).IsValid()) {
+      if (!sched_layer_pools_->Get(kRootBlockIndex).IsSchedLayer(idx)) {
+        op->Run(*scope_, place_);
+      } else {
+        // sched_layer_pools_->Get(kRootBlockIndex).Debug();
+        
+        sched_layer_pools_->Get(kRootBlockIndex).FillPool();
+        // sched_layer_pools_->Get(kRootBlockIndex).Debug();
+        size_t buf_id = sched_layer_pools_->Get(kRootBlockIndex).active_layers_[idx];
+        cudaStreamWaitEvent(
+            sched_layer_pools_->Get(kRootBlockIndex).kernel_run_stream_,
+            sched_layer_pools_->Get(kRootBlockIndex).buffer_nodes_[buf_id].event);
+        op->Run(*scope_, place_);
+        cudaEventRecord(sched_layer_pools_->Get(kRootBlockIndex).buffer_nodes_[buf_id].event,
+                        sched_layer_pools_->Get(kRootBlockIndex).kernel_run_stream_);
+        sched_layer_pools_->Get(kRootBlockIndex).buffer_nodes_[buf_id].ResetBuffer();
+      }
+    } else {
+      op->Run(*scope_, place_);
+    }
+#else
     op->Run(*scope_, place_);
+#endif
 
     // Update the shared_holder so that only records the max one.
     if (reuse_cache_.count(op.get())) {
@@ -94,6 +122,9 @@ void NaiveExecutor::Run() {
   }
 #ifdef PADDLE_WITH_INFERENCE_NVTX
   platform::CudaNvtxRangePop();
+#endif
+#if defined(PADDLE_WITH_CUDA)
+  if (sched_layer_pools_->Get(kRootBlockIndex).IsValid()) sched_layer_pools_->Get(kRootBlockIndex).Reset();
 #endif
 }
 

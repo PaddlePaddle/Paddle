@@ -31,7 +31,10 @@ cc_library(
   inference_op_replace_pass
   SRCS inference_op_replace_pass.cc
   DEPS analysis_pass graph_to_program_pass)
-
+cc_library(
+  offload_params_pass
+  SRCS offload_params_pass.cc
+  DEPS analysis_pass graph_to_program_pass)
 cc_library(
   analysis_passes
   SRCS passes.cc
@@ -42,7 +45,8 @@ cc_library(
        memory_optim_pass
        convert_to_mixed_precision
        inference_op_replace_pass
-       ir_graph_to_program_pass)
+       ir_graph_to_program_pass
+       offload_params_pass)
 
 set(analysis_deps
     ${analysis_deps} analysis_passes subgraph_detector

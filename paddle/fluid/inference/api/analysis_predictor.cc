@@ -1557,6 +1557,13 @@ void AnalysisPredictor::PrepareArgument() {
   argument_->SetEnableGPUMixed(config_.enable_gpu_mixed_);
   argument_->SetMixedPrecisionMode(static_cast<int>(
       paddle::ConvertPrecision(config_.mixed_precision_mode_)));
+
+  // params memory limit
+  if (config_.enable_memory_limit_) {
+    argument_->SetMemoryLimit(config_.memory_limit_);
+    argument_->SetUsePinMemory(config_.pin_memory_);
+    argument_->SetFixedLayerAlgorithm(config_.fixedlayer_algorithm_);
+  }
 }
 
 // NOTE All the members in AnalysisConfig should be copied to Argument.

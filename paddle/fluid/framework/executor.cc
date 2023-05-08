@@ -70,7 +70,9 @@ ExecutorPrepareContext::~ExecutorPrepareContext() {
   VLOG(5) << "destroy ExecutorPrepareContext";
 }
 
-Executor::Executor(const platform::Place& place) : place_(place) {}
+Executor::Executor(const platform::Place& place) : place_(place) {
+  sched_layer_pools_ = &framework::VectorSchedLayersPool::Instance();
+}
 
 Executor::~Executor() {
 #ifdef PADDLE_WITH_MKLDNN
@@ -487,7 +489,6 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
     }
     CreateVariables(ctx->prog_, local_scope, ctx->block_id_);
   }
-
   int64_t max_memory_size = GetEagerDeletionThreshold();
   std::unique_ptr<GarbageCollector> gc;
   if (!ctx->force_disable_gc_ && max_memory_size >= 0) {
@@ -534,16 +535,56 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
 #endif
     }
   }
-
+#if defined(PADDLE_WITH_CUDA)
+  if (ctx->block_id_ < sched_layer_pools_->Size() &&
+      sched_layer_pools_->Get(ctx->block_id_).IsValid())
+    sched_layer_pools_->Get(ctx->block_id_).FillPool();
+#endif
   for (int64_t i = start_op_index; i < end_op_index; ++i) {
     auto& op = ctx->ops_[i];
+    // LOG(INFO) << "Run i " << i << ", " << op->Type();
+#if defined(PADDLE_WITH_CUDA)
+    if (ctx->block_id_ < sched_layer_pools_->Size() &&
+        sched_layer_pools_->Get(ctx->block_id_).IsValid()) {
+      if (!sched_layer_pools_->Get(ctx->block_id_).IsSchedLayer(i)) {
+        op->Run(*local_scope, place_);
+      } else {
+        // sched_layer_pools_->Get(ctx->block_id_).Debug();
+        sched_layer_pools_->Get(ctx->block_id_).FillPool();
+        // sched_layer_pools_->Get(ctx->block_id_).Debug();
+        size_t buf_id =
+            sched_layer_pools_->Get(ctx->block_id_).active_layers_[i];
+        cudaStreamWaitEvent(
+            sched_layer_pools_->Get(ctx->block_id_).kernel_run_stream_,
+            sched_layer_pools_->Get(ctx->block_id_).buffer_nodes_[buf_id].event,
+            0);
+        op->Run(*local_scope, place_);
+        cudaEventRecord(
+            sched_layer_pools_->Get(ctx->block_id_).buffer_nodes_[buf_id].event,
+            sched_layer_pools_->Get(ctx->block_id_).kernel_run_stream_);
+        sched_layer_pools_->Get(ctx->block_id_)
+            .buffer_nodes_[buf_id]
+            .ResetBuffer();
+      }
+    } else {
+      op->Run(*local_scope, place_);
+    }
+#else
     op->Run(*local_scope, place_);
+#endif
+
     if (gc) {
       platform::RecordEvent record(
           "CheckGC", platform::TracerEventType::UserDefined, 10);
       DeleteUnusedTensors(*local_scope, op.get(), ctx->unused_vars_, gc.get());
     }
   }
+
+#if defined(PADDLE_WITH_CUDA)
+  if (ctx->block_id_ < sched_layer_pools_->Size() &&
+      sched_layer_pools_->Get(ctx->block_id_).IsValid())
+    sched_layer_pools_->Get(ctx->block_id_).Reset();
+#endif
 
   auto callback = [scope, local_scope, keep_kids]() {
     if (local_scope != scope) {

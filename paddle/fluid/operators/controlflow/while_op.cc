@@ -188,21 +188,23 @@ class WhileOp : public framework::OperatorBase {
     // the place of every inputs and restore their place after
     // InterpreterCore.run().
     std::map<std::string, phi::Place> input_var_original_places;
-    for (const auto &in_name : Inputs(kX)) {
-      framework::Variable *var = scope.FindVar(in_name);
-      if (var == nullptr) {
-        VLOG(4) << "[while op]"
-                << "input not found:" << in_name;
-      }
+    if (FLAGS_control_flow_use_new_executor) {
+      for (const auto &in_name : Inputs(kX)) {
+        framework::Variable *var = scope.FindVar(in_name);
+        if (var == nullptr) {
+          VLOG(4) << "[while op]"
+                  << "input not found:" << in_name;
+        }
 
-      if (var->Type() == framework::proto::VarType::LOD_TENSOR) {
-        input_var_original_places[in_name] =
-            (var->Get<phi::DenseTensor>()).place();
-      } else {
-        VLOG(10) << "[while op]"
-                 << "skip backup input " << in_name << " type:"
-                 << framework::TransToPhiDataType(
-                        framework::ToVarType(var->Type()));
+        if (var->Type() == framework::proto::VarType::LOD_TENSOR) {
+          input_var_original_places[in_name] =
+              (var->Get<phi::DenseTensor>()).place();
+        } else {
+          VLOG(10) << "[while op]"
+                   << "skip backup input " << in_name << " type:"
+                   << framework::TransToPhiDataType(
+                          framework::ToVarType(var->Type()));
+        }
       }
     }
 

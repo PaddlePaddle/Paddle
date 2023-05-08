@@ -26,6 +26,10 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/framework/sched_layers_pool.h"
+#endif
+
 namespace paddle {
 namespace framework {
 
@@ -40,7 +44,9 @@ class NaiveExecutor {
  public:
   using HookFunc = std::function<void(OperatorBase*)>;
 
-  explicit NaiveExecutor(const platform::Place& place) : place_(place) {}
+  explicit NaiveExecutor(const platform::Place& place) : place_(place) {
+    sched_layer_pools_ = &framework::VectorSchedLayersPool::Instance();
+  }
 
   ~NaiveExecutor();
 
@@ -92,6 +98,10 @@ class NaiveExecutor {
   std::unordered_map<OperatorBase*, std::unordered_map<phi::DenseTensor*, int>>
       reuse_cache_;
   std::vector<phi::DenseTensor*> cluster_buffer_;
+
+#if defined(PADDLE_WITH_CUDA)
+  VectorSchedLayersPool* sched_layer_pools_;
+#endif
 };
 
 }  // namespace framework
