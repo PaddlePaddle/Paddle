@@ -355,6 +355,7 @@
     func : CastInferMeta
   kernel :
     func : cast
+    data_type : x
   backward : cast_grad
 
 - op : ceil
