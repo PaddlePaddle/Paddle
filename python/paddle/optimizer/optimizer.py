@@ -1174,7 +1174,20 @@ class Optimizer:
         return params_grads
 
     def append_cast_to_master_grad_op(self, param_grads):
-        """ """
+        """
+        Add ops to cast gradient to master gradient
+
+        Args:
+          param_grads(list(tuple(Tensor, Tensor))):
+            A list of (parameter, gradient) pair to update.
+
+        Returns:
+          params_master_grads:
+            A list of (parameter, master_gradient) pair.
+            In the following grad clip step and optimizer step, params can be updated by master gradient.
+            main_prog will also append cast ops before grad clip ops.
+
+        """
 
         if not self._master_grad:
             return param_grads

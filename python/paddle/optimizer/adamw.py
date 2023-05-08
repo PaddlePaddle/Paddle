@@ -426,14 +426,6 @@ class AdamW(Optimizer):
             if find_master
             else None
         )
-        find_master_grad = self._master_grad and self._is_dtype_fp16_or_bf16(
-            param_and_grad[1].dtype
-        )
-        master_grad = (
-            self._master_grads[param_and_grad[1].name]
-            if find_master_grad
-            else None
-        )
         lr = self._create_param_lr(param_and_grad)
 
         # create the adamw optimize op
