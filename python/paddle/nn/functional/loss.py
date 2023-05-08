@@ -1541,7 +1541,7 @@ def poisson_nll_loss(
 
             input = paddle.randn([5, 2], dtype=paddle.float32)
             label = paddle.randn([5, 2], dtype=paddle.float32)
-            loss = F.poisson_nll_loss(input, label, log_input=True, reduction='None')
+            loss = F.poisson_nll_loss(input, label, log_input=True, reduction='none')
             print(loss)
             loss = F.poisson_nll_loss(input, label, reduction='mean')
             print(loss)
