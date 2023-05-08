@@ -139,6 +139,45 @@ phi::KernelKey GetSgdExpectedKernelType(
   return phi::KernelKey(data_type, ctx.GetPlace());
 }
 
+phi::KernelKey GetSoftmaxExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  // choose cudnn kernel if the runtime supported.
+  std::string data_format = ctx.Attr<std::string>("data_format");
+  phi::DataLayout layout_ = phi::StringToDataLayout(data_format);
+  auto input_data_type = op_ptr->IndicateVarDataType(ctx, "X");
+  if (input_data_type == framework::proto::VarType::FP16) {
+    PADDLE_ENFORCE_EQ(
+        platform::is_gpu_place(ctx.GetPlace()) ||
+            platform::is_xpu_place(ctx.GetPlace()) ||
+            platform::is_custom_place(ctx.GetPlace()),
+        true,
+        platform::errors::InvalidArgument(
+            "float16 can only be used on GPU/NPU/XPU and custom place"));
+  }
+  return phi::KernelKey(
+      ctx.GetPlace(), layout_, phi::TransToPhiDataType(input_data_type));
+}
+
+phi::KernelKey GetSoftmaxGradExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  // choose cudnn kernel if the runtime supported.
+  std::string data_format = ctx.Attr<std::string>("data_format");
+  phi::DataLayout layout_ = phi::StringToDataLayout(data_format);
+  auto input_data_type =
+      op_ptr->IndicateVarDataType(ctx, framework::GradVarName("Out"));
+  if (input_data_type == framework::proto::VarType::FP16) {
+    if (!(platform::is_gpu_place(ctx.GetPlace()) ||
+          platform::is_xpu_place(ctx.GetPlace()) ||
+          platform::is_custom_place(ctx.GetPlace())))
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "float16 can only be used on GPU/NPU/XPU and custom place"));
+  }
+  return phi::KernelKey(
+      ctx.GetPlace(), layout_, phi::TransToPhiDataType(input_data_type));
+}
+
 phi::KernelKey GetUpdateLossScalingExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr) {

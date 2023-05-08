@@ -335,6 +335,16 @@
   kernel :
     func : share_buffer
 
+- op : softmax
+  args : (Tensor x, int axis)
+  output : Tensor(out)
+  infer_meta :
+    func : SoftmaxInferMeta
+  kernel :
+    func : softmax
+  inplace : (x -> out)
+  backward : softmax_grad
+
 - op : tril_indices
   args : (int rows = 0, int cols = 0, int offset = 0, DataType dtype = DataType::INT64)
   output : Tensor(out)
