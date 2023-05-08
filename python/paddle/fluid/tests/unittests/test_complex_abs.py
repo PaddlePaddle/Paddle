@@ -26,9 +26,10 @@ class TestComplexAbsOp(OpTest):
         paddle.enable_static()
         self.python_api = paddle.abs
         self.op_type = "abs"
-        self.dtype = np.complex128
+        self.dtype = np.float64
         self.shape = (2, 3, 4, 5)
         self.init_input_output()
+        self.init_grad_input_output()
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(self.x)}
         self.outputs = {'Out': self.out}
@@ -39,6 +40,10 @@ class TestComplexAbsOp(OpTest):
         ) + 1j * np.random.random(self.shape).astype(self.dtype)
         self.out = np.abs(self.x)
 
+    def init_grad_input_output(self):
+        self.grad_out = np.ones(self.shape, self.dtype)
+        self.grad_x = self.grad_out * (self.x / np.abs(self.x))
+
     def test_check_output(self):
         self.check_output()
 
@@ -46,6 +51,8 @@ class TestComplexAbsOp(OpTest):
         self.check_grad(
             ['X'],
             'Out',
+            user_defined_grads=[self.grad_x],
+            user_defined_grad_outputs=[self.grad_out],
         )
 
 

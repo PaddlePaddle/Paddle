@@ -2553,11 +2553,6 @@ class OpTest(unittest.TestCase):
             max_relative_error = (
                 0.001 if max_relative_error < 0.001 else max_relative_error
             )
-        if self.dtype in [np.complex128, np.complex64]:
-            print("numeric_grads:")
-            print(numeric_grads)
-            print("analytic_grads:")
-            print(analytic_grads)
         self._assert_is_close(
             numeric_grads,
             analytic_grads,
