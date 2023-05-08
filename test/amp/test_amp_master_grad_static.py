@@ -27,7 +27,9 @@ paddle.enable_static()
 
 
 @unittest.skipIf(
-    not core.supports_bfloat16(), "place does not support BF16 evaluation"
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "place does not support BF16 evaluation",
 )
 class TestStaticMasterGradProgramBF16(AmpTestBase):
     def _check_optimizer(self, program, expected_num_mp):
