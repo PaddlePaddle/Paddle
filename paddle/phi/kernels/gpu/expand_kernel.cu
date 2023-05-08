@@ -88,8 +88,7 @@ void ExpandKernel(const Context& ctx,
   ctx.template Alloc<T>(out);
   std::vector<const DenseTensor*> ins = {&x};
   std::vector<DenseTensor*> outs = {out};
-  phi::funcs::BroadcastKernel<ElementwiseType::kUnary, T, T>(
-      ctx, ins, &outs, -1, kps::IdentityFunctor<T>());
+  phi::funcs::BroadcastKernel<T>(ctx, ins, &outs, kps::IdentityFunctor<T>());
 }
 
 }  // namespace phi

@@ -153,12 +153,8 @@ void SetValueCompute(const Context& dev_ctx,
   slice_tensor.Resize(slice_dims_for_assign);
   if (value_tensor != nullptr) {
     CheckIsDimsMatch(slice_dims_for_assign, value_tensor->dims());
-    phi::funcs::ElementwiseCompute<SubFunctor<T>, T, T>(dev_ctx,
-                                                        slice_tensor,
-                                                        *value_tensor,
-                                                        -1,
-                                                        SubFunctor<T>(),
-                                                        &slice_tensor);
+    phi::funcs::ElementwiseCompute<SubFunctor<T>, T>(
+        dev_ctx, slice_tensor, *value_tensor, SubFunctor<T>(), &slice_tensor);
   } else {
     DenseTensor value_t(dtype);
     auto value_dims = phi::make_ddim(shape);
@@ -166,8 +162,8 @@ void SetValueCompute(const Context& dev_ctx,
 
     value_t.Resize(value_dims);
     dev_ctx.template Alloc<T>(&value_t);
-    phi::funcs::ElementwiseCompute<SubFunctor<T>, T, T>(
-        dev_ctx, slice_tensor, value_t, -1, SubFunctor<T>(), &slice_tensor);
+    phi::funcs::ElementwiseCompute<SubFunctor<T>, T>(
+        dev_ctx, slice_tensor, value_t, SubFunctor<T>(), &slice_tensor);
   }
   slice_tensor.Resize(slice_dims);
 

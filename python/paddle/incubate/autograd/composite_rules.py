@@ -252,7 +252,7 @@ def mean_composite(x, axis, keepdim):
         operator.mul, [x.shape[axis] for axis in axes]
     )
     norm = fill_constant(
-        shape=x.shape if len(x.shape) == 0 else [1],
+        shape=[],
         value=value_to_fill,
         dtype=sum_x.dtype,
     )
@@ -677,6 +677,14 @@ def group_norm_composite(x, scale, bias, epsilon, groups, data_layout):
     if is_amp:
         out = cast(out, "float16")
     return out, ret_mean_, ret_var_
+
+
+@REGISTER_COMPOSITE('sum')
+def sum_composite(x):
+    ans = 0
+    for xi in x:
+        ans += xi
+    return ans
 
 
 @REGISTER_COMPOSITE('leaky_relu')

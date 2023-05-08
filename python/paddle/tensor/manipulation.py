@@ -1239,7 +1239,15 @@ def broadcast_tensors(input, name=None):
             check_variable_and_dtype(
                 x,
                 'input[' + str(id) + ']',
-                ['bool', 'float32', 'float64', 'int32', 'int64'],
+                [
+                    'bool',
+                    'float16',
+                    'float32',
+                    'float64',
+                    'int32',
+                    'int64',
+                    'uint16',
+                ],
                 'broadcast_tensors',
             )
             if x.dtype != input[0].dtype:
@@ -2089,7 +2097,7 @@ def vsplit(x, num_or_sections, name=None):
 
             # x is a Tensor of shape [8, 6, 7]
             x = paddle.rand([8, 6, 7])
-            out0, out1, out2 = paddle.vsplit(x, num_or_sections=2)
+            out0, out1 = paddle.vsplit(x, num_or_sections=2)
             print(out0.shape)  # [4, 6, 7]
             print(out1.shape)  # [4, 6, 7]
             out0, out1, out2 = paddle.vsplit(x, num_or_sections=[1, 3, 4])

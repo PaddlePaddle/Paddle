@@ -1067,44 +1067,61 @@ void BindImperative(py::module *m_ptr) {
              }
 
              bool set_to_1d = FLAGS_set_to_1d;
-             if (!none_axes.empty()) {
-               if (set_to_1d) {
-                 // NOTE(zoooo0820): When all axes are decreased, the output
-                 // will be 1-D with FLAGS_set_to_1d=True. In this case, one
-                 // `None` should be pop out, otherwise the output shape will be
-                 // not correct.
-                 if (static_cast<int>(decrease_axis.size()) ==
-                     tensor->dims().size()) {
+
+             if (set_to_1d) {
+               // NOTE(zoooo0820): When all axes are decreased, the output
+               // will be 1-D with FLAGS_set_to_1d=True. In this case, one
+               // `None` should be pop out, otherwise the output shape will be
+               // not correct.
+               if (static_cast<int>(decrease_axis.size()) ==
+                   tensor->dims().size()) {
+                 VLOG(0) << "Warning: In Tensor '__getitem__', if the number "
+                            "of scalar "
+                            "elements "
+                            "in the index is equal to the rank of the Tensor, "
+                            "the output "
+                            "should "
+                            "be 0-D. In order to be consistent with the "
+                            "behavior of previous "
+                            "versions, it will be processed to 1-D. But it is "
+                            "not correct and "
+                            "will be "
+                            "removed in release 2.6. "
+                            "If 1-D is still wanted, please modify the index "
+                            "element from "
+                            "scalar to slice "
+                            "(e.g. 'x[i]' => 'x[i:i+1]'). ";
+                 if (!none_axes.empty()) {
                    none_axes.pop_back();
                  }
                }
-               if (!none_axes.empty()) {
-                 // Deal with cases that decrease_axes is not empty
-                 // For example:
-                 // # x.shape: (2,3,4)
-                 // out = x[0, 0:2, None] # out.shape : (2, 1, 4)
-                 for (auto &axis : none_axes) {
-                   int len = 0;
-                   for (int da : decrease_axis) {
-                     if (da < axis) {
-                       len++;
-                     }
+             }
+             if (!none_axes.empty()) {
+               // Deal with cases that decrease_axes is not empty
+               // For example:
+               // # x.shape: (2,3,4)
+               // out = x[0, 0:2, None] # out.shape : (2, 1, 4)
+               for (auto &axis : none_axes) {
+                 int len = 0;
+                 for (int da : decrease_axis) {
+                   if (da < axis) {
+                     len++;
                    }
-                   axis -= len;
                  }
-
-                 imperative::NameVarBaseMap ins = {{"X", {out}}};
-                 framework::AttributeMap attrs = {{"axes", none_axes}};
-                 auto new_out = std::shared_ptr<imperative::VarBase>(
-                     new imperative::VarBase(tracer->GenerateUniqueName()));
-                 auto out_xshape = std::shared_ptr<imperative::VarBase>(
-                     new imperative::VarBase(tracer->GenerateUniqueName()));
-                 imperative::NameVarBaseMap outs = {{"Out", {new_out}},
-                                                    {"XShape", {out_xshape}}};
-                 tracer->TraceOp("unsqueeze2", ins, outs, std::move(attrs));
-
-                 return new_out;
+                 axis -= len;
                }
+
+               imperative::NameVarBaseMap ins = {{"X", {out}}};
+               framework::AttributeMap attrs = {{"axes", none_axes}};
+               auto new_out = std::shared_ptr<imperative::VarBase>(
+                   new imperative::VarBase(tracer->GenerateUniqueName()));
+               auto out_xshape = std::shared_ptr<imperative::VarBase>(
+                   new imperative::VarBase(tracer->GenerateUniqueName()));
+               imperative::NameVarBaseMap outs = {{"Out", {new_out}},
+                                                  {"XShape", {out_xshape}}};
+               tracer->TraceOp("unsqueeze2", ins, outs, std::move(attrs));
+
+               return new_out;
              }
 
              // the index is a list
@@ -2152,6 +2169,7 @@ void BindImperative(py::module *m_ptr) {
 
   py::enum_<paddle::imperative::AmpLevel>(m, "AmpLevel", py::arithmetic())
       .value("O0", paddle::imperative::AmpLevel::O0)
+      .value("OD", paddle::imperative::AmpLevel::OD)
       .value("O1", paddle::imperative::AmpLevel::O1)
       .value("O2", paddle::imperative::AmpLevel::O2)
       .value("O3", paddle::imperative::AmpLevel::O3)

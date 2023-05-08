@@ -221,7 +221,7 @@ class ClipHelper:
             in_var = self.block.vars[in_name]
             in_dist_attr = TensorDistAttr()
             in_dist_attr.process_mesh = ProcessMesh(self.world_ranks)
-            in_dist_attr.dims_mapping = [-1]
+            in_dist_attr.dims_mapping = [-1 for i in in_var.shape]
             self.dist_context.set_tensor_dist_attr_for_program(
                 in_var, in_dist_attr
             )
@@ -230,7 +230,7 @@ class ClipHelper:
             out_var = self.block.vars[out_name]
             out_dist_attr = TensorDistAttr()
             out_dist_attr.process_mesh = ProcessMesh(self.world_ranks)
-            out_dist_attr.dims_mapping = [-1]
+            out_dist_attr.dims_mapping = [-1 for i in out_var.shape]
             self.dist_context.set_tensor_dist_attr_for_program(
                 out_var, out_dist_attr
             )

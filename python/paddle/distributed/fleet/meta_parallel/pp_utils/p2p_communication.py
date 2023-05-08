@@ -350,8 +350,6 @@ def _p2p_helper(
 
     # TODO(Yuang Liu): use batch_isend_irecv replace all these comm ops
     tasks = []
-    if paddle.is_compiled_with_xpu():
-        framework.core.ProcessGroupBKCL.group_start()
     # start to p2p communicate
     if tensor_send_prev is not None:
         if isinstance(tensor_send_prev, tuple):
@@ -406,6 +404,7 @@ def _p2p_helper(
                 group=_hcg.recv_prev_group,
                 use_calc_stream=sync_recv,
             )
+
             if sync_recv:
                 allgather_partial(
                     tensor_recv_prev,
@@ -451,6 +450,7 @@ def _p2p_helper(
                     group=_hcg.recv_next_group,
                     use_calc_stream=sync_recv,
                 )
+
                 if sync_recv:
                     allgather_partial(
                         d,
@@ -481,9 +481,6 @@ def _p2p_helper(
                 )
             else:
                 tasks.append(task)
-    if paddle.is_compiled_with_xpu():
-        framework.core.ProcessGroupBKCL.group_end()
-
     if not sync_recv:
         if framework.in_dygraph_mode():
             # wait irecv tasks in eager dygraph mode with new comm library
