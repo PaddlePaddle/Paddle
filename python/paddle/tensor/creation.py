@@ -662,6 +662,8 @@ def _to_tensor_static(data, dtype=None, stop_gradient=None):
                     Thus, process nested structure in except block
                     '''
                     data = np.array(data)
+                    if data.dtype in ['int32']:
+                        data = data.astype('int64')
 
                     # for numpy version <= 1.23.5
                     if data.dtype == 'object':
@@ -682,17 +684,15 @@ def _to_tensor_static(data, dtype=None, stop_gradient=None):
                 )
 
         # fix numpy default dtype
+        if data.dtype in ['float16', 'float32', 'float64']:
+            data = data.astype(paddle.get_default_dtype())
+
         if dtype:
             target_dtype = dtype
-        elif data.dtype in ['float16', 'float32', 'float64']:
-            data = data.astype(paddle.get_default_dtype())
-            target_dtype = data.dtype
-        elif data.dtype in ['int32']:
-            data = data.astype('int64')
+        elif hasattr(data, 'dtype') and data.dtype != 'object':
             target_dtype = data.dtype
         else:
             target_dtype = paddle.get_default_dtype()
-        target_dtype = convert_dtype(target_dtype)
 
         output = assign(data)
 
