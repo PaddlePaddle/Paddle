@@ -1,5 +1,6 @@
-op_library(tensorrt_engine_op DEPS tensorrt_engine tensorrt_converter
-           infer_io_utils analysis_helper)
+op_library(
+  ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/tensorrt/tensorrt_engine_op DEPS
+  tensorrt_engine tensorrt_converter infer_io_utils analysis_helper)
 
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will
