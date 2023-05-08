@@ -605,11 +605,11 @@ class PrimForwardChecker:
             )
             ret = flatten(_as_list(self.public_python_api(*args)))
             primapi.to_prim(main_program.blocks)
-        # check the operator not in program if check prim
+        # ensure the operator not in program if check_prim is True
         if self.prim_op_type == "comp":
             forward_ops = [op.type for op in main_program.blocks[0].ops]
             assert self.op_type not in forward_ops, (
-                "%s shouldn't appear in program"
+                "%s shouldn't appear in program when check_prim is True"
             ) % (self.op_type)
         exe = paddle.static.Executor(self.place)
         exe.run(startup_program)
@@ -681,7 +681,7 @@ class PrimForwardChecker:
         )
         net = PrimNet(self.public_python_api)
         net = apply_to_static(net, False)
-        # check the operator not in program if check prim
+        # ensure the operator not in program if check_prim is True
         if self.prim_op_type == "comp" and self.op_type != "fill_any_like":
             forward_ops = [
                 op.type
@@ -690,7 +690,7 @@ class PrimForwardChecker:
                 .ops
             ]
             assert self.op_type not in forward_ops, (
-                "%s shouldn't appear in program"
+                "%s shouldn't appear in program when check_prim is True"
             ) % (self.op_type)
         ret = flatten(_as_list(net(args)))
         ret = paddle.utils.map_structure(lambda x: x.numpy(), ret)
@@ -778,7 +778,7 @@ class PrimForwardChecker:
         net = apply_to_static(
             net, core.is_compiled_with_cinn() and self.enable_cinn
         )
-        # check the operator not in program if check prim
+        # check the operator not in program if check prim is True
         if self.prim_op_type == "comp" and self.op_type != "fill_any_like":
             forward_ops = [
                 op.type
@@ -787,7 +787,7 @@ class PrimForwardChecker:
                 .ops
             ]
             assert self.op_type not in forward_ops, (
-                "%s shouldn't appear in program"
+                "%s shouldn't appear in program when check_prim is True"
             ) % (self.op_type)
         ret = flatten(_as_list(net(args)))
         ret = paddle.utils.map_structure(lambda x: x.numpy(), ret)
@@ -1083,11 +1083,11 @@ class PrimGradChecker(PrimForwardChecker):
                 var_dict={**inputs_dict, **outputs_dict}
             )
             ret = paddle.static.gradients(ys, xs, vs, no_grad_set=no_grad_vars)
-        # check the backward operator not in program
+        # check the backward operator not in program when check_prim is True
         ops = [op.type for op in main_program.blocks[0].ops]
         backward_op_type = self.op_type + "_grad"
         assert backward_op_type not in ops, (
-            "%s shouldn't appear in program"
+            "%s shouldn't appear in program when check_prim is True"
         ) % (backward_op_type)
         exe = paddle.static.Executor(self.place)
         exe.run(startup_program)
@@ -1174,7 +1174,7 @@ class PrimGradChecker(PrimForwardChecker):
         )
         net = PrimNet(self.public_python_api)
         net = apply_to_static(net, False)
-        # check the backward operator not in program
+        # check the backward operator not in program when check_prim is True
         ops = [
             op.type
             for op in net.forward.get_concrete_program(args)[1]
@@ -1183,7 +1183,7 @@ class PrimGradChecker(PrimForwardChecker):
         ]
         backward_op_type = self.op_type + "_grad"
         assert backward_op_type not in ops, (
-            "%s shouldn't appear in program"
+            "%s shouldn't appear in program when check_prim is True"
         ) % (backward_op_type)
         out = _as_list(net(args))
         if hasattr(self.op_test, "python_out_sig"):
@@ -1304,7 +1304,7 @@ class PrimGradChecker(PrimForwardChecker):
         net = apply_to_static(
             net, core.is_compiled_with_cinn() and self.enable_cinn
         )
-        # check the backward operator not in program
+        # check the backward operator not in program when check_prim is True
         ops = [
             op.type
             for op in net.forward.get_concrete_program(args)[1]
@@ -1313,7 +1313,7 @@ class PrimGradChecker(PrimForwardChecker):
         ]
         backward_op_type = self.op_type + "_grad"
         assert backward_op_type not in ops, (
-            "%s shouldn't appear in program"
+            "%s shouldn't appear in program when check_prim is True"
         ) % (backward_op_type)
 
         out = _as_list(net(args))
