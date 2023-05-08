@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/collective/c_softmax_with_cross_entropy_op.h"
+#include "paddle/phi/kernels/reduce_sum_kernel.h"
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/platform/collective_helper.h"
@@ -337,9 +338,7 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::GPUContext, T> {
     eigen_logits_max.device(*dev_ctx.eigen_device()) =
         eigen_logits.maximum(along_axis);
 
-    std::vector<phi::DenseTensor> in_out;
-    in_out.push_back(logits_max);
-    pg->AllReduce(in_out, in_out, opts)->Synchronize();
+    pg->AllReduce(&logits_max, logits_max, opts, true, true);
 
     // step 2, obtain logit - logit_max
     Eigen::DSizes<int, 2> batch_by_one(N, 1);
@@ -390,10 +389,8 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::GPUContext, T> {
           nranks);
     }
 
-    in_out.clear();
-    in_out.push_back(predicted_logits);
     opts.reduce_op = distributed::ReduceOp::SUM;
-    pg->AllReduce(in_out, in_out, opts)->Synchronize();
+    pg->AllReduce(&predicted_logits, predicted_logits, opts, true, true);
 
     // step 4, obtain exp(logit)
     eigen_softmax.device(*dev_ctx.eigen_device()) = eigen_softmax.exp();
@@ -403,15 +400,11 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::GPUContext, T> {
     sum_exp_logits = ctx.AllocateTmpTensor<T, phi::GPUContext>({N, 1}, dev_ctx);
     void* sum_exp_logits_buff = sum_exp_logits.mutable_data<T>(place);
 
-    auto eigen_sum_exp_logits =
-        phi::funcs::EigenMatrix<T>::From(sum_exp_logits);
-    eigen_sum_exp_logits.device(*dev_ctx.eigen_device()) =
-        eigen_softmax.sum(along_axis);
+    phi::SumKernel<T, phi::GPUContext>(
+        dev_ctx, softmax_2d, {-1}, softmax_2d.dtype(), true, &sum_exp_logits);
 
-    in_out.clear();
-    in_out.push_back(sum_exp_logits);
     opts.reduce_op = distributed::ReduceOp::SUM;
-    pg->AllReduce(in_out, in_out, opts)->Synchronize();
+    pg->AllReduce(&sum_exp_logits, sum_exp_logits, opts, true, true);
 
     if (label_type == framework::proto::VarType::INT32) {
       CaculateLoss<T, int32_t>
@@ -431,6 +424,8 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::GPUContext, T> {
                                                      N);
     }
 
+    auto eigen_sum_exp_logits =
+        phi::funcs::EigenMatrix<T>::From(sum_exp_logits);
     eigen_softmax.device(*dev_ctx.eigen_device()) =
         (eigen_softmax *
          eigen_sum_exp_logits.inverse().broadcast(one_by_class));

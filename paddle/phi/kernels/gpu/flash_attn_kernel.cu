@@ -14,9 +14,11 @@
 
 #include "paddle/phi/kernels/flash_attn_kernel.h"
 
+#include "glog/logging.h"  // For VLOG()
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 
@@ -27,6 +29,8 @@
 #ifdef PADDLE_WITH_FLASHATTN
 #include "paddle/phi/backends/dynload/flashattn.h"
 #endif
+
+DECLARE_bool(cudnn_deterministic);
 
 namespace phi {
 
@@ -73,6 +77,9 @@ void FlashAttnUnpaddedKernel(const Context& ctx,
   int64_t batch_size = cu_seqlens_q.numel() - 1;
 
   int num_splits = 0;  // 0 for an internal heuristic, which is optimal
+  if (FLAGS_cudnn_deterministic) {
+    num_splits = 1;
+  }
   bool zero_tensors = false;
 
   auto gen = ctx.GetGenerator();
@@ -81,6 +88,9 @@ void FlashAttnUnpaddedKernel(const Context& ctx,
 
   uint64_t seed = seed_offset_pair.first;
   uint64_t offset = seed_offset_pair.second;
+
+  VLOG(4) << "FlashAttn fwd seed: " << seed << ", offset: " << offset
+          << ", num_splits:" << num_splits;
 
   seed_offset->Resize({2});
   auto* seed_offset_data = ctx.template HostAlloc<int64_t>(seed_offset);
@@ -216,6 +226,9 @@ void FlashAttnKernel(const Context& ctx,
   int64_t total_k = batch_size * seq_len_k;
 
   float scale = 1.0f / std::sqrt(head_size);
+
+  VLOG(4) << "FlashAttn fwd dims q[" << q.dims() << "], k[" << k.dims()
+          << "], v[" << v.dims() << "]";
 
   DenseTensor q_t_s, k_t_s, v_t_s;
   q_t_s.ShareDataWith(q).Resize({total_q, num_heads, head_size});
