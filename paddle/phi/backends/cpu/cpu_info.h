@@ -72,6 +72,9 @@ size_t CpuMaxChunkSize();
 //! Get the minimum chunk size for buddy allocator.
 size_t CUDAPinnedMinChunkSize();
 
+//! Get the maximum chunk size for buddy allocator.
+size_t CUDAPinnedMaxChunkSize();
+
 typedef enum {
   isa_any,
   sse42,
