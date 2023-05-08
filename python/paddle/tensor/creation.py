@@ -667,12 +667,6 @@ def _to_tensor_static(data, dtype=None, stop_gradient=None):
                     if data.dtype == 'object':
                         raise RuntimeError("Numpy get dtype `object`.")
 
-                    if not dtype:
-                        if data.dtype in ['float16', 'float32', 'float64']:
-                            data = data.astype(paddle.get_default_dtype())
-                        elif data.dtype in ['int32']:
-                            data = data.astype('int64')
-
                 except:
                     to_stack_list = [None] * len(data)
                     for idx, d in enumerate(data):
@@ -687,12 +681,15 @@ def _to_tensor_static(data, dtype=None, stop_gradient=None):
                     f"Do not support transform type `{type(data)}` to tensor"
                 )
 
+        # fix numpy default dtype
         if dtype:
             target_dtype = dtype
-        elif hasattr(data, 'dtype') and data.dtype != 'object':
+        elif data.dtype in ['float16', 'float32', 'float64']:
+            data = data.astype(paddle.get_default_dtype())
             target_dtype = data.dtype
-        else:
-            target_dtype = paddle.get_default_dtype()
+        elif data.dtype in ['int32']:
+            data = data.astype('int64')
+            target_dtype = data.dtype
         target_dtype = convert_dtype(target_dtype)
 
         output = assign(data)
