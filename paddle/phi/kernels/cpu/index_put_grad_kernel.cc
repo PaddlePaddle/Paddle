@@ -21,24 +21,9 @@
 
 namespace phi {
 
-template <typename T>
-void range_kernel(int64_t N, T* out) {
-  for (int64_t idx = 0; idx < N; ++idx) {
-    out[idx] = idx;
-  }
-}
+UNROLL_RANGE_KERNEL_DEFINITION
 
-template <typename T, typename Context>
-phi::DenseTensor GetRangeTensor(const Context& dev_ctx,
-                                int64_t N,
-                                phi::DataType dtype) {
-  phi::DenseTensor res(dtype);
-  res.Resize(phi::make_ddim({N}));
-  DenseTensor* p_res = &res;
-  T* out = dev_ctx.template Alloc<T>(p_res);
-  range_kernel<T>(N, out);
-  return res;
-}
+UNROLL_GET_RANGE_TENSOR_DEFINITION
 
 template <typename T>
 void set_zero_kernel(const int64_t N,
@@ -91,41 +76,38 @@ void index_put_grad_kernel(const int64_t N,
 
 template <typename T, typename Context>
 void LaunchIndexPutGradKernel(const Context& dev_ctx,
-                              const std::vector<const DenseTensor*>& indices_v,
+                              const std::vector<const DenseTensor*>& indices,
                               const DenseTensor& out_grad,
                               bool accumulate,
                               DenseTensor* value_grad,
                               DenseTensor* x_grad) {
+  const int64_t* pd_indices[7];
+  for (size_t i = 0; i < indices.size(); ++i) {
+    pd_indices[i] = indices[i]->data<int64_t>();
+  }
+
   if (x_grad) {
     phi::Copy(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
     if (!accumulate) {
       T* x_grad_data = x_grad->data<T>();
 
       auto x_grad_dims = x_grad->dims();
-      const int64_t numel = indices_v[0]->numel();
+      const int64_t numel = indices[0]->numel();
       auto x_grad_stride = phi::stride(x_grad_dims);
 
-      const int64_t* pd_indices[7];
-      for (size_t i = 0; i < indices_v.size(); ++i) {
-        pd_indices[i] = indices_v[i]->data<int64_t>();
-      }
       set_zero_kernel<T>(
           numel, pd_indices, x_grad_stride, x_grad_dims, x_grad_data);
     }
   }
 
   auto out_grad_dims = out_grad.dims();
-  const int64_t numel = indices_v[0]->numel();
+  const int64_t numel = indices[0]->numel();
   auto out_grad_stride = phi::stride(out_grad_dims);
 
-  const int64_t* pd_indices[7];
-  for (size_t i = 0; i < indices_v.size(); ++i) {
-    pd_indices[i] = indices_v[i]->data<int64_t>();
-  }
   if (value_grad) {
     if (value_grad->numel() == 1) {
       DenseTensor tmp_value_grad(value_grad->dtype());
-      tmp_value_grad.Resize(indices_v[0]->dims());
+      tmp_value_grad.Resize(indices[0]->dims());
 
       T* tmp_value_grad_data = dev_ctx.template Alloc<T>(&tmp_value_grad);
       auto out_grad_data = out_grad.data<T>();
@@ -146,7 +128,7 @@ void LaunchIndexPutGradKernel(const Context& dev_ctx,
                    value_grad->dtype(),
                    false,
                    value_grad);
-    } else if (value_grad->numel() == indices_v[0]->numel()) {
+    } else if (value_grad->numel() == indices[0]->numel()) {
       T* value_grad_data = dev_ctx.template Alloc<T>(value_grad);
       auto out_grad_data = out_grad.data<T>();
 
@@ -158,7 +140,7 @@ void LaunchIndexPutGradKernel(const Context& dev_ctx,
                                value_grad_data);
     } else {
       DenseTensor tmp_value_grad(value_grad->dtype());
-      tmp_value_grad.Resize(indices_v[0]->dims());
+      tmp_value_grad.Resize(indices[0]->dims());
 
       T* tmp_value_grad_data = dev_ctx.template Alloc<T>(&tmp_value_grad);
       auto out_grad_data = out_grad.data<T>();
@@ -175,23 +157,19 @@ void LaunchIndexPutGradKernel(const Context& dev_ctx,
       std::vector<int64_t> compress_dims;
       std::vector<int64_t> dims_without_1;
 
-      CalCompressedDimsWith1AndWithout1(
+      funcs::CalCompressedDimsWith1AndWithout1(
           &after_dims, &before_dims, &compress_dims, &dims_without_1);
 
-      phi::DenseTensor value_grad_dims_without1(value_grad->dtype());
-      value_grad_dims_without1.Resize(phi::make_ddim(dims_without_1));
+      auto pre_dims = value_grad->dims();
+      value_grad->Resize(phi::make_ddim(dims_without_1));
       IntArray v_axis(compress_dims);
       SumKernel<T>(dev_ctx,
                    tmp_value_grad,
                    v_axis,
                    value_grad->dtype(),
                    false,
-                   &value_grad_dims_without1);
-      phi::ReshapeInferKernel<Context>(
-          dev_ctx,
-          value_grad_dims_without1,
-          phi::IntArray(phi::vectorize(value_grad->dims())),
-          value_grad);
+                   value_grad);
+      value_grad->Resize(pre_dims);
     }
   }
 }
@@ -199,7 +177,7 @@ void LaunchIndexPutGradKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void IndexPutGradKernel(const Context& dev_ctx,
                         const DenseTensor& x,
-                        const std::vector<const DenseTensor*>& indices_v,
+                        const std::vector<const DenseTensor*>& indices,
                         const DenseTensor& value,
                         const DenseTensor& out_grad,
                         bool accumulate,
@@ -213,27 +191,27 @@ void IndexPutGradKernel(const Context& dev_ctx,
           "of tensor x."));
   std::vector<DenseTensor> tmp_args;
   std::vector<const phi::DenseTensor*> int_indices_v =
-      DealWithBoolIndices<T, Context>(dev_ctx, indices_v, &tmp_args);
-  auto bd_dim = BroadCastTensorsDims(int_indices_v);
+      funcs::DealWithBoolIndices<T, Context>(dev_ctx, indices, &tmp_args);
+  auto bd_dim = funcs::BroadCastTensorsDims(int_indices_v);
 
   std::vector<int64_t> res_dim_v(phi::vectorize(bd_dim));
   std::vector<const phi::DenseTensor*> res_indices_v(x.dims().size(), nullptr);
   std::vector<DenseTensor> tmp_res_indices_v;
   std::vector<DenseTensor> range_tensor_v;
 
-  for (int i = indices_v.size(); i < x.dims().size(); ++i) {
+  for (int i = indices.size(); i < x.dims().size(); ++i) {
     range_tensor_v.emplace_back(GetRangeTensor<int64_t, Context>(
         dev_ctx, x.dims()[i], phi::DataType::INT64));
   }
 
-  DealWithIndices<T, Context>(dev_ctx,
-                              x,
-                              int_indices_v,
-                              &res_indices_v,
-                              &tmp_res_indices_v,
-                              range_tensor_v,
-                              bd_dim,
-                              &res_dim_v);
+  funcs::DealWithIndices<T, Context>(dev_ctx,
+                                     x,
+                                     int_indices_v,
+                                     &res_indices_v,
+                                     &tmp_res_indices_v,
+                                     range_tensor_v,
+                                     bd_dim,
+                                     &res_dim_v);
 
   LaunchIndexPutGradKernel<T, Context>(
       dev_ctx, res_indices_v, out_grad, accumulate, value_grad, x_grad);

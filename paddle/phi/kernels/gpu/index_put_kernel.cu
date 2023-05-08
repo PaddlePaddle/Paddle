@@ -20,30 +20,10 @@
 #include "paddle/phi/kernels/funcs/index_put_utils.h"
 
 namespace phi {
-template <typename T>
-__global__ void range_cuda_kernel(int64_t N, T* out) {
-  int64_t idx = threadIdx.x + blockDim.x * blockIdx.x;
 
-  if (idx >= N) {
-    return;
-  }
-  out[idx] = idx;
-}
+UNROLL_RANGE_CUDA_KERNEL_DEFINITION
 
-template <typename T, typename Context>
-phi::DenseTensor GetRangeCudaTensor(const Context& dev_ctx,
-                                    int64_t N,
-                                    phi::DataType dtype) {
-  phi::DenseTensor res(dtype);
-  res.Resize(phi::make_ddim({N}));
-  DenseTensor* p_res = &res;
-  T* out = dev_ctx.template Alloc<T>(p_res);
-  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, N);
-  range_cuda_kernel<T>
-      <<<config.block_per_grid, config.thread_per_block, 0, dev_ctx.stream()>>>(
-          N, out);
-  return res;
-}
+UNROLL_GET_RANGE_CUDA_TENSOR_DEFINITION
 
 template <typename T, size_t Rank>
 __global__ void index_put_cuda_kernel(const int64_t N,
@@ -52,7 +32,7 @@ __global__ void index_put_cuda_kernel(const int64_t N,
                                       int64_t** indices,
                                       phi::Array<int64_t, Rank> stride,
                                       phi::Array<int64_t, Rank> shape,
-                                      int64_t isSingleValTensor,
+                                      int64_t is_single_val_tensor,
                                       bool accumulate,
                                       T* out) {
   int64_t idx = threadIdx.x + blockDim.x * blockIdx.x;
@@ -71,30 +51,30 @@ __global__ void index_put_cuda_kernel(const int64_t N,
   }
 
   if (accumulate) {
-    *(out + offset) += *(vals + (idx & isSingleValTensor));
+    *(out + offset) += *(vals + (idx & is_single_val_tensor));
   } else {
-    *(out + offset) = *(vals + (idx & isSingleValTensor));
+    *(out + offset) = *(vals + (idx & is_single_val_tensor));
   }
 }
 
 template <typename T, typename Context, size_t Rank>
 void LaunchIndexPutCudaKernel(const Context& dev_ctx,
                               const DenseTensor& x,
-                              const std::vector<const DenseTensor*>& indices_v,
+                              const std::vector<const DenseTensor*>& indices,
                               const DenseTensor& value,
                               bool accumulate,
                               DenseTensor* out) {
   auto* x_data = x.data<T>();
   auto* val_data = value.data<T>();
-  bool isInitialized = out->initialized();
+  bool is_initialized = out->initialized();
   T* out_data = dev_ctx.template Alloc<T>(out);
 
-  if (!isInitialized) {
+  if (!is_initialized) {
     phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
   }
 
   auto x_dims = x.dims();
-  const int64_t numel = indices_v[0]->numel();
+  const int64_t numel = indices[0]->numel();
   auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);
   auto x_stride = phi::stride(x_dims);
 
@@ -106,9 +86,10 @@ void LaunchIndexPutCudaKernel(const Context& dev_ctx,
     shape_a[idx] = x_dims[idx];
   }
 
-  int64_t isSingleValTensor = (value.numel() == 1) ? 0 : INT64_MAX;
+  int64_t is_single_val_tensor = (value.numel() == 1) ? 0 : INT64_MAX;
 
-  auto pd_indices = GetDevicePointerArray<int64_t, Context>(dev_ctx, indices_v);
+  auto pd_indices =
+      funcs::GetDevicePointerArray<int64_t, Context>(dev_ctx, indices);
   index_put_cuda_kernel<T, Rank>
       <<<config.block_per_grid, config.thread_per_block, 0, dev_ctx.stream()>>>(
           numel,
@@ -117,7 +98,7 @@ void LaunchIndexPutCudaKernel(const Context& dev_ctx,
           pd_indices,
           stride_a,
           shape_a,
-          isSingleValTensor,
+          is_single_val_tensor,
           accumulate,
           out_data);
 }
@@ -125,7 +106,7 @@ void LaunchIndexPutCudaKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void IndexPutKernel(const Context& dev_ctx,
                     const DenseTensor& x,
-                    const std::vector<const DenseTensor*>& indices_v,
+                    const std::vector<const DenseTensor*>& indices,
                     const DenseTensor& value,
                     bool accumulate,
                     DenseTensor* out) {
@@ -135,14 +116,14 @@ void IndexPutKernel(const Context& dev_ctx,
       phi::errors::InvalidArgument(
           "The data type of tensor in indices must be same to the data type "
           "of tensor x."));
-  PADDLE_ENFORCE_EQ(indices_v.empty(),
+  PADDLE_ENFORCE_EQ(indices.empty(),
                     false,
                     phi::errors::InvalidArgument("Indices cannot be empty."));
   std::vector<DenseTensor> tmp_args;
   std::vector<const phi::DenseTensor*> int_indices_v =
-      DealWithBoolIndices<T, Context>(dev_ctx, indices_v, &tmp_args);
+      funcs::DealWithBoolIndices<T, Context>(dev_ctx, indices, &tmp_args);
   const size_t total_dims = x.dims().size();
-  auto bd_dim = BroadCastTensorsDims(int_indices_v);
+  auto bd_dim = funcs::BroadCastTensorsDims(int_indices_v);
 
   std::vector<int64_t> res_dim_v(phi::vectorize(bd_dim));
   std::vector<const phi::DenseTensor*> res_indices_v(x.dims().size(), nullptr);
@@ -151,19 +132,19 @@ void IndexPutKernel(const Context& dev_ctx,
   std::vector<DenseTensor> range_tensor_v;
   const DenseTensor* ptr_value = nullptr;
 
-  for (int i = indices_v.size(); i < x.dims().size(); ++i) {
+  for (int i = indices.size(); i < x.dims().size(); ++i) {
     range_tensor_v.emplace_back(GetRangeCudaTensor<int64_t, Context>(
         dev_ctx, x.dims()[i], phi::DataType::INT64));
   }
 
-  DealWithIndices<T, Context>(dev_ctx,
-                              x,
-                              int_indices_v,
-                              &res_indices_v,
-                              &tmp_res_indices_v,
-                              range_tensor_v,
-                              bd_dim,
-                              &res_dim_v);
+  funcs::DealWithIndices<T, Context>(dev_ctx,
+                                     x,
+                                     int_indices_v,
+                                     &res_indices_v,
+                                     &tmp_res_indices_v,
+                                     range_tensor_v,
+                                     bd_dim,
+                                     &res_dim_v);
 
   if (value.numel() != 1) {
     tmp_value_v.emplace_back(

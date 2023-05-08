@@ -28,6 +28,8 @@
 
 namespace phi {
 
+namespace funcs {
+
 template <typename T, typename Context>
 static phi::DenseTensor GetReshapeAndExpandTensor(
     const Context& dev_ctx,
@@ -289,4 +291,51 @@ static void CalCompressedDimsWith1AndWithout1(
   }
 }
 
+}  // namespace funcs
 }  // namespace phi
+
+#define UNROLL_RANGE_CUDA_KERNEL_DEFINITION              \
+  template <typename T>                                  \
+  __global__ void range_cuda_kernel(int64_t N, T* out) { \
+    int64_t idx = threadIdx.x + blockDim.x * blockIdx.x; \
+    if (idx >= N) {                                      \
+      return;                                            \
+    }                                                    \
+    out[idx] = idx;                                      \
+  }
+
+#define UNROLL_GET_RANGE_CUDA_TENSOR_DEFINITION                         \
+  template <typename T, typename Context>                               \
+  phi::DenseTensor GetRangeCudaTensor(                                  \
+      const Context& dev_ctx, int64_t N, phi::DataType dtype) {         \
+    phi::DenseTensor res(dtype);                                        \
+    res.Resize(phi::make_ddim({N}));                                    \
+    DenseTensor* p_res = &res;                                          \
+    T* out = dev_ctx.template Alloc<T>(p_res);                          \
+    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, N); \
+    range_cuda_kernel<T><<<config.block_per_grid,                       \
+                           config.thread_per_block,                     \
+                           0,                                           \
+                           dev_ctx.stream()>>>(N, out);                 \
+    return res;                                                         \
+  }
+
+#define UNROLL_RANGE_KERNEL_DEFINITION      \
+  template <typename T>                     \
+  void range_kernel(int64_t N, T* out) {    \
+    for (int64_t idx = 0; idx < N; ++idx) { \
+      out[idx] = idx;                       \
+    }                                       \
+  }
+
+#define UNROLL_GET_RANGE_TENSOR_DEFINITION                      \
+  template <typename T, typename Context>                       \
+  phi::DenseTensor GetRangeTensor(                              \
+      const Context& dev_ctx, int64_t N, phi::DataType dtype) { \
+    phi::DenseTensor res(dtype);                                \
+    res.Resize(phi::make_ddim({N}));                            \
+    DenseTensor* p_res = &res;                                  \
+    T* out = dev_ctx.template Alloc<T>(p_res);                  \
+    range_kernel<T>(N, out);                                    \
+    return res;                                                 \
+  }

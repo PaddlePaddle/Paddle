@@ -938,6 +938,7 @@
     func : IndexPutInferMeta
   kernel :
     func : index_put
+    data_type : x
   inplace : (x -> out)
   backward : index_put_grad
 

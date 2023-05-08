@@ -20,24 +20,9 @@
 
 namespace phi {
 
-template <typename T>
-void range_kernel(int64_t N, T* out) {
-  for (int64_t idx = 0; idx < N; ++idx) {
-    out[idx] = idx;
-  }
-}
+UNROLL_RANGE_KERNEL_DEFINITION
 
-template <typename T, typename Context>
-phi::DenseTensor GetRangeTensor(const Context& dev_ctx,
-                                int64_t N,
-                                phi::DataType dtype) {
-  phi::DenseTensor res(dtype);
-  res.Resize(phi::make_ddim({N}));
-  DenseTensor* p_res = &res;
-  T* out = dev_ctx.template Alloc<T>(p_res);
-  range_kernel<T>(N, out);
-  return res;
-}
+UNROLL_GET_RANGE_TENSOR_DEFINITION
 
 template <typename T>
 void index_put_kernel(const int64_t N,
@@ -46,7 +31,7 @@ void index_put_kernel(const int64_t N,
                       const int64_t** indices,
                       const phi::DDim& stride,
                       const phi::DDim& shape,
-                      int64_t isSingleValTensor,
+                      int64_t is_single_val_tensor,
                       bool accumulate,
                       T* out) {
 #ifdef PADDLE_WITH_MKLML
@@ -65,9 +50,9 @@ void index_put_kernel(const int64_t N,
     }
 
     if (accumulate) {
-      *(out + offset) += *(vals + (idx & isSingleValTensor));
+      *(out + offset) += *(vals + (idx & is_single_val_tensor));
     } else {
-      *(out + offset) = *(vals + (idx & isSingleValTensor));
+      *(out + offset) = *(vals + (idx & is_single_val_tensor));
     }
   }
 }
@@ -75,28 +60,28 @@ void index_put_kernel(const int64_t N,
 template <typename T, typename Context>
 void LaunchIndexPutKernel(const Context& dev_ctx,
                           const DenseTensor& x,
-                          const std::vector<const DenseTensor*>& indices_v,
+                          const std::vector<const DenseTensor*>& indices,
                           const DenseTensor& value,
                           bool accumulate,
                           DenseTensor* out) {
   auto* x_data = x.data<T>();
   auto* val_data = value.data<T>();
-  bool isInitialized = out->initialized();
+  bool is_initialized = out->initialized();
   T* out_data = dev_ctx.template Alloc<T>(out);
 
-  if (!isInitialized) {
+  if (!is_initialized) {
     phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
   }
 
   auto x_dims = x.dims();
-  const int64_t numel = indices_v[0]->numel();
+  const int64_t numel = indices[0]->numel();
   auto x_stride = phi::stride(x_dims);
 
-  int64_t isSingleValTensor = (value.numel() == 1) ? 0 : INT64_MAX;
+  int64_t is_single_val_tensor = (value.numel() == 1) ? 0 : INT64_MAX;
 
   const int64_t* pd_indices[7];
-  for (size_t i = 0; i < indices_v.size(); ++i) {
-    pd_indices[i] = indices_v[i]->data<int64_t>();
+  for (size_t i = 0; i < indices.size(); ++i) {
+    pd_indices[i] = indices[i]->data<int64_t>();
   }
 
   index_put_kernel<T>(numel,
@@ -105,7 +90,7 @@ void LaunchIndexPutKernel(const Context& dev_ctx,
                       pd_indices,
                       x_stride,
                       x_dims,
-                      isSingleValTensor,
+                      is_single_val_tensor,
                       accumulate,
                       out_data);
 }
@@ -113,7 +98,7 @@ void LaunchIndexPutKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void IndexPutKernel(const Context& dev_ctx,
                     const DenseTensor& x,
-                    const std::vector<const DenseTensor*>& indices_v,
+                    const std::vector<const DenseTensor*>& indices,
                     const DenseTensor& value,
                     bool accumulate,
                     DenseTensor* out) {
@@ -123,7 +108,7 @@ void IndexPutKernel(const Context& dev_ctx,
       phi::errors::InvalidArgument(
           "The data type of tensor in indices must be same to the data type "
           "of tensor x."));
-  PADDLE_ENFORCE_EQ(indices_v.empty(),
+  PADDLE_ENFORCE_EQ(indices.empty(),
                     false,
                     phi::errors::InvalidArgument("Indices cannot be empty."));
 
@@ -135,9 +120,9 @@ void IndexPutKernel(const Context& dev_ctx,
 
   std::vector<DenseTensor> tmp_args;
   std::vector<const phi::DenseTensor*> int_indices_v =
-      DealWithBoolIndices<T, Context>(dev_ctx, indices_v, &tmp_args);
+      funcs::DealWithBoolIndices<T, Context>(dev_ctx, indices, &tmp_args);
 
-  auto bd_dim = BroadCastTensorsDims(int_indices_v);
+  auto bd_dim = funcs::BroadCastTensorsDims(int_indices_v);
 
   std::vector<int64_t> res_dim_v(phi::vectorize(bd_dim));
   std::vector<const phi::DenseTensor*> res_indices_v(x.dims().size(), nullptr);
@@ -146,19 +131,19 @@ void IndexPutKernel(const Context& dev_ctx,
   std::vector<DenseTensor> range_tensor_v;
   const DenseTensor* ptr_value = nullptr;
 
-  for (int i = indices_v.size(); i < x.dims().size(); ++i) {
+  for (int i = indices.size(); i < x.dims().size(); ++i) {
     range_tensor_v.emplace_back(GetRangeTensor<int64_t, Context>(
         dev_ctx, x.dims()[i], phi::DataType::INT64));
   }
 
-  DealWithIndices<T, Context>(dev_ctx,
-                              x,
-                              int_indices_v,
-                              &res_indices_v,
-                              &tmp_res_indices_v,
-                              range_tensor_v,
-                              bd_dim,
-                              &res_dim_v);
+  funcs::DealWithIndices<T, Context>(dev_ctx,
+                                     x,
+                                     int_indices_v,
+                                     &res_indices_v,
+                                     &tmp_res_indices_v,
+                                     range_tensor_v,
+                                     bd_dim,
+                                     &res_dim_v);
   if (value.numel() != 1) {
     tmp_value_v.emplace_back(
         DenseTensor(value.dtype()).Resize(phi::make_ddim(res_dim_v)));

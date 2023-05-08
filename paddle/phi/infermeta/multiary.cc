@@ -1962,6 +1962,21 @@ void InterpolateInferMeta(
   }
 }
 
+void IndexPutInferMeta(const MetaTensor& x,
+                       const std::vector<const MetaTensor*>& indices,
+                       const MetaTensor& value,
+                       bool accumulate,
+                       MetaTensor* out) {
+  auto in_dims = x.dims();
+  PADDLE_ENFORCE_LT(
+      in_dims.size(),
+      7,
+      phi::errors::InvalidArgument(
+          "The rank of input should be less than 7, but received %d.",
+          in_dims.size()));
+  out->share_meta(x);
+}
+
 void LambInferMeta(const MetaTensor& param,
                    const MetaTensor& grad,
                    const MetaTensor& learning_rate,
@@ -3247,21 +3262,6 @@ void MoeInferMeta(const MetaTensor& x,
   out->share_lod(x);
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
-}
-
-void IndexPutInferMeta(const MetaTensor& x,
-                       const std::vector<const MetaTensor*>& indices,
-                       const MetaTensor& value,
-                       bool accumulate,
-                       MetaTensor* out) {
-  auto in_dims = x.dims();
-  PADDLE_ENFORCE_LT(
-      in_dims.size(),
-      7,
-      phi::errors::InvalidArgument(
-          "The rank of input should be less than 7, but received %d.",
-          in_dims.size()));
-  out->share_meta(x);
 }
 
 void WeightedSampleNeighborsInferMeta(const MetaTensor& row,

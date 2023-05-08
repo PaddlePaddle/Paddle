@@ -332,6 +332,12 @@ void InterpolateInferMeta(
     MetaTensor* output,
     MetaConfig config = MetaConfig());
 
+void IndexPutInferMeta(const MetaTensor& x,
+                       const std::vector<const MetaTensor*>& indices,
+                       const MetaTensor& value,
+                       bool accumulate,
+                       MetaTensor* out);
+
 void LambInferMeta(const MetaTensor& param,
                    const MetaTensor& grad,
                    const MetaTensor& learning_rate,
@@ -614,11 +620,5 @@ void MoeInferMeta(const MetaTensor& x,
                   const MetaTensor& bias1,
                   const std::string& act_type,
                   MetaTensor* out);
-
-void IndexPutInferMeta(const MetaTensor& x,
-                       const std::vector<const MetaTensor*>& indices,
-                       const MetaTensor& value,
-                       bool accumulate,
-                       MetaTensor* out);
 
 }  // namespace phi
