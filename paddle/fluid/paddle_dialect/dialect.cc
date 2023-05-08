@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/paddle_dialect/paddle_dialect.h"
+#include "paddle/fluid/paddle_dialect/dialect.h"
+#include "/ssd2/zhangbo54/Paddle/paddle/fluid/paddle_dialect/type.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/variable.h"
@@ -32,31 +33,30 @@ class ParameterConvertInterface
   // NOTE(zhangbo): Only support new a CPU Variable.
   std::shared_ptr<paddle::framework::Variable> ParameterToVariable(
       ir::Parameter* parameter) {
-    if (parameter->type().isa<ir::DenseTensorType>()) {
+    if (parameter->type().isa<DenseTensorType>()) {
       std::shared_ptr<paddle::framework::Variable> var =
           std::make_shared<paddle::framework::Variable>();
       phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
       // Init DenseTensor
-      auto dim = parameter->type().dyn_cast<ir::DenseTensorType>().dim();
+      auto dim = parameter->type().dyn_cast<DenseTensorType>().dim();
       phi::DenseTensorMeta meta(
           TransToPhiDataType(
-              parameter->type().dyn_cast<ir::DenseTensorType>().dtype()),
+              parameter->type().dyn_cast<DenseTensorType>().dtype()),
           phi::DDim(dim.data(), dim.size()),
           TransToPhiDataLayout(
-              parameter->type().dyn_cast<ir::DenseTensorType>().data_layout()),
-          parameter->type().dyn_cast<ir::DenseTensorType>().lod(),
-          parameter->type().dyn_cast<ir::DenseTensorType>().offset());
+              parameter->type().dyn_cast<DenseTensorType>().data_layout()),
+          parameter->type().dyn_cast<DenseTensorType>().lod(),
+          parameter->type().dyn_cast<DenseTensorType>().offset());
       tensor->set_meta(meta);
       paddle::platform::DeviceContext* dev_ctx =
           paddle::platform::DeviceContextPool::Instance().Get(
               paddle::platform::CPUPlace());
-      dev_ctx->Alloc(
-          tensor,
-          TransToPhiDataType(
-              parameter->type().dyn_cast<ir::DenseTensorType>().dtype()),
-          /*requested_size=*/0,
-          /*pinned=*/false,
-          /*fake_alloc=*/true);
+      dev_ctx->Alloc(tensor,
+                     TransToPhiDataType(
+                         parameter->type().dyn_cast<DenseTensorType>().dtype()),
+                     /*requested_size=*/0,
+                     /*pinned=*/false,
+                     /*fake_alloc=*/true);
       memcpy(tensor->data(),
              parameter->data(),
              tensor->numel() * phi::SizeOf(tensor->dtype()));
@@ -72,17 +72,17 @@ class ParameterConvertInterface
       // Get Meta
       ir::IrContext* ctx = ir::IrContext::Instance();
       ir::Type data_type = TransToIrDataType(tensor->dtype(), ctx);
-      ir::DenseTensorTypeStorage::Dim dims(tensor->dims().size());
+      DenseTensorTypeStorage::Dim dims(tensor->dims().size());
       std::copy(tensor->dims().Get(),
                 tensor->dims().Get() + tensor->dims().size(),
                 dims.data());
-      ir::DenseTensorTypeStorage::DataLayout data_layout =
+      DenseTensorTypeStorage::DataLayout data_layout =
           TransToIrDataLayout(tensor->layout());
-      ir::DenseTensorTypeStorage::LoD lod = tensor->lod();
+      DenseTensorTypeStorage::LoD lod = tensor->lod();
       size_t offset = tensor->meta().offset;
       void* data = tensor->data();
-      ir::Type dense_tensor_type = ir::DenseTensorType::get(
-          ctx, data_type, dims, data_layout, lod, offset);
+      ir::Type dense_tensor_type =
+          DenseTensorType::get(ctx, data_type, dims, data_layout, lod, offset);
       return new ir::Parameter(data,
                                tensor->numel() * phi::SizeOf(tensor->dtype()),
                                dense_tensor_type);
@@ -98,6 +98,7 @@ PaddleDialect::PaddleDialect(ir::IrContext* context)
 }
 
 void PaddleDialect::initialize() {
+  RegisterTypes<GET_PADDLE_TYPE_LIST>();
   RegisterInterfaces<ParameterConvertInterface>();
 }
 

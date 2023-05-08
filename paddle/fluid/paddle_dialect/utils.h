@@ -16,6 +16,7 @@
 
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/paddle_dialect/type_storage.h"
 #include "paddle/ir/builtin_type.h"
 #include "paddle/phi/core/dense_tensor.h"
 
@@ -70,27 +71,27 @@ inline ir::Type TransToIrDataType(phi::DataType dtype,
 }
 
 inline phi::DataLayout TransToPhiDataLayout(
-    ir::DenseTensorTypeStorage::DataLayout data_layout) {
+    DenseTensorTypeStorage::DataLayout data_layout) {
   switch (data_layout) {
-    case ir::DenseTensorTypeStorage::DataLayout::NHWC:
+    case DenseTensorTypeStorage::DataLayout::NHWC:
       return phi::DataLayout::NHWC;
-    case ir::DenseTensorTypeStorage::DataLayout::NCHW:
+    case DenseTensorTypeStorage::DataLayout::NCHW:
       return phi::DataLayout::NCHW;
-    case ir::DenseTensorTypeStorage::DataLayout::NCDHW:
+    case DenseTensorTypeStorage::DataLayout::NCDHW:
       return phi::DataLayout::NCDHW;
-    case ir::DenseTensorTypeStorage::DataLayout::NDHWC:
+    case DenseTensorTypeStorage::DataLayout::NDHWC:
       return phi::DataLayout::NDHWC;
-    case ir::DenseTensorTypeStorage::DataLayout::ONEDNN:
+    case DenseTensorTypeStorage::DataLayout::ONEDNN:
       return phi::DataLayout::ONEDNN;
-    case ir::DenseTensorTypeStorage::DataLayout::SPARSE_COO:
+    case DenseTensorTypeStorage::DataLayout::SPARSE_COO:
       return phi::DataLayout::SPARSE_COO;
-    case ir::DenseTensorTypeStorage::DataLayout::SPARSE_CSR:
+    case DenseTensorTypeStorage::DataLayout::SPARSE_CSR:
       return phi::DataLayout::SPARSE_CSR;
-    case ir::DenseTensorTypeStorage::DataLayout::PSTRING_UNION:
+    case DenseTensorTypeStorage::DataLayout::PSTRING_UNION:
       return phi::DataLayout::PSTRING_UNION;
-    case ir::DenseTensorTypeStorage::DataLayout::NUM_DATA_LAYOUTS:
+    case DenseTensorTypeStorage::DataLayout::NUM_DATA_LAYOUTS:
       return phi::DataLayout::NUM_DATA_LAYOUTS;
-    case ir::DenseTensorTypeStorage::DataLayout::ALL_LAYOUT:
+    case DenseTensorTypeStorage::DataLayout::ALL_LAYOUT:
       return phi::DataLayout::ALL_LAYOUT;
     default:
       PADDLE_THROW(phi::errors::Unimplemented(
@@ -100,29 +101,29 @@ inline phi::DataLayout TransToPhiDataLayout(
   }
 }
 
-inline ir::DenseTensorTypeStorage::DataLayout TransToIrDataLayout(
+inline DenseTensorTypeStorage::DataLayout TransToIrDataLayout(
     phi::DataLayout data_layout) {
   switch (data_layout) {
     case phi::DataLayout::NHWC:
-      return ir::DenseTensorTypeStorage::DataLayout::NHWC;
+      return DenseTensorTypeStorage::DataLayout::NHWC;
     case phi::DataLayout::NCHW:
-      return ir::DenseTensorTypeStorage::DataLayout::NCHW;
+      return DenseTensorTypeStorage::DataLayout::NCHW;
     case phi::DataLayout::NCDHW:
-      return ir::DenseTensorTypeStorage::DataLayout::NCDHW;
+      return DenseTensorTypeStorage::DataLayout::NCDHW;
     case phi::DataLayout::NDHWC:
-      return ir::DenseTensorTypeStorage::DataLayout::NDHWC;
+      return DenseTensorTypeStorage::DataLayout::NDHWC;
     case phi::DataLayout::ONEDNN:
-      return ir::DenseTensorTypeStorage::DataLayout::ONEDNN;
+      return DenseTensorTypeStorage::DataLayout::ONEDNN;
     case phi::DataLayout::SPARSE_COO:
-      return ir::DenseTensorTypeStorage::DataLayout::SPARSE_COO;
+      return DenseTensorTypeStorage::DataLayout::SPARSE_COO;
     case phi::DataLayout::SPARSE_CSR:
-      return ir::DenseTensorTypeStorage::DataLayout::SPARSE_CSR;
+      return DenseTensorTypeStorage::DataLayout::SPARSE_CSR;
     case phi::DataLayout::PSTRING_UNION:
-      return ir::DenseTensorTypeStorage::DataLayout::PSTRING_UNION;
+      return DenseTensorTypeStorage::DataLayout::PSTRING_UNION;
     case phi::DataLayout::NUM_DATA_LAYOUTS:
-      return ir::DenseTensorTypeStorage::DataLayout::NUM_DATA_LAYOUTS;
+      return DenseTensorTypeStorage::DataLayout::NUM_DATA_LAYOUTS;
     case phi::DataLayout::ALL_LAYOUT:
-      return ir::DenseTensorTypeStorage::DataLayout::ALL_LAYOUT;
+      return DenseTensorTypeStorage::DataLayout::ALL_LAYOUT;
     default:
       PADDLE_THROW(phi::errors::Unimplemented(
           "Unsupported phi data layout `%s` when casting it into "

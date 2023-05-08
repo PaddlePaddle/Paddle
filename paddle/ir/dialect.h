@@ -51,8 +51,6 @@ class Dialect {
   template <typename T>
   void RegisterType() {
     VLOG(4) << "Type registered into Dialect. --->";
-    // if (this->ir_context()->registed_abstract_type().count(
-    //         ir::TypeId::get<T>()) == 0) {
     if (this->ir_context()->GetRegisteredAbstractType(ir::TypeId::get<T>()) ==
         nullptr) {
       ir::AbstractType *abstract_type =
