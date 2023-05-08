@@ -284,6 +284,15 @@ def is_integer_or_scalar_tensor(ele):
     if isinstance(ele, int):
         return True
     elif isinstance(ele, Variable):
+        # NOTE(zoooo0820): For compatibility, if FLAGS_set_to_1d is set to True,
+        # 1-D tensor is still treated as a scalar, which means basic indexing.
+        # This will be removed in future.
+        if paddle.get_flags('FLAGS_set_to_1d')['FLAGS_set_to_1d']:
+            if len(ele.shape) == 1 and ele.shape[0] == 1:
+                warnings.warn(
+                    "1-D Tensor will be treat as advanced indexing in future version. Currently, 1-D Tensor means a scalar, not vector, and please modify it to 0-D Tensor. If advanced indexing is needed, please use `export FLAGS_set_to_1d=False` to set the flag."
+                )
+                return True
         if len(ele.shape) == 0:
             return True
     return False
