@@ -34,7 +34,6 @@ list(
   reverse_roll_op_plugin.cu
   prelnlayernorm_shift_partition_op.cu
   trans_layernorm_op_plugin.cu
-  merge_layernorm_op_plugin.cu
   skip_merge_layernorm_op_plugin.cu
   skip_groupnorm_act_op_plugin.cu
   preln_groupnorm_act_op_plugin.cu

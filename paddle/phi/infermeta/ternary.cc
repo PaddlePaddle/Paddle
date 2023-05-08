@@ -676,6 +676,50 @@ void LinspaceInferMeta(const MetaTensor& start,
   LinspaceRawInferMeta(start, stop, number, out);
 }
 
+void MergeLayerNormInferMeta(const MetaTensor& x,
+                             const MetaTensor& scale,
+                             const MetaTensor& bias,
+                             float epsilon,
+                             int begin_norm_axis,
+                             MetaTensor* out,
+                             MetaConfig config) {
+  auto x_dim = x.dims();
+  PADDLE_ENFORCE_LT(
+      begin_norm_axis,
+      x_dim.size(),
+      phi::errors::InvalidArgument(
+          "'begin_norm_axis' must be less than the dimensions of X,"
+          "But received 'begin_norm_axis' is [%d],"
+          "received the dimensions of X is [%d].",
+          begin_norm_axis,
+          x_dim.size()));
+
+  if (scale) {
+    PADDLE_ENFORCE_EQ(scale.dims().size(),
+                      1,
+                      phi::errors::InvalidArgument(
+                          "The dimensions of Input(Scale) must be 1, but "
+                          "received dimensions of"
+                          "Input(Scale) is [%d]",
+                          scale.dims().size()));
+  }
+
+  if (bias) {
+    PADDLE_ENFORCE_EQ(bias.dims().size(),
+                      1,
+                      phi::errors::InvalidArgument(
+                          "The dimensions of Input(Bias) must be 1, but "
+                          "received dimensions of"
+                          "Input(Bias) is [%d]",
+                          bias.dims().size()));
+  }
+
+  phi::DataType x_dtype = x.dtype();
+  out->set_dims(x_dim);
+  out->set_dtype(x_dtype);
+  out->share_lod(x);
+}
+
 void MultiClassNMSInferMeta(const MetaTensor& bboxes,
                             const MetaTensor& scores,
                             const MetaTensor& rois_num,
