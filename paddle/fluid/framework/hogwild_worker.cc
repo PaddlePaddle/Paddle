@@ -350,7 +350,8 @@ void HogwildWorker::CreateThreadOperators(const ProgramDesc &program) {
       skip_vars_.push_back(name);
     }
   }
-  unused_vars_ = GetUnusedVars(block, ops_, skip_vars_, &unpersist_vars_);
+  unused_vars_ =
+      GetUnusedVars(block, ops_, skip_vars_, &unpersist_vars_, sharding_mode_);
   // debug
   VLOG(1) << "device id=" << thread_id_ << "total op count=" << all_desc.size()
           << ", create op count=" << ops_.size()

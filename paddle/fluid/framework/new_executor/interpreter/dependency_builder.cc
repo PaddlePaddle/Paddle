@@ -683,8 +683,8 @@ void DependencyBuilderSimplify::GetAllbehind() {
     }
   };
   for (size_t i = start_index_; i < op_num_; i++) {
-    auto behinds = ops_behind_[i];
-    auto befores = ops_before_[i];
+    auto& behinds = ops_behind_[i];
+    auto& befores = ops_before_[i];
     for (auto before_op : befores) {
       for (auto behind_op : behinds) {
         update_op_happen_before(before_op, behind_op);
@@ -715,6 +715,10 @@ const std::map<size_t, std::set<size_t>>& DependencyBuilderSimplify::Build(
 
   ops_before_.assign(op_num_, {});
   ops_behind_.assign(op_num_, {});
+  for (size_t i = 0; i < op_num_; i++) {
+    ops_before_[i].reserve(op_num_);
+    ops_behind_[i].reserve(op_num_);
+  }
   op_happens_before_.assign(op_num_, std::vector<bool>(op_num_, false));
   auto print_log = [this, &ops](std::string msg) {
     for (auto it : op_downstream_map_) {
@@ -763,8 +767,9 @@ const std::map<size_t, std::set<size_t>>& DependencyBuilderSimplify::Build(
 
   ShrinkDownstreamMap();
   VLOG(6) << "Finish ShrinkDownstreamMap";
-  std::string s1("after ShrinkDownstreamMap");
-  print_log(s1);
+  if (FLAGS_v > 0) {
+    print_log(std::string("after shrinkDownstreamMap"));
+  }
   AddDependencyForCoalesceTensorOp();
 
   // when is_sharding_mode_ is true hbm not safe should run in debug model need

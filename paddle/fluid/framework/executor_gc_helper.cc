@@ -93,12 +93,14 @@ std::unordered_map<const OperatorBase *, std::vector<std::string>>
 GetUnusedVars(const BlockDesc &block,
               const std::vector<std::unique_ptr<OperatorBase>> &ops,
               const std::vector<std::string> &skip_var_list,
-              const std::multiset<std::string> *unpersist_vars) {
+              const std::multiset<std::string> *unpersist_vars,
+              bool is_shard_for_thread_mode) {
   std::unordered_set<std::string> skip_vars(skip_var_list.begin(),
                                             skip_var_list.end());
 
   std::unordered_map<std::string, size_t> var_op_idx_map;
-
+  std::unordered_map<std::string, std::string> old_to_new;
+  std::unordered_map<std::string, std::string> new_to_old;
   for (size_t i = 0; i < ops.size(); ++i) {
     auto *op = ops[i].get();
 
@@ -108,6 +110,23 @@ GetUnusedVars(const BlockDesc &block,
         if (!VarCanBeDeleted(name, block, skip_vars, unpersist_vars)) {
           continue;
         }
+        bool is_unpersist_var = false;
+        if (is_shard_for_thread_mode) {
+          if (unpersist_vars->find(name) != unpersist_vars->end()) {
+            is_unpersist_var = true;
+            if (op->Type() == std::string("c_broadcast")) {
+              auto it = old_to_new.find(name);
+              if (it == old_to_new.end()) {
+                old_to_new[name] = name;
+                new_to_old[name] = name;
+              } else {
+                std::string new_name = it->second + std::string("_");
+                old_to_new[name] = new_name;
+                new_to_old[new_name] = name;
+              }
+            }
+          }
+        }
 
         // var can be gc-ed
         if (!info.IsBuilt()) {
@@ -116,7 +135,11 @@ GetUnusedVars(const BlockDesc &block,
 
         if (info.IsInArgBufferNeeded(name)) {
           // Update the last living op of variable to current op
-          var_op_idx_map[name] = i;
+          if (is_unpersist_var && old_to_new.count(name) > 0) {
+            var_op_idx_map[old_to_new[name]] = i;
+          } else {
+            var_op_idx_map[name] = i;
+          }
         } else {
           VLOG(10) << "Skip reference count computing of variable "
                    << name_pair.first << "(" << name << ") in Operator "
@@ -129,7 +152,11 @@ GetUnusedVars(const BlockDesc &block,
       for (auto &name : name_pair.second) {
         if (VarCanBeDeleted(name, block, skip_vars, unpersist_vars)) {
           // Update the last living op of variable to current op
-          var_op_idx_map[name] = i;
+          if (is_shard_for_thread_mode && old_to_new.count(name) > 0) {
+            var_op_idx_map[old_to_new[name]] = i;
+          } else {
+            var_op_idx_map[name] = i;
+          }
         }
       }
     }
@@ -139,7 +166,11 @@ GetUnusedVars(const BlockDesc &block,
   for (auto &name_op_idx_pair : var_op_idx_map) {
     auto &name = name_op_idx_pair.first;
     size_t op_idx = name_op_idx_pair.second;
-    result[ops[op_idx].get()].emplace_back(name);
+    if (is_shard_for_thread_mode && new_to_old.count(name) > 0) {
+      result[ops[op_idx].get()].emplace_back(new_to_old[name]);
+    } else {
+      result[ops[op_idx].get()].emplace_back(name);
+    }
   }
   return result;
 }
