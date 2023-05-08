@@ -13,7 +13,11 @@
 # limitations under the License.
 
 from paddle import _C_ops, _legacy_C_ops, get_flags, in_dynamic_mode
-from paddle.device import is_compiled_with_cuda, is_compiled_with_rocm
+from paddle.device import (
+    get_all_custom_device_type,
+    is_compiled_with_cuda,
+    is_compiled_with_rocm,
+)
 from paddle.fluid.framework import _global_flags, in_dygraph_mode
 from paddle.tensor.manipulation import reshape
 from paddle.tensor.math import _add_with_axis
@@ -22,6 +26,7 @@ from ...common_ops_import import Variable
 from ...device import get_cudnn_version
 from ...fluid.data_feeder import check_dtype, check_variable_and_dtype
 from ...fluid.layer_helper import LayerHelper
+from ...framework import no_grad
 from ...tensor.manipulation import squeeze, unsqueeze
 from ...utils import (
     _contain_var,
@@ -139,6 +144,16 @@ def _conv_nd(
             new_shape = [1] * len(x.shape)
             new_shape[channel_dim] = -1
             bias = bias.reshape(new_shape)
+            # TODO(qili93): temporary for ascned npu performance to be removed along with npu_identity op
+            if (
+                _global_flags()['FLAGS_npu_storage_format']
+                and 'npu' in get_all_custom_device_type()
+            ):
+                with no_grad():
+                    bias_storage = _C_ops.npu_identity(
+                        bias, 3
+                    )  # ACL_FORMAT_NC1HWC0 = 3
+                    bias_storage._share_underline_tensor_to(bias)
             return _C_ops.add(pre_bias, bias)
         else:
             return pre_bias
@@ -716,6 +731,16 @@ def conv2d(
                         + bias.shape
                         + [1 for i in range(len(x.shape) - channel_dim - 1)],
                     )
+                # TODO(qili93): temporary for ascned npu performance to be removed along with npu_identity op
+                if (
+                    _global_flags()['FLAGS_npu_storage_format']
+                    and 'npu' in get_all_custom_device_type()
+                ):
+                    with no_grad():
+                        bias_storage = _C_ops.npu_identity(
+                            bias, 3
+                        )  # ACL_FORMAT_NC1HWC0 = 3
+                        bias_storage._share_underline_tensor_to(bias)
                 return _C_ops.add(pre_bias, bias)
             else:
                 return pre_bias
