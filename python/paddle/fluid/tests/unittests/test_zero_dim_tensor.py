@@ -2706,7 +2706,7 @@ class TestSundryAPI(unittest.TestCase):
         # using p_matrix_norm ,depends on paddle.sum
         x_3 = paddle.arange(24, dtype="float32").reshape([4, 6])
         x_3.stop_gradient = False
-        out_3 = paddle.linalg.norm(x_3, p = 1, axis=[0,1])
+        out_3 = paddle.linalg.norm(x_3, p=1, axis=[0, 1])
         out_3.retain_grads()
         out_3.backward()
         self.assertEqual(out_3.shape, [])
@@ -2726,7 +2726,7 @@ class TestSundryAPI(unittest.TestCase):
         # using p_matrix_norm, depends on paddle.sum
         x_5 = paddle.arange(24, dtype="float32").reshape([4, 6])
         x_5.stop_gradient = False
-        out_5 = paddle.linalg.norm(x_5, p=2, axis = [0, 1])
+        out_5 = paddle.linalg.norm(x_5, p=2, axis=[0, 1])
         out_5.retain_grads()
         out_5.backward()
 
@@ -2808,7 +2808,7 @@ class TestSundryAPI(unittest.TestCase):
         a_cond_fro.backward()
         self.assertEqual(len(a_cond_fro.shape), 1)
         self.assertEqual(a.grad.shape, [2, 4, 4])
-    
+
     def test_trace(self):
         x = paddle.to_tensor([[3, 2], [1, 9]], dtype="float32")
         x.stop_gradient = False
@@ -5014,7 +5014,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         # using p_matrix_norm ,depends on  paddle.sum
         x_3 = paddle.arange(24, dtype="float32").reshape([4, 6])
         x_3.stop_gradient = False
-        out_3 = paddle.linalg.norm(x_3, p = 1, axis=[0,1])
+        out_3 = paddle.linalg.norm(x_3, p=1, axis=[0, 1])
         paddle.static.append_backward(out_3.sum())
 
         prog = paddle.static.default_main_program()
@@ -5025,7 +5025,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         # 2D input, p = 1, axis = None
         # using p_matrix_norm, depends on paddle.sum
         x_4 = paddle.arange(24, dtype="float32").reshape([4, 6])
-        x_4.stop_gradient=False
+        x_4.stop_gradient = False
         out_4 = paddle.linalg.norm(x_4)
         paddle.static.append_backward(out_4.sum())
 
@@ -5037,7 +5037,7 @@ class TestSundryAPIStatic(unittest.TestCase):
 
         # 2D input, p = inf, axis = None
         x_5 = paddle.arange(24, dtype="float32").reshape([4, 6])
-        x_5.stop_gradient=False
+        x_5.stop_gradient = False
         out_5 = paddle.linalg.norm(x_5)
         paddle.static.append_backward(out_5.sum())
         prog = paddle.static.default_main_program()
@@ -5048,7 +5048,7 @@ class TestSundryAPIStatic(unittest.TestCase):
 
         # 2D input, p = -inf, axis = [0, 1]
         x_6 = paddle.arange(24, dtype="float32").reshape([4, 6])
-        x_6.stop_gradient=False
+        x_6.stop_gradient = False
         out_6 = paddle.linalg.norm(x_6, p=-float("inf"), axis=[0, 1])
         paddle.static.append_backward(out_6.sum())
         prog = paddle.static.default_main_program()
