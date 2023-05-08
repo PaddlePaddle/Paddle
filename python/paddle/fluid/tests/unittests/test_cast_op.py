@@ -32,6 +32,7 @@ def cast_wrapper(x, out_dtype=None):
     return paddle.cast(x, paddle.dtype(out_dtype))
 
 
+# NOTE cast GradOpMaker has been deleted because compositeGradOpMaker
 class TestCastOpFp32ToFp64(OpTest):
     def setUp(self):
         ipt = np.random.random(size=[10, 10])
@@ -50,7 +51,7 @@ class TestCastOpFp32ToFp64(OpTest):
         self.check_output()
 
     def test_grad(self):
-        self.check_grad(['X'], ['Out'], check_prim=True)
+        self.check_grad(['X'], ['Out'], check_prim=True, only_check_prim=True)
 
 
 class TestCastOpFp16ToFp32(OpTest):

@@ -1312,85 +1312,76 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("_add_skip_comp_ops", &paddle::prim::PrimCommonUtils::AddSkipCompOps);
   m.def("_remove_skip_comp_ops",
         &paddle::prim::PrimCommonUtils::RemoveSkipCompOps);
-  m.def(
-      "get_grad_op_desc",
-      [](const OpDesc &op_desc,
-         const std::unordered_set<std::string> &no_grad_set,
-         const std::vector<BlockDesc *> &grad_sub_block) {
-        std::unordered_map<std::string, std::string> grad_to_var;
+  m.def("get_grad_op_desc",
+        [](const OpDesc &op_desc,
+           const std::unordered_set<std::string> &no_grad_set,
+           const std::vector<BlockDesc *> &grad_sub_block) {
+          std::unordered_map<std::string, std::string> grad_to_var;
 
-        auto op_info = framework::OpInfoMap::Instance().Get(op_desc.Type());
-        auto grad_op_maker = op_info.GradOpMaker();
-        auto grad_comp_op_maker = op_info.CompGradOpMaker();
+          auto op_info = framework::OpInfoMap::Instance().Get(op_desc.Type());
+          auto grad_op_maker = op_info.GradOpMaker();
+          auto grad_comp_op_maker = op_info.CompGradOpMaker();
 
-        if ((grad_op_maker == nullptr) && (grad_comp_op_maker == nullptr)) {
-          // Normally, proto_ should not be null, except some special
-          // operators, such as LeaklyReluDoubleGrad op.
-          std::string type =
-              op_info.proto_ ? op_info.proto_->type() : "unknown";
-          PADDLE_THROW(platform::errors::NotFound(
-              "Neither operator %s's GradOpMaker nor CompGradOpMaker has "
-              "been registered.\nPlease check whether (%s) operator has "
-              "gradient operator.\nIf not, please set stop_gradient to be "
-              "True for its input and output variables using "
-              "var.stop_gradient=True.",
-              type.c_str(),
-              type.c_str()));
-        }
-        // In PrimEnabled mode, the priority of CompGradOpMaker is greater
-        // than GradCompMaker as we need split first-order grad operator into
-        // primitive operators for compiler. In PrimDisabled mode, the
-        // priority of CompGradOpMaker is less than GradCompMaker for better
-        // performance.
-        std::vector<std::unique_ptr<OpDesc>> grad_op_descs;
-        auto need_skip =
-            paddle::prim::PrimCommonUtils::CheckSkipCompOps(op_desc.Type());
-        VLOG(3) << "need skip: " << need_skip << std::endl;
-        if (paddle::prim::PrimCommonUtils::IsBwdPrimEnabled()) {
-          if ((grad_comp_op_maker != nullptr) && (!need_skip)) {
-            VLOG(3) << "Runing composite fun for " << op_desc.Type();
-            grad_op_descs = grad_comp_op_maker(op_desc,
-                                               no_grad_set,
-                                               &grad_to_var,
-                                               op_desc.Block(),
-                                               grad_sub_block);
-          } else {
-            grad_op_descs = grad_op_maker(
-                op_desc, no_grad_set, &grad_to_var, grad_sub_block);
+          if ((grad_op_maker == nullptr) && (grad_comp_op_maker == nullptr)) {
+            // Normally, proto_ should not be null, except some special
+            // operators, such as LeaklyReluDoubleGrad op.
+            std::string type =
+                op_info.proto_ ? op_info.proto_->type() : "unknown";
+            PADDLE_THROW(platform::errors::NotFound(
+                "Neither operator %s's GradOpMaker nor CompGradOpMaker has "
+                "been registered.\nPlease check whether (%s) operator has "
+                "gradient operator.\nIf not, please set stop_gradient to be "
+                "True for its input and output variables using "
+                "var.stop_gradient=True.",
+                type.c_str(),
+                type.c_str()));
           }
-        } else {
-          if (op_info.HasEmptyGradOpMaker() && grad_comp_op_maker != nullptr) {
-            VLOG(3) << "grad_op_maker is EmptyGradOpMaker, Runing composite "
-                       "fun for "
-                    << op_desc.Type();
-            grad_op_descs = grad_comp_op_maker(op_desc,
-                                               no_grad_set,
-                                               &grad_to_var,
-                                               op_desc.Block(),
-                                               grad_sub_block);
-          } else if (grad_op_maker != nullptr) {
-            VLOG(3) << "grad_op_maker is ! nullptr, Runing origin fun for "
-                    << op_desc.Type();
-            grad_op_descs = grad_op_maker(
-                op_desc, no_grad_set, &grad_to_var, grad_sub_block);
+          // In PrimEnabled mode, the priority of CompGradOpMaker is greater
+          // than GradCompMaker as we need split first-order grad operator into
+          // primitive operators for compiler. In PrimDisabled mode, the
+          // priority of CompGradOpMaker is less than GradCompMaker for better
+          // performance.
+          std::vector<std::unique_ptr<OpDesc>> grad_op_descs;
+          auto need_skip =
+              paddle::prim::PrimCommonUtils::CheckSkipCompOps(op_desc.Type());
+          VLOG(3) << "need skip: " << need_skip << std::endl;
+          if (paddle::prim::PrimCommonUtils::IsBwdPrimEnabled()) {
+            if ((grad_comp_op_maker != nullptr) && (!need_skip)) {
+              VLOG(3) << "Runing composite fun for " << op_desc.Type();
+              grad_op_descs = grad_comp_op_maker(op_desc,
+                                                 no_grad_set,
+                                                 &grad_to_var,
+                                                 op_desc.Block(),
+                                                 grad_sub_block);
+            } else {
+              grad_op_descs = grad_op_maker(
+                  op_desc, no_grad_set, &grad_to_var, grad_sub_block);
+            }
           } else {
-            VLOG(3) << "grad_op_maker is nullptr Runing composite fun for "
-                    << op_desc.Type();
-            grad_op_descs = grad_comp_op_maker(op_desc,
-                                               no_grad_set,
-                                               &grad_to_var,
-                                               op_desc.Block(),
-                                               grad_sub_block);
+            if (grad_op_maker != nullptr) {
+              VLOG(3) << "grad_op_maker is ! nullptr, Runing origin fun for "
+                      << op_desc.Type();
+              grad_op_descs = grad_op_maker(
+                  op_desc, no_grad_set, &grad_to_var, grad_sub_block);
+            } else {
+              VLOG(3) << "grad_op_maker is nullptr Runing composite fun for "
+                      << op_desc.Type();
+              grad_op_descs = grad_comp_op_maker(op_desc,
+                                                 no_grad_set,
+                                                 &grad_to_var,
+                                                 op_desc.Block(),
+                                                 grad_sub_block);
+            }
           }
-        }
 
-        std::vector<OpDesc *> grad_op_desc_ptrs(grad_op_descs.size());
-        std::transform(grad_op_descs.begin(),
-                       grad_op_descs.end(),
-                       grad_op_desc_ptrs.begin(),
-                       [](std::unique_ptr<OpDesc> &p) { return p.release(); });
-        return std::make_pair(grad_op_desc_ptrs, grad_to_var);
-      });
+          std::vector<OpDesc *> grad_op_desc_ptrs(grad_op_descs.size());
+          std::transform(
+              grad_op_descs.begin(),
+              grad_op_descs.end(),
+              grad_op_desc_ptrs.begin(),
+              [](std::unique_ptr<OpDesc> &p) { return p.release(); });
+          return std::make_pair(grad_op_desc_ptrs, grad_to_var);
+        });
 
   m.def("has_comp_grad_op_maker", [](const std::string op_type) {
     return framework::OpInfoMap::Instance().Get(op_type).HasCompGradOpMaker();

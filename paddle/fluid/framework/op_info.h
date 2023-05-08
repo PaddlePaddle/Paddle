@@ -101,13 +101,6 @@ class OpInfo {
     return grad_op_maker_ != nullptr && !use_empty_grad_op_desc_maker_;
   }
 
-  bool HasEmptyGradOpMaker() const { return use_empty_grad_op_desc_maker_; }
-
-  bool HasNonEmptyCompositeGradOpMaker() const {
-    return grad_comp_op_maker_ != nullptr &&
-           !use_empty_composite_grad_op_desc_maker_;
-  }
-
   const DygraphGradOpMakerFN& DygraphGradOpMaker() const {
     // Normally, proto_ should not be null, except some special operators, such
     // as LeaklyReluDoubleGrad op.
