@@ -276,22 +276,22 @@ def get_numeric_gradient(
 
         if tensor_to_check_dtype in [np.complex64, np.complex128]:
             # always assume real output, because this function has
-            # no input for dl/dy, though it should do. so there di will be zero
+            # no input for dl/di, though it should do. so there di will be zero
             f_ajoint = np.ones_like(inputs).astype(tensor_to_check_dtype)
             df_over_dr = (y_pos - y_neg) / delta / 2
             df_over_di = (y_pos_j - y_neg_j) / delta / 2
 
             dl_over_du, dl_over_dv = f_ajoint.real, f_ajoint.imag
 
-            du_over_dx, dv_over_dx = df_over_dr.real, df_over_dr.imag
+            du_over_dr, dv_over_dr = df_over_dr.real, df_over_dr.imag
 
-            du_over_dy, dv_over_dy = df_over_di.real, df_over_di.imag
+            du_over_di, dv_over_di = df_over_di.real, df_over_di.imag
 
             dl_over_dr = np.sum(
-                dl_over_du * du_over_dx + dl_over_dv * dv_over_dx
+                dl_over_du * du_over_dr + dl_over_dv * dv_over_dr
             )
             dl_over_di = np.sum(
-                dl_over_du * du_over_dy + dl_over_dv * dv_over_dy
+                dl_over_du * du_over_di + dl_over_dv * dv_over_di
             )
             gradient_flat[i] = dl_over_dr + 1j * dl_over_di
         else:
