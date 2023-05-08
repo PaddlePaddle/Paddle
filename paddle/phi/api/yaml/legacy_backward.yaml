@@ -1040,7 +1040,6 @@
     func : TransLayoutGradInferMeta
   kernel :
     func : trans_layout_grad
-  composite: trans_layout_grad(x, out_grad, perm, x_grad)
 
 - backward_op : transpose_double_grad
   forward : transpose_grad (Tensor grad_out, int[] perm) -> Tensor(grad_x)
