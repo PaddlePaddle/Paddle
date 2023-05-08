@@ -15,7 +15,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class CEmbeddingOpXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -68,7 +68,7 @@ class CEmbeddingOpXPUKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class CEmbeddingGradOpXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -140,9 +140,7 @@ class CEmbeddingGradOpXPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_XPU_KERNEL(
-    c_embedding,
-    ops::CEmbeddingOpXPUKernel<paddle::platform::XPUDeviceContext, float>);
-REGISTER_OP_XPU_KERNEL(
-    c_embedding_grad,
-    ops::CEmbeddingGradOpXPUKernel<paddle::platform::XPUDeviceContext, float>);
+PD_REGISTER_STRUCT_KERNEL(
+    c_embedding, XPU, ALL_LAYOUT, ops::CEmbeddingOpXPUKernel, float) {}
+PD_REGISTER_STRUCT_KERNEL(
+    c_embedding_grad, XPU, ALL_LAYOUT, ops::CEmbeddingGradOpXPUKernel, float) {}

@@ -16,6 +16,7 @@
 
 #include "paddle/ir/attribute_base.h"
 #include "paddle/ir/ir_context.h"
+#include "paddle/ir/op_info_impl.h"
 #include "paddle/ir/type_base.h"
 
 namespace ir {
@@ -45,17 +46,19 @@ class Dialect {
     (void)std::initializer_list<int>{0, (RegisterType<Args>(), 0)...};
   }
 
-  ///
-  /// \brief Register type of class T.
-  ///
   template <typename T>
   void RegisterType() {
     VLOG(4) << "Type registered into Dialect. --->";
-    ir::AbstractType *abstract_type =
-        new ir::AbstractType(std::move(ir::AbstractType::get<T>(*this)));
-    this->ir_context()->RegisterAbstractType(ir::TypeId::get<T>(),
-                                             abstract_type);
-    ir::TypeManager::RegisterType<T>(this->ir_context());
+    // if (this->ir_context()->registed_abstract_type().count(
+    //         ir::TypeId::get<T>()) == 0) {
+    if (this->ir_context()->GetRegisteredAbstractType(ir::TypeId::get<T>()) ==
+        nullptr) {
+      ir::AbstractType *abstract_type =
+          new ir::AbstractType(std::move(ir::AbstractType::get<T>(*this)));
+      this->ir_context()->RegisterAbstractType(ir::TypeId::get<T>(),
+                                               abstract_type);
+      ir::TypeManager::RegisterType<T>(this->ir_context());
+    }
     VLOG(4) << "----------------------------------";
   }
 
@@ -78,24 +81,42 @@ class Dialect {
     (void)std::initializer_list<int>{0, (RegisterAttribute<Args>(), 0)...};
   }
 
-  ///
-  /// \brief Register attribute of class T.
-  ///
   template <typename T>
   void RegisterAttribute() {
     VLOG(4) << "Attribute registered into Dialect. --->";
-    ir::AbstractAttribute *abstract_attribute = new ir::AbstractAttribute(
-        std::move(ir::AbstractAttribute::get<T>(*this)));
-    this->ir_context()->RegisterAbstractAttribute(ir::TypeId::get<T>(),
-                                                  abstract_attribute);
-    ir::AttributeManager::RegisterAttribute<T>(this->ir_context());
+    if (this->ir_context()->GetRegisteredAbstractAttribute(
+            ir::TypeId::get<T>()) == nullptr) {
+      ir::AbstractAttribute *abstract_attribute = new ir::AbstractAttribute(
+          std::move(ir::AbstractAttribute::get<T>(*this)));
+      this->ir_context()->RegisterAbstractAttribute(ir::TypeId::get<T>(),
+                                                    abstract_attribute);
+      ir::AttributeManager::RegisterAttribute<T>(this->ir_context());
+    }
     VLOG(4) << "----------------------------------";
   }
 
-  ///
-  /// \brief Register abstract_attribute into context.
-  ///
   void RegisterAttribute(ir::AbstractAttribute &&abstract_attribute);
+
+  ///
+  /// \brief Register Operation methods.
+  ///
+  template <typename... Args>
+  void RegisterOps() {
+    (void)std::initializer_list<int>{0, (RegisterOp<Args>(), 0)...};
+  }
+
+  template <typename ConcertOp>
+  void RegisterOp() {
+    std::string name = this->name() + "." + std::string(ConcertOp::name());
+    VLOG(4) << "Op " << name << " registered into Dialect. --->";
+    if (this->ir_context()->GetRegisteredOpInfo(name) == nullptr) {
+      ir::OpInfoImpl *op_info = ir::OpInfoImpl::create<ConcertOp>(this);
+      this->ir_context()->RegisterOpInfo(name, op_info);
+    }
+    VLOG(4) << "----------------------------------";
+  }
+
+  void RegisterOp(const std::string &name, OpInfoImpl *op_info);
 
  private:
   std::string name_;
