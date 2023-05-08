@@ -182,10 +182,11 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
   // those parameter already exist in trt, and should not have another copy in
   // fluid.
   std::vector<std::string> repetitive_params;
+  std::vector<std::string> engine_names;
   for (auto *node : graph->Nodes()) {
     if (node->IsOp() && !framework::ir::Agent(node).subgraph()->empty()) {
-      CreateTensorRTOp(
-          node, graph, graph_param_names, &repetitive_params, use_cuda_graph);
+      engine_names.push_back(CreateTensorRTOp(
+          node, graph, graph_param_names, &repetitive_params, use_cuda_graph));
     }
   }
 
@@ -198,6 +199,32 @@ void analysis::TensorRtSubgraphPass::ApplyImpl(
   framework::ir::GraphSafeRemoveNodes(graph, nodes2remove);
   graph->Set(framework::ir::kRepetitiveParamAttr,
              new std::vector<std::string>(repetitive_params));
+
+  bool all_nodes_offload_to_trt = AllNodesLowerToTrtPostProcess(graph);
+  if (all_nodes_offload_to_trt) {
+    LOG(INFO) << "The entire graph is offloaded to TensorRT.";
+  }
+  if (use_cuda_graph && !all_nodes_offload_to_trt) {
+    LOG_FIRST_N(WARNING, 1)
+        << "You have enabled CudaGraph, but not the entire graph offload to "
+           "trt, now return to normal mode.";
+    use_cuda_graph = false;
+  }
+  if (use_cuda_graph && all_nodes_offload_to_trt) {
+    for (auto &name : engine_names) {
+      PADDLE_ENFORCE_EQ(
+          paddle::inference::Singleton<
+              inference::tensorrt::TRTEngineManager>::Global()
+              .Has(name),
+          true,
+          platform::errors::PreconditionNotMet(
+              "TRTEnegineManager shoud has engine %s, but not found.", name));
+      paddle::inference::Singleton<
+          inference::tensorrt::TRTEngineManager>::Global()
+          .Get(name)
+          ->SetAllNodesLowerToTrt(use_cuda_graph);
+    }
+  }
 }
 
 std::string GenerateEngineKey(const std::set<std::string> &engine_inputs,
@@ -233,7 +260,7 @@ std::string GenerateEngineKey(const std::set<std::string> &engine_inputs,
   return engine_key;
 }
 
-void TensorRtSubgraphPass::CreateTensorRTOp(
+std::string TensorRtSubgraphPass::CreateTensorRTOp(
     framework::ir::Node *node,
     framework::ir::Graph *graph,
     const std::vector<std::string> &graph_params,
@@ -568,7 +595,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
       (enable_int8 && calibration_data.size() == 0 && use_calib_mode);
   if (calibration_mode) {
     // calibraion mode means generate int8 calibration table data process.
-    return;
+    return calibration_engine_key;
   }
 
   std::copy(params_not_shared.begin(),
@@ -608,17 +635,6 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
       framework::ir::Agent(node).subgraph()->end());
   framework::ir::GraphSafeRemoveNodes(graph, nodes2remove);
 
-  bool all_nodes_offload_to_trt = AllNodesLowerToTrtPostProcess(graph);
-  if (all_nodes_offload_to_trt) {
-    LOG(INFO) << "The entire graph is offloaded to TensorRT.";
-  }
-  if (use_cuda_graph && !all_nodes_offload_to_trt) {
-    LOG_FIRST_N(WARNING, 1)
-        << "You have enabled CudaGraph, but not the entire graph offload to "
-           "trt, now return to normal mode.";
-    use_cuda_graph = false;
-  }
-
   // Setting the disable_trt_plugin_fp16 to true means that TRT plugin will not
   // run fp16.
   // When running fp16, the output accuracy of the model will be affected,
@@ -654,7 +670,6 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
       graph->Has(framework::ir::kEmbEltwiseLayernormPass) &&
       graph->Has(framework::ir::kMultiheadMatmulPass));
   trt_engine->SetContextMemorySharing(Get<bool>("context_memory_sharing"));
-  trt_engine->SetAllNodesLowerToTrt(all_nodes_offload_to_trt && use_cuda_graph);
 
   if (use_static_engine) {
     trt_engine_serialized_data = GetTrtEngineSerializedData(
@@ -666,7 +681,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
         LOG(INFO) << "Load TRT Optimized Info from "
                   << GetTrtEngineSerializedPath(
                          Get<std::string>("model_opt_cache_dir"), engine_key);
-        return;
+        return engine_key + std::to_string(predictor_id);
       } catch (const std::exception &exp) {
         LOG(WARNING)
             << "Fail to load TRT Optimized Info from "
@@ -681,7 +696,7 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   // If with_dynamic_shape is configured，but min_input_shape is empty,
   // create trt engine in runtime instead of in pass.
   if (with_dynamic_shape && min_input_shape.empty()) {
-    return;
+    return engine_key + std::to_string(predictor_id);
   }
 
   // the following code will NOT run in following situation:
@@ -714,6 +729,8 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
               << GetTrtEngineSerializedPath(
                      Get<std::string>("model_opt_cache_dir"), engine_key);
   }
+
+  return engine_key + std::to_string(predictor_id);
 }
 
 }  // namespace analysis
