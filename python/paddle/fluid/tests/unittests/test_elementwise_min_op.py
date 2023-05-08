@@ -294,8 +294,8 @@ class TestElementwiseMinOp_broadcast_4(TestElementwiseOp):
     def setUp(self):
         self.op_type = "elementwise_min"
         self.python_api = paddle.minimum
-        self.public_python_api = paddle.minimum
         self.prim_op_type = "prim"
+        self.public_python_api = paddle.minimum
         x = np.random.uniform(0.5, 1, (2, 10, 2, 5)).astype(np.float64)
         sgn = np.random.choice([-1, 1], (2, 10, 1, 5)).astype(np.float64)
         y = x + sgn * np.random.uniform(1, 2, (2, 10, 1, 5)).astype(np.float64)
