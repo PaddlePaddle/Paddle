@@ -990,7 +990,7 @@ void DistInferMeta(const MetaTensor& x,
                         "The Input(Y) has not been initialized properly. The "
                         "shape of Input(Y) = [%s].",
                         y_dims));
-  out->set_dims({1});
+  out->set_dims(phi::make_ddim({}));
   out->set_dtype(x.dtype());
 }
 

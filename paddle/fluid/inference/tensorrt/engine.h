@@ -39,10 +39,11 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/stream.h"
 #include "paddle/utils/any.h"
 
-DECLARE_bool(trt_ibuilder_cache);
+PHI_DECLARE_bool(trt_ibuilder_cache);
 
 namespace paddle {
 namespace inference {

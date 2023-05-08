@@ -33,7 +33,10 @@ from ..framework import (
 )
 from .base import switch_to_static_graph
 from .math_op_patch import monkey_patch_math_tensor
-from paddle.fluid.data_feeder import convert_dtype, _PADDLE_DTYPE_2_NUMPY_DTYPE
+from paddle.fluid.data_feeder import (
+    convert_uint16_to_float,
+    _PADDLE_DTYPE_2_NUMPY_DTYPE,
+)
 import paddle.utils.deprecated as deprecated
 import paddle.profiler as profiler
 from paddle.profiler.utils import in_profiler_mode
@@ -275,8 +278,6 @@ def monkey_patch_tensor():
                 # 4: [5000.]
 
         """
-        from paddle.distributed.parallel import scale_loss
-
         if framework._non_static_mode():
             if in_profiler_mode():
                 record_event = profiler.RecordEvent(
@@ -306,30 +307,15 @@ def monkey_patch_tensor():
             if _grad_scalar:
                 # When using amp with Fleet DistributedStrategy, we do loss scaling implicitly.
                 self = _grad_scalar.scale(self)
-            if paddle.is_compiled_with_xpu():
-                # TODO(liuyuhui): Currently only for xpu. Will be removed in the future.
-                scaled_loss = scale_loss(self)
-                if framework.global_var._in_eager_mode_:
-                    core.eager.run_backward(
-                        [scaled_loss], grad_tensor, retain_graph
-                    )
-                else:
-                    core.dygraph_run_backward(
-                        [scaled_loss],
-                        [grad_tensor],
-                        retain_graph,
-                        framework._dygraph_tracer(),
-                    )
+            if framework.global_var._in_eager_mode_:
+                core.eager.run_backward([self], grad_tensor, retain_graph)
             else:
-                if framework.global_var._in_eager_mode_:
-                    core.eager.run_backward([self], grad_tensor, retain_graph)
-                else:
-                    core.dygraph_run_backward(
-                        [self],
-                        [grad_tensor],
-                        retain_graph,
-                        framework._dygraph_tracer(),
-                    )
+                core.dygraph_run_backward(
+                    [self],
+                    [grad_tensor],
+                    retain_graph,
+                    framework._dygraph_tracer(),
+                )
             if in_profiler_mode():
                 record_event.end()
         else:
@@ -631,7 +617,10 @@ def monkey_patch_tensor():
                 print(x.item(0, 2))         #3.3
 
         """
-        return self._getitem_from_offset(*args).item()
+        scalar = self._getitem_from_offset(*args)
+        if scalar.dtype == np.uint16:
+            return convert_uint16_to_float(scalar).item()
+        return scalar.item()
 
     @property
     def inplace_version(self):

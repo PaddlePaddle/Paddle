@@ -30,7 +30,7 @@ enum XPUFCCalcType {
   FC_INT16 = 0,
   FC_INT32,
   FC_FLOAT,
-  FC_INT_WITH_LL,
+  FC_INT32_WITH_LL,
 };
 
 template <typename T>
@@ -42,8 +42,8 @@ XPUFCCalcType FCCalcType() {
     return XPUFCCalcType::FC_INT32;
   } else if (std::getenv("XPU_PADDLE_FC_LOCAL_INT16") != nullptr) {
     return XPUFCCalcType::FC_FLOAT;
-  } else if (std::getenv("XPU_PADDLE_FC_INT_WITH_LL") != nullptr) {
-    return XPUFCCalcType::FC_INT_WITH_LL;
+  } else if (std::getenv("XPU_PADDLE_FC_INT32_WITH_LL") != nullptr) {
+    return XPUFCCalcType::FC_INT32_WITH_LL;
   }
   return XPUFCCalcType::FC_INT16;
 }

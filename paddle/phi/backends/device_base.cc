@@ -124,7 +124,7 @@ bool DeviceInterface::QueryEvent(size_t dev_id, const event::Event* event) {
   return true;
 }
 
-// memery manage
+// memory manage
 void DeviceInterface::MemoryCopyH2D(size_t dev_id,
                                     void* dst,
                                     const void* src,
