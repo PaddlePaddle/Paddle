@@ -26,17 +26,21 @@
 #include "paddle/phi/kernels/reshape_kernel.h"
 #include "paddle/phi/kernels/split_kernel.h"
 
+#if defined(__NVCC__)
+#include <cuda.h>
+#include <cuda_runtime.h>
+#endif
+
 namespace phi {
 
 namespace funcs {
 
 template <typename T, typename Context>
-static phi::DenseTensor GetReshapeAndExpandTensor(
-    const Context& dev_ctx,
-    const phi::DenseTensor& tensor,
-    const phi::DDim& res_dim,
-    const phi::DDim& bd_dim,
-    int index) {
+phi::DenseTensor GetReshapeAndExpandTensor(const Context& dev_ctx,
+                                           const phi::DenseTensor& tensor,
+                                           const phi::DDim& res_dim,
+                                           const phi::DDim& bd_dim,
+                                           int index) {
   std::vector<int64_t> before_dims = phi::vectorize(tensor.dims());
   std::vector<int64_t> mid_dims(res_dim.size(), 1);
 
@@ -60,7 +64,7 @@ static phi::DenseTensor GetReshapeAndExpandTensor(
 }
 
 template <typename T, typename Context>
-static std::vector<const phi::DenseTensor*> DealWithBoolIndices(
+std::vector<const phi::DenseTensor*> DealWithBoolIndices(
     const Context& dev_ctx,
     const std::vector<const phi::DenseTensor*>& indices_v,
     std::vector<phi::DenseTensor>* tmp_indices_v) {
@@ -180,15 +184,14 @@ T** GetDevicePointerArray(const Context& ctx,
 }
 
 template <typename T, typename Context>
-static void DealWithIndices(
-    const Context& dev_ctx,
-    const DenseTensor& x,
-    const std::vector<const phi::DenseTensor*>& int_indices_v,
-    std::vector<const phi::DenseTensor*>* res_indices_v,
-    std::vector<DenseTensor>* tmp_res_indices_v,
-    const std::vector<DenseTensor>& range_tensor_v,
-    const phi::DDim& bd_dim,
-    std::vector<int64_t>* res_dim_v) {
+void DealWithIndices(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const std::vector<const phi::DenseTensor*>& int_indices_v,
+                     std::vector<const phi::DenseTensor*>* res_indices_v,
+                     std::vector<DenseTensor>* tmp_res_indices_v,
+                     const std::vector<DenseTensor>& range_tensor_v,
+                     const phi::DDim& bd_dim,
+                     std::vector<int64_t>* res_dim_v) {
   size_t total_dims = x.dims().size();
   if (int_indices_v.size() < total_dims) {
     std::vector<int64_t> tmp_x_dims = phi::vectorize(x.dims());
@@ -291,51 +294,51 @@ static void CalCompressedDimsWith1AndWithout1(
   }
 }
 
+#if defined(__NVCC__)
+template <typename T>
+__global__ void range_cuda_kernel(int64_t N, T* out) {
+  int64_t idx = threadIdx.x + blockDim.x * blockIdx.x;
+
+  if (idx >= N) {
+    return;
+  }
+  out[idx] = idx;
+}
+
+template <typename T, typename Context>
+phi::DenseTensor GetRangeCudaTensor(const Context& dev_ctx,
+                                    int64_t N,
+                                    phi::DataType dtype) {
+  phi::DenseTensor res(dtype);
+  res.Resize(phi::make_ddim({N}));
+  DenseTensor* p_res = &res;
+  T* out = dev_ctx.template Alloc<T>(p_res);
+  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, N);
+  range_cuda_kernel<T>
+      <<<config.block_per_grid, config.thread_per_block, 0, dev_ctx.stream()>>>(
+          N, out);
+  return res;
+}
+#endif
+
+template <typename T>
+void range_kernel(int64_t N, T* out) {
+  for (int64_t idx = 0; idx < N; ++idx) {
+    out[idx] = idx;
+  }
+}
+
+template <typename T, typename Context>
+phi::DenseTensor GetRangeTensor(const Context& dev_ctx,
+                                int64_t N,
+                                phi::DataType dtype) {
+  phi::DenseTensor res(dtype);
+  res.Resize(phi::make_ddim({N}));
+  DenseTensor* p_res = &res;
+  T* out = dev_ctx.template Alloc<T>(p_res);
+  range_kernel<T>(N, out);
+  return res;
+}
+
 }  // namespace funcs
 }  // namespace phi
-
-#define UNROLL_RANGE_CUDA_KERNEL_DEFINITION              \
-  template <typename T>                                  \
-  __global__ void range_cuda_kernel(int64_t N, T* out) { \
-    int64_t idx = threadIdx.x + blockDim.x * blockIdx.x; \
-    if (idx >= N) {                                      \
-      return;                                            \
-    }                                                    \
-    out[idx] = idx;                                      \
-  }
-
-#define UNROLL_GET_RANGE_CUDA_TENSOR_DEFINITION                         \
-  template <typename T, typename Context>                               \
-  phi::DenseTensor GetRangeCudaTensor(                                  \
-      const Context& dev_ctx, int64_t N, phi::DataType dtype) {         \
-    phi::DenseTensor res(dtype);                                        \
-    res.Resize(phi::make_ddim({N}));                                    \
-    DenseTensor* p_res = &res;                                          \
-    T* out = dev_ctx.template Alloc<T>(p_res);                          \
-    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, N); \
-    range_cuda_kernel<T><<<config.block_per_grid,                       \
-                           config.thread_per_block,                     \
-                           0,                                           \
-                           dev_ctx.stream()>>>(N, out);                 \
-    return res;                                                         \
-  }
-
-#define UNROLL_RANGE_KERNEL_DEFINITION      \
-  template <typename T>                     \
-  void range_kernel(int64_t N, T* out) {    \
-    for (int64_t idx = 0; idx < N; ++idx) { \
-      out[idx] = idx;                       \
-    }                                       \
-  }
-
-#define UNROLL_GET_RANGE_TENSOR_DEFINITION                      \
-  template <typename T, typename Context>                       \
-  phi::DenseTensor GetRangeTensor(                              \
-      const Context& dev_ctx, int64_t N, phi::DataType dtype) { \
-    phi::DenseTensor res(dtype);                                \
-    res.Resize(phi::make_ddim({N}));                            \
-    DenseTensor* p_res = &res;                                  \
-    T* out = dev_ctx.template Alloc<T>(p_res);                  \
-    range_kernel<T>(N, out);                                    \
-    return res;                                                 \
-  }

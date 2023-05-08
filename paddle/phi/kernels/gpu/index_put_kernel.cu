@@ -21,10 +21,6 @@
 
 namespace phi {
 
-UNROLL_RANGE_CUDA_KERNEL_DEFINITION
-
-UNROLL_GET_RANGE_CUDA_TENSOR_DEFINITION
-
 template <typename T, size_t Rank>
 __global__ void index_put_cuda_kernel(const int64_t N,
                                       const T* x,
@@ -133,7 +129,7 @@ void IndexPutKernel(const Context& dev_ctx,
   const DenseTensor* ptr_value = nullptr;
 
   for (int i = indices.size(); i < x.dims().size(); ++i) {
-    range_tensor_v.emplace_back(GetRangeCudaTensor<int64_t, Context>(
+    range_tensor_v.emplace_back(funcs::GetRangeCudaTensor<int64_t, Context>(
         dev_ctx, x.dims()[i], phi::DataType::INT64));
   }
 

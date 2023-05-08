@@ -21,10 +21,6 @@
 
 namespace phi {
 
-UNROLL_RANGE_KERNEL_DEFINITION
-
-UNROLL_GET_RANGE_TENSOR_DEFINITION
-
 template <typename T>
 void set_zero_kernel(const int64_t N,
                      const int64_t** indices,
@@ -200,7 +196,7 @@ void IndexPutGradKernel(const Context& dev_ctx,
   std::vector<DenseTensor> range_tensor_v;
 
   for (int i = indices.size(); i < x.dims().size(); ++i) {
-    range_tensor_v.emplace_back(GetRangeTensor<int64_t, Context>(
+    range_tensor_v.emplace_back(funcs::GetRangeTensor<int64_t, Context>(
         dev_ctx, x.dims()[i], phi::DataType::INT64));
   }
 
