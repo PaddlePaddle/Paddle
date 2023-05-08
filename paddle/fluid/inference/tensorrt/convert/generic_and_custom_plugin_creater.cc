@@ -70,9 +70,17 @@ class CustomPluginCreater : public OpConverter {
     std::list<std::vector<int>> ints_attrs;
     std::list<std::vector<float>> floats_attrs;
 
-    for (auto &attr_name : op_attrs_names) {
+    for (auto &attr_name_and_type : op_attrs_names) {
+      auto attr_name =
+          attr_name_and_type.substr(0, attr_name_and_type.find_first_of(":"));
       nvinfer1::PluginField plugindata;
-      plugindata.name = attr_name.c_str();
+
+      // NOTE: to avoid string rewrite by iterator, deep copy here
+      std::vector<char> plugin_attr_name(attr_name.length() + 1, 0);
+      snprintf(
+          plugin_attr_name.data(), attr_name.length() + 1, attr_name.c_str());
+      plugindata.name = plugin_attr_name.data();
+
       if (op_desc.GetAttrType(attr_name) == framework::proto::AttrType::INT) {
         int_attrs.push_back(PADDLE_GET_CONST(int, attrs.at(attr_name)));
         plugindata.data = &int_attrs.back();
