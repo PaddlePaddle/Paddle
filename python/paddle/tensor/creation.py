@@ -662,8 +662,6 @@ def _to_tensor_static(data, dtype=None, stop_gradient=None):
                     Thus, process nested structure in except block
                     '''
                     data = np.array(data)
-                    if data.dtype in ['int32']:
-                        data = data.astype('int64')
 
                     # for numpy version <= 1.23.5
                     if data.dtype == 'object':
@@ -683,9 +681,11 @@ def _to_tensor_static(data, dtype=None, stop_gradient=None):
                     f"Do not support transform type `{type(data)}` to tensor"
                 )
 
-        # fix numpy default dtype
-        if data.dtype in ['float16', 'float32', 'float64']:
-            data = data.astype(paddle.get_default_dtype())
+            # fix numpy default dtype
+            if data.dtype in ['float16', 'float32', 'float64']:
+                data = data.astype(paddle.get_default_dtype())
+            elif data.dtype in ['int32']:
+                data = data.astype('int64')
 
         if dtype:
             target_dtype = dtype
