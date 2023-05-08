@@ -1750,11 +1750,11 @@ class Unflatten(Layer):
     It a certain dimension of the input x Tensor into a desired shape.
 
     Parameters:
+        axis (int): :attr:`axis` to be unflattened, specified as an index into `x.shape`.
         shape (list|tuple|Tensor): Unflatten :attr:`shape` on the specified :attr:`axis`. At most one dimension of the target :attr:`shape` can be -1.
-            If the input :attr:`shape` does not contain -1 , the product should be equal to ``x.shape[axis]`` size.
+            If the input :attr:`shape` does not contain -1 , the product of all elements in ``shape`` should be equal to ``x.shape[axis]``.
             The data type is `int` . If :attr:`shape` is a list or tuple, the elements of it should be integers or Tensors with shape [].
             If :attr:`shape` is an Tensor, it should be an 1-D Tensor.
-        axis (int): :attr:`axis` to be unflattened, specified as an index into `x.shape`.
         name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -1769,25 +1769,25 @@ class Unflatten(Layer):
             x = paddle.randn(shape=[4, 6, 8])
             shape = [2, 3]
             axis = 1
-            unflatten = paddle.nn.Unflatten(shape, axis)
+            unflatten = paddle.nn.Unflatten(axis, shape)
             res = unflatten(x)
             print(res.shape)
             # [4, 2, 3, 8]
 
     """
 
-    def __init__(self, shape, axis, name=None):
+    def __init__(self, axis, shape, name=None):
         super().__init__()
-        self.shape = shape
         self.axis = axis
+        self.shape = shape
         self.name = name
 
     def forward(self, input):
         out = paddle.unflatten(
-            input, shape=self.shape, axis=self.axis, name=self.name
+            input, axis=self.axis, shape=self.shape, name=self.name
         )
         return out
 
     def extra_repr(self):
         name_str = f', name={self.name}' if self.name else ''
-        return f'shape={self.shape}, axis={self.axis}{name_str}'
+        return f'axis={self.axis}, shape={self.shape}{name_str}'

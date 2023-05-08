@@ -19,8 +19,8 @@ import numpy as np
 import paddle
 
 
-def numpy_unflatten(x, shape, axis):
-    if isinstance(shape, list) or isinstance(shape, tuple):
+def numpy_unflatten(x, axis, shape):
+    if isinstance(shape, (list, tuple)):
         if len(shape) == 0:
             raise ValueError("The input for shape cannot be empty.")
         if isinstance(shape, list) or isinstance(shape, tuple):
@@ -57,12 +57,12 @@ def numpy_unflatten(x, shape, axis):
 class TestUnflattenAPI(unittest.TestCase):
     def set_args(self):
         self.x = np.random.rand(4, 6, 16)
-        self.shape = (2, 2)
         self.axis = 0
+        self.shape = (2, 2)
         self.shape_is_tensor = False
 
     def get_output(self):
-        self.output = self.ref_api(self.x, self.shape, self.axis)
+        self.output = self.ref_api(self.x, self.axis, self.shape)
 
     def set_api(self):
         self.ref_api = numpy_unflatten
@@ -84,7 +84,7 @@ class TestUnflattenAPI(unittest.TestCase):
                 shape = paddle.to_tensor(self.shape)
             else:
                 shape = self.shape
-            out = self.paddle_api(x=x, shape=shape, axis=self.axis)
+            out = self.paddle_api(x=x, axis=self.axis, shape=shape)
             np.testing.assert_allclose(out, self.output, rtol=1e-05)
 
     def test_dygraph(self):
@@ -111,13 +111,13 @@ class TestUnflattenAPI(unittest.TestCase):
                 else:
                     shape = self.shape
                 exe = paddle.static.Executor(place)
-                out = self.paddle_api(x=x, shape=shape, axis=self.axis)
+                out = self.paddle_api(x=x, axis=self.axis, shape=shape)
                 fetches = exe.run(
                     paddle.static.default_main_program(),
                     feed={
                         "x": self.x,
-                        "shape": self.shape,
                         "axis": self.axis,
+                        "shape": self.shape,
                     },
                     fetch_list=[out],
                 )
@@ -129,56 +129,56 @@ class TestUnflattenAPI(unittest.TestCase):
 class TestUnflattenInputInt16(TestUnflattenAPI):
     def set_args(self):
         self.x = np.random.rand(4, 6, 16).astype('int16')
-        self.shape = (2, 2)
         self.axis = 0
+        self.shape = (2, 2)
         self.shape_is_tensor = False
 
 
 class TestUnflattenInputInt32(TestUnflattenAPI):
     def set_args(self):
         self.x = np.random.rand(4, 6, 16).astype('int32')
-        self.shape = (2, 2)
         self.axis = 0
+        self.shape = (2, 2)
         self.shape_is_tensor = False
 
 
 class TestUnflattenInputInt64(TestUnflattenAPI):
     def set_args(self):
         self.x = np.random.rand(4, 6, 16).astype('int64')
-        self.shape = (2, 2)
         self.axis = 0
+        self.shape = (2, 2)
         self.shape_is_tensor = False
 
 
 class TestUnflattenInputFloat16(TestUnflattenAPI):
     def set_args(self):
         self.x = np.random.rand(4, 6, 16).astype('float16')
-        self.shape = (2, 2)
         self.axis = 0
+        self.shape = (2, 2)
         self.shape_is_tensor = False
 
 
 class TestUnflattenInputFloat32(TestUnflattenAPI):
     def set_args(self):
         self.x = np.random.rand(4, 6, 16).astype('float32')
-        self.shape = (2, 2)
         self.axis = 0
+        self.shape = (2, 2)
         self.shape_is_tensor = False
 
 
 class TestUnflattenInputFloat64(TestUnflattenAPI):
     def set_args(self):
         self.x = np.random.rand(4, 6, 16).astype('float64')
-        self.shape = (2, 2)
         self.axis = 0
+        self.shape = (2, 2)
         self.shape_is_tensor = False
 
 
 class TestUnflattenInputbool(TestUnflattenAPI):
     def set_args(self):
         self.x = np.random.rand(4, 6, 16).astype('bool')
-        self.shape = (2, 2)
         self.axis = 0
+        self.shape = (2, 2)
         self.shape_is_tensor = False
 
 
@@ -186,56 +186,56 @@ class TestUnflattenInputbool(TestUnflattenAPI):
 class TestUnflattenShapeList1(TestUnflattenAPI):
     def set_args(self):
         self.x = np.random.rand(4, 6, 16).astype('float32')
-        self.shape = [2, 2]
         self.axis = 0
+        self.shape = [2, 2]
         self.shape_is_tensor = False
 
 
 class TestUnflattenShapeList2(TestUnflattenAPI):
     def set_args(self):
         self.x = np.random.rand(4, 6, 16).astype('float32')
-        self.shape = [-1, 2]
         self.axis = -1
+        self.shape = [-1, 2]
         self.shape_is_tensor = False
 
 
 class TestUnflattenShapeList3(TestUnflattenAPI):
     def set_args(self):
         self.x = np.random.rand(4, 6, 16).astype('float32')
-        self.shape = [-1]
         self.axis = 0
+        self.shape = [-1]
         self.shape_is_tensor = False
 
 
 class TestUnflattenTupleShape1(TestUnflattenAPI):
     def set_args(self):
         self.x = np.random.rand(4, 6, 16).astype('float32')
-        self.shape = (2, 2)
         self.axis = 0
+        self.shape = (2, 2)
         self.shape_is_tensor = False
 
 
 class TestUnflattenTupleShape2(TestUnflattenAPI):
     def set_args(self):
         self.x = np.random.rand(4, 6, 16).astype('float32')
-        self.shape = (-1, 2)
         self.axis = 0
+        self.shape = (-1, 2)
         self.shape_is_tensor = False
 
 
 class TestUnflattenTupleShape3(TestUnflattenAPI):
     def set_args(self):
         self.x = np.random.rand(4, 6, 16).astype('float32')
-        self.shape = (-1,)
         self.axis = 0
+        self.shape = (-1,)
         self.shape_is_tensor = False
 
 
 class TestUnflattenShapeTensorInt32(TestUnflattenAPI):
     def set_args(self):
         self.x = np.random.rand(4, 6, 16).astype('float32')
-        self.shape = tuple(np.array((-1, 4)).astype('int32'))
         self.axis = 0
+        self.shape = tuple(np.array((-1, 4)).astype('int32'))
         self.shape_is_tensor = True
 
 
@@ -243,24 +243,24 @@ class TestUnflattenShapeTensorInt32(TestUnflattenAPI):
 class TestUnflattenAxis1(TestUnflattenAPI):
     def set_args(self):
         self.x = np.random.rand(4, 6, 16).astype('float32')
-        self.shape = (2, 3)
         self.axis = 1
+        self.shape = (2, 3)
         self.shape_is_tensor = False
 
 
 class TestUnflattenAxis2(TestUnflattenAPI):
     def set_args(self):
         self.x = np.random.rand(4, 6, 16).astype('float32')
-        self.shape = (2, 8)
         self.axis = -1
+        self.shape = (2, 8)
         self.shape_is_tensor = False
 
 
 class TestLayer(unittest.TestCase):
     def set_args(self):
         self.x = np.random.randn(3, 4, 4, 5).astype('float32')
-        self.shape = [2, 2]
         self.axis = 1
+        self.shape = [2, 2]
 
     def setUp(self):
         self.set_args()
@@ -278,24 +278,20 @@ class TestLayer(unittest.TestCase):
                 paddle.static.Program(), paddle.static.Program()
             ):
                 x = paddle.static.data(
-                    name="x", shape=self.x.shape, dtype=self.x.dtype
+                    name="x", dtype=self.x.dtype, shape=self.x.shape
                 )
                 exe = paddle.static.Executor(place)
-                unflatten = paddle.nn.Unflatten(self.shape, self.axis)
+                unflatten = paddle.nn.Unflatten(self.axis, self.shape)
                 out = unflatten(x)
                 static_ret = exe.run(
                     paddle.static.default_main_program(),
-                    feed={
-                        "x": self.x,
-                        "shape": self.shape,
-                        "axis": self.axis,
-                    },
+                    feed={"x": self.x, "axis": self.axis, "shape": self.shape},
                     fetch_list=[out],
                 )[0]
         for place in self.places:
             paddle.disable_static()
             x = paddle.to_tensor(self.x, dtype='float32', place=place)
-            unflatten = paddle.nn.Unflatten(self.shape, self.axis)
+            unflatten = paddle.nn.Unflatten(self.axis, self.shape)
             dy_ret_value = unflatten(self.x)
         np.testing.assert_array_equal(static_ret, dy_ret_value)
 
@@ -303,10 +299,10 @@ class TestLayer(unittest.TestCase):
 class TestLayerName(unittest.TestCase):
     def test_name(self):
         self.x = np.random.randn(3, 4, 4, 5).astype('float32')
-        self.shape = [2, 2]
         self.axis = 1
+        self.shape = [2, 2]
         self.name = 'unflatten'
-        unflatten = paddle.nn.Unflatten(self.shape, self.axis, self.name)
+        unflatten = paddle.nn.Unflatten(self.axis, self.shape, self.name)
         _name = unflatten.extra_repr()
 
 

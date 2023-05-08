@@ -276,27 +276,6 @@ class TestLayer(LayerTest):
 
             self.assertRaises(TypeError, test_type)
 
-    def test_unflatten(self):
-        input = np.random.randn(3, 4, 4, 5).astype('float32')
-        shape = [2, 2]
-        axis = 1
-        with self.static_graph():
-            x = paddle.static.data(
-                name='x', shape=[3, 4, 4, 5], dtype='float32'
-            )
-            unflatten = paddle.nn.Unflatten(shape, axis)
-            ret = unflatten(x)
-            static_ret = self.get_static_graph_result(
-                feed={'x': input}, fetch_list=[ret]
-            )[0]
-        with self.dynamic_graph():
-            x = base.to_variable(input)
-            unflatten = paddle.nn.Unflatten(shape, axis)
-            dy_ret = unflatten(x)
-            dy_ret_value = dy_ret.numpy()
-
-        np.testing.assert_array_equal(static_ret, dy_ret_value)
-
     def test_SyncBatchNorm(self):
         if core.is_compiled_with_cuda():
             with self.static_graph():
