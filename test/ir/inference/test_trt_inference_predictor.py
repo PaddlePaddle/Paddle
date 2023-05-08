@@ -84,7 +84,7 @@ class BackendPaddle:
         # enable memory optim
         if not self.args.enable_tune:
             config.enable_memory_optim()
-        if self.enable_trt_sparse_weights:
+        if self.args.enable_trt_sparse_weights:
             config.enable_tensorrt_sparse_weights()
 
         config.set_cpu_math_library_num_threads(self.args.cpu_threads)
