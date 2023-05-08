@@ -424,6 +424,8 @@
     {input : Input}
   outputs :
     {output : Output, fused_output : FusedOutput}
+  attrs :
+    {size_of_dtype : user_defined_size_of_dtype}
 
 - op : complex
   backward : complex_grad
