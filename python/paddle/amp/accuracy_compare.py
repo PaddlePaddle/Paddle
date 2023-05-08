@@ -580,30 +580,34 @@ def parse_log(log_dir, filename, specified_op_list=None):
     tensor_info_list = []
     has_tensor_name = False
 
-    with open(complete_filename, 'r') as f:
-        lines = f.readlines()
-        for i in range(len(lines)):
-            if i % 10 == 0:
-                print(
-                    f"-- Processing {i:-8d} / {len(lines):-8d} line",
-                    end="\r",
-                )
-            # [op=adamw] [tensor=encoder_layer_20_multi_head_att_output_fc_0.w_0], numel: 294912, max: 0.005773, min: -0.005774
-            line = lines[i]
-            if "[PRECISION]" in line:
-                tensor_info = TensorInfo()
-                tensor_info.init_from_string(line)
-                if (
-                    tensor_info.tensor_name is not None
-                    and tensor_info.tensor_name != ""
-                ):
-                    has_tensor_name = True
-                if (
-                    specified_op_list is None
-                    or tensor_info.op_type in specified_op_list
-                ):
-                    tensor_info_list.append(tensor_info)
-                # print(tensor_info)
+    try:
+        with open(complete_filename, 'r') as f:
+            lines = f.readlines()
+            for i in range(len(lines)):
+                if i % 10 == 0:
+                    print(
+                        f"-- Processing {i:-8d} / {len(lines):-8d} line",
+                        end="\r",
+                    )
+                # [op=adamw] [tensor=encoder_layer_20_multi_head_att_output_fc_0.w_0], numel: 294912, max: 0.005773, min: -0.005774
+                line = lines[i]
+                if "[PRECISION]" in line:
+                    tensor_info = TensorInfo()
+                    tensor_info.init_from_string(line)
+                    if (
+                        tensor_info.tensor_name is not None
+                        and tensor_info.tensor_name != ""
+                    ):
+                        has_tensor_name = True
+                    if (
+                        specified_op_list is None
+                        or tensor_info.op_type in specified_op_list
+                    ):
+                        tensor_info_list.append(tensor_info)
+                    # print(tensor_info)
+    except FileNotFoundError:
+        print("the file ", complete_filename, "is not found")
+        return None, has_tensor_name
     return tensor_info_list, has_tensor_name
 
 
