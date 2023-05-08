@@ -1173,7 +1173,7 @@ class Optimizer:
                 self._append_dgc_ops(params_grads)
         return params_grads
 
-    def append_cast_to_master_grad_op(self, param_grads):
+    def _append_cast_to_master_grad_op(self, param_grads):
         """
         Add ops to cast gradient to master gradient
 
@@ -1262,7 +1262,7 @@ class Optimizer:
         # 'optimizer(grad_clip)' or 'set_gradient_clip'
         if self._grad_clip is not None:
             # create master gradients
-            params_grads = self.append_cast_to_master_grad_op(params_grads)
+            params_grads = self._append_cast_to_master_grad_op(params_grads)
             params_grads = self._grad_clip(params_grads)
         else:
             params_grads = paddle.nn.clip.append_gradient_clip_ops(params_grads)
