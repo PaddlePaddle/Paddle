@@ -368,18 +368,23 @@ void silu_double_grad(const Tensor& x,
                       const Tensor& grad_x_grad,
                       Tensor* grad_x,
                       Tensor* grad_out_grad) {
-  auto exp_x_ = exp<T>(-x);
-  auto exp_2x_ = exp_x_ * exp_x_;
-  auto sigmod = 1.0 / (1.0 + exp_x_);
+  auto exp_neg_x = exp<T>(-x);
+  auto tmp1 = 1 + exp_neg_x;
+  auto sigmoid = 1.0 / tmp1;
+  auto tmp2 = 1 - sigmoid;
+  auto tmp3 = 1 + x * tmp2;
   if (grad_out_grad) {
-    auto ddout = grad_x_grad * (sigmod * (1 + (x * (1 - sigmod))));
+    auto ddout = grad_x_grad * (sigmoid * tmp3);
     set_output<T>(ddout, grad_out_grad);
   }
   if (grad_x) {
-    auto dx = exp_2x_ * (2 + x) + exp_x_ * (2 - x);
-    dx = dx /
-         elementwise_pow<T>((exp_x_ + 1),
-                            full<T>(phi::vectorize(x.dims()), 3.0, x.dtype()));
+    auto sigmoid_G = out_grad * grad_x_grad * (tmp3 - x * sigmoid);
+    auto dx_0 = grad_x_grad * out_grad * sigmoid * tmp2;
+    auto dx_1 =
+        1 / (elementwise_pow<T>(
+                tmp1, full<T>(phi::vectorize(x.dims()), 2.0, x.dtype())));
+    dx_1 = dx_1 * sigmoid_G * exp_neg_x;
+    auto dx = dx_0 + dx_1;
     set_output<T>(dx, grad_x);
   }
 }

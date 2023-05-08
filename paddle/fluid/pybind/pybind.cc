@@ -1359,22 +1359,13 @@ All parameter, weight, gradient are variables in Paddle.
                 op_desc, no_grad_set, &grad_to_var, grad_sub_block);
           }
         } else {
-          if (op_info.HasEmptyGradOpMaker() && grad_comp_op_maker != nullptr) {
-            VLOG(3) << "grad_op_maker is EmptyGradOpMaker, Runing composite "
-                       "fun for "
-                    << op_desc.Type();
-            grad_op_descs = grad_comp_op_maker(op_desc,
-                                               no_grad_set,
-                                               &grad_to_var,
-                                               op_desc.Block(),
-                                               grad_sub_block);
-          } else if (grad_op_maker != nullptr) {
-            VLOG(3) << "grad_op_maker is ! nullptr, Runing origin fun for "
+          if (grad_op_maker != nullptr) {
+            VLOG(3) << "grad_op_maker is ! nullptr, Runing origin_grad fun for "
                     << op_desc.Type();
             grad_op_descs = grad_op_maker(
                 op_desc, no_grad_set, &grad_to_var, grad_sub_block);
           } else {
-            VLOG(3) << "grad_op_maker is nullptr Runing composite fun for "
+            VLOG(3) << "grad_op_maker is nullptr Runing composite_grad fun for "
                     << op_desc.Type();
             grad_op_descs = grad_comp_op_maker(op_desc,
                                                no_grad_set,

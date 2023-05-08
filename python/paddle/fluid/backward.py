@@ -1342,11 +1342,9 @@ def _append_backward_ops_(
     assert isinstance(rename_var_map, dict)
 
     if core._is_bwd_prim_enabled():
-        print("prim flag 111")
         composite_block = program.clone().current_block()
         # Infer shape for operators whose output haven't been created.
         for op in composite_block.ops:
-            print("composite_block op name : ", op.type)
             if not all(
                 tuple(
                     composite_block._find_var_recursive(arg)
@@ -1357,7 +1355,6 @@ def _append_backward_ops_(
 
     # add grad_op_desc by reversed ops
     for op in reversed(ops):
-        print("op name :", op.type)
         grad_sub_block_list = []
         # If the op has its own sub-block, deal with the sub-block first
         if op.has_attr("sub_block"):
@@ -1405,7 +1402,6 @@ def _append_backward_ops_(
             and core.has_comp_grad_op_maker(op.type)
             or core._is_bwd_prim_enabled()
         ):
-            print("prim flag ----------")
 
             def find_op_index(block_desc, cur_op_desc):
                 for idx in range(block_desc.op_size()):
@@ -1421,12 +1417,10 @@ def _append_backward_ops_(
             for desc in grad_op_desc:
                 infershape_for_composite(composite_block, desc)
         else:
-            print("no prim flag ----------")
             # Getting op's corresponding grad_op
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
                 op.desc, no_grad_dict[block.idx], grad_sub_block_list
             )
-        print("grad_op_desc :", len(grad_op_desc))
         # record the mapping between fwd and bwd
         if grad_op_id_to_fwd_op is not None:
             for op_desc in grad_op_desc:
@@ -1508,7 +1502,6 @@ def _append_backward_ops_(
                     for name in op_desc.input_arg_names()
                     if is_grad_name(name)
                 ]
-            # print("input_grad_names[0] :",input_grad_names[0])
             if len(input_grad_names) == 0:
                 is_append_grad = True
                 break
@@ -2401,9 +2394,6 @@ def calc_gradient_helper(
     targets = _as_list(targets)
     inputs = _as_list(inputs)
     target_gradients = _as_list(target_gradients)
-    print("targets :", len(targets))
-    print("inputs :", len(inputs))
-    print("target_gradients :", len(target_gradients))
     block = targets[0].block
     prog = block.program
     # increase appending gradients times
@@ -2426,7 +2416,6 @@ def calc_gradient_helper(
     no_grad_dict[0].update(list(map(_append_grad_suffix_, no_grad_set)))
 
     fwd_op_num = block.desc.op_size()
-    print("fwd_op_num :", fwd_op_num)
     input_grad_names_set = set()
 
     target_grad_map = {}
@@ -2462,9 +2451,7 @@ def calc_gradient_helper(
             rename_var_map[grad_name] = grad.name
 
     if core._is_bwd_prim_enabled():
-        print("***********0*********")
         core._set_prim_target_grad_name(target_grad_map)
-    print("***********1*********")
     # For double backward, input_grad_names is used for filter
     # some non-used gradients op. rename_var_map is used to
     # associate target_grad var name with first grad_op input name.
@@ -2482,7 +2469,6 @@ def calc_gradient_helper(
     op_path = _find_op_path_(
         block, targets, inputs, block_no_grad_set, op_path_dict
     )
-    print("op_path : ", op_path)
     # find no grad var by op_path
     no_grad_vars = _find_no_grad_vars(
         block, op_path, targets, block_no_grad_set
@@ -2492,7 +2478,6 @@ def calc_gradient_helper(
     no_grad_dict[0].update(list(map(_append_grad_suffix_, block_no_grad_set)))
     grad_to_var = dict()
     grad_info_map = dict()
-    print("*************2*********")
     _append_backward_ops_(
         block,
         op_path,
@@ -2511,10 +2496,8 @@ def calc_gradient_helper(
     _rename_grad_(
         block, fwd_op_num, grad_to_var, target_grad_map, skip_rename_var_list
     )
-    print("grad_to_var :", len(grad_to_var))
     _append_backward_vars_(block, fwd_op_num, grad_to_var, grad_info_map)
     prog._sync_with_cpp()
-    print("grad_info_map :", len(grad_info_map))
     return grad_info_map
 
 
