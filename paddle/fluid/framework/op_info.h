@@ -60,10 +60,6 @@ class OpInfo {
   // the grad maker is the empty one.
   bool use_empty_grad_op_desc_maker_{false};
 
-  // same flag for composite grad op maker
-  bool use_default_composite_grad_op_desc_maker_{false};
-  bool use_empty_composite_grad_op_desc_maker_{false};
-
   bool HasOpProtoAndChecker() const {
     return proto_ != nullptr && checker_ != nullptr;
   }

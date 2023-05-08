@@ -275,8 +275,8 @@ struct OpInfoFiller<T, kGradCompOpDescMaker> {
           return maker();
         };
     // TODO(jiabin): Support this later or just not.
-    info->use_default_composite_grad_op_desc_maker_ = false;
-    info->use_empty_composite_grad_op_desc_maker_ = false;
+    info->use_default_grad_op_desc_maker_ = false;
+    info->use_empty_grad_op_desc_maker_ = false;
   }
 };
 
