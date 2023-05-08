@@ -1264,6 +1264,8 @@
     variance : Variance
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
+  get_expected_kernel_type :
+    layer_norm : GetLayerNormExpectedKernelType
 
 - op : leaky_relu
   backward : leaky_relu_grad, leaky_relu_double_grad (leaky_relu_grad_grad)

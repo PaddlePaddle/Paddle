@@ -250,5 +250,23 @@ phi::KernelKey GetInstanceNormExpectedKernelType(
   return phi::KernelKey(input_data_type, ctx.GetPlace());
 }
 
+phi::KernelKey GetLayerNormExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  (void)ctx;
+
+  auto input_data_type =
+      op_ptr->OperatorWithKernel::IndicateVarDataType(ctx, "X");
+
+  // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
+  int begin_norm_axis = ctx.Attr<int>("begin_norm_axis");
+  if (begin_norm_axis != ctx.Input<phi::DenseTensor>("X")->dims().size() - 1) {
+    op_ptr->SetDnnFallback(true);
+  }
+  // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
+
+  return phi::KernelKey(input_data_type, ctx.GetPlace());
+}
+
 }  // namespace operators
 }  // namespace paddle
