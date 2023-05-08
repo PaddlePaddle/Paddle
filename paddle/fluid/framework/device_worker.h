@@ -44,6 +44,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/timer.h"
 #include "paddle/phi/backends/dynload/port.h"
+#include "paddle/phi/core/macros.h"
 
 namespace paddle {
 namespace framework {
@@ -179,14 +180,14 @@ class DeviceWorker {
   virtual void BindingDataFeedMemory() = 0;
   virtual void SetRootScope(Scope* root_scope);
   virtual void SetDataFeed(DataFeed* data_feed);
-  virtual void SetWorkerNum(int num) {}
-  virtual void CacheProgram(const ProgramDesc& main_program) {}
+  virtual void SetWorkerNum(int num UNUSED) {}
+  virtual void CacheProgram(const ProgramDesc& main_program UNUSED) {}
   virtual void ProduceTasks() {}
   virtual void GetXpuOpIndex() {}
-  virtual void Schedule(int taskid) {}
+  virtual void Schedule(int taskid UNUSED) {}
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  virtual void SetStream(const gpuStream_t stream) {}
-  virtual void SetEvent(const gpuEvent_t event) {}
+  virtual void SetStream(const gpuStream_t stream UNUSED) {}
+  virtual void SetEvent(const gpuEvent_t event UNUSED) {}
 #endif
   virtual void SetNeedDumpField(bool need_dump_field) {
     need_dump_field_ = need_dump_field;
@@ -256,7 +257,7 @@ class CPUWorkerBase : public DeviceWorker {
   virtual void TrainFiles() = 0;
   virtual void TrainFilesWithProfiler() {}
   virtual void PrintFetchVars() {}
-  virtual void CreateDeviceResource(const ProgramDesc& main_prog) {}
+  virtual void CreateDeviceResource(const ProgramDesc& main_prog UNUSED) {}
 
  protected:
   int thread_id_;
@@ -684,7 +685,7 @@ class SectionWorker : public DeviceWorker {
   void PrepareUnusedVar();
 
   void BindingDataFeedMemory() override {}
-  void CreateDeviceResource(const ProgramDesc& main_prog) override{};
+  void CreateDeviceResource(const ProgramDesc& main_prog UNUSED) override{};
 
   void TrainFiles() override;
   void TrainFilesWithProfiler() override{};
@@ -693,7 +694,7 @@ class SectionWorker : public DeviceWorker {
 
   const platform::Place& place() const { return place_; }
 
-  void SetDeviceIndex(int tid) override {}
+  void SetDeviceIndex(int tid UNUSED) override {}
   void SetThreadIndex(int thread_id) { thread_id_ = thread_id; }
   void SetMicrobatchNum(int num) { num_microbatches_ = num; }
   void SetPipelineStageNum(int num) { num_pipeline_stages_ = num; }
@@ -755,7 +756,7 @@ class HeterSectionWorker : public DeviceWorker {
   ~HeterSectionWorker() override {}
 
   void Initialize(const TrainerDesc& desc) override;
-  void CreateDeviceResource(const ProgramDesc& main_prog) override{};
+  void CreateDeviceResource(const ProgramDesc& main_prog UNUSED) override{};
 
   void TrainFiles() override;
   void TrainFilesWithProfiler() override;

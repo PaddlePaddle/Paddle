@@ -405,15 +405,6 @@ class CompositeGradOpMakerBase {
       }
     }
     return input_grads;
-    PADDLE_ENFORCE_LE(
-        var_names.size(),
-        1UL,
-        platform::errors::Unavailable(
-            "BUG from operator developer:"
-            " for input argument with a list of variables, "
-            " drop_empty_grad is not allowed because it makes"
-            " the correspondence bewteen a variable and its gradient"
-            " ambiguous."));
   }
 
   std::vector<framework::VarDesc*> MultiOutputGrad(

@@ -25,7 +25,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class AffineChannelXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -85,7 +85,7 @@ class AffineChannelXPUKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class AffineChannelGradXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -189,10 +189,12 @@ class AffineChannelGradXPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using XPU = paddle::platform::XPUDeviceContext;
 
-REGISTER_OP_XPU_KERNEL(affine_channel, ops::AffineChannelXPUKernel<XPU, float>);
-REGISTER_OP_XPU_KERNEL(affine_channel_grad,
-                       ops::AffineChannelGradXPUKernel<XPU, float>);
-
+PD_REGISTER_STRUCT_KERNEL(
+    affine_channel, XPU, ALL_LAYOUT, ops::AffineChannelXPUKernel, float) {}
+PD_REGISTER_STRUCT_KERNEL(affine_channel_grad,
+                          XPU,
+                          ALL_LAYOUT,
+                          ops::AffineChannelGradXPUKernel,
+                          float) {}
 #endif
