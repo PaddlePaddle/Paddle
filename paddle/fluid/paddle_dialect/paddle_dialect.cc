@@ -13,7 +13,11 @@
 // limitations under the License.
 
 #include "paddle/fluid/paddle_dialect/paddle_dialect.h"
+#include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/paddle_dialect/utils.h"
+#include "paddle/ir/builtin_type.h"
 #include "paddle/ir/dialect_interface.h"
 #include "paddle/ir/parameter.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -25,22 +29,66 @@ class ParameterConvertInterface
  public:
   explicit ParameterConvertInterface(ir::Dialect* dialect) : Base(dialect) {}
 
-  paddle::framework::Variable* ParameterToVariable(ir::Parameter* parameter) {
-    // if (parameter.type == ir::DenseTensorType) {
-    //   new 一个 DenseTensor, 初始化一个 Variable并返回
-    // } else {
-    //   return nullptr;
-    // }
-    return nullptr;
+  // NOTE(zhangbo): Only support new a CPU Variable.
+  std::shared_ptr<paddle::framework::Variable> ParameterToVariable(
+      ir::Parameter* parameter) {
+    if (parameter->type().isa<ir::DenseTensorType>()) {
+      std::shared_ptr<paddle::framework::Variable> var =
+          std::make_shared<paddle::framework::Variable>();
+      phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+      // Init DenseTensor
+      auto dim = parameter->type().dyn_cast<ir::DenseTensorType>().dim();
+      phi::DenseTensorMeta meta(
+          TransToPhiDataType(
+              parameter->type().dyn_cast<ir::DenseTensorType>().dtype()),
+          phi::DDim(dim.data(), dim.size()),
+          TransToPhiDataLayout(
+              parameter->type().dyn_cast<ir::DenseTensorType>().data_layout()),
+          parameter->type().dyn_cast<ir::DenseTensorType>().lod(),
+          parameter->type().dyn_cast<ir::DenseTensorType>().offset());
+      tensor->set_meta(meta);
+      paddle::platform::DeviceContext* dev_ctx =
+          paddle::platform::DeviceContextPool::Instance().Get(
+              paddle::platform::CPUPlace());
+      dev_ctx->Alloc(
+          tensor,
+          TransToPhiDataType(
+              parameter->type().dyn_cast<ir::DenseTensorType>().dtype()),
+          /*requested_size=*/0,
+          /*pinned=*/false,
+          /*fake_alloc=*/true);
+      memcpy(tensor->data(),
+             parameter->data(),
+             tensor->numel() * phi::SizeOf(tensor->dtype()));
+      return var;
+    } else {
+      return nullptr;
+    }
   }
 
   ir::Parameter* VariableToParameter(paddle::framework::Variable* var) {
-    // if (var->IsType<phi::DenseTensor>()) {
-    //   new 一个 Parameter，返回这个指针
-    // } else {
-    //   return nullptr;
-    // }
-    return nullptr;
+    if (var->IsType<phi::DenseTensor>()) {
+      phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+      // Get Meta
+      ir::IrContext* ctx = ir::IrContext::Instance();
+      ir::Type data_type = TransToIrDataType(tensor->dtype(), ctx);
+      ir::DenseTensorTypeStorage::Dim dims(tensor->dims().size());
+      std::copy(tensor->dims().Get(),
+                tensor->dims().Get() + tensor->dims().size(),
+                dims.data());
+      ir::DenseTensorTypeStorage::DataLayout data_layout =
+          TransToIrDataLayout(tensor->layout());
+      ir::DenseTensorTypeStorage::LoD lod = tensor->lod();
+      size_t offset = tensor->meta().offset;
+      void* data = tensor->data();
+      ir::Type dense_tensor_type = ir::DenseTensorType::get(
+          ctx, data_type, dims, data_layout, lod, offset);
+      return new ir::Parameter(data,
+                               tensor->numel() * phi::SizeOf(tensor->dtype()),
+                               dense_tensor_type);
+    } else {
+      return nullptr;
+    }
   }
 };
 
@@ -50,9 +98,6 @@ PaddleDialect::PaddleDialect(ir::IrContext* context)
 }
 
 void PaddleDialect::initialize() {
-  // RegisterTypes<GET_BUILT_IN_TYPE_LIST>();
-  // RegisterAttributes<GET_BUILT_IN_ATTRIBUTE_LIST>();
-  // RegisterOps<GET_BUILT_IN_OP_LIST>();
   RegisterInterfaces<ParameterConvertInterface>();
 }
 
