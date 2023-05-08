@@ -124,5 +124,145 @@ class TestCsrSoftmax(unittest.TestCase):
         np.testing.assert_allclose(csr.grad.values().numpy(), dx, rtol=1e-05)
 
 
+# class TestCooSoftmax(unittest.TestCase):
+#     def sparse_softmax(self, sparse, dense_shape, sparse_dim, dim):
+#         """
+#         sparse softmax algorithm in Python.
+#         """
+#         inf = float('inf')
+#         indices = sparse.indices()
+#         values = sparse.values()
+#         size = sparse.shape
+#         dense_size = tuple(size[sparse_dim:])
+#         dense_dim = len(dense_size)
+#
+#         if dim < sparse_dim:
+#             nnz = sparse.nnz()
+#
+#             # compute pool indices
+#             strides = np.ones((sparse_dim, 1))
+#             for i in reversed(range(sparse_dim - 1)):
+#                 strides[i, 0] = strides[i + 1, 0] * size[i + 1]
+#             strides[dim, 0] = 0
+#             strides = paddle.to_tensor(strides, dtype=indices.dtype)
+#
+#             pool = paddle.sum((indices * strides), axis=0).numpy()
+#             i2p = {}
+#             for i in range(nnz):
+#                 c = int(pool[i])
+#                 if c not in i2p:
+#                     i2p[c] = len(i2p)
+#                 pool[i] = i2p[c]
+#
+#             mx = paddle.empty((pool.max() + 1,) + dense_size).numpy()
+#             mx[:] = -inf
+#             np_values = values.numpy()
+#             for n in range(nnz):
+#                 p = pool[n]
+#                 mx[p] = np.where(mx[p] > np_values[n], mx[p], np_values[n])
+#
+#             # apply exp to (v - mx) and sum the results
+#             exp_values = paddle.empty_like(values).numpy()
+#             exp_sums = np.zeros_like(mx)
+#             for n in range(nnz):
+#                 p = pool[n]
+#                 v = exp_values[n] = np.exp(np_values[n] - mx[p])
+#                 exp_sums[p] = exp_sums[p] + v
+#
+#             # normalize with the sum of exponents
+#             for n in range(nnz):
+#                 p = pool[n]
+#                 exp_values[n] = exp_values[n] / exp_sums[p]
+#             return paddle.sparse.sparse_coo_tensor(
+#                 indices, exp_values, dense_shape
+#             )
+#
+#         elif dim < sparse_dim + dense_dim:
+#             return paddle.sparse.sparse_coo_tensor(
+#                 indices, F.softmax(values, dim - sparse_dim + 1), size
+#             )
+#         else:
+#             print(
+#                 "`dim(=%s)` must be smaller than `sparse_dim(=%s) + dense_dim(=%s)`"
+#                 % (dim, sparse_dim, dense_dim)
+#             )
+#
+#     def check_run(self, dense_shape):
+#         mask = np.random.rand(*dense_shape) < 0.5
+#         np_x = np.random.rand(*dense_shape) * mask
+#
+#         for sparse_dim in range(1, len(dense_shape)):
+#             coo = (
+#                 paddle.to_tensor(np_x, stop_gradient=False)
+#                 .detach()
+#                 .to_sparse_coo(sparse_dim)
+#             )
+#             coo.stop_gradient = False
+#
+#             size = coo.shape
+#             dense_size = tuple(size[sparse_dim:])
+#             dense_dim = len(dense_size)
+#
+#             for axis in range(sparse_dim + dense_dim):
+#                 py_out = self.sparse_softmax(coo, dense_shape, sparse_dim, axis)
+#                 m = paddle.sparse.nn.Softmax(axis=axis)
+#                 out = m(coo)
+#
+#                 np.testing.assert_allclose(
+#                     py_out.indices().numpy(), out.indices().numpy(), rtol=1e-05
+#                 )
+#                 np.testing.assert_allclose(
+#                     py_out.values().numpy(), out.values().numpy(), rtol=1e-05
+#                 )
+#
+#                 out.backward(coo.detach())
+#
+#                 if axis == 0:
+#                     dense_tensor = paddle.to_tensor(np_x, stop_gradient=False)
+#                     model_dense = paddle.nn.Softmax(axis=axis)
+#                     dense_out = model_dense(dense_tensor)
+#                     dense_out.backward(dense_tensor.detach())
+#                     dg_npy = dense_tensor.grad.numpy()
+#                     np.testing.assert_allclose(
+#                         coo.grad.to_dense().numpy(), dg_npy, rtol=1e-05
+#                     )
+#
+#     def test_softmax2d(self):
+#         self.check_run((16, 128))
+#
+#     def test_softmax3d(self):
+#         self.check_run((16, 16, 128))
+
+# def test_softmax2d_static(self):
+#     paddle.enable_static()
+#     indices = paddle.static.data(
+#         name='indices', shape=[2, 5], dtype='int32'
+#     )
+#     values = paddle.static.data(
+#         name='values', shape=[5, 1], dtype='float32'
+#     )
+#
+#     dense_shape = [2, 5]
+#     sp_x = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape)
+#     sp_y = paddle.sparse.nn.functional.softmax(sp_x)
+#     out = sp_y.to_dense()
+#
+#     # exe = paddle.static.Executor()
+#     # indices_data = [[0, 1, 0, 1, 0], [0, 1, 3, 3, 4]]
+#     # values_data = [11, 14, 15, 22, 24]
+#     #
+#     # fetch = exe.run(
+#     #     feed={'indices': indices_data, 'values': values_data},
+#     #     fetch_list=[out],
+#     #     return_numpy=True,
+#     # )
+#
+#     # correct_out = np.array(
+#     #     [[False, False, False], [False, False, True], [False, False, False]]
+#     # ).astype('float32')
+#     # np.testing.assert_allclose(correct_out, fetch[0], rtol=1e-5)
+#     paddle.disable_static()
+
+
 if __name__ == "__main__":
     unittest.main()
