@@ -542,17 +542,27 @@ def logspace(start, stop, num, base=10.0, dtype=None, name=None):
 
 
 def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
+    def _handle_tensor_dtype(tensor, dtype):
+        if dtype:
+            if convert_dtype(dtype) != convert_dtype(tensor.dtype):
+                return tensor.astype(convert_dtype(dtype))
+        return tensor
+
+    def _handle_np_dtype(ndarray, dtype):
+        if dtype:
+            if convert_dtype(dtype) != convert_dtype(ndarray.dtype):
+                # should not ndarray.astype('uint16') directly, data bits is wrong
+                if convert_dtype(dtype) in ['uint16']:
+                    return convert_float_to_uint16(ndarray.astype('float32'))
+                else:
+                    return ndarray.astype(convert_dtype(dtype))
+
+        return ndarray
 
     if isinstance(data, np.number):  # Special case for numpy scalars
         data = np.array(data)
 
     if not isinstance(data, np.ndarray):
-
-        def _handle_dtype(data, dtype):
-            if dtype:
-                if convert_dtype(dtype) != convert_dtype(data.dtype):
-                    return data.astype(convert_dtype(dtype))
-            return data
 
         if np.isscalar(data) and not isinstance(data, str):
             data = np.array(data)
@@ -565,12 +575,12 @@ def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
                 )
         elif isinstance(data, paddle.Tensor) and not in_dygraph_mode():
             data = data._copy_to(place, False)
-            data = _handle_dtype(data, dtype)
+            data = _handle_tensor_dtype(data, dtype)
             data.stop_gradient = stop_gradient
             return data
         elif isinstance(data, core.eager.Tensor) and in_dygraph_mode():
             data = data._copy_to(place, False)
-            data = _handle_dtype(data, dtype)
+            data = _handle_tensor_dtype(data, dtype)
             data.stop_gradient = stop_gradient
             return data
         elif isinstance(data, (core.LoDTensor, core.Tensor)):
@@ -583,7 +593,7 @@ def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
                 data = paddle.Tensor(data)
             if not data.place._equals(place):
                 data = data._copy_to(place, False)
-            data = _handle_dtype(data, dtype)
+            data = _handle_tensor_dtype(data, dtype)
             data.stop_gradient = stop_gradient
             return data
         else:
@@ -607,18 +617,13 @@ def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
                         if default_type in ['float16', 'float32']
                         else 'complex128'
                     )
-                data = data.astype(default_type)
+                data = _handle_np_dtype(data, default_type)
             # Windows default type is 'int32', while Linux/Mac is 'int64'. Unify they.
             if data.dtype in ['int32']:
-                default_type = "int64"
-                data = data.astype(default_type)
+                data = data.astype("int64")
 
-    if dtype and convert_dtype(dtype) != data.dtype:
-        if convert_dtype(dtype) in ['uint16']:
-            # should not ndarray.astype('uint16') directly, data bits is wrong
-            data = convert_float_to_uint16(data.astype('float32'))
-        else:
-            data = data.astype(convert_dtype(dtype))
+    if dtype:
+        data = _handle_np_dtype(data, dtype)
 
     if _in_eager_without_dygraph_check() and isinstance(data, np.ndarray):
         return core.eager.Tensor(
@@ -2209,7 +2214,7 @@ def _memcpy(input, place=None, output=None):
     """
 
     The OP copies the :attr:`input` to the :attr:`output`.
-    NOTE: currently, only support CUDAPlace <-> CUDAPinnedPlace or NPUPlace <-> CPUPlace.
+    NOTE: currently, only support CUDAPlace <-> CUDAPinnedPlace.
 
     Parameters:
         input (Tensor): A tensor. Its data type supports float16, float32, float64, int32, int64, and bool.
