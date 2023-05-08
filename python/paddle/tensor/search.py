@@ -1074,7 +1074,7 @@ def kthvalue(x, k, axis=None, keepdim=False, name=None):
     Find values and indices of the k-th smallest at the axis.
 
     Args:
-        x(Tensor): A N-D Tensor with type float32, float64, int32, int64.
+        x(Tensor): A N-D Tensor with type float16, float32, float64, int32, int64.
         k(int): The k for the k-th smallest number to look for along the axis.
         axis(int, optional): Axis to compute indices along. The effective range
             is [-R, R), where R is x.ndim. when axis < 0, it works the same way

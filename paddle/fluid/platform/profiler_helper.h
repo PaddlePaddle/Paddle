@@ -95,28 +95,34 @@ std::vector<std::vector<MemEvent>> GetMemEvents() {
 
 void SynchronizeAllDevice() {
 #ifdef PADDLE_WITH_CUDA
+  int pre_device_id = GetCurrentDeviceId();
   int count = GetGPUDeviceCount();
   for (int i = 0; i < count; i++) {
     SetDeviceId(i);
     PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
   }
+  SetDeviceId(pre_device_id);
 #endif
 #ifdef PADDLE_WITH_HIP
+  int pre_device_id = GetCurrentDeviceId();
   int count = GetGPUDeviceCount();
   for (int i = 0; i < count; i++) {
     SetDeviceId(i);
     PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize());
   }
+  SetDeviceId(pre_device_id);
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   auto dev_types = phi::DeviceManager::GetAllCustomDeviceTypes();
   for (const auto &dev_type : dev_types) {
+    int pre_device_id = phi::DeviceManager::GetDevice(dev_type);
     auto dev_cnt = phi::DeviceManager::GetDeviceCount(dev_type);
     for (size_t i = 0; i < dev_cnt; i++) {
       auto place = paddle::platform::CustomPlace(dev_type, i);
       phi::DeviceManager::SetDevice(place);
       phi::DeviceManager::SynchronizeDevice(place);
     }
+    phi::DeviceManager::SetDevice(dev_type, pre_device_id);
   }
 #endif
 }

@@ -48,7 +48,7 @@ void ReduceSumGradKernel(const Context& dev_ctx,
   // call ReduceGrad
   dev_ctx.Alloc(x_grad, x.dtype());
   using MPType = typename kps::details::MPTypeTrait<T>::Type;
-  phi::ReduceGrad<T, kps::IdentityFunctor<T, MPType>>(
+  phi::ReduceGrad<kps::IdentityFunctor<T, MPType>>(
       dev_ctx,
       &new_out_grad,
       x_grad,

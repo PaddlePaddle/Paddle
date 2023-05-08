@@ -17,6 +17,7 @@ limitations under the License. */
 #include <thrust/random.h>
 
 #include "gflags/gflags.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
 #include "paddle/phi/kernels/funcs/index_impl.cu.h"
@@ -72,8 +73,12 @@ void UniformInplaceKernel(const Context& ctx,
     funcs::distribution_and_transform<T>(ctx, out, dist, trans);
   } else {
     // Use OP seed
-    auto func =
-        UniformGenerator<T>(min, max, seed, diag_num, diag_step, diag_val);
+    auto func = UniformGenerator<T>(static_cast<T>(min),
+                                    static_cast<T>(max),
+                                    seed,
+                                    diag_num,
+                                    diag_step,
+                                    static_cast<T>(diag_val));
     IndexKernel<T, UniformGenerator<T>>(ctx, out, func);
   }
 }
@@ -85,4 +90,6 @@ PD_REGISTER_KERNEL(uniform_inplace,
                    ALL_LAYOUT,
                    phi::UniformInplaceKernel,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

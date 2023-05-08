@@ -168,6 +168,19 @@ if((WITH_GPU) AND LOCAL_ALL_PLAT)
     test_parallel_dygraph_pipeline_parallel_with_virtual_stage
     PROPERTIES TIMEOUT "500")
 endif()
+if((WITH_GPU) AND LOCAL_ALL_PLAT)
+  bash_test_modules(
+    test_parallel_dygraph_pp_adaptor
+    START_BASH
+    ../../dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=21976;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+  )
+  set_tests_properties(test_parallel_dygraph_pp_adaptor PROPERTIES TIMEOUT
+                                                                   "500")
+endif()
 if((WITH_GPU OR WITH_XPU) AND (LINUX))
   py_test_modules(
     test_fleet_localsgd_meta_optimizer MODULES
