@@ -24,8 +24,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/phi/backends/dynload/port.h"
+#include "paddle/phi/core/flags.h"
 
-DECLARE_bool(use_mkldnn);
+PHI_DECLARE_bool(use_mkldnn);
 
 namespace paddle {
 bool gpu_place_used(const paddle::PaddlePlace& place) {
@@ -33,9 +34,6 @@ bool gpu_place_used(const paddle::PaddlePlace& place) {
 }
 bool xpu_place_used(const paddle::PaddlePlace& place) {
   return place == paddle::PaddlePlace::kXPU;
-}
-bool npu_place_used(const paddle::PaddlePlace& place) {
-  return place == paddle::PaddlePlace::kNPU;
 }
 bool cpu_place_used(const paddle::PaddlePlace& place) {
   return place == paddle::PaddlePlace::kCPU;

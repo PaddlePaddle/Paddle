@@ -21,10 +21,11 @@
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/api/include/sparse_api.h"
+#include "paddle/phi/core/flags.h"
 
 #pragma GCC diagnostic ignored "-Wunused-variable"
-DECLARE_bool(check_nan_inf);
-DECLARE_string(tensor_operants_mode);
+PHI_DECLARE_bool(check_nan_inf);
+PHI_DECLARE_string(tensor_operants_mode);
 
 std::tuple<paddle::Tensor,
            paddle::Tensor&,

@@ -420,6 +420,7 @@ void CpuPassStrategy::EnableMkldnnInt8() {
     passes_.push_back("simplify_with_basic_ops_pass");
     passes_.push_back("quant_dequant_mkldnn_pass");
     passes_.push_back("mkldnn_placement_pass");
+    passes_.push_back("constant_folding_pass");
     passes_.push_back("squeeze2_transpose2_onednn_fuse_pass");
     passes_.push_back("layer_norm_fuse_pass");
     passes_.push_back("attention_lstm_fuse_pass");
@@ -474,7 +475,6 @@ void CpuPassStrategy::EnableMkldnnInt8() {
     passes_.push_back("quant_transpose2_dequant_onednn_fuse_pass");
     passes_.push_back("int8_scale_calculation_mkldnn_pass");
     passes_.push_back("params_quantization_mkldnn_pass");
-    passes_.push_back("constant_folding_pass");
   }
   use_mkldnn_int8_ = true;
 #else
@@ -519,10 +519,11 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "embedding_with_eltwise_add_xpu_fuse_pass",
       "multi_encoder_xpu_fuse_pass",
       "multi_encoder_xpu_slice_fuse_pass",
+      "fused_multi_transformer_cachekv_layout_trans_pass",
       "one_beam_size_fuse_pass",
       "delete_cast_op_pass",
       "stack_fuse_pass",
-      "fused_multi_transformer_xpu_quant_pass",
+      "fused_multi_transformer_xpu_pass",
       "fc_xpu_fuse_pass",
       "conv2d_xpu_fuse_pass",
       "link_xpu_op_max_pass",
