@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import struct
 import unittest
 
 import numpy as np
@@ -19,16 +20,6 @@ import numpy as np
 import paddle
 from paddle import nn
 from paddle.fluid import core
-
-seed = 5
-
-import random
-
-paddle.seed(seed)
-np.random.seed(seed)
-random.seed(seed)
-
-import struct
 
 
 def copy_bits_from_float_to_uint16(f):

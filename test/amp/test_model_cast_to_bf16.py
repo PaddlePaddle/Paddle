@@ -260,14 +260,6 @@ class TestProgramBF16(AmpTestBase):
 
 class TestStaticBF16(AmpTestBase):
     def _generate_feed_x(self):
-        seed = 5
-
-        import random
-
-        paddle.seed(seed)
-        np.random.seed(seed)
-        random.seed(seed)
-
         x = np.random.random(size=[16, 16]).astype("float32")
         x_bf16 = convert_float_to_uint16(x)
         x_fp32 = convert_uint16_to_float(x_bf16)

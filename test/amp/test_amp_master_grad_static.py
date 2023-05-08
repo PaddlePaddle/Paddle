@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+import random
 import unittest
 
 import numpy as np
@@ -105,9 +106,6 @@ class TestStaticMasterGradProgramBF16(AmpTestBase):
 
     def _generate_feed_x(self):
         seed = 0
-
-        import random
-
         paddle.seed(seed)
         np.random.seed(seed)
         random.seed(seed)
@@ -128,9 +126,6 @@ class TestStaticMasterGradProgramBF16(AmpTestBase):
             )
 
             seed = 0
-
-            import random
-
             paddle.seed(seed)
             np.random.seed(seed)
             random.seed(seed)
