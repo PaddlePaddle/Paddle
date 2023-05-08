@@ -53,6 +53,19 @@ class TestCompareAccuracyApi(unittest.TestCase):
             dump_all_tensors=False,
         )
 
+    def test2(self):
+        fp32_path = "workerlog_fp32_log_dir"
+        fp16_path = "workerlog_fp16_null_log_dir"
+        self.calc(fp32_path, "float32")
+        out_excel = "compary_accuracy_out_excel_2.csv"
+        paddle.amp.debugging.compare_accuracy(
+            fp32_path,
+            fp16_path,
+            out_excel,
+            loss_scale=1,
+            dump_all_tensors=False,
+        )
+
 
 if __name__ == '__main__':
     unittest.main()
