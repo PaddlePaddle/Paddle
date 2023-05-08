@@ -16,6 +16,15 @@
 #include "paddle/ir/ir_context.h"
 
 namespace ir {
+Program::~Program() {
+  for (auto op : ops_) {
+    op->destroy();
+  }
+  for (auto kv : parameters_) {
+    delete kv.second;
+  }
+}
+
 void Program::InsertOp(Operation* op) {
   if (op->parent_program() != this) {
     throw("op parent program is not this program");
@@ -26,13 +35,12 @@ Parameter* Program::GetParameter(std::string name) const {
   ir::IrContext* ctx = ir::IrContext::Instance();
   ir::StrAttribute parameter_name = ir::StrAttribute::get(ctx, name);
   if (parameters_.count(parameter_name) != 0) {
-    return parameters_.at(parameter_name).get();
+    return parameters_.at(parameter_name);
   }
   return nullptr;
 }
 
-void Program::SetParameter(std::string name,
-                           std::unique_ptr<Parameter> parameter) {
+void Program::SetParameter(std::string name, Parameter* parameter) {
   ir::IrContext* ctx = ir::IrContext::Instance();
   ir::StrAttribute parameter_name = ir::StrAttribute::get(ctx, name);
   parameters_.emplace(parameter_name, parameter);
