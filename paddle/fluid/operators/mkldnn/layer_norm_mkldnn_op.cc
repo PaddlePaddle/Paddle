@@ -56,16 +56,18 @@ class LayerNormOneDNNHandler
   }
 
   std::shared_ptr<dnnl::memory> AcquireMeanMemory(phi::DenseTensor* mean) {
-    return this->AcquireMemoryFromPrimitive(
-        this->fwd_pd_->mean_desc(),
-        phi::funcs::to_void_cast<float>(mean->data<float>()));
+    float* mean_data = mean->mutable_data<float>(
+        this->place_, this->fwd_pd_->mean_desc().get_size());
+    return this->AcquireMemoryFromPrimitive(this->fwd_pd_->mean_desc(),
+                                            mean_data);
   }
 
   std::shared_ptr<dnnl::memory> AcquireVarianceMemory(
       phi::DenseTensor* variance) {
-    return this->AcquireMemoryFromPrimitive(
-        this->fwd_pd_->variance_desc(),
-        phi::funcs::to_void_cast<float>(variance->data<float>()));
+    float* variance_data = variance->mutable_data<float>(
+        this->place_, this->fwd_pd_->variance_desc().get_size());
+    return this->AcquireMemoryFromPrimitive(this->fwd_pd_->variance_desc(),
+                                            variance_data);
   }
 };
 
