@@ -156,9 +156,13 @@ void LogsumexpKernel(const Context& dev_ctx,
     perm.insert(perm.end(), axis_vec.begin(), axis_vec.end());
     for (auto i : axis_vec) transpose_shape.push_back(xdim[i]);
     DenseTensor transpose_x;
-    transpose_x.Resize(make_ddim(transpose_shape));
-    dev_ctx.template Alloc<T>(&transpose_x);
-    phi::funcs::TransposeGPUKernelDriver<T>(dev_ctx, x, perm, &transpose_x);
+    if (axis_vec.size() == 1 && axis_vec[0] == xdim.size()) {
+      transpose_x = x;
+    } else {
+      transpose_x.Resize(make_ddim(transpose_shape));
+      dev_ctx.template Alloc<T>(&transpose_x);
+      phi::funcs::TransposeGPUKernelDriver<T>(dev_ctx, x, perm, &transpose_x);
+    }
     dev_ctx.template Alloc<T>(out);
     using compute_type = typename ComputeType<T>::type;
     const int64_t num_col = compute_size, num_row = other_size;
