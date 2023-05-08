@@ -108,9 +108,13 @@ class TestPrimDistOp(unittest.TestCase):
             self.main_program, self.startup_program, [(self.w, self.w_grad)]
         )
         ops = dist_main_prog.global_block().ops
-
+        print("===============dist_main_prog==============")
+        print(dist_main_prog)
+        print("===============ops==============")
+        print(ops)
         self.assertTrue(ops[1].type == "c_allreduce_sum")
         self.assertTrue(ops[3].type == "c_allreduce_sum")
+        raise AssertionError()
 
 
 if __name__ == "__main__":
