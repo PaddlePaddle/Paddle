@@ -189,7 +189,7 @@ class TestComplexDotOp(OpTest):
         self.python_api = paddle.dot
         self.init_base_dtype()
         self.init_input_output()
-        # self.init_grad_input_output()
+        self.init_grad_input_output()
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
@@ -198,7 +198,7 @@ class TestComplexDotOp(OpTest):
         self.outputs = {'Out': self.out}
 
     def init_base_dtype(self):
-        self.dtype = np.complex64
+        self.dtype = np.float64
 
     def init_input_output(self):
         self.x = np.random.random(100).astype(
@@ -221,8 +221,8 @@ class TestComplexDotOp(OpTest):
         self.check_grad(
             ['X', 'Y'],
             'Out',
-            # user_defined_grads=[self.grad_x, self.grad_y],
-            # user_defined_grad_outputs=[self.grad_out],
+            user_defined_grads=[self.grad_x, self.grad_y],
+            user_defined_grad_outputs=[self.grad_out],
         )
 
     def test_check_grad_ingore_x(self):
@@ -230,8 +230,8 @@ class TestComplexDotOp(OpTest):
             ['Y'],
             'Out',
             no_grad_set=set("X"),
-            # user_defined_grads=[self.grad_y],
-            # user_defined_grad_outputs=[self.grad_out],
+            user_defined_grads=[self.grad_y],
+            user_defined_grad_outputs=[self.grad_out],
         )
 
     def test_check_grad_ingore_y(self):
@@ -239,8 +239,8 @@ class TestComplexDotOp(OpTest):
             ['X'],
             'Out',
             no_grad_set=set('Y'),
-            # user_defined_grads=[self.grad_x],
-            # user_defined_grad_outputs=[self.grad_out],
+            user_defined_grads=[self.grad_x],
+            user_defined_grad_outputs=[self.grad_out],
         )
 
 
@@ -250,7 +250,7 @@ class TestComplexDotOp2D(OpTest):
         self.python_api = paddle.dot
         self.init_base_dtype()
         self.init_input_output()
-        # self.init_grad_input_output()
+        self.init_grad_input_output()
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
@@ -288,8 +288,8 @@ class TestComplexDotOp2D(OpTest):
         self.check_grad(
             ['X', 'Y'],
             'Out',
-            # user_defined_grads=[self.grad_x, self.grad_y],
-            # user_defined_grad_outputs=[self.grad_out],
+            user_defined_grads=[self.grad_x, self.grad_y],
+            user_defined_grad_outputs=[self.grad_out],
         )
 
     def test_check_grad_ingore_x(self):
@@ -297,8 +297,8 @@ class TestComplexDotOp2D(OpTest):
             ['Y'],
             'Out',
             no_grad_set=set("X"),
-            # user_defined_grads=[self.grad_y],
-            # user_defined_grad_outputs=[self.grad_out],
+            user_defined_grads=[self.grad_y],
+            user_defined_grad_outputs=[self.grad_out],
         )
 
     def test_check_grad_ingore_y(self):
@@ -306,8 +306,8 @@ class TestComplexDotOp2D(OpTest):
             ['X'],
             'Out',
             no_grad_set=set('Y'),
-            # user_defined_grads=[self.grad_x],
-            # user_defined_grad_outputs=[self.grad_out],
+            user_defined_grads=[self.grad_x],
+            user_defined_grad_outputs=[self.grad_out],
         )
 
 
