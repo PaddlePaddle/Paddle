@@ -1445,6 +1445,19 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       --repeat=10)
   endif()
 
+  if(WITH_XPU)
+    inference_analysis_test(
+      xpu_external_config_resnet50_test
+      SRCS
+      xpu_external_config_resnet50_test.cc
+      EXTRA_DEPS
+      paddle_inference_shared
+      ARGS
+      --infer_model=${RESNET50_MODEL_DIR})
+    set_tests_properties(xpu_external_config_resnet50_test PROPERTIES TIMEOUT
+                                                                      120)
+  endif()
+
   set(inference_deps ${analysis_deps} paddle_inference_api analysis
                      naive_executor ${GLOB_PASS_LIB})
 
