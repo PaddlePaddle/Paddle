@@ -76,15 +76,15 @@ void AddDoubleGradImpl(const Context& dev_ctx,
     auto ddy_dims = ddy_safe.dims();
     if (ddx_dims.size() >= ddy_dims.size()) {
       funcs::ElementwiseCompute<funcs::AddFunctor<T>, T>(
-          dev_ctx, ddx_safe, ddy_safe, axis, funcs::AddFunctor<T>(), ddout);
+          dev_ctx, ddx_safe, ddy_safe, funcs::AddFunctor<T>(), ddout, axis);
     } else {
       funcs::ElementwiseCompute<funcs::InverseAddFunctor<T>, T>(
           dev_ctx,
           ddx_safe,
           ddy_safe,
-          axis,
           funcs::InverseAddFunctor<T>(),
-          ddout);
+          ddout,
+          axis);
     }
   }
 }
@@ -107,7 +107,7 @@ void SubtractDoubleGradImpl(const Context& dev_ctx,
 
     dev_ctx.template Alloc<T>(ddout);
     funcs::ElementwiseCompute<funcs::SubtractFunctor<T>, T>(
-        dev_ctx, ddx_safe, ddy_safe, axis, funcs::SubtractFunctor<T>(), ddout);
+        dev_ctx, ddx_safe, ddy_safe, funcs::SubtractFunctor<T>(), ddout, axis);
   }
 }
 
@@ -529,6 +529,44 @@ void MultiplyDoubleGradKernel(const Context& dev_ctx,
                                           funcs::InverseMultiplyFunctor<T>>(
             dev_ctx, dout, ddy_safe, dx, axis);
 
+      } else if ((!dx) && dy) {
+        DenseTensor tmp_a(ddout->dtype());
+        tmp_a.Resize(ddout->dims());
+
+        dev_ctx.template Alloc<T>(&tmp_a);
+        funcs::DefaultElementwiseOperator<Context,
+                                          T,
+                                          funcs::MultiplyFunctor<T>,
+                                          funcs::InverseMultiplyFunctor<T>>(
+            dev_ctx, x, ddy_safe, &tmp_a, axis);
+
+        auto ddout_t1 = phi::EigenVector<T>::Flatten(tmp_a);
+
+        funcs::DefaultElementwiseOperator<Context,
+                                          T,
+                                          funcs::MultiplyFunctor<T>,
+                                          funcs::InverseMultiplyFunctor<T>>(
+            dev_ctx, ddx_safe, y, ddout, axis);
+
+        auto ddout_t2 = phi::EigenVector<T>::Flatten(*ddout);
+        ddout_t2.device(place) = ddout_t2 + ddout_t1;
+
+        // NOTE: in the following ElemwiseGradCompute, for the
+        // first output tensor is nullptr, the branch to calculate first
+        // output tensor will not be activated, DivGradDx function will not
+        // be called and can be ignored, the first branch has little effect
+        // on running speed.
+        phi::funcs::ElemwiseGradCompute<Context, T, MulGradDX<T>, MulGradDY<T>>(
+            dev_ctx,
+            ddx_safe,
+            ddy_safe,
+            dout,
+            dout,
+            axis,
+            nullptr,
+            dy,
+            MulGradDX<T>(),
+            MulGradDY<T>());
       } else {
         DenseTensor tmp_a(ddout->dtype());
         tmp_a.Resize(ddout->dims());
@@ -554,19 +592,18 @@ void MultiplyDoubleGradKernel(const Context& dev_ctx,
       }
     }
   } else {
-    if (dx && dy) {
-      phi::funcs::ElemwiseGradCompute<Context, T, MulGradDX<T>, MulGradDY<T>>(
-          dev_ctx,
-          ddx_safe,
-          ddy_safe,
-          dout,
-          dout,
-          axis,
-          dx,
-          dy,
-          MulGradDX<T>(),
-          MulGradDY<T>());
-    }
+    VLOG(3) << "Calculating here with dx: " << dx << ", dy: " << dy;
+    phi::funcs::ElemwiseGradCompute<Context, T, MulGradDX<T>, MulGradDY<T>>(
+        dev_ctx,
+        ddx_safe,
+        ddy_safe,
+        dout,
+        dout,
+        axis,
+        dx,
+        dy,
+        MulGradDX<T>(),
+        MulGradDY<T>());
   }
 }
 
@@ -921,10 +958,10 @@ void ElementwisePowGradKernel(const Context& dev_ctx,
                               const DenseTensor& x,
                               const DenseTensor& y,
                               const DenseTensor& dout,
-                              int axis,
                               DenseTensor* dx,
                               DenseTensor* dy) {
   funcs::ElementwiseGradPreProcess(dout, dx);
+  int axis = -1;
   phi::funcs::ElemwiseGradCompute<Context, T, PowGradDX<T>, PowGradDY<T>>(
       dev_ctx, x, y, dout, dout, axis, dx, dy, PowGradDX<T>(), PowGradDY<T>());
 }

@@ -969,6 +969,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
         self._batch_reader = None
         self._places = None
         self._feed_list = feed_list
+        self._timeout = QUEUE_GET_TIMEOUT
 
         if not capacity:
             raise ValueError("Please give value to capacity.")
@@ -1164,7 +1165,7 @@ class DygraphGeneratorLoader(DataLoaderBase):
                 # has no enough time to put the data in the queue when the main process
                 # start trying to get data from queue. At this time, the child thread needs
                 # to wait slightly longer
-                tensor_list = self._data_queue.get(timeout=QUEUE_GET_TIMEOUT)
+                tensor_list = self._data_queue.get(timeout=self._timeout)
             except Exception as e:
                 # NOTE [ avoid handing ] After adding the shared memory mechanism, not only
                 # the queue.Empty exception will occur here, but other exceptions will also

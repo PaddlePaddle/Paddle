@@ -1387,7 +1387,6 @@ def get_setup_parameters():
         'paddle.distributed.fleet.elastic',
         'paddle.distributed.fleet.meta_optimizers',
         'paddle.distributed.fleet.meta_optimizers.sharding',
-        'paddle.distributed.fleet.meta_optimizers.ascend',
         'paddle.distributed.fleet.meta_optimizers.dygraph_optimizer',
         'paddle.distributed.fleet.runtime',
         'paddle.distributed.rpc',
@@ -1425,7 +1424,6 @@ def get_setup_parameters():
         'paddle.fluid.dataloader',
         'paddle.fluid.contrib',
         'paddle.fluid.contrib.extend_optimizer',
-        'paddle.fluid.contrib.layers',
         'paddle.fluid.incubate',
         'paddle.incubate.distributed.fleet',
         'paddle.fluid.incubate.checkpoint',
@@ -1460,6 +1458,7 @@ def get_setup_parameters():
         'paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler',
         'paddle.incubate.distributed.fleet.parameter_server.ir',
         'paddle.incubate.distributed.fleet.parameter_server.pslib',
+        'paddle.incubate.layers',
         'paddle.quantization',
         'paddle.quantization.quanters',
         'paddle.quantization.observers',
@@ -1546,6 +1545,52 @@ Please run 'pip install -r python/requirements.txt' to make sure you have all th
             raise RuntimeError(missing_modules.format(dependency=dependency))
 
 
+def install_cpp_dist_and_build_test(install_dir, lib_test_dir, headers, libs):
+    """install cpp distribution and build test target
+
+    TODO(huangjiyi):
+    1. This function will be moved when seperating C++ distribution
+    installation from python package installation.
+    2. Reduce the header and library files to be installed.
+    """
+    if env_dict.get("CMAKE_BUILD_TYPE") != 'Release':
+        return
+    os.makedirs(install_dir, exist_ok=True)
+    # install C++ header files
+    for header in headers:
+        header_install_dir = get_header_install_dir(header)
+        header_install_dir = os.path.join(
+            install_dir, 'include', os.path.dirname(header_install_dir)
+        )
+        os.makedirs(header_install_dir, exist_ok=True)
+        shutil.copy(header, header_install_dir)
+
+    # install C++ shared libraries
+    lib_install_dir = os.path.join(install_dir, 'lib')
+    os.makedirs(lib_install_dir, exist_ok=True)
+    # install libpaddle.ext
+    paddle_libs = glob.glob(
+        paddle_binary_dir
+        + '/paddle/fluid/pybind/'
+        + env_dict.get("FLUID_CORE_NAME")
+        + '.*'
+    )
+    for lib in paddle_libs:
+        shutil.copy(lib, lib_install_dir)
+    # install dependent libraries
+    libs_path = paddle_binary_dir + '/python/paddle/libs'
+    for lib in libs:
+        lib_path = os.path.join(libs_path, lib)
+        shutil.copy(lib_path, lib_install_dir)
+
+    # build test target
+    cmake_args = [CMAKE, lib_test_dir, "-B", lib_test_dir]
+    if os.getenv("GENERATOR") == "Ninja":
+        cmake_args.append("-GNinja")
+    subprocess.check_call(cmake_args)
+    subprocess.check_call([CMAKE, "--build", lib_test_dir])
+
+
 def main():
     # Parse the command line and check arguments before we proceed with building steps and setup
     parse_input_command(filter_args_list)
@@ -1617,6 +1662,17 @@ def main():
         )
         if os.system(command) != 0:
             raise Exception("strip *.so failed, command: %s" % command)
+
+    # install cpp distribution
+    if env_dict.get("WITH_CPP_DIST") == 'ON':
+        paddle_install_dir = env_dict.get("PADDLE_INSTALL_DIR")
+        paddle_lib_test_dir = env_dict.get("PADDLE_LIB_TEST_DIR")
+        install_cpp_dist_and_build_test(
+            paddle_install_dir,
+            paddle_lib_test_dir,
+            headers,
+            package_data['paddle.libs'],
+        )
 
     setup(
         name=package_name,

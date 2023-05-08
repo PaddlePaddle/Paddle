@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
-
+#include "paddle/phi/core/macros.h"
 namespace phi {
 namespace funcs {
 
@@ -29,7 +29,8 @@ struct ForRange {
 
 template <>
 struct ForRange<phi::CPUContext> {
-  ForRange(const phi::CPUContext& dev_ctx, size_t limit) : limit_(limit) {}
+  ForRange(const phi::CPUContext& dev_ctx UNUSED, size_t limit)
+      : limit_(limit) {}
 
   template <typename Function>
   void operator()(Function func) const {

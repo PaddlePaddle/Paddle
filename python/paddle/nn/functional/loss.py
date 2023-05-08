@@ -641,10 +641,10 @@ def binary_cross_entropy(
     Parameters:
         input (Tensor): The input predications tensor. 2-D tensor with shape: [N, *],
             N is batch_size, `*` means number of additional dimensions. The ``input``
-            should always be the output of sigmod.  Available dtype is float32, float64.
+            should always be the output of sigmod.  Available dtype is float16, float32, float64.
         label (Tensor): The target labels tensor. 2-D tensor with the same shape as
             ``input``. The target labels which values should be numbers between 0 and 1.
-            Available dtype is float32, float64.
+            Available dtype is float16, float32, float64.
         weight (Tensor, optional): A manual rescaling weight given to the loss of each
             batch element. If given, has to be a Tensor of size nbatch and the data type
             is float32, float64. Default is ``'None'``.
@@ -694,10 +694,16 @@ def binary_cross_entropy(
             return out
     else:
         check_variable_and_dtype(
-            input, 'input', ['float32', 'float64'], 'binary_cross_entropy'
+            input,
+            'input',
+            ['float16', 'float32', 'float64'],
+            'binary_cross_entropy',
         )
         check_variable_and_dtype(
-            label, 'label', ['float32', 'float64'], 'binary_cross_entropy'
+            label,
+            'label',
+            ['float16', 'float32', 'float64'],
+            'binary_cross_entropy',
         )
 
         sub_name = name if weight is None and reduction == 'none' else None
@@ -1535,7 +1541,7 @@ def poisson_nll_loss(
 
             input = paddle.randn([5, 2], dtype=paddle.float32)
             label = paddle.randn([5, 2], dtype=paddle.float32)
-            loss = F.poisson_nll_loss(input, label, log_input=True, reduction='None')
+            loss = F.poisson_nll_loss(input, label, log_input=True, reduction='none')
             print(loss)
             loss = F.poisson_nll_loss(input, label, reduction='mean')
             print(loss)
@@ -2728,9 +2734,7 @@ def cross_entropy(
             valid_label = (
                 paddle.cast(label != ignore_index, dtype=label.dtype) * label
             )
-        if core.is_compiled_with_custom_device(
-            "npu"
-        ) or core.is_compiled_with_custom_device("mlu"):
+        if core.is_compiled_with_custom_device("npu"):
             if not soft_label:
                 _, out = _legacy_C_ops.softmax_with_cross_entropy(
                     input,

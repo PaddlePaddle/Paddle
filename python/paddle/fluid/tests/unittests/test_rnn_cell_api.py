@@ -12,12 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 import numpy
 import numpy as np
-from rnn.rnn_numpy import LSTMCell
-from rnn.rnn_numpy import rnn as numpy_rnn
+
+sys.path.append("../../../../../test/rnn")
+from rnn_numpy import LSTMCell
+from rnn_numpy import rnn as numpy_rnn
 
 import paddle
 from paddle import fluid

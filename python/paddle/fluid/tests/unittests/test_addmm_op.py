@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle import fluid
-from paddle.fluid import Program, program_guard
+from paddle.fluid import Program, core, program_guard
 
 
 class TestAddMMOp(OpTest):
@@ -27,7 +27,6 @@ class TestAddMMOp(OpTest):
     def setUp(self):
         self.op_type = "addmm"
         self.python_api = paddle.addmm
-        self.dtype = np.float64
         self.init_dtype_type()
         self.inputs = {
             'Input': np.random.random((100, 1)).astype(self.dtype),
@@ -40,7 +39,7 @@ class TestAddMMOp(OpTest):
         }
 
     def init_dtype_type(self):
-        pass
+        self.dtype = np.float64
 
     def test_check_output(self):
         self.check_output()
@@ -56,6 +55,62 @@ class TestAddMMOp(OpTest):
 
     def test_check_grad_input(self):
         self.check_grad(['Input'], 'Out', no_grad_set=None)
+
+
+class TestAddMMFP16Op(TestAddMMOp):
+    def init_dtype_type(self):
+        self.dtype = np.float16
+
+    def test_check_output(self):
+        self.check_output(atol=1e-2)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support bfloat16",
+)
+class TestAddMMBF16Op(OpTest):
+    def setUp(self):
+        self.op_type = "addmm"
+        self.python_api = paddle.addmm
+        self.init_dtype_type()
+        self.inputs = {
+            'Input': np.random.random((100, 1)).astype(self.np_dtype),
+            'X': np.random.random((100, 10)).astype(self.np_dtype),
+            'Y': np.random.random((10, 20)).astype(self.np_dtype),
+        }
+        self.outputs = {
+            'Out': self.inputs['Input']
+            + np.dot(self.inputs['X'], self.inputs['Y'])
+        }
+
+        self.inputs['Input'] = convert_float_to_uint16(self.inputs['Input'])
+        self.inputs['X'] = convert_float_to_uint16(self.inputs['X'])
+        self.inputs['Y'] = convert_float_to_uint16(self.inputs['Y'])
+        self.outputs['Out'] = convert_float_to_uint16(self.outputs['Out'])
+        self.place = core.CUDAPlace(0)
+
+    def init_dtype_type(self):
+        self.dtype = np.uint16
+        self.np_dtype = np.float32
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place)
+
+    def test_check_grad_normal(self):
+        self.check_grad_with_place(self.place, ['Input', 'X', 'Y'], 'Out')
+
+    def test_check_grad_x(self):
+        self.check_grad_with_place(self.place, ['X'], 'Out', no_grad_set=None)
+
+    def test_check_grad_y(self):
+        self.check_grad_with_place(self.place, ['Y'], 'Out', no_grad_set=None)
+
+    def test_check_grad_input(self):
+        self.check_grad_with_place(
+            self.place, ['Input'], 'Out', no_grad_set=None
+        )
 
 
 class TestAddMMOpError(unittest.TestCase):

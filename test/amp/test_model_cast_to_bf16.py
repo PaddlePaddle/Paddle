@@ -17,7 +17,7 @@ import struct
 import unittest
 
 import numpy as np
-from amp_base_models import build_add_model, build_embedding_model
+from amp_base_models import AmpTestBase, build_add_model, build_embedding_model
 
 import paddle
 from paddle import fluid
@@ -220,24 +220,30 @@ class TestModelCastBF16(unittest.TestCase):
         )
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(),
-    "core is not complied with CUDA and not support the bfloat16",
-)
-class TestProgramBF16(unittest.TestCase):
-    def _check_bf16_calls(self, op_stats_dict, expected_bf16_calls):
-        for op_type, value in expected_bf16_calls.items():
-            self.assertEqual(
-                op_stats_dict[op_type].bf16_calls,
-                value,
-                f"The number of bf16 calls of operator < {op_type} > is expected to be {value}, but recieved {op_stats_dict[op_type].bf16_calls}.",
-            )
+class TestProgramBF16(AmpTestBase):
+    def _check_optimizer(self, program, expected_num_mp):
+        optimizers = []
+        for block in program.blocks:
+            for op in block.ops:
+                if "Param" in op.input_names and "Grad" in op.input_names:
+                    optimizers.append(op)
+
+        actual_num_mp = 0
+        for op in optimizers:
+            if op.has_attr("multi_precision") and op.attr("multi_precision"):
+                actual_num_mp += 1
+        self.assertEqual(
+            actual_num_mp,
+            expected_num_mp,
+            f"The number of optimizers with multi_precison = True is expected to be {expected_num_mp}, but recieved {actual_num_mp}.",
+        )
 
     def test_amp_bf16_o1(self):
         main_program, startup_program = build_embedding_model(
             True, "bfloat16", "O1"
         )
         self.assertEqual(main_program.num_blocks, 1)
+        self._check_optimizer(main_program, 0)
 
         amp.debugging.collect_operator_stats(main_program)
         op_stats_list = amp.debugging._get_op_stats_list(main_program)
@@ -249,7 +255,7 @@ class TestProgramBF16(unittest.TestCase):
             "squared_l2_norm": 0,
             "adamw": 0,
         }
-        self._check_bf16_calls(op_stats_list[0], expected_bf16_calls)
+        self._check_op_calls(op_stats_list[0], expected_bf16_calls)
 
     def test_amp_bf16_o2(self):
         main_program, startup_program = build_embedding_model(
@@ -259,22 +265,25 @@ class TestProgramBF16(unittest.TestCase):
 
         amp.debugging.collect_operator_stats(main_program)
         op_stats_list = amp.debugging._get_op_stats_list(main_program)
+        expected_fp32_calls = {"lookup_table_v2": 1}
         expected_bf16_calls = {
             "matmul_v2": 1,
             "elementwise_add": 1,
             "dropout": 1,
             "lookup_table_v2": 0,
-            "squared_l2_norm": 2,
-            "adamw": 2,
+            "squared_l2_norm": 3,
+            "adamw": 3,
         }
-        self._check_bf16_calls(op_stats_list[0], expected_bf16_calls)
+        self._check_optimizer(
+            main_program,
+            expected_bf16_calls["matmul_v2"]
+            + expected_bf16_calls["elementwise_add"]
+            + expected_fp32_calls["lookup_table_v2"],
+        )
+        self._check_op_calls(op_stats_list[0], expected_bf16_calls)
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(),
-    "core is not complied with CUDA and not support the bfloat16",
-)
-class TestStaticBF16(unittest.TestCase):
+class TestStaticBF16(AmpTestBase):
     def _generate_feed_x(self):
         x = np.random.random(size=[16, 16]).astype("float32")
         x_bf16 = convert_float_to_uint16(x)
@@ -282,60 +291,35 @@ class TestStaticBF16(unittest.TestCase):
         return x_fp32, x_bf16
 
     def test_compare_o1_o2(self):
-        def _run_o1(exe, x_np, max_iters):
+        def _run(place, exe, x_np, max_iters, level):
             (
                 main_program,
                 startup_program,
                 optimizer,
                 feed_vars,
                 fetch_vars,
-            ) = build_add_model(True, "bfloat16", "O1")
+            ) = build_add_model(True, "bfloat16", level)
 
-            losses = []
-            scope = paddle.static.Scope()
-            with paddle.static.scope_guard(scope):
-                exe.run(startup_program)
-                for iter_id in range(max_iters):
-                    results = exe.run(
-                        program=main_program,
-                        feed={feed_vars[0].name: x_np},
-                        fetch_list=fetch_vars,
-                    )
-                    print(f"-- [BF16 O1] iter={iter_id}, loss={results[0]}")
-                    losses.append(results[0])
-            return losses
-
-        def _run_o2(exe, x_np, max_iters):
-            (
+            losses = self.run_program(
                 main_program,
                 startup_program,
                 optimizer,
                 feed_vars,
                 fetch_vars,
-            ) = build_add_model(True, "bfloat16", "O2")
-
-            losses = []
-            scope = paddle.static.Scope()
-            with paddle.static.scope_guard(scope):
-                exe.run(startup_program)
-                optimizer.amp_init(place)
-                for iter_id in range(max_iters):
-                    results = exe.run(
-                        program=main_program,
-                        feed={feed_vars[0].name: x_np},
-                        fetch_list=fetch_vars,
-                    )
-                    print(f"-- [BF16 O2] iter={iter_id}, loss={results[0]}")
-                    losses.append(results[0])
+                place,
+                exe,
+                x_np,
+                max_iters,
+                level,
+            )
             return losses
-
-        place = paddle.CUDAPlace(0)
-        exe = paddle.static.Executor(place)
 
         max_iters = 2
         x_fp32, x_bf16 = self._generate_feed_x()
-        losses_o1 = _run_o1(exe, x_fp32, max_iters)
-        losses_o2 = _run_o2(exe, x_bf16, max_iters)
+        place = paddle.CUDAPlace(0)
+        exe = paddle.static.Executor(place)
+        losses_o1 = _run(place, exe, x_fp32, max_iters, 'O1')
+        losses_o2 = _run(place, exe, x_bf16, max_iters, 'O2')
 
 
 if __name__ == '__main__':

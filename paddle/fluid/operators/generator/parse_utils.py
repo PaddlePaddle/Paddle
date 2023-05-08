@@ -167,8 +167,13 @@ def parse_candidates(s: str) -> Dict[str, Any]:
 
 
 def parse_plain_list(s: str, sep=",") -> List[str]:
-    items = [item.strip() for item in s.strip().split(sep)]
-    return items
+    if sep == ",":
+        patten = re.compile(r',(?![^{]*\})')  # support "int[] a={1,2}"
+        items = re.split(patten, s.strip())
+        items = [x.strip() for x in items]
+        return items
+    else:
+        return [item.strip() for item in s.strip().split(sep)]
 
 
 def parse_kernel(op_name: str, kernel_config: Dict[str, Any]) -> Dict[str, Any]:

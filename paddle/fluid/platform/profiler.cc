@@ -32,8 +32,8 @@ limitations under the License. */
 #endif
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/os_info.h"
-
 PADDLE_DEFINE_EXPORTED_bool(enable_rpc_profiler,
                             false,
                             "Enable rpc profiler or not.");

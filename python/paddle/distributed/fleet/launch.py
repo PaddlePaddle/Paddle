@@ -115,7 +115,7 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         "--backend",
         type=str,
         default=os.environ.get('PADDLE_DISTRI_BACKEND', 'auto'),
-        help="Specifize the backend, can be gloo|nccl|bkcl|auto|hccl|heter. "
+        help="Specifize the backend, can be gloo|nccl|bkcl|auto|heter. "
         "Default value is auto which perfers nccl or bkcl.",
     )
     base_group.add_argument(
@@ -757,7 +757,7 @@ def launch():
         check_backend(args.backend)
         distribute_mode = DistributeMode.COLLECTIVE
 
-    # assert args.backend in ['gloo', 'nccl', 'bkcl', 'cncl', 'heter', 'unknown']
+    # assert args.backend in ['gloo', 'nccl', 'bkcl', 'heter', 'unknown']
 
     if args.backend == 'gloo':
         logger.warning("launch start with CPUONLY mode")

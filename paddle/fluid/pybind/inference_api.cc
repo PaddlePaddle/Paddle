@@ -767,6 +767,11 @@ void BindAnalysisConfig(py::module *m) {
       .def("set_xpu_device_id",
            &AnalysisConfig::SetXpuDeviceId,
            py::arg("device_id") = 0)
+      .def(
+          "set_xpu_config",
+          &AnalysisConfig::SetXpuConfig,
+          py::arg("quant_post_dynamic_weight_bits") = -1,
+          py::arg("quant_post_dynamic_op_types") = std::vector<std::string>({}))
       .def("enable_custom_device",
            &AnalysisConfig::EnableCustomDevice,
            py::arg("device_type"),
@@ -861,7 +866,9 @@ void BindAnalysisConfig(py::module *m) {
       .def("shape_range_info_collected",
            &AnalysisConfig::shape_range_info_collected)
       .def("enable_tuned_tensorrt_dynamic_shape",
-           &AnalysisConfig::EnableTunedTensorRtDynamicShape)
+           &AnalysisConfig::EnableTunedTensorRtDynamicShape,
+           py::arg("shape_range_info_path") = "",
+           py::arg("allow_build_at_runtime") = true)
       .def("tuned_tensorrt_dynamic_shape",
            &AnalysisConfig::tuned_tensorrt_dynamic_shape)
       .def("trt_allow_build_at_runtime",

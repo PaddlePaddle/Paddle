@@ -39,6 +39,7 @@ disable_wingpu_test="^test_model$|\
 ^test_reader_reset$|\
 ^test_imperative_se_resnext$|\
 ^test_sync_batch_norm_op$|\
+^test_sync_batch_norm_op_static_build$|\
 ^test_dataloader_keep_order$|\
 ^test_dataloader_unkeep_order$|\
 ^test_multiprocess_dataloader_iterable_dataset_static$|\
@@ -86,6 +87,7 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_full_name_usage$|\
 ^test_trt_convert_unary$|\
 ^test_eigh_op$|\
+^test_eigh_op_static_build$|\
 ^test_fc_op$|\
 ^test_stack_op$|\
 ^trt_split_converter_test$|\
@@ -161,6 +163,7 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_dataloader_keep_order$|\
 ^test_dataloader_unkeep_order$|\
 ^test_sync_batch_norm_op$|\
+^test_sync_batch_norm_op_static_build$|\
 ^test_fuse_bn_act_pass$|\
 ^test_fuse_bn_add_act_pass$|\
 ^test_decoupled_py_reader_data_check$|\

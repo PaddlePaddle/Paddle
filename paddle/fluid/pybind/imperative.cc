@@ -43,7 +43,6 @@ limitations under the License. */
 #include "paddle/fluid/imperative/bkcl_context.h"
 #include "paddle/fluid/imperative/data_loader.h"
 #include "paddle/fluid/imperative/gloo_context.h"
-#include "paddle/fluid/imperative/hccl_context.h"
 #include "paddle/fluid/imperative/heter_ccl_context.h"
 #include "paddle/fluid/imperative/hooks.h"
 #include "paddle/fluid/imperative/layer.h"
@@ -64,6 +63,7 @@ limitations under the License. */
 #include "paddle/phi/core/compat/arg_map_context.h"
 #include "paddle/phi/core/type_defs.h"
 
+PHI_DECLARE_bool(set_to_1d);
 namespace paddle {
 namespace pybind {
 
@@ -156,7 +156,7 @@ static const platform::Place PyObjectToPlace(const py::object &place_obj) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Place should be one of "
         "Place/CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/NPUPlace/IPUPlace/"
-        "MLUPlace/CustomPlace"));
+        "CustomPlace"));
   }
 }
 
@@ -200,8 +200,6 @@ static void InitVarBaseAndTensor(imperative::VarBase *self,
   } else if (platform::is_cuda_pinned_place(place)) {
     SetTensorFromPyArray<platform::CUDAPinnedPlace>(
         tensor, array, place, zero_copy);
-  } else if (platform::is_npu_place(place)) {
-    SetTensorFromPyArray<platform::NPUPlace>(tensor, array, place, zero_copy);
   } else if (platform::is_ipu_place(place)) {
     SetTensorFromPyArray<platform::IPUPlace>(tensor, array, place, zero_copy);
   } else if (platform::is_custom_place(place)) {
@@ -210,8 +208,7 @@ static void InitVarBaseAndTensor(imperative::VarBase *self,
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Place should be one of "
-        "CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/NPUPlace/IPUPlace/"
-        "MLUPlace"));
+        "CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/NPUPlace/IPUPlace/"));
   }
   self->SetDataType(framework::TransToProtoVarType(tensor->dtype()));
 }
@@ -1068,46 +1065,63 @@ void BindImperative(py::module *m_ptr) {
                }
                tracer->TraceOp(op_type, ins, outs, std::move(attrs));
              }
-             if (!none_axes.empty()) {
-               // Deal with cases when all axes are decreased.
-               // After slice, the shape of out is [1], which should have been
-               // [], but Paddle doesn't support scalar.
-               // In order to ensure the correctness of the final shape of out,
-               // one dimension of out needs to be decreased.
-               // For example:
-               // # x.shape: (2,3,4)
-               // out = x[0, 1, 1, None] # out.shape : (1)
+
+             bool set_to_1d = FLAGS_set_to_1d;
+
+             if (set_to_1d) {
+               // NOTE(zoooo0820): When all axes are decreased, the output
+               // will be 1-D with FLAGS_set_to_1d=True. In this case, one
+               // `None` should be pop out, otherwise the output shape will be
+               // not correct.
                if (static_cast<int>(decrease_axis.size()) ==
                    tensor->dims().size()) {
-                 none_axes.pop_back();
-               }
-               if (!none_axes.empty()) {
-                 // Deal with cases that decrease_axes is not empty
-                 // For example:
-                 // # x.shape: (2,3,4)
-                 // out = x[0, 0:2, None] # out.shape : (2, 1, 4)
-                 for (auto &axis : none_axes) {
-                   int len = 0;
-                   for (int da : decrease_axis) {
-                     if (da < axis) {
-                       len++;
-                     }
-                   }
-                   axis -= len;
+                 VLOG(0) << "Warning: In Tensor '__getitem__', if the number "
+                            "of scalar "
+                            "elements "
+                            "in the index is equal to the rank of the Tensor, "
+                            "the output "
+                            "should "
+                            "be 0-D. In order to be consistent with the "
+                            "behavior of previous "
+                            "versions, it will be processed to 1-D. But it is "
+                            "not correct and "
+                            "will be "
+                            "removed in release 2.6. "
+                            "If 1-D is still wanted, please modify the index "
+                            "element from "
+                            "scalar to slice "
+                            "(e.g. 'x[i]' => 'x[i:i+1]'). ";
+                 if (!none_axes.empty()) {
+                   none_axes.pop_back();
                  }
-
-                 imperative::NameVarBaseMap ins = {{"X", {out}}};
-                 framework::AttributeMap attrs = {{"axes", none_axes}};
-                 auto new_out = std::shared_ptr<imperative::VarBase>(
-                     new imperative::VarBase(tracer->GenerateUniqueName()));
-                 auto out_xshape = std::shared_ptr<imperative::VarBase>(
-                     new imperative::VarBase(tracer->GenerateUniqueName()));
-                 imperative::NameVarBaseMap outs = {{"Out", {new_out}},
-                                                    {"XShape", {out_xshape}}};
-                 tracer->TraceOp("unsqueeze2", ins, outs, std::move(attrs));
-
-                 return new_out;
                }
+             }
+             if (!none_axes.empty()) {
+               // Deal with cases that decrease_axes is not empty
+               // For example:
+               // # x.shape: (2,3,4)
+               // out = x[0, 0:2, None] # out.shape : (2, 1, 4)
+               for (auto &axis : none_axes) {
+                 int len = 0;
+                 for (int da : decrease_axis) {
+                   if (da < axis) {
+                     len++;
+                   }
+                 }
+                 axis -= len;
+               }
+
+               imperative::NameVarBaseMap ins = {{"X", {out}}};
+               framework::AttributeMap attrs = {{"axes", none_axes}};
+               auto new_out = std::shared_ptr<imperative::VarBase>(
+                   new imperative::VarBase(tracer->GenerateUniqueName()));
+               auto out_xshape = std::shared_ptr<imperative::VarBase>(
+                   new imperative::VarBase(tracer->GenerateUniqueName()));
+               imperative::NameVarBaseMap outs = {{"Out", {new_out}},
+                                                  {"XShape", {out_xshape}}};
+               tracer->TraceOp("unsqueeze2", ins, outs, std::move(attrs));
+
+               return new_out;
              }
 
              // the index is a list
@@ -1334,7 +1348,7 @@ void BindImperative(py::module *m_ptr) {
 
                 import paddle
 
-                x = paddle.to_tensor(1.0, stop_gradient=False)
+                x = paddle.to_tensor([1.0], stop_gradient=False)
                 detach_x = x.detach()
                 detach_x[:] = 10.0
                 print(x)  # Tensor(shape=[1], dtype=float32, place=CPUPlace, stop_gradient=False,
@@ -2155,6 +2169,7 @@ void BindImperative(py::module *m_ptr) {
 
   py::enum_<paddle::imperative::AmpLevel>(m, "AmpLevel", py::arithmetic())
       .value("O0", paddle::imperative::AmpLevel::O0)
+      .value("OD", paddle::imperative::AmpLevel::OD)
       .value("O1", paddle::imperative::AmpLevel::O1)
       .value("O2", paddle::imperative::AmpLevel::O2)
       .value("O3", paddle::imperative::AmpLevel::O3)
@@ -2227,7 +2242,7 @@ void BindImperative(py::module *m_ptr) {
             } else {
               PADDLE_THROW(platform::errors::InvalidArgument(
                   "Incompatible Place Type: supports XPUPlace, CUDAPlace, "
-                  "CPUPlace, NPUPlace, IPUPlace, MLUPlace"
+                  "CPUPlace, NPUPlace, IPUPlace"
                   "and CUDAPinnedPlace, "
                   "but got Unknown Type!"));
             }

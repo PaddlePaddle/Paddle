@@ -132,8 +132,7 @@ class TestVariable(unittest.TestCase):
 
         nw = w[1, 1, 1]
 
-        self.assertEqual(len(nw.shape), 1)
-        self.assertEqual(nw.shape[0], 1)
+        self.assertEqual(len(nw.shape), 0)
 
         nw = w[:, :, :-1]
         self.assertEqual((784, 100, 99), nw.shape)
@@ -613,7 +612,7 @@ class TestListIndex(unittest.TestCase):
         np.random.seed(2022)
 
     def numel(self, shape):
-        return reduce(lambda x, y: x * y, shape)
+        return reduce(lambda x, y: x * y, shape, 1)
 
     def test_static_graph_list_index(self):
         paddle.enable_static()

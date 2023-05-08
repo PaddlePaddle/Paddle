@@ -57,18 +57,20 @@ DY2ST_CINN_GT = [
     10.112163543701172,
     9.969393730163574,
 ]
+
 DY2ST_PRIM_CINN_GT = [
-    11.144556999206543,
-    10.343620300292969,
-    10.330279350280762,
-    10.276118278503418,
-    10.222086906433105,
-    10.194628715515137,
-    10.149020195007324,
-    10.096250534057617,
-    10.104615211486816,
-    9.985644340515137,
+    10.976988792419434,
+    10.345282554626465,
+    10.33430004119873,
+    10.275235176086426,
+    10.22808837890625,
+    10.200264930725098,
+    10.161019325256348,
+    10.10872745513916,
+    10.121539115905762,
+    9.990568161010742,
 ]
+
 
 if core.is_compiled_with_cuda():
     paddle.set_flags({'FLAGS_cudnn_deterministic': True})
@@ -175,9 +177,6 @@ class TestBert(unittest.TestCase):
         "paddle is not compiled with CINN and CUDA",
     )
     def test_prim_cinn(self):
-        paddle.set_flags(
-            {'FLAGS_deny_cinn_ops': "gaussian_random;uniform_random"}
-        )
         dy2st_prim_cinn = train(
             to_static=True, enable_prim=True, enable_cinn=True
         )

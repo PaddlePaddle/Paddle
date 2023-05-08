@@ -129,7 +129,6 @@ cc_library(
        dlpack
        cudnn_workspace_helper
        ${XPU_CTX_DEPS}
-       ${MLU_CTX_DEPS}
        phi_backends
        phi_device_context
        generator

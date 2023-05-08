@@ -479,7 +479,7 @@ void AucInferMeta(const MetaTensor& input,
       0,
       phi::errors::InvalidArgument("slide_steps must be natural number"));
 
-  auc->set_dims({1});
+  auc->set_dims(phi::make_ddim({}));
   auc->set_dtype(DataType::INT64);
 
   if (slide_steps) {
@@ -1336,10 +1336,11 @@ void GraphReindexInferMeta(const MetaTensor& x,
                            const MetaTensor& count,
                            const MetaTensor& hashtable_value,
                            const MetaTensor& hashtable_index,
-                           bool flag_buffer_hashtable,
                            MetaTensor* reindex_src,
                            MetaTensor* reindex_dst,
                            MetaTensor* out_nodes) {
+  bool flag_buffer_hashtable =
+      hashtable_value.initialized() && hashtable_index.initialized();
   auto GraphReindexShapeCheck = [](const phi::DDim& dims,
                                    std::string tensor_name) {
     if (dims.size() == 2) {
@@ -2045,19 +2046,26 @@ void LambInferMeta(const MetaTensor& param,
   PADDLE_ENFORCE_NOT_NULL(
       beta2_pow_out,
       errors::NotFound("The output beta2_pow_out can not be nullptr"));
-
   param_out->set_dims(param_dims);
-  param_out->set_dtype(param.dtype());
+
+  phi::DataType dtype = param.dtype();
+  if (multi_precision && param.dtype() == phi::DataType::FLOAT16) {
+    dtype = phi::DataType::FLOAT32;
+  }
 
   moment1_out->set_dims(param_dims);
-  moment1_out->set_dtype(moment1.dtype());
+  moment1_out->set_dtype(dtype);
   moment2_out->set_dims(param_dims);
-  moment2_out->set_dtype(moment2.dtype());
+  moment2_out->set_dtype(dtype);
 
   beta1_pow_out->set_dims(beta1_pow_dims);
-  beta1_pow_out->set_dtype(beta1_pow.dtype());
+  beta1_pow_out->set_dtype(dtype);
   beta2_pow_out->set_dims(beta2_pow_dims);
-  beta2_pow_out->set_dtype(beta2_pow.dtype());
+  beta2_pow_out->set_dtype(dtype);
+
+  if (master_param_outs) {
+    master_param_outs->set_dtype(dtype);
+  }
 }
 
 void LogspaceInferMeta(const MetaTensor& start,
@@ -2337,7 +2345,7 @@ void MultiDotInferMeta(const std::vector<const MetaTensor*>& x,
   // If the last tensor is 1D of size n view it as a column vector (n, 1)
   if (last_dim.size() == 1) {
     last_dim = phi::make_ddim({static_cast<int>(last_dim[0]), 1});
-    out_dim = is_vector ? phi::make_ddim({1}) : phi::make_ddim({first_dim[0]});
+    out_dim = is_vector ? phi::make_ddim({}) : phi::make_ddim({first_dim[0]});
   } else {
     out_dim = is_vector ? phi::make_ddim({last_dim[1]})
                         : phi::make_ddim({first_dim[0], last_dim[1]});
@@ -3239,6 +3247,53 @@ void MoeInferMeta(const MetaTensor& x,
   out->share_lod(x);
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
+}
+
+void WeightedSampleNeighborsInferMeta(const MetaTensor& row,
+                                      const MetaTensor& col_ptr,
+                                      const MetaTensor& edge_weight,
+                                      const MetaTensor& x,
+                                      const MetaTensor& eids,
+                                      int sample_size,
+                                      bool return_eids,
+                                      MetaTensor* out,
+                                      MetaTensor* out_count,
+                                      MetaTensor* out_eids) {
+  // GSN: GraphSampleNeighbors
+  auto GSNShapeCheck = [](const phi::DDim& dims, std::string tensor_name) {
+    if (dims.size() == 2) {
+      PADDLE_ENFORCE_EQ(
+          dims[1],
+          1,
+          phi::errors::InvalidArgument("The last dim of %s should be 1 when it "
+                                       "is 2D, but we get %d",
+                                       tensor_name,
+                                       dims[1]));
+    } else {
+      PADDLE_ENFORCE_EQ(
+          dims.size(),
+          1,
+          phi::errors::InvalidArgument(
+              "The %s should be 1D, when it is not 2D, but we get %d",
+              tensor_name,
+              dims.size()));
+    }
+  };
+
+  GSNShapeCheck(row.dims(), "row");
+  GSNShapeCheck(col_ptr.dims(), "colptr");
+  GSNShapeCheck(edge_weight.dims(), "edge_weight");
+  GSNShapeCheck(x.dims(), "input_nodes");
+  if (return_eids) {
+    GSNShapeCheck(eids.dims(), "eids");
+    out_eids->set_dims({-1});
+    out_eids->set_dtype(row.dtype());
+  }
+
+  out->set_dims({-1});
+  out->set_dtype(row.dtype());
+  out_count->set_dims({-1});
+  out_count->set_dtype(DataType::INT32);
 }
 
 }  // namespace phi

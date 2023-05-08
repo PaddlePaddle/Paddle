@@ -222,13 +222,19 @@ def _recompute_without_reentrant(
 
     if preserve_rng_state:
         cur_device = paddle.get_device()
-        if 'gpu:' not in cur_device:
+        if 'gpu:' in cur_device:
+            fw_cuda_rng_state = paddle.get_cuda_rng_state()
+        elif (
+            cur_device.split(':')[0]
+            in paddle.device.get_all_custom_device_type()
+        ):
+            fw_cuda_rng_state = paddle.get_rng_state(cur_device)
+        else:
             raise RuntimeError(
                 "Recompute with RNG perserve is not support current device: {}.".format(
                     cur_device
                 )
             )
-        fw_cuda_rng_state = paddle.get_cuda_rng_state()
         fwd_cuda_rng_state_tracker = (
             get_rng_state_tracker().get_states_tracker()
         )

@@ -24,6 +24,7 @@ from paddle.fluid import core
 class TestUniqueOp(OpTest):
     def setUp(self):
         self.op_type = "unique"
+        self.init_dtype()
         self.init_config()
 
     def test_check_output(self):
@@ -31,13 +32,16 @@ class TestUniqueOp(OpTest):
             check_dygraph=False
         )  # unique return sorted data in dygraph
 
+    def init_dtype(self):
+        self.dtype = np.int64
+
     def init_config(self):
         self.inputs = {
-            'X': np.array([2, 3, 3, 1, 5, 3], dtype='int64'),
+            'X': np.array([2, 3, 3, 1, 5, 3], dtype=self.dtype),
         }
         self.attrs = {'dtype': int(core.VarDesc.VarType.INT32)}
         self.outputs = {
-            'Out': np.array([2, 3, 1, 5], dtype='int64'),
+            'Out': np.array([2, 3, 1, 5], dtype=self.dtype),
             'Index': np.array([0, 1, 1, 2, 3, 1], dtype='int32'),
         }
 
@@ -45,25 +49,25 @@ class TestUniqueOp(OpTest):
 class TestOne(TestUniqueOp):
     def init_config(self):
         self.inputs = {
-            'X': np.array([2], dtype='int64'),
+            'X': np.array([2], dtype=self.dtype),
         }
         self.attrs = {'dtype': int(core.VarDesc.VarType.INT32)}
         self.outputs = {
-            'Out': np.array([2], dtype='int64'),
+            'Out': np.array([2], dtype=self.dtype),
             'Index': np.array([0], dtype='int32'),
         }
 
 
 class TestRandom(TestUniqueOp):
     def init_config(self):
-        self.inputs = {'X': np.random.randint(0, 100, (150,), dtype='int64')}
+        self.inputs = {'X': np.random.randint(0, 100, (150,), dtype=self.dtype)}
         self.attrs = {'dtype': int(core.VarDesc.VarType.INT64)}
         np_unique, np_index, reverse_index = np.unique(
             self.inputs['X'], True, True
         )
         np_tuple = [(np_unique[i], np_index[i]) for i in range(len(np_unique))]
         np_tuple.sort(key=lambda x: x[1])
-        target_out = np.array([i[0] for i in np_tuple], dtype='int64')
+        target_out = np.array([i[0] for i in np_tuple], dtype=self.dtype)
         target_index = np.array(
             [list(target_out).index(i) for i in self.inputs['X']], dtype='int64'
         )
@@ -82,7 +86,7 @@ class TestUniqueRaiseError(unittest.TestCase):
 
             def test_dtype():
                 data = paddle.static.data(
-                    shape=[10], dtype="float16", name="input"
+                    shape=[10], dtype="int16", name="input"
                 )
                 paddle.unique(data)
 
@@ -95,11 +99,11 @@ class TestUniqueRaiseError(unittest.TestCase):
 class TestOneGPU(TestUniqueOp):
     def init_config(self):
         self.inputs = {
-            'X': np.array([2], dtype='int64'),
+            'X': np.array([2], dtype=self.dtype),
         }
         self.attrs = {'dtype': int(core.VarDesc.VarType.INT32)}
         self.outputs = {
-            'Out': np.array([2], dtype='int64'),
+            'Out': np.array([2], dtype=self.dtype),
             'Index': np.array([0], dtype='int32'),
         }
 
@@ -116,14 +120,14 @@ class TestOneGPU(TestUniqueOp):
 )
 class TestRandomGPU(TestUniqueOp):
     def init_config(self):
-        self.inputs = {'X': np.random.randint(0, 100, (150,), dtype='int64')}
+        self.inputs = {'X': np.random.randint(0, 100, (150,), dtype=self.dtype)}
         self.attrs = {'dtype': int(core.VarDesc.VarType.INT64)}
         np_unique, np_index, reverse_index = np.unique(
             self.inputs['X'], True, True
         )
         np_tuple = [(np_unique[i], np_index[i]) for i in range(len(np_unique))]
         np_tuple.sort(key=lambda x: x[1])
-        target_out = np.array([i[0] for i in np_tuple], dtype='int64')
+        target_out = np.array([i[0] for i in np_tuple], dtype=self.dtype)
         target_index = np.array(
             [list(target_out).index(i) for i in self.inputs['X']], dtype='int64'
         )
@@ -139,8 +143,11 @@ class TestRandomGPU(TestUniqueOp):
 
 
 class TestSortedUniqueOp(TestUniqueOp):
+    def init_dtype(self):
+        self.dtype = np.float64
+
     def init_config(self):
-        self.inputs = {'X': np.array([2, 3, 3, 1, 5, 3], dtype='int64')}
+        self.inputs = {'X': np.array([2, 3, 3, 1, 5, 3], dtype=self.dtype)}
         unique, indices, inverse, count = np.unique(
             self.inputs['X'],
             return_index=True,
@@ -164,9 +171,35 @@ class TestSortedUniqueOp(TestUniqueOp):
         }
 
 
+class TestSortedUniqueFP16Op(TestSortedUniqueOp):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestSortedUniqueBF16Op(TestSortedUniqueOp):
+    def init_dtype(self):
+        self.dtype = np.uint16
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(
+            place, check_dygraph=False
+        )  # unique return sorted data in dygraph
+
+
 class TestUniqueOpAxisNone(TestUniqueOp):
+    def init_dtype(self):
+        self.dtype = np.float64
+
     def init_config(self):
-        self.inputs = {'X': np.random.random((4, 7, 10)).astype('float64')}
+        self.inputs = {
+            'X': np.random.randint(0, 100, (4, 7, 10)).astype(self.dtype)
+        }
         unique, indices, inverse, counts = np.unique(
             self.inputs['X'],
             return_index=True,
@@ -190,9 +223,35 @@ class TestUniqueOpAxisNone(TestUniqueOp):
         }
 
 
+class TestUniqueOpAxisNoneFP16Op(TestUniqueOpAxisNone):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestUniqueOpAxisNoneBF16Op(TestUniqueOpAxisNone):
+    def init_dtype(self):
+        self.dtype = np.uint16
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(
+            place, check_dygraph=False
+        )  # unique return sorted data in dygraph
+
+
 class TestUniqueOpAxisNeg(TestUniqueOp):
+    def init_dtype(self):
+        self.dtype = np.float64
+
     def init_config(self):
-        self.inputs = {'X': np.random.random((6, 1, 8)).astype('float64')}
+        self.inputs = {
+            'X': np.random.randint(0, 100, (6, 1, 8)).astype(self.dtype)
+        }
         unique, indices, inverse, counts = np.unique(
             self.inputs['X'],
             return_index=True,
@@ -216,9 +275,35 @@ class TestUniqueOpAxisNeg(TestUniqueOp):
         }
 
 
+class TestUniqueOpAxisNegFP16Op(TestUniqueOpAxisNeg):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestUniqueOpAxisNegBF16Op(TestUniqueOpAxisNeg):
+    def init_dtype(self):
+        self.dtype = np.uint16
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(
+            place, check_dygraph=False
+        )  # unique return sorted data in dygraph
+
+
 class TestUniqueOpAxis1(TestUniqueOp):
+    def init_dtype(self):
+        self.dtype = np.float64
+
     def init_config(self):
-        self.inputs = {'X': np.random.random((3, 8, 8)).astype('float64')}
+        self.inputs = {
+            'X': np.random.randint(0, 100, (3, 8, 8)).astype(self.dtype)
+        }
         unique, indices, inverse, counts = np.unique(
             self.inputs['X'],
             return_index=True,
@@ -240,6 +325,27 @@ class TestUniqueOpAxis1(TestUniqueOp):
             "Index": inverse,
             "Counts": counts,
         }
+
+
+class TestUniqueOpAxis1FP16Op(TestUniqueOpAxis1):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestUniqueOpAxis1BF16Op(TestUniqueOpAxis1):
+    def init_dtype(self):
+        self.dtype = np.uint16
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(
+            place, check_dygraph=False
+        )  # unique return sorted data in dygraph
 
 
 class TestUniqueAPI(unittest.TestCase):
@@ -318,7 +424,7 @@ class TestUniqueError(unittest.TestCase):
                     paddle.static.Program(), paddle.static.Program()
                 ):
                     x = paddle.static.data(
-                        name='x', shape=[10, 10], dtype='float16'
+                        name='x', shape=[10, 10], dtype='int16'
                     )
                     result = paddle.unique(x)
 

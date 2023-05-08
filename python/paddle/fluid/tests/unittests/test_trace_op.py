@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle import fluid, tensor
@@ -58,6 +58,82 @@ class TestTraceOpCase1(TestTraceOp):
 class TestTraceOpCase2(TestTraceOp):
     def init_config(self):
         self.case = np.random.randn(2, 20, 2, 3).astype('float32')
+        self.inputs = {'Input': self.case}
+        self.attrs = {'offset': -5, 'axis1': 1, 'axis2': -1}
+        self.target = np.trace(
+            self.inputs['Input'],
+            offset=self.attrs['offset'],
+            axis1=self.attrs['axis1'],
+            axis2=self.attrs['axis2'],
+        )
+
+
+class TestTraceFP16Op1(TestTraceOp):
+    def init_config(self):
+        self.dtype = np.float16
+        self.case = np.random.randn(20, 6).astype(self.dtype)
+        self.inputs = {'Input': self.case}
+        self.attrs = {'offset': 0, 'axis1': 0, 'axis2': 1}
+        self.target = np.trace(self.inputs['Input'])
+
+
+class TestTraceFP16Op2(TestTraceOp):
+    def init_config(self):
+        self.dtype = np.float16
+        self.case = np.random.randn(2, 20, 2, 3).astype(self.dtype)
+        self.inputs = {'Input': self.case}
+        self.attrs = {'offset': -5, 'axis1': 1, 'axis2': -1}
+        self.target = np.trace(
+            self.inputs['Input'],
+            offset=self.attrs['offset'],
+            axis1=self.attrs['axis1'],
+            axis2=self.attrs['axis2'],
+        )
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support bfloat16",
+)
+class TestTraceBF16Op1(OpTest):
+    def setUp(self):
+        self.op_type = "trace"
+        self.python_api = paddle.trace
+        self.init_config()
+        self.outputs = {'Out': self.target}
+
+        self.inputs['Input'] = convert_float_to_uint16(self.inputs['Input'])
+        self.outputs['Out'] = convert_float_to_uint16(self.outputs['Out'])
+        self.place = core.CUDAPlace(0)
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place)
+
+    def test_check_grad(self):
+        self.check_grad_with_place(
+            self.place, ['Input'], 'Out', numeric_grad_delta=0.02
+        )
+
+    def init_config(self):
+        self.dtype = np.uint16
+        self.np_dtype = np.float32
+        self.case = np.random.randn(20, 6).astype(self.np_dtype)
+        self.inputs = {'Input': self.case}
+        self.attrs = {'offset': 0, 'axis1': 0, 'axis2': 1}
+        self.target = np.trace(self.inputs['Input'])
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support bfloat16",
+)
+class TestTraceBF16Op2(TestTraceBF16Op1):
+    def init_config(self):
+        self.dtype = np.uint16
+        self.np_dtype = np.float32
+        self.case = np.random.randn(2, 20, 2, 3).astype(self.np_dtype)
         self.inputs = {'Input': self.case}
         self.attrs = {'offset': -5, 'axis1': 1, 'axis2': -1}
         self.target = np.trace(

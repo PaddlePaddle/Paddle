@@ -91,8 +91,8 @@ class ValueAccessor {
 
   virtual AccessorInfo GetAccessorInfo() { return _accessor_info; }
 
-  virtual bool NeedExtendMF(float* value) { return false; }
-  virtual bool HasMF(size_t size) { return false; }
+  virtual bool NeedExtendMF(float* value UNUSED) { return false; }
+  virtual bool HasMF(size_t size UNUSED) { return false; }
   // converter for save
   virtual std::string GetConverter(int param) {
     auto itr = _data_coverter_map.find(param);
@@ -118,11 +118,11 @@ class ValueAccessor {
   // param作为参数用于标识save阶段，如downpour的xbox与batch_model
   virtual bool Save(float* value, int param) = 0;
   // update delta_score and unseen_days after save
-  virtual void UpdateStatAfterSave(float* value, int param) {}
+  virtual void UpdateStatAfterSave(float* value UNUSED, int param UNUSED) {}
   // 判断该value是否保存到ssd
   virtual bool SaveSSD(float* value) = 0;
   // 判断热启时是否过滤slot对应的feasign
-  virtual bool FilterSlot(float* value) { return false; }
+  virtual bool FilterSlot(float* value UNUSED) { return false; }
 
   //
   virtual bool SaveCache(float* value,
@@ -131,7 +131,9 @@ class ValueAccessor {
 
   // keys不存在时，为values生成随机值
   virtual int32_t Create(float** value, size_t num) = 0;
-  virtual bool CreateValue(int type, const float* value) { return true; }
+  virtual bool CreateValue(int type UNUSED, const float* value UNUSED) {
+    return true;
+  }
   // 从values中选取到select_values中
   virtual int32_t Select(float** select_values,
                          const float** values,
@@ -159,22 +161,24 @@ class ValueAccessor {
     return data_convert;
   }
 
-  virtual int SetWeight(float** values,
-                        const float** update_values,
-                        size_t num) {
+  virtual int SetWeight(float** values UNUSED,
+                        const float** update_values UNUSED,
+                        size_t num UNUSED) {
     return 0;
   }
 
-  virtual bool SaveMemCache(float* value,
-                            int param,
-                            double global_cache_threshold,
-                            uint16_t pass_id) {
+  virtual bool SaveMemCache(float* value UNUSED,
+                            int param UNUSED,
+                            double global_cache_threshold UNUSED,
+                            uint16_t pass_id UNUSED) {
     return true;
   }
 
-  virtual void UpdatePassId(float* value, uint16_t pass_id) {}
+  virtual void UpdatePassId(float* value UNUSED, uint16_t pass_id UNUSED) {}
 
-  virtual float GetField(float* value, const std::string& name) { return 0.0; }
+  virtual float GetField(float* value UNUSED, const std::string& name UNUSED) {
+    return 0.0;
+  }
 #define DEFINE_GET_INDEX(class, field) \
   virtual int get_##field##_index() { return class ::field##_index(); }
 

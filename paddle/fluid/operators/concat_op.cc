@@ -165,11 +165,11 @@ class ConcatCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
     paddle::optional<paddle::Tensor> tensor_axis =
         this->GetOptionalSingleForwardInput("AxisTensor");
     paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
-    std::vector<paddle::Tensor> input_grad = this->GetMultiForwardInput("X");
+    std::vector<paddle::Tensor> input_grad = this->GetMultiInputGrad("X");
 
-    std::vector<paddle::Tensor *> input_grad_ptr(input_grad.size());
-    for (auto sub_tensor : input_grad) {
-      input_grad_ptr.push_back(&sub_tensor);
+    std::vector<paddle::Tensor *> input_grad_ptr;
+    for (auto i = 0; i < static_cast<int>(input_grad.size()); ++i) {
+      input_grad_ptr.push_back(&input_grad[i]);
     }
     int axis = static_cast<int>(this->Attr<int>("axis"));
     std::vector<paddle::Tensor *> dx_ptr = this->GetOutputPtr(input_grad_ptr);
@@ -215,10 +215,10 @@ REGISTER_OPERATOR(concat,
                   ops::ConcatOpMaker,
                   ops::ConcatGradOpMaker<paddle::framework::OpDesc>,
                   ops::ConcatGradOpMaker<paddle::imperative::OpBase>,
+                  ops::ConcatCompositeGradOpMaker,
                   ConcatInferShapeFunctor);
 REGISTER_OPERATOR(concat_grad,
                   ops::ConcatOpGrad,
-                  ops::ConcatCompositeGradOpMaker,
                   ops::ConcatDoubleGradOpMaker<paddle::framework::OpDesc>,
                   ops::ConcatDoubleGradOpMaker<paddle::imperative::OpBase>,
                   ops::ConcatOpGradNoNeedBufferVarInferer);

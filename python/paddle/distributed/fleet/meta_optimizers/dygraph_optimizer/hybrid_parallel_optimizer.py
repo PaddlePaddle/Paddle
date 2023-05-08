@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
 
 import paddle
 from paddle import framework
@@ -26,6 +27,7 @@ from ...utils.hybrid_parallel_util import (
     sharding_reduce_gradients,
 )
 from ...utils.log_util import logger
+from ...utils.mix_precision_utils import MixPrecisionOptimizer
 
 __all__ = []
 
@@ -94,11 +96,10 @@ class HybridParallelClipGrad:
         # global norm of distributed FP16 params_and_grads
         if len(sum_square_dist_fp16) == 0:
             global_norm_dist_fp16 = paddle.to_tensor(
-                [0.0], dtype=paddle.float32
+                np.array(0.0), dtype=paddle.float32
             )
         else:
-            global_norm_dist_fp16 = paddle.concat(sum_square_dist_fp16)
-            global_norm_dist_fp16 = paddle.sum(global_norm_dist_fp16)
+            global_norm_dist_fp16 = paddle.add_n(sum_square_dist_fp16)
             global_norm_dist_fp16 = paddle.cast(
                 global_norm_dist_fp16, dtype=paddle.float32
             )
@@ -106,11 +107,10 @@ class HybridParallelClipGrad:
         # global norm of non-distributed FP16 params_and_grads
         if len(sum_square_not_dist_fp16) == 0:
             global_norm_not_dist_fp16 = paddle.to_tensor(
-                [0.0], dtype=paddle.float32
+                np.array(0.0), dtype=paddle.float32
             )
         else:
-            global_norm_not_dist_fp16 = paddle.concat(sum_square_not_dist_fp16)
-            global_norm_not_dist_fp16 = paddle.sum(global_norm_not_dist_fp16)
+            global_norm_not_dist_fp16 = paddle.add_n(sum_square_not_dist_fp16)
             global_norm_not_dist_fp16 = paddle.cast(
                 global_norm_not_dist_fp16, dtype=paddle.float32
             )
@@ -118,11 +118,10 @@ class HybridParallelClipGrad:
         # global norm of distributed BF16 params_and_grads
         if len(sum_square_dist_bf16) == 0:
             global_norm_dist_bf16 = paddle.to_tensor(
-                [0.0], dtype=paddle.float32
+                np.array(0.0), dtype=paddle.float32
             )
         else:
-            global_norm_dist_bf16 = paddle.concat(sum_square_dist_bf16)
-            global_norm_dist_bf16 = paddle.sum(global_norm_dist_bf16)
+            global_norm_dist_bf16 = paddle.add_n(sum_square_dist_bf16)
             global_norm_dist_bf16 = paddle.cast(
                 global_norm_dist_bf16, dtype=paddle.float32
             )
@@ -130,30 +129,29 @@ class HybridParallelClipGrad:
         # global norm of non-distributed FP16 params_and_grads
         if len(sum_square_not_dist_bf16) == 0:
             global_norm_not_dist_bf16 = paddle.to_tensor(
-                [0.0], dtype=paddle.float32
+                np.array(0.0), dtype=paddle.float32
             )
         else:
-            global_norm_not_dist_bf16 = paddle.concat(sum_square_not_dist_bf16)
-            global_norm_not_dist_bf16 = paddle.sum(global_norm_not_dist_bf16)
+            global_norm_not_dist_bf16 = paddle.add_n(sum_square_not_dist_bf16)
             global_norm_not_dist_bf16 = paddle.cast(
                 global_norm_not_dist_bf16, dtype=paddle.float32
             )
 
         # global norm of distributed FP32 params_and_grads
-        global_norm_dist_fp32 = (
-            paddle.concat(sum_square_dist_fp32)
-            if len(sum_square_dist_fp32) != 0
-            else paddle.to_tensor([0.0], dtype=paddle.float32)
-        )
-        global_norm_dist_fp32 = paddle.sum(global_norm_dist_fp32)
+        if len(sum_square_dist_fp32) == 0:
+            global_norm_dist_fp32 = paddle.to_tensor(
+                np.array(0.0), dtype=paddle.float32
+            )
+        else:
+            global_norm_dist_fp32 = paddle.add_n(sum_square_dist_fp32)
 
         # global norm of non-distributed FP32 params_and_grads
-        global_norm_not_dist_fp32 = (
-            paddle.concat(sum_square_not_dist_fp32)
-            if len(sum_square_not_dist_fp32) != 0
-            else paddle.to_tensor([0.0], dtype=paddle.float32)
-        )
-        global_norm_not_dist_fp32 = paddle.sum(global_norm_not_dist_fp32)
+        if len(sum_square_not_dist_fp32) == 0:
+            global_norm_not_dist_fp32 = paddle.to_tensor(
+                np.array(0.0), dtype=paddle.float32
+            )
+        else:
+            global_norm_not_dist_fp32 = paddle.add_n(sum_square_not_dist_fp32)
 
         global_norm_var_dist = (
             global_norm_dist_fp16
@@ -192,19 +190,24 @@ class HybridParallelClipGrad:
         )
 
         max_global_norm = paddle.full(
-            shape=[1],
+            shape=[],
             dtype=global_norm_var_fp32.dtype,
             fill_value=self.clip_norm,
         )
         clip_var = paddle.divide(
             x=max_global_norm,
             y=paddle.maximum(x=global_norm_var_fp32, y=max_global_norm)
-            + paddle.to_tensor([1.0e-6], dtype=paddle.float32),
+            + paddle.to_tensor(np.array(1.0e-6), dtype=paddle.float32),
         )
         clip_var_fp16 = paddle.cast(clip_var, paddle.float16)
 
         # bf16 is not supported on XPU now
-        if not paddle.is_compiled_with_xpu():
+        if not (
+            paddle.is_compiled_with_xpu()
+            or isinstance(
+                paddle.framework._current_expected_place(), paddle.CustomPlace
+            )
+        ):
             clip_var_bf16 = paddle.cast(clip_var, paddle.bfloat16)
         for p, g in params_grads:
             if g is None:
@@ -260,43 +263,57 @@ class HybridParallelOptimizer:
                 "or Sharding, the grad clip of original optimizer will be changed."
             )
 
-            if self._sharding_enable:
-                # change sharding inner_optimizer's _grad_clip
-                self._inner_opt._inner_optimizer._grad_clip = (
-                    HybridParallelClipGrad(self._inner_opt._grad_clip, hcg)
-                )
-            elif (
-                self._inner_opt._parameter_list
-                and not isinstance(self._inner_opt._parameter_list[0], dict)
+            inner_opt = (
+                self._inner_opt._inner_optimizer
+                if self._sharding_enable
+                else self._inner_opt
+            )
+
+            if isinstance(inner_opt, MixPrecisionOptimizer):
+                inner_opt = inner_opt._inner_opt
+
+            if (
+                inner_opt._parameter_list
+                and not isinstance(inner_opt._parameter_list[0], dict)
                 and len(
                     [
                         p
-                        for p in self._inner_opt._parameter_list
+                        for p in inner_opt._parameter_list
                         if hasattr(p, "main_grad")
                     ]
                 )
                 > 0
             ):
-
-                self._inner_opt._inner_opt._grad_clip = HybridParallelClipGrad(
-                    self._inner_opt._inner_opt._grad_clip, hcg
+                inner_opt._grad_clip = HybridParallelClipGrad(
+                    inner_opt._grad_clip, hcg
                 )
             else:
-                self._inner_opt._grad_clip = HybridParallelClipGrad(
-                    self._inner_opt._grad_clip, hcg
+                inner_opt._grad_clip = HybridParallelClipGrad(
+                    inner_opt._grad_clip, hcg
                 )
-                if self._inner_opt._parameter_list and isinstance(
-                    self._inner_opt._parameter_list[0], dict
+                if inner_opt._parameter_list and isinstance(
+                    inner_opt._parameter_list[0], dict
                 ):
-                    for item in self._inner_opt._param_groups:
+                    for item in inner_opt._param_groups:
                         if "grad_clip" in item.keys():
                             item["grad_clip"] = HybridParallelClipGrad(
-                                self._inner_opt._grad_clip, hcg
+                                inner_opt._grad_clip, hcg
                             )
 
-    def _filter_fn(self, param):
+    def _insert_sync(self, sync_var, src, mp_group, sync_mode):
+        if sync_mode == "broadcast":
+            paddle.distributed.broadcast(
+                sync_var, src=src, group=mp_group, sync_op=True
+            )
+        else:
+            paddle.distributed.all_reduce(
+                sync_var, group=mp_group, sync_op=True
+            )
+            sync_var.scale_(1.0 / mp_group.nranks)
+
+    def _filter_fn(self, param, strategy):
         p_name = param.name
-        tar_param = ["embedding", "layer_norm", ".b_"]
+        tar_param = strategy.sync_param_name
         if param.is_distributed is False:
             for tar in tar_param:
                 if tar in p_name:
@@ -320,26 +337,48 @@ class HybridParallelOptimizer:
             or mp_configs.sync_moment
         ):
             params = sorted(
-                [p for p in parameters_list if self._filter_fn(p)],
+                [
+                    p
+                    for p in parameters_list
+                    if self._filter_fn(p, fleet.fleet._user_defined_strategy)
+                ],
                 key=lambda p: p.name,
             )
 
+        # Grad sync before opt
         if mp_group.nranks > 1 and mp_configs and mp_configs.sync_grad:
             for p in params:
-                if p.grad is None:
-                    continue
-                paddle.distributed.broadcast(
-                    p.grad, src=src_rank, group=mp_group, sync_op=True
-                )
+                if hasattr(p, "main_grad") and p.main_grad is not None:
+                    assert p.grad is None
+                    self._insert_sync(
+                        p.main_grad, src_rank, mp_group, mp_configs.sync_mode
+                    )
+                elif p.grad is not None:
+                    self._insert_sync(
+                        p.grad, src_rank, mp_group, mp_configs.sync_mode
+                    )
 
         self._inner_opt.step()
 
         if mp_group.nranks > 1 and mp_configs and mp_configs.sync_param:
             for p in params:
-                paddle.distributed.broadcast(
-                    p, src=src_rank, group=mp_group, sync_op=True
-                )
+                # Param sync after opt
+                self._insert_sync(p, src_rank, mp_group, mp_configs.sync_mode)
 
+                # Master param sync after opt
+                if (
+                    hasattr(self._inner_opt, "_multi_precision")
+                    and self._inner_opt._multi_precision
+                    and p.name in self._inner_opt._master_weights
+                ):
+                    self._insert_sync(
+                        self._inner_opt._master_weights[p.name],
+                        src_rank,
+                        mp_group,
+                        mp_configs.sync_mode,
+                    )
+
+        # Moment sync after opt
         if mp_group.nranks > 1 and mp_configs and mp_configs.sync_moment:
             for p in params:
                 # support opt state of adam and adamw to broadcast now.
@@ -348,28 +387,30 @@ class HybridParallelOptimizer:
                     (paddle.optimizer.Adam, paddle.optimizer.AdamW),
                 ):
                     if (
-                        self._inner_opt._multi_precision
-                        and p.name in self._master_weights
+                        p.name
+                        in self._inner_opt._accumulators[
+                            self._inner_opt._moment1_acc_str
+                        ]
                     ):
-                        paddle.distributed.broadcast(
-                            self._inner_opt._master_weights[p.name],
-                            src=src_rank,
-                            group=mp_group,
-                            sync_op=True,
+                        moment1 = self._inner_opt._get_accumulator(
+                            self._inner_opt._moment1_acc_str, p
+                        )
+                        self._insert_sync(
+                            moment1, src_rank, mp_group, mp_configs.sync_mode
                         )
 
-                    moment1 = self._inner_opt._get_accumulator(
-                        self._inner_opt._moment1_acc_str, p
-                    )
-                    moment2 = self._inner_opt._get_accumulator(
-                        self._inner_opt._moment2_acc_str, p
-                    )
-                    paddle.distributed.broadcast(
-                        moment1, src=src_rank, group=mp_group, sync_op=True
-                    )
-                    paddle.distributed.broadcast(
-                        moment2, src=src_rank, group=mp_group, sync_op=True
-                    )
+                    if (
+                        p.name
+                        in self._inner_opt._accumulators[
+                            self._inner_opt._moment2_acc_str
+                        ]
+                    ):
+                        moment2 = self._inner_opt._get_accumulator(
+                            self._inner_opt._moment2_acc_str, p
+                        )
+                        self._insert_sync(
+                            moment2, src_rank, mp_group, mp_configs.sync_mode
+                        )
 
     @no_grad()
     @framework.dygraph_only

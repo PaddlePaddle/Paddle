@@ -166,5 +166,4 @@ cc_library(
        var_type_traits
        layer
        math_function
-       phi_tensor
-       ${MLU_DEPS})
+       phi_tensor)

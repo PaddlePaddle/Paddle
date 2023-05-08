@@ -18,7 +18,7 @@ limitations under the License. */
 #include <unordered_map>
 
 #include "paddle/phi/api/include/dll_decl.h"
-
+#include "paddle/phi/core/macros.h"
 namespace paddle {
 enum class PlaceType;
 }
@@ -34,7 +34,6 @@ enum class AllocationType : int8_t {
   NPU = 5,
   NPUPINNED = 6,
   IPU = 7,
-  MLU = 8,
   CUSTOM = 9,
 };
 
@@ -132,7 +131,7 @@ class CPUPlace : public Place {
   CPUPlace() : Place(AllocationType::CPU) {}
 
   CPUPlace(const CPUPlace&) = default;
-  CPUPlace(const Place& place) : Place(AllocationType::CPU) {}  // NOLINT
+  CPUPlace(const Place& place UNUSED) : Place(AllocationType::CPU) {}  // NOLINT
 };
 
 class GPUPlace : public Place {
@@ -150,7 +149,7 @@ class GPUPinnedPlace : public Place {
   GPUPinnedPlace() : Place(AllocationType::GPUPINNED) {}
 
   GPUPinnedPlace(const GPUPinnedPlace&) = default;
-  GPUPinnedPlace(const Place& place)  // NOLINT
+  GPUPinnedPlace(const Place& place UNUSED)  // NOLINT
       : Place(AllocationType::GPUPINNED) {}
 };
 
@@ -179,7 +178,7 @@ class NPUPinnedPlace : public Place {
   NPUPinnedPlace() : Place(AllocationType::NPUPINNED) {}
 
   NPUPinnedPlace(const NPUPinnedPlace&) = default;
-  NPUPinnedPlace(const Place& place)  // NOLINT
+  NPUPinnedPlace(const Place& place UNUSED)  // NOLINT
       : Place(AllocationType::NPUPINNED) {}
 };
 
