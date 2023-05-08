@@ -2865,10 +2865,10 @@ struct SimpleOpTypeSetTeller : public Teller {
       "logsigmoid",
       "preln_layernorm_shift_partition",
       "lookup_table",
+      "lookup_table_v2",
       "trans_layernorm",
       "merge_layernorm",
       "skip_merge_layernorm",
-      "lookup_table_v2",
       "expand_v2",
       "expand_as_v2",
       "fuse_eleadd_transpose",
@@ -3143,6 +3143,7 @@ OpTeller::OpTeller() {
   tellers_.emplace_back(new tensorrt::GenericPluginTeller);
   tellers_.emplace_back(new tensorrt::CustomPluginTeller);
 }
+
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
