@@ -35,8 +35,6 @@ const char *AllocationTypeStr(AllocationType type) {
       return "gpu_pinned";
     case AllocationType::XPU:
       return "xpu";
-    case AllocationType::NPU:
-      return "npu";
     case AllocationType::NPUPINNED:
       return "npu_pinned";
     case AllocationType::IPU:
@@ -76,8 +74,6 @@ Place GetPinnedPlace(const Place &place) {
     case AllocationType::GPU:
       return phi::GPUPinnedPlace();
       break;
-    case AllocationType::NPU:
-      return phi::NPUPinnedPlace();
     default:
       return place;
   }

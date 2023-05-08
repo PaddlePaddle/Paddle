@@ -138,8 +138,6 @@ phi::Backend ConvertBackend(paddle_infer::PlaceType backend) {
     case paddle_infer::PlaceType::kGPU:
       // NOTE: phi also support phi::Backend::GPUDNN.
       return phi::Backend::GPU;
-    case paddle_infer::PlaceType::kNPU:
-      return phi::Backend::NPU;
     case paddle_infer::PlaceType::kXPU:
       return phi::Backend::XPU;
     case paddle_infer::PlaceType::kCPU:

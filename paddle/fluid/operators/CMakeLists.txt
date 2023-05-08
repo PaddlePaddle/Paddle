@@ -174,12 +174,6 @@ endif()
 
 set(GLOB_OP_LIB ${OP_LIBRARY} CACHE INTERNAL "Global OP library")
 
-if(WITH_MKLDNN)
-include(mkldnn/inplace_op_tests.cmake)
-include(mkldnn/caching_tests.cmake)
-include(mkldnn/nhwc_op_tests.cmake)
-endif()
-
 if(WITH_UNITY_BUILD)
     # Using Unity Build to compile operators, `register_operator` will cause
     # the unity library to lose some symbols.
