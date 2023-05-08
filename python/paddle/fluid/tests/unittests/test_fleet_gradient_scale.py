@@ -18,8 +18,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.distributed.fleet as fleet
-import paddle.fluid as fluid
+from paddle import fluid
+from paddle.distributed import fleet
 
 
 class TestGradientScale(unittest.TestCase):

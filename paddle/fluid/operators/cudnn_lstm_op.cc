@@ -292,7 +292,7 @@ class CudnnLSTMGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class NotImpleKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -312,8 +312,8 @@ REGISTER_OPERATOR(cudnn_lstm,
                   ops::CudnnLSTMGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(cudnn_lstm_grad, ops::CudnnLSTMGradOp);
 
-REGISTER_OP_CPU_KERNEL(cudnn_lstm, ops::NotImpleKernel<float>);
-REGISTER_OP_CPU_KERNEL(cudnn_lstm_grad, ops::NotImpleKernel<float>);
+PD_REGISTER_STRUCT_KERNEL(
+    cudnn_lstm, CPU, ALL_LAYOUT, ops::NotImpleKernel, float) {}
 
 // TODO(Shixiaowei02) Add ModifyInput support
 REGISTER_OP_VERSION(cudnn_lstm)

@@ -20,14 +20,14 @@ namespace inference {
 namespace tensorrt {
 
 /*
- * PRelu converter from fluid to tensorRT.
+ * PRelu converter from paddle to tensorRT.
  */
 class PReluOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(4) << "convert fluid prelu op to tensorrt prelu layer";
+    VLOG(4) << "convert prelu op to tensorrt prelu layer";
 
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs

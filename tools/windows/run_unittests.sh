@@ -20,6 +20,7 @@ disable_wingpu_test="^test_model$|\
 ^test_add_reader_dependency$|\
 ^test_add_reader_dependency_for_interpretercore$|\
 ^test_decoupled_py_reader$|\
+^test_decoupled_py_reader_static_build$|\
 ^test_generator_dataloader$|\
 ^test_parallel_dygraph_sync_batch_norm$|\
 ^test_py_reader_using_executor$|\
@@ -38,6 +39,7 @@ disable_wingpu_test="^test_model$|\
 ^test_reader_reset$|\
 ^test_imperative_se_resnext$|\
 ^test_sync_batch_norm_op$|\
+^test_sync_batch_norm_op_static_build$|\
 ^test_dataloader_keep_order$|\
 ^test_dataloader_unkeep_order$|\
 ^test_multiprocess_dataloader_iterable_dataset_static$|\
@@ -85,6 +87,7 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_full_name_usage$|\
 ^test_trt_convert_unary$|\
 ^test_eigh_op$|\
+^test_eigh_op_static_build$|\
 ^test_fc_op$|\
 ^test_stack_op$|\
 ^trt_split_converter_test$|\
@@ -103,6 +106,7 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_conv3d_transpose_part2_op$|\
 ^test_deform_conv2d$|\
 ^test_matmul_op$|\
+^test_matmul_op_static_build$|\
 ^test_basic_api_transformation$|\
 ^test_deformable_conv_op$|\
 ^test_variable$|\
@@ -153,11 +157,13 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_add_reader_dependency_for_interpretercore$|\
 ^test_compat$|\
 ^test_decoupled_py_reader$|\
+^test_decoupled_py_reader_static_build$|\
 ^test_generator_dataloader$|\
 ^test_py_reader_using_executor$|\
 ^test_dataloader_keep_order$|\
 ^test_dataloader_unkeep_order$|\
 ^test_sync_batch_norm_op$|\
+^test_sync_batch_norm_op_static_build$|\
 ^test_fuse_bn_act_pass$|\
 ^test_fuse_bn_add_act_pass$|\
 ^test_decoupled_py_reader_data_check$|\
@@ -223,6 +229,7 @@ long_time_test="^test_gru_op$|\
 ^test_imperative_lod_tensor_to_selected_rows$|\
 ^test_imperative_selected_rows_to_lod_tensor$|\
 ^test_layer_norm_op$|\
+^test_layer_norm_op_static_build$|\
 ^test_multiclass_nms_op$|\
 ^test_nearest_interp_v2_op$|\
 ^test_nn_grad$|\

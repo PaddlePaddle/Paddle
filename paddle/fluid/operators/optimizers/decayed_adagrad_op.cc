@@ -130,5 +130,6 @@ namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(decayed_adagrad,
                              ops::DecayedAdagradOp,
                              ops::DecayedAdagradOpMaker);
-REGISTER_OP_CPU_KERNEL(decayed_adagrad,
-                       ops::DecayedAdagradOpKernel<phi::CPUContext, float>);
+
+PD_REGISTER_STRUCT_KERNEL(
+    decayed_adagrad, CPU, ALL_LAYOUT, ops::DecayedAdagradOpKernel, float) {}

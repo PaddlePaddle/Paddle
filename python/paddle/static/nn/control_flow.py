@@ -16,7 +16,6 @@ import warnings
 from functools import partial, reduce
 
 import paddle
-import paddle.fluid.core as core
 from paddle.common_ops_import import (
     LayerHelper,
     _non_static_mode,
@@ -24,7 +23,8 @@ from paddle.common_ops_import import (
     check_variable_and_dtype,
     convert_dtype,
 )
-from paddle.fluid.framework import Operator, Program, Variable
+from paddle.fluid import core
+from paddle.fluid.framework import Operator, Program, Variable, static_only
 
 # Temporary solution, it will be deleted later
 from paddle.fluid.layers.control_flow import ConditionalBlock, select_input
@@ -300,7 +300,7 @@ class While:
         check_variable_and_dtype(cond, 'cond', ['bool'], 'static.nn.While')
         if reduce(lambda a, b: a * b, cond.shape, 1) != 1:
             raise TypeError(
-                "condition expected shape as [1], but given shape as {0}.".format(
+                "condition expected shape as [1], but given shape as {}.".format(
                     list(cond.shape)
                 )
             )
@@ -329,7 +329,7 @@ class While:
             if inner_var:
                 out_vars.append(inner_var)
 
-        x_name_list |= set(map(lambda x: x.name, out_vars))
+        x_name_list |= {x.name for x in out_vars}
         # NOTE(dev): cond_var has been contained in Input('Condition'), so
         # we remove it from Input('X')
         x_name_list -= {self.cond_var.name}
@@ -368,7 +368,7 @@ def assign_skip_lod_tensor_array(input, output):
                 return True
         return False
 
-    if not isinstance(input, (Variable, core.VarBase)):
+    if not isinstance(input, (Variable, core.eager.Tensor)):
         if isinstance(output, Variable) and isinstance(
             input, support_ret_buildin_type
         ):
@@ -395,6 +395,10 @@ def assign_skip_lod_tensor_array(input, output):
                     input.shape, output.shape
                 )
             )
+        # NOTE(dev): Avoid assign if input is output in Variable level which means
+        # input is not generated in While sub block and modified by in-place and only
+        # belong to inplace ops in constructing program process, because in-place pass
+        # is only available in Graph level.
         paddle.assign(input, output)
 
 
@@ -462,11 +466,11 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
     if reduce(lambda a, b: a * b, pre_cond.shape, 1) != 1:
         raise TypeError(
             "the shape of the variable returned by cond should be [1],"
-            "but given shape as {0}.".format(list(pre_cond.shape))
+            f"but given shape as {list(pre_cond.shape)}."
         )
 
     if _non_static_mode():
-        now_cond = pre_cond.numpy().item()
+        now_cond = pre_cond.item()
         while now_cond:
             output_vars = body(*loop_vars)
             if not isinstance(output_vars, (list, tuple)):
@@ -476,7 +480,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
                     "body in while_loop should return the same arity "
                     "(length and structure) and types as loop_vars"
                 )
-            now_cond = cond(*output_vars).numpy().item()
+            now_cond = cond(*output_vars).item()
             map_structure(assign_skip_lod_tensor_array, output_vars, loop_vars)
         return loop_vars
 
@@ -500,7 +504,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
         except ValueError as e:
             raise ValueError(
                 "body in while_loop should return the same arity "
-                "(length and structure) as loop_vars: {0}".format(e)
+                f"(length and structure) as loop_vars: {e}"
             )
         now_cond = cond(*output_vars)
         map_structure(assign_skip_lod_tensor_array, output_vars, loop_vars)
@@ -839,7 +843,7 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
             if not callable(fn):
                 raise TypeError(
                     _error_message(
-                        "The type of function for key {}".format(key),
+                        f"The type of function for key {key}",
                         "branch_fns",
                         "switch_case",
                         "callable",
@@ -968,7 +972,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
     if _non_static_mode():
         assert isinstance(pred, Variable), "The pred in cond must be Variable"
         assert pred.size == 1, "condition input's numel should be 1"
-        pred = pred.numpy().item()
+        pred = pred.item()
         if pred:
             if true_fn is not None:
                 if not callable(true_fn):
@@ -1329,3 +1333,101 @@ def change_none_to_undefinedvar(nest1, nest2):
     nest1_out = pack_sequence_as(nest1, list(map(map_fn, flatten(nest1))))
     nest2_out = pack_sequence_as(nest2, list(map(map_fn, flatten(nest2))))
     return nest1_out, nest2_out
+
+
+@static_only
+def Print(
+    input,
+    first_n=-1,
+    message=None,
+    summarize=20,
+    print_tensor_name=True,
+    print_tensor_type=True,
+    print_tensor_shape=True,
+    print_tensor_layout=True,
+    print_tensor_lod=True,
+    print_phase='both',
+):
+    '''
+    :api_attr: Static Graph
+
+    **Print operator**
+
+    This creates a print op that will print when a tensor is accessed.
+
+    Wraps the tensor passed in so that whenever that a tensor is accessed,
+    the message `message` is printed, along with the current value of the
+    tensor `t`.
+
+    Args:
+        input (Tensor): A Tensor to print.
+        first_n (int, optional): Only log `first_n` number of times. Default: -1.
+        message (str, optional): A string message to print as a prefix. Default: None.
+        summarize (int, optional): Number of elements in the tensor to be print. If
+                it's value is -1, then all elements in the tensor will be print.
+        print_tensor_name (bool, optional): Print the tensor name. Default: True.
+        print_tensor_type (bool, optional): Print the tensor type. Defaultt: True.
+        print_tensor_shape (bool, optional): Print the tensor shape. Default: True.
+        print_tensor_layout (bool, optional): Print the tensor layout. Default: True.
+        print_tensor_lod (bool, optional): Print the tensor lod. Default: True.
+        print_phase (str, optional): Which phase to displace, including 'forward',
+                'backward' and 'both'. Default: 'both'. If set to 'backward', will
+                only print the gradients of input tensor; If set to 'both', will
+                both print the input tensor itself and the gradients of input tensor.
+
+    Returns:
+        Tensor: Output tensor.
+
+    NOTES:
+        The input and output are two different Tensor, and in the
+        following process, you should use the output Tensor but not the input,
+        otherwise, the print layer doesn't have backward.
+
+    Examples:
+        .. code-block:: python
+
+           import paddle
+
+           paddle.enable_static()
+
+           x = paddle.full(shape=[2, 3], fill_value=3, dtype='int64')
+           out = paddle.static.Print(x, message="The content of input layer:")
+
+           main_program = paddle.static.default_main_program()
+           exe = paddle.static.Executor(place=paddle.CPUPlace())
+           res = exe.run(main_program, fetch_list=[out])
+           # Variable: fill_constant_1.tmp_0
+           #   - message: The content of input layer:
+           #   - lod: {}
+           #   - place: CPUPlace
+           #   - shape: [2, 3]
+           #   - layout: NCHW
+           #   - dtype: long
+           #   - data: [3 3 3 3 3 3]
+    '''
+    check_variable_and_dtype(
+        input,
+        'input',
+        ['float32', 'float64', 'int32', 'int64', 'bool'],
+        'paddle.static.Print',
+    )
+
+    helper = LayerHelper('print' + "_" + input.name, **locals())
+    output = helper.create_variable_for_type_inference(input.dtype)
+    helper.append_op(
+        type='print',
+        inputs={'In': input},
+        outputs={'Out': output},
+        attrs={
+            'first_n': first_n,
+            'summarize': summarize,
+            'message': message or "",
+            'print_tensor_name': print_tensor_name,
+            'print_tensor_type': print_tensor_type,
+            'print_tensor_shape': print_tensor_shape,
+            'print_tensor_layout': print_tensor_layout,
+            'print_tensor_lod': print_tensor_lod,
+            'print_phase': print_phase.upper(),
+        },
+    )
+    return output

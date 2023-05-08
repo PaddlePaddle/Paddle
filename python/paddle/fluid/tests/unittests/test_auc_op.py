@@ -18,8 +18,7 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
-from paddle.fluid import metrics
+from paddle import fluid
 
 
 class TestAucOp(OpTest):
@@ -49,17 +48,17 @@ class TestAucOp(OpTest):
             "slide_steps": slide_steps,
         }
 
-        python_auc = metrics.Auc(
+        python_auc = paddle.metric.Auc(
             name="auc", curve='ROC', num_thresholds=num_thresholds
         )
         python_auc.update(pred, labels)
 
-        pos = python_auc._stat_pos * 2
+        pos = python_auc._stat_pos.tolist() * 2
         pos.append(1)
-        neg = python_auc._stat_neg * 2
+        neg = python_auc._stat_neg.tolist() * 2
         neg.append(1)
         self.outputs = {
-            'AUC': np.array(python_auc.eval()),
+            'AUC': np.array(python_auc.accumulate()),
             'StatPosOut': np.array(pos),
             'StatNegOut': np.array(neg),
         }
@@ -91,7 +90,7 @@ class TestGlobalAucOp(OpTest):
             "slide_steps": slide_steps,
         }
 
-        python_auc = metrics.Auc(
+        python_auc = paddle.metric.Auc(
             name="auc", curve='ROC', num_thresholds=num_thresholds
         )
         python_auc.update(pred, labels)
@@ -99,7 +98,7 @@ class TestGlobalAucOp(OpTest):
         pos = python_auc._stat_pos
         neg = python_auc._stat_neg
         self.outputs = {
-            'AUC': np.array(python_auc.eval()),
+            'AUC': np.array(python_auc.accumulate()),
             'StatPosOut': np.array(pos),
             'StatNegOut': np.array(neg),
         }
@@ -142,8 +141,12 @@ class TestAucOpError(unittest.TestCase):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
 
             def test_type1():
-                data1 = fluid.data(name="input1", shape=[-1, 2], dtype="int")
-                label1 = fluid.data(name="label1", shape=[-1], dtype="int")
+                data1 = paddle.static.data(
+                    name="input1", shape=[-1, 2], dtype="int"
+                )
+                label1 = paddle.static.data(
+                    name="label1", shape=[-1], dtype="int"
+                )
                 ins_tag_w1 = paddle.static.data(
                     name="label1", shape=[-1], dtype="int"
                 )
@@ -154,10 +157,12 @@ class TestAucOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_type1)
 
             def test_type2():
-                data2 = fluid.data(
+                data2 = paddle.static.data(
                     name="input2", shape=[-1, 2], dtype="float32"
                 )
-                label2 = fluid.data(name="label2", shape=[-1], dtype="float32")
+                label2 = paddle.static.data(
+                    name="label2", shape=[-1], dtype="float32"
+                )
                 result2 = paddle.static.auc(input=data2, label=label2)
 
             self.assertRaises(TypeError, test_type2)

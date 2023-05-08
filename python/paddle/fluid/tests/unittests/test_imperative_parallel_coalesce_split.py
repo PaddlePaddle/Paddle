@@ -18,13 +18,13 @@ from collections import OrderedDict
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
 import paddle.nn.functional as F
+from paddle import fluid
 from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
 
 
-class MyLayer(fluid.Layer):
+class MyLayer(paddle.nn.Layer):
     def __init__(self, name_scope):
         super().__init__(name_scope)
 

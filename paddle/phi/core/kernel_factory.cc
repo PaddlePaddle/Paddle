@@ -14,6 +14,7 @@
 
 #include "paddle/phi/core/kernel_factory.h"
 
+#include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "paddle/phi/core/enforce.h"
 #if defined(PADDLE_WITH_XPU)

@@ -347,4 +347,10 @@ PD_REGISTER_KERNEL(group_norm,
                    float,
                    double,
                    phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16) {
+  if (kernel_key.dtype() == phi::DataType::BFLOAT16 ||
+      kernel_key.dtype() == phi::DataType::FLOAT16) {
+    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
+  }
+}

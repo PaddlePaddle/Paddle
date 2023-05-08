@@ -24,8 +24,6 @@ class DeviceType:
     CPU = 'cpu'
     GPU = 'gpu'
     XPU = 'xpu'
-    NPU = 'npu'
-    MLU = 'mlu'
     IPU = 'ipu'
     CUSTOM_DEVICE = 'custom_device'
 
@@ -69,12 +67,8 @@ class Device:
             return 'FLAGS_selected_cpus'
         if self._dtype == DeviceType.GPU:
             return 'FLAGS_selected_gpus'
-        if self._dtype == DeviceType.NPU:
-            return 'FLAGS_selected_npus'
         if self._dtype == DeviceType.XPU:
             return 'FLAGS_selected_xpus'
-        if self._dtype == DeviceType.MLU:
-            return 'FLAGS_selected_mlus'
         if self._dtype == DeviceType.IPU:
             return 'FLAGS_selected_ipus'
         if self._dtype == DeviceType.CUSTOM_DEVICE:
@@ -114,12 +108,6 @@ class Device:
         elif 'XPU_VISIBLE_DEVICES' in os.environ:
             dev._dtype = DeviceType.XPU
             visible_devices = os.getenv("XPU_VISIBLE_DEVICES")
-        elif 'ASCEND_VISIBLE_DEVICES' in os.environ:
-            dev._dtype = DeviceType.NPU
-            visible_devices = os.getenv("ASCEND_VISIBLE_DEVICES")
-        elif 'MLU_VISIBLE_DEVICES' in os.environ:
-            dev._dtype = DeviceType.MLU
-            visible_devices = os.getenv("MLU_VISIBLE_DEVICES")
 
         if visible_devices is not None and visible_devices != 'all':
             dev._labels = visible_devices.split(',')
@@ -158,14 +146,6 @@ class Device:
             dev._dtype = DeviceType.XPU
             num = core.get_xpu_device_count()
             visible_devices = os.getenv("XPU_VISIBLE_DEVICES")
-        elif core.is_compiled_with_npu():
-            dev._dtype = DeviceType.NPU
-            num = core.get_npu_device_count()
-            visible_devices = os.getenv("ASCEND_VISIBLE_DEVICES")
-        elif core.is_compiled_with_mlu():
-            dev._dtype = DeviceType.MLU
-            num = core.get_mlu_device_count()
-            visible_devices = os.getenv("MLU_VISIBLE_DEVICES")
         elif core.is_compiled_with_ipu():
             dev._dtype = DeviceType.IPU
             num = core.get_ipu_device_count()

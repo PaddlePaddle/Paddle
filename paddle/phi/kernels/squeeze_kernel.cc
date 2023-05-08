@@ -23,10 +23,13 @@ namespace phi {
 template <typename T, typename Context>
 void SqueezeInferKernel(const Context& dev_ctx,
                         const DenseTensor& x,
-                        const IntArray& axes,
+                        const IntArray& axes UNUSED,
                         DenseTensor* out) {
   auto out_dims = out->dims();
   dev_ctx.template Alloc<T>(out);
+  if (x.Holder() == out->Holder()) {
+    return;
+  }
   phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
   out->Resize(out_dims);  // copy will reset the dims.
 }
@@ -36,7 +39,7 @@ void SqueezeKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const IntArray& axes,
                    DenseTensor* out,
-                   DenseTensor* xshape) {
+                   DenseTensor* xshape UNUSED) {
   SqueezeInferKernel<T, Context>(dev_ctx, x, axes, out);
 }
 

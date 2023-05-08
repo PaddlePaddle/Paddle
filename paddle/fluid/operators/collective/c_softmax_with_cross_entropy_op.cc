@@ -106,6 +106,10 @@ class CSoftmaxWithCrossEntropyOpMaker
               "Input(Logits) "
               "except the shape in dimension :attr:`axis` as 1. The cross "
               "entropy loss.");
+    AddAttr<int64_t>("ignore_index",
+                     "(int default -100) Specifies a target value "
+                     "that is ignored and does not contribute to the loss.")
+        .SetDefault(-100);
     AddAttr<int>("ring_id", "(int default 0) nccl communication ring id.")
         .SetDefault(0);
     AddAttr<int>("rank",
@@ -199,7 +203,10 @@ REGISTER_OPERATOR(c_softmax_with_cross_entropy_grad,
                   ops::CSoftmaxWithCrossEntropyOpGrad,
                   ops::CSoftmaxWithCrossEntropyGradInplaceInferer);
 
-REGISTER_OP_CPU_KERNEL(c_softmax_with_cross_entropy,
-                       ops::CSoftmaxWithCrossEntropyOpCPUKernel<float>,
-                       ops::CSoftmaxWithCrossEntropyOpCPUKernel<double>,
-                       ops::CSoftmaxWithCrossEntropyOpCPUKernel<plat::float16>);
+PD_REGISTER_STRUCT_KERNEL(c_softmax_with_cross_entropy,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::CSoftmaxWithCrossEntropyOpCPUKernel,
+                          float,
+                          double,
+                          plat::float16) {}

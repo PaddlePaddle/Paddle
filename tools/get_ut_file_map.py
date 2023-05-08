@@ -72,17 +72,17 @@ def handle_ut_file_map(rootPath):
             all_ut_list.append(ut.strip())
         f.close()
     for ut in all_ut_list:
-        filedir = '%s/build/ut_map/%s' % (rootPath, ut)
+        filedir = f'{rootPath}/build/ut_map/{ut}'
         if not os.path.exists(filedir):
             not_success_file.write('%s\n' % ut)
             utNotSuccess_list.append(ut)
     # if fnda.tmp not exists,write the test into prec_delta
     for ut in files:
         count = count + 1
-        print("ut %s: %s" % (count, ut))
-        coverage_info = '%s/%s/fnda.tmp' % (ut_map_path, ut)
+        print(f"ut {count}: {ut}")
+        coverage_info = f'{ut_map_path}/{ut}/fnda.tmp'
         if os.path.exists(coverage_info):
-            filename = '%s/%s/related_%s.txt' % (ut_map_path, ut, ut)
+            filename = f'{ut_map_path}/{ut}/related_{ut}.txt'
             try:
                 f = open(filename)
                 print("oepn %s succesfully" % filename)
@@ -118,7 +118,7 @@ def handle_ut_file_map(rootPath):
 
     for ut in files:
         if ut not in utNotSuccess_list:
-            filename = '%s/%s/notrelated_%s.txt' % (ut_map_path, ut, ut)
+            filename = f'{ut_map_path}/{ut}/notrelated_{ut}.txt'
             try:
                 f = open(filename)
                 print("oepn %s succesfully" % filename)
@@ -150,7 +150,7 @@ def notsuccessfuc(rootPath):
     for ut in files:
         if ut == 'simple_precise_test':
             continue
-        coverage_info = '%s/%s/fnda.tmp' % (ut_map_path, ut)
+        coverage_info = f'{ut_map_path}/{ut}/fnda.tmp'
         if os.path.exists(coverage_info):
             pass
         else:

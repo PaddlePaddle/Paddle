@@ -25,7 +25,7 @@ from .base_quanter import BaseQuanter
 from .config import QuantConfig
 
 
-class Quantization(object, metaclass=abc.ABCMeta):
+class Quantization(metaclass=abc.ABCMeta):
     r"""
     Abstract class used to prepares a copy of the model for quantization calibration or quantization-aware training.
     Args:

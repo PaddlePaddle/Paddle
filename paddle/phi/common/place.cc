@@ -41,8 +41,6 @@ const char *AllocationTypeStr(AllocationType type) {
       return "npu_pinned";
     case AllocationType::IPU:
       return "ipu";
-    case AllocationType::MLU:
-      return "mlu";
     default:
       PD_THROW("Invalid phi device type.");
       return {};

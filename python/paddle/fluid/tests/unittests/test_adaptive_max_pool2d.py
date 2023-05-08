@@ -18,9 +18,9 @@ import numpy as np
 from eager_op_test import check_out_dtype
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 import paddle.nn.functional as F
+from paddle import fluid
+from paddle.fluid import core
 
 
 def adaptive_start_index(index, input_size, output_size):
@@ -122,7 +122,9 @@ class TestAdaptiveMaxPool2DAPI(unittest.TestCase):
         ):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
             paddle.enable_static()
-            x = paddle.fluid.data(name="x", shape=[2, 3, 7, 7], dtype="float32")
+            x = paddle.static.data(
+                name="x", shape=[2, 3, 7, 7], dtype="float32"
+            )
 
             out_1 = paddle.nn.functional.adaptive_max_pool2d(
                 x=x, output_size=[3, 3]
@@ -225,7 +227,9 @@ class TestAdaptiveMaxPool2DClassAPI(unittest.TestCase):
         ):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
             paddle.enable_static()
-            x = paddle.fluid.data(name="x", shape=[2, 3, 7, 7], dtype="float32")
+            x = paddle.static.data(
+                name="x", shape=[2, 3, 7, 7], dtype="float32"
+            )
 
             adaptive_max_pool = paddle.nn.AdaptiveMaxPool2D(output_size=[3, 3])
             out_1 = adaptive_max_pool(x=x)

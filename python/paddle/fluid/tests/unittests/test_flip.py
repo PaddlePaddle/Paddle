@@ -17,11 +17,11 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 
 class TestFlipOp_API(unittest.TestCase):
@@ -32,7 +32,9 @@ class TestFlipOp_API(unittest.TestCase):
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
             axis = [0]
-            input = fluid.data(name='input', dtype='float32', shape=[2, 3])
+            input = paddle.static.data(
+                name='input', dtype='float32', shape=[2, 3]
+            )
             output = paddle.flip(input, axis)
             output = paddle.flip(output, -1)
             output = output.flip(0)
@@ -72,9 +74,27 @@ class TestFlipOp(OpTest):
         self.op_type = 'flip'
         self.python_api = paddle.tensor.flip
         self.init_test_case()
-        self.inputs = {'X': np.random.random(self.in_shape).astype('float64')}
         self.init_attrs()
-        self.outputs = {'Out': self.calc_ref_res()}
+        self.init_dtype()
+
+        if self.is_bfloat16_op():
+            self.input = np.random.random(self.in_shape).astype(np.float32)
+        else:
+            self.input = np.random.random(self.in_shape).astype(self.dtype)
+
+        output = self.calc_ref_res()
+
+        if self.is_bfloat16_op():
+            output = output.astype(np.float32)
+            self.inputs = {'X': convert_float_to_uint16(self.input)}
+            self.outputs = {'Out': convert_float_to_uint16(output)}
+        else:
+            self.inputs = {'X': self.input.astype(self.dtype)}
+            output = output.astype(self.dtype)
+            self.outputs = {'Out': output}
+
+    def init_dtype(self):
+        self.dtype = np.float64
 
     def init_attrs(self):
         self.attrs = {"axis": self.axis}
@@ -90,7 +110,7 @@ class TestFlipOp(OpTest):
         self.axis = [0, 1]
 
     def calc_ref_res(self):
-        res = self.inputs['X']
+        res = self.input
         if isinstance(self.axis, int):
             return np.flip(res, self.axis)
         for axis in self.axis:
@@ -132,6 +152,75 @@ class TestFlipOpNegAxis(TestFlipOp):
     def init_test_case(self):
         self.in_shape = (6, 4, 2, 2)
         self.axis = [-1]
+
+
+# ----------------flip_fp16----------------
+def create_test_fp16_class(parent):
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    )
+    class TestFlipFP16(parent):
+        def init_dtype(self):
+            self.dtype = np.float16
+
+        def test_check_output(self):
+            if core.is_compiled_with_cuda():
+                place = core.CUDAPlace(0)
+                if core.is_float16_supported(place):
+                    self.check_output_with_place(place)
+
+        def test_check_grad(self):
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_grad_with_place(place, ["X"], "Out")
+
+    cls_name = "{}_{}".format(parent.__name__, "FP16OP")
+    TestFlipFP16.__name__ = cls_name
+    globals()[cls_name] = TestFlipFP16
+
+
+create_test_fp16_class(TestFlipOp)
+create_test_fp16_class(TestFlipOpAxis1)
+create_test_fp16_class(TestFlipOpAxis2)
+create_test_fp16_class(TestFlipOpAxis3)
+create_test_fp16_class(TestFlipOpAxis4)
+create_test_fp16_class(TestFlipOpEmptyAxis)
+create_test_fp16_class(TestFlipOpNegAxis)
+
+
+# ----------------flip_bf16----------------
+def create_test_bf16_class(parent):
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda()
+        or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+        "core is not compiled with CUDA and do not support bfloat16",
+    )
+    class TestFlipBF16(parent):
+        def init_dtype(self):
+            self.dtype = np.uint16
+
+        def test_check_output(self):
+            place = core.CUDAPlace(0)
+            if core.is_bfloat16_supported(place):
+                self.check_output_with_place(place)
+
+        def test_check_grad(self):
+            place = core.CUDAPlace(0)
+            if core.is_bfloat16_supported(place):
+                self.check_grad_with_place(place, ["X"], "Out")
+
+    cls_name = "{}_{}".format(parent.__name__, "BF16OP")
+    TestFlipBF16.__name__ = cls_name
+    globals()[cls_name] = TestFlipBF16
+
+
+create_test_bf16_class(TestFlipOp)
+create_test_bf16_class(TestFlipOpAxis1)
+create_test_bf16_class(TestFlipOpAxis2)
+create_test_bf16_class(TestFlipOpAxis3)
+create_test_bf16_class(TestFlipOpAxis4)
+create_test_bf16_class(TestFlipOpEmptyAxis)
+create_test_bf16_class(TestFlipOpNegAxis)
 
 
 class TestFlipDoubleGradCheck(unittest.TestCase):
@@ -201,13 +290,17 @@ class TestFlipError(unittest.TestCase):
         paddle.enable_static()
 
         def test_axis_rank():
-            input = fluid.data(name='input', dtype='float32', shape=[2, 3])
+            input = paddle.static.data(
+                name='input', dtype='float32', shape=[2, 3]
+            )
             output = paddle.flip(input, axis=[[0]])
 
         self.assertRaises(TypeError, test_axis_rank)
 
         def test_axis_rank2():
-            input = fluid.data(name='input', dtype='float32', shape=[2, 3])
+            input = paddle.static.data(
+                name='input', dtype='float32', shape=[2, 3]
+            )
             output = paddle.flip(input, axis=[[0, 0], [1, 1]])
 
         self.assertRaises(TypeError, test_axis_rank2)

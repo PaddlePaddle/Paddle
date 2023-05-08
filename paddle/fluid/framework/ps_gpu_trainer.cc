@@ -276,14 +276,14 @@ void PSGPUTrainer::InitTrainerEnv(const ProgramDesc& main_program,
     for (auto& var : block.AllVars()) {
       if (var->Persistable()) {
         auto name = var->Name();
+        auto* ptr = scope->Var(name);
+        InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
         Variable* root_var = root_scope_->FindVar(name);
         if (!root_var) {
           continue;
         }
         phi::DenseTensor* root_tensor =
             root_var->GetMutable<phi::DenseTensor>();
-        auto* ptr = scope->Var(name);
-        InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
         phi::DenseTensor* thread_tensor = ptr->GetMutable<phi::DenseTensor>();
         TensorCopy(*root_tensor, place, thread_tensor);
       }
@@ -300,6 +300,19 @@ void PSGPUTrainer::InitTrainerEnv(const ProgramDesc& main_program,
       }
     }
   }
+
+  for (size_t num = 0; num < places_.size(); ++num) {
+    Scope* scope = workers_[num]->GetThreadScope();
+    for (size_t i = 0; i < need_merge_var_names_.size(); i++) {
+      Variable* thread_var = scope->FindVar(need_merge_var_names_[i]);
+      if (thread_var != nullptr) {
+        continue;
+      }
+      auto* ptr = scope->Var(need_merge_var_names_[i]);
+      InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
+    }
+  }
+
   place_ = place;
   return;
 }

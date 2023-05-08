@@ -105,26 +105,6 @@ void VScal<double>(const double* a, const double* x, double* y, int n) {
 }
 
 template <>
-void StrideScal<float>(
-    const float* a, const float* x, float* y, int n, int stride) {
-  if (x == y) {
-    phi::dynload::cblas_sscal(n / stride, *a, y, stride);
-  } else {
-    refer::StrideScal<float>(a, x, y, n, stride);
-  }
-}
-
-template <>
-void StrideScal<double>(
-    const double* a, const double* x, double* y, int n, int stride) {
-  if (x == y) {
-    phi::dynload::cblas_dscal(n / stride, *a, y, stride);
-  } else {
-    refer::StrideScal<double>(a, x, y, n, stride);
-  }
-}
-
-template <>
 void VExp<float>(const float* x, float* y, int n) {
   phi::dynload::vsExp(n, x, y);
 }
@@ -174,16 +154,6 @@ void ASum<double>(const double* x, double* res, int n) {
   res[0] = phi::dynload::cblas_dasum(n, x, 1);
 }
 
-template <>
-void StrideASum<float>(const float* x, float* res, int n, int stride) {
-  res[0] = phi::dynload::cblas_sasum(n / stride, x, stride);
-}
-
-template <>
-void StrideASum<double>(const double* x, double* res, int n, int stride) {
-  res[0] = phi::dynload::cblas_dasum(n / stride, x, stride);
-}
-
 // TODO(TJ): tuning me carefully on AVX, AVX2 and AVX512
 template <>
 bool VMulKernel<float>::CanBeUsed(const int& d) const {
@@ -198,11 +168,6 @@ bool VAddKernel<float>::CanBeUsed(const int& d) const {
 template <>
 bool VScalKernel<float>::CanBeUsed(const int& d) const {
   return phi::backends::cpu::MayIUse(phi::backends::cpu::avx512f) && d > 512;
-}
-
-template <>
-bool StrideScalKernel<float>::CanBeUsed(const int& d) const {
-  return true;
 }
 
 template <>
@@ -281,12 +246,6 @@ bool MatMulKernel<double>::CanBeUsed(const matmul_attr_t& attr) const {
   return true;
 }
 
-template <>
-bool SoftmaxKernel<float>::CanBeUsed(const int& d) const {
-  // tuned on avx2
-  return phi::backends::cpu::MayIUse(phi::backends::cpu::avx) && d < 60;
-}
-
 #define AWALYS_USE_ME_WITH_DOUBLE(func)                      \
   template <>                                                \
   bool func##Kernel<double>::CanBeUsed(const int& d) const { \
@@ -296,13 +255,11 @@ bool SoftmaxKernel<float>::CanBeUsed(const int& d) const {
 AWALYS_USE_ME_WITH_DOUBLE(VMul);
 AWALYS_USE_ME_WITH_DOUBLE(VAdd);
 AWALYS_USE_ME_WITH_DOUBLE(VScal);
-AWALYS_USE_ME_WITH_DOUBLE(StrideScal);
 AWALYS_USE_ME_WITH_DOUBLE(VExp);
 AWALYS_USE_ME_WITH_DOUBLE(VSigmoid);
 AWALYS_USE_ME_WITH_DOUBLE(VTanh);
 AWALYS_USE_ME_WITH_DOUBLE(VSquare);
 AWALYS_USE_ME_WITH_DOUBLE(VCopy);
-AWALYS_USE_ME_WITH_DOUBLE(Softmax);
 
 #undef AWALYS_USE_ME_WITH_DOUBLE
 }  // namespace mkl
@@ -320,7 +277,6 @@ REGISTER_MKL_KERNEL(MatMul);
 REGISTER_MKL_KERNEL(VMul);
 REGISTER_MKL_KERNEL(VAdd);
 REGISTER_MKL_KERNEL(VScal);
-REGISTER_MKL_KERNEL(StrideScal);
 REGISTER_MKL_KERNEL(VExp);
 REGISTER_MKL_KERNEL(VSquare);
 REGISTER_MKL_KERNEL(VCopy);
@@ -329,7 +285,6 @@ REGISTER_MKL_KERNEL(VSigmoid);
 REGISTER_MKL_KERNEL(VTanh);
 REGISTER_MKL_KERNEL(SeqPool);
 REGISTER_MKL_KERNEL(EmbSeqPool);
-REGISTER_MKL_KERNEL(Softmax);
 REGISTER_MKL_KERNEL(Sgd);
 
 #undef REGISTER_MKL_KERNEL

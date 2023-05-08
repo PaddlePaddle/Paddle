@@ -17,16 +17,6 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/plugin/lookup_table.h"
 
 namespace paddle {
-namespace framework {
-class Scope;
-
-namespace proto {
-class OpDesc;
-}  // namespace proto
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
 namespace inference {
 namespace tensorrt {
 
@@ -120,4 +110,6 @@ class FusedLookupTablesOpConverter : public OpConverter {
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_TRT_OP_CONVERTER(lookup_table, FusedLookupTablesOpConverter);
+// NOTE(liuyuanle): We will remove the implementation here later. Ref to
+// tensorrt/convert/lookup_table_op.cc.
+// REGISTER_TRT_OP_CONVERTER(lookup_table, FusedLookupTablesOpConverter);

@@ -28,38 +28,17 @@ function(detection_library TARGET_NAME)
       PARENT_SCOPE)
 endfunction()
 
-if(WITH_ASCEND_CL)
-  detection_library(box_coder_op SRCS box_coder_op.cc box_coder_op_npu.cc)
-  detection_library(density_prior_box_op SRCS density_prior_box_op.cc
-                    density_prior_box_op.cu density_prior_box_op_npu.cc)
-else()
-  detection_library(box_coder_op SRCS box_coder_op.cc)
-  detection_library(density_prior_box_op SRCS density_prior_box_op.cc
-                    density_prior_box_op.cu)
-endif()
+detection_library(density_prior_box_op SRCS density_prior_box_op.cc
+                  density_prior_box_op.cu)
 
 if(WITH_XPU)
   detection_library(iou_similarity_op SRCS iou_similarity_op.cc
                     iou_similarity_op_xpu.cc)
   detection_library(prior_box_op SRCS prior_box_op.cc)
-  detection_library(yolo_box_op SRCS yolo_box_op.cc)
-  detection_library(generate_proposals_v2_op SRCS generate_proposals_v2_op.cc)
-elseif(WITH_MLU)
-  detection_library(iou_similarity_op SRCS iou_similarity_op.cc
-                    iou_similarity_op_mlu.cc)
-  detection_library(prior_box_op SRCS prior_box_op.cc prior_box_op_mlu.cc)
-  detection_library(yolo_box_op SRCS yolo_box_op.cc yolo_box_op_mlu.cc)
-elseif(WITH_ASCEND_CL)
-  detection_library(iou_similarity_op SRCS iou_similarity_op.cc
-                    iou_similarity_op_npu.cc)
-  detection_library(prior_box_op SRCS prior_box_op.cc prior_box_op_npu.cc)
-  detection_library(yolo_box_op SRCS yolo_box_op.cc)
 else()
   detection_library(iou_similarity_op SRCS iou_similarity_op.cc
                     iou_similarity_op.cu)
   detection_library(prior_box_op SRCS prior_box_op.cc)
-  detection_library(yolo_box_op SRCS yolo_box_op.cc)
-  # detection_library(generate_proposals_v2_op SRCS generate_proposals_v2_op.cc)
 endif()
 
 detection_library(bipartite_match_op SRCS bipartite_match_op.cc)
@@ -74,7 +53,6 @@ detection_library(generate_proposal_labels_op SRCS
                   generate_proposal_labels_op.cc)
 detection_library(multiclass_nms_op SRCS multiclass_nms_op.cc DEPS gpc)
 detection_library(locality_aware_nms_op SRCS locality_aware_nms_op.cc DEPS gpc)
-detection_library(matrix_nms_op SRCS matrix_nms_op.cc DEPS gpc)
 detection_library(box_clip_op SRCS box_clip_op.cc box_clip_op.cu)
 detection_library(yolov3_loss_op SRCS yolov3_loss_op.cc)
 detection_library(box_decoder_and_assign_op SRCS box_decoder_and_assign_op.cc
@@ -83,7 +61,6 @@ detection_library(sigmoid_focal_loss_op SRCS sigmoid_focal_loss_op.cc
                   sigmoid_focal_loss_op.cu)
 detection_library(retinanet_detection_output_op SRCS
                   retinanet_detection_output_op.cc)
-detection_library(nms_op SRCS nms_op.cc)
 
 if(WITH_GPU OR WITH_ROCM)
   set(TMPDEPS memory)
@@ -94,17 +71,12 @@ if(WITH_GPU OR WITH_ROCM)
   endif()
   detection_library(generate_proposals_op SRCS generate_proposals_op.cc
                     generate_proposals_op.cu DEPS ${TMPDEPS})
-  detection_library(generate_proposals_v2_op SRCS generate_proposals_v2_op.cc
-                    DEPS ${TMPDEPS})
   detection_library(distribute_fpn_proposals_op SRCS
                     distribute_fpn_proposals_op.cc DEPS ${TMPDEPS})
   detection_library(collect_fpn_proposals_op SRCS collect_fpn_proposals_op.cc
                     collect_fpn_proposals_op.cu DEPS ${TMPDEPS})
 else()
   detection_library(generate_proposals_op SRCS generate_proposals_op.cc)
-  if(NOT WITH_XPU)
-    detection_library(generate_proposals_v2_op SRCS generate_proposals_v2_op.cc)
-  endif()
   detection_library(distribute_fpn_proposals_op SRCS
                     distribute_fpn_proposals_op.cc)
   detection_library(collect_fpn_proposals_op SRCS collect_fpn_proposals_op.cc)

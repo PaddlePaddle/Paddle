@@ -152,7 +152,7 @@ __global__ void KeTemporalShiftBwNHWC(const T* output_grad,
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class TemporalShiftOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -208,7 +208,7 @@ class TemporalShiftOpCUDAKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class TemporalShiftGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -267,13 +267,19 @@ class TemporalShiftGradOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    temporal_shift,
-    ops::TemporalShiftOpCUDAKernel<float>,
-    ops::TemporalShiftOpCUDAKernel<double>,
-    ops::TemporalShiftOpCUDAKernel<paddle::platform::float16>);
-REGISTER_OP_CUDA_KERNEL(
-    temporal_shift_grad,
-    ops::TemporalShiftGradOpCUDAKernel<float>,
-    ops::TemporalShiftGradOpCUDAKernel<double>,
-    ops::TemporalShiftGradOpCUDAKernel<paddle::platform::float16>);
+namespace plat = paddle::platform;
+
+PD_REGISTER_STRUCT_KERNEL(temporal_shift,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::TemporalShiftOpCUDAKernel,
+                          float,
+                          double,
+                          plat::float16) {}
+PD_REGISTER_STRUCT_KERNEL(temporal_shift_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::TemporalShiftGradOpCUDAKernel,
+                          float,
+                          double,
+                          plat::float16) {}

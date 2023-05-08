@@ -18,9 +18,9 @@ import numpy as np
 from test_sparse_attention_op import get_cuda_version
 
 import paddle
-import paddle.fluid.core as core
 import paddle.nn.functional as F
 from paddle import _legacy_C_ops, tensor
+from paddle.fluid import core
 from paddle.fluid.framework import default_main_program
 from paddle.nn.layer.common import Dropout
 from paddle.nn.layer.norm import LayerNorm

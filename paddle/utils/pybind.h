@@ -24,8 +24,6 @@ namespace py = pybind11;
 namespace paddle {
 namespace pybind {
 
-extern PyTypeObject* p_tensor_type;
-
 typedef struct {
   PyObject_HEAD paddle::Tensor tensor;
   // Weak references

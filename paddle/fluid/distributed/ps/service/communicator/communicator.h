@@ -41,6 +41,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/split.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
@@ -52,7 +53,7 @@ struct CommContext;
 }  // namespace distributed
 }  // namespace paddle
 
-DECLARE_bool(communicator_is_sgd_optimizer);
+PHI_DECLARE_bool(communicator_is_sgd_optimizer);
 
 namespace paddle {
 namespace distributed {

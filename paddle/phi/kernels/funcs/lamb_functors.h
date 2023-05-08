@@ -18,8 +18,8 @@ limitations under the License. */
 #include <Eigen/Dense>
 #include <vector>
 
-#include "paddle/fluid/memory/buffer.h"
 #include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/algorithm.h"

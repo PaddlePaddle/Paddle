@@ -237,6 +237,13 @@ class SplitCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
   }
 };
 
+class SplitInferVarType : public framework::VarTypeInference {
+ public:
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    ctx->SyncTypeAndDataType("X", "Out");
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -246,5 +253,6 @@ REGISTER_OPERATOR(split,
                   ops::SplitOp,
                   ops::SplitOpMaker,
                   ops::SplitCompositeGradOpMaker,
+                  ops::SplitInferVarType,
                   ops::SplitGradMaker<paddle::framework::OpDesc>,
                   ops::SplitGradMaker<paddle::imperative::OpBase>);

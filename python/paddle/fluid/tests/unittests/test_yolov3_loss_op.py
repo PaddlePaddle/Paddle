@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 from scipy.special import expit, logit
 
 import paddle
@@ -81,7 +81,7 @@ def YOLOv3Loss(x, gtbox, gtlabel, gtscore, attrs):
     bias_x_y = -0.5 * (scale_x_y - 1.0)
     input_size = downsample_ratio * h
     x = x.reshape((n, mask_num, 5 + class_num, h, w)).transpose((0, 1, 3, 4, 2))
-    loss = np.zeros((n)).astype('float64')
+    loss = np.zeros(n).astype('float64')
 
     smooth_weight = min(1.0 / class_num, 1.0 / 40)
     label_pos = 1.0 - smooth_weight if use_label_smooth else 1.0
@@ -272,13 +272,11 @@ class TestYolov3LossOp(OpTest):
 
     def test_check_output(self):
         place = core.CPUPlace()
-        self.check_output_with_place(place, atol=2e-3, check_eager=True)
+        self.check_output_with_place(place, atol=2e-3)
 
     def test_check_grad_ignore_gtbox(self):
         place = core.CPUPlace()
-        self.check_grad_with_place(
-            place, ['X'], 'Loss', max_relative_error=0.2, check_eager=True
-        )
+        self.check_grad_with_place(place, ['X'], 'Loss', max_relative_error=0.2)
 
     def initTestCase(self):
         self.anchors = [

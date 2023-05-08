@@ -18,7 +18,6 @@ import paddle
 from paddle import _C_ops, _legacy_C_ops
 from paddle.common_ops_import import Variable, default_main_program
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.layers.tensor import fill_constant
 from paddle.framework import core, in_dynamic_mode
 from paddle.tensor.creation import full
 
@@ -400,9 +399,7 @@ def interpolate(
     if size is None and scale_factor is None:
         raise ValueError("One of size and scale_factor must not be None.")
 
-    if (isinstance(size, list) or isinstance(size, tuple)) and len(
-        size
-    ) != x.ndim - 2:
+    if isinstance(size, (tuple, list)) and (len(size) != x.ndim - 2):
         raise ValueError(
             'The x and size should satisfy rank(x) - 2 == len(size).'
         )
@@ -428,11 +425,7 @@ def interpolate(
         )
 
     if resample == 'AREA':
-        if (
-            isinstance(size, list)
-            or isinstance(size, tuple)
-            or isinstance(size, Variable)
-        ):
+        if isinstance(size, (list, tuple, Variable)):
             if len(size) == 0:
                 raise ValueError("output size can not be empty")
         if size is None:
@@ -444,7 +437,7 @@ def interpolate(
             return paddle.nn.functional.adaptive_avg_pool2d(x, size)
         elif len(x.shape) == 5:
             return paddle.nn.functional.adaptive_avg_pool3d(x, size)
-    helper = LayerHelper('{}_interp_v2'.format(resample_type), **locals())
+    helper = LayerHelper(f'{resample_type}_interp_v2', **locals())
     if len(x.shape) == 3 and data_format not in ['NCW', 'NWC']:
         raise ValueError(
             "Got wrong value for param `data_format`: "
@@ -465,7 +458,7 @@ def interpolate(
         )
 
     def _is_list_or_turple_(data):
-        return isinstance(data, list) or isinstance(data, tuple)
+        return isinstance(data, (list, tuple))
 
     if data_format == 'NCHW' or data_format == 'NCDHW' or data_format == 'NCW':
         data_layout = 'NCHW'
@@ -497,13 +490,13 @@ def interpolate(
         else:
             if in_dynamic_mode():
                 if isinstance(out_shape, Variable):
-                    out_shape = list(out_shape.numpy())
+                    out_shape = list(out_shape.numpy(False))
                 else:
                     out_shape = list(out_shape)
 
                 for i, dim in enumerate(out_shape):
                     if isinstance(dim, Variable):
-                        out_shape[i] = dim.numpy().item()
+                        out_shape[i] = dim.item()
             if not (_is_list_or_turple_(out_shape)):
                 raise TypeError("size should be a list or tuple or Variable.")
             # Validate the shape
@@ -529,7 +522,7 @@ def interpolate(
                         temp_out = helper.create_variable_for_type_inference(
                             'int32'
                         )
-                        fill_constant(
+                        paddle.tensor.fill_constant(
                             [1], 'int32', dim, force_cpu=True, out=temp_out
                         )
                         new_size_tensor.append(temp_out)
@@ -582,18 +575,14 @@ def interpolate(
         if isinstance(scale, Variable):
             scale.stop_gradient = True
             inputs["Scale"] = scale
-        elif (
-            isinstance(scale, float)
-            or isinstance(scale, int)
-            or isinstance(scale, numpy.ndarray)
-        ):
+        elif isinstance(scale, (float, int, numpy.ndarray)):
             if scale <= 0:
                 raise ValueError("Attr(scale) should be greater than zero.")
             scale_list = []
             for i in range(len(x.shape) - 2):
                 scale_list.append(scale)
             attrs['scale'] = list(map(float, scale_list))
-        elif isinstance(scale, list) or isinstance(scale, tuple):
+        elif isinstance(scale, (list, tuple)):
             if len(scale) != len(x.shape) - 2:
                 raise ValueError(
                     "scale_shape length should be {} for "
@@ -711,7 +700,7 @@ def interpolate(
 
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
-        type='{}_interp_v2'.format(resample_type),
+        type=f'{resample_type}_interp_v2',
         inputs=inputs,
         outputs={"Out": out},
         attrs=attrs,
@@ -953,7 +942,7 @@ def bilinear(x1, x2, weight, bias=None, name=None):
     """
 
     if in_dygraph_mode():
-        return _C_ops.bilinear_tensor_product(x1, x2, weight, bias)
+        return _C_ops.bilinear(x1, x2, weight, bias)
     else:
         check_variable_and_dtype(x1, 'x1', ['float32', 'float64'], 'bilinear')
         check_variable_and_dtype(x2, 'x2', ['float32', 'float64'], 'bilinear')
@@ -1161,7 +1150,7 @@ def dropout(
         else:
             helper = LayerHelper('dropout', **locals())
             check_variable_and_dtype(
-                x, 'x', ['float16', 'float32', 'float64'], 'dropout'
+                x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'dropout'
             )
 
             out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -1202,7 +1191,7 @@ def dropout(
     else:  # sometimes called dropout_nd #TODO: optimize with c++
         if not in_dynamic_mode():
             check_variable_and_dtype(
-                x, 'x', ['float16', 'float32', 'float64'], 'dropout'
+                x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'dropout'
             )
         dtype = x.dtype
         keep_prob = 1 - p
@@ -1418,7 +1407,7 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
 
     if not in_dynamic_mode():
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'alpha_dropout'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'alpha_dropout'
         )
 
     if training:
@@ -1609,6 +1598,7 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
                 'int64',
                 'complex64',
                 'complex128',
+                'uint16',
             ],
             "pad",
         )
@@ -1632,7 +1622,7 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
         3,
         4,
         5,
-    ], "input tesor dimension must be in [3, 4, 5] but got {}".format(x_dim)
+    ], f"input tesor dimension must be in [3, 4, 5] but got {x_dim}"
 
     supported_format_map = {
         3: ["NCL", "NLC"],
@@ -1693,7 +1683,7 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
 
     if in_dygraph_mode():
         if isinstance(pad, Variable):
-            pad = pad.numpy().tolist()
+            pad = pad.tolist()
         out = _C_ops.pad3d(x, pad, mode, value, data_format)
     else:
         attrs = {'mode': mode, 'value': value, 'data_format': data_format}
@@ -1833,7 +1823,7 @@ def linear(x, weight, bias=None, name=None):
     :math:`[out\_features]` and will be added to the output.
 
     Parameters:
-        x (Tensor): Input tensor. The data type should be float16, float32 or float64.
+        x (Tensor): Input tensor. The data type should be bfloat16, float16, float32 or float64.
         weight (Tensor): Weight tensor. The data type should be float16, float32 or float64.
         bias (Tensor, optional): Bias tensor. The data type should be float16, float32 or float64.
                                  If it is set to None, no bias will be added to the output units.
@@ -1871,9 +1861,14 @@ def linear(x, weight, bias=None, name=None):
         dtype = x.dtype
 
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'linear'
+            x, 'x', ["uint16", 'float16', 'float32', 'float64'], 'linear'
         )
-        check_dtype(dtype, 'dtype', ['float16', 'float32', 'float64'], 'linear')
+        check_dtype(
+            dtype,
+            'dtype',
+            ["uint16", 'float16', 'float32', 'float64'],
+            'linear',
+        )
 
         inputs = {'X': [x], 'Y': [weight]}
         attrs = {'trans_x': False, 'trans_y': False}
@@ -1965,7 +1960,10 @@ def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
         )
 
     check_variable_and_dtype(
-        label, 'label', ['float16', 'float32', 'float64'], 'label_smooth'
+        label,
+        'label',
+        ['uint16', 'float16', 'float32', 'float64'],
+        'label_smooth',
     )
 
     helper = LayerHelper("label_smooth", **locals())
@@ -2276,7 +2274,7 @@ def fold(
     assert len(x.shape) == 3, "input should be the format of [N, C, L]"
 
     def _is_list_or_turple_(data):
-        return isinstance(data, list) or isinstance(data, tuple)
+        return isinstance(data, (list, tuple))
 
     if isinstance(output_sizes, int):
         output_sizes = [output_sizes, output_sizes]

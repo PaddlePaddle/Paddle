@@ -19,11 +19,14 @@ import threading
 import warnings
 import weakref
 
-from paddle.amp.auto_cast import _in_amp_guard
 from paddle.fluid import _non_static_mode, core, framework
 from paddle.fluid.data_feeder import check_type
-from paddle.fluid.dygraph import layers
-from paddle.fluid.dygraph.base import param_guard, switch_to_static_graph
+from paddle.fluid.dygraph.base import (
+    _switch_declarative_mode_guard_,
+    param_guard,
+    switch_to_static_graph,
+)
+from paddle.nn.layer import layers
 from paddle.utils import flatten, gast
 
 from . import error, logging_utils
@@ -42,8 +45,10 @@ from .origin_info import (
 from .partial_program import PartialProgramLayerHook, partial_program_from
 from .utils import (
     ALREADY_D2S,
+    NO_SHAPE_VAR_TYPE,
     ast_to_func,
     ast_to_source_code,
+    backend_guard,
     func_to_source_code,
     input_specs_compatible,
     is_paddle_func,
@@ -81,7 +86,7 @@ class FunctionCache:
         # Caches the converted static functions. {dygraph_func: static_func}
         self._converted_static_func_caches = weakref.WeakKeyDictionary()
         # Caches the converted ast node for same source code. {source_code: ast_root}
-        self._code_to_ast_caches = dict()
+        self._code_to_ast_caches = {}
         self._dygraph_to_static = DygraphToStaticAst()
 
     def convert_with_cache(self, func):
@@ -314,8 +319,8 @@ class StaticFunction:
         # save the instance `self` while decorating a method of class.
 
         if inspect.ismethod(function):
-            self._dygraph_function = getattr(function, '__func__')
-            self._class_instance = getattr(function, '__self__')
+            self._dygraph_function = function.__func__
+            self._class_instance = function.__self__
 
             if not hasattr(self._class_instance, '_original_funcs'):
                 raise TypeError(
@@ -330,7 +335,7 @@ class StaticFunction:
             self._class_instance = None
 
         if input_spec is not None and prim_or_cinn_is_enabled(
-            kwargs.get("build_strategy", None)
+            kwargs.get("build_strategy", None), kwargs.get("backend", None)
         ):
             from paddle.static import InputSpec
 
@@ -546,10 +551,13 @@ class StaticFunction:
 
         with_hook = kwargs.get("with_hook", False)
         is_train = kwargs.get("is_train", True)
+        is_prim_infer = kwargs.get("is_prim_infer", False)
         if "is_train" in kwargs:
             kwargs.pop("is_train")
         if "with_hook" in kwargs:
             kwargs.pop("with_hook")
+        if "is_prim_infer" in kwargs:
+            kwargs.pop("is_prim_infer")
         # 1. unify args/kwargs and replace Tensor with InputSpec
         if len(args) != len(self._function_spec.args_name):
             args, kwargs = self._function_spec.unified_args_and_kwargs(
@@ -570,9 +578,33 @@ class StaticFunction:
             with_hook=with_hook,
             is_train=is_train,
         )
+        if is_prim_infer:
+            (
+                concrete_program,
+                partial_program_layer,
+            ) = self._program_cache.get_program_without_cache(cache_key)
+        else:
+            # 3. check whether hit the cache or build a new program for the input arguments
+            concrete_program, partial_program_layer = self._program_cache[
+                cache_key
+            ]
+        return concrete_program, partial_program_layer
 
-        # 3. check whether hit the cache or build a new program for the input arguments
-        concrete_program, partial_program_layer = self._program_cache[cache_key]
+    def get_concrete_program_with_cache_key(self, cached_key):
+        """
+        Returns traced concrete program and inner executable partial layer by cached key.
+
+        Args:
+            cached_key(CacheKey): The cached key use to get concrete program.
+
+        Returns:
+            Traced ConcreteProgram and executable translated Layer.
+        """
+        self._raise_when_property()
+        (
+            concrete_program,
+            partial_program_layer,
+        ) = self._program_cache.get_program_without_cache(cached_key)
         return concrete_program, partial_program_layer
 
     def get_traced_count(self):
@@ -630,7 +662,7 @@ class StaticFunction:
         return self.concrete_program_specify_input_spec(input_spec=None)
 
     def concrete_program_specify_input_spec(
-        self, input_spec=None, with_hook=False
+        self, input_spec=None, with_hook=False, is_prim_infer=False
     ):
         """
         Returns recent ConcreteProgram instance of decorated function while
@@ -648,6 +680,8 @@ class StaticFunction:
         # else, return the last one.
         cached_program_len = len(self._program_cache)
         # If specific `input_spec`, apply convertion from dygraph layers into static Program.
+        # NOTE(jiabin): is_prim_infer indicates this method called by paddle.jit.save and it is worked in prim mode
+
         if cached_program_len == 0:
             desired_input_spec = input_spec
             if self._function_spec.input_spec is not None:
@@ -675,6 +709,7 @@ class StaticFunction:
                     *desired_input_spec,
                     with_hook=with_hook,
                     is_train=self._is_train_mode(),
+                    is_prim_infer=is_prim_infer,
                 )
                 return concrete_program
             else:
@@ -686,9 +721,14 @@ class StaticFunction:
         elif with_hook:
             cache_key = self._program_cache._recent_cache_key
             cache_key.kwargs["with_hook"] = True
-            concrete_program, _ = self._program_cache[cache_key]
-            return concrete_program
-
+            if not is_prim_infer:
+                concrete_program, _ = self._program_cache[cache_key]
+                return concrete_program
+            else:
+                concrete_program, _ = self.get_concrete_program_with_cache_key(
+                    cache_key
+                )
+                return concrete_program
         # If more than one programs have been cached, return the recent converted program by default.
         elif cached_program_len > 1:
             logging_utils.warn(
@@ -696,12 +736,18 @@ class StaticFunction:
                     self._function_spec, cached_program_len
                 )
             )
-
-        cache_key, (
-            concrete_program,
-            partial_layer,
-        ) = self._program_cache.last()
-        return concrete_program
+        if not is_prim_infer:
+            cache_key, (
+                concrete_program,
+                partial_layer,
+            ) = self._program_cache.last()
+            return concrete_program
+        else:
+            cache_key = self._program_cache._recent_cache_key
+            concrete_program, _ = self.get_concrete_program_with_cache_key(
+                cache_key
+            )
+            return concrete_program
 
     def rollback(self):
         """
@@ -885,7 +931,7 @@ class HookHelper:
         self.need_apply_hook = (
             with_hook
             and isinstance(self.class_instance, layers.Layer)
-            and getattr(func, "__name__") == "forward"
+            and func.__name__ == "forward"
         )
 
     def apply_pre_hooks(self, inputs):
@@ -989,11 +1035,9 @@ class ConcreteProgram:
             framework.default_startup_program().random_seed
         )
 
-        from paddle.fluid.dygraph.base import _switch_declarative_mode_guard_
-
         with framework.program_guard(main_program, startup_program):
             with _switch_declarative_mode_guard_(is_declarative=True):
-                # 1. Adds `fluid.data` layers for input if needed
+                # 1. Adds `paddle.static.data` layers for input if needed
                 static_inputs = func_spec.to_static_inputs_with_spec(
                     input_spec, main_program
                 )
@@ -1081,7 +1125,7 @@ class ParametersRecorder:
         return id(program)
 
 
-class FallbackProgramLayer(object):
+class FallbackProgramLayer:
     __slots__ = [
         '_instance',
         '_dy_func',
@@ -1141,11 +1185,9 @@ class ProgramCache:
     def _build_once(self, cache_key):
         # TODO(Aurelius84): Need a gloabl FLAGS to enable/disable to_prim
         enable_prim = cache_key.kwargs['build_strategy'].build_cinn_pass
-        # TODO(CZ): later when use cinn, set_prim_all_enabled and check_and_set_prim_all_enabled will be set at else branch.
 
         # NOTE(xiongkun): Need a global FLAGS to enable/disable fallback
         enable_fallback = enable_prim
-        core.check_and_set_prim_all_enabled()
         try:
             concrete_program = ConcreteProgram.from_func_spec(
                 func_spec=cache_key.function_spec,
@@ -1173,20 +1215,24 @@ class ProgramCache:
             else:
                 raise
 
-        if prim_or_cinn_is_enabled(cache_key.kwargs['build_strategy']):
+        backend = cache_key.kwargs['backend']
+        if prim_or_cinn_is_enabled(cache_key.kwargs['build_strategy'], backend):
             for var in concrete_program.main_program.list_vars():
-                if -1 in var.shape:
+                if var.type not in NO_SHAPE_VAR_TYPE and -1 in var.shape:
                     warnings.warn(
                         "Now prim and cinn do not support -1 shape, but the shape of var {} is {}".format(
                             var.name, var.shape
                         )
                     )
 
-        partial_program = partial_program_from(concrete_program)
-        if core._is_fwd_prim_enabled() and not _in_amp_guard():
-            partial_program.set_hooker(
-                PrimHooker(concrete_program.main_program)
-            )
+        partial_program = partial_program_from(
+            concrete_program, cache_key.class_instance is not None
+        )
+        with backend_guard(backend):
+            if core._is_fwd_prim_enabled():
+                partial_program.set_hooker(
+                    PrimHooker(concrete_program.main_program, backend)
+                )
         return concrete_program, partial_program
 
     def __getitem__(self, item):
@@ -1211,6 +1257,9 @@ class ProgramCache:
                 )
 
         return self._caches[item_id]
+
+    def get_program_without_cache(self, cache_key):
+        return self._build_once(cache_key=cache_key)
 
     def get_program(self, item):
         if not isinstance(item, CacheKey):
@@ -1243,35 +1292,46 @@ class ProgramCache:
 
 
 class PrimHooker(PartialProgramLayerHook):
-    def __init__(self, original_program):
+    def __init__(self, original_program, backend):
         if len(original_program.blocks) > 1:
             raise ValueError(
                 'The primitive mode only support one block currently.'
             )
+        self.backend = backend
         self.custom_vjps = set()
-        if core._is_all_prim_enabled():
-            self.custom_vjps = {
-                op.type
-                for op in original_program.block(0).ops
-                if core.has_comp_grad_op_maker(op.type)
-            }
+        with backend_guard(self.backend):
+            if core._is_all_prim_enabled():
+                self.custom_vjps = {
+                    op.type
+                    for op in original_program.block(0).ops
+                    if core.has_comp_grad_op_maker(op.type)
+                }
 
     def before_append_backward(self, forward_program):
-        if core._is_fwd_prim_enabled():
-            _to_prim(forward_program.blocks, blacklist=self.custom_vjps)
-        return forward_program
+        with backend_guard(self.backend):
+            if core._is_fwd_prim_enabled():
+                _to_prim(forward_program.blocks, blacklist=self.custom_vjps)
+            return forward_program
 
     def after_append_backward(self, whole_program, backward_start_idx):
-        backward_length = len(whole_program.block(0).ops) - backward_start_idx
-        if core._is_fwd_prim_enabled() and len(self.custom_vjps) != 0:
-            _to_prim(whole_program.blocks, whitelist=self.custom_vjps)
-        new_start_index = len(whole_program.block(0).ops) - backward_length
-        return whole_program, new_start_index
+        with backend_guard(self.backend):
+            backward_length = (
+                len(whole_program.block(0).ops) - backward_start_idx
+            )
+            if core._is_fwd_prim_enabled() and len(self.custom_vjps) != 0:
+                # only process backward part of block
+                _to_prim(whole_program.blocks, backward_length=backward_length)
+            new_start_index = len(whole_program.block(0).ops) - backward_length
+            if backward_length > 0:
+                # only process forward part of block
+                _to_prim(whole_program.blocks, start_idx=new_start_index)
+            return whole_program, new_start_index
 
     def after_infer(self, infer_program):
-        if core._is_fwd_prim_enabled():
-            _to_prim(infer_program.block(0))
-        return infer_program
+        with backend_guard(self.backend):
+            if core._is_fwd_prim_enabled():
+                _to_prim(infer_program.block(0))
+            return infer_program
 
 
 class ProgramTranslator:
@@ -1691,9 +1751,21 @@ def enable_to_static(enable_to_static_bool):
 
 
 @switch_to_static_graph
-def _to_prim(blocks, blacklist=frozenset(), whitelist=frozenset()):
+def _to_prim(
+    blocks,
+    blacklist=frozenset(),
+    whitelist=frozenset(),
+    start_idx=-1,
+    backward_length=-1,
+):
     """Swith to static graph and call to_prim."""
     # TODO(Aurelius84): Fix this cycle import problem
     from paddle.incubate.autograd import primapi
 
-    primapi.to_prim(blocks, blacklist=blacklist, whitelist=whitelist)
+    primapi.to_prim(
+        blocks,
+        blacklist=blacklist,
+        whitelist=whitelist,
+        start_idx=start_idx,
+        backward_length=backward_length,
+    )

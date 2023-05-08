@@ -116,7 +116,7 @@ struct Argument {
   }                                                                         \
   void Set##Field##NotOwned(type__* x) {                                    \
     valid_fields_.insert(#field__);                                         \
-    field__##_ = unique_ptr_t(x, [](void* x) {});                           \
+    field__##_ = unique_ptr_t(x, [](void* x UNUSED) {});                    \
   }                                                                         \
   DECL_ARGUMENT_FIELD_VALID(field__);                                       \
   type__* field__##_ptr() {                                                 \
@@ -289,6 +289,12 @@ struct Argument {
   DECL_ARGUMENT_FIELD(xpu_adaptive_seqlen, XpuAdaptiveSeqlen, bool);
   DECL_ARGUMENT_FIELD(xpu_device_id, XpuDeviceId, int);
   DECL_ARGUMENT_FIELD(xpu_enable_multi_stream, XpuEnableMultiStream, bool);
+  DECL_ARGUMENT_FIELD(xpu_quant_post_dynamic_weight_bits,
+                      XpuQuantPostDynamicWeightBits,
+                      int);
+  DECL_ARGUMENT_FIELD(xpu_quant_post_dynamic_op_types,
+                      XpuQuantPostDynamicOpTypss,
+                      std::vector<std::string>);
 
   DECL_ARGUMENT_FIELD(use_opencl, UseOpenCL, bool);
 
@@ -376,6 +382,9 @@ struct Argument {
   DECL_ARGUMENT_FIELD(use_custom_device, UseCustomDevice, bool);
   DECL_ARGUMENT_FIELD(custom_device_type, CustomDeviceType, std::string);
   DECL_ARGUMENT_FIELD(custom_device_id, CustomDeviceId, int);
+  DECL_ARGUMENT_FIELD(enable_custom_device_mixed,
+                      EnableCustomDeviceMixed,
+                      bool);
 
  private:
   std::unordered_set<std::string> valid_fields_;

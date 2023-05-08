@@ -40,8 +40,9 @@ void AsComplexKernel(const Context& ctx,
   auto out_dims_original = out->dims();
   Copy(ctx, x, ctx.GetPlace(), false, out);
   out->Resize(out_dims_original);  // restored the shape.
-  out->set_type(paddle::experimental::CppTypeToDataType<
-                phi::dtype::complex<T>>::Type());  // restored the dtype.
+  out->set_type(
+      phi::CppTypeToDataType<phi::dtype::complex<T>>::Type());  // restored the
+                                                                // dtype.
 }
 
 }  // namespace phi

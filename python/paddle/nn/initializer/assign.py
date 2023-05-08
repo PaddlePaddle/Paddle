@@ -211,6 +211,6 @@ class Assign(NumpyArrayInitializer):
 
         # TODO: value is already is a tensor, accounting efficiency maybe it does not need to convert tensor to numpy data and then initialized.
         if isinstance(value, paddle.static.Variable):
-            value = value.numpy()
+            value = value.numpy(False)
 
         super().__init__(value)

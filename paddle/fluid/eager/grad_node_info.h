@@ -25,7 +25,7 @@ namespace egr {
 /**
  * GradNodeBase is base class of all grad node, which is what should be used by
  * eager execution, we define most of backward autograd members here, and for
- * each Operator, they should hold their onw forward Inputs as TensorWrapper.
+ * each Operator, they should hold their own forward Inputs as TensorWrapper.
  *
  * The GradNodeBase will be held in autograd_meta, and it is also a member of
  * Edge, which indicates the edge of backward graph.
@@ -40,7 +40,7 @@ namespace egr {
  *
  * NOTE: GradNodeBase holds its own inputs and Outputs
  *
- * Edge is defined to descripe depend of backward, an Edge is what linked
+ * Edge is defined to describe depend of backward, an Edge is what linked
  * between two node, it should contain a Node and rank of this Node (this is
  * used to indicate which input of grad this edge belong).
  **/
@@ -225,6 +225,9 @@ class GradNodeBase {
   void SetGradOutMeta(const std::vector<const paddle::Tensor*>& fwd_in,
                       size_t slot_rank);
   void SetGradOutMeta(const paddle::Tensor& fwd_in, size_t slot_rank);
+  void SetGradOutMeta(const paddle::Tensor& fwd_in,
+                      const AutogradMeta* fwd_in_other,
+                      size_t slot_rank);
   /**
    * Default setters for Grad in/out meta this should be used for same special
    * Node which will not create by user
@@ -289,6 +292,10 @@ class GradNodeBase {
     is_tensor_wrappers_cleared_ = is_tensor_wrappers_cleared;
   }
 
+  void SetForwardTrace(std::string trace) { forward_trace_ = trace; }
+
+  std::string GetForwardTrace() { return forward_trace_; }
+
  private:
   // bwd_out_meta_ is used to record Grad output info for backward
   paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>
@@ -314,6 +321,8 @@ class GradNodeBase {
   bool need_complex_to_real_ = false;
 
   bool is_tensor_wrappers_cleared_ = false;
+  // The trace of forward function
+  std::string forward_trace_ = "";
 };
 
 }  // namespace egr

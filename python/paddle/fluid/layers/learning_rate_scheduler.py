@@ -352,19 +352,21 @@ def polynomial_decay(
 
             if cycle:
                 div_res = paddle.ceil(global_step / decay_steps)
-                zero_var = tensor.fill_constant(
+                zero_var = paddle.tensor.fill_constant(
                     shape=[1], dtype='float32', value=0.0
                 )
-                one_var = tensor.fill_constant(
+                one_var = paddle.tensor.fill_constant(
                     shape=[1], dtype='float32', value=1.0
                 )
 
-                with control_flow.Switch() as switch:
-                    with switch.case(global_step == zero_var):
-                        paddle.assign(one_var, output=div_res)
+                div_val = paddle.static.nn.cond(
+                    global_step == zero_var, lambda: one_var, lambda: div_res
+                )
+                paddle.assign(div_val, output=div_res)
+
                 decay_steps = decay_steps * div_res
             else:
-                decay_steps_var = tensor.fill_constant(
+                decay_steps_var = paddle.tensor.fill_constant(
                     shape=[1], dtype='float32', value=float(decay_steps)
                 )
                 global_step = paddle.minimum(x=global_step, y=decay_steps_var)
@@ -432,30 +434,29 @@ def piecewise_decay(boundaries, values):
                 persistable=True,
                 name="learning_rate",
             )
-
+            # TODO: fluid.layers.control_flow.Switch should be replaced by paddle.static.nn.case(or cond) if possible
             with control_flow.Switch() as switch:
                 for i in range(len(boundaries)):
-                    boundary_val = tensor.fill_constant(
+                    boundary_val = paddle.tensor.fill_constant(
                         shape=[1],
                         dtype='float32',
                         value=float(boundaries[i]),
                         force_cpu=True,
                     )
                     with switch.case(global_step < boundary_val):
-                        tensor.fill_constant(
+                        paddle.tensor.fill_constant(
                             shape=[1],
                             dtype="float32",
                             value=float(values[i]),
                             out=lr,
                         )
                 with switch.default():
-                    tensor.fill_constant(
+                    paddle.tensor.fill_constant(
                         shape=[1],
                         dtype="float32",
                         value=float(values[len(values) - 1]),
                         out=lr,
                     )
-
             return lr
 
 
@@ -589,17 +590,19 @@ def linear_lr_warmup(learning_rate, warmup_steps, start_lr, end_lr):
             )
 
             global_step = _decay_step_counter()
-
-            with control_flow.Switch() as switch:
-                with switch.case(global_step < warmup_steps):
-                    decayed_lr = start_lr + linear_step * (
-                        global_step / float(warmup_steps)
+            if not isinstance(learning_rate, Variable):
+                learning_rate = paddle.tensor.fill_constant(
+                    shape=[1], dtype=dtype, value=float(learning_rate)
+                )
+            lr_val = paddle.static.nn.case(
+                pred_fn_pairs=[
+                    (
+                        global_step < warmup_steps,
+                        lambda: start_lr
+                        + linear_step * (global_step / float(warmup_steps)),
                     )
-                    paddle.assign(decayed_lr, lr)
-                with switch.default():
-                    if not isinstance(learning_rate, Variable):
-                        learning_rate = tensor.fill_constant(
-                            shape=[1], dtype=dtype, value=float(learning_rate)
-                        )
-                    paddle.assign(learning_rate, lr)
+                ],
+                default=lambda: learning_rate,
+            )
+            paddle.assign(lr_val, lr)
             return lr

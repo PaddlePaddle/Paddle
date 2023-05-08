@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from eager_op_test import convert_float_to_uint16
 
 import paddle
 from paddle.framework import _non_static_mode
@@ -24,8 +25,10 @@ SUPPORTED_DTYPES = [
     bool,
     np.int8,
     np.int16,
+    np.uint16,
     np.int32,
     np.int64,
+    np.float16,
     np.float32,
     np.float64,
 ]
@@ -118,6 +121,9 @@ def run_eager(x_np, y_np, op_str, use_gpu=False, binary_op=True):
 def np_data_generator(np_shape, dtype, *args, **kwargs):
     if dtype == bool:
         return np.random.choice(a=[True, False], size=np_shape).astype(bool)
+    elif dtype == np.uint16:
+        x = np.random.uniform(0.0, 1.0, np_shape).astype(np.float32)
+        return convert_float_to_uint16(x)
     else:
         return np.random.normal(0, 1, np_shape).astype(dtype)
 
@@ -132,6 +138,10 @@ def test(unit_test, use_gpu=False, test_error=False):
             META_DATA = dict(TEST_META_WRONG_SHAPE_DATA)
         for shape_data in META_DATA.values():
             for data_type in SUPPORTED_DTYPES:
+                if not (paddle.is_compiled_with_cuda() and use_gpu) and (
+                    data_type in [np.float16, np.uint16]
+                ):
+                    continue
                 meta_data['x_np'] = np_data_generator(
                     shape_data['x_shape'], dtype=data_type
                 )
@@ -184,6 +194,16 @@ def test_type_error(unit_test, use_gpu, type_str_map):
     if use_gpu and paddle.is_compiled_with_cuda():
         place = paddle.CUDAPlace(0)
     for op_data in TEST_META_OP_DATA:
+        if (
+            paddle.is_compiled_with_cuda()
+            and use_gpu
+            and (
+                type_str_map['x'] in [np.float16, np.uint16]
+                or type_str_map['y'] in [np.float16, np.uint16]
+            )
+        ):
+            continue
+
         meta_data = dict(op_data)
         binary_op = meta_data['binary_op']
 

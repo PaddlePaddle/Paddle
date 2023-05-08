@@ -124,10 +124,3 @@ cc_test(
   test_fleet_cc
   SRCS test_fleet.cc
   DEPS fleet_wrapper gloo_wrapper fs shell)
-
-if(WITH_ASCEND OR WITH_ASCEND_CL)
-  cc_library(
-    ascend_wrapper
-    SRCS ascend_wrapper.cc
-    DEPS framework_proto lod_tensor ascend_ge ascend_graph)
-endif()

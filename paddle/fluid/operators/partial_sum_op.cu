@@ -70,7 +70,7 @@ __global__ void PartialSumGradCUDAKernel(T **res_grad,
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class PartialSumOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -144,7 +144,7 @@ class PartialSumOpCUDAKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class PartialSumGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -233,18 +233,3 @@ class PartialSumGradOpCUDAKernel : public framework::OpKernel<T> {
 
 }  // namespace operators
 }  // namespace paddle
-
-namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(partial_sum,
-                        ops::PartialSumOpCUDAKernel<float>,
-                        ops::PartialSumOpCUDAKernel<double>,
-                        ops::PartialSumOpCUDAKernel<int>,
-                        ops::PartialSumOpCUDAKernel<int64_t>,
-                        ops::PartialSumOpCUDAKernel<plat::float16>);
-
-REGISTER_OP_CUDA_KERNEL(partial_sum_grad,
-                        ops::PartialSumGradOpCUDAKernel<float>,
-                        ops::PartialSumGradOpCUDAKernel<double>,
-                        ops::PartialSumGradOpCUDAKernel<int>,
-                        ops::PartialSumGradOpCUDAKernel<int64_t>,
-                        ops::PartialSumGradOpCUDAKernel<plat::float16>);

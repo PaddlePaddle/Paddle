@@ -93,9 +93,8 @@ class PruneGateByCapacityFunctor {
 };
 
 template <typename Visitor>
-static void VisitDataType(paddle::experimental::DataType type,
-                          Visitor visitor) {
-  if (type == paddle::experimental::DataType::INT64) {
+static void VisitDataType(phi::DataType type, Visitor visitor) {
+  if (type == phi::DataType::INT64) {
     visitor.template apply<int64_t>();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
@@ -106,7 +105,7 @@ static void VisitDataType(paddle::experimental::DataType type,
   }
 }
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class PruneGateByCapacityCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -128,6 +127,8 @@ class PruneGateByCapacityCUDAKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_CUDA_KERNEL(
-    prune_gate_by_capacity,
-    ops::PruneGateByCapacityCUDAKernel<phi::GPUContext, int64_t>);
+PD_REGISTER_STRUCT_KERNEL(prune_gate_by_capacity,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::PruneGateByCapacityCUDAKernel,
+                          int64_t) {}

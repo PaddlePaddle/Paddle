@@ -54,7 +54,7 @@ void CvmGradComputeKernel(const bool use_cvm,
   (*DY) += item_width - cvm_offset;
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class CVMOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -95,7 +95,7 @@ class CVMOpKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class CVMGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {

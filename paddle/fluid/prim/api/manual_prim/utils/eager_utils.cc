@@ -21,20 +21,20 @@ namespace prim {
 
 template <>
 Tensor empty<Tensor>(const paddle::experimental::IntArray& shape,
-                     paddle::experimental::DataType dtype,
+                     phi::DataType dtype,
                      const paddle::Place& place) {
-  if (dtype == paddle::experimental::DataType::UNDEFINED) {
-    dtype = paddle::experimental::DataType::FLOAT32;
+  if (dtype == phi::DataType::UNDEFINED) {
+    dtype = phi::DataType::FLOAT32;
   }
   return empty_ad_func(shape, dtype, place);
 }
 
 template <>
 Tensor empty_like<Tensor>(const paddle::Tensor& x,
-                          paddle::experimental::DataType dtype,
+                          phi::DataType dtype,
                           const paddle::Place& place) {
-  if (dtype == paddle::experimental::DataType::UNDEFINED) {
-    dtype = paddle::experimental::DataType::FLOAT32;
+  if (dtype == phi::DataType::UNDEFINED) {
+    dtype = phi::DataType::FLOAT32;
   }
   return empty_like_ad_func(x, dtype, place);
 }

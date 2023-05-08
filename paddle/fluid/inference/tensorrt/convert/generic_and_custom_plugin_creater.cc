@@ -12,18 +12,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/op_meta_info_helper.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/tensorrt/plugin/generic_plugin.h"
 #include "paddle/fluid/inference/tensorrt/plugin_arg_mapping_context.h"
+#include "paddle/phi/api/ext/op_meta_info.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/errors.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
-/*
- * Stack converter from fluid to tensorRT.
- */
+
 class CustomPluginCreater : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc &op,
@@ -48,7 +48,7 @@ class CustomPluginCreater : public OpConverter {
     auto &op_info = meta_info_map.at(op_desc.Type()).front();
 
     // set inputs
-    auto &op_input_names = framework::OpMetaInfoHelper::GetInputs(op_info);
+    auto &op_input_names = OpMetaInfoHelper::GetInputs(op_info);
     for (auto &param_name : op_input_names) {
       for (auto &arg_name : op_desc.Input(param_name)) {
         inputs.push_back(engine_->GetITensor(arg_name));
@@ -60,7 +60,7 @@ class CustomPluginCreater : public OpConverter {
 
     // set attrs
     std::vector<nvinfer1::PluginField> plugindatas;
-    auto &op_attrs_names = framework::OpMetaInfoHelper::GetAttrs(op_info);
+    auto &op_attrs_names = OpMetaInfoHelper::GetAttrs(op_info);
     auto &attrs = op_desc.GetAttrMap();
 
     std::list<int> int_attrs;
@@ -147,7 +147,7 @@ class CustomPluginCreater : public OpConverter {
     CHECK(layer);
 
     // set outputs
-    auto &op_output_names = framework::OpMetaInfoHelper::GetOutputs(op_info);
+    auto &op_output_names = OpMetaInfoHelper::GetOutputs(op_info);
     std::vector<std::string> output_names;
     for (auto &param_name : op_output_names) {
       for (auto &arg_name : op_desc.Output(param_name))
@@ -164,6 +164,8 @@ class GenericPluginCreater : public OpConverter {
                   const framework::Scope &scope,
                   bool test_mode) override {
     framework::OpDesc op_desc(op, nullptr);
+    VLOG(3) << "convert " << op_desc.Type() << " op to generic pluign layer";
+
     CHECK(block_);
     const framework::BlockDesc block_desc(
         nullptr, const_cast<framework::proto::BlockDesc *>(block_));
@@ -181,6 +183,14 @@ class GenericPluginCreater : public OpConverter {
       phi_kernel_signature =
           phi::DefaultKernelSignatureMap::Instance().Get(op_desc.Type());
     }
+    VLOG(3) << phi_kernel_signature;
+    PADDLE_ENFORCE_EQ(
+        phi_kernel_signature.input_names.empty() ||
+            phi_kernel_signature.output_names.empty(),
+        false,
+        platform::errors::PreconditionNotMet(
+            "The %s op's kernel signature (inputs and output) should not null.",
+            op_desc.Type()));
 
     bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
 

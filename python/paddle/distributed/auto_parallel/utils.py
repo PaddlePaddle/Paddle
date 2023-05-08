@@ -521,9 +521,7 @@ def _check_valid_path(file_path):
                     "but got '{}'.".format(str(type(file)))
                 )
             if not os.path.exists(file):
-                raise ValueError(
-                    "The file path '{}' does not exist.".format(file)
-                )
+                raise ValueError(f"The file path '{file}' does not exist.")
         return file_path
     else:
         raise TypeError(
@@ -742,16 +740,14 @@ def _save_distributed_attribute(program, dist_attr_path, dist_context):
     # TODO: just save a complete distributed attribute file
     rank_id = paddle.distributed.get_rank()
     dist_attr_name = os.path.join(
-        dist_attr_path, "dist_attr_rank{}.pdattr".format(rank_id)
+        dist_attr_path, f"dist_attr_rank{rank_id}.pdattr"
     )
     dist_attr_dict = {
         "model": get_dist_attr(program, dist_context),
         "world_size": paddle.distributed.get_world_size(),
     }
     paddle.save(dist_attr_dict, dist_attr_name)
-    logging.info(
-        "Already saved distributed attribute to '{}'.".format(dist_attr_path)
-    )
+    logging.info(f"Already saved distributed attribute to '{dist_attr_path}'.")
 
 
 def _load_distributed_attribute(dist_attr_path):
@@ -774,7 +770,7 @@ def _save_distributed_state_dict(program, addition_info, checkpoint_path):
     """Save parameters' state_dict"""
     rank = paddle.distributed.get_rank()
     ckpt_file_name = os.path.join(
-        checkpoint_path, "model_state_rank{}.pdmodel".format(rank)
+        checkpoint_path, f"model_state_rank{rank}.pdmodel"
     )
     state_dict = {
         "model": program.state_dict(),
@@ -782,7 +778,7 @@ def _save_distributed_state_dict(program, addition_info, checkpoint_path):
         "addition_info": addition_info,
     }
     paddle.save(state_dict, ckpt_file_name)
-    logging.info("Already saved model to '{}'.".format(checkpoint_path))
+    logging.info(f"Already saved model to '{checkpoint_path}'.")
 
 
 def _load_distributed_state_dict(checkpoint_path):
@@ -1172,7 +1168,7 @@ def _get_split_indices(
             split_indices_list = partition_index
     split_indices_list = list(
         map(
-            lambda x, y: list(set(x) - set([y]) - set([0])),
+            lambda x, y: list(set(x) - {y} - {0}),
             split_indices_list,
             complete_shape,
         )
@@ -1264,6 +1260,7 @@ def set_grad_var_shape(program, dist_context):
                 "exp_grad",
                 "sigmoid_grad",
                 "unsqueeze2_grad",
+                "fused_dropout_add_grad",
             ]
             forward_list = [
                 "reshape2",
@@ -1285,6 +1282,7 @@ def set_grad_var_shape(program, dist_context):
                 "exp",
                 "sigmoid",
                 "unsqueeze2",
+                "fused_dropout_add",
             ]
             if op.type in need_set_shape_list:
                 for forward_op in block.ops:
@@ -1468,7 +1466,8 @@ def update_op_dims_mapping_by_default_dist_impl(dist_op):
                 ), "{} only the batch dimension (0-dim) can be sharded, but the dimension {} is sharded by {} part.".format(
                     op_desc.type(), idx, mapping
                 )
-        batch_dim_mappings.append(dims_mapping[0])
+        if len(dims_mapping) >= 1:
+            batch_dim_mappings.append(dims_mapping[0])
     for arg_name in op_desc.output_arg_names():
         serial_tensor = dist_op.get_serial_output(arg_name)
         if serial_tensor.is_parameter:
@@ -1482,7 +1481,8 @@ def update_op_dims_mapping_by_default_dist_impl(dist_op):
                     ), "{} only the batch dimension (0-dim) can be sharded, but the dimension {} is sharded by {} part.".format(
                         op_desc.type(), idx, mapping
                     )
-            batch_dim_mappings.append(dims_mapping[0])
+            if len(dims_mapping) >= 1:
+                batch_dim_mappings.append(dims_mapping[0])
         else:
             assert (
                 dims_mapping[0] == -1
@@ -1507,7 +1507,7 @@ def update_op_dims_mapping_by_default_dist_impl(dist_op):
         if serial_tensor.is_parameter:
             continue
         dims_mapping = op_dist_attr.get_input_dims_mapping(arg_name)
-        if compatible_dim_mapping != dims_mapping[0]:
+        if len(dims_mapping) >= 1 and compatible_dim_mapping != dims_mapping[0]:
             dims_mapping[0] = compatible_dim_mapping
             changed = True
     for arg_name in op_desc.output_arg_names():
@@ -1516,7 +1516,10 @@ def update_op_dims_mapping_by_default_dist_impl(dist_op):
             continue
         dims_mapping = op_dist_attr.get_output_dims_mapping(arg_name)
         if arg_name not in xshape_arg_names:
-            if compatible_dim_mapping != dims_mapping[0]:
+            if (
+                len(dims_mapping) >= 1
+                and compatible_dim_mapping != dims_mapping[0]
+            ):
                 dims_mapping[0] = compatible_dim_mapping
                 changed = True
         else:
@@ -1684,9 +1687,9 @@ def get_standalone_cost_data(distributed_programs):
                 shape = info[
                     shape_left_boundary + 1 : shape_right_boundary
                 ].split(",")
-                shape = list(map(lambda x: int(x.strip()), shape))
+                shape = [int(x.strip()) for x in shape]
                 dtype_factor = 1
-                total_static_input_size += reduce(lambda x, y: x * y, shape)
+                total_static_input_size += reduce(lambda x, y: x * y, shape, 1)
                 if op.type == "c_embedding":
                     arg_name_lower = (
                         "w" if arg_name_lower == "weight" else "ids"
@@ -1790,7 +1793,9 @@ def set_dist_op_desc_original_id(dist_op_desc, op_desc, dist_context):
         return
     # Third, print error infomation if we cannot find the original id
     else:
-        assert False, "Cannot find the original id in the distributed context"
+        raise AssertionError(
+            "Cannot find the original id in the distributed context"
+        )
 
 
 def to_list(value):
@@ -1838,7 +1843,7 @@ def get_var_numel(var):
     """
     assert isinstance(var, Variable)
     assert -1 not in var.shape
-    return reduce(lambda x, y: x * y, var.shape)
+    return reduce(lambda x, y: x * y, var.shape, 1)
 
 
 def get_lr(optimizer):
@@ -2337,7 +2342,7 @@ def insert_dependencies_for_vars(
         )
 
     if op_namescope is not None:
-        depend_op._set_attr('op_namescope', "/{}".format(op_namescope))
+        depend_op._set_attr('op_namescope', f"/{op_namescope}")
 
     if sync:
         block._sync_with_cpp()

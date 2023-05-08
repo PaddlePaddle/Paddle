@@ -25,8 +25,8 @@ from test_parallel_executor_transformer import (
 )
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 
 def simple_fc_net_with_accuracy(use_feed):
@@ -72,7 +72,7 @@ def cond_net(use_feed=None):
         avg_loss = paddle.mean(loss, name='mean_softmax_loss')
         return avg_loss
 
-    two = fluid.layers.fill_constant([1], 'int32', 2)
+    two = paddle.tensor.fill_constant([1], 'int32', 2)
     pred = two == 0
     avg_loss = paddle.static.nn.case(
         [(pred, lambda: loss1(prediction, label))],
@@ -106,7 +106,7 @@ def optimization_in_cond_net(with_optimize=False):
         return avg_loss
 
     sgd = fluid.optimizer.SGD(learning_rate=0.1)
-    two = fluid.layers.fill_constant([1], 'int32', 2)
+    two = paddle.tensor.fill_constant([1], 'int32', 2)
     pred = two == 0
     avg_loss = paddle.static.nn.case(
         [(pred, lambda: loss1(sgd, prediction, label, with_optimize))],

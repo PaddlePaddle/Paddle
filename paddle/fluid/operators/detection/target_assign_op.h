@@ -92,7 +92,7 @@ struct NegTargetAssignFunctor {
                   WT* out_wt) const;
 };
 
-template <typename DeviceContext, typename T, typename WT>
+template <typename T, typename DeviceContext, typename WT = float>
 class TargetAssignKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {

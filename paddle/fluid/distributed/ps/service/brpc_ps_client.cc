@@ -1638,7 +1638,7 @@ void BrpcPsClient::PushSparseTaskConsume() {
 
       while (!task_queue->Empty() && merge_count < cur_meger_size) {
         ++merge_count;
-        SparseAsyncTask *task;
+        SparseAsyncTask *task = nullptr;
         task_queue->Get(task);
         task_list.push_back(std::shared_ptr<SparseAsyncTask>(task));
       }
@@ -1943,7 +1943,7 @@ void BrpcPsClient::PushDenseTaskConsume() {
         continue;
       }
       ++_async_call_num;
-      DenseAsyncTask *task;
+      DenseAsyncTask *task = nullptr;
       task_queue->Get(task);
       auto *accessor = GetTableAccessor(task->table_id());
       // 设置请求回调

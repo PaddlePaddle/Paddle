@@ -14,7 +14,7 @@
 
 import unittest
 
-import paddle.fluid as fluid
+from paddle import fluid
 
 fluid.core._set_eager_deletion_mode(0.0, 1.0, True)
 

@@ -14,6 +14,8 @@
 
 #include "paddle/phi/kernels/selected_rows/adam_kernel.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -23,7 +25,6 @@
 
 namespace phi {
 namespace sr {
-using float16 = dtype::float16;
 
 template <typename T, typename Context>
 void AdamDenseParamSparseGradKernel(

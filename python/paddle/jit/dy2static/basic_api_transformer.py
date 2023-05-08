@@ -152,9 +152,7 @@ class NameloadJstTransformer(BaseTransformer):
 
     def _surround_with_ld(self, node):
         node = (
-            gast.parse(
-                "_jst.Ld({})".format(utils.ast_to_source_code(node).strip())
-            )
+            gast.parse(f"_jst.Ld({utils.ast_to_source_code(node).strip()})")
             .body[0]
             .value
         )
@@ -197,11 +195,9 @@ class AttributeJstTransformer(BaseTransformer):
         assert isinstance(
             node, gast.AST
         ), "Input non-gast.AST node for the initialization of ToTensorTransformer."
-        self.interested_name = set(
-            [
-                'size',
-            ]
-        )
+        self.interested_name = {
+            'size',
+        }
         self.root = node
 
     def transform(self):

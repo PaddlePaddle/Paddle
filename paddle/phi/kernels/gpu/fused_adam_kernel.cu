@@ -492,6 +492,7 @@ PD_REGISTER_KERNEL(fused_adam,
                    ALL_LAYOUT,
                    phi::FusedAdamKernel,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    float,
                    double) {
   // Skip beta1_pow, beta2_pow, skip_update data transform
