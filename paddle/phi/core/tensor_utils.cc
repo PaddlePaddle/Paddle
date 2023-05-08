@@ -94,7 +94,6 @@ void Copy(const Context& dev_ctx,
     return;
   }
   VLOG(4) << "src:" << src_ptr << ", dst:" << dst_ptr;
-  VLOG(4) << "src:" << src.layout() << ", dst:" << dst->layout();
   CHECK(dst->layout() == src.layout());
 
   if (src_place.GetType() == AllocationType::CPU &&
