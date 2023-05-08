@@ -277,7 +277,10 @@ def get_numeric_gradient(
         if tensor_to_check_dtype in [np.complex64, np.complex128]:
             # always assume real output, because this function has
             # no input for dl/di, though it should do. so there di will be zero
-            f_ajoint = np.ones_like(inputs).astype(tensor_to_check_dtype)
+
+            # TODO: Here is a trick to be consistent with the existing OpTest, it
+            # need to support variable gradients input
+            f_ajoint = np.array(1 + 0j)
             df_over_dr = (y_pos - y_neg) / delta / 2
             df_over_di = (y_pos_j - y_neg_j) / delta / 2
 
