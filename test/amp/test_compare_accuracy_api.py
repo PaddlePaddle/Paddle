@@ -22,18 +22,6 @@ from paddle.fluid import core
     not core.is_compiled_with_cuda(), "not support cpu TestCompareAccuracyApi"
 )
 class TestCompareAccuracyApi(unittest.TestCase):
-    def setUp(self):
-        try:
-            import xlsxwriter as xlw
-
-            print(xlw.__version__)
-        except ImportError:
-            import subprocess
-
-            subprocess.check_call(
-                ['python', '-m', 'pip', 'install', 'xlsxwriter==3.0.9']
-            )
-
     def calc(self, path, dtype):
         paddle.fluid.core.set_nan_inf_debug_path(path)
         x = paddle.to_tensor(

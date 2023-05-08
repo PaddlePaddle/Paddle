@@ -440,7 +440,7 @@ def compare_accuracy(
         another_dump_path(str): the path of another running log ,such as the log for execution using the fp16 type.
         output_filename(str): the excel file nmae of compare output.
         loss_scale(float): the loss_scale during the training phase.
-        dump_all_tensors(bool, optional): dump all tensor, default is False.
+        dump_all_tensors(bool, optional): dump all tensor, It is currently not support. Default is False.
 
     Examples:
 
