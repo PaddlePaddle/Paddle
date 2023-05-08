@@ -67,11 +67,20 @@ void HogwildWorker::Initialize(const TrainerDesc &desc) {
   }
 }
 int HogwildWorker::IsParameter(const std::string &name, bool full_match) {
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_GPU_GRAPH)
+  auto gpu_ps = PSGPUWrapper::GetInstance();
+  bool last_device = ((thread_num_ - 1) == thread_id_);
+#endif
   if (full_match) {
     auto it = params2rootid_.find(name);
     if (it == params2rootid_.end()) {
       return -1;
     }
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_GPU_GRAPH)
+    if (last_device && !gpu_ps->IsKeyForSelfRank(it->second)) {
+      free_param_vars_.insert(name);
+    }
+#endif
     if (it->second == nccl_rank_id_) {
       return 1;
     }
@@ -82,6 +91,11 @@ int HogwildWorker::IsParameter(const std::string &name, bool full_match) {
       if (strncmp(name.c_str(), it->first.c_str(), it->first.length()) != 0) {
         continue;
       }
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_GPU_GRAPH)
+      if (last_device && !gpu_ps->IsKeyForSelfRank(it->second)) {
+        free_param_vars_.insert(name);
+      }
+#endif
       if (it->second == nccl_rank_id_) {
         return 1;
       }
@@ -379,9 +393,14 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
   int persist_param = 0;
   int persist_share = 0;
   int persist_reset = 0;
+  std::vector<std::string> del_var_names;
   for (auto &var : block.AllVars()) {
     auto name = var->Name();
     if (remove_vars_.find(name) != remove_vars_.end()) {
+      if (free_param_vars_.find(name) != free_param_vars_.end()) {
+        del_var_names.push_back(name);
+        VLOG(1) << "remove need delete var name=" << name;
+      }
       continue;
     }
     all_param_.push_back(name);
@@ -439,6 +458,10 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
           need_copy_vars_.push_back(name);
         }
       } else {
+        if (free_param_vars_.find(name) != free_param_vars_.end()) {
+          del_var_names.push_back(name);
+          VLOG(0) << "unpersist need delete var name=" << name;
+        }
         // sharding vars
         auto *ptr = thread_scope_->Var(name);
         InitializeVariable(ptr, var->GetType());
@@ -452,11 +475,16 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
       InitializeVariable(ptr, var->GetType());
     }
   }
+  // multi node delete unused vars
+  if (!del_var_names.empty()) {
+    root_scope_->EraseVars(del_var_names);
+  }
   VLOG(0) << "device id=" << thread_id_
           << ", total param count=" << all_param_.size()
           << ", persist count=" << persist_total << ", param=" << persist_param
           << ", share=" << persist_share << ", reset=" << persist_reset
-          << ", need copy param count=" << need_copy_vars_.size();
+          << ", need copy param count=" << need_copy_vars_.size()
+          << ", delete vars count=" << del_var_names.size();
 }
 void HogwildWorker::Finalize() {
 #ifdef PADDLE_WITH_HETERPS

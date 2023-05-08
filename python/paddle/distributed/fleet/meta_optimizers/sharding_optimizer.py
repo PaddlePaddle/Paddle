@@ -1519,7 +1519,7 @@ class ShardingOptimizer(MetaOptimizerBase):
 
         # sharding
         if self.sharding_degree > 1:
-            self.sharding_ring_id = 1
+            self.sharding_ring_id = self.mp_ring_id + 1
             self.sharding_rank = (
                 self.global_rank // self.mp_degree
             ) % self.sharding_degree
@@ -2182,51 +2182,36 @@ class ThreadShardingOptimizer(ShardingOptimizer):
             self.node_nums == node_nums
         ), "end points not equal node nums"
         self.current_endpoint = self.global_endpoints[self.role_id]
+        
         # mp ring
         if self.mp_degree > 1:
-            if node_nums > 1:
-                self._init_communicator(
-                    self._startup_program,
-                    self.current_endpoint,
-                    self.mp_group_endpoints,
-                    self.role_id,
-                    self.mp_ring_id,
-                )
-            else:
-                startup_block.append_op(
-                    type='c_comm_init_all', 
-                    attrs={'ring_id': self.mp_ring_id})
-
+            self._init_communicator(
+                self._startup_program,
+                self.current_endpoint,
+                self.mp_group_endpoints,
+                self.role_id,
+                self.mp_ring_id,
+            )
+            
         # sharding ring
         if self.sharding_degree > 1:
-            if node_nums > 1:
-                self._init_communicator(
-                    self._startup_program,
-                    self.current_endpoint,
-                    self.sharding_group_endpoints,
-                    self.role_id,
-                    self.sharding_ring_id,
-                )
-            else:
-                startup_block.append_op(
-                    type='c_comm_init_all', 
-                    attrs={'ring_id': self.sharding_ring_id})
-
+            self._init_communicator(
+                self._startup_program,
+                self.current_endpoint,
+                self.sharding_group_endpoints,
+                self.role_id,
+                self.sharding_ring_id,
+            )
        
         # pure dp ring
         if self.dp_degree > 1:
-            if node_nums > 1:
-                self._init_communicator(
-                    self._startup_program,
-                    self.current_endpoint,
-                    self.dp_group_endpoints,
-                    self.role_id,
-                    self.dp_ring_id,
-                )
-            else:
-                startup_block.append_op(
-                    type='c_comm_init_all', 
-                    attrs={'ring_id': self.dp_ring_id})
+            self._init_communicator(
+                self._startup_program,
+                self.current_endpoint,
+                self.dp_group_endpoints,
+                self.role_id,
+                self.dp_ring_id,
+            )
 
         startup_block._sync_with_cpp()
 
@@ -2249,34 +2234,41 @@ class ThreadShardingOptimizer(ShardingOptimizer):
         ring_id
     ):
         nranks = len(endpoints)
-        other_endpoints = endpoints[:]
-        other_endpoints.remove(current_endpoint)
         block = program.global_block()
-       
-        nccl_id_var = block.create_var(
-            name=unique_name.generate('nccl_id'),
-            persistable=True,
-            type=core.VarDesc.VarType.RAW,
-        )
-        block.append_op(
-            type='c_gen_nccl_id',
-            inputs={},
-            outputs={'Out': nccl_id_var},
-            attrs={
-                'rank': role_id,
-                'endpoint': current_endpoint,
-                'other_endpoints': other_endpoints,
-                self.op_role_key: OpRole.Forward,
-            },
-        )
-        block.append_op(
-            type='c_comm_init_multitrainer',
-            inputs={'X': nccl_id_var},
-            outputs={},
-            attrs={
-                'ntrainers': nranks,
-                'trainer_id': role_id,
-                'ring_id': ring_id,
-                self.op_role_key: OpRole.Forward,
-            },
-        )
+        # init mulit node nccl
+        if nranks > 1:
+            other_endpoints = endpoints[:]
+            other_endpoints.remove(current_endpoint)
+            
+            nccl_id_var = block.create_var(
+                name=unique_name.generate('nccl_id'),
+                persistable=True,
+                type=core.VarDesc.VarType.RAW,
+            )
+            block.append_op(
+                type='c_gen_nccl_id',
+                inputs={},
+                outputs={'Out': nccl_id_var},
+                attrs={
+                    'rank': role_id,
+                    'endpoint': current_endpoint,
+                    'other_endpoints': other_endpoints,
+                    self.op_role_key: OpRole.Forward,
+                },
+            )
+            block.append_op(
+                type='c_comm_init_multitrainer',
+                inputs={'X': nccl_id_var},
+                outputs={},
+                attrs={
+                    'ntrainers': nranks,
+                    'trainer_id': role_id,
+                    'ring_id': ring_id,
+                    self.op_role_key: OpRole.Forward,
+                },
+            )
+        else:
+            block.append_op(
+                type='c_comm_init_all', 
+                attrs={'ring_id': ring_id}
+            )

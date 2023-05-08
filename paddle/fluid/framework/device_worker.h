@@ -311,6 +311,7 @@ class HogwildWorker : public CPUWorkerBase {
   std::vector<std::string> need_copy_vars_;
   std::vector<std::string> shard_dump_params_;
   std::vector<std::string> shard_dump_fields_;
+  std::multiset<std::string> free_param_vars_;
   bool sharding_mode_ = false;
 };
 
