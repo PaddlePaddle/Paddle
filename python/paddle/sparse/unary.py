@@ -177,8 +177,8 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: Results of summation operation on the specified axis of input Tensor `x`,
-        if `x.dtype='bool'`, `x.dtype='int32'`, it's data type is `'int64'`,
+        Tensor: Results of summation operation on the specified axis of input Tensor `x`.
+        if `x.dtype='bool'` or `x.dtype='int32'`, it's data type is `'int64'`,
         otherwise it's data type is the same as `x`.
 
     Examples:
