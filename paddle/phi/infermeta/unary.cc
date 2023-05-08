@@ -38,7 +38,7 @@ namespace detail {
 static DDim CheckAndGetOutputDim(const DDim& dim_x) {
   auto x_vec = phi::vectorize(dim_x);
   if (x_vec.size() == 2) {
-    return phi::make_ddim({1});
+    return phi::make_ddim({});
   }
   x_vec.erase(x_vec.end() - 2, x_vec.end());
   return phi::make_ddim(x_vec);
@@ -4405,7 +4405,6 @@ void TraceInferMeta(
   auto sizes = vectorize(x_dims);
   if (x_dims.size() == 2) {
     sizes.clear();
-    sizes.push_back(1);
   } else {
     sizes.erase(sizes.begin() + std::max(dim1_, dim2_));
     sizes.erase(sizes.begin() + std::min(dim1_, dim2_));

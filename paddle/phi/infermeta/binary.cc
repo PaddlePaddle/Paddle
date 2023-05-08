@@ -72,7 +72,7 @@ static void BinarySameInputDimsCheck(const MetaTensor& x,
 static DDim CheckAndGetOutputDim(const DDim& dim_x) {
   auto x_vec = phi::vectorize(dim_x);
   if (x_vec.size() == 2) {
-    return phi::make_ddim({1});
+    return phi::make_ddim({});
   }
   x_vec.erase(x_vec.end() - 2, x_vec.end());
   return phi::make_ddim(x_vec);
@@ -990,7 +990,7 @@ void DistInferMeta(const MetaTensor& x,
                         "The Input(Y) has not been initialized properly. The "
                         "shape of Input(Y) = [%s].",
                         y_dims));
-  out->set_dims({1});
+  out->set_dims(phi::make_ddim({}));
   out->set_dtype(x.dtype());
 }
 
