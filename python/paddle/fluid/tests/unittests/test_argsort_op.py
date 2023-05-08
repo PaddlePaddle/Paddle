@@ -15,7 +15,6 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
 
 import paddle
 from paddle import fluid
@@ -520,7 +519,7 @@ class TestArgsortOpFp16(unittest.TestCase):
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA and not support the bfloat16",
 )
-class TestArgsortBF16OP(OpTest):
+class TestArgsortBF16OP(unittest.TestCase):
     def test_bf16(self):
         x_np = np.random.random((2, 8)).astype(np.uint16)
         with paddle.static.program_guard(paddle.static.Program()):
