@@ -651,7 +651,7 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
             backward_op.input("X")[0]
         )
         mesh_shape = process_mesh.shape
-        batch_size_axis = var_dim_mapping[0]
+        batch_size_axis = var_dim_mapping[0] if len(var_dim_mapping) > 0 else -1
         if (
             batch_size_axis > -1
             and mesh_shape[batch_size_axis] > 1
@@ -1028,7 +1028,7 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
             backward_op.input("X")[0]
         )
         mesh_shape = process_mesh.shape
-        batch_size_axis = var_dim_mapping[0]
+        batch_size_axis = var_dim_mapping[0] if len(var_dim_mapping) > 0 else -1
         if (
             batch_size_axis > -1
             and mesh_shape[batch_size_axis] > 1
@@ -1365,7 +1365,7 @@ class DistributedMatmulImpl2(DistributedOperatorImpl):
             backward_op.input("X")[0]
         )
         mesh_shape = process_mesh.shape
-        batch_size_axis = var_dim_mapping[0]
+        batch_size_axis = var_dim_mapping[0] if len(var_dim_mapping) > 0 else -1
         if (
             batch_size_axis > -1
             and mesh_shape[batch_size_axis] > 1
@@ -1552,7 +1552,7 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
             backward_op.input("X")[0]
         )
         mesh_shape = process_mesh.shape
-        batch_size_axis = var_dim_mapping[0]
+        batch_size_axis = var_dim_mapping[0] if len(var_dim_mapping) > 0 else -1
         if (
             batch_size_axis > -1
             and mesh_shape[batch_size_axis] > 1
@@ -1929,7 +1929,7 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
             backward_op.input("X")[0]
         )
         mesh_shape = process_mesh.shape
-        batch_size_axis = var_dim_mapping[0]
+        batch_size_axis = var_dim_mapping[0] if len(var_dim_mapping) > 0 else -1
         if (
             batch_size_axis > -1
             and mesh_shape[batch_size_axis] > 1
@@ -2264,7 +2264,7 @@ class DistributedMatmulV2Impl2(DistributedOperatorImpl):
             backward_op.input("X")[0]
         )
         mesh_shape = process_mesh.shape
-        batch_size_axis = var_dim_mapping[0]
+        batch_size_axis = var_dim_mapping[0] if len(var_dim_mapping) > 0 else -1
         if (
             batch_size_axis > -1
             and mesh_shape[batch_size_axis] > 1
@@ -2449,7 +2449,7 @@ class DistributedMulImpl0(DistributedOperatorImpl):
             backward_op.input("X")[0]
         )
         mesh_shape = process_mesh.shape
-        batch_size_axis = var_dim_mapping[0]
+        batch_size_axis = var_dim_mapping[0] if len(var_dim_mapping) > 0 else -1
         if (
             batch_size_axis > -1
             and mesh_shape[batch_size_axis] > 1
@@ -2832,7 +2832,7 @@ class DistributedMulImpl1(DistributedOperatorImpl):
             backward_op.input("X")[0]
         )
         mesh_shape = process_mesh.shape
-        batch_size_axis = var_dim_mapping[0]
+        batch_size_axis = var_dim_mapping[0] if len(var_dim_mapping) > 0 else -1
         if (
             batch_size_axis > -1
             and mesh_shape[batch_size_axis] > 1
@@ -3178,7 +3178,7 @@ class DistributedMulImpl2(DistributedOperatorImpl):
             backward_op.input("X")[0]
         )
         mesh_shape = process_mesh.shape
-        batch_size_axis = var_dim_mapping[0]
+        batch_size_axis = var_dim_mapping[0] if len(var_dim_mapping) > 0 else -1
         if (
             batch_size_axis > -1
             and mesh_shape[batch_size_axis] > 1
