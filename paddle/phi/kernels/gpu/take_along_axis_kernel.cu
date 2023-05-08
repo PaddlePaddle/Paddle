@@ -42,9 +42,10 @@ void TakeAlongAxisKernel(const Context& dev_ctx,
   } else if (index_type == DataType::INT64) {
     phi::funcs::gpu_gather_kernel<T, int64_t>(x, axis, index, *out, dev_ctx);
   } else {
-    PADDLE_ENFORCE(
-        index_type == DataType::INT32 || index_type == DataType::INT64,
-        "index type must be int32 or int64.");
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("The data type of input index is expected "
+                                     "to be int32 or int64, but recieved %s.",
+                                     phi::DataTypeToString(index_type)));
   }
 }
 
