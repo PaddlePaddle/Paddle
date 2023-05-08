@@ -11,11 +11,12 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #pragma once
 
 #include <assert.h>
 #include <cuda.h>
+#include "paddle/phi/kernels/funcs/aligned_vector.h"
+#include "paddle/phi/kernels/primitive/functor_primitives.h"
 
 #define CUDART_INF __longlong_as_double(0x7ff0000000000000ULL)
 #define CUDART_INF_F __int_as_float(0x7f800000)
@@ -25,19 +26,6 @@ namespace funcs {
 
 constexpr int kWarpSize = 32;
 
-template <typename T>
-struct AddFunctor {
-  __device__ __forceinline__ T operator()(const T& a, const T& b) const {
-    return a + b;
-  }
-};
-
-template <typename T>
-struct MaxFunctor {
-  __device__ __forceinline__ T operator()(const T& a, const T& b) const {
-    return max(a, b);
-  }
-};
 template <typename T>
 __inline__ __device__ T Inf();
 
@@ -93,50 +81,10 @@ inline cudaError_t GetNumBlocks(int64_t block_size,
       1, std::min<int64_t>(max_blocks, sm_count * tpm / block_size * waves));
   return cudaSuccess;
 }
-template <typename T, int N>
-struct GetPackType {
-  using type =
-      typename std::aligned_storage<N * sizeof(T), N * sizeof(T)>::type;
-};
-
-template <typename T, int N>
-using PackType = typename GetPackType<T, N>::type;
-
-template <typename T, int N>
-union Pack {
-  static_assert(sizeof(PackType<T, N>) == sizeof(T) * N, "");
-  __device__ Pack() {
-    // do nothing
-  }
-  PackType<T, N> storage;
-  T elem[N];
-};
-
-template <typename SourceType, typename TargetType>
-struct Load {
-  const SourceType* src;
-  int64_t row_size;
-
-  Load(const SourceType* src, int64_t row_size)
-      : src(src), row_size(row_size) {}
-
-  template <int N>
-  __device__ void load(TargetType* tar, int64_t row, int64_t col) const {
-    Pack<SourceType, N> pack;
-    const int64_t offset = (row * row_size + col) / N;
-    pack.storage =
-        *(reinterpret_cast<const PackType<SourceType, N>*>(src) + offset);
-#pragma unroll
-    for (int i = 0; i < N; ++i) {
-      tar[i] = static_cast<TargetType>(pack.elem[i]);
-    }
-  }
-};
 
 template <typename T,
           typename SourceType,
           typename Context,
-          typename Load,
           int VecSize,
           int ColsPerThread,
           int RowsPerThread,
@@ -145,7 +93,7 @@ template <typename T,
 __global__ void LogsumexpWarpImpl(const Context& dev_ctx,
                                   const int64_t num_row,
                                   const int64_t num_col,
-                                  Load load,
+                                  const SourceType* in,
                                   SourceType* out) {
   static_assert(ColsPerThread % VecSize == 0, "");
   static_assert(ThreadGroupWidth <= kWarpSize, "");
@@ -157,6 +105,12 @@ __global__ void LogsumexpWarpImpl(const Context& dev_ctx,
   const int num_thread_group = gridDim.x * blockDim.y;
   const int thread_id = threadIdx.x;
   const int step = num_thread_group * RowsPerThread;
+
+  using LoadType = phi::AlignedVector<SourceType, VecSize>;
+  using StoreType = phi::AlignedVector<SourceType, RowsPerThread>;
+
+  LoadType load_vec;
+  StoreType store_vec;
 
   for (int64_t cur_row = group_id * RowsPerThread; cur_row < num_row;
        cur_row += step) {
@@ -171,10 +125,11 @@ __global__ void LogsumexpWarpImpl(const Context& dev_ctx,
         const int offset = read_id * VecSize;
         const int cur_col = (read_id * ThreadGroupWidth + thread_id) * VecSize;
         if (!isPadded || cur_col < num_col) {
-          load.template load<VecSize>(
-              row_buffer + offset, cur_row + row_id, cur_col);
+          int64_t load_offset = ((cur_row + row_id) * num_col + cur_col);
+          phi::Load<SourceType, VecSize>(in + load_offset, &load_vec);
 #pragma unroll
           for (int i = 0; i < VecSize; i++) {
+            row_buffer[offset + i] = static_cast<T>(load_vec[i]);
             thread_max[row_id] =
                 max(thread_max[row_id], row_buffer[offset + i]);
           }
@@ -190,8 +145,8 @@ __global__ void LogsumexpWarpImpl(const Context& dev_ctx,
 // Get warp max
 #pragma unroll
     for (int row_id = 0; row_id < RowsPerThread; row_id++) {
-      warp_max[row_id] =
-          WarpAllReduce<T, MaxFunctor, ThreadGroupWidth>(thread_max[row_id]);
+      warp_max[row_id] = WarpAllReduce<T, kps::MaxFunctor, ThreadGroupWidth>(
+          thread_max[row_id]);
     }
     T thread_sum[RowsPerThread];
 // Calculate
@@ -205,26 +160,22 @@ __global__ void LogsumexpWarpImpl(const Context& dev_ctx,
       }
     }
 
-    T warp_sum[RowsPerThread];
 // Get warp sum and write
 #pragma unroll
     for (int row_id = 0; row_id < RowsPerThread; row_id++) {
-      warp_sum[row_id] =
-          WarpAllReduce<T, AddFunctor, ThreadGroupWidth>(thread_sum[row_id]);
+      T res = log(WarpAllReduce<T, kps::AddFunctor, ThreadGroupWidth>(
+          thread_sum[row_id]));
+      store_vec[row_id] = static_cast<SourceType>(res + warp_max[row_id]);
     }
-
-#pragma unroll
-    for (int row_id = 0; row_id < RowsPerThread; row_id++) {
-      out[cur_row + row_id] =
-          static_cast<SourceType>(log(warp_sum[row_id]) + warp_max[row_id]);
-    }
+    if (threadIdx.x == 0)
+      phi::Store<SourceType, RowsPerThread>(store_vec,
+                                            out + group_id * RowsPerThread);
   }
 }
 
 template <typename T,
           typename SourceType,
           typename Context,
-          typename Load,
           int VecSize,
           int ColsPerThread,
           int RowsPerThread,
@@ -233,7 +184,7 @@ template <typename T,
 inline cudaError_t LaunchLogsumexpWarp(const Context& dev_ctx,
                                        const int64_t num_row,
                                        const int64_t num_col,
-                                       Load load,
+                                       const SourceType* in,
                                        SourceType* out) {
   constexpr int block_size = 128;
   constexpr int waves = 32;
@@ -253,20 +204,18 @@ inline cudaError_t LaunchLogsumexpWarp(const Context& dev_ctx,
   LogsumexpWarpImpl<T,
                     SourceType,
                     Context,
-                    Load,
                     VecSize,
                     ColsPerThread,
                     RowsPerThread,
                     ThreadGroupWidth,
                     isPadded><<<grid_dim_x, block_dim, 0, dev_ctx.stream()>>>(
-      dev_ctx, num_row, num_col, load, out);
+      dev_ctx, num_row, num_col, in, out);
   return cudaPeekAtLastError();
 }
 
 template <typename T,
           typename SourceType,
           typename Context,
-          typename Load,
           int VecSize,
           int ColsPerThread,
           int RowsPerThread,
@@ -274,230 +223,201 @@ template <typename T,
 inline cudaError_t DispatchLogsumexpWarpWithPadding(const Context& dev_ctx,
                                                     const int64_t num_row,
                                                     const int64_t num_col,
-                                                    Load load,
+                                                    const SourceType* in,
                                                     SourceType* out) {
   if (num_col == ColsPerThread * ThreadGroupWidth) {
     return LaunchLogsumexpWarp<T,
                                SourceType,
                                Context,
-                               Load,
                                VecSize,
                                ColsPerThread,
                                RowsPerThread,
                                ThreadGroupWidth,
-                               false>(dev_ctx, num_row, num_col, load, out);
+                               false>(dev_ctx, num_row, num_col, in, out);
   } else {
     return LaunchLogsumexpWarp<T,
                                SourceType,
                                Context,
-                               Load,
                                VecSize,
                                ColsPerThread,
                                RowsPerThread,
                                ThreadGroupWidth,
-                               true>(dev_ctx, num_row, num_col, load, out);
+                               true>(dev_ctx, num_row, num_col, in, out);
   }
 }
 
-template <typename T,
-          typename SourceType,
-          typename Context,
-          typename Load,
-          int VecSize>
+template <typename T, typename SourceType, typename Context, int VecSize>
 typename std::enable_if<VecSize == 1, cudaError_t>::type
 DispatchLogsumexpWarpCols(const Context& dev_ctx,
                           const int64_t num_row,
                           const int64_t num_col,
-                          Load load,
+                          const SourceType* in,
                           SourceType* out) {
   if (num_col <= 0) {
     return cudaErrorInvalidValue;
   }
-#define HANDLE_ROWS(thread_group_width)                            \
-  else if (num_col <= (thread_group_width)*VecSize) {              \
+#define HANDLE_THREAD_GROUP(thread_group_width)                    \
+  if (num_col <= (thread_group_width)*VecSize) {                   \
     if (num_row % 2 == 0) {                                        \
       return DispatchLogsumexpWarpWithPadding<T,                   \
                                               SourceType,          \
                                               Context,             \
-                                              Load,                \
                                               VecSize,             \
                                               VecSize,             \
                                               2,                   \
                                               thread_group_width>( \
-          dev_ctx, num_row, num_col, load, out);                   \
+          dev_ctx, num_row, num_col, in, out);                     \
     } else {                                                       \
       return DispatchLogsumexpWarpWithPadding<T,                   \
                                               SourceType,          \
                                               Context,             \
-                                              Load,                \
                                               VecSize,             \
                                               VecSize,             \
                                               1,                   \
                                               thread_group_width>( \
-          dev_ctx, num_row, num_col, load, out);                   \
+          dev_ctx, num_row, num_col, in, out);                     \
     }                                                              \
   }
-  HANDLE_ROWS(1)
-  HANDLE_ROWS(2)
-  HANDLE_ROWS(4)
-  HANDLE_ROWS(8)
-  HANDLE_ROWS(16)
-  HANDLE_ROWS(32)
+  HANDLE_THREAD_GROUP(1)
+  HANDLE_THREAD_GROUP(2)
+  HANDLE_THREAD_GROUP(4)
+  HANDLE_THREAD_GROUP(8)
+  HANDLE_THREAD_GROUP(16)
+  HANDLE_THREAD_GROUP(32)
 #undef HANDLE_ROWS
-#define HANDLE_THREAD_GROUP(col)                        \
-  else if (num_col <= (col)*kWarpSize) {                \
+// if num_col > 32
+#define HANDLE_COL(col)                                 \
+  if (num_col <= (col)*kWarpSize) {                     \
     return DispatchLogsumexpWarpWithPadding<T,          \
                                             SourceType, \
                                             Context,    \
-                                            Load,       \
                                             VecSize,    \
                                             col,        \
                                             kWarpSize,  \
                                             1>(         \
-        dev_ctx, num_row, num_col, load, out);          \
+        dev_ctx, num_row, num_col, in, out);            \
   }
 
-  HANDLE_THREAD_GROUP(2)
-  HANDLE_THREAD_GROUP(3)
-  HANDLE_THREAD_GROUP(4)
-  HANDLE_THREAD_GROUP(5)
-  HANDLE_THREAD_GROUP(6)
-  HANDLE_THREAD_GROUP(7)
-  HANDLE_THREAD_GROUP(8)
-  HANDLE_THREAD_GROUP(9)
-  HANDLE_THREAD_GROUP(10)
-  HANDLE_THREAD_GROUP(11)
-  HANDLE_THREAD_GROUP(12)
-  HANDLE_THREAD_GROUP(13)
-  HANDLE_THREAD_GROUP(14)
-  HANDLE_THREAD_GROUP(15)
-  HANDLE_THREAD_GROUP(16)
-  HANDLE_THREAD_GROUP(17)
-  HANDLE_THREAD_GROUP(18)
-  HANDLE_THREAD_GROUP(19)
-  HANDLE_THREAD_GROUP(20)
-  HANDLE_THREAD_GROUP(21)
-  HANDLE_THREAD_GROUP(22)
-  HANDLE_THREAD_GROUP(23)
-  HANDLE_THREAD_GROUP(24)
-  HANDLE_THREAD_GROUP(25)
-  HANDLE_THREAD_GROUP(26)
-  HANDLE_THREAD_GROUP(27)
-  HANDLE_THREAD_GROUP(28)
-  HANDLE_THREAD_GROUP(29)
-  HANDLE_THREAD_GROUP(30)
-  HANDLE_THREAD_GROUP(31)
-  HANDLE_THREAD_GROUP(32)
-#undef HANDLE_THREAD_GROUP
-  else {
-    return cudaErrorInvalidValue;
-  }
+  HANDLE_COL(2)
+  HANDLE_COL(3)
+  HANDLE_COL(4)
+  HANDLE_COL(5)
+  HANDLE_COL(6)
+  HANDLE_COL(7)
+  HANDLE_COL(8)
+  HANDLE_COL(9)
+  HANDLE_COL(10)
+  HANDLE_COL(11)
+  HANDLE_COL(12)
+  HANDLE_COL(13)
+  HANDLE_COL(14)
+  HANDLE_COL(15)
+  HANDLE_COL(16)
+  HANDLE_COL(17)
+  HANDLE_COL(18)
+  HANDLE_COL(19)
+  HANDLE_COL(20)
+  HANDLE_COL(21)
+  HANDLE_COL(22)
+  HANDLE_COL(23)
+  HANDLE_COL(24)
+  HANDLE_COL(25)
+  HANDLE_COL(26)
+  HANDLE_COL(27)
+  HANDLE_COL(28)
+  HANDLE_COL(29)
+  HANDLE_COL(30)
+  HANDLE_COL(31)
+  HANDLE_COL(32)
+#undef HANDLE_COL
+  return cudaErrorInvalidValue;
 }
 
-template <typename T,
-          typename SourceType,
-          typename Context,
-          typename Load,
-          int VecSize>
+template <typename T, typename SourceType, typename Context, int VecSize>
 typename std::enable_if<VecSize == 2, cudaError_t>::type
 DispatchLogsumexpWarpCols(const Context& dev_ctx,
                           const int64_t num_row,
                           const int64_t num_col,
-                          Load load,
+                          const SourceType* in,
                           SourceType* out) {
   if (num_col <= 0) {
     return cudaErrorInvalidValue;
   }
-#define HANDLE_ROWS(thread_group_width)                            \
-  else if (num_col <= (thread_group_width)*VecSize) {              \
+#define HANDLE_THREAD_GROUP(thread_group_width)                    \
+  if (num_col <= (thread_group_width)*VecSize) {                   \
     if (num_row % 2 == 0) {                                        \
       return DispatchLogsumexpWarpWithPadding<T,                   \
                                               SourceType,          \
                                               Context,             \
-                                              Load,                \
                                               VecSize,             \
                                               VecSize,             \
                                               2,                   \
                                               thread_group_width>( \
-          dev_ctx, num_row, num_col, load, out);                   \
+          dev_ctx, num_row, num_col, in, out);                     \
     } else {                                                       \
       return DispatchLogsumexpWarpWithPadding<T,                   \
                                               SourceType,          \
                                               Context,             \
-                                              Load,                \
                                               VecSize,             \
                                               VecSize,             \
                                               1,                   \
                                               thread_group_width>( \
-          dev_ctx, num_row, num_col, load, out);                   \
+          dev_ctx, num_row, num_col, in, out);                     \
     }                                                              \
   }
-  HANDLE_ROWS(1)
-  HANDLE_ROWS(2)
-  HANDLE_ROWS(4)
-  HANDLE_ROWS(8)
-  HANDLE_ROWS(16)
-  HANDLE_ROWS(32)
-#undef HANDLE_ROWS
-#define HANDLE_THREAD_GROUP(col)                        \
-  else if (num_col <= (col)*kWarpSize) {                \
+  HANDLE_THREAD_GROUP(1)
+  HANDLE_THREAD_GROUP(2)
+  HANDLE_THREAD_GROUP(4)
+  HANDLE_THREAD_GROUP(8)
+  HANDLE_THREAD_GROUP(16)
+  HANDLE_THREAD_GROUP(32)
+#undef HANDLE_THREAD_GROUP
+// if num_col > 32
+#define HANDLE_COL(col)                                 \
+  if (num_col <= (col)*kWarpSize) {                     \
     return DispatchLogsumexpWarpWithPadding<T,          \
                                             SourceType, \
                                             Context,    \
-                                            Load,       \
                                             VecSize,    \
                                             col,        \
                                             1,          \
                                             kWarpSize>( \
-        dev_ctx, num_row, num_col, load, out);          \
+        dev_ctx, num_row, num_col, in, out);            \
   }
 
-  HANDLE_THREAD_GROUP(4)
-  HANDLE_THREAD_GROUP(6)
-  HANDLE_THREAD_GROUP(8)
-  HANDLE_THREAD_GROUP(10)
-  HANDLE_THREAD_GROUP(12)
-  HANDLE_THREAD_GROUP(14)
-  HANDLE_THREAD_GROUP(16)
-  HANDLE_THREAD_GROUP(18)
-  HANDLE_THREAD_GROUP(20)
-  HANDLE_THREAD_GROUP(22)
-  HANDLE_THREAD_GROUP(24)
-  HANDLE_THREAD_GROUP(26)
-  HANDLE_THREAD_GROUP(28)
-  HANDLE_THREAD_GROUP(30)
-  HANDLE_THREAD_GROUP(32)
-#undef HANDLE_THREAD_GROUP
-  else {
-    return cudaErrorInvalidValue;
-  }
+  HANDLE_COL(4)
+  HANDLE_COL(6)
+  HANDLE_COL(8)
+  HANDLE_COL(10)
+  HANDLE_COL(12)
+  HANDLE_COL(14)
+  HANDLE_COL(16)
+  HANDLE_COL(18)
+  HANDLE_COL(20)
+  HANDLE_COL(22)
+  HANDLE_COL(24)
+  HANDLE_COL(26)
+  HANDLE_COL(28)
+  HANDLE_COL(30)
+  HANDLE_COL(32)
+#undef HANDLE_COL
+  return cudaErrorInvalidValue;
 }
 
-template <typename T, typename SourceType, typename Context, typename Load>
-struct DispatchLogsumexpWarpVecSize {
-  cudaError_t operator()(const Context& dev_ctx,
-                         const int64_t num_row,
-                         const int64_t num_col,
-                         Load load,
-                         SourceType* out) {
-    if (num_col % 2 == 0) {
-      return DispatchLogsumexpWarpCols<T, SourceType, Context, Load, 2>(
-          dev_ctx, num_row, num_col, load, out);
-    } else {
-      return DispatchLogsumexpWarpCols<T, SourceType, Context, Load, 1>(
-          dev_ctx, num_row, num_col, load, out);
-    }
-  }
-};
-
-template <typename T, typename SourceType, typename Context, typename Load>
+template <typename T, typename SourceType, typename Context>
 inline cudaError_t DispatchLogsumexpWarp(const Context& dev_ctx,
                                          const int64_t num_row,
                                          const int64_t num_col,
-                                         Load load,
+                                         const SourceType* in,
                                          SourceType* out) {
-  return DispatchLogsumexpWarpVecSize<T, SourceType, Context, Load>()(
-      dev_ctx, num_row, num_col, load, out);
+  // dispatch logsumexp warp with vecsize
+  if (num_col % 2 == 0) {
+    return DispatchLogsumexpWarpCols<T, SourceType, Context, 2>(
+        dev_ctx, num_row, num_col, in, out);
+  } else {
+    return DispatchLogsumexpWarpCols<T, SourceType, Context, 1>(
+        dev_ctx, num_row, num_col, in, out);
+  }
 }
 }  // namespace funcs
 }  // namespace phi

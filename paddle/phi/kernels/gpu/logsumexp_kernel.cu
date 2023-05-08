@@ -22,6 +22,7 @@
 #include "paddle/phi/kernels/elementwise_subtract_kernel.h"
 #include "paddle/phi/kernels/funcs/activation_functor.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
+#include "paddle/phi/kernels/funcs/transpose_function.cu.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
 
 namespace phi {
@@ -67,47 +68,14 @@ struct LogCUDAFunctor<bfloat16> {
 template <typename T, typename Context>
 void LogsumexpFallbackKernel(const Context& dev_ctx,
                              const DenseTensor& x,
-                             const std::vector<int64_t>& axis,
+                             const std::vector<int>& axis_vec,
+                             const std::vector<int64_t>& outdim_vec,
+                             const std::vector<int64_t>& keeped_outdim_vec,
                              bool keepdim,
                              bool reduce_all,
                              DenseTensor* out) {
   auto* in_x = &x;
   auto* out_y = out;
-  auto xdim = in_x->dims();
-  for (size_t i = 0; i < xdim.size(); i++)
-    PADDLE_ENFORCE_LT(0,
-                      xdim[i],
-                      errors::InvalidArgument(
-                          "The dims of Input(X) should be greater than 0."));
-
-  reduce_all = recompute_reduce_all(x, axis, reduce_all);
-  std::vector<int64_t> outdim_vec, keeped_outdim_vec;
-  std::vector<int> axis_vec;
-  for (auto i : axis) {
-    auto v = i >= 0 ? i : i + xdim.size();
-    axis_vec.push_back(v);
-  }
-  if (axis.size() == 0 || reduce_all) {
-    for (size_t i = 0; i < xdim.size(); i++) {
-      axis_vec.push_back(i);
-    }
-  }
-  for (size_t i = 0; i < xdim.size(); i++) {
-    bool flag = false;
-    for (auto v : axis_vec) {
-      if (v == i) {
-        flag = true;
-        break;
-      }
-    }
-    if (flag) {
-      keeped_outdim_vec.push_back(1);
-      if (keepdim) outdim_vec.push_back(1);
-    } else {
-      outdim_vec.push_back(xdim[i]);
-      keeped_outdim_vec.push_back(xdim[i]);
-    }
-  }
 
   auto outdim = phi::make_ddim(outdim_vec);
   auto keeped_outdim = phi::make_ddim(keeped_outdim_vec);
@@ -142,23 +110,70 @@ void LogsumexpKernel(const Context& dev_ctx,
                      bool keepdim,
                      bool reduce_all,
                      DenseTensor* out) {
-  auto x_dim = x.dims();
-  // TODO(xxx): Support all input shape and axis
-  if (x_dim.size() == 2 && axis.size() == 1 && axis[0] == 1 &&
-      x_dim[1] <= 1024) {
-    using compute_type = typename ComputeType<T>::type;
+  auto xdim = x.dims();
+  for (size_t i = 0; i < xdim.size(); i++)
+    PADDLE_ENFORCE_LT(0,
+                      xdim[i],
+                      errors::InvalidArgument(
+                          "The dims of Input(X) should be greater than 0."));
+
+  reduce_all = recompute_reduce_all(x, axis, reduce_all);
+  std::vector<int64_t> outdim_vec, keeped_outdim_vec, transpose_shape;
+  std::vector<int> axis_vec, perm;
+  int64_t compute_size = 1, other_size = 1;
+  for (auto i : axis) {
+    auto v = i >= 0 ? i : i + xdim.size();
+    axis_vec.push_back(v);
+  }
+  if (axis.size() == 0 || reduce_all) {
+    for (size_t i = 0; i < xdim.size(); i++) {
+      axis_vec.push_back(i);
+    }
+  }
+  for (size_t i = 0; i < xdim.size(); i++) {
+    bool flag = false;
+    for (auto v : axis_vec) {
+      if (v == i) {
+        flag = true;
+        break;
+      }
+    }
+    if (flag) {
+      compute_size *= xdim[i];
+      keeped_outdim_vec.push_back(1);
+      if (keepdim) outdim_vec.push_back(1);
+    } else {
+      other_size *= xdim[i];
+      transpose_shape.push_back(xdim[i]);
+      perm.push_back(i);
+      outdim_vec.push_back(xdim[i]);
+      keeped_outdim_vec.push_back(xdim[i]);
+    }
+  }
+
+  auto outdim = phi::make_ddim(outdim_vec);
+  if (compute_size <= 1024) {
+    perm.insert(perm.end(), axis_vec.begin(), axis_vec.end());
+    for (auto i : axis_vec) transpose_shape.push_back(xdim[i]);
+    DenseTensor transpose_x;
+    transpose_x.Resize(make_ddim(transpose_shape));
+    dev_ctx.template Alloc<T>(&transpose_x);
+    phi::funcs::TransposeGPUKernelDriver<T>(dev_ctx, x, perm, &transpose_x);
     dev_ctx.template Alloc<T>(out);
-    int64_t num_col = x_dim[1], num_row = x_dim[0];
-    phi::funcs::Load<T, compute_type> load(x.data<T>(), num_col);
-    cudaError_t err =
-        funcs::DispatchLogsumexpWarp<compute_type,
-                                     T,
-                                     Context,
-                                     phi::funcs::Load<T, compute_type>>(
-            dev_ctx, num_row, num_col, load, out->data<T>());
+    using compute_type = typename ComputeType<T>::type;
+    const int64_t num_col = compute_size, num_row = other_size;
+    cudaError_t err = funcs::DispatchLogsumexpWarp<compute_type, T, Context>(
+        dev_ctx, num_row, num_col, transpose_x.data<T>(), out->data<T>());
+    out->Resize(outdim);
   } else {
-    LogsumexpFallbackKernel<T, Context>(
-        dev_ctx, x, axis, keepdim, reduce_all, out);
+    LogsumexpFallbackKernel<T, Context>(dev_ctx,
+                                        x,
+                                        axis_vec,
+                                        outdim_vec,
+                                        keeped_outdim_vec,
+                                        keepdim,
+                                        reduce_all,
+                                        out);
   }
 }
 
