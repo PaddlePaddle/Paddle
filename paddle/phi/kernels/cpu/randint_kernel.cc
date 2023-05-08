@@ -22,13 +22,13 @@
 namespace phi {
 
 template <typename T, typename Context>
-void RandintRawKernel(const Context& dev_ctx,
-                      int low,
-                      int high,
-                      const IntArray& shape,
-                      DataType dtype,
-                      int seed,
-                      DenseTensor* out) {
+void RandintKernel(const Context& dev_ctx,
+                   int low,
+                   int high,
+                   const IntArray& shape,
+                   DataType dtype,
+                   DenseTensor* out) {
+  int seed = 0;
   out->Resize(phi::make_ddim(shape.GetData()));
   T* data = dev_ctx.template Alloc<T>(out);
   auto numel = out->numel();
@@ -45,20 +45,7 @@ void RandintRawKernel(const Context& dev_ctx,
   }
 }
 
-template <typename T, typename Context>
-void RandintKernel(const Context& dev_ctx,
-                   int low,
-                   int high,
-                   const IntArray& shape,
-                   DataType dtype,
-                   DenseTensor* out) {
-  RandintRawKernel<T>(dev_ctx, low, high, shape, dtype, 0, out);
-}
-
 }  // namespace phi
-
-PD_REGISTER_KERNEL(
-    randint_raw, CPU, ALL_LAYOUT, phi::RandintRawKernel, int, int64_t) {}
 
 PD_REGISTER_KERNEL(randint, CPU, ALL_LAYOUT, phi::RandintKernel, int, int64_t) {
 }

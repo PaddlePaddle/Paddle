@@ -26,11 +26,6 @@ struct MulGradFunctor {
 };
 
 template <typename T>
-struct MaxFunctor {
-  inline HOSTDEVICE T operator()(T a, T b) const { return a < b ? b : a; }
-};
-
-template <typename T>
 struct AddGradFunctor {
   inline HOSTDEVICE T Dx(T x, T y) { return static_cast<T>(1.); }
   inline HOSTDEVICE T Dy(T x, T y) { return static_cast<T>(1.); }

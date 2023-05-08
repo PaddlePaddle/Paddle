@@ -25,10 +25,11 @@
 #include "paddle/fluid/prim/utils/utils.h"
 #include "paddle/phi/api/include/operants_manager.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 DECLARE_bool(prim_enabled);
-DECLARE_string(tensor_operants_mode);
+PHI_DECLARE_string(tensor_operants_mode);
 
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(tanh, CPU, ALL_LAYOUT);

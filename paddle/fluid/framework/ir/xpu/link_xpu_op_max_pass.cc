@@ -41,30 +41,39 @@ namespace patterns {
 struct FusionXPUOpPattern : public PatternBase {
   FusionXPUOpPattern(PDPattern* pattern,
                      const std::string& name_scope,
-                     const std::string& op_type);
+                     const std::string& op_type,
+                     bool with_branch);
 
   // declare operator node's name
   PATTERN_DECL_NODE(fusion_op);
   // declare variable node's name
-  PATTERN_DECL_NODE(out);
-  PATTERN_DECL_NODE(out_max);
+  PATTERN_DECL_NODE(input);
+  PATTERN_DECL_NODE(branch);
 
  private:
   std::string op_type_;
+  bool with_branch_{false};
 };
 
 FusionXPUOpPattern::FusionXPUOpPattern(PDPattern* pattern,
                                        const std::string& name_scope,
-                                       const std::string& op_type)
-    : PatternBase(pattern, name_scope, name_scope), op_type_(op_type) {
+                                       const std::string& op_type,
+                                       bool with_branch)
+    : PatternBase(pattern, name_scope, name_scope),
+      op_type_(op_type),
+      with_branch_(with_branch) {
   auto* fusion_op = pattern->NewNode(fusion_op_repr())->assert_is_op(op_type_);
-  auto* out = pattern->NewNode(out_repr())
-                  ->assert_is_op_output(op_type_, "out")
-                  ->assert_var_not_persistable();
-  auto* out_max = pattern->NewNode(out_max_repr())
-                      ->assert_is_op_output(op_type_, "out_max")
-                      ->assert_var_not_persistable();
-  fusion_op->LinksTo({out, out_max});
+  auto* input =
+      pattern->NewNode(input_repr())->assert_is_op_input(op_type_, "x");
+
+  PDNode* branch = nullptr;
+  if (with_branch_) {
+    branch =
+        pattern->NewNode(branch_repr())->assert_is_op_input(op_type_, "branch");
+    fusion_op->LinksFrom({input, branch});
+  } else {
+    fusion_op->LinksFrom({input});
+  }
 }
 
 }  // namespace patterns
@@ -74,9 +83,11 @@ class LinkXPUOpMaxPass : public FusePassBase {
   void ApplyImpl(ir::Graph* graph) const override;
 
  private:
-  void ApplyImpl(ir::Graph* graph, const std::string& op_type) const;
+  void ApplyImpl(ir::Graph* graph,
+                 const std::string& op_type,
+                 bool with_branch) const;
 
-  const std::string name_scope_{"multi_encoder_xpu_slice_fuse_pass"};
+  const std::string name_scope_{"link_xpu_op_max_pass"};
   // ops with x_max/out_max
   std::set<std::string> op_types_{"fc_xpu", "conv2d_xpu"};
 };
@@ -89,8 +100,7 @@ Origin subgraph:
           out0   out0_max
             |
             \
-          fusion_xpu_op1
-
+            fusion_op
 Fused subgraph:
           fusion_xpu_op0
             /       \
@@ -98,36 +108,86 @@ Fused subgraph:
           out0   out0_max
             |       |
             \       /
-          fusion_xpu_op1
+            fusion_op
+
+Origin subgraph1:
+          fusion_xpu_op0     fusion_xpu_op1
+            /       \         /          \
+            |       |         |          |
+          out0   out0_max    out1      out1_max
+            |                 |
+        (x) \                / (branch)
+              fusion_xpu_op2
+Fused subgraph1:
+          fusion_xpu_op0     fusion_xpu_op1
+            /       \         /           \
+            |       |         |            |
+          out0   out0_max    out1      out1_max
+            |       |          |           |
+        (x) \       |(x_max)   |(branch)  /(branch_max)
+             \      |          |         /
+              \     |          |        /
+               \    |          |       /
+                   fusion_xpu_op2
 */
 void LinkXPUOpMaxPass::ApplyImpl(ir::Graph* graph) const {
   Init(name_scope_, graph);
   for (auto op_type : op_types_) {
-    ApplyImpl(graph, op_type);
+    for (auto with_branch : {true, false}) {
+      ApplyImpl(graph, op_type, with_branch);
+    }
   }
 }
 
 void LinkXPUOpMaxPass::ApplyImpl(ir::Graph* graph,
-                                 const std::string& op_type) const {
+                                 const std::string& op_type,
+                                 bool with_branch) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   GraphPatternDetector gpd;
   patterns::FusionXPUOpPattern pattern(
-      gpd.mutable_pattern(), name_scope_, op_type);
+      gpd.mutable_pattern(), name_scope_, op_type, with_branch);
 
   int found_subgraph_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* graph) {
     VLOG(4) << "handle LinkXPUOpMaxPass fuse";
     GET_IR_NODE(fusion_op);
-    GET_IR_NODE(out);
-    GET_IR_NODE(out_max);
-    for (auto next_op : out->outputs) {
-      auto* next_op_desc = next_op->Op();
-      if (op_types_.count(next_op_desc->Type()) == 0) continue;
-      next_op_desc->SetInput("x_max", {out_max->Name()});
-      IR_NODE_LINK_TO(out_max, next_op);
-      found_subgraph_count++;
+    GET_IR_NODE(input);
+    GET_IR_NODE(branch);
+
+    auto* fusion_op_desc = fusion_op->Op();
+    if (fusion_op_desc->HasAttr("has_branch")) {
+      bool fusion_op_branch =
+          PADDLE_GET_CONST(bool, fusion_op_desc->GetAttr("has_branch"));
+      if (fusion_op_branch != with_branch) {
+        return;
+      }
+    }
+    if (input->inputs.size() > 0 && input->inputs[0]->IsOp() &&
+        input->inputs[0]->Op()->HasOutput("out_max")) {
+      auto input_max_name = input->inputs[0]->Op()->Output("out_max");
+      for (auto max_node : input->inputs[0]->outputs) {
+        if (input_max_name[0] == max_node->Name()) {
+          fusion_op_desc->SetInput("x_max", {max_node->Name()});
+          IR_NODE_LINK_TO(max_node, fusion_op);
+          found_subgraph_count++;
+        }
+      }
+    }
+
+    if (with_branch) {
+      if (branch->inputs.size() > 0 && branch->inputs[0]->IsOp() &&
+          branch->inputs[0]->Op()->HasOutput("out_max")) {
+        auto branch_max_name = branch->inputs[0]->Op()->Output("out_max");
+        for (auto max_node : branch->inputs[0]->outputs) {
+          if (branch_max_name[0] == max_node->Name()) {
+            fusion_op_desc->SetInput("branch_max", {max_node->Name()});
+            IR_NODE_LINK_TO(max_node, fusion_op);
+            found_subgraph_count++;
+          }
+        }
+      }
     }
   };
 

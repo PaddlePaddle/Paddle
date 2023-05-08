@@ -25,8 +25,7 @@ limitations under the License. */
 #include <unordered_set>
 
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
-#include "gflags/gflags.h"
-#include "glog/logging.h"  // For VLOG()
+#include "glog/logging.h"               // For VLOG()
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/details/op_registry.h"
 #include "paddle/fluid/framework/grad_op_desc_maker.h"
@@ -34,6 +33,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/shape_inference.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/macros.h"
 
@@ -70,7 +70,7 @@ class Version;
 }  // namespace framework
 }  // namespace paddle
 
-DECLARE_bool(check_kernel_launch);
+PHI_DECLARE_bool(check_kernel_launch);
 
 namespace paddle {
 namespace framework {
@@ -148,7 +148,7 @@ class OpRegistry {
 };
 
 template <typename PlaceType>
-inline void CheckKernelLaunch(const char* op_type) {}
+inline void CheckKernelLaunch(const char* op_type UNUSED) {}
 
 #ifdef PADDLE_WITH_CUDA
 template <>
