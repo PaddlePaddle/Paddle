@@ -116,9 +116,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Recv(
           BKCLContext_t comm,
           const XPUStream& stream) {
         VLOG(3) << "calling bkcl_recv"
-                << ", rank_id: " << paddle::platform::GetBKCLRankID(comm)
-                << ", dev_id: " << paddle::platform::GetBKCLDevID(comm)
-                << ", nranks: " << paddle::platform::GetBKCLNRanks(comm)
+                << ", rank_id: " << platform::GetBKCLRankID(comm)
+                << ", dev_id: " << platform::GetBKCLDevID(comm)
+                << ", nranks: " << platform::GetBKCLNRanks(comm)
                 << ", src_rank: " << src_rank << ", numel: " << output->numel()
                 << ", dtype: " << output->type() << ", sync_op: " << sync_op
                 << ", use_calc_stream: " << use_calc_stream;
@@ -155,9 +155,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Send(
           BKCLContext_t comm,
           const XPUStream& stream) {
         VLOG(3) << "calling bkcl_send"
-                << ", rank_id: " << paddle::platform::GetBKCLRankID(comm)
-                << ", dev_id: " << paddle::platform::GetBKCLDevID(comm)
-                << ", nranks: " << paddle::platform::GetBKCLNRanks(comm)
+                << ", rank_id: " << platform::GetBKCLRankID(comm)
+                << ", dev_id: " << platform::GetBKCLDevID(comm)
+                << ", nranks: " << platform::GetBKCLNRanks(comm)
                 << ", dst_rank: " << dst_rank
                 << ", input numel: " << input.numel()
                 << ", dtype: " << input.type() << ", sync_op: " << sync_op
@@ -290,9 +290,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllReduce(
           BKCLContext_t comm,
           const XPUStream& stream) {
         VLOG(3) << "calling bkcl_all_reduce"
-                << ", rank_id: " << paddle::platform::GetBKCLRankID(comm)
-                << ", dev_id: " << paddle::platform::GetBKCLDevID(comm)
-                << ", nranks: " << paddle::platform::GetBKCLNRanks(comm)
+                << ", rank_id: " << platform::GetBKCLRankID(comm)
+                << ", dev_id: " << platform::GetBKCLDevID(comm)
+                << ", nranks: " << platform::GetBKCLNRanks(comm)
                 << ", numel: " << input.numel() << ", dtype: " << input.type()
                 << ", reduce_type: " << ToBKCLRedType(opts.reduce_op)
                 << ", sync_op: " << sync_op
@@ -328,9 +328,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Broadcast(
           const XPUStream& stream) {
         int root = opts.source_rank + opts.source_root;
         VLOG(3) << "calling bkcl_broadcast"
-                << ", rank_id: " << paddle::platform::GetBKCLRankID(comm)
-                << ", dev_id: " << paddle::platform::GetBKCLDevID(comm)
-                << ", nranks: " << paddle::platform::GetBKCLNRanks(comm)
+                << ", rank_id: " << platform::GetBKCLRankID(comm)
+                << ", dev_id: " << platform::GetBKCLDevID(comm)
+                << ", nranks: " << platform::GetBKCLNRanks(comm)
                 << ", root: " << root << ", numel: " << input.numel()
                 << ", dtype: " << input.type() << ", sync_op: " << sync_op
                 << ", use_calc_stream: " << use_calc_stream;
@@ -373,9 +373,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllGather(
           BKCLContext_t comm,
           const XPUStream& stream) {
         VLOG(3) << "calling bkcl_all_gather"
-                << ", rank_id: " << paddle::platform::GetBKCLRankID(comm)
-                << ", dev_id: " << paddle::platform::GetBKCLDevID(comm)
-                << ", nranks: " << paddle::platform::GetBKCLNRanks(comm)
+                << ", rank_id: " << platform::GetBKCLRankID(comm)
+                << ", dev_id: " << platform::GetBKCLDevID(comm)
+                << ", nranks: " << platform::GetBKCLNRanks(comm)
                 << ", numel: " << in_tensor_maybe_partial.numel()
                 << ", dtype: " << input.type() << ", sync_op: " << sync_op
                 << ", use_calc_stream: " << use_calc_stream;
@@ -408,13 +408,14 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Reduce(
           BKCLContext_t comm,
           const XPUStream& stream) {
         VLOG(3) << "calling bkcl_reduce"
-                << ", rank_id: " << paddle::platform::GetBKCLRankID(comm)
-                << ", dev_id: " << paddle::platform::GetBKCLDevID(comm)
-                << ", nranks: " << paddle::platform::GetBKCLNRanks(comm)
+                << ", rank_id: " << platform::GetBKCLRankID(comm)
+                << ", dev_id: " << platform::GetBKCLDevID(comm)
+                << ", nranks: " << platform::GetBKCLNRanks(comm)
                 << ", root: " << opts.root_rank << ", numel: " << input.numel()
                 << ", dtype: " << input.type()
                 << ", reduce_type: " << ToBKCLRedType(opts.reduce_op)
-                << ", sync_op: " << sync_op;
+                << ", sync_op: " << sync_op
+                << ", use_calc_stream: " << use_calc_stream;
         int r = bkcl_reduce(comm,
                             input.data(),
                             output->data(),
@@ -445,9 +446,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::ReduceScatter(
           BKCLContext_t comm,
           const XPUStream& stream) {
         VLOG(3) << "calling bkcl_reduce_scatter"
-                << ", rank_id: " << paddle::platform::GetBKCLRankID(comm)
-                << ", dev_id: " << paddle::platform::GetBKCLDevID(comm)
-                << ", nranks: " << paddle::platform::GetBKCLNRanks(comm)
+                << ", rank_id: " << platform::GetBKCLRankID(comm)
+                << ", dev_id: " << platform::GetBKCLDevID(comm)
+                << ", nranks: " << platform::GetBKCLNRanks(comm)
                 << ", numel: " << output->numel() << ", dtype: " << input.type()
                 << ", reduce_type: " << ToBKCLRedType(opts.reduce_op)
                 << ", sync_op: " << sync_op
@@ -538,9 +539,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllReduce(
           BKCLContext_t comm,
           const XPUStream& stream) {
         VLOG(3) << "calling bkcl_all_reduce"
-                << ", rank_id: " << paddle::platform::GetBKCLRankID(comm)
-                << ", dev_id: " << paddle::platform::GetBKCLDevID(comm)
-                << ", nranks: " << paddle::platform::GetBKCLNRanks(comm)
+                << ", rank_id: " << platform::GetBKCLRankID(comm)
+                << ", dev_id: " << platform::GetBKCLDevID(comm)
+                << ", nranks: " << platform::GetBKCLNRanks(comm)
                 << ", numel: " << input.numel() << ", dtype: " << input.type()
                 << ", reduce_type: " << ToBKCLRedType(opts.reduce_op)
                 << ", sync_op: " << true << ", use_calc_stream: " << false;
@@ -587,9 +588,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllReduce(
           BKCLContext_t comm,
           const XPUStream& stream) {
         VLOG(3) << "calling bkcl_all_reduce"
-                << ", rank_id: " << paddle::platform::GetBKCLRankID(comm)
-                << ", dev_id: " << paddle::platform::GetBKCLDevID(comm)
-                << ", nranks: " << paddle::platform::GetBKCLNRanks(comm)
+                << ", rank_id: " << platform::GetBKCLRankID(comm)
+                << ", dev_id: " << platform::GetBKCLDevID(comm)
+                << ", nranks: " << platform::GetBKCLNRanks(comm)
                 << ", numel: " << input.numel() << ", dtype: " << input.type()
                 << ", reduce_type: " << ToBKCLRedType(opts.reduce_op)
                 << ", sync_op: " << sync_op << ", use_calc_stream: " << false;
@@ -638,9 +639,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Broadcast(
         const auto root =
             opts.source_rank * in_tensors.size() + opts.source_root;
         VLOG(3) << "calling bkcl_broadcast"
-                << ", rank_id: " << paddle::platform::GetBKCLRankID(comm)
-                << ", dev_id: " << paddle::platform::GetBKCLDevID(comm)
-                << ", nranks: " << paddle::platform::GetBKCLNRanks(comm)
+                << ", rank_id: " << platform::GetBKCLRankID(comm)
+                << ", dev_id: " << platform::GetBKCLDevID(comm)
+                << ", nranks: " << platform::GetBKCLNRanks(comm)
                 << ", root: " << root << ", numel: " << input.numel()
                 << ", dtype: " << input.type() << ", sync_op: " << true
                 << ", use_calc_stream: " << false;
@@ -690,9 +691,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Broadcast(
         const auto root =
             opts.source_rank * in_tensors.size() + opts.source_root;
         VLOG(3) << "calling bkcl_broadcast"
-                << ", rank_id: " << paddle::platform::GetBKCLRankID(comm)
-                << ", dev_id: " << paddle::platform::GetBKCLDevID(comm)
-                << ", nranks: " << paddle::platform::GetBKCLNRanks(comm)
+                << ", rank_id: " << platform::GetBKCLRankID(comm)
+                << ", dev_id: " << platform::GetBKCLDevID(comm)
+                << ", nranks: " << platform::GetBKCLNRanks(comm)
                 << ", root: " << root << ", numel: " << input.numel()
                 << ", dtype: " << input.type() << ", sync_op: " << sync_op
                 << ", use_calc_stream: " << false;
@@ -741,9 +742,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllGather(
           BKCLContext_t comm,
           const XPUStream& stream) {
         VLOG(3) << "calling bkcl_all_gather"
-                << ", rank_id: " << paddle::platform::GetBKCLRankID(comm)
-                << ", dev_id: " << paddle::platform::GetBKCLDevID(comm)
-                << ", nranks: " << paddle::platform::GetBKCLNRanks(comm)
+                << ", rank_id: " << platform::GetBKCLRankID(comm)
+                << ", dev_id: " << platform::GetBKCLDevID(comm)
+                << ", nranks: " << platform::GetBKCLNRanks(comm)
                 << ", numel: " << input.numel() << ", dtype: " << input.type()
                 << ", sync_op: " << true << ", use_calc_stream: " << false;
         int r =
@@ -787,9 +788,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllGather(
           BKCLContext_t comm,
           const XPUStream& stream) {
         VLOG(3) << "calling bkcl_all_gather"
-                << ", rank_id: " << paddle::platform::GetBKCLRankID(comm)
-                << ", dev_id: " << paddle::platform::GetBKCLDevID(comm)
-                << ", nranks: " << paddle::platform::GetBKCLNRanks(comm)
+                << ", rank_id: " << platform::GetBKCLRankID(comm)
+                << ", dev_id: " << platform::GetBKCLDevID(comm)
+                << ", nranks: " << platform::GetBKCLNRanks(comm)
                 << ", numel: " << input.numel() << ", dtype: " << input.type()
                 << ", sync_op: " << sync_op << ", use_calc_stream: " << false;
         int r =
