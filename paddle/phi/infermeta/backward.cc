@@ -1088,12 +1088,11 @@ void TransposeGradInferMeta(const MetaTensor& x,
   TransposeInferMeta(x, reversed_axis, out);
 }
 
-void TransLayoutGradInferMeta(const MetaTensor& x, 
-		                          const MetaTensor& out_grad,
+void TransLayoutGradInferMeta(const MetaTensor& x,
+                              const MetaTensor& out_grad,
                               const std::vector<int>& axis,
                               MetaTensor* x_grad) {
-
-  TransposeGradInferMeta(out_grad, axis,x_grad);
+  TransposeGradInferMeta(out_grad, axis, x_grad);
   x_grad->set_layout(static_cast<DataLayout>(x.layout()));
 }
 

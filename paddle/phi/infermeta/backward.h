@@ -418,7 +418,7 @@ void TransposeInferMeta(const MetaTensor& x,
                         MetaTensor* out);
 
 void TransLayoutGradInferMeta(const MetaTensor& x,
-		                          const MetaTensor& out_grad,
+                              const MetaTensor& out_grad,
                               const std::vector<int>& axis,
                               MetaTensor* out);
 void UniformRandomInplaceGradInferMeta(const MetaTensor& out_grad,

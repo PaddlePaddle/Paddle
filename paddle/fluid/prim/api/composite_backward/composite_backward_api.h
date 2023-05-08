@@ -209,8 +209,8 @@ void transpose_grad(const Tensor& grad_out,
 }
 
 template <typename T>
-void trans_layout_grad(const Tensor & x,
-		                   const Tensor& grad_out,
+void trans_layout_grad(const Tensor& x,
+                       const Tensor& grad_out,
                        const std::vector<int>& perm,
                        Tensor* grad_x) {
   transpose_grad<T>(grad_out, perm, grad_x);

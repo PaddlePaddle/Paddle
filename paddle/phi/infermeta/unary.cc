@@ -4486,7 +4486,6 @@ void TransposeInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
-
 void UnbindInferMeta(const MetaTensor& x,
                      int axis,
                      std::vector<MetaTensor*> outs) {
