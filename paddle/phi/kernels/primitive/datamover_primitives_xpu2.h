@@ -1248,7 +1248,7 @@ __device__ __forceinline__ void ReadDataBc(
     int total_num_output,
     int read_lens = NX) {
   int thread_offset = block_offset + core_id() * read_lens;
-  __local__ T in_temp[1];
+  __local__ T in_temp[NX];
 
   if (config.cmp_type == details::OptType::MNK_M1K) {
     ReadDataBcM1kMnk<T>(in_temp, src, thread_offset, config, read_lens);
@@ -1266,7 +1266,7 @@ __device__ __forceinline__ void ReadDataBc(
   }
 #pragma unroll
   for (int idx = 0; idx < read_lens; ++idx) {
-    std::get<Index>(dst[idx]) = in_temp[0];
+    std::get<Index>(dst[idx]) = in_temp[idx];
   }
 }
 
