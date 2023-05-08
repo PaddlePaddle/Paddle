@@ -1327,8 +1327,6 @@ void ParallelExecutor::InitExecutorPrivateMemberInfo(
     device_name = "CPU";
   } else if (member_->use_device_ == p::kCUDA) {
     device_name = "CUDA";
-  } else if (member_->use_device_ == p::kNPU) {
-    device_name = "NPU";
   } else if (member_->use_device_ == p::kXPU) {
     device_name = "XPU";
   } else {
