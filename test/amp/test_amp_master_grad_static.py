@@ -122,7 +122,7 @@ class TestStaticMasterGradProgramBF16(AmpTestBase):
                 feed_vars,
                 fetch_vars,
             ) = build_embedding_model(
-                True, "bfloat16", level, use_master_grad=use_master_grad
+                True, "float16", level, use_master_grad=use_master_grad
             )
 
             seed = 0
@@ -144,7 +144,7 @@ class TestStaticMasterGradProgramBF16(AmpTestBase):
             )
             return losses
 
-        max_iters = 40
+        max_iters = 100
         x = self._generate_feed_x()
         place = paddle.CUDAPlace(0)
         exe = paddle.static.Executor(place)
@@ -155,7 +155,7 @@ class TestStaticMasterGradProgramBF16(AmpTestBase):
         self.assertNotEqual(
             losses_o1,
             losses_o2_no_master_grad,
-            f"loss of o1 and o2 should be equal, but recieved loss o1: {losses_o1}, loss o2: {losses_o2_no_master_grad}",
+            f"loss of o1 and o2 should not be equal, but recieved loss o1: {losses_o1}, loss o2: {losses_o2_no_master_grad}",
         )
 
         self.assertEqual(
