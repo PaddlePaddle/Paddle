@@ -8,8 +8,8 @@ set(XPU_API_LIB_NAME "libxpuapi.so")
 set(XPU_RT_LIB_NAME "libxpurt.so")
 set(XPU_XFT_LIB_NAME "libxft.so")
 
-set(XPU_BASE_DATE "20230427")
-set(XPU_XCCL_BASE_VERSION "1.0.13")
+set(XPU_BASE_DATE "20230508")
+set(XPU_XCCL_BASE_VERSION "1.0.14")
 set(XPU_XFT_BASE_VERSION "latest")
 
 if(NOT DEFINED XPU_BASE_URL)
