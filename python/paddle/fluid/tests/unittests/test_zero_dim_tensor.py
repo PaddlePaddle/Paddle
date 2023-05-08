@@ -2808,6 +2808,16 @@ class TestSundryAPI(unittest.TestCase):
         a_cond_fro.backward()
         self.assertEqual(len(a_cond_fro.shape), 1)
         self.assertEqual(a.grad.shape, [2, 4, 4])
+    
+    def test_trace(self):
+        x = paddle.to_tensor([[3, 2], [1, 9]], dtype="float32")
+        x.stop_gradient = False
+        out = paddle.trace(x)
+        out.backward()
+
+        self.assertEqual(out.shape, [])
+        np.testing.assert_allclose(out, np.array(12))
+        self.assertEqual(x.grad.shape, [2, 2])
 
 
 class TestSundryAPIStatic(unittest.TestCase):
