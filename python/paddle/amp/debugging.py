@@ -447,16 +447,16 @@ def compare_accuracy(
         ..  code-block:: python
 
             import paddle
+            from paddle.fluid import core
             try:
                 import xlsxwriter as xlw
-
-                print(xlw.__version__)
             except ImportError:
                 import subprocess
 
                 subprocess.check_call(
                     ['python', '-m', 'pip', 'install', 'xlsxwriter==3.0.9']
                 )
+                import xlsxwriter as xlw
 
             paddle.set_flags(
                 {"FLAGS_check_nan_inf": 1, "FLAGS_check_nan_inf_level": 3}
