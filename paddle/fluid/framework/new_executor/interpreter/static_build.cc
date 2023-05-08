@@ -19,13 +19,17 @@
 #include "paddle/fluid/operators/reader/buffered_reader.h"
 
 // These Ops is OperatorBase, but we have been handle them in static build
-std::set<std::string> OperatorBasesHandledInStaticBuild = {"read"};
+std::set<std::string> OperatorBasesHandledInStaticBuild = {"depend", "read"};
 
 std::set<std::string> OperatorBasesMustRunInStaticBuild = {
     "create_double_buffer_reader", "create_py_reader"};
 
 std::set<std::string> OpsCanSkipedFakeAllocInStaticBuild = {
-    "create_double_buffer_reader", "create_py_reader", "fetch_v2"};
+    "create_double_buffer_reader",
+    "create_py_reader",
+    "depend",
+    "fetch_v2",
+    "nop"};
 
 // Cannot static analysis these Ops' output dtype or backend because their
 // kernels have not moved to PHI yet.
