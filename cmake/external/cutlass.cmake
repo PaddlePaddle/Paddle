@@ -42,14 +42,18 @@ ExternalProject_Add(
   INSTALL_COMMAND ""
   TEST_COMMAND "")
 
+set(tmp_gemm_operations_file
+    ${CMAKE_SOURCE_DIR}/paddle/phi/kernels/sparse/gpu/cutlass_generator/generated/gemm/all_gemm_operations.h.tmp
+)
+set(tmp_configurations_file
+    ${CMAKE_SOURCE_DIR}/paddle/phi/kernels/sparse/gpu/cutlass_generator/generated/gemm/configurations.h.tmp
+)
 set(gemm_operations_file
-    ${CMAKE_SOURCE_DIR}/paddle/phi/kernels/sparse/gpu/cutlass_generator/generated/gemm/all_gemm_operations.h
+    ${CMAKE_SOURCE_DIR}/paddle/phi/kernels/sparse/gpu/cutlass_generator/all_gemm_operations.h
 )
 set(configurations_file
-    ${CMAKE_SOURCE_DIR}/paddle/phi/kernels/sparse/gpu/cutlass_generator/generated/gemm/configurations.h
+    ${CMAKE_SOURCE_DIR}/paddle/phi/kernels/sparse/gpu/cutlass_generator/configurations.h
 )
-set(tmp_gemm_operations_file ${gemm_operations_file}.tmp)
-set(tmp_configurations_file ${configurations_file}.tmp)
 
 add_custom_target(
   cutlass_codegen
