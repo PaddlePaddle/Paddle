@@ -14,7 +14,10 @@ limitations under the License. */
 
 #pragma once
 
+#ifdef PADDLE_WITH_FLASHATTN
 #include "paddle/phi/backends/dynload/flashattn.h"
+#endif
+
 #include "paddle/phi/kernels/arange_kernel.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
@@ -22,10 +25,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/funcs/transpose_function.cu.h"
 #include "paddle/phi/kernels/gpudnn/softmax_gpudnn.h"
-
-#ifdef PADDLE_WITH_FLASHATTN
-#include "paddle/phi/kernels/flash_attn_kernel.h"
-#endif
 
 namespace paddle {
 namespace operators {
@@ -829,50 +828,6 @@ class FMHAGateRef {
   }
 
  private:
-  void ComputeBatchedGEMM(const phi::DDim& a_dims,
-                          const phi::DDim& b_dims,
-                          const T* a_ptr,
-                          const T* b_ptr,
-                          T* c_ptr,
-                          bool trans_a,
-                          bool trans_b,
-                          int64_t m,
-                          int64_t n,
-                          int64_t k,
-                          int64_t batch_size,
-                          T alpha = static_cast<T>(1.0),
-                          T beta = static_cast<T>(0.0)) {
-    int64_t stride_a = m * k;
-    int64_t stride_b = k * n;
-    int64_t stride_out = m * n;
-
-    phi::funcs::MatmulPlanner matmul_planner(
-        vectorize(a_dims),
-        vectorize(b_dims),
-        trans_a,
-        trans_b,
-        phi::CppTypeToDataType<T>::Type(),
-        phi::funcs::MatmulFusedType::kMatmul);
-
-    using blaslt = phi::funcs::MatmulWithCublasLt<T>;
-    blaslt::RunWithBatch(dev_ctx_,
-                         a_ptr,
-                         b_ptr,
-                         c_ptr,
-                         m,
-                         n,
-                         k,
-                         trans_a,
-                         trans_b,
-                         batch_size,
-                         stride_a,
-                         stride_b,
-                         stride_out,
-                         &matmul_planner,
-                         alpha,
-                         beta);
-  }
-
   void ComputeBatchedGEMM(const T* a_ptr,
                           const T* b_ptr,
                           T* c_ptr,
@@ -922,6 +877,7 @@ class FlashAttnWithGating {
                       phi::DenseTensor* fmha_out,
                       phi::DenseTensor* gate_out,
                       GateAttentionConfig<T>* config) {
+#ifdef PADDLE_WITH_FLASHATTN
     bool is_bf16 =
         qkv_transpose_out->dtype() == DataType::BFLOAT16 ? true : false;
     TypeDebugInfo<T>();
@@ -1053,6 +1009,10 @@ class FlashAttnWithGating {
     if (config->has_gating) {
       gate_out->Resize(config->gate_out_dims);
     }
+#else
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "FlashAttention is unsupported, please set use_flash_attn to false."));
+#endif
   }
 
   void ComputeBackward(const phi::DenseTensor* qkv_transpose_out,
@@ -1064,6 +1024,7 @@ class FlashAttnWithGating {
                        phi::DenseTensor* src_mask_grad,
                        phi::DenseTensor* nonbatched_bias_grad,
                        GateAttentionGradConfig<T>* config) {
+#ifdef PADDLE_WITH_FLASHATTN
     bool is_bf16 =
         qkv_transpose_out->dtype() == DataType::BFLOAT16 ? true : false;
     TypeDebugInfo<T>();
@@ -1229,6 +1190,10 @@ class FlashAttnWithGating {
 
     phi::DenseTensor* qkv_out_grad = config->GetQKVOutGrad();
     ComputeQKVTransposeBackward(qkv_transpose_out_grad, qkv_out_grad);
+#else
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "FlashAttention is unsupported, please set use_flash_attn to false."));
+#endif
   }
 
  private:
