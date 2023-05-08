@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/paddle_dialect/paddle_dialect.h"
+
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/paddle_dialect/op.h"
 #include "paddle/ir/dialect_interface.h"
 #include "paddle/ir/parameter.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -46,7 +48,7 @@ PaddleDialect::PaddleDialect(ir::IrContext* context)
 void PaddleDialect::initialize() {
   // RegisterTypes<GET_BUILT_IN_TYPE_LIST>();
   // RegisterAttributes<GET_BUILT_IN_ATTRIBUTE_LIST>();
-  // RegisterOps<GET_BUILT_IN_OP_LIST>();
+  RegisterOps<Conv2DOp>();
   RegisterInterfaces<ParameterConvertInterface>();
 }
 
