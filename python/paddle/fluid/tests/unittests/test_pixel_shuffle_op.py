@@ -15,12 +15,12 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 import paddle.nn.functional as F
+from paddle import fluid
+from paddle.fluid import core
 
 
 def pixel_shuffle_np(x, up_factor, data_format="NCHW"):
@@ -64,6 +64,7 @@ class TestPixelShuffleOp(OpTest):
     def setUp(self):
         self.op_type = "pixel_shuffle"
         self.python_api = paddle.nn.functional.pixel_shuffle
+        self.init_dtype()
         self.init_data_format()
         n, c, h, w = 2, 9, 4, 4
 
@@ -74,12 +75,15 @@ class TestPixelShuffleOp(OpTest):
 
         up_factor = 3
 
-        x = np.random.random(shape).astype("float64")
+        x = np.random.random(shape).astype(self.dtype)
         npresult = pixel_shuffle_np(x, up_factor, self.format)
 
         self.inputs = {'X': x}
         self.outputs = {'Out': npresult}
         self.attrs = {'upscale_factor': up_factor, "data_format": self.format}
+
+    def init_dtype(self):
+        self.dtype = np.float64
 
     def init_data_format(self):
         self.format = "NCHW"
@@ -99,6 +103,60 @@ class TestChannelLast(TestPixelShuffleOp):
         self.format = "NHWC"
 
 
+class TestPixelShuffleFP16Op(TestPixelShuffleOp):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support bfloat16",
+)
+class TestPixelShuffleBF16Op(OpTest):
+    def setUp(self):
+        self.op_type = "pixel_shuffle"
+        self.python_api = paddle.nn.functional.pixel_shuffle
+        self.init_dtype()
+        self.init_data_format()
+        n, c, h, w = 2, 9, 4, 4
+
+        if self.format == "NCHW":
+            shape = [n, c, h, w]
+        if self.format == "NHWC":
+            shape = [n, h, w, c]
+
+        up_factor = 3
+
+        x = np.random.random(shape).astype(self.np_dtype)
+        npresult = pixel_shuffle_np(x, up_factor, self.format)
+
+        self.inputs = {'X': x}
+        self.outputs = {'Out': npresult}
+        self.attrs = {'upscale_factor': up_factor, "data_format": self.format}
+
+        self.place = core.CUDAPlace(0)
+        self.inputs['X'] = convert_float_to_uint16(self.inputs['X'])
+        self.outputs['Out'] = convert_float_to_uint16(self.outputs['Out'])
+
+    def init_dtype(self):
+        self.dtype = np.uint16
+        self.np_dtype = np.float32
+
+    def init_data_format(self):
+        self.format = "NCHW"
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place)
+
+    def test_check_grad(self):
+        self.check_grad_with_place(
+            self.place,
+            ['X'],
+            'Out',
+        )
+
+
 class TestPixelShuffleAPI(unittest.TestCase):
     def setUp(self):
         self.x_1_np = np.random.random([2, 9, 4, 4]).astype("float64")
@@ -113,10 +171,10 @@ class TestPixelShuffleAPI(unittest.TestCase):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
 
             paddle.enable_static()
-            x_1 = paddle.fluid.data(
+            x_1 = paddle.static.data(
                 name="x", shape=[2, 9, 4, 4], dtype="float64"
             )
-            x_2 = paddle.fluid.data(
+            x_2 = paddle.static.data(
                 name="x2", shape=[2, 4, 4, 9], dtype="float64"
             )
             out_1 = F.pixel_shuffle(x_1, 3)
@@ -149,10 +207,10 @@ class TestPixelShuffleAPI(unittest.TestCase):
                 place = paddle.CUDAPlace(0)
                 self.x_1_np = np.random.random([2, 9, 4, 4]).astype("float16")
                 self.x_2_np = np.random.random([2, 4, 4, 9]).astype("float16")
-                x_1 = paddle.fluid.data(
+                x_1 = paddle.static.data(
                     name="x", shape=[2, 9, 4, 4], dtype="float16"
                 )
-                x_2 = paddle.fluid.data(
+                x_2 = paddle.static.data(
                     name="x2", shape=[2, 4, 4, 9], dtype="float16"
                 )
                 # init instance
@@ -186,10 +244,10 @@ class TestPixelShuffleAPI(unittest.TestCase):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
 
             paddle.enable_static()
-            x_1 = paddle.fluid.data(
+            x_1 = paddle.static.data(
                 name="x", shape=[2, 9, 4, 4], dtype="float64"
             )
-            x_2 = paddle.fluid.data(
+            x_2 = paddle.static.data(
                 name="x2", shape=[2, 4, 4, 9], dtype="float64"
             )
             # init instance

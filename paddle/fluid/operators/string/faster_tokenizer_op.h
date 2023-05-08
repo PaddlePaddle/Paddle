@@ -122,7 +122,7 @@ class BertTokenizer {
   InvVocab inv_vocab_;
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class FasterTokenizerKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {

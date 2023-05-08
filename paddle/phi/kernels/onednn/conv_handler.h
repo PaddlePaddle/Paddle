@@ -17,8 +17,8 @@
 #include "paddle/phi/backends/onednn/onednn_helper.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/phi/core/expect.h"
+#include "paddle/phi/core/macros.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
-
 namespace phi {
 namespace onednn {
 
@@ -50,7 +50,7 @@ class ConvOneDNNHandlerT
                      const std::string& padding_algorithm,
                      const std::vector<int>& dilations_in,
                      int groups,
-                     const std::string& data_format,
+                     const std::string& data_format UNUSED,
                      bool is_test,
                      bool is_BFLOAT16,
                      const std::string& fuse_activation,
@@ -726,8 +726,7 @@ class ConvOneDNNHandlerT
   std::shared_ptr<dnnl::memory> AcquireResidualMemory(
       const phi::DenseTensor* residual_param) {
     void* residual_data =
-        residual_param->dtype() ==
-                paddle::experimental::CppTypeToDataType<T_out>::Type()
+        residual_param->dtype() == phi::CppTypeToDataType<T_out>::Type()
             ? funcs::to_void_cast<T_out>(residual_param->data<T_out>())
             : funcs::to_void_cast<T>(residual_param->data<T>());
     auto residual_mem_p = this->AcquireMemory("@user_residual_data_mem_p");

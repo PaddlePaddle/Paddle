@@ -35,7 +35,7 @@ class TestFleetPrivateFunction(unittest.TestCase):
         thr = threading.Thread(target=init_server, args=(9292,))
         thr.start()
 
-        import paddle.distributed.fleet as fleet
+        from paddle.distributed import fleet
 
         ep = ["127.0.0.1:9292"]
         fleet.base.private_helper_function.wait_server_ready(ep)

@@ -68,11 +68,13 @@ AddOutput({{name | to_opmaker_name}}, "({{typename}}), output {{i}} of {{op_name
 {% macro add_attr(i, attr, op_name) %}{# inline #}
   {% set name = attr["fluid_name"] %}
   {% set typename = attr["typename"] %}
-  {% if typename is scalar %}
+  {% if typename is scalar and
+  ("is_support_tensor" not in attr or attr["is_support_tensor"] is false) %}
 AddInput("{{attr | to_scalar_tensor_name}}", "attribute {{i}} for {{op_name}} op from 0D Tensor.")
     .AsDispensable();
 AddAttr<{{attr["data_type"]}}>("{{name}}", "({{attr["data_type"]}}), attribute {{i}} for {{op_name}} op.")
-  {% elif typename == "IntArray" %}{# the type has been renamed #}
+  {% elif typename == "IntArray" and
+  ("is_support_tensor" not in attr or attr["is_support_tensor"] is false) %}{# the type has been renamed #}
     {% if 'tensor_name' in attr or 'manual_flag' not in attr %}
 AddInput("{{attr | to_int_array_tensor_name}}", "attribute {{i}} for {{op_name}} op from 1D integer Tensor.")
     .AsDispensable();
@@ -82,6 +84,8 @@ AddInput("{{attr | to_int_array_tensors_name}}", "attribute {{i}} for {{op_name}
     .AsDuplicable()
     .AsDispensable();
     {% endif %}
+  AddAttr<{{attr["data_type"]}}>("{{name}}", "({{attr["data_type"]}}), attribute {{i}} for {{op_name}} op.")
+  {% elif "is_support_tensor" in attr and attr["is_support_tensor"] %}
 AddAttr<{{attr["data_type"]}}>("{{name}}", "({{attr["data_type"]}}), attribute {{i}} for {{op_name}} op.")
   {% else %}
 AddAttr<{{typename | to_op_attr_type}}>("{{name}}", "({{typename | to_op_attr_type}}), attribute {{i}} for {{op_name}} op.")
@@ -103,16 +107,44 @@ AddAttr<{{typename | to_op_attr_type}}>("{{name}}", "({{typename | to_op_attr_ty
     {% if default_value == "DataType::UNDEFINED" %}
 -1
     {%- else %}
-static_cast<int>(framework::TransToProtoVarType(experimental::{{default_value}}))
+static_cast<int>(framework::TransToProtoVarType(phi::{{default_value}}))
     {%- endif %}
   {%- elif typename == "DataLayout" %} {# does DataLayout need any processing?#}
-static_cast<int>(experimental::{{default_value}})
+static_cast<int>(phi::{{default_value}})
   {%- elif typename == "Place" %}{# construct a Place to get the type #}
 static_cast<int>(phi::Place({{"phi::" if not default_value is initializer_list}}{{default_value}}).GetType())
   {%- else %}{# pass through as-is #}
 {{default_value}}
   {%- endif %}
 {%- endmacro %}
+
+
+{% macro choose_kernel_signature(inputs_type, optional_inputs_name, kernel_args, kernel_name, is_first) %} {#inline#}
+  {%- set inputs_len = inputs_type | length -%}
+  {%- if is_first -%}
+if (
+  {%- else -%}
+else if (
+  {%- endif -%}
+      {%- for input_type in inputs_type -%}
+      {%- set kernel_arg_name = kernel_args[loop.index0] | to_opmaker_name_cstr -%}
+        {%- if loop.index0 != inputs_len - 1%}
+          {%- if kernel_args[loop.index0] in optional_inputs_name %}
+  ((ctx.HasInput({{kernel_arg_name}}) && {{input_type | assert_dense_or_sr}}({{kernel_arg_name}})) || (!ctx.HasInput({{kernel_arg_name}}))) &&
+          {% else %}
+  {{input_type | assert_dense_or_sr}}({{kernel_arg_name}}) &&
+          {% endif %}
+        {% else %} {# the last param #}
+          {% if kernel_args[loop.index0] in optional_inputs_name -%}
+  ((ctx.HasInput({{kernel_arg_name}}) && {{input_type | assert_dense_or_sr}}({{kernel_arg_name}})) || (!ctx.HasInput({{kernel_arg_name}}))))
+          {%- else -%}
+  {{input_type | assert_dense_or_sr}}({{kernel_arg_name}}))
+          {%- endif %}  {
+    return KernelSignature("{{kernel_name}}", std::move(inputs), std::move(attrs), std::move(outputs));
+  }
+        {% endif %}
+      {% endfor %}
+{%- endmacro -%}
 
 
 {# --------------------------------------- name mapping ---------------------------------------------- #}
@@ -128,21 +160,39 @@ All possible KernelSignatures returned by {{op["name"] | to_pascal_case }}OpArgu
 
 KernelSignature {{op["op_name"] | to_pascal_case }}OpArgumentMapping(const ArgumentMappingContext& ctx) {
   {% set kernel_args = op["kernel"]["param"] %}
+  {% set optional_inputs_name = op["inputs"]| find_optinal_inputs_name %}
   {{get_input_list(op["inputs"], kernel_args)}};
   paddle::small_vector<const char*> attrs;
   {% for attr in op["attrs"]%}
-  {% filter indent(2)%}
+    {% filter indent(2)%}
   {{get_an_attr(attr, kernel_args)}}
-  {% endfilter %}
+    {% endfilter %}
   {% endfor %}
   {{get_output_list(op["outputs"], kernel_args)}};
-  {% if op["kernel"]["func"] | length == 1 %}
-  KernelSignature sig("{{op["kernel"]["func"][0]}}", std::move(inputs), std::move(attrs), std::move(outputs));
-  return sig;
-  {% else %}{# it has kernel for selected rows #}
-  const char* kernel_name = ctx.IsSelectedRowsInput({{kernel_args[0] | to_opmaker_name_cstr}}) ? "{{op["kernel"]["func"][1]}}" : "{{op["kernel"]["func"][0]}}";
-  KernelSignature sig (kernel_name, std::move(inputs), std::move(attrs), std::move(outputs));
-  return sig;
+  {% set kernel_num = op["kernel"]["func"] | length %}
+  {% if kernel_num == 1 %}
+  return KernelSignature("{{op["kernel"]["func"][0]}}", std::move(inputs), std::move(attrs), std::move(outputs));
+  {% elif kernel_num == 2 %}{# it has kernel for selected rows #}
+  {% set fun_name = op["kernel"]["func"][0] %}
+    {% set inputs_type = op["kernel"]["dispatch"][fun_name][0] %}
+{{choose_kernel_signature(inputs_type, optional_inputs_name, kernel_args, fun_name, true)}}
+    {%- set fun_name = op["kernel"]["func"][1] -%}
+    {%- set inputs_type = op["kernel"]["dispatch"][fun_name][0] -%}
+{{choose_kernel_signature(inputs_type, optional_inputs_name, kernel_args, fun_name, false)-}}
+  else { return KernelSignature("unregistered", {}, {}, {}); }
+  {% elif kernel_num == 3 %}{# it has kernel for selected rows #}
+    {%- set fun_name = op["kernel"]["func"][0] -%}
+    {%- set inputs_type = op["kernel"]["dispatch"][fun_name][0] -%}
+{{choose_kernel_signature(inputs_type, optional_inputs_name, kernel_args, fun_name, true)}}
+    {%- set fun_name = op["kernel"]["func"][1] -%}
+    {%- set inputs_type = op["kernel"]["dispatch"][fun_name][0] -%}
+{{choose_kernel_signature(inputs_type, optional_inputs_name, kernel_args, fun_name, false)-}}
+    {%- set fun_name = op["kernel"]["func"][2] -%}
+    {%- set inputs_type = op["kernel"]["dispatch"][fun_name][0] -%}
+{{choose_kernel_signature(inputs_type, optional_inputs_name, kernel_args, fun_name, false)-}}
+  else { return KernelSignature("unregistered", {}, {}, {}); }
+  {% else %} {# only support kernel_num <= 3 #}
+  return KernelSignature("unregistered", {}, {}, {});
   {%endif%}
 }
 {% endmacro %}
@@ -221,9 +271,11 @@ paddle::small_vector<const char*> inputs {
 {% set typename = attr["typename"] %}
 {%- if attr["fluid_name"] in kernel_args %}
 {% set name = attr["fluid_name"] %}
-{% if typename is scalar %}{# scalar correspond to a dispensable input and an attr in opmaker #}
+{% if typename is scalar and
+("is_support_tensor" not in attr or attr["is_support_tensor"] is false) %}{# scalar correspond to a dispensable input and an attr in opmaker #}
 attrs.emplace_back(ctx.HasInput("{{attr | to_scalar_tensor_name}}") ? "{{attr | to_scalar_tensor_name}}" : "{{name}}");
-{%- elif typename == "IntArray" %}
+{%- elif typename == "IntArray" and
+("is_support_tensor" not in attr or attr["is_support_tensor"] is false) %}
   {% if 'tensor_name' in attr and  'tensors_name' not in attr %}
 attrs.emplace_back(
   ctx.HasInput("{{attr | to_int_array_tensor_name}}")
@@ -260,18 +312,22 @@ paddle::small_vector<const char*> outputs {
 {% set kernel = op["kernel"] %}
 phi::KernelKey GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const override {
+{% if "get_expected_kernel_type" not in op %}
     phi::KernelKey kt;
 {%if kernel["data_type"] is not none %}{# data type ---------------------------------#}
   {% if kernel["data_type"]["candidates"] | length == 1 %}
     {% set data_type_arg = kernel["data_type"]["candidates"][0] %}
     {% set inputs = op["inputs"] | map(attribute="fluid_name") | list %}
+    {% set attrs = op["attrs"] | map(attribute="fluid_name") | list %}
     {% if data_type_arg in inputs %}
   auto data_type = framework::OperatorWithKernel::IndicateVarDataType(ctx, {{data_type_arg | to_opmaker_name}});
       {% if kernel["data_type"]["to_complex_flag"][0] %}
   data_type = framework::ToComplexType(data_type);
       {% endif %}
-    {% else %}{# it is an attribute and probably named dtype#}
+    {% elif data_type_arg in attrs %}{# it is an attribute and probably named dtype#}
   auto data_type = framework::proto::VarType::Type(ctx.Attr<int>("{{data_type_arg}}"));
+    {% else %}
+  auto data_type = framework::TransToProtoVarType(phi::{{data_type_arg}});
     {% endif %}
   {% elif kernel["data_type"]["candidates"] | length == 2 %}
     {% set data_type_args = kernel["data_type"]["candidates"] %}
@@ -303,6 +359,9 @@ phi::KernelKey GetExpectedKernelType(
     }
 {% endif %}
   return kt;
+{% else %}
+  return {{op["get_expected_kernel_type"]}}(ctx, this);
+{% endif %}
 }
 {% endmacro -%}
 
@@ -329,7 +388,7 @@ phi::KernelKey GetKernelTypeForVar(
           var_name == "{{ skip_arg }}"
           {%- if skip_args_len != 1 and loop.index != skip_args_len %} || {% endif -%}
         {%- endfor -%}
-      ){
+      ) {
     {% if "skip_transform" in op["data_transform"] %}
         return phi::KernelKey(phi::Backend::ALL_BACKEND,
                             expected_kernel_type.layout(),
@@ -344,7 +403,7 @@ phi::KernelKey GetKernelTypeForVar(
         return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
       }
 {% endif %}
-      else{
+      else {
           return phi::KernelKey(
             tensor.place(), tensor.layout(), expected_kernel_type.dtype());
       }
@@ -360,10 +419,12 @@ class {{op["op_name"] | to_pascal_case}}Op : public framework::OperatorWithKerne
   {% set kernel = op["kernel"] %}
   {% if kernel["data_type"] is not none or kernel["backend"] is not none
       or kernel["force_backend"] is not none
-      or "complex_promote" in op or "data_transform" in op %}
+      or "complex_promote" in op or "data_transform" in op 
+      or "get_expected_kernel_type" in op%}
  protected:
     {% if kernel["data_type"] is not none or kernel["backend"] is not none
-      or kernel["force_backend"] is not none or "complex_promote" in op %}
+      or kernel["force_backend"] is not none or "complex_promote" in op
+      or "get_expected_kernel_type" in op%}
       {% filter indent(2, True)%}
 {{get_expected_kernel(op)}}
       {% endfilter %}
@@ -380,10 +441,15 @@ class {{op["op_name"] | to_pascal_case}}Op : public framework::OperatorWithKerne
       {%- endif %}
 };
 
+{% set infer_var_type_func_str = op["op_name"] | get_infer_var_type_func %}
+{% if infer_var_type_func_str is not none %}
+{{infer_var_type_func_str}}
+{% endif %}
+
 DECLARE_INFER_SHAPE_FUNCTOR({{op["op_name"]}}, {{op["op_name"] | to_pascal_case}}InferShapeFunctor,
                             PD_INFER_META(phi::{{op["infer_meta"]["func"]}}));
 {# inplace inferer #}
-{% if op["inplace"] is not none %}
+{% if op["inplace"] is not none and op["inplace"] | length == 1%}
   {% set inplace_map %}
   {% for source, target in op["inplace"].items() %}
 {{"{"}}{{target | to_opmaker_name}}, {{source | to_opmaker_name}}{{"}"}}{{", " if not loop.last}}
@@ -416,6 +482,10 @@ REGISTER_OPERATOR({{name}}, ops::{{name | to_pascal_case}}Op,
 {% endif %}
 {% if op is supports_inplace %}{# inplace#}
                   ops::{{name | to_pascal_case}}InplaceInferer,
+{% endif %}
+{% set infer_var_type_func_str = op["op_name"] | get_infer_var_type_func %}
+{% if infer_var_type_func_str is not none %}
+                  ops::{{name | to_pascal_case}}InferVarType,
 {% endif %}
 {% if "backward_composite" in op and op["backward_composite"] is not none %}
                   ops::{{op["backward_composite"] | to_composite_grad_opmaker_name}},
@@ -523,7 +593,8 @@ class {{name | to_pascal_case}}OpMaker : public framework::SingleGradOpMaker<T> 
       grad_op->SetInput("{{attr | to_int_array_tensors_name}}", this->Input("{{attr | to_int_array_tensors_name}}"));
     }
         {% endif %}
-      {% elif attr["typename"] == "Scalar" %}
+      {% elif attr["typename"] is scalar and 
+      ("is_support_tensor" not in attr or attr["is_support_tensor"] is false)%}
     if (this->HasInput("{{attr | to_scalar_tensor_name}}")) {
       grad_op->SetInput("{{attr | to_scalar_tensor_name}}", this->Input("{{attr | to_scalar_tensor_name}}"));
     }
@@ -589,7 +660,8 @@ class {{name | to_pascal_case}}OpMaker : public framework::SingleGradOpMaker<T> 
       grad_op->SetInput("{{fw_attr | to_int_array_tensors_name}}", this->Input("{{fw_attr | to_int_array_tensors_name}}"));
     }
         {% endif %}
-      {% elif fw_attr["typename"] == "Scalar" %}
+      {% elif fw_attr["typename"] is scalar and
+         ("is_support_tensor" not in attr or attr["is_support_tensor"] is false) %}
     if (this->HasInput("{{fw_attr | to_scalar_tensor_name}}")) {
       grad_op->SetInput("{{fw_attr | to_scalar_tensor_name}}", this->Input("{{fw_attr | to_scalar_tensor_name}}"));
     }
@@ -624,6 +696,7 @@ class {{op_name | to_composite_grad_opmaker_name}} : public prim::CompositeGradO
   void Apply() override {
     //get inputs
 {{construct_composite_input(inputs, fluid_inputs, forward_fluid_inputs, forward_fluid_outputs, input_dict)}}
+{{construct_composite_tensor_attr(attrs, fluid_attrs, attr_dict, op_name)}}
     //get attr
 {{construct_composite_attr(attrs, fluid_attrs, attr_dict)}}
     //get output
@@ -687,6 +760,28 @@ class {{op_name | to_composite_grad_opmaker_name}} : public prim::CompositeGradO
     auto {{inputs[i]}} = this->GetMultiOutputGrad("{{fluid_inputs[i][:-5]}}");
         {%- endif %}
       {%- endif %}
+    {%- endif %}
+  {%- endfor %}
+{%- endmacro %}
+
+{% macro construct_composite_tensor_attr(attrs, fluid_attrs, attr_dict, op_name) %}
+  {% set attrs_length = attrs | length %}
+  {% for i in range(attrs_length) %}
+    {% if "tensor_name" in attr_dict[attrs[i]] %}
+    auto {{'tensor_' + attrs[i]}} = this->GetOptionalSingleForwardInput("{{attr_dict[attrs[i]]['tensor_name']}}");
+    if ({{'tensor_' + attrs[i]}}) {
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "We don't support dynamic tensor attribute {{attr_dict[attrs[i]]['tensor_name']}} for {{op_name}} composite"
+          "for now. "));
+    }
+    {%- endif %}
+    {% if "tensors_name" in attr_dict[attrs[i]] %}
+    auto {{'tensors_' + attrs[i]}} = this->GetOptionalMultiForwardInput("{{attr_dict[attrs[i]]['tensors_name']}}");
+    if ({{'tensors_' + attrs[i]}}) {
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "We don't support dynamic tensors attribute {{attr_dict[attrs[i]]['tensor_name']}} for {{op_name}} composite "
+          "for now. "));
+    }
     {%- endif %}
   {%- endfor %}
 {%- endmacro %}

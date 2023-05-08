@@ -278,3 +278,30 @@ using KPSContext = GPUContext;
 #endif
 
 }  // namespace phi
+
+namespace Eigen {
+struct DefaultDevice;
+}  // namespace Eigen
+
+namespace phi {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+// Currently, GPUPinnedContext is only used to data copying.
+class GPUPinnedContext
+    : public DeviceContext,
+      public phi::TypeInfoTraits<DeviceContext, GPUPinnedContext> {
+ public:
+  GPUPinnedContext();
+  explicit GPUPinnedContext(GPUPinnedPlace place);
+
+  const Place& GetPlace() const override;
+
+  Eigen::DefaultDevice* eigen_device() const;
+
+  static const char* name() { return "GPUPinnedContext"; }
+
+ private:
+  GPUPinnedPlace place_;
+  std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
+};
+#endif
+}  // namespace phi

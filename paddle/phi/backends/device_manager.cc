@@ -144,7 +144,7 @@ void Device::BlasAXPBY(const stream::Stream& stream,
                        T* y) {
   impl_->BlasAXPBY(dev_id_,
                    stream,
-                   paddle::experimental::CppTypeToDataType<T>::Type(),
+                   phi::CppTypeToDataType<T>::Type(),
                    numel,
                    alpha,
                    reinterpret_cast<void*>(const_cast<T*>(x)),
@@ -597,49 +597,44 @@ void DeviceManager::CCLRecv(const std::string& device_type,
 }
 
 // profiler
-void DeviceManager::ProfilerInitialize(
-    const std::string& dev_type,
-    paddle::platform::TraceEventCollector* collector,
-    void** context) {
+void DeviceManager::ProfilerInitialize(const std::string& dev_type,
+                                       phi::TraceEventCollector* collector,
+                                       void** context) {
   auto dev_impl = GetDeviceInterfaceWithType(dev_type);
   dev_impl->ProfilerInitialize(collector, context);
 }
 
-void DeviceManager::ProfilerFinalize(
-    const std::string& dev_type,
-    paddle::platform::TraceEventCollector* collector,
-    void* context) {
+void DeviceManager::ProfilerFinalize(const std::string& dev_type,
+                                     phi::TraceEventCollector* collector,
+                                     void* context) {
   auto dev_impl = GetDeviceInterfaceWithType(dev_type);
   dev_impl->ProfilerFinalize(collector, context);
 }
 
-void DeviceManager::ProfilerPrepareTracing(
-    const std::string& dev_type,
-    paddle::platform::TraceEventCollector* collector,
-    void* context) {
+void DeviceManager::ProfilerPrepareTracing(const std::string& dev_type,
+                                           phi::TraceEventCollector* collector,
+                                           void* context) {
   auto dev_impl = GetDeviceInterfaceWithType(dev_type);
   dev_impl->ProfilerPrepareTracing(collector, context);
 }
 
-void DeviceManager::ProfilerStartTracing(
-    const std::string& dev_type,
-    paddle::platform::TraceEventCollector* collector,
-    void* context) {
+void DeviceManager::ProfilerStartTracing(const std::string& dev_type,
+                                         phi::TraceEventCollector* collector,
+                                         void* context) {
   auto dev_impl = GetDeviceInterfaceWithType(dev_type);
   dev_impl->ProfilerStartTracing(collector, context);
 }
 
-void DeviceManager::ProfilerStopTracing(
-    const std::string& dev_type,
-    paddle::platform::TraceEventCollector* collector,
-    void* context) {
+void DeviceManager::ProfilerStopTracing(const std::string& dev_type,
+                                        phi::TraceEventCollector* collector,
+                                        void* context) {
   auto dev_impl = GetDeviceInterfaceWithType(dev_type);
   dev_impl->ProfilerStopTracing(collector, context);
 }
 
 void DeviceManager::ProfilerCollectTraceData(
     const std::string& dev_type,
-    paddle::platform::TraceEventCollector* collector,
+    phi::TraceEventCollector* collector,
     uint64_t start_ns,
     void* context) {
   auto dev_impl = GetDeviceInterfaceWithType(dev_type);
@@ -660,7 +655,11 @@ void DeviceManager::Clear() {
 
 std::vector<std::string> ListAllLibraries(const std::string& library_dir) {
   std::vector<std::string> libraries;
+#if defined(__APPLE__)
+  std::regex express(".*\\.dylib");
+#else
   std::regex express(".*\\.so");
+#endif
   std::match_results<std::string::iterator> results;
 
 #if !defined(_WIN32)

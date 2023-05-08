@@ -17,10 +17,9 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.fluid.layers as layers
 import paddle.nn.functional as F
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import Program, program_guard
 
@@ -38,9 +37,11 @@ class TestApiWhileLoop(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program, startup_program):
-            i = layers.fill_constant(shape=[1], dtype='int64', value=0)
-            one = layers.fill_constant(shape=[1], dtype='int64', value=1)
-            ten = layers.fill_constant(shape=[1], dtype='int64', value=10)
+            i = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=0)
+            one = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=1)
+            ten = paddle.tensor.fill_constant(
+                shape=[1], dtype='int64', value=10
+            )
             out = paddle.static.nn.while_loop(cond, body, (i,))
 
         place = (
@@ -66,10 +67,14 @@ class TestApiWhileLoop(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program, startup_program):
-            i = layers.zeros(shape=[1], dtype='int64')
-            ten = layers.fill_constant(shape=[1], dtype='int64', value=10)
-            mem = fluid.data(name='mem', shape=[10], dtype='float32')
-            one = layers.fill_constant(shape=[10], dtype='float32', value=1)
+            i = paddle.zeros(shape=[1], dtype='int64')
+            ten = paddle.tensor.fill_constant(
+                shape=[1], dtype='int64', value=10
+            )
+            mem = paddle.static.data(name='mem', shape=[10], dtype='float32')
+            one = paddle.tensor.fill_constant(
+                shape=[10], dtype='float32', value=1
+            )
             out = paddle.static.nn.while_loop(cond, body, [i, mem])
 
             data = np.random.rand(10).astype('float32')
@@ -107,17 +112,23 @@ class TestApiWhileLoop(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program, startup_program):
-            i = layers.zeros(shape=[1], dtype='int64')
-            ten = layers.fill_constant(shape=[1], dtype='int64', value=10)
-            test_data = layers.fill_constant(shape=[1], dtype='int64', value=0)
+            i = paddle.zeros(shape=[1], dtype='int64')
+            ten = paddle.tensor.fill_constant(
+                shape=[1], dtype='int64', value=10
+            )
+            test_data = paddle.tensor.fill_constant(
+                shape=[1], dtype='int64', value=0
+            )
 
             test_dict = {"test_key": test_data}
             test_list = [
-                layers.fill_constant(shape=[1, 2], dtype='int64', value=0)
+                paddle.tensor.fill_constant(
+                    shape=[1, 2], dtype='int64', value=0
+                )
             ]
             test_list_dict = [
                 {
-                    "test_key": layers.fill_constant(
+                    "test_key": paddle.tensor.fill_constant(
                         shape=[1], dtype='float32', value=0
                     )
                 }
@@ -191,13 +202,23 @@ class TestApiWhileLoop_Nested(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program, startup_program):
-            i = layers.zeros(shape=[1], dtype='int64')
-            j = layers.zeros(shape=[1], dtype='int64')
-            init = fluid.data(name='init', shape=[3, 3], dtype='float32')
-            sums = fluid.data(name='sums', shape=[3, 3], dtype='float32')
-            loop_len1 = layers.fill_constant(shape=[1], dtype='int64', value=2)
-            loop_len2 = layers.fill_constant(shape=[1], dtype='int64', value=3)
-            ones = layers.fill_constant(shape=[3, 3], dtype='float32', value=1)
+            i = paddle.zeros(shape=[1], dtype='int64')
+            j = paddle.zeros(shape=[1], dtype='int64')
+            init = paddle.static.data(
+                name='init', shape=[3, 3], dtype='float32'
+            )
+            sums = paddle.static.data(
+                name='sums', shape=[3, 3], dtype='float32'
+            )
+            loop_len1 = paddle.tensor.fill_constant(
+                shape=[1], dtype='int64', value=2
+            )
+            loop_len2 = paddle.tensor.fill_constant(
+                shape=[1], dtype='int64', value=3
+            )
+            ones = paddle.tensor.fill_constant(
+                shape=[3, 3], dtype='float32', value=1
+            )
 
             out = paddle.static.nn.while_loop(
                 external_cond, external_body, [i, j, init, sums]
@@ -236,11 +257,15 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
         with fluid.program_guard(main_program, startup_program):
-            i = fluid.data(name='i', shape=[1], dtype='float32')
+            i = paddle.static.data(name='i', shape=[1], dtype='float32')
             i.stop_gradient = False
-            eleven = layers.fill_constant(shape=[1], dtype='float32', value=11)
-            one = layers.fill_constant(shape=[1], dtype='float32', value=1)
-            x = fluid.data(name='x', shape=[1], dtype='float32')
+            eleven = paddle.tensor.fill_constant(
+                shape=[1], dtype='float32', value=11
+            )
+            one = paddle.tensor.fill_constant(
+                shape=[1], dtype='float32', value=1
+            )
+            x = paddle.static.data(name='x', shape=[1], dtype='float32')
             x.stop_gradient = False
 
             out = paddle.static.nn.while_loop(cond, body, [i, x])
@@ -279,9 +304,9 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
         with fluid.program_guard(main_program, startup_program):
-            i = fluid.data(name='i', shape=[1], dtype='float32')
+            i = paddle.static.data(name='i', shape=[1], dtype='float32')
             i.stop_gradient = False
-            x = fluid.data(name='x', shape=[1], dtype='float32')
+            x = paddle.static.data(name='x', shape=[1], dtype='float32')
             x.stop_gradient = False
 
             out = paddle.static.nn.while_loop(cond, body, [i, x])
@@ -343,26 +368,31 @@ class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
         with fluid.program_guard(main_program, startup_program):
-            d0 = fluid.data(name='d0', shape=[10], dtype='float32')
-            d1 = fluid.data(name='d1', shape=[10], dtype='float32')
-            d2 = fluid.data(name='d2', shape=[10], dtype='float32')
-            x = fluid.data(name='x', shape=[10], dtype='float32')
+            d0 = paddle.static.data(name='d0', shape=[10], dtype='float32')
+            d1 = paddle.static.data(name='d1', shape=[10], dtype='float32')
+            d2 = paddle.static.data(name='d2', shape=[10], dtype='float32')
+            x = paddle.static.data(name='x', shape=[10], dtype='float32')
             x.stop_gradient = False
-            i = layers.zeros(shape=[1], dtype='int64')
+            i = paddle.zeros(shape=[1], dtype='int64')
             i.stop_gradient = True
-            init = layers.zeros(shape=[10], dtype='float32')
+            init = paddle.zeros(shape=[10], dtype='float32')
             mem_array = paddle.tensor.array_write(x=init, i=i)
             data_array = paddle.tensor.array_write(x=d0, i=i)
+            mem_array.stop_gradient = False
             i = paddle.increment(i)
             paddle.tensor.array_write(d1, i, array=data_array)
             i = paddle.increment(i)
             paddle.tensor.array_write(d2, i, array=data_array)
-            i = layers.zeros(shape=[1], dtype='int64')
+            i = paddle.zeros(shape=[1], dtype='int64')
             i.stop_gradient = True
-            array_len = layers.fill_constant(shape=[1], dtype='int64', value=1)
-            j = layers.fill_constant(shape=[1], dtype='int64', value=1)
+            array_len = paddle.tensor.fill_constant(
+                shape=[1], dtype='int64', value=1
+            )
+            j = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=1)
             j.stop_gradient = True
-            array_len2 = layers.fill_constant(shape=[1], dtype='int64', value=3)
+            array_len2 = paddle.tensor.fill_constant(
+                shape=[1], dtype='int64', value=3
+            )
 
             out = paddle.static.nn.while_loop(
                 external_cond, external_body, [i, j, x, mem_array]
@@ -421,10 +451,14 @@ class TestApiWhileLoopWithSwitchCase(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
         with fluid.program_guard(main_program, startup_program):
-            i = layers.fill_constant(shape=[1], dtype='int64', value=1)
-            ten = layers.fill_constant(shape=[1], dtype='int64', value=10)
-            three = layers.fill_constant(shape=[1], dtype='int64', value=3)
-            one = layers.fill_constant(shape=[1], dtype='int64', value=1)
+            i = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=1)
+            ten = paddle.tensor.fill_constant(
+                shape=[1], dtype='int64', value=10
+            )
+            three = paddle.tensor.fill_constant(
+                shape=[1], dtype='int64', value=3
+            )
+            one = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=1)
             out = paddle.static.nn.while_loop(cond, body, [i])
 
         place = (
@@ -470,7 +504,7 @@ class TestApiWhileLoop_Error(unittest.TestCase):
             return i > 0
 
         def body_returns_with_mutable_dict(i, test_dict):
-            test_dict['new_key'] = layers.fill_constant(
+            test_dict['new_key'] = paddle.tensor.fill_constant(
                 shape=[1], dtype='int64', value=1
             )
             return paddle.increment(i), test_dict
@@ -480,18 +514,28 @@ class TestApiWhileLoop_Error(unittest.TestCase):
 
         def body_returns_with_mutable_list(i, test_list):
             test_list.append(
-                layers.fill_constant(shape=[1], dtype='int64', value=1)
+                paddle.tensor.fill_constant(shape=[1], dtype='int64', value=1)
             )
             return paddle.increment(i), test_list
 
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program, startup_program):
-            data = layers.fill_constant(shape=[1], dtype='int64', value=1)
-            data_1d = layers.fill_constant(shape=[1], dtype='int64', value=1)
-            data_2d = layers.fill_constant(shape=[2, 2], dtype='int64', value=1)
-            ten = layers.fill_constant(shape=[1], dtype='int64', value=10)
-            ten_2d = layers.fill_constant(shape=[2, 2], dtype='int64', value=10)
+            data = paddle.tensor.fill_constant(
+                shape=[1], dtype='int64', value=1
+            )
+            data_1d = paddle.tensor.fill_constant(
+                shape=[1], dtype='int64', value=1
+            )
+            data_2d = paddle.tensor.fill_constant(
+                shape=[2, 2], dtype='int64', value=1
+            )
+            ten = paddle.tensor.fill_constant(
+                shape=[1], dtype='int64', value=10
+            )
+            ten_2d = paddle.tensor.fill_constant(
+                shape=[2, 2], dtype='int64', value=10
+            )
 
             # The type of `cond` in Op(while_loop) must be callable
             def type_error_cond():
@@ -566,7 +610,7 @@ class TestApiWhileLoop_Error(unittest.TestCase):
             # The length of `output_vars` with mutable value should keep same with `loop_vars`
             def value_error_body_returns_with_mutable_dict():
                 test_dict = {
-                    "int_constant": layers.fill_constant(
+                    "int_constant": paddle.tensor.fill_constant(
                         shape=[2, 2], dtype='int64', value=1
                     )
                 }
@@ -582,7 +626,9 @@ class TestApiWhileLoop_Error(unittest.TestCase):
 
             def value_error_body_returns_with_mutable_list():
                 test_list = [
-                    layers.fill_constant(shape=[2, 2], dtype='int64', value=1)
+                    paddle.tensor.fill_constant(
+                        shape=[2, 2], dtype='int64', value=1
+                    )
                 ]
                 out = paddle.static.nn.while_loop(
                     cond_returns_with_mutable_list,
@@ -609,9 +655,9 @@ class TestApiWhileLoopSliceInBody(unittest.TestCase):
         startup_program = Program()
         with program_guard(main_program, startup_program):
             x = paddle.static.data(name='x', shape=[-1, 5], dtype='int32')
-            z = fluid.layers.fill_constant([1], 'int32', 0)
+            z = paddle.tensor.fill_constant([1], 'int32', 0)
             x_shape = paddle.shape(x)
-            i = fluid.layers.fill_constant([1], 'int32', 0)
+            i = paddle.tensor.fill_constant([1], 'int32', 0)
             z, _ = paddle.static.nn.while_loop(cond, body, [z, i])
 
         place = (

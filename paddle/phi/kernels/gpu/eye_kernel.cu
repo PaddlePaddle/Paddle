@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/eye_kernel.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/eye_kernel_impl.h"
@@ -26,4 +25,5 @@ PD_REGISTER_KERNEL(eye,
                    double,
                    int64_t,
                    int,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

@@ -56,7 +56,7 @@ inline void GetAccumulation(std::vector<std::pair<T, int>> in_pairs,
   }
 }
 
-template <typename Place, typename T>
+template <typename T, typename DeviceContext>
 class DetectionMAPOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {

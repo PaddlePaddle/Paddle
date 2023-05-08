@@ -99,9 +99,9 @@ void CopyTensorDeviceToCpu(void *dst_ptr, void *src_ptr, int total_bytes);
 
 void CopyTensorCpuToDevice(void *dst_ptr, void *src_ptr, int total_bytes);
 
-std::string ConvertType(paddle::experimental::DataType type);
+std::string ConvertType(phi::DataType type);
 
-int GetDataByte(paddle::experimental::DataType type);
+int GetDataByte(phi::DataType type);
 
 std::string GenerateRandomKey();
 
@@ -114,27 +114,26 @@ void QuantizeOnnx(std::string onnx_file_name,
                   std::string dataset_path,
                   std::string dataset_plugin_path);
 
-static paddle::experimental::DataType DLNNE2FluidDataType(
-    dl::nne::DataType type) {
+static phi::DataType DLNNE2FluidDataType(dl::nne::DataType type) {
   switch (type) {
     case dl::nne::DataType::kFLOAT32:
-      return paddle::experimental::DataType::FLOAT32;
+      return phi::DataType::FLOAT32;
     case dl::nne::DataType::kINT32:
-      return paddle::experimental::DataType::INT32;
+      return phi::DataType::INT32;
     case dl::nne::DataType::kINT64:
-      return paddle::experimental::DataType::INT64;
+      return phi::DataType::INT64;
     case dl::nne::DataType::kFLOAT16:
-      return paddle::experimental::DataType::FLOAT16;
+      return phi::DataType::FLOAT16;
     case dl::nne::DataType::kUINT8:
-      return paddle::experimental::DataType::UINT8;
+      return phi::DataType::UINT8;
     case dl::nne::DataType::kINT8:
-      return paddle::experimental::DataType::INT8;
+      return phi::DataType::INT8;
     case dl::nne::DataType::kBOOL:
-      return paddle::experimental::DataType::BOOL;
+      return phi::DataType::BOOL;
     default:
       PADDLE_THROW(platform::errors::InvalidArgument(
           "unknown fluid datatype in Fluid op converter"));
-      return paddle::experimental::DataType::FLOAT32;
+      return phi::DataType::FLOAT32;
   }
 }
 
@@ -462,19 +461,19 @@ class DlnneEngineOp : public framework::OperatorBase {
       ele_num = 1;
       void *buffer = nullptr;
       // TODO(pei.jiang): add more type
-      if (type == paddle::experimental::DataType::FLOAT32) {
+      if (type == phi::DataType::FLOAT32) {
         buffer = static_cast<void *>(t.data<float>());
         data_bytes = 4;
         dtype = 0;
-      } else if (type == paddle::experimental::DataType::INT64) {
+      } else if (type == phi::DataType::INT64) {
         buffer = static_cast<void *>(t.data<int64_t>());
         data_bytes = 8;
         dtype = 1;
-      } else if (type == paddle::experimental::DataType::INT32) {
+      } else if (type == phi::DataType::INT32) {
         buffer = static_cast<void *>(t.data<int32_t>());
         data_bytes = 4;
         dtype = 2;
-      } else if (type == paddle::experimental::DataType::FLOAT16) {
+      } else if (type == phi::DataType::FLOAT16) {
         buffer = static_cast<void *>(t.data<paddle::platform::float16>());
         data_bytes = 2;
         dtype = 3;

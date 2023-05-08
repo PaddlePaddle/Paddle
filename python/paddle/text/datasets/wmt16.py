@@ -116,7 +116,7 @@ class WMT16(Dataset):
             'train',
             'test',
             'val',
-        ], "mode should be 'train', 'test' or 'val', but got {}".format(mode)
+        ], f"mode should be 'train', 'test' or 'val', but got {mode}"
         self.mode = mode.lower()
 
         self.data_file = data_file
@@ -181,9 +181,7 @@ class WMT16(Dataset):
                     word_dict[w] += 1
 
         with open(dict_path, "wb") as fout:
-            fout.write(
-                ("%s\n%s\n%s\n" % (START_MARK, END_MARK, UNK_MARK)).encode()
-            )
+            fout.write((f"{START_MARK}\n{END_MARK}\n{UNK_MARK}\n").encode())
             for idx, word in enumerate(
                 sorted(word_dict.items(), key=lambda x: x[1], reverse=True)
             ):
@@ -207,7 +205,7 @@ class WMT16(Dataset):
         self.trg_ids = []
         self.trg_ids_next = []
         with tarfile.open(self.data_file, mode="r") as f:
-            for line in f.extractfile("wmt16/{}".format(self.mode)):
+            for line in f.extractfile(f"wmt16/{self.mode}"):
                 line = line.decode()
                 line_split = line.strip().split("\t")
                 if len(line_split) != 2:

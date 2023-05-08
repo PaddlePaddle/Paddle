@@ -14,10 +14,10 @@ limitations under the License. */
 
 #include <gtest/gtest.h>  // NOLINT
 
-#include "paddle/extension.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/convert/test_custom_op_plugin.h"
+#include "paddle/phi/api/all.h"
 
 PD_BUILD_OP(custom_op)
     .Inputs({"Input"})
@@ -109,7 +109,7 @@ TEST(CustomPluginCreater, StaticShapePlugin) {
   framework::OpDesc custom_op(*op_desc, nullptr);
   CHECK_EQ((*custom_plugin_tell)(custom_op, false, false), true);
 
-  OpTeller::Global().SetOpConverterType("custom_op",
+  OpTeller::Global().SetOpConverterType(&custom_op,
                                         OpConverterType::CustomPluginCreater);
 
   OpConverter converter;
@@ -177,6 +177,7 @@ TEST(CustomPluginCreater, DynamicShapePlugin) {
                                    AnalysisConfig::Precision::kFloat32,
                                    nullptr,
                                    0,
+                                   true,
                                    min_input_shape,
                                    max_input_shape,
                                    optim_input_shape));
@@ -195,7 +196,7 @@ TEST(CustomPluginCreater, DynamicShapePlugin) {
   framework::OpDesc custom_op(*op_desc, nullptr);
   CHECK_EQ((*custom_plugin_tell)(custom_op, false, true), true);
 
-  OpTeller::Global().SetOpConverterType("custom_op",
+  OpTeller::Global().SetOpConverterType(&custom_op,
                                         OpConverterType::CustomPluginCreater);
 
   OpConverter converter;

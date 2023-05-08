@@ -19,8 +19,8 @@ from parallel_executor_test_base import DeviceType, TestParallelExecutorBase
 from simple_nets import init_data
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 batch_size = 12
 img_shape = [1, 28, 28]

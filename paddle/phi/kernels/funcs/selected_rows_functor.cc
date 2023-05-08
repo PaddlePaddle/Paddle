@@ -14,6 +14,12 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
 
+#include <algorithm>
+#include <map>
+#include <set>
+#include <vector>
+
+#include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/mixed_vector.h"
 
 #ifdef PADDLE_WITH_XPU
@@ -23,6 +29,8 @@ limitations under the License. */
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/phi/backends/onednn/axpy_handler.h"
 #endif
+
+#include "glog/logging.h"
 
 namespace phi {
 namespace funcs {
@@ -387,6 +395,7 @@ template struct SelectedRowsAddToTensor<phi::CPUContext, float>;
 template struct SelectedRowsAddToTensor<phi::CPUContext, double>;
 template struct SelectedRowsAddToTensor<phi::CPUContext, int>;
 template struct SelectedRowsAddToTensor<phi::CPUContext, int64_t>;
+template struct SelectedRowsAddToTensor<phi::CPUContext, phi::dtype::float16>;
 template struct SelectedRowsAddToTensor<phi::CPUContext, phi::dtype::bfloat16>;
 
 #ifdef PADDLE_WITH_XPU

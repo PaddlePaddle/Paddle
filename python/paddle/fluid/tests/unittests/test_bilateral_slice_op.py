@@ -16,9 +16,10 @@ import math
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest, paddle_static_guard
 
 import paddle
+from paddle.incubate.layers.nn import bilateral_slice
 
 
 class Gsz:
@@ -192,26 +193,27 @@ class TestBilateralSliceOp1(TestBilateralSliceOp):
 
 class TestBilateralSliceApi(unittest.TestCase):
     def test_api(self):
-        x = paddle.fluid.data(
-            name='x', shape=[None, 3, 25, 15], dtype='float32'
-        )
-        guide = paddle.fluid.data(
-            name='guide', shape=[None, 25, 15], dtype='float32'
-        )
-        grid = paddle.fluid.data(
-            name='grid', shape=[None, None, 8, 5, 3], dtype='float32'
-        )
-        paddle.fluid.contrib.layers.bilateral_slice(x, guide, grid, False)
+        with paddle_static_guard():
+            x = paddle.static.data(
+                name='x', shape=[None, 3, 25, 15], dtype='float32'
+            )
+            guide = paddle.static.data(
+                name='guide', shape=[None, 25, 15], dtype='float32'
+            )
+            grid = paddle.static.data(
+                name='grid', shape=[None, None, 8, 5, 3], dtype='float32'
+            )
+            bilateral_slice(x, guide, grid, False)
 
-        if not paddle.fluid.is_compiled_with_cuda():
-            return
+            if not paddle.fluid.is_compiled_with_cuda():
+                return
 
-        with paddle.fluid.dygraph.guard():
-            x1 = paddle.rand([3, 1, 50, 30])
-            guide1 = paddle.rand([3, 50, 30])
-            grid1 = paddle.rand([3, 2, 2, 5, 3])
+            with paddle.fluid.dygraph.guard():
+                x1 = paddle.rand([3, 1, 50, 30])
+                guide1 = paddle.rand([3, 50, 30])
+                grid1 = paddle.rand([3, 2, 2, 5, 3])
 
-            paddle.fluid.contrib.bilateral_slice(x1, guide1, grid1, False)
+                bilateral_slice(x1, guide1, grid1, False)
 
 
 if __name__ == "__main__":

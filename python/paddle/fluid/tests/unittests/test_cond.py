@@ -12,17 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
 from simple_nets import batchnorm_fc_with_inputs, simple_fc_net_with_inputs
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.fluid.framework as framework
-import paddle.fluid.layers as layers
+from paddle import fluid
+from paddle.fluid import core, framework
 from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import Program, program_guard
 
@@ -43,16 +40,24 @@ class TestCondInputOutput(unittest.TestCase):
         paddle.enable_static()
 
         def true_func():
-            return layers.fill_constant(shape=[2, 3], dtype='int32', value=2)
+            return paddle.tensor.fill_constant(
+                shape=[2, 3], dtype='int32', value=2
+            )
 
         def false_func():
-            return layers.fill_constant(shape=[3, 2], dtype='int32', value=-1)
+            return paddle.tensor.fill_constant(
+                shape=[3, 2], dtype='int32', value=-1
+            )
 
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program, startup_program):
-            x = layers.fill_constant(shape=[1], dtype='float32', value=0.1)
-            y = layers.fill_constant(shape=[1], dtype='float32', value=0.23)
+            x = paddle.tensor.fill_constant(
+                shape=[1], dtype='float32', value=0.1
+            )
+            y = paddle.tensor.fill_constant(
+                shape=[1], dtype='float32', value=0.23
+            )
             pred = paddle.less_than(y, x)
             out = paddle.static.nn.cond(pred, true_func, false_func)
             # out is one tensor
@@ -218,19 +223,23 @@ class TestCondInputOutput(unittest.TestCase):
         paddle.enable_static()
 
         def true_func():
-            return layers.fill_constant(
+            return paddle.tensor.fill_constant(
                 shape=[1, 2], dtype='int32', value=1
-            ), layers.fill_constant(shape=[2, 3], dtype='bool', value=True)
+            ), paddle.tensor.fill_constant(
+                shape=[2, 3], dtype='bool', value=True
+            )
 
         def false_func():
-            return layers.fill_constant(
+            return paddle.tensor.fill_constant(
                 shape=[3, 4], dtype='float32', value=3
-            ), layers.fill_constant(shape=[4, 5], dtype='int64', value=2)
+            ), paddle.tensor.fill_constant(shape=[4, 5], dtype='int64', value=2)
 
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program, startup_program):
-            pred = layers.fill_constant(shape=[1], dtype='bool', value=True)
+            pred = paddle.tensor.fill_constant(
+                shape=[1], dtype='bool', value=True
+            )
             out = paddle.static.nn.cond(pred, true_func, false_func)
             # out is a tuple containing 2 tensors
 
@@ -272,8 +281,10 @@ class TestCondInputOutput(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program, startup_program):
-            a = layers.fill_constant(shape=[3, 2, 1], dtype='int32', value=7)
-            i = fluid.data(name="i", shape=[1], dtype='int32')
+            a = paddle.tensor.fill_constant(
+                shape=[3, 2, 1], dtype='int32', value=7
+            )
+            i = paddle.static.data(name="i", shape=[1], dtype='int32')
             pred = (i % 2) == 0
             a = paddle.static.nn.cond(
                 pred, lambda: true_func(a, i), lambda: false_func(a, i)
@@ -318,7 +329,7 @@ class TestCondInputOutput(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program, startup_program):
-            i = fluid.data(name="i", shape=[1], dtype='int32')
+            i = paddle.static.data(name="i", shape=[1], dtype='int32')
             pred = (i % 2) == 0
             out1 = paddle.static.nn.cond(pred, true_func, false_func)
             out2 = paddle.static.nn.cond(pred, None, false_func)
@@ -347,17 +358,19 @@ class TestCondInputOutput(unittest.TestCase):
             return None
 
         def func_return_one_tensor():
-            return layers.fill_constant(shape=[2, 7], dtype='int32', value=3)
+            return paddle.tensor.fill_constant(
+                shape=[2, 7], dtype='int32', value=3
+            )
 
         def func_return_two_tensors():
-            return layers.fill_constant(
+            return paddle.tensor.fill_constant(
                 shape=[3, 1], dtype='int32', value=7
-            ), layers.fill_constant(shape=[3, 1], dtype='int32', value=8)
+            ), paddle.tensor.fill_constant(shape=[3, 1], dtype='int32', value=8)
 
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program, startup_program):
-            i = fluid.data(name="i", shape=[1], dtype='int32')
+            i = paddle.static.data(name="i", shape=[1], dtype='int32')
             pred = (i % 2) == 0
             with self.assertRaises(TypeError):
                 out = paddle.static.nn.cond(pred, i, func_return_one_tensor)
@@ -399,11 +412,11 @@ class TestCondInputOutput(unittest.TestCase):
         main_program = fluid.Program()
         startup_program = fluid.Program()
         with fluid.program_guard(main_program, startup_program):
-            a = fluid.layers.fill_constant(
+            a = paddle.tensor.fill_constant(
                 shape=[1], dtype='float32', value=1.23
             )
             a.stop_gradient = False
-            b = fluid.layers.fill_constant(
+            b = paddle.tensor.fill_constant(
                 shape=[1], dtype='float32', value=1.25
             )
             b.stop_gradient = False
@@ -463,7 +476,8 @@ class TestCondNestedControlFlow(unittest.TestCase):
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program, startup_program):
-            i = fluid.data(name="i", shape=[1], dtype='float32')
+            i = paddle.static.data(name="i", shape=[1], dtype='float32')
+            i.stop_gradient = False
             a = 2.0 * i
             out = paddle.static.nn.cond(
                 i < 5.0,
@@ -567,11 +581,11 @@ class TestCondNestedControlFlow(unittest.TestCase):
         startup_program = fluid.Program()
 
         with fluid.program_guard(main_program, startup_program):
-            a = fluid.layers.fill_constant(
+            a = paddle.tensor.fill_constant(
                 shape=[1], dtype='float32', value=1.23
             )
             a.stop_gradient = False
-            b = fluid.layers.fill_constant(
+            b = paddle.tensor.fill_constant(
                 shape=[1], dtype='float32', value=1.24
             )
             b.stop_gradient = False
@@ -604,7 +618,7 @@ class TestCondNestedControlFlow(unittest.TestCase):
 
 
 class TestCondBackward(unittest.TestCase):
-    def backward_value_helper(self, cond_func, use_cuda, use_parallel_exe):
+    def backward_value_helper(self, cond_func, use_cuda):
         """
         Helper function that compares calculated backward value is close to dy/dx
         """
@@ -614,10 +628,14 @@ class TestCondBackward(unittest.TestCase):
         startup_program = Program()
         startup_program.random_seed = 123
         with program_guard(main_program, startup_program):
-            img = fluid.data(name='image', shape=[-1, 9], dtype='float32')
+            img = paddle.static.data(
+                name='image', shape=[-1, 9], dtype='float32'
+            )
             img.stop_gradient = False
-            label = fluid.data(name='label', shape=[-1, 1], dtype='int64')
-            i = fluid.data(name="i", shape=[1], dtype='int32')
+            label = paddle.static.data(
+                name='label', shape=[-1, 1], dtype='int64'
+            )
+            i = paddle.static.data(name="i", shape=[1], dtype='int32')
             loss = cond_func(i, img, label)
             append_backward(loss)
         place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
@@ -625,14 +643,6 @@ class TestCondBackward(unittest.TestCase):
         exe.run(startup_program)
 
         num_devices = 1
-        if use_parallel_exe:
-            os.environ['CPU_NUM'] = str(2)
-            exe = fluid.ParallelExecutor(
-                use_cuda=use_cuda,
-                main_program=main_program,
-                loss_name=loss.name,
-            )
-            num_devices = exe.device_count
 
         delta = 0.005
         for feed_i in range(0, 10):
@@ -640,74 +650,50 @@ class TestCondBackward(unittest.TestCase):
             feed_label = np.random.randint(
                 low=0, high=10, size=[1, 1], dtype=np.int64
             )
-            if use_parallel_exe:
-                img_grad, loss_value = exe.run(
-                    feed={
-                        'i': np.full((num_devices), feed_i, np.int32),
-                        'image': np.repeat(feed_img, num_devices, axis=0),
-                        'label': np.repeat(feed_label, num_devices, axis=0),
-                    },
-                    fetch_list=[img.grad_name, loss.name],
-                )
-            else:
-                img_grad, loss_value = exe.run(
-                    main_program,
-                    feed={
-                        'i': np.full((1), feed_i, np.int32),
-                        'image': feed_img,
-                        'label': feed_label,
-                    },
-                    fetch_list=[img.grad_name, loss.name],
-                )
+
+            img_grad, loss_value = exe.run(
+                main_program,
+                feed={
+                    'i': np.full((1), feed_i, np.int32),
+                    'image': feed_img,
+                    'label': feed_label,
+                },
+                fetch_list=[img.grad_name, loss.name],
+            )
 
             numerical_grad = np.zeros(shape=[num_devices, 9], dtype=np.float32)
             feed_img_delta = np.copy(feed_img)
             for j in range(9):
                 feed_img_delta[0][j] = feed_img[0][j] + delta
-                if use_parallel_exe:
-                    loss_delta = exe.run(
-                        feed={
-                            'i': np.full((num_devices), feed_i, np.int32),
-                            'image': np.repeat(
-                                feed_img_delta, num_devices, axis=0
-                            ),
-                            'label': np.repeat(feed_label, num_devices, axis=0),
-                        },
-                        fetch_list=[loss.name],
-                    )
-                    multi_device_grad = (
-                        (loss_delta[0] - loss_value[0]) / delta / num_devices
-                    )
-                    for d in range(num_devices):
-                        numerical_grad[d][j] = multi_device_grad[d]
-                else:
-                    loss_delta = exe.run(
-                        main_program,
-                        feed={
-                            'i': np.full((1), feed_i, np.int32),
-                            'image': feed_img_delta,
-                            'label': feed_label,
-                        },
-                        fetch_list=[loss.name],
-                    )
-                    numerical_grad[0][j] = (
-                        loss_delta[0] - loss_value[0]
-                    ) / delta
+                loss_delta = exe.run(
+                    main_program,
+                    feed={
+                        'i': np.full((1), feed_i, np.int32),
+                        'image': feed_img_delta,
+                        'label': feed_label,
+                    },
+                    fetch_list=[loss.name],
+                )
+                numerical_grad[0][j] = (loss_delta - loss_value) / delta
                 feed_img_delta[0][j] = feed_img[0][j]
             np.testing.assert_allclose(
                 img_grad, numerical_grad, rtol=0.05, atol=0.05
             )
 
-    def add_optimizer_helper(self, cond_func, use_cuda, use_parallel_exe):
+    def add_optimizer_helper(self, cond_func, use_cuda):
         """
         Test that program is runnable when add optimizer
         """
         main_program = Program()
         startup_program = Program()
         with program_guard(main_program, startup_program):
-            img = fluid.data(name='image', shape=[-1, 784], dtype='float32')
-            label = fluid.data(name='label', shape=[-1, 1], dtype='int64')
-            i = fluid.data(name="i", shape=[1], dtype='int32')
+            img = paddle.static.data(
+                name='image', shape=[-1, 784], dtype='float32'
+            )
+            label = paddle.static.data(
+                name='label', shape=[-1, 1], dtype='int64'
+            )
+            i = paddle.static.data(name="i", shape=[1], dtype='int32')
             loss = cond_func(i, img, label)
             optimizer = fluid.optimizer.SGD(learning_rate=0.1)
             optimizer.minimize(loss)
@@ -715,39 +701,21 @@ class TestCondBackward(unittest.TestCase):
         place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(startup_program)
-        if use_parallel_exe:
-            os.environ['CPU_NUM'] = str(2)
-            exe = fluid.ParallelExecutor(
-                use_cuda=use_cuda,
-                main_program=main_program,
-                loss_name=loss.name,
-            )
-            num_devices = exe.device_count
 
         for feed_i in range(0, 10):
             feed_img = np.random.random(size=[16, 784]).astype(np.float32)
             feed_label = np.random.randint(
                 low=0, high=10, size=[16, 1], dtype=np.int64
             )
-            if use_parallel_exe:
-                exe.run(
-                    feed={
-                        'i': np.full((num_devices), feed_i, np.int32),
-                        'image': np.repeat(feed_img, num_devices, axis=0),
-                        'label': np.repeat(feed_label, num_devices, axis=0),
-                    },
-                    fetch_list=[loss.name],
-                )
-            else:
-                exe.run(
-                    main_program,
-                    feed={
-                        'i': np.full((1), feed_i, np.int32),
-                        'image': feed_img,
-                        'label': feed_label,
-                    },
-                    fetch_list=[loss],
-                )
+            exe.run(
+                main_program,
+                feed={
+                    'i': np.full((1), feed_i, np.int32),
+                    'image': feed_img,
+                    'label': feed_label,
+                },
+                fetch_list=[loss],
+            )
 
     def test_cond_backward(self):
 
@@ -761,19 +729,8 @@ class TestCondBackward(unittest.TestCase):
                 lambda: batchnorm_fc_with_inputs(img, label, class_num=10),
             )
 
-        for use_parallel_exe in [False, True]:
-            if use_parallel_exe and os.name == "nt":
-                print(
-                    "Skip use_parallel_exe=True in Windows because of flaky test when using PE under old Windows machine"
-                )
-                continue
-
-            self.backward_value_helper(
-                cond_func, core.is_compiled_with_cuda(), use_parallel_exe
-            )
-            self.add_optimizer_helper(
-                cond_func, core.is_compiled_with_cuda(), use_parallel_exe
-            )
+        self.backward_value_helper(cond_func, core.is_compiled_with_cuda())
+        self.add_optimizer_helper(cond_func, core.is_compiled_with_cuda())
 
     def test_half_nested_cond_backward(self):
         paddle.enable_static()
@@ -795,33 +752,22 @@ class TestCondBackward(unittest.TestCase):
                 i < 5, lambda: paddle.mean(img), lambda: branch(i, img, label)
             )
 
-        for use_parallel_exe in [False, True]:
-            if use_parallel_exe and os.name == "nt":
-                print(
-                    "Skip use_parallel_exe=True in Windows because of flaky test when using PE under old Windows machine"
-                )
-                continue
-
-            self.backward_value_helper(
-                cond_func_simple_net_at_true,
-                core.is_compiled_with_cuda(),
-                use_parallel_exe,
-            )
-            self.add_optimizer_helper(
-                cond_func_simple_net_at_true,
-                core.is_compiled_with_cuda(),
-                use_parallel_exe,
-            )
-            self.backward_value_helper(
-                cond_func_simple_net_at_false,
-                core.is_compiled_with_cuda(),
-                use_parallel_exe,
-            )
-            self.add_optimizer_helper(
-                cond_func_simple_net_at_false,
-                core.is_compiled_with_cuda(),
-                use_parallel_exe,
-            )
+        self.backward_value_helper(
+            cond_func_simple_net_at_true,
+            core.is_compiled_with_cuda(),
+        )
+        self.add_optimizer_helper(
+            cond_func_simple_net_at_true,
+            core.is_compiled_with_cuda(),
+        )
+        self.backward_value_helper(
+            cond_func_simple_net_at_false,
+            core.is_compiled_with_cuda(),
+        )
+        self.add_optimizer_helper(
+            cond_func_simple_net_at_false,
+            core.is_compiled_with_cuda(),
+        )
 
     def test_nested_cond_backward(self):
         paddle.enable_static()
@@ -844,18 +790,8 @@ class TestCondBackward(unittest.TestCase):
                 lambda: branch(i, img, label, False),
             )
 
-        for use_parallel_exe in [False, True]:
-            if use_parallel_exe and os.name == "nt":
-                print(
-                    "Skip use_parallel_exe=True in Windows because of flaky test when using PE under old Windows machine"
-                )
-                continue
-            self.backward_value_helper(
-                cond_func, core.is_compiled_with_cuda(), use_parallel_exe
-            )
-            self.add_optimizer_helper(
-                cond_func, core.is_compiled_with_cuda(), use_parallel_exe
-            )
+        self.backward_value_helper(cond_func, core.is_compiled_with_cuda())
+        self.add_optimizer_helper(cond_func, core.is_compiled_with_cuda())
 
 
 class TestCondWithError(unittest.TestCase):
@@ -864,7 +800,7 @@ class TestCondWithError(unittest.TestCase):
         main_program = framework.Program()
         startup_program = framework.Program()
         with framework.program_guard(main_program, startup_program):
-            pred = fluid.data(name='y', shape=[1], dtype='bool')
+            pred = paddle.static.data(name='y', shape=[1], dtype='bool')
 
             def func():
                 return pred

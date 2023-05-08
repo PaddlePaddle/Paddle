@@ -23,8 +23,7 @@
 
 #include "paddle/fluid/distributed/collective/custom_ccl_tools.h"
 #include "paddle/fluid/distributed/collective/process_group.h"
-#include "paddle/fluid/distributed/collective/process_group_without_stream.h"
-#include "paddle/fluid/platform/device/npu/npu_stream.h"
+#include "paddle/fluid/distributed/collective/process_group_with_stream.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
@@ -36,7 +35,7 @@ namespace distributed {
 using Place = paddle::platform::Place;
 using CustomDeviceContext = paddle::platform::CustomDeviceContext;
 
-class ProcessGroupCustom : public ProcessGroupWithoutStream {
+class ProcessGroupCustom : public ProcessGroupWithStream {
  public:
   class CustomTask : public ProcessGroup::Task,
                      public std::enable_shared_from_this<CustomTask> {
@@ -46,10 +45,11 @@ class ProcessGroupCustom : public ProcessGroupWithoutStream {
                CommType CommType,
                const std::vector<phi::DenseTensor>& inputs);
 
-    bool IsCompleted();
+    bool IsCompleted() override;
     void SynchronizeStreams();
-    bool Wait(std::chrono::milliseconds timeout = kWaitTimeout);
-    void Synchronize();
+    bool Wait(std::chrono::milliseconds timeout = kWaitTimeout) override;
+    void Synchronize() override;
+    void UpdateWaitChain(const phi::DeviceContext& ctx) override;
     void SetOutputs(std::vector<phi::DenseTensor>& outputs);  // NOLINT
     virtual ~CustomTask();
 
@@ -143,6 +143,26 @@ class ProcessGroupCustom : public ProcessGroupWithoutStream {
       const BroadcastOptions& opts,
       bool sync_op) override;
 
+  std::shared_ptr<ProcessGroup::Task> Send(const phi::DenseTensor& tensor,
+                                           int dst_rank,
+                                           int64_t offset,
+                                           int64_t numel,
+                                           bool sync_op,
+                                           bool use_calc_stream) override;
+
+  std::shared_ptr<ProcessGroup::Task> Send(
+      std::vector<phi::DenseTensor>& tensors, int dst_rank) override;
+
+  std::shared_ptr<ProcessGroup::Task> Recv(phi::DenseTensor* tensor,
+                                           int src_rank,
+                                           int64_t offset,
+                                           int64_t numel,
+                                           bool sync_op,
+                                           bool use_calc_stream) override;
+
+  std::shared_ptr<ProcessGroup::Task> Recv(
+      std::vector<phi::DenseTensor>& tensors, int src_rank) override;
+
  protected:
   virtual std::shared_ptr<ProcessGroupCustom::CustomTask> CreateTask(
       std::vector<Place> places,
@@ -176,7 +196,9 @@ class ProcessGroupCustom : public ProcessGroupWithoutStream {
       std::vector<phi::DenseTensor>& inputs,   // NOLINT
       std::vector<phi::DenseTensor>& outputs,  // NOLINT
       Fn fn,
-      CommType op_type);
+      CommType op_type,
+      bool sync_op,
+      bool use_calc_stream);
 
   void CreateCustomManagerCache(const std::string& places_key,
                                 const std::vector<Place>& places);

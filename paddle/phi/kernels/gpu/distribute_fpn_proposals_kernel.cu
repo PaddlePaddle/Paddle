@@ -266,4 +266,7 @@ PD_REGISTER_KERNEL(distribute_fpn_proposals,
                    ALL_LAYOUT,
                    phi::DistributeFpnProposalsKernel,
                    float,
-                   double) {}
+                   double) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT32);
+  kernel->OutputAt(2).SetDataType(phi::DataType::INT32);
+}

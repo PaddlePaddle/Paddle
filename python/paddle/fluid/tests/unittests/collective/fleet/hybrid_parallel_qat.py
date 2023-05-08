@@ -19,9 +19,8 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
-import paddle.distributed.fleet as fleet
-import paddle.fluid as fluid
-import paddle.nn as nn
+from paddle import fluid, nn
+from paddle.distributed import fleet
 from paddle.distributed.utils.launch_utils import find_free_ports, get_cluster
 from paddle.quantization import ImperativeQuantAware
 

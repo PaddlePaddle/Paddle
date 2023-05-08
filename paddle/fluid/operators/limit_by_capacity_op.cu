@@ -47,7 +47,7 @@ __global__ void limit_by_capacity_impl(
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class LimitByCapacityOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -78,7 +78,8 @@ class LimitByCapacityOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
-
-REGISTER_OP_CUDA_KERNEL(limit_by_capacity,
-                        ops::LimitByCapacityOpCUDAKernel<int64_t>);
+PD_REGISTER_STRUCT_KERNEL(limit_by_capacity,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::LimitByCapacityOpCUDAKernel,
+                          int64_t) {}

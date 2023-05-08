@@ -27,12 +27,12 @@ HeterPsBase* HeterPsBase::get_instance(
     std::unordered_map<std::string, float> fleet_config,
     std::string accessor_type,
     int optimizer_type) {
+  auto* accessor_wrapper_ptr =
+      GlobalAccessorFactory::GetInstance().GetAccessorWrapper();
+  CommonFeatureValueAccessor* gpu_accessor =
+      ((AccessorWrapper<CommonFeatureValueAccessor>*)accessor_wrapper_ptr)
+          ->AccessorPtr();
   if (accessor_type == "CtrDymfAccessor") {
-    auto* accessor_wrapper_ptr =
-        GlobalAccessorFactory::GetInstance().GetAccessorWrapper();
-    CommonFeatureValueAccessor* gpu_accessor =
-        ((AccessorWrapper<CommonFeatureValueAccessor>*)accessor_wrapper_ptr)
-            ->AccessorPtr();
     if (optimizer_type == 1) {
       return new HeterPs<CommonFeatureValueAccessor, SparseAdagradOptimizer>(
           capacity, resource, *gpu_accessor);
@@ -43,9 +43,20 @@ HeterPsBase* HeterPsBase::get_instance(
       return new HeterPs<CommonFeatureValueAccessor, SparseAdamSharedOptimizer>(
           capacity, resource, *gpu_accessor);
     }
+  } else if (accessor_type == "DownpourCtrDymfAccessor" ||
+             accessor_type == "DownpourCtrDoubleDymfAccessor") {
+    if (optimizer_type == 1) {  // adagrad
+      return new HeterPs<CommonFeatureValueAccessor, SparseAdagradOptimizer>(
+          capacity, resource, *gpu_accessor);
+    } else if (optimizer_type == 2) {  // std_adagrad
+      return new HeterPs<CommonFeatureValueAccessor, StdAdagradOptimizer>(
+          capacity, resource, *gpu_accessor);
+    }
   } else {
-    VLOG(0) << " HeterPsBase get_instance Warning: now only support "
-               "CtrDymfAccessor, but get "
+    VLOG(0) << "HeterPsBase get_instance Warning: now only support "
+               "CtrDymfAccessor, DownpourCtrDymfAccessor or "
+               "DownpourCtrDoubleDymfAccessor, "
+               "but get "
             << accessor_type;
   }
 }

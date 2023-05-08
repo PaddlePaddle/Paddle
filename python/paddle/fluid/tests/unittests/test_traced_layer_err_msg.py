@@ -20,8 +20,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.nn as nn
+from paddle import fluid, nn
 
 
 class SimpleFCLayer(nn.Layer):
@@ -75,7 +74,7 @@ class TestTracedLayerErrMsg(unittest.TestCase):
                     None, [in_x]
                 )
             self.assertEqual(
-                "The type of 'layer' in paddle.jit.TracedLayer.trace must be fluid.dygraph.Layer, but received <{} 'NoneType'>.".format(
+                "The type of 'layer' in paddle.jit.TracedLayer.trace must be paddle.nn.Layer, but received <{} 'NoneType'>.".format(
                     self.type_str
                 ),
                 str(e.exception),

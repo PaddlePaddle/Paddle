@@ -30,4 +30,7 @@ NEED_TO_FIX_OP_LIST = [
     'rnn',
     'multi_dot',
     'index_add',
+    'reshape2',
+    'squeeze',
+    'squeeze2',
 ]

@@ -14,9 +14,12 @@ limitations under the License. */
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_XPU_KERNEL(c_identity,
-                       ops::CIdentityOpKernel<float>,
-                       ops::CIdentityOpKernel<double>,
-                       ops::CIdentityOpKernel<int>,
-                       ops::CIdentityOpKernel<int64_t>,
-                       ops::CIdentityOpKernel<plat::float16>);
+PD_REGISTER_STRUCT_KERNEL(c_identity,
+                          XPU,
+                          ALL_LAYOUT,
+                          ops::CIdentityOpKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t,
+                          plat::float16) {}

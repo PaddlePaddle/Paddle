@@ -155,6 +155,17 @@
     layout : x
   backward : expm1_grad
 
+- op : isnan
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : IsfiniteInferMeta
+    param: [x]
+  kernel :
+    func : isnan_coo{sparse_coo -> sparse_coo},
+      isnan_csr{sparse_csr -> sparse_csr}
+    layout : x
+
 - op : leaky_relu
   args : (Tensor x, float alpha)
   output : Tensor(out)

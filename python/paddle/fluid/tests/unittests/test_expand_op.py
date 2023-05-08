@@ -15,9 +15,9 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 # Situation 1: expand_times is a list(without tensor)
@@ -39,10 +39,10 @@ class TestExpandOpRank1(OpTest):
         self.expand_times = [2]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_dygraph=False)
 
 
 class TestExpandOpRank2_Corner(TestExpandOpRank1):
@@ -87,7 +87,7 @@ class TestExpandOpRank1_tensor_attr(OpTest):
         expand_times_tensor = []
         for index, ele in enumerate(self.expand_times):
             expand_times_tensor.append(
-                ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                ("x" + str(index), np.ones(1).astype('int32') * ele)
             )
 
         self.inputs = {
@@ -104,10 +104,10 @@ class TestExpandOpRank1_tensor_attr(OpTest):
         self.infer_expand_times = [-1]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_dygraph=False)
 
 
 class TestExpandOpRank2_Corner_tensor_attr(TestExpandOpRank1_tensor_attr):
@@ -146,10 +146,10 @@ class TestExpandOpRank1_tensor(OpTest):
         self.expand_times = [2]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_dygraph=False)
 
 
 class TestExpandOpRank2_tensor(TestExpandOpRank1_tensor):
@@ -170,7 +170,7 @@ class TestExpandOpInteger(OpTest):
         self.outputs = {'Out': output}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 # Situation 5: input x is Bool
@@ -183,7 +183,7 @@ class TestExpandOpBoolean(OpTest):
         self.outputs = {'Out': output}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 # Situation 56: input x is Integer
@@ -198,7 +198,7 @@ class TestExpandOpInt64_t(OpTest):
         self.outputs = {'Out': output}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 if __name__ == "__main__":

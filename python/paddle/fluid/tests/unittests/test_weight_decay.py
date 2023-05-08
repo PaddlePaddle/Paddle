@@ -19,9 +19,8 @@ from functools import partial
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import compiler
+from paddle import fluid
+from paddle.fluid import compiler, core
 
 
 def get_places():

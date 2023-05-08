@@ -15,6 +15,9 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
+#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
+#include "paddle/fluid/prim/utils/static/desc_tensor.h"
 
 namespace paddle {
 namespace framework {
@@ -68,6 +71,28 @@ class ElementwiseFMaxOpMaker : public ElementwiseOpMaker {
   }
 };
 
+class ElementwiseMaxCompositeGradOpMaker
+    : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
+ public:
+  void Apply() override {
+    paddle::Tensor x = this->GetSingleForwardInput("X");
+    paddle::Tensor y = this->GetSingleForwardInput("Y");
+    paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
+    paddle::Tensor dx = this->GetSingleInputGrad("X");
+    auto* dx_ptr = this->GetOutputPtr(&dx);
+    std::string dx_name = this->GetOutputName(dx);
+    paddle::Tensor dy = this->GetSingleInputGrad("Y");
+    auto* dy_ptr = this->GetOutputPtr(&dy);
+    std::string dy_name = this->GetOutputName(dy);
+    VLOG(6) << "Runing maximum_grad composite func";
+    prim::maximum_grad<prim::DescTensor>(x, y, out_grad, dx_ptr, dy_ptr);
+    this->RecoverOutputName(dx, dx_name);
+    this->RecoverOutputName(dy, dy_name);
+  }
+};
+
 template <typename T>
 class ElementwiseMaxGradOpMaker : public framework::SingleGradOpMaker<T> {
  public:
@@ -112,7 +137,8 @@ REGISTER_OPERATOR(elementwise_max,
                   ops::ElementwiseMaxOpMaker,
                   ops::ElementwiseOpInferVarType,
                   ops::ElementwiseMaxGradOpMaker<paddle::framework::OpDesc>,
-                  ops::ElementwiseMaxGradOpMaker<paddle::imperative::OpBase>);
+                  ops::ElementwiseMaxGradOpMaker<paddle::imperative::OpBase>,
+                  ops::ElementwiseMaxCompositeGradOpMaker);
 
 REGISTER_OPERATOR(elementwise_max_grad, ops::ElementwiseOpGrad);
 

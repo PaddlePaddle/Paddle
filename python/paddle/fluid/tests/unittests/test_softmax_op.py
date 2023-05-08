@@ -18,9 +18,9 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 import paddle.nn.functional as F
+from paddle import fluid
+from paddle.fluid import core
 
 np.random.seed(10)
 
@@ -54,6 +54,7 @@ class TestSoftmaxOp(OpTest):
         self.op_type = "softmax"
         self.prim_op_type = "comp"
         self.python_api = F.softmax
+        self.public_python_api = F.softmax
         self.use_cudnn = False
         self.use_mkldnn = False
         # explicilty use float32 for ROCm, as MIOpen does not yet support float64
@@ -118,10 +119,12 @@ class TestSoftmaxOp_ZeroDim1(TestSoftmaxOp):
         self.op_type = "softmax"
         self.prim_op_type = "comp"
         self.python_api = F.softmax
+        self.public_python_api = F.softmax
         self.use_cudnn = False
         self.use_mkldnn = False
         # explicilty use float32 for ROCm, as MIOpen does not yet support float64
         self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
+        self.init_kernel_type()
 
         np.random.seed(0)
         x = np.random.uniform(0.1, 1, []).astype(self.dtype)
@@ -459,16 +462,17 @@ class TestSoftmaxAPI(unittest.TestCase):
         self.softmax = F.softmax
 
     def test_static_check(self):
-        with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('X', self.x_np.shape, 'float32')
-            out1 = self.softmax(x)
-            m = paddle.nn.Softmax()
-            out2 = m(x)
-            exe = paddle.static.Executor(self.place)
-            res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
-        out_ref = ref_softmax(self.x_np, axis=-1, dtype=None)
-        for r in res:
-            np.testing.assert_allclose(out_ref, r, rtol=1e-05)
+        with paddle.fluid.framework._static_guard():
+            with paddle.static.program_guard(paddle.static.Program()):
+                x = paddle.static.data('X', self.x_np.shape, 'float32')
+                out1 = self.softmax(x)
+                m = paddle.nn.Softmax()
+                out2 = m(x)
+                exe = paddle.static.Executor(self.place)
+                res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
+            out_ref = ref_softmax(self.x_np, axis=-1, dtype=None)
+            for r in res:
+                np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_check(self):
         paddle.disable_static(self.place)
@@ -502,19 +506,20 @@ class TestSoftmaxAPI(unittest.TestCase):
         paddle.enable_static()
 
     def test_error(self):
-        with paddle.static.program_guard(paddle.static.Program()):
-            # The input type must be Variable.
-            self.assertRaises(TypeError, self.softmax, 1)
-            # The input dtype must be float16, float32, float64.
-            x_int32 = paddle.fluid.data(
-                name='x_int32', shape=[2, 3], dtype='int32'
-            )
-            self.assertRaises(TypeError, self.softmax, x_int32)
-            # support the input dtype is float16
-            x_fp16 = paddle.fluid.data(
-                name='x_fp16', shape=[2, 3], dtype='float16'
-            )
-            self.softmax(x_fp16)
+        with paddle.fluid.framework._static_guard():
+            with paddle.static.program_guard(paddle.static.Program()):
+                # The input type must be Variable.
+                self.assertRaises(TypeError, self.softmax, 1)
+                # The input dtype must be float16, float32, float64.
+                x_int32 = paddle.static.data(
+                    name='x_int32', shape=[2, 3], dtype='int32'
+                )
+                self.assertRaises(TypeError, self.softmax, x_int32)
+                # support the input dtype is float16
+                x_fp16 = paddle.static.data(
+                    name='x_fp16', shape=[2, 3], dtype='float16'
+                )
+                self.softmax(x_fp16)
 
 
 class TestSoftmaxAPI_ZeroDim(unittest.TestCase):
@@ -535,23 +540,24 @@ class TestSoftmaxAPI_ZeroDim(unittest.TestCase):
         paddle.enable_static()
 
     def test_static(self):
-        main_prog = fluid.Program()
-        with fluid.program_guard(main_prog, fluid.Program()):
-            x = paddle.rand([])
-            x.stop_gradient = False
-            out = paddle.nn.functional.softmax(x)
-            fluid.backward.append_backward(out)
+        with paddle.fluid.framework._static_guard():
+            main_prog = fluid.Program()
+            with fluid.program_guard(main_prog, fluid.Program()):
+                x = paddle.rand([])
+                x.stop_gradient = False
+                out = paddle.nn.functional.softmax(x)
+                fluid.backward.append_backward(out)
 
-            # Test compile shape
-            self.assertEqual(x.shape, ())
-            self.assertEqual(out.shape, ())
+                # Test compile shape
+                self.assertEqual(x.shape, ())
+                self.assertEqual(out.shape, ())
 
-            exe = fluid.Executor()
-            result = exe.run(main_prog, fetch_list=[x, out])
+                exe = fluid.Executor()
+                result = exe.run(main_prog, fetch_list=[x, out])
 
-            # Test runtime shape
-            self.assertEqual(result[0].shape, ())
-            self.assertEqual(result[1].shape, ())
+                # Test runtime shape
+                self.assertEqual(result[0].shape, ())
+                self.assertEqual(result[1].shape, ())
 
 
 class TestSoftmaxInplaceAPI(TestSoftmaxAPI):

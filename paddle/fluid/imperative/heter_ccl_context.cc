@@ -42,8 +42,6 @@ HeterParallelContext::HeterParallelContext(const ParallelStrategy &strategy,
     : ParallelContext(strategy, platform::CUDAPlace(device_id))
 #elif PADDLE_WITH_XPU_BKCL
     : ParallelContext(strategy, platform::XPUPlace(device_id))
-#elif PADDLE_WITH_ASCEND_CL
-    : ParallelContext(strategy, platform::NPUPlace(device_id))
 #else
     : ParallelContext(strategy, platform::CPUPlace())
 #endif
@@ -111,11 +109,6 @@ HeterParallelContext::HeterParallelContext(const ParallelStrategy &strategy,
   node_place_ = platform::XPUPlace(device_id);
   node_parallel_ctx_ =
       std::make_shared<BKCLParallelContext>(node_strategy_, node_place_);
-#endif
-#ifdef PADDLE_WITH_ASCEND_CL
-  node_place_ = platform::NPUPlace(device_id);
-  node_parallel_ctx_ =
-      std::make_shared<HCCLParallelContext>(node_strategy_, node_place_);
 #endif
 }
 

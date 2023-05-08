@@ -135,6 +135,7 @@ def save_inference_model(
     export_for_deployment=True,
     program_only=False,
     clip_extra=True,
+    legacy_format=False,
 ):
     """
     Prune the given `main_program` to build a new program especially for inference,
@@ -176,6 +177,8 @@ def save_inference_model(
         program_only(bool, optional): If True, It will save inference program only, and do not
                                       save params of Program.
                                       Default: False.
+        legacy_format(bool, optional): Whether to save program in legacy format.
+                                       Default: False.
 
     Returns:
         list, The fetch variables' name list.
@@ -190,8 +193,8 @@ def save_inference_model(
             path = "./infer_model"
 
             # User defined network, here a softmax regession example
-            image = fluid.data(name='img', shape=[None, 28, 28], dtype='float32')
-            label = fluid.data(name='label', shape=[None, 1], dtype='int64')
+            image = paddle.static.data(name='img', shape=[None, 28, 28], dtype='float32')
+            label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
             feeder = fluid.DataFeeder(feed_list=[image, label], place=fluid.CPUPlace())
             predict = paddle.static.nn.fc(x=image, size=10, activation='softmax')
 
@@ -314,8 +317,6 @@ def save_inference_model(
         prepend_feed_ops(main_program, feeded_var_names)
         append_fetch_ops(main_program, fetch_var_names)
 
-        main_program.desc._set_version()
-        paddle.fluid.core.save_op_version_info(main_program.desc)
         with open(model_basename, "wb") as f:
             f.write(
                 main_program._remove_training_info(

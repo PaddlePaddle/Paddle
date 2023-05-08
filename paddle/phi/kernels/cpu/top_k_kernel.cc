@@ -242,5 +242,5 @@ void TopkKernel(const Context& dev_ctx,
 
 PD_REGISTER_KERNEL(
     topk, CPU, ALL_LAYOUT, phi::TopkKernel, float, double, int32_t, int64_t) {
-  kernel->OutputAt(1).SetDataType(paddle::experimental::DataType::INT64);
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
 }

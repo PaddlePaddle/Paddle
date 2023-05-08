@@ -27,9 +27,11 @@ def adamx_wrapper(
     moment,
     inf_norm,
     beta1_pow=None,
+    master_weight=None,
     beta1=0.78,
     beta2=0.899,
     epsilon=1e-5,
+    find_master=False,
 ):
     return paddle._C_ops.adamax_(
         param,
@@ -38,12 +40,12 @@ def adamx_wrapper(
         moment,
         inf_norm,
         beta1_pow,
+        master_weight,
         beta1,
         beta2,
         epsilon,
+        find_master,
     )
-
-import paddle
 
 
 class TestAdamaxOp1(OpTest):
@@ -350,7 +352,9 @@ class TestAdamaxMultiPrecision2_0(unittest.TestCase):
         exe.run(startup_program)
 
         if use_amp:
-            optimizer.amp_init(place='gpu', scope=paddle.static.global_scope())
+            optimizer.amp_init(
+                place=paddle.CUDAPlace(0), scope=paddle.static.global_scope()
+            )
             x = np.random.random(size=(2, 2)).astype('float16')
         else:
             x = np.random.random(size=(2, 2)).astype('float32')
@@ -457,7 +461,9 @@ class TestAdamaxMultiPrecision1_0(unittest.TestCase):
         exe.run(startup_program)
 
         if use_amp:
-            optimizer.amp_init(place='gpu', scope=paddle.static.global_scope())
+            optimizer.amp_init(
+                place=paddle.CUDAPlace(0), scope=paddle.static.global_scope()
+            )
             x = np.random.random(size=(2, 2)).astype('float16')
         else:
             x = np.random.random(size=(2, 2)).astype('float32')

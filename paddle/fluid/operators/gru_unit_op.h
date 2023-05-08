@@ -25,7 +25,7 @@ namespace operators {
 
 enum GRUActivationType { identity = 0, sigmoid = 1, tanh = 2, relu = 3 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class GRUUnitKernel : public framework::OpKernel<T> {
  public:
   template <typename Device, typename X, typename Y>
@@ -89,7 +89,8 @@ class GRUUnitKernel : public framework::OpKernel<T> {
     const T* weight_data = weight->data<T>();
     T* gate_data = gate->data<T>();
     T* reset_hidden_prev_data = reset_hidden_prev->data<T>();
-    auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
+    auto& dev_ctx = context.template device_context<DeviceContext>();
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
     blas.GEMM(false,
               false,
               batch_size,
@@ -152,7 +153,7 @@ class GRUUnitKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class GRUUnitGradKernel : public framework::OpKernel<T> {
  public:
   template <typename Device, typename X, typename Y, typename DX, typename DY>
@@ -251,7 +252,8 @@ class GRUUnitGradKernel : public framework::OpKernel<T> {
                      d_h * u);
     }
     // backward for reset_hidden_prev
-    auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
+    auto& dev_ctx = context.template device_context<DeviceContext>();
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
     blas.GEMM(false,
               true,
               batch_size,

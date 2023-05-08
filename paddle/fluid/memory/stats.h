@@ -18,15 +18,15 @@ limitations under the License. */
 #include <map>
 #include <string>
 
-#include "paddle/fluid/framework/new_executor/workqueue/thread_data_registry.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/phi/common/thread_data_registry.h"
 
 namespace paddle {
 namespace memory {
 
-using framework::ThreadDataRegistry;
+using phi::ThreadDataRegistry;
 
 struct ThreadLocalStatBase {
   int64_t current{0};

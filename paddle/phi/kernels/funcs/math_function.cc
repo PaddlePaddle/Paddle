@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/core/utils/visit_place.h"
 
 #ifdef PADDLE_WITH_MKLML
 #include "paddle/phi/backends/dynload/mklml.h"
@@ -26,7 +27,6 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/data_type.h"
@@ -184,7 +184,16 @@ void set_constant_with_place<phi::IPUPlace>(const phi::DeviceContext& context,
 template <>
 void set_constant_with_place<phi::CustomPlace>(
     const phi::DeviceContext& context, phi::DenseTensor* tensor, float value) {
-  PADDLE_THROW(phi::errors::Unimplemented("CustomPlace is not supported"));
+  phi::DenseTensor tmp_tensor;
+  tmp_tensor.Resize(tensor->dims());
+  context.HostAlloc(&tmp_tensor, tensor->dtype());
+  phi::VisitDataType(tmp_tensor.dtype(),
+                     TensorSetConstantCPU(&tmp_tensor, value));
+  phi::memory_utils::Copy(tensor->place(),
+                          tensor->data(),
+                          phi::CPUPlace(),
+                          tmp_tensor.data(),
+                          tensor->numel() * phi::SizeOf(tensor->dtype()));
 }
 
 template <>
@@ -192,13 +201,6 @@ void set_constant_with_place<phi::CPUPlace>(const phi::DeviceContext& context,
                                             phi::DenseTensor* tensor,
                                             float value) {
   phi::VisitDataType(tensor->dtype(), TensorSetConstantCPU(tensor, value));
-}
-
-template <>
-void set_constant_with_place<phi::MLUPlace>(const phi::DeviceContext& context,
-                                            phi::DenseTensor* tensor,
-                                            float value) {
-  PADDLE_THROW(phi::errors::Unimplemented("MLUPlace is not supported"));
 }
 
 template <>
@@ -230,13 +232,13 @@ void set_constant(const phi::DeviceContext& context,
   TensorSetConstantWithPlace func(context, tensor, value);
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   if (context.GetPlace().GetType() == phi::AllocationType::CUSTOM) {
-    func(phi::CPUPlace());
+    func(phi::CustomPlace());
     return;
   }
 #endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // tensor->place().apply_visitor(func);
-  paddle::platform::VisitPlace(tensor->place(), func);
+  phi::VisitPlace(tensor->place(), func);
 #elif defined(PADDLE_WITH_XPU)
   func(phi::XPUPlace());
 #else

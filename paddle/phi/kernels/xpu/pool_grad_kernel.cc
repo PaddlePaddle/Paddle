@@ -130,6 +130,12 @@ void Pool2dGradKernel(const Context& ctx,
 
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "adaptive_pool2d_grad");
   } else {
+    if (kernel_size[0] > (in_h + paddings[0] + paddings[1])) {
+      kernel_size[0] = in_h + paddings[0] + paddings[1];
+    }
+    if (kernel_size[1] > (in_w + paddings[2] + paddings[3])) {
+      kernel_size[1] = in_w + paddings[2] + paddings[3];
+    }
     if (pooling_type == "max") {
       // TODO(zhanghuan05) to bind max_pool2d_grad_indices xpu api
       r = xpu::max_pool2d_grad<XPUType>(
@@ -267,6 +273,30 @@ void Pool3dGradKernel(const Context& ctx,
           !channel_last);
 
     } else if (pooling_type == "avg") {
+      if (out_d == 1 && out_h == 1 && out_w == 1 &&
+          std::is_same<T, float>::value) {
+        xpu::ctx_guard RAII_GUARD(ctx.x_context());
+        float scale = 1.0 / (in_d * in_h * in_w);
+        float* scaled_dy = RAII_GUARD.alloc_l3_or_gm<float>(n * c);
+        r = xpu::scale(ctx.x_context(),
+                       dout.data<float>(),
+                       scaled_dy,
+                       n * c,
+                       true,
+                       scale,
+                       0.0);
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
+
+        r = xpu::broadcast(ctx.x_context(),
+                           scaled_dy,
+                           dx->data<float>(),
+                           {n, c, 1, 1, 1},
+                           {n, c, in_d, in_h, in_w});
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast");
+
+        return;
+      }
+
       r = xpu::adaptive_avg_pool3d_grad<XPUType>(
           ctx.x_context(),
           reinterpret_cast<const XPUType*>(dout.data<T>()),
@@ -288,22 +318,41 @@ void Pool3dGradKernel(const Context& ctx,
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "adaptive_pool3d_grad");
   } else {
     if (pooling_type == "max") {
-      r = xpu::max_pool3d_grad<XPUType>(
-          ctx.x_context(),
-          reinterpret_cast<const XPUType*>(x.data<T>()),
-          reinterpret_cast<const XPUType*>(out.data<T>()),
-          index_data,
-          reinterpret_cast<const XPUType*>(dout.data<T>()),
-          reinterpret_cast<XPUType*>(dx->data<T>()),
-          n,
-          c,
-          in_d,
-          in_h,
-          in_w,
-          kernel_size,
-          strides,
-          paddings,
-          !channel_last);
+      if (kernel_size[0] == 1 && kernel_size.size() == 3 &&
+          strides.size() == 3 && paddings.size() == 6) {
+        r = xpu::max_pool2d_grad<XPUType>(
+            ctx.x_context(),
+            reinterpret_cast<const XPUType*>(x.data<T>()),
+            reinterpret_cast<const XPUType*>(out.data<T>()),
+            index_data,
+            reinterpret_cast<const XPUType*>(dout.data<T>()),
+            reinterpret_cast<XPUType*>(dx->data<T>()),
+            n,
+            c * in_d,
+            in_h,
+            in_w,
+            {kernel_size[1], kernel_size[2]},
+            {strides[1], strides[2]},
+            {paddings[2], paddings[3], paddings[4], paddings[5]},
+            !channel_last);
+      } else {
+        r = xpu::max_pool3d_grad<XPUType>(
+            ctx.x_context(),
+            reinterpret_cast<const XPUType*>(x.data<T>()),
+            reinterpret_cast<const XPUType*>(out.data<T>()),
+            index_data,
+            reinterpret_cast<const XPUType*>(dout.data<T>()),
+            reinterpret_cast<XPUType*>(dx->data<T>()),
+            n,
+            c,
+            in_d,
+            in_h,
+            in_w,
+            kernel_size,
+            strides,
+            paddings,
+            !channel_last);
+      }
     } else if (pooling_type == "avg") {
       r = xpu::avg_pool3d_grad<XPUType>(
           ctx.x_context(),

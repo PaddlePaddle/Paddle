@@ -271,7 +271,7 @@ try:
     if avx_supported() and not libpaddle.is_compiled_with_avx():
         sys.stderr.write(
             "Hint: Your machine support AVX, but the installed paddlepaddle doesn't have avx core. "
-            "Hence, no-avx core with worse preformance will be imported.\nIf you like, you could "
+            "Hence, no-avx core with worse performance will be imported.\nIf you like, you could "
             "reinstall paddlepaddle by 'python -m pip install --force-reinstall paddlepaddle-gpu[==version]' "
             "to get better performance.\n"
         )
@@ -378,7 +378,7 @@ def set_paddle_lib_path():
         if os.path.exists(lib_dir):
             _set_paddle_lib_path(lib_dir)
             set_paddle_custom_device_lib_path(
-                os.path.sep.join([lib_dir, '..', '..', 'paddle-plugins'])
+                os.path.sep.join([lib_dir, '..', '..', 'paddle_custom_device'])
             )
             return
     if hasattr(site, 'USER_SITE'):
@@ -386,7 +386,7 @@ def set_paddle_lib_path():
         if os.path.exists(lib_dir):
             _set_paddle_lib_path(lib_dir)
             set_paddle_custom_device_lib_path(
-                os.path.sep.join([lib_dir, '..', '..', 'paddle-plugins'])
+                os.path.sep.join([lib_dir, '..', '..', 'paddle_custom_device'])
             )
 
 
@@ -446,7 +446,11 @@ def __sync_stat_with_flag(flag):
         )
 
 
-# Alert!!! This method is only for test coveraget, user should never use it directly, this may cause serious system errors.
+def _is_all_prim_enabled():
+    return _is_fwd_prim_enabled() and _is_bwd_prim_enabled()
+
+
+# Alert!!! This method is only for test coverage, user should never use it directly, this may cause serious system errors.
 def _test_use_sync(value):
     __sync_stat_with_flag(value)
 
@@ -477,25 +481,25 @@ def _set_prim_forward_blacklist(ops=None):
 
 def _set_prim_backward_enabled(value):
     __set_bwd_prim_enabled(bool(value))
-    if os.getenv("FLAGS_prim_log") is "1":
+    if os.getenv("FLAGS_prim_log") == "1":
         print("backward prim enabled: ", bool(_is_bwd_prim_enabled()))
 
 
 def _set_prim_forward_enabled(value):
     __set_fwd_prim_enabled(bool(value))
-    if os.getenv("FLAGS_prim_log") is "1":
+    if os.getenv("FLAGS_prim_log") == "1":
         print("forward prim enabled: ", bool(_is_fwd_prim_enabled()))
 
 
 def set_prim_eager_enabled(value):
     __set_eager_prim_enabled(bool(value))
-    if os.getenv("FLAGS_prim_log") is "1":
+    if os.getenv("FLAGS_prim_log") == "1":
         print("eager prim enabled: ", bool(_is_eager_prim_enabled()))
 
 
 def _set_prim_all_enabled(value):
     __set_all_prim_enabled(bool(value))
-    if os.getenv("FLAGS_prim_log") is "1":
+    if os.getenv("FLAGS_prim_log") == "1":
         print(
             "all prim enabled: ",
             bool(_is_fwd_prim_enabled() and _is_bwd_prim_enabled()),
@@ -505,7 +509,7 @@ def _set_prim_all_enabled(value):
 def __sync_prim_backward_status():
     flag_value = os.getenv("FLAGS_prim_backward")
     if flag_value is None:
-        if os.getenv("FLAGS_prim_log") is "1":
+        if os.getenv("FLAGS_prim_log") == "1":
             print("backward prim enabled: ", bool(_is_bwd_prim_enabled()))
     else:
         __sync_stat_with_flag("FLAGS_prim_backward")
@@ -514,7 +518,7 @@ def __sync_prim_backward_status():
 def __sync_prim_forward_status():
     flag_value = os.getenv("FLAGS_prim_forward")
     if flag_value is None:
-        if os.getenv("FLAGS_prim_log") is 1:
+        if os.getenv("FLAGS_prim_log") == "1":
             print("forward prim enabled: ", bool(_is_fwd_prim_enabled()))
     else:
         __sync_stat_with_flag("FLAGS_prim_forward")

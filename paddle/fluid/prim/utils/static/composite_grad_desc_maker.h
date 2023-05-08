@@ -32,7 +32,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/flags.h"
 
-DECLARE_string(tensor_operants_mode);
+PHI_DECLARE_string(tensor_operants_mode);
 
 namespace paddle {
 namespace prim {
@@ -103,6 +103,8 @@ class CompositeGradOpMakerBase {
     return output_grad;
   }
 
+  // TODO(Ruting): modify name to GetNullableSingleInputGrad after Large-scale
+  // development
   paddle::Tensor GetSingleInputGrad(const std::string& name) {
     framework::VarDesc* input_grad_desc = this->SingleInputGrad(name);
     if (!input_grad_desc) return paddle::Tensor();
@@ -202,58 +204,71 @@ class CompositeGradOpMakerBase {
     return inputs_grads;
   }
 
-  std::vector<paddle::optional<paddle::Tensor>> GetOptionalMultiForwardOutput(
+  paddle::optional<std::vector<paddle::Tensor>> GetOptionalMultiForwardOutput(
       const std::string& name) {
-    std::vector<paddle::optional<paddle::Tensor>> outputs_opt;
+    paddle::optional<std::vector<paddle::Tensor>> outputs_opt;
     std::vector<framework::VarDesc*> outputs_descs =
         this->MultiForwardOutput(name);
-    outputs_opt.reserve(outputs_descs.size());
+    if ((outputs_descs.empty())) {
+      return outputs_opt;
+    }
+    std::vector<paddle::Tensor> outputs;
+    outputs.reserve(outputs_descs.size());
     for (const auto& output_desc : outputs_descs) {
       if (output_desc) {
-        outputs_opt.emplace_back(paddle::make_optional<paddle::Tensor>(
+        outputs.emplace_back(paddle::Tensor(
             paddle::Tensor(std::make_shared<DescTensor>(output_desc))));
       } else {
-        outputs_opt.emplace_back(
-            paddle::make_optional<paddle::Tensor>(paddle::Tensor()));
+        outputs.emplace_back(paddle::Tensor(paddle::Tensor()));
       }
     }
+    outputs_opt = paddle::make_optional<std::vector<paddle::Tensor>>(outputs);
     return outputs_opt;
   }
 
-  std::vector<paddle::optional<paddle::Tensor>> GetOptionalMultiForwardInput(
+  paddle::optional<std::vector<paddle::Tensor>> GetOptionalMultiForwardInput(
       const std::string& name) {
-    std::vector<paddle::optional<paddle::Tensor>> inputs_opt;
+    paddle::optional<std::vector<paddle::Tensor>> inputs_opt;
     std::vector<framework::VarDesc*> inputs_descs =
         this->MultiForwardInput(name);
-    inputs_opt.reserve(inputs_descs.size());
+    if ((inputs_descs.empty())) {
+      return inputs_opt;
+    }
+    std::vector<paddle::Tensor> inputs;
+    inputs.reserve(inputs_descs.size());
     for (const auto& input_desc : inputs_descs) {
       if (input_desc) {
-        inputs_opt.emplace_back(paddle::make_optional<paddle::Tensor>(
+        inputs.emplace_back(paddle::Tensor(
             paddle::Tensor(std::make_shared<DescTensor>(input_desc))));
       } else {
-        inputs_opt.emplace_back(
-            paddle::make_optional<paddle::Tensor>(paddle::Tensor()));
+        inputs.emplace_back(paddle::Tensor(paddle::Tensor()));
       }
     }
+    inputs_opt = paddle::make_optional<std::vector<paddle::Tensor>>(inputs);
     return inputs_opt;
   }
 
-  std::vector<paddle::optional<paddle::Tensor>> GetOptionalMultiOutputGrad(
+  paddle::optional<std::vector<paddle::Tensor>> GetOptionalMultiOutputGrad(
       const std::string& name) {
-    std::vector<paddle::optional<paddle::Tensor>> outputs_grads;
+    paddle::optional<std::vector<paddle::Tensor>> outputs_grads_opt;
     std::vector<framework::VarDesc*> outputs_grads_descs =
         this->MultiOutputGrad(name);
+    if ((outputs_grads_descs.empty())) {
+      return outputs_grads_opt;
+    }
+    std::vector<paddle::Tensor> outputs_grads;
     outputs_grads.reserve(outputs_grads_descs.size());
     for (const auto& output_grad_desc : outputs_grads_descs) {
       if (output_grad_desc) {
-        outputs_grads.emplace_back(paddle::make_optional<paddle::Tensor>(
+        outputs_grads.emplace_back(paddle::Tensor(
             paddle::Tensor(std::make_shared<DescTensor>(output_grad_desc))));
       } else {
-        outputs_grads.emplace_back(
-            paddle::make_optional<paddle::Tensor>(paddle::Tensor()));
+        outputs_grads.emplace_back(paddle::Tensor(paddle::Tensor()));
       }
     }
-    return outputs_grads;
+    outputs_grads_opt =
+        paddle::make_optional<std::vector<paddle::Tensor>>(outputs_grads);
+    return outputs_grads_opt;
   }
 
   paddle::Tensor* GetOutputPtr(paddle::Tensor* input) {
@@ -307,7 +322,11 @@ class CompositeGradOpMakerBase {
 
   framework::VarDesc* SingleInputGrad(const std::string& name,
                                       bool drop_empty_grad = true) const {
-    auto var_name = this->SingleForwardInputVarName(name);
+    auto* var = this->SingleForwardInput(name);
+    if (!var) {
+      return nullptr;
+    }
+    auto var_name = var->Name();
     auto grad_var_name = framework::GradVarName(var_name);
     if (no_grad_set_.empty() || !no_grad_set_.count(grad_var_name)) {
       (*this->grad_to_var_)[grad_var_name] = var_name;
@@ -329,7 +348,14 @@ class CompositeGradOpMakerBase {
   }
 
   framework::VarDesc* SingleOutputGrad(const std::string& name) const {
-    auto var_name = this->SingleForwardOutputVarName(name);
+    auto* var = this->SingleForwardOutput(name);
+    if (!var) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "GetSingleOutputGrad for %s_grad faild, if it is Optional input,"
+          "please use GetOptionalSingleOutputGrad replaced. ",
+          name));
+    }
+    auto var_name = var->Name();
     auto grad_var_name = framework::GradVarName(var_name);
     (*this->grad_to_var_)[grad_var_name] = var_name;
     VLOG(8) << "Valid gradients: " << grad_var_name;
@@ -350,7 +376,7 @@ class CompositeGradOpMakerBase {
   }
 
   std::vector<framework::VarDesc*> MultiInputGrad(
-      const std::string& name, bool drop_empty_grad = true) const {
+      const std::string& name) const {
     std::vector<std::string> ret_val;
     std::vector<framework::VarDesc*> input_grads;
     auto var_names = this->MultiForwardInputVarName(name);
@@ -367,39 +393,7 @@ class CompositeGradOpMakerBase {
                        return framework::kEmptyVarName;
                      }
                    });
-    if (!drop_empty_grad) {
-      for (const auto& name : ret_val) {
-        if (original_block_->HasVar(name)) {
-          // Copy Var from original block to active block, or create a new one.
-          CopyVarFromOrig(name);
-          input_grads.emplace_back(
-              StaticCompositeContext::Instance().GetBlock()->FindVar(name));
-        } else {
-          input_grads.emplace_back(
-              StaticCompositeContext::Instance().GetBlock()->Var(name));
-        }
-      }
-      return input_grads;
-    }
-    PADDLE_ENFORCE_LE(
-        var_names.size(),
-        1UL,
-        platform::errors::Unavailable(
-            "BUG from operator developer:"
-            " for input argument with a list of variables, "
-            " drop_empty_grad is not allowed because it makes"
-            " the correspondence bewteen a variable and its gradient"
-            " ambiguous."));
-
-    std::vector<std::string> dropped_ret_val;
-    dropped_ret_val.reserve(ret_val.size());
-    std::copy_if(
-        ret_val.begin(),
-        ret_val.end(),
-        std::back_inserter(dropped_ret_val),
-        [](const std::string& str) { return str != framework::kEmptyVarName; });
-    for (const auto& name : dropped_ret_val) {
-      // TODO(jiabin): Will this cause fill zeros error?
+    for (const auto& name : ret_val) {
       if (original_block_->HasVar(name)) {
         // Copy Var from original block to active block, or create a new one.
         CopyVarFromOrig(name);
@@ -540,14 +534,6 @@ class CompositeGradOpMakerBase {
     }
   }
 
-  std::string SingleForwardInputVarName(const std::string& name) const {
-    return fwd_op_.Input(name).at(0);
-  }
-
-  std::string SingleForwardOutputVarName(const std::string& name) const {
-    return fwd_op_.Output(name).at(0);
-  }
-
   std::vector<std::string> MultiForwardOutputVarName(
       const std::string& name) const {
     return fwd_op_.Output(name);
@@ -580,6 +566,9 @@ class CompositeGradOpMakerBase {
 
   const std::unordered_map<std::string, framework::Attribute>& RuntimeAttrs()
       const {
+    LOG(WARNING) << "CompositeGradOpMaker doesn't support use runtime attrs, "
+                    "but find the op"
+                 << fwd_op_.Type() << "use runtime attr.";
     return fwd_op_.GetRuntimeAttrMap();
   }
 

@@ -25,4 +25,14 @@ void Dialect::RegisterType(ir::AbstractType &&abstract_type) {
                                            new_abstract_type);
 }
 
+void Dialect::RegisterAttribute(ir::AbstractAttribute &&abstract_attribute) {
+  ir::AbstractAttribute *new_abstract_attribute =
+      new ir::AbstractAttribute(std::move(abstract_attribute));
+  this->ir_context()->RegisterAbstractAttribute(
+      new_abstract_attribute->type_id(), new_abstract_attribute);
+}
+
+void Dialect::RegisterOp(const std::string &name, OpInfoImpl *op_info) {
+  this->ir_context()->RegisterOpInfo(name, op_info);
+}
 }  // namespace ir

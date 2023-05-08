@@ -362,7 +362,10 @@ cc_test(
   program_desc_test
   SRCS program_desc_test.cc
   DEPS proto_desc device_context)
-
+cc_test(
+  op_desc_test
+  SRCS op_desc_test.cc
+  DEPS proto_desc)
 cc_library(
   op_version_proto
   SRCS op_version_proto.cc
@@ -380,7 +383,7 @@ cc_test(
 cc_library(
   op_proto_maker
   SRCS op_proto_maker.cc
-  DEPS framework_proto attribute ops_extra_info glog)
+  DEPS framework_proto attribute ops_extra_info glog auto_parallel_proto)
 cc_test(
   op_proto_maker_test
   SRCS op_proto_maker_test.cc
@@ -431,13 +434,14 @@ if(WITH_XPU)
     DEPS lod_tensor
          dense_tensor
          selected_rows_utils
+         int_array
+         scalar
          place
          phi
          var_type_traits
          op_info
          xpu_op_list
-         convert_utils
-         phi_api_utils)
+         convert_utils)
 else()
   cc_library(
     phi_utils
@@ -445,12 +449,13 @@ else()
     DEPS lod_tensor
          dense_tensor
          selected_rows_utils
+         int_array
+         scalar
          place
          phi
          var_type_traits
          op_info
-         convert_utils
-         phi_api_utils)
+         convert_utils)
 endif()
 
 if(WITH_XPU)
@@ -479,7 +484,8 @@ if(WITH_XPU)
          kernel_factory
          infershape_utils
          op_utils
-         op_compat_infos)
+         op_compat_infos
+         get_kerneltype_forvar_utils)
 else()
   cc_library(
     operator
@@ -505,7 +511,8 @@ else()
          kernel_factory
          infershape_utils
          op_utils
-         op_compat_infos)
+         op_compat_infos
+         get_kerneltype_forvar_utils)
 endif()
 
 cc_test(
@@ -525,7 +532,7 @@ cc_test(
 
 cc_library(
   proto_desc
-  SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc
+  SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc program_converter.cc
   DEPS attribute
        ops_extra_info
        shape_inference
@@ -534,7 +541,10 @@ cc_library(
        glog
        version
        xxhash
-       dist_attr)
+       dist_attr
+       scalar
+       op_version_proto
+       op_version_registry)
 
 cc_library(
   op_registry
@@ -579,14 +589,24 @@ if(WITH_PYTHON)
   py_proto_compile(pass_desc_py_proto SRCS pass_desc.proto)
   #Generate an empty \
   #__init__.py to make framework_py_proto as a valid python module.
-  file(MAKE_DIRECTORY
-       ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto)
-  file(TOUCH
-       ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/__init__.py)
+  add_custom_target(fleet_proto_init)
+  add_custom_command(
+    TARGET fleet_proto_init
+    COMMAND ${CMAKE_COMMAND} -E make_directory
+            ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
+    COMMAND
+      ${CMAKE_COMMAND} -E touch
+      ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/__init__.py)
   file(TOUCH ${CMAKE_CURRENT_BINARY_DIR}/__init__.py)
   add_dependencies(
-    framework_py_proto trainer_py_proto distributed_strategy_py_proto
-    pass_desc_py_proto ps_py_proto pslib_py_proto)
+    framework_py_proto
+    trainer_py_proto
+    distributed_strategy_py_proto
+    fleet_proto_init
+    pass_desc_py_proto
+    ps_py_proto
+    pslib_py_proto
+    ps_py_proto_init)
   if(NOT WIN32)
     add_custom_command(
       TARGET framework_py_proto
@@ -601,7 +621,7 @@ if(WITH_PYTHON)
     if(NOT WITH_ROCM)
       add_custom_target(
         fleet_executor_proto_init ALL
-        DEPENDS fleet_executor_desc_py_proto
+        DEPENDS fleet_proto_init fleet_executor_desc_py_proto
         COMMAND
           cp
           ${PADDLE_BINARY_DIR}/paddle/fluid/distributed/fleet_executor/fleet_executor_*.py
@@ -633,7 +653,7 @@ endif()
 if(WITH_PSCORE)
   add_custom_target(
     index_dataset_proto_init ALL
-    DEPENDS index_dataset_py_proto
+    DEPENDS fleet_proto_init index_dataset_py_proto
     COMMAND
       cp
       ${PADDLE_BINARY_DIR}/paddle/fluid/distributed/index_dataset/index_dataset_*.py

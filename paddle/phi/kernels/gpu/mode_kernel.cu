@@ -130,4 +130,6 @@ void ModeKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    mode, GPU, ALL_LAYOUT, phi::ModeKernel, float, double, int32_t, int64_t) {}
+    mode, GPU, ALL_LAYOUT, phi::ModeKernel, float, double, int32_t, int64_t) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
+}

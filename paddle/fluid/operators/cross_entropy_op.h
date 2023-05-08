@@ -24,7 +24,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class CrossEntropyOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -121,7 +121,7 @@ class XeGradFunctor {
   size_t ignore_index_;
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class CrossEntropyGradientOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -239,7 +239,7 @@ struct HardLabelCrossEntropyBackwardFunctor {
   int64_t feature_size_;
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class CrossEntropyOpKernel2 : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -266,7 +266,7 @@ class CrossEntropyOpKernel2 : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class CrossEntropyGradientOpKernel2 : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {

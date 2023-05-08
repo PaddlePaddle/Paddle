@@ -20,7 +20,6 @@
 import functools
 import operator
 
-import paddle.framework.dtype as dtypes
 from paddle.fluid import core
 
 from .primitives import *  # noqa: F403
@@ -35,15 +34,26 @@ def _composite(op, *args):
 @REGISTER_COMPOSITE('softmax')
 def softmax_composite(x, axis):
     """define composite rule of op softmax"""
+    is_amp = False
+    from paddle.fluid.data_feeder import convert_dtype
+
+    # Softmax need fp32 compute since it has sum op in
+    if convert_dtype(x.dtype) == "float16":
+        is_amp = True
+        x = cast(x, "float32")
     if not x.shape:
         # do not return 1, to ensure gradients
         res = exp(x - x)
+        if is_amp:
+            res = cast(res, "float16")
         return res
     max_temp = max(x, axis, keepdim=True)
     max_temp.stop_gradient = True
     molecular = exp(x - max_temp)
     denominator = sum(molecular, axis=axis, keepdim=True)
     res = divide(molecular, denominator)
+    if is_amp:
+        res = cast(res, "float16")
     return res
 
 
@@ -61,23 +71,21 @@ def composite_batchnorm(
     use_global_stats,
     trainable_statistics,
 ):
-    """define composite rule of op batch_norm"""
+    """
+    define composite rule of op batch_norm
+    As the same with op kernel, the position of savedvariance indeed return inverse std.
+    """
+
     is_amp = False
     from paddle.fluid.data_feeder import convert_dtype
 
     if convert_dtype(x.dtype) == "float16":
-        print("Running batch_norm in amp")
         is_amp = True
         x = cast(x, "float32")
 
     feature_axis = (
         1 if data_layout in ('NC', 'NCL', 'NCHW', 'NCHWD') else len(x.shape) - 1
     )
-    if use_global_stats is None:
-        use_global_stats = is_test
-        trainable_statistics = False
-    else:
-        trainable_statistics = not use_global_stats
 
     use_run_stat = (is_test and (not trainable_statistics)) or use_global_stats
     reduce_axes = tuple(i for i in range(len(x.shape)) if i != feature_axis)
@@ -85,41 +93,51 @@ def composite_batchnorm(
         1 if i in reduce_axes else s for i, s in enumerate(x.shape)
     )
 
-    batch_mean = zeros(run_mean.shape, run_mean.dtype)
-    batch_var = zeros(run_var.shape, run_var.dtype)
+    half = full([1], -0.5, x.dtype)
+
     if not use_run_stat:
-        batch_mean = mean(x, reduce_axes, keepdim=True)
-        temp = mean(x * x, reduce_axes, keepdim=True)
+        batch_mean = mean(x, reduce_axes)
+        temp = mean(x * x, reduce_axes)
         batch_var = temp - batch_mean * batch_mean
+        inv_std = pow((batch_var + epsilon), half)
+        if data_layout == "NHWC":
+            x_hat = (x - batch_mean) * inv_std
+        else:
+            x_hat = (x - reshape(batch_mean, stats_shape)) * reshape(
+                inv_std, stats_shape
+            )
 
-        x_hat = (x - reshape(batch_mean, stats_shape)) / sqrt(
-            reshape(batch_var, stats_shape) + epsilon
-        )
-
-        run_mean = momentum * run_mean + (1 - momentum) * reshape(
-            batch_mean, run_mean.shape
-        )
-        run_var = momentum * run_var + (1 - momentum) * reshape(
-            batch_var, run_var.shape
-        )
+        run_mean = momentum * run_mean + (1 - momentum) * batch_mean
+        run_var = momentum * run_var + (1 - momentum) * batch_var
     else:
-        x_hat = (x - reshape(run_mean, stats_shape)) / sqrt(
-            reshape(run_var, stats_shape) + epsilon
-        )
-    y = reshape(scale, stats_shape) * x_hat + reshape(bias, stats_shape)
+        batch_mean = zeros(run_mean.shape, run_mean.dtype)
+        batch_var = zeros(run_var.shape, run_var.dtype)
+        inv_std = pow((batch_var + epsilon), half)
+        if data_layout == "NHWC":
+            x_hat = (x - run_mean) * pow((run_var + epsilon), half)
+        else:
+            x_hat = (x - reshape(run_mean, stats_shape)) * pow(
+                (reshape(run_var, stats_shape) + epsilon), half
+            )
+    if data_layout == "NHWC":
+        y = scale * x_hat + bias
+    else:
+        y = reshape(scale, stats_shape) * x_hat + reshape(bias, stats_shape)
     if is_amp:
         y = cast(y, "float16")
 
     # add op assign to detach tensor in void unsafe change outside the rule.
-    batch_mean_ = assign(reshape(batch_mean, run_mean.shape))
-    batch_var_ = assign(reshape(batch_var, run_var.shape))
+    batch_mean_ = assign(batch_mean)
+    inv_std_ = assign(inv_std)
     run_mean_ = assign(run_mean)
     run_var_ = assign(run_var)
 
     # reserve_space is not needed in composite rule, but still ruturn None to keep same as phi op definition.
     reserve_space = None
-
-    return y, run_mean_, run_var_, batch_mean_, batch_var_, reserve_space
+    if not use_run_stat:
+        return y, run_mean_, run_var_, batch_mean_, inv_std_, reserve_space
+    else:
+        return y, run_mean_, run_var_, None, None, reserve_space
 
 
 @REGISTER_COMPOSITE('layer_norm')
@@ -129,6 +147,12 @@ def layernorm_composite(x, scale, bias, epsilon, begin_norm_axis):
     out = (x - mean(x)) / sqrt(var + epsilon))
     var = mean((x-mean(x))^2)
     """
+    is_amp = False
+    from paddle.fluid.data_feeder import convert_dtype
+
+    if convert_dtype(x.dtype) == "float16":
+        is_amp = True
+        x = cast(x, "float32")
 
     axis = tuple(range(begin_norm_axis, len(x.shape)))
     mean_ = mean(x, axis=axis, keepdim=True)
@@ -136,19 +160,54 @@ def layernorm_composite(x, scale, bias, epsilon, begin_norm_axis):
     var_tmp1 = difference * difference
     variance = mean(var_tmp1, axis=axis, keepdim=True)
     var_tmp3 = variance + epsilon
-    sqrt_var = sqrt(var_tmp3)
-    out = difference / sqrt_var
+    rsqrt_var = rsqrt(var_tmp3)
+    out = difference * rsqrt_var
 
     if scale is not None:
-        scale = reshape(scale, x.shape[begin_norm_axis:])
+        if x.shape[begin_norm_axis:] is not scale.shape:
+            scale = reshape(scale, x.shape[begin_norm_axis:])
         out = out * scale
     if bias is not None:
-        bias = reshape(bias, x.shape[begin_norm_axis:])
+        if x.shape[begin_norm_axis:] is not bias.shape:
+            bias = reshape(bias, x.shape[begin_norm_axis:])
         out = out + bias
 
     mean_ = reshape(mean_, [-1])
     variance = reshape(variance, [-1])
+    if is_amp:
+        out = cast(out, "float16")
+
     return out, mean_, variance
+
+
+@REGISTER_COMPOSITE('instance_norm')
+def instancenorm_composite(x, scale, bias, epsilon):
+    """
+    define composite rule of op instance_norm
+    out = (x - mean(x)) / sqrt(var + epsilon))
+    var = mean((x-mean(x))^2)
+    """
+    n, c, h, w = x.shape
+    axis = tuple(range(2, len(x.shape)))
+    mean_ = mean(x, axis=axis, keepdim=True)
+    difference = x - mean_
+    var_tmp1 = difference * difference
+    variance = mean(var_tmp1, axis=axis, keepdim=True)
+    var_tmp3 = variance + epsilon
+    sqrt_var = pow(var_tmp3, full([1], 0.5, dtype=var_tmp3.dtype))
+    out = difference / sqrt_var
+
+    if scale is not None:
+        scale_tile = reshape(scale, [1, c, 1, 1])
+        out = out * scale_tile
+    if bias is not None:
+        bias_tile = reshape(bias, [1, c, 1, 1])
+        out = out + bias_tile
+
+    mean_ = reshape(mean_, [-1])
+    saved_variance = 1 / sqrt_var
+    saved_variance = reshape(saved_variance, [-1])
+    return out, mean_, saved_variance
 
 
 @REGISTER_COMPOSITE('gelu')
@@ -158,12 +217,13 @@ def gelu_composite(x, approximate):
         0.70710678118654752440  # /* 1/sqrt(2) */ copy from gelu-kernel.cc
     )
     M_2_SQRTPI = 1.12837916709551257390  # /* 2/sqrt(pi) */
-    one = ones(x.shape, x.dtype)
-    half = full(x.shape, 0.5, x.dtype)
+    full_shape = x.shape if len(x.shape) == 0 else [1]
+    one = ones(full_shape, x.dtype)
+    half = full(full_shape, 0.5, x.dtype)
     if approximate:
         # gelu(x) = 0.5 * x * (1 + tanh(sqrt(2 / \pi) * (x + 0.044715 * x^{3})))
-        kAlpha = full(x.shape, M_2_SQRTPI * M_SQRT1_2, x.dtype)
-        GELU_CONSTANT = full(x.shape, 0.044715, x.dtype)
+        kAlpha = full(full_shape, M_2_SQRTPI * M_SQRT1_2, x.dtype)
+        GELU_CONSTANT = full(full_shape, 0.044715, x.dtype)
         tanh_out = tanh(kAlpha * (x + GELU_CONSTANT * x * x * x))
         out = x * half * (one + tanh_out)
         return out
@@ -178,6 +238,13 @@ def gelu_composite(x, approximate):
 @REGISTER_COMPOSITE('reduce_mean')
 def mean_composite(x, axis, keepdim):
     """define composite rule of op mean"""
+    is_amp = False
+    from paddle.fluid.data_feeder import convert_dtype
+
+    if convert_dtype(x.dtype) == "float16":
+        is_amp = True
+        x = cast(x, "float32")
+
     axes = axis or list(range(0, len(x.shape)))
     axes = [axes] if isinstance(axes, int) else axes
     sum_x = sum(x, axis=axes, keepdim=keepdim)
@@ -185,11 +252,85 @@ def mean_composite(x, axis, keepdim):
         operator.mul, [x.shape[axis] for axis in axes]
     )
     norm = fill_constant(
-        shape=sum_x.shape,
+        shape=[],
         value=value_to_fill,
         dtype=sum_x.dtype,
     )
-    return divide(sum_x, norm)
+    res = divide(sum_x, norm)
+    if is_amp:
+        res = cast(res, "float16")
+    return res
+
+
+@REGISTER_COMPOSITE('expand_v2')
+def expand_v2_composite(x, shape):
+    """
+    define composite rule of op expnad_v2, expand_v2->expand
+    repeat_times = shape / x.shape
+    out = tile(x, repeat_times = repeat_times)
+    """
+    shape_in = x.shape
+    dim_out = len(shape)
+    dim_in = len(shape_in)
+    assert dim_in <= dim_out and dim_out >= 0
+    repeat_times = []
+    for i in range(dim_out):
+        offset = dim_out - i
+        dim = dim_in - offset
+        size_in = shape_in[dim] if dim >= 0 else 1
+        size_out = shape[i]
+        if size_out == -1:
+            assert dim >= 0
+            repeat = 1
+        else:
+            assert size_out % size_in == 0
+            repeat = int(size_out / size_in)
+        repeat_times.append(repeat)
+    if dim_in < dim_out:
+        shape_in_expand = []
+        for i in range(dim_out - dim_in):
+            shape_in_expand.append(1)
+        shape_in_expand.extend(shape_in)
+        x_reshape = reshape(x, shape_in_expand)
+        return tile(x_reshape, repeat_times=repeat_times)
+    return tile(x, repeat_times=repeat_times)
+
+
+@REGISTER_COMPOSITE('expand_as_v2')
+def expand_as_v2_composite(x, y, target_shape):
+    """
+    define composite rule of op expnad_as_v2, expand_as_v2->expand_as
+    repeat_times = target_shape / x.shape
+    out = tile(x, repeat_times = repeat_times)
+    """
+    shape_in = x.shape
+    if y is not None:
+        target_shape = y.shape
+    assert target_shape is not None
+    dim_out = len(target_shape)
+    dim_in = len(shape_in)
+    assert dim_in <= dim_out and dim_out >= 0
+    repeat_times = []
+    for i in range(dim_out):
+        offset = dim_out - i
+        dim = dim_in - offset
+        size_in = shape_in[dim] if dim >= 0 else 1
+        size_out = target_shape[i]
+        if size_out == -1:
+            assert dim >= 0
+            repeat = 1
+        else:
+            assert size_out % size_in == 0
+            repeat = int(size_out / size_in)
+        repeat_times.append(repeat)
+    if dim_in < dim_out:
+        shape_in_expand = []
+        for i in range(dim_out - dim_in):
+            shape_in_expand.append(1)
+        shape_in_expand.extend(shape_in)
+        x_reshape = reshape(x, shape_in_expand)
+        return tile(x_reshape, repeat_times=repeat_times)
+    return tile(x, repeat_times=repeat_times)
 
 
 @REGISTER_COMPOSITE('stack')
@@ -210,6 +351,8 @@ def stack_composite(x, axis):
 def flatten_contiguous_range_composite(x, start_axis, stop_axis):
     """
     define composite rule of op flatten, flatten_contiguous_range -> flatten.
+
+    xshape is the dim with 0 added to the front of x, keep the shape information of x to calculate the grad.
     CINN doesn't need xshape for backward pass, return none instead of xshape.
     shape_out is the parameter of reshape, get from start_axis and stop_axis.
     out = reshape(x, shape=shape_out), xshape
@@ -218,7 +361,9 @@ def flatten_contiguous_range_composite(x, start_axis, stop_axis):
     start_dim = start_axis if len(shape_in) != 0 else 0
     end_dim = stop_axis if len(shape_in) != 0 else 0
     assert start_dim <= end_dim
-    if len(shape_in) == 0 or start_dim == end_dim:
+    if len(shape_in) == 0:
+        return reshape(x, shape=[1]), None
+    if start_dim == end_dim:
         return reshape(x, shape=shape_in), None
     slice_numel = 1
     for i in range(start_dim, end_dim + 1):
@@ -245,6 +390,7 @@ def dropout_composite(x, seed_tensor, p, is_test, mode, seed, fix_seed):
     fix_seed = True if fix_seed is None else fix_seed
     seed = seed if fix_seed else 0
     upscale_in_train = mode == "upscale_in_train"
+
     mask = bernoulli(shape=x.shape, dtype=x.dtype, p=p, seed=seed)
 
     if upscale_in_train:
@@ -266,10 +412,14 @@ def dropout_composite(x, seed_tensor, p, is_test, mode, seed, fix_seed):
 
 
 def bernoulli(shape, dtype, p, seed=0):
+    from paddle.fluid.data_feeder import convert_dtype
+
+    # TODO(jiabin) Fix uniform doesn't support float16 error in CINN
+    new_dtype = "float32" if convert_dtype(dtype) == "float16" else dtype
     return cast(
         greater_equal(
-            uniform(shape, dtype, min=0.0, max=1.0, seed=seed),
-            fill_constant(shape, dtype, p),
+            uniform(shape, new_dtype, min=0.0, max=1.0, seed=seed),
+            fill_constant(shape if len(shape) == 0 else [1], new_dtype, p),
         ),
         dtype,
     )
@@ -286,17 +436,27 @@ def hard_swish_composite(x):
     offset = 3.0
     threshold = 6.0
     scale = 6.0
+    full_shape = x.shape if len(x.shape) == 0 else [1]
     res = (
         minimum(
             maximum(
-                x + full(x.shape, offset, dtype=x.dtype),
-                full(x.shape, 0.0, dtype=x.dtype),
+                x + full(full_shape, offset, dtype=x.dtype),
+                full(full_shape, 0.0, dtype=x.dtype),
             ),
-            full(x.shape, threshold, dtype=x.dtype),
+            full(full_shape, threshold, dtype=x.dtype),
         )
         * x
-        / full(x.shape, scale, dtype=x.dtype)
+        / full(full_shape, scale, dtype=x.dtype)
     )
+    return res
+
+
+@REGISTER_COMPOSITE('index_select')
+def index_select_composite(x, index, axis):
+    """define composite rule of op index_select."""
+    if axis < 0:
+        axis = len(x.shape) + axis
+    res = gather(x, index, axis=axis)
     return res
 
 
@@ -306,9 +466,16 @@ def sigmoid_composite(x):
     define composite rule of op sigmoid
     res = 1 / (1 + exp(-x))
     """
+    is_amp = False
+    from paddle.fluid.data_feeder import convert_dtype
+
+    if convert_dtype(x.dtype) == "float16":
+        is_amp = True
+        x = cast(x, "float32")
+
     sum_temp = 1 + exp(-x)
     res = 1 / sum_temp
-    return res
+    return res if not is_amp else cast(res, "float16")
 
 
 @REGISTER_COMPOSITE('silu')
@@ -317,9 +484,43 @@ def silu_composite(x):
     define composite rule of op silu
     res = x / (1 + exp(-x))
     """
+    is_amp = False
+    from paddle.fluid.data_feeder import convert_dtype
+
+    if convert_dtype(x.dtype) == "float16":
+        is_amp = True
+        x = cast(x, "float32")
+
     sum_temp = 1 + exp(-x)
     res = x / sum_temp
-    return res
+    return res if not is_amp else cast(res, "float16")
+
+
+@REGISTER_COMPOSITE('meshgrid')
+def meshgrid_composite(inputs):
+    """
+    define composite rule of op meshgrid
+    If the input has N tensors of size S_0, ... S_n-1, then the output will also have N tensors, where
+    each tensor is of shape (S_0, ..., S_n-1).
+    E.g. a1 is Tensor [1,2,3]
+         b1 is Tensor [4,5]
+         r1, r2 = paddle.meshgrid([a1, b1])
+         r1 is Tensor [[1,1], [2,2], [3,3]]
+         r2 is Tensor [[4,5], [4,5], [4,5]]
+    """
+    size = len(inputs)
+    shape = [1] * size
+    for i in range(size):
+        dim = inputs[i].dim()
+        assert dim == 0 or dim == 1
+        if dim == 1:
+            shape[i] = inputs[i].shape[0]
+    outputs = []
+    for i in range(size):
+        view_shape = [1] * size
+        view_shape[i] = shape[i]
+        outputs.append(inputs[i].reshape(view_shape).broadcast_to(shape))
+    return outputs
 
 
 @REGISTER_COMPOSITE('fill_any_like')
@@ -327,13 +528,169 @@ def fill_any_like(x, fill_value, dtype, place=None):
     """define composite rule of op full_like."""
     """op name: full_like  op type name: fill_any_like."""
     """arg place is not used, add it here to keep same as python api."""
-    dtype = dtypes.dtype(dtype)
     val = full(x.shape, fill_value, dtype)
     return val
+
+
+@REGISTER_COMPOSITE('squeeze2')
+def squeeze2_composite(x, axis):
+    """define composite rule of squeeze"""
+    """
+    canonicalize dim within range 0 to rank and
+    determine new shape after squeeze op
+    if axis not specified, remove all dims equal to 1
+    otherwise, remove dims equal to 1 in axis
+    axis can only be list, not int
+    """
+    rank = len(x.shape)
+    if len(axis) == 0:
+        dims = set(range(rank))
+    else:
+        dims = {ax % rank for ax in axis}
+    new_shape = []
+    for d, s in enumerate(x.shape):
+        if not (s == 1 and (d in dims)):
+            new_shape.append(s)
+    out = reshape(x, new_shape)
+    return [out, None]
+
+
+@REGISTER_COMPOSITE('sqrt')
+def sqrt_composite(x):
+    """
+    define composite rule of op sqrt
+    res = pow(x, 0.5)
+    """
+    is_amp = False
+    from paddle.fluid.data_feeder import convert_dtype
+
+    if convert_dtype(x.dtype) == "float16":
+        is_amp = True
+        x = cast(x, "float32")
+
+    y = full(x.shape if len(x.shape) == 0 else [1], 0.5, x.dtype)
+    res = pow(x, y)
+    return res if not is_amp else cast(res, "float16")
+
+
+@REGISTER_COMPOSITE('pow')
+def pow_composite(x, y):
+    """
+    define composite rule of op pow
+    res = x^y
+    """
+    is_amp = False
+    from paddle.fluid.data_feeder import convert_dtype
+
+    if convert_dtype(x.dtype) == "float16":
+        is_amp = True
+        x = cast(x, "float32")
+
+    if isinstance(y, (int, float)):
+        y = full(x.shape if len(x.shape) == 0 else [1], y, x.dtype)
+    res = pow(x, y)
+    if is_amp:
+        res = cast(res, "float16")
+    return res
 
 
 @REGISTER_COMPOSITE('relu')
 def relu_composite(x):
     """define composite rule of op relu."""
     # relu(x) = max(x, 0)
-    return maximum(x, zeros_like(x))
+    if len(x.shape) == 0:
+        return maximum(x, full(x.shape, 0.0, x.dtype))
+    else:
+        return maximum(x, full([1], 0.0, x.dtype))
+
+
+@REGISTER_COMPOSITE('unsqueeze2')
+def unsqueeze_composite(x, axis):
+    """define composite rule of op unsqueeze"""
+    """using reshape to implement unsqueeze op"""
+    x_shape = list(x.shape)
+    axis_list = list(axis)
+    for i in axis_list:
+        if i < 0:
+            i += len(x_shape) + 1
+        x_shape = (
+            x_shape[:i]
+            + [
+                1,
+            ]
+            + x_shape[i:]
+        )
+    out = reshape(x, x_shape)
+    return [out, None]
+
+
+@REGISTER_COMPOSITE('rsqrt')
+def rsqrt_composite(x):
+    """define composite rule of op rsqrt."""
+    # rsqrt(x) = x^(-0.5)
+    is_amp = False
+    from paddle.fluid.data_feeder import convert_dtype
+
+    if convert_dtype(x.dtype) == "float16":
+        is_amp = True
+        x = cast(x, "float32")
+    y = full(x.shape if len(x.shape) == 0 else [1], -0.5, x.dtype)
+    res = pow(x, y)
+    return res if not is_amp else cast(res, "float16")
+
+
+@REGISTER_COMPOSITE('group_norm')
+def group_norm_composite(x, scale, bias, epsilon, groups, data_layout):
+    """
+    define composite rule of op group_norm.
+    x = ((x - mean) / sqrt(var + epsilon)) * scale + bias
+    mean and var are computed from groups
+    """
+    # original GroupNorm op cannot support NHWC format
+    assert data_layout == 'NCHW'
+    N, C, H, W = x.shape
+
+    is_amp = False
+    from paddle.fluid.data_feeder import convert_dtype
+
+    # when inputs are float16, convert to float32 in computing
+    if convert_dtype(x.dtype) == "float16":
+        is_amp = True
+        x = cast(x, "float32")
+        scale = cast(scale, "float32")
+        bias = cast(bias, "float32")
+
+    x = reshape(x, (N * groups, -1))
+    mean_ = mean(x, axis=1, keepdim=True)
+    var_ = mean(x * x, axis=1, keepdim=True) - mean_ * mean_
+    var_ = maximum(var_, zeros_like(var_))
+    var_inv = 1 / sqrt(var_ + epsilon)
+    out = (x - mean_) * var_inv
+    out = reshape(out, (N, C, H, W))
+    if scale is not None:
+        out = out * reshape(scale, (-1, 1, 1))
+    if bias is not None:
+        out = out + reshape(bias, (-1, 1, 1))
+    ret_mean_ = reshape(mean_, (N, groups))
+    ret_var_ = reshape(var_, (N, groups))
+    # return output in float16, mean and var in float32
+    if is_amp:
+        out = cast(out, "float16")
+    return out, ret_mean_, ret_var_
+
+
+@REGISTER_COMPOSITE('sum')
+def sum_composite(x):
+    ans = 0
+    for xi in x:
+        ans += xi
+    return ans
+
+
+@REGISTER_COMPOSITE('leaky_relu')
+def leaky_relu_composite(x, negative_slope):
+    """define composite rule of op leaky_relu."""
+    if negative_slope < 1.0:
+        return maximum(x, negative_slope * x)
+    else:
+        return minimum(x, negative_slope * x)

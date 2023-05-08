@@ -20,7 +20,7 @@ from decorator_helper import prog_scope
 from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import Program, core, program_guard
 
 
@@ -29,6 +29,9 @@ class TestTileOpRank1(OpTest):
     def setUp(self):
         self.op_type = "tile"
         self.python_api = paddle.tile
+        self.prim_op_type = "prim"
+        self.enable_cinn = True
+        self.public_python_api = paddle.tile
         self.init_data()
 
         self.inputs = {'X': np.random.random(self.ori_shape).astype("float64")}
@@ -44,23 +47,26 @@ class TestTileOpRank1(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestTileOpRank_ZeroDim1(TestTileOpRank1):
     def init_data(self):
+        self.enable_cinn = False
         self.ori_shape = []
         self.repeat_times = []
 
 
 class TestTileOpRank_ZeroDim2(TestTileOpRank1):
     def init_data(self):
+        self.enable_cinn = False
         self.ori_shape = []
         self.repeat_times = [2]
 
 
 class TestTileOpRank_ZeroDim3(TestTileOpRank1):
     def init_data(self):
+        self.enable_cinn = False
         self.ori_shape = []
         self.repeat_times = [2, 3]
 
@@ -111,7 +117,7 @@ class TestTileOpRank1_tensor_attr(OpTest):
         repeat_times_tensor = []
         for index, ele in enumerate(self.repeat_times):
             repeat_times_tensor.append(
-                ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                ("x" + str(index), np.ones(1).astype('int32') * ele)
             )
 
         self.inputs = {
@@ -196,24 +202,31 @@ class TestTileOpInteger(OpTest):
         self.check_output()
 
 
-class TestTileOpFloat16(OpTest):
+class TestTileFP16OP(OpTest):
     def setUp(self):
         self.op_type = "tile"
         self.dtype = np.float16
-        self.__class__.op_type = self.op_type
         self.python_api = paddle.tile
-        self.inputs = {
-            'X': np.random.uniform(10, size=(100, 4, 5)).astype(self.dtype)
-        }
-        self.attrs = {'repeat_times': [2, 1, 4]}
-        output = np.tile(self.inputs['X'], (2, 1, 4))
+        self.prim_op_type = "prim"
+        self.enable_cinn = True
+        self.public_python_api = paddle.tile
+        self.init_data()
+        x = np.random.uniform(10, size=self.ori_shape).astype(self.dtype)
+        output = np.tile(x, self.repeat_times)
+        self.inputs = {'X': x}
+        self.attrs = {'repeat_times': self.repeat_times}
         self.outputs = {'Out': output}
+
+    def init_data(self):
+        self.dtype = np.float16
+        self.ori_shape = [100, 4, 5]
+        self.repeat_times = [2, 1, 4]
 
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 @unittest.skipIf(
@@ -221,25 +234,33 @@ class TestTileOpFloat16(OpTest):
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not complied with CUDA and not support the bfloat16",
 )
-class TestWhereOpBFloat16(OpTest):
+class TestTileBF16OP(OpTest):
     def setUp(self):
         self.op_type = 'tile'
-        self.dtype = np.uint16
         self.__class__.op_type = self.op_type
         self.python_api = paddle.tile
-        x = np.random.uniform(10, size=(100, 4, 5)).astype(np.float32)
-        output = np.tile(x, (2, 1, 4))
+        self.prim_op_type = "prim"
+        self.enable_cinn = False
+        self.public_python_api = paddle.tile
+        self.init_data()
+        x = np.random.uniform(10, size=self.ori_shape).astype(np.float32)
+        output = np.tile(x, self.repeat_times)
         self.inputs = {'X': convert_float_to_uint16(x)}
-        self.attrs = {'repeat_times': [2, 1, 4]}
+        self.attrs = {'repeat_times': self.repeat_times}
         self.outputs = {'Out': convert_float_to_uint16(output)}
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
         self.check_output_with_place(place)
 
+    def init_data(self):
+        self.dtype = np.uint16
+        self.ori_shape = [100, 4, 5]
+        self.repeat_times = [2, 1, 4]
+
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out')
+        self.check_grad_with_place(place, ['X'], 'Out', check_prim=True)
 
 
 # Situation 5: input x is Bool
@@ -293,7 +314,9 @@ class TestTileAPIStatic(unittest.TestCase):
             repeat_times = [2, 2]
             x1 = paddle.static.data(name='x1', shape=[-1, 4], dtype="int32")
             out = paddle.tile(x1, repeat_times)
-            positive_2 = fluid.layers.fill_constant([1], dtype="int32", value=2)
+            positive_2 = paddle.tensor.fill_constant(
+                [1], dtype="int32", value=2
+            )
             out2 = paddle.tile(x1, repeat_times=[positive_2, 2])
 
 

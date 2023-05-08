@@ -112,24 +112,6 @@ phi::KernelKey FallBackToCpu(const phi::KernelKey& kernel_key,
         phi::Backend::CPU, kernel_key.layout(), kernel_key.dtype());
   }
 #endif
-#ifdef PADDLE_WITH_ASCEND_CL
-  if (kernel_key.backend() == phi::Backend::NPU) {
-    VLOG(3) << "phi missing NPU kernel: " << op.Type()
-            << ", expected_kernel_key:" << kernel_key
-            << ", fallback to CPU one!";
-    return phi::KernelKey(
-        phi::Backend::CPU, kernel_key.layout(), kernel_key.dtype());
-  }
-#endif
-#ifdef PADDLE_WITH_MLU
-  if (kernel_key.backend() == phi::Backend::MLU) {
-    VLOG(3) << "phi missing MLU kernel: " << op.Type()
-            << ", expected_kernel_key:" << kernel_key
-            << ", fallback to CPU one!";
-    return phi::KernelKey(
-        phi::Backend::CPU, kernel_key.layout(), kernel_key.dtype());
-  }
-#endif
 #ifdef PADDLE_WITH_IPU
   if (kernel_key.backend() == phi::Backend::IPU) {
     VLOG(3) << "phi missing IPU kernel: " << op.Type()
@@ -271,7 +253,7 @@ static void SetAllocationForUninitializedDenseTensor(
     phi::DenseTensor* dense_tensor, const platform::Place& place) {
   int dtype_size = dense_tensor->dtype() == DataType::UNDEFINED
                        ? 0
-                       : experimental::SizeOf(dense_tensor->dtype());
+                       : phi::SizeOf(dense_tensor->dtype());
   int64_t numels = product(dense_tensor->dims());
   numels = numels < 0 ? 0 : numels;
   auto tmp_allocation_ptr = memory::Alloc(place, numels * dtype_size);
@@ -312,7 +294,7 @@ phi::Scalar MakePhiScalarFromVar(const framework::Variable& variable) {
 phi::IntArray MakePhiIntArrayFromVar(const framework::Variable& variable) {
   if (variable.IsType<phi::DenseTensor>()) {
     const auto& tensor = variable.Get<phi::DenseTensor>();
-    return paddle::experimental::MakePhiIntArray(tensor);
+    return phi::IntArray(tensor);
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "Unsupport casting input `%s` type to IntArray when call pt "
@@ -333,11 +315,11 @@ phi::IntArray MakePhiIntArrayFromVarList(
   vector_data.reserve(variable_list.size());
 
   for (auto* var : variable_list) {
-    paddle::experimental::DataType data_type;
+    phi::DataType data_type;
     if (var->IsType<phi::DenseTensor>()) {
       const auto& tensor = var->Get<phi::DenseTensor>();
       data_type = tensor.dtype();
-      if (data_type == paddle::experimental::DataType::INT64) {
+      if (data_type == phi::DataType::INT64) {
         const auto& tensor = var->Get<phi::DenseTensor>();
         if (tensor.IsInitialized() &&
             !platform::is_same_place(tensor.place(), expected_place)) {
@@ -347,7 +329,7 @@ phi::IntArray MakePhiIntArrayFromVarList(
         } else {
           vector_data.push_back(*tensor.data<int64_t>());
         }
-      } else if (data_type == paddle::experimental::DataType::INT32) {
+      } else if (data_type == phi::DataType::INT32) {
         const auto& tensor = var->Get<phi::DenseTensor>();
         if (tensor.IsInitialized() &&
             !platform::is_same_place(tensor.place(), expected_place)) {

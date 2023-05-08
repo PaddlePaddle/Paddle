@@ -25,7 +25,8 @@ import numpy as np
 from paddle_bfloat import bfloat16
 
 import paddle
-import paddle.fluid as fluid
+import paddle.distributed as dist
+from paddle import fluid
 from paddle.distributed.utils.nccl_utils import get_nccl_version_str
 from paddle.fluid import core
 
@@ -47,7 +48,7 @@ def create_float_test_data(shape=None, dtype=None, seed=None):
 def create_int_test_data(shape=None, dtype=None, seed=None):
     if seed:
         np.random.seed(seed)
-    data = np.random.randint(0, high=100, size=shape).astype(dtype)
+    data = np.random.randint(0, high=12, size=shape).astype(dtype)
     return data
 
 
@@ -64,7 +65,7 @@ def create_pyobject_test_data(shape=None, seed=None):
         np.random.seed(seed)
     list_shape = np.random.randint(0, high=100, size=(2)).tolist()
     list_data = np.random.random(shape).tolist()
-    dict_key = [i for i in range(0, shape[0])]
+    dict_key = list(range(0, shape[0]))
     dict_val = np.random.random(shape).tolist()
     dict_data = dict(zip(dict_key, dict_val))
     return [list_data, dict_data]
@@ -127,7 +128,17 @@ class TestCollectiveAPIRunnerBase:
             shape=(10, 1000), dtype=args["dtype"], seed=os.getpid()
         )
         if args['static_mode']:
-            result = self.get_model(train_prog, startup_prog, rank)
+            result = (
+                self.get_model_new(
+                    train_prog,
+                    startup_prog,
+                    rank,
+                    dtype=args['dtype'],
+                    reduce_type=args['reduce_type'],
+                )
+                if args["use_comm_context"]
+                else self.get_model(train_prog, startup_prog, rank)
+            )
             exe = fluid.Executor(place)
             exe.run(startup_prog)
             fetch_list = []
@@ -154,6 +165,7 @@ def runtime_main(test_class, col_type):
     args["path_id"] = int(os.getenv("PATH_ID"))
     args["static_mode"] = int(os.getenv("STATIC_MODE"))
     args["dtype"] = os.getenv("DTYPE")
+    args["reduce_type"] = os.getenv("REDUCE_TYPE")
     args["use_comm_context"] = bool(int(os.getenv("USE_COMM_CONTEXT", "0")))
     model.run_trainer(args)
 
@@ -162,7 +174,7 @@ class TestDistBase(unittest.TestCase):
     def setUp(self):
         self._port_set = set()
         self._trainers = 2
-        self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
+        self._ps_endpoints = "127.0.0.1:{},127.0.0.1:{}".format(
             self._find_free_port(),
             self._find_free_port(),
         )
@@ -294,6 +306,7 @@ class TestDistBase(unittest.TestCase):
         need_envs={},
         eager_mode=True,
         dtype=None,
+        reduce_type=None,
     ):
         if backend == "nccl" or backend == "bkcl":
             with_gloo = '0'
@@ -301,6 +314,7 @@ class TestDistBase(unittest.TestCase):
             with_gloo = '1'
         required_envs = os.environ.copy()
         dtype = "float32" if dtype is None else dtype
+        reduce_type = dist.ReduceOp.SUM if reduce_type is None else reduce_type
         additional_envs = {
             "NCCL_P2P_DISABLE": "1",
             "STATIC_MODE": static_mode,
@@ -309,6 +323,7 @@ class TestDistBase(unittest.TestCase):
             "BACKEND": backend,
             "PATH_ID": path_id,
             "DTYPE": dtype,
+            "REDUCE_TYPE": str(reduce_type),
         }
         required_envs.update(additional_envs)
         required_envs.update(need_envs)
@@ -350,7 +365,14 @@ class TestDistBase(unittest.TestCase):
             self.assertEqual(need_result, tr0_out)
             self.assertEqual(need_result, tr1_out)
         elif col_type == "reduce":
-            need_result = input1 + input2
+            if reduce_type == dist.ReduceOp.SUM:
+                need_result = input1 + input2
+            elif reduce_type == dist.ReduceOp.MAX:
+                need_result = np.amax([input1, input2], 0)
+            elif reduce_type == dist.ReduceOp.MIN:
+                need_result = np.amin([input1, input2], 0)
+            elif reduce_type == dist.ReduceOp.PROD:
+                need_result = np.prod([input1, input2], 0)
             # bfloat16 precision loss comes from truncating the last 16 bits of float32,
             # which sums (\sum_{i=-23}^{-8}2^{i}) to about 0.0078
             if dtype == "bfloat16":
@@ -370,6 +392,14 @@ class TestDistBase(unittest.TestCase):
             need_result2 = [need_result[len(need_result) // 2 :]]
             self.assertEqual(need_result1, tr0_out)
             self.assertEqual(need_result2, tr1_out)
+        elif col_type == "gather":
+            # rank 0 gather all tensor
+            self.assertEqual(len(tr0_out), 2)
+            # rank 1 get nothing
+            self.assertEqual(len(tr1_out), 0)
+            # check values
+            np.testing.assert_equal(input1, tr0_out[0])
+            np.testing.assert_equal(input2, tr0_out[1])
         elif col_type == "reduce_scatter":
             need_result = input1 + input2
             need_result1 = need_result[0 : need_result.shape[0] // 2]
@@ -381,7 +411,14 @@ class TestDistBase(unittest.TestCase):
             np.testing.assert_allclose(tr0_out[0], need_result1, rtol=rtol)
             np.testing.assert_allclose(tr1_out[0], need_result2, rtol=rtol)
         elif col_type == "allreduce":
-            need_result = input1 + input2
+            if reduce_type == dist.ReduceOp.SUM:
+                need_result = input1 + input2
+            elif reduce_type == dist.ReduceOp.MAX:
+                need_result = np.amax([input1, input2], 0)
+            elif reduce_type == dist.ReduceOp.MIN:
+                need_result = np.amin([input1, input2], 0)
+            elif reduce_type == dist.ReduceOp.PROD:
+                need_result = np.prod([input1, input2], 0)
             if dtype == "bfloat16":
                 rtol = 8e-03
                 atol = 8e-03

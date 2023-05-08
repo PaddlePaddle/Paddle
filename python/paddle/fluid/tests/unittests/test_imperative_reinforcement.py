@@ -18,13 +18,13 @@ import numpy as np
 from test_imperative_base import new_program_scope
 
 import paddle
-import paddle.fluid as fluid
 import paddle.nn.functional as F
+from paddle import fluid
 from paddle.fluid import core
 from paddle.fluid.optimizer import SGDOptimizer
 
 
-class Policy(fluid.dygraph.Layer):
+class Policy(paddle.nn.Layer):
     def __init__(self, input_size):
         super().__init__()
 

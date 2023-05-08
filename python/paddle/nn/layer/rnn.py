@@ -22,21 +22,21 @@ import paddle
 from paddle import _C_ops, _legacy_C_ops, framework, in_dynamic_mode
 from paddle.common_ops_import import Variable
 from paddle.fluid.data_feeder import check_type, check_variable_and_dtype
+from paddle.fluid.dygraph.base import NON_PERSISTABLE_VAR_NAME_SUFFIX
 from paddle.fluid.framework import (
     _non_static_mode,
     default_startup_program,
     in_dygraph_mode,
     program_guard,
 )
-from paddle.fluid.layers import control_flow, utils
-from paddle.fluid.layers.utils import flatten, map_structure
+from paddle.fluid.layers import control_flow
 from paddle.framework import core
-from paddle.nn import Layer
 from paddle.nn import functional as F
 from paddle.nn import initializer as I
 from paddle.tensor.manipulation import tensor_array_to_tensor
 
 from .container import LayerList
+from .layers import Layer
 
 __all__ = []
 
@@ -48,7 +48,7 @@ def rnn(
     sequence_length=None,
     time_major=False,
     is_reverse=False,
-    **kwargs
+    **kwargs,
 ):
     r"""
     rnn creates a recurrent neural network specified by RNNCell `cell`,
@@ -110,7 +110,7 @@ def rnn(
             sequence_length,
             time_major,
             is_reverse,
-            **kwargs
+            **kwargs,
         )
     else:
         return _rnn_static_graph(
@@ -120,7 +120,7 @@ def rnn(
             sequence_length,
             time_major,
             is_reverse,
-            **kwargs
+            **kwargs,
         )
 
 
@@ -156,10 +156,10 @@ def _rnn_dynamic_graph(
     sequence_length=None,
     time_major=False,
     is_reverse=False,
-    **kwargs
+    **kwargs,
 ):
     time_step_index = 0 if time_major else 1
-    flat_inputs = flatten(inputs)
+    flat_inputs = paddle.utils.flatten(inputs)
     time_steps = flat_inputs[0].shape[time_step_index]
 
     if initial_states is None:
@@ -168,7 +168,7 @@ def _rnn_dynamic_graph(
         )
 
     if not time_major:
-        inputs = map_structure(_transpose_batch_time, inputs)
+        inputs = paddle.utils.map_structure(_transpose_batch_time, inputs)
 
     if sequence_length is not None:
         mask = paddle.static.nn.sequence_lod.sequence_mask(
@@ -177,7 +177,9 @@ def _rnn_dynamic_graph(
         mask = paddle.transpose(mask, [1, 0])
 
     if is_reverse:
-        inputs = map_structure(lambda x: paddle.reverse(x, axis=[0]), inputs)
+        inputs = paddle.utils.map_structure(
+            lambda x: paddle.reverse(x, axis=[0]), inputs
+        )
         mask = (
             paddle.reverse(mask, axis=[0])
             if sequence_length is not None
@@ -187,27 +189,27 @@ def _rnn_dynamic_graph(
     states = initial_states
     outputs = []
     for i in range(time_steps):
-        step_inputs = map_structure(lambda x: x[i], inputs)
+        step_inputs = paddle.utils.map_structure(lambda x: x[i], inputs)
         step_outputs, new_states = cell(step_inputs, states, **kwargs)
         if sequence_length is not None:
-            new_states = map_structure(
+            new_states = paddle.utils.map_structure(
                 partial(_maybe_copy, step_mask=mask[i]), states, new_states
             )
         states = new_states
         outputs = (
-            map_structure(lambda x: ArrayWrapper(x), step_outputs)
+            paddle.utils.map_structure(lambda x: ArrayWrapper(x), step_outputs)
             if i == 0
-            else map_structure(
+            else paddle.utils.map_structure(
                 lambda x, x_array: x_array.append(x), step_outputs, outputs
             )
         )
 
-    final_outputs = map_structure(
+    final_outputs = paddle.utils.map_structure(
         lambda x: paddle.stack(x.array, axis=time_step_index), outputs
     )
 
     if is_reverse:
-        final_outputs = map_structure(
+        final_outputs = paddle.utils.map_structure(
             lambda x: paddle.reverse(x, axis=time_step_index), final_outputs
         )
 
@@ -222,7 +224,7 @@ def _rnn_static_graph(
     sequence_length=None,
     time_major=False,
     is_reverse=False,
-    **kwargs
+    **kwargs,
 ):
     check_type(inputs, 'inputs', (Variable, list, tuple), 'rnn')
     if isinstance(inputs, (list, tuple)):
@@ -249,38 +251,42 @@ def _rnn_static_graph(
         initial_states = cell.get_initial_states(
             batch_ref=inputs, batch_dim_idx=1 if time_major else 0
         )
-    initial_states = map_structure(_switch_grad, initial_states)
+    initial_states = paddle.utils.map_structure(_switch_grad, initial_states)
 
     if not time_major:
-        inputs = map_structure(_transpose_batch_time, inputs)
+        inputs = paddle.utils.map_structure(_transpose_batch_time, inputs)
 
-    max_seq_len = paddle.shape(flatten(inputs)[0])[0]
+    max_seq_len = paddle.shape(paddle.utils.flatten(inputs)[0])[0]
     if sequence_length:
         mask = paddle.static.nn.sequence_lod.sequence_mask(
             sequence_length,
             maxlen=max_seq_len,
-            dtype=flatten(initial_states)[0].dtype,
+            dtype=paddle.utils.flatten(initial_states)[0].dtype,
         )
         mask = paddle.transpose(mask, [1, 0])
     if is_reverse:
-        inputs = map_structure(lambda x: paddle.reverse(x, axis=[0]), inputs)
+        inputs = paddle.utils.map_structure(
+            lambda x: paddle.reverse(x, axis=[0]), inputs
+        )
         mask = paddle.reverse(mask, axis=[0]) if sequence_length else None
 
     with paddle.fluid.framework.device_guard("cpu"):
-        start_i = paddle.zeros([1], dtype="int64")
+        start_i = paddle.zeros([], dtype="int64")
         end = max_seq_len
 
         end = paddle.cast(end, "int64")
         cond = start_i < end
     while_op = control_flow.While(cond)
 
-    out_array = paddle.tensor.create_array(dtype=flatten(inputs)[0].dtype)
+    out_array = paddle.tensor.create_array(
+        dtype=paddle.utils.flatten(inputs)[0].dtype
+    )
 
-    init_array = map_structure(
+    init_array = paddle.utils.map_structure(
         lambda x: paddle.tensor.create_array(dtype=x.dtype), initial_states
     )
 
-    map_structure(
+    paddle.utils.map_structure(
         lambda x, y: paddle.tensor.array_write(x, start_i, y),
         initial_states,
         init_array,
@@ -290,21 +296,19 @@ def _rnn_static_graph(
 
         step_in = inputs[start_i]
         # step_in = paddle.fluid.layers.Print( step_in, message="step in")
-        pre_state = map_structure(
+        pre_state = paddle.utils.map_structure(
             lambda x: paddle.tensor.array_read(x, start_i), init_array
         )
-        # pre_state = paddle.fluid.layers.Print( pre_state, message="pre")
         outputs, new_states = cell(step_in, pre_state, **kwargs)
         assert isinstance(outputs, paddle.fluid.framework.Variable)
-        utils.assert_same_structure(new_states, pre_state)
+        paddle.utils.assert_same_structure(new_states, pre_state)
         if sequence_length:
             step_mask = paddle.unsqueeze(mask[start_i], 1)
-            # paddle.fluid.layers.Print( step_mask, message="mask")
             # new_states = map_structure(
             #     partial(_maybe_copy, step_mask=step_mask),
             #     pre_state, new_states
             # )
-            new_states = map_structure(
+            new_states = paddle.utils.map_structure(
                 lambda x, y: (x * step_mask + y * (1.0 - step_mask)),
                 new_states,
                 pre_state,
@@ -315,7 +319,7 @@ def _rnn_static_graph(
         with paddle.fluid.framework.device_guard("cpu"):
 
             start_i = paddle.tensor.increment(x=start_i, value=1)
-        map_structure(
+        paddle.utils.map_structure(
             lambda x, y: paddle.tensor.array_write(x, start_i, y),
             new_states,
             init_array,
@@ -327,20 +331,22 @@ def _rnn_static_graph(
 
     out, _ = tensor_array_to_tensor(out_array, axis=0, use_stack=True)
 
-    all_state = map_structure(
+    all_state = paddle.utils.map_structure(
         lambda x: tensor_array_to_tensor(x, axis=0, use_stack=True)[0],
         init_array,
     )
     final_outputs = out
-    final_states = map_structure(lambda x: x[-1], all_state)
+    final_states = paddle.utils.map_structure(lambda x: x[-1], all_state)
 
     if is_reverse:
-        final_outputs = map_structure(
+        final_outputs = paddle.utils.map_structure(
             lambda x: paddle.reverse(x, axis=[0]), final_outputs
         )
 
     if not time_major:
-        final_outputs = map_structure(_transpose_batch_time, final_outputs)
+        final_outputs = paddle.utils.map_structure(
+            _transpose_batch_time, final_outputs
+        )
 
     return (final_outputs, final_states)
 
@@ -352,7 +358,7 @@ def birnn(
     initial_states=None,
     sequence_length=None,
     time_major=False,
-    **kwargs
+    **kwargs,
 ):
     r"""
     birnn creates a bidirectional recurrent neural network specified by
@@ -425,7 +431,7 @@ def birnn(
         states_fw,
         sequence_length,
         time_major=time_major,
-        **kwargs
+        **kwargs,
     )
 
     outputs_bw, states_bw = rnn(
@@ -435,10 +441,10 @@ def birnn(
         sequence_length,
         time_major=time_major,
         is_reverse=True,
-        **kwargs
+        **kwargs,
     )
 
-    outputs = map_structure(
+    outputs = paddle.utils.map_structure(
         lambda x, y: paddle.concat([x, y], -1), outputs_fw, outputs_bw
     )
 
@@ -532,9 +538,9 @@ def concat_states(states, bidirectional=False, state_components=1):
 
     """
     if state_components == 1:
-        return paddle.stack(flatten(states))
+        return paddle.stack(paddle.utils.flatten(states))
     else:
-        states = flatten(states)
+        states = paddle.utils.flatten(states)
         componnets = []
         for i in range(state_components):
             componnets.append(states[i::state_components])
@@ -582,11 +588,11 @@ class RNNCellBase(Layer):
                 packed in the same structure as `shape` and `type` does.
         """
         # TODO: use inputs and batch_size
-        batch_ref = flatten(batch_ref)[0]
+        batch_ref = paddle.utils.flatten(batch_ref)[0]
 
         def _is_shape_sequence(seq):
             """For shape, list/tuple of integer is the finest-grained objection"""
-            if isinstance(seq, list) or isinstance(seq, tuple):
+            if isinstance(seq, (list, tuple)):
                 if reduce(
                     lambda flag, x: isinstance(x, int) and flag, seq, True
                 ):
@@ -602,21 +608,25 @@ class RNNCellBase(Layer):
 
         # nested structure of shapes
         states_shapes = self.state_shape if shape is None else shape
-        is_sequence_ori = utils.is_sequence
-        utils.is_sequence = _is_shape_sequence
-        states_shapes = map_structure(lambda shape: Shape(shape), states_shapes)
-        utils.is_sequence = is_sequence_ori
+        is_sequence_ori = paddle.utils.layers_utils.is_sequence
+        paddle.utils.layers_utils.is_sequence = _is_shape_sequence
+        states_shapes = paddle.utils.map_structure(
+            lambda shape: Shape(shape), states_shapes
+        )
+        paddle.utils.layers_utils.is_sequence = is_sequence_ori
 
         # nested structure of dtypes
         try:
             states_dtypes = self.state_dtype if dtype is None else dtype
         except NotImplementedError:
             states_dtypes = framework.get_default_dtype()
-        if len(flatten(states_dtypes)) == 1:
-            dtype = flatten(states_dtypes)[0]
-            states_dtypes = map_structure(lambda shape: dtype, states_shapes)
+        if len(paddle.utils.flatten(states_dtypes)) == 1:
+            dtype = paddle.utils.flatten(states_dtypes)[0]
+            states_dtypes = paddle.utils.map_structure(
+                lambda shape: dtype, states_shapes
+            )
 
-        init_states = map_structure(
+        init_states = paddle.utils.map_structure(
             lambda shape, dtype: paddle.fluid.layers.fill_constant_batch_size_like(
                 input=batch_ref,
                 shape=shape.shape,
@@ -1153,7 +1163,7 @@ class RNN(Layer):
         - **final_states** (Tensor|list|tuple): final states of the cell. Tensor or a possibly nested structure of tensors which has the same structure with intial state. Each tensor in final states has the same shape and dtype as the corresponding tensor in initial states.
 
     Notes:
-        This class is a low level API for wrapping rnn cell into a RNN network.
+        This class is a low-level API for wrapping rnn cell into a RNN network.
         Users should take care of the state of the cell. If `initial_states` is
         passed to the `forward` method, make sure that it satisfies the
         requirements of the cell.
@@ -1198,7 +1208,7 @@ class RNN(Layer):
             sequence_length=sequence_length,
             time_major=self.time_major,
             is_reverse=self.is_reverse,
-            **kwargs
+            **kwargs,
         )
         return final_outputs, final_states
 
@@ -1213,7 +1223,7 @@ class BiRNN(Layer):
     Parameters:
         cell_fw (RNNCellBase): A RNNCellBase instance used for forward RNN.
         cell_bw (RNNCellBase): A RNNCellBase instance used for backward RNN.
-        time_major (bool): Whether the first dimension of the input means the
+        time_major (bool, optional): Whether the first dimension of the input means the
             time steps. Defaults to False.
 
     Inputs:
@@ -1285,7 +1295,7 @@ class BiRNN(Layer):
             initial_states,
             sequence_length,
             self.time_major,
-            **kwargs
+            **kwargs,
         )
         return outputs, final_states
 
@@ -1417,7 +1427,8 @@ class RNNBase(LayerList):
             # dropout state may also can be hided and avoid saving
             # should dropout state be persistable for static-graph
             self._dropout_state = self.create_variable(
-                dtype=core.VarDesc.VarType.UINT8
+                dtype=core.VarDesc.VarType.UINT8,
+                name=f"dropout_state{NON_PERSISTABLE_VAR_NAME_SUFFIX}",
             )
             if in_dynamic_mode():
                 with paddle.no_grad():
@@ -1707,7 +1718,7 @@ class SimpleRNN(RNNBase):
         elif activation == "relu":
             mode = "RNN_RELU"
         else:
-            raise ValueError("Unknown activation '{}'".format(activation))
+            raise ValueError(f"Unknown activation '{activation}'")
         self.activation = activation
         super().__init__(
             mode,

@@ -19,7 +19,7 @@ import unittest
 from fleet_meta_optimizer_base import TestFleetMetaOptimizer
 
 import paddle
-import paddle.distributed.fleet.meta_optimizers.sharding as sharding
+from paddle.distributed.fleet.meta_optimizers import sharding
 from paddle.distributed.fleet.meta_optimizers.common import is_loss_grad_op
 
 paddle.enable_static()
@@ -42,17 +42,15 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
         self.assertIn('@BroadCast', ''.join(vars))
         self.assertEqual(
             set(parameters),
-            set(
-                [
-                    "fc_1.b_0",
-                    "fc_2.b_0",
-                    "fc_2.w_0",
-                    "fc_1.b_0_velocity_0",
-                    "fc_2.b_0_velocity_0",
-                    "fc_2.w_0_velocity_0",
-                    "learning_rate_0",
-                ]
-            ),
+            {
+                "fc_1.b_0",
+                "fc_2.b_0",
+                "fc_2.w_0",
+                "fc_1.b_0_velocity_0",
+                "fc_2.b_0_velocity_0",
+                "fc_2.w_0_velocity_0",
+                "learning_rate_0",
+            },
         )
 
         self.assertEqual(
@@ -123,20 +121,18 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
         self.assertIn('check_finite_and_unscale', ops)
         self.assertEqual(
             set(parameters),
-            set(
-                [
-                    "fc_1.b_0",
-                    "fc_2.b_0",
-                    "fc_2.w_0",
-                    "fc_1.b_0_velocity_0",
-                    "fc_2.b_0_velocity_0",
-                    "fc_2.w_0_velocity_0",
-                    "learning_rate_0",
-                    "loss_scaling_0",
-                    "num_bad_steps_0",
-                    "num_good_steps_0",
-                ]
-            ),
+            {
+                "fc_1.b_0",
+                "fc_2.b_0",
+                "fc_2.w_0",
+                "fc_1.b_0_velocity_0",
+                "fc_2.b_0_velocity_0",
+                "fc_2.w_0_velocity_0",
+                "learning_rate_0",
+                "loss_scaling_0",
+                "num_bad_steps_0",
+                "num_good_steps_0",
+            },
         )
 
         self.assertEqual(
@@ -232,17 +228,15 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
         self.assertIn('subprog', ''.join(vars))
         self.assertEqual(
             set(parameters),
-            set(
-                [
-                    "fc_1.b_0",
-                    "fc_2.b_0",
-                    "fc_2.w_0",
-                    "fc_1.b_0_velocity_0",
-                    "fc_2.b_0_velocity_0",
-                    "fc_2.w_0_velocity_0",
-                    "learning_rate_0",
-                ]
-            ),
+            {
+                "fc_1.b_0",
+                "fc_2.b_0",
+                "fc_2.w_0",
+                "fc_1.b_0_velocity_0",
+                "fc_2.b_0_velocity_0",
+                "fc_2.w_0_velocity_0",
+                "learning_rate_0",
+            },
         )
 
         self.assertEqual(
@@ -322,20 +316,18 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
 
         self.assertEqual(
             set(parameters),
-            set(
-                [
-                    "fc_1.b_0",
-                    "fc_2.b_0",
-                    "fc_2.w_0",
-                    "fc_1.b_0_velocity_0",
-                    "fc_2.b_0_velocity_0",
-                    "fc_2.w_0_velocity_0",
-                    "learning_rate_0",
-                    "loss_scaling_0",
-                    "num_bad_steps_0",
-                    "num_good_steps_0",
-                ]
-            ),
+            {
+                "fc_1.b_0",
+                "fc_2.b_0",
+                "fc_2.w_0",
+                "fc_1.b_0_velocity_0",
+                "fc_2.b_0_velocity_0",
+                "fc_2.w_0_velocity_0",
+                "learning_rate_0",
+                "loss_scaling_0",
+                "num_bad_steps_0",
+                "num_good_steps_0",
+            },
         )
         self.assertEqual(
             ops,
@@ -448,23 +440,21 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
 
         self.assertEqual(
             set(parameters),
-            set(
-                [
-                    'fc_2.b_0',
-                    'num_good_steps_0',
-                    'fc_2.w_0',
-                    'loss_scaling_0',
-                    'num_bad_steps_0',
-                    'fc_2.w_0_velocity_0',
-                    'fc_2.w_0.asp_mask',
-                    'learning_rate_0',
-                    'fc_1.b_0',
-                    'fc_1.w_0.asp_mask',
-                    'fc_0.w_0.asp_mask',
-                    'fc_1.b_0_velocity_0',
-                    'fc_2.b_0_velocity_0',
-                ]
-            ),
+            {
+                'fc_2.b_0',
+                'num_good_steps_0',
+                'fc_2.w_0',
+                'loss_scaling_0',
+                'num_bad_steps_0',
+                'fc_2.w_0_velocity_0',
+                'fc_2.w_0.asp_mask',
+                'learning_rate_0',
+                'fc_1.b_0',
+                'fc_1.w_0.asp_mask',
+                'fc_0.w_0.asp_mask',
+                'fc_1.b_0_velocity_0',
+                'fc_2.b_0_velocity_0',
+            },
         )
         self.assertEqual(
             ops,
@@ -563,17 +553,15 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
         self.assertIn('@BroadCast', ''.join(vars))
         self.assertEqual(
             set(parameters),
-            set(
-                [
-                    "fc_1.b_0",
-                    "fc_2.b_0",
-                    "fc_2.w_0",
-                    "fc_1.b_0_velocity_0",
-                    "fc_2.b_0_velocity_0",
-                    "fc_2.w_0_velocity_0",
-                    "learning_rate_0",
-                ]
-            ),
+            {
+                "fc_1.b_0",
+                "fc_2.b_0",
+                "fc_2.w_0",
+                "fc_1.b_0_velocity_0",
+                "fc_2.b_0_velocity_0",
+                "fc_2.w_0_velocity_0",
+                "learning_rate_0",
+            },
         )
 
         self.assertEqual(
@@ -650,17 +638,15 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
         self.assertIn('@BroadCast', ''.join(vars))
         self.assertEqual(
             set(parameters),
-            set(
-                [
-                    "fc_1.b_0",
-                    "fc_2.b_0",
-                    "fc_2.w_0",
-                    "fc_1.b_0_velocity_0",
-                    "fc_2.b_0_velocity_0",
-                    "fc_2.w_0_velocity_0",
-                    "learning_rate_0",
-                ]
-            ),
+            {
+                "fc_1.b_0",
+                "fc_2.b_0",
+                "fc_2.w_0",
+                "fc_1.b_0_velocity_0",
+                "fc_2.b_0_velocity_0",
+                "fc_2.w_0_velocity_0",
+                "learning_rate_0",
+            },
         )
 
         self.assertEqual(

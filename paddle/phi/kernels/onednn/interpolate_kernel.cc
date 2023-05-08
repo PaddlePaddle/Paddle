@@ -15,10 +15,40 @@
 #include "paddle/phi/kernels/interpolate_kernel.h"
 
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
+#include "paddle/phi/core/compat/get_kerneltype_forvar_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/interpolate_function.h"
 
 namespace phi {
+
+KernelKey InterpolateGetKernelTypeForVar(
+    const GetKernelTypeForVarContext* ctx) {
+  const std::string& var_name = ctx->GetVarName();
+  const DenseTensor& tensor = ctx->GetTensor();
+  const KernelKey& expected_kernel_type = ctx->GetKernelKey();
+  const AttributeMap& attrs = ctx->GetAttrs();
+  // Only input require reshaping, weights and
+  // bias are having shape in NCHW order
+  if ((expected_kernel_type.layout() == DataLayout::ONEDNN) &&
+      (tensor.layout() != DataLayout::ONEDNN)) {
+    auto it = attrs.find("data_layout");
+    const std::string data_layout = PADDLE_GET_CONST(std::string, it->second);
+    auto dl = StringToDataLayout(data_layout);
+    // Some models may have intentionally set "AnyLayout" for pool
+    // op. Treat this as NCHW (default data_format value)
+    if (dl != DataLayout::kAnyLayout) {
+      return KernelKey(tensor.place(), dl, expected_kernel_type.dtype());
+    }
+  }
+  if (var_name == "OutSize" || var_name == "SizeTensor" ||
+      var_name == "Scale") {
+    return KernelKey(Backend::ALL_BACKEND,
+                     expected_kernel_type.layout(),
+                     expected_kernel_type.dtype());
+  }
+  return KernelKey(
+      tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+}
 
 namespace funcs {
 template <typename T = float>
@@ -233,7 +263,9 @@ PD_REGISTER_KERNEL(bilinear_interp,
                    phi::BilinearInterpKernel,
                    float,
                    phi::dtype::bfloat16,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16) {
+  kernel->get_kerneltype_forvar_fn_ = phi::InterpolateGetKernelTypeForVar;
+}
 
 PD_REGISTER_KERNEL(nearest_interp,
                    OneDNN,
@@ -243,4 +275,6 @@ PD_REGISTER_KERNEL(nearest_interp,
                    phi::dtype::bfloat16,
                    phi::dtype::float16,
                    int8_t,
-                   uint8_t) {}
+                   uint8_t) {
+  kernel->get_kerneltype_forvar_fn_ = phi::InterpolateGetKernelTypeForVar;
+}

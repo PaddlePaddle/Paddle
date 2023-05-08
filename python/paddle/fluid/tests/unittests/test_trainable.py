@@ -18,7 +18,7 @@ from collections import Counter
 from simple_nets import init_data
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 def test_trainable():

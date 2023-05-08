@@ -35,7 +35,7 @@ class TestNanInfDirCheckResult(unittest.TestCase):
         out = np.log(x)
         num_nan = np.sum(np.isnan(out))
         num_inf = np.sum(np.isinf(out))
-        print("[reference] num_nan={}, num_inf={}".format(num_nan, num_inf))
+        print(f"[reference] num_nan={num_nan}, num_inf={num_inf}")
         return num_nan, num_inf
 
     def get_num_nan_inf(
@@ -73,14 +73,19 @@ class TestNanInfDirCheckResult(unittest.TestCase):
                                             num_nan = int(err_str.split("=")[1])
                                         elif "num_inf" in err_str:
                                             num_inf = int(err_str.split("=")[1])
-                print(
-                    "[paddle] num_nan={}, num_inf={}".format(num_nan, num_inf)
-                )
+                print(f"[paddle] num_nan={num_nan}, num_inf={num_inf}")
         return num_nan, num_inf
 
     def test_num_nan_inf(self):
         path = "nan_inf_log_dir"
-        paddle.fluid.core.set_nan_inf_debug_path(path)
+
+        checker_config = paddle.amp.debugging.TensorCheckerConfig(
+            enable=True,
+            debug_mode=paddle.amp.debugging.DebugMode.CHECK_ALL,
+            output_dir=path,
+        )
+
+        paddle.amp.debugging.enable_tensor_checker(checker_config)
 
         def _check_num_nan_inf(use_cuda):
             shape = [32, 32]
@@ -88,20 +93,25 @@ class TestNanInfDirCheckResult(unittest.TestCase):
             num_nan_np, num_inf_np = self.get_reference_num_nan_inf(x_np)
             add_assert = (num_nan_np + num_inf_np) > 0
             num_nan, num_inf = self.get_num_nan_inf(
-                x_np, use_cuda, add_assert, path
+                x_np,
+                use_cuda,
+                add_assert,
+                path,
             )
             if not use_cuda:
                 assert num_nan == num_nan_np and num_inf == num_inf_np
 
-        paddle.set_flags(
-            {"FLAGS_check_nan_inf": 1, "FLAGS_check_nan_inf_level": 3}
-        )
-        _check_num_nan_inf(use_cuda=False)
         if paddle.fluid.core.is_compiled_with_cuda():
             _check_num_nan_inf(use_cuda=True)
+        else:
+            _check_num_nan_inf(use_cuda=False)
+
         x = paddle.to_tensor([2, 3, 4], 'float32')
         y = paddle.to_tensor([1, 5, 2], 'float32')
         z = paddle.add(x, y)
+        path = ""
+        paddle.fluid.core.set_nan_inf_debug_path(path)
+        paddle.amp.debugging.disable_tensor_checker()
 
 
 if __name__ == '__main__':

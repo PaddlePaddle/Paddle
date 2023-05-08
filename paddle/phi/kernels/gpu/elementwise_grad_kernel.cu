@@ -31,29 +31,27 @@ void MaximumGradKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        const DenseTensor& y,
                        const DenseTensor& dout,
-                       int axis,
                        DenseTensor* dx,
                        DenseTensor* dy) {
   const auto place = dev_ctx.GetPlace();
-
+  int axis = -1;
   if (dx != nullptr && dy != nullptr) {
     std::vector<const DenseTensor*> ins = {&x, &y, &dout};
-    GetGradXAndYOut<ElementwiseType::kTernary, T>(
-        dev_ctx,
-        place,
-        axis,
-        ins,
-        dout,
-        dx,
-        dy,
-        funcs::MaxGradXYFunctor<T, T>());
+    GetGradXAndYOut<T>(dev_ctx,
+                       place,
+                       axis,
+                       ins,
+                       dout,
+                       dx,
+                       dy,
+                       funcs::MaxGradXYFunctor<T, T>());
   } else if (dx != nullptr && dy == nullptr) {
     std::vector<const DenseTensor*> ins = {&x, &y, &dout};
-    GetGradXOrYOut<ElementwiseType::kBinary, T>(
+    GetGradXOrYOut<T>(
         dev_ctx, place, axis, ins, dout, dx, funcs::MaxGradXFunctor<T>());
   } else if (dy != nullptr && dx == nullptr) {
     std::vector<const DenseTensor*> ins = {&x, &y, &dout};
-    GetGradXOrYOut<ElementwiseType::kTernary, T>(
+    GetGradXOrYOut<T>(
         dev_ctx, place, axis, ins, dout, dy, funcs::MaxGradYFunctor<T>());
   }
 }
@@ -63,28 +61,27 @@ void MinimumGradKernel(const Context& dev_ctx,
                        const DenseTensor& x,
                        const DenseTensor& y,
                        const DenseTensor& dout,
-                       int axis,
                        DenseTensor* dx,
                        DenseTensor* dy) {
   const auto place = dev_ctx.GetPlace();
+  int axis = -1;
   if (dx != nullptr && dy != nullptr) {
     std::vector<const DenseTensor*> ins = {&x, &y, &dout};
-    GetGradXAndYOut<ElementwiseType::kTernary, T>(
-        dev_ctx,
-        place,
-        axis,
-        ins,
-        dout,
-        dx,
-        dy,
-        funcs::MinGradXYFunctor<T, T>());
+    GetGradXAndYOut<T>(dev_ctx,
+                       place,
+                       axis,
+                       ins,
+                       dout,
+                       dx,
+                       dy,
+                       funcs::MinGradXYFunctor<T, T>());
   } else if (dx != nullptr && dy == nullptr) {
     std::vector<const DenseTensor*> ins = {&x, &y, &dout};
-    GetGradXOrYOut<ElementwiseType::kBinary, T>(
+    GetGradXOrYOut<T>(
         dev_ctx, place, axis, ins, dout, dx, funcs::MinGradXFunctor<T>());
   } else if (dy != nullptr && dx == nullptr) {
     std::vector<const DenseTensor*> ins = {&x, &y, &dout};
-    GetGradXOrYOut<ElementwiseType::kTernary, T>(
+    GetGradXOrYOut<T>(
         dev_ctx, place, axis, ins, dout, dy, funcs::MinGradYFunctor<T>());
   }
 }
@@ -98,6 +95,7 @@ PD_REGISTER_KERNEL(fmax_grad,
                    double,
                    int,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    int64_t) {}
 
 PD_REGISTER_KERNEL(fmin_grad,
@@ -108,6 +106,7 @@ PD_REGISTER_KERNEL(fmin_grad,
                    double,
                    int,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    int64_t) {}
 
 PD_REGISTER_KERNEL(maximum_grad,
@@ -150,4 +149,5 @@ PD_REGISTER_KERNEL(elementwise_pow_grad,
                    double,
                    int,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    int64_t) {}

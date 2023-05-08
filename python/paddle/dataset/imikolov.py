@@ -23,7 +23,7 @@ import collections
 import tarfile
 
 import paddle.dataset.common
-import paddle.utils.deprecated as deprecated
+from paddle.utils import deprecated
 
 __all__ = []
 
@@ -108,7 +108,7 @@ def reader_creator(filename, word_idx, n, data_type):
                         continue
                     yield src_seq, trg_seq
                 else:
-                    assert False, 'Unknown data type'
+                    raise AssertionError('Unknown data type')
 
     return reader
 

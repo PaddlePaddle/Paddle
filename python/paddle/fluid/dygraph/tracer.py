@@ -13,6 +13,9 @@
 # limitations under the License.
 
 from collections import defaultdict
+
+import numpy as np
+
 from paddle.fluid import core
 from paddle.fluid import framework
 from paddle import _C_ops, _legacy_C_ops
@@ -87,6 +90,10 @@ name_mapping = {
     # }
 }
 
+core_ops_args_info = _legacy_C_ops.get_core_ops_args_info()
+core_ops_args_type_info = _legacy_C_ops.get_core_ops_args_type_info()
+core_ops_returns_info = _legacy_C_ops.get_core_ops_returns_info()
+
 
 class Tracer(core.Tracer):
     """
@@ -116,10 +123,6 @@ class Tracer(core.Tracer):
         inplace_map=None,
     ):
         function_ptr = _legacy_C_ops.__dict__[op_type]
-
-        core_ops_args_info = _legacy_C_ops.get_core_ops_args_info()
-        core_ops_args_type_info = _legacy_C_ops.get_core_ops_args_type_info()
-        core_ops_returns_info = _legacy_C_ops.get_core_ops_returns_info()
 
         op_args = core_ops_args_info[op_type]
         op_args_type = core_ops_args_type_info[op_type]
@@ -321,6 +324,14 @@ class Tracer(core.Tracer):
                     type, inputs, outputs, attrs, stop_gradient, inplace_map
                 )
         else:
+            # this block is used to convert attrs according to the opproto
+            # since `trace` handles AttributeMap directly, without other
+            # modification to the passed attribute map, so we change it before
+            # `trace`
+            if framework.OpProtoHolder.instance().has_op_proto(type):
+                proto = framework.OpProtoHolder.instance().get_op_proto(type)
+                attrs = framework.canonicalize_attrs(attrs, proto)
+
             self.trace(
                 type,
                 inputs,

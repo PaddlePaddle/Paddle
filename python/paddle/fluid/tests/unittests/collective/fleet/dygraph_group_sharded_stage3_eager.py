@@ -25,7 +25,7 @@ np.random.seed(2022)
 
 class Model(nn.Layer):
     def __init__(self):
-        super(Model, self).__init__()
+        super().__init__()
         self.first_stage = nn.Linear(4096, 4096, bias_attr=False)
         self.center_stage = nn.Linear(4096, 4096)
         self.center_stage.weight.stop_gradient = True

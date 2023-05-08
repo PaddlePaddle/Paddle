@@ -18,6 +18,7 @@
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/inference/tensorrt/dynamic_shape_infermeta_registry.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/op_utils.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
@@ -55,16 +56,28 @@ void BuildPhiKernelContextAttr(const framework::OpDesc& op_desc,
           auto& attr = *attr_ptr;
           switch (AttrTypeID(attr)) {
             case framework::proto::AttrType::FLOAT:
-              return kernel_context->EmplaceBackAttr(
+              kernel_context->EmplaceBackAttr(
                   phi::Scalar(PADDLE_GET_CONST(float, attr)));
               break;
+            case framework::proto::AttrType::FLOAT64:
+              kernel_context->EmplaceBackAttr(
+                  phi::Scalar(PADDLE_GET_CONST(double, attr)));
+              break;
             case framework::proto::AttrType::INT:
-              return kernel_context->EmplaceBackAttr(
+              kernel_context->EmplaceBackAttr(
                   phi::Scalar(PADDLE_GET_CONST(int, attr)));
               break;
+            case framework::proto::AttrType::LONG:
+              kernel_context->EmplaceBackAttr(
+                  phi::Scalar(PADDLE_GET_CONST(int64_t, attr)));
+              break;
             case framework::proto::AttrType::STRING:
-              return kernel_context->EmplaceBackAttr(
+              kernel_context->EmplaceBackAttr(
                   phi::Scalar(PADDLE_GET_CONST(std::string, attr)));
+              break;
+            case framework::proto::AttrType::SCALAR:
+              kernel_context->EmplaceBackAttr(phi::Scalar(
+                  PADDLE_GET_CONST(paddle::experimental::Scalar, attr)));
               break;
             default:
               PADDLE_THROW(platform::errors::Unimplemented(
@@ -129,6 +142,16 @@ void BuildPhiKernelContextAttr(const framework::OpDesc& op_desc,
             } break;
             case framework::proto::AttrType::FLOAT64S: {
               const auto& vec = PADDLE_GET_CONST(std::vector<double>, attr);
+              std::vector<phi::Scalar> scalar_list;
+              scalar_list.reserve(vec.size());
+              for (const auto& val : vec) {
+                scalar_list.emplace_back(val);
+              }
+              kernel_context->EmplaceBackAttr(std::move(scalar_list));
+            } break;
+            case framework::proto::AttrType::SCALARS: {
+              const auto& vec = PADDLE_GET_CONST(
+                  std::vector<paddle::experimental::Scalar>, attr);
               std::vector<phi::Scalar> scalar_list;
               scalar_list.reserve(vec.size());
               for (const auto& val : vec) {
@@ -332,6 +355,19 @@ bool GenericPlugin::supportsFormatCombination(
     if (pos == 3)
       return in_out[0].type == in_out[pos].type &&
              in_out[0].format == in_out[pos].format;
+  } else if (op_desc_.Type() == "lookup_table_v2") {
+    if (pos == 0)
+      return (in_out[pos].type == nvinfer1::DataType::kINT32 &&
+              (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR));
+    if (pos == 1)
+      return (in_out[pos].type == nvinfer1::DataType::kFLOAT) ||
+             ((isFp16Supported() &&
+               in_out[pos].type == nvinfer1::DataType::kHALF)) &&
+                 (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
+    // output
+    if (pos == 2)
+      return in_out[1].type == in_out[pos].type &&
+             in_out[1].format == in_out[pos].format;
   } else {
     return (in_out[pos].type == nvinfer1::DataType::kFLOAT ||
             (isFp16Supported() &&
@@ -345,6 +381,9 @@ nvinfer1::DataType GenericPlugin::getOutputDataType(
     int index,
     const nvinfer1::DataType* input_types,
     int nb_inputs) const TRT_NOEXCEPT {
+  if (op_desc_.Type() == "lookup_table_v2") {
+    return input_types[1];
+  }
   return input_types[0];
 }
 
@@ -450,7 +489,7 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
                            cudaStream_t stream) TRT_NOEXCEPT {
   platform::CUDAPlace place(platform::GetCurrentDeviceId());
 
-  // [TODO]now generic plugin do not support FP16 and INT8 precision
+  // TODO(inference): generic plugin do not support INT8 precision now.
   auto protoType2PhiType =
       [&](int proto_type,
           nvinfer1::DataType nv_dtype) -> std::pair<phi::DataType, int> {
@@ -481,8 +520,13 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
     }
   };
 
+  nvinfer1::DataType data_type;
   // input
-  auto data_type = input_desc[0].type;
+  if (op_desc_.Type() == "lookup_table_v2") {
+    data_type = input_desc[1].type;
+  } else {
+    data_type = input_desc[0].type;
+  }
   CHECK((data_type == nvinfer1::DataType::kFLOAT) ||
         (data_type == nvinfer1::DataType::kHALF));
 
@@ -532,8 +576,6 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
         new phi::Allocation(reinterpret_cast<void*>(outputs[i]),
                             output_numel * data_type_and_size.second,
                             place));
-
-    phi::DenseTensor output_densetonsor(output_alloc, output_meta);
 
     (*dense_tensor_outputs_)[i] =
         std::move(phi::DenseTensor(output_alloc, output_meta));

@@ -17,7 +17,7 @@ import unittest
 from test_dist_sparse_tensor_load_sgd import TestSparseLoadProgram
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.distributed.fleet import fleet
 
 

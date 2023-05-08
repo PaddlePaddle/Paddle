@@ -89,8 +89,9 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
     astream.wait();
 
     out->Resize(out_dims);
-    out->set_mem_desc(
-        reorder_dst_memory_p->get_desc().reshape(phi::vectorize(out_dims)));
+    auto reshape_dims = out_dims.size() != 0 ? phi::vectorize(out_dims)
+                                             : std::vector<int64_t>{1};
+    out->set_mem_desc(reorder_dst_memory_p->get_desc().reshape(reshape_dims));
   }
 
   void InferInOutShape(const framework::ExecutionContext& ctx,
@@ -285,7 +286,8 @@ class ReshapeGradMKLDNNKernel : public ReshapeMKLDNNKernel<T, op_name> {
     framework::DDim dx_dims;
     InferOutputShapeInGrad(ctx, dx_dims);
 
-    auto dout_vec_dims = phi::vectorize(dout->dims());
+    auto dout_vec_dims = dout->dims().size() != 0 ? phi::vectorize(dout->dims())
+                                                  : std::vector<int64_t>{1};
 
     auto dout_type = phi::funcs::ToOneDNNDataType(dout->dtype());
     phi::funcs::ReorderOneDNNHandler reorder_handler(
@@ -305,7 +307,9 @@ class ReshapeGradMKLDNNKernel : public ReshapeMKLDNNKernel<T, op_name> {
     astream.wait();
 
     dx->Resize(dx_dims);
-    reorder_dst_memory_p->get_desc().reshape(phi::vectorize(dx_dims));
+    const auto reshape_dims =
+        dx_dims.size() != 0 ? phi::vectorize(dx_dims) : std::vector<int64_t>{1};
+    reorder_dst_memory_p->get_desc().reshape(reshape_dims);
   }
 
   void InferOutputShapeInGrad(const framework::ExecutionContext& ctx,

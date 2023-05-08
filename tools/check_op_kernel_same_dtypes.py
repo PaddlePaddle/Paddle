@@ -84,17 +84,17 @@ def check_change_or_add_op_kernel_dtypes_valid():
     origin = read_file(sys.argv[1])
     new = read_file(sys.argv[2])
 
-    origin_all_kernel_dtype_dict = dict()
+    origin_all_kernel_dtype_dict = {}
     for op_msg in origin:
         op_info = op_msg.split()
         origin_all_kernel_dtype_dict[op_info[0]] = set(op_info[1:])
 
-    new_all_kernel_dtype_dict = dict()
+    new_all_kernel_dtype_dict = {}
     for op_msg in new:
         op_info = op_msg.split()
         new_all_kernel_dtype_dict[op_info[0]] = set(op_info[1:])
 
-    added_or_changed_op_info = dict()
+    added_or_changed_op_info = {}
     for op_type, dtype_set in new_all_kernel_dtype_dict.items():
         if op_type in origin_all_kernel_dtype_dict:
             origin_dtype_set = origin_all_kernel_dtype_dict[op_type]

@@ -37,6 +37,7 @@ env_args_mapping = {
     'PADDLE_WITH_GLOO': 'with_gloo',
     'PADDLE_START_PORT': 'start_port',
     'PADDLE_IPS': 'ips',
+    "PADDLE_AUTO_PARALLEL_CONFIG": 'auto_parallel_config',
 }
 
 
@@ -126,6 +127,13 @@ def parse_args():
 
     base_group.add_argument(
         "--start_port", type=int, default=6070, help="fix port start with"
+    )
+
+    base_group.add_argument(
+        "--auto_parallel_config",
+        type=str,
+        default=None,
+        help="auto parallel config file absolute path, the file should be json format",
     )
 
     base_group.add_argument(

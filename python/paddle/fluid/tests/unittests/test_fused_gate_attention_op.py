@@ -20,12 +20,16 @@ os.environ['FLAGS_new_einsum'] = "0"
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
+from eager_op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    convert_uint16_to_float,
+)
 from test_sparse_attention_op import get_cuda_version
 
 import paddle
-import paddle.nn as nn
-from paddle import _legacy_C_ops
+import paddle.incubate.nn.functional as F
+from paddle import _legacy_C_ops, nn
 from paddle.fluid import core
 
 
@@ -97,7 +101,7 @@ class TestFusedGateAttentionOp(OpTest):
             self.gating_b = _random((self.num_heads, self.head_dim))
 
         self.output_w = _random((self.num_heads, self.head_dim, self.out_dim))
-        self.output_b = _random((self.out_dim))
+        self.output_b = _random(self.out_dim)
 
         self.dout = _random(
             (self.batch_size, self.msa_len, self.res_len, self.q_dim)
@@ -308,7 +312,7 @@ class TestFusedGateAttentionOp(OpTest):
         if check_equal:
             self.assertTrue(
                 np.equal(_convert(ref), _convert(out)).all(),
-                "Checking < {} > failed!".format(name),
+                f"Checking < {name} > failed!",
             )
         else:
             np.testing.assert_allclose(
@@ -316,7 +320,7 @@ class TestFusedGateAttentionOp(OpTest):
                 _convert(out),
                 atol=atol,
                 rtol=rtol,
-                err_msg="Checking < {} > failed!".format(name),
+                err_msg=f"Checking < {name} > failed!",
             )
 
     def check_output_and_grad(self, atol, rtol):
@@ -420,6 +424,98 @@ class TestMergeQKVLargeBatchSizeBF16Case(TestMergeQKVBF16Case):
     def config(self):
         super().config()
         self.batch_size = 2
+
+
+class TestFusedGateAttentionApi(unittest.TestCase):
+    def setUp(self):
+        self.has_gating = True
+        self.batch_size = 2
+        self.msa_len = 3
+        self.res_len = 2
+        self.q_dim = 4
+        self.num_heads = 2
+        self.head_dim = 4
+        self.m_size = self.res_len
+        self.kv_dim = self.q_dim
+        self.out_dim = self.q_dim
+        self.merge_qkv = self.q_dim == self.kv_dim
+
+        self.query_shape = [
+            self.batch_size,
+            self.msa_len,
+            self.res_len,
+            self.q_dim,
+        ]
+        self.qkv_weight_shape = [3, self.num_heads, self.head_dim, self.q_dim]
+
+        self.attn_mask_shape = [
+            self.batch_size,
+            self.msa_len,
+            1,
+            1,
+            self.m_size,
+        ]
+        self.nonbatched_bias_shape = [
+            self.batch_size,
+            1,
+            self.num_heads,
+            self.res_len,
+            self.m_size,
+        ]
+
+        self.gating_w_shape = [self.q_dim, self.num_heads, self.head_dim]
+        self.gating_b_shape = [self.num_heads, self.head_dim]
+
+        self.output_w_shape = [self.num_heads, self.head_dim, self.out_dim]
+        self.output_b_shape = [self.out_dim]
+
+        self.out_shape = [
+            self.batch_size,
+            self.msa_len,
+            self.res_len,
+            self.out_dim,
+        ]
+
+    def test_api(self):
+        if not core.is_compiled_with_cuda():
+            pass
+
+        query = paddle.rand(shape=self.query_shape, dtype="float32")
+        qkv_weight = paddle.rand(shape=self.qkv_weight_shape, dtype="float32")
+
+        attn_mask = paddle.rand(shape=self.attn_mask_shape, dtype="float32")
+        nonbatched_bias = paddle.rand(
+            shape=self.nonbatched_bias_shape, dtype="float32"
+        )
+
+        gate_linear_weight = paddle.rand(
+            shape=self.gating_w_shape, dtype="float32"
+        )
+        gate_linear_bias = paddle.rand(
+            shape=self.gating_b_shape, dtype="float32"
+        )
+
+        out_linear_weight = paddle.rand(
+            shape=self.output_w_shape, dtype="float32"
+        )
+        out_linear_bias = paddle.rand(
+            shape=self.output_b_shape, dtype="float32"
+        )
+
+        output = F.fused_gate_attention(
+            query=query,
+            qkv_weight=qkv_weight,
+            gate_linear_weight=gate_linear_weight,
+            gate_linear_bias=gate_linear_bias,
+            out_linear_weight=out_linear_weight,
+            out_linear_bias=out_linear_bias,
+            nonbatched_bias=nonbatched_bias,
+            attn_mask=attn_mask,
+            has_gating=True,
+            merge_qkv=True,
+        )
+        print(f"output.shape={output.shape}")
+        self.assertEqual(output.shape, self.out_shape)
 
 
 if __name__ == "__main__":

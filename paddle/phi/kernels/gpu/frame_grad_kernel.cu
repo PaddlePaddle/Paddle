@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/frame_grad_kernel.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -28,5 +27,6 @@ PD_REGISTER_KERNEL(frame_grad,
                    float,
                    double,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {}

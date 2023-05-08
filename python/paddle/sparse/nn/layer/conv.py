@@ -14,10 +14,10 @@
 
 import numpy as np
 
-from paddle.fluid.layers import utils
 from paddle.nn import Layer
 from paddle.nn.functional.conv import _update_padding_nd
 from paddle.nn.initializer import Normal
+from paddle.utils import convert_to_list
 
 from .. import functional as F
 
@@ -70,11 +70,9 @@ class _Conv3D(Layer):
         channel_last = data_format == "NDHWC"
 
         dims = 3
-        self._stride = utils.convert_to_list(stride, dims, 'stride')
-        self._dilation = utils.convert_to_list(dilation, dims, 'dilation')
-        self._kernel_size = utils.convert_to_list(
-            kernel_size, dims, 'kernel_size'
-        )
+        self._stride = convert_to_list(stride, dims, 'stride')
+        self._dilation = convert_to_list(dilation, dims, 'dilation')
+        self._kernel_size = convert_to_list(kernel_size, dims, 'kernel_size')
         self._padding = padding
         self._padding_mode = padding_mode
         self._updated_padding, self._padding_algorithm = _update_padding_nd(

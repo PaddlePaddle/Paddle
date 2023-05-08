@@ -14,12 +14,13 @@
 
 #include "paddle/phi/kernels/set_value_grad_kernel.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
-
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -222,21 +223,21 @@ void SetValueGradImpl(const Context& dev_ctx,
                    (value_grad_dims_size + decrease_axis_size - num_decrease));
           fake_value_grad_dims[i] = value_grad_dims[index_grad];
 
-          PADDLE_ENFORCE_EQ((out_dims[i] == value_grad_dims[index_grad]) ||
-                                (value_grad_dims[index_grad] == 1),
-                            true,
-                            errors::InvalidArgument(
-                                "An error occurred while calculating %s: "
-                                "[%s] can not be accumulated into [%s].",
-                                paddle::framework::GradVarName("ValueTensor"),
-                                out_dims,
-                                value_grad_dims));
+          PADDLE_ENFORCE_EQ(
+              (out_dims[i] == value_grad_dims[index_grad]) ||
+                  (value_grad_dims[index_grad] == 1),
+              true,
+              errors::InvalidArgument("An error occurred while calculating %s: "
+                                      "[%s] can not be accumulated into [%s].",
+                                      "ValueTensor@GRAD",
+                                      out_dims,
+                                      value_grad_dims));
         }
       }
 
       VLOG(3) << "Dimensions of "
-              << paddle::framework::GradVarName("ValueTensor") << "(["
-              << value_grad_dims << "])is broadcasted into ["
+              << "ValueTensor@GRAD"
+              << "([" << value_grad_dims << "])is broadcasted into ["
               << fake_value_grad_dims << "].";
 
       std::vector<int64_t> slice_end(RANK, 0);
@@ -265,6 +266,11 @@ void SetValueGradImpl(const Context& dev_ctx,
                   {fake_value_grad_dims.Get(), fake_value_grad_dims.size()},
                   static_cast<T>(0));
       auto value_grad_dims_vec = phi::vectorize<int64_t>(value_grad_dims);
+      // for value is a 0-D Tensor
+      if (value_grad_dims.size() == 0) {
+        value_grad_dims_vec =
+            phi::vectorize<int64_t>(phi::make_ddim(std::vector<int>({1})));
+      }
       for (auto offset : offsets) {
         for (int i = 0; i < out_dims_size; i++) {
           slice_end[i] = offset[i] + fake_value_grad_dims[i];

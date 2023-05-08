@@ -21,13 +21,8 @@
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/phi/backends/device_memory_aligment.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#ifdef PADDLE_WITH_ASCEND_CL
-#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
-#endif
+
 #include "paddle/fluid/framework/convert_utils.h"
-#ifdef PADDLE_WITH_MLU
-#include "paddle/fluid/operators/mlu/mlu_baseop.h"
-#endif
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/phi/infermeta/multiary.h"
 
@@ -59,36 +54,8 @@ struct FillConstantVisitor {
   void apply(typename std::enable_if<!(std::is_same<T, int8_t>::value ||
                                        std::is_same<T, int16_t>::value)>::type
                  * = nullptr) const {
-#ifdef PADDLE_WITH_ASCEND_CL
-    if (platform::is_npu_place(dev_ctx_.GetPlace())) {
-      phi::DenseTensor tensor_tmp(framework::TransToPhiDataType(dtype_));
-      tensor_tmp.mutable_data<T>({1}, context_.GetPlace());
-      FillNpuTensorWithConstant<T>(&tensor_tmp, static_cast<T>(value_));
-
-      const auto &runner =
-          NpuOpRunner("FillD",
-                      {tensor_tmp},
-                      {*tensor_},
-                      {{"dims", phi::vectorize(tensor_->dims())}});
-      auto stream =
-          context_.template device_context<paddle::platform::NPUDeviceContext>()
-              .stream();
-      runner.Run(stream);
-    } else {
-      phi::funcs::SetConstant<DeviceContext, T> set_constant;
-      set_constant(dev_ctx_, tensor_, static_cast<T>(value_));
-    }
-#elif defined(PADDLE_WITH_MLU)
-    if (platform::is_mlu_place(context_.GetPlace())) {
-      FillMLUTensorWithHostValue<T>(context_, static_cast<T>(value_), tensor_);
-    } else {
-      phi::funcs::SetConstant<DeviceContext, T> set_constant;
-      set_constant(dev_ctx_, tensor_, static_cast<T>(value_));
-    }
-#else
     phi::funcs::SetConstant<DeviceContext, T> set_constant;
     set_constant(dev_ctx_, tensor_, static_cast<T>(value_));
-#endif
   }
 
   const DeviceContext &dev_ctx_;
@@ -237,12 +204,6 @@ class CoalesceTensorOpKernel : public framework::OpKernel<T> {
     // Init the continuous space
     size_t offset = 0;
     if (context.Attr<bool>("copy_data")) {
-#ifdef PADDLE_WITH_ASCEND_CL
-      framework::VisitDataType(
-          dtype,
-          FillConstantVisitor<DeviceContext>(
-              dev_ctx, fused_tensor, static_cast<float>(0.0), dtype, context));
-#endif
       for (size_t i = 0; i < in_var_names.size(); ++i) {
         size_t len = static_cast<size_t>(in_tensors[i]->numel());
         auto sub_tensor = fused_tensor->Slice(
@@ -365,9 +326,6 @@ class CoalesceTensorOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    if (ctx->IsRuntime()) {
-      return;
-    }
     auto use_align = ctx->Attrs().Get<bool>("use_align");
     auto align_size = ctx->Attrs().Get<int>("align_size");
     auto size_of_dtype = ctx->Attrs().Get<int>("user_defined_size_of_dtype");
@@ -377,30 +335,50 @@ class CoalesceTensorOp : public framework::OperatorWithKernel {
     if (size_of_dtype == -1) {
       size_of_dtype = framework::SizeOfType(dtype);
     }
-
-    auto alignment = [](size_t size, size_t align_size) {
-      size_t remaining = size % align_size;
-      auto aligned_size =
-          remaining == 0 ? size : size + (align_size - remaining);
-      VLOG(4) << remaining << " " << size << " " << align_size << " "
-              << aligned_size;
-      return aligned_size;
-    };
-    VLOG(4) << "align_size: " << align_size;
-    if (use_align && align_size > 0) {
+    if (ctx->IsRuntime()) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       int64_t numel = 0;
       auto dims = ctx->GetInputsDim("Input");
       for (const auto &dim : dims) {
         auto size = phi::product(dim);
-        auto len = use_align
-                       ? alignment(static_cast<size_t>(size) * size_of_dtype,
+        auto len = use_align ? phi::Alignment(
+                                   static_cast<size_t>(size) * size_of_dtype,
+                                   phi::GPUPlace(),
                                    align_size) /
-                             size_of_dtype
-                       : static_cast<size_t>(size);
+                                   size_of_dtype
+                             : static_cast<size_t>(size);
         numel += len;
       }
       ctx->SetOutputDim("FusedOutput", phi::make_ddim({numel}));
       VLOG(4) << "FusedOutput size:" << phi::make_ddim({numel});
+#else
+      return;
+#endif
+    } else {
+      auto alignment = [](size_t size, size_t align_size) {
+        size_t remaining = size % align_size;
+        auto aligned_size =
+            remaining == 0 ? size : size + (align_size - remaining);
+        VLOG(4) << remaining << " " << size << " " << align_size << " "
+                << aligned_size;
+        return aligned_size;
+      };
+      VLOG(4) << "align_size: " << align_size;
+      if (use_align && align_size > 0) {
+        int64_t numel = 0;
+        auto dims = ctx->GetInputsDim("Input");
+        for (const auto &dim : dims) {
+          auto size = phi::product(dim);
+          auto len = use_align
+                         ? alignment(static_cast<size_t>(size) * size_of_dtype,
+                                     align_size) /
+                               size_of_dtype
+                         : static_cast<size_t>(size);
+          numel += len;
+        }
+        ctx->SetOutputDim("FusedOutput", phi::make_ddim({numel}));
+        VLOG(4) << "FusedOutput size:" << phi::make_ddim({numel});
+      }
     }
   }
 
@@ -518,33 +496,6 @@ REGISTER_OPERATOR(coalesce_tensor,
                   CoalesceTensorInferShapeFunctor);
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-
-#if defined(PADDLE_WITH_ASCEND_CL)
-REGISTER_OP_CUDA_KERNEL(
-    coalesce_tensor,
-    ops::CoalesceTensorOpKernel<paddle::platform::NPUDeviceContext,
-                                plat::float16>,
-    ops::CoalesceTensorOpKernel<paddle::platform::NPUDeviceContext, int>,
-    ops::CoalesceTensorOpKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::CoalesceTensorOpKernel<paddle::platform::NPUDeviceContext, double>);
-#endif
-
-#if defined(PADDLE_WITH_ASCEND_CL)
-REGISTER_OP_NPU_KERNEL(
-    coalesce_tensor,
-    ops::CoalesceTensorOpKernel<phi::CPUContext, int>,
-    ops::CoalesceTensorOpKernel<phi::CPUContext, float>,
-    ops::CoalesceTensorOpKernel<phi::CPUContext, plat::float16>,
-    ops::CoalesceTensorOpKernel<phi::CPUContext, double>);
-#endif
-
-#if defined(PADDLE_WITH_MLU)
-REGISTER_OP_MLU_KERNEL(
-    coalesce_tensor,
-    ops::CoalesceTensorOpKernel<phi::CPUContext, plat::float16>,
-    ops::CoalesceTensorOpKernel<phi::CPUContext, int>,
-    ops::CoalesceTensorOpKernel<phi::CPUContext, float>);
-#endif
 
 REGISTER_OP_VERSION(coalesce_tensor)
     .AddCheckpoint(

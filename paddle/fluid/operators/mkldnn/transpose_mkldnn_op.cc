@@ -19,7 +19,6 @@
 namespace paddle {
 namespace operators {
 
-using phi::DataLayout;
 using phi::OneDNNContext;
 
 template <typename T>
@@ -28,7 +27,7 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()),
                       true,
-                      paddle::platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "Operator DNNL Transpose must use CPUPlace"));
     auto& dev_ctx = ctx.template device_context<OneDNNContext>();
     const auto& dnnl_engine = dev_ctx.GetEngine();
@@ -58,8 +57,6 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         dnnl::memory::desc(x_vec_dims,
                            x->mem_desc().data_type(),
                            phi::funcs::GetPlainOneDNNFormat(x_vec_dims.size()));
-    // a trick is used here to fake transpose of out_md, so later it will be
-    // "untransposed", leaving output data in plain format tag
     auto dst_strides =
         phi::funcs::FakeTransposeStrides(dst_md.dims(), transpose_axis);
 
@@ -88,7 +85,7 @@ class TransposeMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE_EQ(platform::is_cpu_place(ctx.GetPlace()),
                       true,
-                      paddle::platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "Operator DNNL TransposeGrad must use CPUPlace"));
 
     const auto* dout =

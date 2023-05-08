@@ -19,52 +19,13 @@
 
 namespace phi {
 
-template <typename T>
-class SoftplusOneDNNHandler
-    : public funcs::OneDNNHandlerNoCachingT<T, dnnl::binary> {
- public:
-  SoftplusOneDNNHandler(const OneDNNContext& dev_ctx,
-                        const phi::DenseTensor* x,
-                        const float beta)
-      : funcs::OneDNNHandlerNoCachingT<T, dnnl::binary>(dev_ctx.GetEngine(),
-                                                        dev_ctx.GetPlace()) {
-    dnnl::post_ops post_ops;
-    post_ops.append_eltwise(
-        1.0f, dnnl::algorithm::eltwise_soft_relu, 0.0f, 0.0f);
-    if (beta != 1.0f) {
-      post_ops.append_eltwise(
-          1.0f, dnnl::algorithm::eltwise_linear, 1.0f / beta, 0.0f);
-    }
-    funcs::AppendActivation(dev_ctx, post_ops);
-    dnnl::primitive_attr attrs;
-    attrs.set_post_ops(post_ops);
-
-    auto x_tz = phi::vectorize(x->dims());
-    auto beta_tz = std::vector<int64_t>(x_tz.size(), 1);
-    auto beta_md = dnnl::memory::desc(beta_tz,
-                                      funcs::OneDNNGetDataType<T>(),
-                                      funcs::GetPlainOneDNNFormat(x_tz.size()));
-
-    this->AcquireForwardPrimitiveDescriptor(attrs,
-                                            dnnl::algorithm::binary_mul,
-                                            x->mem_desc(),
-                                            beta_md,
-                                            x->mem_desc());
-  }
-
-  std::shared_ptr<dnnl::memory> AcquireBetaMemory(const float* beta) {
-    return this->AcquireMemoryFromPrimitive(this->fwd_pd_->src1_desc(),
-                                            funcs::to_void_cast<float>(beta));
-  }
-};
-
 template <typename T, typename Context>
 void SoftplusKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     float beta,
                     float threshold,
                     DenseTensor* out) {
-  SoftplusOneDNNHandler<T> handler(dev_ctx, &x, beta);
+  funcs::SoftplusOneDNNHandler<T> handler(dev_ctx, &x, beta);
 
   auto src_memory_p = handler.AcquireSrcMemory(&x);
   auto beta_memory_p = handler.AcquireBetaMemory(&beta);
@@ -75,7 +36,7 @@ void SoftplusKernel(const Context& dev_ctx,
   } else {
     dst_memory_p = handler.AcquireDstMemory(out);
   }
-  auto binary_p = handler.AcquireForwardPrimitive();
+  auto softplus_p = handler.AcquireForwardPrimitive();
 
   auto& astream = OneDNNContext::tls().get_stream();
 
@@ -84,7 +45,7 @@ void SoftplusKernel(const Context& dev_ctx,
       {DNNL_ARG_SRC_1, *beta_memory_p},
       {DNNL_ARG_DST, *dst_memory_p}};
 
-  binary_p->execute(astream, args);
+  softplus_p->execute(astream, args);
   astream.wait();
 
   out->set_mem_desc(dst_memory_p->get_desc());

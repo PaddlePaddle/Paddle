@@ -84,6 +84,51 @@ class TestStrategyConfig(unittest.TestCase):
         self.assertEqual(strategy.hybrid_configs["mp_degree"], 2)
         self.assertEqual(strategy.hybrid_configs["pp_degree"], 4)
 
+    def test_hybrid_parallel_mp_configs(self):
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        strategy.hybrid_configs = {
+            "dp_degree": 1,
+            "mp_degree": 2,
+            "pp_degree": 4,
+            "mp_configs": {
+                "sync_param": True,
+                "sync_grad": False,
+                "sync_moment": False,
+                "sync_mode": "broadcast",
+                "sync_param_name": ["embedding", "layer_norm", ".w", ".b_"],
+            },
+        }
+        self.assertEqual(strategy.hybrid_configs["dp_degree"], 1)
+        self.assertEqual(strategy.hybrid_configs["mp_degree"], 2)
+        self.assertEqual(strategy.hybrid_configs["pp_degree"], 4)
+        self.assertEqual(strategy.hybrid_configs["mp_configs"].sync_param, True)
+        self.assertEqual(strategy.hybrid_configs["mp_configs"].sync_grad, False)
+        self.assertEqual(
+            strategy.hybrid_configs["mp_configs"].sync_moment, False
+        )
+        self.assertEqual(
+            strategy.hybrid_configs["mp_configs"].sync_mode, "broadcast"
+        )
+
+        self.assertEqual(
+            strategy.sync_param_name, ["embedding", "layer_norm", ".w", ".b_"]
+        )
+
+    def test_hybrid_parallel_configs_order(self):
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        strategy.hybrid_configs = {
+            "dp_degree": 1,
+            "mp_degree": 2,
+            "pp_degree": 4,
+            "order": ['sharding', 'mp', 'dp', 'pp'],
+        }
+        self.assertEqual(strategy.hybrid_configs["dp_degree"], 1)
+        self.assertEqual(strategy.hybrid_configs["mp_degree"], 2)
+        self.assertEqual(strategy.hybrid_configs["pp_degree"], 4)
+        self.assertEqual(
+            strategy.hybrid_parallel_order, ['sharding', 'mp', 'dp', 'pp']
+        )
+
     def test_localsgd(self):
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.localsgd = True

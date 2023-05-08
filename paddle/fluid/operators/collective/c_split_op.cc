@@ -121,9 +121,12 @@ REGISTER_OPERATOR(c_split,
                   ops::CSplitOpGradMaker<paddle::imperative::OpBase>,
                   ops::CSplitOpMaker);
 
-REGISTER_OP_CPU_KERNEL(c_split,
-                       ops::CSplitOpCPUKernel<float>,
-                       ops::CSplitOpCPUKernel<double>,
-                       ops::CSplitOpCPUKernel<int>,
-                       ops::CSplitOpCPUKernel<int64_t>,
-                       ops::CSplitOpCPUKernel<plat::float16>);
+PD_REGISTER_STRUCT_KERNEL(c_split,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::CSplitOpCPUKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t,
+                          plat::float16) {}

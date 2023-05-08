@@ -34,6 +34,12 @@ function LOG {
   echo "[$0:${BASH_LINENO[0]}] $*" >&2
 }
 
+function collect_kernel_registry_info {
+  LOG "[INFO] Collect kernel registry info ..."
+  python ${PADDLE_ROOT}/tools/parse_kernel_info.py
+  [ $? -ne 0 ] && LOG "[FATAL] Collect kernel registry info fail."
+}
+
 # Limit cu file directory
 function match_cu_file_directory {
   LOG "[INFO] run function match_cu_file_directory"
@@ -109,8 +115,14 @@ function load_CHANGE_OP_FILES {
       load_CHANGE_OP_FILES_by_header_file $change_file
     fi
   done
-  [ ${#CHANGE_OP_FILES[@]} -eq 0 ] && LOG "[INFO] No op to test, skip this ci." && \
-  exit 0
+  if [ ${#CHANGE_OP_FILES[@]} -eq 0 ]; then
+    LOG "[INFO] Uninstall PaddlePaddle ..."
+    pip uninstall -y paddlepaddle paddlepaddle_gpu
+    LOG "[INFO] Install PaddlePaddle ..."
+    pip install build/pr_whl/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl
+    collect_kernel_registry_info
+    LOG "[INFO] No op to test, skip this ci." && exit 0
+  fi
 }
 
 # Clone benchmark repo
@@ -196,9 +208,9 @@ function run_op_benchmark_test {
   # pip install tensorflow==2.3.0 tensorflow-probability
   for branch_name in "dev_whl" "pr_whl"
   do
-    LOG "[INFO] Uninstall Paddle ..."
+    LOG "[INFO] Uninstall PaddlePaddle ..."
     pip uninstall -y paddlepaddle paddlepaddle_gpu
-    LOG "[INFO] Install Paddle ..."
+    LOG "[INFO] Install PaddlePaddle ..."
     pip install build/${branch_name}/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl
     logs_dir="$(pwd)/logs-${branch_name}"
     [ -d $logs_dir ] && rm -rf $logs_dir/* || mkdir -p $logs_dir
@@ -299,6 +311,7 @@ function gpu_op_benchmark {
   run_op_benchmark_test
   summary_problems
   LOG "[INFO] Op benchmark run success and no error!"
+  collect_kernel_registry_info
   exit 0
 }
 

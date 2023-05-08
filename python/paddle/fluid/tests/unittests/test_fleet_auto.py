@@ -16,7 +16,7 @@ import os
 import unittest
 
 import paddle
-import paddle.distributed.fleet as fleet
+from paddle.distributed import fleet
 
 paddle.enable_static()
 
@@ -50,7 +50,7 @@ class TestDistributedStrategyAuto(unittest.TestCase):
         optimizer.minimize(avg_cost)
 
         applied_meta_list = fleet._get_applied_meta_list()
-        print("applied_meta_list: {}".format(applied_meta_list))
+        print(f"applied_meta_list: {applied_meta_list}")
 
 
 if __name__ == "__main__":

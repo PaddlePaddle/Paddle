@@ -73,15 +73,13 @@ class ShardingOptimizer(MetaOptimizerBase):
             # "ModelParallelOptimizer",
             # "PipelineOptimizer",
         ]
-        self.meta_optimizers_black_list = [
-            "GraphExecutionOptimizer",
-        ]
+        self.meta_optimizers_black_list = []
         self._main_program = None
         self._startup_program = None
         self._segments = []
         # params and fp16 params is for broadcast
-        self._params = set([])
-        self._broadcast_vars = set([])
+        self._params = set()
+        self._broadcast_vars = set()
         # reduced grads to param name
         self._reduced_grads_to_param = {}
         self._shard = Shard()
@@ -232,7 +230,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         gm_acc_step = int(sharding_configs["gradient_merge_acc_step"])
         if self.pp_degree <= 1:
             gm_mode = "sharding_gm"
-            self._grad2merged_grad = dict()
+            self._grad2merged_grad = {}
         else:
             gm_mode = "pp_gm"
             gm_acc_step = strategy.pipeline_configs['accumulate_steps']
@@ -458,7 +456,7 @@ class ShardingOptimizer(MetaOptimizerBase):
 
         if self.pp_allreduce_in_optimize:
             logger.info(
-                "Pipeline Persistable grad is {}".format(accumulated_grad_names)
+                f"Pipeline Persistable grad is {accumulated_grad_names}"
             )
             # FIXME(wangxi): accumulated_grad get from pipeline is not
             #  include sharding's param@BroadCast grad when
@@ -474,7 +472,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                 rank=self.sharding_rank,
             )
 
-            logger.info("PP-Sharding grad is {}".format(accumulated_grad_names))
+            logger.info(f"PP-Sharding grad is {accumulated_grad_names}")
             first_optimize_op_index += len(main_block.ops) - len_of_ops
             len_of_ops = len(main_block.ops)
 
@@ -490,9 +488,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                 rank=self.dp_rank,
                 strategy=strategy,
             )
-            logger.info(
-                "Optimizer grad in this rank {}".format(accumulated_grad_names)
-            )
+            logger.info(f"Optimizer grad in this rank {accumulated_grad_names}")
             first_optimize_op_index += len(main_block.ops) - len_of_ops
             len_of_ops = len(main_block.ops)
 
@@ -509,9 +505,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                 rank=self.dp_rank,
                 strategy=None if optimize_cast else strategy,
             )
-            logger.info(
-                "Optimizer param in this rank {}".format(optimizer_param)
-            )
+            logger.info(f"Optimizer param in this rank {optimizer_param}")
             if not strategy.fuse_grad_merge and not optimize_cast:
                 assert len(accumulated_grad_names) == len(optimizer_param)
         elif self.hybrid_dp and self.hybrid_dp_mode == "pp_hybrid_dp":
@@ -602,7 +596,7 @@ class ShardingOptimizer(MetaOptimizerBase):
 
         rings = [self.mp_ring_id, self.pp_ring_id]
         # FIXME(wangxi): some problem with NPU found_finite, need sync with DP
-        if core.is_compiled_with_npu():
+        if core.is_compiled_with_custom_device('npu'):
             rings += [self.dp_ring_id]
         FP16Utils.sync_amp_check_nan_inf(main_block, rings)
 
@@ -727,7 +721,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         self._dump_program_for_debug()
 
         # GPU need to wait server ready, GPU and NPU is Layered connection
-        if not core.is_compiled_with_npu():
+        if not core.is_compiled_with_custom_device('npu'):
             self._wait()
         return optimize_ops, params_grads
 
@@ -748,94 +742,6 @@ class ShardingOptimizer(MetaOptimizerBase):
                 sync=False,
             )
 
-    def _init_npu_pipeline_comm(self, startup_block):
-        # NOTE(wangxi): some bug with hccl, must set pp_degree be even number
-        assert (self.pp_degree % 2) == 0
-
-        max_ring_id = -1
-        my_pair = []
-        for pair in self.pipeline_pair:
-            pair_key = pair[0] * 1000 + pair[1]
-            ring_id = self.pp_ring_map[pair_key]
-            max_ring_id = max(max_ring_id, ring_id)
-            logger.info("pp pair:{}, ring_id: {}".format(pair, ring_id))
-
-            if self.pp_rank in pair:
-                my_pair.append(pair)
-
-        # for example: self.pp_rank=2, self.pp_degree=4
-        send_to_next_pair = (
-            self.pp_rank,
-            (self.pp_rank + 1) % self.pp_degree,
-        )  # 2->3
-        recv_from_next_pair = (
-            (self.pp_rank + 1) % self.pp_degree,
-            self.pp_rank,
-        )  # 3->2
-        recv_from_prev_pair = (
-            (self.pp_rank - 1 + self.pp_degree) % self.pp_degree,
-            self.pp_rank,
-        )  # 1->2
-        send_to_prev_pair = (
-            self.pp_rank,
-            (self.pp_rank - 1 + self.pp_degree) % self.pp_degree,
-        )  # 2->1
-
-        even = (self.pp_rank % 2) == 0
-
-        # 1. even send to next, odd recv from prev, 0->1, 2->3
-        pair = send_to_next_pair if even else recv_from_prev_pair
-        ring_id = self.pp_ring_map[pair[0] * 1000 + pair[1]]
-        self._init_pair_comm(pair, ring_id)
-        my_pair.remove(pair)
-        logger.info(
-            "pair0(even->odd): pp pair:{}, ring_id: {}".format(pair, ring_id)
-        )
-
-        # 2. even recv from next, odd send to prev, 1->0, 3->2
-        pair = recv_from_next_pair if even else send_to_prev_pair
-        ring_id = self.pp_ring_map[pair[0] * 1000 + pair[1]]
-        self._init_pair_comm(pair, ring_id)
-        my_pair.remove(pair)
-        logger.info(
-            "pair1(even<-odd): pp pair:{}, ring_id: {}".format(pair, ring_id)
-        )
-
-        # if pp_degree is 2, only need pair(0->1, 1->0)
-        if self.pp_degree > 2:
-            # 3. odd send to next, even recv from prev, 1->2, 3->0
-            pair = send_to_next_pair if not even else recv_from_prev_pair
-            ring_id = self.pp_ring_map.get(
-                pair[0] * 1000 + pair[1], max_ring_id + 1
-            )  # 3->0 not in pp_ring_map
-            self._init_pair_comm(pair, ring_id)
-            if self.pp_rank != 0 and self.pp_rank != self.pp_degree - 1:
-                my_pair.remove(pair)
-            logger.info(
-                "pair2(odd->even): pp pair:{}, ring_id: {}".format(
-                    pair, ring_id
-                )
-            )
-
-            # 4. odd recv from next, even send to prev, 2->1, 0->3
-            pair = recv_from_next_pair if not even else send_to_prev_pair
-            ring_id = self.pp_ring_map.get(
-                pair[0] * 1000 + pair[1], max_ring_id + 2
-            )  # 0->3 not in pp_ring_map
-            self._init_pair_comm(pair, ring_id)
-            if self.pp_rank != 0 and self.pp_rank != self.pp_degree - 1:
-                my_pair.remove(pair)
-            logger.info(
-                "pair3(odd<-even): pp pair:{}, ring_id: {}".format(
-                    pair, ring_id
-                )
-            )
-
-        assert len(my_pair) == 0, (
-            "Current pipeline does not support cross stage communication, "
-            "please check unexpected pair {}".format(my_pair)
-        )
-
     def _init_pipeline_comm(self, startup_block):
         # TODO (JZ-LIANG) to unify pp_rank_ and pp_rank
         if os.getenv("PADDLE_MANUAL_PIPELINE_STAGE", None) is None:
@@ -849,15 +755,11 @@ class ShardingOptimizer(MetaOptimizerBase):
                 sync=False,
             )
 
-        if core.is_compiled_with_npu():
-            self._init_npu_pipeline_comm(startup_block)
-            return
-
         # GPU
         for pair in self.pipeline_pair:
             pair_key = pair[0] * 1000 + pair[1]
             ring_id = self.pp_ring_map[pair_key]
-            logger.info("pp pair:{}, ring_id: {}".format(pair, ring_id))
+            logger.info(f"pp pair:{pair}, ring_id: {ring_id}")
             if self.pp_rank in pair:
                 self._init_pair_comm(pair, ring_id)
 
@@ -909,7 +811,7 @@ class ShardingOptimizer(MetaOptimizerBase):
 
     def _build_shard(self, params_grads, shard_rank, shard_size):
         # step 2: split params
-        self._params = set([x[0].name for x in params_grads])
+        self._params = {x[0].name for x in params_grads}
         self._shard.setup(params_grads, shard_rank, shard_size)
 
         # step 3: get broadcast vars
@@ -939,7 +841,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                 last_backward_op_idx = op_idx + 1
                 break
 
-        var2broadcast_time = dict()
+        var2broadcast_time = {}
         segment = ProgramSegment(block)
         segment._end_idx = last_backward_op_idx
         for op_idx in reversed(range(last_backward_op_idx)):
@@ -1053,10 +955,10 @@ class ShardingOptimizer(MetaOptimizerBase):
         if self._sharding_segment_strategy == "segment_anchors":
             assert (
                 len(self._forward_remain_anchors) == 0
-            ), "remain anchors {}".format(self._forward_remain_anchors)
+            ), f"remain anchors {self._forward_remain_anchors}"
             assert (
                 len(self._backward_remain_anchors) == 0
-            ), "remain anchors {}".format(self._backward_remain_anchors)
+            ), f"remain anchors {self._backward_remain_anchors}"
 
         if self._verbose:
             for varname in sorted(
@@ -1068,7 +970,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                     )
                 )
             for idx_ in range(len(self._segments)):
-                logger.info("segment [{}] :".format(idx_))
+                logger.info(f"segment [{idx_}] :")
                 logger.info(
                     "start op: [{}]  [{}]".format(
                         block.ops[self._segments[idx_]._start_idx].desc.type(),
@@ -1734,41 +1636,39 @@ class ShardingOptimizer(MetaOptimizerBase):
         # NOTE (JZ-LIANG) when use global ring for calc global norm and dp_degree > 1, the allreduce result should be devided by dp_degree
         self.global_ring_id = 3
 
-        logger.info("global word size: {}".format(self.global_word_size))
-        logger.info("global rank: {}".format(self.global_rank))
-        logger.info("global endpoints: {}".format(self.global_endpoints))
-        logger.info("global ring id: {}".format(self.global_ring_id))
+        logger.info(f"global word size: {self.global_word_size}")
+        logger.info(f"global rank: {self.global_rank}")
+        logger.info(f"global endpoints: {self.global_endpoints}")
+        logger.info(f"global ring id: {self.global_ring_id}")
         logger.info("#####" * 6)
 
-        logger.info("mp group size: {}".format(self.mp_degree))
-        logger.info("mp rank: {}".format(self.mp_rank))
-        logger.info("mp group id: {}".format(self.mp_group_id))
-        logger.info("mp group endpoints: {}".format(self.mp_group_endpoints))
-        logger.info("mp ring id: {}".format(self.mp_ring_id))
+        logger.info(f"mp group size: {self.mp_degree}")
+        logger.info(f"mp rank: {self.mp_rank}")
+        logger.info(f"mp group id: {self.mp_group_id}")
+        logger.info(f"mp group endpoints: {self.mp_group_endpoints}")
+        logger.info(f"mp ring id: {self.mp_ring_id}")
         logger.info("#####" * 6)
 
-        logger.info("sharding group size: {}".format(self.sharding_degree))
-        logger.info("sharding rank: {}".format(self.sharding_rank))
-        logger.info("sharding group id: {}".format(self.sharding_group_id))
+        logger.info(f"sharding group size: {self.sharding_degree}")
+        logger.info(f"sharding rank: {self.sharding_rank}")
+        logger.info(f"sharding group id: {self.sharding_group_id}")
         logger.info(
-            "sharding group endpoints: {}".format(self.sharding_group_endpoints)
+            f"sharding group endpoints: {self.sharding_group_endpoints}"
         )
-        logger.info("sharding ring id: {}".format(self.sharding_ring_id))
+        logger.info(f"sharding ring id: {self.sharding_ring_id}")
         logger.info("#####" * 6)
 
-        logger.info("pp group size: {}".format(self.pp_degree))
-        logger.info("pp rank: {}".format(self.pp_rank))
-        logger.info("pp group id: {}".format(self.pp_group_id))
-        logger.info("pp group endpoints: {}".format(self.pp_group_endpoints))
-        logger.info("pp ring id: {}".format(self.pp_ring_id))
+        logger.info(f"pp group size: {self.pp_degree}")
+        logger.info(f"pp rank: {self.pp_rank}")
+        logger.info(f"pp group id: {self.pp_group_id}")
+        logger.info(f"pp group endpoints: {self.pp_group_endpoints}")
+        logger.info(f"pp ring id: {self.pp_ring_id}")
         logger.info("#####" * 6)
 
-        logger.info("pure dp group size: {}".format(self.dp_degree))
-        logger.info("pure dp rank: {}".format(self.dp_rank))
-        logger.info(
-            "pure dp group endpoints: {}".format(self.dp_group_endpoints)
-        )
-        logger.info("pure dp ring id: {}".format(self.dp_ring_id))
+        logger.info(f"pure dp group size: {self.dp_degree}")
+        logger.info(f"pure dp rank: {self.dp_rank}")
+        logger.info(f"pure dp group endpoints: {self.dp_group_endpoints}")
+        logger.info(f"pure dp ring id: {self.dp_ring_id}")
         logger.info("#####" * 6)
 
         return

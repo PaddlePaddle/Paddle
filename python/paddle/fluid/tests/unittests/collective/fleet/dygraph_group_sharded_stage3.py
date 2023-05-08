@@ -61,7 +61,7 @@ class MLP(paddle.nn.Layer):
 
 class Encoder(paddle.nn.Layer):
     def __init__(self, encoder):
-        super(Encoder, self).__init__()
+        super().__init__()
         self.first_stage = paddle.nn.Linear(1024, 1024)
         self.encoder = encoder
 
@@ -73,7 +73,7 @@ class Encoder(paddle.nn.Layer):
 
 class Decoder(paddle.nn.Layer):
     def __init__(self, decoder):
-        super(Decoder, self).__init__()
+        super().__init__()
         self.decoder = decoder
         self.final_stage = paddle.nn.Linear(1024, 1024)
         self.group_norm = paddle.nn.GroupNorm(64, 1024)
@@ -87,7 +87,7 @@ class Decoder(paddle.nn.Layer):
 
 class SpecialModel(paddle.nn.Layer):
     def __init__(self):
-        super(SpecialModel, self).__init__()
+        super().__init__()
         self.shared = paddle.nn.Linear(1024, 1024, bias_attr=False)
         self.encoder = Encoder(self.shared)
         self.decoder = Decoder(self.shared)
