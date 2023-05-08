@@ -41,6 +41,9 @@
 #include "paddle/phi/backends/dynload/cusparse.h"
 #endif  // PADDLE_WITH_CUDA
 
+#ifdef PADDLE_WITH_XPU
+#include "paddle/phi/backends/xpu/xpu_info.h"
+#endif
 namespace paddle {
 namespace internal {
 
@@ -545,4 +548,121 @@ int ResourceManager::RefCount(void* stream) const {
 }
 #endif
 
+#if defined(PADDLE_WITH_XPU)
+// XPUContextResource
+XPUContextResource::XPUContextResource(const phi::Place& place, void* stream)
+    : place_(place) {
+  InitXPUResource(stream);
+}
+
+XPUContextResource::~XPUContextResource() {}
+
+void XPUContextResource::InitXPUResource(void* stream) {
+  phi::backends::xpu::XPUDeviceGuard guard(place_.device);
+  if (stream) {
+    owned_stream_ = false;
+    stream_ = stream;
+  }
+  InitXpuProperties();
+}
+
+void XPUContextResource::InitXpuProperties() {
+  phi::backends::xpu::XPUDeviceGuard guard(place_.device);
+  driver_version_ = phi::backends::xpu::GetDriverVersion();
+  runtime_version_ = phi::backends::xpu::GetRuntimeVersion();
+  xpu_version_ =
+      static_cast<int>(phi::backends::xpu::get_xpu_version(place_.device));
+}
+void* XPUContextResource::GetStream() const { return stream_; }
+
+int XPUContextResource::GetDriverVersion() const { return driver_version_; }
+
+int XPUContextResource::GetRuntimeVersion() const { return runtime_version_; }
+
+int XPUContextResource::GetXpuVersion() const { return xpu_version_; }
+
+void XPUContextResource::ReBindStream(void* stream) {
+  owned_stream_ = false;
+  stream_ = stream;
+}
+// XPUContextResource End.
+
+// Resource Manager
+void* ResourceManager::InitXPUResource(const phi::Place& place, void* stream) {
+  std::lock_guard<std::mutex> lock_gurad(xpu_mutex_);
+  if (xpu_resources_.count(stream)) {
+    Increase(stream);
+    return stream;
+  } else {
+    std::unique_ptr<XPUContextResource> resource{
+        new XPUContextResource(place, stream)};
+    void* s = resource->GetStream();
+    ref_count_[s] = 1;
+    xpu_resources_.emplace(s, std::move(resource));
+    return s;
+  }
+}
+
+XPUContextResource* ResourceManager::GetXPUResource(void* stream) const {
+  PADDLE_ENFORCE_EQ(xpu_resources_.count(stream),
+                    true,
+                    platform::errors::InvalidArgument(
+                        "The stream[%p] not found in xpu_resources.", stream));
+  return xpu_resources_.at(stream).get();
+}
+
+void ResourceManager::XpuResourceReBindStream(void* old_stream,
+                                              void* new_stream) {
+  PADDLE_ENFORCE_EQ(
+      xpu_resources_.count(old_stream),
+      true,
+      platform::errors::InvalidArgument(
+          "The stream[%p] not found in xpu_resources.", old_stream));
+  auto xpu_resource = std::move(xpu_resources_.at(old_stream));
+  DestroyXPUResource(old_stream);
+  PADDLE_ENFORCE_EQ(
+      ref_count_.count(old_stream),
+      0,
+      platform::errors::Fatal("xpu resources rebind stream failed."));
+
+  xpu_resource->ReBindStream(new_stream);
+  ref_count_[new_stream]++;
+  xpu_resources_.emplace(new_stream, std::move(xpu_resource));
+}
+
+void ResourceManager::DestroyXPUResource(void* stream) {
+  PADDLE_ENFORCE_EQ(xpu_resources_.count(stream),
+                    true,
+                    platform::errors::InvalidArgument(
+                        "The stream[%p] not found in xpu_resources.", stream));
+  Decrease(stream);
+}
+
+void ResourceManager::Decrease(void* stream) {
+  PADDLE_ENFORCE_EQ(ref_count_.count(stream),
+                    true,
+                    platform::errors::InvalidArgument(
+                        "The stream[%p] not found in ref_count.", stream));
+  --ref_count_[stream];
+  if (ref_count_[stream] == 0) {
+    ref_count_.erase(stream);
+    xpu_resources_.erase(stream);
+  }
+}
+
+void ResourceManager::Increase(void* stream) {
+  PADDLE_ENFORCE_EQ(ref_count_.count(stream),
+                    true,
+                    platform::errors::InvalidArgument(
+                        "The stream[%p] not found in ref_count.", stream));
+  ++ref_count_[stream];
+}
+
+int ResourceManager::RefCount(void* stream) const {
+  if (ref_count_.count(stream) == 0) return 0;
+  return ref_count_.at(stream);
+}
+// Resource Manager End.
+
+#endif
 }  // namespace paddle
