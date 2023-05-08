@@ -1893,10 +1893,23 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             False if self.composite_func_info == {} else True
         )
 
-        if is_composite_grad_api and next_grad_node_creation_str != '':
-            next_grad_node_creation_str = f"""
+        if is_composite_grad_api:
+            if next_grad_node_creation_str != '':
+                next_grad_node_creation_str = f"""
  if (!paddle::prim::PrimCommonUtils::IsEagerPrimEnabled()) {{
     {next_grad_node_creation_str}
+ }}
+  """
+            else:
+                Unavailable_log = f"""  if(trace_backward) {{
+    PADDLE_THROW(phi::errors::Unavailable(
+    \"The Op {self.backward_api_name} doesn't have any grad\"
+    \"op. If you don't intend calculating higher order\"
+    \"derivatives, please set `create_graph`to False.\"));
+  }}"""
+                next_grad_node_creation_str = f"""
+ if (!paddle::prim::PrimCommonUtils::IsEagerPrimEnabled()) {{
+    {Unavailable_log}
  }}
   """
 
@@ -1918,6 +1931,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
     \"op. If you don't intend calculating higher order\"
     \"derivatives, please set `create_graph`to False.\"));
   }}"""
+
         return (
             has_higher_order_node,
             is_invoke_forward_api,
