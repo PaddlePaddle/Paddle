@@ -160,7 +160,6 @@ class AdamW(Optimizer):
         lazy_mode=False,
         multi_precision=False,
         name=None,
-        master_grad=False,
     ):
         assert learning_rate is not None
         assert beta1 is not None

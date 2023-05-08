@@ -13,178 +13,162 @@
 # limitations under the License.
 
 
+import unittest
+
 import numpy as np
+from amp_base_models import AmpTestBase, build_embedding_model
 
 import paddle
-from paddle.distributed import fleet
+from paddle.fluid import core
+from paddle.static import amp
 
 paddle.enable_static()
 
 
-def init_dist_strategy(
-    use_distributed, use_amp=False, use_pure_fp16=False, use_bf16=False
-):
-    if not use_distributed:
-        return None
+@unittest.skipIf(
+    not core.supports_bfloat16(), "place does not support BF16 evaluation"
+)
+class TestStaticMasterGradProgramBF16(AmpTestBase):
+    def _check_optimizer(self, program, expected_num_mp):
+        optimizers = []
+        for block in program.blocks:
+            for op in block.ops:
+                if "Param" in op.input_names and "Grad" in op.input_names:
+                    optimizers.append(op)
 
-    dist_strategy = fleet.DistributedStrategy()
-    dist_strategy.nccl_comm_num = 1
-    dist_strategy.gradient_merge = True
-    dist_strategy.gradient_merge_configs = {"k_steps": 2, "avg": False}
-    dist_strategy.amp = use_amp
-    if use_amp:
-        dist_strategy.amp_configs = {
-            "use_dynamic_loss_scaling": True,
-            "use_fp16_guard": False,
-            "use_pure_fp16": use_pure_fp16,
-            "use_bf16": use_bf16,
+        actual_num_mp = 0
+        for op in optimizers:
+            if op.has_attr("multi_precision") and op.attr("multi_precision"):
+                actual_num_mp += 1
+        self.assertEqual(
+            actual_num_mp,
+            expected_num_mp,
+            f"The number of optimizers with multi_precison = True is expected to be {expected_num_mp}, but recieved {actual_num_mp}.",
+        )
+
+    def test_amp_bf16_o1(self):
+        main_program, startup_program, _, _, _ = build_embedding_model(
+            True, "bfloat16", "O1"
+        )
+        self.assertEqual(main_program.num_blocks, 1)
+        self._check_optimizer(main_program, 0)
+
+        amp.debugging.collect_operator_stats(main_program)
+        op_stats_list = amp.debugging._get_op_stats_list(main_program)
+        expected_bf16_calls = {
+            "matmul_v2": 1,
+            "elementwise_add": 1,
+            "dropout": 1,
+            "lookup_table_v2": 0,
+            "squared_l2_norm": 0,
+            "adamw": 0,
         }
-    return dist_strategy
+        self._check_op_calls(op_stats_list[0], expected_bf16_calls)
 
-
-def exclude_from_weight_decay(name):
-    if not isinstance(name, str):
-        name = name.name
-    if name.find("layer_norm") > -1:
-        return True
-    bias_suffix = ["_bias", "_b", ".b_0"]
-    for suffix in bias_suffix:
-        if name.endswith(suffix):
-            return True
-    return False
-
-
-def optimization(
-    use_distributed, use_amp, use_pure_fp16, use_bf16, use_master_grad
-):
-
-    dist_strategy = init_dist_strategy(
-        use_distributed, use_amp, use_pure_fp16, use_bf16
-    )
-
-    multi_precision = True
-    master_grad = use_master_grad
-    clip_norm_thres = 1.0
-    clip = paddle.nn.clip.GradientClipByGlobalNorm(clip_norm=clip_norm_thres)
-    scheduled_lr = 1.0  # 0.004
-    beta1 = 0.78
-    beta2 = 0.836
-    epsilon = 1e-4
-    weight_decay = 0.01
-    optimizer = paddle.optimizer.AdamW(
-        learning_rate=scheduled_lr,
-        grad_clip=clip,  # fluid.clip.GradientClipByGlobalNorm(clip_norm=clip_norm_thres),
-        beta1=beta1,
-        beta2=beta2,
-        epsilon=epsilon,
-        weight_decay=weight_decay,
-        multi_precision=multi_precision,
-    )
-
-    if dist_strategy:
-        optimizer = fleet.distributed_optimizer(optimizer, dist_strategy)
-    elif use_amp:
-        optimizer = paddle.static.amp.decorate(
-            optimizer,
-            init_loss_scaling=1.0,
-            use_dynamic_loss_scaling=False,
-            use_pure_fp16=use_pure_fp16,
-            use_fp16_guard=False,
-            use_bf16=use_bf16,
-            use_master_grad=master_grad,
+    def amp_bf16_o2(self, use_master_grad):
+        main_program, startup_program, _, _, _ = build_embedding_model(
+            True, "bfloat16", "O2", use_master_grad=use_master_grad
         )
+        self.assertEqual(main_program.num_blocks, 1)
 
-    return optimizer
-
-
-def model(data):
-    conv2d = paddle.static.nn.conv2d(input=data, num_filters=6, filter_size=3)
-    bn_out = paddle.static.nn.batch_norm(input=conv2d)
-    out = paddle.nn.functional.softmax(bn_out)
-    return out
-
-
-def main(
-    use_distributed=False,
-    use_amp=False,
-    use_pure_fp16=False,
-    use_bf16=False,
-    use_master_grad=False,
-    steps=10,
-):
-    if use_distributed:
-        fleet.init(is_collective=True)
-
-    train_program = paddle.static.Program()
-    startup_program = paddle.static.Program()
-    with paddle.static.program_guard(train_program, startup_program):
-        data = paddle.static.data(
-            name='X', shape=[None, 1, 28, 28], dtype='float32'
-        )
-        # input = data.astype('float32') # ('bfloat16')
-        out = model(data)
-        loss = paddle.mean(out)
-        optimizer = optimization(
-            use_distributed, use_amp, use_pure_fp16, use_bf16, use_master_grad
-        )
-        optimizer.minimize(loss)
-
-    print(train_program)
-
-    place = paddle.CUDAPlace(0)
-    exe = paddle.static.Executor(place)
-    print("===== Run startup_program ======")
-    print(startup_program)
-    exe.run(startup_program)
-    if use_amp and use_pure_fp16:
-        print("======= Run amp_init =======")
-        optimizer.amp_init(place)
-
-    saved_model_name = "test.fp32"
-    if use_amp:
-        if use_pure_fp16:
-            saved_model_name = "test.fp16_o2"
+        amp.debugging.collect_operator_stats(main_program)
+        op_stats_list = amp.debugging._get_op_stats_list(main_program)
+        if use_master_grad:
+            expected_bf16_calls = {
+                "matmul_v2": 1,
+                "elementwise_add": 1,
+                "dropout": 1,
+                "lookup_table_v2": 0,
+                "squared_l2_norm": 0,
+                "adamw": 2,
+            }
         else:
-            saved_model_name = "test.fp16_o1"
-    # paddle.static.save(train_program, 'models/' + saved_model_name)
-
-    # feed and fetch data
-    feed_vars = [data]
-    data_np_fp32 = np.random.random(size=[1, 1, 28, 28]).astype("float32")
-    fetch_vars = [loss]
-    losses = []
-
-    for i in range(steps):
-        results = exe.run(
-            train_program,
-            feed={feed_vars[0].name: data_np_fp32},
-            fetch_list=fetch_vars,
+            expected_bf16_calls = {
+                "matmul_v2": 1,
+                "elementwise_add": 1,
+                "dropout": 1,
+                "lookup_table_v2": 0,
+                "squared_l2_norm": 2,
+                "adamw": 2,
+            }
+        self._check_optimizer(
+            main_program,
+            expected_bf16_calls["matmul_v2"]
+            + expected_bf16_calls["elementwise_add"],
         )
-        import struct
+        self._check_op_calls(op_stats_list[0], expected_bf16_calls)
 
-        def convert_uint16_to_float(in_list):
-            if in_list.dtype == np.uint16:
-                in_list = np.asarray(in_list)
-                out = np.vectorize(
-                    lambda x: struct.unpack('<f', struct.pack('<I', x << 16))[
-                        0
-                    ],
-                    otypes=[np.float32],
-                )(in_list.flat)
-                return np.reshape(out, in_list.shape)
-            else:
-                return in_list
+    def test_amp_bf16_o2(self):
+        use_master_grad_list = [False, True]
+        for master_grad in use_master_grad_list:
+            self.amp_bf16_o2(master_grad)
 
-        if use_bf16:
-            loss = convert_uint16_to_float(results[0])
-        print(f"-- [BF16 {saved_model_name}] iter={i}, loss={loss}")
-        losses.append(results[0])
+    def _generate_feed_x(self):
+        seed = 0
+
+        import random
+
+        paddle.seed(seed)
+        np.random.seed(seed)
+        random.seed(seed)
+
+        x = np.random.randint(1, 128, size=[1, 32]).astype("int64")
+        return x
+
+    def test_compare_o1_and_o2_master_grad(self):
+        def _run(place, exe, x_np, max_iters, level, use_master_grad=False):
+            (
+                main_program,
+                startup_program,
+                optimizer,
+                feed_vars,
+                fetch_vars,
+            ) = build_embedding_model(
+                True, "bfloat16", level, use_master_grad=use_master_grad
+            )
+
+            seed = 0
+
+            import random
+
+            paddle.seed(seed)
+            np.random.seed(seed)
+            random.seed(seed)
+
+            losses = self.run_program(
+                main_program,
+                startup_program,
+                optimizer,
+                feed_vars,
+                fetch_vars,
+                place,
+                exe,
+                x_np,
+                max_iters,
+                level,
+            )
+            return losses
+
+        max_iters = 40
+        x = self._generate_feed_x()
+        place = paddle.CUDAPlace(0)
+        exe = paddle.static.Executor(place)
+        losses_o1 = _run(place, exe, x, max_iters, 'O1')
+        losses_o2_no_master_grad = _run(place, exe, x, max_iters, 'O2')
+        losses_o2_master_grad = _run(place, exe, x, max_iters, 'O2', True)
+
+        self.assertNotEqual(
+            losses_o1,
+            losses_o2_no_master_grad,
+            f"loss of o1 and o2 should be equal, but recieved loss o1: {losses_o1}, loss o2: {losses_o2_no_master_grad}",
+        )
+
+        self.assertEqual(
+            losses_o1,
+            losses_o2_master_grad,
+            f"loss of o1 and o2 should be equal, but recieved loss o1: {losses_o1}, loss o2: {losses_o2_master_grad}",
+        )
 
 
-use_distributed = False
-use_amp = True
-use_pure_fp16 = True
-use_bf16 = True
-use_master_grad = False
-steps = 100
-main(use_distributed, use_amp, use_pure_fp16, use_bf16, use_master_grad, steps)
+if __name__ == '__main__':
+    unittest.main()

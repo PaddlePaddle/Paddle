@@ -20,6 +20,44 @@ import paddle
 from paddle import nn
 from paddle.fluid import core
 
+seed = 5
+
+import random
+
+paddle.seed(seed)
+np.random.seed(seed)
+random.seed(seed)
+
+import struct
+
+
+def copy_bits_from_float_to_uint16(f):
+    return struct.unpack('<I', struct.pack('<f', f))[0] >> 16
+
+
+def convert_float_to_uint16(in_list):
+    if in_list.dtype == np.float32:
+        new_output = []
+        for x in np.nditer(in_list):
+            new_output.append(np.uint16(copy_bits_from_float_to_uint16(x)))
+        new_output = np.reshape(new_output, in_list.shape).view(np.uint16)
+        return new_output
+    else:
+        return in_list
+
+
+def convert_uint16_to_float(in_list):
+    if in_list.dtype == np.uint16:
+        in_list = np.asarray(in_list)
+        out = np.vectorize(
+            lambda x: struct.unpack('<f', struct.pack('<I', x << 16))[0],
+            otypes=[np.float32],
+        )(in_list.flat)
+        return np.reshape(out, in_list.shape)
+    else:
+        return in_list
+
+
 _fixed_add_param = np.random.random(size=[16, 16]).astype("float32")
 
 
@@ -30,6 +68,7 @@ def _build_optimizer(
     amp_lists=None,
     use_grad_clip=False,
     use_promote=False,
+    use_master_grad=False,
 ):
     if use_grad_clip:
         grad_clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
@@ -42,6 +81,7 @@ def _build_optimizer(
         beta2=0.836,
         epsilon=1e-4,
         weight_decay=0.01,
+        multi_precision=True,
     )
     if use_amp:
         optimizer = paddle.static.amp.decorate(
@@ -49,7 +89,10 @@ def _build_optimizer(
             amp_lists,
             level=amp_level,
             dtype=amp_dtype,
+            use_master_grad=use_master_grad,
             use_promote=use_promote,
+            master_weight=True,
+            init_loss_scaling=1,
         )
     return optimizer
 
@@ -71,6 +114,15 @@ class SimpleAddNet(nn.Layer):
         return x + self.weight
 
 
+def cast_add_param(amp_dtype):
+    global _fixed_add_param
+    if amp_dtype == "bfloat16":
+        _fixed_add_param_bf16 = convert_float_to_uint16(_fixed_add_param)
+        _fixed_add_param = convert_uint16_to_float(_fixed_add_param_bf16)
+    else:
+        pass
+
+
 def build_add_model(
     use_amp, amp_dtype="float16", amp_level="O1", use_promote=False
 ):
@@ -84,6 +136,7 @@ def build_add_model(
                     x_dtype = "uint16"
                 elif amp_dtype == "float16":
                     x_dtype = "float16"
+            cast_add_param(amp_dtype)
             model = SimpleAddNet(x_dtype)
             x = paddle.static.data(name='input', shape=[16, 16], dtype=x_dtype)
             out = model(x)
@@ -150,8 +203,9 @@ def build_conv_model(
 class SimpleEmbeddingNet(nn.Layer):
     def __init__(self):
         super().__init__()
-        self.vocab_size = 128
-        self.hidden_size = 16
+
+        global _fixed_embedding_param
+
         self.vocab_size = 128
         self.hidden_size = 16
         self.embedding = nn.Embedding(self.vocab_size, self.hidden_size)
@@ -167,7 +221,11 @@ class SimpleEmbeddingNet(nn.Layer):
 
 
 def build_embedding_model(
-    use_amp, amp_dtype="float16", amp_level="O1", use_promote=False
+    use_amp,
+    amp_dtype="float16",
+    amp_level="O1",
+    use_promote=False,
+    use_master_grad=False,
 ):
     main_program = paddle.static.Program()
     startup_program = paddle.static.Program()
@@ -177,16 +235,28 @@ def build_embedding_model(
             x = paddle.static.data(name='x', shape=[None, 32], dtype='int64')
             out = model(x)
             loss = paddle.mean(out)
+            if use_amp:
+                amp_lists = paddle.static.amp.AutoMixedPrecisionLists(
+                    custom_white_list=["elementwise_mul"],
+                    custom_black_list=["reduce_mean"],
+                    dtype=amp_dtype,
+                )
+            else:
+                amp_lists = None
             optimizer = _build_optimizer(
                 use_amp,
                 amp_dtype,
                 amp_level,
-                None,
+                amp_lists,
                 True,
                 use_promote=use_promote,
+                use_master_grad=use_master_grad,
             )
             optimizer.minimize(loss)
-    return main_program, startup_program
+
+    feed_vars = [x]
+    fetch_vars = [loss]
+    return main_program, startup_program, optimizer, feed_vars, fetch_vars
 
 
 class SimpleWhileNet(nn.Layer):
@@ -277,6 +347,6 @@ class AmpTestBase(unittest.TestCase):
                     feed={feed_vars[0].name: x_np},
                     fetch_list=fetch_vars,
                 )
-                print(f"-- [BF16 {level}] iter={iter_id}, loss={results[0]}")
+                # print(f"-- [BF16 {level}] iter={iter_id}, loss={results[0]}")
                 losses.append(results[0])
         return losses

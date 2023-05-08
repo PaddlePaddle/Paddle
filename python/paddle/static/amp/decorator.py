@@ -798,6 +798,7 @@ def decorate(
     use_dynamic_loss_scaling=None,
     use_amp_guard=False,
     use_promote=False,
+    use_master_grad=False,
 ):
     """
     Decorate the given optimizer to adapt to the mixed-precision training.
@@ -911,6 +912,7 @@ def decorate(
         decr_ratio=decr_ratio,
         use_amp_guard=use_amp_guard,
         use_promote=use_promote,
+        use_master_grad=use_master_grad,
     )
 
     return mp_optimizer

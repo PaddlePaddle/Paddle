@@ -1212,7 +1212,8 @@ class Optimizer:
                         "out_dtype": master_g.dtype,
                     },
                 )
-                continue
+            else:
+                params_master_grads.append((p, g))
 
         return params_master_grads
 
