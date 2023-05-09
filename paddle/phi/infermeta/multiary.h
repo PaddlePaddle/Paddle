@@ -288,6 +288,7 @@ void GraphReindexInferMeta(const MetaTensor& x,
                            const MetaTensor& count,
                            const MetaTensor& hashtable_value,
                            const MetaTensor& hashtable_index,
+                           bool flag_buffer_hashtable,
                            MetaTensor* reindex_src,
                            MetaTensor* reindex_dst,
                            MetaTensor* out_nodes);
@@ -555,17 +556,6 @@ void WarprnntInferMeta(const MetaTensor& input,
                        float fastemit_lambda,
                        MetaTensor* loss,
                        MetaTensor* warpctcgrad);
-
-void WeightedSampleNeighborsInferMeta(const MetaTensor& row,
-                                      const MetaTensor& col_ptr,
-                                      const MetaTensor& edge_weight,
-                                      const MetaTensor& x,
-                                      const MetaTensor& eids,
-                                      int sample_size,
-                                      bool return_eids,
-                                      MetaTensor* out,
-                                      MetaTensor* out_count,
-                                      MetaTensor* out_eids);
 
 void WhereInferMeta(const MetaTensor& condition,
                     const MetaTensor& x,
