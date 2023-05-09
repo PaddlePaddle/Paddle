@@ -26,7 +26,7 @@
 #include "paddle/phi/kernels/reshape_kernel.h"
 #include "paddle/phi/kernels/split_kernel.h"
 
-#if defined(__NVCC__)
+#if defined(__NVCC__) || defined(__HIPCC__)
 #include <cuda.h>
 #include <cuda_runtime.h>
 #endif
@@ -294,7 +294,7 @@ static void CalCompressedDimsWith1AndWithout1(
   }
 }
 
-#if defined(__NVCC__)
+#if defined(__NVCC__) || defined(__HIPCC__)
 template <typename T>
 __global__ void range_cuda_kernel(int64_t N, T* out) {
   int64_t idx = threadIdx.x + blockDim.x * blockIdx.x;
