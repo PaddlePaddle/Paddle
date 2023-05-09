@@ -258,6 +258,7 @@ from .tensor.math import renorm  # noqa: F401
 from .tensor.math import add  # noqa: F401
 from .tensor.math import subtract  # noqa: F401
 from .tensor.math import logsumexp  # noqa: F401
+from .tensor.math import logaddexp  # noqa: F401
 from .tensor.math import inverse  # noqa: F401
 from .tensor.math import log1p  # noqa: F401
 from .tensor.math import erf  # noqa: F401
@@ -437,6 +438,7 @@ __all__ = [  # noqa
     'eye',
     'cumsum',
     'cumprod',
+    'logaddexp',
     'logcumsumexp',
     'logit',
     'LazyGuard',
