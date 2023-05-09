@@ -1588,14 +1588,14 @@
 
 - backward_op : silu_grad
   forward : silu (Tensor x) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad)
+  args : (Tensor x, Tensor out, Tensor out_grad)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
   kernel :
     func : silu_grad
-  composite : silu_grad(x, out_grad, x_grad)
+  composite : silu_grad(x, out, out_grad, x_grad)
   inplace : (out_grad -> x_grad)
 
 - backward_op : sin_double_grad
