@@ -15,7 +15,10 @@
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/erfinv_grad_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 
 namespace phi {
 
@@ -29,8 +32,8 @@ void ErfinvGradKernel(const Context& ctx,
   auto eigen_dout = EigenVector<T>::Flatten(out_grad);
   auto eigen_dx = EigenVector<T>::Flatten(*x_grad);
   auto& place = *ctx.eigen_device();
-  constexpr T half_sqrt_pi = static_cast<T>(1 / M_2_SQRTPI);
-  eigen_dx.device(place) = half_sqrt_pi * eigen_dout * eigen_out.square().exp();
+  phi::funcs::EigenErfinvGrad<std::decay_t<decltype(place)>, T>::Eval(
+      place, eigen_dx, eigen_out, eigen_dout);
 }
 
 }  // namespace phi

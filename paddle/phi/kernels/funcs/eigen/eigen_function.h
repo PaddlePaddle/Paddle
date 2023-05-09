@@ -220,6 +220,18 @@ struct EigenErfGrad {
 };
 
 template <typename EigenDevice, typename T>
+struct EigenErfinvGrad {
+  using InType = Eigen::TensorMap<
+      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using OutType =
+      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  static void Eval(const EigenDevice& dev,
+                   OutType din,
+                   const InType& in,
+                   const InType& dout);
+};
+
+template <typename EigenDevice, typename T>
 struct EigenRankLoss {
   using InType = Eigen::TensorMap<
       Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
