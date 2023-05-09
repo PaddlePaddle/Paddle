@@ -93,9 +93,17 @@ set(PHI_SRCS
     ${infermeta_srcs}
     ${capi_srcs})
 
-set(PHI_BUILD_TYPE SHARED)
+if(WITH_GPU AND WIN32)
+  # The num of symbols exceed maximum number in dll and
+  # we generate static lib temporarily
+  set(PHI_BUILD_TYPE STATIC)
+else()
+  set(PHI_BUILD_TYPE SHARED)
+endif()
+
 if(${PHI_BUILD_TYPE} STREQUAL "SHARED")
   set(BUILD_PHI_SHARED "-DBUILD_PHI_SHARED")
+  add_definitions(-DPHI_SHARED)
 endif()
 
 if(WITH_GPU)

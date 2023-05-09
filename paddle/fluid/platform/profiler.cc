@@ -40,7 +40,7 @@ PADDLE_DEFINE_EXPORTED_bool(enable_rpc_profiler,
 
 DEFINE_bool(enable_record_memory, false, "enable memory recorder");
 
-#if defined _WIN32
+#if defined(_WIN32) && defined(PHI_SHARED)
 phi::ProfilerState phi::ProfilerHelper::g_state = phi::ProfilerState::kDisabled;
 bool phi::ProfilerHelper::g_enable_nvprof_hook = false;
 thread_local uint64_t phi::ProfilerHelper::g_thread_id;
