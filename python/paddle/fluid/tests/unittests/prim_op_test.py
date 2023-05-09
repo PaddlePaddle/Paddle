@@ -606,11 +606,10 @@ class PrimForwardChecker:
             ret = flatten(_as_list(self.public_python_api(*args)))
             primapi.to_prim(main_program.blocks)
         # ensure the operator not in program if check_prim is True
-        if self.prim_op_type == "comp":
-            forward_ops = [op.type for op in main_program.blocks[0].ops]
-            assert self.op_type not in forward_ops, (
-                "%s shouldn't appear in program when check_prim is True"
-            ) % (self.op_type)
+        forward_ops = [op.type for op in main_program.blocks[0].ops]
+        assert self.op_type not in forward_ops, (
+            "%s shouldn't appear in program when check_prim is True"
+        ) % (self.op_type)
         exe = paddle.static.Executor(self.place)
         exe.run(startup_program)
         ret = exe.run(main_program, feed=feed, fetch_list=ret)
@@ -781,7 +780,7 @@ class PrimForwardChecker:
             net, core.is_compiled_with_cinn() and self.enable_cinn
         )
         # check the operator not in program if check prim is True
-        if self.prim_op_type == "comp" and self.op_type != "fill_any_like":
+        if self.op_type != "fill_any_like":
             forward_ops = [
                 op.type
                 for op in net.forward.get_concrete_program(args)[1]
