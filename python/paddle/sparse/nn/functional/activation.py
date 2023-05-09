@@ -57,7 +57,6 @@ def relu(x, name=None):
         return out
 
 
-@dygraph_only
 def softmax(x, axis=-1, name=None):
     r"""
     sparse softmax activation, requiring x to be a SparseCooTensor or SparseCsrTensor.
@@ -129,7 +128,7 @@ def softmax(x, axis=-1, name=None):
             #                0.37859073, 0.30015597, 0.26316857, 0.16354507, 0.27313042])
     """
     if in_dynamic_mode():
-        return _C_ops.sparse_softmax(x)
+        return _C_ops.sparse_softmax(x, axis)
     else:
         op_type = 'sparse_softmax'
         helper = LayerHelper(op_type)
@@ -138,7 +137,7 @@ def softmax(x, axis=-1, name=None):
             type=op_type,
             inputs={'x': x},
             outputs={'out': out},
-            attrs={'axis', axis},
+            attrs={'axis': axis},
         )
         return out
 
