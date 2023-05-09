@@ -87,7 +87,7 @@ void SoftmaxCsrKernel(const Context& dev_ctx,
       }));
 }
 
-void GetPoolsSoftmax(std::vector<std::vector<int64_t>>& pools,
+void GetPoolsSoftmax(const std::vector<std::vector<int64_t>>& pools,
                      const DenseTensor& indices,
                      const std::vector<int64_t>& sizes,
                      const int64_t dim) {

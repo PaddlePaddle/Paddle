@@ -14,6 +14,14 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/sparse/softmax_grad_kernel.h"
 
+#include <thrust/binary_search.h>
+#include <thrust/device_ptr.h>
+#include <thrust/equal.h>
+#include <thrust/iterator/discard_iterator.h>
+#include <thrust/sequence.h>
+#include <thrust/sort.h>
+#include <thrust/transform.h>
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/visit_type.h"
@@ -23,14 +31,6 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/softmax_grad_kernel.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
-
-#include <thrust/binary_search.h>
-#include <thrust/device_ptr.h>
-#include <thrust/equal.h>
-#include <thrust/iterator/discard_iterator.h>
-#include <thrust/sequence.h>
-#include <thrust/sort.h>
-#include <thrust/transform.h>
 
 namespace phi {
 namespace sparse {

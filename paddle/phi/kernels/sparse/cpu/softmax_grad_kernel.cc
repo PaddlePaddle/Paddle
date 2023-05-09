@@ -119,7 +119,7 @@ std::vector<int64_t> GetOffsets(const DenseTensor& indices,
   return offsets;
 }
 
-void GetPoolsSoftmaxGrad(std::vector<std::vector<int64_t>>& pools,
+void GetPoolsSoftmaxGrad(const std::vector<std::vector<int64_t>>& pools,
                          const DenseTensor& indices,
                          const std::vector<int64_t>& sizes,
                          const int64_t dim) {
