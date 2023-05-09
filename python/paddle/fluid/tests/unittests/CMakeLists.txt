@@ -1156,12 +1156,14 @@ set(STATIC_BUILD_TESTS
     test_arg_min_max_op
     test_bincount_op
     test_decoupled_py_reader
+    test_dist_fuse_bn_act_pass
     test_eig_op
     test_eigh_op
     test_fake_quantize_op
     test_fetch_lod_tensor_array
     test_fused_attention_op
     test_fused_attention_op_api
+    test_fuse_bn_act_pass
     test_fused_feedforward_op
     test_fused_feedforward_pass
     test_imperative_optimizer
