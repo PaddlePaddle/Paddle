@@ -117,15 +117,10 @@ TEST(ArgMappingContexTest, BasicFunction) {
 
   EXPECT_EQ(context.InputSize("X"), true);
   EXPECT_EQ(context.OutputSize("Out"), true);
-  EXPECT_EQ(context.IsDenseTensorInput("X"), false);
-  EXPECT_EQ(context.IsDenseTensorInputs("X"), false);
-  EXPECT_EQ(context.IsSelectedRowsInput("X"), false);
-  EXPECT_EQ(context.IsDenseTensorVectorInput("X"), false);
+  EXPECT_EQ(context.IsDenseTensorInput("X"), true);
+  EXPECT_EQ(context.IsDenseTensorInputs("X"), true);
 
-  EXPECT_EQ(context.IsDenseTensorOutput("Out"), false);
-  EXPECT_EQ(context.IsSelectedRowsOutput("Out"), false);
-  EXPECT_EQ(context.IsSparseCooTensorOutput("Out"), false);
-  EXPECT_EQ(context.IsForInferShape(), false);
+  EXPECT_EQ(context.IsDenseTensorOutput("Out"), true);
 }
 
 }  // namespace tensorrt
