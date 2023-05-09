@@ -348,7 +348,7 @@ def amp_guard(
         or tracer._expected_place.is_custom_place()
     ):
         warnings.warn(
-            'amp_guard can only be enabled on CUDAPlace, XPUPlace, NPUPlace, and CustomPlace, current place is %s, so it makes no effect.'
+            'amp_guard can only be enabled on CUDAPlace, XPUPlace, and CustomPlace, current place is %s, so it makes no effect.'
             % tracer._expected_place
         )
         enable = False
