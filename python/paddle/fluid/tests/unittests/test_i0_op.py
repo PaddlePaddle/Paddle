@@ -123,7 +123,9 @@ class TestI0Op(OpTest):
         over_eight_case = np.random.uniform(low=9, high=15, size=100).astype(
             self.dtype
         )
-        self.case = np.concatenate([zero_case, rand_case, one2eight_case, over_eight_case])
+        self.case = np.concatenate(
+            [zero_case, rand_case, one2eight_case, over_eight_case]
+        )
         self.inputs = {'x': self.case}
         self.target = output_i0(self.inputs['x'])
 
@@ -131,7 +133,11 @@ class TestI0Op(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['x'], 'out', user_defined_grads=[ref_i0_grad(self.case, 1 / self.case.size)])
+        self.check_grad(
+            ['x'],
+            'out',
+            user_defined_grads=[ref_i0_grad(self.case, 1 / self.case.size)],
+        )
 
 
 if __name__ == "__main__":

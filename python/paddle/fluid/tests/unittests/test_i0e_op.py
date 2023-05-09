@@ -34,7 +34,7 @@ def ref_i0e_grad(x, dout):
     not_tiny = abs(x) > eps
     safe_x = np.where(not_tiny, x, eps)
     gradx = special.i1e(x) - np.sign(x) * special.i0e(safe_x)
-    gradx = np.where(not_tiny, gradx, -1.)
+    gradx = np.where(not_tiny, gradx, -1.0)
     return dout * gradx
 
 
@@ -127,8 +127,10 @@ class TestI0eOp(OpTest):
         over_eight_case = np.random.uniform(low=9, high=15, size=100).astype(
             self.dtype
         )
-        self.case = np.concatenate([zero_case, rand_case, one2eight_case, over_eight_case])
-        # self.case = np.array([0., 1., 2., 3.]).astype("float64")
+        self.case = np.concatenate(
+            [zero_case, rand_case, one2eight_case, over_eight_case]
+        )
+        self.case = np.array([0.0, 1.0, 2.0, 3.0]).astype("float64")
         self.inputs = {'x': self.case}
         self.target = output_i0e(self.inputs['x'])
 
@@ -136,11 +138,10 @@ class TestI0eOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        print(ref_i0e_grad(self.case, 1 / self.case.size))
         self.check_grad(
             ['x'],
             'out',
-            user_defined_grads=[ref_i0e_grad(self.case, 1 / self.case.size)]
+            user_defined_grads=[ref_i0e_grad(self.case, 1 / self.case.size)],
         )
 
 
