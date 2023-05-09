@@ -219,14 +219,6 @@ class TestReduceAPI(unittest.TestCase):
                 self.assertEqual(x.grad.shape, [])
                 np.testing.assert_allclose(x.grad.numpy(), np.array(3.0))
 
-            if api in [
-                paddle.sum,
-                paddle.mean,
-                paddle.nanmean,
-                paddle.nansum,
-            ]:
-                return
-
             # 2) x is ND, reduce to 0D
             if api in [paddle.all, paddle.any]:
                 x = paddle.randint(0, 2, [3, 5]).astype('bool')
@@ -301,20 +293,11 @@ class TestReduceAPI(unittest.TestCase):
                     np.testing.assert_allclose(res[2], np.array(1.0))
                     np.testing.assert_allclose(res[3], np.array(1.0))
 
-                if api in [
-                    paddle.sum,
-                    paddle.mean,
-                    paddle.nanmean,
-                    paddle.nansum,
-                ]:
-                    return
-
                 # 2) x is ND, reduce to 0D
                 if api in [paddle.all, paddle.any]:
                     x = paddle.randint(0, 2, [3, 5]).astype('bool')
                 else:
                     x = paddle.rand([3, 5])
-                x = paddle.rand([3, 5])
                 x.stop_gradient = False
                 out = api(x, None)
                 paddle.static.append_backward(out)
@@ -665,6 +648,140 @@ class TestSundryAPI(unittest.TestCase):
         )
         self.assertEqual(zero_dim_var.shape, [])
         self.assertEqual(zero_dim_var.item(), 0.5)
+
+    def test_getitem(self):
+        # case1: When all axis have a scalar indice, output should be a 0-d Tensor;
+        x = paddle.arange(2 * 3 * 4 * 5).reshape((2, 3, 4, 5))
+        x.stop_gradient = False
+        out = x[1, 2, 3, 4]
+        out.retain_grads()
+        out.backward()
+        self.assertEqual(out.shape, [])
+        np.testing.assert_allclose(out, np.array(119))
+        self.assertEqual(out.grad.shape, [])
+        np.testing.assert_allclose(out.grad, 1.0)
+        self.assertEqual(x.grad.shape, [2, 3, 4, 5])
+        x_grad_expected = np.zeros((2, 3, 4, 5))
+        x_grad_expected[1, 2, 3, 4] = 1.0
+        np.testing.assert_allclose(x.grad, x_grad_expected)
+
+        # case2: When one axis has a 0-d Tensor indice, the output should be same as int indice.
+        x = paddle.arange(2 * 3 * 4 * 5).reshape((2, 3, 4, 5))
+        out1 = x[1, 2]
+        out2 = x[
+            paddle.full([], 1, dtype='int32'), paddle.full([], 2, dtype='int32')
+        ]
+        np.testing.assert_allclose(out1, out2)
+
+        # case3: When all axis have a scalar indice (i.e. case1) and has None indice,
+        # ndim of output should be same with numbers of None.
+        x = paddle.arange(2 * 3 * 4 * 5).reshape((2, 3, 4, 5))
+        out1 = x[1, 2, None, 3, 4]
+        self.assertEqual(out1.shape, [1])
+        np.testing.assert_allclose(out1, np.array([119]))
+        out2 = x[1, None, 2, None, 3, 4]
+        self.assertEqual(out2.shape, [1, 1])
+        np.testing.assert_allclose(out2, np.array([[119]]))
+
+        # case4: 1-D Tensor will be treated as vector, no axis decrease will happen.
+        x = paddle.ones((2, 3, 4))
+        indice = paddle.ones([1], dtype='int32')
+        out1 = x[indice]
+        self.assertEqual(out1.shape, [1, 3, 4])
+        np.testing.assert_allclose(out1, np.ones((1, 3, 4)))
+        out2 = x[indice, indice]
+        self.assertEqual(out2.shape, [1, 4])
+        np.testing.assert_allclose(out2, np.ones((1, 4)))
+
+    def test_setitem(self):
+        # case1: all axis have a scalar indice
+        x = paddle.arange(2 * 3 * 4 * 5).reshape((2, 3, 4, 5))
+        x.stop_gradient = False
+        out = x * 2
+        out[1, 2, 3, 4] = 10
+        out.backward()
+
+        self.assertEqual(out.shape, x.shape)
+        np.testing.assert_allclose(out[1, 2, 3, 4], np.array(10))
+        self.assertEqual(x.grad.shape, [2, 3, 4, 5])
+        x_grad_expected = np.ones((2, 3, 4, 5)) * 2
+        x_grad_expected[1, 2, 3, 4] = 0
+        np.testing.assert_allclose(x.grad, x_grad_expected)
+
+        # case2: 0-D Tensor indice in some axis
+        # NOTE(zoooo0820): Now, int/slice with 0-D Tensor will still be
+        # treated as combined indexing, which is not support backward.
+        # There should have more test cases such as out[1, indice, :] = 0.5 when this
+        # problem is fixed.
+        x = paddle.randn((2, 3, 4, 5))
+        x.stop_gradient = False
+        indice = paddle.full([], 1, dtype='int32')
+        out = x * 1
+        out[indice, indice] = 0.5
+        out.backward()
+
+        self.assertEqual(out.shape, x.shape)
+        np.testing.assert_allclose(out[1, 1], np.ones((4, 5)) * 0.5)
+        x_grad_expected = np.ones((2, 3, 4, 5))
+        x_grad_expected[1, 1] = 0
+        np.testing.assert_allclose(x.grad, x_grad_expected)
+
+        # case3：0-D Tensor indice in some axis, value is a Tensor
+        # and there is broadcast
+        x = paddle.randn((2, 3, 4, 5))
+        x.stop_gradient = False
+        v = paddle.ones((4, 5), dtype='float32') * 5
+        v.stop_gradient = False
+        indice = paddle.full([], 1, dtype='int32')
+        out = x * 1
+        out[indice] = v
+        out.backward()
+
+        self.assertEqual(out.shape, x.shape)
+        np.testing.assert_allclose(out[1], np.ones((3, 4, 5)) * 5)
+        x_grad_expected = np.ones((2, 3, 4, 5))
+        x_grad_expected[1] = 0
+        np.testing.assert_allclose(x.grad, x_grad_expected)
+        value_grad_expected = np.ones((4, 5)) * 3
+        np.testing.assert_allclose(v.grad, value_grad_expected)
+
+        # case4: value is a 0-D tensor and there is broadcast
+        x = paddle.randn((2, 3, 4, 5))
+        x.stop_gradient = False
+        v = paddle.ones([], dtype='float32') * 5
+        v.stop_gradient = False
+        out = x * 1
+        indice = paddle.full([], 0, dtype='int32')
+        out[indice] = v
+        out.backward()
+
+        self.assertEqual(out.shape, x.shape)
+        self.assertEqual(v.grad.shape, [])
+        np.testing.assert_allclose(out[0], np.ones((3, 4, 5)) * 5)
+        x_grad_expected = np.ones((2, 3, 4, 5))
+        x_grad_expected[0] = 0
+        np.testing.assert_allclose(x.grad, x_grad_expected)
+        value_grad_expected = np.ones(()) * 3 * 4 * 5
+        np.testing.assert_allclose(v.grad, value_grad_expected)
+
+        # case5: indice / value is 0-D Tensor, and there is no broadcast
+        x = paddle.randn((2, 3, 4, 5))
+        x.stop_gradient = False
+        v = paddle.ones([], dtype='float32') * 2
+        v.stop_gradient = False
+        out = x * 1
+        indice = paddle.full([], 0, dtype='int32')
+        out[indice, indice, indice, indice] = v
+        out.backward()
+
+        self.assertEqual(out.shape, x.shape)
+        self.assertEqual(v.grad.shape, [])
+        np.testing.assert_allclose(out[0, 0, 0, 0], np.ones(()) * 2)
+        x_grad_expected = np.ones((2, 3, 4, 5))
+        x_grad_expected[0, 0, 0, 0] = 0
+        np.testing.assert_allclose(x.grad, x_grad_expected)
+        value_grad_expected = np.ones(())
+        np.testing.assert_allclose(v.grad, value_grad_expected)
 
     def test_expand(self):
         # case1
@@ -1230,6 +1347,7 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out.shape, [])
 
     def test_std(self):
+        # 1) x is 0D
         x = paddle.rand([])
         x.stop_gradient = False
         out1 = paddle.std(x)
@@ -1237,18 +1355,24 @@ class TestSundryAPI(unittest.TestCase):
         out1.backward()
         out2.backward()
 
-        # checkout shape of out
         self.assertEqual(out1.shape, [])
         self.assertEqual(out2.shape, [])
-
-        # checkout value of out
         self.assertEqual(out1, 0)
         self.assertEqual(out2, 0)
 
-        # checkout backward
         self.assertEqual(x.grad.shape, [])
 
+        # 2) x is ND
+        x = paddle.rand([3, 5])
+        x.stop_gradient = False
+        out = paddle.std(x)
+        out.backward()
+
+        self.assertEqual(out.shape, [])
+        self.assertEqual(x.grad.shape, [3, 5])
+
     def test_var(self):
+        # 1) x is 0D
         x = paddle.rand([])
         x.stop_gradient = False
         out1 = paddle.var(x)
@@ -1256,17 +1380,22 @@ class TestSundryAPI(unittest.TestCase):
         out1.backward()
         out2.backward()
 
-        # checkout shape of out
         self.assertEqual(out1.shape, [])
         self.assertEqual(out2.shape, [])
-
-        # checkout value of out
         self.assertEqual(out1, 0)
         self.assertEqual(out2, 0)
 
-        # checkout backward
         self.assertEqual(x.grad.shape, [])
         np.testing.assert_allclose(x.grad, 0)
+
+        # 2) x is ND
+        x = paddle.rand([3, 5])
+        x.stop_gradient = False
+        out = paddle.std(x)
+        out.backward()
+
+        self.assertEqual(out.shape, [])
+        self.assertEqual(x.grad.shape, [3, 5])
 
     def test_quantile(self):
         # 1) x is 0D
@@ -1463,7 +1592,6 @@ class TestSundryAPI(unittest.TestCase):
         out = paddle.clip(x, -5, 5)
         out.retain_grads()
         out.backward()
-
         self.assertEqual(out.shape, [])
         self.assertEqual(out.grad.shape, [])
         self.assertEqual(x.grad.shape, [])
@@ -1473,7 +1601,6 @@ class TestSundryAPI(unittest.TestCase):
         out1 = paddle.clip(x1, paddle.full([], 5.0), paddle.full([], 5.0))
         out1.retain_grads()
         out1.backward()
-
         self.assertEqual(out1.shape, [])
         self.assertEqual(out1.grad.shape, [])
         self.assertEqual(x1.grad.shape, [])
@@ -2560,6 +2687,118 @@ class TestSundryAPIStatic(unittest.TestCase):
         res = self.exe.run(prog, fetch_list=[zero_dim_var])
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[0], 0.5)
+
+    @prog_scope()
+    def test_getitem(self):
+        # case1: When all axis have a scalar indice, output should be a 0-d Tensor;
+        x = paddle.arange(2 * 3 * 4 * 5).reshape((2, 3, 4, 5))
+        x.stop_gradient = False
+        out = x[1, 2, 3, 4]
+        paddle.static.append_backward(out.sum())
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out, x.grad_name, out.grad_name])
+
+        self.assertEqual(res[0].shape, ())
+        np.testing.assert_allclose(res[0], np.array(119))
+        self.assertEqual(res[2].shape, ())
+        np.testing.assert_allclose(res[2], 1.0)
+        self.assertEqual(res[1].shape, (2, 3, 4, 5))
+        x_grad_expected = np.zeros((2, 3, 4, 5))
+        x_grad_expected[1, 2, 3, 4] = 1.0
+        np.testing.assert_allclose(res[1], x_grad_expected)
+
+        # case2: When one axis has a 0-d Tensor indice, the output should be same as int indice.
+        x2 = paddle.arange(2 * 3 * 4 * 5).reshape((2, 3, 4, 5))
+        out1 = x2[1, 2]
+        out2 = x2[
+            paddle.full([], 1, dtype='int32'), paddle.full([], 2, dtype='int32')
+        ]
+        res = self.exe.run(prog, fetch_list=[out1, out2])
+        np.testing.assert_allclose(res[0], res[1])
+
+        # case3: When all axis have a scalar indice (i.e. case1) and has None indice,
+        # ndim of output should be same with numbers of None.
+        x3 = paddle.arange(2 * 3 * 4 * 5).reshape((2, 3, 4, 5))
+        out3 = x3[1, 2, None, 3, 4]
+        out4 = x3[1, None, 2, None, 3, 4]
+        res = self.exe.run(prog, fetch_list=[out3, out4])
+        self.assertEqual(res[0].shape, (1,))
+        np.testing.assert_allclose(res[0], np.array([119]))
+        self.assertEqual(res[1].shape, (1, 1))
+        np.testing.assert_allclose(res[1], np.array([[119]]))
+
+        # case4: 1-D Tensor will be treated as vector, no axis decrease will happen.
+        x4 = paddle.ones((2, 3, 4))
+        indice = paddle.ones([1], dtype='int32')
+        out5 = x4[indice]
+        out6 = x4[indice, indice]
+        res = self.exe.run(prog, fetch_list=[out5, out6])
+
+        self.assertEqual(res[0].shape, (1, 3, 4))
+        np.testing.assert_allclose(res[0], np.ones((1, 3, 4)))
+        self.assertEqual(res[1].shape, (1, 4))
+        np.testing.assert_allclose(res[1], np.ones((1, 4)))
+
+    @prog_scope()
+    def test_setitem(self):
+        # NOTE(zoooo0820): __setitem__ has gradient problem in static graph.
+        # To solve this, we may not support __setitem__ in static graph.
+        # These unit tests will delete soon.
+
+        # case1: all axis have a scalar indice
+        x = paddle.arange(2 * 3 * 4 * 5).reshape((2, 3, 4, 5))
+        x.stop_gradient = False
+        out = x * 2
+        out[1, 2, 3, 4] = 10
+        paddle.static.append_backward(out.sum())
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out, x.grad_name])
+
+        self.assertEqual(out.shape, x.shape)
+        np.testing.assert_allclose(res[0][1, 2, 3, 4], np.array(10))
+        self.assertEqual(res[1].shape, (2, 3, 4, 5))
+        x_grad_expected = np.ones((2, 3, 4, 5)) * 2
+        x_grad_expected[1, 2, 3, 4] = 0
+        np.testing.assert_allclose(res[1], x_grad_expected)
+
+        # case2: 0-D Tensor indice in some axis
+        # NOTE(zoooo0820): Now, int/slice with 0-D Tensor will still be
+        # treated as combined indexing, which is not support backward.
+        # There should have more test cases such as out[1, indice, :] = 0.5 when this
+        # problem is fixed.
+        x = paddle.randn((2, 3, 4, 5))
+        x.stop_gradient = False
+        indice = paddle.full([], 1, dtype='int32')
+        out = x * 1
+        out[indice, indice] = 0.5
+        paddle.static.append_backward(out.sum())
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out, x.grad_name])
+
+        self.assertEqual(out.shape, x.shape)
+        np.testing.assert_allclose(res[0][1, 1], np.ones((4, 5)) * 0.5)
+        x_grad_expected = np.ones((2, 3, 4, 5))
+        x_grad_expected[1, 1] = 0
+        np.testing.assert_allclose(res[1], x_grad_expected)
+
+        # case3：0-D Tensor indice in some axis, value is a Tensor
+        # and there is broadcast
+        x = paddle.randn((2, 3, 4, 5))
+        x.stop_gradient = False
+        v = paddle.ones((4, 5), dtype='float32') * 5
+        v.stop_gradient = False
+        indice = paddle.full([], 1, dtype='int32')
+        out = x * 1
+        out[indice] = v
+        paddle.static.append_backward(out.sum())
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out, x.grad_name, v.grad_name])
+
+        self.assertEqual(out.shape, x.shape)
+        np.testing.assert_allclose(res[0][1], np.ones((3, 4, 5)) * 5)
+        x_grad_expected = np.ones((2, 3, 4, 5))
+        x_grad_expected[1] = 0
+        np.testing.assert_allclose(res[1], x_grad_expected)
 
     @prog_scope()
     def test_expand(self):
@@ -5283,8 +5522,7 @@ class TestDistribution(unittest.TestCase):
         self.assertEqual(
             d.log_prob(paddle.full([], 2, dtype='int64')).shape, []
         )
-        # because use paddle.sum
-        # self.assertEqual(d.entropy().shape, [])
+        self.assertEqual(d.entropy().shape, [])
 
     def test_Normal(self):
         normal = paddle.distribution.Normal(0.0, 3.0)
@@ -5327,10 +5565,9 @@ class TestDistribution(unittest.TestCase):
         self.assertEqual(beta.sample([]).shape, [])
         self.assertEqual(beta.mean.shape, [])
         self.assertEqual(beta.variance.shape, [])
-        # because use paddle.sum
-        # self.assertEqual(beta.prob(self.x).shape, [])
-        # self.assertEqual(beta.log_prob(self.x).shape, [])
-        # self.assertEqual(beta.entropy().shape, [])
+        self.assertEqual(beta.prob(self.x).shape, [])
+        self.assertEqual(beta.log_prob(self.x).shape, [])
+        self.assertEqual(beta.entropy().shape, [])
 
     def test_kl_divergence(self):
         p = paddle.distribution.Beta(alpha=0.5, beta=0.5)
@@ -5389,10 +5626,9 @@ class TestDistribution(unittest.TestCase):
         d = paddle.distribution.Multinomial(
             10, paddle.to_tensor([0.2, 0.3, 0.5])
         )
-        # because use paddle.sum
-        # self.assertEqual(d.prob(self.x).shape, [])
-        # self.assertEqual(d.log_prob(self.x).shape, [])
-        # self.assertEqual(d.entropy().shape, [])
+        self.assertEqual(d.prob(self.x).shape, [])
+        self.assertEqual(d.log_prob(self.x).shape, [])
+        self.assertEqual(d.entropy().shape, [])
 
 
 class TestLossAPI(unittest.TestCase):
@@ -5410,10 +5646,10 @@ class TestLossAPI(unittest.TestCase):
         fg_num_1 = paddle.full([1], 2.0)
 
         out0 = F.sigmoid_focal_loss(
-            logit, label, normalizer=fg_num_0, reduction='mean'
+            logit, label, normalizer=fg_num_0, reduction='sum'
         )
         out1 = F.sigmoid_focal_loss(
-            logit, label, normalizer=fg_num_1, reduction='mean'
+            logit, label, normalizer=fg_num_1, reduction='sum'
         )
         out0.retain_grads()
 
@@ -5427,6 +5663,28 @@ class TestLossAPI(unittest.TestCase):
         self.assertEqual(out1.shape, [])
         self.assertEqual(out0.grad.shape, [])
         self.assertEqual(logit.grad.shape, [2, 3])
+
+    def test_cross_entropy(self):
+        input = paddle.rand([3, 5])
+        input.stop_gradient = False
+        label = paddle.randint(0, 5, shape=[3])
+
+        loss = paddle.nn.functional.cross_entropy(input, label, reduction='sum')
+        loss.backward()
+
+        self.assertEqual(loss.shape, [])
+        self.assertEqual(input.grad.shape, [3, 5])
+
+    def test_l1_loss(self):
+        input = paddle.rand([3, 5])
+        input.stop_gradient = False
+        label = paddle.rand([3, 5])
+
+        loss = paddle.nn.functional.l1_loss(input, label, reduction='mean')
+        loss.backward()
+
+        self.assertEqual(loss.shape, [])
+        self.assertEqual(input.grad.shape, [3, 5])
 
 
 class TestLossAPIStatic(unittest.TestCase):
@@ -5458,11 +5716,41 @@ class TestLossAPIStatic(unittest.TestCase):
             prog, fetch_list=[out0, out1, out0.grad_name, logit.grad_name]
         )
         np.testing.assert_allclose(res[0], res[1])
-        # because static use paddle.mean
-        # self.assertEqual(res[0].shape, ())
-        # self.assertEqual(res[1].shape, ())
-        # self.assertEqual(res[2].shape, ())
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, ())
+        self.assertEqual(res[2].shape, ())
         self.assertEqual(res[3].shape, (2, 3))
+
+    @prog_scope()
+    def test_cross_entropy(self):
+        input = paddle.rand([3, 5])
+        input.stop_gradient = False
+        label = paddle.randint(0, 5, shape=[3])
+        label.stop_gradient = False
+
+        loss = paddle.nn.functional.cross_entropy(
+            input, label, reduction='mean'
+        )
+        paddle.static.append_backward(loss)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[loss, input.grad_name])
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, (3, 5))
+
+    @prog_scope()
+    def test_l1_loss(self):
+        input = paddle.rand([3, 5])
+        input.stop_gradient = False
+        label = paddle.rand([3, 5])
+
+        loss = paddle.nn.functional.l1_loss(input, label, reduction='sum')
+        paddle.static.append_backward(loss)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[loss, input.grad_name])
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, (3, 5))
 
 
 if __name__ == "__main__":

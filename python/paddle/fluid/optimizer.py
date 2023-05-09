@@ -5968,7 +5968,7 @@ class PipelineOptimizer:
         }
         assert -1 not in var.shape
         return (
-            reduce(lambda x, y: x * y, var.shape)
+            reduce(lambda x, y: x * y, var.shape, 1)
             * dtype_to_size[var.dtype]
             / 1024.0
             / 1024.0
