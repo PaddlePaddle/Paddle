@@ -630,7 +630,7 @@ class TestHessianBatchFirst(unittest.TestCase):
 
     def func_ndim_bigger_than_2(self):
         def func(x):
-            return (x * x).sum()
+            return (x * x).sum([1, 2, 3])
 
         with self.assertRaises(ValueError):
             x = paddle.ones([3, 3, 3, 3])
