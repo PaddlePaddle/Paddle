@@ -364,7 +364,6 @@ void PSGPUWrapper::PreBuildTask(std::shared_ptr<HeterContext> gpu_task,
 
   add_key_to_gputask(gpu_task);
 }
-
 void PSGPUWrapper::add_slot_feature(std::shared_ptr<HeterContext> gpu_task) {
   platform::Timer timeline;
   platform::Timer time_stage;
@@ -437,6 +436,7 @@ void PSGPUWrapper::add_slot_feature(std::shared_ptr<HeterContext> gpu_task) {
   threads.clear();
   time_stage.Pause();
   divide_nodeid_cost = time_stage.ElapsedSec();
+if (slot_num_for_pull_feature_ > 0) {
 #if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_GPU_GRAPH)
   gpu_task->sub_graph_feas =
       reinterpret_cast<void*>(new std::vector<GpuPsCommGraphFea>);
@@ -657,12 +657,32 @@ void PSGPUWrapper::add_slot_feature(std::shared_ptr<HeterContext> gpu_task) {
           << " get_feature_id_cost " << get_feature_id_cost
           << " add_feature_to_set_cost " << add_feature_to_set_cost
           << " add_feature_to_key_cost " << add_feature_to_key_cost;
+  }
+#if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_GPU_GRAPH)
+  if (float_slot_num_ > 0) {
+    if (FLAGS_gpugraph_storage_mode ==
+                 paddle::framework::GpuGraphStorageMode::
+                     MEM_EMB_FEATURE_AND_GPU_GRAPH ||
+             FLAGS_gpugraph_storage_mode ==
+                 paddle::framework::GpuGraphStorageMode::
+                     SSD_EMB_AND_MEM_FEATURE_GPU_GRAPH) {
+      auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
+      gpu_task->sub_graph_float_feas =
+          reinterpret_cast<void*>(new std::vector<GpuPsCommGraphFloatFea>);
+      std::vector<GpuPsCommGraphFloatFea>& sub_graph_float_feas =
+          *((std::vector<GpuPsCommGraphFloatFea>*)gpu_task->sub_graph_float_feas);
+      if (float_slot_num_ > 0) {
+        sub_graph_float_feas = gpu_graph_ptr->get_sub_graph_float_fea(node_ids, float_slot_num_);
+      }
+    }
+  }
+#endif
 }
 
 void PSGPUWrapper::BuildPull(std::shared_ptr<HeterContext> gpu_task) {
   platform::Timer timeline;
 #if defined(PADDLE_WITH_PSCORE) && defined(PADDLE_WITH_GPU_GRAPH)
-  if (slot_num_for_pull_feature_ > 0 &&
+  if ((slot_num_for_pull_feature_ > 0 || float_slot_num_ > 0) &&
       FLAGS_gpugraph_storage_mode !=
           paddle::framework::GpuGraphStorageMode::WHOLE_HBM) {
     add_slot_feature(gpu_task);
@@ -1390,6 +1410,18 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
           (std::vector<GpuPsCommGraphFea>*)gpu_task->sub_graph_feas;
       gpu_graph_ptr->build_gpu_graph_fea((*tmp)[i], i);
     }
+
+    if (float_slot_num_> 0 &&
+        (FLAGS_gpugraph_storage_mode == paddle::framework::GpuGraphStorageMode::
+                                            MEM_EMB_FEATURE_AND_GPU_GRAPH ||
+         FLAGS_gpugraph_storage_mode ==
+             paddle::framework::GpuGraphStorageMode::
+                 SSD_EMB_AND_MEM_FEATURE_GPU_GRAPH)) {
+      auto gpu_graph_ptr = GraphGpuWrapper::GetInstance();
+      std::vector<GpuPsCommGraphFloatFea>* float_tmp =
+          (std::vector<GpuPsCommGraphFloatFea>*)gpu_task->sub_graph_float_feas;
+      gpu_graph_ptr->build_gpu_graph_float_fea((*float_tmp)[i], i);
+    }
 #endif
     stagetime.Pause();
     auto build_feature_span = stagetime.ElapsedSec();
@@ -1462,6 +1494,11 @@ void PSGPUWrapper::BuildGPUTask(std::shared_ptr<HeterContext> gpu_task) {
         (std::vector<GpuPsCommGraphFea>*)gpu_task->sub_graph_feas;
     delete tmp;
     gpu_task->sub_graph_feas = NULL;
+
+    std::vector<GpuPsCommGraphFloatFea>* float_tmp =
+        (std::vector<GpuPsCommGraphFloatFea>*)gpu_task->sub_graph_float_feas;
+    delete float_tmp;
+    gpu_task->sub_graph_float_feas = NULL;
   }
 #endif
   stagetime.Pause();

@@ -94,6 +94,7 @@ class HeterContext {
   int multi_mf_dim_ = 0;
 
   void* sub_graph_feas = NULL;
+  void* sub_graph_float_feas = NULL;
   uint32_t shard_num_ = 37;
   uint16_t pass_id_ = 0;
   uint64_t size() {

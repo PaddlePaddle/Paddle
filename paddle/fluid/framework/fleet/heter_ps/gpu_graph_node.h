@@ -528,6 +528,84 @@ struct GpuPsCommGraphFea {
   }
 };  // end of struct GpuPsCommGraphFea
 
+struct GpuPsCommGraphFloatFea {
+  uint64_t *node_list;     // only locate on host side, the list of node id
+  float* feature_list;  // locate on both side
+  uint8_t *slot_id_list;   // locate on both side
+  GpuPsFeaInfo
+      *fea_info_list;  // only locate on host side, the list of fea_info
+  uint64_t feature_size, node_size, feature_capacity;
+
+  // the size of feature array and graph_node_list array
+  GpuPsCommGraphFloatFea()
+      : node_list(NULL),
+        feature_list(NULL),
+        slot_id_list(NULL),
+        fea_info_list(NULL),
+        feature_size(0),
+        node_size(0) {}
+  GpuPsCommGraphFloatFea(uint64_t *node_list_,
+                         float *feature_list_,
+                         uint8_t *slot_id_list_,
+                         GpuPsFeaInfo *fea_info_list_,
+                         uint64_t feature_size_,
+                         uint64_t node_size_)
+      : node_list(node_list_),
+        feature_list(feature_list_),
+        slot_id_list(slot_id_list_),
+        fea_info_list(fea_info_list_),
+        feature_size(feature_size_),
+        node_size(node_size_) {}
+  void init_on_cpu(uint64_t feature_size,
+                   uint64_t node_size,
+                   uint32_t slot_num) {
+    PADDLE_ENFORCE_LE(
+        slot_num,
+        255,
+        platform::errors::InvalidArgument(
+            "The number of slot_num should not be greater than 255 "
+            ", but the slot_num is %d ",
+            slot_num));
+    this->feature_size = feature_size;
+    this->node_size = node_size;
+    this->node_list = new uint64_t[node_size];
+    this->feature_list = new float[feature_size];
+    this->slot_id_list = new uint8_t[feature_size];
+    this->fea_info_list = new GpuPsFeaInfo[node_size];
+  }
+  void release_on_cpu() {
+#define DEL_PTR_ARRAY(p) \
+  if (p != nullptr) {    \
+    delete[] p;          \
+    p = nullptr;         \
+  }
+    DEL_PTR_ARRAY(node_list);
+    DEL_PTR_ARRAY(feature_list);
+    DEL_PTR_ARRAY(slot_id_list);
+    DEL_PTR_ARRAY(fea_info_list);
+  }
+  void display_on_cpu() const {
+    VLOG(1) << "feature_size = " << feature_size;
+    VLOG(1) << "node_size = " << node_size;
+    for (uint64_t i = 0; i < feature_size; i++) {
+      VLOG(1) << "feature_list[" << i << "] = " << feature_list[i];
+    }
+    for (uint64_t i = 0; i < node_size; i++) {
+      VLOG(1) << "node_id[" << node_list[i]
+              << "] feature_size = " << fea_info_list[i].feature_size;
+      std::string str;
+      uint32_t offset = fea_info_list[i].feature_offset;
+      for (uint64_t j = 0; j < fea_info_list[i].feature_size; j++) {
+        if (j > 0) str += ",";
+        str += std::to_string(slot_id_list[j + offset]);
+        str += ":";
+        str += std::to_string(feature_list[j + offset]);
+      }
+      VLOG(1) << str;
+    }
+  }
+};  // end of struct GpuPsCommGraphFloatFea
+
 }  // end of namespace framework
 }  // end of namespace paddle
 #endif

@@ -17,7 +17,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/fleet/heter_ps/hashtable.h"
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh.h"
-
 namespace paddle {
 namespace framework {
 
@@ -459,7 +458,6 @@ template void HashTable<int64_t, unsigned int>::get<cudaStream_t>(
 // HashTable<uint64_t, paddle::framework::FeatureValue>::get<cudaStream_t>(
 //    const uint64_t* d_keys, char* d_vals, size_t len, cudaStream_t
 //    stream);
-
 template void HashTable<uint64_t, float>::insert<cudaStream_t>(
     const uint64_t* d_keys,
     const float* d_vals,

@@ -122,7 +122,7 @@ class GraphShard {
   }
   GraphNode *add_graph_node(uint64_t id);
   GraphNode *add_graph_node(Node *node);
-  FeatureNode *add_feature_node(uint64_t id, bool is_overlap = true);
+  FeatureNode *add_feature_node(uint64_t id, bool is_overlap = true, int float_fea_num = 0);
   Node *find_node(uint64_t id);
   void delete_node(uint64_t id);
   void clear();
@@ -726,6 +726,8 @@ class GraphTable : public Table {
       int idx, const std::vector<uint64_t> &ids);
   virtual ::paddle::framework::GpuPsCommGraphFea make_gpu_ps_graph_fea(
       int gpu_id, std::vector<uint64_t> &node_ids, int slot_num);  // NOLINT
+  virtual paddle::framework::GpuPsCommGraphFloatFea make_gpu_ps_graph_float_fea(
+      int gpu_id, std::vector<uint64_t> &node_ids, int float_slot_num);  // NOLINT
   int32_t Load_to_ssd(const std::string &path, const std::string &param);
   int64_t load_graph_to_memory_from_ssd(int idx,
                                         std::vector<uint64_t> &ids);  // NOLINT
@@ -780,7 +782,13 @@ class GraphTable : public Table {
   std::vector<std::vector<std::string>> feat_name;
   std::vector<std::vector<std::string>> feat_dtype;
   std::vector<std::vector<int32_t>> feat_shape;
+  std::vector<std::vector<std::string>> float_feat_name;
+  std::vector<std::vector<std::string>> float_feat_dtype;
+  std::vector<std::vector<int32_t>> float_feat_shape;
+  // int slot_fea_num_{-1};
+  // int float_fea_num_{-1};
   std::vector<std::unordered_map<std::string, int32_t>> feat_id_map;
+  std::vector<std::unordered_map<std::string, int32_t>> float_feat_id_map;
   std::unordered_map<std::string, int> feature_to_id, edge_to_id;
   std::vector<std::string> id_to_feature, id_to_edge;
   std::string table_name;

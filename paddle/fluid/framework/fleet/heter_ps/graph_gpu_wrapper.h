@@ -70,10 +70,13 @@ class GraphGpuWrapper {
   void upload_batch(int table_type,
                     int slice_num,
                     const std::string& edge_type);
-  void upload_batch(int table_type, int slice_num, int slot_num);
+  void upload_batch(int table_type, int slice_num, int slot_num, int float_slot_num);
   std::vector<GpuPsCommGraphFea> get_sub_graph_fea(
       std::vector<std::vector<uint64_t>>& node_ids, int slot_num);    // NOLINT
+  std::vector<GpuPsCommGraphFloatFea> get_sub_graph_float_fea(
+      std::vector<std::vector<uint64_t>>& node_ids, int float_slot_num);    // NOLINT
   void build_gpu_graph_fea(GpuPsCommGraphFea& sub_graph_fea, int i);  // NOLINT
+  void build_gpu_graph_float_fea(GpuPsCommGraphFloatFea& sub_graph_float_fea, int i);  // NOLINT
   void add_table_feat_conf(std::string table_name,
                            std::string feat_name,
                            std::string feat_dtype,
@@ -165,6 +168,7 @@ class GraphGpuWrapper {
   std::vector<std::shared_ptr<phi::Allocation>> get_edge_type_graph(
       int gpu_id, int edge_type_len);
   std::vector<int> slot_feature_num_map() const;
+  void set_feature_info(int slot_num_for_pull_feature, int float_slot_num);
   void set_feature_separator(std::string ch);
   void set_slot_feature_separator(std::string ch);
   void set_infer_mode(bool infer_mode);
@@ -183,7 +187,14 @@ class GraphGpuWrapper {
       std::shared_ptr<phi::Allocation>& size_list_prefix_sum,
       std::shared_ptr<phi::Allocation>& feature_list,  // NOLINT
       std::shared_ptr<phi::Allocation>& slot_list);    // NOLINT
-
+  int get_float_feature_info_of_nodes(
+      int gpu_id,
+      uint64_t *d_nodes,
+      int node_num,
+      uint32_t *size_list,
+      uint32_t *size_list_prefix_sum,
+      std::shared_ptr<phi::Allocation> &feature_list,  // NOLINT  
+      std::shared_ptr<phi::Allocation> &slot_list);  // NOLINT
   void init_metapath(std::string cur_metapath,
                      int cur_metapath_index,
                      int cur_metapath_len);
@@ -213,6 +224,8 @@ class GraphGpuWrapper {
   int search_level = 1;
   void* graph_table;
   int upload_num = 8;
+  int slot_num_for_pull_feature_ = 0;
+  int float_slot_num_ = 0;
   std::shared_ptr<::ThreadPool> upload_task_pool;
   std::string feature_separator_ = std::string(" ");
   bool conf_initialized_ = false;

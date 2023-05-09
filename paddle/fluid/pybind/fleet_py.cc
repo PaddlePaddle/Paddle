@@ -395,7 +395,7 @@ void BindGraphGpuWrapper(py::module* m) {
            py::overload_cast<int, int, const std::string&>(
                &GraphGpuWrapper::upload_batch))
       .def("upload_batch",
-           py::overload_cast<int, int, int>(&GraphGpuWrapper::upload_batch))
+           py::overload_cast<int, int, int, int>(&GraphGpuWrapper::upload_batch))
       .def(
           "get_all_id",
           py::overload_cast<int, int, int, std::vector<std::vector<uint64_t>>*>(
