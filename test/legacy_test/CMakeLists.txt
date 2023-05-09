@@ -68,6 +68,7 @@ endforeach()
 
 if(NOT WITH_COVERAGE)
   list(REMOVE_ITEM TEST_OPS test_hapi_hub)
+  list(REMOVE_ITEM DIST_TEST_OPS test_dist_hapi_model)
 endif()
 
 if(NOT WITH_PYTHON AND ON_INFER)
