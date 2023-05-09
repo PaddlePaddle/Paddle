@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Note(andsonder): Fused bn activation only used in the gpu place.
-#if defined(PADDLE_WITH_CUDA) and CUDNN_VERSION >= 7401
 #include <algorithm>
 #include <cfloat>
 #include <string>
 #include <vector>
+
+#ifdef __NVCC__
 #include "cub/cub.cuh"
+#endif
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
@@ -51,6 +52,8 @@ void FusedBatchNormActKernel(const Context &dev_ctx,
                              DenseTensor *saved_mean,
                              DenseTensor *saved_variance,
                              DenseTensor *reserve_space) {
+// Note(andsonder): Fused bn activation only used in the gpu place.
+#if defined(PADDLE_WITH_CUDA) and CUDNN_VERSION >= 7401
   using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
   using BatchNormParamType = typename CudnnDataType::BatchNormParamType;
 #if CUDNN_VERSION < 7401
@@ -213,6 +216,7 @@ void FusedBatchNormActKernel(const Context &dev_ctx,
       phi::dynload::cudnnDestroyTensorDescriptor(data_desc_));
   PADDLE_ENFORCE_GPU_SUCCESS(
       phi::dynload::cudnnDestroyTensorDescriptor(bn_param_desc_));
+#endif
 }
 
 }  // namespace fusion
@@ -232,4 +236,3 @@ PD_REGISTER_KERNEL(fused_batch_norm_act,
     kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
   }
 }
-#endif
