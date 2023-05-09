@@ -494,6 +494,16 @@
     func : cumprod
   backward : cumprod_grad
 
+- op : deformable_conv
+  args : (Tensor x, Tensor offset, Tensor filter, Tensor mask, int[] strides={1, 1}, int[] paddings={0, 0}, int[] dilations={1, 1}, int deformable_groups=1, int groups=1, int im2col_step=64)
+  output : Tensor(out)
+  infer_meta :
+    func : DeformableConvInferMeta
+  kernel :
+    func : deformable_conv
+    data_type : x
+  backward : deformable_conv_grad
+
 - op : det
   args : (Tensor x)
   output : Tensor

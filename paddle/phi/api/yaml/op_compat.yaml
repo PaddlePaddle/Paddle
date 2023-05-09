@@ -569,17 +569,10 @@
   outputs :
     out : Out
 
-- op : deformable_conv
-  backward : deformable_conv_grad
+- op : deformable_conv (deformable_conv_v1)
+  backward : deformable_conv_grad (deformable_conv_v1_grad)
   inputs :
     {x : Input, offset : Offset, filter : Filter, mask : Mask}
-  outputs :
-    out : Output
-
-- op : deformable_conv_v1
-  backward : deformable_conv_v1_grad
-  inputs :
-    {x : Input, offset : Offset, filter : Filter}
   outputs :
     out : Output
 
