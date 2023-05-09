@@ -28,9 +28,18 @@ sys.path.append("../../python/paddle/fluid/tests/unittests")
 from eager_op_test import OpTest
 
 
+def sequence_mask_wraper(x, maxlen_tensor=None, maxlen=-1, mask_dtype='int64'):
+    if maxlen_tensor is not None:
+        maxlen = maxlen_tensor
+    return paddle.nn.functional.sequence_mask(
+        x, maxlen=maxlen, dtype=mask_dtype
+    )
+
+
 class SequenceMaskTestBase(OpTest):
     def initDefaultParameters(self):
         self.op_type = 'sequence_mask'
+        self.python_api = sequence_mask_wraper
         self.maxlen = 10
         self.mask_dtype = 'int64'
         self.x = [[0, 3, 4], [5, 7, 9]]
@@ -64,7 +73,7 @@ class SequenceMaskTestBase(OpTest):
         return (index_broadcast < x_broadcast).astype(self.mask_dtype)
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
 
 class SequenceMaskTest1(SequenceMaskTestBase):
@@ -100,6 +109,7 @@ class SequenceMaskTest6(SequenceMaskTestBase):
 class SequenceMaskTestBase_tensor_attr(OpTest):
     def initDefaultParameters(self):
         self.op_type = 'sequence_mask'
+        self.python_api = sequence_mask_wraper
         self.maxlen = 10
         self.maxlen_tensor = np.ones((1), 'int32') * 10
         self.mask_dtype = 'int64'
@@ -131,7 +141,7 @@ class SequenceMaskTestBase_tensor_attr(OpTest):
         return (index_broadcast < x_broadcast).astype(self.mask_dtype)
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
 
 class SequenceMaskTest1_tensor_attr(SequenceMaskTestBase_tensor_attr):
