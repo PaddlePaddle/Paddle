@@ -152,7 +152,7 @@ class XPUContextResource {
 
  private:
   bool owned_stream_{true};
-  void* stream_;
+  void* stream_{nullptr};
   phi::Place place_;
 
   int driver_version_;
@@ -178,9 +178,8 @@ class ResourceManager {
   std::mutex cpu_mutex_;
   std::unique_ptr<CPUContextResource> cpu_resource_{nullptr};
 
-// GPU Resource
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-
+  // GPU Resource
  public:
   void* InitGPUResource(const phi::Place& place, void* stream);
   void DestroyGPUResource(void* stream);
@@ -200,9 +199,8 @@ class ResourceManager {
       gpu_resources_;
 #endif
 
-// XPU Resource
 #if defined(PADDLE_WITH_XPU)
-
+  // XPU Resource
  public:
   void* InitXPUResource(const phi::Place& place, void* stream);
   void DestroyXPUResource(void* stream);

@@ -86,16 +86,18 @@ void InferXPUContext::SetL3Info(size_t l3_size,
       if (l3_owned_) {
         xpu_free(l3_ptr_);
       }
-      xpu_malloc(&l3_ptr_, l3_size, XPU_MEM_L3);
-      if (l3_ptr_ != nullptr) {
-        l3_size_ = l3_size;
-        l3_owned_ = true;
-        l3_autotune_size_ = l3_autotune_size;
-      } else {
-        VLOG(3) << "malloc l3(" << l3_size << ") failed. No l3 will be used.";
-        l3_size_ = 0;
-        l3_owned_ = false;
-        l3_autotune_size_ = 0;
+      if (l3_size > 0) {
+        xpu_malloc(&l3_ptr_, l3_size, XPU_MEM_L3);
+        if (l3_ptr_ != nullptr) {
+          l3_size_ = l3_size;
+          l3_owned_ = true;
+          l3_autotune_size_ = l3_autotune_size;
+        } else {
+          VLOG(3) << "malloc l3(" << l3_size << ") failed. No l3 will be used.";
+          l3_size_ = 0;
+          l3_owned_ = false;
+          l3_autotune_size_ = 0;
+        }
       }
     }
   } else {

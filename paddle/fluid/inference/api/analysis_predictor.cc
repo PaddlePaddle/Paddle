@@ -347,6 +347,7 @@ bool AnalysisPredictor::Init(
         static_cast<phi::XPUContext *>(
             platform::DeviceContextPool::Instance().Get(place_))
             ->stream();
+    // LOG(INFO)<<"xxxxxxx, global_stream: "<<(global_stream!=nullptr);
     if (predictor_stream_ == nullptr) {
       predictor_stream_ = global_stream;
     }

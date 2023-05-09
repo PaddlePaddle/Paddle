@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "glog/logging.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
@@ -38,6 +39,7 @@ void Conv2dXPUKernel(const Context& ctx,
                      float act_param,
                      DenseTensor* out,
                      DenseTensor* out_max) {
+  // LOG(INFO)<<"---- conv2d stream: "<<(ctx.stream()!=nullptr);
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto input_dims = x.dims();
   auto filter_dims = filter.dims();

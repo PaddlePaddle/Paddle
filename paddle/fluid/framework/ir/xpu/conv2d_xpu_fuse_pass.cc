@@ -553,12 +553,9 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
     } else {
       conv_bias.push_back(0);
     }
-    if (conv->Op()->HasAttr("padding_algorithm")) {
-      conv2d_xpu_op_desc.SetAttr(
-          "padding_algorithm",
-          PADDLE_GET_CONST(std::string,
-                           conv->Op()->GetAttr("padding_algorithm")));
-    }
+    conv2d_xpu_op_desc.SetAttr(
+        "padding_algorithm",
+        conv->Op()->GetAttrIfExists<std::string>("padding_algorithm"));
     auto conv_paddings =
         PADDLE_GET_CONST(std::vector<int>, conv->Op()->GetAttr("paddings"));
     if (conv_paddings.size() == 2) {

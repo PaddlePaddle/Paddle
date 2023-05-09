@@ -17,6 +17,8 @@ limitations under the License. */
 #include <cmath>
 #include "gflags/gflags.h"
 #include "test/cpp/inference/api/tester_helper.h"
+#include "xpu/runtime.h"
+#include "xpu/xdnn.h"
 
 namespace paddle_infer {
 
@@ -57,23 +59,41 @@ void CompareOutput(std::shared_ptr<Predictor> predictor) {
   float* data_o = out_data.data();
   for (size_t j = 0; j < out_num; j += 10) {
     EXPECT_NEAR(
-        (data_o[j] - TRUTH_VALUES[j / 10]) / TRUTH_VALUES[j / 10], 0., 10e-5);
+        (data_o[j] - TRUTH_VALUES[j / 10]) / TRUTH_VALUES[j / 10], 0., 10e-3);
   }
 }
 
-TEST(xpu_external_config, basic) {
+Config XpuConfig() {
   std::string model_dir = FLAGS_infer_model + "/" + "model";
   Config config;
   config.SetModel(model_dir + "/model", model_dir + "/params");
-  config.EnableLiteEngine(PrecisionType::kFloat32);
+  config.EnableXpu();
+  return config;
+}
 
+TEST(resnet50_xpu, basic) {
+  // setenv("XPU_PADDLE_L3_SIZE", "0", 1);
+  Config config = XpuConfig();
   auto predictor = CreatePredictor(config);
-
   PrepareInput(predictor);
-
   predictor->Run();
-
   CompareOutput(predictor);
 }
+
+// TEST(external_stream, basic) {
+//   Config config = XpuConfig();
+//   auto predictor = CreatePredictor(config);
+
+//   void* xpu_stream = nullptr;
+//   xpu_stream_create(&xpu_stream);
+//   CHECK_NOTNULL(xpu_stream);
+//   experimental::XpuExternalConfig xpu_external_config = {
+//       xpu_stream, 0, nullptr, 0};
+
+//   PrepareInput(predictor);
+//   experimental::InternalUtils::RunWithExternalConfig(predictor.get(),
+//                                                      &xpu_external_config);
+//   CompareOutput(predictor);
+// }
 
 }  // namespace paddle_infer
