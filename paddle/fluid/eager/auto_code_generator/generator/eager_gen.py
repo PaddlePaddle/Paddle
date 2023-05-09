@@ -1901,9 +1901,9 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
  }}
   """
             else:
-                if (
-                    self.grad_api_contents["backward_op"] not in prim_white_list
-                    or not is_invoke_forward_api
+                if not (
+                    self.grad_api_contents["backward_op"] in prim_white_list
+                    or is_invoke_forward_api
                 ):
                     Unavailable_log = f"""  if(trace_backward) {{
     PADDLE_THROW(phi::errors::Unavailable(
