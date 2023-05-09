@@ -364,7 +364,7 @@ class TestListWithCondGradInferVarType(unittest.TestCase):
         x = paddle.to_tensor([2, 3, 4], dtype='float32')
         index = paddle.to_tensor([1])
         res = net(x, index)
-        self.assertEqual(res[0], 48.0)
+        self.assertEqual(res, 48.0)
 
 
 if __name__ == '__main__':

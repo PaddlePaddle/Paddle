@@ -666,6 +666,140 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(zero_dim_var.shape, [])
         self.assertEqual(zero_dim_var.item(), 0.5)
 
+    def test_getitem(self):
+        # case1: When all axis have a scalar indice, output should be a 0-d Tensor;
+        x = paddle.arange(2 * 3 * 4 * 5).reshape((2, 3, 4, 5))
+        x.stop_gradient = False
+        out = x[1, 2, 3, 4]
+        out.retain_grads()
+        out.backward()
+        self.assertEqual(out.shape, [])
+        np.testing.assert_allclose(out, np.array(119))
+        self.assertEqual(out.grad.shape, [])
+        np.testing.assert_allclose(out.grad, 1.0)
+        self.assertEqual(x.grad.shape, [2, 3, 4, 5])
+        x_grad_expected = np.zeros((2, 3, 4, 5))
+        x_grad_expected[1, 2, 3, 4] = 1.0
+        np.testing.assert_allclose(x.grad, x_grad_expected)
+
+        # case2: When one axis has a 0-d Tensor indice, the output should be same as int indice.
+        x = paddle.arange(2 * 3 * 4 * 5).reshape((2, 3, 4, 5))
+        out1 = x[1, 2]
+        out2 = x[
+            paddle.full([], 1, dtype='int32'), paddle.full([], 2, dtype='int32')
+        ]
+        np.testing.assert_allclose(out1, out2)
+
+        # case3: When all axis have a scalar indice (i.e. case1) and has None indice,
+        # ndim of output should be same with numbers of None.
+        x = paddle.arange(2 * 3 * 4 * 5).reshape((2, 3, 4, 5))
+        out1 = x[1, 2, None, 3, 4]
+        self.assertEqual(out1.shape, [1])
+        np.testing.assert_allclose(out1, np.array([119]))
+        out2 = x[1, None, 2, None, 3, 4]
+        self.assertEqual(out2.shape, [1, 1])
+        np.testing.assert_allclose(out2, np.array([[119]]))
+
+        # case4: 1-D Tensor will be treated as vector, no axis decrease will happen.
+        x = paddle.ones((2, 3, 4))
+        indice = paddle.ones([1], dtype='int32')
+        out1 = x[indice]
+        self.assertEqual(out1.shape, [1, 3, 4])
+        np.testing.assert_allclose(out1, np.ones((1, 3, 4)))
+        out2 = x[indice, indice]
+        self.assertEqual(out2.shape, [1, 4])
+        np.testing.assert_allclose(out2, np.ones((1, 4)))
+
+    def test_setitem(self):
+        # case1: all axis have a scalar indice
+        x = paddle.arange(2 * 3 * 4 * 5).reshape((2, 3, 4, 5))
+        x.stop_gradient = False
+        out = x * 2
+        out[1, 2, 3, 4] = 10
+        out.backward()
+
+        self.assertEqual(out.shape, x.shape)
+        np.testing.assert_allclose(out[1, 2, 3, 4], np.array(10))
+        self.assertEqual(x.grad.shape, [2, 3, 4, 5])
+        x_grad_expected = np.ones((2, 3, 4, 5)) * 2
+        x_grad_expected[1, 2, 3, 4] = 0
+        np.testing.assert_allclose(x.grad, x_grad_expected)
+
+        # case2: 0-D Tensor indice in some axis
+        # NOTE(zoooo0820): Now, int/slice with 0-D Tensor will still be
+        # treated as combined indexing, which is not support backward.
+        # There should have more test cases such as out[1, indice, :] = 0.5 when this
+        # problem is fixed.
+        x = paddle.randn((2, 3, 4, 5))
+        x.stop_gradient = False
+        indice = paddle.full([], 1, dtype='int32')
+        out = x * 1
+        out[indice, indice] = 0.5
+        out.backward()
+
+        self.assertEqual(out.shape, x.shape)
+        np.testing.assert_allclose(out[1, 1], np.ones((4, 5)) * 0.5)
+        x_grad_expected = np.ones((2, 3, 4, 5))
+        x_grad_expected[1, 1] = 0
+        np.testing.assert_allclose(x.grad, x_grad_expected)
+
+        # case3：0-D Tensor indice in some axis, value is a Tensor
+        # and there is broadcast
+        x = paddle.randn((2, 3, 4, 5))
+        x.stop_gradient = False
+        v = paddle.ones((4, 5), dtype='float32') * 5
+        v.stop_gradient = False
+        indice = paddle.full([], 1, dtype='int32')
+        out = x * 1
+        out[indice] = v
+        out.backward()
+
+        self.assertEqual(out.shape, x.shape)
+        np.testing.assert_allclose(out[1], np.ones((3, 4, 5)) * 5)
+        x_grad_expected = np.ones((2, 3, 4, 5))
+        x_grad_expected[1] = 0
+        np.testing.assert_allclose(x.grad, x_grad_expected)
+        value_grad_expected = np.ones((4, 5)) * 3
+        np.testing.assert_allclose(v.grad, value_grad_expected)
+
+        # case4: value is a 0-D tensor and there is broadcast
+        x = paddle.randn((2, 3, 4, 5))
+        x.stop_gradient = False
+        v = paddle.ones([], dtype='float32') * 5
+        v.stop_gradient = False
+        out = x * 1
+        indice = paddle.full([], 0, dtype='int32')
+        out[indice] = v
+        out.backward()
+
+        self.assertEqual(out.shape, x.shape)
+        self.assertEqual(v.grad.shape, [])
+        np.testing.assert_allclose(out[0], np.ones((3, 4, 5)) * 5)
+        x_grad_expected = np.ones((2, 3, 4, 5))
+        x_grad_expected[0] = 0
+        np.testing.assert_allclose(x.grad, x_grad_expected)
+        value_grad_expected = np.ones(()) * 3 * 4 * 5
+        np.testing.assert_allclose(v.grad, value_grad_expected)
+
+        # case5: indice / value is 0-D Tensor, and there is no broadcast
+        x = paddle.randn((2, 3, 4, 5))
+        x.stop_gradient = False
+        v = paddle.ones([], dtype='float32') * 2
+        v.stop_gradient = False
+        out = x * 1
+        indice = paddle.full([], 0, dtype='int32')
+        out[indice, indice, indice, indice] = v
+        out.backward()
+
+        self.assertEqual(out.shape, x.shape)
+        self.assertEqual(v.grad.shape, [])
+        np.testing.assert_allclose(out[0, 0, 0, 0], np.ones(()) * 2)
+        x_grad_expected = np.ones((2, 3, 4, 5))
+        x_grad_expected[0, 0, 0, 0] = 0
+        np.testing.assert_allclose(x.grad, x_grad_expected)
+        value_grad_expected = np.ones(())
+        np.testing.assert_allclose(v.grad, value_grad_expected)
+
     def test_expand(self):
         # case1
         x = paddle.full([], 1, 'float32')
@@ -2469,6 +2603,118 @@ class TestSundryAPIStatic(unittest.TestCase):
         res = self.exe.run(prog, fetch_list=[zero_dim_var])
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[0], 0.5)
+
+    @prog_scope()
+    def test_getitem(self):
+        # case1: When all axis have a scalar indice, output should be a 0-d Tensor;
+        x = paddle.arange(2 * 3 * 4 * 5).reshape((2, 3, 4, 5))
+        x.stop_gradient = False
+        out = x[1, 2, 3, 4]
+        paddle.static.append_backward(out.sum())
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out, x.grad_name, out.grad_name])
+
+        self.assertEqual(res[0].shape, ())
+        np.testing.assert_allclose(res[0], np.array(119))
+        self.assertEqual(res[2].shape, ())
+        np.testing.assert_allclose(res[2], 1.0)
+        self.assertEqual(res[1].shape, (2, 3, 4, 5))
+        x_grad_expected = np.zeros((2, 3, 4, 5))
+        x_grad_expected[1, 2, 3, 4] = 1.0
+        np.testing.assert_allclose(res[1], x_grad_expected)
+
+        # case2: When one axis has a 0-d Tensor indice, the output should be same as int indice.
+        x2 = paddle.arange(2 * 3 * 4 * 5).reshape((2, 3, 4, 5))
+        out1 = x2[1, 2]
+        out2 = x2[
+            paddle.full([], 1, dtype='int32'), paddle.full([], 2, dtype='int32')
+        ]
+        res = self.exe.run(prog, fetch_list=[out1, out2])
+        np.testing.assert_allclose(res[0], res[1])
+
+        # case3: When all axis have a scalar indice (i.e. case1) and has None indice,
+        # ndim of output should be same with numbers of None.
+        x3 = paddle.arange(2 * 3 * 4 * 5).reshape((2, 3, 4, 5))
+        out3 = x3[1, 2, None, 3, 4]
+        out4 = x3[1, None, 2, None, 3, 4]
+        res = self.exe.run(prog, fetch_list=[out3, out4])
+        self.assertEqual(res[0].shape, (1,))
+        np.testing.assert_allclose(res[0], np.array([119]))
+        self.assertEqual(res[1].shape, (1, 1))
+        np.testing.assert_allclose(res[1], np.array([[119]]))
+
+        # case4: 1-D Tensor will be treated as vector, no axis decrease will happen.
+        x4 = paddle.ones((2, 3, 4))
+        indice = paddle.ones([1], dtype='int32')
+        out5 = x4[indice]
+        out6 = x4[indice, indice]
+        res = self.exe.run(prog, fetch_list=[out5, out6])
+
+        self.assertEqual(res[0].shape, (1, 3, 4))
+        np.testing.assert_allclose(res[0], np.ones((1, 3, 4)))
+        self.assertEqual(res[1].shape, (1, 4))
+        np.testing.assert_allclose(res[1], np.ones((1, 4)))
+
+    @prog_scope()
+    def test_setitem(self):
+        # NOTE(zoooo0820): __setitem__ has gradient problem in static graph.
+        # To solve this, we may not support __setitem__ in static graph.
+        # These unit tests will delete soon.
+
+        # case1: all axis have a scalar indice
+        x = paddle.arange(2 * 3 * 4 * 5).reshape((2, 3, 4, 5))
+        x.stop_gradient = False
+        out = x * 2
+        out[1, 2, 3, 4] = 10
+        paddle.static.append_backward(out.sum())
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out, x.grad_name])
+
+        self.assertEqual(out.shape, x.shape)
+        np.testing.assert_allclose(res[0][1, 2, 3, 4], np.array(10))
+        self.assertEqual(res[1].shape, (2, 3, 4, 5))
+        x_grad_expected = np.ones((2, 3, 4, 5)) * 2
+        x_grad_expected[1, 2, 3, 4] = 0
+        np.testing.assert_allclose(res[1], x_grad_expected)
+
+        # case2: 0-D Tensor indice in some axis
+        # NOTE(zoooo0820): Now, int/slice with 0-D Tensor will still be
+        # treated as combined indexing, which is not support backward.
+        # There should have more test cases such as out[1, indice, :] = 0.5 when this
+        # problem is fixed.
+        x = paddle.randn((2, 3, 4, 5))
+        x.stop_gradient = False
+        indice = paddle.full([], 1, dtype='int32')
+        out = x * 1
+        out[indice, indice] = 0.5
+        paddle.static.append_backward(out.sum())
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out, x.grad_name])
+
+        self.assertEqual(out.shape, x.shape)
+        np.testing.assert_allclose(res[0][1, 1], np.ones((4, 5)) * 0.5)
+        x_grad_expected = np.ones((2, 3, 4, 5))
+        x_grad_expected[1, 1] = 0
+        np.testing.assert_allclose(res[1], x_grad_expected)
+
+        # case3：0-D Tensor indice in some axis, value is a Tensor
+        # and there is broadcast
+        x = paddle.randn((2, 3, 4, 5))
+        x.stop_gradient = False
+        v = paddle.ones((4, 5), dtype='float32') * 5
+        v.stop_gradient = False
+        indice = paddle.full([], 1, dtype='int32')
+        out = x * 1
+        out[indice] = v
+        paddle.static.append_backward(out.sum())
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out, x.grad_name, v.grad_name])
+
+        self.assertEqual(out.shape, x.shape)
+        np.testing.assert_allclose(res[0][1], np.ones((3, 4, 5)) * 5)
+        x_grad_expected = np.ones((2, 3, 4, 5))
+        x_grad_expected[1] = 0
+        np.testing.assert_allclose(res[1], x_grad_expected)
 
     @prog_scope()
     def test_expand(self):
