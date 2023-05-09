@@ -322,6 +322,14 @@ class CutlassTeller {
     return false;
   }
 
+  bool CbaeleCanSupport(OpDesc *op_desc,
+                        Scope *scope,
+                        std::string ele_type,
+                        std::string act1_type,
+                        int device_id) {
+    return false;
+  }
+
   bool Conv2dCanSupport(int oc,
                         int kc,
                         int kh,
