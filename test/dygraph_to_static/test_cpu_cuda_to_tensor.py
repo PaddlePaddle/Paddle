@@ -35,8 +35,8 @@ class TestCpuCuda(unittest.TestCase):
 class TestToTensor(unittest.TestCase):
     def test_to_tensor_with_variable_list(self):
         def func(x):
-            ones = paddle.to_tensor([1])
-            twos = paddle.to_tensor([2])
+            ones = paddle.to_tensor(1)
+            twos = paddle.to_tensor(2)
             x = paddle.to_tensor([ones, twos, 3, 4])
             return x
 
