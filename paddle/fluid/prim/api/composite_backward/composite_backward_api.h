@@ -110,12 +110,13 @@ void softmax_grad(const Tensor& out,
 }
 
 template <typename T>
-void cast_grad(const Tensor& out_grad, DataType dtype, Tensor* x_grad) {
+void cast_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
-    auto res = cast<T>(out_grad, dtype);
+    auto res = cast<T>(out_grad, x.dtype());
     set_output<T>(res, x_grad);
   }
 }
+
 template <typename T>
 void gather_grad(const Tensor& x,
                  const Tensor& index,
@@ -1698,6 +1699,9 @@ void batch_norm_grad(const Tensor& x,
         if (use_global_stats) {
           auto nhwc_x_grad = scale * rsqrt_var * nhwc_out_grad;
           auto nchw_x_grad = transpose<T>(nhwc_x_grad, nhwc_to_nchw_dim);
+          if (x.dtype() == phi::DataType::FLOAT16) {
+            nchw_x_grad = cast<T>(nchw_x_grad, x.dtype());
+          }
           set_output<T>(nchw_x_grad, x_grad);
         } else {
           auto part1 = scale * rsqrt_var;
@@ -1731,6 +1735,9 @@ void batch_norm_grad(const Tensor& x,
             sum<T>(out_grad_data * x_sub_mean, reduce_axis, dtype, false);
         if (use_global_stats) {
           auto x_grad_data = scale * rsqrt_var * out_grad_data;
+          if (x.dtype() == phi::DataType::FLOAT16) {
+            x_grad_data = cast<T>(x_grad_data, x.dtype());
+          }
           set_output<T>(x_grad_data, x_grad);
         } else {
           auto part1 = scale * rsqrt_var;

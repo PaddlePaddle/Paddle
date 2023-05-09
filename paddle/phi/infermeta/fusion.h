@@ -28,6 +28,7 @@ void Conv2dXPUInferMeta(const MetaTensor& x,
                         const MetaTensor& filter_max,
                         const MetaTensor& bias,
                         const MetaTensor& branch,
+                        const MetaTensor& branch_max,
                         const std::vector<int>& paddings,
                         const std::vector<int>& dilations,
                         const std::vector<int>& strides,
@@ -108,6 +109,7 @@ void FusedMultiTransformerXpuInferMeta(
     const std::vector<const MetaTensor*>& time_step,
     const std::vector<const MetaTensor*>& seq_lengths,
     const std::vector<const MetaTensor*>& src_mask,
+    const std::vector<const MetaTensor*>& gather_index,
     bool pre_layer_norm,
     int rotary_emb_dims,
     float epsilon,
@@ -117,6 +119,7 @@ void FusedMultiTransformerXpuInferMeta(
     const std::string& act_method,
     bool trans_qkvw,
     int ring_id,
+    int gather_axis,
     MetaTensor* out,
     std::vector<MetaTensor*> cache_kv_out);
 }  // namespace phi

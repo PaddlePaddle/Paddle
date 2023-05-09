@@ -34,6 +34,25 @@ class Scope;
 }  // namespace framework
 }  // namespace paddle
 
+namespace {
+
+template <typename T1, typename T2>
+void ConvertTensorType(phi::DenseTensor* tensor) {
+  phi::DenseTensor tmp_tensor;
+  tmp_tensor.set_type(phi::CppTypeToDataType<T2>::Type());
+  tmp_tensor.Resize(tensor->dims());
+  auto* tmp_data = tmp_tensor.mutable_data<T2>(paddle::platform::CPUPlace());
+  auto* data = tensor->mutable_data<T1>(paddle::platform::CPUPlace());
+  for (int i = 0; i < tensor->numel(); i++) {
+    tmp_data[i] = static_cast<T2>(data[i]);
+  }
+  tensor->clear();
+  paddle::framework::TensorCopySync(
+      tmp_tensor, paddle::platform::CPUPlace(), tensor);
+}
+
+}  // namespace
+
 namespace paddle {
 namespace framework {
 namespace ir {
@@ -157,15 +176,23 @@ Conv2dXPUPattern::Conv2dXPUPattern(PDPattern* pattern,
   if (with_bn_) {
     ew_bias_add_out->assert_is_op_input("batch_norm", "X");
     bn_bias = pattern->NewNode(bn_bias_repr())
+                  ->AsInput()
+                  ->assert_is_persistable_var()
                   ->assert_is_op_input("batch_norm", "Bias")
                   ->assert_has_n_outputs(1);
     bn_mean = pattern->NewNode(bn_mean_repr())
+                  ->AsInput()
+                  ->assert_is_persistable_var()
                   ->assert_is_op_input("batch_norm", "Mean")
                   ->assert_has_n_outputs(1);
     bn_scale = pattern->NewNode(bn_scale_repr())
+                   ->AsInput()
+                   ->assert_is_persistable_var()
                    ->assert_is_op_input("batch_norm", "Scale")
                    ->assert_has_n_outputs(1);
     bn_var = pattern->NewNode(bn_var_repr())
+                 ->AsInput()
+                 ->assert_is_persistable_var()
                  ->assert_is_op_input("batch_norm", "Variance")
                  ->assert_has_n_outputs(1);
     bn = pattern->NewNode(bn_repr())->assert_is_op("batch_norm");
@@ -420,13 +447,17 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
     // recompute bias and weight for conv2d_xpu op
     auto* filter_t =
         scope->FindVar(conv_filter->Name())->GetMutable<phi::DenseTensor>();
+    // conv_filter fp16 --> fp32
+    auto tensor_type = filter_t->dtype();
+    if (tensor_type == phi::DataType::FLOAT16) {
+      ConvertTensorType<float16, float>(filter_t);
+    }
     auto filter_dims = filter_t->dims();
     bool has_bias = with_bn || with_conv_bias;
-    bool has_branch = with_branch_x || with_branch_y;
     // Create conv_fusion_bias (conv bias) variable
     Node* fusion_bias_node = nullptr;
     if (has_bias) {
-      if (ew_bias_add != nullptr) {
+      if (with_conv_bias) {
         auto* ew_bias_add_y_t = scope->FindVar(ew_bias_add_y->Name())
                                     ->GetMutable<phi::DenseTensor>();
         auto ew_bias_add_y_dims = ew_bias_add_y_t->dims();
@@ -439,7 +470,7 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
                               filter_dims[0]));
         PrepareBias(graph, scope, block, ew_bias_add_y, &fusion_bias_node);
       }
-      if (bn != nullptr) {
+      if (with_bn) {
         auto bn_bias_t =
             scope->Var(bn_bias->Name())->GetMutable<phi::DenseTensor>();
         PADDLE_ENFORCE_EQ(filter_dims[0],
@@ -469,7 +500,7 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
         auto filter_len = filter_t->numel();
         auto filter_stride = filter_len / mean_len;
         float epsilon = PADDLE_GET_CONST(float, bn->Op()->GetAttr("epsilon"));
-        if (fusion_bias_node == nullptr) {  // prev node is conv
+        if (!with_conv_bias) {  // prev node is conv
           PrepareBias(graph, scope, block, bn_bias, &fusion_bias_node);
         }
         auto fusion_bias_t = scope->Var(fusion_bias_node->Name())
@@ -477,10 +508,10 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
         float* fusion_bias_ptr =
             fusion_bias_t->mutable_data<float>(paddle::platform::CPUPlace());
         // recompute bias and weights
-        if (ew_bias_add == nullptr) {
+        if (!with_conv_bias) {  // prev node is conv
           for (int i = 0; i < mean_len; ++i) {
             bn_scale_ptr[i] = bn_scale_ptr[i] / sqrtf(bn_var_ptr[i] + epsilon);
-            fusion_bias_ptr[i] += (0.f - bn_mean_ptr[i]) * bn_scale_ptr[i];
+            fusion_bias_ptr[i] += (0.0f - bn_mean_ptr[i]) * bn_scale_ptr[i];
             for (int j = 0; j < filter_stride; j++) {
               filter_ptr[i * filter_stride + j] *= bn_scale_ptr[i];
             }
@@ -488,21 +519,25 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
         } else {
           for (int i = 0; i < mean_len; ++i) {
             bn_scale_ptr[i] = bn_scale_ptr[i] / sqrtf(bn_var_ptr[i] + epsilon);
-            bn_bias_ptr[i] +=
+            fusion_bias_ptr[i] =
+                bn_bias_ptr[i] +
                 (fusion_bias_ptr[i] - bn_mean_ptr[i]) * bn_scale_ptr[i];
             for (int j = 0; j < filter_stride; j++) {
               filter_ptr[i * filter_stride + j] *= bn_scale_ptr[i];
             }
           }
-          memcpy(fusion_bias_ptr, bn_bias_ptr, mean_len * sizeof(float));
         }
       }
+    }
+    if (tensor_type == phi::DataType::FLOAT16) {
+      ConvertTensorType<float, float16>(filter_t);
     }
     // filter max
     Node* filter_int16 = nullptr;
     Node* filter_max = nullptr;
     PrepareWeight<int16_t>(
         graph, scope, block, conv_filter, &filter_int16, &filter_max, false);
+    bool has_branch = with_branch_x || with_branch_y;
     // output && output max
     std::string conv2d_xpu_out_name;
     if (!act_type.empty()) {

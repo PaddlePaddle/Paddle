@@ -18,6 +18,15 @@ set(CBLAS_PREFIX_DIR ${THIRD_PARTY_PATH}/openblas)
 set(CBLAS_INSTALL_DIR ${THIRD_PARTY_PATH}/install/openblas)
 set(CBLAS_REPOSITORY ${GIT_URL}/xianyi/OpenBLAS.git)
 set(CBLAS_TAG v0.3.7)
+
+# Please refer to
+# https://github.com/PaddlePaddle/Paddle/pull/52983
+if(UNIX
+   AND NOT APPLE
+   AND NOT WITH_ROCM)
+  set(CBLAS_TAG v0.3.18)
+endif()
+
 if(APPLE AND WITH_ARM)
   set(CBLAS_TAG v0.3.13)
 endif()
