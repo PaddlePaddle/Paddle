@@ -4911,6 +4911,12 @@ def unflatten(x, axis, shape, name=None):
 
     Returns:
         Tensor, return the unflatten tensor of :attr:`x`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
             x = paddle.randn(shape=[4, 6, 8])
             shape = [2, 3]
             axis = 1
@@ -4932,9 +4938,9 @@ def unflatten(x, axis, shape, name=None):
             print(res.shape)
             # [2, 2, 6, 8]
     """
+
     # determine whether the input axis is valid.
     axis = non_negative_axis(x, axis)
-
     if isinstance(shape, (list, tuple)):
         new_shape = (
             list(x.shape[:axis]) + list(shape) + list(x.shape[axis + 1 :])
