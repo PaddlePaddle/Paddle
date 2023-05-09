@@ -582,12 +582,6 @@ py_test_modules(
 py_test_modules(test_install_check MODULES test_install_check ENVS
                 FLAGS_cudnn_deterministic=1)
 set_tests_properties(test_install_check PROPERTIES LABELS "RUN_TYPE=DIST")
-py_test_modules(
-  test_imperative_static_runner_mnist MODULES
-  test_imperative_static_runner_mnist ENVS FLAGS_cudnn_deterministic=1)
-py_test_modules(
-  test_imperative_static_runner_while MODULES
-  test_imperative_static_runner_while ENVS FLAGS_cudnn_deterministic=1)
 
 if((WITH_GPU) AND (CUDA_VERSION GREATER_EQUAL 11.6))
   py_test_modules(test_fused_gemm_epilogue_op MODULES
@@ -1049,7 +1043,6 @@ set_tests_properties(test_svd_op PROPERTIES TIMEOUT 80)
 set_tests_properties(test_einsum_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_qr_op PROPERTIES TIMEOUT 60)
 set_tests_properties(test_trilinear_interp_v2_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_imperative_static_runner_mnist PROPERTIES TIMEOUT 120)
 set_tests_properties(test_masked_select_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_sigmoid_cross_entropy_with_logits_op
                      PROPERTIES TIMEOUT 120)
@@ -1130,8 +1123,6 @@ if(APPLE)
                        PROPERTIES TIMEOUT 300)
   set_tests_properties(test_multiclass_nms_op PROPERTIES TIMEOUT 300)
   set_tests_properties(test_weight_decay PROPERTIES TIMEOUT 300)
-  set_tests_properties(test_imperative_static_runner_mnist PROPERTIES TIMEOUT
-                                                                      300)
 endif()
 
 if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
@@ -1210,9 +1201,6 @@ if(WITH_CINN AND WITH_TESTING)
       FLAGS_allow_cinn_ops="conv2d;conv2d_grad;elementwise_add;elementwise_add_grad;relu;relu_grad;sum"
   )
 endif()
-
-py_test_modules(test_renorm_op_without_eager MODULES test_renorm_op ENVS
-                FLAGS_enable_eager_mode=0)
 
 set_tests_properties(
   test_buffer_shared_memory_reuse_pass
