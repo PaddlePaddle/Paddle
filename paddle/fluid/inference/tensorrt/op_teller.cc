@@ -105,7 +105,8 @@ struct SimpleOpTypeSetTeller : public Teller {
         "erf",        "floor",       "round",
         "sign",       "silu",        "logical_not",
         "reciprocal", "tanh_shrink", "logsigmoid",
-        "rsqrt"};
+        "rsqrt",      "hard_swish",  "hard_sigmoid",
+        "leaky_relu"};
     std::unordered_set<std::string> unary_list = {
         "exp",        "log",  "sqrt",        "abs",        "sin",
         "cos",        "tan",  "tanh",        "sinh",       "cosh",
@@ -967,20 +968,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
-    if (op_type == "hard_swish") {
-      if (desc.Input("X").size() != 1) {
-        VLOG(3) << "HardSwish op has only 1 input, but got "
-                << desc.Input("X").size();
-        return false;
-      }
-
-      if (desc.Output("Out").size() != 1) {
-        VLOG(3) << "HardSwish op has only 1 output, but got "
-                << desc.Output("Out").size();
-        return false;
-      }
-    }
-
     if (op_type == "squeeze2") {
       // If Attribute is Variable(s), HasAttr() will return False
       if (!desc.HasAttr("axes", /*with_attr_var=*/false)) {
@@ -1630,8 +1617,10 @@ struct SimpleOpTypeSetTeller : public Teller {
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
-      if (x_shape.size() == 1) {
-        VLOG(3) << "gelu op does not support input's dim is 1 in tensorrt.";
+      if (!with_dynamic_shape && (x_shape.size() == 1 || x_shape.size() == 0)) {
+        VLOG(3) << op_type
+                << "gelu op does not support input's dim is 1 or 0 in tensorrt "
+                   "static shape mode.";
         return false;
       }
     }
@@ -2367,26 +2356,6 @@ struct SimpleOpTypeSetTeller : public Teller {
         VLOG(3) << "TRT Conv3d expect 1 output, but got "
                 << desc.Output("Output").size() << " output.";
         return false;
-      }
-    }
-
-    if (op_type == "hard_sigmoid") {
-      if (!with_dynamic_shape) {
-        auto* block = desc.Block();
-        if (block == nullptr) {
-          VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                     "Developers need to check whether block_desc is passed in "
-                     "the pass.";
-          return false;
-        }
-        auto x_var_name = desc.Input("X")[0];
-        auto* x_var_desc = block->FindVar(x_var_name);
-        const auto x_shape = x_var_desc->GetShape();
-        if (x_shape.size() == 1) {
-          VLOG(3) << "Hard sigmoid does not support 1-dimensional input in "
-                     "tensorrt";
-          return false;
-        }
       }
     }
 

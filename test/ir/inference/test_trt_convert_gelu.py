@@ -29,7 +29,9 @@ class TrtConvertGeluTest(TrtLayerAutoScanTest):
 
     def sample_program_configs(self):
         def generate_input1(dims, attrs: List[Dict[str, Any]]):
-            if dims == 1:
+            if dims == 0:
+                return np.ones([]).astype(np.float32)
+            elif dims == 1:
                 return np.ones([32]).astype(np.float32)
             elif dims == 2:
                 return np.ones([3, 32]).astype(np.float32)
@@ -70,7 +72,11 @@ class TrtConvertGeluTest(TrtLayerAutoScanTest):
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
-            if self.dims == 1:
+            if self.dims == 0:
+                self.dynamic_shape.min_input_shape = {"input_data": []}
+                self.dynamic_shape.max_input_shape = {"input_data": []}
+                self.dynamic_shape.opt_input_shape = {"input_data": []}
+            elif self.dims == 1:
                 self.dynamic_shape.min_input_shape = {"input_data": [1]}
                 self.dynamic_shape.max_input_shape = {"input_data": [64]}
                 self.dynamic_shape.opt_input_shape = {"input_data": [32]}
@@ -104,7 +110,7 @@ class TrtConvertGeluTest(TrtLayerAutoScanTest):
             runtime_version = paddle_infer.get_trt_runtime_version()
             self.assertTrue(compile_version == runtime_version)
             # Dimension one only runs on Paddle OP
-            if self.dims == 1:
+            if not dynamic_shape and (self.dims == 1 or self.dims == 0):
                 return 0, 3
             if compile_version >= valid_version:
                 return 1, 2
