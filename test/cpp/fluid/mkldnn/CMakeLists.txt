@@ -4,7 +4,6 @@ cc_test(
   DEPS op_registry
        elementwise_add_op
        activation_op
-       softmax_op
        softmax
        scope
        device_context
@@ -16,7 +15,6 @@ set(TEST_MKLDNN_CACHING_DEPS
     elementwise_mul_op
     elementwise_add_op
     activation_op
-    softmax_op
     conv_op
     im2col
     vol2col
