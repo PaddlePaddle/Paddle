@@ -416,6 +416,15 @@
     func : clip_by_norm {dense -> dense}
            clip_by_norm_sr {selected_rows -> selected_rows}
 
+- op : coalesce_tensor
+  args : (Tensor[] input, DataType dtype, bool copy_data = false, bool set_constant = false, bool persist_output = false, float constant = 0.0, bool use_align = true, int align_size = -1, int size_of_dtype = -1, int64_t[] concated_shapes = {}, int64_t[] concated_ranks = {})
+  output : Tensor[](output){input.size()}, Tensor(fused_output)
+  infer_meta :
+    func : CoalesceTensorInferMeta
+  kernel :
+    func : coalesce_tensor
+    data_type : dtype
+
 - op : complex
   args : (Tensor real, Tensor imag)
   output : Tensor
