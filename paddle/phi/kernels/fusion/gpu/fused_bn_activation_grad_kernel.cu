@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Note(andsonder): Fused bn activation only used in the gpu place.
+#if defined(PADDLE_WITH_CUDA) and CUDNN_VERSION >= 7401
+
 #include <algorithm>
 #include <cfloat>
 #include <string>
 #include <vector>
-
-#ifdef __NVCC__
 #include "cub/cub.cuh"
-#endif
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
@@ -233,3 +233,4 @@ PD_REGISTER_KERNEL(fused_batch_norm_act_grad,
     kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
   }
 }
+#endif
