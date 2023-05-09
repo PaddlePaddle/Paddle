@@ -1351,7 +1351,7 @@ void BindImperative(py::module *m_ptr) {
 
                 import paddle
 
-                x = paddle.to_tensor(1.0, stop_gradient=False)
+                x = paddle.to_tensor([1.0], stop_gradient=False)
                 detach_x = x.detach()
                 detach_x[:] = 10.0
                 print(x)  # Tensor(shape=[1], dtype=float32, place=CPUPlace, stop_gradient=False,
