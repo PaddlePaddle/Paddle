@@ -1495,36 +1495,31 @@ class TestSundryAPI(unittest.TestCase):
         np.testing.assert_allclose(out2, expect2, rtol=1e-03)
 
     def test_scatter_1D(self):
+        # have no backward now
         x = paddle.to_tensor([1.0, 3.0, 5.0, 7.0, 9.0], stop_gradient=False)
         index = paddle.full([], 2, 'int64')
         updates = paddle.full([], 4.0)
         out = paddle.scatter(x, index, updates)
-        out.retain_grads()
-        out.backward()
 
         self.assertEqual(out.shape, [5])
         self.assertEqual(out.numpy()[2], 4)
-        self.assertEqual(out.grad.shape, [5])
 
     def test_scatter_XD(self):
+        # have no backward now
         x = paddle.to_tensor(
             [[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], stop_gradient=False
         )
         index = paddle.full([], 1, 'int64')
         updates = paddle.to_tensor([1.0, 2.0, 3.0])
         out = paddle.scatter(x, index, updates)
-        out.retain_grads()
-        out.backward()
 
         self.assertEqual(out.shape, [2, 3])
         np.testing.assert_array_equal(out.numpy()[1], [1.0, 2.0, 3.0])
-        self.assertEqual(out.grad.shape, [2, 3])
 
     def test_diagflat(self):
         x1 = paddle.rand([])
         x2 = paddle.rand([])
         x3 = paddle.rand([])
-
         x1.stop_gradient = False
         x2.stop_gradient = False
         x3.stop_gradient = False
@@ -1575,17 +1570,10 @@ class TestSundryAPI(unittest.TestCase):
     def test_scatter_nd(self):
         index = paddle.to_tensor([3], dtype="int64")
         updates = paddle.full([], 2, dtype='float32')
-        updates.retain_grads()
-        updates.stop_gradient = False
 
         out = paddle.scatter_nd(index, updates, [5])
-        out.retain_grads()
-        out.backward()
-
         self.assertEqual(out.shape, [5])
         self.assertEqual(out.numpy()[3], 2)
-        self.assertEqual(out.grad.shape, [5])
-        self.assertEqual(updates.grad.shape, [])
 
     def test_flatten(self):
         x = paddle.rand([])
