@@ -465,10 +465,10 @@ def compare_accuracy(
                 path = "workerlog_log_dir"
                 paddle.fluid.core.set_nan_inf_debug_path(path)
                 x = paddle.to_tensor(
-                    [2, 3, 4, 0], place=core.CUDAPlace(0), dtype="float32"
+                    [2, 3, 4, 0], dtype="float32"
                 )
                 y = paddle.to_tensor(
-                    [1, 5, 2, 0], place=core.CUDAPlace(0), dtype="float32"
+                    [1, 5, 2, 0], dtype="float32"
                 )
                 z1 = x + y
                 out_excel = "compary_accuracy_out_excel.csv"
