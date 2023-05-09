@@ -50,7 +50,7 @@ class TrtConvertScaleTest(TrtLayerAutoScanTest):
             return np.ones([1]).astype(np.int32 if is_int else np.float32)
 
         for num_input in [0, 1]:
-            for dims in [0]:
+            for dims in [0, 1, 2, 3, 4]:
                 for batch in [1, 2]:
                     for scale in [0.1, -1.0]:
                         for bias in [0.0, 1.2]:
