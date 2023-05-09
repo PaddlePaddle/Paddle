@@ -14,15 +14,29 @@
 
 #pragma once
 
+#include "paddle/fluid/framework/variable.h"
 #include "paddle/ir/dialect.h"
+#include "paddle/ir/parameter.h"
 
 namespace paddle {
 namespace dialect {
+class ParameterConvertInterface
+    : public ir::DialectInterface::Base<ParameterConvertInterface> {
+ public:
+  explicit ParameterConvertInterface(ir::Dialect* dialect) : Base(dialect) {}
+
+  // NOTE(zhangbo): Only support new a CPU Variable.
+  std::shared_ptr<paddle::framework::Variable> ParameterToVariable(
+      ir::Parameter* parameter);
+
+  ir::Parameter* VariableToParameter(paddle::framework::Variable* var);
+};
+
 class PaddleDialect : public ir::Dialect {
  public:
-  explicit PaddleDialect(ir::IrContext *context);
+  explicit PaddleDialect(ir::IrContext* context);
 
-  static const char *name() { return "Paddle"; }
+  static const char* name() { return "Paddle"; }
 
  private:
   void initialize();

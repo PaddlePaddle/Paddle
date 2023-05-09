@@ -33,6 +33,8 @@ class Dialect {
  public:
   Dialect(std::string name, ir::IrContext *context, ir::TypeId id);
 
+  virtual ~Dialect();
+
   const std::string &name() const { return name_; }
 
   ir::IrContext *ir_context() const { return context_; }
@@ -151,6 +153,10 @@ class Dialect {
   }
 
  private:
+  Dialect(const Dialect &) = delete;
+
+  Dialect &operator=(Dialect &) = delete;
+
   std::string name_;
 
   ir::IrContext *context_;  // not owned
