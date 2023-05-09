@@ -1710,20 +1710,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
-    if (op_type == "leaky_relu") {
-      if (desc.Input("X").size() != 1) {
-        VLOG(3) << "Invalid number of TRT leaky_relu op converter "
-                   "inputs. Expected 1, but received "
-                << desc.Input("X").size();
-        return false;
-      }
-      if (desc.Output("Out").size() != 1) {
-        VLOG(3) << "output of leaky_relu op converter should be 1, got "
-                << desc.Output("Out").size();
-        return false;
-      }
-    }
-
     if (op_type == "pad") {
       if (!desc.HasAttr("pad_value") || !desc.HasAttr("paddings")) return false;
       const float pad_value =
