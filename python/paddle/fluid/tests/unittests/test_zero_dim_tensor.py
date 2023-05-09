@@ -5145,7 +5145,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         a = paddle.randn([2, 4, 4])
         a.stop_gradient = False
         a_cond_fro = paddle.linalg.cond(a, p='fro')
-        paddle.static.append_backward(a_cond_fro)
+        paddle.static.append_backward(a_cond_fro.sum())
 
         prog = paddle.static.default_main_program()
         res = self.exe.run(prog, fetch_list=[a_cond_fro, a.grad_name])
