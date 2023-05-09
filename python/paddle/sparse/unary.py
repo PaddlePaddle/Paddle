@@ -188,10 +188,10 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
 
             dense_x = paddle.to_tensor([[-2., 0.], [1., 2.]])
             sparse_x = dense_x.to_sparse_coo(1)
-            out1 = paddle.sparse.sum(x)  # [1.]
-            out2 = paddle.sparse.sum(x, axis=0)  # [-1., 2.]
-            out3 = paddle.sparse.sum(x, axis=-1)  # [-2., 3.]
-            out4 = paddle.sparse.sum(x, axis=1, keepdim=True)  # [[-2.], [3.]]
+            out1 = paddle.sparse.sum(sparse_x)  # [1.]
+            out2 = paddle.sparse.sum(sparse_x, axis=0)  # [-1., 2.]
+            out3 = paddle.sparse.sum(sparse_x, axis=-1)  # [-2., 3.]
+            out4 = paddle.sparse.sum(sparse_x, axis=1, keepdim=True)  # [[-2.], [3.]]
     """
     dtype_flag = False
     if dtype is not None:
