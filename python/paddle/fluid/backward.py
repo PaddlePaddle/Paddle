@@ -1341,17 +1341,16 @@ def _append_backward_ops_(
         rename_var_map = {}
     assert isinstance(rename_var_map, dict)
 
-    if core._is_bwd_prim_enabled():
-        composite_block = program.clone().current_block()
-        # Infer shape for operators whose output haven't been created.
-        for op in composite_block.ops:
-            if not all(
-                tuple(
-                    composite_block._find_var_recursive(arg)
-                    for arg in op.output_arg_names
-                )
-            ):
-                infershape_for_composite(composite_block, op.desc)
+    composite_block = program.clone().current_block()
+    # Infer shape for operators whose output haven't been created.
+    for op in composite_block.ops:
+        if not all(
+            tuple(
+                composite_block._find_var_recursive(arg)
+                for arg in op.output_arg_names
+            )
+        ):
+            infershape_for_composite(composite_block, op.desc)
 
     # add grad_op_desc by reversed ops
     for op in reversed(ops):
