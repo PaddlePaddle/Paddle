@@ -198,13 +198,13 @@ class TestStaticMasterGradProgramBF16(AmpTestBase):
         self.assertNotEqual(
             losses_o1,
             losses_o2_no_master_grad,
-            f"loss of o1 and o2 should not be equal, but recieved loss o1: {losses_o1}, loss o2: {losses_o2_no_master_grad}",
+            f"dtype: {dtype}, loss of o1 and o2-wo-master_grad should not be equal, but recieved loss o1: {losses_o1}, loss o2: {losses_o2_no_master_grad}",
         )
 
         self.assertEqual(
             losses_o1,
             losses_o2_master_grad,
-            f"loss of o1 and o2 should be equal, but recieved loss o1: {losses_o1}, loss o2: {losses_o2_master_grad}",
+            f"dtype: {dtype}, loss of o1 and o2-w-master_grad should be equal, but recieved loss o1: {losses_o1}, loss o2: {losses_o2_master_grad}",
         )
 
 
