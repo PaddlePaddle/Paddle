@@ -29,6 +29,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
+#include "paddle/phi/common/amp_type_traits.h"
 
 namespace phi {
 
@@ -52,10 +53,11 @@ __global__ void bernoulli_cuda_kernel(
     funcs::uniform_distribution<float> dist;
     float4 rand = dist(&state);
 #pragma unroll
+    using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
     for (size_t j = 0; j < 4; j++) {
       size_t idx = i + j;
       if (idx < size) {
-        out_data[idx] = convert_to_T<T>((&rand.x)[j], static_cast<MPType>(x_data[idx]));
+        out_data[idx] = static_cast<T>((&rand.x)[j], static_cast<MPType>(x_data[idx]));
       }
     }
   }
