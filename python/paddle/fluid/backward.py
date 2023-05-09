@@ -1341,17 +1341,16 @@ def _append_backward_ops_(
         rename_var_map = {}
     assert isinstance(rename_var_map, dict)
 
-    if core._is_bwd_prim_enabled():
-        composite_block = program.clone().current_block()
-        # Infer shape for operators whose output haven't been created.
-        for op in composite_block.ops:
-            if not all(
-                tuple(
-                    composite_block._find_var_recursive(arg)
-                    for arg in op.output_arg_names
-                )
-            ):
-                infershape_for_composite(composite_block, op.desc)
+    composite_block = program.clone().current_block()
+    # Infer shape for operators whose output haven't been created.
+    for op in composite_block.ops:
+        if not all(
+            tuple(
+                composite_block._find_var_recursive(arg)
+                for arg in op.output_arg_names
+            )
+        ):
+            infershape_for_composite(composite_block, op.desc)
 
     # add grad_op_desc by reversed ops
     for op in reversed(ops):
@@ -2330,7 +2329,7 @@ def _find_op_path_(
     if inputs:
         for i, op in enumerate(block.ops):
             if _some_in_set_(op.desc.input_arg_names(), input_names):
-                if core.has_non_empty_grad_op_maker(
+                if not core.has_empty_grad_op_maker(
                     op.type
                 ) or core.has_comp_grad_op_maker(op.type):
                     for name in op.desc.output_arg_names():
@@ -2352,7 +2351,7 @@ def _find_op_path_(
             op_path_dict[sub_block_id] = sub_block_path
 
         if _some_in_set_(op.desc.output_arg_names(), output_names):
-            if core.has_non_empty_grad_op_maker(
+            if not core.has_empty_grad_op_maker(
                 op.type
             ) or core.has_comp_grad_op_maker(op.type):
                 for name in op.desc.input_arg_names():
@@ -2371,7 +2370,7 @@ def _find_op_path_(
                 op.desc.output_arg_names(), output_names
             ):
                 relevant_op_flags[i] = True
-                if core.has_non_empty_grad_op_maker(op.type):
+                if not core.has_empty_grad_op_maker(op.type):
                     for name in op.desc.input_arg_names():
                         if name not in no_grad_set:
                             output_names.add(name)
