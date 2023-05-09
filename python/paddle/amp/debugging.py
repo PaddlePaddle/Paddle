@@ -458,22 +458,23 @@ def compare_accuracy(
                 )
                 import xlsxwriter as xlw
 
-            paddle.set_flags(
-                {"FLAGS_check_nan_inf": 1, "FLAGS_check_nan_inf_level": 3}
-            )
-            path = "workerlog_log_dir"
-            paddle.fluid.core.set_nan_inf_debug_path(path)
-            x = paddle.to_tensor(
-                [2, 3, 4, 0], place=core.CUDAPlace(0), dtype="float32"
-            )
-            y = paddle.to_tensor(
-                [1, 5, 2, 0], place=core.CUDAPlace(0), dtype="float32"
-            )
-            z1 = x + y
-            out_excel = "compary_accuracy_out_excel.csv"
-            paddle.amp.debugging.compare_accuracy(
-                path, path, out_excel, loss_scale=1, dump_all_tensors=False
-            )
+            if core.is_compiled_with_cuda():
+                paddle.set_flags(
+                    {"FLAGS_check_nan_inf": 1, "FLAGS_check_nan_inf_level": 3}
+                )
+                path = "workerlog_log_dir"
+                paddle.fluid.core.set_nan_inf_debug_path(path)
+                x = paddle.to_tensor(
+                    [2, 3, 4, 0], place=core.CUDAPlace(0), dtype="float32"
+                )
+                y = paddle.to_tensor(
+                    [1, 5, 2, 0], place=core.CUDAPlace(0), dtype="float32"
+                )
+                z1 = x + y
+                out_excel = "compary_accuracy_out_excel.csv"
+                paddle.amp.debugging.compare_accuracy(
+                    path, path, out_excel, loss_scale=1, dump_all_tensors=False
+                )
     """
     assert dump_all_tensors is False, "It is currently not supported."
     paddle.amp.accuracy_compare.compare_accuracy(
