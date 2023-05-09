@@ -1,4 +1,6 @@
-# Licensed under the Apache License, Version 2.0 (the "License"
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 #
@@ -10,66 +12,81 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
+
 import copy
 import json
 import logging
-import collections
-import numpy as np
+import os
 
 import paddle
-from ...fluid.framework import core
-from ...fluid.layer_helper import LayerHelper
-from ...fluid.framework import IrGraph
-from .quantization_pass import QuantizationTransformPass
-from .quantization_pass import QuantizationFreezePass
-from .quantization_pass import ConvertToInt8Pass
-from .post_training_quantization import PostTrainingQuantization
-from .quantization_pass import AddQuantDequantPass
-from .quantization_pass import OutScaleForTrainingPass
-from .quantization_pass import OutScaleForInferencePass
+
+from ...fluid.framework import IrGraph, core
 from ..log_helper import get_logger
+from .quantization_pass import (
+    AddQuantDequantPass,
+    ConvertToInt8Pass,
+    OutScaleForInferencePass,
+    OutScaleForTrainingPass,
+    QuantizationFreezePass,
+    QuantizationTransformPass,
+)
+
 _logger = get_logger(__name__, level=logging.INFO)
 
 try:
-    from .quantization_pass import QuantizationTransformPassV2
-    from .quantization_pass import QuantWeightPass
-    from .quantization_pass import AddQuantDequantPassV2
-    from .post_training_quantization import PostTrainingQuantizationProgram
-    from .quantization_pass import AddQuantDequantForInferencePass
     from . import quant_config
+    from .post_training_quantization import PostTrainingQuantizationProgram
+    from .quantization_pass import (
+        AddQuantDequantForInferencePass,
+        AddQuantDequantPassV2,
+        QuantizationTransformPassV2,
+        QuantWeightPass,
+    )
 except:
     _logger.warning(
         "Some functions failed to import, better to update PaddlePaddle to the latest develop version."
     )
 
 WEIGHT_QUANTIZATION_TYPES = [
-    'abs_max', 'channel_wise_abs_max', 'range_abs_max', 'moving_average_abs_max'
+    'abs_max',
+    'channel_wise_abs_max',
+    'range_abs_max',
+    'moving_average_abs_max',
 ]
 WEIGHT_QUANTIZATION_TYPES_TENSORRT = ['channel_wise_abs_max']
 
 ACTIVATION_QUANTIZATION_TYPES = [
-    'abs_max', 'range_abs_max', 'moving_average_abs_max'
+    'abs_max',
+    'range_abs_max',
+    'moving_average_abs_max',
 ]
 
 ACTIVATION_QUANTIZATION_TYPES_TENSORRT = [
-    'range_abs_max', 'moving_average_abs_max'
+    'range_abs_max',
+    'moving_average_abs_max',
 ]
 
 VALID_DTYPES = ['int8']
 try:
     TRANSFORM_PASS_OP_TYPES = list(
-        quant_config.SUPPORT_WEIGHT_QUANTIZATION_OP_DICT.keys())
+        quant_config.SUPPORT_WEIGHT_QUANTIZATION_OP_DICT.keys()
+    )
     QUANT_DEQUANT_PASS_OP_TYPES = list(
-        quant_config.SUPPORT_ACT_QUANTIZATION_OP_DICT.keys())
+        quant_config.SUPPORT_ACT_QUANTIZATION_OP_DICT.keys()
+    )
 except:
     from . import utils
+
     TRANSFORM_PASS_OP_TYPES = utils._weight_supported_quantizable_op_type
     QUANT_DEQUANT_PASS_OP_TYPES = utils._act_supported_quantizable_op_type
 
 TENSORRT_OP_TYPES = [
-    'mul', 'conv2d', 'pool2d', 'depthwise_conv2d', 'elementwise_add',
-    'leaky_relu'
+    'mul',
+    'conv2d',
+    'pool2d',
+    'depthwise_conv2d',
+    'elementwise_add',
+    'leaky_relu',
 ]
 
 VARS_MAPPING_TABLE = './mapping_table_for_saving_inference_model'
@@ -95,7 +112,7 @@ _quant_config_default = {
     'moving_rate': 0.9,
     # if True, 'quantize_op_types' will be TENSORRT_OP_TYPES
     'for_tensorrt': False,
-    # if True, 'quantoze_op_types' will be TRANSFORM_PASS_OP_TYPES + QUANT_DEQUANT_PASS_OP_TYPES 
+    # if True, 'quantoze_op_types' will be TRANSFORM_PASS_OP_TYPES + QUANT_DEQUANT_PASS_OP_TYPES
     'is_full_quantize': False,
     # if True, use onnx format to quant.
     'onnx_format': True,
@@ -104,7 +121,7 @@ _quant_config_default = {
     # whether scale can be train
     'scale_trainable': True,
     # Deploy backend, it could be: None, TensorRT, MKLDNN, ARM
-    'deploy_backend': None
+    'deploy_backend': None,
 }
 
 
@@ -133,8 +150,8 @@ def _parse_configs(user_config):
     configs.update(user_config)
 
     assert isinstance(configs['for_tensorrt'], bool) and isinstance(
-        configs['is_full_quantize'],
-        bool), "'for_tensorrt' and 'is_full_quantize' must both be bool'"
+        configs['is_full_quantize'], bool
+    ), "'for_tensorrt' and 'is_full_quantize' must both be bool'"
 
     # check if configs is valid
     if configs['for_tensorrt']:
@@ -145,118 +162,142 @@ def _parse_configs(user_config):
         weight_types = WEIGHT_QUANTIZATION_TYPES
         activation_types = WEIGHT_QUANTIZATION_TYPES
         platform = 'PaddleLite'
-    assert configs['weight_quantize_type'] in weight_types, \
-        "Unknown weight_quantize_type: {}. {} only supports {} ".format(configs['weight_quantize_type'],
-                platform, weight_types)
+    assert (
+        configs['weight_quantize_type'] in weight_types
+    ), "Unknown weight_quantize_type: {}. {} only supports {} ".format(
+        configs['weight_quantize_type'], platform, weight_types
+    )
 
-    assert configs['activation_quantize_type'] in activation_types, \
-        "Unknown activation_quantize_type: {}. {} only supports {}".format(configs['activation_quantize_type'],
-                platform, activation_types)
+    assert (
+        configs['activation_quantize_type'] in activation_types
+    ), "Unknown activation_quantize_type: {}. {} only supports {}".format(
+        configs['activation_quantize_type'], platform, activation_types
+    )
 
-    assert isinstance(configs['weight_bits'], int), \
-        "weight_bits must be int value."
+    assert isinstance(
+        configs['weight_bits'], int
+    ), "weight_bits must be int value."
 
-    assert (configs['weight_bits'] >= 1 and configs['weight_bits'] <= 16), \
-        "weight_bits should be between 1 and 16."
+    assert (
+        configs['weight_bits'] >= 1 and configs['weight_bits'] <= 16
+    ), "weight_bits should be between 1 and 16."
 
-    assert isinstance(configs['activation_bits'], int), \
-        "activation_bits must be int value."
+    assert isinstance(
+        configs['activation_bits'], int
+    ), "activation_bits must be int value."
 
-    assert (configs['activation_bits'] >= 1 and configs['activation_bits'] <= 16), \
-        "activation_bits should be between 1 and 16."
+    assert (
+        configs['activation_bits'] >= 1 and configs['activation_bits'] <= 16
+    ), "activation_bits should be between 1 and 16."
 
-    assert isinstance(configs['not_quant_pattern'], (list, str)), \
-        "not_quant_pattern must be list or str"
+    assert isinstance(
+        configs['not_quant_pattern'], (list, str)
+    ), "not_quant_pattern must be list or str"
 
-    assert isinstance(configs['quantize_op_types'], list), \
-        "quantize_op_types must be a list"
+    assert isinstance(
+        configs['quantize_op_types'], list
+    ), "quantize_op_types must be a list"
 
     if configs['for_tensorrt']:
         configs['quantize_op_types'] = TENSORRT_OP_TYPES
     elif configs['is_full_quantize']:
-        configs[
-            'quantize_op_types'] = TRANSFORM_PASS_OP_TYPES + QUANT_DEQUANT_PASS_OP_TYPES
+        configs['quantize_op_types'] = (
+            TRANSFORM_PASS_OP_TYPES + QUANT_DEQUANT_PASS_OP_TYPES
+        )
     else:
         for op_type in configs['quantize_op_types']:
             assert (op_type in QUANT_DEQUANT_PASS_OP_TYPES) or (
-                op_type in TRANSFORM_PASS_OP_TYPES), "{} is not support, \
+                op_type in TRANSFORM_PASS_OP_TYPES
+            ), "{} is not support, \
                         now support op types are {}".format(
-                    op_type,
-                    TRANSFORM_PASS_OP_TYPES + QUANT_DEQUANT_PASS_OP_TYPES)
+                op_type, TRANSFORM_PASS_OP_TYPES + QUANT_DEQUANT_PASS_OP_TYPES
+            )
 
-    assert isinstance(configs['dtype'], str), \
-        "dtype must be a str."
+    assert isinstance(configs['dtype'], str), "dtype must be a str."
 
-    assert (configs['dtype'] in VALID_DTYPES), \
-        "dtype can only be " + " ".join(VALID_DTYPES)
+    assert configs['dtype'] in VALID_DTYPES, "dtype can only be " + " ".join(
+        VALID_DTYPES
+    )
 
-    assert isinstance(configs['window_size'], int), \
-        "window_size must be int value, window size for 'range_abs_max' quantization, default is 10000."
+    assert isinstance(
+        configs['window_size'], int
+    ), "window_size must be int value, window size for 'range_abs_max' quantization, default is 10000."
 
-    assert isinstance(configs['moving_rate'], float), \
-        "moving_rate must be float value, The decay coefficient of moving average, default is 0.9."
+    assert isinstance(
+        configs['moving_rate'], float
+    ), "moving_rate must be float value, The decay coefficient of moving average, default is 0.9."
 
     deploy_backend = configs['deploy_backend']
     assert not deploy_backend or deploy_backend.lower() in [
-        'tensorrt', 'mkldnn', 'arm'
+        'tensorrt',
+        'mkldnn',
+        'arm',
     ], "Deploy Backend {} not support, please choose None, tensorrt or mkldnn.".format(
-        deploy_backend)
+        deploy_backend
+    )
     try:
         if not deploy_backend:
             configs['quant_config'] = quant_config.BaseQuantizer(
                 quantizable_op_type=configs['quantize_op_types'],
-                quant_bits=configs['weight_bits'], )
+                quant_bits=configs['weight_bits'],
+            )
         elif deploy_backend.lower() == "tensorrt":
             configs['quant_config'] = quant_config.TensorRTQuantizer(
                 quantizable_op_type=configs['quantize_op_types'],
-                quant_bits=configs['weight_bits'], )
+                quant_bits=configs['weight_bits'],
+            )
         elif deploy_backend.lower() == "mkldnn":
             configs['quant_config'] = quant_config.MKLDNNQuantizer(
                 quantizable_op_type=configs['quantize_op_types'],
-                quant_bits=configs['weight_bits'], )
+                quant_bits=configs['weight_bits'],
+            )
         elif deploy_backend.lower() == "arm":
             configs['quant_config'] = quant_config.ARMCPUQuantizer(
                 quantizable_op_type=configs['quantize_op_types'],
-                quant_bits=configs['weight_bits'], )
+                quant_bits=configs['weight_bits'],
+            )
     except:
         _logger.warning(
-            "Set deploy_backend failed, Please update to PaddlePaddle Develop.")
+            "Set deploy_backend failed, Please update to PaddlePaddle Develop."
+        )
 
     return configs
 
 
-def quant_aware(program,
-                place,
-                config=None,
-                scope=None,
-                for_test=False,
-                weight_quantize_func=None,
-                act_quantize_func=None,
-                weight_preprocess_func=None,
-                act_preprocess_func=None,
-                optimizer_func=None,
-                executor=None,
-                return_program=False,
-                calib_config={},
-                draw_graph=False,
-                return_scale_dict=False,
-                scale_dict=None,
-                model_type=None,
-                pattern_ops=None):
-    """Add quantization  and dequantization operators to "program" 
+def quant_aware(
+    program,
+    place,
+    config=None,
+    scope=None,
+    for_test=False,
+    weight_quantize_func=None,
+    act_quantize_func=None,
+    weight_preprocess_func=None,
+    act_preprocess_func=None,
+    optimizer_func=None,
+    executor=None,
+    return_program=False,
+    calib_config={},
+    draw_graph=False,
+    return_scale_dict=False,
+    scale_dict=None,
+    model_type=None,
+    pattern_ops=None,
+):
+    """Add quantization  and dequantization operators to "program"
     for quantization training or testing.
     Args:
         program(paddle.static.Program): training or testing ``program``.
-        place(paddle.CPUPlace or paddle.CUDAPlace): This parameter represents 
+        place(paddle.CPUPlace or paddle.CUDAPlace): This parameter represents
             the executor run on which device.
-        config(dict, optional): configs for quantization. if None, will use default config. 
+        config(dict, optional): configs for quantization. if None, will use default config.
             Default: None.
-        scope(paddle.static.Scope): Scope records the mapping between variable names and variables, 
-            similar to brackets in programming languages. Usually users can use 
+        scope(paddle.static.Scope): Scope records the mapping between variable names and variables,
+            similar to brackets in programming languages. Usually users can use
             `paddle.static.global_scope <https://www.paddlepaddle.org.cn/documentation/docs/zh/develop/api_cn/executor_cn/global_scope_cn.html>`_.
             When ``None`` will use `paddle.static.global_scope() <https://www.paddlepaddle.org.cn/documentation/docs/zh/develop/api_cn/executor_cn/global_scope_cn.html>`_ .
             Default: ``None``.
-        for_test(bool): If the 'program' parameter is a test program, this parameter should be set to ``True``. 
+        for_test(bool): If the 'program' parameter is a test program, this parameter should be set to ``True``.
             Otherwise, set to ``False``.Default: False
         weight_quantize_func(function): Function that defines how to quantize weight. Using this
                 can quickly test if user's quantization method works or not. In this function, user should
@@ -267,7 +308,7 @@ def quant_aware(program,
         act_quantize_func(function): Function that defines how to quantize activation. Using this
                 can quickly test if user's quantization method works or not. In this function, user should
                 both define quantization and dequantization process, that is, the function's input
-                is non-quantized activation and function returns dequantized activation. If None, will use 
+                is non-quantized activation and function returns dequantized activation. If None, will use
                 quantization op defined by 'activation_quantize_type'.
                 Default is None.
         weight_preprocess_func(function): Function that defines how to preprocess weight before quantization. Using this
@@ -280,7 +321,7 @@ def quant_aware(program,
                 is non-quantized activation and function returns processed activation to be quantized. If None, the activation will
                 be quantized directly.
                 Default is None.
-        optimizer_func(function): Fuction return a optimizer. When 'is_test' is False and user want to use self-defined 
+        optimizer_func(function): Fuction return a optimizer. When 'is_test' is False and user want to use self-defined
             quantization function and preprocess function, this function must be set. Default is None.
         exe(paddle.static.Executor): If user want to use self-defined quantization function and preprocess function, exe must be set for
                 initialization. Default is None.
@@ -304,7 +345,7 @@ def quant_aware(program,
     else:
         assert isinstance(config, dict), "config must be dict"
         config = _parse_configs(config)
-    _logger.info("quant_aware config {}".format(config))
+    _logger.info(f"quant_aware config {config}")
 
     skip_tensor_list = []
     same_scale_tensor_list = []
@@ -323,20 +364,23 @@ def quant_aware(program,
             batch_nums=10,
             scale_dict=scale_dict,
             return_graph=True,
-            **calib_config)
+            **calib_config,
+        )
         main_graph = post_training_quantization.quantize()
         scale_dict = post_training_quantization._scale_dict
-        sub_graphs = [sub_graph for sub_graph in main_graph.all_sub_graphs()]
+        sub_graphs = list(main_graph.all_sub_graphs())
     else:
         main_graph = IrGraph(core.Graph(program.desc), for_test=for_test)
-        sub_graphs = [sub_graph for sub_graph in main_graph.all_sub_graphs()]
+        sub_graphs = list(main_graph.all_sub_graphs())
         transform_pass_ops = []
         quant_dequant_ops = []
         if 'quant_config' in config and config['quant_config']:
             transform_pass_ops = config[
-                'quant_config'].weight_quant_operation_types
+                'quant_config'
+            ].weight_quant_operation_types
             quant_dequant_ops = config[
-                'quant_config'].activation_quant_operation_types
+                'quant_config'
+            ].activation_quant_operation_types
         else:
             for op_type in config['quantize_op_types']:
                 if op_type in TRANSFORM_PASS_OP_TYPES:
@@ -344,7 +388,11 @@ def quant_aware(program,
                 elif op_type in QUANT_DEQUANT_PASS_OP_TYPES:
                     quant_dequant_ops.append(op_type)
         if len(transform_pass_ops) > 0:
-            transform_func = QuantizationTransformPassV2 if config['onnx_format'] else QuantizationTransformPass
+            transform_func = (
+                QuantizationTransformPassV2
+                if config['onnx_format']
+                else QuantizationTransformPass
+            )
             transform_pass = transform_func(
                 scope=scope,
                 place=place,
@@ -362,13 +410,18 @@ def quant_aware(program,
                 act_preprocess_func=act_preprocess_func,
                 optimizer_func=optimizer_func,
                 executor=executor,
-                is_test=is_test)
+                is_test=is_test,
+            )
 
             for sub_graph in sub_graphs:
                 transform_pass.apply(sub_graph)
 
         if len(quant_dequant_ops) > 0:
-            qdq_func = AddQuantDequantPassV2 if config['onnx_format'] else AddQuantDequantPass
+            qdq_func = (
+                AddQuantDequantPassV2
+                if config['onnx_format']
+                else AddQuantDequantPass
+            )
             quant_dequant_pass = qdq_func(
                 scope=scope,
                 place=place,
@@ -376,7 +429,8 @@ def quant_aware(program,
                 quant_bits=config['activation_bits'],
                 skip_pattern=config['not_quant_pattern'],
                 quantizable_op_type=quant_dequant_ops,
-                is_test=is_test)
+                is_test=is_test,
+            )
 
             for sub_graph in sub_graphs:
                 quant_dequant_pass.apply(sub_graph)
@@ -386,18 +440,21 @@ def quant_aware(program,
         place=place,
         moving_rate=config['moving_rate'],
         is_test=is_test,
-        scale_dict=scale_dict)
+        scale_dict=scale_dict,
+    )
 
     for sub_graph in sub_graphs:
         out_scale_training_pass.apply(sub_graph)
 
-    if (weight_preprocess_func is not None or act_preprocess_func is not None
-        ) and not for_test and not config['onnx_format']:
+    if (
+        (weight_preprocess_func is not None or act_preprocess_func is not None)
+        and not for_test
+        and not config['onnx_format']
+    ):
         _logger.info(
             "When a preprocess_func is used in quant_aware, Need to save a mapping table to match variable names in the convert phase."
         )
-        _logger.info("The mapping table is saved as '{}'.".format(
-            VARS_MAPPING_TABLE))
+        _logger.info(f"The mapping table is saved as '{VARS_MAPPING_TABLE}'.")
         for sub_graph in sub_graphs:
             save_dict(sub_graph.out_node_mapping_table)
 
@@ -420,7 +477,7 @@ def convert(program, place, config=None, scope=None, save_int8=False):
     """
     convert quantized and well-trained ``program`` to final  quantized
     ``program``that can be used to  save ``inference model``.
-    
+
     Args:
         program(paddle.static.Program): quantized and well-trained ``test program``.
         place(paddle.CPUPlace or paddle.CUDAPlace): This parameter represents
@@ -432,7 +489,7 @@ def convert(program, place, config=None, scope=None, save_int8=False):
                 variable names and variables, similar to brackets in
                 programming languages. Usually users can use
                 `paddle.static.global_scope <https://www.paddlepaddle.org.cn/documentation/docs/zh/develop/api_cn/executor_cn/global_scope_cn.html>`_.
-                When ``None`` will use 
+                When ``None`` will use
                 `paddle.static.global_scope() <https://www.paddlepaddle.org.cn/documentation/docs/zh/develop/api_cn/executor_cn/global_scope_cn.html>`_
                 . Default: ``None``.
         save_int8: Whether to return ``program`` which model parameters'
@@ -451,7 +508,7 @@ def convert(program, place, config=None, scope=None, save_int8=False):
     else:
         assert isinstance(config, dict), "config must be dict"
         config = _parse_configs(config)
-    _logger.info("convert config {}".format(config))
+    _logger.info(f"convert config {config}")
     test_graph = IrGraph(core.Graph(program.desc), for_test=True)
 
     if config['onnx_format']:
@@ -460,7 +517,8 @@ def convert(program, place, config=None, scope=None, save_int8=False):
             quant_weight_pass.apply(sub_graph)
         try:
             out_scale_infer_pass = AddQuantDequantForInferencePass(
-                scope=scope, place=place, quant_bits=config['activation_bits'])
+                scope=scope, place=place, quant_bits=config['activation_bits']
+            )
             for sub_graph in test_graph.all_sub_graphs():
                 out_scale_infer_pass.apply(sub_graph)
         except:
@@ -478,7 +536,8 @@ def convert(program, place, config=None, scope=None, save_int8=False):
             place=place,
             weight_bits=config['weight_bits'],
             activation_bits=config['activation_bits'],
-            weight_quantize_type=config['weight_quantize_type'])
+            weight_quantize_type=config['weight_quantize_type'],
+        )
         if os.path.exists(VARS_MAPPING_TABLE):
             test_graph.out_node_mapping_table = load_dict()
         for sub_graph in test_graph.all_sub_graphs():

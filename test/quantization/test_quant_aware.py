@@ -13,13 +13,13 @@
 # limitations under the License.
 
 import os
-import sys
 import unittest
-import paddle
-from paddle.static.quantization.quanter import quant_aware, convert
-import numpy as np
-from paddle.nn.initializer import KaimingUniform
 
+import numpy as np
+
+import paddle
+from paddle.nn.initializer import KaimingUniform
+from paddle.static.quantization.quanter import convert, quant_aware
 
 train_parameters = {
     "input_size": [3, 224, 224],
@@ -29,12 +29,12 @@ train_parameters = {
         "name": "piecewise_decay",
         "batch_size": 256,
         "epochs": [10, 16, 30],
-        "steps": [0.1, 0.01, 0.001, 0.0001]
-    }
+        "steps": [0.1, 0.01, 0.001, 0.0001],
+    },
 }
 
 
-class MobileNet():
+class MobileNet:
     def __init__(self):
         self.params = train_parameters
 
@@ -47,7 +47,8 @@ class MobileNet():
             num_filters=int(32 * scale),
             stride=2,
             padding=1,
-            name="conv1")
+            name="conv1",
+        )
 
         # 56x56
         input = self.depthwise_separable(
@@ -57,7 +58,8 @@ class MobileNet():
             num_groups=32,
             stride=1,
             scale=scale,
-            name="conv2_1")
+            name="conv2_1",
+        )
 
         input = self.depthwise_separable(
             input,
@@ -66,7 +68,8 @@ class MobileNet():
             num_groups=64,
             stride=2,
             scale=scale,
-            name="conv2_2")
+            name="conv2_2",
+        )
 
         # 28x28
         input = self.depthwise_separable(
@@ -76,7 +79,8 @@ class MobileNet():
             num_groups=128,
             stride=1,
             scale=scale,
-            name="conv3_1")
+            name="conv3_1",
+        )
 
         input = self.depthwise_separable(
             input,
@@ -85,7 +89,8 @@ class MobileNet():
             num_groups=128,
             stride=2,
             scale=scale,
-            name="conv3_2")
+            name="conv3_2",
+        )
 
         # 14x14
         input = self.depthwise_separable(
@@ -95,7 +100,8 @@ class MobileNet():
             num_groups=256,
             stride=1,
             scale=scale,
-            name="conv4_1")
+            name="conv4_1",
+        )
 
         input = self.depthwise_separable(
             input,
@@ -104,7 +110,8 @@ class MobileNet():
             num_groups=256,
             stride=2,
             scale=scale,
-            name="conv4_2")
+            name="conv4_2",
+        )
 
         # 14x14
         for i in range(5):
@@ -115,7 +122,8 @@ class MobileNet():
                 num_groups=512,
                 stride=1,
                 scale=scale,
-                name="conv5" + "_" + str(i + 1))
+                name="conv5" + "_" + str(i + 1),
+            )
         # 7x7
         input = self.depthwise_separable(
             input,
@@ -124,7 +132,8 @@ class MobileNet():
             num_groups=512,
             stride=2,
             scale=scale,
-            name="conv5_6")
+            name="conv5_6",
+        )
 
         input = self.depthwise_separable(
             input,
@@ -133,7 +142,8 @@ class MobileNet():
             num_groups=1024,
             stride=1,
             scale=scale,
-            name="conv6")
+            name="conv6",
+        )
 
         input = paddle.nn.functional.adaptive_avg_pool2d(input, 1)
         with paddle.static.name_scope('last_fc'):
@@ -141,22 +151,26 @@ class MobileNet():
                 input,
                 class_dim,
                 weight_attr=paddle.ParamAttr(
-                    initializer=KaimingUniform(), name="fc7_weights"),
-                bias_attr=paddle.ParamAttr(name="fc7_offset"))
+                    initializer=KaimingUniform(), name="fc7_weights"
+                ),
+                bias_attr=paddle.ParamAttr(name="fc7_offset"),
+            )
 
         return output
 
-    def conv_bn_layer(self,
-                      input,
-                      filter_size,
-                      num_filters,
-                      stride,
-                      padding,
-                      channels=None,
-                      num_groups=1,
-                      act='relu',
-                      use_cudnn=True,
-                      name=None):
+    def conv_bn_layer(
+        self,
+        input,
+        filter_size,
+        num_filters,
+        stride,
+        padding,
+        channels=None,
+        num_groups=1,
+        act='relu',
+        use_cudnn=True,
+        name=None,
+    ):
         conv = paddle.static.nn.conv2d(
             input=input,
             num_filters=num_filters,
@@ -167,8 +181,10 @@ class MobileNet():
             act=None,
             use_cudnn=use_cudnn,
             param_attr=paddle.ParamAttr(
-                initializer=KaimingUniform(), name=name + "_weights"),
-            bias_attr=False)
+                initializer=KaimingUniform(), name=name + "_weights"
+            ),
+            bias_attr=False,
+        )
         bn_name = name + "_bn"
         return paddle.static.nn.batch_norm(
             input=conv,
@@ -176,16 +192,19 @@ class MobileNet():
             param_attr=paddle.ParamAttr(name=bn_name + "_scale"),
             bias_attr=paddle.ParamAttr(name=bn_name + "_offset"),
             moving_mean_name=bn_name + '_mean',
-            moving_variance_name=bn_name + '_variance')
+            moving_variance_name=bn_name + '_variance',
+        )
 
-    def depthwise_separable(self,
-                            input,
-                            num_filters1,
-                            num_filters2,
-                            num_groups,
-                            stride,
-                            scale,
-                            name=None):
+    def depthwise_separable(
+        self,
+        input,
+        num_filters1,
+        num_filters2,
+        num_groups,
+        stride,
+        scale,
+        name=None,
+    ):
         depthwise_conv = self.conv_bn_layer(
             input=input,
             filter_size=3,
@@ -194,7 +213,8 @@ class MobileNet():
             padding=1,
             num_groups=int(num_groups * scale),
             use_cudnn=False,
-            name=name + "_dw")
+            name=name + "_dw",
+        )
 
         pointwise_conv = self.conv_bn_layer(
             input=depthwise_conv,
@@ -202,7 +222,8 @@ class MobileNet():
             num_filters=int(num_filters2 * scale),
             stride=1,
             padding=0,
-            name=name + "_sep")
+            name=name + "_sep",
+        )
         return pointwise_conv
 
 
@@ -215,7 +236,8 @@ class StaticCase(unittest.TestCase):
 class TestQuantAwareCase(StaticCase):
     def test_accuracy(self):
         image = paddle.static.data(
-            name='image', shape=[None, 1, 28, 28], dtype='float32')
+            name='image', shape=[None, 1, 28, 28], dtype='float32'
+        )
         label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
         model = MobileNet()
         out = model.net(input=image, class_dim=10)
@@ -226,13 +248,17 @@ class TestQuantAwareCase(StaticCase):
         optimizer = paddle.optimizer.Momentum(
             momentum=0.9,
             learning_rate=0.01,
-            weight_decay=paddle.regularizer.L2Decay(4e-5))
+            weight_decay=paddle.regularizer.L2Decay(4e-5),
+        )
         optimizer.minimize(avg_cost)
         main_prog = paddle.static.default_main_program()
         val_prog = paddle.static.default_main_program().clone(for_test=True)
 
-        place = paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda(
-        ) else paddle.CPUPlace()
+        place = (
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
         exe = paddle.static.Executor(place)
         exe.run(paddle.static.default_startup_program())
 
@@ -240,9 +266,11 @@ class TestQuantAwareCase(StaticCase):
             return np.reshape(x, [1, 28, 28])
 
         train_dataset = paddle.vision.datasets.MNIST(
-            mode='train', backend='cv2', transform=transform)
+            mode='train', backend='cv2', transform=transform
+        )
         test_dataset = paddle.vision.datasets.MNIST(
-            mode='test', backend='cv2', transform=transform)
+            mode='test', backend='cv2', transform=transform
+        )
         batch_size = 64 if os.environ.get('DATASET') == 'full' else 8
         train_loader = paddle.io.DataLoader(
             train_dataset,
@@ -250,13 +278,15 @@ class TestQuantAwareCase(StaticCase):
             feed_list=[image, label],
             drop_last=True,
             return_list=False,
-            batch_size=batch_size)
+            batch_size=batch_size,
+        )
         valid_loader = paddle.io.DataLoader(
             test_dataset,
             places=place,
             feed_list=[image, label],
             batch_size=batch_size,
-            return_list=False)
+            return_list=False,
+        )
 
         def train(program):
             iter = 0
@@ -265,12 +295,15 @@ class TestQuantAwareCase(StaticCase):
                 cost, top1, top5 = exe.run(
                     program,
                     feed=data,
-                    fetch_list=[avg_cost, acc_top1, acc_top5])
+                    fetch_list=[avg_cost, acc_top1, acc_top5],
+                )
                 iter += 1
                 if iter % 100 == 0:
                     print(
-                        'train iter={}, avg loss {}, acc_top1 {}, acc_top5 {}'.
-                        format(iter, cost, top1, top5))
+                        'train iter={}, avg loss {}, acc_top1 {}, acc_top5 {}'.format(
+                            iter, cost, top1, top5
+                        )
+                    )
                 if stop_iter is not None and iter == stop_iter:
                     break
 
@@ -282,18 +315,25 @@ class TestQuantAwareCase(StaticCase):
                 cost, top1, top5 = exe.run(
                     program,
                     feed=data,
-                    fetch_list=[avg_cost, acc_top1, acc_top5])
+                    fetch_list=[avg_cost, acc_top1, acc_top5],
+                )
                 iter += 1
                 if iter % 100 == 0:
-                    print('eval iter={}, avg loss {}, acc_top1 {}, acc_top5 {}'.
-                          format(iter, cost, top1, top5))
+                    print(
+                        'eval iter={}, avg loss {}, acc_top1 {}, acc_top5 {}'.format(
+                            iter, cost, top1, top5
+                        )
+                    )
                 result[0].append(cost)
                 result[1].append(top1)
                 result[2].append(top5)
                 if stop_iter is not None and iter == stop_iter:
                     break
-            print(' avg loss {}, acc_top1 {}, acc_top5 {}'.format(
-                np.mean(result[0]), np.mean(result[1]), np.mean(result[2])))
+            print(
+                ' avg loss {}, acc_top1 {}, acc_top5 {}'.format(
+                    np.mean(result[0]), np.mean(result[1]), np.mean(result[2])
+                )
+            )
             return np.mean(result[1]), np.mean(result[2])
 
         train(main_prog)
@@ -315,21 +355,24 @@ class TestQuantAwareCase(StaticCase):
 
         top1_2, top5_2 = test(convert_eval_prog)
         # values before quantization and after quantization should be close
-        print("before quantization: top1: {}, top5: {}".format(top1_1, top5_1))
-        print("after quantization: top1: {}, top5: {}".format(top1_2, top5_2))
+        print(f"before quantization: top1: {top1_1}, top5: {top5_1}")
+        print(f"after quantization: top1: {top1_2}, top5: {top5_2}")
 
         convert_op_nums_1, convert_quant_op_nums_1 = self.get_convert_op_number(
-            convert_eval_prog)
+            convert_eval_prog
+        )
         # test convert op numbers
         self.assertEqual(convert_op_nums_1 + 25, convert_quant_op_nums_1)
 
         config['not_quant_pattern'] = ['last_fc']
         quant_prog_2 = quant_aware(
-            main_prog, place, config=config, for_test=True)
+            main_prog, place, config=config, for_test=True
+        )
         op_nums_2, quant_op_nums_2 = self.get_op_number(quant_prog_2)
         convert_prog_2 = convert(quant_prog_2, place, config=config)
         convert_op_nums_2, convert_quant_op_nums_2 = self.get_convert_op_number(
-            convert_prog_2)
+            convert_prog_2
+        )
 
         self.assertEqual(op_nums_1, op_nums_2)
         # test skip_quant
@@ -340,7 +383,8 @@ class TestQuantAwareCase(StaticCase):
 
     def get_op_number(self, prog):
         graph = paddle.fluid.framework.IrGraph(
-            paddle.framework.core.Graph(prog.desc), for_test=False)
+            paddle.framework.core.Graph(prog.desc), for_test=False
+        )
         quant_op_nums = 0
         op_nums = 0
         for op in graph.all_op_nodes():
@@ -352,7 +396,8 @@ class TestQuantAwareCase(StaticCase):
 
     def get_convert_op_number(self, prog):
         graph = paddle.fluid.framework.IrGraph(
-            paddle.framework.core.Graph(prog.desc), for_test=True)
+            paddle.framework.core.Graph(prog.desc), for_test=True
+        )
         quant_op_nums = 0
         op_nums = 0
         dequant_num = 0
@@ -366,4 +411,3 @@ class TestQuantAwareCase(StaticCase):
 
 if __name__ == '__main__':
     unittest.main()
-
