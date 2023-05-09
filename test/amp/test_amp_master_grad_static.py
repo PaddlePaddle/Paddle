@@ -17,7 +17,13 @@ import random
 import unittest
 
 import numpy as np
-from amp_base_models import AmpTestBase, build_embedding_model
+from amp_base_models import (
+    AmpTestBase,
+    build_embedding_model,
+    build_MLP_model,
+    convert_float_to_uint16,
+    convert_uint16_to_float,
+)
 
 import paddle
 from paddle.fluid import core
@@ -76,6 +82,7 @@ class TestStaticMasterGradProgramBF16(AmpTestBase):
 
         amp.debugging.collect_operator_stats(main_program)
         op_stats_list = amp.debugging._get_op_stats_list(main_program)
+        expected_fp32_calls = {"lookup_table_v2": 1}
         if use_master_grad:
             expected_bf16_calls = {
                 "matmul_v2": 1,
@@ -83,7 +90,7 @@ class TestStaticMasterGradProgramBF16(AmpTestBase):
                 "dropout": 1,
                 "lookup_table_v2": 0,
                 "squared_l2_norm": 0,
-                "adamw": 2,
+                "adamw": 3,
             }
         else:
             expected_bf16_calls = {
@@ -91,13 +98,14 @@ class TestStaticMasterGradProgramBF16(AmpTestBase):
                 "elementwise_add": 1,
                 "dropout": 1,
                 "lookup_table_v2": 0,
-                "squared_l2_norm": 2,
-                "adamw": 2,
+                "squared_l2_norm": 3,
+                "adamw": 3,
             }
         self._check_optimizer(
             main_program,
             expected_bf16_calls["matmul_v2"]
-            + expected_bf16_calls["elementwise_add"],
+            + expected_bf16_calls["elementwise_add"]
+            + expected_fp32_calls["lookup_table_v2"],
         )
         self._check_op_calls(op_stats_list[0], expected_bf16_calls)
 
@@ -106,25 +114,41 @@ class TestStaticMasterGradProgramBF16(AmpTestBase):
         for master_grad in use_master_grad_list:
             self.amp_bf16_o2(master_grad)
 
-    def _generate_feed_x(self):
+    def _generate_feed_x(self, dtype="float16"):
         seed = 0
         paddle.seed(seed)
         np.random.seed(seed)
         random.seed(seed)
 
-        x = np.random.randint(1, 128, size=[1, 32]).astype("int64")
-        return x
+        x = np.random.random(size=[64, 16]).astype("float32")
+        if dtype == "bfloat16":
+            x_f16 = convert_float_to_uint16(x)
+            x_f32 = convert_uint16_to_float(x_f16)
+        elif dtype == "float16":
+            x_f16 = x.astype(np.float16)
+            x_f32 = x_f16.astype(np.float32)
+        else:
+            raise AssertionError(f"unkown dtype:{dtype}")
+        return x_f32, x_f16
 
     def test_compare_o1_and_o2_master_grad(self):
-        def _run(place, exe, x_np, max_iters, level, use_master_grad=False):
+        def _run(
+            place,
+            exe,
+            x_np,
+            max_iters,
+            level,
+            dtype="float16",
+            use_master_grad=False,
+        ):
             (
                 main_program,
                 startup_program,
                 optimizer,
                 feed_vars,
                 fetch_vars,
-            ) = build_embedding_model(
-                True, "float16", level, use_master_grad=use_master_grad
+            ) = build_MLP_model(
+                True, dtype, level, use_master_grad=use_master_grad
             )
 
             seed = 0
@@ -146,13 +170,30 @@ class TestStaticMasterGradProgramBF16(AmpTestBase):
             )
             return losses
 
-        max_iters = 100
-        x = self._generate_feed_x()
+        dtype = "float16"
+        max_iters = 40
+        x_f32, x_f16 = self._generate_feed_x(dtype)
         place = paddle.CUDAPlace(0)
         exe = paddle.static.Executor(place)
-        losses_o1 = _run(place, exe, x, max_iters, 'O1')
-        losses_o2_no_master_grad = _run(place, exe, x, max_iters, 'O2')
-        losses_o2_master_grad = _run(place, exe, x, max_iters, 'O2', True)
+        losses_o1 = _run(place, exe, x_f32, max_iters, 'O1', dtype=dtype)
+        losses_o2_no_master_grad = _run(
+            place,
+            exe,
+            x_f16,
+            max_iters,
+            'O2',
+            dtype=dtype,
+            use_master_grad=False,
+        )
+        losses_o2_master_grad = _run(
+            place,
+            exe,
+            x_f16,
+            max_iters,
+            'O2',
+            dtype=dtype,
+            use_master_grad=True,
+        )
 
         self.assertNotEqual(
             losses_o1,

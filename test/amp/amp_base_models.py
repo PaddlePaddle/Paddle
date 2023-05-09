@@ -250,6 +250,66 @@ def build_embedding_model(
     return main_program, startup_program, optimizer, feed_vars, fetch_vars
 
 
+class SimpleMLPNet(nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self.linear0 = paddle.nn.Linear(16, 10)
+        self.linear1 = paddle.nn.Linear(10, 32)
+
+    def forward(self, x):
+        out = self.linear0(x)
+        out = nn.functional.relu(out)
+        out = self.linear1(out)
+        out = nn.functional.dropout(out, p=0.2)
+        return out
+
+
+def build_MLP_model(
+    use_amp,
+    amp_dtype="float16",
+    amp_level="O1",
+    use_promote=False,
+    use_master_grad=False,
+):
+    main_program = paddle.static.Program()
+    startup_program = paddle.static.Program()
+    with paddle.utils.unique_name.guard():
+        with paddle.static.program_guard(main_program, startup_program):
+            model = SimpleMLPNet()
+            x_dtype = "float32"
+            if use_amp and amp_level == "O2":
+                if amp_dtype == "bfloat16":
+                    x_dtype = "uint16"
+                elif amp_dtype == "float16":
+                    x_dtype = "float16"
+            x = paddle.static.data(name='x', shape=[None, 16], dtype=x_dtype)
+            out = model(x)
+            loss = paddle.mean(out)
+
+            if use_amp:
+                amp_lists = paddle.static.amp.AutoMixedPrecisionLists(
+                    custom_black_list=["reduce_mean"],
+                    dtype=amp_dtype,
+                )
+            else:
+                amp_lists = None
+
+            optimizer = _build_optimizer(
+                use_amp,
+                amp_dtype,
+                amp_level,
+                amp_lists,
+                True,
+                use_promote=use_promote,
+                use_master_grad=use_master_grad,
+            )
+            optimizer.minimize(loss)
+
+    feed_vars = [x]
+    fetch_vars = [loss]
+    return main_program, startup_program, optimizer, feed_vars, fetch_vars
+
+
 class SimpleWhileNet(nn.Layer):
     def __init__(self):
         super().__init__()
