@@ -104,7 +104,16 @@ struct SimpleOpTypeSetTeller : public Teller {
         "atanh",      "ceil",        "celu",
         "erf",        "floor",       "round",
         "sign",       "silu",        "logical_not",
-        "reciprocal", "tanh_shrink", "logsigmoid"};
+        "reciprocal", "tanh_shrink", "logsigmoid",
+        "rsqrt"};
+    std::unordered_set<std::string> unary_list = {
+        "exp",        "log",  "sqrt",        "abs",        "sin",
+        "cos",        "tan",  "tanh",        "sinh",       "cosh",
+        "asin",       "acos", "atan",        "asinh",      "acosh",
+        "atanh",      "ceil", "celu",        "floor",      "round",
+        "sign",       "silu", "logical_not", "reciprocal", "tanh_shrink",
+        "logsigmoid", "erf",  "bitwise_not", "equal",      "not_equal",
+        "rsqrt"};
     if (act_op_list.find(op_type) != act_op_list.end()) {
       auto* block = desc.Block();
       if (block == nullptr) {
@@ -116,9 +125,10 @@ struct SimpleOpTypeSetTeller : public Teller {
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
-      if (x_shape.size() == 1) {
+      if (!with_dynamic_shape && (x_shape.size() == 1 || x_shape.size() == 0)) {
         VLOG(3) << op_type
-                << " op does not support input's dim is 1 in tensorrt.";
+                << " op does not support input's dim is 1 or 0 in tensorrt "
+                   "static shape mode.";
         return false;
       }
 #if !IS_TRT_VERSION_GE(7000)
@@ -127,8 +137,14 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
 #endif
+#if !IS_TRT_VERSION_GE(8600)
+      if (x_shape.size() == 0 && unary_list.find(op_type) != unary_list.end()) {
+        VLOG(3) << op_type
+                << " op does not support 0 dim input when TensorRT < 8.6.";
+        return false;
+      }
+#endif
     }
-
     // In static shape in Paddle-TRT, we can't allow that one op has a
     // 1D intermediate tensor as input.
     if (!with_dynamic_shape) {
