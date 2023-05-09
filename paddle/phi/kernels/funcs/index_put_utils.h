@@ -27,8 +27,12 @@
 #include "paddle/phi/kernels/split_kernel.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
+#ifdef __NVCC__
 #include <cuda.h>
 #include <cuda_runtime.h>
+#elif defined(__HIPCC__)
+#include <hip/hip_runtime.h>
+#endif
 #endif
 
 namespace phi {

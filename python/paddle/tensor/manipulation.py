@@ -4803,7 +4803,7 @@ def index_put_(x, indices, value, accumulate=False, name=None):
     If accumulate is True, the elements in values are added to x. If accumulate is False, the behavior is undefined if indices contain duplicate elements.
 
     Args:
-        x (Tensor) : The Source Tensor. Supported data types are int32, int64, float16, float32, float64, bool, complex64, complex128.
+        x (Tensor) : The Source Tensor. Supported data types are int32, int64, float16, float32, float64, bool.
         indices (Tensor): The tuple of Tensor containing the indices to index.
             The data type of ``tensor in indices`` must be int32, int64 or bool
         value (Tensor): The tensor used to be assigned to x.
