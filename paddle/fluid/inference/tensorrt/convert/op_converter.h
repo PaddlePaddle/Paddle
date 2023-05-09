@@ -306,13 +306,15 @@ class OpConverter {
         auto max_input_shape = engine->max_input_shape()[input];
         auto optim_input_shape = engine->optim_input_shape()[input];
         size_t ranks = min_input_shape.size();
-        if (ranks == 0) {
-          all_dynamic_shape_set = false;
-          LOG(INFO) << "trt input [" << input.c_str()
-                    << "] dynamic shape info not set, please check and retry.";
-          // check other input
-          continue;
-        }
+        // allow 0 dim for dynamic shape input
+        // if (ranks == 0) {
+        //   all_dynamic_shape_set = false;
+        //   LOG(INFO) << "trt input [" << input.c_str()
+        //             << "] dynamic shape info not set, please check and
+        //             retry.";
+        //   // check other input
+        //   continue;
+        // }
         std::vector<int64_t> input_shape;
         // input_shape.push_back(-1);
         for (size_t i = 0; i < ranks; i++) {
