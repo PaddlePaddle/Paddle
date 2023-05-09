@@ -1901,13 +1901,14 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
  }}
   """
             else:
-                Unavailable_log = f"""  if(trace_backward) {{
+                if self.grad_api_contents["backward_op"] not in prim_white_list:
+                    Unavailable_log = f"""  if(trace_backward) {{
     PADDLE_THROW(phi::errors::Unavailable(
     \"The Op {self.backward_api_name} doesn't have any grad\"
     \"op. If you don't intend calculating higher order\"
     \"derivatives, please set `create_graph`to False.\"));
   }}"""
-                next_grad_node_creation_str = f"""
+                    next_grad_node_creation_str = f"""
  if (!paddle::prim::PrimCommonUtils::IsEagerPrimEnabled()) {{
     {Unavailable_log}
  }}
