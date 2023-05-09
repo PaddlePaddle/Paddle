@@ -115,7 +115,8 @@ endif()
 file(
   GLOB kernel_xpu
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
-  "xpu/*.cc" "legacy/xpu/*.cc" "selected_rows/xpu/*.cc" "fusion/xpu/*.cc")
+  "xpu/*.cc" "legacy/xpu/*.cc" "selected_rows/xpu/*.cc" "fusion/xpu/*.cc"
+  "sparse/xpu/*.cc")
 
 if(WITH_GPU OR WITH_ROCM)
   collect_srcs(kernels_srcs SRCS ${kernel_cu})
