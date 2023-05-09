@@ -40,7 +40,7 @@ class TrtConvertGeluTest(TrtLayerAutoScanTest):
             else:
                 return np.ones([1, 3, 32, 32]).astype(np.float32)
 
-        for dims in [1, 2, 3, 4]:
+        for dims in [0, 1, 2, 3, 4]:
             for approximate in [True, False]:
                 self.dims = dims
                 dics = [{"approximate": approximate}]
