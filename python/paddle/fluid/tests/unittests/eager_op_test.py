@@ -2362,7 +2362,6 @@ class OpTest(unittest.TestCase):
 
         self._check_grad_helper()
         places = self._get_places()
-        print(places)
         for place in places:
             self.check_grad_with_place(
                 place,
