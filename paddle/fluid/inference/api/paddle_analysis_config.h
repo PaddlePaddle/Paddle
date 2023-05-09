@@ -289,6 +289,18 @@ struct PD_INFER_DECL AnalysisConfig {
                  bool enable_multi_stream = false);
 
   ///
+  /// \brief configs of XPU
+  ///
+  /// \param quant_post_dynamic_weight_bits Weight bits used in dynamic post
+  /// quantization. Optional value: -1, 8, 16. Default value is -1, means using
+  /// the recommended way. \param quant_post_dynamic_op_types Ops used in
+  /// dynamic post quantization.
+  ///
+  void SetXpuConfig(
+      int quant_post_dynamic_weight_bits = -1,
+      const std::vector<std::string>& quant_post_dynamic_op_types = {});
+
+  ///
   /// \brief configs of IPU
   ///
   enum class ipu_config_code {
@@ -1181,6 +1193,8 @@ struct PD_INFER_DECL AnalysisConfig {
   std::string xpu_precision_;
   bool xpu_adaptive_seqlen_;
   bool xpu_enable_multi_stream_;
+  int xpu_quant_post_dynamic_weight_bits_{-1};
+  std::vector<std::string> xpu_quant_post_dynamic_op_types_;
 
   // LITE OPENCL SETTINGS
   bool use_opencl_{false};

@@ -137,11 +137,11 @@ class PSClient {
                                           size_t num,
                                           bool is_training) = 0;
 
-  virtual std::future<int32_t> PullSparseParam(float **select_values,
-                                               size_t table_id,
-                                               const uint64_t *keys,
-                                               size_t num,
-                                               bool is_training) {
+  virtual std::future<int32_t> PullSparseParam(float **select_values UNUSED,
+                                               size_t table_id UNUSED,
+                                               const uint64_t *keys UNUSED,
+                                               size_t num UNUSED,
+                                               bool is_training UNUSED) {
     VLOG(0) << "Did not implement";
     std::promise<int32_t> promise;
     std::future<int> fut = promise.get_future();
@@ -149,13 +149,14 @@ class PSClient {
     return fut;
   }
 
-  virtual ::std::future<int32_t> PullSparsePtr(int shard_id,
-                                               char **select_values,
-                                               size_t table_id,
-                                               const uint64_t *keys,
-                                               size_t num,
-                                               uint16_t pass_id,
-                                               const uint16_t &dim_id = 0) {
+  virtual ::std::future<int32_t> PullSparsePtr(
+      int shard_id UNUSED,
+      char **select_values UNUSED,
+      size_t table_id UNUSED,
+      const uint64_t *keys UNUSED,
+      size_t num UNUSED,
+      uint16_t pass_id UNUSED,
+      const uint16_t &dim_id UNUSED = 0) {
     VLOG(0) << "Did not implement";
     std::promise<int32_t> promise;
     std::future<int> fut = promise.get_future();
@@ -164,9 +165,9 @@ class PSClient {
   }
 
   virtual std::future<int32_t> PrintTableStat(uint32_t table_id) = 0;
-  virtual std::future<int32_t> SaveCacheTable(uint32_t table_id,
-                                              uint16_t pass_id,
-                                              size_t threshold) {
+  virtual std::future<int32_t> SaveCacheTable(uint32_t table_id UNUSED,
+                                              uint16_t pass_id UNUSED,
+                                              size_t threshold UNUSED) {
     VLOG(0) << "Did not implement";
     std::promise<int32_t> promise;
     std::future<int> fut = promise.get_future();
@@ -201,9 +202,10 @@ class PSClient {
 
   virtual void FinalizeWorker() = 0;
   // client to client, 消息发送
-  virtual std::future<int32_t> SendClient2ClientMsg(int msg_type,
-                                                    int to_client_id,
-                                                    const std::string &msg) {
+  virtual std::future<int32_t> SendClient2ClientMsg(int msg_type UNUSED,
+                                                    int to_client_id UNUSED,
+                                                    const std::string &msg
+                                                        UNUSED) {
     VLOG(0) << "Did not implement";
     std::promise<int32_t> promise;
     std::future<int> fut = promise.get_future();
@@ -272,11 +274,11 @@ class PSClient {
                                           size_t num) = 0;
 
   // for save cache
-  virtual std::future<int32_t> CacheShuffle(
-      uint32_t table_id,
-      const std::string &path,
-      const std::string &mode,
-      const std::string &cache_threshold) {
+  virtual std::future<int32_t> CacheShuffle(uint32_t table_id UNUSED,
+                                            const std::string &path UNUSED,
+                                            const std::string &mode UNUSED,
+                                            const std::string &cache_threshold
+                                                UNUSED) {
     VLOG(0) << "Did not implement";
     std::promise<int32_t> promise;
     std::future<int> fut = promise.get_future();
@@ -285,10 +287,10 @@ class PSClient {
   }
 
   virtual std::future<int32_t> CacheShuffleMultiTable(
-      std::vector<int> tables,
-      const std::string &path,
-      const std::string &mode,
-      const std::string &cache_threshold) {
+      std::vector<int> tables UNUSED,
+      const std::string &path UNUSED,
+      const std::string &mode UNUSED,
+      const std::string &cache_threshold UNUSED) {
     VLOG(0) << "Did not implement";
     std::promise<int32_t> promise;
     std::future<int> fut = promise.get_future();
@@ -296,9 +298,9 @@ class PSClient {
     return fut;
   }
 
-  virtual std::future<int32_t> SaveCache(uint32_t table_id,
-                                         const std::string &path,
-                                         const std::string &mode) {
+  virtual std::future<int32_t> SaveCache(uint32_t table_id UNUSED,
+                                         const std::string &path UNUSED,
+                                         const std::string &mode UNUSED) {
     VLOG(0) << "Did not implement";
     std::promise<int32_t> promise;
     std::future<int> fut = promise.get_future();
@@ -306,9 +308,9 @@ class PSClient {
     return fut;
   }
 
-  virtual std::future<int32_t> GetCacheThreshold(
-      uint32_t table_id,
-      double &cache_threshold) {  // NOLINT
+  virtual std::future<int32_t> GetCacheThreshold(uint32_t table_id UNUSED,
+                                                 double &cache_threshold
+                                                     UNUSED) {  // NOLINT
     VLOG(0) << "Did not implement";
     std::promise<int32_t> promise;
     std::future<int> fut = promise.get_future();
@@ -333,7 +335,9 @@ class PSClient {
   }
   // add
   virtual std::shared_ptr<SparseShardValues> TakePassSparseReferedValues(
-      const size_t &table_id, const uint16_t &pass_id, const uint16_t &dim_id) {
+      const size_t &table_id UNUSED,
+      const uint16_t &pass_id UNUSED,
+      const uint16_t &dim_id UNUSED) {
     VLOG(0) << "Did not implement";
     return nullptr;
   }

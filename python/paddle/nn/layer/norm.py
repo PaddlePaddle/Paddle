@@ -1561,7 +1561,10 @@ class SyncBatchNorm(_BatchNormBase):
             return sync_batch_norm_out
 
         check_variable_and_dtype(
-            x, 'input', ['float16', 'float32', 'float64'], 'SyncBatchNorm'
+            x,
+            'input',
+            ['float16', 'uint16', 'float32', 'float64'],
+            'SyncBatchNorm',
         )
 
         attrs = {

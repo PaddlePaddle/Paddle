@@ -59,19 +59,16 @@ DictionaryAttributeStorage::ParamKey DictionaryAttributeStorage::GetAsKey()
 }
 
 Attribute DictionaryAttributeStorage::GetValue(const StrAttribute &name) const {
-  if (size_ > 0) {
-    size_t left = 0;
-    size_t right = size_ - 1;
-    size_t mid = 0;
-    while (left <= right) {
-      mid = (left + right) / 2;
-      if (data_[mid].name() == name) {
-        return data_[mid].value();
-      } else if (data_[mid].name() < name) {
-        left = mid + 1;
-      } else {
-        right = mid - 1;
-      }
+  size_t left = 0;
+  size_t right = size_;
+  while (left < right) {
+    size_t mid = left + (right - left) / 2;
+    if (data_[mid].name() == name) {
+      return data_[mid].value();
+    } else if (data_[mid].name() < name) {
+      left = mid + 1;
+    } else {
+      right = mid;
     }
   }
   return nullptr;

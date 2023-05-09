@@ -155,7 +155,7 @@ def vector_to_parameters(vec, parameters, name=None):
     for param in parameters:
         shape = param.shape
         origin_shapes.append(shape)
-        numel = reduce(lambda x, y: x * y, shape)
+        numel = reduce(lambda x, y: x * y, shape, 1)
         sections.append(numel)
 
     if len(sections) == 1:

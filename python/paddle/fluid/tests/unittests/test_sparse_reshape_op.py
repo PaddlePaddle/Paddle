@@ -36,6 +36,8 @@ class TestReshape(unittest.TestCase):
         paddle.sparse.reshape.
         """
         mask = np.random.randint(0, 2, x_shape)
+        while np.sum(mask) == 0:
+            mask = paddle.randint(0, 2, x_shape)
         np_x = np.random.randint(-100, 100, x_shape) * mask
 
         # check cpu kernel
