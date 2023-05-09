@@ -272,7 +272,7 @@ class DistributedDataLoader(DistributedDataLoaderBase):
         return next(self.data)
 
     def _create_inner_dataloader(self):
-        dataloader = paddle.fluid.io.DataLoader(
+        dataloader = paddle.io.DataLoader(
             self.dataset,
             feed_list=self.feed_list,
             places=self.places,
