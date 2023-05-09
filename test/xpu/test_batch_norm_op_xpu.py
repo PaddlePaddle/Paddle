@@ -154,7 +154,6 @@ class XPUTestBatchNormOp(XPUOpTestWrapper):
     class TestBatchNormOp(unittest.TestCase):
         def setUp(self):
             self.op_type = "batch_norm"
-            self.dtype = np.float32
             self.shape = [2, 3, 4, 5]
             self.data_layout = "NCHW"
             self.epsilon = 1e-05
@@ -175,15 +174,15 @@ class XPUTestBatchNormOp(XPUOpTestWrapper):
             np.random.seed(1024)
             self.x_np = np.random.random_sample(self.shape).astype(self.dtype)
             self.scale_np = np.random.random_sample([channel_size]).astype(
-                self.dtype
+                np.float32
             )
             self.bias_np = np.random.random_sample([channel_size]).astype(
-                self.dtype
+                np.float32
             )
-            self.mean_np = np.zeros([channel_size]).astype(self.dtype)
-            self.variance_np = np.ones([channel_size]).astype(self.dtype)
-            self.saved_mean_np = np.zeros([channel_size]).astype(self.dtype)
-            self.saved_variance_np = np.ones([channel_size]).astype(self.dtype)
+            self.mean_np = np.zeros([channel_size]).astype(np.float32)
+            self.variance_np = np.ones([channel_size]).astype(np.float32)
+            self.saved_mean_np = np.zeros([channel_size]).astype(np.float32)
+            self.saved_variance_np = np.ones([channel_size]).astype(np.float32)
 
         def set_attrs(self):
             pass
