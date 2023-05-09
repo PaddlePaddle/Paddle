@@ -119,10 +119,10 @@ std::vector<int64_t> GetOffsets(const DenseTensor& indices,
   return offsets;
 }
 
-void GetPoolsSoftmaxGrad(const std::vector<std::vector<int64_t>>& pools,
-                         const DenseTensor& indices,
+void GetPoolsSoftmaxGrad(const DenseTensor& indices,
                          const std::vector<int64_t>& sizes,
-                         const int64_t dim) {
+                         const int64_t dim,
+                         std::vector<std::vector<int64_t>>* pools) {
   auto ndim = indices.dims()[0];
   auto nnz = indices.dims()[1];
   std::vector<int64_t> strides(ndim, 1);
@@ -140,10 +140,10 @@ void GetPoolsSoftmaxGrad(const std::vector<std::vector<int64_t>>& pools,
       if (j == dim) continue;
       pool_index += strides[j] * indices_data[j * nnz + i];
     }
-    if (static_cast<int64_t>(pools.size()) <= pool_index) {
-      pools.resize(pool_index + 1);
+    if (static_cast<int64_t>(pools->size()) <= pool_index) {
+      pools->resize(pool_index + 1);
     }
-    pools.at(pool_index).push_back(i);
+    pools->at(pool_index).push_back(i);
   }
 }
 
@@ -244,7 +244,7 @@ void SoftmaxCooGradKernel(const Context& dev_ctx,
   DenseTensor grad_values_2(grad_values);
   grad_values_2.Resize(phi::make_ddim({nnz, nvalues}));
   std::vector<std::vector<int64_t>> pools;
-  GetPoolsSoftmaxGrad(pools, out_indices, sizes, dim);
+  GetPoolsSoftmaxGrad(out_indices, sizes, dim, &pools);
 
   for (size_t p = 0; p < pools.size(); p++) {
     auto pool_indices = pools[p];

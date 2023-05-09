@@ -87,10 +87,10 @@ void SoftmaxCsrKernel(const Context& dev_ctx,
       }));
 }
 
-void GetPoolsSoftmax(const std::vector<std::vector<int64_t>>& pools,
-                     const DenseTensor& indices,
+void GetPoolsSoftmax(const DenseTensor& indices,
                      const std::vector<int64_t>& sizes,
-                     const int64_t dim) {
+                     const int64_t dim,
+                     std::vector<std::vector<int64_t>>* pools) {
   auto ndim = indices.dims()[0];
   auto nnz = indices.dims()[1];
   std::vector<int64_t> strides(ndim, 1);
@@ -108,10 +108,10 @@ void GetPoolsSoftmax(const std::vector<std::vector<int64_t>>& pools,
       if (j == dim) continue;
       pool_index += strides[j] * indices_data[j * nnz + i];
     }
-    if (static_cast<int64_t>(pools.size()) <= pool_index) {
-      pools.resize(pool_index + 1);
+    if (static_cast<int64_t>(pools->size()) <= pool_index) {
+      pools->resize(pool_index + 1);
     }
-    pools.at(pool_index).push_back(i);
+    pools->at(pool_index).push_back(i);
   }
 }
 
@@ -142,7 +142,7 @@ void SoftmaxCooKernel(const Context& dev_ctx,
                                     sizes.end(),
                                     static_cast<int64_t>(1),
                                     std::multiplies<>());
-  GetPoolsSoftmax(pools, out_indices, sizes, dim);
+  GetPoolsSoftmax(out_indices, sizes, dim, &pools);
 
   auto values_ptr = values.data<T>();
   auto out_values_ptr = out_values.data<T>();
