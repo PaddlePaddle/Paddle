@@ -19,9 +19,9 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/fused/fused_dropout_act_bias.h"
-#include "paddle/fluid/operators/fused/fused_dropout_test.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/functors.h"
+#include "test/cpp/fluid/fused/fused_dropout_test.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_DECLARE_KERNEL(dropout, GPU, ALL_LAYOUT);

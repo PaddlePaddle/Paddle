@@ -112,8 +112,8 @@ struct MeanGradFunctor {
             typename DY,
             typename Dim>
   void operator()(const DeviceContext& place,
-                  X* x,
-                  Y* y,
+                  X* x UNUSED,
+                  Y* y UNUSED,
                   DX* dx,
                   DY* dy,
                   const Dim& dim,

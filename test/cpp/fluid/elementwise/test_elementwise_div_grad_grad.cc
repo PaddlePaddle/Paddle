@@ -24,11 +24,11 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/operators/elementwise/test_elementwise_op_grad_grad.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "test/cpp/fluid/elementwise/test_elementwise_op_grad_grad.h"
 
 USE_OP_ITSELF(elementwise_div);
 
