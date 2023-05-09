@@ -178,8 +178,10 @@ if(${len} GREATER_EQUAL 1)
         target_link_libraries(${test_name} ${ROCM_HIPRTC_LIB})
       endif()
       if(APPLE)
-        target_link_libraries(${test_name}
-                              "-Wl,-rpath,$<TARGET_FILE_DIR:${paddle_lib}>")
+        target_link_libraries(
+          ${test_name}
+          "-Wl,-rpath,$<TARGET_FILE_DIR:${paddle_lib}> -Wl,-rpath,$<TARGET_FILE_DIR:phi>"
+        )
       endif()
       if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
         target_link_libraries(${test_name} ${PYTHON_LIBRARIES})

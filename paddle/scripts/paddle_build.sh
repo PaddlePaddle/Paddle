@@ -3512,6 +3512,7 @@ function run_setup_mac(){
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.7" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.7/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.7/lib/
+                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:${PADDLE_ROOT}/build/third_party/install/lapack/lib
                 export PATH=/Library/Frameworks/Python.framework/Versions/3.7/bin/:${PATH}
                 #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
                 export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.7/bin/python3
@@ -3525,6 +3526,7 @@ function run_setup_mac(){
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.8" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.8/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.8/lib/
+                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:${PADDLE_ROOT}/build/third_party/install/lapack/lib
                 export PATH=/Library/Frameworks/Python.framework/Versions/3.8/bin/:${PATH}
                 #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
                 export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.8/bin/python3
@@ -3538,6 +3540,7 @@ function run_setup_mac(){
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.9" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.9/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.9/lib/
+                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:${PADDLE_ROOT}/build/third_party/install/lapack/lib
                 export PATH=/Library/Frameworks/Python.framework/Versions/3.9/bin/:${PATH}
                 #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
                 export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.9/bin/python3
@@ -3551,6 +3554,7 @@ function run_setup_mac(){
             if [ -d "/Library/Frameworks/Python.framework/Versions/3.10" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.10/lib/
                 export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:/Library/Frameworks/Python.framework/Versions/3.10/lib/
+                export DYLD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}:${PADDLE_ROOT}/build/third_party/install/lapack/lib
                 export PATH=/Library/Frameworks/Python.framework/Versions/3.10/bin/:${PATH}
                 #after changing "PYTHON_LIBRARY:FILEPATH" to "PYTHON_LIBRARY" ,we can use export
                 export PYTHON_EXECUTABLE=/Library/Frameworks/Python.framework/Versions/3.10/bin/python3
