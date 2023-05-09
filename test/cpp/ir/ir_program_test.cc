@@ -17,12 +17,15 @@
 #include "paddle/fluid/paddle_dialect/dialect.h"
 #include "paddle/fluid/paddle_dialect/type.h"
 #include "paddle/fluid/paddle_dialect/utils.h"
+#include "paddle/ir/builtin_attribute.h"
 #include "paddle/ir/builtin_dialect.h"
 #include "paddle/ir/builtin_op.h"
 #include "paddle/ir/builtin_type.h"
 #include "paddle/ir/ir_context.h"
 #include "paddle/ir/program.h"
 #include "paddle/ir/utils.h"
+#include "paddle/phi/core/meta_tensor.h"
+#include "paddle/phi/infermeta/binary.h"
 #include "paddle/phi/kernels/elementwise_add_kernel.h"
 
 class AddOp : public ir::Op<AddOp> {
@@ -149,12 +152,24 @@ TEST(program_test, program) {
       op3_info,
       program);
 
-  //   paddle::platform::DeviceContext* dev_ctx =
-  //         paddle::platform::DeviceContextPool::Instance().Get(
-  //             paddle::platform::CPUPlace());
-  //   phi::DenseTensor c_tensor = phi::Add<float,
-  //   paddle::platform::DeviceContext>(*dev_ctx, a_tensor, b_tensor);
-  //   EXPECT_EQ(c_tensor.numel(), 4);
+  phi::CPUContext *dev_ctx = static_cast<phi::CPUContext *>(
+      paddle::platform::DeviceContextPool::Instance().Get(
+          paddle::platform::CPUPlace()));
+  phi::DenseTensor c_tensor =
+      phi::Add<float, phi::CPUContext>(*dev_ctx, a_tensor, b_tensor);
+  std::shared_ptr<paddle::framework::Variable> variable_c =
+      std::make_shared<paddle::framework::Variable>();
+  auto *dst_tensor = variable_c->GetMutable<phi::DenseTensor>();
+  *dst_tensor = c_tensor;
+  EXPECT_EQ(dst_tensor->numel(), b_tensor.numel());
+  EXPECT_EQ(dst_tensor->dims(), b_tensor.dims());
+  EXPECT_EQ(dst_tensor->dtype(), b_tensor.dtype());
+  EXPECT_EQ(dst_tensor->layout(), b_tensor.layout());
+  EXPECT_EQ(dst_tensor->lod(), b_tensor.lod());
+  EXPECT_EQ(dst_tensor->offset(), b_tensor.offset());
+  for (int64_t i = 0; i < dst_tensor->numel(); i++) {
+    EXPECT_EQ(*(dst_tensor->data<float>() + i), data_a[i] + data_b[i]);
+  }
 
   // (7) Def SetParameterOp(c, "c")
   std::string op4_name =
@@ -167,9 +182,29 @@ TEST(program_test, program) {
       ir::DictionaryAttribute::get(ctx, op4_attribute_map);
   ir::Operation *op4 = ir::Operation::create(
       {op3->GetResultByIndex(0)}, {}, op4_attribute, op4_info, program);
-  std::cout << op4 << std::endl;
 
-  // (4) Traverse Program
+  EXPECT_EQ(op4->GetOperandByIndex(0).impl()->source().type().dialect().id(),
+            paddle_dialect->id());
+  Interface *c_interface = op4->GetOperandByIndex(0)
+                               .impl()
+                               ->source()
+                               .type()
+                               .dialect()
+                               .GetRegisteredInterface<Interface>();
+  ir::Parameter *parameter_c =
+      c_interface->VariableToParameter(variable_c.get());
+  program->SetParameter("c", parameter_c);
+
+  EXPECT_EQ(parameter_c->type(), dense_tensor_dtype);
+  for (int64_t i = 0; i < dst_tensor->numel(); i++) {
+    EXPECT_EQ(*(dst_tensor->data<float>() + i),
+              *(static_cast<float *>(parameter_c->data()) + i));
+  }
+
+  // (8) Traverse Program
   std::list<ir::Operation *> ops = program->ops();
   EXPECT_EQ(ops.size() == 4, true);
+  std::unordered_map<ir::StrAttribute, ir::Parameter *> parameters =
+      program->parameters();
+  EXPECT_EQ(parameters.size() == static_cast<size_t>(3), true);
 }

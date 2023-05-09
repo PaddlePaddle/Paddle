@@ -10,6 +10,6 @@ if(WITH_NEWIR)
     DEPS
     new_ir
     paddle_dialect
-    phi_cpu
+    phi
     gtest)
 endif()

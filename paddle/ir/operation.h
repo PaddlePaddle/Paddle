@@ -42,6 +42,8 @@ class alignas(8) Operation final {
 
   ir::OpResult GetResultByIndex(uint32_t index);
 
+  ir::OpOperand GetOperandByIndex(uint32_t index);
+
   std::string print();
 
   ir::DictionaryAttribute attribute() const { return attribute_; }

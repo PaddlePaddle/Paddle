@@ -162,6 +162,15 @@ ir::OpResult Operation::GetResultByIndex(uint32_t index) {
   }
 }
 
+ir::OpOperand Operation::GetOperandByIndex(uint32_t index) {
+  if (index >= num_operands_) {
+    throw("index exceeds OP input range.");
+  }
+  char *ptr = reinterpret_cast<char *>(this) + sizeof(Operation) +
+              (index) * sizeof(detail::OpOperandImpl);
+  return ir::OpOperand(reinterpret_cast<detail::OpOperandImpl *>(ptr));
+}
+
 std::string Operation::print() {
   std::stringstream result;
   result << "{ " << num_results_ << " outputs, " << num_operands_
