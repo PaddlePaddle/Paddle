@@ -13,10 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/paddle_dialect/dialect.h"
-#include "/ssd2/zhangbo54/Paddle/paddle/fluid/paddle_dialect/type.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/paddle_dialect/type.h"
 #include "paddle/fluid/paddle_dialect/utils.h"
 #include "paddle/ir/builtin_type.h"
 #include "paddle/ir/dialect_interface.h"
