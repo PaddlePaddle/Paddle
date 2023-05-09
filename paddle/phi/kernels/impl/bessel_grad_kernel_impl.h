@@ -83,7 +83,8 @@ struct I0eGradFunctor {
 
       const T out = Chbevl<T>(y, A, len) * x;
       const T i1e_out = (inp_x_[idx] < T{0.0}) ? -out : out;
-      const T sign_x = (x == T{0.0}) ? T{0.0} : std::copysign(T{1.0}, x);
+      const T sign_x = std::copysign(T{1.0}, x);
+      // const T sign_x = (x == T{0.0}) ? T{0.0} : std::copysign(T{1.0}, x);
       output_x_grad_[idx] = (i1e_out - sign_x * inp_out_[idx]) * inp_out_grad_[idx];
     } else {
       auto coeff_pair_B = ChebyshevCoefficientsI1e_B<T>();
@@ -93,7 +94,8 @@ struct I0eGradFunctor {
 
       const T out = Chbevl<T>(y, B, len) / std::sqrt(x);
       const T i1e_out = (inp_x_[idx] < T{0.0}) ? -out : out;
-      const T sign_x = (x == T{0.0}) ? T{0.0} : std::copysign(T{1.0}, x);
+      const T sign_x = std::copysign(T{1.0}, x);
+      // const T sign_x = (x == T{0.0}) ? T{0.0} : std::copysign(T{1.0}, x);
       output_x_grad_[idx] = (i1e_out - sign_x * inp_out_[idx]) * inp_out_grad_[idx];
     }
     // using MT = typename phi::dtype::MPTypeTrait<T>::Type;

@@ -30,7 +30,11 @@ def output_i0e(x):
 
 
 def ref_i0e_grad(x, dout):
-    gradx = special.i1e(x) - np.sign(x) * special.i0e(x)
+    eps = np.finfo(x.dtype).eps
+    not_tiny = abs(x) > eps
+    safe_x = np.where(not_tiny, x, eps)
+    gradx = special.i1e(x) - np.sign(x) * special.i0e(safe_x)
+    gradx = np.where(not_tiny, gradx, -1.)
     return dout * gradx
 
 
@@ -124,6 +128,7 @@ class TestI0eOp(OpTest):
             self.dtype
         )
         self.case = np.concatenate([zero_case, rand_case, one2eight_case, over_eight_case])
+        # self.case = np.array([0., 1., 2., 3.]).astype("float64")
         self.inputs = {'x': self.case}
         self.target = output_i0e(self.inputs['x'])
 
@@ -131,6 +136,7 @@ class TestI0eOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
+        print(ref_i0e_grad(self.case, 1 / self.case.size))
         self.check_grad(
             ['x'],
             'out',
