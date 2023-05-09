@@ -2456,8 +2456,7 @@ def calc_gradient_helper(
             input_grad_names_set.add(grad.name)
             rename_var_map[grad_name] = grad.name
 
-    if core._is_bwd_prim_enabled():
-        core._set_prim_target_grad_name(target_grad_map)
+    core._set_prim_target_grad_name(target_grad_map)
 
     # For double backward, input_grad_names is used for filter
     # some non-used gradients op. rename_var_map is used to
