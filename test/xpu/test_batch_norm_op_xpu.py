@@ -148,9 +148,6 @@ class XPUTestBatchNormOp(XPUOpTestWrapper):
         self.op_name = 'batch_norm'
         self.use_dynamic_create_class = False
 
-    @unittest.skipIf(
-        not paddle.is_compiled_with_xpu(), "core is not compiled with XPU"
-    )
     class TestBatchNormOp(unittest.TestCase):
         def setUp(self):
             self.op_type = "batch_norm"
