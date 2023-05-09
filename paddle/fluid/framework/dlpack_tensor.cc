@@ -89,11 +89,6 @@ struct DLDeviceVisitor
         platform::errors::Unimplemented("platform::XPUPlace is not supported"));
   }
 
-  inline ::DLDevice operator()(const platform::NPUPlace &place) const {
-    PADDLE_THROW(
-        platform::errors::Unimplemented("platform::NPUPlace is not supported"));
-  }
-
   inline ::DLDevice operator()(const platform::NPUPinnedPlace &place) const {
     PADDLE_THROW(platform::errors::Unimplemented(
         "platform::NPUPinnedPlace is not supported"));
