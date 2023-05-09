@@ -86,6 +86,13 @@ struct SimpleOpTypeSetTeller : public Teller {
                   bool use_no_calib_int8 = false,
                   bool with_dynamic_shape = false) override {
     const std::string op_type = desc.Type();
+    auto* block = desc.Block();
+    if (block == nullptr) {
+      VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                 "Developers need to check whether block_desc is passed in "
+                 "the pass.";
+      return false;
+    }
     // do not support the op which is labeled the `skip_quant`
     if ((desc.HasAttr("namescope") &&
          PADDLE_GET_CONST(std::string, desc.GetAttr("op_namescope")) ==
@@ -115,13 +122,6 @@ struct SimpleOpTypeSetTeller : public Teller {
         "logsigmoid", "erf",  "bitwise_not", "equal",      "not_equal",
         "rsqrt"};
     if (act_op_list.find(op_type) != act_op_list.end()) {
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
@@ -151,14 +151,11 @@ struct SimpleOpTypeSetTeller : public Teller {
       auto inputs = desc.Inputs();
       for (auto iter : inputs) {
         for (auto var_name : iter.second) {
-          auto* block = desc.Block();
-          if (block) {
-            auto* var_desc = block->FindVar(var_name);
-            // Can't get feed op's TensorDesc
-            if (op_type != "feed" && var_desc && !var_desc->Persistable()) {
-              const auto shape = var_desc->GetShape();
-              if (shape.size() == 1) return false;
-            }
+          auto* var_desc = block->FindVar(var_name);
+          // Can't get feed op's TensorDesc
+          if (op_type != "feed" && var_desc && !var_desc->Persistable()) {
+            const auto shape = var_desc->GetShape();
+            if (shape.size() == 1) return false;
           }
         }
       }
@@ -311,14 +308,11 @@ struct SimpleOpTypeSetTeller : public Teller {
         }
       }
 #endif
-      auto* block = desc.Block();
-      if (block) {
-        auto* filter_var_desc = block->FindVar(desc.Input("Filter")[0]);
-        if (!filter_var_desc->Persistable()) {
-          VLOG(3) << "Trt not support filter is  a intermediate tensor in "
-                     "conv2d op.";
-          return false;
-        }
+      auto* filter_var_desc = block->FindVar(desc.Input("Filter")[0]);
+      if (!filter_var_desc->Persistable()) {
+        VLOG(3) << "Trt not support filter is  a intermediate tensor in "
+                   "conv2d op.";
+        return false;
       }
     }
 
@@ -326,7 +320,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       if (!desc.HasAttr("groups") || !desc.HasAttr("strides") ||
           !desc.HasAttr("paddings"))
         return false;
-      auto* block = desc.Block();
       auto input_name = desc.Input("Input")[0];
       auto* input_desc = block->FindVar(input_name);
       const auto input_shape = input_desc->GetShape();
@@ -377,7 +370,6 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
 #if IS_TRT_VERSION_LT(8400)
-      auto* block = desc.Block();
       auto start_var_name = desc.Input("Start")[0];
       auto* start_var_desc = block->FindVar(start_var_name);
       auto start_dtype = start_var_desc->GetDataType();
@@ -410,13 +402,6 @@ struct SimpleOpTypeSetTeller : public Teller {
 #endif
     }
     if (op_type == "softmax") {
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
@@ -460,13 +445,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       if (!with_dynamic_shape && axis[0] != 0) return false;
       if (axis.size() >= nvinfer1::Dims::MAX_DIMS) return false;
 
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
@@ -514,13 +492,7 @@ struct SimpleOpTypeSetTeller : public Teller {
         int start_axis = PADDLE_GET_CONST(int, desc.GetAttr("start_axis"));
         int stop_axis = PADDLE_GET_CONST(int, desc.GetAttr("stop_axis"));
         auto x_var_name = desc.Input("X")[0];
-        auto* block = desc.Block();
-        if (block == nullptr) {
-          VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                     "Developers need to check whether block_desc is passed in "
-                     "the pass.";
-          return false;
-        }
+
         auto* x_var_desc = block->FindVar(x_var_name);
         const auto x_shape = x_var_desc->GetShape();
         int dims = x_shape.size();
@@ -551,13 +523,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       if (!with_dynamic_shape) {
         return false;
       } else {
-        auto* block = desc.Block();
-        if (block == nullptr) {
-          VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                     "Developers need to check whether block_desc is passed in "
-                     "the pass.";
-          return false;
-        }
 #if !IS_TRT_VERSION_GE(7000)
         auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
         const auto x_shape = x_var_desc->GetShape();
@@ -571,14 +536,6 @@ struct SimpleOpTypeSetTeller : public Teller {
 
     if (op_type == "gather_nd") {
       if (!with_dynamic_shape) return false;
-
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
 #if IS_TRT_VERSION_LT(8200)
       auto index_var_name = desc.Input("Index")[0];
       auto* index_var_desc = block->FindVar(index_var_name);
@@ -607,14 +564,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       if (!with_dynamic_shape) {
         return false;
       } else {
-        auto* block = desc.Block();
-        if (block == nullptr) {
-          VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                     "Developers need to check whether block_desc is passed in "
-                     "the pass.";
-          return false;
-        }
-
         auto index_var_name = desc.Input("Index")[0];
         auto* index_var_desc = block->FindVar(index_var_name);
 
@@ -632,7 +581,6 @@ struct SimpleOpTypeSetTeller : public Teller {
     if (op_type == "take_along_axis") {
 #if IS_TRT_VERSION_GE(8200)
       if (!with_dynamic_shape) return false;
-      auto* block = desc.Block();
       auto input_var_name = desc.Input("Input")[0];
       auto index_var_name = desc.Input("Index")[0];
       auto* input_var_desc = block->FindVar(input_var_name);
@@ -685,13 +633,6 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
 
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       auto x_dtype = x_var_desc->GetDataType();
@@ -719,13 +660,6 @@ struct SimpleOpTypeSetTeller : public Teller {
           PADDLE_GET_CONST(std::string, desc.GetAttr("data_layout")));
       if (data_layout != phi::DataLayout::kNCHW) return false;
 
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
@@ -735,13 +669,6 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "multiclass_nms" || op_type == "multiclass_nms3") {
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
       auto multiclass_nms_inputs = desc.Inputs();
       if (multiclass_nms_inputs.find("RoisNum") !=
           multiclass_nms_inputs.end()) {
@@ -994,22 +921,20 @@ struct SimpleOpTypeSetTeller : public Teller {
         axes = PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("axes"));
       }
       if (axes.size() == 0) {
-        auto* block = desc.Block();
-        if (block) {
-          auto input_var_name = desc.Input("X")[0];
-          auto* input_var_desc = block->FindVar(input_var_name);
-          const auto input_shape = input_var_desc->GetShape();
-          for (int s : input_shape) {
-            if (s == -1) {
-              VLOG(3) << "The necessary attributes of the squeeze2 operator "
-                         "axes is "
-                         "missing. ss ==== -1";
-              return false;
-            } else if (s == 1) {
-              axes.push_back(s);
-            }
+        auto input_var_name = desc.Input("X")[0];
+        auto* input_var_desc = block->FindVar(input_var_name);
+        const auto input_shape = input_var_desc->GetShape();
+        for (int s : input_shape) {
+          if (s == -1) {
+            VLOG(3) << "The necessary attributes of the squeeze2 operator "
+                       "axes is "
+                       "missing. ss ==== -1";
+            return false;
+          } else if (s == 1) {
+            axes.push_back(s);
           }
         }
+
         if (axes.size() == 0) {
           VLOG(3)
               << "The necessary attributes of the squeeze2 operator axes is "
@@ -1069,13 +994,7 @@ struct SimpleOpTypeSetTeller : public Teller {
                 << desc.Output("Y").size() << ".";
         return false;
       }
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
+
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
@@ -1111,13 +1030,7 @@ struct SimpleOpTypeSetTeller : public Teller {
                    "TensorRT with static shape";
         return false;
       }
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
+
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
@@ -1177,13 +1090,7 @@ struct SimpleOpTypeSetTeller : public Teller {
           return false;
         }
       }
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
+
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
@@ -1194,9 +1101,9 @@ struct SimpleOpTypeSetTeller : public Teller {
               dtype == framework::proto::VarType::FP16)) {
           return false;
         }
-        if (x_shape.size() == 1) {
-          VLOG(3)
-              << "Scale op does not support 1-dimensional input in tensorrt";
+        if (x_shape.size() == 1 || x_shape.size() == 0) {
+          VLOG(3) << "Scale op does not support 0 or 1-dimensional input in "
+                     "tensorrt";
           return false;
         }
       } else {
@@ -1270,13 +1177,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       if (!desc.HasAttr("shape")) {
         return false;
       }
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
+
       auto x_var_name = desc.Input("Input")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       auto dtype = x_var_desc->GetDataType();
@@ -1294,7 +1195,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       int dtype = desc.HasAttr("dtype")
                       ? PADDLE_GET_CONST(int, desc.GetAttr("dtype"))
                       : -1;
-      auto* block = desc.Block();
       auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
       auto input_type = x_var_desc->GetDataType();
 #if IS_TRT_VERSION_GE(8400)
@@ -1409,7 +1309,6 @@ struct SimpleOpTypeSetTeller : public Teller {
         VLOG(3) << "Ops(" << op_type << ") do not support static shape yet.";
         return false;
       }
-      auto* block = desc.Block();
       auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
       auto* y_var_desc = block->FindVar(desc.Input("Y")[0]);
       auto x_dtype = x_var_desc->GetDataType();
@@ -1460,13 +1359,7 @@ struct SimpleOpTypeSetTeller : public Teller {
                 << desc.Output("Out").size() << ".";
         return false;
       }
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
+
       auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
       auto* y_var_desc = block->FindVar(desc.Input("Y")[0]);
       const auto x_shape = x_var_desc->GetShape();
@@ -1514,13 +1407,6 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "pow") {
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
       auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
       const auto x_shape = x_var_desc->GetShape();
       if (!with_dynamic_shape && (x_shape.size() == 1 || x_shape.size() == 0)) {
@@ -1619,14 +1505,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
 #endif
 
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
-
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
@@ -1704,13 +1582,6 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
 
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
@@ -1744,13 +1615,7 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
       std::vector<int64_t> shape;
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
+
       for (auto& param_name : desc.Inputs()) {
         for (auto& var_name : param_name.second) {
           auto* var_desc = block->FindVar(var_name);
@@ -1804,13 +1669,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
     if (op_type == "swish") {
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
@@ -1833,13 +1691,6 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
 
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
       auto* var_desc = block->FindVar(desc.Input("Alpha")[0]);
       if (!var_desc) {
         VLOG(3) << "Variable Alpha of prelu TRT converter not found.";
@@ -1875,14 +1726,6 @@ struct SimpleOpTypeSetTeller : public Teller {
         VLOG(3) << "Invalid output Out's size of mish TRT converter. "
                    "Expected 1, received "
                 << desc.Output("Out").size() << ".";
-        return false;
-      }
-
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
         return false;
       }
 
@@ -1955,7 +1798,6 @@ struct SimpleOpTypeSetTeller : public Teller {
 
     if (op_type == "bitwise_not") {
 #if !IS_TRT_VERSION_GE(8400)
-      auto* block = desc.Block();
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       auto dtype = x_var_desc->GetDataType();
@@ -2036,13 +1878,6 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
 
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
       auto* input_desc = block->FindVar(desc.Input("Input").front());
       const auto input_shape = input_desc->GetShape();
       const auto head_number =
@@ -2095,13 +1930,6 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
 
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
       auto* input_desc = block->FindVar(desc.Input("Input").front());
       const auto input_shape = input_desc->GetShape();
       const auto head_number =
@@ -2164,7 +1992,6 @@ struct SimpleOpTypeSetTeller : public Teller {
         if (shape[0] == 0) {
           return true;
         } else {
-          auto* block = desc.Block();
           auto x_var_name = desc.Input("X")[0];
           auto* x_var_desc = block->FindVar(x_var_name);
           const auto x_shape = x_var_desc->GetShape();
@@ -2176,6 +2003,18 @@ struct SimpleOpTypeSetTeller : public Teller {
             return true;
           }
         }
+        return false;
+      }
+    }
+
+    if (op_type == "square") {
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var = block->FindVar(x_var_name);
+      const auto x_shape = x_var->GetShape();
+      if (!with_dynamic_shape && x_shape.size() == 0) {
+        VLOG(3) << op_type
+                << " op does not support input's dim is 0 in tensorrt "
+                   "with static shape.";
         return false;
       }
     }
@@ -2194,13 +2033,6 @@ struct SimpleOpTypeSetTeller : public Teller {
         }
       }
 
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
@@ -2222,14 +2054,6 @@ struct SimpleOpTypeSetTeller : public Teller {
         VLOG(3) << "the " << op_type
                 << " does not have attr (keep_dim or dim or "
                    "reduce_all)";
-        return false;
-      }
-
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
         return false;
       }
 
@@ -2372,13 +2196,6 @@ struct SimpleOpTypeSetTeller : public Teller {
 
     if (op_type == "hard_sigmoid") {
       if (!with_dynamic_shape) {
-        auto* block = desc.Block();
-        if (block == nullptr) {
-          VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                     "Developers need to check whether block_desc is passed in "
-                     "the pass.";
-          return false;
-        }
         auto x_var_name = desc.Input("X")[0];
         auto* x_var_desc = block->FindVar(x_var_name);
         const auto x_shape = x_var_desc->GetShape();
@@ -2427,7 +2244,6 @@ struct SimpleOpTypeSetTeller : public Teller {
                    "starts or steps)";
         return false;
       }
-      auto* block = desc.Block();
       auto input_name = desc.Input("Input")[0];
       auto* input_desc = block->FindVar(input_name);
       const auto input_shape = input_desc->GetShape();
@@ -2438,15 +2254,7 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "top_k_v2" || op_type == "top_k") {
-      auto* block = desc.Block();
       auto x_var_name = desc.Input("X")[0];
-
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
       auto* x_var_desc = block->FindVar(x_var_name);
       auto x_dtype = x_var_desc->GetDataType();
 
@@ -2505,13 +2313,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
       int axis = PADDLE_GET_CONST(int, desc.GetAttr("axis"));
       if (axis == 0) {
-        return false;
-      }
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
         return false;
       }
 #endif
@@ -2616,14 +2417,6 @@ struct SimpleOpTypeSetTeller : public Teller {
           return false;
         }
       }
-
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
     }
 
     if (op_type == "grid_sampler") {
@@ -2644,13 +2437,6 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
 
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
       auto input_name = desc.Input("X")[0];
       auto* input_desc = block->FindVar(input_name);
       const auto input_shape = input_desc->GetShape();
@@ -2678,13 +2464,6 @@ struct SimpleOpTypeSetTeller : public Teller {
                    "static shape yet";
         return false;
       }
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
     }
 
     if (op_type == "temporal_shift") {
@@ -2701,14 +2480,6 @@ struct SimpleOpTypeSetTeller : public Teller {
 
       if (!desc.HasAttr("shift_ratio") || !desc.HasAttr("seg_num")) {
         VLOG(3) << "temporal shift need attributes : shift_ratio and seg_num";
-        return false;
-      }
-
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
         return false;
       }
 
