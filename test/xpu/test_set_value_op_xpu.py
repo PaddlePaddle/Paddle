@@ -1432,7 +1432,7 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
                 a.stop_gradient = False
                 b = a[:]
                 c = b
-                b[paddle.to_tensor(0)] = 1.0
+                b[paddle.zeros([], dtype='int32')] = 1.0
 
                 self.assertTrue(id(b) == id(c))
                 np.testing.assert_array_equal(b.numpy(), c.numpy())
