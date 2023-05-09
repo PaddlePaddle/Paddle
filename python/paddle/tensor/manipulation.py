@@ -2098,7 +2098,7 @@ def vsplit(x, num_or_sections, name=None):
 
             # x is a Tensor of shape [8, 6, 7]
             x = paddle.rand([8, 6, 7])
-            out0, out1, out2 = paddle.vsplit(x, num_or_sections=2)
+            out0, out1 = paddle.vsplit(x, num_or_sections=2)
             print(out0.shape)  # [4, 6, 7]
             print(out1.shape)  # [4, 6, 7]
             out0, out1, out2 = paddle.vsplit(x, num_or_sections=[1, 3, 4])
@@ -4804,7 +4804,7 @@ def index_put_(x, indices, value, accumulate=False, name=None):
 
     Args:
         x (Tensor) : The Source Tensor. Supported data types are int32, int64, float16, float32, float64, bool.
-        indices (Tensor): The tuple of Tensor containing the indices to index.
+        indices (Tuple of Tensor): The tuple of Tensor containing the indices to index.
             The data type of ``tensor in indices`` must be int32, int64 or bool
         value (Tensor): The tensor used to be assigned to x.
         accummulate (Bool): Whether the elements in values are added to x
@@ -4812,10 +4812,8 @@ def index_put_(x, indices, value, accumulate=False, name=None):
 
     Returns:
         Tensor, same dimention and dtype with x.
-
     Examples:
         .. code-block:: python
-
             import paddle
 
             x = paddle.zeros([3, 3])
@@ -4835,10 +4833,6 @@ def index_put_(x, indices, value, accumulate=False, name=None):
             #        [[0., 1., 0.],
             #         [0., 0., 1.],
             #         [0., 1., 0.]])
-
-
-
-
     """
     return _C_ops.index_put_(x, indices, value, accumulate)
 
@@ -4850,7 +4844,6 @@ def index_put(x, indices, value, accumulate=False, name=None):
 
     Examples:
         .. code-block:: python
-
             import paddle
 
             x = paddle.zeros([3, 3])
@@ -4901,6 +4894,68 @@ def index_put(x, indices, value, accumulate=False, name=None):
         attrs={'accumulate': accumulate},
     )
     return out
+
+
+def unflatten(x, axis, shape, name=None):
+    """
+    Expand a certain dimension of the input x Tensor into a desired shape.
+
+    Args:
+        x (Tensor) : An N-D Tensor. The data type is float16, float32, float64, int16, int32, int64, bool, uint16.
+        axis (int): :attr:`axis` to be unflattened, specified as an index into `x.shape`.
+        shape (list|tuple|Tensor): Unflatten :attr:`shape` on the specified :attr:`axis`. At most one dimension of the target :attr:`shape` can be -1.
+            If the input :attr:`shape` does not contain -1 , the product of all elements in ``shape`` should be equal to ``x.shape[axis]``.
+            The data type is `int` . If :attr:`shape` is a list or tuple, the elements of it should be integers or Tensors with shape [].
+            If :attr:`shape` is an Tensor, it should be an 1-D Tensor.
+        name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        Tensor, return the unflatten tensor of :attr:`x`.
+            x = paddle.randn(shape=[4, 6, 8])
+            shape = [2, 3]
+            axis = 1
+            res = paddle.unflatten(x, axis, shape)
+            print(res.shape)
+            # [4, 2, 3, 8]
+
+            x = paddle.randn(shape=[4, 6, 8])
+            shape = (-1, 2)
+            axis = -1
+            res = paddle.unflatten(x, axis, shape)
+            print(res.shape)
+            # [4, 6, 4, 2]
+
+            x = paddle.randn(shape=[4, 6, 8])
+            shape = paddle.to_tensor([2, 2])
+            axis = 0
+            res = paddle.unflatten(x, axis, shape)
+            print(res.shape)
+            # [2, 2, 6, 8]
+    """
+    # determine whether the input axis is valid.
+    axis = non_negative_axis(x, axis)
+
+    if isinstance(shape, (list, tuple)):
+        new_shape = (
+            list(x.shape[:axis]) + list(shape) + list(x.shape[axis + 1 :])
+        )
+    elif isinstance(shape, Variable):
+        # The data type returned by `paddle.shape` is only 'int32'.
+        new_shape = paddle.concat(
+            [
+                paddle.shape(x)[:axis],
+                paddle.cast(shape, 'int32'),
+                paddle.shape(x)[axis + 1 :],
+            ]
+        )
+    else:
+        raise TypeError(
+            "The data type of x should be one of ['List', 'Tuple', 'Tensor'], but got {}".format(
+                type(shape)
+            )
+        )
+    x = x.reshape(new_shape)
+    return x
 
 
 # TODO(dev): We need avoid implementing it by this way.

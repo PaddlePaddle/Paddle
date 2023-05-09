@@ -62,9 +62,16 @@ def _dygraph_distributed_optimizer(optimizer, strategy=None):
 
     if fleet_env.worker_num() > 1:
         if not fleet_env._user_defined_strategy.heter_ccl_mode:
-            return HybridParallelOptimizer(
+            hp_optim = HybridParallelOptimizer(
                 optimizer, fleet_env._hcg, fleet_env._user_defined_strategy
             )
+
+            if fleet_env._user_defined_strategy.hybrid_configs[
+                "pp_configs"
+            ].dp_comm_overlap:
+                hp_optim._dp_enable = False
+
+            return hp_optim
         else:
             return HeterParallelOptimizer(
                 optimizer, fleet_env._user_defined_strategy

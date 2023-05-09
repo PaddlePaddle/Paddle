@@ -110,10 +110,29 @@ struct BroadcastDataLoader {
                                                const Array3 &use_broadcast,
                                                const int block_offset,
                                                const int num,
-                                               const uint32_t numel) {
+                                               const uint32_t numel,
+                                               int read_lens) {
     using Type = std::tuple_element_t<Index, ArgsT>;
+#ifdef PADDLE_WITH_XPU_KP
+    kps::Init<Type, ArgsT, Index, VecSize>(
+        args, static_cast<Type>(1.0f), read_lens);
+    if (use_broadcast[Index]) {
+      kps::ReadDataBc<Type, VecSize, 1, ArgsT, Index, IsBoundary>(
+          args,
+          reinterpret_cast<const _ptr_ Type *>(ins[Index]),
+          block_offset,
+          configs[Index],
+          numel,
+          read_lens);
+    } else {
+      kps::ReadData<Type, VecSize, 1, ArgsT, Index, IsBoundary>(
+          args,
+          reinterpret_cast<const _ptr_ Type *>(ins[Index]) + block_offset,
+          num,
+          read_lens);
+    }
+#else
     kps::Init<Type, ArgsT, Index, VecSize>(args, static_cast<Type>(1.0f));
-
     if (use_broadcast[Index]) {
       kps::ReadDataBc<Type, VecSize, 1, ArgsT, Index, IsBoundary>(
           args,
@@ -133,6 +152,7 @@ struct BroadcastDataLoader {
           num,
           VecSize);
     }
+#endif
   }
 };
 
@@ -148,7 +168,8 @@ struct BroadcastDataLoader<Index, VecSize, true, kElementwise> {
                                                const Array3 &use_broadcast,
                                                const int block_offset,
                                                const int num,
-                                               const uint32_t numel) {
+                                               const uint32_t numel,
+                                               int read_lens) {
     using Type = std::tuple_element_t<Index, ArgsT>;
     int thread_offset = threadIdx.x * VecSize + block_offset;
 #pragma unroll
@@ -173,7 +194,8 @@ struct BroadcastDataLoader<Index, VecSize, false, kElementwise> {
                                                const Array3 &use_broadcast,
                                                const int block_offset,
                                                const int num,
-                                               const uint32_t numel) {
+                                               const uint32_t numel,
+                                               int read_lens) {
     using Type = std::tuple_element_t<Index, ArgsT>;
     using VecType = phi::kps::details::VectorType<Type, VecSize>;
     VecType vec_temp;
@@ -189,45 +211,29 @@ struct BroadcastDataLoader<Index, VecSize, false, kElementwise> {
   }
 };
 
-// Common broadcast data loader.
-template <int Index, int VecSize, bool IsBoundary>
-struct BroadcastDataLoader<Index, VecSize, IsBoundary, kBroadcast> {
-  template <typename Array1, typename Array2, typename Array3, typename ArgsT>
-  static __device__ __forceinline__ void Apply(const Array1 &ins,
-                                               ArgsT *args,
-                                               const Array2 &configs,
-                                               const Array3 &use_broadcast,
-                                               const int block_offset,
-                                               const int num,
-                                               const uint32_t numel) {
+template <int Index, int VecSize>
+struct BroadcastDataInit {
+  template <typename ArgsT>
+  static __device__ __forceinline__ void Apply(ArgsT *args) {
     using Type = std::tuple_element_t<Index, ArgsT>;
-    uint32_t index_bc[VecSize];
 #pragma unroll
     for (int k = 0; k < VecSize; ++k) {
-      index_bc[k] = 0;
       std::get<Index>(args[k]) = static_cast<Type>(1);
     }
+  }
+};
 
-    uint32_t thread_offset = block_offset + threadIdx.x * VecSize;
-#pragma unroll
-    for (int k = 0; k < VecSize; ++k) {
-      uint32_t idx = thread_offset + k;
-      if (IsBoundary && idx == numel) {
-        break;
-      }
-#pragma unroll
-      for (int i = 0; i < phi::DDim::kMaxRank; ++i) {
-        if (i == configs[0].rank) break;
-        auto fast_divmoder = configs[0].divmoders[i].Divmod(idx);
-        idx = fast_divmoder.val[0];
-        index_bc[k] += fast_divmoder.val[1] * configs[Index].strides[i];
-      }
-    }
-
+template <int Index, int VecSize>
+struct BroadcastDataSetter {
+  template <typename Array, typename ArgsT>
+  static __device__ __forceinline__ void Apply(const Array &ins,
+                                               ArgsT *args,
+                                               uint32_t index_bc[][VecSize]) {
+    using Type = std::tuple_element_t<Index, ArgsT>;
 #pragma unroll
     for (int k = 0; k < VecSize; ++k) {
       std::get<Index>(args[k]) =
-          reinterpret_cast<const _ptr_ Type *>(ins[Index])[index_bc[k]];
+          reinterpret_cast<const _ptr_ Type *>(ins[Index])[index_bc[Index][k]];
     }
   }
 };
@@ -285,9 +291,35 @@ __device__ void VectorizedBroadcastKernelImpl(
   __simd__ ArgsT args[VecSize];
   __simd__ ConditionalT<OutT, NumOuts> result[VecSize];
 
+#ifdef PADDLE_WITH_XPU_KP
   BcUnroller<BroadcastDataLoader, IsBoundary, LoadType, VecSize, Arity>::step(
-      ins, args, configs, use_broadcast, block_offset, num, numel);
-
+      ins, args, configs, use_broadcast, block_offset, num, numel, read_lens);
+#else
+  if (LoadType == kBroadcast) {
+    uint32_t index_bc[Arity][VecSize] = {0};
+    Unroller<BroadcastDataInit, VecSize, Arity>::step(args);
+    uint32_t thread_offset = block_offset + threadIdx.x * VecSize;
+#pragma unroll
+    for (int k = 0; k < VecSize; ++k) {
+      uint32_t idx = thread_offset + k;
+      if (IsBoundary && idx == numel) break;
+#pragma unroll
+      for (int i = 0; i < phi::DDim::kMaxRank; ++i) {
+        if (i == configs[0].rank) break;
+        auto fast_divmoder = configs[0].divmoders[i].Divmod(idx);
+        idx = fast_divmoder.val[0];
+#pragma unroll
+        for (int j = 0; j < Arity; ++j) {
+          index_bc[j][k] += fast_divmoder.val[1] * configs[j].strides[i];
+        }
+      }
+    }
+    Unroller<BroadcastDataSetter, VecSize, Arity>::step(ins, args, index_bc);
+  } else {
+    BcUnroller<BroadcastDataLoader, IsBoundary, LoadType, VecSize, Arity>::step(
+        ins, args, configs, use_broadcast, block_offset, num, numel, read_lens);
+  }
+#endif
   SameDimsElementwisePrimitiveCaller<ConditionalT<OutT, NumOuts>,
                                      VecSize,
                                      Functor,
@@ -783,11 +815,7 @@ struct LaunchBroadcastKernelWithInt64IndexHelper<OutT,
 };
 #endif
 
-template <ElementwiseType ET,
-          typename OutT,
-          typename Functor,
-          int kArity,
-          int NumOuts = 1>
+template <typename OutT, typename Functor, int kArity, int NumOuts = 1>
 void BroadcastKernelForDifferentVecSize(
     const KPDevice &ctx,
     const std::vector<const DenseTensor *> &ins,
@@ -922,16 +950,12 @@ void BroadcastKernelForDifferentVecSize(
   }
 }
 
-template <ElementwiseType ET,
-          typename InT,
-          typename OutT,
-          typename Functor,
-          int NumOuts = 1>
+template <typename OutT, typename Functor, int NumOuts = 1>
 void BroadcastKernel(const KPDevice &ctx,
                      const std::vector<const DenseTensor *> &ins,
                      std::vector<DenseTensor *> *outs,
-                     int axis,
-                     Functor func) {
+                     Functor func,
+                     int axis = -1) {
   // When there are multiple inputs, the outputs's rank should be equal the
   // maximum rank of all inputs.
   using Traits = phi::funcs::FunctionTraits<Functor>;
@@ -968,7 +992,7 @@ void BroadcastKernel(const KPDevice &ctx,
     max_rank = std::max(max_rank, (*outs)[0]->dims().size());
   }
   axis = axis == -1 ? max_rank - min_rank : axis;
-  BroadcastKernelForDifferentVecSize<ET, OutT, Functor, kArity, NumOuts>(
+  BroadcastKernelForDifferentVecSize<OutT, Functor, kArity, NumOuts>(
       ctx, ins, outs, axis, func);
 }
 
@@ -976,15 +1000,14 @@ template <typename Functor, typename T, typename OutType = T>
 void ElementwiseCompute(const GPUContext &dev_ctx,
                         const DenseTensor &x,
                         const DenseTensor &y,
-                        int axis,
                         Functor func,
-                        DenseTensor *z) {
+                        DenseTensor *z,
+                        int axis = -1) {
   std::vector<const DenseTensor *> ins = {&x, &y};
   std::vector<DenseTensor *> outs = {z};
   dev_ctx.template Alloc<OutType>(z);
 
-  BroadcastKernel<ElementwiseType::kBinary, T, OutType, Functor, 1>(
-      dev_ctx, ins, &outs, axis, func);
+  BroadcastKernel<OutType, Functor, 1>(dev_ctx, ins, &outs, func, axis);
 }
 
 template <typename DeviceContext,
@@ -999,7 +1022,7 @@ void DefaultElementwiseOperator(const DeviceContext &dev_ctx,
   auto x_dims = x.dims();
   auto y_dims = y.dims();
   dev_ctx.template Alloc<T>(z);
-  funcs::ElementwiseCompute<Functor, T>(dev_ctx, x, y, axis, Functor(), z);
+  funcs::ElementwiseCompute<Functor, T>(dev_ctx, x, y, Functor(), z, axis);
 }
 
 #else
@@ -1017,10 +1040,10 @@ void DefaultElementwiseOperator(const DeviceContext &dev_ctx,
   auto y_dims = y.dims();
   dev_ctx.template Alloc<T>(z);
   if (x_dims.size() >= y_dims.size()) {
-    funcs::ElementwiseCompute<Functor, T>(dev_ctx, x, y, axis, Functor(), z);
+    funcs::ElementwiseCompute<Functor, T>(dev_ctx, x, y, Functor(), z, axis);
   } else {
     funcs::ElementwiseCompute<InverseFunctor, T>(
-        dev_ctx, x, y, axis, InverseFunctor(), z);
+        dev_ctx, x, y, InverseFunctor(), z, axis);
   }
 }
 #endif

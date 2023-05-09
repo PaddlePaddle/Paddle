@@ -17,6 +17,7 @@ import numpy as np
 from . import unique_name
 from . import core
 import paddle
+import warnings
 
 MAX_INTEGER = 2**31 - 1
 
@@ -283,6 +284,15 @@ def is_integer_or_scalar_tensor(ele):
     if isinstance(ele, int):
         return True
     elif isinstance(ele, Variable):
+        # NOTE(zoooo0820): For compatibility, if FLAGS_set_to_1d is set to True,
+        # 1-D tensor is still treated as a scalar, which means basic indexing.
+        # This will be removed in future.
+        if paddle.get_flags('FLAGS_set_to_1d')['FLAGS_set_to_1d']:
+            if len(ele.shape) == 1 and ele.shape[0] == 1:
+                warnings.warn(
+                    "1-D Tensor will be treat as advanced indexing in future version. Currently, 1-D Tensor means a scalar, not vector, and please modify it to 0-D Tensor. If advanced indexing is needed, please use `export FLAGS_set_to_1d=False` to set the flag."
+                )
+                return True
         if len(ele.shape) == 0:
             return True
     return False
@@ -579,6 +589,9 @@ def _getitem_impl_(var, item):
     # otherwise the output shape will be not correct.
     set_to_1d = paddle.get_flags('FLAGS_set_to_1d')['FLAGS_set_to_1d']
     if set_to_1d and len(decrease_axes) == len(var.shape):
+        warnings.warn(
+            "Warning: In Tensor '__getitem__', if the number of scalar elements in the index is equal to the rank of the Tensor, the output should be 0-D. In order to be consistent with the behavior of previous versions, it will be processed to 1-D. But it is not correct and will be removed in release 2.6. If 1-D is still wanted, please modify the index element from scalar to slice (e.g. 'x[i]' => 'x[i:i+1]')."
+        )
         none_axes = none_axes[1:]
 
     if len(none_axes) > 0:

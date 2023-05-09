@@ -104,7 +104,6 @@ pass_library(delete_dropout_op_pass inference)
 pass_library(delete_concat_op_pass inference)
 pass_library(delete_c_identity_op_pass inference)
 pass_library(preln_residual_bias_fuse_pass inference)
-pass_library(delete_fill_constant_op_pass inference)
 pass_library(constant_folding_pass inference)
 pass_library(auto_mixed_precision_pass inference)
 pass_library(conv2d_fusion_layout_transfer_pass inference)
@@ -118,7 +117,6 @@ pass_library(fused_multi_transformer_encoder_pass inference)
 pass_library(fused_multi_transformer_decoder_pass inference)
 pass_library(fuse_multi_transformer_layer_pass inference)
 pass_library(adaptive_pool2d_convert_global_pass inference)
-pass_library(unsqueeze2_eltwise_fuse_pass inference)
 pass_library(yolo_box_fuse_pass inference)
 pass_library(layer_norm_fuse_pass inference)
 pass_library(add_support_int8_pass inference)
@@ -242,7 +240,7 @@ if(WITH_XPU)
   pass_library(one_beam_size_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(delete_isolated_node_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
-  pass_library(fused_multi_transformer_xpu_quant_pass inference DIR xpu DEPS
+  pass_library(fused_multi_transformer_xpu_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
   pass_library(stack_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(fused_multi_transformer_cachekv_layout_trans_pass inference DIR
@@ -392,10 +390,6 @@ cc_test(
   SRCS adaptive_pool2d_convert_global_pass_tester.cc
   DEPS adaptive_pool2d_convert_global_pass)
 cc_test(
-  test_unsqueeze2_eltwise_fuse_pass_cc
-  SRCS unsqueeze2_eltwise_fuse_pass_tester.cc
-  DEPS unsqueeze2_eltwise_fuse_pass)
-cc_test(
   test_generate_pass_cc
   SRCS generate_pass_tester.cc
   DEPS generate_pass pass_desc_proto)
@@ -519,9 +513,9 @@ if(WITH_XPU)
     SRCS xpu/delete_isolated_node_pass_test.cc
     DEPS delete_isolated_node_pass)
   cc_test(
-    test_fused_multi_transformer_xpu_quant_pass
-    SRCS xpu/fused_multi_transformer_xpu_quant_pass_tester.cc
-    DEPS fused_multi_transformer_xpu_quant_pass)
+    test_fused_multi_transformer_xpu_pass
+    SRCS xpu/fused_multi_transformer_xpu_pass_tester.cc
+    DEPS fused_multi_transformer_xpu_pass)
   cc_test(
     test_one_beam_size_fuse_pass
     SRCS xpu/one_beam_size_fuse_pass_test.cc

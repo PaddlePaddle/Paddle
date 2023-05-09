@@ -35,7 +35,6 @@ namespace kps = phi::kps;
 
 namespace phi {
 
-enum ElementwiseType { kUnary = 1, kBinary = 2, kTernary = 3 };
 /* Packing scalar type T(float, int etc.) into Array<T, NumOuts> type
    for supporting multiple-output feature in elementwise system.*/
 template <class T, int Num>
@@ -369,9 +368,9 @@ template <typename Functor, typename T, typename OutType = T>
 void ElementwiseCompute(const CPUContext &dev_ctx,
                         const DenseTensor &x,
                         const DenseTensor &y,
-                        int axis,
                         Functor func,
-                        DenseTensor *z) {
+                        DenseTensor *z,
+                        int axis = -1) {
   dev_ctx.Alloc<OutType>(z);
   auto x_dims = x.dims();
   auto y_dims = y.dims();
