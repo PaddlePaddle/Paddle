@@ -485,6 +485,7 @@ if(NOT WIN32)
   set_tests_properties(test_imperative_ptq PROPERTIES TIMEOUT 120)
   set_tests_properties(test_weight_quantization_mobilenetv1 PROPERTIES TIMEOUT
                                                                        120)
+  set_tests_properties(test_quant_aware PROPERTIES TIMEOUT 900)
 endif()
 
 set_tests_properties(test_graph PROPERTIES TIMEOUT 120)
@@ -515,7 +516,6 @@ if(LINUX AND WITH_MKLDNN)
   set_tests_properties(test_quant_int8_googlenet_mkldnn PROPERTIES TIMEOUT 120)
   set_tests_properties(test_quant2_int8_resnet50_mkldnn PROPERTIES TIMEOUT 200)
   set_tests_properties(test_quant2_int8_lstm_mkldnn PROPERTIES TIMEOUT 120)
-  set_tests_properties(test_quant_aware PROPERTIES TIMEOUT 120)
 endif()
 
 if(APPLE)

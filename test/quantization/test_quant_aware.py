@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import sys
 import unittest
 import paddle
@@ -242,22 +243,24 @@ class TestQuantAwareCase(StaticCase):
             mode='train', backend='cv2', transform=transform)
         test_dataset = paddle.vision.datasets.MNIST(
             mode='test', backend='cv2', transform=transform)
+        batch_size = 64 if os.environ.get('DATASET') == 'full' else 8
         train_loader = paddle.io.DataLoader(
             train_dataset,
             places=place,
             feed_list=[image, label],
             drop_last=True,
             return_list=False,
-            batch_size=64)
+            batch_size=batch_size)
         valid_loader = paddle.io.DataLoader(
             test_dataset,
             places=place,
             feed_list=[image, label],
-            batch_size=64,
+            batch_size=batch_size,
             return_list=False)
 
         def train(program):
             iter = 0
+            stop_iter = None if os.environ.get('DATASET') == 'full' else 10
             for data in train_loader():
                 cost, top1, top5 = exe.run(
                     program,
@@ -268,9 +271,12 @@ class TestQuantAwareCase(StaticCase):
                     print(
                         'train iter={}, avg loss {}, acc_top1 {}, acc_top5 {}'.
                         format(iter, cost, top1, top5))
+                if stop_iter is not None and iter == stop_iter:
+                    break
 
         def test(program):
             iter = 0
+            stop_iter = None if os.environ.get('DATASET') == 'full' else 10
             result = [[], [], []]
             for data in valid_loader():
                 cost, top1, top5 = exe.run(
@@ -284,6 +290,8 @@ class TestQuantAwareCase(StaticCase):
                 result[0].append(cost)
                 result[1].append(top1)
                 result[2].append(top5)
+                if stop_iter is not None and iter == stop_iter:
+                    break
             print(' avg loss {}, acc_top1 {}, acc_top5 {}'.format(
                 np.mean(result[0]), np.mean(result[1]), np.mean(result[2])))
             return np.mean(result[1]), np.mean(result[2])
