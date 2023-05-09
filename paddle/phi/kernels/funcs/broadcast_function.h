@@ -110,10 +110,29 @@ struct BroadcastDataLoader {
                                                const Array3 &use_broadcast,
                                                const int block_offset,
                                                const int num,
-                                               const uint32_t numel) {
+                                               const uint32_t numel,
+                                               int read_lens) {
     using Type = std::tuple_element_t<Index, ArgsT>;
+#ifdef PADDLE_WITH_XPU_KP
+    kps::Init<Type, ArgsT, Index, VecSize>(
+        args, static_cast<Type>(1.0f), read_lens);
+    if (use_broadcast[Index]) {
+      kps::ReadDataBc<Type, VecSize, 1, ArgsT, Index, IsBoundary>(
+          args,
+          reinterpret_cast<const _ptr_ Type *>(ins[Index]),
+          block_offset,
+          configs[Index],
+          numel,
+          read_lens);
+    } else {
+      kps::ReadData<Type, VecSize, 1, ArgsT, Index, IsBoundary>(
+          args,
+          reinterpret_cast<const _ptr_ Type *>(ins[Index]) + block_offset,
+          num,
+          read_lens);
+    }
+#else
     kps::Init<Type, ArgsT, Index, VecSize>(args, static_cast<Type>(1.0f));
-
     if (use_broadcast[Index]) {
       kps::ReadDataBc<Type, VecSize, 1, ArgsT, Index, IsBoundary>(
           args,
@@ -133,6 +152,7 @@ struct BroadcastDataLoader {
           num,
           VecSize);
     }
+#endif
   }
 };
 
@@ -148,7 +168,8 @@ struct BroadcastDataLoader<Index, VecSize, true, kElementwise> {
                                                const Array3 &use_broadcast,
                                                const int block_offset,
                                                const int num,
-                                               const uint32_t numel) {
+                                               const uint32_t numel,
+                                               int read_lens) {
     using Type = std::tuple_element_t<Index, ArgsT>;
     int thread_offset = threadIdx.x * VecSize + block_offset;
 #pragma unroll
@@ -173,7 +194,8 @@ struct BroadcastDataLoader<Index, VecSize, false, kElementwise> {
                                                const Array3 &use_broadcast,
                                                const int block_offset,
                                                const int num,
-                                               const uint32_t numel) {
+                                               const uint32_t numel,
+                                               int read_lens) {
     using Type = std::tuple_element_t<Index, ArgsT>;
     using VecType = phi::kps::details::VectorType<Type, VecSize>;
     VecType vec_temp;
@@ -269,6 +291,10 @@ __device__ void VectorizedBroadcastKernelImpl(
   __simd__ ArgsT args[VecSize];
   __simd__ ConditionalT<OutT, NumOuts> result[VecSize];
 
+#ifdef PADDLE_WITH_XPU_KP
+  BcUnroller<BroadcastDataLoader, IsBoundary, LoadType, VecSize, Arity>::step(
+      ins, args, configs, use_broadcast, block_offset, num, numel, read_lens);
+#else
   if (LoadType == kBroadcast) {
     uint32_t index_bc[Arity][VecSize] = {0};
     Unroller<BroadcastDataInit, VecSize, Arity>::step(args);
@@ -291,9 +317,9 @@ __device__ void VectorizedBroadcastKernelImpl(
     Unroller<BroadcastDataSetter, VecSize, Arity>::step(ins, args, index_bc);
   } else {
     BcUnroller<BroadcastDataLoader, IsBoundary, LoadType, VecSize, Arity>::step(
-        ins, args, configs, use_broadcast, block_offset, num, numel);
+        ins, args, configs, use_broadcast, block_offset, num, numel, read_lens);
   }
-
+#endif
   SameDimsElementwisePrimitiveCaller<ConditionalT<OutT, NumOuts>,
                                      VecSize,
                                      Functor,

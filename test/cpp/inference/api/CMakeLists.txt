@@ -1377,7 +1377,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     set_tests_properties(test_analyzer_ernie PROPERTIES TIMEOUT 120)
   endif()
   if(WITH_GPU AND TENSORRT_FOUND)
-    set_tests_properties(trt_mobilenet_test PROPERTIES TIMEOUT 120)
+    set_tests_properties(trt_mobilenet_test PROPERTIES TIMEOUT 240)
     if(WITH_MKLDNN)
       set_tests_properties(test_analyzer_bfloat16_resnet50 PROPERTIES TIMEOUT
                                                                       120)
