@@ -201,6 +201,7 @@ from .math import subtract  # noqa: F401
 from .math import subtract_  # noqa: F401
 from .math import atan2  # noqa: F401
 from .math import logsumexp  # noqa: F401
+from .math import logaddexp  # noqa: F401
 from .math import inverse  # noqa: F401
 from .math import log2  # noqa: F401
 from .math import log10  # noqa: F401
@@ -341,6 +342,7 @@ tensor_method_func = [  # noqa
     'floor',
     'floor_',
     'increment',
+    'logaddexp',
     'log',
     'log2',
     'log10',
