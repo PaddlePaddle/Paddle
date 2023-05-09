@@ -138,8 +138,6 @@ phi::Backend ConvertBackend(paddle_infer::PlaceType backend) {
     case paddle_infer::PlaceType::kGPU:
       // NOTE: phi also support phi::Backend::GPUDNN.
       return phi::Backend::GPU;
-    case paddle_infer::PlaceType::kNPU:
-      return phi::Backend::NPU;
     case paddle_infer::PlaceType::kXPU:
       return phi::Backend::XPU;
     case paddle_infer::PlaceType::kCPU:
@@ -335,6 +333,26 @@ bool AnalysisPredictor::Init(
     }
   }
 #endif
+#if defined(PADDLE_WITH_XPU)
+  if (config_.use_xpu_ && config_.use_external_stream_) {
+    private_context_ = true;
+  }
+  if (private_context_) {
+    if (!status_is_cloned_) {
+      predictor_stream_ = config_.GetExecStream();
+    }
+    // NOTE: If the external_stream equals to global_device_contexts's stream,
+    // then fallback.
+    auto global_stream =
+        static_cast<phi::XPUContext *>(
+            platform::DeviceContextPool::Instance().Get(place_))
+            ->stream();
+    if (predictor_stream_ != global_stream) {
+      InitResourceManager(predictor_stream_);
+      InitDeviceContexts();
+    }
+  }
+#endif
   inference::DisplayMemoryInfo(place_, "Init predictor");
   return true;
 }
@@ -418,6 +436,9 @@ void AnalysisPredictor::InitResourceManager(void *stream) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   predictor_stream_ =
       ResourceManager::Instance().InitGPUResource(place_, stream);
+#elif defined(PADDLE_WITH_XPU)
+  predictor_stream_ =
+      ResourceManager::Instance().InitXPUResource(place_, stream);
 #endif
 }
 
@@ -488,6 +509,32 @@ void AnalysisPredictor::InitDeviceContexts() {
         }));
   }
 #endif
+#if defined(PADDLE_WITH_XPU)
+  if (place_.GetType() == phi::AllocationType::XPU) {
+    device_contexts_.emplace(
+        place_, std::async(std::launch::deferred, [=] {
+          auto *xpu_resource =
+              ResourceManager::Instance().GetXPUResource(predictor_stream_);
+          auto &instance = memory::allocation::AllocatorFacade::Instance();
+          auto *xpu_context = new InferXPUContext(place_);
+          xpu_context->SetAllocator(instance.GetAllocator(place_).get());
+          xpu_context->SetGenerator(
+              phi::DefaultXPUGenerator(place_.GetDeviceId()).get());
+          xpu_context->SetHostAllocator(
+              instance.GetAllocator(platform::CPUPlace()).get());
+          xpu_context->SetHostGenerator(phi::DefaultCPUGenerator().get());
+          xpu_context->SetZeroAllocator(
+              instance.GetZeroAllocator(place_).get());
+          xpu_context->SetHostZeroAllocator(
+              instance.GetZeroAllocator(platform::CPUPlace()).get());
+          xpu_context->SetStream(xpu_resource->GetStream());
+          xpu_context->SetDriverVersion(xpu_resource->GetDriverVersion());
+          xpu_context->SetRuntimeVersion(xpu_resource->GetRuntimeVersion());
+          xpu_context->SetXpuVersion(xpu_resource->GetXpuVersion());
+          return std::unique_ptr<phi::DeviceContext>(xpu_context);
+        }));
+  }
+#endif
   // TODO(Inference): Support other backends.
 }
 
@@ -506,10 +553,14 @@ void *AnalysisPredictor::GetExecStream() const {
 #endif
 #if defined(PADDLE_WITH_XPU)
   if (place_.GetType() == phi::AllocationType::XPU) {
-    paddle::platform::DeviceContextPool &pool =
-        paddle::platform::DeviceContextPool::Instance();
-    return reinterpret_cast<const phi::XPUContext *>(pool.Get(place_))
-        ->stream();
+    if (private_context_) {
+      return predictor_stream_;
+    } else {
+      paddle::platform::DeviceContextPool &pool =
+          paddle::platform::DeviceContextPool::Instance();
+      return reinterpret_cast<const phi::XPUContext *>(pool.Get(place_))
+          ->stream();
+    }
   }
 #endif
   // TODO(inference): Support other backends.
@@ -2050,6 +2101,33 @@ bool AnalysisPredictor::ExpRunWithExternalStream(const gpuStream_t stream) {
 }
 #endif
 
+bool AnalysisPredictor::ExpRunWithExternalStream(void *stream) {
+#if defined(PADDLE_WITH_XPU)
+  if (!private_context_) {
+    PADDLE_THROW(platform::errors::Fatal(
+        "Please use config.SetExecStream to init resources, and then we "
+        "will bind resources to execution stream."));
+  }
+  if (stream != predictor_stream_) {
+    paddle::platform::XPUStreamSync(
+        static_cast<paddle::xpuStream>(predictor_stream_));
+    ResourceManager::Instance().XpuResourceReBindStream(predictor_stream_,
+                                                        stream);
+    predictor_stream_ = stream;
+
+    auto *dev_ctxs = reinterpret_cast<const std::map<
+        phi::Place,
+        std::shared_future<std::unique_ptr<phi::DeviceContext>>> *>(
+        this->GetDeviceContexts());
+    auto *dev_ctx =
+        static_cast<InferXPUContext *>(dev_ctxs->at(place_).get().get());
+    dev_ctx->SetStream(stream);
+  }
+  return ZeroCopyRun();
+#endif
+  return false;
+}
+
 void AnalysisPredictor::CollectShapeRangeInfo() {
   // if use gpu, sync first.
   paddle::platform::DeviceContextPool &pool =
@@ -2413,7 +2491,12 @@ AnalysisPredictor::~AnalysisPredictor() {
   if (predictor_stream_ != nullptr) {
     ResourceManager::Instance().DestroyGPUResource(predictor_stream_);
   }
+#elif defined(PADDLE_WITH_XPU)
+  if (predictor_stream_ != nullptr) {
+    ResourceManager::Instance().DestroyXPUResource(predictor_stream_);
+  }
 #endif
+
   if (place_.GetType() != phi::AllocationType::UNDEFINED) {
     memory::Release(place_);
   }
@@ -2615,6 +2698,8 @@ USE_TRT_CONVERTER(reduce_max);
 USE_TRT_CONVERTER(reduce_min);
 USE_TRT_CONVERTER(reduce_sum);
 USE_TRT_CONVERTER(reduce_prod);
+USE_TRT_CONVERTER(reduce_any);
+USE_TRT_CONVERTER(reduce_all);
 USE_TRT_CONVERTER(tile);
 USE_TRT_CONVERTER(conv3d);
 USE_TRT_CONVERTER(conv3d_transpose);
@@ -2919,6 +3004,11 @@ bool InternalUtils::RunWithExternalStream(paddle_infer::Predictor *p,
   return pred->ExpRunWithExternalStream(stream);
 #endif
   return false;
+}
+bool InternalUtils::RunWithExternalStream(paddle_infer::Predictor *p,
+                                          void *stream) {
+  auto pred = dynamic_cast<paddle::AnalysisPredictor *>(p->predictor_.get());
+  return pred->ExpRunWithExternalStream(stream);
 }
 
 void InternalUtils::UpdateConfigInterleaved(paddle_infer::Config *c,

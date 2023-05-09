@@ -225,6 +225,9 @@ class AnalysisPredictor : public PaddlePredictor {
   bool ExpRunWithExternalStream(const gpuStream_t stream);
 #endif
 
+  // Note: Can only be used under thread_local semantics.
+  bool ExpRunWithExternalStream(void *stream);
+
   ///
   /// \brief Get the execution stream on devices with a concept of stream,
   /// otherwise returns nullptr.
