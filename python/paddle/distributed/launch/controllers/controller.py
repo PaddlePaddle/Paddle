@@ -183,9 +183,29 @@ class Controller(ControllerBase):
         '''
         raise NotImplementedError
 
-    def _get_entrypoint(self):
+    def _get_entrypoint(self, rank):
         if self.ctx.args.training_script.endswith('.py'):
-            entrypoint = [sys.executable, "-u", self.ctx.args.training_script]
+            if int(rank) == 2:
+                print("add nsys !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+                entrypoint = [
+                    "nsys",
+                    "profile",
+                    "--stats",
+                    "true",
+                    "-w",
+                    "true",
+                    "-t",
+                    "cuda,nvtx,osrt,cudnn,cublas",
+                    sys.executable,
+                    "-u",
+                    self.ctx.args.training_script,
+                ]
+            else:
+                entrypoint = [
+                    sys.executable,
+                    "-u",
+                    self.ctx.args.training_script,
+                ]
         else:
             entrypoint = [self.ctx.args.training_script]
 
@@ -203,7 +223,9 @@ class Controller(ControllerBase):
         self, entrypoint=None, envs={}, use_ctx_env=True, out=None, err=None
     ):
         c = Container(
-            entrypoint=(entrypoint or self._get_entrypoint()),
+            entrypoint=(
+                entrypoint or self._get_entrypoint(envs["PADDLE_LOCAL_RANK"])
+            ),
             env=(self.ctx.get_envs() if use_ctx_env else {}),
         )
         c.outfile, c.errfile = self._get_out_err_file(out, err)
