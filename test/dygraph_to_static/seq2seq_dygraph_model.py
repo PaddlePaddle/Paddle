@@ -407,7 +407,7 @@ class BaseModel(paddle.nn.Layer):
         parent_ids = []
 
         for step_idx in range(paddle.to_tensor(self.beam_max_step_num)):
-            if paddle.sum(1 - beam_finished).numpy()[0] == 0:
+            if paddle.sum(1 - beam_finished) == 0:
                 break
             step_input = self._merge_batch_beams(step_input)
             new_dec_hidden, new_dec_cell = [], []

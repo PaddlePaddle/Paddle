@@ -47,7 +47,7 @@ elementwise_inner_add(const phi::CPUContext& ctx,
 
 template <typename T, typename IndexT = int>
 typename std::enable_if<!std::is_floating_point<T>::value>::type
-elementwise_inner_add(const phi::CPUContext& ctx,
+elementwise_inner_add(const phi::CPUContext& ctx UNUSED,
                       const T* src_pointer,
                       T* dst_pointer,
                       size_t src_index,

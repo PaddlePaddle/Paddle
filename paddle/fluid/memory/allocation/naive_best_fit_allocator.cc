@@ -16,7 +16,6 @@
 
 #include <mutex>
 
-#include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "paddle/fluid/memory/allocation/buddy_allocator.h"
 #include "paddle/fluid/memory/allocation/system_allocator.h"
@@ -30,7 +29,7 @@
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
-
+#include "paddle/fluid/platform/flags.h"
 PADDLE_DEFINE_EXPORTED_bool(
     init_allocated_mem,
     false,
@@ -39,9 +38,9 @@ PADDLE_DEFINE_EXPORTED_bool(
     "To find this error in time, we use init_allocated_mem to indicate "
     "that initializing the allocated memory with a small value "
     "during unit testing.");
-DECLARE_double(fraction_of_gpu_memory_to_use);
-DECLARE_uint64(initial_gpu_memory_in_mb);
-DECLARE_uint64(reallocate_gpu_memory_in_mb);
+PHI_DECLARE_double(fraction_of_gpu_memory_to_use);
+PHI_DECLARE_uint64(initial_gpu_memory_in_mb);
+PHI_DECLARE_uint64(reallocate_gpu_memory_in_mb);
 DECLARE_bool(benchmark);
 
 namespace paddle {
@@ -150,7 +149,7 @@ void *Alloc<platform::XPUPlace>(const platform::XPUPlace &place, size_t size) {
   VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
   void *p = nullptr;
 
-  platform::XPUDeviceGuard gurad(place.device);
+  platform::XPUDeviceGuard guard(place.device);
   int ret = xpu_malloc(reinterpret_cast<void **>(&p), size);
   if (ret != XPU_SUCCESS) {
     VLOG(10) << "xpu memory malloc(" << size << ") failed, try again";
@@ -183,7 +182,7 @@ void Free<platform::XPUPlace>(const platform::XPUPlace &place,
   VLOG(10) << "Free " << size << " bytes on " << platform::Place(place);
   VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
 
-  platform::XPUDeviceGuard gurad(place.device);
+  platform::XPUDeviceGuard guard(place.device);
   xpu_free(p);
 #else
   PADDLE_THROW(

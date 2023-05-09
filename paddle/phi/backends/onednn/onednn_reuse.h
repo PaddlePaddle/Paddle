@@ -676,7 +676,7 @@ class OneDNNHandlerNoCachingT {
       const dnnl::memory::desc& user_md,
       const dnnl::memory::desc& target_md,
       void* ptr,
-      bool is_persistent = false,
+      bool is_persistent UNUSED = false,
       std::function<std::shared_ptr<F>(const F*)> custom_reorder_func = {}) {
     std::shared_ptr<dnnl::memory> target_memory_p;
     if (custom_reorder_func) {
@@ -1178,7 +1178,7 @@ class ReductionOneDNNHandler
                          const dnnl::engine engine,
                          Place cpu_place,
                          const DenseTensor* x,
-                         const DenseTensor* out,
+                         const DenseTensor* out UNUSED,
                          std::vector<int64_t> out_tz,
                          const dnnl::primitive_attr& attrs = NULL)
       : OneDNNHandlerNoCachingT<T, dnnl::reduction>(engine, cpu_place) {

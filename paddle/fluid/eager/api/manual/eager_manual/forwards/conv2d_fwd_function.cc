@@ -20,8 +20,9 @@
 #include "paddle/fluid/eager/eager_layout_auto_tune.h"
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/core/flags.h"
 
-DECLARE_bool(check_nan_inf);
+PHI_DECLARE_bool(check_nan_inf);
 
 paddle::Tensor conv2d_ad_func(const paddle::Tensor& input,
                               const paddle::Tensor& filter,
@@ -110,11 +111,9 @@ paddle::Tensor conv2d_ad_func(const paddle::Tensor& input,
                                                  dilations,
                                                  groups,
                                                  data_format);
-  std::string forward_trace = "";
   // Check NaN and Inf if needed
   if (FLAGS_check_nan_inf) {
     egr::CheckTensorHasNanOrInf("conv2d", api_result);
-    forward_trace = egr::Controller::Instance().GetPythonStack();
   }
 
   // Get Outputs
@@ -143,7 +142,7 @@ paddle::Tensor conv2d_ad_func(const paddle::Tensor& input,
 
     // Set forward's stack
     if (FLAGS_check_nan_inf) {
-      grad_node->SetForwardTrace(forward_trace);
+      grad_node->SetForwardTrace(egr::Controller::Instance().GetPythonStack());
     }
 
     // SetAttributes if needed

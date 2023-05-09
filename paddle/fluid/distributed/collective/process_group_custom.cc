@@ -139,11 +139,12 @@ void ProcessGroupCustom::BroadcastUniqueCustomID(
 // create CustomCCLManager cache for places_key
 void ProcessGroupCustom::CreateCustomManagerCache(
     const std::string& places_key, const std::vector<Place>& places) {
-  PADDLE_ENFORCE_EQ(places_key.empty(),
-                    false,
-                    platform::errors::PreconditionNotMet(
-                        "Not able to create/get the HCCL Communicator since "
-                        "the NPU place are not known"));
+  PADDLE_ENFORCE_EQ(
+      places_key.empty(),
+      false,
+      platform::errors::PreconditionNotMet(
+          "Not able to create/get the CustomCCL Communicator since "
+          "the NPU place are not known"));
   const std::string device_type = places.back().GetDeviceType();
 
   std::vector<std::shared_ptr<CustomCCLCommManager>> ccl_comms;
@@ -188,7 +189,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Collective(
     std::vector<phi::DenseTensor>& outputs,
     Fn fn,
     CommType op_type,
-    bool sync_op,
+    bool sync_op UNUSED,
     bool use_calc_stream) {
   const auto places = GetPlaceList(inputs);
   const auto key = GetKeyFromPlaces(places);
@@ -575,6 +576,150 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Broadcast(
       false);
 }
 
+void CheckTensorsInDifferentCustomDevices(
+    const std::vector<phi::DenseTensor>& tensors, const size_t num_devices) {
+  PADDLE_ENFORCE_EQ(
+      tensors.size() == 0,
+      false,
+      phi::errors::InvalidArgument("Tensor list must be nonempty."));
+  PADDLE_ENFORCE_LE(
+      tensors.size(),
+      num_devices,
+      phi::errors::InvalidArgument("Tensor list mustn't be larger than the "
+                                   "number of available CustomDevice."));
+
+  std::set<Place> used_devices;
+
+  for (const auto& t : tensors) {
+    PADDLE_ENFORCE_EQ(platform::is_custom_place(t.place()),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Tensors must be CustomDevice and dense tensor."));
+
+    const auto inserted = used_devices.insert(t.place()).second;
+    PADDLE_ENFORCE_EQ(inserted,
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Tensors must be on distinct custom devices."));
+  }
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Recv(
+    phi::DenseTensor* tensor,
+    int src_rank,
+    int64_t offset,
+    int64_t numel,
+    bool sync_op,
+    bool use_calc_stream) {
+  // numel > 0 indicates the tensor need to be sliced
+  phi::DenseTensor partial_tensor;
+  if (numel > 0) {
+    partial_tensor = GetPartialTensor(*tensor, offset, numel);
+    tensor = &partial_tensor;
+  }
+  phi::distributed::CommStaticCheck::CheckShape(
+      *tensor, rank_, size_, phi::AllocationType::CUSTOM);
+  std::vector<phi::DenseTensor> in_wrapper{*tensor};
+  std::vector<phi::DenseTensor> out_wrapper{*tensor};
+  return Collective(
+      in_wrapper,
+      out_wrapper,
+      [&](phi::DenseTensor& input,
+          phi::DenseTensor& output,
+          phi::ccl::CCLComm comm,
+          const phi::stream::Stream& stream) {
+        phi::DeviceManager::CCLRecv(device_type_,
+                                    output.data(),
+                                    output.numel(),
+                                    phi::ccl::ToCCLDataType(output.dtype()),
+                                    src_rank,
+                                    comm,
+                                    stream);
+      },
+      CommType::RECV,
+      sync_op,
+      use_calc_stream);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Recv(
+    std::vector<phi::DenseTensor>& tensors, int src_rank) {
+  CheckTensorsInDifferentCustomDevices(tensors, static_cast<size_t>(GetSize()));
+  return Collective(
+      tensors,
+      tensors,
+      [&](phi::DenseTensor& input,
+          phi::DenseTensor& output,
+          phi::ccl::CCLComm comm,
+          const phi::stream::Stream& stream) {
+        phi::DeviceManager::CCLRecv(device_type_,
+                                    output.data(),
+                                    output.numel(),
+                                    phi::ccl::ToCCLDataType(output.dtype()),
+                                    src_rank,
+                                    comm,
+                                    stream);
+      },
+      CommType::RECV,
+      false,
+      false);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Send(
+    const phi::DenseTensor& tensor,
+    int dst_rank,
+    int64_t offset,
+    int64_t numel,
+    bool sync_op,
+    bool use_calc_stream) {
+  // numel > 0 indicates the tensor need to be sliced
+  const phi::DenseTensor& tensor_maybe_partial =
+      numel > 0 ? GetPartialTensor(tensor, offset, numel) : tensor;
+  phi::distributed::CommStaticCheck::CheckShape(
+      tensor_maybe_partial, rank_, size_, phi::AllocationType::CUSTOM);
+  std::vector<phi::DenseTensor> in_wrapper{tensor_maybe_partial};
+  std::vector<phi::DenseTensor> out_wrapper{tensor_maybe_partial};
+  return Collective(
+      in_wrapper,
+      out_wrapper,
+      [&](phi::DenseTensor& input,
+          phi::DenseTensor& output,
+          phi::ccl::CCLComm comm,
+          const phi::stream::Stream& stream) {
+        phi::DeviceManager::CCLSend(device_type_,
+                                    input.data(),
+                                    input.numel(),
+                                    phi::ccl::ToCCLDataType(input.dtype()),
+                                    dst_rank,
+                                    comm,
+                                    stream);
+      },
+      CommType::SEND,
+      sync_op,
+      use_calc_stream);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Send(
+    std::vector<phi::DenseTensor>& tensors, int dst_rank) {
+  CheckTensorsInDifferentCustomDevices(tensors, static_cast<size_t>(GetSize()));
+  return Collective(
+      tensors,
+      tensors,
+      [&](phi::DenseTensor& input,
+          phi::DenseTensor& output,
+          phi::ccl::CCLComm comm,
+          const phi::stream::Stream& stream) {
+        phi::DeviceManager::CCLSend(device_type_,
+                                    input.data(),
+                                    input.numel(),
+                                    phi::ccl::ToCCLDataType(input.dtype()),
+                                    dst_rank,
+                                    comm,
+                                    stream);
+      },
+      CommType::SEND,
+      false,
+      false);
+}
 std::shared_ptr<ProcessGroupCustom>
 ProcessGroupCustom::CreateProcessGroupCustom(
     const std::shared_ptr<phi::distributed::Store>& store,

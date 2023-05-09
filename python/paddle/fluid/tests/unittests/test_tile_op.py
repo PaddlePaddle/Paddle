@@ -29,6 +29,9 @@ class TestTileOpRank1(OpTest):
     def setUp(self):
         self.op_type = "tile"
         self.python_api = paddle.tile
+        self.prim_op_type = "prim"
+        self.enable_cinn = True
+        self.public_python_api = paddle.tile
         self.init_data()
 
         self.inputs = {'X': np.random.random(self.ori_shape).astype("float64")}
@@ -44,23 +47,26 @@ class TestTileOpRank1(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestTileOpRank_ZeroDim1(TestTileOpRank1):
     def init_data(self):
+        self.enable_cinn = False
         self.ori_shape = []
         self.repeat_times = []
 
 
 class TestTileOpRank_ZeroDim2(TestTileOpRank1):
     def init_data(self):
+        self.enable_cinn = False
         self.ori_shape = []
         self.repeat_times = [2]
 
 
 class TestTileOpRank_ZeroDim3(TestTileOpRank1):
     def init_data(self):
+        self.enable_cinn = False
         self.ori_shape = []
         self.repeat_times = [2, 3]
 
@@ -201,6 +207,9 @@ class TestTileFP16OP(OpTest):
         self.op_type = "tile"
         self.dtype = np.float16
         self.python_api = paddle.tile
+        self.prim_op_type = "prim"
+        self.enable_cinn = True
+        self.public_python_api = paddle.tile
         self.init_data()
         x = np.random.uniform(10, size=self.ori_shape).astype(self.dtype)
         output = np.tile(x, self.repeat_times)
@@ -217,7 +226,7 @@ class TestTileFP16OP(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 @unittest.skipIf(
@@ -230,6 +239,9 @@ class TestTileBF16OP(OpTest):
         self.op_type = 'tile'
         self.__class__.op_type = self.op_type
         self.python_api = paddle.tile
+        self.prim_op_type = "prim"
+        self.enable_cinn = False
+        self.public_python_api = paddle.tile
         self.init_data()
         x = np.random.uniform(10, size=self.ori_shape).astype(np.float32)
         output = np.tile(x, self.repeat_times)
@@ -248,7 +260,7 @@ class TestTileBF16OP(OpTest):
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out')
+        self.check_grad_with_place(place, ['X'], 'Out', check_prim=True)
 
 
 # Situation 5: input x is Bool

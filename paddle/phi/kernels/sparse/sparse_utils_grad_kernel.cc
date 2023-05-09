@@ -20,7 +20,7 @@ namespace phi {
 namespace sparse {
 
 template <typename T, typename Context>
-void ValuesCooGradKernel(const Context& dev_ctx,
+void ValuesCooGradKernel(const Context& dev_ctx UNUSED,
                          const SparseCooTensor& x,
                          const DenseTensor& out_grad,
                          SparseCooTensor* x_grad) {

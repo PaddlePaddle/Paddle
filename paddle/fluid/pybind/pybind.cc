@@ -193,11 +193,12 @@ limitations under the License. */
 #include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/phi/api/include/operants_manager.h"
 #include "paddle/phi/api/include/tensor_operants.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 #include "pybind11/stl.h"
 
-DECLARE_bool(use_mkldnn);
+PHI_DECLARE_bool(use_mkldnn);
 
 // disable auto conversion to list in Python
 PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
@@ -2670,8 +2671,20 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("use_layout_autotune",
         [] { return egr::Controller::Instance().UseLayoutAutoTune(); });
   // Add the api for nan op debug
+  m.def("set_nan_inf_stack_limit",
+        &paddle::framework::details::SetNanInfStackLimit);
+
+  // Add the api for nan op debug
   m.def("set_nan_inf_debug_path",
         &paddle::framework::details::SetNanInfDebugPath);
+
+  // Add check op lost
+  m.def("set_checked_op_list",
+        [](const std::string &op_list) { egr::SetCheckOpList(op_list); });
+
+  // Add skipped op list
+  m.def("set_skipped_op_list",
+        [](const std::string &op_list) { egr::SetSkipOpList(op_list); });
 
   m.def("check_numerics",
         [](const std::string &op_name, const paddle::Tensor &tensor) {

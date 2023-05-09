@@ -96,7 +96,6 @@ enum DeviceType {
   NPU = 2,
   XPU = 3,
   IPU = 4,
-  MLU = 5,
   CUSTOM_DEVICE = 6,
 
   MAX_DEVICE_TYPES = 7,
@@ -107,7 +106,6 @@ DeviceType Place2DeviceType(const platform::Place& place);
 constexpr DeviceType kCPU = DeviceType::CPU;
 constexpr DeviceType kCUDA = DeviceType::CUDA;
 constexpr DeviceType kXPU = DeviceType::XPU;
-constexpr DeviceType kNPU = DeviceType::NPU;
 constexpr DeviceType kIPU = DeviceType::IPU;
 constexpr DeviceType kCUSTOM_DEVICE = DeviceType::CUSTOM_DEVICE;
 
