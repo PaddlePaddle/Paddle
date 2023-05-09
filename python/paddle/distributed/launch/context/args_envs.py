@@ -13,7 +13,8 @@
 # limitations under the License.
 
 import os
-from argparse import REMAINDER, ArgumentParser, ArgumentTypeError
+from argparse import REMAINDER, ArgumentParser
+from distutils.util import strtobool
 
 env_args_mapping = {
     'POD_IP': 'host',
@@ -49,15 +50,6 @@ def fetch_envs():
     return os.environ.copy()
 
 
-def str2bool(v):
-    if v.lower() in ('yes', 'true', 't', 'y', '1'):
-        return True
-    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
-        return False
-    else:
-        raise ArgumentTypeError('Unsupported value encountered.')
-
-
 def parse_args():
     parser = ArgumentParser()
 
@@ -71,7 +63,7 @@ def parse_args():
     )
 
     base_group.add_argument(
-        "--legacy", type=str2bool, default=False, help="use legacy launch"
+        "--legacy", type=strtobool, default=False, help="use legacy launch"
     )
 
     base_group.add_argument(
@@ -84,7 +76,7 @@ def parse_args():
 
     base_group.add_argument(
         "--log_overwrite",
-        type=str2bool,
+        type=strtobool,
         default=False,
         help="overwrite exits logfiles. Default False",
     )
