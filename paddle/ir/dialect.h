@@ -109,7 +109,7 @@ class Dialect {
 
   template <typename ConcertOp>
   void RegisterOp() {
-    std::string name = this->name() + "." + std::string(ConcertOp::name());
+    std::string name = std::string(ConcertOp::name());
     VLOG(4) << "Op " << name << " registered into Dialect. --->";
     if (this->ir_context()->GetRegisteredOpInfo(name) == nullptr) {
       ir::OpInfoImpl *op_info = ir::OpInfoImpl::create<ConcertOp>(this);

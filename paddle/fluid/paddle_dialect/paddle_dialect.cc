@@ -54,7 +54,33 @@ PaddleDialect::PaddleDialect(ir::IrContext* context)
 void PaddleDialect::initialize() {
   // RegisterTypes<GET_BUILT_IN_TYPE_LIST>();
   // RegisterAttributes<GET_BUILT_IN_ATTRIBUTE_LIST>();
-  RegisterOps<Conv2DOp>();
+  RegisterOps<conv2dOp,
+              feedOp,
+              batch_normOp,
+              reluOp,
+              elementwise_addOp,
+              pool2dOp,
+              flatten_contiguous_rangeOp,
+              matmul_v2Op,
+              reshape2Op,
+              softmax_with_cross_entropyOp,
+              reduce_meanOp,
+              top_k_v2Op,
+              accuracyOp,
+              scaleOp,
+              fill_constantOp,
+              reduce_mean_gradOp,
+              softmax_with_cross_entropy_gradOp,
+              elementwise_add_gradOp,
+              matmul_v2_gradOp,
+              flatten_contiguous_range_gradOp,
+              pool2d_gradOp,
+              relu_gradOp,
+              batch_norm_gradOp,
+              conv2d_gradOp,
+              sumOp,
+              merged_momentumOp,
+              fetch_v2Op>();
   RegisterInterfaces<ParameterConvertInterface>();
 }
 

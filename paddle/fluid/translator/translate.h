@@ -14,19 +14,18 @@
 
 #pragma once
 
-#include "paddle/ir/dialect.h"
+#include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/paddle_dialect/paddle_dialect.h"
+#include "paddle/ir/program.h"
 
 namespace paddle {
-namespace dialect {
-class PaddleDialect : public ir::Dialect {
- public:
-  explicit PaddleDialect(ir::IrContext *context);
+namespace fluid {
 
-  static const char *name() { return "paddle"; }
+using LegacyProgramDesc = ::paddle::framework::ProgramDesc;
+using Program = ::ir::Program;
 
- private:
-  void initialize();
-};
+Program TranslateLegacyProgramToProgram(
+    const LegacyProgramDesc& legacy_program);
 
-}  // namespace dialect
+}  // namespace fluid
 }  // namespace paddle

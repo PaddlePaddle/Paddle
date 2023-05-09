@@ -10,6 +10,7 @@ add_subdirectory(prim)
 add_subdirectory(jit)
 if(WITH_NEWIR)
   add_subdirectory(paddle_dialect)
+  add_subdirectory(translator)
 endif()
 # NOTE: please add subdirectory inference at last.
 add_subdirectory(inference)

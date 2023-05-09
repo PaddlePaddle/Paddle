@@ -14,19 +14,12 @@
 
 #pragma once
 
-#include "paddle/ir/dialect.h"
+#include <memory>
+#include <unordered_map>
+#include "paddle/ir/value.h"
 
 namespace paddle {
-namespace dialect {
-class PaddleDialect : public ir::Dialect {
- public:
-  explicit PaddleDialect(ir::IrContext *context);
-
-  static const char *name() { return "paddle"; }
-
- private:
-  void initialize();
-};
-
-}  // namespace dialect
+namespace fluid {
+namespace translator {}  // namespace translator
+}  // namespace fluid
 }  // namespace paddle

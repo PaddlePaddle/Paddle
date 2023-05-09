@@ -12,21 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/fluid/translator/translate.h"
 
-#include "paddle/ir/dialect.h"
+#include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/paddle_dialect/paddle_dialect.h"
+#include "paddle/ir/program.h"
 
 namespace paddle {
-namespace dialect {
-class PaddleDialect : public ir::Dialect {
- public:
-  explicit PaddleDialect(ir::IrContext *context);
+namespace fluid {
 
-  static const char *name() { return "paddle"; }
+using LegacyProgramDesc = ::paddle::framework::ProgramDesc;
+using Program = ::ir::Program;
 
- private:
-  void initialize();
-};
+Program TranslateLegacyProgramToProgram(
+    const LegacyProgramDesc& legacy_program) {
+  ir::Program program;
 
-}  // namespace dialect
+  return program;
+}
+
+}  // namespace fluid
 }  // namespace paddle
