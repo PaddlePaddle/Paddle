@@ -172,7 +172,7 @@ class TestComplexFP16OP(TestComplexOp):
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not complied with CUDA and not support the bfloat16",
 )
-class TestComplexBF16(OpTest):
+class TestComplexBF16OP(OpTest):
     def init_spec(self):
         self.x_shape = [10, 10]
         self.y_shape = [10, 10]
@@ -182,12 +182,12 @@ class TestComplexBF16(OpTest):
         self.op_type = "complex"
         self.python_api = paddle.complex
         self.init_spec()
-        x = np.random.randn(*self.x_shape).astype(self.dtype)
-        y = np.random.randn(*self.y_shape).astype(self.dtype)
+        x = np.random.randn(*self.x_shape).astype("float32")
+        y = np.random.randn(*self.y_shape).astype("float32")
         out_ref = ref_complex(x, y)
         self.out_grad = np.random.randn(*self.x_shape).astype(
-            self.dtype
-        ) + 1j * np.random.randn(*self.y_shape).astype(self.dtype)
+            "float32"
+        ) + 1j * np.random.randn(*self.y_shape).astype("float32")
         self.inputs = {
             'X': convert_float_to_uint16(x),
             'Y': convert_float_to_uint16(y),
