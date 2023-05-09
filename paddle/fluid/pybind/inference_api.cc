@@ -840,7 +840,8 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("min_subgraph_size") = 3,
            py::arg("precision_mode") = AnalysisConfig::Precision::kFloat32,
            py::arg("use_static") = false,
-           py::arg("use_calib_mode") = true)
+           py::arg("use_calib_mode") = true,
+           py::arg("use_cuda_graph") = false)
       .def("enable_tensorrt_memory_optim",
            &AnalysisConfig::EnableTensorRTMemoryOptim,
            py::arg("engine_memory_sharing") = true,
