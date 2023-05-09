@@ -34,7 +34,7 @@ template <typename T, typename Context>
 void FullLikeCooKernel(const Context& dev_ctx,
                        const SparseCooTensor& x,
                        const Scalar& val,
-                       DataType dtype,
+                       DataType dtype UNUSED,
                        SparseCooTensor* out) {
   phi::Copy<Context>(dev_ctx,
                      x.non_zero_indices(),
