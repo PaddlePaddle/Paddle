@@ -1156,7 +1156,6 @@ set(STATIC_BUILD_TESTS
     test_arg_min_max_op
     test_bincount_op
     test_decoupled_py_reader
-    test_dist_fuse_bn_act_pass
     test_eig_op
     test_eigh_op
     test_fake_quantize_op
