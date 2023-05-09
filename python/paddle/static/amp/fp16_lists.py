@@ -23,11 +23,15 @@ _logger = get_logger(
 )
 
 # lookup_table fp16 is slower than fp32, though fp16 is supported.
-_extra_unsupported_list = {
+_extra_black_list = {
     'lookup_table',
     'lookup_table_v2',
     'scatter',
-    'scatter_grad',
+    'linear_interp_v2',
+    'nearest_interp_v2',
+    'bilinear_interp_v2',
+    'bicubic_interp_v2',
+    'trilinear_interp_v2',
 }
 
 
@@ -118,8 +122,7 @@ def _get_sys_unsupported_list(dtype):
 def _get_unsupported_list(dtype):
     # The set of ops that don't support fp16 calculation
     _, _sys_unsupported_list = _get_sys_unsupported_list(dtype)
-    unsupported_list = _extra_unsupported_list | _sys_unsupported_list
-    return unsupported_list
+    return _sys_unsupported_list
 
 
 # The three sets listed below are changed dynamiclly. They don't contain all
@@ -143,6 +146,32 @@ def _get_white_list(dtype):
     if dtype == 'float16':
         white_list_for_dtype = white_list_for_dtype | _only_supported_fp16_list
     return white_list_for_dtype
+
+
+# The set of ops that support fp16 calculation and are considered numerically-
+# dangerous and whose effects may also be observed in downstream ops.
+black_list = {
+    'exp',
+    'square',
+    'log',
+    'mean',
+    'sum',
+    'cos_sim',
+    'softmax',
+    'softmax_with_cross_entropy',
+    'sigmoid_cross_entropy_with_logits',
+    'c_softmax_with_cross_entropy',
+    'cross_entropy',
+    'cross_entropy2',
+    # default fp32 can avoid return inf when the sum value large than 65504
+    'reduce_sum',
+}
+
+
+def _get_black_list():
+    _black_list = copy.copy(black_list)
+    _black_list = _black_list | _extra_black_list
+    return _black_list
 
 
 class AutoMixedPrecisionLists:
@@ -170,7 +199,7 @@ class AutoMixedPrecisionLists:
         self._custom_white_list = custom_white_list
         self._custom_black_list = custom_black_list
         self.white_list = copy.copy(_get_white_list(self.amp_dtype))
-        self.black_list = copy.copy(black_list)
+        self.black_list = copy.copy(_get_black_list())
         self.gray_list = copy.copy(gray_list)
         self.unsupported_list = copy.copy(_get_unsupported_list(self.amp_dtype))
         self.black_varnames = copy.copy(custom_black_varnames)
@@ -196,8 +225,6 @@ class AutoMixedPrecisionLists:
                 elif op_name in self.gray_list:
                     self.gray_list.remove(op_name)
                 self.white_list.add(op_name)
-                if op_name in _extra_unsupported_list:
-                    self.unsupported_list.remove(op_name)
         if self._custom_black_list:
             for op_name in self._custom_black_list:
                 if op_name in self.white_list:
@@ -216,33 +243,6 @@ class AutoMixedPrecisionLists:
                 f"On current {device}, {self.amp_dtype} is not supported for operators < {actual_unsupported_list} > in white_list!"
             )
 
-
-# The set of ops that support fp16 calculation and are considered numerically-
-# dangerous and whose effects may also be observed in downstream ops.
-black_list = {
-    'exp',
-    'square',
-    'log',
-    'mean',
-    'sum',
-    'cos_sim',
-    'softmax',
-    'softmax_with_cross_entropy',
-    'sigmoid_cross_entropy_with_logits',
-    'c_softmax_with_cross_entropy',
-    'cross_entropy',
-    'cross_entropy2',
-    # fp16 is slower than fp32, though fp16 is supported.
-    'lookup_table',
-    'lookup_table_v2',
-    'linear_interp_v2',
-    'nearest_interp_v2',
-    'bilinear_interp_v2',
-    'bicubic_interp_v2',
-    'trilinear_interp_v2',
-    # default fp32 can avoid return inf when the sum value large than 65504
-    'reduce_sum',
-}
 
 # This set contains two types of ops. All ops supported fp16 calculation. One
 # of two types is considered numerically-safe, but may be made unsafe by an

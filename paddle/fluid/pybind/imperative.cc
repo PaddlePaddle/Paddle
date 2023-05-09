@@ -144,8 +144,6 @@ static const platform::Place PyObjectToPlace(const py::object &place_obj) {
     return place_obj.cast<platform::XPUPlace>();
   } else if (py::isinstance<platform::CUDAPinnedPlace>(place_obj)) {
     return place_obj.cast<platform::CUDAPinnedPlace>();
-  } else if (py::isinstance<platform::NPUPlace>(place_obj)) {
-    return place_obj.cast<platform::NPUPlace>();
   } else if (py::isinstance<platform::IPUPlace>(place_obj)) {
     return place_obj.cast<platform::IPUPlace>();
   } else if (py::isinstance<platform::Place>(place_obj)) {
@@ -155,7 +153,7 @@ static const platform::Place PyObjectToPlace(const py::object &place_obj) {
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Place should be one of "
-        "Place/CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/NPUPlace/IPUPlace/"
+        "Place/CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/IPUPlace/"
         "CustomPlace"));
   }
 }
@@ -208,7 +206,7 @@ static void InitVarBaseAndTensor(imperative::VarBase *self,
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Place should be one of "
-        "CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/NPUPlace/IPUPlace/"));
+        "CPUPlace/XPUPlace/CUDAPlace/CUDAPinnedPlace/IPUPlace/"));
   }
   self->SetDataType(framework::TransToProtoVarType(tensor->dtype()));
 }
@@ -712,14 +710,6 @@ void BindImperative(py::module *m_ptr) {
            py::arg("name") = "",
            py::arg("stop_gradient") = -1)
       .def("__init__",
-           &InitVarBaseFromNumpyWithArg<platform::NPUPlace>,
-           py::arg("value"),
-           py::arg("place"),
-           py::arg("persistable") = false,
-           py::arg("zero_copy") = false,
-           py::arg("name") = "",
-           py::arg("stop_gradient") = -1)
-      .def("__init__",
            &InitVarBaseFromNumpyWithArg<platform::CustomPlace>,
            py::arg("value"),
            py::arg("place"),
@@ -749,11 +739,6 @@ void BindImperative(py::module *m_ptr) {
            py::arg("name") = "")
       .def("__init__",
            &InitVarBaseFromTensorWithArg<platform::CUDAPinnedPlace>,
-           py::arg("tensor"),
-           py::arg("place"),
-           py::arg("name") = "")
-      .def("__init__",
-           &InitVarBaseFromTensorWithArg<platform::NPUPlace>,
            py::arg("tensor"),
            py::arg("place"),
            py::arg("name") = "")
@@ -1067,44 +1052,61 @@ void BindImperative(py::module *m_ptr) {
              }
 
              bool set_to_1d = FLAGS_set_to_1d;
-             if (!none_axes.empty()) {
-               if (set_to_1d) {
-                 // NOTE(zoooo0820): When all axes are decreased, the output
-                 // will be 1-D with FLAGS_set_to_1d=True. In this case, one
-                 // `None` should be pop out, otherwise the output shape will be
-                 // not correct.
-                 if (static_cast<int>(decrease_axis.size()) ==
-                     tensor->dims().size()) {
+
+             if (set_to_1d) {
+               // NOTE(zoooo0820): When all axes are decreased, the output
+               // will be 1-D with FLAGS_set_to_1d=True. In this case, one
+               // `None` should be pop out, otherwise the output shape will be
+               // not correct.
+               if (static_cast<int>(decrease_axis.size()) ==
+                   tensor->dims().size()) {
+                 VLOG(0) << "Warning: In Tensor '__getitem__', if the number "
+                            "of scalar "
+                            "elements "
+                            "in the index is equal to the rank of the Tensor, "
+                            "the output "
+                            "should "
+                            "be 0-D. In order to be consistent with the "
+                            "behavior of previous "
+                            "versions, it will be processed to 1-D. But it is "
+                            "not correct and "
+                            "will be "
+                            "removed in release 2.6. "
+                            "If 1-D is still wanted, please modify the index "
+                            "element from "
+                            "scalar to slice "
+                            "(e.g. 'x[i]' => 'x[i:i+1]'). ";
+                 if (!none_axes.empty()) {
                    none_axes.pop_back();
                  }
                }
-               if (!none_axes.empty()) {
-                 // Deal with cases that decrease_axes is not empty
-                 // For example:
-                 // # x.shape: (2,3,4)
-                 // out = x[0, 0:2, None] # out.shape : (2, 1, 4)
-                 for (auto &axis : none_axes) {
-                   int len = 0;
-                   for (int da : decrease_axis) {
-                     if (da < axis) {
-                       len++;
-                     }
+             }
+             if (!none_axes.empty()) {
+               // Deal with cases that decrease_axes is not empty
+               // For example:
+               // # x.shape: (2,3,4)
+               // out = x[0, 0:2, None] # out.shape : (2, 1, 4)
+               for (auto &axis : none_axes) {
+                 int len = 0;
+                 for (int da : decrease_axis) {
+                   if (da < axis) {
+                     len++;
                    }
-                   axis -= len;
                  }
-
-                 imperative::NameVarBaseMap ins = {{"X", {out}}};
-                 framework::AttributeMap attrs = {{"axes", none_axes}};
-                 auto new_out = std::shared_ptr<imperative::VarBase>(
-                     new imperative::VarBase(tracer->GenerateUniqueName()));
-                 auto out_xshape = std::shared_ptr<imperative::VarBase>(
-                     new imperative::VarBase(tracer->GenerateUniqueName()));
-                 imperative::NameVarBaseMap outs = {{"Out", {new_out}},
-                                                    {"XShape", {out_xshape}}};
-                 tracer->TraceOp("unsqueeze2", ins, outs, std::move(attrs));
-
-                 return new_out;
+                 axis -= len;
                }
+
+               imperative::NameVarBaseMap ins = {{"X", {out}}};
+               framework::AttributeMap attrs = {{"axes", none_axes}};
+               auto new_out = std::shared_ptr<imperative::VarBase>(
+                   new imperative::VarBase(tracer->GenerateUniqueName()));
+               auto out_xshape = std::shared_ptr<imperative::VarBase>(
+                   new imperative::VarBase(tracer->GenerateUniqueName()));
+               imperative::NameVarBaseMap outs = {{"Out", {new_out}},
+                                                  {"XShape", {out_xshape}}};
+               tracer->TraceOp("unsqueeze2", ins, outs, std::move(attrs));
+
+               return new_out;
              }
 
              // the index is a list
@@ -1863,18 +1865,6 @@ void BindImperative(py::module *m_ptr) {
       .def(
           "_copy_to",
           [](const std::shared_ptr<imperative::VarBase> &self,
-             const platform::NPUPlace &place,
-             bool blocking) {
-            auto new_var = self->NewVarBase(place, blocking);
-            if (!blocking) {
-              IncreaseVarbaseReferenceCountUntilCopyComplete(self, place);
-            }
-            return new_var;
-          },
-          py::return_value_policy::copy)
-      .def(
-          "_copy_to",
-          [](const std::shared_ptr<imperative::VarBase> &self,
              const platform::IPUPlace &place,
              bool blocking) {
             auto new_var = self->NewVarBase(place, blocking);
@@ -2202,11 +2192,6 @@ void BindImperative(py::module *m_ptr) {
               self.SetExpectedPlace(*p);
               VLOG(4) << "Tracer(" << &self << ")"
                       << " set expected place " << *p;
-            } else if (py::isinstance<platform::NPUPlace>(obj)) {
-              auto p = obj.cast<platform::NPUPlace *>();
-              self.SetExpectedPlace(*p);
-              VLOG(4) << "Tracer(" << &self << ")"
-                      << " set expected place " << *p;
             } else if (py::isinstance<platform::IPUPlace>(obj)) {
               auto p = obj.cast<platform::IPUPlace *>();
               self.SetExpectedPlace(*p);
@@ -2225,7 +2210,7 @@ void BindImperative(py::module *m_ptr) {
             } else {
               PADDLE_THROW(platform::errors::InvalidArgument(
                   "Incompatible Place Type: supports XPUPlace, CUDAPlace, "
-                  "CPUPlace, NPUPlace, IPUPlace"
+                  "CPUPlace, IPUPlace"
                   "and CUDAPinnedPlace, "
                   "but got Unknown Type!"));
             }
@@ -2364,28 +2349,6 @@ void BindImperative(py::module *m_ptr) {
               const PyNameVarBaseMap &ins,
               const PyNameVarBaseMap &outs,
               framework::AttributeMap attrs,
-              const platform::NPUPlace &place,
-              bool trace_backward,
-              const std::map<std::string, std::string> &inplace_map = {}) {
-             auto ins_map = ConvertToNameVarBaseMap(ins);
-             auto outs_map = ConvertToNameVarBaseMap(outs);
-             {
-               py::gil_scoped_release release;
-               self.TraceOp<imperative::VarBase>(type,
-                                                 std::move(ins_map),
-                                                 std::move(outs_map),
-                                                 std::move(attrs),
-                                                 place,
-                                                 trace_backward,
-                                                 inplace_map);
-             }
-           })
-      .def("trace",
-           [](imperative::Tracer &self,
-              const std::string &type,
-              const PyNameVarBaseMap &ins,
-              const PyNameVarBaseMap &outs,
-              framework::AttributeMap attrs,
               const platform::IPUPlace &place,
               bool trace_backward,
               const std::map<std::string, std::string> &inplace_map = {}) {
@@ -2471,7 +2434,6 @@ void BindImperative(py::module *m_ptr) {
   m.def("varbase_copy", &VarBaseCopy<platform::CUDAPlace>);
   m.def("varbase_copy", &VarBaseCopy<platform::XPUPlace>);
   m.def("varbase_copy", &VarBaseCopy<platform::CUDAPinnedPlace>);
-  m.def("varbase_copy", &VarBaseCopy<platform::NPUPlace>);
   m.def("varbase_copy", &VarBaseCopy<platform::CustomPlace>);
 
   m.def(
