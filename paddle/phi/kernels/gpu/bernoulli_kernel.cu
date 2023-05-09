@@ -32,33 +32,6 @@
 
 namespace phi {
 
-template <typename T>
-__device__ T convert_to_T(float rand_value, T x_value);
-
-template <>
-__device__ phi::dtype::float16 convert_to_T<phi::dtype::float16>(
-    float rand_value, phi::dtype::float16 x_value) {
-  return static_cast<phi::dtype::float16>(rand_value <=
-                                          static_cast<float>(x_value));
-}
-
-template <>
-__device__ phi::dtype::bfloat16 convert_to_T<phi::dtype::bfloat16>(
-    float rand_value, phi::dtype::bfloat16 x_value) {
-  return static_cast<phi::dtype::bfloat16>(rand_value <=
-                                           static_cast<float>(x_value));
-}
-
-template <>
-__device__ float convert_to_T<float>(float rand_value, float x_value) {
-  return static_cast<float>(rand_value <= x_value);
-}
-
-template <>
-__device__ double convert_to_T<double>(float rand_value, double x_value) {
-  return static_cast<double>(rand_value <= x_value);
-}
-
 // 'curand_uniform4/hiprand_uniform4' generate 4 random number each time
 template <typename T>
 __global__ void bernoulli_cuda_kernel(
@@ -82,7 +55,7 @@ __global__ void bernoulli_cuda_kernel(
     for (size_t j = 0; j < 4; j++) {
       size_t idx = i + j;
       if (idx < size) {
-        out_data[idx] = convert_to_T<T>((&rand.x)[j], x_data[idx]);
+        out_data[idx] = convert_to_T<T>((&rand.x)[j], static_cast<MPType>(x_data[idx]));
       }
     }
   }

@@ -24,38 +24,13 @@ namespace phi {
 using phi::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T>
-__device__ T device_trunc(T x);
-
-template <>
-__device__ float device_trunc<float>(float x) {
-  return truncf(x);
-}
-
-template <>
-__device__ double device_trunc<double>(double x) {
-  return trunc(x);
-}
-
-template <>
-__device__ phi::dtype::float16 device_trunc<phi::dtype::float16>(
-    phi::dtype::float16 x) {
-  return static_cast<phi::dtype::float16>(truncf(static_cast<float>(x)));
-}
-
-template <>
-__device__ phi::dtype::bfloat16 device_trunc<phi::dtype::bfloat16>(
-    phi::dtype::bfloat16 x) {
-  return static_cast<phi::dtype::bfloat16>(truncf(static_cast<float>(x)));
-}
-
-template <typename T>
 class TruncFunctor {
  public:
-  __device__ TruncFunctor(T x) : x_(x) {}
-  __device__ T operator()() { return device_trunc(x_); }
+   __device__ TruncFunctor(const T x) : x_(x) {}
+  __device__ T operator()() { return trunc(static_cast<MPType>(x_)); }
 
  public:
-  T x_;
+  const T x_;
 };
 
 template <>
