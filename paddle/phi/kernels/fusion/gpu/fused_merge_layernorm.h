@@ -20,12 +20,12 @@ limitations under the License. */
 namespace phi {
 
 template <typename T, typename Context>
-void FusedMergeLayernormKernel(const Context& dev_ctx,
-                               const DenseTensor& x,
-                               const DenseTensor& scale,
-                               const DenseTensor& bias,
-                               const float epsilon,
-                               const int begin_norm_axis,
-                               DenseTensor* out);
+void MergeLayernormKernel(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          const DenseTensor& scale,
+                          const DenseTensor& bias,
+                          const float epsilon,
+                          const int begin_norm_axis,
+                          DenseTensor* out);
 
 }  // namespace phi

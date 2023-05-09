@@ -149,13 +149,13 @@ template void invokeMergeLayernorm<half>(half *output,
                                          cudaStream_t stream);
 
 template <typename T, typename Context>
-void FusedMergeLayernormKernel(const Context &dev_ctx,
-                               const DenseTensor &x,
-                               const DenseTensor &scale,
-                               const DenseTensor &bias,
-                               const float epsilon,
-                               const int begin_norm_axis,
-                               DenseTensor *out) {
+void MergeLayernormKernel(const Context &dev_ctx,
+                          const DenseTensor &x,
+                          const DenseTensor &scale,
+                          const DenseTensor &bias,
+                          const float epsilon,
+                          const int begin_norm_axis,
+                          DenseTensor *out) {
   auto *x_data = x.data<T>();
   auto *bias_data = bias.data<T>();
   auto *scale_data = scale.data<T>();
@@ -207,15 +207,15 @@ void FusedMergeLayernormKernel(const Context &dev_ctx,
 }  // namespace phi
 
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 10000
-PD_REGISTER_KERNEL(fused_merge_layernorm,
+PD_REGISTER_KERNEL(merge_layernorm,
                    GPU,
                    ALL_LAYOUT,
-                   phi::fusion::FusedMergeLayernormKernel,
+                   phi::fusion::MergeLayernormKernel,
                    phi::dtype::float16) {}
 #else
-PD_REGISTER_KERNEL(fused_merge_layernorm,
+PD_REGISTER_KERNEL(merge_layernorm,
                    GPU,
                    ALL_LAYOUT,
-                   phi::fusion::FusedMergeLayernormKernel,
+                   phi::fusion::MergeLayernormKernel,
                    float) {}
 #endif
