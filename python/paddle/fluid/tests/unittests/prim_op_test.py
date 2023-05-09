@@ -682,7 +682,9 @@ class PrimForwardChecker:
         net = PrimNet(self.public_python_api)
         net = apply_to_static(net, False)
         # ensure the operator not in program if check_prim is True
-        if self.prim_op_type == "comp" and self.op_type != "fill_any_like":
+        # because to_static will build backward graph in forward, fill_any_like op's
+        # backward op is itself, so we skip it here.
+        if self.op_type != "fill_any_like":
             forward_ops = [
                 op.type
                 for op in net.forward.get_concrete_program(args)[1]
