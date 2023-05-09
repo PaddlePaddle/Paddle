@@ -72,7 +72,6 @@ Config XpuConfig() {
 }
 
 TEST(resnet50_xpu, basic) {
-  // setenv("XPU_PADDLE_L3_SIZE", "0", 1);
   Config config = XpuConfig();
   auto predictor = CreatePredictor(config);
   PrepareInput(predictor);
@@ -80,20 +79,122 @@ TEST(resnet50_xpu, basic) {
   CompareOutput(predictor);
 }
 
-// TEST(external_stream, basic) {
-//   Config config = XpuConfig();
-//   auto predictor = CreatePredictor(config);
+#define RUN_WITH_EXTERNAL_CONFIG(idx_, config_)                             \
+  Config config##idx_ = XpuConfig();                                        \
+  auto predictor##idx_ = CreatePredictor(config##idx_);                     \
+  PrepareInput(predictor##idx_);                                            \
+  experimental::InternalUtils::RunWithExternalConfig(predictor##idx_.get(), \
+                                                     &config_);             \
+  CompareOutput(predictor##idx_);                                           \
+  CHECK_EQ(predictor##idx_->GetExecStream(), config_.stream);
 
-//   void* xpu_stream = nullptr;
-//   xpu_stream_create(&xpu_stream);
-//   CHECK_NOTNULL(xpu_stream);
-//   experimental::XpuExternalConfig xpu_external_config = {
-//       xpu_stream, 0, nullptr, 0};
+TEST(external_stream, null_stream) {
+  experimental::XpuExternalConfig xpu_external_config = {
+      nullptr, 0, nullptr, 0};
+  RUN_WITH_EXTERNAL_CONFIG(0, xpu_external_config);
+}
 
-//   PrepareInput(predictor);
-//   experimental::InternalUtils::RunWithExternalConfig(predictor.get(),
-//                                                      &xpu_external_config);
-//   CompareOutput(predictor);
-// }
+TEST(external_stream, new_stream) {
+  void* stream = nullptr;
+  xpu_stream_create(&stream);
+  CHECK_NOTNULL(stream);
+  {
+    experimental::XpuExternalConfig xpu_external_config = {
+        stream, 0, nullptr, 0};
+    RUN_WITH_EXTERNAL_CONFIG(0, xpu_external_config);
+  }
+  xpu_stream_destroy(stream);
+}
+
+TEST(external_stream, 2_null_stream) {
+  experimental::XpuExternalConfig xpu_external_config = {
+      nullptr, 0, nullptr, 0};
+  RUN_WITH_EXTERNAL_CONFIG(0, xpu_external_config);
+  RUN_WITH_EXTERNAL_CONFIG(1, xpu_external_config);
+}
+
+TEST(external_stream, null_and_new_stream) {
+  experimental::XpuExternalConfig xpu_external_config0 = {
+      nullptr, 0, nullptr, 0};
+  void* stream = nullptr;
+  xpu_stream_create(&stream);
+  CHECK_NOTNULL(stream);
+  {
+    experimental::XpuExternalConfig xpu_external_config1 = {
+        stream, 0, nullptr, 0};
+    RUN_WITH_EXTERNAL_CONFIG(0, xpu_external_config0);
+    RUN_WITH_EXTERNAL_CONFIG(1, xpu_external_config1);
+  }
+  xpu_stream_destroy(stream);
+}
+
+TEST(external_stream, 2_new_same_stream) {
+  void* stream = nullptr;
+  xpu_stream_create(&stream);
+  CHECK_NOTNULL(stream);
+  experimental::XpuExternalConfig xpu_external_config = {stream, 0, nullptr, 0};
+  {
+    RUN_WITH_EXTERNAL_CONFIG(0, xpu_external_config);
+    RUN_WITH_EXTERNAL_CONFIG(1, xpu_external_config);
+  }
+  xpu_stream_destroy(stream);
+}
+
+TEST(external_stream, 2_new_different_stream) {
+  void* stream0 = nullptr;
+  xpu_stream_create(&stream0);
+  CHECK_NOTNULL(stream0);
+  experimental::XpuExternalConfig xpu_external_config0 = {
+      stream0, 0, nullptr, 0};
+  void* stream1 = nullptr;
+  xpu_stream_create(&stream1);
+  CHECK_NOTNULL(stream1);
+  experimental::XpuExternalConfig xpu_external_config1 = {
+      stream1, 0, nullptr, 0};
+  {
+    RUN_WITH_EXTERNAL_CONFIG(0, xpu_external_config0);
+    RUN_WITH_EXTERNAL_CONFIG(1, xpu_external_config1);
+  }
+  xpu_stream_destroy(stream0);
+  xpu_stream_destroy(stream1);
+}
+
+void RunPredictorWithExternalConfig(
+    std::shared_ptr<Predictor> predictor,
+    experimental::XpuExternalConfig external_config) {
+  PrepareInput(predictor);
+  experimental::InternalUtils::RunWithExternalConfig(predictor.get(),
+                                                     &external_config);
+  CompareOutput(predictor);
+  CHECK_EQ(predictor->GetExecStream(), external_config.stream);
+}
+
+TEST(external_stream, 2_thread) {
+  void* stream0 = nullptr;
+  xpu_stream_create(&stream0);
+  CHECK_NOTNULL(stream0);
+  experimental::XpuExternalConfig xpu_external_config0 = {
+      stream0, 0, nullptr, 0};
+
+  void* stream1 = nullptr;
+  xpu_stream_create(&stream1);
+  CHECK_NOTNULL(stream1);
+  experimental::XpuExternalConfig xpu_external_config1 = {
+      stream1, 0, nullptr, 0};
+
+  {
+    RUN_WITH_EXTERNAL_CONFIG(0, xpu_external_config0);
+    RUN_WITH_EXTERNAL_CONFIG(1, xpu_external_config1);
+    std::thread t0(
+        RunPredictorWithExternalConfig, predictor0, xpu_external_config0);
+    std::thread t1(
+        RunPredictorWithExternalConfig, predictor1, xpu_external_config1);
+    t0.join();
+    t1.join();
+  }
+
+  xpu_stream_destroy(stream0);
+  xpu_stream_destroy(stream1);
+}
 
 }  // namespace paddle_infer

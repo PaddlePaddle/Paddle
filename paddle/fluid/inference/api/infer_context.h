@@ -53,10 +53,6 @@ class InferGPUContext : public phi::GPUContext {
 class InferXPUContext : public phi::XPUContext {
  public:
   explicit InferXPUContext(const phi::Place& place);
-  using phi::XPUContext::SetDriverVersion;
-  using phi::XPUContext::SetRuntimeVersion;
-  using phi::XPUContext::SetStream;
-  using phi::XPUContext::SetXpuVersion;
 
   void* Alloc(phi::TensorBase* tensor,
               phi::DataType dtype,

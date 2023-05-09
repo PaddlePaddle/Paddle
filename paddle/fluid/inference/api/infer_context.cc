@@ -28,9 +28,10 @@ InferGPUContext::InferGPUContext(const phi::Place& place)
 #ifdef PADDLE_WITH_XPU
 InferXPUContext::InferXPUContext(const phi::Place& place)
     : phi::XPUContext(place) {
-  l3_size_ = x_context()->_l3_mgr.get_size();
-  l3_ptr_ = x_context()->_l3_mgr.get_ptr();
-  l3_owned_ = false;
+  SetXpuVersion(
+      static_cast<int>(phi::backends::xpu::get_xpu_version(place.device)));
+  SetDriverVersion(phi::backends::xpu::GetDriverVersion());
+  SetRuntimeVersion(phi::backends::xpu::GetRuntimeVersion());
 }
 
 void* InferXPUContext::Alloc(phi::TensorBase* tensor,
@@ -89,6 +90,7 @@ void InferXPUContext::SetL3Info(size_t l3_size,
       if (l3_size > 0) {
         xpu_malloc(&l3_ptr_, l3_size, XPU_MEM_L3);
         if (l3_ptr_ != nullptr) {
+          VLOG(3) << "remalloc l3(" << l3_size << ") success.";
           l3_size_ = l3_size;
           l3_owned_ = true;
           l3_autotune_size_ = l3_autotune_size;
@@ -107,6 +109,9 @@ void InferXPUContext::SetL3Info(size_t l3_size,
     l3_ptr_ = l3_ptr;
     l3_size_ = l3_size;
     l3_autotune_size_ = l3_autotune_size;
+  }
+  if (l3_autotune_size_ == 0) {
+    x_context()->_l3_mgr.set(l3_ptr_, l3_size_);
   }
 }
 

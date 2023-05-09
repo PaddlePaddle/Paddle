@@ -17,7 +17,6 @@ limitations under the License. */
 #include <numeric>
 #include <vector>
 #include "glog/logging.h"
-#include "paddle/phi/core/allocator.h"
 
 namespace phi {
 
