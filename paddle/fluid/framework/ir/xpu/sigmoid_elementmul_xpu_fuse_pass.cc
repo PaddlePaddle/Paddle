@@ -129,7 +129,6 @@ void SigmoidElementmulXpuFusePass::ApplyImpl(ir::Graph* graph) const {
     GET_IR_NODE(elemul_out);
 
     auto* block = sigmoid->Op()->Block();
-    auto* scope = param_scope();
     std::string elemul_out_name = elemul_out->Name();
 
     // Generate swish op
