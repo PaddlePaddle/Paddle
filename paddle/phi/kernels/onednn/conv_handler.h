@@ -181,8 +181,7 @@ class ConvOneDNNHandlerT
 
       const auto dst_md = funcs::OneDNNMemDesc(
           dst_tz, funcs::OneDNNGetDataType<T_out>(), chosen_memory_format);
-      const auto fwd_prop_kind = is_test ? dnnl::prop_kind::forward_inference
-                                         : dnnl::prop_kind::forward_training;
+      const auto fwd_prop_kind = dnnl::prop_kind::forward_inference;
       const dnnl::primitive_attr conv_attr = CreateConvAttrs(filter,
                                                              groups,
                                                              force_fp32_output,
@@ -340,7 +339,7 @@ class ConvOneDNNHandlerT
 
         this->AcquireForwardPrimitiveDescriptor(
             conv_attr,
-            dnnl::prop_kind::forward_training,
+            dnnl::prop_kind::forward_inference,
             dnnl::algorithm::convolution_direct,
             src_md,
             weights_md,
@@ -353,7 +352,7 @@ class ConvOneDNNHandlerT
       } else {
         this->AcquireForwardPrimitiveDescriptor(
             conv_attr,
-            dnnl::prop_kind::forward_training,
+            dnnl::prop_kind::forward_inference,
             dnnl::algorithm::convolution_direct,
             src_md,
             weights_md,
