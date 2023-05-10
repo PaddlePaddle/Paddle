@@ -198,6 +198,7 @@ from .tensor.manipulation import moveaxis  # noqa: F401
 from .tensor.manipulation import repeat_interleave  # noqa: F401
 from .tensor.manipulation import index_add  # noqa: F401
 from .tensor.manipulation import index_add_  # noqa: F401
+from .tensor.manipulation import unflatten  # noqa: F401
 from .tensor.math import abs  # noqa: F401
 from .tensor.math import acos  # noqa: F401
 from .tensor.math import asin  # noqa: F401
@@ -691,5 +692,6 @@ __all__ = [  # noqa
     'cumulative_trapezoid',
     'polar',
     'vander',
+    'unflatten',
     'nextafter',
 ]
