@@ -33,7 +33,7 @@ def ref_i0e_grad(x, dout):
     eps = np.finfo(x.dtype).eps
     not_tiny = abs(x) > eps
     safe_x = np.where(not_tiny, x, eps)
-    gradx = special.i1e(x) - np.sign(x) * special.i0e(safe_x)
+    gradx = special.i1e(x) - np.sign(x) * output_i0e(safe_x)
     gradx = np.where(not_tiny, gradx, -1.0)
     return dout * gradx
 
