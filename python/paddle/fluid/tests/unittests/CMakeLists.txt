@@ -1206,6 +1206,7 @@ endforeach()
 
 set_tests_properties(test_decoupled_py_reader_static_build PROPERTIES TIMEOUT
                                                                       120)
+set_tests_properties(test_fuse_bn_act_pass_static_build PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_optimizer_static_build PROPERTIES TIMEOUT
                                                                        250)
 set_tests_properties(test_matmul_op_static_build PROPERTIES TIMEOUT 120)
