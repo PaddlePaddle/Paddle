@@ -1916,8 +1916,6 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
   }}
  }}
   """
-                else:
-                    print("&&&&&&& : ", self.grad_api_contents["backward_op"])
 
         if next_node_generator is not None:
             has_higher_order_node = True
