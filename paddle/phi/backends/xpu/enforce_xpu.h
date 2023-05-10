@@ -206,6 +206,16 @@ DEFINE_EXTERNAL_API_TYPE(BKCLResult_t, BKCL_SUCCESS);
       __THROW_ERROR_INTERNAL__(__summary__);                 \
     }                                                        \
   } while (0)
+#define PADDLE_ENFORCE_XRE_SUCCESS(COND)                         \
+  do {                                                           \
+    auto __cond__ = (COND);                                      \
+    auto xre_msg = xpu_strerror(__cond__);                       \
+    if (UNLIKELY(__cond__ != 0)) {                               \
+      auto __summary__ =                                         \
+          phi::errors::External("XPU Runtime Error: ", xre_msg); \
+      __THROW_ERROR_INTERNAL__(__summary__);                     \
+    }                                                            \
+  } while (0)
 
 }  // namespace xpu
 }  // namespace backends

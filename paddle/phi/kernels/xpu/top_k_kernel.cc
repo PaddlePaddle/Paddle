@@ -17,6 +17,7 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/xpu/xpu_mem_util.h"
 namespace phi {
 
 template <typename T, typename Context>
@@ -59,8 +60,9 @@ void TopkKernel(const Context& dev_ctx,
   size_t k = k_scalar.to<int>();
   if (axis + 1 == in_dims.size()) {
     xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
-    int32_t* indices_int_data =
-        RAII_GUARD.alloc_l3_or_gm<int32_t>(indices->numel());
+    int32_t* indices_int_data = Alloc_l3_or_gm<Context, int32_t, int32_t>(
+        dev_ctx, indices->numel(), &RAII_GUARD);
+    PADDLE_ENFORCE_XDNN_NOT_NULL(indices_int_data);
 
     const size_t row =
         phi::product(phi::slice_ddim(in_dims, 0, in_dims.size() - 1));
@@ -104,7 +106,9 @@ void TopkKernel(const Context& dev_ctx,
     }
 
     xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
-    XPUType* trans_in_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(x.numel());
+    XPUType* trans_in_data =
+        Alloc_l3_or_gm<Context, T, XPUType>(dev_ctx, x.numel(), &RAII_GUARD);
+    PADDLE_ENFORCE_XDNN_NOT_NULL(trans_in_data);
 
     // Transpose and save interval output to trans_in
     int r = xpu::transpose<XPUType>(dev_ctx.x_context(),
@@ -119,10 +123,17 @@ void TopkKernel(const Context& dev_ctx,
                                        r,
                                        XPUAPIErrorMsg[r]));
 
-    XPUType* trans_out_data = RAII_GUARD.alloc_l3_or_gm<XPUType>(out->numel());
-    int64_t* trans_idx_data = RAII_GUARD.alloc_l3_or_gm<int64_t>(out->numel());
-    int32_t* trans_idx_int32_data =
-        RAII_GUARD.alloc_l3_or_gm<int32_t>(out->numel());
+    XPUType* trans_out_data =
+        Alloc_l3_or_gm<Context, T, XPUType>(dev_ctx, out->numel(), &RAII_GUARD);
+    PADDLE_ENFORCE_XDNN_NOT_NULL(trans_out_data);
+
+    int64_t* trans_idx_data = Alloc_l3_or_gm<Context, int64_t, int64_t>(
+        dev_ctx, out->numel(), &RAII_GUARD);
+    PADDLE_ENFORCE_XDNN_NOT_NULL(trans_idx_data);
+
+    int32_t* trans_idx_int32_data = Alloc_l3_or_gm<Context, int32_t, int32_t>(
+        dev_ctx, out->numel(), &RAII_GUARD);
+    PADDLE_ENFORCE_XDNN_NOT_NULL(trans_idx_int32_data);
     const size_t row =
         phi::product(phi::slice_ddim(trans_dims, 0, trans_dims.size() - 1));
     const size_t col = trans_dims[trans_dims.size() - 1];

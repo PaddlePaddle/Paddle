@@ -18,6 +18,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/unfold_functor.h"
 
+#include "paddle/phi/kernels/xpu/xpu_mem_util.h"
 namespace phi {
 
 template <typename T, typename Context>
@@ -29,6 +30,7 @@ void UnfoldKernel(const Context& ctx,
                   const std::vector<int>& dilations,
                   DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
+  FLAGS_limited_idle_chunk = true;
   ctx.template Alloc<T>(out);
   const std::string data_format = phi::DataLayoutToString(x.layout());
   bool is_nchw = data_format == "NCHW";
@@ -56,7 +58,10 @@ void UnfoldKernel(const Context& ctx,
                                              strides[1]);
 
   xpu::ctx_guard RAII_GUARD(ctx.x_context());
-  XPUType* out_pre_trans = RAII_GUARD.alloc_l3_or_gm<XPUType>(out->numel());
+  XPUType* out_pre_trans =
+      Alloc_l3_or_gm<Context, T, XPUType>(ctx, out->numel(), &RAII_GUARD);
+  PADDLE_ENFORCE_XDNN_NOT_NULL(out_pre_trans);
+
   int r = xpu::im2col(ctx.x_context(),
                       reinterpret_cast<const XPUType*>(x.data<T>()),
                       out_pre_trans,

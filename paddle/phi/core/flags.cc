@@ -1244,3 +1244,19 @@ PHI_DEFINE_EXPORTED_bool(use_shm_cache,
 PHI_DEFINE_EXPORTED_string(tensor_operants_mode,
                            "eager",
                            "Tensor operants mode");
+
+#ifdef PADDLE_WITH_XPU
+/**
+ * Auto growth allocator relatedd FLAG
+ * Name: limited_idle_chunk
+ * Since Version: 2.5.0
+ * Value Range: bool, default=false
+ * Example:
+ * Note: In XPU kernels, if the XPU API potentially require large size of
+ * memory during exection, set this FLAG in xpu kernel before any Alloc to
+ * free all auto growth allocator idle chunks in ahead.
+ **/
+PHI_DEFINE_EXPORTED_bool(limited_idle_chunk,
+                         false,
+                         "if free idle chunks immediately");
+#endif

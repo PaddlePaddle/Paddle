@@ -17,6 +17,8 @@
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/xpu/xpu_api_wrapper.h"
+
+#include "paddle/phi/kernels/xpu/xpu_mem_util.h"
 namespace phi {
 
 template <typename T, typename Context>
@@ -58,8 +60,10 @@ void MatmulGradKernel(const Context& dev_ctx,
 
   if (info_forward.is_x_need_broadcast) {
     XPUType* new_c_1 = nullptr;
-    new_c_1 = RAII_GUARD.alloc_l3_or_gm<XPUType>(
-        info_forward.bs * info_forward.m * info_forward.k);
+    new_c_1 = Alloc_l3_or_gm<Context, T, XPUType>(
+        dev_ctx,
+        info_forward.bs * info_forward.m * info_forward.k,
+        &RAII_GUARD);
     PADDLE_ENFORCE_XDNN_NOT_NULL(new_c_1);
     c_1 = new_c_1;
   }

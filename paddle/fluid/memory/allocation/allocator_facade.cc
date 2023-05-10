@@ -22,6 +22,7 @@
 #include "paddle/fluid/memory/allocation/naive_best_fit_allocator.h"
 #include "paddle/fluid/memory/allocation/retry_allocator.h"
 #include "paddle/fluid/memory/allocation/stat_allocator.h"
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/macros.h"
@@ -35,7 +36,6 @@
 #include "paddle/fluid/memory/allocation/stream_safe_cuda_allocator.h"
 #include "paddle/fluid/memory/allocation/thread_local_allocator.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 
 #ifdef PADDLE_WITH_CUDA
@@ -50,7 +50,10 @@
 #endif
 
 #ifdef PADDLE_WITH_XPU
+#include "paddle/fluid/memory/allocation/stream_safe_xpu_allocator.h"
+#include "paddle/fluid/memory/allocation/xpu_allocator.h"
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
+#include "paddle/phi/backends/xpu/xpu_context.h"
 #endif
 
 #ifdef PADDLE_WITH_IPU
@@ -166,6 +169,11 @@ class AllocatorFacadePrivate {
       std::map<platform::CUDAPlace,
                std::map<gpuStream_t, std::shared_ptr<Allocator>>>;
 #endif
+#ifdef PADDLE_WITH_XPU
+  using XPUAllocatorMap =
+      std::map<platform::XPUPlace,
+               std::map<XPUStream, std::shared_ptr<Allocator>>>;
+#endif
 
   explicit AllocatorFacadePrivate(bool allow_free_idle_chunk = true) {
     strategy_ = GetAllocatorStrategy();
@@ -236,9 +244,16 @@ class AllocatorFacadePrivate {
         InitNaiveBestFitCUDAPinnedAllocator();
 #endif
 #ifdef PADDLE_WITH_XPU
+        allow_free_idle_chunk_ = allow_free_idle_chunk;
         for (int dev_id = 0; dev_id < platform::GetXPUDeviceCount(); ++dev_id) {
-          InitNaiveBestFitXPUAllocator(platform::XPUPlace(dev_id));
+          InitAutoGrowthXPUAllocator(platform::XPUPlace(dev_id),
+                                     allow_free_idle_chunk_);
         }
+        if (FLAGS_use_stream_safe_cuda_allocator) {
+          WrapStreamSafeXPUAllocatorForDefault();
+          is_stream_safe_cuda_allocator_used_ = true;
+        }
+
 #endif
 #ifdef PADDLE_WITH_IPU
         for (int dev_id = 0; dev_id < platform::GetIPUDeviceCount(); ++dev_id) {
@@ -436,6 +451,114 @@ class AllocatorFacadePrivate {
 
     VLOG(6) << "GetStream for a non-StreamSafeCUDAAllocation";
     return static_cast<phi::GPUContext*>(
+               platform::DeviceContextPool::Instance().Get(allocation->place()))
+        ->stream();
+  }
+#endif
+
+#ifdef PADDLE_WITH_XPU
+  bool HasXPUAllocator(const platform::XPUPlace& place, XPUStream stream) {
+    auto it = xpu_allocators_.find(place);
+    if (it == xpu_allocators_.end()) {
+      return false;
+    }
+    const std::map<XPUStream, std::shared_ptr<Allocator>>& allocator_map =
+        it->second;
+    return allocator_map.find(stream) != allocator_map.end();
+  }
+
+  const std::shared_ptr<Allocator>& GetAllocator(
+      const platform::XPUPlace& place,
+      XPUStream stream,
+      bool create_if_not_found = false) {
+    if (stream == GetDefaultStream(place)) {
+      VLOG(7) << "Get Allocator by passing in a default stream";
+      return GetAllocator(place, /* A non-zero num to choose allocator_ */ 1);
+    }
+
+    /* shared_lock_guard */ {
+      std::shared_lock<std::shared_timed_mutex> lock_guard(
+          xpu_allocator_mutex_);
+      if (LIKELY(HasXPUAllocator(place, stream))) {
+        return xpu_allocators_[place][stream];
+      } else {
+        PADDLE_ENFORCE_NE(create_if_not_found,
+                          false,
+                          platform::errors::NotFound(
+                              "No allocator found for stream %s in place %s "
+                              "with create_if_not_found = false",
+                              stream,
+                              place));
+      }
+    }
+
+    /* unique_lock_guard */ {
+      std::unique_lock<std::shared_timed_mutex> lock_guard(
+          xpu_allocator_mutex_);
+      InitStreamSafeXPUAllocator(place, stream);
+      return xpu_allocators_[place][stream];
+    }
+  }
+
+  const std::shared_ptr<StreamSafeXPUAllocator>
+  GetDefaultStreamSafeXPUAllocator(const platform::XPUPlace& place) const {
+    const auto iter = default_stream_safe_xpu_allocators_.find(place);
+    PADDLE_ENFORCE_NE(
+        iter,
+        default_stream_safe_xpu_allocators_.end(),
+        platform::errors::NotFound(
+            "No StreamSafeXPUAllocator found for the place, %s", place));
+    return iter->second;
+  }
+
+  XPUStream GetDefaultStream(const platform::XPUPlace& place) const {
+    const std::shared_ptr<StreamSafeXPUAllocator>& allocator =
+        GetDefaultStreamSafeXPUAllocator(place);
+    return allocator->GetDefaultStream();
+  }
+
+  void SetDefaultStream(const platform::XPUPlace& place, XPUStream stream) {
+    const std::shared_ptr<StreamSafeXPUAllocator>& allocator =
+        GetDefaultStreamSafeXPUAllocator(place);
+
+    PADDLE_ENFORCE_EQ(
+        allocator->GetDefaultStream(),
+        nullptr,
+        platform::errors::Unavailable(
+            "The default stream for StreamSafeXPUAllocator(%p) in %s has been "
+            "set to %p, not allow to change it to %p.",
+            allocator.get(),
+            place,
+            allocator->GetDefaultStream(),
+            stream));
+
+    allocator->SetDefaultStream(stream);
+    VLOG(8) << "Set default stream to " << stream
+            << " for StreamSafeXPUAllocator(" << allocator.get() << ") in "
+            << place;
+  }
+
+  void RecordStream(std::shared_ptr<phi::Allocation> allocation,
+                    XPUStream stream) {
+    std::shared_ptr<StreamSafeXPUAllocation> stream_safe_xpu_allocation =
+        std::dynamic_pointer_cast<StreamSafeXPUAllocation>(allocation);
+    if (stream_safe_xpu_allocation != nullptr) {
+      stream_safe_xpu_allocation->RecordStream(stream);
+    } else {
+      VLOG(6) << "RecordStream for a non-StreamSafeXPUAllocation";
+    }
+  }
+
+  XPUStream GetStream(
+      const std::shared_ptr<phi::Allocation>& allocation) const {
+    const std::shared_ptr<StreamSafeXPUAllocation> stream_safe_xpu_allocation =
+        std::dynamic_pointer_cast<StreamSafeXPUAllocation>(allocation);
+    if (stream_safe_xpu_allocation != nullptr) {
+      return stream_safe_xpu_allocation->GetOwningStream();
+    }
+
+    VLOG(6) << "GetStream for a non-StreamSafeXPUAllocation";
+    return static_cast<phi::XPUContext*>(
                platform::DeviceContextPool::Instance().Get(allocation->place()))
         ->stream();
   }
@@ -774,6 +897,105 @@ class AllocatorFacadePrivate {
   void InitNaiveBestFitXPUAllocator(platform::XPUPlace p) {
     allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
   }
+
+  // Create a new XPUAllocator or XPUManagedAllocator for the given device
+  std::shared_ptr<Allocator> CreateXPUAllocator(platform::XPUPlace p) {
+    return std::make_shared<XPUAllocator>(p);
+  }
+
+  void InitStreamSafeXPUAllocator(platform::XPUPlace p, XPUStream stream) {
+    PADDLE_ENFORCE_EQ(
+        strategy_,
+        AllocatorStrategy::kAutoGrowth,
+        platform::errors::Unimplemented(
+            "Only support auto-growth strategey for StreamSafeXPUAllocator, "
+            "the allocator strategy %d is unsupported for multi-stream",
+            static_cast<int>(strategy_)));
+    if (LIKELY(!HasXPUAllocator(p, stream))) {
+      VLOG(8) << "Init XPU allocator for stream " << stream << " in place "
+              << p;
+      InitAutoGrowthXPUAllocator(p, stream);
+
+      WrapStreamSafeXPUAllocator(p, stream);
+
+      WrapXPURetryAllocator(p, stream, FLAGS_gpu_allocator_retry_time);
+      WrapStatAllocator(p, stream);
+    }
+  }
+
+  void InitAutoGrowthXPUAllocator(platform::XPUPlace p, XPUStream stream) {
+    auto chunk_size = FLAGS_auto_growth_chunk_size_in_mb << 6;
+    VLOG(4) << "FLAGS_auto_growth_chunk_size_in_mb is "
+            << FLAGS_auto_growth_chunk_size_in_mb;
+    auto xpu_allocator = CreateXPUAllocator(p);
+    auto alignment = platform::XPUMinChunkSize();
+
+    std::shared_ptr<Allocator> underlying_allocator{nullptr};
+
+    VLOG(10) << "not use AlignedAllocator with alignment: " << alignment;
+    underlying_allocator = xpu_allocator;
+
+    xpu_allocators_[p][stream] = std::make_shared<AutoGrowthBestFitAllocator>(
+        underlying_allocator, alignment, chunk_size, allow_free_idle_chunk_);
+  }
+
+  void InitAutoGrowthXPUAllocator(platform::XPUPlace p,
+                                  bool allow_free_idle_chunk) {
+    // auto chunk_size = FLAGS_auto_growth_chunk_size_in_mb << 20;
+    auto chunk_size = FLAGS_auto_growth_chunk_size_in_mb << 6;
+    VLOG(4) << "FLAGS_auto_growth_chunk_size_in_mb is "
+            << FLAGS_auto_growth_chunk_size_in_mb;
+    auto xpu_allocator = CreateXPUAllocator(p);
+    auto alignment = platform::XPUMinChunkSize();
+
+    std::shared_ptr<Allocator> underlying_allocator{nullptr};
+
+    VLOG(10) << "not use AlignedAllocator with alignment: " << alignment;
+    underlying_allocator = xpu_allocator;
+
+    allocators_[p] = std::make_shared<AutoGrowthBestFitAllocator>(
+        underlying_allocator, alignment, chunk_size, allow_free_idle_chunk);
+  }
+
+  void WrapStreamSafeXPUAllocator(platform::XPUPlace p, XPUStream stream) {
+    std::shared_ptr<Allocator>& allocator = xpu_allocators_[p][stream];
+    allocator = std::make_shared<StreamSafeXPUAllocator>(allocator, p, stream);
+  }
+
+  void WrapStreamSafeXPUAllocatorForDefault() {
+    for (auto& pair : allocators_) {
+      auto& place = pair.first;
+      if (platform::is_xpu_place(place)) {
+        std::shared_ptr<StreamSafeXPUAllocator>&& allocator =
+            std::make_shared<StreamSafeXPUAllocator>(
+                pair.second,
+                place,
+                /* default_stream = */ nullptr);
+        pair.second = allocator;
+        default_stream_safe_xpu_allocators_[place] = allocator;
+        VLOG(8) << "WrapStreamSafeXPUAllocator for " << place
+                << ", allocator address = " << pair.second.get();
+      }
+    }
+  }
+
+  void WrapXPURetryAllocator(platform::XPUPlace p,
+                             XPUStream stream,
+                             size_t retry_time) {
+    PADDLE_ENFORCE_GT(
+        retry_time,
+        0,
+        platform::errors::InvalidArgument(
+            "Retry time should be larger than 0, but got %d", retry_time));
+    std::shared_ptr<Allocator>& allocator = xpu_allocators_[p][stream];
+    allocator = std::make_shared<RetryAllocator>(allocator, retry_time);
+  }
+
+  void WrapStatAllocator(platform::XPUPlace p, XPUStream stream) {
+    std::shared_ptr<Allocator>& allocator = xpu_allocators_[p][stream];
+    allocator = std::make_shared<StatAllocator>(allocator);
+  }
+
 #endif
 
 #ifdef PADDLE_WITH_IPU
@@ -807,7 +1029,7 @@ class AllocatorFacadePrivate {
     int device_count = platform::GetXPUDeviceCount();
     for (int i = 0; i < device_count; ++i) {
       platform::XPUPlace p(i);
-      system_allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
+      system_allocators_[p] = CreateXPUAllocator(p);
     }
 #endif
 #ifdef PADDLE_WITH_IPU
@@ -905,7 +1127,8 @@ class AllocatorFacadePrivate {
         platform::errors::InvalidArgument(
             "Retry time should be larger than 0, but got %d", retry_time));
     for (auto& pair : allocators_) {
-      if (platform::is_gpu_place(pair.first)) {
+      if (platform::is_gpu_place(pair.first) ||
+          platform::is_xpu_place(pair.first)) {
         pair.second = std::make_shared<RetryAllocator>(pair.second, retry_time);
       }
     }
@@ -930,6 +1153,15 @@ class AllocatorFacadePrivate {
   CUDAAllocatorMap cuda_allocators_;
   std::shared_timed_mutex cuda_allocator_mutex_;
 #endif
+
+#ifdef PADDLE_WITH_XPU
+  // a standalone XPU allocator to support multi-stream GC in new executor
+  std::map<platform::Place, std::shared_ptr<StreamSafeXPUAllocator>>
+      default_stream_safe_xpu_allocators_;
+  XPUAllocatorMap xpu_allocators_;
+  std::shared_timed_mutex xpu_allocator_mutex_;
+#endif
+
   AllocatorStrategy strategy_;
   AllocatorMap allocators_;
   static AllocatorMap zero_size_allocators_;

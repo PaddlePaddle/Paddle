@@ -19,6 +19,7 @@
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/xpu/xpu_api_wrapper.h"
 
+#include "paddle/phi/kernels/xpu/xpu_mem_util.h"
 namespace phi {
 
 template <typename T, typename Context>
@@ -33,6 +34,7 @@ void ConvKernel(const Context& dev_ctx,
                 const std::string& data_format,
                 DenseTensor* out) {
   using XPUT = typename XPUTypeTrait<T>::Type;
+  FLAGS_limited_idle_chunk = true;
   std::vector<int> paddings = paddings_t;
   std::vector<int> dilations = dilations_t;
   // The filter will be reshaped in the calculations,

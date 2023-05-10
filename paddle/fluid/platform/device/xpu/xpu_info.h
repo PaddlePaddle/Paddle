@@ -70,6 +70,48 @@ using XPUDeviceGuard = phi::backends::xpu::XPUDeviceGuard;
 
 phi::backends::xpu::XPUVersion get_xpu_version(int dev_id);
 
+//! Get the memory usage of current XPU device.
+void XPUMemoryUsage(size_t *available, size_t *total);
+
+//! Get the available memory to allocate, which is the size of available XPU
+//! minus reserving.
+size_t XPUAvailableMemToAlloc();
+
+//! Get the maximum allocation size of current XPU device.
+size_t XPUMaxAllocSize();
+
+//! Get the initial allocation size of current XPU device.
+size_t XPUInitAllocSize();
+
+//! Get the re-allocation size of current XPU device.
+size_t XPUReallocSize();
+
+//! Get the minimum chunk size for XPU buddy allocator.
+size_t XPUMinChunkSize();
+
+//! Get the maximum chunk size for XPU buddy allocator.
+size_t XPUMaxChunkSize();
+
+//! xpu_malloc with recorded info
+int RecordedXPUMalloc(void **ptr, size_t size, int dev_id);
+
+//! xpu_free with recorded info
+void RecordedXPUFree(void *p, size_t size, int dev_id);
+
+//! Get available and total gpu memory with considering limitation
+bool RecordedXPUMemGetInfo(size_t *avail,
+                           size_t *total,
+                           size_t *actual_avail,
+                           size_t *actual_total,
+                           int dev_id);
+
+//! Get recorded actrtMalloc size. If record is disabled, return 0.
+uint64_t RecordedXPUMallocSize(int dev_id);
+
+uint64_t RecordedXPULimitSize(int dev_id);
+
+bool IsXPUMallocRecorded(int dev_id);
+
 }  // namespace platform
 }  // namespace paddle
 #endif

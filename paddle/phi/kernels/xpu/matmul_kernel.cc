@@ -18,6 +18,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/xpu/xpu_api_wrapper.h"
 
+#include "paddle/phi/kernels/xpu/xpu_mem_util.h"
 namespace phi {
 
 template <typename T, typename Context>
@@ -29,6 +30,7 @@ void MatmulKernel(const Context& dev_ctx,
                   DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
 
+  FLAGS_limited_idle_chunk = true;
   dev_ctx.template Alloc<T>(out);
   const XPUType* x_ptr = reinterpret_cast<const XPUType*>(x.data<T>());
   const XPUType* y_ptr = reinterpret_cast<const XPUType*>(y.data<T>());

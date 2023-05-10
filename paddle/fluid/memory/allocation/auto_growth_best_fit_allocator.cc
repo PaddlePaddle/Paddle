@@ -21,6 +21,10 @@
 #include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
+#ifdef PADDLE_WITH_XPU
+#include "paddle/fluid/platform/device/xpu/xpu_info.h"
+#endif
+
 PADDLE_DEFINE_EXPORTED_READONLY_bool(
     free_idle_chunk,
     false,
@@ -36,6 +40,10 @@ PADDLE_DEFINE_EXPORTED_READONLY_bool(
     "chunk would be freed when no cache hit; if false, idle "
     "chunk would be freed when out of memory occurs. This flag "
     "only works when FLAGS_allocator_strategy=auto_growth.");
+
+#ifdef PADDLE_WITH_XPU
+DECLARE_bool(limited_idle_chunk);
+#endif
 
 namespace paddle {
 namespace memory {
@@ -121,6 +129,15 @@ phi::Allocation *AutoGrowthBestFitAllocator::AllocateImpl(
   ++total_alloc_times_;
   total_alloc_size_ += size;
   VLOG(10) << "Alloc " << block_it->size_ << " bytes, ptr = " << block_it->ptr_;
+
+#ifdef PADDLE_WITH_XPU
+  VLOG(5) << "if flush at alloc = " << FLAGS_limited_idle_chunk;
+  if (FLAGS_limited_idle_chunk) {
+    xpu_wait();
+    FreeIdleChunks();
+    FLAGS_limited_idle_chunk = false;
+  }
+#endif
   return new BlockAllocation(block_it);
 }
 
