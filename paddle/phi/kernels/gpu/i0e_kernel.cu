@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
-#include "paddle/phi/kernels/poisson_kernel.h"
+#include "paddle/phi/kernels/i0e_kernel.h"
 
 namespace phi {
 
