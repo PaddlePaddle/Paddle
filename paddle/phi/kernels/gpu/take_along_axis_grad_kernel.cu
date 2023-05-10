@@ -55,6 +55,11 @@ void TakeAlongAxisGradKernel(const Context& dev_ctx,
   } else if (index_type == DataType::INT64) {
     phi::funcs::gpu_scatter_add_kernel<T, int64_t>(
         *x_grad, axis, index, out_grad, dev_ctx);
+  } else {
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("The data type of input index is expected "
+                                     "to be int32 or int64, but recieved %s.",
+                                     phi::DataTypeToString(index_type)));
   }
 }
 
