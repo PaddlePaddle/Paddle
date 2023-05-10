@@ -15,8 +15,6 @@
 #pragma once
 
 #include <NvInfer.h>
-#include <stdio.h>
-#include <cassert>
 #include <string>
 #include <vector>
 
@@ -84,45 +82,50 @@ class GenericPlugin : public DynamicPluginTensorRT {
   // Shutdown the layer. This is called when the engine is destroyed
   void terminate() TRT_NOEXCEPT override;
 
-  void destroy() TRT_NOEXCEPT{};
+  void destroy() TRT_NOEXCEPT override{};
 
-  size_t getSerializationSize() const TRT_NOEXCEPT {
-    return op_meta_data_.size() + SerializedSize(inputs_data_type_) +
-           SerializedSize(outputs_data_type_) + SerializedSize(with_fp16_);
+  size_t getSerializationSize() const TRT_NOEXCEPT override {
+    size_t sum = 0;
+    sum += SerializedSize(inputs_data_type_);
+    sum += SerializedSize(outputs_data_type_);
+    sum += SerializedSize(with_fp16_);
+    sum += op_meta_data_.size();
+    return sum;
   }
 
-  void serialize(void* buffer) const TRT_NOEXCEPT;
+  void serialize(void* buffer) const TRT_NOEXCEPT override;
 
   // The Func in IPluginV2
-  nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT;
+  nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override;
 
   nvinfer1::DimsExprs getOutputDimensions(
       int output_index,
       const nvinfer1::DimsExprs* inputs,
       int nb_inputs,
       nvinfer1::IExprBuilder& expr_builder)  // NOLINT
-      TRT_NOEXCEPT;
+      TRT_NOEXCEPT override;
 
   bool supportsFormatCombination(int pos,
                                  const nvinfer1::PluginTensorDesc* in_out,
                                  int nb_inputs,
-                                 int nb_outputs) TRT_NOEXCEPT;
+                                 int nb_outputs) TRT_NOEXCEPT override;
 
   void configurePlugin(const nvinfer1::DynamicPluginTensorDesc* in,
                        int nb_inputs,
                        const nvinfer1::DynamicPluginTensorDesc* out,
-                       int nb_outputs) TRT_NOEXCEPT;
+                       int nb_outputs) TRT_NOEXCEPT override;
 
   int enqueue(const nvinfer1::PluginTensorDesc* input_desc,
               const nvinfer1::PluginTensorDesc* output_desc,
               const void* const* inputs,
               void* const* outputs,
               void* workspace,
-              cudaStream_t stream) TRT_NOEXCEPT;
+              cudaStream_t stream) TRT_NOEXCEPT override;
 
   nvinfer1::DataType getOutputDataType(int index,
                                        const nvinfer1::DataType* input_types,
-                                       int nb_inputs) const TRT_NOEXCEPT;
+                                       int nb_inputs) const
+      TRT_NOEXCEPT override;
 
   bool isFp16Supported() {
     auto half_dtype = nvinfer1::DataType::kHALF;
@@ -146,7 +149,6 @@ class GenericPlugin : public DynamicPluginTensorRT {
   std::vector<phi::DenseTensor>* dense_tensor_outputs_{nullptr};
 
  private:
-  InputOutPutVarInfo in_out_info_;
   std::vector<int> inputs_data_type_;
   std::vector<int> outputs_data_type_;
 };
@@ -166,6 +168,7 @@ class GenericPluginCreator : public TensorRTPluginCreator {
     return new GenericPlugin(serial_data, serial_length);
   }
 };
+
 REGISTER_TRT_PLUGIN_V2(GenericPluginCreator);
 
 }  // namespace plugin

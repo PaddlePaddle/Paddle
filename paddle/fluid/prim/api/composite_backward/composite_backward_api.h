@@ -110,12 +110,13 @@ void softmax_grad(const Tensor& out,
 }
 
 template <typename T>
-void cast_grad(const Tensor& out_grad, DataType dtype, Tensor* x_grad) {
+void cast_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
   if (x_grad) {
-    auto res = cast<T>(out_grad, dtype);
+    auto res = cast<T>(out_grad, x.dtype());
     set_output<T>(res, x_grad);
   }
 }
+
 template <typename T>
 void gather_grad(const Tensor& x,
                  const Tensor& index,
@@ -250,6 +251,30 @@ void subtract_grad(const Tensor& x,
 }
 
 template <typename T>
+void subtract_double_grad(const Tensor& y,
+                          const Tensor& grad_out,
+                          const paddle::optional<Tensor>& grad_x_grad,
+                          const paddle::optional<Tensor>& grad_y_grad,
+                          int axis,
+                          Tensor* grad_out_grad) {
+  if (grad_out_grad) {
+    // ddout = ddx - ddy
+    if (!grad_x_grad && !grad_y_grad) {
+      grad_out_grad = nullptr;
+    } else {
+      Tensor ddout = full<T>(phi::vectorize(grad_out.dims()), 0.0, y.dtype());
+      if (grad_x_grad) {
+        ddout = ddout + grad_x_grad.get();
+      }
+      if (grad_y_grad) {
+        ddout = ddout - grad_y_grad.get();
+      }
+      set_output<T>(ddout, grad_out_grad);
+    }
+  }
+}
+
+template <typename T>
 void add_grad(const Tensor& x,
               const Tensor& y,
               const Tensor& out_grad,
@@ -292,6 +317,30 @@ void add_grad(const Tensor& x,
 }
 
 template <typename T>
+void add_double_grad(const Tensor& y,
+                     const Tensor& grad_out,
+                     const paddle::optional<Tensor>& grad_x_grad,
+                     const paddle::optional<Tensor>& grad_y_grad,
+                     int axis,
+                     Tensor* grad_out_grad) {
+  if (grad_out_grad) {
+    // ddout = ddx + ddy
+    if (!grad_x_grad && !grad_y_grad) {
+      grad_out_grad = nullptr;
+    } else {
+      Tensor ddout = full<T>(phi::vectorize(grad_out.dims()), 0.0, y.dtype());
+      if (grad_x_grad) {
+        ddout = ddout + grad_x_grad.get();
+      }
+      if (grad_y_grad) {
+        ddout = ddout + grad_y_grad.get();
+      }
+      set_output<T>(ddout, grad_out_grad);
+    }
+  }
+}
+
+template <typename T>
 void sum_grad(const Tensor& x,
               const Tensor& out_grad,
               const IntArray& axis,
@@ -317,7 +366,7 @@ void sum_grad(const Tensor& x,
     if (!keepdim) {
       auto axis_ = std::vector<int64_t>();
       if (reduce_all) {
-        for (int64_t i = 1; i < x_dim_size; i++) {
+        for (int64_t i = 0; i < x_dim_size; i++) {
           axis_.push_back(i);
         }
       } else {
@@ -328,7 +377,8 @@ void sum_grad(const Tensor& x,
           }
         }
       }
-      auto out_grad_ = unsqueeze<T>(out_grad, axis_);
+      auto out_grad_shape = get_unsqueeze_dims(out_grad, axis_);
+      auto out_grad_ = reshape<T>(out_grad, out_grad_shape);
       x_grad_tmp = out_grad_.expand(IntArray(x_dim));
     } else {
       x_grad_tmp = out_grad.expand(IntArray(x_dim));
@@ -517,6 +567,75 @@ void multiply_grad(const Tensor& x,
       }
     } else {
       set_output<T>(y_grad_unreduce, y_grad);
+    }
+  }
+}
+
+template <typename T>
+void multiply_double_grad(const Tensor& x,
+                          const Tensor& y,
+                          const Tensor& grad_out,
+                          const paddle::optional<Tensor>& grad_x_grad,
+                          const paddle::optional<Tensor>& grad_y_grad,
+                          int axis,
+                          Tensor* x_grad,
+                          Tensor* y_grad,
+                          Tensor* grad_out_grad) {
+  if (x_grad) {
+    if (grad_y_grad) {
+      auto dx = grad_y_grad.get() * grad_out;
+      if (dx.dims() != x.dims()) {
+        auto axes = get_reduce_dims_from_out(dx.dims(), x.dims());
+        if (!axes.size()) {
+          set_output<T>(dx, x_grad);
+        } else {
+          auto dx_reduce = dx.sum(phi::vectorize(axes), dx.dtype(), false);
+          if (dx_reduce.dims().size() != x.dims().size()) {
+            dx_reduce = reshape<T>(dx_reduce, x.shape());
+          }
+          set_output<T>(dx_reduce, x_grad);
+        }
+      } else {
+        set_output<T>(dx, x_grad);
+      }
+
+    } else {
+      x_grad = nullptr;
+    }
+  }
+  if (y_grad) {
+    if (grad_x_grad) {
+      auto dy = grad_x_grad.get() * grad_out;
+      if (dy.dims() != y.dims()) {
+        auto axes = get_reduce_dims_from_out(dy.dims(), y.dims());
+        if (!axes.size()) {
+          set_output<T>(dy, y_grad);
+        } else {
+          auto dy_reduce = dy.sum(phi::vectorize(axes), dy.dtype(), false);
+          if (dy_reduce.dims().size() != y.dims().size()) {
+            dy_reduce = reshape<T>(dy_reduce, y.shape());
+          }
+          set_output<T>(dy_reduce, y_grad);
+        }
+      } else {
+        set_output<T>(dy, y_grad);
+      }
+    } else {
+      y_grad = nullptr;
+    }
+  }
+  if (grad_out_grad) {
+    if (grad_x_grad && grad_y_grad) {
+      auto ddout = grad_x_grad.get() * y + grad_y_grad.get() * x;
+      set_output<T>(ddout, grad_out_grad);
+    } else if (grad_x_grad) {
+      auto ddout = grad_x_grad.get() * y;
+      set_output<T>(ddout, grad_out_grad);
+    } else if (grad_y_grad) {
+      auto ddout = grad_y_grad.get() * x;
+      set_output<T>(ddout, grad_out_grad);
+    } else {
+      grad_out_grad = nullptr;
     }
   }
 }
@@ -1063,9 +1182,11 @@ void group_norm_grad(const Tensor& x,
 
     auto p2 = (d2 * mean - d1) * (inv_std_mul_s * inv_std * inv_std);
     auto p3 = -p2 * mean - d2 * inv_std_mul_s;
-    p1 = unsqueeze<T>(p1, std::vector<int64_t>({3}));
-    p2 = unsqueeze<T>(p2, std::vector<int64_t>({2, 3}));
-    p3 = unsqueeze<T>(p3, std::vector<int64_t>({2, 3}));
+    auto first_shape = get_unsqueeze_dims(p1, std::vector<int64_t>({3}));
+    auto second_shape = get_unsqueeze_dims(p2, std::vector<int64_t>({2, 3}));
+    p1 = reshape<T>(p1, first_shape);
+    p2 = reshape<T>(p2, second_shape);
+    p3 = reshape<T>(p3, second_shape);
     auto tmp_1 = reshape<T>(out_grad_data, whole_group_shape) * p1;
     auto tmp_2 = reshape<T>(x_data, whole_group_shape) * p2 + p3;
     auto x_grad_data = tmp_1 + tmp_2;
@@ -1078,10 +1199,11 @@ void group_norm_grad(const Tensor& x,
   }
   if (scale_grad) {
     if (scale_ptr) {
+      auto third_shape = get_unsqueeze_dims(mean, std::vector<int64_t>({2}));
       auto tmp1 = (reshape<T>(sum_y_grad_mul_x, shape_group) -
                    reshape<T>(sum_y_grad, shape_group) *
-                       unsqueeze<T>(mean, std::vector<int64_t>({2}))) *
-                  unsqueeze<T>(inv_std, std::vector<int64_t>({2}));
+                       reshape<T>(mean, third_shape)) *
+                  reshape<T>(inv_std, third_shape);
       auto scale_grad_tmp =
           reshape<T>(tmp1.sum(std::vector<int64_t>({0}), dtype, false),
                      IntArray(std::vector<int64_t>({C})));
@@ -1291,9 +1413,10 @@ void prod_grad(const Tensor& x,
             }
           }
         }
-        auto out_grad_ = unsqueeze<T>(out_grad, axis_);
+        auto out_grad_shape = get_unsqueeze_dims(out_grad, axis_);
+        auto out_grad_ = reshape<T>(out_grad, out_grad_shape);
         x_grad_tmp = out_grad_.expand(IntArray(x_dim));
-        auto out_ = unsqueeze<T>(out, axis_);
+        auto out_ = reshape<T>(out, out_grad_shape);
         out_tmp = out_.expand(IntArray(x_dim));
       } else {
         x_grad_tmp = out_grad.expand(IntArray(x_dim));
@@ -1346,8 +1469,9 @@ void max_grad(const Tensor& x,
         }
       }
     }
-    auto out_grad_ = unsqueeze<T>(out_grad, axis_);
-    auto out_ = unsqueeze<T>(out, axis_);
+    auto out_grad_shape = get_unsqueeze_dims(out_grad, axis_);
+    auto out_grad_ = reshape<T>(out_grad, out_grad_shape);
+    auto out_ = reshape<T>(out, out_grad_shape);
     auto out_grad_tmp = out_grad_.expand(IntArray(x_dim));
     auto out_tmp = out_.expand(IntArray(x_dim));
     auto mask = equal<T>(x, out_tmp);
@@ -1575,6 +1699,9 @@ void batch_norm_grad(const Tensor& x,
         if (use_global_stats) {
           auto nhwc_x_grad = scale * rsqrt_var * nhwc_out_grad;
           auto nchw_x_grad = transpose<T>(nhwc_x_grad, nhwc_to_nchw_dim);
+          if (x.dtype() == phi::DataType::FLOAT16) {
+            nchw_x_grad = cast<T>(nchw_x_grad, x.dtype());
+          }
           set_output<T>(nchw_x_grad, x_grad);
         } else {
           auto part1 = scale * rsqrt_var;
@@ -1608,6 +1735,9 @@ void batch_norm_grad(const Tensor& x,
             sum<T>(out_grad_data * x_sub_mean, reduce_axis, dtype, false);
         if (use_global_stats) {
           auto x_grad_data = scale * rsqrt_var * out_grad_data;
+          if (x.dtype() == phi::DataType::FLOAT16) {
+            x_grad_data = cast<T>(x_grad_data, x.dtype());
+          }
           set_output<T>(x_grad_data, x_grad);
         } else {
           auto part1 = scale * rsqrt_var;

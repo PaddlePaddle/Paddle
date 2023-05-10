@@ -514,7 +514,7 @@ class TestParametersWithStopGradient(unittest.TestCase):
 
         dy_loss = self.train(to_static=False)
         st_loss = self.train(to_static=True)
-        self.assertEqual(dy_loss[0], st_loss[0])
+        self.assertEqual(dy_loss, st_loss)
 
         paddle.enable_static()
 

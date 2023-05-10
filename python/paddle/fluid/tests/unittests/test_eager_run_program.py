@@ -57,15 +57,14 @@ def _append_backward_desc(main_program, outs):
 def _create_out(var):
     assert isinstance(var, Variable)
     var_desc = var.desc
-    varbase = None
-    var_base = core.eager.Tensor(
+    out = core.eager.Tensor(
         var_desc.dtype(),
         var_desc.shape(),
         var_desc.name(),
         var_desc.type(),
         False,
     )
-    return var_base
+    return out
 
 
 @switch_to_static_graph

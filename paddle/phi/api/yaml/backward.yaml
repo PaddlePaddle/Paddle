@@ -796,6 +796,17 @@
     data_type : out_grad
   inplace : (out_grad -> x_grad)
 
+- backward_op : index_put_grad
+  forward : index_put (Tensor x, Tensor[] indices, Tensor value, bool accumulate=false) -> Tensor(out)
+  args : (Tensor x, Tensor[] indices, Tensor value, Tensor out_grad, bool accumulate=false)
+  output : Tensor(x_grad), Tensor(value_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, value]
+  kernel :
+    func : index_put_grad
+    data_type : out_grad
+
 - backward_op : index_sample_grad
   forward : index_sample (Tensor x, Tensor index) -> Tensor(out)
   args : (Tensor x, Tensor index, Tensor out_grad)
@@ -1865,7 +1876,6 @@
   kernel :
     func : tanh_double_grad
   composite : tanh_double_grad(out, grad_out, grad_x_grad, out_grad, grad_out_grad)
-  backward : tanh_triple_grad
   inplace : (grad_x_grad -> grad_out_grad)
 
 - backward_op : tanh_grad
@@ -1891,18 +1901,6 @@
   kernel :
     func : tanh_shrink_grad
   inplace : (out_grad -> x_grad)
-
-- backward_op : tanh_triple_grad
-  forward : tanh_double_grad (Tensor out, Tensor grad_out_forward, Tensor grad_x_grad_forward) -> Tensor(grad_out_new), Tensor(grad_out_grad)
-  args : (Tensor out, Tensor grad_out_forward, Tensor grad_x_grad_forward, Tensor grad_out_new_grad, Tensor grad_out_grad_grad)
-  output : Tensor(out_grad), Tensor(grad_out_forward_grad), Tensor(grad_x_grad_forward_grad)
-  infer_meta :
-    func : GeneralTernaryGradInferMeta
-    param : [out, out, grad_x_grad_forward]
-  kernel :
-    func : tanh_triple_grad
-  inplace : (grad_x_grad_forward -> grad_out_forward_grad)
-  optional : grad_out_new_grad, grad_out_grad_grad
 
 - backward_op : temporal_shift_grad
   forward : temporal_shift(Tensor x, int seg_num, float shift_ratio = 0.25f, str data_format = "NCHW") -> Tensor(out)
@@ -2077,3 +2075,35 @@
   kernel :
     func : where_grad
   no_need_buffer : x, y
+
+- backward_op : yolo_loss_grad
+  forward : yolo_loss (Tensor x, Tensor gt_box, Tensor gt_label, Tensor gt_score, int[] anchors={}, int[] anchor_mask={}, int class_num =1 , float ignore_thresh=0.7, int downsample_ratio=32, bool use_label_smooth=true, float scale_x_y=1.0) -> Tensor(loss), Tensor(objectness_mask), Tensor(gt_match_mask)
+  args : (Tensor x, Tensor gt_box, Tensor gt_label, Tensor gt_score, Tensor objectness_mask, Tensor gt_match_mask, Tensor loss_grad, int[] anchors, int[] anchor_mask, int class_num, float ignore_thresh, int downsample_ratio, bool use_label_smooth, float scale_x_y)
+  output : Tensor(x_grad), Tensor(gt_box_grad), Tensor(gt_label_grad), Tensor(gt_score_grad)
+  infer_meta :
+    func : YoloLossGradInferMeta
+  kernel :
+    func : yolo_loss_grad
+  optional : gt_score
+
+- backward_op: unpool3d_grad
+  forward: unpool3d (Tensor x, Tensor indices, int[] ksize, int[] strides={1,1,1}, int[] paddings={0,0,0}, int[] output_size={0,0,0}, str data_format="NCDHW") -> Tensor(out)
+  args: (Tensor x, Tensor indices, Tensor out, Tensor out_grad, int[] ksize, int[] strides, int[] paddings, int[] output_size, str data_format)
+  output: Tensor(x_grad)
+  infer_meta:
+    func: UnchangedInferMeta
+    param : [x]
+  kernel:
+    func: unpool3d_grad
+    data_type: x
+
+- backward_op: unpool_grad
+  forward: unpool (Tensor x, Tensor indices, int[] ksize, int[] strides = {1,1}, int[] paddings ={0,0} ,IntArray output_size = {0,0}, str data_format="NCHW") -> Tensor(out)
+  args: (Tensor x, Tensor indices, Tensor out, Tensor out_grad, int[] ksize, int[] strides, int[] paddings, IntArray output_size, str data_format)
+  output: Tensor(x_grad)
+  infer_meta:
+    func: UnchangedInferMeta
+    param : [x]
+  kernel:
+    func: unpool_grad
+    data_type: x
