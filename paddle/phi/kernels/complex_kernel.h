@@ -58,7 +58,7 @@ template <
     std::enable_if_t<!std::is_same<T, phi::dtype::complex<float>>::value &&
                          !std::is_same<T, phi::dtype::complex<double>>::value,
                      bool> = true>
-DenseTensor Conj(const Context& dev_ctx, const DenseTensor& x) {
+DenseTensor Conj(const Context& dev_ctx UNUSED, const DenseTensor& x) {
   return x;
 }
 

@@ -135,6 +135,7 @@ from .manipulation import moveaxis  # noqa: F401
 from .manipulation import repeat_interleave  # noqa: F401
 from .manipulation import index_add  # noqa: F401
 from .manipulation import index_add_  # noqa: F401
+from .manipulation import unflatten  # noqa: F401
 from .math import abs  # noqa: F401
 from .math import acos  # noqa: F401
 from .math import asin  # noqa: F401
@@ -201,6 +202,7 @@ from .math import subtract  # noqa: F401
 from .math import subtract_  # noqa: F401
 from .math import atan2  # noqa: F401
 from .math import logsumexp  # noqa: F401
+from .math import logaddexp  # noqa: F401
 from .math import inverse  # noqa: F401
 from .math import log2  # noqa: F401
 from .math import log10  # noqa: F401
@@ -341,6 +343,7 @@ tensor_method_func = [  # noqa
     'floor',
     'floor_',
     'increment',
+    'logaddexp',
     'log',
     'log2',
     'log10',
@@ -542,6 +545,7 @@ tensor_method_func = [  # noqa
     'sigmoid_',
     'vander',
     'nextafter',
+    'unflatten',
 ]
 
 # this list used in math_op_patch.py for magic_method bind

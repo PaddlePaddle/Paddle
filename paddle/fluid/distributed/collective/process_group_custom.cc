@@ -189,7 +189,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Collective(
     std::vector<phi::DenseTensor>& outputs,
     Fn fn,
     CommType op_type,
-    bool sync_op,
+    bool sync_op UNUSED,
     bool use_calc_stream) {
   const auto places = GetPlaceList(inputs);
   const auto key = GetKeyFromPlaces(places);

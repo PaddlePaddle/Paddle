@@ -16,6 +16,7 @@
 #include <string>
 #include <tuple>
 
+#include "glog/logging.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
@@ -193,6 +194,14 @@ void AnalysisConfig::SetXpuDeviceId(int device_id) {
                     platform::errors::PreconditionNotMet(
                         "Should call EnableXpu before SetXpuDeviceId."));
   xpu_device_id_ = device_id;
+  Update();
+}
+
+void AnalysisConfig::SetXpuConfig(
+    int quant_post_dynamic_weight_bits,
+    const std::vector<std::string> &quant_post_dynamic_op_types) {
+  xpu_quant_post_dynamic_weight_bits_ = quant_post_dynamic_weight_bits;
+  xpu_quant_post_dynamic_op_types_ = quant_post_dynamic_op_types;
   Update();
 }
 
@@ -434,6 +443,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(trt_dla_core_);
   CP_MEMBER(trt_use_static_engine_);
   CP_MEMBER(trt_use_calib_mode_);
+  CP_MEMBER(trt_use_cuda_graph_);
   CP_MEMBER(trt_use_varseqlen_);
   CP_MEMBER(trt_with_interleaved_);
   CP_MEMBER(tensorrt_transformer_posid_);
@@ -489,6 +499,8 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(xpu_precision_);
   CP_MEMBER(xpu_adaptive_seqlen_);
   CP_MEMBER(xpu_enable_multi_stream_);
+  CP_MEMBER(xpu_quant_post_dynamic_weight_bits_);
+  CP_MEMBER(xpu_quant_post_dynamic_op_types_);
 
   // Lite OpenCL Related
   CP_MEMBER(use_opencl_);
@@ -709,7 +721,8 @@ void AnalysisConfig::EnableTensorRtEngine(
     int min_subgraph_size,
     AnalysisConfig::Precision precision_mode,
     bool use_static,
-    bool use_calib_mode) {
+    bool use_calib_mode,
+    bool use_cuda_graph) {
 #ifdef PADDLE_WITH_TENSORRT
   if (!use_gpu()) {
     LOG(ERROR) << "To use TensorRT engine, please call EnableUseGpu() first";
@@ -723,6 +736,11 @@ void AnalysisConfig::EnableTensorRtEngine(
   tensorrt_precision_mode_ = precision_mode;
   trt_use_static_engine_ = use_static;
   trt_use_calib_mode_ = use_calib_mode;
+  trt_use_cuda_graph_ = use_cuda_graph;
+  if (use_cuda_graph) {
+    LOG_FIRST_N(INFO, 1) << "You have enabled Trt Cuda Graph, you must ensure "
+                            "that the input Shape remains unchanged.";
+  }
 
   Update();
 #else
@@ -1091,6 +1109,10 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << xpu_precision_;
   ss << xpu_adaptive_seqlen_;
   ss << xpu_enable_multi_stream_;
+  ss << xpu_quant_post_dynamic_weight_bits_;
+  for (auto op_type : xpu_quant_post_dynamic_op_types_) {
+    ss << op_type;
+  }
 
   ss << use_npu_;
   ss << npu_device_id_;
@@ -1299,6 +1321,8 @@ std::string AnalysisConfig::Summary() {
                     trt_use_static_engine_ ? "true" : "false"});
       os.InsertRow(
           {"tensorrt_use_calib_mode", trt_use_calib_mode_ ? "true" : "false"});
+      os.InsertRow(
+          {"tensorrt_use_cuda_graph", trt_use_cuda_graph_ ? "true" : "false"});
 
       // dynamic_shape
       os.InsertRow({"tensorrt_enable_dynamic_shape",
@@ -1331,6 +1355,13 @@ std::string AnalysisConfig::Summary() {
     os.InsertRow({"xpu_device_id", std::to_string(xpu_device_id_)});
     os.InsertRow(
         {"xpu_l3_workspace_size", std::to_string(xpu_l3_workspace_size_)});
+    os.InsertRow({"xpu_quant_post_dynamic_weight_bits",
+                  std::to_string(xpu_quant_post_dynamic_weight_bits_)});
+    std::vector<std::string> op_types{"xpu_quant_post_dynamic_op_types"};
+    for (auto op_type : xpu_quant_post_dynamic_op_types_) {
+      op_types.push_back(op_type);
+    }
+    os.InsertRow(op_types);
   }
   os.InsetDivider();
 
