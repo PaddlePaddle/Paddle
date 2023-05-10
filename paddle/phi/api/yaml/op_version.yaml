@@ -72,6 +72,24 @@
         - add_input : Max
           comment : Pass the mix, min value as input, not attribute. Max is dispensable.
 
+- op : coalesce_tensor
+  version :
+    - checkpoint : "Upgrade coalesce_tensor: add a new attribute [use_align]."
+      action :
+        - add_attr : use_align
+          comment : In order to optionally take memory alignment into account when
+            coalescing tensors. The default value is true to be compatible
+            with before.
+          default : "true"
+    - checkpoint : "Upgrade coalesce_tensor: add a new attribute [align_size]."
+      action :
+        - add_attr : align_size
+          comment : In order to optionally take memory alignment into account when
+            coalescing tensors. The default value is -1 and use the default
+            align_size
+            of each place to be compatible with before.
+          default : -1
+
 - op : embedding
   version :
     - checkpoint : Upgrade flip, add new attr [axis] and delete attr [dims]
