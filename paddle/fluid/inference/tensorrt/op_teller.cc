@@ -114,21 +114,31 @@ struct SimpleOpTypeSetTeller : public Teller {
         "sign",       "silu", "logical_not", "reciprocal", "tanh_shrink",
         "logsigmoid", "erf",  "bitwise_not", "equal",      "not_equal",
         "rsqrt"};
+
+    // Static shape does not support 0 or 1 dim's input.
+    if (!with_dynamic_shape) {
+      auto inputs = desc.Inputs();
+      for (auto iter : inputs) {
+        for (auto var_name : iter.second) {
+          auto* block = desc.Block();
+          if (block) {
+            auto* var_desc = block->FindVar(var_name);
+            // Can't get feed op's TensorDesc
+            if (op_type != "feed" && var_desc && !var_desc->Persistable()) {
+              const auto shape = var_desc->GetShape();
+              if (shape.size() == 1 || shape.size() == 0) return false;
+            }
+          }
+        }
+      }
+    }
+
     if (act_op_list.find(op_type) != act_op_list.end()) {
       auto* block = desc.Block();
       if (block == nullptr) {
         VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
                    "Developers need to check whether block_desc is passed in "
                    "the pass.";
-        return false;
-      }
-      auto x_var_name = desc.Input("X")[0];
-      auto* x_var_desc = block->FindVar(x_var_name);
-      const auto x_shape = x_var_desc->GetShape();
-      if (!with_dynamic_shape && (x_shape.size() == 1 || x_shape.size() == 0)) {
-        VLOG(3) << op_type
-                << " op does not support input's dim is 1 or 0 in tensorrt "
-                   "static shape mode.";
         return false;
       }
 #if !IS_TRT_VERSION_GE(7000)
@@ -144,24 +154,6 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
 #endif
-    }
-    // In static shape in Paddle-TRT, we can't allow that one op has a
-    // 1D intermediate tensor as input.
-    if (!with_dynamic_shape) {
-      auto inputs = desc.Inputs();
-      for (auto iter : inputs) {
-        for (auto var_name : iter.second) {
-          auto* block = desc.Block();
-          if (block) {
-            auto* var_desc = block->FindVar(var_name);
-            // Can't get feed op's TensorDesc
-            if (op_type != "feed" && var_desc && !var_desc->Persistable()) {
-              const auto shape = var_desc->GetShape();
-              if (shape.size() == 1) return false;
-            }
-          }
-        }
-      }
     }
 
     if (op_type == "dropout") {
@@ -1505,6 +1497,7 @@ struct SimpleOpTypeSetTeller : public Teller {
                    "elementwise op.";
         return false;
       }
+
       if (x_var_desc->Persistable() && !with_dynamic_shape) {
         VLOG(3)
             << "Input X is a parameter which is not supported for "
