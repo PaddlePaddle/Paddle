@@ -924,6 +924,7 @@ set_tests_properties(test_imperative_selected_rows_to_lod_tensor
                      PROPERTIES TIMEOUT 200)
 set_tests_properties(test_index_select_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_index_add_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_index_put_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_tensordot PROPERTIES TIMEOUT 200)
 set_tests_properties(test_partial_eager_deletion_transformer PROPERTIES TIMEOUT
                                                                         120)
