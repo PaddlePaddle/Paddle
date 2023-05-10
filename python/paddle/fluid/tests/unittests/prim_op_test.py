@@ -683,16 +683,15 @@ class PrimForwardChecker:
         # ensure the operator not in program if check_prim is True
         # because to_static will build backward graph in forward, fill_any_like op's
         # backward op is itself, so we skip it here.
-        if self.op_type != "fill_any_like":
-            forward_ops = [
-                op.type
-                for op in net.forward.get_concrete_program(args)[1]
-                ._train_program.block(0)
-                .ops
-            ]
-            assert self.op_type not in forward_ops, (
-                "%s shouldn't appear in program when check_prim is True"
-            ) % (self.op_type)
+        forward_ops = [
+            op.type
+            for op in net.forward.get_concrete_program(args)[1]
+            .forward_program.block(0)
+            .ops
+        ]
+        assert self.op_type not in forward_ops, (
+            "%s shouldn't appear in program when check_prim is True"
+        ) % (self.op_type)
         ret = flatten(_as_list(net(args)))
         ret = paddle.utils.map_structure(lambda x: x.numpy(), ret)
         if OpTestUtils.is_bfloat16_type(self.dtype):
@@ -780,16 +779,15 @@ class PrimForwardChecker:
             net, core.is_compiled_with_cinn() and self.enable_cinn
         )
         # check the operator not in program if check prim is True
-        if self.op_type != "fill_any_like":
-            forward_ops = [
-                op.type
-                for op in net.forward.get_concrete_program(args)[1]
-                ._train_program.block(0)
-                .ops
-            ]
-            assert self.op_type not in forward_ops, (
-                "%s shouldn't appear in program when check_prim is True"
-            ) % (self.op_type)
+        forward_ops = [
+            op.type
+            for op in net.forward.get_concrete_program(args)[1]
+            .forward_program.block(0)
+            .ops
+        ]
+        assert self.op_type not in forward_ops, (
+            "%s shouldn't appear in program when check_prim is True"
+        ) % (self.op_type)
         ret = flatten(_as_list(net(args)))
         ret = paddle.utils.map_structure(lambda x: x.numpy(), ret)
         if OpTestUtils.is_bfloat16_type(self.dtype):
@@ -1179,7 +1177,7 @@ class PrimGradChecker(PrimForwardChecker):
         ops = [
             op.type
             for op in net.forward.get_concrete_program(args)[1]
-            ._train_program.block(0)
+            .backward_program.block(0)
             .ops
         ]
         backward_op_type = self.op_type + "_grad"
@@ -1309,7 +1307,7 @@ class PrimGradChecker(PrimForwardChecker):
         ops = [
             op.type
             for op in net.forward.get_concrete_program(args)[1]
-            ._train_program.block(0)
+            .backward_program.block(0)
             .ops
         ]
         backward_op_type = self.op_type + "_grad"
