@@ -57,7 +57,8 @@ __global__ void bernoulli_cuda_kernel(
     for (size_t j = 0; j < 4; j++) {
       size_t idx = i + j;
       if (idx < size) {
-        out_data[idx] = static_cast<T>((&rand.x)[j], static_cast<MPType>(x_data[idx]));
+        out_data[idx] =
+            static_cast<T>((&rand.x)[j], static_cast<MPType>(x_data[idx]));
       }
     }
   }

@@ -22,11 +22,12 @@
 namespace phi {
 
 using phi::PADDLE_CUDA_NUM_THREADS;
+using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
 
 template <typename T>
 class TruncFunctor {
  public:
-   __device__ TruncFunctor(const T x) : x_(x) {}
+  __device__ TruncFunctor(const T x) : x_(x) {}
   __device__ T operator()() { return trunc(static_cast<MPType>(x_)); }
 
  public:
