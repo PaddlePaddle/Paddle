@@ -323,6 +323,10 @@ cc_test(
   SRCS graph_pattern_detector_tester.cc
   DEPS graph_pattern_detector)
 cc_test(
+  test_save_optimized_model_pass
+  SRCS save_optimized_model_pass_tester.cc
+  DEPS save_optimized_model_pass)
+cc_test(
   test_op_compat_sensible_pass
   SRCS op_compat_sensible_pass_tester.cc
   DEPS op_compat_sensible_pass)
