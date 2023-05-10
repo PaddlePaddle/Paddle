@@ -1396,30 +1396,21 @@ def _append_backward_ops_(
         #       x_grad = reduce_sum(x_grad_unreduce)
         grad_op_desc = []
         op_grad_to_var = {}
-        if (
-            not core.has_grad_op_maker(op.type)
-            and core.has_comp_grad_op_maker(op.type)
-            or core._is_bwd_prim_enabled()
-        ):
 
-            def find_op_index(block_desc, cur_op_desc):
-                for idx in range(block_desc.op_size()):
-                    if cur_op_desc == block_desc.op(idx):
-                        return idx
-                return -1
+        # Getting op's corresponding grad_op
+        def find_op_index(block_desc, cur_op_desc):
+            for idx in range(block_desc.op_size()):
+                if cur_op_desc == block_desc.op(idx):
+                    return idx
+            return -1
 
-            grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
-                composite_block.desc.op(find_op_index(block.desc, op.desc)),
-                no_grad_dict[composite_block.idx],
-                grad_sub_block_list,
-            )
-            for desc in grad_op_desc:
-                infershape_for_composite(composite_block, desc)
-        else:
-            # Getting op's corresponding grad_op
-            grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
-                op.desc, no_grad_dict[block.idx], grad_sub_block_list
-            )
+        grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
+            composite_block.desc.op(find_op_index(block.desc, op.desc)),
+            no_grad_dict[composite_block.idx],
+            grad_sub_block_list,
+        )
+        for desc in grad_op_desc:
+            infershape_for_composite(composite_block, desc)
 
         # record the mapping between fwd and bwd
         if grad_op_id_to_fwd_op is not None:
