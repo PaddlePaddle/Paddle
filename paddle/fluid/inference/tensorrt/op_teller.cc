@@ -93,20 +93,20 @@ struct SimpleOpTypeSetTeller : public Teller {
         desc.HasAttr("skip_quant"))
       return false;
     std::unordered_set<std::string> act_op_list = {
-        "relu",       "relu6",       "sigmoid",
-        "elu",        "selu",        "softsign",
-        "softplus",   "stanh",       "thresholded_relu",
-        "exp",        "log",         "sqrt",
-        "abs",        "sin",         "cos",
-        "tan",        "tanh",        "sinh",
-        "cosh",       "asin",        "acos",
-        "atan",       "asinh",       "acosh",
-        "atanh",      "ceil",        "celu",
-        "erf",        "floor",       "round",
-        "sign",       "silu",        "logical_not",
-        "reciprocal", "tanh_shrink", "logsigmoid",
-        "rsqrt",      "hard_swish",  "hard_sigmoid",
-        "leaky_relu"};
+        "relu",       "relu6",        "sigmoid",
+        "elu",        "selu",         "softsign",
+        "softplus",   "stanh",        "thresholded_relu",
+        "exp",        "log",          "sqrt",
+        "abs",        "sin",          "cos",
+        "tan",        "tanh",         "sinh",
+        "cosh",       "asin",         "acos",
+        "atan",       "asinh",        "acosh",
+        "atanh",      "ceil",         "celu",
+        "erf",        "floor",        "round",
+        "sign",       "silu",         "logical_not",
+        "reciprocal", "tanh_shrink",  "logsigmoid",
+        "hard_swish", "hard_sigmoid", "leaky_relu",
+        "rsqrt",      "swish"};
     std::unordered_set<std::string> unary_list = {
         "exp",        "log",  "sqrt",        "abs",        "sin",
         "cos",        "tan",  "tanh",        "sinh",       "cosh",
