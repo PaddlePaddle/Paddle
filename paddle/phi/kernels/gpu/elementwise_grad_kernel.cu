@@ -139,6 +139,7 @@ PD_REGISTER_KERNEL(heaviside_grad,
                    double,
                    int,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    int64_t) {}
 
 PD_REGISTER_KERNEL(elementwise_pow_grad,
