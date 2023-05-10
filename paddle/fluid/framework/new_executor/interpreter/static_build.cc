@@ -19,12 +19,19 @@
 #include "paddle/fluid/operators/reader/buffered_reader.h"
 
 // These Ops is OperatorBase, but we have been handle them in static build
-std::set<std::string> OperatorBasesHandledInStaticBuild = {"depend", "read"};
+std::set<std::string> OperatorBasesHandledInStaticBuild = {"read"};
 
 std::set<std::string> OperatorBasesMustRunInStaticBuild = {
     "create_double_buffer_reader", "create_py_reader"};
 
 std::set<std::string> OpsCanSkipedFakeAllocInStaticBuild = {
+    "c_comm_init",
+    "c_comm_init_all",
+    "c_comm_init_multitrainer",
+    "c_gen_bkcl_id",
+    "c_gen_nccl_id",
+    "c_wait_comm",
+    "c_wait_compute",
     "create_double_buffer_reader",
     "create_py_reader",
     "depend",
