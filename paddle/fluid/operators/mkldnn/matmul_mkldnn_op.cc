@@ -411,7 +411,7 @@ class MatMulMKLDNNKernel : public paddle::framework::OpKernel<T> {
   }
 
  private:
-  void CalculateMatrixDims(const ExecutionContext &ctx,
+  void CalculateMatrixDims(const ExecutionContext &ctx UNUSED,
                            const std::vector<int64_t> &x_dims,
                            const std::vector<int64_t> &y_dims,
                            std::vector<int64_t> *x_bd_dims,
