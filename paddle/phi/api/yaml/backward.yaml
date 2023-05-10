@@ -724,7 +724,7 @@
     data_type : x
 
 - backward_op : group_norm_grad
-  forward : group_norm (Tensor x, Tensor scale, Tensor bias, float epsilon = 1e-5, int groups, str data_layout = "NCHW") -> Tensor(y), Tensor(mean), Tensor(variance)
+  forward : group_norm (Tensor x, Tensor scale, Tensor bias, float epsilon = 1e-5, int groups = -1, str data_layout = "NCHW") -> Tensor(y), Tensor(mean), Tensor(variance)
   args : (Tensor x, Tensor scale, Tensor bias, Tensor y, Tensor mean, Tensor variance, Tensor y_grad, float epsilon, int groups, str data_layout)
   output : Tensor(x_grad), Tensor(scale_grad), Tensor(bias_grad)
   infer_meta :

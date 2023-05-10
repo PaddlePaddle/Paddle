@@ -845,7 +845,7 @@
   backward : grid_sample_grad
 
 - op : group_norm
-  args : (Tensor x, Tensor scale, Tensor bias, float epsilon = 1e-5, int groups, str data_layout = "NCHW")
+  args : (Tensor x, Tensor scale, Tensor bias, float epsilon = 1e-5, int groups = -1, str data_layout = "NCHW")
   output : Tensor(y), Tensor(mean), Tensor(variance)
   infer_meta :
     func : GroupNormInferMeta
