@@ -279,7 +279,7 @@ void SoftmaxCooGradKernel(const Context& dev_ctx,
         auto grad_values_row = grad_values_2.data<T>() + j * nvalues;
         for (int64_t k = 0; k < nvalues; k++) {
           *(values_row + k) =
-              (*out_values_row + k) * ((*(grad_values_row + k)) + tmp_row[k]);
+              (*(out_values_row + k)) * ((*(grad_values_row + k)) + tmp_row[k]);
         }
       } else {
         for (int64_t k = 0; k < nvalues; k++) {
