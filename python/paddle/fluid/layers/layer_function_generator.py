@@ -315,9 +315,9 @@ Perform elementwise abs for input `X`.
 
     out = |x|
 
-Args :
+Args:
     x (Tensor): The input tensor of abs op.
-    out (Tensor), The output tensor of abs op.
+    out (Tensor): The output tensor of abs op.
     name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 """
     else:
