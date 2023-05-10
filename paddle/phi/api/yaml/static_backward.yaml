@@ -55,7 +55,7 @@
     data_type: out_grad
 
 - backward_op : softmax_grad
-  forward : softmax (Tensor x, int axis) -> Tensor(out)
+  forward : softmax (Tensor x, int axis=-1) -> Tensor(out)
   args : (Tensor out, Tensor out_grad, int axis)
   output : Tensor(x_grad)
   infer_meta :
