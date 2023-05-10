@@ -1240,7 +1240,15 @@ def broadcast_tensors(input, name=None):
             check_variable_and_dtype(
                 x,
                 'input[' + str(id) + ']',
-                ['bool', 'float32', 'float64', 'int32', 'int64'],
+                [
+                    'bool',
+                    'float16',
+                    'float32',
+                    'float64',
+                    'int32',
+                    'int64',
+                    'uint16',
+                ],
                 'broadcast_tensors',
             )
             if x.dtype != input[0].dtype:
@@ -1899,7 +1907,7 @@ def split(x, num_or_sections, axis=0, name=None):
     Split the input tensor into multiple sub-Tensors.
 
     Args:
-        x (Tensor): A N-D Tensor. The data type is bool, float16, float32, float64, uint8, int8, int32 or int64.
+        x (Tensor): A N-D Tensor. The data type is bool, bfloat16, float16, float32, float64, uint8, int8, int32 or int64.
         num_or_sections (int|list|tuple): If ``num_or_sections`` is an int, then ``num_or_sections``
             indicates the number of equal sized sub-Tensors that the ``x`` will be divided into.
             If ``num_or_sections`` is a list or tuple, the length of it indicates the number of
@@ -1970,7 +1978,9 @@ def split(x, num_or_sections, axis=0, name=None):
             'input',
             [
                 'bool',
+                'bfloat16',
                 'float16',
+                'uint16',
                 'float32',
                 'float64',
                 'int32',
@@ -2088,7 +2098,7 @@ def vsplit(x, num_or_sections, name=None):
 
             # x is a Tensor of shape [8, 6, 7]
             x = paddle.rand([8, 6, 7])
-            out0, out1, out2 = paddle.vsplit(x, num_or_sections=2)
+            out0, out1 = paddle.vsplit(x, num_or_sections=2)
             print(out0.shape)  # [4, 6, 7]
             print(out1.shape)  # [4, 6, 7]
             out0, out1, out2 = paddle.vsplit(x, num_or_sections=[1, 3, 4])
@@ -2200,6 +2210,7 @@ def squeeze(x, axis=None, name=None):
             'input',
             [
                 'float16',
+                'uint16',
                 'float32',
                 'float64',
                 'bool',
@@ -2476,7 +2487,10 @@ def unique(
         return tuple(outs)
     else:
         check_variable_and_dtype(
-            x, "input", ['float32', 'float64', 'int32', 'int64'], 'unique'
+            x,
+            "input",
+            ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
+            'unique',
         )
         check_type(return_index, 'return_index', bool, 'unique')
         check_type(return_inverse, 'return_inverse', bool, 'unique')
@@ -2541,7 +2555,7 @@ def unsqueeze(x, axis, name=None):
     please use `Tensor.clone` like ``unsqueeze_clone_x = x.unsqueeze(-1).clone()``.
 
     Args:
-        x (Tensor): The input Tensor to be unsqueezed. Supported data type: float32, float64, bool, int8, int32, int64.
+        x (Tensor): The input Tensor to be unsqueezed. Supported data type: bfloat16, float16, float32, float64, bool, int8, int32, int64.
         axis (int|list|tuple|Tensor): Indicates the dimensions to be inserted. The data type is ``int32`` .
                                     If ``axis`` is a list or tuple, the elements of it should be integers or Tensors with shape [1].
                                     If ``axis`` is a Tensor, it should be an 1-D Tensor .
@@ -2595,7 +2609,9 @@ def unsqueeze(x, axis, name=None):
             input,
             'input',
             [
+                'uint16',
                 'float16',
+                'uint16',
                 'float32',
                 'float64',
                 'bool',
@@ -2803,7 +2819,15 @@ def unbind(input, axis=0):
         check_dtype(
             dtype,
             'unbind',
-            ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'bool',
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+            ],
             'unbind',
         )
         outs = [
@@ -3146,19 +3170,19 @@ def tile(x, repeat_times, name=None):
         )
         if isinstance(repeat_times, Variable):
             assert (
-                len(repeat_times.shape) == 1
-            ), 'repeat_times must be an 1-D Tensor.'
+                repeat_times.numel() == 1
+            ), 'repeat_times must be a Tensor with one element.'
         else:
             for elem in repeat_times:
                 if isinstance(elem, Variable):
                     assert (
-                        len(elem.shape) == 1
-                    ), 'Elements in repeat_times must be 1-D Tensors or integers.'
+                        elem.numel() == 1
+                    ), 'Elements in repeat_times must be Tensor with one element or integers.'
                 else:
                     type_tuple = (int, np.int32, np.int64)
                     assert isinstance(
                         elem, type_tuple
-                    ), 'Elements in repeat_times must be 1-D Tensors or integers.'
+                    ), 'Elements in repeat_times must be Tensor with one element or integers.'
 
         check_variable_and_dtype(
             x,
@@ -3402,18 +3426,18 @@ def expand(x, shape, name=None):
         return _C_ops.expand(x, shape)
     else:
         if isinstance(shape, Variable):
-            assert len(shape.shape) == 1, 'shape must be an 1-D Tensor.'
+            assert shape.numel() == 1, 'shape must be a Tensor with one element'
         else:
             for elem in shape:
                 if isinstance(elem, Variable):
                     assert (
-                        len(elem.shape) == 1
-                    ), 'Elements in shape must be 1-D Tensors or integers.'
+                        elem.numel() == 1
+                    ), 'Elements in shape must be Tensor with one element or integers.'
                 else:
                     type_tuple = (int, np.int32, np.int64)
                     assert isinstance(
                         elem, type_tuple
-                    ), 'Elements in shape must be 1-D Tensors or integers.'
+                    ), 'Elements in shape must be Tensor with one element or integers.'
 
         check_variable_and_dtype(
             x,
@@ -3858,7 +3882,15 @@ def strided_slice(x, axes, starts, ends, strides, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'bool',
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+            ],
             'strided_slice',
         )
         check_type(axes, 'axes', (list, tuple), 'strided_slice')
@@ -4174,9 +4206,6 @@ def tensordot(x, y, axes=2, name=None):
             perm_y.append(i)
             shape_out.append(shape_y[i])
             not_contraction_size_y *= shape_y[i]
-
-    if not shape_out:
-        shape_out = [1]
 
     x = x.transpose(perm=perm_x).reshape(
         [not_contraction_size_x, contraction_size]
@@ -4540,7 +4569,15 @@ def take_along_axis(arr, indices, axis):
         check_variable_and_dtype(
             arr,
             'x',
-            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint8'],
+            [
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'uint8',
+                'uint16',
+            ],
             'take_along_axis',
         )
         check_variable_and_dtype(
@@ -4612,7 +4649,15 @@ def put_along_axis(arr, indices, values, axis, reduce='assign'):
         check_variable_and_dtype(
             arr,
             'x',
-            ['float16', 'float32', 'float64', 'int32', 'int64', 'uint8'],
+            [
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'uint8',
+                'uint16',
+            ],
             'put_along_axis',
         )
         check_variable_and_dtype(
@@ -4694,7 +4739,7 @@ def index_add(x, index, axis, value, name=None):
     check_variable_and_dtype(
         x,
         'x',
-        ['float16', 'float32', 'float64', 'int32', 'int64'],
+        ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
         'paddle.tensor.manipulation.index_add',
     )
     check_variable_and_dtype(
@@ -4706,7 +4751,7 @@ def index_add(x, index, axis, value, name=None):
     check_variable_and_dtype(
         value,
         'add_value',
-        ['float16', 'float32', 'float64', 'int32', 'int64'],
+        ['float16', 'float32', 'float64', 'int32', 'int64', 'uint16'],
         'paddle.tensor.manipulation.index_add',
     )
 
@@ -4748,6 +4793,75 @@ def index_add_(x, index, axis, value, name=None):
             #         [2., 1., 2.]])
     """
     return _C_ops.index_add_(x, index, value, axis)
+
+
+def unflatten(x, axis, shape, name=None):
+    """
+    Expand a certain dimension of the input x Tensor into a desired shape.
+
+    Args:
+        x (Tensor) : An N-D Tensor. The data type is float16, float32, float64, int16, int32, int64, bool, uint16.
+        axis (int): :attr:`axis` to be unflattened, specified as an index into `x.shape`.
+        shape (list|tuple|Tensor): Unflatten :attr:`shape` on the specified :attr:`axis`. At most one dimension of the target :attr:`shape` can be -1.
+            If the input :attr:`shape` does not contain -1 , the product of all elements in ``shape`` should be equal to ``x.shape[axis]``.
+            The data type is `int` . If :attr:`shape` is a list or tuple, the elements of it should be integers or Tensors with shape [].
+            If :attr:`shape` is an Tensor, it should be an 1-D Tensor.
+        name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        Tensor, return the unflatten tensor of :attr:`x`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.randn(shape=[4, 6, 8])
+            shape = [2, 3]
+            axis = 1
+            res = paddle.unflatten(x, axis, shape)
+            print(res.shape)
+            # [4, 2, 3, 8]
+
+            x = paddle.randn(shape=[4, 6, 8])
+            shape = (-1, 2)
+            axis = -1
+            res = paddle.unflatten(x, axis, shape)
+            print(res.shape)
+            # [4, 6, 4, 2]
+
+            x = paddle.randn(shape=[4, 6, 8])
+            shape = paddle.to_tensor([2, 2])
+            axis = 0
+            res = paddle.unflatten(x, axis, shape)
+            print(res.shape)
+            # [2, 2, 6, 8]
+    """
+
+    # determine whether the input axis is valid.
+    axis = non_negative_axis(x, axis)
+
+    if isinstance(shape, (list, tuple)):
+        new_shape = (
+            list(x.shape[:axis]) + list(shape) + list(x.shape[axis + 1 :])
+        )
+    elif isinstance(shape, Variable):
+        # The data type returned by `paddle.shape` is only 'int32'.
+        new_shape = paddle.concat(
+            [
+                paddle.shape(x)[:axis],
+                paddle.cast(shape, 'int32'),
+                paddle.shape(x)[axis + 1 :],
+            ]
+        )
+    else:
+        raise TypeError(
+            "The data type of x should be one of ['List', 'Tuple', 'Tensor'], but got {}".format(
+                type(shape)
+            )
+        )
+    x = x.reshape(new_shape)
+    return x
 
 
 # TODO(dev): We need avoid implementing it by this way.

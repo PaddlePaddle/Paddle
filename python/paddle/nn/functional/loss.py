@@ -1541,7 +1541,7 @@ def poisson_nll_loss(
 
             input = paddle.randn([5, 2], dtype=paddle.float32)
             label = paddle.randn([5, 2], dtype=paddle.float32)
-            loss = F.poisson_nll_loss(input, label, log_input=True, reduction='None')
+            loss = F.poisson_nll_loss(input, label, log_input=True, reduction='none')
             print(loss)
             loss = F.poisson_nll_loss(input, label, reduction='mean')
             print(loss)
@@ -2734,9 +2734,7 @@ def cross_entropy(
             valid_label = (
                 paddle.cast(label != ignore_index, dtype=label.dtype) * label
             )
-        if core.is_compiled_with_custom_device(
-            "npu"
-        ) or core.is_compiled_with_custom_device("mlu"):
+        if core.is_compiled_with_custom_device("npu"):
             if not soft_label:
                 _, out = _legacy_C_ops.softmax_with_cross_entropy(
                     input,

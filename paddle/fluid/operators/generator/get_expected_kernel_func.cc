@@ -75,13 +75,11 @@ phi::KernelKey GetReduceExpectedKernelType(
   if (input_data_type == framework::proto::VarType::FP16) {
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(ctx.GetPlace()) ||
-            platform::is_npu_place(ctx.GetPlace()) ||
-            platform::is_mlu_place(ctx.GetPlace()) ||
             platform::is_xpu_place(ctx.GetPlace()) ||
             platform::is_custom_place(ctx.GetPlace()),
         true,
         platform::errors::InvalidArgument(
-            "float16 can only be used on GPU or NPU or MLU or XPU place"));
+            "float16 can only be used on GPU or NPU or XPU place"));
   }
   return phi::KernelKey(input_data_type, ctx.GetPlace());
 }
@@ -155,6 +153,13 @@ phi::KernelKey GetMatrixNmsExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr) {
   return phi::KernelKey(op_ptr->IndicateVarDataType(ctx, "Scores"),
+                        platform::CPUPlace());
+}
+
+phi::KernelKey GetYoloLossExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  return phi::KernelKey(op_ptr->IndicateVarDataType(ctx, "X"),
                         platform::CPUPlace());
 }
 

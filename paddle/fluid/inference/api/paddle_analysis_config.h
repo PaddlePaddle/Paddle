@@ -289,6 +289,18 @@ struct PD_INFER_DECL AnalysisConfig {
                  bool enable_multi_stream = false);
 
   ///
+  /// \brief configs of XPU
+  ///
+  /// \param quant_post_dynamic_weight_bits Weight bits used in dynamic post
+  /// quantization. Optional value: -1, 8, 16. Default value is -1, means using
+  /// the recommended way. \param quant_post_dynamic_op_types Ops used in
+  /// dynamic post quantization.
+  ///
+  void SetXpuConfig(
+      int quant_post_dynamic_weight_bits = -1,
+      const std::vector<std::string>& quant_post_dynamic_op_types = {});
+
+  ///
   /// \brief configs of IPU
   ///
   enum class ipu_config_code {
@@ -574,6 +586,9 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \param use_static Serialize optimization information to disk for reusing.
   /// \param use_calib_mode Use TRT int8 calibration(post training
   /// quantization).
+  /// \param use_cuda_graph Use CudaGraph to reduce the time consumption of
+  /// enqueue. Note that this option can only be enabled when your input is
+  /// constant (including the batch dimension).
   ///
   ///
   void EnableTensorRtEngine(int64_t workspace_size = 1 << 30,
@@ -581,7 +596,8 @@ struct PD_INFER_DECL AnalysisConfig {
                             int min_subgraph_size = 3,
                             Precision precision = Precision::kFloat32,
                             bool use_static = false,
-                            bool use_calib_mode = true);
+                            bool use_calib_mode = true,
+                            bool use_cuda_graph = false);
   ///
   /// \brief A boolean state telling whether the TensorRT engine is used.
   ///
@@ -1102,6 +1118,7 @@ struct PD_INFER_DECL AnalysisConfig {
   Precision tensorrt_precision_mode_{Precision::kFloat32};
   bool trt_use_static_engine_{false};
   bool trt_use_calib_mode_{true};
+  bool trt_use_cuda_graph_{false};
   bool trt_use_varseqlen_{false};
   bool trt_with_interleaved_{false};
   std::string tensorrt_transformer_posid_{""};
@@ -1181,6 +1198,8 @@ struct PD_INFER_DECL AnalysisConfig {
   std::string xpu_precision_;
   bool xpu_adaptive_seqlen_;
   bool xpu_enable_multi_stream_;
+  int xpu_quant_post_dynamic_weight_bits_{-1};
+  std::vector<std::string> xpu_quant_post_dynamic_op_types_;
 
   // LITE OPENCL SETTINGS
   bool use_opencl_{false};

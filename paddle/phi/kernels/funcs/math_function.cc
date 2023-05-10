@@ -92,7 +92,7 @@ DEFINE_CPU_TRANS(6);
 
 template <typename DeviceContext, typename T>
 void TransposeNormal<DeviceContext, T>::operator()(
-    const DeviceContext& context,
+    const DeviceContext& context UNUSED,
     const phi::DenseTensor& in,
     phi::DenseTensor* out,
     const std::vector<int>& axis) {
@@ -159,13 +159,6 @@ void set_constant_with_place<phi::XPUPlace>(const phi::DeviceContext& context,
 #else
   PADDLE_THROW(phi::errors::PreconditionNotMet("Not compiled with XPU!"));
 #endif
-}
-
-template <>
-void set_constant_with_place<phi::NPUPlace>(const phi::DeviceContext& context,
-                                            phi::DenseTensor* tensor,
-                                            float value) {
-  PADDLE_THROW(phi::errors::Unimplemented("NPUPlace is not supported"));
 }
 
 template <>

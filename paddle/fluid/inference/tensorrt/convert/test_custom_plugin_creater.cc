@@ -23,13 +23,13 @@ PD_BUILD_OP(custom_op)
     .Inputs({"Input"})
     .Outputs({"Output"})
     .Attrs({
-        "float_attr",
-        "int_attr",
-        "bool_attr",
-        "string_attr",
-        "ints_attr",
-        "floats_attr",
-        "bools_attr",
+        "float_attr: float",
+        "int_attr: int",
+        "bool_attr: bool",
+        "string_attr: std::string",
+        "ints_attr: std::vector<int>",
+        "floats_attr: std::vector<float>",
+        "bools_attr: std::vector<bool>",
     });
 
 namespace paddle {
@@ -109,7 +109,7 @@ TEST(CustomPluginCreater, StaticShapePlugin) {
   framework::OpDesc custom_op(*op_desc, nullptr);
   CHECK_EQ((*custom_plugin_tell)(custom_op, false, false), true);
 
-  OpTeller::Global().SetOpConverterType("custom_op",
+  OpTeller::Global().SetOpConverterType(&custom_op,
                                         OpConverterType::CustomPluginCreater);
 
   OpConverter converter;
@@ -196,7 +196,7 @@ TEST(CustomPluginCreater, DynamicShapePlugin) {
   framework::OpDesc custom_op(*op_desc, nullptr);
   CHECK_EQ((*custom_plugin_tell)(custom_op, false, true), true);
 
-  OpTeller::Global().SetOpConverterType("custom_op",
+  OpTeller::Global().SetOpConverterType(&custom_op,
                                         OpConverterType::CustomPluginCreater);
 
   OpConverter converter;

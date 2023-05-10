@@ -38,8 +38,6 @@ list(APPEND MIXED_DIST_TEST_OPS test_fleetrun)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_run_random_port)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_async)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_cloud)
-list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_ascend)
-list(APPEND MIXED_DIST_TEST_OPS test_ascend_group)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_nproc)
 
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_base)
@@ -768,8 +766,6 @@ if(NOT WIN32)
                   test_ir_memory_optimize_transformer)
 endif()
 
-add_subdirectory(sequence)
-
 # dist xpu tests:
 if(WITH_XPU_BKCL)
   py_test(test_collective_allreduce_api_xpu
@@ -1119,7 +1115,9 @@ set(TEST_CINN_OPS
     test_cast_op
     test_dropout_op
     test_group_norm_op
-    test_roll_op)
+    test_tile_op
+    test_roll_op
+    test_sum_op)
 
 foreach(TEST_CINN_OPS ${TEST_CINN_OPS})
   if(WITH_CINN)
@@ -1165,6 +1163,10 @@ set(STATIC_BUILD_TESTS
     test_eigh_op
     test_fake_quantize_op
     test_fetch_lod_tensor_array
+    test_fused_attention_op
+    test_fused_attention_op_api
+    test_fused_feedforward_op
+    test_fused_feedforward_pass
     test_imperative_optimizer
     test_lamb_op
     test_layer_norm_op
@@ -1190,6 +1192,13 @@ set(STATIC_BUILD_TESTS
     test_update_loss_scaling_op
     test_while_op
     test_one_hot_v2_op)
+
+if(NOT WITH_GPU)
+  list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_attention_op)
+  list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_attention_op_api)
+  list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_feedforward_op)
+  list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_feedforward_op_pass)
+endif()
 
 foreach(STATIC_BUILD_TEST ${STATIC_BUILD_TESTS})
   py_test_modules(

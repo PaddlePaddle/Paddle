@@ -19,9 +19,6 @@ REGISTER_FILE_SYMBOLS(init_phi)
 
 namespace paddle {
 
-InitPhi::InitPhi() {
-  paddle::framework::InitMemoryMethod();
-  VLOG(4) << "Init MemoryMethod success.";
-}
+InitPhi::InitPhi() { paddle::framework::InitMemoryMethod(); }
 
 }  // namespace paddle

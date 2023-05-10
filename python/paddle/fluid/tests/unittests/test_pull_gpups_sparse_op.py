@@ -18,7 +18,7 @@ import numpy as np
 
 import paddle
 from paddle import fluid
-from paddle.fluid.layers.nn import _pull_gpups_sparse
+from paddle.incubate.layers import _pull_gpups_sparse
 
 paddle.enable_static()
 

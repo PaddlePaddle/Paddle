@@ -28,6 +28,7 @@
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/flags.h"
 
 namespace paddle {
 namespace framework {
@@ -37,7 +38,7 @@ struct ExecutorPrepareContext;
 }  // namespace framework
 }  // namespace paddle
 
-DECLARE_double(eager_delete_tensor_gb);
+PHI_DECLARE_double(eager_delete_tensor_gb);
 
 namespace paddle {
 namespace distributed {

@@ -136,5 +136,40 @@ class TestMaxoutAPI(unittest.TestCase):
             self.assertRaises(ValueError, F.maxout, x_float32, 2, 2)
 
 
+class TestMaxOutOpFP16(TestMaxOutOp):
+    def set_attrs(self):
+        self.dtype = 'float16'
+
+
+class TestMaxoutFP16Case1(TestMaxOutOpFP16):
+    def set_attrs(self):
+        self.axis = -1
+
+
+class TestMaxoutFP16Case2(TestMaxOutOpFP16):
+    def set_attrs(self):
+        self.axis = 3
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestMaxoutStaticAPIFP16(unittest.TestCase):
+    def setUp(self):
+        self.x_np = np.random.uniform(-1, 1, [2, 6, 5, 4]).astype(np.float16)
+        self.groups = 2
+        self.axis = 1
+        self.place = paddle.CUDAPlace(0)
+
+    def test_static_api(self):
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data('X', self.x_np.shape, self.x_np.dtype)
+            out = F.maxout(x, self.groups, self.axis)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(feed={'X': self.x_np}, fetch_list=[out])
+        out_ref = maxout_forward_naive(self.x_np, self.groups, self.axis)
+        np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -154,14 +154,19 @@ def _broadcast_object_list_help(object_list, hcg):
 def broadcast_input_data(hcg, *inputs, **kwargs):
     cur_device = paddle.get_device()
     dev = cur_device.split(":")[0]
-    assert dev in [
-        "xpu",
-        "gpu",
-        "npu",
-    ], f"Only support xpu, gpu and npu now, but this is {dev}"
+    assert (
+        dev
+        in [
+            "xpu",
+            "gpu",
+        ]
+        or dev in paddle.device.get_all_custom_device_type()
+    ), f"Only support xpu, gpu and custom_device now, but this is {dev}"
     dev_idx = int(cur_device.split(':')[1])
     if dev == "gpu":
         place = paddle.CUDAPlace(dev_idx)
+    elif dev in paddle.device.get_all_custom_device_type():
+        place = paddle.CustomPlace(dev, dev_idx)
     else:
         place = eval(f"paddle.{dev.upper()}Place")(dev_idx)
 

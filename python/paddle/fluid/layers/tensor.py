@@ -20,7 +20,7 @@ from ..layer_helper import LayerHelper
 from ..framework import (
     _current_expected_place,
     convert_np_dtype_to_dtype_,
-    _varbase_creator,
+    _create_tensor,
     in_dygraph_mode,
 )
 from ..framework import Variable

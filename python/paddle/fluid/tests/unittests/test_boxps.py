@@ -18,7 +18,7 @@ import paddle
 from paddle import fluid
 from paddle.distributed.transpiler import collective
 from paddle.fluid import core
-from paddle.fluid.layers.nn import _pull_box_sparse
+from paddle.incubate.layers.nn import _pull_box_sparse
 
 
 class TestTranspile(unittest.TestCase):

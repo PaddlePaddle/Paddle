@@ -40,6 +40,10 @@ class Container:
         self._shell = False
 
     @property
+    def env(self):
+        return self._env
+
+    @property
     def entrypoint(self):
         return self._entrypoint
 

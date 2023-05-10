@@ -652,7 +652,7 @@ class CompileTimeStrategy:
                 var = self.origin_main_program.global_block().vars[
                     grad.merged_var.name
                 ]
-                var_numel = reduce(lambda x, y: x * y, var.shape[1:])
+                var_numel = reduce(lambda x, y: x * y, var.shape[1:], 1)
 
                 sparse_ctx = core.CommContext(
                     grad_name,
@@ -705,7 +705,7 @@ class CompileTimeStrategy:
                 var = self.origin_main_program.global_block().vars[
                     grad.merged_var.name
                 ]
-                var_numel += reduce(lambda x, y: x * y, var.shape)
+                var_numel += reduce(lambda x, y: x * y, var.shape, 1)
             grad_name = "Dense@Grad"
             trainer_id = self.get_role_id()
             aggregate = True
@@ -734,7 +734,7 @@ class CompileTimeStrategy:
                 var = self.origin_main_program.global_block().vars[
                     origin_varname
                 ]
-                var_numel = reduce(lambda x, y: x * y, var.shape)
+                var_numel = reduce(lambda x, y: x * y, var.shape, 1)
                 grad_name = origin_varname
                 aggregate = True
                 dense_ctx = core.CommContext(
@@ -1058,7 +1058,7 @@ class CompileTimeStrategy:
         blocks = []
         for var in var_list:
             if not uniform:
-                var_numel = reduce(lambda x, y: x * y, var.shape)
+                var_numel = reduce(lambda x, y: x * y, var.shape, 1)
 
                 split_count = 1
 
@@ -1077,7 +1077,7 @@ class CompileTimeStrategy:
 
                 if len(var.shape) >= 2:
                     # align by dim1(width)
-                    dim1 = reduce(lambda x, y: x * y, var.shape[1:])
+                    dim1 = reduce(lambda x, y: x * y, var.shape[1:], 1)
                     remains = block_size % dim1
                     if remains != 0:
                         block_size += dim1 - remains
@@ -1102,7 +1102,7 @@ class CompileTimeStrategy:
                 for i in range(remainder):
                     dim0s[i] = dim0s[i] + 1
 
-                dim1 = reduce(lambda x, y: x * y, var.shape[1:])
+                dim1 = reduce(lambda x, y: x * y, var.shape[1:], 1)
 
                 for block_id in range(len(dim0s)):
                     numel = dim0s[block_id] * dim1

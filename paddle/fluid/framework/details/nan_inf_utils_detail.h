@@ -20,8 +20,8 @@
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
-
 #ifdef _WIN32
 #include <direct.h>
 #include <io.h>
@@ -31,7 +31,7 @@
 #define MKDIR(path) mkdir(path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH)
 #endif
 
-DECLARE_int32(check_nan_inf_level);
+PHI_DECLARE_int32(check_nan_inf_level);
 namespace paddle {
 namespace framework {
 namespace details {
@@ -39,6 +39,10 @@ namespace details {
 void SetNanInfDebugPath(const std::string& nan_inf_path);
 
 std::string GetNanPath();
+
+void SetNanInfStackLimit(const int& stack_limit);
+
+int GetNanInfStackLimit();
 
 template <typename T,
           typename MT,

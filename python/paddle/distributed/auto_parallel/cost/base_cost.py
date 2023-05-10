@@ -13,7 +13,8 @@
 # limitations under the License
 
 from collections import OrderedDict
-from functools import reduce
+
+import numpy as np
 
 import paddle
 from paddle.utils.flops import flops
@@ -807,7 +808,7 @@ class CommOpCost(OpCost):
                 factor = 8
             else:
                 raise ValueError(f"Unsupported comm dtype {dtype}")
-            comm_count = reduce(lambda x, y: x * y, shape) * factor
+            comm_count = int(np.prod(shape)) * factor
             self._comm_count = comm_count
 
         return self._comm_count
