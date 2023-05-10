@@ -28,6 +28,8 @@ import warnings
 
 from collections.abc import Sequence
 
+import re
+
 __all__ = [
     'append_backward',
     'gradients',
@@ -459,10 +461,14 @@ def _strip_grad_suffix_(name):
     """
     Strip the grad suffix from the given variable name
     e.g. x@GRAD ==> x
+         x@GRAD@GRAD ==> x
          y@GRAD@RENAME@1 ==> y
+         z@GRAD_slice_0@GRAD ==> z@GRAD_slice_0
     """
-    pos = name.find(core.grad_var_suffix())
-    new_name = name[:pos] if pos != -1 else name
+    pos = re.search(f'{core.grad_var_suffix()}$', name) or re.search(
+        f'{core.grad_var_suffix()}@', name
+    )
+    new_name = name[: pos.start()] if pos is not None else name
     new_pos = name.rfind('grad/')
     return new_name[new_pos + 5 :] if new_pos != -1 else new_name
 
@@ -1786,6 +1792,18 @@ def infershape_for_composite(block, grad_op_desc):
         op_desc.infer_var_type(block.desc)
         op_desc.infer_shape(block.desc)
         grad_op_desc.copy_from(op_desc)
+
+    if not framework.OpProtoHolder.instance().has_op_proto(grad_op_desc.type()):
+        # NOTE: Some raw fluid grad operators which hadn't been decomposed may not
+        # implement InferVarType method, such as elementwise_xx_grad, and it will
+        # cause the dtype or shape of corresponding cotangent incorrect. This
+        # patch set the cotangent dtype and shape same with corresponding
+        # forward variable. For primitive operators, we have ensure all
+        # InferVarType method to be executed correctly in PR#52818, we skip
+        # this patch for primitive operators.
+        for arg in grad_op_desc.output_arg_names():
+            if arg in new_vars:
+                _infer_var_data_type_shape_(arg, block)
 
 
 def _rename_grad_(
