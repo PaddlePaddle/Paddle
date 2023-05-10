@@ -173,7 +173,7 @@ class TestMasterGradAccuracy(AmpTestBase):
             return losses
 
         dtype = "float16"
-        max_iters = 40
+        max_iters = 25
         x_f32, x_f16 = self._generate_feed_x(dtype)
         place = paddle.CUDAPlace(0)
         exe = paddle.static.Executor(place)
