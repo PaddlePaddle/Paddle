@@ -21,6 +21,25 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+//     conv_in
+//       |
+//  conv2d_fusion  residual_input
+//             |        |
+//         conv_out     |
+//             |        |
+//            elementwise_op
+//                 |
+//         elementwise_op_out
+
+//
+// -> fused to
+//
+//         conv_in     residual_input
+//             |        |
+//            conv2d_fusion
+//                 |
+//         elementwise_op_out
+
 void Conv2dFusionCutlassElementwiseFusePass::ApplyImpl(ir::Graph* graph) const {
   // This pass is used for cutlass, because cutlass can fuse conv + bias + act0
   // + elementwise_op + act1

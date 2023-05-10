@@ -158,6 +158,11 @@ class CutlassTeller {
     int dilation_w = dilations[1];
     auto act_type = op_desc->GetAttrIfExists<std::string>("activation");
 
+    // Do not allow conv2d_fusion already have residual input.
+    if (op_desc->Input("ResidualData").size() >= 1) {
+      return false;
+    }
+
     auto filter_names = op_desc->Input("Filter");
 
     for (const auto &filter_name : filter_names) {
