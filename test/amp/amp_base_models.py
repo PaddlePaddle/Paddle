@@ -194,9 +194,6 @@ def build_conv_model(
 class SimpleEmbeddingNet(nn.Layer):
     def __init__(self):
         super().__init__()
-
-        global _fixed_embedding_param
-
         self.vocab_size = 128
         self.hidden_size = 16
         self.embedding = nn.Embedding(self.vocab_size, self.hidden_size)

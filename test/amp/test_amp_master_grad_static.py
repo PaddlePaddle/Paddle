@@ -114,6 +114,8 @@ class TestStaticMasterGradProgramBF16(AmpTestBase):
         for master_grad in use_master_grad_list:
             self.amp_bf16_o2(master_grad)
 
+
+class TestMasterGradAccuracy(AmpTestBase):
     def _generate_feed_x(self, dtype="float16"):
         seed = 0
         paddle.seed(seed)
