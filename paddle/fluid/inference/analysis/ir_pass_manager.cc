@@ -338,9 +338,9 @@ void IRPassManager::CreatePasses(Argument *argument,
             argument->Has("model_dir")
                 ? argument->model_dir()
                 : GetDirRoot(argument->model_program_path());
-        pass->Set("model_opt_cache_dir",
-                  new std::string(GetOrCreateModelOptCacheDir(
-                      std::movemodel_opt_cache_dir)));
+        pass->Set(
+            "model_opt_cache_dir",
+            new std::string(GetOrCreateModelOptCacheDir(model_opt_cache_dir)));
       }
     }
     pre_pass = pass_name;
