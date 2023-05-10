@@ -17,5 +17,10 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/determinant_kernel_impl.h"
 
-PD_REGISTER_KERNEL(
-    determinant, GPU, ALL_LAYOUT, phi::DeterminantKernel, float, double) {}
+PD_REGISTER_KERNEL(determinant,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::DeterminantKernel,
+                   phi::dtype::float16,
+                   float,
+                   double) {}

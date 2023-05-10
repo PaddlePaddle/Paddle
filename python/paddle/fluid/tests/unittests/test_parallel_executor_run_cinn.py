@@ -110,7 +110,7 @@ def train(dot_save_dir, prefix, seed=1234):
     loss_values = []
     for step in range(iters):
         loss_v = exe.run(compiled_program, feed=feed[step], fetch_list=[loss])
-        loss_values.append(loss_v[0][0])
+        loss_values.append(loss_v[0])
     return loss_values
 
 

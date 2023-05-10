@@ -462,16 +462,17 @@ class TestSoftmaxAPI(unittest.TestCase):
         self.softmax = F.softmax
 
     def test_static_check(self):
-        with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.static.data('X', self.x_np.shape, 'float32')
-            out1 = self.softmax(x)
-            m = paddle.nn.Softmax()
-            out2 = m(x)
-            exe = paddle.static.Executor(self.place)
-            res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
-        out_ref = ref_softmax(self.x_np, axis=-1, dtype=None)
-        for r in res:
-            np.testing.assert_allclose(out_ref, r, rtol=1e-05)
+        with paddle.fluid.framework._static_guard():
+            with paddle.static.program_guard(paddle.static.Program()):
+                x = paddle.static.data('X', self.x_np.shape, 'float32')
+                out1 = self.softmax(x)
+                m = paddle.nn.Softmax()
+                out2 = m(x)
+                exe = paddle.static.Executor(self.place)
+                res = exe.run(feed={'X': self.x_np}, fetch_list=[out1, out2])
+            out_ref = ref_softmax(self.x_np, axis=-1, dtype=None)
+            for r in res:
+                np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
     def test_dygraph_check(self):
         paddle.disable_static(self.place)
@@ -505,19 +506,20 @@ class TestSoftmaxAPI(unittest.TestCase):
         paddle.enable_static()
 
     def test_error(self):
-        with paddle.static.program_guard(paddle.static.Program()):
-            # The input type must be Variable.
-            self.assertRaises(TypeError, self.softmax, 1)
-            # The input dtype must be float16, float32, float64.
-            x_int32 = paddle.static.data(
-                name='x_int32', shape=[2, 3], dtype='int32'
-            )
-            self.assertRaises(TypeError, self.softmax, x_int32)
-            # support the input dtype is float16
-            x_fp16 = paddle.static.data(
-                name='x_fp16', shape=[2, 3], dtype='float16'
-            )
-            self.softmax(x_fp16)
+        with paddle.fluid.framework._static_guard():
+            with paddle.static.program_guard(paddle.static.Program()):
+                # The input type must be Variable.
+                self.assertRaises(TypeError, self.softmax, 1)
+                # The input dtype must be float16, float32, float64.
+                x_int32 = paddle.static.data(
+                    name='x_int32', shape=[2, 3], dtype='int32'
+                )
+                self.assertRaises(TypeError, self.softmax, x_int32)
+                # support the input dtype is float16
+                x_fp16 = paddle.static.data(
+                    name='x_fp16', shape=[2, 3], dtype='float16'
+                )
+                self.softmax(x_fp16)
 
 
 class TestSoftmaxAPI_ZeroDim(unittest.TestCase):
@@ -538,23 +540,24 @@ class TestSoftmaxAPI_ZeroDim(unittest.TestCase):
         paddle.enable_static()
 
     def test_static(self):
-        main_prog = fluid.Program()
-        with fluid.program_guard(main_prog, fluid.Program()):
-            x = paddle.rand([])
-            x.stop_gradient = False
-            out = paddle.nn.functional.softmax(x)
-            fluid.backward.append_backward(out)
+        with paddle.fluid.framework._static_guard():
+            main_prog = fluid.Program()
+            with fluid.program_guard(main_prog, fluid.Program()):
+                x = paddle.rand([])
+                x.stop_gradient = False
+                out = paddle.nn.functional.softmax(x)
+                fluid.backward.append_backward(out)
 
-            # Test compile shape
-            self.assertEqual(x.shape, ())
-            self.assertEqual(out.shape, ())
+                # Test compile shape
+                self.assertEqual(x.shape, ())
+                self.assertEqual(out.shape, ())
 
-            exe = fluid.Executor()
-            result = exe.run(main_prog, fetch_list=[x, out])
+                exe = fluid.Executor()
+                result = exe.run(main_prog, fetch_list=[x, out])
 
-            # Test runtime shape
-            self.assertEqual(result[0].shape, ())
-            self.assertEqual(result[1].shape, ())
+                # Test runtime shape
+                self.assertEqual(result[0].shape, ())
+                self.assertEqual(result[1].shape, ())
 
 
 class TestSoftmaxInplaceAPI(TestSoftmaxAPI):

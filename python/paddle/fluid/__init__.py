@@ -79,7 +79,7 @@ from . import compiler
 from .compiler import *
 from paddle.fluid.layers.math_op_patch import monkey_patch_variable
 from .dygraph.base import enable_dygraph, disable_dygraph
-from .dygraph.varbase_patch_methods import monkey_patch_varbase
+from .dygraph.tensor_patch_methods import monkey_patch_tensor
 from .core import _cuda_synchronize
 from .trainer_desc import (
     TrainerDesc,
@@ -211,7 +211,7 @@ def __bootstrap__():
 # Consider paddle.init(args) or paddle.main(args)
 monkey_patch_variable()
 __bootstrap__()
-monkey_patch_varbase()
+monkey_patch_tensor()
 
 # NOTE(Aurelius84): clean up ExecutorCacheInfo in advance manually.
 atexit.register(core.clear_executor_cache)

@@ -27,6 +27,7 @@
 #include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 #include "paddle/fluid/operators/ops_extra_info.h"
+#include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
@@ -40,8 +41,8 @@ PADDLE_DEFINE_EXPORTED_bool(
     false,
     "Log memory stats after each op runs, just used for debug.");
 
-DECLARE_bool(use_mkldnn);
-DECLARE_bool(check_nan_inf);
+PHI_DECLARE_bool(use_mkldnn);
+PHI_DECLARE_bool(check_nan_inf);
 
 namespace paddle {
 namespace framework {
@@ -843,6 +844,22 @@ void BuildOpFuncList(const platform::Place& place,
       interpreter::LogDeviceMemoryStats(place);
     }
   }
+
+  // in the unused_var_map, we did not record the variable who are created in
+  // ApplyDataTransform. So we erase these variables here.
+  std::deque<std::shared_ptr<memory::Allocation>>* garbages =
+      new std::deque<std::shared_ptr<memory::Allocation>>();
+  for (const auto& transferred_var : var_scope->DataTransferAddedVars()) {
+    const auto& var_name = transferred_var.first;
+    auto* var = local_scope->FindVar(var_name);
+    if (var == nullptr) continue;
+    VLOG(6) << "Erase variable " << var_name;
+    if (var->IsType<phi::DenseTensor>()) {
+      garbages->emplace_back(
+          var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder());
+    }
+  }
+  delete garbages;
 }
 
 void BuildVariableScope(const framework::BlockDesc& block,
