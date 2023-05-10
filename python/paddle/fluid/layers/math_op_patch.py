@@ -419,7 +419,9 @@ def monkey_patch_variable():
             if method_name in compare_ops:
                 out = create_new_tmp_var(current_block(self), dtype="bool")
             else:
-                out = create_new_tmp_var(current_block(self), dtype=lhs_dtype)
+                out = create_new_tmp_var(
+                    current_block(self), dtype=safe_get_dtype(self)
+                )
 
             axis = -1
             if other_var.ndim > 0 and other_var.shape[0] == -1:
