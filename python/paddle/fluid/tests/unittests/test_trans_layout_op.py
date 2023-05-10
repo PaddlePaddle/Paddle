@@ -12,20 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
+import os
+import tempfile
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from eager_op_test import OpTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.framework import Program, program_guard
-from paddle.fluid.layer_helper import LayerHelper
 
 
 def transpose_layout(x, src_layout, dst_layout):
     return x.transpose([0, 2, 3, 1])
+
 
 class TestTransferLayoutFP16Op(OpTest):
     def setUp(self):
@@ -40,6 +40,7 @@ class TestTransferLayoutFP16Op(OpTest):
 
     def test_check_output(self):
         self.check_output()
+
 
 class LayoutAutoTune(unittest.TestCase):
     def test_config(self):
@@ -105,6 +106,7 @@ class LayoutAutoTune(unittest.TestCase):
 
         self.assertEqual(conv_out.shape, [1, 8, 14, 12])
         self.assertEqual(out.shape, [2, 8, 14, 12])
+
 
 if __name__ == '__main__':
     unittest.main()
