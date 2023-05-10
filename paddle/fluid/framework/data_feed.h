@@ -944,6 +944,7 @@ struct GraphDataGeneratorConfig {
   bool get_degree;
   bool weighted_sample;
   bool return_weight;
+  bool is_multi_node;
   int batch_size;
   int slot_num;
   int walk_degree;
@@ -956,6 +957,7 @@ struct GraphDataGeneratorConfig {
   int debug_mode;
   int excluded_train_pair_len;
   int edge_to_id_len;
+  size_t buf_size;
   size_t once_max_sample_keynum;
   int64_t reindex_table_size;
   uint64_t train_table_cap;
@@ -976,8 +978,6 @@ class GraphDataGenerator {
   void SetFeedVec(std::vector<phi::DenseTensor*> feed_vec);
   void SetFeedInfo(std::vector<UsedSlotInfo>* feed_info);
   int GenerateBatch();
-  int FillWalkBuf();
-  int FillWalkBufMultiPath();
   int FillInferBuf();
   void DoWalkandSage();
   int FillSlotFeature(uint64_t* d_walk);
@@ -1001,9 +1001,7 @@ class GraphDataGenerator {
       return;
     }
   }
-  bool GetSageMode() {
-    return conf_.sage_mode;
-  }
+  bool GetSageMode() { return conf_.sage_mode; }
   void ResetEpochFinish() { epoch_finish_ = false; }
   void reset_pass_end() { pass_end_ = 0; }
   void ClearSampleState();
@@ -1014,12 +1012,10 @@ class GraphDataGenerator {
     // h_device_keys_.push_back(device_keys);
   }
 
-  std::shared_ptr<phi::Allocation> GetNodeDegree(uint64_t* node_ids, int len);
   std::vector<uint64_t>& GetHostVec() { return host_vec_; }
   bool get_epoch_finish() { return epoch_finish_; }
   int get_pass_end() { return pass_end_; }
   void clear_gpu_mem();
-  int multi_node_sync_sample(int flag, const ncclRedOp_t& op);
   int dynamic_adjust_batch_num_for_sage();
 
  protected:
@@ -1079,7 +1075,6 @@ class GraphDataGenerator {
   int id_offset_of_feed_vec_;
 
   // size of a d_walk buf
-  size_t buf_size_;
   int repeat_time_;
   BufState buf_state_;
   int float_slot_num_ = 0; // float slot num
@@ -1098,7 +1093,6 @@ class GraphDataGenerator {
   size_t infer_node_end_;
   std::set<int> infer_node_type_index_set_;
   std::string infer_node_type_;
-  bool is_multi_node_;
   phi::DenseTensor multi_node_sync_stat_;
 };
 
