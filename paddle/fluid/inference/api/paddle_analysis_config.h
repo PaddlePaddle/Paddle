@@ -200,6 +200,14 @@ struct PD_INFER_DECL AnalysisConfig {
   void SetParamsFile(const std::string& x) { params_file_ = x; }
 
   ///
+  /// \brief Save optimized model.
+  ///
+  /// \param save_optimized_model Whether to enable save optimized model.
+  ///
+  void EnableSaveOptimizedModel(bool save_optimized_model) {
+    save_optimized_model_ = save_optimized_model;
+  }
+  ///
   /// \brief Set the path of optimization cache directory.
   ///
   /// \param opt_cache_dir the path of optimization cache directory.
@@ -298,8 +306,7 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   void SetXpuConfig(
       int quant_post_dynamic_weight_bits = -1,
-      const std::vector<std::string>& quant_post_dynamic_op_types = {},
-      bool save_optimized_model = false);
+      const std::vector<std::string>& quant_post_dynamic_op_types = {});
 
   ///
   /// \brief configs of IPU
@@ -1201,7 +1208,6 @@ struct PD_INFER_DECL AnalysisConfig {
   bool xpu_enable_multi_stream_;
   int xpu_quant_post_dynamic_weight_bits_{-1};
   std::vector<std::string> xpu_quant_post_dynamic_op_types_;
-  bool save_optimized_model_;
 
   // LITE OPENCL SETTINGS
   bool use_opencl_{false};
@@ -1257,6 +1263,7 @@ struct PD_INFER_DECL AnalysisConfig {
   // Variables held by config can take up a lot of memory in some cases.
   // So we release the memory when the predictor is set up.
   mutable bool is_valid_{true};
+  bool save_optimized_model_{false};
   std::string opt_cache_dir_;
   friend class paddle_infer::experimental::InternalUtils;
 

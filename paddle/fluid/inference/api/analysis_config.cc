@@ -199,11 +199,9 @@ void AnalysisConfig::SetXpuDeviceId(int device_id) {
 
 void AnalysisConfig::SetXpuConfig(
     int quant_post_dynamic_weight_bits,
-    const std::vector<std::string> &quant_post_dynamic_op_types,
-    bool save_optimized_model) {
+    const std::vector<std::string> &quant_post_dynamic_op_types) {
   xpu_quant_post_dynamic_weight_bits_ = quant_post_dynamic_weight_bits;
   xpu_quant_post_dynamic_op_types_ = quant_post_dynamic_op_types;
-  save_optimized_model_ = save_optimized_model;
   Update();
 }
 
@@ -413,7 +411,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(model_dir_);
   CP_MEMBER(model_from_memory_);  // the memory model reuses prog_file_ and
                                   // params_file_ fields.
-
+  CP_MEMBER(save_optimized_model_);
   CP_MEMBER(opt_cache_dir_);
   CP_MEMBER(prog_file_);
   CP_MEMBER(params_file_);
@@ -503,7 +501,6 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(xpu_enable_multi_stream_);
   CP_MEMBER(xpu_quant_post_dynamic_weight_bits_);
   CP_MEMBER(xpu_quant_post_dynamic_op_types_);
-  CP_MEMBER(save_optimized_model_);
 
   // Lite OpenCL Related
   CP_MEMBER(use_opencl_);
@@ -1051,6 +1048,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << model_dir_;
   ss << prog_file_;
   ss << params_file_;
+  ss << save_optimized_model_;
 
   ss << use_gpu_;
   ss << enable_gpu_mixed_;
@@ -1113,7 +1111,6 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << xpu_adaptive_seqlen_;
   ss << xpu_enable_multi_stream_;
   ss << xpu_quant_post_dynamic_weight_bits_;
-  ss << save_optimized_model_;
   for (auto op_type : xpu_quant_post_dynamic_op_types_) {
     ss << op_type;
   }
