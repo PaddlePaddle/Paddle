@@ -972,7 +972,7 @@
   backward : index_select_grad
 
 - op : instance_norm
-  args : (Tensor x, Tensor scale, Tensor bias, float epsilon)
+  args : (Tensor x, Tensor scale, Tensor bias, float epsilon=1e-5)
   output : Tensor(y), Tensor(saved_mean), Tensor(saved_variance)
   infer_meta :
     func : InstanceNormInferMeta
