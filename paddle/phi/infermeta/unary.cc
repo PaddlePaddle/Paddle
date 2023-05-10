@@ -3762,6 +3762,9 @@ void SqueezeInferMeta(const MetaTensor& x,
   if (!config.is_runtime && axes.FromTensor()) {
     // compile time infershape, set all elements to -1.
     int output_size = x.dims().size() - axes.GetData().size();
+    if (x.dims().size() == 0 && output_size == -1) {
+      output_size = 0;
+    }
     std::vector<int64_t> vec_out_dims(output_size, -1);
     out->set_dims(phi::make_ddim(vec_out_dims));
   } else {
