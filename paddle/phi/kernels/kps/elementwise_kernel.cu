@@ -177,5 +177,6 @@ PD_REGISTER_KERNEL(heaviside,
                    double,
                    int,
                    float16,
+                   bfloat16,
                    int64_t) {}
 #endif
