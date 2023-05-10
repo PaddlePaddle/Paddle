@@ -535,8 +535,10 @@ void ComputeFusedGemmEpilogueBackwardImpl(const phi::GPUContext& dev_ctx,
                                           bool use_addto_dx,
                                           bool use_addto_dy) {
   using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-  static_assert(std::is_same<DXT, T>::value || std::is_same<DXT, MT>::value);
-  static_assert(std::is_same<DYT, T>::value || std::is_same<DYT, MT>::value);
+  constexpr bool kIsValidDataType =
+      (std::is_same<DXT, T>::value || std::is_same<DXT, MT>::value) &&
+      (std::is_same<DYT, T>::value || std::is_same<DYT, MT>::value);
+  static_assert(kIsValidDataType, "Invalid data type");
   using Trait = FusedGEMMGradTrait<TransX, TransY>;
 
   if (dx) {
