@@ -253,8 +253,6 @@ phi::KernelKey GetInstanceNormExpectedKernelType(
 phi::KernelKey GetLayerNormExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr) {
-  (void)ctx;
-
   auto input_data_type =
       op_ptr->OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
