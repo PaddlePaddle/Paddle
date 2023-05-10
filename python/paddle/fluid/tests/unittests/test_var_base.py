@@ -114,7 +114,7 @@ class TestVarBase(unittest.TestCase):
                 )
                 np.testing.assert_array_equal(x.numpy(), [1.0])
                 self.assertEqual(x.dtype, core.VarDesc.VarType.FP32)
-                self.assertEqual(x.shape, [1])
+                self.assertEqual(x.shape, [])
                 self.assertEqual(x.stop_gradient, False)
                 self.assertEqual(x.type, core.VarDesc.VarType.LOD_TENSOR)
 
@@ -387,7 +387,7 @@ class TestVarBase(unittest.TestCase):
 
     def test_detach(self):
         with fluid.dygraph.guard():
-            x = paddle.to_tensor(1.0, dtype="float64", stop_gradient=False)
+            x = paddle.to_tensor([1.0], dtype="float64", stop_gradient=False)
             detach_x = x.detach()
             self.assertTrue(detach_x.stop_gradient, True)
 

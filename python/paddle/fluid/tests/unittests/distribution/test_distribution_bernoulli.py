@@ -184,10 +184,10 @@ class BernoulliTest(unittest.TestCase):
         ('probs_00', 0.0, 'float64', 'float32'),
         ('probs_03', 0.3, 'float64', 'float32'),
         ('probs_10', 1.0, 'float64', 'float32'),
-        ('probs_tensor_03_32', paddle.to_tensor(0.3), 'float32', 'float32'),
+        ('probs_tensor_03_32', paddle.to_tensor([0.3]), 'float32', 'float32'),
         (
             'probs_tensor_03_64',
-            paddle.to_tensor(0.3, dtype='float64'),
+            paddle.to_tensor([0.3], dtype='float64'),
             'float64',
             'float64',
         ),
@@ -257,11 +257,11 @@ class BernoulliTestFeature(BernoulliTest):
             ),
             (
                 paddle.to_tensor(
-                    0.0,
+                    [0.0],
                 ),
             ),
-            (paddle.to_tensor(1.0),),
-            (paddle.to_tensor(0.0, dtype='float64'),),
+            (paddle.to_tensor([1.0]),),
+            (paddle.to_tensor([0.0], dtype='float64'),),
         ]
     )
     def test_log_prob(self, value):
@@ -291,9 +291,9 @@ class BernoulliTestFeature(BernoulliTest):
                     ]
                 ),
             ),
-            (paddle.to_tensor(0.0),),
-            (paddle.to_tensor(1.0),),
-            (paddle.to_tensor(0.0, dtype='float64'),),
+            (paddle.to_tensor([0.0]),),
+            (paddle.to_tensor([1.0]),),
+            (paddle.to_tensor([0.0], dtype='float64'),),
         ]
     )
     def test_prob(self, value):
@@ -323,11 +323,11 @@ class BernoulliTestFeature(BernoulliTest):
                     ]
                 ),
             ),
-            (paddle.to_tensor(0.0),),
-            (paddle.to_tensor(0.3),),
-            (paddle.to_tensor(0.7),),
-            (paddle.to_tensor(1.0),),
-            (paddle.to_tensor(0.0, dtype='float64'),),
+            (paddle.to_tensor([0.0]),),
+            (paddle.to_tensor([0.3]),),
+            (paddle.to_tensor([0.7]),),
+            (paddle.to_tensor([1.0]),),
+            (paddle.to_tensor([0.0], dtype='float64'),),
         ]
     )
     def test_cdf(self, value):
@@ -359,7 +359,7 @@ class BernoulliTestFeature(BernoulliTest):
 
     def test_kl_divergence(self):
         with paddle.fluid.dygraph.guard(self.place):
-            other_probs = paddle.to_tensor(0.9, dtype=self.dtype)
+            other_probs = paddle.to_tensor([0.9], dtype=self.dtype)
 
             rv_paddle_other = Bernoulli(other_probs)
             rv_np_other = BernoulliNumpy(other_probs)
@@ -422,7 +422,7 @@ class BernoulliTestFeature(BernoulliTest):
         # 1-D probs
         (
             'probs_1d_1d_32',
-            paddle.to_tensor(0.3),
+            paddle.to_tensor([0.3]),
             'float32',
             'float32',
             [
@@ -432,7 +432,7 @@ class BernoulliTestFeature(BernoulliTest):
         ),
         (
             'probs_1d_1d_64',
-            paddle.to_tensor(0.3, dtype='float64'),
+            paddle.to_tensor([0.3], dtype='float64'),
             'float64',
             'float64',
             paddle.to_tensor(
@@ -444,7 +444,7 @@ class BernoulliTestFeature(BernoulliTest):
         ),
         (
             'probs_1d_2d',
-            paddle.to_tensor(0.3),
+            paddle.to_tensor([0.3]),
             'float32',
             'float32',
             [100, 2],
@@ -452,7 +452,7 @@ class BernoulliTestFeature(BernoulliTest):
         ),
         (
             'probs_1d_3d',
-            paddle.to_tensor(0.3),
+            paddle.to_tensor([0.3]),
             'float32',
             'float32',
             [100, 2, 3],

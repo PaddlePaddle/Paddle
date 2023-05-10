@@ -46,8 +46,7 @@ void SquaredL2NormGradKernel(const Context& dev_ctx,
   std::vector<const DenseTensor*> ins{&x, &dout};
   std::vector<DenseTensor*> outs{dx};
 
-  funcs::BroadcastKernel<ElementwiseType::kBinary, T, T>(
-      dev_ctx, ins, &outs, -1, phi::DoubleMulFunctor<T>());
+  funcs::BroadcastKernel<T>(dev_ctx, ins, &outs, phi::DoubleMulFunctor<T>());
 }
 }  // namespace phi
 

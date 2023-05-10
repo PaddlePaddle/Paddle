@@ -117,7 +117,7 @@ class SendRecvMeta:
 
     def _send_dims_shape_dtype(self, tensor, group):
         # send len(shape)
-        dims = paddle.to_tensor(len(tensor.shape))
+        dims = paddle.to_tensor([len(tensor.shape)])
         dst_rank = _hcg._get_p2p_next_rank()
 
         paddle.distributed.send(dims, dst=dst_rank, group=group)
@@ -127,11 +127,11 @@ class SendRecvMeta:
         paddle.distributed.send(shape, dst=dst_rank, group=group)
 
         # send dtype
-        dtype = paddle.to_tensor(paddle_2_number(tensor.dtype))
+        dtype = paddle.to_tensor([paddle_2_number(tensor.dtype)])
         paddle.distributed.send(dtype, dst=dst_rank, group=group)
 
         # send trainable
-        stop_grad = paddle.to_tensor(int(tensor.stop_gradient))
+        stop_grad = paddle.to_tensor([int(tensor.stop_gradient)])
         paddle.distributed.send(stop_grad, dst=dst_rank, group=group)
 
     def send_meta(self, tensor, group):
@@ -148,7 +148,7 @@ class SendRecvMeta:
             # send tensor type
             paddle.distributed.send(tensor_type, dst=dst_rank, group=group)
 
-            nums = paddle.to_tensor(len(tensor))
+            nums = paddle.to_tensor([len(tensor)])
             paddle.distributed.send(nums, dst=dst_rank, group=group)
 
             for d in tensor:

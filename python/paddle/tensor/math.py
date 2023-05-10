@@ -4428,8 +4428,8 @@ def rad2deg(x, name=None):
             x3 = paddle.to_tensor(1)
             result3 = paddle.rad2deg(x3)
             print(result3)
-            # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #         [57.29578018])
+            # Tensor(shape=[], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        57.29578018)
     """
     rad2deg_scale = 180 / np.pi
     if in_dygraph_mode():
@@ -4492,8 +4492,8 @@ def deg2rad(x, name=None):
             x2 = paddle.to_tensor(180)
             result2 = paddle.deg2rad(x2)
             print(result2)
-            # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #         [3.14159274])
+            # Tensor(shape=[], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        3.14159274)
     """
     deg2rad_scale = np.pi / 180.0
     if in_dygraph_mode():
@@ -4552,8 +4552,8 @@ def gcd(x, y, name=None):
             x1 = paddle.to_tensor(12)
             x2 = paddle.to_tensor(20)
             paddle.gcd(x1, x2)
-            # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
-            #        [4])
+            # Tensor(shape=[], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+            #        4)
 
             x3 = paddle.arange(6)
             paddle.gcd(x3, x2)
@@ -4562,17 +4562,17 @@ def gcd(x, y, name=None):
 
             x4 = paddle.to_tensor(0)
             paddle.gcd(x4, x2)
-            # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
-            #        [20])
+            # Tensor(shape=[], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+            #        20)
 
             paddle.gcd(x4, x4)
-            # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
-            #        [0])
+            # Tensor(shape=[], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+            #        0)
 
             x5 = paddle.to_tensor(-20)
             paddle.gcd(x1, x5)
-            # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
-            #        [4])
+            # Tensor(shape=[], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+            #        4)
     """
     shape = paddle.broadcast_shape(x.shape, y.shape)
     x = paddle.broadcast_to(x, shape)
@@ -4637,8 +4637,8 @@ def lcm(x, y, name=None):
             x1 = paddle.to_tensor(12)
             x2 = paddle.to_tensor(20)
             paddle.lcm(x1, x2)
-            # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
-            #        [60])
+            # Tensor(shape=[], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+            #        60)
 
             x3 = paddle.arange(6)
             paddle.lcm(x3, x2)
@@ -4647,17 +4647,17 @@ def lcm(x, y, name=None):
 
             x4 = paddle.to_tensor(0)
             paddle.lcm(x4, x2)
-            # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
-            #        [0])
+            # Tensor(shape=[], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+            #        0)
 
             paddle.lcm(x4, x4)
-            # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
-            #        [0])
+            # Tensor(shape=[], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+            #        0)
 
             x5 = paddle.to_tensor(-20)
             paddle.lcm(x1, x5)
-            # Tensor(shape=[1], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
-            #        [60])
+            # Tensor(shape=[], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
+            #        60)
     """
     d = paddle.gcd(x, y)
     # paddle.mod will raise an error when any element of y is 0. To avoid
