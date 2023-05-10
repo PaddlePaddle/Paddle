@@ -788,6 +788,15 @@
   inplace : (x -> out)
   backward : multiply_grad
 
+- op : norm
+  args : (Tensor x, int axis, float epsilon, bool is_test)
+  output : Tensor(out), Tensor(norm)
+  infer_meta :
+    func : NormInferMeta
+  kernel :
+      func : norm
+  backward : norm_grad
+
 - op : not_equal
   args : (Tensor x, Tensor y)
   output : Tensor(out)

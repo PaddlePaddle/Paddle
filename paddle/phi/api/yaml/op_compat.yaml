@@ -1675,6 +1675,14 @@
   outputs :
     out : Out
 
+- op : norm
+  inputs :
+    x : x
+  outputs :
+    {out : Out, norm : Norm}
+  extra :
+    attrs : [bool use_mkldnn = false]
+
 - op : not_equal
   inputs :
     {x : X, y : Y}

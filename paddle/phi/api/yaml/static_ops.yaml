@@ -229,6 +229,16 @@
            matrix_rank_tol {dense, dense -> dense}
     data_type : x
 
+- op : norm
+  args : (Tensor x, int axis, float epsilon, bool is_test)
+  output : Tensor(out), Tensor(norm)
+  infer_meta :
+    func : NormInferMeta
+  kernel :
+      func : norm
+  backward : norm_grad
+  intermediate : norm
+
 - op : not_equal
   args : (Tensor x, Tensor y, int axis = -1, bool force_cpu=false)
   output : Tensor(out)

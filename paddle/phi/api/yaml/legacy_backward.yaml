@@ -631,6 +631,16 @@
   composite: multiply_grad(x, y, out_grad, axis, x_grad, y_grad)
   backward : multiply_double_grad
 
+- backward_op : norm_grad
+  forward : norm (Tensor x, int axis, float epsilon, bool is_test) -> Tensor(out), Tensor(norm)
+  args : (Tensor x, Tensor norm, Tensor out_grad, int axis, float epsilon, bool is_test)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : norm_grad
+
 - backward_op : pad3d_double_grad
   forward : pad3d_grad(Tensor x, Tensor grad_out, IntArray paddings, str mode, float pad_value, str data_format) -> Tensor(grad_x)
   args : (Tensor grad_x_grad, IntArray paddings, str mode, float pad_value, str data_format)
