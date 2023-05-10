@@ -14,9 +14,9 @@
 
 #include <gtest/gtest.h>
 
-#include "paddle/fluid/paddle_dialect/dialect.h"
-#include "paddle/fluid/paddle_dialect/type.h"
-#include "paddle/fluid/paddle_dialect/utils.h"
+#include "paddle/fluid/dialect/pd_dialect.h"
+#include "paddle/fluid/dialect/pd_type.h"
+#include "paddle/fluid/dialect/utils.h"
 #include "paddle/ir/builtin_attribute.h"
 #include "paddle/ir/builtin_dialect.h"
 #include "paddle/ir/builtin_op.h"

@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/paddle_dialect/dialect.h"
+#include "paddle/fluid/dialect/pd_dialect.h"
+#include "paddle/fluid/dialect/pd_type.h"
+#include "paddle/fluid/dialect/utils.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/paddle_dialect/type.h"
-#include "paddle/fluid/paddle_dialect/utils.h"
 #include "paddle/ir/builtin_type.h"
 #include "paddle/ir/dialect_interface.h"
 #include "paddle/phi/core/dense_tensor.h"

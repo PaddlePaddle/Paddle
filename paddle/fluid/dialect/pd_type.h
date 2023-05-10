@@ -14,32 +14,32 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/variable.h"
-#include "paddle/ir/dialect.h"
-#include "paddle/ir/parameter.h"
+#include "paddle/fluid/dialect/pd_type_storage.h"
+#include "paddle/ir/type.h"
 
 namespace paddle {
 namespace dialect {
-class ParameterConvertInterface
-    : public ir::DialectInterface::Base<ParameterConvertInterface> {
+#define GET_PADDLE_TYPE_LIST paddle::dialect::DenseTensorType
+
+///
+/// \brief Define built-in parameteric types.
+///
+class DenseTensorType : public ir::Type {
  public:
-  explicit ParameterConvertInterface(ir::Dialect* dialect) : Base(dialect) {}
+  using Type::Type;
 
-  // NOTE(zhangbo): Only support new a CPU Variable.
-  std::shared_ptr<paddle::framework::Variable> ParameterToVariable(
-      ir::Parameter* parameter);
+  DECLARE_TYPE_UTILITY_FUNCTOR(DenseTensorType, DenseTensorTypeStorage);
 
-  ir::Parameter* VariableToParameter(paddle::framework::Variable* var);
-};
+  const ir::Type &dtype() const;
 
-class PaddleDialect : public ir::Dialect {
- public:
-  explicit PaddleDialect(ir::IrContext* context);
+  const paddle::dialect::DenseTensorTypeStorage::Dim &dim() const;
 
-  static const char* name() { return "Paddle"; }
+  const paddle::dialect::DenseTensorTypeStorage::DataLayout &data_layout()
+      const;
 
- private:
-  void initialize();
+  const paddle::dialect::DenseTensorTypeStorage::LoD &lod() const;
+
+  const size_t &offset() const;
 };
 
 }  // namespace dialect

@@ -12,35 +12,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include "paddle/fluid/paddle_dialect/type_storage.h"
-#include "paddle/ir/type.h"
+#include "paddle/fluid/dialect/pd_type.h"
 
 namespace paddle {
 namespace dialect {
-#define GET_PADDLE_TYPE_LIST paddle::dialect::DenseTensorType
+const ir::Type& DenseTensorType::dtype() const { return storage()->dtype_; }
 
-///
-/// \brief Define built-in parameteric types.
-///
-class DenseTensorType : public ir::Type {
- public:
-  using Type::Type;
+const paddle::dialect::DenseTensorTypeStorage::Dim& DenseTensorType::dim()
+    const {
+  return storage()->dims_;
+}
 
-  DECLARE_TYPE_UTILITY_FUNCTOR(DenseTensorType, DenseTensorTypeStorage);
+const paddle::dialect::DenseTensorTypeStorage::DataLayout&
+DenseTensorType::data_layout() const {
+  return storage()->layout_;
+}
 
-  const ir::Type &dtype() const;
+const paddle::dialect::DenseTensorTypeStorage::LoD& DenseTensorType::lod()
+    const {
+  return storage()->lod_;
+}
 
-  const paddle::dialect::DenseTensorTypeStorage::Dim &dim() const;
-
-  const paddle::dialect::DenseTensorTypeStorage::DataLayout &data_layout()
-      const;
-
-  const paddle::dialect::DenseTensorTypeStorage::LoD &lod() const;
-
-  const size_t &offset() const;
-};
+const size_t& DenseTensorType::offset() const { return storage()->offset_; }
 
 }  // namespace dialect
 }  // namespace paddle
