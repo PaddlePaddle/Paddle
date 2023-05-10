@@ -419,6 +419,14 @@
   outputs :
     out : Out
 
+- op : coalesce_tensor
+  inputs :
+    {input : Input}
+  outputs :
+    {output : Output, fused_output : FusedOutput}
+  attrs :
+    {size_of_dtype : user_defined_size_of_dtype}
+
 - op : complex
   backward : complex_grad
   inputs :
@@ -1406,6 +1414,16 @@
   backward : lrn_grad
   extra :
     attrs : [bool use_mkldnn = false, bool is_test = false]
+
+- op : lstsq
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {solution : Solution, residuals : Residuals, rank : Rank, singular_values : SingularValues}
+  scalar :
+    rcond :
+      data_type : float
+      support_tensor : true
 
 - op : lu_unpack
   backward : lu_unpack_grad
@@ -2502,6 +2520,16 @@
     {x : X, img_size : ImgSize}
   outputs :
     {boxes : Boxes, scores : Scores}
+
+- op : yolo_loss (yolov3_loss)
+  backward: yolo_loss_grad (yolov3_loss_grad)
+  inputs :
+    {x : X,  gt_box : GTBox, gt_label : GTLabel ,gt_score : GTScore}
+  outputs :
+    {loss : Loss , objectness_mask : ObjectnessMask, gt_match_mask : GTMatchMask}
+  get_expected_kernel_type :
+    yolo_loss : GetYoloLossExpectedKernelType
+    yolo_loss_grad : GetYoloLossExpectedKernelType
 
 - op: lu
   backward: lu_grad
