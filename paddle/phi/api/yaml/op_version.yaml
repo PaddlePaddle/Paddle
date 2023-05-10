@@ -72,6 +72,24 @@
         - add_input : Max
           comment : Pass the mix, min value as input, not attribute. Max is dispensable.
 
+- op : coalesce_tensor
+  version :
+    - checkpoint : "Upgrade coalesce_tensor: add a new attribute [use_align]."
+      action :
+        - add_attr : use_align
+          comment : In order to optionally take memory alignment into account when
+            coalescing tensors. The default value is true to be compatible
+            with before.
+          default : "true"
+    - checkpoint : "Upgrade coalesce_tensor: add a new attribute [align_size]."
+      action :
+        - add_attr : align_size
+          comment : In order to optionally take memory alignment into account when
+            coalescing tensors. The default value is -1 and use the default
+            align_size
+            of each place to be compatible with before.
+          default : -1
+
 - op : embedding
   version :
     - checkpoint : Upgrade flip, add new attr [axis] and delete attr [dims]
@@ -192,6 +210,13 @@
         - add_attr : dtype
           comment : In order to change output data type
           default : 5
+
+- op : lstsq
+  version :
+    - checkpoint : Upgrade lstsq, add 1 outputs [Residuals].
+      action :
+        - add_output : Residuals
+          comment : Output tensor of lstsq operator, meaning the squared residuals of the calculated solutions.
 
 - op : matrix_nms
   version :

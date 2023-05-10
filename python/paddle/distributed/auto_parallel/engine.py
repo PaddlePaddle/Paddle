@@ -511,7 +511,7 @@ class Engine:
             loss_indices = fetch_indices[group_idx]
             assert len(loss_indices) <= 1
             for idx in loss_indices:
-                logs["loss"] = outs[idx][0]
+                logs["loss"] = outs[idx]
             group_idx += 1
             # logging metrics
             dist_context = self._dist_contexts[mode]

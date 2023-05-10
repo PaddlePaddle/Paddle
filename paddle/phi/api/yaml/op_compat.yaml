@@ -95,6 +95,12 @@
     attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
+- op : add_n (sum)
+  inputs:
+    {inputs : X}
+  outputs:
+    {out : Out}
+
 - op : addmm
   backward : addmm_grad
   inputs :
@@ -343,6 +349,12 @@
   outputs :
     out : Out
 
+- op : box_coder
+  inputs :
+    {prior_box : PriorBox , prior_box_var : PriorBoxVar, target_box: TargetBox}
+  outputs :
+    output_box : OutputBox
+
 - op : broadcast_tensors
   backward : broadcast_tensors_grad
   inputs :
@@ -379,6 +391,12 @@
   outputs :
     out : Out
 
+- op : class_center_sample
+  inputs :
+    label : Label
+  outputs :
+    {remapped_label : RemappedLabel, sampled_local_class_center : SampledLocalClassCenter}
+
 - op : clip
   backward : clip_grad, clip_double_grad
   inputs :
@@ -400,6 +418,14 @@
     x : X
   outputs :
     out : Out
+
+- op : coalesce_tensor
+  inputs :
+    {input : Input}
+  outputs :
+    {output : Output, fused_output : FusedOutput}
+  attrs :
+    {size_of_dtype : user_defined_size_of_dtype}
 
 - op : complex
   backward : complex_grad
@@ -664,6 +690,16 @@
   backward : dropout_nd_grad
   extra :
     attrs : [bool fix_seed = false, int seed = 0]
+
+- op : edit_distance
+  inputs :
+    hyps : Hyps
+    refs : Refs
+    hypslength : HypsLength
+    refslength : RefsLength
+  outputs :
+    sequencenum : SequenceNum
+    out : Out
 
 - op : eig
   inputs :
@@ -1383,6 +1419,16 @@
   extra :
     attrs : [bool use_mkldnn = false, bool is_test = false]
 
+- op : lstsq
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {solution : Solution, residuals : Residuals, rank : Rank, singular_values : SingularValues}
+  scalar :
+    rcond :
+      data_type : float
+      support_tensor : true
+
 - op : lu_unpack
   backward : lu_unpack_grad
   inputs :
@@ -1454,6 +1500,22 @@
       data_type : int
   extra :
     attrs : [bool use_mkldnn = false]
+
+- op : max_pool2d_with_index
+  inputs :
+    {x : X}
+  outputs :
+    {out : Out, mask : Mask}
+  attrs :
+    kernel_size : ksize
+
+- op : max_pool3d_with_index
+  inputs :
+    {x : X}
+  outputs :
+    {out : Out, mask : Mask}
+  attrs :
+    kernel_size : ksize
 
 - op : maximum (elementwise_max)
   backward : maximum_grad (elementwise_max_grad)
@@ -2244,7 +2306,7 @@
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : tanh
-  backward : tanh_grad, tanh_double_grad (tanh_grad_grad), tanh_triple_grad
+  backward : tanh_grad, tanh_double_grad (tanh_grad_grad)
   inputs :
     x : X
   outputs :
@@ -2303,6 +2365,13 @@
   extra :
     outputs : [XShape]
     attrs : [bool use_mkldnn = false, str data_format = "AnyLayout", str mkldnn_data_type = "float32"]
+
+- op : triangular_solve
+  backward : triangular_solve_grad
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
 
 - op : trilinear_interp (trilinear_interp_v2)
   backward : trilinear_interp_grad (trilinear_interp_v2_grad)
@@ -2374,6 +2443,22 @@
   outputs :
     {out : Out, index : Index, counts : Counts}
 
+- op : unpool
+  inputs :
+    {x : X, indices: Indices}
+  outputs :
+    out : Out
+  int_array :
+    output_size:
+      data_type : int
+      support_tensor : true
+
+- op : unpool3d
+  inputs :
+    {x : X, indices: Indices}
+  outputs :
+    out : Out
+
 - op : unsqueeze (unsqueeze2)
   backward : unsqueeze_grad (unsqueeze2_grad), unsqueeze_double_grad(unsqueeze2_double_grad)
   inputs :
@@ -2439,6 +2524,16 @@
     {x : X, img_size : ImgSize}
   outputs :
     {boxes : Boxes, scores : Scores}
+
+- op : yolo_loss (yolov3_loss)
+  backward: yolo_loss_grad (yolov3_loss_grad)
+  inputs :
+    {x : X,  gt_box : GTBox, gt_label : GTLabel ,gt_score : GTScore}
+  outputs :
+    {loss : Loss , objectness_mask : ObjectnessMask, gt_match_mask : GTMatchMask}
+  get_expected_kernel_type :
+    yolo_loss : GetYoloLossExpectedKernelType
+    yolo_loss_grad : GetYoloLossExpectedKernelType
 
 - op: lu
   backward: lu_grad

@@ -228,7 +228,7 @@ class TestListWithoutControlFlow(unittest.TestCase):
             test_list_pop_without_control_flow_2,
         ]
 
-    def varbase_to_numpy(self, res):
+    def result_to_numpy(self, res):
         if isinstance(res, (list, tuple)):
             res = paddle.utils.map_structure(lambda x: x.numpy(), res)
         else:
@@ -248,7 +248,7 @@ class TestListWithoutControlFlow(unittest.TestCase):
                 res = paddle.jit.to_static(self.dygraph_func)(self.input)
             else:
                 res = self.dygraph_func(self.input)
-            return self.varbase_to_numpy(res)
+            return self.result_to_numpy(res)
 
     def test_transformed_static_result(self):
         for dyfunc in self.all_dygraph_funcs:
@@ -294,7 +294,7 @@ class TestListInWhileLoop(TestListWithoutControlFlow):
                 )
             else:
                 res = self.dygraph_func(self.input, self.iter_num)
-            return self.varbase_to_numpy(res)
+            return self.result_to_numpy(res)
 
 
 class TestListInWhileLoopWithStack(TestListInWhileLoop):
