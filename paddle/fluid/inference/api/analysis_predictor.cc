@@ -420,7 +420,8 @@ void AnalysisPredictor::InitPlace() {
 #endif
   } else if (config_.use_custom_device()) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
-    place_ = paddle::platform::CustomPlace(config_.custom_device_type());
+    place_ = paddle::platform::CustomPlace(config_.custom_device_type(),
+                                           config_.custom_device_id());
 #else
     PADDLE_THROW(platform::errors::Unavailable(
         "You tried to use CustomDevice forward propagation, but Paddle was not "
@@ -563,6 +564,14 @@ void *AnalysisPredictor::GetExecStream() const {
     }
   }
 #endif
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+  if (place_.GetType() == phi::AllocationType::CUSTOM) {
+    paddle::platform::DeviceContextPool &pool =
+        paddle::platform::DeviceContextPool::Instance();
+    return reinterpret_cast<const phi::CustomContext *>(pool.Get(place_))
+        ->stream();
+  }
+#endif
   // TODO(inference): Support other backends.
   return nullptr;
 }
@@ -677,12 +686,16 @@ static void DisablePrepareDataOpt(
 }
 
 bool AnalysisPredictor::PrepareExecutor() {
-#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
   if (config_.dist_config().use_dist_model()) {
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
     VLOG(3) << "use_dist_model is enabled, will init FleetExecutor.";
     return PrepareFleetExecutor();
-  }
+#else
+    PADDLE_THROW(platform::errors::PermissionDenied(
+        "Paddle can't use FleetExecutor since it's not compiled with PSCORE,"
+        "Please recompile or reinstall Paddle with PSCORE support."));
 #endif
+  }
   DisablePrepareDataOpt(inference_program_, 0, false);
 
   executor_->Prepare(
@@ -855,6 +868,30 @@ void AnalysisPredictor::InsertCommOp(
     new_var->SetPersistable(true);
     framework::OpDesc *gen_bkcl_id_op = block->AppendOp();
     gen_bkcl_id_op->SetType("c_gen_bkcl_id");
+    gen_bkcl_id_op->SetOutput("Out", {tmp_var_name});
+    gen_bkcl_id_op->SetAttr("rank", rank);
+    gen_bkcl_id_op->SetAttr("endpoint",
+                            config_.dist_config().current_endpoint());
+    gen_bkcl_id_op->SetAttr("other_endpoints", peer_endpoints);
+    gen_bkcl_id_op->SetAttr("ring_id", ring_id);
+    gen_bkcl_id_op->SetAttr("op_role",
+                            static_cast<int>(framework::OpRole::kForward));
+    gen_bkcl_id_op->CheckAttrs();
+    framework::OpDesc *comm_init_op = block->AppendOp();
+    comm_init_op->SetType("c_comm_init");
+    comm_init_op->SetInput("X", {tmp_var_name});
+    comm_init_op->SetAttr("rank", rank);
+    comm_init_op->SetAttr("nranks", nranks);
+    comm_init_op->SetAttr("ring_id", ring_id);
+    comm_init_op->SetAttr("op_role",
+                          static_cast<int>(framework::OpRole::kForward));
+    comm_init_op->CheckAttrs();
+  } else if (config_.use_custom_device()) {
+    framework::VarDesc *new_var = block->Var(tmp_var_name);
+    new_var->SetType(framework::proto::VarType::RAW);
+    new_var->SetPersistable(true);
+    framework::OpDesc *gen_bkcl_id_op = block->AppendOp();
+    gen_bkcl_id_op->SetType("c_gen_xccl_id");
     gen_bkcl_id_op->SetOutput("Out", {tmp_var_name});
     gen_bkcl_id_op->SetAttr("rank", rank);
     gen_bkcl_id_op->SetAttr("endpoint",
