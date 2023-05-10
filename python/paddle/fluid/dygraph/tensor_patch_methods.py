@@ -33,7 +33,10 @@ from ..framework import (
 )
 from .base import switch_to_static_graph
 from .math_op_patch import monkey_patch_math_tensor
-from paddle.fluid.data_feeder import convert_dtype, _PADDLE_DTYPE_2_NUMPY_DTYPE
+from paddle.fluid.data_feeder import (
+    convert_uint16_to_float,
+    _PADDLE_DTYPE_2_NUMPY_DTYPE,
+)
 import paddle.utils.deprecated as deprecated
 import paddle.profiler as profiler
 from paddle.profiler.utils import in_profiler_mode
@@ -614,7 +617,10 @@ def monkey_patch_tensor():
                 print(x.item(0, 2))         #3.3
 
         """
-        return self._getitem_from_offset(*args).item()
+        scalar = self._getitem_from_offset(*args)
+        if scalar.dtype == np.uint16:
+            return convert_uint16_to_float(scalar).item()
+        return scalar.item()
 
     @property
     def inplace_version(self):

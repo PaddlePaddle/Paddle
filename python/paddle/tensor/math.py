@@ -636,6 +636,64 @@ def add_(x, y, name=None):
     return _C_ops.add_(x, y)
 
 
+def logaddexp(x, y, name=None):
+    """
+    Elementwise LogAddExp Operator.
+    Add of exponentiations of the inputs
+    The equation is:
+
+    ..  math::
+
+        Out=log(X.exp()+Y.exp())
+
+    $X$ the tensor of any dimension.
+    $Y$ the tensor whose dimensions must be less than or equal to the dimensions of $X$.
+
+    There are two cases for this operator:
+
+    1. The shape of $Y$ is the same with $X$.
+    2. The shape of $Y$ is a continuous subsequence of $X$.
+
+    For case 2:
+
+    1. Broadcast $Y$ to match the shape of $X$, where axis is the start dimension index for broadcasting $Y$ onto $X$.
+    2. If $axis$ is -1 (default), $axis$=rank($X$)-rank($Y$).
+    3. The trailing dimensions of size 1 for $Y$ will be ignored for the consideration of subsequence, such as shape($Y$) = (2, 1) => (2).
+
+        For example:
+
+        ..  code-block:: python
+
+            shape(X) = (2, 3, 4, 5), shape(Y) = (,)
+            shape(X) = (2, 3, 4, 5), shape(Y) = (5,)
+            shape(X) = (2, 3, 4, 5), shape(Y) = (4, 5), with axis=-1(default) or axis=2
+            shape(X) = (2, 3, 4, 5), shape(Y) = (3, 4), with axis=1
+            shape(X) = (2, 3, 4, 5), shape(Y) = (2), with axis=0
+            shape(X) = (2, 3, 4, 5), shape(Y) = (2, 1), with axis=0
+
+    Args:
+        x (Tensor): Tensor or LoDTensor of any dimensions. Its dtype should be float32, float64, float16.
+        y (Tensor): Tensor or LoDTensor of any dimensions. Its dtype should be float32, float64, float16.
+        name (string, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        N-D Tensor. A location into which the result is stored. It's dimension equals with x.
+
+    Examples:
+
+        ..  code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([-1, -2, -3], 'float64')
+            y = paddle.to_tensor([-1], 'float64')
+            z = paddle.logaddexp(x, y)
+            print(z)  # [-0.30685282, -0.68673831, -0.87307199]
+    """
+
+    return paddle.log1p(paddle.exp(-paddle.abs(x - y))) + paddle.maximum(x, y)
+
+
 def subtract(x, y, name=None):
     """
     Substract two tensors element-wise. The equation is:
