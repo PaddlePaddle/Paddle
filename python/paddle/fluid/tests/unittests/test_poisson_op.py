@@ -399,13 +399,25 @@ class TestPoissonBF16Op(OpTest):
         self.b = 15
         self.dtype = np.uint16
 
+    def verify_output(self, outs):
+        hist, prob = output_hist(np.array(outs[0]), self.lam, self.a, self.b)
+        np.testing.assert_allclose(hist, prob, rtol=0.01)
+
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place_customized(self.verify_output, place)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out')
+        self.check_grad_with_place(
+            place,
+            ['X'],
+            'Out',
+            user_defined_grads=[np.zeros([2048, 1024], dtype="float32")],
+            user_defined_grad_outputs=[
+                np.random.rand(2048, 1024).astype("float32")
+            ],
+        )
 
 
 if __name__ == "__main__":
