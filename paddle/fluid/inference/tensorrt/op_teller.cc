@@ -2603,6 +2603,15 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
 
+#if IS_TRT_VERSION_LT(8000)
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      const auto x_shape = x_var_desc->GetShape();
+      if (x_shape.size() == 0) {
+        return false;  // not supported 0 dim.
+      }
+#endif
+
       auto inputs = desc.Inputs();
       if (op_type == "expand_as_v2") {
         if (!desc.HasAttr("target_shape") && inputs.find("Y") == inputs.end()) {
