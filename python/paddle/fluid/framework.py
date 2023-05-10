@@ -1645,8 +1645,6 @@ class Variable(metaclass=VariableMetaClass):
 
         def backward_hook_wrapper(dy):
             """call the backward hook in ."""
-            import numpy as np
-
             return hook(np.array(dy))
 
         def forward_hook_wrapper(x):

@@ -273,6 +273,7 @@ PD_REGISTER_KERNEL(coalesce_tensor,
                    int,
                    float,
                    double) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
 }
 
