@@ -1181,9 +1181,9 @@ struct SimpleOpTypeSetTeller : public Teller {
               dtype == framework::proto::VarType::FP16)) {
           return false;
         }
-        if (x_shape.size() == 1) {
-          VLOG(3)
-              << "Scale op does not support 1-dimensional input in tensorrt";
+        if (x_shape.size() == 1 || x_shape.size() == 0) {
+          VLOG(3) << "Scale op does not support 0 or 1-dimensional input in "
+                     "tensorrt";
           return false;
         }
       } else {
@@ -1535,8 +1535,24 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
     }
-    // remember that 1D input in static shape mode is filtered at the beginning
+
     if (op_type == "sum") {
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var = block->FindVar(x_var_name);
+      const auto x_shape = x_var->GetShape();
+      if (!with_dynamic_shape && (x_shape.size() == 0 || x_shape.size() == 1)) {
+        VLOG(3) << op_type
+                << " op does not support input's dim is 0 or 1 in tensorrt "
+                   "with static shape.";
+        return false;
+      }
       return true;
     }
 
@@ -1778,22 +1794,7 @@ struct SimpleOpTypeSetTeller : public Teller {
         }
       }
     }
-    if (op_type == "swish") {
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
-      auto x_var_name = desc.Input("X")[0];
-      auto* x_var_desc = block->FindVar(x_var_name);
-      const auto x_shape = x_var_desc->GetShape();
-      if (x_shape.size() == 1) {
-        VLOG(3) << "swish op does not support input's dim is 1 in tensorrt.";
-        return false;
-      }
-    }
+
     if (op_type == "prelu") {
       if (desc.Input("X").size() != 1) {
         VLOG(3) << "Invalid input X's size of prelu TRT converter. "
@@ -2151,6 +2152,25 @@ struct SimpleOpTypeSetTeller : public Teller {
             return true;
           }
         }
+        return false;
+      }
+    }
+
+    if (op_type == "square") {
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var = block->FindVar(x_var_name);
+      const auto x_shape = x_var->GetShape();
+      if (!with_dynamic_shape && x_shape.size() == 0) {
+        VLOG(3) << op_type
+                << " op does not support input's dim is 0 in tensorrt "
+                   "with static shape.";
         return false;
       }
     }
