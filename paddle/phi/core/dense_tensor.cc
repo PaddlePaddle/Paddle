@@ -138,7 +138,7 @@ void* DenseTensor::AllocateFrom(Allocator* allocator,
     meta_.offset = 0;
     VLOG(10) << "Allocate data with bytes: " << bytes;
     auto holder = allocator->Allocate(bytes);
-    if (holder) {
+    if (holder_) {
       PADDLE_ENFORCE_LE(
           numel() * static_cast<int64_t>(SizeOf(dtype)) +
               static_cast<int64_t>(meta_.offset),
