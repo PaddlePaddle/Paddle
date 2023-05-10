@@ -139,8 +139,9 @@ void MasterDaemon::StopByControlFd() {
 #else
 void MasterDaemon::InitControlFd() {
   ghStopEvent_ = CreateEvent(NULL, TRUE, FALSE, NULL);
-  PADDLE_ENFORCE_EQ(
-      ghStopEvent_, true, phi::errors::Fatal("failed to cread control pipe"));
+  PADDLE_ENFORCE_NE(ghStopEvent_,
+                    nullptr,
+                    phi::errors::Fatal("failed to cread control pipe"));
 }
 void MasterDaemon::CloseControlFd() { CloseHandle(ghStopEvent_); }
 void MasterDaemon::StopByControlFd() { SetEvent(ghStopEvent_); }
