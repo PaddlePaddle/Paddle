@@ -103,7 +103,7 @@ void MatMulFunctionImplWithBlas(
     bool trans_x,
     bool trans_y,
     bool flag = false,
-    phi::funcs::MatmulPlanner* matmul_planner = nullptr) {
+    phi::funcs::MatmulPlanner* matmul_planner UNUSED = nullptr) {
   const int x_ndim = x_dims.size();
   const int y_ndim = y_dims.size();
 
