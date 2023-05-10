@@ -239,8 +239,8 @@ void NearestInterpKernel(
     int out_w,
     const std::vector<float>& scale,
     const std::string& interp_method,
-    bool align_corners,
-    int align_mode,
+    bool align_corners UNUSED,
+    int align_mode UNUSED,
     DenseTensor* output) {
   InterpolateKernel<T, Context>(ctx,
                                 x,
