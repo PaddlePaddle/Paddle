@@ -162,6 +162,19 @@ if((WITH_GPU) AND LOCAL_ALL_PLAT)
   set_tests_properties(test_parallel_dygraph_pipeline_parallel
                        PROPERTIES TIMEOUT "500")
 endif()
+if((WITH_GPU OR WITH_XPU) AND LOCAL_ALL_PLAT)
+  bash_test_modules(
+    test_parallel_dygraph_pipeline_parallel_sync_send
+    START_BASH
+    ../../dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=21992;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python;PADDLE_P2P_SYNC_SEND=1"
+  )
+  set_tests_properties(test_parallel_dygraph_pipeline_parallel_sync_send
+                       PROPERTIES TIMEOUT "300")
+endif()
 if((WITH_GPU) AND LOCAL_ALL_PLAT)
   bash_test_modules(
     test_parallel_dygraph_pipeline_parallel_with_virtual_stage

@@ -54,7 +54,7 @@ template <typename T, typename Context>
 void FullLikeCsrKernel(const Context& dev_ctx,
                        const SparseCsrTensor& x,
                        const Scalar& val,
-                       DataType dtype,
+                       DataType dtype UNUSED,
                        SparseCsrTensor* out) {
   phi::Copy<Context>(dev_ctx,
                      x.non_zero_crows(),
