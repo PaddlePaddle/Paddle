@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/ir/operation.h"
-#include <iostream>
 #include "paddle/ir/dialect.h"
 #include "paddle/ir/program.h"
 #include "paddle/ir/utils.h"
