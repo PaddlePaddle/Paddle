@@ -73,7 +73,7 @@ class MaxPoolGrad {
  public:
   static constexpr bool use_x = true;
   HOSTDEVICE inline void compute(
-      const T& x, const T& y, const T& dy, T scale, T* dx) {
+      const T& x, const T& y, const T& dy, T scale UNUSED, T* dx) {
     *dx += dy * static_cast<T>(x == y);
   }
 };

@@ -25,8 +25,8 @@ class Point_ {
  public:
   // default constructor
   Point_() {}
-  Point_(T _x, T _y) {}
-  Point_(const Point_& pt) {}
+  Point_(T _x UNUSED, T _y UNUSED) {}
+  Point_(const Point_& pt UNUSED) {}
 
   Point_& operator=(const Point_& pt);
   // conversion to another data type
@@ -71,5 +71,3 @@ T PolyOverlapArea(const T* box1,
                   const bool normalized);
 }  // namespace funcs
 }  // namespace phi
-
-#include "paddle/phi/kernels/funcs/detection/poly_util.cc"
