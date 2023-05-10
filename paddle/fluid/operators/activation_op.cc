@@ -29,7 +29,8 @@ limitations under the License. */
 #include "paddle/phi/backends/dynload/port.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/infermeta/backward.h"
-DECLARE_bool(use_mkldnn);
+
+PHI_DECLARE_bool(use_mkldnn);
 
 namespace paddle {
 namespace operators {

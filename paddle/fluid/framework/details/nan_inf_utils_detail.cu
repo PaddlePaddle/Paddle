@@ -24,9 +24,10 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 
-DECLARE_int32(check_nan_inf_level);
+PHI_DECLARE_int32(check_nan_inf_level);
 
 namespace paddle {
 namespace framework {
@@ -516,7 +517,7 @@ void TensorCheckerVisitor<phi::GPUContext>::apply(
                                        check_nan_inf_level,
                                        nan_inf_zero_tensor.data<int64_t>());
 
-  if (check_nan_inf_level == 0) {
+  if (check_nan_inf_level == 0 && GetNanInfStackLimit() > 0) {
     auto nan_cpu =
         phi::memory_utils::Alloc(phi::CPUPlace(), sizeof(int64_t) * 3);
     int64_t* nan_cpu_ptr = reinterpret_cast<int64_t*>(nan_cpu->ptr());

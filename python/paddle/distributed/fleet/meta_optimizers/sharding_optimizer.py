@@ -755,9 +755,6 @@ class ShardingOptimizer(MetaOptimizerBase):
                 sync=False,
             )
 
-        if core.is_compiled_with_custom_device('npu'):
-            return
-
         # GPU
         for pair in self.pipeline_pair:
             pair_key = pair[0] * 1000 + pair[1]

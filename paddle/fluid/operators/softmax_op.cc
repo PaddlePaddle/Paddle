@@ -43,12 +43,11 @@ class SoftmaxOp : public framework::OperatorWithKernel {
     if (input_data_type == framework::proto::VarType::FP16) {
       PADDLE_ENFORCE_EQ(
           platform::is_gpu_place(ctx.GetPlace()) ||
-              platform::is_npu_place(ctx.GetPlace()) ||
               platform::is_xpu_place(ctx.GetPlace()) ||
               platform::is_custom_place(ctx.GetPlace()),
           true,
           platform::errors::InvalidArgument(
-              "float16 can only be used on GPU/NPU/XPU/MLU and custom place"));
+              "float16 can only be used on GPU/NPU/XPU and custom place"));
     }
     return phi::KernelKey(
         ctx.GetPlace(), layout_, phi::TransToPhiDataType(input_data_type));
@@ -128,11 +127,10 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
         ctx, framework::GradVarName("Out"));
     if (input_data_type == framework::proto::VarType::FP16) {
       if (!(platform::is_gpu_place(ctx.GetPlace()) ||
-            platform::is_npu_place(ctx.GetPlace()) ||
             platform::is_xpu_place(ctx.GetPlace()) ||
             platform::is_custom_place(ctx.GetPlace())))
         PADDLE_THROW(platform::errors::InvalidArgument(
-            "float16 can only be used on GPU/NPU/XPU/MLU and custom place"));
+            "float16 can only be used on GPU/NPU/XPU and custom place"));
     }
     return phi::KernelKey(
         ctx.GetPlace(), layout_, phi::TransToPhiDataType(input_data_type));

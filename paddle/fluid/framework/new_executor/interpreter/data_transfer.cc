@@ -227,8 +227,7 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
 
   // NOTE(winter-wang): in npu and custom device, D2H kernel is asynchronous.
   // need to explicit synchronization.
-  if ((platform::is_npu_place(place) || platform::is_custom_place(place)) &&
-      op_type == kMemcpyD2H) {
+  if ((platform::is_custom_place(place)) && op_type == kMemcpyD2H) {
     dev_ctx->Wait();
   }
 
@@ -419,7 +418,6 @@ std::shared_ptr<OperatorBase> TransferDevice(const std::string& var_name,
   if (IsSupportedHeterPlace(dst_place)) {
     op_type = kMemcpyH2D;
     int dst_place_type = platform::is_gpu_place(dst_place)      ? 0
-                         : platform::is_npu_place(dst_place)    ? 1
                          : platform::is_ipu_place(dst_place)    ? 3
                          : platform::is_xpu_place(dst_place)    ? 2
                          : platform::is_custom_place(dst_place) ? 6

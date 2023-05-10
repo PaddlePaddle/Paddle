@@ -237,7 +237,7 @@ def _conv_nd(
             "data_format": data_format,
         }
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], op_type
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], op_type
         )
         helper = LayerHelper(op_type, **locals())
         dtype = helper.input_dtype(input_param_name='x')
@@ -1344,7 +1344,10 @@ def conv2d_transpose(
             'data_format': data_format,
         }
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'conv2d_transpose'
+            x,
+            'x',
+            ['float16', 'uint16', 'float32', 'float64'],
+            'conv2d_transpose',
         )
         helper = LayerHelper(op_type, **locals())
         pre_bias = helper.create_variable_for_type_inference(x.dtype)

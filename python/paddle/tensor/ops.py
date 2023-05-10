@@ -221,7 +221,7 @@ def acos(x, name=None):
         return _C_ops.acos(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'acos'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'acos'
         )
         helper = LayerHelper('acos', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -258,7 +258,7 @@ def acosh(x, name=None):
         return _C_ops.acosh(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'acosh'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'acosh'
         )
         helper = LayerHelper('acosh', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -295,7 +295,7 @@ def asin(x, name=None):
         return _C_ops.asin(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'asin'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'asin'
         )
         helper = LayerHelper('asin', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -332,7 +332,7 @@ def asinh(x, name=None):
         return _C_ops.asinh(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'asinh'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'asinh'
         )
         helper = LayerHelper('asinh', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -369,7 +369,7 @@ def atan(x, name=None):
         return _C_ops.atan(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'atan'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'atan'
         )
         helper = LayerHelper('atan', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -406,7 +406,7 @@ def atanh(x, name=None):
         return _C_ops.atanh(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'atanh'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'atanh'
         )
         helper = LayerHelper('atanh', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -444,7 +444,7 @@ def ceil(x, name=None):
         return _C_ops.ceil(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'ceil'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'ceil'
         )
         helper = LayerHelper('ceil', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -522,7 +522,7 @@ def cosh(x, name=None):
         return _C_ops.cosh(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'cosh'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'cosh'
         )
         helper = LayerHelper('cosh', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -611,7 +611,7 @@ def expm1(x, name=None):
         return _C_ops.expm1(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'expm1'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'expm1'
         )
         helper = LayerHelper('expm1', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -649,7 +649,7 @@ def floor(x, name=None):
         return _C_ops.floor(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'floor'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'floor'
         )
         helper = LayerHelper('floor', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -687,7 +687,7 @@ def reciprocal(x, name=None):
         return _C_ops.reciprocal(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'reciprocal'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'reciprocal'
         )
         helper = LayerHelper('reciprocal', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -734,7 +734,7 @@ def round(x, name=None):
         return _C_ops.round(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'round'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'round'
         )
         helper = LayerHelper('round', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -773,7 +773,7 @@ def rsqrt(x, name=None):
         return _C_ops.rsqrt(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'rsqrt'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'rsqrt'
         )
         helper = LayerHelper('rsqrt', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -848,7 +848,7 @@ def sin(x, name=None):
         return _C_ops.sin(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'sin'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'sin'
         )
         helper = LayerHelper('sin', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -885,7 +885,7 @@ def sinh(x, name=None):
         return _C_ops.sinh(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'sinh'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'sinh'
         )
         helper = LayerHelper('sinh', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -1010,7 +1010,7 @@ def tan(x, name=None):
         return _C_ops.tan(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'tan'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'tan'
         )
         helper = LayerHelper('tan', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)

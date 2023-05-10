@@ -771,9 +771,7 @@ if(WITH_DISTRIBUTE)
            heter_service_proto
            fleet_executor
            ${BRPC_DEP})
-    set(DISTRIBUTE_COMPILE_FLAGS
-        "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=parentheses"
-    )
+    set(DISTRIBUTE_COMPILE_FLAGS "")
     if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
       set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
     endif()
@@ -855,9 +853,7 @@ if(WITH_DISTRIBUTE)
            brpc
            fleet_executor
            flags)
-    set(DISTRIBUTE_COMPILE_FLAGS
-        "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=parentheses"
-    )
+    set(DISTRIBUTE_COMPILE_FLAGS "")
     if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
       set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
     endif()
@@ -928,9 +924,7 @@ if(WITH_DISTRIBUTE)
            fleet_executor)
   endif()
 elseif(WITH_PSLIB)
-  set(DISTRIBUTE_COMPILE_FLAGS
-      "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor"
-  )
+  set(DISTRIBUTE_COMPILE_FLAGS "")
   if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
     set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
   endif()

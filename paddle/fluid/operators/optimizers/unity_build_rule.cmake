@@ -9,7 +9,6 @@ register_unity_group(
   ftrl_op.cc
   lars_momentum_op.cc
   proximal_adagrad_op.cc
-  adam_op.cc
   proximal_gd_op.cc
   decayed_adagrad_op.cc
   adadelta_op.cc
@@ -22,7 +21,6 @@ register_unity_group(
   sgd_op.cu
   proximal_adagrad_op.cu
   adagrad_op.cu
-  adam_op.cu
   decayed_adagrad_op.cu
   adadelta_op.cu
   lamb_op.cu)
