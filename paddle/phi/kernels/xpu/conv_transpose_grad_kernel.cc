@@ -97,10 +97,46 @@ void Conv2dTransposeGradKernel(const Context& ctx,
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose_grad");
 }
 
+template <typename T, typename Context>
+void DepthwiseConv2dTransposeGradKernel(const Context& ctx,
+                                        const DenseTensor& x,
+                                        const DenseTensor& filter,
+                                        const DenseTensor& dout,
+                                        const std::vector<int>& strides,
+                                        const std::vector<int>& paddings,
+                                        const std::vector<int>& output_padding,
+                                        const IntArray& output_size,
+                                        const std::string& padding_algorithm,
+                                        int groups,
+                                        const std::vector<int>& dilations,
+                                        const std::string& data_format,
+                                        DenseTensor* dx,
+                                        DenseTensor* dfilter) {
+  Conv2dTransposeGradKernel<T, Context>(ctx,
+                                         x,
+                                         filter,
+                                         dout,
+                                         strides,
+                                         paddings,
+                                         output_padding,
+                                         output_size,
+                                         padding_algorithm,
+                                         groups,
+                                         dilations,
+                                         data_format,
+                                         dx,
+                                         dfilter);
+
+                                         }
 }  // namespace phi
 
 PD_REGISTER_KERNEL(conv2d_transpose_grad,
                    XPU,
                    ALL_LAYOUT,
                    phi::Conv2dTransposeGradKernel,
+                   float) {}
+PD_REGISTER_KERNEL(depthwise_conv2d_transpose_grad,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::DepthwiseConv2dTransposeGradKernel,
                    float) {}
