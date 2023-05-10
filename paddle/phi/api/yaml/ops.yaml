@@ -2265,3 +2265,15 @@
   kernel :
     func : yolo_box
     data_type : x
+
+- op : yolo_loss
+  args : (Tensor x, Tensor gt_box, Tensor gt_label, Tensor gt_score, int[] anchors={}, int[] anchor_mask={}, int class_num =1 , float ignore_thresh=0.7, int downsample_ratio=32, bool use_label_smooth=true, float scale_x_y=1.0)
+  output : Tensor(loss), Tensor(objectness_mask), Tensor(gt_match_mask)
+  infer_meta :
+    func : YoloLossInferMeta
+  kernel :
+    func : yolo_loss
+    data_type : x
+  optional : gt_score
+  intermediate : objectness_mask, gt_match_mask
+  backward : yolo_loss_grad

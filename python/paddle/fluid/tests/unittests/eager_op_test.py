@@ -557,9 +557,9 @@ class OpTest(unittest.TestCase):
     def _enable_check_cinn_test(self, place, inputs, outputs):
         # if the test not run in cuda or the paddle not compile with CINN, skip cinn test
         if (
-            core.is_compiled_with_cinn()
-            and core.is_compiled_with_cuda()
-            and isinstance(place, fluid.CUDAPlace)
+            not core.is_compiled_with_cinn()
+            or not core.is_compiled_with_cuda()
+            or not isinstance(place, fluid.CUDAPlace)
         ):
             return False
         # CINN not support bfloat16 now, skip cinn test

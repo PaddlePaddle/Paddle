@@ -1198,17 +1198,6 @@
     func : unique
     data_type : x
 
-- op : yolo_loss
-  args : (Tensor x, Tensor gt_box, Tensor gt_label, Tensor gt_score, int[] anchors, int[] anchor_mask, int class_num, float ignore_thresh, int downsample_ratio, bool use_label_smooth=true, float scale_x_y=1.0)
-  output : Tensor(loss), Tensor(objectness_mask), Tensor(gt_match_mask)
-  infer_meta :
-    func : YoloLossInferMeta
-  kernel :
-    func : yolo_loss
-    data_type : x
-  optional : gt_score
-  backward : yolo_loss_grad
-
 - op : zeros
   args : (IntArray shape, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
   output : Tensor(out)
