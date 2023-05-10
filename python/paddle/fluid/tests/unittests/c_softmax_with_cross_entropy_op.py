@@ -26,7 +26,7 @@ def stable_softmax(x):
     """Compute the softmax of vector x in a numerically stable way."""
     # clip to shiftx, otherwise, when calc loss with
     # log(exp(shiftx)), may get log(0)=INF
-    shiftx = (x - np.max(x)).clip(-64.0)
+    shiftx = x - np.max(x)
     exps = np.exp(shiftx)
     return exps / np.sum(exps)
 
@@ -88,13 +88,13 @@ class TestCSoftmaxWithCrossEntropy(unittest.TestCase):
         # get input data for rank 0
         np.random.seed(0)
         input0 = np.random.uniform(
-            low=-10.0, high=10.0, size=(self.batch_size, local_elements)
+            low=-100.0, high=100.0, size=(self.batch_size, local_elements)
         ).astype(data_type)
 
         # get input data for rank 1
         np.random.seed(1)
         input1 = np.random.uniform(
-            low=-10.0, high=10.0, size=(self.batch_size, local_elements)
+            low=-100.0, high=100.0, size=(self.batch_size, local_elements)
         ).astype(data_type)
 
         # get combined input data
