@@ -76,12 +76,10 @@ class XPUTestPadOp(XPUOpTestWrapper):
             }
 
         def test_check_output(self):
-            self.check_output_with_place(self.place, check_dygraph=True)
+            self.check_output_with_place(self.place)
 
         def test_check_grad_normal(self):
-            self.check_grad_with_place(
-                self.place, ['X'], 'Out', check_dygraph=True
-            )
+            self.check_grad_with_place(self.place, ['X'], 'Out')
 
     class TestCase1(TestPadOp):
         def init_test_case(self):
