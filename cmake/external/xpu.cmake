@@ -81,9 +81,6 @@ set(XPU_XFT_URL "${XPU_XFT_BASE_URL}/${XPU_XFT_DIR_NAME}.tar.gz")
 set(XPU_PACK_DEPENCE_URL
     "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/pack_paddle_depence.sh"
     CACHE STRING "" FORCE)
-#set(XPU_CHECK_DEPENCE_URL
-#    "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/check_xpu_dependence.sh"
-#    CACHE STRING "" FORCE)
 set(XPU_XFT_GET_DEPENCE_URL
     "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/get_xft_dependence.sh"
     CACHE STRING "" FORCE)
