@@ -249,7 +249,7 @@ class TestCooSoftmax(unittest.TestCase):
 
         paddle.enable_static()
         indices = paddle.static.data(
-            name='indices', shape=[2, 5], dtype='int64'
+            name='indices', shape=[2, 5], dtype='int32'
         )
         values = paddle.static.data(
             name='values', shape=[5, 1], dtype='float32'

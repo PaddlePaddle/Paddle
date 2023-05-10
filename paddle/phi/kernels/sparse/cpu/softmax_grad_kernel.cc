@@ -89,23 +89,24 @@ void SoftmaxCsrGradKernel(const Context& dev_ctx,
       }));
 }
 
-std::vector<int64_t> GetOffsets(const DenseTensor& indices,
-                                const std::vector<int64_t>& sizes,
-                                const int64_t dim) {
+template <typename IntT>
+std::vector<IntT> GetOffsets(const DenseTensor& indices,
+                             const std::vector<IntT>& sizes,
+                             const int dim) {
   auto ndim = indices.dims()[0];
   auto nnz = indices.dims()[1];
-  std::vector<int64_t> offsets(nnz);
-  std::vector<int64_t> strides(ndim, 1);
-  auto indices_ptr = indices.data<int64_t>();
+  std::vector<IntT> offsets(nnz);
+  std::vector<IntT> strides(ndim, 1);
+  auto indices_ptr = indices.data<IntT>();
 
   if (ndim > 1) {
-    for (int64_t i = ndim - 2; i >= 0; i--) {
+    for (IntT i = ndim - 2; i >= 0; i--) {
       strides[i] = strides[i + 1] * sizes[i + 1];
     }
   }
 
   for (int i = 0; i < nnz; i++) {
-    int64_t acc = 0;
+    IntT acc = 0;
     for (int j = 0; j < ndim; j++) {
       auto indices_cur = indices_ptr + j * nnz + i;
       auto stride = strides[j];
@@ -119,46 +120,47 @@ std::vector<int64_t> GetOffsets(const DenseTensor& indices,
   return offsets;
 }
 
+template <typename IntT>
 void GetPoolsSoftmaxGrad(const DenseTensor& indices,
-                         const std::vector<int64_t>& sizes,
-                         const int64_t dim,
-                         std::vector<std::vector<int64_t>>* pools) {
+                         const std::vector<IntT>& sizes,
+                         const int dim,
+                         std::vector<std::vector<IntT>>* pools) {
   auto ndim = indices.dims()[0];
   auto nnz = indices.dims()[1];
-  std::vector<int64_t> strides(ndim, 1);
+  std::vector<IntT> strides(ndim, 1);
 
   if (ndim > 1) {
-    for (int64_t i = ndim - 2; i >= 0; i--) {
+    for (IntT i = ndim - 2; i >= 0; i--) {
       strides[i] = strides[i + 1] * (i + 1 == dim ? 1 : sizes[i + 1]);
     }
   }
 
-  auto* indices_data = indices.data<int64_t>();
-  for (int64_t i = 0; i < nnz; i++) {
-    int64_t pool_index = 0;
-    for (int64_t j = 0; j < ndim; j++) {
+  auto* indices_data = indices.data<IntT>();
+  for (IntT i = 0; i < nnz; i++) {
+    IntT pool_index = 0;
+    for (IntT j = 0; j < ndim; j++) {
       if (j == dim) continue;
       pool_index += strides[j] * indices_data[j * nnz + i];
     }
-    if (static_cast<int64_t>(pools->size()) <= pool_index) {
+    if (static_cast<IntT>(pools->size()) <= pool_index) {
       pools->resize(pool_index + 1);
     }
     pools->at(pool_index).push_back(i);
   }
 }
 
-template <typename T, typename Context>
-void SoftmaxCooGradKernel(const Context& dev_ctx,
-                          const SparseCooTensor& out,
-                          const SparseCooTensor& dout,
-                          int axis,
-                          SparseCooTensor* dx) {
+template <typename T, typename IntT, typename Context>
+void SoftmaxCooGradCPUKernel(const Context& dev_ctx,
+                             const SparseCooTensor& out,
+                             const SparseCooTensor& dout,
+                             int axis,
+                             SparseCooTensor* dx) {
   auto out_indices = out.indices();
   auto out_values = out.values();
   auto out_values_ptr = out_values.data<T>();
   const auto out_dims = out.dims();
   auto sparse_dim = out.sparse_dim();
-  auto sizes = phi::vectorize(out_dims);
+  auto sizes = phi::vectorize<IntT>(out_dims);
   auto grad_indices = dout.indices();
   auto grad_values = dout.values();
   auto grad_values_ptr = grad_values.data<T>();
@@ -230,10 +232,10 @@ void SoftmaxCooGradKernel(const Context& dev_ctx,
   }
 
   auto nnz = out.nnz();
-  int64_t nvalues = std::accumulate(sizes.begin() + sparse_dim,
-                                    sizes.end(),
-                                    static_cast<int64_t>(1),
-                                    std::multiplies<>());
+  IntT nvalues = std::accumulate(sizes.begin() + sparse_dim,
+                                 sizes.end(),
+                                 static_cast<IntT>(1),
+                                 std::multiplies<>());
 
   DenseTensor values_2(*values);
   values_2.Resize(phi::make_ddim({nnz, nvalues}));
@@ -243,7 +245,7 @@ void SoftmaxCooGradKernel(const Context& dev_ctx,
 
   DenseTensor grad_values_2(grad_values);
   grad_values_2.Resize(phi::make_ddim({nnz, nvalues}));
-  std::vector<std::vector<int64_t>> pools;
+  std::vector<std::vector<IntT>> pools;
   GetPoolsSoftmaxGrad(out_indices, sizes, dim, &pools);
 
   for (size_t p = 0; p < pools.size(); p++) {
@@ -253,7 +255,7 @@ void SoftmaxCooGradKernel(const Context& dev_ctx,
     std::vector<T> tmp_row(nvalues, 0);
 
     /* Compute tmp = - sum_j output_j * grad_j */
-    for (int64_t i : pool_indices) {
+    for (IntT i : pool_indices) {
       auto out_values_row = out_values_2.data<T>() + i * nvalues;
       auto low = std::lower_bound(
           grad_offsets.begin(), grad_offsets.end(), out_offsets[i]);
@@ -261,14 +263,14 @@ void SoftmaxCooGradKernel(const Context& dev_ctx,
 
       if (j < grad_nnz && (out_offsets[i] == grad_offsets[j])) {
         auto grad_values_row = grad_values_2.data<T>() + j * nvalues;
-        for (int64_t k = 0; k < nvalues; k++) {
+        for (IntT k = 0; k < nvalues; k++) {
           tmp_row[k] -= (*(out_values_row + k)) * (*(grad_values_row + k));
         }
       }
     }
 
     /* Compute grad_input = output * (grad + tmp)*/
-    for (int64_t i : pool_indices) {
+    for (IntT i : pool_indices) {
       auto out_values_row = out_values_2.data<T>() + i * nvalues;
       auto values_row = values_2.data<T>() + i * nvalues;
       auto low = std::lower_bound(
@@ -277,17 +279,30 @@ void SoftmaxCooGradKernel(const Context& dev_ctx,
 
       if (j < grad_nnz && (out_offsets[i] == grad_offsets[j])) {
         auto grad_values_row = grad_values_2.data<T>() + j * nvalues;
-        for (int64_t k = 0; k < nvalues; k++) {
+        for (IntT k = 0; k < nvalues; k++) {
           *(values_row + k) =
               (*(out_values_row + k)) * ((*(grad_values_row + k)) + tmp_row[k]);
         }
       } else {
-        for (int64_t k = 0; k < nvalues; k++) {
+        for (IntT k = 0; k < nvalues; k++) {
           *(values_row + k) = (*out_values_row + k) * (tmp_row[k]);
         }
       }
     }
   }
+}
+
+template <typename T, typename Context>
+void SoftmaxCooGradKernel(const Context& dev_ctx,
+                          const SparseCooTensor& out,
+                          const SparseCooTensor& dout,
+                          int axis,
+                          SparseCooTensor* dx) {
+  PD_VISIT_BASE_INTEGRAL_TYPES(
+      out.indices().dtype(), "SoftmaxCooGradCPUKernel", ([&] {
+        SoftmaxCooGradCPUKernel<T, data_t, Context>(
+            dev_ctx, out, dout, axis, dx);
+      }));
 }
 
 }  // namespace sparse

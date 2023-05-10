@@ -87,40 +87,40 @@ void SoftmaxCsrKernel(const Context& dev_ctx,
       }));
 }
 
+template <typename IntT>
 void GetPoolsSoftmax(const DenseTensor& indices,
-                     const std::vector<int64_t>& sizes,
-                     const int64_t dim,
-                     std::vector<std::vector<int64_t>>* pools) {
+                     const std::vector<IntT>& sizes,
+                     const int dim,
+                     std::vector<std::vector<IntT>>* pools) {
   auto ndim = indices.dims()[0];
   auto nnz = indices.dims()[1];
-  std::vector<int64_t> strides(ndim, 1);
+  std::vector<IntT> strides(ndim, 1);
 
   if (ndim > 1) {
-    for (int64_t i = ndim - 2; i >= 0; i--) {
+    for (IntT i = ndim - 2; i >= 0; i--) {
       strides[i] = strides[i + 1] * (i + 1 == dim ? 1 : sizes[i + 1]);
     }
   }
 
-  auto* indices_data = indices.data<int64_t>();
-  for (int64_t i = 0; i < nnz; i++) {
-    int64_t pool_index = 0;
-    for (int64_t j = 0; j < ndim; j++) {
+  auto* indices_data = indices.data<IntT>();
+  for (IntT i = 0; i < nnz; i++) {
+    IntT pool_index = 0;
+    for (IntT j = 0; j < ndim; j++) {
       if (j == dim) continue;
       pool_index += strides[j] * indices_data[j * nnz + i];
     }
-    if (static_cast<int64_t>(pools->size()) <= pool_index) {
+    if (static_cast<IntT>(pools->size()) <= pool_index) {
       pools->resize(pool_index + 1);
     }
     pools->at(pool_index).push_back(i);
   }
 }
 
-// cpu kerenel
-template <typename T, typename Context>
-void SoftmaxCooKernel(const Context& dev_ctx,
-                      const SparseCooTensor& x,
-                      int axis,
-                      SparseCooTensor* out) {
+template <typename T, typename IntT, typename Context>
+void SoftmaxCooCPUKernel(const Context& dev_ctx,
+                         const SparseCooTensor& x,
+                         int axis,
+                         SparseCooTensor* out) {
   auto indices = x.indices();
   auto values = x.values();
   const auto x_dims = x.dims();
@@ -136,12 +136,12 @@ void SoftmaxCooKernel(const Context& dev_ctx,
     return;
   }
 
-  const std::vector<int64_t> sizes = phi::vectorize<int64_t>(x_dims);
-  std::vector<std::vector<int64_t>> pools;
-  int64_t nvalues = std::accumulate(sizes.begin() + sparse_dim,
-                                    sizes.end(),
-                                    static_cast<int64_t>(1),
-                                    std::multiplies<>());
+  const std::vector<IntT> sizes = phi::vectorize<IntT>(x_dims);
+  std::vector<std::vector<IntT>> pools;
+  IntT nvalues = std::accumulate(sizes.begin() + sparse_dim,
+                                 sizes.end(),
+                                 static_cast<IntT>(1),
+                                 std::multiplies<>());
   GetPoolsSoftmax(out_indices, sizes, dim, &pools);
 
   auto values_ptr = values.data<T>();
@@ -154,21 +154,21 @@ void SoftmaxCooKernel(const Context& dev_ctx,
 
     std::vector<T> mx_row(nvalues, -std::numeric_limits<T>::infinity());
     std::vector<T> exp_sums_row(nvalues, 0);
-    int64_t pool_size = static_cast<int64_t>(pool_indices.size());
+    IntT pool_size = static_cast<IntT>(pool_indices.size());
 
     // Compute max for each pool
-    for (int64_t i = 0; i < pool_size; i++) {
+    for (IntT i = 0; i < pool_size; i++) {
       auto values_row = values_ptr + pool_indices[i] * nvalues;
-      for (int64_t j = 0; j < nvalues; j++) {
+      for (IntT j = 0; j < nvalues; j++) {
         mx_row[j] = std::max(mx_row[j], *(values_row + j));
       }
     }
 
     // exp to (v - mx) and sum the results
-    for (int64_t i = 0; i < pool_size; i++) {
+    for (IntT i = 0; i < pool_size; i++) {
       auto values_row = values_ptr + pool_indices[i] * nvalues;
       auto out_values_row = out_values_ptr + pool_indices[i] * nvalues;
-      for (int64_t j = 0; j < nvalues; j++) {
+      for (IntT j = 0; j < nvalues; j++) {
         auto v = std::exp(*(values_row + j) - mx_row[j]);
         out_values_row[j] = v;
         exp_sums_row[j] += v;
@@ -176,13 +176,25 @@ void SoftmaxCooKernel(const Context& dev_ctx,
     }
 
     /* Normalize with the sum of exponents */
-    for (int64_t i = 0; i < pool_size; i++) {
+    for (IntT i = 0; i < pool_size; i++) {
       auto out_values_row = out_values_ptr + pool_indices[i] * nvalues;
-      for (int64_t j = 0; j < nvalues; j++) {
+      for (IntT j = 0; j < nvalues; j++) {
         out_values_row[j] *= 1.0 / exp_sums_row[j];
       }
     }
   }
+}
+
+// cpu kerenel
+template <typename T, typename Context>
+void SoftmaxCooKernel(const Context& dev_ctx,
+                      const SparseCooTensor& x,
+                      int axis,
+                      SparseCooTensor* out) {
+  PD_VISIT_BASE_INTEGRAL_TYPES(
+      x.indices().dtype(), "SoftmaxCooCPUKernel", ([&] {
+        SoftmaxCooCPUKernel<T, data_t, Context>(dev_ctx, x, axis, out);
+      }));
 }
 
 }  // namespace sparse
