@@ -2328,7 +2328,9 @@ class Variable(metaclass=VariableMetaClass):
         return _getitem_impl_(self, item)
 
     def __setitem__(self, item, value):
-        return _setitem_impl_(self, item, value)
+        raise RuntimeError(
+            "In static mode, the __setitem__ (looks like: x[index] = value) should not be used. Please use x = paddle.static.setitem(x, index, value)"
+        )
 
     def get_value(self, scope=None):
         """
