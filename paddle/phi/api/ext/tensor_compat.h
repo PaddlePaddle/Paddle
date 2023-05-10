@@ -112,7 +112,6 @@ using experimental::multiply;
 using experimental::mv;
 using experimental::nll_loss;
 using experimental::not_equal;
-using experimental::npu_identity;
 using experimental::one_hot;
 using experimental::ones;
 using experimental::overlap_add;

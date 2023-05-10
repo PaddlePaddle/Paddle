@@ -1081,17 +1081,6 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
             "PyArray does not own data, in which case  memory leak "
             "or double free would occur"));
 
-    // TODO(qili93): temporary for ascned npu performance to be removed along
-    // with npu_identity op
-    paddle::Tensor tensor_out(std::make_shared<phi::DenseTensor>());
-    if (tensor.storage_properties_initialized()) {
-      paddle::Tensor tensor_in(std::make_shared<phi::DenseTensor>(tensor));
-      tensor_out = npu_identity_ad_func(tensor_in, -1);
-      auto dense_tensor =
-          std::dynamic_pointer_cast<phi::DenseTensor>(tensor_out.impl());
-      tensor_buf_ptr = dense_tensor->data();
-    }
-
     size_t copy_bytes = sizeof_dtype * numel;
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &ctx = *pool.Get(tensor.place());

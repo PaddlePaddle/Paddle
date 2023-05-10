@@ -39,8 +39,6 @@ class MemcpyFunctor {
     CUDA = 1,
     CUDA_PINNED = 2,
     XPU = 3,
-    NPU = 4,
-    NPU_PINNED = 5,
     CUSTOM_DEVICE = 6,
   };
 
