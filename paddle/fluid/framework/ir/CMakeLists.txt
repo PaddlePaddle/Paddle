@@ -104,7 +104,6 @@ pass_library(delete_dropout_op_pass inference)
 pass_library(delete_concat_op_pass inference)
 pass_library(delete_c_identity_op_pass inference)
 pass_library(preln_residual_bias_fuse_pass inference)
-pass_library(delete_fill_constant_op_pass inference)
 pass_library(constant_folding_pass inference)
 pass_library(auto_mixed_precision_pass inference)
 pass_library(conv2d_fusion_layout_transfer_pass inference)
@@ -118,7 +117,6 @@ pass_library(fused_multi_transformer_encoder_pass inference)
 pass_library(fused_multi_transformer_decoder_pass inference)
 pass_library(fuse_multi_transformer_layer_pass inference)
 pass_library(adaptive_pool2d_convert_global_pass inference)
-pass_library(unsqueeze2_eltwise_fuse_pass inference)
 pass_library(yolo_box_fuse_pass inference)
 pass_library(layer_norm_fuse_pass inference)
 pass_library(add_support_int8_pass inference)
@@ -391,10 +389,6 @@ cc_test(
   test_adaptive_pool2d_convert_global_pass
   SRCS adaptive_pool2d_convert_global_pass_tester.cc
   DEPS adaptive_pool2d_convert_global_pass)
-cc_test(
-  test_unsqueeze2_eltwise_fuse_pass_cc
-  SRCS unsqueeze2_eltwise_fuse_pass_tester.cc
-  DEPS unsqueeze2_eltwise_fuse_pass)
 cc_test(
   test_generate_pass_cc
   SRCS generate_pass_tester.cc

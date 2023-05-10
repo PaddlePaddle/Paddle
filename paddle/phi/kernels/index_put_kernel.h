@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,17 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/compat/op_utils.h"
+#pragma once
+
+#include <vector>
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
-
-KernelSignature LstsqOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("lstsq",
-                         {"X", "Y"},
-                         {"rcond", "driver"},
-                         {"Solution", "Residuals", "Rank", "SingularValues"});
-}
+template <typename T, typename Context>
+void IndexPutKernel(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    const std::vector<const DenseTensor*>& indices_v,
+                    const DenseTensor& value,
+                    bool accumulate,
+                    DenseTensor* out);
 
 }  // namespace phi
-
-PD_REGISTER_ARG_MAPPING_FN(lstsq, phi::LstsqOpArgumentMapping);

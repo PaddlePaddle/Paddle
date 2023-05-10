@@ -75,7 +75,8 @@ namespace sparse {
         self.top_level_file = open(self.top_level_path, "w")
         self.top_level_file.write(self.header_template)
         self.top_level_file.write(
-            '#include "' + self.operation_path + '/' + 'configurations.h"\n'
+            '#include "'
+            + 'paddle/phi/kernels/sparse/gpu/cutlass_generator/configurations.h"\n'
         )
 
         self.configuration_file = open(self.configuration_path, "w")
