@@ -95,7 +95,7 @@ struct BeamSearchDecodeFunctor {
 
     } else {
       BeamSearchDecoder<T> beam_search_decoder(beam_size_, end_id_);
-      // Check if the tensor is on GPU or NPU. If so, use the CPU copy instead
+      // Check if the tensor is on GPU. If so, use the CPU copy instead
       if (tensor_on_gpu_ || tensor_on_npu_) {
         beam_search_decoder.Backtrace(
             step_ids_, step_scores_, id_tensor_, score_tensor_);
