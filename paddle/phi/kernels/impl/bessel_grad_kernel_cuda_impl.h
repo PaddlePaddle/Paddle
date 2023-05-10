@@ -22,8 +22,7 @@ namespace phi {
 
 template <typename T>
 struct CudaI0GradFunctor {
-  __device__ __forceinline__ T operator()(const T _x,
-                                          const T _out_grad) const {
+  __device__ __forceinline__ T operator()(const T _x, const T _out_grad) const {
     using MT = typename phi::dtype::MPTypeTrait<T>::Type;
     const MT mp_x = static_cast<MT>(_x);
     const MT mp_out_grad = static_cast<MT>(_out_grad);
@@ -72,7 +71,8 @@ struct CudaI0eGradFunctor {
       const MT i1e_out = Chbevl<MT>(y, A, len) * x;
       const MT i1e_data = (mp_x < MT{0.0}) ? -i1e_out : i1e_out;
       // calculate i0e gradient
-      return static_cast<T>((i1e_data - std::copysign(MT{1.0}, mp_x) * mp_out) * mp_out_grad);
+      return static_cast<T>((i1e_data - std::copysign(MT{1.0}, mp_x) * mp_out) *
+                            mp_out_grad);
     }
     auto coeff_pair_B = ChebyshevCoefficientsI1e_B<MT>();
     auto B = std::get<0>(coeff_pair_B);
@@ -82,7 +82,8 @@ struct CudaI0eGradFunctor {
     const MT i1e_out = Chbevl<MT>(y, B, len) / std::sqrt(x);
     const MT i1e_data = (mp_x < MT{0.0}) ? -i1e_out : i1e_out;
 
-    return static_cast<T>((i1e_data - std::copysign(MT{1.0}, mp_x) * mp_out) * mp_out_grad);
+    return static_cast<T>((i1e_data - std::copysign(MT{1.0}, mp_x) * mp_out) *
+                          mp_out_grad);
   }
 };
 

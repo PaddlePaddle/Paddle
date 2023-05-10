@@ -15,9 +15,9 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
-#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/impl/bessel_kernel_impl.h"
 
 namespace phi {
@@ -27,7 +27,7 @@ struct I0GradFunctor {
   I0GradFunctor(const T* x, const T* out_grad, T* x_grad, int64_t numel)
       : inp_x_(x),
         inp_out_grad_(out_grad),
-        output_x_grad_(x_grad), 
+        output_x_grad_(x_grad),
         numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
@@ -66,7 +66,8 @@ struct I0GradFunctor {
 
 template <typename T>
 struct I0eGradFunctor {
-  I0eGradFunctor(const T* x, const T* out, const T* out_grad, T* x_grad, int64_t numel)
+  I0eGradFunctor(
+      const T* x, const T* out, const T* out_grad, T* x_grad, int64_t numel)
       : inp_x_(x),
         inp_out_(out),
         inp_out_grad_(out_grad),
@@ -83,7 +84,9 @@ struct I0eGradFunctor {
 
       const T out = Chbevl<T>(y, A, len) * x;
       const T i1e_out = (inp_x_[idx] < T{0.0}) ? -out : out;
-      output_x_grad_[idx] = (i1e_out - std::copysign(T{1.0}, inp_x_[idx]) * inp_out_[idx]) * inp_out_grad_[idx];
+      output_x_grad_[idx] =
+          (i1e_out - std::copysign(T{1.0}, inp_x_[idx]) * inp_out_[idx]) *
+          inp_out_grad_[idx];
     } else {
       auto coeff_pair_B = ChebyshevCoefficientsI1e_B<T>();
       auto B = std::get<0>(coeff_pair_B);
@@ -92,7 +95,9 @@ struct I0eGradFunctor {
 
       const T out = Chbevl<T>(y, B, len) / std::sqrt(x);
       const T i1e_out = (inp_x_[idx] < T{0.0}) ? -out : out;
-      output_x_grad_[idx] = (i1e_out - std::copysign(T{1.0}, inp_x_[idx]) * inp_out_[idx]) * inp_out_grad_[idx];
+      output_x_grad_[idx] =
+          (i1e_out - std::copysign(T{1.0}, inp_x_[idx]) * inp_out_[idx]) *
+          inp_out_grad_[idx];
     }
   }
 
