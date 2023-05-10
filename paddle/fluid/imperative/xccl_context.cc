@@ -47,7 +47,9 @@ static void XcclAllReduce(const phi::DenseTensor &src,
 
   void *src_ptr = const_cast<void *>(src.data());
   dst->Resize(src.dims());
-  auto *dst_ptr = dst->mutable_data(src.place(), src.dtype());
+  auto *dst_ptr = phi::DeviceContextPool::Instance()
+                      .Get(src.place())
+                      ->Alloc(dst, src.dtype());
   auto xccl_dtype = phi::ccl::ToCCLDataType(src.dtype());
 
   phi::DeviceManager::CCLAllReduce(place.GetDeviceType(),
