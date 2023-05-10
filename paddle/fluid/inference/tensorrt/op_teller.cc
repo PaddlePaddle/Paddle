@@ -1954,18 +1954,31 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "bitwise_not") {
-#if !IS_TRT_VERSION_GE(8400)
       auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
+#if !IS_TRT_VERSION_GE(8600)
       auto dtype = x_var_desc->GetDataType();
       if (dtype == framework::proto::VarType::BOOL ||
           dtype == framework::proto::VarType::INT8 ||
           dtype == framework::proto::VarType::UINT8) {
-        VLOG(3) << "BOOL / INT8 / UINT8 type support requires TensorRT 8.4";
+        VLOG(3) << "BOOL / INT8 / UINT8 type support requires TensorRT 8.6";
         return false;
       }
 #endif
+      const auto x_shape = x_var_desc->GetShape();
+      if (!with_dynamic_shape && (x_shape.size() == 1 || x_shape.size() == 0)) {
+        VLOG(3) << op_type
+                << " op does not support input's dim is 1 or 0 in tensorrt "
+                   "static shape mode.";
+        return false;
+      }
     }
 
     if (op_type == "one_hot" || op_type == "one_hot_v2") {
@@ -2204,6 +2217,12 @@ struct SimpleOpTypeSetTeller : public Teller {
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
+      if (!with_dynamic_shape && (x_shape.size() == 1 || x_shape.size() == 0)) {
+        VLOG(3) << op_type
+                << " op does not support input's dim is 1 or 0 in tensorrt "
+                   "static shape mode.";
+        return false;
+      }
     }
 
     if (op_type == "reduce_sum" || op_type == "reduce_mean" ||
@@ -2412,6 +2431,22 @@ struct SimpleOpTypeSetTeller : public Teller {
           return true;
         }
 #endif
+        return false;
+      }
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      const auto x_shape = x_var_desc->GetShape();
+      if (!with_dynamic_shape && (x_shape.size() == 1 || x_shape.size() == 0)) {
+        VLOG(3) << op_type
+                << " op does not support input's dim is 1 or 0 in tensorrt "
+                   "static shape mode.";
         return false;
       }
     }
