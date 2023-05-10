@@ -1316,6 +1316,7 @@ void AnalysisPredictor::PrepareArgument() {
   // Analyze inference_program
   argument_->SetPredictorID(predictor_id_);
   argument_->SetRootPredictorID(root_predictor_id_);
+  argument_->SetSaveOptimizedModel(config_.save_optimized_model_);
   argument_->SetOptimCacheDir(config_.opt_cache_dir_);
   if (!config_.model_dir().empty()) {
     argument_->SetModelDir(config_.model_dir());
@@ -1485,7 +1486,7 @@ void AnalysisPredictor::PrepareArgument() {
   argument_->SetXpuEnableMultiStream(config_.xpu_enable_multi_stream_);
   argument_->SetXpuQuantPostDynamicWeightBits(
       config_.xpu_quant_post_dynamic_weight_bits_);
-  argument_->SetXpuQuantPostDynamicOpTypss(
+  argument_->SetXpuQuantPostDynamicOpTypes(
       config_.xpu_quant_post_dynamic_op_types_);
 #endif
 

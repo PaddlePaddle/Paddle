@@ -770,7 +770,8 @@ void BindAnalysisConfig(py::module *m) {
           "set_xpu_config",
           &AnalysisConfig::SetXpuConfig,
           py::arg("quant_post_dynamic_weight_bits") = -1,
-          py::arg("quant_post_dynamic_op_types") = std::vector<std::string>({}))
+          py::arg("quant_post_dynamic_op_types") = std::vector<std::string>({}),
+          py::arg("save_otpimized_model") = false)
       .def("enable_custom_device",
            &AnalysisConfig::EnableCustomDevice,
            py::arg("device_type"),

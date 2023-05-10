@@ -199,9 +199,11 @@ void AnalysisConfig::SetXpuDeviceId(int device_id) {
 
 void AnalysisConfig::SetXpuConfig(
     int quant_post_dynamic_weight_bits,
-    const std::vector<std::string> &quant_post_dynamic_op_types) {
+    const std::vector<std::string> &quant_post_dynamic_op_types,
+    bool save_optimized_model) {
   xpu_quant_post_dynamic_weight_bits_ = quant_post_dynamic_weight_bits;
   xpu_quant_post_dynamic_op_types_ = quant_post_dynamic_op_types;
+  save_optimized_model_ = save_optimized_model;
   Update();
 }
 
@@ -501,6 +503,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(xpu_enable_multi_stream_);
   CP_MEMBER(xpu_quant_post_dynamic_weight_bits_);
   CP_MEMBER(xpu_quant_post_dynamic_op_types_);
+  CP_MEMBER(save_optimized_model_);
 
   // Lite OpenCL Related
   CP_MEMBER(use_opencl_);
@@ -1110,6 +1113,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << xpu_adaptive_seqlen_;
   ss << xpu_enable_multi_stream_;
   ss << xpu_quant_post_dynamic_weight_bits_;
+  ss << save_optimized_model_;
   for (auto op_type : xpu_quant_post_dynamic_op_types_) {
     ss << op_type;
   }
@@ -1373,6 +1377,8 @@ std::string AnalysisConfig::Summary() {
   os.InsertRow({"use_cinn_compiler", use_cinn_compiler_ ? "true" : "false"});
 
   // ir info
+  os.InsertRow(
+      {"save_optimized_model", save_optimized_model_ ? "true" : "false"});
   os.InsertRow({"ir_optim", enable_ir_optim_ ? "true" : "false"});
   os.InsertRow({"ir_debug", ir_debug_ ? "true" : "false"});
   os.InsertRow({"memory_optim", enable_memory_optim_ ? "true" : "false"});

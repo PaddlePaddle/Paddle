@@ -298,7 +298,8 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   void SetXpuConfig(
       int quant_post_dynamic_weight_bits = -1,
-      const std::vector<std::string>& quant_post_dynamic_op_types = {});
+      const std::vector<std::string>& quant_post_dynamic_op_types = {},
+      bool save_optimized_model = false);
 
   ///
   /// \brief configs of IPU
@@ -1200,6 +1201,7 @@ struct PD_INFER_DECL AnalysisConfig {
   bool xpu_enable_multi_stream_;
   int xpu_quant_post_dynamic_weight_bits_{-1};
   std::vector<std::string> xpu_quant_post_dynamic_op_types_;
+  bool save_optimized_model_;
 
   // LITE OPENCL SETTINGS
   bool use_opencl_{false};
