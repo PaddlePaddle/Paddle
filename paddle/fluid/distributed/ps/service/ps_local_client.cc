@@ -33,6 +33,9 @@ int32_t PsLocalClient::Initialize() {
 
 ::std::future<int32_t> PsLocalClient::Shrink(uint32_t table_id,
                                              const std::string threshold) {
+  // threshold not use
+  auto* table_ptr = GetTable(table_id);
+  table_ptr->Shrink("");
   return done();
 }
 

@@ -1758,7 +1758,7 @@ class TheOnePSRuntime(RuntimeBase):
             threshold = 0
 
         fleet.util.barrier()
-        if self.role_maker._is_first_worker():
+        if self.context['use_ps_gpu'] or self.role_maker._is_first_worker():
             sparses = get_the_one_recv_context(
                 self.context,
                 is_dense=False,

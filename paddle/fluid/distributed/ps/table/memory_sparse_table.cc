@@ -1052,18 +1052,26 @@ int32_t MemorySparseTable::Flush() { return 0; }
 
 int32_t MemorySparseTable::Shrink(const std::string &param) {
   VLOG(0) << "MemorySparseTable::Shrink";
-  // TODO(zhaocaibei123): implement with multi-thread
+  std::atomic<uint32_t> shrink_size_all{0};
+  int thread_num = _real_local_shard_num;
+  omp_set_num_threads(thread_num);
+#pragma omp parallel for schedule(dynamic)
   for (int shard_id = 0; shard_id < _real_local_shard_num; ++shard_id) {
     // Shrink
+    int feasign_size = 0;
     auto &shard = _local_shards[shard_id];
     for (auto it = shard.begin(); it != shard.end();) {
       if (_value_accesor->Shrink(it.value().data())) {
         it = shard.erase(it);
+        ++feasign_size;
       } else {
         ++it;
       }
     }
+    shrink_size_all += feasign_size;
   }
+  VLOG(0) << "MemorySparseTable::Shrink success, shrink size:"
+          << shrink_size_all;
   return 0;
 }
 
