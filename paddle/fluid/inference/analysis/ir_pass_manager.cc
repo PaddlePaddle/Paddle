@@ -165,6 +165,8 @@ void IRPassManager::CreatePasses(Argument *argument,
                 new AnalysisConfig::Precision(precision_mode));
       pass->Set("context_memory_sharing",
                 new bool(argument->trt_engine_memory_sharing()));
+      pass->Set("use_cuda_graph",
+                new bool(argument->tensorrt_use_cuda_graph()));
       bool use_static_engine = argument->tensorrt_use_static_engine();
       bool model_from_memory = argument->model_from_memory();
       std::string optim_cache_dir = argument->optim_cache_dir();

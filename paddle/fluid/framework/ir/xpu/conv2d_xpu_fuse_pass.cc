@@ -34,25 +34,6 @@ class Scope;
 }  // namespace framework
 }  // namespace paddle
 
-namespace {
-
-template <typename T1, typename T2>
-void ConvertTensorType(phi::DenseTensor* tensor) {
-  phi::DenseTensor tmp_tensor;
-  tmp_tensor.set_type(phi::CppTypeToDataType<T2>::Type());
-  tmp_tensor.Resize(tensor->dims());
-  auto* tmp_data = tmp_tensor.mutable_data<T2>(paddle::platform::CPUPlace());
-  auto* data = tensor->mutable_data<T1>(paddle::platform::CPUPlace());
-  for (int i = 0; i < tensor->numel(); i++) {
-    tmp_data[i] = static_cast<T2>(data[i]);
-  }
-  tensor->clear();
-  paddle::framework::TensorCopySync(
-      tmp_tensor, paddle::platform::CPUPlace(), tensor);
-}
-
-}  // namespace
-
 namespace paddle {
 namespace framework {
 namespace ir {
@@ -450,7 +431,7 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
     // conv_filter fp16 --> fp32
     auto tensor_type = filter_t->dtype();
     if (tensor_type == phi::DataType::FLOAT16) {
-      ConvertTensorType<float16, float>(filter_t);
+      CastToFp32(filter_t, nullptr);
     }
     auto filter_dims = filter_t->dims();
     bool has_bias = with_bn || with_conv_bias;
@@ -528,9 +509,6 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
           }
         }
       }
-    }
-    if (tensor_type == phi::DataType::FLOAT16) {
-      ConvertTensorType<float, float16>(filter_t);
     }
     // filter max
     Node* filter_int16 = nullptr;

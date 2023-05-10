@@ -133,6 +133,7 @@ _only_supported_fp16_list = {'resnet_unit', 'fused_bn_add_activation'}
 
 white_list = {
     'conv2d',
+    'einsum',
     'matmul',
     'matmul_v2',
     'mul',
