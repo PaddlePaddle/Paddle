@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/sparse/softmax_kernel.h"
 
 #include <thrust/device_ptr.h>
+#include <thrust/iterator/constant_iterator.h>
 #include <thrust/iterator/discard_iterator.h>
 #include <thrust/sequence.h>
 #include <thrust/sort.h>

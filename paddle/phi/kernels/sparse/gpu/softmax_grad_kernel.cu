@@ -17,6 +17,7 @@ limitations under the License. */
 #include <thrust/binary_search.h>
 #include <thrust/device_ptr.h>
 #include <thrust/equal.h>
+#include <thrust/iterator/constant_iterator.h>
 #include <thrust/iterator/discard_iterator.h>
 #include <thrust/sequence.h>
 #include <thrust/sort.h>
