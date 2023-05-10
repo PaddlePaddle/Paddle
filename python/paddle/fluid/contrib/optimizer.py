@@ -133,7 +133,7 @@ class Momentum(Optimizer):
         self._regularization_coeff = 0
         if isinstance(regularization, L2DecayRegularizer):
             self._regularization_method = "l2_decay"
-            self._regularization_coeff = regularization._regularization_coeff
+            self._regularization_coeff = regularization._coeff
         self._multi_precision = multi_precision
         self._rescale_grad = rescale_grad
         self._master_weights = {}

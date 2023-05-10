@@ -266,8 +266,8 @@ class TestRegularizer(unittest.TestCase):
                 )
 
     def test_repeated_regularization(self):
-        l1 = paddle.regularizer.L1Decay(regularization_coeff=0.1)
-        l2 = paddle.regularizer.L2Decay(regularization_coeff=0.01)
+        l1 = paddle.regularizer.L1Decay(coeff=0.1)
+        l2 = paddle.regularizer.L2Decay(coeff=0.01)
         fc_param_attr = paddle.ParamAttr(
             regularizer=paddle.regularizer.L1Decay()
         )

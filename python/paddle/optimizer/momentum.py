@@ -194,7 +194,7 @@ class Momentum(Optimizer):
 
         if isinstance(weight_decay, L2DecayRegularizer):
             reg_method = "l2_decay"
-            reg_coeff = weight_decay._regularization_coeff
+            reg_coeff = weight_decay._coeff
         if isinstance(weight_decay, float):
             reg_method = "l2_decay"
             reg_coeff = weight_decay
@@ -262,7 +262,7 @@ class Momentum(Optimizer):
             # we skip param's l2decay before, so fuse it with momentum here.
             if isinstance(param.regularizer, L2DecayRegularizer):
                 regularization_method = "l2_decay"
-                regularization_coeff = param.regularizer._regularization_coeff
+                regularization_coeff = param.regularizer._coeff
             # the param's regularization has been done before, we avoid do l2decay in momentum.
             elif param.regularizer is not None:
                 regularization_method = ""
@@ -350,9 +350,7 @@ class Momentum(Optimizer):
                 # we skip param's l2decay before, so fuse it with momentum here.
                 if isinstance(param.regularizer, L2DecayRegularizer):
                     regularization_method = "l2_decay"
-                    regularization_coeff = (
-                        param.regularizer._regularization_coeff
-                    )
+                    regularization_coeff = param.regularizer._coeff
                 elif param.regularizer is not None:
                     regularization_method = ""
                     regularization_coeff = 0.0
