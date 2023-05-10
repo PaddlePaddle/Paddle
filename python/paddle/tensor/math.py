@@ -5587,7 +5587,7 @@ def nextafter(x, y, name=None):
 
 
 def i0(x, name=None):
-    """
+    r"""
     The function used to calculate modified bessel function of order 0.
 
     Equation:
@@ -5623,7 +5623,7 @@ def i0(x, name=None):
 
 
 def i0e(x, name=None):
-    """
+    r"""
     The function used to calculate exponentially scaled modified Bessel function of order 0.
 
     Equation:
