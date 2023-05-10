@@ -42,7 +42,6 @@ def _build_optimizer(
         beta2=0.836,
         epsilon=1e-4,
         weight_decay=0.01,
-        multi_precision=True,
     )
     if use_amp:
         optimizer = paddle.static.amp.decorate(

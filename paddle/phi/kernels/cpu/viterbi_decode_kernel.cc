@@ -113,7 +113,7 @@ template <typename Context,
           class CompareFunctor,
           typename T>
 struct GetMask {
-  void operator()(const Context& dev_ctx,
+  void operator()(const Context& dev_ctx UNUSED,
                   const DenseTensor& lhs,
                   const DenseTensor& rhs,
                   DenseTensor* mask) {
@@ -127,7 +127,7 @@ template <typename Context,
           class BinaryFunctor,
           typename T>
 struct BinaryOperation {
-  void operator()(const Context& dev_ctx,
+  void operator()(const Context& dev_ctx UNUSED,
                   const DenseTensor& lhs,
                   const DenseTensor& rhs,
                   DenseTensor* output) {

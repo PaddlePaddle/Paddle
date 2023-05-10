@@ -65,7 +65,7 @@ from ..fluid.framework import Operator  # noqa: F401
 from ..fluid.framework import Parameter  # noqa: F401
 from ..fluid.framework import ipu_shard_guard  # noqa: F401
 from ..fluid.framework import set_ipu_shard  # noqa: F401
-from ..fluid.layers.control_flow import Print  # noqa: F401
+from .nn.control_flow import Print  # noqa: F401
 from ..fluid.param_attr import WeightNormParamAttr  # noqa: F401
 from ..fluid.optimizer import Optimizer  # noqa: F401
 from ..fluid.optimizer import Adam  # noqa: F401

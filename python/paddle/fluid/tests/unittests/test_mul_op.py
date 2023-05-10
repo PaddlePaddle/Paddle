@@ -20,7 +20,7 @@ import numpy as np
 from paddle.fluid import core
 
 sys.path.append("..")
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 
 class TestMulOp(OpTest):
@@ -114,14 +114,14 @@ class TestMulOp2(OpTest):
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
-class TestFP16MulOp1(TestMulOp):
+class TestMulFP16Op1(TestMulOp):
     def init_dtype_type(self):
         self.dtype = np.float16
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
-            self.check_output_with_place(place, atol=1e-1, check_dygraph=False)
+            self.check_output_with_place(place, check_dygraph=False)
 
     def test_check_grad_normal(self):
         place = core.CUDAPlace(0)
@@ -130,7 +130,6 @@ class TestFP16MulOp1(TestMulOp):
                 place,
                 ['X', 'Y'],
                 'Out',
-                max_relative_error=0.5,
                 check_dygraph=False,
             )
 
@@ -141,7 +140,6 @@ class TestFP16MulOp1(TestMulOp):
                 place,
                 ['Y'],
                 'Out',
-                max_relative_error=0.5,
                 no_grad_set=set("X"),
                 check_dygraph=False,
             )
@@ -153,7 +151,6 @@ class TestFP16MulOp1(TestMulOp):
                 place,
                 ['X'],
                 'Out',
-                max_relative_error=0.5,
                 no_grad_set=set('Y'),
                 check_dygraph=False,
             )
@@ -162,14 +159,14 @@ class TestFP16MulOp1(TestMulOp):
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
-class TestFP16MulOp2(TestMulOp2):
+class TestMulFP16Op2(TestMulOp2):
     def init_dtype_type(self):
         self.dtype = np.float16
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
         if core.is_float16_supported(place):
-            self.check_output_with_place(place, atol=2e-1, check_dygraph=False)
+            self.check_output_with_place(place, check_dygraph=False)
 
     def test_check_grad_normal(self):
         place = core.CUDAPlace(0)
@@ -178,7 +175,6 @@ class TestFP16MulOp2(TestMulOp2):
                 place,
                 ['X', 'Y'],
                 'Out',
-                max_relative_error=0.9,
                 check_dygraph=False,
             )
 
@@ -189,7 +185,6 @@ class TestFP16MulOp2(TestMulOp2):
                 place,
                 ['Y'],
                 'Out',
-                max_relative_error=0.5,
                 no_grad_set=set("X"),
                 check_dygraph=False,
             )
@@ -201,10 +196,119 @@ class TestFP16MulOp2(TestMulOp2):
                 place,
                 ['X'],
                 'Out',
-                max_relative_error=0.9,
                 no_grad_set=set('Y'),
                 check_dygraph=False,
             )
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support bfloat16",
+)
+class TestMulBF16Op1(OpTest):
+    def setUp(self):
+        self.op_type = "mul"
+        self.init_dtype_type()
+        self.inputs = {
+            'X': np.random.random((20, 5)).astype(self.np_dtype),
+            'Y': np.random.random((5, 21)).astype(self.np_dtype),
+        }
+        self.outputs = {'Out': np.dot(self.inputs['X'], self.inputs['Y'])}
+
+        self.inputs['X'] = convert_float_to_uint16(self.inputs['X'])
+        self.inputs['Y'] = convert_float_to_uint16(self.inputs['Y'])
+        self.outputs['Out'] = convert_float_to_uint16(self.outputs['Out'])
+        self.place = core.CUDAPlace(0)
+
+    def init_dtype_type(self):
+        self.dtype = np.uint16
+        self.np_dtype = np.float32
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place, check_dygraph=False)
+
+    def test_check_grad_normal(self):
+        self.check_grad_with_place(
+            self.place, ['X', 'Y'], 'Out', check_dygraph=False
+        )
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad_with_place(
+            self.place,
+            ['Y'],
+            'Out',
+            no_grad_set=set("X"),
+            check_dygraph=False,
+        )
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad_with_place(
+            self.place,
+            ['X'],
+            'Out',
+            no_grad_set=set('Y'),
+            check_dygraph=False,
+        )
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support bfloat16",
+)
+class TestMulBF16Op2(TestMulBF16Op1):
+    def setUp(self):
+        self.op_type = "mul"
+        self.init_dtype_type()
+        self.inputs = {
+            'X': np.random.random((3, 4, 2, 9)).astype(self.np_dtype),
+            'Y': np.random.random((3, 6, 1, 2, 3)).astype(self.np_dtype),
+        }
+        self.attrs = {
+            'x_num_col_dims': 2,
+            'y_num_col_dims': 2,
+        }
+        result = np.dot(
+            self.inputs['X'].reshape(3 * 4, 2 * 9),
+            self.inputs['Y'].reshape(3 * 6, 1 * 2 * 3),
+        )
+        result = result.reshape(3, 4, 1, 2, 3)
+        self.outputs = {'Out': result}
+
+        self.inputs['X'] = convert_float_to_uint16(self.inputs['X'])
+        self.inputs['Y'] = convert_float_to_uint16(self.inputs['Y'])
+        self.outputs['Out'] = convert_float_to_uint16(self.outputs['Out'])
+        self.place = core.CUDAPlace(0)
+
+    def test_check_grad_normal(self):
+        self.check_grad_with_place(
+            self.place,
+            ['X', 'Y'],
+            'Out',
+            numeric_grad_delta=0.02,
+            check_dygraph=False,
+        )
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad_with_place(
+            self.place,
+            ['Y'],
+            'Out',
+            numeric_grad_delta=0.02,
+            no_grad_set=set("X"),
+            check_dygraph=False,
+        )
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad_with_place(
+            self.place,
+            ['X'],
+            'Out',
+            numeric_grad_delta=0.02,
+            no_grad_set=set('Y'),
+            check_dygraph=False,
+        )
 
 
 if __name__ == "__main__":

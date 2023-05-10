@@ -76,7 +76,7 @@ struct XPUContext::Impl {
     if (owned_ && context_ != nullptr) {
       backends::xpu::XPUDeviceGuard guard(place_.GetDeviceId());
       xpu_wait(context_->xpu_stream);
-      if (context_->xpu_stream) {
+      if (context_->xpu_stream && stream_owned_) {
         // manually destroy XPUStream here until xpu::api integrates this work
         // into Context dtor
         xpu_stream_destroy(context_->xpu_stream);
@@ -109,6 +109,12 @@ struct XPUContext::Impl {
       return ctx_t->xpu_stream;
     }
     return context_->xpu_stream;
+  }
+
+  // Set external stream for context
+  void SetStream(void* stream) {
+    stream_owned_ = false;
+    context_->set_stream(static_cast<XPUStream>(stream));
   }
 
   xpu::Context* GetXContext() const {
@@ -179,6 +185,7 @@ struct XPUContext::Impl {
       return;
     }
     PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_create(&context_->xpu_stream));
+    stream_owned_ = true;
   }
 
   // Methods of XPU Dataloader threads contexts map,
@@ -221,8 +228,11 @@ struct XPUContext::Impl {
   }
 
   bool owned_{false};
+  bool stream_owned_{false};
   Place place_;
   backends::xpu::XPUVersion xpu_version_;
+  int runtime_version_;
+  int driver_version_;
   xpu::Context* context_{nullptr};
   std::unordered_map<uint32_t, xpu::Context*> xdl_context_map_;
 
@@ -245,6 +255,20 @@ XPUContext::~XPUContext() = default;
 const Place& XPUContext::GetPlace() const { return impl_->GetPlace(); }
 
 XPUStream XPUContext::stream() const { return impl_->stream(); }
+
+void XPUContext::SetStream(void* stream) { impl_->SetStream(stream); }
+
+void XPUContext::SetXpuVersion(int version) {
+  impl_->xpu_version_ = static_cast<backends::xpu::XPUVersion>(version);
+}
+
+void XPUContext::SetRuntimeVersion(int version) {
+  impl_->runtime_version_ = version;
+}
+
+void XPUContext::SetDriverVersion(int version) {
+  impl_->driver_version_ = version;
+}
 
 backends::xpu::XPUVersion XPUContext::xpu_version() const {
   return impl_->xpu_version_;

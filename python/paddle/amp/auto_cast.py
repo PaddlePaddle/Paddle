@@ -20,45 +20,7 @@ from paddle.fluid import core
 from paddle.fluid.framework import _dygraph_tracer, dygraph_only
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 
-AMP_LEVEL = core.AmpLevel
-
-# The set of ops that support fp16 calculation and are considered numerically-
-# safe and performance-critical. These ops are always converted to fp16.
-FP16_WHITE_LIST = {
-    'conv2d',
-    'matmul',
-    'matmul_v2',
-    'max_pool2d_with_index',
-    'mul',
-    'fake_quantize_dequantize_abs_max',
-    'fake_quantize_dequantize_moving_average_abs_max',
-}
-
-# The set of ops that support fp16 calculation and are considered numerically-
-# dangerous and whose effects may also be observed in downstream ops.
-FP16_BLACK_LIST = {
-    'exp',
-    'square',
-    'log',
-    'mean',
-    'sum',
-    'cos_sim',
-    'softmax',
-    'softmax_with_cross_entropy',
-    'sigmoid_cross_entropy_with_logits',
-    'c_softmax_with_cross_entropy',
-    'cross_entropy',
-    'cross_entropy2',
-    # default fp32 can avoid return inf when the sum value large than 65504
-    'reduce_sum',
-    # FP16 performance of grad op is worse than that of FP32. Use FP32 by default.
-    'linear_interp_v2',
-    'nearest_interp_v2',
-    'bilinear_interp_v2',
-    'bicubic_interp_v2',
-    'trilinear_interp_v2',
-}
-
+from .amp_lists import black_list, white_list
 
 AMP_RELATED_FLAGS = [
     'FLAGS_cudnn_exhaustive_search',
@@ -72,27 +34,7 @@ AMP_RELATED_FLAGS_SETTING = {
     'FLAGS_cudnn_batchnorm_spatial_persistent': 1,
 }
 
-PURE_FP16_WHITE_LIST = copy.copy(FP16_WHITE_LIST)
-
-PURE_FP16_BLACK_LIST = {
-    'lookup_table',
-    'lookup_table_v2',
-    'scatter',
-    'scatter_grad',
-    # FP16 performance of grad op is worse than that of FP32. Use FP32 by default.
-    'linear_interp_v2',
-    'nearest_interp_v2',
-    'bilinear_interp_v2',
-    'bicubic_interp_v2',
-    'trilinear_interp_v2',
-}
-
-BF16_WHITE_LIST = {'conv2d', 'matmul_v2'}
-BF16_BLACK_LIST = set()
-
-PURE_BF16_WHITE_LIST = copy.copy(BF16_WHITE_LIST)
-PURE_BF16_BLACK_LIST = set()
-
+AMP_LEVEL = core.AmpLevel
 _g_amp_state_ = None
 
 
@@ -106,6 +48,7 @@ class AMPGlobalState:
         self.model_parameters = []
         self.use_master_grad = False
         self.already_register_final_backward_hook = False
+        self.amp_dtype = 'float32'
 
     def __setattr__(self, name, val):
         self.__dict__[name] = val
@@ -126,20 +69,12 @@ def _update_list(
     """
     Update black and white list according to users' custom list.
     """
-    if dtype == 'float16':
-        if level == 'O1':
-            _white_list = copy.copy(FP16_WHITE_LIST)
-            _black_list = copy.copy(FP16_BLACK_LIST)
-        else:
-            _white_list = copy.copy(PURE_FP16_WHITE_LIST)
-            _black_list = copy.copy(PURE_FP16_BLACK_LIST)
-    else:
-        if level == 'O1':
-            _white_list = copy.copy(BF16_WHITE_LIST)
-            _black_list = copy.copy(BF16_BLACK_LIST)
-        else:
-            _white_list = copy.copy(PURE_BF16_WHITE_LIST)
-            _black_list = copy.copy(PURE_BF16_BLACK_LIST)
+    if level == 'O0':
+        _white_list = set()
+        _black_list = set()
+        return _white_list, _black_list
+    _white_list = copy.copy(white_list()[dtype][level])
+    _black_list = copy.copy(black_list()[dtype][level])
     if custom_white_list and custom_black_list:
         for op_name in custom_white_list:
             if op_name in custom_black_list:
@@ -386,10 +321,8 @@ def amp_guard(
 
     # check amp_level: O0-O2
     level = level.upper()
-    if not (level in ['O0', 'O1', 'O2']):
-        raise ValueError(
-            "level should be O0, O1 or O2. O0 represents fp32 train mode, O1 represents AMP train mode, O2 represents pure fp16/bf16 train mode."
-        )
+    if not (level in ['O0', 'OD', 'O1', 'O2']):
+        raise ValueError("level should be O0, OD, O1 or O2.")
 
     # check amp_dtype: float16 or bfloat16
     dtype = dtype.lower()
@@ -415,7 +348,7 @@ def amp_guard(
         or tracer._expected_place.is_custom_place()
     ):
         warnings.warn(
-            'amp_guard can only be enabled on CUDAPlace, XPUPlace, MLUPlace, NPUPlace, and CustomPlace, current place is %s, so it makes no effect.'
+            'amp_guard can only be enabled on CUDAPlace, XPUPlace, and CustomPlace, current place is %s, so it makes no effect.'
             % tracer._expected_place
         )
         enable = False
@@ -450,37 +383,20 @@ def amp_guard(
             )
 
     amp_dtype = dtype
+    amp_global_state().amp_dtype = amp_dtype
 
-    if level == 'O1':
+    if level == 'OD':
+        amp_level = AMP_LEVEL.OD
+    elif level == 'O1':
         amp_level = AMP_LEVEL.O1
-        if dtype == 'float16':
-            _white_list = FP16_WHITE_LIST
-            _black_list = FP16_BLACK_LIST
-        elif dtype == 'bfloat16':
-            _white_list = BF16_WHITE_LIST
-            _black_list = BF16_BLACK_LIST
-
     elif level == 'O2':
         amp_level = AMP_LEVEL.O2
-        if dtype == 'float16':
-            _white_list = PURE_FP16_WHITE_LIST
-            _black_list = PURE_FP16_BLACK_LIST
-        elif dtype == 'bfloat16':
-            _white_list = BF16_WHITE_LIST
-            _black_list = BF16_BLACK_LIST
     elif level == 'O0':
         amp_level = AMP_LEVEL.O0
-        if dtype == 'float16':
-            _white_list = FP16_WHITE_LIST
-            _black_list = FP16_BLACK_LIST
-        elif dtype == 'bfloat16':
-            _white_list = BF16_WHITE_LIST
-            _black_list = BF16_BLACK_LIST
 
-    if custom_white_list or custom_black_list:
-        _white_list, _black_list = _update_list(
-            custom_white_list, custom_black_list, level, dtype
-        )
+    _white_list, _black_list = _update_list(
+        custom_white_list, custom_black_list, level, dtype
+    )
 
     if not enable:
         amp_level = AMP_LEVEL.O0
@@ -728,22 +644,24 @@ def auto_cast(
 ):
     """
     Create a context which enables auto-mixed-precision(AMP) of operators executed in dynamic graph mode.
-    If enabled, the input data type (float32 or float16) of each operator is decided
+    If enabled, the input data type (float32, float16 or bfloat16) of each operator is decided
     by autocast algorithm for better performance.
 
-    Commonly, it is used together with `GradScaler` to achieve Auto-Mixed-Precision in
-    imperative mode. It is used together with `decorator` to achieve Pure fp16 in imperative mode.
+    Commonly, it is used together with `GradScaler` and `decorator` to achieve Auto-Mixed-Precision in
+    imperative mode.
 
     Args:
         enable(bool, optional): Enable auto-mixed-precision or not. Default is True.
-        custom_white_list(set|list|tuple, optional): The custom white_list. It's the set of ops that support
-             fp16 calculation and are considered numerically-safe and performance-critical. These ops
-             will be converted to fp16.
-        custom_black_list(set|list|tuple, optional): The custom black_list. The set of ops that support fp16
-             calculation and are considered numerically-dangerous and whose effects may also be
-             observed in downstream ops. These ops will not be converted to fp16.
-        level(str, optional): Auto mixed precision level. Accepted values are "O1" and "O2": O1 represent mixed precision, the input data type of each operator will be casted by white_list and black_list;
-             O2 represent Pure fp16, all operators parameters and input data will be casted to fp16, except operators in black_list, don't support fp16 kernel and batchnorm. Default is O1(amp)
+        custom_white_list(set|list|tuple, optional): A default white list is already set. Usually there is no need to set custom white list.
+             The set of ops should be considered numerically-safe and performance-critical. These ops will be converted to float16/bfloat16.
+        custom_black_list(set|list|tuple, optional): A default black list is already set. You can set a custom black list according to the model.
+             The set of ops are considered numerically-dangerous and whose effects may also be observed in downstream ops. These ops will not be
+             converted to float16/bfloat16.
+        level(str, optional): Auto mixed precision level. Accepted values are "O1", "O2" and "OD": At the O1 level, operators in the white list
+             will use float16/bfloat16 inputs for calculations, and operators in the black list will use float32 inputs for calculations. At the O2
+             level, model's parameters will be casted to float16/bfloat16 by using `decorator`, and operators that have all float16/bfloat16 inputs
+             will be converted to float16/bfloat16, and that have any float32 input will be converted to float32. For the OD level, operators in
+             default white list will compute in float16/bfloat16, and the others will compute in float32. Default is O1.
         dtype(str, optional): Whether to use 'float16' or 'bfloat16'. Default is 'float16'.
 
     Examples:

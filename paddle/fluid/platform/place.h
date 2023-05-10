@@ -28,7 +28,6 @@ using Place = phi::Place;
 using CPUPlace = phi::CPUPlace;
 using CUDAPlace = phi::GPUPlace;
 using CUDAPinnedPlace = phi::GPUPinnedPlace;
-using NPUPlace = phi::NPUPlace;
 using NPUPinnedPlace = phi::NPUPinnedPlace;
 using XPUPlace = phi::XPUPlace;
 using IPUPlace = phi::IPUPlace;
@@ -47,11 +46,9 @@ class PlaceHelper {
 
 bool is_gpu_place(const Place &);
 bool is_xpu_place(const Place &);
-bool is_npu_place(const Place &);
 bool is_ipu_place(const Place &);
 bool is_cpu_place(const Place &);
 bool is_cuda_pinned_place(const Place &);
-bool is_npu_pinned_place(const Place &);
 bool is_custom_place(const Place &p);
 bool places_are_same_class(const Place &, const Place &);
 bool is_same_place(const Place &, const Place &);
@@ -89,11 +86,6 @@ typename Visitor::result_type VisitPlace(const Place &place,
           "Paddle is not compiled with XPU. Cannot visit xpu device"));
       return typename Visitor::result_type();
 #endif
-    }
-    case phi::AllocationType::NPU: {
-      PADDLE_THROW(platform::errors::Unavailable(
-          "Paddle is not compiled with NPU. Cannot visit npu_pinned"));
-      return typename Visitor::result_type();
     }
     case phi::AllocationType::NPUPINNED: {
       PADDLE_THROW(platform::errors::Unavailable(

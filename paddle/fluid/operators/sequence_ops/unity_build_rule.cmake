@@ -30,7 +30,6 @@ register_unity_group(
   sequence_expand_op.cu
   sequence_mask_op.cu
   sequence_pad_op.cu
-  sequence_pool_op.cu
   sequence_expand_as_op.cu
   sequence_reshape_op.cu
   sequence_reverse_op.cu

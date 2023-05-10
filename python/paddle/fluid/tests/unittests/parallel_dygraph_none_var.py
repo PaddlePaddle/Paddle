@@ -40,7 +40,7 @@ class SimpleNet(paddle.nn.Layer):
         self.step = 0
 
     def forward(self, x):
-        return paddle.to_tensor(0.0, dtype='float32')
+        return paddle.to_tensor([0.0], dtype='float32')
 
 
 def fake_sample_reader():

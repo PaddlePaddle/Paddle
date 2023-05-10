@@ -48,11 +48,12 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/core/cuda_stream.h"
 #endif
+#include "paddle/phi/core/flags.h"
 
-DECLARE_int32(record_pool_max_size);
-DECLARE_int32(slotpool_thread_num);
-DECLARE_bool(enable_slotpool_wait_release);
-DECLARE_bool(enable_slotrecord_reset_shrink);
+PHI_DECLARE_int32(record_pool_max_size);
+PHI_DECLARE_int32(slotpool_thread_num);
+PHI_DECLARE_bool(enable_slotpool_wait_release);
+PHI_DECLARE_bool(enable_slotrecord_reset_shrink);
 
 namespace paddle {
 namespace framework {
@@ -401,22 +402,22 @@ class CustomParser {
   virtual void Init(const std::vector<SlotConf>& slots) = 0;
   virtual bool Init(const std::vector<AllSlotInfo>& slots) = 0;
   virtual void ParseOneInstance(const char* str, Record* instance) = 0;
-  virtual int ParseInstance(int len,
-                            const char* str,
-                            std::vector<Record>* instances) {
+  virtual int ParseInstance(int len UNUSED,
+                            const char* str UNUSED,
+                            std::vector<Record>* instances UNUSED) {
     return 0;
   }
   virtual bool ParseOneInstance(
-      const std::string& line,
-      std::function<void(std::vector<SlotRecord>&, int)>
-          GetInsFunc) {  // NOLINT
+      const std::string& line UNUSED,
+      std::function<void(std::vector<SlotRecord>&, int)> GetInsFunc
+          UNUSED) {  // NOLINT
     return true;
   }
   virtual bool ParseFileInstance(
-      std::function<int(char* buf, int len)> ReadBuffFunc,
-      std::function<void(std::vector<SlotRecord>&, int, int)>
-          PullRecordsFunc,  // NOLINT
-      int& lines) {         // NOLINT
+      std::function<int(char* buf, int len)> ReadBuffFunc UNUSED,
+      std::function<void(std::vector<SlotRecord>&, int, int)> PullRecordsFunc
+          UNUSED,           // NOLINT
+      int& lines UNUSED) {  // NOLINT
     return false;
   }
 };
@@ -1266,7 +1267,8 @@ class DataFeed {
   virtual void SetInsIdVec(MiniBatchGpuPack* pack) {}
 #endif
 
-  virtual void DumpWalkPath(std::string dump_path, size_t dump_rate) {
+  virtual void DumpWalkPath(std::string dump_path UNUSED,
+                            size_t dump_rate UNUSED) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "This function(DumpWalkPath) is not implemented."));
   }

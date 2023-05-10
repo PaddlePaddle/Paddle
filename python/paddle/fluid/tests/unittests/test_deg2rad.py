@@ -74,7 +74,7 @@ class TestDeg2radAPI2(TestDeg2radAPI):
     def test_dygraph(self):
         paddle.disable_static()
 
-        x2 = paddle.to_tensor(180)
+        x2 = paddle.to_tensor([180])
         result2 = paddle.deg2rad(x2)
         np.testing.assert_allclose(np.pi, result2.numpy(), rtol=1e-05)
 

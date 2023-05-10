@@ -42,6 +42,7 @@ limitations under the License. */
 
 #include "paddle/phi/core/compat/arg_map_context.h"
 #include "paddle/phi/core/compat/op_utils.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/core/macros.h"
@@ -59,7 +60,7 @@ namespace phi {
 class KernelContext;
 }
 
-DECLARE_int32(inner_op_parallelism);
+PHI_DECLARE_int32(inner_op_parallelism);
 
 namespace paddle {
 namespace framework {

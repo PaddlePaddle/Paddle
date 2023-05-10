@@ -35,6 +35,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
+#include "paddle/fluid/pybind/complex.h"
 #include "paddle/phi/kernels/funcs/strided_memcpy.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
@@ -960,7 +961,6 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
   }
   bool is_gpu_tensor = platform::is_gpu_place(tensor.place());
   bool is_xpu_tensor = platform::is_xpu_place(tensor.place());
-  bool is_npu_tensor = platform::is_npu_place(tensor.place());
   bool is_custom_device_tensor = platform::is_custom_place(tensor.place());
   const auto &tensor_dims = tensor.dims();
   auto tensor_dtype = framework::TransToProtoVarType(tensor.dtype());
@@ -981,8 +981,7 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
   std::string py_dtype_str = details::TensorDTypeToPyDTypeStr(
       framework::TransToProtoVarType(tensor.dtype()));
 
-  if (!is_gpu_tensor && !is_xpu_tensor && !is_npu_tensor &&
-      !is_custom_device_tensor) {
+  if (!is_gpu_tensor && !is_xpu_tensor && !is_custom_device_tensor) {
     if (!need_deep_copy) {
       auto base = py::cast(std::move(tensor));
       return py::array(py::dtype(py_dtype_str.c_str()),

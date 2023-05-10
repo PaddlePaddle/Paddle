@@ -45,8 +45,6 @@ DeviceType Place2DeviceType(const platform::Place& place) {
     return platform::DeviceType::XPU;
   } else if (platform::is_ipu_place(place)) {
     return platform::DeviceType::IPU;
-  } else if (platform::is_npu_place(place)) {
-    return platform::DeviceType::NPU;
   } else if (platform::is_custom_place(place)) {
     return platform::DeviceType::CUSTOM_DEVICE;
   } else {

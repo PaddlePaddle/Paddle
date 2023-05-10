@@ -21,7 +21,7 @@ from paddle.fluid.dygraph.base import (
     in_declarative_mode,
 )
 from paddle.fluid.framework import Variable, core
-from paddle.fluid.layers import Print, control_flow
+from paddle.fluid.layers import control_flow
 from paddle.fluid.layers.control_flow import while_loop
 
 from .utils import (
@@ -749,7 +749,7 @@ def convert_print(*objects, sep=' ', end='\n', file=None, flush=False):
     """
     for obj in objects:
         if isinstance(obj, Variable):
-            Print(obj)
+            paddle.static.Print(obj)
     print(*objects, sep=sep, end=end, file=file, flush=flush)
 
 

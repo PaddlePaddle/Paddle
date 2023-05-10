@@ -300,7 +300,7 @@ class QuantizationPass(PassBase):
                     for slot_name in quant_op.desc.input_names():
                         in_name = quant_op.desc.input(slot_name)[0]
                         input_var = block._var_recursive(in_name)
-                        ref_dims_mapping = [-1]
+                        ref_dims_mapping = [-1 for i in input_var.shape]
                         if slot_name == "X":
                             continue
                         elif slot_name in ['Scale', 'ZeroPoint']:
@@ -333,7 +333,7 @@ class QuantizationPass(PassBase):
                     for slot_name in quant_op.desc.output_names():
                         output_name = quant_op.desc.output(slot_name)[0]
                         output_var = block._var_recursive(output_name)
-                        ref_dims_mapping = [-1]
+                        ref_dims_mapping = [-1 for i in output_var.shape]
                         if slot_name == "Y":
                             dist_context.set_tensor_dist_attr_for_program(
                                 output_var, consume_input_dist_attr

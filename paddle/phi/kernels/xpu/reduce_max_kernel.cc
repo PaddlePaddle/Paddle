@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -49,4 +49,4 @@ void MaxRawKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(max_raw, XPU, ALL_LAYOUT, phi::MaxRawKernel, float) {}
+PD_REGISTER_KERNEL(max_raw, XPU, ALL_LAYOUT, phi::MaxRawKernel, float, int) {}

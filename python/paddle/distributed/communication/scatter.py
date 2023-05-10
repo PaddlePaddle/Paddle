@@ -122,8 +122,7 @@ def scatter_object_list(
             in_obj_sizes.append(obj_size)
         max_obj_size_tensor = max(in_obj_sizes)
     else:
-        # NOTE: shape can be [] after 0D tensor support
-        max_obj_size_tensor = paddle.empty([1], dtype="int64")
+        max_obj_size_tensor = paddle.empty([], dtype="int64")
     stream.broadcast(max_obj_size_tensor, src)
     max_obj_size = int(max_obj_size_tensor.item())
 
@@ -137,8 +136,7 @@ def scatter_object_list(
     out_tensor = paddle.empty([max_obj_size], dtype="uint8")
     scatter(out_tensor, in_tensor_list if rank == src else None, src, group)
 
-    # NOTE: shape can be [] after 0D tensor support
-    out_tensor_size = paddle.empty([1], dtype="int64")
+    out_tensor_size = paddle.empty([], dtype="int64")
     scatter(out_tensor_size, in_obj_sizes if rank == src else None, src, group)
 
     out_object_list.clear()

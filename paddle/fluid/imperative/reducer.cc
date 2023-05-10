@@ -42,9 +42,6 @@ void Group::DivNRanks(const platform::DeviceContext &context, int64_t nranks) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     DivNRanks(tensor, nranks, context);
 #endif
-  } else if (platform::is_npu_place(tensor->place())) {
-    // TODO(kuizhiqing)
-    VLOG(4) << "divnrank for npu not support yet";
   } else if (platform::is_cpu_place(tensor->place())) {
     VLOG(4) << "before div 2" << *tensor;
     VLOG(4) << "NDiv for cpu devices : rank = " << nranks;
@@ -64,7 +61,9 @@ void Group::DivNRanks(const platform::DeviceContext &context, int64_t nranks) {
     VLOG(4) << "after div 2" << *tensor;
   } else if (platform::is_xpu_place(tensor->place())) {
 #ifdef PADDLE_WITH_XPU_BKCL
-// TODO(liuyuhui) support xpu about div nranks in the future
+    PADDLE_THROW(
+        platform::errors::Unimplemented("DivNRanks is not supported on XPU / "
+                                        "XPU_BKCL, use EagerReducer instead."));
 #endif
   }
 }

@@ -19,7 +19,6 @@ from eager_op_test import OpTest
 
 import paddle
 from paddle import fluid
-from paddle.fluid import metrics
 
 
 class TestAucOp(OpTest):
@@ -49,17 +48,17 @@ class TestAucOp(OpTest):
             "slide_steps": slide_steps,
         }
 
-        python_auc = metrics.Auc(
+        python_auc = paddle.metric.Auc(
             name="auc", curve='ROC', num_thresholds=num_thresholds
         )
         python_auc.update(pred, labels)
 
-        pos = python_auc._stat_pos * 2
+        pos = python_auc._stat_pos.tolist() * 2
         pos.append(1)
-        neg = python_auc._stat_neg * 2
+        neg = python_auc._stat_neg.tolist() * 2
         neg.append(1)
         self.outputs = {
-            'AUC': np.array(python_auc.eval()),
+            'AUC': np.array(python_auc.accumulate()),
             'StatPosOut': np.array(pos),
             'StatNegOut': np.array(neg),
         }
@@ -91,7 +90,7 @@ class TestGlobalAucOp(OpTest):
             "slide_steps": slide_steps,
         }
 
-        python_auc = metrics.Auc(
+        python_auc = paddle.metric.Auc(
             name="auc", curve='ROC', num_thresholds=num_thresholds
         )
         python_auc.update(pred, labels)
@@ -99,7 +98,7 @@ class TestGlobalAucOp(OpTest):
         pos = python_auc._stat_pos
         neg = python_auc._stat_neg
         self.outputs = {
-            'AUC': np.array(python_auc.eval()),
+            'AUC': np.array(python_auc.accumulate()),
             'StatPosOut': np.array(pos),
             'StatNegOut': np.array(neg),
         }
