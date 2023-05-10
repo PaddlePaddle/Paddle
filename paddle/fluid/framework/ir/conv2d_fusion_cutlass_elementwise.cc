@@ -116,14 +116,8 @@ void Conv2dFusionCutlassElementwiseFusePass::ApplyImpl(ir::Graph* graph) const {
       return;
     }
 
-    std::cout << "cutlass 可以支持" << std::endl;
-
     OpDesc new_desc = *(conv_op_node->Op());
     auto activation = new_desc.GetAttrIfExists<std::string>("activation");
-    // new_desc.SetType(target_op);
-    // new_desc.SetInput("Input", {conv_in_node->Name()});
-    // new_desc.SetInput("Filter", {conv_filter_node->Name()});
-    // new_desc.SetInput("Bias", {conv_bias_node->Name()});
     new_desc.SetAttr("activation",
                      activation + std::string("_elementwise_add_identity"));
     new_desc.SetInput("ResidualData", {residual_input_node->Name()});
