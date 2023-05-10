@@ -21,22 +21,6 @@ import warnings
 import pandas as pd
 
 
-def preprocess_macro(file_content, processed_file_path):
-    if file_content is None:
-        return file_content
-    # comment out external macro
-    file_content = re.sub(r'#(include|pragma)', r'// \g<0>', file_content)
-    with open(processed_file_path, "w") as f:
-        f.write(file_content)
-    # expand macro and correct format
-    subprocess.run(
-        ['g++', '-E', processed_file_path, '-o', processed_file_path]
-    )
-    subprocess.run(['clang-format', '-i', processed_file_path])
-    file_content = open(processed_file_path, "r").read()
-    return file_content
-
-
 def search_pattern(pattern, file_content):
     if file_content is not None:
         match_result = re.search(pattern, file_content)
@@ -100,8 +84,9 @@ class KernelSignatureSearcher:
                     self.func_signature_map[match_result[1]] = match_result[0]
 
     def search_kernel_registration(self, path):
-        self.processed_file_path = osp.join(
-            self.build_path, '.processed_file.cc'
+        self.tmp_file_path = osp.join(self.build_path, '.tmp_file.cc')
+        self.processed_file_path = self.tmp_file_path.replace(
+            '.tmp_file.cc', '.processed_file.cc'
         )
         for file in os.listdir(path):
             file_path = osp.join(path, file)
@@ -113,6 +98,7 @@ class KernelSignatureSearcher:
             if re.match(r'\w+_kernel\.(cc|cu)', file):
                 self._search_kernel_registration(file_path, file)
         if osp.exists(self.processed_file_path):
+            os.remove(self.tmp_file_path)
             os.remove(self.processed_file_path)
 
     def _search_kernel_registration(self, file_path, file):
@@ -121,9 +107,7 @@ class KernelSignatureSearcher:
         # if some kernel registration is in macro, preprocess macro first
         self.file_preprocessed = False
         if re.search(self.macro_kernel_reg_pattern, file_content):
-            file_content = preprocess_macro(
-                file_content, self.processed_file_path
-            )
+            file_content = self.preprocess_macro(file_content)
             self.file_preprocessed = True
         # search kernel registration
         match_results = re.findall(self.kernel_reg_pattern, file_content)
@@ -161,9 +145,7 @@ class KernelSignatureSearcher:
             return kernel_signature
         # expand macro and search again
         if not self.file_preprocessed:
-            file_content = preprocess_macro(
-                file_content, self.processed_file_path
-            )
+            file_content = self.preprocess_macro(file_content)
             kernel_signature = search_pattern(
                 target_kernel_signature_pattern, file_content
             )
@@ -175,15 +157,28 @@ class KernelSignatureSearcher:
             if osp.exists(header_path):
                 self.header_content = open(header_path, 'r').read()
         if self.header_content is not None:
-            self.header_content = preprocess_macro(
-                self.header_content, self.processed_file_path
-            )
+            self.header_content = self.preprocess_macro(self.header_content)
             kernel_signature = search_pattern(
                 target_kernel_signature_pattern, self.header_content
             )
             if kernel_signature is not None:
                 return kernel_signature
         return None
+
+    def preprocess_macro(self, file_content):
+        if file_content is None:
+            return file_content
+        # comment out external macro
+        file_content = re.sub(r'#(include|pragma)', r'// \g<0>', file_content)
+        with open(self.tmp_file_path, "w") as f:
+            f.write(file_content)
+        # expand macro and correct format
+        subprocess.run(
+            ['g++', '-E', self.tmp_file_path, '-o', self.processed_file_path]
+        )
+        subprocess.run(['clang-format', '-i', self.processed_file_path])
+        file_content = open(self.processed_file_path, "r").read()
+        return file_content
 
 
 def get_kernel_signatures():

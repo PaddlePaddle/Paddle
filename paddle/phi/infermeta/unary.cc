@@ -38,7 +38,7 @@ namespace detail {
 static DDim CheckAndGetOutputDim(const DDim& dim_x) {
   auto x_vec = phi::vectorize(dim_x);
   if (x_vec.size() == 2) {
-    return phi::make_ddim({1});
+    return phi::make_ddim({});
   }
   x_vec.erase(x_vec.end() - 2, x_vec.end());
   return phi::make_ddim(x_vec);
@@ -1839,7 +1839,7 @@ void InverseInferMeta(const MetaTensor& x, MetaTensor* out) {
 }
 
 void IsEmptyInferMeta(const MetaTensor& x, MetaTensor* out) {
-  out->set_dims(phi::make_ddim({1}));
+  out->set_dims(phi::make_ddim({}));
   out->set_dtype(DataType::BOOL);
 }
 
@@ -2146,7 +2146,7 @@ void MaxPoolWithIndexInferMeta(const MetaTensor& x,
 }
 
 void MeanAllInferMeta(const MetaTensor& x, MetaTensor* out) {
-  out->set_dims(phi::make_ddim({1}));
+  out->set_dims(phi::make_ddim({}));
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
 }
@@ -2750,32 +2750,33 @@ void PNormInferMeta(const MetaTensor& x,
                         x_rank,
                         x_dim));
 
-  std::vector<int> reduce_dims;
+  std::vector<int> out_dim_vector;
   if (asvector) {
-    reduce_dims.emplace_back(1);
     if (keepdim) {
-      for (int i = 1; i < x_dim.size(); ++i) {
-        reduce_dims.emplace_back(1);
+      for (int i = 0; i < x_rank; ++i) {
+        out_dim_vector.emplace_back(1);
       }
-      x_dim = phi::make_ddim(reduce_dims);
+    } else {
+      out_dim_vector = {};
     }
   } else {
-    if (axis < 0) axis = x_dim.size() + axis;
-    for (int i = 0; i < x_dim.size(); ++i) {
-      if (i != axis) reduce_dims.emplace_back(x_dim[i]);
+    if (axis < 0) axis = axis + x_rank;
+    if (keepdim) {
+      for (int i = 0; i < x_dim.size(); ++i) {
+        if (i != axis) {
+          out_dim_vector.emplace_back(x_dim[i]);
+        } else {
+          out_dim_vector.emplace_back(1);
+        }
+      }
+    } else {
+      for (int i = 0; i < x_dim.size(); ++i) {
+        if (i != axis) out_dim_vector.emplace_back(x_dim[i]);
+      }
     }
-    if (reduce_dims.size() == 0) {
-      reduce_dims.emplace_back(1);
-    }
-
-    x_dim[axis] = 1;
   }
 
-  if (keepdim) {
-    out->set_dims(x_dim);
-  } else {
-    out->set_dims(phi::make_ddim(reduce_dims));
-  }
+  out->set_dims(phi::make_ddim(out_dim_vector));
   out->set_dtype(x.dtype());
 }
 
@@ -3050,29 +3051,19 @@ DDim ReduceInferDim(const MetaTensor& x,
   reduce_all = reduce_all || full_dim;
 
   std::vector<int64_t> out_dim_vector;
-  if (keep_dim) {
-    for (int64_t i = 0; i < x_rank; ++i) {
-      if (reduce_all || dims_set.find(i) != dims_set.end()) {
+  for (int64_t i = 0; i < x_rank; ++i) {
+    if (reduce_all || dims_set.find(i) != dims_set.end()) {
+      if (keep_dim) {
         out_dim_vector.push_back(1);
       } else {
-        out_dim_vector.push_back(x.dims().at(i));
-      }
-    }
-  } else {
-    for (int64_t i = 0; i < x_rank; ++i) {
-      if (reduce_all || dims_set.find(i) != dims_set.end()) {
         continue;
-      } else {
-        out_dim_vector.push_back(x.dims().at(i));
       }
-    }
-
-    if (x_rank > 0 && out_dim_vector.size() == 0) {
-      out_dim_vector.push_back(1);
+    } else {
+      out_dim_vector.push_back(x.dims().at(i));
     }
   }
-  DDim out_dim = phi::make_ddim(out_dim_vector);
 
+  DDim out_dim = phi::make_ddim(out_dim_vector);
   return out_dim;
 }
 
@@ -3086,14 +3077,14 @@ DDim ReduceInferDimForIntArrayAxis(const MetaTensor& x,
     if (keep_dim) {
       vec_dim = std::vector<int64_t>(x.dims().size(), 1);
     } else {
-      vec_dim = {1};
+      vec_dim = {};
     }
   } else {
     if (keep_dim) {
       vec_dim = std::vector<int64_t>(x.dims().size(), -1);
     } else {
       auto x_rank = static_cast<size_t>(x.dims().size());
-      if (vec_axis.size() >= x_rank) {
+      if (vec_axis.size() > x_rank) {
         vec_dim = {-1};
       } else {
         vec_dim = std::vector<int64_t>(x.dims().size() - vec_axis.size(), -1);
@@ -3125,22 +3116,6 @@ void ReduceInferMetaBase(const MetaTensor& x,
   out->set_layout(x.layout());
 }
 
-void ReduceIntArrayAxisInferMetaBase(const MetaTensor& x,
-                                     const IntArray& axis,
-                                     bool keep_dim,
-                                     bool reduce_all,
-                                     MetaTensor* out,
-                                     MetaConfig config) {
-  if (config.is_runtime || !axis.FromTensor()) {
-    ReduceInferMetaBase(x, axis.GetData(), keep_dim, reduce_all, out);
-  } else {
-    DDim out_dim = ReduceInferDimForIntArrayAxis(x, axis, keep_dim, reduce_all);
-    out->set_dims(out_dim);
-    out->set_dtype(x.dtype());
-    out->set_layout(x.layout());
-  }
-}
-
 void ReduceIntArrayAxisInferMeta(const MetaTensor& x,
                                  const IntArray& axis,
                                  bool keep_dim,
@@ -3151,6 +3126,23 @@ void ReduceIntArrayAxisInferMeta(const MetaTensor& x,
     reduce_all = true;
   }
   ReduceIntArrayAxisInferMetaBase(x, axis, keep_dim, reduce_all, out, config);
+}
+
+void ReduceIntArrayAxisInferMetaBase(const MetaTensor& x,
+                                     const IntArray& axis,
+                                     bool keep_dim,
+                                     bool reduce_all,
+                                     MetaTensor* out,
+                                     MetaConfig config) {
+  DDim out_dim;
+  if (config.is_runtime || !axis.FromTensor()) {
+    out_dim = ReduceInferDim(x, axis.GetData(), keep_dim, reduce_all);
+  } else {
+    out_dim = ReduceInferDimForIntArrayAxis(x, axis, keep_dim, reduce_all);
+  }
+  out->set_dims(out_dim);
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
 }
 
 void ReduceScatterInferMeta(const MetaTensor& x, int nranks, MetaTensor* out) {
@@ -3770,6 +3762,9 @@ void SqueezeInferMeta(const MetaTensor& x,
   if (!config.is_runtime && axes.FromTensor()) {
     // compile time infershape, set all elements to -1.
     int output_size = x.dims().size() - axes.GetData().size();
+    if (x.dims().size() == 0 && output_size == -1) {
+      output_size = 0;
+    }
     std::vector<int64_t> vec_out_dims(output_size, -1);
     out->set_dims(phi::make_ddim(vec_out_dims));
   } else {
@@ -3927,9 +3922,6 @@ void StridedSliceRawInferMeta(const MetaTensor& x,
         new_out_shape.push_back(out_dims[i]);
       }
     }
-    if (new_out_shape.size() == 0) {
-      new_out_shape.push_back(1);
-    }
     out_dims = phi::make_ddim(new_out_shape);
   }
   VLOG(4) << "out_dims: " << out_dims;
@@ -3949,6 +3941,102 @@ void StridedSliceInferMeta(const MetaTensor& x,
   std::vector<int> decrease_axis;
   StridedSliceRawInferMeta(
       x, axes, starts, ends, strides, infer_flags, decrease_axis, out, config);
+}
+
+// TODO(zhouwei): OriginReduceInferDim doesn't support 0D, remove in future
+DDim OriginReduceInferDim(const MetaTensor& x,
+                          const std::vector<int64_t>& axis,
+                          bool keep_dim,
+                          bool reduce_all) {
+  auto x_rank = x.dims().size();
+
+  std::vector<int64_t> formated_axis = axis;
+  for (size_t i = 0; i < axis.size(); ++i) {
+    if (x_rank == 0) {
+      PADDLE_ENFORCE_EQ(
+          axis[i] == 0 || axis[i] == -1,
+          true,
+          phi::errors::InvalidArgument(
+              "When input 0D Tensor, the axis can only be -1, 0, None or []"));
+    } else {
+      PADDLE_ENFORCE_LT(axis[i],
+                        x_rank,
+                        errors::InvalidArgument(
+                            "The reduce dim index %d should be in the "
+                            "range [ -dimension(X), dimension(X) ) "
+                            "which dimesion = %d. But received dim index = %d.",
+                            i,
+                            x_rank,
+                            axis[i]));
+      PADDLE_ENFORCE_GE(axis[i],
+                        -x_rank,
+                        errors::InvalidArgument(
+                            "The reduce dim index %d should be in the "
+                            "range [ -dimension(X), dimension(X) )  "
+                            "which dimesion = %d. But received dim index = %d.",
+                            i,
+                            x_rank,
+                            axis[i]));
+    }
+
+    if (axis[i] < 0) {
+      formated_axis[i] = axis[i] + x_rank;
+    }
+  }
+
+  bool full_dim = true;
+  std::set<int64_t> dims_set(formated_axis.begin(), formated_axis.end());
+  for (int64_t i = 0; i < x_rank; ++i) {
+    if (dims_set.find(i) == dims_set.end()) {
+      full_dim = false;
+      break;
+    }
+  }
+  reduce_all = reduce_all || full_dim;
+
+  std::vector<int64_t> out_dim_vector;
+  for (int64_t i = 0; i < x_rank; ++i) {
+    if (reduce_all || dims_set.find(i) != dims_set.end()) {
+      if (keep_dim) {
+        out_dim_vector.push_back(1);
+      } else {
+        continue;
+      }
+    } else {
+      out_dim_vector.push_back(x.dims().at(i));
+    }
+  }
+
+  DDim out_dim = phi::make_ddim(out_dim_vector);
+  return out_dim;
+}
+
+// TODO(zhouwei): OriginReduceInferDim doesn't support 0D, remove in future
+DDim OriginReduceInferDimForIntArrayAxis(const MetaTensor& x,
+                                         const IntArray& axis,
+                                         bool keep_dim,
+                                         bool reduce_all) {
+  std::vector<int64_t> vec_axis = axis.GetData();
+  std::vector<int64_t> vec_dim;
+  if (reduce_all) {
+    if (keep_dim) {
+      vec_dim = std::vector<int64_t>(x.dims().size(), 1);
+    } else {
+      vec_dim = {};
+    }
+  } else {
+    if (keep_dim) {
+      vec_dim = std::vector<int64_t>(x.dims().size(), -1);
+    } else {
+      auto x_rank = static_cast<size_t>(x.dims().size());
+      if (vec_axis.size() > x_rank) {
+        vec_dim = {-1};
+      } else {
+        vec_dim = std::vector<int64_t>(x.dims().size() - vec_axis.size(), -1);
+      }
+    }
+  }
+  return phi::make_ddim(vec_dim);
 }
 
 /*  Why not use SumRawInferMeta directly?
@@ -3977,9 +4065,10 @@ void SumRawInferMeta(const MetaTensor& x,
                      MetaConfig config) {
   DDim out_dim;
   if (config.is_runtime || !axis.FromTensor()) {
-    out_dim = ReduceInferDim(x, axis.GetData(), keep_dim, reduce_all);
+    out_dim = OriginReduceInferDim(x, axis.GetData(), keep_dim, reduce_all);
   } else {
-    out_dim = ReduceInferDimForIntArrayAxis(x, axis, keep_dim, reduce_all);
+    out_dim =
+        OriginReduceInferDimForIntArrayAxis(x, axis, keep_dim, reduce_all);
   }
 
   DataType out_dtype;
@@ -3995,6 +4084,38 @@ void SumRawInferMeta(const MetaTensor& x,
 
   out->set_dims(out_dim);
   out->set_dtype(out_dtype);
+  out->set_layout(x.layout());
+}
+
+// TODO(zhouwei): OriginReduce doesn't support 0D, remove in future
+void OriginReduceInferMeta(const MetaTensor& x,
+                           const IntArray& axis,
+                           bool keep_dim,
+                           MetaTensor* out,
+                           MetaConfig config) {
+  bool reduce_all = false;
+  if (axis.size() == 0) {
+    reduce_all = true;
+  }
+  OriginReduceInferMetaBase(x, axis, keep_dim, reduce_all, out, config);
+}
+
+// TODO(zhouwei): OriginReduce doesn't support 0D, remove in future
+void OriginReduceInferMetaBase(const MetaTensor& x,
+                               const IntArray& axis,
+                               bool keep_dim,
+                               bool reduce_all,
+                               MetaTensor* out,
+                               MetaConfig config) {
+  DDim out_dim;
+  if (config.is_runtime || !axis.FromTensor()) {
+    out_dim = OriginReduceInferDim(x, axis.GetData(), keep_dim, reduce_all);
+  } else {
+    out_dim =
+        OriginReduceInferDimForIntArrayAxis(x, axis, keep_dim, reduce_all);
+  }
+  out->set_dims(out_dim);
+  out->set_dtype(x.dtype());
   out->set_layout(x.layout());
 }
 
@@ -4100,7 +4221,7 @@ void TileInferMeta(const MetaTensor& x,
   auto repeat_times_data = repeat_times.GetData();
   auto x_dims = x.dims();
   if (repeat_times_data.size() == 0) {
-    repeat_times_data = std::vector<int64_t>(x_dims.size(), -1);
+    repeat_times_data = std::vector<int64_t>(x_dims.size(), 1);
   }
 
   PADDLE_ENFORCE_LE(
@@ -4133,10 +4254,10 @@ void TileInferMeta(const MetaTensor& x,
   auto x_dim_vec = phi::vectorize<int>(x_dims);
   if (x_dim_vec.size() > repeat_times_data.size()) {
     auto diff = x_dim_vec.size() - repeat_times_data.size();
-    repeat_times_data.insert(repeat_times_data.begin(), diff, -1);
+    repeat_times_data.insert(repeat_times_data.begin(), diff, 1);
   } else {
     auto diff = repeat_times_data.size() - x_dim_vec.size();
-    x_dim_vec.insert(x_dim_vec.begin(), diff, -1);
+    x_dim_vec.insert(x_dim_vec.begin(), diff, 1);
   }
   for (size_t i = 0; i < repeat_times_data.size(); ++i) {
     if (x_dim_vec[i] == -1 || repeat_times_data[i] == -1) {
@@ -4282,7 +4403,6 @@ void TraceInferMeta(
   auto sizes = vectorize(x_dims);
   if (x_dims.size() == 2) {
     sizes.clear();
-    sizes.push_back(1);
   } else {
     sizes.erase(sizes.begin() + std::max(dim1_, dim2_));
     sizes.erase(sizes.begin() + std::min(dim1_, dim2_));
@@ -4434,6 +4554,13 @@ void TrilInferMeta(const MetaTensor& x, int diagonal, MetaTensor* out) {
 
 void TriuInferMeta(const MetaTensor& x, int diagonal, MetaTensor* out) {
   TrilTriuInferMeta(x, diagonal, false, out);
+}
+
+// Some operator having oneDnn kernel will be set layout in kernel.
+void UnchangedExceptLayoutInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dims(x.dims());
+  out->set_dtype(x.dtype());
+  out->share_lod(x);
 }
 
 void UnchangedInferMeta(const MetaTensor& x, MetaTensor* out) {

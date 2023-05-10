@@ -21,10 +21,11 @@
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/api/include/sparse_api.h"
+#include "paddle/phi/core/flags.h"
 
 #pragma GCC diagnostic ignored "-Wunused-variable"
-DECLARE_bool(check_nan_inf);
-DECLARE_string(tensor_operants_mode);
+PHI_DECLARE_bool(check_nan_inf);
+PHI_DECLARE_string(tensor_operants_mode);
 
 std::tuple<paddle::Tensor,
            paddle::Tensor&,
@@ -226,6 +227,12 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
     // Node Construction
     auto grad_node =
         std::shared_ptr<SyncBatchNormGradNode>(new SyncBatchNormGradNode(6, 5));
+
+    // Set forward's stack
+    if (FLAGS_check_nan_inf) {
+      grad_node->SetForwardTrace(egr::Controller::Instance().GetPythonStack());
+    }
+
     egr::Controller::Instance().PushBackForceSequentialNodes(grad_node.get());
     // SetAttributes if needed
     grad_node->SetAttributemomentum(momentum);

@@ -12,6 +12,11 @@ set(EAGER_GENERETOR_DEPS
     imperative_profiler
     imperative_flag)
 
+if(WITH_CUSTOM_DEVICE)
+  set(EAGER_GENERETOR_DEPS ${EAGER_GENERETOR_DEPS}
+                           custom_device_common_op_registry)
+endif()
+
 add_executable(eager_generator eager_generator.cc)
 target_link_libraries(eager_generator ${EAGER_GENERETOR_DEPS})
 

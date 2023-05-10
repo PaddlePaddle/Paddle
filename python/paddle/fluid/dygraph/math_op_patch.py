@@ -65,7 +65,7 @@ _complex_dtypes = [
 _already_patch_eager_tensor = False
 
 
-def monkey_patch_math_varbase():
+def monkey_patch_math_tensor():
     """
     Similar to monkey_patch_variable.
     The difference is, in dygraph mode, use auto-generated op functions for better performance.
@@ -179,7 +179,7 @@ def monkey_patch_math_varbase():
 
     @property
     def _size_(var):
-        return np.prod(var.shape)
+        return int(np.prod(var.shape))
 
     @property
     def _T_(var):
@@ -248,7 +248,7 @@ def monkey_patch_math_varbase():
                 # do nothing
                 pass
 
-            # 2. create varbase for scalar
+            # 2. create Tensor for scalar
             lhs_dtype = self.dtype
             other_var_should_be = core.eager.Tensor
             if not isinstance(other_var, other_var_should_be):
@@ -343,7 +343,7 @@ def monkey_patch_math_varbase():
         __impl__.__name__ = method_name
         return __impl__
 
-    varbase_methods = [
+    tensor_methods = [
         ('__neg__', _neg_),
         ('__float__', _float_),
         ('__long__', _long_),
@@ -498,7 +498,7 @@ def monkey_patch_math_varbase():
                 setattr(local_tensor, method_name, method_impl)
 
         else:
-            for method in varbase_methods:
+            for method in tensor_methods:
                 method_name = method[0]
                 method_impl = method[1]
                 setattr(local_tensor, method_name, method_impl)

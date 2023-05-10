@@ -123,11 +123,11 @@ void Conv2dTransposeKernel(const Context& ctx,
         true);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose_v2");
   } else {
-    int r = xpu::conv2d_transpose_v2<float, float, float, int16_t>(
+    int r = xpu::conv2d_transpose_v2<XPUT, XPUT, XPUT, int16_t>(
         ctx.x_context(),
-        x.data<float>(),
-        filter_.data<float>(),
-        out->data<float>(),
+        reinterpret_cast<const XPUT*>(x.data<T>()),
+        reinterpret_cast<const XPUT*>(filter.data<T>()),
+        reinterpret_cast<XPUT*>(out->data<T>()),
         batch_size,
         img_yc,
         img_xh,
@@ -148,5 +148,9 @@ void Conv2dTransposeKernel(const Context& ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    conv2d_transpose, XPU, ALL_LAYOUT, phi::Conv2dTransposeKernel, float) {}
+PD_REGISTER_KERNEL(conv2d_transpose,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::Conv2dTransposeKernel,
+                   float,
+                   phi::dtype::float16) {}

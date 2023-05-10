@@ -99,6 +99,17 @@ const std::shared_ptr<Generator>& DefaultCPUGenerator() {
   return default_cpu_generator;
 }
 
+const std::shared_ptr<Generator>& DefaultCustomDeviceGenerator(
+    const phi::CustomPlace& place) {
+  static std::
+      unordered_map<phi::Place, std::shared_ptr<Generator>, phi::Place::Hash>
+          generators;
+  if (generators.find(place) == generators.end()) {
+    generators.insert({place, std::make_shared<Generator>(GetRandomSeed())});
+  }
+  return generators[place];
+}
+
 using RNGMap = std::unordered_map<std::string, std::shared_ptr<Generator>>;
 
 static RNGMap& GetRandomSeedGeneratorMap() {

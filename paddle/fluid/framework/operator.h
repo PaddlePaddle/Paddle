@@ -42,8 +42,10 @@ limitations under the License. */
 
 #include "paddle/phi/core/compat/arg_map_context.h"
 #include "paddle/phi/core/compat/op_utils.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
+#include "paddle/phi/core/macros.h"
 #include "paddle/utils/flat_hash_map.h"
 
 namespace paddle {
@@ -58,7 +60,7 @@ namespace phi {
 class KernelContext;
 }
 
-DECLARE_int32(inner_op_parallelism);
+PHI_DECLARE_int32(inner_op_parallelism);
 
 namespace paddle {
 namespace framework {
@@ -353,11 +355,11 @@ class OperatorBase {
 
   void SetIsCalledByExecutor(bool x) { run_by_executor_ = x; }
 
-  virtual void SetIsRuntimeInferShape(bool x) {}
+  virtual void SetIsRuntimeInferShape(bool x UNUSED) {}
 
-  virtual void RuntimeInferShape(const Scope& scope,
-                                 const platform::Place& place,
-                                 const RuntimeContext& ctx) const {}
+  virtual void RuntimeInferShape(const Scope& scope UNUSED,
+                                 const platform::Place& place UNUSED,
+                                 const RuntimeContext& ctx UNUSED) const {}
 
   virtual platform::Place GetExecutionPlace(
       const platform::Place& place) const {
@@ -794,7 +796,7 @@ class OperatorWithKernel : public OperatorBase {
       const phi::KernelKey& expected_kernel_type) const;
 
   platform::Place GetExecutionPlace(
-      const platform::Place& platform) const override {
+      const platform::Place& platform UNUSED) const override {
     return kernel_type_->place_;
   }
 

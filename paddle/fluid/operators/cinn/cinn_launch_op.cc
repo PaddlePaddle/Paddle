@@ -21,9 +21,10 @@
 #include "cinn/runtime/cinn_runtime.h"
 #include "cinn/runtime/flags.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/generator.h"
 
-DECLARE_bool(cudnn_deterministic);
+PHI_DECLARE_bool(cudnn_deterministic);
 
 namespace paddle {
 namespace operators {

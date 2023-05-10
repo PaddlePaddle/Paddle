@@ -45,9 +45,6 @@ inline size_t Alignment(size_t size,
 #endif
     }
   }
-  if (place.GetType() == phi::AllocationType::NPU) {
-    size += 32;  // required by ascendcl
-  }
   size_t remaining = size % alignment;
   return remaining == 0 ? size : size + (alignment - remaining);
 }

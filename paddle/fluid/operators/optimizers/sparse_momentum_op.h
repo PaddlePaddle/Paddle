@@ -295,7 +295,7 @@ class IndexMomentumFunctor {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class SparseMomentumOpKernel : public framework::OpKernel<T> {
   using MPDType = MultiPrecisionType<T>;
 

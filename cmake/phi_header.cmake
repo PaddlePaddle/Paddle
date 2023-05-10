@@ -17,21 +17,24 @@ set(PADDLE_INFERENCE_INSTALL_DIR
 
 function(phi_header_path_compat TARGET_PATH)
   message(STATUS "phi header path compat processing: ${TARGET_PATH}")
-  file(GLOB HEADERS "${TARGET_PATH}/*" "*.h")
-  foreach(header ${HEADERS})
-    if(${header} MATCHES ".*.h$")
-      file(READ ${header} HEADER_CONTENT)
-      string(REPLACE "paddle/phi/" "paddle/include/experimental/phi/"
-                     HEADER_CONTENT "${HEADER_CONTENT}")
-      string(REPLACE "paddle/fluid/platform/"
-                     "paddle/include/experimental/phi/" HEADER_CONTENT
-                     "${HEADER_CONTENT}")
-      string(REPLACE "paddle/utils/" "paddle/include/experimental/utils/"
-                     HEADER_CONTENT "${HEADER_CONTENT}")
-      file(WRITE ${header} "${HEADER_CONTENT}")
-      message(STATUS "phi header path compat processing complete: ${header}")
-    endif()
-  endforeach()
+  string(FIND ${TARGET_PATH} "experimental" pos)
+  if(pos GREATER 1)
+    file(GLOB HEADERS "${TARGET_PATH}/*" "*.h")
+    foreach(header ${HEADERS})
+      if(${header} MATCHES ".*.h$")
+        file(READ ${header} HEADER_CONTENT)
+        string(REPLACE "paddle/phi/" "paddle/include/experimental/phi/"
+                       HEADER_CONTENT "${HEADER_CONTENT}")
+        string(REPLACE "paddle/fluid/platform/"
+                       "paddle/include/experimental/phi/" HEADER_CONTENT
+                       "${HEADER_CONTENT}")
+        string(REPLACE "paddle/utils/" "paddle/include/experimental/utils/"
+                       HEADER_CONTENT "${HEADER_CONTENT}")
+        file(WRITE ${header} "${HEADER_CONTENT}")
+        message(STATUS "phi header path compat processing complete: ${header}")
+      endif()
+    endforeach()
+  endif()
 endfunction()
 
 phi_header_path_compat(
@@ -48,7 +51,16 @@ phi_header_path_compat(
   ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/common)
 phi_header_path_compat(
   ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/phi/core)
-phi_header_path_compat(${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/)
+
+# NOTE(liuyuanle): In inference lib, no need include paddle/utils/pybind.h, so we delete this.
+file(READ
+     ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/extension.h
+     HEADER_CONTENT)
+string(REGEX REPLACE "#if !defined\\(PADDLE_ON_INFERENCE\\).*#endif" ""
+                     HEADER_CONTENT "${HEADER_CONTENT}")
+file(WRITE
+     ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/extension.h
+     "${HEADER_CONTENT}")
 
 # In order to be compatible with the original behavior, the header file name needs to be changed
 file(RENAME

@@ -36,20 +36,20 @@ size_t constexpr max_out_channels = 256;
 static size_t workspace_size =
     sizeof(float) * max_splitk_slices * max_in_channels * max_out_channels;
 
-#define TYPEDEF_KERNEL_POINTER(kernel, dtype)        \
-  typedef void (*kernel)(dtype const alpha,          \
-                         dtype const beta,           \
-                         const GPUContext& dev_ctx,  \
-                         const dtype* const a,       \
-                         const dtype* const b,       \
-                         const dtype* const c,       \
-                         dtype* const d,             \
-                         const int m,                \
-                         const int n,                \
-                         const int k,                \
-                         const int32_t* a_indices,   \
-                         const int32_t* b_indices,   \
-                         const int32_t* c_d_indices, \
+#define TYPEDEF_KERNEL_POINTER(kernel, in_type, out_type) \
+  typedef void (*kernel)(out_type const alpha,            \
+                         out_type const beta,             \
+                         const GPUContext& dev_ctx,       \
+                         const in_type* const a,          \
+                         const in_type* const b,          \
+                         const out_type* const c,         \
+                         out_type* const d,               \
+                         const int m,                     \
+                         const int n,                     \
+                         const int k,                     \
+                         const int32_t* a_indices,        \
+                         const int32_t* b_indices,        \
+                         const int32_t* c_d_indices,      \
                          void* const workspace_ptr);
 #define GATHER_GEMM_SCATTER_CHECK(status)                      \
   {                                                            \
@@ -58,15 +58,15 @@ static size_t workspace_size =
       throw std::runtime_error(cutlassGetStatusString(error)); \
     }                                                          \
   }
-#define DEFINE_LAUNCH_KERNEL(dtype, cutlass_type)                             \
+#define DEFINE_LAUNCH_KERNEL(in_type, out_type)                               \
   template <typename Config>                                                  \
-  void launchKernel(dtype const alpha,                                        \
-                    dtype const beta,                                         \
+  void launchKernel(out_type const alpha,                                     \
+                    out_type const beta,                                      \
                     const GPUContext& dev_ctx,                                \
-                    const dtype* const a,                                     \
-                    const dtype* const b,                                     \
-                    const dtype* const c,                                     \
-                    dtype* const d,                                           \
+                    const in_type* const a,                                   \
+                    const in_type* const b,                                   \
+                    const out_type* const c,                                  \
+                    out_type* const d,                                        \
                     const int m,                                              \
                     const int n,                                              \
                     const int k,                                              \
@@ -81,12 +81,14 @@ static size_t workspace_size =
         Config::Mode,                                                         \
         problem_size_real,                                                    \
         split_k_slices,                                                       \
-        {static_cast<const cutlass_type>(static_cast<const float>(alpha)),    \
-         static_cast<const cutlass_type>(static_cast<const float>(beta))},    \
-        reinterpret_cast<const cutlass_type* const>(a),                       \
-        reinterpret_cast<const cutlass_type* const>(b),                       \
-        reinterpret_cast<const cutlass_type* const>(c),                       \
-        reinterpret_cast<cutlass_type* const>(d),                             \
+        {static_cast<const typename Gemm::Base::ElementAccumulator>(          \
+             static_cast<const float>(alpha)),                                \
+         static_cast<const typename Gemm::Base::ElementAccumulator>(          \
+             static_cast<const float>(beta))},                                \
+        reinterpret_cast<const typename Gemm::Base::ElementA* const>(a),      \
+        reinterpret_cast<const typename Gemm::Base::ElementB* const>(b),      \
+        reinterpret_cast<const typename Gemm::Base::ElementC* const>(c),      \
+        reinterpret_cast<typename Gemm::Base::ElementC* const>(d),            \
         m * k,                                                                \
         k * n,                                                                \
         m * n,                                                                \
@@ -172,19 +174,23 @@ static size_t workspace_size =
           ref_workspace,                                                      \
           ref_d,                                                              \
           ref_c,                                                              \
-          {static_cast<const cutlass_type>(static_cast<const float>(alpha)),  \
-           static_cast<const cutlass_type>(static_cast<const float>(beta))}); \
+          {static_cast<const typename Gemm::Base::ElementAccumulator>(        \
+               static_cast<const float>(alpha)),                              \
+           static_cast<const typename Gemm::Base::ElementAccumulator>(        \
+               static_cast<const float>(beta))});                             \
       status = reduction_op.initialize(reduction_args);                       \
       GATHER_GEMM_SCATTER_CHECK(status);                                      \
       reduction_op(dev_ctx.stream());                                         \
     }                                                                         \
   }
 
-TYPEDEF_KERNEL_POINTER(fp16_gather_gemm_scatter, phi::dtype::float16)
-TYPEDEF_KERNEL_POINTER(fp32_gather_gemm_scatter, float)
+TYPEDEF_KERNEL_POINTER(gather_hgemm_scatter, phi::dtype::float16, phi::float16)
+TYPEDEF_KERNEL_POINTER(gather_sgemm_scatter, float, float)
+TYPEDEF_KERNEL_POINTER(gather_sgemm_f16_scatter, phi::dtype::float16, float)
 
-DEFINE_LAUNCH_KERNEL(phi::dtype::float16, cutlass::half_t)
+DEFINE_LAUNCH_KERNEL(phi::dtype::float16, phi::dtype::float16)
 DEFINE_LAUNCH_KERNEL(float, float)
+DEFINE_LAUNCH_KERNEL(phi::dtype::float16, float)
 
 }  // namespace sparse
 }  // namespace phi

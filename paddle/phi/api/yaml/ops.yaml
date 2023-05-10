@@ -44,6 +44,18 @@
   optional : master_param, master_param_out
   inplace : (param -> param_out), (moment -> moment_out), (master_param -> master_param_out)
 
+- op : adam_
+  args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor moment1, Tensor moment2, Tensor beta1_pow, Tensor beta2_pow, Tensor master_param, Tensor skip_update, Scalar beta1 = 0.9f, Scalar beta2 = 0.999f, Scalar epsilon = 1.0e-8f, bool lazy_mode = false, int64_t min_row_size_to_use_multithread = 1000, bool multi_precision = false, bool use_global_beta_pow = false)
+  output : Tensor(param_out), Tensor(moment1_out), Tensor(moment2_out), Tensor(beta1_pow_out), Tensor(beta2_pow_out), Tensor(master_param_out)
+  infer_meta :
+    func : AdamInferMeta
+  kernel :
+    func : adam {dense, dense, dense, dense, dense, dense, dense, dense, dense -> dense, dense, dense, dense, dense, dense},
+           adam_dense_param_sparse_grad {dense, selected_rows, dense, dense, dense, dense, dense, dense, dense -> dense, dense, dense, dense, dense, dense}
+    data_type : param
+  optional : master_param, skip_update, master_param_out
+  inplace : (param -> param_out), (moment1 -> moment1_out), (moment2 -> moment2_out), (beta1_pow -> beta1_pow_out), (beta2_pow -> beta2_pow_out), (master_param -> master_param_out)
+
 - op : adamax_
   args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor moment, Tensor inf_norm, Tensor beta1_pow, Tensor master_param, float beta1 = 0.9f, float beta2 = 0.999f, float epsilon = 1.0e-8f, bool multi_precision = false)
   output : Tensor(param_out), Tensor(moment_out), Tensor(inf_norm_out), Tensor(master_param_out)
@@ -54,6 +66,17 @@
     data_type : param
   optional : master_param, master_param_out
   inplace : (param -> param_out), (moment -> moment_out), (inf_norm -> inf_norm_out), (master_param ->master_param_out)
+
+- op : adamw_
+  args : (Tensor param, Tensor grad, Tensor learning_rate, Tensor moment1, Tensor moment2, Tensor beta1_pow, Tensor beta2_pow, Tensor master_param, Tensor skip_update, Scalar beta1 = 0.9f, Scalar beta2 = 0.999f, Scalar epsilon = 1.0e-8f, float lr_ratio = 1.0f, float coeff = 0.01f, bool with_decay = false, bool lazy_mode = false, int64_t min_row_size_to_use_multithread = 1000, bool multi_precision = false, bool use_global_beta_pow = false)
+  output : Tensor(param_out), Tensor(moment1_out), Tensor(moment2_out), Tensor(beta1_pow_out), Tensor(beta2_pow_out), Tensor(master_param_out)
+  infer_meta :
+    func : AdamwInferMeta
+  kernel :
+    func : adamw
+    data_type : param
+  optional : master_param, skip_update, master_param_out
+  inplace : (param -> param_out), (moment1 -> moment1_out), (moment2 -> moment2_out), (beta1_pow -> beta1_pow_out), (beta2_pow -> beta2_pow_out), (master_param -> master_param_out)
 
 - op : addmm
   args : (Tensor input, Tensor x, Tensor y, float beta=1.0, float alpha=1.0)
@@ -306,6 +329,15 @@
     func : bmm
   backward : bmm_grad
 
+- op : box_coder
+  args : (Tensor prior_box, Tensor prior_box_var, Tensor target_box, str code_type = "encode_center_size", bool box_normalized = true, int axis = 0, float[] variance = {})
+  output : Tensor(output_box)
+  infer_meta :
+    func : BoxCoderInferMeta
+  kernel :
+    func : box_coder
+  optional : prior_box_var
+
 - op : broadcast_tensors
   args: (Tensor[] input)
   output: Tensor[]{input.size()}
@@ -354,6 +386,15 @@
     func : cholesky_solve
   backward : cholesky_solve_grad
 
+- op : class_center_sample
+  args : (Tensor label, int num_classes, int num_samples, int ring_id = 0, int rank = 0, int nranks = 1, bool fix_seed = false, int seed = 0)
+  output : Tensor(remapped_label), Tensor(sampled_local_class_center)
+  infer_meta :
+    func : ClassCenterSampleInferMeta
+  kernel :
+    func : class_center_sample
+    data_type : label
+
 - op : clip
   args : (Tensor x, Scalar(float) min, Scalar(float) max)
   output : Tensor(out)
@@ -374,6 +415,15 @@
   kernel :
     func : clip_by_norm {dense -> dense}
            clip_by_norm_sr {selected_rows -> selected_rows}
+
+- op : coalesce_tensor
+  args : (Tensor[] input, DataType dtype, bool copy_data = false, bool set_constant = false, bool persist_output = false, float constant = 0.0, bool use_align = true, int align_size = -1, int size_of_dtype = -1, int64_t[] concated_shapes = {}, int64_t[] concated_ranks = {})
+  output : Tensor[](output){input.size()}, Tensor(fused_output)
+  infer_meta :
+    func : CoalesceTensorInferMeta
+  kernel :
+    func : coalesce_tensor
+    data_type : dtype
 
 - op : complex
   args : (Tensor real, Tensor imag)
@@ -523,6 +573,16 @@
     func : dot
     data_type : x
   backward : dot_grad
+
+- op : edit_distance
+  args : (Tensor hyps, Tensor refs, Tensor hypslength, Tensor refslength, bool normalized = false)
+  output : Tensor(sequencenum), Tensor(out)
+  infer_meta :
+    func : EditDistanceInferMeta
+  kernel :
+    func : edit_distance
+    data_type : DataType::FLOAT32
+  optional : hypslength, refslength
 
 - op : eig
   args: (Tensor x)
@@ -678,8 +738,9 @@
   backward : fill_diagonal_tensor_grad
 
 - op : flash_attn
-  args : (Tensor q, Tensor k, Tensor v, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false)
+  args : (Tensor q, Tensor k, Tensor v, Tensor fixed_seed_offset, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false, str rng_name = "")
   output : Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
+  optional : fixed_seed_offset
   infer_meta :
     func : FlashAttnInferMeta
     param : [q, k, v]
@@ -690,8 +751,9 @@
   backward : flash_attn_grad
 
 - op : flash_attn_unpadded
-  args : (Tensor q, Tensor k, Tensor v, Tensor cu_seqlens_q,  Tensor cu_seqlens_k, int64_t max_seqlen_q, int64_t max_seqlen_k, float scale, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false)
+  args : (Tensor q, Tensor k, Tensor v, Tensor cu_seqlens_q,  Tensor cu_seqlens_k, Tensor fixed_seed_offset, int64_t max_seqlen_q, int64_t max_seqlen_k, float scale, float dropout = 0.0, bool causal = false, bool return_softmax = false, bool is_test = false, str rng_name = "")
   output : Tensor(out), Tensor(softmax), Tensor(softmax_lse), Tensor(seed_offset)
+  optional : fixed_seed_offset
   infer_meta :
     func : FlashAttnInferMeta
     param : [q, k, v]
@@ -780,6 +842,16 @@
     func : gelu
   backward : gelu_grad
 
+- op : generate_proposals
+  args : (Tensor scores, Tensor bbox_deltas, Tensor im_shape, Tensor anchors, Tensor variances, int pre_nms_top_n, int post_nms_top_n, float nms_thresh, float min_size, float eta, bool pixel_offset=true)
+  output : Tensor(rpn_rois), Tensor(rpn_roi_probs), Tensor(rpn_rois_num)
+  infer_meta :
+    func : GenerateProposalsV2InferMeta
+  kernel :
+    func : generate_proposals
+    data_type : anchors
+  optional : rpn_rois_num
+
 - op : grid_sample
   args : (Tensor x, Tensor grid, str mode = "bilinear", str padding_mode = "zeros", bool align_corners = true)
   output : Tensor(out)
@@ -867,6 +939,17 @@
     data_type : x
   inplace : (x -> out)
   backward : index_add_grad
+
+- op : index_put
+  args : (Tensor x, Tensor[] indices, Tensor value, bool accumulate=false)
+  output : Tensor(out)
+  infer_meta :
+    func : IndexPutInferMeta
+  kernel :
+    func : index_put
+    data_type : x
+  inplace : (x -> out)
+  backward : index_put_grad
 
 - op : index_sample
   args : (Tensor x, Tensor index)
@@ -1159,6 +1242,16 @@
     func : logsigmoid
   backward : logsigmoid_grad
 
+- op : lstsq
+  args : (Tensor x, Tensor y, Scalar rcond=0.0f, str driver="gels")
+  output : Tensor(solution), Tensor(residuals), Tensor(rank), Tensor(singular_values)
+  infer_meta :
+    func : LstsqInferMeta
+  kernel :
+    func : lstsq
+    data_type : x
+  optional : residuals
+
 - op : lu
   args : (Tensor x, bool pivot = true)
   output : Tensor(out), Tensor(pivots), Tensor(infos)
@@ -1218,6 +1311,24 @@
     func : matrix_power
   backward : matrix_power_grad
 
+- op : max_pool2d_with_index
+  args : (Tensor x, int[] kernel_size, int[] strides= {1, 1}, int[] paddings = {0, 0}, bool global_pooling = false, bool adaptive = false)
+  output : Tensor(out), Tensor(mask)
+  infer_meta :
+    func : MaxPoolWithIndexInferMeta
+  kernel :
+    func : max_pool2d_with_index
+  backward : max_pool2d_with_index_grad
+
+- op : max_pool3d_with_index
+  args : (Tensor x, int[] kernel_size, int[] strides = {1, 1, 1}, int[] paddings = {0, 0, 0}, bool global_pooling = false, bool adaptive = false)
+  output : Tensor(out), Tensor(mask)
+  infer_meta :
+    func : MaxPoolWithIndexInferMeta
+  kernel :
+    func : max_pool3d_with_index
+  backward : max_pool3d_with_index_grad
+
 - op : maxout
   args : (Tensor x, int groups, int axis = 1)
   output : Tensor(out)
@@ -1226,6 +1337,15 @@
   kernel :
     func : maxout
   backward : maxout_grad
+
+- op : mean_all
+  args : (Tensor x)
+  output : Tensor
+  infer_meta :
+    func : MeanAllInferMeta
+  kernel :
+    func : mean_all
+  backward : mean_all_grad
 
 - op : memory_efficient_attention
   args : (Tensor query, Tensor key, Tensor value, Tensor bias, Tensor cu_seqlens_q, Tensor cu_seqlens_k, Tensor causal_diagonal, Tensor seqlen_k, Scalar max_seqlen_q, Scalar max_seqlen_k, bool causal, double dropout_p, float scale, bool is_test)
@@ -1245,6 +1365,17 @@
     func : UnchangedInferMeta
   kernel :
     func : merge_selected_rows {selected_rows -> selected_rows}
+
+- op : merged_adam_
+  args : (Tensor[] param, Tensor[] grad, Tensor[] learning_rate, Tensor[] moment1, Tensor[] moment2, Tensor[] beta1_pow, Tensor[] beta2_pow, Tensor[] master_param, Scalar beta1 = 0.9f, Scalar beta2 = 0.999f, Scalar epsilon = 1.0e-8f, bool multi_precision = false, bool use_global_beta_pow = false)
+  output : Tensor[](param_out){param.size()}, Tensor[](moment1_out){param.size()}, Tensor[](moment2_out){param.size()}, Tensor[](beta1_pow_out){param.size()}, Tensor[](beta2_pow_out){param.size()}, Tensor[](master_param_out){param.size()}
+  infer_meta :
+    func : MergedAdamInferMeta
+  kernel :
+    func : merged_adam
+    data_type : param
+  optional: master_param, master_param_out
+  inplace : (param -> param_out), (moment1 -> moment1_out), (moment2 -> moment2_out), (beta1_pow -> beta1_pow_out), (beta2_pow -> beta2_pow_out), (master_param -> master_param_out)
 
 - op : merged_momentum_
   args : (Tensor[] param, Tensor[] grad, Tensor[] velocity, Tensor[] learning_rate, Tensor[] master_param, float mu, bool use_nesterov = false, str[] regularization_method = {}, float[] regularization_coeff = {}, bool multi_precision = false, float rescale_grad = 1.0f)
@@ -1347,6 +1478,16 @@
   backward : nearest_interp_grad
   data_transform :
     skip_transform : out_size, size_tensor, scale_tensor
+
+- op : nextafter
+  args : (Tensor x, Tensor y)
+  output : Tensor(out)
+  infer_meta :
+    func : ElementwiseInferMeta
+    param: [x, y]
+  kernel :
+    func : nextafter
+    data_type : x
 
 - op : nll_loss
   args : (Tensor input, Tensor label, Tensor weight, int64_t ignore_index = -100, str reduction = "mean")
@@ -1495,6 +1636,16 @@
     func : reciprocal
   inplace : (x -> out)
   backward : reciprocal_grad
+
+- op : reindex_graph
+  args : (Tensor x, Tensor neighbors, Tensor count, Tensor hashtable_value, Tensor hashtable_index)
+  output : Tensor(reindex_src), Tensor(reindex_dst), Tensor(out_nodes)
+  infer_meta :
+    func : GraphReindexInferMeta
+  kernel :
+    func : graph_reindex
+    data_type : x
+  optional : hashtable_value, hashtable_index
 
 - op : relu
   args : (Tensor x)
@@ -1951,6 +2102,16 @@
     func : trace
   backward : trace_grad
 
+- op : triangular_solve
+  args : (Tensor x, Tensor y, bool upper=true, bool transpose=false, bool unitriangular=false)
+  output : Tensor
+  infer_meta :
+    func : TriangularSolveInferMeta
+  kernel :
+    func : triangular_solve
+    data_type : x
+  backward : triangular_solve_grad
+
 - op : trilinear_interp
   args : (Tensor x, Tensor out_size, Tensor[] size_tensor, Tensor scale_tensor, str data_layout="NCHW", int out_d=0, int out_h=0, int out_w=0, float[] scale={}, str interp_method="bilinear", bool align_corners=true, int align_mode=1)
   output : Tensor(output)
@@ -2011,6 +2172,26 @@
     func : unique_consecutive
     data_type : x
   optional : index, counts
+
+- op : unpool
+  args: (Tensor x, Tensor indices, int[] ksize, int[] strides = {1,1}, int[] paddings ={0,0} ,IntArray output_size = {0,0}, str data_format="NCHW")
+  output: Tensor(out)
+  infer_meta:
+    func: UnpoolInferMeta
+  kernel:
+    func: unpool
+    data_type: x
+  backward: unpool_grad
+
+- op : unpool3d
+  args: (Tensor x, Tensor indices, int[] ksize, int[] strides={1,1,1}, int[] paddings={0,0,0}, int[] output_size={0,0,0}, str data_format="NCDHW")
+  output: Tensor(out)
+  infer_meta:
+    func: Unpool3dInferMeta
+  kernel:
+    func: unpool3d
+    data_type: x
+  backward: unpool3d_grad
 
 - op : unsqueeze
   args : (Tensor x, IntArray axis = {})
@@ -2079,6 +2260,15 @@
   intermediate: warprnntgrad
   backward : warprnnt_grad
 
+- op : weighted_sample_neighbors
+  args : (Tensor row, Tensor colptr, Tensor edge_weight, Tensor input_nodes, Tensor eids, int sample_size, bool return_eids)
+  output : Tensor(out_neighbors), Tensor(out_count), Tensor(out_eids)
+  infer_meta :
+    func : WeightedSampleNeighborsInferMeta
+  kernel :
+    func : weighted_sample_neighbors
+  optional: eids
+
 - op : where
   args : (Tensor condition, Tensor x, Tensor y)
   output : Tensor
@@ -2096,3 +2286,15 @@
   kernel :
     func : yolo_box
     data_type : x
+
+- op : yolo_loss
+  args : (Tensor x, Tensor gt_box, Tensor gt_label, Tensor gt_score, int[] anchors={}, int[] anchor_mask={}, int class_num =1 , float ignore_thresh=0.7, int downsample_ratio=32, bool use_label_smooth=true, float scale_x_y=1.0)
+  output : Tensor(loss), Tensor(objectness_mask), Tensor(gt_match_mask)
+  infer_meta :
+    func : YoloLossInferMeta
+  kernel :
+    func : yolo_loss
+    data_type : x
+  optional : gt_score
+  intermediate : objectness_mask, gt_match_mask
+  backward : yolo_loss_grad

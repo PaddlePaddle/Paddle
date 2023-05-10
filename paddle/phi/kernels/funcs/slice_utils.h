@@ -13,10 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <glog/logging.h>
 #include <paddle/phi/core/ddim.h>
-
 #include <string>
 #include <vector>
+#include "paddle/phi/core/flags.h"
+
+PHI_DECLARE_bool(set_to_1d);
 
 namespace phi {
 
@@ -202,13 +205,11 @@ inline DDim GetDecreasedDims(const DDim slice_dims,
         new_shape.push_back(decreased_dims[i]);
       }
     }
-
-    // NOTE(liym27): Paddle does not support that the rank of Tensor is 0, and
-    // uses [1] instead.
-    if (new_shape.size() == 0) {
+    if (FLAGS_set_to_1d && new_shape.size() == 0) {
+      // NOTE(zoooo0820): Hack procssing to 1-D, when axes decrease to 0-D in
+      // slice. This will remove in release 2.6.
       new_shape.push_back(1);
     }
-
     decreased_dims = phi::make_ddim(new_shape);
   }
   return decreased_dims;

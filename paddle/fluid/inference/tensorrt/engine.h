@@ -39,14 +39,73 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/stream.h"
 #include "paddle/utils/any.h"
 
-DECLARE_bool(trt_ibuilder_cache);
+PHI_DECLARE_bool(trt_ibuilder_cache);
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
+
+// The code is mainly from TensorRT, thanks to the project.
+class TrtCudaGraph {
+ public:
+  TrtCudaGraph() = default;
+  ~TrtCudaGraph() {
+    if (cuda_graph_exec_) {
+      cudaGraphExecDestroy(cuda_graph_exec_);
+    }
+  }
+
+  void BeginCapture(cudaStream_t stream) {
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        cudaStreamBeginCapture(stream, cudaStreamCaptureModeThreadLocal));
+  }
+
+  bool Launch(cudaStream_t stream) {
+    return cudaGraphLaunch(cuda_graph_exec_, stream);
+  }
+
+  void EndCapture(cudaStream_t stream) {
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamEndCapture(stream, &cuda_graph_));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaGraphInstantiate(
+        &cuda_graph_exec_, cuda_graph_, nullptr, nullptr, 0));
+    PADDLE_ENFORCE_GPU_SUCCESS(cudaGraphDestroy(cuda_graph_));
+  }
+
+  void EndCaptureOnError(cudaStream_t stream) {
+    // There are two possibilities why stream capture would fail:
+    // (1) stream is in cudaErrorStreamCaptureInvalidated state.
+    // (2) TRT reports a failure.
+    // In case (1), the returning cuda_graph_ should be nullptr.
+    // In case (2), the returning cuda_graph_ is not nullptr, but it should not
+    // be used.
+    const auto ret = cudaStreamEndCapture(stream, &cuda_graph_);
+    if (ret == cudaErrorStreamCaptureInvalidated) {
+      PADDLE_ENFORCE_EQ(cuda_graph_ == nullptr,
+                        true,
+                        platform::errors::PreconditionNotMet(
+                            "CudaGraph capture stream failed."));
+    } else {
+      PADDLE_ENFORCE_GPU_SUCCESS(ret);
+      PADDLE_ENFORCE_NOT_NULL(
+          cuda_graph_,
+          phi::errors::PreconditionNotMet("CudaGraph capture stream failed."));
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaGraphDestroy(cuda_graph_));
+      cuda_graph_ = nullptr;
+    }
+    // Clean up any cuda error.
+    cudaGetLastError();
+    LOG(WARNING) << "The TRT CUDA graph capture on the stream has failed.";
+  }
+
+ private:
+  DISABLE_COPY_AND_ASSIGN(TrtCudaGraph);
+  cudaGraph_t cuda_graph_{};
+  cudaGraphExec_t cuda_graph_exec_{};
+};
 
 namespace plugin {
 class PluginTensorRT;
@@ -86,10 +145,10 @@ template <typename T>
 nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape,
                             std::string input,
                             bool with_dynamic_shape = false) {
-  PADDLE_ENFORCE_GT(shape.size(),
+  PADDLE_ENFORCE_GE(shape.size(),
                     0UL,
                     platform::errors::InvalidArgument(
-                        "TensorRT's tensor input requires at least 1 "
+                        "TensorRT's tensor input requires at least 0 "
                         "dimensions, but input %s has %d dims.",
                         input,
                         shape.size()));
@@ -444,6 +503,11 @@ class TensorRTEngine {
                std::vector<void*>* buffers,
                cudaStream_t stream = nullptr);
 
+  bool Enqueue(nvinfer1::IExecutionContext* context,
+               std::vector<void*>* buffers,
+               int batch,
+               cudaStream_t stream);
+
   nvinfer1::INetworkDefinition* network() { return infer_network_.get(); }
 
   ShapeMapType min_input_shape() { return min_input_shape_; }
@@ -681,6 +745,11 @@ class TensorRTEngine {
     context_memory_sharing_ = context_memory_sharing;
   }
 
+  void SetAllNodesLowerToTrt(bool all_nodes_offload_to_trt) {
+    // all nodes are in trt, so we can use cudaGraph to optimize runtime.
+    startup_with_cudagraph_ = all_nodes_offload_to_trt;
+  }
+
  private:
   // Each ICudaEngine object is bound to a specific GPU when it is instantiated,
   // ensure that the thread is associated with the correct device by calling
@@ -742,6 +811,11 @@ class TensorRTEngine {
       infer_context_;
   infer_ptr<nvinfer1::IHostMemory> ihost_memory_;
   std::unordered_map<nvinfer1::ITensor*, float> quant_dynamic_range_;
+
+  // cudagraph related
+  TrtCudaGraph cuda_graph_;
+  bool cudagraph_inited_{false};
+  bool startup_with_cudagraph_{false};
 
   std::unordered_map<std::string, paddle::any> attrs_;
   std::unordered_map<std::string, std::function<void(void)>> attr_dels_;

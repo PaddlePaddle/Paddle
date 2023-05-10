@@ -22,7 +22,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class CAllGatherOpXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -43,12 +43,9 @@ class CAllGatherOpXPUKernel : public framework::OpKernel<T> {
         platform::errors::InvalidArgument(
             "nranks: %s should equal to %s", nranks, comm->nranks()));
 
-    framework::DDim out_dims = in->dims();
-    out_dims[0] *= nranks;
-
     size_t numel = in->numel();
     const void* sendbuff = in->data<T>();
-    void* recvbuff = out->mutable_data<T>(out_dims, place);
+    void* recvbuff = out->mutable_data<T>(place);
 
     XPUStream stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {
@@ -80,9 +77,12 @@ class CAllGatherOpXPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_XPU_KERNEL(c_allgather,
-                       ops::CAllGatherOpXPUKernel<float>,
-                       ops::CAllGatherOpXPUKernel<double>,
-                       ops::CAllGatherOpXPUKernel<int>,
-                       ops::CAllGatherOpXPUKernel<int64_t>,
-                       ops::CAllGatherOpXPUKernel<plat::float16>);
+PD_REGISTER_STRUCT_KERNEL(c_allgather,
+                          XPU,
+                          ALL_LAYOUT,
+                          ops::CAllGatherOpXPUKernel,
+                          float,
+                          double,
+                          plat::float16,
+                          int,
+                          int64_t) {}

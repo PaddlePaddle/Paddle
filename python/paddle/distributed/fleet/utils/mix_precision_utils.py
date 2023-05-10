@@ -242,7 +242,7 @@ def unscale_method(self, optimizer):
         paddle.distributed.all_reduce(
             is_found_inf, op=paddle.distributed.ReduceOp.MAX, group=None
         )
-        self._found_inf = is_found_inf.numpy()[0]
+        self._found_inf = int(is_found_inf)
 
 
 class MixPrecisionScaler:
