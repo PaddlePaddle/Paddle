@@ -50,36 +50,18 @@ __inline__ __device__ T WarpAllReduce(T val) {
   return val;
 }
 
-inline cudaError_t GetNumBlocks(int64_t block_size,
+inline void GetNumBlocks(int64_t block_size,
                                 int64_t max_blocks,
                                 int64_t waves,
                                 int* num_blocks) {
   int dev;
-  {
-    cudaError_t err = cudaGetDevice(&dev);
-    if (err != cudaSuccess) {
-      return err;
-    }
-  }
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaGetDevice(&dev));
   int sm_count;
-  {
-    cudaError_t err =
-        cudaDeviceGetAttribute(&sm_count, cudaDevAttrMultiProcessorCount, dev);
-    if (err != cudaSuccess) {
-      return err;
-    }
-  }
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceGetAttribute(&sm_count, cudaDevAttrMultiProcessorCount, dev));
   int tpm;
-  {
-    cudaError_t err = cudaDeviceGetAttribute(
-        &tpm, cudaDevAttrMaxThreadsPerMultiProcessor, dev);
-    if (err != cudaSuccess) {
-      return err;
-    }
-  }
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceGetAttribute(&tpm, cudaDevAttrMaxThreadsPerMultiProcessor, dev));
   *num_blocks = std::max<int>(
       1, std::min<int64_t>(max_blocks, sm_count * tpm / block_size * waves));
-  return cudaSuccess;
 }
 
 template <typename T,
@@ -159,7 +141,6 @@ __global__ void LogsumexpWarpImpl(const Context& dev_ctx,
         thread_sum[row_id] += exp(row_buffer[i] - warp_max[row_id]);
       }
     }
-
 // Get warp sum and write
 #pragma unroll
     for (int row_id = 0; row_id < RowsPerThread; row_id++) {
@@ -167,8 +148,10 @@ __global__ void LogsumexpWarpImpl(const Context& dev_ctx,
           thread_sum[row_id]));
       store_vec[row_id] = static_cast<SourceType>(res + warp_max[row_id]);
     }
+    if (thread_id=0 && cur_row < num_row) {
     phi::Store<SourceType, RowsPerThread>(store_vec,
                                           out + group_id * RowsPerThread);
+    }
   }
 }
 
@@ -195,10 +178,7 @@ inline cudaError_t LaunchLogsumexpWarp(const Context& dev_ctx,
       thread_groups_per_block;
   int grid_dim_x;
   {
-    cudaError_t err = GetNumBlocks(block_size, num_blocks, waves, &grid_dim_x);
-    if (err != cudaSuccess) {
-      return err;
-    }
+    GetNumBlocks(block_size, num_blocks, waves, &grid_dim_x);
   }
   LogsumexpWarpImpl<T,
                     SourceType,
