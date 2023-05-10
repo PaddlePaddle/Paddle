@@ -36,7 +36,7 @@ void FusedElementwiseKernel(const OneDNNContext& dev_ctx,
 
   dnnl::post_ops post_operations;
   funcs::AppendActivation(
-      dev_ctx, post_operations, 1.0f, fuse_activation, fuse_alpha, fuse_beta);
+      dev_ctx, post_operations, fuse_activation, fuse_alpha, fuse_beta);
   if (fused_output_scale != 1.0) {
     post_operations.append_eltwise(
         dnnl::algorithm::eltwise_linear, fused_output_scale, 0.0f);

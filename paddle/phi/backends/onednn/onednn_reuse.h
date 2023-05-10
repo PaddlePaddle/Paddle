@@ -98,7 +98,6 @@ static std::unordered_map<std::string, dnnl::algorithm> OneDNNActivationMap() {
 
 static void AppendActivation(const OneDNNContext& dev_ctx,
                              dnnl::post_ops& post_ops,  // NOLINT
-                             float activation_scale = 1.0f,
                              std::string fuse_activation = "",
                              float fuse_alpha = 0.0f,
                              float fuse_beta = 0.0f) {
@@ -135,7 +134,6 @@ static void AppendActivation(const OneDNNContext& dev_ctx,
                         fuse_activation));
 
   post_ops.append_eltwise(activation_type->second, fuse_alpha, fuse_beta);
-  (void)activation_scale;
 }
 
 template <typename T,
@@ -1738,8 +1736,7 @@ class SoftplusOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
       post_ops.append_eltwise(
           dnnl::algorithm::eltwise_linear, 1.0f / beta, 0.0f);
     }
-    AppendActivation(
-        dev_ctx, post_ops, 1.f, fuse_activation, fuse_alpha, fuse_beta);
+    AppendActivation(dev_ctx, post_ops, fuse_activation, fuse_alpha, fuse_beta);
     dnnl::primitive_attr attrs;
     attrs.set_post_ops(post_ops);
 

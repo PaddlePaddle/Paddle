@@ -394,7 +394,6 @@ class ConvOneDNNHandlerT
     dnnl::post_ops post_operations;
 
     float sum_scale = 1.0f;
-    float activation_scale = 1.0f;
     std::vector<float> output_shift_scale;
     if (funcs::is_int8<T>()) {
       conv_attr.set_scales_mask(DNNL_ARG_SRC, 0);
@@ -422,7 +421,7 @@ class ConvOneDNNHandlerT
       post_operations.append_sum(sum_scale);
     }
 
-    funcs::AppendActivation(this->dev_ctx_, post_operations, activation_scale);
+    funcs::AppendActivation(this->dev_ctx_, post_operations);
 
     conv_attr.set_post_ops(post_operations);
     return conv_attr;
