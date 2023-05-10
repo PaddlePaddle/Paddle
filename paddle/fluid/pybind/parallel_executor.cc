@@ -230,21 +230,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
           },
           [](ExecutionStrategy &self, size_t num_iteration_per_run) {
             self.num_iteration_per_run_ = num_iteration_per_run;
-          },
-          R"DOC(This config that how many iteration the executor will run when
-                user call exe.run() in python。Default: 1.
-
-                Examples:
-                    .. code-block:: python
-
-                        import paddle
-                        import paddle.static as static
-
-                        paddle.enable_static()
-
-                        exec_strategy = static.ExecutionStrategy()
-                        exec_strategy.num_iteration_per_run = 10
-              )DOC")
+          })
       .def_property(
           "use_thread_barrier",
           [](const ExecutionStrategy &self) { return self.thread_barrier_; },
