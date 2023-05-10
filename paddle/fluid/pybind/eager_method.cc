@@ -136,7 +136,7 @@ static PyObject* tensor_method_numpy(TensorObject* self,
     }
     if (set_to_1d) {
       // 0D Tensor hack process to 1D numpy, will remove in release 2.6
-      VLOG(0)
+      VLOG(1)
           << "Warning:: 0D Tensor cannot be used as 'Tensor.numpy()[0]' . In "
              "order to avoid this problem, "
              "0D Tensor will be changed to 1D numpy currently, but it's not "
@@ -930,7 +930,7 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
     // with FLAGS_set_to_1d=True. In this case, one `None` should be pop out,
     // otherwise the output shape will be not correct.
     if (static_cast<int>(decrease_axis.size()) == tensor->dims().size()) {
-      VLOG(0)
+      VLOG(1)
           << "Warning: In Tensor '__getitem__', if the number of scalar "
              "elements "
              "in the index is equal to the rank of the Tensor, the output "

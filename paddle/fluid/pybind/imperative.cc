@@ -1078,7 +1078,7 @@ void BindImperative(py::module *m_ptr) {
                // not correct.
                if (static_cast<int>(decrease_axis.size()) ==
                    tensor->dims().size()) {
-                 VLOG(0) << "Warning: In Tensor '__getitem__', if the number "
+                 VLOG(1) << "Warning: In Tensor '__getitem__', if the number "
                             "of scalar "
                             "elements "
                             "in the index is equal to the rank of the Tensor, "
