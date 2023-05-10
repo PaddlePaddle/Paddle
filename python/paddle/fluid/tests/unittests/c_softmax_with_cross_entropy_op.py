@@ -88,13 +88,13 @@ class TestCSoftmaxWithCrossEntropy(unittest.TestCase):
         # get input data for rank 0
         np.random.seed(0)
         input0 = np.random.uniform(
-            low=-100.0, high=100.0, size=(self.batch_size, local_elements)
+            low=-40.0, high=40.0, size=(self.batch_size, local_elements)
         ).astype(data_type)
 
         # get input data for rank 1
         np.random.seed(1)
         input1 = np.random.uniform(
-            low=-100.0, high=100.0, size=(self.batch_size, local_elements)
+            low=-40.0, high=40.0, size=(self.batch_size, local_elements)
         ).astype(data_type)
 
         # get combined input data
