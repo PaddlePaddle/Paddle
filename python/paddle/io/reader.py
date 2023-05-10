@@ -36,14 +36,11 @@ from .dataloader.dataloader_iter import (
     _DataLoaderIterMultiProcess,
     _DataLoaderIterSingleProcess,
     _DatasetKind,
-    default_collate_fn,
 )
 
 # NOTE: [ avoid hanging & failed quickly ]
 # These value is used in getting data from another process
 QUEUE_GET_TIMEOUT = 60
-
-__all__ = ['DataLoader', 'default_collate_fn']
 
 USE_PINNED_MEMORY = None
 # AutoTune Flags
