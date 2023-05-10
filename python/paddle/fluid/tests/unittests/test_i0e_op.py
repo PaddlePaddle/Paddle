@@ -130,7 +130,6 @@ class TestI0eOp(OpTest):
         self.case = np.concatenate(
             [zero_case, rand_case, one2eight_case, over_eight_case]
         )
-        # self.case = np.array([0.0, 1.0, 2.0, 3.0]).astype("float64")
         self.inputs = {'x': self.case}
         self.target = output_i0e(self.inputs['x'])
 

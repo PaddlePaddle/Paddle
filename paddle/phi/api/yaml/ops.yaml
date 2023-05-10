@@ -2295,21 +2295,3 @@
   optional : gt_score
   intermediate : objectness_mask, gt_match_mask
   backward : yolo_loss_grad
-
-- op : i0
-  args : (Tensor x)
-  output : Tensor
-  infer_meta :
-    func : UnchangedInferMeta
-  kernel :
-    func : i0
-  backward : i0_grad
-
-- op : i0e
-  args : (Tensor x)
-  output : Tensor
-  infer_meta :
-    func : UnchangedInferMeta
-  kernel :
-    func : i0e
-  backward : i0e_grad
