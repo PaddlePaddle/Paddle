@@ -25,7 +25,7 @@ namespace phi {
 template <typename T, typename Context>
 void SplitKernel(const Context& dev_ctx,
                  const DenseTensor& x,
-                 const IntArray& sections,
+                 const IntArray& sections UNUSED,
                  const Scalar& axis_scalar,
                  std::vector<DenseTensor*> outs) {
   std::vector<const DenseTensor*> shape_refer;

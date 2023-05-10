@@ -637,7 +637,6 @@ void BindPaddlePlace(py::module *m) {
       .value("CPU", PaddlePlace::kCPU)
       .value("GPU", PaddlePlace::kGPU)
       .value("XPU", PaddlePlace::kXPU)
-      .value("NPU", PaddlePlace::kNPU)
       .value("CUSTOM", PaddlePlace::kCUSTOM);
 }
 
