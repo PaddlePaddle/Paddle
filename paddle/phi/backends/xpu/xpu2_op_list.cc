@@ -165,6 +165,7 @@ XPUOpMap& get_kl2_ops() {
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"conv2d_transpose_grad", XPUKernelSet({phi::DataType::FLOAT32})},
       {"conv2d_transpose", XPUKernelSet({phi::DataType::FLOAT32})},
+
       {"cumsum",
        XPUKernelSet({phi::DataType::FLOAT32,
                      phi::DataType::FLOAT16,
@@ -184,6 +185,9 @@ XPUOpMap& get_kl2_ops() {
       {"deformable_conv_v1", XPUKernelSet({phi::DataType::FLOAT32})},
       {"depthwise_conv2d_grad", XPUKernelSet({phi::DataType::FLOAT32})},
       {"depthwise_conv2d", XPUKernelSet({phi::DataType::FLOAT32})},
+      {"depthwise_conv2d_transpose_grad",
+       XPUKernelSet({phi::DataType::FLOAT32})},
+      {"depthwise_conv2d_transpose", XPUKernelSet({phi::DataType::FLOAT32})},
       {"diag_v2",
        XPUKernelSet({phi::DataType::FLOAT32,
                      phi::DataType::FLOAT16,
