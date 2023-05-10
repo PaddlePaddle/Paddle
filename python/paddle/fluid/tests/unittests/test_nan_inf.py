@@ -147,8 +147,9 @@ class TestNanInfCheckResult(unittest.TestCase):
         _check_num_nan_inf(use_cuda=False)
         if paddle.fluid.core.is_compiled_with_cuda():
             _check_num_nan_inf(use_cuda=True)
+
     def check_stack(self, file_name):
-        self._python_interp += file_name;
+        self._python_interp += file_name
         cmd = self._python_interp
         proc = subprocess.Popen(
             cmd.split(" "),

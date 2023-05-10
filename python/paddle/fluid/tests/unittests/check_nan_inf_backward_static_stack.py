@@ -14,10 +14,12 @@
 
 import paddle
 
+
 # 定义静态图模型
 def static_model(x, y):
     z = paddle.pow(x, y)
     return z
+
 
 def main():
     # 开启静态图模式
@@ -26,22 +28,25 @@ def main():
     # 定义输入变量和模型输出变量
     x_static = paddle.static.data(name='x_static', shape=[3], dtype='float32')
     y_static = paddle.static.data(name='y_static', shape=[3], dtype='float32')
-    x_static.stop_gradient=False
+    x_static.stop_gradient = False
     z_static = static_model(x_static, y_static)
-    
+
     # 计算梯度
     grads_static = paddle.static.gradients(z_static, x_static, y_static)
-    
+
     # 创建 Executor 对象
     exe_static = paddle.static.Executor(paddle.CPUPlace())
-    
+
     # 编译计算图
     exe_static.run(paddle.static.default_startup_program())
-    
+
     # 执行前向计算和反向传播
-    grads_val_static = exe_static.run(paddle.static.default_main_program(),
-                                       feed={'x_static': [1, 0, 3],'y_static': [0, 0, 0]},
-                                       fetch_list=[grads_static])
-    
+    grads_val_static = exe_static.run(
+        paddle.static.default_main_program(),
+        feed={'x_static': [1, 0, 3], 'y_static': [0, 0, 0]},
+        fetch_list=[grads_static],
+    )
+
+
 if __name__ == "__main__":
     main()
