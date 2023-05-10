@@ -1454,8 +1454,6 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       paddle_inference_shared
       ARGS
       --infer_model=${RESNET50_MODEL_DIR})
-    set_tests_properties(xpu_external_config_resnet50_test PROPERTIES TIMEOUT
-                                                                      120)
   endif()
 
   set(inference_deps ${analysis_deps} paddle_inference_api analysis
