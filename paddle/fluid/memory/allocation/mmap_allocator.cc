@@ -146,7 +146,11 @@ std::shared_ptr<MemoryMapAllocation> AllocateMemoryMapAllocationAndUnlink(
     std::string handle = memory::allocation::GetIPCName();
     AllocateMemoryMap(handle, flags, size, &ptr, &fd);
   } else {
-    AllocateMemoryMap("", flags, size, &ptr, &fd);
+    ptr = mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    PADDLE_ENFORCE_NE(ptr,
+                      MAP_FAILED,
+                      platform::errors::Unavailable(
+                          "Memory map failed when create shared memory."));
   }
   // 构造1个shmem的wapper
   return std::make_shared<MemoryMapAllocation>(ptr, size, "", flags, fd);
