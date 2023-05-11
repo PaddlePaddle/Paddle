@@ -145,8 +145,39 @@ void Conv2dTransposeKernel(const Context& ctx,
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose_v2");
   }
 }
+template <typename T, typename Context>
+void DepthwiseConv2dTransposeKernel(const Context& ctx,
+                                    const DenseTensor& x,
+                                    const DenseTensor& filter,
+                                    const std::vector<int>& strides,
+                                    const std::vector<int>& paddings,
+                                    const std::vector<int>& output_padding,
+                                    const IntArray& output_size,
+                                    const std::string& padding_algorithm,
+                                    int groups,
+                                    const std::vector<int>& dilations,
+                                    const std::string& data_format,
+                                    DenseTensor* out) {
+  Conv2dTransposeKernel<T, Context>(ctx,
+                                    x,
+                                    filter,
+                                    strides,
+                                    paddings,
+                                    output_padding,
+                                    output_size,
+                                    padding_algorithm,
+                                    groups,
+                                    dilations,
+                                    data_format,
+                                    out);
+}
 
 }  // namespace phi
+PD_REGISTER_KERNEL(depthwise_conv2d_transpose,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::DepthwiseConv2dTransposeKernel,
+                   float) {}
 
 PD_REGISTER_KERNEL(conv2d_transpose,
                    XPU,
