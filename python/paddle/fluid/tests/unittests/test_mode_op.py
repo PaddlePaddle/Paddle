@@ -61,46 +61,57 @@ def cal_mode(a, axis, keepdim=False):
     return modes, indexes
 
 
-def init_numeric_grads(input_shape, out_indices, axis, dtype):
-    if axis < 0:
-        axis = len(input_shape) + axis
-    grad = np.zeros(input_shape).astype(dtype)
-    in_dims = list(range(grad.ndim))
-    if axis == len(input_shape) - 1:
-        a_view = grad
-    else:
-        a_view = np.transpose(
-            grad,
-            in_dims[:axis] + in_dims[axis + 1 :] + [axis],
-        )
-    idx = np.array(out_indices).flatten()
-    inds = np.ndindex(a_view.shape[:-1])
-    for i, ind in enumerate(inds):
-        a_view[ind][idx[i]] = 1 / np.prod(out_indices.shape)
-    if axis == len(input_shape) - 1:
-        grad = a_view
-    else:
-        grad = np.transpose(
-            a_view,
-            in_dims[:axis] + in_dims[-1:] + in_dims[axis:-1],
-        )
-    return grad
-
-
 class TestModeOp(OpTest):
     def init_args(self):
         self.axis = 1
 
+    def init_input_data(self):
+        self.input_data = np.random.rand(2, 64, 1).astype(self.dtype)
+        self.inputs = {'X': self.input_data}
+
+    def init_dtype(self):
+        self.dtype = np.float64
+
     def setUp(self):
         self.op_type = "mode"
         self.python_api = paddle.mode
-        self.dtype = np.float64
-        self.input_data = np.random.rand(2, 64, 1)
+        self.init_dtype()
         self.init_args()
-        self.inputs = {'X': self.input_data}
+        self.init_input_data()
         self.attrs = {'axis': self.axis}
         output, indices = cal_mode(self.input_data, axis=self.axis)
         self.outputs = {'Out': output, 'Indices': indices}
+
+    def init_numeric_grads(self):
+        if self.axis < 0:
+            axis = len(self.input_data.shape) + self.axis
+        else:
+            axis = self.axis
+        if self.dtype == np.float64:
+            dtype = np.float64
+        else:
+            dtype = np.float32
+        grad = np.zeros(self.input_data.shape).astype(dtype)
+        in_dims = list(range(grad.ndim))
+        if axis == len(self.input_data.shape) - 1:
+            a_view = grad
+        else:
+            a_view = np.transpose(
+                grad,
+                in_dims[:axis] + in_dims[axis + 1 :] + [axis],
+            )
+        idx = np.array(self.outputs['Indices']).flatten()
+        inds = np.ndindex(a_view.shape[:-1])
+        for i, ind in enumerate(inds):
+            a_view[ind][idx[i]] = 1 / np.prod(self.outputs['Indices'].shape)
+        if axis == len(self.input_data.shape) - 1:
+            grad = a_view
+        else:
+            grad = np.transpose(
+                a_view,
+                in_dims[:axis] + in_dims[-1:] + in_dims[axis:-1],
+            )
+        return grad
 
     def test_check_output(self):
         paddle.enable_static()
@@ -108,32 +119,16 @@ class TestModeOp(OpTest):
 
     def test_check_grad(self):
         paddle.enable_static()
-        grad = init_numeric_grads(
-            self.input_data.shape,
-            self.outputs['Indices'],
-            self.axis,
-            np.float64,
-        )
+        grad = self.init_numeric_grads()
         self.check_grad({'X'}, 'Out', user_defined_grads=[grad])
 
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
-class TestModeFP16Op(OpTest):
-    def init_args(self):
-        self.axis = 1
-
-    def setUp(self):
-        self.op_type = "mode"
-        self.python_api = paddle.mode
+class TestModeFP16Op(TestModeOp):
+    def init_dtype(self):
         self.dtype = np.float16
-        self.input_data = np.random.rand(2, 64, 1).astype(np.float16)
-        self.init_args()
-        self.inputs = {'X': self.input_data.astype(self.dtype)}
-        self.attrs = {'axis': self.axis}
-        output, indices = cal_mode(self.input_data, axis=self.axis)
-        self.outputs = {'Out': output, 'Indices': indices}
 
     def test_check_output(self):
         paddle.enable_static()
@@ -144,12 +139,7 @@ class TestModeFP16Op(OpTest):
     def test_check_grad(self):
         paddle.enable_static()
         place = core.CUDAPlace(0)
-        grad = init_numeric_grads(
-            self.input_data.shape,
-            self.outputs['Indices'],
-            self.axis,
-            np.float32,
-        )
+        grad = self.init_numeric_grads()
 
         if core.is_float16_supported(place):
             self.check_grad_with_place(
@@ -162,28 +152,16 @@ class TestModeFP16Op(OpTest):
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA and not support the bfloat16",
 )
-class TestModeBF16Op(OpTest):
-    def init_args(self):
-        self.axis = 1
-
-    def setUp(self):
-        self.op_type = "mode"
-        self.__class__.op_type = "mode"
-        self.python_api = paddle.mode
+class TestModeBF16Op(TestModeOp):
+    def init_dtype(self):
         self.dtype = np.uint16
+
+    def init_input_data(self):
         self.input_data = np.random.rand(2, 64, 1).astype(np.float32)
-        self.init_args()
         self.input_data = convert_uint16_to_float(
             convert_float_to_uint16(self.input_data)
         )
-
         self.inputs = {'X': convert_float_to_uint16(self.input_data)}
-        self.attrs = {'axis': self.axis}
-        output, indices = cal_mode(self.input_data, axis=self.axis)
-        self.outputs = {
-            'Out': convert_float_to_uint16(output),
-            'Indices': indices,
-        }
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
@@ -194,12 +172,8 @@ class TestModeBF16Op(OpTest):
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         paddle.enable_static()
-        grad = init_numeric_grads(
-            self.input_data.shape,
-            self.outputs['Indices'],
-            self.axis,
-            np.float32,
-        )
+        grad = self.init_numeric_grads()
+
         if core.is_bfloat16_supported(place):
             self.check_grad_with_place(
                 place, {'X'}, 'Out', user_defined_grads=[grad]
@@ -210,17 +184,6 @@ class TestModeOpLastdim(TestModeOp):
     def init_args(self):
         self.axis = -1
 
-    def setUp(self):
-        self.op_type = "mode"
-        self.python_api = paddle.mode
-        self.dtype = np.float64
-        self.input_data = np.random.rand(2, 1, 1, 2, 30)
-        self.init_args()
-        self.inputs = {'X': self.input_data}
-        self.attrs = {'axis': self.axis}
-        output, indices = cal_mode(self.input_data, axis=self.axis)
-        self.outputs = {'Out': output, 'Indices': indices}
-
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
@@ -229,17 +192,6 @@ class TestModeFP16OpLastdim(TestModeFP16Op):
     def init_args(self):
         self.axis = -1
 
-    def setUp(self):
-        self.op_type = "mode"
-        self.python_api = paddle.mode
-        self.dtype = np.float16
-        self.input_data = np.random.rand(2, 1, 1, 2, 30).astype(np.float16)
-        self.init_args()
-        self.inputs = {'X': self.input_data.astype(self.dtype)}
-        self.attrs = {'axis': self.axis}
-        output, indices = cal_mode(self.input_data, axis=self.axis)
-        self.outputs = {'Out': output, 'Indices': indices}
-
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
@@ -247,23 +199,6 @@ class TestModeFP16OpLastdim(TestModeFP16Op):
 class TestModeBF16OpLastdim(TestModeBF16Op):
     def init_args(self):
         self.axis = -1
-
-    def setUp(self):
-        self.op_type = "mode"
-        self.python_api = paddle.mode
-        self.dtype = np.uint16
-        self.input_data = np.random.rand(2, 1, 1, 2, 30).astype(np.float32)
-        self.init_args()
-        self.input_data = convert_uint16_to_float(
-            convert_float_to_uint16(self.input_data)
-        )
-        self.inputs = {'X': convert_float_to_uint16(self.input_data)}
-        self.attrs = {'axis': self.axis}
-        output, indices = cal_mode(self.input_data, axis=self.axis)
-        self.outputs = {
-            'Out': convert_float_to_uint16(output),
-            'Indices': indices,
-        }
 
 
 class TestModeOpKernels(unittest.TestCase):
