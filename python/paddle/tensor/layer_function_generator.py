@@ -310,10 +310,14 @@ def generate_activation_fn(op_type):
     func.__name__ = op_type
     if op_type == 'abs':
         func.__doc__ = r"""
+
 Abs Operator.
 Perform elementwise abs for input `X`.
+
 .. math::
+
     out = |x|
+
 Args:
     x (Tensor): The input tensor of abs op.
     out (Tensor): The output tensor of abs op.
