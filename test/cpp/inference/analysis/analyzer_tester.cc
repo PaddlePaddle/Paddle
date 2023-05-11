@@ -45,7 +45,7 @@ TEST(Analyzer, analysis_save_optimized_model) {
   Argument argument;
   argument.SetDisableLogs(false);
   argument.SetModelDir(FLAGS_inference_model_dir);
-  argument.SetEnableIrOptim(false);
+  argument.SetEnableIrOptim(true);
   argument.SetUseGPU(false);
   argument.SetSaveOptimizedModel(true);
   argument.SetAnalysisPasses(
