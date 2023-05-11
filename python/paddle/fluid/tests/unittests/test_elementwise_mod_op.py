@@ -175,37 +175,23 @@ class TestElementwiseModBF16Op(OpTest):
         self.init_kernel_type()
         self.init_axis()
         self.inputs = {
-            'X': convert_float_to_uint16(
-                OpTest.np_dtype_to_fluid_dtype(self.x)
+            'X': convert_uint16_to_float(
+                convert_float_to_uint16(OpTest.np_dtype_to_fluid_dtype(self.x))
             ),
-            'Y': convert_float_to_uint16(
-                OpTest.np_dtype_to_fluid_dtype(self.y)
+            'Y': convert_uint16_to_float(
+                convert_float_to_uint16(OpTest.np_dtype_to_fluid_dtype(self.y))
             ),
         }
         self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
-        self.outputs = {'Out': convert_float_to_uint16(self.out)}
+        self.outputs = {
+            'Out': convert_uint16_to_float(convert_float_to_uint16(self.out))
+        }
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
-        self.check_output_with_place_customized(
-            checker=self.verify_output, place=place
-        )
-
-    def verify_output(self, outs):
-        outs = convert_uint16_to_float(outs)
-        self.assertEqual(outs[0].shape, (10, 10))
-        hist1, _ = np.histogram(outs[0], range=(-3, 5))
-        hist1 = hist1.astype("float32")
-        hist1 = hist1 / float(outs[0].size)
-
-        x = np.random.uniform(0, 10000, [10, 10]).astype(np.float32)
-        y = np.random.uniform(0, 1000, [10, 10]).astype(np.float32)
-        data_np = np.fmod(y + np.fmod(x, y), y)
-        hist2, _ = np.histogram(data_np, range=(-3, 5))
-        hist2 = hist2.astype("float32")
-        hist2 = hist2 / float(data_np.size)
-
-        np.testing.assert_allclose(hist1, hist2, rtol=1, atol=0.03)
+        if self.attrs['axis'] == -1:
+            self.check_output()
+        else:
+            self.check_output()
 
     def init_dtype(self):
         self.dtype = np.uint16
