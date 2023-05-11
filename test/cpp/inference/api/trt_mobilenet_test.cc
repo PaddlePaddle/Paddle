@@ -99,4 +99,30 @@ TEST(PredictorPool, use_gpu) {
   predictor->Run();
 }
 
+TEST(PredictorPool, use_trt_cuda_graph) {
+  std::string model_dir = FLAGS_infer_model + "/" + "mobilenet";
+  Config config;
+  config.EnableUseGpu(100, 0);
+  config.SetModel(model_dir);
+  config.EnableTensorRtEngine(
+      1 << 20, 1, 3, PrecisionType::kFloat32, false, false, true);
+  config.Exp_DisableTensorRtOPs({"fc"});
+  config.EnableTensorRtDLA(0);
+  services::PredictorPool pred_pool(config, 1);
+
+  auto predictor = pred_pool.Retrive(0);
+  auto input_names = predictor->GetInputNames();
+  auto input_t = predictor->GetInputHandle(input_names[0]);
+  std::vector<int> in_shape = {1, 3, 224, 224};
+  int in_num =
+      std::accumulate(in_shape.begin(), in_shape.end(), 1, [](int &a, int &b) {
+        return a * b;
+      });
+
+  std::vector<float> input(in_num, 0);
+  input_t->Reshape(in_shape);
+  input_t->CopyFromCpu(input.data());
+  predictor->Run();
+}
+
 }  // namespace paddle_infer

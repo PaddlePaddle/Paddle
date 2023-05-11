@@ -37,8 +37,9 @@ if(WITH_GPU)
                                                   VERSION_GREATER 12.0)
     file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/gloo/device.cc.patch
          native_dst)
-    set(GLOO_PATCH_COMMAND patch -d ${GLOO_SOURCE_DIR}/gloo/transport/tcp <
-                           ${native_dst})
+    set(GLOO_PATCH_COMMAND
+        git checkout -- . && git checkout ${GLOO_TAG} &&patch -Nd
+        ${GLOO_SOURCE_DIR}/gloo/transport/tcp < ${native_dst})
   endif()
 endif()
 
@@ -54,9 +55,11 @@ if(CMAKE_COMPILER_IS_GNUCC)
          native_dst)
     file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/gloo/types.h.patch
          types_header)
+    # See: [Why calling some `git` commands before `patch`?]
     set(GLOO_PATCH_COMMAND
-        patch -Nd ${GLOO_SOURCE_DIR}/gloo/transport/tcp < ${native_dst} &&
-        patch -Nd ${GLOO_SOURCE_DIR}/gloo/ < ${types_header})
+        git checkout -- . && git checkout ${GLOO_TAG} && patch -Nd
+        ${GLOO_SOURCE_DIR}/gloo/transport/tcp < ${native_dst} && patch -Nd
+        ${GLOO_SOURCE_DIR}/gloo/ < ${types_header})
   endif()
 endif()
 include_directories(${GLOO_INCLUDE_DIR})

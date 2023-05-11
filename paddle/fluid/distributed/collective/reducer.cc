@@ -15,9 +15,10 @@
 #include "paddle/fluid/distributed/collective/reducer.h"
 #include "paddle/phi/backends/device_guard.h"
 #include "paddle/phi/backends/device_manager.h"
+#include "paddle/phi/core/flags.h"
 
 DECLARE_bool(use_stream_safe_cuda_allocator);
-DECLARE_string(allocator_strategy);
+PHI_DECLARE_string(allocator_strategy);
 
 namespace paddle {
 namespace distributed {
@@ -214,7 +215,11 @@ struct ConcatTensorsForAllReduce<platform::CustomDeviceContext, T> {
       const uint8_t *in_data =
           reinterpret_cast<const uint8_t *>(tensor.data<T>());
       auto sz = tensor.numel() * sizeof(T);
-      device->MemoryCopyD2D(out_data + offset, in_data, sz, &stream);
+      if (tensor.place().GetType() == phi::AllocationType::CPU) {
+        device->MemoryCopyH2D(out_data + offset, in_data, sz, &stream);
+      } else {
+        device->MemoryCopyD2D(out_data + offset, in_data, sz, &stream);
+      }
       offset += sz;
     }
   }
@@ -236,7 +241,11 @@ struct SplitTensorsForAllReduce<platform::CustomDeviceContext, T> {
     for (auto &tensor : *p_dense_tensors) {
       uint8_t *out_data = reinterpret_cast<uint8_t *>(tensor.data<T>());
       auto sz = tensor.numel() * sizeof(T);
-      device->MemoryCopyD2D(out_data, in_data + offset, sz, &stream);
+      if (tensor.place().GetType() == phi::AllocationType::CPU) {
+        device->MemoryCopyD2H(out_data, in_data + offset, sz, &stream);
+      } else {
+        device->MemoryCopyD2D(out_data, in_data + offset, sz, &stream);
+      }
       offset += sz;
     }
   }

@@ -15,23 +15,59 @@
 #pragma once
 
 #include "paddle/ir/operation.h"
+#include "paddle/ir/utils.h"
 
 namespace ir {
 class OpBase {
  public:
-  Operation *operation() { return operation_; }
+  explicit OpBase(const Operation *operation) : operation_(operation) {}
 
-  explicit operator bool() { return operation() != nullptr; }
+  const Operation *operation() const { return operation_; }
 
-  operator Operation *() const { return operation_; }
+  explicit operator bool() const { return operation() != nullptr; }
 
-  Operation *operator->() const { return operation_; }
+  operator const Operation *() const { return operation_; }
 
- protected:
-  explicit OpBase(Operation *operation) : operation_(operation) {}
+  const Operation *operator->() const { return operation_; }
 
  private:
-  Operation *operation_;
+  const Operation *operation_;  // Not owned
+};
+
+///
+/// \brief OpTrait
+///
+template <class ConcreteTrait>
+class OpTraitBase : public OpBase {
+ public:
+  explicit OpTraitBase(const Operation *op) : OpBase(op) {}
+
+  static TypeId GetTraitId() { return TypeId::get<ConcreteTrait>(); }
+};
+
+///
+/// \brief OpInterface
+///
+template <typename ConcreteInterface>
+class OpInterfaceBase : public OpBase {
+ public:
+  // explicit OpInterfaceBase(Operation *op) : OpBase(op) {}
+
+  explicit OpInterfaceBase(const Operation *op) : OpBase(op) {}
+
+  static TypeId GetInterfaceId() { return TypeId::get<ConcreteInterface>(); }
+};
+
+template <typename ConcreteOp, class... TraitOrInterface>
+class Op : public OpBase {
+ public:
+  using OpBase::OpBase;
+
+  using TraitList =
+      typename Filter<OpTraitBase, std::tuple<TraitOrInterface...>>::Type;
+
+  using InterfaceList =
+      typename Filter<OpInterfaceBase, std::tuple<TraitOrInterface...>>::Type;
 };
 
 }  // namespace ir

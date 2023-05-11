@@ -103,7 +103,7 @@ class TestResnet50Accuracy(unittest.TestCase):
                     fetch_list=[loss],
                     return_numpy=True,
                 )
-                loss_vals.append(loss_v[0][0])
+                loss_vals.append(loss_v[0])
         return loss_vals
 
     def test_check_resnet50_accuracy(self):

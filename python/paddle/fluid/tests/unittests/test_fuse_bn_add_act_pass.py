@@ -216,7 +216,7 @@ class TestFusedBnAddActAPI(unittest.TestCase):
                 loss_v = exe.run(
                     binary_fused, feed={"x": x, "y": y}, fetch_list=[loss]
                 )
-                loss_vals_fused.append(loss_v[0][0])
+                loss_vals_fused.append(loss_v[0])
 
         # build_origin_program: turn off fused_bn_act_ops
         build_strategy = fluid.BuildStrategy()
@@ -234,7 +234,7 @@ class TestFusedBnAddActAPI(unittest.TestCase):
                     feed={"x": x_data[i], "y": y_data[i]},
                     fetch_list=[loss],
                 )
-                loss_vals.append(loss_v[0][0])
+                loss_vals.append(loss_v[0])
 
         # check loss
         for i in range(iters):

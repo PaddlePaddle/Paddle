@@ -65,24 +65,6 @@ KernelSignature Pool2dDoubleGradOpArgumentMapping(
                          {"Out"});
 }
 
-KernelSignature MaxPool2dWithIndexOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "max_pool2d_with_index",
-      {"X"},
-      {"ksize", "strides", "paddings", "global_pooling", "adaptive"},
-      {"Out", "Mask"});
-}
-
-KernelSignature MaxPool2dWithIndexGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "max_pool2d_with_index_grad",
-      {"X", "Mask", "Out@GRAD"},
-      {"ksize", "strides", "paddings", "global_pooling", "adaptive"},
-      {"X@GRAD"});
-}
-
 KernelSignature Pool3dOpArgumentMapping(const ArgumentMappingContext& ctx) {
   return KernelSignature("pool3d",
                          {"X"},
@@ -115,24 +97,6 @@ KernelSignature Pool3dGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
                          {"X@GRAD"});
 }
 
-KernelSignature MaxPool3dWithIndexOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "max_pool3d_with_index",
-      {"X"},
-      {"ksize", "strides", "paddings", "global_pooling", "adaptive"},
-      {"Out", "Mask"});
-}
-
-KernelSignature MaxPool3dWithIndexGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "max_pool3d_with_index_grad",
-      {"X", "Mask", "Out@GRAD"},
-      {"ksize", "strides", "paddings", "global_pooling", "adaptive"},
-      {"X@GRAD"});
-}
-
 }  // namespace phi
 
 PD_REGISTER_ARG_MAPPING_FN(pool2d, phi::Pool2dOpArgumentMapping);
@@ -140,15 +104,5 @@ PD_REGISTER_ARG_MAPPING_FN(pool2d_grad, phi::Pool2dGradOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(pool2d_double_grad,
                            phi::Pool2dDoubleGradOpArgumentMapping);
 
-PD_REGISTER_ARG_MAPPING_FN(max_pool2d_with_index,
-                           phi::MaxPool2dWithIndexOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(max_pool2d_with_index_grad,
-                           phi::MaxPool2dWithIndexGradOpArgumentMapping);
-
 PD_REGISTER_ARG_MAPPING_FN(pool3d, phi::Pool3dOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(pool3d_grad, phi::Pool3dGradOpArgumentMapping);
-
-PD_REGISTER_ARG_MAPPING_FN(max_pool3d_with_index,
-                           phi::MaxPool3dWithIndexOpArgumentMapping);
-PD_REGISTER_ARG_MAPPING_FN(max_pool3d_with_index_grad,
-                           phi::MaxPool3dWithIndexGradOpArgumentMapping);

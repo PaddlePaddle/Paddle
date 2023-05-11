@@ -25,8 +25,9 @@
 #include "paddle/fluid/jit/layer.h"
 #include "paddle/fluid/jit/property.h"
 #include "paddle/fluid/jit/serializer_utils.h"
+#include "paddle/phi/core/flags.h"
 
-DECLARE_string(jit_engine_type);
+PHI_DECLARE_string(jit_engine_type);
 
 namespace paddle {
 namespace jit {
