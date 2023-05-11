@@ -30,6 +30,9 @@ class SaveOptimizedModelPass : public AnalysisPass {
  public:
   void RunImpl(Argument *argument) override;
   std::string repr() const override;
+
+ private:
+  void SaveOptimizedModel(Argument *argument);
 };
 
 }  // namespace analysis

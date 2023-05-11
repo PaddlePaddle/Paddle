@@ -27,8 +27,12 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
-void SaveOptimizedModelPass::RunImpl(Argument* argument) {
+void SaveOptimizedModelPass::SaveOptimizedModel(Argument* argument) {
   if (!argument->save_optimized_model()) return;
+  if (!argument->enable_ir_optim()) {
+    LOG(WARNING) << "ir_optim is turned off, skip save_optimized_model_pass";
+    return;
+  }
 
   std::string model_opt_cache_dir = argument->optim_cache_dir();
   if (!model_opt_cache_dir.empty()) {
@@ -123,6 +127,12 @@ void SaveOptimizedModelPass::RunImpl(Argument* argument) {
   SerializeProg(model_opt_cache_dir);
   SerializeParams(model_opt_cache_dir);
   LOG(INFO) << "Optimized model saved to " << model_opt_cache_dir;
+}
+
+void SaveOptimizedModelPass::RunImpl(Argument* argument) {
+  if (argument->use_xpu_valid()) {
+    SaveOptimizedModel(argument);
+  }
 }
 
 std::string SaveOptimizedModelPass::repr() const {
