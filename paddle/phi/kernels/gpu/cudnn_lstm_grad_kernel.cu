@@ -15,7 +15,7 @@
 #include "paddle/phi/kernels/cudnn_lstm_grad_kernel.h"
 
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/gpudnn/cudnn_lstm_utils.h"
+#include "paddle/phi/kernels/gpu/cudnn_lstm_utils.h"
 
 namespace phi {
 

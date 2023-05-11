@@ -21,10 +21,10 @@
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/phi/kernels/gpudnn/cudnn_lstm_cache.h"
+#include "paddle/phi/kernels/gpu/cudnn_lstm_cache.h"
 #endif
 #ifdef PADDLE_WITH_HIP
-#include "paddle/phi/kernels/gpudnn/miopen_lstm_cache.h"
+#include "paddle/phi/kernels/gpu/miopen_lstm_cache.h"
 #endif
 
 namespace phi {
