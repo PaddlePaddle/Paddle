@@ -395,6 +395,6 @@ class AmpTestBase(unittest.TestCase):
                     feed={feed_vars[0].name: x_np},
                     fetch_list=fetch_vars,
                 )
-                # print(f"-- [BF16 {level}] iter={iter_id}, loss={results[0]}")
+                print(f"-- [BF16 {level}] iter={iter_id}, loss={results[0]}")
                 losses.append(results[0])
         return losses
