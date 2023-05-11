@@ -1962,6 +1962,21 @@ void InterpolateInferMeta(
   }
 }
 
+void IndexPutInferMeta(const MetaTensor& x,
+                       const std::vector<const MetaTensor*>& indices,
+                       const MetaTensor& value,
+                       bool accumulate,
+                       MetaTensor* out) {
+  auto in_dims = x.dims();
+  PADDLE_ENFORCE_LT(
+      in_dims.size(),
+      7,
+      phi::errors::InvalidArgument(
+          "The rank of input should be less than 7, but received %d.",
+          in_dims.size()));
+  out->share_meta(x);
+}
+
 void LambInferMeta(const MetaTensor& param,
                    const MetaTensor& grad,
                    const MetaTensor& learning_rate,
@@ -3295,6 +3310,5 @@ void WeightedSampleNeighborsInferMeta(const MetaTensor& row,
   out_count->set_dims({-1});
   out_count->set_dtype(DataType::INT32);
 }
-
 }  // namespace phi
 PD_REGISTER_INFER_META_FN(batch_norm_infer, phi::BatchNormInferInferMeta);

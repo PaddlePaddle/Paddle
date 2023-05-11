@@ -135,6 +135,8 @@ from .manipulation import moveaxis  # noqa: F401
 from .manipulation import repeat_interleave  # noqa: F401
 from .manipulation import index_add  # noqa: F401
 from .manipulation import index_add_  # noqa: F401
+from .manipulation import index_put  # noqa: F401
+from .manipulation import index_put_  # noqa: F401
 from .manipulation import unflatten  # noqa: F401
 from .math import abs  # noqa: F401
 from .math import acos  # noqa: F401
@@ -534,6 +536,8 @@ tensor_method_func = [  # noqa
     'heaviside',
     'index_add',
     "index_add_",
+    'index_put',
+    'index_put_',
     'take',
     'bucketize',
     'sgn',
