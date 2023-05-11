@@ -18,7 +18,7 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/kernels/autotune/auto_tune_base.h"
-#include "paddle/phi/kernels/sparse/gpu/cutlass_generator/build/generated/gemm/all_gemm_operations.h"
+#include "paddle/phi/kernels/sparse/gpu/cutlass_generator/all_gemm_operations.h"
 
 namespace phi {
 namespace sparse {

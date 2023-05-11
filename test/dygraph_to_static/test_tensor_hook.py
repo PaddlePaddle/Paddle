@@ -45,7 +45,7 @@ class TestStaticAnalysis(unittest.TestCase):
         jit_f = to_static(f)
         loss = jit_f(x_jit)
         loss.backward()
-        self.assertTrue(np.allclose(x.grad.numpy(), x_jit.grad.numpy()))
+        np.testing.assert_allclose(x.grad.numpy(), x_jit.grad.numpy())
 
     def test_hook_for_reassignment_parameter(self):
         def f(x):
@@ -68,7 +68,7 @@ class TestStaticAnalysis(unittest.TestCase):
         jit_f = to_static(f)
         loss = jit_f(x_jit)
         loss.backward()
-        self.assertTrue(np.allclose(x.grad.numpy(), x_jit.grad.numpy()))
+        np.testing.assert_allclose(x.grad.numpy(), x_jit.grad.numpy())
 
     def test_hook_for_repeat_register(self):
         def f(x):
@@ -91,7 +91,7 @@ class TestStaticAnalysis(unittest.TestCase):
         jit_f = to_static(f)
         loss = jit_f(x_jit)
         loss.backward()
-        self.assertTrue(np.allclose(x.grad.numpy(), x_jit.grad.numpy()))
+        np.testing.assert_allclose(x.grad.numpy(), x_jit.grad.numpy())
 
     def test_hook_in_init_for_layer(self):
         def hook(grad):
@@ -120,11 +120,9 @@ class TestStaticAnalysis(unittest.TestCase):
         loss_jit = jit_layer(image_jit)
         loss_jit.backward()
         loss.backward()
-        self.assertTrue(
-            np.allclose(
-                layer.parameters()[0].grad.numpy(),
-                jit_layer.parameters()[0].grad.numpy(),
-            )
+        np.testing.assert_allclose(
+            layer.parameters()[0].grad.numpy(),
+            jit_layer.parameters()[0].grad.numpy(),
         )
 
     # def test_hook_in_forward_for_layer(self):

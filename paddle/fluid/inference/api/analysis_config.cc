@@ -16,6 +16,7 @@
 #include <string>
 #include <tuple>
 
+#include "glog/logging.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
@@ -55,8 +56,6 @@ PassStrategy *AnalysisConfig::pass_builder() const {
       pass_builder_.reset(new GpuPassStrategy);
     } else if (use_xpu_) {
       pass_builder_.reset(new XpuPassStrategy);
-    } else if (use_npu_) {
-      pass_builder_.reset(new NpuPassStrategy);
     } else if (use_ipu_) {
       LOG(INFO) << "Create IPU IR passes";
       pass_builder_.reset(new IpuPassStrategy);
@@ -442,6 +441,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(trt_dla_core_);
   CP_MEMBER(trt_use_static_engine_);
   CP_MEMBER(trt_use_calib_mode_);
+  CP_MEMBER(trt_use_cuda_graph_);
   CP_MEMBER(trt_use_varseqlen_);
   CP_MEMBER(trt_with_interleaved_);
   CP_MEMBER(tensorrt_transformer_posid_);
@@ -504,8 +504,6 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(use_opencl_);
 
   // NPU related.
-  CP_MEMBER(use_npu_);
-  CP_MEMBER(npu_device_id_);
   CP_MEMBER(nnadapter_config_);
 
   // profile related.
@@ -572,9 +570,6 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   } else if (use_custom_device_) {
     pass_builder_.reset(new CustomDevicePassStrategy(
         *static_cast<CustomDevicePassStrategy *>(other.pass_builder())));
-  } else if (use_npu_) {
-    pass_builder_.reset(new NpuPassStrategy(
-        *static_cast<NpuPassStrategy *>(other.pass_builder())));
   } else {
     pass_builder_.reset(new CpuPassStrategy(
         *static_cast<CpuPassStrategy *>(other.pass_builder())));
@@ -719,7 +714,8 @@ void AnalysisConfig::EnableTensorRtEngine(
     int min_subgraph_size,
     AnalysisConfig::Precision precision_mode,
     bool use_static,
-    bool use_calib_mode) {
+    bool use_calib_mode,
+    bool use_cuda_graph) {
 #ifdef PADDLE_WITH_TENSORRT
   if (!use_gpu()) {
     LOG(ERROR) << "To use TensorRT engine, please call EnableUseGpu() first";
@@ -733,6 +729,11 @@ void AnalysisConfig::EnableTensorRtEngine(
   tensorrt_precision_mode_ = precision_mode;
   trt_use_static_engine_ = use_static;
   trt_use_calib_mode_ = use_calib_mode;
+  trt_use_cuda_graph_ = use_cuda_graph;
+  if (use_cuda_graph) {
+    LOG_FIRST_N(INFO, 1) << "You have enabled Trt Cuda Graph, you must ensure "
+                            "that the input Shape remains unchanged.";
+  }
 
   Update();
 #else
@@ -819,7 +820,6 @@ void AnalysisConfig::Update() {
   // Transfer pass_builder and copy the existing compatible passes.
   if (!pass_builder_ || ((use_gpu() ^ pass_builder_->use_gpu())) ||
       ((use_xpu() ^ pass_builder_->use_xpu())) ||
-      ((use_npu() ^ pass_builder_->use_npu())) ||
       ((use_ipu() ^ pass_builder_->use_ipu())) ||
       ((use_custom_device() ^ pass_builder_->use_custom_device()))) {
     if (use_gpu()) {
@@ -833,13 +833,6 @@ void AnalysisConfig::Update() {
           platform::errors::InvalidArgument(
               "Only one choice can be made between CPU and XPU."));
       pass_builder_.reset(new XpuPassStrategy);
-    } else if (use_npu()) {
-      PADDLE_ENFORCE_EQ(
-          use_gpu(),
-          false,
-          platform::errors::InvalidArgument(
-              "Only one choice can be made between GPU and NPU."));
-      pass_builder_.reset(new NpuPassStrategy);
     } else if (use_custom_device()) {
       PADDLE_ENFORCE_EQ(
           use_gpu(),
@@ -867,14 +860,6 @@ void AnalysisConfig::Update() {
               "Only one choice can be made between CPU and XPU."));
       pass_builder_.reset(new XpuPassStrategy(
           *static_cast<XpuPassStrategy *>(pass_builder_.get())));
-    } else if (use_npu()) {
-      PADDLE_ENFORCE_EQ(
-          use_gpu(),
-          false,
-          platform::errors::InvalidArgument(
-              "Only one choice can be made between GPU and NPU."));
-      pass_builder_.reset(new NpuPassStrategy(
-          *static_cast<NpuPassStrategy *>(pass_builder_.get())));
     } else if (use_custom_device()) {
       PADDLE_ENFORCE_EQ(
           use_gpu(),
@@ -1106,9 +1091,6 @@ std::string AnalysisConfig::SerializeInfoCache() {
     ss << op_type;
   }
 
-  ss << use_npu_;
-  ss << npu_device_id_;
-
   ss << thread_local_stream_;
 
   ss << use_ipu_;
@@ -1313,6 +1295,8 @@ std::string AnalysisConfig::Summary() {
                     trt_use_static_engine_ ? "true" : "false"});
       os.InsertRow(
           {"tensorrt_use_calib_mode", trt_use_calib_mode_ ? "true" : "false"});
+      os.InsertRow(
+          {"tensorrt_use_cuda_graph", trt_use_cuda_graph_ ? "true" : "false"});
 
       // dynamic_shape
       os.InsertRow({"tensorrt_enable_dynamic_shape",
