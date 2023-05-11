@@ -26,18 +26,12 @@ from amp_base_models import (
 )
 
 import paddle
-from paddle.fluid import core
 from paddle.static import amp
 
 paddle.enable_static()
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "place does not support BF16 evaluation",
-)
-class TestStaticMasterGradProgramBF16(AmpTestBase):
+class TestStaticMasterGradProgramFP16(AmpTestBase):
     def _check_optimizer(self, program, expected_num_mp):
         optimizers = []
         for block in program.blocks:
@@ -55,16 +49,14 @@ class TestStaticMasterGradProgramBF16(AmpTestBase):
             f"The number of optimizers with multi_precison = True is expected to be {expected_num_mp}, but recieved {actual_num_mp}.",
         )
 
-    def test_amp_bf16_o1(self):
-        main_program, startup_program, _, _, _ = build_embedding_model(
-            True, "bfloat16", "O1"
-        )
+    def test_amp_fp16_o1(self):
+        main_program, _, _, _, _ = build_embedding_model(True, "float16", "O1")
         self.assertEqual(main_program.num_blocks, 1)
         self._check_optimizer(main_program, 0)
 
         amp.debugging.collect_operator_stats(main_program)
         op_stats_list = amp.debugging._get_op_stats_list(main_program)
-        expected_bf16_calls = {
+        expected_fp16_calls = {
             "matmul_v2": 1,
             "elementwise_add": 1,
             "dropout": 1,
@@ -72,11 +64,13 @@ class TestStaticMasterGradProgramBF16(AmpTestBase):
             "squared_l2_norm": 0,
             "adamw": 0,
         }
-        self._check_op_calls(op_stats_list[0], expected_bf16_calls)
+        self._check_op_calls(
+            op_stats_list[0], expected_fp16_calls=expected_fp16_calls
+        )
 
-    def amp_bf16_o2(self, use_master_grad):
-        main_program, startup_program, _, _, _ = build_embedding_model(
-            True, "bfloat16", "O2", use_master_grad=use_master_grad
+    def amp_fp16_o2(self, use_master_grad):
+        main_program, _, _, _, _ = build_embedding_model(
+            True, "float16", "O2", use_master_grad=use_master_grad
         )
         self.assertEqual(main_program.num_blocks, 1)
 
@@ -84,7 +78,7 @@ class TestStaticMasterGradProgramBF16(AmpTestBase):
         op_stats_list = amp.debugging._get_op_stats_list(main_program)
         expected_fp32_calls = {"lookup_table_v2": 1}
         if use_master_grad:
-            expected_bf16_calls = {
+            expected_fp16_calls = {
                 "matmul_v2": 1,
                 "elementwise_add": 1,
                 "dropout": 1,
@@ -93,7 +87,7 @@ class TestStaticMasterGradProgramBF16(AmpTestBase):
                 "adamw": 3,
             }
         else:
-            expected_bf16_calls = {
+            expected_fp16_calls = {
                 "matmul_v2": 1,
                 "elementwise_add": 1,
                 "dropout": 1,
@@ -103,16 +97,18 @@ class TestStaticMasterGradProgramBF16(AmpTestBase):
             }
         self._check_optimizer(
             main_program,
-            expected_bf16_calls["matmul_v2"]
-            + expected_bf16_calls["elementwise_add"]
+            expected_fp16_calls["matmul_v2"]
+            + expected_fp16_calls["elementwise_add"]
             + expected_fp32_calls["lookup_table_v2"],
         )
-        self._check_op_calls(op_stats_list[0], expected_bf16_calls)
+        self._check_op_calls(
+            op_stats_list[0], expected_fp16_calls=expected_fp16_calls
+        )
 
-    def test_amp_bf16_o2(self):
+    def test_amp_fp16_o2(self):
         use_master_grad_list = [False, True]
         for master_grad in use_master_grad_list:
-            self.amp_bf16_o2(master_grad)
+            self.amp_fp16_o2(master_grad)
 
 
 class TestMasterGradAccuracy(AmpTestBase):

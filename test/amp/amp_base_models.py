@@ -252,15 +252,11 @@ class SimpleMLPNet(nn.Layer):
         super().__init__()
         self.linear0 = paddle.nn.Linear(16, 10)
         self.linear1 = paddle.nn.Linear(10, 32)
-        self.layernorm = paddle.nn.LayerNorm(32)
-        self.linear2 = paddle.nn.Linear(32, 64)
 
     def forward(self, x):
         out = self.linear0(x)
         out = nn.functional.relu(out)
         out = self.linear1(out)
-        out = self.layernorm(out)
-        out = self.linear2(out)
         out = nn.functional.dropout(out, p=0.2)
         return out
 
