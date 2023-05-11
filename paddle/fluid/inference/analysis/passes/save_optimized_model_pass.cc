@@ -12,34 +12,44 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/ir/save_optimized_model_pass.h"
+#include "paddle/fluid/inference/analysis/passes/save_optimized_model_pass.h"
+
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/phi/common/backend.h"
-#include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/errors.h"
 
 namespace paddle {
-namespace framework {
-class ProgramDesc;
-}  // namespace framework
-}  // namespace paddle
+namespace inference {
+namespace analysis {
 
-namespace paddle {
-namespace framework {
-namespace ir {
+void SaveOptimizedModelPass::RunImpl(Argument* argument) {
+  if (!argument->save_optimized_model()) return;
 
-void SaveOptimizedModelPass::ApplyImpl(ir::Graph* graph) const {
-  if (!Has("save_optimized_model") || !Get<bool>("save_optimized_model"))
-    return;
+  std::string model_opt_cache_dir = argument->optim_cache_dir();
+  if (!model_opt_cache_dir.empty()) {
+    if (!PathExists(model_opt_cache_dir)) {
+      PADDLE_ENFORCE_NE(
+          MKDIR(model_opt_cache_dir.c_str()),
+          -1,
+          platform::errors::PreconditionNotMet(
+              "Can not create optimize cache directory: %s, Make sure you "
+              "have permission to write",
+              model_opt_cache_dir));
+    }
+  } else {
+    model_opt_cache_dir = argument->Has("model_dir")
+                              ? argument->model_dir()
+                              : GetDirRoot(argument->model_program_path());
+  }
 
-  std::string model_opt_cache_dir = Get<std::string>("model_opt_cache_dir");
-  auto& scope = graph->Get<Scope>(kParamScopeAttr);
+  auto& scope = argument->scope();
+  auto* graph = argument->main_graph_ptr();
+
   framework::ProgramDesc optimized_program_desc;
   framework::ir::GraphToProgram(*graph, &optimized_program_desc);
 
@@ -115,9 +125,10 @@ void SaveOptimizedModelPass::ApplyImpl(ir::Graph* graph) const {
   LOG(INFO) << "Optimized model saved to " << model_opt_cache_dir;
 }
 
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+std::string SaveOptimizedModelPass::repr() const {
+  return "save_optimized_model_pass";
+}
 
-REGISTER_PASS(save_optimized_model_pass,
-              paddle::framework::ir::SaveOptimizedModelPass);
+}  // namespace analysis
+}  // namespace inference
+}  // namespace paddle

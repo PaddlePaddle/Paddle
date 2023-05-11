@@ -318,30 +318,6 @@ void IRPassManager::CreatePasses(Argument *argument,
         pass->Set("quant_weight_bits",
                   new int(argument->xpu_quant_post_dynamic_weight_bits()));
       }
-    } else if (pass_name == "save_optimized_model_pass") {
-      pass->Set("save_optimized_model",
-                new bool(argument->save_optimized_model()));
-      std::string optim_cache_dir = argument->optim_cache_dir();
-      if (!optim_cache_dir.empty()) {
-        if (!PathExists(optim_cache_dir)) {
-          PADDLE_ENFORCE_NE(
-              MKDIR(optim_cache_dir.c_str()),
-              -1,
-              platform::errors::PreconditionNotMet(
-                  "Can not create optimize cache directory: %s, Make sure you "
-                  "have permission to write",
-                  optim_cache_dir));
-        }
-        pass->Set("model_opt_cache_dir", new std::string(optim_cache_dir));
-      } else {
-        std::string model_opt_cache_dir =
-            argument->Has("model_dir")
-                ? argument->model_dir()
-                : GetDirRoot(argument->model_program_path());
-        pass->Set(
-            "model_opt_cache_dir",
-            new std::string(GetOrCreateModelOptCacheDir(model_opt_cache_dir)));
-      }
     }
     pre_pass = pass_name;
 

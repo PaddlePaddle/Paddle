@@ -127,7 +127,6 @@ pass_library(dense_multihead_matmul_to_sparse_pass inference)
 pass_library(delete_cast_op_pass inference)
 pass_library(delete_elementwise_mul_op_pass inference)
 pass_library(delete_repeated_ops_pass inference)
-pass_library(save_optimized_model_pass inference)
 pass_library(generate_pass DEPS pass_desc_proto)
 target_link_libraries(generate_pass pass_desc_proto)
 
@@ -322,10 +321,6 @@ cc_test(
   test_graph_pattern_detector
   SRCS graph_pattern_detector_tester.cc
   DEPS graph_pattern_detector)
-cc_test(
-  test_save_optimized_model_pass
-  SRCS save_optimized_model_pass_tester.cc
-  DEPS save_optimized_model_pass)
 cc_test(
   test_op_compat_sensible_pass
   SRCS op_compat_sensible_pass_tester.cc

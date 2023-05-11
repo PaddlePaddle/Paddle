@@ -41,6 +41,20 @@ TEST(Analyzer, analysis_without_tensorrt) {
   analyser.Run(&argument);
 }
 
+TEST(Analyzer, analysis_save_optimized_model) {
+  Argument argument;
+  argument.SetDisableLogs(false);
+  argument.SetModelDir(FLAGS_inference_model_dir);
+  argument.SetEnableIrOptim(false);
+  argument.SetUseGPU(false);
+  argument.SetSaveOptimizedModel(true);
+  argument.SetAnalysisPasses(
+      {"ir_graph_build_pass", "ir_analysis_pass", "save_optimized_model_pass"});
+
+  Analyzer analyser;
+  analyser.Run(&argument);
+}
+
 TEST(Analyzer, analysis_with_tensorrt) {
   Argument argument;
   argument.SetDisableLogs(false);

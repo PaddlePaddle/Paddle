@@ -17,20 +17,21 @@ limitations under the License. */
 #include <string>
 #include <unordered_set>
 
-#include "paddle/fluid/framework/ir/graph_helper.h"
-#include "paddle/fluid/framework/ir/pass.h"
+#include "paddle/fluid/inference/analysis/analysis_pass.h"
 
 namespace paddle {
-namespace framework {
-namespace ir {
+namespace inference {
+namespace analysis {
 
-class Graph;
-
-class SaveOptimizedModelPass : public Pass {
- protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+/*
+ * Save model optimized by ir pass
+ */
+class SaveOptimizedModelPass : public AnalysisPass {
+ public:
+  void RunImpl(Argument *argument) override;
+  std::string repr() const override;
 };
 
-}  // namespace ir
-}  // namespace framework
+}  // namespace analysis
+}  // namespace inference
 }  // namespace paddle
