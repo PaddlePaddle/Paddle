@@ -3350,3 +3350,45 @@ def corrcoef(x, rowvar=True, name=None):
         c = paddle.clip(c, -1, 1)
 
     return c
+
+
+def cdist(x, y, p=2, name=None):
+    r"""
+    Computes batched the p-norm distance between each pair of the two collections of row vectors.
+
+    If x has shape B \times P \times M and y has shape B \times R \times M,
+    then the output will have shape B \times P \times R
+
+    Args:
+    x (Tensor): input tensor of shape (*, P, M), its data type is float32 or float64.
+    y (Tensor): input tensor of shape (*, R, M), its data type is float32 or float64.
+    p (float, optional): The norm to be computed, its data type is float32 or float64. Default: 2.
+    name (str, optional): The default value is `None`. Normally there is no need for
+    user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+    Tensor: Tensor that is the p-norm distance between each pair of the two collections of x and y.
+
+    Examples:
+    .. code-block:: python
+
+    import paddle
+
+    x = paddle.to_tensor([[1, 3],[3, 4]], dtype="float32")
+    y = paddle.to_tensor([[3, 2],[3, 1]], dtype="float32")
+
+    out = paddle.cdist(x, y, 2)
+    print(out) # out = [[2.23606801, 2.82842708],
+                        [2.        , 3.        ]])
+
+    """
+    x_shape = x.shape
+    y_shape = y.shape
+
+    y = paddle.concat([y] * x_shape[-2], axis=-2)
+    x = x.repeat_interleave(y_shape[-2], axis=-2)
+
+    loss = ((x - y) ** p).abs().sum(axis=-1) ** (1 / p)
+
+    loss = loss.reshape((*x.shape[:-2], x.shape[-2], y.shape[-2]))
+    return loss
