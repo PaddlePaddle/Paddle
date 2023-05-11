@@ -1837,28 +1837,28 @@ struct SimpleOpTypeSetTeller : public Teller {
                    "the pass.";
         return false;
       }
-      auto* var_desc = block->FindVar(desc.Input("Alpha")[0]);
-      if (!var_desc) {
+      auto* alpha_var = block->FindVar(desc.Input("Alpha")[0]);
+      if (!alpha_var) {
         VLOG(3) << "Variable Alpha of prelu TRT converter not found.";
+        return false;
+      }
+      auto alpha_shape = alpha_var->GetShape();
+      if (!with_dynamic_shape && alpha_shape.size() == 0) {
+        VLOG(3) << op_type
+                << " op does not support alpha's dim is 0 in tensorrt "
+                   "static shape mode.";
         return false;
       }
 
       auto x_var_name = desc.Input("X")[0];
-      auto* x_var_desc = block->FindVar(x_var_name);
-      const auto x_shape = x_var_desc->GetShape();
-      if (!with_dynamic_shape && x_shape.size() == 1) {
-        VLOG(3) << "prelu op does not support input's dim is 1 in tensorrt "
+      auto* x_var = block->FindVar(x_var_name);
+      const auto x_shape = x_var->GetShape();
+      if (!with_dynamic_shape && (x_shape.size() == 1 || x_shape.size() == 0)) {
+        VLOG(3) << op_type
+                << " op does not support input's dim is 1 or 0 in tensorrt "
                    "with static shape.";
         return false;
       }
-
-#if IS_TRT_VERSION_LT(7000)
-      if (!with_dynamic_shape) {
-        // TODO(inference): fix trt6 static plugin error.
-        VLOG(3) << "prelu static plugin in trt6 has bug.";
-        return false;
-      }
-#endif
     }
 
     if (op_type == "mish") {
