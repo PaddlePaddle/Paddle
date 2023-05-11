@@ -13,24 +13,24 @@
 # limitations under the License.
 
 import os
-import sys
-import paddle
-import numpy as np
-import traceback
-from collections import namedtuple
-from .. import core
-from .fetcher import _IterableDatasetFetcher, _MapDatasetFetcher
-from ..multiprocess_utils import (
-    _cleanup_mmap,
-    CleanupFuncRegistrar,
-    MP_STATUS_CHECK_INTERVAL,
-)
-from ..framework import _non_static_mode, _in_eager_without_dygraph_check
-from .flat import _flatten_batch
 
+# NOTE: queue has a different name in python2 and python3
 import queue
+import sys
+import traceback
 
-__all__ = ['get_worker_info']
+import numpy as np
+
+import paddle
+
+from ...framework import core
+from ..multiprocess_utils import (
+    MP_STATUS_CHECK_INTERVAL,
+    CleanupFuncRegistrar,
+    _cleanup_mmap,
+)
+from .fetcher import _IterableDatasetFetcher, _MapDatasetFetcher
+from .flat import _flatten_batch
 
 
 class _IterableDatasetStopIteration:
@@ -59,7 +59,7 @@ class _DatasetKind:
                 dataset, auto_collate_batch, collate_fn, drop_last
             )
         else:
-            raise NotImplementedError("unknown Dataset kind {}".format(kind))
+            raise NotImplementedError(f"unknown Dataset kind {kind}")
 
 
 class ParentWatchDog:
@@ -291,9 +291,9 @@ def _worker_loop(
 
         # set different numpy seed for each worker
         try:
-            import numpy as np
-            import time
             import random
+
+            import numpy as np
         except ImportError:
             pass
         else:
