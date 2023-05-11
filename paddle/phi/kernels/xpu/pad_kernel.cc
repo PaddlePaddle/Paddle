@@ -15,7 +15,6 @@
 #include "paddle/phi/kernels/pad_kernel.h"
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
-#include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -47,4 +46,11 @@ void PadKernel(const Context& dev_ctx,
 }
 }  // namespace phi
 
-PD_REGISTER_KERNEL(pad, XPU, ALL_LAYOUT, phi::PadKernel, float, int, int16_t) {}
+PD_REGISTER_KERNEL(pad,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::PadKernel,
+                   float,
+                   int,
+                   int16_t,
+                   phi::dtype::float16) {}
