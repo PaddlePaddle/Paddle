@@ -16,9 +16,9 @@
 
 #include <vector>
 
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/generator.h"
 #include "paddle/phi/core/tensor_utils.h"
-#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/kernels/gpudnn/cudnn_lstm_cache.h"
@@ -52,10 +52,11 @@ inline int size_sum(const std::vector<const phi::DenseTensor *> &weight_list) {
 }
 
 template <typename T>
-inline void weight_to_tensor(const phi::Place &place,
-                      gpuStream_t stream,
-                      const std::vector<const phi::DenseTensor *> &weight_list,
-                      phi::DenseTensor *weight) {
+inline void weight_to_tensor(
+    const phi::Place &place,
+    gpuStream_t stream,
+    const std::vector<const phi::DenseTensor *> &weight_list,
+    phi::DenseTensor *weight) {
   auto weight_data = weight->data<T>();
   int weight_offset = 0;
   for (size_t i = 0; i < weight_list.size(); ++i) {
@@ -63,11 +64,11 @@ inline void weight_to_tensor(const phi::Place &place,
     auto in_size = weight_list[i]->numel();
 
     memory_utils::Copy(weight->place(),
-                 weight_data + weight_offset,
-                 weight_list[i]->place(),
-                 in_data,
-                 in_size * sizeof(T),
-                 stream);
+                       weight_data + weight_offset,
+                       weight_list[i]->place(),
+                       in_data,
+                       in_size * sizeof(T),
+                       stream);
     weight_offset += in_size;
   }
 }
