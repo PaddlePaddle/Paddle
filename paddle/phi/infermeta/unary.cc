@@ -2750,31 +2750,33 @@ void PNormInferMeta(const MetaTensor& x,
                         x_rank,
                         x_dim));
 
-  std::vector<int> reduce_dims;
+  std::vector<int> out_dim_vector;
   if (asvector) {
-    reduce_dims.emplace_back(1);
     if (keepdim) {
-      for (int i = 1; i < x_dim.size(); ++i) {
-        reduce_dims.emplace_back(1);
+      for (int i = 0; i < x_rank; ++i) {
+        out_dim_vector.emplace_back(1);
       }
-      x_dim = phi::make_ddim(reduce_dims);
+    } else {
+      out_dim_vector = {};
     }
   } else {
-    if (axis < 0) axis = x_dim.size() + axis;
-    for (int i = 0; i < x_dim.size(); ++i) {
-      if (i != axis) reduce_dims.emplace_back(x_dim[i]);
+    if (axis < 0) axis = axis + x_rank;
+    if (keepdim) {
+      for (int i = 0; i < x_dim.size(); ++i) {
+        if (i != axis) {
+          out_dim_vector.emplace_back(x_dim[i]);
+        } else {
+          out_dim_vector.emplace_back(1);
+        }
+      }
+    } else {
+      for (int i = 0; i < x_dim.size(); ++i) {
+        if (i != axis) out_dim_vector.emplace_back(x_dim[i]);
+      }
     }
-    if (reduce_dims.size() == 0) {
-      reduce_dims.emplace_back(1);
-    }
-    x_dim[axis] = 1;
   }
 
-  if (keepdim) {
-    out->set_dims(x_dim);
-  } else {
-    out->set_dims(phi::make_ddim(reduce_dims));
-  }
+  out->set_dims(phi::make_ddim(out_dim_vector));
   out->set_dtype(x.dtype());
 }
 

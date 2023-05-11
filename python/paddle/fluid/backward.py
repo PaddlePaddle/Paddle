@@ -1341,16 +1341,17 @@ def _append_backward_ops_(
         rename_var_map = {}
     assert isinstance(rename_var_map, dict)
 
-    composite_block = program.clone().current_block()
-    # Infer shape for operators whose output haven't been created.
-    for op in composite_block.ops:
-        if not all(
-            tuple(
-                composite_block._find_var_recursive(arg)
-                for arg in op.output_arg_names
-            )
-        ):
-            infershape_for_composite(composite_block, op.desc)
+    if core._is_bwd_prim_enabled():
+        composite_block = program.clone().current_block()
+        # Infer shape for operators whose output haven't been created.
+        for op in composite_block.ops:
+            if not all(
+                tuple(
+                    composite_block._find_var_recursive(arg)
+                    for arg in op.output_arg_names
+                )
+            ):
+                infershape_for_composite(composite_block, op.desc)
 
     # add grad_op_desc by reversed ops
     for op in reversed(ops):
@@ -1396,11 +1397,7 @@ def _append_backward_ops_(
         #       x_grad = reduce_sum(x_grad_unreduce)
         grad_op_desc = []
         op_grad_to_var = {}
-        if (
-            not core.has_grad_op_maker(op.type)
-            and core.has_comp_grad_op_maker(op.type)
-            or core._is_bwd_prim_enabled()
-        ):
+        if core._is_bwd_prim_enabled():
 
             def find_op_index(block_desc, cur_op_desc):
                 for idx in range(block_desc.op_size()):
@@ -1420,6 +1417,7 @@ def _append_backward_ops_(
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
                 op.desc, no_grad_dict[block.idx], grad_sub_block_list
             )
+
         # record the mapping between fwd and bwd
         if grad_op_id_to_fwd_op is not None:
             for op_desc in grad_op_desc:
@@ -2328,15 +2326,12 @@ def _find_op_path_(
     # All the inputs of the block are used if inputs is empty,
     if inputs:
         for i, op in enumerate(block.ops):
-            if _some_in_set_(op.desc.input_arg_names(), input_names):
-                if not core.has_empty_grad_op_maker(
-                    op.type
-                ) or core.has_comp_grad_op_maker(op.type):
-                    for name in op.desc.output_arg_names():
-                        if name not in no_grad_set:
-                            input_names.add(name)
-                else:
-                    relevant_op_flags[i] = False
+            if _some_in_set_(
+                op.desc.input_arg_names(), input_names
+            ) and core.has_non_empty_grad_op_maker(op.type):
+                for name in op.desc.output_arg_names():
+                    if name not in no_grad_set:
+                        input_names.add(name)
             else:
                 relevant_op_flags[i] = False
 
@@ -2350,15 +2345,12 @@ def _find_op_path_(
             )
             op_path_dict[sub_block_id] = sub_block_path
 
-        if _some_in_set_(op.desc.output_arg_names(), output_names):
-            if not core.has_empty_grad_op_maker(
-                op.type
-            ) or core.has_comp_grad_op_maker(op.type):
-                for name in op.desc.input_arg_names():
-                    if name not in no_grad_set:
-                        output_names.add(name)
-            else:
-                relevant_op_flags[i] = False
+        if _some_in_set_(
+            op.desc.output_arg_names(), output_names
+        ) and core.has_non_empty_grad_op_maker(op.type):
+            for name in op.desc.input_arg_names():
+                if name not in no_grad_set:
+                    output_names.add(name)
         else:
             relevant_op_flags[i] = False
 
@@ -2370,7 +2362,7 @@ def _find_op_path_(
                 op.desc.output_arg_names(), output_names
             ):
                 relevant_op_flags[i] = True
-                if not core.has_empty_grad_op_maker(op.type):
+                if core.has_non_empty_grad_op_maker(op.type):
                     for name in op.desc.input_arg_names():
                         if name not in no_grad_set:
                             output_names.add(name)
@@ -2397,6 +2389,7 @@ def calc_gradient_helper(
     targets = _as_list(targets)
     inputs = _as_list(inputs)
     target_gradients = _as_list(target_gradients)
+
     block = targets[0].block
     prog = block.program
     # increase appending gradients times
@@ -2419,6 +2412,7 @@ def calc_gradient_helper(
     no_grad_dict[0].update(list(map(_append_grad_suffix_, no_grad_set)))
 
     fwd_op_num = block.desc.op_size()
+
     input_grad_names_set = set()
 
     target_grad_map = {}
@@ -2455,6 +2449,7 @@ def calc_gradient_helper(
 
     if core._is_bwd_prim_enabled():
         core._set_prim_target_grad_name(target_grad_map)
+
     # For double backward, input_grad_names is used for filter
     # some non-used gradients op. rename_var_map is used to
     # associate target_grad var name with first grad_op input name.
@@ -2472,6 +2467,7 @@ def calc_gradient_helper(
     op_path = _find_op_path_(
         block, targets, inputs, block_no_grad_set, op_path_dict
     )
+
     # find no grad var by op_path
     no_grad_vars = _find_no_grad_vars(
         block, op_path, targets, block_no_grad_set
@@ -2499,6 +2495,7 @@ def calc_gradient_helper(
     _rename_grad_(
         block, fwd_op_num, grad_to_var, target_grad_map, skip_rename_var_list
     )
+
     _append_backward_vars_(block, fwd_op_num, grad_to_var, grad_info_map)
     prog._sync_with_cpp()
     return grad_info_map
