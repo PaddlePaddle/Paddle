@@ -16,12 +16,12 @@ limitations under the License. */
 
 #include <vector>
 
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
-#include "paddle/fluid/platform/dynload/cudnn.h"
+#include "paddle/phi/backends/dynload/cudnn.h"
+#include "paddle/phi/backends/gpu/forwards.h"
+#include "paddle/phi/backends/gpu/gpu_dnn.h"
+#include "paddle/phi/core/dense_tensor.h"
 
-namespace paddle {
-namespace operators {
+namespace phi {
 
 class ScopedRNNBase {
  public:
@@ -48,13 +48,13 @@ class ScopedRNNBase {
 
   template <typename T>
   void Create(const cudnnHandle_t& handle,
-              const platform::Place& place,
+              const phi::Place& place,
               const std::vector<int>& sequence_length,
               size_t* workspace_size,
               size_t* reserve_size,
               phi::DenseTensor* dropout_state) {
     int numDirections = is_bidirec_ ? 2 : 1;
-    cudnnDataType_t cudnn_type = platform::CudnnDataType<T>::type;
+    cudnnDataType_t cudnn_type = phi::backends::gpu::CudnnDataType<T>::type;
 
     // ------------------- cudnn x, y descriptors ---------------------
     std::vector<int> dims_x = {batch_size_, input_size_, 1};
@@ -91,7 +91,7 @@ class ScopedRNNBase {
     size_t state_size;
     if (!initialized_) {
       PADDLE_ENFORCE_GPU_SUCCESS(
-          platform::dynload::cudnnDropoutGetStatesSize(handle, &state_size));
+          phi::dynload::cudnnDropoutGetStatesSize(handle, &state_size));
       dropout_state->mutable_data<uint8_t>({static_cast<int64_t>(state_size)},
                                            place);
     }
@@ -104,7 +104,7 @@ class ScopedRNNBase {
                              state_size);
 
     // ------------------- cudnn rnn descriptors ---------------------
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetRNNDescriptor_v6(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetRNNDescriptor_v6(
         handle,
         rnn_desc_.desc(),
         hidden_size_,
@@ -118,38 +118,34 @@ class ScopedRNNBase {
 
 #if CUDNN_VERSION >= 7201
     if (!sequence_length.empty()) {
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnSetRNNPaddingMode(
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnSetRNNPaddingMode(
           rnn_desc_.desc(), CUDNN_RNN_PADDED_IO_ENABLED));
     }
 #endif
 
     // ------------------- cudnn weights_size ---------------------
     size_t weights_size_;
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::cudnnGetRNNParamsSize(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnGetRNNParamsSize(
         handle, rnn_desc_.desc(), x_descs_[0], &weights_size_, cudnn_type));
     PADDLE_ENFORCE_EQ(
         weights_size_,
         sizeof(T) * weight_numel_,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The cudnn lstm and setting weight size should be same."));
     // ------------------- cudnn weight descriptors ---------------------
-    platform::DataLayout layout = platform::DataLayout::kNCHW;
+    phi::DataLayout layout = phi::DataLayout::kNCHW;
     int dim_tmp = weights_size_ / sizeof(T);
     std::vector<int> dim_w = {dim_tmp, 1, 1};
     weight_desc_.descriptor<T>(layout, dim_w);
     // ------------------- cudnn workspace, reserve size ---------------------
     PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::cudnnGetRNNWorkspaceSize(handle,
-                                                    rnn_desc_.desc(),
-                                                    seq_length_,
-                                                    x_descs_.data(),
-                                                    workspace_size));
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::cudnnGetRNNTrainingReserveSize(handle,
-                                                          rnn_desc_.desc(),
-                                                          seq_length_,
-                                                          x_descs_.data(),
-                                                          reserve_size));
+        phi::dynload::cudnnGetRNNWorkspaceSize(handle,
+                                               rnn_desc_.desc(),
+                                               seq_length_,
+                                               x_descs_.data(),
+                                               workspace_size));
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::cudnnGetRNNTrainingReserveSize(
+        handle, rnn_desc_.desc(), seq_length_, x_descs_.data(), reserve_size));
   }
   cudnnTensorDescriptor_t* x_descs() { return x_descs_.data(); }
   cudnnTensorDescriptor_t* y_descs() { return y_descs_.data(); }
@@ -179,20 +175,19 @@ class ScopedRNNBase {
   std::vector<cudnnTensorDescriptor_t> x_descs_;
   std::vector<cudnnTensorDescriptor_t> y_descs_;
 
-  platform::ScopedTensorDescriptor x_desc_;
-  platform::ScopedTensorDescriptor y_desc_;
+  phi::backends::gpu::ScopedTensorDescriptor x_desc_;
+  phi::backends::gpu::ScopedTensorDescriptor y_desc_;
 #if CUDNN_VERSION >= 7201
-  platform::ScopedRNNTensorDescriptor x_seq_desc_;
-  platform::ScopedRNNTensorDescriptor y_seq_desc_;
+  phi::backends::gpu::ScopedRNNTensorDescriptor x_seq_desc_;
+  phi::backends::gpu::ScopedRNNTensorDescriptor y_seq_desc_;
 #endif
-  platform::ScopedTensorDescriptor init_h_desc_;
-  platform::ScopedTensorDescriptor init_c_desc_;
-  platform::ScopedTensorDescriptor last_h_desc_;
-  platform::ScopedTensorDescriptor last_c_desc_;
-  platform::ScopedDropoutDescriptor dropout_desc_;
-  platform::ScopedFilterDescriptor weight_desc_;
-  platform::ScopedRNNDescriptor rnn_desc_;
+  phi::backends::gpu::ScopedTensorDescriptor init_h_desc_;
+  phi::backends::gpu::ScopedTensorDescriptor init_c_desc_;
+  phi::backends::gpu::ScopedTensorDescriptor last_h_desc_;
+  phi::backends::gpu::ScopedTensorDescriptor last_c_desc_;
+  phi::backends::gpu::ScopedDropoutDescriptor dropout_desc_;
+  phi::backends::gpu::ScopedFilterDescriptor weight_desc_;
+  phi::backends::gpu::ScopedRNNDescriptor rnn_desc_;
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace phi

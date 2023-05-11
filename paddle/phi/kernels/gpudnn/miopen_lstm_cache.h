@@ -16,8 +16,10 @@ limitations under the License. */
 
 #include <vector>
 
-#include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
+#include "paddle/phi/backends/dynload/miopen.h"
+#include "paddle/phi/backends/gpu/forwards.h"
+#include "paddle/phi/backends/gpu/gpu_dnn.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace paddle {
 namespace operators {
@@ -47,13 +49,13 @@ class ScopedRNNBase {
 
   template <typename T>
   void Create(const miopenHandle_t& handle,
-              const platform::Place& place,
+              const phi::Place& place,
               const std::vector<int>& sequence_length,
               size_t* workspace_size,
               size_t* reserve_size,
               phi::DenseTensor* dropout_state) {
     int numDirections = is_bidirec_ ? 2 : 1;
-    miopenDataType_t miopen_type = platform::CudnnDataType<T>::type;
+    miopenDataType_t miopen_type = phi::backends::gpu::CudnnDataType<T>::type;
 
     // ------------------- miopen x, y descriptors ---------------------
     std::vector<int> dims_x = {batch_size_, input_size_, 1};
@@ -78,7 +80,7 @@ class ScopedRNNBase {
     size_t state_size;
     if (!initialized_) {
       PADDLE_ENFORCE_GPU_SUCCESS(
-          platform::dynload::miopenDropoutGetStatesSize(handle, &state_size));
+          phi::dynload::miopenDropoutGetStatesSize(handle, &state_size));
       dropout_state->mutable_data<uint8_t>({static_cast<int64_t>(state_size)},
                                            place);
     }
@@ -91,7 +93,7 @@ class ScopedRNNBase {
                              state_size);
 
     // ------------------- miopen rnn descriptors ---------------------
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenSetRNNDescriptor_V2(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenSetRNNDescriptor_V2(
         rnn_desc_.desc(),
         hidden_size_,
         num_layers_,
@@ -105,31 +107,27 @@ class ScopedRNNBase {
 
     // ------------------- miopen weights_size ---------------------
     size_t weights_size_;
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::miopenGetRNNParamsSize(
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenGetRNNParamsSize(
         handle, rnn_desc_.desc(), x_descs_[0], &weights_size_, miopen_type));
     PADDLE_ENFORCE_EQ(
         weights_size_,
         sizeof(T) * weight_numel_,
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The miopen lstm and setting weight size should be same."));
     // ------------------- miopen weight descriptors ---------------------
-    platform::DataLayout layout = platform::DataLayout::kNCHW;
+    phi::DataLayout layout = phi::DataLayout::kNCHW;
     int dim_tmp = weights_size_ / sizeof(T);
     std::vector<int> dim_w = {dim_tmp, 1, 1};
     weight_desc_.descriptor<T>(layout, dim_w);
     // ------------------- miopen workspace, reserve size ---------------------
     PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::miopenGetRNNWorkspaceSize(handle,
-                                                     rnn_desc_.desc(),
-                                                     seq_length_,
-                                                     x_descs_.data(),
-                                                     workspace_size));
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        platform::dynload::miopenGetRNNTrainingReserveSize(handle,
-                                                           rnn_desc_.desc(),
-                                                           seq_length_,
-                                                           x_descs_.data(),
-                                                           reserve_size));
+        phi::dynload::miopenGetRNNWorkspaceSize(handle,
+                                                rnn_desc_.desc(),
+                                                seq_length_,
+                                                x_descs_.data(),
+                                                workspace_size));
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::miopenGetRNNTrainingReserveSize(
+        handle, rnn_desc_.desc(), seq_length_, x_descs_.data(), reserve_size));
   }
   miopenTensorDescriptor_t* x_descs() { return x_descs_.data(); }
   miopenTensorDescriptor_t* y_descs() { return y_descs_.data(); }
@@ -155,15 +153,15 @@ class ScopedRNNBase {
   std::vector<miopenTensorDescriptor_t> x_descs_;
   std::vector<miopenTensorDescriptor_t> y_descs_;
 
-  platform::ScopedTensorDescriptor x_desc_;
-  platform::ScopedTensorDescriptor y_desc_;
-  platform::ScopedTensorDescriptor init_h_desc_;
-  platform::ScopedTensorDescriptor init_c_desc_;
-  platform::ScopedTensorDescriptor last_h_desc_;
-  platform::ScopedTensorDescriptor last_c_desc_;
-  platform::ScopedDropoutDescriptor dropout_desc_;
-  platform::ScopedFilterDescriptor weight_desc_;
-  platform::ScopedRNNDescriptor rnn_desc_;
+  phi::backends::gpu::ScopedTensorDescriptor x_desc_;
+  phi::backends::gpu::ScopedTensorDescriptor y_desc_;
+  phi::backends::gpu::ScopedTensorDescriptor init_h_desc_;
+  phi::backends::gpu::ScopedTensorDescriptor init_c_desc_;
+  phi::backends::gpu::ScopedTensorDescriptor last_h_desc_;
+  phi::backends::gpu::ScopedTensorDescriptor last_c_desc_;
+  phi::backends::gpu::ScopedDropoutDescriptor dropout_desc_;
+  phi::backends::gpu::ScopedFilterDescriptor weight_desc_;
+  phi::backends::gpu::ScopedRNNDescriptor rnn_desc_;
 };
 
 }  // namespace operators
