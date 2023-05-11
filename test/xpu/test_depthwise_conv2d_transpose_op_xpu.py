@@ -28,7 +28,6 @@ paddle.enable_static()
 
 
 def depthwiseconv2dtranspose_forward_naive(input_, filter_, attrs):
-    print("depthwise_conv2d_transpose2d_forward_naive")
     padding_algorithm = attrs['padding_algorithm']
     if padding_algorithm not in ["SAME", "VALID", "EXPLICIT"]:
         raise ValueError(
