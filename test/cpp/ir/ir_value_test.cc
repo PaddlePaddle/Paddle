@@ -113,4 +113,6 @@ TEST(value_test, value_test) {
   op2->destroy();
   std::cout << op1->GetResultByIndex(0).print_ud_chain() << std::endl;
   op1->destroy();
+
+  std::cout << "3333" << std::endl; 
 }

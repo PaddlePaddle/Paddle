@@ -340,6 +340,12 @@ if [ "${INVALID_UNITTEST_ASSERT_CHECK}" != "" ] && [ "${GIT_PR_ID}" != "" ]; the
     check_approval 1 16605440 6836917
 fi
 
+OUTPUT_LOG=`echo "$ALL_ADDED_LINES" | grep -Ew "print|printf|fprintf|std::cout" || true`
+if [ "$OUTPUT_LOG" != "" ];then
+    echo_line="print or std::cout is not recommended for direct use, please use loggin or glog. If it is necessary to use, please contact tianshuo78520a (Recommend) or zhangbo9674 review and approve.\n"
+    check_approval 1 tianshuo7852a zhangbo9674
+fi
+
 HAS_MODIFIED_PHI_FILES=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/" || true`
 PHI_INCLUDE_FLUID_FILES=""
 for CHANGE_FILE in ${HAS_MODIFIED_PHI_FILES}; do
