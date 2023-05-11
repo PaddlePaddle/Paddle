@@ -136,9 +136,7 @@ class TrtConvertExpandV2Test(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            ver = paddle_infer.get_trt_compile_version()
-            ver_num = ver[0] * 1000 + ver[1] * 100 + ver[2] * 10
-            if dynamic_shape and (ver_num > 8000 or self.dims > 0):
+            if dynamic_shape:
                 return 1, 2
             else:
                 return 0, 3
