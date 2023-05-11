@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/assign_kernel.h"
-#include <iostream>
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -104,8 +103,6 @@ void AssignValueKernel(const Context& dev_ctx,
                                    "argument dtype is %s, kernel dtype is %s.",
                                    dtype,
                                    template_dtype));
-  std::cout << "kernel receive dtype: " << dtype << std::endl;
-  std::cout << "scalar.size: " << values.size() << std::endl;
   CopyVectorToTensor<T>(dev_ctx, values, out);
   out->Resize(phi::make_ddim(shape));
 }

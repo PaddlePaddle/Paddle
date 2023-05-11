@@ -11,7 +11,6 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include <iostream>
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
@@ -42,16 +41,16 @@ void DenseTensor::check_memory_size() const {
       holder_,
       phi::errors::PreconditionNotMet("Tensor holds no memory. "
                                       "Call Tensor::mutable_data firstly."));
-  // PADDLE_ENFORCE_LE(
-  //     numel() * SizeOf(dtype()),
-  //     memory_size(),
-  //     phi::errors::PreconditionNotMet(
-  //         "Tensor's dimension is out of bound."
-  //         "Tensor's dimension must be equal or less than the size of its "
-  //         "memory."
-  //         "But received Tensor's dimension is %d, memory's size is %d.",
-  //         numel() * SizeOf(dtype()),
-  //         memory_size()));
+  PADDLE_ENFORCE_LE(
+      numel() * SizeOf(dtype()),
+      memory_size(),
+      phi::errors::PreconditionNotMet(
+          "Tensor's dimension is out of bound."
+          "Tensor's dimension must be equal or less than the size of its "
+          "memory."
+          "But received Tensor's dimension is %d, memory's size is %d.",
+          numel() * SizeOf(dtype()),
+          memory_size()));
 }
 
 const Place& DenseTensor::place() const {
