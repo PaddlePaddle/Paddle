@@ -29,11 +29,11 @@ namespace phi {
                         DenseTensor* dx);
 
 #define DECLARE_ACTIVATION_GRAD_KERNEL_DEPXOUT(name) \
-  template <typename T, typename Context>                           \
-  void name##GradKernel(const Context& dev_ctx,                     \
-                        const DenseTensor& x,                       \
-                        const DenseTensor& out,                       \
-                        const DenseTensor& dout,                    \
+  template <typename T, typename Context>            \
+  void name##GradKernel(const Context& dev_ctx,      \
+                        const DenseTensor& x,        \
+                        const DenseTensor& out,      \
+                        const DenseTensor& dout,     \
                         DenseTensor* dx);
 
 #define DECLARE_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(name, attr) \

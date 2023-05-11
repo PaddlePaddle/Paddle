@@ -87,15 +87,15 @@ void ActivationGradGPUImpl(const Context& dev_ctx,
   }
 
 #define DEFINE_GPU_ACTIVATION_GRAD_KERNEL_DEPXOUT(name, functor_class) \
-  template <typename T, typename Context>                           \
-  void name##GradKernel(const Context& dev_ctx,                     \
-                        const DenseTensor& x,                       \
-                        const DenseTensor& out,                      \
-                        const DenseTensor& dout,                    \
-                        DenseTensor* dx) {                          \
-    funcs::functor_class<T> functor;                                \
-    ActivationGradGPUImpl<T, Context, funcs::functor_class<T>>(     \
-        dev_ctx, &x, &out, &dout, dx, functor);                  \
+  template <typename T, typename Context>                              \
+  void name##GradKernel(const Context& dev_ctx,                        \
+                        const DenseTensor& x,                          \
+                        const DenseTensor& out,                        \
+                        const DenseTensor& dout,                       \
+                        DenseTensor* dx) {                             \
+    funcs::functor_class<T> functor;                                   \
+    ActivationGradGPUImpl<T, Context, funcs::functor_class<T>>(        \
+        dev_ctx, &x, &out, &dout, dx, functor);                        \
   }
 
 #define DEFINE_GPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(         \
