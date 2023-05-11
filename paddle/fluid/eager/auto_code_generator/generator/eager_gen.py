@@ -68,7 +68,6 @@ prim_white_list = [
     "matmul_double_grad",
     "tanh_double_grad",
     "add_double_grad",
-    "multiply_double_grad",
     "subtract_double_grad",
     "silu_double_grad",
 ]
