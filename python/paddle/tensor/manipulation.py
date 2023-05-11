@@ -4815,6 +4815,7 @@ def index_put_(x, indices, value, accumulate=False, name=None):
 
     Examples:
         .. code-block:: python
+
             import paddle
 
             x = paddle.zeros([3, 3])
@@ -4845,6 +4846,7 @@ def index_put(x, indices, value, accumulate=False, name=None):
 
     Examples:
         .. code-block:: python
+
             import paddle
 
             x = paddle.zeros([3, 3])
