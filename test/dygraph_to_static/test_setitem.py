@@ -141,9 +141,9 @@ class TestCase9(TestSetItemBase):
     def init_func(self):
         def foo(x):
             y = x + 1
-            one = paddle.to_tensor([1], dtype="int64")
-            two = paddle.to_tensor([2], dtype="int64")
-            y[one, :, :, 2] = x[1, :, :, two] + 1  # Tensor([1]), Tensor([2])
+            one = paddle.to_tensor(1, dtype="int64")
+            two = paddle.to_tensor(2, dtype="int64")
+            y[one, :, :, 2] = x[1, :, :, two] + 1  # Tensor(1), Tensor(2)
             return y
 
         return foo

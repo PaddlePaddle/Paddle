@@ -216,7 +216,9 @@ class SliceInfo:
         out = paddle.scatter(t_reshape, index_1d, value_1d)
         if tensor_type is not None:
             out = out.astype(tensor_type)
-        tensor_origin[:] = out.reshape(tensor_origin.shape)
+        tensor_origin = _setitem_impl_(
+            tensor_origin, ..., out.reshape(tensor_origin.shape)
+        )
 
         return tensor_origin
 
@@ -855,7 +857,7 @@ def set_value_for_bool_tensor(var, item, value):
         gather_val = gather_nd(var, idx)
         gather_val_new = value - gather_val
         out = scatter_nd_add(var, idx, gather_val_new)
-        var[:] = out
+        var = _setitem_impl_(var, ..., out)
 
     from paddle.static.nn import cond
 
