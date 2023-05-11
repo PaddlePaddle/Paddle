@@ -30,7 +30,7 @@ class TruncFunctor {
   __device__ TruncFunctor(const T x) : x_(x) {}
   __device__ T operator()() {
     using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
-    return trunc(static_cast<MPType>(x_));
+    return static_cast<T>(trunc(static_cast<MPType>(x_)));
   }
 
  public:
