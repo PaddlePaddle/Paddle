@@ -200,14 +200,13 @@ struct GateAttentionConfig {
       return false;
     }
 
-    if (merge_qkv && (head_dim % 8 == 0) && (head_dim <= 128)) {
-      return use_flash_attn;
-    } else {
-      return false;
+    if (merge_qkv) {
+      if (head_dim == 32 || head_dim == 64 || head_dim == 128) {
+        return use_flash_attn;
+      }
     }
-#else
-    return false;
 #endif
+    return false;
   }
 
   int64_t GetQuerySize() const {
