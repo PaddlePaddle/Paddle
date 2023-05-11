@@ -66,7 +66,7 @@ class InferShapeInterface : public ir::OpInterfaceBase<InferShapeInterface> {
 class Operation1 : public ir::Op<Operation1> {
  public:
   using Op::Op;
-  static const char *name() { return "Operation1"; }
+  static const char *name() { return "op_test.operation1"; }
   static const char *attributes_name_[];
   static uint32_t attributes_num() { return 2; }
 };
@@ -77,7 +77,7 @@ class Operation2
     : public ir::Op<Operation2, ReadOnlyTrait, InferShapeInterface> {
  public:
   using Op::Op;
-  static const char *name() { return "Operation2"; }
+  static const char *name() { return "op_test.operation2"; }
   static const char *attributes_name_[];
   static uint32_t attributes_num() { return 2; }
   static void InferShape() {
@@ -117,12 +117,10 @@ TEST(op_test, op_test) {
   std::cout << test_dialect << std::endl;
 
   // (2) Get registered operations.
-  std::string op1_name =
-      test_dialect->name() + "." + std::string(Operation1::name());
+  std::string op1_name(Operation1::name());
   ir::OpInfoImpl *op1_info = ctx->GetRegisteredOpInfo(op1_name);
   EXPECT_EQ(op1_info != nullptr, true);
-  std::string op2_name =
-      test_dialect->name() + "." + std::string(Operation2::name());
+  std::string op2_name(Operation2::name());
   ir::OpInfoImpl *op2_info = ctx->GetRegisteredOpInfo(op2_name);
   EXPECT_EQ(op2_info != nullptr, true);
 
