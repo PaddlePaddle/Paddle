@@ -27,7 +27,7 @@ void CudnnLSTMKernel(
     const DenseTensor& init_h,
     const DenseTensor& init_c,
     const paddle::optional<DenseTensor>& w,
-    const paddle::optional<std::vector<DenseTensor*>>& weight_list,
+    const paddle::optional<std::vector<const DenseTensor*>>& weight_list,
     const paddle::optional<DenseTensor>& sequence_length,
     float dropout_prob,
     bool is_bidirec,

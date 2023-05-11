@@ -25,7 +25,7 @@ void CudnnLSTMGradKernel(
     const DenseTensor& x,
     const DenseTensor& init_h,
     const DenseTensor& init_c,
-    const paddle::optional<std::vector<DenseTensor*>>& weight_list,
+    const paddle::optional<std::vector<const DenseTensor*>>& weight_list,
     const paddle::optional<DenseTensor>& sequence_length,
     const DenseTensor& out,
     const DenseTensor& reserve,

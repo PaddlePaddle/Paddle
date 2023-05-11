@@ -18,6 +18,7 @@
 
 #include "paddle/phi/core/generator.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/kernels/gpudnn/cudnn_lstm_cache.h"
@@ -29,7 +30,7 @@
 namespace phi {
 
 template <typename T, typename Type>
-bool is_continuous(const Type &weight_list) {
+inline bool is_continuous(const Type &weight_list) {
   bool continuous = true;
   for (size_t i = 0; i < weight_list.size() - 1; ++i) {
     auto *in_data = weight_list[i]->template data<T>();
@@ -41,7 +42,7 @@ bool is_continuous(const Type &weight_list) {
   return continuous;
 }
 
-int size_sum(const std::vector<const phi::DenseTensor *> &weight_list) {
+inline int size_sum(const std::vector<const phi::DenseTensor *> &weight_list) {
   int size = 0;
   for (size_t i = 0; i < weight_list.size(); ++i) {
     auto in_size = weight_list[i]->numel();
@@ -51,7 +52,7 @@ int size_sum(const std::vector<const phi::DenseTensor *> &weight_list) {
 }
 
 template <typename T>
-void weight_to_tensor(const phi::Place &place,
+inline void weight_to_tensor(const phi::Place &place,
                       gpuStream_t stream,
                       const std::vector<const phi::DenseTensor *> &weight_list,
                       phi::DenseTensor *weight) {
@@ -61,7 +62,7 @@ void weight_to_tensor(const phi::Place &place,
     const T *in_data = weight_list[i]->data<T>();
     auto in_size = weight_list[i]->numel();
 
-    memory::Copy(weight->place(),
+    memory_utils::Copy(weight->place(),
                  weight_data + weight_offset,
                  weight_list[i]->place(),
                  in_data,

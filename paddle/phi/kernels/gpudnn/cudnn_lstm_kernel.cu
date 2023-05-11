@@ -14,6 +14,8 @@
 
 #include "paddle/phi/kernels/cudnn_lstm_kernel.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/gpudnn/cudnn_lstm_utils.h"
 
@@ -132,7 +134,7 @@ void CudnnLSTMKernel(
     const DenseTensor &init_h,
     const DenseTensor &init_c,
     const paddle::optional<DenseTensor> &w,
-    const paddle::optional<std::vector<DenseTensor *>> &weight_list,
+    const paddle::optional<std::vector<const DenseTensor *>> &weight_list,
     const paddle::optional<DenseTensor> &sequence_length,
     float dropout_prob,
     bool is_bidirec,
@@ -190,7 +192,7 @@ void CudnnLSTMKernel(
     weight_numel = running_w->numel();
   }
   if (!w_initialized) {
-    auto running_weight_list = weight_list.get_impl();
+    auto running_weight_list = *weight_list.get_ptr();
     bool continuous = is_continuous<T, std::vector<const phi::DenseTensor *>>(
         running_weight_list);
     weight_numel = size_sum(running_weight_list);

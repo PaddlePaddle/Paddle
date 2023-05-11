@@ -25,7 +25,7 @@ void CudnnLSTMGradKernel(
     const DenseTensor &x,
     const DenseTensor &init_h,
     const DenseTensor &init_c,
-    const paddle::optional<std::vector<DenseTensor *>> &weight_list,
+    const paddle::optional<std::vector<const DenseTensor *>> &weight_list,
     const paddle::optional<DenseTensor> &sequence_length,
     const DenseTensor &out,
     const DenseTensor &reserve,
@@ -54,7 +54,7 @@ void CudnnLSTMGradKernel(
   auto *last_h_grad_data = last_h_grad.data<T>();
   auto *last_c_grad_data = last_c_grad.data<T>();
 
-  auto running_weight_list = weight_list.get_impl();
+  auto running_weight_list = *weight_list.get_ptr();
   int weight_numel = size_sum(running_weight_list);
   bool continuous = is_continuous<T, std::vector<const phi::DenseTensor *>>(
       running_weight_list);
