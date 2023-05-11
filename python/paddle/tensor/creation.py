@@ -636,8 +636,10 @@ def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
 
 def _to_tensor_static(data, dtype=None, stop_gradient=None):
 
-    if isinstance(data, Variable) and (dtype is None or dtype == data.dtype):
+    if isinstance(data, Variable):
         output = data
+        if dtype is not None and dtype != data.dtype:
+            output = paddle.cast(output, dtype)
     else:
         if isinstance(data, np.number):  # Special case for numpy scalars
             data = np.array(data)
@@ -646,17 +648,37 @@ def _to_tensor_static(data, dtype=None, stop_gradient=None):
             if np.isscalar(data) and not isinstance(data, str):
                 data = np.array(data)
             elif isinstance(data, (list, tuple)):
-                data = np.array(data)
+                try:
+                    '''
+                    In numpy version >= 1.24.0, case like:
+                        np.array([Variable, 1, 2])
+                    is not supported, it will raise error (numpy returns an numpy array with dtype='object' in version <= 1.23.5)
 
-            if (
-                isinstance(data, np.ndarray)
-                and not dtype
-                and data.dtype != 'object'
-            ):
-                if data.dtype in ['float16', 'float32', 'float64']:
-                    data = data.astype(paddle.get_default_dtype())
-                elif data.dtype in ['int32']:
-                    data = data.astype('int64')
+                    Thus, process nested structure in except block
+                    '''
+                    data = np.array(data)
+
+                    # for numpy version <= 1.23.5
+                    if data.dtype == 'object':
+                        raise RuntimeError("Numpy get dtype `object`.")
+
+                except:
+                    to_stack_list = [None] * len(data)
+                    for idx, d in enumerate(data):
+                        to_stack_list[idx] = _to_tensor_static(
+                            d, dtype, stop_gradient
+                        )
+                    data = paddle.stack(to_stack_list)
+                    data = paddle.squeeze(data, -1)
+
+            else:
+                raise RuntimeError(
+                    f"Do not support transform type `{type(data)}` to tensor"
+                )
+
+            # fix numpy default dtype
+            if data.dtype in ['float16', 'float32', 'float64']:
+                data = data.astype(paddle.get_default_dtype())
 
         if dtype:
             target_dtype = dtype
@@ -664,24 +686,10 @@ def _to_tensor_static(data, dtype=None, stop_gradient=None):
             target_dtype = data.dtype
         else:
             target_dtype = paddle.get_default_dtype()
-
         target_dtype = convert_dtype(target_dtype)
 
-        if (
-            isinstance(data, np.ndarray)
-            and len(data.shape) > 0
-            and any(isinstance(x, Variable) for x in data)
-        ):
-            to_stack_list = [None] * data.shape[0]
-            for idx, d in enumerate(data):
-                to_stack_list[idx] = _to_tensor_static(d, dtype, stop_gradient)
-            data = paddle.stack(to_stack_list)
-            data = paddle.squeeze(data, -1)
+        output = assign(data)
 
-        if not isinstance(data, Variable):
-            output = assign(data)
-        else:
-            output = data
         if convert_dtype(output.dtype) != target_dtype:
             output = paddle.cast(output, target_dtype)
 
