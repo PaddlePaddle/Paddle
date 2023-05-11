@@ -940,6 +940,17 @@
   inplace : (x -> out)
   backward : index_add_grad
 
+- op : index_put
+  args : (Tensor x, Tensor[] indices, Tensor value, bool accumulate=false)
+  output : Tensor(out)
+  infer_meta :
+    func : IndexPutInferMeta
+  kernel :
+    func : index_put
+    data_type : x
+  inplace : (x -> out)
+  backward : index_put_grad
+
 - op : index_sample
   args : (Tensor x, Tensor index)
   output : Tensor

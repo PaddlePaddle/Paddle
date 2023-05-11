@@ -796,6 +796,17 @@
     data_type : out_grad
   inplace : (out_grad -> x_grad)
 
+- backward_op : index_put_grad
+  forward : index_put (Tensor x, Tensor[] indices, Tensor value, bool accumulate=false) -> Tensor(out)
+  args : (Tensor x, Tensor[] indices, Tensor value, Tensor out_grad, bool accumulate=false)
+  output : Tensor(x_grad), Tensor(value_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, value]
+  kernel :
+    func : index_put_grad
+    data_type : out_grad
+
 - backward_op : index_sample_grad
   forward : index_sample (Tensor x, Tensor index) -> Tensor(out)
   args : (Tensor x, Tensor index, Tensor out_grad)
