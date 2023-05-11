@@ -31,9 +31,9 @@ TEST(ReBindStream_single, use_gpu) {
   config.EnableTensorRtEngine();
 
   cudaStream_t stream1, stream2, stream3;
-  cudaStreamCreateWithFlags(&stream1, cudaStreamNonBlocking);
-  cudaStreamCreateWithFlags(&stream2, cudaStreamNonBlocking);
-  cudaStreamCreateWithFlags(&stream3, cudaStreamNonBlocking);
+  cudaStreamCreate(&stream1);
+  cudaStreamCreate(&stream2);
+  cudaStreamCreate(&stream3);
 
   config.SetExecStream(stream1);
   auto predictor = paddle_infer::CreatePredictor(config);
@@ -42,10 +42,13 @@ TEST(ReBindStream_single, use_gpu) {
   float x_data[3 * 224 * 224] = {0};
   x_t->CopyFromCpu(x_data);
   ASSERT_TRUE(predictor->Run());
+  cudaDeviceSynchronize();
   ASSERT_TRUE(paddle_infer::experimental::InternalUtils::RunWithExternalStream(
       predictor.get(), stream2));
+  cudaDeviceSynchronize();
   ASSERT_TRUE(paddle_infer::experimental::InternalUtils::RunWithExternalStream(
       predictor.get(), stream3));
+  cudaDeviceSynchronize();
 }
 
 TEST(ReBindStream_multi, use_gpu) {
