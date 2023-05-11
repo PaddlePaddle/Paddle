@@ -16,6 +16,7 @@ include(ExternalProject)
 
 set(CRYPTOPP_PREFIX_DIR ${THIRD_PARTY_PATH}/cryptopp)
 set(CRYPTOPP_INSTALL_DIR ${THIRD_PARTY_PATH}/install/cryptopp)
+set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/cryptopp)
 set(CRYPTOPP_INCLUDE_DIR
     "${CRYPTOPP_INSTALL_DIR}/include"
     CACHE PATH "cryptopp include directory." FORCE)
@@ -62,9 +63,8 @@ include_directories(${CRYPTOPP_INCLUDE_DIR})
 
 ExternalProject_Add(
   extern_cryptopp
-  ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}
-  GIT_REPOSITORY ${CRYPTOPP_REPOSITORY}
-  GIT_TAG ${CRYPTOPP_TAG}
+  ${EXTERNAL_PROJECT_LOG_ARGS}
+  SOURCE_DIR ${SOURCE_DIR}
   PREFIX ${CRYPTOPP_PREFIX_DIR}
   UPDATE_COMMAND ""
   PATCH_COMMAND

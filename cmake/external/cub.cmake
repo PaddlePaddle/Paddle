@@ -21,7 +21,7 @@ set(CUB_PATH
     "${THIRD_PARTY_PATH}/cub"
     CACHE STRING "A path setting for external_cub path.")
 set(CUB_PREFIX_DIR ${CUB_PATH})
-
+set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/cub)
 set(CUB_REPOSITORY ${GIT_URL}/NVlabs/cub.git)
 
 if(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 11.6)
@@ -32,16 +32,15 @@ if(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 11.6)
 else()
   set(CUB_TAG 1.8.0)
 endif()
-
+set(CUB_PATCH_COMMAND cd ${SOURCE_DIR} && git checkout ${CUB_TAG})
 set(CUB_INCLUDE_DIR ${CUB_PREFIX_DIR}/src/extern_cub)
 message("CUB_INCLUDE_DIR is ${CUB_INCLUDE_DIR}")
 include_directories(${CUB_INCLUDE_DIR})
 
 ExternalProject_Add(
   extern_cub
-  ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}
-  GIT_REPOSITORY ${CUB_REPOSITORY}
-  GIT_TAG ${CUB_TAG}
+  ${EXTERNAL_PROJECT_LOG_ARGS}
+  SOURCE_DIR ${SOURCE_DIR}
   PREFIX ${CUB_PREFIX_DIR}
   UPDATE_COMMAND ""
   CONFIGURE_COMMAND ""
