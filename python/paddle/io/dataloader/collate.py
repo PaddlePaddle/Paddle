@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import numbers
-import numpy as np
-from ..framework import _non_static_mode
-from .. import core, layers
+from collections.abc import Mapping, Sequence
 
-from collections.abc import Sequence, Mapping
+import numpy as np
+
+import paddle
+
+from ...framework import core
 
 
 def default_collate_fn(batch):
