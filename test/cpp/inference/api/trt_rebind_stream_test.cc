@@ -14,8 +14,10 @@ limitations under the License. */
 
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+#include <thread>
 
 #include "gflags/gflags.h"
+#include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "test/cpp/inference/api/tester_helper.h"
 
 namespace paddle {
@@ -94,6 +96,82 @@ TEST(ReBindStream_multi, use_gpu) {
   ASSERT_TRUE(paddle_infer::experimental::InternalUtils::RunWithExternalStream(
       predictor2.get(), stream3));
   cudaStreamSynchronize(stream3);
+}
+
+TEST(SwitchStream_multi, use_gpu) {
+  std::string model_dir = FLAGS_infer_model + "/mobilenet";
+  AnalysisConfig config1;
+  config1.EnableUseGpu(100, 0);
+  config1.SetModel(model_dir);
+  AnalysisConfig config2;
+  config2.EnableUseGpu(100, 0);
+  config2.SetModel(model_dir);
+  AnalysisConfig config3;
+  config3.EnableUseGpu(100, 0);
+  config3.SetModel(model_dir);
+
+  // config1.EnableTensorRtEngine();
+  // config2.EnableTensorRtEngine();
+  // config3.EnableTensorRtEngine();
+
+  cudaStream_t stream1, stream2, stream3;
+  cudaStreamCreate(&stream1);
+  cudaStreamCreate(&stream2);
+  cudaStreamCreate(&stream3);
+
+  config1.SetExecStream(stream1);
+  config2.SetExecStream(stream1);
+  config3.SetExecStream(stream1);
+  auto predictor1 = paddle_infer::CreatePredictor(config1);
+  auto predictor2 = paddle_infer::CreatePredictor(config2);
+  auto predictor3 = paddle_infer::CreatePredictor(config3);
+
+  std::vector<float> x1(3 * 224 * 224, 1.0);
+  auto x_t1 = predictor1->GetInputHandle("x");
+  x_t1->Reshape({1, 3, 224, 224});
+  x_t1->CopyFromCpu(x1.data());
+  std::vector<float> x2(3 * 224 * 224, 2.0);
+  auto x_t2 = predictor2->GetInputHandle("x");
+  x_t2->Reshape({1, 3, 224, 224});
+  x_t2->CopyFromCpu(x2.data());
+  std::vector<float> x3(3 * 224 * 224, 2.5);
+  auto x_t3 = predictor3->GetInputHandle("x");
+  x_t3->Reshape({1, 3, 224, 224});
+  x_t3->CopyFromCpu(x3.data());
+
+  // TODO(wilber): fix.
+  // NOTE: Must run once on master thread, but why?
+  // if remove the code, the unit test fail.
+  ASSERT_TRUE(predictor1->Run());
+  cudaStreamSynchronize(stream1);
+  ASSERT_TRUE(predictor2->Run());
+  cudaStreamSynchronize(stream1);
+  ASSERT_TRUE(predictor3->Run());
+  cudaStreamSynchronize(stream1);
+
+  auto Run = [&](paddle_infer::Predictor* p,
+                 std::vector<cudaStream_t> streams) {
+    for (auto s : streams) {
+      paddle_infer::experimental::InternalUtils::RunWithExternalStream(p, s);
+    }
+  };
+
+  std::thread p1(Run,
+                 predictor1.get(),
+                 std::vector<cudaStream_t>{
+                     stream1, stream2, stream3, stream3, stream2, stream2});
+  std::thread p2(Run,
+                 predictor2.get(),
+                 std::vector<cudaStream_t>{
+                     stream1, stream3, stream1, stream2, stream1, stream3});
+  std::thread p3(Run,
+                 predictor3.get(),
+                 std::vector<cudaStream_t>{
+                     stream1, stream1, stream2, stream3, stream3, stream2});
+  p1.join();
+  p2.join();
+  p3.join();
+  cudaDeviceSynchronize();
 }
 
 }  // namespace inference
