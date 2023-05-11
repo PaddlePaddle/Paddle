@@ -200,16 +200,8 @@ struct GateAttentionConfig {
       return false;
     }
 
-    if (merge_qkv) {
-      switch (head_dim) {
-        case 16:
-        case 32:
-        case 64:
-        case 128:
-          return use_flash_attn;
-        default:
-          return false;
-      }
+    if (merge_qkv && (head_dim % 8 == 0) && (head_dim <= 128)) {
+      return use_flash_attn;
     } else {
       return false;
     }
