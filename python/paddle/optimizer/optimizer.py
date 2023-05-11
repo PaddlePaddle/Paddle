@@ -1185,9 +1185,6 @@ class Optimizer:
         target_block = global_block
         current_block = framework.default_main_program().current_block()
         if current_block.idx != global_block.idx:
-            assert (
-                current_block.backward_block_idx != -1
-            ), "current block is not global_block, but it doesn't have backward block."
             target_block = framework.default_main_program().blocks[
                 current_block.backward_block_idx
             ]
@@ -1199,23 +1196,22 @@ class Optimizer:
         assert isinstance(target_block, framework.Block)
         # create
         for p, g in param_grads:
-            if g.name in self._already_create_master_grad:
-                continue
-            if self._is_dtype_fp16_or_bf16(g.dtype):
-                master_g = self._create_master_grad(g)
-                params_master_grads.append((p, master_g))
-                self._already_create_master_grad.add(g.name)
-                target_block.append_op(
-                    type="cast",
-                    inputs={"X": [g]},
-                    outputs={"Out": [master_g]},
-                    attrs={
-                        "in_dtype": g.dtype,
-                        "out_dtype": master_g.dtype,
-                    },
-                )
-            else:
-                params_master_grads.append((p, g))
+            if g.name not in self._already_create_master_grad:
+                if self._is_dtype_fp16_or_bf16(g.dtype):
+                    master_g = self._create_master_grad(g)
+                    params_master_grads.append((p, master_g))
+                    self._already_create_master_grad.add(g.name)
+                    target_block.append_op(
+                        type="cast",
+                        inputs={"X": [g]},
+                        outputs={"Out": [master_g]},
+                        attrs={
+                            "in_dtype": g.dtype,
+                            "out_dtype": master_g.dtype,
+                        },
+                    )
+                else:
+                    params_master_grads.append((p, g))
 
         return params_master_grads
 
