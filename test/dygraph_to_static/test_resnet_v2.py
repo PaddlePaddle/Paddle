@@ -255,7 +255,7 @@ class TestResnet(unittest.TestCase):
             batch_size=batch_size,
             drop_last=True,
         )
-        data_loader = paddle.io.DataLoader.from_generator(
+        data_loader = paddle.fluid.io.DataLoader.from_generator(
             capacity=5, iterable=True
         )
         data_loader.set_sample_list_generator(train_reader)

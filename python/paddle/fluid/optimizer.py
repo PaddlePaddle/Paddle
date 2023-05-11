@@ -4554,9 +4554,7 @@ class PipelineOptimizer:
 
     def __init__(self, optimizer, num_microbatches=1, start_cpu_core_id=0):
         self._device = 'cpu'
-        if core.is_compiled_with_custom_device('npu'):
-            self._device = "npu"
-        elif core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda():
             self._device = "gpu"
         if in_dygraph_mode():
             raise Exception("In dygraph, don't support PipelineOptimizer.")
@@ -4945,8 +4943,8 @@ class PipelineOptimizer:
             else None
         )
         if device:
-            assert device[0:3] == 'gpu' or device[0:3] == 'npu', (
-                "Now, only gpu and npu devices are "
+            assert device[0:3] == 'gpu', (
+                "Now, only gpu devices are "
                 "supported in pipeline parallemism."
             )
         return device
@@ -5148,8 +5146,8 @@ class PipelineOptimizer:
                 continue
 
             dev_type = device.split(':')[0]
-            assert dev_type == "gpu" or dev_type == 'npu', (
-                "Now only gpu and npu devices are supported "
+            assert dev_type == "gpu", (
+                "Now only gpu devices are supported "
                 "for pipeline parallelism."
             )
 
@@ -6388,8 +6386,6 @@ class PipelineOptimizer:
             dev_index = int(dev.split(":")[1])
             if core.is_compiled_with_cuda():
                 place_list.append(core.CUDAPlace(dev_index % 1))
-            elif paddle.is_compiled_with_custom_device('npu'):
-                place_list.append(paddle.CustomPlace('npu', dev_index % 1))
 
         # Step6: Split startup program
         new_startup_program = self._split_startup_program(
@@ -6412,8 +6408,6 @@ class PipelineOptimizer:
 
         if core.is_compiled_with_cuda():
             place_id = int(os.getenv("FLAGS_selected_gpus", "0"))
-        elif core.is_compiled_with_custom_device('npu'):
-            place_id = int(os.getenv("FLAGS_selected_npus", "0"))
         # A pass to move the recv op to the beginning of
         # the forward/backward phase
         self._mv_head_recv(program_list[self.local_rank])

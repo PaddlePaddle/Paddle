@@ -148,8 +148,8 @@ phi::Backend ConvertBackend(paddle_infer::PlaceType backend) {
       return phi::Backend::CUSTOM;
     default:
       PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-          "Paddle Inference not support backend, we now only support GPU, XPU, "
-          "NPU and CPU."));
+          "Paddle Inference not support backend, we now only support GPU, XPU "
+          "and CPU."));
       return phi::Backend::CPU;
   }
 }
@@ -1352,6 +1352,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_->SetTensorRtDLACore(config_.trt_dla_core_);
     argument_->SetTensorRtUseStaticEngine(config_.trt_use_static_engine_);
     argument_->SetTensorRtUseCalibMode(config_.trt_use_calib_mode_);
+    argument_->SetTensorRtUseCudaGraph(config_.trt_use_cuda_graph_);
     argument_->SetCloseTrtPluginFp16(config_.disable_trt_plugin_fp16_);
     argument_->SetTensorRtShapeRangeInfoPath(config_.shape_range_info_path());
     argument_->SetTensorRtAllowBuildAtRuntime(
@@ -1430,9 +1431,6 @@ void AnalysisPredictor::PrepareArgument() {
   argument_->SetIpuCustomOpsInfo(config_.ipu_custom_ops_info_);
   argument_->SetIpuCustomPatterns(config_.ipu_custom_patterns_);
 #endif
-
-  argument_->SetUseNpu(config_.use_npu_);
-  argument_->SetNPUDeviceId(config_.npu_device_id());
 
   if (config_.use_mkldnn_) {
     LOG(INFO) << "MKLDNN is enabled";

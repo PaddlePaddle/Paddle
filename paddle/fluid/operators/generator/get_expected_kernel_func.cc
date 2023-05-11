@@ -195,6 +195,13 @@ phi::KernelKey GetMatrixNmsExpectedKernelType(
                         platform::CPUPlace());
 }
 
+phi::KernelKey GetYoloLossExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  return phi::KernelKey(op_ptr->IndicateVarDataType(ctx, "X"),
+                        platform::CPUPlace());
+}
+
 phi::KernelKey GetUniqueExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr) {
