@@ -153,7 +153,7 @@ phi::KernelKey GetSoftmaxExpectedKernelType(
             platform::is_custom_place(ctx.GetPlace()),
         true,
         platform::errors::InvalidArgument(
-            "float16 can only be used on GPU/NPU/XPU and custom place"));
+            "float16 can only be used on GPU/XPU and custom place"));
   }
   return phi::KernelKey(
       ctx.GetPlace(), layout_, phi::TransToPhiDataType(input_data_type));
@@ -172,7 +172,7 @@ phi::KernelKey GetSoftmaxGradExpectedKernelType(
           platform::is_xpu_place(ctx.GetPlace()) ||
           platform::is_custom_place(ctx.GetPlace())))
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "float16 can only be used on GPU/NPU/XPU and custom place"));
+          "float16 can only be used on GPU/XPU and custom place"));
   }
   return phi::KernelKey(
       ctx.GetPlace(), layout_, phi::TransToPhiDataType(input_data_type));
