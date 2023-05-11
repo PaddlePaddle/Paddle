@@ -41,7 +41,7 @@ void Pow2DecayWithLinearWarmupKernel(const Context& dev_ctx,
                     phi::errors::InvalidArgument(
                         "Input(Step) and Output(StepOut) must be the same."));
   PADDLE_ENFORCE_EQ(
-      step->IsInitialized(),
+      step.IsInitialized(),
       true,
       phi::errors::InvalidArgument("Input(Step) must be initialized."));
 

@@ -85,7 +85,7 @@ void Pow2DecayWithLinearWarmupKernel(const Context& dev_ctx,
                     phi::errors::InvalidArgument(
                         "Input(Step) and Output(StepOut) must be the same."));
   PADDLE_ENFORCE_EQ(
-      step->IsInitialized(),
+      step.IsInitialized(),
       true,
       phi::errors::InvalidArgument("Input(Step) must be initialized."));
 
@@ -96,7 +96,7 @@ void Pow2DecayWithLinearWarmupKernel(const Context& dev_ctx,
 
   auto* lr_data = lr_out->data<T>();
   auto* step_data = step_out->data<int64_t>();
-  phi::funcs::ForRange<DeviceContext> for_range(dev_ctx, 1);
+  phi::funcs::ForRange<Context> for_range(dev_ctx, 1);
   using AttrT = double;
   Pow2DecayWithLinearWarmupFunctor<T, AttrT> functor(
       lr_data,
