@@ -295,12 +295,9 @@ void CudnnLSTMGradKernel(
 
 #ifdef PADDLE_WITH_HIP
 PD_REGISTER_KERNEL(
-    cudnn_lstm_grad, GPUDNN, ALL_LAYOUT, phi::CudnnLSTMGradKernel, float) {}
+    cudnn_lstm_grad, GPU, ALL_LAYOUT, phi::CudnnLSTMGradKernel, float) {}
 #else
-PD_REGISTER_KERNEL(cudnn_lstm_grad,
-                   GPUDNN,
-                   ALL_LAYOUT,
-                   phi::CudnnLSTMGradKernel,
-                   float,
-                   double) {}
+PD_REGISTER_KERNEL(
+    cudnn_lstm_grad, GPU, ALL_LAYOUT, phi::CudnnLSTMGradKernel, float, double) {
+}
 #endif
