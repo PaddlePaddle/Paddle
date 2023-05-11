@@ -139,8 +139,8 @@ class TestDispatch(unittest.TestCase):
         ),
         (
             'test-same-dist',
-            mock.Exponential(paddle.to_tensor(1.0)),
-            mock.Exponential(paddle.to_tensor(1.0)),
+            mock.Exponential(paddle.to_tensor([1.0])),
+            mock.Exponential(paddle.to_tensor([1.0])),
         ),
     ],
 )

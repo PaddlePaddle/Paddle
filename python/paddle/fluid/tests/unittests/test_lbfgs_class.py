@@ -206,75 +206,75 @@ class TestLbfgs(unittest.TestCase):
 
     def test_line_search_incubate(self):
         def func1(x, alpha, d):
-            return paddle.to_tensor(x + alpha * d), paddle.to_tensor(0.0)
+            return paddle.to_tensor(x + alpha * d), paddle.to_tensor([0.0])
 
         def func2(x, alpha, d):
-            return paddle.to_tensor(x + alpha * d), paddle.to_tensor(1.0)
+            return paddle.to_tensor(x + alpha * d), paddle.to_tensor([1.0])
 
         def func3(x, alpha, d):
-            return paddle.to_tensor(x + alpha * d), paddle.to_tensor(-1.0)
+            return paddle.to_tensor(x + alpha * d), paddle.to_tensor([-1.0])
 
         line_search_dygraph._strong_wolfe(
             func1,
-            paddle.to_tensor(1.0),
-            paddle.to_tensor(0.001),
-            paddle.to_tensor(1.0),
-            paddle.to_tensor(1.0),
-            paddle.to_tensor(0.0),
-            paddle.to_tensor(0.0),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([0.001]),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([0.0]),
+            paddle.to_tensor([0.0]),
             max_ls=1,
         )
 
         line_search_dygraph._strong_wolfe(
             func1,
-            paddle.to_tensor(1.0),
-            paddle.to_tensor(0.001),
-            paddle.to_tensor(0.0),
-            paddle.to_tensor(1.0),
-            paddle.to_tensor(0.0),
-            paddle.to_tensor(0.0),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([0.001]),
+            paddle.to_tensor([0.0]),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([0.0]),
+            paddle.to_tensor([0.0]),
             max_ls=0,
         )
 
         line_search_dygraph._strong_wolfe(
             func2,
-            paddle.to_tensor(1.0),
-            paddle.to_tensor(-0.001),
-            paddle.to_tensor(1.0),
-            paddle.to_tensor(1.0),
-            paddle.to_tensor(1.0),
-            paddle.to_tensor(1.0),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([-0.001]),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([1.0]),
             max_ls=1,
         )
 
         line_search_dygraph._strong_wolfe(
             func3,
-            paddle.to_tensor(1.0),
-            paddle.to_tensor(-0.001),
-            paddle.to_tensor(1.0),
-            paddle.to_tensor(1.0),
-            paddle.to_tensor(1.0),
-            paddle.to_tensor(1.0),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([-0.001]),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([1.0]),
             max_ls=1,
         )
 
         line_search_dygraph._cubic_interpolate(
-            paddle.to_tensor(2.0),
-            paddle.to_tensor(1.0),
-            paddle.to_tensor(0.0),
-            paddle.to_tensor(1.0),
-            paddle.to_tensor(2.0),
-            paddle.to_tensor(0.0),
+            paddle.to_tensor([2.0]),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([0.0]),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([2.0]),
+            paddle.to_tensor([0.0]),
             [0.1, 0.5],
         )
 
         line_search_dygraph._cubic_interpolate(
-            paddle.to_tensor(2.0),
-            paddle.to_tensor(0.0),
-            paddle.to_tensor(-3.0),
-            paddle.to_tensor(1.0),
-            paddle.to_tensor(1.0),
-            paddle.to_tensor(-0.1),
+            paddle.to_tensor([2.0]),
+            paddle.to_tensor([0.0]),
+            paddle.to_tensor([-3.0]),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([-0.1]),
             [0.1, 0.5],
         )
 
@@ -456,75 +456,75 @@ class TestLbfgs(unittest.TestCase):
 
     def test_line_search(self):
         def func1(x, alpha, d):
-            return paddle.to_tensor(x + alpha * d), paddle.to_tensor(0.0)
+            return paddle.to_tensor(x + alpha * d), paddle.to_tensor([0.0])
 
         def func2(x, alpha, d):
-            return paddle.to_tensor(x + alpha * d), paddle.to_tensor(1.0)
+            return paddle.to_tensor(x + alpha * d), paddle.to_tensor([1.0])
 
         def func3(x, alpha, d):
-            return paddle.to_tensor(x + alpha * d), paddle.to_tensor(-1.0)
+            return paddle.to_tensor(x + alpha * d), paddle.to_tensor([-1.0])
 
         lbfgs._strong_wolfe(
             func1,
-            paddle.to_tensor(1.0),
-            paddle.to_tensor(0.001),
-            paddle.to_tensor(1.0),
-            paddle.to_tensor(1.0),
-            paddle.to_tensor(0.0),
-            paddle.to_tensor(0.0),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([0.001]),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([0.0]),
+            paddle.to_tensor([0.0]),
             max_ls=1,
         )
 
         lbfgs._strong_wolfe(
             func1,
-            paddle.to_tensor(1.0),
-            paddle.to_tensor(0.001),
-            paddle.to_tensor(0.0),
-            paddle.to_tensor(1.0),
-            paddle.to_tensor(0.0),
-            paddle.to_tensor(0.0),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([0.001]),
+            paddle.to_tensor([0.0]),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([0.0]),
+            paddle.to_tensor([0.0]),
             max_ls=0,
         )
 
         lbfgs._strong_wolfe(
             func2,
-            paddle.to_tensor(1.0),
-            paddle.to_tensor(-0.001),
-            paddle.to_tensor(1.0),
-            paddle.to_tensor(1.0),
-            paddle.to_tensor(1.0),
-            paddle.to_tensor(1.0),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([-0.001]),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([1.0]),
             max_ls=1,
         )
 
         lbfgs._strong_wolfe(
             func3,
-            paddle.to_tensor(1.0),
-            paddle.to_tensor(-0.001),
-            paddle.to_tensor(1.0),
-            paddle.to_tensor(1.0),
-            paddle.to_tensor(1.0),
-            paddle.to_tensor(1.0),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([-0.001]),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([1.0]),
             max_ls=1,
         )
 
         lbfgs._cubic_interpolate(
-            paddle.to_tensor(2.0),
-            paddle.to_tensor(1.0),
-            paddle.to_tensor(0.0),
-            paddle.to_tensor(1.0),
-            paddle.to_tensor(2.0),
-            paddle.to_tensor(0.0),
+            paddle.to_tensor([2.0]),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([0.0]),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([2.0]),
+            paddle.to_tensor([0.0]),
             [0.1, 0.5],
         )
 
         lbfgs._cubic_interpolate(
-            paddle.to_tensor(2.0),
-            paddle.to_tensor(0.0),
-            paddle.to_tensor(-3.0),
-            paddle.to_tensor(1.0),
-            paddle.to_tensor(1.0),
-            paddle.to_tensor(-0.1),
+            paddle.to_tensor([2.0]),
+            paddle.to_tensor([0.0]),
+            paddle.to_tensor([-3.0]),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([1.0]),
+            paddle.to_tensor([-0.1]),
             [0.1, 0.5],
         )
 
