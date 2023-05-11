@@ -34,7 +34,7 @@ set(BRPC_INCLUDE_DIR
 set(BRPC_LIBRARIES
     "${BRPC_INSTALL_DIR}/lib/libbrpc.a"
     CACHE FILEPATH "brpc library." FORCE)
-
+set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/brpc)
 include_directories(${BRPC_INCLUDE_DIR})
 
 # Reference https://stackoverflow.com/questions/45414507/pass-a-list-of-prefix-paths-to-externalproject-add-in-cmake-args
@@ -46,9 +46,8 @@ set(prefix_path
 ExternalProject_Add(
   extern_brpc
   ${EXTERNAL_PROJECT_LOG_ARGS}
-  GIT_REPOSITORY "https://github.com/apache/incubator-brpc"
-  GIT_TAG 1.4.0
   PREFIX ${BRPC_PREFIX_DIR}
+  SOURCE_DIR ${SOURCE_DIR}
   UPDATE_COMMAND ""
   CMAKE_ARGS -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
              -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
