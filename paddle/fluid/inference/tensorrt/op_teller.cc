@@ -409,6 +409,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       return false;
 #endif
     }
+
     if (op_type == "softmax") {
       auto* block = desc.Block();
       if (block == nullptr) {
@@ -420,7 +421,23 @@ struct SimpleOpTypeSetTeller : public Teller {
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
+      if (!with_dynamic_shape && (x_shape.size() == 1 || x_shape.size() == 0)) {
+        VLOG(3) << op_type
+                << " op does not support input's dim is 1 or 0 in tensorrt "
+                   "with static shape.";
+        return false;
+      }
+
+      if (with_dynamic_shape && (x_shape.size() == 1 || x_shape.size() == 0)) {
+        int axis = desc.HasAttr("axis")
+                       ? PADDLE_GET_CONST(int, desc.GetAttr("axis"))
+                       : -1;
+        if (axis > 0) {
+          return false;
+        }
+      }
     }
+
     if (op_type == "group_norm") {
       if (!desc.HasAttr("epsilon") || !desc.HasAttr("groups") ||
           !desc.HasAttr("data_layout"))
