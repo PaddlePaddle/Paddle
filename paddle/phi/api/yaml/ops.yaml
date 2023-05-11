@@ -1518,6 +1518,15 @@
     func : nonzero
     data_type: condition
 
+- op : npu_identity
+  args : (Tensor x, int format = -1)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : npu_identity
+
 - op : numel
   args : (Tensor x)
   output : Tensor(size)
