@@ -32,6 +32,18 @@ namespace phi {
         dev_ctx, &x, nullptr, &dout, dx, functor);                  \
   }
 
+#define DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPXOUT(name, functor_class) \
+  template <typename T, typename Context>                           \
+  void name##GradKernel(const Context& dev_ctx,                     \
+                        const DenseTensor& x,                       \
+                        const DenseTensor& out,                       \
+                        const DenseTensor& dout,                    \
+                        DenseTensor* dx) {                          \
+    funcs::functor_class<T> functor;                                \
+    ActivationGradImpl<T, Context, funcs::functor_class<T>>(        \
+        dev_ctx, &x, &out, &dout, dx, functor);                  \
+  }
+
 #define DEFINE_CPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(      \
     name, functor_class, attr)                               \
   template <typename T, typename Context>                    \
@@ -128,7 +140,7 @@ DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPX(Asinh, AsinhGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPX(Acosh, AcoshGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPX(Atanh, AtanhGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPX(TanhShrink, TanhShrinkGradFunctor);
-DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPX(Silu, SiluGradFunctor);
+DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPXOUT(Silu, SiluGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPX(Square, SquareGradFunctor);
 
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Exp, ExpGradFunctor);

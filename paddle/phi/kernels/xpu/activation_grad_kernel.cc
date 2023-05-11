@@ -49,6 +49,18 @@ void ActivationGradXPUImpl(const Context& dev_ctx,
         dev_ctx, &x, nullptr, &dout, dx, functor);                  \
   }
 
+#define DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPXOUT(name, functor_class) \
+  template <typename T, typename Context>                           \
+  void name##GradKernel(const Context& dev_ctx,                     \
+                        const DenseTensor& x,                       \
+                        const DenseTensor& out,                     \
+                        const DenseTensor& dout,                    \
+                        DenseTensor* dx) {                          \
+    functor_class<T> functor;                                       \
+    ActivationGradXPUImpl<T, Context, functor_class<T>>(            \
+        dev_ctx, &x, &out, &dout, dx, functor);                  \
+  }
+
 #define DEFINE_XPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(  \
     name, functor_class, attr)                           \
   template <typename T, typename Context>                \
@@ -567,7 +579,7 @@ DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Tanh, XPUTanhGradFunctor);
 DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Relu, XPUReluGradFunctor);
 DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Relu6, XPURelu6GradFunctor);
 
-DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPX(Silu, XPUSiluGradFunctor);
+DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPXOUT(Silu, XPUSiluGradFunctor);
 DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPX(Log, XPULogGradFunctor);
 DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPX(Square, XPUSquareGradFunctor);
 DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPX(Swish, XPUSwishGradFunctor);
