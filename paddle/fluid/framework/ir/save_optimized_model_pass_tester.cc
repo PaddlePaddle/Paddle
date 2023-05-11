@@ -62,7 +62,7 @@ TEST(SaveOptimizedModelPass, basic) {
   auto save_optimized_model_pass =
       PassRegistry::Instance().Get("save_optimized_model_pass");
   save_optimized_model_pass->Set("save_optimized_model", new bool(true));
-  save_optimized_model_pass->Set("model_opt_cache_dir", new std::string(""));
+  save_optimized_model_pass->Set("model_opt_cache_dir", new std::string("./"));
   save_optimized_model_pass->Apply(graph.get());
 }
 
