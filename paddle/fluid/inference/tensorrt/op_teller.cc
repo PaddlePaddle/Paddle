@@ -1862,12 +1862,6 @@ struct SimpleOpTypeSetTeller : public Teller {
                    "with static shape.";
         return false;
       }
-
-#if IS_TRT_VERSION_LT(8000)
-      if (with_dynamic_shape && x_shape.size() == 0) {
-        return false;  // not supported 0 dim.
-      }
-#endif
     }
 
     if (op_type == "mish") {
