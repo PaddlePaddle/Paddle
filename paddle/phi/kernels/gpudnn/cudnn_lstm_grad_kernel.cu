@@ -66,7 +66,8 @@ void CudnnLSTMGradKernel(
   T *weight_data = nullptr;
 
   if (!continuous) {
-    weight_whole.mutable_data<T>({weight_numel}, place);
+    weight_whole.Resize({weight_numel});
+    ctx.template Alloc<T>(&weight_whole);
     weight_to_tensor<T>(place, stream, running_weight_list, &weight_whole);
     weight_data = weight_whole.data<T>();
   } else {
@@ -75,7 +76,8 @@ void CudnnLSTMGradKernel(
 
   phi::DenseTensor weight_grad;
   phi::funcs::SetConstant<phi::GPUContext, T> zero;
-  weight_grad.mutable_data<T>({weight_numel}, ctx.GetPlace());
+  weight_grad.Resize({weight_numel});
+  ctx.template Alloc<T>(&weight_grad);
   zero(ctx, &weight_grad, static_cast<T>(0.0));
   T *weight_grad_data = weight_grad.data<T>();
 
@@ -90,13 +92,20 @@ void CudnnLSTMGradKernel(
     offset += len;
   }
 
-  x_grad->mutable_data<T>(input_dims, ctx.GetPlace());
+  x_grad->Resize(input_dims);
+  ctx.template Alloc<T>(x_grad);
   auto *in_grad_data = x_grad->data<T>();
 
-  if (init_h_grad) init_h_grad->mutable_data<T>(init_h_dims, ctx.GetPlace());
+  if (init_h_grad) {
+    init_h_grad->Resize(init_h_dims);
+    ctx.template Alloc<T>(init_h_grad);
+  }
   auto *init_h_grad_data = init_h_grad ? init_h_grad->data<T>() : nullptr;
 
-  if (init_c_grad) init_c_grad->mutable_data<T>(init_c_dims, ctx.GetPlace());
+  if (init_c_grad) {
+    init_c_grad->Resize(init_c_dims);
+    ctx.template Alloc<T>(init_c_grad);
+  }
   auto *init_c_grad_data = init_c_grad ? init_c_grad->data<T>() : nullptr;
 
   auto running_seq_length = sequence_length.get_ptr();
@@ -132,8 +141,8 @@ void CudnnLSTMGradKernel(
                 const_cast<phi::DenseTensor *>(&state_out));
 
   phi::DenseTensor workspace_data_;
-  workspace_data_.mutable_data<uint8_t>({static_cast<int64_t>(workspace_size)},
-                                        ctx.GetPlace());
+  workspace_data_.Resize({static_cast<int64_t>(workspace_size)});
+  ctx.template Alloc<uint8_t>(&workspace_data_);
   const uint8_t *reserve_data = reserve.data<uint8_t>();
 
   if (!has_seq_length) {

@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <vector>
 
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/dynload/miopen.h"
 #include "paddle/phi/backends/gpu/forwards.h"
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
@@ -81,8 +82,10 @@ class ScopedRNNBase {
     if (!initialized_) {
       PADDLE_ENFORCE_GPU_SUCCESS(
           phi::dynload::miopenDropoutGetStatesSize(handle, &state_size));
-      dropout_state->mutable_data<uint8_t>({static_cast<int64_t>(state_size)},
-                                           place);
+      phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+      auto* dev_ctx = pool.GetByPlace(place);
+      dropout_state->Resize({static_cast<int64_t>(state_size)});
+      dev_ctx->template Alloc<uint8_t>(dropout_state);
     }
     dropout_desc_.descriptor(handle,
                              place,

@@ -151,9 +151,9 @@ void CudnnLSTMKernel(
   const T *init_h_data = init_h.data<T>();
   const T *init_c_data = init_c.data<T>();
 
-  T *out_data = out->mutable_data<T>(ctx.GetPlace());
-  T *last_h_data = last_h->mutable_data<T>(ctx.GetPlace());
-  T *last_c_data = last_c->mutable_data<T>(ctx.GetPlace());
+  T *out_data = ctx.template Alloc<T>(out);
+  T *last_h_data = ctx.template Alloc<T>(last_h);
+  T *last_c_data = ctx.template Alloc<T>(last_c);
 
   if (!is_test) {
     if (seed == 0) {
@@ -202,7 +202,8 @@ void CudnnLSTMKernel(
           << "If the memory space of the Input WeightList is not continuous, "
              "less efficient calculation will be called. Please call "
              "flatten_parameters() to make the input memory continuous.";
-      weight_whole.mutable_data<T>({weight_numel}, place);
+      weight_whole.Resize({weight_numel});
+      ctx.template Alloc<T>(&weight_whole);
       weight_to_tensor<T>(place, stream, running_weight_list, &weight_whole);
       w_data = weight_whole.data<T>();
       if (is_test) {  // maybe also reset small weights' ptr for training
@@ -243,11 +244,11 @@ void CudnnLSTMKernel(
                 state_out);
 
   phi::DenseTensor workspace_data_;
-  workspace_data_.mutable_data<uint8_t>({static_cast<int64_t>(workspace_size)},
-                                        ctx.GetPlace());
+  workspace_data_.Resize({static_cast<int64_t>(workspace_size)});
+  ctx.template Alloc<uint8_t>(&workspace_data_);
 
-  auto *reserve_data = reserve->mutable_data<uint8_t>(
-      {static_cast<int64_t>(reserve_size)}, ctx.GetPlace());
+  reserve->Resize({static_cast<int64_t>(reserve_size)});
+  auto *reserve_data = ctx.template Alloc<uint8_t>(reserve);
 
   if (is_test) {
     LSTMInferece<T>(has_seq_length,
