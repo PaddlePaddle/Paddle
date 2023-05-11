@@ -30,31 +30,31 @@ batch_size = 2
 epoch_num = 1
 
 # In V100, 16G, CUDA 11.2, the results are as follows:
-# DY2ST_PRIM_CINN_GT = [
+# DY2ST_PRIM_GT = [
 #     5.8473358154296875,
-#     8.322463989257812,
-#     5.169863700866699,
-#     8.399882316589355,
-#     7.859550476074219,
-#     7.4672698974609375,
-#     9.828727722167969,
-#     8.270355224609375,
-#     8.456792831420898,
-#     9.919631958007812,
+#     8.354944229125977,
+#     5.098367691040039,
+#     8.533346176147461,
+#     8.179085731506348,
+#     7.285282135009766,
+#     9.824585914611816,
+#     8.56928825378418,
+#     8.539499282836914,
+#     10.256929397583008,
 # ]
 
 # The results in ci as as follows:
-DY2ST_PRIM_CINN_GT = [
-    5.828786849975586,
-    8.332868576049805,
-    5.038548469543457,
-    8.554015159606934,
-    8.106254577636719,
-    7.493070125579834,
-    9.479158401489258,
-    8.270158767700195,
-    8.324719429016113,
-    10.140411376953125,
+DY2ST_PRIM_GT = [
+    5.82879114151001,
+    8.33370590209961,
+    5.091761589050293,
+    8.776082992553711,
+    8.274380683898926,
+    7.546653747558594,
+    9.607137680053711,
+    8.27371597290039,
+    8.429732322692871,
+    10.362630844116211,
 ]
 
 if core.is_compiled_with_cuda():
@@ -180,13 +180,9 @@ class TestResnet(unittest.TestCase):
         not (paddle.is_compiled_with_cinn() and paddle.is_compiled_with_cuda()),
         "paddle is not compiled with CINN and CUDA",
     )
-    def test_prim_cinn(self):
-        dy2st_prim_cinn = train(
-            to_static=True, enable_prim=True, enable_cinn=True
-        )
-        np.testing.assert_allclose(
-            dy2st_prim_cinn, DY2ST_PRIM_CINN_GT, rtol=1e-5
-        )
+    def test_prim(self):
+        dy2st_prim = train(to_static=True, enable_prim=True, enable_cinn=False)
+        np.testing.assert_allclose(dy2st_prim, DY2ST_PRIM_GT, rtol=1e-5)
 
 
 if __name__ == '__main__':

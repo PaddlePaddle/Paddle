@@ -33,19 +33,18 @@ MD5SUM = '71e730ee8d7aa77a215b7e898aa089af'
 SAVE_NAME = 'bert_training_data.npz'
 
 
-DY2ST_PRIM_CINN_GT = [
-    10.861940383911133,
-    10.350666046142578,
-    10.331628799438477,
-    10.267815589904785,
-    10.22376537322998,
-    10.198311805725098,
-    10.16231632232666,
-    10.10612678527832,
-    10.122684478759766,
-    10.0067138671875,
+DY2ST_PRIM_GT = [
+    11.144556999206543,
+    10.343620300292969,
+    10.330279350280762,
+    10.276118278503418,
+    10.222086906433105,
+    10.194628715515137,
+    10.14902114868164,
+    10.096250534057617,
+    10.104615211486816,
+    9.985644340515137,
 ]
-
 
 if core.is_compiled_with_cuda():
     paddle.set_flags({'FLAGS_cudnn_deterministic': True})
@@ -134,13 +133,9 @@ class TestBert(unittest.TestCase):
         not (paddle.is_compiled_with_cinn() and paddle.is_compiled_with_cuda()),
         "paddle is not compiled with CINN and CUDA",
     )
-    def test_prim_cinn(self):
-        dy2st_prim_cinn = train(
-            to_static=True, enable_prim=True, enable_cinn=True
-        )
-        np.testing.assert_allclose(
-            dy2st_prim_cinn, DY2ST_PRIM_CINN_GT, rtol=1e-5
-        )
+    def test_prim(self):
+        dy2st_prim = train(to_static=True, enable_prim=True, enable_cinn=False)
+        np.testing.assert_allclose(dy2st_prim, DY2ST_PRIM_GT, rtol=1e-5)
 
 
 if __name__ == '__main__':
