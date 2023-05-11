@@ -554,11 +554,11 @@ def hessian(
 
     When the input ``xs`` is a Tensor tuple, the returned result is a ``Hessian`` tuple,
     assuming that the internal shape of the ``xs`` tuple is composed of
-    ``([M1, ], [M2, ]) ``, the shape of the returned result consists of
+    ``([M1, ], [M2, ])``, the shape of the returned result consists of
     ``(([M1, M1], [M1, M2]), ([M2, M1], [M2, M2]))``
 
     - When ``batch_axis=None``, only 0-dimensional Tensor or 1-dimensional Tensor is
-      supported, assuming that the shape of ``xs`` is ``[N, ]``, and the shape of ``ys`` is ``[ ]``(0-dimensional Tensor), the final output is a single Hessian matrix whose shape is ``[N, N]``.
+      supported, assuming that the shape of ``xs`` is ``[N, ]``, and the shape of ``ys`` is ``[ ]`` (0-dimensional Tensor), the final output is a single Hessian matrix whose shape is ``[N, N]``.
 
     - When ``batch_axis=0``, only 1-dimensional Tensor or 2-dimensional Tensor is
       supported, assuming that the shape of ``xs`` is ``[B, N]``, and the shape of ``ys`` is `` [B, ]``, the final output Jacobian matrix shape is ``[B, N, N]``.
