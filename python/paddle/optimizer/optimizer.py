@@ -677,17 +677,6 @@ class Optimizer:
         return var
 
     def _create_master_grad(self, grad):
-        global_block = framework.default_main_program().global_block()
-        target_block = global_block
-        current_block = framework.default_main_program().current_block()
-        if current_block.idx != global_block.idx:
-            assert (
-                current_block.backward_block_idx != -1
-            ), "current block is not global_block, but it doesn't have backward block."
-            target_block = framework.default_main_program().blocks[
-                current_block.backward_block_idx
-            ]
-
         if grad.name in self._master_grads:
             var = self._master_grads[grad.name]
         else:
