@@ -814,15 +814,6 @@
     func : pad
   backward : pad_grad
 
-- op : pad3d
-  args : (Tensor x, IntArray paddings, str mode,  float pad_value, str data_format)
-  output : Tensor(out)
-  infer_meta :
-    func : Pad3dInferMeta
-  kernel :
-    func : pad3d
-  backward : pad3d_grad
-
 - op : pool2d
   args : (Tensor x, IntArray kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
   output : Tensor(out)

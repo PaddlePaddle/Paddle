@@ -156,6 +156,25 @@ phi::KernelKey GetMatrixNmsExpectedKernelType(
                         platform::CPUPlace());
 }
 
+phi::KernelKey GetPad3dExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  auto input_data_type = op_ptr->IndicateVarDataType(ctx, "X");
+#ifdef PADDLE_WITH_MKLDNN
+  // only constant mode and non-blocked layouts are supported for oneDNN
+  if (op_ptr->CanMKLDNNBeUsed(ctx, input_data_type) &&
+      ctx.Attr<std::string>("mode") == "constant" &&
+      ctx.Input<phi::DenseTensor>("X")
+              ->mem_desc()
+              .data.format_desc.blocking.inner_nblks == 0) {
+    return phi::KernelKey(phi::Backend::ONEDNN,
+                          phi::DataLayout::ONEDNN,
+                          phi::TransToPhiDataType(input_data_type));
+  }
+#endif
+  return phi::KernelKey(input_data_type, ctx.GetPlace());
+}
+
 phi::KernelKey GetYoloLossExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr) {
