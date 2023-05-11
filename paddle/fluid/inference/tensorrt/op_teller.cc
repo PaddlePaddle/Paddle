@@ -1890,8 +1890,10 @@ struct SimpleOpTypeSetTeller : public Teller {
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
-      if (x_shape.size() == 1) {
-        VLOG(3) << "mish op does not support input's dim is 1 in tensorrt.";
+      if ((!with_dynamic_shape && x_shape.size() == 1) || x_shape.size() == 0) {
+        VLOG(3) << op_type
+                << "mish op does not support input's dim is 1 in tensorrt "
+                   "static shape mode or 0.";
         return false;
       }
     }
@@ -2644,6 +2646,15 @@ struct SimpleOpTypeSetTeller : public Teller {
                    "the pass.";
         return false;
       }
+
+#if IS_TRT_VERSION_LT(8000)
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      const auto x_shape = x_var_desc->GetShape();
+      if (x_shape.size() == 0) {
+        return false;  // not supported 0 dim.
+      }
+#endif
     }
 
     if (op_type == "grid_sampler") {
