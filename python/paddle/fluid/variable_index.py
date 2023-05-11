@@ -620,7 +620,7 @@ def _setitem_for_tensor_array(var, item, value):
     If item is case (1), we perform paddle.tensor.array_write,
     in other cases, we raise a NotImplementedError.
     """
-    from ..framework import LayerHelper, core, _non_static_mode
+    from ..framework import core, _non_static_mode
     from .framework import Variable
 
     assert (

@@ -37,6 +37,7 @@ from .io import set_program_state  # noqa: F401
 from ..fluid import Scope  # noqa: F401
 from .input import data  # noqa: F401
 from .input import InputSpec  # noqa: F401
+from .input import setitem  # noqa: F401
 
 from ..tensor.creation import create_parameter  # noqa: F401
 from ..tensor.creation import create_global_var  # noqa: F401
@@ -126,4 +127,5 @@ __all__ = [  # noqa
     'set_ipu_shard',
     'ctr_metric_bundle',
     'exponential_decay',
+    'setitem',
 ]
