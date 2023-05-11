@@ -23,6 +23,8 @@ limitations under the License. */
 namespace paddle {
 namespace inference {
 
+// TODO(inference): This case failed in windows with a SEH error, we need to fix
+// it.
 TEST(ReBindStream_single, use_gpu) {
   std::string model_dir = FLAGS_infer_model + "/mobilenet";
   AnalysisConfig config;
