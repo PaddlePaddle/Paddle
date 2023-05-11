@@ -36,8 +36,8 @@ class XCCLParallelContext : public ParallelContext {
 
   ~XCCLParallelContext() override = default;
 
-  void BcastXCCLId(std::vector<phi::ccl::CCLRootId>& xccl_ids,
-                   int root,  // NOLINT
+  void BcastXCCLId(std::vector<phi::ccl::CCLRootId>& xccl_ids,  // NOLINT
+                   int root,
                    int server_fd);
 
   void Init() override;
