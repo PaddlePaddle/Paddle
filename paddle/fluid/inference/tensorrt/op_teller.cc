@@ -1564,6 +1564,24 @@ struct SimpleOpTypeSetTeller : public Teller {
                "mode.";
         return false;
       }
+
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      const auto x_shape = x_var_desc->GetShape();
+      int rank = x_shape.size();
+      int axis = desc.HasAttr("axis")
+                     ? PADDLE_GET_CONST(int, desc.GetAttr("axis"))
+                     : -1;
+      if (axis > rank || axis < -(rank + 1)) {
+        return false;
+      }
     }
 
     if (op_type == "sum") {

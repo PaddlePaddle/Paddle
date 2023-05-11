@@ -407,9 +407,11 @@ class OpConverter {
   }
 
   nvinfer1::ITensor* Reshape(nvinfer1::ITensor* input,
-                             nvinfer1::ITensor* newShape) {
+                             nvinfer1::ITensor* newShape,
+                             const std::string& name = "reshape") {
     auto* shuffle = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
     shuffle->setInput(1, *newShape);
+    shuffle->setName(name.c_str());
     return shuffle->getOutput(0);
   }
 
