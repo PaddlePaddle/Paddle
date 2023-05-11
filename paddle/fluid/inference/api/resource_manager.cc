@@ -436,9 +436,6 @@ void ResourceManager::GpuResourceSwitchStream(void* old_stream,
   // NOTE: stream may be used by multiple predictor, skip resource
   //       operation if resource of new_stream is already exists
   bool new_stream_existed = gpu_resources_.count(new_stream) > 0;
-  LOG(INFO) << new_stream << " existed? " << new_stream_existed;
-  LOG(INFO) << "ref_count[" << old_stream << "] = " << ref_count_[old_stream];
-  LOG(INFO) << "ref_count[" << new_stream << "] = " << ref_count_[new_stream];
   if (!new_stream_existed) {
     auto place = gpu_resources_.at(old_stream)->Place();
     std::unique_ptr<GPUContextResource> resource{
