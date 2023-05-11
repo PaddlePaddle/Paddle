@@ -93,16 +93,17 @@ set(PHI_SRCS
     ${infermeta_srcs}
     ${capi_srcs})
 
-if(WITH_GPU AND WIN32)
-  # The num of symbols exceed maximum number in dll and
-  # we generate static lib temporarily
-  set(PHI_BUILD_TYPE STATIC)
-else()
-  set(PHI_BUILD_TYPE SHARED)
-endif()
+# if(WITH_GPU OR WIN32)
+#   # The num of symbols exceed maximum number in dll and
+#   # we generate static lib temporarily
+#   set(PHI_BUILD_TYPE STATIC)
+# else()
+#   set(PHI_BUILD_TYPE SHARED)
+# endif()
+
+set(PHI_BUILD_TYPE STATIC)
 
 if(${PHI_BUILD_TYPE} STREQUAL "SHARED")
-  set(BUILD_PHI_SHARED "-DBUILD_PHI_SHARED")
   add_definitions(-DPHI_SHARED)
 endif()
 
@@ -131,8 +132,6 @@ endif()
 if(WIN32)
   target_link_libraries(phi shlwapi.lib)
 endif()
-
-set_target_properties(phi PROPERTIES COMPILE_OPTIONS ${BUILD_PHI_SHARED})
 
 if(WIN32)
   set_property(TARGET phi PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
