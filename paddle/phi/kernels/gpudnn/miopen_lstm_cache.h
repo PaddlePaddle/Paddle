@@ -83,7 +83,7 @@ class ScopedRNNBase {
       PADDLE_ENFORCE_GPU_SUCCESS(
           phi::dynload::miopenDropoutGetStatesSize(handle, &state_size));
       phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
-      auto* dev_ctx = pool.GetByPlace(place);
+      auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(pool.Get(place));
       dropout_state->Resize({static_cast<int64_t>(state_size)});
       dev_ctx->template Alloc<uint8_t>(dropout_state);
     }
@@ -118,7 +118,8 @@ class ScopedRNNBase {
         phi::errors::InvalidArgument(
             "The miopen lstm and setting weight size should be same."));
     // ------------------- miopen weight descriptors ---------------------
-    phi::DataLayout layout = phi::DataLayout::kNCHW;
+    phi::backends::gpu::DataLayout layout =
+        phi::backends::gpu::DataLayout::kNCHW;
     int dim_tmp = weights_size_ / sizeof(T);
     std::vector<int> dim_w = {dim_tmp, 1, 1};
     weight_desc_.descriptor<T>(layout, dim_w);
