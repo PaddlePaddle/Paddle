@@ -13,17 +13,8 @@
 # limitations under the License.
 
 import paddle
-from .. import framework
 
-__all__ = [
-    "Dataset",
-    "IterableDataset",
-    "TensorDataset",
-    "ComposeDataset",
-    "ChainDataset",
-    "random_split",
-    "Subset",
-]
+from ... import framework
 
 
 class Dataset:
