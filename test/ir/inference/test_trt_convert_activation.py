@@ -60,6 +60,9 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                     "logsigmoid",
                     "tanh_shrink",
                     "softplus",
+                    "hard_swish",
+                    "hard_sigmoid",
+                    "leaky_relu",
                 ]:
                     # few samples to reduce time
                     # for beta in [-0.2, 0.5, 0.67, 3]:
@@ -80,6 +83,18 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                                 dics = [{"threshold": alpha}]
                             if op_type == "softplus":
                                 dics = [{"beta": beta}]
+                            if op_type == "hard_swish":
+                                dics = [
+                                    {
+                                        "threshold": 6.0,
+                                        "scale": 6.0,
+                                        "offset": 3.0,
+                                    }
+                                ]
+                            if op_type == "hard_sigmoid":
+                                dics = [{"slope": beta, "offset": alpha}]
+                            if op_type == "leaky_relu":
+                                dics = [{"alpha": alpha}]
 
                             ops_config = [
                                 {
