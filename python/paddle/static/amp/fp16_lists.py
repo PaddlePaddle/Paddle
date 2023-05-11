@@ -97,8 +97,6 @@ def _get_sys_unsupported_list(dtype):
     device = None
     if core.is_compiled_with_xpu():
         device = 'XPU'
-    elif core.is_compiled_with_custom_device('npu'):
-        device = 'NPU'
     else:
         device = 'GPU'
     _, _, sys_unsupported_list = core.op_supported_infos(device, var_type)
@@ -135,6 +133,7 @@ _only_supported_fp16_list = {'resnet_unit', 'fused_bn_add_activation'}
 
 white_list = {
     'conv2d',
+    'einsum',
     'matmul',
     'matmul_v2',
     'mul',

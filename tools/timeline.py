@@ -212,12 +212,6 @@ class Timeline:
                     self._chrome_trace.emit_pid(
                         "memory usage on %s:cudapinnedplace:%d" % (k, 0), pid
                     )
-                if (k, 0, "NPU") not in self._mem_devices:
-                    pid = self._allocate_pid()
-                    self._mem_devices[(k, 0, "NPU")] = pid
-                    self._chrome_trace.emit_pid(
-                        "memory usage on %s:npu:%d" % (k, 0), pid
-                    )
 
     def _allocate_events(self):
         for k, profile_pb in self._profile_dict.items():
