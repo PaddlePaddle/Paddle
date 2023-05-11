@@ -29,7 +29,8 @@ class ParameterConvertInterface
   std::shared_ptr<paddle::framework::Variable> ParameterToVariable(
       ir::Parameter* parameter);
 
-  ir::Parameter* VariableToParameter(paddle::framework::Variable* var);
+  std::unique_ptr<ir::Parameter> VariableToParameter(
+      paddle::framework::Variable* var);
 };
 
 class PaddleDialect : public ir::Dialect {

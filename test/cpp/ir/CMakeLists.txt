@@ -9,7 +9,7 @@ if(WITH_NEWIR)
     ir_program_test.cc
     DEPS
     new_ir
-    paddle_dialect
+    pd_dialect
     phi
     gtest)
 endif()

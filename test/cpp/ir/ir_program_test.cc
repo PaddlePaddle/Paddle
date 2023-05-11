@@ -49,7 +49,6 @@ TEST(program_test, program) {
   // (2) Create an empty program object
   ir::Program *program = new ir::Program();
   EXPECT_EQ(program->ops().size() == 0, true);
-  EXPECT_EQ(program->parameters().size() == 0, true);
 
   // (3) Create a float32 DenseTensor Parameter and save into Program
   ir::Type fp32_dtype = ir::Float32Type::get(ctx);
@@ -62,19 +61,20 @@ TEST(program_test, program) {
       ctx, fp32_dtype, dims, data_layout, lod, offset);
 
   std::vector<float> data_a = {1, 2, 3, 4};
-  ir::Parameter *parameter_a =
-      new ir::Parameter(reinterpret_cast<void *>(data_a.data()),
-                        4 * sizeof(float),
-                        dense_tensor_dtype);
-  program->SetParameter("a", parameter_a);
+  std::unique_ptr<ir::Parameter> parameter_a =
+      std::make_unique<ir::Parameter>(reinterpret_cast<void *>(data_a.data()),
+                                      4 * sizeof(float),
+                                      dense_tensor_dtype);
+  program->SetParameter("a", std::move(parameter_a));
+  EXPECT_EQ(program->parameters_num() == 1, true);
 
   std::vector<float> data_b = {5, 6, 7, 8};
-  ir::Parameter *parameter_b =
-      new ir::Parameter(reinterpret_cast<void *>(data_b.data()),
-                        4 * sizeof(float),
-                        dense_tensor_dtype);
-  program->SetParameter("b", parameter_b);
-  EXPECT_EQ(program->parameters().size() == 2, true);
+  std::unique_ptr<ir::Parameter> parameter_b =
+      std::make_unique<ir::Parameter>(reinterpret_cast<void *>(data_b.data()),
+                                      4 * sizeof(float),
+                                      dense_tensor_dtype);
+  program->SetParameter("b", std::move(parameter_b));
+  EXPECT_EQ(program->parameters_num() == 2, true);
 
   // (4) Def a = GetParameterOp("a"), and create DenseTensor for a.
   std::string op1_name =
@@ -191,20 +191,19 @@ TEST(program_test, program) {
                                .type()
                                .dialect()
                                .GetRegisteredInterface<Interface>();
-  ir::Parameter *parameter_c =
+  //   ir::Parameter *parameter_c =
+  //       c_interface->VariableToParameter(variable_c.get());
+  std::unique_ptr<ir::Parameter> parameter_c =
       c_interface->VariableToParameter(variable_c.get());
-  program->SetParameter("c", parameter_c);
-
   EXPECT_EQ(parameter_c->type(), dense_tensor_dtype);
   for (int64_t i = 0; i < dst_tensor->numel(); i++) {
     EXPECT_EQ(*(dst_tensor->data<float>() + i),
               *(static_cast<float *>(parameter_c->data()) + i));
   }
+  program->SetParameter("c", std::move(parameter_c));
 
   // (8) Traverse Program
   std::list<ir::Operation *> ops = program->ops();
   EXPECT_EQ(ops.size() == 4, true);
-  std::unordered_map<ir::StrAttribute, ir::Parameter *> parameters =
-      program->parameters();
-  EXPECT_EQ(parameters.size() == static_cast<size_t>(3), true);
+  EXPECT_EQ(program->parameters_num() == 3, true);
 }
