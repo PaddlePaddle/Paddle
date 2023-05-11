@@ -167,7 +167,7 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                 + runtime_version[2] * 10
                 < 8600
                 and self.dims == 0
-            ) and program_config.ops[0].type in ["celu", "logsigmoid", "silu"]:
+            ) and program_config.ops[0].type in ["celu", "logsigmoid"]:
                 return 0, 3
             return 1, 2
 
