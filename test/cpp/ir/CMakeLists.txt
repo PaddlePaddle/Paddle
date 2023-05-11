@@ -5,12 +5,12 @@ if(WITH_NEWIR)
   cc_test_old(ir_op_test SRCS ir_op_test.cc DEPS new_ir gtest)
   cc_test_old(ir_program_test SRCS ir_program_test.cc DEPS new_ir gtest)
 
-  add_custom_target(
-    download_rest50_program_for_program_translator
-    COMMAND
-      wget -nc --no-check-certificate
-      https://paddle-ci.gz.bcebos.com/ir_translator_test/restnet50_main.prog
-    WORKING_DIRECTORY "./")
+  file(
+    DOWNLOAD
+    https://paddle-ci.gz.bcebos.com/ir_translator_test/restnet50_main.prog
+    ${CMAKE_CURRENT_BINARY_DIR}/restnet50_main.prog
+    EXPECTED_MD5 b64c0ad3c96d99fc37d12094623ce1ad)
+
   cc_test_old(
     program_translator_test
     SRCS
@@ -20,7 +20,5 @@ if(WITH_NEWIR)
     gtest
     new_ir
     paddle_dialect)
-  add_dependencies(program_translator_test
-                   download_rest50_program_for_program_translator)
 
 endif()
