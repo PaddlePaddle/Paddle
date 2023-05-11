@@ -78,7 +78,7 @@ bool PyObject_CheckLongOrToLong(PyObject** obj) {
   }
 
   if (std::string(((PyTypeObject*)(*obj)->ob_type)->tp_name)  // NOLINT
-          .find("numpy") != std::string::npos) {
+          .find("numpy.int") != std::string::npos) {
     auto to = PyNumber_Long(*obj);
     if (to) {
       *obj = to;
@@ -91,14 +91,14 @@ bool PyObject_CheckLongOrToLong(PyObject** obj) {
 
 bool PyObject_CheckFloatOrToFloat(PyObject** obj) {
   // sometimes users provide PyLong or numpy.int64 but attr is float
-  if (PyFloat_Check(*obj) || PyLong_Check(*obj) ||
+  if (PyFloat_Check(*obj) ||
       PyObject_IsInstance(*obj, (PyObject*)g_varbase_pytype) ||  // NOLINT
       (PyObject_IsInstance(*obj, (PyObject*)p_tensor_type) &&    // NOLINT
        (((TensorObject*)(*obj))->tensor.numel() == 1))) {        // NOLINT
     return true;
   }
   if (std::string(((PyTypeObject*)(*obj)->ob_type)->tp_name)  // NOLINT
-          .find("numpy") != std::string::npos) {
+          .find("numpy.float") != std::string::npos) {
     auto to = PyNumber_Float(*obj);
     if (to) {
       *obj = to;
@@ -109,13 +109,16 @@ bool PyObject_CheckFloatOrToFloat(PyObject** obj) {
 }
 
 bool PyObject_CheckComplexOrToComplex(PyObject** obj) {
-  if (PyComplex_Check(*obj) || PyLong_Check(*obj) || PyFloat_Check(*obj) ||
+  if (PyComplex_Check(*obj) ||
       PyObject_IsInstance(*obj, (PyObject*)g_vartype_pytype) ||  // NOLINT
       PyObject_IsInstance(*obj, (PyObject*)g_varbase_pytype) ||  // NOLINT
       PyObject_IsInstance(*obj, (PyObject*)p_tensor_type)) {     // NOLINT
     return true;
   }
-  // consider numpy cfloat & numpy cdouble?
+  if (std::string(((PyTypeObject*)(*obj)->ob_type)->tp_name)  // NOLINT
+          .find("numpy.complex") != std::string::npos) {
+    return true;
+  }
   return false;
 }
 

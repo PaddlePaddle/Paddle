@@ -33,7 +33,6 @@ from ..fluid.framework import (
     Variable,
     _in_eager_without_dygraph_check,
     device_guard,
-    wrap_as_scalars,
 )
 from ..fluid.param_attr import ParamAttr
 from ..framework import (
@@ -2021,8 +2020,7 @@ def assign(x, output=None):
 
     Parameters:
         x (Tensor|np.ndarray|list|tuple|scalar): A Tensor, numpy ndarray, tuple/list of scalar,
-            or scalar. Its data type can be float16, float32, float64, int32, int64 or bool. Note: the float64 data will be converted to float32 because of current platform protobuf
-            data limitation.
+            or scalar. Its data type can be float16, float32, float64, complex64, complex128, int32, int64 or bool.
         output (Tensor, optional): A Tensor. If :attr:`output` is None, a new Tensor will be created as :attr:`output`. Default: None.
 
     Returns:
@@ -2051,7 +2049,7 @@ def assign(x, output=None):
     check_type(
         input,
         'input',
-        (Variable, np.ndarray, list, tuple, float, int, bool),
+        (Variable, np.ndarray, list, tuple, float, int, bool, complex),
         'assign',
     )
 
@@ -2084,6 +2082,8 @@ def assign(x, output=None):
                     'uint8',
                     'int8',
                     'bool',
+                    'complex64',
+                    'complex128',
                 ],
                 'assign',
                 '(When the type of input in assign is Variable.)',
@@ -2127,7 +2127,23 @@ def assign(x, output=None):
             )
 
         dtype = convert_np_dtype_to_dtype_(input.dtype)
-        values = wrap_as_scalars(input)
+        check_dtype(
+            dtype,
+            'input',
+            [
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'bool',
+                'complex64',
+                'complex128',
+            ],
+            'assign',
+            '(When the type of input in assign is numpy array.)',
+        )
+        # convert it to a python list to avoid using numpy scalar types here
+        values = input.ravel().tolist()
         if input.size > 1024 * 1024:
             raise ValueError(
                 "The size of input is too big. Please consider "

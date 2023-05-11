@@ -1474,6 +1474,8 @@ std::vector<phi::Scalar> CastPyArg2ScalarArray(PyObject* obj,
     Py_ssize_t len = PyList_Size(obj);
     PyObject* item = nullptr;
     item = PyList_GetItem(obj, 0);
+    PyTypeObject* item_type = item->ob_type;
+    VLOG(4) << "item_type: " << std::string(item_type->tp_name);
     if (PyObject_CheckFloatOrToFloat(&item)) {
       std::vector<phi::Scalar> value;
       for (Py_ssize_t i = 0; i < len; i++) {
@@ -1493,8 +1495,10 @@ std::vector<phi::Scalar> CastPyArg2ScalarArray(PyObject* obj,
       std::vector<phi::Scalar> value;
       for (Py_ssize_t i = 0; i < len; i++) {
         item = PyList_GetItem(obj, i);
-        Py_complex v = PyComplex_AsCComplex(item);
-        value.emplace_back(phi::Scalar{std::complex<double>(v.real, v.imag)});
+        // if type is numpy.complex, will call __complex__() first
+        Py_complex complex_item = PyComplex_AsCComplex(item);
+        value.emplace_back(phi::Scalar{
+            std::complex<double>(complex_item.real, complex_item.imag)});
       }
       return value;
     }

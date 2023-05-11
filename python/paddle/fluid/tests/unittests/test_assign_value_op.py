@@ -22,19 +22,19 @@ from paddle import fluid
 from paddle.fluid import framework
 
 
-def assign_value_wrapper(
-    shape=[], dtype=fluid.core.VarDesc.VarType.FP32, values=0.0
-):
-    tensor = paddle.Tensor()
-    return paddle._C_ops.assign_value_(
-        tensor, shape, dtype, values, framework._current_expected_place()
-    )
+def wrap_assign_value_wrapper(dtype=fluid.core.VarDesc.VarType.FP32):
+    def assign_value_wrapper(shape=[], dtype=dtype, values=0.0):
+        tensor = paddle.Tensor()
+        return paddle._C_ops.assign_value_(
+            tensor, shape, dtype, values, framework._current_expected_place()
+        )
+
+    return assign_value_wrapper
 
 
 class TestAssignValueOp(eager_op_test.OpTest):
     def setUp(self):
         self.op_type = "assign_value"
-        self.python_api = assign_value_wrapper
         self.inputs = {}
         self.attrs = {}
         self.init_data()
@@ -42,37 +42,57 @@ class TestAssignValueOp(eager_op_test.OpTest):
         self.attrs["dtype"] = framework.convert_np_dtype_to_dtype_(
             self.value.dtype
         )
+        self.python_api = wrap_assign_value_wrapper(self.attrs["dtype"])
         self.outputs = {"Out": self.value}
 
     def init_data(self):
         self.value = np.random.random(size=(2, 5)).astype(np.float32)
-        self.attrs["values"] = framework.wrap_as_scalars(self.value)
-        self.attrs["dtype"] = "float32"
+        self.attrs["values"] = [float(v) for v in self.value.flat]
 
     def test_forward(self):
         self.check_output()
 
 
-# class TestAssignValueOp2(TestAssignValueOp):
-#     def init_data(self):
-#         self.value = np.random.random(size=(2, 5)).astype(np.int32)
-#         self.attrs["values"] = framework.wrap_as_scalars(self.value)
-#         self.attrs["dtype"] = "int32"
+class TestAssignValueOp2(TestAssignValueOp):
+    def init_data(self):
+        self.value = np.random.random(size=(2, 5)).astype(np.int32)
+        self.attrs["values"] = [int(v) for v in self.value.flat]
 
 
-# class TestAssignValueOp3(TestAssignValueOp):
-#     def init_data(self):
-#         self.value = np.random.random(size=(2, 5)).astype(np.int64)
-#         self.attrs["values"] = framework.wrap_as_scalars(self.value)
-#         self.attrs["dtype"] = "int64"
+class TestAssignValueOp3(TestAssignValueOp):
+    def init_data(self):
+        self.value = np.random.random(size=(2, 5)).astype(np.int64)
+        self.attrs["values"] = [int(v) for v in self.value.flat]
 
 
-# class TestAssignValueOp4(TestAssignValueOp):
-#     def init_data(self):
-#         self.value = np.random.choice(a=[False, True], size=(2, 5)).astype(
-#             np.bool_
-#         )
-#         self.attrs["values"] = framework.wrap_as_scalars(self.value)
+class TestAssignValueOp4(TestAssignValueOp):
+    def init_data(self):
+        self.value = np.random.choice(a=[False, True], size=(2, 5)).astype(
+            np.bool_
+        )
+        self.attrs["values"] = [int(v) for v in self.value.flat]
+
+
+class TestAssignValueOp5(TestAssignValueOp):
+    def init_data(self):
+        self.value = np.random.random(size=(2, 5)).astype(np.float64)
+        self.attrs["values"] = [float(v) for v in self.value.flat]
+
+
+class TestAssignValueOp6(TestAssignValueOp):
+    def init_data(self):
+        self.value = (
+            np.random.random(size=(2, 5)) + 1j * np.random.random(size=(2, 5))
+        ).astype(np.complex64)
+        self.attrs["values"] = list(self.value.flat)
+
+
+class TestAssignValueOp7(TestAssignValueOp):
+    def init_data(self):
+        self.value = (
+            np.random.random(size=(2, 5)) + 1j * np.random.random(size=(2, 5))
+        ).astype(np.complex128)
+        self.attrs["values"] = list(self.value.flat)
 
 
 class TestAssignApi(unittest.TestCase):
@@ -129,6 +149,42 @@ class TestAssignApi4(TestAssignApi):
 
     def init_dtype(self):
         self.dtype = "bool"
+
+
+class TestAssignApi5(TestAssignApi):
+    def setUp(self):
+        with eager_op_test.paddle_static_guard():
+            self.init_dtype()
+            self.value = (
+                np.random.random(size=(2, 5))
+                + 1j * (np.random.random(size=(2, 5)))
+            ).astype(np.complex64)
+            self.place = (
+                fluid.CUDAPlace(0)
+                if fluid.is_compiled_with_cuda()
+                else fluid.CPUPlace()
+            )
+
+    def init_dtype(self):
+        self.dtype = "complex64"
+
+
+class TestAssignApi6(TestAssignApi):
+    def setUp(self):
+        with eager_op_test.paddle_static_guard():
+            self.init_dtype()
+            self.value = (
+                np.random.random(size=(2, 5))
+                + 1j * (np.random.random(size=(2, 5)))
+            ).astype(np.complex128)
+            self.place = (
+                fluid.CUDAPlace(0)
+                if fluid.is_compiled_with_cuda()
+                else fluid.CPUPlace()
+            )
+
+    def init_dtype(self):
+        self.dtype = "complex128"
 
 
 if __name__ == '__main__':
