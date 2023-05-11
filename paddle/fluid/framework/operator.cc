@@ -2074,26 +2074,6 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
             << "Op(" << type_
             << ") has no CUDA implementation. It will be assigned to CPUPlace.";
       }
-    } else if (Attr<std::string>("op_device").find("npu") !=
-               std::string::npos) {
-      auto device = Attr<std::string>("op_device");
-      size_t pos = device.find(':');
-      if (pos != std::string::npos) {
-        device = device.substr(0, pos);
-        LOG_FIRST_N(WARNING, 1)
-            << "Device index is only supported under pipeline parallelism, "
-            << "so it will be ignored.";
-      }
-      // when the Op that does not have NPUKernel is assigned to NPU, the
-      // CPUKernel will be executed and a warning will be given at the same
-      // time.
-      expected_kernel_key.place_ = platform::CPUPlace();
-
-      if (platform::is_cpu_place(expected_kernel_key.place_)) {
-        LOG_FIRST_N(WARNING, 1)
-            << "Op(" << type_
-            << ") has no NPU implementation. It will be assigned to CPUPlace.";
-      }
     } else if (Attr<std::string>("op_device").find("xpu") !=
                std::string::npos) {
       auto device = Attr<std::string>("op_device");

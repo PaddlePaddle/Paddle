@@ -233,7 +233,7 @@ def _convert_to_place(device):
                     "The device must be a string which is like 'cpu', {}".format(
                         ', '.join(
                             f"'{x}', '{x}:x'"
-                            for x in ['gpu', 'xpu', 'npu']
+                            for x in ['gpu', 'xpu']
                             + core.get_all_custom_device_type()
                         )
                     )
