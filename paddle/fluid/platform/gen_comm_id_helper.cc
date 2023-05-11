@@ -351,6 +351,7 @@ static void SendCommID(int conn, CommUniqueId* nccl_id) {
                  "send comm unique id");
 }
 
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
 template <>
 void RecvCommID<phi::ccl::CCLRootId>(int conn, phi::ccl::CCLRootId* nccl_id) {
   char buffer[MAX_COMMUNIQUEID_LEN] = {0};
@@ -400,6 +401,7 @@ void SendCommID<phi::ccl::CCLRootId>(int conn, phi::ccl::CCLRootId* nccl_id) {
   }
   VLOG(6) << "SendCommID done";
 }
+#endif
 
 template <typename CommUniqueId>
 void SendBroadCastCommID(std::vector<std::string> servers,
