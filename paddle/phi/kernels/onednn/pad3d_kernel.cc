@@ -21,15 +21,14 @@
 namespace phi {
 
 KernelKey Pad3dGetKernelTypeForVar(const GetKernelTypeForVarContext* ctx) {
-  const std::string& var_name = ctx->GetVarName();
   const DenseTensor& tensor = ctx->GetTensor();
   const KernelKey& expected_kernel_type = ctx->GetKernelKey();
+  const AttributeMap& attrs = ctx->GetAttrs();
 #ifdef PADDLE_WITH_MKLDNN
   if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
       (tensor.layout() != phi::DataLayout::ONEDNN)) {
-    auto attrs = Attrs();
-    auto ar = paddle::framework::AttrReader(attrs);
-    const std::string data_format = ar.Get<std::string>("data_format");
+    auto it = attrs.find("data_format");
+    const std::string data_format = PADDLE_GET_CONST(std::string, it->second);
     return phi::KernelKey(tensor.place(),
                           phi::StringToDataLayout(data_format),
                           expected_kernel_type.dtype());
