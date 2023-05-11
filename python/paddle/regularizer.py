@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@ from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid import framework
 from paddle.fluid.framework import in_dygraph_mode
 
-__all__ = ['L1Decay', 'L2Decay', 'L1DecayRegularizer', 'L2DecayRegularizer']
+__all__ = ['L1Decay', 'L2Decay']
 
 
 class WeightDecayRegularizer:
@@ -43,7 +43,7 @@ class WeightDecayRegularizer:
         raise NotImplementedError()
 
 
-class L1DecayRegularizer(WeightDecayRegularizer):
+class L1Decay(WeightDecayRegularizer):
     r"""
     Implement the L1 Weight Decay Regularization, which encourages the weights to be sparse.
 
@@ -153,7 +153,7 @@ class L1DecayRegularizer(WeightDecayRegularizer):
         return "L1Decay, coeff=%f" % self._coeff
 
 
-class L2DecayRegularizer(WeightDecayRegularizer):
+class L2Decay(WeightDecayRegularizer):
     r"""
     Implement the L2 Weight Decay Regularization, which helps to prevent the model over-fitting.
 
@@ -253,7 +253,3 @@ class L2DecayRegularizer(WeightDecayRegularizer):
 
     def __str__(self):
         return "L2Decay, coeff=%f" % self._coeff
-
-
-L1Decay = L1DecayRegularizer
-L2Decay = L2DecayRegularizer

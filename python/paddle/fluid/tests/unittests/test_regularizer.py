@@ -25,7 +25,7 @@ from paddle.fluid import core, framework
 from paddle.fluid.backward import append_backward
 
 
-class TestL2DecayRegularizer(unittest.TestCase):
+class TestL2Decay(unittest.TestCase):
     def test_l2decay_regularizer(self):
         paddle.enable_static()
         program = framework.Program()
@@ -35,12 +35,10 @@ class TestL2DecayRegularizer(unittest.TestCase):
             shape=[5, 10],
             lod_level=0,
             name="mul.x",
-            regularizer=regularizer.L2DecayRegularizer(0.5),
+            regularizer=regularizer.L2Decay(0.5),
         )
         self.assertIsNotNone(mul_x.regularizer)
-        self.assertTrue(
-            isinstance(mul_x.regularizer, regularizer.L2DecayRegularizer)
-        )
+        self.assertTrue(isinstance(mul_x.regularizer, regularizer.L2Decay))
         mul_y = block.create_var(
             dtype="float32", shape=[10, 8], lod_level=0, name="mul.y"
         )
@@ -70,7 +68,7 @@ class TestL2DecayRegularizer(unittest.TestCase):
         self.assertEqual(block.ops[-2].type, 'scale')
 
 
-class TestL1DecayRegularizer(unittest.TestCase):
+class TestL1Decay(unittest.TestCase):
     def test_l2decay_regularizer(self):
         paddle.enable_static()
         program = framework.Program()
@@ -80,12 +78,10 @@ class TestL1DecayRegularizer(unittest.TestCase):
             shape=[5, 10],
             lod_level=0,
             name="mul.x",
-            regularizer=regularizer.L1DecayRegularizer(0.5),
+            regularizer=regularizer.L1Decay(0.5),
         )
         self.assertIsNotNone(mul_x.regularizer)
-        self.assertTrue(
-            isinstance(mul_x.regularizer, regularizer.L1DecayRegularizer)
-        )
+        self.assertTrue(isinstance(mul_x.regularizer, regularizer.L1Decay))
         mul_y = block.create_var(
             dtype="float32", shape=[10, 8], lod_level=0, name="mul.y"
         )

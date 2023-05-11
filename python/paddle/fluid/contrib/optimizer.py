@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from paddle.fluid.optimizer import Optimizer
-from paddle.regularizer import L1DecayRegularizer
-from paddle.regularizer import L2DecayRegularizer
+from paddle.regularizer import L1Decay
+from paddle.regularizer import L2Decay
 from paddle.fluid import core
 from paddle.fluid import framework
 from paddle.fluid.framework import program_guard
@@ -117,7 +117,7 @@ class Momentum(Optimizer):
     ):
         assert learning_rate is not None
         assert momentum is not None
-        predicate = lambda regular: isinstance(regular, L2DecayRegularizer)
+        predicate = lambda regular: isinstance(regular, L2Decay)
         py_regular = None if predicate(regularization) else regularization
         super().__init__(
             learning_rate=learning_rate,
@@ -131,7 +131,7 @@ class Momentum(Optimizer):
         self._use_nesterov = bool(use_nesterov)
         self._regularization_method = ""
         self._regularization_coeff = 0
-        if isinstance(regularization, L2DecayRegularizer):
+        if isinstance(regularization, L2Decay):
             self._regularization_method = "l2_decay"
             self._regularization_coeff = regularization._coeff
         self._multi_precision = multi_precision
