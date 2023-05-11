@@ -51,15 +51,17 @@ __inline__ __device__ T WarpAllReduce(T val) {
 }
 
 inline void GetNumBlocks(int64_t block_size,
-                                int64_t max_blocks,
-                                int64_t waves,
-                                int* num_blocks) {
+                         int64_t max_blocks,
+                         int64_t waves,
+                         int* num_blocks) {
   int dev;
   PADDLE_ENFORCE_GPU_SUCCESS(cudaGetDevice(&dev));
   int sm_count;
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceGetAttribute(&sm_count, cudaDevAttrMultiProcessorCount, dev));
+  PADDLE_ENFORCE_GPU_SUCCESS(
+      cudaDeviceGetAttribute(&sm_count, cudaDevAttrMultiProcessorCount, dev));
   int tpm;
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceGetAttribute(&tpm, cudaDevAttrMaxThreadsPerMultiProcessor, dev));
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceGetAttribute(
+      &tpm, cudaDevAttrMaxThreadsPerMultiProcessor, dev));
   *num_blocks = std::max<int>(
       1, std::min<int64_t>(max_blocks, sm_count * tpm / block_size * waves));
 }
@@ -148,9 +150,9 @@ __global__ void LogsumexpWarpImpl(const Context& dev_ctx,
           thread_sum[row_id]));
       store_vec[row_id] = static_cast<SourceType>(res + warp_max[row_id]);
     }
-    if (thread_id=0 && cur_row < num_row) {
-    phi::Store<SourceType, RowsPerThread>(store_vec,
-                                          out + group_id * RowsPerThread);
+    if (thread_id == 0 && cur_row < num_row) {
+      phi::Store<SourceType, RowsPerThread>(store_vec,
+                                            out + group_id * RowsPerThread);
     }
   }
 }
@@ -177,9 +179,7 @@ inline cudaError_t LaunchLogsumexpWarp(const Context& dev_ctx,
       (num_row / RowsPerThread + thread_groups_per_block - 1) /
       thread_groups_per_block;
   int grid_dim_x;
-  {
-    GetNumBlocks(block_size, num_blocks, waves, &grid_dim_x);
-  }
+  { GetNumBlocks(block_size, num_blocks, waves, &grid_dim_x); }
   LogsumexpWarpImpl<T,
                     SourceType,
                     Context,
