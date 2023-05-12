@@ -163,7 +163,7 @@ class TestElementwiseModBF16Op(OpTest):
     def init_input_output(self):
         self.x = np.random.uniform(0, 10000, [10, 10]).astype(np.float32)
         self.y = np.random.uniform(0, 1000, [10, 10]).astype(np.float32)
-        self.out = np.fmod(self.y + np.fmod(self.x, self.y), self.y)
+        self.out = np.mod(self.x, self.y)
 
     def setUp(self):
         self.op_type = "elementwise_mod"
