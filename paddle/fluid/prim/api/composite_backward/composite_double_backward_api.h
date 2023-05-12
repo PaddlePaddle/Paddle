@@ -364,28 +364,22 @@ void matmul_double_grad(const Tensor& x,
 
 template <typename T>
 void silu_double_grad(const Tensor& x,
+                      const Tensor& out,
                       const Tensor& out_grad,
                       const Tensor& grad_x_grad,
                       Tensor* grad_x,
                       Tensor* grad_out_grad) {
-  auto exp_neg_x = exp<T>(-x);
-  auto tmp1 = 1 + exp_neg_x;
-  auto sigmoid = 1.0 / tmp1;
-  auto tmp2 = 1 - sigmoid;
-  auto tmp3 = 1 + x * tmp2;
+  auto sigmoid = out / x;
+  auto tmp1 = 1 - sigmoid;
+  auto tmp2 = 1 + tmp1 * x;
   if (grad_out_grad) {
-    auto ddout = grad_x_grad * (sigmoid * tmp3);
+    auto ddout = grad_x_grad * sigmoid * c_5;
     set_output<T>(ddout, grad_out_grad);
   }
   if (grad_x) {
-    auto sigmoid_G = out_grad * grad_x_grad * (tmp3 - x * sigmoid);
-    auto dx_0 = grad_x_grad * out_grad * sigmoid * tmp2;
-    auto dx_1 =
-        1 / (elementwise_pow<T>(
-                tmp1, full<T>(phi::vectorize(x.dims()), 2.0, x.dtype())));
-    dx_1 = dx_1 * sigmoid_G * exp_neg_x;
-    auto dx = dx_0 + dx_1;
-    set_output<T>(dx, grad_x);
+    auto sigmoid_G = out_grad * grad_x_grad * (tmp2 - x * sigmoid);
+    auto dx = sigmoid * (grad_x_grad * out_grad + sigmoid_G) *
+              tmp2 set_output<T>(dx, grad_x);
   }
 }
 

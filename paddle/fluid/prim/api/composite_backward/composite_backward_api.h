@@ -61,9 +61,12 @@ void leaky_relu_grad(const Tensor& out,
 }
 
 template <typename T>
-void silu_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
+void silu_grad(const Tensor& x,
+               const Tensor& out,
+               const Tensor& out_grad,
+               Tensor* x_grad) {
   if (x_grad) {
-    auto sigmoid = 1.0 / (1.0 + exp<T>(-x));
+    auto sigmoid = out / x;
     auto res = out_grad * sigmoid * (1.0 + x * (1.0 - sigmoid));
     set_output<T>(res, x_grad);
   }
