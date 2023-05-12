@@ -39,12 +39,7 @@ void Analyzer::RunAnalysis(Argument *argument) {
       string::PrettyLogH1("--- Running analysis [%s]", pass);
     }
     if (!argument->enable_ir_optim() && pass == "ir_analysis_pass") continue;
-    if (argument->save_optimized_model() &&
-        pass == "ir_params_sync_among_devices_pass") {
-      LOG(WARNING) << "When save_optimized_model is turn on, we need to skip "
-                      "ir_params_sync_among_devices_pass for saving time.";
-      continue;
-    }
+
     auto *ptr = PassRegistry::Global().Retreive(pass);
     PADDLE_ENFORCE_NOT_NULL(ptr,
                             platform::errors::PreconditionNotMet(
