@@ -561,9 +561,9 @@ package_dir={
 libs_path='${PADDLE_BINARY_DIR}/python/paddle/libs'
 
 package_data['paddle.libs']= []
-
-package_data['paddle.libs'] = [('libphi' if os.name != 'nt' else 'phi') + ext_name]
-shutil.copy('${PHI_LIB}', libs_path)
+if('${PHI_BUILD_TYPE}' == 'SHARED'):
+    package_data['paddle.libs'] = [('libphi' if os.name != 'nt' else 'phi') + ext_name]
+    shutil.copy('${PHI_LIB}', libs_path)
 
 package_data['paddle.libs']+=[
     ('libwarpctc' if os.name != 'nt' else 'warpctc') + ext_name,
@@ -721,12 +721,14 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
         if "@APPLE@" == "1":
             commands = ["install_name_tool -id '@loader_path/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so']
             commands.append("install_name_tool -add_rpath '@loader_path/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so')
-            # change rpath of phi.ext for loading 3rd party libb
-            commands.append("install_name_tool -add_rpath '@loader_path' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_NAME}")
+            if('${PHI_BUILD_TYPE}' == 'SHARED'):
+                # change rpath of phi.ext for loading 3rd party libb
+                commands.append("install_name_tool -add_rpath '@loader_path' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_NAME}")
         else:
             commands = ["patchelf --set-rpath '$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so']
-            # change rpath of phi.ext for loading 3rd party lib
-            commands.append("patchelf --set-rpath '$ORIGIN' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_NAME}")
+            if('${PHI_BUILD_TYPE}' == 'SHARED'):
+                # change rpath of phi.ext for loading 3rd party lib
+                commands.append("patchelf --set-rpath '$ORIGIN' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_NAME}")
         # The sw_64 not suppot patchelf, so we just disable that.
         if platform.machine() != 'sw_64' and platform.machine() != 'mips64':
             for command in commands:

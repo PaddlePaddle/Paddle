@@ -125,7 +125,7 @@ if(WIN32)
     set(PHI_NAME
         phi.dll
         CACHE INTERNAL "" FORCE)
-  elseif()
+  else()
     set(PHI_NAME
         phi.lib
         CACHE INTERNAL "" FORCE)
@@ -135,7 +135,7 @@ elseif(APPLE)
     set(PHI_NAME
         libphi.dylib
         CACHE INTERNAL "" FORCE)
-  elseif()
+  else()
     set(PHI_NAME
         libphi.a
         CACHE INTERNAL "" FORCE)
@@ -145,7 +145,7 @@ else()
     set(PHI_NAME
         libphi.so
         CACHE INTERNAL "" FORCE)
-  elseif()
+  else()
     set(PHI_NAME
         libphi.a
         CACHE INTERNAL "" FORCE)
