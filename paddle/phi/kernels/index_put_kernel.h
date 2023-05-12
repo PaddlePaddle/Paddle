@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,13 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/optimizers/pow2_decay_with_linear_warmup_op.h"
-#include "paddle/fluid/framework/op_registry.h"
+#pragma once
 
-namespace ops = paddle::operators;
-namespace plat = paddle::platform;
+#include <vector>
+#include "paddle/phi/core/dense_tensor.h"
 
-REGISTER_OP_CUDA_KERNEL(
-    pow2_decay_with_linear_warmup,
-    ops::Pow2DecayWithLinearWarmupOpKernel<phi::GPUContext, double>,
-    ops::Pow2DecayWithLinearWarmupOpKernel<phi::GPUContext, float>);
+namespace phi {
+template <typename T, typename Context>
+void IndexPutKernel(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    const std::vector<const DenseTensor*>& indices_v,
+                    const DenseTensor& value,
+                    bool accumulate,
+                    DenseTensor* out);
+
+}  // namespace phi

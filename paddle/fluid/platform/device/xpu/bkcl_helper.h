@@ -62,6 +62,18 @@ inline BKCLDataType ToBKCLDataType(framework::proto::VarType::Type type) {
   }
 }
 
+inline int GetBKCLRankID(BKCLContext_t comm) {
+  return reinterpret_cast<int *>(comm)[0];
+}
+
+inline int GetBKCLDevID(BKCLContext_t comm) {
+  return reinterpret_cast<int *>(comm)[1];
+}
+
+inline int GetBKCLNRanks(BKCLContext_t comm) {
+  return reinterpret_cast<int *>(comm)[2];
+}
+
 class BKCLGroupGuard {
  public:
   static std::mutex &BKCLMutex() {
