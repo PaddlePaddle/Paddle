@@ -61,27 +61,6 @@
 [submodule "third_party/cryptopp"]
 	path = third_party/cryptopp
 	url = https://github.com/weidai11/cryptopp.git
-[submodule "third_party/CINN"]
-	path = third_party/CINN
-	url = https://github.com/PaddlePaddle/CINN.git
-[submodule "third_party/cudnn-frontend"]
-	path = third_party/cudnn-frontend
-	url = https://github.com/NVIDIA/cudnn-frontend.git
-[submodule "third_party/cutlass"]
-	path = third_party/cutlass
-	url = https://github.com/NVIDIA/cutlass.git
-[submodule "third_party/flashattn"]
-	path = third_party/flashattn
-	url = https://github.com/PaddlePaddle/flash-attention.git
-[submodule "third_party/libxsmm"]
-	path = third_party/libxsmm
-	url = https://github.com/hfp/libxsmm.git
-[submodule "third_party/lite"]
-	path = third_party/lite
-	url = https://github.com/PaddlePaddle/Paddle-Lite.git
-[submodule "third_party/openblas"]
-	path = third_party/openblas
-	url = https://github.com/xianyi/OpenBLAS.git
 [submodule "third_party/mkldnn"]
 	path = third_party/mkldnn
 	url = https://github.com/oneapi-src/oneDNN.git
