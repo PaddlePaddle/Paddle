@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import numbers
+from collections.abc import Mapping, Sequence
+
 import numpy as np
 
-from collections.abc import Sequence, Mapping
-
+import paddle
 
 FIELD_PREFIX = "_paddle_field_"
 
@@ -38,7 +38,7 @@ def _flatten_batch(batch):
                     field,
                     (np.ndarray, paddle.Tensor, paddle.fluid.core.eager.Tensor),
                 ):
-                    structure.append('{}{}'.format(FIELD_PREFIX, field_idx))
+                    structure.append(f'{FIELD_PREFIX}{field_idx}')
                     flat_batch.append(field)
                     field_idx += 1
                 elif isinstance(field, (str, bytes, numbers.Number)):
@@ -61,7 +61,7 @@ def _flatten_batch(batch):
                     field,
                     (np.ndarray, paddle.Tensor, paddle.fluid.core.eager.Tensor),
                 ):
-                    structure[k] = '{}{}'.format(FIELD_PREFIX, field_idx)
+                    structure[k] = f'{FIELD_PREFIX}{field_idx}'
                     flat_batch.append(field)
                     field_idx += 1
                 elif isinstance(field, (str, bytes, numbers.Number)):
@@ -79,7 +79,7 @@ def _flatten_batch(batch):
                 else:
                     structure[k] = field
         else:
-            raise TypeError("wrong flat data type: {}".format(type(batch)))
+            raise TypeError(f"wrong flat data type: {type(batch)}")
 
         return structure, field_idx
 
@@ -130,7 +130,7 @@ def _restore_batch(flat_batch, structure):
                 elif isinstance(field, (Sequence, Mapping)):
                     field_idx = _restore(structure[k], field_idx)
         else:
-            raise TypeError("wrong flat data type: {}".format(type(structure)))
+            raise TypeError(f"wrong flat data type: {type(structure)}")
 
         return field_idx
 
@@ -145,7 +145,7 @@ def _restore_batch(flat_batch, structure):
     if isinstance(structure, (str, bytes)):
         assert structure == '{}{}'.format(
             FIELD_PREFIX, 0
-        ), "invalid structure: {}".format(structure)
+        ), f"invalid structure: {structure}"
         return flat_batch[0]
     field_idx = _restore(structure, 0)
     assert field_idx + 1 == len(flat_batch), "Tensor parse incomplete"

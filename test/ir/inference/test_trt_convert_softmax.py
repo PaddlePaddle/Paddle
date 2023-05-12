@@ -47,8 +47,12 @@ class TrtConvertSoftmaxTest(TrtLayerAutoScanTest):
                 return np.ones([batch, 3, 24]).astype(np.float32)
             elif self.dims == 2:
                 return np.ones([batch, 32]).astype(np.float32)
+            elif self.dims == 1:
+                return np.ones([batch]).astype(np.float32)
+            elif self.dims == 0:
+                return np.ones([]).astype(np.float32)
 
-        for dims in [2, 3, 4]:
+        for dims in [0, 1, 2, 3, 4]:
             for batch in [1, 2, 4]:
                 for axis in [-1, 0, 1, 2, 3]:
                     self.dims = dims
@@ -103,6 +107,14 @@ class TrtConvertSoftmaxTest(TrtLayerAutoScanTest):
                 self.dynamic_shape.min_input_shape = {"softmax_input": [1, 32]}
                 self.dynamic_shape.max_input_shape = {"softmax_input": [4, 64]}
                 self.dynamic_shape.opt_input_shape = {"softmax_input": [1, 32]}
+            elif self.dims == 1:
+                self.dynamic_shape.min_input_shape = {"softmax_input": [1]}
+                self.dynamic_shape.max_input_shape = {"softmax_input": [4]}
+                self.dynamic_shape.opt_input_shape = {"softmax_input": [1]}
+            elif self.dims == 0:
+                self.dynamic_shape.min_input_shape = {"softmax_input": []}
+                self.dynamic_shape.max_input_shape = {"softmax_input": []}
+                self.dynamic_shape.opt_input_shape = {"softmax_input": []}
 
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
@@ -110,6 +122,8 @@ class TrtConvertSoftmaxTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
+            if not dynamic_shape and (self.dims == 1 or self.dims == 0):
+                return 0, 3
             return 1, 2
 
         attrs = [

@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/optimizers/pow2_decay_with_linear_warmup_op.h"
-#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/kernels/pow2_decay_with_linear_warmup_kernel.h"
 
-namespace ops = paddle::operators;
-namespace plat = paddle::platform;
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/pow2_decay_with_linear_warmup_kernel_impl.h"
 
-REGISTER_OP_CUDA_KERNEL(
-    pow2_decay_with_linear_warmup,
-    ops::Pow2DecayWithLinearWarmupOpKernel<phi::GPUContext, double>,
-    ops::Pow2DecayWithLinearWarmupOpKernel<phi::GPUContext, float>);
+PD_REGISTER_KERNEL(pow2_decay_with_linear_warmup,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::Pow2DecayWithLinearWarmupKernel,
+                   float,
+                   double) {}

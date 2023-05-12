@@ -110,7 +110,7 @@ void IndexPutKernel(const Context& dev_ctx,
       x.dtype(),
       value.dtype(),
       phi::errors::InvalidArgument(
-          "The data type of tensor in indices must be same to the data type "
+          "The data type of tensor value must be same to the data type "
           "of tensor x."));
   PADDLE_ENFORCE_EQ(indices.empty(),
                     false,
