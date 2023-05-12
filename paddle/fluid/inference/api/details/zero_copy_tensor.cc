@@ -124,16 +124,13 @@ T *Tensor::mutable_data(PlaceType place) {
     case static_cast<int>(PlaceType::kXPU): {
       return tensor->mutable_data<T>(paddle::platform::XPUPlace(device_));
     }
-    case static_cast<int>(PlaceType::kNPU): {
-      return tensor->mutable_data<T>(paddle::platform::NPUPlace(device_));
-    }
     case static_cast<int>(PlaceType::kCUSTOM): {
       return tensor->mutable_data<T>(
           paddle::platform::CustomPlace(device_type_, device_));
     }
     default:
       PADDLE_THROW(paddle::platform::errors::Unavailable(
-          "Only CPU / CUDA / XPU / NPU places is supported. The place `%d` is "
+          "Only CPU / CUDA / XPU places is supported. The place `%d` is "
           "not supported.",
           static_cast<int>(place)));
       break;
@@ -152,8 +149,6 @@ T *Tensor::data(PlaceType *place, int *size) const {
     *place = PlaceType::kGPU;
   } else if (paddle::platform::is_xpu_place(tensor->place())) {
     *place = PlaceType::kXPU;
-  } else if (paddle::platform::is_npu_place(tensor->place())) {
-    *place = PlaceType::kNPU;
   } else if (paddle::platform::is_custom_place(tensor->place())) {
     *place = PlaceType::kCUSTOM;
   } else {
@@ -266,7 +261,7 @@ void Tensor::CopyFromCpu(const T *data) {
                          dev_ctx->stream());
 #else
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "The analysis predictor supports CPU, GPU, NPU and XPU now."));
+        "The analysis predictor supports CPU, GPU and XPU now."));
 #endif
   }
 }
@@ -345,9 +340,16 @@ void Tensor::ShareExternalData(const T *data,
             const_cast<T *>(data), size, paddle::platform::CUDAPlace(device_)),
         meta);
     *tensor = std::move(dtensor);
+  } else if (place == PlaceType::kXPU) {
+    phi::DenseTensor dtensor(
+        std::make_shared<phi::Allocation>(
+            const_cast<T *>(data), size, paddle::platform::XPUPlace(device_)),
+        meta);
+    *tensor = std::move(dtensor);
   } else {
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "PlaceType must be PlaceType::kCPU or PlaceType::kGPU."));
+        "PlaceType must be one of [PlaceType::kCPU, PlaceType::kGPU, "
+        "PlaceType::kXPU]."));
   }
 }
 
@@ -463,10 +465,10 @@ void Tensor::CopyToCpuImpl(T *data,
                          t_data,
                          ele_num * sizeof(T),
                          dev_ctx->stream());
-// TODO(wangran16): sync_stream
+    dev_ctx->GetStream()->Synchronize();
 #else
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "The analysis predictor supports CPU, GPU, NPU and XPU now."));
+        "The analysis predictor supports CPU, GPU and XPU now."));
 #endif
   }
 }

@@ -113,7 +113,7 @@ class DGCMomentumOptimizer(Optimizer):
         return regular_type, regular_coeff
 
     def _is_use_dgc(self, param_var, grad_var):
-        var_numel = abs(reduce(lambda x, y: x * y, param_var.shape))
+        var_numel = abs(reduce(lambda x, y: x * y, param_var.shape, 1))
         if (
             var_numel < 16384
             or param_var.type == core.VarDesc.VarType.SELECTED_ROWS

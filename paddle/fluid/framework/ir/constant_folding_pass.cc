@@ -64,7 +64,7 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
       platform::errors::Fatal(
           "scope must not be null when applying constant floding."));
 
-  std::vector<std::string> blacklist{"feed", "matrix_multiply"};
+  std::vector<std::string> blacklist{"feed", "matrix_multiply", "save"};
 
   auto op_node_sorted = framework::ir::TopologyVarientSort(
       *graph, static_cast<framework::ir::SortKind>(0));

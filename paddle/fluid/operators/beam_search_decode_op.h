@@ -36,8 +36,7 @@ struct BeamSearchDecodeFunctor {
     tensor_on_gpu_ = false;
     tensor_on_npu_ = false;
     // First make a copy of GPU data on CPU
-    if (platform::is_gpu_place(step_ids_origin_[0].place()) ||
-        platform::is_npu_place(step_ids_origin_[0].place())) {
+    if (platform::is_gpu_place(step_ids_origin_[0].place())) {
       if (platform::is_gpu_place(step_ids_origin_[0].place())) {
         tensor_on_gpu_ = true;
       } else {
@@ -61,8 +60,7 @@ struct BeamSearchDecodeFunctor {
         step_ids_.push_back(out);
       }
     }
-    if (platform::is_gpu_place(step_scores_origin_[0].place()) ||
-        platform::is_npu_place(step_scores_origin_[0].place())) {
+    if (platform::is_gpu_place(step_scores_origin_[0].place())) {
       if (platform::is_gpu_place(step_scores_origin_[0].place())) {
         tensor_on_gpu_ = true;
       } else {
@@ -97,7 +95,7 @@ struct BeamSearchDecodeFunctor {
 
     } else {
       BeamSearchDecoder<T> beam_search_decoder(beam_size_, end_id_);
-      // Check if the tensor is on GPU or NPU. If so, use the CPU copy instead
+      // Check if the tensor is on GPU. If so, use the CPU copy instead
       if (tensor_on_gpu_ || tensor_on_npu_) {
         beam_search_decoder.Backtrace(
             step_ids_, step_scores_, id_tensor_, score_tensor_);

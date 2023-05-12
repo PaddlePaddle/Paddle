@@ -136,7 +136,7 @@ def get_program():
 
         data_holder = [input, label]
         # dataloader
-        dataloader = paddle.io.DataLoader.from_generator(
+        dataloader = fluid.io.DataLoader.from_generator(
             feed_list=data_holder, capacity=4 * batch_size, iterable=False
         )
         dataloader.set_batch_generator(
@@ -206,7 +206,7 @@ def get_program():
         auto.shard_tensor(error_cost, _g_process_mesh, [None, None, None])
 
         loss = paddle.mean(error_cost)
-        auto.shard_tensor(loss, _g_process_mesh, [None])
+        auto.shard_tensor(loss, _g_process_mesh, [])
 
     return train_program, start_program, dataloader, i, loss
 

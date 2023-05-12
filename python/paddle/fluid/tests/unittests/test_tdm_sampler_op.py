@@ -20,6 +20,7 @@ from eager_op_test import OpTest, paddle_static_guard
 import paddle
 from paddle import fluid
 from paddle.fluid import core
+from paddle.incubate.layers.nn import tdm_sampler
 
 
 def create_tdm_travel():
@@ -284,7 +285,7 @@ class TestTDMSamplerShape(unittest.TestCase):
             neg_samples_num_list = [1, 2, 3, 4]
             leaf_node_num = 13
 
-            sample, label, mask = fluid.contrib.layers.tdm_sampler(
+            sample, label, mask = tdm_sampler(
                 x,
                 neg_samples_num_list,
                 layer_node_num_list,

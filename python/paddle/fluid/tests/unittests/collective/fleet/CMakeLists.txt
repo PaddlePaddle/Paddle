@@ -37,6 +37,8 @@ if(WITH_NCCL)
       test_parallel_margin_cross_entropy
       START_BASH
       ../../dist_test.sh
+      TIMEOUT
+      "120"
       LABELS
       "RUN_TYPE=DIST"
       ENVS
@@ -95,6 +97,8 @@ if(WITH_NCCL)
       test_parallel_dygraph_mp_layers
       START_BASH
       ../../dist_test.sh
+      TIMEOUT
+      "120"
       LABELS
       "RUN_TYPE=DIST"
       ENVS
@@ -120,6 +124,8 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     test_dygraph_sharding_stage3_for_eager
     START_BASH
     ../../dist_test.sh
+    TIMEOUT
+    "350"
     LABELS
     "RUN_TYPE=DIST"
     ENVS
@@ -146,6 +152,8 @@ if((WITH_GPU) AND LOCAL_ALL_PLAT)
     test_parallel_dygraph_pipeline_parallel
     START_BASH
     ../../dist_test.sh
+    TIMEOUT
+    "500"
     LABELS
     "RUN_TYPE=DIST"
     ENVS
@@ -154,11 +162,26 @@ if((WITH_GPU) AND LOCAL_ALL_PLAT)
   set_tests_properties(test_parallel_dygraph_pipeline_parallel
                        PROPERTIES TIMEOUT "500")
 endif()
+if((WITH_GPU OR WITH_XPU) AND LOCAL_ALL_PLAT)
+  bash_test_modules(
+    test_parallel_dygraph_pipeline_parallel_sync_send
+    START_BASH
+    ../../dist_test.sh
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=21992;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python;PADDLE_P2P_SYNC_SEND=1"
+  )
+  set_tests_properties(test_parallel_dygraph_pipeline_parallel_sync_send
+                       PROPERTIES TIMEOUT "300")
+endif()
 if((WITH_GPU) AND LOCAL_ALL_PLAT)
   bash_test_modules(
     test_parallel_dygraph_pipeline_parallel_with_virtual_stage
     START_BASH
     ../../dist_test.sh
+    TIMEOUT
+    "500"
     LABELS
     "RUN_TYPE=DIST"
     ENVS
@@ -167,6 +190,21 @@ if((WITH_GPU) AND LOCAL_ALL_PLAT)
   set_tests_properties(
     test_parallel_dygraph_pipeline_parallel_with_virtual_stage
     PROPERTIES TIMEOUT "500")
+endif()
+if((WITH_GPU) AND LOCAL_ALL_PLAT)
+  bash_test_modules(
+    test_parallel_dygraph_pp_adaptor
+    START_BASH
+    ../../dist_test.sh
+    TIMEOUT
+    "500"
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=21976;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+  )
+  set_tests_properties(test_parallel_dygraph_pp_adaptor PROPERTIES TIMEOUT
+                                                                   "500")
 endif()
 if((WITH_GPU OR WITH_XPU) AND (LINUX))
   py_test_modules(
@@ -180,6 +218,8 @@ if(WITH_NCCL)
       test_parallel_class_center_sample
       START_BASH
       ../../dist_test.sh
+      TIMEOUT
+      "120"
       LABELS
       "RUN_TYPE=DIST"
       ENVS
@@ -194,6 +234,8 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     test_pipeline
     START_BASH
     ../../dist_test.sh
+    TIMEOUT
+    "120"
     LABELS
     "RUN_TYPE=DIST"
     ENVS
@@ -213,6 +255,8 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     test_static_model_parallel
     START_BASH
     ../../dist_test.sh
+    TIMEOUT
+    "240"
     LABELS
     "RUN_TYPE=DIST"
     ENVS
@@ -226,6 +270,8 @@ if(WITH_NCCL)
       test_parallel_dygraph_no_sync
       START_BASH
       ../../dist_test.sh
+      TIMEOUT
+      "300"
       LABELS
       "RUN_TYPE=DIST"
       ENVS
@@ -239,6 +285,8 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     test_dygraph_sharding_stage2
     START_BASH
     ../../dist_test.sh
+    TIMEOUT
+    "200"
     LABELS
     "RUN_TYPE=DIST"
     ENVS
@@ -251,6 +299,8 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     test_parallel_dygraph_control_flow
     START_BASH
     ../../dist_test.sh
+    TIMEOUT
+    "350"
     LABELS
     "RUN_TYPE=DIST"
     ENVS
@@ -275,6 +325,8 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     test_hybrid_parallel_inference_helper
     START_BASH
     ../../dist_test.sh
+    TIMEOUT
+    "120"
     LABELS
     "RUN_TYPE=DIST"
     ENVS
@@ -352,6 +404,8 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     test_parallel_dygraph_sharding_parallel
     START_BASH
     ../../dist_test.sh
+    TIMEOUT
+    "120"
     LABELS
     "RUN_TYPE=DIST"
     ENVS
@@ -365,6 +419,8 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     test_parallel_dygraph_tensor_parallel
     START_BASH
     ../../dist_test.sh
+    TIMEOUT
+    "200"
     LABELS
     "RUN_TYPE=DIST"
     ENVS
@@ -378,6 +434,8 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     test_dygraph_group_sharded_api_for_eager
     START_BASH
     ../../dist_test.sh
+    TIMEOUT
+    "120"
     LABELS
     "RUN_TYPE=DIST"
     ENVS
@@ -404,6 +462,8 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     test_parallel_dygraph_unused_variables
     START_BASH
     ../../dist_test.sh
+    TIMEOUT
+    "350"
     LABELS
     "RUN_TYPE=DIST"
     ENVS
@@ -429,6 +489,8 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     test_parallel_dygraph_no_sync_gradient_check
     START_BASH
     ../../dist_test.sh
+    TIMEOUT
+    "60"
     LABELS
     "RUN_TYPE=DIST"
     ENVS
@@ -459,6 +521,8 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     test_parallel_dygraph_qat
     START_BASH
     ../../dist_test.sh
+    TIMEOUT
+    "120"
     LABELS
     "RUN_TYPE=DIST"
     ENVS
@@ -473,6 +537,8 @@ if(WITH_NCCL)
         test_parallel_dygraph_sparse_embedding
         START_BASH
         ../../dist_test.sh
+        TIMEOUT
+        "200"
         LABELS
         "RUN_TYPE=DIST"
         ENVS
@@ -488,6 +554,8 @@ if((WITH_ROCM) AND LOCAL_ALL_PLAT)
     test_parallel_dygraph_sparse_embedding
     START_BASH
     ../../dist_test.sh
+    TIMEOUT
+    "200"
     LABELS
     "RUN_TYPE=DIST"
     ENVS
@@ -508,6 +576,8 @@ if(WITH_NCCL)
         test_parallel_dygraph_sparse_embedding_over_height
         START_BASH
         ../../dist_test.sh
+        TIMEOUT
+        "150"
         LABELS
         "RUN_TYPE=DIST"
         ENVS
@@ -523,6 +593,8 @@ if((WITH_ROCM) AND LOCAL_ALL_PLAT)
     test_parallel_dygraph_sparse_embedding_over_height
     START_BASH
     ../../dist_test.sh
+    TIMEOUT
+    "350"
     LABELS
     "RUN_TYPE=DIST"
     ENVS
@@ -541,6 +613,8 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     test_auto_parallel_parallelizer
     START_BASH
     ../../dist_test.sh
+    TIMEOUT
+    "120"
     LABELS
     "RUN_TYPE=DIST"
     ENVS
@@ -574,6 +648,8 @@ if((WITH_GPU OR WITH_XPU) AND (LINUX))
     test_c_comm_init_op
     START_BASH
     test_c_comm_init_op.sh
+    TIMEOUT
+    "120"
     LABELS
     "RUN_TYPE=DIST"
     ENVS
@@ -585,6 +661,8 @@ if((WITH_GPU) AND (LINUX))
     test_fused_attention_pass_with_mp
     START_BASH
     test_fused_attention_pass_with_mp.sh
+    TIMEOUT
+    "120"
     LABELS
     "RUN_TYPE=DIST"
     ENVS
@@ -597,6 +675,8 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
     test_ir_pass_pipeline
     START_BASH
     ../../dist_test.sh
+    TIMEOUT
+    "120"
     LABELS
     "RUN_TYPE=DIST"
     ENVS
@@ -609,6 +689,8 @@ if((WITH_GPU OR WITH_ROCM) AND LOCAL_ALL_PLAT)
     test_parallel_dygraph_mnist
     START_BASH
     ../../dist_test.sh
+    TIMEOUT
+    "200"
     LABELS
     "RUN_TYPE=DIST"
     ENVS
@@ -621,6 +703,8 @@ if((WITH_GPU OR WITH_ROCM) AND LOCAL_ALL_PLAT)
     test_parallel_dygraph_se_resnext
     START_BASH
     ../../dist_test.sh
+    TIMEOUT
+    "200"
     LABELS
     "RUN_TYPE=DIST"
     ENVS
@@ -691,6 +775,8 @@ if(LOCAL_ALL_ARCH AND (LINUX))
     test_auto_checkpoint
     START_BASH
     ../../dist_test.sh
+    TIMEOUT
+    "200"
     LABELS
     "RUN_TYPE=EXCLUSIVE:NIGHTLY"
     ENVS
@@ -703,6 +789,8 @@ if(LOCAL_ALL_ARCH AND (LINUX))
     test_auto_checkpoint1
     START_BASH
     ../../dist_test.sh
+    TIMEOUT
+    "200"
     LABELS
     "RUN_TYPE=EXCLUSIVE:NIGHTLY"
     ENVS
@@ -715,6 +803,8 @@ if(LOCAL_ALL_ARCH AND (LINUX))
     test_auto_checkpoint2
     START_BASH
     ../../dist_test.sh
+    TIMEOUT
+    "200"
     LABELS
     "RUN_TYPE=EXCLUSIVE:NIGHTLY"
     ENVS
@@ -727,6 +817,8 @@ if(LOCAL_ALL_ARCH AND (LINUX))
     test_auto_checkpoint3
     START_BASH
     ../../dist_test.sh
+    TIMEOUT
+    "200"
     LABELS
     "RUN_TYPE=EXCLUSIVE:NIGHTLY"
     ENVS
@@ -739,6 +831,8 @@ if(LOCAL_ALL_ARCH AND (LINUX))
     test_auto_checkpoint_multiple
     START_BASH
     ../../dist_test.sh
+    TIMEOUT
+    "200"
     LABELS
     "RUN_TYPE=EXCLUSIVE:NIGHTLY"
     ENVS
@@ -751,6 +845,8 @@ if(LOCAL_ALL_ARCH AND (LINUX))
     test_auto_checkpoint_dist_basic
     START_BASH
     ../../dist_test.sh
+    TIMEOUT
+    "200"
     LABELS
     "RUN_TYPE=EXCLUSIVE:NIGHTLY"
     ENVS
@@ -763,6 +859,8 @@ if(LOCAL_ALL_ARCH AND (LINUX))
     test_hdfs1
     START_BASH
     ../../dist_test.sh
+    TIMEOUT
+    "200"
     LABELS
     "RUN_TYPE=EXCLUSIVE:NIGHTLY"
     ENVS
@@ -775,6 +873,8 @@ if(LOCAL_ALL_ARCH AND (LINUX))
     test_hdfs2
     START_BASH
     ../../dist_test.sh
+    TIMEOUT
+    "200"
     LABELS
     "RUN_TYPE=EXCLUSIVE:NIGHTLY"
     ENVS
@@ -787,6 +887,8 @@ if(LOCAL_ALL_ARCH AND (LINUX))
     test_hdfs3
     START_BASH
     ../../dist_test.sh
+    TIMEOUT
+    "200"
     LABELS
     "RUN_TYPE=EXCLUSIVE:NIGHTLY"
     ENVS

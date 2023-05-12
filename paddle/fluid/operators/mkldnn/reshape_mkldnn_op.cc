@@ -89,8 +89,9 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
     astream.wait();
 
     out->Resize(out_dims);
-    out->set_mem_desc(
-        reorder_dst_memory_p->get_desc().reshape(phi::vectorize(out_dims)));
+    auto reshape_dims = out_dims.size() != 0 ? phi::vectorize(out_dims)
+                                             : std::vector<int64_t>{1};
+    out->set_mem_desc(reorder_dst_memory_p->get_desc().reshape(reshape_dims));
   }
 
   void InferInOutShape(const framework::ExecutionContext& ctx,

@@ -67,6 +67,8 @@ black_ops_list = [
 prim_white_list = [
     "matmul_double_grad",
     "tanh_double_grad",
+    "add_double_grad",
+    "subtract_double_grad",
 ]
 
 # dict of special api that forward api's output will affect bacward api's output
@@ -299,7 +301,7 @@ FORWARD_BODY_TEMPLATE = """  if(require_any_grad) {{
 {}
     // Set for forward trace
   if (FLAGS_check_nan_inf) {{
-  {}
+    grad_node->SetForwardTrace(egr::Controller::Instance().GetPythonStack());
   }}
     // SetAttributes if needed
 {}
@@ -361,7 +363,8 @@ NODE_CC_FILE_TEMPLATE = """
 #include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
 #include "paddle/fluid/prim/api/all.h"
 #include "paddle/fluid/prim/utils/utils.h"
-DECLARE_bool(check_nan_inf);
+#include "paddle/phi/core/flags.h"
+PHI_DECLARE_bool(check_nan_inf);
 {}
 """
 
@@ -388,8 +391,10 @@ FORWARD_CC_FILE_TEMPLATE = """
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/eager/api/manual/eager_manual/dygraph_forward_api.h"
+#include "paddle/phi/core/flags.h"
+
 DECLARE_bool(check_nan_inf);
-DECLARE_string(tensor_operants_mode);
+PHI_DECLARE_string(tensor_operants_mode);
 {}
 {}
 """
@@ -490,10 +495,8 @@ CHECK_BACKWARD_INPLACE_TEMPLATE = """
   }}"""
 
 CHECK_NAN_AND_INF_TEMPLATE_FORWARD = """
-  std::string forward_trace ="";
   if (FLAGS_check_nan_inf) {{
       egr::CheckTensorHasNanOrInf("{}", {});
-      forward_trace = egr::Controller::Instance().GetPythonStack();
   }}
 """
 
@@ -1070,15 +1073,11 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
 
         node_event_name = forward_api_name + " node_creation"
         node_creation_event_str = f"{indent}paddle::platform::RecordEvent node_creation_record_event(\"{node_event_name}\", paddle::platform::TracerEventType::OperatorInner, 1);\n"
-        set_forward_trace = (
-            f"{indent} grad_node->SetForwardTrace(forward_trace);"
-        )
         if not for_backward:
             self.node_creation_str = FORWARD_BODY_TEMPLATE.format(
                 node_creation_event_str,
                 pass_stop_gradient_args_str,
                 node_construction_str,
-                set_forward_trace,
                 set_attributes_str,
                 set_input_tensor_wrappers_str,
                 set_grad_out_meta_str,
@@ -1893,10 +1892,27 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             False if self.composite_func_info == {} else True
         )
 
-        if is_composite_grad_api and next_grad_node_creation_str != '':
-            next_grad_node_creation_str = f"""
+        if is_composite_grad_api:
+            if next_grad_node_creation_str != '':
+                next_grad_node_creation_str = f"""
  if (!paddle::prim::PrimCommonUtils::IsEagerPrimEnabled()) {{
     {next_grad_node_creation_str}
+ }}
+  """
+            else:
+                if not (
+                    self.grad_api_contents["backward_op"] in prim_white_list
+                    or is_invoke_forward_api
+                ):
+
+                    next_grad_node_creation_str = f"""
+ if (!paddle::prim::PrimCommonUtils::IsEagerPrimEnabled()) {{
+    if(trace_backward) {{
+    PADDLE_THROW(phi::errors::Unavailable(
+    \"The Op {self.backward_api_name} doesn't have any grad\"
+    \"op. If you don't intend calculating higher order\"
+    \"derivatives, please set `create_graph`to False.\"));
+  }}
  }}
   """
 
@@ -1918,6 +1934,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
     \"op. If you don't intend calculating higher order\"
     \"derivatives, please set `create_graph`to False.\"));
   }}"""
+
         return (
             has_higher_order_node,
             is_invoke_forward_api,

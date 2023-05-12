@@ -275,7 +275,7 @@ void TensorCopyImpl(const TENSOR& src,
                     TENSOR* dst) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   const platform::DeviceContext* dev_ctx;
-  if (platform::is_gpu_place(dst_place) || platform::is_npu_place(dst_place) ||
+  if (platform::is_gpu_place(dst_place) ||
       platform::is_custom_place(dst_place)) {
     dev_ctx = pool.Get(dst_place);
   } else {
@@ -614,7 +614,6 @@ void TensorFromStream(std::istream& is,
     size_t size = tensor->numel() * framework::SizeOfType(desc.data_type());
     if (platform::is_gpu_place(dev_ctx.GetPlace()) ||
         platform::is_xpu_place(dev_ctx.GetPlace()) ||
-        platform::is_npu_place(dev_ctx.GetPlace()) ||
         platform::is_custom_place(dev_ctx.GetPlace())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_CUSTOM_DEVICE)
@@ -626,8 +625,7 @@ void TensorFromStream(std::istream& is,
       is.read(static_cast<char*>(buf), size);
       auto dst_place = dev_ctx.GetPlace();
       framework::TensorCopy(cpu_tensor, dst_place, dev_ctx, tensor);
-      if (platform::is_npu_place(dev_ctx.GetPlace()) ||
-          platform::is_custom_place(dev_ctx.GetPlace())) {
+      if (platform::is_custom_place(dev_ctx.GetPlace())) {
         dev_ctx.Wait();
       }
 #else
@@ -689,7 +687,6 @@ void TensorFromStream(std::istream& is,
     size_t size = tensor->numel() * framework::SizeOfType(desc.data_type());
     if (platform::is_gpu_place(dev_ctx.GetPlace()) ||
         platform::is_xpu_place(dev_ctx.GetPlace()) ||
-        platform::is_npu_place(dev_ctx.GetPlace()) ||
         platform::is_custom_place(dev_ctx.GetPlace())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_CUSTOM_DEVICE)
@@ -701,8 +698,7 @@ void TensorFromStream(std::istream& is,
       is.read(static_cast<char*>(buf), size);
       auto dst_place = dev_ctx.GetPlace();
       framework::TensorCopy(cpu_tensor, dst_place, dev_ctx, tensor);
-      if (platform::is_npu_place(dev_ctx.GetPlace()) ||
-          platform::is_custom_place(dev_ctx.GetPlace())) {
+      if (platform::is_custom_place(dev_ctx.GetPlace())) {
         dev_ctx.Wait();
       }
 #else
@@ -712,9 +708,6 @@ void TensorFromStream(std::istream& is,
       } else if (platform::is_xpu_place(dev_ctx.GetPlace())) {
         PADDLE_THROW(platform::errors::Unimplemented(
             "XPUPlace is not supported when not compiled with XPU"));
-      } else if (platform::is_npu_place(dev_ctx.GetPlace())) {
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "NPUPlace is not supported when not compiled with NPU"));
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "CutomPlace is not supported when not compiled with CustomDevice"));
