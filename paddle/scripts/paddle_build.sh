@@ -1044,11 +1044,6 @@ function generate_api_spec() {
         pip --no-cache-dir install ${PADDLE_ROOT}/dist/*whl
         mkdir ${PADDLE_ROOT}/build/python/dist/ && mv  ${PADDLE_ROOT}/dist/*whl  ${PADDLE_ROOT}/build/python/dist/
     fi
-    # debug
-    echo "debugging........"
-    env
-    ldd .${spec_kind}_env/lib/python3.7/site-packages/paddle/fluid/libpaddle.so
-    ls .${spec_kind}_env/lib/python3.7/site-packages/paddle/libs
     spec_path=${PADDLE_ROOT}/paddle/fluid/API_${spec_kind}.spec
     python ${PADDLE_ROOT}/tools/print_signatures.py paddle > $spec_path
 
