@@ -140,11 +140,11 @@ if(WIN32)
       CACHE INTERNAL "" FORCE)
 elseif(APPLE)
   set(PHI_NAME
-      libphi.dylib
+      libphi.a #libphi.dylib
       CACHE INTERNAL "" FORCE)
 else()
   set(PHI_NAME
-      libphi.so
+      libphi.a #libphi.so
       CACHE INTERNAL "" FORCE)
 endif()
 
