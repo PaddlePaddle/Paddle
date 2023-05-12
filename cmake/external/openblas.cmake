@@ -24,16 +24,10 @@ set(CBLAS_TAG v0.3.7)
 # And why compile when gcc>8.2? Please refer to
 # https://github.com/spack/spack/issues/19932#issuecomment-733452619
 # v0.3.18 only support gcc>=8.3 or gcc>=7.4
-if(CMAKE_COMPILER_IS_GNUCXX)
-  execute_process(COMMAND ${CMAKE_CXX_COMPILER} -dumpfullversion -dumpversion
-                  OUTPUT_VARIABLE GNU_VERSION)
-  string(REGEX MATCHALL "[0-9]+" GNU_VERSION_COMPONENTS ${GNU_VERSION})
-  list(GET GNU_VERSION_COMPONENTS 0 GNU_MAJOR)
-  list(GET GNU_VERSION_COMPONENTS 1 GNU_MINOR)
+if((CMAKE_CXX_COMPILER_ID STREQUAL "GNU") AND CMAKE_CXX_COMPILER_VERSION
+                                              VERSION_GREATER 8.2)
   # We only compile with openblas 0.3.18 when gcc >= 8.3
-  if(GNU_VERSION GREATER "8.2")
-    set(CBLAS_TAG v0.3.18)
-  endif()
+  set(CBLAS_TAG v0.3.18)
 endif()
 
 if(APPLE AND WITH_ARM)
