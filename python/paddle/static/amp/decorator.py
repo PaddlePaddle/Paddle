@@ -881,7 +881,7 @@ def decorate(
         amp_lists = AutoMixedPrecisionLists(dtype=amp_dtype)
 
     if level == 'OD':
-        warnings.warn("Amp level is OD, amp list will't be used!")
+        warnings.warn("If the Amp level is set to "OD", the amp list will not be used.")
         if amp_lists is not None:
             amp_lists = AutoMixedPrecisionLists(dtype=amp_dtype)
 
