@@ -524,6 +524,12 @@ struct SimpleOpTypeSetTeller : public Teller {
         auto* x_var_desc = block->FindVar(x_var_name);
         const auto x_shape = x_var_desc->GetShape();
         int dims = x_shape.size();
+        if (dims == 0) {
+          VLOG(3) << op_type
+                  << " op does not support input's dim is 0 in tensorrt "
+                     "static shape mode.";
+          return false;
+        }
         if (start_axis < 0) start_axis += dims;
         if (start_axis == 0) {
           VLOG(3) << "TRT flatten_contiguous_range not support the "
@@ -1962,24 +1968,15 @@ struct SimpleOpTypeSetTeller : public Teller {
                    "the pass.";
         return false;
       }
-      auto x_var_name = desc.Input("X")[0];
-      auto* x_var_desc = block->FindVar(x_var_name);
-#if !IS_TRT_VERSION_GE(8600)
+#if !IS_TRT_VERSION_GE(8400)
       auto dtype = x_var_desc->GetDataType();
       if (dtype == framework::proto::VarType::BOOL ||
           dtype == framework::proto::VarType::INT8 ||
           dtype == framework::proto::VarType::UINT8) {
-        VLOG(3) << "BOOL / INT8 / UINT8 type support requires TensorRT 8.6";
+        VLOG(3) << "BOOL / INT8 / UINT8 type support requires TensorRT 8.4";
         return false;
       }
 #endif
-      const auto x_shape = x_var_desc->GetShape();
-      if (!with_dynamic_shape && (x_shape.size() == 1 || x_shape.size() == 0)) {
-        VLOG(3) << op_type
-                << " op does not support input's dim is 1 or 0 in tensorrt "
-                   "static shape mode.";
-        return false;
-      }
     }
 
     if (op_type == "one_hot" || op_type == "one_hot_v2") {
