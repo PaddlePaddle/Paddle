@@ -135,7 +135,7 @@ class TestBernoulliBF16Op(OpTest):
 
     def verify_output(self, outs):
         hist, prob = output_hist(np.array(outs[0]))
-        np.testing.assert_allclose(hist, prob, rtol=0, atol=0.01)
+        np.testing.assert_allclose(hist, prob)
 
 
 if __name__ == "__main__":
