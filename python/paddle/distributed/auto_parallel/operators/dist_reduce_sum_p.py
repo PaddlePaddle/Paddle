@@ -58,7 +58,7 @@ class DistributedReduceSumPrimtiveImpl0(DistributedOperatorImpl):
 
         output_name = outputs[0]
         output_var = dist_op.serial_op.block._var_recursive(output_name)
-        if output_var.shape != (1,):
+        if output_var.shape != ():
             return False
 
         return True

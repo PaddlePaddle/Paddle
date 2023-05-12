@@ -119,7 +119,9 @@ void SubtractDoubleGradImpl(const Context& dev_ctx,
 
 template <typename T>
 struct DivGradDX {
-  HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return dout / y; }
+  HOSTDEVICE T operator()(T x UNUSED, T y, T out UNUSED, T dout) const {
+    return dout / y;
+  }
 };
 
 template <typename T>
@@ -136,7 +138,7 @@ struct DivGradDX<phi::dtype::complex<T>> {
 
 template <typename T>
 struct DivGradDY {
-  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+  HOSTDEVICE T operator()(T x UNUSED, T y, T out, T dout) const {
     return -dout * out / y;
   }
 };
@@ -857,14 +859,14 @@ struct MinGradDy {
 
 template <typename T>
 struct HeavisideGradDx {
-  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+  HOSTDEVICE T operator()(T x UNUSED, T y UNUSED, T out UNUSED, T dout) const {
     return dout * static_cast<T>(0);
   }
 };
 
 template <typename T>
 struct HeavisideGradDy {
-  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+  HOSTDEVICE T operator()(T x, T y UNUSED, T out UNUSED, T dout) const {
     return dout * static_cast<T>(x == static_cast<T>(0));
   }
 };

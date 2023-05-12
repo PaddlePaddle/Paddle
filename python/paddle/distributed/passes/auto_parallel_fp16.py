@@ -685,7 +685,7 @@ def _insert_memcopy(block, idx, src_var, dist_context, direction="D2H"):
         world_process_group.ranks,
     )
 
-    # TODO to support CUDAPinned/NPU/XPU Places
+    # TODO to support CUDAPinned/XPU Places
     if direction == "D2H":
         dst_place_type = 0
     else:
