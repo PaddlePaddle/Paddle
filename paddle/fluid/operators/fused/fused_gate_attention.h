@@ -940,7 +940,6 @@ class FlashAttnWithGating {
         fa_dropout_prob_,
         fa_softmax_scale_,
         fa_zero_tensors_,
-        fa_is_causal_,
         is_bf16,
         fa_num_splits_,
         softmax_lse->data(),
@@ -976,7 +975,6 @@ class FlashAttnWithGating {
         fa_dropout_prob_,
         fa_softmax_scale_,
         fa_zero_tensors_,
-        fa_is_causal_,
         is_bf16,
         fa_num_splits_,
         softmax_lse->data(),
@@ -1099,7 +1097,6 @@ class FlashAttnWithGating {
         fa_dropout_prob_,
         fa_softmax_scale_,
         fa_zero_tensors_,
-        fa_is_causal_,
         is_bf16,
         fa_num_splits_,
         softmax_lse->data(),
@@ -1140,7 +1137,6 @@ class FlashAttnWithGating {
         fa_dropout_prob_,
         fa_softmax_scale_,
         fa_zero_tensors_,
-        fa_is_causal_,
         is_bf16,
         fa_num_splits_,
         softmax_lse->data(),
@@ -1264,7 +1260,6 @@ class FlashAttnWithGating {
     fa_offset_ = seed_offset_pair.second;
 
     fa_zero_tensors_ = false;
-    fa_is_causal_ = false;
 
     if (VLOG_IS_ON(6)) {
       VLOG(6) << "fa_batch_size    : " << fa_batch_size_;
@@ -1315,7 +1310,6 @@ class FlashAttnWithGating {
   uint64_t fa_seed_{0};
   uint64_t fa_offset_{0};
   bool fa_zero_tensors_{false};
-  bool fa_is_causal_{false};
 };
 
 }  // namespace operators
