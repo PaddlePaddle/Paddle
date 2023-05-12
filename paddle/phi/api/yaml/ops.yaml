@@ -920,6 +920,24 @@
   intermediate : residual
   backward : huber_loss_grad
 
+- op : i0
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : i0
+  backward : i0_grad
+
+- op : i0e
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : i0e
+  backward : i0e_grad
+
 - op : imag
   args : (Tensor x)
   output : Tensor (out)
