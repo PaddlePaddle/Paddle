@@ -26,7 +26,7 @@ namespace paddle {
 namespace fluid {
 namespace translator {
 
-ProgramTranslator::ProgramTranslator(ProgramDesc* legacy_program,
+ProgramTranslator::ProgramTranslator(const ProgramDesc* legacy_program,
                                      ir::Program* program)
     : legacy_program(legacy_program), program(program) {
   ctx = ir::IrContext::Instance();

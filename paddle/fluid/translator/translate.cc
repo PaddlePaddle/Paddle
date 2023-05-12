@@ -14,8 +14,11 @@
 
 #include "paddle/fluid/translator/translate.h"
 
+#include <memory>
+
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/paddle_dialect/paddle_dialect.h"
+#include "paddle/fluid/translator/program_translator.h"
 #include "paddle/ir/program.h"
 
 namespace paddle {
@@ -24,9 +27,13 @@ namespace fluid {
 using LegacyProgramDesc = ::paddle::framework::ProgramDesc;
 using Program = ::ir::Program;
 
-Program TranslateLegacyProgramToProgram(
+std::unique_ptr<Program> TranslateLegacyProgramToProgram(
     const LegacyProgramDesc& legacy_program) {
-  ir::Program program;
+  auto program = std::make_unique<Program>();
+
+  translator::ProgramTranslator program_translator(&legacy_program,
+                                                   program.get());
+  program_translator.Translate();
 
   return program;
 }

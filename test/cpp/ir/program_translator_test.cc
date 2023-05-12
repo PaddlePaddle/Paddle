@@ -22,7 +22,7 @@
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/paddle_dialect/paddle_dialect.h"
-#include "paddle/fluid/translator/program_translator.h"
+#include "paddle/fluid/translator/translate.h"
 #include "paddle/ir/builtin_dialect.h"
 #include "paddle/ir/dialect.h"
 #include "paddle/ir/ir_context.h"
@@ -34,7 +34,6 @@ using BlockDesc = paddle::framework::BlockDesc;
 using OpDesc = paddle::framework::OpDesc;
 using VarDesc = paddle::framework::VarDesc;
 using VarType = paddle::framework::proto::VarType;
-using ProgramTranslator = ::paddle::fluid::translator::ProgramTranslator;
 
 ProgramDesc load_from_file(const std::string &file_name) {
   std::ifstream fin(file_name, std::ios::in | std::ios::binary);
@@ -56,13 +55,9 @@ TEST(PaddleDialectTest, Translator) {
   ir::IrContext *ctx = ir::IrContext::Instance();
   ctx->GetOrRegisterDialect<PaddleDialect>();
   ctx->GetOrRegisterDialect<ir::BuiltinDialect>();
-  auto program = new ir::Program;
-
-  ProgramTranslator program_translator(&p, program);
-  program_translator.Translate();
+  auto program = paddle::fluid::TranslateLegacyProgramToProgram(p);
 
   std::list<ir::Operation *> ops = program->ops();
   std::cout << ops.size() << std::endl;
-  EXPECT_GT(ops.size(), p.Block(0).OpSize());
-  // EXPECT_EQ(ops.size(), block.OpSize() + parameter_size);
+  EXPECT_EQ(ops.size(), p.Block(0).OpSize() + program->parameters().size());
 }

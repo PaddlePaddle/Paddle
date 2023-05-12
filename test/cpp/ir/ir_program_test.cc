@@ -94,4 +94,6 @@ TEST(program_test, program) {
   // (4) Traverse Program
   std::list<ir::Operation *> ops = program->ops();
   EXPECT_EQ(ops.size() == 4, true);
+
+  delete program;
 }

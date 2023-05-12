@@ -7,4 +7,4 @@ file(GLOB PD_PROGRAM_TRANSLATOR_SRCS "*.cc")
 cc_library(
   program_translator
   SRCS ${PD_PROGRAM_TRANSLATOR_SRCS}
-  DEPS proto_desc paddle_dialect new_ir)
+  DEPS proto_desc paddle_dialect new_ir framework_proto)

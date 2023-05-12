@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <memory>
+
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/paddle_dialect/paddle_dialect.h"
 #include "paddle/ir/program.h"
@@ -24,7 +26,7 @@ namespace fluid {
 using LegacyProgramDesc = ::paddle::framework::ProgramDesc;
 using Program = ::ir::Program;
 
-Program TranslateLegacyProgramToProgram(
+std::unique_ptr<Program> TranslateLegacyProgramToProgram(
     const LegacyProgramDesc& legacy_program);
 
 }  // namespace fluid

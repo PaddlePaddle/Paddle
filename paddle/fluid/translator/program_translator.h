@@ -34,12 +34,13 @@ using TranslationContext = std::unordered_map<std::string, ir::OpResult>;
 
 class ProgramTranslator {
  public:
-  explicit ProgramTranslator(ProgramDesc* legacy_program, ir::Program* program);
+  explicit ProgramTranslator(const ProgramDesc* legacy_program,
+                             ir::Program* program);
 
   void Translate();
 
  private:
-  ProgramDesc* legacy_program;
+  const ProgramDesc* legacy_program;
   ir::Program* program;
   TranslationContext param_map;
   ir::IrContext* ctx;
