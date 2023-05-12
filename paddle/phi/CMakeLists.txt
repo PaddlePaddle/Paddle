@@ -95,6 +95,10 @@ set(PHI_SRCS
 
 if(WITH_PHI_SHARED)
   set(PHI_BUILD_TYPE
+      SHARED
+      CACHE INTERNAL "" FORCE)
+else()
+  set(PHI_BUILD_TYPE
       STATIC
       CACHE INTERNAL "" FORCE)
 endif()
