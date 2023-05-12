@@ -22,8 +22,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/core/dense_tensor.h"
 
-namespace paddle {
-namespace operators {
+namespace phi {
 
 class ScopedRNNBase {
  public:
@@ -168,5 +167,4 @@ class ScopedRNNBase {
   phi::backends::gpu::ScopedRNNDescriptor rnn_desc_;
 };
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace phi
