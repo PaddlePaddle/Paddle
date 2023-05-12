@@ -116,13 +116,13 @@ def _get_sys_unsupported_list(dtype):
     }
     sys_unsupported_list -= supported_fp16_list
 
-    return device, sys_unsupported_list
+    return device, sys_unsupported_list, sys_unsupported_list
 
 
 def _get_unsupported_list(dtype):
     # The set of ops that don't support fp16 calculation
-    _, _sys_unsupported_list = _get_sys_unsupported_list(dtype)
-    return _sys_unsupported_list
+    _, _sys_unsupported_list, _sys_all_list = _get_sys_unsupported_list(dtype)
+    return _sys_unsupported_list, _sys_all_list
 
 
 # The three sets listed below are changed dynamiclly. They don't contain all
@@ -201,7 +201,11 @@ class AutoMixedPrecisionLists:
         self.white_list = copy.copy(_get_white_list(self.amp_dtype))
         self.black_list = copy.copy(_get_black_list())
         self.gray_list = copy.copy(gray_list)
-        self.unsupported_list = copy.copy(_get_unsupported_list(self.amp_dtype))
+        _, unsupported_list, sys_all_list = _get_unsupported_list(
+            self.amp_dtype
+        )
+        self.unsupported_list = copy.copy(unsupported_list)
+        self.all_list = copy.copy(sys_all_list)
         self.black_varnames = copy.copy(custom_black_varnames)
         self._update_list()
 
