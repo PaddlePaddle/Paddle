@@ -150,7 +150,7 @@ DeviceContext* StreamAnalyzer::ParseDeviceContext(
 
   DeviceContext* dev_ctx = nullptr;
 
-  // only gpu/npu need update. xpu not need, because xpu memcpy op kernel is
+  // only gpu need update. xpu not need, because xpu memcpy op kernel is
   // synchronous.
   if (platform::is_gpu_place(place_) || platform::is_custom_place(place_)) {
     VLOG(6) << "Parse DeviceContext for " << op_type

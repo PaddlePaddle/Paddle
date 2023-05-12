@@ -111,8 +111,7 @@ bool MessageBus::Send(int64_t dst_rank,
 #else
   PADDLE_THROW(platform::errors::Unavailable(
       "Fleet executor does not support sending message between different "
-      "ranks when Paddle is compiled with npu or "
-      "isn't compiled with distributed for now."));
+      "ranks when Paddle isn't compiled with distributed for now."));
 #endif
   return true;
 }
@@ -202,10 +201,9 @@ void MessageBus::ListenPort() {
   }
   LOG(INFO) << "Message bus's listen port thread starts successful.";
 #else
-  LOG(WARNING)
-      << "Fleet executor's ListenPort() is a fake function when Paddle is "
-         "compiled with npu or Paddle isn't compiled "
-         "with distributed for now.";
+  LOG(WARNING) << "Fleet executor's ListenPort() is a fake function when "
+                  "Paddle isn't compiled "
+                  "with distributed for now.";
 #endif
 }
 
