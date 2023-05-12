@@ -387,8 +387,8 @@ class TestPoissonBF16Op(OpTest):
         self.op_type = "poisson"
         self.python_api = paddle.tensor.poisson
         self.config()
-        x = np.full([2048, 1024], self.lam, dtype=self.dtype)
-        out = np.ones([2048, 1024])
+        x = np.full([2048, 1024], self.lam, dtype="float32")
+        out = np.ones([2048, 1024], dtype="float32")
         self.attrs = {}
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.outputs = {'Out': convert_float_to_uint16(out)}
