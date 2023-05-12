@@ -461,8 +461,9 @@ def set_param_dtype(program, dtype, amp_lists, use_fp16_guard, level):
     return keep_fp32_var_names
 
 
-def op_need_keep_fp32(op, amp_lists, use_fp16_guard):
+def op_need_keep_fp32(op, amp_lists, use_fp16_guard, params_list):
     need_keep_fp32 = False
+    fp16_varname_list_in_fp32_op = set()
     if _need_keep_fp32(
         op,
         amp_lists.unsupported_list,
@@ -475,8 +476,14 @@ def op_need_keep_fp32(op, amp_lists, use_fp16_guard):
         need_keep_fp32 = True
     elif op.type in amp_lists.black_list:
         need_keep_fp32 = True
+        for in_name in op.input_names:
+            for params in params_list:
+                if op.input(in_name)[0] == params.name:
+                    fp16_varname_list_in_fp32_op = (
+                        fp16_varname_list_in_fp32_op.union(op.input(in_name))
+                    )
 
-    return need_keep_fp32
+    return need_keep_fp32, fp16_varname_list_in_fp32_op
 
 
 def get_promote_dtype(op, amp_dtype, block):
@@ -651,7 +658,14 @@ def cast_model_to_fp16(
             if not need_process(op):
                 _logger.debug("---- The op does not need to be processed ----.")
                 continue
-            if op_need_keep_fp32(op, amp_lists, use_fp16_guard):
+            all_params = global_block.all_parameters()
+            op_keep_fp32, fp16_var_names_in_fp32_op = op_need_keep_fp32(
+                op, amp_lists, use_fp16_guard, all_params
+            )
+            to_fp16_var_names = to_fp16_var_names.union(
+                fp16_var_names_in_fp32_op
+            )
+            if op_keep_fp32:
                 keep_fp32_ops.add(op)
                 process_op_input_and_outputs(
                     op, block, global_block, core.VarDesc.VarType.FP32
