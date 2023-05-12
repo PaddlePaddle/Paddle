@@ -2584,6 +2584,22 @@ void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
   }
 }
 
+void SequenceMaskInferMeta(const MetaTensor& x,
+                           const MetaTensor& max_len_tensor,
+                           int maxlen,
+                           int out_dtype,
+                           MetaTensor* y) {
+  auto dim = phi::vectorize<int>(x.dims());
+
+  if (max_len_tensor) {
+    dim.push_back(-1);
+  } else {
+    dim.push_back(maxlen > 0 ? maxlen : -1);
+  }
+
+  y->set_dims(phi::make_ddim(dim));
+}
+
 void SoftmaxMaskFuseInferMeta(const MetaTensor& x,
                               const MetaTensor& mask,
                               MetaTensor* out) {
