@@ -207,16 +207,7 @@ class RunProgramOpTest(unittest.TestCase):
         for name in self.output_names['Out']:
             outputs['Out'].append(create_var_base(False, name))
 
-        if global_var._in_eager_mode_:
-            outputs['OutScope'] = [core.Scope()]
-        else:
-            outputs['OutScope'] = framework._create_tensor(
-                type=core.VarDesc.VarType.STEP_SCOPES,
-                name="program_out_scope",
-                persistable=True,
-            )
-            inner_scope = core.Scope()
-            outputs['OutScope'].value().set_scope(inner_scope)
+        outputs['OutScope'] = [core.Scope()]
 
         outputs['DOut'] = [create_var_base(False, "Fake_var")]
         return outputs
