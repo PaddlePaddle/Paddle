@@ -238,7 +238,7 @@ endif()
 
 set(WITH_PHI_SHARED
     OFF
-    CACHE BOOL FORCE)
+    CACHE BOOL "" FORCE)
 
 if(WITH_PHI_SHARED)
   add_definitions(-DPHI_SHARED)
