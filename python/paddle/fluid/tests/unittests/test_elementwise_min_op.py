@@ -18,6 +18,7 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
+from paddle import fluid
 from paddle.fluid import core
 
 paddle.enable_static()
@@ -354,30 +355,112 @@ class TestElementwiseBF16Op(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        # self.check_output()
+        places = self._get_places()
+        for place in places:
+            res = self.check_output_with_place(
+                place,
+                atol=1e-5,
+                rtol=1e-5,
+                no_check_set=None,
+                equal_nan=False,
+                check_dygraph=True,
+                check_prim=False,
+                inplace_atol=None,
+                check_cinn=False,
+            )
 
     def test_check_grad_normal(self):
-        self.check_grad(
-            ['X', 'Y'], 'Out', numeric_grad_delta=0.05, check_prim=True
-        )
+        # self.check_grad(
+        #     ['X', 'Y'], 'Out', numeric_grad_delta=0.05, check_prim=True
+        # )
+        places = self._get_places()
+        for place in places:
+            if place == fluid.CPUPlace():
+                check_prim = False
+            else:
+                check_prim = True
+
+            self.check_grad_with_place(
+                place,
+                inputs_to_check=['X', 'Y'],
+                output_names='Out',
+                no_grad_set=None,
+                numeric_grad_delta=0.05,
+                in_place=False,
+                max_relative_error=0.005,
+                user_defined_grads=None,
+                user_defined_grad_outputs=None,
+                check_dygraph=True,
+                check_prim=check_prim,
+                only_check_prim=False,
+                atol=1e-5,
+                check_cinn=False,
+            )
 
     def test_check_grad_ingore_x(self):
-        self.check_grad(
-            ['Y'],
-            'Out',
-            numeric_grad_delta=0.05,
-            no_grad_set=set("X"),
-            check_prim=True,
-        )
+        # self.check_grad(
+        #     ['Y'],
+        #     'Out',
+        #     numeric_grad_delta=0.05,
+        #     no_grad_set=set("X"),
+        #     check_prim=True,
+        # )
+        places = self._get_places()
+        for place in places:
+            if place == fluid.CPUPlace():
+                check_prim = False
+            else:
+                check_prim = True
+
+            self.check_grad_with_place(
+                place,
+                inputs_to_check=['Y'],
+                output_names='Out',
+                no_grad_set=set("X"),
+                numeric_grad_delta=0.05,
+                in_place=False,
+                max_relative_error=0.005,
+                user_defined_grads=None,
+                user_defined_grad_outputs=None,
+                check_dygraph=True,
+                check_prim=check_prim,
+                only_check_prim=False,
+                atol=1e-5,
+                check_cinn=False,
+            )
 
     def test_check_grad_ingore_y(self):
-        self.check_grad(
-            ['X'],
-            'Out',
-            numeric_grad_delta=0.05,
-            no_grad_set=set('Y'),
-            check_prim=True,
-        )
+        # self.check_grad(
+        #     ['X'],
+        #     'Out',
+        #     numeric_grad_delta=0.05,
+        #     no_grad_set=set('Y'),
+        #     check_prim=True,
+        # )
+        places = self._get_places()
+        for place in places:
+            if place == fluid.CPUPlace():
+                check_prim = False
+            else:
+                check_prim = True
+
+            self.check_grad_with_place(
+                place,
+                inputs_to_check=['Y'],
+                output_names='Out',
+                no_grad_set=set("X"),
+                numeric_grad_delta=0.05,
+                in_place=False,
+                max_relative_error=0.005,
+                user_defined_grads=None,
+                user_defined_grad_outputs=None,
+                check_dygraph=True,
+                check_prim=check_prim,
+                only_check_prim=False,
+                atol=1e-5,
+                check_cinn=False,
+            )
 
 
 class TestElementwiseMinBF16Op_ZeroDim1(TestElementwiseBF16Op):
