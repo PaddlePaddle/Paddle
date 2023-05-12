@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import paddle
-from paddle import _legacy_C_ops
+from paddle import _C_ops
 from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.fluid.framework import Variable, _non_static_mode
 from paddle.fluid.layer_helper import LayerHelper
@@ -87,14 +87,12 @@ def reindex_graph(
     )
 
     if _non_static_mode():
-        reindex_src, reindex_dst, out_nodes = _legacy_C_ops.graph_reindex(
+        reindex_src, reindex_dst, out_nodes = _C_ops.reindex_graph(
             x,
             neighbors,
             count,
             value_buffer,
             index_buffer,
-            "flag_buffer_hashtable",
-            use_buffer_hashtable,
         )
         return reindex_src, reindex_dst, out_nodes
 
@@ -130,7 +128,6 @@ def reindex_graph(
             "Reindex_Dst": reindex_dst,
             "Out_Nodes": out_nodes,
         },
-        attrs={"flag_buffer_hashtable": use_buffer_hashtable},
     )
     return reindex_src, reindex_dst, out_nodes
 
@@ -211,14 +208,12 @@ def reindex_heter_graph(
     if _non_static_mode():
         neighbors = paddle.concat(neighbors, axis=0)
         count = paddle.concat(count, axis=0)
-        reindex_src, reindex_dst, out_nodes = _legacy_C_ops.graph_reindex(
+        reindex_src, reindex_dst, out_nodes = _C_ops.reindex_graph(
             x,
             neighbors,
             count,
             value_buffer,
             index_buffer,
-            "flag_buffer_hashtable",
-            use_buffer_hashtable,
         )
         return reindex_src, reindex_dst, out_nodes
 
@@ -264,6 +259,5 @@ def reindex_heter_graph(
             "Reindex_Dst": reindex_dst,
             "Out_Nodes": out_nodes,
         },
-        attrs={"flag_buffer_hashtable": use_buffer_hashtable},
     )
     return reindex_src, reindex_dst, out_nodes

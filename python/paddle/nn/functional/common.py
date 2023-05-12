@@ -942,7 +942,7 @@ def bilinear(x1, x2, weight, bias=None, name=None):
     """
 
     if in_dygraph_mode():
-        return _C_ops.bilinear_tensor_product(x1, x2, weight, bias)
+        return _C_ops.bilinear(x1, x2, weight, bias)
     else:
         check_variable_and_dtype(x1, 'x1', ['float32', 'float64'], 'bilinear')
         check_variable_and_dtype(x2, 'x2', ['float32', 'float64'], 'bilinear')
@@ -1150,7 +1150,7 @@ def dropout(
         else:
             helper = LayerHelper('dropout', **locals())
             check_variable_and_dtype(
-                x, 'x', ['float16', 'float32', 'float64'], 'dropout'
+                x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'dropout'
             )
 
             out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -1191,7 +1191,7 @@ def dropout(
     else:  # sometimes called dropout_nd #TODO: optimize with c++
         if not in_dynamic_mode():
             check_variable_and_dtype(
-                x, 'x', ['float16', 'float32', 'float64'], 'dropout'
+                x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'dropout'
             )
         dtype = x.dtype
         keep_prob = 1 - p
@@ -1407,7 +1407,7 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
 
     if not in_dynamic_mode():
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'alpha_dropout'
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'alpha_dropout'
         )
 
     if training:
@@ -1823,7 +1823,7 @@ def linear(x, weight, bias=None, name=None):
     :math:`[out\_features]` and will be added to the output.
 
     Parameters:
-        x (Tensor): Input tensor. The data type should be float16, float32 or float64.
+        x (Tensor): Input tensor. The data type should be bfloat16, float16, float32 or float64.
         weight (Tensor): Weight tensor. The data type should be float16, float32 or float64.
         bias (Tensor, optional): Bias tensor. The data type should be float16, float32 or float64.
                                  If it is set to None, no bias will be added to the output units.
@@ -1861,9 +1861,14 @@ def linear(x, weight, bias=None, name=None):
         dtype = x.dtype
 
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'linear'
+            x, 'x', ["uint16", 'float16', 'float32', 'float64'], 'linear'
         )
-        check_dtype(dtype, 'dtype', ['float16', 'float32', 'float64'], 'linear')
+        check_dtype(
+            dtype,
+            'dtype',
+            ["uint16", 'float16', 'float32', 'float64'],
+            'linear',
+        )
 
         inputs = {'X': [x], 'Y': [weight]}
         attrs = {'trans_x': False, 'trans_y': False}

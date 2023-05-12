@@ -25,7 +25,7 @@ from dist_test_utils import remove_ps_flag
 from paddle import fluid
 from paddle.fluid import core
 from paddle.fluid.framework import Program, program_guard
-from paddle.fluid.op import Operator
+from paddle.fluid.tests.unittests.op import Operator
 from paddle.incubate.distributed.fleet.parameter_server.mode import (
     DistributedMode,
 )

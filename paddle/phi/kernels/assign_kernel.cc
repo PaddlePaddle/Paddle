@@ -108,21 +108,21 @@ void AssignValueKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_GENERAL_KERNEL(
-    assign, CPU, ALL_LAYOUT, phi::AssignKernel<phi::CPUContext>, ALL_DTYPE) {}
+PD_REGISTER_KERNEL_FOR_ALL_DTYPE(assign,
+                                 CPU,
+                                 ALL_LAYOUT,
+                                 phi::AssignKernel<phi::CPUContext>) {}
 
-PD_REGISTER_GENERAL_KERNEL(assign_raw,
-                           CPU,
-                           ALL_LAYOUT,
-                           phi::AssignRawKernel<phi::CPUContext>,
-                           ALL_DTYPE) {
+PD_REGISTER_KERNEL_FOR_ALL_DTYPE(assign_raw,
+                                 CPU,
+                                 ALL_LAYOUT,
+                                 phi::AssignRawKernel<phi::CPUContext>) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
 }
-PD_REGISTER_GENERAL_KERNEL(assign_array,
-                           CPU,
-                           ALL_LAYOUT,
-                           phi::AssignArrayKernel<phi::CPUContext>,
-                           ALL_DTYPE) {
+PD_REGISTER_KERNEL_FOR_ALL_DTYPE(assign_array,
+                                 CPU,
+                                 ALL_LAYOUT,
+                                 phi::AssignArrayKernel<phi::CPUContext>) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
 }
 PD_REGISTER_KERNEL(assign_value,
@@ -135,20 +135,20 @@ PD_REGISTER_KERNEL(assign_value,
                    int64_t) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_REGISTER_GENERAL_KERNEL(
-    assign, GPU, ALL_LAYOUT, phi::AssignKernel<phi::GPUContext>, ALL_DTYPE) {}
-PD_REGISTER_GENERAL_KERNEL(assign_raw,
-                           GPU,
-                           ALL_LAYOUT,
-                           phi::AssignRawKernel<phi::GPUContext>,
-                           ALL_DTYPE) {
+PD_REGISTER_KERNEL_FOR_ALL_DTYPE(assign,
+                                 GPU,
+                                 ALL_LAYOUT,
+                                 phi::AssignKernel<phi::GPUContext>) {}
+PD_REGISTER_KERNEL_FOR_ALL_DTYPE(assign_raw,
+                                 GPU,
+                                 ALL_LAYOUT,
+                                 phi::AssignRawKernel<phi::GPUContext>) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
 }
-PD_REGISTER_GENERAL_KERNEL(assign_array,
-                           GPU,
-                           ALL_LAYOUT,
-                           phi::AssignArrayKernel<phi::GPUContext>,
-                           ALL_DTYPE) {
+PD_REGISTER_KERNEL_FOR_ALL_DTYPE(assign_array,
+                                 GPU,
+                                 ALL_LAYOUT,
+                                 phi::AssignArrayKernel<phi::GPUContext>) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
 }
 PD_REGISTER_KERNEL(assign_value,
@@ -162,20 +162,20 @@ PD_REGISTER_KERNEL(assign_value,
 #endif
 
 #ifdef PADDLE_WITH_XPU
-PD_REGISTER_GENERAL_KERNEL(
-    assign, XPU, ALL_LAYOUT, phi::AssignKernel<phi::XPUContext>, ALL_DTYPE) {}
-PD_REGISTER_GENERAL_KERNEL(assign_raw,
-                           XPU,
-                           ALL_LAYOUT,
-                           phi::AssignRawKernel<phi::XPUContext>,
-                           ALL_DTYPE) {
+PD_REGISTER_KERNEL_FOR_ALL_DTYPE(assign,
+                                 XPU,
+                                 ALL_LAYOUT,
+                                 phi::AssignKernel<phi::XPUContext>) {}
+PD_REGISTER_KERNEL_FOR_ALL_DTYPE(assign_raw,
+                                 XPU,
+                                 ALL_LAYOUT,
+                                 phi::AssignRawKernel<phi::XPUContext>) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
 }
-PD_REGISTER_GENERAL_KERNEL(assign_array,
-                           XPU,
-                           ALL_LAYOUT,
-                           phi::AssignArrayKernel<phi::XPUContext>,
-                           ALL_DTYPE) {
+PD_REGISTER_KERNEL_FOR_ALL_DTYPE(assign_array,
+                                 XPU,
+                                 ALL_LAYOUT,
+                                 phi::AssignArrayKernel<phi::XPUContext>) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
 }
 PD_REGISTER_KERNEL(assign_value,
@@ -186,6 +186,5 @@ PD_REGISTER_KERNEL(assign_value,
                    int,
                    float,
                    double,
-                   int64_t,
-                   phi::dtype::float16) {}
+                   int64_t) {}
 #endif

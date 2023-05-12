@@ -49,7 +49,7 @@ inline float get_period_sparcity(const std::vector<float>& sparsity,
   return sparsity[idx];
 }
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class DGCOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {

@@ -25,12 +25,13 @@
 #endif
 
 #include <gloo/broadcast.h>
+#include <gloo/gather.h>
 #include <gloo/reduce.h>
 #include <gloo/scatter.h>
 
 #include "paddle/fluid/distributed/collective/common.h"
+#include "paddle/fluid/distributed/collective/gloo_send_recv.h"
 #include "paddle/fluid/distributed/collective/process_group_gloo.h"
-#include "paddle/fluid/distributed/collective/send_recv.h"
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -678,6 +679,65 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Scatter(
     std::vector<phi::DenseTensor>& out_tensors,
     const ScatterOptions& opts) {
   return Scatter(&out_tensors[0], in_tensors[0], opts, true);
+}
+
+class GatherGlooTask : public ProcessGroupGloo::GlooTask {
+ public:
+  GatherGlooTask(int rank,
+                 const std::shared_ptr<gloo::Context>& context,
+                 const phi::DenseTensor& input,  // NOLINT
+                 phi::DenseTensor* output,       // NOLINT
+                 int src,
+                 uint32_t tag)
+      : ProcessGroupGloo::GlooTask(rank, {input}, CommType::GATHER),
+        _context(context),
+        _input(input),
+        _output(*output),
+        _src(src),
+        _tag(tag) {}
+
+  void Run() override { _do_gather(_input, _output, _src); }
+
+ private:
+  std::shared_ptr<gloo::Context> _context;
+  phi::DenseTensor _input;
+  phi::DenseTensor _output;
+  int _src;
+  uint32_t _tag;
+
+  void _do_gather(phi::DenseTensor& in,   // NOLINT
+                  phi::DenseTensor& out,  // NOLINT
+                  int src) {
+    const auto& dtype = in.dtype();
+    gloo::GatherOptions opts(_context);
+    if (rank_ == src) {
+      GENERATE_FUNC(dtype, set_output, opts, out);
+    }
+    GENERATE_FUNC(dtype, set_input, opts, in);
+
+    opts.setRoot(src);
+    opts.setTag(_tag);
+    gloo::gather(opts);
+  }
+};
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupGloo::Gather(
+    phi::DenseTensor* out_tensor,
+    const phi::DenseTensor& in_tensor,
+    const GatherOptions& opts,
+    bool sync_op,
+    bool use_calc_stream) {
+  PADDLE_ENFORCE_NE(
+      use_calc_stream,
+      true,
+      platform::errors::InvalidArgument("Gloo cannot use use_calc_stream."));
+  std::shared_ptr<GatherGlooTask> task;
+  auto tag = next_tag();
+  auto context = get_context();
+  task = std::make_shared<GatherGlooTask>(
+      rank_, context, in_tensor, out_tensor, opts.root_rank, tag);
+  task->Run();
+  return task;
 }
 
 std::shared_ptr<::gloo::transport::Device>

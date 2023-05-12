@@ -123,30 +123,26 @@ if(NOT WIN32)
       SRCS reducer.cc
       DEPS layer)
   endif()
-  if(WITH_ASCEND_CL)
+  if(WITH_CUSTOM_DEVICE)
     cc_library(
-      hccl_context
-      SRCS hccl_context.cc
+      xccl_context
+      SRCS xccl_context.cc
       DEPS collective_helper device_context tensor var_type_traits)
-    cc_library(
-      reducer
-      SRCS reducer.cc
-      DEPS layer)
-  endif()
-  if(WITH_CNCL)
-    cc_library(
-      cncl_context
-      SRCS cncl_context.cc
-      DEPS collective_helper device_context tensor var_type_traits)
-    cc_library(
-      reducer
-      SRCS reducer.cc
-      DEPS layer)
+    if(NOT
+       (WITH_NCCL
+        OR WITH_RCCL
+        OR WITH_XPU_BKCL
+        OR WITH_GLOO))
+      cc_library(
+        reducer
+        SRCS reducer.cc
+        DEPS layer)
+    endif()
   endif()
   if(WITH_NCCL
      OR WITH_RCCL
      OR WITH_XPU_BKCL
-     OR WITH_ASCEND_CL)
+     OR WITH_CUSTOM_DEVICE)
     cc_library(
       heter_ccl_context
       SRCS heter_ccl_context.cc
@@ -166,9 +162,7 @@ if(WITH_GLOO)
      OR (NOT
          (WITH_NCCL
           OR WITH_RCCL
-          OR WITH_XPU_BKCL
-          OR WITH_ASCEND_CL
-          OR WITH_CNCL)
+          OR WITH_XPU_BKCL)
         ))
     cc_library(
       reducer
@@ -177,36 +171,15 @@ if(WITH_GLOO)
   endif()
 endif()
 
-if(WITH_MLU)
-  set(MLU_DEPS mlu_baseop)
-endif()
-
-if(NOT WITH_ASCEND_CL)
-  cc_library(
-    gradient_accumulator
-    SRCS gradient_accumulator.cc
-    DEPS blas
-         operator
-         lod_tensor
-         selected_rows_utils
-         selected_rows_functor
-         var_type_traits
-         layer
-         math_function
-         phi_tensor
-         ${MLU_DEPS})
-else()
-  cc_library(
-    gradient_accumulator
-    SRCS gradient_accumulator.cc
-    DEPS blas
-         operator
-         lod_tensor
-         selected_rows_utils
-         selected_rows_functor
-         var_type_traits
-         layer
-         math_function
-         npu_op_runner
-         phi_tensor)
-endif()
+cc_library(
+  gradient_accumulator
+  SRCS gradient_accumulator.cc
+  DEPS blas
+       operator
+       lod_tensor
+       selected_rows_utils
+       selected_rows_functor
+       var_type_traits
+       layer
+       math_function
+       phi_tensor)

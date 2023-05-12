@@ -314,7 +314,7 @@ class TestSumOpExclusiveFP16(OpTest):
         self.python_api = cumsum_wrapper
         self.public_python_api = paddle.cumsum
         self.init_dtype()
-        self.enable_cinn = False
+        self.enable_cinn = True
         self.attrs = {'axis': 2, "exclusive": True}
         self.x = np.random.random((4, 5, 20)).astype(self.dtype)
         self.out = np.concatenate(
@@ -389,7 +389,7 @@ def create_test_fp16_class(parent, max_relative_error=1e-2):
             self.dtype = self.dtype_ = np.float16
 
         def set_enable_cinn(self):
-            self.enable_cinn = False
+            self.enable_cinn = True
 
         def test_check_output(self):
             self.check_output()

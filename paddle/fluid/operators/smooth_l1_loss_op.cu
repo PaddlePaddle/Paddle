@@ -14,7 +14,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/smooth_l1_loss_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(smooth_l1_loss,
-                        ops::SmoothL1LossKernel<phi::GPUContext, float>);
-REGISTER_OP_CUDA_KERNEL(smooth_l1_loss_grad,
-                        ops::SmoothL1LossGradKernel<phi::GPUContext, float>);
+PD_REGISTER_STRUCT_KERNEL(
+    smooth_l1_loss, GPU, ALL_LAYOUT, ops::SmoothL1LossKernel, float) {}
+PD_REGISTER_STRUCT_KERNEL(
+    smooth_l1_loss_grad, GPU, ALL_LAYOUT, ops::SmoothL1LossGradKernel, float) {}

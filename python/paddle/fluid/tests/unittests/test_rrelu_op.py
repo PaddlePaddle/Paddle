@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.nn.functional as F
@@ -327,7 +327,7 @@ class RReluTest(OpTest):
         ]  # python out sig is customized output signature.
 
     def init_params(self):
-        self.dtype = "float64"
+        self.init_dtype()
         self.x_shape = [2, 3, 4, 5]
 
         x_np = np.random.uniform(-1, 1, self.x_shape).astype(self.dtype)
@@ -337,11 +337,18 @@ class RReluTest(OpTest):
 
         self.inputs = {'X': x_np}
         self.outputs = {'Out': out_np, 'Noise': noise_np}
+        self.convert_input_output()
         self.attrs = {
             'lower': self.lower,
             "upper": self.upper,
             "is_test": self.is_test,
         }
+
+    def init_dtype(self):
+        self.dtype = "float64"
+
+    def convert_input_output(self):
+        pass
 
     def test_check_output(self):
         self.check_output(no_check_set=['Noise'])
@@ -361,6 +368,68 @@ class RReluTrainingTest(RReluTest):
         self.python_out_sig = [
             "Out"
         ]  # python out sig is customized output signature.
+
+
+class RReluTestFP16OP(RReluTest):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA and do not support bfloat16",
+)
+class RReluTestBF16OP(RReluTest):
+    def init_dtype(self):
+        self.dtype = np.float32
+
+    def convert_input_output(self):
+        self.inputs = {'X': convert_float_to_uint16(self.inputs['X'])}
+        self.outputs = {
+            'Out': convert_float_to_uint16(self.outputs['Out']),
+            'Noise': convert_float_to_uint16(self.outputs['Noise']),
+        }
+        self.dtype = np.uint16
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, no_check_set=['Noise'])
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X'], 'Out')
+
+
+class RReluTrainingTestFP16OP(RReluTrainingTest):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA and do not support bfloat16",
+)
+class RReluTrainingTestBF16OP(RReluTrainingTest):
+    def init_dtype(self):
+        self.dtype = np.float32
+
+    def convert_input_output(self):
+        self.inputs = {'X': convert_float_to_uint16(self.inputs['X'])}
+        self.outputs = {
+            'Out': convert_float_to_uint16(self.outputs['Out']),
+            'Noise': convert_float_to_uint16(self.outputs['Noise']),
+        }
+        self.dtype = np.uint16
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, no_check_set=['Noise'])
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X'], 'Out')
 
 
 if __name__ == "__main__":

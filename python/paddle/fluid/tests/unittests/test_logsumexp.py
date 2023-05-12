@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.fluid import core
@@ -182,6 +182,47 @@ class TestLogsumexp_FP16(TestLogsumexp):
         x = self.inputs['X'].astype(np.float16)
         x_grad = logsumexp_op_grad(x)
         np.testing.assert_allclose(x_grad, ref_x_grad, rtol=1e-03, atol=1e-05)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestLogsumexpBF16Op(TestLogsumexp):
+    def setUp(self):
+        self.op_type = 'logsumexp'
+        self.python_api = logsumexp_wrapper
+        self.dtype = np.uint16
+        self.shape = [2, 3, 4, 5]
+        self.axis = [-1]
+        self.keepdim = False
+        self.reduce_all = False
+        self.set_attrs()
+        x = np.random.uniform(-1, 1, self.shape).astype(np.float64)
+        out = ref_logsumexp(x, self.axis, self.keepdim, self.reduce_all)
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.outputs = {'Out': convert_float_to_uint16(out)}
+        self.attrs = {
+            'axis': self.axis,
+            'keepdim': self.keepdim,
+            'reduce_all': self.reduce_all,
+        }
+        self.set_attrs_addition()
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X'], 'Out')
+
+    def set_attrs(self):
+        pass
+
+    def set_attrs_addition(self):
+        pass
 
 
 class TestLogsumexpError(unittest.TestCase):

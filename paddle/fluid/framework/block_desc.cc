@@ -313,7 +313,13 @@ void BlockDesc::MoveFrom(BlockDesc *block) {
       } else if (attr_type == proto::AttrType::BLOCK) {
         ProgramDesc *program = block->Program();
         std::vector<framework::BlockDesc *> old_block_desc;
-        for (int i = 0; i < program->Proto()->blocks_size(); ++i) {
+        // NOTE(GhostScreaming): don't use program->proto()->blocks_size(),
+        // previous assignment of new Variable in vars_ use std::move,
+        // which makes 'var_ptr' which holded by 'block' a nullptr.
+        // block->Program()->proto() will calls Flush() at firtst,
+        // a null var_ptr will cause segmentation fault.
+        int block_size = static_cast<int>(program->Size());
+        for (int i = 0; i < block_size; ++i) {
           // record all block desc's ptr from origin block's program
           old_block_desc.emplace_back(program->MutableBlock(i));
         }

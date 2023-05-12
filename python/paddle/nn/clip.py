@@ -63,7 +63,9 @@ def clip_by_norm(x, max_norm, name=None):
         return _legacy_C_ops.clip_by_norm(x, 'max_norm', max_norm)
 
     helper = LayerHelper("clip_by_norm", **locals())
-    check_variable_and_dtype(x, 'X', ['float32', 'float16'], 'clip_by_norm')
+    check_variable_and_dtype(
+        x, 'X', ['float16', 'float32', 'uint16'], 'clip_by_norm'
+    )
     check_type(max_norm, 'max_norm', (float), 'clip_by_norm')
 
     if name is None:
@@ -698,7 +700,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
         global_norm_var = paddle.add_n(global_norm_var)
         global_norm_var = paddle.sqrt(global_norm_var)
         max_global_norm = paddle.full(
-            shape=[1], dtype=global_norm_var.dtype, fill_value=self.clip_norm
+            shape=[], dtype=global_norm_var.dtype, fill_value=self.clip_norm
         )
 
         need_clip = False

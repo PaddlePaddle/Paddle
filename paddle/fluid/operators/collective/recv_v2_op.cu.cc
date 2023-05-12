@@ -105,7 +105,7 @@ framework::DDim recv_shape_info(const platform::Place &place,
 }
 #endif
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -232,13 +232,17 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_CUDA_KERNEL(recv_v2,
-                        ops::RecvOpV2CUDAKernel<float>,
-                        ops::RecvOpV2CUDAKernel<double>,
+PD_REGISTER_STRUCT_KERNEL(recv_v2,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::RecvOpV2CUDAKernel,
+                          float,
+                          double,
 #if NCCL_VERSION_CODE >= 21000
-                        ops::RecvOpV2CUDAKernel<plat::bfloat16>,
+                          plat::bfloat16,
 #endif
-                        ops::RecvOpV2CUDAKernel<int>,
-                        ops::RecvOpV2CUDAKernel<int64_t>,
-                        ops::RecvOpV2CUDAKernel<int8_t>,
-                        ops::RecvOpV2CUDAKernel<plat::float16>);
+                          int,
+                          int64_t,
+                          int8_t,
+                          plat::float16) {
+}

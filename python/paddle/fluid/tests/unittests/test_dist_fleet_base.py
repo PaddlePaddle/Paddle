@@ -428,6 +428,9 @@ class TestFleetBase(unittest.TestCase):
                     basename
                 )
             )
+
+            if not os.path.isfile(logx):
+                raise FileNotFoundError(f"{logx} is not a file")
             os.system(f"cat {logx}")
             print(
                 "================== Error {} end =====================\n".format(

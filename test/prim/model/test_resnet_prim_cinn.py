@@ -70,15 +70,15 @@ epoch_num = 1
 # The results in ci as as follows:
 DY2ST_PRIM_GT = [
     5.82879114151001,
-    8.333706855773926,
-    5.07769250869751,
-    8.66937255859375,
-    8.411705017089844,
-    7.252340793609619,
-    9.683248519897461,
-    8.177335739135742,
-    8.195427894592285,
-    10.219732284545898,
+    8.33370590209961,
+    5.091761589050293,
+    8.776082992553711,
+    8.274380683898926,
+    7.546653747558594,
+    9.607137680053711,
+    8.27371597290039,
+    8.429732322692871,
+    10.362630844116211,
 ]
 DY2ST_CINN_GT = [
     5.828789710998535,
@@ -92,17 +92,18 @@ DY2ST_CINN_GT = [
     8.383116722106934,
     10.120304107666016,
 ]
+
 DY2ST_PRIM_CINN_GT = [
-    5.828784942626953,
-    8.341737747192383,
-    5.113619327545166,
-    8.625601768493652,
-    8.082450866699219,
-    7.4913249015808105,
-    9.858025550842285,
-    8.287693977355957,
-    8.435812950134277,
-    10.372406005859375,
+    5.828786849975586,
+    8.332868576049805,
+    5.038548469543457,
+    8.554015159606934,
+    8.106254577636719,
+    7.493070125579834,
+    9.479158401489258,
+    8.270158767700195,
+    8.324719429016113,
+    10.140411376953125,
 ]
 
 if core.is_compiled_with_cuda():
@@ -128,6 +129,67 @@ def optimizer_setting(parameter_list=None):
     )
 
     return optimizer
+
+
+def run(model, data_loader, optimizer, mode):
+    if mode == 'train':
+        model.train()
+        end_step = 9
+    elif mode == 'eval':
+        model.eval()
+        end_step = 1
+
+    for epoch in range(epoch_num):
+        total_acc1 = 0.0
+        total_acc5 = 0.0
+        total_sample = 0
+        losses = []
+
+        for batch_id, data in enumerate(data_loader()):
+            start_time = time.time()
+            img, label = data
+
+            pred = model(img)
+            avg_loss = paddle.nn.functional.cross_entropy(
+                input=pred,
+                label=label,
+                soft_label=False,
+                reduction='mean',
+                use_softmax=True,
+            )
+
+            acc_top1 = paddle.static.accuracy(input=pred, label=label, k=1)
+            acc_top5 = paddle.static.accuracy(input=pred, label=label, k=5)
+
+            if mode == 'train':
+                avg_loss.backward()
+                optimizer.minimize(avg_loss)
+                model.clear_gradients()
+
+            total_acc1 += acc_top1
+            total_acc5 += acc_top5
+            total_sample += 1
+            losses.append(avg_loss.numpy().item())
+
+            end_time = time.time()
+            print(
+                "[%s]epoch %d | batch step %d, loss %0.8f, acc1 %0.3f, acc5 %0.3f, time %f"
+                % (
+                    mode,
+                    epoch,
+                    batch_id,
+                    avg_loss,
+                    total_acc1.numpy() / total_sample,
+                    total_acc5.numpy() / total_sample,
+                    end_time - start_time,
+                )
+            )
+            if batch_id >= end_step:
+                # avoid dataloader throw abort signaal
+                data_loader._reset()
+                break
+    print(losses)
+    return losses
 
 
 def train(to_static, enable_prim, enable_cinn):
@@ -156,55 +218,10 @@ def train(to_static, enable_prim, enable_cinn):
         resnet = paddle.jit.to_static(resnet, build_strategy=build_strategy)
     optimizer = optimizer_setting(parameter_list=resnet.parameters())
 
-    for epoch in range(epoch_num):
-        total_acc1 = 0.0
-        total_acc5 = 0.0
-        total_sample = 0
-        losses = []
-
-        for batch_id, data in enumerate(data_loader()):
-            start_time = time.time()
-            img, label = data
-
-            pred = resnet(img)
-            avg_loss = paddle.nn.functional.cross_entropy(
-                input=pred,
-                label=label,
-                soft_label=False,
-                reduction='mean',
-                use_softmax=True,
-            )
-
-            acc_top1 = paddle.static.accuracy(input=pred, label=label, k=1)
-            acc_top5 = paddle.static.accuracy(input=pred, label=label, k=5)
-
-            avg_loss.backward()
-            optimizer.minimize(avg_loss)
-            resnet.clear_gradients()
-
-            total_acc1 += acc_top1
-            total_acc5 += acc_top5
-            total_sample += 1
-            losses.append(avg_loss.numpy().item())
-
-            end_time = time.time()
-            print(
-                "epoch %d | batch step %d, loss %0.8f, acc1 %0.3f, acc5 %0.3f, time %f"
-                % (
-                    epoch,
-                    batch_id,
-                    avg_loss,
-                    total_acc1.numpy() / total_sample,
-                    total_acc5.numpy() / total_sample,
-                    end_time - start_time,
-                )
-            )
-            if batch_id >= 9:
-                # avoid dataloader throw abort signaal
-                data_loader._reset()
-                break
-    print(losses)
-    return losses
+    train_losses = run(resnet, data_loader, optimizer, 'train')
+    if to_static and enable_prim and enable_cinn:
+        eval_losses = run(resnet, data_loader, optimizer, 'eval')
+    return train_losses
 
 
 class TestResnet(unittest.TestCase):

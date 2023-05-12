@@ -12,16 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 import numpy as np
 from eager_op_test import OpTest
-from sequence.test_sequence_pool import (
+
+sys.path.append("../../../../../test/sequence")
+from test_cvm_op import cvm_compute
+from test_sequence_pool import (
     compute_seqpool_avg,
     compute_seqpool_sqrt,
     compute_seqpool_sum,
 )
-from test_cvm_op import cvm_compute
 
 
 def convert_to_offset(lod):

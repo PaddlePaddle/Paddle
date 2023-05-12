@@ -26,7 +26,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class SendAndRecvKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -98,17 +98,25 @@ class SendAndRecvOpMaker : public framework::OpProtoAndCheckerMaker {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(send_and_recv, ops::SendAndRecvOp, ops::SendAndRecvOpMaker);
-REGISTER_OP_CUDA_KERNEL(send_and_recv,
-                        ops::SendAndRecvKernel<phi::GPUContext, float>,
-                        ops::SendAndRecvKernel<phi::GPUContext, double>,
-                        ops::SendAndRecvKernel<phi::GPUContext, int>,
-                        ops::SendAndRecvKernel<phi::GPUContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(send_and_recv,
-                       ops::SendAndRecvKernel<phi::CPUContext, float>,
-                       ops::SendAndRecvKernel<phi::CPUContext, double>,
-                       ops::SendAndRecvKernel<phi::CPUContext, int>,
-                       ops::SendAndRecvKernel<phi::CPUContext, int64_t>);
 
+PD_REGISTER_STRUCT_KERNEL(send_and_recv,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::SendAndRecvKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_REGISTER_STRUCT_KERNEL(send_and_recv,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::SendAndRecvKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}
+#endif
 REGISTER_OP_VERSION(send_and_recv)
     .AddCheckpoint(
         R"ROC(add new attributes [next_endpoints] [previous_endpoints] and [mode])ROC",

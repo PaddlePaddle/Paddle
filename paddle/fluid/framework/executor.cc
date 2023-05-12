@@ -29,9 +29,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 #include "paddle/fluid/framework/executor_gc_helper.h"
+#include "paddle/phi/core/flags.h"
 
 DECLARE_bool(benchmark);
-DECLARE_bool(use_mkldnn);
+PHI_DECLARE_bool(use_mkldnn);
 
 namespace paddle {
 namespace framework {
@@ -516,17 +517,6 @@ void Executor::RunPartialPreparedContext(ExecutorPrepareContext* ctx,
 #else
       PADDLE_THROW(
           platform::errors::Unimplemented("No IPU gc found in CPU/IPU paddle"));
-#endif
-    } else if (platform::is_mlu_place(place_)) {
-#ifdef PADDLE_WITH_MLU
-      if (IsFastEagerDeletionModeEnabled()) {
-        gc.reset(new MLUUnsafeFastGarbageCollector(place_, max_memory_size));
-      } else {
-        gc.reset(new MLUDefaultStreamGarbageCollector(place_, max_memory_size));
-      }
-#else
-      PADDLE_THROW(
-          platform::errors::Unimplemented("No MLU gc found in CPU/MLU paddle"));
 #endif
     } else if (platform::is_custom_place(place_)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE

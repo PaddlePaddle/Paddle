@@ -18,12 +18,13 @@
 #include <unordered_map>
 #include <vector>
 
+#include "gflags/gflags.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
 
 DECLARE_int32(search_cache_max_number);
 
-inline void HashCombine(std::size_t* seed) {}
+inline void HashCombine(std::size_t* seed UNUSED) {}
 
 // combine hash value
 // https://stackoverflow.com/questions/2590677/how-do-i-combine-hash-values-in-c0x

@@ -54,7 +54,7 @@ class SumOp : public framework::OperatorWithKernel {
                                        x_vars_name[idx]));
         auto tensor =
             framework::GetLoDTensorOrSelectedRowsValueFromVar(*x_vars[idx]);
-        if (tensor->numel() <= 0 || (!tensor->IsInitialized())) {
+        if (!tensor->IsInitialized()) {
           continue;
         }
         if (dtype == -1) {

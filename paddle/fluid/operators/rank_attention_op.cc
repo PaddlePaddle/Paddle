@@ -192,9 +192,8 @@ REGISTER_OPERATOR(rank_attention_grad,
                   ops::RankAttentionGradOp,
                   ops::RankAttentionGradOpNoNeedBufferVarsInference);
 
-REGISTER_OP_CPU_KERNEL(rank_attention,
-                       ops::RankAttentionKernel<phi::CPUContext, float>,
-                       ops::RankAttentionKernel<phi::CPUContext, double>);
+PD_REGISTER_STRUCT_KERNEL(
+    rank_attention, CPU, ALL_LAYOUT, ops::RankAttentionKernel, float, double) {}
 
 REGISTER_OP_VERSION(rank_attention)
     .AddCheckpoint(

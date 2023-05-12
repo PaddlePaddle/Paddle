@@ -24,6 +24,8 @@ from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph import to_variable
 from paddle.fluid.framework import _dygraph_tracer, dygraph_only
 
+from .auto_cast import amp_global_state
+
 
 class OptimizerState(Enum):
     INIT = 0
@@ -105,11 +107,10 @@ class AmpScaler:
         if enable and not (
             tracer._expected_place.is_gpu_place()
             or tracer._expected_place.is_xpu_place()
-            or tracer._expected_place.is_npu_place()
             or tracer._expected_place.is_custom_place()
         ):
             warnings.warn(
-                'AmpScaler can only be enabled on CUDAPlace, XPUPlace, MLUPlace, NPUPlace and CustomPlace, current place is %s, so it makes no effect.'
+                'AmpScaler can only be enabled on CUDAPlace, XPUPlace and CustomPlace, current place is %s, so it makes no effect.'
                 % tracer._expected_place
             )
             enable = False
@@ -179,6 +180,18 @@ class AmpScaler:
                     scaler.minimize(optimizer, scaled)
         """
         check_type(var, "var", core.eager.Tensor, 'AmpScaler.scale()')
+
+        if (
+            self._enable
+            and amp_global_state().amp_dtype != 'float16'
+            and self._use_dynamic_loss_scaling
+        ):
+            self._enable = False
+            self._use_dynamic_loss_scaling = False
+            warnings.warn(
+                'It is not recommended to use dynamic loss scaling for %s, so GradScaler is disable by default.'
+                % (amp_global_state().amp_dtype)
+            )
 
         if not self._enable:
             return var
@@ -326,74 +339,36 @@ class AmpScaler:
                     if param.dtype == core.VarDesc.VarType.FP32
                 ]
         self._found_inf = self._temp_found_inf_value_false
-        if core.is_compiled_with_npu():
-            float_status = _legacy_C_ops.alloc_float_status()
-            _legacy_C_ops.clear_float_status(float_status, float_status)
-
-            if len(param_grads_fp16):
-                _legacy_C_ops.check_finite_and_unscale(
-                    param_grads_fp16,
-                    self._scale,
-                    float_status,
-                    param_grads_fp16,
-                    self._temp_found_inf_fp16,
-                )
-                self._found_inf = _C_ops.bitwise_or(
-                    self._found_inf, self._temp_found_inf_fp16
-                )
-            if len(param_grads_bf16):
-                _legacy_C_ops.check_finite_and_unscale(
-                    param_grads_bf16,
-                    self._scale,
-                    float_status,
-                    param_grads_bf16,
-                    self._temp_found_inf_bf16,
-                )
-                self._found_inf = _C_ops.bitwise_or(
-                    self._found_inf, self._temp_found_inf_bf16
-                )
-            if len(param_grads_fp32):
-                _legacy_C_ops.check_finite_and_unscale(
-                    param_grads_fp32,
-                    self._scale,
-                    float_status,
-                    param_grads_fp32,
-                    self._temp_found_inf_fp32,
-                )
-                self._found_inf = _C_ops.bitwise_or(
-                    self._found_inf, self._temp_found_inf_fp32
-                )
-        else:
-            if len(param_grads_fp16):
-                _legacy_C_ops.check_finite_and_unscale(
-                    param_grads_fp16,
-                    self._scale,
-                    param_grads_fp16,
-                    self._temp_found_inf_fp16,
-                )
-                self._found_inf = _C_ops.bitwise_or(
-                    self._found_inf, self._temp_found_inf_fp16
-                )
-            if len(param_grads_bf16):
-                _legacy_C_ops.check_finite_and_unscale(
-                    param_grads_bf16,
-                    self._scale,
-                    param_grads_bf16,
-                    self._temp_found_inf_bf16,
-                )
-                self._found_inf = _C_ops.bitwise_or(
-                    self._found_inf, self._temp_found_inf_bf16
-                )
-            if len(param_grads_fp32):
-                _legacy_C_ops.check_finite_and_unscale(
-                    param_grads_fp32,
-                    self._scale,
-                    param_grads_fp32,
-                    self._temp_found_inf_fp32,
-                )
-                self._found_inf = _C_ops.bitwise_or(
-                    self._found_inf, self._temp_found_inf_fp32
-                )
+        if len(param_grads_fp16):
+            _legacy_C_ops.check_finite_and_unscale(
+                param_grads_fp16,
+                self._scale,
+                param_grads_fp16,
+                self._temp_found_inf_fp16,
+            )
+            self._found_inf = _C_ops.bitwise_or(
+                self._found_inf, self._temp_found_inf_fp16
+            )
+        if len(param_grads_bf16):
+            _legacy_C_ops.check_finite_and_unscale(
+                param_grads_bf16,
+                self._scale,
+                param_grads_bf16,
+                self._temp_found_inf_bf16,
+            )
+            self._found_inf = _C_ops.bitwise_or(
+                self._found_inf, self._temp_found_inf_bf16
+            )
+        if len(param_grads_fp32):
+            _legacy_C_ops.check_finite_and_unscale(
+                param_grads_fp32,
+                self._scale,
+                param_grads_fp32,
+                self._temp_found_inf_fp32,
+            )
+            self._found_inf = _C_ops.bitwise_or(
+                self._found_inf, self._temp_found_inf_fp32
+            )
 
         optimizer_state["state"] = OptimizerState.UNSCALED
 

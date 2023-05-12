@@ -55,8 +55,6 @@ static phi::Backend ConvertPlaceToBackend(const phi::Place& place) {
       return phi::Backend::GPU;
     case phi::AllocationType::XPU:
       return phi::Backend::XPU;
-    case phi::AllocationType::NPU:
-      return phi::Backend::NPU;
     default:
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Cannot convert place(%d).", static_cast<int>(place.GetType())));
@@ -612,6 +610,15 @@ bool AutoMixedPrecisionPass::InputVarsNotConvert(
 
   if (backend_ == phi::Backend::XPU) {
     if (GetOpOriginalType(op_desc->Type()) == "layer_norm") {
+      auto vecs = op_desc->Input("Bias");
+      if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
+        return true;
+      }
+      vecs = op_desc->Input("Scale");
+      if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
+        return true;
+      }
+    } else if (GetOpOriginalType(op_desc->Type()) == "instance_norm") {
       auto vecs = op_desc->Input("Bias");
       if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
         return true;

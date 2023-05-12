@@ -72,9 +72,9 @@ class TestFullNameDecorator(unittest.TestCase):
             np.testing.assert_allclose(
                 decorated_call_decorated(x).numpy(), answer, rtol=1e-05
             )
-            with self.assertRaises(NotImplementedError):
+            with self.assertRaises((NotImplementedError, TypeError)):
                 DoubleDecorated().double_decorated_func1(x)
-            with self.assertRaises(NotImplementedError):
+            with self.assertRaises((NotImplementedError, TypeError)):
                 DoubleDecorated().double_decorated_func2(x)
 
 

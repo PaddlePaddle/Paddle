@@ -61,7 +61,11 @@ class ProgramDesc {
 
   proto::OpVersionMap *OpVersionMap();
 
+  bool HasOpVersionMap() const;
+
   int64_t Version() const;
+
+  bool HasVersion() const;
 
   void SetVersion(const int64_t version);
 

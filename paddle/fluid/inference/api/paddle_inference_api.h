@@ -129,6 +129,17 @@ class PD_INFER_DECL Predictor {
   bool Run();
 
   ///
+  /// \brief Run the prediction engine (Recommended)
+  ///
+  /// \param[in] inputs An list of Tensor as the input to the network.
+  /// \param[out] outputs Pointer to the tensor list, which holds the output
+  /// Tensor
+  ///
+  /// \return Whether the run is successful
+  bool Run(const std::vector<paddle::Tensor>& inputs,
+           std::vector<paddle::Tensor>* outputs);
+
+  ///
   /// \brief Get the output names
   ///
   /// \return output names

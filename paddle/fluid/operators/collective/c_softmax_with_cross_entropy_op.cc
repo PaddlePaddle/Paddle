@@ -203,7 +203,10 @@ REGISTER_OPERATOR(c_softmax_with_cross_entropy_grad,
                   ops::CSoftmaxWithCrossEntropyOpGrad,
                   ops::CSoftmaxWithCrossEntropyGradInplaceInferer);
 
-REGISTER_OP_CPU_KERNEL(c_softmax_with_cross_entropy,
-                       ops::CSoftmaxWithCrossEntropyOpCPUKernel<float>,
-                       ops::CSoftmaxWithCrossEntropyOpCPUKernel<double>,
-                       ops::CSoftmaxWithCrossEntropyOpCPUKernel<plat::float16>);
+PD_REGISTER_STRUCT_KERNEL(c_softmax_with_cross_entropy,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::CSoftmaxWithCrossEntropyOpCPUKernel,
+                          float,
+                          double,
+                          plat::float16) {}

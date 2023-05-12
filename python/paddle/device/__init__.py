@@ -36,7 +36,6 @@ __all__ = [  # noqa
     'is_compiled_with_cinn',
     'is_compiled_with_cuda',
     'is_compiled_with_rocm',
-    'is_compiled_with_npu',
     'is_compiled_with_custom_device',
     'get_all_device_type',
     'get_all_custom_device_type',
@@ -51,24 +50,6 @@ __all__ = [  # noqa
 ]
 
 _cudnn_version = None
-
-
-# TODO: WITH_ASCEND_CL may changed to WITH_NPU or others in the future
-# for consistent.
-def is_compiled_with_npu():
-    """
-    Whether paddle was built with WITH_ASCEND_CL=ON to support Ascend NPU.
-
-    Return:
-        bool, ``True`` if NPU is supported, otherwise ``False``.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            support_npu = paddle.device.is_compiled_with_npu()
-    """
-    return core.is_compiled_with_npu()
 
 
 def is_compiled_with_custom_device(device_type):
@@ -210,15 +191,6 @@ def _convert_to_place(device):
         selected_xpus = os.getenv("FLAGS_selected_xpus", "0").split(",")
         device_id = int(selected_xpus[0])
         place = core.XPUPlace(device_id)
-    elif lower_device == 'npu':
-        if not core.is_compiled_with_npu():
-            raise ValueError(
-                "The device should not be 'npu', "
-                "since PaddlePaddle is not compiled with NPU"
-            )
-        selected_npus = os.getenv("FLAGS_selected_npus", "0").split(",")
-        device_id = int(selected_npus[0])
-        place = core.NPUPlace(device_id)
     elif lower_device == 'ipu':
         if not core.is_compiled_with_ipu():
             raise ValueError(
@@ -229,7 +201,6 @@ def _convert_to_place(device):
     else:
         avaliable_gpu_device = re.match(r'gpu:\d+', lower_device)
         avaliable_xpu_device = re.match(r'xpu:\d+', lower_device)
-        avaliable_npu_device = re.match(r'npu:\d+', lower_device)
         if avaliable_gpu_device:
             if not core.is_compiled_with_cuda():
                 raise ValueError(
@@ -250,31 +221,7 @@ def _convert_to_place(device):
             device_id = device_info_list[1]
             device_id = int(device_id)
             place = core.XPUPlace(device_id)
-        if avaliable_npu_device:
-            if not core.is_compiled_with_npu():
-                device_info_list = device.split(':', 1)
-                device_type = device_info_list[0]
-                if device_type in core.get_all_custom_device_type():
-                    device_id = device_info_list[1]
-                    device_id = int(device_id)
-                    place = core.CustomPlace(device_type, device_id)
-                    return place
-                else:
-                    raise ValueError(
-                        "The device should not be {}, since PaddlePaddle is "
-                        "not compiled with NPU or compiled with custom device".format(
-                            avaliable_npu_device
-                        )
-                    )
-            device_info_list = device.split(':', 1)
-            device_id = device_info_list[1]
-            device_id = int(device_id)
-            place = core.NPUPlace(device_id)
-        if (
-            not avaliable_gpu_device
-            and not avaliable_xpu_device
-            and not avaliable_npu_device
-        ):
+        if not avaliable_gpu_device and not avaliable_xpu_device:
             device_info_list = device.split(':', 1)
             device_type = device_info_list[0]
             if device_type in core.get_all_custom_device_type():
@@ -346,9 +293,6 @@ def get_device():
     elif isinstance(place, core.XPUPlace):
         device_id = place.get_device_id()
         device = 'xpu:' + str(device_id)
-    elif isinstance(place, core.NPUPlace):
-        device_id = place.get_device_id()
-        device = 'npu:' + str(device_id)
     elif isinstance(place, core.IPUPlace):
         num_devices = core.get_ipu_device_count()
         device = f"ipus:{{0-{num_devices - 1}}}"
@@ -469,7 +413,7 @@ class Event:
     Parameters:
         device(str|paddle.CUDAPlace(n)|paddle.CustomPlace(n)): Which device the stream runn on. If device is None, the device is the current device. Default: None.
             It can be ``gpu``, ``gpu:x``,``custom_device``, ``custom_device:x``, where ``custom_device`` is the name of CustomDevicec,
-            where ``x`` is the index of the GPUs, XPUs or NPUs. And it can be paddle.CUDAPlace(n) or paddle.CustomPlace(n).
+            where ``x`` is the index of the GPUs, XPUs. And it can be paddle.CUDAPlace(n) or paddle.CustomPlace(n).
         enable_timing (bool, optional): indicates if the event should measure time, default is False
         blocking (bool, optional): if True, ``wait`` will be blocking, default is False
         interprocess (bool): if True, the event can be shared between processes, default is False
@@ -614,7 +558,7 @@ class Stream:
     Parameters:
         device(str|paddle.CUDAPlace(n)|paddle.CustomPlace(n)): Which device the stream runn on. If device is None, the device is the current device. Default: None.
             It can be ``gpu``, ``gpu:x``,``custom_device``, ``custom_device:x``, where ``custom_device`` is the name of CustomDevicec,
-            where ``x`` is the index of the GPUs, XPUs or NPUs. And it can be paddle.CUDAPlace(n) or paddle.CustomPlace(n).
+            where ``x`` is the index of the GPUs, XPUs. And it can be paddle.CUDAPlace(n) or paddle.CustomPlace(n).
         priority(int, optional): priority of the CUDA stream. Can be either
             1 (high priority) or 2 (low priority). By default, streams have
             priority 2.
@@ -936,7 +880,7 @@ def synchronize(device=None):
     Parameters:
         device(str|paddle.CUDAPlace(n)|paddle.XPUPlace(n)|paddle.CustomPlace(n)): The device which want to wait for.  If device is None, the device is the current device. Default: None.
             It can be ``gpu``, ``gpu:x``, ``xpu``, ``xpu:x``, ``custom_device``, ``custom_device:x``, where ``custom_device`` is the name of CustomDevicec,
-            where ``x`` is the index of the GPUs, XPUs or NPUs. And it can be paddle.CUDAPlace(n) or paddle.XPUPlace(n) or paddle.CustomPlace(n).
+            where ``x`` is the index of the GPUs, XPUs. And it can be paddle.CUDAPlace(n) or paddle.XPUPlace(n) or paddle.CustomPlace(n).
     Examples:
         .. code-block:: python
             # required: custom_device

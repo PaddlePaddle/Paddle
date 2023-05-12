@@ -58,7 +58,6 @@ __all__ = [
     'is_compiled_with_cuda',
     'is_compiled_with_rocm',
     'is_compiled_with_xpu',
-    'is_compiled_with_npu',
     'Variable',
     'require_version',
     'device_guard',
@@ -113,19 +112,9 @@ _global_expected_place_ = None
 _current_device = None
 global_prog_seed = 0
 _current_pipeline_stage = None
-_already_patch_eager_tensor = False
-_already_patch_varbase = False
 _current_cuda_graph_mode = None
 _global_flags_ = core.globals()
-_enable_standalone_executor_ = os.environ.get(
-    'FLAGS_USE_STANDALONE_EXECUTOR', None
-)
-_dy2st_enable_standalone_executor_ = os.environ.get(
-    'FLAGS_DY2ST_USE_STANDALONE_EXECUTOR', 1
-)
-_cuda_graph_enable_standalone_executor_ = os.environ.get(
-    'FLAGS_CUDA_GRAPH_USE_STANDALONE_EXECUTOR', 0
-)
+
 
 # special_op_attrs, extra_op_attrs are prepared for printing warnings
 # when turning on FLAGS_print_extra_attrs
@@ -191,40 +180,11 @@ extra_op_attrs = {
 # to make sure in most case, we find new dygraph mode first with only one if statement.
 
 
-def _update_monkey_methods():
-    """
-    Update monkey methods of Tensor or eager.Tensor while
-    switching eager mode and legacy mode.
-    """
-    from paddle import _C_ops, _legacy_C_ops
-    from .dygraph.varbase_patch_methods import monkey_patch_varbase
-    from .dygraph import monkey_patch_math_varbase
-
-    global _already_patch_eager_tensor
-    global _already_patch_varbase
-
-    if not _already_patch_eager_tensor:
-        monkey_patch_varbase()
-        monkey_patch_math_varbase()
-
-        _already_patch_eager_tensor = True
-
-    # switch Paddle.Tensor bind type
-    _switch_tensor_bind_type()
-
-
-def _switch_tensor_bind_type():
-    import paddle
-
-    paddle.Tensor = core.eager.Tensor
-    paddle.Tensor.__qualname__ = 'Tensor'
-
-
 def _in_eager_without_dygraph_check():
     return global_var._in_eager_mode_
 
 
-# FIXME(dev): We haven't fully verified eager mode on XPU/NPU et.al but
+# FIXME(dev): We haven't fully verified eager mode on XPU et.al but
 # only GPU/CPU. Remove this after we improve this feature.
 _is_first_import_ = True
 
@@ -269,17 +229,6 @@ global_ipu_index = -1
 global_ipu_stage = -1
 ipu_index_attr_name = 'ipu_index'
 ipu_stage_attr_name = 'ipu_stage'
-
-
-@signature_safe_contextmanager
-def _enable_standalone_executor(enable=True):
-    global _enable_standalone_executor_
-    original_ = _enable_standalone_executor_
-    _enable_standalone_executor_ = enable
-    try:
-        yield
-    finally:
-        _enable_standalone_executor_ = original_
 
 
 @signature_safe_contextmanager
@@ -648,21 +597,6 @@ def _current_expected_place():
                     "You are using XPU version Paddle, but your XPU device is not set properly. CPU device will be used by default."
                 )
                 _global_expected_place_ = core.CPUPlace()
-        elif core.is_compiled_with_custom_device("npu"):
-            # TODO(duanyanhui): Optimize DeviceManager and Return all expected places when device registered in DeviceManager is greater than 1.
-            try:
-                device_count = core.get_custom_device_count("npu")
-            except Exception as e:
-                device_count = 0
-            if device_count > 0:
-                _global_expected_place_ = core.CustomPlace(
-                    "npu", _custom_device_ids("npu")[0]
-                )
-            else:
-                warnings.warn(
-                    "You are using NPU version Paddle, but your NPU device is not set properly. CPU device will be used by default."
-                )
-                _global_expected_place_ = core.CPUPlace()
         else:
             _global_expected_place_ = core.CPUPlace()
 
@@ -715,15 +649,6 @@ def _xpu_ids():
     return device_ids
 
 
-def _npu_ids():
-    npus_env = os.getenv("FLAGS_selected_npus")
-    if npus_env:
-        device_ids = [int(s) for s in npus_env.split(",")]
-    else:
-        device_ids = range(core.get_npu_device_count())
-    return device_ids
-
-
 def _custom_device_ids(device_type):
     custom_devices_env = os.getenv("FLAGS_selected_" + device_type + "s")
     if custom_devices_env:
@@ -746,21 +671,6 @@ def is_compiled_with_xpu():
             support_xpu = fluid.is_compiled_with_xpu()
     """
     return core.is_compiled_with_xpu()
-
-
-def is_compiled_with_npu():
-    """
-    Whether this whl package can be used to run the model on NPU.
-
-    Returns (bool): support npu or not.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle.fluid as fluid
-            support_npu = fluid.is_compiled_with_npu()
-    """
-    return core.is_compiled_with_npu()
 
 
 def disable_signal_handler():
@@ -793,7 +703,8 @@ def is_compiled_with_cinn():
     """
     Whether this whl package can be used to run the model on CINN.
 
-    Returns (bool): `True` if CINN is currently available, otherwise `False`.
+    Returns:
+        Bool: `True` if CINN is currently available, otherwise `False`.
 
     Examples:
         .. code-block:: python
@@ -808,7 +719,8 @@ def is_compiled_with_cuda():
     """
     Whether this whl package can be used to run the model on GPU.
 
-    Returns (bool): `True` if CUDA is currently available, otherwise `False`.
+    Returns:
+        Bool: `True` if CUDA is currently available, otherwise `False`.
 
     Examples:
         .. code-block:: python
@@ -823,7 +735,8 @@ def is_compiled_with_rocm():
     """
     Whether this whl package can be used to run the model on AMD or Hygon GPU(ROCm).
 
-    Returns (bool): `True` if ROCm is currently available, otherwise `False`.
+    Returns:
+        Bool: `True` if ROCm is currently available, otherwise `False`.
 
     Examples:
         .. code-block:: python
@@ -919,47 +832,6 @@ def xpu_places(device_ids=None):
     elif not isinstance(device_ids, (list, tuple)):
         device_ids = [device_ids]
     return [core.XPUPlace(dev_id) for dev_id in device_ids]
-
-
-def npu_places(device_ids=None):
-    """
-
-    Note:
-        For multi-card tasks, please use `FLAGS_selected_npus` environment variable to set the visible NPU device.
-
-    This function creates a list of :code:`paddle.NPUPlace` objects.
-    If :code:`device_ids` is None, environment variable of
-    :code:`FLAGS_selected_npus` would be checked first. For example, if
-    :code:`FLAGS_selected_npus=0,1,2`, the returned list would
-    be [paddle.NPUPlace(0), paddle.NPUPlace(1), paddle.NPUPlace(2)].
-    If :code:`FLAGS_selected_npus` is not set, all visible
-    npu places would be returned.
-    If :code:`device_ids` is not None, it should be the device
-    ids of NPUs. For example, if :code:`device_ids=[0,1,2]`,
-    the returned list would be
-    [paddle.NPUPlace(0), paddle.NPUPlace(1), paddle.NPUPlace(2)].
-
-    Parameters:
-        device_ids (list or tuple of int, optional): list of NPU device ids.
-    Returns:
-        list of paddle.NPUPlace: Created NPU place list.
-    Examples:
-        .. code-block:: python
-
-            # required: npu
-
-            import paddle
-            import paddle.static as static
-
-            paddle.enable_static()
-            npu_places = static.npu_places()
-    """
-    assert core.is_compiled_with_npu(), "Not compiled with NPU"
-    if device_ids is None:
-        device_ids = _npu_ids()
-    elif not isinstance(device_ids, (list, tuple)):
-        device_ids = [device_ids]
-    return [core.NPUPlace(dev_id) for dev_id in device_ids]
 
 
 def cpu_places(device_count=None):
@@ -1233,7 +1105,7 @@ def _debug_string_(proto, throw_on_error=True):
     return proto.__str__()
 
 
-def _varbase_creator(
+def _create_tensor(
     type=core.VarDesc.VarType.LOD_TENSOR,
     name=None,
     shape=None,
@@ -1620,7 +1492,7 @@ class Variable(metaclass=VariableMetaClass):
         """
         pass
 
-    @fake_interface_only
+    @non_static_only
     def backward(self, retain_graph=False):
         """
         **Notes**:
@@ -1657,7 +1529,17 @@ class Variable(metaclass=VariableMetaClass):
                 loss.backward()
 
         """
-        pass
+        from .backward import append_backward
+
+        if retain_graph is True:
+            raise AssertionError(
+                "`retain_graph` == True is not supported in @to_static function."
+                "please set retain_graph = False."
+            )
+        param_grad_list = append_backward(self)
+        for param, param_grad in param_grad_list:
+            # set grad to simulate dygraph loss.backward() in static mode.
+            setattr(param, "grad", param_grad)
 
     @fake_interface_only
     def gradient(self):
@@ -1743,9 +1625,24 @@ class Variable(metaclass=VariableMetaClass):
         """
         pass
 
-    @fake_interface_only
     def register_hook(self, hook):
-        pass
+        import paddle
+
+        def backward_hook_wrapper(dy):
+            """call the backward hook in ."""
+            return hook(np.array(dy))
+
+        def forward_hook_wrapper(x):
+            """do nothing but return a new variable."""
+            return x
+
+        paddle.static.py_func(
+            func=forward_hook_wrapper,
+            x=self,
+            out=self,
+            backward_func=backward_hook_wrapper,
+            skip_vars_in_backward_input=[self],
+        )
 
     def __str__(self):
         return self._to_readable_code()
@@ -2577,10 +2474,6 @@ class Variable(metaclass=VariableMetaClass):
             p = core.Place()
             p.set_place(t._place())
             place = core.XPUPlace(p.xpu_device_id())
-        elif p.is_npu_place():
-            p = core.Place()
-            p.set_place(t._place())
-            place = core.NPUPlace(p.npu_device_id())
         else:
             p = core.Place()
             p.set_place(t._place())
@@ -2837,10 +2730,7 @@ class Operator:
         'heter_listen_and_serv',
         'c_wait_comm',
         'c_wait_compute',
-        'c_gen_hccl_id',
-        'c_comm_init_hccl',
         'copy_cross_scope',
-        'c_gen_cncl_id',
     }
 
     def __init__(
@@ -2864,7 +2754,6 @@ class Operator:
             self._type = type
             self.attrs = attrs if attrs else {}
         else:
-            self.legacy_attrs = attrs if attrs else {}
 
             self.block = block
             self.desc = desc
@@ -2996,14 +2885,35 @@ class Operator:
                 for m in proto.outputs:
                     if (m.name not in outputs) and m.dispensable:
                         continue
-                    if not ((m.name in outputs) or m.dispensable):
-                        raise ValueError(
-                            (
-                                "Incorrect setting for output(s) of "
-                                "operator \"%s\", should set: [%s]."
+
+                    # FIXME: The outputs of primitive operator currently
+                    # doesn't include intermediate output as it will be dropped
+                    # in operator codegen, such as xshape output of reshape2.
+                    # It will fixed when the operator codegen support
+                    # intermediate output.
+                    if core._is_bwd_prim_enabled():
+                        if not (
+                            (m.name in outputs)
+                            or m.dispensable
+                            or m.intermediate
+                        ):
+                            raise ValueError(
+                                (
+                                    "Incorrect setting for output(s) of "
+                                    "operator \"%s\", should set: [%s]."
+                                )
+                                % (type, m.name)
                             )
-                            % (type, m.name)
-                        )
+                    else:
+                        if not ((m.name in outputs) or m.dispensable):
+                            raise ValueError(
+                                (
+                                    "Incorrect setting for output(s) of "
+                                    "operator \"%s\", should set: [%s]."
+                                )
+                                % (type, m.name)
+                            )
+
                 for out_proto in proto.outputs:
                     if out_proto.name not in outputs:
                         continue
@@ -3097,20 +3007,12 @@ class Operator:
 
             self.desc.check_attrs()
 
-            # record all attrs needed by creating op
-            for item in self.desc.attr_names():
-                self.legacy_attrs[item] = self.desc.attr(item)
-
             if self._has_kernel(type):
                 self.desc.infer_var_type(self.block.desc)
                 self.desc.infer_shape(self.block.desc)
 
     def _has_kernel(self, op_type):
         return op_type not in self.OP_WITHOUT_KERNEL_SET
-
-    def _get_runtime_attrs(self):
-        """Record all attrs needed by creating op. This api is only for to_prim process."""
-        return self.legacy_attrs
 
     def to_string(self, throw_on_error):
         """
@@ -3906,7 +3808,7 @@ class Block:
 
     def create_var(self, *args, **kwargs):
         if _non_static_mode():
-            var = _varbase_creator(*args, **kwargs)
+            var = _create_tensor(*args, **kwargs)
         else:
             var = Variable(block=self, *args, **kwargs)
             if 'initializer' in kwargs:
@@ -5405,6 +5307,8 @@ class Program:
         self._fleet_opt = None
         self._program_config = None
 
+        self._pass_applied = None
+
         # assigned if this program has been parsed by a pipeline optimizer
         self._pipeline_opt = None
 
@@ -5804,6 +5708,22 @@ class Program:
             res_str = ""
             for block in self.blocks:
                 res_str += block.to_string(throw_on_error, with_details)
+            protostr = self.desc.serialize_to_string()
+            proto = framework_pb2.ProgramDesc.FromString(bytes(protostr))
+            res_str += (
+                "version {\n  "
+                + textwrap.indent(
+                    _debug_string_(proto.version, throw_on_error), "  "
+                )
+                + "}\n"
+            )
+            res_str += (
+                "op_version_map {\n  "
+                + textwrap.indent(
+                    _debug_string_(proto.op_version_map, throw_on_error), "  "
+                )
+                + "}\n"
+            )
         else:
             protostr = self.desc.serialize_to_string()
             proto = framework_pb2.ProgramDesc.FromString(bytes(protostr))
@@ -7406,6 +7326,19 @@ def _get_var(name, program=None):
 
 
 @signature_safe_contextmanager
+def dygraph_guard_if_declarative():
+    from .dygraph.base import in_declarative_mode
+    from .dygraph import Tracer
+
+    if in_declarative_mode():
+        # Under @paddle.jit.to_static decorator, we switch back dygraph mode temporarily.
+        with _dygraph_guard(tracer=Tracer()):
+            yield
+    else:
+        yield
+
+
+@signature_safe_contextmanager
 def _dygraph_guard(tracer):
     tmp_tracer = global_var._dygraph_tracer_
     global_var._dygraph_tracer_ = tracer
@@ -7506,9 +7439,9 @@ def device_guard(device=None):
         device, index = device.split(':')
         if device == 'cpu':
             raise ValueError("Should not set device id for cpu.")
-    if device not in ['cpu', 'gpu', 'npu', 'xpu', '', None]:
+    if device not in ['cpu', 'gpu', 'xpu', '', None]:
         raise ValueError(
-            "The Attr(device) should be 'cpu' 'npu' 'xpu' or 'gpu', and it can also be empty string or None "
+            "The Attr(device) should be 'cpu' or 'gpu', and it can also be empty string or None "
             "when there is no need to specify device. But received %s" % device
         )
     if index:
@@ -7637,7 +7570,6 @@ def _get_paddle_place(place):
             core.CPUPlace,
             core.CUDAPinnedPlace,
             core.CUDAPlace,
-            core.NPUPlace,
             core.IPUPlace,
             core.CustomPlace,
         ),
@@ -7687,19 +7619,6 @@ def _get_paddle_place(place):
         device_id = int(device_id)
         return core.XPUPlace(device_id)
 
-    # NPU
-    avaliable_npu_place = re.match(r'npu:\d+', place)
-    if avaliable_npu_place:
-        if not core.is_compiled_with_npu():
-            raise ValueError(
-                "The device should not be {}, since PaddlePaddle is "
-                "not compiled with NPU".format(avaliable_npu_place.group())
-            )
-        place_info_list = place.split(':', 1)
-        device_id = place_info_list[1]
-        device_id = int(device_id)
-        return core.NPUPlace(device_id)
-
     # IPU
     avaliable_ipu_place = re.match(r'ipu:\d+', place)
     if avaliable_ipu_place:
@@ -7714,9 +7633,7 @@ def _get_paddle_place(place):
         return core.IPUPlace(device_id)
 
     raise ValueError(
-        "Paddle supports CPUPlace, CUDAPlace,CUDAPinnedPlace, XPUPlace, IPUPlace and NPUPlace, but received {}.".format(
-            place
-        )
+        f"Paddle supports CPUPlace, CUDAPlace, CUDAPinnedPlace, XPUPlace and IPUPlace, but received {place}."
     )
 
 

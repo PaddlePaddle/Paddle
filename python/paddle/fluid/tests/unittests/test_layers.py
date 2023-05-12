@@ -26,6 +26,13 @@ from paddle import fluid
 from paddle.fluid import core, layers, nets
 from paddle.fluid.dygraph import base, to_variable
 from paddle.fluid.framework import Program, default_main_program, program_guard
+from paddle.incubate.layers.nn import (
+    batch_fc,
+    partial_concat,
+    partial_sum,
+    rank_attention,
+    shuffle_batch,
+)
 from paddle.tensor import random
 
 
@@ -1426,8 +1433,9 @@ class TestLayer(LayerTest):
             exe.run(fluid.default_startup_program())
             # x = np.random.rand(3, 32, 32).astype("float32")
             # y = np.array([[1], [0], [1]])
+
             static_out = exe.run(
-                feed={"input": x, "label": y}, fetch_list=result[0]
+                feed={"input": x, "label": y}, fetch_list=result
             )
 
         with self.dynamic_graph(force_to_use_cpu=True):
@@ -2144,9 +2152,9 @@ class TestBook(LayerTest):
             x = paddle.static.data(
                 name='X', shape=[-1, 4, 50], dtype='float32', lod_level=0
             )
-            out1 = fluid.contrib.layers.shuffle_batch(x)
+            out1 = shuffle_batch(x)
             default_main_program().random_seed = 1000
-            out2 = fluid.contrib.layers.shuffle_batch(x)
+            out2 = shuffle_batch(x)
             self.assertIsNotNone(out1)
             self.assertIsNotNone(out2)
             return out1
@@ -2155,9 +2163,7 @@ class TestBook(LayerTest):
         with self.static_graph():
             x = paddle.static.data(name="x", shape=[None, 3], dtype="float32")
             y = paddle.static.data(name="y", shape=[None, 3], dtype="float32")
-            sum = fluid.contrib.layers.partial_sum(
-                [x, y], start_index=0, length=2
-            )
+            sum = partial_sum([x, y], start_index=0, length=2)
             return sum
 
     def test_batch_fc(self):
@@ -2165,7 +2171,7 @@ class TestBook(LayerTest):
             input = paddle.static.data(
                 name="input", shape=[16, 2, 3], dtype="float32"
             )
-            out = fluid.contrib.layers.batch_fc(
+            out = batch_fc(
                 input=input,
                 param_size=[16, 3, 10],
                 param_attr=fluid.ParamAttr(
@@ -2191,7 +2197,7 @@ class TestBook(LayerTest):
             rank_offset = paddle.static.data(
                 name="rank_offset", shape=[None, 7], dtype="int32"
             )
-            out = fluid.contrib.layers.rank_attention(
+            out = rank_attention(
                 input=input,
                 rank_offset=rank_offset,
                 rank_param_shape=[18, 3],
@@ -2262,12 +2268,8 @@ class TestBook(LayerTest):
         with self.static_graph():
             x = paddle.static.data(name="x", shape=[None, 3], dtype="float32")
             y = paddle.static.data(name="y", shape=[None, 3], dtype="float32")
-            concat1 = fluid.contrib.layers.partial_concat(
-                [x, y], start_index=0, length=2
-            )
-            concat2 = fluid.contrib.layers.partial_concat(
-                x, start_index=0, length=-1
-            )
+            concat1 = partial_concat([x, y], start_index=0, length=2)
+            concat2 = partial_concat(x, start_index=0, length=-1)
             return concat1, concat2
 
     def test_addmm(self):

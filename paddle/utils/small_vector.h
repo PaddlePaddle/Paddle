@@ -1,3 +1,4 @@
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 // This file copy from llvm/ADT/SmallVector.h, version: 12.0.0
 // Modified the following points
 // 1. remove  macro
@@ -47,11 +48,12 @@ class iterator_range {
   IteratorT begin_iterator, end_iterator;
 
  public:
-  // TODO: Add SFINAE to test that the Container's iterators match the range's
+  // TODO(others): Add SFINAE to test that the Container's iterators match the
+  // range's
   //      iterators.
   template <typename Container>
-  iterator_range(Container &&c)
-      // TODO: Consider ADL/non-member begin/end calls.
+  explicit iterator_range(Container &&c)
+      // TODO(others): Consider ADL/non-member begin/end calls.
       : begin_iterator(c.begin()), end_iterator(c.end()) {}
   iterator_range(IteratorT begin_iterator, IteratorT end_iterator)
       : begin_iterator(std::move(begin_iterator)),
@@ -102,7 +104,7 @@ class small_vector_base {
   /// This is a helper for \a grow() that's out of line to reduce code
   /// duplication.  This function will report a fatal error if it can't grow at
   /// least to \p MinSize.
-  void *mallocForGrow(size_t MinSize, size_t TSize, size_t &NewCapacity);
+  void *mallocForGrow(size_t MinSize, size_t TSize, size_t *NewCapacity);
 
   /// This is an implementation of the grow() method which only works
   /// on POD-like data types and is out of line to reduce code duplication.
@@ -162,7 +164,8 @@ class small_vector_template_common
   // Space after 'FirstEl' is clobbered, do not add any instance vars after it.
 
  protected:
-  small_vector_template_common(size_t Size) : Base(getFirstEl(), Size) {}
+  explicit small_vector_template_common(size_t Size)
+      : Base(getFirstEl(), Size) {}
 
   void grow_pod(size_t MinSize, size_t TSize) {
     Base::grow_pod(getFirstEl(), MinSize, TSize);
@@ -217,6 +220,8 @@ class small_vector_template_common
 
   /// Check whether Elt will be invalidated by resizing the vector to NewSize.
   void assertSafeToReferenceAfterResize(const void *Elt, size_t NewSize) {
+    (void)Elt;
+    (void)NewSize;  // just remove [-Wunused-paremeter]
     assert(isSafeToReferenceAfterResize(Elt, NewSize) &&
            "Attempting to reference an element of the vector in an operation "
            "that invalidates it");
@@ -376,7 +381,7 @@ class small_vector_template_base : public small_vector_template_common<T> {
   static constexpr bool TakesParamByValue = false;
   using ValueParamT = const T &;
 
-  small_vector_template_base(size_t Size)
+  explicit small_vector_template_base(size_t Size)
       : small_vector_template_common<T>(Size) {}
 
   static void destroy_range(T *S, T *E) {
@@ -408,7 +413,7 @@ class small_vector_template_base : public small_vector_template_common<T> {
 
   /// Create a new allocation big enough for \p MinSize and pass back its size
   /// in \p NewCapacity. This is the first section of \a grow().
-  T *mallocForGrow(size_t MinSize, size_t &NewCapacity) {
+  T *mallocForGrow(size_t MinSize, size_t *NewCapacity) {
     return static_cast<T *>(
         small_vector_base<SmallVectorSizeType<T>>::mallocForGrow(
             MinSize, sizeof(T), NewCapacity));
@@ -423,13 +428,7 @@ class small_vector_template_base : public small_vector_template_common<T> {
 
   /// Reserve enough space to add one element, and return the updated element
   /// pointer in case it was a reference to the storage.
-  const T *reserveForParamAndGetAddress(const T &Elt, size_t N = 1) {
-    return this->reserveForParamAndGetAddressImpl(this, Elt, N);
-  }
-
-  /// Reserve enough space to add one element, and return the updated element
-  /// pointer in case it was a reference to the storage.
-  T *reserveForParamAndGetAddress(T &Elt, size_t N = 1) {
+  T *reserveForParamAndGetAddress(const T &Elt, size_t N = 1) {
     return const_cast<T *>(
         this->reserveForParamAndGetAddressImpl(this, Elt, N));
   }
@@ -439,8 +438,8 @@ class small_vector_template_base : public small_vector_template_common<T> {
 
   void growAndAssign(size_t NumElts, const T &Elt) {
     // Grow manually in case Elt is an internal reference.
-    size_t NewCapacity;
-    T *NewElts = mallocForGrow(NumElts, NewCapacity);
+    size_t NewCapacity = 0;
+    T *NewElts = mallocForGrow(NumElts, &NewCapacity);
     std::uninitialized_fill_n(NewElts, NumElts, Elt);
     this->destroy_range(this->begin(), this->end());
     takeAllocationForGrow(NewElts, NewCapacity);
@@ -450,9 +449,10 @@ class small_vector_template_base : public small_vector_template_common<T> {
   template <typename... ArgTypes>
   T &growAndEmplaceBack(ArgTypes &&...Args) {
     // Grow manually in case one of Args is an internal reference.
-    size_t NewCapacity;
-    T *NewElts = mallocForGrow(0, NewCapacity);
-    ::new ((void *)(NewElts + this->size())) T(std::forward<ArgTypes>(Args)...);
+    size_t NewCapacity = 0;
+    T *NewElts = mallocForGrow(0, &NewCapacity);
+    ::new (reinterpret_cast<void *>(NewElts + this->size()))
+        T(std::forward<ArgTypes>(Args)...);
     moveElementsForGrow(NewElts);
     takeAllocationForGrow(NewElts, NewCapacity);
     this->set_size(this->size() + 1);
@@ -462,13 +462,13 @@ class small_vector_template_base : public small_vector_template_common<T> {
  public:
   void push_back(const T &Elt) {
     const T *EltPtr = reserveForParamAndGetAddress(Elt);
-    ::new ((void *)this->end()) T(*EltPtr);
+    ::new (reinterpret_cast<void *>(this->end())) T(*EltPtr);
     this->set_size(this->size() + 1);
   }
 
   void push_back(T &&Elt) {
     T *EltPtr = reserveForParamAndGetAddress(Elt);
-    ::new ((void *)this->end()) T(::std::move(*EltPtr));
+    ::new (reinterpret_cast<void *>(this->end())) T(::std::move(*EltPtr));
     this->set_size(this->size() + 1);
   }
 
@@ -481,8 +481,8 @@ class small_vector_template_base : public small_vector_template_common<T> {
 // Define this out-of-line to dissuade the C++ compiler from inlining it.
 template <typename T, bool TriviallyCopyable>
 void small_vector_template_base<T, TriviallyCopyable>::grow(size_t MinSize) {
-  size_t NewCapacity;
-  T *NewElts = mallocForGrow(MinSize, NewCapacity);
+  size_t NewCapacity = 0;
+  T *NewElts = mallocForGrow(MinSize, &NewCapacity);
   moveElementsForGrow(NewElts);
   takeAllocationForGrow(NewElts, NewCapacity);
 }
@@ -528,7 +528,7 @@ class small_vector_template_base<T, true>
   using ValueParamT =
       typename std::conditional<TakesParamByValue, T, const T &>::type;
 
-  small_vector_template_base(size_t Size)
+  explicit small_vector_template_base(size_t Size)
       : small_vector_template_common<T>(Size) {}
 
   // No need to do a destroy loop for POD's.
@@ -572,13 +572,7 @@ class small_vector_template_base<T, true>
 
   /// Reserve enough space to add one element, and return the updated element
   /// pointer in case it was a reference to the storage.
-  const T *reserveForParamAndGetAddress(const T &Elt, size_t N = 1) {
-    return this->reserveForParamAndGetAddressImpl(this, Elt, N);
-  }
-
-  /// Reserve enough space to add one element, and return the updated element
-  /// pointer in case it was a reference to the storage.
-  T *reserveForParamAndGetAddress(T &Elt, size_t N = 1) {
+  T *reserveForParamAndGetAddress(const T &Elt, size_t N = 1) {
     return const_cast<T *>(
         this->reserveForParamAndGetAddressImpl(this, Elt, N));
   }
@@ -813,7 +807,7 @@ class small_vector_impl : public small_vector_template_base<T> {
         this->reserveForParamAndGetAddress(Elt);
     I = this->begin() + Index;
 
-    ::new ((void *)this->end()) T(::std::move(this->back()));
+    ::new (reinterpret_cast<void *>(this->end())) T(::std::move(this->back()));
     // Push everything else over.
     std::move_backward(I, this->end() - 1, this->end());
     this->set_size(this->size() + 1);
@@ -973,7 +967,8 @@ class small_vector_impl : public small_vector_template_base<T> {
     if (this->size() >= this->capacity())
       return this->growAndEmplaceBack(std::forward<ArgTypes>(Args)...);
 
-    ::new ((void *)this->end()) T(std::forward<ArgTypes>(Args)...);
+    ::new (reinterpret_cast<void *>(this->end()))
+        T(std::forward<ArgTypes>(Args)...);
     this->set_size(this->size() + 1);
     return this->back();
   }
@@ -1276,7 +1271,7 @@ class small_vector : public small_vector_impl<T>, small_vector_storage<T, N> {
     if (!RHS.empty()) small_vector_impl<T>::operator=(::std::move(RHS));
   }
 
-  small_vector(small_vector_impl<T> &&RHS) : small_vector_impl<T>(N) {
+  explicit small_vector(small_vector_impl<T> &&RHS) : small_vector_impl<T>(N) {
     if (!RHS.empty()) small_vector_impl<T>::operator=(::std::move(RHS));
   }
 
@@ -1349,14 +1344,14 @@ inline void *safe_realloc(void *Ptr, size_t Sz) {
 }
 
 // Check that no bytes are wasted and everything is well-aligned.
-namespace {
+
 struct Struct16B {
   alignas(16) void *X;
 };
 struct Struct32B {
   alignas(32) void *X;
 };
-}  // namespace
+
 static_assert(sizeof(small_vector<void *, 0>) ==
                   sizeof(unsigned) * 2 + sizeof(void *),
               "wasted space in small_vector size 0");
@@ -1399,7 +1394,7 @@ static void report_at_maximum_capacity(size_t MaxSize) {
 
 // Note: Moving this function into the header may cause performance regression.
 template <class Size_T>
-static size_t getNewCapacity(size_t MinSize, size_t TSize, size_t OldCapacity) {
+static size_t getNewCapacity(size_t MinSize, size_t OldCapacity) {
   constexpr size_t MaxSize = (std::numeric_limits<Size_T>::max)();
 
   // Ensure we can fit the new capacity.
@@ -1422,9 +1417,9 @@ static size_t getNewCapacity(size_t MinSize, size_t TSize, size_t OldCapacity) {
 template <class Size_T>
 void *small_vector_base<Size_T>::mallocForGrow(size_t MinSize,
                                                size_t TSize,
-                                               size_t &NewCapacity) {
-  NewCapacity = getNewCapacity<Size_T>(MinSize, TSize, this->capacity());
-  return safe_malloc(NewCapacity * TSize);
+                                               size_t *NewCapacity) {
+  *NewCapacity = getNewCapacity<Size_T>(MinSize, this->capacity());
+  return safe_malloc((*NewCapacity) * TSize);
 }
 
 // Note: Moving this function into the header may cause performance regression.
@@ -1432,7 +1427,7 @@ template <class Size_T>
 void small_vector_base<Size_T>::grow_pod(void *FirstEl,
                                          size_t MinSize,
                                          size_t TSize) {
-  size_t NewCapacity = getNewCapacity<Size_T>(MinSize, TSize, this->capacity());
+  size_t NewCapacity = getNewCapacity<Size_T>(MinSize, this->capacity());
   void *NewElts;
   if (BeginX == FirstEl) {
     NewElts = safe_malloc(NewCapacity * TSize);

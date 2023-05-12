@@ -16,11 +16,11 @@ import unittest
 
 import numpy as np
 from eager_op_test import OpTest
+from op import Operator
 
 import paddle
 from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.op import Operator
 
 paddle.enable_static()
 
@@ -382,7 +382,9 @@ class TestSGDMultiPrecision2_0(unittest.TestCase):
         exe.run(startup_program)
 
         if mp:
-            optimizer.amp_init(place='gpu', scope=paddle.static.global_scope())
+            optimizer.amp_init(
+                place=paddle.CUDAPlace(0), scope=paddle.static.global_scope()
+            )
             x = np.random.random(size=(2, 2)).astype('float16')
         else:
             x = np.random.random(size=(2, 2)).astype('float32')
@@ -492,7 +494,9 @@ class TestSGDMultiPrecision1_0(unittest.TestCase):
         exe.run(startup_program)
 
         if mp:
-            optimizer.amp_init(place='gpu', scope=paddle.static.global_scope())
+            optimizer.amp_init(
+                place=paddle.CUDAPlace(0), scope=paddle.static.global_scope()
+            )
             x = np.random.random(size=(2, 2)).astype('float16')
         else:
             x = np.random.random(size=(2, 2)).astype('float32')

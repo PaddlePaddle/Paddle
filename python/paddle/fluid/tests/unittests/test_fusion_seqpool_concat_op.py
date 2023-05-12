@@ -12,11 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 import numpy as np
 from eager_op_test import OpTest
-from sequence.test_sequence_pool import (
+
+sys.path.append("../../../../../test/sequence")
+from test_sequence_pool import (
     compute_seqpool_avg,
     compute_seqpool_sqrt,
     compute_seqpool_sum,

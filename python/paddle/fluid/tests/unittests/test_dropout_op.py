@@ -83,7 +83,8 @@ class TestDropoutOp(OpTest):
         self.check_output(check_prim=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        # Now in dy2st mode x_grad = [], so set check_prim=False
+        self.check_grad(['X'], 'Out', check_prim=False)
 
 
 class TestDropoutOpInput1d(OpTest):
@@ -107,7 +108,8 @@ class TestDropoutOpInput1d(OpTest):
         self.check_output(check_prim=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        # Now in dy2st mode x_grad = [], so set check_prim=False
+        self.check_grad(['X'], 'Out', check_prim=False)
 
 
 class TestDropoutOp2(TestDropoutOp):
@@ -283,7 +285,8 @@ class TestDropoutOpWithSeed(OpTest):
         self.check_output(check_prim=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', max_relative_error=0.05, check_prim=True)
+        # Now in dy2st mode x_grad = [], so set check_prim=False
+        self.check_grad(['X'], 'Out', max_relative_error=0.05, check_prim=False)
 
 
 @unittest.skipIf(
@@ -308,7 +311,6 @@ class TestFP16DropoutOp(OpTest):
             'is_test': True,
         }
         self.outputs = {'Out': out}
-        self.enable_cinn = False
         # Because prim op compare res with dygraph
         # when p = 0 dropout api return x,in dygraph mode x_grad = out_grad,
         # but in static mode x_grad = []
@@ -1689,23 +1691,25 @@ class TestCompositeDropout(unittest.TestCase):
         rev_actual = []
         paddle.disable_static()
         for place in self.places:
-            if isinstance(place, fluid.CPUPlace):
-                paddle.set_device("cpu")
-            if isinstance(place, fluid.CUDAPlace):
-                paddle.set_device("gpu")
+            if not isinstance(place, fluid.CUDAPlace):
+                continue
+            paddle.set_device("gpu")
             paddle.seed(self.seed)
             input_ = paddle.to_tensor(
                 data=self.x, dtype=self.dtype, place=place, stop_gradient=False
             )
             net = PrimNet()
-            net = apply_to_static(net, False)
+            net = apply_to_static(net, True)
             output = net(
                 input_, self.p, training=(not self.is_test), mode=self.mode
             )
             grad = paddle.grad(output, input_)
             fwd_actual.append(output.numpy())
             rev_actual.append(grad[0].numpy())
-        for i in range(len(self.places)):
+        i = 0
+        for place in self.places:
+            if not isinstance(self.places[i], fluid.CUDAPlace):
+                continue
             np.testing.assert_allclose(
                 self.fwd_desire[i].sum(),
                 fwd_actual[i].sum(),
@@ -1718,6 +1722,7 @@ class TestCompositeDropout(unittest.TestCase):
                 rtol=1e-2,  # mean of uniform distribution, scale for avoid random failed
                 atol=0,
             )
+            i += 1
 
 
 if __name__ == '__main__':

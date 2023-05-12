@@ -15,6 +15,7 @@
 
 #include <set>
 
+#include "gflags/gflags.h"
 #include "glog/logging.h"
 
 #include "paddle/phi/core/dense_tensor.h"
@@ -751,7 +752,7 @@ void EinsumKernel(const Context& dev_ctx,
                   const std::string& equation,
                   DenseTensor* out,
                   std::vector<DenseTensor*> cache,
-                  std::vector<DenseTensor*> xshape) {
+                  std::vector<DenseTensor*> xshape UNUSED) {
   std::vector<char> tmp;
   // for the sake of compatibility, we may load and run v2.3 EinsumOp. Output
   // may have nullptr and the cache.size() is not equal to inputs.size(). refer

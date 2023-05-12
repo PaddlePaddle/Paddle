@@ -211,7 +211,7 @@ __global__ void GPUPRROIPoolBackward(const int nthreads,
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class GPUPRROIPoolOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -314,7 +314,7 @@ class GPUPRROIPoolOpKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class GPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -428,9 +428,12 @@ class GPUPRROIPoolGradOpKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(prroi_pool,
-                        ops::GPUPRROIPoolOpKernel<float>,
-                        ops::GPUPRROIPoolOpKernel<double>);
-REGISTER_OP_CUDA_KERNEL(prroi_pool_grad,
-                        ops::GPUPRROIPoolGradOpKernel<phi::GPUContext, float>,
-                        ops::GPUPRROIPoolGradOpKernel<phi::GPUContext, double>);
+
+PD_REGISTER_STRUCT_KERNEL(
+    prroi_pool, GPU, ALL_LAYOUT, ops::GPUPRROIPoolOpKernel, float, double) {}
+PD_REGISTER_STRUCT_KERNEL(prroi_pool_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::GPUPRROIPoolGradOpKernel,
+                          float,
+                          double) {}

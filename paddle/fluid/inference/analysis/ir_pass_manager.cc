@@ -165,6 +165,8 @@ void IRPassManager::CreatePasses(Argument *argument,
                 new AnalysisConfig::Precision(precision_mode));
       pass->Set("context_memory_sharing",
                 new bool(argument->trt_engine_memory_sharing()));
+      pass->Set("use_cuda_graph",
+                new bool(argument->tensorrt_use_cuda_graph()));
       bool use_static_engine = argument->tensorrt_use_static_engine();
       bool model_from_memory = argument->model_from_memory();
       std::string optim_cache_dir = argument->optim_cache_dir();
@@ -199,7 +201,7 @@ void IRPassManager::CreatePasses(Argument *argument,
                   optim_cache_dir));
         }
         pass->Set("model_opt_cache_dir", new std::string(optim_cache_dir));
-      } else if (use_static_engine || enable_int8) {
+      } else if (use_static_engine || enable_int8 || with_dynamic_shape) {
         std::string model_opt_cache_dir =
             argument->Has("model_dir")
                 ? argument->model_dir()
@@ -211,6 +213,8 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("use_static_engine", new bool(use_static_engine));
       pass->Set("model_from_memory", new bool(argument->model_from_memory()));
       pass->Set("use_inspector", new bool(argument->tensorrt_use_inspector()));
+      pass->Set("use_sparse_weights",
+                new bool(argument->tensorrt_use_sparse_weights()));
 
       // tuned trt dynamic_shape
       pass->Set("trt_shape_range_info_path",
@@ -308,6 +312,14 @@ void IRPassManager::CreatePasses(Argument *argument,
       }
       bool use_fc_padding = !fc_mkldnn_pass && argument->use_fc_padding();
       pass->Set("use_fc_padding", new bool(use_fc_padding));
+    } else if (pass_name == "fused_multi_transformer_xpu_quant_pass") {
+      auto op_types = argument->xpu_quant_post_dynamic_op_types();
+      if (std::count(op_types.begin(),
+                     op_types.end(),
+                     "fused_multi_transformer") > 0) {
+        pass->Set("quant_weight_bits",
+                  new int(argument->xpu_quant_post_dynamic_weight_bits()));
+      }
     }
     pre_pass = pass_name;
 

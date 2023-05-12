@@ -115,7 +115,7 @@ class RecomputeState(ProgramStats):
         a seed op before it to guarantee that two dropout op have the same outputs.
         """
         op_types = [op.type for op in self.ops]
-        if "dropout" not in op_types:
+        if "dropout" not in op_types and "fused_dropout_add" not in op_types:
             return
 
         op_idx = 0
@@ -127,16 +127,23 @@ class RecomputeState(ProgramStats):
                 self._reserved_vars.extend(cur_op.output_arg_names)
                 op_idx += 1
                 continue
-            if cur_op.type != "dropout":
+            if cur_op.type not in ["dropout", "fused_dropout_add"]:
                 op_idx += 1
                 continue
-            if cur_op.input("Seed") is not None and len(cur_op.input("Seed")):
+            seed_tensor_name = (
+                "seed_tensor" if cur_op.type == "fused_dropout_add" else "Seed"
+            )
+            if cur_op.input(seed_tensor_name) is not None and len(
+                cur_op.input(seed_tensor_name)
+            ):
                 op_idx += 1
                 continue
 
             cur_op_dist_attr = dist_context.get_op_dist_attr_for_program(cur_op)
             # insert seed op to guarantee that two dropout op have the same outputs
-            op_unique_name = unique_name.generate("seed")
+            # NOTE Hack for adopt recompute for random control, for more info see dist_dropout.py
+            # new seed added by recompute should have a prefix to distinguish with seed added by user or other moudule.
+            op_unique_name = unique_name.generate("rc_seed")
             var_unique_name = unique_name.generate_with_ignorable_key(
                 ".".join([op_unique_name, 'tmp'])
             )
@@ -177,7 +184,7 @@ class RecomputeState(ProgramStats):
 
             # modify dropout op's desc
             self.ops.insert(op_idx, seed_op)
-            cur_op.desc.set_input("Seed", [var_unique_name])
+            cur_op.desc.set_input(seed_tensor_name, [var_unique_name])
             cur_op._remove_attr("fix_seed")
             cur_op._remove_attr("seed")
             cur_op_dist_attr.set_input_dist_attr(

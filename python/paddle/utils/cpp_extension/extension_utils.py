@@ -180,6 +180,9 @@ def custom_write_stub(resource, pyfile):
 
         def __bootstrap__():
             assert os.path.exists(so_path)
+            # load custom op shared library with abs path
+            custom_ops = paddle.utils.cpp_extension.load_op_meta_info_and_register_op(so_path)
+
             if os.name == 'nt' or sys.platform.startswith('darwin'):
                 # Cpp Extension only support Linux now
                 mod = types.ModuleType(__name__)
@@ -193,10 +196,8 @@ def custom_write_stub(resource, pyfile):
                 except ImportError:
                     mod = types.ModuleType(__name__)
 
-            # load custom op shared library with abs path
-            custom_ops = paddle.utils.cpp_extension.load_op_meta_info_and_register_op(so_path)
-            for custom_ops in custom_ops:
-                setattr(mod, custom_ops, eval(custom_ops))
+            for custom_op in custom_ops:
+                setattr(mod, custom_op, eval(custom_op))
 
         __bootstrap__()
 
@@ -1037,15 +1038,22 @@ def _generate_python_module(
 
 
 def _gen_output_content(
-    op_name, in_names, out_names, ins_map, attrs_map, inplace_reverse_idx
+    op_name,
+    in_names,
+    out_names,
+    ins_map,
+    attrs_map,
+    outs_list,
+    inplace_reverse_idx,
 ):
     # ' ' * tab space * tab number
     indent = ' ' * 4 * 2
-    inplace_idx = {v: k for k, v in inplace_reverse_idx.items()}
-    dynamic_content = ""
-    static_content = f"""
-{indent}ins = {{}}
+    dynamic_content = f"""res = []
+{indent}start_idx = 0"""
+    static_content = f"""ins = {{}}
 {indent}ins_map = {ins_map}
+{indent}outs = {{}}
+{indent}outs_list = {outs_list}
 {indent}for key, value in ins_map.items():
 {indent}    # handle optional inputs
 {indent}    if value is not None:
@@ -1065,10 +1073,11 @@ def _gen_output_content(
             lower_in_names = in_names[in_idx].split("@")[0].lower()
             dynamic_content += f"""
 {indent}if {lower_in_names} is not None:
-{indent}    outs['{out_name}'] = [core.eager.Tensor() for _ in range(len({lower_in_names}))]
+{indent}    res.append(outs[start_idx: start_idx + len({lower_in_names})])
+{indent}    start_idx += len({lower_in_names})
 {indent}else:
-{indent}    outs['{out_name}'] = core.eager.Tensor()
-{indent}ctx.add_outputs(outs['{out_name}'])"""
+{indent}    res.append(None)
+{indent}    start_idx += 1"""
             static_content += f"""
 {indent}if {lower_in_names} is not None:
 {indent}    outs['{out_name}'] = [helper.create_variable(dtype='float32') for _ in range(len({lower_in_names}))]"""
@@ -1077,8 +1086,8 @@ def _gen_output_content(
         ):  # inplace vector<Tensor> output case
             lower_in_names = in_names[in_idx].split("@")[0].lower()
             dynamic_content += f"""
-{indent}outs['{out_name}'] = [core.eager.Tensor() for _ in range(len({lower_in_names}))]
-{indent}ctx.add_outputs(outs['{out_name}'])"""
+{indent}res.append(outs[start_idx: start_idx + len({lower_in_names})])
+{indent}start_idx += len({lower_in_names})"""
             static_content += f"""
 {indent}outs['{out_name}'] = [helper.create_variable(dtype='float32') for _ in range(len({lower_in_names}))]"""
         elif (
@@ -1086,21 +1095,22 @@ def _gen_output_content(
         ):  # inplace optional Tensor output case, handle inplace None input
             lower_in_names = in_names[in_idx].split("@")[0].lower()
             dynamic_content += f"""
-{indent}outs['{out_name}'] = core.eager.Tensor()
-{indent}ctx.add_outputs(outs['{out_name}'])"""
+{indent}if {lower_in_names} is not None:
+{indent}    res.append(outs[start_idx])
+{indent}else:
+{indent}    res.append(None)
+{indent}start_idx += 1"""
             static_content += f"""
 {indent}if {lower_in_names} is not None:
 {indent}    outs['{out_name}'] = helper.create_variable(dtype='float32')"""
         else:  # general/inplace Tensor output case
             dynamic_content += f"""
-{indent}outs['{out_name}'] = core.eager.Tensor()
-{indent}ctx.add_outputs(outs['{out_name}'])"""
+{indent}res.append(outs[start_idx])
+{indent}start_idx += 1"""
             static_content += f"""
 {indent}outs['{out_name}'] = helper.create_variable(dtype='float32')"""
 
     dynamic_content += f"""
-{indent}core.eager._run_custom_op(ctx, "{op_name}", True)
-{indent}res = [outs[out_name] if isinstance(outs[out_name], list) or outs[out_name]._is_initialized() else None for out_name in outs_list]
 {indent}return res[0] if len(res)==1 else res"""
 
     static_content += f"""
@@ -1128,29 +1138,20 @@ def _custom_api_content(op_name):
         out_names,
         ins_map,
         attrs_map,
+        outs_list,
         inplace_reverse_idx,
     )
-    lower_in_list = [p.split("@")[0].lower() for p in in_names]
     API_TEMPLATE = textwrap.dedent(
         """
         import paddle.fluid.core as core
-        from paddle.fluid.core import Tensor, CustomOpKernelContext
-        from paddle.fluid.framework import _dygraph_tracer, in_dygraph_mode
+        from paddle.fluid.framework import in_dygraph_mode
         from paddle.fluid.layer_helper import LayerHelper
 
         def {op_name}({params_list}):
-            # prepare inputs and outputs
-            outs = {{}}
-            outs_list = {outs_list}
-
             # The output variable's dtype use default value 'float32',
             # and the actual dtype of output variable will be inferred in runtime.
             if in_dygraph_mode():
-                ctx = CustomOpKernelContext()
-                for i in {in_names}:
-                    ctx.add_inputs(i)
-                for j in {attr_names}:
-                    ctx.add_attr(j)
+                outs = core.eager._run_custom_op("{op_name}", {params_list})
                 {dynamic_content}
             else:
                 {static_content}
@@ -1161,12 +1162,6 @@ def _custom_api_content(op_name):
     api_content = API_TEMPLATE.format(
         op_name=op_name,
         params_list=params_list,
-        ins_map=ins_map,
-        attrs_map=attrs_map,
-        # "[x, y, z]""
-        in_names="[" + ",".join(lower_in_list) + "]",
-        attr_names="[" + ",".join(attr_names) + "]",
-        outs_list=outs_list,
         dynamic_content=dynamic_content,
         static_content=static_content,
     )

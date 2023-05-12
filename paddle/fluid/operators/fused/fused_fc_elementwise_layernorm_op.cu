@@ -374,7 +374,7 @@ void AddReluAddLayerNorm(gpuStream_t stream,
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class FusedFCElementwiseLayerNormOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -449,8 +449,12 @@ class FusedFCElementwiseLayerNormOpKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    fused_fc_elementwise_layernorm,
-    ops::FusedFCElementwiseLayerNormOpKernel<phi::dtype::float16>,
-    ops::FusedFCElementwiseLayerNormOpKernel<float>,
-    ops::FusedFCElementwiseLayerNormOpKernel<double>);
+namespace plat = paddle::platform;
+
+PD_REGISTER_STRUCT_KERNEL(fused_fc_elementwise_layernorm,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::FusedFCElementwiseLayerNormOpKernel,
+                          float,
+                          double,
+                          plat::float16) {}

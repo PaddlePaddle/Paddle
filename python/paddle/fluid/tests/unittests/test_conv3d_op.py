@@ -15,10 +15,16 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, paddle_static_guard
+from eager_op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    get_numeric_gradient,
+    paddle_static_guard,
+)
 
 import paddle
 from paddle.fluid import core
+from paddle.fluid.tests.unittests.testsuite import create_op
 
 
 def conv3d_forward_naive(
@@ -179,6 +185,77 @@ def create_test_cudnn_class(parent):
     globals()[cls_name] = TestCUDNNCase
 
 
+def create_test_cudnn_bf16_class(parent):
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda()
+        or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+        "core is not compiled with CUDA and do not support bfloat16",
+    )
+    class TestConv3DCUDNNBF16(parent):
+        def get_numeric_grad(self, place, check_name):
+            scope = core.Scope()
+            self._check_grad_helper()
+            op = create_op(
+                scope, self.op_type, self.inputs, self.outputs, self.attrs
+            )
+            return get_numeric_gradient(
+                place, scope, op, self.inputs_fp32, check_name, ['Output']
+            )
+
+        def init_kernel_type(self):
+            self.use_cudnn = True
+            self.dtype = np.uint16
+
+        def test_check_output(self):
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(
+                place, check_dygraph=(not self.use_mkldnn)
+            )
+
+        def test_check_grad_no_filter(self):
+            place = core.CUDAPlace(0)
+            numeric_grads = self.get_numeric_grad(place, 'Input')
+
+            self.check_grad_with_place(
+                place,
+                ['Input'],
+                'Output',
+                no_grad_set={'Filter'},
+                check_dygraph=(not self.use_mkldnn),
+                user_defined_grads=[numeric_grads],
+            )
+
+        def test_check_grad_no_input(self):
+            place = core.CUDAPlace(0)
+            numeric_grads = self.get_numeric_grad(place, 'Filter')
+
+            self.check_grad_with_place(
+                place,
+                ['Filter'],
+                'Output',
+                no_grad_set={'Input'},
+                check_dygraph=(not self.use_mkldnn),
+                user_defined_grads=[numeric_grads],
+            )
+
+        def test_check_grad(self):
+            place = core.CUDAPlace(0)
+            numeric_input_grads = self.get_numeric_grad(place, 'Input')
+            numeric_fliter_grads = self.get_numeric_grad(place, 'Filter')
+
+            self.check_grad_with_place(
+                place,
+                {'Input', 'Filter'},
+                'Output',
+                user_defined_grads=[numeric_input_grads, numeric_fliter_grads],
+                check_dygraph=(not self.use_mkldnn),
+            )
+
+    cls_name = "{}_{}".format(parent.__name__, "CUDNNBF16OP")
+    TestConv3DCUDNNBF16.__name__ = cls_name
+    globals()[cls_name] = TestConv3DCUDNNBF16
+
+
 def create_test_padding_SAME_class(parent):
     class TestPaddingSMAECase(parent):
         def init_paddings(self):
@@ -323,19 +400,37 @@ class TestConv3DOp(OpTest):
             'dilations': self.dilations,
         }
 
-        input = np.random.random(self.input_size).astype(self.dtype)
-        filter = np.random.random(self.filter_size).astype(self.dtype)
+        if self.is_bfloat16_op():
+            input = np.random.random(self.input_size).astype(np.float32)
+            filter = np.random.random(self.filter_size).astype(np.float32)
+        else:
+            input = np.random.random(self.input_size).astype(self.dtype)
+            filter = np.random.random(self.filter_size).astype(self.dtype)
+
         output = conv3d_forward_naive(
             input,
             filter,
             self.groups,
             conv3d_param,
-        ).astype(self.dtype)
+        )
 
-        self.inputs = {
-            'Input': OpTest.np_dtype_to_fluid_dtype(input),
-            'Filter': OpTest.np_dtype_to_fluid_dtype(filter),
-        }
+        if self.is_bfloat16_op():
+            output = convert_float_to_uint16(output)
+            self.inputs = {
+                'Input': convert_float_to_uint16(input),
+                'Filter': convert_float_to_uint16(filter),
+            }
+            self.inputs_fp32 = {
+                'Input': OpTest.np_dtype_to_fluid_dtype(input),
+                'Filter': OpTest.np_dtype_to_fluid_dtype(filter),
+            }
+        else:
+            output = output.astype(self.dtype)
+            self.inputs = {
+                'Input': OpTest.np_dtype_to_fluid_dtype(input),
+                'Filter': OpTest.np_dtype_to_fluid_dtype(filter),
+            }
+
         self.attrs = {
             'strides': self.stride,
             'paddings': self.pad,
@@ -358,8 +453,6 @@ class TestConv3DOp(OpTest):
         )
 
     def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
         place = core.CUDAPlace(0) if self.has_cudnn() else core.CPUPlace()
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_grad_with_place(
@@ -371,8 +464,7 @@ class TestConv3DOp(OpTest):
         )
 
     def test_check_grad_no_filter(self):
-        if self.dtype == np.float16:
-            return
+
         place = core.CUDAPlace(0) if self.has_cudnn() else core.CPUPlace()
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_grad_with_place(
@@ -385,8 +477,7 @@ class TestConv3DOp(OpTest):
         )
 
     def test_check_grad_no_input(self):
-        if self.dtype == np.float16:
-            return
+
         place = core.CUDAPlace(0) if self.has_cudnn() else core.CPUPlace()
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_grad_with_place(
@@ -615,6 +706,14 @@ class TestCUDNNExhaustiveSearch(TestCUDNN):
         self.use_cudnn = True
         self.exhaustive_search = True
         self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
+
+
+# ----------------Conv3DCUDNN bf16----------------
+create_test_cudnn_bf16_class(TestConv3DOp)
+create_test_cudnn_bf16_class(TestWithGroup1)
+create_test_cudnn_bf16_class(TestWithGroup2)
+create_test_cudnn_bf16_class(TestWith1x1)
+create_test_cudnn_bf16_class(TestWithInput1x1Filter1x1)
 
 
 # ---- test asymmetric padding ----
@@ -1114,4 +1213,5 @@ class TestConv3DAPI_Error(unittest.TestCase):
 
 
 if __name__ == '__main__':
+
     unittest.main()

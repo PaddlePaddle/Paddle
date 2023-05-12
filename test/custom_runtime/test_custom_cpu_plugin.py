@@ -31,8 +31,11 @@ class TestCustomCPUPlugin(unittest.TestCase):
             && git fetch origin \
             && git checkout {} -b dev \
             && cd backends/custom_cpu \
-            && mkdir build && cd build && cmake .. && make -j8'.format(
-            self.temp_dir.name, os.getenv('PLUGIN_URL'), os.getenv('PLUGIN_TAG')
+            && mkdir build && cd build && cmake .. -DPython_EXECUTABLE={} && make -j8'.format(
+            self.temp_dir.name,
+            os.getenv('PLUGIN_URL'),
+            os.getenv('PLUGIN_TAG'),
+            sys.executable,
         )
         os.system(cmd)
 

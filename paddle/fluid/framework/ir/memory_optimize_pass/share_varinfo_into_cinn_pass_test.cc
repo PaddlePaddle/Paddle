@@ -26,8 +26,14 @@
 #include "paddle/fluid/framework/program_desc.h"
 
 USE_OP_ITSELF(mul);
-USE_OP(cinn_launch);
 USE_OP_ITSELF(elementwise_add);
+
+USE_OP_ITSELF(cinn_launch);
+PD_DECLARE_KERNEL(cinn_launch, CPU, ALL_LAYOUT);
+#ifdef PADDLE_WITH_CUDA
+PD_DECLARE_KERNEL(cinn_launch, GPU, ALL_LAYOUT);
+#endif
+
 namespace paddle::framework {
 
 using Name2VarInfoMap =

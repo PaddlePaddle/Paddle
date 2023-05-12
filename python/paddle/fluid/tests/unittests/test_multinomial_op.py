@@ -16,12 +16,12 @@ import os
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 from test_attribute_var import UnittestBase
 
 import paddle
 from paddle import fluid
-from paddle.fluid import Program, program_guard
+from paddle.fluid import Program, core, program_guard
 
 
 def sample_output_one_dimension(out, dim):
@@ -153,6 +153,84 @@ class TestMultinomialFP16Op3(TestMultinomialFP16Op):
     def init_data(self):
         # replacement is False. number of samples must be less than number of categories.
         self.input_np = np.random.rand(1000).astype(self.dtype)
+        self.outputs = {"Out": np.zeros(100).astype("int64")}
+        self.attrs = {"num_samples": 100, "replacement": False}
+
+    def verify_output(self, outs):
+        out = np.array(outs[0])
+        unique_out = np.unique(out)
+        self.assertEqual(
+            len(unique_out),
+            100,
+            "replacement is False. categories can't be sampled repeatedly",
+        )
+
+
+# BF16 OP
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA and do not support bfloat16",
+)
+class TestMultinomialBF16OP(OpTest):
+    def setUp(self):
+        paddle.enable_static()
+        self.op_type = "multinomial"
+        self.dtype = np.uint16
+        self.init_data()
+        self.inputs = {"X": convert_float_to_uint16(self.input_np)}
+
+    def init_data(self):
+        # input probability is a vector, and replacement is True
+        self.input_np = np.random.rand(4).astype(np.float32)
+        self.outputs = {"Out": np.zeros(100000).astype("int64")}
+        self.attrs = {"num_samples": 100000, "replacement": True}
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place_customized(self.verify_output, place)
+
+    def sample_output(self, out):
+        return sample_output_one_dimension(out, 4)
+
+    def verify_output(self, outs):
+        # normalize the input to get the probability
+        prob = self.input_np / self.input_np.sum(axis=-1, keepdims=True)
+        sample_prob = self.sample_output(np.array(outs[0]))
+        np.testing.assert_allclose(
+            sample_prob,
+            prob,
+            rtol=0,
+            atol=0.01,
+            err_msg='sample_prob: ' + str(sample_prob) + '\nprob: ' + str(prob),
+        )
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA and do not support bfloat16",
+)
+class TestMultinomialBF16OP2(TestMultinomialBF16OP):
+    def init_data(self):
+        # input probability is a matrix
+        self.input_np = np.random.rand(3, 4).astype(np.float32)
+        self.outputs = {"Out": np.zeros((3, 100000)).astype("int64")}
+        self.attrs = {"num_samples": 100000, "replacement": True}
+
+    def sample_output(self, out):
+        return sample_output_two_dimension(out, [3, 4])
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA and do not support bfloat16",
+)
+class TestMultinomialBF16OP3(TestMultinomialBF16OP):
+    def init_data(self):
+        # replacement is False. number of samples must be less than number of categories.
+        self.input_np = np.random.rand(1000).astype(np.float32)
         self.outputs = {"Out": np.zeros(100).astype("int64")}
         self.attrs = {"num_samples": 100, "replacement": False}
 

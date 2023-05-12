@@ -31,8 +31,13 @@ class CAllGatherOp : public framework::OperatorWithKernel {
                       platform::errors::InvalidArgument(
                           "The value of nranks should be >=2."));
     framework::DDim dim = ctx->GetInputDim("X");
-    dim[0] = dim[0] * nranks;
-    if (dim[0] < 0) dim[0] = -1;
+    // 0D use stack/unstack while others use concat/split
+    if (dim.size() == 0) {
+      dim = phi::make_ddim({nranks});
+    } else {
+      dim[0] = dim[0] * nranks;
+      if (dim[0] < 0) dim[0] = -1;
+    }
     ctx->SetOutputDim("Out", dim);
   }
 };
@@ -44,10 +49,6 @@ class CAllGatherOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "(Tensor) the allgather result");
     AddAttr<int>("ring_id", "(int default 0) communication ring id.")
         .SetDefault(0);
-#if defined(PADDLE_WITH_ASCEND_CL)
-    AddAttr<std::string>("tag", "(string default tag) tag for all gather.")
-        .SetDefault("tag");
-#endif
     AddAttr<bool>(
         "use_calc_stream",
         "(bool default false) eject CUDA operations to calculation stream.")
