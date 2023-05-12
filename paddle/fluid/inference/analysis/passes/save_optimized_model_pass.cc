@@ -28,7 +28,11 @@ namespace inference {
 namespace analysis {
 
 void SaveOptimizedModelPass::SaveOptimizedModel(Argument* argument) {
-  if (!argument->save_optimized_model()) return;
+  if (!argument->save_optimized_model()) {
+    LOG(WARNING) << "save_optim_cache_model is turned off, skip "
+                    "save_optimized_model_pass";
+    return;
+  }
   if (!argument->enable_ir_optim()) {
     LOG(WARNING) << "ir_optim is turned off, skip save_optimized_model_pass";
     return;
