@@ -1240,7 +1240,15 @@ def broadcast_tensors(input, name=None):
             check_variable_and_dtype(
                 x,
                 'input[' + str(id) + ']',
-                ['bool', 'float32', 'float64', 'int32', 'int64'],
+                [
+                    'bool',
+                    'float16',
+                    'float32',
+                    'float64',
+                    'int32',
+                    'int64',
+                    'uint16',
+                ],
                 'broadcast_tensors',
             )
             if x.dtype != input[0].dtype:
@@ -1899,7 +1907,7 @@ def split(x, num_or_sections, axis=0, name=None):
     Split the input tensor into multiple sub-Tensors.
 
     Args:
-        x (Tensor): A N-D Tensor. The data type is bool, float16, float32, float64, uint8, int8, int32 or int64.
+        x (Tensor): A N-D Tensor. The data type is bool, bfloat16, float16, float32, float64, uint8, int8, int32 or int64.
         num_or_sections (int|list|tuple): If ``num_or_sections`` is an int, then ``num_or_sections``
             indicates the number of equal sized sub-Tensors that the ``x`` will be divided into.
             If ``num_or_sections`` is a list or tuple, the length of it indicates the number of
@@ -1970,6 +1978,7 @@ def split(x, num_or_sections, axis=0, name=None):
             'input',
             [
                 'bool',
+                'bfloat16',
                 'float16',
                 'uint16',
                 'float32',
@@ -2089,7 +2098,7 @@ def vsplit(x, num_or_sections, name=None):
 
             # x is a Tensor of shape [8, 6, 7]
             x = paddle.rand([8, 6, 7])
-            out0, out1, out2 = paddle.vsplit(x, num_or_sections=2)
+            out0, out1 = paddle.vsplit(x, num_or_sections=2)
             print(out0.shape)  # [4, 6, 7]
             print(out1.shape)  # [4, 6, 7]
             out0, out1, out2 = paddle.vsplit(x, num_or_sections=[1, 3, 4])
@@ -2546,7 +2555,7 @@ def unsqueeze(x, axis, name=None):
     please use `Tensor.clone` like ``unsqueeze_clone_x = x.unsqueeze(-1).clone()``.
 
     Args:
-        x (Tensor): The input Tensor to be unsqueezed. Supported data type: float32, float64, bool, int8, int32, int64.
+        x (Tensor): The input Tensor to be unsqueezed. Supported data type: bfloat16, float16, float32, float64, bool, int8, int32, int64.
         axis (int|list|tuple|Tensor): Indicates the dimensions to be inserted. The data type is ``int32`` .
                                     If ``axis`` is a list or tuple, the elements of it should be integers or Tensors with shape [1].
                                     If ``axis`` is a Tensor, it should be an 1-D Tensor .
@@ -2600,6 +2609,7 @@ def unsqueeze(x, axis, name=None):
             input,
             'input',
             [
+                'uint16',
                 'float16',
                 'uint16',
                 'float32',
@@ -4783,6 +4793,176 @@ def index_add_(x, index, axis, value, name=None):
             #         [2., 1., 2.]])
     """
     return _C_ops.index_add_(x, index, value, axis)
+
+
+@inplace_apis_in_dygraph_only
+def index_put_(x, indices, value, accumulate=False, name=None):
+    """
+    Puts values from the tensor values into the tensor x using the indices specified in indices (which is a tuple of Tensors).
+    The expression paddle.index_put_(x, indices, values) is equivalent to tensor[indices] = values. Returns x.
+    If accumulate is True, the elements in values are added to x. If accumulate is False, the behavior is undefined if indices contain duplicate elements.
+
+    Args:
+        x (Tensor) : The Source Tensor. Supported data types are int32, int64, float16, float32, float64, bool.
+        indices (Tuple of Tensor): The tuple of Tensor containing the indices to index.
+            The data type of ``tensor in indices`` must be int32, int64 or bool
+        value (Tensor): The tensor used to be assigned to x.
+        accummulate (Bool, optional): Whether the elements in values are added to x. Default: False.
+        name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        Tensor, same dimention and dtype with x.
+
+    Examples:
+        .. code-block:: python
+            import paddle
+
+            x = paddle.zeros([3, 3])
+            value = paddle.ones([3])
+            ix1 = paddle.to_tensor([0,1,2])
+            ix2 = paddle.to_tensor([1,2,1])
+            indices=(ix1,ix2)
+
+            out = paddle.index_put_(x,indices,value)
+            print(x)
+            # Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[0., 1., 0.],
+            #         [0., 0., 1.],
+            #         [0., 1., 0.]])
+            print(out)
+            # Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[0., 1., 0.],
+            #         [0., 0., 1.],
+            #         [0., 1., 0.]])
+    """
+    return _C_ops.index_put_(x, indices, value, accumulate)
+
+
+def index_put(x, indices, value, accumulate=False, name=None):
+    """
+    Outplace version of ``index_put_`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_index_put`.
+
+    Examples:
+        .. code-block:: python
+            import paddle
+
+            x = paddle.zeros([3, 3])
+            value = paddle.ones([3])
+            ix1 = paddle.to_tensor([0,1,2])
+            ix2 = paddle.to_tensor([1,2,1])
+            indices=(ix1,ix2)
+
+            out = paddle.index_put(x,indices,value)
+            print(x)
+            # Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[0., 0., 0.],
+            #         [0., 0., 0.],
+            #         [0., 0., 0.]])
+            print(out)
+            # Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        [[0., 1., 0.],
+            #         [0., 0., 1.],
+            #         [0., 1., 0.]])
+    """
+    if in_dygraph_mode():
+        return _C_ops.index_put(x, indices, value, accumulate)
+
+    helper = LayerHelper("index_put", **locals())
+    check_variable_and_dtype(
+        x,
+        'x',
+        ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
+        'paddle.tensor.manipulation.index_put',
+    )
+    check_variable_and_dtype(
+        value,
+        'value',
+        ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
+        'paddle.tensor.manipulation.index_put',
+    )
+
+    out = helper.create_variable_for_type_inference(x.dtype)
+
+    helper.append_op(
+        type='index_put',
+        inputs={
+            'x': x,
+            'indices': indices,
+            'value': value,
+        },
+        outputs={'out': out},
+        attrs={'accumulate': accumulate},
+    )
+    return out
+
+
+def unflatten(x, axis, shape, name=None):
+    """
+    Expand a certain dimension of the input x Tensor into a desired shape.
+
+    Args:
+        x (Tensor) : An N-D Tensor. The data type is float16, float32, float64, int16, int32, int64, bool, uint16.
+        axis (int): :attr:`axis` to be unflattened, specified as an index into `x.shape`.
+        shape (list|tuple|Tensor): Unflatten :attr:`shape` on the specified :attr:`axis`. At most one dimension of the target :attr:`shape` can be -1.
+            If the input :attr:`shape` does not contain -1 , the product of all elements in ``shape`` should be equal to ``x.shape[axis]``.
+            The data type is `int` . If :attr:`shape` is a list or tuple, the elements of it should be integers or Tensors with shape [].
+            If :attr:`shape` is an Tensor, it should be an 1-D Tensor.
+        name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        Tensor, return the unflatten tensor of :attr:`x`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.randn(shape=[4, 6, 8])
+            shape = [2, 3]
+            axis = 1
+            res = paddle.unflatten(x, axis, shape)
+            print(res.shape)
+            # [4, 2, 3, 8]
+
+            x = paddle.randn(shape=[4, 6, 8])
+            shape = (-1, 2)
+            axis = -1
+            res = paddle.unflatten(x, axis, shape)
+            print(res.shape)
+            # [4, 6, 4, 2]
+
+            x = paddle.randn(shape=[4, 6, 8])
+            shape = paddle.to_tensor([2, 2])
+            axis = 0
+            res = paddle.unflatten(x, axis, shape)
+            print(res.shape)
+            # [2, 2, 6, 8]
+    """
+
+    # determine whether the input axis is valid.
+    axis = non_negative_axis(x, axis)
+    if isinstance(shape, (list, tuple)):
+        new_shape = (
+            list(x.shape[:axis]) + list(shape) + list(x.shape[axis + 1 :])
+        )
+    elif isinstance(shape, Variable):
+        # The data type returned by `paddle.shape` is only 'int32'.
+        new_shape = paddle.concat(
+            [
+                paddle.shape(x)[:axis],
+                paddle.cast(shape, 'int32'),
+                paddle.shape(x)[axis + 1 :],
+            ]
+        )
+    else:
+        raise TypeError(
+            "The data type of x should be one of ['List', 'Tuple', 'Tensor'], but got {}".format(
+                type(shape)
+            )
+        )
+    x = x.reshape(new_shape)
+    return x
 
 
 # TODO(dev): We need avoid implementing it by this way.

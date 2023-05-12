@@ -106,7 +106,6 @@ DeviceType Place2DeviceType(const platform::Place& place);
 constexpr DeviceType kCPU = DeviceType::CPU;
 constexpr DeviceType kCUDA = DeviceType::CUDA;
 constexpr DeviceType kXPU = DeviceType::XPU;
-constexpr DeviceType kNPU = DeviceType::NPU;
 constexpr DeviceType kIPU = DeviceType::IPU;
 constexpr DeviceType kCUSTOM_DEVICE = DeviceType::CUSTOM_DEVICE;
 

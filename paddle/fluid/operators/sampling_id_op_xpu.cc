@@ -16,8 +16,6 @@
 #include "paddle/fluid/platform/device_context.h"
 
 namespace ops = paddle::operators;
-using XPUCtx = paddle::platform::XPUDeviceContext;
 
-REGISTER_OP_XPU_KERNEL(sampling_id,
-                       paddle::operators::SamplingIdKernel<float, XPUCtx>,
-                       paddle::operators::SamplingIdKernel<double, XPUCtx>);
+PD_REGISTER_STRUCT_KERNEL(
+    sampling_id, XPU, ALL_LAYOUT, ops::SamplingIdKernel, float, double) {}

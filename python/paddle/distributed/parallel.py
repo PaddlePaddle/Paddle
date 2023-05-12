@@ -47,7 +47,7 @@ from paddle.distributed.fleet.launch_utils import check_backend
 # (TODO: GhostScreaming) It will be removed later.
 from paddle.framework import _set_expected_place
 from paddle.framework import base as imperative_base
-from paddle.framework import core, in_dygraph_mode, to_variable
+from paddle.framework import core, in_dygraph_mode
 from paddle.nn.layer import layers
 from paddle.utils import deprecated
 
@@ -117,21 +117,6 @@ def _split_tensors(coalesced_grads_and_grad_vars):
                 assert g_var.shape == g_shape
 
 
-def scale_loss(loss):
-    # TODO(liuyuhui) Currently only for xpu. Will be removed in the future.
-    if not paddle.distributed.ParallelEnv().world_size > 1:
-        return loss
-
-    loss_scale = to_variable(
-        np.array([paddle.distributed.ParallelEnv().world_size]).astype(
-            "float32"
-        )
-    )
-    loss_scale.stop_gradient = True
-    scaled_loss = loss / loss_scale
-    return scaled_loss
-
-
 @imperative_base.no_grad
 @framework.dygraph_only
 def build_groups(vars, group_size):
@@ -161,20 +146,18 @@ def sync_params_buffers(
     for _, param in model._obtain_parameters_buffers().items():
         if not isinstance(param, core.eager.Tensor):
             raise TypeError(
-                "The data type of '%s' must be Varbase or eager.Tensor"
-                % param.name
+                "The data type of '%s' must be core.eager.Tensor" % param.name
             )
 
-        # is_distributed param not need to sync when in mp mode
-        if isinstance(param, core.eager.Tensor):
-            if is_model_parallel:
-                if hasattr(param, "is_distributed") and param.is_distributed:
-                    continue
-
-            # NOTE(shenliang03): Support situations that do not require synchronization parameters,
-            # such as moe's expert parameters
-            if getattr(param, "no_sync", False):
+        if is_model_parallel:
+            if hasattr(param, "is_distributed") and param.is_distributed:
                 continue
+
+        # NOTE(shenliang03): Support situations that do not require synchronization parameters,
+        # such as moe's expert parameters
+        if getattr(param, "no_sync", False):
+            continue
+
         if param.type == core.VarDesc.VarType.VOCAB:
             continue
 
@@ -489,14 +472,14 @@ class DataParallel(layers.Layer):
                 self.find_unused_parameters,
             )
 
-    def _find_varbase(self, obj):
+    def _find_tensor(self, obj):
         var_type = core.eager.Tensor
         if isinstance(obj, var_type):
             return [obj]
         if isinstance(obj, (list, tuple)):
-            return itertools.chain(*map(self._find_varbase, obj))
+            return itertools.chain(*map(self._find_tensor, obj))
         if isinstance(obj, dict):
-            return itertools.chain(*map(self._find_varbase, obj.values()))
+            return itertools.chain(*map(self._find_tensor, obj.values()))
         return []
 
     @contextmanager
@@ -551,9 +534,7 @@ class DataParallel(layers.Layer):
             and framework._dygraph_tracer()._has_grad
             and self.grad_need_sync
         ):
-            self._reducer.prepare_for_backward(
-                list(self._find_varbase(outputs))
-            )
+            self._reducer.prepare_for_backward(list(self._find_tensor(outputs)))
         return outputs
 
     @deprecated(

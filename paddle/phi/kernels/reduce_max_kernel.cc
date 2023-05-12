@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -62,5 +62,5 @@ PD_REGISTER_KERNEL(
 #endif
 
 #if defined(PADDLE_WITH_XPU)
-PD_REGISTER_KERNEL(max, XPU, ALL_LAYOUT, phi::MaxKernel, float) {}
+PD_REGISTER_KERNEL(max, XPU, ALL_LAYOUT, phi::MaxKernel, float, int) {}
 #endif

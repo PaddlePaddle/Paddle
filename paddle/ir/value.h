@@ -57,6 +57,38 @@ class OpOperand {
 };
 
 ///
+/// \brief Value Iterator
+///
+template <typename OperandType>
+class ValueUseIterator {
+ public:
+  ValueUseIterator(OperandType use = nullptr) : current_(use) {}  // NOLINT
+
+  bool operator==(const ValueUseIterator<OperandType> &rhs) const {
+    return current_ == rhs.current_;
+  }
+  ir::Operation *owner() const { return current_.impl()->owner(); }
+
+  OperandType get() const { return current_; }
+
+  OperandType operator*() const { return get(); }
+
+  ValueUseIterator<OperandType> &operator++() {
+    current_ = current_.impl()->next_use();
+    return *this;
+  }
+
+  ValueUseIterator<OperandType> operator++(int) {
+    ValueUseIterator<OperandType> tmp = *this;
+    ++*(this);
+    return tmp;
+  }
+
+ protected:
+  OperandType current_;
+};
+
+///
 /// \brief Value class represents the SSA value in the IR system. This class
 /// only provides interfaces, for specific implementation, see Impl class.
 ///
@@ -95,6 +127,15 @@ class Value {
   Operation *GetDefiningOp() const;
 
   std::string print_ud_chain();
+
+  ///
+  /// \brief Provide iterator interface to access Value use chain.
+  ///
+  using use_iterator = ValueUseIterator<OpOperand>;
+
+  use_iterator begin() const;
+
+  use_iterator end() const;
 
   friend struct std::hash<Value>;
 
