@@ -373,13 +373,13 @@ void silu_double_grad(const Tensor& x,
   auto tmp1 = 1 - sigmoid;
   auto tmp2 = 1 + tmp1 * x;
   if (grad_out_grad) {
-    auto ddout = grad_x_grad * sigmoid * c_5;
+    auto ddout = grad_x_grad * sigmoid * tmp2;
     set_output<T>(ddout, grad_out_grad);
   }
   if (grad_x) {
-    auto sigmoid_G = out_grad * grad_x_grad * (tmp2 - x * sigmoid);
-    auto dx = sigmoid * (grad_x_grad * out_grad + sigmoid_G) *
-              tmp2 set_output<T>(dx, grad_x);
+    auto dx =
+        sigmoid * grad_x_grad * out_grad * (1 + (tmp2 - x * sigmoid)) * tmp1;
+    set_output<T>(dx, grad_x);
   }
 }
 
