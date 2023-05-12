@@ -4804,7 +4804,7 @@ def index_put_(x, indices, value, accumulate=False, name=None):
     Args:
         x (Tensor) : The Source Tensor. Supported data types are int32, int64, float16, float32, float64, bool.
         indices (Tuple of Tensor): The tuple of Tensor containing the indices to index.
-            The data type of ``tensor in indices`` must be int32, int64 or bool
+            The data type of ``tensor in indices`` must be int32, int64 or bool.
         value (Tensor): The tensor used to be assigned to x.
         accummulate (Bool, optional): Whether the elements in values are added to x. Default: False.
         name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
@@ -4814,6 +4814,7 @@ def index_put_(x, indices, value, accumulate=False, name=None):
 
     Examples:
         .. code-block:: python
+
             import paddle
 
             x = paddle.zeros([3, 3])
@@ -4844,6 +4845,7 @@ def index_put(x, indices, value, accumulate=False, name=None):
 
     Examples:
         .. code-block:: python
+
             import paddle
 
             x = paddle.zeros([3, 3])
