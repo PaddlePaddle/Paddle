@@ -24,8 +24,8 @@ limitations under the License. */
 
 namespace phi {
 
-class CPUContext : public DeviceContext,
-                   public TypeInfoTraits<DeviceContext, CPUContext> {
+class PADDLE_API CPUContext : public DeviceContext,
+                              public TypeInfoTraits<DeviceContext, CPUContext> {
  public:
   CPUContext();
   CPUContext(CPUContext&&);

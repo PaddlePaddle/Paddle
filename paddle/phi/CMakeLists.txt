@@ -130,8 +130,8 @@ if(WIN32)
 endif()
 
 if(WIN32)
-  set_property(TARGET phi PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
   if(WITH_PHI_SHARED)
+    set_property(TARGET phi PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
     set(PHI_NAME
         phi.dll
         CACHE INTERNAL "" FORCE)

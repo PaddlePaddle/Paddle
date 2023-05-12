@@ -53,7 +53,7 @@ class CustomRegisteredDeviceMap {
 const char* AllocationTypeStr(AllocationType type);
 
 /// \brief The place is used to specify where the data is stored.
-class Place {
+class PADDLE_API Place {
  public:
   Place();
 

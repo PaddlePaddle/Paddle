@@ -36,7 +36,7 @@ limitations under the License. */
 
 namespace paddle {
 
-class OpMetaInfoHelper;
+class PADDLE_API OpMetaInfoHelper;
 using Tensor = paddle::Tensor;
 
 ///////////////// Util Marco Define ////////////////
@@ -99,11 +99,11 @@ inline std::string Optional(const std::string& t_name) {
 
 std::vector<std::string> ParseAttrStr(const std::string& attr);
 
-void AssignTensorImpl(const Tensor& src, Tensor* dst);
+void PADDLE_API AssignTensorImpl(const Tensor& src, Tensor* dst);
 
 ////////////////////// Kernel Context ////////////////////////
 
-class CustomOpKernelContext {
+class PADDLE_API CustomOpKernelContext {
  public:
   CustomOpKernelContext() = default;
 
@@ -759,7 +759,7 @@ struct InferDtypeFuncImpl<Return (*)(Args...), impl_fn> {
 
 ////////////////////// Op Meta Info //////////////////////
 
-class OpMetaInfo {
+class PADDLE_API OpMetaInfo {
  public:
   explicit OpMetaInfo(const std::string& op_name) : name_(op_name) {}
 
@@ -823,7 +823,7 @@ class OpMetaInfoHelper {
 
 //////////////// Op Meta Info Map /////////////////
 
-class OpMetaInfoMap {
+class PADDLE_API OpMetaInfoMap {
  public:
   // this function's impl should keep in header file.
   // if move to cc file, meta info can not be added
@@ -847,7 +847,7 @@ class OpMetaInfoMap {
 
 //////////////// Op Meta Info Builder /////////////////
 
-class OpMetaInfoBuilder {
+class PADDLE_API OpMetaInfoBuilder {
  public:
   explicit OpMetaInfoBuilder(std::string&& name, size_t index);
   OpMetaInfoBuilder& Inputs(std::vector<std::string>&& inputs);

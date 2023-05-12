@@ -57,7 +57,7 @@ std::vector<std::string> ParseAttrStr(const std::string& attr) {
   return rlt;
 }
 
-void AssignTensorImpl(const Tensor& src, Tensor* dst) {
+PADDLE_API void AssignTensorImpl(const Tensor& src, Tensor* dst) {
   if (!src.initialized() || !dst->defined()) {
     VLOG(3) << "Custom operator assigns non-initialized tensor, this only "
                "happens when handling inplace optional inputs & outputs.";

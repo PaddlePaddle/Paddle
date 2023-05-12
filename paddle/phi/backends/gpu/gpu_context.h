@@ -78,8 +78,8 @@ class DnnWorkspaceHandle {
   std::unique_ptr<std::mutex> mtx_;
 };
 
-class GPUContext : public DeviceContext,
-                   public TypeInfoTraits<DeviceContext, GPUContext> {
+class PADDLE_API GPUContext : public DeviceContext,
+                              public TypeInfoTraits<DeviceContext, GPUContext> {
  public:
   explicit GPUContext(const GPUPlace& place,
                       bool init = true,
