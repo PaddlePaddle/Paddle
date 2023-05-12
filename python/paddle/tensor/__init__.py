@@ -46,6 +46,7 @@ from .linalg import dot  # noqa: F401
 from .linalg import cov  # noqa: F401
 from .linalg import corrcoef  # noqa: F401
 from .linalg import norm  # noqa: F401
+from .linalg import pca_lowrank  # noqa: F401
 from .linalg import cond  # noqa: F401
 from .linalg import transpose  # noqa: F401
 from .linalg import lstsq  # noqa: F401
@@ -60,7 +61,6 @@ from .linalg import mv  # noqa: F401
 from .linalg import eig  # noqa: F401
 from .linalg import matrix_power  # noqa: F401
 from .linalg import qr  # noqa: F401
-from .linalg import pca_lowrank  # noqa: F401
 from .linalg import eigvals  # noqa: F401
 from .linalg import multi_dot  # noqa: F401
 from .linalg import svd  # noqa: F401

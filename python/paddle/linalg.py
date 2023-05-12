@@ -29,9 +29,9 @@ from .tensor.linalg import matrix_power  # noqa: F401
 from .tensor.linalg import matrix_rank  # noqa: F401
 from .tensor.linalg import multi_dot  # noqa: F401
 from .tensor.linalg import norm  # noqa: F401
+from .tensor.linalg import pca_lowrank  # noqa: F401
 from .tensor.linalg import pinv  # noqa: F401
 from .tensor.linalg import qr  # noqa: F401
-from .tensor.linalg import pca_lowrank  # noqa: F401
 from .tensor.linalg import slogdet  # noqa: F401
 from .tensor.linalg import solve  # noqa: F401
 from .tensor.linalg import svd  # noqa: F401

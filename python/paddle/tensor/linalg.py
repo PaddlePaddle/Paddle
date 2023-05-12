@@ -2147,26 +2147,8 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
         if len(x.shape) != 2:
             raise ValueError('pca_lowrank input is expected to be 2-dimensional tensor')
         s_sum = paddle.sparse.sum(x, axis=-2)
-        d_m = paddle.full(s_sum.values().shape, fill_value=m, dtype=s_sum.dtype)
-        d_m = paddle.sparse.sparse_coo_tensor(s_sum.indices(), d_m, dtype=s_sum.dtype, place=s_sum.place)
-
-        # s_sum = s_sum.to_dense()
-        # d_m = d_m.to_dense()
-        # c = paddle.divide(s_sum, d_m)
-        # c = c.to_sparse_coo(sparse_dim=1)
-        '''
-        paddle.sparse.divide会产生segment fault，不确定是API使用有问题还是divide算子实现有问题
-        print(s_sum)
-        Tensor(shape=[4], dtype=paddle.float64, place=Place(gpu:0), stop_gradient=True, 
-               indices=[[3, 0, 1, 2]], 
-               values=[-0.00004095, -0.51593942, -0.31248844,  0.04855237])
-        print(d_m)
-        Tensor(shape=[4], dtype=paddle.float64, place=Place(gpu:0), stop_gradient=True, 
-               indices=[[3, 0, 1, 2]], 
-               values=[17., 17., 17., 17.])
-        '''
-        
-        c = paddle.sparse.divide(s_sum, d_m)
+        s_val = s_sum.values() / m
+        c = paddle.sparse.sparse_coo_tensor(s_sum.indices(), s_val, dtype=s_sum.dtype, place=s_sum.place)
         column_indices = c.indices()[0]
         indices = paddle.zeros((2, len(column_indices)), dtype=column_indices.dtype)
         indices[0] = column_indices
