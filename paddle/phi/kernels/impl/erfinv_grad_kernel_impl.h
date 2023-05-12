@@ -22,18 +22,18 @@
 
 namespace phi {
 
-template <typename T, typename Context>
+template <typename Context>
 void ErfinvGradKernel(const Context& ctx,
                       const DenseTensor& out,
                       const DenseTensor& out_grad,
                       DenseTensor* x_grad) {
-  ctx.template Alloc<T>(x_grad);
-  auto eigen_out = EigenVector<T>::Flatten(out);
-  auto eigen_dout = EigenVector<T>::Flatten(out_grad);
-  auto eigen_dx = EigenVector<T>::Flatten(*x_grad);
+  ctx.template Alloc<phi::ConditionalT<phi::DataType, float, double>>(x_grad);
+  auto eigen_out = EigenVector<phi::ConditionalT<phi::DataType, float, double>>::Flatten(out);
+  auto eigen_dout = EigenVector<phi::ConditionalT<phi::DataType, float, double>>::Flatten(out_grad);
+  auto eigen_dx = EigenVector<phi::ConditionalT<phi::DataType, float, double>>::Flatten(*x_grad);
   auto& place = *ctx.eigen_device();
-  phi::funcs::EigenErfinvGrad<std::decay_t<decltype(place)>, T>::Eval(
-      place, eigen_dx, eigen_out, eigen_dout);
+  constexpr phi::ConditionalT<phi::DataType, float, double> half_sqrt_pi = static_cast<phi::ConditionalT<phi::DataType, float, double>>(1 / M_2_SQRTPI);
+  eigen_dx.device(place) = half_sqrt_pi * eigen_dout * eigen_out.square().exp();
 }
 
 }  // namespace phi
