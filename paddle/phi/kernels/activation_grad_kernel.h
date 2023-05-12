@@ -28,14 +28,6 @@ namespace phi {
                         const DenseTensor& dout,  \
                         DenseTensor* dx);
 
-#define DECLARE_ACTIVATION_GRAD_KERNEL_DEPXOUT(name) \
-  template <typename T, typename Context>            \
-  void name##GradKernel(const Context& dev_ctx,      \
-                        const DenseTensor& x,        \
-                        const DenseTensor& out,      \
-                        const DenseTensor& dout,     \
-                        DenseTensor* dx);
-
 #define DECLARE_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(name, attr) \
   template <typename T, typename Context>                       \
   void name##GradKernel(const Context& dev_ctx,                 \
@@ -82,6 +74,12 @@ namespace phi {
                         float attr2,                                      \
                         DenseTensor* dx);
 
+template <typename T, typename Context>
+void SiluGradKernel(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& out,
+                    const DenseTensor& dout,
+                    DenseTensor* dx);
 template <typename T, typename Context>
 void ReluDoubleGradKernel(const Context& dev_ctx,
                           const DenseTensor& out,
@@ -285,7 +283,6 @@ DECLARE_ACTIVATION_GRAD_KERNEL_DEPX(Asinh);
 DECLARE_ACTIVATION_GRAD_KERNEL_DEPX(Acosh);
 DECLARE_ACTIVATION_GRAD_KERNEL_DEPX(Atanh);
 DECLARE_ACTIVATION_GRAD_KERNEL_DEPX(TanhShrink);
-DECLARE_ACTIVATION_GRAD_KERNEL_DEPXOUT(Silu);
 DECLARE_ACTIVATION_GRAD_KERNEL_DEPX(Square);
 DECLARE_ACTIVATION_GRAD_KERNEL_DEPX(Softsign);
 DECLARE_ACTIVATION_GRAD_KERNEL_DEPX(LogSigmoid);
