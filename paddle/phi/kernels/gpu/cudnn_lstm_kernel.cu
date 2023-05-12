@@ -16,7 +16,6 @@
 
 #include "glog/logging.h"
 
-#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/gpu/cudnn_lstm_utils.h"
 
@@ -363,13 +362,13 @@ void CudnnLSTMKernel(
 
 #ifdef PADDLE_WITH_HIP
 PD_REGISTER_KERNEL(cudnn_lstm, GPU, ALL_LAYOUT, phi::CudnnLSTMKernel, float) {
-  kernel->OutputAt(3).SetDataType(paddle::experimental::DataType::UINT8);
-  kernel->OutputAt(4).SetDataType(paddle::experimental::DataType::UINT8);
+  kernel->OutputAt(3).SetDataType(phi::DataType::UINT8);
+  kernel->OutputAt(4).SetDataType(phi::DataType::UINT8);
 }
 #else
 PD_REGISTER_KERNEL(
     cudnn_lstm, GPU, ALL_LAYOUT, phi::CudnnLSTMKernel, float, double) {
-  kernel->OutputAt(3).SetDataType(paddle::experimental::DataType::UINT8);
-  kernel->OutputAt(4).SetDataType(paddle::experimental::DataType::UINT8);
+  kernel->OutputAt(3).SetDataType(phi::DataType::UINT8);
+  kernel->OutputAt(4).SetDataType(phi::DataType::UINT8);
 }
 #endif
