@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/platform/device_code.h"
+#include "paddle/phi/backends/device_code.h"
 
 #include <utility>
 
@@ -54,7 +54,7 @@ TEST(DeviceCode, cuda) {
 
   paddle::framework::InitDevices({0});
   paddle::platform::CUDAPlace place = paddle::platform::CUDAPlace(0);
-  paddle::platform::CUDADeviceCode code(place, "saxpy_kernel", saxpy_code);
+  phi::CUDADeviceCode code(place, "saxpy_kernel", saxpy_code);
 
   phi::DenseTensor cpu_x;
   phi::DenseTensor cpu_y;
@@ -109,19 +109,18 @@ TEST(DeviceCodePool, cuda) {
 
   paddle::framework::InitDevices({0});
   paddle::platform::CUDAPlace place = paddle::platform::CUDAPlace(0);
-  paddle::platform::DeviceCodePool& pool =
-      paddle::platform::DeviceCodePool::Init({place});
+  phi::DeviceCodePool& pool = phi::DeviceCodePool::Init({place});
   size_t num_device_codes_before = pool.size(place);
   EXPECT_EQ(num_device_codes_before, 0UL);
 
-  std::unique_ptr<paddle::platform::DeviceCode> code(
-      new paddle::platform::CUDADeviceCode(place, "saxpy_kernel", saxpy_code));
+  std::unique_ptr<phi::DeviceCode> code(
+      new phi::CUDADeviceCode(place, "saxpy_kernel", saxpy_code));
   LOG(INFO) << "origin ptr: " << code.get();
   pool.Set(std::move(code));
   size_t num_device_codes_after = pool.size(place);
   EXPECT_EQ(num_device_codes_after, 1UL);
 
-  paddle::platform::DeviceCode* code_get = pool.Get(place, "saxpy_kernel");
+  phi::DeviceCode* code_get = pool.Get(place, "saxpy_kernel");
   LOG(INFO) << "get ptr: " << code_get;
 }
 #endif
