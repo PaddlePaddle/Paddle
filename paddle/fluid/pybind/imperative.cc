@@ -2155,6 +2155,9 @@ void BindImperative(py::module *m_ptr) {
       .def_property("_enable_program_desc_tracing",
                     &imperative::Tracer::IsProgramDescTracingEnabled,
                     &imperative::Tracer::SetEnableProgramDescTracing)
+      .def_property("_use_promote",
+                    &imperative::Tracer::GetUsePromote,
+                    &imperative::Tracer::SetUsePromote)
       .def_property("_amp_level",
                     &imperative::Tracer::GetAmpLevel,
                     &imperative::Tracer::SetAmpLevel)
