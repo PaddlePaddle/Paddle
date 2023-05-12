@@ -17,15 +17,15 @@
 #include <cstdlib>
 #include <string>
 #include <unordered_set>
+#include <vector>
 
-#include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
-#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/phi/common/data_type.h"
+#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 DEFINE_bool(
     custom_model_save_cpu,

@@ -15,12 +15,9 @@
 #pragma once
 
 #include <string>
-#include <vector>
 
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
-#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/analysis/analysis_pass.h"
-#include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace inference {
