@@ -796,6 +796,17 @@
     data_type : out_grad
   inplace : (out_grad -> x_grad)
 
+- backward_op : index_put_grad
+  forward : index_put (Tensor x, Tensor[] indices, Tensor value, bool accumulate=false) -> Tensor(out)
+  args : (Tensor x, Tensor[] indices, Tensor value, Tensor out_grad, bool accumulate=false)
+  output : Tensor(x_grad), Tensor(value_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [x, value]
+  kernel :
+    func : index_put_grad
+    data_type : out_grad
+
 - backward_op : index_sample_grad
   forward : index_sample (Tensor x, Tensor index) -> Tensor(out)
   args : (Tensor x, Tensor index, Tensor out_grad)
@@ -1588,14 +1599,14 @@
 
 - backward_op : silu_grad
   forward : silu (Tensor x) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad)
+  args : (Tensor x, Tensor out, Tensor out_grad)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
   kernel :
     func : silu_grad
-  composite : silu_grad(x, out_grad, x_grad)
+  composite : silu_grad(x, out, out_grad, x_grad)
   inplace : (out_grad -> x_grad)
 
 - backward_op : sin_double_grad

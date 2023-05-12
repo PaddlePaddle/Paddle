@@ -18,6 +18,9 @@
 
 #include "paddle/phi/kernels/funcs/math_function.h"
 
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/common/memory_utils.h"
+
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -381,18 +384,16 @@ int FusedTokenPrunePluginDynamic::enqueue(
 
     // 3. compute new pos id
     // Determine temporary device storage requirements
-    void* d_temp_storage = NULL;
     size_t temp_storage_bytes = 0;
-    cub::DeviceScan::ExclusiveSum(d_temp_storage,
-                                  temp_storage_bytes,
-                                  pruned_token_lengths_,
-                                  output3,
-                                  B + 1);
+    cub::DeviceScan::ExclusiveSum(
+        NULL, temp_storage_bytes, pruned_token_lengths_, output3, B + 1);
     // Allocate temporary storage
-    cudaMalloc(&d_temp_storage, temp_storage_bytes);
+
+    platform::CUDAPlace place(platform::GetCurrentDeviceId());
+    auto d_temp_storage = phi::memory_utils::Alloc(place, temp_storage_bytes);
 
     // Run exclusive prefix sum
-    cub::DeviceScan::ExclusiveSum(d_temp_storage,
+    cub::DeviceScan::ExclusiveSum(d_temp_storage->ptr(),
                                   temp_storage_bytes,
                                   pruned_token_lengths_,
                                   output3,
