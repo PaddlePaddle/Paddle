@@ -19,13 +19,21 @@ set(CBLAS_INSTALL_DIR ${THIRD_PARTY_PATH}/install/openblas)
 set(CBLAS_REPOSITORY ${GIT_URL}/xianyi/OpenBLAS.git)
 set(CBLAS_TAG v0.3.7)
 
-# Please refer to
-# https://github.com/PaddlePaddle/Paddle/pull/52983
-if(UNIX
-   AND NOT APPLE
-   AND NOT WITH_ROCM
-   AND NOT WITH_XPU)
-  set(CBLAS_TAG v0.3.18)
+# Why use v0.3.18?  The IDG business line encountered a random openblas error,
+# which can be resolved after upgrading openblas.
+# And why compile when gcc>8.2? Please refer to
+# https://github.com/spack/spack/issues/19932#issuecomment-733452619
+# v0.3.18 only support gcc>=8.3 or gcc>=7.4
+if(CMAKE_COMPILER_IS_GNUCXX)
+  execute_process(COMMAND ${CMAKE_CXX_COMPILER} -dumpfullversion -dumpversion
+                  OUTPUT_VARIABLE GNU_VERSION)
+  string(REGEX MATCHALL "[0-9]+" GNU_VERSION_COMPONENTS ${GNU_VERSION})
+  list(GET GNU_VERSION_COMPONENTS 0 GNU_MAJOR)
+  list(GET GNU_VERSION_COMPONENTS 1 GNU_MINOR)
+  # We only compile with openblas 0.3.18 when gcc >= 8.3
+  if(GNU_VERSION GREATER "8.2")
+    set(CBLAS_TAG v0.3.18)
+  endif()
 endif()
 
 if(APPLE AND WITH_ARM)
