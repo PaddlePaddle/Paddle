@@ -2021,6 +2021,7 @@ def assign(x, output=None):
     Parameters:
         x (Tensor|np.ndarray|list|tuple|scalar): A Tensor, numpy ndarray, tuple/list of scalar,
             or scalar. Its data type can be float16, float32, float64, complex64, complex128, int32, int64 or bool.
+            Note: the float64 data will be converted to float32 because of current platform protobuf
         output (Tensor, optional): A Tensor. If :attr:`output` is None, a new Tensor will be created as :attr:`output`. Default: None.
 
     Returns:
