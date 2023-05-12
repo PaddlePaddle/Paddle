@@ -1538,16 +1538,6 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
     }
 
-    if (op_type == "sum") {
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
-        return false;
-      }
-    }
-
     if (op_type == "shape" && !with_dynamic_shape) {
       return false;
     }
@@ -2100,16 +2090,6 @@ struct SimpleOpTypeSetTeller : public Teller {
             return true;
           }
         }
-        return false;
-      }
-    }
-
-    if (op_type == "square") {
-      auto* block = desc.Block();
-      if (block == nullptr) {
-        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
-                   "Developers need to check whether block_desc is passed in "
-                   "the pass.";
         return false;
       }
     }
