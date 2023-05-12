@@ -438,7 +438,7 @@ def set_param_dtype(program, dtype, amp_lists, use_fp16_guard, level):
             # input in transformer, so the weight is also in to_fp16_var_names.
             # TODO(zhangting2020): consider fix auto_parallel_fp16 and remove lookup_table
             # from black_list and unsupport_list.
-            if op in ['lookup_table', 'lookup_table_v2']:
+            if op.type in amp_lists.black_list:
                 continue
             if _need_keep_fp32(op, amp_lists.unsupported_list, use_fp16_guard):
                 for in_name in op.input_names:
