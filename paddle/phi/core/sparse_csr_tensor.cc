@@ -88,6 +88,12 @@ void* SparseCsrTensor::AllocateFrom(Allocator* allocator,
       allocator, dtype, requested_size, fake_alloc);
 }
 
+void SparseCsrTensor::set_type(const DataType dtype) { meta_.dtype = dtype; }
+
+void SparseCsrTensor::set_layout(const DataLayout layout) {
+  meta_.layout = layout;
+}
+
 void SparseCsrTensor::Resize(const DDim& dense_dims,
                              const int64_t non_zero_num) {
   PADDLE_ENFORCE(this->initialized(),

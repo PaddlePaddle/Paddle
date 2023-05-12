@@ -122,7 +122,7 @@ __global__ void ConvShiftDy(const T *x,
 }  // namespace
 
 template <typename T>
-class ConvShiftKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
+class ConvShiftKernel<T, phi::GPUContext> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     const phi::DenseTensor *X = context.Input<phi::DenseTensor>("X");
@@ -151,7 +151,7 @@ class ConvShiftKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
 };
 
 template <typename T>
-class ConvShiftGradKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
+class ConvShiftGradKernel<T, phi::GPUContext> : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     const phi::DenseTensor *X = context.Input<phi::DenseTensor>("X");
@@ -209,7 +209,8 @@ class ConvShiftGradKernel<phi::GPUContext, T> : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(conv_shift,
-                        ops::ConvShiftKernel<phi::GPUContext, float>);
-REGISTER_OP_CUDA_KERNEL(conv_shift_grad,
-                        ops::ConvShiftGradKernel<phi::GPUContext, float>);
+
+PD_REGISTER_STRUCT_KERNEL(
+    conv_shift, GPU, ALL_LAYOUT, ops::ConvShiftKernel, float) {}
+PD_REGISTER_STRUCT_KERNEL(
+    conv_shift_grad, GPU, ALL_LAYOUT, ops::ConvShiftGradKernel, float) {}

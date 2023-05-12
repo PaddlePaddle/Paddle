@@ -122,9 +122,9 @@ def all_reduce(
             tensor, op, group, sync_op, use_calc_stream
         )
     else:
-        assert (
-            group is None
-        ), "Group can not be used in static graph mode for now."
+        # assert (
+        #     group is None
+        # ), "Group can not be used in static graph mode for now."
         return _all_reduce_in_static_mode(
             tensor, op, group, sync_op, use_calc_stream
         )

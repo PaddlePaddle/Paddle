@@ -26,14 +26,12 @@ limitations under the License. */
 #else
 #include <sys/mman.h>  // for mlock and munlock
 #endif
-#include "gflags/gflags.h"
+
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
-#ifdef PADDLE_WITH_MLU
-#include "paddle/fluid/platform/device/mlu/mlu_info.h"
-#endif
+#include "paddle/phi/core/flags.h"
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
@@ -42,10 +40,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/device_wrapper.h"
 #include "paddle/fluid/platform/profiler/mem_tracing.h"
 
-DECLARE_bool(use_pinned_memory);
-DECLARE_double(fraction_of_gpu_memory_to_use);
-DECLARE_uint64(initial_gpu_memory_in_mb);
-DECLARE_uint64(reallocate_gpu_memory_in_mb);
+PHI_DECLARE_bool(use_pinned_memory);
+PHI_DECLARE_double(fraction_of_gpu_memory_to_use);
+PHI_DECLARE_uint64(initial_gpu_memory_in_mb);
+PHI_DECLARE_uint64(reallocate_gpu_memory_in_mb);
 
 namespace paddle {
 namespace memory {
@@ -285,78 +283,6 @@ void CUDAPinnedAllocator::Free(void* p, size_t size, size_t index) {
 
 bool CUDAPinnedAllocator::UseGpu() const { return false; }
 
-#endif
-
-#ifdef PADDLE_WITH_MLU
-void* MLUAllocator::Alloc(size_t* index, size_t size) {
-  if (size <= 0) return nullptr;
-
-  void* p;
-  auto result = platform::RecordedMLUMalloc(&p, size, mlu_id_);
-
-  if (result == cnrtSuccess) {
-    *index = 0;
-    mlu_alloc_size_ += size;
-    return p;
-  } else {
-    size_t avail, total, actual_avail, actual_total;
-    bool is_limited = platform::RecordedMLUMemGetInfo(
-        &avail, &total, &actual_avail, &actual_total, mlu_id_);
-    size_t allocated = total - avail;
-
-    std::string err_msg;
-    if (is_limited) {
-      auto limit_size = (total >> 20);
-      err_msg = string::Sprintf(
-          "\n   3) Set environment variable `FLAGS_gpu_memory_limit_mb` to a "
-          "larger value. Currently `FLAGS_gpu_memory_limit_mb` is %d, so the "
-          "maximum MLU memory usage is limited to %d MB.\n"
-          "      The command is `export FLAGS_gpu_memory_limit_mb=xxx`.",
-          limit_size,
-          limit_size);
-    }
-
-    PADDLE_THROW_BAD_ALLOC(platform::errors::ResourceExhausted(
-        "\n\nOut of memory error on MLU %d. "
-        "Cannot allocate %s memory on MLU %d, %s memory has been allocated and "
-        "available memory is only %s.\n\n"
-        "Please check whether there is any other process using MLU %d.\n"
-        "1. If yes, please stop them, or start PaddlePaddle on another MLU.\n"
-        "2. If no, please try one of the following suggestions:\n"
-        "   1) Decrease the batch size of your model.\n"
-        "   2) FLAGS_fraction_of_gpu_memory_to_use is %.2lf now, "
-        "please set it to a higher value but less than 1.0.\n"
-        "      The command is "
-        "`export FLAGS_fraction_of_gpu_memory_to_use=xxx`.%s\n\n",
-        mlu_id_,
-        string::HumanReadableSize(size),
-        mlu_id_,
-        string::HumanReadableSize(allocated),
-        string::HumanReadableSize(avail),
-        mlu_id_,
-        FLAGS_fraction_of_gpu_memory_to_use,
-        err_msg));
-  }
-}
-
-void MLUAllocator::Free(void* p, size_t size, size_t index) {
-  PADDLE_ENFORCE_EQ(index,
-                    0,
-                    platform::errors::InvalidArgument(
-                        "The index should be 0, index is %d", index));
-  PADDLE_ENFORCE_GE(mlu_alloc_size_,
-                    size,
-                    platform::errors::InvalidArgument(
-                        "The size of memory (%d) to free exceeds the size of "
-                        "allocated gpu memory (%d)",
-                        size,
-                        mlu_alloc_size_));
-  mlu_alloc_size_ -= size;
-
-  platform::RecordedMLUFree(p, size, mlu_id_);
-}
-
-bool MLUAllocator::UseGpu() const { return true; }
 #endif
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE

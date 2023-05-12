@@ -17,6 +17,7 @@
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
+#include "paddle/fluid/framework/new_executor/interpreter/static_build.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 
@@ -37,7 +38,7 @@ bool DataTranferHelper::apply(const phi::KernelKey& kernel_type_for_var,
                               std::vector<OpFuncNode>* op_func_nodes,
                               bool use_local_scope,
                               bool is_fetch_v2,
-                              bool skip_run) {
+                              bool static_build) {
   bool is_transferred = false;
   auto* src_var_name = &var_name;
 
@@ -52,7 +53,7 @@ bool DataTranferHelper::apply(const phi::KernelKey& kernel_type_for_var,
                              is_fetch_v2);
     if (op) {
       RunAndConstructOpFuncNode(
-          op, *src_var_name, *new_var_name, op_func_nodes, skip_run);
+          op, *src_var_name, *new_var_name, op_func_nodes, static_build);
     }
     // update src_var_name
     src_var_name = new_var_name;
@@ -70,7 +71,7 @@ bool DataTranferHelper::apply(const phi::KernelKey& kernel_type_for_var,
         scope_);
     if (op) {
       RunAndConstructOpFuncNode(
-          op, *src_var_name, *new_var_name, op_func_nodes, skip_run);
+          op, *src_var_name, *new_var_name, op_func_nodes, static_build);
     }
     // update src_var_name
     src_var_name = new_var_name;
@@ -87,7 +88,7 @@ bool DataTranferHelper::apply(const phi::KernelKey& kernel_type_for_var,
         *src_var_name, new_var_name, src_place, dst_place, var_scope_, scope_);
     if (op) {
       RunAndConstructOpFuncNode(
-          op, *src_var_name, *new_var_name, op_func_nodes, skip_run);
+          op, *src_var_name, *new_var_name, op_func_nodes, static_build);
     }
     is_transferred = true;
   }
@@ -98,7 +99,7 @@ void DataTranferHelper::RunAndConstructShareNode(
     const std::string& src_var_name,
     const std::string& dst_var_name,
     std::vector<OpFuncNode>* op_func_nodes,
-    bool skip_run) {
+    bool static_build) {
   VariableNameMap in_name_map = {{"X", {src_var_name}}};
   VariableNameMap out_name_map = {{"Out", {dst_var_name}}};
   AttributeMap attr_map;
@@ -112,7 +113,7 @@ void DataTranferHelper::RunAndConstructShareNode(
       "Insert %s with %s -> %s.", op_type, src_var_name, dst_var_name);
 
   RunAndConstructOpFuncNode(
-      op, src_var_name, dst_var_name, op_func_nodes, skip_run);
+      op, src_var_name, dst_var_name, op_func_nodes, static_build);
 }
 
 void DataTranferHelper::RunAndConstructOpFuncNode(
@@ -120,15 +121,18 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
     const std::string& var_name,
     const std::string& new_var_name,
     std::vector<OpFuncNode>* new_op_func_nodes,
-    bool skip_run) {
+    bool static_build) {
   auto& op_type = op->Type();
 
   // 1. Construct RuntimeContext
   RuntimeContext runtime_context({}, {});
   runtime_context.inputs["X"] = {scope_->FindVar(var_name)};
   runtime_context.outputs["Out"] = {scope_->Var(new_var_name)};
-  RuntimeInferShapeContext infer_shape_ctx(*op, runtime_context);
-  op.get()->Info().infer_shape_(&infer_shape_ctx);
+
+  if (!static_build) {
+    RuntimeInferShapeContext infer_shape_ctx(*op, runtime_context);
+    op->Info().infer_shape_(&infer_shape_ctx);
+  }
 
   // 2. choose kernel
 
@@ -192,7 +196,7 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
                                  ? OpFuncType::kGpuSync
                                  : OpFuncType::kGpuAsync;
   } else {
-    // Memcpy in npu and custom devices is asynchronous
+    // Memcpy in custom devices is asynchronous
     new_op_func_node.type_ = OpFuncType::kGpuAsync;
   }
 
@@ -203,12 +207,16 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
   } else {
     new_op_func_node.phi_kernel_ = op_with_kernel->PhiKernel();
 
-    if (skip_run) {
+    if (static_build) {
       FakeInitializeOutputsForFunctionKernel(
+          *op,
           *(new_op_func_node.phi_kernel_),
           *(op_with_kernel->PhiKernelSignature()),
           runtime_context,
           *dev_ctx);
+    } else if (new_op_func_node.phi_kernel_->GetKernelRegisteredType() ==
+               phi::KernelRegisteredType::STRUCTURE) {
+      (*new_op_func_node.phi_kernel_)(&exec_ctx);
     } else {
       phi::KernelContext phi_kernel_context;
       op_with_kernel->BuildPhiKernelContext(
@@ -217,10 +225,9 @@ void DataTranferHelper::RunAndConstructOpFuncNode(
     }
   }
 
-  // NOTE(winter-wang): in npu and custom device, D2H kernel is asynchronous.
+  // NOTE(winter-wang): in custom device, D2H kernel is asynchronous.
   // need to explicit synchronization.
-  if ((platform::is_npu_place(place) || platform::is_custom_place(place)) &&
-      op_type == kMemcpyD2H) {
+  if ((platform::is_custom_place(place)) && op_type == kMemcpyD2H) {
     dev_ctx->Wait();
   }
 
@@ -411,7 +418,6 @@ std::shared_ptr<OperatorBase> TransferDevice(const std::string& var_name,
   if (IsSupportedHeterPlace(dst_place)) {
     op_type = kMemcpyH2D;
     int dst_place_type = platform::is_gpu_place(dst_place)      ? 0
-                         : platform::is_npu_place(dst_place)    ? 1
                          : platform::is_ipu_place(dst_place)    ? 3
                          : platform::is_xpu_place(dst_place)    ? 2
                          : platform::is_custom_place(dst_place) ? 6
@@ -449,7 +455,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
                         OpFuncNode* op_func_node,
                         std::vector<OpFuncNode>* new_op_func_nodes,
                         bool use_local_scope,
-                        bool skip_run) {
+                        bool static_build) {
   Scope* local_scope = use_local_scope ? var_scope->GetMutableLocalScope()
                                        : var_scope->GetMutableScope();
 
@@ -546,7 +552,11 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
                                          op_base->Type() == "fetch_v2");
                 if (op) {
                   data_transfer_helper.RunAndConstructOpFuncNode(
-                      op, var_name, new_var_name, new_op_func_nodes, skip_run);
+                      op,
+                      var_name,
+                      new_var_name,
+                      new_op_func_nodes,
+                      static_build);
                 }
                 is_transferred = true;
               } else {
@@ -611,7 +621,7 @@ void ApplyDataTransform(const OpKernelType& expected_kernel_key,
                 new_op_func_nodes,
                 use_local_scope,
                 op_base->Type() == "fetch_v2",
-                skip_run);
+                static_build);
           }
 
           if (is_transferred) {
@@ -741,7 +751,7 @@ void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
                                  VariableScope* var_scope,
                                  std::vector<OpFuncNode>* op_func_nodes,
                                  framework::Scope* local_scope,
-                                 bool skip_run) {
+                                 bool static_build) {
   DataTranferHelper data_transfer_helper(place, var_scope, local_scope);
   for (auto& var_name_item : out_names) {
     std::vector<Variable*>& vars = out_vars->at(var_name_item.first);
@@ -817,9 +827,9 @@ void HandleComplexGradToRealGrad(const OpFuncNode& op_func_node,
       auto op = TransferDtype(
           var_name, &new_var_name, src_type, dst_type, var_scope, local_scope);
       data_transfer_helper.RunAndConstructOpFuncNode(
-          op, var_name, new_var_name, op_func_nodes, skip_run);
+          op, var_name, new_var_name, op_func_nodes, static_build);
       data_transfer_helper.RunAndConstructShareNode(
-          new_var_name, var_name, op_func_nodes, skip_run);
+          new_var_name, var_name, op_func_nodes, static_build);
     }
   }
 }

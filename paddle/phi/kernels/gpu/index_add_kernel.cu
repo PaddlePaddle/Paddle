@@ -14,6 +14,8 @@
 
 #include "paddle/phi/kernels/index_add_kernel.h"
 
+#include "gflags/gflags.h"
+#include "glog/logging.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
@@ -121,5 +123,6 @@ PD_REGISTER_KERNEL(index_add,
                    float,
                    double,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    int,
                    int64_t) {}

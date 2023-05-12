@@ -14,6 +14,8 @@
 
 #include "paddle/phi/backends/gpu/gpu_info.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/core/enforce.h"
 
 static std::once_flag g_device_props_size_init_flag;

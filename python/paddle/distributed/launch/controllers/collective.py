@@ -13,12 +13,17 @@
 # limitations under the License.
 
 import json
+import os
 
 from ..context.device import DeviceType
 from .controller import ControleMode, Controller
 
 
 class CollectiveController(Controller):
+    def __init__(self, ctx):
+        self._tuner_run_mode = None  # 'tuner_only', 'run_only', 'tuner_and_run'
+        super().__init__(ctx)
+
     @classmethod
     def enable(cls, ctx):
         # collective is the default mode
@@ -30,6 +35,9 @@ class CollectiveController(Controller):
             return False
 
     def build_pod(self):
+        skip_run = self._build_pod_with_tuner()
+        if skip_run:
+            return
         if (
             self.ctx.args.master is None
             and self.ctx.args.start_port
@@ -38,6 +46,46 @@ class CollectiveController(Controller):
             return self._build_pod_with_args()
         else:
             return self._build_pod_with_master()
+
+    def _build_pod_with_tuner(self):
+        auto_parallel_config = self.ctx.args.auto_parallel_config
+        if auto_parallel_config is not None:
+            if not os.path.exists(auto_parallel_config):
+                self.ctx.logger.warning("auto_parallel_conf not exists!")
+            if not auto_parallel_config.endswith(".json"):
+                self.ctx.logger.warning(
+                    "auto_parallel_config should be a json format file!"
+                )
+
+            with open(auto_parallel_config, 'r') as robj:
+                auto_parallel_data = json.loads(robj.read())
+                self._tuner_run_mode = auto_parallel_data.get(
+                    "tuner_run_mode", 'tuner_and_run'
+                )
+
+            self.ctx.logger.info(f"tuner_run_mode is: {self._tuner_run_mode}")
+            endpoint = f"127.0.0.1:{self.ctx.node.get_free_port()}"
+            pod_replicas = self.pod_replicas()
+            if self._tuner_run_mode in ['tuner_only', 'tuner_and_run']:
+                e = {
+                    "PADDLE_AUTO_PARALLEL_CONFIG": self.ctx.args.auto_parallel_config,
+                    "PADDLE_TRAINERS_NUM": "1",
+                    "PADDLE_TRAINER_ENDPOINTS": endpoint,
+                    "PADDLE_TRAINER_ID": "0",
+                    "PADDLE_CURRENT_ENDPOINT": endpoint,
+                    "FLAGS_selected_gpus": "0",
+                    "PADDLE_AUTO_PARALLEL_STAGE": "tuner",
+                    "PADDLE_GLOBAL_SIZE": "{}".format(
+                        pod_replicas * int(self.ctx.args.nnodes)
+                    ),
+                    "PADDLE_LOCAL_SIZE": f"{pod_replicas}",
+                }
+                log_file = "tuner.log"
+                self.add_container(envs=e, log_file=log_file, is_init=True)
+
+                if self._tuner_run_mode == 'tuner_only':
+                    return True
+        return False
 
     def _build_pod_with_args(self):
         self.pod.replicas = self.pod_replicas()
@@ -78,6 +126,13 @@ class CollectiveController(Controller):
                 "PADDLE_TRAINERS_NUM": f"{len(job_endpoints)}",
                 "PADDLE_RANK_IN_NODE": str(i),
             }
+            if self._tuner_run_mode is not None:
+                e.update(
+                    {
+                        "PADDLE_AUTO_PARALLEL_CONFIG": self.ctx.args.auto_parallel_config,
+                        "PADDLE_AUTO_PARALLEL_STAGE": "run",
+                    }
+                )
             if len(selected_dev_list) > 0:
                 if self.ctx.node.device.dtype == DeviceType.CUSTOM_DEVICE:
                     e.update(self.ctx.node.device.get_custom_device_envs())
@@ -144,7 +199,7 @@ class CollectiveController(Controller):
 
         job_endpoints = [i['endpoints'] for i in peer_list]
 
-        self.pod.reset()
+        # self.pod.reset()
         selected_dev_key = self.ctx.node.device.get_selected_device_key()
         selected_dev_list = self.ctx.node.device.get_selected_devices(
             self.ctx.args.devices
@@ -164,6 +219,13 @@ class CollectiveController(Controller):
                 "PADDLE_TRAINERS_NUM": f"{global_size}",
                 "PADDLE_RANK_IN_NODE": str(i),
             }
+            if self._tuner_run_mode is not None:
+                e.update(
+                    {
+                        "PADDLE_AUTO_PARALLEL_CONFIG": self.ctx.args.auto_parallel_config,
+                        "PADDLE_AUTO_PARALLEL_STAGE": "run",
+                    }
+                )
             if len(selected_dev_list) > 0:
                 if self.ctx.node.device.dtype == DeviceType.CUSTOM_DEVICE:
                     e.update(self.ctx.node.device.get_custom_device_envs())

@@ -16,6 +16,7 @@
 
 #include "paddle/ir/attribute.h"
 #include "paddle/ir/builtin_attribute_storage.h"
+#include "paddle/ir/utils.h"
 
 namespace ir {
 ///
@@ -82,15 +83,11 @@ class DictionaryAttribute : public ir::Attribute {
 }  // namespace ir
 
 namespace std {
-static std::size_t hash_combine(std::size_t lhs, std::size_t rhs) {
-  return lhs ^= rhs + 0x9e3779b9 + (lhs << 6) + (lhs >> 2);
-}
-
 template <>
 struct hash<ir::NamedAttribute> {
   std::size_t operator()(const ir::NamedAttribute &obj) const {
-    return hash_combine(std::hash<ir::Attribute>()(obj.name_),
-                        std::hash<ir::Attribute>()(obj.value_));
+    return ir::hash_combine(std::hash<ir::Attribute>()(obj.name_),
+                            std::hash<ir::Attribute>()(obj.value_));
   }
 };
 }  // namespace std

@@ -26,6 +26,8 @@ class TestRollOp(OpTest):
     def setUp(self):
         self.python_api = paddle.roll
         self.op_type = "roll"
+        self.public_python_api = paddle.roll
+        self.prim_op_type = "prim"
         self.init_dtype_type()
         self.attrs = {'shifts': self.shifts, 'axis': self.axis}
         bf16_ut = self.dtype == np.uint16
@@ -46,10 +48,13 @@ class TestRollOp(OpTest):
         self.axis = [0, -2]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_prim=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestRollOpCase2(TestRollOp):
@@ -106,10 +111,10 @@ class TestRollBF16OP(TestRollOp):
         self.place = core.CUDAPlace(0)
 
     def test_check_output(self):
-        self.check_output_with_place(self.place)
+        self.check_output_with_place(self.place, check_prim=True)
 
     def test_check_grad_normal(self):
-        self.check_grad_with_place(self.place, ['X'], 'Out')
+        self.check_grad_with_place(self.place, ['X'], 'Out', check_prim=True)
 
 
 @unittest.skipIf(
@@ -126,10 +131,10 @@ class TestRollBF16OpCase2(TestRollOp):
         self.place = core.CUDAPlace(0)
 
     def test_check_output(self):
-        self.check_output_with_place(self.place)
+        self.check_output_with_place(self.place, check_prim=True)
 
     def test_check_grad_normal(self):
-        self.check_grad_with_place(self.place, ['X'], 'Out')
+        self.check_grad_with_place(self.place, ['X'], 'Out', check_prim=True)
 
 
 @unittest.skipIf(
@@ -146,10 +151,10 @@ class TestRollBF16OpCase3(TestRollOp):
         self.place = core.CUDAPlace(0)
 
     def test_check_output(self):
-        self.check_output_with_place(self.place)
+        self.check_output_with_place(self.place, check_prim=True)
 
     def test_check_grad_normal(self):
-        self.check_grad_with_place(self.place, ['X'], 'Out')
+        self.check_grad_with_place(self.place, ['X'], 'Out', check_prim=True)
 
 
 class TestRollAPI(unittest.TestCase):

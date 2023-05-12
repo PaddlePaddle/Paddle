@@ -20,6 +20,9 @@ extern "C" {
 
 #include <algorithm>
 #include "paddle/fluid/framework/feed_fetch_type.h"
+#include "paddle/fluid/framework/op_version_proto.h"
+#include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/fluid/framework/program_converter.h"
 #include "paddle/fluid/framework/version.h"
 
 namespace paddle {
@@ -48,7 +51,11 @@ proto::OpVersionMap *ProgramDesc::OpVersionMap() {
   return desc_.mutable_op_version_map();
 }
 
+bool ProgramDesc::HasOpVersionMap() const { return desc_.has_op_version_map(); }
+
 int64_t ProgramDesc::Version() const { return desc_.version().version(); }
+
+bool ProgramDesc::HasVersion() const { return desc_.has_version(); }
 
 void ProgramDesc::SetVersion(const int64_t version) {
   desc_.mutable_version()->set_version(version);
@@ -142,6 +149,7 @@ ProgramDesc::ProgramDesc(const std::string &binary_str) {
                     platform::errors::InvalidArgument(
                         "Failed to parse program_desc from binary string."));
   InitFromProto();
+  scalar::ConvertProgram(this);
 }
 
 void ProgramDesc::InitFromProto() {

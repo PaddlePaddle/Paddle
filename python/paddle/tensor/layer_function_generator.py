@@ -294,6 +294,7 @@ def generate_activation_fn(op_type):
                         'float64',
                         'complex64',
                         'complex128',
+                        'uint16',
                     ],
                     op_type,
                 )

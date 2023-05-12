@@ -655,7 +655,11 @@ void DeviceManager::Clear() {
 
 std::vector<std::string> ListAllLibraries(const std::string& library_dir) {
   std::vector<std::string> libraries;
+#if defined(__APPLE__)
+  std::regex express(".*\\.dylib");
+#else
   std::regex express(".*\\.so");
+#endif
   std::match_results<std::string::iterator> results;
 
 #if !defined(_WIN32)

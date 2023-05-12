@@ -36,14 +36,14 @@ void AngleGradInferMeta(const MetaTensor& x,
                         const MetaTensor& out_grad,
                         MetaTensor* x_grad);
 
-void BilinearTensorProductGradInferMeta(const MetaTensor& x,
-                                        const MetaTensor& y,
-                                        const MetaTensor& weight,
-                                        const MetaTensor& dout,
-                                        MetaTensor* dx,
-                                        MetaTensor* dy,
-                                        MetaTensor* dweight,
-                                        MetaTensor* dbias);
+void BilinearGradInferMeta(const MetaTensor& x,
+                           const MetaTensor& y,
+                           const MetaTensor& weight,
+                           const MetaTensor& dout,
+                           MetaTensor* dx,
+                           MetaTensor* dy,
+                           MetaTensor* dweight,
+                           MetaTensor* dbias);
 
 void BmmGradInferMeta(const MetaTensor& x,
                       const MetaTensor& y,
@@ -151,6 +151,10 @@ void EigvalshGradInferMeta(const MetaTensor& out_v,
                            bool is_test,
                            MetaTensor* x_grad);
 
+void EmbeddingGradInferMeta(const MetaTensor& x,
+                            const MetaTensor& weight,
+                            MetaTensor* out);
+
 void FFTC2RGradInferMeta(const MetaTensor& x,
                          const std::vector<int64_t>& axes,
                          const std::string& normalization,
@@ -174,6 +178,11 @@ void FlashAttnGradInferMeta(const MetaTensor& q,
                             MetaTensor* dq,
                             MetaTensor* dk,
                             MetaTensor* dv);
+
+void FusedDropoutAddGradInferMeta(const MetaTensor& seed_offset,
+                                  const MetaTensor& out_grad,
+                                  MetaTensor* x_grad,
+                                  MetaTensor* y_grad);
 
 void GatherNdGradInferMeta(const MetaTensor& x,
                            const MetaTensor& index,

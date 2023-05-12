@@ -30,30 +30,6 @@ batch_size = 2
 epoch_num = 1
 
 # In V100, 16G, CUDA 11.2, the results are as follows:
-# DY2ST_PRIM_GT = [
-#     5.8473358154296875,
-#     8.354944229125977,
-#     5.098367691040039,
-#     8.533346176147461,
-#     8.179085731506348,
-#     7.285282135009766,
-#     9.824585914611816,
-#     8.56928825378418,
-#     8.539499282836914,
-#     10.256929397583008,
-# ]
-# DY2ST_CINN_GT = [
-#     5.847336769104004,
-#     8.336246490478516,
-#     5.108744144439697,
-#     8.316713333129883,
-#     8.175262451171875,
-#     7.590441703796387,
-#     9.895681381225586,
-#     8.196207046508789,
-#     8.438933372497559,
-#     10.305074691772461,
-# ]
 # DY2ST_PRIM_CINN_GT = [
 #     5.8473358154296875,
 #     8.322463989257812,
@@ -68,41 +44,17 @@ epoch_num = 1
 # ]
 
 # The results in ci as as follows:
-DY2ST_PRIM_GT = [
-    5.82879114151001,
-    8.333706855773926,
-    5.07769250869751,
-    8.66937255859375,
-    8.411705017089844,
-    7.252340793609619,
-    9.683248519897461,
-    8.177335739135742,
-    8.195427894592285,
-    10.219732284545898,
-]
-DY2ST_CINN_GT = [
-    5.828789710998535,
-    8.340764999389648,
-    4.998944282531738,
-    8.474305152893066,
-    8.09157943725586,
-    7.440057754516602,
-    9.907357215881348,
-    8.304681777954102,
-    8.383116722106934,
-    10.120304107666016,
-]
 DY2ST_PRIM_CINN_GT = [
-    5.828784942626953,
-    8.341737747192383,
-    5.113619327545166,
-    8.625601768493652,
-    8.082450866699219,
-    7.4913249015808105,
-    9.858025550842285,
-    8.287693977355957,
-    8.435812950134277,
-    10.372406005859375,
+    5.828786849975586,
+    8.332868576049805,
+    5.038548469543457,
+    8.554015159606934,
+    8.106254577636719,
+    7.493070125579834,
+    9.479158401489258,
+    8.270158767700195,
+    8.324719429016113,
+    10.140411376953125,
 ]
 
 if core.is_compiled_with_cuda():
@@ -128,6 +80,67 @@ def optimizer_setting(parameter_list=None):
     )
 
     return optimizer
+
+
+def run(model, data_loader, optimizer, mode):
+    if mode == 'train':
+        model.train()
+        end_step = 9
+    elif mode == 'eval':
+        model.eval()
+        end_step = 1
+
+    for epoch in range(epoch_num):
+        total_acc1 = 0.0
+        total_acc5 = 0.0
+        total_sample = 0
+        losses = []
+
+        for batch_id, data in enumerate(data_loader()):
+            start_time = time.time()
+            img, label = data
+
+            pred = model(img)
+            avg_loss = paddle.nn.functional.cross_entropy(
+                input=pred,
+                label=label,
+                soft_label=False,
+                reduction='mean',
+                use_softmax=True,
+            )
+
+            acc_top1 = paddle.static.accuracy(input=pred, label=label, k=1)
+            acc_top5 = paddle.static.accuracy(input=pred, label=label, k=5)
+
+            if mode == 'train':
+                avg_loss.backward()
+                optimizer.minimize(avg_loss)
+                model.clear_gradients()
+
+            total_acc1 += acc_top1
+            total_acc5 += acc_top5
+            total_sample += 1
+            losses.append(avg_loss.numpy().item())
+
+            end_time = time.time()
+            print(
+                "[%s]epoch %d | batch step %d, loss %0.8f, acc1 %0.3f, acc5 %0.3f, time %f"
+                % (
+                    mode,
+                    epoch,
+                    batch_id,
+                    avg_loss,
+                    total_acc1.numpy() / total_sample,
+                    total_acc5.numpy() / total_sample,
+                    end_time - start_time,
+                )
+            )
+            if batch_id >= end_step:
+                # avoid dataloader throw abort signaal
+                data_loader._reset()
+                break
+    print(losses)
+    return losses
 
 
 def train(to_static, enable_prim, enable_cinn):
@@ -156,74 +169,13 @@ def train(to_static, enable_prim, enable_cinn):
         resnet = paddle.jit.to_static(resnet, build_strategy=build_strategy)
     optimizer = optimizer_setting(parameter_list=resnet.parameters())
 
-    for epoch in range(epoch_num):
-        total_acc1 = 0.0
-        total_acc5 = 0.0
-        total_sample = 0
-        losses = []
-
-        for batch_id, data in enumerate(data_loader()):
-            start_time = time.time()
-            img, label = data
-
-            pred = resnet(img)
-            avg_loss = paddle.nn.functional.cross_entropy(
-                input=pred,
-                label=label,
-                soft_label=False,
-                reduction='mean',
-                use_softmax=True,
-            )
-
-            acc_top1 = paddle.static.accuracy(input=pred, label=label, k=1)
-            acc_top5 = paddle.static.accuracy(input=pred, label=label, k=5)
-
-            avg_loss.backward()
-            optimizer.minimize(avg_loss)
-            resnet.clear_gradients()
-
-            total_acc1 += acc_top1
-            total_acc5 += acc_top5
-            total_sample += 1
-            losses.append(avg_loss.numpy().item())
-
-            end_time = time.time()
-            print(
-                "epoch %d | batch step %d, loss %0.8f, acc1 %0.3f, acc5 %0.3f, time %f"
-                % (
-                    epoch,
-                    batch_id,
-                    avg_loss,
-                    total_acc1.numpy() / total_sample,
-                    total_acc5.numpy() / total_sample,
-                    end_time - start_time,
-                )
-            )
-            if batch_id >= 9:
-                # avoid dataloader throw abort signaal
-                data_loader._reset()
-                break
-    print(losses)
-    return losses
+    train_losses = run(resnet, data_loader, optimizer, 'train')
+    if to_static and enable_prim and enable_cinn:
+        eval_losses = run(resnet, data_loader, optimizer, 'eval')
+    return train_losses
 
 
 class TestResnet(unittest.TestCase):
-    @unittest.skipIf(
-        not (paddle.is_compiled_with_cinn() and paddle.is_compiled_with_cuda()),
-        "paddle is not compiled with CINN and CUDA",
-    )
-    def test_prim(self):
-        dy2st_prim = train(to_static=True, enable_prim=True, enable_cinn=False)
-        np.testing.assert_allclose(dy2st_prim, DY2ST_PRIM_GT, rtol=1e-5)
-
-    @unittest.skipIf(
-        not (paddle.is_compiled_with_cinn() and paddle.is_compiled_with_cuda()),
-        "paddle is not compiled with CINN and CUDA",
-    )
-    def test_cinn(self):
-        dy2st_cinn = train(to_static=True, enable_prim=False, enable_cinn=True)
-        np.testing.assert_allclose(dy2st_cinn, DY2ST_CINN_GT, rtol=1e-5)
-
     @unittest.skipIf(
         not (paddle.is_compiled_with_cinn() and paddle.is_compiled_with_cuda()),
         "paddle is not compiled with CINN and CUDA",

@@ -55,8 +55,6 @@ from paddle.fluid.log_helper import get_logger
 from . import reader
 from . import unique_name
 from .reader import *
-from . import dataloader
-from .dataloader import *
 from . import core
 from paddle.utils import deprecated
 from paddle.fluid.framework import static_only
@@ -135,6 +133,7 @@ def save_inference_model(
     export_for_deployment=True,
     program_only=False,
     clip_extra=True,
+    legacy_format=False,
 ):
     """
     Prune the given `main_program` to build a new program especially for inference,
@@ -176,6 +175,8 @@ def save_inference_model(
         program_only(bool, optional): If True, It will save inference program only, and do not
                                       save params of Program.
                                       Default: False.
+        legacy_format(bool, optional): Whether to save program in legacy format.
+                                       Default: False.
 
     Returns:
         list, The fetch variables' name list.
@@ -314,8 +315,6 @@ def save_inference_model(
         prepend_feed_ops(main_program, feeded_var_names)
         append_fetch_ops(main_program, fetch_var_names)
 
-        main_program.desc._set_version()
-        paddle.fluid.core.save_op_version_info(main_program.desc)
         with open(model_basename, "wb") as f:
             f.write(
                 main_program._remove_training_info(

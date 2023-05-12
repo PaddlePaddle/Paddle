@@ -351,10 +351,7 @@ struct XPUReluGradFunctor : public funcs::BaseActivationFunctor<T> {
 template <typename T>
 struct XPURelu6GradFunctor : public funcs::BaseActivationFunctor<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  float threshold;
-  typename funcs::BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"threshold", &threshold}};
-  }
+  typename funcs::BaseActivationFunctor<T>::AttrPair GetAttrs() { return {{}}; }
   template <typename Context>
   void operator()(const Context& dev_ctx,
                   const DenseTensor* x,
@@ -481,10 +478,7 @@ void PowGradKernel(const Context& dev_ctx,
 template <typename T>
 struct XPUSwishGradFunctor : public funcs::BaseActivationFunctor<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  float beta;
-  typename funcs::BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"beta", &beta}};
-  }
+  typename funcs::BaseActivationFunctor<T>::AttrPair GetAttrs() { return {{}}; }
 
   template <typename Context>
   void operator()(const Context& dev_ctx,
@@ -571,24 +565,18 @@ DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Sigmoid, XPUSigmoidGradFunctor);
 DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Sqrt, XPUSqrtGradFunctor);
 DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Tanh, XPUTanhGradFunctor);
 DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Relu, XPUReluGradFunctor);
+DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Relu6, XPURelu6GradFunctor);
 
-DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPX(Silu, XPUSiluGradFunctor);
 DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPX(Log, XPULogGradFunctor);
 DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPX(Square, XPUSquareGradFunctor);
+DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPX(Swish, XPUSwishGradFunctor);
 
-DEFINE_XPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(Swish,
-                                               XPUSwishGradFunctor,
-                                               beta);
 DEFINE_XPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(Mish,
                                                XPUMishGradFunctor,
                                                threshold);
 DEFINE_XPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPX(LeakyRelu,
                                                XPULeakyReluGradFunctor,
                                                alpha);
-
-DEFINE_XPU_ACT_GRAD_KERNEL_WITH_ONE_ATTRS_DEPOUT(Relu6,
-                                                 XPURelu6GradFunctor,
-                                                 threshold);
 
 DEFINE_XPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPX(Softplus,
                                                XPUSoftPlusGradFunctor,
@@ -616,6 +604,16 @@ void HardSwishGradKernel(const Context& dev_ctx,
       dev_ctx, &x, nullptr, &dout, dx, functor);
 }
 
+template <typename T, typename Context>
+void SiluGradKernel(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& out,
+                    const DenseTensor& dout,
+                    DenseTensor* dx) {
+  XPUSiluGradFunctor<T> functor;
+  ActivationGradXPUImpl<T, Context, XPUSiluGradFunctor<T>>(
+      dev_ctx, &x, &out, &dout, dx, functor);
+}
 }  // namespace phi
 
 PD_REGISTER_KERNEL(relu_grad,

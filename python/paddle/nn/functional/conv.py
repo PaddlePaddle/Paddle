@@ -16,7 +16,6 @@ from paddle import _C_ops, _legacy_C_ops, get_flags, in_dynamic_mode
 from paddle.device import (
     get_all_custom_device_type,
     is_compiled_with_cuda,
-    is_compiled_with_npu,
     is_compiled_with_rocm,
 )
 from paddle.fluid.framework import _global_flags, in_dygraph_mode
@@ -237,7 +236,7 @@ def _conv_nd(
             "data_format": data_format,
         }
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], op_type
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], op_type
         )
         helper = LayerHelper(op_type, **locals())
         dtype = helper.input_dtype(input_param_name='x')
@@ -464,13 +463,6 @@ def conv1d(
     ):
         l_type = 'depthwise_conv2d'
         use_cudnn = False
-
-    # NPU only supports depthwise_conv2d when  "input_channel = output_channel = groups"
-    if is_compiled_with_npu():
-        if num_channels == groups and num_channels == num_filters:
-            l_type = 'depthwise_conv2d'
-        else:
-            l_type = 'conv2d'
 
     squeeze_aixs = -3 if channel_last else -2
     x = unsqueeze(x, axis=[squeeze_aixs])
@@ -754,13 +746,6 @@ def conv2d(
                 return pre_bias
 
     use_mkldnn = _global_flags()["FLAGS_use_mkldnn"]
-
-    # NPU only supports depthwise_conv2d when  "input_channel = output_channel = groups"
-    if is_compiled_with_npu():
-        if num_channels == groups and num_channels == num_filters:
-            l_type = 'depthwise_conv2d'
-        else:
-            l_type = 'conv2d'
 
     if (
         is_compiled_with_cuda()
@@ -1344,7 +1329,10 @@ def conv2d_transpose(
             'data_format': data_format,
         }
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'conv2d_transpose'
+            x,
+            'x',
+            ['float16', 'uint16', 'float32', 'float64'],
+            'conv2d_transpose',
         )
         helper = LayerHelper(op_type, **locals())
         pre_bias = helper.create_variable_for_type_inference(x.dtype)

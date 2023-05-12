@@ -197,5 +197,6 @@ namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(chunk_eval,
                              ops::ChunkEvalOp,
                              ops::ChunkEvalOpMaker);
-REGISTER_OP_CPU_KERNEL(chunk_eval,
-                       ops::ChunkEvalKernel<paddle::platform::CPUPlace, float>);
+
+PD_REGISTER_STRUCT_KERNEL(
+    chunk_eval, CPU, ALL_LAYOUT, ops::ChunkEvalKernel, float) {}

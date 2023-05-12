@@ -17,13 +17,13 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/plugin/generic_plugin.h"
 #include "paddle/fluid/inference/tensorrt/plugin_arg_mapping_context.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/errors.h"
 
 namespace paddle {
 namespace inference {
 namespace tensorrt {
-/*
- * Stack converter from fluid to tensorRT.
- */
+
 class CustomPluginCreater : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc &op,
@@ -70,9 +70,17 @@ class CustomPluginCreater : public OpConverter {
     std::list<std::vector<int>> ints_attrs;
     std::list<std::vector<float>> floats_attrs;
 
-    for (auto &attr_name : op_attrs_names) {
+    for (auto &attr_name_and_type : op_attrs_names) {
+      auto attr_name =
+          attr_name_and_type.substr(0, attr_name_and_type.find_first_of(":"));
       nvinfer1::PluginField plugindata;
-      plugindata.name = attr_name.c_str();
+
+      // NOTE: to avoid string rewrite by iterator, deep copy here
+      std::vector<char> plugin_attr_name(attr_name.length() + 1, 0);
+      snprintf(
+          plugin_attr_name.data(), attr_name.length() + 1, attr_name.c_str());
+      plugindata.name = plugin_attr_name.data();
+
       if (op_desc.GetAttrType(attr_name) == framework::proto::AttrType::INT) {
         int_attrs.push_back(PADDLE_GET_CONST(int, attrs.at(attr_name)));
         plugindata.data = &int_attrs.back();
@@ -164,6 +172,8 @@ class GenericPluginCreater : public OpConverter {
                   const framework::Scope &scope,
                   bool test_mode) override {
     framework::OpDesc op_desc(op, nullptr);
+    VLOG(3) << "convert " << op_desc.Type() << " op to generic pluign layer";
+
     CHECK(block_);
     const framework::BlockDesc block_desc(
         nullptr, const_cast<framework::proto::BlockDesc *>(block_));
@@ -181,6 +191,14 @@ class GenericPluginCreater : public OpConverter {
       phi_kernel_signature =
           phi::DefaultKernelSignatureMap::Instance().Get(op_desc.Type());
     }
+    VLOG(3) << phi_kernel_signature;
+    PADDLE_ENFORCE_EQ(
+        phi_kernel_signature.input_names.empty() ||
+            phi_kernel_signature.output_names.empty(),
+        false,
+        platform::errors::PreconditionNotMet(
+            "The %s op's kernel signature (inputs and output) should not null.",
+            op_desc.Type()));
 
     bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
 

@@ -16,7 +16,6 @@
 
 #include <mutex>
 
-#include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "paddle/fluid/memory/allocation/buddy_allocator.h"
 #include "paddle/fluid/memory/allocation/system_allocator.h"
@@ -30,7 +29,7 @@
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
-
+#include "paddle/fluid/platform/flags.h"
 PADDLE_DEFINE_EXPORTED_bool(
     init_allocated_mem,
     false,
@@ -39,9 +38,9 @@ PADDLE_DEFINE_EXPORTED_bool(
     "To find this error in time, we use init_allocated_mem to indicate "
     "that initializing the allocated memory with a small value "
     "during unit testing.");
-DECLARE_double(fraction_of_gpu_memory_to_use);
-DECLARE_uint64(initial_gpu_memory_in_mb);
-DECLARE_uint64(reallocate_gpu_memory_in_mb);
+PHI_DECLARE_double(fraction_of_gpu_memory_to_use);
+PHI_DECLARE_uint64(initial_gpu_memory_in_mb);
+PHI_DECLARE_uint64(reallocate_gpu_memory_in_mb);
 DECLARE_bool(benchmark);
 
 namespace paddle {
@@ -150,7 +149,7 @@ void *Alloc<platform::XPUPlace>(const platform::XPUPlace &place, size_t size) {
   VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
   void *p = nullptr;
 
-  platform::XPUDeviceGuard gurad(place.device);
+  platform::XPUDeviceGuard guard(place.device);
   int ret = xpu_malloc(reinterpret_cast<void **>(&p), size);
   if (ret != XPU_SUCCESS) {
     VLOG(10) << "xpu memory malloc(" << size << ") failed, try again";
@@ -183,7 +182,7 @@ void Free<platform::XPUPlace>(const platform::XPUPlace &place,
   VLOG(10) << "Free " << size << " bytes on " << platform::Place(place);
   VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
 
-  platform::XPUDeviceGuard gurad(place.device);
+  platform::XPUDeviceGuard guard(place.device);
   xpu_free(p);
 #else
   PADDLE_THROW(
@@ -417,140 +416,6 @@ uint64_t Release<platform::CUDAPinnedPlace>(
 #else
   PADDLE_THROW(platform::errors::PermissionDenied(
       "'CUDAPinnedPlace' is not supported in CPU only device."));
-#endif
-}
-
-// For MLU
-#ifdef PADDLE_WITH_MLU
-class MLUBuddyAllocatorList {
- private:
-  MLUBuddyAllocatorList() : devices_(platform::GetMLUSelectedDevices()) {
-    auto mlu_num = devices_.size();
-    allocators_.resize(mlu_num);
-    init_flags_.reserve(mlu_num);
-    for (size_t i = 0; i < mlu_num; ++i) {
-      init_flags_.emplace_back(new std::once_flag());
-    }
-  }
-
-  static MLUBuddyAllocatorList *CreateNewInstance() {
-    return new MLUBuddyAllocatorList();
-  }
-
- public:
-  static MLUBuddyAllocatorList *Instance() {
-    static auto *instance = CreateNewInstance();
-    return instance;
-  }
-
-  BuddyAllocator *Get(int mlu_id) {
-    auto pos = std::distance(
-        devices_.begin(), std::find(devices_.begin(), devices_.end(), mlu_id));
-    PADDLE_ENFORCE_LT(pos,
-                      devices_.size(),
-                      platform::errors::OutOfRange(
-                          "The index exceeds the size of devices, the size of "
-                          "devices is %d, the index is %d",
-                          devices_.size(),
-                          pos));
-
-    std::call_once(*init_flags_[pos], [this, pos] {
-      platform::SetMLUDeviceId(devices_[pos]);
-      allocators_[pos].reset(
-          new BuddyAllocator(std::unique_ptr<detail::SystemAllocator>(
-                                 new detail::MLUAllocator(devices_[pos])),
-                             platform::MLUMinChunkSize(),
-                             platform::MLUMaxChunkSize()));
-      VLOG(10) << "\n\nNOTE:\n"
-               << "You can set GFlags environment variable "
-               << "(mlu reuse gpu GFlags) "
-               << "'FLAGS_fraction_of_gpu_memory_to_use' "
-               << "or 'FLAGS_initial_gpu_memory_in_mb' "
-               << "or 'FLAGS_reallocate_gpu_memory_in_mb' "
-               << "to change the memory size for MLU usage.\n"
-               << "Current 'FLAGS_fraction_of_gpu_memory_to_use' value is "
-               << FLAGS_fraction_of_gpu_memory_to_use
-               << ". Current 'FLAGS_initial_gpu_memory_in_mb' value is "
-               << FLAGS_initial_gpu_memory_in_mb
-               << ". Current 'FLAGS_reallocate_gpu_memory_in_mb' value is "
-               << FLAGS_reallocate_gpu_memory_in_mb << "\n\n";
-    });
-
-    return allocators_[pos].get();
-  }
-
- private:
-  std::vector<int> devices_;
-  std::vector<std::unique_ptr<std::once_flag>> init_flags_;
-  std::vector<std::unique_ptr<BuddyAllocator>> allocators_;
-};
-
-BuddyAllocator *GetMLUBuddyAllocator(int mlu_id) {
-  return MLUBuddyAllocatorList::Instance()->Get(mlu_id);
-}
-#endif
-
-template <>
-size_t Used<platform::MLUPlace>(const platform::MLUPlace &place) {
-#ifdef PADDLE_WITH_MLU
-  return GetMLUBuddyAllocator(place.device)->Used();
-#else
-  PADDLE_THROW(platform::errors::PermissionDenied(
-      "'MLUPlace' is not supported in CPU only device."));
-#endif
-}
-
-template <>
-void *Alloc<platform::MLUPlace>(const platform::MLUPlace &place, size_t size) {
-#ifdef PADDLE_WITH_MLU
-  auto *buddy_allocator = GetMLUBuddyAllocator(place.device);
-  auto *ptr = buddy_allocator->Alloc(size);
-  if (ptr == nullptr) {
-    platform::MLUDeviceGuard(place.device);
-    size_t avail = 0, total = 0;
-    platform::MLUMemoryUsage(&avail, &total);
-    PADDLE_THROW(platform::errors::ResourceExhausted(
-        "Cannot allocate %s in MLU %d, avaliable %s, total %s, MLUMinChunkSize "
-        "%s, MLUMinChunkSize %s, MLU memory used: %s.",
-        string::HumanReadableSize(size),
-        place.device,
-        string::HumanReadableSize(avail),
-        string::HumanReadableSize(total),
-        string::HumanReadableSize(buddy_allocator->GetMinChunkSize()),
-        string::HumanReadableSize(buddy_allocator->GetMaxChunkSize()),
-        string::HumanReadableSize(Used<platform::MLUPlace>(place))));
-  } else {
-    if (FLAGS_init_allocated_mem) {
-      cnrtMemset(ptr, 0xEF, size);
-    }
-  }
-  return ptr;
-#else
-  PADDLE_THROW(platform::errors::PermissionDenied(
-      "'MLUPlace' is not supported in CPU only device."));
-#endif
-}
-
-template <>
-void Free<platform::MLUPlace>(const platform::MLUPlace &place,
-                              void *p,
-                              size_t size) {
-#ifdef PADDLE_WITH_MLU
-  VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
-  GetMLUBuddyAllocator(place.device)->Free(p);
-#else
-  PADDLE_THROW(platform::errors::PermissionDenied(
-      "'MLUPlace' is not supported in CPU only device."));
-#endif
-}
-
-template <>
-uint64_t Release<platform::MLUPlace>(const platform::MLUPlace &place) {
-#ifdef PADDLE_WITH_MLU
-  return GetMLUBuddyAllocator(place.device)->Release();
-#else
-  PADDLE_THROW(platform::errors::PermissionDenied(
-      "'MLUPlace' is not supported in CPU only device."));
 #endif
 }
 

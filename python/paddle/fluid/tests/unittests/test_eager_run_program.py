@@ -20,10 +20,6 @@ import paddle
 from paddle import _legacy_C_ops
 from paddle.fluid import core
 from paddle.fluid.dygraph.base import switch_to_static_graph
-from paddle.fluid.executor import (
-    _is_dy2st_enable_standalone_executor,
-    _is_enable_standalone_executor,
-)
 from paddle.fluid.framework import Variable
 
 
@@ -61,15 +57,14 @@ def _append_backward_desc(main_program, outs):
 def _create_out(var):
     assert isinstance(var, Variable)
     var_desc = var.desc
-    varbase = None
-    var_base = core.eager.Tensor(
+    out = core.eager.Tensor(
         var_desc.dtype(),
         var_desc.shape(),
         var_desc.name(),
         var_desc.type(),
         False,
     )
-    return var_base
+    return out
 
 
 @switch_to_static_graph
@@ -138,12 +133,11 @@ class TestRunProgram(unittest.TestCase):
             ['Fake_var@GRAD'],
             'out_grad_names',
             [out.name + '@GRAD'],
+            'x_grad_names',
+            [x_t.name + '@GRAD', y_t.name + '@GRAD'],
         ]
 
-        use_interpretorcore = (
-            _is_enable_standalone_executor()
-            and _is_dy2st_enable_standalone_executor()
-        )
+        use_interpretorcore = True
         attrs.extend(('use_interpretorcore', use_interpretorcore))
         if use_interpretorcore:
             attrs.extend(

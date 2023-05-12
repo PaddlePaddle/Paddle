@@ -22,9 +22,9 @@ from eager_op_test import OpTest
 import paddle
 from paddle.fluid import core
 
-sys.path.append("./rnn")
-from rnn.convert import get_params_for_net
-from rnn.rnn_numpy import SimpleRNN
+sys.path.append("../../../../../test/rnn")
+from convert import get_params_for_net
+from rnn_numpy import SimpleRNN
 
 random.seed(2)
 np.set_printoptions(threshold=np.inf)

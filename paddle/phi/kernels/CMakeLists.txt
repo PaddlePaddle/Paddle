@@ -74,6 +74,7 @@ set(COMMON_KERNEL_DEPS
     phi_dynload_warpctc
     phi_dynload_warprnnt
     sequence_padding
+    sequence_pooling
     sequence_scale
     fft
     phi_data_layout_transform
@@ -110,6 +111,8 @@ file(
   "gpu/*.cu.cc"
   "gpudnn/*.cu"
   "kps/*.cu"
+  "legacy/kps/*.cu"
+  "legacy/gpu/*.cu"
   "selected_rows/gpu/*.cu"
   "sparse/gpu/*.cu"
   "strings/gpu/*.cu"
@@ -121,6 +124,7 @@ if(WITH_CUTLASS)
             "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d/generated"
     COMMAND ${PYTHON_EXECUTABLE} "conv2d_bias_act.py"
     COMMAND ${PYTHON_EXECUTABLE} "conv2d_bias_residual.py"
+    COMMAND ${PYTHON_EXECUTABLE} "conv2d_depthwise_bias_act.py"
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/conv2d")
 
   execute_process(
@@ -150,6 +154,8 @@ if(WITH_MKLDNN)
     kernel_cc
     "*.cc"
     "cpu/*.cc"
+    "legacy/*.cc"
+    "legacy/cpu/*.cc"
     "selected_rows/*.cc"
     "selected_rows/cpu/*.cc"
     "sparse/*.cc"
@@ -166,6 +172,8 @@ else()
     kernel_cc
     "*.cc"
     "cpu/*.cc"
+    "legacy/*.cc"
+    "legacy/cpu/*.cc"
     "selected_rows/*.cc"
     "selected_rows/cpu/*.cc"
     "sparse/*.cc"
@@ -176,7 +184,14 @@ else()
     "fusion/cpu/*.cc")
 endif()
 
-file(GLOB kernel_xpu "xpu/*.cc" "selected_rows/xpu/*.cc" "fusion/xpu/*.cc")
+file(
+  GLOB
+  kernel_xpu
+  "xpu/*.cc"
+  "legacy/xpu/*.cc"
+  "selected_rows/xpu/*.cc"
+  "fusion/xpu/*.cc"
+  "sparse/xpu/*.cc")
 
 if(WITH_MKLDNN)
   set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} get_kerneltype_forvar_utils)
@@ -199,26 +214,50 @@ elseif(WITH_XPU)
   if(WITH_XPU_KP)
     file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/kps/
          DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/kps/)
+    file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/legacy/kps/
+         DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/kps/)
     file(GLOB kernel_xpu_kps "${CMAKE_CURRENT_BINARY_DIR}/kps/*.cu")
     foreach(kernel ${kernel_xpu_kps})
       get_filename_component(name ${kernel} NAME_WE)
       file(RENAME ${kernel} "${CMAKE_CURRENT_BINARY_DIR}/kps/${name}.kps")
     endforeach()
     file(GLOB kernel_xpu_kps "${CMAKE_CURRENT_BINARY_DIR}/kps/*.kps")
+    file(
+      GLOB kernel_cc_relative
+      RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+      "*.cc"
+      "cpu/*.cc"
+      "legacy/*.cc"
+      "legacy/cpu/*.cc"
+      "selected_rows/*.cc"
+      "selected_rows/cpu/*.cc"
+      "sparse/*.cc"
+      "sparse/cpu/*.cc"
+      "strings/*.cc"
+      "strings/cpu/*.cc"
+      "fusion/*.cc"
+      "fusion/cpu/*.cc")
+    foreach(kernel ${kernel_cc_relative})
+      file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/${kernel}
+           DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/${kernel})
+    endforeach()
+    file(GLOB_RECURSE kernel_xpu_cc "${CMAKE_CURRENT_BINARY_DIR}/*.cc")
     xpu_add_library(
       phi_xpu
       STATIC
       ${kernel_xpu}
       ${kernel_xpu_kps}
-      ${kernel_cc}
+      ${kernel_xpu_cc}
       DEPENDS
       ${COMMON_KERNEL_DEPS})
+    kernel_declare("${kernel_xpu_cc}")
   else()
     add_library(phi_xpu ${kernel_xpu} ${kernel_cc})
+    kernel_declare("${kernel_cc}")
   endif()
   kernel_declare("${kernel_xpu}")
   kernel_declare("${kernel_xpu_kps}")
-  kernel_declare("${kernel_cc}")
+
   target_link_libraries(phi_xpu ${COMMON_KERNEL_DEPS})
   set(ADD_PHI_KERNELS ${ADD_PHI_KERNELS} phi_xpu)
 else()

@@ -109,7 +109,37 @@ class SegmentLayers:
         ), "layer number should be greater than number of segments"
 
     def do_segment(self):
-        if self.method == "uniform":
+
+        if isinstance(self.method, list):
+            seg_method = self.method[:]
+            source_num_parts = len(seg_method) - 1
+
+            def check_sanity():
+                assert seg_method[0] == 0, "seg_method[0] should be 0"
+                for part in seg_method:
+                    assert isinstance(part, int), "part should be int"
+                    assert part >= 0, f"part[{part}] should be greater than 0"
+                    assert (
+                        part <= self.num_items
+                    ), "part[{}] should be less than num_items[{}]".format(
+                        part, self.num_items
+                    )
+
+            check_sanity()
+
+            if self.num_parts == source_num_parts + 1:
+                seg_method.append(self.num_items)
+                return seg_method
+            elif self.num_parts == source_num_parts:
+                return seg_method
+            else:
+                raise ValueError(
+                    "We set seg_method as {}, this length is {}, but the number of stages is {}".format(
+                        seg_method, len(seg_method), self.num_parts
+                    )
+                )
+
+        elif self.method == "uniform":
             return self.uniform(self.num_items, self.num_parts)
 
         elif self.method.startswith('layer:'):
@@ -144,6 +174,8 @@ class SegmentLayers:
                     memory_counter = 0
             result[actual_num_parts] = len(weights)
             return result
+        else:
+            raise ValueError(f"method {self.method} is not supported")
 
     def _gen_layer_weight(self, layername):
         weight_idxs = []
@@ -329,6 +361,9 @@ class PipelineLayer(nn.Layer):
         self._topo = topology
         self._recompute_interval = recompute_interval
         self.recompute_ctx = recompute_ctx
+
+        # Defaults to 1234 to initialize layer parameters
+        self._base_seed = 1234
 
         if recompute_interval > 0:
             assert (
@@ -529,7 +564,7 @@ class PipelineLayer(nn.Layer):
         self.segment_parts = seg.do_segment()
 
         logger.info(
-            "segment result:"
+            f"segment with method: {seg_method}; result: "
             + ", ".join(str(arg) for arg in self.segment_parts)
         )
 
@@ -559,7 +594,7 @@ class PipelineLayer(nn.Layer):
         self.segment_parts = seg.do_segment()
 
         logger.info(
-            "segment result:"
+            f"segment with method: {seg_method}; result: "
             + ", ".join(str(arg) for arg in self.segment_parts)
         )
 
@@ -626,8 +661,21 @@ class PipelineLayer(nn.Layer):
             # For 1f1b scheduler, just use run_function list
             run_function = self.run_function
 
+        from paddle.distributed.fleet.meta_parallel.parallel_layers.random import (
+            get_rng_state_tracker,
+        )
+
+        orig_rng_state = paddle.get_rng_state()
+        orig_rng_tracker = get_rng_state_tracker().get_states_tracker()
+
         for index, layer in enumerate(self._layers_desc[start:end]):
             layer_index = start + index
+
+            # NOTE(shenliang03): need set different seeds for pipeline parameters initialization.
+            # Since the parameters of model_parallel are controlled by its own RNG_STATE_TRACKER,
+            # only non-mp parameters in pp are controlled here.
+            paddle.seed(self._base_seed + layer_index)
+
             if isinstance(layer, nn.Layer):
                 run_function.append(layer)
                 if self._num_virtual_pipeline_stages == 1:
@@ -666,6 +714,8 @@ class PipelineLayer(nn.Layer):
             else:
                 run_function.append(layer)
 
+        paddle.set_rng_state(orig_rng_state)
+        get_rng_state_tracker().set_states_tracker(orig_rng_tracker)
         return run_function
 
     def forward_function(self, start, end):

@@ -190,7 +190,7 @@ class Normal(distribution.Distribution):
             output_shape = shape + batch_shape
             output = random.gaussian(
                 output_shape, mean=0.0, std=1.0, seed=seed, dtype=self.dtype
-            ) * (tensor.zeros(output_shape, dtype=self.dtype) + self.scale)
+            ) * (paddle.zeros(output_shape, dtype=self.dtype) + self.scale)
             output = paddle.add(output, self.loc, name=name)
             if self.all_arg_is_float:
                 return paddle.reshape(output, shape, name=name)

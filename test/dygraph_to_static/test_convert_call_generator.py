@@ -16,11 +16,12 @@ import unittest
 
 import paddle
 from paddle.jit import to_static
+from paddle.jit.dy2static.convert_call_func import translator_logger
 
 
 def dyfunc_generator():
     for i in range(100):
-        yield paddle.fluid.dygraph.to_variable([i] * 10)
+        yield paddle.to_tensor([i] * 10)
 
 
 def main_func():
@@ -31,8 +32,17 @@ def main_func():
 
 class TestConvertGenerator(unittest.TestCase):
     def test_raise_error(self):
-        with self.assertRaises(Exception):
+        translator_logger.verbosity_level = 1
+        with self.assertLogs(
+            translator_logger.logger_name, level='WARNING'
+        ) as cm:
             to_static(main_func)()
+            self.assertRegex(
+                cm.output[0],
+                "Your function:`dyfunc_generator` doesn't support "
+                "to transform to static function because it is a "
+                "generator function",
+            )
 
 
 if __name__ == '__main__':

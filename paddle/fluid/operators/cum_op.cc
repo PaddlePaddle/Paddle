@@ -123,74 +123,6 @@ class CumsumCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
     this->RecoverOutputName(dx, dx_name);
   }
 };
-
-class LogcumsumexpOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput("X", "Input of logcumsumexp operator");
-    AddOutput("Out", "Output of logcumsumexp operator");
-    AddAttr<int>("axis",
-                 "The dimension to accumulate along. -1 means the last "
-                 "dimension [default -1].")
-        .SetDefault(-1);
-    AddAttr<bool>(
-        "flatten",
-        "Whether to compute the logcumsumexp over the flattened array. "
-        "[default false].")
-        .SetDefault(false);
-    AddAttr<bool>("exclusive",
-                  "Whether to perform exclusive logcumsumexp. [default false].")
-        .SetDefault(false);
-    AddAttr<bool>(
-        "reverse",
-        "If true, the logcumsumexp is performed in the reversed direction. "
-        "[default false].")
-        .SetDefault(false);
-    AddComment(R"DOC(
-Returns the logarithm of the cumulative summation of the exponentiation of elements of input along the given axis.
-By default, the first element of the result is the same of the first element of
-the input. If exclusive is true, the first element of the result is the lowest finite value of the dtype of output tensor.
-)DOC");
-  }
-};
-
-class LogcumsumexpGradOp : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "logcumsumexp");
-    OP_INOUT_CHECK(ctx->HasInput("Out"), "Input", "Out", "logcumsumexp");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input",
-                   "Out@GRAD",
-                   "logcumsumexp");
-    ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
-  }
-};
-
-template <typename T>
-class LogcumsumexpGradMaker : public framework::SingleGradOpMaker<T> {
- public:
-  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
-
- protected:
-  void Apply(GradOpPtr<T> grad_op) const override {
-    grad_op->SetType("logcumsumexp_grad");
-    grad_op->SetInput("X", this->Input("X"));
-    grad_op->SetInput("Out", this->Output("Out"));
-    grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
-    grad_op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
-    grad_op->SetAttr("axis", PADDLE_GET_CONST(int, this->GetAttr("axis")));
-    grad_op->SetAttr("flatten",
-                     PADDLE_GET_CONST(bool, this->GetAttr("flatten")));
-    grad_op->SetAttr("exclusive",
-                     PADDLE_GET_CONST(bool, this->GetAttr("exclusive")));
-    grad_op->SetAttr("reverse",
-                     PADDLE_GET_CONST(bool, this->GetAttr("reverse")));
-  }
-};
-
 }  // namespace operators
 }  // namespace paddle
 
@@ -200,9 +132,6 @@ DECLARE_INFER_SHAPE_FUNCTOR(cumsum,
                             CumsumInferShapeFunctor,
                             PD_INFER_META(phi::CumScalarAxisInferMeta));
 
-DECLARE_INFER_SHAPE_FUNCTOR(logcumsumexp,
-                            LogcumsumexpInferShapeFunctor,
-                            PD_INFER_META(phi::CumInferMeta));
 REGISTER_OPERATOR(cumsum,
                   ops::CumOp,
                   ops::CumsumOpMaker,
@@ -210,13 +139,6 @@ REGISTER_OPERATOR(cumsum,
                   ops::CumsumGradMaker<paddle::framework::OpDesc>,
                   ops::CumsumGradMaker<paddle::imperative::OpBase>,
                   CumsumInferShapeFunctor);
-REGISTER_OPERATOR(logcumsumexp,
-                  ops::CumOp,
-                  ops::LogcumsumexpOpMaker,
-                  ops::LogcumsumexpGradMaker<paddle::framework::OpDesc>,
-                  ops::LogcumsumexpGradMaker<paddle::imperative::OpBase>,
-                  LogcumsumexpInferShapeFunctor);
-REGISTER_OPERATOR(logcumsumexp_grad, ops::LogcumsumexpGradOp);
 REGISTER_OPERATOR(cumsum_grad, ops::CumGradOp);
 
 REGISTER_OP_VERSION(cumsum).AddCheckpoint(

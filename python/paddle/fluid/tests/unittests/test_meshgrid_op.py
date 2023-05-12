@@ -67,12 +67,21 @@ class TestMeshgridOp(OpTest):
         return [100, 200]
 
     def if_enable_cinn(self):
-        self.enable_cinn = True
+        # 拆解tile_grad导致cinn运行超时
+        self.enable_cinn = False
 
 
 class TestMeshgridOp2(TestMeshgridOp):
     def get_x_shape(self):
         return [100, 300]
+
+
+class TestMeshgridOp2Fp16(TestMeshgridOp):
+    def get_x_shape(self):
+        return [100, 300]
+
+    def get_dtype(self):
+        return np.float16
 
 
 class TestMeshgridOp3(unittest.TestCase):

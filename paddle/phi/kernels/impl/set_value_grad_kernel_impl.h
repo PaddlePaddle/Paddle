@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include "glog/logging.h"
+
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -52,7 +54,7 @@ void SetValueGradImpl(const Context& dev_ctx,
                       const IntArray& steps,
                       const std::vector<int64_t>& axes,
                       const std::vector<int64_t>& decrease_axes,
-                      const std::vector<int64_t>& none_axes,
+                      const std::vector<int64_t>& none_axes UNUSED,
                       DenseTensor* x_grad,
                       DenseTensor* value_grad) {
   PADDLE_ENFORCE_EQ(

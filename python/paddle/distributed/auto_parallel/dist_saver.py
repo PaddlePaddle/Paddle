@@ -192,26 +192,38 @@ class DistributedSaver:
             used_inputs += op.input_arg_names
             used_outputs += op.output_arg_names
 
-        for idx, var_name in enumerate(feed_vars_names):
-            if var_name not in used_inputs:
-                feed_vars_names.pop(idx)
-        for idx, var_name in enumerate(fetch_vars_names):
-            if var_name not in used_outputs:
-                fetch_vars_names.pop(idx)
+        # delete duplicated elements and keep order
+        feed_vars_names = list({}.fromkeys(feed_vars_names).keys())
+        used_inputs = list({}.fromkeys(used_inputs).keys())
+        fetch_vars_names = list({}.fromkeys(fetch_vars_names).keys())
+        used_outputs = list({}.fromkeys(used_outputs).keys())
+
+        dist_feed_vars_names = [
+            var_name for var_name in feed_vars_names if var_name in used_inputs
+        ]
+        dist_fetch_vars_names = [
+            var_name
+            for var_name in fetch_vars_names
+            if var_name in used_outputs
+        ]
 
         dist_feed_vars = list(
-            reversed([global_block.vars[name] for name in feed_vars_names])
+            reversed([global_block.vars[name] for name in dist_feed_vars_names])
         )
-        dist_fetch_vars = [global_block.vars[name] for name in fetch_vars_names]
+        dist_fetch_vars = [
+            global_block.vars[name] for name in dist_fetch_vars_names
+        ]
 
         dist_filename = filename + "_dist" + str(rank_id)
         dist_path = os.path.join(dirname, dist_filename)
+        legacy_format = kwargs.get("legacy_format", False)
         paddle.static.save_inference_model(
             dist_path,
             dist_feed_vars,
             dist_fetch_vars,
             exe,
             program=dist_main_prog,
+            legacy_format=legacy_format,
         )
 
     def _save_rank_mapping(self, dirname):

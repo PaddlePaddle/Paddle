@@ -24,7 +24,11 @@ import unittest
 
 import numpy as np
 from decorator_helper import prog_scope
-from eager_op_test import OpTest, _set_use_system_allocator
+from eager_op_test import (
+    OpTest,
+    _set_use_system_allocator,
+    convert_float_to_uint16,
+)
 
 import paddle
 from paddle import fluid, nn
@@ -85,7 +89,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
         cmds += ["--fetch_list", str(fetch_list)]
         if only_forward:
             cmds += ["--only_forward"]
-        if self.dtype == np.float16:
+        if self.dtype == np.float16 or self.dtype == np.uint16:
             cmds += ["--use_cudnn"]
         p = subprocess.run(cmds)
         assert p.returncode == 0, f"Fleet train: Failed: {p}"
@@ -98,7 +102,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
         startup = fluid.Program()
         main.random_seed = seed
         startup.random_seed = seed
-        use_cudnn = self.dtype == np.float16
+        use_cudnn = (self.dtype == np.float16) or (self.dtype == np.uint16)
         with fluid.unique_name.guard():
             with fluid.program_guard(main, startup):
                 data = paddle.static.data(
@@ -144,7 +148,14 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
         os.environ['FLAGS_cudnn_deterministic'] = "1"
         paddle.enable_static()
         scope = core.Scope()
-        data = np.random.random(size=self.dshape).astype(self.dtype) * 4.0 - 2
+        if self.dtype == np.uint16:
+            data = convert_float_to_uint16(
+                np.random.random(size=self.dshape).astype(np.float32) * 4.0 - 2
+            )
+        else:
+            data = (
+                np.random.random(size=self.dshape).astype(self.dtype) * 4.0 - 2
+            )
         stride = self.N // core.get_cuda_device_count()
         for id in range(core.get_cuda_device_count()):
             filepath = os.path.join(
@@ -264,6 +275,27 @@ class TestFP16SyncBatchNormOpTraining(TestSyncBatchNormOpTraining):
     def setUp(self):
         """Setup."""
         self.dtype = np.float16
+        self.N = 8
+        self.C = 16
+        self.H = 32
+        self.W = 32
+        self.dshape = [self.N, self.C, self.H, self.W]
+        self.atol = 1e-3
+        self.data_dir = tempfile.TemporaryDirectory()
+        self.fleet_log_dir = tempfile.TemporaryDirectory()
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestBF16SyncBatchNormOpTraining(TestSyncBatchNormOpTraining):
+    """sync_batch_norm op test for BF16 input."""
+
+    def setUp(self):
+        """Setup."""
+        self.dtype = np.uint16
         self.N = 8
         self.C = 16
         self.H = 32

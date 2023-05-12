@@ -499,7 +499,6 @@ void BindDistributed(py::module *m) {
               py::arg("src"),
               py::arg("sync_op"),
               py::call_guard<py::gil_scoped_release>())
-
           .def(
               "scatter_tensor",
               [](distributed::ProcessGroup &self,
@@ -547,11 +546,12 @@ void BindDistributed(py::module *m) {
 
                 auto *dev_ctx =
                     self.GetDeviceContext(in_tensor.place(), use_calc_stream);
-                distributed::GatherOptions gather_ops{dst};
+                distributed::GatherOptions gather_opts{dst};
                 auto task = self.Gather(
-                    out_dense, in_dense, gather_ops, sync_op, use_calc_stream);
+                    out_dense, in_dense, gather_opts, sync_op, use_calc_stream);
                 SplitTensor(*dev_ctx, *out_dense, &out_tensor_list);
-                if (!use_calc_stream) {
+                if (!use_calc_stream &&
+                    dev_ctx->GetPlace() != platform::CPUPlace()) {
                   // calculate stream will wait comm stream
                   task->UpdateWaitChain(*dev_ctx);
                 }
@@ -561,7 +561,7 @@ void BindDistributed(py::module *m) {
               py::arg("out"),
               py::arg("dst"),
               py::arg("sync_op"),
-              py::arg("use_calc_stream"),
+              py::arg("use_calc_stream") = false,
               py::call_guard<py::gil_scoped_release>())
           .def(
               "barrier",
@@ -1357,7 +1357,6 @@ void BindDistributed(py::module *m) {
       *m, "ProcessGroupIdMap")
       .def_static("destroy",
                   distributed::ProcessGroupIdMap::DestroyProcessGroup,
-                  py::arg("group_id") = 0,
                   py::call_guard<py::gil_scoped_release>());
 }
 

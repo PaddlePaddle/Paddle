@@ -51,7 +51,7 @@ static __global__ void GetLengthLoD(const int nthreads,
   }
 }
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -267,7 +267,10 @@ class GPUCollectFpnProposalsOpKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    collect_fpn_proposals,
-    ops::GPUCollectFpnProposalsOpKernel<phi::GPUContext, float>,
-    ops::GPUCollectFpnProposalsOpKernel<phi::GPUContext, double>);
+
+PD_REGISTER_STRUCT_KERNEL(collect_fpn_proposals,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::GPUCollectFpnProposalsOpKernel,
+                          float,
+                          double) {}

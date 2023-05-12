@@ -1330,7 +1330,7 @@ static void LaunchElementwiseAddWithCastKernel(const phi::GPUContext &dev_ctx,
 }
 
 template <typename T>
-class DistributedFusedLambOpKernel<phi::GPUContext, T>
+class DistributedFusedLambOpKernel<T, phi::GPUContext>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -2300,6 +2300,8 @@ class DistributedFusedLambOpKernel<phi::GPUContext, T>
 namespace plat = paddle::platform;
 namespace ops = paddle::operators;
 
-REGISTER_OP_CUDA_KERNEL(
-    distributed_fused_lamb,
-    ops::DistributedFusedLambOpKernel<phi::GPUContext, float>);
+PD_REGISTER_STRUCT_KERNEL(distributed_fused_lamb,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::DistributedFusedLambOpKernel,
+                          float) {}

@@ -497,9 +497,6 @@ class TestElementwiseAddOp_rowwise_add_1(TestElementwiseAddOp):
         self.y = np.random.rand(100, 1).astype(self.dtype)
         self.out = self.x + self.y.reshape(1, 100, 1)
 
-    def if_enable_cinn(self):
-        self.enable_cinn = False
-
 
 @skip_check_grad_ci(
     reason="[skip shape check] Use y_shape(1) to test broadcast."

@@ -44,7 +44,7 @@ __all__ = [
     'to_variable',
 ]
 
-# Flag that indicates whether running code under `@to_static`
+NON_PERSISTABLE_VAR_NAME_SUFFIX = "__non_persistable"
 
 
 def in_declarative_mode():
@@ -125,7 +125,7 @@ def param_guard(parameters):
 
 def _convert_into_variable(tensor):
     """
-    Convert Varbase into Variable.
+    Convert Tensor into Variable.
     """
     if isinstance(tensor, core.eager.Tensor):
         # Check whether has been created before.
@@ -143,17 +143,16 @@ def _convert_into_variable(tensor):
             # and necessary for inferring. It will be pruned if it's not necessary for inferring.
 
             # But if its shape is empty while created from `create_variable()`, we consider this buffer
-            # non-persistable. See case of `drop_state` in lstm api.
-            is_persistable = len(tensor.shape) > 0
+            # non-persistable. See case of `dropout_state` in lstm api.
+            is_persistable = True
+            if tensor.name.endswith(NON_PERSISTABLE_VAR_NAME_SUFFIX):
+                is_persistable = False
 
             new_var = tensor._to_static_var(
                 to_parameter=False, persistable=is_persistable
             )
         # add param into parameter recorder to collect all the params used in this program.
         if new_var.persistable is True:
-            # TODO(@xiongkun): 0d-tensor may be affected at present,
-            # but there is no particularly good method to identify whether 0d-tensor
-            # is used as buffer or "drop_out_state" in LSTM buffer variable.
             from paddle.jit.dy2static.program_translator import (
                 ProgramTranslator,
             )

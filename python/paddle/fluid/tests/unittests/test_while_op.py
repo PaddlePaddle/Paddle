@@ -18,9 +18,10 @@ import numpy
 
 import paddle
 from paddle import fluid
-from paddle.fluid import core, layers
+from paddle.fluid import core
 from paddle.fluid.backward import append_backward
 from paddle.fluid.executor import Executor
+from paddle.incubate.layers.nn import shuffle_batch
 
 paddle.enable_static()
 
@@ -30,16 +31,16 @@ class TestWhileOp(unittest.TestCase):
         d0 = paddle.static.data("d0", shape=[10], dtype='float32')
         d1 = paddle.static.data("d1", shape=[10], dtype='float32')
         d2 = paddle.static.data("d2", shape=[10], dtype='float32')
-        i = layers.zeros(shape=[1], dtype='int64')
+        i = paddle.zeros(shape=[1], dtype='int64')
         i.stop_gradient = True
-        init = layers.zeros(shape=[10], dtype='float32')
+        init = paddle.zeros(shape=[10], dtype='float32')
         mem_array = paddle.tensor.array_write(x=init, i=i)
         data_array = paddle.tensor.array_write(x=d0, i=i)
         i = paddle.increment(i)
         paddle.tensor.array_write(d1, i, array=data_array)
         i = paddle.increment(i)
         paddle.tensor.array_write(d2, i, array=data_array)
-        i = layers.zeros(shape=[1], dtype='int64')
+        i = paddle.zeros(shape=[1], dtype='int64')
         i.stop_gradient = True
         array_len = paddle.tensor.fill_constant(
             shape=[1], dtype='int64', value=1
@@ -115,7 +116,7 @@ class TestWhileOp(unittest.TestCase):
                 exe.run(binary, feed={'d0': d[0], 'd1': d[1], 'd2': d[2]})
 
     def test_exceptions(self):
-        i = layers.zeros(shape=[2], dtype='int64')
+        i = paddle.zeros(shape=[2], dtype='int64')
         array_len = paddle.tensor.fill_constant(
             shape=[2], dtype='int64', value=1
         )
@@ -145,7 +146,7 @@ class TestIgnoreVarNameInWhile(unittest.TestCase):
 
         def body_func(i, ten, batch_info, origin_seq):
             print(batch_info)
-            batch_info = fluid.contrib.layers.shuffle_batch(batch_info)
+            batch_info = shuffle_batch(batch_info)
             print(batch_info)
             i = i + 1
             return [i, ten, batch_info, origin_seq]
@@ -192,9 +193,9 @@ class TestOutputsMustExistsInputs(unittest.TestCase):
         with fluid.program_guard(main_program, startup_program):
 
             def func(x):
-                s = paddle.zeros([1])
-                i = paddle.ones([1])
-                max_len = paddle.shape(x)[0]
+                s = paddle.zeros([])
+                i = paddle.ones([])
+                max_len = paddle.shape(x)
 
                 def cond(i, s, x):
                     return i < max_len

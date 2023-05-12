@@ -17,11 +17,11 @@ import unittest
 
 import numpy as np
 from eager_op_test import OpTest
+from op import Operator
 
 import paddle
 from paddle import fluid
 from paddle.fluid import Program, core, program_guard
-from paddle.fluid.op import Operator
 
 
 def _reference_testing(x, batch_size, batch_sum, batch_square_sum, slot_dim=-1):

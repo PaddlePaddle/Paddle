@@ -151,8 +151,8 @@ class CoordinatorService : public PsService {
                          ::google::protobuf::Closure* done);
 
   int32_t SaveFLClientInfo(const CoordinatorReqMessage& request,
-                           CoordinatorResMessage* response,
-                           brpc::Controller* cntl) {
+                           CoordinatorResMessage* response UNUSED,
+                           brpc::Controller* cntl UNUSED) {
     _coordinator_service_handle->SaveFLClientInfo(request);
     return 0;
   }

@@ -32,7 +32,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/flags.h"
 
-DECLARE_string(tensor_operants_mode);
+PHI_DECLARE_string(tensor_operants_mode);
 
 namespace paddle {
 namespace prim {
@@ -350,10 +350,7 @@ class CompositeGradOpMakerBase {
   framework::VarDesc* SingleOutputGrad(const std::string& name) const {
     auto* var = this->SingleForwardOutput(name);
     if (!var) {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "GetSingleOutputGrad for %s_grad faild, if it is Optional input,"
-          "please use GetOptionalSingleOutputGrad replaced. ",
-          name));
+      return nullptr;
     }
     auto var_name = var->Name();
     auto grad_var_name = framework::GradVarName(var_name);
@@ -371,12 +368,12 @@ class CompositeGradOpMakerBase {
       return StaticCompositeContext::Instance().GetBlock()->FindVar(
           grad_var_name);
     } else {
-      return StaticCompositeContext::Instance().GetBlock()->Var(grad_var_name);
+      return nullptr;
     }
   }
 
   std::vector<framework::VarDesc*> MultiInputGrad(
-      const std::string& name, bool drop_empty_grad = true) const {
+      const std::string& name) const {
     std::vector<std::string> ret_val;
     std::vector<framework::VarDesc*> input_grads;
     auto var_names = this->MultiForwardInputVarName(name);
@@ -393,39 +390,7 @@ class CompositeGradOpMakerBase {
                        return framework::kEmptyVarName;
                      }
                    });
-    if (!drop_empty_grad) {
-      for (const auto& name : ret_val) {
-        if (original_block_->HasVar(name)) {
-          // Copy Var from original block to active block, or create a new one.
-          CopyVarFromOrig(name);
-          input_grads.emplace_back(
-              StaticCompositeContext::Instance().GetBlock()->FindVar(name));
-        } else {
-          input_grads.emplace_back(
-              StaticCompositeContext::Instance().GetBlock()->Var(name));
-        }
-      }
-      return input_grads;
-    }
-    PADDLE_ENFORCE_LE(
-        var_names.size(),
-        1UL,
-        platform::errors::Unavailable(
-            "BUG from operator developer:"
-            " for input argument with a list of variables, "
-            " drop_empty_grad is not allowed because it makes"
-            " the correspondence bewteen a variable and its gradient"
-            " ambiguous."));
-
-    std::vector<std::string> dropped_ret_val;
-    dropped_ret_val.reserve(ret_val.size());
-    std::copy_if(
-        ret_val.begin(),
-        ret_val.end(),
-        std::back_inserter(dropped_ret_val),
-        [](const std::string& str) { return str != framework::kEmptyVarName; });
-    for (const auto& name : dropped_ret_val) {
-      // TODO(jiabin): Will this cause fill zeros error?
+    for (const auto& name : ret_val) {
       if (original_block_->HasVar(name)) {
         // Copy Var from original block to active block, or create a new one.
         CopyVarFromOrig(name);
@@ -598,6 +563,9 @@ class CompositeGradOpMakerBase {
 
   const std::unordered_map<std::string, framework::Attribute>& RuntimeAttrs()
       const {
+    LOG(WARNING) << "CompositeGradOpMaker doesn't support use runtime attrs, "
+                    "but find the op"
+                 << fwd_op_.Type() << "use runtime attr.";
     return fwd_op_.GetRuntimeAttrMap();
   }
 

@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/phi/api/lib/data_transform.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/backends/context_pool.h"

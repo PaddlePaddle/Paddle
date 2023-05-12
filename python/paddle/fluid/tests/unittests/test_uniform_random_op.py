@@ -17,13 +17,13 @@ import unittest
 
 import numpy as np
 from eager_op_test import OpTest, convert_uint16_to_float
+from op import Operator
 from test_attribute_var import UnittestBase
 
 import paddle
 from paddle import fluid
 from paddle.fluid import Program, core, program_guard
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
-from paddle.fluid.op import Operator
 from paddle.tensor import random
 
 

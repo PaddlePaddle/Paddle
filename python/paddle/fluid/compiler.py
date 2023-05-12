@@ -245,7 +245,7 @@ class CompiledProgram:
             )
             self._exec_strategy.num_threads = 1
 
-        # TODO(wuyi): trainer endpoings should be passed in through
+        # TODO(wuyi): trainer endpoints should be passed in through
         # build_strategy, not program.xxx.
         # TODO(gongwb): let user to set them once.
         if (
@@ -548,7 +548,9 @@ class IpuDynamicPatcher:
 
                 self._caches[item_id] = (
                     concrete_program,
-                    partial_program_from(concrete_program),
+                    partial_program_from(
+                        concrete_program, item.class_instance is not None
+                    ),
                 )
                 # Note: raise warnings if number of traced program is more than `max_tracing_count`
                 current_tracing_count = len(self._caches)

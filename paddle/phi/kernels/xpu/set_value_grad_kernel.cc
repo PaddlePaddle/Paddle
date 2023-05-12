@@ -14,12 +14,13 @@
 
 #include "paddle/phi/kernels/set_value_grad_kernel.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
-
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -265,6 +266,11 @@ void SetValueGradImpl(const Context& dev_ctx,
                   {fake_value_grad_dims.Get(), fake_value_grad_dims.size()},
                   static_cast<T>(0));
       auto value_grad_dims_vec = phi::vectorize<int64_t>(value_grad_dims);
+      // for value is a 0-D Tensor
+      if (value_grad_dims.size() == 0) {
+        value_grad_dims_vec =
+            phi::vectorize<int64_t>(phi::make_ddim(std::vector<int>({1})));
+      }
       for (auto offset : offsets) {
         for (int i = 0; i < out_dims_size; i++) {
           slice_end[i] = offset[i] + fake_value_grad_dims[i];

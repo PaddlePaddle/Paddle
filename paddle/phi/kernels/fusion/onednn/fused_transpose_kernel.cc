@@ -12,11 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 
 namespace phi {
+namespace fusion {
 
 void SetInMemDescWithSqueeze2FuseSupport(
     const std::vector<int> fused_squeeze2_axes,
@@ -166,12 +169,14 @@ void FusedTransposeKernel(const Context& dev_ctx,
     out->set_mem_desc(out_md);
   }
 }
+
+}  // namespace fusion
 }  // namespace phi
 
 PD_REGISTER_KERNEL(fused_transpose,
                    OneDNN,
                    ONEDNN,
-                   phi::FusedTransposeKernel,
+                   phi::fusion::FusedTransposeKernel,
                    float,
                    uint8_t,
                    int8_t,

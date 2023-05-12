@@ -28,7 +28,7 @@
 
 namespace phi {
 
-template <typename InT, typename Functor>
+template <typename Functor>
 void ReduceGrad(const GPUContext& dev_ctx,
                 DenseTensor* d_out,
                 DenseTensor* d_x,
@@ -36,14 +36,13 @@ void ReduceGrad(const GPUContext& dev_ctx,
                 Functor functor) {
   std::vector<const DenseTensor*> inputs = {d_out};
   std::vector<DenseTensor*> outputs = {d_x};
-  PD_VISIT_ALL_TYPES(
-      out_dtype, "BroadcastKernel", ([&] {
-        funcs::BroadcastKernel<phi::ElementwiseType::kUnary, InT, data_t>(
-            dev_ctx, inputs, &outputs, 0, functor);
-      }));
+  PD_VISIT_ALL_TYPES(out_dtype, "BroadcastKernel", ([&] {
+                       funcs::BroadcastKernel<data_t>(
+                           dev_ctx, inputs, &outputs, functor, 0);
+                     }));
 }
 
-template <typename T, typename OutT, typename Context, typename Functor>
+template <typename OutT, typename Context, typename Functor>
 void ReduceGradKernel(const Context& dev_ctx,
                       const DenseTensor& x,
                       const DenseTensor& out_grad,
@@ -79,8 +78,7 @@ void ReduceGradKernel(const Context& dev_ctx,
   auto pt_d_x = *d_x;
   std::vector<const DenseTensor*> inputs = {&pt_d_out};
   std::vector<DenseTensor*> outputs = {&pt_d_x};
-  funcs::BroadcastKernel<phi::ElementwiseType::kUnary, T, OutT>(
-      dev_ctx, inputs, &outputs, 0, functor);
+  funcs::BroadcastKernel<OutT>(dev_ctx, inputs, &outputs, functor, 0);
 }
 
 }  // namespace phi

@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle import fluid
-from paddle.fluid import Program, program_guard
+from paddle.fluid import Program, core, program_guard
 
 
 class TestCrossOp(OpTest):
@@ -65,6 +65,9 @@ class TestCrossOpCase1(TestCrossOp):
         self.outputs = {'Out': np.array(z_list).reshape(self.shape)}
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestCrossFP16Op(TestCrossOp):
     def initTestCase(self):
         self.shape = (2048, 3)
@@ -75,6 +78,51 @@ class TestCrossFP16Op(TestCrossOp):
         for i in range(2048):
             z_list.append(np.cross(self.inputs['X'][i], self.inputs['Y'][i]))
         self.outputs = {'Out': np.array(z_list).reshape(self.shape)}
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA and not support the bfloat16",
+)
+class TestCrossBF16Op(OpTest):
+    def setUp(self):
+        self.op_type = "cross"
+        self.python_api = paddle.cross
+        self.initTestCase()
+        self.x = np.random.random(self.shape).astype(np.float32)
+        self.y = np.random.random(self.shape).astype(np.float32)
+        self.inputs = {
+            'X': convert_float_to_uint16(self.x),
+            'Y': convert_float_to_uint16(self.y),
+        }
+        self.init_output()
+
+    def initTestCase(self):
+        self.attrs = {'dim': -2}
+        self.dtype = np.uint16
+        self.shape = (1024, 3, 1)
+
+    def init_output(self):
+        x = np.squeeze(self.x, 2)
+        y = np.squeeze(self.y, 2)
+        z_list = []
+        for i in range(1024):
+            z_list.append(np.cross(x[i], y[i]))
+        out = np.array(z_list).astype(np.float32).reshape(self.shape)
+        self.outputs = {'Out': convert_float_to_uint16(out)}
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_bfloat16_supported(place):
+                self.check_output_with_place(place)
+
+    def test_check_grad_normal(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_bfloat16_supported(place):
+                self.check_grad_with_place(place, ['X', 'Y'], 'Out')
 
 
 class TestCrossAPI(unittest.TestCase):
