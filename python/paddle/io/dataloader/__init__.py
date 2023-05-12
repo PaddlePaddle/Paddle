@@ -12,21 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import dataset
-from .dataset import *
+from .dataset import Dataset
+from .dataset import IterableDataset
+from .dataset import TensorDataset
+from .dataset import ComposeDataset
+from .dataset import ChainDataset
+from .dataset import random_split
+from .dataset import Subset
 
-from . import batch_sampler
-from .batch_sampler import *
+from .batch_sampler import BatchSampler
+from .batch_sampler import DistributedBatchSampler
 
-from . import dataloader_iter
-from .dataloader_iter import *
+from .worker import get_worker_info
 
-from . import sampler
-from .sampler import *
-
-__all__ = (
-    dataset.__all__
-    + batch_sampler.__all__
-    + dataloader_iter.__all__
-    + sampler.__all__
-)
+from .sampler import Sampler
+from .sampler import SequenceSampler
+from .sampler import RandomSampler
+from .sampler import WeightedRandomSampler

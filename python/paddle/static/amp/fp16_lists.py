@@ -97,8 +97,6 @@ def _get_sys_unsupported_list(dtype):
     device = None
     if core.is_compiled_with_xpu():
         device = 'XPU'
-    elif core.is_compiled_with_custom_device('npu'):
-        device = 'NPU'
     else:
         device = 'GPU'
     _, _, sys_unsupported_list = core.op_supported_infos(device, var_type)
