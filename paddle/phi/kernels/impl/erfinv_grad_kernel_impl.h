@@ -27,12 +27,12 @@ void ErfinvGradKernel(const Context& ctx,
                       const DenseTensor& out,
                       const DenseTensor& out_grad,
                       DenseTensor* x_grad) {
-  ctx.template Alloc<phi::ConditionalT<phi::DataType, float, double>>(x_grad);
-  auto eigen_out = EigenVector<phi::ConditionalT<phi::DataType, float, double>>::Flatten(out);
-  auto eigen_dout = EigenVector<phi::ConditionalT<phi::DataType, float, double>>::Flatten(out_grad);
-  auto eigen_dx = EigenVector<phi::ConditionalT<phi::DataType, float, double>>::Flatten(*x_grad);
+  ctx.template Alloc<phi::DataType>(x_grad);
+  auto eigen_out = EigenVector<phi::DataType>::Flatten(out);
+  auto eigen_dout = EigenVector<phi::DataType>::Flatten(out_grad);
+  auto eigen_dx = EigenVector<phi::DataType>::Flatten(*x_grad);
   auto& place = *ctx.eigen_device();
-  constexpr phi::ConditionalT<phi::DataType, float, double> half_sqrt_pi = static_cast<phi::ConditionalT<phi::DataType, float, double>>(1 / M_2_SQRTPI);
+  constexpr phi::DataType half_sqrt_pi = static_cast<phi::DataType>(1 / M_2_SQRTPI);
   eigen_dx.device(place) = half_sqrt_pi * eigen_dout * eigen_out.square().exp();
 }
 
