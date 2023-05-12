@@ -235,3 +235,11 @@ endif()
 if(WITH_CUDNN_FRONTEND)
   add_definitions(-DPADDLE_WITH_CUDNN_FRONTEND)
 endif()
+
+set(PHI_BUILD_TYPE
+    STATIC
+    CACHE INTERNAL "" FORCE)
+
+if(${PHI_BUILD_TYPE} STREQUAL "SHARED")
+  add_definitions(-DPHI_SHARED)
+endif()

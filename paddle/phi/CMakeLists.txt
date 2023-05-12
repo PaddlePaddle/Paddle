@@ -93,20 +93,6 @@ set(PHI_SRCS
     ${infermeta_srcs}
     ${capi_srcs})
 
-# if(WITH_GPU OR WIN32)
-#   # The num of symbols exceed maximum number in dll and
-#   # we generate static lib temporarily
-#   set(PHI_BUILD_TYPE STATIC)
-# else()
-#   set(PHI_BUILD_TYPE SHARED)
-# endif()
-
-set(PHI_BUILD_TYPE STATIC)
-
-if(${PHI_BUILD_TYPE} STREQUAL "SHARED")
-  add_definitions(-DPHI_SHARED)
-endif()
-
 if(WITH_GPU)
   add_definitions(-DCUDA_REAL_ARCHS=${NVCC_FLAGS_EXTRA_real_archs}
   )# for backends/gpu/gpu_resources.cc
@@ -135,17 +121,35 @@ endif()
 
 if(WIN32)
   set_property(TARGET phi PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
-  set(PHI_NAME
-      phi.dll
-      CACHE INTERNAL "" FORCE)
+  if(${PHI_BUILD_TYPE} STREQUAL "SHARED")
+    set(PHI_NAME
+        phi.dll
+        CACHE INTERNAL "" FORCE)
+  elseif()
+    set(PHI_NAME
+        phi.lib
+        CACHE INTERNAL "" FORCE)
+  endif()
 elseif(APPLE)
-  set(PHI_NAME
-      libphi.a #libphi.dylib
-      CACHE INTERNAL "" FORCE)
+  if(${PHI_BUILD_TYPE} STREQUAL "SHARED")
+    set(PHI_NAME
+        libphi.dylib
+        CACHE INTERNAL "" FORCE)
+  elseif()
+    set(PHI_NAME
+        libphi.a
+        CACHE INTERNAL "" FORCE)
+  endif()
 else()
-  set(PHI_NAME
-      libphi.a #libphi.so
-      CACHE INTERNAL "" FORCE)
+  if(${PHI_BUILD_TYPE} STREQUAL "SHARED")
+    set(PHI_NAME
+        libphi.so
+        CACHE INTERNAL "" FORCE)
+  elseif()
+    set(PHI_NAME
+        libphi.a
+        CACHE INTERNAL "" FORCE)
+  endif()
 endif()
 
 set(PHI_LIB
