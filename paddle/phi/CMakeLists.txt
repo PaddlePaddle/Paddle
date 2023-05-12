@@ -93,6 +93,12 @@ set(PHI_SRCS
     ${infermeta_srcs}
     ${capi_srcs})
 
+if(WITH_PHI_SHARED)
+  set(PHI_BUILD_TYPE
+      STATIC
+      CACHE INTERNAL "" FORCE)
+endif()
+
 if(WITH_GPU)
   add_definitions(-DCUDA_REAL_ARCHS=${NVCC_FLAGS_EXTRA_real_archs}
   )# for backends/gpu/gpu_resources.cc
@@ -121,7 +127,7 @@ endif()
 
 if(WIN32)
   set_property(TARGET phi PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
-  if(${PHI_BUILD_TYPE} STREQUAL "SHARED")
+  if(WITH_PHI_SHARED)
     set(PHI_NAME
         phi.dll
         CACHE INTERNAL "" FORCE)
@@ -131,7 +137,7 @@ if(WIN32)
         CACHE INTERNAL "" FORCE)
   endif()
 elseif(APPLE)
-  if(${PHI_BUILD_TYPE} STREQUAL "SHARED")
+  if(WITH_PHI_SHARED)
     set(PHI_NAME
         libphi.dylib
         CACHE INTERNAL "" FORCE)
@@ -141,7 +147,7 @@ elseif(APPLE)
         CACHE INTERNAL "" FORCE)
   endif()
 else()
-  if(${PHI_BUILD_TYPE} STREQUAL "SHARED")
+  if(WITH_PHI_SHARED)
     set(PHI_NAME
         libphi.so
         CACHE INTERNAL "" FORCE)
