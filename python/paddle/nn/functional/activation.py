@@ -787,7 +787,7 @@ def maxout(x, groups, axis=1, name=None):
 
     Parameters:
         x (Tensor): The input is 4-D Tensor with shape [N, C, H, W] or [N, H, W, C], the data type
-            of input is float32 or float64.
+            of input is float16, float32 or float64.
         groups (int): The groups number of maxout. `groups` specifies the
             index of channel dimension where maxout will be performed. This must be
             a factor of number of features.
@@ -822,7 +822,9 @@ def maxout(x, groups, axis=1, name=None):
     if in_dygraph_mode():
         return _C_ops.maxout(x, groups, axis)
     else:
-        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'maxout')
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'float32', 'float64'], 'maxout'
+        )
         if axis not in [1, -1, 3]:
             raise ValueError(
                 "Attr(axis) should be 1 when data format is NCHW, -1 or 3 when data format is NHWC. Received "

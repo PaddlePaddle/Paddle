@@ -32,7 +32,7 @@ namespace phi {
 template <typename Context, typename T, typename IndexT>
 void CalculateXGrad(const Context& ctx,
                     const T* out_grad,
-                    const T* x_data,
+                    const T* x_data UNUSED,
                     const T* e_data,
                     const phi::DDim& out_grad_dims,
                     const phi::DDim& x_dims,
@@ -46,7 +46,7 @@ void CalculateXGrad(const Context& ctx,
                     const DenseTensor& out_grad_tensor,
                     DenseTensor* x_grad_tensor,
                     const DenseTensor* dst_count = nullptr,
-                    const DenseTensor* out = nullptr) {
+                    const DenseTensor* out UNUSED = nullptr) {
   std::vector<int64_t> reduce_idx;
   bool reduce = ReduceGrad(out_grad_dims, x_dims, reduce_idx);
 
@@ -232,7 +232,7 @@ void CalculateXGrad(const Context& ctx,
 template <typename T, typename IndexT>
 void CalculateEGrad(const T* out_grad_data,
                     const T* x_data,
-                    const T* e_data,
+                    const T* e_data UNUSED,
                     const phi::DDim& x_dims,
                     const phi::DDim& e_dims,
                     const IndexT* s_index,
@@ -308,7 +308,7 @@ void CalculateXEGradForMinMax(const T* out_grad,
                               const IndexT* s_index,
                               const IndexT* d_index,
                               const std::string& message_op,
-                              const std::string& reduce_op,
+                              const std::string& reduce_op UNUSED,
                               int64_t index_size,
                               T* x_grad,
                               T* e_grad,

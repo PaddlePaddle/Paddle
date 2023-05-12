@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/enforce.h"
@@ -117,7 +118,7 @@ struct DivGradXYFunctor {
     // dy = - dout * out / y
     phi::Array<OutT, 2> outs;
     outs[0] = a / c;
-    outs[1] = -a * b / c;
+    outs[1] = -a * ((b / c) / c);
     return outs;
   }
 };
@@ -130,7 +131,7 @@ struct DivGradXYFunctor<ComplexType<InT>, ComplexType<OutT>> {
       const ComplexType<InT> c) {
     phi::Array<ComplexType<OutT>, 2> outs;
     ComplexType<InT> c_conj(c.real, -c.imag);
-    ComplexType<InT> out_div_c_conj((b / c).real, -(b / c).imag);
+    ComplexType<InT> out_div_c_conj(((b / c) / c).real, -((b / c) / c).imag);
     outs[0] = a / c_conj;
     outs[1] = -a * out_div_c_conj;
     return outs;
@@ -157,7 +158,7 @@ struct DivGradXFunctor<ComplexType<T>> {
 template <typename T>
 struct DivGradYFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b, const T c) const {
-    return -a * b / c;
+    return -a * ((b / c) / c);
   }
 };
 
@@ -167,7 +168,7 @@ struct DivGradYFunctor<ComplexType<T>> {
   inline HOSTDEVICE ComplexType<T> operator()(const ComplexType<T> a,
                                               const ComplexType<T> b,
                                               const ComplexType<T> c) const {
-    ComplexType<T> out_div_c_conj((b / c).real, -(b / c).imag);
+    ComplexType<T> out_div_c_conj(((b / c) / c).real, -((b / c) / c).imag);
     return -a * out_div_c_conj;
   }
 };
@@ -187,6 +188,17 @@ struct FMinFunctor<dtype::float16> {
     float float_b = static_cast<float>(b);
     auto result = std::fmin(float_a, float_b);
     return static_cast<dtype::float16>(result);
+  }
+};
+
+template <>
+struct FMinFunctor<dtype::bfloat16> {
+  inline HOSTDEVICE dtype::bfloat16 operator()(const dtype::bfloat16 a,
+                                               const dtype::bfloat16 b) const {
+    float float_a = static_cast<float>(a);
+    float float_b = static_cast<float>(b);
+    auto result = std::fmin(float_a, float_b);
+    return static_cast<dtype::bfloat16>(result);
   }
 };
 
@@ -226,6 +238,17 @@ struct FMaxFunctor<dtype::float16> {
     float float_b = static_cast<float>(b);
     auto result = std::fmax(float_a, float_b);
     return static_cast<dtype::float16>(result);
+  }
+};
+
+template <>
+struct FMaxFunctor<dtype::bfloat16> {
+  inline HOSTDEVICE dtype::bfloat16 operator()(const dtype::bfloat16 a,
+                                               const dtype::bfloat16 b) const {
+    float float_a = static_cast<float>(a);
+    float float_b = static_cast<float>(b);
+    auto result = std::fmax(float_a, float_b);
+    return static_cast<dtype::bfloat16>(result);
   }
 };
 

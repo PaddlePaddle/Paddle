@@ -33,7 +33,9 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
 
     def sample_program_configs(self):
         def generate_input1(dims, batch, attrs: List[Dict[str, Any]]):
-            if dims == 1:
+            if dims == 0:
+                return np.random.random([]).astype(np.float32)
+            elif dims == 1:
                 return np.random.random([32]).astype(np.float32)
             elif dims == 2:
                 return np.random.random([3, 32]).astype(np.float32)
@@ -42,19 +44,25 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
             else:
                 return np.random.random([batch, 3, 32, 32]).astype(np.float32)
 
-        for dims in [1, 2, 3, 4]:
+        for dims in [0, 1, 2, 3, 4]:
             for batch in [1, 4]:
                 for op_type in [
                     "relu",
                     "sigmoid",
-                    "tanh",
                     "relu6",
                     "elu",
                     "selu",
+                    "silu",
                     "softsign",
                     "stanh",
                     "thresholded_relu",
+                    "celu",
+                    "logsigmoid",
+                    "tanh_shrink",
                     "softplus",
+                    "hard_swish",
+                    "hard_sigmoid",
+                    "leaky_relu",
                 ]:
                     # few samples to reduce time
                     # for beta in [-0.2, 0.5, 0.67, 3]:
@@ -63,6 +71,8 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                         for alpha in [0.67]:
                             self.dims = dims
                             dics = [{}]
+                            if op_type == "celu":
+                                dics = [{"alpha": 1.0}]
                             if op_type == "elu":
                                 dics = [{"alpha": alpha}]
                             if op_type == "selu":
@@ -73,6 +83,18 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                                 dics = [{"threshold": alpha}]
                             if op_type == "softplus":
                                 dics = [{"beta": beta}]
+                            if op_type == "hard_swish":
+                                dics = [
+                                    {
+                                        "threshold": 6.0,
+                                        "scale": 6.0,
+                                        "offset": 3.0,
+                                    }
+                                ]
+                            if op_type == "hard_sigmoid":
+                                dics = [{"slope": beta, "offset": alpha}]
+                            if op_type == "leaky_relu":
+                                dics = [{"alpha": alpha}]
 
                             ops_config = [
                                 {
@@ -103,7 +125,11 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
-            if self.dims == 1:
+            if self.dims == 0:
+                self.dynamic_shape.min_input_shape = {"input_data": []}
+                self.dynamic_shape.max_input_shape = {"input_data": []}
+                self.dynamic_shape.opt_input_shape = {"input_data": []}
+            elif self.dims == 1:
                 self.dynamic_shape.min_input_shape = {"input_data": [1]}
                 self.dynamic_shape.max_input_shape = {"input_data": [64]}
                 self.dynamic_shape.opt_input_shape = {"input_data": [32]}
@@ -132,7 +158,16 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            if self.dims == 1:
+            if not dynamic_shape and (self.dims == 1 or self.dims == 0):
+                return 0, 3
+            runtime_version = paddle_infer.get_trt_runtime_version()
+            if (
+                runtime_version[0] * 1000
+                + runtime_version[1] * 100
+                + runtime_version[2] * 10
+                < 8600
+                and self.dims == 0
+            ) and program_config.ops[0].type in ["celu", "logsigmoid"]:
                 return 0, 3
             return 1, 2
 

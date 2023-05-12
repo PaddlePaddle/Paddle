@@ -112,6 +112,7 @@ file(
   "gpudnn/*.cu"
   "kps/*.cu"
   "legacy/kps/*.cu"
+  "legacy/gpu/*.cu"
   "selected_rows/gpu/*.cu"
   "sparse/gpu/*.cu"
   "strings/gpu/*.cu"
