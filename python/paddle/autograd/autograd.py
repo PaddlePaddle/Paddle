@@ -465,12 +465,12 @@ def jacobian(
     The ``xs`` tuples are identical in one-to-one correspondence.
 
     - When ``batch_axis=None``, only 0-dimensional Tensor or 1-dimensional Tensor is
-          supported, assuming the shape of ``xs`` is ``[N, ]``, the shape of ``ys`` is
-          ``[M, ]``, then the output Jacobian matrix shape is ``[M, N]``.
+      supported, assuming the shape of ``xs`` is ``[N, ]``, the shape of ``ys`` is
+      ``[M, ]``, then the output Jacobian matrix shape is ``[M, N]``.
 
     - When ``batch_axis=0``, only 1-dimensional Tensor or 2-dimensional Tensor is
-          supported, assuming the shape of ``xs`` is ``[B, N]``, The shape of ``ys`` is
-          ``[B, M]``, then the output Jacobian matrix shape is ``[B, M, N]``.
+      supported, assuming the shape of ``xs`` is ``[B, N]``, The shape of ``ys`` is
+      ``[B, M]``, then the output Jacobian matrix shape is ``[B, M, N]``.
 
     After the ``Jacobian`` object is created, the actual calculation process does not
     occur, but the lazy evaluation method is used for calculation. It can be
@@ -553,15 +553,14 @@ def hessian(
     ``batch_axis`` means The position of the batch dimension of the parameter data.
 
     When the input ``xs`` is a Tensor tuple, the returned result is a ``Hessian`` tuple,
-    assuming that the internal shape of the ``xs`` tuple is composed of
-    ``([M1, ], [M2, ]) ``, the shape of the returned result consists of
-    ``(([M1, M1], [M1, M2]), ([M2, M1], [M2, M2]))``
+    assuming that the internal shape of the ``xs`` tuple is composed of ``([M1, ], [M2, ])``, the shape of the returned
+    result consists of ``(([M1, M1], [M1, M2]), ([M2, M1], [M2, M2]))``
 
     - When ``batch_axis=None``, only 0-dimensional Tensor or 1-dimensional Tensor is
-        supported, assuming that the shape of ``xs`` is ``[N, ]``, and the shape of ``ys`` is ``[ ]``(0-dimensional Tensor), the final output is a single Hessian matrix whose shape is ``[N, N]``.
+      supported, assuming that the shape of ``xs`` is ``[N, ]``, and the shape of ``ys`` is ``[ ]`` (0-dimensional Tensor), the final output is a single Hessian matrix whose shape is ``[N, N]``.
 
     - When ``batch_axis=0``, only 1-dimensional Tensor or 2-dimensional Tensor is
-        supported, assuming that the shape of ``xs`` is ``[B, N]``, and the shape of ``ys`` is `` [B, ]``, the final output Jacobian matrix shape is ``[B, N, N]``.
+      supported, assuming that the shape of ``xs`` is ``[B, N]``, and the shape of ``ys`` is ``[B, ]``, the final output Jacobian matrix shape is ``[B, N, N]``.
 
     After the ``Hessian`` object is created, the complete calculation process does not
     occur, but a partial lazy evaluation method is used for calculation. It can be
