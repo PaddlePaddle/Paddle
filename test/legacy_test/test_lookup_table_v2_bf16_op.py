@@ -19,8 +19,8 @@ import numpy as np
 import paddle
 from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.tests.unittests.eager_op_test import convert_uint16_to_float
-from paddle.fluid.tests.unittests.test_lookup_table_bf16_op import (
+from eager_op_test import convert_uint16_to_float
+from test_lookup_table_bf16_op import (
     TestLookupTableBF16Op,
     TestLookupTableBF16OpIds4D,
     TestLookupTableBF16OpWIsSelectedRows,

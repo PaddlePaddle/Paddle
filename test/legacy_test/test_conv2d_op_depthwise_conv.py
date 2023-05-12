@@ -30,8 +30,8 @@ from test_conv2d_op import (
 )
 
 from paddle.fluid import core
-from paddle.fluid.tests.unittests.eager_op_test import get_numeric_gradient
-from paddle.fluid.tests.unittests.testsuite import create_op
+from eager_op_test import get_numeric_gradient
+from testsuite import create_op
 
 # ----------------TestDepthwiseConv -----
 

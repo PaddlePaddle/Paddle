@@ -24,7 +24,7 @@ from paddle.fluid.framework import (
     program_guard,
 )
 
-sys.path.append("../../python/paddle/fluid/tests/unittests")
+sys.path.append("../legacy_test")
 from eager_op_test import OpTest
 
 

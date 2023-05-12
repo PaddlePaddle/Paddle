@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 from eager_op_test import OpTest
 
-from paddle.fluid.tests.unittests.test_lstm_op import ACTIVATION
+from test_lstm_op import ACTIVATION
 
 
 def gru(

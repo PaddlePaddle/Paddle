@@ -26,7 +26,7 @@ from test_attribute_var import UnittestBase
 
 from paddle import fluid
 from paddle.fluid import Program, core, program_guard
-from paddle.fluid.tests.unittests.testsuite import create_op
+from testsuite import create_op
 
 
 def conv2dtranspose_forward_naive(input_, filter_, attrs):

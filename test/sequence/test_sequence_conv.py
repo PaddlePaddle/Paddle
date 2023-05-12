@@ -20,7 +20,7 @@ import numpy as np
 
 import paddle
 
-sys.path.append("../../python/paddle/fluid/tests/unittests")
+sys.path.append("../legacy_test")
 from eager_op_test import OpTest
 
 

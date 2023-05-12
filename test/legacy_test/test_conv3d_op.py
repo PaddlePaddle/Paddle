@@ -24,7 +24,7 @@ from eager_op_test import (
 
 import paddle
 from paddle.fluid import core
-from paddle.fluid.tests.unittests.testsuite import create_op
+from testsuite import create_op
 
 
 def conv3d_forward_naive(

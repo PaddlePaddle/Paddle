@@ -14,7 +14,7 @@
 import sys
 import unittest
 
-sys.path.append("../../../../python/paddle/fluid/tests/unittests")
+sys.path.append("../../../legacy_test")
 
 import gradient_checker
 import numpy as np

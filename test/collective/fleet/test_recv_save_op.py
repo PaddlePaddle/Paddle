@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import sys
 import shutil
 import signal
 import time
@@ -20,6 +21,8 @@ import unittest
 from multiprocessing import Process
 
 import numpy as np
+
+sys.path.append("../../../test/legacy_test")
 from dist_test_utils import remove_ps_flag
 
 from paddle import fluid

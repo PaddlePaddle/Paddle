@@ -19,7 +19,7 @@ import scipy.stats
 
 import paddle
 
-sys.path.append("../../python/paddle/fluid/tests/unittests")
+sys.path.append("../legacy_test")
 import unittest
 
 from eager_op_test import (

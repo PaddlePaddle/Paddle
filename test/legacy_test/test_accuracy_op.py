@@ -15,12 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, paddle_static_guard
+from eager_op_test import OpTest, paddle_static_guard, convert_float_to_uint16
 
 import paddle
 from paddle import fluid
 from paddle.fluid import Program, core, program_guard
-from paddle.fluid.tests.unittests.eager_op_test import convert_float_to_uint16
 
 
 def accuracy_wrapper(infer, indices, label):

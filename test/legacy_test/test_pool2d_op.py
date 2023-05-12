@@ -15,11 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import convert_float_to_uint16
+from eager_op_test import convert_float_to_uint16, OpTest
 
 import paddle
 from paddle.fluid import core
-from paddle.fluid.tests.unittests.eager_op_test import OpTest
 
 
 def adaptive_start_index(index, input_size, output_size):

@@ -21,7 +21,7 @@ from op import Operator
 import paddle
 from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.tests.unittests.test_uniform_random_op import (
+from test_uniform_random_op import (
     output_hist,
     output_hist_diag,
 )
