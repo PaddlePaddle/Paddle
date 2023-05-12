@@ -31,9 +31,7 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
         self.trt_param.workspace_size = 1073741824
 
         def generate_input1(dims, batch, attrs: List[Dict[str, Any]]):
-            if dims == 0:
-                return np.random.random([]).astype(np.bool8)
-            elif dims == 1:
+            if dims == 1:
                 return np.random.random([32]).astype(np.bool8)
             elif dims == 2:
                 return np.random.random([3, 32]).astype(np.int8)
@@ -42,7 +40,7 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
             else:
                 return np.random.random([batch, 3, 32, 32]).astype(np.int64)
 
-        for dims in [0, 1, 2, 3, 4]:
+        for dims in [1, 2, 3, 4]:
             for batch in [1, 4]:
                 self.dims = dims
                 dics = [{}]
@@ -73,11 +71,7 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
-            if self.dims == 0:
-                self.dynamic_shape.min_input_shape = {"input_data": []}
-                self.dynamic_shape.max_input_shape = {"input_data": []}
-                self.dynamic_shape.opt_input_shape = {"input_data": []}
-            elif self.dims == 1:
+            if self.dims == 1:
                 self.dynamic_shape.min_input_shape = {"input_data": [1]}
                 self.dynamic_shape.max_input_shape = {"input_data": [64]}
                 self.dynamic_shape.opt_input_shape = {"input_data": [32]}
@@ -108,14 +102,12 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
         def generate_trt_nodes_num(attrs, dynamic_shape):
             ver = paddle_infer.get_trt_compile_version()
             trt_version = ver[0] * 1000 + ver[1] * 100 + ver[2] * 10
-            if trt_version >= 8600:
-                if (self.dims == 1 or self.dims == 0) and not dynamic_shape:
+            if trt_version >= 8400:
+                if self.dims == 1 and not dynamic_shape:
                     return 0, 3
                 return 1, 2
             else:
-                if (
-                    not dynamic_shape and (self.dims == 1 or self.dims == 0)
-                ) or (
+                if (self.dims == 1 and not dynamic_shape) or (
                     program_config.inputs['input_data'].dtype
                     in ['bool', 'int8', 'uint8']
                 ):

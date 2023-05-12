@@ -220,24 +220,7 @@ class OptimizerWithMixedPrecision:
         """
         train_program = loss.block.program
         self._train_program = train_program
-
-        # NOTE(zhiqiu): _float_status is only used for NPU.
-        if core.is_compiled_with_custom_device('npu'):
-            float_status = paddle.static.data(
-                name="float_status", shape=[8], dtype='float32'
-            )
-            self._train_program.global_block().append_op(
-                type="alloc_float_status",
-                outputs={"FloatStatus": float_status},
-            )
-            self._train_program.global_block().append_op(
-                type="clear_float_status",
-                inputs={"FloatStatus": float_status},
-                outputs={"FloatStatusOut": float_status},
-            )
-            self._float_status = float_status
-        else:
-            self._float_status = None
+        self._float_status = None
 
         with program_guard(self._train_program, startup_program):
             self._init_amp_var()
@@ -476,27 +459,17 @@ class OptimizerWithMixedPrecision:
         if self._is_distributed:
             # if distributed, split check_finite_and_unscale to overlap
             # unscale with communication
-            if core.is_compiled_with_custom_device('npu'):
-                with self._train_program._optimized_guard(grads):
+            for p, g in params_grads:
+                with self._train_program._optimized_guard([p, g]):
                     _, found_inf = check_finite_and_unscale(
-                        grads,
+                        [
+                            g,
+                        ],
                         self._loss_scaling,
                         name="find_infinite_scale",
                         float_status=self._float_status,
                     )
                     found_infs.append(found_inf)
-            else:
-                for p, g in params_grads:
-                    with self._train_program._optimized_guard([p, g]):
-                        _, found_inf = check_finite_and_unscale(
-                            [
-                                g,
-                            ],
-                            self._loss_scaling,
-                            name="find_infinite_scale",
-                            float_status=self._float_status,
-                        )
-                        found_infs.append(found_inf)
         elif self._use_pure_fp16:
             if fp32_grads:
                 with self._train_program._optimized_guard(fp32_grads):

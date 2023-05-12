@@ -200,6 +200,13 @@
           comment : In order to change output data type
           default : 5
 
+- op : lstsq
+  version :
+    - checkpoint : Upgrade lstsq, add 1 outputs [Residuals].
+      action :
+        - add_output : Residuals
+          comment : Output tensor of lstsq operator, meaning the squared residuals of the calculated solutions.
+
 - op : matrix_nms
   version :
     - checkpoint : Upgrade matrix_nms, add a new output [RoisNum].

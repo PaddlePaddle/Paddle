@@ -1415,6 +1415,16 @@
   extra :
     attrs : [bool use_mkldnn = false, bool is_test = false]
 
+- op : lstsq
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {solution : Solution, residuals : Residuals, rank : Rank, singular_values : SingularValues}
+  scalar :
+    rcond :
+      data_type : float
+      support_tensor : true
+
 - op : lu_unpack
   backward : lu_unpack_grad
   inputs :

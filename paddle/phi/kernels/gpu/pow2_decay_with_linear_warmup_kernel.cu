@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/sequence_ops/sequence_mask_op.h"
+#include "paddle/phi/kernels/pow2_decay_with_linear_warmup_kernel.h"
 
-namespace ops = paddle::operators;
-PD_REGISTER_STRUCT_KERNEL(sequence_mask,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::SequenceMaskKernel,
-                          float,
-                          double,
-                          int,
-                          int64_t) {}
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/pow2_decay_with_linear_warmup_kernel_impl.h"
+
+PD_REGISTER_KERNEL(pow2_decay_with_linear_warmup,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::Pow2DecayWithLinearWarmupKernel,
+                   float,
+                   double) {}

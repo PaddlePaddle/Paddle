@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,13 +16,15 @@
 
 namespace phi {
 
-KernelSignature LstsqOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("lstsq",
-                         {"X", "Y"},
-                         {"rcond", "driver"},
-                         {"Solution", "Residuals", "Rank", "SingularValues"});
+KernelSignature Pow2DecayWithLinearWarmupOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature("pow2_decay_with_linear_warmup",
+                         {"LearningRate", "Step"},
+                         {"warmup_steps", "total_steps", "base_lr", "end_lr"},
+                         {"LearningRateOut", "StepOut"});
 }
 
 }  // namespace phi
 
-PD_REGISTER_ARG_MAPPING_FN(lstsq, phi::LstsqOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(pow2_decay_with_linear_warmup,
+                           phi::Pow2DecayWithLinearWarmupOpArgumentMapping);
