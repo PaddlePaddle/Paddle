@@ -944,7 +944,6 @@ class FlashAttnWithGating {
         is_bf16,
         fa_num_splits_,
         softmax_lse->data(),
-        nullptr,  // softmax out,
         nullptr,
         &workspace_size,
         stream,
@@ -981,7 +980,6 @@ class FlashAttnWithGating {
         is_bf16,
         fa_num_splits_,
         softmax_lse->data(),
-        nullptr,  // softmax out
         (workspace_size > 0) ? static_cast<void*>(workspace.data()) : nullptr,
         &workspace_size,
         stream,
