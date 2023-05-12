@@ -201,9 +201,7 @@ class AutoMixedPrecisionLists:
         self.white_list = copy.copy(_get_white_list(self.amp_dtype))
         self.black_list = copy.copy(_get_black_list())
         self.gray_list = copy.copy(gray_list)
-        _, unsupported_list, sys_all_list = _get_unsupported_list(
-            self.amp_dtype
-        )
+        unsupported_list, sys_all_list = _get_unsupported_list(self.amp_dtype)
         self.unsupported_list = copy.copy(unsupported_list)
         self.all_list = copy.copy(sys_all_list)
         self.black_varnames = copy.copy(custom_black_varnames)
@@ -237,7 +235,9 @@ class AutoMixedPrecisionLists:
                     self.gray_list.remove(op_name)
                 self.black_list.add(op_name)
                 self.unsupported_list.add(op_name)
-        device, sys_unsupported_list = _get_sys_unsupported_list(self.amp_dtype)
+        _, device, sys_unsupported_list = _get_sys_unsupported_list(
+            self.amp_dtype
+        )
         actual_unsupported_list = []
         for op_name in sys_unsupported_list:
             if op_name in self.white_list:
