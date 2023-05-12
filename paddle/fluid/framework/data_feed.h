@@ -1019,6 +1019,9 @@ class GraphDataGenerator {
   int dynamic_adjust_batch_num_for_sage();
 
  protected:
+  void DoWalkandSageForInfer();
+  void DoWalkandSageForTrain();
+
   HashTable<uint64_t, uint64_t>* table_;
   GraphDataGeneratorConfig conf_;
   size_t infer_cursor_;
