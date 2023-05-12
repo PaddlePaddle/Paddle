@@ -64,9 +64,10 @@ def cal_mode(a, axis, keepdim=False):
 class TestModeOp(OpTest):
     def init_args(self):
         self.axis = 1
+        self.input_shape = (2, 64, 1)
 
     def init_input_data(self):
-        self.input_data = np.random.rand(2, 64, 1).astype(self.dtype)
+        self.input_data = np.random.rand(*self.input_shape).astype(self.dtype)
         self.inputs = {'X': self.input_data}
 
     def init_dtype(self):
@@ -130,34 +131,16 @@ class TestModeFP16Op(TestModeOp):
     def init_dtype(self):
         self.dtype = np.float16
 
-    def test_check_output(self):
-        paddle.enable_static()
-        place = core.CUDAPlace(0)
-        if core.is_float16_supported(place):
-            self.check_output_with_place(place)
-
-    def test_check_grad(self):
-        paddle.enable_static()
-        place = core.CUDAPlace(0)
-        grad = self.init_numeric_grads()
-
-        if core.is_float16_supported(place):
-            self.check_grad_with_place(
-                place, {'X'}, 'Out', user_defined_grads=[grad]
-            )
-
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda()
-    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
-    "core is not compiled with CUDA and not support the bfloat16",
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestModeBF16Op(TestModeOp):
     def init_dtype(self):
         self.dtype = np.uint16
 
     def init_input_data(self):
-        self.input_data = np.random.rand(2, 64, 1).astype(np.float32)
+        self.input_data = np.random.rand(*self.input_shape).astype(np.float32)
         self.input_data = convert_uint16_to_float(
             convert_float_to_uint16(self.input_data)
         )
@@ -183,6 +166,7 @@ class TestModeBF16Op(TestModeOp):
 class TestModeOpLastdim(TestModeOp):
     def init_args(self):
         self.axis = -1
+        self.input_shape = (2, 1, 1, 2, 30)
 
 
 @unittest.skipIf(
@@ -191,6 +175,7 @@ class TestModeOpLastdim(TestModeOp):
 class TestModeFP16OpLastdim(TestModeFP16Op):
     def init_args(self):
         self.axis = -1
+        self.input_shape = (2, 1, 1, 2, 30)
 
 
 @unittest.skipIf(
@@ -199,6 +184,7 @@ class TestModeFP16OpLastdim(TestModeFP16Op):
 class TestModeBF16OpLastdim(TestModeBF16Op):
     def init_args(self):
         self.axis = -1
+        self.input_shape = (2, 1, 1, 2, 30)
 
 
 class TestModeOpKernels(unittest.TestCase):
