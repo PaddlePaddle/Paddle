@@ -30,6 +30,7 @@
   kernel :
     func : add_double_grad
   optional : grad_x_grad, grad_y_grad
+  backward : add_triple_grad
   inplace : (grad_x_grad -> grad_out_grad)
   composite : add_double_grad(y, grad_out, grad_x_grad, grad_y_grad, axis, grad_out_grad)
 
@@ -46,6 +47,17 @@
   composite : add_grad(x, y, out_grad, axis, x_grad, y_grad)
   backward : add_double_grad
   inplace : (out_grad -> x_grad)
+
+- backward_op : add_triple_grad
+  forward : add_double_grad (Tensor y, Tensor grad_out, Tensor grad_grad_x, Tensor grad_grad_y, int axis = -1) -> Tensor(grad_grad_out)
+  args : (Tensor grad_grad_x, Tensor grad_grad_y, Tensor grad_grad_out_grad, int axis = -1)
+  output : Tensor(grad_grad_x_grad), Tensor(grad_grad_y_grad)
+  infer_meta :
+    func : GeneralBinaryGradInferMeta
+    param : [grad_grad_x, grad_grad_y]
+  kernel :
+    func : add_triple_grad
+  inplace : (grad_grad_out_grad -> grad_grad_x_grad)
 
 - backward_op : amax_grad
   forward: amax (Tensor x,  int64_t[] axis={},  bool keepdim=false) -> Tensor(out)
