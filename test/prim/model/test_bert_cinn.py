@@ -33,17 +33,17 @@ MD5SUM = '71e730ee8d7aa77a215b7e898aa089af'
 SAVE_NAME = 'bert_training_data.npz'
 
 
-DY2ST_PRIM_CINN_GT = [
-    10.976988792419434,
-    10.345282554626465,
-    10.33430004119873,
-    10.275235176086426,
-    10.22808837890625,
-    10.200264930725098,
-    10.161019325256348,
-    10.10872745513916,
-    10.121539115905762,
-    9.990568161010742,
+DY2ST_CINN_GT = [
+    10.649632453918457,
+    10.333406448364258,
+    10.33541202545166,
+    10.260543823242188,
+    10.219606399536133,
+    10.176884651184082,
+    10.124699592590332,
+    10.072620391845703,
+    10.112163543701172,
+    9.969393730163574,
 ]
 
 
@@ -134,13 +134,10 @@ class TestBert(unittest.TestCase):
         not (paddle.is_compiled_with_cinn() and paddle.is_compiled_with_cuda()),
         "paddle is not compiled with CINN and CUDA",
     )
-    def test_prim_cinn(self):
-        dy2st_prim_cinn = train(
-            to_static=True, enable_prim=True, enable_cinn=True
-        )
-        np.testing.assert_allclose(
-            dy2st_prim_cinn, DY2ST_PRIM_CINN_GT, rtol=1e-5
-        )
+    def test_cinn(self):
+        paddle.set_flags({'FLAGS_deny_cinn_ops': "dropout"})
+        dy2st_cinn = train(to_static=True, enable_prim=False, enable_cinn=True)
+        np.testing.assert_allclose(dy2st_cinn, DY2ST_CINN_GT, rtol=1e-5)
 
 
 if __name__ == '__main__':
