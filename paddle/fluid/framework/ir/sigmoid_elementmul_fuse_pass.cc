@@ -19,28 +19,18 @@
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/pass.h"
-#include "paddle/fluid/framework/ir/xpu/pass_utils.h"
-#include "paddle/fluid/framework/ir/xpu/quant_utils.h"
+#include "paddle/fluid/framework/ir/sigmoid_elementmul_fuse_pass.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
-
-namespace phi {
-class DenseTensor;
-}  // namespace phi
-
-namespace paddle {
-namespace framework {
-class Scope;
-}  // namespace framework
-}  // namespace paddle
 
 namespace paddle {
 namespace framework {
 namespace ir {
 namespace patterns {
 
-struct SwishXPUPattern : public PatternBase {
-  SwishXPUPattern(PDPattern* pattern, const std::string& name_scope);
+struct SigmoidElementmulFusePattern : public PatternBase {
+  SigmoidElementmulFusePattern(PDPattern* pattern,
+                               const std::string& name_scope);
 
   // declare operator node's name
   PATTERN_DECL_NODE(sigmoid);
@@ -51,8 +41,8 @@ struct SwishXPUPattern : public PatternBase {
   PATTERN_DECL_NODE(elemul_out);
 };
 
-SwishXPUPattern::SwishXPUPattern(PDPattern* pattern,
-                                 const std::string& name_scope)
+SigmoidElementmulFusePattern::SigmoidElementmulFusePattern(
+    PDPattern* pattern, const std::string& name_scope)
     : PatternBase(pattern, name_scope, name_scope) {
   auto* sigmoid_x = pattern->NewNode(sigmoid_x_repr())
                         ->assert_is_op_input("sigmoid", "X")
@@ -77,70 +67,41 @@ SwishXPUPattern::SwishXPUPattern(PDPattern* pattern,
 
 }  // namespace patterns
 
-/*
-1. fuse sigmoid + elementwise_mul into swish
+SigmoidElementmulFusePass::SigmoidElementmulFusePass() {}
 
-Origin subgraph:
-              input
-            /      \
-            |      |
-            |     sigmoid
-            |      |
-            |      |
-          elementwise_mul
-                |
-                |
-               out
-
-Fused subgraph:
-              input
-                |
-                |
-              swish
-                |
-                |
-               out
-*/
-class SigmoidElementmulXpuFusePass : public FusePassBase {
- protected:
-  void ApplyImpl(ir::Graph* graph) const override;
-
- private:
-  const std::string name_scope_{"sigmoid_elementmul_xpu_fuse_pass"};
-};
-
-void SigmoidElementmulXpuFusePass::ApplyImpl(ir::Graph* graph) const {
+void SigmoidElementmulFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
   Init(name_scope_, graph);
 
   GraphPatternDetector gpd;
-  patterns::SwishXPUPattern pattern(gpd.mutable_pattern(), name_scope_);
+  patterns::SigmoidElementmulFusePattern pattern(gpd.mutable_pattern(),
+                                                 name_scope_);
 
   int found_subgraph_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* graph) {
-    VLOG(4) << "handle SigmoidElementmulXpuFusePass fuse";
-
+    VLOG(4) << "handle SigmoidElementmulFusePass fuse";
+#define GET_IR_NODE(node_) GET_IR_NODE_FROM_SUBGRAPH(node_, node_, pattern)
     GET_IR_NODE(sigmoid_x);
     GET_IR_NODE(sigmoid);
     GET_IR_NODE(sigmoid_out);
     GET_IR_NODE(elementwise_mul);
     GET_IR_NODE(elemul_out);
-
+#undef GET_IR_NODE
     auto* block = sigmoid->Op()->Block();
     std::string elemul_out_name = elemul_out->Name();
 
     // Generate swish op
-    framework::OpDesc swish_xpu_op_desc(block);
-    swish_xpu_op_desc.SetType("swish");
-    swish_xpu_op_desc.SetInput("X", {sigmoid_x->Name()});
-    swish_xpu_op_desc.SetAttr("beta", 1.f);
-    swish_xpu_op_desc.SetOutput("Out", {elemul_out_name});
+    framework::OpDesc swish_op_desc(block);
+    swish_op_desc.SetType("swish");
+    swish_op_desc.SetInput("X", {sigmoid_x->Name()});
+    swish_op_desc.SetAttr("beta", 1.f);
+    swish_op_desc.SetOutput("Out", {elemul_out_name});
 
-    auto* swish_xpu = graph->CreateOpNode(&swish_xpu_op_desc);
-    IR_NODE_LINK_TO(sigmoid_x, swish_xpu);
-    IR_NODE_LINK_TO(swish_xpu, elemul_out);
+    auto* swish = graph->CreateOpNode(&swish_op_desc);
+    IR_NODE_LINK_TO(sigmoid_x, swish);
+    IR_NODE_LINK_TO(swish, elemul_out);
 
     // delete useless node
     std::unordered_set<const Node*> delete_nodes;
@@ -157,10 +118,10 @@ void SigmoidElementmulXpuFusePass::ApplyImpl(ir::Graph* graph) const {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(sigmoid_elementmul_xpu_fuse_pass,
-              paddle::framework::ir::SigmoidElementmulXpuFusePass);
+REGISTER_PASS(sigmoid_elementmul_fuse_pass,
+              paddle::framework::ir::SigmoidElementmulFusePass);
 
-REGISTER_PASS_CAPABILITY(sigmoid_elementmul_xpu_fuse_pass)
+REGISTER_PASS_CAPABILITY(sigmoid_elementmul_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination().EQ(
             "swish", 0));
