@@ -2328,7 +2328,7 @@ def _find_op_path_(
         for i, op in enumerate(block.ops):
             if _some_in_set_(
                 op.desc.input_arg_names(), input_names
-            ) and core.has_non_empty_grad_op_maker(op.type):
+            ) and not core.has_empty_grad_op_maker(op.type):
                 for name in op.desc.output_arg_names():
                     if name not in no_grad_set:
                         input_names.add(name)
