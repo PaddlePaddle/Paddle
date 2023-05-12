@@ -99,7 +99,7 @@ inline std::string Optional(const std::string& t_name) {
 
 std::vector<std::string> ParseAttrStr(const std::string& attr);
 
-void PADDLE_API AssignTensorImpl(const Tensor& src, Tensor* dst);
+PADDLE_API void AssignTensorImpl(const Tensor& src, Tensor* dst);
 
 ////////////////////// Kernel Context ////////////////////////
 
