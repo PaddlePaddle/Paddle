@@ -361,8 +361,14 @@ void CudnnLSTMKernel(
 }  // namespace phi
 
 #ifdef PADDLE_WITH_HIP
-PD_REGISTER_KERNEL(cudnn_lstm, GPU, ALL_LAYOUT, phi::CudnnLSTMKernel, float) {}
+PD_REGISTER_KERNEL(cudnn_lstm, GPU, ALL_LAYOUT, phi::CudnnLSTMKernel, float) {
+  kernel->OutputAt(3).SetDataType(paddle::experimental::DataType::UINT8);
+  kernel->OutputAt(4).SetDataType(paddle::experimental::DataType::UINT8);
+}
 #else
 PD_REGISTER_KERNEL(
-    cudnn_lstm, GPU, ALL_LAYOUT, phi::CudnnLSTMKernel, float, double) {}
+    cudnn_lstm, GPU, ALL_LAYOUT, phi::CudnnLSTMKernel, float, double) {
+  kernel->OutputAt(3).SetDataType(paddle::experimental::DataType::UINT8);
+  kernel->OutputAt(4).SetDataType(paddle::experimental::DataType::UINT8);
+}
 #endif
