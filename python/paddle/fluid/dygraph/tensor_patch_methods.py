@@ -287,7 +287,6 @@ def monkey_patch_tensor():
                     grad_tensor.name, grad_tensor.shape, self.name, self.shape
                 )
 
-
             if grad_tensor is None:
                 grad_tensor = []
             else:

@@ -30,10 +30,7 @@ from ..fluid.data_feeder import (
     convert_dtype,
     convert_float_to_uint16,
 )
-from ..fluid.framework import (
-    Variable,
-    device_guard,
-)
+from ..fluid.framework import Variable, device_guard
 from ..fluid.param_attr import ParamAttr
 from ..framework import (
     LayerHelper,

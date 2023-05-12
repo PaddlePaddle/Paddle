@@ -21,7 +21,6 @@ import paddle
 from paddle import _legacy_C_ops, fluid
 from paddle.fluid import core, framework
 from paddle.fluid.dygraph.base import switch_to_static_graph
-from paddle.fluid.framework import global_var
 
 paddle.enable_static()
 
