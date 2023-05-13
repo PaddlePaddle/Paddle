@@ -86,10 +86,6 @@ class TestPcaLowrankAPI(unittest.TestCase):
             a = a_input.to_dense()
 
         u, s, v = pca(a_input, q=guess_rank, **options)
-        # if self.is_sparse(a_input):
-        #     print("sparse ", a.shape)
-        # else:
-        #     print("dense ", a.shape)
 
         self.assertEqual(s.shape[-1], guess_rank)
         self.assertEqual(u.shape[-2], rows)
@@ -104,7 +100,18 @@ class TestPcaLowrankAPI(unittest.TestCase):
         A2 = a - ones_m1.matmul(c)
         np.testing.assert_allclose(A1.numpy(), A2.numpy())
         # self.assertEqual(A1, A2)
-        
+
+        if density == 1:
+            detect_rank = (s.abs() > 1e-5).sum(axis=-1)
+            left = actual_rank * paddle.ones(batches, dtype=paddle.int64)
+            if not left.shape:
+                np.testing.assert_allclose(int(left), int(detect_rank))
+            else:
+                np.testing.assert_allclose(left.numpy(), detect_rank.numpy())
+            S = paddle.linalg.svd(A2, full_matrices=False)[1]
+            left = s[..., :actual_rank]
+            right = S[..., :actual_rank]
+            np.testing.assert_allclose(left.numpy(), right.numpy())
 
     def test_forward(self):
         pca_lowrank = paddle.linalg.pca_lowrank
