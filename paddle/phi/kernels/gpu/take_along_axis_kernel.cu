@@ -28,11 +28,6 @@ void TakeAlongAxisKernel(const Context& dev_ctx,
                          const DenseTensor& index,
                          int axis,
                          DenseTensor* out) {
-  PADDLE_ENFORCE_EQ(
-      dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU,
-      true,
-      errors::PreconditionNotMet("This kernel only runs on GPU device."));
-
   out->Resize(index.dims());
   dev_ctx.template Alloc<T>(out);
 
@@ -41,6 +36,11 @@ void TakeAlongAxisKernel(const Context& dev_ctx,
     phi::funcs::gpu_gather_kernel<T, int32_t>(x, axis, index, *out, dev_ctx);
   } else if (index_type == DataType::INT64) {
     phi::funcs::gpu_gather_kernel<T, int64_t>(x, axis, index, *out, dev_ctx);
+  } else {
+    PADDLE_THROW(
+        phi::errors::InvalidArgument("The data type of input index is expected "
+                                     "to be int32 or int64, but recieved %s.",
+                                     phi::DataTypeToString(index_type)));
   }
 }
 
