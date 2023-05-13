@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 /* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,18 +11,6 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-=======
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//     http://www.apache.org/licenses/LICENSE-2.0
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
->>>>>>> 3c1049b876 (Add i1 and i1e op)
 
 #pragma once
 
@@ -100,7 +87,6 @@ static inline T Chbevl(T x, const T array[], size_t len) {
 }
 
 template <typename T>
-<<<<<<< HEAD
 struct I0eFunctor {
   I0eFunctor(const T* input, T* output, int64_t numel)
       : input_(input), output_(output), numel_(numel) {}
@@ -162,8 +148,6 @@ struct I0Functor {
 };
 
 template <typename T>
-=======
->>>>>>> 3c1049b876 (Add i1 and i1e op)
 static inline typename std::enable_if<std::is_same<double, T>::value,
                                       std::tuple<const T*, size_t>>::type
 ChebyshevCoefficientsI1e_A() {
@@ -267,8 +251,6 @@ ChebyshevCoefficientsI1e_B() {
   return std::make_tuple(coeff, 7);
 }
 
-<<<<<<< HEAD
-=======
 template <typename T>
 struct I1Functor {
   I1Functor(const T* input, T* output, int64_t numel)
@@ -330,5 +312,4 @@ struct I1eFunctor {
   int64_t numel_;
 };
 
->>>>>>> 3c1049b876 (Add i1 and i1e op)
 }  // namespace phi
