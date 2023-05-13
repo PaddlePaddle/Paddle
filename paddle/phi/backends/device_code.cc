@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/phi/backends/device_code.h"
 
+#include <glog/logging.h>
 #include <sys/stat.h>
 
 #include <algorithm>
