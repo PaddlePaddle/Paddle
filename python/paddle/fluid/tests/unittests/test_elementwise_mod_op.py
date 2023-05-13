@@ -183,7 +183,9 @@ class TestElementwiseModBF16Op(OpTest):
             ),
         }
         self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
-        self.outputs = {'Out': convert_float_to_uint16(self.out)}
+        self.outputs = {
+            'Out': convert_uint16_to_float(convert_float_to_uint16(self.out))
+        }
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
