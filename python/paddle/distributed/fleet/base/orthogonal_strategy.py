@@ -18,6 +18,7 @@ import itertools
 
 import paddle.distributed as dist
 from paddle.distributed.fleet.base.strategy_group import StrategyGroupBase
+from paddle.distributed.fleet.layers.mpu import RNGStatesTracker
 
 
 class OrthogonalStrategy:
@@ -47,11 +48,16 @@ class OrthogonalStrategy:
 
     """
 
-    def __init__(self, list_of_strategy, fused_strategy_dict={}):
+    def __init__(
+        self, list_of_strategy, fused_strategy_dict={}, strategy_rank_list=None
+    ):
         self._list_of_strategy = list_of_strategy
         self._fused_strategy_dict = fused_strategy_dict
-        self._rank = dist.get_rank()
-        self._rank_list_dict = {}
+        self._strategy_rank_list = (
+            strategy_rank_list
+            if strategy_rank_list is not None
+            else list(range(dist.get_world_size()))
+        )
         self._name_to_group_dict = {}
         self._name_to_degree_dict = {}
         self._list_of_strategy_name = [
@@ -67,16 +73,17 @@ class OrthogonalStrategy:
         list_of_coord = [
             self._coordinate(*coord) for coord in itertools.product(*ranges)
         ]
+
         self._coord_to_rank_dict = dict(
-            zip(list_of_coord, range(len(list_of_coord)))
+            zip(list_of_coord, self._strategy_rank_list)
         )
 
         for idx, strategy in enumerate(list_of_strategy):
             strategy_name = strategy[0]
             self._name_to_degree_dict[strategy_name] = strategy[1]
-            self._rank_list_dict[strategy_name] = self._calc_rank_list(idx)
+            rank_list = self._calc_rank_list(idx)
             self._name_to_group_dict[strategy_name] = strategy[2](
-                self._rank_list_dict[strategy_name]
+                rank_list,
             )
 
         self._name_to_fused_group_dict = {}
@@ -136,11 +143,13 @@ class OrthogonalStrategy:
         num_of_ranks = functools.reduce(
             lambda x, y: x * y, self._list_of_degree
         )
-        assert (
-            num_of_ranks == dist.get_world_size()
+
+        assert num_of_ranks == len(
+            self._strategy_rank_list
         ), "There are total {} ranks, but need {} ranks in this strategy.".format(
-            dist.get_world_size(), num_of_ranks
+            len(self._strategy_rank_list), num_of_ranks
         )
+
         for fused_strategy in self._fused_strategy_dict.values():
             for strategy in fused_strategy:
                 assert (
@@ -198,3 +207,32 @@ class OrthogonalStrategy:
             rank_list.append(ranks)
 
         return rank_list
+
+
+Tensor_PARALLEL_RNG = "model_parallel_rng"
+
+
+class HybridParallelManager:
+    def __init__(
+        self,
+        list_of_strategy,
+        fused_strategy_dict={},
+        strategy_rank_list=None,
+        seed=0,
+    ):
+        # init strategy
+        self._strategy = OrthogonalStrategy(
+            list_of_strategy, fused_strategy_dict, strategy_rank_list
+        )
+        # init random states tracker
+        self.random_states_tracker = RNGStatesTracker()
+        self.add_random_seed(Tensor_PARALLEL_RNG, seed)
+
+    def strategy_group(self, name):
+        return self._strategy.strategy_group(name)
+
+    def add_random_seed(self, name, seed):
+        self.random_states_tracker.add(name, seed)
+
+    def get_rng_state_tracker(self):
+        return self.random_states_tracker
