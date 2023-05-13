@@ -41,6 +41,7 @@ void Conv2dXPUInferMeta(const MetaTensor& x,
                         const MetaTensor& filter_max,
                         const MetaTensor& bias,
                         const MetaTensor& branch,
+                        const MetaTensor& branch_max,
                         const std::vector<int>& paddings,
                         const std::vector<int>& dilations,
                         const std::vector<int>& strides,
@@ -158,7 +159,7 @@ void Conv2dXPUInferMeta(const MetaTensor& x,
   }
   // set output and output max dims
   out->set_dims(DDim(out_shape.data(), out_shape.size()));
-  out_max->set_dims(phi::make_ddim({4}));
+  out_max->set_dims(phi::make_ddim({6}));
 }
 
 void EmbeddingWithEltwiseAddXPUInferMeta(
@@ -204,7 +205,7 @@ void FcXPUInferMeta(const MetaTensor& x,
   out->set_dims(DDim(out_shape.data(), out_shape.size()));
   out->set_dtype(x.dtype());
   out->set_layout(x.layout());
-  out_max->set_dims(w_max.dims());
+  out_max->set_dims(phi::make_ddim({6}));
   out_max->set_dtype(x.dtype());
   out_max->set_layout(x.layout());
 }
@@ -278,6 +279,7 @@ void FusedMultiTransformerXpuInferMeta(
     const std::vector<const MetaTensor*>& time_step,
     const std::vector<const MetaTensor*>& seq_lengths,
     const std::vector<const MetaTensor*>& src_mask,
+    const std::vector<const MetaTensor*>& gather_index,
     bool pre_layer_norm,
     int rotary_emb_dims,
     float epsilon,
@@ -287,6 +289,7 @@ void FusedMultiTransformerXpuInferMeta(
     const std::string& act_method,
     bool trans_qkvw,
     int ring_id,
+    int gather_axis,
     MetaTensor* out,
     std::vector<MetaTensor*> cache_kv_out) {
   auto x_dim = x.dims();
@@ -325,13 +328,6 @@ void FusedMultiTransformerXpuInferMeta(
                       phi::errors::InvalidArgument(
                           "The first dim of CacheKV must be 2, but got %d",
                           c_dim[0]));  // 2
-    PADDLE_ENFORCE_EQ(
-        c_dim[2],
-        x_dim[0],
-        phi::errors::InvalidArgument("The third dim of CacheKV must be equal "
-                                     "with batch size %d, but got %d",
-                                     x_dim[0],
-                                     c_dim[2]));  // batch_size
     PADDLE_ENFORCE_EQ(
         c_dim[3],
         trans_qkvw ? y_dim[1] : y_dim[2],

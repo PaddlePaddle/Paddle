@@ -98,11 +98,6 @@ PD_REGISTER_KERNEL(
     dist_grad, CPU, ALL_LAYOUT, phi::DistGradKernel, float, double) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_REGISTER_KERNEL(dist_grad,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::DistGradKernel,
-                   phi::dtype::float16,
-                   float,
-                   double) {}
+PD_REGISTER_KERNEL(
+    dist_grad, GPU, ALL_LAYOUT, phi::DistGradKernel, float, double) {}
 #endif
