@@ -22,6 +22,20 @@
 
 namespace phi {
 
+template <typename T, typename Context>
+void ErfinvGradKernel(const Context& ctx,
+                      const DenseTensor& out,
+                      const DenseTensor& out_grad,
+                      DenseTensor* x_grad) {
+  ctx.template Alloc<T>(x_grad);
+  auto eigen_out = EigenVector<T>::Flatten(out);
+  auto eigen_dout = EigenVector<T>::Flatten(out_grad);
+  auto eigen_dx = EigenVector<T>::Flatten(*x_grad);
+  auto& place = *ctx.eigen_device();
+  constexpr T half_sqrt_pi = static_cast<T>(1 / M_2_SQRTPI);
+  eigen_dx.device(place) = half_sqrt_pi * eigen_dout * eigen_out.square().exp();
+}
+
 template <typename Context>
 void ErfinvGradKernel(const Context& ctx,
                       const DenseTensor& out,
