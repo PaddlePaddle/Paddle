@@ -290,7 +290,7 @@ function(build_protobuf TARGET_NAME BUILD_FOR_HOST)
   else()
     ExternalProject_Add(
       ${TARGET_NAME}
-      ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}
+      ${EXTERNAL_PROJECT_LOG_ARGS}
       PREFIX ${PROTOBUF_PREFIX_DIR}
       SOURCE_DIR ${SOURCE_DIR}
       UPDATE_COMMAND ""

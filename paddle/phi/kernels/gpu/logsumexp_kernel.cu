@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/logsumexp_kernel.h"
-#include "paddle/phi/kernels/gpu/logsumexp_function.cu.h"
 
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
@@ -25,23 +24,6 @@
 #include "paddle/phi/kernels/gpu/reduce.h"
 
 namespace phi {
-
-template <typename T>
-struct ComputeType {
-  using type = T;
-};
-
-template <>
-struct ComputeType<phi::dtype::float16> {
-  using type = float;
-};
-
-#if CUDA_VERSION >= 11000
-template <>
-struct ComputeType<phi::dtype::bfloat16> {
-  using type = float;
-};
-#endif
 
 template <typename T>
 struct LogCUDAFunctor {
@@ -65,12 +47,12 @@ struct LogCUDAFunctor<bfloat16> {
 };
 
 template <typename T, typename Context>
-void LogsumexpFallbackKernel(const Context& dev_ctx,
-                             const DenseTensor& x,
-                             const std::vector<int64_t>& axis,
-                             bool keepdim,
-                             bool reduce_all,
-                             DenseTensor* out) {
+void LogsumexpKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const std::vector<int64_t>& axis,
+                     bool keepdim,
+                     bool reduce_all,
+                     DenseTensor* out) {
   auto* in_x = &x;
   auto* out_y = out;
   auto xdim = in_x->dims();
@@ -133,33 +115,6 @@ void LogsumexpFallbackKernel(const Context& dev_ctx,
   temp_x.Resize(outdim);
   out->Resize(outdim);
   phi::AddKernel<T, Context>(dev_ctx, temp_x, max_x, out);
-}
-
-template <typename T, typename Context>
-void LogsumexpKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     const std::vector<int64_t>& axis,
-                     bool keepdim,
-                     bool reduce_all,
-                     DenseTensor* out) {
-  auto x_dim = x.dims();
-  // TODO(xxx): Support all input shape and axis
-  if (x_dim.size() == 2 && axis.size() == 1 && axis[0] == 1 &&
-      x_dim[1] <= 1024) {
-    using compute_type = typename ComputeType<T>::type;
-    dev_ctx.template Alloc<T>(out);
-    int64_t num_col = x_dim[1], num_row = x_dim[0];
-    phi::funcs::Load<T, compute_type> load(x.data<T>(), num_col);
-    cudaError_t err =
-        funcs::DispatchLogsumexpWarp<compute_type,
-                                     T,
-                                     Context,
-                                     phi::funcs::Load<T, compute_type>>(
-            dev_ctx, num_row, num_col, load, out->data<T>());
-  } else {
-    LogsumexpFallbackKernel<T, Context>(
-        dev_ctx, x, axis, keepdim, reduce_all, out);
-  }
 }
 
 }  // namespace phi

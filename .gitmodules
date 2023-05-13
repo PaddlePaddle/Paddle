@@ -7,27 +7,15 @@
 [submodule "third_party/gloo"]
 	path = third_party/gloo
 	url = https://github.com/ziyoujiyi/gloo.git
-[submodule "third_party/pocketfft"]
-	path = third_party/pocketfft
-	url = https://gitlab.mpcdf.mpg.de/mtr/pocketfft.git
 [submodule "third_party/brpc"]
 	path = third_party/brpc
 	url = https://github.com/apache/incubator-brpc
-[submodule "third_party/cub"]
-	path = third_party/cub
-	url = https://github.com/NVlabs/cub.git
 [submodule "third_party/dlpack"]
 	path = third_party/dlpack
 	url = https://github.com/dmlc/dlpack.git
 [submodule "third_party/gtest"]
 	path = third_party/gtest
 	url = https://github.com/google/googletest.git
-[submodule "third_party/pybind"]
-	path = third_party/pybind
-	url = https://github.com/pybind/pybind11.git
-[submodule "third_party/snappy"]
-	path = third_party/snappy
-	url = https://github.com/google/snappy
 [submodule "third_party/utf8proc"]
 	path = third_party/utf8proc
 	url = https://github.com/JuliaStrings/utf8proc.git
@@ -46,27 +34,21 @@
 [submodule "third_party/leveldb"]
 	path = third_party/leveldb
 	url = https://github.com/google/leveldb
-[submodule "third_party/rocksdb"]
-	path = third_party/rocksdb
-	url = https://github.com/Thunderbrook/rocksdb
 [submodule "third_party/threadpool"]
 	path = third_party/threadpool
 	url = https://github.com/progschj/ThreadPool.git
-[submodule "third_party/xbyak"]
-	path = third_party/xbyak
-	url = https://github.com/herumi/xbyak.git
 [submodule "third_party/zlib"]
 	path = third_party/zlib
 	url = https://github.com/madler/zlib.git
-[submodule "third_party/cryptopp"]
-	path = third_party/cryptopp
-	url = https://github.com/weidai11/cryptopp.git
-[submodule "third_party/mkldnn"]
-	path = third_party/mkldnn
-	url = https://github.com/oneapi-src/oneDNN.git
 [submodule "third_party/glog"]
 	path = third_party/glog
 	url = https://github.com/google/glog.git
 [submodule "third_party/dirent"]
 	path = third_party/dirent
 	url = https://github.com/tronkko/dirent
+[submodule "third_party/cryptopp"]
+	path = third_party/cryptopp
+	url = https://github.com/weidai11/cryptopp.git
+[submodule "third_party/cub"]
+	path = third_party/cub
+	url = https://github.com/NVlabs/cub.git

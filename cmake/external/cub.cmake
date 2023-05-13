@@ -28,6 +28,7 @@ if(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 11.6)
   # cuda_11.6/11.7/11.8‘s own cub is 1.15.0, which will cause compiling error in windows.
   set(CUB_TAG 1.16.0)
   # cub 1.16.0 is not compitable with current thrust version
+  execute_process(COMMAND cd ${SOURCE_DIR} && git checkout 1.16.0)
   add_definitions(-DTHRUST_IGNORE_CUB_VERSION_CHECK)
 else()
   set(CUB_TAG 1.8.0)
@@ -35,7 +36,7 @@ endif()
 set(CUB_PATCH_COMMAND cd ${SOURCE_DIR} && git checkout ${CUB_TAG})
 set(CUB_INCLUDE_DIR ${CUB_PREFIX_DIR}/src/extern_cub)
 message("CUB_INCLUDE_DIR is ${CUB_INCLUDE_DIR}")
-include_directories(${CUB_INCLUDE_DIR})
+include_directories(${SOURCE_DIR})
 
 ExternalProject_Add(
   extern_cub

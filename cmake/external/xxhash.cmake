@@ -18,28 +18,17 @@ set(XXHASH_PREFIX_DIR ${THIRD_PARTY_PATH}/xxhash)
 set(XXHASH_SOURCE_DIR ${THIRD_PARTY_PATH}/xxhash/src/extern_xxhash)
 set(XXHASH_INSTALL_DIR ${THIRD_PARTY_PATH}/install/xxhash)
 set(XXHASH_INCLUDE_DIR "${XXHASH_INSTALL_DIR}/include")
-set(XXHASH_REPOSITORY ${GIT_URL}/Cyan4973/xxHash.git)
 set(XXHASH_TAG v0.6.5)
+set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/xxhash)
 
 include_directories(${XXHASH_INCLUDE_DIR})
 
 if(APPLE)
   set(BUILD_CMD
-      sed
-      -i
-      \"\"
-      "s/-Wstrict-prototypes -Wundef/-Wstrict-prototypes -Wundef -fPIC/g"
-      ${XXHASH_SOURCE_DIR}/Makefile
-      &&
       make
       lib)
 elseif(UNIX)
   set(BUILD_CMD
-      sed
-      -i
-      "s/-Wstrict-prototypes -Wundef/-Wstrict-prototypes -Wundef -fPIC/g"
-      ${XXHASH_SOURCE_DIR}/Makefile
-      &&
       make
       lib)
 endif()
@@ -57,9 +46,8 @@ endif()
 if(WIN32)
   ExternalProject_Add(
     extern_xxhash
-    ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}
-    GIT_REPOSITORY ${XXHASH_REPOSITORY}
-    GIT_TAG ${XXHASH_TAG}
+    ${EXTERNAL_PROJECT_LOG_ARGS} 
+    SOURCE_DIR ${SOURCE_DIR}
     PREFIX ${XXHASH_PREFIX_DIR}
     UPDATE_COMMAND ""
     PATCH_COMMAND ""
@@ -83,8 +71,7 @@ else()
   ExternalProject_Add(
     extern_xxhash
     ${EXTERNAL_PROJECT_LOG_ARGS}
-    GIT_REPOSITORY ${XXHASH_REPOSITORY}
-    GIT_TAG ${XXHASH_TAG}
+    SOURCE_DIR ${SOURCE_DIR}
     PREFIX ${XXHASH_PREFIX_DIR}
     UPDATE_COMMAND ""
     CONFIGURE_COMMAND ""
