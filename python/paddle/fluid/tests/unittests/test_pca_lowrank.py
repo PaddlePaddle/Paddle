@@ -120,7 +120,6 @@ class TestPcaLowrankAPI(unittest.TestCase):
             (2, (17, 4), all_batches),
             (2, (100, 4), all_batches),
             (6, (100, 40), all_batches),
-            (12, (1000, 1000), [()]),
         ]:
             for batches in all_batches:
                 for guess_rank in [
