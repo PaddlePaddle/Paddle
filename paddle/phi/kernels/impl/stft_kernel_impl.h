@@ -52,7 +52,7 @@ void StftKernel(const Context& ctx,
   phi::DDim frames_dims(out->dims());
   frames_dims.at(axes.back()) = n_fft;
   frames.Resize(frames_dims);
-  ctx.template Alloc<T>(frames_dims);
+  ctx.template Alloc<T>(frames);
   phi::funcs::FrameFunctor<Context, T>()(ctx,
                                          &x,
                                          &frames,
@@ -65,7 +65,6 @@ void StftKernel(const Context& ctx,
   // Window
   phi::DenseTensor frames_w;
   frames_w.Resize(frames_dims);
-  ctx.template Alloc<T>(frames_dims);
   ctx.template Alloc<T>(frames_w);
   phi::funcs::ElementwiseCompute<phi::funcs::MultiplyFunctor<T>, T, T>(
       ctx,
