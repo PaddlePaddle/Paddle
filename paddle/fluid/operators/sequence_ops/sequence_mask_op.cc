@@ -12,9 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/sequence_ops/sequence_mask_op.h"
-
-#include <string>
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -101,10 +99,3 @@ REGISTER_OPERATOR(
     paddle::operators::SequenceMaskOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-
-REGISTER_OP_CPU_KERNEL(
-    sequence_mask,
-    paddle::operators::SequenceMaskKernel<phi::CPUContext, int>,
-    paddle::operators::SequenceMaskKernel<phi::CPUContext, int64_t>,
-    paddle::operators::SequenceMaskKernel<phi::CPUContext, float>,
-    paddle::operators::SequenceMaskKernel<phi::CPUContext, double>);

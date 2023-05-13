@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #pragma once
+#include "glog/logging.h"
+
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/selected_rows.h"
@@ -129,7 +131,7 @@ void ComputeRowImpl(const Context& dev_ctx,
                     float beta1_f,
                     float beta2_f,
                     float epsilon_f,
-                    bool multi_precision,
+                    bool multi_precision UNUSED,
                     DenseTensor* param_out,
                     DenseTensor* mom1_out,
                     DenseTensor* mom2_out,
@@ -294,7 +296,7 @@ void ComputeRowImpl(const Context& dev_ctx,
 
   // TODO(zengjinle): remove the following Eigen operations when
   // *skip_update == true.
-  paddle::memory::Buffer buffer(dev_ctx.GetPlace());
+  memory_utils::Buffer buffer(dev_ctx.GetPlace());
   phi::funcs::SquaredL2Norm(
       dev_ctx,
       reinterpret_cast<const MT*>(IsMultiPrecision ? master_param_ptr

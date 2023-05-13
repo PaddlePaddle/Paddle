@@ -18,7 +18,7 @@ import unittest
 
 import numpy as np
 
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid.reader import _reader_process_loop
 
 

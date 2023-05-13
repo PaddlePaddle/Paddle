@@ -20,8 +20,8 @@ os.environ["FLAGS_check_nan_inf"] = "1"
 os.environ["GLOG_vmodule"] = "nan_inf_utils_detail=10"
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 paddle.enable_static()
 
@@ -95,11 +95,7 @@ def check(use_cuda):
                     fetch_list=[y_predict.name, avg_cost.name, acc_top1.name],
                 )
                 step += 1
-                print(
-                    'iter={:.0f},cost={},acc1={}'.format(
-                        step, outs[1][0], outs[2][0]
-                    )
-                )
+                print(f'iter={step:.0f},cost={outs[1]},acc1={outs[2]}')
 
 
 if __name__ == '__main__':

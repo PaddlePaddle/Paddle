@@ -16,8 +16,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.vision.models as models
 from paddle.static import InputSpec
+from paddle.vision import models
 
 
 class TestVisonModels(unittest.TestCase):

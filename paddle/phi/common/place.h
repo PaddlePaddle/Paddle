@@ -18,7 +18,7 @@ limitations under the License. */
 #include <unordered_map>
 
 #include "paddle/phi/api/include/dll_decl.h"
-
+#include "paddle/phi/core/macros.h"
 namespace paddle {
 enum class PlaceType;
 }
@@ -32,9 +32,7 @@ enum class AllocationType : int8_t {
   GPUPINNED = 3,
   XPU = 4,
   NPU = 5,
-  NPUPINNED = 6,
   IPU = 7,
-  MLU = 8,
   CUSTOM = 9,
 };
 
@@ -132,7 +130,7 @@ class CPUPlace : public Place {
   CPUPlace() : Place(AllocationType::CPU) {}
 
   CPUPlace(const CPUPlace&) = default;
-  CPUPlace(const Place& place) : Place(AllocationType::CPU) {}  // NOLINT
+  CPUPlace(const Place& place UNUSED) : Place(AllocationType::CPU) {}  // NOLINT
 };
 
 class GPUPlace : public Place {
@@ -150,7 +148,7 @@ class GPUPinnedPlace : public Place {
   GPUPinnedPlace() : Place(AllocationType::GPUPINNED) {}
 
   GPUPinnedPlace(const GPUPinnedPlace&) = default;
-  GPUPinnedPlace(const Place& place)  // NOLINT
+  GPUPinnedPlace(const Place& place UNUSED)  // NOLINT
       : Place(AllocationType::GPUPINNED) {}
 };
 
@@ -164,25 +162,6 @@ class XPUPlace : public Place {
       : Place(AllocationType::XPU, place.GetDeviceId()) {}
 };
 
-class NPUPlace : public Place {
- public:
-  NPUPlace() : Place(AllocationType::NPU, 0) {}
-  explicit NPUPlace(int device_id) : Place(AllocationType::NPU, device_id) {}
-
-  NPUPlace(const NPUPlace&) = default;
-  NPUPlace(const Place& place)  // NOLINT
-      : Place(AllocationType::NPU, place.GetDeviceId()) {}
-};
-
-class NPUPinnedPlace : public Place {
- public:
-  NPUPinnedPlace() : Place(AllocationType::NPUPINNED) {}
-
-  NPUPinnedPlace(const NPUPinnedPlace&) = default;
-  NPUPinnedPlace(const Place& place)  // NOLINT
-      : Place(AllocationType::NPUPINNED) {}
-};
-
 class IPUPlace : public Place {
  public:
   IPUPlace() : Place(AllocationType::IPU, 0) {}
@@ -191,16 +170,6 @@ class IPUPlace : public Place {
   IPUPlace(const IPUPlace&) = default;
   IPUPlace(const Place& place)  // NOLINT
       : Place(AllocationType::IPU, place.GetDeviceId()) {}
-};
-
-class MLUPlace : public Place {
- public:
-  MLUPlace() : Place(AllocationType::MLU, 0) {}
-  explicit MLUPlace(int device_id) : Place(AllocationType::MLU, device_id) {}
-
-  MLUPlace(const MLUPlace&) = default;
-  MLUPlace(const Place& place)  // NOLINT
-      : Place(AllocationType::MLU, place.GetDeviceId()) {}
 };
 
 class CustomPlace : public Place {
@@ -231,7 +200,6 @@ namespace experimental {
 using AllocationType = phi::AllocationType;
 using GPUPinnedPlace = phi::GPUPinnedPlace;
 using XPUPlace = phi::XPUPlace;
-using NPUPlace = phi::NPUPlace;
 }  // namespace experimental
 
 using AllocationType = phi::AllocationType;

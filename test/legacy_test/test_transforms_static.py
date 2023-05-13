@@ -126,7 +126,7 @@ class TestRandomCrop_random(TestTransformUnitTestBase):
         for y in range(h - c_h):
             for x in range(w - c_w):
                 diff_abs_sum = np.abs(
-                    (self.img[:, y : y + c_h, x : x + c_w] - res)
+                    self.img[:, y : y + c_h, x : x + c_w] - res
                 ).sum()
                 if diff_abs_sum < eps:
                     res_assert = False

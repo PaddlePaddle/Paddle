@@ -16,7 +16,7 @@ import functools
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 from paddle.fluid.tests.unittests.test_lstm_op import ACTIVATION
 
@@ -40,7 +40,7 @@ def gru(
         for i in range(len(seq_lens)):
             seq_starts.append(seq_starts[-1] + seq_lens[i])
         sorted_seqs = sorted(
-            list(range(len(seq_lens))),
+            range(len(seq_lens)),
             key=functools.cmp_to_key(lambda x, y: seq_lens[y] - seq_lens[x]),
         )
         num_batch = seq_lens[sorted_seqs[0]]

@@ -57,6 +57,9 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
 
 #ifdef PADDLE_WITH_CINN
     if (FLAGS_use_cinn || strategy.build_cinn_pass_) {
+      // Note: This is a trick to support 0D-Tensor for CINN. This pass will be
+      // removed in the near future.
+      AppendPass("cinn_zero_tensor_trick_pass");
       // Note: This pass is used to enable cinn.
       AppendPass("build_cinn_pass");
       AppendPrintGraphPass("graph_viz_pass", "_build_cinn_graph");
@@ -189,6 +192,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
 
 #ifdef PADDLE_WITH_CUDA
     AppendPassWithCheck(strategy_.fused_attention_, "fused_attention_pass");
+    AppendPassWithCheck(strategy_.fuse_adamw_, "fuse_adamw_op_pass");
 #endif
 
 #if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060)
@@ -528,8 +532,10 @@ USE_PASS(add_reader_dependency_pass);
 USE_PASS(delete_dropout_op_x_pass);
 #ifdef PADDLE_WITH_CUDA
 USE_PASS(fused_attention_pass);
+USE_PASS(fuse_adamw_op_pass);
 #endif
 #ifdef PADDLE_WITH_CINN
+USE_PASS(cinn_zero_tensor_trick_pass);
 USE_PASS(build_cinn_pass);
 #endif
 #ifdef PADDLE_WITH_CUDA

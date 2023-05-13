@@ -247,6 +247,6 @@ REGISTER_OPERATOR(cos_sim,
                   ops::CosSimGradOpMaker<paddle::framework::OpDesc>,
                   ops::CosSimGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(cos_sim_grad, ops::CosSimOpGrad);
-REGISTER_OP_CPU_KERNEL(cos_sim, ops::CosSimKernel<phi::CPUContext, float>);
-REGISTER_OP_CPU_KERNEL(cos_sim_grad,
-                       ops::CosSimGradKernel<phi::CPUContext, float>);
+PD_REGISTER_STRUCT_KERNEL(cos_sim, CPU, ALL_LAYOUT, ops::CosSimKernel, float) {}
+PD_REGISTER_STRUCT_KERNEL(
+    cos_sim_grad, CPU, ALL_LAYOUT, ops::CosSimGradKernel, float) {}

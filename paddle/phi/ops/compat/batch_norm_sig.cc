@@ -79,7 +79,7 @@ KernelSignature BatchNormGradOpArgumentMapping(
 
 KernelSignature BatchNormGradGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("batch_norm_grad_grad",
+  return KernelSignature("batch_norm_double_grad",
                          {"X",
                           "Scale",
                           "Mean",

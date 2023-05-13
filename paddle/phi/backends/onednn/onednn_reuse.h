@@ -676,7 +676,7 @@ class OneDNNHandlerNoCachingT {
       const dnnl::memory::desc& user_md,
       const dnnl::memory::desc& target_md,
       void* ptr,
-      bool is_persistent = false,
+      bool is_persistent UNUSED = false,
       std::function<std::shared_ptr<F>(const F*)> custom_reorder_func = {}) {
     std::shared_ptr<dnnl::memory> target_memory_p;
     if (custom_reorder_func) {
@@ -936,8 +936,13 @@ class BinaryOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
     // if output tensor(z) is nullptr then we are computing into oneDNN
     // managed buffer
     auto rankdiff = x->dims().size() - y->dims().size();
-    auto dst_tz = (out == nullptr) ? (rankdiff > 0 ? src_x_tz : src_y_tz)
-                                   : vectorize(out->dims());
+    auto dst_tz =
+        (out == nullptr)
+            ? (rankdiff > 0 ? src_x_tz
+                            : (y->dims().size() == 0 ? std::vector<int64_t>{1}
+                                                     : src_x_tz))
+            : (out->dims().size() == 0 ? std::vector<int64_t>{1}
+                                       : vectorize(out->dims()));
 
     auto src0_md = x->mem_desc();
     auto src1_md = y->mem_desc();
@@ -1074,10 +1079,13 @@ class BroadcastDataOneDNNHandler
                              float scale_y,
                              const std::vector<int64_t>& extended_x_dims)
       : OneDNNHandlerNoCachingT<T, dnnl::binary>(engine, cpu_place) {
-    const auto src0_tz = vectorize(out->dims());
+    const auto src0_tz = out->dims().size() == 0 ? std::vector<int64_t>{1}
+                                                 : vectorize(out->dims());
     const auto src0_md = dnnl::memory::desc(
         src0_tz, OneDNNGetDataType<T>(), GetPlainOneDNNFormat(src0_tz.size()));
-    const auto src1_md = x->mem_desc().reshape(extended_x_dims);
+    const auto reshape_dims =
+        extended_x_dims.size() != 0 ? extended_x_dims : std::vector<int64_t>{1};
+    const auto src1_md = x->mem_desc().reshape(reshape_dims);
 
     dnnl::primitive_attr attributes;
     attributes.set_scales(DNNL_ARG_SRC_0, 0, {scale_x});
@@ -1120,6 +1128,9 @@ class PReluOneDNNHandler
             *std::max_element(weights_dims.begin(), weights_dims.end());
       }
       weights_dims = std::move(new_weights_dims);
+    }
+    if (weights_dims.empty()) {
+      weights_dims = std::vector<int64_t>{1};
     }
     auto weights_md = memory::desc(
         weights_dims, OneDNNGetDataType<T>(), memory::format_tag::any);
@@ -1167,7 +1178,7 @@ class ReductionOneDNNHandler
                          const dnnl::engine engine,
                          Place cpu_place,
                          const DenseTensor* x,
-                         const DenseTensor* out,
+                         const DenseTensor* out UNUSED,
                          std::vector<int64_t> out_tz,
                          const dnnl::primitive_attr& attrs = NULL)
       : OneDNNHandlerNoCachingT<T, dnnl::reduction>(engine, cpu_place) {

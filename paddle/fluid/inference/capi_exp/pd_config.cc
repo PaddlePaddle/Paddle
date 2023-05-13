@@ -171,19 +171,9 @@ void PD_ConfigEnableXpu(__pd_keep PD_Config* pd_config,
                     enable_multi_stream);
 }
 
-void PD_ConfigEnableNpu(__pd_keep PD_Config* pd_config, int32_t device_id) {
-  CHECK_AND_CONVERT_PD_CONFIG;
-  config->EnableNpu(device_id);
-}
-
 PD_Bool PD_ConfigUseXpu(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
   return config->use_xpu();
-}
-
-PD_Bool PD_ConfigUseNpu(__pd_keep PD_Config* pd_config) {
-  CHECK_AND_CONVERT_PD_CONFIG;
-  return config->use_npu();
 }
 
 int32_t PD_ConfigGpuDeviceId(__pd_keep PD_Config* pd_config) {
@@ -194,10 +184,29 @@ int32_t PD_ConfigXpuDeviceId(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
   return config->xpu_device_id();
 }
-int32_t PD_ConfigNpuDeviceId(__pd_keep PD_Config* pd_config) {
+
+void PD_ConfigEnableCustomDevice(__pd_keep PD_Config* pd_config,
+                                 char* device_type,
+                                 int32_t device_id) {
   CHECK_AND_CONVERT_PD_CONFIG;
-  return config->npu_device_id();
+  config->EnableCustomDevice(device_type, device_id);
 }
+PD_Bool PD_ConfigUseCustomDevice(__pd_keep PD_Config* pd_config) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  return config->use_custom_device();
+}
+int32_t PD_ConfigCustomDeviceId(__pd_keep PD_Config* pd_config) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  return config->custom_device_id();
+}
+char* PD_ConfigCustomDeviceType(__pd_keep PD_Config* pd_config) {
+  CHECK_AND_CONVERT_PD_CONFIG;
+  auto device_type_str = config->custom_device_type();
+  char* c = reinterpret_cast<char*>(malloc(device_type_str.length() + 1));
+  snprintf(c, device_type_str.length() + 1, "%s", device_type_str.c_str());
+  return c;
+}
+
 int32_t PD_ConfigMemoryPoolInitSizeMb(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
   return config->memory_pool_init_size_mb();

@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.nn.functional as functional
+from paddle import fluid
+from paddle.nn import functional
 
 
 class EmbeddingStatic(unittest.TestCase):

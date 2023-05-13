@@ -15,10 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
 
@@ -33,7 +34,7 @@ class TestEmptyOp(OpTest):
 
     def verify_output(self, outs):
         data_type = outs[0].dtype
-        if data_type in ['float32', 'float64', 'int32', 'int64']:
+        if data_type in ['float16', 'float32', 'float64', 'int32', 'int64']:
             max_value = np.nanmax(outs[0])
             min_value = np.nanmin(outs[0])
 
@@ -160,7 +161,7 @@ class TestEmptyOp_ShapeTensorList(OpTest):
         shape_tensor_list = []
         for index, ele in enumerate(self.shape):
             shape_tensor_list.append(
-                ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                ("x" + str(index), np.ones(1).astype('int32') * ele)
             )
 
         self.inputs = {"ShapeTensorList": shape_tensor_list}
@@ -277,6 +278,48 @@ class TestEmptyAPI(unittest.TestCase):
         self.__check_out__(res_4, dtype)
         self.__check_out__(res_5, dtype)
         self.__check_out__(res_6, dtype)
+
+
+class TestEmptyFP16Op(TestEmptyOp):
+    def init_config(self):
+        shape = [500, 3]
+        self.dtype = np.float16
+        dtype_inner = convert_np_dtype_to_dtype_(self.dtype)
+        self.attrs = {'shape': shape, 'dtype': dtype_inner}
+        self.inputs = {}
+        self.outputs = {'Out': np.zeros(shape).astype(self.dtype)}
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestEmptyBF16Op(OpTest):
+    def setUp(self):
+        self.op_type = 'empty'
+        self.dtype = np.uint16
+        self.__class__.op_type = self.op_type
+        self.python_api = paddle.empty
+        shape = np.array([200, 3]).astype('int32')
+        dtype_inner = convert_np_dtype_to_dtype_(self.dtype)
+        output = np.zeros(shape).astype(self.dtype)
+        self.inputs = {}
+        self.attrs = {'shape': shape, 'dtype': dtype_inner}
+        self.outputs = {'Out': convert_float_to_uint16(output)}
+
+    def test_check_output(self):
+        self.check_output_customized(self.verify_output)
+
+    def verify_output(self, outs):
+        max_value = np.nanmax(outs[0])
+        min_value = np.nanmin(outs[0])
+        always_full_zero = max_value == 0.0 and min_value == 0.0
+        always_non_full_zero = max_value >= min_value
+        self.assertTrue(
+            always_full_zero or always_non_full_zero,
+            'always_full_zero or always_non_full_zero.',
+        )
 
 
 class TestEmptyError(unittest.TestCase):

@@ -90,8 +90,7 @@ class FuseGemmEpiloguePass : public FusePassBase {
 
  private:
   bool IsGemmFromLinear_(const std::vector<int64_t> &x_shape,
-                         const std::vector<int64_t> &w_shape,
-                         OpDesc *matmul_v2_op) const;
+                         const std::vector<int64_t> &w_shape) const;
   const std::string GetReserveSpaceCacheKey(const std::string var_name,
                                             int block_id) const {
     return std::to_string(block_id) + var_name;

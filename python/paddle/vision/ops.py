@@ -192,7 +192,7 @@ def yolo_loss(
     """
 
     if in_dygraph_mode():
-        loss, _, _ = _C_ops.yolo_loss(
+        loss = _C_ops.yolo_loss(
             x,
             gt_box,
             gt_label,
@@ -495,7 +495,7 @@ def prior_box(
     """
 
     def _is_list_or_tuple_(data):
-        return isinstance(data, list) or isinstance(data, tuple)
+        return isinstance(data, (list, tuple))
 
     if not _is_list_or_tuple_(min_sizes):
         min_sizes = [min_sizes]
@@ -524,9 +524,9 @@ def prior_box(
             input,
             image,
             min_sizes,
+            max_sizes,
             aspect_ratios,
             variance,
-            max_sizes,
             flip,
             clip,
             step_w,
@@ -1319,7 +1319,7 @@ def read_file(filename, name=None):
     if in_dygraph_mode():
         return _legacy_C_ops.read_file('filename', filename)
     else:
-        inputs = dict()
+        inputs = {}
         attrs = {'filename': filename}
 
         helper = LayerHelper("read_file", **locals())

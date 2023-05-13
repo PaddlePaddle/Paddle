@@ -15,7 +15,7 @@
 import logging
 
 # import paddle.incubate.distributed.fleet.role_maker as role_maker
-import paddle.distributed.fleet.base.role_maker as role_maker
+from paddle.distributed.fleet.base import role_maker
 from paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler import (
     fleet,
 )

@@ -19,7 +19,7 @@ from test_parallel_dygraph_dataparallel import TestMultipleGpus
 
 class TestCollectiveBatchIsendIrecv(TestMultipleGpus):
     def test_collective_batch_isend_irecv(self):
-        self.run_mnist_2gpu('collective_batch_isend_irecv.py', eager_mode=True)
+        self.run_mnist_2gpu('collective_batch_isend_irecv.py')
 
 
 if __name__ == "__main__":

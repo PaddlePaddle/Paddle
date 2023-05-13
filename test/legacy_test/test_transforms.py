@@ -299,10 +299,10 @@ class TestTransformsCV2(unittest.TestCase):
 
         trans_batch = transforms.Compose([transforms.Resize(-1)])
 
-        with self.assertRaises(Exception):
+        with self.assertRaises((cv2.error, AssertionError, ValueError)):
             self.do_transform(trans)
 
-        with self.assertRaises(Exception):
+        with self.assertRaises((cv2.error, AssertionError, ValueError)):
             self.do_transform(trans_batch)
 
         with self.assertRaises(ValueError):
@@ -411,22 +411,35 @@ class TestTransformsCV2(unittest.TestCase):
         with self.assertRaises(NotImplementedError):
             transform = transforms.BrightnessTransform('0.1', keys='a')
 
-        with self.assertRaises(Exception):
+        with self.assertRaisesRegex(
+            AssertionError, "scale should be a tuple or list"
+        ):
             transform = transforms.RandomErasing(scale=0.5)
 
-        with self.assertRaises(Exception):
+        with self.assertRaisesRegex(
+            AssertionError, "ratio should be a tuple or list"
+        ):
             transform = transforms.RandomErasing(ratio=0.8)
 
-        with self.assertRaises(Exception):
+        with self.assertRaisesRegex(
+            AssertionError,
+            r"scale should be of kind \(min, max\) and in range \[0, 1\]",
+        ):
             transform = transforms.RandomErasing(scale=(10, 0.4))
 
-        with self.assertRaises(Exception):
+        with self.assertRaisesRegex(
+            AssertionError, r"ratio should be of kind \(min, max\)"
+        ):
             transform = transforms.RandomErasing(ratio=(3.3, 0.3))
 
-        with self.assertRaises(Exception):
+        with self.assertRaisesRegex(
+            AssertionError, r"The probability should be in range \[0, 1\]"
+        ):
             transform = transforms.RandomErasing(prob=1.5)
 
-        with self.assertRaises(Exception):
+        with self.assertRaisesRegex(
+            ValueError, r"value must be 'random' when type is str"
+        ):
             transform = transforms.RandomErasing(value="0")
 
     def test_info(self):
@@ -571,10 +584,10 @@ class TestTransformsTensor(TestTransformsCV2):
 
         trans_batch = transforms.Compose([transforms.Resize(-1)])
 
-        with self.assertRaises(Exception):
+        with self.assertRaises((cv2.error, AssertionError, ValueError)):
             self.do_transform(trans)
 
-        with self.assertRaises(Exception):
+        with self.assertRaises((cv2.error, AssertionError, ValueError)):
             self.do_transform(trans_batch)
 
         with self.assertRaises(ValueError):

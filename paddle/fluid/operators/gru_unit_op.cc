@@ -323,9 +323,7 @@ REGISTER_OPERATOR(gru_unit_grad,
                   ops::GRUUnitGradOp,
                   ops::GRUUnitGradOpNoNeedBufferVarInferer);
 
-REGISTER_OP_CPU_KERNEL(gru_unit,
-                       ops::GRUUnitKernel<phi::CPUContext, float>,
-                       ops::GRUUnitKernel<phi::CPUContext, double>);
-REGISTER_OP_CPU_KERNEL(gru_unit_grad,
-                       ops::GRUUnitGradKernel<phi::CPUContext, float>,
-                       ops::GRUUnitGradKernel<phi::CPUContext, double>);
+PD_REGISTER_STRUCT_KERNEL(
+    gru_unit, CPU, ALL_LAYOUT, ops::GRUUnitKernel, float, double) {}
+PD_REGISTER_STRUCT_KERNEL(
+    gru_unit_grad, CPU, ALL_LAYOUT, ops::GRUUnitGradKernel, float, double) {}

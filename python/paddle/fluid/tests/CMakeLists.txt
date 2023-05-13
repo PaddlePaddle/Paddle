@@ -9,8 +9,3 @@ foreach(src ${TEST_OPS})
 endforeach()
 
 add_subdirectory(unittests)
-add_subdirectory(book)
-add_subdirectory(cpp_extension)
-add_subdirectory(custom_op)
-add_subdirectory(custom_kernel)
-add_subdirectory(custom_runtime)

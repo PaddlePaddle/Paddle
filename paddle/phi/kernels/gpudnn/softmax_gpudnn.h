@@ -499,8 +499,7 @@ __global__ void KeMatrixSoftmaxForward(T* softmax, const T* src, int dim_size) {
 
   // write data to softmax_output according to the LogMode
   if (LogMode) {
-    LogSoftmaxForwardFunctor<AccT, T> reduction(thread_max,
-                                                std::log(thread_exp));
+    LogSoftmaxForwardFunctor<AccT, T> reduction(thread_max, thread_exp);
     if (input_align_shift == output_align_shift) {
       ThreadVecWriteVec<LogSoftmaxForwardFunctor, T, AccT, VecSize>(
           batch_output, batch_input, dim_size, input_align_shift, reduction);

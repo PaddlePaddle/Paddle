@@ -262,7 +262,7 @@ class APITestStaticFusedFFN(unittest.TestCase):
         dropout2_out = x + F.dropout(x=linear2_out, p=0.0, training=False)
         ln_out = F.layer_norm(
             dropout2_out,
-            normalized_shape=list([d_model]),
+            normalized_shape=[d_model],
             weight=ln2_scale,
             bias=ln2_bias,
         )
@@ -275,16 +275,16 @@ class APITestStaticFusedFFN(unittest.TestCase):
         linear1_weight_data = np.random.random(
             (d_model, dim_feedforward)
         ).astype(dtype)
-        linear1_bias_data = np.zeros((dim_feedforward)).astype(dtype)
+        linear1_bias_data = np.zeros(dim_feedforward).astype(dtype)
         linear2_weight_data = np.random.random(
             (dim_feedforward, d_model)
         ).astype(dtype)
-        linear2_bias_data = np.zeros((d_model)).astype(dtype)
+        linear2_bias_data = np.zeros(d_model).astype(dtype)
 
-        ln1_scale_data = np.ones((d_model)).astype(layer_norm_dtype)
-        ln1_bias_data = np.zeros((d_model)).astype(layer_norm_dtype)
-        ln2_scale_data = np.ones((d_model)).astype(layer_norm_dtype)
-        ln2_bias_data = np.zeros((d_model)).astype(layer_norm_dtype)
+        ln1_scale_data = np.ones(d_model).astype(layer_norm_dtype)
+        ln1_bias_data = np.zeros(d_model).astype(layer_norm_dtype)
+        ln2_scale_data = np.ones(d_model).astype(layer_norm_dtype)
+        ln2_bias_data = np.zeros(d_model).astype(layer_norm_dtype)
 
         res_list = [fused_out, ln_out]
         real_res = []

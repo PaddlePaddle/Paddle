@@ -16,8 +16,8 @@ import unittest
 
 import numpy as np
 
-import paddle.nn as nn
 import paddle.nn.functional as F
+from paddle import nn
 from paddle.distributed import fleet
 from paddle.distributed.fleet.meta_parallel import LayerDesc, PipelineLayer
 from paddle.nn import Layer, Sequential
@@ -135,6 +135,20 @@ class TestPipeLayerAPI(unittest.TestCase):
 
                 np.testing.assert_array_equal(param_a.name, param_b.name)
                 np.testing.assert_allclose(param_a.numpy(), param_b.numpy())
+
+    def test_pipelayer_segment_method(self):
+        init_net = AlexNetPipe()
+        pipe_model = PipelineLayer(
+            layers=init_net.to_layers(),
+            num_stages=self.pipeline_parallel_size,
+            seg_method=[0, 4],
+            loss_fn=nn.CrossEntropyLoss(),
+        )
+        stage_id = self.hcg.get_stage_id()
+        if stage_id == 0:
+            np.testing.assert_array_equal(len(pipe_model.parameters()), 4)
+        elif stage_id == 1:
+            np.testing.assert_array_equal(len(pipe_model.parameters()), 8)
 
 
 if __name__ == '__main__':

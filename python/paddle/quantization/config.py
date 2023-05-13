@@ -16,7 +16,7 @@ import copy
 from typing import Dict, Union
 
 import paddle
-import paddle.nn as nn
+from paddle import nn
 from paddle.nn import Layer
 
 from .factory import QuanterFactory
@@ -89,7 +89,7 @@ class QuantConfig:
         self._type2config = {}
         self._model = None
         self._qat_layer_mapping = copy.deepcopy(DEFAULT_QAT_LAYER_MAPPINGS)
-        self._customized_qat_layer_mapping = dict()
+        self._customized_qat_layer_mapping = {}
 
         self._customized_leaves = []
 

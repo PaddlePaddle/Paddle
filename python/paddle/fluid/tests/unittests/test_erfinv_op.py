@@ -19,7 +19,7 @@ from eager_op_test import OpTest
 from scipy.special import erfinv
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 paddle.enable_static()
 np.random.seed(0)

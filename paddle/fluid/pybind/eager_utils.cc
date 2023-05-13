@@ -38,6 +38,7 @@ limitations under the License. */
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
+DECLARE_bool(check_nan_inf);
 
 namespace paddle {
 namespace pybind {
@@ -51,12 +52,10 @@ extern PyTypeObject* g_place_pytype;
 extern PyTypeObject* g_cudaplace_pytype;
 extern PyTypeObject* g_cpuplace_pytype;
 extern PyTypeObject* g_xpuplace_pytype;
-extern PyTypeObject* g_npuplace_pytype;
 extern PyTypeObject* g_cudapinnedplace_pytype;
 extern PyTypeObject* g_customplace_pytype;
 extern PyTypeObject* g_framework_tensor_pytype;
 extern PyTypeObject* g_framework_lodtensorarray_pytype;
-extern PyTypeObject* g_custom_op_kernel_ctx_pytype;
 extern PyTypeObject* g_jit_function_pytype;
 
 int TensorDtype2NumpyDtype(phi::DataType dtype) {
@@ -214,6 +213,22 @@ std::string CastPyArg2AttrString(PyObject* obj, ssize_t arg_pos) {
 std::shared_ptr<imperative::VarBase> CastPyArg2VarBase(PyObject* obj,
                                                        ssize_t arg_pos) {
   return py::cast<std::shared_ptr<imperative::VarBase>>(obj);
+}
+
+void SetPythonStack() {
+  if (FLAGS_check_nan_inf) {
+    VLOG(4) << "this is SetPythonStack";
+    pybind11::gil_scoped_acquire gil;
+    PyObject* mod = PyImport_ImportModule("traceback");
+    PyObject* traceback_list = PyObject_CallMethod(mod, "format_stack", "");
+    std::string str = "";
+    for (Py_ssize_t i = 0; i < PyList_Size(traceback_list); i++) {
+      PyObject* line = PyList_GetItem(traceback_list, i);
+      str += py::str(PyUnicode_AsUTF8(line));
+    }
+    std::string last = str + egr::Controller::Instance().GetPythonStack();
+    egr::Controller::Instance().SetPythonStack(last);
+  }
 }
 
 std::shared_ptr<jit::Function> CastPyArg2JitFunction(PyObject* obj,
@@ -432,6 +447,54 @@ std::vector<size_t> CastPyArg2VectorOfSize_t(PyObject* obj, size_t arg_pos) {
   return result;
 }
 
+std::vector<float> CastPyArg2VectorOfFloat(PyObject* obj, size_t arg_pos) {
+  std::vector<float> result;
+  if (PyList_Check(obj)) {
+    Py_ssize_t len = PyList_Size(obj);
+    PyObject* item = nullptr;
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PyList_GetItem(obj, i);
+      if (PyObject_CheckFloatOrConvertToFloat(&item)) {
+        result.emplace_back(static_cast<float>(PyFloat_AsDouble(item)));
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "argument (position %d) must be "
+            "list of float, but got %s at pos %d",
+            arg_pos + 1,
+            reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name,
+            i));
+      }
+    }
+  } else if (PyTuple_Check(obj)) {
+    Py_ssize_t len = PyTuple_Size(obj);
+    PyObject* item = nullptr;
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PyTuple_GET_ITEM(obj, i);
+      if (PyObject_CheckFloatOrConvertToFloat(&item)) {
+        result.emplace_back(static_cast<float>(PyFloat_AsDouble(item)));
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "argument (position %d) must be "
+            "list of float, but got %s at pos %d",
+            arg_pos + 1,
+            reinterpret_cast<PyTypeObject*>(item->ob_type)->tp_name,
+            i));
+      }
+    }
+  } else if (obj == Py_None) {
+    return {};
+  } else if (PyObject_CheckFloatOrConvertToFloat(&obj)) {
+    return {static_cast<float>(PyFloat_AsDouble(obj))};
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "argument (position %d) must be "
+        "list of float, but got %s",
+        arg_pos + 1,
+        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
+  }
+  return result;
+}
+
 std::vector<std::vector<size_t>> CastPyArg2VectorOfVectorOfSize_t(
     PyObject* obj, size_t arg_pos) {
   std::vector<std::vector<size_t>> result;
@@ -466,9 +529,6 @@ platform::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos) {
                  obj, reinterpret_cast<PyObject*>(g_xpuplace_pytype))) {
     place = ::pybind11::handle(obj).cast<platform::XPUPlace>();
   } else if (PyObject_IsInstance(
-                 obj, reinterpret_cast<PyObject*>(g_npuplace_pytype))) {
-    place = ::pybind11::handle(obj).cast<platform::NPUPlace>();
-  } else if (PyObject_IsInstance(
                  obj, reinterpret_cast<PyObject*>(g_cudapinnedplace_pytype))) {
     place = ::pybind11::handle(obj).cast<platform::CUDAPinnedPlace>();
   } else if (PyObject_IsInstance(
@@ -478,7 +538,7 @@ platform::Place CastPyArg2Place(PyObject* obj, ssize_t arg_pos) {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument (position %d) must be "
         "one "
-        "of(Place,CUDAPlace,CPUPlace,XPUPlace,NPUPlace,CUDAPinnedPlace,"
+        "of(Place,CUDAPlace,CPUPlace,XPUPlace,CUDAPinnedPlace,"
         "CustomPlace), "
         "but got %s",
         arg_pos + 1,
@@ -602,19 +662,6 @@ std::vector<std::string> CastPyArg2VectorOfString(PyObject* obj,
   }
 }
 
-paddle::CustomOpKernelContext CastPyArg2CustomOpKernelContext(PyObject* obj,
-                                                              ssize_t arg_pos) {
-  if (PyObject_IsInstance(
-          obj, reinterpret_cast<PyObject*>(g_custom_op_kernel_ctx_pytype))) {
-    return ::pybind11::handle(obj).cast<paddle::CustomOpKernelContext>();
-  } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "argument (position %d) must be CustomOpKernelContext, "
-        "but got %s",
-        arg_pos + 1,
-        reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
-  }
-}
 PyObject* ToPyObject(bool value) {
   if (value) {
     Py_INCREF(Py_True);
@@ -736,7 +783,15 @@ PyObject* ToPyObject(const std::vector<std::vector<size_t>>& value) {
 
 PyObject* ToPyObject(const std::vector<paddle::Tensor>& value,
                      bool return_py_none_if_not_initialize) {
+// NOTE(liuyuanle): I encountered a bug(access violation) in windows. ref to
+// https://stackoverflow.com/questions/55598839/how-to-fix-access-violation-error-when-returning-pyobject-from-c-function-usin
+#ifdef _WIN32
+  PyGILState_STATE gstate = PyGILState_Ensure();
+#endif
   PyObject* result = PyList_New((Py_ssize_t)value.size());
+#ifdef _WIN32
+  PyGILState_Release(gstate);
+#endif
 
   for (size_t i = 0; i < value.size(); i++) {
     if (!value[i].initialized() && return_py_none_if_not_initialize) {
@@ -808,6 +863,27 @@ PyObject* ToPyObject(const void* value) {
   }
   PADDLE_THROW(
       platform::errors::Fatal("ToPyObject do not support void* with value."));
+}
+
+PyObject* ToPyObject(const std::unordered_map<int, int>& value) {
+  PyObject* dict = PyDict_New();
+  for (const auto& map_iter : value) {
+    // Convert Key
+    PyObject* key = ToPyObject(map_iter.first);
+    // Convert Value
+    PyObject* value = ToPyObject(map_iter.second);
+
+    if (!key || !value) {
+      PADDLE_THROW(
+          platform::errors::Fatal("Unable to convert int to PyObject"));
+    }
+
+    if (PyDict_SetItem(dict, key, value) != 0) {
+      PADDLE_THROW(
+          platform::errors::Fatal("Unable to set key:value for py_dict"));
+    }
+  }
+  return dict;
 }
 
 PyObject* ToPyObject(
@@ -1308,10 +1384,18 @@ paddle::experimental::Scalar CastNumpy2Scalar(PyObject* obj,
   } else if (type_name == "numpy.int32" || type_name == "numpy.intc") {
     int value = CastPyArg2Int(obj, op_type, arg_pos);
     return paddle::experimental::Scalar(value);
+  } else if (type_name == "numpy.complex64") {
+    phi::dtype::complex<float> value = CastPyArg2Complex(obj, op_type, arg_pos);
+    return paddle::experimental::Scalar(value);
+  } else if (type_name == "numpy.complex128") {
+    phi::dtype::complex<double> value =
+        CastPyArg2Complex128(obj, op_type, arg_pos);
+    return paddle::experimental::Scalar(value);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
-        "numpy.float16/float32/float64, numpy.int32/int64, but got %s",
+        "numpy.float32/float64, numpy.int32/int64, numpy.complex64/complex128, "
+        "but got %s",
         op_type,
         arg_pos + 1,
         type_name));  // NOLINT
@@ -1350,7 +1434,7 @@ paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,
   } else if (type_name.find("numpy") != std::string::npos) {
     return CastNumpy2Scalar(obj, op_type, arg_pos);
   } else if (PyComplex_Check(obj)) {
-    auto value = CastPyArg2Complex(obj, op_type, arg_pos);
+    auto value = CastPyArg2Complex128(obj, op_type, arg_pos);
     return paddle::experimental::Scalar(value);
   } else if (PyObject_CheckLongOrToLong(&obj)) {
     int value = CastPyArg2Int(obj, op_type, arg_pos);
@@ -1405,11 +1489,19 @@ std::vector<phi::Scalar> CastPyArg2ScalarArray(PyObject* obj,
             phi::Scalar{static_cast<int64_t>(PyLong_AsLong(item))});
       }
       return value;
+    } else if (PyObject_CheckComplexOrToComplex(&item)) {
+      std::vector<phi::Scalar> value;
+      for (Py_ssize_t i = 0; i < len; i++) {
+        item = PyList_GetItem(obj, i);
+        Py_complex v = PyComplex_AsCComplex(item);
+        value.emplace_back(phi::Scalar{std::complex<double>(v.real, v.imag)});
+      }
+      return value;
     }
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
-        "a list of int, float, or bool, but got %s",
+        "a list of int, float, complex, or bool, but got %s",
         op_type,
         arg_pos + 1,
         ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT

@@ -36,49 +36,6 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
-#ifdef PADDLE_WITH_ASCEND_CL
-void IrParamsSyncAmongDevicesPass::CopyParamsToNpu(Argument *argument) {
-  if (!argument->use_npu()) return;
-
-  auto &graph = argument->main_graph();
-  std::vector<std::string> repetitive_params;
-
-  if (graph.Has(framework::ir::kRepetitiveParamAttr))
-    repetitive_params = graph.Get<std::vector<std::string>>(
-        framework::ir::kRepetitiveParamAttr);
-
-  LOG(INFO) << "Sync params from CPU to NPU";
-
-  PADDLE_ENFORCE_EQ(argument->npu_device_id_valid(),
-                    true,
-                    platform::errors::PreconditionNotMet(
-                        "The npu_device_id field should be valid"));
-  platform::Place place = platform::NPUPlace(argument->npu_device_id());
-  auto *scope = argument->scope_ptr();
-  std::vector<std::string> all_vars = scope->LocalVarNames();
-
-  for (auto &var_name : all_vars) {
-    auto *var = scope->FindLocalVar(var_name);
-    PADDLE_ENFORCE_NOT_NULL(
-        var,
-        platform::errors::PreconditionNotMet("The var should not be nullptr"));
-
-    if (var->IsType<phi::DenseTensor>()) {
-      auto *t = var->GetMutable<phi::DenseTensor>();
-
-      platform::CPUPlace cpu_place;
-      phi::DenseTensor temp_tensor;
-      temp_tensor.Resize(t->dims());
-      temp_tensor.mutable_data<float>(cpu_place);
-
-      paddle::framework::TensorCopySync(*t, cpu_place, &temp_tensor);
-      t->clear();
-      paddle::framework::TensorCopySync(temp_tensor, place, t);
-    }
-  }
-}
-#endif
-
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 void IrParamsSyncAmongDevicesPass::CopyParamsToGpu(Argument *argument) {
   // The parameters are on the cpu, therefore, synchronization is not necessary.
@@ -182,9 +139,8 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToCustomDevice(
     repetitive_params = graph.Get<std::vector<std::string>>(
         framework::ir::kRepetitiveParamAttr);
 
-  LOG(INFO) << "Sync params from CPU to CustomDevice"
-            << argument->custom_device_type() << "/"
-            << argument->custom_device_id();
+  LOG(INFO) << "Sync params from CPU to " << argument->custom_device_type()
+            << ":" << argument->custom_device_id();
 
   platform::Place place = platform::CustomPlace(argument->custom_device_type(),
                                                 argument->custom_device_id());
@@ -253,11 +209,6 @@ void IrParamsSyncAmongDevicesPass::RunImpl(Argument *argument) {
       argument->scope_valid(),
       true,
       platform::errors::PreconditionNotMet("The scope field should be valid"));
-#ifdef PADDLE_WITH_ASCEND_CL
-  if (argument->use_npu_valid()) {
-    CopyParamsToNpu(argument);
-  }
-#endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (argument->use_gpu_valid()) {
     CopyParamsToGpu(argument);

@@ -205,17 +205,10 @@ elseif(WITH_ROCM)
     SRCS fused_broadcast_op_handle.cc
     DEPS broadcast_op_handle)
 else()
-  if(WITH_ASCEND_CL)
-    cc_library(
-      nan_inf_utils
-      SRCS nan_inf_utils_detail.cc
-      DEPS npu_op_runner framework_proto scope place)
-  else()
-    cc_library(
-      nan_inf_utils
-      SRCS nan_inf_utils_detail.cc
-      DEPS framework_proto scope place)
-  endif()
+  cc_library(
+    nan_inf_utils
+    SRCS nan_inf_utils_detail.cc
+    DEPS framework_proto scope place)
   cc_library(
     all_reduce_op_handle
     SRCS all_reduce_op_handle.cc
@@ -383,11 +376,13 @@ set(IR_PASS_DEPS
     fix_op_run_order_pass
     fuse_gemm_epilogue_pass
     fused_attention_pass
+    fuse_adamw_op_pass
     fused_feedforward_pass
     delete_dropout_op_pass)
 
 if(WITH_CINN)
   set(IR_PASS_DEPS ${IR_PASS_DEPS} build_cinn_pass)
+  set(IR_PASS_DEPS ${IR_PASS_DEPS} cinn_zero_tensor_trick_pass)
 endif()
 
 if(NOT APPLE

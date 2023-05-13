@@ -146,15 +146,26 @@ struct DeviceContext::Impl {
     // NOTE(paddle-dev): In case of tensor has already hold allocation and
     // is going to allocate allocation on new place, we will clear its holder
     // firstly and then re-alloc it.
-    if (tensor->initialized() && tensor->place() != place) {
-      ClearHolder(tensor);
+    if (phi::DenseTensor::classof(tensor)) {
+      // NOTE(Ruibiao): The tensor hold zero-size allocation is not regarded as
+      // `initialized`. Fix other tensor class when needed.
+      if (static_cast<phi::DenseTensor*>(tensor)->Holder() &&
+          tensor->place() != place) {
+        ClearHolder(tensor);
+      }
+    } else {
+      if (tensor->initialized() && tensor->place() != place) {
+        ClearHolder(tensor);
+      }
     }
+
     auto* allocator =
-        (tensor->numel() == 0 || fake_alloc) && requested_size == 0
+        (fake_alloc || tensor->numel() == 0) && requested_size == 0
             ? zero_allocator_
             : (pinned ? pinned_allocator_ : device_allocator_);
 #ifdef PADDLE_WITH_CUDA
-    bool must_cuda_graph_allocator = (tensor->numel() != 0) && !pinned;
+    bool must_cuda_graph_allocator =
+        (!fake_alloc && tensor->numel() != 0) && !pinned;
     if (must_cuda_graph_allocator &&
         place.GetType() == phi::AllocationType::GPU &&
         phi::backends::gpu::CUDAGraph::IsThisThreadCapturing()) {
@@ -189,11 +200,22 @@ struct DeviceContext::Impl {
     if (dtype == DataType::UNDEFINED) {
       dtype = tensor->dtype();
     }
-    if (tensor->initialized() && tensor->place() != CPUPlace()) {
-      ClearHolder(tensor);
+
+    if (phi::DenseTensor::classof(tensor)) {
+      // NOTE(Ruibiao): The tensor holds zero-size allocation is not regarded as
+      // `initialized`. Fix other tensor class when needed.
+      if (static_cast<phi::DenseTensor*>(tensor)->Holder() &&
+          tensor->place() != CPUPlace()) {
+        ClearHolder(tensor);
+      }
+    } else {
+      if (tensor->initialized() && tensor->place() != CPUPlace()) {
+        ClearHolder(tensor);
+      }
     }
+
     auto* allocator =
-        (tensor->numel() == 0 || fake_alloc) && requested_size == 0
+        (fake_alloc || tensor->numel() == 0) && requested_size == 0
             ? host_zero_allocator_
             : host_allocator_;
     return tensor->AllocateFrom(
@@ -246,8 +268,6 @@ struct DeviceContext::Impl {
 
  private:
   void ClearHolder(TensorBase* tensor) const {
-    if (!tensor->initialized()) return;
-
     if (DenseTensor::classof(tensor)) {
       static_cast<DenseTensor*>(tensor)->clear();
     } else if (SelectedRows::classof(tensor)) {

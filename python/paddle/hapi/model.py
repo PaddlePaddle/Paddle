@@ -24,9 +24,9 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
-import paddle.distributed.fleet as fleet
 from paddle import fluid
 from paddle.autograd import no_grad
+from paddle.distributed import fleet
 from paddle.distributed.fleet.base import role_maker
 from paddle.fluid import core
 from paddle.fluid.dygraph.base import to_variable
@@ -58,10 +58,10 @@ def to_list(value):
 
 def to_numpy(var):
     assert isinstance(
-        var, (Variable, fluid.core.VarBase, fluid.core.eager.Tensor)
+        var, (Variable, fluid.core.eager.Tensor)
     ), "not a variable"
-    if isinstance(var, (fluid.core.VarBase, fluid.core.eager.Tensor)):
-        return var.numpy()
+    if isinstance(var, fluid.core.eager.Tensor):
+        return np.array(var)
     t = global_scope().find_var(var.name).get_tensor()
     return np.array(t)
 
@@ -154,33 +154,6 @@ def init_communicator(
                 'nranks': nranks,
                 'rank': rank,
                 'ring_id': 0,
-            },
-        )
-    elif core.is_compiled_with_npu():
-        hccl_id_var = block.create_var(
-            name=fluid.unique_name.generate('hccl_id'),
-            persistable=True,
-            type=core.VarDesc.VarType.RAW,
-        )
-        block.append_op(
-            type='c_gen_hccl_id',
-            inputs={},
-            outputs={'Out': hccl_id_var},
-            attrs={
-                'rank': rank,
-                'endpoint': current_endpoint,
-                'other_endpoints': other_endpoints,
-            },
-        )
-        block.append_op(
-            type='c_comm_init_hccl',
-            inputs={'X': hccl_id_var},
-            outputs={},
-            attrs={
-                'rank': rank,
-                'ring_id': 0,
-                'device_id': int(os.getenv("FLAGS_selected_npus")),
-                'rank_ids': nranks,
             },
         )
     elif core.is_compiled_with_xpu():
@@ -494,7 +467,7 @@ class StaticGraphAdapter:
 
             assert (
                 var.name in converted_state
-            ), "variable [{}] is not in optimizer state file".format(var.name)
+            ), f"variable [{var.name}] is not in optimizer state file"
             self._set_var(var, converted_state[var.name])
 
     def _set_var(self, var, ndarray):
@@ -695,7 +668,7 @@ class StaticGraphAdapter:
                         amp_lists=amp_lists,
                         use_pure_fp16=self._amp_level == "O2",
                         use_fp16_guard=self._use_fp16_guard,
-                        **self._amp_configs
+                        **self._amp_configs,
                     )
 
                 self.model._optimizer.minimize(self._loss_endpoint)
@@ -827,7 +800,7 @@ class DynamicGraphAdapter:
         with paddle.amp.auto_cast(
             enable=self._amp_level != 'O0',
             **self._amp_custom_lists,
-            level=self._amp_level
+            level=self._amp_level,
         ):
             if self._nranks > 1:
                 outputs = self.ddp_model(*[to_variable(x) for x in inputs])
@@ -1482,9 +1455,7 @@ class Model:
         def _check_match(key, param):
             state = param_state.get(key, None)
             if state is None:
-                raise ValueError(
-                    "{} is not found in the providing file.".format(key)
-                )
+                raise ValueError(f"{key} is not found in the providing file.")
             if list(state.shape) != list(param.shape):
                 raise ValueError(
                     "{} receives a shape {}, but the expected shape is {}.".format(
@@ -1500,7 +1471,7 @@ class Model:
                 '.pdparams',
                 '.pdopt',
                 '.pdmodel',
-            ], "Unknown postfix {} from weights".format(ext)
+            ], f"Unknown postfix {ext} from weights"
             return path
 
         path = _strip_postfix(path)
@@ -1513,9 +1484,7 @@ class Model:
                 match_res = _check_match(key, param)
             except ValueError as err:
                 if skip_mismatch:
-                    warnings.warn(
-                        ("Skip loading for {}. ".format(key) + str(err))
-                    )
+                    warnings.warn(f"Skip loading for {key}. " + str(err))
                     # reset optimizer when mismatch happens
                     reset_optimizer = True
                 else:
@@ -1731,7 +1700,7 @@ class Model:
         for metric in to_list(metrics):
             assert isinstance(
                 metric, Metric
-            ), "{} is not sub class of Metric".format(metric.__class__.__name__)
+            ), f"{metric.__class__.__name__} is not sub class of Metric"
         self._metrics = to_list(metrics)
         self._prepare_amp(amp_configs)
 

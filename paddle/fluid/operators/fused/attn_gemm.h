@@ -14,13 +14,13 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/operators/fused/fused_gemm_epilogue_op.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/blas/blaslt_impl.cu.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
+#include "paddle/phi/kernels/funcs/fused_gemm_epilogue.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
 namespace paddle {
@@ -68,25 +68,20 @@ class AttnMatMul {
               "The output (= input * weight) is expected to be nullptr or the "
               "same as bias_out when fused is true."));
 
-      auto fused_impl =
-          phi::funcs::MatmulPlanner(vectorize(input->dims()),
-                                    vectorize(weight->dims()),
-                                    transA_,
-                                    transB_,
-                                    phi::CppTypeToDataType<T>::Type(),
-                                    phi::funcs::MatmulFusedType::kMatmulBias,
-                                    static_cast<const void*>(bias->data<T>()),
-                                    nullptr);
-      phi::funcs::MatmulWithCublasLt<T>::Run(dev_ctx_,
-                                             input->data<T>(),
-                                             weight->data<T>(),
-                                             bias_out->data<T>(),
-                                             bsz_seq_,      // M
-                                             output_size_,  // N
-                                             input_size_,   // K
-                                             transA_,
-                                             transB_,
-                                             &fused_impl);
+      phi::funcs::LinearWithCublasLt<T>::Run(
+          dev_ctx_,
+          input,                                      // x
+          weight,                                     // y
+          bias_out,                                   // out
+          static_cast<const void*>(bias->data<T>()),  // bias
+          nullptr,
+          bsz_seq_,      // M
+          output_size_,  // N
+          input_size_,   // K
+          transA_,
+          transB_,
+          phi::funcs::MatmulFusedType::kMatmulBias);
+
       return;
     }
 #endif
@@ -114,8 +109,8 @@ class AttnMatMul {
       // bias_out = output + bias
       std::vector<const phi::DenseTensor*> ins = {output, bias};
       std::vector<phi::DenseTensor*> outs = {bias_out};
-      phi::funcs::BroadcastKernel<phi::ElementwiseType::kBinary, T, T>(
-          dev_ctx_, ins, &outs, -1, phi::funcs::AddFunctor<T>());
+      phi::funcs::BroadcastKernel<T>(
+          dev_ctx_, ins, &outs, phi::funcs::AddFunctor<T>());
     }
   }
 
@@ -129,21 +124,21 @@ class AttnMatMul {
                        bool fused = false) {
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060
     if (compute_bias_ && fused) {
-      ComputeFusedGemmEpilogueBackward<T>(dev_ctx_,
-                                          d_output,
-                                          input,
-                                          weight,
-                                          nullptr,
-                                          bsz_seq_,      // M
-                                          output_size_,  // N
-                                          input_size_,   // K
-                                          transA_,
-                                          transB_,
-                                          "none",
-                                          d_input,
-                                          d_weight,
-                                          d_bias,
-                                          use_addto);
+      phi::funcs::ComputeFusedGemmEpilogueBackward<T>(dev_ctx_,
+                                                      d_output,
+                                                      input,
+                                                      weight,
+                                                      nullptr,
+                                                      bsz_seq_,      // M
+                                                      output_size_,  // N
+                                                      input_size_,   // K
+                                                      transA_,
+                                                      transB_,
+                                                      "none",
+                                                      d_input,
+                                                      d_weight,
+                                                      d_bias,
+                                                      use_addto);
       return;
     }
 #endif

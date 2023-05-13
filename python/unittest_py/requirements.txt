@@ -8,7 +8,7 @@ hypothesis
 opencv-python<=4.2.0.32
 visualdl
 paddle2onnx>=0.9.6
-scipy>=1.6
+scipy>=1.6, !=1.7.2, !=1.7.3
 prettytable
 distro
 numpy>=1.20
@@ -16,3 +16,4 @@ autograd==1.4
 librosa==0.8.1
 parameterized
 wandb>=0.13
+xlsxwriter==3.0.9

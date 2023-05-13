@@ -28,6 +28,8 @@
 // need to manually specify them in this map.
 std::map<std::string, std::set<std::string>> op_ins_map = {
     {"fc", {"Input", "W", "Bias"}},
+    {"precision_recall",
+     {"MaxProbs", "Indices", "Labels", "Weights", "StatesInfo"}},
     {"layer_norm", {"X", "Scale", "Bias"}},
     {"conv2d_fusion_cutlass", {"Input", "Filter", "Bias", "ResidualData"}},
     {"conv2d_fusion", {"Input", "Filter", "Bias", "ResidualData"}},
@@ -218,7 +220,12 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"sgd", {"Param", "LearningRate", "Grad", "MasterParam"}},
     {"adagrad", {"Param", "Grad", "Moment", "LearningRate", "MasterParam"}},
     {"adadelta",
-     {"Param", "Grad", "AvgSquaredGrad", "AvgSquaredUpdate", "MasterParam"}},
+     {"Param",
+      "Grad",
+      "AvgSquaredGrad",
+      "AvgSquaredUpdate",
+      "LearningRate",
+      "MasterParam"}},
     {"graph_khop_sampler", {"Row", "Eids", "Col_Ptr", "X"}},
     {"nce",
      {"Input",
@@ -279,6 +286,7 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
 // functions. While, for very few OPs, the dispensable outputs are used, we
 // need to manually specify them in this map.
 std::map<std::string, std::set<std::string>> op_outs_map = {
+    {"rank_attention", {"InputHelp", "Out", "InsRank"}},
     {"fake_quantize_dequantize_moving_average_abs_max",
      {"Out", "OutScale", "OutAccum", "OutState"}},
     {"batch_norm",

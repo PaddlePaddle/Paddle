@@ -19,7 +19,7 @@ import numpy as np
 from eager_op_test import OpTest, skip_check_grad_ci
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 
 def get_outputs(DOut, X, Y):

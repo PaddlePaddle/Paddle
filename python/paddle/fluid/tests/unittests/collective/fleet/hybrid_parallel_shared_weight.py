@@ -19,8 +19,8 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
-import paddle.distributed.fleet as fleet
-import paddle.nn as nn
+from paddle import nn
+from paddle.distributed import fleet
 from paddle.distributed.fleet.meta_parallel import (
     LayerDesc,
     PipelineLayer,

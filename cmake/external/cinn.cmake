@@ -20,7 +20,7 @@ if(NOT CINN_GIT_TAG)
   set(CINN_GIT_TAG develop)
 endif()
 
-message(STATUS "CINN version: " ${CINN_GIT_TAG})
+message(STATUS "CINN  version: " ${CINN_GIT_TAG})
 
 # TODO(zhhsplendid): CINN has lots of warnings during early development.
 # They will be treated as errors under paddle. We set no-error now and we will
@@ -58,7 +58,6 @@ ExternalProject_Add(
   BUILD_COMMAND ${CINN_BUILD_COMMAND}
   INSTALL_COMMAND ""
   CMAKE_ARGS ${CINN_OPTIONAL_ARGS}
-  CMAKE_GENERATOR "Unix Makefiles"
   BUILD_BYPRODUCTS ${CINN_LIB})
 
 ExternalProject_Get_Property(external_cinn BINARY_DIR)

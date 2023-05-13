@@ -16,15 +16,12 @@ import sys
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 from test_softmax_op import stable_softmax
 
 import paddle
-import paddle.fluid.core as core
 import paddle.nn.functional as F
-from paddle.fluid import Program, program_guard
-
-paddle.enable_static()
+from paddle.fluid import Program, core, program_guard
 
 CUDA_BLOCK_SIZE = 32
 
@@ -207,6 +204,19 @@ class CTCForward:
         return self.loss
 
 
+def warpctc_wrapper(
+    Logits,
+    Label,
+    LogitsLength=None,
+    LabelLength=None,
+    blank=0,
+    norm_by_times=False,
+):
+    return paddle._C_ops.warpctc(
+        Logits, Label, LogitsLength, LabelLength, blank, norm_by_times
+    )
+
+
 class TestWarpCTCOp(OpTest):
     def config(self):
         self.batch_size = 4
@@ -218,6 +228,8 @@ class TestWarpCTCOp(OpTest):
 
     def setUp(self):
         self.op_type = "warpctc"
+        self.python_api = warpctc_wrapper
+        self.python_out_sig = ["Loss"]
         self.config()
 
         logits = np.random.uniform(
@@ -305,6 +317,7 @@ class TestWarpCTCOpWithPadding(OpTest):
 
     def setUp(self):
         self.op_type = "warpctc"
+        self.python_api = warpctc_wrapper
         self.python_out_sig = ["Loss"]
         self.config()
 
@@ -381,7 +394,7 @@ class TestWarpCTCOpWithPadding(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output()
 
     def test_check_grad(self):
         self.outputs['WarpCTCGrad'] = self.gradient
@@ -426,6 +439,7 @@ class TestWarpCTCOpFp64(OpTest):
 
     def setUp(self):
         self.op_type = "warpctc"
+        self.python_api = warpctc_wrapper
         self.python_out_sig = ["Loss"]
         self.config()
 
@@ -502,11 +516,11 @@ class TestWarpCTCOpFp64(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=False)
+        self.check_output()
 
     def test_check_grad(self):
         self.outputs['WarpCTCGrad'] = self.gradient
-        self.check_grad(["Logits"], "Loss", check_eager=False)
+        self.check_grad(["Logits"], "Loss")
 
 
 class TestWarpCTCOpError(unittest.TestCase):

@@ -17,8 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-from paddle import Model, set_device
+from paddle import Model, fluid, set_device
 from paddle.metric import Accuracy
 from paddle.nn.layer.loss import CrossEntropyLoss
 from paddle.static import InputSpec as Input

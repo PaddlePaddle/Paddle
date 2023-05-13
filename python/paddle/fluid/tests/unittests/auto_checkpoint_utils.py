@@ -18,8 +18,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.incubate.checkpoint.auto_checkpoint as acp
+from paddle import fluid
 from paddle.fluid import unique_name
 from paddle.fluid.framework import program_guard
 

@@ -16,10 +16,10 @@ import random
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 random.seed(2021)
 
@@ -43,7 +43,7 @@ def find_output_shape(input_list):
     return list(reversed(output_shape))
 
 
-def make_inputs_outputs(input_shapes, dtype):
+def make_inputs_outputs(input_shapes, dtype, is_bfloat16=False):
     """Automatically generate formatted inputs and outputs from input_shapes"""
     input_list = [
         np.random.random(shape).astype(dtype) for shape in input_shapes
@@ -52,6 +52,16 @@ def make_inputs_outputs(input_shapes, dtype):
     output_list = [
         x + np.zeros(output_shape).astype(x.dtype) for x in input_list
     ]
+
+    if is_bfloat16:
+        input_list = [
+            convert_float_to_uint16(input_list[i])
+            for i in range(len(input_list))
+        ]
+        output_list = [
+            convert_float_to_uint16(output_list[i])
+            for i in range(len(output_list))
+        ]
 
     output_formatted = {
         "Out": [(f"out{i}", output_list[i]) for i in range(len(output_list))]
@@ -63,24 +73,24 @@ def make_inputs_outputs(input_shapes, dtype):
     return input_formatted, output_formatted
 
 
-def gen_rank_diff_test(dtype):
+def gen_rank_diff_test(dtype, is_bfloat16=False):
     input_shapes = [(2, 60, 1), (6, 2, 1, 10)]
-    return make_inputs_outputs(input_shapes, dtype)
+    return make_inputs_outputs(input_shapes, dtype, is_bfloat16)
 
 
-def gen_no_broadcast_test(dtype):
+def gen_no_broadcast_test(dtype, is_bfloat16=False):
     input_shapes = [(12, 1, 10, 1), (12, 1, 10, 1)]
-    return make_inputs_outputs(input_shapes, dtype)
+    return make_inputs_outputs(input_shapes, dtype, is_bfloat16)
 
 
-def gen_mixed_tensors_test(dtype):
+def gen_mixed_tensors_test(dtype, is_bfloat16=False):
     input_shapes = [(2, 60, 1), (2, 2, 1, 30), (1, 2, 60, 1)]
-    return make_inputs_outputs(input_shapes, dtype)
+    return make_inputs_outputs(input_shapes, dtype, is_bfloat16)
 
 
-def gen_empty_tensors_test(dtype):
+def gen_empty_tensors_test(dtype, is_bfloat16=False):
     input_shapes = [(0), (0), (0)]
-    return make_inputs_outputs(input_shapes, dtype)
+    return make_inputs_outputs(input_shapes, dtype, is_bfloat16)
 
 
 class TestCPUBroadcastTensorsOp(OpTest):
@@ -125,7 +135,7 @@ class TestCPUBroadcastTensorsOp(OpTest):
     def test_check_output(self):
         self.run_dual_test(
             self.check_output_with_place,
-            {"place": self.place, "atol": 1e-1},
+            {"place": self.place},
         )
 
     def test_check_grad_normal(self):
@@ -135,7 +145,6 @@ class TestCPUBroadcastTensorsOp(OpTest):
                 "place": self.place,
                 "inputs_to_check": ['x0', 'x1'],
                 "output_names": ['out0', 'out1'],
-                "max_relative_error": 0.05,
             },
         )
         self.run_triple_in_test(
@@ -144,7 +153,6 @@ class TestCPUBroadcastTensorsOp(OpTest):
                 "place": self.place,
                 "inputs_to_check": ['x0', 'x1', 'x2'],
                 "output_names": ['out0', 'out1', "out2"],
-                "max_relative_error": 0.05,
             },
         )
 
@@ -152,14 +160,77 @@ class TestCPUBroadcastTensorsOp(OpTest):
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
-class TestCUDABroadcastTensorsOp(TestCPUBroadcastTensorsOp):
+class TestBroadcastTensorsFP16Op(TestCPUBroadcastTensorsOp):
     def set_place(self):
         self.place = core.CUDAPlace(0)
 
     def set_dtypes(self):
-        self.dtypes = ['float64']
-        if core.is_float16_supported(self.place):
-            self.dtypes.append('float16')
+        self.dtypes = ['float16']
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support bfloat16",
+)
+class TestBroadcastTensorsBF16Op(OpTest):
+    def setUp(self):
+        self.op_type = "broadcast_tensors"
+        self.dtype = np.uint16
+        self.np_dtype = "float32"
+        self.use_mkldnn = False
+        self.attrs = {'use_mkldnn': self.use_mkldnn}
+        self.test_gen_func_list = [
+            gen_rank_diff_test,
+            gen_no_broadcast_test,
+            gen_mixed_tensors_test,
+        ]
+        self.python_api = paddle.broadcast_tensors
+        self.place = core.CUDAPlace(0)
+
+    def run_dual_test(self, test_func, args):
+        for gen_func in self.test_gen_func_list:
+            self.inputs, self.outputs = gen_func(self.np_dtype, True)
+            if len(self.outputs["Out"]) < 3:
+                self.python_out_sig = [
+                    f"out{i}" for i in range(len(self.outputs["Out"]))
+                ]
+                test_func(**args)
+
+    def run_triple_in_test(self, test_func, args):
+        self.inputs, self.outputs = self.test_gen_func_list[2](
+            self.np_dtype, True
+        )
+        self.python_out_sig = [
+            f"out{i}" for i in range(len(self.outputs["Out"]))
+        ]
+        test_func(**args)
+
+    def test_check_output(self):
+        self.run_dual_test(
+            self.check_output_with_place,
+            {"place": self.place},
+        )
+
+    def test_check_grad_normal(self):
+        self.run_dual_test(
+            self.check_grad_with_place,
+            {
+                "place": self.place,
+                "inputs_to_check": ['x0', 'x1'],
+                "output_names": ['out0', 'out1'],
+                "check_dygraph": False,
+            },
+        )
+        self.run_triple_in_test(
+            self.check_grad_with_place,
+            {
+                "place": self.place,
+                "inputs_to_check": ['x0', 'x1', 'x2'],
+                "output_names": ['out0', 'out1', 'out2'],
+                "check_dygraph": False,
+            },
+        )
 
 
 class TestBroadcastTensorsAPI(unittest.TestCase):

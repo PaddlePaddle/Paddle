@@ -38,6 +38,7 @@ from .loop_transformer import LoopTransformer
 from .return_transformer import ReturnTransformer
 from .static_analysis import StaticAnalysisVisitor
 from .tensor_shape_transformer import TensorShapeTransformer
+from .tensorhook_transformer import RegisterHookTransformer
 from .typehint_transformer import TypeHintTransformer
 from .utils import ast_to_source_code
 
@@ -86,12 +87,13 @@ class DygraphToStaticAst(BaseTransformer):
 
     def transfer_from_node_type(self, node_wrapper):
         self.translator_logger.log(
-            1, "Source code: \n{}".format(ast_to_source_code(self.root))
+            1, f"Source code: \n{ast_to_source_code(self.root)}"
         )
         # Generic transformation
         self.visit(node_wrapper.node)
 
         transformers = [
+            RegisterHookTransformer,
             EarlyReturnTransformer,
             BasicApiTransformer,  # Basic Api
             TensorShapeTransformer,  # Tensor.shape -> paddle.shape(Tensor)

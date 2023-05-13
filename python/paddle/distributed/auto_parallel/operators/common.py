@@ -284,7 +284,7 @@ def is_parameter_related(varname, block, dist_context=None):
         varname = varname[: varname.index(".quantized")]
     assert block._find_var_recursive(
         varname
-    ), "cannot find var {} in cur block".format(varname)
+    ), f"cannot find var {varname} in cur block"
     var = block._var_recursive(varname)
     # NOTE(hack method): to find the param which is resharded
     if dist_context and "@RESHARD" in varname:
@@ -393,7 +393,7 @@ def get_data_parallel_group(dist_ctx, op, act_grad_names, rank):
 
     for var_name in act_grad_names:
         var_dim_mapping = op_dist_attr.get_input_dims_mapping(var_name)
-        # consider that the variable's shape is None
+        # consider that the variable's shape is [], which is 0D
         # TODO utilize the batch_dim attr instead of "0" in future
         batch_size_axis = var_dim_mapping[0] if len(var_dim_mapping) > 0 else -1
 

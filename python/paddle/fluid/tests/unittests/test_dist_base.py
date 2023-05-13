@@ -17,21 +17,23 @@ import ast
 import os
 import pickle
 import random
+import socket
 import subprocess
 import sys
 import tempfile
 import time
 import unittest
+from contextlib import closing
 
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.incubate.distributed.fleet.role_maker as role_maker
+from paddle import fluid
 from paddle.distributed.fleet.meta_optimizers import (
     RawProgramOptimizer as RawProgram,
 )
 from paddle.fluid import compiler
+from paddle.incubate.distributed.fleet import role_maker
 from paddle.incubate.distributed.fleet.collective import (
     DistributedStrategy,
     fleet,
@@ -132,13 +134,13 @@ class TestDistRunnerBase:
 
     @staticmethod
     def get_lr_scheduler(program):
-        lr_sheduler = None
-        if hasattr(program, 'lr_sheduler'):
+        lr_scheduler = None
+        if hasattr(program, 'lr_scheduler'):
             from paddle.optimizer.lr import LRScheduler
 
-            lr_sheduler = program.lr_sheduler
-            assert isinstance(lr_sheduler, LRScheduler), "must be LRScheduler"
-        return lr_sheduler
+            lr_scheduler = program.lr_scheduler
+            assert isinstance(lr_scheduler, LRScheduler), "must be LRScheduler"
+        return lr_scheduler
 
     def run_pserver(self, args):
         self.lr = args.lr
@@ -196,14 +198,14 @@ class TestDistRunnerBase:
         out_losses = []
 
         main_program = fluid.default_main_program()
-        lr_sheduler = self.get_lr_scheduler(main_program)
+        lr_scheduler = self.get_lr_scheduler(main_program)
         for i in range(RUN_STEP):
             loss = exe.run(main_program, fetch_list=[avg_cost])
             loss = loss[0] if loss else None
             out_losses.append(loss)
             print_to_err(type(self).__name__, "run step %d finished" % i)
-            if lr_sheduler is not None:
-                lr_sheduler.step()
+            if lr_scheduler is not None:
+                lr_scheduler.step()
 
         data_loader.reset()
         print_to_err(type(self).__name__, "trainer run finished")
@@ -284,10 +286,10 @@ class TestDistRunnerBase:
                 fetch_list=[avg_cost.name],
                 feed=feeder.feed(get_data()),
             )
-            out_losses.append(loss[0])
+            out_losses.append(float(loss))
             print_to_err(type(self).__name__, "run step %d finished" % i)
         print_to_err(type(self).__name__, "trainer run finished")
-        print_to_err(type(self).__name__, "dist losses: {}".format(out_losses))
+        print_to_err(type(self).__name__, f"dist losses: {out_losses}")
 
         sys.stdout.buffer.write(pickle.dumps(out_losses))
 
@@ -380,7 +382,7 @@ class TestDistRunnerBase:
                 fetch_list=[avg_cost.name],
                 feed=feeder.feed(get_data()),
             )
-            out_losses.append(loss[0])
+            out_losses.append(float(loss))
             print_to_err(type(self).__name__, "run step %d finished" % i)
         print_to_err(type(self).__name__, "trainer run finished")
 
@@ -442,7 +444,7 @@ class TestDistRunnerBase:
         build_stra.memory_optimize = False
 
         if args.fuse_all_reduce is not None:
-            sys.stderr.write('fuse_all_reduce={}'.format(args.fuse_all_reduce))
+            sys.stderr.write(f'fuse_all_reduce={args.fuse_all_reduce}')
             build_stra.fuse_all_reduce_ops = args.fuse_all_reduce
 
         if args.hogwild:
@@ -617,7 +619,7 @@ class TestDistRunnerBase:
             (loss,) = exe.run(
                 binary, fetch_list=[avg_cost.name], feed=feeder.feed(get_data())
             )
-            out_losses.append(loss[0])
+            out_losses.append(float(loss))
             print_to_err(type(self).__name__, "run step %d finished" % i)
             if lr_scheduler is not None:
                 lr_scheduler.step()
@@ -660,7 +662,7 @@ class TestParallelDyGraphRunnerBase:
                 if paddle.distributed.get_rank() == 0:
                     new_batch.append(batch[0])
                 elif paddle.distributed.get_rank() == 1:
-                    new_batch.extend([_ for _ in batch[1:]])
+                    new_batch.extend(list(batch[1:]))
                 else:
                     raise NotImplementedError(
                         "Current TestParallelDyGraphRunnerBase don't support world_size > 2"
@@ -684,12 +686,6 @@ class TestParallelDyGraphRunnerBase:
         elif fluid.core.is_compiled_with_xpu():
             device_id = int(os.getenv("FLAGS_selected_xpus", "0"))
             place = fluid.XPUPlace(device_id)
-        elif fluid.core.is_compiled_with_npu():
-            device_id = int(os.getenv("FLAGS_selected_npus", "0"))
-            place = fluid.NPUPlace(device_id)
-        elif fluid.core.is_compiled_with_mlu():
-            device_id = int(os.getenv("FLAGS_selected_mlus", "0"))
-            place = fluid.MLUPlace(device_id)
         else:
             assert "Only support CUDAPlace or XPUPlace or CPU(Gloo) for now."
 
@@ -704,12 +700,7 @@ class TestParallelDyGraphRunnerBase:
             nranks = len(args.endpoints.split(",")) if args.endpoints else 1
 
             # if args.update_method == "nccl2":
-            if (
-                args.update_method == "nccl2"
-                or args.update_method == "bkcl"
-                or args.update_method == "hccl"
-                or args.update_method == "cncl"
-            ):
+            if args.update_method == "nccl2" or args.update_method == "bkcl":
                 strategy = paddle.distributed.parallel.ParallelStrategy()
                 strategy.nranks = nranks
                 strategy.local_rank = args.trainer_id
@@ -802,7 +793,7 @@ class TestParallelDyGraphRunnerBase:
         return out_losses
 
     def run_use_fleet_api_trainer(self, args):
-        import paddle.distributed.fleet as fleet
+        from paddle.distributed import fleet
 
         # 1. enable dygraph
         paddle.disable_static()
@@ -823,12 +814,12 @@ class TestParallelDyGraphRunnerBase:
             strategy.find_unused_parameters = True
 
         # 3. init parallel env
-        if args.update_method == "nccl2" or "bkcl" or "hccl":
+        if args.update_method == "nccl2" or "bkcl":
             fleet.init(is_collective=True, strategy=strategy)
 
         # 4. train model
         model, train_reader, opt = self.get_model()
-        if args.update_method == "nccl2" or "bkcl" or "hccl":
+        if args.update_method == "nccl2" or "bkcl":
             opt = fleet.distributed_optimizer(opt)
             model = fleet.distributed_model(model)
 
@@ -865,8 +856,6 @@ def runtime_main(test_class):
             "local",
             "nccl2_reduce_layer",
             "gloo",
-            "hccl",
-            "cncl",
         ],
     )
     parser.add_argument('--trainer_id', type=int, required=False, default=0)
@@ -891,8 +880,6 @@ def runtime_main(test_class):
     parser.add_argument('--use_cpu', action='store_true')
     parser.add_argument('--use_xpu', action='store_true')
     parser.add_argument('--use_dgc', action='store_true')
-    parser.add_argument('--use_npu', action='store_true')
-    parser.add_argument('--use_mlu', action='store_true')
     parser.add_argument('--accumulate_gradient', action='store_true')
     parser.add_argument('--find_unused_parameters', action='store_true')
     parser.add_argument('--use_reduce', action='store_true')
@@ -936,10 +923,6 @@ def runtime_main(test_class):
         model.run_trainer(args)
 
 
-import socket
-from contextlib import closing
-
-
 class TestDistBase(unittest.TestCase):
     def _setup_config(self):
         raise NotImplementedError("tests should have _setup_config implemented")
@@ -949,31 +932,13 @@ class TestDistBase(unittest.TestCase):
             self.__use_cuda = False
             self.__use_xpu = False
             self._use_dgc = False
-            self.__use_npu = False
-            self._use_mlu = False
         elif self._enforce_place == "GPU":
             self.__use_cuda = True
             self.__use_xpu = False
-            self.__use_npu = False
-            self._use_mlu = False
         elif self._enforce_place == "XPU":
             self.__use_cuda = False
             self.__use_xpu = True
             self._use_dgc = False
-            self.__use_npu = False
-            self._use_mlu = False
-        elif self._enforce_place == "NPU":
-            self.__use_cuda = False
-            self.__use_xpu = False
-            self._use_dgc = False
-            self.__use_npu = True
-            self._use_mlu = False
-        elif self._enforce_place == "MLU":
-            self.__use_cuda = False
-            self.__use_xpu = False
-            self._use_dgc = False
-            self.__use_npu = False
-            self._use_mlu = True
         else:
             if fluid.core.is_compiled_with_cuda():
                 self.__use_cuda = True
@@ -998,8 +963,6 @@ class TestDistBase(unittest.TestCase):
         self._nccl2_mode = False
         self._bkcl_mode = False
         self._gloo_mode = False  # now, support gloo backend
-        self._hccl_mode = False
-        self._cncl_mode = False
         self._pipeline_mode = False
         self._mp_mode = False
         self._diff_batch = False
@@ -1029,12 +992,12 @@ class TestDistBase(unittest.TestCase):
             DIST_UT_PORT = int(os.getenv("PADDLE_DIST_UT_PORT"))
 
         if DIST_UT_PORT == 0:
-            self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
+            self._ps_endpoints = "127.0.0.1:{},127.0.0.1:{}".format(
                 self._find_free_port(),
                 self._find_free_port(),
             )
         else:
-            self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
+            self._ps_endpoints = "127.0.0.1:{},127.0.0.1:{}".format(
                 DIST_UT_PORT,
                 DIST_UT_PORT + 1,
             )
@@ -1137,7 +1100,7 @@ class TestDistBase(unittest.TestCase):
             envs['COVERAGE_FILE'] = os.getenv('COVERAGE_FILE', '')
             cmd += " -m coverage run --branch -p"
 
-        cmd += " %s --role trainer --update_method local --lr %f" % (
+        cmd += " {} --role trainer --update_method local --lr {:f}".format(
             model,
             self._lr,
         )
@@ -1163,13 +1126,6 @@ class TestDistBase(unittest.TestCase):
                 "PADDLE_TRAINERS_NUM": "1",
                 "PADDLE_TRAINER_ID": "0",
             }
-        elif self.__use_npu:
-            cmd += " --use_npu"
-            env_local = {
-                "FLAGS_selected_npus": devices,
-                "PADDLE_TRAINERS_NUM": "1",
-                "PADDLE_TRAINER_ID": "0",
-            }
         else:
             env_local = {'CPU_NUM': '1'}
 
@@ -1184,7 +1140,7 @@ class TestDistBase(unittest.TestCase):
             cmd += " --find_unused_parameters"
 
         env_local.update(envs)
-        print("local_cmd: {}, env: {}".format(cmd, env_local))
+        print(f"local_cmd: {cmd}, env: {env_local}")
 
         if check_error_log:
             path = os.path.join(self.temp_dir.name, log_name + "_local.log")
@@ -1290,8 +1246,8 @@ class TestDistBase(unittest.TestCase):
         env0.update(envs)
         env1.update(envs)
 
-        print("tr0_cmd: {}, env: {}".format(tr0_cmd, env0))
-        print("tr1_cmd: {}, env: {}".format(tr1_cmd, env1))
+        print(f"tr0_cmd: {tr0_cmd}, env: {env0}")
+        print(f"tr1_cmd: {tr1_cmd}, env: {env1}")
 
         path0 = os.path.join(self.temp_dir.name, log_name + "_tr0_err.log")
         path1 = os.path.join(self.temp_dir.name, log_name + "_tr1_err.log")
@@ -1377,8 +1333,8 @@ class TestDistBase(unittest.TestCase):
         tr_cmd += " --use_cpu"
         env.update(
             {
-                "PADDLE_TRAINERS_NUM": "{}".format(trainer_num),
-                "PADDLE_TRAINER_ID": "{}".format(trainer_id),
+                "PADDLE_TRAINERS_NUM": f"{trainer_num}",
+                "PADDLE_TRAINER_ID": f"{trainer_id}",
                 "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
                 "PADDLE_CURRENT_ENDPOINT": ep,
                 "PADDLE_CURRENT_ENDPOINT": ep,
@@ -1401,7 +1357,7 @@ class TestDistBase(unittest.TestCase):
             tr_cmd += " --enable_backward_deps"
 
         if self._fuse_all_reduce is not None:
-            tr_cmd += " --fuse_all_reduce {}".format(self._fuse_all_reduce)
+            tr_cmd += f" --fuse_all_reduce {self._fuse_all_reduce}"
 
         assert not self._use_fleet_api, "gloo not support use fleet api"
         assert not self._use_fleet_api_20, "gloo not support use fleet api"
@@ -1438,10 +1394,10 @@ class TestDistBase(unittest.TestCase):
             tr_cmd += " --use_cuda"
             env.update(
                 {
-                    "FLAGS_selected_gpus": "{}".format(0),
-                    "CUDA_VISIBLE_DEVICES": "{}".format(trainer_id),
-                    "PADDLE_TRAINERS_NUM": "{}".format(trainer_num),
-                    "PADDLE_TRAINER_ID": "{}".format(trainer_id),
+                    "FLAGS_selected_gpus": f"{0}",
+                    "CUDA_VISIBLE_DEVICES": f"{trainer_id}",
+                    "PADDLE_TRAINERS_NUM": f"{trainer_num}",
+                    "PADDLE_TRAINER_ID": f"{trainer_id}",
                     "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
                     "PADDLE_CURRENT_ENDPOINT": ep,
                 }
@@ -1452,37 +1408,13 @@ class TestDistBase(unittest.TestCase):
             tr_cmd += " --use_xpu"
             env.update(
                 {
-                    "FLAGS_selected_xpus": "{}".format(trainer_id),
+                    "FLAGS_selected_xpus": f"{trainer_id}",
                     # "XPU_VISIBLE_DEVICES": "{}".format(trainer_id + 1),
-                    "PADDLE_TRAINERS_NUM": "{}".format(trainer_num),
-                    "PADDLE_TRAINER_ID": "{}".format(trainer_id),
+                    "PADDLE_TRAINERS_NUM": f"{trainer_num}",
+                    "PADDLE_TRAINER_ID": f"{trainer_id}",
                     "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
                     "PADDLE_CURRENT_ENDPOINT": ep,
                     "GLOG_v": "2",
-                }
-            )
-        elif self.__use_npu:
-            tr_cmd += " --use_npu"
-            env.update(
-                {
-                    "FLAGS_selected_npus": "{}".format(trainer_id),
-                    "PADDLE_TRAINERS_NUM": "{}".format(trainer_num),
-                    "PADDLE_TRAINER_ID": "{}".format(trainer_id),
-                    "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
-                    "PADDLE_CURRENT_ENDPOINT": ep,
-                    "GLOG_v": "2",
-                }
-            )
-        elif self._use_mlu:
-            tr_cmd += " --use_mlu"
-            env.update(
-                {
-                    "FLAGS_selected_mlus": "{}".format(trainer_id),
-                    "PADDLE_TRAINERS_NUM": "{}".format(trainer_num),
-                    "PADDLE_TRAINER_ID": "{}".format(trainer_id),
-                    "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
-                    "PADDLE_CURRENT_ENDPOINT": ep,
-                    "GLOG_v": "4",
                 }
             )
         else:
@@ -1500,10 +1432,10 @@ class TestDistBase(unittest.TestCase):
         if self._pipeline_mode:
             tr_cmd += " --use_pipeline"
         if self._mp_mode:
-            env = {"FLAGS_selected_gpus": "{}".format(trainer_id)}
+            env = {"FLAGS_selected_gpus": f"{trainer_id}"}
 
         if self._nccl_comm_num > 1:
-            tr_cmd += " --nccl_comm_num {}".format(self._nccl_comm_num)
+            tr_cmd += f" --nccl_comm_num {self._nccl_comm_num}"
 
         if self._use_hallreduce:
             tr_cmd += " --use_hallreduce --hallreduce_inter_nranks 2"
@@ -1512,7 +1444,7 @@ class TestDistBase(unittest.TestCase):
             tr_cmd += " --enable_backward_deps"
 
         if self._fuse_all_reduce is not None:
-            tr_cmd += " --fuse_all_reduce {}".format(self._fuse_all_reduce)
+            tr_cmd += f" --fuse_all_reduce {self._fuse_all_reduce}"
 
         if self._use_fleet_api:
             tr_cmd += (
@@ -1563,13 +1495,13 @@ class TestDistBase(unittest.TestCase):
             )
 
             path = os.path.join(
-                self.temp_dir.name, log_name + "_tr{}_err.log".format(i)
+                self.temp_dir.name, log_name + f"_tr{i}_err.log"
             )
             tr_pipe = open(path, "wb")
 
             print_to_err(
                 type(self).__name__,
-                "going to start process {} with nccl2".format(i),
+                f"going to start process {i} with nccl2",
             )
             tr_proc = subprocess.Popen(
                 tr_cmd.strip().split(" "),
@@ -1586,7 +1518,7 @@ class TestDistBase(unittest.TestCase):
             tr_out, tr_err = procs[i].communicate()
             outs.append(tr_out)
             pipes[i].close()
-            sys.stderr.write('trainer {} stderr: {}\n'.format(i, tr_err))
+            sys.stderr.write(f'trainer {i} stderr: {tr_err}\n')
 
         if trainer_num == 1:
             if check_error_log:
@@ -1637,13 +1569,13 @@ class TestDistBase(unittest.TestCase):
             )
 
             path = os.path.join(
-                self.temp_dir.name, log_name + "_tr{}_err.log".format(i)
+                self.temp_dir.name, log_name + f"_tr{i}_err.log"
             )
             tr_pipe = open(path, "wb")
 
             print_to_err(
                 type(self).__name__,
-                "going to start process {} with nccl2".format(i),
+                f"going to start process {i} with nccl2",
             )
             tr_proc = subprocess.Popen(
                 tr_cmd.strip().split(" "),
@@ -1660,7 +1592,7 @@ class TestDistBase(unittest.TestCase):
             tr_out, tr_err = procs[i].communicate()
             outs.append(tr_out)
             pipes[i].close()
-            sys.stderr.write('trainer {} stderr: {}\n'.format(i, tr_err))
+            sys.stderr.write(f'trainer {i} stderr: {tr_err}\n')
 
         if check_error_log:
             print("outs[0]:", outs[0])
@@ -1686,14 +1618,14 @@ class TestDistBase(unittest.TestCase):
             tr_env['NCCL_SHM_DISABLE'] = '1'
             tr_env['FLAGS_selected_gpus'] = str(i)
             tr_env['FLAGS_cudnn_deterministic'] = '0'
-            print("tr_cmd:{}, env: {}".format(tr_cmd, tr_env))
+            print(f"tr_cmd:{tr_cmd}, env: {tr_env}")
 
-            path = os.path.join(self.temp_dir.name + "tr{}_err.log".format(i))
+            path = os.path.join(self.temp_dir.name + f"tr{i}_err.log")
             tr_pipe = open(path, "wb")
 
             print_to_err(
                 type(self).__name__,
-                "going to start process {} with nccl2".format(i),
+                f"going to start process {i} with nccl2",
             )
             tr_proc = subprocess.Popen(
                 tr_cmd.strip().split(" "),
@@ -1710,7 +1642,7 @@ class TestDistBase(unittest.TestCase):
             tr_out, tr_err = procs[i].communicate()
             outs.append(tr_out)
             pipes[i].close()
-            sys.stderr.write('trainer {} stderr: {}\n'.format(i, tr_err))
+            sys.stderr.write(f'trainer {i} stderr: {tr_err}\n')
 
         if check_error_log:
             print("outs[0]:", outs[0])
@@ -1731,6 +1663,7 @@ class TestDistBase(unittest.TestCase):
             "http_proxy": "",
             "NCCL_P2P_DISABLE": "1",
             "NCCL_SHM_DISABLE": "1",
+            "FLAGS_new_executor_static_build": "1",
         }
 
         if check_error_log:
@@ -1825,22 +1758,6 @@ class TestDistBase(unittest.TestCase):
                 model_file,
                 required_envs,
                 update_method='gloo',
-                check_error_log=check_error_log,
-                log_name=log_name,
-            )
-        elif self._hccl_mode:
-            tr0_losses, tr1_losses = self._run_cluster_nccl2(
-                model_file,
-                required_envs,
-                update_method='hccl',
-                check_error_log=check_error_log,
-                log_name=log_name,
-            )
-        elif self._cncl_mode:
-            tr0_losses, tr1_losses = self._run_cluster_nccl2(
-                model_file,
-                required_envs,
-                update_method='cncl',
                 check_error_log=check_error_log,
                 log_name=log_name,
             )

@@ -16,10 +16,10 @@ from collections import defaultdict
 
 import numpy as np
 
-import paddle.distributed.fleet as fleet
+from paddle.distributed import fleet
 
 # (TODO: GhostScreaming) It will be removed later.
-import paddle.fluid.core as core
+from paddle.fluid import core
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.framework import Block, Program
 
@@ -201,11 +201,9 @@ class HybridParallelInferenceHelper:
         assert isinstance(main_program, Program)
 
         self._device = None
-        if core.is_compiled_with_npu():
-            self._device = "npu"
-        elif core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda():
             self._device = "gpu"
-        assert self._device, "Only gpu and npu are supported."
+        assert self._device, "Only gpu are supported."
 
         assert not in_dygraph_mode(), "Only static graph mode is supported."
 
@@ -214,11 +212,11 @@ class HybridParallelInferenceHelper:
         self._op_role_key = op_maker.kOpRoleAttrName()
         self._op_device_key = op_maker.kOpDeviceAttrName()
 
-        self._param_device_map = dict()
+        self._param_device_map = {}
 
         self._pipeline_pair = []
         self._pipeline_pair_in_while = []
-        self._pp_ring_map = dict()
+        self._pp_ring_map = {}
         self.ring_id = 20  # Just a magic number
 
         self.micro_batch_size = micro_batch_size
@@ -556,7 +554,7 @@ class HybridParallelInferenceHelper:
         """
         # A map from var to device where op takes it as input,
         # avoiding multiple send and recv ops.
-        input_var_to_device = dict()
+        input_var_to_device = {}
 
         extra_index_info = {
             'index': 0,

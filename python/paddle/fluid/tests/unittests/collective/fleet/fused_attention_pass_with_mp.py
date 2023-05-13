@@ -18,9 +18,9 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.distributed.fleet as fleet
-import paddle.fluid as fluid
 import paddle.nn.functional as F
+from paddle import fluid
+from paddle.distributed import fleet
 from paddle.distributed.passes import PassManager, new_pass
 
 paddle.enable_static()

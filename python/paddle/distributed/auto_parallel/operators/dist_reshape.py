@@ -120,7 +120,9 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
                     var_dim_mapping = dist_attr.get_input_dims_mapping(varname)
 
                     mesh_shape = process_mesh.shape
-                    batch_size_axis = var_dim_mapping[0]
+                    batch_size_axis = (
+                        var_dim_mapping[0] if len(var_dim_mapping) > 0 else -1
+                    )
                     if batch_size_axis > -1 and mesh_shape[batch_size_axis] > 1:
                         parallel_axis = batch_size_axis
                         attrs = {"use_calc_stream": True}
@@ -240,7 +242,7 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         assert (
             op_dist_attr is not None
-        ), "backward op [{}] don't have dist attribute !".format(str(src_op))
+        ), f"backward op [{str(src_op)}] don't have dist attribute !"
 
         # check validation of inputs / outputs
         for input_name in src_op.desc.input_names():
@@ -249,7 +251,7 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
             )
             assert len(kwargs[input_name]) == len(
                 src_op.desc.input(input_name)
-            ), "number of tensor for input [{}] is not match".format(input_name)
+            ), f"number of tensor for input [{input_name}] is not match"
         for output_name in src_op.desc.output_names():
             assert output_name in kwargs, "input [{}] is not given".format(
                 output_name
@@ -377,7 +379,9 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
                     var_dim_mapping = dist_attr.get_input_dims_mapping(varname)
 
                     mesh_shape = process_mesh.shape
-                    batch_size_axis = var_dim_mapping[0]
+                    batch_size_axis = (
+                        var_dim_mapping[0] if len(var_dim_mapping) > 0 else -1
+                    )
                     if batch_size_axis > -1 and mesh_shape[batch_size_axis] > 1:
                         parallel_axis = batch_size_axis
                         attrs = {"use_calc_stream": True}
@@ -500,7 +504,7 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         assert (
             op_dist_attr is not None
-        ), "backward op [{}] don't have dist attribute !".format(str(src_op))
+        ), f"backward op [{str(src_op)}] don't have dist attribute !"
 
         # check validation of inputs / outputs
         for input_name in src_op.desc.input_names():
@@ -509,7 +513,7 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
             )
             assert len(kwargs[input_name]) == len(
                 src_op.desc.input(input_name)
-            ), "number of tensor for input [{}] is not match".format(input_name)
+            ), f"number of tensor for input [{input_name}] is not match"
         for output_name in src_op.desc.output_names():
             assert output_name in kwargs, "input [{}] is not given".format(
                 output_name
@@ -637,7 +641,9 @@ class DistributedReshapeImpl2(DistributedOperatorImpl):
                     var_dim_mapping = dist_attr.get_input_dims_mapping(varname)
 
                     mesh_shape = process_mesh.shape
-                    batch_size_axis = var_dim_mapping[0]
+                    batch_size_axis = (
+                        var_dim_mapping[0] if len(var_dim_mapping) > 0 else -1
+                    )
                     if batch_size_axis > -1 and mesh_shape[batch_size_axis] > 1:
                         parallel_axis = batch_size_axis
                         attrs = {"use_calc_stream": True}
@@ -753,7 +759,7 @@ class DistributedReshapeImpl2(DistributedOperatorImpl):
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         assert (
             op_dist_attr is not None
-        ), "backward op [{}] don't have dist attribute !".format(str(src_op))
+        ), f"backward op [{str(src_op)}] don't have dist attribute !"
 
         # check validation of inputs / outputs
         for input_name in src_op.desc.input_names():
@@ -762,7 +768,7 @@ class DistributedReshapeImpl2(DistributedOperatorImpl):
             )
             assert len(kwargs[input_name]) == len(
                 src_op.desc.input(input_name)
-            ), "number of tensor for input [{}] is not match".format(input_name)
+            ), f"number of tensor for input [{input_name}] is not match"
         for output_name in src_op.desc.output_names():
             assert output_name in kwargs, "input [{}] is not given".format(
                 output_name

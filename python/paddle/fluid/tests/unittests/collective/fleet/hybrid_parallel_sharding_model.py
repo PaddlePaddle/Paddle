@@ -19,7 +19,7 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
-import paddle.distributed.fleet as fleet
+from paddle.distributed import fleet
 from paddle.distributed.fleet.meta_optimizers.dygraph_optimizer.dygraph_sharding_optimizer import (
     DygraphShardingOptimizer,
 )
@@ -322,39 +322,35 @@ class TestDistMPTraning(unittest.TestCase):
                 )
 
     def test_sharding_adam(self):
-        sharded_accumulators = set(
-            [
-                'linear_0.w_0_moment1_0',
-                'linear_1.b_0_moment1_0',
-                'linear_2.b_0_moment1_0',
-                'embedding_0.w_0_moment1_0',
-                'linear_0.w_0_moment2_0',
-                'linear_1.b_0_moment2_0',
-                'linear_2.b_0_moment2_0',
-                'embedding_0.w_0_moment2_0',
-                'linear_0.w_0_beta1_pow_acc_0',
-                'linear_1.b_0_beta1_pow_acc_0',
-                'linear_2.b_0_beta1_pow_acc_0',
-                'embedding_0.w_0_beta1_pow_acc_0',
-                'linear_0.w_0_beta2_pow_acc_0',
-                'linear_1.b_0_beta2_pow_acc_0',
-                'linear_2.b_0_beta2_pow_acc_0',
-                'embedding_0.w_0_beta2_pow_acc_0',
-            ]
-        )
+        sharded_accumulators = {
+            'linear_0.w_0_moment1_0',
+            'linear_1.b_0_moment1_0',
+            'linear_2.b_0_moment1_0',
+            'embedding_0.w_0_moment1_0',
+            'linear_0.w_0_moment2_0',
+            'linear_1.b_0_moment2_0',
+            'linear_2.b_0_moment2_0',
+            'embedding_0.w_0_moment2_0',
+            'linear_0.w_0_beta1_pow_acc_0',
+            'linear_1.b_0_beta1_pow_acc_0',
+            'linear_2.b_0_beta1_pow_acc_0',
+            'embedding_0.w_0_beta1_pow_acc_0',
+            'linear_0.w_0_beta2_pow_acc_0',
+            'linear_1.b_0_beta2_pow_acc_0',
+            'linear_2.b_0_beta2_pow_acc_0',
+            'embedding_0.w_0_beta2_pow_acc_0',
+        }
         self.sharding_model(
             Optimizer="adam", sharded_accumulators=sharded_accumulators
         )
 
     def test_sharding_momentum(self):
-        sharded_accumulators = set(
-            [
-                'linear_6.w_0_velocity_0',
-                'linear_7.b_0_velocity_0',
-                'linear_8.b_0_velocity_0',
-                'embedding_2.w_0_velocity_0',
-            ]
-        )
+        sharded_accumulators = {
+            'linear_6.w_0_velocity_0',
+            'linear_7.b_0_velocity_0',
+            'linear_8.b_0_velocity_0',
+            'embedding_2.w_0_velocity_0',
+        }
         self.sharding_model(
             Optimizer="Momentum", sharded_accumulators=sharded_accumulators
         )

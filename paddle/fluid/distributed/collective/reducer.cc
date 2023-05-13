@@ -15,9 +15,10 @@
 #include "paddle/fluid/distributed/collective/reducer.h"
 #include "paddle/phi/backends/device_guard.h"
 #include "paddle/phi/backends/device_manager.h"
+#include "paddle/phi/core/flags.h"
 
 DECLARE_bool(use_stream_safe_cuda_allocator);
-DECLARE_string(allocator_strategy);
+PHI_DECLARE_string(allocator_strategy);
 
 namespace paddle {
 namespace distributed {
@@ -207,13 +208,18 @@ struct ConcatTensorsForAllReduce<platform::CustomDeviceContext, T> {
             .get();
     uint8_t *out_data = reinterpret_cast<uint8_t *>(out->data<T>());
     auto *device = phi::DeviceManager::GetDeviceWithPlace(context.GetPlace());
+    phi::stream::Stream stream(context.GetPlace(), context.stream());
 
     size_t offset = 0;
     for (const auto &tensor : dense_tensors_) {
       const uint8_t *in_data =
           reinterpret_cast<const uint8_t *>(tensor.data<T>());
       auto sz = tensor.numel() * sizeof(T);
-      device->MemoryCopyD2D(out_data + offset, in_data, sz, nullptr);
+      if (tensor.place().GetType() == phi::AllocationType::CPU) {
+        device->MemoryCopyH2D(out_data + offset, in_data, sz, &stream);
+      } else {
+        device->MemoryCopyD2D(out_data + offset, in_data, sz, &stream);
+      }
       offset += sz;
     }
   }
@@ -229,12 +235,17 @@ struct SplitTensorsForAllReduce<platform::CustomDeviceContext, T> {
             .get();
     uint8_t *in_data = reinterpret_cast<uint8_t *>(in->data<T>());
     auto *device = phi::DeviceManager::GetDeviceWithPlace(context.GetPlace());
+    phi::stream::Stream stream(context.GetPlace(), context.stream());
 
     size_t offset = 0;
     for (auto &tensor : *p_dense_tensors) {
       uint8_t *out_data = reinterpret_cast<uint8_t *>(tensor.data<T>());
       auto sz = tensor.numel() * sizeof(T);
-      device->MemoryCopyD2D(out_data, in_data + offset, sz, nullptr);
+      if (tensor.place().GetType() == phi::AllocationType::CPU) {
+        device->MemoryCopyD2H(out_data, in_data + offset, sz, &stream);
+      } else {
+        device->MemoryCopyD2D(out_data, in_data + offset, sz, &stream);
+      }
       offset += sz;
     }
   }
@@ -819,9 +830,9 @@ void EagerReducer::MarkVarReady(const size_t var_index,
 
   auto &group = groups_[group_index];
   auto &group_tensor = group.dense_tensors_[inside_group_index];
-  const auto length = group.length_[inside_group_index];
 
   if (!group.is_sparse_) {
+    const auto length = group.length_[inside_group_index];
     if (is_used_var) {
       auto *autograd_meta = tensors_[var_index].get_autograd_meta();
       auto &grad_tensor =

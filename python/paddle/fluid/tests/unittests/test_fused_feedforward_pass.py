@@ -17,9 +17,9 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid.core as core
-import paddle.nn as nn
+from paddle import nn
 from paddle.distributed.passes import PassManager, new_pass
+from paddle.fluid import core
 
 paddle.enable_static()
 
@@ -37,7 +37,7 @@ class FeedForward(nn.Layer):
         use_dropout_1=True,
         use_dropout_2=True,
     ):
-        super(FeedForward, self).__init__()
+        super().__init__()
         self.in_features = in_features
         self.hidden_features = hidden_features
         self.in_features = out_features
