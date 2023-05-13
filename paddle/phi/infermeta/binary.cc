@@ -2328,7 +2328,7 @@ void PReluInferMeta(const MetaTensor& x,
                       1,
                       phi::errors::InvalidArgument(
                           "For mode 'element', rank of input X must be "
-                          "equal or larger than 2. But recevied X's "
+                          "equal or larger than 1. But recevied X's "
                           "rank: %d",
                           x_rank));
     PADDLE_ENFORCE_EQ(
