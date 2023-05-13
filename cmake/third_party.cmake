@@ -347,7 +347,8 @@ if(WITH_GPU)
       download_externalError copy_externalError
       COMMAND ${CMAKE_COMMAND} -E copy_directory ${SRC_DIR} ${DST_DIR1}
       COMMAND ${CMAKE_COMMAND} -E copy_directory ${SRC_DIR} ${DST_DIR2}
-      DEPENDEES download)
+      DEPENDEES download
+      ALWAYS 1)
   endif()
 endif()
 

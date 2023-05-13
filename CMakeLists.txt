@@ -558,10 +558,8 @@ endif()
 if(WITH_MPI)
   include(mpi)
 endif()
-message("++++externalError_INCLUDE_DIR = ${externalError_INCLUDE_DIR}")
 include(third_party
 )# download, build, install third_party, Contains about 20+ dependencies
-message("++++externalError_INCLUDE_DIR = ${externalError_INCLUDE_DIR}")
 include(flags) # set paddle compile flags
 
 if(WITH_PROFILER)
