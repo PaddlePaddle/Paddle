@@ -506,9 +506,10 @@ class TestArgsortFP16OP(OpTest):
     def setUp(self):
         self.op_type = 'argsort'
         self.dtype = np.float16
-        x = np.random.random((2, 8)).astype('float16')
+        x_np = np.random.random((2, 8)).astype(self.dtype)
+        x = paddle.static.data(shape=[2, 8], name='x', dtype=self.dtype)
         out = np.argsort(x)
-        self.inputs = {'X': x}
+        self.inputs = {'X': x_np}
         self.outputs = {'Out': out}
 
     def test_check_output(self):
