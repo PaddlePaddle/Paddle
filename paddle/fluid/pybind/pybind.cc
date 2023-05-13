@@ -899,6 +899,7 @@ PYBIND11_MODULE(libpaddle, m) {
 All parameter, weight, gradient are variables in Paddle.
 )DOC")
       .def(py::init<>())
+      .def("is_initialized", &Variable::IsInitialized)
       .def("is_int", [](const Variable &var) { return var.IsType<int>(); })
       .def("set_int",
            [](Variable &var, int val) -> void { *var.GetMutable<int>() = val; })
@@ -1050,13 +1051,25 @@ All parameter, weight, gradient are variables in Paddle.
                out (core.Variable|None): the found variable or None.
            )DOC",
            py::return_value_policy::reference)
+      .def("local_var_names", &Scope::LocalVarNames)
       .def("size", &Scope::Size)
+      .def("clear",
+           &Scope::ClearVars,
+           py::arg("names"),
+           R"DOC(
+           Clear the memory holder of variable named :code:`name` in the current scope.
+
+           Args:
+               name (str): the variable names to be cleared.
+
+           Returns:
+               None
+           )DOC")
       .def("erase",
            &Scope::EraseVars,
            py::arg("names"),
            R"DOC(
-           Find variable named :code:`name` in the current scope or
-           its parent scope. Return None if not found. 
+           Erase the variable named :code:`name` in the current scope.
 
            Args:
                name (str): the variable names to be erase.

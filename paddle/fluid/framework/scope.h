@@ -79,6 +79,9 @@ class Scope : public ScopeBase {
   /// Caller doesn't own the returned Variable.
   Variable* Var(std::string* name = nullptr);
 
+  // Not erase the vars in scope, but ONLY clear the memory holder in vars.
+  void ClearVars(const std::vector<std::string>& var_names);
+
   void EraseVars(const std::vector<std::string>& var_names);
 
   // Erase all variables except the given `vars`

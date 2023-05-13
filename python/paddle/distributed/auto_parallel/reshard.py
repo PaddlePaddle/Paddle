@@ -833,7 +833,7 @@ class Remover:
             for var in remove_vars:
                 if var in feed_var_names:
                     continue
-                block._remove_var(var)
+                block._remove_var(var, sync=False)
 
     @staticmethod
     def remove_no_need_in_main(
@@ -901,7 +901,7 @@ class Remover:
             if var_name not in actual_need_vars:
                 remove_vars.add(var_name)
         for var in remove_vars:
-            startup_block._remove_var(var)
+            startup_block._remove_var(var, sync=False)
 
         remove_op_idx = []
         vars = startup_block.vars
@@ -2617,19 +2617,23 @@ class Resharder:
                 idx += 1
 
     def reshard(self):
+        print("_remove_global_process_mesh" + "***" * 20)
         self._remove_global_process_mesh()
         for block_idx, block in enumerate(self.auto_parallel_main_prog.blocks):
             # change the var_name before resharding sub block
             if block_idx in Resharder.while_block_info:
                 self._change_subblock_op_input_and_output(block_idx, block)
 
+            print("_reshard_input" + "***" * 20)
             # reshard input
             self._reshard_input(block)
 
             # reshard output
             # NOTE: Only support that insert send and recv op if output process mesh is different from tensor process mesh
+            print("_reshard_output" + "***" * 20)
             self._reshard_output(block)
 
+        print("remove_no_need_in_main" + "***" * 20)
         # remove no need vars and ops in the main program
         Remover.remove_no_need_in_main(
             self.auto_parallel_main_prog,
@@ -2638,6 +2642,7 @@ class Resharder:
             self.dist_params_grads,
         )
 
+        print("remove_no_need_in_startup" + "***" * 20)
         # remove no need vars and ops in the startip program
         Remover.remove_no_need_in_startup(
             self.auto_parallel_main_prog, self.auto_parallel_startup_prog
