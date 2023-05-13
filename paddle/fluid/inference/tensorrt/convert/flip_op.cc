@@ -15,15 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 namespace paddle {
-namespace framework {
-class Scope;
-namespace proto {
-class OpDesc;
-}  // namespace proto
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
 namespace inference {
 namespace tensorrt {
 
@@ -32,26 +23,61 @@ class FlipOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
+#if IS_TRT_VERSION_GE(8600)
     VLOG(3) << "convert a flip op to tensorrt layer";
     std::cout << "convert a flip op to tensorrt layer" << std::endl;
     framework::OpDesc op_desc(op, nullptr);
 
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
     auto input_dims = input->getDimensions();
+
     int rank = input_dims.nbDims;
-    int axis =  PADDLE_GET_CONST(int64_t, op_desc.GetAttr("axis"))
-    if (axis < 0) axis += rank;
+    int axis = PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("axis"))[0];
+    if (axis < 0) {
+      axis += rank;
+    }
+
+    // expand the batch dimension for static shape
+    if (!engine_->with_dynamic_shape()) {
+      nvinfer1::Dims reshape_dim;
+      reshape_dim.nbDims = input_dims.nbDims + 1;
+      reshape_dim.d[0] = 1;
+      for (int i = 0; i < input_dims.nbDims; ++i) {
+        reshape_dim.d[i + 1] = input_dims.d[i];
+      }
+      auto* reshape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
+      reshape_layer->setReshapeDimensions(reshape_dim);
+      input = reshape_layer->getOutput(0);
+    }
+
     auto* input_shape = Shape(input);
-    auto dims = input_shape->getDimensions()
-    auto* sequenceLens = Add1DConstantLayer(dims.d[axis]);
+    // get the sequence length at the axis dimension
+    auto* sequence_lens = Gather(input_shape, std::vector<int>{axis});
+
     auto output_name = op_desc.Output("Out")[0];
-    auto* reverse_layer = TRT_ENGINE_ADD_LAYER(engine_, ReverseSequence, *input, *sequenceLens);
-//    reverse_layer->setBatchAxis(axis);
-//    reverse_layer->setSequenceAxis(axis);
-    RreplenishLayerAndOutput(reverse_layer,
-                             "flip",
-                             {output_name + "_value", output_name},
-                             test_mode);
+    auto* reverse_layer =
+        TRT_ENGINE_ADD_LAYER(engine_, ReverseSequence, *input, *sequence_lens);
+    reverse_layer->setBatchAxis(axis);
+    reverse_layer->setSequenceAxis(axis);
+
+    // remove the batch dimension for static shape
+    if (!engine_->with_dynamic_shape()) {
+      auto* reshape_layer =
+          TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *reverse_layer->getOutput(0));
+      reshape_layer->setReshapeDimensions(input_dims);
+      RreplenishLayerAndOutput(reshape_layer,
+                               "flip",
+                               {output_name + "_value", output_name},
+                               test_mode);
+    } else {
+      RreplenishLayerAndOutput(reverse_layer,
+                               "flip",
+                               {output_name + "_value", output_name},
+                               test_mode);
+    }
+#else
+    VLOG(3) << "Flip is not supported when TensorRT < 8.6";
+#endif
   }
 };
 
