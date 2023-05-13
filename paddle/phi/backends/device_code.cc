@@ -22,6 +22,7 @@ limitations under the License. */
 
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/flags.h"
 
 PHI_DECLARE_string(cuda_dir);
 
