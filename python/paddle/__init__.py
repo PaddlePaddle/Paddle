@@ -132,6 +132,7 @@ from .tensor.linalg import bmm  # noqa: F401
 from .tensor.linalg import histogram  # noqa: F401
 from .tensor.linalg import bincount  # noqa: F401
 from .tensor.linalg import mv  # noqa: F401
+from .tensor.linalg import cdist
 from .tensor.logic import equal  # noqa: F401
 from .tensor.linalg import eigvalsh  # noqa: F401
 from .tensor.logic import greater_equal  # noqa: F401
@@ -527,6 +528,7 @@ __all__ = [  # noqa
     'triu',
     'sin',
     'dist',
+    'cdist',
     'unbind',
     'meshgrid',
     'arange',

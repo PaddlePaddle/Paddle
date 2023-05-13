@@ -70,6 +70,7 @@ from .linalg import solve  # noqa: F401
 from .linalg import cholesky_solve  # noqa: F401
 from .linalg import lu  # noqa: F401
 from .linalg import lu_unpack  # noqa: F401
+from .linalg import cdist
 from .logic import equal  # noqa: F401
 from .logic import greater_equal  # noqa: F401
 from .logic import greater_than  # noqa: F401
@@ -311,6 +312,7 @@ tensor_method_func = [  # noqa
     'transpose',
     'lstsq',
     'dist',
+    'cdist',
     't',
     'cross',
     'cholesky',

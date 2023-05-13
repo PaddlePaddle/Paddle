@@ -3382,13 +3382,24 @@ def cdist(x, y, p=2, name=None):
                         [2.        , 3.        ]])
 
     """
+    check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'cdist')
+    check_variable_and_dtype(y, 'dtype', ['float32', 'float64'], 'cdist')
     x_shape = x.shape
     y_shape = y.shape
-
+    if x_shape[:-2] != y_shape[:-2] or x_shape[-1] != y_shape[-1]:
+        raise ValueError(
+            "Input(x) shape[:-2] should be same as Input(y) shape[:-2] "
+            "and Input(x) shape[-1] shoule be same as Input(y) shape[-1]"
+        )
     y = paddle.concat([y] * x_shape[-2], axis=-2)
     x = x.repeat_interleave(y_shape[-2], axis=-2)
-
-    loss = ((x - y) ** p).abs().sum(axis=-1) ** (1 / p)
-
-    loss = loss.reshape((*x.shape[:-2], x.shape[-2], y.shape[-2]))
+    if p == 0:
+        loss = ((x - y) ** p).abs().sum(axis=-1)
+    elif p == float('inf'):
+        loss = paddle.max((x - y).abs(), axis=-1)
+    elif p == float('-inf'):
+        loss = paddle.min((x - y).abs(), axis=-1)
+    else:
+        loss = ((x - y) ** p).abs().sum(axis=-1) ** (1 / p)
+    loss = loss.reshape((*x_shape[:-2], x_shape[-2], y_shape[-2]))
     return loss
