@@ -88,7 +88,7 @@ DeviceCodePool::DeviceCodePool(const std::vector<phi::Place>& places) {
   }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  CUDADeviceCode::CheckAvailableStatus();
+  GPUDeviceCode::CheckAvailableStatus();
 #endif
 }
 
@@ -115,8 +115,8 @@ static bool CheckCUDADriverResult(CUresult result,
   return true;
 }
 
-bool CUDADeviceCode::available_ = false;
-void CUDADeviceCode::CheckAvailableStatus() {
+bool GPUDeviceCode::available_ = false;
+void GPUDeviceCode::CheckAvailableStatus() {
   available_ = false;
   if (!dynload::HasNVRTC() || !dynload::HasCUDADriver()) {
     LOG_FIRST_N(WARNING, 1)
@@ -216,12 +216,12 @@ static std::string FindCUDAIncludePath() {
   return "";
 }
 
-CUDADeviceCode::CUDADeviceCode(const Place& place,
-                               const std::string& name,
-                               const std::string& kernel) {
+GPUDeviceCode::GPUDeviceCode(const Place& place,
+                             const std::string& name,
+                             const std::string& kernel) {
   if (place.GetType() != phi::AllocationType::GPU) {
     PADDLE_THROW(phi::errors::PermissionDenied(
-        "CUDADeviceCode can only launch on GPU place."));
+        "GPUDeviceCode can only launch on GPU place."));
   }
 
   place_ = place;
@@ -233,7 +233,7 @@ CUDADeviceCode::CUDADeviceCode(const Place& place,
 #endif
 }
 
-bool CUDADeviceCode::Compile(bool include_path) {
+bool GPUDeviceCode::Compile(bool include_path) {
   is_compiled_ = false;
   if (!dynload::HasNVRTC() || !dynload::HasCUDADriver()) {
     LOG_FIRST_N(WARNING, 1)
@@ -404,7 +404,7 @@ bool CUDADeviceCode::Compile(bool include_path) {
   return true;
 }
 
-void CUDADeviceCode::Launch(const size_t n, std::vector<void*>* args) const {
+void GPUDeviceCode::Launch(const size_t n, std::vector<void*>* args) const {
   PADDLE_ENFORCE_EQ(
       is_compiled_,
       true,
@@ -455,8 +455,8 @@ void CUDADeviceCode::Launch(const size_t n, std::vector<void*>* args) const {
 }
 
 #ifdef PADDLE_WITH_HIP
-bool CUDADeviceCode::CheckNVRTCResult(hiprtcResult result,
-                                      std::string function) {
+bool GPUDeviceCode::CheckNVRTCResult(hiprtcResult result,
+                                     std::string function) {
   if (result != HIPRTC_SUCCESS) {
     LOG_FIRST_N(WARNING, 1)
         << "Call " << function << " for < " << name_
@@ -464,8 +464,7 @@ bool CUDADeviceCode::CheckNVRTCResult(hiprtcResult result,
     return false;
   }
 #else
-bool CUDADeviceCode::CheckNVRTCResult(nvrtcResult result,
-                                      std::string function) {
+bool GPUDeviceCode::CheckNVRTCResult(nvrtcResult result, std::string function) {
   if (result != NVRTC_SUCCESS) {
     LOG_FIRST_N(WARNING, 1)
         << "Call " << function << " for < " << name_

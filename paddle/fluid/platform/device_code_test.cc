@@ -54,7 +54,7 @@ TEST(DeviceCode, cuda) {
 
   paddle::framework::InitDevices({0});
   paddle::platform::CUDAPlace place = paddle::platform::CUDAPlace(0);
-  phi::CUDADeviceCode code(place, "saxpy_kernel", saxpy_code);
+  phi::GPUDeviceCode code(place, "saxpy_kernel", saxpy_code);
 
   phi::DenseTensor cpu_x;
   phi::DenseTensor cpu_y;
@@ -114,7 +114,7 @@ TEST(DeviceCodePool, cuda) {
   EXPECT_EQ(num_device_codes_before, 0UL);
 
   std::unique_ptr<phi::DeviceCode> code(
-      new phi::CUDADeviceCode(place, "saxpy_kernel", saxpy_code));
+      new phi::GPUDeviceCode(place, "saxpy_kernel", saxpy_code));
   LOG(INFO) << "origin ptr: " << code.get();
   pool.Set(std::move(code));
   size_t num_device_codes_after = pool.size(place);

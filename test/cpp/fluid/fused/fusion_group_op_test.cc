@@ -96,7 +96,7 @@ void PrepareDeviceCode(platform::Place place,
   phi::DeviceCodePool& pool = phi::DeviceCodePool::Init({place});
 
   std::unique_ptr<phi::DeviceCode> code(
-      new phi::CUDADeviceCode(place, func_name, cuda_kernel_str));
+      new phi::GPUDeviceCode(place, func_name, cuda_kernel_str));
   code->Compile();
   pool.Set(std::move(code));
 }

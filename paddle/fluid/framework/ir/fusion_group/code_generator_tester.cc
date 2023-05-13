@@ -182,7 +182,7 @@ void TestMainImpl(std::string func_name,
                     std::type_index(typeid(paddle::platform::float16));
 
   paddle::platform::CUDAPlace place = paddle::platform::CUDAPlace(0);
-  phi::CUDADeviceCode device_code(place, func_name, code_str);
+  phi::GPUDeviceCode device_code(place, func_name, code_str);
 #ifdef PADDLE_WITH_HIP
   device_code.Compile(true);
 #else
