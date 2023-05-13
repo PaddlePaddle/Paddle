@@ -56,11 +56,6 @@ void FusedBatchNormActKernel(const Context &dev_ctx,
 #if defined(PADDLE_WITH_CUDA) and CUDNN_VERSION >= 7401
   using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
   using BatchNormParamType = typename CudnnDataType::BatchNormParamType;
-#if CUDNN_VERSION < 7401
-  PADDLE_THROW(phi::errors::Unimplemented(
-      "The fused_batch_norm_act operator is not supported on GPU "
-      "when CUDNN version < 7.4.1"));
-#endif
   bool is_gpu_place = dev_ctx.GetPlace().GetType() == phi::AllocationType::GPU;
   PADDLE_ENFORCE_EQ(is_gpu_place,
                     true,
@@ -216,6 +211,10 @@ void FusedBatchNormActKernel(const Context &dev_ctx,
       phi::dynload::cudnnDestroyTensorDescriptor(data_desc_));
   PADDLE_ENFORCE_GPU_SUCCESS(
       phi::dynload::cudnnDestroyTensorDescriptor(bn_param_desc_));
+#else
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "The fused_batch_norm_act operator is not supported on GPU "
+      "when CUDNN version < 7.4.1"));
 #endif
 }
 
