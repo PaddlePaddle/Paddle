@@ -21,27 +21,27 @@ set(CUB_PATH
     "${THIRD_PARTY_PATH}/cub"
     CACHE STRING "A path setting for external_cub path.")
 set(CUB_PREFIX_DIR ${CUB_PATH})
-set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/cub)
+
 set(CUB_REPOSITORY ${GIT_URL}/NVlabs/cub.git)
 
 if(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 11.6)
   # cuda_11.6/11.7/11.8‘s own cub is 1.15.0, which will cause compiling error in windows.
   set(CUB_TAG 1.16.0)
   # cub 1.16.0 is not compitable with current thrust version
-  execute_process(COMMAND cd ${SOURCE_DIR} && git checkout 1.16.0)
   add_definitions(-DTHRUST_IGNORE_CUB_VERSION_CHECK)
 else()
   set(CUB_TAG 1.8.0)
 endif()
-set(CUB_PATCH_COMMAND cd ${SOURCE_DIR} && git checkout ${CUB_TAG})
+
 set(CUB_INCLUDE_DIR ${CUB_PREFIX_DIR}/src/extern_cub)
 message("CUB_INCLUDE_DIR is ${CUB_INCLUDE_DIR}")
-include_directories(${SOURCE_DIR})
+include_directories(${CUB_INCLUDE_DIR})
 
 ExternalProject_Add(
   extern_cub
-  ${EXTERNAL_PROJECT_LOG_ARGS}
-  SOURCE_DIR ${SOURCE_DIR}
+  ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}
+  GIT_REPOSITORY ${CUB_REPOSITORY}
+  GIT_TAG ${CUB_TAG}
   PREFIX ${CUB_PREFIX_DIR}
   UPDATE_COMMAND ""
   CONFIGURE_COMMAND ""
