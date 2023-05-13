@@ -759,13 +759,16 @@ struct SimpleOpTypeSetTeller : public Teller {
       auto* block = desc.Block();
       auto* input_var_desc = block->FindVar(input_var_name);
       const auto input_shape = input_var_desc->GetShape();
-      if (input_shape.size() < 2) {
+
+      const int input_size = input_shape.size();
+      if (input_size < 2) {
         VLOG(3) << "The input tensor to the layer. Must have rank >= 2.";
         return false;
       }
 
-      const auto axis = PADDLE_GET_CONST(int, desc.GetAttr("axis"));
-      if ((axis + 1) > input_shape.size()) {
+      const int axis =
+          PADDLE_GET_CONST(std::vector<int>, desc.GetAttr("axis"))[0];
+      if ((axis + 1) > input_size) {
         VLOG(3) << "axis must less than input dims size";
         return false;
       }
