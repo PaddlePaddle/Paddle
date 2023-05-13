@@ -20,7 +20,7 @@ if(NOT CINN_GIT_TAG)
   set(CINN_GIT_TAG develop)
 endif()
 
-message(STATUS "CINN version: " ${CINN_GIT_TAG})
+message(STATUS "CINN  version: " ${CINN_GIT_TAG})
 
 # TODO(zhhsplendid): CINN has lots of warnings during early development.
 # They will be treated as errors under paddle. We set no-error now and we will
@@ -31,7 +31,6 @@ add_definitions(-w)
 # Build CINN from Git External Project
 ######################################
 include(ExternalProject)
-set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/CINN)
 set(CINN_PREFIX_DIR ${THIRD_PARTY_PATH}/CINN)
 set(CINN_OPTIONAL_ARGS
     -DPY_VERSION=${PY_VERSION}
@@ -53,8 +52,9 @@ set(CINN_LIB "${CINN_LIB_LOCATION}/${CINN_LIB_NAME}")
 ExternalProject_Add(
   external_cinn
   ${EXTERNAL_PROJECT_LOG_ARGS}
+  GIT_REPOSITORY "${GIT_URL}/PaddlePaddle/CINN.git"
+  GIT_TAG ${CINN_GIT_TAG}
   PREFIX ${CINN_PREFIX_DIR}
-  SOURCE_DIR ${SOURCE_DIR}
   BUILD_COMMAND ${CINN_BUILD_COMMAND}
   INSTALL_COMMAND ""
   CMAKE_ARGS ${CINN_OPTIONAL_ARGS}

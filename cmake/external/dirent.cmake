@@ -19,7 +19,7 @@ include(ExternalProject)
 
 set(DIRENT_PREFIX_DIR ${THIRD_PARTY_PATH}/dirent)
 set(DIRENT_INCLUDE_DIR ${THIRD_PARTY_PATH}/dirent/src/extern_dirent/include)
-set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/dirent)
+
 include_directories(${DIRENT_INCLUDE_DIR})
 
 set(DIRENT_REPOSITORY ${GIT_URL}/tronkko/dirent)
@@ -27,8 +27,9 @@ set(DIRENT_TAG 1.23.2)
 
 ExternalProject_Add(
   extern_dirent
-  ${EXTERNAL_PROJECT_LOG_ARGS}
-  SOURCE_DIR ${SOURCE_DIR}
+  ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}
+  GIT_REPOSITORY ${DIRENT_REPOSITORY}
+  GIT_TAG ${DIRENT_TAG}
   PREFIX ${DIRENT_PREFIX_DIR}
   UPDATE_COMMAND ""
   CONFIGURE_COMMAND ""
