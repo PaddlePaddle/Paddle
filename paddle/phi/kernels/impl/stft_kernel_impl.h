@@ -37,7 +37,7 @@ void StftKernel(const Context& ctx,
                 DenseTensor* out) {
   using C = phi::dtype::complex<T>;
 
-  out->mutable_data<C>(ctx.GetPlace());
+  ctx.template Alloc<C>(out);
 
   const size_t x_rank = x.dims().size();
   const size_t out_rank = out->dims().size();
@@ -51,7 +51,8 @@ void StftKernel(const Context& ctx,
   phi::DenseTensor frames;
   phi::DDim frames_dims(out->dims());
   frames_dims.at(axes.back()) = n_fft;
-  frames.mutable_data<T>(frames_dims, ctx.GetPlace());
+  frames.Resize(frames_dims);
+  ctx.template Alloc<T>(frames_dims);
   phi::funcs::FrameFunctor<Context, T>()(ctx,
                                          &x,
                                          &frames,
@@ -63,8 +64,9 @@ void StftKernel(const Context& ctx,
 
   // Window
   phi::DenseTensor frames_w;
-  frames_w.mutable_data<T>(frames_dims, ctx.GetPlace());
-  frames_w.mutable_data<T>(ctx.GetPlace());
+  frames_w.Resize(frames_dims);
+  ctx.template Alloc<T>(frames_dims);
+  ctx.template Alloc<T>(frames_w);
   phi::funcs::ElementwiseCompute<phi::funcs::MultiplyFunctor<T>, T, T>(
       ctx,
       frames,
