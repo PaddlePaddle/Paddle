@@ -154,11 +154,11 @@ void MemcpyKernel(const Context& dev_ctx,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     case 1: /* CUDAPlace */
       dev_ctx.Alloc(out, x.dtype());
-      Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+      Copy(dev_ctx, x, dev_ctx.GetPlace(), true, out);
       break;
     case 2: /* CUDAPinnedPlace */
       dev_ctx.Alloc(out, x.dtype(), 0, true);
-      Copy(dev_ctx, x, GPUPinnedPlace(), false, out);
+      Copy(dev_ctx, x, GPUPinnedPlace(), true, out);
       break;
 #endif
     default:
