@@ -276,10 +276,6 @@ std::string GetExternalErrorMsg(T status) {
     if (dladdr(reinterpret_cast<void*>(GetCurrentTraceBackString), &info)) {
       std::string strModule(info.dli_fname);
       const size_t last_slash_idx = strModule.find_last_of("/");
-      printf("Symbol name: %s\n", info.dli_sname);
-      printf("Symbol address: %p\n", info.dli_saddr);
-      printf("Shared object name: %s\n", info.dli_fname);
-      printf("Shared object base address: %p\n", info.dli_fbase);
       std::string compare_path = strModule.substr(strModule.length() - 6);
       if (std::string::npos != last_slash_idx) {
         strModule.erase(last_slash_idx, std::string::npos);
@@ -289,15 +285,14 @@ std::string GetExternalErrorMsg(T status) {
       //  'compare_path.find("dist-packages") != std::string::npos' means that
       //  after using 'pip install paddle'.
       if (compare_path.compare("avx.so") == 0 ||
-          compare_path.find("dist-packages") != std::string::npos) {
+          strModule.find("dist-packages") != std::string::npos) {
         filePath =
             strModule +
             "/../include/third_party/externalError/data/externalErrorMsg.pb";
       } else {
         // Just for unittest
-        filePath =
-            strModule +
-            "/../../paddle/third_party/externalError/data/externalErrorMsg.pb";
+        filePath = strModule +
+                   "/../third_party/externalError/data/externalErrorMsg.pb";
       }
     }
 #else
@@ -315,13 +310,13 @@ std::string GetExternalErrorMsg(T status) {
       strModule.erase(last_slash_idx, std::string::npos);
     }
     if (compare_path.compare("avx.pyd") == 0 ||
-        compare_path.find("dist-packages") != std::string::npos) {
+        strModule.find("dist-packages") != std::string::npos) {
       filePath = strModule +
                  "\\..\\include\\third_"
                  "party\\externalerror\\data\\externalErrorMsg.pb";
     } else {
       filePath = strModule +
-                 "\\..\\..\\paddle\\third_"
+                 "\\..\\paddle\\third_"
                  "party\\externalerror\\data\\externalErrorMsg.pb";
     }
 #endif
