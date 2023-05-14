@@ -87,11 +87,66 @@ class TestPolygammaAPI(unittest.TestCase):
             paddle.enable_static()
 
 
-class TestPolygammaFloat32Zero2EightCase(TestPolygammaAPI):
+class TestPolygammaFloat32Order0(TestPolygammaAPI):
     DTYPE = "float32"
-    DATA = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+    DATA = [2, 3, 5, 2.25, 7, 7.25]
+    ORDER = 0
 
 
+class TestPolygammaFloat32Order1(TestPolygammaAPI):
+    DTYPE = "float32"
+    DATA = [2, 3, 5, 2.25, 7, 7.25]
+    ORDER = 1
+
+
+class TestPolygammaFloat32Order2(TestPolygammaAPI):
+    DTYPE = "float32"
+    DATA = [2, 3, 5, 2.25, 7, 7.25]
+    ORDER = 0
+
+
+class TestPolygammaFloat32Order3(TestPolygammaAPI):
+    DTYPE = "float32"
+    DATA = [2, 3, 5, 2.25, 7, 7.25]
+    ORDER = 3
+
+
+class TestPolygammaFloat64Order0(TestPolygammaAPI):
+    DTYPE = "float64"
+    DATA = [2, 3, 5, 2.25, 7, 7.25]
+    ORDER = 0
+
+
+class TestPolygammaFloat64Order1(TestPolygammaAPI):
+    DTYPE = "float64"
+    DATA = [2, 3, 5, 2.25, 7, 7.25]
+    ORDER = 1
+
+
+class TestPolygammaFloat64Order2(TestPolygammaAPI):
+    DTYPE = "float64"
+    DATA = [2, 3, 5, 2.25, 7, 7.25]
+    ORDER = 2
+
+
+class TestPolygammaFloat64Order3(TestPolygammaAPI):
+    DTYPE = "float64"
+    DATA = [2, 3, 5, 2.25, 7, 7.25]
+    ORDER = 3
+    
+
+class TestPolygammaNegativeOrder0(TestPolygammaAPI):
+    DTYPE = "float64"
+    DATA = [-2, 3, 5, 2.25, 7, 7.25]
+    ORDER = 0
+
+
+class TestPolygammaNegativeOrder1(TestPolygammaAPI):
+    DTYPE = "float64"
+    DATA = [-2, 3, 5, 2.25, 7, 7.25]
+    ORDER = 1
+    
+    
 class TestPolygammaOp(OpTest):
     def setUp(self) -> None:
         self.op_type = "polygamma"
