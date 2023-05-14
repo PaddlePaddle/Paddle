@@ -111,7 +111,7 @@ struct UniqueConsecutiveFlattenedTensorFunctor {
 
 template <typename Context, class ForwardIt, typename InT, typename IndexT>
 static ForwardIt UniqueConsecutiveDimImpl(
-    const Context& context,
+    const Context& context UNUSED,
     ForwardIt first,
     ForwardIt last,
     const std::vector<IndexT>& sorted_indices_vec,

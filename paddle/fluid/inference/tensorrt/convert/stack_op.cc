@@ -65,12 +65,11 @@ class StackOpConverter : public OpConverter {
     auto* after_shape_tensor = Concat(shape_tensor_vec);
 
     for (int i = 0; i < input_num; ++i) {
-      auto* reshape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *inputs[i]);
-      reshape_layer->setInput(1, *after_shape_tensor);
-      inputs[i] = reshape_layer->getOutput(0);
-      reshape_layer->setName(("stack: reshape: (Output( " + std::to_string(i) +
-                              " )" + output_name + ")")
-                                 .c_str());
+      inputs[i] = Reshape(inputs[i],
+                          after_shape_tensor,
+                          ("stack: reshape: (Output( " + std::to_string(i) +
+                           " )" + output_name + ")")
+                              .c_str());
     }
 
     auto* layer = TRT_ENGINE_ADD_LAYER(

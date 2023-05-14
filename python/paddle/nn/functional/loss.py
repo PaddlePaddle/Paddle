@@ -16,7 +16,7 @@ import math
 
 # TODO: define loss functions of neural network
 import paddle
-from paddle import _C_ops, _legacy_C_ops, fluid, in_dynamic_mode
+from paddle import _C_ops, fluid, in_dynamic_mode
 from paddle.framework import core
 from paddle.static.nn.control_flow import Assert
 from paddle.utils import deprecated
@@ -269,51 +269,15 @@ def fluid_softmax_with_cross_entropy(
     if input_dims - 1 == label_dims:
         label = paddle.unsqueeze(label, axis=axis)
     if in_dygraph_mode():
-        if core.is_compiled_with_custom_device("npu"):
-            if not soft_label:
-                valid_label = (
-                    paddle.cast(label != ignore_index, dtype=label.dtype)
-                    * label
-                )
-                softmax, loss = _legacy_C_ops.softmax_with_cross_entropy(
-                    logits,
-                    valid_label,
-                    'soft_label',
-                    soft_label,
-                    'ignore_index',
-                    ignore_index,
-                    'numeric_stable_mode',
-                    numeric_stable_mode,
-                    'axis',
-                    axis,
-                    'use_softmax',
-                    True,
-                )
-            else:
-                softmax, loss = _legacy_C_ops.softmax_with_cross_entropy(
-                    logits,
-                    label,
-                    'soft_label',
-                    soft_label,
-                    'ignore_index',
-                    ignore_index,
-                    'numeric_stable_mode',
-                    numeric_stable_mode,
-                    'axis',
-                    axis,
-                    'use_softmax',
-                    True,
-                )
-        else:
-            softmax, loss = _C_ops.cross_entropy_with_softmax(
-                logits,
-                label,
-                soft_label,
-                True,
-                numeric_stable_mode,
-                ignore_index,
-                axis,
-            )
+        softmax, loss = _C_ops.cross_entropy_with_softmax(
+            logits,
+            label,
+            soft_label,
+            True,
+            numeric_stable_mode,
+            ignore_index,
+            axis,
+        )
         if not return_softmax:
             return loss
         else:
@@ -1547,7 +1511,7 @@ def poisson_nll_loss(
 
             input = paddle.randn([5, 2], dtype=paddle.float32)
             label = paddle.randn([5, 2], dtype=paddle.float32)
-            loss = F.poisson_nll_loss(input, label, log_input=True, reduction='None')
+            loss = F.poisson_nll_loss(input, label, log_input=True, reduction='none')
             print(loss)
             loss = F.poisson_nll_loss(input, label, reduction='mean')
             print(loss)
@@ -2740,41 +2704,9 @@ def cross_entropy(
             valid_label = (
                 paddle.cast(label != ignore_index, dtype=label.dtype) * label
             )
-        if core.is_compiled_with_custom_device("npu"):
-            if not soft_label:
-                _, out = _legacy_C_ops.softmax_with_cross_entropy(
-                    input,
-                    valid_label,
-                    'soft_label',
-                    soft_label,
-                    'ignore_index',
-                    ignore_index,
-                    'numeric_stable_mode',
-                    True,
-                    'axis',
-                    axis,
-                    'use_softmax',
-                    use_softmax,
-                )
-            else:
-                _, out = _legacy_C_ops.softmax_with_cross_entropy(
-                    input,
-                    label,
-                    'soft_label',
-                    soft_label,
-                    'ignore_index',
-                    ignore_index,
-                    'numeric_stable_mode',
-                    True,
-                    'axis',
-                    axis,
-                    'use_softmax',
-                    use_softmax,
-                )
-        else:
-            _, out = _C_ops.cross_entropy_with_softmax(
-                input, label, soft_label, use_softmax, True, ignore_index, axis
-            )
+        _, out = _C_ops.cross_entropy_with_softmax(
+            input, label, soft_label, use_softmax, True, ignore_index, axis
+        )
 
         if weight is not None:
 
