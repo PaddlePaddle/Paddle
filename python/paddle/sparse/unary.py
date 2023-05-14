@@ -836,3 +836,8 @@ def isnan(x, name=None):
             type=op_type, inputs={'x': x}, outputs={'out': out}, attrs={}
         )
         return out
+
+
+@dygraph_only
+def slice(x, axes, starts, ends, name=None):
+    return _C_ops.sparse_slice(x, axes, starts, ends)
