@@ -505,15 +505,12 @@ class PipelineLayer(nn.Layer):
                         group = paddle.distributed.new_group(ranks=shared_ranks)
                         if self.global_rank in shared_ranks:
                             assert key in self.shared_layers
-                            if key in self.shared_layers:
-                                shared_comm[key] = {
-                                    'ranks': shared_ranks,
-                                    'group': group,
-                                    'weight_attr': self.shared_weight_attrs[
-                                        key
-                                    ],
-                                    'layer': self.shared_layers[key],
-                                }
+                            shared_comm[key] = {
+                                'ranks': shared_ranks,
+                                'group': group,
+                                'weight_attr': self.shared_weight_attrs[key],
+                                'layer': self.shared_layers[key],
+                            }
         return shared_comm
 
     def _synchronize_shared_weights(self):
