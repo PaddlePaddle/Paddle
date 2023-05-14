@@ -107,6 +107,18 @@ class TestTakeAlongAxisAPI(unittest.TestCase):
         np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
         paddle.enable_static()
 
+    def test_api_dygraph_dtype(self):
+        paddle.disable_static(self.place[0])
+        with self.assertRaises(AssertionError):
+            x_tensor = paddle.to_tensor(self.x_np)
+            self.index = paddle.to_tensor(self.index_np).astype("float32")
+            out = paddle.take_along_axis(x_tensor, self.index, self.axis)
+            out_ref = np.array(
+                np.take_along_axis(self.x_np, self.index_np, self.axis)
+            )
+            np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
+        paddle.enable_static()
+
 
 class TestTakeAlongAxisAPICase1(TestTakeAlongAxisAPI):
     def setUp(self):
