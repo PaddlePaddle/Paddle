@@ -502,21 +502,27 @@ class TestArgsortWithInputNaN(unittest.TestCase):
         paddle.enable_static()
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestArgsortFP16OP(OpTest):
     def setUp(self):
-        self.op_type = 'argsort'
+        self.op_type = "argsort"
         self.dtype = np.float16
-        x_np = np.random.random((2, 8)).astype(self.dtype)
-        x = paddle.static.data(shape=[2, 8], name='x', dtype=self.dtype)
-        out = np.argsort(x)
+        x_np = np.random.random((10, 10)).astype(self.dtype)
+        x = paddle.static.data(shape=[10, 10], name='x', dtype=self.dtype)
+        out = np.argsort(x).astype(self.dtype)
         self.inputs = {'X': x_np}
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output()
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
 
     def test_check_grad(self):
-        self.check_grad(
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place,
             ['X'],
             'Out',
         )
