@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import unittest
+import sys
+sys.path.append("../legacy_test")
 
 import paddle
 from paddle import fluid
