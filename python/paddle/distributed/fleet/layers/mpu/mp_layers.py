@@ -141,7 +141,7 @@ class VocabParallelEmbedding(paddle.nn.Layer):
                 is_bias=False,
             )
 
-        self.weight.is_distributed = True if self.is_mp else False
+        self.weight.is_distributed = self.is_mp
         if self.weight.is_distributed:
             self.weight.split_axis = 0
 
