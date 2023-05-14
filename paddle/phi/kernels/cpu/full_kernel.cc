@@ -44,7 +44,7 @@ void FullLikeKernel(const Context& dev_ctx,
                     const Scalar& val,
                     DataType dtype UNUSED,
                     DenseTensor* out) {
-  auto value = val.to<double>();
+  auto value = val.to<T>();
   using CommonType = typename std::common_type<
       float,
       typename std::conditional<std::is_same<T, phi::dtype::float16>::value,
@@ -56,6 +56,11 @@ void FullLikeKernel(const Context& dev_ctx,
   // Check whether the filled value is valid
   bool is_out_range = true;
   if (std::isinf(value) || std::isnan(value)) {
+    is_out_range = false;
+  }
+
+  if (std::is_same<T, phi::complex64>::value ||
+      std::is_same<T, phi::complex128>::value) {
     is_out_range = false;
   }
 

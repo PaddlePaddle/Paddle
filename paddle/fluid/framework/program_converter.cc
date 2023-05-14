@@ -117,6 +117,12 @@ void ConvertSetValueOp(OpDesc* op) {
   }
 }
 
+void ConvertFillAnyLikeOp(OpDesc* op) {
+  paddle::experimental::Scalar value = PADDLE_GET_CONST(
+      paddle::experimental::Scalar, op->GetAttr("value", false));
+  op->SetAttr("value", value.to<float>());
+}
+
 void ConvertProgram(ProgramDesc* program) {
   PADDLE_ENFORCE_NOT_NULL(
       program,
@@ -143,6 +149,8 @@ void ConvertProgram(ProgramDesc* program) {
       const std::string op_type = op->Type();
       if (op_type == "set_value" || op_type == "set_value_grad") {
         ConvertSetValueOp(op);
+      } else if (op_type == "fill_any_like") {
+        ConvertFillAnyLikeOp(op);
       }
     }
   }
@@ -204,6 +212,13 @@ void ConvertSetValueOp(OpDesc* op) {
   op->SetAttr("values", values);
 }
 
+void ConvertFillAnyLikeOp(OpDesc* op) {
+  float fp_value = PADDLE_GET_CONST(float, op->GetAttr("value", false));
+  paddle::experimental::Scalar value = paddle::experimental::Scalar(fp_value);
+
+  op->SetAttr("value", value);
+}
+
 void ConvertProgram(ProgramDesc* program) {
   PADDLE_ENFORCE_NOT_NULL(
       program,
@@ -238,6 +253,8 @@ void ConvertProgram(ProgramDesc* program) {
 
       if (op_type == "set_value" || op_type == "set_value_grad") {
         ConvertSetValueOp(op);
+      } else if (op_type == "fill_any_like") {
+        ConvertFillAnyLikeOp(op);
       }
     }
   }

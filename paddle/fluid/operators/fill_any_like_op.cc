@@ -15,6 +15,7 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/op_version_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -57,7 +58,8 @@ class FillAnyLikeOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "The input of fill-zeros-like op.");
     AddOutput("Out", "The variable will be filled up with specified value.");
-    AddAttr<float>("value", "The filled value").SetDefault(0.0);
+    AddAttr<paddle::experimental::Scalar>("value", "The filled value")
+        .SetDefault({});
     AddAttr<int>("dtype",
                  "Output tensor data type. default value is -1,"
                  "according to the input dtype.")
@@ -96,3 +98,11 @@ REGISTER_OPERATOR(
     ::paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     ::paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::FillAnyLikeVarTypeInference)
+
+REGISTER_OP_VERSION(fill_any_like)
+    .AddCheckpoint(
+        R"ROC(
+Upgrade fill_any_like, change the type of attribute value to Scalar to support
+generic type.)ROC",
+        paddle::framework::compatible::OpVersionDesc().ModifyAttr(
+            "value", "generic value", 0.0));

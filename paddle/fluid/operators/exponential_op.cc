@@ -55,7 +55,7 @@ class ExponentialGradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> retv) const override {
     retv->SetType("fill_any_like");
     retv->SetInput("X", this->OutputGrad("Out"));
-    retv->SetAttr("value", 0.0f);
+    retv->SetAttr("value", paddle::experimental::Scalar(0.0));
     retv->SetOutput("Out", this->InputGrad("X"));
   }
 };

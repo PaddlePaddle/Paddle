@@ -564,7 +564,8 @@ Node *assign_value_handler(Graph *graph, Node *node) {
 
 Node *fill_any_like_handler(Graph *graph, Node *node) {
   auto *op = node->Op();
-  auto value = PADDLE_GET_CONST(float, op->GetAttr("value"));
+  auto value =
+      PADDLE_GET_CONST(paddle::experimental::Scalar, op->GetAttr("value"));
   auto x_shape = GetInputVarNode("X", node)->Var()->GetShape();
   auto dtype_ = PADDLE_GET_CONST(int, op->GetAttr("dtype"));
   auto dtype = static_cast<VarType::Type>(dtype_);
