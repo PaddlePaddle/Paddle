@@ -17,7 +17,7 @@ import sys
 import numpy as np
 
 sys.path.append('..')
-sys.path.append('../../python/paddle/fluid/tests/unittests')
+sys.path.append('../legacy_test')
 
 from eager_op_test import OpTest
 from get_test_cover_info import (

@@ -14,8 +14,12 @@
 
 import unittest
 
+import sys
+
 import paddle
-from paddle.fluid.tests.unittests.c_embedding_op_base import (
+
+sys.path.append("../legacy_test")
+from c_embedding_op_base import (
     TestCEmbeddingCPU,
     TestCEmbeddingOpBase,
     TestCEmbeddingOpFP32,

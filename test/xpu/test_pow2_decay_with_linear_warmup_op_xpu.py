@@ -15,7 +15,7 @@
 import sys
 import unittest
 
-sys.path.append('../../python/paddle/fluid/tests/unittests')
+sys.path.append('../legacy_test')
 
 from get_test_cover_info import record_op_test
 

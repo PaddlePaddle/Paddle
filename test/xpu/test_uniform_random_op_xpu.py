@@ -15,7 +15,7 @@
 import sys
 import unittest
 
-sys.path.append('../../python/paddle/fluid/tests/unittests')
+sys.path.append('../legacy_test')
 
 import numpy as np
 from test_uniform_random_op import (

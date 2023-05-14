@@ -25,7 +25,11 @@ from op_test_xpu import XPUOpTest
 import paddle
 from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.tests.unittests.op import Operator
+
+import sys
+
+sys.path.append("../legacy_test")
+from op import Operator
 
 paddle.enable_static()
 

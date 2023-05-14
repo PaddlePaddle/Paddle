@@ -14,7 +14,7 @@
 import sys
 import unittest
 
-sys.path.append('../../python/paddle/fluid/tests/unittests')
+sys.path.append('../legacy_test')
 
 import numpy as np
 from eager_op_test import skip_check_grad_ci
