@@ -18,7 +18,6 @@ import itertools
 
 import paddle.distributed as dist
 from paddle.distributed.fleet.base.strategy_group import StrategyGroupBase
-from paddle.distributed.fleet.layers.mpu import RNGStatesTracker
 
 
 class OrthogonalStrategy:
@@ -207,32 +206,3 @@ class OrthogonalStrategy:
             rank_list.append(ranks)
 
         return rank_list
-
-
-Tensor_PARALLEL_RNG = "model_parallel_rng"
-
-
-class HybridParallelManager:
-    def __init__(
-        self,
-        list_of_strategy,
-        fused_strategy_dict={},
-        strategy_rank_list=None,
-        seed=0,
-    ):
-        # init strategy
-        self._strategy = OrthogonalStrategy(
-            list_of_strategy, fused_strategy_dict, strategy_rank_list
-        )
-        # init random states tracker
-        self.random_states_tracker = RNGStatesTracker()
-        self.add_random_seed(Tensor_PARALLEL_RNG, seed)
-
-    def strategy_group(self, name):
-        return self._strategy.strategy_group(name)
-
-    def add_random_seed(self, name, seed):
-        self.random_states_tracker.add(name, seed)
-
-    def get_rng_state_tracker(self):
-        return self.random_states_tracker
