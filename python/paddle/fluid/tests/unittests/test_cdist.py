@@ -43,6 +43,7 @@ class TestDistAPI(unittest.TestCase):
         )
 
     def test_api(self):
+        paddle.enable_static()
         for p in [2, 0, float('inf'), float('-inf')]:
             self.init_data_type()
             main_program = fluid.Program()
@@ -71,17 +72,15 @@ class TestDistAPI(unittest.TestCase):
                 np.testing.assert_allclose(
                     cdist(x_i, y_i, p), out[0], rtol=1e-05
                 )
+        paddle.disable_static()
 
     def test_grad_x(self):
-        paddle.disable_static()
         a = paddle.rand([2, 2, 3, 2])
-        b = paddle.rand([1, 1, 3, 1])
+        b = paddle.rand([2, 2, 4, 2])
         a.stop_gradient = False
         c = paddle.dist(a, b, 2)
         c.backward()
-        paddle.enable_static()
 
 
 if __name__ == '__main__':
-    paddle.enable_static()
     unittest.main()
