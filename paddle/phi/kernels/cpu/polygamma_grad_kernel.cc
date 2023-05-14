@@ -24,10 +24,10 @@ template <typename T, typename Context>
 void PolygammaGradKernel(const Context& ctx,
                        const DenseTensor& x,
                        const DenseTensor& out_grad,
+                       const int n,
                        DenseTensor* x_grad) {
   ctx.template Alloc<T>(x_grad);
-  phi::funcs::SetConstant<Context, T> functor;
-  functor(ctx, x_grad, static_cast<T>(0));
+
 }
 
 } // namespace phi
