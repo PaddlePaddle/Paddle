@@ -141,7 +141,7 @@ class VocabParallelEmbedding(paddle.nn.Layer):
                 is_bias=False,
             )
 
-        self.weight.is_distributed = True if self.is_mp else False
+        self.weight.is_distributed = self.is_mp
         if self.weight.is_distributed:
             self.weight.split_axis = 0
 
@@ -274,7 +274,7 @@ class ColumnParallelLinear(paddle.nn.Layer):
                 is_bias=False,
             )
 
-        self.weight.is_distributed = True if self.is_mp else False
+        self.weight.is_distributed = self.is_mp
 
         if self.weight.is_distributed:
             self.weight.split_axis = 1
@@ -287,7 +287,7 @@ class ColumnParallelLinear(paddle.nn.Layer):
                 dtype=self._dtype,
                 is_bias=True,
             )
-            self.bias.is_distributed = True if self.is_mp else False
+            self.bias.is_distributed = self.is_mp
             if self.bias.is_distributed:
                 self.bias.split_axis = 0
         else:
@@ -452,7 +452,7 @@ class RowParallelLinear(paddle.nn.Layer):
                 is_bias=False,
             )
 
-        self.weight.is_distributed = True if self.is_mp else False
+        self.weight.is_distributed = self.is_mp
         if self.weight.is_distributed:
             self.weight.split_axis = 0
 
