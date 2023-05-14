@@ -6,7 +6,7 @@ cc_library(
 cc_library(
   phi_c_device_context
   SRCS c_device_context.cc
-  DEPS phi_backends)
+  DEPS phi_backends auto_parallel_proto)
 
 cc_library(
   phi_c_int_array
