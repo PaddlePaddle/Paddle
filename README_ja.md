@@ -14,8 +14,8 @@
 
 PaddlePaddle GitHub へようこそ。
 
-PaddlePaddle は、中国初の独立系 R&D ディープラーニングプラットフォームとして、2016年からプロのコミュニティに正式にオープンソース化されました。コアとなる深層学習フレームワーク、基本モデルライブラリ、エンドツーエンドの開発キット、ツール＆コンポーネント、さらにサービスプラットフォームを網羅する、高度な技術と豊富な機能を備えた産業プラットフォームです。
-PaddlePaddle は、工業化に対する献身的なコミットメントを持つ工業的実践から生まれたものです。製造業、農業、企業サービスなど幅広い分野で採用され、535万人以上の開発者、20万以上の企業、67万以上のモデルを生み出しています。このような優位性により、PaddlePaddle は、ますます多くのパートナーの AI 商用化を支援しています。
+PaddlePaddle は中国初の独立系 R&D ディープラーニングプラットフォームとして、2016年からプロのコミュニティに正式にオープンソース化されました。コアとなる深層学習フレームワーク、基本モデルライブラリ、エンドツーエンドの開発キット、ツール＆コンポーネント、さらにサービスプラットフォームを網羅する、高度な技術と豊富な機能を備えた産業プラットフォームです。
+PaddlePaddle は、工業化に対するコミットメントを持つ工業的実践から生まれたものです。製造業、農業、企業サービスなど幅広い分野で採用され、535万人以上の開発者、20万以上の企業、67万以上のモデルを生み出しています。それにより PaddlePaddle は、ますます多くのパートナーの AI 商用化を支援しています。
 
 
 ## インストール
@@ -51,7 +51,7 @@ pip install paddlepaddle-gpu
 
 - **総合的な展開環境に対応した高性能推論エンジン**
 
-   PaddlePaddle は、サードパーティのオープンソースフレームワークで学習されたモデルとの互換性があるだけでなく、様々な生産シナリオに対応した完全な推論製品を提供しています。当社の推論製品ラインには、[Paddle Inference](https://paddle-inference.readthedocs.io/en/master/guides/introduction/index_intro.html) があります： [Paddle Serving](https://github.com/PaddlePaddle/Serving): 高性能なサーバーおよびクラウド推論用のネイティブ推論ライブラリ： [Paddle Serving](https://github.com/PaddlePaddle/Paddle-Lite): 分散型やパイプライン型プロダクションに適したサービス指向フレームワーク; [Paddle Lite](https://github.com/PaddlePaddle/Paddle-Lite)： モバイルや IoT 環境向けの超軽量推論エンジン; [Paddle.js](https://www.paddlepaddle.org.cn/paddle/paddlejs)： ブラウザやミニアプリのためのフロントエンド推論エンジンです。さらに、各シナリオの主要なハードウェアに最適化することで、Paddle の推論エンジンは他の主流フレームワークのほとんどを凌駕しています。
+   PaddlePaddle は、サードパーティのオープンソースフレームワークで学習されたモデルとの互換性があるだけでなく、様々な生産シナリオに対応した完全な推論エンジン、システム、スイートを提供しています。当社の推論エンジン、システム、スイートには、[Paddle Inference](https://paddle-inference.readthedocs.io/en/master/guides/introduction/index_intro.html) があります： [Paddle Serving](https://github.com/PaddlePaddle/Serving): 高性能なサーバーおよびクラウド推論用のネイティブ推論ライブラリ： [Paddle Serving](https://github.com/PaddlePaddle/Paddle-Lite): 分散型やパイプライン型プロダクションに適したサービス指向フレームワーク; [Paddle Lite](https://github.com/PaddlePaddle/Paddle-Lite)： モバイルや IoT 環境向けの超軽量推論エンジン; [Paddle.js](https://www.paddlepaddle.org.cn/paddle/paddlejs)： ブラウザやミニアプリのためのフロントエンド推論エンジンです。さらに、各シナリオの主要なハードウェアに最適化することで、Paddle の推論エンジンは他の主流フレームワークのほとんどを凌駕しています。
 
 
 - **オープンソースリポジトリによる業界指向のモデルやライブラリ**
@@ -71,7 +71,7 @@ pip install paddlepaddle-gpu
 
 - [プラクティス](https://www.paddlepaddle.org.cn/documentation/docs/zh/tutorial/index_cn.html)
 
-  これまで、皆さんはすでに Fluid に親しんできました。そして次のステップは、より効率的なモデルを構築したり、オリジナルの Operator を発明することです。
+  Paddle を使ってモデルを構築し、ディープラーニングタスクをより効率的に実行しましょう。
 
 - [API リファレンス](https://www.paddlepaddle.org.cn/documentation/docs/en/api/index_en.html)
 
