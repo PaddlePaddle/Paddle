@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import random
+import tempfile
 import unittest
 from functools import partial
 
@@ -209,6 +211,70 @@ class TestAdamW2(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(core.CUDAPlace(0))
+
+
+class TestAdamWOpSaveLoad(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
+        self.temp_dir = tempfile.TemporaryDirectory()
+        value = np.arange(26).reshape(2, 13).astype("float32")
+
+        a = paddle.to_tensor(value)
+        linear = paddle.nn.Linear(13, 5)
+        adam = paddle.optimizer.AdamW(
+            learning_rate=0.01,
+            parameters=linear.parameters(),
+            apply_decay_param_fun=lambda name: True,
+            multi_precision=True,
+        )
+        linear, adam = paddle.amp.decorate(
+            models=linear, optimizers=adam, level='O2'
+        )
+        with paddle.amp.auto_cast(level='O2'):
+            out = linear(a)
+        out.backward()
+        adam.step()
+        adam.clear_gradients()
+
+        opt_state_dict = adam.state_dict()
+
+        delete_key = []
+        for k, v in opt_state_dict.items():
+            if "moment" in k:
+                delete_key.append(k)
+        for k in delete_key:
+            del opt_state_dict[k]
+
+        paddle.save(
+            opt_state_dict,
+            os.path.join(self.temp_dir.name, "opt.pdopt"),
+        )
+
+    def test_adamw_save_load_dygraph(self):
+        value = np.arange(26).reshape(2, 13).astype("float32")
+        a = paddle.to_tensor(value)
+        linear = paddle.nn.Linear(13, 5)
+        adam = paddle.optimizer.AdamW(
+            learning_rate=0.01,
+            parameters=linear.parameters(),
+            apply_decay_param_fun=lambda name: True,
+            multi_precision=True,
+        )
+        opt_state_dict = paddle.load(
+            os.path.join(self.temp_dir.name, "opt.pdopt")
+        )
+        self.temp_dir.cleanup()
+        adam.set_state_dict(opt_state_dict)
+
+        linear, adam = paddle.amp.decorate(
+            models=linear, optimizers=adam, level='O2'
+        )
+        with paddle.amp.auto_cast(level='O2'):
+            out = linear(a)
+        out.backward()
+        adam.step()
+        adam.clear_gradients()
 
 
 class TestAdamWOp(unittest.TestCase):
