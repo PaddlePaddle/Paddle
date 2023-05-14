@@ -33,13 +33,13 @@ KernelSignature BatchNormActGradFuseOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("fused_batch_norm_act_grad",
                          {"X",
-                          "Y",
-                          "Y@GRAD",
                           "Scale",
                           "Bias",
                           "SavedMean",
                           "SavedVariance",
-                          "ReserveSpace"},
+                          "ReserveSpace",
+                          "Y",
+                          "Y@GRAD"},
                          {"momentum", "epsilon", "act_type"},
                          {"X@GRAD", "Scale@GRAD", "Bias@GRAD"});
 }
