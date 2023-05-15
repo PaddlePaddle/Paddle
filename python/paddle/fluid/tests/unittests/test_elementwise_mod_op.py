@@ -162,7 +162,9 @@ class TestElementwiseModBF16Op(OpTest):
 
     def init_input_output(self):
         self.x = np.random.uniform(0, 10000, [10, 10]).astype(np.float32)
+        self.x = convert_uint16_to_float(convert_float_to_uint16(self.x))
         self.y = np.random.uniform(0, 1000, [10, 10]).astype(np.float32)
+        self.y = convert_uint16_to_float(convert_float_to_uint16(self.y))
         self.out = np.fmod(self.y + np.fmod(self.x, self.y), self.y)
 
     def setUp(self):
@@ -175,17 +177,15 @@ class TestElementwiseModBF16Op(OpTest):
         self.init_kernel_type()
         self.init_axis()
         self.inputs = {
-            'X': convert_uint16_to_float(
-                convert_float_to_uint16(OpTest.np_dtype_to_fluid_dtype(self.x))
+            'X': convert_float_to_uint16(
+                OpTest.np_dtype_to_fluid_dtype(self.x)
             ),
-            'Y': convert_uint16_to_float(
-                convert_float_to_uint16(OpTest.np_dtype_to_fluid_dtype(self.y))
+            'Y': convert_float_to_uint16(
+                OpTest.np_dtype_to_fluid_dtype(self.y)
             ),
         }
         self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
-        self.outputs = {
-            'Out': convert_uint16_to_float(convert_float_to_uint16(self.out))
-        }
+        self.outputs = {'Out': convert_float_to_uint16(self.out)}
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
@@ -201,7 +201,9 @@ class TestElementwiseModBF16Op(OpTest):
 class TestElementwiseModBF16Op_ZeroDim1(TestElementwiseModBF16Op):
     def init_input(self):
         self.x = np.random.uniform(0, 10000, []).astype("float32")
+        self.x = convert_uint16_to_float(convert_float_to_uint16(self.x))
         self.y = np.random.uniform(0, 1000, []).astype("float32")
+        self.y = convert_uint16_to_float(convert_float_to_uint16(self.y))
         self.out = np.fmod(self.y + np.fmod(self.x, self.y), self.y)
 
 
