@@ -684,7 +684,7 @@
     seed : seed
     fix_seed : fix_seed
   extra :
-    attrs : [bool fix_seed = false, int seed = 0]
+    attrs : [bool fix_seed = false]
 
 - op : dropout_nd
   backward : dropout_nd_grad

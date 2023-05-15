@@ -312,7 +312,7 @@
   backward : divide_double_grad
 
 - backward_op : dropout_grad
-  forward : dropout (Tensor x, Tensor seed_tensor, Scalar p, bool is_test, str mode, int seed, bool fix_seed) -> Tensor(out), Tensor(mask)
+  forward : dropout (Tensor x, Tensor seed_tensor, Scalar p, bool is_test, str mode, Scalar seed, bool fix_seed) -> Tensor(out), Tensor(mask)
   args : (Tensor mask, Tensor out_grad, Scalar p, bool is_test, str mode)
   output : Tensor(x_grad)
   infer_meta :

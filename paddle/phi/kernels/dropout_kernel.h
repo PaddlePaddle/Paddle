@@ -27,7 +27,7 @@ void DropoutRawKernel(const Context& dev_ctx,
                       const Scalar& p,
                       bool is_test,
                       const std::string& mode,
-                      int seed,
+                      Scalar seed,
                       bool fix_seed,
                       DenseTensor* out,
                       DenseTensor* mask);

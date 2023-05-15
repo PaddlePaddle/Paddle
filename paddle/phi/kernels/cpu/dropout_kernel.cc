@@ -52,7 +52,7 @@ void DropoutRawKernel(const Context& dev_ctx,
                       const Scalar& p,
                       bool is_test,
                       const std::string& mode,
-                      int seed,
+                      Scalar seed,
                       bool fix_seed,
                       DenseTensor* out,
                       DenseTensor* mask) {
@@ -80,7 +80,7 @@ void DropoutRawKernel(const Context& dev_ctx,
     if (seed_tensor.get_ptr() != nullptr) {
       seed_data = *(seed_tensor->data<int>());
     } else {
-      seed_data = fix_seed ? seed : 0;
+      seed_data = fix_seed ? seed.to<int32_t>() : 0;
     }
     std::shared_ptr<std::mt19937_64> engine;
     if (seed_data) {

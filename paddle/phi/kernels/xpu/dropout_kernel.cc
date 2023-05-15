@@ -30,7 +30,7 @@ void DropoutRawKernel(const Context& dev_ctx,
                       const Scalar& p,
                       bool is_test,
                       const std::string& mode,
-                      int seed,
+                      Scalar seed,
                       bool fix_seed,
                       DenseTensor* out,
                       DenseTensor* mask) {
@@ -56,7 +56,7 @@ void DropoutRawKernel(const Context& dev_ctx,
       }
 
     } else {
-      seed_data = fix_seed ? seed : 0;
+      seed_data = fix_seed ? seed.to<int32_t>() : 0;
     }
     if (seed_data == 0) {
       seed_data = dev_ctx.GetGenerator()->Random64();

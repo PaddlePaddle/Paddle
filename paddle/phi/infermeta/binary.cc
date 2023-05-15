@@ -1050,7 +1050,7 @@ void DropoutInferMeta(const MetaTensor& x,
                       const Scalar& p,
                       bool is_test,
                       const std::string& mode,
-                      int seed,
+                      Scalar seed,
                       bool fix_seed,
                       MetaTensor* out,
                       MetaTensor* mask) {
