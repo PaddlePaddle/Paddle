@@ -235,7 +235,7 @@ class AutoMixedPrecisionLists:
                     self.gray_list.remove(op_name)
                 self.black_list.add(op_name)
                 self.unsupported_list.add(op_name)
-        _, device, sys_unsupported_list = _get_sys_unsupported_list(
+        device, sys_unsupported_list, _ = _get_sys_unsupported_list(
             self.amp_dtype
         )
         actual_unsupported_list = []
