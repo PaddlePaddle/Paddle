@@ -30,16 +30,18 @@ void IndexSelectKernel(const Context& ctx,
                        int dim,
                        DenseTensor* output) {
   DenseTensor& xx = const_cast<DenseTensor&>(x);
-  output->can_not_uses = xx.can_not_uses;
-  if (*output->canNotUse == false) {
-    *output->canNotUse = *xx.canNotUse;
-  }
-  xx.can_not_uses->insert(xx.canNotUse);
-  xx.can_not_uses->insert(output->canNotUse);
-  VLOG(1) << "stride api call log: IndexSelectKernel";
+  if (!xx.IsSharedBufferWith(x)) {
+    output->can_not_uses = xx.can_not_uses;
+    if (*output->canNotUse == false) {
+      *output->canNotUse = *xx.canNotUse;
+    }
+    xx.can_not_uses->insert(xx.canNotUse);
+    xx.can_not_uses->insert(output->canNotUse);
+    VLOG(1) << "stride api call log: IndexSelectKernel";
 
-  if (FLAGS_throw_strided_error_op == "IndexSelectKernel") {
-    PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+    if (FLAGS_throw_strided_error_op == "IndexSelectKernel") {
+      PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+    }
   }
   auto inputs = x;
   if (dim < 0) {

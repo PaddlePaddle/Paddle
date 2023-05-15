@@ -284,16 +284,18 @@ void SliceGradKernel(const Context& ctx,
                      const std::vector<int64_t>& decrease_axis,
                      DenseTensor* input_grad) {
   DenseTensor& xx = const_cast<DenseTensor&>(out_grad);
-  input_grad->can_not_uses = xx.can_not_uses;
-  if (*input_grad->canNotUse == false) {
-    *input_grad->canNotUse = *xx.canNotUse;
-  }
-  xx.can_not_uses->insert(xx.canNotUse);
-  xx.can_not_uses->insert(input_grad->canNotUse);
-  VLOG(1) << "stride api call log: SliceGradKernel";
+  if (!xx.IsSharedBufferWith(x)) {
+    input_grad->can_not_uses = xx.can_not_uses;
+    if (*input_grad->canNotUse == false) {
+      *input_grad->canNotUse = *xx.canNotUse;
+    }
+    xx.can_not_uses->insert(xx.canNotUse);
+    xx.can_not_uses->insert(input_grad->canNotUse);
+    VLOG(1) << "stride api call log: SliceGradKernel";
 
-  if (FLAGS_throw_strided_error_op == "SliceGradKernel") {
-    PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+    if (FLAGS_throw_strided_error_op == "SliceGradKernel") {
+      PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+    }
   }
   size_t rank = input.dims().size();
 

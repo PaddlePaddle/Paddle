@@ -29,15 +29,17 @@ void FlattenGradKernel(const Context& dev_ctx,
                        const DenseTensor& out_grad,
                        DenseTensor* x_grad) {
   DenseTensor& xx = const_cast<DenseTensor&>(out_grad);
-  x_grad->can_not_uses = xx.can_not_uses;
-  if (*x_grad->canNotUse == false) {
-    *x_grad->canNotUse = *xx.canNotUse;
-  }
-  xx.can_not_uses->insert(xx.canNotUse);
-  xx.can_not_uses->insert(x_grad->canNotUse);
-  VLOG(1) << "stride api call log: FlattenGradKernel";
-  if (FLAGS_throw_strided_error_op == "FlattenGradKernel") {
-    PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+  if (!xx.IsSharedBufferWith(x)) {
+    x_grad->can_not_uses = xx.can_not_uses;
+    if (*x_grad->canNotUse == false) {
+      *x_grad->canNotUse = *xx.canNotUse;
+    }
+    xx.can_not_uses->insert(xx.canNotUse);
+    xx.can_not_uses->insert(x_grad->canNotUse);
+    VLOG(1) << "stride api call log: FlattenGradKernel";
+    if (FLAGS_throw_strided_error_op == "FlattenGradKernel") {
+      PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+    }
   }
   auto xshape_dims = xshape.dims();
   dev_ctx.Alloc(x_grad, out_grad.dtype());

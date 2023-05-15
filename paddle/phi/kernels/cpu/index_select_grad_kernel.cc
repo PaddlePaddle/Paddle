@@ -31,16 +31,18 @@ void IndexSelectGradKernel(const Context& ctx,
                            int dim,
                            DenseTensor* x_grad) {
   DenseTensor& xx = const_cast<DenseTensor&>(out_grad);
-  x_grad->can_not_uses = xx.can_not_uses;
-  if (*x_grad->canNotUse == false) {
-    *x_grad->canNotUse = *xx.canNotUse;
-  }
-  xx.can_not_uses->insert(xx.canNotUse);
-  xx.can_not_uses->insert(x_grad->canNotUse);
-  VLOG(1) << "stride api call log: IndexSelectGradKernel";
+  if (!xx.IsSharedBufferWith(x)) {
+    x_grad->can_not_uses = xx.can_not_uses;
+    if (*x_grad->canNotUse == false) {
+      *x_grad->canNotUse = *xx.canNotUse;
+    }
+    xx.can_not_uses->insert(xx.canNotUse);
+    xx.can_not_uses->insert(x_grad->canNotUse);
+    VLOG(1) << "stride api call log: IndexSelectGradKernel";
 
-  if (FLAGS_throw_strided_error_op == "IndexSelectGradKernel") {
-    PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+    if (FLAGS_throw_strided_error_op == "IndexSelectGradKernel") {
+      PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+    }
   }
   if (dim < 0) {
     dim += out_grad.dims().size();

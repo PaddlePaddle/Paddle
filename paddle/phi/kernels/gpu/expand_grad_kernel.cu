@@ -31,16 +31,18 @@ void ExpandGradKernel(const Context& ctx,
                       const IntArray& shape,
                       DenseTensor* x_grad) {
   DenseTensor& xx = const_cast<DenseTensor&>(out_grad);
-  x_grad->can_not_uses = xx.can_not_uses;
-  if (*x_grad->canNotUse == false) {
-    *x_grad->canNotUse = *xx.canNotUse;
-  }
-  xx.can_not_uses->insert(xx.canNotUse);
-  xx.can_not_uses->insert(x_grad->canNotUse);
-  VLOG(1) << "stride api call log: ExpandGradKernel";
+  if (!xx.IsSharedBufferWith(x)) {
+    x_grad->can_not_uses = xx.can_not_uses;
+    if (*x_grad->canNotUse == false) {
+      *x_grad->canNotUse = *xx.canNotUse;
+    }
+    xx.can_not_uses->insert(xx.canNotUse);
+    xx.can_not_uses->insert(x_grad->canNotUse);
+    VLOG(1) << "stride api call log: ExpandGradKernel";
 
-  if (FLAGS_throw_strided_error_op == "ExpandGradKernel") {
-    PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+    if (FLAGS_throw_strided_error_op == "ExpandGradKernel") {
+      PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+    }
   }
   ctx.template Alloc<T>(x_grad);
   if (x_grad->dims() == out_grad.dims()) {

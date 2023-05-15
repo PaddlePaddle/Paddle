@@ -48,16 +48,18 @@ void FlattenKernel(const Context& dev_ctx,
                    DenseTensor* out,
                    DenseTensor* xshape UNUSED) {
   DenseTensor& xx = const_cast<DenseTensor&>(x);
-  out->can_not_uses = xx.can_not_uses;
-  if (*out->canNotUse == false) {
-    *out->canNotUse = *xx.canNotUse;
-  }
-  xx.can_not_uses->insert(xx.canNotUse);
-  xx.can_not_uses->insert(out->canNotUse);
-  VLOG(1) << "stride api call log: FlattenKernel";
+  if (!xx.IsSharedBufferWith(x)) {
+    out->can_not_uses = xx.can_not_uses;
+    if (*out->canNotUse == false) {
+      *out->canNotUse = *xx.canNotUse;
+    }
+    xx.can_not_uses->insert(xx.canNotUse);
+    xx.can_not_uses->insert(out->canNotUse);
+    VLOG(1) << "stride api call log: FlattenKernel";
 
-  if (FLAGS_throw_strided_error_op == "FlattenKernel") {
-    PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+    if (FLAGS_throw_strided_error_op == "FlattenKernel") {
+      PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+    }
   }
   FlattenInferKernel<T, Context>(dev_ctx, x, start_axis, stop_axis, out);
 }

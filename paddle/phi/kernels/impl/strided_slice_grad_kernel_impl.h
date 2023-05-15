@@ -33,16 +33,18 @@ void StridedSliceRawGradKernel(const Context& dev_ctx,
                                const std::vector<int>& decrease_axis,
                                DenseTensor* x_grad) {
   DenseTensor& xx = const_cast<DenseTensor&>(x);
-  x_grad->can_not_uses = xx.can_not_uses;
-  if (*x_grad->canNotUse == false) {
-    *x_grad->canNotUse = *xx.canNotUse;
-  }
-  xx.can_not_uses->insert(xx.canNotUse);
-  xx.can_not_uses->insert(x_grad->canNotUse);
-  VLOG(1) << "stride api call log: StridedSliceRawGradKernel";
+  if (!xx.IsSharedBufferWith(x)) {
+    x_grad->can_not_uses = xx.can_not_uses;
+    if (*x_grad->canNotUse == false) {
+      *x_grad->canNotUse = *xx.canNotUse;
+    }
+    xx.can_not_uses->insert(xx.canNotUse);
+    xx.can_not_uses->insert(x_grad->canNotUse);
+    VLOG(1) << "stride api call log: StridedSliceRawGradKernel";
 
-  if (FLAGS_throw_strided_error_op == "StridedSliceRawGradKernel") {
-    PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+    if (FLAGS_throw_strided_error_op == "StridedSliceRawGradKernel") {
+      PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+    }
   }
   int rank = x.dims().size();
 #define SLICE_CASE(Rank)                                            \

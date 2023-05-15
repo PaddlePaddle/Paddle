@@ -32,16 +32,18 @@ void TransposeKernel(const Context& ctx,
                      const std::vector<int>& axis,
                      DenseTensor* out) {
   DenseTensor& xx = const_cast<DenseTensor&>(x);
-  out->can_not_uses = xx.can_not_uses;
-  if (*out->canNotUse == false) {
-    *out->canNotUse = *xx.canNotUse;
-  }
-  xx.can_not_uses->insert(xx.canNotUse);
-  xx.can_not_uses->insert(out->canNotUse);
-  VLOG(1) << "stride api call log: TransposeKernel";
+  if (!xx.IsSharedBufferWith(x)) {
+    out->can_not_uses = xx.can_not_uses;
+    if (*out->canNotUse == false) {
+      *out->canNotUse = *xx.canNotUse;
+    }
+    xx.can_not_uses->insert(xx.canNotUse);
+    xx.can_not_uses->insert(out->canNotUse);
+    VLOG(1) << "stride api call log: TransposeKernel";
 
-  if (FLAGS_throw_strided_error_op == "TransposeKernel") {
-    PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+    if (FLAGS_throw_strided_error_op == "TransposeKernel") {
+      PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+    }
   }
   size_t x_rank = x.dims().size();
   std::vector<int> formated_axis = axis;
