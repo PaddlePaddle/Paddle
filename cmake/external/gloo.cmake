@@ -72,9 +72,9 @@ ExternalProject_Add(
   PATCH_COMMAND ${GLOO_PATCH_COMMAND}
   CONFIGURE_COMMAND ""
   BUILD_COMMAND
-    mkdir -p ${GLOO_SOURCE_DIR}/build && cd ${GLOO_SOURCE_DIR}/build && cmake ${SOURCE_DIR}
-    -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS} && ${CMAKE_COMMAND} --build . && mkdir
-    -p ${GLOO_LIBRARY_DIR} ${GLOO_INCLUDE_DIR}/glo
+    mkdir -p ${GLOO_SOURCE_DIR}/build && cd ${GLOO_SOURCE_DIR}/build && cmake
+    ${SOURCE_DIR} -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS} && ${CMAKE_COMMAND}
+    --build . && mkdir -p ${GLOO_LIBRARY_DIR} ${GLOO_INCLUDE_DIR}/glo
   INSTALL_COMMAND ${CMAKE_COMMAND} -E copy
                   ${GLOO_SOURCE_DIR}/build/gloo/libgloo.a ${GLOO_LIBRARY_DIR}
   COMMAND ${CMAKE_COMMAND} -E copy_directory "${SOURCE_DIR}/gloo/"

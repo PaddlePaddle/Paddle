@@ -24,13 +24,9 @@ set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/xxhash)
 include_directories(${XXHASH_INCLUDE_DIR})
 
 if(APPLE)
-  set(BUILD_CMD
-      make
-      lib)
+  set(BUILD_CMD make lib)
 elseif(UNIX)
-  set(BUILD_CMD
-      make
-      lib)
+  set(BUILD_CMD make lib)
 endif()
 
 if(WIN32)
@@ -46,7 +42,7 @@ endif()
 if(WIN32)
   ExternalProject_Add(
     extern_xxhash
-    ${EXTERNAL_PROJECT_LOG_ARGS} 
+    ${EXTERNAL_PROJECT_LOG_ARGS}
     SOURCE_DIR ${SOURCE_DIR}
     PREFIX ${XXHASH_PREFIX_DIR}
     UPDATE_COMMAND ""

@@ -37,6 +37,3 @@
 [submodule "third_party/glog"]
 	path = third_party/glog
 	url = https://github.com/google/glog.git
-[submodule "third_party/cryptopp"]
-	path = third_party/cryptopp
-	url = https://github.com/weidai11/cryptopp.git

@@ -28,14 +28,12 @@ elseif(LINUX)
     # which will cause compiler error of using __host__ funciont
     # in __host__ __device__
     file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/eigen/Meta.h native_src)
-    file(TO_NATIVE_PATH ${SOURCE_DIR}/Eigen/src/Core/util/Meta.h
-         native_dst)
+    file(TO_NATIVE_PATH ${SOURCE_DIR}/Eigen/src/Core/util/Meta.h native_dst)
     file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/eigen/TensorReductionGpu.h
          native_src1)
-    file(
-      TO_NATIVE_PATH
-      ${SOURCE_DIR}/unsupported/Eigen/CXX11/src/Tensor/TensorReductionGpu.h
-      native_dst1)
+    file(TO_NATIVE_PATH
+         ${SOURCE_DIR}/unsupported/Eigen/CXX11/src/Tensor/TensorReductionGpu.h
+         native_dst1)
     set(EIGEN_PATCH_COMMAND cp ${native_src} ${native_dst} && cp ${native_src1}
                             ${native_dst1})
   endif()
