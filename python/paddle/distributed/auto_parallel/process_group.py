@@ -49,6 +49,12 @@ def clear_all_process_groups():
     _g_process_group_map[0] = ProcessGroup(1000, [])
 
 
+def remove_process_group(ring_id):
+    global _g_process_group_map
+    if ring_id in _g_process_group_map:
+        _g_process_group_map.pop(ring_id)
+
+
 def new_process_group(ranks, group_id=None):
     global _g_process_group_map
     # A key constructed from ranks is used for avoiding duplication
@@ -138,6 +144,10 @@ class ProcessGroup:
             ]
             strategy.current_endpoint = genv.current_endpoint
             strategy.nrings = 1
+
+            print(
+                f"process_group: ring_id: {self.id}, ranks: {self.ranks}, nranks: {self.nranks}, trainer_endpoints: {strategy.trainer_endpoints}"
+            )
 
             if core.is_compiled_with_cuda():
                 place = core.CUDAPlace(genv.device_id)
