@@ -110,7 +110,10 @@ class _HPRecomputeFunction(PyLayer):
 
         cur_device = paddle.get_device()
         assert (
-            'gpu:' in paddle.get_device() or 'xpu:' in paddle.get_device()
+            'gpu:' in paddle.get_device()
+            or 'xpu:' in paddle.get_device()
+            or cur_device.split(':')[0]
+            in paddle.device.get_all_custom_device_type()
         ), "Recompute with RNG is not support current device: {}.".format(
             cur_device
         )
