@@ -62,8 +62,12 @@ TEST(DeviceCode, cuda) {
   float scale = 2;
   auto dims =
       phi::make_ddim({static_cast<int64_t>(256), static_cast<int64_t>(1024)});
-  cpu_x.mutable_data<float>(dims, phi::CPUPlace());
-  cpu_y.mutable_data<float>(dims, phi::CPUPlace());
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+  auto* cpu_ctx = reinterpret_cast<phi::CPUContext*>(pool.Get(phi::CPUPlace()));
+  cpu_x.resize(dims);
+  cpu_ctx->template Alloc<float>(&cpu_x);
+  cpu_y.resize(dims);
+  cpu_ctx->template Alloc<float>(&cpu_y);
 
   size_t n = cpu_x.numel();
   for (size_t i = 0; i < n; ++i) {
@@ -77,9 +81,13 @@ TEST(DeviceCode, cuda) {
   phi::DenseTensor y;
   phi::DenseTensor z;
 
-  float* x_data = x.mutable_data<float>(dims, place);
-  float* y_data = y.mutable_data<float>(dims, place);
-  float* z_data = z.mutable_data<float>(dims, place);
+  auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(pool.Get(place));
+  x.resize(dims);
+  float* x_data = dev_ctx->template Alloc<float>(&x);
+  y.resize(dims);
+  float* y_data = dev_ctx->template Alloc<float>(&y);
+  z.resize(dims);
+  float* z_data = dev_ctx->template Alloc<float>(&z);
 
   paddle::framework::TensorCopySync(cpu_x, place, &x);
   paddle::framework::TensorCopySync(cpu_y, place, &y);
