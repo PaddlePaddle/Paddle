@@ -5584,3 +5584,19 @@ def nextafter(x, y, name=None):
         outputs = {"out": out}
         helper.append_op(type=op_type, inputs=inputs, outputs=outputs)
     return out
+
+
+def copysign(x, y, name=None):
+
+    if in_dygraph_mode():
+        return _C_ops.copysign(x, y)
+    else:
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'copysign')
+        check_variable_and_dtype(y, 'y', ['float32', 'float64'], 'copysign')
+        op_type = "copysign"
+        helper = LayerHelper(op_type, **locals())
+        inputs = {"x": x, "y": y}
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        outputs = {"out": out}
+        helper.append_op(type=op_type, inputs=inputs, outputs=outputs)
+    return out
