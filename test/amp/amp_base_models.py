@@ -254,6 +254,7 @@ class SimpleMLPNet(nn.Layer):
         out = self.linear0(x)
         out = nn.functional.relu(out)
         out = self.linear1(out)
+        out = nn.functional.relu(out)
         out = nn.functional.dropout(out, p=0.2)
         return out
 
