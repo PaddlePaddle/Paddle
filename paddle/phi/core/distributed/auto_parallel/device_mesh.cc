@@ -15,10 +15,13 @@ limitations under the License. */
 #include <algorithm>
 #include <iterator>
 
-#include "paddle/fluid/distributed/auto_parallel/device_mesh.h"
-#include "paddle/fluid/distributed/auto_parallel/utils.h"
+// #include "paddle/fluid/distributed/auto_parallel/device_mesh.h"
+// #include "paddle/fluid/distributed/auto_parallel/utils.h"
 
-namespace paddle {
+#include "paddle/phi/core/distributed/auto_parallel/device_mesh.h"
+#include "paddle/phi/core/distributed/auto_parallel/utils.h"
+
+namespace phi {
 namespace distributed {
 namespace auto_parallel {
 
@@ -395,4 +398,4 @@ bool operator==(const DeviceMesh &lhs, const DeviceMesh &rhs) {
 
 }  // namespace auto_parallel
 }  // namespace distributed
-}  // namespace paddle
+}  // namespace phi

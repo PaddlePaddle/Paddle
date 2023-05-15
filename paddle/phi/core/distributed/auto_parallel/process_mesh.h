@@ -20,12 +20,12 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/distributed/auto_parallel/auto_parallel.pb.h"
-#include "paddle/fluid/distributed/auto_parallel/device_mesh.h"
-#include "paddle/fluid/distributed/auto_parallel/utils.h"
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/distributed/auto_parallel/auto_parallel.pb.h"
+#include "paddle/phi/core/distributed/auto_parallel/device_mesh.h"
+#include "paddle/phi/core/distributed/auto_parallel/utils.h"
+#include "paddle/phi/core/platform/enforce.h"
 
-namespace paddle {
+namespace phi {
 namespace distributed {
 namespace auto_parallel {
 
@@ -90,4 +90,4 @@ inline bool operator!=(const ProcessMesh& lhs, const ProcessMesh& rhs) {
 
 }  // namespace auto_parallel
 }  // namespace distributed
-}  // namespace paddle
+}  // namespace phi

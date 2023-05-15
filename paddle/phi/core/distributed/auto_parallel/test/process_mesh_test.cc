@@ -17,7 +17,7 @@ limitations under the License. */
 #include <sstream>
 #include "gtest/gtest.h"
 
-namespace paddle {
+namespace phi {
 namespace distributed {
 namespace auto_parallel {
 
@@ -50,4 +50,4 @@ TEST(ProcessMesh, Ctor) {
 
 }  // namespace auto_parallel
 }  // namespace distributed
-}  // namespace paddle
+}  // namespace phi

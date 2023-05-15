@@ -14,10 +14,10 @@ limitations under the License. */
 
 #include <algorithm>
 
-#include "paddle/fluid/distributed/auto_parallel/dist_mapper.h"
-#include "paddle/fluid/distributed/auto_parallel/utils.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_mapper.h"
+#include "paddle/phi/core/distributed/auto_parallel/utils.h"
 
-namespace paddle {
+namespace phi {
 namespace distributed {
 namespace auto_parallel {
 
@@ -143,4 +143,4 @@ bool operator==(const DistributedMapper& lhs, const DistributedMapper& rhs) {
 
 }  // namespace auto_parallel
 }  // namespace distributed
-}  // namespace paddle
+}  // namespace phi

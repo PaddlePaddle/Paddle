@@ -19,7 +19,7 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle//platform/enforce.h"
 
 namespace paddle {
 namespace distributed {
