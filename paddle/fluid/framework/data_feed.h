@@ -957,6 +957,7 @@ struct GraphDataGeneratorConfig {
   int debug_mode;
   int excluded_train_pair_len;
   int edge_to_id_len;
+  int tensor_pair_num = 1;
   size_t buf_size;
   size_t once_max_sample_keynum;
   int64_t reindex_table_size;
@@ -991,12 +992,12 @@ class GraphDataGenerator {
       std::shared_ptr<phi::Allocation> final_sage_nodes = nullptr);
   int FillSlotFeature(uint64_t* d_walk, size_t key_num);
   int FillFloatFeature(uint64_t* d_walk, size_t key_num);
-  int GetPathNum() { return total_row_; }
-  void ResetPathNum() { total_row_ = 0; }
+  int GetPathNum() { return total_row_[0]; }
+  void ResetPathNum() { total_row_[0] = 0; }
   int GetGraphBatchsize() { return conf_.batch_size; }
   void SetNewBatchsize(int batch_num) {
     if (!conf_.gpu_graph_training) {
-      conf_.batch_size = (total_row_ + batch_num - 1) / batch_num;
+      conf_.batch_size = (total_row_[0] + batch_num - 1) / batch_num;
     } else {
       return;
     }
@@ -1042,22 +1043,22 @@ class GraphDataGenerator {
   std::vector<std::shared_ptr<phi::Allocation>> d_device_keys_;
   std::shared_ptr<phi::Allocation> d_train_metapath_keys_;
 
-  std::shared_ptr<phi::Allocation> d_walk_;
-  std::shared_ptr<phi::Allocation> d_walk_ntype_;
+  std::vector<std::shared_ptr<phi::Allocation>> d_walk_;
+  std::vector<std::shared_ptr<phi::Allocation>> d_walk_ntype_;
   std::shared_ptr<phi::Allocation> d_feature_list_;
   std::shared_ptr<phi::Allocation> d_feature_;
-  std::shared_ptr<phi::Allocation> d_random_row_;
-  std::shared_ptr<phi::Allocation> d_random_row_col_shift_;
+  std::vector<std::shared_ptr<phi::Allocation>> d_random_row_;
+  std::vector<std::shared_ptr<phi::Allocation>> d_random_row_col_shift_;
   std::shared_ptr<phi::Allocation> d_uniq_node_num_;
   std::shared_ptr<phi::Allocation> d_slot_feature_num_map_;
   std::shared_ptr<phi::Allocation> d_actual_slot_id_map_;
   std::shared_ptr<phi::Allocation> d_fea_offset_map_;
 
-  std::shared_ptr<phi::Allocation> d_pair_label_buf_;
-  std::shared_ptr<phi::Allocation> d_ins_buf_;
+  std::vector<std::shared_ptr<phi::Allocation>> d_pair_label_buf_;
+  std::vector<std::shared_ptr<phi::Allocation>> d_ins_buf_;
   std::shared_ptr<phi::Allocation> d_feature_size_list_buf_;
   std::shared_ptr<phi::Allocation> d_feature_size_prefixsum_buf_;
-  std::shared_ptr<phi::Allocation> d_pair_num_;
+  std::vector<std::shared_ptr<phi::Allocation>> d_pair_num_;
   std::shared_ptr<phi::Allocation> d_slot_tensor_ptr_;
   std::shared_ptr<phi::Allocation> d_slot_lod_tensor_ptr_;
   std::vector<std::shared_ptr<phi::Allocation>> edge_type_graph_;
@@ -1074,12 +1075,12 @@ class GraphDataGenerator {
 
   int sage_batch_count_;
   int sage_batch_num_;
-  int ins_buf_pair_len_;
+  std::vector<int> ins_buf_pair_len_;
   int id_offset_of_feed_vec_;
 
   // size of a d_walk buf
   int repeat_time_;
-  BufState buf_state_;
+  std::vector<BufState> buf_state_;
   int float_slot_num_ = 0; // float slot num
   int uint_slot_num_ = 0; // uint slot num
   std::vector<int> h_slot_feature_num_map_;
@@ -1091,7 +1092,7 @@ class GraphDataGenerator {
   std::vector<uint64_t> h_device_keys_len_;
   uint64_t h_train_metapath_keys_len_;
   uint64_t copy_unique_len_;
-  int total_row_;
+  std::vector<int> total_row_;
   size_t infer_node_start_;
   size_t infer_node_end_;
   std::set<int> infer_node_type_index_set_;
