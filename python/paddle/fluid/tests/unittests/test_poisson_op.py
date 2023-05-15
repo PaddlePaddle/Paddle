@@ -389,6 +389,8 @@ class TestPoissonBF16Op(OpTest):
         self.config()
         x = np.full([2048, 1024], self.lam, dtype="float32")
         out = np.ones([2048, 1024], dtype="float32")
+        x = convert_uint16_to_float(convert_float_to_uint16(x))
+        out = convert_uint16_to_float(convert_float_to_uint16(out))
         self.attrs = {}
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.outputs = {'Out': convert_float_to_uint16(out)}
