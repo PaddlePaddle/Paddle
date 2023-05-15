@@ -14,6 +14,8 @@
 import paddle.fluid.contrib.mixed_precision as mixed_precision
 from .meta_optimizer_base import MetaOptimizerBase
 
+import paddle
+
 __all__ = []
 
 
@@ -47,15 +49,30 @@ class AMPOptimizer(MetaOptimizerBase):
         custom_white_list = set(config['custom_white_list'])
         custom_black_list = set(config['custom_black_list'])
         custom_black_varnames = set(config['custom_black_varnames'])
+        use_bf16 = bool(config['use_bf16'])
+        amp_dtype = "bfloat16" if use_bf16 else "float16"
         amp_lists = mixed_precision.AutoMixedPrecisionLists(
-            custom_white_list, custom_black_list, custom_black_varnames)
+            custom_white_list,
+            custom_black_list,
+            custom_black_varnames,
+            dtype=amp_dtype,
+        )
 
+        # Setting 'use_bf16=True' to switch the data type of amp to bfloat16,
+        # for which dynamic loss scaling is not needed. Both O1 and O2 are supported for fp16 and bf16.
         self.wrapped_opt = mixed_precision.decorate(
-            self.inner_opt, amp_lists, config['init_loss_scaling'],
-            config['incr_every_n_steps'], config['decr_every_n_nan_or_inf'],
-            config['incr_ratio'], config['decr_ratio'],
-            config['use_dynamic_loss_scaling'], config['use_pure_fp16'],
-            config['use_fp16_guard'])
+            self.inner_opt,
+            amp_lists,
+            config['init_loss_scaling'],
+            config['incr_every_n_steps'],
+            config['decr_every_n_nan_or_inf'],
+            config['incr_ratio'],
+            config['decr_ratio'],
+            config['use_dynamic_loss_scaling'],
+            config['use_pure_fp16'],
+            config['use_fp16_guard'],
+            config['use_bf16'],
+        )        
 
         # if worker_num > 1, all cards will communication with each other,
         # add is_distributed to optimize amp, overlap communication and

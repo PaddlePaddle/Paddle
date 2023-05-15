@@ -41,6 +41,21 @@ __all__ = [
 
 _clip_by_global_norm_using_mp_type_flag = False
 
+_merged_grad_in_mp_type_flag = False
+
+
+def _merged_grad_in_mp_type(*args):
+    global _merged_grad_in_mp_type_flag
+    assert len(args) <= 1
+    if len(args) == 1:
+        assert isinstance(args[0], bool)
+        old_value = _merged_grad_in_mp_type_flag
+        _merged_grad_in_mp_type_flag = args[0]
+        return old_value
+
+    else:
+        return _merged_grad_in_mp_type_flag
+
 
 def _clip_by_global_norm_using_mp_type(*args):
     global _clip_by_global_norm_using_mp_type_flag
@@ -89,6 +104,7 @@ def _squared_l2_norm(x):
 
     inputs = {"X": x}
     outputs = {'Out': out}
+    # print(f"squared l2 norm X={x}, out={out}")
     helper.append_op(type=op_type, inputs=inputs, outputs=outputs)
     return out
 
@@ -618,7 +634,13 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     if sum_square.dtype == core.VarDesc.VarType.FP16:
                         sum_square_list_fp16.append(sum_square)
                     elif sum_square.dtype == core.VarDesc.VarType.BF16:
-                        sum_square_list_bf16.append(sum_square)
+                        if _merged_grad_in_mp_type():
+                            sum_square_list_fp32.append(
+                                sum_square.astype(core.VarDesc.VarType.FP32)
+                            )
+                        else:
+                            sum_square_list_bf16.append(sum_square)
+                        # sum_square_list_bf16.append(sum_square)
                     elif sum_square.dtype == core.VarDesc.VarType.FP32:
                         sum_square_list_fp32.append(sum_square)
                     else:
@@ -707,11 +729,12 @@ class ClipGradByGlobalNorm(ClipGradBase):
                 with p.block.program._optimized_guard([p, g]):
                     new_g = _cast_to_mp_type_if_enabled(g)
                     # inplace
-                    scale_input = (
-                        scale_var.astype(new_g.dtype)
-                        if scale_var.dtype != new_g.dtype
-                        else scale_var
-                    )
+                    # scale_input = (
+                    #    scale_var.astype(new_g.dtype)
+                    #    if scale_var.dtype != new_g.dtype
+                    #    else scale_var
+                    # )
+                    scale_input = scale_var
                     # NOTE(Yuang Liu): For pure dp with gradient merge, the p and g
                     # will be in different blocks with the gradient clip related ops.
                     # We need to handle the correct block, otherwise will encounter
