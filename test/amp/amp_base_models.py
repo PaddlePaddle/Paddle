@@ -81,7 +81,6 @@ def _build_optimizer(
             dtype=amp_dtype,
             master_grad=use_master_grad,
             use_promote=use_promote,
-            master_weight=True,
         )
     return optimizer
 
