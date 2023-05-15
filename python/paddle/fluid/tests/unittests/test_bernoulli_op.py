@@ -36,7 +36,7 @@ class TestBernoulliOp(OpTest):
             "X": np.random.uniform(size=(1000, 784)).astype(self.dtype)
         }
         self.attrs = {}
-        self.outputs = {"Out": np.zeros((1000, 784))}
+        self.outputs = {"Out": np.zeros((1000, 784)).astype(self.dtype}
 
     def init_dtype(self):
         self.dtype = np.float32
