@@ -236,6 +236,9 @@ class TestLerpBF16(TestLerp):
         x = np.arange(1.0, 101.0).astype(np.float32).reshape(self.xshape)
         y = np.full(100, 10.0).astype(np.float32).reshape(self.yshape)
         w = np.random.random(self.wshape).astype(np.float32)
+        x = convert_uint16_to_float(convert_float_to_uint16(x))
+        y = convert_uint16_to_float(convert_float_to_uint16(y))
+        w = convert_uint16_to_float(convert_float_to_uint16(w))
         self.inputs = {
             'X': convert_float_to_uint16(x),
             'Y': convert_float_to_uint16(y),
