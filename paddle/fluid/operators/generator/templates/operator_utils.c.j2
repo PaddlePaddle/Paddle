@@ -472,7 +472,8 @@ REGISTER_OPERATOR({{name}}, ops::{{name | to_pascal_case}}Op,
 {% if not "forward" in op %}{# it is a forward op #}
                   ops::{{name | to_pascal_case}}OpMaker,
 {% endif %}
-{% if "backward" in op and op["backward"] is not none %}{# backward #}
+{% if "only_backward_composite" in op and op["only_backward_composite"] is true %}{# backward #}
+{% elif "backward" in op and op["backward"] is not none %}
   {% set backward_name = op["backward"] %}
                   ops::{{backward_name | to_pascal_case}}OpMaker<paddle::framework::OpDesc>,
                   ops::{{backward_name | to_pascal_case}}OpMaker<paddle::imperative::OpBase>,
