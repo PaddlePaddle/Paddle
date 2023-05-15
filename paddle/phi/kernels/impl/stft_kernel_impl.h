@@ -90,7 +90,8 @@ void StftKernel(const Context& ctx,
     const int64_t onesided_axis_size = out->dims().at(axes.back()) / 2 + 1;
     onesided_dims.at(axes.back()) = onesided_axis_size;
     phi::DenseTensor onesided_out;
-    onesided_out.mutable_data<C>(onesided_dims, ctx.GetPlace());
+    frames_w.Resize(onesided_dims);
+    ctx.template Alloc<T>(&onesided_out);
     fft_r2c_func(ctx, frames_w, &onesided_out, axes, normalization, true);
     phi::funcs::FFTFillConj<Context, C>(ctx, &onesided_out, out, axes);
   }
