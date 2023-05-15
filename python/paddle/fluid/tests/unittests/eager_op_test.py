@@ -200,6 +200,10 @@ def get_numeric_gradient(
             return tensor._get_float_element(i)
         elif tensor_to_check_dtype == np.float64:
             return tensor._get_double_element(i)
+        elif tensor_to_check_dtype == np.complex64:
+            return tensor._get_complex64_element(i)
+        elif tensor_to_check_dtype == np.complex128:
+            return tensor._get_complex128_element(i)
         else:
             raise TypeError(
                 "Unsupported test data type %s." % tensor_to_check_dtype
@@ -224,6 +228,10 @@ def get_numeric_gradient(
             tensor._set_float_element(i, e)
         elif tensor_to_check_dtype == np.float64:
             tensor._set_double_element(i, e)
+        elif tensor_to_check_dtype == np.complex64:
+            return tensor._set_complex64_element(i, e)
+        elif tensor_to_check_dtype == np.complex128:
+            return tensor._set_complex128_element(i, e)
         else:
             raise TypeError(
                 "Unsupported test data type %s." % tensor_to_check_dtype
@@ -242,6 +250,13 @@ def get_numeric_gradient(
         __set_elem__(tensor_to_check, i, x_pos)
         y_pos = get_output()
 
+        if tensor_to_check_dtype in [np.complex64, np.complex128]:
+            if in_place:
+                set_input(scope, op, inputs, place)
+            x_pos_j = origin + 1j * delta
+            __set_elem__(tensor_to_check, i, x_pos_j)
+            y_pos_j = get_output()
+
         if in_place:
             set_input(scope, op, inputs, place)
 
@@ -249,8 +264,44 @@ def get_numeric_gradient(
         __set_elem__(tensor_to_check, i, x_neg)
         y_neg = get_output()
 
+        if tensor_to_check_dtype in [np.complex64, np.complex128]:
+            if in_place:
+                set_input(scope, op, inputs, place)
+
+            x_neg_j = origin - 1j * delta
+            __set_elem__(tensor_to_check, i, x_neg_j)
+            y_neg_j = get_output()
+
         __set_elem__(tensor_to_check, i, origin)
-        gradient_flat[i] = (y_pos - y_neg) / delta / 2
+
+        if tensor_to_check_dtype in [np.complex64, np.complex128]:
+            # always assume real output, because this function has
+            # no input for dl/di, though it should do. so there di will be zero
+
+            # TODO: Here is a trick to be consistent with the existing OpTest, it
+            # need to support variable gradients input
+            f_ajoint = np.array(1 + 0j)
+            df_over_dr = (y_pos - y_neg) / delta / 2
+            df_over_di = (y_pos_j - y_neg_j) / delta / 2
+
+            dl_over_du, dl_over_dv = f_ajoint.real, f_ajoint.imag
+
+            du_over_dr, dv_over_dr = df_over_dr.real, df_over_dr.imag
+
+            du_over_di, dv_over_di = df_over_di.real, df_over_di.imag
+
+            dl_over_dr = np.sum(
+                dl_over_du * du_over_dr + dl_over_dv * dv_over_dr
+            )
+            dl_over_di = np.sum(
+                dl_over_du * du_over_di + dl_over_dv * dv_over_di
+            )
+            gradient_flat[i] = dl_over_dr + 1j * dl_over_di
+        else:
+            df_over_dr = y_pos - y_neg
+            gradient_flat[i] = df_over_dr / delta / 2
+
+        __set_elem__(tensor_to_check, i, origin)
 
     return gradient_flat.reshape(tensor_to_check.shape())
 
@@ -375,6 +426,13 @@ class OpTest(unittest.TestCase):
         def is_custom_device_op_test():
             return hasattr(cls, "use_custom_device") and cls.use_custom_device
 
+        def is_complex_test():
+            return (
+                hasattr(cls, "test_complex")
+                and cls.test_complex
+                or (cls.dtype in [np.complex64, np.complex128])
+            )
+
         if not hasattr(cls, "op_type"):
             raise AssertionError(
                 "This test do not have op_type in class attrs, "
@@ -382,8 +440,10 @@ class OpTest(unittest.TestCase):
             )
 
         # case in NO_FP64_CHECK_GRAD_CASES and op in NO_FP64_CHECK_GRAD_OP_LIST should be fixed
-        if not hasattr(cls, "no_need_check_grad") and not is_empty_grad_op(
-            cls.op_type
+        if (
+            not hasattr(cls, "no_need_check_grad")
+            and not is_empty_grad_op(cls.op_type)
+            and not is_complex_test()
         ):
             if cls.dtype is None or (
                 cls.dtype == np.float16
@@ -497,9 +557,9 @@ class OpTest(unittest.TestCase):
     def _enable_check_cinn_test(self, place, inputs, outputs):
         # if the test not run in cuda or the paddle not compile with CINN, skip cinn test
         if (
-            core.is_compiled_with_cinn()
-            and core.is_compiled_with_cuda()
-            and isinstance(place, fluid.CUDAPlace)
+            not core.is_compiled_with_cinn()
+            or not core.is_compiled_with_cuda()
+            or not isinstance(place, fluid.CUDAPlace)
         ):
             return False
         # CINN not support bfloat16 now, skip cinn test
@@ -2492,7 +2552,6 @@ class OpTest(unittest.TestCase):
             max_relative_error = (
                 0.001 if max_relative_error < 0.001 else max_relative_error
             )
-
         self._assert_is_close(
             numeric_grads,
             analytic_grads,
@@ -2685,6 +2744,26 @@ class OpTest(unittest.TestCase):
     def np_value_to_fluid_value(input):
         return input
 
+    def cast_bf16_output(self, block, cast_inputs):
+        output_names = []
+        for i in range(0, len(cast_inputs)):
+            cast_output = block.create_var(
+                dtype="float32", shape=cast_inputs[i].shape
+            )
+            cast_op = block.append_op(
+                inputs={"X": cast_inputs[i]},
+                outputs={"Out": cast_output},
+                type="cast",
+                attrs={
+                    "in_dtype": core.VarDesc.VarType.BF16,
+                    "out_dtype": core.VarDesc.VarType.FP32,
+                },
+            )
+            cast_op.desc.infer_var_type(block.desc)
+            cast_op.desc.infer_shape(block.desc)
+            output_names.append(cast_output.name)
+        return output_names
+
     def _get_gradient(
         self,
         input_to_check,
@@ -2708,21 +2787,24 @@ class OpTest(unittest.TestCase):
             if user_defined_grad_outputs is None:
                 if self.dtype == np.uint16:
                     cast_inputs = list(map(block.var, output_names))
-                    cast_outputs = block.create_var(
-                        dtype="float32", shape=cast_inputs[0].shape
-                    )
-                    cast_op = block.append_op(
-                        inputs={"X": cast_inputs},
-                        outputs={"Out": cast_outputs},
-                        type="cast",
-                        attrs={
-                            "in_dtype": core.VarDesc.VarType.BF16,
-                            "out_dtype": core.VarDesc.VarType.FP32,
-                        },
-                    )
-                    cast_op.desc.infer_var_type(block.desc)
-                    cast_op.desc.infer_shape(block.desc)
-                    output_names = [cast_outputs.name]
+                    if self.op_type == "broadcast_tensors":
+                        output_names = self.cast_bf16_output(block, cast_inputs)
+                    else:
+                        cast_outputs = block.create_var(
+                            dtype="float32", shape=cast_inputs[0].shape
+                        )
+                        cast_op = block.append_op(
+                            inputs={"X": cast_inputs},
+                            outputs={"Out": cast_outputs},
+                            type="cast",
+                            attrs={
+                                "in_dtype": core.VarDesc.VarType.BF16,
+                                "out_dtype": core.VarDesc.VarType.FP32,
+                            },
+                        )
+                        cast_op.desc.infer_var_type(block.desc)
+                        cast_op.desc.infer_shape(block.desc)
+                        output_names = [cast_outputs.name]
                 loss = append_loss_ops(block, output_names)
                 param_grad_list = append_backward(
                     loss=loss,

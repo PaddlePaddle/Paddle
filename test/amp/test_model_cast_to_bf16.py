@@ -265,18 +265,20 @@ class TestProgramBF16(AmpTestBase):
 
         amp.debugging.collect_operator_stats(main_program)
         op_stats_list = amp.debugging._get_op_stats_list(main_program)
+        expected_fp32_calls = {"lookup_table_v2": 1}
         expected_bf16_calls = {
             "matmul_v2": 1,
             "elementwise_add": 1,
             "dropout": 1,
             "lookup_table_v2": 0,
-            "squared_l2_norm": 2,
-            "adamw": 2,
+            "squared_l2_norm": 3,
+            "adamw": 3,
         }
         self._check_optimizer(
             main_program,
             expected_bf16_calls["matmul_v2"]
-            + expected_bf16_calls["elementwise_add"],
+            + expected_bf16_calls["elementwise_add"]
+            + expected_fp32_calls["lookup_table_v2"],
         )
         self._check_op_calls(op_stats_list[0], expected_bf16_calls)
 

@@ -112,6 +112,7 @@ file(
   "gpudnn/*.cu"
   "kps/*.cu"
   "legacy/kps/*.cu"
+  "legacy/gpu/*.cu"
   "selected_rows/gpu/*.cu"
   "sparse/gpu/*.cu"
   "strings/gpu/*.cu"
@@ -185,8 +186,14 @@ else()
     "stride/*.cc")
 endif()
 
-file(GLOB kernel_xpu "xpu/*.cc" "legacy/xpu/*.cc" "selected_rows/xpu/*.cc"
-     "fusion/xpu/*.cc")
+file(
+  GLOB
+  kernel_xpu
+  "xpu/*.cc"
+  "legacy/xpu/*.cc"
+  "selected_rows/xpu/*.cc"
+  "fusion/xpu/*.cc"
+  "sparse/xpu/*.cc")
 
 if(WITH_MKLDNN)
   set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} get_kerneltype_forvar_utils)

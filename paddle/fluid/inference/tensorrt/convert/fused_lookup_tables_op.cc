@@ -110,4 +110,6 @@ class FusedLookupTablesOpConverter : public OpConverter {
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_TRT_OP_CONVERTER(lookup_table, FusedLookupTablesOpConverter);
+// NOTE(liuyuanle): We will remove the implementation here later. Ref to
+// tensorrt/convert/lookup_table_op.cc.
+// REGISTER_TRT_OP_CONVERTER(lookup_table, FusedLookupTablesOpConverter);
