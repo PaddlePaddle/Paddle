@@ -277,8 +277,11 @@ class Optimizer:
         self._auxiliary_vars = {}
         self._already_create_accumulater = set()
 
-        # master gradients
-        self._already_create_master_grad = set()
+        # create master gradients' states
+        self._create_master_grad_states()
+
+    def _create_master_grad_states(self):
+        # master gradients states
         self._master_grads = {}
         self._master_grad = False
 
@@ -677,6 +680,7 @@ class Optimizer:
         return var
 
     def _create_master_grad(self, grad):
+        assert self._is_dtype_fp16_or_bf16(grad.dtype)
         if grad.name in self._master_grads:
             var = self._master_grads[grad.name]
         else:
@@ -1162,59 +1166,6 @@ class Optimizer:
                 self._append_dgc_ops(params_grads)
         return params_grads
 
-    def _append_cast_to_master_grad_op(self, param_grads):
-        """
-        Add ops to cast gradient to master gradient
-
-        Args:
-          param_grads(list(tuple(Tensor, Tensor))):
-            A list of (parameter, gradient) pair to update.
-
-        Returns:
-          params_master_grads:
-            A list of (parameter, master_gradient) pair.
-            In the following grad clip step and optimizer step, params can be updated by master gradient.
-            main_prog will also append cast ops before grad clip ops.
-
-        """
-
-        if not self._master_grad:
-            return param_grads
-
-        global_block = framework.default_main_program().global_block()
-        target_block = global_block
-        current_block = framework.default_main_program().current_block()
-        if current_block.idx != global_block.idx:
-            target_block = framework.default_main_program().blocks[
-                current_block.backward_block_idx
-            ]
-
-        start = len(target_block.ops)
-
-        params_master_grads = []
-
-        assert isinstance(target_block, framework.Block)
-        # create
-        for p, g in param_grads:
-            if g.name not in self._already_create_master_grad:
-                if self._is_dtype_fp16_or_bf16(g.dtype):
-                    master_g = self._create_master_grad(g)
-                    params_master_grads.append((p, master_g))
-                    self._already_create_master_grad.add(g.name)
-                    target_block.append_op(
-                        type="cast",
-                        inputs={"X": [g]},
-                        outputs={"Out": [master_g]},
-                        attrs={
-                            "in_dtype": g.dtype,
-                            "out_dtype": master_g.dtype,
-                        },
-                    )
-                else:
-                    params_master_grads.append((p, g))
-
-        return params_master_grads
-
     def apply_gradients(self, params_grads):
         """
         Second part of `minimize`, appending optimization operators for
@@ -1246,8 +1197,6 @@ class Optimizer:
 
         # 'optimizer(grad_clip)' or 'set_gradient_clip'
         if self._grad_clip is not None:
-            # create master gradients
-            params_grads = self._append_cast_to_master_grad_op(params_grads)
             params_grads = self._grad_clip(params_grads)
         else:
             params_grads = paddle.nn.clip.append_gradient_clip_ops(params_grads)

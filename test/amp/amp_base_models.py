@@ -72,7 +72,6 @@ def _build_optimizer(
         beta2=0.836,
         epsilon=1e-4,
         weight_decay=0.01,
-        multi_precision=True,
     )
     if use_amp:
         optimizer = paddle.static.amp.decorate(
@@ -80,10 +79,9 @@ def _build_optimizer(
             amp_lists,
             level=amp_level,
             dtype=amp_dtype,
-            use_master_grad=use_master_grad,
+            master_grad=use_master_grad,
             use_promote=use_promote,
             master_weight=True,
-            init_loss_scaling=1,
         )
     return optimizer
 
@@ -263,6 +261,7 @@ class SimpleMLPNet(nn.Layer):
 
 def build_MLP_model(
     use_amp,
+    use_grad_clip=False,
     amp_dtype="float16",
     amp_level="O1",
     use_promote=False,
@@ -296,7 +295,7 @@ def build_MLP_model(
                 amp_dtype,
                 amp_level,
                 amp_lists,
-                True,
+                use_grad_clip=use_grad_clip,
                 use_promote=use_promote,
                 use_master_grad=use_master_grad,
             )
