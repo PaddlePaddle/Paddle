@@ -295,6 +295,50 @@ void BmmInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
   out->set_layout(x.layout());
 }
 
+void CdistInferMeta(const MetaTensor& x,
+                    const MetaTensor& y,
+                    float p,
+                    const std::string& compute_mode,
+                    MetaTensor* out) {
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+
+  auto x_dims_n = x_dims.size();
+  auto y_dims_n = y_dims.size();
+
+  PADDLE_ENFORCE_GE(x_dims_n,
+                    2,
+                    phi::errors::InvalidArgument(
+                        "the rank of input X must greater or equal to 2"));
+  PADDLE_ENFORCE_GE(y_dims_n,
+                    2,
+                    phi::errors::InvalidArgument(
+                        "the rank of input Y must greater or equal to 2"));
+  PADDLE_ENFORCE_EQ(x_dims[x_dims_n - 1],
+                    y_dims[y_dims_n - 1],
+                    phi::errors::InvalidArgument(
+                        "the last dimension of input X and Y must be equal"));
+
+  std::vector<int64_t> x_dims_vec = phi::vectorize(x_dims);
+  std::vector<int64_t> y_dims_vec = phi::vectorize(y_dims);
+
+  auto x_r = x_dims_vec[x_dims_n - 2];
+  auto y_r = y_dims_vec[y_dims_n - 2];
+
+  std::vector<int64_t> x_dims_vec_cut(x_dims_vec.begin(), x_dims_vec.end() - 2);
+  std::vector<int64_t> y_dims_vec_cut(y_dims_vec.begin(), y_dims_vec.end() - 2);
+
+  std::vector<int64_t> expand_batch_portion =
+      funcs::MatrixGetBroadcastBatchPortion(x_dims_vec_cut, y_dims_vec_cut);
+
+  std::vector<int64_t> output_dims({expand_batch_portion});
+  output_dims.insert(output_dims.end(), {x_r, y_r});
+
+  out->set_dims(phi::make_ddim(output_dims));
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+}
+
 void CholeskySolveInferMeta(const MetaTensor& x,
                             const MetaTensor& y,
                             bool upper,

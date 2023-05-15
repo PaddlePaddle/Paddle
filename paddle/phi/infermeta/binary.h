@@ -58,6 +58,12 @@ void BincountInferMeta(const MetaTensor& x,
 
 void BmmInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
 
+void CdistInferMeta(const MetaTensor& x,
+                    const MetaTensor& y,
+                    float p,
+                    const std::string& compute_mode,
+                    MetaTensor* out);
+
 void CholeskySolveInferMeta(const MetaTensor& x,
                             const MetaTensor& y,
                             bool upper,
