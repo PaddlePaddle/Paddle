@@ -877,15 +877,14 @@ def decorate(
         raise ValueError("level should be O0, OD, O1 or O2.")
 
     amp_dtype = check_amp_dtype(dtype)
-    if amp_lists is None:
+    if amp_lists is None or level == 'OD':
         amp_lists = AutoMixedPrecisionLists(dtype=amp_dtype)
 
     if level == 'OD':
-        warnings.warn(
-            "If the Amp level is set to OD, the amp list will not be used."
-        )
         if amp_lists is not None:
-            amp_lists = AutoMixedPrecisionLists(dtype=amp_dtype)
+            warnings.warn(
+                "If the Amp level is set to OD, the amp list will not be used."
+            )
 
         amp_lists.white_list = {"conv2d", "matmul_v2"}
         amp_lists.black_list = amp_lists.all_list - amp_lists.white_list

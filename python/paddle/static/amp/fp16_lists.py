@@ -101,7 +101,7 @@ def _get_sys_unsupported_list(dtype):
         device = 'NPU'
     else:
         device = 'GPU'
-    _, _, sys_unsupported_list = core.op_supported_infos(device, var_type)
+    _, _, sys_supported_list = core.op_supported_infos(device, var_type)
 
     # sys_unsupported_list will include the following ops.
     supported_fp16_list = {
@@ -114,9 +114,9 @@ def _get_sys_unsupported_list(dtype):
         "lod_array_length",
         "write_to_array",
     }
-    sys_unsupported_list -= supported_fp16_list
+    sys_unsupported_list = sys_supported_list - supported_fp16_list
 
-    return device, sys_unsupported_list, sys_unsupported_list
+    return device, sys_unsupported_list, sys_supported_list
 
 
 def _get_unsupported_list(dtype):
