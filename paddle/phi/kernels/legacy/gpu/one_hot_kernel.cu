@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/one_hot_kernel.h"
-
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/common/scalar.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -40,11 +40,43 @@ __global__ void FillOutputKernel(const InT* p_in_data,
   }
 }
 
+template <typename DeviceContext, typename InT>
+struct OneHotV2OpCUDAFunctor {
+  const DenseTensor* in_;
+  DenseTensor* out_;
+  const DeviceContext& ctx_;
+  int depth_;
+
+  OneHotV2OpCUDAFunctor(const DenseTensor* in,
+                        DenseTensor* out,
+                        int depth,
+                        const DeviceContext& ctx)
+      : in_(in), out_(out), depth_(depth), ctx_(ctx) {}
+
+  template <typename OutT>
+  void apply() const {
+    auto* p_in_data = in_->data<InT>();
+    auto numel = in_->numel();
+    auto* p_out_data = ctx_.template Alloc<OutT>(out_);
+    auto stream = ctx_.stream();
+    funcs::set_constant(ctx_, out_, 0.0);
+
+    auto config = phi::backends::gpu::GetGpuLaunchConfig1D(ctx_, numel);
+
+    FillOutputKernel<<<config.block_per_grid,
+                       config.thread_per_block,
+                       0,
+                       stream>>>(p_in_data, p_out_data, numel, depth_);
+  }
+};
+
 template <typename T, typename Context>
-void OneHotKernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  const Scalar& depth,
-                  DenseTensor* out) {
+void OneHotRawKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const Scalar& depth,
+                     DataType dtype,
+                     bool allow_out_of_range,
+                     DenseTensor* out) {
   auto depth_v = depth.to<int>();
   auto out_dims = out->dims();
   if (out_dims[out_dims.size() - 1] == -1) {
@@ -52,22 +84,13 @@ void OneHotKernel(const Context& dev_ctx,
     out->Resize(out_dims);
   }
 
-  auto* p_in_data = x.data<T>();
-  auto numel = x.numel();
-  auto* p_out_data = dev_ctx.template Alloc<float>(out);
-  auto stream = dev_ctx.stream();
-  funcs::set_constant(dev_ctx, out, 0.0);
-
-  auto config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, numel);
-
-  FillOutputKernel<<<config.block_per_grid,
-                     config.thread_per_block,
-                     0,
-                     stream>>>(p_in_data, p_out_data, numel, depth_v);
+  phi::VisitDataType(
+      dtype, OneHotV2OpCUDAFunctor<Context, T>(&x, out, depth_v, dev_ctx));
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(one_hot, GPU, ALL_LAYOUT, phi::OneHotKernel, int, int64_t) {
-  kernel->OutputAt(0).SetDataType(phi::DataType::FLOAT32);
+PD_REGISTER_KERNEL(
+    one_hot_raw, GPU, ALL_LAYOUT, phi::OneHotRawKernel, int, int64_t) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }

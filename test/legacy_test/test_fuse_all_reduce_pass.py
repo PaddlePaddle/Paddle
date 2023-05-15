@@ -88,7 +88,7 @@ class TestFuseAllReduceOpsBase(TestParallelExecutorBase):
     def optimizer(self, learning_rate=1e-3):
         optimizer = fluid.optimizer.SGD(
             learning_rate=learning_rate,
-            regularization=fluid.regularizer.L2Decay(1e-3),
+            regularization=paddle.regularizer.L2Decay(1e-3),
         )
         return optimizer
 

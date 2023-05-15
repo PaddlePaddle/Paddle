@@ -1019,6 +1019,15 @@
   composite : tile_grad(x, outgrad, repeat_times, x_grad)
   backward : tile_double_grad
 
+- backward_op : trans_layout_grad
+  forward : trans_layout (Tensor x, int[] perm) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, int[] perm)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : TransLayoutGradInferMeta
+  kernel :
+    func : trans_layout_grad
+
 - backward_op : transpose_double_grad
   forward : transpose_grad (Tensor grad_out, int[] perm) -> Tensor(grad_x)
   args : (Tensor grad_x_grad, int[] perm)

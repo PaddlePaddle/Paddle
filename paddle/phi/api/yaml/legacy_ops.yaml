@@ -1103,6 +1103,15 @@
     func : tile
   backward : tile_grad
 
+- op : trans_layout
+  args : (Tensor x, int[] perm)
+  output : Tensor
+  infer_meta :
+    func : TransposeInferMeta
+  kernel :
+    func : transpose
+  backward : trans_layout_grad
+
 - op : transpose
   args : (Tensor x, int[] perm)
   output : Tensor
