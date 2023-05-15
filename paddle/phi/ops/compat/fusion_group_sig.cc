@@ -20,7 +20,7 @@ KernelSignature FusionGroupOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("fusion_group",
                          {"Inputs"},
-                         {"outs_dtype", "inputs_dtype", "type", "func_name"},
+                         {"outs_dtype", "inputs_dtype", "func_name", "type"},
                          {"Outs"});
 }
 

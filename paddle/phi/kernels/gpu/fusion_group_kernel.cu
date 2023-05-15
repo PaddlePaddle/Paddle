@@ -48,8 +48,8 @@ void FusionGroupKernel(const Context& dev_ctx,
                        const std::vector<const DenseTensor*>& ins,
                        const std::vector<int>& outs_dtype,
                        const std::vector<int>& inputs_dtype,
+                       const std::string& func_name,
                        int type,
-                       std::string func_name,
                        std::vector<DenseTensor*> outs) {
   size_t num_ins = ins.size();
   size_t num_outs = outs.size();
