@@ -1597,6 +1597,7 @@ def install_cpp_dist_and_build_test(install_dir, lib_test_dir, headers, libs):
     subprocess.check_call(cmake_args)
     subprocess.check_call([CMAKE, "--build", lib_test_dir])
 
+
 def check_submodules():
     def get_submodule_folder():
         git_submodules_path = os.path.join(TOP_DIR, ".gitmodules")
