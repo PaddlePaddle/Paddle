@@ -47,7 +47,7 @@ class Program {
  private:
   std::list<Operation*> ops_;
 
-  std::unordered_map<StrAttribute, std::unique_ptr<Parameter>> parameters_;
+  std::unordered_map<std::string, std::unique_ptr<Parameter>> parameters_;
 };
 
 }  // namespace ir

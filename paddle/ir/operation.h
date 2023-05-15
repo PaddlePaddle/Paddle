@@ -26,6 +26,8 @@ template <typename ConcreteInterface>
 class OpInterfaceBase;
 class Program;
 
+using AttributeMap = std::unordered_map<std::string, Attribute>;
+
 class alignas(8) Operation final {
  public:
   ///
@@ -34,7 +36,7 @@ class alignas(8) Operation final {
   ///
   static Operation *create(const std::vector<ir::OpResult> &inputs,
                            const std::vector<ir::Type> &output_types,
-                           ir::DictionaryAttribute attribute,
+                           const AttributeMap &attribute,
                            ir::OpInfo op_info,
                            ir::Program *parent_program);
 
@@ -46,7 +48,7 @@ class alignas(8) Operation final {
 
   std::string print();
 
-  ir::DictionaryAttribute attribute() const { return attribute_; }
+  const AttributeMap &attribute() const { return attribute_; }
 
   ir::OpInfo op_info() const { return op_info_; }
 
@@ -76,7 +78,7 @@ class alignas(8) Operation final {
  private:
   Operation(uint32_t num_results,
             uint32_t num_operands,
-            ir::DictionaryAttribute attribute,
+            const AttributeMap &attribute,
             ir::OpInfo op_info,
             ir::Program *parent_program);
 
@@ -101,7 +103,7 @@ class alignas(8) Operation final {
     }
   };
 
-  ir::DictionaryAttribute attribute_;
+  AttributeMap attribute_;
 
   ir::OpInfo op_info_;
 

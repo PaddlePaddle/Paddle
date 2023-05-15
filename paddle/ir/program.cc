@@ -30,19 +30,15 @@ void Program::InsertOp(Operation* op) {
 }
 
 Parameter* Program::GetParameter(std::string name) const {
-  ir::IrContext* ctx = ir::IrContext::Instance();
-  ir::StrAttribute parameter_name = ir::StrAttribute::get(ctx, name);
-  if (parameters_.count(parameter_name) != 0) {
-    return parameters_.at(parameter_name).get();
+  if (parameters_.count(name) != 0) {
+    return parameters_.at(name).get();
   }
   return nullptr;
 }
 
 void Program::SetParameter(std::string name,
                            std::unique_ptr<Parameter>&& parameter) {
-  ir::IrContext* ctx = ir::IrContext::Instance();
-  ir::StrAttribute parameter_name = ir::StrAttribute::get(ctx, name);
-  parameters_[parameter_name].reset(parameter.release());
+  parameters_[name].reset(parameter.release());
 }
 
 }  // namespace ir

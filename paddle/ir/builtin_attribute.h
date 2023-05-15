@@ -22,7 +22,7 @@ namespace ir {
 ///
 /// \brief All built-in attributes.
 ///
-#define GET_BUILT_IN_ATTRIBUTE_LIST ir::StrAttribute, ir::DictionaryAttribute
+#define GET_BUILT_IN_ATTRIBUTE_LIST ir::StrAttribute
 
 class StrAttribute : public ir::Attribute {
  public:
@@ -39,58 +39,9 @@ class StrAttribute : public ir::Attribute {
   uint32_t size() const;
 };
 
-class NamedAttribute {
- public:
-  NamedAttribute(StrAttribute name, Attribute value);
-
-  StrAttribute name() const { return name_; }
-
-  Attribute value() const { return value_; }
-
-  void SetName(StrAttribute name) { name_ = name; }
-
-  void SetValue(Attribute value) { value_ = value; }
-
-  bool operator<(const NamedAttribute &right) const;
-
-  bool operator==(const NamedAttribute &right) const;
-
-  bool operator!=(const NamedAttribute &right) const;
-
-  friend struct std::hash<NamedAttribute>;
-
-  operator std::pair<const StrAttribute, Attribute>() const {
-    return std::make_pair(name_, value_);
-  }
-
- private:
-  StrAttribute name_;
-  Attribute value_;
-};
-
-class DictionaryAttribute : public ir::Attribute {
- public:
-  using Attribute::Attribute;
-
-  DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(DictionaryAttribute,
-                                    DictionaryAttributeStorage);
-
-  Attribute GetValue(const StrAttribute &name);
-
-  uint32_t size() const;
-};
-
 }  // namespace ir
 
 namespace std {
-template <>
-struct hash<ir::NamedAttribute> {
-  std::size_t operator()(const ir::NamedAttribute &obj) const {
-    return ir::hash_combine(std::hash<ir::Attribute>()(obj.name_),
-                            std::hash<ir::Attribute>()(obj.value_));
-  }
-};
-
 template <>
 struct hash<ir::StrAttribute> {
   std::size_t operator()(const ir::StrAttribute &obj) const {

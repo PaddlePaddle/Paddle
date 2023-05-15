@@ -99,15 +99,14 @@ class TestDialect : public ir::Dialect {
   void initialize() { RegisterOps<Operation1, Operation2>(); }
 };
 
-ir::DictionaryAttribute CreateAttribute(std::string attribute_name,
-                                        std::string attribute) {
+ir::AttributeMap CreateAttributeMap(std::string attribute_name,
+                                    std::string attribute) {
   ir::IrContext *ctx = ir::IrContext::Instance();
-  ir::StrAttribute attr_name = ir::StrAttribute::get(ctx, attribute_name);
   ir::Attribute attr_value = ir::StrAttribute::get(ctx, attribute);
-  std::map<ir::StrAttribute, ir::Attribute> named_attr;
-  named_attr.insert(
-      std::pair<ir::StrAttribute, ir::Attribute>(attr_name, attr_value));
-  return ir::DictionaryAttribute::get(ctx, named_attr);
+  ir::AttributeMap attr_map;
+  attr_map.insert(
+      std::pair<std::string, ir::Attribute>(attribute_name, attr_value));
+  return attr_map;
 }
 
 TEST(op_test, op_test) {
@@ -137,7 +136,7 @@ TEST(op_test, op_test) {
   ir::Operation *op =
       ir::Operation::create(op_inputs,
                             op_output_types,
-                            CreateAttribute("op1_name", "op1_attr"),
+                            CreateAttributeMap("op1_name", "op1_attr"),
                             op2_info,
                             nullptr);
 

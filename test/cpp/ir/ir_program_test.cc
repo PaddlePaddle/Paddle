@@ -80,11 +80,8 @@ TEST(program_test, program) {
   std::string op1_name =
       builtin_dialect->name() + "." + std::string(ir::GetParameterOp::name());
   ir::OpInfoImpl *op1_info = ctx->GetRegisteredOpInfo(op1_name);
-  std::map<ir::StrAttribute, ir::Attribute> op1_attribute_map{
-      {ir::StrAttribute::get(ctx, "parameter_name"),
-       ir::StrAttribute::get(ctx, "a")}};
-  ir::DictionaryAttribute op1_attribute =
-      ir::DictionaryAttribute::get(ctx, op1_attribute_map);
+  std::unordered_map<std::string, ir::Attribute> op1_attribute{
+      {"parameter_name", ir::StrAttribute::get(ctx, "a")}};
   ir::Operation *op1 = ir::Operation::create(
       {}, {dense_tensor_dtype}, op1_attribute, op1_info, program);
 
@@ -113,11 +110,8 @@ TEST(program_test, program) {
   std::string op2_name =
       builtin_dialect->name() + "." + std::string(ir::GetParameterOp::name());
   ir::OpInfoImpl *op2_info = ctx->GetRegisteredOpInfo(op2_name);
-  std::map<ir::StrAttribute, ir::Attribute> op2_attribute_map{
-      {ir::StrAttribute::get(ctx, "parameter_name"),
-       ir::StrAttribute::get(ctx, "b")}};
-  ir::DictionaryAttribute op2_attribute =
-      ir::DictionaryAttribute::get(ctx, op2_attribute_map);
+  std::unordered_map<std::string, ir::Attribute> op2_attribute{
+      {"parameter_name", ir::StrAttribute::get(ctx, "b")}};
   ir::Operation *op2 = ir::Operation::create(
       {}, {dense_tensor_dtype}, op2_attribute, op2_info, program);
 
@@ -145,10 +139,11 @@ TEST(program_test, program) {
   std::string op3_name =
       builtin_dialect->name() + "." + std::string(AddOp::name());
   ir::OpInfoImpl *op3_info = ctx->GetRegisteredOpInfo(op3_name);
+  std::unordered_map<std::string, ir::Attribute> op3_attribute;
   ir::Operation *op3 = ir::Operation::create(
       {op1->GetResultByIndex(0), op2->GetResultByIndex(0)},
       {dense_tensor_dtype},
-      nullptr,
+      op3_attribute,
       op3_info,
       program);
 
@@ -175,11 +170,8 @@ TEST(program_test, program) {
   std::string op4_name =
       builtin_dialect->name() + "." + std::string(ir::SetParameterOp::name());
   ir::OpInfoImpl *op4_info = ctx->GetRegisteredOpInfo(op4_name);
-  std::map<ir::StrAttribute, ir::Attribute> op4_attribute_map{
-      {ir::StrAttribute::get(ctx, "parameter_name"),
-       ir::StrAttribute::get(ctx, "c")}};
-  ir::DictionaryAttribute op4_attribute =
-      ir::DictionaryAttribute::get(ctx, op4_attribute_map);
+  std::unordered_map<std::string, ir::Attribute> op4_attribute{
+      {"parameter_name", ir::StrAttribute::get(ctx, "c")}};
   ir::Operation *op4 = ir::Operation::create(
       {op3->GetResultByIndex(0)}, {}, op4_attribute, op4_info, program);
 
