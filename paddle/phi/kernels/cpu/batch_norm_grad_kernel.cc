@@ -15,6 +15,7 @@
 #include "glog/logging.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/compat/get_kerneltype_forvar_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/batch_norm_kernel.h"
 #include "paddle/phi/kernels/funcs/batch_norm_utils.h"
@@ -651,10 +652,37 @@ void BatchNormDoubleGradKernel(
   }
 }
 
+phi::KernelKey BatchNormGradGetKernelTypeForVar(
+    const GetKernelTypeForVarContext* ctx) {
+  const phi::DenseTensor& tensor = ctx->GetTensor();
+  const phi::KernelKey& expected_kernel_type = ctx->GetKernelKey();
+#ifdef PADDLE_WITH_MKLDNN
+  const std::string& var_name = ctx->GetVarName();
+  // Only input require reshaping, weights and
+  // bias are having shape in NCHW order
+  if (((var_name == "X") || (var_name == "Y@GRAD")) &&
+      (expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
+      (tensor.layout() != phi::DataLayout::ONEDNN)) {
+    auto attrs = ctx->GetAttrs();
+    auto it = attrs.find("data_layout");
+    const std::string data_layout = PADDLE_GET_CONST(std::string, it->second);
+    auto dl = phi::StringToDataLayout(data_layout);
+    // Some models may have intentionally set "AnyLayout" for pool
+    // op. Treat this as NCHW (default data_format value)
+    if (dl != phi::DataLayout::kAnyLayout) {
+      return phi::KernelKey(tensor.place(), dl, expected_kernel_type.dtype());
+    }
+  }
+#endif
+  return phi::KernelKey(
+      tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
     batch_norm_grad, CPU, ALL_LAYOUT, phi::BatchNormGradKernel, float, double) {
+  kernel->get_kerneltype_forvar_fn_ = phi::BatchNormGradGetKernelTypeForVar;
 }
 
 PD_REGISTER_KERNEL(batch_norm_grad_raw,

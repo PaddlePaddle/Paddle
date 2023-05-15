@@ -334,6 +334,11 @@
     reserve_space: ReserveSpace
   extra :
     attrs : [bool use_mkldnn = false, bool fuse_with_relu = false]
+  manual_signature : [batch_norm]
+  get_expected_kernel_type :
+    batch_norm : GetBatchNormExpectedKernelType
+    batch_norm_grad : GetBatchNormGradExpectedKernelType
+    batch_norm_grad_grad : GetBatchNormDoubleGradExpectedKernelType
 
 - op : bce_loss
   backward : bce_loss_grad
