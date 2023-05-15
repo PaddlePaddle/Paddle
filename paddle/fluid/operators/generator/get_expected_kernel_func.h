@@ -32,6 +32,18 @@ phi::KernelKey GetAssignExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr);
 
+phi::KernelKey GetBatchNormExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr);
+
+phi::KernelKey GetBatchNormGradExpectedKernelType(
+    const framework::ExecutionContext& ctx const framework::OperatorWithKernel*
+        op_ptr);
+
+phi::KernelKey GetBatchNormDoubleGradExpectedKernelType(
+    const framework::ExecutionContext& ctx const framework::OperatorWithKernel*
+        op_ptr);
+
 phi::KernelKey GetSgdExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr);

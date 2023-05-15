@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/batch_norm_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_dnn.h"
+#include "paddle/phi/core/compat/get_kerneltype_forvar_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 
@@ -58,6 +59,32 @@ void BatchNormInferKernel(const Context& dev_ctx,
                               /*reserve_space=*/nullptr);
 }
 
+phi::KernelKey BatchNormGetKernelTypeForVar(
+    const GetKernelTypeForVarContext* ctx) {
+  const std::string& var_name = ctx->GetVarName();
+  const phi::DenseTensor& tensor = ctx->GetTensor();
+  const phi::KernelKey& expected_kernel_type = ctx->GetKernelKey();
+#ifdef PADDLE_WITH_MKLDNN
+  // Only input require reshaping, weights and
+  // bias are having shape in NCHW order
+  if ((var_name == "X") &&
+      (expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
+      (tensor.layout() != phi::DataLayout::ONEDNN)) {
+    auto attrs = Attrs();
+    auto ar = paddle::framework::AttrReader(attrs);
+    const std::string data_layout = ar.Get<std::string>("data_layout");
+    auto dl = phi::StringToDataLayout(data_layout);
+    // Some models may have intentionally set "AnyLayout" for pool
+    // op. Treat this as NCHW (default data_format value)
+    if (dl != phi::DataLayout::kAnyLayout) {
+      return phi::KernelKey(tensor.place(), dl, expected_kernel_type.dtype());
+    }
+  }
+#endif
+  return phi::KernelKey(
+      tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(batch_norm_infer,
@@ -65,7 +92,9 @@ PD_REGISTER_KERNEL(batch_norm_infer,
                    ALL_LAYOUT,
                    phi::BatchNormInferKernel,
                    float,
-                   double) {}
+                   double) {
+  kernel->get_kerneltype_forvar_fn_ = phi::BatchNormGetKernelTypeForVar;
+}
 #ifdef PADDLE_WITH_CUDA
 #if CUDNN_VERSION_MIN(8, 1, 0)
 PD_REGISTER_KERNEL(batch_norm_infer,
