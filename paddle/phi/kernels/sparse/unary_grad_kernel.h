@@ -121,5 +121,14 @@ void ReshapeCsrGradKernel(const Context& dev_ctx,
                           const SparseCsrTensor& dout,
                           SparseCsrTensor* dx);
 
+template <typename T, typename Context>
+void SliceCooGradKernel(const Context& dev_ctx,
+                        const SparseCooTensor& x,
+                        const SparseCooTensor& out_grad,
+                        const phi::IntArray& axes_arr,
+                        const phi::IntArray& starts_arr,
+                        const phi::IntArray& ends_arr,
+                        SparseCooTensor* x_grad);
+
 }  // namespace sparse
 }  // namespace phi

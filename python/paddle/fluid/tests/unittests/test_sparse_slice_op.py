@@ -40,6 +40,14 @@ class TestSlice(unittest.TestCase):
             sp_out.to_dense().numpy(), dense_out.numpy(), rtol=1e-5
         )
 
+        dense_out.backward()
+        sp_out.backward()
+        np.testing.assert_allclose(
+            sp_x.grad.to_dense().numpy(),
+            dense_x.grad.numpy() * np_x.astype('bool').astype('int'),
+            rtol=1e-5,
+        )
+
     def check_result_with_shape(self, x_shape, axes, starts, ends):
         mask = np.random.randint(0, 2, x_shape)
         np_x = np.random.randint(-100, 100, x_shape) * mask

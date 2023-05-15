@@ -535,3 +535,4 @@
   kernel :
     func : slice_coo{sparse_coo -> sparse_coo}
     layout : x
+  backward : slice_grad
