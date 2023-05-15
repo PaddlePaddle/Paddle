@@ -64,9 +64,9 @@ TEST(DeviceCode, cuda) {
       phi::make_ddim({static_cast<int64_t>(256), static_cast<int64_t>(1024)});
   phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
   auto* cpu_ctx = reinterpret_cast<phi::CPUContext*>(pool.Get(phi::CPUPlace()));
-  cpu_x.resize(dims);
+  cpu_x.Resize(dims);
   cpu_ctx->template Alloc<float>(&cpu_x);
-  cpu_y.resize(dims);
+  cpu_y.Resize(dims);
   cpu_ctx->template Alloc<float>(&cpu_y);
 
   size_t n = cpu_x.numel();
@@ -82,11 +82,11 @@ TEST(DeviceCode, cuda) {
   phi::DenseTensor z;
 
   auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(pool.Get(place));
-  x.resize(dims);
+  x.Resize(dims);
   float* x_data = dev_ctx->template Alloc<float>(&x);
-  y.resize(dims);
+  y.Resize(dims);
   float* y_data = dev_ctx->template Alloc<float>(&y);
-  z.resize(dims);
+  z.Resize(dims);
   float* z_data = dev_ctx->template Alloc<float>(&z);
 
   paddle::framework::TensorCopySync(cpu_x, place, &x);
