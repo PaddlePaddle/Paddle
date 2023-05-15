@@ -474,7 +474,7 @@ void Unpack_Pivot(const Context& dev_ctx,
                   const DenseTensor& Pivot,
                   DenseTensor* P,
                   int h,
-                  int w) {
+                  int w UNUSED) {
   auto dims = Pivot.dims();
   auto Pdimvec = vectorize(dims);
   auto prank = Pdimvec.size();

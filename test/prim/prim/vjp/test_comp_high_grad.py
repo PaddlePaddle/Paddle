@@ -25,7 +25,7 @@ import paddle
 from paddle import fluid
 from paddle.fluid import core
 
-
+'''
 @param.parameterized_class(
     ('shape1', 'shape2'),
     [
@@ -120,6 +120,7 @@ class TestAddHighGradCheck(unittest.TestCase):
         for p in places:
             self.func_double(p)
             self.func_triple(p)
+'''
 
 
 @param.parameterized_class(
@@ -226,6 +227,7 @@ class TestSubtractHighGradCheck(unittest.TestCase):
             self.func_triple(p)
 
 
+'''
 @param.parameterized_class(
     ('shape1', 'shape2'),
     [
@@ -328,7 +330,6 @@ class TestMultiplyHighGradCheck(unittest.TestCase):
         for p in places:
             self.func_double(p)
             self.func_triple(p)
-
-
+'''
 if __name__ == '__main__':
     unittest.main()

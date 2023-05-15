@@ -128,7 +128,6 @@ DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPX(Asinh, AsinhGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPX(Acosh, AcoshGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPX(Atanh, AtanhGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPX(TanhShrink, TanhShrinkGradFunctor);
-DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPX(Silu, SiluGradFunctor);
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPX(Square, SquareGradFunctor);
 
 DEFINE_CPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Exp, ExpGradFunctor);
@@ -189,6 +188,17 @@ DEFINE_CPU_ACT_GRAD_KERNEL_WITH_TWO_ATTRS_DEPOUT(HardSigmoid,
                                                  HardSigmoidGradFunctor,
                                                  slope,
                                                  offset);
+
+template <typename T, typename Context>
+void SiluGradKernel(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& out,
+                    const DenseTensor& dout,
+                    DenseTensor* dx) {
+  funcs::SiluGradFunctor<T> functor;
+  ActivationGradImpl<T, Context, funcs::SiluGradFunctor<T>>(
+      dev_ctx, &x, &out, &dout, dx, functor);
+}
 
 template <typename T, typename Context>
 void EluGradKernel(const Context& dev_ctx,
