@@ -132,7 +132,9 @@ class TestBernoulliBF16Op(OpTest):
     def init_test_case(self):
         self.x = np.random.uniform(size=(1000, 784)).astype("float32")
         self.out = np.zeros((1000, 784)).astype("float32")
-
+        self.x = convert_uint16_to_float(convert_float_to_uint16(self.x))
+        self.out = convert_uint16_to_float(convert_float_to_uint16(self.out))
+                                                            
     def verify_output(self, outs):
         hist, prob = output_hist(np.array(outs[0]))
         np.testing.assert_allclose(hist, prob)
