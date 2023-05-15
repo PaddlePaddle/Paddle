@@ -65,7 +65,7 @@ inline std::shared_ptr<EagerLayoutTransformer> EagerLayoutAutotune(
     const std::string& op_name,
     const paddle::small_vector<std::vector<paddle::Tensor>,
                                kSlotSmallVectorSize>& tensors_vector,
-    T* attr) {
+    T* attr UNUSED) {
   // For lightly op like reduce
   if (!(DesiredLayout() == phi::DataLayout::UNDEFINED)) {
     VLOG(4) << "LayoutAutotune was unstarted. Current op :" << op_name;
@@ -81,7 +81,7 @@ inline std::shared_ptr<EagerLayoutTransformer> EagerLayoutAutotune(
     const paddle::small_vector<std::vector<paddle::Tensor>,
                                kSlotSmallVectorSize>& tensors_vector,
     T1* axis,
-    T2* keep_dim) {
+    T2* keep_dim UNUSED) {
   // For lightly op like argmax
   return EagerLayoutAutotune<T1>(op_name, tensors_vector, axis);
 }
