@@ -33,19 +33,14 @@ from .quantization_pass import (
 
 _logger = get_logger(__name__, level=logging.INFO)
 
-try:
-    from . import quant_config
-    from .post_training_quantization import PostTrainingQuantizationProgram
-    from .quantization_pass import (
-        AddQuantDequantForInferencePass,
-        AddQuantDequantPassV2,
-        QuantizationTransformPassV2,
-        QuantWeightPass,
-    )
-except:
-    _logger.warning(
-        "Some functions failed to import, better to update PaddlePaddle to the latest develop version."
-    )
+from . import quant_config
+from .post_training_quantization import PostTrainingQuantizationProgram
+from .quantization_pass import (
+    AddQuantDequantForInferencePass,
+    AddQuantDequantPassV2,
+    QuantizationTransformPassV2,
+    QuantWeightPass,
+)
 
 WEIGHT_QUANTIZATION_TYPES = [
     'abs_max',
@@ -67,18 +62,13 @@ ACTIVATION_QUANTIZATION_TYPES_TENSORRT = [
 ]
 
 VALID_DTYPES = ['int8']
-try:
-    TRANSFORM_PASS_OP_TYPES = list(
-        quant_config.SUPPORT_WEIGHT_QUANTIZATION_OP_DICT.keys()
-    )
-    QUANT_DEQUANT_PASS_OP_TYPES = list(
-        quant_config.SUPPORT_ACT_QUANTIZATION_OP_DICT.keys()
-    )
-except:
-    from . import utils
 
-    TRANSFORM_PASS_OP_TYPES = utils._weight_supported_quantizable_op_type
-    QUANT_DEQUANT_PASS_OP_TYPES = utils._act_supported_quantizable_op_type
+TRANSFORM_PASS_OP_TYPES = list(
+    quant_config.SUPPORT_WEIGHT_QUANTIZATION_OP_DICT.keys()
+)
+QUANT_DEQUANT_PASS_OP_TYPES = list(
+    quant_config.SUPPORT_ACT_QUANTIZATION_OP_DICT.keys()
+)
 
 TENSORRT_OP_TYPES = [
     'mul',
@@ -515,16 +505,11 @@ def convert(program, place, config=None, scope=None, save_int8=False):
         quant_weight_pass = QuantWeightPass(scope, place)
         for sub_graph in test_graph.all_sub_graphs():
             quant_weight_pass.apply(sub_graph)
-        try:
-            out_scale_infer_pass = AddQuantDequantForInferencePass(
-                scope=scope, place=place, quant_bits=config['activation_bits']
-            )
-            for sub_graph in test_graph.all_sub_graphs():
-                out_scale_infer_pass.apply(sub_graph)
-        except:
-            _logger.warning(
-                "Unable to convert quant model with onnx_format=True, please update PaddlePaddle >= 2.4.0"
-            )
+        out_scale_infer_pass = AddQuantDequantForInferencePass(
+            scope=scope, place=place, quant_bits=config['activation_bits']
+        )
+        for sub_graph in test_graph.all_sub_graphs():
+            out_scale_infer_pass.apply(sub_graph)
     else:
         out_scale_infer_pass = OutScaleForInferencePass(scope=scope)
         for sub_graph in test_graph.all_sub_graphs():
