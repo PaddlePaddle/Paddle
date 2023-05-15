@@ -1348,7 +1348,8 @@ All parameter, weight, gradient are variables in Paddle.
           VLOG(3) << "need skip: " << need_skip << std::endl;
           if (paddle::prim::PrimCommonUtils::IsBwdPrimEnabled()) {
             if ((grad_comp_op_maker != nullptr) && (!need_skip)) {
-              VLOG(3) << "Runing composite fun for " << op_desc.Type();
+              VLOG(3) << "Prim Flag Open: Runing composite grad fun for "
+                      << op_desc.Type();
               grad_op_descs = grad_comp_op_maker(op_desc,
                                                  no_grad_set,
                                                  &grad_to_var,
@@ -1360,9 +1361,13 @@ All parameter, weight, gradient are variables in Paddle.
             }
           } else {
             if (grad_op_maker != nullptr) {
+              VLOG(3) << "Prim Flag close: Runing origin grad fun for "
+                      << op_desc.Type();
               grad_op_descs = grad_op_maker(
                   op_desc, no_grad_set, &grad_to_var, grad_sub_block);
             } else {
+              VLOG(3) << "Prim Flag close: Runing composite grad fun for "
+                      << op_desc.Type();
               grad_op_descs = grad_comp_op_maker(op_desc,
                                                  no_grad_set,
                                                  &grad_to_var,
