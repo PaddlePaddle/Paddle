@@ -99,7 +99,6 @@ TEST(DeviceCode, cuda) {
   code.SetWorkloadPerThread(1);
   code.Launch(n, &args);
 
-  auto* dev_ctx = phi::DeviceContextPool::Instance().Get(place);
   dev_ctx->Wait();
 
   paddle::framework::TensorCopySync(z, phi::CPUPlace(), &cpu_z);
