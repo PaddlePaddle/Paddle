@@ -23,7 +23,7 @@ from paddle.static import amp
 
 class TestStaticAmpPromoteStats(AmpTestBase):
     def check_promote_results(
-        self, use_amp, dtype, level, use_promote, expected_op_calls
+        self, use_amp, dtype, level, use_promote, expected_op_calls, debug_info
     ):
         paddle.enable_static()
         (
@@ -39,7 +39,9 @@ class TestStaticAmpPromoteStats(AmpTestBase):
         op_stats_list = amp.debugging._get_op_stats_list(main_program)
 
         self._check_op_calls(
-            op_stats_list[0], expected_fp16_calls=expected_op_calls
+            op_stats_list[0],
+            expected_fp16_calls=expected_op_calls,
+            debug_info=debug_info,
         )
 
         place = paddle.CUDAPlace(0)
@@ -63,7 +65,6 @@ class TestStaticAmpPromoteStats(AmpTestBase):
         paddle.disable_static()
 
     def test_static_amp_o1(self):
-        print("[TestStaticAmpPromoteStats] test_static_amp_o1")
         expected_fp16_calls = {
             "conv2d": 1,
             "elementwise_add": 0,
@@ -79,10 +80,10 @@ class TestStaticAmpPromoteStats(AmpTestBase):
             'O1',
             use_promote=True,
             expected_op_calls=expected_fp16_calls,
+            debug_info="TestStaticAmpPromoteStats/test_static_amp_o1",
         )
 
     def test_static_amp_o2(self):
-        print("[TestStaticAmpPromoteStats] test_static_amp_o2")
         expected_fp16_calls = {
             "conv2d": 1,
             "elementwise_add": 2,
@@ -98,6 +99,7 @@ class TestStaticAmpPromoteStats(AmpTestBase):
             'O2',
             use_promote=True,
             expected_op_calls=expected_fp16_calls,
+            debug_info="TestStaticAmpPromoteStats/test_static_amp_o2",
         )
 
 
