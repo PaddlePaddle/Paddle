@@ -663,9 +663,9 @@ phi::KernelKey BatchNormGradGetKernelTypeForVar(
   if (((var_name == "X") || (var_name == framework::GradVarName("Y"))) &&
       (expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
       (tensor.layout() != phi::DataLayout::ONEDNN)) {
-    auto attrs = Attrs();
-    auto ar = paddle::framework::AttrReader(attrs);
-    const std::string data_layout = ar.Get<std::string>("data_layout");
+    auto attrs = ctx->GetAttrs();
+    auto it = attrs.find("data_layout");
+    const std::string data_layout = PADDLE_GET_CONST(std::string, it->second);
     auto dl = phi::StringToDataLayout(data_layout);
     // Some models may have intentionally set "AnyLayout" for pool
     // op. Treat this as NCHW (default data_format value)

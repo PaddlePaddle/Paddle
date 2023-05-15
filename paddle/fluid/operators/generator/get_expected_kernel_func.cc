@@ -118,8 +118,8 @@ phi::KernelKey GetAssignExpectedKernelType(
 }
 
 phi::KernelKey GetBatchNormExpectedKernelType(
-    const framework::ExecutionContext& ctx const framework::OperatorWithKernel*
-        op_ptr) {
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
   auto input_data_type = op_ptr->IndicateVarDataType(ctx, "X");
   // By default, the type of the scale, bias, mean,
   // and var tensors should both be float. (For float or float16 input tensor)
@@ -153,8 +153,8 @@ phi::KernelKey GetBatchNormExpectedKernelType(
 }
 
 phi::KernelKey GetBatchNormGradExpectedKernelType(
-    const framework::ExecutionContext& ctx const framework::OperatorWithKernel*
-        op_ptr) {
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
   const auto* var = ctx.InputVar(framework::GradVarName("Y"));
   if (var == nullptr) {
     PADDLE_THROW(
@@ -176,8 +176,8 @@ phi::KernelKey GetBatchNormGradExpectedKernelType(
 }
 
 phi::KernelKey GetBatchNormDoubleGradExpectedKernelType(
-    const framework::ExecutionContext& ctx const framework::OperatorWithKernel*
-        op_ptr) {
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
   const auto* var = ctx.InputVar("DY");
   if (var == nullptr) {
     PADDLE_THROW(
