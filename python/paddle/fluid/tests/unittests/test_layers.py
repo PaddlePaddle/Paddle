@@ -2141,8 +2141,10 @@ class TestBook(LayerTest):
             like = paddle.tensor.fill_constant(
                 shape=[1, 200], value=10, dtype='int64'
             )
-            out = layers.fill_constant_batch_size_like(
-                input=like, shape=[2, 3300], value=1315454564656, dtype='int64'
+            out = paddle.full(
+                shape=[like.shape[0], 3300],
+                fill_value=1315454564656,
+                dtype='int64',
             )
             return out
 

@@ -21,7 +21,6 @@ from paddle import nn, static, tensor, utils
 from paddle.distributed.auto_parallel.completion import Completer
 from paddle.distributed.auto_parallel.dist_context import DistributedContext
 from paddle.distributed.fleet import auto
-from paddle.fluid import layers
 from paddle.nn.layer.transformer import _convert_param_attr_to_list
 
 paddle.enable_static()
@@ -170,18 +169,15 @@ class MultiHeadAttention(nn.Layer):
             k, v = self.compute_kv(key, value)
             return self.StaticCache(k, v)
         elif value is None:  # incremental_state
-            k = layers.fill_constant_batch_size_like(
-                input=key,
-                shape=[-1, self.num_heads, 0, self.head_dim],
-                dtype=key.dtype,
-                value=0,
-            )
-            v = layers.fill_constant_batch_size_like(
-                input=key,
-                shape=[-1, self.num_heads, 0, self.head_dim],
-                dtype=key.dtype,
-                value=0,
-            )
+            batch_size = key.shape[0]  # 获取输入的批量大小
+            output_shape = [
+                batch_size,
+                self.num_heads,
+                0,
+                self.head_dim,
+            ]  # 新的shape
+            k = paddle.full(shape=output_shape, fill_value=0, dtype=key.dtype)
+            v = paddle.full(shape=output_shape, fill_value=0, dtype=key.dtype)
             return self.Cache(k, v)
         else:
             # incremental_state with initial value, mainly for usage like UniLM

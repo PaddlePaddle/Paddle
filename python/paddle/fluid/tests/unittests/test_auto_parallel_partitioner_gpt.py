@@ -24,7 +24,6 @@ from paddle.distributed.auto_parallel.partitioner import Partitioner
 from paddle.distributed.auto_parallel.process_group import new_process_group
 from paddle.distributed.auto_parallel.utils import _get_comm_group
 from paddle.distributed.fleet import auto
-from paddle.fluid import layers
 from paddle.nn.layer.transformer import _convert_param_attr_to_list
 
 paddle.enable_static()
@@ -216,17 +215,15 @@ class MultiHeadAttention(nn.Layer):
             k, v = self.compute_kv(key, value)
             return self.StaticCache(k, v)
         elif value is None:  # incremental_state
-            k = layers.fill_constant_batch_size_like(
-                input=key,
-                shape=[-1, self.num_heads, 0, self.head_dim],
+            k = paddle.full(
+                shape=[key[0], self.num_heads, 0, self.head_dim],
+                fill_value=0,
                 dtype=key.dtype,
-                value=0,
             )
-            v = layers.fill_constant_batch_size_like(
-                input=key,
-                shape=[-1, self.num_heads, 0, self.head_dim],
+            v = paddle.full(
+                shape=[key[0], self.num_heads, 0, self.head_dim],
+                fill_value=0,
                 dtype=key.dtype,
-                value=0,
             )
             return self.Cache(k, v)
         else:
