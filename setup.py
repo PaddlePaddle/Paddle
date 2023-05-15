@@ -1613,19 +1613,9 @@ def check_submodules():
             os.path.isdir(folder) and len(os.listdir(folder)) == 0
         )
 
-    def check_for_files_of_submodule(folder, files):
-        if not any(os.path.exists(os.path.join(folder, f)) for f in files):
-            print(
-                "Could not find any of {} in {}".format(
-                    ", ".join(files), folder
-                )
-            )
-            print("Did you run 'git submodule update --init --recursive'?")
-            sys.exit(1)
-
     submodule_folders = get_submodule_folder()
     # f none of the submodule folders exists, try to initialize them
-    if all(
+    if any(
         submodules_not_exists_or_empty(folder) for folder in submodule_folders
     ):
         try:
@@ -1645,18 +1635,6 @@ def check_submodules():
             print(' --- Submodule initalization failed')
             print('Please run:\n\tgit submodule update --init --recursive')
             sys.exit(1)
-    for folder in submodule_folders:
-        check_for_files_of_submodule(
-            folder,
-            [
-                "CMakeLists.txt",
-                "Makefile",
-                "setup.py",
-                "LICENSE",
-                "LICENSE.md",
-                "LICENSE.txt",
-            ],
-        )
 
 
 def main():
