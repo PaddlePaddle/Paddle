@@ -110,7 +110,7 @@ paddle.enable_static()
             primops.reduce_sum,
             randn(2, 3),
             {'axis': (0, 1)},
-            (1,),
+            (),
             'float64',
         ),
         (

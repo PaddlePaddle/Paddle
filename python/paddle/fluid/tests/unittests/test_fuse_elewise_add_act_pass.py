@@ -38,7 +38,7 @@ class TestMNIST(TestParallelExecutorBase):
         def _optimizer(learning_rate=1e-6):
             optimizer = fluid.optimizer.SGD(
                 learning_rate=learning_rate,
-                regularization=fluid.regularizer.L2Decay(1e-6),
+                regularization=paddle.regularizer.L2Decay(1e-6),
             )
             return optimizer
 
@@ -74,10 +74,12 @@ class TestMNIST(TestParallelExecutorBase):
             optimizer=_optimizer,
         )
 
-        for loss in zip(not_fuse_op_first_loss, fuse_op_first_loss):
-            self.assertAlmostEqual(loss[0], loss[1], delta=1e-6)
-        for loss in zip(not_fuse_op_last_loss, fuse_op_last_loss):
-            self.assertAlmostEqual(loss[0], loss[1], delta=1e-6)
+        self.assertAlmostEqual(
+            not_fuse_op_first_loss, fuse_op_first_loss, delta=1e-6
+        )
+        self.assertAlmostEqual(
+            not_fuse_op_last_loss, fuse_op_last_loss, delta=1e-6
+        )
 
     def test_simple_fc_with_fuse_op(self):
         self._compare_fuse_elewise_add_act_ops(simple_fc_net, DeviceType.CUDA)

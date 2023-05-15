@@ -597,7 +597,7 @@ struct SquareGradFunctor : public BaseActivationFunctor<T> {
             typename Out,
             typename dOut,
             typename dX>
-  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+  void operator()(Device d, X x, Out out UNUSED, dOut dout, dX dx) const {
     dx.device(d) = dout * static_cast<T>(2) * x;
   }
 
@@ -1087,7 +1087,7 @@ struct ExpGradFunctor : public BaseActivationFunctor<T> {
             typename Out,
             typename dOut,
             typename dX>
-  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+  void operator()(Device d, X x UNUSED, Out out, dOut dout, dX dx) const {
     dx.device(d) = dout * out;
   }
 
@@ -1112,7 +1112,7 @@ struct Expm1GradFunctor : public BaseActivationFunctor<T> {
             typename Out,
             typename dOut,
             typename dX>
-  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+  void operator()(Device d, X x UNUSED, Out out, dOut dout, dX dx) const {
     dx.device(d) = dout * out + dout;
   }
 
@@ -1147,7 +1147,7 @@ struct ReluGradFunctor : public BaseActivationFunctor<T> {
             typename Out,
             typename dOut,
             typename dX>
-  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+  void operator()(Device d, X x UNUSED, Out out, dOut dout, dX dx) const {
     dx.device(d) = dout * (out > static_cast<T>(0)).template cast<T>();
   }
 
@@ -1412,7 +1412,7 @@ struct LeakyReluGradFunctor : public BaseActivationFunctor<T> {
             typename Out,
             typename dOut,
             typename dX>
-  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+  void operator()(Device d, X x, Out out UNUSED, dOut dout, dX dx) const {
     auto temp1 =
         static_cast<T>(alpha) * (x < static_cast<T>(0)).template cast<T>();
     auto temp2 = (x >= static_cast<T>(0)).template cast<T>();
