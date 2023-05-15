@@ -536,6 +536,12 @@ struct SimpleOpTypeSetTeller : public Teller {
         auto* x_var_desc = block->FindVar(x_var_name);
         const auto x_shape = x_var_desc->GetShape();
         int dims = x_shape.size();
+        if (dims == 0) {
+          VLOG(3) << op_type
+                  << " op does not support input's dim is 0 in tensorrt "
+                     "static shape mode.";
+          return false;
+        }
         if (start_axis < 0) start_axis += dims;
         if (start_axis == 0) {
           VLOG(3) << "TRT flatten_contiguous_range not support the "
@@ -2231,6 +2237,12 @@ struct SimpleOpTypeSetTeller : public Teller {
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
+      if (!with_dynamic_shape && (x_shape.size() == 1 || x_shape.size() == 0)) {
+        VLOG(3) << op_type
+                << " op does not support input's dim is 1 or 0 in tensorrt "
+                   "static shape mode.";
+        return false;
+      }
     }
 
     if (op_type == "reduce_sum" || op_type == "reduce_mean" ||
@@ -2419,6 +2431,22 @@ struct SimpleOpTypeSetTeller : public Teller {
           return true;
         }
 #endif
+        return false;
+      }
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      const auto x_shape = x_var_desc->GetShape();
+      if (!with_dynamic_shape && (x_shape.size() == 1 || x_shape.size() == 0)) {
+        VLOG(3) << op_type
+                << " op does not support input's dim is 1 or 0 in tensorrt "
+                   "static shape mode.";
         return false;
       }
     }
