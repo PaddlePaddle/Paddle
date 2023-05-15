@@ -47,13 +47,12 @@ void saxpy_kernel(float a, float *x, float* y, float* z, size_t n) {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(DeviceCode, cuda) {
-  if (!paddle::platform::dynload::HasNVRTC() ||
-      !paddle::platform::dynload::HasCUDADriver()) {
+  if (!phi::dynload::HasNVRTC() || !phi::dynload::HasCUDADriver()) {
     return;
   }
 
   paddle::framework::InitDevices({0});
-  paddle::platform::CUDAPlace place = paddle::platform::CUDAPlace(0);
+  phi::GPUPlace place = phi::GPUPlace(0);
   phi::GPUDeviceCode code(place, "saxpy_kernel", saxpy_code);
 
   phi::DenseTensor cpu_x;
@@ -63,8 +62,8 @@ TEST(DeviceCode, cuda) {
   float scale = 2;
   auto dims =
       phi::make_ddim({static_cast<int64_t>(256), static_cast<int64_t>(1024)});
-  cpu_x.mutable_data<float>(dims, paddle::platform::CPUPlace());
-  cpu_y.mutable_data<float>(dims, paddle::platform::CPUPlace());
+  cpu_x.mutable_data<float>(dims, phi::CPUPlace());
+  cpu_y.mutable_data<float>(dims, phi::CPUPlace());
 
   size_t n = cpu_x.numel();
   for (size_t i = 0; i < n; ++i) {
@@ -92,23 +91,22 @@ TEST(DeviceCode, cuda) {
   code.SetWorkloadPerThread(1);
   code.Launch(n, &args);
 
-  auto* dev_ctx = paddle::platform::DeviceContextPool::Instance().Get(place);
+  auto* dev_ctx = phi::DeviceContextPool::Instance().Get(place);
   dev_ctx->Wait();
 
-  paddle::framework::TensorCopySync(z, paddle::platform::CPUPlace(), &cpu_z);
+  paddle::framework::TensorCopySync(z, phi::CPUPlace(), &cpu_z);
   for (size_t i = 0; i < n; i++) {
     EXPECT_EQ(cpu_z.data<float>()[i], static_cast<float>(i) * scale + 0.5);
   }
 }
 
 TEST(DeviceCodePool, cuda) {
-  if (!paddle::platform::dynload::HasNVRTC() ||
-      !paddle::platform::dynload::HasCUDADriver()) {
+  if (!phi::dynload::HasNVRTC() || !phi::dynload::HasCUDADriver()) {
     return;
   }
 
   paddle::framework::InitDevices({0});
-  paddle::platform::CUDAPlace place = paddle::platform::CUDAPlace(0);
+  phi::GPUPlace place = phi::GPUPlace(0);
   phi::DeviceCodePool& pool = phi::DeviceCodePool::Init({place});
   size_t num_device_codes_before = pool.size(place);
   EXPECT_EQ(num_device_codes_before, 0UL);
