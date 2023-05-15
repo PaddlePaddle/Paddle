@@ -15,6 +15,7 @@ limitations under the License. */
 
 #include <vector>
 
+#include "paddle/phi/core/macros.h"
 #include "paddle/phi/kernels/funcs/gpc.h"
 
 namespace phi {
@@ -26,7 +27,7 @@ class Point_ {
   // default constructor
   Point_() {}
   Point_(T _x, T _y) {}
-  Point_(const Point_& pt) {}
+  Point_(const Point_& pt UNUSED) {}
 
   Point_& operator=(const Point_& pt);
   // conversion to another data type
@@ -71,5 +72,3 @@ T PolyOverlapArea(const T* box1,
                   const bool normalized);
 }  // namespace funcs
 }  // namespace phi
-
-#include "paddle/phi/kernels/funcs/detection/poly_util.cc"
