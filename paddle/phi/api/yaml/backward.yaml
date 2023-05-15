@@ -797,6 +797,26 @@
   kernel :
     func : huber_loss_grad
 
+- backward_op : i0_grad
+  forward : i0 (Tensor x) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : i0_grad
+
+- backward_op : i0e_grad
+  forward : i0e (Tensor x) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : i0e_grad
+
 - backward_op : imag_grad
   forward : imag (Tensor x) -> Tensor(out)
   args : (Tensor out_grad)
@@ -1621,14 +1641,15 @@
 
 - backward_op : silu_grad
   forward : silu (Tensor x) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad)
+  args : (Tensor x, Tensor out, Tensor out_grad)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
   kernel :
     func : silu_grad
-  composite : silu_grad(x, out_grad, x_grad)
+  backward : silu_double_grad
+  composite : silu_grad(x, out, out_grad, x_grad)
   inplace : (out_grad -> x_grad)
 
 - backward_op : sin_double_grad
@@ -2107,6 +2128,12 @@
   kernel :
     func : yolo_loss_grad
   optional : gt_score
+
+- backward_op: silu_double_grad
+  forward: silu_grad (Tensor x, Tensor out, Tensor grad_out) -> Tensor(grad_x)
+  args: (Tensor x, Tensor out, Tensor grad_out, Tensor grad_x_grad)
+  output: Tensor(x_grad), Tensor(grad_out_grad)
+  composite: silu_double_grad(x, out, grad_out, grad_x_grad, x_grad, grad_out_grad)
 
 - backward_op: unpool3d_grad
   forward: unpool3d (Tensor x, Tensor indices, int[] ksize, int[] strides={1,1,1}, int[] paddings={0,0,0}, int[] output_size={0,0,0}, str data_format="NCDHW") -> Tensor(out)

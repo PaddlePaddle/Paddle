@@ -139,9 +139,8 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToCustomDevice(
     repetitive_params = graph.Get<std::vector<std::string>>(
         framework::ir::kRepetitiveParamAttr);
 
-  LOG(INFO) << "Sync params from CPU to CustomDevice"
-            << argument->custom_device_type() << "/"
-            << argument->custom_device_id();
+  LOG(INFO) << "Sync params from CPU to " << argument->custom_device_type()
+            << ":" << argument->custom_device_id();
 
   platform::Place place = platform::CustomPlace(argument->custom_device_type(),
                                                 argument->custom_device_id());

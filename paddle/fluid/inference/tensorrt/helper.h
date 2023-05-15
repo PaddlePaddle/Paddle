@@ -96,6 +96,10 @@ static std::tuple<int, int, int> GetTrtCompileVersion() {
       NV_TENSORRT_MAJOR, NV_TENSORRT_MINOR, NV_TENSORRT_PATCH};
 }
 
+static float TrtMajorVersion(int full_version) {
+  return (full_version / 100) / 10.0;
+}
+
 template <typename T>
 struct Destroyer {
   void operator()(T* x) {
