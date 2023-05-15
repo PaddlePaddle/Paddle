@@ -152,6 +152,7 @@ void ConvertAssignValueOp(OpDesc* op) {
   }
 }
 
+// only support for 2.5+ -> 2.4.2 (Scalar Atrribute change)
 void ConvertProgram(ProgramDesc* program) {
   PADDLE_ENFORCE_NOT_NULL(
       program,
@@ -281,6 +282,7 @@ void ConvertAssignValueOp(OpDesc* op) {
   op->SetAttr("values", values);
 }
 
+// only support for 2.4.2 -> 2.5+ (Scalar Atrribute change)
 void ConvertProgram(ProgramDesc* program) {
   PADDLE_ENFORCE_NOT_NULL(
       program,
