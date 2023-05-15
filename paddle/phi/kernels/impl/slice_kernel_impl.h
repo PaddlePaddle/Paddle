@@ -111,7 +111,7 @@ void SliceKernel(const Context& ctx,
                  const std::vector<int64_t>& decrease_axis,
                  DenseTensor* out) {
   DenseTensor& xx = const_cast<DenseTensor&>(input);
-  if (!xx.IsSharedBufferWith(x)) {
+  if (!xx.IsSharedBufferWith(input)) {
     out->can_not_uses = xx.can_not_uses;
     if (*out->canNotUse == false) {
       *out->canNotUse = *xx.canNotUse;
