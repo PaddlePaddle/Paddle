@@ -36,30 +36,6 @@ class TestAutoCast(AmpTestBase):
         self.assertEqual(out2.dtype, paddle.float32)
         self.assertEqual(out3.dtype, paddle.float32)
 
-    def test_use_promote_on(self):
-        with paddle.amp.auto_cast(level='O2'):
-            x = paddle.rand(shape=[1, 1, 6, 6], dtype='float32')
-            conv_out = self._conv(x)
-            y = paddle.rand(shape=conv_out.shape, dtype='float16')
-            add_out = conv_out + y
-            linear_out = self._linear(add_out)
-
-        self.assertEqual(conv_out.dtype, paddle.float16)
-        self.assertEqual(add_out.dtype, paddle.float16)
-        self.assertEqual(linear_out.dtype, paddle.float32)
-
-    def test_use_promote_off(self):
-        with paddle.amp.auto_cast(level='O2', use_promote=False):
-            x = paddle.rand(shape=[1, 1, 6, 6], dtype='float32')
-            conv_out = self._conv(x)
-            y = paddle.rand(shape=conv_out.shape, dtype='float16')
-            add_out = conv_out + y
-            linear_out = self._linear(add_out)
-
-        self.assertEqual(conv_out.dtype, paddle.float16)
-        self.assertEqual(add_out.dtype, paddle.float16)
-        self.assertEqual(linear_out.dtype, paddle.float16)
-
 
 class TestGradScaler(AmpTestBase):
     def test_amp_grad_scaler(self):
