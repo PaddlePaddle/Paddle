@@ -52,7 +52,7 @@ if(CMAKE_COMPILER_IS_GNUCC)
     # See: [Why calling some `git` commands before `patch`?]
     set(EIGEN_PATCH_COMMAND
         git checkout -- . && git checkout ${EIGEN_TAG} && patch -Nd
-        ${EIGEN_SOURCE_DIR}/Eigen/src/Core/arch/SSE/ < ${complex_header})
+        ${SOURCE_DIR}/Eigen/src/Core/arch/SSE/ < ${complex_header})
   endif()
 endif()
 

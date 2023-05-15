@@ -24,9 +24,24 @@ set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/xxhash)
 include_directories(${XXHASH_INCLUDE_DIR})
 
 if(APPLE)
-  set(BUILD_CMD make lib)
+  set(BUILD_CMD
+      sed
+      -i
+      \"\"
+      "s/-Wstrict-prototypes -Wundef/-Wstrict-prototypes -Wundef -fPIC/g"
+      ${XXHASH_SOURCE_DIR}/Makefile
+      &&
+      make
+      lib)
 elseif(UNIX)
-  set(BUILD_CMD make lib)
+  set(BUILD_CMD
+      sed
+      -i
+      "s/-Wstrict-prototypes -Wundef/-Wstrict-prototypes -Wundef -fPIC/g"
+      ${XXHASH_SOURCE_DIR}/Makefile
+      &&
+      make
+      lib)
 endif()
 
 if(WIN32)
