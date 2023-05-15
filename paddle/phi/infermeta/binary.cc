@@ -990,7 +990,7 @@ void DistInferMeta(const MetaTensor& x,
                         "The Input(Y) has not been initialized properly. The "
                         "shape of Input(Y) = [%s].",
                         y_dims));
-  out->set_dims({1});
+  out->set_dims(phi::make_ddim({}));
   out->set_dtype(x.dtype());
 }
 
@@ -2340,7 +2340,7 @@ void PReluInferMeta(const MetaTensor& x,
                       1,
                       phi::errors::InvalidArgument(
                           "For mode 'element', rank of input X must be "
-                          "equal or larger than 2. But recevied X's "
+                          "equal or larger than 1. But recevied X's "
                           "rank: %d",
                           x_rank));
     PADDLE_ENFORCE_EQ(

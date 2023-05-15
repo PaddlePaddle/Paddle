@@ -78,15 +78,17 @@ class TestFuseAllReduceOpsBase(TestParallelExecutorBase):
             optimizer=optimizer,
         )
 
-        for loss in zip(not_fuse_op_first_loss, fuse_op_first_loss):
-            self.assertAlmostEqual(loss[0], loss[1], delta=1e-6)
-        for loss in zip(not_fuse_op_last_loss, fuse_op_last_loss):
-            self.assertAlmostEqual(loss[0], loss[1], delta=1e-6)
+        self.assertAlmostEqual(
+            not_fuse_op_first_loss, fuse_op_first_loss, delta=1e-6
+        )
+        self.assertAlmostEqual(
+            not_fuse_op_last_loss, fuse_op_last_loss, delta=1e-6
+        )
 
     def optimizer(self, learning_rate=1e-3):
         optimizer = fluid.optimizer.SGD(
             learning_rate=learning_rate,
-            regularization=fluid.regularizer.L2Decay(1e-3),
+            regularization=paddle.regularizer.L2Decay(1e-3),
         )
         return optimizer
 

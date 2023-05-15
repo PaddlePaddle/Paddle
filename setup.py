@@ -1071,6 +1071,12 @@ def get_package_data_and_package_dir():
         if os.path.exists(cinn_fp16_file):
             shutil.copy(cinn_fp16_file, libs_path)
             package_data['paddle.libs'] += ['float16.h']
+        cinn_bf16_file = (
+            env_dict.get("CINN_INCLUDE_DIR") + '/cinn/runtime/cuda/bfloat16.h'
+        )
+        if os.path.exists(cinn_bf16_file):
+            shutil.copy(cinn_bf16_file, libs_path)
+            package_data['paddle.libs'] += ['bfloat16.h']
 
         if env_dict.get("CMAKE_BUILD_TYPE") == 'Release' and os.name != 'nt':
             command = (
@@ -1422,7 +1428,6 @@ def get_setup_parameters():
         'paddle.fluid.proto',
         'paddle.fluid.proto.profiler',
         'paddle.fluid.layers',
-        'paddle.fluid.dataloader',
         'paddle.fluid.contrib',
         'paddle.fluid.contrib.extend_optimizer',
         'paddle.fluid.incubate',
@@ -1469,6 +1474,7 @@ def get_setup_parameters():
         'paddle.sparse.nn.functional',
         'paddle.incubate.xpu',
         'paddle.io',
+        'paddle.io.dataloader',
         'paddle.optimizer',
         'paddle.nn',
         'paddle.nn.functional',
