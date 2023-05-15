@@ -132,7 +132,7 @@ class Bilinear(Initializer):
             out_var = var
 
         if out_dtype == core.VarDesc.VarType.FP32:
-            value_name = "fp32_values"
+            value_name = "values"
             values = [float(v) for v in weight.flat]
         else:
             raise TypeError("Unsupported dtype %s", var.dtype)

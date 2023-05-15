@@ -522,35 +522,8 @@ Node *assign_value_handler(Graph *graph, Node *node) {
   auto dtype = VarType2OnnxDType(static_cast<VarType::Type>(dtype_));
   auto dims_ = PADDLE_GET_CONST(std::vector<int>, op->GetAttr("shape"));
   std::vector<int64_t> dims(dims_.begin(), dims_.end());
-  Attribute values;
-  std::string value_name;
-  switch (dtype_) {
-    case VarType::BOOL: {
-      value_name = "bool_values";
-      auto vec_int =
-          PADDLE_GET_CONST(std::vector<int>, op->GetAttr(value_name));
-      std::vector<bool> vec_bool(vec_int.begin(), vec_int.end());
-      values = vec_bool;
-    } break;
-    case VarType::INT32:
-      value_name = "int32_values";
-      values = PADDLE_GET_CONST(std::vector<int>, op->GetAttr(value_name));
-      break;
-    case VarType::FP16:
-    case VarType::FP32:
-      value_name = "fp32_values";
-      values = PADDLE_GET_CONST(std::vector<float>, op->GetAttr(value_name));
-      break;
-    case VarType::INT64:
-      value_name = "int64_values";
-      values = PADDLE_GET_CONST(std::vector<int64_t>, op->GetAttr(value_name));
-      break;
-    default:
-      PADDLE_THROW(platform::errors::Unimplemented(
-          "Unsupported data type(code %d) for AssignValue operator, only "
-          "supports bool, int32, float32 and int64.",
-          dtype));
-  }
+  auto values = PADDLE_GET_CONST(std::vector<paddle::experimental::Scalar>,
+                                 op->GetAttr("values"));
   return CreateConst(graph,
                      node,
                      node->inputs,

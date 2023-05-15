@@ -645,7 +645,7 @@ class TestNumpyArrayInitializer(unittest.TestCase):
         self.assertEqual(len(block.ops), num_ops)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'assign_value')
-        assert (init_op.attr('fp32_values') == np_array).all()
+        assert (init_op.attr('values') == np_array).all()
         return block
 
     def test_numpy_array_initializer_fp16(self):

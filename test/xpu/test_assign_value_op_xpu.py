@@ -53,7 +53,7 @@ class XPUTestAssignValueOp(XPUOpTestWrapper):
 
         def init_data(self):
             self.value = np.random.random(size=(2, 5)).astype(np.float32)
-            self.attrs["fp32_values"] = [float(v) for v in self.value.flat]
+            self.attrs["values"] = [float(v) for v in self.value.flat]
 
         def test_forward(self):
             self.check_output_with_place(self.place)
@@ -61,19 +61,19 @@ class XPUTestAssignValueOp(XPUOpTestWrapper):
     class TestAssignValueOp2(TestAssignValueOp):
         def init_data(self):
             self.value = np.random.random(size=(2, 5)).astype(np.int32)
-            self.attrs["int32_values"] = [int(v) for v in self.value.flat]
+            self.attrs["values"] = [int(v) for v in self.value.flat]
 
     class TestAssignValueOp3(TestAssignValueOp):
         def init_data(self):
             self.value = np.random.random(size=(2, 5)).astype(np.int64)
-            self.attrs["int64_values"] = [int(v) for v in self.value.flat]
+            self.attrs["values"] = [int(v) for v in self.value.flat]
 
     class TestAssignValueOp4(TestAssignValueOp):
         def init_data(self):
             self.value = np.random.choice(a=[False, True], size=(2, 5)).astype(
                 np.bool_
             )
-            self.attrs["bool_values"] = [int(v) for v in self.value.flat]
+            self.attrs["values"] = [int(v) for v in self.value.flat]
 
 
 class TestAssignApi(unittest.TestCase):
