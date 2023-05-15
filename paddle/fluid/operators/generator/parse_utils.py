@@ -528,6 +528,7 @@ def parse_op_entry(op_entry: Dict[str, Any], name_field="op"):
                 "inplace": inplace_pairs,
             }
         )
+
     # has invoke ?
     if "invoke" in op_entry:
         invoke_dict = parse_invoke(op_name, op_entry["invoke"])

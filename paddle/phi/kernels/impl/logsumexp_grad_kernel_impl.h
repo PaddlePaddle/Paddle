@@ -38,7 +38,7 @@ struct LogsumexpGradFunctor {
                   DX* dx,
                   DY* dy,
                   const Dim& dim,
-                  int size) {
+                  int size UNUSED) {
     using MT = typename phi::dtype::MPTypeTrait<T>::Type;
     auto x_mt = (*x).template cast<MT>();
     auto y_mt = (*y).template cast<MT>();

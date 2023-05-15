@@ -243,7 +243,7 @@ class DistSeResneXt2x2(TestDistRunnerBase):
                     boundaries=bd, values=lr
                 ),
                 momentum=0.9,
-                regularization=fluid.regularizer.L2Decay(1e-4),
+                regularization=paddle.regularizer.L2Decay(1e-4),
             )
         else:
             optimizer = (
@@ -253,7 +253,7 @@ class DistSeResneXt2x2(TestDistRunnerBase):
                     ),
                     momentum=0.9,
                     rampup_begin_step=0,
-                    regularization=fluid.regularizer.L2Decay(1e-4),
+                    regularization=paddle.regularizer.L2Decay(1e-4),
                 )
             )
         optimizer.minimize(avg_cost)

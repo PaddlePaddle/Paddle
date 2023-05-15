@@ -636,6 +636,64 @@ def add_(x, y, name=None):
     return _C_ops.add_(x, y)
 
 
+def logaddexp(x, y, name=None):
+    """
+    Elementwise LogAddExp Operator.
+    Add of exponentiations of the inputs
+    The equation is:
+
+    ..  math::
+
+        Out=log(X.exp()+Y.exp())
+
+    $X$ the tensor of any dimension.
+    $Y$ the tensor whose dimensions must be less than or equal to the dimensions of $X$.
+
+    There are two cases for this operator:
+
+    1. The shape of $Y$ is the same with $X$.
+    2. The shape of $Y$ is a continuous subsequence of $X$.
+
+    For case 2:
+
+    1. Broadcast $Y$ to match the shape of $X$, where axis is the start dimension index for broadcasting $Y$ onto $X$.
+    2. If $axis$ is -1 (default), $axis$=rank($X$)-rank($Y$).
+    3. The trailing dimensions of size 1 for $Y$ will be ignored for the consideration of subsequence, such as shape($Y$) = (2, 1) => (2).
+
+        For example:
+
+        ..  code-block:: python
+
+            shape(X) = (2, 3, 4, 5), shape(Y) = (,)
+            shape(X) = (2, 3, 4, 5), shape(Y) = (5,)
+            shape(X) = (2, 3, 4, 5), shape(Y) = (4, 5), with axis=-1(default) or axis=2
+            shape(X) = (2, 3, 4, 5), shape(Y) = (3, 4), with axis=1
+            shape(X) = (2, 3, 4, 5), shape(Y) = (2), with axis=0
+            shape(X) = (2, 3, 4, 5), shape(Y) = (2, 1), with axis=0
+
+    Args:
+        x (Tensor): Tensor or LoDTensor of any dimensions. Its dtype should be float32, float64, float16.
+        y (Tensor): Tensor or LoDTensor of any dimensions. Its dtype should be float32, float64, float16.
+        name (string, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        N-D Tensor. A location into which the result is stored. It's dimension equals with x.
+
+    Examples:
+
+        ..  code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([-1, -2, -3], 'float64')
+            y = paddle.to_tensor([-1], 'float64')
+            z = paddle.logaddexp(x, y)
+            print(z)  # [-0.30685282, -0.68673831, -0.87307199]
+    """
+
+    return paddle.log1p(paddle.exp(-paddle.abs(x - y))) + paddle.maximum(x, y)
+
+
 def subtract(x, y, name=None):
     """
     Substract two tensors element-wise. The equation is:
@@ -5525,4 +5583,77 @@ def nextafter(x, y, name=None):
         out = helper.create_variable_for_type_inference(dtype=paddle.float32)
         outputs = {"out": out}
         helper.append_op(type=op_type, inputs=inputs, outputs=outputs)
+    return out
+
+
+def i0(x, name=None):
+    r"""
+    The function used to calculate modified bessel function of order 0.
+
+    Equation:
+        ..  math::
+
+            I_0(x) = \sum^{\infty}_{k=0}\frac{(x^2/4)^k}{(k!)^2}
+
+    Args:
+        x (Tensor): The input tensor, it's data type should be float32, float64.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        - out (Tensor), A Tensor. the value of the modified bessel function of order 0 at x.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([0, 1, 2, 3, 4], dtype="float32")
+            print(paddle.i0(x))
+            # (Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True, [0.99999994 , 1.26606596 , 2.27958512 , 4.88079262 , 11.30192089]),
+    """
+    if in_dygraph_mode():
+        return _C_ops.i0(x)
+    else:
+        check_variable_and_dtype(x, "x", ["float32", "float64"], "i0")
+
+        helper = LayerHelper("i0", **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(type='i0', inputs={'x': x}, outputs={'out': out})
+    return out
+
+
+def i0e(x, name=None):
+    r"""
+    The function used to calculate exponentially scaled modified Bessel function of order 0.
+
+    Equation:
+        ..  math::
+
+            I_0(x) = \sum^{\infty}_{k=0}\frac{(x^2/4)^k}{(k!)^2} \\
+            I_{0e}(x) = e^{-|x|}I_0(x)
+
+    Args:
+        x (Tensor): The input tensor, it's data type should be float32, float64.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        - out (Tensor), A Tensor. the value of the exponentially scaled modified Bessel function of order 0 at x.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([0, 1, 2, 3, 4], dtype="float32")
+            print(paddle.i0e(x))
+            # (Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True, [1., 0.46575961, 0.30850832, 0.24300035, 0.20700192]),
+    """
+    if in_dygraph_mode():
+        return _C_ops.i0e(x)
+    else:
+        check_variable_and_dtype(x, "x", ["float32", "float64"], "i0e")
+
+        helper = LayerHelper("i0e", **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(type='i0e', inputs={'x': x}, outputs={'out': out})
     return out
