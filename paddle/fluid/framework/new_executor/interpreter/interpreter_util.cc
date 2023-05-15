@@ -400,6 +400,18 @@ void ApplyDeviceGuard(const OperatorBase* op_base,
       }
       VLOG(3) << "Switch into " << expected_kernel_key->place_
               << " by device_guard.";
+    } else if (op_device.find("npu") != std::string::npos &&
+               platform::is_custom_place(place)) {
+      if (op_base->SupportCustomDevice()) {
+        expected_kernel_key->place_ = place;
+      } else {
+        expected_kernel_key->place_ = platform::CPUPlace();
+        LOG_FIRST_N(WARNING, 1)
+            << "Op(" << op_base->Type()
+            << ") has no NPU implementation. It will be assigned to CPUPlace.";
+      }
+      VLOG(3) << "Switch into " << expected_kernel_key->place_
+              << " by device_guard.";
     } else {
       PADDLE_THROW(
           platform::errors::Fatal("Unsupported current place %s", op_device));
