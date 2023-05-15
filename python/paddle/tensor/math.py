@@ -5417,26 +5417,20 @@ def vander(x, n=None, increasing=False, name=None):
     return res
 
 
-def ldexp(input, other, name=None):
+def ldexp(x, y, name=None):
     """
-    Multiplies input by 2**:attr:other.. The equation is:
+    Compute the result of multiplying x by 2 to the power of y. The equation is:
 
     .. math::
-        out = input * 2^{other}
-
-    Note:
-        ``paddle.ldexp`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
-
-        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensors
-
+        out = x * 2^{y}
 
     Args:
-        input (Tensor): An N-D Tensor, the data type is float32, float64, int32 or int64.
-        other (int|Tensor):  Its data type is int32 or int64.
-        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+        x (Tensor): An N-D Tensor, the data type is float16, float32, float64, int32 or int64.
+        y (int|Tensor):  If it is an N-D Tensor, it should typically be an integer tensor.
+        name (str, optional): Name for the operation (optional, default is None).
 
     Returns:
-        N-D Tensor or scalar. The result of input * 2**other. This is a scalar if both input and other are scalars.
+        N-D Tensor. A location into which the result is stored. Its dimension and data type are the same as `x`.
 
     Examples:
 
@@ -5444,46 +5438,72 @@ def ldexp(input, other, name=None):
 
             import paddle
 
-            x = paddle.to_tensor([1, 2, 3], dtype='float64')
+            x = paddle.to_tensor([1, 2, 3], dtype='float32')
 
-            # example 1: y is a int
+            # example 1: y is an int
             res = paddle.ldexp(x, 2)
             print(res)
             # Tensor(shape=[3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #        [1., 4., 9.])
+            #        [4., 8., 12.])
 
             # example 2: y is a Tensor
-            y = paddle.to_tensor([2], dtype='int64')
+            y = paddle.to_tensor([2, 3, 4], dtype='int32')
             res = paddle.ldexp(x, y)
             print(res)
             # Tensor(shape=[3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #        [1., 4., 9.])
+            #        [4., 16., 48.])
 
     """
-    check_variable_and_dtype(
-        input,
-        'input',
-        [
-            'float32',
-            'float64',
-            'int32',
-            'int64',
-        ],
-        "ldexp",
-    )
-    if isinstance(other, (int)):
-        return input * paddle.pow(paddle.to_tensor([2], dtype='int64'), other)
-    elif isinstance(other, (paddle.Tensor, Variable)):
-        if other.dtype == "int64":
-            return input * paddle.pow(
-                paddle.to_tensor([2], dtype='int64'), other
+    two = paddle.to_tensor(2, dtype='int64')
+
+    if isinstance(y, float) or (
+        isinstance(y, (paddle.Tensor, Variable))
+        and y.dtype in ['float32', 'float64']
+    ):
+        raise ValueError(
+            'y must be integer or integer tensor type, but received: %s '
+            % (y.dtype)
+        )
+    if in_dygraph_mode():
+        if isinstance(y, (int, float)):
+            return paddle.multiply(
+                x, paddle.cast(paddle.pow(two, y), dtype=x.dtype)
             )
-        elif other.dtype == "int32":
-            return input * paddle.pow(
-                paddle.to_tensor([2], dtype='int32'), other
+        elif isinstance(y, (paddle.Tensor, Variable)):
+            return paddle.multiply(
+                x, paddle.cast(paddle.pow(two, y), dtype=x.dtype)
+            )
+        else:
+            raise TypeError(
+                'y must be scalar or tensor type, but received: %s ' % (y.dtype)
             )
     else:
-        raise TypeError(
-            'other must be scalar or tensor type, but received: %s '
-            % (other.dtype)
+        # in static graph mode
+        helper = LayerHelper('ldexp', **locals())
+        if isinstance(y, int):
+            # compute 2^y
+            power = helper.create_variable_for_type_inference(dtype=x.dtype)
+            attrs = {'factor': y}
+            helper.append_op(
+                type='pow',
+                inputs={'X': two},
+                outputs={'Out': power},
+                attrs=attrs,
+            )
+        elif isinstance(y, (paddle.Tensor, Variable)):
+            # compute 2^y
+            power = helper.create_variable_for_type_inference(dtype=x.dtype)
+            helper.append_op(
+                type='elementwise_pow',
+                inputs={'X': two, 'Y': y},
+                outputs={'Out': power},
+            )
+
+        # compute x * (2^y)
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type='elementwise_mul',
+            inputs={'X': x, 'Y': power},
+            outputs={'Out': out},
         )
+        return out
