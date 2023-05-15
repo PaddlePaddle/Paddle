@@ -58,7 +58,7 @@ def kl_divergence(p, q):
 
             print(paddle.distribution.kl_divergence(p, q))
             # Tensor(shape=[], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #        [0.21193528])
+            #        0.21193528)
 
     """
     return _dispatch(type(p), type(q))(p, q)

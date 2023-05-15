@@ -385,7 +385,7 @@ def _create_op_desc_(op_type, inputs, outputs, attrs):
 
 
 def _create_loss_op_desc_(loss):
-    # 0D Tensor or 0-Size Tensor
+    # 0-D Tensor or 0-Size Tensor
     if len(loss.shape) == 0 or 0 in loss.shape:
         create_shape = loss.shape
     else:
