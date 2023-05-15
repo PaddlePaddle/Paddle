@@ -204,7 +204,7 @@ struct TensorSetConstantWithPlace
       : context_(context), tensor_(tensor), value_(value) {}
 
   template <typename Place>
-  void operator()(Place place) const {
+  void operator()(Place place UNUSED) const {
     set_constant_with_place<Place>(context_, tensor_, value_);
   }
 
