@@ -440,7 +440,7 @@ def amp_guard(
         tracer._amp_dtype = amp_dtype
 
         # switch promote
-        if amp_level == "O2":
+        if amp_level == AMP_LEVEL.O2:
             original_use_promote = tracer._use_promote
             tracer._use_promote = use_promote
 
@@ -454,7 +454,7 @@ def amp_guard(
             tracer._set_amp_op_list(original_white_list, original_black_list)
             # set_flags(original_flags)
             tracer._amp_dtype = original_amp_dtype
-            if amp_level == "O2":
+            if amp_level == AMP_LEVEL.O2:
                 tracer._use_promote = original_use_promote
 
 

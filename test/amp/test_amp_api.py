@@ -20,19 +20,45 @@ import paddle
 
 
 class TestAutoCast(AmpTestBase):
-    def test_amp_OD_level(self):
-        conv = paddle.nn.Conv2D(
+    def setUp(self):
+        self._conv = paddle.nn.Conv2D(
             in_channels=1, out_channels=6, kernel_size=3, bias_attr=False
         )
-        linear = paddle.nn.Linear(in_features=4, out_features=4)
+        self._linear = paddle.nn.Linear(in_features=4, out_features=4)
+
+    def test_amp_OD_level(self):
         with paddle.amp.auto_cast(level='OD'):
-            out1 = conv(paddle.rand(shape=[1, 1, 6, 6], dtype='float32'))
+            out1 = self._conv(paddle.rand(shape=[1, 1, 6, 6], dtype='float32'))
             out2 = out1 + paddle.rand(shape=out1.shape, dtype='float16')
-            out3 = linear(out2)
+            out3 = self._linear(out2)
 
         self.assertEqual(out1.dtype, paddle.float16)
         self.assertEqual(out2.dtype, paddle.float32)
         self.assertEqual(out3.dtype, paddle.float32)
+
+    def test_use_promote_on(self):
+        with paddle.amp.auto_cast(level='O2'):
+            x = paddle.rand(shape=[1, 1, 6, 6], dtype='float32')
+            conv_out = self._conv(x)
+            y = paddle.rand(shape=conv_out.shape, dtype='float16')
+            add_out = conv_out + y
+            linear_out = self._linear(add_out)
+
+        self.assertEqual(conv_out.dtype, paddle.float16)
+        self.assertEqual(add_out.dtype, paddle.float16)
+        self.assertEqual(linear_out.dtype, paddle.float32)
+
+    def test_use_promote_off(self):
+        with paddle.amp.auto_cast(level='O2', use_promote=False):
+            x = paddle.rand(shape=[1, 1, 6, 6], dtype='float32')
+            conv_out = self._conv(x)
+            y = paddle.rand(shape=conv_out.shape, dtype='float16')
+            add_out = conv_out + y
+            linear_out = self._linear(add_out)
+
+        self.assertEqual(conv_out.dtype, paddle.float16)
+        self.assertEqual(add_out.dtype, paddle.float16)
+        self.assertEqual(linear_out.dtype, paddle.float16)
 
 
 class TestGradScaler(AmpTestBase):
