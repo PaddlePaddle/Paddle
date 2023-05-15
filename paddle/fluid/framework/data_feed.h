@@ -1027,7 +1027,7 @@ class GraphDataGenerator {
   HashTable<uint64_t, uint64_t>* table_;
   GraphDataGeneratorConfig conf_;
   size_t infer_cursor_;
-  size_t jump_rows_;
+  std::vector<size_t> jump_rows_;
   int64_t* id_tensor_ptr_;
   int* index_tensor_ptr_;
   int64_t* show_tensor_ptr_;
@@ -1041,8 +1041,8 @@ class GraphDataGenerator {
   std::vector<phi::DenseTensor*> feed_vec_;
   std::vector<UsedSlotInfo>* feed_info_; // adapt for float feature
   std::vector<size_t> offset_;
-  std::vector<std::shared_ptr<phi::Allocation>> d_device_keys_;
-  std::shared_ptr<phi::Allocation> d_train_metapath_keys_;
+  std::vector<std::vector<std::shared_ptr<phi::Allocation>>> d_device_keys_;
+  std::vector<std::shared_ptr<phi::Allocation>> d_train_metapath_keys_;
 
   std::vector<std::shared_ptr<phi::Allocation>> d_walk_;
   std::vector<std::shared_ptr<phi::Allocation>> d_walk_ntype_;
@@ -1050,7 +1050,7 @@ class GraphDataGenerator {
   std::shared_ptr<phi::Allocation> d_feature_;
   std::vector<std::shared_ptr<phi::Allocation>> d_random_row_;
   std::vector<std::shared_ptr<phi::Allocation>> d_random_row_col_shift_;
-  std::shared_ptr<phi::Allocation> d_uniq_node_num_;
+  std::vector<std::shared_ptr<phi::Allocation>> d_uniq_node_num_;
   std::shared_ptr<phi::Allocation> d_slot_feature_num_map_;
   std::shared_ptr<phi::Allocation> d_actual_slot_id_map_;
   std::shared_ptr<phi::Allocation> d_fea_offset_map_;
@@ -1086,13 +1086,13 @@ class GraphDataGenerator {
   int uint_slot_num_ = 0; // uint slot num
   std::vector<int> h_slot_feature_num_map_;
   int fea_num_per_node_;
-  int shuffle_seed_;
+  std::vector<int> shuffle_seed_;
   bool epoch_finish_;
   int pass_end_ = 0;
   std::vector<uint64_t> host_vec_;
-  std::vector<uint64_t> h_device_keys_len_;
-  uint64_t h_train_metapath_keys_len_;
-  uint64_t copy_unique_len_;
+  std::vector<std::vector<uint64_t>> h_device_keys_len_;
+  std::vector<uint64_t> h_train_metapath_keys_len_;
+  std::vector<uint64_t> copy_unique_len_;
   std::vector<int> total_row_;
   size_t infer_node_start_;
   size_t infer_node_end_;

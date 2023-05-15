@@ -230,13 +230,13 @@ class GraphGpuWrapper {
   std::string feature_separator_ = std::string(" ");
   bool conf_initialized_ = false;
   bool type_keys_initialized_ = false;
-  std::vector<int> first_node_type_;
+  std::vector<std::vector<int>> first_node_type_;
   std::vector<uint8_t> excluded_train_pair_;
   std::vector<int32_t> pair_label_conf_;
-  std::vector<std::vector<int>> meta_path_;
+  std::vector<std::vector<std::vector<int>>> meta_path_;
 
-  std::vector<std::set<int>> finish_node_type_;
-  std::vector<std::unordered_map<int, size_t>> node_type_start_;
+  std::vector<std::vector<std::set<int>>> finish_node_type_;
+  std::vector<std::vector<std::unordered_map<int, size_t>>> node_type_start_;
   std::vector<size_t> cur_metapath_start_;
   std::vector<std::unordered_map<int, size_t>> global_infer_node_type_start_;
   std::vector<size_t> infer_cursor_;
