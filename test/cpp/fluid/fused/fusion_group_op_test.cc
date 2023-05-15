@@ -182,7 +182,7 @@ void TestMain(const std::vector<std::string>& input_names,
 }
 
 TEST(FusionGroupOp, elementwise) {
-  if (!platform::dynload::HasNVRTC() || !platform::dynload::HasCUDADriver()) {
+  if (!phi::dynload::HasNVRTC() || !phi::dynload::HasCUDADriver()) {
     return;
   }
 

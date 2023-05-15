@@ -149,7 +149,8 @@ if(WITH_CUTLASS)
 endif()
 
 if(APPLE OR WIN32)
-  list(REMOVE_ITEM kernel_cu "gpu/fusion_group_kernel.cu")
+  list(REMOVE_ITEM kernel_cu
+       "${CMAKE_CURRENT_SOURCE_DIR}/gpu/fusion_group_kernel.cu")
 endif()
 
 if(WITH_MKLDNN)
