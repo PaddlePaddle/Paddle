@@ -870,11 +870,10 @@ def relu6(x, name=None):
             print(out)
             # [0, 0.3, 6]
     """
-    threshold = 6.0
     if in_dygraph_mode():
         return _C_ops.relu6(x)
     if in_dynamic_mode():
-        return _legacy_C_ops.relu6(x, 'threshold', threshold)
+        return _legacy_C_ops.relu6(x)
 
     check_variable_and_dtype(
         x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'relu6'
@@ -885,7 +884,6 @@ def relu6(x, name=None):
         type='relu6',
         inputs={'X': x},
         outputs={'Out': out},
-        attrs={'threshold': threshold},
     )
     return out
 
@@ -1353,7 +1351,6 @@ def swish(x, name=None):
             type='swish',
             inputs={'X': x},
             outputs={'Out': out},
-            attrs={'beta': 1.0},
         )
         return out
 

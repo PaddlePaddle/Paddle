@@ -60,11 +60,11 @@ KernelSignature HardSwishOpArgumentMapping(const ArgumentMappingContext& ctx) {
 }
 
 KernelSignature SwishOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("swish_raw", {"X"}, {"beta"}, {"Out"});
+  return KernelSignature("swish", {"X"}, {}, {"Out"});
 }
 
 KernelSignature Relu6OpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("relu6_raw", {"X"}, {"threshold"}, {"Out"});
+  return KernelSignature("relu6", {"X"}, {}, {"Out"});
 }
 
 }  // namespace phi
