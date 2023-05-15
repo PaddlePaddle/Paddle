@@ -166,15 +166,6 @@ def add_composite_info(ops, backward_ops, backward_op_dict):
             op["backward_composite"] = op["backward"]
         else:
             op["backward_composite"] = None
-        # add whether only composite
-        if (
-            op["backward_composite"] is not None
-            and "invoke" not in backward_op_dict[op["backward"]]
-            and "kernel" not in backward_op_dict[op["backward"]]
-        ):
-            op["only_backward_composite"] = True
-        else:
-            op["only_backward_composite"] = False
 
         # add whether only composite
         if (

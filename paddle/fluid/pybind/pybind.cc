@@ -1336,6 +1336,7 @@ All parameter, weight, gradient are variables in Paddle.
                 type.c_str(),
                 type.c_str()));
           }
+
           // In PrimEnabled mode, the priority of CompGradOpMaker is greater
           // than GradCompMaker as we need split first-order grad operator into
           // primitive operators for compiler. In PrimDisabled mode, the
@@ -1359,13 +1360,9 @@ All parameter, weight, gradient are variables in Paddle.
             }
           } else {
             if (grad_op_maker != nullptr) {
-              VLOG(3) << "grad_op_maker is ! nullptr, Runing origin fun for "
-                      << op_desc.Type();
               grad_op_descs = grad_op_maker(
                   op_desc, no_grad_set, &grad_to_var, grad_sub_block);
             } else {
-              VLOG(3) << "grad_op_maker is nullptr Runing composite fun for "
-                      << op_desc.Type();
               grad_op_descs = grad_comp_op_maker(op_desc,
                                                  no_grad_set,
                                                  &grad_to_var,
@@ -1382,7 +1379,6 @@ All parameter, weight, gradient are variables in Paddle.
               [](std::unique_ptr<OpDesc> &p) { return p.release(); });
           return std::make_pair(grad_op_desc_ptrs, grad_to_var);
         });
-
   m.def("has_comp_grad_op_maker", [](const std::string op_type) {
     return framework::OpInfoMap::Instance().Get(op_type).HasCompGradOpMaker();
   });
@@ -1393,9 +1389,6 @@ All parameter, weight, gradient are variables in Paddle.
     return framework::OpInfoMap::Instance()
         .Get(op_type)
         .HasNonEmptyGradOpMaker();
-  });
-  m.def("has_empty_grad_op_maker", [](const std::string op_type) {
-    return framework::OpInfoMap::Instance().Get(op_type).HasEmptyGradOpMaker();
   });
   m.def("has_infer_inplace", [](const std::string op_type) {
     return framework::OpInfoMap::Instance().Get(op_type).HasInferInplace();

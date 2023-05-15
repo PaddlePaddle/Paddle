@@ -39,7 +39,7 @@ using paddle::framework::GradVarName;
 
 {{operator(op)}}
   {% elif op is only_composite_op %}
-  
+
   {% else %}
 {{backward_op_reused_maker(op, op_dict[op["forward"]["name"]], op["invoke"])}}
   {% endif %}
