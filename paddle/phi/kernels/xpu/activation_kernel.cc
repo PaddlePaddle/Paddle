@@ -527,7 +527,6 @@ void HardSwishKernel(const Context& dev_ctx,
 template <typename T, typename Context>
 void Relu6Kernel(const Context& dev_ctx,
                  const DenseTensor& x,
-                 float attr,
                  DenseTensor* out) {
   XPURelu6Functor<T> functor;
   auto attrs = functor.GetAttrs();
