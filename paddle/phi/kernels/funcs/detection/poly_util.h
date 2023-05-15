@@ -15,6 +15,10 @@ limitations under the License. */
 #ifndef POLY_UTIL_H_
 #define POLY_UTIL_H_
 
+#include <vector>
+
+#include "paddle/phi/kernels/funcs/gpc.h"
+
 namespace phi {
 namespace funcs {
 
