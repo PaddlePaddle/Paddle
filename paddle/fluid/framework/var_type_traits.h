@@ -43,6 +43,10 @@
 #include "xpu/bkcl.h"
 #endif
 
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+#include "paddle/phi/backends/c_comm_lib.h"
+#endif
+
 namespace phi {
 class DenseTensor;
 class SelectedRows;
@@ -195,6 +199,9 @@ using VarTypeRegistry = detail::VarTypeRegistryImpl<
 #if defined(PADDLE_WITH_XPU_BKCL)
     BKCLUniqueId,
     platform::BKCLCommunicator,
+#endif
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+    phi::ccl::CCLRootId,
 #endif
     std::vector<std::unique_ptr<operators::CUDAGraphWithInOuts>>,
     int,

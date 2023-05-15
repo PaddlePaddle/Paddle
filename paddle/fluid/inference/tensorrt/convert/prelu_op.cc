@@ -87,7 +87,6 @@ class PReluOpConverter : public OpConverter {
           if (hw_tensor != nullptr) {
             shape_tensor = Concat(
                 std::vector<nvinfer1::ITensor*>{n_tensor, c_tensor, hw_tensor});
-
           } else {
             shape_tensor =
                 Concat(std::vector<nvinfer1::ITensor*>{n_tensor, c_tensor});
