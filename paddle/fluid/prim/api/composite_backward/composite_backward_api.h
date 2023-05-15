@@ -60,9 +60,12 @@ void leaky_relu_grad(const Tensor& out,
 }
 
 template <typename T>
-void silu_grad(const Tensor& x, const Tensor& out_grad, Tensor* x_grad) {
+void silu_grad(const Tensor& x,
+               const Tensor& out,
+               const Tensor& out_grad,
+               Tensor* x_grad) {
   if (x_grad) {
-    auto sigmoid = 1.0 / (1.0 + exp<T>(-x));
+    auto sigmoid = out / x;
     auto res = out_grad * sigmoid * (1.0 + x * (1.0 - sigmoid));
     set_output<T>(res, x_grad);
   }
@@ -1946,15 +1949,15 @@ void pad_grad(const Tensor& input,
     size_t rank = input.dims().size();
     auto out_dims = out_grad.dims();
 
-    std::vector<int> starts(rank, 0);
+    std::vector<int64_t> starts(rank, 0);
     std::vector<int64_t> ends(rank, 0);
     std::vector<int64_t> axes(rank, 0);
     std::vector<int64_t> infer_flags(rank, 1);
     std::vector<int64_t> decrease_axis({});
     for (size_t i = 0; i < rank; ++i) {
-      starts.push_back(static_cast<int>(paddings[2 * i]));
-      ends.push_back(static_cast<int64_t>(out_dims[i] - paddings[2 * i + 1]));
-      axes.push_back(i);
+      starts[i] = static_cast<int64_t>(paddings[2 * i]);
+      ends[i] = static_cast<int64_t>(out_dims[i] - paddings[2 * i + 1]);
+      axes[i] = i;
     }
     auto out_tmp =
         slice<T>(out_grad, axes, starts, ends, infer_flags, decrease_axis);
