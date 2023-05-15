@@ -3379,20 +3379,22 @@ def cdist(x, y, p=2, name=None):
 
     out = paddle.cdist(x, y, 2)
     print(out) # out = [[2.23606801, 2.82842708],
-                        [2.        , 3.        ]])
+               #        [2.        , 3.        ]])
 
     """
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'cdist')
     check_variable_and_dtype(y, 'dtype', ['float32', 'float64'], 'cdist')
     x_shape = x.shape
     y_shape = y.shape
+    if len(x_shape) < 2 or len(y_shape) < 2:
+        raise ValueError('The Input(x) and Input(y) should be 2-D tensor.')
     if x_shape[:-2] != y_shape[:-2] or x_shape[-1] != y_shape[-1]:
         raise ValueError(
             "Input(x) shape[:-2] should be same as Input(y) shape[:-2] "
             "and Input(x) shape[-1] shoule be same as Input(y) shape[-1]"
         )
     y = paddle.concat([y] * x_shape[-2], axis=-2)
-    x = x.repeat_interleave(y_shape[-2], axis=-2)
+    x = paddle.repeat_interleave(x, y_shape[-2], axis=-2)
     if p == 0:
         loss = ((x - y) ** p).abs().sum(axis=-1)
     elif p == float('inf'):
