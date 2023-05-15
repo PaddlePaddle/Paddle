@@ -18,7 +18,7 @@ namespace phi {
 
 #define DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(func_name, op_name, attrs) \
   KernelSignature func_name##GradOpArgumentMapping(               \
-      const ArgumentMappingContext& ctx) {                        \
+      const ArgumentMappingContext& ctx UNUSED) {                 \
     return KernelSignature(                                       \
         op_name "_grad", {"X", "Out@GRAD"}, {attrs}, {"X@GRAD"}); \
   }
