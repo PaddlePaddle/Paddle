@@ -444,6 +444,15 @@
     func : conj
   backward : conj_grad
 
+- op : copysign
+  args : (Tensor x, Tensor y)
+  output : Tensor
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : copysign
+  backward : copysign_grad
+
 - op : cos
   args : (Tensor x)
   output : Tensor
