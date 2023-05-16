@@ -279,10 +279,6 @@ void CdistGradKernel(const Context& dev_ctx,
       dev_ctx, x_expanded, y_expanded, out, out_grad, p, x_grad);
   cdist_grad_impl<T, Context>(
       dev_ctx, y_expanded, x_expanded, out_t, out_grad_t, p, y_grad);
-
-  T* x_grad_data = x_grad->data<T>();
-  T* y_grad_data = y_grad->data<T>();
-
   *x_grad = phi::Reshape<T, Context>(dev_ctx, *x_grad, x_tensor_expand_dims);
   *y_grad = phi::Reshape<T, Context>(dev_ctx, *y_grad, y_tensor_expand_dims);
 }

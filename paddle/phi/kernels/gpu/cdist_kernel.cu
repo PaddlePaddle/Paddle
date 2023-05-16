@@ -15,13 +15,20 @@
 #include "paddle/phi/kernels/cdist_kernel.h"
 
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/activation_kernel.h"
+#include "paddle/phi/kernels/concat_kernel.h"
 #include "paddle/phi/kernels/dist_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/expand_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/matmul_kernel.h"
+#include "paddle/phi/kernels/reduce_sum_kernel.h"
 #include "paddle/phi/kernels/reshape_kernel.h"
+#include "paddle/phi/kernels/scale_kernel.h"
+#include "paddle/phi/kernels/transpose_kernel.h"
 
 template <typename T, typename ReduceOp>
 __inline__ __device__ T WarpReduce(T val, const ReduceOp& op) {
