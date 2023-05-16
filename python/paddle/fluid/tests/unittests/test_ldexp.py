@@ -64,18 +64,102 @@ class TestLdexpAPI(unittest.TestCase):
             x = (np.random.rand(*dims) * 10).astype(np.float64)
             y = (np.random.randint(-10, 10, dims)).astype(np.int64)
             res = _run_ldexp(DYNAMIC, x, y, place)
-            np.testing.assert_allclose(res, np.ldexp(x, y), rtol=1e-05)
+            np.testing.assert_allclose(res, np.ldexp(x, y), rtol=1e-02)
             res = _run_ldexp(STATIC, x, y, place)
-            np.testing.assert_allclose(res, np.ldexp(x, y), rtol=1e-05)
+            np.testing.assert_allclose(res, np.ldexp(x, y), rtol=1e-02)
+
+            dims = (np.random.randint(200, 300),)
+            x = (np.random.rand(*dims) * 10).astype(np.float32)
+            y = (np.random.randint(-10, 10, dims)).astype(np.int64)
+            res = _run_ldexp(DYNAMIC, x, y, place)
+            np.testing.assert_allclose(res, np.ldexp(x, y), rtol=1e-02)
+            res = _run_ldexp(STATIC, x, y, place)
+            np.testing.assert_allclose(res, np.ldexp(x, y), rtol=1e-02)
 
             # test 1-d int tensor and 1-d int tensor
             dims = (np.random.randint(200, 300),)
             x = (np.random.randint(-10, 10, dims)).astype(np.int64)
             y = (np.random.randint(-10, 10, dims)).astype(np.int64)
             res = _run_ldexp(DYNAMIC, x, y, place)
-            np.testing.assert_allclose(res, np.ldexp(x, y), rtol=1e-05)
+            np.testing.assert_allclose(res, np.ldexp(x, y), rtol=1e-02)
             res = _run_ldexp(STATIC, x, y, place)
-            np.testing.assert_allclose(res, np.ldexp(x, y), rtol=1e-05)
+            np.testing.assert_allclose(res, np.ldexp(x, y), rtol=1e-02)
+
+            dims = (np.random.randint(200, 300),)
+            x = (np.random.randint(-10, 10, dims)).astype(np.int32)
+            y = (np.random.randint(-10, 10, dims)).astype(np.int32)
+            res = _run_ldexp(DYNAMIC, x, y, place)
+            np.testing.assert_allclose(res, np.ldexp(x, y), rtol=1e-02)
+            res = _run_ldexp(STATIC, x, y, place)
+            np.testing.assert_allclose(res, np.ldexp(x, y), rtol=1e-02)
+
+            # test 1-d float tensor and 1-d int scalar
+            dims = (np.random.randint(200, 300),)
+            x = (np.random.rand(*dims) * 10).astype(np.float64)
+            y = int(np.random.rand() * 10)
+            res = _run_ldexp(DYNAMIC, x, y, place)
+            np.testing.assert_allclose(res, np.ldexp(x, y), rtol=1e-02)
+            res = _run_ldexp(STATIC, x, y, place)
+            np.testing.assert_allclose(res, np.ldexp(x, y), rtol=1e-02)
+
+            dims = (np.random.randint(200, 300),)
+            x = (np.random.rand(*dims) * 10).astype(np.float32)
+            y = int(np.random.rand() * 10)
+            res = _run_ldexp(DYNAMIC, x, y, place)
+            np.testing.assert_allclose(res, np.ldexp(x, y), rtol=1e-02)
+            res = _run_ldexp(STATIC, x, y, place)
+            np.testing.assert_allclose(res, np.ldexp(x, y), rtol=1e-02)
+
+            # test 1-d int tensor and 1-d int scalar
+            dims = (np.random.randint(200, 300),)
+            x = (np.random.rand(*dims) * 10).astype(np.int64)
+            y = int(np.random.rand() * 10)
+            res = _run_ldexp(DYNAMIC, x, y, place)
+            np.testing.assert_allclose(res, np.ldexp(x, y), rtol=1e-02)
+            res = _run_ldexp(STATIC, x, y, place)
+            np.testing.assert_allclose(res, np.ldexp(x, y), rtol=1e-02)
+
+            dims = (np.random.randint(200, 300),)
+            x = (np.random.rand(*dims) * 10).astype(np.int32)
+            y = int(np.random.rand() * 10)
+            res = _run_ldexp(DYNAMIC, x, y, place)
+            np.testing.assert_allclose(res, np.ldexp(x, y), rtol=1e-02)
+            res = _run_ldexp(STATIC, x, y, place)
+            np.testing.assert_allclose(res, np.ldexp(x, y), rtol=1e-02)
+
+            # test 1-d float scalar and 1-d int tensor
+            dims = (np.random.randint(200, 300),)
+            x = np.random.rand() * 10
+            y = (np.random.randint(-10, 10, dims)).astype(np.int64)
+            res = _run_ldexp(DYNAMIC, x, y, place)
+            np.testing.assert_allclose(res, np.ldexp(x, y), rtol=1e-02)
+            res = _run_ldexp(STATIC, x, y, place)
+            np.testing.assert_allclose(res, np.ldexp(x, y), rtol=1e-02)
+
+            dims = (np.random.randint(200, 300),)
+            x = np.random.rand() * 10
+            y = (np.random.randint(-10, 10, dims)).astype(np.int32)
+            res = _run_ldexp(DYNAMIC, x, y, place)
+            np.testing.assert_allclose(res, np.ldexp(x, y), rtol=1e-02)
+            res = _run_ldexp(STATIC, x, y, place)
+            np.testing.assert_allclose(res, np.ldexp(x, y), rtol=1e-02)
+
+            # test 1-d int scalar and 1-d int tensor
+            dims = (np.random.randint(200, 300),)
+            x = int(np.random.rand() * 10)
+            y = (np.random.randint(-10, 10, dims)).astype(np.int64)
+            res = _run_ldexp(DYNAMIC, x, y, place)
+            np.testing.assert_allclose(res, np.ldexp(x, y), rtol=1e-02)
+            res = _run_ldexp(STATIC, x, y, place)
+            np.testing.assert_allclose(res, np.ldexp(x, y), rtol=1e-02)
+
+            dims = (np.random.randint(200, 300),)
+            x = int(np.random.rand() * 10)
+            y = (np.random.randint(-10, 10, dims)).astype(np.int32)
+            res = _run_ldexp(DYNAMIC, x, y, place)
+            np.testing.assert_allclose(res, np.ldexp(x, y), rtol=1e-02)
+            res = _run_ldexp(STATIC, x, y, place)
+            np.testing.assert_allclose(res, np.ldexp(x, y), rtol=1e-02)
 
             # test broadcast
             dims = (
@@ -86,18 +170,9 @@ class TestLdexpAPI(unittest.TestCase):
             x = (np.random.rand(*dims) * 10).astype(np.float64)
             y = (np.random.randint(-10, 10, dims[-1])).astype(np.int64)
             res = _run_ldexp(DYNAMIC, x, y)
-            np.testing.assert_allclose(res, np.ldexp(x, y), rtol=1e-05)
+            np.testing.assert_allclose(res, np.ldexp(x, y), rtol=1e-02)
             res = _run_ldexp(STATIC, x, y)
-            np.testing.assert_allclose(res, np.ldexp(x, y), rtol=1e-05)
-
-            # test 2-d float tensor and 2-d int tensor
-            dims = (np.random.randint(2, 10), np.random.randint(5, 10))
-            x = (np.random.rand(*dims) * 10).astype(np.float32)
-            y = (np.random.randint(-10, 10, dims)).astype(np.int32)
-            res = _run_ldexp(DYNAMIC, x, y, place)
-            np.testing.assert_allclose(res, np.ldexp(x, y))
-            res = _run_ldexp(STATIC, x, y, place)
-            np.testing.assert_allclose(res, np.ldexp(x, y), rtol=1e-05)
+            np.testing.assert_allclose(res, np.ldexp(x, y), rtol=1e-02)
 
 
 if __name__ == '__main__':

@@ -5464,46 +5464,5 @@ def ldexp(x, y, name=None):
             'y must be integer or integer tensor type, but received: %s '
             % (y.dtype)
         )
-    if in_dygraph_mode():
-        if isinstance(y, (int, float)):
-            return paddle.multiply(
-                x, paddle.cast(paddle.pow(two, y), dtype=x.dtype)
-            )
-        elif isinstance(y, (paddle.Tensor, Variable)):
-            return paddle.multiply(
-                x, paddle.cast(paddle.pow(two, y), dtype=x.dtype)
-            )
-        else:
-            raise TypeError(
-                'y must be scalar or tensor type, but received: %s ' % (y.dtype)
-            )
-    else:
-        # in static graph mode
-        helper = LayerHelper('ldexp', **locals())
-        if isinstance(y, int):
-            # compute 2^y
-            power = helper.create_variable_for_type_inference(dtype=x.dtype)
-            attrs = {'factor': y}
-            helper.append_op(
-                type='pow',
-                inputs={'X': two},
-                outputs={'Out': power},
-                attrs=attrs,
-            )
-        elif isinstance(y, (paddle.Tensor, Variable)):
-            # compute 2^y
-            power = helper.create_variable_for_type_inference(dtype=x.dtype)
-            helper.append_op(
-                type='elementwise_pow',
-                inputs={'X': two, 'Y': y},
-                outputs={'Out': power},
-            )
 
-        # compute x * (2^y)
-        out = helper.create_variable_for_type_inference(dtype=x.dtype)
-        helper.append_op(
-            type='elementwise_mul',
-            inputs={'X': x, 'Y': power},
-            outputs={'Out': out},
-        )
-        return out
+    return paddle.multiply(x, paddle.cast(paddle.pow(two, y), dtype=x.dtype))
