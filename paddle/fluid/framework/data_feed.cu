@@ -3332,7 +3332,8 @@ void GraphDataGenerator::DoSageForTrain() {
   int sage_pass_end = 0;
   uint64_t *ins_buf, *ins_cursor;
   while (is_sage_pass_continue) {
-    for (int tensor_pair_idx = 0; tensor_pair_idx < conf_.tensor_pair_num;
+    for (int tensor_pair_idx = 0;
+            tensor_pair_idx < conf_.tensor_pair_num && is_sage_pass_continue;
             ++tensor_pair_idx) {
       while (ins_buf_pair_len_[tensor_pair_idx] < conf_.batch_size) {
         int32_t *pair_label_buf = NULL;
@@ -3369,80 +3370,79 @@ void GraphDataGenerator::DoSageForTrain() {
           }
         }
       }
-    }
 
-    // check whether reach sage pass end
-    if (conf_.is_multi_node) {
-      int res = multi_node_sync_sample(
-          sage_pass_end, ncclProd, place_, &multi_node_sync_stat_);
-      if (res) {
-        is_sage_pass_continue = false;
+      // check whether reach sage pass end
+      if (conf_.is_multi_node) {
+        int res = multi_node_sync_sample(
+            sage_pass_end, ncclProd, place_, &multi_node_sync_stat_);
+        if (res) {
+          is_sage_pass_continue = false;
+          break;
+        }
       }
+
+      total_instance = ins_buf_pair_len_[tensor_pair_idx] < conf_.batch_size ?
+          ins_buf_pair_len_[tensor_pair_idx] : conf_.batch_size;
+      total_instance *= 2;
+
+      ins_buf = reinterpret_cast<uint64_t *>(d_ins_buf_[tensor_pair_idx]->ptr());
+      ins_cursor = ins_buf + ins_buf_pair_len_[tensor_pair_idx] * 2 - total_instance;
+      auto final_sage_nodes = GenerateSampleGraph(ins_cursor,
+                                                  total_instance,
+                                                  &uniq_instance,
+                                                  conf_,
+                                                  &inverse_vec_,
+                                                  &graph_edges_vec_,
+                                                  &edges_split_num_vec_,
+                                                  &edge_type_graph_,
+                                                  place_,
+                                                  sample_stream_);
+      final_sage_nodes_vec_.emplace_back(final_sage_nodes);
+      uniq_instance_vec_.emplace_back(uniq_instance);
+      total_instance_vec_.emplace_back(total_instance);
+
+      if (conf_.get_degree) {
+        auto node_degrees = GetNodeDegree(reinterpret_cast<uint64_t *>(final_sage_nodes->ptr()),
+                                          uniq_instance,
+                                          conf_,
+                                          place_,
+                                          sample_stream_);
+        node_degree_vec_.emplace_back(node_degrees);
+      }
+      
+      if (conf_.enable_pair_label) {
+        auto pair_label = memory::AllocShared(
+            place_,
+            total_instance / 2 * sizeof(int),
+            phi::Stream(reinterpret_cast<phi::StreamId>(sample_stream_)));
+        int32_t *pair_label_buf =
+            reinterpret_cast<int32_t *>(d_pair_label_buf_[tensor_pair_idx]->ptr());
+        int32_t *pair_label_cursor =
+            pair_label_buf + ins_buf_pair_len_[tensor_pair_idx] - total_instance / 2;
+        cudaMemcpyAsync(pair_label->ptr(),
+                        pair_label_cursor,
+                        sizeof(int32_t) * total_instance / 2,
+                        cudaMemcpyDeviceToDevice,
+                        sample_stream_);
+        pair_label_vec_.emplace_back(pair_label);
+      }
+      
+      cudaStreamSynchronize(sample_stream_);
+      InsertTable(reinterpret_cast<uint64_t *>(final_sage_nodes->ptr()),
+                  uniq_instance,
+                  &d_uniq_node_num_[tensor_pair_idx],
+                  conf_,
+                  &copy_unique_len_[tensor_pair_idx],
+                  place_,
+                  table_,
+                  &host_vec_,
+                  sample_stream_);
+      
+      ins_buf_pair_len_[tensor_pair_idx] -= total_instance / 2;
     }
-
-    if (!is_sage_pass_continue) {
-      break;
+    if (is_sage_pass_continue) {
+      sage_batch_num_ += 1;
     }
-
-    total_instance = ins_buf_pair_len_[0] < conf_.batch_size ? ins_buf_pair_len_[0]
-                                                          : conf_.batch_size;
-    total_instance *= 2;
-
-    ins_buf = reinterpret_cast<uint64_t *>(d_ins_buf_[0]->ptr());
-    ins_cursor = ins_buf + ins_buf_pair_len_[0] * 2 - total_instance;
-    auto final_sage_nodes = GenerateSampleGraph(ins_cursor,
-                                                total_instance,
-                                                &uniq_instance,
-                                                conf_,
-                                                &inverse_vec_,
-                                                &graph_edges_vec_,
-                                                &edges_split_num_vec_,
-                                                &edge_type_graph_,
-                                                place_,
-                                                sample_stream_);
-    final_sage_nodes_vec_.emplace_back(final_sage_nodes);
-    uniq_instance_vec_.emplace_back(uniq_instance);
-    total_instance_vec_.emplace_back(total_instance);
-
-    if (conf_.get_degree) {
-      auto node_degrees = GetNodeDegree(reinterpret_cast<uint64_t *>(final_sage_nodes->ptr()),
-                                        uniq_instance,
-                                        conf_,
-                                        place_,
-                                        sample_stream_);
-      node_degree_vec_.emplace_back(node_degrees);
-    }
-
-    if (conf_.enable_pair_label) {
-      auto pair_label = memory::AllocShared(
-          place_,
-          total_instance / 2 * sizeof(int),
-          phi::Stream(reinterpret_cast<phi::StreamId>(sample_stream_)));
-      int32_t *pair_label_buf =
-          reinterpret_cast<int32_t *>(d_pair_label_buf_[0]->ptr());
-      int32_t *pair_label_cursor =
-          pair_label_buf + ins_buf_pair_len_[0] - total_instance / 2;
-      cudaMemcpyAsync(pair_label->ptr(),
-                      pair_label_cursor,
-                      sizeof(int32_t) * total_instance / 2,
-                      cudaMemcpyDeviceToDevice,
-                      sample_stream_);
-      pair_label_vec_.emplace_back(pair_label);
-    }
-
-    cudaStreamSynchronize(sample_stream_);
-    InsertTable(reinterpret_cast<uint64_t *>(final_sage_nodes->ptr()),
-                uniq_instance,
-                &d_uniq_node_num_[0],
-                conf_,
-                &copy_unique_len_[0],
-                place_,
-                table_,
-                &host_vec_,
-                sample_stream_);
-    
-    ins_buf_pair_len_[0] -= total_instance / 2;
-    sage_batch_num_ += 1;
   }
 }
 
@@ -3460,60 +3460,63 @@ void GraphDataGenerator::DoSageForInfer() {
           : infer_node_end_ - infer_node_start_;
   total_instance *= 2;
   while (total_instance != 0) {
-    uint64_t *d_type_keys = reinterpret_cast<uint64_t *>(
-        d_device_keys_[0][infer_cursor_]->ptr());
-    d_type_keys += infer_node_start_;
-    infer_node_start_ += total_instance / 2;
-    auto node_buf = memory::AllocShared(
-        place_,
-        total_instance * sizeof(uint64_t),
-        phi::Stream(reinterpret_cast<phi::StreamId>(sample_stream_)));
-    int64_t *node_buf_ptr = reinterpret_cast<int64_t *>(node_buf->ptr());
-    CopyDuplicateKeys<<<GET_BLOCKS(total_instance / 2),
-                        CUDA_NUM_THREADS,
-                        0,
-                        sample_stream_>>>(
-        node_buf_ptr, d_type_keys, total_instance / 2);
-    auto final_sage_nodes = GenerateSampleGraph(reinterpret_cast<uint64_t *>(node_buf->ptr()),
-                                                total_instance,
-                                                &uniq_instance,
-                                                conf_,
-                                                &inverse_vec_,
-                                                &graph_edges_vec_,
-                                                &edges_split_num_vec_,
-                                                &edge_type_graph_,
-                                                place_,
-                                                sample_stream_);
-    final_sage_nodes_vec_.emplace_back(final_sage_nodes);
-    uniq_instance_vec_.emplace_back(uniq_instance);
-    total_instance_vec_.emplace_back(total_instance);
-
-    if (conf_.get_degree) {
-      auto node_degrees = GetNodeDegree(reinterpret_cast<uint64_t *>(final_sage_nodes->ptr()),
-                                        uniq_instance,
-                                        conf_,
-                                        place_,
-                                        sample_stream_);
-      node_degree_vec_.emplace_back(node_degrees);
+    for (int tensor_pair_idx = 0; tensor_pair_idx < conf_.tensor_pair_num;
+            ++tensor_pair_idx) {
+      uint64_t *d_type_keys = reinterpret_cast<uint64_t *>(
+          d_device_keys_[tensor_pair_idx][infer_cursor_]->ptr());
+      d_type_keys += infer_node_start_;
+      infer_node_start_ += total_instance / 2;
+      auto node_buf = memory::AllocShared(
+          place_,
+          total_instance * sizeof(uint64_t),
+          phi::Stream(reinterpret_cast<phi::StreamId>(sample_stream_)));
+      int64_t *node_buf_ptr = reinterpret_cast<int64_t *>(node_buf->ptr());
+      CopyDuplicateKeys<<<GET_BLOCKS(total_instance / 2),
+                          CUDA_NUM_THREADS,
+                          0,
+                          sample_stream_>>>(
+          node_buf_ptr, d_type_keys, total_instance / 2);
+      auto final_sage_nodes = GenerateSampleGraph(reinterpret_cast<uint64_t *>(node_buf->ptr()),
+                                                  total_instance,
+                                                  &uniq_instance,
+                                                  conf_,
+                                                  &inverse_vec_,
+                                                  &graph_edges_vec_,
+                                                  &edges_split_num_vec_,
+                                                  &edge_type_graph_,
+                                                  place_,
+                                                  sample_stream_);
+      final_sage_nodes_vec_.emplace_back(final_sage_nodes);
+      uniq_instance_vec_.emplace_back(uniq_instance);
+      total_instance_vec_.emplace_back(total_instance);
+      
+      if (conf_.get_degree) {
+        auto node_degrees = GetNodeDegree(reinterpret_cast<uint64_t *>(final_sage_nodes->ptr()),
+                                          uniq_instance,
+                                          conf_,
+                                          place_,
+                                          sample_stream_);
+        node_degree_vec_.emplace_back(node_degrees);
+      }
+      cudaStreamSynchronize(sample_stream_);
+      InsertTable(reinterpret_cast<uint64_t *>(final_sage_nodes->ptr()),
+                  uniq_instance,
+                  &d_uniq_node_num_[tensor_pair_idx],
+                  conf_,
+                  &copy_unique_len_[tensor_pair_idx],
+                  place_,
+                  table_,
+                  &host_vec_,
+                  sample_stream_);
+      
+      total_instance =
+          (infer_node_start_ + conf_.batch_size <= infer_node_end_)
+              ? conf_.batch_size
+              : infer_node_end_ - infer_node_start_;
+      total_instance *= 2;
     }
-    cudaStreamSynchronize(sample_stream_);
-    InsertTable(reinterpret_cast<uint64_t *>(final_sage_nodes->ptr()),
-                uniq_instance,
-                &d_uniq_node_num_[0],
-                conf_,
-                &copy_unique_len_[0],
-                place_,
-                table_,
-                &host_vec_,
-                sample_stream_);
-    
-    sage_batch_num_ += 1;
 
-    total_instance =
-        (infer_node_start_ + conf_.batch_size <= infer_node_end_)
-            ? conf_.batch_size
-            : infer_node_end_ - infer_node_start_;
-    total_instance *= 2;
+    sage_batch_num_ += 1;
   }
 }
 
