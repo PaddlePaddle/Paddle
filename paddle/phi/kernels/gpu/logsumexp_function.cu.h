@@ -41,9 +41,9 @@ __inline__ __device__ double Inf<double>() {
 template <typename T,
           template <typename>
           class Functor,
-          int thread_group_width = kWarpSize>
+          int ThreadGroupWidth = kWarpSize>
 __inline__ __device__ T WarpAllReduce(T val) {
-  for (int mask = thread_group_width / 2; mask > 0; mask /= 2) {
+  for (int mask = ThreadGroupWidth / 2; mask > 0; mask /= 2) {
     val = Functor<T>()(val, __shfl_xor_sync(0xffffffff, val, mask));
   }
   return val;
@@ -83,7 +83,6 @@ __global__ void LogsumexpWarpImpl(const Context& dev_ctx,
   static_assert(kWarpSize % ThreadGroupWidth == 0, "");
   constexpr int num_read = ColsPerThread / VecSize;
   assert(num_col <= ColsPerThread * ThreadGroupWidth);
-  T buffer[RowsPerThread][ColsPerThread];
   const int group_id = blockIdx.x * blockDim.y + threadIdx.y;
   const int num_thread_group = gridDim.x * blockDim.y;
   const int thread_id = threadIdx.x;
@@ -94,6 +93,8 @@ __global__ void LogsumexpWarpImpl(const Context& dev_ctx,
 
   LoadType load_vec;
   StoreType store_vec;
+
+  T buffer[RowsPerThread][ColsPerThread];
 
   for (int64_t cur_row = group_id * RowsPerThread; cur_row < num_row;
        cur_row += step) {
@@ -118,7 +119,7 @@ __global__ void LogsumexpWarpImpl(const Context& dev_ctx,
           }
         } else {
 #pragma unroll
-          for (int i = 0; i < VecSize; ++i) {
+          for (int i = 0; i < VecSize; i++) {
             row_buffer[offset + i] = -Inf<T>();
           }
         }
@@ -272,8 +273,8 @@ DispatchLogsumexpWarpCols(const Context& dev_ctx,
                                             Context,    \
                                             VecSize,    \
                                             col,        \
-                                            kWarpSize,  \
-                                            1>(         \
+                                            1,          \
+                                            kWarpSize>( \
         dev_ctx, num_row, num_col, in, out);            \
   }
 

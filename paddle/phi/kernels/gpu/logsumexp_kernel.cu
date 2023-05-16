@@ -156,7 +156,8 @@ void LogsumexpKernel(const Context& dev_ctx,
     perm.insert(perm.end(), axis_vec.begin(), axis_vec.end());
     for (auto i : axis_vec) transpose_shape.push_back(xdim[i]);
     DenseTensor transpose_x;
-    if (axis_vec.size() == 1 && axis_vec[0] == xdim.size()) {
+    if (xdim.size() == 0 ||
+        (axis_vec.size() == 1 && axis_vec[0] == xdim.size())) {
       transpose_x = x;
     } else {
       transpose_x.Resize(make_ddim(transpose_shape));
