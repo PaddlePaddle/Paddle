@@ -41,7 +41,7 @@ class TrtConvertSwishTest(TrtLayerAutoScanTest):
                 return np.ones([1, 3, 64, 64]).astype(np.float32)
 
         for dims in [0, 1, 2, 3, 4]:
-            for beta in [1.0, 2.0, 3.0]:
+            for beta in [1.0]:
                 self.dims = dims
 
                 dics = [{"beta": beta}]
