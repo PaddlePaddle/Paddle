@@ -2101,7 +2101,7 @@
     out : Out
 
 - op : silu
-  backward : silu_grad
+  backward : silu_grad, silu_double_grad
   inputs :
     x : X
   outputs :
