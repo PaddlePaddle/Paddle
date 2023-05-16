@@ -858,10 +858,18 @@ def set_value_for_bool_tensor(var, item, value):
         gather_val_new = value - gather_val
         out = scatter_nd_add(var, idx, gather_val_new)
         var = _setitem_impl_(var, ..., out)
+        return var
+
+    def idx_is_empty(var):
+        return var
 
     from paddle.static.nn import cond
 
     # If all the bool index is False, just do nothing
-    cond(item.any(), lambda: idx_not_empty(var, item, value))
+    var = cond(
+        item.any(),
+        lambda: idx_not_empty(var, item, value),
+        lambda: idx_is_empty(var),
+    )
 
     return var
