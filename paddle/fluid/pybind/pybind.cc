@@ -1325,8 +1325,7 @@ All parameter, weight, gradient are variables in Paddle.
           if ((grad_op_maker == nullptr) && (grad_comp_op_maker == nullptr)) {
             // Normally, proto_ should not be null, except some special
             // operators, such as LeaklyReluDoubleGrad op.
-            std::string type =
-                op_info.proto_ ? op_info.proto_->type() : "unknown";
+            std::string type = op_desc.Type();
             PADDLE_THROW(platform::errors::NotFound(
                 "Neither operator %s's GradOpMaker nor CompGradOpMaker has "
                 "been registered.\nPlease check whether (%s) operator has "
@@ -1361,12 +1360,12 @@ All parameter, weight, gradient are variables in Paddle.
             }
           } else {
             if (grad_op_maker != nullptr) {
-              VLOG(3) << "Prim Flag close: Runing origin grad fun for "
+              VLOG(3) << "Prim Flag Close: Runing origin grad fun for "
                       << op_desc.Type();
               grad_op_descs = grad_op_maker(
                   op_desc, no_grad_set, &grad_to_var, grad_sub_block);
             } else {
-              VLOG(3) << "Prim Flag close: Runing composite grad fun for "
+              VLOG(3) << "Prim Flag Close: Runing composite grad fun for "
                       << op_desc.Type();
               grad_op_descs = grad_comp_op_maker(op_desc,
                                                  no_grad_set,
