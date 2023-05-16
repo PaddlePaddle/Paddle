@@ -18,7 +18,7 @@ import paddle
 from paddle import _C_ops
 from paddle.distribution import distribution
 from paddle.fluid.data_feeder import check_type, convert_dtype
-from paddle.fluid.framework import _non_static_mode, in_dygraph_mode
+from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.layers import tensor
 from paddle.tensor import random
 
@@ -92,7 +92,7 @@ class Uniform(distribution.Distribution):
     """
 
     def __init__(self, low, high, name=None):
-        if not _non_static_mode():
+        if not in_dygraph_mode():
             check_type(
                 low,
                 'low',
@@ -152,7 +152,7 @@ class Uniform(distribution.Distribution):
             Tensor, A tensor with prepended dimensions shape. The data type is float32.
 
         """
-        if not _non_static_mode():
+        if not in_dygraph_mode():
             check_type(shape, 'shape', (list), 'sample')
             check_type(seed, 'seed', (int), 'sample')
 

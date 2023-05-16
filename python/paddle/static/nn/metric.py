@@ -19,7 +19,7 @@ import numpy as np
 import paddle
 from paddle import _legacy_C_ops
 from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.fluid.framework import Variable, _create_tensor, _non_static_mode
+from paddle.fluid.framework import Variable, _create_tensor, in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.nn.initializer import ConstantInitializer
 
@@ -72,7 +72,7 @@ def accuracy(input, label, k=1, correct=None, total=None):
             #[array([0.], dtype=float32)]
 
     """
-    if _non_static_mode():
+    if in_dygraph_mode():
         if correct is None:
             correct = _create_tensor(dtype="int32")
         if total is None:

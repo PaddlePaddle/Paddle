@@ -14,7 +14,7 @@
 
 from paddle import _C_ops
 from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.fluid.framework import _non_static_mode
+from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.utils import deprecated
 
@@ -116,7 +116,7 @@ def graph_reindex(
                 "be None if `flag_buffer_hashtable` is True."
             )
 
-    if _non_static_mode():
+    if in_dygraph_mode():
         reindex_src, reindex_dst, out_nodes = _C_ops.reindex_graph(
             x,
             neighbors,

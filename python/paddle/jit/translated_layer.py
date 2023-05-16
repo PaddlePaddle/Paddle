@@ -22,7 +22,7 @@ from paddle import _legacy_C_ops
 from paddle.fluid import backward, core, framework, unique_name
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph.base import switch_to_static_graph
-from paddle.fluid.framework import OpProtoHolder, _non_static_mode
+from paddle.fluid.framework import OpProtoHolder, in_dygraph_mode
 from paddle.jit.dy2static.partial_program import (
     LazyInitialized,
     add_build_strategy_for,
@@ -1486,7 +1486,7 @@ class TranslatedLayer(layers.Layer):
             program_holder = self._program_holder_dict[__i_m_p_l__.__name__]
             # When using jit.save, it runs in static graph mode.
             # Run in dynamic graph mode when the model is inferring.
-            if _non_static_mode():
+            if in_dygraph_mode():
                 return _run_dygraph(self, input, program_holder)
             else:
                 # NOTE(weixin): [ why not use 'program_holder.infer_program' directly? ]

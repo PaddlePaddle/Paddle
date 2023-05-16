@@ -19,7 +19,7 @@ import threading
 import warnings
 import weakref
 
-from paddle.fluid import _non_static_mode, core, framework
+from paddle.fluid import core, framework, in_dygraph_mode
 from paddle.fluid.data_feeder import check_type
 from paddle.fluid.dygraph.base import (
     _switch_declarative_mode_guard_,
@@ -457,7 +457,7 @@ class StaticFunction:
             )
             return self._call_dygraph_function(*args, **kwargs)
 
-        if not _non_static_mode():
+        if not in_dygraph_mode():
             raise RuntimeError(
                 "Failed to run the callable object {} decorated by '@paddle.jit.to_static', "
                 "because it is NOT in dynamic mode. Please disable the static graph mode to enter dynamic mode with the "

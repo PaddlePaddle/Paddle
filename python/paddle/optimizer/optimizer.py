@@ -194,7 +194,7 @@ class Optimizer:
             self._parameter_list = None
 
         self._name = name
-        if framework._non_static_mode():
+        if framework.in_dygraph_mode():
             if self._parameter_list is None:
                 raise AttributeError(
                     "parameters argument given to the Optimizer should not be None in dygraph mode."
@@ -716,7 +716,7 @@ class Optimizer:
             name in self._accumulators
             and param.name in self._accumulators[name]
         ):
-            if framework._non_static_mode():
+            if framework.in_dygraph_mode():
                 return self._accumulators[name][param.name]
             raise Exception(
                 "Accumulator {} already exists for parameter {}".format(
@@ -763,7 +763,7 @@ class Optimizer:
                     ),
                 )
 
-        if framework._non_static_mode():
+        if framework.in_dygraph_mode():
             if len(self._accumulators_holder) > 0:
                 assert (
                     var_name in self._accumulators_holder
@@ -922,7 +922,7 @@ class Optimizer:
                         ],
                         param_group_idx,
                     )
-            if framework._non_static_mode():
+            if framework.in_dygraph_mode():
                 self._append_optimize_multi_tensor_op(
                     target_block,
                     parameters_and_grads,
@@ -953,7 +953,7 @@ class Optimizer:
                             param_group_idx=param_group_idx,
                         )
         else:
-            if not framework._non_static_mode():
+            if not framework.in_dygraph_mode():
                 params_grads_device_map = (
                     parameters_and_grads['params']
                     if isinstance(parameters_and_grads, dict)
@@ -983,7 +983,7 @@ class Optimizer:
                 with paddle.fluid.framework.dygraph_guard_if_declarative():
                     self._create_accumulators(target_block, params_acc_dict)
 
-            if framework._non_static_mode():
+            if framework.in_dygraph_mode():
                 found_inf = self._get_auxiliary_var('found_inf')
                 if found_inf:
                     if isinstance(found_inf, core.eager.Tensor):
@@ -1087,7 +1087,7 @@ class Optimizer:
                 adam.clear_grad()
         """
         act_no_grad_set = None
-        if framework._non_static_mode():
+        if framework.in_dygraph_mode():
             pass
         else:
             act_no_grad_set = self._get_no_grad_set(loss, no_grad_set)
@@ -1193,7 +1193,7 @@ class Optimizer:
         Returns:
             list: A list of operators appended to the current program.
         """
-        if framework._non_static_mode():
+        if framework.in_dygraph_mode():
             with program_guard(
                 framework.default_main_program(),
                 framework.default_startup_program(),
@@ -1294,7 +1294,7 @@ class Optimizer:
             Exception: Unknown regularization type
         """
         params_and_grads = []
-        if framework._non_static_mode():
+        if framework.in_dygraph_mode():
             for param, grad in parameters_and_grads:
                 new_grad = self._create_regularization_of_grad(
                     param, grad, regularization

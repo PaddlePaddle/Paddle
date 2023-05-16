@@ -18,11 +18,11 @@ from sqlite3 import NotSupportedError
 
 import paddle
 import paddle.autograd as imperative_base
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _C_ops
 from paddle.common_ops_import import Variable, check_type, default_main_program
 from paddle.fluid import core, framework, unique_name
 from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.framework import LayerHelper, _non_static_mode, in_dygraph_mode
+from paddle.framework import LayerHelper, in_dygraph_mode
 from paddle.tensor.layer_function_generator import templatedoc
 
 __all__ = []
@@ -59,8 +59,6 @@ def clip_by_norm(x, max_norm, name=None):
 
     if in_dygraph_mode():
         return _C_ops.clip_by_norm(x, max_norm)
-    if _non_static_mode():
-        return _legacy_C_ops.clip_by_norm(x, 'max_norm', max_norm)
 
     helper = LayerHelper("clip_by_norm", **locals())
     check_variable_and_dtype(
@@ -111,9 +109,6 @@ def merge_selected_rows(x, name=None):
     """
     if in_dygraph_mode():
         return _C_ops.merge_selected_rows(x)
-
-    if _non_static_mode():
-        return _legacy_C_ops.merge_selected_rows(x)
 
     helper = LayerHelper("merge_selected_rows", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -335,7 +330,7 @@ class ClipGradBase:
         raise NotImplementedError
 
     def __call__(self, params_grads):
-        if _non_static_mode():
+        if in_dygraph_mode():
             return self._dygraph_clip(params_grads)
         else:
             for p, g in params_grads:

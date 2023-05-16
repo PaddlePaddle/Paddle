@@ -45,7 +45,7 @@ class TestReadFile(unittest.TestCase):
         img = decode_jpeg(img_bytes)
 
         img_cv2 = cv2.imread(self.img_path)
-        if paddle.in_dynamic_mode():
+        if paddle.in_dygraph_mode():
             np.testing.assert_equal(img.shape, img_cv2.transpose(2, 0, 1).shape)
         else:
             place = paddle.CUDAPlace(0)

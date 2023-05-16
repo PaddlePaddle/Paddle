@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from paddle import _legacy_C_ops
-from paddle.fluid.framework import _non_static_mode
+from paddle.fluid.framework import in_dygraph_mode
 
 
 def fused_gate_attention(
@@ -141,7 +141,7 @@ def fused_gate_attention(
             # [2, 4, 2, 4]
 
     """
-    if _non_static_mode():
+    if in_dygraph_mode():
         _, _, _, _, _, _, _, out = _legacy_C_ops.fused_gate_attention(
             query,
             key,

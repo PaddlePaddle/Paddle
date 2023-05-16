@@ -40,7 +40,7 @@ from .framework import set_flags  # noqa: F401
 
 from .framework import disable_static  # noqa: F401
 from .framework import enable_static  # noqa: F401
-from .framework import in_dynamic_mode  # noqa: F401
+from .framework import in_dygraph_mode as in_dynamic_mode  # noqa: F401
 from .fluid.dataset import *  # noqa: F401, F403
 from .fluid.lazy_init import LazyGuard  # noqa: F401
 

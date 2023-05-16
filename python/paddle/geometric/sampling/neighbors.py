@@ -14,7 +14,7 @@
 
 from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.fluid.framework import _non_static_mode, in_dygraph_mode
+from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
 
 __all__ = []
@@ -100,7 +100,7 @@ def sample_neighbors(
 
     use_perm_buffer = True if perm_buffer is not None else False
 
-    if _non_static_mode():
+    if in_dygraph_mode():
         (
             out_neighbors,
             out_count,

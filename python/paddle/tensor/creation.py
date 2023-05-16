@@ -778,7 +778,7 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
     if place is None:
         place = _current_expected_place()
 
-    if paddle.fluid.framework._non_static_mode():
+    if in_dygraph_mode():
         return _to_tensor_non_static(data, dtype, place, stop_gradient)
 
     # call assign for static graph
@@ -2057,7 +2057,7 @@ def assign(x, output=None):
         input = np.array(input)
     # NOTE(Aurelius84): Why we judge core.Tensor?
     # In case of @to_static, a Tensor can be as input of `assign`,
-    # but _non_static_mode()==False under @to_static, which means
+    # but in_dygraph_mode()==False under @to_static, which means
     # isinstance(Tensor, Variable) == False. It will cause return None
     # after this api.
     if isinstance(input, (Variable, core.eager.Tensor)):

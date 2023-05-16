@@ -200,7 +200,7 @@ class Momentum(Optimizer):
 
     def _create_accumulators(self, block, parameters):
         '''
-        if framework._non_static_mode():
+        if framework.in_dygraph_mode():
             return
         '''
         assert isinstance(block, framework.Block)

@@ -19,8 +19,8 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-from paddle import _C_ops, _legacy_C_ops
-from paddle.fluid import _non_static_mode, in_dygraph_mode
+from paddle import _C_ops
+from paddle.fluid import in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
 
 
@@ -58,30 +58,6 @@ def multiclass_nms3(
         if not return_index:
             index = None
         return output, index, nms_rois_num
-    elif _non_static_mode():
-        attrs = (
-            'background_label',
-            background_label,
-            'score_threshold',
-            score_threshold,
-            'nms_top_k',
-            nms_top_k,
-            'nms_threshold',
-            nms_threshold,
-            'keep_top_k',
-            keep_top_k,
-            'nms_eta',
-            nms_eta,
-            'normalized',
-            normalized,
-        )
-        output, index, nms_rois_num = _legacy_C_ops.multiclass_nms3(
-            bboxes, scores, rois_num, *attrs
-        )
-        if not return_index:
-            index = None
-        return output, index, nms_rois_num
-
     else:
         output = helper.create_variable_for_type_inference(dtype=bboxes.dtype)
         index = helper.create_variable_for_type_inference(dtype='int32')

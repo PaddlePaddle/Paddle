@@ -17,7 +17,7 @@ import numpy as np
 import paddle
 from paddle.distribution import distribution
 from paddle.fluid.data_feeder import check_type, convert_dtype
-from paddle.fluid.framework import _non_static_mode
+from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.layers import tensor
 from paddle.tensor import multinomial
 
@@ -90,7 +90,7 @@ class Categorical(distribution.Distribution):
             logits(list|tuple|numpy.ndarray|Tensor): The logits input of categorical distribution. The data type is float32 or float64.
             name(str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
         """
-        if not _non_static_mode():
+        if not in_dygraph_mode():
             check_type(
                 logits,
                 'logits',
@@ -146,7 +146,7 @@ class Categorical(distribution.Distribution):
 
         """
         name = self.name + '_sample'
-        if not _non_static_mode():
+        if not in_dygraph_mode():
             check_type(shape, 'shape', (list), 'sample')
 
         num_samples = np.prod(np.array(shape))
@@ -208,7 +208,7 @@ class Categorical(distribution.Distribution):
 
         """
         name = self.name + '_kl_divergence'
-        if not _non_static_mode():
+        if not in_dygraph_mode():
             check_type(other, 'other', Categorical, 'kl_divergence')
 
         logits = self.logits - paddle.max(self.logits, axis=-1, keepdim=True)

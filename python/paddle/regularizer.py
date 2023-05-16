@@ -122,9 +122,9 @@ class L1Decay(WeightDecayRegularizer):
         assert isinstance(param, framework.Variable)
         assert isinstance(block, framework.Block)
 
-        if framework._non_static_mode():
-            sign = block.create_var(dtype=param.dtype, shape=param.shape)
-            decay = block.create_var(dtype=param.dtype, shape=param.shape)
+        if in_dygraph_mode():
+            sign = _C_ops.sign(param)
+            return _C_ops.scale(sign, self._coeff, 0.0, True)
         else:
             sign = block.create_var(
                 dtype=param.dtype, shape=param.shape, lod_level=param.lod_level
@@ -132,22 +132,19 @@ class L1Decay(WeightDecayRegularizer):
             decay = block.create_var(
                 dtype=param.dtype, shape=param.shape, lod_level=param.lod_level
             )
-        if in_dygraph_mode():
-            sign = _C_ops.sign(param)
-            return _C_ops.scale(sign, self._coeff, 0.0, True)
+            # Append sign op
+            block.append_op(
+                type='sign', inputs={"X": param}, outputs={"Out": sign}
+            )
 
-        # Append sign op
-        block.append_op(type='sign', inputs={"X": param}, outputs={"Out": sign})
-
-        # Append scale op to the output of sign op
-        block.append_op(
-            type='scale',
-            inputs={"X": sign},
-            outputs={"Out": decay},
-            attrs={"scale": self._coeff},
-        )
-
-        return decay
+            # Append scale op to the output of sign op
+            block.append_op(
+                type='scale',
+                inputs={"X": sign},
+                outputs={"Out": decay},
+                attrs={"scale": self._coeff},
+            )
+            return decay
 
     def __str__(self):
         return "L1Decay, coeff=%f" % self._coeff
@@ -231,7 +228,7 @@ class L2Decay(WeightDecayRegularizer):
         assert isinstance(param, framework.Variable)
         assert isinstance(block, framework.Block)
 
-        if framework._non_static_mode():
+        if framework.in_dygraph_mode():
             if framework.in_dygraph_mode():
                 return _C_ops.scale(param, self._coeff, 0.0, True)
             else:

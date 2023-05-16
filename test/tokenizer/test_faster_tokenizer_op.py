@@ -21,7 +21,7 @@ from bert_tokenizer import BertTokenizer
 
 import paddle
 from paddle import _legacy_C_ops, nn
-from paddle.fluid.framework import _non_static_mode, core
+from paddle.fluid.framework import core, in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
 
 
@@ -77,7 +77,7 @@ class FasterTokenizer(nn.Layer):
         is_split_into_words=False,
         pad_to_max_seq_len=False,
     ):
-        if _non_static_mode():
+        if in_dygraph_mode():
             input_ids, seg_ids = _legacy_C_ops.faster_tokenizer(
                 self.vocab,
                 text,

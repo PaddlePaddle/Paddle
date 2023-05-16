@@ -129,7 +129,7 @@ class DistributedFusedLamb(Optimizer):
         name=None,
     ):
         assert (
-            not framework._non_static_mode()
+            not framework.in_dygraph_mode()
         ), "DistributedFusedLamb does not support dygraph mode"
         super().__init__(learning_rate=learning_rate, grad_clip=None, name=name)
 

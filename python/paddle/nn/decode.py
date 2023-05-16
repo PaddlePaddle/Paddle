@@ -20,7 +20,7 @@ import numpy as np
 
 import paddle
 from paddle.common_ops_import import default_main_program
-from paddle.framework import _non_static_mode
+from paddle.framework import in_dygraph_mode
 
 from ..fluid.data_feeder import convert_dtype
 
@@ -1071,7 +1071,7 @@ def dynamic_decode(
                                     inits=decoder_cell.get_initial_states(encoder_output),
                                     max_step_num=10)
     """
-    if _non_static_mode():
+    if in_dygraph_mode():
         return _dynamic_decode_imperative(
             decoder,
             inits,

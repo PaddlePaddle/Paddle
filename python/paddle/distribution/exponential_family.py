@@ -14,7 +14,7 @@
 
 import paddle
 from paddle.distribution import distribution
-from paddle.fluid.framework import _non_static_mode
+from paddle.fluid.framework import in_dygraph_mode
 
 
 class ExponentialFamily(distribution.Distribution):
@@ -61,7 +61,7 @@ class ExponentialFamily(distribution.Distribution):
 
         log_norm = self._log_normalizer(*natural_parameters)
 
-        if _non_static_mode():
+        if in_dygraph_mode():
             grads = paddle.grad(
                 log_norm.sum(), natural_parameters, create_graph=True
             )

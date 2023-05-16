@@ -1176,7 +1176,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             else:
                 self._collective_env()
             self._role_is_generated = True
-            if not paddle.framework.in_dynamic_mode():
+            if not paddle.framework.in_dygraph_mode():
                 self._gloo_init()
 
 

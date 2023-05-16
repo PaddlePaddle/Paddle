@@ -15,7 +15,7 @@
 from paddle import _legacy_C_ops
 from paddle.fluid import core
 from paddle.fluid.data_feeder import check_dtype, check_variable_and_dtype
-from paddle.fluid.framework import _non_static_mode, default_main_program
+from paddle.fluid.framework import default_main_program, in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
 
 __all__ = []
@@ -132,7 +132,7 @@ def fused_feedforward(
         'downgrade_in_infer' if mode == 'downscale_in_infer' else mode
     )  # semantic transfer
 
-    if _non_static_mode():
+    if in_dygraph_mode():
         if default_main_program().random_seed != 0:
             seed = default_main_program().random_seed
         out, _, _, _, _, _, _, _, _, _, _ = _legacy_C_ops.fused_feedforward(
@@ -363,7 +363,7 @@ def fused_bias_dropout_residual_layer_norm(
             x.shape[len(x.shape) - 1] == ln_bias.shape[0]
         ), "The dim of ln_bias must equal to the last dim of x."
 
-    if _non_static_mode():
+    if in_dygraph_mode():
         if default_main_program().random_seed != 0:
             seed = default_main_program().random_seed
         (
@@ -620,7 +620,7 @@ def fused_multi_head_attention(
             f"The rank of the x should be 3, but received {x.ndim}."
         )
 
-    if _non_static_mode():
+    if in_dygraph_mode():
         if default_main_program().random_seed != 0:
             seed = default_main_program().random_seed
         # pre_ln_mean, pre_ln_variance, pre_ln_out, qkv_out, qkv_bias_out, transpose_out, qk_out,
@@ -1046,7 +1046,7 @@ def fused_multi_transformer(
         'downgrade_in_infer' if mode == 'downscale_in_infer' else mode
     )  # semantic transfer
 
-    if _non_static_mode():
+    if in_dygraph_mode():
         cache_kv_out, final_out = _legacy_C_ops.fused_multi_transformer(
             x,
             ln_scales,

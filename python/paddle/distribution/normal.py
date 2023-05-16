@@ -20,7 +20,7 @@ import numpy as np
 import paddle
 from paddle.distribution import distribution
 from paddle.fluid.data_feeder import check_type, convert_dtype
-from paddle.fluid.framework import _non_static_mode
+from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.layers import tensor
 from paddle.tensor import random
 
@@ -87,7 +87,7 @@ class Normal(distribution.Distribution):
     """
 
     def __init__(self, loc, scale, name=None):
-        if not _non_static_mode():
+        if not in_dygraph_mode():
             check_type(
                 loc,
                 'loc',
@@ -166,7 +166,7 @@ class Normal(distribution.Distribution):
         if not isinstance(shape, Iterable):
             raise TypeError('sample shape must be Iterable object.')
 
-        if not _non_static_mode():
+        if not in_dygraph_mode():
             check_type(seed, 'seed', (int), 'sample')
 
         shape = list(shape)
@@ -321,7 +321,7 @@ class Normal(distribution.Distribution):
             Tensor, kl-divergence between two normal distributions.The data type is float32.
 
         """
-        if not _non_static_mode():
+        if not in_dygraph_mode():
             check_type(other, 'other', Normal, 'kl_divergence')
 
         name = self.name + '_kl_divergence'
