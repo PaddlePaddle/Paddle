@@ -113,6 +113,9 @@ void CsrToCooCPUKernel(const CPUContext& dev_ctx,
                        SparseCooTensor* out) {
   const DDim& x_dims = x.dims();
   const int64_t non_zero_num = x.cols().numel();
+  if (x.nnz() <= 0) {
+    return;
+  }
   const auto& csr_crows = x.crows();
   const auto& csr_cols = x.cols();
   const auto& csr_values = x.values();
@@ -177,7 +180,9 @@ void CooToCsrCPUKernel(const CPUContext& dev_ctx,
                     phi::errors::InvalidArgument(
                         "SparseCsrTensor only support 2-D or 3-D matrix"));
   const int64_t non_zero_num = x.nnz();
-  if (non_zero_num <= 0) return;
+  if (non_zero_num <= 0) {
+    return;
+  }
 
   int batchs = x_dims.size() == 2 ? 1 : x_dims[0];
   int rows = x_dims.size() == 2 ? x_dims[0] : x_dims[1];
@@ -268,6 +273,12 @@ void CooToDenseCPUKernel(const CPUContext& dev_ctx,
   const T* x_data = values.data<T>();
   dev_ctx.template Alloc<T>(out);
   T* out_data = out->data<T>();
+  memset(out_data, 0, sizeof(T) * out->numel());
+
+  if (x.nnz() <= 0) {
+    return;
+  }
+
   int64_t base_offset = 1;
   for (int64_t i = 0; i < dense_dim; i++) {
     base_offset *= dense_dims[sparse_dim + i];
@@ -279,7 +290,6 @@ void CooToDenseCPUKernel(const CPUContext& dev_ctx,
     offset *= dense_dims[i];
   }
 
-  memset(out_data, 0, sizeof(T) * out->numel());
   for (auto i = 0; i < non_zero_num; i++) {
     int64_t index = 0;
     for (int j = 0; j < sparse_dim; j++) {

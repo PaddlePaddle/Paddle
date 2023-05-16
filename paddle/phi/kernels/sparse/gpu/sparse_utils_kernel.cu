@@ -515,7 +515,7 @@ void CooToDenseGPUKernel(const GPUContext& dev_ctx,
   phi::backends::gpu::GpuMemsetAsync(
       out_data, 0, sizeof(T) * out->numel(), dev_ctx.stream());
 
-  if (x.nnz() == 0) {
+  if (x.nnz() <= 0) {
     return;
   }
 
