@@ -36,7 +36,7 @@ namespace ir {
 //                 |                                          |
 //                 |                                        var2
 //                 |                                          |
-//                 |                                    transfer_layout(G) 
+//                 |                                    transfer_layout(G)
 //                 |                                          |
 //                var2                              var2'(var2 + suffix)(G)
 //                 |                                           |
@@ -60,11 +60,11 @@ void TransferLayoutElimPass::PutTranferlayoutAfterOp(Node *op_node,
   // before Bias and Scale so we extract useful_var1s from op_node->inputs.
   std::vector<Node *> useful_var1s;
   for (auto var1 : op_node->inputs) {
-    if (var1->inputs.size() >= 1 &&
-            var1->inputs[0]->Op()->Type() == "transfer_layout" ||
-        1) {
-      useful_var1s.push_back(var1);
-    }
+    // if (var1->inputs.size() >= 1 &&
+    //         var1->inputs[0]->Op()->Type() == "transfer_layout") {
+    //   useful_var1s.push_back(var1);
+    // }
+    useful_var1s.push_back(var1);
   }
   CHECK_EQ(useful_var1s.size() >= 1L, true);
 
@@ -105,7 +105,7 @@ void TransferLayoutElimPass::PutTranferlayoutAfterOp(Node *op_node,
 
   auto *var2_dot_desc = block->Var(var2_dot_name);
   var2_dot_desc->SetPersistable(false);
-  // set var2_dot_desc
+  // set var2_dot_desc be var2_shape
   var2_dot_desc->SetShape(var2_shape);
 
   var2_dot_desc->SetDataType(var2->Var()->GetDataType());
@@ -147,13 +147,13 @@ bool TransferLayoutElimPass::InputAllTransferlayout(
   for (auto var : op_node->inputs) {
     // If this input is a 1D persistable tensor，we allow transfer_layout not
     // appear before this var.
-    if (var->Var()->Persistable() && 0) {
-      auto var_dims =
-          scope->FindVar(var->Name())->GetMutable<phi::DenseTensor>()->dims();
-      if (var_dims.size() == 1) {
-        continue;
-      }
-    }
+    // if (var->Var()->Persistable() && 0) {
+    //   auto var_dims =
+    //       scope->FindVar(var->Name())->GetMutable<phi::DenseTensor>()->dims();
+    //   if (var_dims.size() == 1) {
+    //     continue;
+    //   }
+    // }
 
     if (var->inputs.size() != 1L) {
       return false;
@@ -176,15 +176,15 @@ bool TransferLayoutElimPass::InputAllTransferlayout(
   return dst_layouts.size() == 1 && src_layouts.size() == 1;
 }
 
-// (X) means deleted nodes
+// (D) means deleted nodes
 // (G) means generated node
 //            var0
 //              |
-//      transfer_layout0(X)
+//      transfer_layout0(D)
 //              |
 //            var1
 //              |
-//      transfer_layout1(X ,op_node)
+//      transfer_layout1(D ,op_node)
 //              |
 //             var2
 //         |   |     |
@@ -237,7 +237,7 @@ void TransferLayoutElimPass::ApplyImpl(ir::Graph *graph) const {
     return "";
   };
 
-  while (1) {
+  while (true) {
     auto op_node_sorted = framework::ir::TopologyVarientSort(
         *graph, static_cast<framework::ir::SortKind>(0));
     bool modify = false;
