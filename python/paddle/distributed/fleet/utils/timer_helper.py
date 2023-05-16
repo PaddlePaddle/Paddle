@@ -97,13 +97,6 @@ class Timers:
             self.timers[name] = _Timer(name)
         return self.timers[name]
 
-    def write(self, names, writer, iteration, normalizer=1.0, reset=False):
-        """Write timers to a tensorboard writer"""
-        assert normalizer > 0.0
-        for name in names:
-            value = self.timers[name].elapsed(reset=reset) / normalizer
-            writer.add_scalar(name + "-time", value, iteration)
-
     def log(self, names, normalizer=1.0, reset=True):
         """Log a group of timers."""
         assert normalizer > 0.0
