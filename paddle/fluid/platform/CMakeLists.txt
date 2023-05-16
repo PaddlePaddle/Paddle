@@ -123,7 +123,6 @@ cc_library(
        framework_proto
        ${IPU_CTX_DEPS}
        ${GPU_CTX_DEPS}
-       ${NPU_CTX_DEPS}
        ${MKLDNN_CTX_DEPS}
        ${dgc_deps}
        dlpack
