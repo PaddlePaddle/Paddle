@@ -22,6 +22,8 @@ namespace xpu {
 XPUOpMap& get_kl2_ops() {
   // KL2支持的op，通过op_name, data_type, place来索引
   static XPUOpMap s_xpu2_kernels{
+      {"add_act_xpu",
+       XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
       {"abs", XPUKernelSet({phi::DataType::FLOAT32})},
       {"abs_grad",
        XPUKernelSet({phi::DataType::FLOAT32, phi::DataType::FLOAT16})},
