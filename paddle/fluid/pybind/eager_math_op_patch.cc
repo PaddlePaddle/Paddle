@@ -214,6 +214,10 @@ static PyObject* tensor__add__method(TensorObject* self,
           _supported_int_dtype_.end()) {
         eager_gil_scoped_release guard;
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
+        LOG(WARNING) << "python math cast dtype warning: "
+                     << "__add__"
+                     << " not support " << self_tensor.dtype() << " cast to "
+                     << DataType::FLOAT32;
       }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
       other = CastPyArg2Double(other_obj, "__add__", 0);
@@ -260,10 +264,18 @@ static PyObject* tensor__add__method(TensorObject* self,
         // cast
         eager_gil_scoped_release guard;
         self_tensor = cast_ad_func(self_tensor, promote_dtype);
+        LOG(WARNING) << "python math cast dtype warning: "
+                     << "__add__"
+                     << " self(left) type is " << self_tensor.dtype()
+                     << " cast to " << promote_dtype;
       }
       if (rhs_dtype != promote_dtype) {
         eager_gil_scoped_release guard;
         other_tensor = cast_ad_func(other_tensor, promote_dtype);
+        LOG(WARNING) << "python math cast dtype warning: "
+                     << "__add__"
+                     << " other(right) type is " << other_tensor.dtype()
+                     << " cast to " << promote_dtype;
       }
     } else {
       VLOG(6) << "The dtype of left and right Tensor are not the same, left "
@@ -272,6 +284,10 @@ static PyObject* tensor__add__method(TensorObject* self,
               << ", the right dtype will convert to " << lhs_dtype;
       eager_gil_scoped_release guard;
       other_tensor = cast_ad_func(other_tensor, lhs_dtype);
+      LOG(WARNING) << "python math cast dtype warning: "
+                   << "__add__"
+                   << " other(right) type is " << other_tensor.dtype()
+                   << " cast to left type " << lhs_dtype;
     }
   }
 
@@ -316,6 +332,10 @@ static PyObject* tensor__sub__method(TensorObject* self,
           _supported_int_dtype_.end()) {
         eager_gil_scoped_release guard;
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
+        LOG(WARNING) << "python math cast dtype warning: "
+                     << "__sub__"
+                     << " not support " << self_tensor.dtype() << " cast to "
+                     << DataType::FLOAT32;
       }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
       other = CastPyArg2Double(other_obj, "__sub__", 0);
@@ -359,10 +379,18 @@ static PyObject* tensor__sub__method(TensorObject* self,
         // cast
         eager_gil_scoped_release guard;
         self_tensor = cast_ad_func(self_tensor, promote_dtype);
+        LOG(WARNING) << "python math cast dtype warning: "
+                     << "__sub__"
+                     << " self(left) type is " << self_tensor.dtype()
+                     << " cast to " << promote_dtype;
       }
       if (rhs_dtype != promote_dtype) {
         eager_gil_scoped_release guard;
         other_tensor = cast_ad_func(other_tensor, promote_dtype);
+        LOG(WARNING) << "python math cast dtype warning: "
+                     << "__sub__"
+                     << " other(right) type is " << other_tensor.dtype()
+                     << " cast to " << promote_dtype;
       }
     } else {
       VLOG(6) << "The dtype of left and right Tensor are not the same, left "
@@ -371,6 +399,10 @@ static PyObject* tensor__sub__method(TensorObject* self,
               << ", the right dtype will convert to " << lhs_dtype;
       eager_gil_scoped_release guard;
       other_tensor = cast_ad_func(other_tensor, lhs_dtype);
+      LOG(WARNING) << "python math cast dtype warning: "
+                   << "__sub__"
+                   << " other(right) type is " << other_tensor.dtype()
+                   << " cast to left type " << lhs_dtype;
     }
   }
   // 4. calculation
@@ -413,6 +445,10 @@ static PyObject* tensor__rsub__method(TensorObject* self,
           _supported_int_dtype_.end()) {
         eager_gil_scoped_release guard;
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
+        LOG(WARNING) << "python math cast dtype warning: "
+                     << "__rsub__"
+                     << " not support " << self_tensor.dtype() << " cast to "
+                     << DataType::FLOAT32;
       }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
       other = CastPyArg2Double(other_obj, "__rsub__", 0);
@@ -456,10 +492,18 @@ static PyObject* tensor__rsub__method(TensorObject* self,
         // cast
         eager_gil_scoped_release guard;
         self_tensor = cast_ad_func(self_tensor, promote_dtype);
+        LOG(WARNING) << "python math cast dtype warning: "
+                     << "__rsub__"
+                     << " self(left) type is " << self_tensor.dtype()
+                     << " cast to " << promote_dtype;
       }
       if (rhs_dtype != promote_dtype) {
         eager_gil_scoped_release guard;
         other_tensor = cast_ad_func(other_tensor, promote_dtype);
+        LOG(WARNING) << "python math cast dtype warning: "
+                     << "__rsub__"
+                     << " other(right) type is " << other_tensor.dtype()
+                     << " cast to " << promote_dtype;
       }
     } else {
       VLOG(6) << "The dtype of left and right Tensor are not the same, left "
@@ -468,6 +512,10 @@ static PyObject* tensor__rsub__method(TensorObject* self,
               << ", the right dtype will convert to " << lhs_dtype;
       eager_gil_scoped_release guard;
       other_tensor = cast_ad_func(other_tensor, lhs_dtype);
+      LOG(WARNING) << "python math cast dtype warning: "
+                   << "__rsub__"
+                   << " other(right) type is " << other_tensor.dtype()
+                   << " cast to left type " << lhs_dtype;
     }
   }
 
@@ -512,6 +560,10 @@ static PyObject* tensor__mul__method(TensorObject* self,
           _supported_int_dtype_.end()) {
         eager_gil_scoped_release guard;
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
+        LOG(WARNING) << "python math cast dtype warning: "
+                     << "__mul__"
+                     << " not support " << self_tensor.dtype() << " cast to "
+                     << DataType::FLOAT32;
       }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
       other = CastPyArg2Double(other_obj, "__mul__", 0);
@@ -561,10 +613,18 @@ static PyObject* tensor__mul__method(TensorObject* self,
         // cast
         eager_gil_scoped_release guard;
         self_tensor = cast_ad_func(self_tensor, promote_dtype);
+        LOG(WARNING) << "python math cast dtype warning: "
+                     << "__mul__"
+                     << " self(left) type is " << self_tensor.dtype()
+                     << " cast to " << promote_dtype;
       }
       if (rhs_dtype != promote_dtype) {
         eager_gil_scoped_release guard;
         other_tensor = cast_ad_func(other_tensor, promote_dtype);
+        LOG(WARNING) << "python math cast dtype warning: "
+                     << "__mul__"
+                     << " other(right) type is " << other_tensor.dtype()
+                     << " cast to " << promote_dtype;
       }
     } else {
       VLOG(6) << "The dtype of left and right Tensor are not the same, left "
@@ -573,6 +633,10 @@ static PyObject* tensor__mul__method(TensorObject* self,
               << ", the right dtype will convert to " << lhs_dtype;
       eager_gil_scoped_release guard;
       other_tensor = cast_ad_func(other_tensor, lhs_dtype);
+      LOG(WARNING) << "python math cast dtype warning: "
+                   << "__mul__"
+                   << " other(right) type is " << other_tensor.dtype()
+                   << " cast to left type " << lhs_dtype;
     }
   }
 
@@ -621,6 +685,10 @@ static PyObject* tensor__div__method(TensorObject* self,
         _supported_int_dtype_.end()) {
       eager_gil_scoped_release guard;
       self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
+      LOG(WARNING) << "python math cast dtype warning: "
+                   << "__div__"
+                   << " not support " << self_tensor.dtype() << " cast to "
+                   << DataType::FLOAT32;
     }
     {
       eager_gil_scoped_release guard;
@@ -667,10 +735,18 @@ static PyObject* tensor__div__method(TensorObject* self,
         // cast
         eager_gil_scoped_release guard;
         self_tensor = cast_ad_func(self_tensor, promote_dtype);
+        LOG(WARNING) << "python math cast dtype warning: "
+                     << "__div__"
+                     << " self(left) type is " << self_tensor.dtype()
+                     << " cast to " << promote_dtype;
       }
       if (rhs_dtype != promote_dtype) {
         eager_gil_scoped_release guard;
         other_tensor = cast_ad_func(other_tensor, promote_dtype);
+        LOG(WARNING) << "python math cast dtype warning: "
+                     << "__div__"
+                     << " other(right) type is " << other_tensor.dtype()
+                     << " cast to " << promote_dtype;
       }
     } else {
       VLOG(6) << "The dtype of left and right Tensor are not the same, left "
@@ -679,17 +755,29 @@ static PyObject* tensor__div__method(TensorObject* self,
               << ", the right dtype will convert to " << lhs_dtype;
       eager_gil_scoped_release guard;
       other_tensor = cast_ad_func(other_tensor, lhs_dtype);
+      LOG(WARNING) << "python math cast dtype warning: "
+                   << "__div__"
+                   << " other(right) type is " << other_tensor.dtype()
+                   << " cast to left type " << lhs_dtype;
     }
   }
   if (_supported_int_dtype_.find(self_tensor.dtype()) !=
       _supported_int_dtype_.end()) {
     eager_gil_scoped_release guard;
     self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
+    LOG(WARNING) << "python math cast dtype warning: "
+                 << "__div__2"
+                 << " not support " << self_tensor.dtype() << " cast to "
+                 << DataType::FLOAT32;
   }
   if (_supported_int_dtype_.find(other_tensor.dtype()) !=
       _supported_int_dtype_.end()) {
     eager_gil_scoped_release guard;
     other_tensor = cast_ad_func(other_tensor, DataType::FLOAT32);
+    LOG(WARNING) << "python math cast dtype warning: "
+                 << "__div__ other"
+                 << " not support " << self_tensor.dtype() << " cast to "
+                 << DataType::FLOAT32;
   }
 
   // 4. calculation
@@ -740,6 +828,10 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
         _supported_int_dtype_.end()) {
       eager_gil_scoped_release guard;
       self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
+      LOG(WARNING) << "python math cast dtype warning: "
+                   << "__rdiv__"
+                   << " not support " << self_tensor.dtype() << " cast to "
+                   << DataType::FLOAT32;
     }
   }
 
@@ -787,10 +879,18 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
         // cast
         eager_gil_scoped_release guard;
         self_tensor = cast_ad_func(self_tensor, promote_dtype);
+        LOG(WARNING) << "python math cast dtype warning: "
+                     << "__rdiv__"
+                     << " self(left) type is " << self_tensor.dtype()
+                     << " cast to " << promote_dtype;
       }
       if (rhs_dtype != promote_dtype) {
         eager_gil_scoped_release guard;
         other_tensor = cast_ad_func(other_tensor, promote_dtype);
+        LOG(WARNING) << "python math cast dtype warning: "
+                     << "__rdiv__"
+                     << " other(right) type is " << other_tensor.dtype()
+                     << " cast to " << promote_dtype;
       }
     } else {
       VLOG(6) << "The dtype of left and right Tensor are not the same, left "
@@ -799,17 +899,29 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
               << ", the right dtype will convert to " << lhs_dtype;
       eager_gil_scoped_release guard;
       other_tensor = cast_ad_func(other_tensor, lhs_dtype);
+      LOG(WARNING) << "python math cast dtype warning: "
+                   << "__rdiv__"
+                   << " other(right) type is " << other_tensor.dtype()
+                   << " cast to left type " << lhs_dtype;
     }
   }
   if (_supported_int_dtype_.find(self_tensor.dtype()) !=
       _supported_int_dtype_.end()) {
     eager_gil_scoped_release guard;
     self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
+    LOG(WARNING) << "python math cast dtype warning: "
+                 << "__rdiv__2"
+                 << " not support " << self_tensor.dtype() << " cast to "
+                 << DataType::FLOAT32;
   }
   if (_supported_int_dtype_.find(other_tensor.dtype()) !=
       _supported_int_dtype_.end()) {
     eager_gil_scoped_release guard;
     other_tensor = cast_ad_func(other_tensor, DataType::FLOAT32);
+    LOG(WARNING) << "python math cast dtype warning: "
+                 << "__rdiv__ other"
+                 << " not support " << self_tensor.dtype() << " cast to "
+                 << DataType::FLOAT32;
   }
 
   // 4. calculation
@@ -854,6 +966,10 @@ static PyObject* tensor__gt__method(TensorObject* self,
           _supported_int_dtype_.end()) {
         eager_gil_scoped_release guard;
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
+        LOG(WARNING) << "python math cast dtype warning: "
+                     << "__gt__"
+                     << " not support " << self_tensor.dtype() << " cast to "
+                     << DataType::FLOAT32;
       }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
       other_double = CastPyArg2Double(other_obj, "__gt__", 0);
@@ -899,6 +1015,10 @@ static PyObject* tensor__gt__method(TensorObject* self,
             << ", the right dtype will convert to " << lhs_dtype;
     eager_gil_scoped_release guard;
     other_tensor = cast_ad_func(other_tensor, lhs_dtype);
+    LOG(WARNING) << "python math cast dtype warning: "
+                 << "__gt__"
+                 << " other(right) type is " << other_tensor.dtype()
+                 << " cast to left type " << lhs_dtype;
   }
 
   // 4. calculation
@@ -944,6 +1064,10 @@ static PyObject* tensor__ge__method(TensorObject* self,
           _supported_int_dtype_.end()) {
         eager_gil_scoped_release guard;
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
+        LOG(WARNING) << "python math cast dtype warning: "
+                     << "__ge__"
+                     << " not support " << self_tensor.dtype() << " cast to "
+                     << DataType::FLOAT32;
       }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
       other_double = CastPyArg2Double(other_obj, "__ge__", 0);
@@ -989,6 +1113,10 @@ static PyObject* tensor__ge__method(TensorObject* self,
             << ", the right dtype will convert to " << lhs_dtype;
     eager_gil_scoped_release guard;
     other_tensor = cast_ad_func(other_tensor, lhs_dtype);
+    LOG(WARNING) << "python math cast dtype warning: "
+                 << "__ge__"
+                 << " other(right) type is " << other_tensor.dtype()
+                 << " cast to left type " << lhs_dtype;
   }
 
   // 4. calculation
@@ -1035,6 +1163,10 @@ static PyObject* tensor__mod__method(TensorObject* self,
           _supported_int_dtype_.end()) {
         eager_gil_scoped_release guard;
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
+        LOG(WARNING) << "python math cast dtype warning: "
+                     << "__mod__"
+                     << " not support " << self_tensor.dtype() << " cast to "
+                     << DataType::FLOAT32;
       }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
       other_double = CastPyArg2Double(other_obj, "__mod__", 0);
@@ -1080,6 +1212,10 @@ static PyObject* tensor__mod__method(TensorObject* self,
             << ", the right dtype will convert to " << lhs_dtype;
     eager_gil_scoped_release guard;
     other_tensor = cast_ad_func(other_tensor, lhs_dtype);
+    LOG(WARNING) << "python math cast dtype warning: "
+                 << "__mod__"
+                 << " other(right) type is " << other_tensor.dtype()
+                 << " cast to left type " << lhs_dtype;
   }
 
   // 4. calculation
@@ -1125,6 +1261,10 @@ static PyObject* tensor__matmul__method(TensorObject* self,
           _supported_int_dtype_.end()) {
         eager_gil_scoped_release guard;
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
+        LOG(WARNING) << "python math cast dtype warning: "
+                     << "__matmul__"
+                     << " not support " << self_tensor.dtype() << " cast to "
+                     << DataType::FLOAT32;
       }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
       other_double = CastPyArg2Double(other_obj, "__matmul__", 0);
@@ -1176,10 +1316,18 @@ static PyObject* tensor__matmul__method(TensorObject* self,
         // cast
         eager_gil_scoped_release guard;
         self_tensor = cast_ad_func(self_tensor, promote_dtype);
+        LOG(WARNING) << "python math cast dtype warning: "
+                     << "__matmul__"
+                     << " self(left) type is " << self_tensor.dtype()
+                     << " cast to " << promote_dtype;
       }
       if (rhs_dtype != promote_dtype) {
         eager_gil_scoped_release guard;
         other_tensor = cast_ad_func(other_tensor, promote_dtype);
+        LOG(WARNING) << "python math cast dtype warning: "
+                     << "__matmul__"
+                     << " other(right) type is " << other_tensor.dtype()
+                     << " cast to " << promote_dtype;
       }
     } else {
       VLOG(6) << "The dtype of left and right Tensor are not the same, left "
@@ -1188,6 +1336,10 @@ static PyObject* tensor__matmul__method(TensorObject* self,
               << ", the right dtype will convert to " << lhs_dtype;
       eager_gil_scoped_release guard;
       other_tensor = cast_ad_func(other_tensor, lhs_dtype);
+      LOG(WARNING) << "python math cast dtype warning: "
+                   << "__matmul__"
+                   << " other(right) type is " << other_tensor.dtype()
+                   << " cast to left type " << lhs_dtype;
     }
   }
 
@@ -1233,6 +1385,10 @@ static PyObject* tensor__lt__method(TensorObject* self,
           _supported_int_dtype_.end()) {
         eager_gil_scoped_release guard;
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
+        LOG(WARNING) << "python math cast dtype warning: "
+                     << "__lt__"
+                     << " not support " << self_tensor.dtype() << " cast to "
+                     << DataType::FLOAT32;
       }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
       other_double = CastPyArg2Double(other_obj, "__lt__", 0);
@@ -1278,6 +1434,10 @@ static PyObject* tensor__lt__method(TensorObject* self,
             << ", the right dtype will convert to " << lhs_dtype;
     eager_gil_scoped_release guard;
     other_tensor = cast_ad_func(other_tensor, lhs_dtype);
+    LOG(WARNING) << "python math cast dtype warning: "
+                 << "__lt__"
+                 << " other(right) type is " << other_tensor.dtype()
+                 << " cast to left type " << lhs_dtype;
   }
 
   // 4. calculation
@@ -1323,6 +1483,10 @@ static PyObject* tensor__le__method(TensorObject* self,
           _supported_int_dtype_.end()) {
         eager_gil_scoped_release guard;
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
+        LOG(WARNING) << "python math cast dtype warning: "
+                     << "__le__"
+                     << " not support " << self_tensor.dtype() << " cast to "
+                     << DataType::FLOAT32;
       }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
       other_double = CastPyArg2Double(other_obj, "__le__", 0);
@@ -1368,6 +1532,10 @@ static PyObject* tensor__le__method(TensorObject* self,
             << ", the right dtype will convert to " << lhs_dtype;
     eager_gil_scoped_release guard;
     other_tensor = cast_ad_func(other_tensor, lhs_dtype);
+    LOG(WARNING) << "python math cast dtype warning: "
+                 << "__le__"
+                 << " other(right) type is " << other_tensor.dtype()
+                 << " cast to left type " << lhs_dtype;
   }
 
   // 4. calculation
@@ -1414,6 +1582,10 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
           _supported_int_dtype_.end()) {
         eager_gil_scoped_release guard;
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
+        LOG(WARNING) << "python math cast dtype warning: "
+                     << "__floordiv__"
+                     << " not support " << self_tensor.dtype() << " cast to "
+                     << DataType::FLOAT32;
       }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
       other_double = CastPyArg2Double(other_obj, "__floordiv__", 0);
@@ -1462,6 +1634,10 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
             << ", the right dtype will convert to " << lhs_dtype;
     eager_gil_scoped_release guard;
     other_tensor = cast_ad_func(other_tensor, lhs_dtype);
+    LOG(WARNING) << "python math cast dtype warning: "
+                 << "__floordiv__"
+                 << " other(right) type is " << other_tensor.dtype()
+                 << " cast to left type " << lhs_dtype;
   }
 
   // 4. calculation
@@ -1505,6 +1681,10 @@ static PyObject* tensor__pow__method(TensorObject* self,
           _supported_int_dtype_.end()) {
         eager_gil_scoped_release guard;
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
+        LOG(WARNING) << "python math cast dtype warning: "
+                     << "__pow__"
+                     << " not support " << self_tensor.dtype() << " cast to "
+                     << DataType::FLOAT32;
       }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
       other = CastPyArg2Double(other_obj, "__pow__", 0);
@@ -1548,6 +1728,10 @@ static PyObject* tensor__pow__method(TensorObject* self,
             << ", the right dtype will convert to " << lhs_dtype;
     eager_gil_scoped_release guard;
     other_tensor = cast_ad_func(other_tensor, lhs_dtype);
+    LOG(WARNING) << "python math cast dtype warning: "
+                 << "__pow__"
+                 << " other(right) type is " << other_tensor.dtype()
+                 << " cast to left type " << lhs_dtype;
   }
 
   // 4. calculation
@@ -1595,6 +1779,10 @@ static PyObject* tensor__rpow__method(TensorObject* self,
           _supported_int_dtype_.end()) {
         eager_gil_scoped_release guard;
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
+        LOG(WARNING) << "python math cast dtype warning: "
+                     << "__rpow__"
+                     << " not support " << self_tensor.dtype() << " cast to "
+                     << DataType::FLOAT32;
       }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
       other_double = CastPyArg2Double(other_obj, "__rpow__", 0);
@@ -1640,6 +1828,10 @@ static PyObject* tensor__rpow__method(TensorObject* self,
             << ", the right dtype will convert to " << lhs_dtype;
     eager_gil_scoped_release guard;
     other_tensor = cast_ad_func(other_tensor, lhs_dtype);
+    LOG(WARNING) << "python math cast dtype warning: "
+                 << "__rpow__"
+                 << " other(right) type is " << other_tensor.dtype()
+                 << " cast to left type " << lhs_dtype;
   }
 
   // 4. calculation
@@ -1685,6 +1877,10 @@ static PyObject* tensor__ne__method(TensorObject* self,
           _supported_int_dtype_.end()) {
         eager_gil_scoped_release guard;
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
+        LOG(WARNING) << "python math cast dtype warning: "
+                     << "__ne__"
+                     << " not support " << self_tensor.dtype() << " cast to "
+                     << DataType::FLOAT32;
       }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
       other_double = CastPyArg2Double(other_obj, "__ne__", 0);
@@ -1730,6 +1926,10 @@ static PyObject* tensor__ne__method(TensorObject* self,
             << ", the right dtype will convert to " << lhs_dtype;
     eager_gil_scoped_release guard;
     other_tensor = cast_ad_func(other_tensor, lhs_dtype);
+    LOG(WARNING) << "python math cast dtype warning: "
+                 << "__ne__"
+                 << " other(right) type is " << other_tensor.dtype()
+                 << " cast to left type " << lhs_dtype;
   }
 
   // 4. calculation
@@ -1775,6 +1975,10 @@ static PyObject* tensor__eq__method(TensorObject* self,
           _supported_int_dtype_.end()) {
         eager_gil_scoped_release guard;
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
+        LOG(WARNING) << "python math cast dtype warning: "
+                     << "__eq__"
+                     << " not support " << self_tensor.dtype() << " cast to "
+                     << DataType::FLOAT32;
       }
     } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
       other_double = CastPyArg2Double(other_obj, "__eq__", 0);
@@ -1820,6 +2024,10 @@ static PyObject* tensor__eq__method(TensorObject* self,
             << ", the right dtype will convert to " << lhs_dtype;
     eager_gil_scoped_release guard;
     other_tensor = cast_ad_func(other_tensor, lhs_dtype);
+    LOG(WARNING) << "python math cast dtype warning: "
+                 << "__eq__"
+                 << " other(right) type is " << other_tensor.dtype()
+                 << " cast to left type " << lhs_dtype;
   }
 
   // 4. calculation
