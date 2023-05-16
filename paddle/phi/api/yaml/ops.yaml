@@ -5,6 +5,16 @@
 # are consistent and correspond one-to-one. It's forbidden that the
 # operator configured in this yaml file does not have Python API.
 
+- op : abs
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : RealAndImagInferMeta
+  kernel :
+    func : abs
+    data_type : x
+  backward : abs_grad
+
 - op : accuracy
   args : (Tensor x, Tensor indices, Tensor label)
   output : Tensor(accuracy), Tensor(correct), Tensor(total)

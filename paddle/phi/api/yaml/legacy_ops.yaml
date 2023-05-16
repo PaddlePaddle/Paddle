@@ -1,15 +1,6 @@
 # The apis in this file are unstandardized that may caused by a variety of reasons,
 # we are trying to fix these apis and will move standardized apis into ops.yaml.
 
-- op : abs
-  args : (Tensor x)
-  output : Tensor
-  infer_meta :
-    func : RealAndImagInferMeta
-  kernel :
-    func : abs
-  backward : abs_grad
-
 - op : adadelta_
   args : (Tensor param, Tensor grad, Tensor avg_squared_grad, Tensor avg_squared_update, Tensor learning_rate, Tensor master_param, float rho, float epsilon, bool multi_precision)
   output : Tensor(param_out), Tensor(moment_out), Tensor(inf_norm_out), Tensor(master_param_out)
