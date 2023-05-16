@@ -15,6 +15,7 @@
 #pragma once
 
 #include <list>
+#include <ostream>
 #include <unordered_map>
 
 #include "paddle/ir/builtin_attribute.h"
@@ -51,5 +52,7 @@ class Program {
 
   std::unordered_map<StrAttribute, Parameter*> parameters_;
 };
+
+std::ostream& operator<<(std::ostream& os, Program& program);
 
 }  // namespace ir

@@ -16,6 +16,7 @@
 
 #include "glog/logging.h"
 
+#include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/translator/op_translator.h"
 #include "paddle/ir/attribute.h"
 #include "paddle/ir/builtin_type.h"
@@ -25,6 +26,9 @@
 namespace paddle {
 namespace fluid {
 namespace translator {
+
+using ProgramDesc = ::paddle::framework::ProgramDesc;
+using BlockDesc = ::paddle::framework::BlockDesc;
 
 ProgramTranslator::ProgramTranslator(const ProgramDesc* legacy_program,
                                      ir::Program* program)

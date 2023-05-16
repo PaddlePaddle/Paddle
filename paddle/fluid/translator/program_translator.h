@@ -28,11 +28,12 @@ namespace paddle {
 namespace fluid {
 namespace translator {
 
-using ProgramDesc = ::paddle::framework::ProgramDesc;
-using BlockDesc = ::paddle::framework::BlockDesc;
 using TranslationContext = std::unordered_map<std::string, ir::OpResult>;
 
 class ProgramTranslator {
+  using ProgramDesc = ::paddle::framework::ProgramDesc;
+  using BlockDesc = ::paddle::framework::BlockDesc;
+
  public:
   explicit ProgramTranslator(const ProgramDesc* legacy_program,
                              ir::Program* program);

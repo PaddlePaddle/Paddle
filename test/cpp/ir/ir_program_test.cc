@@ -95,5 +95,9 @@ TEST(program_test, program) {
   std::list<ir::Operation *> ops = program->ops();
   EXPECT_EQ(ops.size() == 4, true);
 
+  for (auto *op : ops) {
+    std::cout << op->op_name() << std::endl;
+  }
+
   delete program;
 }
