@@ -54,11 +54,7 @@ class TensorHookRemoveHelper:
     """
 
     def __init__(self, tensor, hook_id):
-        self._tensor = (
-            tensor
-            if framework.global_var._in_eager_mode_
-            else weakref.ref(tensor)
-        )
+        self._tensor = tensor
         self._hook_id = hook_id
 
     def remove(self):
@@ -68,11 +64,7 @@ class TensorHookRemoveHelper:
         Returns:
             bool: Return True if removed successfully
         """
-        tensor = (
-            self._tensor
-            if framework.global_var._in_eager_mode_
-            else self._tensor()
-        )
+        tensor = self._tensor
         if tensor is not None:
             res = tensor._remove_grad_hook(self._hook_id)
             if res is True:
@@ -285,37 +277,26 @@ def monkey_patch_tensor():
                 )
                 record_event.begin()
             if grad_tensor is not None:
-                if framework.global_var._in_eager_mode_:
-                    assert isinstance(
-                        grad_tensor, core.eager.Tensor
-                    ), "The type of grad_tensor must be paddle.Tensor"
-                else:
-                    assert isinstance(
-                        grad_tensor, paddle.Tensor
-                    ), "The type of grad_tensor must be paddle.Tensor"
+                assert isinstance(
+                    grad_tensor, core.eager.Tensor
+                ), "The type of grad_tensor must be paddle.Tensor"
+
                 assert (
                     grad_tensor.shape == self.shape
                 ), "Tensor shape not match, Tensor of grad_tensor [ {} ] with shape {} mismatch Tensor [ {} ] with shape {}".format(
                     grad_tensor.name, grad_tensor.shape, self.name, self.shape
                 )
 
-            if framework.global_var._in_eager_mode_:
-                if grad_tensor is None:
-                    grad_tensor = []
-                else:
-                    grad_tensor = [grad_tensor]
+            if grad_tensor is None:
+                grad_tensor = []
+            else:
+                grad_tensor = [grad_tensor]
             if _grad_scalar:
                 # When using amp with Fleet DistributedStrategy, we do loss scaling implicitly.
                 self = _grad_scalar.scale(self)
-            if framework.global_var._in_eager_mode_:
-                core.eager.run_backward([self], grad_tensor, retain_graph)
-            else:
-                core.dygraph_run_backward(
-                    [self],
-                    [grad_tensor],
-                    retain_graph,
-                    framework._dygraph_tracer(),
-                )
+
+            core.eager.run_backward([self], grad_tensor, retain_graph)
+
             if in_profiler_mode():
                 record_event.end()
         else:
@@ -352,31 +333,11 @@ def monkey_patch_tensor():
                 # [500.]
 
         """
-        if framework.global_var._in_eager_mode_:
-            if self.grad is None:
-                return None
-            if self.grad.is_selected_rows():
-                return (np.array(self.grad), np.array(self.grad.rows()))
-            return np.array(self.grad)
-        else:
-            if self._grad_ivar() is None:
-                return None
-
-            new_ivar = self._grad_ivar()
-            # TODO(qili93): temporary for ascned npu performance to be removed along with npu_identity op
-            if (
-                _global_flags()['FLAGS_npu_storage_format']
-                and 'npu' in get_all_custom_device_type()
-            ):
-                new_ivar = paddle.incubate._npu_identity(x=new_ivar, format=-1)
-            new_ivar = new_ivar._copy_to(core.CPUPlace(), True)
-            if self._grad_ivar().type == core.VarDesc.VarType.SELECTED_ROWS:
-                return (
-                    np.array(new_ivar.value().get_selected_rows().get_tensor()),
-                    np.array(new_ivar.value().get_selected_rows().rows()),
-                )
-            else:
-                return np.array(new_ivar.value().get_tensor())
+        if self.grad is None:
+            return None
+        if self.grad.is_selected_rows():
+            return (np.array(self.grad), np.array(self.grad.rows()))
+        return np.array(self.grad)
 
     @framework.dygraph_only
     def register_hook(self, hook):
@@ -705,13 +666,8 @@ def monkey_patch_tensor():
         assert (
             numel == 1
         ), "When Variable is used as the condition of if/while , Variable can only contain one element."
-        if framework.global_var._in_eager_mode_:
-            assert self._is_initialized(), "tensor not initialized"
-            return bool(np.array(self) > 0)
-        else:
-            tensor = self.value().get_tensor()
-            assert tensor._is_initialized(), "tensor not initialized"
-            return bool(np.array(tensor) > 0)
+        assert self._is_initialized(), "tensor not initialized"
+        return bool(np.array(self) > 0)
 
     def __bool__(self):
         return self.__nonzero__()
@@ -830,11 +786,7 @@ def monkey_patch_tensor():
             return _setitem_impl_(self, item, value)
 
         else:
-            if framework.global_var._in_eager_mode_:
-                return self.__setitem_eager_tensor__(item, value)
-            else:
-                # Call c++ func __setitem_varbase__ to speedup.
-                return self.__setitem_varbase__(item, value)
+            return self.__setitem_eager_tensor__(item, value)
 
     @framework.dygraph_only
     def _set_grad_ivar(self, value):
@@ -1000,7 +952,7 @@ def monkey_patch_tensor():
     def __hash__(self):
         return hash(id(self))
 
-    if framework.global_var._in_eager_mode_ and not hasattr(core, "eager"):
+    if not hasattr(core, "eager"):
         return
 
     for method_name, method in (
