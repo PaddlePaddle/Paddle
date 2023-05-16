@@ -27,10 +27,12 @@ class TransferLayoutElimPass : public FusePassBase {
   virtual ~TransferLayoutElimPass() {}
 
  protected:
-  void ApplyImpl(ir::Graph* graph) const override;
+  void ApplyImpl(ir::Graph *graph) const override;
   bool InputAllTransferlayout(const Node *op_node) const;
-  void PutTranferlayoutAfterOp(Node *op_node, ir::Graph* graph) const;
-  void ElimTwoTranferlayout(Node *op_node, ir::Graph* graph) const;
+  void PutTranferlayoutAfterOp(Node *op_node, ir::Graph *graph) const;
+  void ElimTwoTranferlayout(Node *op_node,
+                            ir::Graph *graph,
+                            bool *modify) const;
 };
 
 }  // namespace ir
