@@ -51,7 +51,7 @@ class Program {
   void SetParameter(std::string name, std::unique_ptr<Parameter>&& parameter);
 
  private:
-  std::list<Operation*> ops_;
+  std::list<Operation*> ops_;  // owned
 
   std::unordered_map<std::string, std::unique_ptr<Parameter>> parameters_;
 };
