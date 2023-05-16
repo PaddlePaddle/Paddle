@@ -144,7 +144,6 @@ if(NOT WIN32)
       -Werror
       -Wall
       -Wextra
-      -Wno-implicit-int-float-conversion
       -Wno-unused-parameter
       -Wno-unused-function
       -Wno-error=array-bounds #Warning in Eigen, gcc 12.2

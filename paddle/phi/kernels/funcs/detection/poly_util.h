@@ -27,6 +27,26 @@ using phi::funcs::gpc_free_polygon;
 using phi::funcs::gpc_polygon_clip;
 
 template <class T>
+class Point_ {
+ public:
+  // default constructor
+  Point_() {}
+  Point_(T _x, T _y) {}
+  Point_(const Point_& pt) {}
+
+  Point_& operator=(const Point_& pt);
+  // conversion to another data type
+  // template<typename _T> operator Point_<_T>() const;
+  // conversion to the old-style C structures
+  // operator Vec<T, 2>() const;
+
+  // checks whether the point is inside the specified rectangle
+  // bool inside(const Rect_<T>& r) const;
+  T x;  //!< x coordinate of the point
+  T y;  //!< y coordinate of the point
+};
+
+template <class T>
 void Array2PointVec(const T* box,
                     const size_t box_size,
                     std::vector<Point_<T>>* vec) {
