@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,10 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/stft_op.h"
+#include "paddle/phi/kernels/stft_kernel.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/stft_kernel_impl.h"
 
-namespace ops = paddle::operators;
-
-REGISTER_OP_CUDA_KERNEL(stft_grad,
-                        ops::StftGradKernel<phi::GPUContext, float>,
-                        ops::StftGradKernel<phi::GPUContext, double>);
+PD_REGISTER_KERNEL(stft, GPU, ALL_LAYOUT, phi::StftKernel, float, double) {}
