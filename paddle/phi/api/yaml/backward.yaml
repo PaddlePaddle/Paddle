@@ -315,7 +315,6 @@
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
-    param : [x]
   kernel :
     func : copysign
   backward : copysign_grad
