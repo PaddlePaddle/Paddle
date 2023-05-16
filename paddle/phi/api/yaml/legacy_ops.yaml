@@ -669,15 +669,6 @@
     func : logsumexp
   backward : logsumexp_grad
 
-- op : lstsq
-  args : (Tensor x, Tensor y, Scalar rcond, str driver)
-  output : Tensor(solution), Tensor(residuals), Tensor(rank), Tensor(singular_values)
-  infer_meta :
-    func : LstsqInferMeta
-  kernel :
-    func : lstsq
-    data_type : x
-
 - op : matmul
   args : (Tensor x, Tensor y, bool transpose_x = false, bool transpose_y = false)
   output : Tensor
@@ -1111,6 +1102,15 @@
   kernel :
     func : tile
   backward : tile_grad
+
+- op : trans_layout
+  args : (Tensor x, int[] perm)
+  output : Tensor
+  infer_meta :
+    func : TransposeInferMeta
+  kernel :
+    func : transpose
+  backward : trans_layout_grad
 
 - op : transpose
   args : (Tensor x, int[] perm)

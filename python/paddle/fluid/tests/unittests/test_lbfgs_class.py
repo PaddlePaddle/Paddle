@@ -555,6 +555,36 @@ class TestLbfgs(unittest.TestCase):
 
         self.assertRaises(AssertionError, error_func3)
 
+    def test_error4(self):
+        # test call minimize(loss)
+        paddle.disable_static()
+
+        def error_func4():
+            inputs = np.random.rand(1).astype(np.float32)
+            targets = paddle.to_tensor([inputs * 2])
+            inputs = paddle.to_tensor(inputs)
+
+            extream_point = np.array([-1, 1]).astype('float32')
+
+            def func(extream_point, x):
+                return x * extream_point[0] + 5 * x * extream_point[1]
+
+            net = Net(extream_point, func)
+            opt = lbfgs.LBFGS(
+                learning_rate=1,
+                max_iter=10,
+                max_eval=None,
+                tolerance_grad=1e-07,
+                tolerance_change=1e-09,
+                history_size=5,
+                line_search_fn='strong_wolfe',
+                parameters=net.parameters(),
+            )
+            loss = train_step(inputs, targets, net, opt)
+            opt.minimize(loss)
+
+        self.assertRaises(NotImplementedError, error_func4)
+
 
 if __name__ == '__main__':
     unittest.main()

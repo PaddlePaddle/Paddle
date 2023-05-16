@@ -38,7 +38,7 @@ class TestMNIST(TestParallelExecutorBase):
         def _optimizer(learning_rate=1e-6):
             optimizer = fluid.optimizer.SGD(
                 learning_rate=learning_rate,
-                regularization=fluid.regularizer.L2Decay(1e-6),
+                regularization=paddle.regularizer.L2Decay(1e-6),
             )
             return optimizer
 

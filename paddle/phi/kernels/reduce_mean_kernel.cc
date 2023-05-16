@@ -67,5 +67,6 @@ PD_REGISTER_KERNEL(
 #endif
 
 #if defined(PADDLE_WITH_XPU)
-PD_REGISTER_KERNEL(mean, XPU, ALL_LAYOUT, phi::MeanKernel, float) {}
+PD_REGISTER_KERNEL(
+    mean, XPU, ALL_LAYOUT, phi::MeanKernel, float, phi::dtype::float16) {}
 #endif

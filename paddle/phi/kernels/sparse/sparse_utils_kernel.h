@@ -165,7 +165,7 @@ void IndicesCooKernel(const Context& dev_ctx UNUSED,
 }
 
 template <typename T, typename Context>
-void SparseCooTensorKernel(const Context& dev_ctx,
+void SparseCooTensorKernel(const Context& dev_ctx UNUSED,
                            const DenseTensor& values,
                            const DenseTensor& indices,
                            const std::vector<int64_t>& shape,
