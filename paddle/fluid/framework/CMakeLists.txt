@@ -541,7 +541,7 @@ cc_library(
        glog
        version
        xxhash
-       dist_attr
+       op_dist_attr
        scalar
        op_version_proto
        op_version_registry)

@@ -26,10 +26,9 @@ namespace paddle {
 namespace distributed {
 namespace auto_parallel {
 
-std::vector<std::string> TensorDistAttr::fields_{
-    "process_mesh", "dims_mapping", "batch_dim", "dynamic_dims"};
+using phi::distributed::auto_parallel::str_join;
 
-static inline std::vector<int64_t> get_tensor_shape(const VarDesc* tensor) {
+std::vector<int64_t> get_tensor_shape(const VarDesc* tensor) {
   if (tensor == nullptr) return std::vector<int64_t>();
   switch (tensor->GetType()) {
     case framework::proto::VarType::READER:
@@ -90,7 +89,7 @@ void OperatorDistAttr::initialize(const OpDesc* op) {
     if (input == nullptr || op->Type() == "create_py_reader") {
       input_dist_attrs_[name] = TensorDistAttr();
     } else {
-      input_dist_attrs_[name] = TensorDistAttr(*input);
+      input_dist_attrs_[name] = TensorDistAttr(get_tensor_shape(input));
     }
   }
   for (std::string name : op->OutputArgumentNames()) {
@@ -99,7 +98,7 @@ void OperatorDistAttr::initialize(const OpDesc* op) {
     if (output == nullptr) {
       output_dist_attrs_[name] = TensorDistAttr();
     } else {
-      output_dist_attrs_[name] = TensorDistAttr(*output);
+      output_dist_attrs_[name] = TensorDistAttr(get_tensor_shape(output));
     }
   }
   op_type_ = op->Type();
@@ -220,7 +219,8 @@ bool OperatorDistAttr::verify_input_dist_attr(const std::string& name,
                                               const VarDesc* tensor) const {
   VLOG(4) << "[OperatorDistAttr verify_input_dist_attr] " << name << " "
           << dist_attr.to_string();
-  if (!dist_attr.verify(tensor)) {
+  auto tensor_shape = get_tensor_shape(tensor);
+  if (!dist_attr.verify(tensor_shape)) {
     return false;
   }
   if (tensor != nullptr) {
@@ -239,7 +239,8 @@ bool OperatorDistAttr::verify_output_dist_attr(const std::string& name,
                                                const VarDesc* tensor) const {
   VLOG(4) << "[OperatorDistAttr verify_output_dist_attr] " << name << " "
           << dist_attr.to_string();
-  if (!dist_attr.verify(tensor)) {
+  auto tensor_shape = get_tensor_shape(tensor);
+  if (!dist_attr.verify(tensor_shape)) {
     return false;
   }
   if (tensor != nullptr) {

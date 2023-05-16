@@ -14,7 +14,7 @@ limitations under the License. */
 
 syntax = "proto2";
 
-package paddle.distributed.auto_parallel;
+package phi.distributed.auto_parallel;
 
 // ProcessMesh is used to organize processes and like n-dimension array.
 message ProcessMeshProto {

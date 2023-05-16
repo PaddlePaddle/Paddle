@@ -21,10 +21,11 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-// #include "paddle//distributed/auto_parallel/auto_parallel.pb.h"
-#include "paddle/fluid/distributed/auto_parallel/process_mesh.h"
-#include "paddle/fluid/distributed/auto_parallel/utils.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/distributed/auto_parallel/auto_parallel.pb.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
+#include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
+#include "paddle/phi/core/distributed/auto_parallel/utils.h"
 
 namespace paddle {
 
@@ -46,7 +47,13 @@ using framework::OpDesc;
 using framework::ProgramDesc;
 using framework::VarDesc;
 
+using phi::distributed::auto_parallel::OperatorDistAttrProto;
+using phi::distributed::auto_parallel::ProcessMesh;
+using phi::distributed::auto_parallel::TensorDistAttr;
+
 constexpr const char* kDefault = "default";
+
+std::vector<int64_t> get_tensor_shape(const VarDesc* tensor);
 
 class OperatorDistAttr {
  public:

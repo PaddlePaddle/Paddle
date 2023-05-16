@@ -1,4 +1,5 @@
 cc_library(
-  dist_attr
+  op_dist_attr
   SRCS dist_attr.cc
-  DEPS process_mesh auto_parallel_proto proto_desc phi_enforce)
+  DEPS dist_attr process_mesh dist_mapper auto_parallel_proto proto_desc
+       phi_enforce)

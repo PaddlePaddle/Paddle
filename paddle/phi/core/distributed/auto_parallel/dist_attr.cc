@@ -25,7 +25,7 @@ std::vector<std::string> TensorDistAttr::fields_{
     "process_mesh", "dims_mapping", "batch_dim", "dynamic_dims"};
 
 // static inline std::vector<int64_t> get_tensor_shape(const VarDesc* tensor) {
-//   if (tensor == nullptr) return std::vector<int64_t>();
+//  if (tensor == nullptr) return std::vector<int64_t>();
 //   switch (tensor->GetType()) {
 //     case framework::proto::VarType::READER:
 //     case framework::proto::VarType::LOD_TENSOR_ARRAY:
@@ -38,7 +38,6 @@ std::vector<std::string> TensorDistAttr::fields_{
 //   }
 // }
 
-// TensorDistAttr::TensorDistAttr(const VarDesc& tensor) {
 TensorDistAttr::TensorDistAttr(const std::vector<int64_t>& tensor_shape) {
   // VLOG(4) << "[TensorDistAttr constructor] tensor name: " << tensor.Name();
   // std::vector<int64_t> tensor_shape = get_tensor_shape(&tensor);
@@ -254,7 +253,7 @@ std::string TensorDistAttr::serialize_to_string() {
   proto.SerializeToString(&data);
   PADDLE_ENFORCE_EQ(to_proto().SerializeToString(&data),
                     true,
-                    platform::errors::InvalidArgument(
+                    paddle::platform::errors::InvalidArgument(
                         "Failed to serialize tensor dist attr to string."));
   return data;
 }
@@ -263,7 +262,7 @@ void TensorDistAttr::parse_from_string(const std::string& data) {
   TensorDistAttrProto proto;
   PADDLE_ENFORCE_EQ(proto.ParseFromString(data),
                     true,
-                    platform::errors::InvalidArgument(
+                    paddle::platform::errors::InvalidArgument(
                         "Failed to parse tensor dist attr from string."));
   from_proto(proto);
 }

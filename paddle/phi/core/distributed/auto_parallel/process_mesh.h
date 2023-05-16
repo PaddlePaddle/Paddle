@@ -20,10 +20,10 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/core/distributed/auto_parallel/auto_parallel.pb.h"
 #include "paddle/phi/core/distributed/auto_parallel/device_mesh.h"
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
-#include "paddle/phi/core/platform/enforce.h"
 
 namespace phi {
 namespace distributed {
@@ -58,7 +58,7 @@ class ProcessMesh {
         return shape_[i];
       }
     }
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
         "Cannot find the dimension of %s in this process mesh.", dim_name));
   }
 
