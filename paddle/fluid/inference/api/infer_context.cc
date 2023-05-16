@@ -27,12 +27,7 @@ InferGPUContext::InferGPUContext(const phi::Place& place)
 
 #ifdef PADDLE_WITH_XPU
 InferXPUContext::InferXPUContext(const phi::Place& place)
-    : phi::XPUContext(place) {
-  SetXpuVersion(
-      static_cast<int>(phi::backends::xpu::get_xpu_version(place.device)));
-  SetDriverVersion(phi::backends::xpu::GetDriverVersion());
-  SetRuntimeVersion(phi::backends::xpu::GetRuntimeVersion());
-}
+    : phi::XPUContext(place) {}
 
 void* InferXPUContext::Alloc(phi::TensorBase* tensor,
                              phi::DataType dtype,
