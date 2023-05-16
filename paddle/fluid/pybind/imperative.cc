@@ -52,6 +52,7 @@ limitations under the License. */
 #include "paddle/fluid/imperative/reducer.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/imperative/type_defs.h"
+#include "paddle/fluid/imperative/xccl_context.h"
 #include "paddle/fluid/memory/allocation/mmap_allocator.h"
 #include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/pybind/cuda_streams_py.h"
@@ -2479,8 +2480,9 @@ void BindImperative(py::module *m_ptr) {
       },
       py::call_guard<py::gil_scoped_release>());
 
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_GLOO)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) ||     \
+    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_GLOO) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE)
   py::class_<imperative::ParallelContext,
              std::shared_ptr<imperative::ParallelContext>>(m,
                                                            "ParallelContext");
@@ -2520,6 +2522,19 @@ void BindImperative(py::module *m_ptr) {
            py::arg("ring_id"));
 #endif
 
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+  py::class_<imperative::XCCLParallelContext,
+             imperative::ParallelContext,
+             std::shared_ptr<imperative::XCCLParallelContext>>(
+      m, "XCCLParallelContext")
+      .def(py::init<const imperative::ParallelStrategy &,
+                    const platform::CustomPlace &>())
+      .def("init", [](imperative::XCCLParallelContext &self) { self.Init(); })
+      .def("init_with_ring_id",
+           &imperative::XCCLParallelContext::InitWithRingID,
+           py::arg("ring_id"));
+#endif
+
 #if defined(PADDLE_WITH_XPU_BKCL)
   py::class_<imperative::BKCLParallelContext,
              imperative::ParallelContext,
@@ -2548,7 +2563,7 @@ void BindImperative(py::module *m_ptr) {
 #endif
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_XPU_BKCL)
+    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_CUSTOM_DEVICE)
   py::class_<imperative::HeterParallelContext,
              imperative::ParallelContext,
              std::shared_ptr<imperative::HeterParallelContext>>(
