@@ -31,7 +31,6 @@ enum class AllocationType : int8_t {
   GPU = 2,
   GPUPINNED = 3,
   XPU = 4,
-  NPU = 5,
   IPU = 7,
   CUSTOM = 9,
 };

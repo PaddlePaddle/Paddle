@@ -53,3 +53,14 @@
   kernel :
     func : rnn_grad
     data_type: out_grad
+
+- backward_op : softmax_grad
+  forward : softmax (Tensor x, int axis=-1) -> Tensor(out)
+  args : (Tensor out, Tensor out_grad, int axis)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [out]
+  kernel :
+    func : softmax_grad
+  composite : softmax_grad(out, out_grad, axis, x_grad)

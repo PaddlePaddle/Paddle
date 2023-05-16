@@ -450,9 +450,8 @@ class Cluster:
         """Generate cluster by default config."""
         gpu_models = ["V100", "A100", "H100", "A2", "A10", "A16", "A30", "A40"]
         xpu_models = ["XPU"]
-        npu_models = ["NPU"]
         dcu_models = ["DCU"]
-        all_gpu_models = gpu_models + xpu_models + npu_models + dcu_models
+        all_gpu_models = gpu_models + xpu_models + dcu_models
         self._num_devices_per_machine = device_count
 
         def _convert_to_type(gpu_model):
@@ -461,8 +460,6 @@ class Cluster:
                 type = "GPU"
             elif gpu_model in xpu_models:
                 type = "XPU"
-            elif gpu_model in npu_models:
-                type = "NPU"
             elif gpu_model in dcu_models:
                 type = "DCU"
             else:
