@@ -189,7 +189,8 @@ class HybridCommunicateGroup:
 
         # create p2p_groups
         if self._pp_degree > 1:
-            check_nccl_version_for_p2p()
+            if not paddle.is_compiled_with_xpu():
+                check_nccl_version_for_p2p()
             self._set_p2p_group()
 
         debug_str = (
