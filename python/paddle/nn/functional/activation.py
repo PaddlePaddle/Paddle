@@ -872,8 +872,6 @@ def relu6(x, name=None):
     """
     if in_dygraph_mode():
         return _C_ops.relu6(x)
-    if in_dynamic_mode():
-        return _legacy_C_ops.relu6(x)
 
     check_variable_and_dtype(
         x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'relu6'
