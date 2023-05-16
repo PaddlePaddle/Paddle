@@ -892,3 +892,20 @@ class PADDLE_API OpMetaInfoBuilder {
       ::paddle::OpMetaInfoBuilder(#op_name, 2)
 
 }  // namespace paddle
+
+///////////////////// C API ///////////////////
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#if defined(_WIN32)
+// C-API to get global OpMetaInfoMap.
+__declspec(dllexport) inline paddle::OpMetaInfoMap& PD_GetOpMetaInfoMap() {
+  return paddle::OpMetaInfoMap::Instance();
+}
+#endif  // _WIN32
+
+#ifdef __cplusplus
+}
+#endif

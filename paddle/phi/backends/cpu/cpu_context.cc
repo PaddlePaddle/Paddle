@@ -79,6 +79,4 @@ void CPUContext::SetEigenDevice(Eigen::DefaultDevice* device) {
   impl_->eigen_device_ = device;
 }
 
-PADDLE_API const char* CPUContext::name() { return "CPUContext"; }
-
 }  // namespace phi

@@ -446,8 +446,6 @@ Generator* DeviceContext::GetHostGenerator() const {
   return impl_->GetHostGenerator();
 }
 
-TypeInfo<DeviceContext> DeviceContext::type_info() const { return type_info_; }
-
 void DeviceContext::SetCommContext(distributed::CommContext* comm_context) {
   impl_->SetCommContext(comm_context);
 }

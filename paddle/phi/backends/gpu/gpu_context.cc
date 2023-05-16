@@ -1046,8 +1046,6 @@ void GPUContext::SetDnnAttr(const std::string& attr_name, Attribute attr) {
 
 void GPUContext::ClearDnnAttr() { return impl_->ClearDnnAttr(); }
 
-PADDLE_API const char* GPUContext::name() { return "GPUContext"; }
-
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 GPUPinnedContext::GPUPinnedContext() {
   eigen_device_.reset(new Eigen::DefaultDevice());

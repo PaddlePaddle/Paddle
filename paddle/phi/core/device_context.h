@@ -205,7 +205,7 @@ class PADDLE_API DeviceContext {
    *
    * @return The type information of the derived class.
    */
-  TypeInfo<DeviceContext> type_info() const;
+  TypeInfo<DeviceContext> type_info() const { return type_info_; }
 
   /**
    * @brief Set the comm context point.
