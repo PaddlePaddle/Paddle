@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/fusion_group_kernel.h"
-
 #include "glog/logging.h"
 
 #include "paddle/phi/backends/device_code.h"
@@ -22,6 +20,7 @@
 #include "paddle/phi/core/utils/data_type.h"
 
 namespace phi {
+namespace fusion {
 
 template <typename DeviceContext>
 static void MutableMultiTypeData(std::vector<phi::DenseTensor*>* var,
@@ -93,12 +92,13 @@ void FusionGroupKernel(const Context& dev_ctx,
   }
 }
 
+}  // namespace fusion
 }  // namespace phi
 
 PD_REGISTER_KERNEL(fusion_group,
                    GPU,
                    ALL_LAYOUT,
-                   phi::FusionGroupKernel,
+                   phi::fusion::FusionGroupKernel,
                    float,
                    double,
                    phi::dtype::float16) {}

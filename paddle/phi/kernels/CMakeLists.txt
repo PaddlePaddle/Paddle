@@ -150,7 +150,7 @@ endif()
 
 if(APPLE OR WIN32)
   list(REMOVE_ITEM kernel_cu
-       "${CMAKE_CURRENT_SOURCE_DIR}/gpu/fusion_group_kernel.cu")
+       "${CMAKE_CURRENT_SOURCE_DIR}/fusion/gpu/fusion_group_kernel.cu")
 endif()
 
 if(WITH_MKLDNN)
