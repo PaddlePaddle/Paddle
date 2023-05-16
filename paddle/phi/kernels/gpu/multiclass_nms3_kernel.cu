@@ -15,7 +15,6 @@ limitations under the License. */
 #ifndef PADDLE_WITH_HIP
 
 #include "paddle/phi/kernels/multiclass_nms3_kernel.h"
-#include "paddle/phi/kernels/impl/multiclass_nms3_kernel_impl.h"
 
 #include <cub/cub.cuh>
 #include "cuda.h"  // NOLINT
@@ -932,20 +931,20 @@ void InferNMS(cudaStream_t stream,
 }
 
 template <typename T, typename Context>
-void MultiClassNMSKernel(const Context& ctx,
-                         const DenseTensor& bboxes,
-                         const DenseTensor& scores,
-                         const paddle::optional<DenseTensor>& rois_num,
-                         float score_threshold,
-                         int nms_top_k,
-                         int keep_top_k,
-                         float nms_threshold,
-                         bool normalized,
-                         float nms_eta,
-                         int background_label,
-                         DenseTensor* out,
-                         DenseTensor* index,
-                         DenseTensor* nms_rois_num) {
+void MultiClassNMSGPUKernel(const Context& ctx,
+                            const DenseTensor& bboxes,
+                            const DenseTensor& scores,
+                            const paddle::optional<DenseTensor>& rois_num,
+                            float score_threshold,
+                            int nms_top_k,
+                            int keep_top_k,
+                            float nms_threshold,
+                            bool normalized,
+                            float nms_eta,
+                            int background_label,
+                            DenseTensor* out,
+                            DenseTensor* index,
+                            DenseTensor* nms_rois_num) {
   bool return_index = index != nullptr;
   bool has_roisnum = rois_num.get_ptr() != nullptr;
   auto score_dims = scores.dims();
@@ -982,20 +981,20 @@ void MultiClassNMSKernel(const Context& ctx,
     ctx.Wait();
     phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
     auto* cpu_ctx = static_cast<phi::CPUContext*>(pool.Get(cpu_place));
-    MultiClassNMSCPUKernel<T, phi::CPUContext>(*cpu_ctx,
-                                               bboxes_cpu,
-                                               scores_cpu,
-                                               rois_num_cpu,
-                                               score_threshold,
-                                               nms_top_k,
-                                               keep_top_k,
-                                               nms_threshold,
-                                               normalized,
-                                               nms_eta,
-                                               background_label,
-                                               &out_cpu,
-                                               &index_cpu,
-                                               &nms_rois_num_cpu);
+    MultiClassNMSKernel<T, phi::CPUContext>(*cpu_ctx,
+                                            bboxes_cpu,
+                                            scores_cpu,
+                                            rois_num_cpu,
+                                            score_threshold,
+                                            nms_top_k,
+                                            keep_top_k,
+                                            nms_threshold,
+                                            normalized,
+                                            nms_eta,
+                                            background_label,
+                                            &out_cpu,
+                                            &index_cpu,
+                                            &nms_rois_num_cpu);
     // copy back
     phi::Copy(ctx, out_cpu, gpu_place, false, out);
     phi::Copy(ctx, index_cpu, gpu_place, false, index);
@@ -1140,7 +1139,7 @@ void MultiClassNMSKernel(const Context& ctx,
 PD_REGISTER_KERNEL(multiclass_nms3,  // cuda_only
                    GPU,
                    ALL_LAYOUT,
-                   phi::MultiClassNMSKernel,
+                   phi::MultiClassNMSGPUKernel,
                    float) {
   kernel->OutputAt(1).SetDataType(phi::DataType::INT32);
   kernel->OutputAt(2).SetDataType(phi::DataType::INT32);
