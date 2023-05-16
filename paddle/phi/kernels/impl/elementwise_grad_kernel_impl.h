@@ -364,13 +364,18 @@ void ElementwiseFMinGradKernel(const Context& dev_ctx,
 
 template <typename T>
 struct MulGradDX {
-  HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return dout * y; }
+  HOSTDEVICE T operator()(T x UNUSED, T y, T out UNUSED, T dout) const {
+    return dout * y;
+  }
 };
 
 // avoid [-Wint-in-bool-context] warning
 template <>
 struct MulGradDX<bool> {
-  HOSTDEVICE bool operator()(bool x, bool y, bool out, bool dout) const {
+  HOSTDEVICE bool operator()(bool x UNUSED,
+                             bool y,
+                             bool out UNUSED,
+                             bool dout) const {
     return dout && y;
   }
 };
@@ -395,13 +400,18 @@ struct MulGradDX<phi::dtype::complex<T>> {
 
 template <typename T>
 struct MulGradDY {
-  HOSTDEVICE T operator()(T x, T y, T out, T dout) const { return dout * x; }
+  HOSTDEVICE T operator()(T x, T y UNUSED, T out UNUSED, T dout) const {
+    return dout * x;
+  }
 };
 
 // avoid [-Wint-in-bool-context] warning
 template <>
 struct MulGradDY<bool> {
-  HOSTDEVICE bool operator()(bool x, bool y, bool out, bool dout) const {
+  HOSTDEVICE bool operator()(bool x,
+                             bool y UNUSED,
+                             bool out UNUSED,
+                             bool dout) const {
     return dout && x;
   }
 };
@@ -826,14 +836,14 @@ void MultiplyTripleGradKernel(const Context& dev_ctx,
 
 template <typename T>
 struct MaxGradDx {
-  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+  HOSTDEVICE T operator()(T x, T y, T out UNUSED, T dout) const {
     return dout * static_cast<T>(x > y);
   }
 };
 
 template <typename T>
 struct MaxGradDy {
-  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+  HOSTDEVICE T operator()(T x, T y, T out UNUSED, T dout) const {
     return dout * static_cast<T>(x <= y);
   }
 };
@@ -845,14 +855,14 @@ struct MaxGradDy {
 */
 template <typename T>
 struct MinGradDx {
-  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+  HOSTDEVICE T operator()(T x, T y, T out UNUSED, T dout) const {
     return dout * static_cast<T>(x < y);
   }
 };
 
 template <typename T>
 struct MinGradDy {
-  HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
+  HOSTDEVICE T operator()(T x, T y, T out UNUSED, T dout) const {
     return dout * static_cast<T>(x >= y);
   }
 };
@@ -924,14 +934,14 @@ compute_pow_grad_dy(T x, T y, T out, T dout) {
 }
 #else
 template <typename T, typename MPType>
-HOSTDEVICE T compute_pow_grad_dx(T x, T y, T out, T dout) {
+HOSTDEVICE T compute_pow_grad_dx(T x, T y, T out UNUSED, T dout) {
   MPType x_val = static_cast<MPType>(x);
   MPType y_val = static_cast<MPType>(y);
   return static_cast<T>(static_cast<MPType>(dout) * y_val *
                         std::pow(x_val, y_val - 1));
 }
 template <typename T, typename MPType>
-HOSTDEVICE T compute_pow_grad_dy(T x, T y, T out, T dout) {
+HOSTDEVICE T compute_pow_grad_dy(T x, T y, T out UNUSED, T dout) {
   MPType x_val = static_cast<MPType>(x);
   MPType y_val = static_cast<MPType>(y);
   return static_cast<T>(static_cast<MPType>(dout) * std::log(x_val) *
