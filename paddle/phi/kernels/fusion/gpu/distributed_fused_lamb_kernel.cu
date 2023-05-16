@@ -115,6 +115,45 @@ static __global__ void MultiTensorL2NormReduceAgainCUDAKernel(
   }
 }
 
+template <typename T>
+static int GetChunkedVecSize(const T *ptr, int chunk_size) {
+  static_assert(!std::is_same<T, void>::value, "T cannot be void.");
+
+  constexpr int max_load_bits = 128;
+  int valid_vec_size = max_load_bits / CHAR_BIT / sizeof(T);
+  auto address = reinterpret_cast<uintptr_t>(ptr);
+  constexpr int vec8 = alignof(phi::AlignedVector<T, 8>);
+  constexpr int vec4 = alignof(phi::AlignedVector<T, 4>);
+  constexpr int vec2 = alignof(phi::AlignedVector<T, 2>);
+  chunk_size *= sizeof(T);
+  if (address % vec8 == 0 && chunk_size % vec8 == 0) {
+    return std::min(8, valid_vec_size);
+  } else if (address % vec4 == 0 && chunk_size % vec4 == 0) {
+    return std::min(4, valid_vec_size);
+  } else if (address % vec2 == 0 && chunk_size % vec2 == 0) {
+    return std::min(2, valid_vec_size);
+  } else {
+    return 1;
+  }
+}
+
+#define PD_VEC_LAUNCH_KERNEL_CASE(__vec_size, ...) \
+  case __vec_size: {                               \
+    constexpr int kVecSize = __vec_size;           \
+    __VA_ARGS__;                                   \
+    break;                                         \
+  }
+
+#define PD_VEC_LAUNCH_KERNEL(__vec_size, ...)    \
+  do {                                           \
+    switch (__vec_size) {                        \
+      PD_VEC_LAUNCH_KERNEL_CASE(8, __VA_ARGS__); \
+      PD_VEC_LAUNCH_KERNEL_CASE(4, __VA_ARGS__); \
+      PD_VEC_LAUNCH_KERNEL_CASE(2, __VA_ARGS__); \
+      PD_VEC_LAUNCH_KERNEL_CASE(1, __VA_ARGS__); \
+    }                                            \
+  } while (0)
+
 // TODO(zengjinle): which chunk_size is better?
 template <typename InT,
           typename OutT,
@@ -222,45 +261,6 @@ static bool IsFinite(const phi::GPUContext &dev_ctx, const float *ptr) {
   LOG(INFO) << "NAN_INF indicator value: " << cpu_value;
   return isfinite(cpu_value);
 }
-
-template <typename T>
-static int GetChunkedVecSize(const T *ptr, int chunk_size) {
-  static_assert(!std::is_same<T, void>::value, "T cannot be void.");
-
-  constexpr int max_load_bits = 128;
-  int valid_vec_size = max_load_bits / CHAR_BIT / sizeof(T);
-  auto address = reinterpret_cast<uintptr_t>(ptr);
-  constexpr int vec8 = alignof(phi::AlignedVector<T, 8>);
-  constexpr int vec4 = alignof(phi::AlignedVector<T, 4>);
-  constexpr int vec2 = alignof(phi::AlignedVector<T, 2>);
-  chunk_size *= sizeof(T);
-  if (address % vec8 == 0 && chunk_size % vec8 == 0) {
-    return std::min(8, valid_vec_size);
-  } else if (address % vec4 == 0 && chunk_size % vec4 == 0) {
-    return std::min(4, valid_vec_size);
-  } else if (address % vec2 == 0 && chunk_size % vec2 == 0) {
-    return std::min(2, valid_vec_size);
-  } else {
-    return 1;
-  }
-}
-
-#define PD_VEC_LAUNCH_KERNEL_CASE(__vec_size, ...) \
-  case __vec_size: {                               \
-    constexpr int kVecSize = __vec_size;           \
-    __VA_ARGS__;                                   \
-    break;                                         \
-  }
-
-#define PD_VEC_LAUNCH_KERNEL(__vec_size, ...)    \
-  do {                                           \
-    switch (__vec_size) {                        \
-      PD_VEC_LAUNCH_KERNEL_CASE(8, __VA_ARGS__); \
-      PD_VEC_LAUNCH_KERNEL_CASE(4, __VA_ARGS__); \
-      PD_VEC_LAUNCH_KERNEL_CASE(2, __VA_ARGS__); \
-      PD_VEC_LAUNCH_KERNEL_CASE(1, __VA_ARGS__); \
-    }                                            \
-  } while (0)
 
 template <typename T>
 static const T *GetInputTensorPtr(const DenseTensor *in_tensor,
