@@ -22,7 +22,9 @@
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/phi/api/all.h"
 #include "paddle/phi/api/lib/api_custom_impl.h"
-DECLARE_bool(check_nan_inf);
+#include "paddle/phi/core/flags.h"
+
+PHI_DECLARE_bool(check_nan_inf);
 
 paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
 AddNGradNodeFinal::operator()(

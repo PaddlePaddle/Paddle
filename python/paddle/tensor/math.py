@@ -499,6 +499,7 @@ def _elementwise_op(helper):
         "elementwise_sub",
         "elementwise_mul",
         "elementwise_div",
+        "elementwise_max",
     ]
     if original_op_type in bf16_and_complex_supported_ops:
         data_type = [
@@ -633,6 +634,64 @@ def add_(x, y, name=None):
         )
 
     return _C_ops.add_(x, y)
+
+
+def logaddexp(x, y, name=None):
+    """
+    Elementwise LogAddExp Operator.
+    Add of exponentiations of the inputs
+    The equation is:
+
+    ..  math::
+
+        Out=log(X.exp()+Y.exp())
+
+    $X$ the tensor of any dimension.
+    $Y$ the tensor whose dimensions must be less than or equal to the dimensions of $X$.
+
+    There are two cases for this operator:
+
+    1. The shape of $Y$ is the same with $X$.
+    2. The shape of $Y$ is a continuous subsequence of $X$.
+
+    For case 2:
+
+    1. Broadcast $Y$ to match the shape of $X$, where axis is the start dimension index for broadcasting $Y$ onto $X$.
+    2. If $axis$ is -1 (default), $axis$=rank($X$)-rank($Y$).
+    3. The trailing dimensions of size 1 for $Y$ will be ignored for the consideration of subsequence, such as shape($Y$) = (2, 1) => (2).
+
+        For example:
+
+        ..  code-block:: python
+
+            shape(X) = (2, 3, 4, 5), shape(Y) = (,)
+            shape(X) = (2, 3, 4, 5), shape(Y) = (5,)
+            shape(X) = (2, 3, 4, 5), shape(Y) = (4, 5), with axis=-1(default) or axis=2
+            shape(X) = (2, 3, 4, 5), shape(Y) = (3, 4), with axis=1
+            shape(X) = (2, 3, 4, 5), shape(Y) = (2), with axis=0
+            shape(X) = (2, 3, 4, 5), shape(Y) = (2, 1), with axis=0
+
+    Args:
+        x (Tensor): Tensor or LoDTensor of any dimensions. Its dtype should be float32, float64, float16.
+        y (Tensor): Tensor or LoDTensor of any dimensions. Its dtype should be float32, float64, float16.
+        name (string, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        N-D Tensor. A location into which the result is stored. It's dimension equals with x.
+
+    Examples:
+
+        ..  code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([-1, -2, -3], 'float64')
+            y = paddle.to_tensor([-1], 'float64')
+            z = paddle.logaddexp(x, y)
+            print(z)  # [-0.30685282, -0.68673831, -0.87307199]
+    """
+
+    return paddle.log1p(paddle.exp(-paddle.abs(x - y))) + paddle.maximum(x, y)
 
 
 def subtract(x, y, name=None):
@@ -1958,10 +2017,14 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
 
         helper = LayerHelper("addmm", **locals())
         check_variable_and_dtype(
-            input, 'Input', ['float32', 'float64'], 'addmm'
+            input, 'Input', ['float16', 'float32', 'float64', 'uint16'], 'addmm'
         )
-        check_variable_and_dtype(x, 'X', ['float32', 'float64'], 'addmm')
-        check_variable_and_dtype(y, 'Y', ['float32', 'float64'], 'addmm')
+        check_variable_and_dtype(
+            x, 'X', ['float16', 'float32', 'float64', 'uint16'], 'addmm'
+        )
+        check_variable_and_dtype(
+            y, 'Y', ['float16', 'float32', 'float64', 'uint16'], 'addmm'
+        )
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
         helper.append_op(
@@ -2456,7 +2519,10 @@ def min(x, axis=None, keepdim=False, name=None):
         reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
         helper = LayerHelper('min', **locals())
         check_variable_and_dtype(
-            x, 'x', ['float32', 'float64', 'int32', 'int64'], 'min'
+            x,
+            'x',
+            ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
+            'min',
         )
 
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -3054,7 +3120,7 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
 
 def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
     """
-    This OP computes the diagonals of the input tensor x.
+    Computes the diagonals of the input tensor x.
 
     If ``x`` is 2D, returns the diagonal.
     If ``x`` has larger dimensions, diagonals be taken from the 2D planes specified by axis1 and axis2.
@@ -5482,3 +5548,39 @@ def vander(x, n=None, increasing=False, name=None):
         res[:, 1:] = paddle.cumprod(res[:, 1:], dim=-1)
     res = res[:, ::-1] if not increasing else res
     return res
+
+
+def nextafter(x, y, name=None):
+    r"""
+    Return the next floating-point value after input towards other, elementwise.
+    The shapes of input and other must be broadcastable.
+
+    Args:
+        x (Tensor): An N-D Tensor, the data type is float32, float64.
+        y (Tensor): An N-D Tensor, the data type is float32, float64.
+        name(str, optional):Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        out (Tensor): An N-D Tensor, the shape and data type is the same with input.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            out = paddle.nextafter(paddle.to_tensor([1.0,2.0]),paddle.to_tensor([2.0,1.0]))
+            print(out)
+            #Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #       [1.00000012, 1.99999988])
+    """
+    if in_dygraph_mode():
+        return _C_ops.nextafter(x, y)
+    else:
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'nextafter')
+        check_variable_and_dtype(y, 'y', ['float32', 'float64'], 'nextafter')
+        op_type = "nextafter"
+        helper = LayerHelper(op_type, **locals())
+        inputs = {"x": x, "y": y}
+        out = helper.create_variable_for_type_inference(dtype=paddle.float32)
+        outputs = {"out": out}
+        helper.append_op(type=op_type, inputs=inputs, outputs=outputs)
+    return out

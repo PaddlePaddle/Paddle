@@ -171,14 +171,25 @@ class TileCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
     paddle::Tensor x = this->GetSingleForwardInput("X");
     paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
     paddle::Tensor x_grad = this->GetSingleInputGrad("X");
+    paddle::optional<paddle::Tensor> tensor_repeat_times =
+        this->GetOptionalSingleForwardInput("RepeatTimes");
+    paddle::optional<paddle::Tensor> tensor_repeat_times_attr =
+        this->GetOptionalSingleForwardInput("repeat_times_tensor");
 
     auto dx_ptr = this->GetOutputPtr(&x_grad);
     std::string dx_name = this->GetOutputName(x_grad);
     auto repeat_times = this->Attr<std::vector<int>>("repeat_times");
-    VLOG(6) << "Runing tile_grad composite func";
-    prim::tile_grad<prim::DescTensor>(
-        x, out_grad, paddle::experimental::IntArray(repeat_times), dx_ptr);
-    this->RecoverOutputName(x_grad, dx_name);
+    if (tensor_repeat_times.is_initialized() ||
+        tensor_repeat_times_attr.is_initialized()) {
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "We don't support RepeatTimes from tensor or repeat_times_tensor for "
+          "tile composite grad for now. "));
+    } else {
+      VLOG(6) << "Runing tile_grad composite func";
+      prim::tile_grad<prim::DescTensor>(
+          x, out_grad, paddle::experimental::IntArray(repeat_times), dx_ptr);
+      this->RecoverOutputName(x_grad, dx_name);
+    }
   }
 };
 

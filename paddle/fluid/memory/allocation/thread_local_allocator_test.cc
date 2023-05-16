@@ -19,9 +19,10 @@
 
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/malloc.h"
+#include "paddle/phi/core/flags.h"
 
-DECLARE_double(fraction_of_gpu_memory_to_use);
-DECLARE_string(allocator_strategy);
+PHI_DECLARE_double(fraction_of_gpu_memory_to_use);
+PHI_DECLARE_string(allocator_strategy);
 
 namespace paddle {
 namespace memory {

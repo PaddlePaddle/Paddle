@@ -246,10 +246,12 @@ class TestVarBase(unittest.TestCase):
                 np.testing.assert_array_equal(x.numpy(), numpy_array)
                 self.assertEqual(x.type, core.VarDesc.VarType.LOD_TENSOR)
 
-                # test dtype bfloat16
+                # test dtype=bfloat16
                 x = paddle.to_tensor(-1e6, dtype=paddle.bfloat16)
                 self.assertEqual(x.dtype, core.VarDesc.VarType.BF16)
                 self.assertTrue(x == -999424.0)
+                self.assertTrue(x.item() == -999424.0)
+                self.assertTrue(isinstance(x.item(), float))
 
                 x = paddle.to_tensor([-1e6, -1e6, -1e6], dtype='bfloat16')
                 self.assertEqual(x.dtype, core.VarDesc.VarType.BF16)
@@ -265,6 +267,28 @@ class TestVarBase(unittest.TestCase):
                 y = x * x
                 y.backward()
                 self.assertTrue(x.grad == -999424.0 * 2)
+
+                # test default_type=bfloat16
+                paddle.set_default_dtype('bfloat16')
+                x = paddle.to_tensor(-1e6)
+                self.assertEqual(x.dtype, core.VarDesc.VarType.BF16)
+                self.assertTrue(x == -999424.0)
+                self.assertTrue(x.item() == -999424.0)
+                self.assertTrue(isinstance(x.item(), float))
+
+                x = paddle.to_tensor([-1e6, -1e6, -1e6])
+                self.assertEqual(x.dtype, core.VarDesc.VarType.BF16)
+                self.assertTrue(x[0] == -999424.0)
+                self.assertTrue(x[1] == -999424.0)
+                self.assertTrue(x[2] == -999424.0)
+
+                x = paddle.to_tensor(-1e6, stop_gradient=False)
+                self.assertEqual(x.dtype, core.VarDesc.VarType.BF16)
+                self.assertTrue(x == -999424.0)
+                y = x * x
+                y.backward()
+                self.assertTrue(x.grad == -999424.0 * 2)
+                paddle.set_default_dtype('float32')
 
                 with self.assertRaises(ValueError):
                     paddle.randn([3, 2, 2]).item()

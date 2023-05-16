@@ -112,8 +112,6 @@ _global_expected_place_ = None
 _current_device = None
 global_prog_seed = 0
 _current_pipeline_stage = None
-_already_patch_eager_tensor = False
-_already_patch_varbase = False
 _current_cuda_graph_mode = None
 _global_flags_ = core.globals()
 
@@ -180,35 +178,6 @@ extra_op_attrs = {
 # In some performance issue, we find that python if statement cause server performance problem
 # and we need our new dygraph mode becomes as fast as it could be. That's why we make these flags
 # to make sure in most case, we find new dygraph mode first with only one if statement.
-
-
-def _update_monkey_methods():
-    """
-    Update monkey methods of Tensor or eager.Tensor while
-    switching eager mode and legacy mode.
-    """
-    from paddle import _C_ops, _legacy_C_ops
-    from .dygraph.varbase_patch_methods import monkey_patch_varbase
-    from .dygraph import monkey_patch_math_varbase
-
-    global _already_patch_eager_tensor
-    global _already_patch_varbase
-
-    if not _already_patch_eager_tensor:
-        monkey_patch_varbase()
-        monkey_patch_math_varbase()
-
-        _already_patch_eager_tensor = True
-
-    # switch Paddle.Tensor bind type
-    _switch_tensor_bind_type()
-
-
-def _switch_tensor_bind_type():
-    import paddle
-
-    paddle.Tensor = core.eager.Tensor
-    paddle.Tensor.__qualname__ = 'Tensor'
 
 
 def _in_eager_without_dygraph_check():
@@ -628,21 +597,6 @@ def _current_expected_place():
                     "You are using XPU version Paddle, but your XPU device is not set properly. CPU device will be used by default."
                 )
                 _global_expected_place_ = core.CPUPlace()
-        elif core.is_compiled_with_custom_device("npu"):
-            # TODO(duanyanhui): Optimize DeviceManager and Return all expected places when device registered in DeviceManager is greater than 1.
-            try:
-                device_count = core.get_custom_device_count("npu")
-            except Exception as e:
-                device_count = 0
-            if device_count > 0:
-                _global_expected_place_ = core.CustomPlace(
-                    "npu", _custom_device_ids("npu")[0]
-                )
-            else:
-                warnings.warn(
-                    "You are using NPU version Paddle, but your NPU device is not set properly. CPU device will be used by default."
-                )
-                _global_expected_place_ = core.CPUPlace()
         else:
             _global_expected_place_ = core.CPUPlace()
 
@@ -749,7 +703,8 @@ def is_compiled_with_cinn():
     """
     Whether this whl package can be used to run the model on CINN.
 
-    Returns (bool): `True` if CINN is currently available, otherwise `False`.
+    Returns:
+        Bool: `True` if CINN is currently available, otherwise `False`.
 
     Examples:
         .. code-block:: python
@@ -764,7 +719,8 @@ def is_compiled_with_cuda():
     """
     Whether this whl package can be used to run the model on GPU.
 
-    Returns (bool): `True` if CUDA is currently available, otherwise `False`.
+    Returns:
+        Bool: `True` if CUDA is currently available, otherwise `False`.
 
     Examples:
         .. code-block:: python
@@ -779,7 +735,8 @@ def is_compiled_with_rocm():
     """
     Whether this whl package can be used to run the model on AMD or Hygon GPU(ROCm).
 
-    Returns (bool): `True` if ROCm is currently available, otherwise `False`.
+    Returns:
+        Bool: `True` if ROCm is currently available, otherwise `False`.
 
     Examples:
         .. code-block:: python
@@ -1668,9 +1625,24 @@ class Variable(metaclass=VariableMetaClass):
         """
         pass
 
-    @fake_interface_only
     def register_hook(self, hook):
-        pass
+        import paddle
+
+        def backward_hook_wrapper(dy):
+            """call the backward hook in ."""
+            return hook(np.array(dy))
+
+        def forward_hook_wrapper(x):
+            """do nothing but return a new variable."""
+            return x
+
+        paddle.static.py_func(
+            func=forward_hook_wrapper,
+            x=self,
+            out=self,
+            backward_func=backward_hook_wrapper,
+            skip_vars_in_backward_input=[self],
+        )
 
     def __str__(self):
         return self._to_readable_code()
@@ -7467,9 +7439,9 @@ def device_guard(device=None):
         device, index = device.split(':')
         if device == 'cpu':
             raise ValueError("Should not set device id for cpu.")
-    if device not in ['cpu', 'gpu', 'xpu', 'npu', '', None]:
+    if device not in ['cpu', 'gpu', 'xpu', '', None]:
         raise ValueError(
-            "The Attr(device) should be 'cpu' 'npu' or 'gpu', and it can also be empty string or None "
+            "The Attr(device) should be 'cpu' or 'gpu', and it can also be empty string or None "
             "when there is no need to specify device. But received %s" % device
         )
     if index:

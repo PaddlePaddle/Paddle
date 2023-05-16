@@ -16,9 +16,10 @@ import math
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
+from paddle.fluid import core
 
 paddle.enable_static()
 paddle.seed(100)
@@ -42,17 +43,20 @@ class TestPoissonOp1(OpTest):
     def setUp(self):
         self.op_type = "poisson"
         self.python_api = paddle.tensor.poisson
+        self.init_dtype()
         self.config()
 
         self.attrs = {}
         self.inputs = {'X': np.full([2048, 1024], self.lam, dtype=self.dtype)}
         self.outputs = {'Out': np.ones([2048, 1024], dtype=self.dtype)}
 
+    def init_dtype(self):
+        self.dtype = "float64"
+
     def config(self):
         self.lam = 10
         self.a = 5
         self.b = 15
-        self.dtype = "float64"
 
     def verify_output(self, outs):
         hist, prob = output_hist(np.array(outs[0]), self.lam, self.a, self.b)
@@ -366,6 +370,56 @@ class TestPoissonAPI(unittest.TestCase):
         ]
         np.testing.assert_array_equal(y_np[15, 1023, 1000:1020], expect)
         paddle.enable_static()
+
+
+class TestPoissonFP16OP(TestPoissonOp1):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestPoissonBF16Op(OpTest):
+    def setUp(self):
+        self.op_type = "poisson"
+        self.python_api = paddle.tensor.poisson
+        self.config()
+        x = np.full([2048, 1024], self.lam, dtype="float32")
+        out = np.ones([2048, 1024], dtype="float32")
+        x = convert_uint16_to_float(convert_float_to_uint16(x))
+        out = convert_uint16_to_float(convert_float_to_uint16(out))
+        self.attrs = {}
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.outputs = {'Out': convert_float_to_uint16(out)}
+
+    def config(self):
+        self.lam = 10
+        self.a = 5
+        self.b = 15
+        self.dtype = np.uint16
+
+    def verify_output(self, outs):
+        hist, prob = output_hist(np.array(outs[0]), self.lam, self.a, self.b)
+        np.testing.assert_allclose(hist, prob, rtol=0.01)
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place_customized(self.verify_output, place)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(
+            place,
+            ['X'],
+            'Out',
+            user_defined_grads=[np.zeros([2048, 1024], dtype="float32")],
+            user_defined_grad_outputs=[
+                np.random.rand(2048, 1024).astype("float32")
+            ],
+        )
 
 
 if __name__ == "__main__":

@@ -28,8 +28,9 @@
 #include "paddle/fluid/platform/dynload/rccl.h"
 #endif
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
+#include "paddle/phi/core/flags.h"
 
-DECLARE_bool(sync_nccl_allreduce);
+PHI_DECLARE_bool(sync_nccl_allreduce);
 
 namespace paddle {
 namespace framework {
@@ -224,7 +225,7 @@ class NCCLOpHandleBase : public OpHandleBase {
                    void* recvbuff,
                    size_t count,
                    ncclDataType_t datatype,
-                   ncclRedOp_t op) {
+                   ncclRedOp_t op UNUSED) {
     auto nccl_ctxs = nccl_ctxs_->GetHierarchicalInterCtx(run_order_);
     int dev_id = place.device;
     auto& nccl_ctx = nccl_ctxs->at(dev_id);
@@ -296,7 +297,7 @@ class NCCLOpHandleBase : public OpHandleBase {
                       void* sendbuff,
                       size_t count,
                       ncclDataType_t datatype,
-                      ncclRedOp_t op) {
+                      ncclRedOp_t op UNUSED) {
     auto nccl_ctxs = nccl_ctxs_->GetHierarchicalInterCtx(run_order_);
     int dev_id = place.device;
     auto& nccl_ctx = nccl_ctxs->at(dev_id);
