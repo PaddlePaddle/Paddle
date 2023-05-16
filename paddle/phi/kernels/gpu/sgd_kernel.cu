@@ -188,7 +188,9 @@ PD_REGISTER_KERNEL(sgd,
                    phi::dtype::float16,
                    float,
                    double) {
-  kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
+  if (kernel_key.dtype() == phi::DataType::FLOAT16) {
+    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
+  }
 }
 
 PD_REGISTER_KERNEL(sgd_dense_param_sparse_grad,

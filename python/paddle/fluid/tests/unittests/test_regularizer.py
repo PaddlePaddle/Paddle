@@ -20,14 +20,12 @@ from functools import partial
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.fluid.framework as framework
-import paddle.fluid.regularizer as regularizer
+from paddle import fluid, regularizer
+from paddle.fluid import core, framework
 from paddle.fluid.backward import append_backward
 
 
-class TestL2DecayRegularizer(unittest.TestCase):
+class TestL2Decay(unittest.TestCase):
     def test_l2decay_regularizer(self):
         paddle.enable_static()
         program = framework.Program()
@@ -37,12 +35,10 @@ class TestL2DecayRegularizer(unittest.TestCase):
             shape=[5, 10],
             lod_level=0,
             name="mul.x",
-            regularizer=regularizer.L2DecayRegularizer(0.5),
+            regularizer=regularizer.L2Decay(0.5),
         )
         self.assertIsNotNone(mul_x.regularizer)
-        self.assertTrue(
-            isinstance(mul_x.regularizer, regularizer.L2DecayRegularizer)
-        )
+        self.assertTrue(isinstance(mul_x.regularizer, regularizer.L2Decay))
         mul_y = block.create_var(
             dtype="float32", shape=[10, 8], lod_level=0, name="mul.y"
         )
@@ -72,7 +68,7 @@ class TestL2DecayRegularizer(unittest.TestCase):
         self.assertEqual(block.ops[-2].type, 'scale')
 
 
-class TestL1DecayRegularizer(unittest.TestCase):
+class TestL1Decay(unittest.TestCase):
     def test_l2decay_regularizer(self):
         paddle.enable_static()
         program = framework.Program()
@@ -82,12 +78,10 @@ class TestL1DecayRegularizer(unittest.TestCase):
             shape=[5, 10],
             lod_level=0,
             name="mul.x",
-            regularizer=regularizer.L1DecayRegularizer(0.5),
+            regularizer=regularizer.L1Decay(0.5),
         )
         self.assertIsNotNone(mul_x.regularizer)
-        self.assertTrue(
-            isinstance(mul_x.regularizer, regularizer.L1DecayRegularizer)
-        )
+        self.assertTrue(isinstance(mul_x.regularizer, regularizer.L1Decay))
         mul_y = block.create_var(
             dtype="float32", shape=[10, 8], lod_level=0, name="mul.y"
         )
@@ -210,7 +204,8 @@ class TestRegularizer(unittest.TestCase):
             avg_cost = model(data, label, self.word_len)
 
             optimizer = fluid.optimizer.Adagrad(
-                learning_rate=0.1, regularization=fluid.regularizer.L2Decay(1.0)
+                learning_rate=0.1,
+                regularization=paddle.regularizer.L2Decay(1.0),
             )
             optimizer.minimize(avg_cost)
             param_sum = self.run_program(place, [data, label])
@@ -267,8 +262,8 @@ class TestRegularizer(unittest.TestCase):
                 )
 
     def test_repeated_regularization(self):
-        l1 = fluid.regularizer.L1Decay(regularization_coeff=0.1)
-        l2 = fluid.regularizer.L2Decay(regularization_coeff=0.01)
+        l1 = paddle.regularizer.L1Decay(coeff=0.1)
+        l2 = paddle.regularizer.L2Decay(coeff=0.01)
         fc_param_attr = paddle.ParamAttr(
             regularizer=paddle.regularizer.L1Decay()
         )

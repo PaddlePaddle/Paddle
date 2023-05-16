@@ -14,13 +14,13 @@
 
 #pragma once
 
+#include "paddle/phi/core/macros.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
 #include "paddle/phi/kernels/slice_grad_kernel.h"
-
 namespace phi {
 
 template <typename T, typename Context, size_t D>
@@ -212,8 +212,8 @@ void SliceGradCompute(const Context& ctx,
                       const DenseTensor& out_grad,
                       const std::vector<int64_t>& axes,
                       const std::vector<int64_t>& starts,
-                      const std::vector<int64_t>& ends,
-                      const std::vector<int64_t>& infer_flags,
+                      const std::vector<int64_t>& ends UNUSED,
+                      const std::vector<int64_t>& infer_flags UNUSED,
                       const std::vector<int64_t>& decrease_axis,
                       DenseTensor* input_grad) {
   auto* d_out = &out_grad;
@@ -271,15 +271,15 @@ void SliceGradCompute(const Context& ctx,
 }
 
 template <typename T, typename Context>
-void SliceGradRawKernel(const Context& ctx,
-                        const DenseTensor& input,
-                        const DenseTensor& out_grad,
-                        const std::vector<int64_t>& axes,
-                        const IntArray& starts_arr,
-                        const IntArray& ends_arr,
-                        const std::vector<int64_t>& infer_flags,
-                        const std::vector<int64_t>& decrease_axis,
-                        DenseTensor* input_grad) {
+void SliceGradKernel(const Context& ctx,
+                     const DenseTensor& input,
+                     const DenseTensor& out_grad,
+                     const std::vector<int64_t>& axes,
+                     const IntArray& starts_arr,
+                     const IntArray& ends_arr,
+                     const std::vector<int64_t>& infer_flags,
+                     const std::vector<int64_t>& decrease_axis,
+                     DenseTensor* input_grad) {
   size_t rank = input.dims().size();
 
   auto& starts = starts_arr.GetData();
@@ -357,7 +357,7 @@ void SliceArrayGradKernel(const Context& dev_ctx,
                           const TensorArray& input,
                           const TensorArray& out_grad,
                           const IntArray& starts,
-                          const IntArray& ends,
+                          const IntArray& ends UNUSED,
                           TensorArray* input_grad) {
   int64_t d_in_size = input.size();
   input_grad->resize(d_in_size);

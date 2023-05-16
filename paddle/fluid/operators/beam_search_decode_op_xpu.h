@@ -19,11 +19,11 @@ namespace paddle {
 namespace operators {
 
 int SetMeta(const phi::DenseTensor& srcTensor, phi::DenseTensor* dstTensor) {
-  if (srcTensor.dtype() == paddle::experimental::DataType::INT32 ||
-      srcTensor.dtype() == paddle::experimental::DataType::INT64 ||
-      srcTensor.dtype() == paddle::experimental::DataType::FLOAT32 ||
-      srcTensor.dtype() == paddle::experimental::DataType::FLOAT16 ||
-      srcTensor.dtype() == paddle::experimental::DataType::FLOAT64) {
+  if (srcTensor.dtype() == phi::DataType::INT32 ||
+      srcTensor.dtype() == phi::DataType::INT64 ||
+      srcTensor.dtype() == phi::DataType::FLOAT32 ||
+      srcTensor.dtype() == phi::DataType::FLOAT16 ||
+      srcTensor.dtype() == phi::DataType::FLOAT64) {
     const phi::DenseTensorMeta meta_data(srcTensor.dtype(), srcTensor.dims());
     dstTensor->set_meta(meta_data);
   } else {
@@ -72,16 +72,16 @@ const int CopyTensorByType(const phi::DenseTensor& srcTensor,
                            int flag,
                            const Place& place) {
   int r = 0;
-  if (srcTensor.dtype() == paddle::experimental::DataType::FLOAT32)
+  if (srcTensor.dtype() == phi::DataType::FLOAT32)
     r = CopyTensorByXPU<float>(srcTensor, dstTensor, flag, place);
-  else if (srcTensor.dtype() == paddle::experimental::DataType::FLOAT16)
+  else if (srcTensor.dtype() == phi::DataType::FLOAT16)
     r = CopyTensorByXPU<paddle::platform::float16>(
         srcTensor, dstTensor, flag, place);
-  else if (srcTensor.dtype() == paddle::experimental::DataType::FLOAT64)
+  else if (srcTensor.dtype() == phi::DataType::FLOAT64)
     r = CopyTensorByXPU<double>(srcTensor, dstTensor, flag, place);
-  else if (srcTensor.dtype() == paddle::experimental::DataType::INT32)
+  else if (srcTensor.dtype() == phi::DataType::INT32)
     r = CopyTensorByXPU<int>(srcTensor, dstTensor, flag, place);
-  else if (srcTensor.dtype() == paddle::experimental::DataType::INT64)
+  else if (srcTensor.dtype() == phi::DataType::INT64)
     r = CopyTensorByXPU<int64_t>(srcTensor, dstTensor, flag, place);
   else
     return xpu::Error_t::INVALID_PARAM;

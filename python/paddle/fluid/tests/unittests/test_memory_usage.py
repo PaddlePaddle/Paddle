@@ -16,7 +16,7 @@ import contextlib
 import unittest
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 def train_simulator(test_batch_size=10):

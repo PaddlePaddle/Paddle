@@ -153,7 +153,7 @@ __global__ void TilingSwapDim1And2(const T* __restrict__ input,
   if (x < in_effective_thread_num) {
     // Read a tile from input using block.
     int x_i = x / TileY;
-    int x_j = x % TileY;
+    int x_j = x - x_i * TileY;
     IndexType input_ind =
         input_origin_block_flat_index + x_i * input_dims[2] + x_j;
     IndexType input_inc = BlockReadRows * input_dims[2];
@@ -197,7 +197,7 @@ __global__ void TilingSwapDim1And2(const T* __restrict__ input,
 
   if (x < out_effective_thread_num) {
     int x_i = x / TileX;
-    int x_j = x % TileX;
+    int x_j = x - x_i * TileX;
     IndexType output_ind =
         output_origin_block_flat_index + x_i * output_dims[2] + x_j;
     IndexType output_inc = BlockWriteRows * output_dims[2];
@@ -1480,10 +1480,9 @@ void TransposeGPUKernelDriver(const phi::GPUContext& ctx,
     auto* tuner = phi::autotune::MakeTransposeTuner<T>(PermuteWithEigen<T>);
     tuner->AddCallBack(PermuteAndTranspose<T>);
 
-    size_t key = phi::autotune::TransposeKey(
-        simplifier.GetSrcDims(),
-        simplifier.GetPerm(),
-        paddle::experimental::CppTypeToDataType<T>::Type());
+    size_t key = phi::autotune::TransposeKey(simplifier.GetSrcDims(),
+                                             simplifier.GetPerm(),
+                                             phi::CppTypeToDataType<T>::Type());
 
     tuner->Run(ctx,
                phi::autotune::AlgorithmType::kTranspose,

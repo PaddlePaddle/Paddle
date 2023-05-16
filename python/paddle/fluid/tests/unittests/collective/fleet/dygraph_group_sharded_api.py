@@ -18,7 +18,6 @@ import tempfile
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
 from paddle.distributed import fleet
 from paddle.distributed.sharding import (
     group_sharded_parallel,
@@ -35,7 +34,7 @@ l2_decay = 1e-4
 batch_size = 100
 
 
-class MLP(fluid.Layer):
+class MLP(paddle.nn.Layer):
     def __init__(self, linear_size=1000, param_attr=None, bias_attr=None):
         super().__init__()
 

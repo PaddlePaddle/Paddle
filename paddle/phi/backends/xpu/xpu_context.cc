@@ -16,6 +16,8 @@
 
 #include <memory>
 
+#include "glog/logging.h"
+
 #include "paddle/phi/api/ext/exception.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/common/place.h"
@@ -60,7 +62,9 @@ struct XPUContext::Impl {
       return false;
     }
     std::string cur_thread_name = phi::GetCurrentThreadName();
-    bool is_dataloader_thread = (cur_thread_name.substr(0, 10) == "Dataloader");
+    VLOG(3) << "XPU Dataloader: current thread at Get Context = "
+            << phi::GetCurrentThreadName();
+    bool is_dataloader_thread = (cur_thread_name != "MainThread");
     return is_dataloader_thread;
   }
 
@@ -72,7 +76,7 @@ struct XPUContext::Impl {
     if (owned_ && context_ != nullptr) {
       backends::xpu::XPUDeviceGuard guard(place_.GetDeviceId());
       xpu_wait(context_->xpu_stream);
-      if (context_->xpu_stream) {
+      if (context_->xpu_stream && stream_owned_) {
         // manually destroy XPUStream here until xpu::api integrates this work
         // into Context dtor
         xpu_stream_destroy(context_->xpu_stream);
@@ -93,6 +97,7 @@ struct XPUContext::Impl {
         xpu::destroy_context(ctx);
         ctx = nullptr;
       }
+      xdl_context_map_.clear();
     }
   }
 
@@ -100,11 +105,16 @@ struct XPUContext::Impl {
 
   XPUStream stream() const {
     if (IsDataloader()) {
-      std::string cur_thread_name = phi::GetCurrentThreadName();
-      xpu::Context* ctx_t = GetXdlCtx(cur_thread_name);
+      xpu::Context* ctx_t = GetXdlCtx();
       return ctx_t->xpu_stream;
     }
     return context_->xpu_stream;
+  }
+
+  // Set external stream for context
+  void SetStream(void* stream) {
+    stream_owned_ = false;
+    context_->set_stream(static_cast<XPUStream>(stream));
   }
 
   xpu::Context* GetXContext() const {
@@ -120,12 +130,9 @@ struct XPUContext::Impl {
   // Overload GetXContext function to set and get
   // contexts of XPU Dataloader threads, and keep old GetXContext Method
   xpu::Context* GetXContext() {
-    std::string cur_thread_name = phi::GetCurrentThreadName();
-    VLOG(3) << "XPU Dataloader: current thread at Get Context = "
-            << phi::GetCurrentThreadName();
     if (IsDataloader()) {
-      SetXdlCtx(cur_thread_name);
-      xpu::Context* ctx_t = GetXdlCtx(cur_thread_name);
+      SetXdlCtx();
+      xpu::Context* ctx_t = GetXdlCtx();
       PD_CHECK(ctx_t != nullptr, "the xpu dataloader context is nullptr.");
       return ctx_t;
     }
@@ -135,23 +142,23 @@ struct XPUContext::Impl {
   }
 
   void Wait() const {
-    backends::xpu::XPUDeviceGuard guard(place_.GetDeviceId());
-    PD_CHECK(context_ != nullptr, "the xpu context is nullptr.");
-    xpu_wait(context_->xpu_stream);
-  }
-
-  // Overload Wait for xpu wait on XPU Dataloader threads streams
-  void Wait() {
     if (IsDataloader()) {
-      std::string cur_thread_name = phi::GetCurrentThreadName();
-      SetXdlCtx(cur_thread_name);
-      xpu::Context* ctx_t = GetXdlCtx(cur_thread_name);
-      PD_CHECK(ctx_t != nullptr, "the xpu dataloader context is nullptr.");
-      xpu_wait(GetXdlCtx(cur_thread_name)->xpu_stream);
+      xpu::Context* ctx_t = GetXdlCtx();
+      if (ctx_t) {
+        PD_CHECK(ctx_t != nullptr, "the xpu dataloader context is nullptr.");
+        xpu_wait(ctx_t->xpu_stream);
+      }
+      return;
     }
+
     backends::xpu::XPUDeviceGuard guard(place_.GetDeviceId());
     PD_CHECK(context_ != nullptr, "the xpu context is nullptr.");
     xpu_wait(context_->xpu_stream);
+    xpu::Context* ctx_t = GetXdlCtx();
+    if (ctx_t) {
+      PD_CHECK(ctx_t != nullptr, "the xpu dataloader context is nullptr.");
+      xpu_wait(ctx_t->xpu_stream);
+    }
   }
 
   void Init() {
@@ -178,6 +185,7 @@ struct XPUContext::Impl {
       return;
     }
     PADDLE_ENFORCE_XPU_SUCCESS(xpu_stream_create(&context_->xpu_stream));
+    stream_owned_ = true;
   }
 
   // Methods of XPU Dataloader threads contexts map,
@@ -191,22 +199,24 @@ struct XPUContext::Impl {
     for (const auto& tp : thread_map) {
       std::string t_name = tp.second;
       if (t_name.substr(0, 10) == "Dataloader") {
-        SetXdlCtx(t_name);
+        SetXdlCtx();
       }
     }
   }
 
-  void SetXdlCtx(std::string thread_name) {
-    if (xdl_context_map_.find(thread_name) == xdl_context_map_.end()) {
+  void SetXdlCtx() {
+    auto pid = phi::GetProcessId();
+    if (xdl_context_map_.find(pid) == xdl_context_map_.end()) {
       xpu::Context* ctx_t = xpu::create_context();
-      xdl_context_map_[thread_name] = ctx_t;
+      xdl_context_map_[pid] = ctx_t;
     }
   }
 
-  xpu::Context* GetXdlCtx(const std::string thread_name) const {
-    return (xdl_context_map_.find(thread_name) == xdl_context_map_.end())
+  xpu::Context* GetXdlCtx() const {
+    auto pid = phi::GetProcessId();
+    return (xdl_context_map_.find(pid) == xdl_context_map_.end())
                ? nullptr
-               : xdl_context_map_.find(thread_name)->second;
+               : xdl_context_map_.find(pid)->second;
   }
 
   std::vector<xpu::Context*> GetAllXdlCtxs() {
@@ -218,10 +228,13 @@ struct XPUContext::Impl {
   }
 
   bool owned_{false};
+  bool stream_owned_{false};
   Place place_;
   backends::xpu::XPUVersion xpu_version_;
+  int runtime_version_;
+  int driver_version_;
   xpu::Context* context_{nullptr};
-  std::unordered_map<std::string, xpu::Context*> xdl_context_map_;
+  std::unordered_map<uint32_t, xpu::Context*> xdl_context_map_;
 
   // NOTE: Distributed communicator, distributed framework manages its
   // resources, XPUContext only holds references.
@@ -242,6 +255,20 @@ XPUContext::~XPUContext() = default;
 const Place& XPUContext::GetPlace() const { return impl_->GetPlace(); }
 
 XPUStream XPUContext::stream() const { return impl_->stream(); }
+
+void XPUContext::SetStream(void* stream) { impl_->SetStream(stream); }
+
+void XPUContext::SetXpuVersion(int version) {
+  impl_->xpu_version_ = static_cast<backends::xpu::XPUVersion>(version);
+}
+
+void XPUContext::SetRuntimeVersion(int version) {
+  impl_->runtime_version_ = version;
+}
+
+void XPUContext::SetDriverVersion(int version) {
+  impl_->driver_version_ = version;
+}
 
 backends::xpu::XPUVersion XPUContext::xpu_version() const {
   return impl_->xpu_version_;

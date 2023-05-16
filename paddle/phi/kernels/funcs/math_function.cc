@@ -27,7 +27,6 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/data_type.h"
@@ -93,7 +92,7 @@ DEFINE_CPU_TRANS(6);
 
 template <typename DeviceContext, typename T>
 void TransposeNormal<DeviceContext, T>::operator()(
-    const DeviceContext& context,
+    const DeviceContext& context UNUSED,
     const phi::DenseTensor& in,
     phi::DenseTensor* out,
     const std::vector<int>& axis) {
@@ -163,19 +162,6 @@ void set_constant_with_place<phi::XPUPlace>(const phi::DeviceContext& context,
 }
 
 template <>
-void set_constant_with_place<phi::NPUPlace>(const phi::DeviceContext& context,
-                                            phi::DenseTensor* tensor,
-                                            float value) {
-  PADDLE_THROW(phi::errors::Unimplemented("NPUPlace is not supported"));
-}
-
-template <>
-void set_constant_with_place<phi::NPUPinnedPlace>(
-    const phi::DeviceContext& context, phi::DenseTensor* tensor, float value) {
-  PADDLE_THROW(phi::errors::Unimplemented("NPUPinnedPlace is not supported"));
-}
-
-template <>
 void set_constant_with_place<phi::IPUPlace>(const phi::DeviceContext& context,
                                             phi::DenseTensor* tensor,
                                             float value) {
@@ -185,7 +171,16 @@ void set_constant_with_place<phi::IPUPlace>(const phi::DeviceContext& context,
 template <>
 void set_constant_with_place<phi::CustomPlace>(
     const phi::DeviceContext& context, phi::DenseTensor* tensor, float value) {
-  PADDLE_THROW(phi::errors::Unimplemented("CustomPlace is not supported"));
+  phi::DenseTensor tmp_tensor;
+  tmp_tensor.Resize(tensor->dims());
+  context.HostAlloc(&tmp_tensor, tensor->dtype());
+  phi::VisitDataType(tmp_tensor.dtype(),
+                     TensorSetConstantCPU(&tmp_tensor, value));
+  phi::memory_utils::Copy(tensor->place(),
+                          tensor->data(),
+                          phi::CPUPlace(),
+                          tmp_tensor.data(),
+                          tensor->numel() * phi::SizeOf(tensor->dtype()));
 }
 
 template <>
@@ -193,13 +188,6 @@ void set_constant_with_place<phi::CPUPlace>(const phi::DeviceContext& context,
                                             phi::DenseTensor* tensor,
                                             float value) {
   phi::VisitDataType(tensor->dtype(), TensorSetConstantCPU(tensor, value));
-}
-
-template <>
-void set_constant_with_place<phi::MLUPlace>(const phi::DeviceContext& context,
-                                            phi::DenseTensor* tensor,
-                                            float value) {
-  PADDLE_THROW(phi::errors::Unimplemented("MLUPlace is not supported"));
 }
 
 template <>
@@ -231,7 +219,7 @@ void set_constant(const phi::DeviceContext& context,
   TensorSetConstantWithPlace func(context, tensor, value);
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   if (context.GetPlace().GetType() == phi::AllocationType::CUSTOM) {
-    func(phi::CPUPlace());
+    func(phi::CustomPlace());
     return;
   }
 #endif

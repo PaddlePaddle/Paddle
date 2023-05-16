@@ -104,4 +104,10 @@ PD_REGISTER_KERNEL(eig,
                    float,
                    double,
                    phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::dtype::complex<double>) {
+  if (kernel_key.dtype() == phi::DataType::FLOAT32 ||
+      kernel_key.dtype() == phi::DataType::FLOAT64) {
+    kernel->OutputAt(0).SetDataType(phi::dtype::ToComplex(kernel_key.dtype()));
+    kernel->OutputAt(1).SetDataType(phi::dtype::ToComplex(kernel_key.dtype()));
+  }
+}

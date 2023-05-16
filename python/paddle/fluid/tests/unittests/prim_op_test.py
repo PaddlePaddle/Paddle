@@ -20,8 +20,14 @@ import config
 import numpy as np
 
 import paddle
-import paddle.fluid.core as core
-from paddle.fluid.framework import _dygraph_tracer, in_dygraph_mode
+from paddle.fluid import core
+from paddle.fluid.framework import (
+    OpProtoHolder,
+    _dygraph_tracer,
+    canonicalize_attrs,
+    in_dygraph_mode,
+)
+from paddle.incubate.autograd import primapi
 from paddle.jit.dy2static.utils import parse_arg_and_kwargs
 
 
@@ -61,11 +67,16 @@ class OpTestUtils:
         cls, op_type, eager_tensor_inputs, eager_tensor_outputs, attrs_outputs
     ):
         try:
+            op_proto = OpProtoHolder.instance().get_op_proto(op_type)
+            canonicalized_attrs = canonicalize_attrs(attrs_outputs, op_proto)
+        except ValueError:
+            canonicalized_attrs = attrs_outputs
+        try:
             kernel_sig = _dygraph_tracer()._get_kernel_signature(
                 op_type,
                 eager_tensor_inputs,
                 eager_tensor_outputs,
-                attrs_outputs,
+                canonicalized_attrs,
             )
         except RuntimeError as re:
             """we think the kernel_sig is missing."""
@@ -163,11 +174,13 @@ class OpTestUtils:
         if api_params == []:
             results.append(input_arguments)
             return results
-        api_ignore_param_list = set(['name', 'dtype', 'out', 'output'])
+        api_ignore_param_list = {'name', 'dtype', 'out', 'output'}
         idx_of_op_proto_arguments = 0
         for idx, arg_name in enumerate(api_params):
             if arg_name in api_ignore_param_list:
                 results.append(get_default(idx, api_defaults))
+                if idx_of_op_proto_arguments < len(input_arguments):
+                    idx_of_op_proto_arguments += 1
             else:
                 if idx_of_op_proto_arguments < len(input_arguments):
                     tmp = input_arguments[idx_of_op_proto_arguments]
@@ -220,12 +233,12 @@ def apply_to_static(net, use_cinn):
 
 
 class PrimNet(paddle.nn.Layer):
-    def __init__(self, python_api):
-        super(PrimNet, self).__init__()
-        self.python_api = python_api
+    def __init__(self, public_python_api):
+        super().__init__()
+        self.public_python_api = public_python_api
 
     def forward(self, args):
-        out = self.python_api(*args)
+        out = self.public_python_api(*args)
         return out
 
 
@@ -263,7 +276,10 @@ class PrimForwardChecker:
         ), "Please set dtype in setUp function."
         self.op_type = self.op_test.op_type
         self.prim_op_type = self.op_test.prim_op_type
-        self.python_api = self.op_test.python_api
+        assert hasattr(
+            self.op_test, 'public_python_api'
+        ), "If you want to check prim, please set public_python_api in setUp function."
+        self.public_python_api = self.op_test.public_python_api
         self.dtype = np.dtype(self.op_test.dtype)
         self.inputs = self.op_test.inputs
         self.attrs = (
@@ -431,7 +447,7 @@ class PrimForwardChecker:
             _,
         ) = self.get_eager_input_attr_and_inputdict(stop_gradient=True)
         args = OpTestUtils.prepare_python_api_arguments(
-            self.python_api,
+            self.public_python_api,
             eager_tensor_inputs,
             attrs_outputs,
             self.kernel_sig,
@@ -440,7 +456,7 @@ class PrimForwardChecker:
         args = OpTestUtils.assumption_assert_and_transform(
             args, len(inputs_sig)
         )
-        ret = flatten(_as_list(self.python_api(*args)))
+        ret = flatten(_as_list(self.public_python_api(*args)))
         ret = paddle.utils.map_structure(lambda x: x.numpy(), ret)
         if OpTestUtils.is_bfloat16_type(self.dtype):
             ret = paddle.utils.map_structure(
@@ -578,7 +594,7 @@ class PrimForwardChecker:
                 stop_gradient=True
             )
             args = OpTestUtils.prepare_python_api_arguments(
-                self.python_api,
+                self.public_python_api,
                 static_inputs,
                 attrs,
                 self.kernel_sig,
@@ -587,8 +603,13 @@ class PrimForwardChecker:
             args = OpTestUtils.assumption_assert_and_transform(
                 args, len(inputs_sig)
             )
-            ret = flatten(_as_list(self.python_api(*args)))
-            paddle.incubate.autograd.to_prim(main_program.blocks)
+            ret = flatten(_as_list(self.public_python_api(*args)))
+            primapi.to_prim(main_program.blocks)
+        # ensure the operator not in program if check_prim is True
+        forward_ops = [op.type for op in main_program.blocks[0].ops]
+        assert self.op_type not in forward_ops, (
+            "%s shouldn't appear in program when check_prim is True"
+        ) % (self.op_type)
         exe = paddle.static.Executor(self.place)
         exe.run(startup_program)
         ret = exe.run(main_program, feed=feed, fetch_list=ret)
@@ -610,13 +631,12 @@ class PrimForwardChecker:
             )
             raise RuntimeError(msg)
         for i in range(len(ret)):
-            if not np.allclose(
+            np.testing.assert_allclose(
                 ret[i],
                 self.eager_desire[i],
                 rtol=self.fw_comp_rtol,
                 atol=self.fw_comp_atol,
-            ):
-                msg = (
+                err_msg=(
                     'Check static comp forward api out failed. Mismatch between static comp '
                     'and eager on %s, when enable_fw_comp is %s,the forward api out tensor\'s index is : %d \n'
                     'static comp forward api out tensor:\n%s\n eager forward api out tensor:\n%s\n'
@@ -627,8 +647,8 @@ class PrimForwardChecker:
                         ret[i],
                         self.eager_desire[i],
                     )
-                )
-                raise RuntimeError(msg)
+                ),
+            )
         paddle.disable_static()
         core._set_prim_forward_enabled(False)
 
@@ -649,7 +669,7 @@ class PrimForwardChecker:
             _,
         ) = self.get_eager_input_attr_and_inputdict(stop_gradient=True)
         args = OpTestUtils.prepare_python_api_arguments(
-            self.python_api,
+            self.public_python_api,
             eager_tensor_inputs,
             attrs_outputs,
             self.kernel_sig,
@@ -658,8 +678,18 @@ class PrimForwardChecker:
         args = OpTestUtils.assumption_assert_and_transform(
             args, len(inputs_sig)
         )
-        net = PrimNet(self.python_api)
+        net = PrimNet(self.public_python_api)
         net = apply_to_static(net, False)
+        # ensure the operator not in program if check_prim is True
+        forward_ops = [
+            op.type
+            for op in net.forward.get_concrete_program(args)[1]
+            .forward_program.block(0)
+            .ops
+        ]
+        assert self.op_type not in forward_ops, (
+            "%s shouldn't appear in program when check_prim is True"
+        ) % (self.op_type)
         ret = flatten(_as_list(net(args)))
         ret = paddle.utils.map_structure(lambda x: x.numpy(), ret)
         if OpTestUtils.is_bfloat16_type(self.dtype):
@@ -680,10 +710,12 @@ class PrimForwardChecker:
             )
             raise RuntimeError(msg)
         for i in range(len(ret)):
-            if not np.allclose(
-                ret[i], self.eager_desire[i], rtol=rtol, atol=atol
-            ):
-                msg = (
+            np.testing.assert_allclose(
+                ret[i],
+                self.eager_desire[i],
+                rtol=rtol,
+                atol=atol,
+                err_msg=(
                     'Check jit comp forward api out failed. Mismatch between jit comp '
                     'and eager on %s, when enable_fw_comp is %s,the forward api out tensor\'s index is : %d \n'
                     'jit comp forward api out tensor:\n%s\n eager forward api out tensor:\n%s\n'
@@ -694,8 +726,8 @@ class PrimForwardChecker:
                         ret[i],
                         self.eager_desire[i],
                     )
-                )
-                raise RuntimeError(msg)
+                ),
+            )
         core._set_prim_forward_enabled(False)
         net.forward.program_cache.clear()
 
@@ -731,7 +763,7 @@ class PrimForwardChecker:
             _,
         ) = self.get_eager_input_attr_and_inputdict(stop_gradient=True)
         args = OpTestUtils.prepare_python_api_arguments(
-            self.python_api,
+            self.public_python_api,
             eager_tensor_inputs,
             attrs_outputs,
             self.kernel_sig,
@@ -740,10 +772,20 @@ class PrimForwardChecker:
         args = OpTestUtils.assumption_assert_and_transform(
             args, len(inputs_sig)
         )
-        net = PrimNet(self.python_api)
+        net = PrimNet(self.public_python_api)
         net = apply_to_static(
             net, core.is_compiled_with_cinn() and self.enable_cinn
         )
+        # check the operator not in program if check prim is True
+        forward_ops = [
+            op.type
+            for op in net.forward.get_concrete_program(args)[1]
+            .forward_program.block(0)
+            .ops
+        ]
+        assert self.op_type not in forward_ops, (
+            "%s shouldn't appear in program when check_prim is True"
+        ) % (self.op_type)
         ret = flatten(_as_list(net(args)))
         ret = paddle.utils.map_structure(lambda x: x.numpy(), ret)
         if OpTestUtils.is_bfloat16_type(self.dtype):
@@ -765,10 +807,12 @@ class PrimForwardChecker:
             )
             raise RuntimeError(msg)
         for i in range(len(ret)):
-            if not np.allclose(
-                ret[i], self.eager_desire[i], rtol=rtol, atol=atol
-            ):
-                msg = (
+            np.testing.assert_allclose(
+                ret[i],
+                self.eager_desire[i],
+                rtol=rtol,
+                atol=atol,
+                err_msg=(
                     'Check jit comp with cinn forward api out failed. Mismatch between jit comp and eager on %s, '
                     'when enable_fw_comp is %s, enable_cinn is %s, the forward api out tensor\'s index is : %d \n'
                     'jit comp forward api out tensor:\n%s\n eager forward api out tensor:\n%s\n'
@@ -780,8 +824,8 @@ class PrimForwardChecker:
                         ret[i],
                         self.eager_desire[i],
                     )
-                )
-                raise RuntimeError(msg)
+                ),
+            )
         core._set_prim_forward_enabled(False)
         net.forward.program_cache.clear()
 
@@ -894,7 +938,7 @@ class PrimGradChecker(PrimForwardChecker):
             inputs_dict,
         ) = self.get_eager_input_attr_and_inputdict(stop_gradient=False)
         args = OpTestUtils.prepare_python_api_arguments(
-            self.python_api,
+            self.public_python_api,
             eager_tensor_inputs,
             attrs_outputs,
             self.kernel_sig,
@@ -905,7 +949,7 @@ class PrimGradChecker(PrimForwardChecker):
         args = OpTestUtils.assumption_assert_and_transform(
             args, len(inputs_sig)
         )
-        ret = _as_list(self.python_api(*args))
+        ret = _as_list(self.public_python_api(*args))
         outputs_dict = self.get_output_dict(self.outputs, ret, outputs_sig)
         ys = []
         if isinstance(self.output_names, list):
@@ -959,13 +1003,12 @@ class PrimGradChecker(PrimForwardChecker):
             )
             raise RuntimeError(msg)
         for i in range(len(actual_ret)):
-            if not np.allclose(
+            np.testing.assert_allclose(
                 actual_ret[i],
                 self.eager_desire[i],
                 rtol=atol,
                 atol=rtol,
-            ):
-                msg = (
+                err_msg=(
                     'Check eager comp grad out failed. Mismatch between eager comp '
                     'and eager on %s, when enable_rev_comp is %s,the eager comp grad out tensor\'s index is : %d \n'
                     'eager comp grad out tensor:\n%s\n eager grad out tensor:\n%s\n'
@@ -976,8 +1019,8 @@ class PrimGradChecker(PrimForwardChecker):
                         actual_ret[i],
                         self.eager_desire[i],
                     )
-                )
-                raise RuntimeError(msg)
+                ),
+            )
         core.set_prim_eager_enabled(False)
 
     def check_static_comp(self):
@@ -1003,7 +1046,7 @@ class PrimGradChecker(PrimForwardChecker):
                 stop_gradient=False
             )
             args = OpTestUtils.prepare_python_api_arguments(
-                self.python_api,
+                self.public_python_api,
                 static_inputs,
                 attrs,
                 self.kernel_sig,
@@ -1014,11 +1057,11 @@ class PrimGradChecker(PrimForwardChecker):
             args = OpTestUtils.assumption_assert_and_transform(
                 args, len(inputs_sig)
             )
-            fw_outs = _as_list(self.python_api(*args))
+            fw_outs = _as_list(self.public_python_api(*args))
             outputs_dict = self.get_output_dict(
                 self.outputs, fw_outs, outputs_sig
             )
-            paddle.incubate.autograd.to_prim(main_program.blocks)
+            primapi.to_prim(main_program.blocks)
             ys = []
             if isinstance(self.output_names, list):
                 for output_name in self.output_names:
@@ -1037,6 +1080,12 @@ class PrimGradChecker(PrimForwardChecker):
                 var_dict={**inputs_dict, **outputs_dict}
             )
             ret = paddle.static.gradients(ys, xs, vs, no_grad_set=no_grad_vars)
+        # check the backward operator not in program when check_prim is True
+        ops = [op.type for op in main_program.blocks[0].ops]
+        backward_op_type = self.op_type + "_grad"
+        assert backward_op_type not in ops, (
+            "%s shouldn't appear in program when check_prim is True"
+        ) % (backward_op_type)
         exe = paddle.static.Executor(self.place)
         exe.run(startup_program)
         actual_ret = exe.run(main_program, feed=feed, fetch_list=ret)
@@ -1059,10 +1108,12 @@ class PrimGradChecker(PrimForwardChecker):
             )
             raise RuntimeError(msg)
         for i in range(len(actual_ret)):
-            if not np.allclose(
-                actual_ret[i], self.eager_desire[i], rtol=rtol, atol=atol
-            ):
-                msg = (
+            np.testing.assert_allclose(
+                actual_ret[i],
+                self.eager_desire[i],
+                rtol=rtol,
+                atol=atol,
+                err_msg=(
                     'Check static comp grad out failed. Mismatch between static comp '
                     'and eager on %s, when enable_fw_comp is %s,enable_rev_comp is %s,the forward api out tensor\'s index is : %d \n'
                     'static comp grad out tensor:\n%s\n eager grad out tensor:\n%s\n'
@@ -1074,8 +1125,8 @@ class PrimGradChecker(PrimForwardChecker):
                         actual_ret[i],
                         self.eager_desire[i],
                     )
-                )
-                raise RuntimeError(msg)
+                ),
+            )
         core._set_prim_forward_enabled(False)
         core._set_prim_backward_enabled(False)
         paddle.disable_static()
@@ -1109,7 +1160,7 @@ class PrimGradChecker(PrimForwardChecker):
             inputs_dict,
         ) = self.get_eager_input_attr_and_inputdict(stop_gradient=False)
         args = OpTestUtils.prepare_python_api_arguments(
-            self.python_api,
+            self.public_python_api,
             eager_tensor_inputs,
             attrs_outputs,
             self.kernel_sig,
@@ -1118,8 +1169,19 @@ class PrimGradChecker(PrimForwardChecker):
         args = OpTestUtils.assumption_assert_and_transform(
             args, len(inputs_sig)
         )
-        net = PrimNet(self.python_api)
+        net = PrimNet(self.public_python_api)
         net = apply_to_static(net, False)
+        # check the backward operator not in program when check_prim is True
+        ops = [
+            op.type
+            for op in net.forward.get_concrete_program(args)[1]
+            .backward_program.block(0)
+            .ops
+        ]
+        backward_op_type = self.op_type + "_grad"
+        assert backward_op_type not in ops, (
+            "%s shouldn't appear in program when check_prim is True"
+        ) % (backward_op_type)
         out = _as_list(net(args))
         if hasattr(self.op_test, "python_out_sig"):
             outputs_sig = self.op_test.python_out_sig
@@ -1163,10 +1225,12 @@ class PrimGradChecker(PrimForwardChecker):
             )
             raise RuntimeError(msg)
         for i in range(len(ret)):
-            if not np.allclose(
-                ret[i], self.eager_desire[i], rtol=rtol, atol=atol
-            ):
-                msg = (
+            np.testing.assert_allclose(
+                ret[i],
+                self.eager_desire[i],
+                rtol=rtol,
+                atol=atol,
+                err_msg=(
                     'Check jit comp grad out failed. Mismatch between jit comp '
                     'and eager on %s, when enable_fw_comp is %s, enable_rev_comp is %s,the grad out tensor\'s index is : %d \n'
                     'jit comp grad out tensor:\n%s\n eager grad out out tensor:\n%s\n'
@@ -1178,8 +1242,8 @@ class PrimGradChecker(PrimForwardChecker):
                         ret[i],
                         self.eager_desire[i],
                     )
-                )
-                raise RuntimeError(msg)
+                ),
+            )
         core._set_prim_forward_enabled(False)
         core._set_prim_backward_enabled(False)
         net.forward.program_cache.clear()
@@ -1224,7 +1288,7 @@ class PrimGradChecker(PrimForwardChecker):
             inputs_dict,
         ) = self.get_eager_input_attr_and_inputdict(stop_gradient=False)
         args = OpTestUtils.prepare_python_api_arguments(
-            self.python_api,
+            self.public_python_api,
             eager_tensor_inputs,
             attrs_outputs,
             self.kernel_sig,
@@ -1233,10 +1297,22 @@ class PrimGradChecker(PrimForwardChecker):
         args = OpTestUtils.assumption_assert_and_transform(
             args, len(inputs_sig)
         )
-        net = PrimNet(self.python_api)
+        net = PrimNet(self.public_python_api)
         net = apply_to_static(
             net, core.is_compiled_with_cinn() and self.enable_cinn
         )
+        # check the backward operator not in program when check_prim is True
+        ops = [
+            op.type
+            for op in net.forward.get_concrete_program(args)[1]
+            .backward_program.block(0)
+            .ops
+        ]
+        backward_op_type = self.op_type + "_grad"
+        assert backward_op_type not in ops, (
+            "%s shouldn't appear in program when check_prim is True"
+        ) % (backward_op_type)
+
         out = _as_list(net(args))
         if hasattr(self.op_test, "python_out_sig"):
             outputs_sig = self.op_test.python_out_sig
@@ -1281,10 +1357,12 @@ class PrimGradChecker(PrimForwardChecker):
             )
             raise RuntimeError(msg)
         for i in range(len(ret)):
-            if not np.allclose(
-                ret[i], self.eager_desire[i], rtol=rtol, atol=atol
-            ):
-                msg = (
+            np.testing.assert_allclose(
+                ret[i],
+                self.eager_desire[i],
+                rtol=rtol,
+                atol=atol,
+                err_msg=(
                     'Check jit comp with cinn grad out failed. Mismatch between jit comp with cinn '
                     'and eager on %s, when enable_fw_comp is %s, enable_rev_comp is %s, enable_cinn is %s,'
                     'the grad out tensor\'s index is : %d ,jit comp with cinn grad out tensor:\n%s\n eager grad out out tensor:\n%s\n'
@@ -1297,8 +1375,9 @@ class PrimGradChecker(PrimForwardChecker):
                         ret[i],
                         self.eager_desire[i],
                     )
-                )
-                raise RuntimeError(msg)
+                ),
+            )
+
         core._set_prim_forward_enabled(False)
         core._set_prim_backward_enabled(False)
         net.forward.program_cache.clear()

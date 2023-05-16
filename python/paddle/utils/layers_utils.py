@@ -152,8 +152,7 @@ def _yield_value(iterable):
         for key in _sorted(iterable):
             yield iterable[key]
     else:
-        for value in iterable:
-            yield value
+        yield from iterable
 
 
 def _yield_flat_nest(nest):
@@ -291,7 +290,7 @@ def _recursive_assert_same_structure(nest1, nest2, check_types):
     if is_sequence_nest1 != is_sequence(nest2):
         raise ValueError(
             "The two structures don't have the same nested structure.\n\n"
-            "First structure: %s\n\nSecond structure: %s." % (nest1, nest2)
+            "First structure: {}\n\nSecond structure: {}.".format(nest1, nest2)
         )
     if not is_sequence_nest1:
         return  # finished checking
@@ -314,8 +313,8 @@ def _recursive_assert_same_structure(nest1, nest2, check_types):
                         keys1, keys2
                     )
                 )
-    nest1_as_sequence = [n for n in _yield_value(nest1)]
-    nest2_as_sequence = [n for n in _yield_value(nest2)]
+    nest1_as_sequence = list(_yield_value(nest1))
+    nest2_as_sequence = list(_yield_value(nest2))
     for n1, n2 in zip(nest1_as_sequence, nest2_as_sequence):
         _recursive_assert_same_structure(n1, n2, check_types)
 
@@ -380,7 +379,7 @@ def _contain_var(list_or_tuple):
 
 
 def get_shape_tensor_inputs(inputs, attrs, shape, op_type):
-    from ..fluid.layers.tensor import fill_constant
+    from paddle.tensor import fill_constant
 
     def _get_attr_shape(list_shape):
         attr_shape = []
@@ -435,7 +434,7 @@ def _convert_to_tensor_list(old_list, dtype="int32"):
     """
     Converts all elements of a list to Variable.
     """
-    from ..fluid.layers.tensor import fill_constant
+    from paddle.tensor import fill_constant
 
     new_list_tensor = []
     for ele in old_list:
@@ -455,14 +454,9 @@ def convert_shape_to_list(shape):
     Convert shape(list, tuple, variable) to list in imperative mode
     """
     if isinstance(shape, (list, tuple)):
-        shape = list(
-            map(
-                lambda x: x.numpy().flat[0] if isinstance(x, Variable) else x,
-                shape,
-            )
-        )
+        shape = [x.item(0) if isinstance(x, Variable) else x for x in shape]
     else:
-        shape = shape.numpy().astype(int).tolist()
+        shape = shape.astype(int).tolist()
     return shape
 
 

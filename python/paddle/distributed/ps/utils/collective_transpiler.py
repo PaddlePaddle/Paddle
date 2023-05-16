@@ -14,6 +14,7 @@
 
 import os
 
+import paddle
 from paddle.distributed.fleet.base.private_helper_function import (
     wait_server_ready,
 )
@@ -133,37 +134,8 @@ class Collective:
             wait_server_ready(other_endpoints)
 
         block = program.global_block()
-        if core.is_compiled_with_npu():
-            hccl_id_var = block.create_var(
-                name=unique_name.generate('hccl_id'),
-                persistable=True,
-                type=core.VarDesc.VarType.RAW,
-            )
-            endpoint_to_index_map = {e: idx for idx, e in enumerate(endpoints)}
-            block.append_op(
-                type='c_gen_hccl_id',
-                inputs={},
-                outputs={'Out': hccl_id_var},
-                attrs={
-                    'rank': rank,
-                    'endpoint': current_endpoint,
-                    'other_endpoints': other_endpoints,
-                    self.op_role_key: OpRole.Forward,
-                },
-            )
-            block.append_op(
-                type='c_comm_init_hccl',
-                inputs={'X': hccl_id_var},
-                outputs={},
-                attrs={
-                    'rank': rank,
-                    'ring_id': ring_id,
-                    'device_id': int(os.getenv("FLAGS_selected_npus")),
-                    'rank_ids': nranks,
-                    self.op_role_key: OpRole.Forward,
-                },
-            )
-        elif core.is_compiled_with_xpu():
+
+        if core.is_compiled_with_xpu():
             bkcl_id_var = block.create_var(
                 name=unique_name.generate('bkcl_id'),
                 persistable=True,
@@ -233,6 +205,38 @@ class Collective:
                         self.op_role_key: OpRole.Forward,
                     },
                 )
+        elif (
+            paddle.distributed.ParallelEnv().device_type
+            in paddle.device.get_all_custom_device_type()
+        ):
+            xccl_id_var = block.create_var(
+                name=unique_name.generate('xccl_id'),
+                persistable=True,
+                type=core.VarDesc.VarType.RAW,
+            )
+            endpoint_to_index_map = {e: idx for idx, e in enumerate(endpoints)}
+            block.append_op(
+                type='c_gen_xccl_id',
+                inputs={},
+                outputs={'Out': xccl_id_var},
+                attrs={
+                    'rank': rank,
+                    'endpoint': current_endpoint,
+                    'other_endpoints': other_endpoints,
+                    self.op_role_key: OpRole.Forward,
+                },
+            )
+            block.append_op(
+                type='c_comm_init',
+                inputs={'X': xccl_id_var},
+                outputs={},
+                attrs={
+                    'nranks': nranks,
+                    'rank': rank,
+                    'ring_id': ring_id,
+                    self.op_role_key: OpRole.Forward,
+                },
+            )
 
     def _broadcast_params(self):
         block = self.startup_program.global_block()
@@ -781,7 +785,7 @@ class MultiThread(GradAllReduce):
                     # insert coalesce tensor
                     tmp_var = block.create_var(
                         name=unique_name.generate(
-                            'FusedOutput_{}'.format(segment[0].name)
+                            f'FusedOutput_{segment[0].name}'
                         ),
                         dtype=segment[0].dtype,
                         persistable=False,

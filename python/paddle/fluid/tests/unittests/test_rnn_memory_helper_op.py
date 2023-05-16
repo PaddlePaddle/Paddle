@@ -16,7 +16,7 @@ import unittest
 
 import numpy as np
 
-import paddle.fluid.core as core
+from paddle.fluid import core
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program
 

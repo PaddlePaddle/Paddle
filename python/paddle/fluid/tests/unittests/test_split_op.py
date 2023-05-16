@@ -18,18 +18,21 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import Program, core, program_guard
 
 
 class TestSplitOp(OpTest):
     def setUp(self):
         self.python_api = paddle.split
+        self.public_python_api = paddle.split
         self.python_out_sig = ['out0', 'out1', 'out2']
         self._set_op_type()
+        self.prim_op_type = "prim"
         self.dtype = self.get_dtype()
         axis = 1
         if self.dtype == np.uint16:
+            self.enable_cinn = False
             x = np.random.random((4, 5, 6)).astype(np.float32)
             out = np.split(x, [2, 3], axis)
             self.inputs = {'X': convert_float_to_uint16(x)}
@@ -58,29 +61,45 @@ class TestSplitOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['out0', 'out1', 'out2'])
+        self.check_grad(['X'], ['out0', 'out1', 'out2'], check_prim=True)
 
 
 # test with attr(num)
-class TestSplitOp_2(OpTest):
+class TestSplitWithNumOp(OpTest):
     def setUp(self):
         self.python_api = paddle.split
+        self.public_python_api = paddle.split
         self.python_out_sig = ['out0', 'out1', 'out2']
         self._set_op_type()
+        self.prim_op_type = "prim"
         self.dtype = self.get_dtype()
         self.init_data()
-        self.inputs = {'X': self.x}
         self.attrs = {
             'axis': self.axis,
             'sections': self.sections,
             'num': self.num,
         }
-
-        out = np.split(self.x, self.indices_or_sections, self.axis)
-        self.outputs = {'Out': [('out%d' % i, out[i]) for i in range(len(out))]}
+        if self.dtype == np.uint16:
+            self.inputs = {'X': convert_float_to_uint16(self.x)}
+            out = np.split(self.x, self.indices_or_sections, self.axis)
+            self.outputs = {
+                'Out': [
+                    ('out%d' % i, convert_float_to_uint16(out[i]))
+                    for i in range(len(out))
+                ]
+            }
+        else:
+            self.inputs = {'X': self.x}
+            out = np.split(self.x, self.indices_or_sections, self.axis)
+            self.outputs = {
+                'Out': [('out%d' % i, out[i]) for i in range(len(out))]
+            }
 
     def init_data(self):
-        self.x = np.random.random((4, 5, 6)).astype(self.dtype)
+        if self.dtype == np.uint16:
+            self.x = np.random.random((4, 5, 6)).astype(np.float32)
+        else:
+            self.x = np.random.random((4, 5, 6)).astype(self.dtype)
         self.axis = 2
         self.sections = []
         self.num = 3
@@ -96,7 +115,7 @@ class TestSplitOp_2(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['out0', 'out1', 'out2'])
+        self.check_grad(['X'], ['out0', 'out1', 'out2'], check_prim=True)
 
 
 # attr(axis) is Tensor
@@ -149,7 +168,7 @@ class TestSplitOp_SectionsTensor(OpTest):
         sections_tensor = []
         for index, ele in enumerate(self.sections):
             sections_tensor.append(
-                ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                ("x" + str(index), np.ones(1).astype('int32') * ele)
             )
 
         self.inputs['SectionsTensorList'] = sections_tensor
@@ -187,8 +206,10 @@ class TestSplitOp_SectionsTensor(OpTest):
 class TestSplitOp_unk_section(OpTest):
     def setUp(self):
         self.python_api = paddle.split
+        self.public_python_api = paddle.split
         self.python_out_sig = ['out0', 'out1', 'out2']
         self._set_op_type()
+        self.prim_op_type = "prim"
         self.dtype = self.get_dtype()
         self.init_data()
         self.inputs = {'X': self.x}
@@ -218,7 +239,7 @@ class TestSplitOp_unk_section(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['out0', 'out1', 'out2'])
+        self.check_grad(['X'], ['out0', 'out1', 'out2'], check_prim=True)
 
 
 class TestSplitByrefOp(OpTest):
@@ -233,28 +254,28 @@ def create_test_fp16(parent):
     @unittest.skipIf(
         not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
     )
-    class TestSplitFp16(parent):
+    class TestSplitFP16Op(parent):
         def get_dtype(self):
             return np.float16
 
-        def test_check_grad(self):
-            pass
-
-    cls_name = "{0}_{1}".format(parent.__name__, "Fp16")
-    TestSplitFp16.__name__ = cls_name
-    globals()[cls_name] = TestSplitFp16
+    cls_name = "{}_{}".format(parent.__name__, "FP16Op")
+    TestSplitFP16Op.__name__ = cls_name
+    globals()[cls_name] = TestSplitFP16Op
 
 
 create_test_fp16(TestSplitOp)
+create_test_fp16(TestSplitWithNumOp)
 
 # ----------------Split Bf16----------------
 
 
 def create_test_bf16(parent):
     @unittest.skipIf(
-        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+        not core.is_compiled_with_cuda()
+        or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+        "core is not compiled with CUDA or not support bfloat16",
     )
-    class TestSplitBf16(parent):
+    class TestSplitBF16Op(parent):
         def get_dtype(self):
             return np.uint16
 
@@ -263,24 +284,26 @@ def create_test_bf16(parent):
             self.check_output_with_place(place)
 
         def test_check_grad(self):
-            pass
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(place, ['X'], 'out2')
 
-    cls_name = "{0}_{1}".format(parent.__name__, "Bf16")
-    TestSplitBf16.__name__ = cls_name
-    globals()[cls_name] = TestSplitBf16
+    cls_name = "{}_{}".format(parent.__name__, "BF16Op")
+    TestSplitBF16Op.__name__ = cls_name
+    globals()[cls_name] = TestSplitBF16Op
 
 
 create_test_bf16(TestSplitOp)
+create_test_bf16(TestSplitWithNumOp)
 
 
 class TestSplitAPI(unittest.TestCase):
     def test_api(self):
         input_1 = np.random.random([4, 5, 6]).astype("int32")
-        positive_1_int32 = fluid.layers.fill_constant([1], "int32", 1)
-        positive_1_int64 = fluid.layers.fill_constant([1], "int64", 1)
-        positive_2_int64 = fluid.layers.fill_constant([1], "int64", 2)
-        x_1 = fluid.data(shape=[4, 5, 6], dtype='int32', name='x_1')
-        x_2 = fluid.data(shape=[4, 5, None], dtype='int32', name='x_2')
+        positive_1_int32 = paddle.tensor.fill_constant([1], "int32", 1)
+        positive_1_int64 = paddle.tensor.fill_constant([1], "int64", 1)
+        positive_2_int64 = paddle.tensor.fill_constant([1], "int64", 2)
+        x_1 = paddle.static.data(shape=[4, 5, 6], dtype='int32', name='x_1')
+        x_2 = paddle.static.data(shape=[4, 5, None], dtype='int32', name='x_2')
 
         out_0, out_1, out_2 = paddle.split(
             x=x_1,

@@ -21,7 +21,7 @@ namespace phi {
 template <typename T, typename Context>
 void FullBatchSizeLikeKernel(const Context& dev_ctx,
                              const DenseTensor& x,
-                             const std::vector<int>& shape,
+                             const std::vector<int>& shape UNUSED,
                              const Scalar& val,
                              DataType dtype,
                              int x_batch_size_dim,
@@ -59,7 +59,8 @@ PD_REGISTER_KERNEL(full_batch_size_like,
                    int,
                    int64_t,
                    bool,
-                   phi::dtype::float16) {
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
 }
 #endif

@@ -243,26 +243,38 @@ REGISTER_OPERATOR(pad_constant_like,
                   ops::PadConstantLikeOpGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(pad_constant_like_grad, ops::PadConstantLikeOpGrad);
 
-REGISTER_OP_CPU_KERNEL(pad_constant_like,
-                       ops::PadConstantLikeKernel<phi::CPUContext, float>,
-                       ops::PadConstantLikeKernel<phi::CPUContext, double>,
-                       ops::PadConstantLikeKernel<phi::CPUContext, int>,
-                       ops::PadConstantLikeKernel<phi::CPUContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
-    pad_constant_like_grad,
-    ops::PadConstantLikeGradKernel<phi::CPUContext, float>,
-    ops::PadConstantLikeGradKernel<phi::CPUContext, double>,
-    ops::PadConstantLikeGradKernel<phi::CPUContext, int>,
-    ops::PadConstantLikeGradKernel<phi::CPUContext, int64_t>);
+PD_REGISTER_STRUCT_KERNEL(pad_constant_like,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::PadConstantLikeKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}
+PD_REGISTER_STRUCT_KERNEL(pad_constant_like_grad,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::PadConstantLikeGradKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}
 
-REGISTER_OP_CUDA_KERNEL(pad_constant_like,
-                        ops::PadConstantLikeKernel<phi::GPUContext, float>,
-                        ops::PadConstantLikeKernel<phi::GPUContext, double>,
-                        ops::PadConstantLikeKernel<phi::GPUContext, int>,
-                        ops::PadConstantLikeKernel<phi::GPUContext, int64_t>);
-REGISTER_OP_CUDA_KERNEL(
-    pad_constant_like_grad,
-    ops::PadConstantLikeGradKernel<phi::GPUContext, int>,
-    ops::PadConstantLikeGradKernel<phi::GPUContext, int64_t>,
-    ops::PadConstantLikeGradKernel<phi::GPUContext, float>,
-    ops::PadConstantLikeGradKernel<phi::GPUContext, double>);
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_REGISTER_STRUCT_KERNEL(pad_constant_like,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::PadConstantLikeKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}
+PD_REGISTER_STRUCT_KERNEL(pad_constant_like_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::PadConstantLikeGradKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}
+#endif

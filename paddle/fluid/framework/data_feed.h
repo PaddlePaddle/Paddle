@@ -31,7 +31,6 @@ limitations under the License. */
 #include <unordered_set>
 #include <utility>
 #include <vector>
-
 #include "paddle/fluid/framework/archive.h"
 #include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/channel.h"
@@ -42,16 +41,19 @@ limitations under the License. */
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/timer.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/phi/core/macros.h"
 #if defined(PADDLE_WITH_CUDA)
 #include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_utils.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/core/cuda_stream.h"
 #endif
+#include "paddle/phi/core/flags.h"
 
-DECLARE_int32(record_pool_max_size);
-DECLARE_int32(slotpool_thread_num);
-DECLARE_bool(enable_slotpool_wait_release);
-DECLARE_bool(enable_slotrecord_reset_shrink);
+PHI_DECLARE_int32(record_pool_max_size);
+PHI_DECLARE_int32(slotpool_thread_num);
+PHI_DECLARE_bool(enable_slotpool_wait_release);
+PHI_DECLARE_bool(enable_slotrecord_reset_shrink);
 
 namespace paddle {
 namespace framework {
@@ -400,22 +402,22 @@ class CustomParser {
   virtual void Init(const std::vector<SlotConf>& slots) = 0;
   virtual bool Init(const std::vector<AllSlotInfo>& slots) = 0;
   virtual void ParseOneInstance(const char* str, Record* instance) = 0;
-  virtual int ParseInstance(int len,
-                            const char* str,
-                            std::vector<Record>* instances) {
+  virtual int ParseInstance(int len UNUSED,
+                            const char* str UNUSED,
+                            std::vector<Record>* instances UNUSED) {
     return 0;
   }
   virtual bool ParseOneInstance(
-      const std::string& line,
-      std::function<void(std::vector<SlotRecord>&, int)>
-          GetInsFunc) {  // NOLINT
+      const std::string& line UNUSED,
+      std::function<void(std::vector<SlotRecord>&, int)> GetInsFunc
+          UNUSED) {  // NOLINT
     return true;
   }
   virtual bool ParseFileInstance(
-      std::function<int(char* buf, int len)> ReadBuffFunc,
-      std::function<void(std::vector<SlotRecord>&, int, int)>
-          PullRecordsFunc,  // NOLINT
-      int& lines) {         // NOLINT
+      std::function<int(char* buf, int len)> ReadBuffFunc UNUSED,
+      std::function<void(std::vector<SlotRecord>&, int, int)> PullRecordsFunc
+          UNUSED,           // NOLINT
+      int& lines UNUSED) {  // NOLINT
     return false;
   }
 };
@@ -535,8 +537,11 @@ struct BatchGPUValue {
 class MiniBatchGpuPack {
  public:
   MiniBatchGpuPack(const paddle::platform::Place& place,
-                   const std::vector<UsedSlotInfo>& infos);
+                   const std::vector<UsedSlotInfo>& infos,
+                   phi::StreamId stream_id);
   ~MiniBatchGpuPack();
+  bool is_use() { return is_using_; }
+  void set_use_flag(bool is_use) { is_using_ = is_use; }
   void reset(const paddle::platform::Place& place);
   void pack_instance(const SlotRecord* ins_vec, int num);
   int ins_num() { return ins_num_; }
@@ -566,6 +571,12 @@ class MiniBatchGpuPack {
   }
   phi::DenseTensor& float_tensor(void) { return float_tensor_; }
   phi::DenseTensor& uint64_tensor(void) { return uint64_tensor_; }
+  std::vector<phi::DenseTensor>& float_tensor_vec(void) {
+    return float_tensor_vec_;
+  }
+  std::vector<phi::DenseTensor>& uint64_tensor_vec(void) {
+    return uint64_tensor_vec_;
+  }
 
   HostBuffer<size_t>& offsets(void) { return offsets_; }
   HostBuffer<void*>& h_tensor_ptrs(void) { return h_tensor_ptrs_; }
@@ -590,6 +601,8 @@ class MiniBatchGpuPack {
     return batch_ins_[idx]->ins_id_;
   }
 
+  cudaStream_t get_stream() { return stream_; }
+
  private:
   void transfer_to_gpu(void);
   void pack_all_data(const SlotRecord* ins_vec, int num);
@@ -612,7 +625,9 @@ class MiniBatchGpuPack {
   }
 
  private:
+  bool is_using_ = false;
   paddle::platform::Place place_;
+  std::unique_ptr<phi::CUDAStream> stream_holder_;
   cudaStream_t stream_;
   BatchGPUValue value_;
   BatchCPUValue buf_;
@@ -631,8 +646,10 @@ class MiniBatchGpuPack {
 
   // uint64 tensor
   phi::DenseTensor uint64_tensor_;
+  std::vector<phi::DenseTensor> uint64_tensor_vec_;
   // float tensor
   phi::DenseTensor float_tensor_;
+  std::vector<phi::DenseTensor> float_tensor_vec_;
   // batch
   HostBuffer<size_t> offsets_;
   HostBuffer<void*> h_tensor_ptrs_;
@@ -645,33 +662,52 @@ class MiniBatchGpuPackMgr {
 
  public:
   MiniBatchGpuPackMgr() {
+    pack_list_.resize(MAX_DEIVCE_NUM);
     for (int i = 0; i < MAX_DEIVCE_NUM; ++i) {
-      pack_list_[i] = nullptr;
+      pack_list_[i].clear();
     }
   }
   ~MiniBatchGpuPackMgr() {
     for (int i = 0; i < MAX_DEIVCE_NUM; ++i) {
-      if (pack_list_[i] == nullptr) {
-        continue;
+      for (size_t j = 0; j < pack_list_[i].size(); j++) {
+        if (pack_list_[i][j] == nullptr) {
+          continue;
+        }
+        delete pack_list_[i][j];
+        pack_list_[i][j] = nullptr;
       }
-      delete pack_list_[i];
-      pack_list_[i] = nullptr;
     }
   }
-  // one device one thread
+
+  // thread unsafe
   MiniBatchGpuPack* get(const paddle::platform::Place& place,
                         const std::vector<UsedSlotInfo>& infos) {
     int device_id = place.GetDeviceId();
-    if (pack_list_[device_id] == nullptr) {
-      pack_list_[device_id] = new MiniBatchGpuPack(place, infos);
-    } else {
-      pack_list_[device_id]->reset(place);
+    for (size_t i = 0; i < pack_list_[device_id].size(); i++) {
+      if (!pack_list_[device_id][i]->is_use()) {
+        pack_list_[device_id][i]->set_use_flag(true);
+        pack_list_[device_id][i]->reset(place);
+        return pack_list_[device_id][i];
+      }
     }
-    return pack_list_[device_id];
+    {
+      std::lock_guard<std::mutex> lock(mutex_);
+      if (!alloc_stream_map_.count(device_id)) {
+        alloc_stream_map_.emplace(device_id, new phi::CUDAStream(place));
+      }
+    }
+    phi::StreamId alloc_stream_id = reinterpret_cast<phi::StreamId>(
+        alloc_stream_map_[device_id]->raw_stream());
+    auto* pack = new MiniBatchGpuPack(place, infos, alloc_stream_id);
+    pack->set_use_flag(true);
+    pack_list_[device_id].push_back(pack);
+    return pack;
   }
 
  private:
-  MiniBatchGpuPack* pack_list_[MAX_DEIVCE_NUM];
+  std::vector<std::vector<MiniBatchGpuPack*>> pack_list_;
+  std::unordered_map<int, std::unique_ptr<phi::CUDAStream>> alloc_stream_map_;
+  std::mutex mutex_;
 };
 // global mgr
 inline MiniBatchGpuPackMgr& BatchGpuPackMgr() {
@@ -941,11 +977,11 @@ class GraphDataGenerator {
   void ResetEpochFinish() { epoch_finish_ = false; }
   void ClearSampleState();
   void DumpWalkPath(std::string dump_path, size_t dump_rate);
-  void SetDeviceKeys(std::vector<uint64_t>* device_keys, int type) {
+  void SetDeviceKeys(std::vector<uint64_t>* device_keys UNUSED,
+                     int type UNUSED) {
     // type_to_index_[type] = h_device_keys_.size();
     // h_device_keys_.push_back(device_keys);
   }
-
   std::vector<std::shared_ptr<phi::Allocation>> SampleNeighbors(
       int64_t* uniq_nodes,
       int len,
@@ -1091,7 +1127,7 @@ class DataFeed {
   }
   virtual ~DataFeed() {}
   virtual void Init(const DataFeedDesc& data_feed_desc) = 0;
-  virtual bool CheckFile(const char* filename) {
+  virtual bool CheckFile(const char* filename UNUSED) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "This function(CheckFile) is not implemented."));
   }
@@ -1119,30 +1155,34 @@ class DataFeed {
   // This function is used for binding feed_vec memory in a given scope
   virtual void AssignFeedVar(const Scope& scope);
 
-  // This function will do nothing at default
-  virtual void SetInputPvChannel(void* channel) {}
-  // This function will do nothing at default
-  virtual void SetOutputPvChannel(void* channel) {}
-  // This function will do nothing at default
-  virtual void SetConsumePvChannel(void* channel) {}
+  virtual std::vector<std::string> GetInputVarNames() {
+    return std::vector<std::string>();
+  }
 
   // This function will do nothing at default
-  virtual void SetInputChannel(void* channel) {}
+  virtual void SetInputPvChannel(void* channel UNUSED) {}
   // This function will do nothing at default
-  virtual void SetOutputChannel(void* channel) {}
+  virtual void SetOutputPvChannel(void* channel UNUSED) {}
   // This function will do nothing at default
-  virtual void SetConsumeChannel(void* channel) {}
+  virtual void SetConsumePvChannel(void* channel UNUSED) {}
+
   // This function will do nothing at default
-  virtual void SetThreadId(int thread_id) {}
+  virtual void SetInputChannel(void* channel UNUSED) {}
   // This function will do nothing at default
-  virtual void SetThreadNum(int thread_num) {}
+  virtual void SetOutputChannel(void* channel UNUSED) {}
   // This function will do nothing at default
-  virtual void SetParseInsId(bool parse_ins_id) {}
-  virtual void SetParseUid(bool parse_uid) {}
-  virtual void SetParseContent(bool parse_content) {}
-  virtual void SetParseLogKey(bool parse_logkey) {}
-  virtual void SetEnablePvMerge(bool enable_pv_merge) {}
-  virtual void SetCurrentPhase(int current_phase) {}
+  virtual void SetConsumeChannel(void* channel UNUSED) {}
+  // This function will do nothing at default
+  virtual void SetThreadId(int thread_id UNUSED) {}
+  // This function will do nothing at default
+  virtual void SetThreadNum(int thread_num UNUSED) {}
+  // This function will do nothing at default
+  virtual void SetParseInsId(bool parse_ins_id UNUSED) {}
+  virtual void SetParseUid(bool parse_uid UNUSED) {}
+  virtual void SetParseContent(bool parse_content UNUSED) {}
+  virtual void SetParseLogKey(bool parse_logkey UNUSED) {}
+  virtual void SetEnablePvMerge(bool enable_pv_merge UNUSED) {}
+  virtual void SetCurrentPhase(int current_phase UNUSED) {}
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
   virtual void InitGraphResource() {}
   virtual void InitGraphTrainResource() {}
@@ -1165,6 +1205,9 @@ class DataFeed {
   }
   virtual const std::vector<std::string>& GetInsContentVec() const {
     return ins_content_vec_;
+  }
+  virtual void SetCurBatchSize(const int batch_size) {
+    batch_size_ = batch_size;
   }
   virtual int GetCurBatchSize() { return batch_size_; }
   virtual int GetGraphPathNum() {
@@ -1212,7 +1255,20 @@ class DataFeed {
   }
   virtual const paddle::platform::Place& GetPlace() const { return place_; }
 
-  virtual void DumpWalkPath(std::string dump_path, size_t dump_rate) {
+#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
+  virtual MiniBatchGpuPack* get_pack(MiniBatchGpuPack* last_pack) {
+    return nullptr;
+  }
+
+  virtual void PackToScope(MiniBatchGpuPack* pack, const Scope* scope) {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "This function(PackToScope) is not implemented."));
+  }
+  virtual void SetInsIdVec(MiniBatchGpuPack* pack) {}
+#endif
+
+  virtual void DumpWalkPath(std::string dump_path UNUSED,
+                            size_t dump_rate UNUSED) {
     PADDLE_THROW(platform::errors::Unimplemented(
         "This function(DumpWalkPath) is not implemented."));
   }
@@ -1361,13 +1417,13 @@ class InMemoryDataFeed : public DataFeed {
  protected:
   virtual bool ParseOneInstance(T* instance) = 0;
   virtual bool ParseOneInstanceFromPipe(T* instance) = 0;
-  virtual void ParseOneInstanceFromSo(const char* str,
-                                      T* instance,
-                                      CustomParser* parser) {}
-  virtual int ParseInstanceFromSo(int len,
-                                  const char* str,
-                                  std::vector<T>* instances,
-                                  CustomParser* parser) {
+  virtual void ParseOneInstanceFromSo(const char* str UNUSED,
+                                      T* instance UNUSED,
+                                      CustomParser* parser UNUSED) {}
+  virtual int ParseInstanceFromSo(int len UNUSED,
+                                  const char* str UNUSED,
+                                  std::vector<T>* instances UNUSED,
+                                  CustomParser* parser UNUSED) {
     return 0;
   }
   virtual void PutToFeedVec(const std::vector<T>& ins_vec) = 0;
@@ -1602,7 +1658,7 @@ struct RecordCandidate {
 class RecordCandidateList {
  public:
   RecordCandidateList() = default;
-  RecordCandidateList(const RecordCandidateList&) {}
+  RecordCandidateList(const RecordCandidateList& UNUSED) {}
 
   size_t Size() { return cur_size_; }
   void ReSize(size_t length);
@@ -1748,9 +1804,9 @@ class MultiSlotInMemoryDataFeed : public InMemoryDataFeed<Record> {
  protected:
   virtual bool ParseOneInstance(Record* instance);
   virtual bool ParseOneInstanceFromPipe(Record* instance);
-  virtual void ParseOneInstanceFromSo(const char* str,
-                                      Record* instance,
-                                      CustomParser* parser) {}
+  virtual void ParseOneInstanceFromSo(const char* str UNUSED,
+                                      Record* instance UNUSED,
+                                      CustomParser* parser UNUSED) {}
   virtual int ParseInstanceFromSo(int len,
                                   const char* str,
                                   std::vector<Record>* instances,
@@ -1766,38 +1822,47 @@ class MultiSlotInMemoryDataFeed : public InMemoryDataFeed<Record> {
 class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {
  public:
   SlotRecordInMemoryDataFeed() {}
-  virtual ~SlotRecordInMemoryDataFeed() {
-#if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
-    if (pack_ != nullptr) {
-      pack_ = nullptr;
-    }
-#endif
-  }
-  virtual void Init(const DataFeedDesc& data_feed_desc);
-  virtual void LoadIntoMemory();
+  virtual ~SlotRecordInMemoryDataFeed();
+  void Init(const DataFeedDesc& data_feed_desc) override;
+  void LoadIntoMemory() override;
   void ExpandSlotRecord(SlotRecord* ins);
 
  protected:
-  virtual bool Start();
-  virtual int Next();
-  virtual bool ParseOneInstance(SlotRecord* instance) { return false; }
-  virtual bool ParseOneInstanceFromPipe(SlotRecord* instance) { return false; }
+  bool Start() override;
+  int Next() override;
+  bool ParseOneInstance(SlotRecord* instance UNUSED) override { return false; }
+  bool ParseOneInstanceFromPipe(SlotRecord* instance UNUSED) override {
+    return false;
+  }
   // virtual void ParseOneInstanceFromSo(const char* str, T* instance,
   //                                    CustomParser* parser) {}
-  virtual void PutToFeedVec(const std::vector<SlotRecord>& ins_vec) {}
+  void PutToFeedVec(const std::vector<SlotRecord>& ins_vec UNUSED) override {}
 
   virtual void LoadIntoMemoryByCommand(void);
   virtual void LoadIntoMemoryByLib(void);
   virtual void LoadIntoMemoryByLine(void);
   virtual void LoadIntoMemoryByFile(void);
-  virtual void SetInputChannel(void* channel) {
+  void SetInputChannel(void* channel) override {
     input_channel_ = static_cast<ChannelObject<SlotRecord>*>(channel);
   }
   bool ParseOneInstance(const std::string& line, SlotRecord* rec);
-  virtual void PutToFeedVec(const SlotRecord* ins_vec, int num);
-  virtual void AssignFeedVar(const Scope& scope);
+  void PutToFeedVec(const SlotRecord* ins_vec, int num) override;
+  void AssignFeedVar(const Scope& scope) override;
+  std::vector<std::string> GetInputVarNames() override {
+    std::vector<std::string> var_names;
+    for (int i = 0; i < use_slot_size_; ++i) {
+      var_names.push_back(used_slots_info_[i].slot);
+    }
+    return var_names;
+  }
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
-  void BuildSlotBatchGPU(const int ins_num);
+  void BuildSlotBatchGPU(const int ins_num, MiniBatchGpuPack* pack);
+
+  virtual MiniBatchGpuPack* get_pack(MiniBatchGpuPack* last_pack);
+
+  virtual void PackToScope(MiniBatchGpuPack* pack,
+                           const Scope* scope = nullptr);
+
   void FillSlotValueOffset(const int ins_num,
                            const int used_slot_num,
                            size_t* slot_value_offsets,
@@ -1805,7 +1870,8 @@ class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {
                            const int uint64_slot_size,
                            const int* float_offsets,
                            const int float_slot_size,
-                           const UsedSlotGpuType* used_slots);
+                           const UsedSlotGpuType* used_slots,
+                           cudaStream_t stream);
   void CopyForTensor(const int ins_num,
                      const int used_slot_num,
                      void** dest,
@@ -1818,15 +1884,26 @@ class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {
                      const int* float_offsets,
                      const int* float_ins_lens,
                      const int float_slot_size,
-                     const UsedSlotGpuType* used_slots);
+                     const UsedSlotGpuType* used_slots,
+                     cudaStream_t stream);
 #endif
 
 #if defined(PADDLE_WITH_GPU_GRAPH) && defined(PADDLE_WITH_HETERPS)
   virtual void InitGraphResource(void);
   virtual void InitGraphTrainResource(void);
   virtual void DoWalkandSage();
+  void SetInsIdVec(MiniBatchGpuPack* pack) override {
+    if (parse_ins_id_) {
+      size_t ins_num = pack->ins_num();
+      ins_id_vec_.clear();
+      ins_id_vec_.resize(ins_num);
+      for (size_t i = 0; i < ins_num; i++) {
+        ins_id_vec_[i] = pack->get_lineid(i);
+      }
+    }
+  }
 #endif
-  virtual void DumpWalkPath(std::string dump_path, size_t dump_rate);
+  void DumpWalkPath(std::string dump_path, size_t dump_rate) override;
 
   float sample_rate_ = 1.0f;
   int use_slot_size_ = 0;
@@ -1838,7 +1915,20 @@ class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {
   std::vector<int> float_total_dims_without_inductives_;
 
 #if defined(PADDLE_WITH_CUDA) && defined(PADDLE_WITH_HETERPS)
-  MiniBatchGpuPack* pack_ = nullptr;
+  int pack_thread_num_{5};
+  std::vector<std::thread> pack_threads_;
+  std::vector<MiniBatchGpuPack*> pack_vec_;
+  BlockingQueue<MiniBatchGpuPack*> free_pack_queue_;
+  BlockingQueue<MiniBatchGpuPack*> using_pack_queue_;
+  std::atomic<bool> pack_is_end_{false};
+  std::atomic<uint64_t> pack_offset_index_{0};
+  MiniBatchGpuPack* last_pack_{nullptr};
+  std::atomic<bool> stop_token_{false};
+  std::atomic<int> thread_count_{0};
+  std::mutex pack_mutex_;
+
+  // async infershape
+  std::map<const Scope*, std::vector<phi::DenseTensor*>> scpoe_feed_vec_;
 #endif
 };
 

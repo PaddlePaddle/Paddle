@@ -18,9 +18,9 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.distributed.fleet as fleet
-import paddle.fluid as fluid
 import paddle.nn.functional as F
+from paddle import fluid
+from paddle.distributed import fleet
 from paddle.distributed.passes import PassManager, new_pass
 
 paddle.enable_static()
@@ -35,7 +35,7 @@ class MultiHeadAttentionWithMP(paddle.nn.Layer):
         pre_ln=True,
         attn_dropout=True,
     ):
-        super(MultiHeadAttentionWithMP, self).__init__()
+        super().__init__()
         self.embed_dim = embed_dim
         self.kdim = embed_dim
         self.vdim = embed_dim

@@ -192,7 +192,7 @@ template <typename T, typename Context>
 void NanmedianKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const IntArray& axes,
-                     bool keepdim,
+                     bool keepdim UNUSED,
                      DenseTensor* out,
                      DenseTensor* median_index) {
   BaseMedianKernel<T, Context>(dev_ctx, x, axes, out, median_index, true);
@@ -207,4 +207,6 @@ PD_REGISTER_KERNEL(nanmedian,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
+}

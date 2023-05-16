@@ -143,5 +143,7 @@ REGISTER_OPERATOR(pull_sparse,
                   ops::PushSparseOpMaker<paddle::framework::OpDesc>,
                   ops::PushSparseOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(push_sparse, ops::PushSparseOp);
-REGISTER_OP_CPU_KERNEL(pull_sparse, ops::PullSparseCPUKernel<float>)
-REGISTER_OP_CPU_KERNEL(push_sparse, ops::PushSparseCPUKernel<float>)
+PD_REGISTER_STRUCT_KERNEL(
+    pull_sparse, CPU, ALL_LAYOUT, ops::PullSparseCPUKernel, float) {}
+PD_REGISTER_STRUCT_KERNEL(
+    push_sparse, CPU, ALL_LAYOUT, ops::PushSparseCPUKernel, float) {}

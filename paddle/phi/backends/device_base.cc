@@ -124,7 +124,7 @@ bool DeviceInterface::QueryEvent(size_t dev_id, const event::Event* event) {
   return true;
 }
 
-// memery manage
+// memory manage
 void DeviceInterface::MemoryCopyH2D(size_t dev_id,
                                     void* dst,
                                     const void* src,
@@ -359,7 +359,7 @@ void DeviceInterface::CCLRecv(void* recvbuf,
 // blas
 void DeviceInterface::BlasAXPBY(size_t dev_id,
                                 const stream::Stream& stream,
-                                paddle::experimental::DataType dtype,
+                                phi::DataType dtype,
                                 size_t numel,
                                 float alpha,
                                 void* x,

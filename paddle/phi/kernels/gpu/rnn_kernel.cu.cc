@@ -14,6 +14,8 @@
 
 #include "paddle/phi/kernels/rnn_kernel.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/generator.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -400,7 +402,11 @@ void RnnKernel(const Context &dev_ctx,
 
 #ifdef PADDLE_WITH_HIP
 // MIOPEN do not support double
-PD_REGISTER_KERNEL(rnn, GPU, ALL_LAYOUT, phi::RnnKernel, float) {}
+PD_REGISTER_KERNEL(rnn, GPU, ALL_LAYOUT, phi::RnnKernel, float) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::UINT8);
+}
 #else
-PD_REGISTER_KERNEL(rnn, GPU, ALL_LAYOUT, phi::RnnKernel, float, double) {}
+PD_REGISTER_KERNEL(rnn, GPU, ALL_LAYOUT, phi::RnnKernel, float, double) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::UINT8);
+}
 #endif

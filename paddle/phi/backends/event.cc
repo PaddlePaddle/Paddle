@@ -14,6 +14,8 @@
 
 #include "paddle/phi/backends/event.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/device_guard.h"
 #include "paddle/phi/backends/stream.h"
 

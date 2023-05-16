@@ -15,9 +15,8 @@
 from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.data_feeder as data_feeder
-import paddle.framework as framework
+from paddle import fluid, framework
+from paddle.fluid import data_feeder
 
 paddle.enable_static()
 
@@ -45,8 +44,8 @@ def broadcast_new(tensor, src, group=None, sync_op=True):
 
     helper.append_op(
         type=op_type,
-        inputs={'X': [tensor]},
-        outputs={'Out': [tensor]},
+        inputs={'x': [tensor]},
+        outputs={'out': [tensor]},
         attrs={
             'root': src,
             'ring_id': ring_id,
@@ -68,12 +67,7 @@ class TestCollectiveBroadcastAPI(TestCollectiveAPIRunnerBase):
             return [tindata]
 
     def get_model_new(
-        self,
-        main_prog,
-        startup_program,
-        rank,
-        dtype='float32',
-        reduce_type=None,
+        self, main_prog, startup_program, rank, dtype=None, reduce_type=None
     ):
         with fluid.program_guard(main_prog, startup_program):
             tindata = paddle.static.data(

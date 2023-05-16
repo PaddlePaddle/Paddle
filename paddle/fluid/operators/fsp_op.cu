@@ -16,10 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
-REGISTER_OP_CUDA_KERNEL(fsp,
-                        ops::FSPOpKernel<phi::GPUContext, float>,
-                        ops::FSPOpKernel<phi::GPUContext, double>);
-REGISTER_OP_CUDA_KERNEL(fsp_grad,
-                        ops::FSPGradOpKernel<phi::GPUContext, float>,
-                        ops::FSPGradOpKernel<phi::GPUContext, double>);
+PD_REGISTER_STRUCT_KERNEL(
+    fsp, GPU, ALL_LAYOUT, ops::FSPOpKernel, float, double) {}
+PD_REGISTER_STRUCT_KERNEL(
+    fsp_grad, GPU, ALL_LAYOUT, ops::FSPGradOpKernel, float, double) {}

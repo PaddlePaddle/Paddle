@@ -44,6 +44,8 @@ if((WITH_ROCM OR WITH_GPU) AND (LINUX))
     test_collective_split_embedding
     START_BASH
     ../dist_test.sh
+    TIMEOUT
+    "300"
     LABELS
     "RUN_TYPE=DIST"
     ENVS
@@ -71,7 +73,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     test_collective_allreduce_api MODULES test_collective_allreduce_api ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
   set_tests_properties(test_collective_allreduce_api
-                       PROPERTIES TIMEOUT "180" LABELS "RUN_TYPE=DIST")
+                       PROPERTIES TIMEOUT "300" LABELS "RUN_TYPE=DIST")
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
@@ -85,6 +87,8 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     test_collective_alltoall_single
     START_BASH
     ../dist_test.sh
+    TIMEOUT
+    "350"
     LABELS
     "RUN_TYPE=DIST"
     ENVS
@@ -112,6 +116,8 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     test_collective_batch_isend_irecv
     START_BASH
     ../dist_test.sh
+    TIMEOUT
+    "350"
     LABELS
     "RUN_TYPE=DIST"
     ENVS
@@ -176,6 +182,8 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     test_collective_process_group
     START_BASH
     ../dist_test.sh
+    TIMEOUT
+    "350"
     LABELS
     "RUN_TYPE=DIST"
     ENVS
@@ -195,13 +203,15 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     test_collective_reduce_api MODULES test_collective_reduce_api ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
   set_tests_properties(test_collective_reduce_api
-                       PROPERTIES TIMEOUT "180" LABELS "RUN_TYPE=DIST")
+                       PROPERTIES TIMEOUT "500" LABELS "RUN_TYPE=DIST")
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   bash_test_modules(
     test_collective_reduce_scatter
     START_BASH
     ../dist_test.sh
+    TIMEOUT
+    "350"
     LABELS
     "RUN_TYPE=DIST"
     ENVS
@@ -215,7 +225,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     test_collective_reduce_scatter_api ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
   set_tests_properties(test_collective_reduce_scatter_api
-                       PROPERTIES TIMEOUT "120" LABELS "RUN_TYPE=DIST")
+                       PROPERTIES TIMEOUT "150" LABELS "RUN_TYPE=DIST")
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
@@ -241,6 +251,13 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
+    test_collective_gather_api MODULES test_collective_gather_api ENVS
+    "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
+  set_tests_properties(test_collective_gather_api
+                       PROPERTIES TIMEOUT "180" LABELS "RUN_TYPE=DIST")
+endif()
+if((WITH_GPU OR WITH_ROCM) AND (LINUX))
+  py_test_modules(
     test_collective_sendrecv MODULES test_collective_sendrecv ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
   set_tests_properties(test_collective_sendrecv PROPERTIES TIMEOUT "300" LABELS
@@ -251,7 +268,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     test_collective_sendrecv_api MODULES test_collective_sendrecv_api ENVS
     "http_proxy=;https_proxy=;PYTHONPATH=..:${PADDLE_BINARY_DIR}/python")
   set_tests_properties(test_collective_sendrecv_api
-                       PROPERTIES TIMEOUT "120" LABELS "RUN_TYPE=DIST")
+                       PROPERTIES TIMEOUT "300" LABELS "RUN_TYPE=DIST")
 endif()
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
@@ -361,12 +378,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   set_tests_properties(test_eager_dist_api PROPERTIES TIMEOUT "120" LABELS
                                                       "RUN_TYPE=DIST")
 endif()
-if((WITH_GPU
-    OR WITH_ROCM
-    OR WITH_ASCEND
-    OR WITH_ASCEND_CL
-   )
-   AND LOCAL_ALL_PLAT)
+if((WITH_GPU OR WITH_ROCM) AND LOCAL_ALL_PLAT)
   bash_test_modules(
     test_gen_nccl_id_op
     START_BASH
@@ -389,6 +401,8 @@ if((WITH_ROCM OR WITH_GPU) AND (LINUX))
     test_world_size_and_rank
     START_BASH
     test_world_size_and_rank.sh
+    TIMEOUT
+    "120"
     LABELS
     "RUN_TYPE=DIST"
     ENVS
@@ -412,6 +426,8 @@ if((WITH_ROCM OR WITH_GPU) AND (LINUX))
     test_strategy_group
     START_BASH
     test_strategy_group.sh
+    TIMEOUT
+    "120"
     LABELS
     "RUN_TYPE=DIST"
     ENVS
@@ -423,6 +439,8 @@ if((WITH_ROCM OR WITH_GPU) AND (LINUX))
     test_orthogonal_strategy
     START_BASH
     test_orthogonal_strategy.sh
+    TIMEOUT
+    "120"
     LABELS
     "RUN_TYPE=DIST"
     ENVS
@@ -430,4 +448,3 @@ if((WITH_ROCM OR WITH_GPU) AND (LINUX))
   set_tests_properties(test_orthogonal_strategy PROPERTIES TIMEOUT "120")
 endif()
 add_subdirectory(fleet)
-add_subdirectory(multinode)

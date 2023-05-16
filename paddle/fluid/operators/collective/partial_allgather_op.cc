@@ -50,10 +50,7 @@ class PartialAllGatherOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "(Tensor) the allgather result");
     AddAttr<int>("ring_id", "(int default 0) communication ring id.")
         .SetDefault(0);
-#if defined(PADDLE_WITH_ASCEND_CL)
-    AddAttr<std::string>("tag", "(string default tag) tag for all gather.")
-        .SetDefault("tag");
-#endif
+
     AddAttr<bool>(
         "use_calc_stream",
         "(bool default false) eject CUDA operations to calculation stream.")
@@ -88,9 +85,12 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     ops::PartialAllGatherOpInplaceInferer)
 
-REGISTER_OP_CPU_KERNEL(partial_allgather,
-                       ops::PartialAllGatherOpCPUKernel<float>,
-                       ops::PartialAllGatherOpCPUKernel<double>,
-                       ops::PartialAllGatherOpCPUKernel<int>,
-                       ops::PartialAllGatherOpCPUKernel<int64_t>,
-                       ops::PartialAllGatherOpCPUKernel<plat::float16>);
+PD_REGISTER_STRUCT_KERNEL(partial_allgather,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::PartialAllGatherOpCPUKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t,
+                          plat::float16) {}

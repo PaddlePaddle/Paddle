@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/instance_norm_kernel.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
 
@@ -37,9 +38,31 @@ void InstanceNormKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(y);
   dev_ctx.template Alloc<float>(saved_mean);
   dev_ctx.template Alloc<float>(saved_var);
-
+  // scale
   const auto scale_ptr = scale.get_ptr();
-  const auto bias_ptr = bias.get_ptr();
+  const float* scale_data_fp32 = nullptr;
+  DenseTensor scale_data;
+  if (scale_ptr == nullptr) {
+    scale_data.Resize({c});
+    dev_ctx.template Alloc<float>(&scale_data);
+    phi::funcs::set_constant(dev_ctx, &scale_data, static_cast<float>(1));
+    scale_data_fp32 = scale_data.data<float>();
+  } else {
+    // no need to cast
+    scale_data_fp32 = scale_ptr->data<float>();
+  }
+  // bias
+  const float* bias_data_fp32 = nullptr;
+  const auto* bias_ptr = bias.get_ptr();
+  DenseTensor bias_data;
+  if (bias_ptr == nullptr) {
+    bias_data.Resize({c});
+    dev_ctx.template Alloc<float>(&bias_data);
+    phi::funcs::set_constant(dev_ctx, &bias_data, static_cast<float>(0));
+    bias_data_fp32 = bias_data.data<float>();
+  } else {
+    bias_data_fp32 = bias_ptr->data<float>();
+  }
 
   int r = xpu::instance_norm(dev_ctx.x_context(),
                              reinterpret_cast<const XPUType*>(x.data<T>()),
@@ -49,8 +72,8 @@ void InstanceNormKernel(const Context& dev_ctx,
                              h,
                              w,
                              epsilon,
-                             scale_ptr->data<float>(),
-                             bias_ptr->data<float>(),
+                             scale_data_fp32,
+                             bias_data_fp32,
                              saved_mean->data<float>(),
                              saved_var->data<float>(),
                              true);
@@ -60,5 +83,9 @@ void InstanceNormKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    instance_norm, XPU, ALL_LAYOUT, phi::InstanceNormKernel, float) {}
+PD_REGISTER_KERNEL(instance_norm,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::InstanceNormKernel,
+                   float,
+                   phi::dtype::float16) {}

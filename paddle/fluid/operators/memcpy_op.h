@@ -39,8 +39,6 @@ class MemcpyFunctor {
     CUDA = 1,
     CUDA_PINNED = 2,
     XPU = 3,
-    NPU = 4,
-    NPU_PINNED = 5,
     CUSTOM_DEVICE = 6,
   };
 
@@ -61,14 +59,7 @@ class MemcpyFunctor {
           lod_tensor, dev_ctx_.GetPlace(), dev_ctx_, &out_tensor);
     } else if (dst_place_type_ == DeviceType::CPU) {
       framework::TensorCopySync(lod_tensor, platform::CPUPlace(), &out_tensor);
-#ifdef PADDLE_WITH_ASCEND_CL
-    } else if (dst_place_type_ == DeviceType::NPU) { /* npu_pin->npu */
-      framework::TensorCopy(
-          lod_tensor, dev_ctx_.GetPlace(), dev_ctx_, &out_tensor);
-    } else if (dst_place_type_ == DeviceType::NPU_PINNED) { /* npu->npu_pin */
-      framework::TensorCopy(
-          lod_tensor, platform::NPUPinnedPlace(), dev_ctx_, &out_tensor);
-#endif
+
 #ifdef PADDLE_WTIH_CUSTOM_DEVICE
     } else if (dst_place_type_ == DeviceType::CUSTOM_DEVICE) {
       framework::TensorCopy(
@@ -88,7 +79,7 @@ class MemcpyFunctor {
   }
 
   template <typename T>
-  void operator()(const T &v) const {
+  void operator()(const T &v UNUSED) const {
     PADDLE_ENFORCE_EQ(
         true,
         false,

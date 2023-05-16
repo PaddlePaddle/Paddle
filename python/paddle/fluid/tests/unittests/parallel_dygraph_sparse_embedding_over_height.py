@@ -20,7 +20,7 @@ from parallel_dygraph_sparse_embedding import (
 from test_dist_base import runtime_main
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 # global configs
 # using small `vocab_size` to test rows number over height

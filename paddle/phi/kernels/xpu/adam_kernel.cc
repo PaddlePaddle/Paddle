@@ -14,6 +14,8 @@
 
 #include "paddle/phi/kernels/adam_kernel.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/enforce.h"
@@ -22,8 +24,6 @@
 #include "paddle/phi/kernels/funcs/adam_functors.h"
 
 namespace phi {
-
-using float16 = dtype::float16;
 
 template <typename T, typename Context>
 void AdamDenseKernel(const Context& dev_ctx,
@@ -133,8 +133,10 @@ void AdamDenseKernel(const Context& dev_ctx,
     phi::Copy(dev_ctx, param, dev_ctx.GetPlace(), false, param_out);
     phi::Copy(dev_ctx, moment1, dev_ctx.GetPlace(), false, moment1_out);
     phi::Copy(dev_ctx, moment2, dev_ctx.GetPlace(), false, moment2_out);
-    phi::Copy(dev_ctx, beta1_pow, beta1_pow.place(), false, beta1_pow_out);
-    phi::Copy(dev_ctx, beta2_pow, beta2_pow.place(), false, beta2_pow_out);
+    if (!use_global_beta_pow) {
+      phi::Copy(dev_ctx, beta1_pow, beta1_pow.place(), false, beta1_pow_out);
+      phi::Copy(dev_ctx, beta2_pow, beta2_pow.place(), false, beta2_pow_out);
+    }
     return;
   }
 
@@ -246,4 +248,7 @@ PD_REGISTER_KERNEL(
   kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(6).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(8).SetBackend(phi::Backend::ALL_BACKEND);
+
+  kernel->OutputAt(3).SetBackend(phi::Backend::UNDEFINED);
+  kernel->OutputAt(4).SetBackend(phi::Backend::UNDEFINED);
 }

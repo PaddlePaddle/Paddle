@@ -14,6 +14,7 @@
 
 #include "paddle/phi/kernels/batch_norm_kernel.h"
 
+#include "paddle/phi/backends/gpu/gpu_dnn.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 
@@ -66,6 +67,22 @@ PD_REGISTER_KERNEL(batch_norm_infer,
                    float,
                    double) {}
 #ifdef PADDLE_WITH_CUDA
+#if CUDNN_VERSION_MIN(8, 1, 0)
+PD_REGISTER_KERNEL(batch_norm_infer,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::BatchNormInferKernel,
+                   float,
+                   double,
+                   phi::dtype::bfloat16,
+                   phi::dtype::float16) {
+  if (kernel_key.dtype() == phi::DataType::FLOAT16 ||
+      kernel_key.dtype() == phi::DataType::BFLOAT16) {
+    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
+  }
+}
+#else
 PD_REGISTER_KERNEL(batch_norm_infer,
                    GPU,
                    ALL_LAYOUT,
@@ -79,6 +96,7 @@ PD_REGISTER_KERNEL(batch_norm_infer,
   }
 }
 #endif
+#endif
 #ifdef PADDLE_WITH_HIP
 PD_REGISTER_KERNEL(batch_norm_infer,
                    GPU,
@@ -88,6 +106,10 @@ PD_REGISTER_KERNEL(batch_norm_infer,
                    phi::dtype::float16) {}
 #endif
 #ifdef PADDLE_WITH_XPU
-PD_REGISTER_KERNEL(
-    batch_norm_infer, XPU, ALL_LAYOUT, phi::BatchNormInferKernel, float) {}
+PD_REGISTER_KERNEL(batch_norm_infer,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::BatchNormInferKernel,
+                   float,
+                   phi::dtype::float16) {}
 #endif

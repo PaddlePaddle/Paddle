@@ -20,7 +20,7 @@ set(FLASHATTN_PREFIX_DIR ${THIRD_PARTY_PATH}/flashattn)
 set(FLASHATTN_SOURCE_SUBDIR csrc/flash_attn)
 set(FLASHATTN_INSTALL_DIR ${THIRD_PARTY_PATH}/install/flashattn)
 set(FLASHATTN_REPOSITORY ${GIT_URL}/PaddlePaddle/flash-attention.git)
-set(FLASHATTN_TAG f0edf243a813a65d05c75fcb331b2a95faf96bbc)
+set(FLASHATTN_TAG 5ff4bbf56ad066750407c4aef16ac740ebda0717)
 
 set(FLASHATTN_INCLUDE_DIR
     "${FLASHATTN_INSTALL_DIR}/include"
@@ -87,6 +87,7 @@ ExternalProject_Add(
              -DCMAKE_CXX_FLAGS_DEBUG=${FLASHATTN_CXX_FLAGS_DEBUG}
              -DCMAKE_INSTALL_PREFIX=${FLASHATTN_INSTALL_DIR}
              -DWITH_GPU=${WITH_GPU}
+             -DCMAKE_CUDA_COMPILER=${CMAKE_CUDA_COMPILER}
              -DWITH_ROCM=${WITH_ROCM}
              -DWITH_OMP=${USE_OMP}
              -DBUILD_SHARED=ON

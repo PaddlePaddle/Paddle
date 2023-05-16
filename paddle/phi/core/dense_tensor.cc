@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/phi/core/dense_tensor.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
@@ -104,7 +106,7 @@ void* DenseTensor::AllocateFrom(Allocator* allocator,
       phi::errors::InvalidArgument(
           "Required allocator shall not be nullptr, but received nullptr."));
   if (this->dtype() != dtype) {
-    VLOG(10) << "change data type in mutbale_data, target dtype - " << dtype;
+    VLOG(10) << "change data type in mutable_data, target dtype - " << dtype;
     meta_.dtype = dtype;
   }
 
@@ -155,11 +157,11 @@ template <typename T>
 const T* DenseTensor::data() const {
   PADDLE_ENFORCE_EQ(
       dtype(),
-      paddle::experimental::CppTypeToDataType<T>::Type(),
+      phi::CppTypeToDataType<T>::Type(),
       phi::errors::InvalidArgument(
           "The type of data we are trying to retrieve (%s) does not match the "
           "type of data (%s) currently contained in the container.",
-          paddle::experimental::CppTypeToDataType<T>::Type(),
+          phi::CppTypeToDataType<T>::Type(),
           dtype()));
   return static_cast<const T*>(data());
 }
@@ -168,11 +170,11 @@ template <typename T>
 T* DenseTensor::data() {
   T* ret = static_cast<T*>(data());
   PADDLE_ENFORCE(
-      (dtype() == paddle::experimental::CppTypeToDataType<T>::Type()),
+      (dtype() == phi::CppTypeToDataType<T>::Type()),
       phi::errors::InvalidArgument(
           "The type of data we are trying to retrieve (%s) does not match the "
           "type of data (%s) currently contained in the container.",
-          paddle::experimental::CppTypeToDataType<T>::Type(),
+          phi::CppTypeToDataType<T>::Type(),
           dtype()));
   return ret;
 }

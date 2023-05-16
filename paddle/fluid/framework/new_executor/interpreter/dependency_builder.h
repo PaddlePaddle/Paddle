@@ -19,6 +19,8 @@
 
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 
+DECLARE_bool(new_executor_sequential_run);
+
 namespace paddle {
 namespace framework {
 namespace interpreter {

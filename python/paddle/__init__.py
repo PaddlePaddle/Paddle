@@ -24,11 +24,15 @@ except ImportError:
     )
 
 from .batch import batch  # noqa: F401
+
+# Do the *DUPLICATED* monkey-patch for the tensor object.
+# We need remove the duplicated code here once we fix
+# the illogical implement in the monkey-patch methods later.
 from .framework import monkey_patch_variable
-from .framework import monkey_patch_math_varbase
+from .framework import monkey_patch_math_tensor
 
 monkey_patch_variable()
-monkey_patch_math_varbase()
+monkey_patch_math_tensor()
 
 from .framework import disable_signal_handler  # noqa: F401
 from .framework import get_flags  # noqa: F401
@@ -42,7 +46,7 @@ from .fluid.lazy_init import LazyGuard  # noqa: F401
 
 from .framework.dtype import iinfo  # noqa: F401
 from .framework.dtype import finfo  # noqa: F401
-from .framework.dtype import dtype as dtype  # noqa: F401
+from .framework.dtype import dtype  # noqa: F401
 from .framework.dtype import uint8  # noqa: F401
 from .framework.dtype import int8  # noqa: F401
 from .framework.dtype import int16  # noqa: F401
@@ -56,11 +60,7 @@ from .framework.dtype import bool  # noqa: F401
 from .framework.dtype import complex64  # noqa: F401
 from .framework.dtype import complex128  # noqa: F401
 
-if fluid.framework.global_var._in_eager_mode_:
-    Tensor = framework.core.eager.Tensor
-else:
-    from .framework import VarBase as Tensor  # noqa: F401
-
+Tensor = framework.core.eager.Tensor  # noqa: F401
 Tensor.__qualname__ = 'Tensor'  # noqa: F401
 import paddle.distributed  # noqa: F401
 import paddle.sysconfig  # noqa: F401
@@ -119,6 +119,7 @@ from .tensor.creation import complex  # noqa: F401
 from .tensor.creation import clone  # noqa: F401
 from .tensor.creation import tril_indices  # noqa: F401
 from .tensor.creation import triu_indices  # noqa: F401
+from .tensor.creation import polar  # noqa: F401
 from .tensor.linalg import matmul  # noqa: F401
 from .tensor.linalg import dot  # noqa: F401
 from .tensor.linalg import norm  # noqa: F401
@@ -197,6 +198,9 @@ from .tensor.manipulation import moveaxis  # noqa: F401
 from .tensor.manipulation import repeat_interleave  # noqa: F401
 from .tensor.manipulation import index_add  # noqa: F401
 from .tensor.manipulation import index_add_  # noqa: F401
+from .tensor.manipulation import index_put  # noqa: F401
+from .tensor.manipulation import index_put_  # noqa: F401
+from .tensor.manipulation import unflatten  # noqa: F401
 from .tensor.math import abs  # noqa: F401
 from .tensor.math import acos  # noqa: F401
 from .tensor.math import asin  # noqa: F401
@@ -257,6 +261,7 @@ from .tensor.math import renorm  # noqa: F401
 from .tensor.math import add  # noqa: F401
 from .tensor.math import subtract  # noqa: F401
 from .tensor.math import logsumexp  # noqa: F401
+from .tensor.math import logaddexp  # noqa: F401
 from .tensor.math import inverse  # noqa: F401
 from .tensor.math import log1p  # noqa: F401
 from .tensor.math import erf  # noqa: F401
@@ -295,6 +300,12 @@ from .tensor.math import frac  # noqa: F401
 from .tensor.math import sgn  # noqa: F401
 from .tensor.math import take  # noqa: F401
 from .tensor.math import frexp  # noqa: F401
+from .tensor.math import trapezoid  # noqa: F401
+from .tensor.math import cumulative_trapezoid  # noqa: F401
+from .tensor.math import vander  # noqa: F401
+from .tensor.math import nextafter  # noqa: F401
+from .tensor.math import i0  # noqa: F401
+from .tensor.math import i0e  # noqa: F401
 
 from .tensor.random import bernoulli  # noqa: F401
 from .tensor.random import poisson  # noqa: F401
@@ -334,9 +345,7 @@ from .framework import ParamAttr  # noqa: F401
 from .framework import CPUPlace  # noqa: F401
 from .framework import IPUPlace  # noqa: F401
 from .framework import CUDAPlace  # noqa: F401
-from .framework import NPUPlace  # noqa: F401
 from .framework import CUDAPinnedPlace  # noqa: F401
-from .framework import MLUPlace  # noqa: F401
 from .framework import CustomPlace  # noqa: F401
 
 from .autograd import grad  # noqa: F401
@@ -364,9 +373,7 @@ from .device import get_cudnn_version  # noqa: F401
 from .device import set_device  # noqa: F401
 from .device import get_device  # noqa: F401
 from .device import is_compiled_with_xpu  # noqa: F401
-from .device import is_compiled_with_npu  # noqa: F401
 from .device import is_compiled_with_ipu  # noqa: F401
-from .device import is_compiled_with_mlu  # noqa: F401
 from .device import is_compiled_with_cinn  # noqa: F401
 from .device import is_compiled_with_cuda  # noqa: F401
 from .device import is_compiled_with_rocm  # noqa: F401
@@ -436,6 +443,7 @@ __all__ = [  # noqa
     'eye',
     'cumsum',
     'cumprod',
+    'logaddexp',
     'logcumsumexp',
     'logit',
     'LazyGuard',
@@ -514,7 +522,6 @@ __all__ = [  # noqa
     'histogram',
     'multiplex',
     'CUDAPlace',
-    'NPUPlace',
     'empty',
     'shape',
     'real',
@@ -681,8 +688,18 @@ __all__ = [  # noqa
     'tril_indices',
     'index_add',
     "index_add_",
+    "index_put",
+    "index_put_",
     'sgn',
     'triu_indices',
     'take',
     'frexp',
+    'trapezoid',
+    'cumulative_trapezoid',
+    'polar',
+    'vander',
+    'unflatten',
+    'nextafter',
+    'i0',
+    'i0e',
 ]

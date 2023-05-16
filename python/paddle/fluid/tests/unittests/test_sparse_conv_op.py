@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.sparse as sparse
+from paddle import sparse
 from paddle.fluid import core
 
 

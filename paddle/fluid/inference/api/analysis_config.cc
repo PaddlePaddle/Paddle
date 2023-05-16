@@ -16,6 +16,7 @@
 #include <string>
 #include <tuple>
 
+#include "glog/logging.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
@@ -24,6 +25,7 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/utils/string/split.h"
 
 #ifdef PADDLE_WITH_TENSORRT
@@ -31,7 +33,7 @@
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-DECLARE_uint64(initial_gpu_memory_in_mb);
+PHI_DECLARE_uint64(initial_gpu_memory_in_mb);
 #endif
 
 namespace paddle {
@@ -54,11 +56,12 @@ PassStrategy *AnalysisConfig::pass_builder() const {
       pass_builder_.reset(new GpuPassStrategy);
     } else if (use_xpu_) {
       pass_builder_.reset(new XpuPassStrategy);
-    } else if (use_npu_) {
-      pass_builder_.reset(new NpuPassStrategy);
     } else if (use_ipu_) {
       LOG(INFO) << "Create IPU IR passes";
       pass_builder_.reset(new IpuPassStrategy);
+    } else if (use_custom_device_) {
+      LOG(INFO) << "Create CUSTOM DEVICE IR passes";
+      pass_builder_.reset(new CustomDevicePassStrategy);
     } else {
       LOG(INFO) << "Create CPU IR passes";
       pass_builder_.reset(new CpuPassStrategy);
@@ -192,27 +195,34 @@ void AnalysisConfig::SetXpuDeviceId(int device_id) {
   Update();
 }
 
-void AnalysisConfig::EnableNpu(int device_id) {
-#if defined(PADDLE_WITH_ASCEND_CL)
-  use_npu_ = true;
-  npu_device_id_ = device_id;
-#elif defined(PADDLE_WITH_CUSTOM_DEVICE)
-  use_custom_device_ = true;
-  custom_device_id_ = device_id;
-  custom_device_type_ = "npu";
-#else
-  LOG(ERROR) << "Please compile with npu to EnableNpu()";
-  use_npu_ = false;
-#endif
+void AnalysisConfig::SetXpuConfig(
+    int quant_post_dynamic_weight_bits,
+    const std::vector<std::string> &quant_post_dynamic_op_types) {
+  xpu_quant_post_dynamic_weight_bits_ = quant_post_dynamic_weight_bits;
+  xpu_quant_post_dynamic_op_types_ = quant_post_dynamic_op_types;
   Update();
 }
 
 void AnalysisConfig::EnableCustomDevice(const std::string &device_type,
-                                        int device_id) {
+                                        int device_id,
+                                        Precision precision_mode) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   use_custom_device_ = true;
   custom_device_id_ = device_id;
   custom_device_type_ = device_type;
+  mixed_precision_mode_ = precision_mode;
+  if (precision_mode == Precision::kFloat32) {
+    // default
+  } else if (precision_mode == Precision::kHalf ||
+             precision_mode == Precision::kBf16) {
+    enable_custom_device_mixed_ = true;
+    LOG(INFO) << "enable_custom_device_mixed_";
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "The Paddle-CustomDevice inference currently only supports "
+        "float32/float16/bfloat16 precision. Please check the parameters "
+        "you specified in EnableCustomDevice function."));
+  }
 #else
   LOG(ERROR) << "Please compile with CustomDevice to EnableCustomDevice()";
   use_custom_device_ = false;
@@ -431,6 +441,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(trt_dla_core_);
   CP_MEMBER(trt_use_static_engine_);
   CP_MEMBER(trt_use_calib_mode_);
+  CP_MEMBER(trt_use_cuda_graph_);
   CP_MEMBER(trt_use_varseqlen_);
   CP_MEMBER(trt_with_interleaved_);
   CP_MEMBER(tensorrt_transformer_posid_);
@@ -440,6 +451,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(collect_shape_range_info_);
   CP_MEMBER(shape_range_info_path_);
   CP_MEMBER(trt_use_inspector_);
+  CP_MEMBER(trt_use_sparse_weights_);
   CP_MEMBER(trt_engine_memory_sharing_);
   CP_MEMBER(trt_engine_memory_sharing_identifier_);
   // Dlnne related
@@ -486,13 +498,13 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(xpu_precision_);
   CP_MEMBER(xpu_adaptive_seqlen_);
   CP_MEMBER(xpu_enable_multi_stream_);
+  CP_MEMBER(xpu_quant_post_dynamic_weight_bits_);
+  CP_MEMBER(xpu_quant_post_dynamic_op_types_);
 
   // Lite OpenCL Related
   CP_MEMBER(use_opencl_);
 
   // NPU related.
-  CP_MEMBER(use_npu_);
-  CP_MEMBER(npu_device_id_);
   CP_MEMBER(nnadapter_config_);
 
   // profile related.
@@ -537,6 +549,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(use_custom_device_);
   CP_MEMBER(custom_device_type_);
   CP_MEMBER(custom_device_id_);
+  CP_MEMBER(enable_custom_device_mixed_);
 
   // JITLayer relate
   CP_MEMBER(apply_optim_);
@@ -555,9 +568,9 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   } else if (use_xpu_) {
     pass_builder_.reset(new XpuPassStrategy(
         *static_cast<XpuPassStrategy *>(other.pass_builder())));
-  } else if (use_npu_) {
-    pass_builder_.reset(new NpuPassStrategy(
-        *static_cast<NpuPassStrategy *>(other.pass_builder())));
+  } else if (use_custom_device_) {
+    pass_builder_.reset(new CustomDevicePassStrategy(
+        *static_cast<CustomDevicePassStrategy *>(other.pass_builder())));
   } else {
     pass_builder_.reset(new CpuPassStrategy(
         *static_cast<CpuPassStrategy *>(other.pass_builder())));
@@ -702,7 +715,8 @@ void AnalysisConfig::EnableTensorRtEngine(
     int min_subgraph_size,
     AnalysisConfig::Precision precision_mode,
     bool use_static,
-    bool use_calib_mode) {
+    bool use_calib_mode,
+    bool use_cuda_graph) {
 #ifdef PADDLE_WITH_TENSORRT
   if (!use_gpu()) {
     LOG(ERROR) << "To use TensorRT engine, please call EnableUseGpu() first";
@@ -716,6 +730,11 @@ void AnalysisConfig::EnableTensorRtEngine(
   tensorrt_precision_mode_ = precision_mode;
   trt_use_static_engine_ = use_static;
   trt_use_calib_mode_ = use_calib_mode;
+  trt_use_cuda_graph_ = use_cuda_graph;
+  if (use_cuda_graph) {
+    LOG_FIRST_N(INFO, 1) << "You have enabled Trt Cuda Graph, you must ensure "
+                            "that the input Shape remains unchanged.";
+  }
 
   Update();
 #else
@@ -787,6 +806,10 @@ void AnalysisConfig::EnableTensorRtDLA(int dla_core) {
 
 void AnalysisConfig::EnableTensorRtInspector() { trt_use_inspector_ = true; }
 
+void AnalysisConfig::EnableTensorRtSparseWeights() {
+  trt_use_sparse_weights_ = true;
+}
+
 void AnalysisConfig::Exp_DisableTensorRtOPs(
     const std::vector<std::string> &ops) {
   trt_disabled_ops_.insert(trt_disabled_ops_.end(), ops.begin(), ops.end());
@@ -802,7 +825,6 @@ void AnalysisConfig::Update() {
   // Transfer pass_builder and copy the existing compatible passes.
   if (!pass_builder_ || ((use_gpu() ^ pass_builder_->use_gpu())) ||
       ((use_xpu() ^ pass_builder_->use_xpu())) ||
-      ((use_npu() ^ pass_builder_->use_npu())) ||
       ((use_ipu() ^ pass_builder_->use_ipu())) ||
       ((use_custom_device() ^ pass_builder_->use_custom_device()))) {
     if (use_gpu()) {
@@ -816,13 +838,6 @@ void AnalysisConfig::Update() {
           platform::errors::InvalidArgument(
               "Only one choice can be made between CPU and XPU."));
       pass_builder_.reset(new XpuPassStrategy);
-    } else if (use_npu()) {
-      PADDLE_ENFORCE_EQ(
-          use_gpu(),
-          false,
-          platform::errors::InvalidArgument(
-              "Only one choice can be made between GPU and NPU."));
-      pass_builder_.reset(new NpuPassStrategy);
     } else if (use_custom_device()) {
       PADDLE_ENFORCE_EQ(
           use_gpu(),
@@ -850,14 +865,6 @@ void AnalysisConfig::Update() {
               "Only one choice can be made between CPU and XPU."));
       pass_builder_.reset(new XpuPassStrategy(
           *static_cast<XpuPassStrategy *>(pass_builder_.get())));
-    } else if (use_npu()) {
-      PADDLE_ENFORCE_EQ(
-          use_gpu(),
-          false,
-          platform::errors::InvalidArgument(
-              "Only one choice can be made between GPU and NPU."));
-      pass_builder_.reset(new NpuPassStrategy(
-          *static_cast<NpuPassStrategy *>(pass_builder_.get())));
     } else if (use_custom_device()) {
       PADDLE_ENFORCE_EQ(
           use_gpu(),
@@ -1002,20 +1009,6 @@ void AnalysisConfig::Update() {
         "with XPU-runtime."));
 #endif
   }
-
-  if (use_npu_) {
-#if defined(PADDLE_WITH_ASCEND_CL) || defined(LITE_SUBGRAPH_WITH_NPU)
-    PADDLE_ENFORCE_EQ(use_gpu_,
-                      false,
-                      platform::errors::Unavailable(
-                          "Currently, NPU and GPU cannot be enabled in the "
-                          "same analysis configuration."));
-#else
-    PADDLE_THROW(platform::errors::Unavailable(
-        "You tried to use an NPU device, but Paddle was not compiled "
-        "with NPU-runtime."));
-#endif
-  }
   if (use_ipu_) {
 #ifndef PADDLE_WITH_IPU
     PADDLE_THROW(platform::errors::Unavailable(
@@ -1098,9 +1091,10 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << xpu_precision_;
   ss << xpu_adaptive_seqlen_;
   ss << xpu_enable_multi_stream_;
-
-  ss << use_npu_;
-  ss << npu_device_id_;
+  ss << xpu_quant_post_dynamic_weight_bits_;
+  for (auto op_type : xpu_quant_post_dynamic_op_types_) {
+    ss << op_type;
+  }
 
   ss << thread_local_stream_;
 
@@ -1306,6 +1300,8 @@ std::string AnalysisConfig::Summary() {
                     trt_use_static_engine_ ? "true" : "false"});
       os.InsertRow(
           {"tensorrt_use_calib_mode", trt_use_calib_mode_ ? "true" : "false"});
+      os.InsertRow(
+          {"tensorrt_use_cuda_graph", trt_use_cuda_graph_ ? "true" : "false"});
 
       // dynamic_shape
       os.InsertRow({"tensorrt_enable_dynamic_shape",
@@ -1338,6 +1334,13 @@ std::string AnalysisConfig::Summary() {
     os.InsertRow({"xpu_device_id", std::to_string(xpu_device_id_)});
     os.InsertRow(
         {"xpu_l3_workspace_size", std::to_string(xpu_l3_workspace_size_)});
+    os.InsertRow({"xpu_quant_post_dynamic_weight_bits",
+                  std::to_string(xpu_quant_post_dynamic_weight_bits_)});
+    std::vector<std::string> op_types{"xpu_quant_post_dynamic_op_types"};
+    for (auto op_type : xpu_quant_post_dynamic_op_types_) {
+      op_types.push_back(op_type);
+    }
+    os.InsertRow(op_types);
   }
   os.InsetDivider();
 

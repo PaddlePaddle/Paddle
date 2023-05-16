@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/operator.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 #ifdef PADDLE_WITH_MKLML
@@ -39,7 +38,7 @@ namespace funcs {
  * if Mat A is [BatchSize, H, W], Mat B is [BatchSize, H, W]. It will be a
  * `batch_size` times of GEMM. The batched GEMM could be faster base on the
  * implementation of the blas library. The batch size could be zero. If any
- * matrix of `matmul` has a batch size, the will be a batched GEMM, too. e.g.,
+ * matrix of `matmul` has a batch size, there will be a batched GEMM, too. e.g.,
  * Mat A is [BatchSize, H1, W2], and Mat B [H2, W2], The result matrix wil be
  * [BatchSize, H1, W2]
  *
@@ -578,13 +577,6 @@ class BlasT : private Blas<DeviceContext> {
     return static_cast<const Blas<DeviceContext>*>(this);
   }
 };
-
-template <typename DeviceContext, typename T>
-inline BlasT<DeviceContext, T> GetBlas(
-    const paddle::framework::ExecutionContext& exe_ctx) {
-  return BlasT<DeviceContext, T>(
-      exe_ctx.template device_context<DeviceContext>());
-}
 
 template <typename DeviceContext, typename T>
 inline BlasT<DeviceContext, T> GetBlas(const DeviceContext& dev_ctx) {

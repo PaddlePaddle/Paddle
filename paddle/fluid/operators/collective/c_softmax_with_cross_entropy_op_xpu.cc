@@ -29,10 +29,17 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class CSoftmaxWithCrossEntropyOp : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    const int64_t ignore_index = ctx.Attr<int64_t>("ignore_index");
+    PADDLE_ENFORCE_LT(ignore_index,
+                      0,
+                      platform::errors::InvalidArgument(
+                          "When SoftmaxWithCrossEntropy run on XPU, "
+                          "ignore_index should be <=0, however it's %ld",
+                          ignore_index));
     const int rid = ctx.Attr<int>("ring_id");
     auto map = distributed::ProcessGroupMapFromGid::getInstance();
     if (map->has(rid)) {
@@ -130,6 +137,12 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::XPUContext, T> {
     phi::DenseTensor predicted_logits;
     predicted_logits =
         ctx.AllocateTmpTensor<T, phi::XPUContext>({N, 1}, dev_ctx);
+    ret = xpu::constant<XPUType>(
+        dev_ctx.x_context(),
+        reinterpret_cast<XPUType*>(predicted_logits.data<T>()),
+        N,
+        0.0);
+    PADDLE_ENFORCE_XDNN_SUCCESS(ret, "constant");
     const int start_index = rank * D;
     const int end_index = start_index + D;
     const auto& label_type = framework::TransToProtoVarType(labels->dtype());
@@ -441,7 +454,7 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::XPUContext, T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class CSoftmaxWithCrossEntropyGrad : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -453,6 +466,13 @@ class CSoftmaxWithCrossEntropyGrad : public framework::OpKernel<T> {
         context.Output<phi::DenseTensor>(framework::GradVarName("Logits"));
     const phi::DenseTensor* softmax =
         context.Input<phi::DenseTensor>("Softmax");
+    const int64_t ignore_index = context.Attr<int64_t>("ignore_index");
+    PADDLE_ENFORCE_LT(ignore_index,
+                      0,
+                      platform::errors::InvalidArgument(
+                          "When SoftmaxWithCrossEntropy run on XPU, "
+                          "ignore_index should be <=0, however it's %ld",
+                          ignore_index));
     const int rank = context.Attr<int>("rank");
     auto& dev_ctx = context.template device_context<DeviceContext>();
 
@@ -501,9 +521,13 @@ class CSoftmaxWithCrossEntropyGrad : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_XPU_KERNEL(c_softmax_with_cross_entropy,
-                       ops::CSoftmaxWithCrossEntropyOp<phi::XPUContext, float>);
-
-REGISTER_OP_XPU_KERNEL(
-    c_softmax_with_cross_entropy_grad,
-    ops::CSoftmaxWithCrossEntropyGrad<phi::XPUContext, float>);
+PD_REGISTER_STRUCT_KERNEL(c_softmax_with_cross_entropy,
+                          XPU,
+                          ALL_LAYOUT,
+                          ops::CSoftmaxWithCrossEntropyOp,
+                          float) {}
+PD_REGISTER_STRUCT_KERNEL(c_softmax_with_cross_entropy_grad,
+                          XPU,
+                          ALL_LAYOUT,
+                          ops::CSoftmaxWithCrossEntropyGrad,
+                          float) {}

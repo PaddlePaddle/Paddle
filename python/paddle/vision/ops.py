@@ -18,6 +18,7 @@ from paddle import _C_ops, _legacy_C_ops
 from paddle.tensor.math import _add_with_axis
 from paddle.utils import convert_to_list
 
+from ..fluid import core
 from ..fluid.data_feeder import check_type, check_variable_and_dtype
 from ..fluid.framework import Variable, in_dygraph_mode
 from ..fluid.layer_helper import LayerHelper
@@ -191,7 +192,7 @@ def yolo_loss(
     """
 
     if in_dygraph_mode():
-        loss, _, _ = _C_ops.yolo_loss(
+        loss = _C_ops.yolo_loss(
             x,
             gt_box,
             gt_label,
@@ -494,7 +495,7 @@ def prior_box(
     """
 
     def _is_list_or_tuple_(data):
-        return isinstance(data, list) or isinstance(data, tuple)
+        return isinstance(data, (list, tuple))
 
     if not _is_list_or_tuple_(min_sizes):
         min_sizes = [min_sizes]
@@ -523,9 +524,9 @@ def prior_box(
             input,
             image,
             min_sizes,
+            max_sizes,
             aspect_ratios,
             variance,
-            max_sizes,
             flip,
             clip,
             step_w,
@@ -680,7 +681,7 @@ def box_coder(
 
     """
     if in_dygraph_mode():
-        if isinstance(prior_box_var, Variable):
+        if isinstance(prior_box_var, core.eager.Tensor):
             output_box = _C_ops.box_coder(
                 prior_box,
                 prior_box_var,
@@ -1318,7 +1319,7 @@ def read_file(filename, name=None):
     if in_dygraph_mode():
         return _legacy_C_ops.read_file('filename', filename)
     else:
-        inputs = dict()
+        inputs = {}
         attrs = {'filename': filename}
 
         helper = LayerHelper("read_file", **locals())

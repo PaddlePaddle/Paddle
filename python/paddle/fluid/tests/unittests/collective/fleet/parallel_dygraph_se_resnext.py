@@ -18,7 +18,7 @@ import numpy as np
 from test_dist_base import TestParallelDyGraphRunnerBase, runtime_main
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid.dygraph.base import to_variable
 from paddle.nn import Linear
 
@@ -61,7 +61,7 @@ def optimizer_setting(params, parameter_list=None):
                 learning_rate=lr, step_each_epoch=step, epochs=num_epochs
             ),
             momentum=momentum_rate,
-            regularization=fluid.regularizer.L2Decay(l2_decay),
+            regularization=paddle.regularizer.L2Decay(l2_decay),
             parameter_list=parameter_list,
         )
     else:
@@ -70,13 +70,13 @@ def optimizer_setting(params, parameter_list=None):
                 learning_rate=lr, step_each_epoch=step, epochs=num_epochs
             ),
             momentum=momentum_rate,
-            regularization=fluid.regularizer.L2Decay(l2_decay),
+            regularization=paddle.regularizer.L2Decay(l2_decay),
         )
 
     return optimizer
 
 
-class ConvBNLayer(fluid.dygraph.Layer):
+class ConvBNLayer(paddle.nn.Layer):
     def __init__(
         self,
         num_channels,
@@ -109,7 +109,7 @@ class ConvBNLayer(fluid.dygraph.Layer):
         return y
 
 
-class SqueezeExcitation(fluid.dygraph.Layer):
+class SqueezeExcitation(paddle.nn.Layer):
     def __init__(self, num_channels, reduction_ratio):
 
         super().__init__()
@@ -143,7 +143,7 @@ class SqueezeExcitation(fluid.dygraph.Layer):
         return y
 
 
-class BottleneckBlock(fluid.dygraph.Layer):
+class BottleneckBlock(paddle.nn.Layer):
     def __init__(
         self,
         num_channels,
@@ -207,7 +207,7 @@ class BottleneckBlock(fluid.dygraph.Layer):
         return y
 
 
-class SeResNeXt(fluid.dygraph.Layer):
+class SeResNeXt(paddle.nn.Layer):
     def __init__(self, layers=50, class_dim=102):
         super().__init__()
 

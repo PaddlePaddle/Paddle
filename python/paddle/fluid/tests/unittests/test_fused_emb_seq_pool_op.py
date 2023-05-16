@@ -16,10 +16,11 @@ import platform
 import unittest
 
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
+from eager_op_test import OpTest, paddle_static_guard, skip_check_grad_ci
 
 import paddle
 import paddle.version as ver
+from paddle.incubate.layers.nn import fused_embedding_seq_pool
 
 
 @skip_check_grad_ci(
@@ -70,7 +71,7 @@ class TestLookupTableOpWithPadding(TestFusedEmbeddingSeqPoolOp):
         if ver.mkl() == "ON" and 'Linux' in platform.platform():
             ids = np.squeeze(self.ids, axis=2)
             padding_idx = np.random.choice(ids.flatten(), 1)[0]
-            output = list()
+            output = []
             index = 0
             for count in self.lod[0]:
                 arr = ids[index : count + index]
@@ -105,32 +106,33 @@ class TestLookupTableOpWithPadding(TestFusedEmbeddingSeqPoolOp):
 
 class TestFusedEmbeddingSeqPoolApi(unittest.TestCase):
     def test_api(self):
-        if ver.mkl() == "ON" and 'Linux' in platform.platform():
-            import paddle.fluid as fluid
+        with paddle_static_guard():
+            if ver.mkl() == "ON" and 'Linux' in platform.platform():
+                from paddle import fluid
 
-            dict_size = 20
-            data_t = paddle.static.data(
-                name='word', shape=[-1, 1], dtype='int64', lod_level=1
-            )
-            padding_idx = np.random.randint(1, 10)
-            out = fluid.contrib.fused_embedding_seq_pool(
-                input=data_t,
-                size=[dict_size, 32],
-                param_attr='w',
-                padding_idx=padding_idx,
-                is_sparse=False,
-            )
+                dict_size = 20
+                data_t = paddle.static.data(
+                    name='word', shape=[-1, 1], dtype='int64', lod_level=1
+                )
+                padding_idx = np.random.randint(1, 10)
+                out = fused_embedding_seq_pool(
+                    input=data_t,
+                    size=[dict_size, 32],
+                    param_attr='w',
+                    padding_idx=padding_idx,
+                    is_sparse=False,
+                )
 
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
-            # prepare input words' idx
-            x_tensor = fluid.core.LoDTensor()
-            idxs = np.random.randint(1, 10, (8)).astype("int64")
+                place = fluid.CPUPlace()
+                exe = fluid.Executor(place)
+                exe.run(fluid.default_startup_program())
+                # prepare input words' idx
+                x_tensor = fluid.core.LoDTensor()
+                idxs = np.random.randint(1, 10, (8)).astype("int64")
 
-            x_tensor.set(idxs, place)
-            x_tensor.set_recursive_sequence_lengths([[4, 4]])
-            ret = exe.run(feed={'word': x_tensor}, fetch_list=[out])
+                x_tensor.set(idxs, place)
+                x_tensor.set_recursive_sequence_lengths([[4, 4]])
+                ret = exe.run(feed={'word': x_tensor}, fetch_list=[out])
 
 
 if __name__ == "__main__":

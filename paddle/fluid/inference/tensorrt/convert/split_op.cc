@@ -24,7 +24,7 @@ class SplitOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(4) << "convert a fluid split op to tensorrt split layer";
+    VLOG(4) << "convert a split op to tensorrt split layer";
 
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs

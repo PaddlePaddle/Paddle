@@ -115,8 +115,8 @@ def _to_summary(var):
     else:
         # recursively handle all dimensions
         if var.shape[0] > 2 * edgeitems:
-            begin = [x for x in var[:edgeitems]]
-            end = [x for x in var[(-1 * edgeitems) :]]
+            begin = list(var[:edgeitems])
+            end = list(var[(-1 * edgeitems) :])
             return np.stack([_to_summary(x) for x in (begin + end)])
         else:
             return np.stack([_to_summary(x) for x in var])
@@ -133,13 +133,13 @@ def _format_item(np_var, max_width=0, signed=False):
                 DEFAULT_PRINT_OPTIONS.precision
             ).format(np_var)
         elif np.ceil(np_var) == np_var:
-            item_str = '{:.0f}.'.format(np_var)
+            item_str = f'{np_var:.0f}.'
         else:
             item_str = '{{:.{}f}}'.format(
                 DEFAULT_PRINT_OPTIONS.precision
             ).format(np_var)
     else:
-        item_str = '{}'.format(np_var)
+        item_str = f'{np_var}'
 
     if max_width > len(item_str):
         if signed:  # handle sign character for tenosr with negative item
@@ -257,7 +257,7 @@ def to_string(var, prefix='Tensor'):
 
     if var.dtype == core.VarDesc.VarType.BF16:
         var = var.astype('float32')
-    np_var = var.numpy()
+    np_var = var.numpy(False)
 
     if len(var.shape) == 0:
         size = 0
@@ -291,7 +291,8 @@ def _format_dense_tensor(tensor, indent):
     if tensor.dtype == core.VarDesc.VarType.BF16:
         tensor = tensor.astype('float32')
 
-    np_tensor = tensor.numpy()
+    # TODO(zhouwei): will remove 0D Tensor.numpy() hack
+    np_tensor = tensor.numpy(False)
 
     if len(tensor.shape) == 0:
         size = 0

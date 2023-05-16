@@ -47,7 +47,7 @@ __global__ void CalcOutPut(const T* in_data,
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class SequenceEnumerateOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -91,7 +91,10 @@ class SequenceEnumerateOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_CUDA_KERNEL(
-    sequence_enumerate,
-    paddle::operators::SequenceEnumerateOpCUDAKernel<int32_t>,
-    paddle::operators::SequenceEnumerateOpCUDAKernel<int64_t>);
+namespace ops = paddle::operators;
+PD_REGISTER_STRUCT_KERNEL(sequence_enumerate,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::SequenceEnumerateOpCUDAKernel,
+                          int32_t,
+                          int64_t) {}

@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #pragma once
+#include "glog/logging.h"
+
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/kernels/funcs/lamb_functors.h"
@@ -128,7 +131,7 @@ void ComputeRowImpl(const Context& dev_ctx,
                     float beta1_f,
                     float beta2_f,
                     float epsilon_f,
-                    bool multi_precision,
+                    bool multi_precision UNUSED,
                     DenseTensor* param_out,
                     DenseTensor* mom1_out,
                     DenseTensor* mom2_out,
@@ -293,7 +296,7 @@ void ComputeRowImpl(const Context& dev_ctx,
 
   // TODO(zengjinle): remove the following Eigen operations when
   // *skip_update == true.
-  paddle::memory::Buffer buffer(dev_ctx.GetPlace());
+  memory_utils::Buffer buffer(dev_ctx.GetPlace());
   phi::funcs::SquaredL2Norm(
       dev_ctx,
       reinterpret_cast<const MT*>(IsMultiPrecision ? master_param_ptr
@@ -309,8 +312,7 @@ void ComputeRowImpl(const Context& dev_ctx,
     auto pn = phi::funcs::ToVector(p_norm_ptr, 1, dev_ctx.GetPlace());
     auto tn =
         phi::funcs::ToVector(trust_ratio_div_norm_ptr, 1, dev_ctx.GetPlace());
-    auto dtype = paddle::framework::DataTypeToString(
-        paddle::framework::DataTypeTrait<T>::DataType());
+    auto dtype = DataTypeToString(phi::CppTypeToDataType<T>::Type());
     VLOG(1) << "Param " << dtype << " " << name << " pn = " << pn[0]
             << " , tn = " << tn[0];
   }

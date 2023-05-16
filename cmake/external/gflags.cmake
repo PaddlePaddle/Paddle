@@ -14,13 +14,14 @@
 
 include(ExternalProject)
 
-set(GFLAGS_PREFIX_DIR ${THIRD_PARTY_PATH}/gflags)
 set(GFLAGS_INSTALL_DIR ${THIRD_PARTY_PATH}/install/gflags)
+set(GFLAGS_PREFIX_DIR ${THIRD_PARTY_PATH}/gflags)
 set(GFLAGS_INCLUDE_DIR
     "${GFLAGS_INSTALL_DIR}/include"
     CACHE PATH "gflags include directory." FORCE)
 set(GFLAGS_REPOSITORY ${GIT_URL}/gflags/gflags.git)
 set(GFLAGS_TAG "v2.2.2")
+
 if(WIN32)
   set(GFLAGS_LIBRARIES
       "${GFLAGS_INSTALL_DIR}/lib/gflags_static.lib"

@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 
 #if !defined(PADDLE_WITH_ARM) && !defined(PADDLE_WITH_SW) && \
-    !defined(PADDLE_WITH_MIPS)
+    !defined(PADDLE_WITH_MIPS) && !defined(PADDLE_WITH_LOONGARCH)
 #include <immintrin.h>
 #endif
 #include <cfloat>
@@ -61,7 +61,8 @@ void call_gemm(const framework::ExecutionContext& ctx,
                T* C) {
   int lda = (TransA == CblasNoTrans) ? K : M;
   int ldb = (TransB == CblasNoTrans) ? N : K;
-  auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(ctx);
+  auto& dev_ctx = ctx.template device_context<phi::CPUContext>();
+  auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
   blas.GEMM(TransA, TransB, M, N, K, alpha, A, lda, B, ldb, beta, C, N);
 }
 
@@ -102,7 +103,7 @@ void call_gemm_batched(const framework::ExecutionContext& ctx,
 }
 
 #if !defined(PADDLE_WITH_ARM) && !defined(PADDLE_WITH_SW) && \
-    !defined(PADDLE_WITH_MIPS)
+    !defined(PADDLE_WITH_MIPS) && !defined(PADDLE_WITH_LOONGARCH)
 
 #define __m256x __m256
 
@@ -143,7 +144,7 @@ inline void axpy(const T* x, T* y, size_t len, const T alpha) {
                       _mm256_mul_px(mm_alpha, _mm256_load_px(x + jjj))));
   }
 #elif defined(PADDLE_WITH_ARM) || defined(PADDLE_WITH_SW) || \
-    defined(PADDLE_WITH_MIPS)
+    defined(PADDLE_WITH_MIPS) || defined(PADDLE_WITH_LOONGARCH)
   PADDLE_THROW(platform::errors::Unimplemented("axpy is not supported"));
 #else
   lll = len & ~SSE_CUT_LEN_MASK;
@@ -173,7 +174,7 @@ inline void axpy_noadd(const T* x, T* y, size_t len, const T alpha) {
     _mm256_store_px(y + jjj, _mm256_mul_px(mm_alpha, _mm256_load_px(x + jjj)));
   }
 #elif defined(PADDLE_WITH_ARM) || defined(PADDLE_WITH_SW) || \
-    defined(PADDLE_WITH_MIPS)
+    defined(PADDLE_WITH_MIPS) || defined(PADDLE_WITH_LOONGARCH)
   PADDLE_THROW(platform::errors::Unimplemented("axpy_noadd is not supported"));
 #else
   lll = len & ~SSE_CUT_LEN_MASK;

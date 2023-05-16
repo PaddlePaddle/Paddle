@@ -52,6 +52,7 @@ DECLARE_SPARSE_UNARY_KERNEL(Sinh)
 DECLARE_SPARSE_UNARY_KERNEL(Asinh)
 DECLARE_SPARSE_UNARY_KERNEL(Atanh)
 DECLARE_SPARSE_UNARY_KERNEL(Relu)
+DECLARE_SPARSE_UNARY_KERNEL(Isnan)
 DECLARE_SPARSE_UNARY_KERNEL(Tanh)
 DECLARE_SPARSE_UNARY_KERNEL(Square)
 DECLARE_SPARSE_UNARY_KERNEL(Sqrt)
@@ -155,6 +156,22 @@ SparseCsrTensor TransposeCsr(const Context& dev_ctx,
   TransposeCsrKernel<T, Context>(dev_ctx, x, perm, &csr);
   return csr;
 }
+
+template <typename T, typename Context>
+void SumCooKernel(const Context& dev_ctx,
+                  const SparseCooTensor& x,
+                  const IntArray& axis,
+                  DataType dtype,
+                  bool keep_dim,
+                  SparseCooTensor* out);
+
+template <typename T, typename Context>
+void SumCsrKernel(const Context& dev_ctx,
+                  const SparseCsrTensor& x,
+                  const IntArray& axis,
+                  DataType dtype,
+                  bool keep_dim,
+                  SparseCsrTensor* out);
 
 template <typename T, typename Context>
 SparseCooTensor ReluCoo(const Context& dev_ctx, const SparseCooTensor& x) {

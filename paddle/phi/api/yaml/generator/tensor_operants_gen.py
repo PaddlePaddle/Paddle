@@ -144,6 +144,30 @@ Tensor Tensor::subtract(const Scalar& y) const {
   return paddle::OperantsManager::Instance().subtract(static_cast<const Tensor &>(*this), y);
 }
 
+Tensor Tensor::operator<(const Tensor &other) const {
+  return less_than(other);
+}
+
+Tensor Tensor::operator<=(const Tensor &other) const {
+  return less_equal(other);
+}
+
+Tensor Tensor::operator==(const Tensor &other) const {
+  return equal(other);
+}
+
+Tensor Tensor::operator!=(const Tensor &other) const {
+  return not_equal(other);
+}
+
+Tensor Tensor::operator>(const Tensor &other) const {
+  return greater_than(other);
+}
+
+Tensor Tensor::operator>=(const Tensor &other) const {
+  return greater_equal(other);
+}
+
 Tensor Tensor::operator-() const {
   return scale(-1.0, 0.0, true);
 }
@@ -277,7 +301,7 @@ Tensor PhiTensorOperants::subtract(const Tensor& x, const Scalar& y) {
 }
 
 Tensor PhiTensorOperants::multiply(const Tensor& x, const Scalar& y) {
-  return paddle::experimental::multiply(x, paddle::experimental::full_like(x, y));
+  return paddle::experimental::scale(x, y, 0.0f, true);
 }
 
 Tensor PhiTensorOperants::divide(const Tensor& x, const Scalar& y) {
@@ -293,7 +317,7 @@ Tensor PhiTensorOperants::subtract(const Scalar& x, const Tensor& y) {
 }
 
 Tensor PhiTensorOperants::multiply(const Scalar& x, const Tensor& y) {
-  return paddle::experimental::multiply(paddle::experimental::full_like(y, x), y);
+  return paddle::experimental::scale(y, x, 0.0f, true);
 }
 
 Tensor PhiTensorOperants::divide(const Scalar& x, const Tensor& y) {
@@ -444,7 +468,7 @@ operants_manager_source_end = """
 
 
 class OperantsAPI(ForwardAPI):
-    def __init__(self, api_item_yaml, prims=tuple()):
+    def __init__(self, api_item_yaml, prims=()):
         super().__init__(api_item_yaml)
         self.is_prim_api = False
         if self.get_api_func_name() in prims:
@@ -569,7 +593,7 @@ class OperantsAPI(ForwardAPI):
         nullptr,
         phi::errors::Unavailable("The eager_operants pointer of "
                                  "OperantsManager is not initialized"));
-    VLOG(4) << "OperantsManager reaches eager mode";
+    VLOG(4) << "OperantsManager reusing eager mode API ::{func_name}_ad_func";
     return this->eager_operants->{func_name}({func_args_code});
   }} else if (FLAGS_tensor_operants_mode == "static") {{
     PADDLE_ENFORCE_NE(
@@ -577,7 +601,7 @@ class OperantsAPI(ForwardAPI):
         nullptr,
         phi::errors::Unavailable("The static_operants pointer of "
                                  "OperantsManager is not initialized"));
-    VLOG(4) << "OperantsManager reaches static mode";
+    VLOG(4) << "OperantsManager reusing static mode API paddle::prim::{func_name}<DescTensor>";
     return this->static_operants->{func_name}({func_args_code});
   }} else if (FLAGS_tensor_operants_mode == "phi") {{
     PADDLE_ENFORCE_NE(
@@ -585,7 +609,7 @@ class OperantsAPI(ForwardAPI):
         nullptr,
         phi::errors::Unavailable(
             "The phi_operants pointer of OperantsManager is not initialized"));
-    VLOG(4) << "OperantsManager reaches phi mode";
+    VLOG(4) << "OperantsManager reusing phi mode API paddle::experimental::{func_name}";
     return this->phi_operants->{func_name}({func_args_code});
   }} else {{
     PADDLE_THROW(phi::errors::Unimplemented(

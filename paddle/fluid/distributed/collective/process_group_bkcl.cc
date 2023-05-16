@@ -19,7 +19,9 @@
 #include "paddle/fluid/distributed/collective/utils.h"
 #include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
+#include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/core/device_context.h"
+#include "paddle/phi/core/distributed/check/static_check.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
 
@@ -81,10 +83,12 @@ ProcessGroupBKCL::ProcessGroupBKCL(
     : ProcessGroupWithStream(rank, size, gid), store_(store) {}
 
 void ProcessGroupBKCL::GroupStart() {
+  VLOG(3) << "bkcl_group_start";
   PADDLE_ENFORCE_XPU_SUCCESS(bkcl_group_start());
 }
 
 void ProcessGroupBKCL::GroupEnd() {
+  VLOG(3) << "bkcl_group_end";
   PADDLE_ENFORCE_XPU_SUCCESS(bkcl_group_end());
 }
 
@@ -111,13 +115,21 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Recv(
           const phi::DenseTensor& input,
           BKCLContext_t comm,
           const XPUStream& stream) {
-        return bkcl_recv(comm,
-                         output->data(),
-                         output->numel(),
-                         src_rank,
-                         platform::ToBKCLDataType(
-                             framework::TransToProtoVarType(output->type())),
-                         stream);
+        VLOG(3) << "calling bkcl_recv"
+                << ", rank_id: " << platform::GetBKCLRankID(comm)
+                << ", dev_id: " << platform::GetBKCLDevID(comm)
+                << ", nranks: " << platform::GetBKCLNRanks(comm)
+                << ", src_rank: " << src_rank << ", numel: " << output->numel()
+                << ", dtype: " << output->type() << ", sync_op: " << sync_op
+                << ", use_calc_stream: " << use_calc_stream;
+        int r = bkcl_recv(comm,
+                          output->data(),
+                          output->numel(),
+                          src_rank,
+                          platform::ToBKCLDataType(
+                              framework::TransToProtoVarType(output->type())),
+                          stream);
+        return r;
       },
       CommType::RECV,
       sync_op,
@@ -142,13 +154,22 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Send(
           const phi::DenseTensor& input,
           BKCLContext_t comm,
           const XPUStream& stream) {
-        return bkcl_send(comm,
-                         input.data(),
-                         input.numel(),
-                         dst_rank,
-                         platform::ToBKCLDataType(
-                             framework::TransToProtoVarType(input.type())),
-                         stream);
+        VLOG(3) << "calling bkcl_send"
+                << ", rank_id: " << platform::GetBKCLRankID(comm)
+                << ", dev_id: " << platform::GetBKCLDevID(comm)
+                << ", nranks: " << platform::GetBKCLNRanks(comm)
+                << ", dst_rank: " << dst_rank
+                << ", input numel: " << input.numel()
+                << ", dtype: " << input.type() << ", sync_op: " << sync_op
+                << ", use_calc_stream: " << use_calc_stream;
+        int r = bkcl_send(comm,
+                          input.data(),
+                          input.numel(),
+                          dst_rank,
+                          platform::ToBKCLDataType(
+                              framework::TransToProtoVarType(input.type())),
+                          stream);
+        return r;
       },
       CommType::SEND,
       sync_op,
@@ -268,15 +289,24 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllReduce(
           const phi::DenseTensor& input,
           BKCLContext_t comm,
           const XPUStream& stream) {
-        return bkcl_all_reduce(
-            comm,
-            input.data(),
-            output->data(),
-            input.numel(),
-            platform::ToBKCLDataType(
-                framework::TransToProtoVarType(input.type())),
-            ToBKCLRedType(opts.reduce_op),
-            stream);
+        VLOG(3) << "calling bkcl_all_reduce"
+                << ", rank_id: " << platform::GetBKCLRankID(comm)
+                << ", dev_id: " << platform::GetBKCLDevID(comm)
+                << ", nranks: " << platform::GetBKCLNRanks(comm)
+                << ", numel: " << input.numel() << ", dtype: " << input.type()
+                << ", reduce_type: " << ToBKCLRedType(opts.reduce_op)
+                << ", sync_op: " << sync_op
+                << ", use_calc_stream: " << use_calc_stream;
+        int r =
+            bkcl_all_reduce(comm,
+                            input.data(),
+                            output->data(),
+                            input.numel(),
+                            platform::ToBKCLDataType(
+                                framework::TransToProtoVarType(input.type())),
+                            ToBKCLRedType(opts.reduce_op),
+                            stream);
+        return r;
       },
       CommType::ALLREDUCE,
       sync_op,
@@ -297,14 +327,37 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Broadcast(
           BKCLContext_t comm,
           const XPUStream& stream) {
         int root = opts.source_rank + opts.source_root;
-        return bkcl_broadcast(comm,
-                              input.data(),
-                              output->data(),
-                              input.numel(),
-                              platform::ToBKCLDataType(
-                                  framework::TransToProtoVarType(input.type())),
-                              root,
-                              stream);
+        VLOG(3) << "calling bkcl_broadcast"
+                << ", rank_id: " << platform::GetBKCLRankID(comm)
+                << ", dev_id: " << platform::GetBKCLDevID(comm)
+                << ", nranks: " << platform::GetBKCLNRanks(comm)
+                << ", root: " << root << ", numel: " << input.numel()
+                << ", dtype: " << input.type() << ", sync_op: " << sync_op
+                << ", use_calc_stream: " << use_calc_stream;
+        if (framework::TransToProtoVarType(input.dtype()) ==
+            framework::proto::VarType::INT64) {
+          // special for int64_t, send as int32_t with DOUBLE NUMEL
+          int r = bkcl_broadcast(
+              comm,
+              input.data(),
+              output->data(),
+              input.numel() * 2,
+              platform::ToBKCLDataType(framework::proto::VarType::INT32),
+              root,
+              stream);
+          return r;
+        } else {
+          int r =
+              bkcl_broadcast(comm,
+                             input.data(),
+                             output->data(),
+                             input.numel(),
+                             platform::ToBKCLDataType(
+                                 framework::TransToProtoVarType(input.type())),
+                             root,
+                             stream);
+          return r;
+        }
       },
       CommType::BROADCAST,
       sync_op,
@@ -314,10 +367,18 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Broadcast(
 std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllGather(
     phi::DenseTensor* out_tensor,
     const phi::DenseTensor& in_tensor,
-    int64_t offset,  // for compatibility, no use now
-    int64_t numel,   // for compatibility, no use now
+    int64_t offset,
+    int64_t numel,
     bool sync_op,
     bool use_calc_stream) {
+  const phi::DenseTensor& in_tensor_maybe_partial =
+      numel > 0 ? GetPartialTensor(in_tensor, offset, numel) : in_tensor;
+  phi::distributed::CommStaticCheck::GatherLikeShape(*out_tensor,
+                                                     in_tensor_maybe_partial,
+                                                     /*dst_rank*/ rank_,
+                                                     /*cur_rank*/ rank_,
+                                                     size_,
+                                                     phi::AllocationType::XPU);
   return Collective(
       out_tensor,
       in_tensor,
@@ -325,14 +386,22 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllGather(
           const phi::DenseTensor& input,
           BKCLContext_t comm,
           const XPUStream& stream) {
-        return bkcl_all_gather(
-            comm,
-            input.data(),
-            input.numel(),
-            output->data(),
-            platform::ToBKCLDataType(
-                framework::TransToProtoVarType(input.type())),
-            stream);
+        VLOG(3) << "calling bkcl_all_gather"
+                << ", rank_id: " << platform::GetBKCLRankID(comm)
+                << ", dev_id: " << platform::GetBKCLDevID(comm)
+                << ", nranks: " << platform::GetBKCLNRanks(comm)
+                << ", numel: " << in_tensor_maybe_partial.numel()
+                << ", dtype: " << input.type() << ", sync_op: " << sync_op
+                << ", use_calc_stream: " << use_calc_stream;
+        int r =
+            bkcl_all_gather(comm,
+                            in_tensor_maybe_partial.data(),
+                            in_tensor_maybe_partial.numel(),
+                            output->data(),
+                            platform::ToBKCLDataType(
+                                framework::TransToProtoVarType(input.type())),
+                            stream);
+        return r;
       },
       CommType::ALLGATHER,
       sync_op,
@@ -352,15 +421,25 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Reduce(
           const phi::DenseTensor& input,
           BKCLContext_t comm,
           const XPUStream& stream) {
-        return bkcl_reduce(comm,
-                           input.data(),
-                           output->data(),
-                           input.numel(),
-                           platform::ToBKCLDataType(
-                               framework::TransToProtoVarType(input.type())),
-                           ToBKCLRedType(opts.reduce_op),
-                           opts.root_rank,
-                           stream);
+        VLOG(3) << "calling bkcl_reduce"
+                << ", rank_id: " << platform::GetBKCLRankID(comm)
+                << ", dev_id: " << platform::GetBKCLDevID(comm)
+                << ", nranks: " << platform::GetBKCLNRanks(comm)
+                << ", root: " << opts.root_rank << ", numel: " << input.numel()
+                << ", dtype: " << input.type()
+                << ", reduce_type: " << ToBKCLRedType(opts.reduce_op)
+                << ", sync_op: " << sync_op
+                << ", use_calc_stream: " << use_calc_stream;
+        int r = bkcl_reduce(comm,
+                            input.data(),
+                            output->data(),
+                            input.numel(),
+                            platform::ToBKCLDataType(
+                                framework::TransToProtoVarType(input.type())),
+                            ToBKCLRedType(opts.reduce_op),
+                            opts.root_rank,
+                            stream);
+        return r;
       },
       CommType::REDUCE,
       sync_op,
@@ -380,7 +459,15 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::ReduceScatter(
           const phi::DenseTensor& input,
           BKCLContext_t comm,
           const XPUStream& stream) {
-        return bkcl_reduce_scatter(
+        VLOG(3) << "calling bkcl_reduce_scatter"
+                << ", rank_id: " << platform::GetBKCLRankID(comm)
+                << ", dev_id: " << platform::GetBKCLDevID(comm)
+                << ", nranks: " << platform::GetBKCLNRanks(comm)
+                << ", numel: " << output->numel() << ", dtype: " << input.type()
+                << ", reduce_type: " << ToBKCLRedType(opts.reduce_op)
+                << ", sync_op: " << sync_op
+                << ", use_calc_stream: " << use_calc_stream;
+        int r = bkcl_reduce_scatter(
             comm,
             input.data(),
             output->data(),
@@ -389,6 +476,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::ReduceScatter(
                 framework::TransToProtoVarType(input.type())),
             ToBKCLRedType(opts.reduce_op),
             stream);
+        return r;
       },
       CommType::REDUCE_SCATTER,
       sync_op,
@@ -464,15 +552,23 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllReduce(
           const phi::DenseTensor& input,
           BKCLContext_t comm,
           const XPUStream& stream) {
-        return bkcl_all_reduce(
-            comm,
-            input.data(),
-            output->data(),
-            input.numel(),
-            platform::ToBKCLDataType(
-                framework::TransToProtoVarType(input.type())),
-            ToBKCLRedType(opts.reduce_op),
-            stream);
+        VLOG(3) << "calling bkcl_all_reduce"
+                << ", rank_id: " << platform::GetBKCLRankID(comm)
+                << ", dev_id: " << platform::GetBKCLDevID(comm)
+                << ", nranks: " << platform::GetBKCLNRanks(comm)
+                << ", numel: " << input.numel() << ", dtype: " << input.type()
+                << ", reduce_type: " << ToBKCLRedType(opts.reduce_op)
+                << ", sync_op: " << true << ", use_calc_stream: " << false;
+        int r =
+            bkcl_all_reduce(comm,
+                            input.data(),
+                            output->data(),
+                            input.numel(),
+                            platform::ToBKCLDataType(
+                                framework::TransToProtoVarType(input.type())),
+                            ToBKCLRedType(opts.reduce_op),
+                            stream);
+        return r;
       },
       CommType::ALLREDUCE,
       /*sync_op*/ true,
@@ -505,15 +601,23 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllReduce(
           const phi::DenseTensor& input,
           BKCLContext_t comm,
           const XPUStream& stream) {
-        return bkcl_all_reduce(
-            comm,
-            input.data(),
-            output->data(),
-            input.numel(),
-            platform::ToBKCLDataType(
-                framework::TransToProtoVarType(input.type())),
-            ToBKCLRedType(opts.reduce_op),
-            stream);
+        VLOG(3) << "calling bkcl_all_reduce"
+                << ", rank_id: " << platform::GetBKCLRankID(comm)
+                << ", dev_id: " << platform::GetBKCLDevID(comm)
+                << ", nranks: " << platform::GetBKCLNRanks(comm)
+                << ", numel: " << input.numel() << ", dtype: " << input.type()
+                << ", reduce_type: " << ToBKCLRedType(opts.reduce_op)
+                << ", sync_op: " << sync_op << ", use_calc_stream: " << false;
+        int r =
+            bkcl_all_reduce(comm,
+                            input.data(),
+                            output->data(),
+                            input.numel(),
+                            platform::ToBKCLDataType(
+                                framework::TransToProtoVarType(input.type())),
+                            ToBKCLRedType(opts.reduce_op),
+                            stream);
+        return r;
       },
       CommType::ALLREDUCE,
       sync_op,
@@ -548,14 +652,23 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Broadcast(
           const XPUStream& stream) {
         const auto root =
             opts.source_rank * in_tensors.size() + opts.source_root;
-        return bkcl_broadcast(comm,
-                              input.data(),
-                              output->data(),
-                              input.numel(),
-                              platform::ToBKCLDataType(
-                                  framework::TransToProtoVarType(input.type())),
-                              root,
-                              stream);
+        VLOG(3) << "calling bkcl_broadcast"
+                << ", rank_id: " << platform::GetBKCLRankID(comm)
+                << ", dev_id: " << platform::GetBKCLDevID(comm)
+                << ", nranks: " << platform::GetBKCLNRanks(comm)
+                << ", root: " << root << ", numel: " << input.numel()
+                << ", dtype: " << input.type() << ", sync_op: " << true
+                << ", use_calc_stream: " << false;
+        int r =
+            bkcl_broadcast(comm,
+                           input.data(),
+                           output->data(),
+                           input.numel(),
+                           platform::ToBKCLDataType(
+                               framework::TransToProtoVarType(input.type())),
+                           root,
+                           stream);
+        return r;
       },
       CommType::BROADCAST,
       /*sync_op*/ true,
@@ -591,14 +704,23 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Broadcast(
           const XPUStream& stream) {
         const auto root =
             opts.source_rank * in_tensors.size() + opts.source_root;
-        return bkcl_broadcast(comm,
-                              input.data(),
-                              output->data(),
-                              input.numel(),
-                              platform::ToBKCLDataType(
-                                  framework::TransToProtoVarType(input.type())),
-                              root,
-                              stream);
+        VLOG(3) << "calling bkcl_broadcast"
+                << ", rank_id: " << platform::GetBKCLRankID(comm)
+                << ", dev_id: " << platform::GetBKCLDevID(comm)
+                << ", nranks: " << platform::GetBKCLNRanks(comm)
+                << ", root: " << root << ", numel: " << input.numel()
+                << ", dtype: " << input.type() << ", sync_op: " << sync_op
+                << ", use_calc_stream: " << false;
+        int r =
+            bkcl_broadcast(comm,
+                           input.data(),
+                           output->data(),
+                           input.numel(),
+                           platform::ToBKCLDataType(
+                               framework::TransToProtoVarType(input.type())),
+                           root,
+                           stream);
+        return r;
       },
       CommType::BROADCAST,
       sync_op,
@@ -633,14 +755,21 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllGather(
           const phi::DenseTensor& input,
           BKCLContext_t comm,
           const XPUStream& stream) {
-        return bkcl_all_gather(
-            comm,
-            input.data(),
-            input.numel(),
-            output->data(),
-            platform::ToBKCLDataType(
-                framework::TransToProtoVarType(input.type())),
-            stream);
+        VLOG(3) << "calling bkcl_all_gather"
+                << ", rank_id: " << platform::GetBKCLRankID(comm)
+                << ", dev_id: " << platform::GetBKCLDevID(comm)
+                << ", nranks: " << platform::GetBKCLNRanks(comm)
+                << ", numel: " << input.numel() << ", dtype: " << input.type()
+                << ", sync_op: " << true << ", use_calc_stream: " << false;
+        int r =
+            bkcl_all_gather(comm,
+                            input.data(),
+                            input.numel(),
+                            output->data(),
+                            platform::ToBKCLDataType(
+                                framework::TransToProtoVarType(input.type())),
+                            stream);
+        return r;
       },
       CommType::ALLGATHER,
       /*sync_op*/ true,
@@ -672,14 +801,21 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::AllGather(
           const phi::DenseTensor& input,
           BKCLContext_t comm,
           const XPUStream& stream) {
-        return bkcl_all_gather(
-            comm,
-            input.data(),
-            input.numel(),
-            output->data(),
-            platform::ToBKCLDataType(
-                framework::TransToProtoVarType(input.type())),
-            stream);
+        VLOG(3) << "calling bkcl_all_gather"
+                << ", rank_id: " << platform::GetBKCLRankID(comm)
+                << ", dev_id: " << platform::GetBKCLDevID(comm)
+                << ", nranks: " << platform::GetBKCLNRanks(comm)
+                << ", numel: " << input.numel() << ", dtype: " << input.type()
+                << ", sync_op: " << sync_op << ", use_calc_stream: " << false;
+        int r =
+            bkcl_all_gather(comm,
+                            input.data(),
+                            input.numel(),
+                            output->data(),
+                            platform::ToBKCLDataType(
+                                framework::TransToProtoVarType(input.type())),
+                            stream);
+        return r;
       },
       CommType::ALLGATHER,
       sync_op,

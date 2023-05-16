@@ -27,6 +27,7 @@ from distutils.spawn import find_executable
 from subprocess import CalledProcessError
 
 from setuptools import Command, Extension, setup
+from setuptools.command.develop import develop as DevelopCommandBase
 from setuptools.command.egg_info import egg_info
 from setuptools.command.install import install as InstallCommandBase
 from setuptools.command.install_lib import install_lib
@@ -140,21 +141,14 @@ def get_header_install_dir(header):
         if 'fluid/jit' in install_dir:
             install_dir = re.sub('fluid/jit', 'jit', install_dir)
             print('fluid/jit install_dir: ', install_dir)
-        if 'trace_event.h' in install_dir:
-            install_dir = re.sub(
-                'fluid/platform/profiler',
-                'phi/backends/custom',
-                install_dir,
-            )
-            print('trace_event.h install_dir: ', install_dir)
     else:
         # third_party
         install_dir = re.sub(
-            env_dict.get("THIRD_PARTY_PATH") + '/', 'third_party', header
+            env_dict.get("THIRD_PARTY_PATH"), 'third_party', header
         )
         patterns = [
-            'install/mkldnn/include',
-            'pybind/src/extern_pybind/include',
+            'install/mkldnn/include/',
+            'pybind/src/extern_pybind/include/',
             'third_party/xpu/src/extern_xpu/xpu/include/',
         ]
         for pattern in patterns:
@@ -220,6 +214,55 @@ class InstallCommand(InstallCommandBase):
         )
         print("install_headers:", self.install_headers)
         return ret
+
+
+class DevelopCommand(DevelopCommandBase):
+    def run(self):
+        # copy proto and .so to python_source_dir
+        fluid_proto_binary_path = (
+            paddle_binary_dir + '/python/paddle/fluid/proto/'
+        )
+        fluid_proto_source_path = (
+            paddle_source_dir + '/python/paddle/fluid/proto/'
+        )
+        distributed_proto_binary_path = (
+            paddle_binary_dir + '/python/paddle/distributed/fleet/proto/'
+        )
+        distributed_proto_source_path = (
+            paddle_source_dir + '/python/paddle/distributed/fleet/proto/'
+        )
+        os.system(f"rm -rf {fluid_proto_source_path}")
+        shutil.copytree(fluid_proto_binary_path, fluid_proto_source_path)
+        os.system(f"rm -rf {distributed_proto_source_path}")
+        shutil.copytree(
+            distributed_proto_binary_path, distributed_proto_source_path
+        )
+        shutil.copy(
+            paddle_binary_dir + '/python/paddle/fluid/libpaddle.so',
+            paddle_source_dir + '/python/paddle/fluid/',
+        )
+        dynamic_library_binary_path = paddle_binary_dir + '/python/paddle/libs/'
+        dynamic_library_source_path = paddle_source_dir + '/python/paddle/libs/'
+        for lib_so in os.listdir(dynamic_library_binary_path):
+            shutil.copy(
+                dynamic_library_binary_path + lib_so,
+                dynamic_library_source_path,
+            )
+        # write version.py and cuda_env_config_py to python_source_dir
+        write_version_py(
+            filename='{}/python/paddle/version/__init__.py'.format(
+                paddle_source_dir
+            )
+        )
+        write_cuda_env_config_py(
+            filename=f'{paddle_source_dir}/python/paddle/cuda_env.py'
+        )
+        write_parameter_server_version_py(
+            filename='{}/python/paddle/incubate/distributed/fleet/parameter_server/version.py'.format(
+                paddle_source_dir
+            )
+        )
+        DevelopCommandBase.run(self)
 
 
 class EggInfo(egg_info):
@@ -384,6 +427,57 @@ def is_taged():
         return False
 
 
+def get_cinn_version():
+    if env_dict.get("WITH_CINN") != 'ON':
+        return "False"
+
+    cinn_git_version = 'Unknown'
+    # try get cinn tag name
+    try:
+        cmd = [
+            'git',
+            'describe',
+            '--exact-match',
+            '--tags',
+            'HEAD',
+            '2>/dev/null',
+        ]
+        cinn_tag = (
+            subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                cwd=env_dict.get("CINN_SOURCE_DIR"),
+            )
+            .communicate()[0]
+            .strip()
+        )
+        if len(cinn_tag) > 0:
+            cinn_git_version = cinn_tag
+    except:
+        pass
+
+    if cinn_git_version == 'Unknown':
+        # try get cinn commit id
+        try:
+            cmd = ['git', 'rev-parse', 'HEAD']
+            cinn_commit = (
+                subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    cwd=env_dict.get("CINN_SOURCE_DIR"),
+                )
+                .communicate()[0]
+                .strip()
+            )
+            if len(cinn_commit) > 0:
+                cinn_git_version = cinn_commit
+        except:
+            pass
+
+    cinn_git_version = cinn_git_version.decode('utf-8')
+    return str(cinn_git_version)
+
+
 def write_version_py(filename='paddle/version/__init__.py'):
     cnt = '''# THIS FILE IS GENERATED FROM PADDLEPADDLE SETUP.PY
 #
@@ -399,6 +493,7 @@ xpu_xccl_version = '%(xpu_xccl)s'
 istaged          = %(istaged)s
 commit           = '%(commit)s'
 with_mkl         = '%(with_mkl)s'
+cinn_version      = '%(cinn)s'
 
 __all__ = ['cuda', 'cudnn', 'show', 'xpu', 'xpu_xccl']
 
@@ -427,6 +522,8 @@ def show():
 
         xpu_xccl: the xpu xccl version of package. It will return `False` if non-XPU version paddle package is installed
 
+        cinn: the cinn version of package. It will return `False` if paddle package is not compiled with CINN
+
     Examples:
         .. code-block:: python
 
@@ -443,6 +540,7 @@ def show():
             # cudnn: '7.6.5'
             # xpu: '20230114'
             # xpu_xccl: '1.0.7'
+            # cinn: False
 
             # Case 2: paddle is not tagged
             paddle.version.show()
@@ -451,6 +549,7 @@ def show():
             # cudnn: '7.6.5'
             # xpu: '20230114'
             # xpu_xccl: '1.0.7'
+            # cinn: False
     """
     if istaged:
         print('full_version:', full_version)
@@ -464,6 +563,7 @@ def show():
     print('cudnn:', cudnn_version)
     print('xpu:', xpu_version)
     print('xpu_xccl:', xpu_xccl_version)
+    print('cinn:', cinn_version)
 
 def mkl():
     return with_mkl
@@ -535,6 +635,23 @@ def xpu_xccl():
 
     """
     return xpu_xccl_version
+
+def cinn():
+    """Get CINN version of paddle package.
+
+    Returns:
+        string: Return the version information of CINN. If paddle package is not compiled with CINN, it will return False.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            paddle.version.cinn()
+            # False
+
+    """
+    return cinn_version
 '''
     commit = git_commit()
 
@@ -562,6 +679,7 @@ def xpu_xccl():
                 'commit': commit,
                 'istaged': is_taged(),
                 'with_mkl': env_dict.get("WITH_MKL"),
+                'cinn': get_cinn_version(),
             }
         )
 
@@ -624,7 +742,7 @@ def find_files(pattern, root, recursive=False):
 @contextmanager
 def cd(path):
     if not os.path.isabs(path):
-        raise RuntimeError('Can only cd to absolute path, got: {}'.format(path))
+        raise RuntimeError(f'Can only cd to absolute path, got: {path}')
     orig_path = os.getcwd()
     os.chdir(path)
     try:
@@ -636,12 +754,17 @@ def cd(path):
 def options_process(args, build_options):
     for key, value in sorted(build_options.items()):
         if value is not None:
-            args.append("-D{}={}".format(key, value))
+            args.append(f"-D{key}={value}")
 
 
 def get_cmake_generator():
     if os.getenv("GENERATOR"):
         cmake_generator = os.getenv("GENERATOR")
+        if os.system('ninja --version') == 0:
+            print("Ninja has been installed,use ninja to compile Paddle now.")
+        else:
+            print("Ninja has not been installed,install it now.")
+            os.system('python -m pip install ninja')
     else:
         cmake_generator = "Unix Makefiles"
     return cmake_generator
@@ -741,7 +864,7 @@ def run_cmake_build(build_path):
 
         build_args += ["--"]
         if IS_WINDOWS:
-            build_args += ["/p:CL_MPCount={}".format(max_jobs)]
+            build_args += [f"/p:CL_MPCount={max_jobs}"]
         else:
             build_args += ["-j", max_jobs]
     else:
@@ -828,18 +951,7 @@ def get_package_data_and_package_dir():
         paddle_binary_dir + '/python/paddle/cost_model/static_op_benchmark.json'
     ]
     if 'develop' in sys.argv:
-        package_dir = {
-            '': paddle_binary_dir.split('/')[-1] + '/python',
-            # '':'build/python',
-            # The paddle.fluid.proto will be generated while compiling.
-            # So that package points to other directory.
-            'paddle.fluid.proto.profiler': paddle_binary_dir.split('/')[-1]
-            + '/paddle/fluid/platform',
-            'paddle.fluid.proto': paddle_binary_dir.split('/')[-1]
-            + '/paddle/fluid/framework',
-            'paddle.fluid': paddle_binary_dir.split('/')[-1]
-            + '/python/paddle/fluid',
-        }
+        package_dir = {'': 'python'}
     else:
         package_dir = {
             '': env_dict.get("PADDLE_BINARY_DIR") + '/python',
@@ -958,6 +1070,12 @@ def get_package_data_and_package_dir():
         if os.path.exists(cinn_fp16_file):
             shutil.copy(cinn_fp16_file, libs_path)
             package_data['paddle.libs'] += ['float16.h']
+        cinn_bf16_file = (
+            env_dict.get("CINN_INCLUDE_DIR") + '/cinn/runtime/cuda/bfloat16.h'
+        )
+        if os.path.exists(cinn_bf16_file):
+            shutil.copy(cinn_bf16_file, libs_path)
+            package_data['paddle.libs'] += ['bfloat16.h']
 
         if env_dict.get("CMAKE_BUILD_TYPE") == 'Release' and os.name != 'nt':
             command = (
@@ -1119,7 +1237,7 @@ def get_package_data_and_package_dir():
 
 def get_headers():
     headers = (
-        # paddle level api headers
+        # paddle level api headers (high level api, for both training and inference)
         list(find_files('*.h', paddle_source_dir + '/paddle'))
         + list(find_files('*.h', paddle_source_dir + '/paddle/phi/api'))
         + list(  # phi unify api header
@@ -1131,73 +1249,67 @@ def get_headers():
         + list(  # phi api
             find_files('*.h', paddle_source_dir + '/paddle/phi/common')
         )
-        + list(
-            find_files('*.h', paddle_source_dir + '/paddle/phi')
-        )  # phi common headers
-        # phi level api headers (low level api)
+        # phi level api headers (low level api, for training only)
         + list(  # phi extension header
+            find_files('*.h', paddle_source_dir + '/paddle/phi')
+        )
+        + list(  # phi include header
             find_files(
                 '*.h', paddle_source_dir + '/paddle/phi/include', recursive=True
             )
         )
-        + list(  # phi include headers
+        + list(  # phi backends headers
             find_files(
                 '*.h',
                 paddle_source_dir + '/paddle/phi/backends',
                 recursive=True,
             )
         )
-        + list(  # phi backends headers
+        + list(  # phi core headers
             find_files(
                 '*.h', paddle_source_dir + '/paddle/phi/core', recursive=True
             )
         )
-        + list(  # phi core headers
+        + list(  # phi infermeta headers
             find_files(
                 '*.h',
                 paddle_source_dir + '/paddle/phi/infermeta',
                 recursive=True,
             )
         )
-        + list(  # phi infermeta headers
-            find_files('*.h', paddle_source_dir + '/paddle/phi/kernels')
-        )
-        + list(  # phi kernels headers
-            find_files('*.h', paddle_source_dir + '/paddle/phi/kernels/sparse')
-        )
-        + list(  # phi sparse kernels headers
+        + list(  # phi kernel headers
             find_files(
-                '*.h', paddle_source_dir + '/paddle/phi/kernels/selected_rows'
+                '*.h',
+                paddle_source_dir + '/paddle/phi/kernels',
+                recursive=True,
             )
         )
-        + list(  # phi selected_rows kernels headers
-            find_files('*.h', paddle_source_dir + '/paddle/phi/kernels/strings')
-        )
-        + list(  # phi sparse kernels headers
-            find_files(
-                '*.h', paddle_source_dir + '/paddle/phi/kernels/primitive'
-            )
-        )
-        + list(  # phi kernel primitive api headers
-            # capi headers
+        # phi capi headers
+        + list(
             find_files(
                 '*.h', paddle_source_dir + '/paddle/phi/capi', recursive=True
             )
         )
-        + list(  # phi capi headers
-            # profiler headers
-            find_files(
-                'trace_event.h',
-                paddle_source_dir + '/paddle/fluid/platform/profiler',
-            )
-        )
-        + list(  # phi profiler headers
-            # utils api headers
+        + list(  # utils api headers
             find_files(
                 '*.h', paddle_source_dir + '/paddle/utils', recursive=True
             )
         )
-    )  # paddle utils headers
+        + list(  # phi profiler headers
+            find_files(
+                '*.h',
+                paddle_source_dir + '/paddle/phi/api/profiler',
+                recursive=True,
+            )
+        )
+        + list(  # phi init headers
+            find_files(
+                'init_phi.h',
+                paddle_source_dir + '/paddle/fluid/platform',
+                recursive=True,
+            )
+        )
+    )
 
     jit_layer_headers = [
         'layer.h',
@@ -1225,7 +1337,7 @@ def get_headers():
             find_files('*.pb', env_dict.get("externalError_INCLUDE_DIR"))
         )
 
-    if env_dict.get("WITH_XDNN_API") == 'ON':
+    if env_dict.get("WITH_XPU") == 'ON':
         headers += list(
             find_files(
                 '*.h',
@@ -1281,7 +1393,6 @@ def get_setup_parameters():
         'paddle.distributed.fleet.elastic',
         'paddle.distributed.fleet.meta_optimizers',
         'paddle.distributed.fleet.meta_optimizers.sharding',
-        'paddle.distributed.fleet.meta_optimizers.ascend',
         'paddle.distributed.fleet.meta_optimizers.dygraph_optimizer',
         'paddle.distributed.fleet.runtime',
         'paddle.distributed.rpc',
@@ -1316,10 +1427,8 @@ def get_setup_parameters():
         'paddle.fluid.proto',
         'paddle.fluid.proto.profiler',
         'paddle.fluid.layers',
-        'paddle.fluid.dataloader',
         'paddle.fluid.contrib',
         'paddle.fluid.contrib.extend_optimizer',
-        'paddle.fluid.contrib.layers',
         'paddle.fluid.incubate',
         'paddle.incubate.distributed.fleet',
         'paddle.fluid.incubate.checkpoint',
@@ -1354,6 +1463,7 @@ def get_setup_parameters():
         'paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler',
         'paddle.incubate.distributed.fleet.parameter_server.ir',
         'paddle.incubate.distributed.fleet.parameter_server.pslib',
+        'paddle.incubate.layers',
         'paddle.quantization',
         'paddle.quantization.quanters',
         'paddle.quantization.observers',
@@ -1363,6 +1473,7 @@ def get_setup_parameters():
         'paddle.sparse.nn.functional',
         'paddle.incubate.xpu',
         'paddle.io',
+        'paddle.io.dataloader',
         'paddle.optimizer',
         'paddle.nn',
         'paddle.nn.functional',
@@ -1431,11 +1542,59 @@ Please run 'pip install -r python/requirements.txt' to make sure you have all th
     reqs = subprocess.check_output([sys.executable, '-m', 'pip', 'freeze'])
 
     for r in reqs.split():
-        installed_packages.append(re.sub("_|-", '', r.decode().split('==')[0]))
+        installed_packages.append(
+            re.sub("_|-", '', r.decode().split('==')[0]).lower()
+        )
 
     for dependency in python_dependcies_module:
-        if dependency not in installed_packages:
+        if dependency.lower() not in installed_packages:
             raise RuntimeError(missing_modules.format(dependency=dependency))
+
+
+def install_cpp_dist_and_build_test(install_dir, lib_test_dir, headers, libs):
+    """install cpp distribution and build test target
+
+    TODO(huangjiyi):
+    1. This function will be moved when seperating C++ distribution
+    installation from python package installation.
+    2. Reduce the header and library files to be installed.
+    """
+    if env_dict.get("CMAKE_BUILD_TYPE") != 'Release':
+        return
+    os.makedirs(install_dir, exist_ok=True)
+    # install C++ header files
+    for header in headers:
+        header_install_dir = get_header_install_dir(header)
+        header_install_dir = os.path.join(
+            install_dir, 'include', os.path.dirname(header_install_dir)
+        )
+        os.makedirs(header_install_dir, exist_ok=True)
+        shutil.copy(header, header_install_dir)
+
+    # install C++ shared libraries
+    lib_install_dir = os.path.join(install_dir, 'lib')
+    os.makedirs(lib_install_dir, exist_ok=True)
+    # install libpaddle.ext
+    paddle_libs = glob.glob(
+        paddle_binary_dir
+        + '/paddle/fluid/pybind/'
+        + env_dict.get("FLUID_CORE_NAME")
+        + '.*'
+    )
+    for lib in paddle_libs:
+        shutil.copy(lib, lib_install_dir)
+    # install dependent libraries
+    libs_path = paddle_binary_dir + '/python/paddle/libs'
+    for lib in libs:
+        lib_path = os.path.join(libs_path, lib)
+        shutil.copy(lib_path, lib_install_dir)
+
+    # build test target
+    cmake_args = [CMAKE, lib_test_dir, "-B", lib_test_dir]
+    if os.getenv("GENERATOR") == "Ninja":
+        cmake_args.append("-GNinja")
+    subprocess.check_call(cmake_args)
+    subprocess.check_call([CMAKE, "--build", lib_test_dir])
 
 
 def main():
@@ -1459,7 +1618,7 @@ def main():
     else:
         env_dict_path = TOP_DIR + "/build/python/"
     sys.path.insert(1, env_dict_path)
-    from env_dict import env_dict as env_dict
+    from env_dict import env_dict
 
     global env_dict
     global paddle_binary_dir, paddle_source_dir
@@ -1470,13 +1629,14 @@ def main():
     # preparing parameters for setup()
     paddle_version = env_dict.get("PADDLE_VERSION")
     package_name = env_dict.get("PACKAGE_NAME")
+
     write_version_py(
         filename='{}/python/paddle/version/__init__.py'.format(
             paddle_binary_dir
         )
     )
     write_cuda_env_config_py(
-        filename='{}/python/paddle/cuda_env.py'.format(paddle_binary_dir)
+        filename=f'{paddle_binary_dir}/python/paddle/cuda_env.py'
     )
     write_parameter_server_version_py(
         filename='{}/python/paddle/incubate/distributed/fleet/parameter_server/version.py'.format(
@@ -1509,6 +1669,17 @@ def main():
         if os.system(command) != 0:
             raise Exception("strip *.so failed, command: %s" % command)
 
+    # install cpp distribution
+    if env_dict.get("WITH_CPP_DIST") == 'ON':
+        paddle_install_dir = env_dict.get("PADDLE_INSTALL_DIR")
+        paddle_lib_test_dir = env_dict.get("PADDLE_LIB_TEST_DIR")
+        install_cpp_dist_and_build_test(
+            paddle_install_dir,
+            paddle_lib_test_dir,
+            headers,
+            package_data['paddle.libs'],
+        )
+
     setup(
         name=package_name,
         version=paddle_version,
@@ -1534,6 +1705,7 @@ def main():
             'install': InstallCommand,
             'egg_info': EggInfo,
             'install_lib': InstallLib,
+            'develop': DevelopCommand,
         },
         entry_points={
             'console_scripts': [

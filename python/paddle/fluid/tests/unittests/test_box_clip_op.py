@@ -52,7 +52,7 @@ def batch_box_clip(input_boxes, im_info, lod):
 
 class TestBoxClipOp(OpTest):
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def setUp(self):
         self.op_type = "box_clip"

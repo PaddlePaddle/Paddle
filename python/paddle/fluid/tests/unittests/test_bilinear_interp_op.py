@@ -18,7 +18,7 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 paddle.enable_static()
 
@@ -109,7 +109,6 @@ class TestBilinearInterpOp(OpTest):
         self.op_type = "bilinear_interp"
         # NOTE(dev): some AsDispensible input is not used under imperative mode.
         # Skip check_dygraph while found them in Inputs.
-        self.check_dygraph = True
         input_np = np.random.random(self.input_shape).astype("float64")
 
         if self.data_layout == "NCHW":
@@ -139,10 +138,8 @@ class TestBilinearInterpOp(OpTest):
         self.inputs = {'X': input_np}
         if self.out_size is not None:
             self.inputs['OutSize'] = self.out_size
-            self.check_dygraph = False
         if self.actual_shape is not None:
             self.inputs['OutSize'] = self.actual_shape
-            self.check_dygraph = False
 
         self.attrs = {
             'out_h': self.out_h,
@@ -156,12 +153,10 @@ class TestBilinearInterpOp(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output(check_dygraph=self.check_dygraph)
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'], 'Out', in_place=True, check_dygraph=self.check_dygraph
-        )
+        self.check_grad(['X'], 'Out', in_place=True, check_dygraph=False)
 
     def init_test_case(self):
         self.interp_method = 'bilinear'
@@ -285,7 +280,6 @@ class TestBilinearInterpOpUint8(OpTest):
         self.actual_shape = None
         self.init_test_case()
         self.op_type = "bilinear_interp"
-        self.check_dygraph = True
         input_np = np.random.randint(
             low=0, high=256, size=self.input_shape
         ).astype("uint8")
@@ -309,7 +303,6 @@ class TestBilinearInterpOpUint8(OpTest):
         self.inputs = {'X': input_np}
         if self.out_size is not None:
             self.inputs['OutSize'] = self.out_size
-            self.check_dygraph = False
 
         self.attrs = {
             'out_h': self.out_h,
@@ -323,7 +316,7 @@ class TestBilinearInterpOpUint8(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(
-            place=core.CPUPlace(), atol=1, check_dygraph=self.check_dygraph
+            place=core.CPUPlace(), atol=1, check_dygraph=False
         )
 
     def init_test_case(self):
@@ -427,7 +420,6 @@ class TestBilinearInterpOp_attr_tensor(OpTest):
         self.actual_shape = None
         self.init_test_case()
         self.op_type = "bilinear_interp"
-        self.check_dygraph = True
         self.shape_by_1Dtensor = False
         self.scale_by_1Dtensor = False
         self.attrs = {
@@ -450,15 +442,13 @@ class TestBilinearInterpOp_attr_tensor(OpTest):
 
         if self.shape_by_1Dtensor:
             self.inputs['OutSize'] = self.out_size
-            self.check_dygraph = False
         elif self.out_size is not None:
             size_tensor = []
             for index, ele in enumerate(self.out_size):
                 size_tensor.append(
-                    ("x" + str(index), np.ones((1)).astype('int32') * ele)
+                    ("x" + str(index), np.ones(1).astype('int32') * ele)
                 )
             self.inputs['SizeTensor'] = size_tensor
-            self.check_dygraph = False
 
         self.attrs['out_h'] = self.out_h
         self.attrs['out_w'] = self.out_w
@@ -473,12 +463,10 @@ class TestBilinearInterpOp_attr_tensor(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output(check_dygraph=self.check_dygraph)
+        self.check_output(check_dygraph=False)
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'], 'Out', in_place=True, check_dygraph=self.check_dygraph
-        )
+        self.check_grad(['X'], 'Out', in_place=True, check_dygraph=False)
 
     def init_test_case(self):
         self.interp_method = 'bilinear'

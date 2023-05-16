@@ -21,6 +21,7 @@ from .reduce_scatter import reduce_scatter
 from .recv import recv
 from .scatter import scatter
 from .send import send
+from .gather import gather
 
 __all__ = [
     "all_gather",
@@ -33,4 +34,5 @@ __all__ = [
     "recv",
     "scatter",
     "send",
+    "gather",
 ]

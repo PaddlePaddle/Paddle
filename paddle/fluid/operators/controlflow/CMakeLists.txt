@@ -27,26 +27,15 @@ cc_library(
   SRCS while_op_helper.cc
   DEPS operator op_variant)
 
-cc_test(
-  conditional_block_op_test
-  SRCS conditional_block_op_test.cc
-  DEPS conditional_block_op standalone_executor executor)
-
 if(WITH_UNITY_BUILD)
   target_link_libraries(paddle_operators_controlflow_unity conditional_block_op)
 else()
   target_link_libraries(conditional_block_infer_op conditional_block_op)
 endif()
 
-file(
-  APPEND ${pybind_file}
-  "USE_OP_ITSELF(less_than);\nUSE_OP_ITSELF(equal_all);\nUSE_NO_KERNEL_OP(read_from_array);\n"
-)
+file(APPEND ${pybind_file}
+     "USE_OP_ITSELF(less_than);\nUSE_NO_KERNEL_OP(read_from_array);\n")
 file(
   APPEND ${pybind_file}
   "USE_OP_ITSELF(logical_and);\nUSE_OP_ITSELF(logical_or);\nUSE_OP_ITSELF(logical_xor);\nUSE_OP_ITSELF(logical_not);\n"
-)
-file(
-  APPEND ${pybind_file}
-  "USE_OP_ITSELF(bitwise_and);\nUSE_OP_ITSELF(bitwise_or);\nUSE_OP_ITSELF(bitwise_xor);\nUSE_OP_ITSELF(bitwise_not);\n"
 )

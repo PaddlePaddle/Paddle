@@ -18,12 +18,13 @@
 #include <unordered_map>
 #include <vector>
 
+#include "gflags/gflags.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
 
 DECLARE_int32(search_cache_max_number);
 
-inline void HashCombine(std::size_t* seed) {}
+inline void HashCombine(std::size_t* seed UNUSED) {}
 
 // combine hash value
 // https://stackoverflow.com/questions/2590677/how-do-i-combine-hash-values-in-c0x
@@ -59,27 +60,6 @@ size_t GenKey(Args&&... args) {
   HashCombine(&seed, std::forward<Args>(args)...);
   return seed;
 }
-
-struct MatmulCacheKey {
- public:
-  MatmulCacheKey() {}
-  MatmulCacheKey(const std::vector<int64_t>& x_dims,
-                 const std::vector<int64_t>& y_dims,
-                 const bool trans_x,
-                 const bool trans_y,
-                 phi::DataType dtype) {
-    key = GenKey(x_dims,
-                 y_dims,
-                 static_cast<int64_t>(trans_x),
-                 static_cast<int64_t>(trans_y),
-                 static_cast<int64_t>(dtype));
-  }
-  size_t GetKey() const { return key; }
-  size_t GenSubKey(int64_t idx) const { return GenKey(key, idx); }
-
- private:
-  size_t key;
-};
 
 struct ConvCacheKey {
   ConvCacheKey() {}

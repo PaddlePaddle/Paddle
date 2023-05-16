@@ -32,7 +32,7 @@ namespace phi {
 template <typename Context, typename T, typename IndexT>
 void CalculateXGrad(const Context& ctx,
                     const T* out_grad,
-                    const T* x_data,
+                    const T* x_data UNUSED,
                     const T* e_data,
                     const phi::DDim& out_grad_dims,
                     const phi::DDim& x_dims,
@@ -46,7 +46,7 @@ void CalculateXGrad(const Context& ctx,
                     const DenseTensor& out_grad_tensor,
                     DenseTensor* x_grad_tensor,
                     const DenseTensor* dst_count = nullptr,
-                    const DenseTensor* out = nullptr) {
+                    const DenseTensor* out UNUSED = nullptr) {
   std::vector<int64_t> reduce_idx;
   bool reduce = ReduceGrad(out_grad_dims, x_dims, reduce_idx);
 
@@ -70,12 +70,12 @@ void CalculateXGrad(const Context& ctx,
           ElementwiseInnerOperation<T, IndexT, GraphSendRecvSumFunctor<T>>(
               out_grad_tensor, &x_grad_v2, src, dst, false, sum_functor);
         }
-        DenseTensor x_grad_out = phi::Sum<T, Context>(
-            ctx,
-            x_grad_v2,
-            phi::IntArray(reduce_idx),
-            paddle::experimental::CppTypeToDataType<T>::Type(),
-            true);
+        DenseTensor x_grad_out =
+            phi::Sum<T, Context>(ctx,
+                                 x_grad_v2,
+                                 phi::IntArray(reduce_idx),
+                                 phi::CppTypeToDataType<T>::Type(),
+                                 true);
         memcpy(x_grad, x_grad_out.data<T>(), x_grad_out.numel() * sizeof(T));
       }
     } else if (message_op == "MUL") {
@@ -128,12 +128,12 @@ void CalculateXGrad(const Context& ctx,
             }
           }
         }
-        DenseTensor x_grad_out = phi::Sum<T, Context>(
-            ctx,
-            x_grad_v2,
-            phi::IntArray(reduce_idx),
-            paddle::experimental::CppTypeToDataType<T>::Type(),
-            true);
+        DenseTensor x_grad_out =
+            phi::Sum<T, Context>(ctx,
+                                 x_grad_v2,
+                                 phi::IntArray(reduce_idx),
+                                 phi::CppTypeToDataType<T>::Type(),
+                                 true);
         memcpy(x_grad, x_grad_out.data<T>(), x_grad_out.numel() * sizeof(T));
       }
     }
@@ -163,12 +163,12 @@ void CalculateXGrad(const Context& ctx,
           auto eigen_x_grad = phi::EigenVector<T>::Flatten(x_grad_slice);
           eigen_x_grad += (eigen_out_grad / static_cast<T>(s_count[src]));
         }
-        DenseTensor x_grad_out = phi::Sum<T, Context>(
-            ctx,
-            x_grad_v2,
-            phi::IntArray(reduce_idx),
-            paddle::experimental::CppTypeToDataType<T>::Type(),
-            true);
+        DenseTensor x_grad_out =
+            phi::Sum<T, Context>(ctx,
+                                 x_grad_v2,
+                                 phi::IntArray(reduce_idx),
+                                 phi::CppTypeToDataType<T>::Type(),
+                                 true);
         memcpy(x_grad, x_grad_out.data<T>(), x_grad_out.numel() * sizeof(T));
       }
     } else if (message_op == "MUL") {
@@ -217,12 +217,12 @@ void CalculateXGrad(const Context& ctx,
             x_grad_off[j] += (val / s_count[src]);
           }
         }
-        DenseTensor x_grad_out = phi::Sum<T, Context>(
-            ctx,
-            x_grad_v2,
-            phi::IntArray(reduce_idx),
-            paddle::experimental::CppTypeToDataType<T>::Type(),
-            true);
+        DenseTensor x_grad_out =
+            phi::Sum<T, Context>(ctx,
+                                 x_grad_v2,
+                                 phi::IntArray(reduce_idx),
+                                 phi::CppTypeToDataType<T>::Type(),
+                                 true);
         memcpy(x_grad, x_grad_out.data<T>(), x_grad_out.numel() * sizeof(T));
       }
     }
@@ -232,7 +232,7 @@ void CalculateXGrad(const Context& ctx,
 template <typename T, typename IndexT>
 void CalculateEGrad(const T* out_grad_data,
                     const T* x_data,
-                    const T* e_data,
+                    const T* e_data UNUSED,
                     const phi::DDim& x_dims,
                     const phi::DDim& e_dims,
                     const IndexT* s_index,
@@ -308,7 +308,7 @@ void CalculateXEGradForMinMax(const T* out_grad,
                               const IndexT* s_index,
                               const IndexT* d_index,
                               const std::string& message_op,
-                              const std::string& reduce_op,
+                              const std::string& reduce_op UNUSED,
                               int64_t index_size,
                               T* x_grad,
                               T* e_grad,

@@ -15,9 +15,10 @@
 #include "paddle/fluid/distributed/collective/reducer.h"
 #include "paddle/phi/backends/device_guard.h"
 #include "paddle/phi/backends/device_manager.h"
+#include "paddle/phi/core/flags.h"
 
 DECLARE_bool(use_stream_safe_cuda_allocator);
-DECLARE_string(allocator_strategy);
+PHI_DECLARE_string(allocator_strategy);
 
 namespace paddle {
 namespace distributed {
@@ -77,12 +78,11 @@ std::vector<std::vector<size_t>> Eager_AssignGroupBySize(
 
   // Key: the var type
   // Value: should use which index in group_size_limits for group size limit
-  std::map<experimental::DataType, size_t> group_limit_index;
+  std::map<phi::DataType, size_t> group_limit_index;
 
   // Key: the var type
   // Value: <the var index in input tensors, total numel in this group>
-  std::map<experimental::DataType, std::pair<std::vector<size_t>, size_t>>
-      next_group;
+  std::map<phi::DataType, std::pair<std::vector<size_t>, size_t>> next_group;
 
   for (size_t i = 0; i < tensors.size(); ++i) {
     const auto &var = tensors[i];
@@ -114,7 +114,7 @@ std::vector<std::vector<size_t>> Eager_AssignGroupBySize(
     }
 
     group_info.first.push_back(tensor_real_index);
-    group_info.second += experimental::SizeOf(var_dtype) * var_size;
+    group_info.second += phi::SizeOf(var_dtype) * var_size;
     // group_info.second += framework::SizeOfType(var_dtype) * var_size;
 
     if (group_limit_index.find(var_dtype) == group_limit_index.end()) {
@@ -208,13 +208,18 @@ struct ConcatTensorsForAllReduce<platform::CustomDeviceContext, T> {
             .get();
     uint8_t *out_data = reinterpret_cast<uint8_t *>(out->data<T>());
     auto *device = phi::DeviceManager::GetDeviceWithPlace(context.GetPlace());
+    phi::stream::Stream stream(context.GetPlace(), context.stream());
 
     size_t offset = 0;
     for (const auto &tensor : dense_tensors_) {
       const uint8_t *in_data =
           reinterpret_cast<const uint8_t *>(tensor.data<T>());
       auto sz = tensor.numel() * sizeof(T);
-      device->MemoryCopyD2D(out_data + offset, in_data, sz, nullptr);
+      if (tensor.place().GetType() == phi::AllocationType::CPU) {
+        device->MemoryCopyH2D(out_data + offset, in_data, sz, &stream);
+      } else {
+        device->MemoryCopyD2D(out_data + offset, in_data, sz, &stream);
+      }
       offset += sz;
     }
   }
@@ -230,12 +235,17 @@ struct SplitTensorsForAllReduce<platform::CustomDeviceContext, T> {
             .get();
     uint8_t *in_data = reinterpret_cast<uint8_t *>(in->data<T>());
     auto *device = phi::DeviceManager::GetDeviceWithPlace(context.GetPlace());
+    phi::stream::Stream stream(context.GetPlace(), context.stream());
 
     size_t offset = 0;
     for (auto &tensor : *p_dense_tensors) {
       uint8_t *out_data = reinterpret_cast<uint8_t *>(tensor.data<T>());
       auto sz = tensor.numel() * sizeof(T);
-      device->MemoryCopyD2D(out_data, in_data + offset, sz, nullptr);
+      if (tensor.place().GetType() == phi::AllocationType::CPU) {
+        device->MemoryCopyD2H(out_data, in_data + offset, sz, &stream);
+      } else {
+        device->MemoryCopyD2D(out_data, in_data + offset, sz, &stream);
+      }
       offset += sz;
     }
   }
@@ -820,9 +830,9 @@ void EagerReducer::MarkVarReady(const size_t var_index,
 
   auto &group = groups_[group_index];
   auto &group_tensor = group.dense_tensors_[inside_group_index];
-  const auto length = group.length_[inside_group_index];
 
   if (!group.is_sparse_) {
+    const auto length = group.length_[inside_group_index];
     if (is_used_var) {
       auto *autograd_meta = tensors_[var_index].get_autograd_meta();
       auto &grad_tensor =

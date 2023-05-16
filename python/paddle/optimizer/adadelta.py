@@ -149,12 +149,15 @@ class Adadelta(Optimizer):
             parameters = parameters.get('params')
 
         for p in parameters:
+            if p.name in self._already_create_accumulater:
+                continue
             if self._multi_precision and self._is_dtype_fp16_or_bf16(p.dtype):
                 master_p = self._create_master_weight(p)
                 self._add_accumulator(self._avg_squared_grad_acc_str, master_p)
                 self._add_accumulator(
                     self._avg_squared_update_acc_str, master_p
                 )
+                self._already_create_accumulater.add(p.name)
                 continue
             if (
                 self._is_dtype_fp16_or_bf16(p.dtype)
@@ -166,6 +169,7 @@ class Adadelta(Optimizer):
                 )
             self._add_accumulator(self._avg_squared_grad_acc_str, p)
             self._add_accumulator(self._avg_squared_update_acc_str, p)
+            self._already_create_accumulater.add(p.name)
 
     def _append_optimize_op(self, block, param_and_grad):
         if isinstance(param_and_grad, dict):
@@ -193,6 +197,7 @@ class Adadelta(Optimizer):
                     param_and_grad[1],
                     avg_squared_grad_acc,
                     avg_squared_update_acc,
+                    self._create_param_lr(param_and_grad),
                     master_weight,
                     self._rho,
                     self._epsilon,
@@ -209,6 +214,7 @@ class Adadelta(Optimizer):
                 "Grad": param_and_grad[1],
                 "AvgSquaredGrad": avg_squared_grad_acc,
                 "AvgSquaredUpdate": avg_squared_update_acc,
+                "LearningRate": self._create_param_lr(param_and_grad),
             }
             outputs = {
                 "ParamOut": param_and_grad[0],

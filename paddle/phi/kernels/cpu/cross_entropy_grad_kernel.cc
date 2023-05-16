@@ -30,7 +30,7 @@ void CrossEntropyWithSoftmaxGradCPUKernel(const CPUContext& dev_ctx,
                                           const DenseTensor& loss_grad,
                                           bool soft_label,
                                           bool use_softmax,
-                                          bool numeric_stable_mode,
+                                          bool numeric_stable_mode UNUSED,
                                           int ignore_index,
                                           int axis,
                                           DenseTensor* logits_grad) {
@@ -184,7 +184,7 @@ void CrossEntropyWithSoftmaxGradKernel(const Context& dev_ctx,
   if (soft_label) {
     PADDLE_ENFORCE_EQ(
         dtype,
-        paddle::experimental::CppTypeToDataType<T>::Type(),
+        phi::CppTypeToDataType<T>::Type(),
         phi::errors::InvalidArgument("The Input(Label) should be with the "
                                      "same data type as kernel data type."));
     CrossEntropyWithSoftmaxGradCPUKernel<T, T>(dev_ctx,

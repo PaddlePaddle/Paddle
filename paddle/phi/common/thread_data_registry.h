@@ -44,7 +44,7 @@ class ThreadDataRegistry {
   }
 
   // Returns current snapshot of all threads. Make sure there is no thread
-  // create/destory when using it.
+  // create/destroy when using it.
   template <
       typename Alias = T,
       typename = std::enable_if_t<std::is_copy_constructible<Alias>::value>>
@@ -53,7 +53,7 @@ class ThreadDataRegistry {
   }
 
   // Returns current snapshot of all threads. Make sure there is no thread
-  // create/destory when using it.
+  // create/destroy when using it.
   std::unordered_map<uint64_t, std::reference_wrapper<T>>
   GetAllThreadDataByRef() {
     return impl_->GetAllThreadDataByRef();

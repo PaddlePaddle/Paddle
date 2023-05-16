@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
 
@@ -109,7 +109,7 @@ def batch_box_coder(p_box, pb_v, t_box, lod, code_type, norm, axis=0):
 
 class TestBoxCoderOp(OpTest):
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def setUp(self):
         self.op_type = "box_coder"
@@ -142,7 +142,7 @@ class TestBoxCoderOp(OpTest):
 
 class TestBoxCoderOpWithoutBoxVar(OpTest):
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def setUp(self):
         self.python_api = paddle.vision.ops.box_coder
@@ -176,7 +176,7 @@ class TestBoxCoderOpWithoutBoxVar(OpTest):
 
 class TestBoxCoderOpWithLoD(OpTest):
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def setUp(self):
         self.python_api = paddle.vision.ops.box_coder
@@ -207,7 +207,7 @@ class TestBoxCoderOpWithLoD(OpTest):
 
 class TestBoxCoderOpWithAxis(OpTest):
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def setUp(self):
         self.python_api = paddle.vision.ops.box_coder
@@ -242,15 +242,58 @@ class TestBoxCoderOpWithAxis(OpTest):
         self.outputs = {'OutputBox': output_box}
 
 
+def wrapper_box_coder(
+    prior_box,
+    prior_box_var=None,
+    target_box=None,
+    code_type="encode_center_size",
+    box_normalized=True,
+    axis=0,
+    variance=[],
+):
+    if isinstance(prior_box_var, paddle.Tensor):
+        output_box = paddle._C_ops.box_coder(
+            prior_box,
+            prior_box_var,
+            target_box,
+            code_type,
+            box_normalized,
+            axis,
+            [],
+        )
+    elif isinstance(prior_box_var, list):
+        output_box = paddle._C_ops.box_coder(
+            prior_box,
+            None,
+            target_box,
+            code_type,
+            box_normalized,
+            axis,
+            prior_box_var,
+        )
+    else:
+        output_box = paddle._C_ops.box_coder(
+            prior_box,
+            None,
+            target_box,
+            code_type,
+            box_normalized,
+            axis,
+            variance,
+        )
+    return output_box
+
+
 class TestBoxCoderOpWithVariance(OpTest):
     def test_check_output(self):
         self.check_output()
 
     def setUp(self):
         self.op_type = "box_coder"
+        self.python_api = wrapper_box_coder
         lod = [[1, 1, 1, 1, 1]]
         prior_box = np.random.random((30, 4)).astype('float32')
-        prior_box_var = np.random.random((4)).astype('float32')
+        prior_box_var = np.random.random(4).astype('float32')
         target_box = np.random.random((30, 81, 4)).astype('float32')
         code_type = "DecodeCenterSize"
         box_normalized = False
@@ -282,7 +325,7 @@ class TestBoxCoderOpWithVarianceDygraphAPI(unittest.TestCase):
     def setUp(self):
         self.lod = [[1, 1, 1, 1, 1]]
         self.prior_box = np.random.random((30, 4)).astype('float32')
-        self.prior_box_var = np.random.random((4)).astype('float32')
+        self.prior_box_var = np.random.random(4).astype('float32')
         self.target_box = np.random.random((30, 81, 4)).astype('float32')
         self.code_type = "DecodeCenterSize"
         self.box_normalized = False

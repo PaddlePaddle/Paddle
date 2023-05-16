@@ -53,7 +53,7 @@ __global__ void AssignPos(T* cum_count,
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class AssignPosCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -102,4 +102,6 @@ class AssignPosCUDAKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_CUDA_KERNEL(assign_pos, ops::AssignPosCUDAKernel<int64_t>);
+
+PD_REGISTER_STRUCT_KERNEL(
+    assign_pos, GPU, ALL_LAYOUT, ops::AssignPosCUDAKernel, int64_t) {}

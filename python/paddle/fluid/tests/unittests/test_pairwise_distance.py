@@ -17,15 +17,11 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 def np_pairwise_distance(x, y, p=2.0, epsilon=1e-6, keepdim=False):
     distance = np.linalg.norm(x - y + epsilon, ord=p, axis=-1, keepdims=keepdim)
-    # Paddle currently has not supported for 0-d Tensors, so even if keep_dim is False,
-    # and neither x nor y is batched, a Tensor of shape (1, ) is returned
-    if distance.ndim == 0:
-        distance = np.expand_dims(distance, axis=0)
     return distance
 
 
@@ -58,8 +54,8 @@ def test_static(
     )
     paddle.enable_static()
     with paddle.static.program_guard(prog, startup_prog):
-        x = paddle.fluid.data(name='x', shape=x_np.shape, dtype=x_np.dtype)
-        y = paddle.fluid.data(name='y', shape=y_np.shape, dtype=x_np.dtype)
+        x = paddle.static.data(name='x', shape=x_np.shape, dtype=x_np.dtype)
+        y = paddle.static.data(name='y', shape=y_np.shape, dtype=x_np.dtype)
 
         if functional:
             distance = call_pairwise_distance_functional(

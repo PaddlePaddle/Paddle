@@ -19,7 +19,11 @@ from pathlib import Path
 
 import yaml
 from filters import (
+    assert_dense_or_sr,
     cartesian_prod_mapping,
+    delete_last_underline,
+    find_optinal_inputs_name,
+    get_infer_var_type_func,
     to_composite_grad_opmaker_name,
     to_input_name,
     to_int_array_tensor_name,
@@ -33,10 +37,11 @@ from filters import (
 )
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 from parse_utils import to_named_dict
-from tests import (
+from tests_utils import (
     is_base_op,
     is_composite_op,
     is_initializer_list,
+    is_only_composite_op,
     is_scalar,
     is_vec,
     supports_inplace,
@@ -63,8 +68,12 @@ env.filters["to_opmaker_name_cstr"] = to_opmaker_name_cstr
 env.filters["cartesian_prod_mapping"] = cartesian_prod_mapping
 env.filters["to_composite_grad_opmaker_name"] = to_composite_grad_opmaker_name
 env.filters["to_variable_names"] = to_variable_names
+env.filters["get_infer_var_type_func"] = get_infer_var_type_func
+env.filters["assert_dense_or_sr"] = assert_dense_or_sr
+env.filters["find_optinal_inputs_name"] = find_optinal_inputs_name
 env.tests["base_op"] = is_base_op
 env.tests["composite_op"] = is_composite_op
+env.tests["only_composite_op"] = is_only_composite_op
 env.tests["vec"] = is_vec
 env.tests["scalar"] = is_scalar
 env.tests["initializer_list"] = is_initializer_list
@@ -101,18 +110,12 @@ def process_scalar(op_item, scalar_configs):
                     and scalar_config['support_tensor']
                     else False
                 )
-                if attr_item['is_support_tensor']:
-                    attr_item['typename'] = (
-                        scalar_config['data_type']
-                        if 'data_type' in scalar_config
-                        else scalar_map[attr_type]
-                    )
-                else:
-                    attr_item['data_type'] = (
-                        scalar_config['data_type']
-                        if 'data_type' in scalar_config
-                        else scalar_map[attr_type]
-                    )
+                attr_item['data_type'] = (
+                    scalar_config['data_type']
+                    if 'data_type' in scalar_config
+                    else scalar_map[attr_type]
+                )
+                if attr_item['is_support_tensor'] is False:
                     attr_item['tensor_name'] = scalar_config['tensor_name']
 
 
@@ -136,19 +139,12 @@ def process_int_array(op_item, int_array_configs):
                     and int_array_config['support_tensor']
                     else False
                 )
-                if attr_item['is_support_tensor']:
-                    attr_item['typename'] = (
-                        'int[]'
-                        if 'data_type' in int_array_config
-                        and int_array_config['data_type'] == 'int'
-                        else 'int64_t[]'
-                    )
-                else:
-                    attr_item['data_type'] = (
-                        data_type_map[int_array_config['data_type']]
-                        if 'data_type' in int_array_config
-                        else 'std::vector<int64_t>'
-                    )
+                attr_item['data_type'] = (
+                    data_type_map[int_array_config['data_type']]
+                    if 'data_type' in int_array_config
+                    else 'std::vector<int64_t>'
+                )
+                if attr_item['is_support_tensor'] is False:
                     attr_item['manual_flag'] = True
                     if 'tensor_name' in int_array_config:
                         attr_item['tensor_name'] = int_array_config[
@@ -170,6 +166,16 @@ def add_composite_info(ops, backward_ops, backward_op_dict):
             op["backward_composite"] = op["backward"]
         else:
             op["backward_composite"] = None
+
+        # add whether only composite
+        if (
+            op["backward_composite"] is not None
+            and "invoke" not in backward_op_dict[op["backward"]]
+            and "kernel" not in backward_op_dict[op["backward"]]
+        ):
+            op["only_backward_composite"] = True
+        else:
+            op["only_backward_composite"] = False
 
 
 # add fluid name in ops and backward ops info
@@ -254,6 +260,9 @@ def add_compat_name(op_fluid_map_list, forward_op_dict, backward_op_dict):
                 for param in op_item['invoke']['args'].split(',')
             ]
             return
+        elif 'composite' in op_item and 'kernel' not in op_item:
+            return
+
         op_item['infer_meta']['param'] = get_param_list_alias(
             op_item['infer_meta']['param'], args_name_map
         )
@@ -460,16 +469,16 @@ def process_invoke_op(forward_op_dict, backward_op_dict):
 
 
 def parse_drop_empty_grad(op_fluid_list: list, bw_op_dict: dict):
-    for op_op in op_fluid_list:
-        if 'drop_empty_grad' in op_op:
+    for op_comp_map in op_fluid_list:
+        if 'drop_empty_grad' in op_comp_map:
             bw_names = [
                 bw_name.split('(')[0].strip()
-                for bw_name in op_op['backward'].split(',')
+                for bw_name in op_comp_map['backward'].split(',')
             ]
             for bw_name in bw_names:
                 # static_ops.yaml and ops.yaml use the common op_compat.yaml
                 if bw_name in bw_op_dict:
-                    for out_grad in op_op['drop_empty_grad']:
+                    for out_grad in op_comp_map['drop_empty_grad']:
                         assert (
                             out_grad in bw_op_dict[bw_name]['output_dict']
                         ), f'''
@@ -477,6 +486,60 @@ def parse_drop_empty_grad(op_fluid_list: list, bw_op_dict: dict):
                         bw_op_dict[bw_name]['output_dict'][out_grad][
                             'drop_empty_grad'
                         ] = False
+
+
+def parse_get_expected_kerneltype(
+    op_fluid_list: list, fw_op_dict: dict, bw_op_dict: dict
+):
+    for op_comp_map in op_fluid_list:
+        if 'get_expected_kernel_type' in op_comp_map:
+            fw_name = op_comp_map['op'].split('(')[0].strip()
+            # deal the last underline of function name in op_comp_map['get_expected_kernel_type']
+            new_get_expected_kernel_type_func_map = {}
+            for (key, value) in op_comp_map['get_expected_kernel_type'].items():
+                new_get_expected_kernel_type_func_map[
+                    delete_last_underline(key)
+                ] = value
+            op_comp_map[
+                'get_expected_kernel_type'
+            ] = new_get_expected_kernel_type_func_map
+            if fw_name in op_comp_map['get_expected_kernel_type']:
+                # static_ops.yaml and ops.yaml use the common op_compat.yaml
+                if fw_name in fw_op_dict:
+                    fw_op_dict[fw_name][
+                        "get_expected_kernel_type"
+                    ] = op_comp_map['get_expected_kernel_type'][fw_name]
+            if "backward" in op_comp_map:
+                bw_names = [
+                    bw_name.split('(')[0].strip()
+                    for bw_name in op_comp_map['backward'].split(',')
+                ]
+                for bw_name in bw_names:
+                    # static_ops.yaml and ops.yaml use the common op_compat.yaml
+                    if (
+                        bw_name in bw_op_dict
+                        and bw_name in op_comp_map['get_expected_kernel_type']
+                    ):
+                        bw_op_dict[bw_name][
+                            "get_expected_kernel_type"
+                        ] = op_comp_map['get_expected_kernel_type'][bw_name]
+
+
+def parse_keep_signature(
+    op_fluid_list: list, fw_op_dict: dict, bw_op_dict: dict
+):
+    for op_comp_map in op_fluid_list:
+        if 'manual_signature' in op_comp_map:
+            for op_name in op_comp_map['manual_signature']:
+                op_name_without_last_underline = delete_last_underline(op_name)
+                if op_name_without_last_underline in fw_op_dict:
+                    fw_op_dict[op_name_without_last_underline][
+                        "manual_signature"
+                    ] = True
+                elif op_name_without_last_underline in bw_op_dict:
+                    bw_op_dict[op_name_without_last_underline][
+                        "manual_signature"
+                    ] = True
 
 
 def split_ops_list(ops, backward_op_dict, split_num):
@@ -502,6 +565,20 @@ def split_ops_list(ops, backward_op_dict, split_num):
     return new_ops_list, new_bw_ops_list
 
 
+def to_phi_and_fluid_op_name_without_underline(op_item):
+    '''
+    If the op_name ends with '_', delete the last '_'. For an example, 'sgd_' becomes 'sgd
+    '''
+    names = op_item.split('(')
+    if len(names) == 1:
+        op_kernel_name = delete_last_underline(names[0].strip())
+        return op_kernel_name
+    else:
+        op_name = delete_last_underline(names[0].strip())
+        kernel_name = delete_last_underline(names[1].split(')')[0].strip())
+        return op_name + '(' + kernel_name + ')'
+
+
 def main(
     ops_yaml_path,
     backward_yaml_path,
@@ -513,11 +590,11 @@ def main(
     with open(ops_yaml_path, "rt") as f:
         ops = yaml.safe_load(f)
         ops = [restruct_io(op) for op in ops]
-    forward_op_dict = to_named_dict(ops)
+    forward_op_dict = to_named_dict(ops, True)
     with open(backward_yaml_path, "rt") as f:
         backward_ops = yaml.safe_load(f)
         backward_ops = [restruct_io(op) for op in backward_ops]
-    backward_op_dict = to_named_dict(backward_ops)
+    backward_op_dict = to_named_dict(backward_ops, True)
     with open(op_version_yaml_path, "rt") as f:
         op_versions = yaml.safe_load(f)
     # add op version info into op
@@ -527,6 +604,10 @@ def main(
 
     with open(op_compat_yaml_path, "rt") as f:
         op_fluid_map_list = yaml.safe_load(f)
+        for op_args in op_fluid_map_list:
+            op_args["op"] = to_phi_and_fluid_op_name_without_underline(
+                op_args["op"]
+            )
 
     for op in ops:
         op['op_name'] = op['name']
@@ -546,6 +627,12 @@ def main(
 
     # deal the drop_empty_grad of bw_op by op_compat.yaml
     parse_drop_empty_grad(op_fluid_map_list, backward_op_dict)
+
+    parse_get_expected_kerneltype(
+        op_fluid_map_list, forward_op_dict, backward_op_dict
+    )
+
+    parse_keep_signature(op_fluid_map_list, forward_op_dict, backward_op_dict)
 
     add_composite_info(ops, backward_ops, backward_op_dict)
 

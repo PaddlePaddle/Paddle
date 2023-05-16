@@ -149,7 +149,7 @@ void FetchAsyncOpHandle::FetchMergedLodTensor(
     phi::DenseTensor *dst_lodtensor) {
   // calc dst type,layout,dim,lod and calc check dim
   proto::VarType::Type new_type = proto::VarType::FP32;
-  phi::DataLayout new_layout;
+  phi::DataLayout new_layout = phi::DataLayout::UNDEFINED;
   framework::DDim new_dim;
   LoD new_lod = src_lodtensors[0]->lod();
 
@@ -203,7 +203,7 @@ void FetchAsyncOpHandle::FetchMergedLodTensor(
   }
 
   // slice and memcpy
-  // for 0D tensor, can't concat eath tensor, stack them. for 1+D tensor, concat
+  // for 0D tensor, can't concat each tensor, stack them. for 1+D tensor, concat
   // them
   int begin = 0;
   int end = 0;

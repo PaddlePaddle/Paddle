@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/cpu/index_select_impl.h"
 #include "paddle/phi/kernels/repeat_interleave_grad_kernel.h"
@@ -91,22 +92,18 @@ void RepeatInterleaveWithTensorIndexGradKernel(
                         repeats_tensor.dims()[0],
                         x_grad->dims()[dim]));
 
-  const auto& index_type =
-      paddle::framework::TransToProtoVarType(repeats_tensor.dtype());
+  const auto& index_type = repeats_tensor.dtype();
 
   bool index_type_match =
-      index_type == paddle::framework::proto::VarType::INT32 ||
-      index_type == paddle::framework::proto::VarType::INT64;
+      index_type == DataType::INT32 || index_type == DataType::INT64;
   PADDLE_ENFORCE_EQ(index_type_match,
                     true,
                     phi::errors::InvalidArgument(
                         "Input(Repeats) holds the wrong type, it holds %s, but "
                         "desires to be %s or %s",
-                        paddle::framework::DataTypeToString(index_type),
-                        paddle::framework::DataTypeToString(
-                            paddle::framework::proto::VarType::INT32),
-                        paddle::framework::DataTypeToString(
-                            paddle::framework::proto::VarType::INT64)));
+                        DataTypeToString(index_type),
+                        DataTypeToString(DataType::INT32),
+                        DataTypeToString(DataType::INT64)));
 #if defined(__NVCC__) || defined(__HIPCC__)
 
   auto output_dim = out_grad.dims();
@@ -126,7 +123,7 @@ void RepeatInterleaveWithTensorIndexGradKernel(
          0,
          stream>>>(in_grad_data, numel);
 
-  if (index_type == paddle::framework::proto::VarType::INT64) {
+  if (index_type == DataType::INT64) {
     phi::funcs::RepeatsTensor2IndexTensor<Context, int64_t>(
         ctx, repeats_tensor, &index);
     int64_t index_nums = index.numel();

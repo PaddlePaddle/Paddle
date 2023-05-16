@@ -20,6 +20,7 @@ void BmmKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const DenseTensor& y,
                DenseTensor* out) {
+  using XPUT = typename XPUTypeTrait<T>::Type;
   dev_ctx.template Alloc<T>(out);
   if (x.numel() == 0 || y.numel() == 0) {
     return;
@@ -62,16 +63,15 @@ void BmmKernel(const Context& dev_ctx,
           y_dims[1]));
 
   xpu::Context* xpu_ctx = dev_ctx.x_context();
-  if (std::is_same<phi::dtype::float16, T>::value) {
-    MatMulXPUFunction<T, int16_t>(x, y, out, trans_x, trans_y, xpu_ctx);
+  int fccal_type = FCCalcType<XPUT>();
+  if (fccal_type == XPUFCCalcType::FC_INT32) {
+    MatMulXPUFunction<T, int32_t>(x, y, out, trans_x, trans_y, xpu_ctx);
+  } else if (fccal_type == XPUFCCalcType::FC_FLOAT) {
+    MatMulXPUFunction<T, float>(x, y, out, trans_x, trans_y, xpu_ctx);
+  } else if (fccal_type == XPUFCCalcType::FC_INT32_WITH_LL) {
+    MatMulXPUFunction<T, int_with_ll_t>(x, y, out, trans_x, trans_y, xpu_ctx);
   } else {
-    if (std::getenv("XPU_PADDLE_FC_INT32") != nullptr) {
-      MatMulXPUFunction<T, int32_t>(x, y, out, trans_x, trans_y, xpu_ctx);
-    } else if (std::getenv("XPU_PADDLE_FC_LOCAL_INT16") != nullptr) {
-      MatMulXPUFunction<T, float>(x, y, out, trans_x, trans_y, xpu_ctx);
-    } else {
-      MatMulXPUFunction<T, int16_t>(x, y, out, trans_x, trans_y, xpu_ctx);
-    }
+    MatMulXPUFunction<T, int16_t>(x, y, out, trans_x, trans_y, xpu_ctx);
   }
 }
 }  // namespace phi

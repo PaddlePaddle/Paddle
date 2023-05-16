@@ -14,17 +14,33 @@
 
 #include "paddle/phi/core/compat/get_kerneltype_forvar_utils.h"
 
+#include "paddle/phi/core/enforce.h"
 namespace phi {
 
 const std::string& GetKernelTypeForVarContext::GetVarName(void) const {
+  PADDLE_ENFORCE_NE(
+      var_name_,
+      nullptr,
+      errors::InvalidArgument(
+          "Variable name is null. The context hasn't been initialized. "));
   return *var_name_;
 }
 
 const DenseTensor& GetKernelTypeForVarContext::GetTensor(void) const {
+  PADDLE_ENFORCE_NE(
+      tensor_,
+      nullptr,
+      errors::InvalidArgument(
+          "Tensor is null. The context hasn't been initialized. "));
   return *tensor_;
 }
 
 const KernelKey& GetKernelTypeForVarContext::GetKernelKey(void) const {
+  PADDLE_ENFORCE_NE(
+      kernel_key_,
+      nullptr,
+      errors::InvalidArgument(
+          "Kernel key is null. The context hasn't been initialized. "));
   return *kernel_key_;
 }
 

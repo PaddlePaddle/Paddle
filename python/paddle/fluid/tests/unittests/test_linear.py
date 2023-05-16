@@ -17,9 +17,9 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid.core as core
 import paddle.nn.functional as F
 from paddle import fluid
+from paddle.fluid import core
 
 
 class LinearTestCase(unittest.TestCase):
@@ -27,7 +27,7 @@ class LinearTestCase(unittest.TestCase):
         self.dtype = 'float32'
         self.input = np.ones((3, 1, 2)).astype(self.dtype)
         self.weight = np.ones((2, 2)).astype(self.dtype)
-        self.bias = np.ones((2)).astype(self.dtype)
+        self.bias = np.ones(2).astype(self.dtype)
         self.place = (
             paddle.CUDAPlace(0)
             if core.is_compiled_with_cuda()

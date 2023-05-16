@@ -60,9 +60,6 @@ void TransformData(const phi::KernelKey &expected_kernel_type,
       if (lin != DataLayout::ONEDNN && lout == DataLayout::ONEDNN) {
         // Case1 - transform from Non-ONEDNN OPKernel to ONEDNN OPKernel
         // Just set layout/format. No real transform occur
-
-        auto out_format = phi::funcs::OneDNNFormatForSize(
-            in.dims().size(), phi::funcs::ToOneDNNFormat(lin));
         out.ShareDataWith(input_tensor);
         // For NHWC data we need reshape of tensors as MKL-DNN
         // is expecting NHWC dims description order
@@ -72,10 +69,9 @@ void TransformData(const phi::KernelKey &expected_kernel_type,
           // NHWC or NCHW
           phi::OneDNNContext::tls().set_cur_paddle_data_layout(lin);
         }
-        dnnl::memory::desc out_mem_desc(
-            vectorize(out.dims()),
-            phi::funcs::ToOneDNNDataType(in.dtype()),
-            out_format);
+
+        dnnl::memory::desc out_mem_desc =
+            phi::funcs::make_memory_desc(out, lin);
         out.set_mem_desc(out_mem_desc);
       } else {
         // Case2 - transfrom from ONEDNN OPKernel to Non-ONEDNN OPKernel
@@ -161,7 +157,7 @@ phi::GetKernelTypeForVarContext BuildGetKernelTypeForVarContext(
     const AttributeMap &fluid_attrs,
     phi::AttributeMap *phi_attrs,
     bool has_infer_varkernel_fn) {
-  // According to "GetKernelTypeForVar" in some ops those have MKLDNN codes,
+  // According to "GetKernelTypeForVar" in some ops executed with oneDNN,
   // the only "string" member, such as "data_layout" 、"data_format" of
   // AttibuteMap is useful. In the future the other args maybe used. Because the
   // "phi" module should not depend on the "fluid", transform

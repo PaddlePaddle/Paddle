@@ -17,7 +17,7 @@ import unittest
 
 import numpy as np
 
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.io import DataLoader, IterableDataset, get_worker_info
 
 

@@ -18,9 +18,10 @@
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
+#include "paddle/phi/core/flags.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-DECLARE_bool(sync_nccl_allreduce);
+PHI_DECLARE_bool(sync_nccl_allreduce);
 #endif
 
 namespace paddle {
@@ -135,7 +136,7 @@ void AllReduceOpHandle::AllReduceImpl(
 
     if (i == 0) {
       numel = static_cast<int64_t>(lod_tensor.numel());
-      // only enforce place0, we will enforce other palce numel == place0 numel
+      // only enforce place0, we will enforce other place numel == place0 numel
       PADDLE_ENFORCE_GT(
           numel,
           0,

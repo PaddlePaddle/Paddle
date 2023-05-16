@@ -493,34 +493,6 @@ def _to_name_str(var):
         return _to_str(var)
 
 
-def _is_enable_standalone_executor():
-    return (
-        framework._enable_standalone_executor_ is None
-        or framework._enable_standalone_executor_
-        in [1, '1', True, 'True', 'true']
-    )
-
-
-def _is_dy2st_enable_standalone_executor():
-    return framework._dy2st_enable_standalone_executor_ in [
-        1,
-        '1',
-        True,
-        'True',
-        'true',
-    ]
-
-
-def _is_cuda_graph_enable_standalone_executor():
-    return framework._cuda_graph_enable_standalone_executor_ in [
-        1,
-        '1',
-        True,
-        'True',
-        'true',
-    ]
-
-
 def _prepare_fleet_executor():
     from ..distributed.fleet.proto import fleet_executor_desc_pb2
 
@@ -608,7 +580,7 @@ def _as_lodtensor(data, place, dtype=None):
             else dtype
         )
         if np.isscalar(data):
-            data = np.array([data]).astype(dtype)
+            data = np.array(data).astype(dtype)
         elif isinstance(data, (list, tuple)):
             data = np.array(data)
             if data.dtype == np.object_:
@@ -871,8 +843,8 @@ class _ExecutorCache:
             ir_graph = framework.IrGraph(compiled_program._graph)
             converted_program = ir_graph.to_program()
 
-            if hasattr(inner_program, 'lr_sheduler'):
-                converted_program.lr_sheduler = inner_program.lr_sheduler
+            if hasattr(inner_program, 'lr_scheduler'):
+                converted_program.lr_scheduler = inner_program.lr_scheduler
 
             inner_program = converted_program
             # print(f"Program after convert:\n {inner_program}", flush=True)
@@ -991,6 +963,7 @@ class Executor:
         self.ctx_caches = dict()
         self.trainer_caches = dict()
         self.scope_caches = dict()
+        self.micro_scope_cache = dict()
         self.var_caches = dict()
         self.pruned_program_caches = dict()
         p = core.Place()
@@ -1004,8 +977,6 @@ class Executor:
             "__auto_checkpoint_executor__"
         )
 
-        # NOTE: Whether to use experimental executor `StandaloneExecutor`.
-        self._enable_interpreter_core = _is_enable_standalone_executor()
         self._executor_cache = _ExecutorCache()
 
         self._fleet_executor = None
@@ -1061,6 +1032,12 @@ class Executor:
 
     def _add_scope_cache(self, scope_cache_key, scope):
         self.scope_caches[scope_cache_key] = scope
+
+    def _add_micro_scopes_cache(self, program_cache_key, micro_scopes: list):
+        self.micro_scope_cache[program_cache_key] = micro_scopes
+
+    def _get_micro_scopes_cache(self, program_cache_key):
+        return self.micro_scope_cache.get(program_cache_key, None)
 
     # just for testing, will be removed later
     @lru_cache()
@@ -1295,81 +1272,6 @@ class Executor:
                 del trainer_instance
             self._default_executor.close()
 
-    def _run_parallel(
-        self, program, scope, feed, fetch_list, fetch_var_name, return_numpy
-    ):
-        from paddle.optimizer.lr import LRScheduler
-
-        exe = program._executor
-        # TODO(zhenghuihuang): quantization uses Graph in CompiledProgram
-        # instead of program. We will add support for checking Vars in Graph
-        need_check_feed = program._program is not None
-        if need_check_feed:
-            global_block = program._program.global_block()
-        if isinstance(feed, dict):
-            feed_tensor_dict = dict()
-            for feed_name in feed:
-                feed_tensor = feed[feed_name]
-                var = global_block.var(feed_name) if need_check_feed else None
-                if not isinstance(feed_tensor, core.LoDTensor):
-                    # always set to CPU place, since the tensor need to be split
-                    # it is fast in CPU
-                    feed_tensor = _as_lodtensor(
-                        feed[feed_name],
-                        core.CPUPlace(),
-                        var.dtype if var else None,
-                    )
-                if need_check_feed:
-                    check_feed_shape_type(var, feed_tensor, exe.device_count())
-                feed_tensor_dict[feed_name] = feed_tensor
-            exe.feed_and_split_tensor_into_local_scopes(feed_tensor_dict)
-
-        elif isinstance(feed, list) or isinstance(feed, tuple):
-            res = list()
-            for i, each in enumerate(feed):
-                if not isinstance(each, dict):
-                    raise TypeError(
-                        "Each element of feed list should be a dict"
-                    )
-                res_dict = dict()
-                for feed_name in each:
-                    tensor = each[feed_name]
-                    var = (
-                        global_block.var(feed_name) if need_check_feed else None
-                    )
-                    if not isinstance(tensor, core.LoDTensor):
-                        tensor = _as_lodtensor(
-                            each[feed_name],
-                            program._places[i],
-                            var.dtype if var else None,
-                        )
-                    if need_check_feed:
-                        check_feed_shape_type(var, tensor)
-                    res_dict[feed_name] = tensor
-                res.append(res_dict)
-
-            exe.feed_tensors_into_local_scopes(res)
-
-        if hasattr(program._program, 'lr_sheduler'):
-            lr_sheduler = program._program.lr_sheduler
-            assert isinstance(lr_sheduler, LRScheduler), "must be LRScheduler"
-            lr_value = lr_sheduler()
-            lr_var = program._program.global_block().vars[lr_sheduler._var_name]
-            lr_tensor = _as_lodtensor(lr_value, core.CPUPlace(), lr_var.dtype)
-            if core.is_cuda_graph_capturing():
-                warnings.warn(
-                    "Caution!!! When capturing CUDA Graph, the learning rate scheduler would not "
-                    "take any effect! Please set the learning rate manually before each batch!"
-                )
-            else:
-                exe.feed_and_split_tensor_into_local_scopes(
-                    {lr_sheduler._var_name: lr_tensor}
-                )
-
-        fetch_var_names = list(map(_to_name_str, fetch_list))
-        tensors = exe.run(fetch_var_names, True)._move_to_list()
-        return as_numpy(tensors) if return_numpy else tensors
-
     def run(
         self,
         program=None,
@@ -1572,6 +1474,7 @@ class Executor:
                     feed=feed,
                     fetch_list=fetch_list,
                     with_standalone_executor=self._fleet_executor_with_standalone,
+                    return_numpy=return_numpy,
                 )
             if "startup_program" in program._pipeline_opt:
                 program = program._pipeline_opt["startup_program"]
@@ -1660,9 +1563,6 @@ class Executor:
             program = pruned_program
 
         def _can_use_interpreter_core(program, place):
-            if core.is_compiled_with_mlu():
-                return False
-
             compiled = isinstance(
                 program, compiler.CompiledProgram
             ) or isinstance(program._graph, compiler.CompiledProgram)
@@ -1673,23 +1573,7 @@ class Executor:
                     else program._graph
                 )
 
-                # Unsupported case 1: data parallel
-                if (
-                    compiled_program._is_data_parallel
-                    and len(
-                        compiled_program._get_places(
-                            place, compiled_program._places
-                        )
-                    )
-                    != 1
-                ):
-                    warnings.warn(
-                        "Standalone executor is not used for data parallel",
-                        UserWarning,
-                    )
-                    return False
-
-                # Unsupported case 2: inference
+                # Unsupported case 1: inference
                 if compiled_program._is_inference:
                     warnings.warn(
                         "Standalone executor is not used for inference",
@@ -1697,33 +1581,9 @@ class Executor:
                     )
                     return False
 
-                # Unsupported case 3: async mode
-                if (
-                    compiled_program._build_strategy is not None
-                    and compiled_program._build_strategy.async_mode
-                ):
-                    warnings.warn(
-                        "Standalone executor is not used for async mode",
-                        UserWarning,
-                    )
-                    return False
-
-                # Unsupported case 4: CUDA Graph
-                if (
-                    compiled_program._build_strategy is not None
-                    and compiled_program._build_strategy.allow_cuda_graph_capture
-                    and not _is_cuda_graph_enable_standalone_executor()
-                ):
-                    warnings.warn(
-                        "Standalone executor is not used for CUDA Graph when FLAGS_CUDA_GRAPH_USE_STANDALONE_EXECUTOR=0",
-                        UserWarning,
-                    )
-                    return False
             return True
 
-        if self._enable_interpreter_core and _can_use_interpreter_core(
-            program, self.place
-        ):
+        if _can_use_interpreter_core(program, self.place):
 
             if feed is None:
                 feed = {}
@@ -1737,6 +1597,29 @@ class Executor:
                 )
             feed = self._update_feed(program, feed)
 
+            stored_flag = {}
+            if isinstance(program, compiler.CompiledProgram) or isinstance(
+                program._graph, compiler.CompiledProgram
+            ):
+                compiled_program = (
+                    program
+                    if isinstance(program, compiler.CompiledProgram)
+                    else program._graph
+                )
+                build_strategy = compiled_program._build_strategy
+                if build_strategy is not None and build_strategy.sequential_run:
+                    schedule_flag = [
+                        'FLAGS_new_executor_serial_run',
+                        'FLAGS_new_executor_sequential_run',
+                    ]
+                    for flag in schedule_flag:
+                        value = os.getenv(flag, False)
+                        if isinstance(value, str):
+                            value = value.lower()
+                            value = True if value == 'true' else False
+                        stored_flag[flag] = bool(value)
+                    set_flags({f: True for f in schedule_flag})
+
             program, new_exe = self._executor_cache.get_program_and_executor(
                 program,
                 feed,
@@ -1748,17 +1631,17 @@ class Executor:
             )
 
             self._feed_data(program, feed, feed_var_name, scope)
-            if hasattr(program, 'lr_sheduler'):
+            if hasattr(program, 'lr_scheduler'):
                 from paddle.optimizer.lr import LRScheduler
 
                 assert isinstance(
-                    program.lr_sheduler, LRScheduler
+                    program.lr_scheduler, LRScheduler
                 ), "must be LRScheduler"
-                lr_sheduler = program.lr_sheduler
-                lr_value = lr_sheduler()
-                lr_var = program.global_block().vars[lr_sheduler._var_name]
+                lr_scheduler = program.lr_scheduler
+                lr_value = lr_scheduler()
+                lr_var = program.global_block().vars[lr_scheduler._var_name]
                 data = np.array([lr_value]).astype(convert_dtype(lr_var.dtype))
-                tensor = core.get_variable_tensor(scope, lr_sheduler._var_name)
+                tensor = core.get_variable_tensor(scope, lr_scheduler._var_name)
                 # NOTE(dev): `tensor.set(data, self.place)` always call TensorCopySync that is a blocking behavior. So we use `_copy_from` to replace it.
                 cpu_tensor = _as_lodtensor(data, core.CPUPlace())
                 if core.is_cuda_graph_capturing():
@@ -1772,13 +1655,15 @@ class Executor:
                 else:
                     tensor._copy_from(cpu_tensor, self.place)
 
-            return new_exe.run(
+            ret = new_exe.run(
                 scope, list(feed.keys()), fetch_list, return_numpy
             )
+            set_flags(stored_flag)
+            return ret
 
         compiled = isinstance(program, compiler.CompiledProgram)
 
-        # Check if fluid.data() variable no feed data
+        # Check if paddle.static.data() variable no feed data
         if use_prune:
             if compiled:
                 global_block = program._program.global_block()
@@ -1801,156 +1686,11 @@ class Executor:
 
         acp._auto_checkpoint(self, program)
 
-        # For backward compatibility, run directly.
-        if not compiled:
-            # In distributed training, the compiled program is saved in Program._graph
-            has_compiled_graph = isinstance(
-                program._graph, compiler.CompiledProgram
-            )
-
-            if has_compiled_graph:
-                program._graph._compile(scope, self.place)
-                # _graph in program does not support inference since the _graph is optimized
-                # through optimizer.minimize function and should not be used as inference graph
-                # assert not program._graph._is_inference
-                return self._run_parallel(
-                    program._graph,
-                    scope=scope,
-                    feed=feed,
-                    fetch_list=fetch_list,
-                    fetch_var_name=fetch_var_name,
-                    return_numpy=return_numpy,
-                )
-
-            return self._run_program(
-                program,
-                feed=feed,
-                fetch_list=fetch_list,
-                feed_var_name=feed_var_name,
-                fetch_var_name=fetch_var_name,
-                scope=scope,
-                return_numpy=return_numpy,
-                use_program_cache=use_program_cache,
-            )
-
         program._compile(scope, self.place)
-        if program._is_inference:
-            return self._run_inference(program._executor, feed)
-        else:
-            return self._run_parallel(
-                program,
-                scope=scope,
-                feed=feed,
-                fetch_list=fetch_list,
-                fetch_var_name=fetch_var_name,
-                return_numpy=return_numpy,
-            )
-
-    def _run_program(
-        self,
-        program,
-        feed,
-        fetch_list,
-        feed_var_name,
-        fetch_var_name,
-        scope,
-        return_numpy,
-        use_program_cache,
-    ):
-        from paddle.optimizer.lr import LRScheduler
-
-        if feed is None:
-            feed = {}
-        elif isinstance(feed, (list, tuple)):
-            assert len(feed) == 1, "Not compiled with data parallel"
-            feed = feed[0]
-
-        if not isinstance(feed, dict):
-            raise TypeError(
-                "feed requires dict as its Parameter. But you passed in %s"
-                % (type(feed))
-            )
-
-        assert program is not None, "The program should not be Empty"
-        if not isinstance(program, Program):
-            raise TypeError(
-                "Executor requires Program as its Parameter. But you passed in %s"
-                % (type(program))
-            )
-
-        if not isinstance(fetch_var_name, str):
-            raise TypeError(
-                "The name of fetch variable requires string as its Parameter. But you passed in %s"
-                % (type(fetch_var_name))
-            )
-
-        if use_program_cache:
-            cache_key = _get_strong_program_cache_key(program, feed, fetch_list)
-            cached_program = self._get_program_cache(cache_key)
-            cached_ctx = self._get_ctx_cache(cache_key)
-            cached_scope = self._get_scope_cache(cache_key)
-            if cached_program is None:
-                cached_program = _add_feed_fetch_ops(
-                    program=program,
-                    feed=feed,
-                    fetch_list=fetch_list,
-                    feed_var_name=feed_var_name,
-                    fetch_var_name=fetch_var_name,
-                )
-                self._add_program_cache(cache_key, cached_program)
-                fetch_list_str = list(map(_to_name_str, fetch_list))
-                cached_ctx = self._default_executor.prepare(
-                    cached_program.desc, 0, fetch_list_str, False
-                )
-                # currently, we cache program, vars, sub_scope here
-                # we suppose that in a life cycle of training, a user
-                # will not create many programs. So, here the basic
-                # rule of caching is to cache all unseen (program, var, scope)
-                # when a user use use_program_cache.
-                cached_scope = scope.new_scope()
-                self._default_executor.create_variables(
-                    cached_program.desc, cached_scope, 0
-                )
-                self._add_ctx_cache(cache_key, cached_ctx)
-                self._add_scope_cache(cache_key, cached_scope)
-            program = cached_program
-            ctx = cached_ctx
-            scope = cached_scope
-        else:
-            program = _add_feed_fetch_ops(
-                program=program,
-                feed=feed,
-                fetch_list=fetch_list,
-                feed_var_name=feed_var_name,
-                fetch_var_name=fetch_var_name,
-            )
-
-        self._feed_data(program, feed, feed_var_name, scope)
-        if hasattr(program, 'lr_sheduler'):
-            assert isinstance(
-                program.lr_sheduler, LRScheduler
-            ), "must be LRScheduler"
-            lr_sheduler = program.lr_sheduler
-            lr_value = lr_sheduler()
-            lr_var = program.global_block().vars[lr_sheduler._var_name]
-            data = np.array([lr_value]).astype(convert_dtype(lr_var.dtype))
-            tensor = core.get_variable_tensor(scope, lr_sheduler._var_name)
-            tensor.set(data, self.place)
-
-        if not use_program_cache:
-            self._default_executor.run(
-                program.desc, scope, 0, True, True, [fetch_var_name]
-            )
-        else:
-            self._default_executor.run_prepared_ctx(
-                ctx, scope, False, False, False
-            )
-        arr = scope.find_var(fetch_var_name).get_fetch_list()
-        tensors = arr._move_to_list()
-        if return_numpy:
-            return as_numpy(tensors)
-        else:
-            return tensors
+        assert (
+            program._is_inference
+        ), f"Program must have _is_inference = True, but get {program._is_inference}"
+        return self._run_inference(program._executor, feed)
 
     def _run_inference(self, exe, feed):
         return exe.run(feed)
@@ -2248,14 +1988,9 @@ class Executor:
             for var in program.global_block().vars.values():
                 if var.is_data:
                     data_vars.append(var)
-            if core.is_compiled_with_npu():
-                dataset = paddle.fluid.DatasetFactory().create_dataset(
-                    'InMemoryDataset'
-                )
-            else:
-                dataset = paddle.fluid.DatasetFactory().create_dataset(
-                    'FileInstantDataset'
-                )
+            dataset = paddle.fluid.DatasetFactory().create_dataset(
+                'FileInstantDataset'
+            )
             dataset.set_batch_size(1)
             dataset.set_thread(1)
             dataset.set_filelist(['None'])
@@ -2425,14 +2160,9 @@ class Executor:
             for var in program.global_block().vars.values():
                 if var.is_data:
                     data_vars.append(var)
-            if core.is_compiled_with_npu():
-                dataset = paddle.fluid.DatasetFactory().create_dataset(
-                    'InMemoryDataset'
-                )
-            else:
-                dataset = paddle.fluid.DatasetFactory().create_dataset(
-                    'FileInstantDataset'
-                )
+            dataset = paddle.fluid.DatasetFactory().create_dataset(
+                'FileInstantDataset'
+            )
             dataset.set_batch_size(1)
             dataset.set_thread(1)
             dataset.set_filelist(['None'])
@@ -2608,13 +2338,25 @@ class Executor:
         fetch_var_name="fetch",
         fetch_list=None,
         with_standalone_executor=False,
+        return_numpy=True,
     ):
         cache_key = _get_strong_program_cache_key(program, feed, fetch_list)
         cached_program = self._get_program_cache(cache_key)
         cached_scope = self._get_scope_cache(cache_key)
+        micro_cached_scopes = self._get_micro_scopes_cache(cache_key)
+        fleet_opt = program._pipeline_opt["fleet_opt"]
         if cached_scope is None:
             cached_scope = global_scope()
             self._add_scope_cache(cache_key, cached_scope)
+        if micro_cached_scopes is None:
+            micro_cached_scopes = []
+            if (
+                "inference_generation" in fleet_opt
+                and fleet_opt["inference_generation"]
+            ):
+                for _ in range(int(fleet_opt["num_micro_batches"])):
+                    micro_cached_scopes.append(cached_scope.new_scope())
+                self._add_micro_scopes_cache(cache_key, micro_cached_scopes)
         if cached_program is None:
             assert (
                 program._pipeline_opt
@@ -2692,7 +2434,7 @@ class Executor:
                 program=cached_program,
                 scope=cached_scope,
                 fleet_opt=fleet_opt,
-                micro_scope_list=micro_scope_list,
+                micro_scope_list=micro_cached_scopes,
                 with_standalone_executor=with_standalone_executor,
             )
 
@@ -2704,29 +2446,45 @@ class Executor:
 
         from paddle.optimizer.lr import LRScheduler
 
-        if hasattr(program, 'lr_sheduler'):
-            lr_sheduler = program.lr_sheduler
-            assert isinstance(lr_sheduler, LRScheduler), "must be LRScheduler"
-            lr_value = lr_sheduler()
-            lr_var = program.global_block().vars[lr_sheduler._var_name]
+        if hasattr(program, 'lr_scheduler'):
+            lr_scheduler = program.lr_scheduler
+            assert isinstance(lr_scheduler, LRScheduler), "must be LRScheduler"
+            lr_value = lr_scheduler()
+            lr_var = program.global_block().vars[lr_scheduler._var_name]
             data = np.array([lr_value]).astype(convert_dtype(lr_var.dtype))
             tensor = core.get_variable_tensor(
-                cached_scope, lr_sheduler._var_name
+                cached_scope, lr_scheduler._var_name
             )
             tensor.set(data, self.place)
 
         self._fleet_executor.run(cache_key)
-
         if "fetch_var" in fleet_opt:
             # If we speed up the generation in evaluation, we need to generate
             # multiple queries at the same time. Each query will in separate scope in order
             # not mix up. It indicate that final result will in multiple scopes and need to
             # fetch each.
             result_list = []
-            for scope in micro_scope_list:
-                for var in fleet_opt["fetch_var"]:
-                    tensor = core.get_variable_tensor(scope, var)
-                result_list.append(as_numpy(tensor))
+            for scope in micro_cached_scopes:
+                scope_result_list = []
+                for varname in fleet_opt["fetch_var"]:
+                    tensor = None
+                    try:
+                        tensor = core.get_variable_tensor(scope, varname)
+                        if return_numpy:
+                            tensor = as_numpy(tensor)
+                    except:
+                        var = scope.find_var(varname)
+                        tensor = var.get_lod_tensor_array()
+                        if return_numpy:
+                            tensor = as_numpy(tensor)
+                        else:
+                            tensor = [t for t in tensor]
+
+                    if tensor:
+                        scope_result_list.append(tensor)
+
+                if scope_result_list:
+                    result_list.append(scope_result_list)
             return result_list
 
         if fetch_list:
@@ -2848,13 +2606,13 @@ class Executor:
 
         from paddle.optimizer.lr import LRScheduler
 
-        if hasattr(program, 'lr_sheduler'):
-            lr_sheduler = program.lr_sheduler
-            assert isinstance(lr_sheduler, LRScheduler), "must be LRScheduler"
-            lr_value = lr_sheduler()
-            lr_var = program.global_block().vars[lr_sheduler._var_name]
+        if hasattr(program, 'lr_scheduler'):
+            lr_scheduler = program.lr_scheduler
+            assert isinstance(lr_scheduler, LRScheduler), "must be LRScheduler"
+            lr_value = lr_scheduler()
+            lr_var = program.global_block().vars[lr_scheduler._var_name]
             data = np.array([lr_value]).astype(convert_dtype(lr_var.dtype))
-            tensor = core.get_variable_tensor(scope, lr_sheduler._var_name)
+            tensor = core.get_variable_tensor(scope, lr_scheduler._var_name)
             tensor.set(data, self.place)
 
         self._default_executor.run_from_dataset(trainer_instance)

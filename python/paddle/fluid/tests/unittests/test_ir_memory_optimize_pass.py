@@ -18,7 +18,7 @@ import numpy as np
 from parallel_executor_test_base import DeviceType, TestParallelExecutorBase
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 
 def _feed_data_helper():
@@ -80,10 +80,9 @@ class TestMNIST(TestParallelExecutorBase):
             use_device=use_device,
             use_ir_memory_optimize=True,
         )
-        for loss in zip(first_loss0, first_loss1):
-            self.assertAlmostEqual(loss[0], loss[1], delta=1e-6)
-        for loss in zip(last_loss0, last_loss1):
-            self.assertAlmostEqual(loss[0], loss[1], delta=1e-6)
+
+        self.assertAlmostEqual(first_loss0, first_loss1, delta=1e-6)
+        self.assertAlmostEqual(last_loss0, last_loss1, delta=1e-6)
 
     def test_simple_fc_net(self):
         self._compare_ir_memory_optimize(simple_fc_net, DeviceType.CPU)

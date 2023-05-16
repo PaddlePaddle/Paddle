@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
+from paddle import fluid
 
 fluid.core._set_eager_deletion_mode(-1, -1, False)
 
@@ -185,7 +185,7 @@ def optimizer(learning_rate=0.01):
             learning_rate=learning_rate, step_each_epoch=2, epochs=1
         ),
         momentum=0.9,
-        regularization=fluid.regularizer.L2Decay(1e-4),
+        regularization=paddle.regularizer.L2Decay(1e-4),
     )
     return optimizer
 

@@ -203,11 +203,15 @@ class RMSProp(Optimizer):
             parameters = parameters.get('params')
 
         for p in parameters:
+            if p.name in self._already_create_accumulater:
+                continue
+
             if self._multi_precision and self._is_dtype_fp16_or_bf16(p.dtype):
                 master_p = self._create_master_weight(p)
                 self._add_accumulator(self._momentum_acc_str, master_p)
                 self._add_accumulator(self._mean_square_acc_str, master_p)
                 self._add_accumulator(self._mean_grad_acc_str, master_p)
+                self._already_create_accumulater.add(p.name)
                 continue
             if (
                 self._is_dtype_fp16_or_bf16(p.dtype)
@@ -220,6 +224,7 @@ class RMSProp(Optimizer):
             self._add_accumulator(self._momentum_acc_str, p)
             self._add_accumulator(self._mean_square_acc_str, p)
             self._add_accumulator(self._mean_grad_acc_str, p)
+            self._already_create_accumulater.add(p.name)
 
     def _append_optimize_op(self, block, param_and_grad):
         if not isinstance(block, framework.Block):

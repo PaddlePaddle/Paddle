@@ -16,8 +16,7 @@ import time
 
 import numpy as np
 from eager_op_test import OpTest
-
-from paddle.fluid.op import Operator
+from op import Operator
 
 
 class BenchmarkSuite(OpTest):
@@ -87,8 +86,8 @@ class BenchmarkSuite(OpTest):
             elapses.append(self.timeit_output_with_place(place, iters))
         for place, elapse in zip(places, elapses):
             print(
-                "One pass of ({2}_op) at {0} cost {1}".format(
-                    str(place), elapse, self.op_type
+                "One pass of ({}_op) at {} cost {}".format(
+                    self.op_type, str(place), elapse
                 )
             )
 
@@ -111,7 +110,7 @@ class BenchmarkSuite(OpTest):
             elapses.append(self.timeit_grad_with_place(place, iters))
         for place, elapse in zip(places, elapses):
             print(
-                "One pass of ({2}_grad_op) at {0} cost {1}".format(
-                    str(place), elapse, self.op_type
+                "One pass of ({}_grad_op) at {} cost {}".format(
+                    self.op_type, str(place), elapse
                 )
             )

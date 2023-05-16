@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.nn as nn
+from paddle import nn
 from paddle.device.cuda.graphs import (
     cuda_graph_transform,
     is_cuda_graph_supported,

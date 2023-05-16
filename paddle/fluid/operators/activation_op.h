@@ -268,8 +268,6 @@ using BReluGradFunctor = phi::funcs::HardTanhGradFunctor<T>;
 
 USE_PHI_FUNCTOR(Tanh)
 USE_PHI_FUNCTOR(Relu6)
-USE_PHI_FUNCTOR(LeakyRelu)
-USE_PHI_DOUBLE_GRAD_FUNCTOR(LeakyRelu)
 USE_PHI_FUNCTOR(HardShrink)
 USE_PHI_FUNCTOR(ELU)
 USE_PHI_FUNCTOR(Sigmoid)
@@ -278,7 +276,6 @@ USE_PHI_FUNCTOR(Swish)
 USE_PHI_FUNCTOR(HardSwish)
 USE_PHI_FUNCTOR(Pow)
 USE_PHI_FUNCTOR(Mish)
-USE_PHI_FUNCTOR(STanh)
 
 template <typename T>
 using ELUGradNegativeAlphaFunctor = phi::funcs::ELUGradNegativeAlphaFunctor<T>;
@@ -337,7 +334,7 @@ struct SoftReluGradFunctor : public BaseActivationFunctor<T> {
             typename Out,
             typename dOut,
             typename dX>
-  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+  void operator()(Device d, X x UNUSED, Out out, dOut dout, dX dx) const {
     auto tmp = static_cast<T>(threshold);
     auto temp = ((out > -tmp) * (out < tmp)).template cast<T>();
     dx.device(d) = dout * (static_cast<T>(1) - (-out).exp()) * temp;

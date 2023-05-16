@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
+from op import Operator
 
-import paddle.fluid.core as core
-from paddle.fluid.op import Operator
+from paddle.fluid import core
 
 
 def ftrl_step(param, grad, rows, sq_accum, lin_accum, lr, l1, l2, lr_power):
@@ -116,7 +116,7 @@ class TestFTRLOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
 
 class TestSparseFTRLOp(unittest.TestCase):

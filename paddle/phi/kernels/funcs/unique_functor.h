@@ -84,9 +84,9 @@ struct UniqueOpFunctor {
                         phi::errors::InvalidArgument(
                             "Index holds the wrong type, it holds %s, "
                             "but desires to be %s or %s",
-                            phi::DataTypeToString(index_type),
-                            phi::DataTypeToString(DataType::INT32),
-                            phi::DataTypeToString(DataType::INT64)));
+                            DataTypeToString(index_type),
+                            DataTypeToString(DataType::INT32),
+                            DataTypeToString(DataType::INT64)));
 
       if (index_type == DataType::INT32) {
         for (auto i = 0; i < in_->numel(); ++i) {
@@ -190,7 +190,7 @@ static void UniqueFlattendTensor(const Context& context,
 }
 
 template <typename Context, typename ForwardIt, typename InT, typename IndexT>
-static ForwardIt UniqueDimImpl(const Context& context,
+static ForwardIt UniqueDimImpl(const Context& context UNUSED,
                                ForwardIt first,
                                ForwardIt last,
                                const std::vector<IndexT>& sorted_indices_vec,

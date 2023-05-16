@@ -39,6 +39,7 @@ class AdadeltaOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("AvgSquaredGrad", "(Tensor) Input average of squared gradient");
     AddInput("AvgSquaredUpdate",
              "(Tensor) Input average of squared parameter updates");
+    AddInput("LearningRate", "(Tensor) Learning rate");
     AddInput("MasterParam", "FP32 master weight for AMP.").AsDispensable();
 
     AddOutput("ParamOut", "(Tensor) Output parameter");

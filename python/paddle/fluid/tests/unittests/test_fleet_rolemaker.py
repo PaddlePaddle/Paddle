@@ -17,7 +17,7 @@ import os
 import unittest
 
 import paddle
-import paddle.incubate.distributed.fleet.role_maker as role_maker
+from paddle.incubate.distributed.fleet import role_maker
 
 
 class TestCloudRoleMaker(unittest.TestCase):
@@ -62,7 +62,7 @@ class TestCloudRoleMaker(unittest.TestCase):
 
     def test_pslib_1(self):
         """Test cases for pslib."""
-        import paddle.fluid as fluid
+        from paddle import fluid
         from paddle.incubate.distributed.fleet.parameter_server.pslib import (
             fleet,
         )

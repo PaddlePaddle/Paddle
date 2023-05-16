@@ -99,11 +99,13 @@ class CommonFeatureValueAccessor {
 
     // 根据mf_dim计算的总长度
     __host__ __device__ int Dim(int mf_dim) {
-      int tmp_embedx_sgd_dim = 1;
+      int tmp_embedx_sgd_dim = 1;  // shared adagrad
       if (optimizer_type_ == 3) {  // adam
         tmp_embedx_sgd_dim = mf_dim * 2 + 2;
       } else if (optimizer_type_ == 4) {  // shared_adam
         tmp_embedx_sgd_dim = 4;
+      } else if (optimizer_type_ == 2) {
+        tmp_embedx_sgd_dim = mf_dim;
       }
       return 9 + embed_sgd_dim + tmp_embedx_sgd_dim + mf_dim;
     }
@@ -115,11 +117,13 @@ class CommonFeatureValueAccessor {
 
     // 根据mf_dim 计算的 mf_size byte数
     __host__ __device__ size_t MFSize(int mf_dim) {
-      int tmp_embedx_sgd_dim = 1;
+      int tmp_embedx_sgd_dim = 1;  // shared adagrad
       if (optimizer_type_ == 3) {  // adam
         tmp_embedx_sgd_dim = mf_dim * 2 + 2;
       } else if (optimizer_type_ == 4) {  // shared_adam
         tmp_embedx_sgd_dim = 4;
+      } else if (optimizer_type_ = 2) {  // std adagrad
+        tmp_embedx_sgd_dim = mf_dim;
       }
       return (tmp_embedx_sgd_dim + mf_dim) * sizeof(float);
     }
@@ -127,12 +131,14 @@ class CommonFeatureValueAccessor {
     __host__ __device__ int EmbedxG2SumOffsetIndex() { return 0; }
     __host__ __device__ int EmbedxWOffsetIndex(float* val) {
       // has mf
-      int tmp_embedx_sgd_dim = 1;
+      int tmp_embedx_sgd_dim = 1;  // shared adagrad
       if (static_cast<int>(MfSize(val)) > 0) {
         if (optimizer_type_ == 3) {  // adam
           tmp_embedx_sgd_dim = MfDim(val) * 2 + 2;
         } else if (optimizer_type_ == 4) {  // shared_adam
           tmp_embedx_sgd_dim = 4;
+        } else if (optimizer_type_ == 2) {  // std adagrad
+          tmp_embedx_sgd_dim = static_cast<int>(MfDim(val));
         }
         return EmbedxG2SumIndex() + tmp_embedx_sgd_dim;
       } else {
@@ -753,6 +759,10 @@ struct FeaturePushValue {
   float lr_g;
   int mf_dim;
   float mf_g[0];
+
+  __device__ __forceinline__ FeaturePushValue() = default;
+  __device__ __forceinline__ FeaturePushValue(const FeaturePushValue&) =
+      default;
 
   __device__ __forceinline__ FeaturePushValue
   operator+(const FeaturePushValue& a) const {

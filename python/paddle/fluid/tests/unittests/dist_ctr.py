@@ -18,7 +18,7 @@ import dist_ctr_reader
 from test_dist_base import TestDistRunnerBase, runtime_main
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 IS_SPARSE = True
 os.environ['PADDLE_ENABLE_REMOTE_PREFETCH'] = "1"
@@ -114,9 +114,7 @@ class TestDistCTR2x2(TestDistRunnerBase):
         regularization = None
         use_l2_decay = bool(os.getenv('USE_L2_DECAY', 0))
         if use_l2_decay:
-            regularization = fluid.regularizer.L2DecayRegularizer(
-                regularization_coeff=1e-1
-            )
+            regularization = paddle.regularizer.L2Decay(coeff=1e-1)
         use_lr_decay = bool(os.getenv('LR_DECAY', 0))
         lr = 0.0001
         if use_lr_decay:

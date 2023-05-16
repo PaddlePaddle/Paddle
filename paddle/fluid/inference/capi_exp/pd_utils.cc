@@ -221,6 +221,8 @@ PlaceType CvtToCxxPlaceType(PD_PlaceType place_type) {
       return PlaceType::kGPU;
     case PD_PLACE_XPU:
       return PlaceType::kXPU;
+    case PD_PLACE_CUSTOM:
+      return PlaceType::kCUSTOM;
     default:
       PADDLE_THROW(paddle::platform::errors::InvalidArgument(
           "Unsupport paddle place type %d.", place_type));
@@ -236,6 +238,8 @@ PD_PlaceType CvtFromCxxPlaceType(PlaceType place_type) {
       return PD_PLACE_GPU;
     case PlaceType::kXPU:
       return PD_PLACE_XPU;
+    case PlaceType::kCUSTOM:
+      return PD_PLACE_CUSTOM;
     default:
       return PD_PLACE_UNK;
   }

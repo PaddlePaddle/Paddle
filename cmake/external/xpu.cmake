@@ -8,8 +8,8 @@ set(XPU_API_LIB_NAME "libxpuapi.so")
 set(XPU_RT_LIB_NAME "libxpurt.so")
 set(XPU_XFT_LIB_NAME "libxft.so")
 
-set(XPU_BASE_DATE "20230310")
-set(XPU_XCCL_BASE_VERSION "1.0.12")
+set(XPU_BASE_DATE "20230510")
+set(XPU_XCCL_BASE_VERSION "1.0.49.2")
 set(XPU_XFT_BASE_VERSION "latest")
 
 if(NOT DEFINED XPU_BASE_URL)
@@ -30,35 +30,41 @@ if(NOT XPU_XFT_BASE_URL)
   )
 endif()
 
+if(WITH_XCCL_RDMA)
+  set(XPU_XCCL_PREFIX "xccl_rdma")
+else()
+  set(XPU_XCCL_PREFIX "xccl_socket")
+endif()
+
 if(WITH_AARCH64)
   set(XPU_XRE_DIR_NAME "xre-kylin_aarch64")
   set(XPU_XDNN_DIR_NAME "xdnn-kylin_aarch64")
-  set(XPU_XCCL_DIR_NAME "xccl-kylin_aarch64")
+  set(XPU_XCCL_DIR_NAME "${XPU_XCCL_PREFIX}-kylin_aarch64")
   set(XPU_XFT_DIR_NAME "") # TODO: xft has no kylin output at now.
 elseif(WITH_SUNWAY)
   set(XPU_XRE_DIR_NAME "xre-deepin_sw6_64")
   set(XPU_XDNN_DIR_NAME "xdnn-deepin_sw6_64")
-  set(XPU_XCCL_DIR_NAME "xccl-deepin_sw6_64")
+  set(XPU_XCCL_DIR_NAME "${XPU_XCCL_PREFIX}-deepin_sw6_64")
   set(XPU_XFT_DIR_NAME "") # TODO: xft has no deepin output at now.
 elseif(WITH_BDCENTOS)
   set(XPU_XRE_DIR_NAME "xre-bdcentos_x86_64")
   set(XPU_XDNN_DIR_NAME "xdnn-bdcentos_x86_64")
-  set(XPU_XCCL_DIR_NAME "xccl-bdcentos_x86_64")
+  set(XPU_XCCL_DIR_NAME "${XPU_XCCL_PREFIX}-bdcentos_x86_64")
   set(XPU_XFT_DIR_NAME "xft_bdcentos6u3_x86_64_gcc82")
 elseif(WITH_UBUNTU)
   set(XPU_XRE_DIR_NAME "xre-ubuntu_x86_64")
   set(XPU_XDNN_DIR_NAME "xdnn-ubuntu_x86_64")
-  set(XPU_XCCL_DIR_NAME "xccl-ubuntu_x86_64")
+  set(XPU_XCCL_DIR_NAME "${XPU_XCCL_PREFIX}-ubuntu_x86_64")
   set(XPU_XFT_DIR_NAME "xft_ubuntu1604_x86_64")
 elseif(WITH_CENTOS)
   set(XPU_XRE_DIR_NAME "xre-centos7_x86_64")
   set(XPU_XDNN_DIR_NAME "xdnn-centos7_x86_64")
-  set(XPU_XCCL_DIR_NAME "xccl-bdcentos_x86_64")
+  set(XPU_XCCL_DIR_NAME "${XPU_XCCL_PREFIX}-bdcentos_x86_64")
   set(XPU_XFT_DIR_NAME "xft_bdcentos6u3_x86_64_gcc82")
 else()
   set(XPU_XRE_DIR_NAME "xre-ubuntu_x86_64")
   set(XPU_XDNN_DIR_NAME "xdnn-ubuntu_x86_64")
-  set(XPU_XCCL_DIR_NAME "xccl-ubuntu_x86_64")
+  set(XPU_XCCL_DIR_NAME "${XPU_XCCL_PREFIX}-ubuntu_x86_64")
   set(XPU_XFT_DIR_NAME "xft_ubuntu1604_x86_64")
 endif()
 
@@ -74,9 +80,6 @@ set(XPU_XCCL_URL
 set(XPU_XFT_URL "${XPU_XFT_BASE_URL}/${XPU_XFT_DIR_NAME}.tar.gz")
 set(XPU_PACK_DEPENCE_URL
     "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/pack_paddle_depence.sh"
-    CACHE STRING "" FORCE)
-set(XPU_CHECK_DEPENCE_URL
-    "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/check_xpu_dependence.sh"
     CACHE STRING "" FORCE)
 set(XPU_XFT_GET_DEPENCE_URL
     "https://baidu-kunlun-public.su.bcebos.com/paddle_depence/get_xft_dependence.sh"
@@ -99,14 +102,24 @@ file(
   "install(DIRECTORY xpu/include xpu/lib \n"
   "        DESTINATION ${XPU_INSTALL_DIR})\n")
 
+if(WITH_XPU_BKCL)
+  message(STATUS "Compile with XPU BKCL!")
+  add_definitions(-DPADDLE_WITH_XPU_BKCL)
+
+  set(XPU_BKCL_LIB_NAME "libbkcl.so")
+  set(XPU_BKCL_LIB "${XPU_LIB_DIR}/${XPU_BKCL_LIB_NAME}")
+  set(XPU_BKCL_INC_DIR "${THIRD_PARTY_PATH}/install/xpu/include")
+  include_directories(${XPU_BKCL_INC_DIR})
+endif()
+
 ExternalProject_Add(
   ${XPU_PROJECT}
   ${EXTERNAL_PROJECT_LOG_ARGS}
   PREFIX ${SNAPPY_PREFIX_DIR}
   DOWNLOAD_DIR ${XPU_DOWNLOAD_DIR}
   DOWNLOAD_COMMAND
-    wget ${XPU_CHECK_DEPENCE_URL} && bash check_xpu_dependence.sh
-    ${XPU_BASE_URL} ${XPU_XCCL_BASE_URL} && wget ${XPU_PACK_DEPENCE_URL} && bash
+    bash ${CMAKE_SOURCE_DIR}/tools/xpu/check_xpu_dependence.sh ${XPU_BASE_URL}
+    ${XPU_XCCL_BASE_URL} && wget ${XPU_PACK_DEPENCE_URL} && bash
     pack_paddle_depence.sh ${XPU_XRE_URL} ${XPU_XRE_DIR_NAME} ${XPU_XDNN_URL}
     ${XPU_XDNN_DIR_NAME} ${XPU_XCCL_URL} ${XPU_XCCL_DIR_NAME} && wget
     ${XPU_XFT_GET_DEPENCE_URL} && bash get_xft_dependence.sh ${XPU_XFT_URL}
@@ -116,7 +129,8 @@ ExternalProject_Add(
   CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${XPU_INSTALL_ROOT}
   CMAKE_CACHE_ARGS -DCMAKE_INSTALL_PREFIX:PATH=${XPU_INSTALL_ROOT}
   BUILD_BYPRODUCTS ${XPU_API_LIB}
-  BUILD_BYPRODUCTS ${XPU_RT_LIB})
+  BUILD_BYPRODUCTS ${XPU_RT_LIB}
+  BUILD_BYPRODUCTS ${XPU_BKCL_LIB})
 
 include_directories(${XPU_INC_DIR})
 add_library(shared_xpuapi SHARED IMPORTED GLOBAL)
@@ -128,20 +142,12 @@ generate_dummy_static_lib(LIB_NAME "xpulib" GENERATOR "xpu.cmake")
 
 target_link_libraries(xpulib ${XPU_API_LIB} ${XPU_RT_LIB})
 
-if(WITH_XPU_BKCL)
-  message(STATUS "Compile with XPU BKCL!")
-  add_definitions(-DPADDLE_WITH_XPU_BKCL)
-
-  set(XPU_BKCL_LIB_NAME "libbkcl.so")
-  set(XPU_BKCL_LIB "${XPU_LIB_DIR}/${XPU_BKCL_LIB_NAME}")
-  set(XPU_BKCL_INC_DIR "${THIRD_PARTY_PATH}/install/xpu/include")
-  include_directories(${XPU_BKCL_INC_DIR})
-endif()
-
 if(WITH_XPU_XFT)
   message(STATUS "Compile with XPU XFT!")
   add_definitions(-DPADDLE_WITH_XPU_XFT)
 
+  set(XPU_XFT_INC_DIR "${XPU_INC_DIR}/xft")
+  include_directories(${XPU_XFT_INC_DIR})
   set(XPU_XFT_LIB "${XPU_LIB_DIR}/${XPU_XFT_LIB_NAME}")
 endif()
 

@@ -15,9 +15,8 @@
 import paddle
 from paddle import _legacy_C_ops
 from paddle.distributed import collective
-from paddle.fluid import core
 from paddle.fluid.data_feeder import check_dtype, check_variable_and_dtype
-from paddle.framework import LayerHelper, _varbase_creator, in_dygraph_mode
+from paddle.framework import LayerHelper, _create_tensor, in_dygraph_mode
 from paddle.nn import Layer
 from paddle.nn.utils import dygraph_utils
 
@@ -229,7 +228,7 @@ def _mp_allreduce(
 
     if in_dygraph_mode():
         group = collective._get_default_group() if group is None else group
-        assert op == ReduceOp.SUM, "Unknown parameter: {}.".format(op)
+        assert op == ReduceOp.SUM, f"Unknown parameter: {op}."
 
         from paddle.autograd import PyLayer
 
@@ -366,14 +365,18 @@ class _Linear(Layer):
         return out
 
     def extra_repr(self):
-        name_str = ', name={}'.format(self.name) if self.name else ''
+        name_str = f', name={self.name}' if self.name else ''
         return 'in_features={}, out_features={}, dtype={}{}'.format(
             self.weight.shape[0], self.weight.shape[1], self._dtype, name_str
         )
 
 
 def _c_softmax_with_cross_entropy(
-    logits, label, group=None, return_softmax=False
+    logits,
+    label,
+    group=None,
+    return_softmax=False,
+    ignore_index=-100,
 ):
     if group is not None and not group.is_member():
         return
@@ -400,7 +403,16 @@ def _c_softmax_with_cross_entropy(
 
     if in_dygraph_mode():
         softmax, loss = _legacy_C_ops.c_softmax_with_cross_entropy(
-            logits, label, 'ring_id', ring_id, 'rank', rank, 'nranks', nranks
+            logits,
+            label,
+            'ring_id',
+            ring_id,
+            'rank',
+            rank,
+            'nranks',
+            nranks,
+            'ignore_index',
+            ignore_index,
         )
         if not return_softmax:
             return loss
@@ -411,6 +423,7 @@ def _c_softmax_with_cross_entropy(
             'ring_id': ring_id,
             'rank': rank,
             'nranks': nranks,
+            'ignore_index': ignore_index,
         }
         helper = LayerHelper('c_softmax_with_cross_entropy', **locals())
         softmax = helper.create_variable_for_type_inference(dtype=logits.dtype)
@@ -433,7 +446,7 @@ def _linear(x, weight, bias=None, name=None):
     Fuction Linear
     """
     if in_dygraph_mode():
-        pre_bias = _varbase_creator(dtype=x.dtype)
+        pre_bias = _create_tensor(dtype=x.dtype)
         _legacy_C_ops.matmul(
             x,
             weight,
@@ -537,9 +550,7 @@ def _parallel_linear(
     )
 
     # NOTE: npu linear function use matmul_v2 but linear use matmul
-    linear_function = (
-        _linear if core.is_compiled_with_npu() else paddle.nn.functional.linear
-    )
+    linear_function = paddle.nn.functional.linear
     linear_out = linear_function(
         x,
         linear.weight,

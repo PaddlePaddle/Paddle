@@ -392,7 +392,7 @@ std::vector<phi::DenseTensor> SampleRpnFgBgGt(
   return loc_score_tgtlbl_gt;
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class RpnTargetAssignKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -995,7 +995,7 @@ std::vector<phi::DenseTensor> GetAllFgBgGt(
   return loc_score_tgtlbl_gt;
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class RetinanetTargetAssignKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -1236,15 +1236,21 @@ REGISTER_OPERATOR(
     ops::RpnTargetAssignOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(rpn_target_assign,
-                       ops::RpnTargetAssignKernel<float>,
-                       ops::RpnTargetAssignKernel<double>);
+PD_REGISTER_STRUCT_KERNEL(rpn_target_assign,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::RpnTargetAssignKernel,
+                          float,
+                          double) {}
 REGISTER_OPERATOR(
     retinanet_target_assign,
     ops::RetinanetTargetAssignOp,
     ops::RetinanetTargetAssignOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(retinanet_target_assign,
-                       ops::RetinanetTargetAssignKernel<float>,
-                       ops::RetinanetTargetAssignKernel<double>);
+PD_REGISTER_STRUCT_KERNEL(retinanet_target_assign,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::RetinanetTargetAssignKernel,
+                          float,
+                          double) {}

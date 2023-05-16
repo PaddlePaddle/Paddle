@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 paddle.enable_static()
 
@@ -27,15 +27,19 @@ class TestLcmAPI(unittest.TestCase):
     def setUp(self):
         self.x_np = 12
         self.y_np = 20
-        self.x_shape = [1]
-        self.y_shape = [1]
+        self.x_shape = []
+        self.y_shape = []
 
     def test_static_graph(self):
         startup_program = fluid.Program()
         train_program = fluid.Program()
         with fluid.program_guard(startup_program, train_program):
-            x1 = fluid.data(name='input1', dtype='int32', shape=self.x_shape)
-            x2 = fluid.data(name='input2', dtype='int32', shape=self.y_shape)
+            x1 = paddle.static.data(
+                name='input1', dtype='int32', shape=self.x_shape
+            )
+            x2 = paddle.static.data(
+                name='input2', dtype='int32', shape=self.y_shape
+            )
             out = paddle.lcm(x1, x2)
 
             place = (
@@ -77,14 +81,14 @@ class TestLcmAPI3(TestLcmAPI):
     def setUp(self):
         self.x_np = 0
         self.y_np = 20
-        self.x_shape = [1]
-        self.y_shape = [1]
+        self.x_shape = []
+        self.y_shape = []
 
 
 class TestLcmAPI4(TestLcmAPI):
     def setUp(self):
-        self.x_np = 0
-        self.y_np = 0
+        self.x_np = [0]
+        self.y_np = [0]
         self.x_shape = [1]
         self.y_shape = [1]
 
@@ -93,5 +97,5 @@ class TestLcmAPI5(TestLcmAPI):
     def setUp(self):
         self.x_np = 12
         self.y_np = -20
-        self.x_shape = [1]
-        self.y_shape = [1]
+        self.x_shape = []
+        self.y_shape = []

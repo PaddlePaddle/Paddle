@@ -17,7 +17,7 @@ import warnings
 import paddle
 from paddle import _C_ops
 from paddle.fluid.framework import in_dygraph_mode
-from paddle.fluid.regularizer import L2DecayRegularizer
+from paddle.regularizer import L2Decay
 
 from ..fluid import core, framework
 from .optimizer import Optimizer
@@ -136,9 +136,7 @@ class Momentum(Optimizer):
         if momentum is None:
             raise ValueError("momentum is not set")
 
-        predicate = lambda regular: isinstance(
-            regular, (L2DecayRegularizer, float)
-        )
+        predicate = lambda regular: isinstance(regular, (L2Decay, float))
         if isinstance(parameters, list):
             if isinstance(parameters[0], dict):
                 for param_group in parameters:
@@ -192,9 +190,9 @@ class Momentum(Optimizer):
         reg_method = ""
         reg_coeff = 0.0
 
-        if isinstance(weight_decay, L2DecayRegularizer):
+        if isinstance(weight_decay, L2Decay):
             reg_method = "l2_decay"
-            reg_coeff = weight_decay._regularization_coeff
+            reg_coeff = weight_decay._coeff
         if isinstance(weight_decay, float):
             reg_method = "l2_decay"
             reg_coeff = weight_decay
@@ -211,9 +209,12 @@ class Momentum(Optimizer):
             parameters = self._update_param_group(parameters)
 
         for p in parameters:
+            if p.name in self._already_create_accumulater:
+                continue
             if self._multi_precision and self._is_dtype_fp16_or_bf16(p.dtype):
                 master_p = self._create_master_weight(p)
                 self._add_accumulator(self._velocity_acc_str, master_p)
+                self._already_create_accumulater.add(p.name)
                 continue
             if (
                 self._is_dtype_fp16_or_bf16(p.dtype)
@@ -224,6 +225,7 @@ class Momentum(Optimizer):
                     "Consider using multi_precision=True option of the Momentum optimizer."
                 )
             self._add_accumulator(self._velocity_acc_str, p)
+            self._already_create_accumulater.add(p.name)
 
     def _create_regularization_of_grad(self, param, grad, regularization=None):
         """Create and add backward regularization Operators
@@ -233,7 +235,7 @@ class Momentum(Optimizer):
         # If ParamAttr is set to L2Decay, we skip doing regularization here. And then we fused
         # L2Decay with momentum which can refer to _append_optimize_op below.
         if hasattr(param, 'regularizer') and isinstance(
-            param.regularizer, L2DecayRegularizer
+            param.regularizer, L2Decay
         ):
             return grad
         return super()._create_regularization_of_grad(
@@ -256,9 +258,9 @@ class Momentum(Optimizer):
         regularization_coeff = self._regularization_coeff
         if hasattr(param, 'regularizer'):
             # we skip param's l2decay before, so fuse it with momentum here.
-            if isinstance(param.regularizer, L2DecayRegularizer):
+            if isinstance(param.regularizer, L2Decay):
                 regularization_method = "l2_decay"
-                regularization_coeff = param.regularizer._regularization_coeff
+                regularization_coeff = param.regularizer._coeff
             # the param's regularization has been done before, we avoid do l2decay in momentum.
             elif param.regularizer is not None:
                 regularization_method = ""
@@ -344,11 +346,9 @@ class Momentum(Optimizer):
             regularization_coeff = self._regularization_coeff
             if hasattr(param, 'regularizer'):
                 # we skip param's l2decay before, so fuse it with momentum here.
-                if isinstance(param.regularizer, L2DecayRegularizer):
+                if isinstance(param.regularizer, L2Decay):
                     regularization_method = "l2_decay"
-                    regularization_coeff = (
-                        param.regularizer._regularization_coeff
-                    )
+                    regularization_coeff = param.regularizer._coeff
                 elif param.regularizer is not None:
                     regularization_method = ""
                     regularization_coeff = 0.0
@@ -432,7 +432,7 @@ class Momentum(Optimizer):
                 if param_and_grad[1] is None:
                     continue
                 if param_and_grad[0].stop_gradient is False:
-                    param_grad_dict = dict()
+                    param_grad_dict = {}
                     param_grad_dict['params'] = param_and_grad
                     param_grad_dict.update(
                         {
@@ -472,19 +472,30 @@ class Momentum(Optimizer):
                 )
 
                 if in_dygraph_mode():
-                    _, _, _ = _C_ops.merged_momentum_(
-                        self._param_dict[key][param_group_idx],
-                        grad_dict[key],
-                        self._velocity_dict[key][param_group_idx],
-                        lr_dict[key],
-                        master_weight,
-                        self._momentum,
-                        self._use_nesterov,
-                        self._regularization_method_dict[key][param_group_idx],
-                        self._regularization_coeff_dict[key][param_group_idx],
-                        find_master,
-                        self._rescale_grad,
-                    )
+                    found_inf = self._get_auxiliary_var('found_inf')
+                    if found_inf:
+                        if isinstance(found_inf, core.eager.Tensor):
+                            self._set_auxiliary_var('found_inf', True)
+                    else:
+                        if isinstance(found_inf, core.eager.Tensor):
+                            self._set_auxiliary_var('found_inf', False)
+                        _, _, _ = _C_ops.merged_momentum_(
+                            self._param_dict[key][param_group_idx],
+                            grad_dict[key],
+                            self._velocity_dict[key][param_group_idx],
+                            lr_dict[key],
+                            master_weight,
+                            self._momentum,
+                            self._use_nesterov,
+                            self._regularization_method_dict[key][
+                                param_group_idx
+                            ],
+                            self._regularization_coeff_dict[key][
+                                param_group_idx
+                            ],
+                            find_master,
+                            self._rescale_grad,
+                        )
                 else:
                     inputs = {
                         "Param": self._param_dict[key][param_group_idx],

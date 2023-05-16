@@ -329,22 +329,18 @@ def source_include(header_file_path):
     return f"""
 #include "{header_file_path}"
 
+#include "gflags/gflags.h"
+#include "glog/logging.h"
+
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/string_tensor.h"
 #include "paddle/phi/infermeta/strings/nullary.h"
 #include "paddle/phi/infermeta/strings/unary.h"
-#include "paddle/phi/api/lib/api_registry.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 DECLARE_int32(low_precision_op_list);
-"""
-
-
-def api_register():
-    return """
-PD_REGISTER_API(StringsApi);
 """
 
 
@@ -389,8 +385,6 @@ def generate_api(api_yaml_path, header_file_path, source_file_path):
 
     header_file.write(namespace[1])
     source_file.write(namespace[1])
-
-    # source_file.write(api_register())
 
     header_file.close()
     source_file.close()

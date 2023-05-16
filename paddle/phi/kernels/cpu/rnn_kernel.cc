@@ -57,13 +57,13 @@ struct SimpleRNNCell : Cell<T> {
                   DenseTensor* input,
                   const DenseTensor* weight_hh,
                   const DenseTensor* init_h,
-                  const DenseTensor* init_c,
-                  DenseTensor* last_h,
-                  DenseTensor* last_c,
-                  DenseTensor* last_c_act,
-                  DenseTensor* output,
-                  const DenseTensor* bias_hh,
-                  DenseTensor* weight_hh_gru) const override {
+                  const DenseTensor* init_c UNUSED,
+                  DenseTensor* last_h UNUSED,
+                  DenseTensor* last_c UNUSED,
+                  DenseTensor* last_c_act UNUSED,
+                  DenseTensor* output UNUSED,
+                  const DenseTensor* bias_hh UNUSED,
+                  DenseTensor* weight_hh_gru UNUSED) const override {
     auto blas = phi::funcs::GetBlas<CPUContext, T>(*dev_ctx);
     auto mat_dim_a =
         phi::funcs::CreateMatrixDescriptor(init_h->dims(), 0, false);
@@ -292,22 +292,22 @@ struct Layer {
     }
   }
 
-  virtual void operator()(const CPUContext& dev_ctx,
-                          const DenseTensor* input,
-                          const std::vector<DenseTensor>& vec,
-                          const std::vector<DenseTensor>& init_h,
-                          const std::vector<DenseTensor>& init_c,
-                          const DenseTensor* sequence_length,
-                          std::vector<DenseTensor> last_h,
-                          std::vector<DenseTensor> last_c,
-                          DenseTensor* output,
-                          const int& layer_idx,
-                          const int& gate_num,
-                          DenseTensor* gate_value,
-                          DenseTensor* cell_value,
-                          DenseTensor* cell_act_value,
-                          const std::string& mode,
-                          bool is_test) {}
+  virtual void operator()(const CPUContext& dev_ctx UNUSED,
+                          const DenseTensor* input UNUSED,
+                          const std::vector<DenseTensor>& vec UNUSED,
+                          const std::vector<DenseTensor>& init_h UNUSED,
+                          const std::vector<DenseTensor>& init_c UNUSED,
+                          const DenseTensor* sequence_length UNUSED,
+                          std::vector<DenseTensor> last_h UNUSED,
+                          std::vector<DenseTensor> last_c UNUSED,
+                          DenseTensor* output UNUSED,
+                          const int& layer_idx UNUSED,
+                          const int& gate_num UNUSED,
+                          DenseTensor* gate_value UNUSED,
+                          DenseTensor* cell_value UNUSED,
+                          DenseTensor* cell_act_value UNUSED,
+                          const std::string& mode UNUSED,
+                          bool is_test UNUSED) {}
 
   void RunTestIter(const CPUContext& dev_ctx,
                    const DenseTensor* input,
@@ -320,8 +320,8 @@ struct Layer {
                    DenseTensor* output,
                    int layer_idx,
                    DenseTensor* gate_value,
-                   DenseTensor* cell_value,
-                   DenseTensor* cell_act_value,
+                   DenseTensor* cell_value UNUSED,
+                   DenseTensor* cell_act_value UNUSED,
                    bool is_bidirect,
                    int offset,
                    const std::string& mode) {
@@ -701,7 +701,7 @@ struct SingleLayer : public Layer<T, CellType> {
                   std::vector<DenseTensor> last_c,
                   DenseTensor* output,
                   const int& layer_idx,
-                  const int& gate_num,
+                  const int& gate_num UNUSED,
                   DenseTensor* gate_value,
                   DenseTensor* cell_value,
                   DenseTensor* cell_act_value,
@@ -740,7 +740,7 @@ struct BidirLayer : public Layer<T, CellType> {
                   std::vector<DenseTensor> last_c,
                   DenseTensor* output,
                   const int& layer_idx,
-                  const int& gate_num,
+                  const int& gate_num UNUSED,
                   DenseTensor* gate_value,
                   DenseTensor* cell_value,
                   DenseTensor* cell_act_value,
@@ -952,4 +952,6 @@ void RnnKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(rnn, CPU, ALL_LAYOUT, phi::RnnKernel, float, double) {}
+PD_REGISTER_KERNEL(rnn, CPU, ALL_LAYOUT, phi::RnnKernel, float, double) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::UINT8);
+}
