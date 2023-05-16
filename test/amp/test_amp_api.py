@@ -20,15 +20,17 @@ import paddle
 
 
 class TestAutoCast(AmpTestBase):
-    def test_amp_OD_level(self):
-        conv = paddle.nn.Conv2D(
+    def setUp(self):
+        self._conv = paddle.nn.Conv2D(
             in_channels=1, out_channels=6, kernel_size=3, bias_attr=False
         )
-        linear = paddle.nn.Linear(in_features=4, out_features=4)
+        self._linear = paddle.nn.Linear(in_features=4, out_features=4)
+
+    def test_amp_OD_level(self):
         with paddle.amp.auto_cast(level='OD'):
-            out1 = conv(paddle.rand(shape=[1, 1, 6, 6], dtype='float32'))
+            out1 = self._conv(paddle.rand(shape=[1, 1, 6, 6], dtype='float32'))
             out2 = out1 + paddle.rand(shape=out1.shape, dtype='float16')
-            out3 = linear(out2)
+            out3 = self._linear(out2)
 
         self.assertEqual(out1.dtype, paddle.float16)
         self.assertEqual(out2.dtype, paddle.float32)

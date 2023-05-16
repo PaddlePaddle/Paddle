@@ -464,9 +464,10 @@ def _strip_grad_suffix_(name):
          x@GRAD@GRAD ==> x
          y@GRAD@RENAME@1 ==> y
          z@GRAD_slice_0@GRAD ==> z@GRAD_slice_0
+         grad/grad/z@GRAD@RENAME@block0@1@GRAD ==> z
     """
-    pos = re.search(f'{core.grad_var_suffix()}$', name) or re.search(
-        f'{core.grad_var_suffix()}@', name
+    pos = re.search(f'{core.grad_var_suffix()}+@', name) or re.search(
+        f'{core.grad_var_suffix()}$', name
     )
     new_name = name[: pos.start()] if pos is not None else name
     new_pos = name.rfind('grad/')
