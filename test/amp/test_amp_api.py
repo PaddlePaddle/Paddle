@@ -81,6 +81,7 @@ class TestStaticDecorate(AmpTestBase):
             exe,
             x_fp32,
             max_iters,
+            dtype,
             level,
         )
 
