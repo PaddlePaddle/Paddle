@@ -47,7 +47,9 @@ class TestExpandV2OpRank1(OpTest):
         self.check_output(check_cinn=self.enable_cinn)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True, check_cinn=self.enable_cinn)
+        self.check_grad(
+            ['X'], 'Out', check_prim=True, check_cinn=self.enable_cinn
+        )
 
 
 class TestExpandV2OpRank2_DimExpanding(TestExpandV2OpRank1):
@@ -249,7 +251,9 @@ class TestExpandV2BF16Op(OpTest):
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out', check_prim=True, check_cinn=True)
+        self.check_grad_with_place(
+            place, ['X'], 'Out', check_prim=True, check_cinn=True
+        )
 
 
 class TestExpandV2Error(unittest.TestCase):

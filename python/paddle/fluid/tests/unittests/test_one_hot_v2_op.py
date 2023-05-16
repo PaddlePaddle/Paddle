@@ -49,7 +49,7 @@ class TestOneHotOp(OpTest):
         self.outputs = {'Out': (out, x_lod)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_cinn=True)
 
 
 class TestOneHotOp_attr(OpTest):
@@ -57,6 +57,7 @@ class TestOneHotOp_attr(OpTest):
         self.op_type = 'one_hot_v2'
         self.python_api = one_hot_wrapper
         depth = 10
+        depth_np = np.array(10).astype('int32')
         dimension = 12
         x_lod = [[4, 1, 3, 3]]
         x = [np.random.randint(0, depth - 1) for i in range(sum(x_lod[0]))]
@@ -69,12 +70,12 @@ class TestOneHotOp_attr(OpTest):
         for i in range(np.product(x.shape)):
             out[i, 0, x[i]] = 1.0
 
-        self.inputs = {'X': (x, x_lod)}
+        self.inputs = {'X': (x, x_lod), 'depth_tensor': depth_np}
         self.attrs = {'dtype': int(core.VarDesc.VarType.FP32), 'depth': depth}
         self.outputs = {'Out': (out, x_lod)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_cinn=True)
 
 
 class TestOneHotOp_default_dtype(OpTest):
@@ -98,7 +99,7 @@ class TestOneHotOp_default_dtype(OpTest):
         self.outputs = {'Out': (out, x_lod)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_cinn=True)
 
 
 class TestOneHotOp_default_dtype_attr(OpTest):
@@ -106,6 +107,7 @@ class TestOneHotOp_default_dtype_attr(OpTest):
         self.op_type = 'one_hot_v2'
         self.python_api = one_hot_wrapper
         depth = 10
+        depth_np = np.array(10).astype('int32')
         dimension = 12
         x_lod = [[4, 1, 3, 3]]
         x = [np.random.randint(0, depth - 1) for i in range(sum(x_lod[0]))]
@@ -118,12 +120,12 @@ class TestOneHotOp_default_dtype_attr(OpTest):
         for i in range(np.product(x.shape)):
             out[i, 0, x[i]] = 1.0
 
-        self.inputs = {'X': (x, x_lod)}
+        self.inputs = {'X': (x, x_lod), 'depth_tensor': depth_np}
         self.attrs = {'depth': depth}
         self.outputs = {'Out': (out, x_lod)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_cinn=True)
 
 
 class TestOneHotOp_exception(unittest.TestCase):
