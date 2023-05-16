@@ -51,6 +51,7 @@ class TestPad3dOneDNNOp(OpTest):
         self.attrs['value'] = self.value
         self.attrs['mode'] = self.mode
         self.attrs['data_format'] = self.data_format
+        self.attrs['use_mkldnn'] = self.use_onednn
         if self.data_format == "NCDHW":
             paddings = [
                 (0, 0),
@@ -87,7 +88,7 @@ class TestPad3dOneDNNOp(OpTest):
             self.outputs['Out'] = convert_float_to_uint16(self.outputs['Out'])
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
     def test_check_grad_normal(self):
         self.check_grad(['X'], 'Out')
