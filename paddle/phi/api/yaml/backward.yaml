@@ -2123,14 +2123,3 @@
   kernel:
     func: unpool3d_grad
     data_type: x
-
-- backward_op: unpool_grad
-  forward: unpool (Tensor x, Tensor indices, int[] ksize, int[] strides = {1,1}, int[] paddings ={0,0} ,IntArray output_size = {0,0}, str data_format="NCHW") -> Tensor(out)
-  args: (Tensor x, Tensor indices, Tensor out, Tensor out_grad, int[] ksize, int[] strides, int[] paddings, IntArray output_size, str data_format)
-  output: Tensor(x_grad)
-  infer_meta:
-    func: UnchangedInferMeta
-    param : [x]
-  kernel:
-    func: unpool_grad
-    data_type: x

@@ -2191,16 +2191,6 @@
     data_type : x
   optional : index, counts
 
-- op : unpool
-  args: (Tensor x, Tensor indices, int[] ksize, int[] strides = {1,1}, int[] paddings ={0,0} ,IntArray output_size = {0,0}, str data_format="NCHW")
-  output: Tensor(out)
-  infer_meta:
-    func: UnpoolInferMeta
-  kernel:
-    func: unpool
-    data_type: x
-  backward: unpool_grad
-
 - op : unpool3d
   args: (Tensor x, Tensor indices, int[] ksize, int[] strides={1,1,1}, int[] paddings={0,0,0}, int[] output_size={0,0,0}, str data_format="NCDHW")
   output: Tensor(out)
