@@ -29,7 +29,7 @@ if(APPLE)
       -i
       \"\"
       "s/-Wstrict-prototypes -Wundef/-Wstrict-prototypes -Wundef -fPIC/g"
-      ${XXHASH_SOURCE_DIR}/Makefile
+      ${SOURCE_DIR}/Makefile
       &&
       make
       lib)
@@ -38,7 +38,7 @@ elseif(UNIX)
       sed
       -i
       "s/-Wstrict-prototypes -Wundef/-Wstrict-prototypes -Wundef -fPIC/g"
-      ${XXHASH_SOURCE_DIR}/Makefile
+      ${SOURCE_DIR}/Makefile
       &&
       make
       lib)
@@ -63,7 +63,7 @@ if(WIN32)
     UPDATE_COMMAND ""
     PATCH_COMMAND ""
     CONFIGURE_COMMAND
-      ${CMAKE_COMMAND} ${XXHASH_SOURCE_DIR}/cmake_unofficial
+      ${CMAKE_COMMAND} ${SOURCE_DIR}/cmake_unofficial
       -DCMAKE_INSTALL_PREFIX:PATH=${XXHASH_INSTALL_DIR}
       -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
       -DCMAKE_VERBOSE_MAKEFILE:BOOL=OFF
