@@ -15,6 +15,7 @@ import paddle
 from paddle import framework
 
 from ..meta_optimizers.dygraph_optimizer import HybridParallelOptimizer
+from ..utils import timer_helper as timer
 from ..utils.hybrid_parallel_util import (
     broadcast_dp_parameters,
     broadcast_mp_parameters,
@@ -75,13 +76,24 @@ class PipelineParallel(MetaParallelBase):
         self._dp_comm_overlap = self._strategy.hybrid_configs[
             "pp_configs"
         ].dp_comm_overlap
+        self._enable_timer = self._strategy.hybrid_configs[
+            "pp_configs"
+        ].enable_timer
         self._dp_comm_buffers = []
 
         if self._dp_comm_overlap:
             assert self.use_data_parallel and self.num_stages > 1
 
+        if self._enable_timer:
+            if not timer.is_timer_initialized():
+                timer.set_timers()
+            self.timers = timer.get_timers()
+
         p2p.initialize_p2p_groups(
-            hcg, self._using_cache, self._enable_partial_send_recv
+            hcg,
+            self._using_cache,
+            self._enable_partial_send_recv,
+            self._enable_timer,
         )
 
         self.global_rank = self._hcg.get_global_rank()
@@ -167,6 +179,12 @@ class PipelineParallel(MetaParallelBase):
                         self.bw_hook_func(buffer, param)
                     )
 
+    def timer_printer(self):
+        if not self._enable_timer:
+            return
+        all_flag_names = self.timers.timers.keys()
+        self.timers.log(all_flag_names)
+
     def forward_backward_pipeline(self, data, scaler=None):
         # use the 1f1b scheduling strategy.
         # this strategy is inspired by:
@@ -250,9 +268,17 @@ class PipelineParallel(MetaParallelBase):
             for buffer in self._dp_comm_buffers:
                 buffer.scale_and_split_grads()
 
+        if self._enable_timer:
+            self.timers("allreduce_shared_weight_gradients").start()
         self._layers.allreduce_shared_weight_gradients()
+        if self._enable_timer:
+            self.timers("allreduce_shared_weight_gradients").stop()
+            self.timers("broadcast_final_loss").start()
         with paddle.amp.auto_cast(enable=False):
             train_loss = self._broadcast_final_loss()
+        if self._enable_timer:
+            self.timers("broadcast_final_loss").stop()
+        self.timer_printer()
         return train_loss
 
     def _prepare_training(self, data, optimizer, lr_scheduler):
@@ -348,6 +374,8 @@ class PipelineParallel(MetaParallelBase):
         return self.train_loss
 
     def _forward_step(self, input_tensor, chunk_id=None):
+        if self._enable_timer:
+            self.timers("forward_step").start()
         if self.is_pipeline_first_stage():
             input_tensor = self._load_micro_batch(self.micro_batch_id)
 
@@ -379,9 +407,13 @@ class PipelineParallel(MetaParallelBase):
             # Only increase micro batch id at virtual first/last pp stage.
             # The micro batch id is used to load data, therefore, only increase it when load data.
             self.micro_batch_id += 1
+        if self._enable_timer:
+            self.timers("forward_step").stop()
         return output_tensor
 
     def _backward_step(self, input_tensor, output_tensor, output_tensor_grad):
+        if self._enable_timer:
+            self.timers("backward_step").start()
         with paddle.amp.auto_cast(enable=False):
             if self.is_pipeline_last_stage():
                 assert output_tensor_grad is None
@@ -411,6 +443,8 @@ class PipelineParallel(MetaParallelBase):
                     )
                 else:
                     input_tensor_grad = input_tensor.grad
+            if self._enable_timer:
+                self.timers("backward_step").stop()
             return input_tensor_grad
 
     def _check_data_vaild(self, data):
@@ -821,16 +855,25 @@ class PipelineParallelWithInterleave(PipelineParallel):
                 for buffer in self._dp_comm_buffers:
                     buffer.scale_and_split_grads()
 
+            if self._enable_timer:
+                self.timers("allreduce_shared_weight_gradients").start()
             self._layers.allreduce_shared_weight_gradients()
+            if self._enable_timer:
+                self.timers("allreduce_shared_weight_gradients").stop()
 
         if compute_loss:
             # return loss if compute loss
+            if self._enable_timer:
+                self.timers("broadcast_final_loss").start()
             with paddle.amp.auto_cast(enable=False):
                 train_loss = self._broadcast_final_loss()
+            if self._enable_timer:
+                self.timers("broadcast_final_loss").stop()
         else:
             # else just return all intermediate output tensor for all micro steps
             train_loss = self.output_tensors
 
+        self.timer_printer()
         return train_loss
 
     def train_batch(self, data, optimizer, lr_scheduler=None, scaler=None):
