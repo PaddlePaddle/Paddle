@@ -1,6 +1,6 @@
 // Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
-//
 // Licensed under the Apache License, Version 2.0 (the "License");
+//
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -14,7 +14,6 @@
 #pragma once
 
 #include <assert.h>
-#include <cuda.h>
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/primitive/functor_primitives.h"
 
@@ -73,7 +72,7 @@ template <typename T,
           int ColsPerThread,
           int RowsPerThread,
           int ThreadGroupWidth,
-          bool isPadded>
+          bool NeedPadding>
 __global__ void LogsumexpWarpImpl(const Context& dev_ctx,
                                   const int64_t num_row,
                                   const int64_t num_col,
@@ -108,7 +107,7 @@ __global__ void LogsumexpWarpImpl(const Context& dev_ctx,
       for (int read_id = 0; read_id < num_read; read_id++) {
         const int offset = read_id * VecSize;
         const int cur_col = (read_id * ThreadGroupWidth + thread_id) * VecSize;
-        if (!isPadded || cur_col < num_col) {
+        if (!NeedPadding || cur_col < num_col) {
           int64_t load_offset = ((cur_row + row_id) * num_col + cur_col);
           phi::Load<SourceType, VecSize>(in + load_offset, &load_vec);
 #pragma unroll
@@ -164,7 +163,7 @@ template <typename T,
           int ColsPerThread,
           int RowsPerThread,
           int ThreadGroupWidth,
-          bool isPadded>
+          bool NeedPadding>
 inline cudaError_t LaunchLogsumexpWarp(const Context& dev_ctx,
                                        const int64_t num_row,
                                        const int64_t num_col,
@@ -187,8 +186,9 @@ inline cudaError_t LaunchLogsumexpWarp(const Context& dev_ctx,
                     ColsPerThread,
                     RowsPerThread,
                     ThreadGroupWidth,
-                    isPadded><<<grid_dim_x, block_dim, 0, dev_ctx.stream()>>>(
-      dev_ctx, num_row, num_col, in, out);
+                    NeedPadding>
+      <<<grid_dim_x, block_dim, 0, dev_ctx.stream()>>>(
+          dev_ctx, num_row, num_col, in, out);
   return cudaPeekAtLastError();
 }
 
