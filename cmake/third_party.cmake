@@ -142,13 +142,14 @@ function(file_download_and_uncompress URL NAME)
     URL ${URL}
     URL_MD5 ${URL_MD5}
     TIMEOUT 120
-    DOWNLOAD_DIR ${THIRD_PARTY_PATH}/${NAME}/data/
-    SOURCE_DIR ${THIRD_PARTY_PATH}/${NAME}/data/
+    DOWNLOAD_DIR ${THIRD_PARTY_PATH}/${NAME}/data
+    SOURCE_DIR ${THIRD_PARTY_PATH}/${NAME}/data
     DOWNLOAD_NO_PROGRESS 1
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""
     UPDATE_COMMAND ""
-    INSTALL_COMMAND "")
+    INSTALL_COMMAND ""
+    LOG_DOWNLOAD TRUE)
   set(third_party_deps
       ${third_party_deps} download_${NAME}
       PARENT_SCOPE)
@@ -342,12 +343,14 @@ if(WITH_GPU)
     set(DST_DIR2
         ${CMAKE_BINARY_DIR}/python/paddle/include/third_party/externalError/data
     )
-    add_custom_command(
-      TARGET download_externalError
-      POST_BUILD
+    ExternalProject_Add_Step(
+      download_externalError copy_externalError
       COMMAND ${CMAKE_COMMAND} -E copy_directory ${SRC_DIR} ${DST_DIR1}
       COMMAND ${CMAKE_COMMAND} -E copy_directory ${SRC_DIR} ${DST_DIR2}
-      COMMENT "copy_directory from ${SRC_DIR} to ${DST_DIR}")
+      COMMAND ${CMAKE_COMMAND} -E copy_directory ${DST_DIR1} ${SRC_DIR}
+      COMMAND ${CMAKE_COMMAND} -E copy_directory ${DST_DIR2} ${SRC_DIR}
+      DEPENDEES download
+      ALWAYS 1)
   endif()
 endif()
 

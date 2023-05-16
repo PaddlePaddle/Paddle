@@ -237,8 +237,13 @@ if(WITH_CUDNN_FRONTEND)
 endif()
 
 set(WITH_PHI_SHARED
-    OFF
+    ON
     CACHE BOOL "" FORCE)
+if(WIN32 OR WITH_ROCM)
+  set(WITH_PHI_SHARED
+      OFF
+      CACHE BOOL "" FORCE)
+endif()
 
 if(WITH_PHI_SHARED)
   add_definitions(-DPHI_SHARED)
