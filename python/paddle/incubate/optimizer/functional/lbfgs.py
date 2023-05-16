@@ -178,16 +178,20 @@ def minimize_lbfgs(
             shape=[], fill_value=(head - 1).mod(history_size), dtype='int64'
         )
 
-        def cond(i, q):
+        def cond(i, q, ai_vec):
             return i != tail
 
-        def body(i, q):
-            ai_vec[i] = rhok_vec[i] * paddle.dot(sk_vec[i], q)
+        def body(i, q, ai_vec):
+            ai_vec = paddle.static.setitem(
+                ai_vec, i, rhok_vec[i] * paddle.dot(sk_vec[i], q)
+            )
             q = q - ai_vec[i] * yk_vec[i]
             i = (i - 1).mod(history_size)
-            return i, q
+            return i, q, ai_vec
 
-        paddle.static.nn.while_loop(cond=cond, body=body, loop_vars=[i, q])
+        paddle.static.nn.while_loop(
+            cond=cond, body=body, loop_vars=[i, q, ai_vec]
+        )
 
         r = paddle.matmul(H0, q)
 
@@ -233,10 +237,9 @@ def minimize_lbfgs(
             lambda: paddle.full(shape=[1], fill_value=1000.0, dtype=dtype),
             lambda: 1.0 / rhok_inv,
         )
-
-        sk_vec[head] = sk
-        yk_vec[head] = yk
-        rhok_vec[head] = rhok
+        sk_vec = paddle.static.setitem(sk_vec, head, sk)
+        yk_vec = paddle.static.setitem(yk_vec, head, yk)
+        rhok_vec = paddle.static.setitem(rhok_vec, head, rhok)
         head = (head + 1) % history_size
 
         def true_fn(tail):

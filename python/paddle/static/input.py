@@ -346,7 +346,6 @@ class InputSpec:
         return not self == other
 
 
-@static_only
 def setitem(x, index, value):
     """
     x(Tensor): input Tensor.
