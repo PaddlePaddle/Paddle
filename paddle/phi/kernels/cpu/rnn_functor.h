@@ -168,11 +168,11 @@ void DropoutCpuFunctionInplace(const CPUContext& dev_ctx,
 }
 
 template <typename Context, typename TensorType>
-void SplitReserveData(const Context& dev_ctx,
-                      int direction_num,
-                      int time_step,
-                      int batch_size,
-                      int hidden_size,
+void SplitReserveData(const Context& dev_ctx UNUSED,
+                      int direction_num UNUSED,
+                      int time_step UNUSED,
+                      int batch_size UNUSED,
+                      int hidden_size UNUSED,
                       int gate_num,
                       int num_layers,
                       const std::string& mode,
