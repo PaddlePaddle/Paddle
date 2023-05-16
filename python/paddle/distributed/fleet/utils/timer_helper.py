@@ -19,9 +19,13 @@ import paddle
 _GLOBAL_TIMERS = None
 
 
+def is_timer_initialized():
+    return _GLOBAL_TIMERS is not None
+
+
 def _ensure_var_is_not_initialized(var, name):
     """Make sure the input variable is not None."""
-    assert var is None, f"{name} is not initialized."
+    assert var is None, f"{name} has been already initialized."
 
 
 def _ensure_var_is_initialized(var, name):

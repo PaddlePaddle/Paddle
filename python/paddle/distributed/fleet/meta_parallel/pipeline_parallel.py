@@ -83,7 +83,8 @@ class PipelineParallel(MetaParallelBase):
             assert self.use_data_parallel and self.num_stages > 1
 
         if self._enable_timer:
-            timer.set_timers()
+            if not timer.is_timer_initialized():
+                timer.set_timers()
             self.timers = timer.get_timers()
 
         p2p.initialize_p2p_groups(
