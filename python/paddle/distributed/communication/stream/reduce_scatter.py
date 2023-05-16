@@ -81,6 +81,7 @@ def _reduce_scatter_in_static_mode(tensor, tensor_or_tensor_list, group):
             'int8',
             'uint8',
             'bool',
+            'uint16',
         ],
         op_type,
     )

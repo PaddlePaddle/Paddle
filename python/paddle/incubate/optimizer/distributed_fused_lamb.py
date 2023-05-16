@@ -58,6 +58,21 @@ def init_communicator(block, rank, ranks, ring_id):
                 'ring_id': ring_id,
             },
         )
+    elif (
+        paddle.distributed.ParallelEnv().device_type
+        in paddle.device.get_all_custom_device_type()
+    ):
+        block.append_op(
+            type='c_gen_xccl_id',
+            inputs={},
+            outputs={'Out': comm_id_var},
+            attrs={
+                'rank': local_rank,
+                'endpoint': cur_ep,
+                'other_endpoints': other_eps,
+                'ring_id': ring_id,
+            },
+        )
     block.append_op(
         type='c_comm_init',
         inputs={'X': comm_id_var},

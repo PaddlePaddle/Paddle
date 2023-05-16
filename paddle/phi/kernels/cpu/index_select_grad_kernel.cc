@@ -25,7 +25,7 @@ namespace phi {
 
 template <typename T, typename Context>
 void IndexSelectGradKernel(const Context& ctx,
-                           const DenseTensor& x,
+                           const DenseTensor& x UNUSED,
                            const DenseTensor& index,
                            const DenseTensor& out_grad,
                            int dim,

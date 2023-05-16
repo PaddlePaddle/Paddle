@@ -84,7 +84,7 @@ void ReshapeKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const IntArray& shape,
                    DenseTensor* out,
-                   DenseTensor* xshape) {
+                   DenseTensor* xshape UNUSED) {
   DenseTensor& xx = const_cast<DenseTensor&>(x);
   if (!xx.IsSharedBufferWith(*out)) {
     if (xx.can_not_uses != out->can_not_uses) {

@@ -141,7 +141,7 @@ void* DenseTensor::AllocateFrom(Allocator* allocator,
       phi::errors::InvalidArgument(
           "Required allocator shall not be nullptr, but received nullptr."));
   if (this->dtype() != dtype) {
-    VLOG(10) << "change data type in mutbale_data, target dtype - " << dtype;
+    VLOG(10) << "change data type in mutable_data, target dtype - " << dtype;
     meta_.dtype = dtype;
   }
 

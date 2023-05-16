@@ -176,11 +176,6 @@ PD_Bool PD_ConfigUseXpu(__pd_keep PD_Config* pd_config) {
   return config->use_xpu();
 }
 
-PD_Bool PD_ConfigUseNpu(__pd_keep PD_Config* pd_config) {
-  CHECK_AND_CONVERT_PD_CONFIG;
-  return config->use_npu();
-}
-
 int32_t PD_ConfigGpuDeviceId(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
   return config->gpu_device_id();
@@ -188,10 +183,6 @@ int32_t PD_ConfigGpuDeviceId(__pd_keep PD_Config* pd_config) {
 int32_t PD_ConfigXpuDeviceId(__pd_keep PD_Config* pd_config) {
   CHECK_AND_CONVERT_PD_CONFIG;
   return config->xpu_device_id();
-}
-int32_t PD_ConfigNpuDeviceId(__pd_keep PD_Config* pd_config) {
-  CHECK_AND_CONVERT_PD_CONFIG;
-  return config->npu_device_id();
 }
 
 void PD_ConfigEnableCustomDevice(__pd_keep PD_Config* pd_config,
