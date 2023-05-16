@@ -40,7 +40,7 @@ struct odist_calc {
 
 // less than two norm
 template <typename T>
-struct lltdist_calc {
+struct lttdist_calc {
   static inline T backward(const T diff,
                            const T grad,
                            const T dist,
@@ -86,9 +86,9 @@ struct idist_calc {
                            const T grad,
                            const T dist,
                            const T p) {
-    T result =
-        grad * sign(diff) *
-        (1.0 - std::min(1.0, std::ceil(std::abs(std::abs(diff) - dist))));
+    T result = grad * sign(diff) *
+               (1.0 - std::min(static_cast<T>(1.0),
+                               std::ceil(std::abs(std::abs(diff) - dist))));
     return result;
   }
 };
@@ -96,24 +96,24 @@ struct idist_calc {
 namespace phi {
 
 template <typename T, typename F>
-static void backward_down_column_cdist(const T* t1,
-                                       const T* t2,
-                                       T* res,
-                                       const T* grad_k,
-                                       const T* dist_k,
-                                       const T p,
-                                       const int64_t r1,
-                                       const int64_t r2,
-                                       const int64_t m,
-                                       const int64_t d,
-                                       const int64_t gs,
-                                       const int64_t l1_size,
-                                       const int64_t l2_size) {
+inline static void backward_down_column_cdist(const T* t1,
+                                              const T* t2,
+                                              T* res,
+                                              const T* grad_k,
+                                              const T* dist_k,
+                                              const T p,
+                                              const int64_t r1,
+                                              const int64_t r2,
+                                              const int64_t m,
+                                              const int64_t d,
+                                              const int64_t gs,
+                                              const int64_t l1_size,
+                                              const int64_t l2_size) {
   const T* t1_end = t1 + l1_size;
   const T* t2_end = t2 + l2_size;
 
   for (int64_t l = 0; l < d; ++l) {
-    for (; t1 != t2_end; t1 += m, res += m) {
+    for (; t1 != t1_end; t1 += m, res += m) {
       T res_tmp = *res;
       for (const T* t2_curr = t2; t2_curr != t2_end;
            t2_curr += m, grad_k += gs, dist_k += 1) {
@@ -189,6 +189,23 @@ void cdist_grad_impl(const Context& dev_ctx,
                      DenseTensor* x_grad) {
   phi::FullLikeKernel<T>(
       dev_ctx, *x_grad, static_cast<T>(0), x_grad->dtype(), x_grad);
+  if (p == 0.0) {
+  } else if (p == 1.0) {
+    run_backward_parallel_cdist<T, Context, odist_calc<T>>(
+        x, y, out, out_grad, p, x_grad);
+  } else if (p < 2.0) {
+    run_backward_parallel_cdist<T, Context, lttdist_calc<T>>(
+        x, y, out, out_grad, p, x_grad);
+  } else if (p == 2.0) {
+    run_backward_parallel_cdist<T, Context, tdist_calc<T>>(
+        x, y, out, out_grad, p, x_grad);
+  } else if (p == INFINITY) {
+    run_backward_parallel_cdist<T, Context, idist_calc<T>>(
+        x, y, out, out_grad, p, x_grad);
+  } else {
+    run_backward_parallel_cdist<T, Context, pdist_calc<T>>(
+        x, y, out, out_grad, p, x_grad);
+  }
 }
 
 template <typename T, typename Context>
@@ -262,6 +279,9 @@ void CdistGradKernel(const Context& dev_ctx,
       dev_ctx, x_expanded, y_expanded, out, out_grad, p, x_grad);
   cdist_grad_impl<T, Context>(
       dev_ctx, y_expanded, x_expanded, out_t, out_grad_t, p, y_grad);
+
+  T* x_grad_data = x_grad->data<T>();
+  T* y_grad_data = y_grad->data<T>();
 
   *x_grad = phi::Reshape<T, Context>(dev_ctx, *x_grad, x_tensor_expand_dims);
   *y_grad = phi::Reshape<T, Context>(dev_ctx, *y_grad, y_tensor_expand_dims);

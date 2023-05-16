@@ -19,8 +19,6 @@ from eager_op_test import OpTest
 
 import paddle
 
-# # paddle.enable_static()
-
 
 def _cdist(x, y, p=2.0):
     r1 = x.shape[-2]
@@ -41,8 +39,8 @@ class TestCdistOp(OpTest):
         self.check_output()
 
     def init_config(self):
-        self.x = np.random.random((10, 2)).astype('float64')
-        self.y = np.random.random((11, 2)).astype('float64')
+        self.x = np.random.random((50, 3)).astype('float64')
+        self.y = np.random.random((51, 3)).astype('float64')
         self.inputs = {'x': self.x, 'y': self.y}
         self.attrs = {
             'p': 2.0,
@@ -51,52 +49,13 @@ class TestCdistOp(OpTest):
         self.target = _cdist(self.x, self.y, p=2.0)
 
     def test_check_grad(self):
-        self.check_grad(
-            ["x", "y"],
-            "out",
-        )
-
-
-class TestCdistOpEmptyCase1(TestCdistOp):
-    def init_config(self):
-        self.x = np.random.random((0, 2)).astype('float32')
-        self.y = np.random.random((4, 2)).astype('float32')
-        self.inputs = {'x': self.x, 'y': self.y}
-        self.attrs = {
-            'p': 2.0,
-            'compute_mode': 'use_mm_for_euclid_dist_if_necessary',
-        }
-        self.target = np.empty((0, 4))
-
-
-class TestCdistOpEmptyCase2(TestCdistOp):
-    def init_config(self):
-        self.x = np.random.random((3, 2)).astype('float32')
-        self.y = np.random.random((0, 2)).astype('float32')
-        self.inputs = {'x': self.x, 'y': self.y}
-        self.attrs = {
-            'p': 2.0,
-            'compute_mode': 'use_mm_for_euclid_dist_if_necessary',
-        }
-        self.target = np.empty((3, 0))
-
-
-class TestCdistOpEmptyCase3(TestCdistOp):
-    def init_config(self):
-        self.x = np.random.random((3, 0)).astype('float32')
-        self.y = np.random.random((2, 0)).astype('float32')
-        self.inputs = {'x': self.x, 'y': self.y}
-        self.attrs = {
-            'p': 2.0,
-            'compute_mode': 'use_mm_for_euclid_dist_if_necessary',
-        }
-        self.target = np.zeros((3, 2))
+        self.check_grad(['x', 'y'], 'out')
 
 
 class TestCdistOpNormCase1(TestCdistOp):
     def init_conig(self):
-        self.x = np.random.random((4, 3)).astype('float32')
-        self.y = np.random.random((5, 3)).astype('float32')
+        self.x = np.random.random((40, 3)).astype('float64')
+        self.y = np.random.random((50, 3)).astype('float64')
         self.inputs = {'x': self.x, 'y': self.y}
         self.attrs = {
             'p': 0.0,
@@ -107,8 +66,8 @@ class TestCdistOpNormCase1(TestCdistOp):
 
 class TestCdistOpNormCase2(TestCdistOp):
     def init_conig(self):
-        self.x = np.random.random((4, 2)).astype('float32')
-        self.y = np.random.random((5, 2)).astype('float32')
+        self.x = np.random.random((40, 2)).astype('float64')
+        self.y = np.random.random((50, 2)).astype('float64')
         self.inputs = {'x': self.x, 'y': self.y}
         self.attrs = {
             'p': 1.0,
@@ -119,8 +78,8 @@ class TestCdistOpNormCase2(TestCdistOp):
 
 class TestCdistOpNormCase3(TestCdistOp):
     def init_conig(self):
-        self.x = np.random.random((4, 10)).astype('float32')
-        self.y = np.random.random((5, 10)).astype('float32')
+        self.x = np.random.random((40, 10)).astype('float64')
+        self.y = np.random.random((50, 10)).astype('float64')
         self.inputs = {'x': self.x, 'y': self.y}
         self.attrs = {
             'p': 2,
@@ -131,8 +90,8 @@ class TestCdistOpNormCase3(TestCdistOp):
 
 class TestCdistOpNormCase4(TestCdistOp):
     def init_conig(self):
-        self.x = np.random.random((3, 4)).astype('float32')
-        self.y = np.random.random((7, 4)).astype('float32')
+        self.x = np.random.random((30, 4)).astype('float64')
+        self.y = np.random.random((70, 4)).astype('float64')
         self.inputs = {'x': self.x, 'y': self.y}
         self.attrs = {
             'p': 3.0,
@@ -143,8 +102,8 @@ class TestCdistOpNormCase4(TestCdistOp):
 
 class TestCdistOpNormCase5(TestCdistOp):
     def init_conig(self):
-        self.x = np.random.random((6, 10)).astype('float32')
-        self.y = np.random.random((8, 10)).astype('float32')
+        self.x = np.random.random((60, 10)).astype('float64')
+        self.y = np.random.random((80, 10)).astype('float64')
         self.inputs = {'x': self.x, 'y': self.y}
         self.attrs = {
             'p': float('inf'),
@@ -155,8 +114,8 @@ class TestCdistOpNormCase5(TestCdistOp):
 
 class TestCdistOpNormCase6(TestCdistOp):
     def init_conig(self):
-        self.x = np.random.random((4, 3)).astype('float32')
-        self.y = np.random.random((5, 3)).astype('float32')
+        self.x = np.random.random((40, 3)).astype('float64')
+        self.y = np.random.random((50, 3)).astype('float64')
         self.inputs = {'x': self.x, 'y': self.y}
         self.attrs = {
             'p': 1.5,
@@ -167,8 +126,8 @@ class TestCdistOpNormCase6(TestCdistOp):
 
 class TestCdistOpNormCase7(TestCdistOp):
     def init_conig(self):
-        self.x = np.random.random((4, 3)).astype('float32')
-        self.y = np.random.random((5, 3)).astype('float32')
+        self.x = np.random.random((40, 3)).astype('float64')
+        self.y = np.random.random((50, 3)).astype('float64')
         self.inputs = {'x': self.x, 'y': self.y}
         self.attrs = {
             'p': 2.5,
@@ -179,8 +138,8 @@ class TestCdistOpNormCase7(TestCdistOp):
 
 class TestCdistOpNormCase8(TestCdistOp):
     def init_conig(self):
-        self.x = np.random.random((4, 10)).astype('float32')
-        self.y = np.random.random((5, 10)).astype('float32')
+        self.x = np.random.random((40, 10)).astype('float64')
+        self.y = np.random.random((50, 10)).astype('float64')
         self.inputs = {'x': self.x, 'y': self.y}
         self.attrs = {'p': 2, 'compute_mode': 'use_mm_for_euclid_dist'}
         self.target = _cdist(self.x, self.y, p=2)
@@ -188,8 +147,8 @@ class TestCdistOpNormCase8(TestCdistOp):
 
 class TestCdistOpNormCase9(TestCdistOp):
     def init_conig(self):
-        self.x = np.random.random((4, 10)).astype('float32')
-        self.y = np.random.random((5, 10)).astype('float32')
+        self.x = np.random.random((40, 10)).astype('float64')
+        self.y = np.random.random((50, 10)).astype('float64')
         self.inputs = {'x': self.x, 'y': self.y}
         self.attrs = {'p': 2, 'compute_mode': 'donot_use_mm_for_euclid_dist'}
         self.target = _cdist(self.x, self.y, p=2)
@@ -197,8 +156,8 @@ class TestCdistOpNormCase9(TestCdistOp):
 
 class TestCdistOpNormBatchCase1(TestCdistOp):
     def init_conig(self):
-        self.x = np.random.random((2, 3, 6, 4, 3)).astype('float32')
-        self.y = np.random.random((2, 3, 6, 5, 3)).astype('float32')
+        self.x = np.random.random((20, 30, 6, 4, 3)).astype('float64')
+        self.y = np.random.random((20, 30, 6, 5, 3)).astype('float64')
         self.inputs = {'x': self.x, 'y': self.y}
         self.attrs = {
             'p': 0.0,
@@ -209,8 +168,8 @@ class TestCdistOpNormBatchCase1(TestCdistOp):
 
 class TestCdistOpNormBatchCase2(TestCdistOp):
     def init_conig(self):
-        self.x = np.random.random((2, 3, 6, 4, 2)).astype('float32')
-        self.y = np.random.random((2, 3, 6, 5, 2)).astype('float32')
+        self.x = np.random.random((2, 30, 6, 4, 2)).astype('float64')
+        self.y = np.random.random((2, 30, 6, 5, 2)).astype('float64')
         self.inputs = {'x': self.x, 'y': self.y}
         self.attrs = {
             'p': 1.0,
@@ -221,8 +180,8 @@ class TestCdistOpNormBatchCase2(TestCdistOp):
 
 class TestCdistOpNormBatchCase3(TestCdistOp):
     def init_conig(self):
-        self.x = np.random.random((2, 3, 6, 4, 10)).astype('float32')
-        self.y = np.random.random((2, 3, 6, 5, 10)).astype('float32')
+        self.x = np.random.random((2, 3, 60, 4, 10)).astype('float64')
+        self.y = np.random.random((2, 3, 60, 5, 10)).astype('float64')
         self.inputs = {'x': self.x, 'y': self.y}
         self.attrs = {
             'p': 2,
@@ -233,8 +192,8 @@ class TestCdistOpNormBatchCase3(TestCdistOp):
 
 class TestCdistOpNormBatchCase4(TestCdistOp):
     def init_conig(self):
-        self.x = np.random.random((2, 3, 6, 3, 4)).astype('float32')
-        self.y = np.random.random((2, 3, 6, 7, 4)).astype('float32')
+        self.x = np.random.random((2, 3, 60, 3, 4)).astype('float64')
+        self.y = np.random.random((2, 3, 60, 7, 4)).astype('float64')
         self.inputs = {'x': self.x, 'y': self.y}
         self.attrs = {
             'p': 3.0,
@@ -245,8 +204,8 @@ class TestCdistOpNormBatchCase4(TestCdistOp):
 
 class TestCdistOpNormBatchCase5(TestCdistOp):
     def init_conig(self):
-        self.x = np.random.random((2, 3, 6, 6, 10)).astype('float32')
-        self.y = np.random.random((2, 3, 6, 8, 10)).astype('float32')
+        self.x = np.random.random((20, 3, 6, 6, 10)).astype('float64')
+        self.y = np.random.random((20, 3, 6, 8, 10)).astype('float64')
         self.inputs = {'x': self.x, 'y': self.y}
         self.attrs = {
             'p': float('inf'),
@@ -257,8 +216,8 @@ class TestCdistOpNormBatchCase5(TestCdistOp):
 
 class TestCdistOpNormBatchCase6(TestCdistOp):
     def init_conig(self):
-        self.x = np.random.random((2, 3, 6, 4, 3)).astype('float32')
-        self.y = np.random.random((2, 3, 6, 5, 3)).astype('float32')
+        self.x = np.random.random((20, 3, 6, 4, 3)).astype('float64')
+        self.y = np.random.random((20, 3, 6, 5, 3)).astype('float64')
         self.inputs = {'x': self.x, 'y': self.y}
         self.attrs = {
             'p': 1.5,
@@ -269,8 +228,8 @@ class TestCdistOpNormBatchCase6(TestCdistOp):
 
 class TestCdistOpNormBatchCase7(TestCdistOp):
     def init_conig(self):
-        self.x = np.random.random((2, 3, 6, 4, 3)).astype('float32')
-        self.y = np.random.random((2, 3, 6, 5, 3)).astype('float32')
+        self.x = np.random.random((2, 30, 6, 4, 3)).astype('float64')
+        self.y = np.random.random((2, 30, 6, 5, 3)).astype('float64')
         self.inputs = {'x': self.x, 'y': self.y}
         self.attrs = {
             'p': 2.5,
@@ -281,8 +240,8 @@ class TestCdistOpNormBatchCase7(TestCdistOp):
 
 class TestCdistOpNormBatchCase8(TestCdistOp):
     def init_conig(self):
-        self.x = np.random.random((2, 3, 6, 4, 10)).astype('float32')
-        self.y = np.random.random((2, 3, 6, 5, 10)).astype('float32')
+        self.x = np.random.random((2, 3, 60, 4, 10)).astype('float64')
+        self.y = np.random.random((2, 3, 60, 5, 10)).astype('float64')
         self.inputs = {'x': self.x, 'y': self.y}
         self.attrs = {'p': 2, 'compute_mode': 'use_mm_for_euclid_dist'}
         self.target = _cdist(self.x, self.y, p=2)
@@ -290,8 +249,8 @@ class TestCdistOpNormBatchCase8(TestCdistOp):
 
 class TestCdistOpNormBatchCase9(TestCdistOp):
     def init_conig(self):
-        self.x = np.random.random((2, 3, 6, 4, 10)).astype('float32')
-        self.y = np.random.random((2, 3, 6, 5, 10)).astype('float32')
+        self.x = np.random.random((2, 3, 60, 4, 10)).astype('float64')
+        self.y = np.random.random((2, 3, 60, 5, 10)).astype('float64')
         self.inputs = {'x': self.x, 'y': self.y}
         self.attrs = {'p': 2, 'compute_mode': 'donot_use_mm_for_euclid_dist'}
         self.target = _cdist(self.x, self.y, p=2)

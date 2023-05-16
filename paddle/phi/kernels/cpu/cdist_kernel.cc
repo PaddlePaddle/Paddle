@@ -15,12 +15,19 @@
 #include "paddle/phi/kernels/cdist_kernel.h"
 
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/activation_kernel.h"
+#include "paddle/phi/kernels/concat_kernel.h"
 #include "paddle/phi/kernels/dist_kernel.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/expand_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/matmul_kernel.h"
+#include "paddle/phi/kernels/reduce_sum_kernel.h"
 #include "paddle/phi/kernels/reshape_kernel.h"
+#include "paddle/phi/kernels/scale_kernel.h"
+#include "paddle/phi/kernels/transpose_kernel.h"
 
 template <typename T>
 static T sign(T val) {
@@ -155,7 +162,34 @@ void _euclidean_dist(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& y,
                      DenseTensor* out) {
-  DistKernel<T>(dev_ctx, x, y, 2.0, out);
+  DenseTensor x_norm;
+  x_norm.Resize(x.dims());
+  dev_ctx.template Alloc<T>(&x_norm);
+  phi::PowKernel<T, Context>(dev_ctx, x, phi::Scalar(2.0), &x_norm);
+  x_norm = phi::Sum<T, Context>(
+      dev_ctx, x_norm, IntArray({-1}), phi::CppTypeToDataType<T>::Type(), true);
+  DenseTensor y_norm;
+  y_norm.Resize(y.dims());
+  dev_ctx.template Alloc<T>(&y_norm);
+  phi::PowKernel<T, Context>(dev_ctx, y, phi::Scalar(2.0), &y_norm);
+  y_norm = phi::Sum<T, Context>(
+      dev_ctx, y_norm, IntArray({-1}), phi::CppTypeToDataType<T>::Type(), true);
+
+  DenseTensor x_pad;
+  x_pad.Resize(x_norm.dims());
+  dev_ctx.template Alloc<T>(&x_pad);
+  phi::funcs::SetConstant<Context, T>()(dev_ctx, &x_pad, static_cast<T>(1));
+  DenseTensor y_pad;
+  y_pad.Resize(y_norm.dims());
+  dev_ctx.template Alloc<T>(&y_pad);
+  phi::funcs::SetConstant<Context, T>()(dev_ctx, &y_pad, static_cast<T>(1));
+
+  DenseTensor x_mul = phi::Scale<T, Context>(dev_ctx, x, -2, 0.0, false);
+  DenseTensor x_ =
+      phi::Concat<T, Context>(dev_ctx, {&x_mul, &x_norm, &x_pad}, -1);
+  DenseTensor y_ = phi::Concat<T, Context>(dev_ctx, {&y, &y_pad, &y_norm}, -1);
+  DenseTensor temp = phi::Matmul<T, Context>(dev_ctx, x_, y_, false, true);
+  phi::SqrtKernel<T, Context>(dev_ctx, temp, out);
 }
 
 template <typename T, typename Context>
