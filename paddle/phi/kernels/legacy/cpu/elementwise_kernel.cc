@@ -135,7 +135,11 @@ PD_REGISTER_KERNEL(floor_divide_raw,
                    ALL_LAYOUT,
                    phi::FloorDivideRawKernel,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(elementwise_pow_raw,
                    CPU,
                    ALL_LAYOUT,
