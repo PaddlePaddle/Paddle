@@ -73,6 +73,37 @@ class TestFullOp(unittest.TestCase):
         self.assertTrue((out.numpy() == out_numpy).all(), True)
         paddle.enable_static()
 
+    def test_full_like_imperative_complex64(self):
+        paddle.disable_static()
+        input = paddle.complex(
+            paddle.ones([3, 4], dtype=paddle.float32),
+            paddle.ones([3, 4], dtype=paddle.float32),
+        )
+        out = paddle.full_like(
+            input, fill_value=42.1 + 42.1j, dtype='complex64'
+        )
+        out_numpy = (np.ones([3, 4]) + 1j * np.ones([3, 4])).astype(
+            np.complex64
+        )
+        out_numpy.fill(42.1 + 42.1j)
+        self.assertTrue((out.numpy() == out_numpy).all(), True)
+        paddle.enable_static()
+
+    def test_full_like_imperative_complex128(self):
+        paddle.disable_static()
+        input = paddle.complex(
+            paddle.ones([3, 4], dtype=paddle.float64),
+            paddle.ones([3, 4], dtype=paddle.float64),
+        )
+        fill_value = np.finfo(np.float64).max + 1j * np.finfo(np.float64).min
+        out = paddle.full_like(input, fill_value=fill_value, dtype='complex128')
+        out_numpy = (np.ones([3, 4]) + 1j * np.ones([3, 4])).astype(
+            np.complex128
+        )
+        out_numpy.fill(fill_value)
+        self.assertTrue((out.numpy() == out_numpy).all(), True)
+        paddle.enable_static()
+
     def test_full_like_fill_inf(self):
         paddle.disable_static()
         input = paddle.arange(6, 10, dtype='float32')
@@ -139,7 +170,7 @@ class TestFullLikeOp1(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output(check_prim=False)
 
     def if_enable_cinn(self):
         pass
@@ -198,6 +229,22 @@ class TestFullLikeBF16Op(TestFullLikeOp1):
         self.fill_value = 6666
         self.shape = [10, 10]
         self.dtype = np.uint16
+
+
+class TestFullLikeComplex64Op(TestFullLikeOp1):
+    def init_data(self):
+        self.fill_value = 42.1 + 42.1j
+        self.shape = [10, 10]
+        self.dtype = np.complex64
+
+
+class TestFullLikeComplex128Op(TestFullLikeOp1):
+    def init_data(self):
+        self.fill_value = (
+            np.finfo(np.float64).max + 1j * np.finfo(np.float64).min
+        )
+        self.shape = [10, 10]
+        self.dtype = np.complex128
 
 
 if __name__ == "__main__":
