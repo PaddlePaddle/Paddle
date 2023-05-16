@@ -92,9 +92,9 @@ void TransferLayoutElimPass::PutTranferlayoutAfterOp(Node *op_node,
     new_var2_shape[3] = var2_shape[2];
   } else if (dst_layout == 1 && src_layout == 2) {
     suffix = "_nchw_to_nhwc";
-    new_var2_shape[1] = var2_shape[3];
-    new_var2_shape[2] = var2_shape[1];
-    new_var2_shape[3] = var2_shape[2];
+    new_var2_shape[1] = var2_shape[2];
+    new_var2_shape[2] = var2_shape[3];
+    new_var2_shape[3] = var2_shape[1];
   }
 
   var2_desc->SetShape(new_var2_shape);
@@ -146,14 +146,14 @@ bool TransferLayoutElimPass::InputAllTransferlayout(
 
   for (auto var : op_node->inputs) {
     // If this input is a 1D persistable tensor，we allow transfer_layout not
-    // appear before this var.
-    // if (var->Var()->Persistable() && 0) {
-    //   auto var_dims =
-    //       scope->FindVar(var->Name())->GetMutable<phi::DenseTensor>()->dims();
-    //   if (var_dims.size() == 1) {
-    //     continue;
-    //   }
-    // }
+    // appear before this var, but temporarily diasble this if.
+    if (var->Var()->Persistable() && 0) {
+      auto var_dims =
+          scope->FindVar(var->Name())->GetMutable<phi::DenseTensor>()->dims();
+      if (var_dims.size() == 1) {
+        continue;
+      }
+    }
 
     if (var->inputs.size() != 1L) {
       return false;
@@ -257,7 +257,7 @@ void TransferLayoutElimPass::ApplyImpl(ir::Graph *graph) const {
       // For these Ops, you can move down the transfer_layout, but MUST change
       // the data_format attribute!
       std::vector<std::string> pool_like_ops = {
-          // "pool2d",
+          "pool2d",
           // "group_norm",
       };
       bool is_pool_like_op =
