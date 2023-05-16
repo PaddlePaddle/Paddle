@@ -14,12 +14,15 @@
 
 #pragma once
 
+#include "gflags/gflags.h"
+
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 
+DECLARE_string(throw_strided_error_op);
 namespace phi {
 
 template <typename T, typename Context>

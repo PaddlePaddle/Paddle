@@ -13,10 +13,12 @@
 // limitations under the License.
 
 #pragma once
-
+#include "gflags/gflags.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/elementwise_grad_base.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
+
+DECLARE_string(throw_strided_error_op);
 
 namespace phi {
 
