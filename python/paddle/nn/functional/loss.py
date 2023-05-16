@@ -1084,10 +1084,16 @@ def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
         out = _C_ops.huber_loss(input, label, delta)
     else:
         check_variable_and_dtype(
-            input, 'input', ['float32', 'float64'], 'smooth_l1_loss'
+            input,
+            'input',
+            ['float16', 'float32', 'float64', 'uint16'],
+            'smooth_l1_loss',
         )
         check_variable_and_dtype(
-            label, 'label', ['float32', 'float64'], 'smooth_l1_loss'
+            label,
+            'label',
+            ['float16', 'float32', 'float64', 'uint16'],
+            'smooth_l1_loss',
         )
         helper = LayerHelper('huber_loss', **locals())
         residual = helper.create_variable_for_type_inference(
