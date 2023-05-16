@@ -16,7 +16,11 @@ import math
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from eager_op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    convert_uint16_to_float,
+)
 
 import paddle
 from paddle.fluid import core
@@ -386,6 +390,7 @@ class TestPoissonBF16Op(OpTest):
     def setUp(self):
         self.op_type = "poisson"
         self.python_api = paddle.tensor.poisson
+        self.__class__.op_type = self.op_type
         self.config()
         x = np.full([2048, 1024], self.lam, dtype="float32")
         out = np.ones([2048, 1024], dtype="float32")
