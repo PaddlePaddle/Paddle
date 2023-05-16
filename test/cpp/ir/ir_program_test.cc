@@ -47,8 +47,9 @@ TEST(program_test, program) {
       ctx->GetOrRegisterDialect<paddle::dialect::PaddleDialect>();
 
   // (2) Create an empty program object
-  ir::Program *program = new ir::Program();
-  EXPECT_EQ(program->ops().size() == 0, true);
+  ir::Program program;
+  //   ir::Program *program = new ir::Program();
+  EXPECT_EQ(program.ops().size() == 0, true);
 
   // (3) Create a float32 DenseTensor Parameter and save into Program
   ir::Type fp32_dtype = ir::Float32Type::get(ctx);
@@ -65,16 +66,16 @@ TEST(program_test, program) {
       std::make_unique<ir::Parameter>(reinterpret_cast<void *>(data_a.data()),
                                       4 * sizeof(float),
                                       dense_tensor_dtype);
-  program->SetParameter("a", std::move(parameter_a));
-  EXPECT_EQ(program->parameters_num() == 1, true);
+  program.SetParameter("a", std::move(parameter_a));
+  EXPECT_EQ(program.parameters_num() == 1, true);
 
   std::vector<float> data_b = {5, 6, 7, 8};
   std::unique_ptr<ir::Parameter> parameter_b =
       std::make_unique<ir::Parameter>(reinterpret_cast<void *>(data_b.data()),
                                       4 * sizeof(float),
                                       dense_tensor_dtype);
-  program->SetParameter("b", std::move(parameter_b));
-  EXPECT_EQ(program->parameters_num() == 2, true);
+  program.SetParameter("b", std::move(parameter_b));
+  EXPECT_EQ(program.parameters_num() == 2, true);
 
   // (4) Def a = GetParameterOp("a"), and create DenseTensor for a.
   std::string op1_name =
@@ -82,8 +83,10 @@ TEST(program_test, program) {
   ir::OpInfoImpl *op1_info = ctx->GetRegisteredOpInfo(op1_name);
   std::unordered_map<std::string, ir::Attribute> op1_attribute{
       {"parameter_name", ir::StrAttribute::get(ctx, "a")}};
-  ir::Operation *op1 = ir::Operation::create(
-      {}, {dense_tensor_dtype}, op1_attribute, op1_info, program);
+  ir::Operation *op1 =
+      ir::Operation::create({}, {dense_tensor_dtype}, op1_attribute, op1_info);
+
+  program.InsertOp(op1);
 
   EXPECT_EQ(op1->GetResultByIndex(0).type().dialect().id(),
             paddle_dialect->id());
@@ -93,7 +96,7 @@ TEST(program_test, program) {
                                .dialect()
                                .GetRegisteredInterface<Interface>();
   std::shared_ptr<paddle::framework::Variable> a_var =
-      a_interface->ParameterToVariable(program->GetParameter("a"));
+      a_interface->ParameterToVariable(program.GetParameter("a"));
   const phi::DenseTensor &a_tensor = a_var->Get<phi::DenseTensor>();
   EXPECT_EQ(a_tensor.numel(), 4);
   EXPECT_EQ(a_tensor.dims(), phi::DDim(dims.data(), dims.size()));
@@ -112,8 +115,9 @@ TEST(program_test, program) {
   ir::OpInfoImpl *op2_info = ctx->GetRegisteredOpInfo(op2_name);
   std::unordered_map<std::string, ir::Attribute> op2_attribute{
       {"parameter_name", ir::StrAttribute::get(ctx, "b")}};
-  ir::Operation *op2 = ir::Operation::create(
-      {}, {dense_tensor_dtype}, op2_attribute, op2_info, program);
+  ir::Operation *op2 =
+      ir::Operation::create({}, {dense_tensor_dtype}, op2_attribute, op2_info);
+  program.InsertOp(op2);
 
   EXPECT_EQ(op2->GetResultByIndex(0).type().dialect().id(),
             paddle_dialect->id());
@@ -122,7 +126,7 @@ TEST(program_test, program) {
                                .dialect()
                                .GetRegisteredInterface<Interface>();
   std::shared_ptr<paddle::framework::Variable> b_var =
-      b_interface->ParameterToVariable(program->GetParameter("b"));
+      b_interface->ParameterToVariable(program.GetParameter("b"));
   const phi::DenseTensor &b_tensor = b_var->Get<phi::DenseTensor>();
   EXPECT_EQ(b_tensor.numel(), 4);
   EXPECT_EQ(b_tensor.dims(), phi::DDim(dims.data(), dims.size()));
@@ -144,8 +148,8 @@ TEST(program_test, program) {
       {op1->GetResultByIndex(0), op2->GetResultByIndex(0)},
       {dense_tensor_dtype},
       op3_attribute,
-      op3_info,
-      program);
+      op3_info);
+  program.InsertOp(op3);
 
   phi::CPUContext *dev_ctx = static_cast<phi::CPUContext *>(
       paddle::platform::DeviceContextPool::Instance().Get(
@@ -173,7 +177,8 @@ TEST(program_test, program) {
   std::unordered_map<std::string, ir::Attribute> op4_attribute{
       {"parameter_name", ir::StrAttribute::get(ctx, "c")}};
   ir::Operation *op4 = ir::Operation::create(
-      {op3->GetResultByIndex(0)}, {}, op4_attribute, op4_info, program);
+      {op3->GetResultByIndex(0)}, {}, op4_attribute, op4_info);
+  program.InsertOp(op4);
 
   EXPECT_EQ(op4->GetOperandByIndex(0).impl()->source().type().dialect().id(),
             paddle_dialect->id());
@@ -192,10 +197,10 @@ TEST(program_test, program) {
     EXPECT_EQ(*(dst_tensor->data<float>() + i),
               *(static_cast<float *>(parameter_c->data()) + i));
   }
-  program->SetParameter("c", std::move(parameter_c));
+  program.SetParameter("c", std::move(parameter_c));
 
   // (8) Traverse Program
-  std::list<ir::Operation *> ops = program->ops();
+  std::list<ir::Operation *> ops = program.ops();
   EXPECT_EQ(ops.size() == 4, true);
-  EXPECT_EQ(program->parameters_num() == 3, true);
+  EXPECT_EQ(program.parameters_num() == 3, true);
 }

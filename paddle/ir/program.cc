@@ -23,10 +23,8 @@ Program::~Program() {
 }
 
 void Program::InsertOp(Operation* op) {
-  if (op->parent_program() != this) {
-    throw("op parent program is not this program");
-  }
   ops_.push_back(op);
+  op->set_parent_program(this);
 }
 
 Parameter* Program::GetParameter(std::string name) const {

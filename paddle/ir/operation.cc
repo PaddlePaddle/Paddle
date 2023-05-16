@@ -24,8 +24,7 @@ namespace ir {
 Operation *Operation::create(const std::vector<ir::OpResult> &inputs,
                              const std::vector<ir::Type> &output_types,
                              const AttributeMap &attribute,
-                             ir::OpInfo op_info,
-                             ir::Program *parent_program = nullptr) {
+                             ir::OpInfo op_info) {
   // 1. Calculate the required memory size for OpResults + Operation +
   // OpOperands.
   uint32_t num_results = output_types.size();
@@ -55,8 +54,8 @@ Operation *Operation::create(const std::vector<ir::OpResult> &inputs,
     }
   }
   // 3.2. Construct Operation.
-  Operation *op = new (base_ptr)
-      Operation(num_results, num_operands, attribute, op_info, parent_program);
+  Operation *op =
+      new (base_ptr) Operation(num_results, num_operands, attribute, op_info);
   base_ptr += sizeof(Operation);
   // 3.3. Construct OpOperands.
   if ((reinterpret_cast<uintptr_t>(base_ptr) & 0x7) != 0) {
@@ -66,10 +65,7 @@ Operation *Operation::create(const std::vector<ir::OpResult> &inputs,
     new (base_ptr) detail::OpOperandImpl(inputs[idx].impl_, op);
     base_ptr += sizeof(detail::OpOperandImpl);
   }
-  VLOG(4) << "Construct an Operation: " << op->print();
-  if (parent_program) {
-    parent_program->InsertOp(op);
-  }
+
   return op;
 }
 
@@ -89,9 +85,18 @@ void Operation::destroy() {
   // 2.1. Deconstruct OpResult.
   char *base_ptr = aligned_ptr;
   for (size_t idx = num_results_; idx > 0; idx--) {
-    if (!reinterpret_cast<detail::OpResultImpl *>(base_ptr)->use_empty()) {
-      throw("Cannot destroy a value that still has uses!");
+    // release the uses of this result
+    detail::OpOperandImpl *first_use =
+        reinterpret_cast<detail::OpResultImpl *>(base_ptr)->first_use();
+    if (first_use != nullptr) {
+      first_use->release_source();
+      detail::OpOperandImpl *next_use = first_use->next_use();
+      while (next_use != nullptr) {
+        next_use->release_source();
+        next_use = next_use->next_use();
+      }
     }
+    // destory the result
     if (idx > max_inline_result_num) {
       reinterpret_cast<detail::OpOutlineResultImpl *>(base_ptr)
           ->~OpOutlineResultImpl();
@@ -124,13 +129,11 @@ void Operation::destroy() {
 Operation::Operation(uint32_t num_results,
                      uint32_t num_operands,
                      const AttributeMap &attribute,
-                     ir::OpInfo op_info,
-                     ir::Program *parent_program) {
+                     ir::OpInfo op_info) {
   num_results_ = num_results;
   num_operands_ = num_operands;
   attribute_ = attribute;
   op_info_ = op_info;
-  parent_program_ = parent_program;
 }
 
 ir::OpResult Operation::GetResultByIndex(uint32_t index) {
