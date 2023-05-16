@@ -25,8 +25,7 @@ limitations under the License. */
 #include <unordered_set>
 
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
-#include "gflags/gflags.h"
-#include "glog/logging.h"  // For VLOG()
+#include "glog/logging.h"               // For VLOG()
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/details/op_registry.h"
 #include "paddle/fluid/framework/grad_op_desc_maker.h"
@@ -34,7 +33,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/shape_inference.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/macros.h"
 
 namespace paddle {
 namespace framework {
@@ -69,7 +70,7 @@ class Version;
 }  // namespace framework
 }  // namespace paddle
 
-DECLARE_bool(check_kernel_launch);
+PHI_DECLARE_bool(check_kernel_launch);
 
 namespace paddle {
 namespace framework {
@@ -147,7 +148,7 @@ class OpRegistry {
 };
 
 template <typename PlaceType>
-inline void CheckKernelLaunch(const char* op_type) {}
+inline void CheckKernelLaunch(const char* op_type UNUSED) {}
 
 #ifdef PADDLE_WITH_CUDA
 template <>
@@ -218,9 +219,9 @@ struct OpKernelRegistrarFunctor<PlaceType, false, I, KernelTypes...> {
 
 template <typename PlaceType, size_t I, typename... KernelType>
 struct OpKernelRegistrarFunctor<PlaceType, true, I, KernelType...> {
-  void operator()(const char* op_type,
-                  const char* library_type,
-                  int customized_type_value) const {}
+  void operator()(const char* op_type UNUSED,
+                  const char* library_type UNUSED,
+                  int customized_type_value UNUSED) const {}
 };
 
 // User can register many kernel in one place. The data type could be
@@ -256,9 +257,9 @@ struct OpKernelRegistrarFunctorEx<PlaceType,
                                   true,
                                   I,
                                   DataTypeAndKernelType...> {
-  void operator()(const char* op_type,
-                  const char* library_type,
-                  int customized_type_value) const {}
+  void operator()(const char* op_type UNUSED,
+                  const char* library_type UNUSED,
+                  int customized_type_value UNUSED) const {}
 };
 
 template <typename PlaceType, size_t I, typename... DataTypeAndKernelType>
@@ -373,12 +374,6 @@ struct OpKernelRegistrarFunctorEx<PlaceType,
 #define REGISTER_OP_XPU_KERNEL(op_type, ...) \
   REGISTER_OP_KERNEL(op_type, XPU, ::paddle::platform::XPUPlace, __VA_ARGS__)
 
-#define REGISTER_OP_NPU_KERNEL(op_type, ...) \
-  REGISTER_OP_KERNEL(op_type, NPU, ::paddle::platform::NPUPlace, __VA_ARGS__)
-
-#define REGISTER_OP_MLU_KERNEL(op_type, ...) \
-  REGISTER_OP_KERNEL(op_type, MLU, ::paddle::platform::MLUPlace, __VA_ARGS__)
-
 #define REGISTER_OP_KERNEL_EX(op_type, library_type, place_class,  \
                               customized_name,                     \
                               customized_type_value,               \
@@ -412,18 +407,6 @@ struct OpKernelRegistrarFunctorEx<PlaceType,
 #define REGISTER_OP_XPU_KERNEL_FUNCTOR(op_type, ...)                  \
   REGISTER_OP_KERNEL_EX(                                              \
       op_type, XPU, ::paddle::platform::XPUPlace, DEFAULT_TYPE,       \
-      ::paddle::framework::OpKernelType::kDefaultCustomizedTypeValue, \
-      __VA_ARGS__)
-
-#define REGISTER_OP_NPU_KERNEL_FUNCTOR(op_type, ...)                  \
-  REGISTER_OP_KERNEL_EX(                                              \
-      op_type, NPU, ::paddle::platform::NPUPlace, DEFAULT_TYPE,       \
-      ::paddle::framework::OpKernelType::kDefaultCustomizedTypeValue, \
-      __VA_ARGS__)
-
-#define REGISTER_OP_MLU_KERNEL_FUNCTOR(op_type, ...)                  \
-  REGISTER_OP_KERNEL_EX(                                              \
-      op_type, MLU, ::paddle::platform::MLUPlace, DEFAULT_TYPE,       \
       ::paddle::framework::OpKernelType::kDefaultCustomizedTypeValue, \
       __VA_ARGS__)
 

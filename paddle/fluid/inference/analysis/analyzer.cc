@@ -15,7 +15,6 @@
 #include "paddle/fluid/inference/analysis/analyzer.h"
 
 #include <string>
-#include <vector>
 
 #include "paddle/fluid/inference/analysis/passes/passes.h"
 #include "paddle/fluid/string/pretty_log.h"

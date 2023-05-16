@@ -31,9 +31,9 @@ ExportedFlagInfoMap *GetMutableExportedFlagInfoMap() {
 
 }  // namespace phi
 
-PADDLE_DEFINE_EXPORTED_int32(inner_op_parallelism,
-                             0,
-                             "number of threads for inner op");
+PHI_DEFINE_EXPORTED_int32(inner_op_parallelism,
+                          0,
+                          "number of threads for inner op");
 
 /**
  * NOTE(paddle-dev): This file is designed to define all public FLAGS.
@@ -48,9 +48,9 @@ PADDLE_DEFINE_EXPORTED_int32(inner_op_parallelism,
  * instance to 2
  * Note:
  */
-PADDLE_DEFINE_EXPORTED_int32(paddle_num_threads,
-                             1,
-                             "Number of threads for each paddle instance.");
+PHI_DEFINE_EXPORTED_int32(paddle_num_threads,
+                          1,
+                          "Number of threads for each paddle instance.");
 
 /**
  * Low Precision Op related FLAG
@@ -63,11 +63,11 @@ PADDLE_DEFINE_EXPORTED_int32(paddle_num_threads,
  * - 1, return the low precision op list of current module.
  * - 2, return the op list of current module.
  */
-PADDLE_DEFINE_EXPORTED_int32(low_precision_op_list,
-                             0,
-                             "Setting the level of low precision op"
-                             "list printing. It will be return the "
-                             "low precision op list of current module.");
+PHI_DEFINE_EXPORTED_int32(low_precision_op_list,
+                          0,
+                          "Setting the level of low precision op"
+                          "list printing. It will be return the "
+                          "low precision op list of current module.");
 
 /**
  * Operator related FLAG
@@ -77,7 +77,7 @@ PADDLE_DEFINE_EXPORTED_int32(low_precision_op_list,
  * Example:
  * Note: Used to debug. Checking whether operator produce NAN/INF or not.
  */
-PADDLE_DEFINE_EXPORTED_bool(
+PHI_DEFINE_EXPORTED_bool(
     check_nan_inf,
     false,
     "Checking whether operator produce NAN/INF or not. It will be "
@@ -99,7 +99,7 @@ PADDLE_DEFINE_EXPORTED_bool(
  * overflowing float16's limit.
  * - 3, print the information of all tensors.
  */
-PADDLE_DEFINE_EXPORTED_int32(
+PHI_DEFINE_EXPORTED_int32(
     check_nan_inf_level,
     0,
     "Setting the check and print level when FLAGS_check_nan_inf is set.");
@@ -112,7 +112,7 @@ PADDLE_DEFINE_EXPORTED_int32(
  * Example:
  * Note: Used to debug. Checking whether operator produce NAN/INF or not.
  */
-PADDLE_DEFINE_EXPORTED_bool(
+PHI_DEFINE_EXPORTED_bool(
     enable_opt_get_features,
     false,
     "Checking whether operator produce NAN/INF or not. It will be "
@@ -130,7 +130,7 @@ PADDLE_DEFINE_EXPORTED_bool(
  * Example:
  * Note: whether to use Tensor Core, faster but it may loss precision.
  */
-PADDLE_DEFINE_EXPORTED_bool(
+PHI_DEFINE_EXPORTED_bool(
     enable_cublas_tensor_op_math,
     false,
     "The enable_cublas_tensor_op_math indicate whether to use Tensor Core, "
@@ -150,7 +150,7 @@ PADDLE_DEFINE_EXPORTED_bool(
  * Note: whether to use fp16 compute type when the input and output is fp16,
  * faster but it may loss precision.
  */
-PADDLE_DEFINE_EXPORTED_bool(
+PHI_DEFINE_EXPORTED_bool(
     gemm_use_half_precision_compute_type,
     false,
     "Whether to use fp16 compute type when the input and output is fp16, "
@@ -166,7 +166,7 @@ PADDLE_DEFINE_EXPORTED_bool(
  * cards
  * Note: A list of device ids separated by comma, like: 0,1,2,3
  */
-PADDLE_DEFINE_EXPORTED_string(
+PHI_DEFINE_EXPORTED_string(
     selected_gpus,
     "",
     "A list of device ids separated by comma, like: 0,1,2,3. "
@@ -195,7 +195,7 @@ PADDLE_DEFINE_EXPORTED_string(
  *       layer specification Once you change the layer specifications
  *       (such as M, N and K), it will re-search again.
  */
-PADDLE_DEFINE_EXPORTED_int64(
+PHI_DEFINE_EXPORTED_int64(
     cublaslt_exhaustive_search_times,
     0,
     "The times of exhaustive search for cuBlasLt matmul with/without "
@@ -210,7 +210,7 @@ PADDLE_DEFINE_EXPORTED_int64(
  * Example: FLAGS_enable_api_kernel_fallback=true would allow kernel of current
  * backend fallback to CPU one when not found
  */
-PADDLE_DEFINE_EXPORTED_bool(
+PHI_DEFINE_EXPORTED_bool(
     enable_api_kernel_fallback,
     true,
     "Whether enable api kernel fallback to CPU one when not found");
@@ -225,12 +225,30 @@ PADDLE_DEFINE_EXPORTED_bool(
  * Note: whether to use deterministic algorithm in cudnn.
  *       If true, it will slow down some operators such as conv and pooling.
  */
-PADDLE_DEFINE_EXPORTED_bool(
+PHI_DEFINE_EXPORTED_bool(
     cudnn_deterministic,
     false,
     "Whether allow using an autotuning algorithm for convolution "
     "operator. The autotuning algorithm may be non-deterministic. If "
     "true, the algorithm is deterministic.");
+
+/**
+ * CUDA related FLAG
+ * Name: FLAGS_embedding_deterministic
+ * Since Version: 2.5
+ * Value Range: int64, default=0
+ * Example:
+ * Note: whether to use deterministic algorithm in embedding op.
+ *       If it is 1, it will use the optimized deterministic CUDA kernel in
+ *       embedding op. If it is 2, it will use the legacy deterministic
+ *       CUDA kernel in embedding op.
+ */
+PHI_DEFINE_EXPORTED_int64(
+    embedding_deterministic,
+    0,
+    "Whether allow using an deterministic algorithm for embedding "
+    "operator. The deterministic algorithm may be slower. If "
+    "it is larger than 0, the algorithm is deterministic.");
 
 /**
  * CUDNN related FLAG
@@ -244,10 +262,9 @@ PADDLE_DEFINE_EXPORTED_bool(
  * increased.
  *       Users need to balance memory and speed.
  */
-PADDLE_DEFINE_EXPORTED_int64(
-    conv_workspace_size_limit,
-    phi::backends::gpu::kDefaultConvWorkspaceSizeLimitMB,
-    "cuDNN convolution workspace limit in MB unit.");
+PHI_DEFINE_EXPORTED_int64(conv_workspace_size_limit,
+                          phi::backends::gpu::kDefaultConvWorkspaceSizeLimitMB,
+                          "cuDNN convolution workspace limit in MB unit.");
 
 /**
  * CUDNN related FLAG
@@ -263,7 +280,7 @@ PADDLE_DEFINE_EXPORTED_int64(
  *       layer specification. Once you change the layer specifications
  *       (such as batch size, feature map size), it will search again.
  */
-PADDLE_DEFINE_EXPORTED_bool(
+PHI_DEFINE_EXPORTED_bool(
     cudnn_exhaustive_search,
     false,
     "Whether enable exhaustive search for cuDNN convolution or "
@@ -277,10 +294,10 @@ PADDLE_DEFINE_EXPORTED_bool(
  * Example:
  * Note: only used to predict for advanced developer
  */
-PADDLE_DEFINE_EXPORTED_int64(cudnn_exhaustive_search_times,
-                             -1,
-                             "Exhaustive search times for cuDNN convolution, "
-                             "default is -1, not exhaustive search");
+PHI_DEFINE_EXPORTED_int64(cudnn_exhaustive_search_times,
+                          -1,
+                          "Exhaustive search times for cuDNN convolution, "
+                          "default is -1, not exhaustive search");
 
 /**
  * CUDNN related FLAG
@@ -298,7 +315,7 @@ PADDLE_DEFINE_EXPORTED_int64(cudnn_exhaustive_search_times,
  * certain
  *       input data range.
  */
-PADDLE_DEFINE_EXPORTED_bool(
+PHI_DEFINE_EXPORTED_bool(
     cudnn_batchnorm_spatial_persistent,
     false,
     "Whether enable CUDNN_BATCHNORM_SPATIAL_PERSISTENT mode for cudnn "
@@ -317,7 +334,7 @@ PADDLE_DEFINE_EXPORTED_bool(
  *       https://github.com/PaddlePaddle/Paddle/issues/15049
  *       If you want to change this default value, why?(gongwb)
  */
-PADDLE_DEFINE_EXPORTED_bool(
+PHI_DEFINE_EXPORTED_bool(
     sync_nccl_allreduce,
     true,
     "If set true, will call `cudaStreamSynchronize(nccl_stream)`"
@@ -336,10 +353,10 @@ PADDLE_DEFINE_EXPORTED_bool(
  *       into the queue, and then the communicator takes the gradients out
  *       of the queue and sends them after merging.
  */
-PADDLE_DEFINE_EXPORTED_int32(communicator_max_merge_var_num,
-                             20,
-                             "max var num to merge and send");
-PADDLE_DEFINE_EXPORTED_bool(
+PHI_DEFINE_EXPORTED_int32(communicator_max_merge_var_num,
+                          20,
+                          "max var num to merge and send");
+PHI_DEFINE_EXPORTED_bool(
     communicator_is_sgd_optimizer,
     true,
     "gradient sent to the server is the sum of the gradients "
@@ -357,9 +374,9 @@ PADDLE_DEFINE_EXPORTED_bool(
  *       space. It is used to avoid training much faster than communication,
  *       so that too many gradients are not sent out in time.
  */
-PADDLE_DEFINE_EXPORTED_int32(communicator_send_queue_size,
-                             20,
-                             "queue size to recv gradient before send");
+PHI_DEFINE_EXPORTED_int32(communicator_send_queue_size,
+                          20,
+                          "queue size to recv gradient before send");
 #endif
 
 /**
@@ -371,10 +388,9 @@ PADDLE_DEFINE_EXPORTED_int32(communicator_send_queue_size,
  * Note: Control the number of threads used for distributed modules.
  *       If it is not set, it is set to a hard thread.
  */
-PADDLE_DEFINE_EXPORTED_int32(
-    dist_threadpool_size,
-    0,
-    "number of threads used for distributed executed.");
+PHI_DEFINE_EXPORTED_int32(dist_threadpool_size,
+                          0,
+                          "number of threads used for distributed executed.");
 
 /**
  * Garbage collector related FLAG
@@ -395,7 +411,7 @@ PADDLE_DEFINE_EXPORTED_int32(
 // Disable gc by default when inference library is built
 static const double kDefaultEagerDeleteTensorGB = 0;
 
-PADDLE_DEFINE_EXPORTED_double(
+PHI_DEFINE_EXPORTED_double(
     eager_delete_tensor_gb,
     kDefaultEagerDeleteTensorGB,
     "Memory size threshold (GB) when the garbage collector clear tensors."
@@ -413,7 +429,7 @@ PADDLE_DEFINE_EXPORTED_double(
  *       has finished, which will make the garbage collection strategy faster.
  *       Only works when garbage collection strategy is enabled.
  */
-PADDLE_DEFINE_EXPORTED_bool(
+PHI_DEFINE_EXPORTED_bool(
     fast_eager_deletion_mode,
     true,
     "Fast eager deletion mode. If enabled, memory would release "
@@ -437,7 +453,7 @@ PADDLE_DEFINE_EXPORTED_bool(
  *       largest FLAGS_memory_fraction_of_eager_deletion ratio will be released.
  *       The flag is only valid when running parallel data compilers.
  */
-PADDLE_DEFINE_EXPORTED_double(
+PHI_DEFINE_EXPORTED_double(
     memory_fraction_of_eager_deletion,
     1.0,
     "Fraction of eager deletion. If less than 1.0, all variables in "
@@ -455,7 +471,7 @@ PADDLE_DEFINE_EXPORTED_double(
  * Note: For selecting allocator policy of PaddlePaddle.
  */
 static constexpr char kDefaultAllocatorStrategy[] = "auto_growth";
-PADDLE_DEFINE_EXPORTED_string(
+PHI_DEFINE_EXPORTED_string(
     allocator_strategy,
     kDefaultAllocatorStrategy,
     "The allocation strategy, enum in [naive_best_fit, auto_growth]. "
@@ -483,10 +499,10 @@ PADDLE_DEFINE_EXPORTED_string(
  *       size as the memory block will be allocated from the CUDA pinned
  *       request util the CPU does not have enough memory.
  */
-PADDLE_DEFINE_EXPORTED_double(fraction_of_cpu_memory_to_use,
-                              1,
-                              "Default use 100% of CPU memory for PaddlePaddle,"
-                              "reserve the rest for page tables, etc");
+PHI_DEFINE_EXPORTED_double(fraction_of_cpu_memory_to_use,
+                           1,
+                           "Default use 100% of CPU memory for PaddlePaddle,"
+                           "reserve the rest for page tables, etc");
 
 /**
  * Memory related FLAG
@@ -500,10 +516,9 @@ PADDLE_DEFINE_EXPORTED_double(fraction_of_cpu_memory_to_use,
  *       FLAGS_fraction_of_cpu_memory_to_use*(total physical memory)
  *       as memory block sizes.
  */
-PADDLE_DEFINE_EXPORTED_uint64(
-    initial_cpu_memory_in_mb,
-    500ul,
-    "Initial CPU memory for PaddlePaddle, in MD unit.");
+PHI_DEFINE_EXPORTED_uint64(initial_cpu_memory_in_mb,
+                           500ul,
+                           "Initial CPU memory for PaddlePaddle, in MD unit.");
 
 /**
  * Memory related FLAG
@@ -518,7 +533,7 @@ PADDLE_DEFINE_EXPORTED_uint64(
  *       size as the memory block will be allocated from the CPU
  *       request util the CPU does not have enough memory.
  */
-PADDLE_DEFINE_EXPORTED_double(
+PHI_DEFINE_EXPORTED_double(
     fraction_of_cuda_pinned_memory_to_use,
     0.5,
     "Default use 50% of CPU memory as the pinned_memory for PaddlePaddle,"
@@ -554,7 +569,7 @@ constexpr static float fraction_of_gpu_memory_to_use = 0.92f;
 // which may lead to insufficient memory left for paddle
 constexpr static float fraction_of_gpu_memory_to_use = 0.5f;
 #endif
-PADDLE_DEFINE_EXPORTED_double(
+PHI_DEFINE_EXPORTED_double(
     fraction_of_gpu_memory_to_use,
     fraction_of_gpu_memory_to_use,
     "Allocate a trunk of gpu memory that is this fraction of the "
@@ -575,7 +590,7 @@ PADDLE_DEFINE_EXPORTED_double(
  *       FLAGS_reallocate_gpu_memory_in_mb will be requested from the GPU until
  *       the GPU has no remaining memory.
  */
-PADDLE_DEFINE_EXPORTED_uint64(
+PHI_DEFINE_EXPORTED_uint64(
     initial_gpu_memory_in_mb,
     0ul,
     "Allocate a trunk of gpu memory whose byte size is specified by "
@@ -598,14 +613,14 @@ PADDLE_DEFINE_EXPORTED_uint64(
  * Note: If the allocated GPU memory blocks are exhausted,
  *       additional GPU memory blocks are reallocated
  */
-PADDLE_DEFINE_EXPORTED_uint64(
+PHI_DEFINE_EXPORTED_uint64(
     reallocate_gpu_memory_in_mb,
     0ul,
     "If this flag is set, Paddle will reallocate the gpu memory with "
     "size specified by this flag. Else Paddle will reallocate by "
     "FLAGS_fraction_of_gpu_memory_to_use");
 
-PADDLE_DEFINE_EXPORTED_uint64(
+PHI_DEFINE_EXPORTED_uint64(
     gpu_memory_limit_mb,
     0UL,
     "The maximum gpu memory limit that the process can allocate. "
@@ -625,7 +640,7 @@ PADDLE_DEFINE_EXPORTED_uint64(
  *       The real chunk size is max(request_size,
  *       FLAGS_auto_growth_chunk_size_in_mb).
  */
-PADDLE_DEFINE_EXPORTED_uint64(
+PHI_DEFINE_EXPORTED_uint64(
     auto_growth_chunk_size_in_mb,
     0ul,
     "The minimal chunk size of GPU memory block in auto_growth allocator.  "
@@ -642,7 +657,7 @@ PADDLE_DEFINE_EXPORTED_uint64(
  * Example:
  * Note:
  */
-PADDLE_DEFINE_EXPORTED_double(
+PHI_DEFINE_EXPORTED_double(
     local_exe_sub_scope_limit,
     256.0,  // MBytes
     "The memory up limit of sub-scopes of local execution scope for "
@@ -650,7 +665,7 @@ PADDLE_DEFINE_EXPORTED_double(
     "you should set FLAGS_local_exe_sub_scope_limit=-1. "
     "The default value is 256 MBytes.");
 
-PADDLE_DEFINE_EXPORTED_bool(
+PHI_DEFINE_EXPORTED_bool(
     reader_queue_speed_test_mode,
     false,
     "If set true, the queue.pop will only get data from queue but not "
@@ -664,7 +679,7 @@ PADDLE_DEFINE_EXPORTED_bool(
  * Example:
  * Note:
  */
-PADDLE_DEFINE_EXPORTED_bool(use_mkldnn, false, "Use MKLDNN to run");
+PHI_DEFINE_EXPORTED_bool(use_mkldnn, false, "Use MKLDNN to run");
 
 /**
  * Debug related FLAG
@@ -686,7 +701,7 @@ static const int32_t kDefaultCallStackLevel = 2;
 static const int32_t kDefaultCallStackLevel = 1;
 #endif
 
-PADDLE_DEFINE_EXPORTED_int32(
+PHI_DEFINE_EXPORTED_int32(
     call_stack_level,
     kDefaultCallStackLevel,
     "Determine the call stack to print when error or exeception happens."
@@ -707,10 +722,10 @@ PADDLE_DEFINE_EXPORTED_int32(
  * Note: If True, gradients are summed by the reverse order of
  * the forward execution sequence.
  */
-PADDLE_DEFINE_EXPORTED_bool(sort_sum_gradient,
-                            false,
-                            "Sum gradients by the reverse order of "
-                            "the forward execution sequence.");
+PHI_DEFINE_EXPORTED_bool(sort_sum_gradient,
+                         false,
+                         "Sum gradients by the reverse order of "
+                         "the forward execution sequence.");
 
 /**
  * Performance related FLAG
@@ -720,7 +735,7 @@ PADDLE_DEFINE_EXPORTED_bool(sort_sum_gradient,
  * Example:
  * Note: The maximum number of inplace grad_add.
  */
-PADDLE_DEFINE_EXPORTED_int32(
+PHI_DEFINE_EXPORTED_int32(
     max_inplace_grad_add,
     0,
     "The maximum number of inplace grad_add. When doing "
@@ -736,7 +751,7 @@ PADDLE_DEFINE_EXPORTED_int32(
  * Now, just set true by default in 2.5 transition time
  * which will be removed in future (2.6 or 2.7) .
  */
-PADDLE_DEFINE_EXPORTED_bool(set_to_1d, true, "set 0D Tensor to 1D numpy");
+PHI_DEFINE_EXPORTED_bool(set_to_1d, true, "set 0D Tensor to 1D numpy");
 
 /**
  * Debug related FLAG
@@ -746,9 +761,9 @@ PADDLE_DEFINE_EXPORTED_bool(set_to_1d, true, "set 0D Tensor to 1D numpy");
  * Example:
  * Note: Holds list of operation types with OneDNN kernels to be enabled.
  */
-PADDLE_DEFINE_EXPORTED_string(tracer_mkldnn_ops_on,
-                              "",
-                              "List of OneDNN operation types to be turned on");
+PHI_DEFINE_EXPORTED_string(tracer_mkldnn_ops_on,
+                           "",
+                           "List of OneDNN operation types to be turned on");
 
 /**
  * Debug related FLAG
@@ -758,10 +773,9 @@ PADDLE_DEFINE_EXPORTED_string(tracer_mkldnn_ops_on,
  * Example:
  * Note: Holds list of operation types with OneDNN kernels to be disabled.
  */
-PADDLE_DEFINE_EXPORTED_string(
-    tracer_mkldnn_ops_off,
-    "",
-    "List of OneDNN operation types to be turned off");
+PHI_DEFINE_EXPORTED_string(tracer_mkldnn_ops_off,
+                           "",
+                           "List of OneDNN operation types to be turned off");
 
 /**
  * Debug related FLAG
@@ -772,7 +786,7 @@ PADDLE_DEFINE_EXPORTED_string(
  * Note: Check kernel launch status after every kernel compute.
  */
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PADDLE_DEFINE_EXPORTED_bool(
+PHI_DEFINE_EXPORTED_bool(
     check_kernel_launch,
     false,
     "Check kernel launch status after every kernel compute");
@@ -787,13 +801,13 @@ PADDLE_DEFINE_EXPORTED_bool(
  * Note: Disable cudnn in conv2d.
  */
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PADDLE_DEFINE_EXPORTED_bool(conv2d_disable_cudnn,
-                            false,
-                            "Disable cudnn in conv2d");
+PHI_DEFINE_EXPORTED_bool(conv2d_disable_cudnn,
+                         false,
+                         "Disable cudnn in conv2d");
 
-PADDLE_DEFINE_EXPORTED_bool(use_fast_math,
-                            false,
-                            "Whether to use fast math GPU functions.");
+PHI_DEFINE_EXPORTED_bool(use_fast_math,
+                         false,
+                         "Whether to use fast math GPU functions.");
 #endif
 
 /**
@@ -805,10 +819,10 @@ PADDLE_DEFINE_EXPORTED_bool(use_fast_math,
  * Note: Get host by name time.
  */
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_XPU) || \
-    defined(PADDLE_WITH_HIP)
-PADDLE_DEFINE_EXPORTED_int32(get_host_by_name_time,
-                             120,
-                             "The maximum time for get host by name time");
+    defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_CUSTOM_DEVICE)
+PHI_DEFINE_EXPORTED_int32(get_host_by_name_time,
+                          120,
+                          "The maximum time for get host by name time");
 #endif
 
 /**
@@ -820,7 +834,7 @@ PADDLE_DEFINE_EXPORTED_int32(get_host_by_name_time,
  *          program when using Fleet APIs.
  * Note: Apply IR pass to program. Be only useful when using Fleet APIs.
  */
-PADDLE_DEFINE_EXPORTED_bool(
+PHI_DEFINE_EXPORTED_bool(
     apply_pass_to_program,
     false,
     "It controls whether to apply IR pass to program when using Fleet APIs");
@@ -834,10 +848,10 @@ PADDLE_DEFINE_EXPORTED_bool(
  * Note: Control whether load graph node and edge with multi threads parallely
  *       If it is not set, load graph data with one thread
  */
-PADDLE_DEFINE_EXPORTED_bool(graph_load_in_parallel,
-                            false,
-                            "It controls whether load graph node and edge with "
-                            "mutli threads parallely.");
+PHI_DEFINE_EXPORTED_bool(graph_load_in_parallel,
+                         false,
+                         "It controls whether load graph node and edge with "
+                         "mutli threads parallely.");
 
 /**
  * Distributed related FLAG
@@ -848,10 +862,10 @@ PADDLE_DEFINE_EXPORTED_bool(graph_load_in_parallel,
  * Note: Control whether load graph node and edge with multi threads parallely
  *       If it is not set, load graph data with one thread
  */
-PADDLE_DEFINE_EXPORTED_bool(graph_metapath_split_opt,
-                            false,
-                            "It controls whether load graph node and edge with "
-                            "mutli threads parallely.");
+PHI_DEFINE_EXPORTED_bool(graph_metapath_split_opt,
+                         false,
+                         "It controls whether load graph node and edge with "
+                         "mutli threads parallely.");
 
 /**
  * Distributed related FLAG
@@ -862,7 +876,7 @@ PADDLE_DEFINE_EXPORTED_bool(graph_metapath_split_opt,
  * Note: Control get all neighbor id when running sub part graph
  *       If it is not set, do not need get neighbor id when run all part graph
  */
-PADDLE_DEFINE_EXPORTED_bool(
+PHI_DEFINE_EXPORTED_bool(
     graph_get_neighbor_id,
     false,
     "It controls get all neighbor id when running sub part graph.");
@@ -876,7 +890,7 @@ PADDLE_DEFINE_EXPORTED_bool(
  * Note: Control  whether exit trainer when an worker has no ins.
  *       If it is not set, trainer will exit until all worker finish train.
  */
-PADDLE_DEFINE_EXPORTED_bool(
+PHI_DEFINE_EXPORTED_bool(
     enable_exit_when_partial_worker,
     false,
     "It controls whether exit trainer when an worker has no ins.");
@@ -889,9 +903,9 @@ PADDLE_DEFINE_EXPORTED_bool(
  * Example:
  * Note: represent gpugraph storage mode, 1 for full hbm, 2 for hbm + mem + ssd.
  */
-PADDLE_DEFINE_EXPORTED_int32(gpugraph_storage_mode,
-                             1,
-                             "gpugraph storage mode, default 1");
+PHI_DEFINE_EXPORTED_int32(gpugraph_storage_mode,
+                          1,
+                          "gpugraph storage mode, default 1");
 
 /**
  * KP kernel related FLAG
@@ -902,9 +916,9 @@ PADDLE_DEFINE_EXPORTED_int32(gpugraph_storage_mode,
  * Op.
  * Note:
  */
-PADDLE_DEFINE_EXPORTED_bool(run_kp_kernel,
-                            false,
-                            "It controls whether to run PaddlePaddle using KP");
+PHI_DEFINE_EXPORTED_bool(run_kp_kernel,
+                         false,
+                         "It controls whether to run PaddlePaddle using KP");
 
 /**
  * Distributed related FLAG
@@ -917,12 +931,12 @@ PADDLE_DEFINE_EXPORTED_bool(run_kp_kernel,
  *       multiple events. Currently, only fuse allreduce supports this.
  *       Otherwise, the precision may be wrong.
  */
-PADDLE_DEFINE_EXPORTED_bool(allreduce_record_one_event,
-                            false,
-                            "It controls whether the allreduce operations "
-                            "would only wait one event instead of multiple "
-                            "events. Currently, only fuse allreduce supports "
-                            "this. Otherwise, the precision may be wrong.");
+PHI_DEFINE_EXPORTED_bool(allreduce_record_one_event,
+                         false,
+                         "It controls whether the allreduce operations "
+                         "would only wait one event instead of multiple "
+                         "events. Currently, only fuse allreduce supports "
+                         "this. Otherwise, the precision may be wrong.");
 
 #ifdef PADDLE_WITH_CINN
 /*
@@ -932,8 +946,9 @@ PADDLE_DEFINE_EXPORTED_bool(allreduce_record_one_event,
  * Value Range: bool, default=false
  * Example: FLAGS_use_cinn=true would run PaddlePaddle using CINN
  */
-PADDLE_DEFINE_EXPORTED_bool(
-    use_cinn, false, "It controls whether to run PaddlePaddle using CINN");
+PHI_DEFINE_EXPORTED_bool(use_cinn,
+                         false,
+                         "It controls whether to run PaddlePaddle using CINN");
 
 /*
  * CINN related FLAG
@@ -943,10 +958,10 @@ PADDLE_DEFINE_EXPORTED_bool(
  * Example: FLAGS_allow_cinn_ops="mul;relu" would only cover `mul` and `relu`
  * when using CINN
  */
-PADDLE_DEFINE_EXPORTED_string(allow_cinn_ops,
-                              "",
-                              "It controls the cinn op subset to be used, "
-                              "which has the highest priority.");
+PHI_DEFINE_EXPORTED_string(allow_cinn_ops,
+                           "",
+                           "It controls the cinn op subset to be used, "
+                           "which has the highest priority.");
 
 /*
  * CINN related FLAG
@@ -956,9 +971,9 @@ PADDLE_DEFINE_EXPORTED_string(allow_cinn_ops,
  * Example: FLAGS_deny_cinn_ops="mul;relu" would block `mul` and `relu` two ops
  * when using CINN
  */
-PADDLE_DEFINE_EXPORTED_string(deny_cinn_ops,
-                              "",
-                              "It controls the cinn op subset to be not used.");
+PHI_DEFINE_EXPORTED_string(deny_cinn_ops,
+                           "",
+                           "It controls the cinn op subset to be not used.");
 
 /*
  * CINN related FLAG
@@ -969,10 +984,10 @@ PADDLE_DEFINE_EXPORTED_string(deny_cinn_ops,
  * instructions of a paddle graph with ParallelExecutor, otherwise with the
  * CINN compiled runtime program in sequential order.
  */
-PADDLE_DEFINE_EXPORTED_bool(enable_pe_launch_cinn,
-                            true,
-                            "It controls whether to execute cinn compiled "
-                            "program with ParallelExecutor");
+PHI_DEFINE_EXPORTED_bool(enable_pe_launch_cinn,
+                         true,
+                         "It controls whether to execute cinn compiled "
+                         "program with ParallelExecutor");
 
 /*
  * CINN related FLAG
@@ -983,10 +998,10 @@ PADDLE_DEFINE_EXPORTED_bool(enable_pe_launch_cinn,
  * compiled instructions of a paddle graph with InterpreterCore, otherwise with
  * the CINN compiled runtime program in sequential order.
  */
-PADDLE_DEFINE_EXPORTED_bool(enable_interpretercore_launch_cinn,
-                            true,
-                            "It controls whether to execute cinn compiled "
-                            "program with InterpreterCore");
+PHI_DEFINE_EXPORTED_bool(enable_interpretercore_launch_cinn,
+                         true,
+                         "It controls whether to execute cinn compiled "
+                         "program with InterpreterCore");
 
 /*
  * CINN related FLAG
@@ -996,10 +1011,24 @@ PADDLE_DEFINE_EXPORTED_bool(enable_interpretercore_launch_cinn,
  * Example: FLAGS_enable_cinn_auto_tune=true would use CINN with its
  * auto-tune feature enabled
  */
-PADDLE_DEFINE_EXPORTED_bool(enable_cinn_auto_tune,
-                            false,
-                            "It controls whether to use cinn with "
-                            "its auto-tune feature enabled");
+PHI_DEFINE_EXPORTED_bool(enable_cinn_auto_tune,
+                         false,
+                         "It controls whether to use cinn with "
+                         "its auto-tune feature enabled");
+
+/*
+ * CINN related FLAG
+ * Name: FLAGS_cinn_subgraph_graphviz_dir
+ * Since Version: 2.3
+ * Value Range: string, default=""
+ * Example: FLAGS_cinn_subgraph_graphviz_dir="./cinn_graph/" will save the
+ * CINN sub-graph into "./cinn_graph/", and each sub-graph will save into
+ * "fusion_groups_*"" directory
+ */
+PHI_DEFINE_EXPORTED_string(cinn_subgraph_graphviz_dir,
+                           "",
+                           "Specify the directory path of dot file of "
+                           "graph, which is used for debug.");
 
 #endif
 
@@ -1011,9 +1040,9 @@ PADDLE_DEFINE_EXPORTED_bool(enable_cinn_auto_tune,
  * Example: FLAGS_new_executor_use_cuda_graph=true would allow
  * new executor to use CUDA Graph.
  */
-PADDLE_DEFINE_EXPORTED_bool(new_executor_use_cuda_graph,
-                            false,
-                            "Use CUDA Graph in new executor");
+PHI_DEFINE_EXPORTED_bool(new_executor_use_cuda_graph,
+                         false,
+                         "Use CUDA Graph in new executor");
 
 DEFINE_int32(record_pool_max_size,
              2000000,
@@ -1021,63 +1050,63 @@ DEFINE_int32(record_pool_max_size,
 DEFINE_int32(slotpool_thread_num, 1, "SlotRecordDataset slot pool thread num");
 DEFINE_bool(enable_slotpool_wait_release,
             false,
-            "enable slotrecord obejct wait release, default false");
+            "enable slotrecord object wait release, default false");
 DEFINE_bool(enable_slotrecord_reset_shrink,
             false,
-            "enable slotrecord obejct reset shrink memory, default false");
+            "enable slotrecord object reset shrink memory, default false");
 DEFINE_bool(enable_ins_parser_file,
             false,
             "enable parser ins file, default false");
-PADDLE_DEFINE_EXPORTED_bool(
+PHI_DEFINE_EXPORTED_bool(
     gpugraph_enable_hbm_table_collision_stat,
     false,
     "enable hash collisions stat for hbm table, default false");
-PADDLE_DEFINE_EXPORTED_double(gpugraph_hbm_table_load_factor,
-                              0.75,
-                              "the load factor of hbm table, default 0.75");
-PADDLE_DEFINE_EXPORTED_bool(
+PHI_DEFINE_EXPORTED_double(gpugraph_hbm_table_load_factor,
+                           0.75,
+                           "the load factor of hbm table, default 0.75");
+PHI_DEFINE_EXPORTED_bool(
     gpugraph_enable_gpu_direct_access,
     false,
-    "enable direct access bwtween multi gpu cards, default false");
-PADDLE_DEFINE_EXPORTED_bool(
+    "enable direct access between multi gpu cards, default false");
+PHI_DEFINE_EXPORTED_bool(
     gpugraph_enable_segment_merge_grads,
     false,
     "enable segment merge gradients while push sparse, default false");
-PADDLE_DEFINE_EXPORTED_uint64(
+PHI_DEFINE_EXPORTED_uint64(
     gpugraph_merge_grads_segment_size,
     128,
     "segment size with segment gradient merge, default 128");
-PADDLE_DEFINE_EXPORTED_uint64(gpugraph_slot_feasign_max_num,
-                              5,
-                              "max feasign number in one slot, default 5");
-PADDLE_DEFINE_EXPORTED_int32(
+PHI_DEFINE_EXPORTED_uint64(gpugraph_slot_feasign_max_num,
+                           5,
+                           "max feasign number in one slot, default 5");
+PHI_DEFINE_EXPORTED_int32(
     gpugraph_dedup_pull_push_mode,
     0,
     "enable dedup keys while pull push sparse, default 0");
-PADDLE_DEFINE_EXPORTED_bool(gpugraph_load_node_list_into_hbm,
-                            true,
-                            "enable load_node_list_into_hbm, default true");
-PADDLE_DEFINE_EXPORTED_int32(gpugraph_sparse_table_storage_mode,
-                             0,
-                             "parse_table_storage_mode, default 0");
-PADDLE_DEFINE_EXPORTED_bool(enable_auto_detect_gpu_topo,
-                            true,
-                            "enable auto detect gpu topo, default true");
-PADDLE_DEFINE_EXPORTED_bool(enable_auto_rdma_trans,
-                            true,
-                            "enable auto gpu rdma trans, default true");
-PADDLE_DEFINE_EXPORTED_bool(enable_tracker_all2all,
-                            false,
-                            "enable tracker all2all log, default false");
-PADDLE_DEFINE_EXPORTED_bool(enable_all2all_use_fp16,
-                            false,
-                            "enable all2all use fp16, default false");
-PADDLE_DEFINE_EXPORTED_bool(enable_sparse_inner_gather,
-                            false,
-                            "enable sparse inner gather, default false");
-PADDLE_DEFINE_EXPORTED_bool(gpugraph_debug_gpu_memory,
-                            false,
-                            "enable debug gpu memory, default false");
+PHI_DEFINE_EXPORTED_bool(gpugraph_load_node_list_into_hbm,
+                         true,
+                         "enable load_node_list_into_hbm, default true");
+PHI_DEFINE_EXPORTED_int32(gpugraph_sparse_table_storage_mode,
+                          0,
+                          "parse_table_storage_mode, default 0");
+PHI_DEFINE_EXPORTED_bool(enable_auto_detect_gpu_topo,
+                         true,
+                         "enable auto detect gpu topo, default true");
+PHI_DEFINE_EXPORTED_bool(enable_auto_rdma_trans,
+                         true,
+                         "enable auto gpu rdma trans, default true");
+PHI_DEFINE_EXPORTED_bool(enable_tracker_all2all,
+                         false,
+                         "enable tracker all2all log, default false");
+PHI_DEFINE_EXPORTED_bool(enable_all2all_use_fp16,
+                         false,
+                         "enable all2all use fp16, default false");
+PHI_DEFINE_EXPORTED_bool(enable_sparse_inner_gather,
+                         false,
+                         "enable sparse inner gather, default false");
+PHI_DEFINE_EXPORTED_bool(gpugraph_debug_gpu_memory,
+                         false,
+                         "enable debug gpu memory, default false");
 /**
  * ProcessGroupNCCL related FLAG
  * Name: nccl_blocking_wait
@@ -1087,7 +1116,7 @@ PADDLE_DEFINE_EXPORTED_bool(gpugraph_debug_gpu_memory,
  * Note: nccl blocking wait.
  */
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PADDLE_DEFINE_EXPORTED_bool(nccl_blocking_wait, false, "nccl blocking wait");
+PHI_DEFINE_EXPORTED_bool(nccl_blocking_wait, false, "nccl blocking wait");
 #endif
 
 /**
@@ -1097,7 +1126,7 @@ PADDLE_DEFINE_EXPORTED_bool(nccl_blocking_wait, false, "nccl blocking wait");
  * Value Range: bool, default=false
  * Example:
  */
-PADDLE_DEFINE_EXPORTED_bool(use_autotune, false, "Whether enable autotune.");
+PHI_DEFINE_EXPORTED_bool(use_autotune, false, "Whether enable autotune.");
 
 /**
  * Conv Search cache max number related FLAG
@@ -1106,20 +1135,20 @@ PADDLE_DEFINE_EXPORTED_bool(use_autotune, false, "Whether enable autotune.");
  * Value Range: int32, default=1000000
  * Example:
  */
-PADDLE_DEFINE_EXPORTED_int32(search_cache_max_number,
-                             1000000,
-                             "search_cache_max_number.");
+PHI_DEFINE_EXPORTED_int32(search_cache_max_number,
+                          1000000,
+                          "search_cache_max_number.");
 
 /**
- * Preformance related FLAG
+ * Performance related FLAG
  * Name: einsum_opt
  * Since Version: 2.3.0
  * Value Range: bool, default=false
  * Example:
- * Note: If True, EinsumOp will be optimimzed by innercache reuse, which
+ * Note: If True, EinsumOp will be optimized by innercache reuse, which
  * uses more gpu memory.
  */
-PADDLE_DEFINE_EXPORTED_bool(
+PHI_DEFINE_EXPORTED_bool(
     einsum_opt,
     false,
     "EinsumOp backward will be speedup at the expense of more gpu memory.");
@@ -1135,9 +1164,9 @@ PADDLE_DEFINE_EXPORTED_bool(
  * FLAGS_jit_engine_type == New, using InterpreterEngine by default
  * FLAGS_jit_engine_type == Predictor, using inference Predictor by default
  */
-PADDLE_DEFINE_EXPORTED_string(jit_engine_type,
-                              "Predictor",
-                              "Choose default funciton type in JitLayer.");
+PHI_DEFINE_EXPORTED_string(jit_engine_type,
+                           "Predictor",
+                           "Choose default function type in JitLayer.");
 
 /**
  * Custom Device NPU related FLAG
@@ -1147,7 +1176,7 @@ PADDLE_DEFINE_EXPORTED_string(jit_engine_type,
  * Example:
  * Note: Enable NPU Storage Format for Ascend910 performance improvement.
  */
-PADDLE_DEFINE_EXPORTED_bool(npu_storage_format, false, "");
+PHI_DEFINE_EXPORTED_bool(npu_storage_format, false, "");
 
 #ifdef PADDLE_WITH_CUDNN_FRONTEND
 /**
@@ -1158,7 +1187,7 @@ PADDLE_DEFINE_EXPORTED_bool(npu_storage_format, false, "");
  * Example:
  * Note: Enable CUDNNv8 Frontend API for CUDNN kernels.
  */
-PADDLE_DEFINE_EXPORTED_bool(enable_cudnn_frontend, false, "");
+PHI_DEFINE_EXPORTED_bool(enable_cudnn_frontend, false, "");
 
 /**
  * CUDNNv8 related FLAG
@@ -1171,7 +1200,7 @@ PADDLE_DEFINE_EXPORTED_bool(enable_cudnn_frontend, false, "");
  * N times before it is actually added in the cache. It is useful when
  * the result of exhaustive search is unstable.
  */
-PADDLE_DEFINE_EXPORTED_int32(cudnn_cache_saturation_count, 1, "");
+PHI_DEFINE_EXPORTED_int32(cudnn_cache_saturation_count, 1, "");
 #endif  // PADDLE_WITH_CUDNN_FRONTEND
 
 /**
@@ -1183,9 +1212,9 @@ PADDLE_DEFINE_EXPORTED_int32(cudnn_cache_saturation_count, 1, "");
  * Note: This FLAG is only enabled when CI is running. If True, a persistent
  * IBuilder is added to avoid TensorRT unload/reload kernels.
  */
-PADDLE_DEFINE_EXPORTED_bool(trt_ibuilder_cache,
-                            false,
-                            "Add a persistent ibuilder.");
+PHI_DEFINE_EXPORTED_bool(trt_ibuilder_cache,
+                         false,
+                         "Add a persistent ibuilder.");
 
 /**
  * mmap_allocator related FLAG
@@ -1196,9 +1225,9 @@ PADDLE_DEFINE_EXPORTED_bool(trt_ibuilder_cache,
  * Note: . If True, mmap_allocator will cache shm file to decrease munmap
  * operation.
  */
-PADDLE_DEFINE_EXPORTED_bool(use_shm_cache,
-                            false,
-                            "Use shm cache in mmap_allocator.");
+PHI_DEFINE_EXPORTED_bool(use_shm_cache,
+                         false,
+                         "Use shm cache in mmap_allocator.");
 
 /**
  * Tensor operants related FLAG
@@ -1212,6 +1241,6 @@ PADDLE_DEFINE_EXPORTED_bool(use_shm_cache,
  *       - phi mode: tensor operants with only phi forward API;
  *       - static mode: tensor operants within static graph.
  */
-PADDLE_DEFINE_EXPORTED_string(tensor_operants_mode,
-                              "eager",
-                              "Tensor operants mode");
+PHI_DEFINE_EXPORTED_string(tensor_operants_mode,
+                           "eager",
+                           "Tensor operants mode");

@@ -1154,7 +1154,9 @@ def exponential_(x, lam=1.0, name=None):
     if in_dygraph_mode():
         return _C_ops.exponential_(x, lam)
     else:
-        check_variable_and_dtype(x, "x", ["float32", "float64"], "exponential")
+        check_variable_and_dtype(
+            x, "x", ["float16", "float32", "float64", "uint16"], "exponential"
+        )
 
         helper = LayerHelper("exponential", **locals())
         helper.append_op(

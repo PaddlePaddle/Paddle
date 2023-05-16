@@ -42,7 +42,7 @@ class TestScaleOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_cinn=True)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
@@ -66,7 +66,7 @@ class TestScaleOpScaleVariable(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_cinn=True)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
@@ -148,7 +148,7 @@ class TestScaleFp16Op(TestScaleOp):
         self.dtype = np.float16
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_cinn=True)
 
     def test_check_grad(self):
         self.check_grad(["X"], "Out")

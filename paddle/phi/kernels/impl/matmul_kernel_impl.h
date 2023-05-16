@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include "glog/logging.h"
+
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/autotune/cache_base.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
@@ -101,7 +103,7 @@ void MatMulFunctionImplWithBlas(
     bool trans_x,
     bool trans_y,
     bool flag = false,
-    phi::funcs::MatmulPlanner* matmul_planner = nullptr) {
+    phi::funcs::MatmulPlanner* matmul_planner UNUSED = nullptr) {
   const int x_ndim = x_dims.size();
   const int y_ndim = y_dims.size();
 

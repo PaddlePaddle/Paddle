@@ -17,9 +17,6 @@ limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 
-#ifdef PADDLE_WITH_MLU
-#include "paddle/fluid/operators/mlu/mlu_baseop.h"
-#endif
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 
@@ -181,100 +178,6 @@ class SplitFunctor<platform::XPUDeviceContext, T> {
 };
 #endif
 
-#ifdef PADDLE_WITH_MLU
-template <typename T>
-class ConcatFunctor<platform::MLUDeviceContext, T> {
- public:
-  void operator()(const platform::MLUDeviceContext& context,
-                  const std::vector<phi::DenseTensor>& input,
-                  int axis,
-                  phi::DenseTensor* output) {
-    int dev_id = context.GetPlace().GetDeviceId();
-    platform::MLUDeviceGuard guard(dev_id);
-
-    auto ins_size = input.size();
-
-    const int axis_t = axis;
-    const int ins_size_t = ins_size;
-
-    // mlu should do sth
-    // init ins tensors
-    std::vector<const void*> inputs;
-    std::vector<MLUCnnlTensorDesc> input_descs;
-    std::vector<cnnlTensorDescriptor_t> desc_vector;
-    for (size_t i = 0; i < ins_size; i++) {
-      input_descs.emplace_back(MLUCnnlTensorDesc(
-          input[i], CNNL_LAYOUT_ARRAY, ToCnnlDataType(input[i].dtype())));
-      desc_vector.push_back(input_descs.back().get());
-      inputs.push_back(input[i].data());
-    }
-    // init out tensors
-    MLUCnnlTensorDesc output_desc(
-        *output, CNNL_LAYOUT_ARRAY, ToCnnlDataType(output->dtype()));
-
-    // MLU should do sth
-    MLUCnnl::Concat(context,
-                    ins_size_t,
-                    axis_t,
-                    desc_vector.data(),
-                    inputs.data(),
-                    output_desc.get(),
-                    GetBasePtr(output));
-  }
-};
-
-template <typename T>
-class SplitFunctor<platform::MLUDeviceContext, T> {
- public:
-  void operator()(const platform::MLUDeviceContext& context,
-                  const phi::DenseTensor& input,
-                  const std::vector<const phi::DenseTensor*>& ref_inputs,
-                  const int axis,
-                  std::vector<phi::DenseTensor*>* outputs) {
-    if (input.numel() == 0) {
-      return;
-    }
-
-    int dev_id = context.GetPlace().GetDeviceId();
-    platform::MLUDeviceGuard guard(dev_id);
-
-    auto in_dims = input.dims();
-    auto out_size = outputs->size();
-
-    std::vector<framework::DDim> outs_dims(out_size, in_dims);
-    for (size_t i = 0; i < out_size; ++i) {
-      outs_dims[i][axis] = ref_inputs[i]->dims()[axis];
-    }
-
-    // init out tensors
-    std::vector<void*> vct_tensor;
-    std::vector<MLUCnnlTensorDesc> output_descs;
-    std::vector<cnnlTensorDescriptor_t> desc_vector;
-    for (size_t i = 0; i < out_size; i++) {
-      (*outputs)[i]->Resize(outs_dims[i]);
-      output_descs.emplace_back(
-          MLUCnnlTensorDesc(*(*outputs)[i],
-                            CNNL_LAYOUT_ARRAY,
-                            ToCnnlDataType((*outputs)[i]->dtype())));
-      desc_vector.push_back(output_descs.back().get());
-      vct_tensor.push_back(GetBasePtr((*outputs)[i]));
-    }
-    // init in tensors
-    MLUCnnlTensorDesc input_desc(
-        input, CNNL_LAYOUT_ARRAY, ToCnnlDataType(input.dtype()));
-
-    // MLU should do sth
-    MLUCnnl::Split(context,
-                   out_size,
-                   axis,
-                   input_desc.get(),
-                   input.data(),
-                   desc_vector.data(),
-                   vct_tensor.data());
-  }
-};
-#endif
-
 #define DEFINE_FUNCTOR(type)                           \
   template class ConcatFunctor<phi::CPUContext, type>; \
   template class SplitFunctor<phi::CPUContext, type>;
@@ -288,20 +191,6 @@ FOR_ALL_TYPES(DEFINE_FUNCTOR);
 
 DEFINE_XPU_FUNCTOR(float)
 DEFINE_XPU_FUNCTOR(platform::float16)
-#endif
-
-#ifdef PADDLE_WITH_MLU
-#define DEFINE_MLU_FUNCTOR(type)                                  \
-  template class ConcatFunctor<platform::MLUDeviceContext, type>; \
-  template class SplitFunctor<platform::MLUDeviceContext, type>;
-DEFINE_MLU_FUNCTOR(float)
-DEFINE_MLU_FUNCTOR(platform::float16)
-DEFINE_MLU_FUNCTOR(int64_t)
-DEFINE_MLU_FUNCTOR(bool)
-DEFINE_MLU_FUNCTOR(int)
-DEFINE_MLU_FUNCTOR(int8_t)
-DEFINE_MLU_FUNCTOR(int16_t)
-DEFINE_MLU_FUNCTOR(uint8_t)
 #endif
 }  // namespace math
 }  // namespace operators

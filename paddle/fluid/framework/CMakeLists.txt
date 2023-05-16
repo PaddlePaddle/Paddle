@@ -383,7 +383,7 @@ cc_test(
 cc_library(
   op_proto_maker
   SRCS op_proto_maker.cc
-  DEPS framework_proto attribute ops_extra_info glog)
+  DEPS framework_proto attribute ops_extra_info glog auto_parallel_proto)
 cc_test(
   op_proto_maker_test
   SRCS op_proto_maker_test.cc
@@ -532,7 +532,7 @@ cc_test(
 
 cc_library(
   proto_desc
-  SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc
+  SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc program_converter.cc
   DEPS attribute
        ops_extra_info
        shape_inference
@@ -542,7 +542,9 @@ cc_library(
        version
        xxhash
        dist_attr
-       scalar)
+       scalar
+       op_version_proto
+       op_version_registry)
 
 cc_library(
   op_registry
@@ -619,7 +621,7 @@ if(WITH_PYTHON)
     if(NOT WITH_ROCM)
       add_custom_target(
         fleet_executor_proto_init ALL
-        DEPENDS fleet_executor_desc_py_proto
+        DEPENDS fleet_proto_init fleet_executor_desc_py_proto
         COMMAND
           cp
           ${PADDLE_BINARY_DIR}/paddle/fluid/distributed/fleet_executor/fleet_executor_*.py
@@ -651,7 +653,7 @@ endif()
 if(WITH_PSCORE)
   add_custom_target(
     index_dataset_proto_init ALL
-    DEPENDS index_dataset_py_proto
+    DEPENDS fleet_proto_init index_dataset_py_proto
     COMMAND
       cp
       ${PADDLE_BINARY_DIR}/paddle/fluid/distributed/index_dataset/index_dataset_*.py
@@ -769,9 +771,7 @@ if(WITH_DISTRIBUTE)
            heter_service_proto
            fleet_executor
            ${BRPC_DEP})
-    set(DISTRIBUTE_COMPILE_FLAGS
-        "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=parentheses"
-    )
+    set(DISTRIBUTE_COMPILE_FLAGS "")
     if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
       set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
     endif()
@@ -853,9 +853,7 @@ if(WITH_DISTRIBUTE)
            brpc
            fleet_executor
            flags)
-    set(DISTRIBUTE_COMPILE_FLAGS
-        "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor -Wno-error=parentheses"
-    )
+    set(DISTRIBUTE_COMPILE_FLAGS "")
     if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
       set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
     endif()
@@ -926,9 +924,7 @@ if(WITH_DISTRIBUTE)
            fleet_executor)
   endif()
 elseif(WITH_PSLIB)
-  set(DISTRIBUTE_COMPILE_FLAGS
-      "-Wno-non-virtual-dtor -Wno-error=non-virtual-dtor -Wno-error=delete-non-virtual-dtor"
-  )
+  set(DISTRIBUTE_COMPILE_FLAGS "")
   if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
     set(DISTRIBUTE_COMPILE_FLAGS "${DISTRIBUTE_COMPILE_FLAGS} -faligned-new")
   endif()
@@ -1103,7 +1099,7 @@ endif()
 cc_library(
   prune
   SRCS prune.cc
-  DEPS framework_proto)
+  DEPS framework_proto auto_parallel_proto)
 cc_test(
   prune_test
   SRCS prune_test.cc

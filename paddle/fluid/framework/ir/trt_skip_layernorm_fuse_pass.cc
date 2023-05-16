@@ -176,9 +176,16 @@ void TrtSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
     new_desc.SetInput("Bias", {layer_norm_bias->Name()});
 
     if (layer_norm->Op()->HasAttr("out_threshold")) {
-      new_desc.SetAttr("enable_int8", true);
       new_desc.SetAttr("out_threshold",
                        layer_norm->Op()->GetAttr("out_threshold"));
+    }
+    if (subgraph.at(x)->inputs[0]->Op()->HasAttr("out_threshold")) {
+      new_desc.SetAttr(
+          "X", subgraph.at(x)->inputs[0]->Op()->GetAttr("out_threshold"));
+    }
+    if (subgraph.at(y)->inputs[0]->Op()->HasAttr("out_threshold")) {
+      new_desc.SetAttr(
+          "Y", subgraph.at(y)->inputs[0]->Op()->GetAttr("out_threshold"));
     }
 
     if (layer_norm->Op()->HasAttr("smooth_scale")) {

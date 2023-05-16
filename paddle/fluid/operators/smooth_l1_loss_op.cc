@@ -225,7 +225,7 @@ REGISTER_OPERATOR(smooth_l1_loss,
                   ops::SmoothL1LossGradMaker<paddle::framework::OpDesc>,
                   ops::SmoothL1LossGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(smooth_l1_loss_grad, ops::SmoothL1LossGradOp);
-REGISTER_OP_CPU_KERNEL(smooth_l1_loss,
-                       ops::SmoothL1LossKernel<phi::CPUContext, float>);
-REGISTER_OP_CPU_KERNEL(smooth_l1_loss_grad,
-                       ops::SmoothL1LossGradKernel<phi::CPUContext, float>);
+PD_REGISTER_STRUCT_KERNEL(
+    smooth_l1_loss, CPU, ALL_LAYOUT, ops::SmoothL1LossKernel, float) {}
+PD_REGISTER_STRUCT_KERNEL(
+    smooth_l1_loss_grad, CPU, ALL_LAYOUT, ops::SmoothL1LossGradKernel, float) {}

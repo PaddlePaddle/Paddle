@@ -28,11 +28,8 @@ using Place = phi::Place;
 using CPUPlace = phi::CPUPlace;
 using CUDAPlace = phi::GPUPlace;
 using CUDAPinnedPlace = phi::GPUPinnedPlace;
-using NPUPlace = phi::NPUPlace;
-using NPUPinnedPlace = phi::NPUPinnedPlace;
 using XPUPlace = phi::XPUPlace;
 using IPUPlace = phi::IPUPlace;
-using MLUPlace = phi::MLUPlace;
 using CustomPlace = phi::CustomPlace;
 
 using PlaceList = std::vector<Place>;
@@ -48,12 +45,9 @@ class PlaceHelper {
 
 bool is_gpu_place(const Place &);
 bool is_xpu_place(const Place &);
-bool is_npu_place(const Place &);
-bool is_mlu_place(const Place &);
 bool is_ipu_place(const Place &);
 bool is_cpu_place(const Place &);
 bool is_cuda_pinned_place(const Place &);
-bool is_npu_pinned_place(const Place &);
 bool is_custom_place(const Place &p);
 bool places_are_same_class(const Place &, const Place &);
 bool is_same_place(const Place &, const Place &);
@@ -92,16 +86,6 @@ typename Visitor::result_type VisitPlace(const Place &place,
       return typename Visitor::result_type();
 #endif
     }
-    case phi::AllocationType::NPU: {
-      PADDLE_THROW(platform::errors::Unavailable(
-          "Paddle is not compiled with NPU. Cannot visit npu_pinned"));
-      return typename Visitor::result_type();
-    }
-    case phi::AllocationType::NPUPINNED: {
-      PADDLE_THROW(platform::errors::Unavailable(
-          "Paddle is not compiled with NPU. Cannot visit npu_pinned"));
-      return typename Visitor::result_type();
-    }
     case phi::AllocationType::IPU: {
 #ifdef PADDLE_WITH_IPU
       platform::IPUPlace p(place.GetDeviceId());
@@ -110,15 +94,6 @@ typename Visitor::result_type VisitPlace(const Place &place,
       PADDLE_THROW(platform::errors::Unavailable(
           "Paddle is not compiled with IPU. Cannot visit ipu device"));
       return typename Visitor::result_type();
-#endif
-    }
-    case phi::AllocationType::MLU: {
-#ifdef PADDLE_WITH_MLU
-      platform::MLUPlace p(place.GetDeviceId());
-      return visitor(p);
-#else
-      PADDLE_THROW(platform::errors::Unavailable(
-          "Paddle is not compiled with MLU. Cannot visit mlu device"));
 #endif
     }
     case phi::AllocationType::CUSTOM: {

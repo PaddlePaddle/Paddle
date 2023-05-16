@@ -92,7 +92,7 @@ DEFINE_CPU_TRANS(6);
 
 template <typename DeviceContext, typename T>
 void TransposeNormal<DeviceContext, T>::operator()(
-    const DeviceContext& context,
+    const DeviceContext& context UNUSED,
     const phi::DenseTensor& in,
     phi::DenseTensor* out,
     const std::vector<int>& axis) {
@@ -162,19 +162,6 @@ void set_constant_with_place<phi::XPUPlace>(const phi::DeviceContext& context,
 }
 
 template <>
-void set_constant_with_place<phi::NPUPlace>(const phi::DeviceContext& context,
-                                            phi::DenseTensor* tensor,
-                                            float value) {
-  PADDLE_THROW(phi::errors::Unimplemented("NPUPlace is not supported"));
-}
-
-template <>
-void set_constant_with_place<phi::NPUPinnedPlace>(
-    const phi::DeviceContext& context, phi::DenseTensor* tensor, float value) {
-  PADDLE_THROW(phi::errors::Unimplemented("NPUPinnedPlace is not supported"));
-}
-
-template <>
 void set_constant_with_place<phi::IPUPlace>(const phi::DeviceContext& context,
                                             phi::DenseTensor* tensor,
                                             float value) {
@@ -201,13 +188,6 @@ void set_constant_with_place<phi::CPUPlace>(const phi::DeviceContext& context,
                                             phi::DenseTensor* tensor,
                                             float value) {
   phi::VisitDataType(tensor->dtype(), TensorSetConstantCPU(tensor, value));
-}
-
-template <>
-void set_constant_with_place<phi::MLUPlace>(const phi::DeviceContext& context,
-                                            phi::DenseTensor* tensor,
-                                            float value) {
-  PADDLE_THROW(phi::errors::Unimplemented("MLUPlace is not supported"));
 }
 
 template <>

@@ -177,7 +177,6 @@ def python_api(
     path_code=None,
     num_classes=-1,
     is_sparse=False,
-    remote_prefetch=False,
 ):
     return paddle.nn.functional.hsigmoid_loss(
         input,

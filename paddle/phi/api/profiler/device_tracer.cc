@@ -21,6 +21,7 @@ limitations under the License. */
 #include <string>
 #include <thread>  // NOLINT
 
+#include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "paddle/phi/core/enforce.h"
 
@@ -695,8 +696,6 @@ class DeviceTracerImpl : public DeviceTracer {
           event->set_device_id(r.place.GetDeviceId());
         } else if (r.place.GetType() == phi::AllocationType::GPUPINNED) {
           event->set_place(proto::MemEvent::CUDAPinnedPlace);
-        } else if (r.place.GetType() == phi::AllocationType::NPU) {
-          event->set_place(proto::MemEvent::NPUPlace);
         } else {
           PADDLE_THROW(
               errors::Unimplemented("The current place is not supported."));

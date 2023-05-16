@@ -168,7 +168,7 @@ def while_loop_class_var(x):
     foo = Foo()
     i = fluid.dygraph.to_variable(x)
     while i < 10:
-        foo.b = fluid.layers.zeros(shape=[1], dtype='float32')
+        foo.b = paddle.zeros(shape=[1], dtype='float32')
         foo.c = foo.b + foo.a
         i += 1
         if foo.c < 0:

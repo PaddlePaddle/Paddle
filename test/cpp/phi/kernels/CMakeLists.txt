@@ -105,3 +105,8 @@ cc_test(
   sequence_padding_test
   SRCS sequence_padding_test.cc
   DEPS sequence_padding)
+
+cc_test(
+  sequence_pooling_test
+  SRCS sequence_pooling_test.cc
+  DEPS sequence_pooling)

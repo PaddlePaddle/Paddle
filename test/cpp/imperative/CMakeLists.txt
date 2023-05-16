@@ -28,12 +28,6 @@ else()
       SRCS bkcl_context_test.cc
       DEPS bkcl_context)
   endif()
-  if(WITH_CNCL)
-    cc_test(
-      cncl_context_test
-      SRCS cncl_context_test.cc
-      DEPS cncl_context)
-  endif()
 endif()
 
 cc_test(
@@ -99,8 +93,7 @@ cc_test(
   DEPS tracer layer prepared_operator mul_op)
 if(WITH_NCCL
    OR WITH_RCCL
-   OR WITH_XPU_BKCL
-   OR WITH_CNCL)
+   OR WITH_XPU_BKCL)
   cc_test(
     test_group
     SRCS test_group.cc

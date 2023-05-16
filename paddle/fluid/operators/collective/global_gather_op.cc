@@ -111,9 +111,12 @@ REGISTER_OPERATOR(global_gather,
                   ops::GlobalGatherOpGradMaker<paddle::framework::OpDesc>,
                   ops::GlobalGatherOpGradMaker<paddle::imperative::OpBase>)
 
-REGISTER_OP_CPU_KERNEL(global_gather,
-                       ops::GlobalGatherOpCPUKernel<float>,
-                       ops::GlobalGatherOpCPUKernel<double>,
-                       ops::GlobalGatherOpCPUKernel<int>,
-                       ops::GlobalGatherOpCPUKernel<int64_t>,
-                       ops::GlobalGatherOpCPUKernel<plat::float16>);
+PD_REGISTER_STRUCT_KERNEL(global_gather,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::GlobalGatherOpCPUKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t,
+                          plat::float16) {}

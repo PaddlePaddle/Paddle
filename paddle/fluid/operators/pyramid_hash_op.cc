@@ -232,7 +232,7 @@ class PyramidHashOP : public framework::OperatorWithKernel {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class CPUPyramidHashOPKernel : public framework::OpKernel<T> {
  public:
   bool should_use_term(math::bloomfilter* _filter,
@@ -492,7 +492,7 @@ class PyramidHashGradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class CPUPyramidHashOPGradKernel : public framework::OpKernel<T> {
  public:
   void hash_embedding_bp(const T* hash_id,
@@ -584,8 +584,11 @@ REGISTER_OPERATOR(pyramid_hash,
                   ops::PyramidHashGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(pyramid_hash_grad, ops::PyramidHashOpGrad);
 
-REGISTER_OP_CPU_KERNEL(pyramid_hash,
-                       ops::CPUPyramidHashOPKernel<phi::CPUContext, float>,
-                       ops::CPUPyramidHashOPKernel<phi::CPUContext, int8_t>);
-REGISTER_OP_CPU_KERNEL(pyramid_hash_grad,
-                       ops::CPUPyramidHashOPGradKernel<phi::CPUContext, float>);
+PD_REGISTER_STRUCT_KERNEL(
+    pyramid_hash, CPU, ALL_LAYOUT, ops::CPUPyramidHashOPKernel, float, int8_t) {
+}
+PD_REGISTER_STRUCT_KERNEL(pyramid_hash_grad,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::CPUPyramidHashOPGradKernel,
+                          float) {}

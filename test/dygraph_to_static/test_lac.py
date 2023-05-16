@@ -100,9 +100,7 @@ class BiGRU(paddle.nn.Layer):
                 initializer=paddle.nn.initializer.Uniform(
                     low=-init_bound, high=init_bound
                 ),
-                regularizer=fluid.regularizer.L2DecayRegularizer(
-                    regularization_coeff=1e-4
-                ),
+                regularizer=paddle.regularizer.L2Decay(coeff=1e-4),
             ),
         )
 
@@ -113,9 +111,7 @@ class BiGRU(paddle.nn.Layer):
                 initializer=paddle.nn.initializer.Uniform(
                     low=-init_bound, high=init_bound
                 ),
-                regularizer=fluid.regularizer.L2DecayRegularizer(
-                    regularization_coeff=1e-4
-                ),
+                regularizer=paddle.regularizer.L2Decay(coeff=1e-4),
             ),
         )
 
@@ -126,9 +122,7 @@ class BiGRU(paddle.nn.Layer):
                 initializer=paddle.nn.initializer.Uniform(
                     low=-init_bound, high=init_bound
                 ),
-                regularizer=fluid.regularizer.L2DecayRegularizer(
-                    regularization_coeff=1e-4
-                ),
+                regularizer=paddle.regularizer.L2Decay(coeff=1e-4),
             ),
         )
 
@@ -140,9 +134,7 @@ class BiGRU(paddle.nn.Layer):
                 initializer=paddle.nn.initializer.Uniform(
                     low=-init_bound, high=init_bound
                 ),
-                regularizer=fluid.regularizer.L2DecayRegularizer(
-                    regularization_coeff=1e-4
-                ),
+                regularizer=paddle.regularizer.L2Decay(coeff=1e-4),
             ),
         )
 
@@ -417,9 +409,7 @@ class LexNet(paddle.nn.Layer):
                 initializer=paddle.nn.initializer.Uniform(
                     low=-self.init_bound, high=self.init_bound
                 ),
-                regularizer=fluid.regularizer.L2DecayRegularizer(
-                    regularization_coeff=1e-4
-                ),
+                regularizer=paddle.regularizer.L2Decay(coeff=1e-4),
             ),
         )
 
@@ -564,8 +554,6 @@ class TestLACModel(unittest.TestCase):
             )
 
             step = 0
-            chunk_evaluator = fluid.metrics.ChunkEvaluator()
-            chunk_evaluator.reset()
 
             loss_data = []
             for epoch_id in range(args.epoch):
@@ -573,7 +561,7 @@ class TestLACModel(unittest.TestCase):
                     words, targets, length = batch
                     start_time = time.time()
                     avg_cost, crf_decode = model(words, targets, length)
-                    loss_data.append(avg_cost.numpy()[0])
+                    loss_data.append(float(avg_cost))
 
                     # backward and optimization
                     avg_cost.backward()

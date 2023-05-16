@@ -39,6 +39,7 @@ limitations under the License. */
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/compat/get_kerneltype_forvar_utils.h"
 #include "paddle/phi/core/ddim.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/ops/compat/signatures.h"
@@ -57,19 +58,15 @@ class DenseTensor;
 #include "paddle/fluid/platform/mkldnn_op_list.h"
 #endif
 
-#ifdef PADDLE_WITH_MLU
-#include "paddle/fluid/platform/device/mlu/mlu_info.h"
-#endif
-
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #endif
 
 DECLARE_bool(benchmark);
-DECLARE_bool(check_nan_inf);
+PHI_DECLARE_bool(check_nan_inf);
 DECLARE_bool(enable_unused_var_check);
-DECLARE_bool(run_kp_kernel);
-DECLARE_bool(enable_host_event_recorder_hook);
+PHI_DECLARE_bool(run_kp_kernel);
+PHI_DECLARE_bool(enable_host_event_recorder_hook);
 
 namespace paddle {
 namespace framework {
@@ -771,16 +768,6 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
       auto dev_id = place.device;
       platform::SetXPUDeviceId(dev_id);
 #endif
-    } else if (platform::is_mlu_place(place)) {
-#ifndef PADDLE_WITH_MLU
-      PADDLE_THROW(platform::errors::Unavailable(
-          "Cannot run operator on place %s, please recompile paddle or "
-          "reinstall Paddle with MLU support.",
-          place));
-#else
-      auto dev_id = place.device;
-      platform::SetMLUDeviceId(dev_id);
-#endif
     } else if (platform::is_custom_place(place)) {
 #ifndef PADDLE_WITH_CUSTOM_DEVICE
       PADDLE_THROW(platform::errors::Unavailable(
@@ -1335,33 +1322,6 @@ bool OperatorWithKernel::SupportGPU() const {
           op_kernels.end(),
           [](OpKernelMap::const_reference kern_pair) {
             return platform::is_gpu_place(kern_pair.first.place_);
-          });
-    }
-  }
-}
-
-bool OperatorWithKernel::SupportNPU() const {
-  auto phi_kernels = phi::KernelFactory::Instance().SelectKernelMap(
-      phi::TransToPhiKernelName(type_));
-  auto has_phi_kernel =
-      std::any_of(phi_kernels.begin(),
-                  phi_kernels.end(),
-                  [](phi::KernelKeyMap::const_reference kern_pair) {
-                    return kern_pair.first.backend() == phi::Backend::NPU;
-                  });
-  if (has_phi_kernel) {
-    return true;
-  } else {
-    auto kernel_iter = OperatorWithKernel::AllOpKernels().find(type_);
-    if (kernel_iter == OperatorWithKernel::AllOpKernels().end()) {
-      return false;
-    } else {
-      auto& op_kernels = kernel_iter->second;
-      return std::any_of(
-          op_kernels.begin(),
-          op_kernels.end(),
-          [](OpKernelMap::const_reference kern_pair) {
-            return platform::is_npu_place(kern_pair.first.place_);
           });
     }
   }
@@ -2301,16 +2261,6 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
   }
 #endif
 
-#ifdef PADDLE_WITH_MLU
-  if (kernel_iter == kernels.end() &&
-      platform::is_mlu_place(expected_kernel_key.place_)) {
-    VLOG(3) << "missing MLU kernel: " << type_
-            << ", expected_kernel_key:" << expected_kernel_key
-            << ", fallbacking to CPU one!";
-    expected_kernel_key.place_ = platform::CPUPlace();
-    kernel_iter = kernels.find(expected_kernel_key);
-  }
-#endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   if (kernel_iter == kernels.end() &&
       platform::is_custom_place(expected_kernel_key.place_)) {
@@ -2534,21 +2484,32 @@ Scope* OperatorWithKernel::PrepareData(
       }
 
       std::unique_ptr<phi::KernelKey> new_expected_kernel_key = nullptr;
-      if (run_phi_kernel_ && in_def != nullptr &&
-          in_def->backend != phi::Backend::ALL_BACKEND) {
-        auto tensor_backend = phi::TransToPhiBackend(tensor_in->place());
-        if ((in_def->backend != tensor_backend &&
-             !(in_def->backend == phi::Backend::GPUDNN &&
-               tensor_backend == phi::Backend::GPU) &&
-             !(in_def->backend == phi::Backend::KPS &&
-               tensor_backend == phi::Backend::XPU) &&
-             !(in_def->backend == phi::Backend::ONEDNN &&
-               tensor_backend == phi::Backend::CPU)) ||
-            tensor_in->place().GetType() == AllocationType::GPUPINNED) {
-          new_expected_kernel_key =
-              std::make_unique<phi::KernelKey>(in_def->backend,
-                                               expected_kernel_key.layout(),
-                                               expected_kernel_key.dtype());
+      if (run_phi_kernel_) {
+        if (phi_kernel_->GetKernelRegisteredType() ==
+            phi::KernelRegisteredType::STRUCTURE) {
+          if (!backends_are_same_class(kernel_type_for_var.backend(),
+                                       expected_kernel_key.backend())) {
+            new_expected_kernel_key =
+                std::make_unique<phi::KernelKey>(expected_kernel_key.backend(),
+                                                 expected_kernel_key.layout(),
+                                                 expected_kernel_key.dtype());
+          }
+        } else if (in_def != nullptr &&  // KernelRegisteredType is Function
+                   in_def->backend != phi::Backend::ALL_BACKEND) {
+          auto tensor_backend = phi::TransToPhiBackend(tensor_in->place());
+          if ((in_def->backend != tensor_backend &&
+               !(in_def->backend == phi::Backend::GPUDNN &&
+                 tensor_backend == phi::Backend::GPU) &&
+               !(in_def->backend == phi::Backend::KPS &&
+                 tensor_backend == phi::Backend::XPU) &&
+               !(in_def->backend == phi::Backend::ONEDNN &&
+                 tensor_backend == phi::Backend::CPU)) ||
+              tensor_in->place().GetType() == AllocationType::GPUPINNED) {
+            new_expected_kernel_key =
+                std::make_unique<phi::KernelKey>(in_def->backend,
+                                                 expected_kernel_key.layout(),
+                                                 expected_kernel_key.dtype());
+          }
         }
       }
 

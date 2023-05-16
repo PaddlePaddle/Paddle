@@ -17,7 +17,6 @@ register_unity_group(
   assert_op.cc
   assign_value_op.cc
   attention_lstm_op.cc
-  average_accumulates_op.cc
   batch_fc_op.cc
   bce_loss_op.cc
   beam_search_op.cc
@@ -50,7 +49,6 @@ register_unity_group(
   cos_sim_op.cc
   crf_decoding_op.cc
   crop_op.cc
-  ascend_trigger_op.cc
   conj_op.cc
   imag_op.cc
   kldiv_loss_op.cc
@@ -202,7 +200,6 @@ register_unity_group(
   pad_op.cc)
 register_unity_group(
   cc
-  modified_huber_loss_op.cc
   partial_sum_op.cc
   pixel_shuffle_op.cc
   pool_op.cc
@@ -223,7 +220,6 @@ register_unity_group(
   mkldnn/quantize_mkldnn_op.cc
   queue_generator_op.cc
   random_crop_op.cc
-  randperm_op.cc
   range_op.cc
   rank_attention_op.cc
   rank_loss_op.cc
@@ -263,8 +259,7 @@ register_unity_group(
   sign_op.cc
   similarity_focus_op.cc
   size_op.cc
-  slice_op.cc
-  softmax_op.cc)
+  slice_op.cc)
 register_unity_group(
   cc
   space_to_depth_op.cc
@@ -294,7 +289,6 @@ register_unity_group(
   mkldnn/transpose_mkldnn_op.cc
   tree_conv_op.cc
   tril_triu_op.cc
-  truncated_gaussian_random_op.cc
   unbind_op.cc
   unfold_op.cc)
 register_unity_group(
@@ -332,7 +326,6 @@ register_unity_group(
   pool_op.cu.cc
   pool_cudnn_op.cu.cc
   pool_with_index_op.cu.cc
-  run_program_op.cu.cc
   softmax_op.cu.cc
   softmax_cudnn_op.cu.cc
   spp_op.cu.cc
@@ -358,7 +351,6 @@ register_unity_group(
   rnn_op.cu.cc
   split_op.cu.cc
   assign_value_op.cu.cc
-  run_program_op.cu.cc
   warpctc_op.cu.cc)
 register_unity_group(
   cu
@@ -388,7 +380,6 @@ register_unity_group(
   conv_transpose_op.cu
   cos_sim_op.cu
   crop_op.cu
-  average_accumulates_op.cu
   conj_op.cu
   correlation_op.cu)
 register_unity_group(
@@ -497,12 +488,12 @@ register_unity_group(
   pixel_shuffle_op.cu
   prelu_op.cu
   prroi_pool_op.cu
+  run_program_op.cu
   pull_box_extended_sparse_op.cu
   pull_box_sparse_op.cu)
 register_unity_group(
   cu
   random_crop_op.cu
-  randperm_op.cu
   range_op.cu
   reverse_op.cu
   partial_concat_op.cu
@@ -544,7 +535,6 @@ register_unity_group(
   row_conv_op.cu
   tree_conv_op.cu
   tril_triu_op.cu
-  truncated_gaussian_random_op.cu
   unfold_op.cu
   arg_min_op.cu
   crop_tensor_op.cu)

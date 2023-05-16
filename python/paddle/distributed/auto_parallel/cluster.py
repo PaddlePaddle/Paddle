@@ -13,11 +13,14 @@
 # limitations under the License.
 
 import json
+import logging
 import os
 import re
 from enum import IntEnum, unique
 
 import paddle
+
+from ..utils.log_utils import get_logger
 
 
 @unique
@@ -447,9 +450,8 @@ class Cluster:
         """Generate cluster by default config."""
         gpu_models = ["V100", "A100", "H100", "A2", "A10", "A16", "A30", "A40"]
         xpu_models = ["XPU"]
-        npu_models = ["NPU"]
         dcu_models = ["DCU"]
-        all_gpu_models = gpu_models + xpu_models + npu_models + dcu_models
+        all_gpu_models = gpu_models + xpu_models + dcu_models
         self._num_devices_per_machine = device_count
 
         def _convert_to_type(gpu_model):
@@ -458,8 +460,6 @@ class Cluster:
                 type = "GPU"
             elif gpu_model in xpu_models:
                 type = "XPU"
-            elif gpu_model in npu_models:
-                type = "NPU"
             elif gpu_model in dcu_models:
                 type = "DCU"
             else:
@@ -830,6 +830,9 @@ class Cluster:
         return self.__str__()
 
 
+logger = get_logger(logging.INFO)
+
+
 def get_default_cluster(json_config=None):
     def is_by_json_config(json_config):
         if not json_config:
@@ -877,30 +880,34 @@ def get_default_cluster(json_config=None):
             assert global_device_count % local_device_count == 0
             node_count = int(global_device_count) // local_device_count
 
-        gpu_info = paddle.device.cuda.get_device_properties()
-        assert gpu_info, "Auto parallel just runs on gpu now."
-
-        gpu_name = gpu_info.name
-        try:
-            re_result = re.split(r'[ , -]', gpu_name)
-            gpu_model = re_result[1]
-            memory = int(re_result[-1][:-2])
-        except:
-            memory = int(gpu_info.total_memory) // (1000**3)
+        if os.getenv("PADDLE_DISTRI_BACKEND", None) == "xccl":
+            gpu_name = os.getenv("PADDLE_XCCL_BACKEND", None)
             gpu_model = gpu_name
+            memory = int(
+                paddle.fluid.core._get_device_total_memory(gpu_name)
+            ) // (1000**3)
+        else:
+            gpu_info = paddle.device.cuda.get_device_properties()
+            assert gpu_info, "Auto parallel just runs on gpu now."
 
-    print(
-        "Node Count: ",
-        node_count,
-        "Local Device Size: ",
-        local_device_count,
-        "GPU Model: ",
-        gpu_model,
-        "GPU Memory: ",
-        memory,
-        "World size: ",
-        paddle.distributed.get_world_size(),
-        flush=True,
+            gpu_name = gpu_info.name
+            try:
+                re_result = re.split(r'[ , -]', gpu_name)
+                gpu_model = re_result[1]
+                memory = int(re_result[-1][:-2])
+            except:
+                memory = int(gpu_info.total_memory) // (1000**3)
+                gpu_model = gpu_name
+
+    logger.info(
+        "Node Count: {}, Local Device Size: {}, GPU Model: {}, GPU Memory: {}GB, World size: {}, EndPoint: {}.".format(
+            node_count,
+            local_device_count,
+            gpu_model,
+            memory,
+            paddle.distributed.get_world_size(),
+            os.getenv("PADDLE_CURRENT_ENDPOINT", None),
+        )
     )
     cluster.gen_default_config_cluster(
         node_count=node_count,

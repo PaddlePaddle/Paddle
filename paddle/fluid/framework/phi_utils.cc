@@ -112,15 +112,6 @@ phi::KernelKey FallBackToCpu(const phi::KernelKey& kernel_key,
         phi::Backend::CPU, kernel_key.layout(), kernel_key.dtype());
   }
 #endif
-#ifdef PADDLE_WITH_MLU
-  if (kernel_key.backend() == phi::Backend::MLU) {
-    VLOG(3) << "phi missing MLU kernel: " << op.Type()
-            << ", expected_kernel_key:" << kernel_key
-            << ", fallback to CPU one!";
-    return phi::KernelKey(
-        phi::Backend::CPU, kernel_key.layout(), kernel_key.dtype());
-  }
-#endif
 #ifdef PADDLE_WITH_IPU
   if (kernel_key.backend() == phi::Backend::IPU) {
     VLOG(3) << "phi missing IPU kernel: " << op.Type()

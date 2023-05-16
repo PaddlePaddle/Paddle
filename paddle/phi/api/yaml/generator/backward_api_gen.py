@@ -112,7 +112,7 @@ class BackwardAPI(BaseAPI):
         return ""
 
     def gene_api_declaration(self):
-        if not self.is_base_api:
+        if not self.is_base_api and not self.is_only_composite_api:
             invoke_func_name = self.invoke.split('(')[0]
             if (not invoke_func_name.endswith("_grad")) and (
                 not invoke_func_name.endswith('_impl')
@@ -275,6 +275,7 @@ def source_include(header_file_path, fw_header_file_path):
 #include <memory>
 
 #include "glog/logging.h"
+#include "gflags/gflags.h"
 
 #include "paddle/phi/api/lib/api_custom_impl.h"
 #include "paddle/phi/api/lib/api_gen_utils.h"

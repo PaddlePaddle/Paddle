@@ -192,6 +192,15 @@ class TestDistAPI(unittest.TestCase):
             )
             np.testing.assert_allclose(dist(x_i, y_i, p), out[0], rtol=1e-05)
 
+    def test_grad_x(self):
+        paddle.disable_static()
+        a = paddle.rand([2, 2, 3, 2])
+        b = paddle.rand([1, 1, 3, 1])
+        a.stop_gradient = False
+        c = paddle.dist(a, b, 2)
+        c.backward()
+        paddle.enable_static()
+
 
 if __name__ == '__main__':
     paddle.enable_static()

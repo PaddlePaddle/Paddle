@@ -205,7 +205,7 @@ class Dirac(Initializer):
 
         if framework.in_dygraph_mode():
             with fluid.dygraph.no_grad():
-                tmp_tensor = framework._varbase_creator()
+                tmp_tensor = framework._create_tensor()
                 _C_ops.assign_value_(
                     tmp_tensor,
                     [len(idx_list)],
@@ -234,7 +234,7 @@ class Dirac(Initializer):
 
         if framework.in_dygraph_mode():
             with fluid.dygraph.no_grad():
-                tmp_tensor = framework._varbase_creator()
+                tmp_tensor = framework._create_tensor()
                 _C_ops.assign_value_(
                     tmp_tensor,
                     [len(value_list)],

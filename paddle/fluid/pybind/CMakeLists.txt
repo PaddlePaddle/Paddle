@@ -91,15 +91,15 @@ if(WITH_XPU_BKCL)
   set(PYBIND_DEPS ${PYBIND_DEPS} heter_ccl_context)
 endif()
 
-if(WITH_ASCEND_CL)
-  set(PYBIND_DEPS ${PYBIND_DEPS} reducer)
-  set(PYBIND_DEPS ${PYBIND_DEPS} hccl_context)
-  set(PYBIND_DEPS ${PYBIND_DEPS} heter_ccl_context)
-endif()
-
-if(WITH_CNCL)
-  set(PYBIND_DEPS ${PYBIND_DEPS} reducer)
-  set(PYBIND_DEPS ${PYBIND_DEPS} cncl_context)
+if(WITH_CUSTOM_DEVICE)
+  set(PYBIND_DEPS ${PYBIND_DEPS} xccl_context)
+  if(NOT
+     (WITH_NCCL
+      OR WITH_RCCL
+      OR WITH_XPU_BKCL))
+    set(PYBIND_DEPS ${PYBIND_DEPS} reducer)
+    set(PYBIND_DEPS ${PYBIND_DEPS} heter_ccl_context)
+  endif()
 endif()
 
 if(NOT WIN32)
@@ -178,11 +178,6 @@ if(WITH_PYTHON)
 endif()
 set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_comm_utils)
 
-if(WITH_ASCEND)
-  set(PYBIND_DEPS ${PYBIND_DEPS} ascend_wrapper)
-  set(PYBIND_SRCS ${PYBIND_SRCS} ascend_wrapper_py.cc)
-endif()
-
 if(WITH_GLOO)
   set(PYBIND_DEPS ${PYBIND_DEPS} gloo_context)
   set(PYBIND_SRCS ${PYBIND_SRCS} gloo_context_py.cc)
@@ -249,28 +244,16 @@ endif()
 
 if(WITH_PYTHON)
   # generate op pybind functions automatically for dygraph.
-  if(WITH_ASCEND_CL)
-    set(OP_FUNCTION_GENERETOR_DEPS
-        pybind
-        proto_desc
-        executor
-        layer
-        tracer
-        engine
-        imperative_profiler
-        imperative_flag
-        ascend_wrapper)
-  else()
-    set(OP_FUNCTION_GENERETOR_DEPS
-        pybind
-        proto_desc
-        executor
-        layer
-        tracer
-        engine
-        imperative_profiler
-        imperative_flag)
-  endif()
+
+  set(OP_FUNCTION_GENERETOR_DEPS
+      pybind
+      proto_desc
+      executor
+      layer
+      tracer
+      engine
+      imperative_profiler
+      imperative_flag)
   list(APPEND OP_FUNCTION_GENERETOR_DEPS ${GLOB_OP_LIB})
   list(APPEND OP_FUNCTION_GENERETOR_DEPS ${GLOB_OPERATOR_DEPS})
 
@@ -282,16 +265,13 @@ if(WITH_PYTHON)
     list(APPEND OP_FUNCTION_GENERETOR_DEPS bkcl_context)
   endif()
 
-  if(WITH_ASCEND_CL)
-    list(APPEND OP_FUNCTION_GENERETOR_DEPS hccl_context)
-  endif()
-
-  if(WITH_CNCL)
-    list(APPEND OP_FUNCTION_GENERETOR_DEPS cncl_context)
-  endif()
-
   if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     list(APPEND OP_FUNCTION_GENERETOR_DEPS ${PYTHON_LIBRARIES})
+  endif()
+
+  if(WITH_CUSTOM_DEVICE)
+    set(OP_FUNCTION_GENERETOR_DEPS ${OP_FUNCTION_GENERETOR_DEPS}
+                                   custom_device_common_op_registry)
   endif()
 
   add_executable(eager_legacy_op_function_generator

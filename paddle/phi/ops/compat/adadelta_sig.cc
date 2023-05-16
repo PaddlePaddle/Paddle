@@ -18,14 +18,18 @@ namespace phi {
 
 KernelSignature AdadeltaOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.IsDenseTensorInput("Grad")) {
-    return KernelSignature(
-        "adadelta",
-        {"Param", "Grad", "AvgSquaredGrad", "AvgSquaredUpdate", "MasterParam"},
-        {"rho", "epsilon", "multi_precision"},
-        {"ParamOut",
-         "AvgSquaredGradOut",
-         "AvgSquaredUpdateOut",
-         "MasterParamOut"});
+    return KernelSignature("adadelta",
+                           {"Param",
+                            "Grad",
+                            "AvgSquaredGrad",
+                            "AvgSquaredUpdate",
+                            "LearningRate",
+                            "MasterParam"},
+                           {"rho", "epsilon", "multi_precision"},
+                           {"ParamOut",
+                            "AvgSquaredGradOut",
+                            "AvgSquaredUpdateOut",
+                            "MasterParamOut"});
   }
 
   return KernelSignature("unregistered", {}, {}, {});

@@ -15,7 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    convert_uint16_to_float,
+)
 
 import paddle
 from paddle.fluid import core
@@ -40,12 +44,21 @@ def error_msg(data_np):
 
 
 def convert_dtype(dtype_str):
-    dtype_str_list = ["int32", "int64", "float32", "float64"]
+    dtype_str_list = [
+        "int32",
+        "int64",
+        "float16",
+        "float32",
+        "float64",
+        "uint16",
+    ]
     dtype_num_list = [
         core.VarDesc.VarType.INT32,
         core.VarDesc.VarType.INT64,
+        core.VarDesc.VarType.FP16,
         core.VarDesc.VarType.FP32,
         core.VarDesc.VarType.FP64,
+        core.VarDesc.VarType.BF16,
     ]
     assert dtype_str in dtype_str_list, (
         dtype_str + " should in " + str(dtype_str_list)
@@ -62,9 +75,9 @@ class TestRandpermOp(OpTest):
         self.n = 200
         self.dtype = "int64"
 
+        self.init_attrs()
         self.inputs = {}
         self.outputs = {"Out": np.zeros(self.n).astype(self.dtype)}
-        self.init_attrs()
         self.attrs = {
             "n": self.n,
             "dtype": convert_dtype(self.dtype),
@@ -101,6 +114,47 @@ class TestRandpermOpFloat32(TestRandpermOp):
 class TestRandpermOpFloat64(TestRandpermOp):
     def init_attrs(self):
         self.dtype = "float64"
+
+
+class TestRandpermFP16Op(TestRandpermOp):
+    def init_attrs(self):
+        self.dtype = "float16"
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support bfloat16",
+)
+class TestRandpermBF16Op(OpTest):
+    def setUp(self):
+        self.op_type = "randperm"
+        self.python_api = paddle.randperm
+        self.n = 200
+
+        self.init_attrs()
+        self.inputs = {}
+        self.outputs = {"Out": np.zeros(self.n).astype(self.np_dtype)}
+        self.attrs = {
+            "n": self.n,
+            "dtype": convert_dtype(self.dtype),
+        }
+
+        self.outputs['Out'] = convert_float_to_uint16(self.outputs['Out'])
+        self.place = core.CUDAPlace(0)
+
+    def init_attrs(self):
+        self.dtype = "uint16"
+        self.np_dtype = np.float32
+
+    def test_check_output(self):
+        self.check_output_with_place_customized(self.verify_output, self.place)
+
+    def verify_output(self, outs):
+        out_np = convert_uint16_to_float(np.array(outs[0]))
+        self.assertTrue(
+            check_randperm_out(self.n, out_np), msg=error_msg(out_np)
+        )
 
 
 class TestRandpermOpError(unittest.TestCase):

@@ -219,7 +219,7 @@ class BaseModel(paddle.nn.Layer):
         enc_cell_0 = to_variable(
             np.zeros((self.batch_size, self.hidden_size), dtype='float32')
         )
-        zero = fluid.layers.zeros(shape=[1], dtype="int64")
+        zero = paddle.zeros(shape=[1], dtype="int64")
         enc_hidden = paddle.tensor.create_array(dtype="float32")
         enc_cell = paddle.tensor.create_array(dtype="float32")
         for i in range(self.num_layers):
@@ -321,7 +321,7 @@ class BaseModel(paddle.nn.Layer):
         enc_cell_0 = to_variable(
             np.zeros((self.batch_size, self.hidden_size), dtype='float32')
         )
-        zero = fluid.layers.zeros(shape=[1], dtype="int64")
+        zero = paddle.zeros(shape=[1], dtype="int64")
         enc_hidden = paddle.tensor.create_array(dtype="float32")
         enc_cell = paddle.tensor.create_array(dtype="float32")
         for j in range(self.num_layers):
@@ -407,7 +407,7 @@ class BaseModel(paddle.nn.Layer):
         parent_ids = []
 
         for step_idx in range(paddle.to_tensor(self.beam_max_step_num)):
-            if paddle.sum(1 - beam_finished).numpy()[0] == 0:
+            if paddle.sum(1 - beam_finished) == 0:
                 break
             step_input = self._merge_batch_beams(step_input)
             new_dec_hidden, new_dec_cell = [], []
@@ -738,7 +738,7 @@ class AttentionModel(paddle.nn.Layer):
             np.zeros((self.batch_size, self.hidden_size), dtype='float32')
         )
         enc_hidden_0.stop_gradient = True
-        zero = fluid.layers.zeros(shape=[1], dtype="int64")
+        zero = paddle.zeros(shape=[1], dtype="int64")
         enc_hidden = paddle.tensor.create_array(dtype="float32")
         enc_cell = paddle.tensor.create_array(dtype="float32")
         for i in range(self.num_layers):

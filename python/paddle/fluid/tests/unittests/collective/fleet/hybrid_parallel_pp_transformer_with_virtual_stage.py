@@ -120,11 +120,10 @@ class CriterionPipe(Layer):
 
 
 class ModelPipe(PipelineLayer):
-    def __init__(self, topology):
+    def __init__(self, topology, transformer_layer_num: int = 8):
         self.descs = []
         self.descs.append(LayerDesc(EmbeddingPipe))
-
-        for x in range(8):
+        for x in range(transformer_layer_num):
             self.descs.append(LayerDesc(TransformerNetPipe))
 
         self.descs.append(lambda x: x[0])

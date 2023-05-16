@@ -47,7 +47,7 @@ struct ChannelDequantizeFunctorV2 {
                   phi::DenseTensor* out);
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class QuantizeLinearKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -130,7 +130,7 @@ class QuantizeLinearKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class DeQuantizeLinearKernel : public framework::OpKernel<T> {
  public:
   template <typename D>

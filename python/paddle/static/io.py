@@ -75,7 +75,7 @@ def _check_args(caller, args, supported_args=None, deprecated_args=None):
 def _check_vars(name, var_list):
     if not isinstance(var_list, list):
         var_list = [var_list]
-    if not var_list or not all([isinstance(var, Variable) for var in var_list]):
+    if not all([isinstance(var, Variable) for var in var_list]):
         raise ValueError(
             f"'{name}' should be a Variable or a list of Variable."
         )
@@ -252,6 +252,7 @@ def serialize_program(feed_vars, fetch_vars, **kwargs):
         kwargs: Supported keys including ``program``. Attention please, kwargs is used for backward compatibility mainly.
 
             - program(Program): specify a program if you don't want to use default main program.
+            - legacy_format(bool): whether to save inference program in legacy format. Defaults to False.
 
     Returns:
         bytes: serialized program.
@@ -289,14 +290,15 @@ def serialize_program(feed_vars, fetch_vars, **kwargs):
 
     program = _get_valid_program(kwargs.get('program', None))
     program = normalize_program(program, feed_vars, fetch_vars)
-    return _serialize_program(program)
+    legacy_format = kwargs.get('legacy_format', False)
+    return _serialize_program(program, legacy_format=legacy_format)
 
 
-def _serialize_program(program):
+def _serialize_program(program, legacy_format=False):
     """
     serialize given program to bytes.
     """
-    return program.desc.serialize_to_string()
+    return program.desc.serialize_to_string(legacy_format=legacy_format)
 
 
 @static_only
@@ -459,6 +461,8 @@ def save_inference_model(
 
             - clip_extra(bool): the flag indicating whether to clip extra information for every operator. Default: True.
 
+            - legacy_format(bool): whether to save inference model in legacy format. Default: False.
+
     Returns:
         None
 
@@ -518,8 +522,10 @@ def save_inference_model(
     clip_extra = kwargs.get('clip_extra', True)
     program = normalize_program(program, feed_vars, fetch_vars)
     # serialize and save program
+    legacy_format = kwargs.get('legacy_format', False)
     program_bytes = _serialize_program(
-        program._remove_training_info(clip_extra=clip_extra)
+        program._remove_training_info(clip_extra=clip_extra),
+        legacy_format=legacy_format,
     )
     save_to_file(model_path, program_bytes)
     # serialize and save params
@@ -1371,8 +1377,6 @@ def save(program, model_path, protocol=4, **configs):
 
     main_program = program.clone()
     program.desc.flush()
-    main_program.desc._set_version()
-    paddle.fluid.core.save_op_version_info(program.desc)
 
     with open(model_path + ".pdmodel", "wb") as f:
         f.write(program.desc.serialize_to_string())

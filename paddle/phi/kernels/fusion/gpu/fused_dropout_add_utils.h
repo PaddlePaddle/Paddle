@@ -20,7 +20,7 @@ namespace phi {
 namespace fusion {
 
 template <typename Context>
-static inline std::vector<size_t> GetRandomCudaProp(int numel,
+static inline std::vector<size_t> GetRandomCudaProp(int64_t numel,
                                                     const Context& dev_ctx) {
   constexpr int kVecSize = funcs::uniform_distribution<float>::kReturnsCount;
   auto gpu_config =

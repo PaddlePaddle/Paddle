@@ -17,6 +17,8 @@
 #include <sstream>
 #include <vector>
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/device_memory_aligment.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -271,6 +273,7 @@ PD_REGISTER_KERNEL(coalesce_tensor,
                    int,
                    float,
                    double) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
 }
 

@@ -21,13 +21,17 @@ from paddle import _legacy_C_ops
 from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
 from paddle.fluid import backward, core, framework, program_guard
 from paddle.fluid.compiler import BuildStrategy
-from paddle.fluid.data_feeder import convert_dtype
+from paddle.fluid.data_feeder import check_type, convert_dtype
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.framework import _apply_pass
 from paddle.optimizer.lr import LRScheduler
 
 from . import logging_utils
-from .utils import RETURN_NO_VALUE_MAGIC_NUM, _out_grad_names, _param_grad_names
+from .utils import (
+    RETURN_NO_VALUE_MAGIC_NUM,
+    backend_guard,
+    construct_grad_names,
+)
 
 __all__ = []
 
@@ -184,19 +188,26 @@ class PartialProgramLayer:
         self._infer_info = ProgramInfo()
         self._forward_end_index_map = {}
 
-        custom_white_list, custom_black_list = None, None
+        amp_dtype, custom_white_list, custom_black_list = None, None, None
         tracer = framework._dygraph_tracer()
         if tracer:
             custom_white_list, custom_black_list = tracer._get_amp_op_list()
-        # For AMP training
-        self._amp_list = paddle.static.amp.fp16_lists.AutoMixedPrecisionLists(
-            custom_white_list=custom_white_list,
-            custom_black_list=custom_black_list,
-        )
+            amp_dtype = tracer._amp_dtype
+        if amp_dtype is not None and amp_dtype in ['float16', 'bfloat16']:
+            # For AMP training
+            self._amp_list = (
+                paddle.static.amp.fp16_lists.AutoMixedPrecisionLists(
+                    custom_white_list=custom_white_list,
+                    custom_black_list=custom_black_list,
+                    dtype=amp_dtype,
+                )
+            )
 
         # program_id -> list(scope)
         self._scope_cache = {}
         self._hooker = None
+        self._backend = kwargs.get('backend', None)
+        self._grad_var_names = {}
 
     def __call__(self, inputs):
         """
@@ -283,10 +294,12 @@ class PartialProgramLayer:
     def _create_amp_program(self, is_infer_mode=False):
         amp_program = self._origin_main_program.clone(for_test=is_infer_mode)
         with program_guard(amp_program):
-            paddle.static.amp.fp16_utils.rewrite_program(
-                amp_program, self._amp_list
+            paddle.static.amp.fp16_utils.cast_model_to_fp16(
+                amp_program, self._amp_list, use_fp16_guard=False, level='O1'
             )
         if is_infer_mode:
+            if self._hooker:
+                amp_program = self._hooker.after_infer(amp_program)
             return amp_program
         else:
             train_amp_program = self._append_backward_desc(amp_program)
@@ -430,22 +443,10 @@ class PartialProgramLayer:
     def _infer_pure_fp16_program_id(self):
         return paddle.utils._hash_with_id(self._infer_pure_fp16_program, self)
 
-    @LazyInitialized
-    def _param_grad_names(self):
-        return _param_grad_names(self._train_program.desc, self._params)
-
     def get_forward_end_op_idx(self, program):
         return self._forward_end_index_map[
             paddle.utils._hash_with_id(program, self)
         ]
-
-    @LazyInitialized
-    def _out_grad_names(self):
-        return _out_grad_names(
-            self._train_program.desc,
-            self.get_forward_end_op_idx(self._train_program),
-            len(self._outputs.var_ids),
-        )
 
     @property
     def program(self):
@@ -634,10 +635,35 @@ class PartialProgramLayer:
 
         start_idx = len(program.block(0).ops) + len(self._outputs.tolist())
         if targets:
-            # TODO(CZ): later when use cinn, set_prim_all_enabled and check_and_set_prim_all_enabled will be set at else branch.
-            core.check_and_set_prim_all_enabled()
             start_idx = len(program.block(0).ops) + len(self._outputs.tolist())
-            backward.gradients(targets=targets, inputs=[])
+            with backend_guard(self._backend):
+                check_type(
+                    targets,
+                    'targets',
+                    (framework.Variable, list, tuple),
+                    'paddle.static.gradients',
+                )
+                grad_info_map = backward.calc_gradient_helper(
+                    targets=targets, inputs=[]
+                )
+
+                x_vars = [
+                    program.block(0).var(var.name)
+                    for var in self._inputs
+                    if isinstance(var, framework.Variable)
+                ]
+                param_vars = [
+                    program.block(0).var(param.name) for param in self._params
+                ]
+                out_vars = [
+                    program.block(0).var(var.name)
+                    for var in self._outputs
+                    if isinstance(var, framework.Variable)
+                ]
+
+                self._grad_var_names = construct_grad_names(
+                    grad_info_map, x_vars, param_vars, out_vars
+                )
 
             if self._hooker:
                 program, start_idx = self._hooker.after_append_backward(
@@ -708,9 +734,11 @@ class PartialProgramLayer:
             attrs.extend(
                 (
                     'param_grad_names',
-                    self._param_grad_names,
+                    self._grad_var_names.get('param', []),
                     'out_grad_names',
-                    self._out_grad_names,
+                    self._grad_var_names.get('out', []),
+                    'x_grad_names',
+                    self._grad_var_names.get('x', []),
                 )
             )
         if self._cuda_graph_capture_mode:
@@ -749,9 +777,9 @@ class PartialProgramLayer:
         backward_end_op_index = whole_program.desc.block(0).op_size()
         # For Backward process in CINN, all param@GRAD shoule be skipped for GC, because
         # they will be shared in scope and used by optimizer.
-        backward_skip_vars = (
-            self._parse_skip_gc_vars(whole_program) + self._param_grad_names
-        )
+        backward_skip_vars = self._parse_skip_gc_vars(
+            whole_program
+        ) + self._grad_var_names.get('param', [])
         backward_builded_program = add_build_strategy_for(
             whole_program,
             backward_start_op_index,
@@ -885,27 +913,26 @@ class PartialProgramLayer:
             input_vars.append(var)
 
         # mapping from name(string) -> Tensor
-        out_varbase_map = {}
+        out_tensor_map = {}
 
         def create_out(var_id):
             var = self._outputs[var_id]
             assert isinstance(var, framework.Variable)
             var_desc = var.desc
-            varbase = None
 
-            if var_desc.name() in out_varbase_map:
-                return out_varbase_map[var_desc.name()]
+            if var_desc.name() in out_tensor_map:
+                return out_tensor_map[var_desc.name()]
 
-            var_base = core.eager.Tensor(
+            out = core.eager.Tensor(
                 var_desc.dtype(),
                 var_desc.shape(),
                 var_desc.name(),
                 var_desc.type(),
                 False,
             )
-            var_base.stop_gradient = var.stop_gradient
-            out_varbase_map[var_desc.name()] = var_base
-            return var_base
+            out.stop_gradient = var.stop_gradient
+            out_tensor_map[var_desc.name()] = out
+            return out
 
         # Create Tensor to receive output data.
         out_vars = list(map(create_out, self._outputs.var_ids))

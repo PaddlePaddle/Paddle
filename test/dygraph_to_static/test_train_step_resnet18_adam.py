@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import platform
 import unittest
 
 from test_train_step import (
@@ -33,6 +34,9 @@ class TestTrainStepResNet18Adam(TestTrainStepTinyModel):
         self.loss_fn = loss_fn_tiny_model
         self.train_step_func = train_step_tiny_model
         self.steps = 3
+        self.rtol = 1e-4
+        if platform.system() == 'Windows':
+            self.rtol = 1e-3
 
 
 if __name__ == "__main__":

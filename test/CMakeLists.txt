@@ -93,10 +93,8 @@ endfunction()
 if(WITH_TESTING)
   add_subdirectory(amp)
   add_subdirectory(asp)
-  # add_subdirectory(auto_parallel)
   add_subdirectory(autograd)
   add_subdirectory(book)
-  add_subdirectory(collective)
   # add_subdirectory(composite_ops)
   add_subdirectory(contrib)
   add_subdirectory(cpp)
@@ -104,29 +102,47 @@ if(WITH_TESTING)
   add_subdirectory(custom_op)
   add_subdirectory(custom_runtime)
   add_subdirectory(dataset)
-  # add_subdirectory(distributed_passes)
-  # add_subdirectory(distribution)
+  add_subdirectory(cpp_extension)
+  if(WITH_DISTRIBUTE)
+    add_subdirectory(collective)
+    add_subdirectory(auto_parallel)
+    add_subdirectory(distributed_passes)
+    add_subdirectory(ps)
+  endif()
+  add_subdirectory(distribution)
   add_subdirectory(dygraph_to_static)
-  # add_subdirectory(fft)
+  if(NOT WIN32 OR NOT WITH_GPU)
+    add_subdirectory(fft)
+  endif()
   # add_subdirectory(fleet)
   if(WITH_IPU)
     add_subdirectory(ipu)
   endif()
-  # add_subdirectory(ir)
+  add_subdirectory(ir)
   add_subdirectory(legacy_test)
   if(WITH_MKLDNN)
     add_subdirectory(mkldnn)
   endif()
   add_subdirectory(prim)
-  # add_subdirectory(ps)
   add_subdirectory(quantization)
-  # add_subdirectory(rnn)
+  add_subdirectory(rnn)
   add_subdirectory(rpc)
-  # add_subdirectory(sequence)
-  # add_subdirectory(standalone_executor)
-  # add_subdirectory(tokenizer)
+  add_subdirectory(sequence)
+  add_subdirectory(standalone_executor)
+  add_subdirectory(tokenizer)
   # add_subdirectory(white_list)
-  add_subdirectory(xpu)
+  if(WITH_XPU)
+    add_subdirectory(xpu)
+  endif()
+endif()
+
+if(WITH_CPP_DIST)
+  add_test(NAME test_paddle_lib
+           COMMAND ${PADDLE_BINARY_DIR}/test/paddle_lib/test_paddle_lib)
+  if(WITH_GPU)
+    add_test(NAME test_paddle_lib_gpu
+             COMMAND ${PADDLE_BINARY_DIR}/test/paddle_lib/test_paddle_lib_gpu)
+  endif()
 endif()
 
 get_property(test_srcs GLOBAL PROPERTY TEST_SRCS)
@@ -170,27 +186,14 @@ if(${len} GREATER_EQUAL 1)
       if(WITH_XPU)
         target_link_libraries(${test_name} xpulib)
       endif()
-      if(WITH_MLU)
-        target_link_libraries(${test_name} neuware_lib)
-      endif()
-      if(NOT
-         ("${test_name}" STREQUAL "c_broadcast_op_npu_test"
-          OR "${test_name}" STREQUAL "c_allreduce_sum_op_npu_test"
-          OR "${test_name}" STREQUAL "c_allreduce_max_op_npu_test"
-          OR "${test_name}" STREQUAL "c_reducescatter_op_npu_test"
-          OR "${test_name}" STREQUAL "c_allgather_op_npu_test"
-          OR "${test_name}" STREQUAL "send_v2_op_npu_test"
-          OR "${test_name}" STREQUAL "c_reduce_sum_op_npu_test"
-          OR "${test_name}" STREQUAL "recv_v2_op_npu_test"))
-        cc_test_run(
-          ${test_name}
-          COMMAND
-          ${test_name}
-          ARGS
-          ${test_arg}
-          DIR
-          ${CC_TESTS_DIR})
-      endif()
+      cc_test_run(
+        ${test_name}
+        COMMAND
+        ${test_name}
+        ARGS
+        ${test_arg}
+        DIR
+        ${CC_TESTS_DIR})
     elseif(WITH_TESTING AND NOT TEST ${test_name})
       add_test(NAME ${test_name} COMMAND ${CMAKE_COMMAND} -E echo CI skip
                                          ${test_name}.)

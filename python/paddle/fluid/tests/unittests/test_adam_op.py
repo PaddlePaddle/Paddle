@@ -711,7 +711,7 @@ class TestAdamOpV2(unittest.TestCase):
         )
         adam = paddle.optimizer.Adam(
             learning_rate=learning_rate,
-            weight_decay=fluid.regularizer.L2Decay(0.001),
+            weight_decay=paddle.regularizer.L2Decay(0.001),
             parameters=emb.parameters(),
         )
         lr = adam.get_lr()
@@ -976,9 +976,7 @@ class TestAdamOptimizer(unittest.TestCase):
         weight_attr = paddle.ParamAttr(
             name="weight1",
             initializer=paddle.nn.initializer.Constant(value=1.0),
-            regularizer=fluid.regularizer.L1DecayRegularizer(
-                regularization_coeff=0.1
-            ),
+            regularizer=paddle.regularizer.L1Decay(coeff=0.1),
             trainable=True,
         )
         with fluid.program_guard(main):
@@ -1235,7 +1233,9 @@ class TestMultiTensorAdam(unittest.TestCase):
             optimizer.minimize(loss)
         exe.run(startup_program)
         if use_amp:
-            optimizer.amp_init(place=place, scope=paddle.static.global_scope())
+            optimizer.amp_init(
+                place=paddle.CUDAPlace(0), scope=paddle.static.global_scope()
+            )
             x = np.random.random(size=(2, 2)).astype('float16')
         else:
             x = np.random.random(size=(2, 2)).astype('float32')

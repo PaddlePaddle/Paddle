@@ -21,9 +21,6 @@ limitations under the License. */
 #include "paddle/phi/core/errors.h"
 
 #include "paddle/phi/backends/gpu/gpu_info.h"
-#ifdef PADDLE_WITH_MLU
-#include "paddle/phi/backends/mlu/mlu_info.h"
-#endif
 
 namespace phi {
 
@@ -42,16 +39,11 @@ inline size_t Alignment(size_t size,
       alignment = phi::backends::gpu::GpuMinChunkSize();
 #elif defined(PADDLE_WITH_XPU)
       alignment = alignment;
-#elif defined(PADDLE_WITH_MLU)
-      alignment = phi::backends::mlu::MLUMinChunkSize();
 #else
       PADDLE_THROW(phi::errors::PreconditionNotMet(
-          "Fluid is not compiled with CUDA/XPU/NPU/MLU."));
+          "Fluid is not compiled with CUDA/XPU."));
 #endif
     }
-  }
-  if (place.GetType() == phi::AllocationType::NPU) {
-    size += 32;  // required by ascendcl
   }
   size_t remaining = size % alignment;
   return remaining == 0 ? size : size + (alignment - remaining);

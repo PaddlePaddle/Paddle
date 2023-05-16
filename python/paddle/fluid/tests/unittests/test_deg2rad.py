@@ -66,7 +66,7 @@ class TestDeg2radAPI(unittest.TestCase):
 class TestDeg2radAPI2(TestDeg2radAPI):
     # Test input data type is int
     def setUp(self):
-        self.x_np = 180
+        self.x_np = [180]
         self.x_shape = [1]
         self.out_np = np.pi
         self.x_dtype = 'int64'
@@ -74,7 +74,7 @@ class TestDeg2radAPI2(TestDeg2radAPI):
     def test_dygraph(self):
         paddle.disable_static()
 
-        x2 = paddle.to_tensor(180)
+        x2 = paddle.to_tensor([180])
         result2 = paddle.deg2rad(x2)
         np.testing.assert_allclose(np.pi, result2.numpy(), rtol=1e-05)
 

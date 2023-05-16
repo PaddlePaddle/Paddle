@@ -252,7 +252,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
             backward_op.input("Ids")[0]
         )
         mesh_shape = process_mesh.shape
-        batch_size_axis = var_dim_mapping[0]
+        batch_size_axis = var_dim_mapping[0] if len(var_dim_mapping) > 0 else -1
         if batch_size_axis > -1 and mesh_shape[batch_size_axis] > 1:
             parallel_axis = batch_size_axis
             attrs = {"use_calc_stream": True}
@@ -362,7 +362,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         op_dist_attr = ctx.get_op_dist_attr_for_program(src_op)
         assert (
             op_dist_attr is not None
-        ), f"backward op [{str(src_op)}] don't have dist attribute !"
+        ), f"forward op [{str(src_op)}] don't have dist attribute !"
 
         # check validation of inputs / outputs
         assert 'Ids' in kwargs, "input [{}] is not given".format('Ids')

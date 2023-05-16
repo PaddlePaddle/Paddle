@@ -22,9 +22,10 @@
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm_kernel.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/flags.h"
 #ifdef PADDLE_WITH_HETERPS
 
-DECLARE_double(gpugraph_hbm_table_load_factor);
+PHI_DECLARE_double(gpugraph_hbm_table_load_factor);
 
 namespace paddle {
 namespace framework {

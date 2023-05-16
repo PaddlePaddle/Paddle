@@ -176,7 +176,7 @@ class TestReduceMeanOp(OpTest):
         pass
 
     def if_enable_cinn(self):
-        self.enable_cinn = False
+        pass
 
     def test_check_output(self):
         if self.dtype != 'float16':

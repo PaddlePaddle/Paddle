@@ -33,6 +33,7 @@
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
+#include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/backends/device_manager.h"
 
 PADDLE_DEFINE_EXPORTED_bool(
@@ -50,15 +51,12 @@ PADDLE_DEFINE_EXPORTED_bool(new_executor_use_local_scope,
                             true,
                             "Use local_scope in new executor(especially used "
                             "in UT), can turn off for better performance");
-PADDLE_DEFINE_EXPORTED_bool(control_flow_use_new_executor,
-                            true,
-                            "Use new executor in control flow op");
 
-DECLARE_bool(check_nan_inf);
+PHI_DECLARE_bool(check_nan_inf);
 DECLARE_bool(benchmark);
-DECLARE_bool(new_executor_use_cuda_graph);
+PHI_DECLARE_bool(new_executor_use_cuda_graph);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-DECLARE_bool(sync_nccl_allreduce);
+PHI_DECLARE_bool(sync_nccl_allreduce);
 #endif
 
 constexpr const char* kExceptionCaught = "ExceptionCaught";

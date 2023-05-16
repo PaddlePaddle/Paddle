@@ -13,6 +13,9 @@
 // limitations under the License.
 
 #include <string>
+
+#include "glog/logging.h"
+
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/pass.h"
@@ -99,13 +102,16 @@ Conv2dXPUPattern::Conv2dXPUPattern(PDPattern* pattern,
   auto conv = pattern->NewNode(conv_repr())->assert_is_op(conv_type_);
   auto input = pattern->NewNode(input_repr())
                    ->assert_is_op_input(conv_type_, "Input")
-                   ->AsInput();
+                   ->AsInput()
+                   ->assert_more([](Node* node) {
+                     return node->Var()->GetShape().size() == 4;
+                   });
   auto conv_filter = pattern->NewNode(conv_filter_repr())
                          ->assert_is_op_input(conv_type_, "Filter")
                          ->AsInput();
   auto conv_out = pattern->NewNode(conv_out_repr())
                       ->assert_is_op_output(conv_type_, "Output")
-                      ->assert_var_not_persistable();
+                      ->assert_has_n_outputs(1);
   conv->LinksFrom({input, conv_filter}).LinksTo({conv_out});
   // ew_bias_add op
   PDNode* ew_bias_add = nullptr;
@@ -116,11 +122,17 @@ Conv2dXPUPattern::Conv2dXPUPattern(PDPattern* pattern,
     ew_bias_add_y = pattern->NewNode(ew_bias_add_y_repr())
                         ->assert_is_op_input("elementwise_add", "Y")
                         ->assert_is_persistable_var()
-                        ->assert_has_n_outputs(1);
+                        ->assert_has_n_outputs(1)
+                        ->assert_more([](Node* node) {
+                          return node->Var()->GetShape().size() == 1;
+                        });
     ew_bias_add =
         pattern->NewNode(ew_bias_add_repr())->assert_is_op("elementwise_add");
     ew_bias_add_out = pattern->NewNode(ew_bias_add_out_repr())
                           ->assert_is_op_output("elementwise_add", "Out");
+    if (with_bn_ || with_branch_ || !act_type_.empty()) {
+      ew_bias_add_out->assert_has_n_outputs(1);
+    }
     ew_bias_add->LinksFrom({conv_out, ew_bias_add_y})
         .LinksTo({ew_bias_add_out});
   } else {
@@ -145,20 +157,31 @@ Conv2dXPUPattern::Conv2dXPUPattern(PDPattern* pattern,
   if (with_bn_) {
     ew_bias_add_out->assert_is_op_input("batch_norm", "X");
     bn_bias = pattern->NewNode(bn_bias_repr())
+                  ->AsInput()
+                  ->assert_is_persistable_var()
                   ->assert_is_op_input("batch_norm", "Bias")
                   ->assert_has_n_outputs(1);
     bn_mean = pattern->NewNode(bn_mean_repr())
+                  ->AsInput()
+                  ->assert_is_persistable_var()
                   ->assert_is_op_input("batch_norm", "Mean")
                   ->assert_has_n_outputs(1);
     bn_scale = pattern->NewNode(bn_scale_repr())
+                   ->AsInput()
+                   ->assert_is_persistable_var()
                    ->assert_is_op_input("batch_norm", "Scale")
                    ->assert_has_n_outputs(1);
     bn_var = pattern->NewNode(bn_var_repr())
+                 ->AsInput()
+                 ->assert_is_persistable_var()
                  ->assert_is_op_input("batch_norm", "Variance")
                  ->assert_has_n_outputs(1);
     bn = pattern->NewNode(bn_repr())->assert_is_op("batch_norm");
     bn_out =
         pattern->NewNode(bn_out_repr())->assert_is_op_output("batch_norm", "Y");
+    if (with_branch_ || !act_type_.empty()) {
+      bn_out->assert_has_n_outputs(1);
+    }
     bn_mean_out = pattern->NewNode(bn_mean_out_repr())
                       ->assert_is_op_output("batch_norm", "MeanOut");
     bn_saved_mean = pattern->NewNode(bn_saved_mean_repr())
@@ -176,26 +199,30 @@ Conv2dXPUPattern::Conv2dXPUPattern(PDPattern* pattern,
   // ew_branch_add op
   if (with_branch_) {
     if (with_branch_x_) {
-      bn_out->assert_is_op_input("elementwise_add", "Y")->AsIntermediate();
+      bn_out->assert_is_op_input("elementwise_add", "Y");
       ew_branch_add_in = pattern->NewNode(ew_branch_add_in_repr())
                              ->assert_is_op_input("elementwise_add", "X")
-                             ->AsInput()
-                             ->assert_more([](Node* node) {
-                               return node->Var()->GetShape().size() == 4;
-                             });
+                             ->AsInput();
     } else if (with_branch_y_) {
-      bn_out->assert_is_op_input("elementwise_add", "X")->AsIntermediate();
+      bn_out->assert_is_op_input("elementwise_add", "X");
       ew_branch_add_in = pattern->NewNode(ew_branch_add_in_repr())
                              ->assert_is_op_input("elementwise_add", "Y")
-                             ->AsInput()
-                             ->assert_more([](Node* node) {
-                               return node->Var()->GetShape().size() == 4;
-                             });
+                             ->AsInput();
     }
-    ew_branch_add =
-        pattern->NewNode(ew_branch_add_repr())->assert_is_op("elementwise_add");
+    ew_branch_add = pattern->NewNode(ew_branch_add_repr())
+                        ->assert_is_op("elementwise_add")
+                        ->assert_more([](Node* node) {
+                          if (node->inputs.size() != 2) {
+                            return false;
+                          }
+                          return node->inputs[0]->Var()->GetShape() ==
+                                 node->inputs[1]->Var()->GetShape();
+                        });
     ew_branch_add_out = pattern->NewNode(ew_branch_add_out_repr())
                             ->assert_is_op_output("elementwise_add", "Out");
+    if (!act_type_.empty()) {
+      ew_branch_add_out->assert_has_n_outputs(1);
+    }
     ew_branch_add->LinksFrom({bn_out, ew_branch_add_in})
         .LinksTo({ew_branch_add_out});
   } else {
@@ -203,13 +230,15 @@ Conv2dXPUPattern::Conv2dXPUPattern(PDPattern* pattern,
   }
   // act op
   if (!act_type_.empty()) {
-    ew_branch_add_out->assert_is_op_input(act_type_, "X")->AsIntermediate();
+    ew_branch_add_out->assert_is_op_input(act_type_, "X");
     act = pattern->NewNode(act_repr())->assert_is_op(act_type_);
-    act_out = pattern->NewNode(act_out_repr())
-                  ->assert_is_op_output(act_type_, "Out")
-                  ->assert_var_not_persistable();
+    act_out =
+        pattern->NewNode(act_out_repr())->assert_is_op_output(act_type_, "Out");
     act->LinksFrom({ew_branch_add_out}).LinksTo({act_out});
+  } else {
+    act_out = ew_branch_add_out;
   }
+  act_out->AsOutput();
 }
 
 }  // namespace patterns
@@ -399,12 +428,17 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
     // recompute bias and weight for conv2d_xpu op
     auto* filter_t =
         scope->FindVar(conv_filter->Name())->GetMutable<phi::DenseTensor>();
+    // conv_filter fp16 --> fp32
+    auto tensor_type = filter_t->dtype();
+    if (tensor_type == phi::DataType::FLOAT16) {
+      CastToFp32(filter_t, nullptr);
+    }
     auto filter_dims = filter_t->dims();
     bool has_bias = with_bn || with_conv_bias;
     // Create conv_fusion_bias (conv bias) variable
     Node* fusion_bias_node = nullptr;
     if (has_bias) {
-      if (ew_bias_add != nullptr) {
+      if (with_conv_bias) {
         auto* ew_bias_add_y_t = scope->FindVar(ew_bias_add_y->Name())
                                     ->GetMutable<phi::DenseTensor>();
         auto ew_bias_add_y_dims = ew_bias_add_y_t->dims();
@@ -417,7 +451,7 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
                               filter_dims[0]));
         PrepareBias(graph, scope, block, ew_bias_add_y, &fusion_bias_node);
       }
-      if (bn != nullptr) {
+      if (with_bn) {
         auto bn_bias_t =
             scope->Var(bn_bias->Name())->GetMutable<phi::DenseTensor>();
         PADDLE_ENFORCE_EQ(filter_dims[0],
@@ -447,7 +481,7 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
         auto filter_len = filter_t->numel();
         auto filter_stride = filter_len / mean_len;
         float epsilon = PADDLE_GET_CONST(float, bn->Op()->GetAttr("epsilon"));
-        if (fusion_bias_node == nullptr) {  // prev node is conv
+        if (!with_conv_bias) {  // prev node is conv
           PrepareBias(graph, scope, block, bn_bias, &fusion_bias_node);
         }
         auto fusion_bias_t = scope->Var(fusion_bias_node->Name())
@@ -455,10 +489,10 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
         float* fusion_bias_ptr =
             fusion_bias_t->mutable_data<float>(paddle::platform::CPUPlace());
         // recompute bias and weights
-        if (ew_bias_add == nullptr) {
+        if (!with_conv_bias) {  // prev node is conv
           for (int i = 0; i < mean_len; ++i) {
             bn_scale_ptr[i] = bn_scale_ptr[i] / sqrtf(bn_var_ptr[i] + epsilon);
-            fusion_bias_ptr[i] += (0.f - bn_mean_ptr[i]) * bn_scale_ptr[i];
+            fusion_bias_ptr[i] += (0.0f - bn_mean_ptr[i]) * bn_scale_ptr[i];
             for (int j = 0; j < filter_stride; j++) {
               filter_ptr[i * filter_stride + j] *= bn_scale_ptr[i];
             }
@@ -466,13 +500,13 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
         } else {
           for (int i = 0; i < mean_len; ++i) {
             bn_scale_ptr[i] = bn_scale_ptr[i] / sqrtf(bn_var_ptr[i] + epsilon);
-            bn_bias_ptr[i] +=
+            fusion_bias_ptr[i] =
+                bn_bias_ptr[i] +
                 (fusion_bias_ptr[i] - bn_mean_ptr[i]) * bn_scale_ptr[i];
             for (int j = 0; j < filter_stride; j++) {
               filter_ptr[i * filter_stride + j] *= bn_scale_ptr[i];
             }
           }
-          memcpy(fusion_bias_ptr, bn_bias_ptr, mean_len * sizeof(float));
         }
       }
     }
@@ -481,6 +515,7 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
     Node* filter_max = nullptr;
     PrepareWeight<int16_t>(
         graph, scope, block, conv_filter, &filter_int16, &filter_max, false);
+    bool has_branch = with_branch_x || with_branch_y;
     // output && output max
     std::string conv2d_xpu_out_name;
     if (!act_type.empty()) {
@@ -501,18 +536,17 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
     framework::OpDesc conv2d_xpu_op_desc(block);
     // set input&output var
     conv2d_xpu_op_desc.SetType("conv2d_xpu");
-    conv2d_xpu_op_desc.SetInput("input", {input->Name()});
+    conv2d_xpu_op_desc.SetInput("x", {input->Name()});
     conv2d_xpu_op_desc.SetInput("filter", {filter_int16->Name()});
     conv2d_xpu_op_desc.SetInput("filter_max", {filter_max->Name()});
-    conv2d_xpu_op_desc.SetOutput("output", {conv2d_xpu_out_name});
-    conv2d_xpu_op_desc.SetOutput("output_max", {conv_out_max_name});
+    conv2d_xpu_op_desc.SetOutput("out", {conv2d_xpu_out_name});
+    conv2d_xpu_op_desc.SetOutput("out_max", {conv_out_max_name});
     // set fusion_bias input node
     if (has_bias) {
       conv2d_xpu_op_desc.SetInput("bias", {fusion_bias_node->Name()});
-      conv2d_xpu_op_desc.SetAttr("has_bias", has_bias);
     }
     // set ew_branch_add input node
-    if (ew_branch_add_in != nullptr) {
+    if (ew_branch_add != nullptr) {
       conv2d_xpu_op_desc.SetInput("branch", {ew_branch_add_in->Name()});
     }
     // set attrs of conv2d_xpu
@@ -566,7 +600,8 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
     conv2d_xpu_op_desc.SetAttr("place_z", std::vector<int>{10});
     conv2d_xpu_op_desc.SetAttr("paddings", conv_paddings);
     conv2d_xpu_op_desc.SetAttr("block_lod", std::vector<int>{1});
-    conv2d_xpu_op_desc.SetAttr("has_branch", with_branch_x || with_branch_y);
+    conv2d_xpu_op_desc.SetAttr("has_branch", has_branch);
+    conv2d_xpu_op_desc.SetAttr("has_bias", has_bias);
 
     auto* conv2d_xpu = graph->CreateOpNode(&conv2d_xpu_op_desc);
     IR_NODE_LINK_TO(input, conv2d_xpu);

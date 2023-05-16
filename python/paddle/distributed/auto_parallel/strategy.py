@@ -102,6 +102,12 @@ class GradientMergeConfig(BaseConfig):
         super().__init__(category, config_dict)
 
 
+class PipelineConfig(BaseConfig):
+    def __init__(self, config_dict=None):
+        category = constants.PIPELINE
+        super().__init__(category, config_dict)
+
+
 class QATConfig(BaseConfig):
     def __init__(self, config_dict=None):
         category = constants.QAT
@@ -185,6 +191,9 @@ class Strategy(BaseConfig):
 
         config_dict = self._config_dict.get(constants.GRADIENT_MERGE, None)
         self.gradient_merge = GradientMergeConfig(config_dict)
+
+        config_dict = self._config_dict.get(constants.PIPELINE, None)
+        self.pipeline = PipelineConfig(config_dict)
 
         config_dict = self._config_dict.get(constants.QAT, None)
         self.qat = QATConfig(config_dict)

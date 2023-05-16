@@ -441,6 +441,21 @@ class TestCrossEntropyOpError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_dtype)
 
+            def test_input_dims():
+                with paddle_static_guard():
+                    # "input_dims - 1 != label_dims and input_dims != label_dims" must be false.
+                    x3 = paddle.static.data(
+                        name='x3', shape=[-1, 3, 4, 5], dtype="int32"
+                    )
+                    lab3 = paddle.static.data(
+                        name='lab3', shape=[-1, 3, 4, 5, 6], dtype="int32"
+                    )
+                    paddle.nn.functional.cross_entropy(
+                        x3, lab3, reduction='none', use_softmax=False
+                    )
+
+            self.assertRaises(ValueError, test_input_dims)
+
 
 if __name__ == "__main__":
     unittest.main()

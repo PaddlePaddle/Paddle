@@ -185,7 +185,7 @@ class Uniform(distribution.Distribution):
             output = paddle.uniform(
                 output_shape, dtype=self.dtype, min=0.0, max=1.0, seed=seed
             ) * (
-                tensor.zeros(output_shape, dtype=self.dtype)
+                paddle.zeros(output_shape, dtype=self.dtype)
                 + (self.high - self.low)
             )
             output = paddle.add(output, self.low, name=name)

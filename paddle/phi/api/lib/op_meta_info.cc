@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "glog/logging.h"
@@ -23,6 +24,38 @@ limitations under the License. */
 #include "paddle/phi/core/enforce.h"
 
 namespace paddle {
+
+// remove leading and tailing spaces
+std::string trim_spaces(const std::string& str) {
+  const char* p = str.c_str();
+  while (*p != 0 && isspace(*p)) {
+    p++;
+  }
+  size_t len = strlen(p);
+  while (len > 0 && isspace(p[len - 1])) {
+    len--;
+  }
+  return std::string(p, len);
+}
+
+std::vector<std::string> ParseAttrStr(const std::string& attr) {
+  auto split_pos = attr.find_first_of(":");
+  PADDLE_ENFORCE_NE(split_pos,
+                    std::string::npos,
+                    phi::errors::InvalidArgument(
+                        "Invalid attribute string format. Attribute string "
+                        "format is `<name>:<type>`."));
+
+  std::vector<std::string> rlt;
+  // 1. name
+  rlt.emplace_back(trim_spaces(attr.substr(0, split_pos)));
+  // 2. type
+  rlt.emplace_back(trim_spaces(attr.substr(split_pos + 1)));
+
+  VLOG(3) << "attr name: " << rlt[0] << ", attr type str: " << rlt[1];
+
+  return rlt;
+}
 
 PADDLE_API void AssignTensorImpl(const Tensor& src, Tensor* dst) {
   if (!src.initialized() || !dst->defined()) {
@@ -103,6 +136,10 @@ Tensor& CustomOpKernelContext::MutableInputAt(size_t idx) {
   return inputs_.at(idx);
 }
 
+std::vector<Tensor>* CustomOpKernelContext::AllMutableInput() {
+  return &inputs_;
+}
+
 paddle::optional<Tensor> CustomOpKernelContext::OptionalInputAt(size_t idx) {
   if (!inputs_.at(idx).is_initialized()) {
     return paddle::none;
@@ -156,13 +193,15 @@ const std::pair<size_t, size_t>& CustomOpKernelContext::OutputRangeAt(
   return output_range_.at(idx);
 }
 
-// handle inplace mechanism
-// Find out non-inplace output tensors.
-// TODO(HongyuJia): Add cache for inplace_tensor_map_ to optimize performance
-void CustomOpKernelContext::MapPlainOutputs(
+void CustomOpKernelContext::ConstructInplaceIndex(
     const std::vector<std::string>& inputs,
     const std::vector<std::string>& outputs,
     const std::unordered_map<std::string, std::string>& inplace_map) {
+  // Cache inplace indices.
+  if (inplace_map.empty() || !inplace_idx_map_.empty()) {
+    VLOG(4) << "Custom opertor ConstructInplaceIndex no need to recompute.";
+    return;
+  }
   for (size_t in_idx = 0; in_idx < inputs.size(); ++in_idx) {
     auto& input = inputs[in_idx];
     if (inplace_map.find(input) == inplace_map.end()) {
@@ -175,15 +214,26 @@ void CustomOpKernelContext::MapPlainOutputs(
                               "the input of `Inplace` again and make "
                               "sure you registered your op accurately. ",
                               input));
-    inplace_tensor_map_[in_idx] = distance(outputs.begin(), out_iter);
+    size_t out_idx = distance(outputs.begin(), out_iter);
+    inplace_idx_map_[in_idx] = out_idx;
+    inplace_reverse_idx_map_[out_idx] = in_idx;
   }
+  VLOG(4) << "Custom opertor update inplace input-output map successfully.";
+}
+
+// Find out non-inplace output tensors.
+void CustomOpKernelContext::UpdatePlainOutputs(
+    const std::vector<std::string>& inputs,
+    const std::vector<std::string>& outputs,
+    const std::unordered_map<std::string, std::string>& inplace_map) {
+  // Cache plain outputs vector.
+  if (!plain_outputs_.empty()) {
+    VLOG(4) << "Custom opertor UpdatePlainOutputs no need to recompute.";
+    return;
+  }
+  ConstructInplaceIndex(inputs, outputs, inplace_map);
   for (size_t i = 0; i < outputs.size(); ++i) {
-    if (std::any_of(
-            inplace_tensor_map_.begin(),
-            inplace_tensor_map_.end(),
-            [i](std::unordered_map<size_t, size_t>::const_reference pair) {
-              return pair.second == i;
-            })) {
+    if (inplace_reverse_idx_map_.find(i) != inplace_reverse_idx_map_.end()) {
       continue;
     }
     size_t output_start_idx = output_range_[i].first;
@@ -192,11 +242,12 @@ void CustomOpKernelContext::MapPlainOutputs(
       plain_outputs_.push_back(&outputs_[idx]);
     }
   }
-  VLOG(4) << "Custom opertor update inplace input-output map successfully.";
+  VLOG(4) << "Custom opertor update plain outputs map successfully.";
 }
+
 // Assign input tensor to inplace output tensors.
 void CustomOpKernelContext::AssignInplaceOutputs() {
-  for (auto pair : inplace_tensor_map_) {
+  for (auto pair : inplace_idx_map_) {
     size_t in_start_idx = input_range_[pair.first].first;
     size_t in_end_idx = input_range_[pair.first].second;
     size_t out_start_idx = output_range_[pair.second].first;
@@ -213,15 +264,21 @@ void CustomOpKernelContext::AssignInplaceOutputs() {
     }
     VLOG(4) << "Custom opertor update inplace input-output tensor "
                "successfully. Update map size = "
-            << inplace_tensor_map_.size();
+            << inplace_idx_map_.size();
   }
 }
+
 std::vector<Tensor*>* CustomOpKernelContext::AllMutablePlainOutput() {
   return &plain_outputs_;
 }
+
+std::unordered_map<size_t, size_t> CustomOpKernelContext::GetInplaceIndexMap() {
+  return inplace_idx_map_;
+}
+
 std::unordered_map<size_t, size_t>
-CustomOpKernelContext::GetInplaceTensorMap() {
-  return inplace_tensor_map_;
+CustomOpKernelContext::GetInplaceReverseIndexMap() {
+  return inplace_reverse_idx_map_;
 }
 ////////////////////// Op Meta Info //////////////////////
 
@@ -322,6 +379,30 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::Outputs(
 }
 
 OpMetaInfoBuilder& OpMetaInfoBuilder::Attrs(std::vector<std::string>&& attrs) {
+  const std::unordered_set<std::string> custom_attrs_type(
+      {"bool",
+       "int",
+       "float",
+       "int64_t",
+       "std::string",
+       "std::vector<int>",
+       "std::vector<float>",
+       "std::vector<int64_t>",
+       "std::vector<std::string>"});
+  for (const auto& attr : attrs) {
+    auto attr_type_str = ParseAttrStr(attr)[1];
+    if (custom_attrs_type.find(attr_type_str) == custom_attrs_type.end()) {
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "Unsupported `%s` type value as custom attribute now. "
+          "Supported data types include `bool`, `int`, `float`, "
+          "`int64_t`, `std::string`, `std::vector<int>`, "
+          "`std::vector<float>`, `std::vector<int64_t>`, "
+          "`std::vector<std::string>`, "
+          "Please check whether the attribute data type and "
+          "data type string are matched.",
+          attr_type_str));
+    }
+  }
   info_ptr_->Attrs(std::forward<std::vector<std::string>>(attrs));
   return *this;
 }

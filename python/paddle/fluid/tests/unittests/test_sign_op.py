@@ -17,7 +17,7 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle import fluid
@@ -38,6 +38,42 @@ class TestSignOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
+
+
+class TestSignFP16Op(TestSignOp):
+    def setUp(self):
+        self.op_type = "sign"
+        self.python_api = paddle.sign
+        self.inputs = {
+            'X': np.random.uniform(-10, 10, (10, 10)).astype("float16")
+        }
+        self.outputs = {'Out': np.sign(self.inputs['X'])}
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support bfloat16",
+)
+class TestSignBF16Op(OpTest):
+    def setUp(self):
+        self.op_type = "sign"
+        self.python_api = paddle.sign
+        self.dtype = np.uint16
+        self.inputs = {
+            'X': np.random.uniform(-10, 10, (10, 10)).astype("float32")
+        }
+        self.outputs = {'Out': np.sign(self.inputs['X'])}
+
+        self.inputs['X'] = convert_float_to_uint16(self.inputs['X'])
+        self.outputs['Out'] = convert_float_to_uint16(self.outputs['Out'])
+        self.place = core.CUDAPlace(0)
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place)
+
+    def test_check_grad(self):
+        self.check_grad_with_place(self.place, ['X'], 'Out')
 
 
 class TestSignOpError(unittest.TestCase):
@@ -97,7 +133,7 @@ class TestSignDoubleGradCheck(unittest.TestCase):
 
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         eps = 0.005
         dtype = np.float32
 
@@ -128,7 +164,7 @@ class TestSignTripleGradCheck(unittest.TestCase):
 
     @prog_scope()
     def func(self, place):
-        # the shape of input variable should be clearly specified, not inlcude -1.
+        # the shape of input variable should be clearly specified, not include -1.
         eps = 0.005
         dtype = np.float32
 
