@@ -1651,7 +1651,7 @@ struct ELUGradFunctor : public BaseActivationFunctor<T> {
             typename Out,
             typename dOut,
             typename dX>
-  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
+  void operator()(Device d, X x UNUSED, Out out, dOut dout, dX dx) const {
     // case 1: alpha >= 0
     // dx = dout, if out > 0
     // dx = dout * (out + alpha), if out <= 0
