@@ -4485,25 +4485,6 @@ void TransposeInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
-void TransposeGradInferMeta(const MetaTensor& x,
-                            const std::vector<int>& axis,
-                            MetaTensor* out) {
-  size_t x_rank = x.dims().size();
-  std::vector<int> formated_axis = axis;
-  for (size_t i = 0; i < axis.size(); i++) {
-    if (axis[i] < 0) {
-      formated_axis[i] = axis[i] + x_rank;
-    }
-  }
-
-  std::vector<int> reversed_axis(axis);
-  for (size_t i = 0; i < formated_axis.size(); i++) {
-    reversed_axis[formated_axis[i]] = i;
-  }
-
-  TransposeInferMeta(x, reversed_axis, out);
-}
-
 void UnbindInferMeta(const MetaTensor& x,
                      int axis,
                      std::vector<MetaTensor*> outs) {

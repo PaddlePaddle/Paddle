@@ -81,7 +81,7 @@ class MemcpyFunctor {
   }
 
   template <typename T>
-  void operator()(const T &v) const {
+  void operator()(const T &v UNUSED) const {
     PADDLE_ENFORCE_EQ(
         true,
         false,

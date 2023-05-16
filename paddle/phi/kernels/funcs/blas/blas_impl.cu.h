@@ -190,7 +190,7 @@ struct CUBlas<double> {
   }
 
   template <typename... ARGS>
-  static void GEMM_EX(ARGS... args) {
+  static void GEMM_EX(ARGS... args UNUSED) {
     PADDLE_THROW(
         phi::errors::Unimplemented("Currently there are not cublasDgemmEx."));
   }

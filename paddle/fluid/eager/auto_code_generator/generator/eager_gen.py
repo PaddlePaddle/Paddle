@@ -67,8 +67,8 @@ black_ops_list = [
 prim_white_list = [
     "matmul_double_grad",
     "tanh_double_grad",
-    "add_double_grad",
     "subtract_double_grad",
+    "silu_double_grad",
 ]
 
 # dict of special api that forward api's output will affect bacward api's output
