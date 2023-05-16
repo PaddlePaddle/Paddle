@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 from scipy.special import erfinv
 
 import paddle
@@ -138,6 +138,48 @@ class TestErfinvFP16OP(OpTest):
             user_defined_grads=[self.gradient],
             user_defined_grad_outputs=self.grad_out,
         )
+
+
+@unittest.skipIf(
+    not paddle.fluid.core.is_compiled_with_cuda()
+    or not paddle.fluid.core.is_bfloat16_supported(
+        paddle.fluid.core.CUDAPlace(0)
+    ),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestErfinvBF16OP(OpTest):
+    def setUp(self):
+        self.op_type = "erfinv"
+        self.python_api = paddle.erfinv
+        self.init_dtype()
+        self.shape = [11, 17]
+        self.x = np.random.uniform(-1, 1, size=self.shape).astype(np.float32)
+        self.out = erfinv(self.x).astype(np.float32)
+        self.res_ref = convert_float_to_uint16(self.out)
+        self.grad_out = np.ones(self.shape, self.dtype)
+        self.gradient = (
+            np.sqrt(np.pi) / 2 * np.exp(np.square(self.res_ref)) * self.grad_out
+        )
+        self.inputs = {'X': convert_float_to_uint16(self.x)}
+        self.outputs = {'Out': self.res_ref}
+
+    def init_dtype(self):
+        self.dtype = np.uint16
+
+    def test_check_output(self):
+        place = paddle.fluid.core.CUDAPlace(0)
+        self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        place = paddle.fluid.core.CUDAPlace(0)
+        self.check_grad(
+            place,
+            ['X'],
+            'Out',
+            user_defined_grads=[self.gradient],
+            user_defined_grad_outputs=self.grad_out,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
