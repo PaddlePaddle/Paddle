@@ -26,9 +26,7 @@ from ..fluid.data_feeder import (
 )
 from ..framework import LayerHelper, in_dygraph_mode
 from .creation import full
-from .logic import logical_not
 from .manipulation import cast
-from .math import add, multiply
 
 __all__ = []
 
@@ -675,8 +673,8 @@ def dist(x, y, p=2, name=None):
         ||z||_{p}=(\sum_{i=1}^{m}|z_i|^p)^{\\frac{1}{p}}
 
     Args:
-        x (Tensor): 1-D to 6-D Tensor, its data type is float16, float32 or float64.
-        y (Tensor): 1-D to 6-D Tensor, its data type is float16, float32 or float64.
+        x (Tensor): 1-D to 6-D Tensor, its data type is float32 or float64.
+        y (Tensor): 1-D to 6-D Tensor, its data type is float32 or float64.
         p (float, optional): The norm to be computed, its data type is float32 or float64. Default: 2.
         name (str, optional): The default value is `None`. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name`.
@@ -706,12 +704,8 @@ def dist(x, y, p=2, name=None):
     if in_dygraph_mode():
         return _C_ops.dist(x, y, p)
 
-    check_variable_and_dtype(
-        x, 'dtype', ['float16', 'float32', 'float64'], 'dist'
-    )
-    check_variable_and_dtype(
-        y, 'dtype', ['float16', 'float32', 'float64'], 'dist'
-    )
+    check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'dist')
+    check_variable_and_dtype(y, 'dtype', ['float32', 'float64'], 'dist')
     check_type(p, 'p', (float, int), 'dist')
     helper = LayerHelper("dist", **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
@@ -2669,12 +2663,7 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
             y = float('inf')
             y = paddle.to_tensor(y, dtype=x.dtype)
 
-            condition = s > cutoff
-            cond_int = cast(condition, s.dtype)
-            cond_not_int = cast(logical_not(condition), s.dtype)
-            out1 = multiply(1 / s, cond_int)
-            out2 = multiply(1 / y, cond_not_int)
-            singular = add(out1, out2)
+            singular = paddle.where(s > cutoff, 1 / s, 1 / y)
             st = _C_ops.unsqueeze(singular, [-2])
 
             dims = list(range(len(vt.shape)))
@@ -2694,12 +2683,7 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
             y = float('inf')
             y = paddle.to_tensor(y, dtype=s.dtype)
 
-            condition = s_abs > cutoff
-            cond_int = cast(condition, s.dtype)
-            cond_not_int = cast(logical_not(condition), s.dtype)
-            out1 = multiply(1 / s, cond_int)
-            out2 = multiply(1 / y, cond_not_int)
-            singular = add(out1, out2)
+            singular = paddle.where(s_abs > cutoff, 1 / s, 1 / y)
             st = _C_ops.unsqueeze(singular, [-2])
 
             out_1 = u * st
@@ -2735,12 +2719,7 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
             y = float('inf')
             y = full(shape=[1], fill_value=y, dtype=dtype)
 
-            condition = s > cutoff
-            cond_int = cast(condition, dtype)
-            cond_not_int = cast(logical_not(condition), dtype)
-            out1 = multiply(1 / s, cond_int)
-            out2 = multiply(1 / y, cond_not_int)
-            singular = add(out1, out2)
+            singular = paddle.where(s > cutoff, 1 / s, 1 / y)
 
             st = helper.create_variable_for_type_inference(dtype=dtype)
             st_shape = helper.create_variable_for_type_inference(dtype=dtype)
@@ -2821,12 +2800,7 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
             y = float('inf')
             y = full(shape=[1], fill_value=y, dtype=s_type)
 
-            condition = s_abs > cutoff
-            cond_int = cast(condition, s_type)
-            cond_not_int = cast(logical_not(condition), s_type)
-            out1 = multiply(1 / s, cond_int)
-            out2 = multiply(1 / y, cond_not_int)
-            singular = add(out1, out2)
+            singular = paddle.where(s_abs > cutoff, 1 / s, 1 / y)
 
             st = helper.create_variable_for_type_inference(dtype=s_type)
             st_shape = helper.create_variable_for_type_inference(dtype=s_type)

@@ -90,7 +90,6 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "trt_map_ops_to_matrix_multiply_pass",          //
       "shuffle_channel_detect_pass",                  //
       "quant_conv2d_dequant_fuse_pass",               //
-      "delete_fill_constant_op_pass",                 //
       "delete_quant_dequant_op_pass",                 //
       "delete_quant_dequant_filter_op_pass",          //
       "trt_delete_weight_dequant_linear_op_pass",     //
@@ -123,7 +122,6 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "preln_layernorm_x_fuse_pass",     //
       "reverse_roll_fuse_pass",          //
       "conv_bn_fuse_pass",               //
-      "unsqueeze2_eltwise_fuse_pass",    //
       "conv_elementwise_add_fuse_pass",  //
 #if defined _WIN32  // Windows CI is TensorRT7.0. Remove this after upgrading.
 #else
@@ -524,6 +522,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "delete_cast_op_pass",
       "stack_fuse_pass",
       "fused_multi_transformer_xpu_pass",
+      "sigmoid_elementmul_fuse_pass",
       "fc_xpu_fuse_pass",
       "conv2d_xpu_fuse_pass",
       "link_xpu_op_max_pass",

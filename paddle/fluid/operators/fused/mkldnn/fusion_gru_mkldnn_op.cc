@@ -33,7 +33,7 @@ class GRUMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::gru_forward, T_out> {
   GRUMKLDNNHandler(const paddle::framework::ExecutionContext& ctx,
                    const OneDNNContext& dev_ctx,
                    const dnnl::engine onednn_engine,
-                   platform::Place cpu_place,
+                   platform::Place cpu_place UNUSED,
                    const phi::DenseTensor* input,
                    const phi::DenseTensor* weight_h,
                    const phi::DenseTensor* h0,
@@ -42,7 +42,7 @@ class GRUMKLDNNHandler : public RNNMKLDNNHandler<T, dnnl::gru_forward, T_out> {
                    const int64_t Ti,
                    const int64_t IC,
                    const int64_t OC,
-                   const std::string& unique_name)
+                   const std::string& unique_name UNUSED)
       : RNNMKLDNNHandler<T, dnnl::gru_forward, T_out>(
             ctx,
             dev_ctx,
