@@ -23,7 +23,8 @@ set(CBLAS_TAG v0.3.7)
 # https://github.com/PaddlePaddle/Paddle/pull/52983
 if(UNIX
    AND NOT APPLE
-   AND NOT WITH_ROCM)
+   AND NOT WITH_ROCM
+   AND NOT WITH_XPU)
   set(CBLAS_TAG v0.3.18)
 endif()
 
