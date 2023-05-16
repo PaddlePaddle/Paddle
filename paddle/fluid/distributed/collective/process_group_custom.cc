@@ -125,12 +125,14 @@ void ProcessGroupCustom::BroadcastUniqueCustomID(
     std::vector<phi::ccl::CCLRootId>& ccl_ids) {  // NOLINT
   if (rank_ == 0) {
     for (size_t i = 0; i < ccl_ids.size(); i++) {
-      auto key = "ProcessGroupCustom/ccl_ids/" + std::to_string(i);
+      auto key = "ProcessGroupCustom/ccl_ids/" + std::to_string(gid_) + "/" +
+                 std::to_string(i);
       store_->set(key, ccl_ids[i]);
     }
   } else {
     for (size_t i = 0; i < ccl_ids.size(); i++) {
-      auto key = "ProcessGroupCustom/ccl_ids/" + std::to_string(i);
+      auto key = "ProcessGroupCustom/ccl_ids/" + std::to_string(gid_) + "/" +
+                 std::to_string(i);
       ccl_ids[i] = store_->get(key);
     }
   }

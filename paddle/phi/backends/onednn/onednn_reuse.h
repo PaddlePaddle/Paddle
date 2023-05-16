@@ -1178,7 +1178,7 @@ class PReluOneDNNHandler
                      const DenseTensor& x,
                      const DenseTensor& weights,
                      const std::string& mode,
-                     const std::string& data_format,
+                     const std::string& data_format UNUSED,
                      const bool is_test)
       : OneDNNHandlerNoCachingT<T, dnnl::prelu_forward, dnnl::prelu_backward>(
             engine, cpu_place) {

@@ -234,10 +234,10 @@ class ConvOneDNNHandlerT
                      const std::string& padding_algorithm,
                      const std::vector<int>& dilations_in,
                      int groups,
-                     const std::string& data_format,
+                     const std::string& data_format UNUSED,
                      bool is_test,
-                     phi::DenseTensor* filter_grad,
-                     phi::DenseTensor* in_x_grad,
+                     phi::DenseTensor* filter_grad UNUSED,
+                     phi::DenseTensor* in_x_grad UNUSED,
                      const std::string& unique_name)
       : funcs::OneDNNHandlerT<T,
                               dnnl::convolution_forward,
