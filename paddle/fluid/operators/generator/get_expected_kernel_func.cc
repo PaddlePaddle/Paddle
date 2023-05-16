@@ -181,5 +181,35 @@ phi::KernelKey GetUniqueExpectedKernelType(
   }
 }
 
+phi::KernelKey GetInstanceNormExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  auto input_data_type =
+      op_ptr->OperatorWithKernel::IndicateVarDataType(ctx, "X");
+  // By default, the type of the scale, bias, mean,
+  // and var tensors should both be float. (For float or float16 input tensor)
+  // or double (For double input tensor).
+  auto in_param_type = framework::proto::VarType::FP32;
+  if (input_data_type == framework::proto::VarType::FP64) {
+    in_param_type = framework::proto::VarType::FP64;
+  }
+  if (ctx.HasInput("Scale")) {
+    PADDLE_ENFORCE_EQ(in_param_type,
+                      framework::TransToProtoVarType(
+                          ctx.Input<phi::DenseTensor>("Scale")->dtype()),
+                      platform::errors::InvalidArgument(
+                          "Scale input should be of float type"));
+  }
+  if (ctx.HasInput("Bias")) {
+    PADDLE_ENFORCE_EQ(in_param_type,
+                      framework::TransToProtoVarType(
+                          ctx.Input<phi::DenseTensor>("Bias")->dtype()),
+                      platform::errors::InvalidArgument(
+                          "Bias input should be of float type"));
+  }
+
+  return phi::KernelKey(input_data_type, ctx.GetPlace());
+}
+
 }  // namespace operators
 }  // namespace paddle

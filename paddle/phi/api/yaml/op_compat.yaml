@@ -1171,6 +1171,10 @@
     y : Y
     saved_mean : SavedMean
     saved_variance : SavedVariance
+  extra:
+    outputs: [ saved_mean, saved_variance ]
+  get_expected_kernel_type:
+    instance_norm: GetInstanceNormExpectedKernelType
 
 - op : inverse
   inputs :

@@ -597,18 +597,6 @@
     func : increment
   inplace : (x -> out)
 
-- op : instance_norm
-  args : (Tensor x, Tensor scale, Tensor bias, float epsilon)
-  output : Tensor(y), Tensor(saved_mean), Tensor(saved_variance)
-  infer_meta :
-    func : InstanceNormInferMeta
-  kernel :
-    func : instance_norm
-    data_type : x
-  optional : scale, bias
-  intermediate : saved_mean, saved_variance
-  backward : instance_norm_grad
-
 - op : layer_norm
   args : (Tensor x, Tensor scale, Tensor bias, float epsilon, int begin_norm_axis)
   output : Tensor(out), Tensor(mean), Tensor(variance)
