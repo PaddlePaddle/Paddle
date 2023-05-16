@@ -29,9 +29,24 @@ from .fp16_lists import AutoMixedPrecisionLists, check_amp_dtype
 from .fp16_utils import (
     cast_model_to_fp16,
     cast_parameters_to_fp16,
-    rewrite_program,
     update_role_var_grad,
 )
+from .function_overload import FunctionType, overload
+
+
+def _set_multi_precision(optimizer, multi_precision):
+    if not isinstance(
+        optimizer,
+        (paddle.optimizer.Optimizer, paddle.fluid.optimizer.Optimizer),
+    ):
+        raise RuntimeError(
+            "Current AMP training level is O2, optimizer is expected to be paddle.optimizer.Optimizer or paddle.fluid.optimizer.Optimizer, but receive {}.".format(
+                type(optimizer)
+            )
+        )
+
+    if multi_precision and hasattr(optimizer, "_multi_precision"):
+        optimizer._multi_precision = multi_precision
 
 
 class OptimizerWithMixedPrecision:
@@ -46,12 +61,11 @@ class OptimizerWithMixedPrecision:
     Args:
         optimizer (Optimizer): A common Optimizer object.
         amp_lists (AutoMixedPrecisionLists): An AutoMixedPrecisionLists object.
-        level(str): Auto mixed precision level. Accepted values are
-            "O1" and "O2": O1 represent mixed precision, the input data type
-            of each operator will be casted by white_list and black_list;
-            O2 represent Pure fp16 or bf16, all operators parameters and input
-            data will be casted to fp16 or bf16, except operators in black_list,
-            don't support fp16 or bf16 kernel and batch_norm.
+        level(str): Auto mixed precision level. Accepted values are "O1", "O2" and "OD": At the O1 level, operators in the white list
+             will use float16/bfloat16 inputs for calculations, and operators in the black list will use float32 inputs for calculations. At the O2
+             level, model's parameters will be casted to float16/bfloat16 by using `decorator`, and operators that have all float16/bfloat16 inputs
+             will be converted to float16/bfloat16, and that have any float32 input will be converted to float32. For the OD level, operators in
+             default white list will compute in float16/bfloat16.
         dtype(str): Whether to use 'float16' or 'bfloat16'.
         init_loss_scaling (float): The initial loss scaling factor.
         use_dynamic_loss_scaling (bool): Whether to use dynamic loss scaling.
@@ -66,6 +80,7 @@ class OptimizerWithMixedPrecision:
                            the loss scaling.
         use_amp_guard(bool): Whether to use `fp16_guard` when constructing the program.
                            Default None, which means that its value is equal to `use_pure_fp16`.
+        use_promote(bool): Whether to promotes to fp32 when op has any float32 inputs. Default is False.
     """
 
     def __init__(
@@ -81,6 +96,7 @@ class OptimizerWithMixedPrecision:
         incr_ratio,
         decr_ratio,
         use_amp_guard=None,
+        use_promote=False,
     ):
         self._optimizer = optimizer
         self._amp_lists = amp_lists
@@ -106,6 +122,7 @@ class OptimizerWithMixedPrecision:
         self._learning_rate = optimizer._learning_rate
         self._learning_rate_map = optimizer._learning_rate_map
         self._use_pure_fp16 = level == "O2"
+        self._amp_level = level
         self._use_fp16_guard = use_amp_guard
         self._to_fp16_var_names = None
         if self._use_dynamic_loss_scaling:
@@ -115,6 +132,7 @@ class OptimizerWithMixedPrecision:
             self._decr_ratio = decr_ratio
             self._num_good_steps = None
             self._num_bad_steps = None
+        self.use_promote = use_promote
 
     def _set_distributed(self, flag):
         # if distributed, all cards will communication with each other,
@@ -202,24 +220,7 @@ class OptimizerWithMixedPrecision:
         """
         train_program = loss.block.program
         self._train_program = train_program
-
-        # NOTE(zhiqiu): _float_status is only used for NPU.
-        if core.is_compiled_with_custom_device('npu'):
-            float_status = paddle.static.data(
-                name="float_status", shape=[8], dtype='float32'
-            )
-            self._train_program.global_block().append_op(
-                type="alloc_float_status",
-                outputs={"FloatStatus": float_status},
-            )
-            self._train_program.global_block().append_op(
-                type="clear_float_status",
-                inputs={"FloatStatus": float_status},
-                outputs={"FloatStatusOut": float_status},
-            )
-            self._float_status = float_status
-        else:
-            self._float_status = None
+        self._float_status = None
 
         with program_guard(self._train_program, startup_program):
             self._init_amp_var()
@@ -230,10 +231,18 @@ class OptimizerWithMixedPrecision:
                     self._amp_lists,
                     self._use_fp16_guard,
                     self._amp_vartype,
+                    level='O2',
+                    use_promote=self.use_promote,
                 )
             else:
-                rewrite_program(
-                    self._train_program, self._amp_lists, self._amp_vartype
+                # use_fp16_guard is not support amp-o1.
+                cast_model_to_fp16(
+                    self._train_program,
+                    self._amp_lists,
+                    use_fp16_guard=False,
+                    dest_type=self._amp_vartype,
+                    level=self._amp_level,
+                    use_promote=self.use_promote,
                 )
 
             if loss.dtype != core.VarDesc.VarType.FP32:
@@ -361,10 +370,18 @@ class OptimizerWithMixedPrecision:
                     self._amp_lists,
                     self._use_fp16_guard,
                     self._amp_vartype,
+                    level='O2',
+                    use_promote=self.use_promote,
                 )
             elif use_fp16_test:
-                rewrite_program(
-                    test_program, self._amp_lists, self._amp_vartype
+                # use_fp16_guard is not support amp-o1.
+                cast_model_to_fp16(
+                    test_program,
+                    self._amp_lists,
+                    use_fp16_guard=False,
+                    dest_type=self._amp_vartype,
+                    level=self._amp_level,
+                    use_promote=self.use_promote,
                 )
 
     def apply_gradients(self, params_grads):
@@ -442,27 +459,17 @@ class OptimizerWithMixedPrecision:
         if self._is_distributed:
             # if distributed, split check_finite_and_unscale to overlap
             # unscale with communication
-            if core.is_compiled_with_custom_device('npu'):
-                with self._train_program._optimized_guard(grads):
+            for p, g in params_grads:
+                with self._train_program._optimized_guard([p, g]):
                     _, found_inf = check_finite_and_unscale(
-                        grads,
+                        [
+                            g,
+                        ],
                         self._loss_scaling,
                         name="find_infinite_scale",
                         float_status=self._float_status,
                     )
                     found_infs.append(found_inf)
-            else:
-                for p, g in params_grads:
-                    with self._train_program._optimized_guard([p, g]):
-                        _, found_inf = check_finite_and_unscale(
-                            [
-                                g,
-                            ],
-                            self._loss_scaling,
-                            name="find_infinite_scale",
-                            float_status=self._float_status,
-                        )
-                        found_infs.append(found_inf)
         elif self._use_pure_fp16:
             if fp32_grads:
                 with self._train_program._optimized_guard(fp32_grads):
@@ -610,6 +617,7 @@ class OptimizerWithMixedPrecision:
         return optimize_ops, scaled_params_grads
 
 
+@overload(key=FunctionType.FP16_ONLY)
 def decorate(
     optimizer,
     amp_lists=None,
@@ -622,6 +630,7 @@ def decorate(
     use_pure_fp16=False,
     use_fp16_guard=None,
     use_bf16=False,
+    use_promote=False,
 ):
     """
     Decorate the given optimizer to adapt to the mixed-precision training.
@@ -734,37 +743,132 @@ def decorate(
         incr_ratio=incr_ratio,
         decr_ratio=decr_ratio,
         use_amp_guard=use_fp16_guard,
+        use_promote=use_promote,
     )
 
     return mp_optimizer
 
 
-def amp_decorate(
+@overload(key=FunctionType.COMMON)
+def decorate(
     optimizer,
     amp_lists=None,
     level='O1',
     dtype='float16',
+    master_weight=None,
     init_loss_scaling=2**15,
     incr_every_n_steps=1000,
     decr_every_n_nan_or_inf=2,
     incr_ratio=2.0,
     decr_ratio=0.8,
-    use_dynamic_loss_scaling=True,
+    use_dynamic_loss_scaling=None,
     use_amp_guard=False,
+    use_promote=False,
 ):
     """
     Decorate the given optimizer to adapt to the mixed-precision training.
-    """
-    amp_dtype = check_amp_dtype(dtype)
-    if amp_lists is None:
-        amp_lists = AutoMixedPrecisionLists(dtype=amp_dtype)
 
+    Args:
+        optimizer(Optimizer): A common Optimizer.
+        amp_lists(CustomOpLists, optional): An CustomOpLists object. The default
+            white_list and black_list will be used for AMP training when it is
+            not set. Default is None.
+        level(str, optional): Auto mixed precision level. Accepted values are "O1", "O2" and "OD": At the O1 level, operators in the white list
+             will use float16/bfloat16 inputs for calculations, and operators in the black list will use float32 inputs for calculations. At the O2
+             level, model's parameters will be casted to float16/bfloat16 by using `decorator`, and operators that have all float16/bfloat16 inputs
+             will be converted to float16/bfloat16, and that have any float32 input will be converted to float32. For the OD level, operators in
+             default white list will compute in float16/bfloat16, and the others will compute in float32. Default is O1.
+        dtype(str, optional): Whether to use 'float16' or 'bfloat16'. Default is 'float16'.
+        master_weight(bool, optinal): For level='O2', whether to use multi-precision
+            during weight updating. If master_weight is None, in O2 level optimizer
+            will use multi-precision. Default is None.
+        init_loss_scaling(float, optional): The initial loss scaling factor.
+            Default is 32768.
+        incr_every_n_steps(int, optional): Increases loss scaling every n
+            consecutive steps with finite gradients. Default is 1000.
+        decr_every_n_nan_or_inf(int, optional): Decreases loss scaling every n
+            accumulated steps with nan or inf gradients. Default is 2.
+        incr_ratio(float, optional): The multiplier to use when increasing the
+            loss scaling. Default is 2.
+        decr_ratio(float, optional): The less-than-one-multiplier to use when
+            decreasing the loss scaling. Default is 0.8.
+        use_dynamic_loss_scaling(bool, None): Whether to use dynamic loss
+            scaling. Default is None, which means True for float16, and False
+            for bfloat16.
+
+    Returns:
+        An optimizer acting like a normal one but with mixed-precision training
+
+    Examples:
+
+     .. code-block:: python
+
+        import paddle
+
+        paddle.enable_static()
+
+        class SimpleConvNet(paddle.nn.Layer):
+            def __init__(self):
+                super().__init__()
+                self.conv = paddle.nn.Conv2D(in_channels=1, out_channels=6, kernel_size=3)
+                self.linear = paddle.nn.Linear(in_features=26, out_features=10)
+
+            def forward(self, x):
+                out = self.conv(x)
+                out = paddle.nn.functional.relu(out)
+                out = self.linear(out)
+                out = paddle.nn.functional.softmax(out)
+                return out
+
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.utils.unique_name.guard():
+            with paddle.static.program_guard(main_program, startup_program):
+                model = SimpleConvNet()
+                x = paddle.static.data(
+                    name='input', shape=[None, 1, 28, 28], dtype='float32'
+                )
+                out = model(x)
+                loss = paddle.mean(out)
+                optimizer = paddle.optimizer.AdamW()
+                optimizer = paddle.static.amp.decorate(optimizer, level="O2", dtype="float16")
+                optimizer.minimize(loss)
+
+        if paddle.is_compiled_with_cuda() and len(paddle.static.cuda_places()) > 0:
+            place = paddle.CUDAPlace(0)
+            exe = paddle.static.Executor(place)
+            exe.run(startup_program)
+
+            # Call `amp_init` after FP32 parameters initialization, such as `exe.run(startup_program)`,
+            # to convert FP32 parameters to low precision FP16 / BF16.
+            optimizer.amp_init(place, scope=paddle.static.global_scope())
+
+    """
     # check amp_level: O0-O2
     level = level.upper()
-    if not (level in ['O0', 'O1', 'O2']):
-        raise ValueError(
-            "level should be O0, O1 or O2. O0 represents fp32 train mode, O1 represents AMP train mode, O2 represents pure fp16/bf16 train mode."
-        )
+    if not (level in ['O0', 'OD', 'O1', 'O2']):
+        raise ValueError("level should be O0, OD, O1 or O2.")
+
+    amp_dtype = check_amp_dtype(dtype)
+    if amp_lists is None or level == 'OD':
+        amp_lists = AutoMixedPrecisionLists(dtype=amp_dtype)
+
+    if level == 'OD':
+        if amp_lists is not None:
+            warnings.warn(
+                "If the Amp level is set to OD, the amp list will not be used."
+            )
+
+        amp_lists.white_list = {"conv2d", "matmul_v2"}
+        amp_lists.black_list = amp_lists.all_list - amp_lists.white_list
+
+    if use_dynamic_loss_scaling is None:
+        use_dynamic_loss_scaling = dtype == "float16"
+
+    if optimizer is not None:
+        # support master_weight
+        multi_precision = not (master_weight is False)
+        _set_multi_precision(optimizer, multi_precision)
 
     mp_optimizer = OptimizerWithMixedPrecision(
         optimizer,
@@ -778,6 +882,7 @@ def amp_decorate(
         incr_ratio=incr_ratio,
         decr_ratio=decr_ratio,
         use_amp_guard=use_amp_guard,
+        use_promote=use_promote,
     )
 
     return mp_optimizer

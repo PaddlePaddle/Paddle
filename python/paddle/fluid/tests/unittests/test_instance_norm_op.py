@@ -125,7 +125,6 @@ class TestInstanceNormOp(OpTest):
             'SavedMean': ref_mean_np,
             'SavedVariance': ref_var_np,
         }
-        self.enable_cinn = False
 
     def test_check_output(self):
         self.check_output(check_prim=True)
@@ -165,6 +164,8 @@ class TestInstanceNormFP64(TestInstanceNormOp):
         self.mean_np, self.var_np = _cal_mean_variance(
             self.x_np, self.epsilon, mean_shape
         )
+        self.cinn_atol = 1e-13
+        self.cinn_rtol = 1e-13
         self.fw_comp_rtol = 1e-14
         self.fw_comp_atol = 1e-14
         self.rev_comp_rtol = 1e-13
@@ -667,7 +668,7 @@ class TestCompositeInstanceNormNorm(unittest.TestCase):
                 stop_gradient=False,
             )
             net = PrimGroupNorm(self.num_channels, scale_, bias_)
-            net = apply_to_static(net, False)
+            net = apply_to_static(net, True)
             output = net(input_)
             grad = paddle.grad(output, input_)
             fwd_actual.append(output.numpy())

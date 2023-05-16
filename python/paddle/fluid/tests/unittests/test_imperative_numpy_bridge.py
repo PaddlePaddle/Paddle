@@ -43,7 +43,7 @@ class TestImperativeNumpyBridge(unittest.TestCase):
             np.testing.assert_array_equal(var2.numpy(), data_np)
             data_np[0][0] = -1
             self.assertEqual(data_np[0][0], -1)
-            self.assertNotEqual(var2[0][0].numpy()[0], -1)
+            self.assertNotEqual(var2[0][0].numpy(), -1)
             self.assertFalse(np.array_equal(var2.numpy(), data_np))
 
 

@@ -21,7 +21,6 @@ import paddle
 from paddle import _legacy_C_ops, fluid
 from paddle.fluid import core, framework
 from paddle.fluid.dygraph.base import switch_to_static_graph
-from paddle.fluid.framework import global_var
 
 paddle.enable_static()
 
@@ -197,7 +196,7 @@ class RunProgramOpTest(unittest.TestCase):
 
     def prepare_dygraph_output(self):
         def create_var_base(is_input, name):
-            var = framework._varbase_creator(dtype=None, shape=None, name=name)
+            var = framework._create_tensor(dtype=None, shape=None, name=name)
             var.stop_gradient = False
             return var
 
@@ -207,16 +206,7 @@ class RunProgramOpTest(unittest.TestCase):
         for name in self.output_names['Out']:
             outputs['Out'].append(create_var_base(False, name))
 
-        if global_var._in_eager_mode_:
-            outputs['OutScope'] = [core.Scope()]
-        else:
-            outputs['OutScope'] = framework._varbase_creator(
-                type=core.VarDesc.VarType.STEP_SCOPES,
-                name="program_out_scope",
-                persistable=True,
-            )
-            inner_scope = core.Scope()
-            outputs['OutScope'].value().set_scope(inner_scope)
+        outputs['OutScope'] = [core.Scope()]
 
         outputs['DOut'] = [create_var_base(False, "Fake_var")]
         return outputs
@@ -254,6 +244,8 @@ class RunProgramOpTest(unittest.TestCase):
                     [p.name + '@GRAD' for p in inputs['Params']],
                     'out_grad_names',
                     [out.name + '@GRAD' for out in outputs['Out']],
+                    'x_grad_names',
+                    [p.name + '@GRAD' for p in inputs['X']],
                 )
             )
 
@@ -303,6 +295,8 @@ class RunProgramOpTest(unittest.TestCase):
                     [p.name + '@GRAD' for p in inputs['Params']],
                     'out_grad_names',
                     [out.name + '@GRAD' for out in outputs['Out']],
+                    'x_grad_names',
+                    [p.name + '@GRAD' for p in inputs['X']],
                 )
             )
 
@@ -510,7 +504,7 @@ class TestParametersWithStopGradient(unittest.TestCase):
 
         dy_loss = self.train(to_static=False)
         st_loss = self.train(to_static=True)
-        self.assertEqual(dy_loss[0], st_loss[0])
+        self.assertEqual(dy_loss, st_loss)
 
         paddle.enable_static()
 

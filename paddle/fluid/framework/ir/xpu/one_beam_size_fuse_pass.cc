@@ -259,22 +259,6 @@ bool OnlyOneBeamSearchAndOneBeamSize(ir::Graph* graph) {
          beam_search_nodes[0]->Op()->GetAttrIfExists<int>("beam_size") == 1;
 }
 
-Node* FindOpNodeByInputName(Graph* graph,
-                            const std::string& op_type,
-                            const std::string& arg_name,
-                            const std::string& var_name) {
-  for (auto* node : graph->Nodes()) {
-    if (!node->IsOp() || node->Op()->Type() != op_type) continue;
-    auto inputs = node->Op()->Inputs();
-    if (inputs.count(arg_name) == 0) continue;
-    auto in_names = inputs.at(arg_name);
-    if (std::find(in_names.begin(), in_names.end(), var_name) == in_names.end())
-      continue;
-    return node;
-  }
-  return nullptr;
-}
-
 void OneBeamSizeFusePass::RemoveAssignGather(ir::Graph* graph) const {
   // detect assign + gather
   GraphPatternDetector gpd;
@@ -287,9 +271,9 @@ void OneBeamSizeFusePass::RemoveAssignGather(ir::Graph* graph) const {
     GET_IR_NODE(assign);
     GET_IR_NODE(assign_out);
     // Assign_out may not link to gather, so we find gather by input name.
-    auto* gather =
-        FindOpNodeByInputName(graph, "gather", "X", assign_out->Name());
-    if (gather == nullptr) return;
+    auto next_ops = FindOpNodeByInputName(graph, assign_out->Name());
+    if (next_ops.size() != 1 || next_ops[0]->Name() != "gather") return;
+    auto* gather = next_ops[0];
 
     // "assign_out" is used in multi blocks. "assign_out" should be reserved.
     auto* assign_in = assign->inputs[0];
@@ -449,6 +433,143 @@ void OneBeamSizeFusePass::RemoveBeamSearchAssociatedOps(
   AddStatis(found_subgraph_count);
 }
 
+namespace patterns {
+struct WriteToArrayPattern : public PatternBase {
+  WriteToArrayPattern(PDPattern* pattern, const std::string& name_scope);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(write_to_array);
+  // declare variable node's name
+  PATTERN_DECL_NODE(write_x);
+  PATTERN_DECL_NODE(write_out);
+};
+
+WriteToArrayPattern::WriteToArrayPattern(PDPattern* pattern,
+                                         const std::string& name_scope)
+    : PatternBase(pattern, name_scope, name_scope) {
+  auto* write_x = pattern->NewNode(write_x_repr())
+                      ->assert_is_op_input("write_to_array", "X")
+                      ->assert_is_persistable_var();
+  auto* write_to_array =
+      pattern->NewNode(write_to_array_repr())->assert_is_op("write_to_array");
+  auto* write_out = pattern->NewNode(write_out_repr())
+                        ->assert_is_op_output("write_to_array", "Out");
+
+  write_to_array->LinksFrom({write_x}).LinksTo({write_out});
+}
+}  // namespace patterns
+
+void OneBeamSizeFusePass::RemoveWriteReadArrayOps(ir::Graph* graph) const {
+  GraphPatternDetector gpd;
+  patterns::WriteToArrayPattern pattern(gpd.mutable_pattern(), name_scope_);
+  int found_subgraph_count = 0;
+
+  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
+                     Graph* graph) {
+    VLOG(4) << "handle RemoveWriteReadArrayOps";
+    GET_IR_NODE(write_to_array);
+    GET_IR_NODE(write_x);
+    GET_IR_NODE(write_out);
+    auto* scope = param_scope();
+
+    // write_out is from graph0 and do not link to any op, so we find
+    // "read_from_array" by write_out name.
+    auto next_ops = FindOpNodeByInputName(graph, write_out->Name());
+    if (next_ops.size() != 1 || next_ops[0]->Name() != "read_from_array")
+      return;
+    auto* read_from_array = next_ops[0];
+    auto* read_out = read_from_array->outputs[0];
+    read_out->Var()->SetPersistable(true);
+    auto* write_x_tensor =
+        scope->Var(write_x->Name())->GetMutable<phi::DenseTensor>();
+    auto* read_out_tensor =
+        scope->Var(read_out->Name())->GetMutable<phi::DenseTensor>();
+    Assign(*write_x_tensor, read_out_tensor);
+
+    std::unordered_set<const Node*> delete_nodes{
+        write_to_array, write_out, read_from_array};
+    GraphSafeRemoveNodes(graph, delete_nodes);
+    found_subgraph_count++;
+  };
+
+  gpd(graph, handler);
+  AddStatis(found_subgraph_count);
+}
+
+namespace patterns {
+struct GatherPattern : public PatternBase {
+  GatherPattern(PDPattern* pattern, const std::string& name_scope);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(gather);
+  // declare variable node's name
+  PATTERN_DECL_NODE(gather_x);
+  PATTERN_DECL_NODE(gather_i);
+  PATTERN_DECL_NODE(gather_out);
+};
+
+GatherPattern::GatherPattern(PDPattern* pattern, const std::string& name_scope)
+    : PatternBase(pattern, name_scope, name_scope) {
+  auto* gather_x =
+      pattern->NewNode(gather_x_repr())->assert_is_op_input("gather", "X");
+  auto* gather_i = pattern->NewNode(gather_i_repr())
+                       ->assert_is_op_input("gather", "Index")
+                       ->assert_is_persistable_var();
+  auto* gather = pattern->NewNode(gather_repr())
+                     ->assert_is_op("gather")
+                     ->assert_more([&](Node* node) {
+                       return node->Op()->GetAttrIfExists<int>("axis") == 0;
+                     });
+  auto* gather_out =
+      pattern->NewNode(gather_out_repr())->assert_is_op_output("gather", "Out");
+
+  gather->LinksFrom({gather_x, gather_i}).LinksTo({gather_out});
+}
+}  // namespace patterns
+
+void OneBeamSizeFusePass::RemoveGatherOps(ir::Graph* graph) const {
+  GraphPatternDetector gpd;
+  patterns::GatherPattern pattern(gpd.mutable_pattern(), name_scope_);
+  int found_subgraph_count = 0;
+
+  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
+                     Graph* graph) {
+    VLOG(4) << "handle RemoveGatherOps";
+    GET_IR_NODE(gather);
+    GET_IR_NODE(gather_x);
+    GET_IR_NODE(gather_i);
+    GET_IR_NODE(gather_out);
+    auto* scope = param_scope();
+
+    // gather_i should be 0
+    auto* gather_i_tensor =
+        scope->Var(gather_i->Name())->GetMutable<phi::DenseTensor>();
+    auto gather_i_dims = gather_i_tensor->dims();
+    if (gather_i_dims.size() != 1 || gather_i_dims[0] != 1) return;
+    if (gather_i_tensor->dtype() == phi::DataType::INT32) {
+      auto* i_data = gather_i_tensor->data<int>();
+      if (i_data[0] != 0) return;
+    } else {
+      auto* i_data = gather_i_tensor->data<int64_t>();
+      if (i_data[0] != 0) return;
+    }
+
+    auto gather_x_name = gather_x->Name();
+    auto gather_out_name = gather_out->Name();
+    for (auto* next_op : gather_out->outputs) {
+      next_op->Op()->RenameInput(gather_out_name, gather_x_name);
+      IR_NODE_LINK_TO(gather_x, next_op);
+    }
+
+    std::unordered_set<const Node*> delete_nodes{gather, gather_out};
+    GraphSafeRemoveNodes(graph, delete_nodes);
+    found_subgraph_count++;
+  };
+
+  gpd(graph, handler);
+  AddStatis(found_subgraph_count);
+}
+
 void OneBeamSizeFusePass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
@@ -458,6 +579,8 @@ void OneBeamSizeFusePass::ApplyImpl(ir::Graph* graph) const {
   RemoveAssignGather(graph);
   FoldShapeAssociatedOps(graph);
   RemoveBeamSearchAssociatedOps(graph);
+  RemoveWriteReadArrayOps(graph);
+  RemoveGatherOps(graph);
 }
 
 }  // namespace ir

@@ -26,9 +26,7 @@ from ..fluid.data_feeder import (
 )
 from ..framework import LayerHelper, in_dygraph_mode
 from .creation import full
-from .logic import logical_not
 from .manipulation import cast
-from .math import add, multiply
 
 __all__ = []
 
@@ -415,7 +413,10 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             if axis is not None:
                 check_type(axis, 'axis', (int), 'p_norm')
             check_variable_and_dtype(
-                input, 'input', ['float32', 'float64'], 'p_norm'
+                input,
+                'input',
+                ['float16', 'uint16', 'float32', 'float64'],
+                'p_norm',
             )
 
             attrs = {
@@ -1112,10 +1113,16 @@ def dot(x, y, name=None):
         assert y is not None, f'y cannot be None in {op_type}'
 
         check_variable_and_dtype(
-            x, 'x', ['float32', 'float64', 'int32', 'int64'], op_type
+            x,
+            'x',
+            ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
+            op_type,
         )
         check_variable_and_dtype(
-            y, 'y', ['float32', 'float64', 'int32', 'int64'], op_type
+            y,
+            'y',
+            ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
+            op_type,
         )
 
         helper = LayerHelper(op_type, **locals())
@@ -1374,13 +1381,13 @@ def cross(x, y, axis=9, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['float16', 'float32', 'float64', "int32", "int64"],
+            ['float16', 'uint16', 'float32', 'float64', "int32", "int64"],
             'cross',
         )
         check_variable_and_dtype(
             y,
             'y',
-            ['float16', 'float32', 'float64', "int32", "int64"],
+            ['float16', 'uint16', 'float32', 'float64', "int32", "int64"],
             'cross',
         )
         helper = LayerHelper("cross", **locals())
@@ -1505,7 +1512,7 @@ def matrix_rank(x, tol=None, hermitian=False, name=None):
         else:
             tol_attr = float(tol)
             use_default_tol = False
-        return _C_ops.matrix_rank(x, tol_attr, hermitian, use_default_tol)
+        return _C_ops.matrix_rank(x, tol_attr, use_default_tol, hermitian)
     else:
         inputs = {}
         attrs = {}
@@ -1800,7 +1807,7 @@ def det(x, name=None):
     if in_dygraph_mode():
         return _C_ops.det(x)
     else:
-        check_dtype(x.dtype, 'Input', ['float32', 'float64'], 'det')
+        check_dtype(x.dtype, 'Input', ['float16', 'float32', 'float64'], 'det')
 
         input_shape = list(x.shape)
         assert len(input_shape) >= 2, (
@@ -2489,7 +2496,7 @@ def multi_dot(x, name=None):
             check_variable_and_dtype(
                 item,
                 'x[' + str(id) + ']',
-                ['float16', 'float32', 'float64'],
+                ['float16', 'float32', 'float64', 'uint16'],
                 'multi_dot',
             )
             if item.dtype != x[0].dtype:
@@ -2656,12 +2663,7 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
             y = float('inf')
             y = paddle.to_tensor(y, dtype=x.dtype)
 
-            condition = s > cutoff
-            cond_int = cast(condition, s.dtype)
-            cond_not_int = cast(logical_not(condition), s.dtype)
-            out1 = multiply(1 / s, cond_int)
-            out2 = multiply(1 / y, cond_not_int)
-            singular = add(out1, out2)
+            singular = paddle.where(s > cutoff, 1 / s, 1 / y)
             st = _C_ops.unsqueeze(singular, [-2])
 
             dims = list(range(len(vt.shape)))
@@ -2681,12 +2683,7 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
             y = float('inf')
             y = paddle.to_tensor(y, dtype=s.dtype)
 
-            condition = s_abs > cutoff
-            cond_int = cast(condition, s.dtype)
-            cond_not_int = cast(logical_not(condition), s.dtype)
-            out1 = multiply(1 / s, cond_int)
-            out2 = multiply(1 / y, cond_not_int)
-            singular = add(out1, out2)
+            singular = paddle.where(s_abs > cutoff, 1 / s, 1 / y)
             st = _C_ops.unsqueeze(singular, [-2])
 
             out_1 = u * st
@@ -2722,12 +2719,7 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
             y = float('inf')
             y = full(shape=[1], fill_value=y, dtype=dtype)
 
-            condition = s > cutoff
-            cond_int = cast(condition, dtype)
-            cond_not_int = cast(logical_not(condition), dtype)
-            out1 = multiply(1 / s, cond_int)
-            out2 = multiply(1 / y, cond_not_int)
-            singular = add(out1, out2)
+            singular = paddle.where(s > cutoff, 1 / s, 1 / y)
 
             st = helper.create_variable_for_type_inference(dtype=dtype)
             st_shape = helper.create_variable_for_type_inference(dtype=dtype)
@@ -2808,12 +2800,7 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
             y = float('inf')
             y = full(shape=[1], fill_value=y, dtype=s_type)
 
-            condition = s_abs > cutoff
-            cond_int = cast(condition, s_type)
-            cond_not_int = cast(logical_not(condition), s_type)
-            out1 = multiply(1 / s, cond_int)
-            out2 = multiply(1 / y, cond_not_int)
-            singular = add(out1, out2)
+            singular = paddle.where(s_abs > cutoff, 1 / s, 1 / y)
 
             st = helper.create_variable_for_type_inference(dtype=s_type)
             st_shape = helper.create_variable_for_type_inference(dtype=s_type)

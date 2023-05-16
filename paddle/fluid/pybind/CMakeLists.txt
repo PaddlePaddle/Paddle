@@ -91,6 +91,17 @@ if(WITH_XPU_BKCL)
   set(PYBIND_DEPS ${PYBIND_DEPS} heter_ccl_context)
 endif()
 
+if(WITH_CUSTOM_DEVICE)
+  set(PYBIND_DEPS ${PYBIND_DEPS} xccl_context)
+  if(NOT
+     (WITH_NCCL
+      OR WITH_RCCL
+      OR WITH_XPU_BKCL))
+    set(PYBIND_DEPS ${PYBIND_DEPS} reducer)
+    set(PYBIND_DEPS ${PYBIND_DEPS} heter_ccl_context)
+  endif()
+endif()
+
 if(NOT WIN32)
   set(PYBIND_DEPS ${PYBIND_DEPS} data_loader)
   if(WITH_NCCL OR WITH_RCCL)
@@ -256,6 +267,11 @@ if(WITH_PYTHON)
 
   if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     list(APPEND OP_FUNCTION_GENERETOR_DEPS ${PYTHON_LIBRARIES})
+  endif()
+
+  if(WITH_CUSTOM_DEVICE)
+    set(OP_FUNCTION_GENERETOR_DEPS ${OP_FUNCTION_GENERETOR_DEPS}
+                                   custom_device_common_op_registry)
   endif()
 
   add_executable(eager_legacy_op_function_generator

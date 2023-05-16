@@ -49,7 +49,6 @@ register_unity_group(
   cos_sim_op.cc
   crf_decoding_op.cc
   crop_op.cc
-  ascend_trigger_op.cc
   conj_op.cc
   imag_op.cc
   kldiv_loss_op.cc
@@ -260,8 +259,7 @@ register_unity_group(
   sign_op.cc
   similarity_focus_op.cc
   size_op.cc
-  slice_op.cc
-  softmax_op.cc)
+  slice_op.cc)
 register_unity_group(
   cc
   space_to_depth_op.cc

@@ -15,9 +15,8 @@
 import paddle
 from paddle import _legacy_C_ops
 from paddle.distributed import collective
-from paddle.fluid import core
 from paddle.fluid.data_feeder import check_dtype, check_variable_and_dtype
-from paddle.framework import LayerHelper, _varbase_creator, in_dygraph_mode
+from paddle.framework import LayerHelper, _create_tensor, in_dygraph_mode
 from paddle.nn import Layer
 from paddle.nn.utils import dygraph_utils
 
@@ -447,7 +446,7 @@ def _linear(x, weight, bias=None, name=None):
     Fuction Linear
     """
     if in_dygraph_mode():
-        pre_bias = _varbase_creator(dtype=x.dtype)
+        pre_bias = _create_tensor(dtype=x.dtype)
         _legacy_C_ops.matmul(
             x,
             weight,
@@ -551,11 +550,7 @@ def _parallel_linear(
     )
 
     # NOTE: npu linear function use matmul_v2 but linear use matmul
-    linear_function = (
-        _linear
-        if core.is_compiled_with_custom_device('npu')
-        else paddle.nn.functional.linear
-    )
+    linear_function = paddle.nn.functional.linear
     linear_out = linear_function(
         x,
         linear.weight,

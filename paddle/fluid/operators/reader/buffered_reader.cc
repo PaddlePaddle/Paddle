@@ -98,8 +98,6 @@ BufferedReader::BufferedReader(
 
   cpu_buffer_.resize(buffer_size);
   cuda_buffer_.resize(buffer_size);
-  npu_buffer_.resize(buffer_size);
-  mlu_buffer_.resize(buffer_size);
   xpu_buffer_.resize(buffer_size);
   custom_device_buffer_.resize(buffer_size);
   ReadTillBufferFullAsync();
@@ -269,7 +267,7 @@ void BufferedReader::ReadAsync(size_t i) {
         xpu_ptrs.emplace_back(xpu[i].mutable_data(place_, cpu[i].type()));
       }
 
-      platform::XPUDeviceGuard gurad(place_.device);
+      platform::XPUDeviceGuard guard(place_.device);
       int r = xpu_event_record(events_[i].get(), compute_stream_);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu_event_record");
       r = xpu_stream_wait_event(stream_.get(), events_[i].get());
@@ -385,10 +383,6 @@ void BufferedReader::ReadNextImpl(paddle::framework::LoDTensorArray *out) {
 
   if (platform::is_gpu_place(place_)) {
     *out = std::move(cuda_buffer_[i]);
-  } else if (platform::is_npu_place(place_)) {
-    *out = std::move(npu_buffer_[i]);
-  } else if (platform::is_mlu_place(place_)) {
-    *out = std::move(mlu_buffer_[i]);
   } else if (platform::is_xpu_place(place_)) {
     *out = std::move(xpu_buffer_[i]);
   } else if (platform::is_custom_place(place_)) {

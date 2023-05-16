@@ -1,3 +1,24 @@
+- op : adam_
+  version :
+    - checkpoint : Upgrade adam add 1 attribute [multi_precision].
+      action :
+        - add_attr : multi_precision
+          comment : (bool) Whether to use multi-precision during weight updating.
+          default : "false"
+    - checkpoint : Upgrade adam, add 1 dispensable input [EpsilonTensor].
+      action :
+        - add_input : EpsilonTensor
+          comment : If provided, Adam will use this as epsilon, this has a higher priority than attr(epsilon). For better performance in npu kernel.
+    - checkpoint : Upgrade adam, add 1 attribute [use_global_beta_pow].
+      action :
+        - add_attr : use_global_beta_pow
+          comment : If true, Adam will use global beta_pow for whole model instead of creating beta_pow for each parameter. In that case, the outputs(Beta1PowOut, Beta2PowOut) will not be used in adam op, and beta_pow will be updated after all adam op in the model.
+          default : "false"
+    - checkpoint : Upgrade adam, add 1 dispensable input [SkipUpdate].
+      action :
+        - add_input : SkipUpdate
+          comment : If the value is true, Adam will skip the update.
+
 - op : affine_grid
   version :
     - checkpoint : Compatible upgrade of affine_grid, add a new attribute [align_corners].
@@ -51,6 +72,24 @@
         - add_input : Max
           comment : Pass the mix, min value as input, not attribute. Max is dispensable.
 
+- op : coalesce_tensor
+  version :
+    - checkpoint : "Upgrade coalesce_tensor: add a new attribute [use_align]."
+      action :
+        - add_attr : use_align
+          comment : In order to optionally take memory alignment into account when
+            coalescing tensors. The default value is true to be compatible
+            with before.
+          default : "true"
+    - checkpoint : "Upgrade coalesce_tensor: add a new attribute [align_size]."
+      action :
+        - add_attr : align_size
+          comment : In order to optionally take memory alignment into account when
+            coalescing tensors. The default value is -1 and use the default
+            align_size
+            of each place to be compatible with before.
+          default : -1
+
 - op : embedding
   version :
     - checkpoint : Upgrade flip, add new attr [axis] and delete attr [dims]
@@ -96,6 +135,14 @@
           comment : "The arg 'default_value' of attr 'shape' is changed: from 'None' to '{}'."
           default : std::vector<int64_t>{}
 
+- op : generate_proposals
+  version :
+    - checkpoint : Registe generate_proposals_v2 for adding the attribute of pixel_offset
+      action :
+        - add_attr : pixel_offset
+          comment : If true, im_shape pixel offset is 1.
+          default : "true"
+
 - op : greater_equal
   version :
     - checkpoint : Upgrade compare ops, add a new attribute [force_cpu]
@@ -119,6 +166,17 @@
         - add_attr : mode
           comment : In order to specify interpolation mode
           default : std::string("bilinear")
+
+- op : instance_norm
+  version :
+    - checkpoint : Change dispensable of attribute from False to True in instance_norm.
+      action :
+        - modify_attr : Bias
+          comment : "The arg 'dispensable' of Input 'Bias' is changed: from 'False' to 'True'."
+          default : "true"
+        - modify_attr : Scale
+          comment : "The arg 'dispensable' of Input 'Scale' is changed: from 'False' to 'True'."
+          default : "true"
 
 - op : lamb
   version :
@@ -152,6 +210,13 @@
         - add_attr : dtype
           comment : In order to change output data type
           default : 5
+
+- op : lstsq
+  version :
+    - checkpoint : Upgrade lstsq, add 1 outputs [Residuals].
+      action :
+        - add_output : Residuals
+          comment : Output tensor of lstsq operator, meaning the squared residuals of the calculated solutions.
 
 - op : matrix_nms
   version :

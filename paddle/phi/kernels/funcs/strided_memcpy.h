@@ -12,9 +12,9 @@ limitations under the License. */
 #pragma once
 #include <vector>
 
-#include "paddle/phi/kernels/funcs/detail/strided_memcpy.h"
-
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/macros.h"
+#include "paddle/phi/kernels/funcs/detail/strided_memcpy.h"
 
 namespace phi {
 class CPUContext;
@@ -65,7 +65,7 @@ inline void CopyWithContext(const Context& ctx,
 }
 
 template <>
-inline void CopyWithContext<phi::CPUContext>(const phi::CPUContext& ctx,
+inline void CopyWithContext<phi::CPUContext>(const phi::CPUContext& ctx UNUSED,
                                              const Place& dst_place,
                                              void* dst,
                                              const Place& src_place,

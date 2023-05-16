@@ -580,7 +580,7 @@ def _as_lodtensor(data, place, dtype=None):
             else dtype
         )
         if np.isscalar(data):
-            data = np.array([data]).astype(dtype)
+            data = np.array(data).astype(dtype)
         elif isinstance(data, (list, tuple)):
             data = np.array(data)
             if data.dtype == np.object_:
@@ -1988,14 +1988,9 @@ class Executor:
             for var in program.global_block().vars.values():
                 if var.is_data:
                     data_vars.append(var)
-            if core.is_compiled_with_custom_device('npu'):
-                dataset = paddle.fluid.DatasetFactory().create_dataset(
-                    'InMemoryDataset'
-                )
-            else:
-                dataset = paddle.fluid.DatasetFactory().create_dataset(
-                    'FileInstantDataset'
-                )
+            dataset = paddle.fluid.DatasetFactory().create_dataset(
+                'FileInstantDataset'
+            )
             dataset.set_batch_size(1)
             dataset.set_thread(1)
             dataset.set_filelist(['None'])
@@ -2165,14 +2160,9 @@ class Executor:
             for var in program.global_block().vars.values():
                 if var.is_data:
                     data_vars.append(var)
-            if core.is_compiled_with_custom_device('npu'):
-                dataset = paddle.fluid.DatasetFactory().create_dataset(
-                    'InMemoryDataset'
-                )
-            else:
-                dataset = paddle.fluid.DatasetFactory().create_dataset(
-                    'FileInstantDataset'
-                )
+            dataset = paddle.fluid.DatasetFactory().create_dataset(
+                'FileInstantDataset'
+            )
             dataset.set_batch_size(1)
             dataset.set_thread(1)
             dataset.set_filelist(['None'])

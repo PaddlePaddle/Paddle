@@ -101,5 +101,24 @@ class TestTensorSize(unittest.TestCase):
         np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-5)
 
 
+@paddle.jit.to_static
+def true_div(x, y):
+    z = x / y
+    return z
+
+
+class TestTrueDiv(unittest.TestCase):
+    def _run(self, to_static):
+        paddle.jit.enable_to_static(to_static)
+        x = paddle.to_tensor([3], dtype='int64')
+        y = paddle.to_tensor([4], dtype='int64')
+        return true_div(x, y).numpy()
+
+    def test_ture_div(self):
+        dygraph_res = self._run(to_static=False)
+        static_res = self._run(to_static=True)
+        np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-5)
+
+
 if __name__ == '__main__':
     unittest.main()

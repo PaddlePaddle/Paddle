@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/flash_attn_grad_kernel.h"
+#include "glog/logging.h"  // For VLOG()
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/arange_kernel.h"
@@ -24,6 +26,8 @@
 #ifdef PADDLE_WITH_FLASHATTN
 #include "paddle/phi/backends/dynload/flashattn.h"
 #endif
+
+DECLARE_bool(cudnn_deterministic);
 
 namespace phi {
 
@@ -65,11 +69,17 @@ void FlashAttnUnpaddedGradKernel(const Context& ctx,
   int64_t batch_size = cu_seqlens_q.numel() - 1;
 
   int num_splits = 0;  // 0 for an internal heuristic, which is optimal
+  if (FLAGS_cudnn_deterministic) {
+    num_splits = 1;
+  }
   bool zero_tensors = false;
 
   const int64_t* seed_offset_data = seed_offset.data<int64_t>();
   uint64_t seed = static_cast<uint64_t>(seed_offset_data[0]);
   uint64_t offset = static_cast<uint64_t>(seed_offset_data[1]);
+
+  VLOG(4) << "FlashAttn bwd seed: " << seed << ", offset: " << offset
+          << ", num_splits:" << num_splits;
 
   int64_t seq_len_q = ((max_seqlen_q + 16 - 1) / 16) * 16;
   DenseTensor dsoftmax = Empty<float>(ctx, {batch_size, num_heads, seq_len_q});
@@ -186,6 +196,9 @@ void FlashAttnGradKernel(const Context& ctx,
   int64_t total_k = batch_size * seq_len_k;
 
   float scale = 1.0f / std::sqrt(head_size);
+
+  VLOG(4) << "FlashAttn bwd dims q[" << q.dims() << "], k[" << k.dims()
+          << "], v[" << v.dims() << "]";
 
   DenseTensor q_t_s, k_t_s, v_t_s;
   q_t_s.ShareDataWith(q).Resize({total_q, num_heads, head_size});

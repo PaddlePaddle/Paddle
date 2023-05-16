@@ -22,7 +22,7 @@ from op_test_xpu import XPUOpTest
 import paddle
 from paddle.fluid import core
 
-sys.path.append('../../python/paddle/fluid/tests/unittests/rnn')
+sys.path.append('../rnn')
 from convert import get_params_for_net
 from get_test_cover_info import (
     XPUOpTestWrapper,
