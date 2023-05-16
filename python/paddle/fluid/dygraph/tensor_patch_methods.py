@@ -516,7 +516,7 @@ def monkey_patch_tensor():
                 y = paddle.pow(x, 4.0)
                 y.backward()
                 print("grad of x: {}".format(x.grad))
-                # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=False, [500.])
+                # Tensor(shape=[], dtype=float32, place=CUDAPlace(0), stop_gradient=False, 500.)
 
         """
         msg = (
@@ -638,12 +638,12 @@ def monkey_patch_tensor():
                 y = copy.deepcopy(x)
 
                 print(x)
-                # Tensor(shape=[1], dtype=float32, place=CPUPlace, stop_gradient=True,
-                #        [2.])
+                # Tensor(shape=[], dtype=float32, place=CPUPlace, stop_gradient=True,
+                #        2.)
 
                 print(y)
-                # Tensor(shape=[1], dtype=float32, place=CPUPlace, stop_gradient=True,
-                #        [2.])
+                # Tensor(shape=[], dtype=float32, place=CPUPlace, stop_gradient=True,
+                #        2.)
 
         """
         if not self.is_leaf:
