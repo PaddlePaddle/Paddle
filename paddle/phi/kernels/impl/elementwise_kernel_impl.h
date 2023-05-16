@@ -39,10 +39,10 @@ namespace phi {
       auto y_dims = y.dims();                                               \
       if (x_dims.size() >= y_dims.size()) {                                 \
         funcs::ElementwiseCompute<funcs::name##Functor<T>, T>(              \
-            dev_ctx, x, y, axis, funcs::name##Functor<T>(), out);           \
+            dev_ctx, x, y, funcs::name##Functor<T>(), out, axis);           \
       } else {                                                              \
         funcs::ElementwiseCompute<funcs::Inverse##name##Functor<T>, T>(     \
-            dev_ctx, x, y, axis, funcs::Inverse##name##Functor<T>(), out);  \
+            dev_ctx, x, y, funcs::Inverse##name##Functor<T>(), out, axis);  \
       }                                                                     \
     }                                                                       \
   }
@@ -62,8 +62,8 @@ namespace phi {
     inputs.emplace_back(&y);                                         \
     outputs.emplace_back(out);                                       \
     dev_ctx.template Alloc<T>(out);                                  \
-    funcs::BroadcastKernel<ElementwiseType::kBinary, T, T>(          \
-        dev_ctx, inputs, &outputs, axis, funcs::name##Functor<T>()); \
+    funcs::BroadcastKernel<T>(                                       \
+        dev_ctx, inputs, &outputs, funcs::name##Functor<T>(), axis); \
   }
 
 template <typename T, typename Context>
@@ -72,8 +72,8 @@ void FMaxKernel(const Context& dev_ctx,
                 const DenseTensor& y,
                 DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
-  funcs::ElementwiseCompute<funcs::FMaxFunctor<T>, T, T>(
-      dev_ctx, x, y, -1, funcs::FMaxFunctor<T>(), out);
+  funcs::ElementwiseCompute<funcs::FMaxFunctor<T>, T>(
+      dev_ctx, x, y, funcs::FMaxFunctor<T>(), out);
 }
 
 template <typename T, typename Context>
@@ -82,8 +82,8 @@ void FMinKernel(const Context& dev_ctx,
                 const DenseTensor& y,
                 DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
-  funcs::ElementwiseCompute<funcs::FMinFunctor<T>, T, T>(
-      dev_ctx, x, y, -1, funcs::FMinFunctor<T>(), out);
+  funcs::ElementwiseCompute<funcs::FMinFunctor<T>, T>(
+      dev_ctx, x, y, funcs::FMinFunctor<T>(), out);
 }
 
 }  // namespace phi

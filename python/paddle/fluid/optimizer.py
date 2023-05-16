@@ -232,7 +232,7 @@ class Optimizer:
 
             if not isinstance(self._learning_rate, _LearningRateEpochDecay):
                 var_tmp = None
-                var_temp = framework._varbase_creator(
+                var_temp = framework._create_tensor(
                     None, name='global_step', dtype='int32'
                 )
 
@@ -3215,6 +3215,7 @@ class AdadeltaOptimizer(Optimizer):
                 param_and_grad[1],
                 avg_squared_grad_acc,
                 avg_squared_update_acc,
+                self._create_param_lr(param_and_grad),
                 master_weight,
                 self._rho,
                 self._epsilon,
@@ -3227,6 +3228,7 @@ class AdadeltaOptimizer(Optimizer):
                 "Grad": param_and_grad[1],
                 "AvgSquaredGrad": avg_squared_grad_acc,
                 "AvgSquaredUpdate": avg_squared_update_acc,
+                "LearningRate": self._create_param_lr(param_and_grad),
             }
             outputs = {
                 "ParamOut": param_and_grad[0],
@@ -4371,12 +4373,12 @@ class ExponentialMovingAverage:
                 ema = block._clone_variable(self._ema_vars[param.name])
                 paddle.assign(param, output=tmp)
                 # bias correction
-                with layers.control_flow.Switch() as switch:
-                    with switch.case(global_step > 0):
-                        paddle.assign(ema / (1.0 - decay_pow), output=param)
-                    with switch.default():
-                        paddle.assign(ema, output=param)
-
+                param_val = paddle.static.nn.cond(
+                    global_step > 0,
+                    lambda: ema / (1.0 - decay_pow),
+                    lambda: ema,
+                )
+                paddle.assign(param_val, output=param)
         self.restore_program = Program()
         block = self.restore_program.global_block()
         with program_guard(main_program=self.restore_program):
@@ -4397,13 +4399,12 @@ class ExponentialMovingAverage:
 
             if self._thres_steps is not None:
                 decay_t = (self._thres_steps + 1.0) / (self._thres_steps + 10.0)
-                with layers.control_flow.Switch() as switch:
-                    with switch.case(decay_t < self._decay):
-                        paddle.assign(decay_t, decay_var)
-                    with switch.default():
-                        paddle.assign(
-                            np.array([self._decay], dtype=np.float32), decay_var
-                        )
+                decay_val = paddle.static.nn.cond(
+                    decay_t < self._decay,
+                    lambda: decay_t,
+                    lambda: np.array([self._decay], dtype=np.float32),
+                )
+                paddle.assign(decay_val, decay_var)
         return decay_var
 
     def _get_decay_pow(self, block):
@@ -4553,9 +4554,7 @@ class PipelineOptimizer:
 
     def __init__(self, optimizer, num_microbatches=1, start_cpu_core_id=0):
         self._device = 'cpu'
-        if core.is_compiled_with_custom_device('npu'):
-            self._device = "npu"
-        elif core.is_compiled_with_cuda():
+        if core.is_compiled_with_cuda():
             self._device = "gpu"
         if in_dygraph_mode():
             raise Exception("In dygraph, don't support PipelineOptimizer.")
@@ -4944,8 +4943,8 @@ class PipelineOptimizer:
             else None
         )
         if device:
-            assert device[0:3] == 'gpu' or device[0:3] == 'npu', (
-                "Now, only gpu and npu devices are "
+            assert device[0:3] == 'gpu', (
+                "Now, only gpu devices are "
                 "supported in pipeline parallemism."
             )
         return device
@@ -4980,8 +4979,8 @@ class PipelineOptimizer:
             device = post_op.attr(self._op_device_key)
             assert device, "The post op must have op_device set."
             op._set_attr(self._op_device_key, device)
-        elif (op.type == "cast" or op.type == "scale") and self._is_backward_op(
-            op
+        elif (op.type == "cast" or op.type == "scale") and (
+            self._is_backward_op(op) or self._is_forward_op(op)
         ):
             prev_op = self._find_prev_op(idx, op.desc.input("X")[0])
             op._set_attr(self._op_device_key, prev_op.attr(self._op_device_key))
@@ -5147,8 +5146,8 @@ class PipelineOptimizer:
                 continue
 
             dev_type = device.split(':')[0]
-            assert dev_type == "gpu" or dev_type == 'npu', (
-                "Now only gpu and npu devices are supported "
+            assert dev_type == "gpu", (
+                "Now only gpu devices are supported "
                 "for pipeline parallelism."
             )
 
@@ -5966,7 +5965,7 @@ class PipelineOptimizer:
         }
         assert -1 not in var.shape
         return (
-            reduce(lambda x, y: x * y, var.shape)
+            reduce(lambda x, y: x * y, var.shape, 1)
             * dtype_to_size[var.dtype]
             / 1024.0
             / 1024.0
@@ -6387,8 +6386,6 @@ class PipelineOptimizer:
             dev_index = int(dev.split(":")[1])
             if core.is_compiled_with_cuda():
                 place_list.append(core.CUDAPlace(dev_index % 1))
-            elif paddle.is_compiled_with_custom_device('npu'):
-                place_list.append(paddle.CustomPlace('npu', dev_index % 1))
 
         # Step6: Split startup program
         new_startup_program = self._split_startup_program(
@@ -6411,8 +6408,6 @@ class PipelineOptimizer:
 
         if core.is_compiled_with_cuda():
             place_id = int(os.getenv("FLAGS_selected_gpus", "0"))
-        elif core.is_compiled_with_custom_device('npu'):
-            place_id = int(os.getenv("FLAGS_selected_npus", "0"))
         # A pass to move the recv op to the beginning of
         # the forward/backward phase
         self._mv_head_recv(program_list[self.local_rank])
@@ -7406,26 +7401,30 @@ class LookaheadOptimizer:
             )
 
             mod = paddle.remainder(step, k)
-            with layers.control_flow.Switch() as switch:
-                with switch.case(step == one_var):
-                    for param_name in params:
-                        fast_var = main_block.var(param_name)
-                        slow_var = param_to_slow[param_name]
-                        paddle.assign(fast_var, output=slow_var)
-                with switch.case(mod == zero_var):
-                    for param_name in params:
-                        fast_var = main_block.var(param_name)
-                        slow_var = param_to_slow[param_name]
-                        tmp_var = paddle.add(
-                            paddle.multiply(fast_var, alpha),
-                            paddle.multiply(
-                                slow_var, paddle.subtract(one_var, alpha)
-                            ),
-                        )
-                        paddle.assign(tmp_var, output=slow_var)
-                        paddle.assign(tmp_var, output=fast_var)
-                with switch.default():
-                    pass
+            for param_name in params:
+                fast_var = main_block.var(param_name)
+                slow_var = param_to_slow[param_name]
+                tmp_var = paddle.add(
+                    paddle.multiply(fast_var, alpha),
+                    paddle.multiply(slow_var, paddle.subtract(one_var, alpha)),
+                )
+                slow_val = paddle.static.nn.case(
+                    [
+                        (step == one_var, lambda: fast_var),
+                        (mod == zero_var, lambda: tmp_var),
+                    ],
+                    default=lambda: slow_var,
+                )
+                paddle.assign(slow_val, slow_var)
+
+                fast_val = paddle.static.nn.case(
+                    [
+                        (mod == zero_var, lambda: tmp_var),
+                    ],
+                    default=lambda: fast_var,
+                )
+                paddle.assign(fast_val, fast_var)
+
         return mini_out
 
 

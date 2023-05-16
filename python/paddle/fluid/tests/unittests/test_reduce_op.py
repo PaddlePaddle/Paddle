@@ -25,133 +25,104 @@ from paddle.fluid.framework import convert_np_dtype_to_dtype_
 
 class TestSumOp(OpTest):
     def setUp(self):
+        self.init_dtype()
+        self.init_input()
+        self.init_attrs()
+        self.calc_output()
+
         self.python_api = paddle.sum
         self.public_python_api = paddle.sum
         self.op_type = "reduce_sum"
         self.prim_op_type = "prim"
-        self.inputs = {'X': np.random.random((5, 6, 10)).astype("float64")}
-        self.outputs = {'Out': self.inputs['X'].sum(axis=0)}
+        self.inputs = {'X': self.x}
+        self.outputs = {'Out': self.out}
+        self.enable_cinn = True
+
+    def init_dtype(self):
+        self.dtype = np.float64
+
+    def init_input(self):
+        self.x = np.random.random((5, 6, 10)).astype(self.dtype)
+
+    def init_attrs(self):
         self.attrs = {'dim': [0]}
-        self.enable_cinn = True
 
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
-
-
-class TestSumOpFp32(OpTest):
-    def setUp(self):
-        self.python_api = paddle.sum
-        self.public_python_api = paddle.sum
-        self.op_type = "reduce_sum"
-        self.prim_op_type = "prim"
-        self.inputs = {
-            'X': np.random.uniform(0, 0.1, (5, 6, 10)).astype("float16")
-        }
-        self.attrs = {'dim': [0, 1, 2]}
-        self.outputs = {
-            'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']))
-        }
-        self.gradient = self.calc_gradient()
-        self.enable_cinn = True
-
-    def test_check_output(self):
-        self.check_output()
-
-    def calc_gradient(self):
-        x = self.inputs["X"]
-        grad = np.ones(x.shape, dtype=x.dtype)
-        return (grad,)
-
-    def test_check_grad(self):
-        self.check_grad(
-            ['X'],
-            'Out',
-            user_defined_grads=self.gradient,
-            check_prim=True,
-        )
-
-
-class TestSumOp_ZeroDim(OpTest):
-    def setUp(self):
-        self.python_api = paddle.sum
-        self.public_python_api = paddle.sum
-        self.op_type = "reduce_sum"
-        self.prim_op_type = "prim"
-        self.inputs = {'X': np.random.random([]).astype("float64")}
-        self.outputs = {'Out': self.inputs['X'].sum(axis=None)}
-        self.attrs = {'dim': [], 'reduce_all': True}
-        # reduce doesn't support float64 in cinn.
-        # 0-D tensor doesn't support in cinn
-        self.enable_cinn = False
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
-
-
-@unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
-)
-class TestSumOp_bf16(OpTest):
-    def setUp(self):
-        np.random.seed(100)
-        self.python_api = paddle.sum
-        self.public_python_api = paddle.sum
-        self.op_type = "reduce_sum"
-        self.prim_op_type = "prim"
-        self.dtype = np.uint16
-        self.x = np.random.uniform(0, 0.1, (2, 5, 10)).astype(np.float32)
-        self.attrs = {'dim': [0, 1, 2]}
+    def calc_output(self):
         self.out = self.x.sum(axis=tuple(self.attrs['dim']))
-        self.gradient = self.calc_gradient()
-
-        self.inputs = {'X': convert_float_to_uint16(self.x)}
-        self.outputs = {'Out': convert_float_to_uint16(self.out)}
-        self.gradient = self.calc_gradient()
-        self.enable_cinn = False
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
-        self.check_output_with_place(place, atol=0.1)
+        self.check_output()
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place,
-            ['X'],
-            'Out',
-            user_defined_grads=self.gradient,
-            check_prim=True,
-        )
-
-    def calc_gradient(self):
-        x = self.x
-        grad = np.ones(x.shape, dtype=x.dtype)
-        return [grad]
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
-class TestSumOp_fp16_withInt(OpTest):
-    def setUp(self):
-        self.python_api = paddle.sum
-        self.public_python_api = paddle.sum
-        self.op_type = "reduce_sum"
-        self.prim_op_type = "prim"
-        self.inputs = {
-            # ref to https://en.wikipedia.org/wiki/Half-precision_floating-point_format
-            # Precision limitations on integer values between 0 and 2048 can be exactly represented
-            'X': np.random.randint(0, 30, (10, 10)).astype("float16")
-        }
-        self.attrs = {'dim': [0, 1]}
-        self.outputs = {
-            'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']))
-        }
-        self.gradient = self.calc_gradient()
-        self.enable_cinn = True
+class TestComplexSumOP(TestSumOp):
+    def init_dtype(self):
+        self.dtype = np.complex128
+
+    def init_input(self):
+        self.x = np.random.random((3, 4)).astype(self.dtype)
+
+    def init_attrs(self):
+        self.attrs = {'dim': [0]}
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_prim=False)
+
+
+class TestSumOp_ZeroDim(TestSumOp):
+    def init_attrs(self):
+        self.attrs = {'dim': [], 'reduce_all': True}
+
+    def init_input(self):
+        self.x = np.random.random([]).astype(self.dtype)
+
+    def calc_output(self):
+        self.out = self.x.sum(axis=None)
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestSumOp5D(TestSumOp):
+    def init_input(self):
+        self.x = np.random.random((1, 2, 5, 6, 10)).astype(self.dtype)
+
+    def init_attrs(self):
+        self.attrs = {'dim': [0]}
+
+
+class TestSumOp6D(TestSumOp):
+    def init_input(self):
+        self.x = np.random.random((1, 1, 2, 5, 6, 10)).astype(self.dtype)
+
+    def init_attrs(self):
+        self.attrs = {'dim': [0]}
+
+
+class TestSumOp8D(TestSumOp):
+    def init_input(self):
+        self.x = np.random.random((1, 3, 1, 2, 1, 4, 3, 10)).astype(self.dtype)
+
+    def init_attrs(self):
+        self.attrs = {'dim': (0, 3)}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestSumOp_withInt(TestSumOp):
+    def init_input(self):
+        # ref to https://en.wikipedia.org/wiki/Half-precision_floating-point_format
+        # Precision limitations on integer values between 0 and 2048 can be exactly represented
+        self.x = np.random.randint(0, 30, (10, 10)).astype(self.dtype)
+
+    def init_attrs(self):
+        self.attrs = {'dim': (0, 1)}
 
     def test_check_output(self):
         self.check_output()
@@ -165,66 +136,103 @@ class TestSumOp_fp16_withInt(OpTest):
         self.check_grad(
             ['X'],
             'Out',
-            user_defined_grads=self.gradient,
+            user_defined_grads=self.calc_gradient(),
             check_prim=True,
         )
 
 
-class TestSumOp5D(OpTest):
-    def setUp(self):
-        self.python_api = paddle.sum
-        self.public_python_api = paddle.sum
-        self.op_type = "reduce_sum"
-        self.prim_op_type = "prim"
-        self.inputs = {
-            'X': np.random.random((1, 2, 5, 6, 10)).astype("float64")
-        }
-        self.attrs = {'dim': [0]}
-        self.outputs = {'Out': self.inputs['X'].sum(axis=0)}
-        # error occurred in cinn
-        self.enable_cinn = True
+class TestSumOp3Dim(TestSumOp):
+    def init_input(self):
+        self.x = np.random.uniform(0, 0.1, (5, 6, 10)).astype(self.dtype)
+
+    def init_attrs(self):
+        self.attrs = {'dim': (0, 1, 2)}
 
     def test_check_output(self):
         self.check_output()
 
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
-
-
-class TestSumOp6D(OpTest):
-    def setUp(self):
-        self.python_api = paddle.sum
-        self.public_python_api = paddle.sum
-        self.op_type = "reduce_sum"
-        self.prim_op_type = "prim"
-        self.inputs = {
-            'X': np.random.random((1, 1, 2, 5, 6, 10)).astype("float64")
-        }
-        self.attrs = {'dim': [0]}
-        self.outputs = {'Out': self.inputs['X'].sum(axis=0)}
-
-    def test_check_output(self):
-        self.check_output()
+    def calc_gradient(self):
+        x = self.inputs["X"]
+        grad = np.ones(x.shape, dtype=x.dtype)
+        return (grad,)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(
+            ['X'],
+            'Out',
+            user_defined_grads=self.calc_gradient(),
+            check_prim=True,
+        )
 
 
-class TestSumOp8D(OpTest):
-    def setUp(self):
-        self.python_api = paddle.sum
-        self.op_type = "reduce_sum"
-        self.inputs = {
-            'X': np.random.random((1, 3, 1, 2, 1, 4, 3, 10)).astype("float64")
-        }
-        self.attrs = {'dim': (0, 3)}
-        self.outputs = {'Out': self.inputs['X'].sum(axis=(0, 3))}
+def create_test_fp16_class(parent):
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    )
+    class TestSumOpFp16(parent):
+        def init_dtype(self):
+            self.dtype = np.float16
 
-    def test_check_output(self):
-        self.check_output()
+        def test_check_output(self):
+            self.check_output()
 
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        def test_check_grad(self):
+            self.check_grad(
+                ['X'],
+                'Out',
+                check_prim=True,
+            )
+
+
+create_test_fp16_class(TestSumOp)
+create_test_fp16_class(TestSumOp_ZeroDim)
+create_test_fp16_class(TestSumOp5D)
+create_test_fp16_class(TestSumOp6D)
+create_test_fp16_class(TestSumOp8D)
+create_test_fp16_class(TestSumOp_withInt)
+create_test_fp16_class(TestSumOp3Dim)
+
+
+def create_test_bf16_class(parent):
+    @unittest.skipIf(
+        not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    )
+    class TestSumOpBf16(parent):
+        def setUp(self):
+            self.inputs = {'X': convert_float_to_uint16(self.x)}
+            self.outputs = {'Out': convert_float_to_uint16(self.out)}
+            self.enable_cinn = False
+
+        def init_dtype(self):
+            self.dtype = np.uint16
+
+        def test_check_output(self):
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place)
+
+        def test_check_grad(self):
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place,
+                ['X'],
+                'Out',
+                user_defined_grads=self.gradient,
+                check_prim=True,
+            )
+
+        def calc_gradient(self):
+            x = self.x
+            grad = np.ones(x.shape, dtype=x.dtype)
+            return [grad]
+
+
+create_test_bf16_class(TestSumOp)
+create_test_bf16_class(TestSumOp_ZeroDim)
+create_test_bf16_class(TestSumOp5D)
+create_test_bf16_class(TestSumOp6D)
+create_test_bf16_class(TestSumOp8D)
+create_test_bf16_class(TestSumOp_withInt)
+create_test_bf16_class(TestSumOp3Dim)
 
 
 @skip_check_grad_ci(
@@ -257,18 +265,6 @@ class TestMaxOp(OpTest):
             only_check_prim=True,
         )
 
-    def test_raise_error(self):
-        if core.is_compiled_with_cuda():
-            self.inputs = {'X': np.random.random((5, 6, 10)).astype("float16")}
-            place = core.CUDAPlace(0)
-            with self.assertRaises(RuntimeError) as cm:
-                self.check_output_with_place(place)
-            error_msg = str(cm.exception).split("\n")[-2].strip().split(".")[0]
-            self.assertEqual(
-                error_msg,
-                "NotFoundError: The kernel (reduce_max) with key (GPU, Undefined(AnyLayout), float16) is not found and GPU kernel cannot fallback to CPU one",
-            )
-
 
 class TestMaxOp_ZeroDim(OpTest):
     """Remove Max with subgradient from gradient check to confirm the success of CI."""
@@ -298,7 +294,7 @@ class TestMaxOp_ZeroDim(OpTest):
         )
 
 
-class TestMaxOp_FP32(OpTest):
+class TestMaxFP32Op(OpTest):
     """Remove Max with subgradient from gradient check to confirm the success of CI."""
 
     def setUp(self):
@@ -306,13 +302,19 @@ class TestMaxOp_FP32(OpTest):
         self.prim_op_type = "prim"
         self.python_api = paddle.max
         self.public_python_api = paddle.max
-        self.inputs = {'X': np.random.random((5, 6, 10)).astype("float32")}
+        self.init_dtype()
+        if self.dtype == np.uint16:
+            x = np.random.random((5, 6, 10)).astype(np.float32)
+            self.inputs = {'X': convert_float_to_uint16(x)}
+        else:
+            x = np.random.random((5, 6, 10)).astype(self.dtype)
+            self.inputs = {'X': x}
         self.attrs = {'dim': [-1], 'keep_dim': True}
-        self.outputs = {
-            'Out': self.inputs['X'].max(
-                axis=tuple(self.attrs['dim']), keepdims=True
-            )
-        }
+        out = x.max(axis=tuple(self.attrs['dim']), keepdims=True)
+        if self.dtype == np.uint16:
+            self.outputs = {'Out': convert_float_to_uint16(out)}
+        else:
+            self.outputs = {'Out': out}
 
     def test_check_output(self):
         self.check_output()
@@ -320,6 +322,37 @@ class TestMaxOp_FP32(OpTest):
     def test_check_grad(self):
         # only composite op support gradient check of reduce_max
         self.check_grad(
+            ['X'],
+            'Out',
+            check_prim=True,
+            only_check_prim=True,
+        )
+
+    def init_dtype(self):
+        self.dtype = np.float32
+
+
+class TestMaxFP16Op(TestMaxFP32Op):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestMaxBF16Op(TestMaxFP32Op):
+    def init_dtype(self):
+        self.dtype = np.uint16
+
+    def test_check_output(self):
+        self.check_output_with_place(core.CUDAPlace(0))
+
+    def test_check_grad(self):
+        # only composite op support gradient check of reduce_max
+        self.check_grad_with_place(
+            core.CUDAPlace(0),
             ['X'],
             'Out',
             check_prim=True,
@@ -397,6 +430,51 @@ class TestMin8DOp(OpTest):
 
     def test_check_output(self):
         self.check_output()
+
+
+@skip_check_grad_ci(
+    reason="reduce_min is discontinuous non-derivable function,"
+    " its gradient check is not supported by unittest framework."
+)
+class TestMinFP16Op(OpTest):
+    """Remove Min with subgradient from gradient check to confirm the success of CI."""
+
+    def setUp(self):
+        self.op_type = "reduce_min"
+        self.python_api = paddle.min
+        self.public_python_api = paddle.min
+        self.init_dtype()
+        if self.dtype == np.uint16:
+            x = np.random.random((5, 6, 10)).astype(np.float32)
+            self.inputs = {'X': convert_float_to_uint16(x)}
+        else:
+            x = np.random.random((5, 6, 10)).astype(self.dtype)
+            self.inputs = {'X': x}
+        self.attrs = {'dim': [2], 'keep_dim': True}
+        out = x.min(axis=tuple(self.attrs['dim']), keepdims=True)
+        if self.dtype == np.uint16:
+            self.outputs = {'Out': convert_float_to_uint16(out)}
+        else:
+            self.outputs = {'Out': out}
+
+    def init_dtype(self):
+        self.dtype = np.float16
+
+    def test_check_output(self):
+        self.check_output()
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestMinBF16Op(TestMinFP16Op):
+    def init_dtype(self):
+        self.dtype = np.uint16
+
+    def test_check_output(self):
+        self.check_output_with_place(core.CUDAPlace(0))
 
 
 def raw_reduce_prod(x, dim=[0], keep_dim=False):

@@ -202,14 +202,19 @@ REGISTER_OPERATOR(partial_concat,
 
 REGISTER_OPERATOR(partial_concat_grad, ops::PartialConcatGradOp);
 
-REGISTER_OP_CPU_KERNEL(partial_concat,
-                       ops::PartialConcatKernel<phi::CPUContext, double>,
-                       ops::PartialConcatKernel<phi::CPUContext, float>,
-                       ops::PartialConcatKernel<phi::CPUContext, int64_t>,
-                       ops::PartialConcatKernel<phi::CPUContext, int>);
-
-REGISTER_OP_CPU_KERNEL(partial_concat_grad,
-                       ops::PartialConcatGradientOpKernel<float>,
-                       ops::PartialConcatGradientOpKernel<int>,
-                       ops::PartialConcatGradientOpKernel<double>,
-                       ops::PartialConcatGradientOpKernel<int64_t>);
+PD_REGISTER_STRUCT_KERNEL(partial_concat,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::PartialConcatKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}
+PD_REGISTER_STRUCT_KERNEL(partial_concat_grad,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::PartialConcatGradientOpKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}

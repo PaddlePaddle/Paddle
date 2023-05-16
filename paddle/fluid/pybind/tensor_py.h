@@ -24,6 +24,7 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <tuple>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -34,6 +35,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
+#include "paddle/fluid/pybind/complex.h"
 #include "paddle/phi/kernels/funcs/strided_memcpy.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
@@ -63,12 +65,19 @@ constexpr int NPY_UINT16_ = 4;
 constexpr int NPY_COMPLEX64 = 14;
 constexpr int NPY_COMPLEX128 = 15;
 
+template <typename T, typename S>
+struct casting_complex_to_non_complex {
+  static const bool value = pybind11::detail::is_complex<S>::value &&
+                            !pybind11::detail::is_complex<T>::value;
+};
+
 // cast numpy type form S to T, this may allocate new memory
-template <class T, class S>
+template <
+    class T,
+    class S,
+    std::enable_if_t<!std::is_same<T, S>::value &&
+                     !casting_complex_to_non_complex<T, S>::value> * = nullptr>
 static py::array_t<T> CastNumpyType(py::array_t<S> array) {
-  if (std::is_same<T, S>::value) {
-    return array;
-  }
   auto dim = array.ndim();
   std::vector<py::ssize_t> result_shape(dim);
   for (auto i = 0; i < dim; i++) {
@@ -78,6 +87,30 @@ static py::array_t<T> CastNumpyType(py::array_t<S> array) {
   py::array_t<T> result(result_shape);
 
   return py::vectorize([](S s) { return static_cast<T>(s); })(array);
+}
+
+template <
+    class T,
+    class S,
+    std::enable_if_t<(!std::is_same<T, S>::value) &&
+                     casting_complex_to_non_complex<T, S>::value> * = nullptr>
+static py::array_t<T> CastNumpyType(py::array_t<S> array) {
+  auto dim = array.ndim();
+  std::vector<py::ssize_t> result_shape(dim);
+  for (auto i = 0; i < dim; i++) {
+    result_shape[i] = array.shape(i);
+  }
+
+  py::array_t<T> result(result_shape);
+
+  return py::vectorize([](S s) { return static_cast<T>(s.real()); })(array);
+}
+
+template <class T,
+          class S,
+          std::enable_if_t<std::is_same<T, S>::value> * = nullptr>
+static py::array_t<T> CastNumpyType(py::array_t<S> array) {
+  return array;
 }
 
 template <class T>
@@ -92,10 +125,14 @@ static py::array_t<T> CastNumpyArray(const py::object &array) {
     return CastNumpyType<T>(array.cast<py::array_t<int64_t>>());
   } else if (py::isinstance<py::array_t<bool>>(array)) {
     return CastNumpyType<T>(array.cast<py::array_t<bool>>());
+  } else if (py::isinstance<py::array_t<std::complex<float>>>(array)) {
+    return CastNumpyType<T>(array.cast<py::array_t<std::complex<float>>>());
+  } else if (py::isinstance<py::array_t<std::complex<double>>>(array)) {
+    return CastNumpyType<T>(array.cast<py::array_t<std::complex<double>>>());
   } else {
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
         "Value type error. The assign numpy value allows integer, float, "
-        "double and bool, "
+        "double, complex64, complex128, and bool, "
         "but received %s.",
         Py_TYPE(array.ptr())->tp_name));
   }
@@ -397,7 +434,7 @@ void SetTensorFromPyArrayT(
     }
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(
-        "Cannot use IPUPlace in CPU/GPU/XPU/NPU version, "
+        "Cannot use IPUPlace in CPU/GPU/XPU version, "
         "Please recompile or reinstall Paddle with IPU support."));
 #endif
   } else if (paddle::platform::is_custom_place(place)) {
@@ -808,7 +845,7 @@ void _sliceDapper(const phi::DenseTensor *in,
 template <typename T>
 inline phi::DenseTensor *_sliceWrapper(const phi::DenseTensor &self,
                                        const phi::CPUContext &ctx,
-                                       py::object obj,
+                                       py::object obj UNUSED,
                                        int dim,
                                        int64_t start,
                                        int64_t slicelength) {
@@ -924,8 +961,6 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
   }
   bool is_gpu_tensor = platform::is_gpu_place(tensor.place());
   bool is_xpu_tensor = platform::is_xpu_place(tensor.place());
-  bool is_npu_tensor = platform::is_npu_place(tensor.place());
-  bool is_mlu_tensor = platform::is_mlu_place(tensor.place());
   bool is_custom_device_tensor = platform::is_custom_place(tensor.place());
   const auto &tensor_dims = tensor.dims();
   auto tensor_dtype = framework::TransToProtoVarType(tensor.dtype());
@@ -946,8 +981,7 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
   std::string py_dtype_str = details::TensorDTypeToPyDTypeStr(
       framework::TransToProtoVarType(tensor.dtype()));
 
-  if (!is_gpu_tensor && !is_xpu_tensor && !is_npu_tensor && !is_mlu_tensor &&
-      !is_custom_device_tensor) {
+  if (!is_gpu_tensor && !is_xpu_tensor && !is_custom_device_tensor) {
     if (!need_deep_copy) {
       auto base = py::cast(std::move(tensor));
       return py::array(py::dtype(py_dtype_str.c_str()),
@@ -1072,7 +1106,7 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
     return py_arr;
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(
-        "Cannot use CustomPlace in CPU/GPU/XPU/NPU version, "
+        "Cannot use CustomPlace in CPU/GPU/XPU version, "
         "Please recompile or reinstall Paddle with CustomPlace "
         "support."));
 #endif

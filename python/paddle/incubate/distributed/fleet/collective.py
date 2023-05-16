@@ -82,6 +82,7 @@ class Collective(Fleet):
         target_vars=None,
         main_program=None,
         export_for_deployment=True,
+        legacy_format=False,
     ):
         """
         Prune the given `main_program` to build a new program especially for
@@ -109,6 +110,7 @@ class Collective(Fleet):
             None,
             None,
             export_for_deployment,
+            legacy_format=legacy_format,
         )
 
     def save_persistables(

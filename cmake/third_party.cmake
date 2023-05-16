@@ -493,11 +493,6 @@ if(WIN32)
   list(APPEND third_party_deps extern_dirent)
 endif()
 
-if(WITH_INFRT)
-  include(external/llvm)
-  list(APPEND third_party_deps ${llvm_libs})
-endif()
-
 if(WITH_IPU)
   include(external/poplar)
   list(APPEND third_party_deps extern_poplar)

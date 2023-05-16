@@ -139,6 +139,7 @@ template <typename T, typename Context>
 void FusedDropoutAddKernel(const Context& dev_ctx,
                            const DenseTensor& x,
                            const DenseTensor& y,
+                           const paddle::optional<DenseTensor>& seed_tensor,
                            const Scalar& p,
                            bool is_test,
                            const std::string& mode,
@@ -168,10 +169,18 @@ void FusedDropoutAddKernel(const Context& dev_ctx,
     size_t block_size = random_prop[1];
     size_t offset = random_prop[2];
     size_t main_offset = random_prop[3];
-    funcs::GetSeedDataAndIncrement(
-        dev_ctx, nullptr, fix_seed, seed, offset, &seed_data, &increment);
+    funcs::GetSeedDataAndIncrement(dev_ctx,
+                                   seed_tensor.get_ptr(),
+                                   fix_seed,
+                                   seed,
+                                   offset,
+                                   &seed_data,
+                                   &increment);
     seed_offset_data[0] = static_cast<int64_t>(seed_data);
     seed_offset_data[1] = static_cast<int64_t>(increment);
+
+    VLOG(4) << "FusedDropoutAdd seed: " << seed << ", offset: " << offset
+            << ", seed_data:" << seed_data;
 
     auto dst_functor =
         NoMaskFwFunctor<T, float>(1.0f - dropout_rate, upscale_in_train);

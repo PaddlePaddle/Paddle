@@ -493,26 +493,6 @@ def _to_name_str(var):
         return _to_str(var)
 
 
-def _is_dy2st_enable_standalone_executor():
-    return framework._dy2st_enable_standalone_executor_ in [
-        1,
-        '1',
-        True,
-        'True',
-        'true',
-    ]
-
-
-def _is_cuda_graph_enable_standalone_executor():
-    return framework._cuda_graph_enable_standalone_executor_ in [
-        1,
-        '1',
-        True,
-        'True',
-        'true',
-    ]
-
-
 def _prepare_fleet_executor():
     from ..distributed.fleet.proto import fleet_executor_desc_pb2
 
@@ -600,7 +580,7 @@ def _as_lodtensor(data, place, dtype=None):
             else dtype
         )
         if np.isscalar(data):
-            data = np.array([data]).astype(dtype)
+            data = np.array(data).astype(dtype)
         elif isinstance(data, (list, tuple)):
             data = np.array(data)
             if data.dtype == np.object_:
@@ -983,6 +963,7 @@ class Executor:
         self.ctx_caches = dict()
         self.trainer_caches = dict()
         self.scope_caches = dict()
+        self.micro_scope_cache = dict()
         self.var_caches = dict()
         self.pruned_program_caches = dict()
         p = core.Place()
@@ -1051,6 +1032,12 @@ class Executor:
 
     def _add_scope_cache(self, scope_cache_key, scope):
         self.scope_caches[scope_cache_key] = scope
+
+    def _add_micro_scopes_cache(self, program_cache_key, micro_scopes: list):
+        self.micro_scope_cache[program_cache_key] = micro_scopes
+
+    def _get_micro_scopes_cache(self, program_cache_key):
+        return self.micro_scope_cache.get(program_cache_key, None)
 
     # just for testing, will be removed later
     @lru_cache()
@@ -1487,6 +1474,7 @@ class Executor:
                     feed=feed,
                     fetch_list=fetch_list,
                     with_standalone_executor=self._fleet_executor_with_standalone,
+                    return_numpy=return_numpy,
                 )
             if "startup_program" in program._pipeline_opt:
                 program = program._pipeline_opt["startup_program"]
@@ -1619,10 +1607,7 @@ class Executor:
                     else program._graph
                 )
                 build_strategy = compiled_program._build_strategy
-                if (
-                    build_strategy is not None
-                    and build_strategy.force_sequential_run
-                ):
+                if build_strategy is not None and build_strategy.sequential_run:
                     schedule_flag = [
                         'FLAGS_new_executor_serial_run',
                         'FLAGS_new_executor_sequential_run',
@@ -2003,14 +1988,9 @@ class Executor:
             for var in program.global_block().vars.values():
                 if var.is_data:
                     data_vars.append(var)
-            if core.is_compiled_with_custom_device('npu'):
-                dataset = paddle.fluid.DatasetFactory().create_dataset(
-                    'InMemoryDataset'
-                )
-            else:
-                dataset = paddle.fluid.DatasetFactory().create_dataset(
-                    'FileInstantDataset'
-                )
+            dataset = paddle.fluid.DatasetFactory().create_dataset(
+                'FileInstantDataset'
+            )
             dataset.set_batch_size(1)
             dataset.set_thread(1)
             dataset.set_filelist(['None'])
@@ -2180,14 +2160,9 @@ class Executor:
             for var in program.global_block().vars.values():
                 if var.is_data:
                     data_vars.append(var)
-            if core.is_compiled_with_custom_device('npu'):
-                dataset = paddle.fluid.DatasetFactory().create_dataset(
-                    'InMemoryDataset'
-                )
-            else:
-                dataset = paddle.fluid.DatasetFactory().create_dataset(
-                    'FileInstantDataset'
-                )
+            dataset = paddle.fluid.DatasetFactory().create_dataset(
+                'FileInstantDataset'
+            )
             dataset.set_batch_size(1)
             dataset.set_thread(1)
             dataset.set_filelist(['None'])
@@ -2363,13 +2338,25 @@ class Executor:
         fetch_var_name="fetch",
         fetch_list=None,
         with_standalone_executor=False,
+        return_numpy=True,
     ):
         cache_key = _get_strong_program_cache_key(program, feed, fetch_list)
         cached_program = self._get_program_cache(cache_key)
         cached_scope = self._get_scope_cache(cache_key)
+        micro_cached_scopes = self._get_micro_scopes_cache(cache_key)
+        fleet_opt = program._pipeline_opt["fleet_opt"]
         if cached_scope is None:
             cached_scope = global_scope()
             self._add_scope_cache(cache_key, cached_scope)
+        if micro_cached_scopes is None:
+            micro_cached_scopes = []
+            if (
+                "inference_generation" in fleet_opt
+                and fleet_opt["inference_generation"]
+            ):
+                for _ in range(int(fleet_opt["num_micro_batches"])):
+                    micro_cached_scopes.append(cached_scope.new_scope())
+                self._add_micro_scopes_cache(cache_key, micro_cached_scopes)
         if cached_program is None:
             assert (
                 program._pipeline_opt
@@ -2447,7 +2434,7 @@ class Executor:
                 program=cached_program,
                 scope=cached_scope,
                 fleet_opt=fleet_opt,
-                micro_scope_list=micro_scope_list,
+                micro_scope_list=micro_cached_scopes,
                 with_standalone_executor=with_standalone_executor,
             )
 
@@ -2471,17 +2458,33 @@ class Executor:
             tensor.set(data, self.place)
 
         self._fleet_executor.run(cache_key)
-
         if "fetch_var" in fleet_opt:
             # If we speed up the generation in evaluation, we need to generate
             # multiple queries at the same time. Each query will in separate scope in order
             # not mix up. It indicate that final result will in multiple scopes and need to
             # fetch each.
             result_list = []
-            for scope in micro_scope_list:
-                for var in fleet_opt["fetch_var"]:
-                    tensor = core.get_variable_tensor(scope, var)
-                result_list.append(as_numpy(tensor))
+            for scope in micro_cached_scopes:
+                scope_result_list = []
+                for varname in fleet_opt["fetch_var"]:
+                    tensor = None
+                    try:
+                        tensor = core.get_variable_tensor(scope, varname)
+                        if return_numpy:
+                            tensor = as_numpy(tensor)
+                    except:
+                        var = scope.find_var(varname)
+                        tensor = var.get_lod_tensor_array()
+                        if return_numpy:
+                            tensor = as_numpy(tensor)
+                        else:
+                            tensor = [t for t in tensor]
+
+                    if tensor:
+                        scope_result_list.append(tensor)
+
+                if scope_result_list:
+                    result_list.append(scope_result_list)
             return result_list
 
         if fetch_list:

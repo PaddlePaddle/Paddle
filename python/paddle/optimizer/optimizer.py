@@ -30,6 +30,7 @@ from paddle.fluid.framework import (
     in_dygraph_mode,
     name_scope,
 )
+from paddle.regularizer import L2Decay
 
 from ..fluid import framework, unique_name
 from ..fluid.backward import _get_no_grad_set_name, append_backward
@@ -224,8 +225,6 @@ class Optimizer:
                     "'grad_clip' should be an instance of GradientClipBase's derived class"
                 )
         if isinstance(weight_decay, float):
-            from ..fluid.regularizer import L2Decay
-
             self.regularization = L2Decay(weight_decay)
         else:
             self.regularization = weight_decay
@@ -774,7 +773,7 @@ class Optimizer:
                 ), "Optimizer set error, {} should in state dict".format(
                     var_name
                 )
-                var.set_value(self._accumulators_holder[var_name])
+                var.set_value(self._accumulators_holder.pop(var_name))
 
         self._accumulators[name][param.name] = var
         return var
@@ -1571,8 +1570,6 @@ class Optimizer:
         for param in param_group['params']:
             weight_decay = param_group['weight_decay']
             if isinstance(weight_decay, float):
-                from ..fluid.regularizer import L2Decay
-
                 regularization = L2Decay(weight_decay)
             else:
                 regularization = weight_decay

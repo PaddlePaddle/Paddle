@@ -38,8 +38,23 @@ class SoftMaxOpConverter : public OpConverter {
                    ? PADDLE_GET_CONST(int, op_desc.GetAttr("axis"))
                    : -1;
 
-    auto* layer = TRT_ENGINE_ADD_LAYER(
-        engine_, SoftMax, *const_cast<nvinfer1::ITensor*>(input1));
+    // support 0 or 1 dims input
+    bool is_0_dims = input_dims == 0;
+    bool is_1_dims = input_dims == 1;
+    if (is_0_dims || is_1_dims) {
+      auto reshaped_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input1);
+      nvinfer1::Dims reshaped_dims;
+      reshaped_dims.nbDims = 2;
+      reshaped_dims.d[0] = 1;
+      reshaped_dims.d[1] = is_0_dims ? 1 : input_shape.d[0];
+      reshaped_layer->setReshapeDimensions(reshaped_dims);
+      input1 = reshaped_layer->getOutput(0);
+      input_shape = input1->getDimensions();
+      input_dims = input_shape.nbDims;
+      axis = -1;
+    }
+
+    auto* layer = TRT_ENGINE_ADD_LAYER(engine_, SoftMax, *input1);
     uint32_t axes = std::max(0, input_dims - 3);
     // TODO(cryoco): Poor workaround. Fix padded dims problem when TRT layers
     // support Nd.
@@ -68,11 +83,22 @@ class SoftMaxOpConverter : public OpConverter {
       }
     }
     layer->setAxes(1 << axes);
-    auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(layer, "softmax", {output_name}, test_mode);
 
     // The trt will not run int for softmax.
     engine_->SetTensorDynamicRange(input1, 1.0);
+    auto output_name = op_desc.Output("Out")[0];
+
+    // support 0 or 1 dims input
+    if (is_0_dims || is_1_dims) {
+      auto reshaped_layer =
+          TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *layer->getOutput(0));
+      reshaped_layer->setReshapeDimensions(
+          engine_->GetITensor(op_desc.Input("X")[0])->getDimensions());
+      RreplenishLayerAndOutput(
+          reshaped_layer, "reshape_softmax_reshape", {output_name}, test_mode);
+    } else {
+      RreplenishLayerAndOutput(layer, "softmax", {output_name}, test_mode);
+    }
   }
 };
 

@@ -200,6 +200,10 @@ def get_numeric_gradient(
             return tensor._get_float_element(i)
         elif tensor_to_check_dtype == np.float64:
             return tensor._get_double_element(i)
+        elif tensor_to_check_dtype == np.complex64:
+            return tensor._get_complex64_element(i)
+        elif tensor_to_check_dtype == np.complex128:
+            return tensor._get_complex128_element(i)
         else:
             raise TypeError(
                 "Unsupported test data type %s." % tensor_to_check_dtype
@@ -224,6 +228,10 @@ def get_numeric_gradient(
             tensor._set_float_element(i, e)
         elif tensor_to_check_dtype == np.float64:
             tensor._set_double_element(i, e)
+        elif tensor_to_check_dtype == np.complex64:
+            return tensor._set_complex64_element(i, e)
+        elif tensor_to_check_dtype == np.complex128:
+            return tensor._set_complex128_element(i, e)
         else:
             raise TypeError(
                 "Unsupported test data type %s." % tensor_to_check_dtype
@@ -242,6 +250,13 @@ def get_numeric_gradient(
         __set_elem__(tensor_to_check, i, x_pos)
         y_pos = get_output()
 
+        if tensor_to_check_dtype in [np.complex64, np.complex128]:
+            if in_place:
+                set_input(scope, op, inputs, place)
+            x_pos_j = origin + 1j * delta
+            __set_elem__(tensor_to_check, i, x_pos_j)
+            y_pos_j = get_output()
+
         if in_place:
             set_input(scope, op, inputs, place)
 
@@ -249,8 +264,44 @@ def get_numeric_gradient(
         __set_elem__(tensor_to_check, i, x_neg)
         y_neg = get_output()
 
+        if tensor_to_check_dtype in [np.complex64, np.complex128]:
+            if in_place:
+                set_input(scope, op, inputs, place)
+
+            x_neg_j = origin - 1j * delta
+            __set_elem__(tensor_to_check, i, x_neg_j)
+            y_neg_j = get_output()
+
         __set_elem__(tensor_to_check, i, origin)
-        gradient_flat[i] = (y_pos - y_neg) / delta / 2
+
+        if tensor_to_check_dtype in [np.complex64, np.complex128]:
+            # always assume real output, because this function has
+            # no input for dl/di, though it should do. so there di will be zero
+
+            # TODO: Here is a trick to be consistent with the existing OpTest, it
+            # need to support variable gradients input
+            f_ajoint = np.array(1 + 0j)
+            df_over_dr = (y_pos - y_neg) / delta / 2
+            df_over_di = (y_pos_j - y_neg_j) / delta / 2
+
+            dl_over_du, dl_over_dv = f_ajoint.real, f_ajoint.imag
+
+            du_over_dr, dv_over_dr = df_over_dr.real, df_over_dr.imag
+
+            du_over_di, dv_over_di = df_over_di.real, df_over_di.imag
+
+            dl_over_dr = np.sum(
+                dl_over_du * du_over_dr + dl_over_dv * dv_over_dr
+            )
+            dl_over_di = np.sum(
+                dl_over_du * du_over_di + dl_over_dv * dv_over_di
+            )
+            gradient_flat[i] = dl_over_dr + 1j * dl_over_di
+        else:
+            df_over_dr = y_pos - y_neg
+            gradient_flat[i] = df_over_dr / delta / 2
+
+        __set_elem__(tensor_to_check, i, origin)
 
     return gradient_flat.reshape(tensor_to_check.shape())
 
@@ -375,6 +426,13 @@ class OpTest(unittest.TestCase):
         def is_custom_device_op_test():
             return hasattr(cls, "use_custom_device") and cls.use_custom_device
 
+        def is_complex_test():
+            return (
+                hasattr(cls, "test_complex")
+                and cls.test_complex
+                or (cls.dtype in [np.complex64, np.complex128])
+            )
+
         if not hasattr(cls, "op_type"):
             raise AssertionError(
                 "This test do not have op_type in class attrs, "
@@ -382,8 +440,10 @@ class OpTest(unittest.TestCase):
             )
 
         # case in NO_FP64_CHECK_GRAD_CASES and op in NO_FP64_CHECK_GRAD_OP_LIST should be fixed
-        if not hasattr(cls, "no_need_check_grad") and not is_empty_grad_op(
-            cls.op_type
+        if (
+            not hasattr(cls, "no_need_check_grad")
+            and not is_empty_grad_op(cls.op_type)
+            and not is_complex_test()
         ):
             if cls.dtype is None or (
                 cls.dtype == np.float16
@@ -493,6 +553,28 @@ class OpTest(unittest.TestCase):
 
     def disable_cal_ref_output(self):
         self.is_calc_ref = False
+
+    def _enable_check_cinn_test(self, place, inputs, outputs):
+        # if the test not run in cuda or the paddle not compile with CINN, skip cinn test
+        if (
+            not core.is_compiled_with_cinn()
+            or not core.is_compiled_with_cuda()
+            or not isinstance(place, fluid.CUDAPlace)
+        ):
+            return False
+        # CINN not support bfloat16 now, skip cinn test
+        if self.is_bfloat16_op():
+            return False
+        # CINN not support 0D-tensor now, skip cinn test
+        for var in inputs.values():
+            if len(var.shape()) == 0:
+                return False
+        for var in outputs.values():
+            if len(var.shape) == 0:
+                return False
+        # CINN not support dynamic shape now, skip cinn test
+        # TODO(thisjiang): cannot check dynamic shape op automatic, should do manually now
+        return True
 
     # set the self.output_dtype .
     def infer_dtype_from_inputs_outputs(self, inputs, outputs):
@@ -885,7 +967,9 @@ class OpTest(unittest.TestCase):
                 np_dyg,
                 rtol=1e-05,
                 equal_nan=False,
-                err_msg='Output ('
+                err_msg='Operator ('
+                + self.op_type
+                + ') Output ('
                 + name
                 + ') has diff at '
                 + str(place)
@@ -1042,6 +1126,7 @@ class OpTest(unittest.TestCase):
         loss=None,
         enable_inplace=None,
         for_inplace_test=None,
+        check_cinn=False,
     ):
         with paddle.fluid.framework._static_guard():
             program = Program()
@@ -1085,9 +1170,21 @@ class OpTest(unittest.TestCase):
                 for out_name, out_dup in Operator.get_op_outputs(self.op_type):
                     fetch_list.append(str(out_name))
 
-            if enable_inplace is not None:
+            enable_cinn_test = check_cinn and self._enable_check_cinn_test(
+                place, feed_map, outputs
+            )
+            if enable_cinn_test:
+                if hasattr(self, 'cinn_atol'):
+                    self.atol = self.cinn_atol
+                if hasattr(self, 'cinn_rtol'):
+                    self.rtol = self.cinn_rtol
+
+            if (enable_inplace is not None) or enable_cinn_test:
                 build_strategy = fluid.BuildStrategy()
-                build_strategy.enable_inplace = enable_inplace
+                if enable_inplace is not None:
+                    build_strategy.enable_inplace = enable_inplace
+                if enable_cinn_test:
+                    build_strategy.build_cinn_pass = check_cinn
 
                 compiled_prog = fluid.CompiledProgram(
                     program, build_strategy=build_strategy
@@ -1137,7 +1234,9 @@ class OpTest(unittest.TestCase):
                     actual_out,
                     rtol=1e-05,
                     atol=inplace_atol,
-                    err_msg='Output ('
+                    err_msg='Operator ('
+                    + self.op_type
+                    + ') Output ('
                     + name
                     + ') has diff at '
                     + str(place)
@@ -1514,6 +1613,7 @@ class OpTest(unittest.TestCase):
         check_dygraph=True,
         check_prim=False,
         inplace_atol=None,
+        check_cinn=False,
     ):
         core._set_prim_all_enabled(False)
         core.set_prim_eager_enabled(False)
@@ -1622,11 +1722,13 @@ class OpTest(unittest.TestCase):
                     np.testing.assert_allclose(
                         actual_np,
                         expect_np,
-                        atol=atol,
+                        atol=self.atol if hasattr(self, 'atol') else atol,
                         rtol=self.rtol if hasattr(self, 'rtol') else rtol,
                         equal_nan=equal_nan,
                         err_msg=(
-                            "Output ("
+                            "Operator ("
+                            + self.op_type
+                            + ") Output ("
                             + name
                             + ") has diff at "
                             + str(place)
@@ -1639,11 +1741,13 @@ class OpTest(unittest.TestCase):
                     np.allclose(
                         actual_np,
                         expect_np,
-                        atol=atol,
+                        atol=self.atol if hasattr(self, 'atol') else atol,
                         rtol=self.rtol if hasattr(self, 'rtol') else rtol,
                         equal_nan=equal_nan,
                     ),
-                    "Output ("
+                    "Operator ("
+                    + self.op_type
+                    + ") Output ("
                     + name
                     + ") has diff at "
                     + str(place)
@@ -1713,7 +1817,7 @@ class OpTest(unittest.TestCase):
 
             def calculate_output(self):
                 outs, fetch_list = self.op_test._calc_output(
-                    place, no_check_set=no_check_set
+                    place, no_check_set=no_check_set, check_cinn=check_cinn
                 )
                 self.outputs = outs
                 self.fetch_list = fetch_list
@@ -1815,7 +1919,9 @@ class OpTest(unittest.TestCase):
                             rtol=self.rtol if hasattr(self, 'rtol') else rtol,
                             equal_nan=equal_nan,
                             err_msg=(
-                                "Output ("
+                                "Operator ("
+                                + self.op_type
+                                + ") Output ("
                                 + name
                                 + ") has diff at "
                                 + str(place)
@@ -1832,7 +1938,9 @@ class OpTest(unittest.TestCase):
                             rtol=self.rtol if hasattr(self, 'rtol') else rtol,
                             equal_nan=equal_nan,
                         ),
-                        "Output ("
+                        "Operator ("
+                        + self.op_type
+                        + ") Output ("
                         + name
                         + ") has diff at "
                         + str(place)
@@ -1882,7 +1990,9 @@ class OpTest(unittest.TestCase):
                         .get_tensor()
                         .recursive_sequence_lengths(),
                         expect[1],
-                        "Output ("
+                        "Operator ("
+                        + self.op_type
+                        + ") Output ("
                         + name
                         + ") has different lod at "
                         + str(place)
@@ -2063,6 +2173,7 @@ class OpTest(unittest.TestCase):
         check_dygraph=True,
         check_prim=False,
         inplace_atol=None,
+        check_cinn=False,
     ):
 
         self.__class__.op_type = self.op_type
@@ -2086,6 +2197,7 @@ class OpTest(unittest.TestCase):
                 check_dygraph=check_dygraph,
                 check_prim=check_prim,
                 inplace_atol=inplace_atol,
+                check_cinn=check_cinn,
             )
             if check_dygraph:
                 outs, dygraph_dygraph_outs, fetch_list = res
@@ -2243,6 +2355,7 @@ class OpTest(unittest.TestCase):
         check_prim=False,
         only_check_prim=False,
         atol=1e-5,
+        check_cinn=False,
     ):
         if hasattr(self, "use_custom_device") and self.use_custom_device:
             check_dygraph = False
@@ -2264,6 +2377,7 @@ class OpTest(unittest.TestCase):
                 check_prim=check_prim,
                 only_check_prim=only_check_prim,
                 atol=atol,
+                check_cinn=check_cinn,
             )
 
     def check_grad_with_place(
@@ -2282,6 +2396,7 @@ class OpTest(unittest.TestCase):
         only_check_prim=False,
         numeric_place=None,
         atol=1e-5,
+        check_cinn=False,
     ):
         if hasattr(self, "use_custom_device") and self.use_custom_device:
             check_dygraph = False
@@ -2413,6 +2528,7 @@ class OpTest(unittest.TestCase):
             output_names,
             no_grad_set,
             user_defined_grad_outputs,
+            check_cinn=check_cinn,
         )
         # comparison of bf16 results will happen as fp32
         # loop over list of grads and convert bf16 to fp32
@@ -2440,7 +2556,6 @@ class OpTest(unittest.TestCase):
             max_relative_error = (
                 0.001 if max_relative_error < 0.001 else max_relative_error
             )
-
         self._assert_is_close(
             numeric_grads,
             analytic_grads,
@@ -2633,6 +2748,26 @@ class OpTest(unittest.TestCase):
     def np_value_to_fluid_value(input):
         return input
 
+    def cast_bf16_output(self, block, cast_inputs):
+        output_names = []
+        for i in range(0, len(cast_inputs)):
+            cast_output = block.create_var(
+                dtype="float32", shape=cast_inputs[i].shape
+            )
+            cast_op = block.append_op(
+                inputs={"X": cast_inputs[i]},
+                outputs={"Out": cast_output},
+                type="cast",
+                attrs={
+                    "in_dtype": core.VarDesc.VarType.BF16,
+                    "out_dtype": core.VarDesc.VarType.FP32,
+                },
+            )
+            cast_op.desc.infer_var_type(block.desc)
+            cast_op.desc.infer_shape(block.desc)
+            output_names.append(cast_output.name)
+        return output_names
+
     def _get_gradient(
         self,
         input_to_check,
@@ -2641,6 +2776,7 @@ class OpTest(unittest.TestCase):
         no_grad_set,
         user_defined_grad_outputs=None,
         parallel=False,
+        check_cinn=False,
     ):
         with paddle.fluid.framework._static_guard():
             prog = Program()
@@ -2655,21 +2791,24 @@ class OpTest(unittest.TestCase):
             if user_defined_grad_outputs is None:
                 if self.dtype == np.uint16:
                     cast_inputs = list(map(block.var, output_names))
-                    cast_outputs = block.create_var(
-                        dtype="float32", shape=cast_inputs[0].shape
-                    )
-                    cast_op = block.append_op(
-                        inputs={"X": cast_inputs},
-                        outputs={"Out": cast_outputs},
-                        type="cast",
-                        attrs={
-                            "in_dtype": core.VarDesc.VarType.BF16,
-                            "out_dtype": core.VarDesc.VarType.FP32,
-                        },
-                    )
-                    cast_op.desc.infer_var_type(block.desc)
-                    cast_op.desc.infer_shape(block.desc)
-                    output_names = [cast_outputs.name]
+                    if self.op_type == "broadcast_tensors":
+                        output_names = self.cast_bf16_output(block, cast_inputs)
+                    else:
+                        cast_outputs = block.create_var(
+                            dtype="float32", shape=cast_inputs[0].shape
+                        )
+                        cast_op = block.append_op(
+                            inputs={"X": cast_inputs},
+                            outputs={"Out": cast_outputs},
+                            type="cast",
+                            attrs={
+                                "in_dtype": core.VarDesc.VarType.BF16,
+                                "out_dtype": core.VarDesc.VarType.FP32,
+                            },
+                        )
+                        cast_op.desc.infer_var_type(block.desc)
+                        cast_op.desc.infer_shape(block.desc)
+                        output_names = [cast_outputs.name]
                 loss = append_loss_ops(block, output_names)
                 param_grad_list = append_backward(
                     loss=loss,
@@ -2707,11 +2846,26 @@ class OpTest(unittest.TestCase):
                 )
                 fetch_list = grad_inputs
 
-            if parallel:
+            enable_cinn_test = check_cinn and self._enable_check_cinn_test(
+                place, feed_dict, outputs
+            )
+            if enable_cinn_test:
+                if hasattr(self, 'cinn_atol'):
+                    self.atol = self.cinn_atol
+                if hasattr(self, 'cinn_rtol'):
+                    self.rtol = self.cinn_rtol
+
+            if parallel or enable_cinn_test:
                 use_cuda = False
                 if isinstance(place, fluid.CUDAPlace):
                     use_cuda = True
-                compiled_prog = fluid.CompiledProgram(prog)
+
+                build_strategy = None
+                if enable_cinn_test:
+                    build_strategy = fluid.BuildStrategy()
+                    build_strategy.build_cinn_pass = check_cinn
+
+                compiled_prog = fluid.CompiledProgram(prog, build_strategy)
                 prog = compiled_prog
             executor = fluid.Executor(place)
             res = list(

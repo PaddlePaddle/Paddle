@@ -261,7 +261,7 @@ struct GlobalGatherProcessGroupFunctor<phi::GPUContext, T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeivceContext>
 class GlobalGatherOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -283,9 +283,12 @@ class GlobalGatherOpCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_CUDA_KERNEL(global_gather,
-                        ops::GlobalGatherOpCUDAKernel<float>,
-                        ops::GlobalGatherOpCUDAKernel<double>,
-                        ops::GlobalGatherOpCUDAKernel<int>,
-                        ops::GlobalGatherOpCUDAKernel<int64_t>,
-                        ops::GlobalGatherOpCUDAKernel<plat::float16>);
+PD_REGISTER_STRUCT_KERNEL(global_gather,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::GlobalGatherOpCUDAKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t,
+                          plat::float16) {}

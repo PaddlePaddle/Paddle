@@ -35,6 +35,7 @@ from .unary import deg2rad
 from .unary import rad2deg
 from .unary import expm1
 from .unary import transpose
+from .unary import sum
 from .unary import reshape
 from .unary import isnan
 
@@ -79,6 +80,7 @@ __all__ = [
     'add',
     'subtract',
     'transpose',
+    'sum',
     'multiply',
     'divide',
     'coalesce',

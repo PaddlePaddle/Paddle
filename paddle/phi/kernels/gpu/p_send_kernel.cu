@@ -14,6 +14,8 @@
 
 #include "paddle/phi/kernels/p_send_kernel.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"

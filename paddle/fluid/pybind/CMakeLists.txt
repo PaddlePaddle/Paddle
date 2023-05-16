@@ -91,9 +91,15 @@ if(WITH_XPU_BKCL)
   set(PYBIND_DEPS ${PYBIND_DEPS} heter_ccl_context)
 endif()
 
-if(WITH_CNCL)
-  set(PYBIND_DEPS ${PYBIND_DEPS} reducer)
-  set(PYBIND_DEPS ${PYBIND_DEPS} cncl_context)
+if(WITH_CUSTOM_DEVICE)
+  set(PYBIND_DEPS ${PYBIND_DEPS} xccl_context)
+  if(NOT
+     (WITH_NCCL
+      OR WITH_RCCL
+      OR WITH_XPU_BKCL))
+    set(PYBIND_DEPS ${PYBIND_DEPS} reducer)
+    set(PYBIND_DEPS ${PYBIND_DEPS} heter_ccl_context)
+  endif()
 endif()
 
 if(NOT WIN32)
@@ -171,11 +177,6 @@ if(WITH_PYTHON)
   set(PYBIND_SRCS ${PYBIND_SRCS} distributed_py.cc)
 endif()
 set(PYBIND_DEPS ${PYBIND_DEPS} processgroup_comm_utils)
-
-if(WITH_ASCEND)
-  set(PYBIND_DEPS ${PYBIND_DEPS} ascend_wrapper)
-  set(PYBIND_SRCS ${PYBIND_SRCS} ascend_wrapper_py.cc)
-endif()
 
 if(WITH_GLOO)
   set(PYBIND_DEPS ${PYBIND_DEPS} gloo_context)
@@ -264,12 +265,13 @@ if(WITH_PYTHON)
     list(APPEND OP_FUNCTION_GENERETOR_DEPS bkcl_context)
   endif()
 
-  if(WITH_CNCL)
-    list(APPEND OP_FUNCTION_GENERETOR_DEPS cncl_context)
-  endif()
-
   if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     list(APPEND OP_FUNCTION_GENERETOR_DEPS ${PYTHON_LIBRARIES})
+  endif()
+
+  if(WITH_CUSTOM_DEVICE)
+    set(OP_FUNCTION_GENERETOR_DEPS ${OP_FUNCTION_GENERETOR_DEPS}
+                                   custom_device_common_op_registry)
   endif()
 
   add_executable(eager_legacy_op_function_generator

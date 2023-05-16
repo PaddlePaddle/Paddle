@@ -43,8 +43,8 @@
 #include "xpu/bkcl.h"
 #endif
 
-#if defined(PADDLE_WITH_CNCL)
-#include <cncl.h>
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+#include "paddle/phi/backends/c_comm_lib.h"
 #endif
 
 namespace phi {
@@ -200,8 +200,8 @@ using VarTypeRegistry = detail::VarTypeRegistryImpl<
     BKCLUniqueId,
     platform::BKCLCommunicator,
 #endif
-#if defined(PADDLE_WITH_CNCL)
-    cnclCliqueId,
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+    phi::ccl::CCLRootId,
 #endif
     std::vector<std::unique_ptr<operators::CUDAGraphWithInOuts>>,
     int,

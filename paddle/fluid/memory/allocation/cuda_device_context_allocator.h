@@ -19,6 +19,8 @@
 #include <utility>
 #include <vector>
 
+#include "glog/logging.h"
+
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/device_context.h"

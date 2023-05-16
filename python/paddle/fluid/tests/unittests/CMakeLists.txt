@@ -15,9 +15,7 @@ list(REMOVE_ITEM DIST_TEST_OPS "test_dist_op")
 
 string(REPLACE ".py" "" DIST_TEST_OPS "${DIST_TEST_OPS}")
 
-if((NOT WITH_GPU)
-   AND (NOT WITH_XPU)
-   AND NOT (WITH_ASCEND))
+if((NOT WITH_GPU) AND (NOT WITH_XPU))
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_batch_merge")
 endif()
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_dataparallel)
@@ -40,8 +38,6 @@ list(APPEND MIXED_DIST_TEST_OPS test_fleetrun)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_run_random_port)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_async)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_cloud)
-list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_ascend)
-list(APPEND MIXED_DIST_TEST_OPS test_ascend_group)
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_launch_nproc)
 
 list(APPEND MIXED_DIST_TEST_OPS test_fleet_base)
@@ -402,7 +398,6 @@ endfunction()
 list(REMOVE_ITEM TEST_OPS test_feed_data_check_shape_type)
 list(REMOVE_ITEM TEST_OPS test_fetch_lod_tensor_array)
 list(REMOVE_ITEM TEST_OPS test_warpctc_op)
-list(REMOVE_ITEM TEST_OPS test_parallel_executor_profiler)
 list(REMOVE_ITEM TEST_OPS test_data_norm_op)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_transformer)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_transformer_auto_growth)
@@ -493,9 +488,7 @@ foreach(TEST_OP ${TEST_EAGER_OPS})
   py_test_modules(${TEST_OP} MODULES ${TEST_OP})
 endforeach()
 
-if((NOT WITH_GPU)
-   AND (NOT WITH_XPU)
-   AND NOT (WITH_ASCEND))
+if((NOT WITH_GPU) AND (NOT WITH_XPU))
   list(REMOVE_ITEM TEST_OPS "test_dist_mnist_batch_merge")
 endif()
 
@@ -507,7 +500,6 @@ py_test_modules(test_adam_op_multi_thread MODULES test_adam_op ENVS
                 FLAGS_inner_op_parallelism=4)
 if(WITH_GPU
    OR WITH_XPU
-   OR WITH_ASCEND
    OR APPLE)
   py_test_modules(test_warpctc_op MODULES test_warpctc_op)
   set_tests_properties(test_warpctc_op PROPERTIES TIMEOUT 120)
@@ -558,8 +550,6 @@ if((WITH_GPU) AND (CUDA_VERSION GREATER_EQUAL 11.6))
 endif()
 
 set_tests_properties(test_conv2d_op PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
-set_tests_properties(test_faster_tokenizer_op PROPERTIES LABELS
-                                                         "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_conv2d_op_depthwise_conv
                      PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_conv2d_api PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
@@ -568,9 +558,6 @@ set_tests_properties(test_norm_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 set_tests_properties(test_nn_grad PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
 
 if(WITH_DISTRIBUTE)
-  add_subdirectory(distributed_passes)
-  add_subdirectory(ps)
-  add_subdirectory(auto_parallel)
   add_subdirectory(collective)
 
   # FIXME(typhoonzero): add these tests back
@@ -643,9 +630,7 @@ if(WITH_DISTRIBUTE)
 
     bash_test_modules(test_fleetrun START_BASH test_fleetrun.sh ENVS
                       PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
-    if(WITH_GPU
-       OR WITH_XPU
-       OR WITH_ASCEND)
+    if(WITH_GPU OR WITH_XPU)
       bash_test_modules(
         test_fleet_launch_nproc START_BASH test_fleet_launch_nproc.sh ENVS
         PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
@@ -658,13 +643,6 @@ if(WITH_DISTRIBUTE)
       bash_test_modules(
         test_fleet_launch_cloud START_BASH test_fleet_launch_cloud.sh ENVS
         PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
-    endif()
-    if(WITH_ASCEND)
-      bash_test_modules(
-        test_fleet_launch_ascend START_BASH test_fleet_launch_ascend.sh ENVS
-        PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
-      bash_test_modules(test_ascend_group START_BASH test_ascend_group.sh ENVS
-                        PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR})
     endif()
 
     # port range (20000, 21200) is reserved for dist-ops
@@ -708,17 +686,6 @@ if(WITH_DISTRIBUTE)
   endif()
 endif()
 
-# profiler will random hang in linux cuda 10.1 or 10.2
-# see https://github.com/PaddlePaddle/Paddle/issues/29082 for details.
-# We guess there are some bugs in linux cuda 10.1 or 10.2,
-# since this unittest is stable in cuda 11.2 and 10.2 (windows-ci pipeline) now.
-if(NOT (LINUX AND CUDA_VERSION LESS 11.0))
-  py_test_modules(test_parallel_executor_profiler MODULES
-                  test_parallel_executor_profiler)
-  set_tests_properties(test_parallel_executor_profiler
-                       PROPERTIES LABELS "RUN_TYPE=DIST")
-  set_tests_properties(test_parallel_executor_profiler PROPERTIES TIMEOUT 120)
-endif()
 py_test_modules(test_parallel_executor_transformer MODULES
                 test_parallel_executor_transformer)
 if(WIN32)
@@ -796,18 +763,6 @@ if(NOT WIN32)
                   test_ir_memory_optimize_transformer)
 endif()
 
-add_subdirectory(sequence)
-add_subdirectory(rnn)
-add_subdirectory(distribution)
-
-if(NOT WIN32 OR NOT WITH_GPU)
-  add_subdirectory(fft)
-endif()
-
-if(WITH_XPU)
-  add_subdirectory(xpu)
-endif()
-
 # dist xpu tests:
 if(WITH_XPU_BKCL)
   py_test(test_collective_allreduce_api_xpu
@@ -825,8 +780,6 @@ if(WIN32)
     SRCS cc_imp_py_test.cc
     DEPS python)
 endif()
-
-add_subdirectory(ir)
 
 set_tests_properties(
   test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
@@ -963,6 +916,7 @@ set_tests_properties(test_imperative_selected_rows_to_lod_tensor
                      PROPERTIES TIMEOUT 200)
 set_tests_properties(test_index_select_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_index_add_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_index_put_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_tensordot PROPERTIES TIMEOUT 200)
 set_tests_properties(test_partial_eager_deletion_transformer PROPERTIES TIMEOUT
                                                                         120)
@@ -1151,17 +1105,22 @@ set(TEST_CINN_OPS
     test_mean_op
     test_unsqueeze2_op
     test_meshgrid_op
+    test_scale_op
+    test_clip_op
     test_scatter_op
     test_gather_op
     test_layer_norm_op
     test_cast_op
     test_dropout_op
     test_group_norm_op
-    test_roll_op)
+    test_tile_op
+    test_roll_op
+    test_sum_op)
 
 foreach(TEST_CINN_OPS ${TEST_CINN_OPS})
   if(WITH_CINN)
     set_tests_properties(${TEST_CINN_OPS} PROPERTIES LABELS "RUN_TYPE=CINN")
+    set_tests_properties(${TEST_CINN_OPS} PROPERTIES TIMEOUT 150)
   endif()
 endforeach()
 
@@ -1198,8 +1157,14 @@ set(STATIC_BUILD_TESTS
     test_arg_min_max_op
     test_bincount_op
     test_decoupled_py_reader
+    test_eig_op
+    test_eigh_op
     test_fake_quantize_op
     test_fetch_lod_tensor_array
+    test_fused_attention_op
+    test_fused_attention_op_api
+    test_fused_feedforward_op
+    test_fused_feedforward_pass
     test_imperative_optimizer
     test_lamb_op
     test_layer_norm_op
@@ -1219,9 +1184,19 @@ set(STATIC_BUILD_TESTS
     test_sparse_conv_op
     test_sparse_norm_op
     test_sparse_pooling_op
+    test_sync_batch_norm_op
     test_tensor_array_to_tensor
+    test_unique
+    test_update_loss_scaling_op
     test_while_op
     test_one_hot_v2_op)
+
+if(NOT WITH_GPU)
+  list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_attention_op)
+  list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_attention_op_api)
+  list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_feedforward_op)
+  list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_feedforward_op_pass)
+endif()
 
 foreach(STATIC_BUILD_TEST ${STATIC_BUILD_TESTS})
   py_test_modules(
@@ -1239,3 +1214,7 @@ set_tests_properties(test_layer_norm_op_static_build PROPERTIES TIMEOUT 1500)
 set_tests_properties(test_paddle_save_load_binary_static_build
                      PROPERTIES TIMEOUT 120)
 set_tests_properties(test_reduce_op_static_build PROPERTIES TIMEOUT 500)
+set_tests_properties(test_sync_batch_norm_op_static_build
+                     PROPERTIES LABELS "RUN_TYPE=DIST")
+set_tests_properties(test_sync_batch_norm_op_static_build PROPERTIES TIMEOUT
+                                                                     120)

@@ -17,7 +17,7 @@ import logging
 import paddle
 from paddle import _legacy_C_ops, in_dynamic_mode
 from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.fluid.framework import _varbase_creator
+from paddle.fluid.framework import _create_tensor
 from paddle.fluid.log_helper import get_logger
 from paddle.framework import ParamAttr, core
 from paddle.nn import Layer
@@ -87,7 +87,7 @@ class FakeQuantAbsMax(Layer):
     def forward(self, input):
         if in_dynamic_mode():
             attrs = ('bit_length', self._quant_bits)
-            quant_out = _varbase_creator(
+            quant_out = _create_tensor(
                 type=input.type,
                 name=f"{input.name}.quantized.dequantized",
                 shape=input.shape,
@@ -101,7 +101,7 @@ class FakeQuantAbsMax(Layer):
                 )
 
             if not out_scale:
-                out_scale = _varbase_creator(
+                out_scale = _create_tensor(
                     type=core.VarDesc.VarType.LOD_TENSOR,
                     name=self._scale_name,
                     shape=[1],
@@ -210,7 +210,7 @@ class FakeQuantMovingAverageAbsMax(Layer):
                 'is_test',
                 not self.training,
             )
-            quant_out = _varbase_creator(
+            quant_out = _create_tensor(
                 type=input.type,
                 name=f"{input.name}.quantized.dequantized",
                 shape=input.shape,
@@ -322,7 +322,7 @@ class FakeQuantChannelWiseAbsMax(Layer):
                 'quant_axis',
                 self._quant_axis,
             )
-            quant_out = _varbase_creator(
+            quant_out = _create_tensor(
                 type=input.type,
                 name=f"{input.name}.quantized.dequantized",
                 shape=input.shape,
@@ -336,7 +336,7 @@ class FakeQuantChannelWiseAbsMax(Layer):
                     out_scale, op=paddle.distributed.ReduceOp.MAX
                 )
             if out_scale is None:
-                out_scale = _varbase_creator(
+                out_scale = _create_tensor(
                     type=core.VarDesc.VarType.LOD_TENSOR,
                     name=self._scale_name,
                     shape=[self._channel_num],
@@ -441,7 +441,7 @@ class MovingAverageAbsMaxScale(Layer):
                 not self.training,
             )
 
-            quant_out = _varbase_creator(
+            quant_out = _create_tensor(
                 type=input.type,
                 name=f"{input.name}.tmp",
                 shape=input.shape,

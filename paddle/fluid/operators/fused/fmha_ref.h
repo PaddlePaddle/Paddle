@@ -255,12 +255,11 @@ class FMHARef {
         ins.emplace_back(src_mask_tensor);
         outs.emplace_back(src_mask_out_tensor);
         int elewise_add_axis = -1;
-        phi::funcs::BroadcastKernel<phi::ElementwiseType::kBinary, T, T>(
-            dev_ctx_,
-            ins,
-            &outs,
-            elewise_add_axis,
-            phi::funcs::AddFunctor<T>());
+        phi::funcs::BroadcastKernel<T>(dev_ctx_,
+                                       ins,
+                                       &outs,
+                                       phi::funcs::AddFunctor<T>(),
+                                       elewise_add_axis);
 
         phi::SoftmaxForwardCUDAKernelDriver<T>(
             dev_ctx_, *src_mask_out_tensor, softmax_axis, softmax_out_tensor);
@@ -432,12 +431,11 @@ class FMHARef {
         ins.emplace_back(src_mask_tensor);
         outs.emplace_back(src_mask_out_tensor);
         int elewise_add_axis = -1;
-        phi::funcs::BroadcastKernel<phi::ElementwiseType::kBinary, T, T>(
-            dev_ctx_,
-            ins,
-            &outs,
-            elewise_add_axis,
-            phi::funcs::AddFunctor<T>());
+        phi::funcs::BroadcastKernel<T>(dev_ctx_,
+                                       ins,
+                                       &outs,
+                                       phi::funcs::AddFunctor<T>(),
+                                       elewise_add_axis);
 
         phi::SoftmaxForwardCUDAKernelDriver<T>(
             dev_ctx_, *src_mask_out_tensor, softmax_axis, softmax_out_tensor);

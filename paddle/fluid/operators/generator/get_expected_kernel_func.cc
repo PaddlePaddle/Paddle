@@ -75,13 +75,11 @@ phi::KernelKey GetReduceExpectedKernelType(
   if (input_data_type == framework::proto::VarType::FP16) {
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(ctx.GetPlace()) ||
-            platform::is_npu_place(ctx.GetPlace()) ||
-            platform::is_mlu_place(ctx.GetPlace()) ||
             platform::is_xpu_place(ctx.GetPlace()) ||
             platform::is_custom_place(ctx.GetPlace()),
         true,
         platform::errors::InvalidArgument(
-            "float16 can only be used on GPU or NPU or MLU or XPU place"));
+            "float16 can only be used on GPU or NPU or XPU place"));
   }
   return phi::KernelKey(input_data_type, ctx.GetPlace());
 }
@@ -156,6 +154,31 @@ phi::KernelKey GetMatrixNmsExpectedKernelType(
     const framework::OperatorWithKernel* op_ptr) {
   return phi::KernelKey(op_ptr->IndicateVarDataType(ctx, "Scores"),
                         platform::CPUPlace());
+}
+
+phi::KernelKey GetYoloLossExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  return phi::KernelKey(op_ptr->IndicateVarDataType(ctx, "X"),
+                        platform::CPUPlace());
+}
+
+phi::KernelKey GetUniqueExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  (void)ctx;
+  // Return CPUPlace when Attr("is_sorted") is false. Because it means
+  // that fluid.layers.unique is called, but there is no cuda kernel.
+  if (!ctx.Attr<bool>("is_sorted")) {
+    return phi::KernelKey(
+        op_ptr->OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        platform::CPUPlace());
+  } else {
+    // new version paddle.unique is called.
+    return phi::KernelKey(
+        op_ptr->OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+        ctx.GetPlace());
+  }
 }
 
 }  // namespace operators

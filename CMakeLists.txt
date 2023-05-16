@@ -24,6 +24,9 @@ endif()
 # https://cmake.org/cmake/help/v3.0/policy/CMP0026.html?highlight=cmp0026
 cmake_policy(SET CMP0026 OLD)
 cmake_policy(SET CMP0079 NEW)
+if(${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.18)
+  cmake_policy(SET CMP0104 OLD)
+endif()
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 set(PADDLE_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(PADDLE_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
@@ -54,7 +57,6 @@ option(WITH_XPU "Compile PaddlePaddle with BAIDU KUNLUN XPU" OFF)
 option(WITH_XPU_KP "Compile PaddlePaddle with BAIDU XPU compiler " OFF)
 option(WITH_XPU_XFT "Compile PaddlePaddle with BAIDU XPU-XFT" OFF)
 option(WITH_WIN_DUMP_DBG "Compile with windows core dump debug mode" OFF)
-option(WITH_ASCEND "Compile PaddlePaddle with ASCEND" OFF)
 option(WITH_ROCM "Compile PaddlePaddle with ROCM platform" OFF)
 option(WITH_IPU "Compile PaddlePaddle with Graphcore IPU" OFF)
 option(WITH_ONNXRUNTIME "Compile PaddlePaddle with ONNXRUNTIME" OFF)
@@ -74,9 +76,6 @@ endif()
 if(WITH_GPU AND WITH_XPU_XFT)
   message(FATAL_ERROR "Error when compile GPU and XPU-XFT at the same time")
 endif()
-if(WITH_GPU AND WITH_ASCEND)
-  message(FATAL_ERROR "Error when compile GPU and ASCEND at the same time")
-endif()
 if(WITH_GPU AND WITH_ROCM)
   message(FATAL_ERROR "Error when compile CUDA and ROCM at the same time")
 endif()
@@ -92,6 +91,11 @@ message(STATUS "CXX compiler: ${CMAKE_CXX_COMPILER}, version: "
 message(STATUS "C compiler: ${CMAKE_C_COMPILER}, version: "
                "${CMAKE_C_COMPILER_ID} ${CMAKE_C_COMPILER_VERSION}")
 message(STATUS "AR tools: ${CMAKE_AR}")
+
+if((CMAKE_CXX_COMPILER_ID STREQUAL "GNU") AND CMAKE_CXX_COMPILER_VERSION
+                                              VERSION_GREATER 10.4)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=uninitialized")
+endif()
 
 # MUSL build turn off warnings
 if(WITH_MUSL)
@@ -247,6 +251,7 @@ option(WITH_DISTRIBUTE "Compile with distributed support" OFF)
 option(WITH_BRPC_RDMA "Use brpc rdma as the rpc protocal" OFF)
 option(ON_INFER "Turn on inference optimization and inference-lib generation"
        ON)
+option(WITH_CPP_DIST "Install PaddlePaddle C++ distribution" OFF)
 ################################ Internal Configurations #######################################
 option(WITH_NV_JETSON "Compile PaddlePaddle with NV JETSON" OFF)
 option(WITH_PROFILER "Compile PaddlePaddle with GPU profiler and gperftools"
@@ -261,7 +266,7 @@ option(WITH_BOX_PS "Compile with box_ps support" OFF)
 option(WITH_XBYAK "Compile with xbyak support" ON)
 option(WITH_CONTRIB "Compile the third-party contributation" OFF)
 option(WITH_PSCORE "Compile with parameter server support" ${WITH_DISTRIBUTE})
-option(WITH_HETERPS "Compile with heterps" OFF})
+option(WITH_HETERPS "Compile with heterps" OFF)
 option(WITH_INFERENCE_API_TEST
        "Test fluid inference C++ high-level api interface" OFF)
 option(WITH_INFERENCE_NVTX "Paddle inference with nvtx for profiler" OFF)
@@ -273,11 +278,9 @@ option(
   OFF)
 option(WITH_LITE "Compile Paddle Fluid with Lite Engine" OFF)
 option(WITH_CINN "Compile PaddlePaddle with CINN" OFF)
-option(WITH_INFRT "Compile PaddlePaddle with INFRT" OFF)
 option(WITH_NCCL "Compile PaddlePaddle with NCCL support" ON)
 option(WITH_RCCL "Compile PaddlePaddle with RCCL support" ON)
 option(WITH_XPU_BKCL "Compile PaddlePaddle with BAIDU KUNLUN XPU BKCL" OFF)
-option(WITH_CNCL "Compile PaddlePaddle with CNCL support" OFF)
 option(WITH_CRYPTO "Compile PaddlePaddle with crypto support" ON)
 option(WITH_ARM "Compile PaddlePaddle with arm support" OFF)
 option(WITH_SW "Compile PaddlePaddle with sw support" OFF)
@@ -293,7 +296,6 @@ option(NEW_RELEASE_ALL
        OFF)
 option(NEW_RELEASE_JIT
        "PaddlePaddle next-level release strategy for backup jit package" OFF)
-option(WITH_ASCEND_INT64 "Compile with int64 kernel for ascend NPU" OFF)
 option(WITH_POCKETFFT "Compile with pocketfft support" ON)
 option(WITH_RECORD_BUILDTIME
        "Compile PaddlePaddle with record all targets build time" OFF)
@@ -663,6 +665,21 @@ if(WITH_STRIP)
         OFF
         CACHE STRING "Command strip is only used on Linux when it exists."
               FORCE)
+  endif()
+endif()
+
+if(WITH_CPP_DIST)
+  # TODO(huangjiyi): Separate installing C++ distribution from python package
+  # installation and support for installing C++ distribution on more platforms.
+  if(NOT LINUX OR NOT WITH_PYTHON)
+    set(WITH_CPP_DIST
+        OFF
+        CACHE
+          STRING
+          "Currently C++ Distribution Generation is only available on Linux and compiling WITH_PYTHON=ON."
+          FORCE)
+  else()
+    include(paddle_lib)
   endif()
 endif()
 

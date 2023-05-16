@@ -180,6 +180,9 @@ def check_send_recv_result(dist_main_prog, rank_id):
     return send_result and recv_result
 
 
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestMLPReshard(unittest.TestCase):
     def test_mlp_serial(self):
         global _global_parallel_strategy

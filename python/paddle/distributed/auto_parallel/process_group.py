@@ -52,9 +52,9 @@ def new_process_group(ranks, group_id=None, force_new_group=False):
     global _g_process_group_map
     if not force_new_group:
         # A key constructed from ranks is used for avoiding duplication
-        new_key = ''.join(map(str, sorted(ranks)))
+        new_key = ''.join(map(str, ranks))
         for pg_id, pg in _g_process_group_map.items():
-            cur_key = ''.join(map(str, sorted(pg.ranks)))
+            cur_key = ''.join(map(str, pg.ranks))
             if pg_id != 0 and new_key == cur_key:
                 return pg
     # If not matching the existing one, construct a new process group
@@ -82,7 +82,7 @@ class ProcessGroup:
                 group_id != 0
             ), "Process group id 0 is reserved for all ranks."
         self._group_id = group_id
-        self._ranks = sorted(ranks)
+        self._ranks = ranks
         # Add the current ranks into group 0
         if group_id != 0:
             global _g_process_group_map
@@ -109,7 +109,7 @@ class ProcessGroup:
                 not self.is_instantiate()
             ), "Cannot add new ranks after instantiating the process group"
         self._ranks.extend(new_ranks)
-        self._ranks = sorted(set(self.ranks))
+        self._ranks = list(set(self.ranks))
 
     def local_rank(self, global_rank):
         if global_rank in self.ranks:
@@ -148,6 +148,11 @@ class ProcessGroup:
                 core.BKCLParallelContext(strategy, place).init_with_ring_id(
                     ring_id
                 )
+            elif genv.device_type in core.get_all_custom_device_type():
+                place = core.CustomPlace(genv.device_type, genv.device_id)
+                core.XCCLParallelContext(strategy, place).init_with_ring_id(
+                    ring_id
+                )
             else:
                 raise AssertionError('No CUDA device found')
 
@@ -161,6 +166,14 @@ class ProcessGroup:
             elif core.is_compiled_with_xpu():
                 paddle.set_device(
                     'xpu:%d' % paddle.distributed.ParallelEnv().dev_id
+                )
+            elif genv.device_type in core.get_all_custom_device_type():
+                paddle.set_device(
+                    '%s:%d'
+                    % (
+                        paddle.distributed.ParallelEnv().device_type,
+                        paddle.distributed.ParallelEnv().dev_id,
+                    ),
                 )
             tmp = (
                 paddle.to_tensor([1], dtype="int32")

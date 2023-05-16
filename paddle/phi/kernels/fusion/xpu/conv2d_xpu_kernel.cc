@@ -21,12 +21,13 @@ namespace fusion {
 
 template <typename T, typename Context>
 void Conv2dXPUKernel(const Context& ctx,
-                     const DenseTensor& input,
-                     const paddle::optional<DenseTensor>& input_max,
+                     const DenseTensor& x,
+                     const paddle::optional<DenseTensor>& x_max,
                      const DenseTensor& filter,
                      const DenseTensor& filter_max,
                      const paddle::optional<DenseTensor>& bias,
                      const paddle::optional<DenseTensor>& branch,
+                     const paddle::optional<DenseTensor>& branch_max,
                      const std::vector<int>& paddings,
                      const std::vector<int>& dilations,
                      const std::vector<int>& strides,
@@ -36,10 +37,10 @@ void Conv2dXPUKernel(const Context& ctx,
                      bool has_branch,
                      int act_type,
                      float act_param,
-                     DenseTensor* output,
-                     DenseTensor* output_max) {
+                     DenseTensor* out,
+                     DenseTensor* out_max) {
   using XPUType = typename XPUTypeTrait<T>::Type;
-  auto input_dims = input.dims();
+  auto input_dims = x.dims();
   auto filter_dims = filter.dims();
   // update paddings and dilations accoring to padding_algorithm
   std::vector<int> paddings_vec = paddings;
@@ -62,18 +63,19 @@ void Conv2dXPUKernel(const Context& ctx,
   int win_h = static_cast<int>(filter_dims[2]);
   int win_w = static_cast<int>(filter_dims[3]);
 
-  auto* input_data = reinterpret_cast<const XPUType*>(input.data<T>());
-  const float* input_max_data = input_max.get_ptr() == nullptr
-                                    ? nullptr
-                                    : input_max.get_ptr()->data<float>();
+  auto* input_data = reinterpret_cast<const XPUType*>(x.data<T>());
+  const float* input_max_data =
+      x_max.get_ptr() == nullptr ? nullptr : x_max.get_ptr()->data<float>();
   auto* branch_data =
       branch.get_ptr() == nullptr
           ? nullptr
           : reinterpret_cast<const XPUType*>(branch.get_ptr()->data<T>());
+  const float* branch_max_data = branch_max.get_ptr() == nullptr
+                                     ? nullptr
+                                     : branch_max.get_ptr()->data<float>();
   const float* bias_data =
       bias.get_ptr() == nullptr ? nullptr : bias.get_ptr()->data<float>();
-  auto* out_data = reinterpret_cast<XPUType*>(ctx.template Alloc<T>(output));
-
+  auto* out_data = reinterpret_cast<XPUType*>(ctx.template Alloc<T>(out));
   xpu::Activation_t act(static_cast<xpu::Activation_t::act_enum>(act_type));
   if (act_type == xpu::Activation_t::LEAKY_RELU) {
     act.leaky_alpha = act_param;
@@ -98,13 +100,13 @@ void Conv2dXPUKernel(const Context& ctx,
           /* int64_t groups */ groups,
           /* const float* in_maxptr */ input_max_data,
           /* const float* filter_maxptr */ filter_max.data<float>(),
-          /* float* out_maxptr */ ctx.template Alloc<float>(output_max),
+          /* float* out_maxptr */ ctx.template Alloc<float>(out_max),
           /* bool is_nchw */ true,
           /* const float* bias */ bias_data,
           /* const TY* branch */ branch_data,
           /* const baidu::xpu::api::Activation_t& act */ act,
-          /* const float* branch_maxptr */ nullptr);
-  // /* const float* scale */ nullptr);
+          /* const float* branch_maxptr */ branch_max_data,
+          /* const float* scale */ nullptr);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_xpu");
 }
 

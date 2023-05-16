@@ -26,6 +26,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
@@ -49,6 +50,10 @@ namespace detail {
 template <>
 struct radix_key_codec_base<phi::dtype::float16>
     : radix_key_codec_integral<phi::dtype::float16, uint16_t> {};
+
+template <>
+struct radix_key_codec_base<phi::dtype::bfloat16>
+    : radix_key_codec_integral<phi::dtype::bfloat16, uint16_t> {};
 }  // namespace detail
 }  // namespace rocprim
 namespace cub = hipcub;
@@ -58,6 +63,12 @@ namespace cub {
 template <>
 struct NumericTraits<phi::dtype::float16>
     : BaseTraits<FLOATING_POINT, true, false, uint16_t, phi::dtype::float16> {};
+
+template <>
+struct NumericTraits<phi::dtype::bfloat16>
+    : BaseTraits<FLOATING_POINT, true, false, uint16_t, phi::dtype::bfloat16> {
+};
+
 }  // namespace cub
 #endif
 
@@ -583,6 +594,24 @@ struct RadixTypeConfig<phi::dtype::float16> {
     assert(false);
     return static_cast<phi::dtype::float16>(0);
 #endif
+  }
+};
+
+template <>
+struct RadixTypeConfig<phi::dtype::bfloat16> {
+  typedef uint32_t RadixType;
+
+  static inline __device__ RadixType Convert(phi::dtype::bfloat16 v) {
+    RadixType x = v.x;
+    RadixType mask = (x & 0x00008000) ? 0x0000ffff : 0x00008000;
+    return (v == v) ? (x ^ mask) : 0xffff;
+  }
+
+  static inline __device__ phi::dtype::bfloat16 Deconvert(RadixType v) {
+    RadixType mask = (v & 0x00008000) ? 0x00008000 : 0x0000ffff;
+    phi::dtype::bfloat16 r;
+    r.x = (v ^ mask);
+    return r;
   }
 };
 

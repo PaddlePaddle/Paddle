@@ -18,6 +18,7 @@ import numpy as np
 
 import paddle
 from paddle import fluid
+from paddle.incubate.layers.nn import search_pyramid_hash
 
 
 class TestPyramidHashOpApi(unittest.TestCase):
@@ -28,7 +29,7 @@ class TestPyramidHashOpApi(unittest.TestCase):
         x = paddle.static.data(
             name='x', shape=x_shape, dtype='int32', lod_level=1
         )
-        hash_embd = fluid.contrib.search_pyramid_hash(
+        hash_embd = search_pyramid_hash(
             input=x,
             num_emb=embed_dim,
             space_len=num_voc * embed_dim,

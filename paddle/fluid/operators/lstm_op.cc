@@ -358,9 +358,8 @@ REGISTER_OPERATOR(lstm,
                   ops::LSTMGradOpMaker<paddle::framework::OpDesc>,
                   ops::LSTMGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(lstm_grad, ops::LSTMGradOp);
-REGISTER_OP_CPU_KERNEL(lstm,
-                       ops::LSTMKernel<phi::CPUContext, float>,
-                       ops::LSTMKernel<phi::CPUContext, double>);
-REGISTER_OP_CPU_KERNEL(lstm_grad,
-                       ops::LSTMGradKernel<phi::CPUContext, float>,
-                       ops::LSTMGradKernel<phi::CPUContext, double>);
+
+PD_REGISTER_STRUCT_KERNEL(
+    lstm, CPU, ALL_LAYOUT, ops::LSTMKernel, float, double) {}
+PD_REGISTER_STRUCT_KERNEL(
+    lstm_grad, CPU, ALL_LAYOUT, ops::LSTMGradKernel, float, double) {}

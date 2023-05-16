@@ -44,6 +44,8 @@ if((WITH_ROCM OR WITH_GPU) AND (LINUX))
     test_collective_split_embedding
     START_BASH
     ../dist_test.sh
+    TIMEOUT
+    "300"
     LABELS
     "RUN_TYPE=DIST"
     ENVS
@@ -85,6 +87,8 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     test_collective_alltoall_single
     START_BASH
     ../dist_test.sh
+    TIMEOUT
+    "350"
     LABELS
     "RUN_TYPE=DIST"
     ENVS
@@ -112,6 +116,8 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     test_collective_batch_isend_irecv
     START_BASH
     ../dist_test.sh
+    TIMEOUT
+    "350"
     LABELS
     "RUN_TYPE=DIST"
     ENVS
@@ -176,6 +182,8 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     test_collective_process_group
     START_BASH
     ../dist_test.sh
+    TIMEOUT
+    "350"
     LABELS
     "RUN_TYPE=DIST"
     ENVS
@@ -202,6 +210,8 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
     test_collective_reduce_scatter
     START_BASH
     ../dist_test.sh
+    TIMEOUT
+    "350"
     LABELS
     "RUN_TYPE=DIST"
     ENVS
@@ -368,10 +378,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   set_tests_properties(test_eager_dist_api PROPERTIES TIMEOUT "120" LABELS
                                                       "RUN_TYPE=DIST")
 endif()
-if((WITH_GPU
-    OR WITH_ROCM
-    OR WITH_ASCEND)
-   AND LOCAL_ALL_PLAT)
+if((WITH_GPU OR WITH_ROCM) AND LOCAL_ALL_PLAT)
   bash_test_modules(
     test_gen_nccl_id_op
     START_BASH
@@ -394,6 +401,8 @@ if((WITH_ROCM OR WITH_GPU) AND (LINUX))
     test_world_size_and_rank
     START_BASH
     test_world_size_and_rank.sh
+    TIMEOUT
+    "120"
     LABELS
     "RUN_TYPE=DIST"
     ENVS
@@ -417,6 +426,8 @@ if((WITH_ROCM OR WITH_GPU) AND (LINUX))
     test_strategy_group
     START_BASH
     test_strategy_group.sh
+    TIMEOUT
+    "120"
     LABELS
     "RUN_TYPE=DIST"
     ENVS
@@ -428,6 +439,8 @@ if((WITH_ROCM OR WITH_GPU) AND (LINUX))
     test_orthogonal_strategy
     START_BASH
     test_orthogonal_strategy.sh
+    TIMEOUT
+    "120"
     LABELS
     "RUN_TYPE=DIST"
     ENVS

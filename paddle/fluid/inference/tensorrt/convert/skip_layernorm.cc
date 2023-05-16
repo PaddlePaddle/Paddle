@@ -31,6 +31,7 @@ class SkipLayerNormOpConverter : public OpConverter {
                       platform::errors::InvalidArgument(
                           "Skip_layernorm must run the dynamic shape mode."));
     framework::OpDesc op_desc(op, nullptr);
+    auto output_name = op_desc.Output("Out")[0];
     auto GetWeight =
         [&](const std::string& arg_name) -> TensorRTEngine::Weight {
       std::string var_name = op_desc.Input(arg_name).front();
@@ -42,14 +43,71 @@ class SkipLayerNormOpConverter : public OpConverter {
     // Declare inputs
     auto* input1 = engine_->GetITensor(op_desc.Input("X")[0]);
     auto* input2 = engine_->GetITensor(op_desc.Input("Y")[0]);
+
+    bool enable_int8 =
+        (engine_->precision() == AnalysisConfig::Precision::kInt8);
+    float x_scale = 0;
+    float y_scale = 0;
+
+    if (enable_int8) {
+      if (op_desc.HasAttr("X")) {
+        x_scale = PADDLE_GET_CONST(float, op_desc.GetAttr("X"));
+        engine_->SetTensorDynamicRange(input1, x_scale);
+      }
+      if (op_desc.HasAttr("Y")) {
+        y_scale = PADDLE_GET_CONST(float, op_desc.GetAttr("Y"));
+        engine_->SetTensorDynamicRange(input2, y_scale);
+      }
+    }
+
+    nvinfer1::Dims dims_x = input1->getDimensions();
+    int32_t x_rank = dims_x.nbDims;
+    nvinfer1::Dims dims_y = input2->getDimensions();
+    int32_t y_rank = dims_y.nbDims;
+
+    if ((x_rank == 2 && y_rank == 4) || (y_rank == 2 && x_rank == 4)) {
+      if (x_rank == 2 && y_rank == 4) {
+        auto* reshape_before_skiplayn =
+            TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input1);
+        std::vector<nvinfer1::ITensor*> reshape_before_tensor;
+        reshape_before_tensor.push_back(GetEleTensorOfShape(Shape(input1), 0));
+        reshape_before_tensor.push_back(GetEleTensorOfShape(Shape(input1), 1));
+        reshape_before_tensor.push_back(Add1DConstantLayer(1));
+        reshape_before_tensor.push_back(Add1DConstantLayer(1));
+        reshape_before_skiplayn->setInput(1, *Concat(reshape_before_tensor));
+        reshape_before_skiplayn->setName(
+            ("reshape_before_skiplayn(Output: " + output_name + ")").c_str());
+        input1 = reshape_before_skiplayn->getOutput(0);
+
+        if (enable_int8) {
+          if (op_desc.HasAttr("X")) {
+            engine_->SetTensorDynamicRange(input1, x_scale);
+          }
+        }
+      } else {
+        auto* reshape_before_skiplayn =
+            TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input2);
+        std::vector<nvinfer1::ITensor*> reshape_before_tensor;
+        reshape_before_tensor.push_back(GetEleTensorOfShape(Shape(input2), 0));
+        reshape_before_tensor.push_back(GetEleTensorOfShape(Shape(input2), 1));
+        reshape_before_tensor.push_back(Add1DConstantLayer(1));
+        reshape_before_tensor.push_back(Add1DConstantLayer(1));
+        reshape_before_skiplayn->setInput(1, *Concat(reshape_before_tensor));
+        reshape_before_skiplayn->setName(
+            ("reshape_before_skiplayn(Output: " + output_name + ")").c_str());
+        input2 = reshape_before_skiplayn->getOutput(0);
+
+        if (enable_int8) {
+          if (op_desc.HasAttr("Y")) {
+            engine_->SetTensorDynamicRange(input2, y_scale);
+          }
+        }
+      }
+    }
+
     std::vector<nvinfer1::ITensor*> inputs;
     inputs.push_back(input1);
     inputs.push_back(input2);
-
-    bool enable_int8 = false;
-    if (op_desc.HasAttr("enable_int8")) {
-      enable_int8 = PADDLE_GET_CONST(bool, op_desc.GetAttr("enable_int8"));
-    }
 
     std::vector<float> smooth_scale;
     bool use_smooth = false;
@@ -199,7 +257,6 @@ class SkipLayerNormOpConverter : public OpConverter {
         layer = plugin_layer;
       }
     }
-    auto output_name = op_desc.Output("Out")[0];
     RreplenishLayerAndOutput(layer, "skip_layernorm", {output_name}, test_mode);
   }
 };

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -31,13 +32,14 @@ class TestStandaloneExecutor(unittest.TestCase):
 
         return main_program, startup_program, [c]
 
-    def run_program(self, force_sequential_run=False):
+    def run_program(self, sequential_run=False):
         seed = 100
         paddle.seed(seed)
         np.random.seed(seed)
         main, startup, outs = self.build_program()
         build_strategy = paddle.static.BuildStrategy()
-        build_strategy.force_sequential_run = force_sequential_run
+        build_strategy.sequential_run = sequential_run
+        print(build_strategy)
         compiled_program = paddle.static.CompiledProgram(
             main, build_strategy=build_strategy
         )
@@ -59,6 +61,12 @@ class TestStandaloneExecutor(unittest.TestCase):
         ret1 = self.run_program(True)
         ret2 = self.run_program(False)
         np.testing.assert_array_equal(ret1, ret2)
+
+    def test_str_flag(self):
+        paddle.enable_static()
+        os.environ['FLAGS_new_executor_sequential_run'] = 'true'
+        ret1 = self.run_program(True)
+        assert os.environ['FLAGS_new_executor_sequential_run'] == "true"
 
 
 if __name__ == "__main__":

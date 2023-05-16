@@ -95,11 +95,7 @@ def check(use_cuda):
                     fetch_list=[y_predict.name, avg_cost.name, acc_top1.name],
                 )
                 step += 1
-                print(
-                    'iter={:.0f},cost={},acc1={}'.format(
-                        step, outs[1][0], outs[2][0]
-                    )
-                )
+                print(f'iter={step:.0f},cost={outs[1]},acc1={outs[2]}')
 
 
 if __name__ == '__main__':

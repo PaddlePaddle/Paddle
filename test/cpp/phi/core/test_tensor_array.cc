@@ -86,7 +86,7 @@ TEST(tensor_array, tensor_array_not_init) {
     EXPECT_TRUE(ex_msg.find("valid") != std::string::npos);
   }
 
-  CHECK_EQ(tensor_array.initialized(), false);
+  EXPECT_TRUE(!tensor_array.initialized());
 }
 
 TEST(tensor_array, tensor_array_init) {
@@ -115,7 +115,7 @@ TEST(tensor_array, tensor_array_init) {
   TensorArray tensor_array(tensors);
   tensor_array.AllocateFrom(alloc, DataType::INT8);
 
-  CHECK_EQ(tensor_array.initialized(), true);
+  EXPECT_TRUE(tensor_array.initialized());
 }
 
 }  // namespace tests

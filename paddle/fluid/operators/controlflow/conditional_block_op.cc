@@ -24,7 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
-DECLARE_bool(use_mkldnn);
+PHI_DECLARE_bool(use_mkldnn);
 
 namespace paddle {
 namespace operators {
@@ -95,48 +95,28 @@ class ConditionalBlockOp : public ConditionalOp {
       auto &skip_vars =
           Attr<std::vector<std::string>>(ConditionalOp::kSkipEagerDeletionVars);
 
-      if (FLAGS_control_flow_use_new_executor) {
-        LOG_FIRST_N(INFO, 1)
-            << "[ControlFlow][ConditionalBlock] New Executor is Running.";
-        if (!core_ || !platform::is_same_place(core_->GetPlace(), dev_place)) {
-          VLOG(10) << "[interpreterCore cache]" << core_.get();
-          VLOG_IF(10, core_)
-              << platform::is_same_place(core_->GetPlace(), dev_place);
+      LOG_FIRST_N(INFO, 1)
+          << "[ControlFlow][ConditionalBlock] New Executor is Running.";
+      if (!core_ || !platform::is_same_place(core_->GetPlace(), dev_place)) {
+        VLOG(10) << "[interpreterCore cache]" << core_.get();
+        VLOG_IF(10, core_) << platform::is_same_place(core_->GetPlace(),
+                                                      dev_place);
 
-          framework::interpreter::ExecutionConfig execution_config;
-          execution_config.create_local_scope = false;
-          execution_config.used_for_control_flow_op = true;
-          execution_config.skip_gc_vars =
-              std::set<std::string>(skip_vars.begin(), skip_vars.end());
+        framework::interpreter::ExecutionConfig execution_config;
+        execution_config.create_local_scope = false;
+        execution_config.used_for_control_flow_op = true;
+        execution_config.skip_gc_vars =
+            std::set<std::string>(skip_vars.begin(), skip_vars.end());
 
-          core_.reset(new InterpreterCore(
-              dev_place, *block, &cur_scope, execution_config));
-          VLOG(10) << "[interpreterCore cache]"
-                   << "new created:" << core_;
-        } else {
-          BuildScopeForControlFlowOp(*core_, *block, &cur_scope);
-          core_->reset_scope(&cur_scope);
-        }
-
-        core_->Run({}, false);
-
+        core_.reset(new InterpreterCore(
+            dev_place, *block, &cur_scope, execution_config));
+        VLOG(10) << "[interpreterCore] created:" << core_;
       } else {
-        if (!exec_ || !platform::is_same_place(exec_->GetPlace(), dev_place)) {
-          auto &pdesc = *block->Program();
-          exec_.reset(new Executor(dev_place));
-          if (FLAGS_use_mkldnn) exec_->EnableMKLDNN(pdesc);
-          ctx_ = exec_->Prepare(pdesc, block->ID(), skip_vars, false);
-#ifdef PADDLE_WITH_MKLDNN
-          platform::AttachPointerHashToMKLDNNKey(exec_.get(), dev_place);
-          platform::RegisterModelLayout(ctx_->ops_, dev_place);
-#endif
-        }
-        exec_->RunPreparedContext(ctx_.get(),
-                                  &cur_scope,
-                                  /* create_local_scope */ false,
-                                  /* create_vars */ true,
-                                  /* keep_kids */ true);
+        BuildScopeForControlFlowOp(*core_, *block, &cur_scope);
+        core_->reset_scope(&cur_scope);
       }
+
+      core_->Run({}, false);
     }
   }
 
@@ -208,47 +188,27 @@ class ConditionalBlockGradOp : public ConditionalOp {
       VLOG(3) << "Conditional Grad block.idx = " << block->ID()
               << ", scope = " << &cur_scope;
 
-      if (FLAGS_control_flow_use_new_executor) {
-        LOG_FIRST_N(INFO, 1)
-            << "[ControlFlow][ConditionalGradBlock] New Executor is Running.";
-        if (!core_ || !platform::is_same_place(core_->GetPlace(), dev_place)) {
-          VLOG(10) << "[interpreterCore cache]" << core_.get();
-          VLOG_IF(10, core_)
-              << platform::is_same_place(core_->GetPlace(), dev_place);
+      LOG_FIRST_N(INFO, 1)
+          << "[ControlFlow][ConditionalGradBlock] New Executor is Running.";
+      if (!core_ || !platform::is_same_place(core_->GetPlace(), dev_place)) {
+        VLOG(10) << "[interpreterCore cache]" << core_.get();
+        VLOG_IF(10, core_) << platform::is_same_place(core_->GetPlace(),
+                                                      dev_place);
 
-          framework::interpreter::ExecutionConfig execution_config;
-          execution_config.create_local_scope = false;
-          execution_config.used_for_control_flow_op = true;
-          execution_config.skip_gc_vars =
-              std::set<std::string>(inside_grads.begin(), inside_grads.end());
+        framework::interpreter::ExecutionConfig execution_config;
+        execution_config.create_local_scope = false;
+        execution_config.used_for_control_flow_op = true;
+        execution_config.skip_gc_vars =
+            std::set<std::string>(inside_grads.begin(), inside_grads.end());
 
-          core_.reset(new InterpreterCore(
-              dev_place, *block, &cur_scope, execution_config));
-          VLOG(10) << "[interpreterCore cache]"
-                   << "new created:" << core_;
-        } else {
-          BuildScopeForControlFlowOp(*core_, *block, &cur_scope);
-          core_->reset_scope(&cur_scope);
-        }
-        core_->Run({}, false);
-
+        core_.reset(new InterpreterCore(
+            dev_place, *block, &cur_scope, execution_config));
+        VLOG(10) << "[interpreterCore] created:" << core_;
       } else {
-        if (!exec_ || !platform::is_same_place(exec_->GetPlace(), dev_place)) {
-          auto &pdesc = *block->Program();
-          exec_.reset(new Executor(dev_place));
-          if (FLAGS_use_mkldnn) exec_->EnableMKLDNN(pdesc);
-          ctx_ = exec_->Prepare(pdesc, block->ID(), inside_grads, false);
-#ifdef PADDLE_WITH_MKLDNN
-          platform::AttachPointerHashToMKLDNNKey(exec_.get(), dev_place);
-          platform::RegisterModelLayout(ctx_->ops_, dev_place);
-#endif
-        }
-        exec_->RunPreparedContext(ctx_.get(),
-                                  &cur_scope,
-                                  /* create_local_scope */ false,
-                                  /* create_vars */ true,
-                                  /* keep_kids */ true);
+        BuildScopeForControlFlowOp(*core_, *block, &cur_scope);
+        core_->reset_scope(&cur_scope);
       }
+      core_->Run({}, false);
 
       AssignLocalGradientToParentScope(
           dev_place, cur_scope, scope, inside_grads, outside_grads, inputs);
@@ -398,7 +358,8 @@ struct FilterNoGradInput<framework::OpDesc> {
                      std::vector<std::string> *vec) {
     auto f = [desc](const std::string &name) -> std::string {
       if (name == framework::kEmptyVarName) {
-        // don't drop empty var name, you can use Input(name, true) to drop it.
+        // don't drop empty var name, you can use Input(name, true) to drop
+        // it.
         return framework::kEmptyVarName;
       }
       auto var_desc =

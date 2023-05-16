@@ -79,6 +79,7 @@ def fused_dropout_add(
         out, seed_offset = _C_ops.fused_dropout_add(
             x,
             y,
+            None,
             p,
             not training,
             mode,
@@ -109,7 +110,7 @@ def fused_dropout_add(
 
         helper.append_op(
             type='fused_dropout_add',
-            inputs={'x': x, 'y': y},
+            inputs={'x': x, 'y': y, 'seed_tensor': None},
             outputs={'out': [out], 'seed_offset': [seed_offset]},
             attrs=attrs,
         )

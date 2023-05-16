@@ -15,7 +15,9 @@
 #include "paddle/fluid/inference/analysis/passes/memory_optimize_pass.h"
 
 #include <string>
+#include <unordered_set>
 #include <utility>
+#include <vector>
 
 #include "glog/logging.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"

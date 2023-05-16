@@ -159,8 +159,8 @@ class FusionSeqConvEltAddReluKernel : public framework::OpKernel<T> {
     auto* col = ctx.Output<phi::DenseTensor>("ColMat");
 
     auto x_lod = x->lod();
-    auto x_dims = x->dims();
-    auto w_dims = w->dims();
+    auto x_dims = phi::vectorize<int64_t>(x->dims());
+    auto w_dims = phi::vectorize<int64_t>(w->dims());
     PADDLE_ENFORCE_EQ(
         b->numel(),
         w_dims[1],
