@@ -218,6 +218,9 @@ void CsrToCooGPUKernel(const GPUContext& dev_ctx,
                        SparseCooTensor* out) {
   const DDim& x_dims = x.dims();
   const int64_t non_zero_num = x.cols().numel();
+  if (x.nnz() <= 0) {
+    return;
+  }
 
 // rocsparse_csr2coo only support index with type 'rocsparse_int' (aka 'int')
 // now
@@ -395,7 +398,9 @@ void CooToCsrGPUKernel(const GPUContext& dev_ctx,
                     phi::errors::InvalidArgument(
                         "SparseCsrTensor only support 2-D or 3-D matrix"));
   const int64_t non_zero_num = x.nnz();
-  if (non_zero_num <= 0) return;
+  if (non_zero_num <= 0) {
+    return;
+  }
 
   int batchs = x_dims.size() == 2 ? 1 : x_dims[0];
   int rows = x_dims.size() == 2 ? x_dims[0] : x_dims[1];
@@ -507,6 +512,13 @@ void CooToDenseGPUKernel(const GPUContext& dev_ctx,
   dev_ctx.template Alloc<T>(out);
 
   T* out_data = out->data<T>();
+  phi::backends::gpu::GpuMemsetAsync(
+      out_data, 0, sizeof(T) * out->numel(), dev_ctx.stream());
+
+  if (x.nnz() == 0) {
+    return;
+  }
+
   int64_t base_offset = 1;
   for (int64_t i = 0; i < dense_dim; i++) {
     base_offset *= dense_dims[sparse_dim + i];
@@ -525,8 +537,6 @@ void CooToDenseGPUKernel(const GPUContext& dev_ctx,
                                      sparse_dim * sizeof(int64_t),
                                      gpuMemcpyHostToDevice,
                                      dev_ctx.stream());
-  phi::backends::gpu::GpuMemsetAsync(
-      out_data, 0, sizeof(T) * out->numel(), dev_ctx.stream());
 
   auto config =
       phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, non_zero_num, 1);
