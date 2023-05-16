@@ -7440,8 +7440,8 @@ def device_guard(device=None):
         if device == 'cpu':
             raise ValueError("Should not set device id for cpu.")
     if (
-        device not in ['cpu', 'gpu', 'xpu' '', None]
-        and device not in paddle.device.get_all_custom_device_type()
+        device not in ['cpu', 'gpu', 'xpu', '', None]
+        and device not in core.get_all_custom_device_type()
     ):
         raise ValueError(
             "The Attr(device) should be 'cpu', 'xpu', 'gpu' or custom device, and it can also be empty string or None "
