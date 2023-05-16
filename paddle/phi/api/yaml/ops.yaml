@@ -5,6 +5,16 @@
 # are consistent and correspond one-to-one. It's forbidden that the
 # operator configured in this yaml file does not have Python API.
 
+- op : abs
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : RealAndImagInferMeta
+  kernel :
+    func : abs
+    data_type : x
+  backward : abs_grad
+
 - op : accuracy
   args : (Tensor x, Tensor indices, Tensor label)
   output : Tensor(accuracy), Tensor(correct), Tensor(total)
@@ -997,6 +1007,18 @@
     func : index_select
     data_type : x
   backward : index_select_grad
+
+- op : instance_norm
+  args : (Tensor x, Tensor scale, Tensor bias, float epsilon=1e-5)
+  output : Tensor(y), Tensor(saved_mean), Tensor(saved_variance)
+  infer_meta :
+    func : InstanceNormInferMeta
+  kernel :
+    func : instance_norm
+    data_type : x
+  optional : scale, bias
+  intermediate : saved_mean, saved_variance
+  backward : instance_norm_grad
 
 - op : inverse
   args : (Tensor x)
