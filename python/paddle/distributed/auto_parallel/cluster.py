@@ -883,17 +883,24 @@ def get_default_cluster(json_config=None):
             assert global_device_count % local_device_count == 0
             node_count = int(global_device_count) // local_device_count
 
-        gpu_info = paddle.device.cuda.get_device_properties()
-        assert gpu_info, "Auto parallel just runs on gpu now."
-
-        gpu_name = gpu_info.name
-        try:
-            re_result = re.split(r'[ , -]', gpu_name)
-            gpu_model = re_result[1]
-            memory = int(re_result[-1][:-2])
-        except:
-            memory = int(gpu_info.total_memory) // (1000**3)
+        if os.getenv("PADDLE_DISTRI_BACKEND", None) == "xccl":
+            gpu_name = os.getenv("PADDLE_XCCL_BACKEND", None)
             gpu_model = gpu_name
+            memory = int(
+                paddle.fluid.core._get_device_total_memory(gpu_name)
+            ) // (1000**3)
+        else:
+            gpu_info = paddle.device.cuda.get_device_properties()
+            assert gpu_info, "Auto parallel just runs on gpu now."
+
+            gpu_name = gpu_info.name
+            try:
+                re_result = re.split(r'[ , -]', gpu_name)
+                gpu_model = re_result[1]
+                memory = int(re_result[-1][:-2])
+            except:
+                memory = int(gpu_info.total_memory) // (1000**3)
+                gpu_model = gpu_name
 
     logger.info(
         "Node Count: {}, Local Device Size: {}, GPU Model: {}, GPU Memory: {}GB, World size: {}, EndPoint: {}.".format(

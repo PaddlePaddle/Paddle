@@ -16,10 +16,15 @@ import random
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    convert_uint16_to_float,
+)
 
 import paddle
 from paddle import fluid
+from paddle.fluid import core
 
 
 class TestElementwiseModOp(OpTest):
@@ -106,20 +111,100 @@ class TestElementwiseModOpFloat(TestElementwiseModOp):
             self.check_output()
 
 
-class TestElementwiseModOpFp16(TestElementwiseModOp):
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestElementwiseModFP16Op(TestElementwiseModOp):
     def init_dtype(self):
         self.dtype = np.float16
 
     def init_input_output(self):
         self.x = np.random.uniform(-1000, 1000, [10, 10]).astype(self.dtype)
         self.y = np.random.uniform(-100, 100, [10, 10]).astype(self.dtype)
-        self.out = np.mod(self.x, self.y)
+        self.out = np.fmod(self.y + np.fmod(self.x, self.y), self.y)
 
     def test_check_output(self):
         if self.attrs['axis'] == -1:
             self.check_output()
         else:
             self.check_output()
+
+
+class TestElementwiseModFP16Op_ZeroDim1(TestElementwiseModFP16Op):
+    def init_input_output(self):
+        self.x = np.random.uniform(0, 10000, []).astype(np.float16)
+        self.y = np.random.uniform(0, 1000, []).astype(np.float16)
+        self.out = np.fmod(self.y + np.fmod(self.x, self.y), self.y)
+
+
+class TestElementwiseModFP16Op_ZeroDim2(TestElementwiseModFP16Op):
+    def init_input_output(self):
+        self.x = np.random.uniform(0, 10000, [10, 10]).astype(np.float16)
+        self.y = np.random.uniform(0, 1000, []).astype(np.float16)
+        self.out = np.fmod(self.y + np.fmod(self.x, self.y), self.y)
+
+
+class TestElementwiseModFP16Op_ZeroDim3(TestElementwiseModFP16Op):
+    def init_input_output(self):
+        self.x = np.random.uniform(0, 10000, []).astype(np.float16)
+        self.y = np.random.uniform(0, 1000, [10, 10]).astype(np.float16)
+        self.out = np.fmod(self.y + np.fmod(self.x, self.y), self.y)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestElementwiseModBF16Op(OpTest):
+    def init_kernel_type(self):
+        self.use_mkldnn = False
+
+    def init_input_output(self):
+        self.x = np.random.uniform(0, 10000, [10, 10]).astype(np.float32)
+        self.x = convert_uint16_to_float(convert_float_to_uint16(self.x))
+        self.y = np.random.uniform(0, 1000, [10, 10]).astype(np.float32)
+        self.y = convert_uint16_to_float(convert_float_to_uint16(self.y))
+        self.out = np.fmod(self.y + np.fmod(self.x, self.y), self.y)
+
+    def setUp(self):
+        self.op_type = "elementwise_mod"
+        self.python_api = paddle.remainder
+        self.public_python_api = paddle.remainder
+        self.axis = -1
+        self.init_dtype()
+        self.init_input_output()
+        self.init_kernel_type()
+        self.init_axis()
+        self.inputs = {
+            'X': convert_float_to_uint16(
+                OpTest.np_dtype_to_fluid_dtype(self.x)
+            ),
+            'Y': convert_float_to_uint16(
+                OpTest.np_dtype_to_fluid_dtype(self.y)
+            ),
+        }
+        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
+        self.outputs = {'Out': convert_float_to_uint16(self.out)}
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
+
+    def init_dtype(self):
+        self.dtype = np.uint16
+
+    def init_axis(self):
+        pass
+
+
+class TestElementwiseModBF16Op_ZeroDim1(TestElementwiseModBF16Op):
+    def init_input(self):
+        self.x = np.random.uniform(0, 10000, []).astype("float32")
+        self.x = convert_uint16_to_float(convert_float_to_uint16(self.x))
+        self.y = np.random.uniform(0, 1000, []).astype("float32")
+        self.y = convert_uint16_to_float(convert_float_to_uint16(self.y))
+        self.out = np.fmod(self.y + np.fmod(self.x, self.y), self.y)
 
 
 class TestElementwiseModOpDouble(TestElementwiseModOpFloat):
