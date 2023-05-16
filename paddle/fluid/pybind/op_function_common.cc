@@ -97,8 +97,10 @@ bool PyObject_CheckFloatOrToFloat(PyObject** obj) {
        (((TensorObject*)(*obj))->tensor.numel() == 1))) {        // NOLINT
     return true;
   }
-  if (std::string(((PyTypeObject*)(*obj)->ob_type)->tp_name)  // NOLINT
-          .find("numpy.float") != std::string::npos) {
+  auto type_name =
+      std::string(((PyTypeObject*)(*obj)->ob_type)->tp_name);  // NOLINT
+  if (type_name.find("numpy.float") != std::string::npos ||    // NOLINT
+      type_name == "numpy.int64") {
     auto to = PyNumber_Float(*obj);
     if (to) {
       *obj = to;
