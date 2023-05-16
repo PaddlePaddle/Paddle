@@ -1301,46 +1301,46 @@ static void LaunchElementwiseAddWithCastKernel(const phi::GPUContext &dev_ctx,
 template <typename T, typename Context>
 void DistributedFusedLambKernel(
     const Context &dev_ctx,
-    const std::vector<const DenseTensor *> &param,          //
-    const paddle::optional<DenseTensor> &fp32_fused_param,  //
-    const paddle::optional<DenseTensor> &fp32_fused_grad,   //
-    const paddle::optional<DenseTensor> &fp16_fused_param,  //
-    const paddle::optional<DenseTensor> &fp16_fused_grad,   //
-    const DenseTensor &moment1,                             //
-    const DenseTensor &moment2,                             //
-    const DenseTensor &beta1_pow,                           //
-    const DenseTensor &beta2_pow,                           //
-    const DenseTensor &fused_param_offsets,                 //
-    const DenseTensor &fp32_shared_fused_param_offsets,     //
-    const DenseTensor &fp16_shared_fused_param_offsets,     //
-    const DenseTensor &param_info,                          //
-    const DenseTensor &param_order,                         //
-    const DenseTensor &learning_rate,                       //
-    const DenseTensor &global_scale,                        //
-    int acc_steps,                                          //
-    float beta1,                                            //
-    float beta2,                                            //
-    float epsilon,                                          //
-    float max_global_grad_norm,                             //
-    float weight_decay,                                     //
-    bool clip_after_allreduce,                              //
-    bool use_master_param_norm,                             //
-    bool is_grad_scaled_by_nranks,                          //
-    bool use_hierarchical_allreduce,                        //
-    int64_t nranks,                                         //
-    const std::vector<int> &ring_ids,                       //
-    DenseTensor *fp32_fused_param_out,                      //
-    DenseTensor *fp16_fused_param_out,                      //
-    DenseTensor *fp32_acc_fused_grad,                       //
-    DenseTensor *fp16_acc_fused_grad,                       //
-    DenseTensor *moment1_out,                               //
-    DenseTensor *moment2_out,                               //
-    DenseTensor *beta1_pow_out,                             //
-    DenseTensor *beta2_pow_out,                             //
-    DenseTensor *found_inf,                                 //
-    DenseTensor *acc_step,                                  //
-    DenseTensor *stop_update,                               //
-    DenseTensor *step) {                                    //
+    const std::vector<const DenseTensor *> &param,
+    const paddle::optional<DenseTensor> &fp32_fused_param,
+    const paddle::optional<DenseTensor> &fp32_fused_grad,
+    const paddle::optional<DenseTensor> &fp16_fused_param,
+    const paddle::optional<DenseTensor> &fp16_fused_grad,
+    const DenseTensor &moment1,
+    const DenseTensor &moment2,
+    const DenseTensor &beta1_pow,
+    const DenseTensor &beta2_pow,
+    const DenseTensor &fused_param_offsets,
+    const DenseTensor &fp32_shared_fused_param_offsets,
+    const DenseTensor &fp16_shared_fused_param_offsets,
+    const DenseTensor &param_info,
+    const DenseTensor &param_order,
+    const DenseTensor &learning_rate,
+    const DenseTensor &global_scale,
+    int acc_steps,
+    float beta1,
+    float beta2,
+    float epsilon,
+    float max_global_grad_norm,
+    float weight_decay,
+    bool clip_after_allreduce,
+    bool use_master_param_norm,
+    bool is_grad_scaled_by_nranks,
+    bool use_hierarchical_allreduce,
+    int64_t nranks,
+    const std::vector<int> &ring_ids,
+    DenseTensor *fp32_fused_param_out,
+    DenseTensor *fp16_fused_param_out,
+    DenseTensor *fp32_acc_fused_grad,
+    DenseTensor *fp16_acc_fused_grad,
+    DenseTensor *moment1_out,
+    DenseTensor *moment2_out,
+    DenseTensor *beta1_pow_out,
+    DenseTensor *beta2_pow_out,
+    DenseTensor *found_inf,
+    DenseTensor *acc_step,
+    DenseTensor *stop_update,
+    DenseTensor *step) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   auto stream = dev_ctx.stream();
   auto place = dev_ctx.GetPlace();
