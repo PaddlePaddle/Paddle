@@ -257,7 +257,7 @@ void TransferLayoutElimPass::ApplyImpl(ir::Graph *graph) const {
       // For these Ops, you can move down the transfer_layout, but MUST change
       // the data_format attribute!
       std::vector<std::string> pool_like_ops = {
-          "pool2d",
+          // "pool2d",
           // "group_norm",
       };
       bool is_pool_like_op =
