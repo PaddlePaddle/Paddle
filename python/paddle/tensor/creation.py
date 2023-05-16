@@ -842,6 +842,8 @@ def full_like(x, fill_value, dtype=None, name=None):
                 'int32',
                 'int64',
                 'uint16',
+                'complex64',
+                'complex128',
             ],
             'full_like',
         )
@@ -857,6 +859,8 @@ def full_like(x, fill_value, dtype=None, name=None):
                 'int32',
                 'int64',
                 'uint16',
+                'complex64',
+                'complex128',
             ],
             'full_like/zeros_like/ones_like',
         )

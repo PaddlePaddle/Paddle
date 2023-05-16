@@ -20,6 +20,7 @@ namespace compatible {
 namespace pb {
 const std::unordered_map<std::string, uint32_t>& GetLegacyOpVersions() {
   static std::unordered_map<std::string, uint32_t> op_versions = {
+      {"fill_any_like", 0},
       {"not_equal", 1},
       {"fake_channel_wise_dequantize_max_abs", 2},
       {"yolo_box", 1},

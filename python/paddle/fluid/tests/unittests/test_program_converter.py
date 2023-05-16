@@ -292,3 +292,115 @@ class TestSetValue(unittest.TestCase):
             legacy_program_bytes = mp._get_desc().serialize_to_string(
                 legacy_format=True
             )
+
+
+class TestFillAnyLike(unittest.TestCase):
+    def setUp(self):
+        paddle.enable_static()
+
+    def _test_for_new_program_format(self, program_bytes):
+        restored_prog_as_is = framework_pb2.ProgramDesc.FromString(
+            program_bytes
+        )
+        for block in restored_prog_as_is.blocks:
+            for op in block.ops:
+                if op.type == "fill_any_like":
+                    attr_names = [attr.name for attr in op.attrs]
+                    self.assertTrue("value" in attr_names)
+
+    def _test_for_legacy_program_format(self, program_bytes):
+        restored_prog_as_is = framework_pb2.ProgramDesc.FromString(
+            program_bytes
+        )
+        for block in restored_prog_as_is.blocks:
+            for op in block.ops:
+                if op.type == "fill_any_like":
+                    attr_names = [attr.name for attr in op.attrs]
+                    self.assertTrue("value" in attr_names)
+
+    def _test_equivalence(
+        self,
+        new_program_bytes,
+        legacy_program_bytes,
+        fetch_list,
+        expected_outputs,
+    ):
+        normal_program = paddle.static.io.deserialize_program(new_program_bytes)
+        converted_back_program = paddle.static.io.deserialize_program(
+            legacy_program_bytes
+        )
+
+        exe = paddle.static.Executor(paddle.CPUPlace())
+        [out] = exe.run(normal_program, fetch_list=fetch_list)
+        np.testing.assert_allclose(out, expected_outputs[0])
+
+        [out] = exe.run(converted_back_program, fetch_list=fetch_list)
+        np.testing.assert_allclose(out, expected_outputs[0])
+
+    def test_float32(self):
+        mp = paddle.static.Program()
+        sp = paddle.static.Program()
+        fill_value = np.finfo(np.float32).max
+        with paddle.static.program_guard(mp, sp):
+            x = paddle.ones([3, 4], dtype=paddle.float32)
+            y = paddle.full_like(x, fill_value)
+
+        x_input = np.ones([3, 4], dtype=np.float32)
+        x_output = np.full_like(x_input, fill_value)
+
+        normal_program_bytes = mp._get_desc().serialize_to_string()
+        legacy_program_bytes = mp._get_desc().serialize_to_string(
+            legacy_format=True
+        )
+
+        self.assertNotEqual(normal_program_bytes, legacy_program_bytes)
+        self._test_for_new_program_format(normal_program_bytes)
+        self._test_for_legacy_program_format(legacy_program_bytes)
+        self._test_equivalence(
+            normal_program_bytes,
+            legacy_program_bytes,
+            fetch_list=[y.name],
+            expected_outputs=[x_output],
+        )
+
+    def test_complex64(self):
+        mp = paddle.static.Program()
+        sp = paddle.static.Program()
+        fill_value = np.complex64(42.1 + 42.1j)
+        with paddle.static.program_guard(mp, sp):
+            x = paddle.complex(
+                paddle.ones([3, 4], dtype=paddle.float32),
+                paddle.ones([3, 4], dtype=paddle.float32),
+            )
+            y = paddle.full_like(x, fill_value)
+
+        x_input = (np.ones([3, 4]) + 1j * np.ones([3, 4])).astype(np.complex64)
+        x_output = np.full_like(x_input, fill_value)
+
+        with self.assertRaisesRegex(RuntimeError, "Invalid data type"):
+            legacy_program_bytes = mp._get_desc().serialize_to_string(
+                legacy_format=True
+            )
+
+    def test_complex128(self):
+        mp = paddle.static.Program()
+        sp = paddle.static.Program()
+        fill_value = np.finfo(np.float64).max + 1j * np.finfo(np.float64).min
+        with paddle.static.program_guard(mp, sp):
+            x = paddle.complex(
+                paddle.ones([3, 4], dtype=paddle.float64),
+                paddle.ones([3, 4], dtype=paddle.float64),
+            )
+            y = paddle.full_like(x, fill_value)
+
+        x_input = (np.ones([3, 4]) + 1j * np.ones([3, 4])).astype(np.complex128)
+        x_output = np.full_like(x_input, fill_value)
+
+        with self.assertRaisesRegex(RuntimeError, "Invalid data type"):
+            legacy_program_bytes = mp._get_desc().serialize_to_string(
+                legacy_format=True
+            )
+
+
+if __name__ == '__main__':
+    unittest.main()

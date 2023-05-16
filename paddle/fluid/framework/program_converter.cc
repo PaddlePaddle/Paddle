@@ -120,7 +120,12 @@ void ConvertSetValueOp(OpDesc* op) {
 void ConvertFillAnyLikeOp(OpDesc* op) {
   paddle::experimental::Scalar value = PADDLE_GET_CONST(
       paddle::experimental::Scalar, op->GetAttr("value", false));
-  op->SetAttr("value", value.to<float>());
+  phi::DataType dtype = value.dtype();
+  if (dtype == phi::DataType::COMPLEX64 || dtype == phi::DataType::COMPLEX128) {
+    PD_THROW("Invalid data type `", dtype, "`.");
+  } else {
+    op->SetAttr("value", value.to<float>());
+  }
 }
 
 void ConvertProgram(ProgramDesc* program) {
