@@ -183,6 +183,17 @@
           comment : In order to specify interpolation mode
           default : std::string("bilinear")
 
+- op : instance_norm
+  version :
+    - checkpoint : Change dispensable of attribute from False to True in instance_norm.
+      action :
+        - modify_attr : Bias
+          comment : "The arg 'dispensable' of Input 'Bias' is changed: from 'False' to 'True'."
+          default : "true"
+        - modify_attr : Scale
+          comment : "The arg 'dispensable' of Input 'Scale' is changed: from 'False' to 'True'."
+          default : "true"
+
 - op : lamb
   version :
     - checkpoint : Upgrade lamb, add two new outputs [Beta1PowOut] and [Beta2PowOut].
