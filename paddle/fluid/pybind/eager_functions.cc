@@ -159,9 +159,8 @@ static PyObject* eager_api_print_can_not_use(PyObject* self,
   EAGER_TRY
   auto tensor = CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0);
   auto dense_tensor = static_cast<phi::DenseTensor*>(tensor.impl().get());
-
-  std::cout << "dense_tensor->can_not_uses.size() = "
-            << dense_tensor->can_not_uses->size() << std::endl;
+  std::cout << "print " << tensor.name() << " = " << *dense_tensor->canNotUse
+            << "---";
   for (auto iter : *dense_tensor->can_not_uses) {
     std::cout << *iter << " ";
   }
