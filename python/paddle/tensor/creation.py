@@ -1300,6 +1300,10 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
             # [3, 4, 5, 6]
 
     """
+    if end is None:
+        end = start
+        start = 0
+
     if dtype is None:
         if not all(
             paddle.to_tensor(val).is_integer() for val in [start, end, step]
@@ -1307,9 +1311,6 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
             dtype = paddle.get_default_dtype()
         else:
             dtype = 'int64'
-    if end is None:
-        end = start
-        start = 0
 
     out_shape = None
     if not in_dygraph_mode() and (
