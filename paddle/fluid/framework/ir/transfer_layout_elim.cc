@@ -87,14 +87,14 @@ void TransferLayoutElimPass::PutTranferlayoutAfterOp(Node *op_node,
   auto src_layout = new_transfer_layout_desc.GetAttrIfExists<int>("src_layout");
   if (dst_layout == 2 && src_layout == 1) {
     suffix = "_nhwc_to_nchw";
-    new_var2_shape[1] = var2_shape[3];
-    new_var2_shape[2] = var2_shape[1];
-    new_var2_shape[3] = var2_shape[2];
-  } else if (dst_layout == 1 && src_layout == 2) {
-    suffix = "_nchw_to_nhwc";
     new_var2_shape[1] = var2_shape[2];
     new_var2_shape[2] = var2_shape[3];
     new_var2_shape[3] = var2_shape[1];
+  } else if (dst_layout == 1 && src_layout == 2) {
+    suffix = "_nchw_to_nhwc";
+    new_var2_shape[1] = var2_shape[3];
+    new_var2_shape[2] = var2_shape[1];
+    new_var2_shape[3] = var2_shape[2];
   }
 
   var2_desc->SetShape(new_var2_shape);
