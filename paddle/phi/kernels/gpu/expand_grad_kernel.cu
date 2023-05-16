@@ -30,24 +30,6 @@ void ExpandGradKernel(const Context& ctx,
                       const DenseTensor& out_grad,
                       const IntArray& shape,
                       DenseTensor* x_grad) {
-  std::cout << "x = " << *x.canNotUse << "---";
-  for (auto item : *x.can_not_uses) {
-    std::cout << *item << " ";
-  }
-  std::cout << std::endl;
-
-  std::cout << "out_grad = " << *out_grad.canNotUse << "---";
-  for (auto item : *out_grad.can_not_uses) {
-    std::cout << *item << " ";
-  }
-  std::cout << std::endl;
-
-  std::cout << "x_grad = " << *x_grad->canNotUse << "---";
-  for (auto item : *x_grad->can_not_uses) {
-    std::cout << *item << " ";
-  }
-  std::cout << std::endl;
-
   DenseTensor& xx = const_cast<DenseTensor&>(out_grad);
   if (!xx.IsSharedBufferWith(*x_grad)) {
     if (xx.can_not_uses != x_grad->can_not_uses) {
