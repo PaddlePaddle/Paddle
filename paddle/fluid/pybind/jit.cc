@@ -84,13 +84,6 @@ inline static PyObject *eval_custom_code(PyThreadState *tstate,
     nfrees = PyTuple_GET_SIZE(code->co_freevars);
   }
 
-  // DEBUG_NULL_CHECK(tstate);
-  // DEBUG_NULL_CHECK(frame);
-  // DEBUG_NULL_CHECK(code);
-  // DEBUG_CHECK(ncells == PyTuple_GET_SIZE(frame->f_code->co_cellvars));
-  // DEBUG_CHECK(nfrees == PyTuple_GET_SIZE(frame->f_code->co_freevars));
-  // DEBUG_CHECK(nlocals_new >= nlocals_old);
-
   PyFrameObject *shadow = PyFrame_New(tstate, code, frame->f_globals, NULL);
   if (shadow == NULL) {
     return NULL;
@@ -118,7 +111,6 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
                                     PyFrameObject *frame,
                                     int throw_flag,
                                     PyObject *callback) {
-  // TODO(xiongkun): why need this line?
   // https://peps.python.org/pep-0558/#fast-locals-proxy-implementation-details
   // https://devguide.python.org/internals/interpreter/#all-sorts-of-variables
   if (PyFrame_FastToLocalsWithError(frame) < 0) {
@@ -126,9 +118,15 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
   }
 
   // NOTE:(xiongkun): Handle GeneratorExit exception: (Spend a day)
-  // In Python, gen close is also a Python function call that will enter this function
-  // with GeneratorExit set, which will cause the PyObject_CallObject raise SystemError.
-  // So we disable the custom behavior for GeneratorExit.
+  // In Python, gen close is also a Python function call that will enter this
+  // function with GeneratorExit set, which will cause the PyObject_CallObject
+  // raise SystemError. So we disable the custom behavior for GeneratorExit. def
+  // func():
+  //     iter = iter([1, 2, 3])
+  //     for i in iter:
+  //         return i # <--- Early return, cause a GeneratorExit thrown,
+  //                  # <--- which Cause the PyObject_CallObject raise
+  //                  SystemError.
   if (PyErr_ExceptionMatches(PyExc_GeneratorExit)) {
     return eval_frame_default(tstate, frame, throw_flag);
   }
@@ -191,7 +189,7 @@ static PyObject *set_eval_frame(PyObject *new_callback, PyThreadState *tstate) {
   PyObject *old_callback = eval_frame_callback_get();
 
 #if PY_VERSION_HEX >= 0x03090000
-  void *old_eval_frame = _PyInterpreterState_GetEvalFrameFunc(tstate->interp);
+  auto *old_eval_frame = _PyInterpreterState_GetEvalFrameFunc(tstate->interp);
 #else
   // Function pointer.
   _PyFrameEvalFunction old_eval_frame = tstate->interp->eval_frame;

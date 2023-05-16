@@ -26,7 +26,7 @@ limitations under the License. */
 // If py_version==3.8.0, we need to redefine _PyEvalFrameFunc and the
 // related functions and structs.
 
-#if PY_VERSION_HEX >= 0x03080000
+#if PY_VERSION_HEX >= 0x03080000 && PY_VERSION_HEX <= 0x3090000
 
 typedef PyObject *(*_PyFrameEvalFunction)(struct _frame *, int);
 
