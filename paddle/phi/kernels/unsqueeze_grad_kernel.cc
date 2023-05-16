@@ -30,16 +30,18 @@ void UnsqueezeGradKernel(const Context& dev_ctx,
                          DenseTensor* dx) {
   DenseTensor& xx = const_cast<DenseTensor&>(dout);
   if (!xx.IsSharedBufferWith(*dx)) {
-    dx->can_not_uses = xx.can_not_uses;
-    if (*dx->canNotUse == false) {
-      *dx->canNotUse = *xx.canNotUse;
-    }
-    xx.can_not_uses->insert(xx.canNotUse);
-    xx.can_not_uses->insert(dx->canNotUse);
-    VLOG(1) << "stride api call log: UnsqueezeGradKernel";
+    if (xx.can_not_uses != dx->can_not_uses) {
+      dx->can_not_uses = xx.can_not_uses;
+      if (*dx->canNotUse == false) {
+        *dx->canNotUse = *xx.canNotUse;
+      }
+      xx.can_not_uses->insert(xx.canNotUse);
+      xx.can_not_uses->insert(dx->canNotUse);
+      VLOG(1) << "stride api call log: UnsqueezeGradKernel";
 
-    if (FLAGS_throw_strided_error_op == "UnsqueezeGradKernel") {
-      PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+      if (FLAGS_throw_strided_error_op == "UnsqueezeGradKernel") {
+        PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+      }
     }
   }
   auto xshape_dims = x_shape.dims();

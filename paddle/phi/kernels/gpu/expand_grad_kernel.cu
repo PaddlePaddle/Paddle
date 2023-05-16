@@ -30,18 +30,38 @@ void ExpandGradKernel(const Context& ctx,
                       const DenseTensor& out_grad,
                       const IntArray& shape,
                       DenseTensor* x_grad) {
+  std::cout << "x = " << *x.canNotUse << "---";
+  for (auto item : *x.can_not_uses) {
+    std::cout << *item << " ";
+  }
+  std::cout << std::endl;
+
+  std::cout << "out_grad = " << *out_grad.canNotUse << "---";
+  for (auto item : *out_grad.can_not_uses) {
+    std::cout << *item << " ";
+  }
+  std::cout << std::endl;
+
+  std::cout << "x_grad = " << *x_grad->canNotUse << "---";
+  for (auto item : *x_grad->can_not_uses) {
+    std::cout << *item << " ";
+  }
+  std::cout << std::endl;
+
   DenseTensor& xx = const_cast<DenseTensor&>(out_grad);
   if (!xx.IsSharedBufferWith(*x_grad)) {
-    x_grad->can_not_uses = xx.can_not_uses;
-    if (*x_grad->canNotUse == false) {
-      *x_grad->canNotUse = *xx.canNotUse;
-    }
-    xx.can_not_uses->insert(xx.canNotUse);
-    xx.can_not_uses->insert(x_grad->canNotUse);
-    VLOG(1) << "stride api call log: ExpandGradKernel";
+    if (xx.can_not_uses != x_grad->can_not_uses) {
+      x_grad->can_not_uses = xx.can_not_uses;
+      if (*x_grad->canNotUse == false) {
+        *x_grad->canNotUse = *xx.canNotUse;
+      }
+      xx.can_not_uses->insert(xx.canNotUse);
+      xx.can_not_uses->insert(x_grad->canNotUse);
+      VLOG(1) << "stride api call log: ExpandGradKernel";
 
-    if (FLAGS_throw_strided_error_op == "ExpandGradKernel") {
-      PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+      if (FLAGS_throw_strided_error_op == "ExpandGradKernel") {
+        PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+      }
     }
   }
   ctx.template Alloc<T>(x_grad);

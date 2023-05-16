@@ -26,9 +26,17 @@ void RealGradKernel(const Context& dev_ctx,
                     DenseTensor* dx) {
   DenseTensor& xx = const_cast<DenseTensor&>(dout);
   if (!xx.IsSharedBufferWith(*dx)) {
-    dx->can_not_uses = xx.can_not_uses;
-    *dx->canNotUse = *xx.canNotUse;
-    xx.can_not_uses->insert(dx->canNotUse);
+    if (xx.can_not_uses != dx->can_not_uses) {
+      dx->can_not_uses = xx.can_not_uses;
+      *dx->canNotUse = *xx.canNotUse;
+      xx.can_not_uses->insert(dx->canNotUse);
+
+      VLOG(1) << "stride api call log: RealGradKernel";
+
+      if (FLAGS_throw_strided_error_op == "RealGradKernel") {
+        PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+      }
+    }
   }
   auto numel = dout.numel();
   auto* dout_data = dout.data<phi::dtype::Real<T>>();
@@ -46,9 +54,17 @@ void ImagGradKernel(const Context& dev_ctx,
                     DenseTensor* dx) {
   DenseTensor& xx = const_cast<DenseTensor&>(dout);
   if (!xx.IsSharedBufferWith(*dx)) {
-    dx->can_not_uses = xx.can_not_uses;
-    *dx->canNotUse = *xx.canNotUse;
-    xx.can_not_uses->insert(dx->canNotUse);
+    if (xx.can_not_uses != dx->can_not_uses) {
+      dx->can_not_uses = xx.can_not_uses;
+      *dx->canNotUse = *xx.canNotUse;
+      xx.can_not_uses->insert(dx->canNotUse);
+
+      VLOG(1) << "stride api call log: ImagGradKernel";
+
+      if (FLAGS_throw_strided_error_op == "ImagGradKernel") {
+        PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+      }
+    }
   }
   auto numel = dout.numel();
   auto* dout_data = dout.data<phi::dtype::Real<T>>();

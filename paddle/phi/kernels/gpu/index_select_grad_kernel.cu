@@ -57,16 +57,18 @@ void IndexSelectGradKernel(const Context& ctx,
                            DenseTensor* x_grad) {
   DenseTensor& xx = const_cast<DenseTensor&>(out_grad);
   if (!xx.IsSharedBufferWith(*x_grad)) {
-    x_grad->can_not_uses = xx.can_not_uses;
-    if (*x_grad->canNotUse == false) {
-      *x_grad->canNotUse = *xx.canNotUse;
-    }
-    xx.can_not_uses->insert(xx.canNotUse);
-    xx.can_not_uses->insert(x_grad->canNotUse);
-    VLOG(1) << "stride api call log: IndexSelectGradKernel";
+    if (xx.can_not_uses != x_grad->can_not_uses) {
+      x_grad->can_not_uses = xx.can_not_uses;
+      if (*x_grad->canNotUse == false) {
+        *x_grad->canNotUse = *xx.canNotUse;
+      }
+      xx.can_not_uses->insert(xx.canNotUse);
+      xx.can_not_uses->insert(x_grad->canNotUse);
+      VLOG(1) << "stride api call log: IndexSelectGradKernel";
 
-    if (FLAGS_throw_strided_error_op == "IndexSelectGradKernel") {
-      PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+      if (FLAGS_throw_strided_error_op == "IndexSelectGradKernel") {
+        PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+      }
     }
   }
   auto* output_grad_data = out_grad.data<T>();

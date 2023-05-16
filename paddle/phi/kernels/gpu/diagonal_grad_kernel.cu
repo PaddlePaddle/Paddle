@@ -36,16 +36,18 @@ void DiagonalGradKernel(const Context& dev_ctx,
                         DenseTensor* in_grad) {
   DenseTensor& xx = const_cast<DenseTensor&>(out_grad);
   if (!xx.IsSharedBufferWith(*in_grad)) {
-    in_grad->can_not_uses = xx.can_not_uses;
-    if (*in_grad->canNotUse == false) {
-      *in_grad->canNotUse = *xx.canNotUse;
-    }
-    xx.can_not_uses->insert(xx.canNotUse);
-    xx.can_not_uses->insert(in_grad->canNotUse);
-    VLOG(1) << "stride api call log: DiagonalGradKernel";
+    if (xx.can_not_uses != in_grad->can_not_uses) {
+      in_grad->can_not_uses = xx.can_not_uses;
+      if (*in_grad->canNotUse == false) {
+        *in_grad->canNotUse = *xx.canNotUse;
+      }
+      xx.can_not_uses->insert(xx.canNotUse);
+      xx.can_not_uses->insert(in_grad->canNotUse);
+      VLOG(1) << "stride api call log: DiagonalGradKernel";
 
-    if (FLAGS_throw_strided_error_op == "DiagonalGradKernel") {
-      PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+      if (FLAGS_throw_strided_error_op == "DiagonalGradKernel") {
+        PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+      }
     }
   }
   const auto* dout = &out_grad;

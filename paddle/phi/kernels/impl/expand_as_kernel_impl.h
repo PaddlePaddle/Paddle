@@ -105,16 +105,18 @@ void ExpandAsKernel(const Context& ctx,
                     DenseTensor* out) {
   DenseTensor& xx = const_cast<DenseTensor&>(x);
   if (!xx.IsSharedBufferWith(*out)) {
-    out->can_not_uses = xx.can_not_uses;
-    if (*out->canNotUse == false) {
-      *out->canNotUse = *xx.canNotUse;
-    }
-    xx.can_not_uses->insert(xx.canNotUse);
-    xx.can_not_uses->insert(out->canNotUse);
-    VLOG(1) << "stride api call log: ExpandAsKernel";
+    if (xx.can_not_uses != out->can_not_uses) {
+      out->can_not_uses = xx.can_not_uses;
+      if (*out->canNotUse == false) {
+        *out->canNotUse = *xx.canNotUse;
+      }
+      xx.can_not_uses->insert(xx.canNotUse);
+      xx.can_not_uses->insert(out->canNotUse);
+      VLOG(1) << "stride api call log: ExpandAsKernel";
 
-    if (FLAGS_throw_strided_error_op == "ExpandAsKernel") {
-      PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+      if (FLAGS_throw_strided_error_op == "ExpandAsKernel") {
+        PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+      }
     }
   }
   auto rank = x.dims().size();

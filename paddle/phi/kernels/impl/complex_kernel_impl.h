@@ -41,9 +41,17 @@ void RealKernel(const Context& dev_ctx,
                 DenseTensor* out) {
   DenseTensor& xx = const_cast<DenseTensor&>(x);
   if (!xx.IsSharedBufferWith(*out)) {
-    out->can_not_uses = xx.can_not_uses;
-    *out->canNotUse = *xx.canNotUse;
-    xx.can_not_uses->insert(out->canNotUse);
+    if (xx.can_not_uses != out->can_not_uses) {
+      out->can_not_uses = xx.can_not_uses;
+      *out->canNotUse = *xx.canNotUse;
+      xx.can_not_uses->insert(out->canNotUse);
+
+      VLOG(1) << "stride api call log: RealKernel";
+
+      if (FLAGS_throw_strided_error_op == "RealKernel") {
+        PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+      }
+    }
   }
   auto numel = x.numel();
   auto* x_data = x.data<T>();
@@ -61,9 +69,17 @@ void ImagKernel(const Context& dev_ctx,
                 DenseTensor* out) {
   DenseTensor& xx = const_cast<DenseTensor&>(x);
   if (!xx.IsSharedBufferWith(*out)) {
-    out->can_not_uses = xx.can_not_uses;
-    *out->canNotUse = *xx.canNotUse;
-    xx.can_not_uses->insert(out->canNotUse);
+    if (xx.can_not_uses != out->can_not_uses) {
+      out->can_not_uses = xx.can_not_uses;
+      *out->canNotUse = *xx.canNotUse;
+      xx.can_not_uses->insert(out->canNotUse);
+
+      VLOG(1) << "stride api call log: ImagKernel";
+
+      if (FLAGS_throw_strided_error_op == "ImagKernel") {
+        PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+      }
+    }
   }
   auto numel = x.numel();
   auto* x_data = x.data<T>();

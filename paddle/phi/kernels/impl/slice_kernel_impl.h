@@ -112,16 +112,18 @@ void SliceKernel(const Context& ctx,
                  DenseTensor* out) {
   DenseTensor& xx = const_cast<DenseTensor&>(input);
   if (!xx.IsSharedBufferWith(*out)) {
-    out->can_not_uses = xx.can_not_uses;
-    if (*out->canNotUse == false) {
-      *out->canNotUse = *xx.canNotUse;
-    }
-    xx.can_not_uses->insert(xx.canNotUse);
-    xx.can_not_uses->insert(out->canNotUse);
-    VLOG(1) << "stride api call log: SliceKernel";
+    if (xx.can_not_uses != out->can_not_uses) {
+      out->can_not_uses = xx.can_not_uses;
+      if (*out->canNotUse == false) {
+        *out->canNotUse = *xx.canNotUse;
+      }
+      xx.can_not_uses->insert(xx.canNotUse);
+      xx.can_not_uses->insert(out->canNotUse);
+      VLOG(1) << "stride api call log: SliceKernel";
 
-    if (FLAGS_throw_strided_error_op == "SliceKernel") {
-      PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+      if (FLAGS_throw_strided_error_op == "SliceKernel") {
+        PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+      }
     }
   }
   int rank = input.dims().size();
