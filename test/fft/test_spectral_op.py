@@ -169,8 +169,6 @@ class TestFFTC2COp(OpTest):
         self.check_grad(
             "X",
             "Out",
-            user_defined_grads=[self.x_grad],
-            user_defined_grad_outputs=[self.out_grad],
         )
 
 
@@ -265,8 +263,6 @@ class TestFFTC2ROp(OpTest):
         self.check_grad(
             ["X"],
             "Out",
-            user_defined_grads=[self.x_grad],
-            user_defined_grad_outputs=[self.out_grad],
         )
 
 
@@ -349,6 +345,4 @@ class TestFFTR2COp(OpTest):
         self.check_grad(
             "X",
             "Out",
-            user_defined_grads=[self.x_grad],
-            user_defined_grad_outputs=[self.out_grad],
         )
