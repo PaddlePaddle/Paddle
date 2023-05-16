@@ -15,10 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle import fluid
+from paddle.fluid import core
 
 
 def meshgrid_wrapper(x):
@@ -32,11 +33,7 @@ class TestMeshgridOp(OpTest):
         self.python_api = meshgrid_wrapper
         self.public_python_api = meshgrid_wrapper
         self.dtype = self.get_dtype()
-        ins, outs = self.init_test_data()
-        self.inputs = {'X': [('x%d' % i, ins[i]) for i in range(len(ins))]}
-        self.outputs = {
-            'Out': [('out%d' % i, outs[i]) for i in range(len(outs))]
-        }
+        self.init_inputs_and_outputs()
         self.python_out_sig = ['out0', 'out1']
         self.if_enable_cinn()
 
@@ -49,7 +46,7 @@ class TestMeshgridOp(OpTest):
     def test_check_grad(self):
         self.check_grad(['x0'], ['out0', 'out1'], check_prim=True)
 
-    def init_test_data(self):
+    def init_inputs_and_outputs(self):
         self.shape = self.get_x_shape()
         ins = []
         outs = []
@@ -61,7 +58,10 @@ class TestMeshgridOp(OpTest):
             out_reshape[i] = self.shape[i]
             out_temp = np.reshape(ins[i], out_reshape)
             outs.append(np.broadcast_to(out_temp, self.shape))
-        return ins, outs
+        self.inputs = {'X': [('x%d' % i, ins[i]) for i in range(len(ins))]}
+        self.outputs = {
+            'Out': [('out%d' % i, outs[i]) for i in range(len(outs))]
+        }
 
     def get_x_shape(self):
         return [100, 200]
@@ -82,6 +82,42 @@ class TestMeshgridOp2Fp16(TestMeshgridOp):
 
     def get_dtype(self):
         return np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestMeshgridOpBFP16OP(TestMeshgridOp):
+    def init_data_type(self):
+        self.data_type = np.uint16
+
+    def init_inputs_and_outputs(self):
+        self.shape = self.get_x_shape()
+        ins = []
+        outs = []
+        for i in range(len(self.shape)):
+            ins.append(np.random.random((self.shape[i],)).astype(self.dtype))
+
+        for i in range(len(self.shape)):
+            out_reshape = [1] * len(self.shape)
+            out_reshape[i] = self.shape[i]
+            out_temp = np.reshape(ins[i], out_reshape)
+            outs.append(np.broadcast_to(out_temp, self.shape))
+        self.inputs = {'X': [('x%d' % i, convert_float_to_uint16(ins[i])) for i in range(len(ins))]}
+        self.outputs = {
+            'Out': [('out%d' % i, convert_float_to_uint16(outs[i])) for i in range(len(outs))]
+        }
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
+        
+    def test_check_output(self):
+        self.check_output_with_place(place=paddle.CUDAPlace(0))
+
+    def test_check_grad(self):
+        self.check_grad_with_place(paddle.CUDAPlace(0), ['x0'], ['out0', 'out1'], check_prim=True)
 
 
 class TestMeshgridOp3(unittest.TestCase):
@@ -273,7 +309,7 @@ class TestMeshgridOp8(unittest.TestCase):
 
 
 class TestMeshGrid_ZeroDim(TestMeshgridOp):
-    def init_test_data(self):
+    def init_inputs_and_outputs(self):
         self.shape = self.get_x_shape()
         ins = []
         outs = []
@@ -285,7 +321,10 @@ class TestMeshGrid_ZeroDim(TestMeshgridOp):
             out_reshape[i] = self.shape[i]
             out_temp = np.reshape(ins[i], out_reshape)
             outs.append(np.broadcast_to(out_temp, self.shape))
-        return ins, outs
+        self.inputs = {'X': [('x%d' % i, ins[i]) for i in range(len(ins))]}
+        self.outputs = {
+            'Out': [('out%d' % i, outs[i]) for i in range(len(outs))]
+        }
 
     def get_x_shape(self):
         return [1, 2, 3]

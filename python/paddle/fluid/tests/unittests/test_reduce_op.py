@@ -303,6 +303,7 @@ class TestMaxFP32Op(OpTest):
         self.python_api = paddle.max
         self.public_python_api = paddle.max
         self.init_dtype()
+        self.if_enable_cinn()
         if self.dtype == np.uint16:
             x = np.random.random((5, 6, 10)).astype(np.float32)
             self.inputs = {'X': convert_float_to_uint16(x)}
@@ -315,6 +316,9 @@ class TestMaxFP32Op(OpTest):
             self.outputs = {'Out': convert_float_to_uint16(out)}
         else:
             self.outputs = {'Out': out}
+
+    def if_enable_cinn(self):
+        pass
 
     def test_check_output(self):
         self.check_output()
@@ -345,6 +349,9 @@ class TestMaxFP16Op(TestMaxFP32Op):
 class TestMaxBF16Op(TestMaxFP32Op):
     def init_dtype(self):
         self.dtype = np.uint16
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
 
     def test_check_output(self):
         self.check_output_with_place(core.CUDAPlace(0))
@@ -487,8 +494,11 @@ class TestProdOp(OpTest):
         self.python_api = raw_reduce_prod
         self.public_python_api = raw_reduce_prod
         self.prim_op_type = "prim"
-
         self.init_data_type()
+        self.init_inputs_and_outputs()
+        self.if_enable_cinn()
+
+    def init_inputs_and_outputs(self):
         self.inputs = {'X': np.random.random((5, 6, 10)).astype(self.data_type)}
         self.outputs = {'Out': self.inputs['X'].prod(axis=0)}
 
@@ -497,11 +507,53 @@ class TestProdOp(OpTest):
             "float32" if core.is_compiled_with_rocm() else "float64"
         )
 
+    def if_enable_cinn(self):
+        pass
+
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_prim=True)
+
+
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda(), "FP16 test runs only on GPU"
+)
+class TestProdFP16OP(TestProdOp):
+    def init_data_type(self):
+        self.data_type = "float16"
+
+    def test_check_output(self):
+        self.check_output_with_place(place=paddle.CUDAPlace(0))
+
+    def test_check_grad(self):
+        self.check_grad_with_place(paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestProdBFP16OP(TestProdOp):
+    def init_data_type(self):
+        self.data_type = np.uint16
+
+    def init_inputs_and_outputs(self):
+        x = np.random.random((5, 6, 10)).astype("float32")
+        out = x.prod(axis=0)
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.outputs = {'Out': convert_float_to_uint16(out)}
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
+        
+    def test_check_output(self):
+        self.check_output_with_place(place=paddle.CUDAPlace(0))
+
+    def test_check_grad(self):
+        self.check_grad_with_place(paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True)
 
 
 class TestProdOpFp64(TestProdOp):
@@ -522,11 +574,16 @@ class TestProdOp_ZeroDim(OpTest):
         # 0-D tensor doesn't support in cinn
         self.enable_cinn = False
 
+    def init_inputs_and_outputs(self):
+        self.inputs = {'X': np.random.random([]).astype("float64")}
+        self.outputs = {'Out': self.inputs['X'].prod()}
+        self.attrs = {'dim': [], 'reduce_all': True}
+        
     def test_check_output(self):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestProd6DOp(OpTest):
@@ -536,6 +593,15 @@ class TestProd6DOp(OpTest):
         self.public_python_api = raw_reduce_prod
         self.prim_op_type = "prim"
         self.init_data_type()
+        self.init_inputs_and_outputs()
+        self.if_enable_cinn()
+
+    def init_data_type(self):
+        self.data_type = (
+            "float32" if core.is_compiled_with_rocm() else "float64"
+        )
+
+    def init_inputs_and_outputs(self):
         self.inputs = {
             'X': np.random.random((5, 6, 2, 3, 4, 2)).astype(self.data_type)
         }
@@ -544,10 +610,8 @@ class TestProd6DOp(OpTest):
             'Out': self.inputs['X'].prod(axis=tuple(self.attrs['dim']))
         }
 
-    def init_data_type(self):
-        self.data_type = (
-            "float32" if core.is_compiled_with_rocm() else "float64"
-        )
+    def if_enable_cinn(self):
+        pass
 
     def test_check_output(self):
         self.check_output()
@@ -556,12 +620,55 @@ class TestProd6DOp(OpTest):
         self.check_grad(['X'], 'Out', check_prim=True)
 
 
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda(), "FP16 test runs only on GPU"
+)
+class TestProd6DFP16OP(TestProd6DOp):
+    def init_data_type(self):
+        self.data_type = "float16"
+
+    def test_check_output(self):
+        self.check_output_with_place(place=paddle.CUDAPlace(0))
+
+    def test_check_grad(self):
+        self.check_grad_with_place(paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestProd6DBFP16OP(TestProd6DOp):
+    def init_data_type(self):
+        self.data_type = np.uint16
+
+    def init_inputs_and_outputs(self):
+        x = np.random.random((5, 6, 2, 3, 4, 2)).astype("float32")
+        self.attrs = {'dim': [2, 3, 4]}
+        out = x.prod(axis=tuple(self.attrs['dim']))
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.outputs = {'Out': convert_float_to_uint16(out)}
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
+        
+    def test_check_output(self):
+        self.check_output_with_place(place=paddle.CUDAPlace(0))
+
+    def test_check_grad(self):
+        self.check_grad_with_place(paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True)
+
+
 class TestProd8DOp(OpTest):
     def setUp(self):
         self.op_type = "reduce_prod"
         self.python_api = raw_reduce_prod
         self.public_python_api = raw_reduce_prod
         self.init_data_type()
+        self.init_inputs_and_outputs()
+
+    def init_inputs_and_outputs(self):
         self.inputs = {
             'X': np.random.random((2, 5, 3, 2, 2, 3, 4, 2)).astype(
                 self.data_type
@@ -582,6 +689,43 @@ class TestProd8DOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
+
+
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda(), "FP16 test runs only on GPU"
+)
+class TestProd8DFP16OP(TestProd8DOp):
+    def init_data_type(self):
+        self.data_type = "float16"
+
+    def test_check_output(self):
+        self.check_output_with_place(place=paddle.CUDAPlace(0))
+
+    def test_check_grad(self):
+        self.check_grad_with_place(paddle.CUDAPlace(0), ['X'], 'Out')
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support the bfloat16",
+)
+class TestProd8DBFP16OP(TestProd8DOp):
+    def init_data_type(self):
+        self.data_type = np.uint16
+
+    def init_inputs_and_outputs(self):
+        x = np.random.random((2, 5, 3, 2, 2, 3, 4, 2)).astype("float32")
+        self.attrs = {'dim': [2, 3, 4]}
+        out = x.prod(axis=tuple(self.attrs['dim']))
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.outputs = {'Out': convert_float_to_uint16(out)}
+        
+    def test_check_output(self):
+        self.check_output_with_place(place=paddle.CUDAPlace(0))
+
+    def test_check_grad(self):
+        self.check_grad_with_place(paddle.CUDAPlace(0), ['X'], 'Out')
 
 
 class TestAllOp(OpTest):

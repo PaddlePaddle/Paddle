@@ -1568,7 +1568,7 @@ def meshgrid(*args, **kwargs):
             check_dtype(
                 input_.dtype,
                 'create data type',
-                ['float16', 'float32', 'float64', 'int32', 'int64'],
+                ['uint16', 'float16', 'float32', 'float64', 'int32', 'int64'],
                 'meshgrid',
             )
 

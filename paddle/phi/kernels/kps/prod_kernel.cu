@@ -36,5 +36,5 @@ void ProdKernel(const Context& dev_ctx,
 PD_REGISTER_KERNEL(prod, KPS, ALL_LAYOUT, phi::ProdKernel, float) {}
 #else
 PD_REGISTER_KERNEL(
-    prod, KPS, ALL_LAYOUT, phi::ProdKernel, float, double, int, int64_t) {}
+    prod, KPS, ALL_LAYOUT, phi::ProdKernel, float, double, int, int64_t, phi::dtype::float16, phi::dtype::bfloat16) {}
 #endif
