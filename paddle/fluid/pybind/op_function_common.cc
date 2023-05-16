@@ -100,7 +100,7 @@ bool PyObject_CheckFloatOrToFloat(PyObject** obj) {
   auto type_name =
       std::string(((PyTypeObject*)(*obj)->ob_type)->tp_name);  // NOLINT
   if (type_name.find("numpy.float") != std::string::npos ||    // NOLINT
-      type_name == "numpy.int64") {
+      type_name.find("numpy.int") != std::string::npos {
     auto to = PyNumber_Float(*obj);
     if (to) {
       *obj = to;
