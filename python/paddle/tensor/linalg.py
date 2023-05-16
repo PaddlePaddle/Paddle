@@ -26,9 +26,7 @@ from ..fluid.data_feeder import (
 )
 from ..framework import LayerHelper, in_dygraph_mode
 from .creation import full
-from .logic import logical_not
 from .manipulation import cast
-from .math import add, multiply
 
 __all__ = []
 
@@ -2665,12 +2663,7 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
             y = float('inf')
             y = paddle.to_tensor(y, dtype=x.dtype)
 
-            condition = s > cutoff
-            cond_int = cast(condition, s.dtype)
-            cond_not_int = cast(logical_not(condition), s.dtype)
-            out1 = multiply(1 / s, cond_int)
-            out2 = multiply(1 / y, cond_not_int)
-            singular = add(out1, out2)
+            singular = paddle.where(s > cutoff, 1 / s, 1 / y)
             st = _C_ops.unsqueeze(singular, [-2])
 
             dims = list(range(len(vt.shape)))
@@ -2690,12 +2683,7 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
             y = float('inf')
             y = paddle.to_tensor(y, dtype=s.dtype)
 
-            condition = s_abs > cutoff
-            cond_int = cast(condition, s.dtype)
-            cond_not_int = cast(logical_not(condition), s.dtype)
-            out1 = multiply(1 / s, cond_int)
-            out2 = multiply(1 / y, cond_not_int)
-            singular = add(out1, out2)
+            singular = paddle.where(s_abs > cutoff, 1 / s, 1 / y)
             st = _C_ops.unsqueeze(singular, [-2])
 
             out_1 = u * st
@@ -2731,12 +2719,7 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
             y = float('inf')
             y = full(shape=[1], fill_value=y, dtype=dtype)
 
-            condition = s > cutoff
-            cond_int = cast(condition, dtype)
-            cond_not_int = cast(logical_not(condition), dtype)
-            out1 = multiply(1 / s, cond_int)
-            out2 = multiply(1 / y, cond_not_int)
-            singular = add(out1, out2)
+            singular = paddle.where(s > cutoff, 1 / s, 1 / y)
 
             st = helper.create_variable_for_type_inference(dtype=dtype)
             st_shape = helper.create_variable_for_type_inference(dtype=dtype)
@@ -2817,12 +2800,7 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
             y = float('inf')
             y = full(shape=[1], fill_value=y, dtype=s_type)
 
-            condition = s_abs > cutoff
-            cond_int = cast(condition, s_type)
-            cond_not_int = cast(logical_not(condition), s_type)
-            out1 = multiply(1 / s, cond_int)
-            out2 = multiply(1 / y, cond_not_int)
-            singular = add(out1, out2)
+            singular = paddle.where(s_abs > cutoff, 1 / s, 1 / y)
 
             st = helper.create_variable_for_type_inference(dtype=s_type)
             st_shape = helper.create_variable_for_type_inference(dtype=s_type)
