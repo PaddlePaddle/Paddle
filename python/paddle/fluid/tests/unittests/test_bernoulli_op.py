@@ -15,7 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from eager_op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    convert_uint16_to_float,
+)
 
 import paddle
 from paddle.fluid import core
@@ -36,7 +40,7 @@ class TestBernoulliOp(OpTest):
             "X": np.random.uniform(size=(1000, 784)).astype(self.dtype)
         }
         self.attrs = {}
-        self.outputs = {"Out": np.zeros((1000, 784)).astype(self.dtype}
+        self.outputs = {"Out": np.zeros((1000, 784)).astype(self.dtype)}
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -134,7 +138,7 @@ class TestBernoulliBF16Op(OpTest):
         self.out = np.zeros((1000, 784)).astype("float32")
         self.x = convert_uint16_to_float(convert_float_to_uint16(self.x))
         self.out = convert_uint16_to_float(convert_float_to_uint16(self.out))
-                                                            
+
     def verify_output(self, outs):
         hist, prob = output_hist(np.array(outs[0]))
         np.testing.assert_allclose(hist, prob)
