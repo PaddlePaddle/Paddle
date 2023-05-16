@@ -195,8 +195,6 @@ def get_kernel_signatures():
     KernelSignatureSearcher.filter["kernel_name"].
     """
     Paddle_path = osp.abspath(osp.join(osp.dirname(__file__), '../../..'))
-    if Paddle_path.split('/')[-1] != 'Paddle':
-        raise ValueError('Paddle path error.')
     build_path = osp.join(Paddle_path, 'build')
     os.makedirs(build_path, exist_ok=True)
     KernelSignatureSearcher.build_path = build_path
@@ -209,8 +207,9 @@ def get_kernel_signatures():
     # subdirs, so we need to search them separately.
     independent_subdir = [
         'fusion',
-        'legacy',
-        'selected_rows',
+        # Currently, we need filter legacy dir and selected_rows dir.
+        # 'legacy',
+        # 'selected_rows',
         'sparse',
         'strings',
     ]
