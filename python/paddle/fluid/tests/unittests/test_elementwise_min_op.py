@@ -18,7 +18,6 @@ import numpy as np
 from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
-from paddle import fluid
 from paddle.fluid import core
 
 paddle.enable_static()
@@ -355,7 +354,6 @@ class TestElementwiseBF16Op(OpTest):
         }
 
     def test_check_output(self):
-        # self.check_output()
         places = self._get_places()
         for place in places:
             res = self.check_output_with_place(
@@ -371,12 +369,9 @@ class TestElementwiseBF16Op(OpTest):
             )
 
     def test_check_grad_normal(self):
-        # self.check_grad(
-        #     ['X', 'Y'], 'Out', numeric_grad_delta=0.05, check_prim=True
-        # )
         places = self._get_places()
         for place in places:
-            if place == fluid.CPUPlace():
+            if type(place) is paddle.fluid.libpaddle.CPUPlace:
                 check_prim = False
             else:
                 check_prim = True
@@ -399,16 +394,9 @@ class TestElementwiseBF16Op(OpTest):
             )
 
     def test_check_grad_ingore_x(self):
-        # self.check_grad(
-        #     ['Y'],
-        #     'Out',
-        #     numeric_grad_delta=0.05,
-        #     no_grad_set=set("X"),
-        #     check_prim=True,
-        # )
         places = self._get_places()
         for place in places:
-            if place == fluid.CPUPlace():
+            if type(place) is paddle.fluid.libpaddle.CPUPlace:
                 check_prim = False
             else:
                 check_prim = True
@@ -431,16 +419,9 @@ class TestElementwiseBF16Op(OpTest):
             )
 
     def test_check_grad_ingore_y(self):
-        # self.check_grad(
-        #     ['X'],
-        #     'Out',
-        #     numeric_grad_delta=0.05,
-        #     no_grad_set=set('Y'),
-        #     check_prim=True,
-        # )
         places = self._get_places()
         for place in places:
-            if place == fluid.CPUPlace():
+            if type(place) is paddle.fluid.libpaddle.CPUPlace:
                 check_prim = False
             else:
                 check_prim = True
