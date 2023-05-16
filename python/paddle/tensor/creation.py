@@ -30,11 +30,7 @@ from ..fluid.data_feeder import (
     convert_dtype,
     convert_float_to_uint16,
 )
-from ..fluid.framework import (
-    Variable,
-    _in_eager_without_dygraph_check,
-    device_guard,
-)
+from ..fluid.framework import Variable, device_guard
 from ..fluid.param_attr import ParamAttr
 from ..framework import (
     LayerHelper,
@@ -625,7 +621,7 @@ def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
     if dtype:
         data = _handle_np_dtype(data, dtype)
 
-    if _in_eager_without_dygraph_check() and isinstance(data, np.ndarray):
+    if isinstance(data, np.ndarray):
         return core.eager.Tensor(
             value=data,
             place=place,

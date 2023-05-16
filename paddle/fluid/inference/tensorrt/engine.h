@@ -31,7 +31,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
-#include "paddle/fluid/inference/engine.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
 #include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"

@@ -131,6 +131,7 @@ class TestUnittedEmbedding(AmpTestBase):
                 exe,
                 x_np,
                 max_iters,
+                "float16",
                 level,
             )
             return losses

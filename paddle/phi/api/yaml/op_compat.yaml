@@ -1171,6 +1171,10 @@
     y : Y
     saved_mean : SavedMean
     saved_variance : SavedVariance
+  extra:
+    outputs: [ saved_mean, saved_variance ]
+  get_expected_kernel_type:
+    instance_norm: GetInstanceNormExpectedKernelType
 
 - op : inverse
   inputs :
@@ -2143,8 +2147,13 @@
   backward : softmax_grad
   inputs :
     x : X
+  outputs :
+    out : Out
+  get_expected_kernel_type :
+    softmax : GetSoftmaxExpectedKernelType
+    softmax_grad : GetSoftmaxGradExpectedKernelType
   extra :
-    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
+    attrs : [str data_format = "AnyLayout", bool use_cudnn=false, bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
 
 - op : softplus
   backward : softplus_grad, softplus_double_grad
