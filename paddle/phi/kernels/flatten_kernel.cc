@@ -48,7 +48,7 @@ void FlattenKernel(const Context& dev_ctx,
                    DenseTensor* out,
                    DenseTensor* xshape UNUSED) {
   DenseTensor& xx = const_cast<DenseTensor&>(x);
-  if (!xx.IsSharedBufferWith(x)) {
+  if (!xx.IsSharedBufferWith(*out)) {
     out->can_not_uses = xx.can_not_uses;
     if (*out->canNotUse == false) {
       *out->canNotUse = *xx.canNotUse;

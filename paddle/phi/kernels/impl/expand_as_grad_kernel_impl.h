@@ -52,7 +52,7 @@ void ExpandAsGradKernel(const Context& context,
                         const std::vector<int>& target_shape,
                         DenseTensor* in_grad) {
   DenseTensor& xx = const_cast<DenseTensor&>(x);
-  if (!xx.IsSharedBufferWith(x)) {
+  if (!xx.IsSharedBufferWith(*in_grad)) {
     in_grad->can_not_uses = xx.can_not_uses;
     if (*in_grad->canNotUse == false) {
       *in_grad->canNotUse = *xx.canNotUse;

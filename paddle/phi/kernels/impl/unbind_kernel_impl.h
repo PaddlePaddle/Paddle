@@ -28,20 +28,18 @@ void UnbindKernel(const Context& dev_ctx,
                   int axis,
                   std::vector<DenseTensor*> outs) {
   DenseTensor& xx = const_cast<DenseTensor&>(x);
-  if (!xx.IsSharedBufferWith(x)) {
-    for (size_t j = 0; j < outs.size(); ++j) {
-      outs[j]->can_not_uses = xx.can_not_uses;
-      if (*outs[j]->canNotUse == false) {
-        *outs[j]->canNotUse = *xx.canNotUse;
-      }
-      xx.can_not_uses->insert(xx.canNotUse);
-      xx.can_not_uses->insert(outs[j]->canNotUse);
+  for (size_t j = 0; j < outs.size(); ++j) {
+    outs[j]->can_not_uses = xx.can_not_uses;
+    if (*outs[j]->canNotUse == false) {
+      *outs[j]->canNotUse = *xx.canNotUse;
     }
-    VLOG(1) << "stride api call log: UnbindKernel";
+    xx.can_not_uses->insert(xx.canNotUse);
+    xx.can_not_uses->insert(outs[j]->canNotUse);
+  }
+  VLOG(1) << "stride api call log: UnbindKernel";
 
-    if (FLAGS_throw_strided_error_op == "DenseTensor") {
-      PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
-    }
+  if (FLAGS_throw_strided_error_op == "DenseTensor") {
+    PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
   }
   auto x_dims = x.dims();
   axis = axis < 0 ? x_dims.size() + axis : axis;

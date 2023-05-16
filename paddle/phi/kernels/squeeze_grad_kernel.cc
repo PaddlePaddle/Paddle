@@ -29,7 +29,7 @@ void SqueezeGradKernel(const Context& dev_ctx,
                        const IntArray& axes UNUSED,
                        DenseTensor* dx) {
   DenseTensor& xx = const_cast<DenseTensor&>(dout);
-  if (!xx.IsSharedBufferWith(dout)) {
+  if (!xx.IsSharedBufferWith(*dx)) {
     dx->can_not_uses = xx.can_not_uses;
     if (*dx->canNotUse == false) {
       *dx->canNotUse = *xx.canNotUse;

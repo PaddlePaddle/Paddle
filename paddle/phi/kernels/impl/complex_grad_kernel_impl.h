@@ -25,7 +25,7 @@ void RealGradKernel(const Context& dev_ctx,
                     const DenseTensor& dout,
                     DenseTensor* dx) {
   DenseTensor& xx = const_cast<DenseTensor&>(dout);
-  if (!xx.IsSharedBufferWith(dout)) {
+  if (!xx.IsSharedBufferWith(*dx)) {
     dx->can_not_uses = xx.can_not_uses;
     *dx->canNotUse = *xx.canNotUse;
     xx.can_not_uses->insert(dx->canNotUse);
@@ -45,7 +45,7 @@ void ImagGradKernel(const Context& dev_ctx,
                     const DenseTensor& dout,
                     DenseTensor* dx) {
   DenseTensor& xx = const_cast<DenseTensor&>(dout);
-  if (!xx.IsSharedBufferWith(dout)) {
+  if (!xx.IsSharedBufferWith(*dx)) {
     dx->can_not_uses = xx.can_not_uses;
     *dx->canNotUse = *xx.canNotUse;
     xx.can_not_uses->insert(dx->canNotUse);

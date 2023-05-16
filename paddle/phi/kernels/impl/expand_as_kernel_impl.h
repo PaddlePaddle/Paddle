@@ -104,7 +104,7 @@ void ExpandAsKernel(const Context& ctx,
                     const std::vector<int>& target_shape,
                     DenseTensor* out) {
   DenseTensor& xx = const_cast<DenseTensor&>(x);
-  if (!xx.IsSharedBufferWith(x)) {
+  if (!xx.IsSharedBufferWith(*out)) {
     out->can_not_uses = xx.can_not_uses;
     if (*out->canNotUse == false) {
       *out->canNotUse = *xx.canNotUse;

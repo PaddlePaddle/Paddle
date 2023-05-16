@@ -32,7 +32,7 @@ void DiagonalGradKernel(const Context& dev_ctx,
                         int axis2,
                         DenseTensor* in_grad) {
   DenseTensor& xx = const_cast<DenseTensor&>(out_grad);
-  if (!xx.IsSharedBufferWith(out_grad)) {
+  if (!xx.IsSharedBufferWith(*in_grad)) {
     in_grad->can_not_uses = xx.can_not_uses;
     if (*in_grad->canNotUse == false) {
       *in_grad->canNotUse = *xx.canNotUse;

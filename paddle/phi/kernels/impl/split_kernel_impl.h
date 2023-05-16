@@ -32,20 +32,18 @@ void SplitKernel(const Context& dev_ctx,
                  const Scalar& axis_scalar,
                  std::vector<DenseTensor*> outs) {
   DenseTensor& xx = const_cast<DenseTensor&>(x);
-  if (!xx.IsSharedBufferWith(x)) {
-    for (size_t i = 0; i < outs.size(); ++i) {
-      outs[i]->can_not_uses = xx.can_not_uses;
-      if (*outs[i]->canNotUse == false) {
-        *outs[i]->canNotUse = *xx.canNotUse;
-      }
-      xx.can_not_uses->insert(xx.canNotUse);
-      xx.can_not_uses->insert(outs[i]->canNotUse);
+  for (size_t i = 0; i < outs.size(); ++i) {
+    outs[i]->can_not_uses = xx.can_not_uses;
+    if (*outs[i]->canNotUse == false) {
+      *outs[i]->canNotUse = *xx.canNotUse;
     }
-    VLOG(1) << "stride api call log: SplitKernel";
+    xx.can_not_uses->insert(xx.canNotUse);
+    xx.can_not_uses->insert(outs[i]->canNotUse);
+  }
+  VLOG(1) << "stride api call log: SplitKernel";
 
-    if (FLAGS_throw_strided_error_op == "SplitKernel") {
-      PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
-    }
+  if (FLAGS_throw_strided_error_op == "SplitKernel") {
+    PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
   }
   std::vector<const DenseTensor*> shape_refer;
   for (size_t j = 0; j < outs.size(); ++j) {

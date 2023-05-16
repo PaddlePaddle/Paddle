@@ -35,7 +35,7 @@ void IndexSelectKernel(const Context& ctx,
                        int dim,
                        DenseTensor* output) {
   DenseTensor& xx = const_cast<DenseTensor&>(x);
-  if (!xx.IsSharedBufferWith(x)) {
+  if (!xx.IsSharedBufferWith(*output)) {
     output->can_not_uses = xx.can_not_uses;
     if (*output->canNotUse == false) {
       *output->canNotUse = *xx.canNotUse;

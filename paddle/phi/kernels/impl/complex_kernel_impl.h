@@ -40,7 +40,7 @@ void RealKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 DenseTensor* out) {
   DenseTensor& xx = const_cast<DenseTensor&>(x);
-  if (!xx.IsSharedBufferWith(x)) {
+  if (!xx.IsSharedBufferWith(*out)) {
     out->can_not_uses = xx.can_not_uses;
     *out->canNotUse = *xx.canNotUse;
     xx.can_not_uses->insert(out->canNotUse);
@@ -60,7 +60,7 @@ void ImagKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 DenseTensor* out) {
   DenseTensor& xx = const_cast<DenseTensor&>(x);
-  if (!xx.IsSharedBufferWith(x)) {
+  if (!xx.IsSharedBufferWith(*out)) {
     out->can_not_uses = xx.can_not_uses;
     *out->canNotUse = *xx.canNotUse;
     xx.can_not_uses->insert(out->canNotUse);

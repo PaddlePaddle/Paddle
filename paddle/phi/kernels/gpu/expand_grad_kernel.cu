@@ -31,7 +31,7 @@ void ExpandGradKernel(const Context& ctx,
                       const IntArray& shape,
                       DenseTensor* x_grad) {
   DenseTensor& xx = const_cast<DenseTensor&>(out_grad);
-  if (!xx.IsSharedBufferWith(out_grad)) {
+  if (!xx.IsSharedBufferWith(*x_grad)) {
     x_grad->can_not_uses = xx.can_not_uses;
     if (*x_grad->canNotUse == false) {
       *x_grad->canNotUse = *xx.canNotUse;
