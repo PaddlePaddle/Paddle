@@ -287,6 +287,7 @@ class TestStaticBF16(AmpTestBase):
                 exe,
                 x_np,
                 max_iters,
+                "bfloat16",
                 level,
             )
             return losses

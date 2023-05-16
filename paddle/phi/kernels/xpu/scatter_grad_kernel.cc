@@ -17,8 +17,6 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-#include "glog/logging.h"
-
 namespace phi {
 
 template <typename T, typename Context>

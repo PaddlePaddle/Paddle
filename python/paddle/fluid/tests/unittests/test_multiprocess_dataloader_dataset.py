@@ -406,7 +406,7 @@ class TestDataLoaderGenerateStates(unittest.TestCase):
         ]
 
     def test_main(self):
-        from paddle.fluid.dataloader.worker import _generate_states
+        from paddle.io.dataloader.worker import _generate_states
 
         for inp, outp in zip(self.inputs, self.outputs):
             out = _generate_states(*inp)

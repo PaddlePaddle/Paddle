@@ -181,9 +181,7 @@ class AdamW(Optimizer):
                 not core.is_compiled_with_cuda()
                 and not core.is_compiled_with_xpu()
             ):
-                raise NotImplementedError(
-                    "'lr_ratio' is unimplemented in CPU, and NPU"
-                )
+                raise NotImplementedError("'lr_ratio' is unimplemented in CPU.")
 
         if parameters is not None:
             # paddle.Tensor is also iterable, so here we don't check whether

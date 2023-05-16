@@ -24,12 +24,12 @@ from paddle.fluid import core
 from paddle.fluid.framework import (
     Variable,
     _current_expected_place,
-    _in_eager_without_dygraph_check,
     default_main_program,
     device_guard,
     in_dygraph_mode,
     name_scope,
 )
+from paddle.regularizer import L2Decay
 
 from ..fluid import framework, unique_name
 from ..fluid.backward import _get_no_grad_set_name, append_backward
@@ -224,8 +224,6 @@ class Optimizer:
                     "'grad_clip' should be an instance of GradientClipBase's derived class"
                 )
         if isinstance(weight_decay, float):
-            from ..fluid.regularizer import L2Decay
-
             self.regularization = L2Decay(weight_decay)
         else:
             self.regularization = weight_decay
@@ -764,9 +762,7 @@ class Optimizer:
             name=var_name,
             persistable=True,
             dtype=dtype or param.dtype,
-            type=core.VarDesc.VarType.LOD_TENSOR
-            if framework._in_eager_without_dygraph_check()
-            else (param.type if type is None else type),
+            type=core.VarDesc.VarType.LOD_TENSOR,
             shape=shape,
             belong_to_optimizer=True,
         )
@@ -1407,11 +1403,8 @@ class Optimizer:
                     if not p.stop_gradient:
                         param_list.append(p)
 
-        if _in_eager_without_dygraph_check():
-            for p in param_list:
-                p.clear_gradient(set_to_zero)
-        else:
-            core.clear_gradients(param_list, set_to_zero)
+        for p in param_list:
+            p.clear_gradient(set_to_zero)
 
     @imperative_base.no_grad()
     def minimize(
@@ -1597,8 +1590,6 @@ class Optimizer:
         for param in param_group['params']:
             weight_decay = param_group['weight_decay']
             if isinstance(weight_decay, float):
-                from ..fluid.regularizer import L2Decay
-
                 regularization = L2Decay(weight_decay)
             else:
                 regularization = weight_decay

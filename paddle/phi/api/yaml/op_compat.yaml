@@ -1171,6 +1171,10 @@
     y : Y
     saved_mean : SavedMean
     saved_variance : SavedVariance
+  extra:
+    outputs: [ saved_mean, saved_variance ]
+  get_expected_kernel_type:
+    instance_norm: GetInstanceNormExpectedKernelType
 
 - op : inverse
   inputs :
@@ -1414,6 +1418,16 @@
   backward : lrn_grad
   extra :
     attrs : [bool use_mkldnn = false, bool is_test = false]
+
+- op : lstsq
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {solution : Solution, residuals : Residuals, rank : Rank, singular_values : SingularValues}
+  scalar :
+    rcond :
+      data_type : float
+      support_tensor : true
 
 - op : lu_unpack
   backward : lu_unpack_grad
@@ -2091,7 +2105,7 @@
     out : Out
 
 - op : silu
-  backward : silu_grad
+  backward : silu_grad, silu_double_grad
   inputs :
     x : X
   outputs :
@@ -2133,8 +2147,13 @@
   backward : softmax_grad
   inputs :
     x : X
+  outputs :
+    out : Out
+  get_expected_kernel_type :
+    softmax : GetSoftmaxExpectedKernelType
+    softmax_grad : GetSoftmaxGradExpectedKernelType
   extra :
-    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
+    attrs : [str data_format = "AnyLayout", bool use_cudnn=false, bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
 
 - op : softplus
   backward : softplus_grad, softplus_double_grad

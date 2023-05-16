@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import struct
 import unittest
 
@@ -20,6 +21,7 @@ import numpy as np
 import paddle
 from paddle import nn
 from paddle.fluid import core
+from paddle.fluid.framework import _non_static_mode
 
 
 def copy_bits_from_float_to_uint16(f):
@@ -60,20 +62,27 @@ def _build_optimizer(
     use_grad_clip=False,
     use_promote=False,
     use_master_grad=False,
+    model=None,
 ):
     if use_grad_clip:
         grad_clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
     else:
         grad_clip = None
+    if _non_static_mode():
+        assert model is not None
+        parameters = model.parameters()
+    else:
+        parameters = None
     optimizer = paddle.optimizer.AdamW(
         learning_rate=0.01,
+        parameters=parameters,
         grad_clip=grad_clip,
         beta1=0.78,
         beta2=0.836,
         epsilon=1e-4,
         weight_decay=0.01,
     )
-    if use_amp:
+    if not _non_static_mode() and use_amp:
         optimizer = paddle.static.amp.decorate(
             optimizer,
             amp_lists,
@@ -159,7 +168,7 @@ class SimpleConvNet(nn.Layer):
 
     def forward(self, x):
         out = self.conv(x)
-        out = nn.functional.relu(out)
+        out = nn.functional.relu(out.cast("float32"))
         out = out.flatten(start_axis=1, stop_axis=3)
         out = self.linear(out)
         out = nn.functional.softmax(out)
@@ -169,6 +178,22 @@ class SimpleConvNet(nn.Layer):
 def build_conv_model(
     use_amp, amp_dtype="float16", amp_level="O1", use_promote=False
 ):
+    if _non_static_mode():
+        model = SimpleConvNet()
+        optimizer = _build_optimizer(use_amp=False, model=model)
+        if use_amp and amp_dtype == "float16":
+            scaler = paddle.amp.GradScaler()
+        else:
+            scaler = None
+        if use_amp and amp_level == "O2":
+            model, optimizer = paddle.amp.decorate(
+                models=model,
+                optimizers=optimizer,
+                level=amp_level,
+                dtype=amp_dtype,
+            )
+        return model, optimizer, scaler
+
     main_program = paddle.static.Program()
     startup_program = paddle.static.Program()
     with paddle.utils.unique_name.guard():
@@ -354,19 +379,36 @@ class AmpTestBase(unittest.TestCase):
         self.amp_level = None
 
     def _check_op_calls(
-        self, op_stats_dict, expected_bf16_calls={}, expected_fp16_calls={}
+        self,
+        op_stats_dict,
+        expected_bf16_calls={},
+        expected_fp16_calls={},
+        debug_info=None,
     ):
-        for op_type, value in expected_bf16_calls.items():
+        def _extract_op_call(op_calls_str, pos):
+            return int(copy.copy(op_calls_str).split(",")[pos])
+
+        for op_type, expected_value in expected_bf16_calls.items():
+            # print(f"[BF16] op_type={op_type}, value={value}")
+            if isinstance(op_stats_dict[op_type], str):
+                actual_value = _extract_op_call(op_stats_dict[op_type], 1)
+            else:
+                actual_value = op_stats_dict[op_type].bf16_calls
             self.assertEqual(
-                op_stats_dict[op_type].bf16_calls,
-                value,
-                f"The number of bf16 calls of operator < {op_type} > is expected to be {value}, but recieved {op_stats_dict[op_type].bf16_calls}.",
+                actual_value,
+                expected_value,
+                f"[{debug_info}] The number of bf16 calls of operator < {op_type} > is expected to be {expected_value}, but recieved {actual_value}.",
             )
-        for op_type, value in expected_fp16_calls.items():
+        for op_type, expected_value in expected_fp16_calls.items():
+            # print(f"[FP16] op_type={op_type}, value={value}")
+            if isinstance(op_stats_dict[op_type], str):
+                actual_value = _extract_op_call(op_stats_dict[op_type], 0)
+            else:
+                actual_value = op_stats_dict[op_type].fp16_calls
             self.assertEqual(
-                op_stats_dict[op_type].fp16_calls,
-                value,
-                f"The number of fp16 calls of operator < {op_type} > is expected to be {value}, but recieved {op_stats_dict[op_type].fp16_calls}.",
+                actual_value,
+                expected_value,
+                f"[debug_info] The number of fp16 calls of operator < {op_type} > is expected to be {expected_value}, but recieved {actual_value}.",
             )
 
     def run_program(
@@ -380,6 +422,7 @@ class AmpTestBase(unittest.TestCase):
         exe,
         x_np,
         max_iters,
+        dtype,
         level,
     ):
         losses = []
@@ -394,6 +437,8 @@ class AmpTestBase(unittest.TestCase):
                     feed={feed_vars[0].name: x_np},
                     fetch_list=fetch_vars,
                 )
-                print(f"-- [BF16 {level}] iter={iter_id}, loss={results[0]}")
+                print(
+                    f"-- [AMP {dtype} {level}] iter={iter_id}, loss={results[0]}"
+                )
                 losses.append(results[0])
         return losses

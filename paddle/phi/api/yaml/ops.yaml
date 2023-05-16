@@ -5,6 +5,16 @@
 # are consistent and correspond one-to-one. It's forbidden that the
 # operator configured in this yaml file does not have Python API.
 
+- op : abs
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : RealAndImagInferMeta
+  kernel :
+    func : abs
+    data_type : x
+  backward : abs_grad
+
 - op : accuracy
   args : (Tensor x, Tensor indices, Tensor label)
   output : Tensor(accuracy), Tensor(correct), Tensor(total)
@@ -920,6 +930,24 @@
   intermediate : residual
   backward : huber_loss_grad
 
+- op : i0
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : i0
+  backward : i0_grad
+
+- op : i0e
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : i0e
+  backward : i0e_grad
+
 - op : imag
   args : (Tensor x)
   output : Tensor (out)
@@ -940,6 +968,17 @@
   inplace : (x -> out)
   backward : index_add_grad
 
+- op : index_put
+  args : (Tensor x, Tensor[] indices, Tensor value, bool accumulate=false)
+  output : Tensor(out)
+  infer_meta :
+    func : IndexPutInferMeta
+  kernel :
+    func : index_put
+    data_type : x
+  inplace : (x -> out)
+  backward : index_put_grad
+
 - op : index_sample
   args : (Tensor x, Tensor index)
   output : Tensor
@@ -959,6 +998,18 @@
     func : index_select
     data_type : x
   backward : index_select_grad
+
+- op : instance_norm
+  args : (Tensor x, Tensor scale, Tensor bias, float epsilon=1e-5)
+  output : Tensor(y), Tensor(saved_mean), Tensor(saved_variance)
+  infer_meta :
+    func : InstanceNormInferMeta
+  kernel :
+    func : instance_norm
+    data_type : x
+  optional : scale, bias
+  intermediate : saved_mean, saved_variance
+  backward : instance_norm_grad
 
 - op : inverse
   args : (Tensor x)
@@ -1230,6 +1281,16 @@
   kernel :
     func : logsigmoid
   backward : logsigmoid_grad
+
+- op : lstsq
+  args : (Tensor x, Tensor y, Scalar rcond=0.0f, str driver="gels")
+  output : Tensor(solution), Tensor(residuals), Tensor(rank), Tensor(singular_values)
+  infer_meta :
+    func : LstsqInferMeta
+  kernel :
+    func : lstsq
+    data_type : x
+  optional : residuals
 
 - op : lu
   args : (Tensor x, bool pivot = true)

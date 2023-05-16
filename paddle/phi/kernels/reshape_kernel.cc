@@ -81,7 +81,7 @@ void ReshapeKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const IntArray& shape,
                    DenseTensor* out,
-                   DenseTensor* xshape) {
+                   DenseTensor* xshape UNUSED) {
   ReshapeInferKernel(dev_ctx, x, shape, out);
 }
 
