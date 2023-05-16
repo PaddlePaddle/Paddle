@@ -318,13 +318,16 @@ phi::KernelKey GetExpectedKernelType(
   {% if kernel["data_type"]["candidates"] | length == 1 %}
     {% set data_type_arg = kernel["data_type"]["candidates"][0] %}
     {% set inputs = op["inputs"] | map(attribute="fluid_name") | list %}
+    {% set attrs = op["attrs"] | map(attribute="fluid_name") | list %}
     {% if data_type_arg in inputs %}
   auto data_type = framework::OperatorWithKernel::IndicateVarDataType(ctx, {{data_type_arg | to_opmaker_name}});
       {% if kernel["data_type"]["to_complex_flag"][0] %}
   data_type = framework::ToComplexType(data_type);
       {% endif %}
-    {% else %}{# it is an attribute and probably named dtype#}
+    {% elif data_type_arg in attrs %}{# it is an attribute and probably named dtype#}
   auto data_type = framework::proto::VarType::Type(ctx.Attr<int>("{{data_type_arg}}"));
+    {% else %}
+  auto data_type = framework::TransToProtoVarType(phi::{{data_type_arg}});
     {% endif %}
   {% elif kernel["data_type"]["candidates"] | length == 2 %}
     {% set data_type_args = kernel["data_type"]["candidates"] %}
@@ -469,7 +472,8 @@ REGISTER_OPERATOR({{name}}, ops::{{name | to_pascal_case}}Op,
 {% if not "forward" in op %}{# it is a forward op #}
                   ops::{{name | to_pascal_case}}OpMaker,
 {% endif %}
-{% if "backward" in op and op["backward"] is not none %}{# backward #}
+{% if "only_backward_composite" in op and op["only_backward_composite"] is true %}{# backward #}
+{% elif "backward" in op and op["backward"] is not none %}
   {% set backward_name = op["backward"] %}
                   ops::{{backward_name | to_pascal_case}}OpMaker<paddle::framework::OpDesc>,
                   ops::{{backward_name | to_pascal_case}}OpMaker<paddle::imperative::OpBase>,

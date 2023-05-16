@@ -35,8 +35,6 @@ namespace cub = hipcub;
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/randint_kernel.h"
 
-DECLARE_bool(use_curand);
-
 namespace phi {
 
 template <typename keyT, typename dataT>

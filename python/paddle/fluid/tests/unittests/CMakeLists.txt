@@ -916,6 +916,7 @@ set_tests_properties(test_imperative_selected_rows_to_lod_tensor
                      PROPERTIES TIMEOUT 200)
 set_tests_properties(test_index_select_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_index_add_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_index_put_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_tensordot PROPERTIES TIMEOUT 200)
 set_tests_properties(test_partial_eager_deletion_transformer PROPERTIES TIMEOUT
                                                                         120)
@@ -1113,7 +1114,8 @@ set(TEST_CINN_OPS
     test_dropout_op
     test_group_norm_op
     test_tile_op
-    test_roll_op)
+    test_roll_op
+    test_sum_op)
 
 foreach(TEST_CINN_OPS ${TEST_CINN_OPS})
   if(WITH_CINN)
@@ -1161,6 +1163,8 @@ set(STATIC_BUILD_TESTS
     test_fetch_lod_tensor_array
     test_fused_attention_op
     test_fused_attention_op_api
+    test_fused_feedforward_op
+    test_fused_feedforward_pass
     test_imperative_optimizer
     test_lamb_op
     test_layer_norm_op
@@ -1190,6 +1194,8 @@ set(STATIC_BUILD_TESTS
 if(NOT WITH_GPU)
   list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_attention_op)
   list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_attention_op_api)
+  list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_feedforward_op)
+  list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_feedforward_op_pass)
 endif()
 
 foreach(STATIC_BUILD_TEST ${STATIC_BUILD_TESTS})

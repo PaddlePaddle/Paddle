@@ -236,17 +236,19 @@ PHI_DEFINE_EXPORTED_bool(
  * CUDA related FLAG
  * Name: FLAGS_embedding_deterministic
  * Since Version: 2.5
- * Value Range: bool, default=false
+ * Value Range: int64, default=0
  * Example:
  * Note: whether to use deterministic algorithm in embedding op.
- *       If true, it will use deterministic CUDA kernel in embedding op.
+ *       If it is 1, it will use the optimized deterministic CUDA kernel in
+ *       embedding op. If it is 2, it will use the legacy deterministic
+ *       CUDA kernel in embedding op.
  */
-PHI_DEFINE_EXPORTED_bool(
+PHI_DEFINE_EXPORTED_int64(
     embedding_deterministic,
-    false,
+    0,
     "Whether allow using an deterministic algorithm for embedding "
     "operator. The deterministic algorithm may be slower. If "
-    "true, the algorithm is deterministic.");
+    "it is larger than 0, the algorithm is deterministic.");
 
 /**
  * CUDNN related FLAG
@@ -817,7 +819,7 @@ PHI_DEFINE_EXPORTED_bool(use_fast_math,
  * Note: Get host by name time.
  */
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_XPU) || \
-    defined(PADDLE_WITH_HIP)
+    defined(PADDLE_WITH_HIP) || defined(PADDLE_WITH_CUSTOM_DEVICE)
 PHI_DEFINE_EXPORTED_int32(get_host_by_name_time,
                           120,
                           "The maximum time for get host by name time");

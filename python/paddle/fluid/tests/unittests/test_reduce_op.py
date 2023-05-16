@@ -57,6 +57,20 @@ class TestSumOp(OpTest):
         self.check_grad(['X'], 'Out', check_prim=True)
 
 
+class TestComplexSumOP(TestSumOp):
+    def init_dtype(self):
+        self.dtype = np.complex128
+
+    def init_input(self):
+        self.x = np.random.random((3, 4)).astype(self.dtype)
+
+    def init_attrs(self):
+        self.attrs = {'dim': [0]}
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', check_prim=False)
+
+
 class TestSumOp_ZeroDim(TestSumOp):
     def init_attrs(self):
         self.attrs = {'dim': [], 'reduce_all': True}

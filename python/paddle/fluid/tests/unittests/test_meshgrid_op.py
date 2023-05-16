@@ -76,6 +76,14 @@ class TestMeshgridOp2(TestMeshgridOp):
         return [100, 300]
 
 
+class TestMeshgridOp2Fp16(TestMeshgridOp):
+    def get_x_shape(self):
+        return [100, 300]
+
+    def get_dtype(self):
+        return np.float16
+
+
 class TestMeshgridOp3(unittest.TestCase):
     def test_api(self):
         x = paddle.static.data(shape=[100], dtype='int32', name='x')

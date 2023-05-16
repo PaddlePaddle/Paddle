@@ -158,6 +158,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/fluid/operators/custom_device_common_op_registry.h"
+#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/phi/capi/capi.h"
 #endif
 
@@ -990,6 +991,7 @@ PYBIND11_MODULE(libpaddle, m) {
         []() { phi::KernelFactory::Instance().kernels().clear(); });
   m.def("clear_device_manager", []() {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
+    platform::XCCLCommContext::Release();
     phi::DeviceManager::Clear();
 #endif
   });

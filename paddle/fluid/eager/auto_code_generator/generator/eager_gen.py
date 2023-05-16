@@ -67,6 +67,8 @@ black_ops_list = [
 prim_white_list = [
     "matmul_double_grad",
     "tanh_double_grad",
+    "subtract_double_grad",
+    "silu_double_grad",
 ]
 
 # dict of special api that forward api's output will affect bacward api's output
@@ -1890,10 +1892,27 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             False if self.composite_func_info == {} else True
         )
 
-        if is_composite_grad_api and next_grad_node_creation_str != '':
-            next_grad_node_creation_str = f"""
+        if is_composite_grad_api:
+            if next_grad_node_creation_str != '':
+                next_grad_node_creation_str = f"""
  if (!paddle::prim::PrimCommonUtils::IsEagerPrimEnabled()) {{
     {next_grad_node_creation_str}
+ }}
+  """
+            else:
+                if not (
+                    self.grad_api_contents["backward_op"] in prim_white_list
+                    or is_invoke_forward_api
+                ):
+
+                    next_grad_node_creation_str = f"""
+ if (!paddle::prim::PrimCommonUtils::IsEagerPrimEnabled()) {{
+    if(trace_backward) {{
+    PADDLE_THROW(phi::errors::Unavailable(
+    \"The Op {self.backward_api_name} doesn't have any grad\"
+    \"op. If you don't intend calculating higher order\"
+    \"derivatives, please set `create_graph`to False.\"));
+  }}
  }}
   """
 
@@ -1915,6 +1934,7 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
     \"op. If you don't intend calculating higher order\"
     \"derivatives, please set `create_graph`to False.\"));
   }}"""
+
         return (
             has_higher_order_node,
             is_invoke_forward_api,

@@ -125,12 +125,14 @@ void ProcessGroupCustom::BroadcastUniqueCustomID(
     std::vector<phi::ccl::CCLRootId>& ccl_ids) {  // NOLINT
   if (rank_ == 0) {
     for (size_t i = 0; i < ccl_ids.size(); i++) {
-      auto key = "ProcessGroupCustom/ccl_ids/" + std::to_string(i);
+      auto key = "ProcessGroupCustom/ccl_ids/" + std::to_string(gid_) + "/" +
+                 std::to_string(i);
       store_->set(key, ccl_ids[i]);
     }
   } else {
     for (size_t i = 0; i < ccl_ids.size(); i++) {
-      auto key = "ProcessGroupCustom/ccl_ids/" + std::to_string(i);
+      auto key = "ProcessGroupCustom/ccl_ids/" + std::to_string(gid_) + "/" +
+                 std::to_string(i);
       ccl_ids[i] = store_->get(key);
     }
   }
@@ -189,7 +191,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Collective(
     std::vector<phi::DenseTensor>& outputs,
     Fn fn,
     CommType op_type,
-    bool sync_op,
+    bool sync_op UNUSED,
     bool use_calc_stream) {
   const auto places = GetPlaceList(inputs);
   const auto key = GetKeyFromPlaces(places);
