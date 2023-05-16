@@ -137,6 +137,8 @@ class PassManager {
     }
 
    private:
+    // The enable_print_before_ and enable_print_after_ can be used to specify
+    // the pass to be printed. The default is to print all passes.
     std::function<bool(Pass *, mlir::Operation *)> enable_print_before_;
     std::function<bool(Pass *, mlir::Operation *)> enable_print_after_;
 

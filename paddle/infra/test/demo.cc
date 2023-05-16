@@ -194,7 +194,15 @@ int main(int argc, char** argv) {
 
   infra::PassManager pm(&context, opt_level);
   pm.EnableTiming();
-  pm.EnableIRPrinting(std::make_unique<infra::PassManager::IRPrinterConfig>());
+  pm.EnableIRPrinting(std::make_unique<infra::PassManager::IRPrinterConfig>(
+      [](infra::Pass* pass, mlir::Operation* op) {
+        return pass->GetPassInfo().name == "TestPass";
+      },
+      [](infra::Pass* pass, mlir::Operation* op) {
+        return pass->GetPassInfo().name == "TestPass";
+      },
+      true,
+      false));
   auto pass = std::make_unique<TestPass>();
   pm.addPass(std::move(pass));
 
