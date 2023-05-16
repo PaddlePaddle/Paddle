@@ -150,6 +150,7 @@ class TestMasterGradAccuracy(AmpTestBase):
                 exe,
                 x_np,
                 max_iters,
+                dtype,
                 level,
             )
             return losses
