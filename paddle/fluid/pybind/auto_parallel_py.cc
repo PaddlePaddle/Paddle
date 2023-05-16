@@ -373,6 +373,14 @@ void BindAutoParallel(py::module *m) {
           },
           py::arg("memo"))
       .def("__str__", &OperatorDistAttr::to_string);
+
+  // TODO(liuzhenhai): DistributedMapper is not used for now, but
+  // dist_mapper_test need the symbols forch DistributedMapper to be linked,
+  // remove it latter
+  m->def("touch_dist_mapper", []() {
+    DistributedMapper mapper;
+    return mapper.to_string();
+  });
 }
 
 }  // namespace pybind
