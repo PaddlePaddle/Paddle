@@ -188,6 +188,8 @@ class FMHARef {
       // out [2, bs, num_head, cache_seq_len + seq_len, head_dim]
       concat(dev_ctx_, {*cache_kv_tensor, kv_tensor}, 3, cache_kv_out_tensor);
       out_seq_len = cache_kv_out_tensor->dims()[3];
+    } else {
+      *cache_kv_out_tensor = transpose_2_out_tensor->Slice(1, 3);
     }
 
     int64_t q_size = batch_size_ * seq_len_ * num_head_ * head_dim_;
