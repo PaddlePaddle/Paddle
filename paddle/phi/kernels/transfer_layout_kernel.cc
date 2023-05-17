@@ -58,7 +58,6 @@ template <typename Context>
 void TransferLayoutGeneral(const Context& dev_ctx,
                            const DenseTensor& x,
                            DataLayout dst_layout,
-                           DataLayout src_layout,
                            DenseTensor* out) {
   auto src_dim = x.dims();
 
