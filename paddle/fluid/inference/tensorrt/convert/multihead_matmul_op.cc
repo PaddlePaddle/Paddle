@@ -141,7 +141,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
           // half -> bool
           auto* cast_layer_0 = TRT_ENGINE_ADD_LAYER(
               engine_, Identity, *slice_layer->getOutput(0));
-          cast_layer_0->setOutputType(0, nvinfer1::DataType::kBOOL);
+          cast_layer_0->setOutputType(0, nvinfer1::DataType::tekBOOL);
 
           // bool kNOT
           auto* not_layer =

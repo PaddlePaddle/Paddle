@@ -74,6 +74,8 @@ cc_test_old(
   brpc_utils
   scope
   math_function
+  sendrecv_rpc
+  ps_service
   ${COMMON_DEPS}
   ${RPC_DEPS})
 
@@ -115,10 +117,16 @@ cc_test_old(
   ps_framework_proto
   ${COMMON_DEPS})
 
-set_source_files_properties(
-  feature_value_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-cc_test_old(feature_value_test SRCS feature_value_test.cc DEPS ${COMMON_DEPS}
-            table)
+set_source_files_properties(.cc PROPERTIES COMPILE_FLAGS
+                                           ${DISTRIBUTE_COMPILE_FLAGS})
+cc_test_old(
+  feature_value_test
+  SRCS
+  feature_value_test.cc
+  DEPS
+  table
+  common_table
+  sendrecv_rpc)
 
 set_source_files_properties(
   sparse_sgd_rule_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
@@ -127,13 +135,13 @@ cc_test_old(sparse_sgd_rule_test SRCS sparse_sgd_rule_test.cc DEPS
 
 set_source_files_properties(
   ctr_accessor_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
-cc_test_old(ctr_accessor_test SRCS ctr_accessor_test.cc DEPS ${COMMON_DEPS}
-            table)
+cc_test_old(ctr_accessor_test SRCS ctr_accessor_test.cc DEPS table
+            ${COMMON_DEPS})
 set_source_files_properties(
   ctr_dymf_accessor_test.cc PROPERTIES COMPILE_FLAGS
                                        ${DISTRIBUTE_COMPILE_FLAGS})
-cc_test_old(ctr_dymf_accessor_test SRCS ctr_dymf_accessor_test.cc DEPS
-            ${COMMON_DEPS} table)
+cc_test_old(ctr_dymf_accessor_test SRCS ctr_dymf_accessor_test.cc DEPS table
+            ${COMMON_DEPS})
 
 set_source_files_properties(
   memory_sparse_table_test.cc PROPERTIES COMPILE_FLAGS

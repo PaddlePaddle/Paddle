@@ -44,12 +44,13 @@ cc_test_old(
   compute_interceptor_run_op_test.cc
   DEPS
   fleet_executor
-  ${BRPC_DEPS}
   op_registry
   fill_constant_op
   elementwise_add_op
   scope
-  device_context)
+  device_context
+  ${BRPC_DEPS}
+  naive_executor)
 
 if(WITH_DISTRIBUTE AND NOT WITH_PSLIB)
   set_source_files_properties(

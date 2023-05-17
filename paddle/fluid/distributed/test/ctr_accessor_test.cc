@@ -25,7 +25,7 @@ limitations under the License. */
 namespace paddle {
 namespace distributed {
 REGISTER_PSCORE_CLASS(SparseValueSGDRule, SparseAdaGradSGDRule);
-REGISTER_PSCORE_CLASS(SparseValueSGDRule, StdAdaGradSGDRule);
+// REGISTER_PSCORE_CLASS(SparseValueSGDRule, StdAdaGradSGDRule);
 REGISTER_PSCORE_CLASS(SparseValueSGDRule, SparseAdamSGDRule);
 REGISTER_PSCORE_CLASS(SparseValueSGDRule, SparseNaiveSGDRule);
 
