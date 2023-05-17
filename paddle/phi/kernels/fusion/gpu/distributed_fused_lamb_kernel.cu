@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/phi/backends/dynload/nccl.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/amp_type_traits.h"
@@ -22,6 +23,7 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/funcs/tensor_to_string.h"
@@ -299,9 +301,7 @@ static T *GetSameInOutTensorPtr(const Context &dev_ctx,
   PADDLE_ENFORCE_EQ(in_data,
                     out_data,
                     phi::errors::InvalidArgument(
-                        "Input(%s) and Output(%s) must be the same Tensor.",
-                        in_name,
-                        out_name));
+                        "Input and Output must be the same Tensor."));
   if (numel) *numel = out_tensor->numel();
   return out_data;
 }
@@ -1090,9 +1090,7 @@ std::string NumToString(T x) {
 }
 
 template <typename T>
-static std::string GetMinMaxStr(const T *x,
-                                size_t n,
-                                const platform::Place &place) {
+static std::string GetMinMaxStr(const T *x, size_t n, const phi::Place &place) {
   PADDLE_ENFORCE_EQ(
       place.GetType() == phi::AllocationType::GPU,
       true,
@@ -1299,48 +1297,48 @@ static void LaunchElementwiseAddWithCastKernel(const phi::GPUContext &dev_ctx,
 }
 
 template <typename T, typename Context>
-void DistributedFusedLambKernel(
-    const Context &dev_ctx,
-    const std::vector<const DenseTensor *> &param,
-    const paddle::optional<DenseTensor> &fp32_fused_param,
-    const paddle::optional<DenseTensor> &fp32_fused_grad,
-    const paddle::optional<DenseTensor> &fp16_fused_param,
-    const paddle::optional<DenseTensor> &fp16_fused_grad,
-    const DenseTensor &moment1,
-    const DenseTensor &moment2,
-    const DenseTensor &beta1_pow,
-    const DenseTensor &beta2_pow,
-    const DenseTensor &fused_param_offsets,
-    const DenseTensor &fp32_shared_fused_param_offsets,
-    const DenseTensor &fp16_shared_fused_param_offsets,
-    const DenseTensor &param_info,
-    const DenseTensor &param_order,
-    const DenseTensor &learning_rate,
-    const DenseTensor &global_scale,
-    int acc_steps,
-    float beta1,
-    float beta2,
-    float epsilon,
-    float max_global_grad_norm,
-    float weight_decay,
-    bool clip_after_allreduce,
-    bool use_master_param_norm,
-    bool is_grad_scaled_by_nranks,
-    bool use_hierarchical_allreduce,
-    int64_t nranks,
-    const std::vector<int> &ring_ids,
-    DenseTensor *fp32_fused_param_out,
-    DenseTensor *fp16_fused_param_out,
-    DenseTensor *fp32_acc_fused_grad,
-    DenseTensor *fp16_acc_fused_grad,
-    DenseTensor *moment1_out,
-    DenseTensor *moment2_out,
-    DenseTensor *beta1_pow_out,
-    DenseTensor *beta2_pow_out,
-    DenseTensor *found_inf,
-    DenseTensor *acc_step,
-    DenseTensor *stop_update,
-    DenseTensor *step) {
+void DistributedFusedLambKernel(const Context &dev_ctx,
+                                const std::vector<const DenseTensor *> &param,
+                                const paddle::optional<DenseTensor> &fp32_param,
+                                const paddle::optional<DenseTensor> &fp32_grad,
+                                const paddle::optional<DenseTensor> &fp16_param,
+                                const paddle::optional<DenseTensor> &fp16_grad,
+                                const DenseTensor &moment1,
+                                const DenseTensor &moment2,
+                                const DenseTensor &beta1_pow,
+                                const DenseTensor &beta2_pow,
+                                const DenseTensor &param_offsets,
+                                const DenseTensor &fp32_partial_offsets,
+                                const DenseTensor &fp16_partial_offsets,
+                                const DenseTensor &param_info,
+                                const DenseTensor &param_order,
+                                const DenseTensor &learning_rate,
+                                const DenseTensor &global_scale,
+                                int acc_steps,
+                                float beta1,
+                                float beta2,
+                                float epsilon,
+                                float max_global_grad_norm,
+                                float weight_decay,
+                                bool clip_after_allreduce,
+                                bool use_master_param_norm,
+                                bool use_master_acc_grad,
+                                bool is_grad_scaled_by_nranks,
+                                bool use_hierarchical_allreduce,
+                                int64_t nranks,
+                                const std::vector<int> &ring_ids,
+                                DenseTensor *fp32_param_out,
+                                DenseTensor *fp16_param_out,
+                                DenseTensor *fp32_acc_grad,
+                                DenseTensor *fp16_acc_grad,
+                                DenseTensor *moment1_out,
+                                DenseTensor *moment2_out,
+                                DenseTensor *beta1_pow_out,
+                                DenseTensor *beta2_pow_out,
+                                DenseTensor *found_inf,
+                                DenseTensor *acc_step,
+                                DenseTensor *stop_update,
+                                DenseTensor *step) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   auto stream = dev_ctx.stream();
   auto place = dev_ctx.GetPlace();
@@ -1349,20 +1347,20 @@ void DistributedFusedLambKernel(
 
   // Step 1: Get fp16 param and grad tensors
   int64_t fp16_numel;
-  auto *fp16_param = GetSameInOutTensorPtr<dtype::float16, Context, true>(
-      dev_ctx, fp16_fused_param.get_ptr(), fp16_fused_param_out, &fp16_numel);
+  auto *fp16_param_data = GetSameInOutTensorPtr<dtype::float16, Context, true>(
+      dev_ctx, fp16_param.get_ptr(), fp16_param_out, &fp16_numel);
   bool has_fp16_param = (fp16_numel > 0);
-  const dtype::float16 *fp16_grad = nullptr;
+  const dtype::float16 *fp16_grad_data = nullptr;
   if (has_fp16_param) {
-    fp16_grad = GetInputTensorPtr<dtype::float16>(fp16_fused_grad.get_ptr());
+    fp16_grad_data = GetInputTensorPtr<dtype::float16>(fp16_grad.get_ptr());
   } else {
-    fp16_param = nullptr;
+    fp16_param_data = nullptr;
   }
 
   // Step 2: Get fp32 param and grad tensors
   int64_t fp32_numel = 0;
-  auto *fp32_param = GetSameInOutTensorPtr<float, Context, true>(
-      dev_ctx, fp32_fused_param.get_ptr(), fp32_fused_param_out, &fp32_numel);
+  auto *fp32_param_data = GetSameInOutTensorPtr<float, Context, true>(
+      dev_ctx, fp32_param.get_ptr(), fp32_param_out, &fp32_numel);
   PADDLE_ENFORCE_GE(fp32_numel,
                     fp16_numel,
                     phi::errors::InvalidArgument(
@@ -1372,9 +1370,9 @@ void DistributedFusedLambKernel(
   fp32_numel -= fp16_numel;  // the FP32FusedParam contains fp32 param and
                              // fp16 master weight
   bool has_fp32_param = (fp32_numel > 0);
-  const float *fp32_grad = nullptr;
+  const float *fp32_grad_data = nullptr;
   if (has_fp32_param) {
-    fp32_grad = GetInputTensorPtr<float>(fp32_fused_grad.get_ptr());
+    fp32_grad_data = GetInputTensorPtr<float>(fp32_grad.get_ptr());
   } else {
     PADDLE_ENFORCE_EQ(
         has_fp16_param,
@@ -1405,52 +1403,52 @@ void DistributedFusedLambKernel(
         phi::errors::InvalidArgument(
             "Output(AccStep) cannot be nullptr when Attr(acc_steps) > 1."));
     bool is_initialized = acc_step->IsInitialized();
-    int64_t *step_ptr;
+    int64_t *acc_step_data;
     if (is_initialized) {
-      step_ptr = acc_step->mutable_data<int64_t>(phi::CPUPlace());
-      ++(*step_ptr);
+      acc_step_data = acc_step->mutable_data<int64_t>(phi::CPUPlace());
+      ++(*acc_step_data);
     } else {
       acc_step->Resize({1});
-      step_ptr = acc_step->mutable_data<int64_t>(phi::CPUPlace());
-      *step_ptr = 1;
+      acc_step_data = acc_step->mutable_data<int64_t>(phi::CPUPlace());
+      *acc_step_data = 1;
     }
-    int64_t rounded_step = (*step_ptr) % acc_steps;
+    int64_t rounded_step = (*acc_step_data) % acc_steps;
 
     float *fp32_acc_grad_data = nullptr;
     if (has_fp32_param) {
-      PADDLE_ENFORCE_NOT_NULL(fp32_acc_fused_grad,
+      PADDLE_ENFORCE_NOT_NULL(fp32_acc_grad,
                               phi::errors::InvalidArgument(
                                   "Output(FP32AccFusedGrad) cannot be nullptr "
                                   "when Attr(acc_steps) > 1."));
-      if (!fp32_acc_fused_grad->IsInitialized()) {
-        fp32_acc_fused_grad->Resize({static_cast<int64_t>(fp32_numel)});
-        fp32_acc_grad_data = fp32_acc_fused_grad->mutable_data<float>(place);
+      if (!fp32_acc_grad->IsInitialized()) {
+        fp32_acc_grad->Resize({static_cast<int64_t>(fp32_numel)});
+        fp32_acc_grad_data = fp32_acc_grad->mutable_data<float>(place);
       } else {
-        fp32_acc_grad_data = fp32_acc_fused_grad->data<float>();
+        fp32_acc_grad_data = fp32_acc_grad->data<float>();
       }
     }
 
     dtype::float16 *fp16_acc_grad_data = nullptr;
     float *master_acc_grad = nullptr;
-    bool use_master_acc_grad = false;
     if (has_fp16_param) {
-      PADDLE_ENFORCE_NOT_NULL(fp16_acc_fused_grad,
+      PADDLE_ENFORCE_NOT_NULL(fp16_acc_grad,
                               phi::errors::InvalidArgument(
                                   "Output(FP16AccFusedGrad) cannot be nullptr "
                                   "when Attr(acc_steps) > 1."));
-      if (!fp16_acc_fused_grad->IsInitialized()) {
+      if (!fp16_acc_grad->IsInitialized()) {
         auto acc_grad_size =
             use_master_acc_grad ? (3 * fp16_numel) : fp16_numel;
-        fp16_acc_fused_grad->Resize({static_cast<int64_t>(acc_grad_size)});
-        fp16_acc_grad_data =
-            fp16_acc_fused_grad->mutable_data<dtype::float16>(place);
+        fp16_acc_grad->Resize({static_cast<int64_t>(acc_grad_size)});
+        fp16_acc_grad_data = fp16_acc_grad->mutable_data<dtype::float16>(place);
       } else {
-        fp16_acc_grad_data = fp16_acc_fused_grad->data<dtype::float16>();
+        fp16_acc_grad_data = fp16_acc_grad->data<dtype::float16>();
       }
       if (use_master_acc_grad) {
         master_acc_grad =
             reinterpret_cast<float *>(fp16_acc_grad_data + fp16_numel);
       }
+    } else {
+      use_master_acc_grad = false;
     }
 
     // Inplace addto
@@ -1459,12 +1457,12 @@ void DistributedFusedLambKernel(
         memory_utils::Copy(place,
                            fp32_acc_grad_data,
                            place,
-                           fp32_grad,
+                           fp32_grad_data,
                            fp32_numel * sizeof(float),
                            stream);
       } else {
         LaunchElementwiseAddWithCastKernel(dev_ctx,
-                                           fp32_grad,
+                                           fp32_grad_data,
                                            fp32_acc_grad_data,
                                            fp32_acc_grad_data,
                                            fp32_numel,
@@ -1477,7 +1475,7 @@ void DistributedFusedLambKernel(
         if (rounded_step != 1) {
           LaunchElementwiseAddWithCastKernel(dev_ctx,
                                              fp16_acc_grad_data,
-                                             fp16_grad,
+                                             fp16_grad_data,
                                              fp16_acc_grad_data,
                                              fp16_numel,
                                              stream);
@@ -1485,14 +1483,14 @@ void DistributedFusedLambKernel(
           memory_utils::Copy(place,
                              fp16_acc_grad_data,
                              place,
-                             fp16_grad,
+                             fp16_grad_data,
                              fp16_numel * sizeof(dtype::float16),
                              stream);
         }
       } else {  // acc_steps >= 3
         if (rounded_step == 0) {
           LaunchElementwiseAddWithCastKernel(dev_ctx,
-                                             fp16_grad,
+                                             fp16_grad_data,
                                              master_acc_grad,
                                              fp16_acc_grad_data,
                                              fp16_numel,
@@ -1501,19 +1499,19 @@ void DistributedFusedLambKernel(
           memory_utils::Copy(place,
                              fp16_acc_grad_data,
                              place,
-                             fp16_grad,
+                             fp16_grad_data,
                              fp16_numel * sizeof(dtype::float16),
                              stream);
         } else if (rounded_step == 2) {
           LaunchElementwiseAddWithCastKernel(dev_ctx,
-                                             fp16_grad,
+                                             fp16_grad_data,
                                              fp16_acc_grad_data,
                                              master_acc_grad,
                                              fp16_numel,
                                              stream);
         } else {
           LaunchElementwiseAddWithCastKernel(dev_ctx,
-                                             fp16_grad,
+                                             fp16_grad_data,
                                              master_acc_grad,
                                              master_acc_grad,
                                              fp16_numel,
@@ -1523,20 +1521,20 @@ void DistributedFusedLambKernel(
     }
 
     stop_update->Resize({1});
-    auto *stop_update = stop_update->mutable_data<bool>(phi::CPUPlace());
+    auto *stop_update_data = stop_update->mutable_data<bool>(phi::CPUPlace());
 
     auto *found_inf_cpu = found_inf->mutable_data<bool>(phi::CPUPlace());
 
     if (rounded_step != 0) {
-      *stop_update = true;
+      *stop_update_data = true;
       auto *found_inf_cpu = found_inf->mutable_data<bool>(phi::CPUPlace());
       *found_inf_cpu = false;
       return;
     } else {
       // swap pointer
-      fp32_grad = fp32_acc_grad_data;
-      fp16_grad = fp16_acc_grad_data;
-      *stop_update = false;
+      fp32_grad_data = fp32_acc_grad_data;
+      fp16_grad_data = fp16_acc_grad_data;
+      *stop_update_data = false;
       found_inf->clear();
     }
   }
@@ -1641,17 +1639,17 @@ void DistributedFusedLambKernel(
              external_comm = nullptr;
   if (nranks > 1) {
     auto *nccl_comm_handle =
-        distributed::NCCLCommContext::Instance().Get(ring_ids[0], place);
+        paddle::platform::NCCLCommContext::Instance().Get(ring_ids[0], place);
     global_comm = nccl_comm_handle->comm();
     global_rank = nccl_comm_handle->rank();
 
     if (local_shard) {
       auto *local_nccl_comm_handle =
-          distributed::NCCLCommContext::Instance().Get(ring_ids[1], place);
+          paddle::platform::NCCLCommContext::Instance().Get(ring_ids[1], place);
       local_comm = local_nccl_comm_handle->comm();
       local_rank = local_nccl_comm_handle->rank();
       if (use_hierarchical_allreduce) {
-        external_comm = distributed::NCCLCommContext::Instance()
+        external_comm = paddle::platform::NCCLCommContext::Instance()
                             .Get(ring_ids[2], place)
                             ->comm();
       }
@@ -1694,8 +1692,8 @@ void DistributedFusedLambKernel(
     // if-else codes (num_devices > 1) when I write the following code.
     // So I prefer to use const_cast to unify the following code to reduce
     // the if-else codes.
-    fp32_sum_grad = const_cast<float *>(fp32_grad);
-    fp16_sum_grad = const_cast<dtype::float16 *>(fp16_grad);
+    fp32_sum_grad = const_cast<float *>(fp32_grad_data);
+    fp16_sum_grad = const_cast<dtype::float16 *>(fp16_grad_data);
   }
 
   float rescale_grad = 1.0f;
@@ -1709,7 +1707,7 @@ void DistributedFusedLambKernel(
       if (local_shard) {
         if (use_hierarchical_allreduce) {
           NCCLReduceScatterWithScale(
-              fp32_grad,
+              fp32_grad_data,
               fp32_sum_grad + local_rank * fp32_numel_each_device,
               fp32_numel_each_device,
               num_devices,
@@ -1726,7 +1724,7 @@ void DistributedFusedLambKernel(
               dev_ctx);
 
           NCCLReduceScatterWithScale(
-              fp16_grad,
+              fp16_grad_data,
               fp16_sum_grad + local_rank * fp16_numel_each_device,
               fp16_numel_each_device,
               num_devices,
@@ -1742,14 +1740,14 @@ void DistributedFusedLambKernel(
               stream,
               dev_ctx);
         } else {
-          NCCLAllReduceWithScale(fp32_grad,
+          NCCLAllReduceWithScale(fp32_grad_data,
                                  fp32_sum_grad,
                                  fp32_numel,
                                  nranks,
                                  global_comm,
                                  stream,
                                  dev_ctx);
-          NCCLAllReduceWithScale(fp16_grad,
+          NCCLAllReduceWithScale(fp16_grad_data,
                                  fp16_sum_grad,
                                  fp16_numel,
                                  nranks,
@@ -1760,14 +1758,14 @@ void DistributedFusedLambKernel(
         fp32_sum_grad += (local_rank * fp32_numel_each_device);
         fp16_sum_grad += (local_rank * fp16_numel_each_device);
       } else {
-        NCCLReduceScatterWithScale(fp32_grad,
+        NCCLReduceScatterWithScale(fp32_grad_data,
                                    fp32_sum_grad,
                                    fp32_numel_each_device,
                                    nranks,
                                    global_comm,
                                    stream,
                                    dev_ctx);
-        NCCLReduceScatterWithScale(fp16_grad,
+        NCCLReduceScatterWithScale(fp16_grad_data,
                                    fp16_sum_grad,
                                    fp16_numel_each_device,
                                    nranks,
@@ -1799,9 +1797,9 @@ void DistributedFusedLambKernel(
               << FlattenToString(fp32_square_grad_norm, 1, place);
     } else {
       // (1) Calculate the local grad norm
-      GetSquareGradNorm(fp32_grad,
+      GetSquareGradNorm(fp32_grad_data,
                         fp32_numel,
-                        fp16_grad,
+                        fp16_grad_data,
                         fp16_numel,
                         fp32_square_grad_norm,
                         stream,
@@ -1840,13 +1838,13 @@ void DistributedFusedLambKernel(
       }
       // (3) Do ReduceScatter with scale
       VLOG(1) << "FP32 HasNanInf before all reduce: "
-              << HasNanInf(dev_ctx, fp32_grad, fp32_numel);
+              << HasNanInf(dev_ctx, fp32_grad_data, fp32_numel);
       VLOG(1) << "FP16 HasNanInf before all reduce: "
-              << HasNanInf(dev_ctx, fp16_grad, fp16_numel);
+              << HasNanInf(dev_ctx, fp16_grad_data, fp16_numel);
       if (local_shard) {
         if (use_hierarchical_allreduce) {
           NCCLReduceScatterWithScale(
-              fp32_grad,
+              fp32_grad_data,
               fp32_sum_grad + local_rank * fp32_numel_each_device,
               fp32_numel_each_device,
               num_devices,
@@ -1864,7 +1862,7 @@ void DistributedFusedLambKernel(
               dev_ctx);
 
           NCCLReduceScatterWithScale(
-              fp16_grad,
+              fp16_grad_data,
               fp16_sum_grad + local_rank * fp16_numel_each_device,
               fp16_numel_each_device,
               num_devices,
@@ -1881,7 +1879,7 @@ void DistributedFusedLambKernel(
               stream,
               dev_ctx);
         } else {
-          NCCLAllReduceWithScale(fp32_grad,
+          NCCLAllReduceWithScale(fp32_grad_data,
                                  fp32_sum_grad,
                                  fp32_numel,
                                  nranks,
@@ -1889,7 +1887,7 @@ void DistributedFusedLambKernel(
                                  stream,
                                  dev_ctx,
                                  fp32_scale);
-          NCCLAllReduceWithScale(fp16_grad,
+          NCCLAllReduceWithScale(fp16_grad_data,
                                  fp16_sum_grad,
                                  fp16_numel,
                                  nranks,
@@ -1901,7 +1899,7 @@ void DistributedFusedLambKernel(
         fp32_sum_grad += (local_rank * fp32_numel_each_device);
         fp16_sum_grad += (local_rank * fp16_numel_each_device);
       } else {
-        NCCLReduceScatterWithScale(fp32_grad,
+        NCCLReduceScatterWithScale(fp32_grad_data,
                                    fp32_sum_grad,
                                    fp32_numel_each_device,
                                    nranks,
@@ -1909,7 +1907,7 @@ void DistributedFusedLambKernel(
                                    stream,
                                    dev_ctx,
                                    fp32_scale);
-        NCCLReduceScatterWithScale(fp16_grad,
+        NCCLReduceScatterWithScale(fp16_grad_data,
                                    fp16_sum_grad,
                                    fp16_numel_each_device,
                                    nranks,
@@ -1949,7 +1947,7 @@ void DistributedFusedLambKernel(
     if (local_shard) {
       if (use_hierarchical_allreduce) {
         NCCLReduceScatterWithScale(
-            fp32_grad,
+            fp32_grad_data,
             fp32_sum_grad + local_rank * fp32_numel_each_device,
             fp32_numel_each_device,
             num_devices,
@@ -1966,7 +1964,7 @@ void DistributedFusedLambKernel(
             dev_ctx);
 
         NCCLReduceScatterWithScale(
-            fp16_grad,
+            fp16_grad_data,
             fp16_sum_grad + local_rank * fp16_numel_each_device,
             fp16_numel_each_device,
             num_devices,
@@ -1982,14 +1980,14 @@ void DistributedFusedLambKernel(
             stream,
             dev_ctx);
       } else {
-        NCCLAllReduceWithScale(fp32_grad,
+        NCCLAllReduceWithScale(fp32_grad_data,
                                fp32_sum_grad,
                                fp32_numel,
                                nranks,
                                global_comm,
                                stream,
                                dev_ctx);
-        NCCLAllReduceWithScale(fp16_grad,
+        NCCLAllReduceWithScale(fp16_grad_data,
                                fp16_sum_grad,
                                fp16_numel,
                                nranks,
@@ -2000,14 +1998,14 @@ void DistributedFusedLambKernel(
       fp32_sum_grad += (local_rank * fp32_numel_each_device);
       fp16_sum_grad += (local_rank * fp16_numel_each_device);
     } else {
-      NCCLReduceScatterWithScale(fp32_grad,
+      NCCLReduceScatterWithScale(fp32_grad_data,
                                  fp32_sum_grad,
                                  fp32_numel_each_device,
                                  num_devices,
                                  global_comm,
                                  stream,
                                  dev_ctx);
-      NCCLReduceScatterWithScale(fp16_grad,
+      NCCLReduceScatterWithScale(fp16_grad_data,
                                  fp16_sum_grad,
                                  fp16_numel_each_device,
                                  num_devices,
@@ -2037,26 +2035,24 @@ void DistributedFusedLambKernel(
   VLOG(10) << "ReduceScatter done";
 
   // Step 7: update the moment1, moment2. Calcuate the trust_ratio_div
-  auto *fused_offsets = fused_param_offsets.data<int>();
-  const auto *fp32_partial_fused_offsets =
-      fp32_shared_fused_param_offsets.data<int>();
-  const auto *fp16_partial_fused_offsets =
-      fp16_shared_fused_param_offsets.data<int>();
+  auto *param_offsets_data = param_offsets.data<int>();
+  const auto *fp32_partial_offsets_data = fp32_partial_offsets.data<int>();
+  const auto *fp16_partial_offsets_data = fp16_partial_offsets.data<int>();
 
   auto *step_data = step->data<int64_t>();
 
   VLOG(1) << "FusedParamOffsets: "
-          << FlattenToString(fused_offsets,
-                             fused_param_offsets.numel(),
-                             fused_param_offsets.place());
+          << FlattenToString(param_offsets_data,
+                             param_offsets.numel(),
+                             param_offsets.place());
   VLOG(1) << "FP32ShardFusedParamOffsets: "
-          << FlattenToString(fp32_partial_fused_offsets,
-                             fp32_shared_fused_param_offsets.numel(),
-                             fp32_shared_fused_param_offsets.place());
+          << FlattenToString(fp32_partial_offsets_data,
+                             fp32_partial_offsets.numel(),
+                             fp32_partial_offsets.place());
   VLOG(1) << "FP16ShardFusedParamOffsets: "
-          << FlattenToString(fp16_partial_fused_offsets,
-                             fp16_shared_fused_param_offsets.numel(),
-                             fp16_shared_fused_param_offsets.place());
+          << FlattenToString(fp16_partial_offsets_data,
+                             fp16_partial_offsets.numel(),
+                             fp16_partial_offsets.place());
 
   memory_utils::Buffer trust_ratio_div_buffer(place);
   auto *trust_ratio_div = trust_ratio_div_buffer.Alloc<float>(partial_numel);
@@ -2065,9 +2061,9 @@ void DistributedFusedLambKernel(
   if (has_fp32_param) {
     VLOG(10) << "Update FP32 Moment and TrustRatioDiv starts";
     MultiTensorUpdateLambMomentAndTrustRatioDiv(dev_ctx,
-                                                fp32_partial_fused_offsets,
+                                                fp32_partial_offsets_data,
                                                 fp32_local_param_num,
-                                                fp32_param + fp32_offset,
+                                                fp32_param_data + fp32_offset,
                                                 fp32_sum_grad,
                                                 fp32_square_grad_norm,
                                                 global_scale_data,
@@ -2089,13 +2085,13 @@ void DistributedFusedLambKernel(
   }
   float *master_param = nullptr;
   if (has_fp16_param) {
-    master_param = fp32_param + fp32_numel;
+    master_param = fp32_param_data + fp32_numel;
     VLOG(10) << "Update FP16 Moment and TrustRatioDiv starts";
     auto tmp_found_inf = has_fp32_param ? nullptr : found_inf_data;
     auto tmp_step = has_fp32_param ? nullptr : step_data;
     MultiTensorUpdateLambMomentAndTrustRatioDiv(
         dev_ctx,
-        fp16_partial_fused_offsets,
+        fp16_partial_offsets_data,
         fp16_local_param_num,
         master_param + fp16_offset,
         fp16_sum_grad,
@@ -2135,23 +2131,24 @@ void DistributedFusedLambKernel(
   }
   MultiTensorL2Norm(place,
                     stream,
-                    fp32_param,
-                    fused_offsets,
+                    fp32_param_data,
+                    param_offsets_data,
                     fp32_global_param_num,
                     param_square_norm);
   if (use_master_param_norm) {
     MultiTensorL2Norm(place,
                       stream,
                       master_param + fp16_offset,
-                      fp16_partial_fused_offsets,
+                      fp16_partial_offsets_data,
                       fp16_local_param_num,
                       param_square_norm + fp16_local_start_idx);
   } else {
     MultiTensorL2Norm(place,
                       stream,
-                      fp16_param + fused_offsets[fp16_local_start_idx] -
-                          fused_offsets[fp32_global_param_num],
-                      fused_offsets + fp16_local_start_idx,
+                      fp16_param_data +
+                          param_offsets_data[fp16_local_start_idx] -
+                          param_offsets_data[fp32_global_param_num],
+                      param_offsets_data + fp16_local_start_idx,
                       fp16_local_param_num,
                       param_square_norm + fp16_local_start_idx);
   }
@@ -2159,13 +2156,13 @@ void DistributedFusedLambKernel(
   MultiTensorL2Norm(place,
                     stream,
                     trust_ratio_div,
-                    fp32_partial_fused_offsets,
+                    fp32_partial_offsets_data,
                     fp32_local_param_num,
                     trust_ratio_div_square_norm + fp32_local_start_idx);
   MultiTensorL2Norm(place,
                     stream,
                     trust_ratio_div + fp32_numel_each_device,
-                    fp16_partial_fused_offsets,
+                    fp16_partial_offsets_data,
                     fp16_local_param_num,
                     trust_ratio_div_square_norm + fp16_local_start_idx);
 
@@ -2202,14 +2199,14 @@ void DistributedFusedLambKernel(
   if (has_fp32_param) {
     MultiTensorUpdateLambParamAndBetaPows<float>(
         dev_ctx,
-        fp32_partial_fused_offsets,
+        fp32_partial_offsets_data,
         fp32_local_param_num,
         trust_ratio_div,
         lr_data,
         param_square_norm + fp32_local_start_idx,
         trust_ratio_div_square_norm + fp32_local_start_idx,
         found_inf_data,
-        fp32_param + fp32_offset,
+        fp32_param_data + fp32_offset,
         nullptr,
         beta1_pow_data,
         beta2_pow_data,
@@ -2218,8 +2215,8 @@ void DistributedFusedLambKernel(
     if (num_devices > 1) {
       // ncclAllGather
       PADDLE_ENFORCE_GPU_SUCCESS(
-          phi::dynload::ncclAllGather(fp32_param + fp32_offset,
-                                      fp32_param,
+          phi::dynload::ncclAllGather(fp32_param_data + fp32_offset,
+                                      fp32_param_data,
                                       fp32_numel_each_device,
                                       ncclFloat32,
                                       local_comm,
@@ -2232,14 +2229,14 @@ void DistributedFusedLambKernel(
   if (has_fp16_param) {
     MultiTensorUpdateLambParamAndBetaPows<dtype::float16>(
         dev_ctx,
-        fp16_partial_fused_offsets,
+        fp16_partial_offsets_data,
         fp16_local_param_num,
         trust_ratio_div + fp32_numel_each_device,
         lr_data,
         param_square_norm + fp16_local_start_idx,
         trust_ratio_div_square_norm + fp16_local_start_idx,
         found_inf_data,
-        fp16_param + fp16_offset,
+        fp16_param_data + fp16_offset,
         master_param + fp16_offset,
         beta1_pow_data,
         beta2_pow_data,
@@ -2248,8 +2245,8 @@ void DistributedFusedLambKernel(
     if (num_devices > 1) {
       // ncclAllGather
       PADDLE_ENFORCE_GPU_SUCCESS(
-          phi::dynload::ncclAllGather(fp16_param + fp16_offset,
-                                      fp16_param,
+          phi::dynload::ncclAllGather(fp16_param_data + fp16_offset,
+                                      fp16_param_data,
                                       fp16_numel_each_device,
                                       ncclFloat16,
                                       local_comm,
