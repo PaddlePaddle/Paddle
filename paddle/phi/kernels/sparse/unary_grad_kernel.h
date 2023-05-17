@@ -130,5 +130,13 @@ void SliceCooGradKernel(const Context& dev_ctx,
                         const phi::IntArray& ends_arr,
                         SparseCooTensor* x_grad);
 
+template <typename T, typename Context>
+void SliceCsrGradKernel(const Context& dev_ctx,
+                        const SparseCsrTensor& x,
+                        const SparseCsrTensor& out_grad,
+                        const phi::IntArray& axes_arr,
+                        const phi::IntArray& starts_arr,
+                        const phi::IntArray& ends_arr,
+                        SparseCsrTensor* x_grad);
 }  // namespace sparse
 }  // namespace phi

@@ -25,15 +25,20 @@ class TestSlice(unittest.TestCase):
     x: sparse, out: sparse
     """
 
-    def _check_result(self, np_x, axes, starts, ends):
+    def _check_result(self, np_x, axes, starts, ends, format='coo'):
         x_shape = np_x.shape
         dense_x = paddle.to_tensor(np_x, place=paddle.CPUPlace())
         dense_x.stop_gradient = False
         dense_out = paddle.slice(dense_x, axes, starts, ends)
 
-        sp_x = paddle.to_tensor(np_x, place=paddle.CPUPlace()).to_sparse_coo(
-            len(x_shape)
-        )
+        if format == 'coo':
+            sp_x = paddle.to_tensor(
+                np_x, place=paddle.CPUPlace()
+            ).to_sparse_coo(len(x_shape))
+        else:
+            sp_x = paddle.to_tensor(
+                np_x, place=paddle.CPUPlace()
+            ).to_sparse_csr()
         sp_x.stop_gradient = False
         sp_out = paddle.sparse.slice(sp_x, axes, starts, ends)
         np.testing.assert_allclose(
@@ -48,24 +53,75 @@ class TestSlice(unittest.TestCase):
             rtol=1e-5,
         )
 
-    def check_result_with_shape(self, x_shape, axes, starts, ends):
+    def check_result_with_shape(
+        self, x_shape, axes, starts, ends, format='coo'
+    ):
         mask = np.random.randint(0, 2, x_shape)
         np_x = np.random.randint(-100, 100, x_shape) * mask
-        self._check_result(np_x, axes, starts, ends)
+        self._check_result(np_x, axes, starts, ends, format)
 
-    def check_result_with_list(self, x, axes, starts, ends):
+    def check_result_with_list(self, x, axes, starts, ends, format='coo'):
         np_x = np.array(x)
-        self._check_result(np_x, axes, starts, ends)
+        self._check_result(np_x, axes, starts, ends, format)
+
+    def test_coo_5d(self):
+        self.check_result_with_shape(
+            [2, 3, 4, 5, 6],
+            [0, 1, 2, 4],
+            [0, 1, 2, -4],
+            [3, 3, 4, -2],
+            format='coo',
+        )
+
+    def test_coo_4d(self):
+        self.check_result_with_shape(
+            [2, 3, 4, 5],
+            [0, 1, 2, 3],
+            [0, 1, 2, -4],
+            [3, 3, 4, -2],
+            format='coo',
+        )
 
     def test_coo_3d(self):
-        self.check_result_with_shape([3, 4, 5], [0, 1], [1, 2], [3, 3])
+        self.check_result_with_shape(
+            [4, 4, 5], [0, 1, 2], [0, 1, 2], [3, 3, 4], format='coo'
+        )
+        self.check_result_with_shape([4, 4, 5], [0], [0], [2], format='coo')
+        self.check_result_with_shape([4, 4, 5], [1], [2], [3], format='coo')
+        self.check_result_with_shape(
+            [4, 4, 5], [1, 2], [2, 2], [3, 4], format='coo'
+        )
+        self.check_result_with_shape(
+            [4, 4, 5], [0, 2], [2, 2], [3, 4], format='coo'
+        )
 
     def test_coo_2d(self):
-        self.check_result_with_shape([3, 4], [0], [0], [2])
+        self.check_result_with_shape([3, 4], [0], [0], [2], format='coo')
 
     def test_coo_1d(self):
         x = [-49, 55, -5, 0, 3, 0, 0, -60, -21, 0, 0, 0]
-        self.check_result_with_list(x, [0], [-3], [-1])
+        self.check_result_with_list(x, [0], [-3], [-1], format='coo')
+
+    def test_csr_3d(self):
+        self.check_result_with_shape(
+            [4, 4, 5], [0, 1, 2], [0, 1, 2], [3, 3, 4], format='csr'
+        )
+        self.check_result_with_shape([4, 4, 5], [0], [0], [2], format='csr')
+        self.check_result_with_shape([4, 4, 5], [1], [2], [3], format='csr')
+        self.check_result_with_shape(
+            [4, 4, 5], [1, 2], [2, 2], [3, 4], format='csr'
+        )
+        self.check_result_with_shape(
+            [4, 4, 5], [0, 2], [2, 2], [3, 4], format='csr'
+        )
+
+    def test_csr_2d(self):
+        self.check_result_with_shape([3, 4], [0], [0], [2], format='csr')
+        self.check_result_with_shape([3, 4], [1], [2], [3], format='csr')
+        self.check_result_with_shape([3, 4], [1], [-3], [-1], format='csr')
+        self.check_result_with_shape(
+            [3, 4], [0, 1], [0, 2], [-1, 3], format='csr'
+        )
 
 
 if __name__ == "__main__":

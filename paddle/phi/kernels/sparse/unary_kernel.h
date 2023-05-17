@@ -232,5 +232,14 @@ void SliceCooKernel(const Context& dev_ctx,
                     const phi::IntArray& starts_arr,
                     const phi::IntArray& ends_arr,
                     SparseCooTensor* out);
+
+template <typename T, typename Context>
+void SliceCsrKernel(const Context& dev_ctx,
+                    const SparseCsrTensor& x,
+                    const phi::IntArray& axes_arr,
+                    const phi::IntArray& starts_arr,
+                    const phi::IntArray& ends_arr,
+                    SparseCsrTensor* out);
+
 }  // namespace sparse
 }  // namespace phi

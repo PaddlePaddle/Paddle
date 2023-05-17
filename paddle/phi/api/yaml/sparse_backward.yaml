@@ -471,4 +471,5 @@
     func : UnchangedInferMeta
     param : [x]
   kernel :
-    func : slice_coo_grad{sparse_coo, sparse_coo -> sparse_coo}
+    func : slice_coo_grad{sparse_coo, sparse_coo -> sparse_coo},
+           slice_csr_grad{sparse_csr, sparse_csr -> sparse_csr}

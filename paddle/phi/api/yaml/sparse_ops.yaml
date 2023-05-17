@@ -533,6 +533,7 @@
     func : UnchangedInferMeta
     param : [x]
   kernel :
-    func : slice_coo{sparse_coo -> sparse_coo}
+    func : slice_coo{sparse_coo -> sparse_coo},
+           slice_csr{sparse_csr -> sparse_csr}
     layout : x
   backward : slice_grad
