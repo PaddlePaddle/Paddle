@@ -866,7 +866,6 @@ class FlashAttnWithGating {
                       phi::DenseTensor* qkv_transpose_out,
                       phi::DenseTensor* softmax_lse,
                       phi::DenseTensor* fmha_out,
-                      phi::DenseTensor* gate_out,
                       GateAttentionConfig<T>* config) {
 #ifdef PADDLE_WITH_FLASHATTN
     bool is_bf16 =
@@ -889,22 +888,16 @@ class FlashAttnWithGating {
     T* k_ptr = q_ptr + q_size;
     T* v_ptr = k_ptr + q_size;
 
-    // 2. Dealing with cu_seq_q and cu_seq_k for flash_attn.
+    // 2. flash_attn parameter setting.
     phi::DenseTensor cu_seq_q;
     phi::DenseTensor cu_seq_k;
-    int seq_batch_size = static_cast<int>(config->batch_size) *
-                         static_cast<int>(config->seq_len_m);
-    int64_t step = static_cast<int64_t>(config->seq_len_r);
-    AllocAndInitSeqQK(seq_batch_size, step, &cu_seq_q, &cu_seq_k);
+    InitArgumentsAndSeqTensors(config, &cu_seq_q, &cu_seq_k);
 
     // 3. Dealing with mask and bias for flash_attn.
     std::vector<int64_t> temp_mask_dim = GetCompressedDim(src_mask);
     std::vector<int64_t> temp_bias_dim = GetCompressedDim(nonbatched_bias);
 
-    // 4. flash_attn parameter setting.
-    InitFlashAttnArguments(config);
-
-    // 5. construct softmax_lse
+    // 4. construct softmax_lse
     int softmax_lse_last_dim = ((fa_max_seqlen_q_ + 16 - 1) / 16) * 16;
     softmax_lse->Resize({fa_batch_size_, fa_num_heads_, softmax_lse_last_dim});
     AllocWithDebugInfo<float>(dev_ctx_, "flash_attn: softmax_lse", softmax_lse);
@@ -917,10 +910,9 @@ class FlashAttnWithGating {
       VLOG(6) << TensorDebugString(qkv_transpose_out, "qkv_transpose_out");
       VLOG(6) << TensorDebugString(softmax_lse, "softmax_lse");
       VLOG(6) << TensorDebugString(fmha_out, "fmha_out");
-      VLOG(6) << TensorDebugString(gate_out, "gate_out");
     }
 
-    // 6. flas_attn part one, get temp worksapce size.
+    // 5. flash_attn part one, get temp worksapce size.
     cudaStream_t stream = dev_ctx_.stream();
     uint64_t workspace_size;
     bool succ = phi::dynload::flash_attn_fwd_with_bias_and_mask(
@@ -952,11 +944,10 @@ class FlashAttnWithGating {
         nonbatched_bias ? nonbatched_bias->data() : nullptr,
         src_mask ? temp_mask_dim.data() : nullptr,
         nonbatched_bias ? temp_bias_dim.data() : nullptr);
-    if (!succ) {
-      PADDLE_THROW(phi::errors::External(phi::dynload::flash_attn_error()));
-    }
+    PADDLE_ENFORCE_EQ(
+        succ, true, phi::errors::External(phi::dynload::flash_attn_error()));
 
-    // 8. Run flash-attention kernel.
+    // 6. Run flash-attention kernel.
     phi::DenseTensor workspace = CreateWorkspace(workspace_size);
     succ = phi::dynload::flash_attn_fwd_with_bias_and_mask(
         static_cast<const void*>(q_ptr),
@@ -987,15 +978,9 @@ class FlashAttnWithGating {
         nonbatched_bias ? nonbatched_bias->data() : nullptr,
         src_mask ? temp_mask_dim.data() : nullptr,
         nonbatched_bias ? temp_bias_dim.data() : nullptr);
-    if (!succ) {
-      PADDLE_THROW(phi::errors::External(phi::dynload::flash_attn_error()));
-    }
+    PADDLE_ENFORCE_EQ(
+        succ, true, phi::errors::External(phi::dynload::flash_attn_error()));
     WaitWithDebugInfo(dev_ctx_);
-    VLOG(5) << "[ComputeForward]: Run SUCCESS!!!";
-
-    if (config->has_gating) {
-      gate_out->Resize(config->gate_out_dims);
-    }
 #else
     PADDLE_THROW(phi::errors::Unimplemented(
         "FlashAttention is unsupported, please set use_flash_attn to false."));
@@ -1036,12 +1021,10 @@ class FlashAttnWithGating {
     T* v_grad_ptr = k_grad_ptr + q_size;
     WaitWithDebugInfo(dev_ctx_);
 
-    // 2. Init with cu_seq_q and cu_seq_k for flash_attn.
-    phi::DenseTensor cu_seq_q, cu_seq_k;
-    int seq_batch_size = static_cast<int>(config->batch_size) *
-                         static_cast<int>(config->seq_len_m);
-    int64_t step = static_cast<int64_t>(config->seq_len_r);
-    AllocAndInitSeqQK(seq_batch_size, step, &cu_seq_q, &cu_seq_k);
+    // 2. flash_attn parameter setting.
+    phi::DenseTensor cu_seq_q;
+    phi::DenseTensor cu_seq_k;
+    InitArgumentsAndSeqTensors(config, &cu_seq_q, &cu_seq_k);
     const int32_t* cu_seq_q_ptr = cu_seq_q.data<int32_t>();
     const int32_t* cu_seq_k_ptr = cu_seq_k.data<int32_t>();
 
@@ -1049,10 +1032,7 @@ class FlashAttnWithGating {
     std::vector<int64_t> temp_mask_dim = GetCompressedDim(src_mask);
     std::vector<int64_t> temp_bias_dim = GetCompressedDim(nonbatched_bias);
 
-    // 4. flash_attn parameter setting.
-    InitFlashAttnArguments(config);
-
-    // 5. construct softmax_lse
+    // 4. construct softmax_lse
     phi::DenseTensor softmax_d;
     softmax_d.Resize(softmax_lse->dims());
     AllocWithDebugInfo<float>(dev_ctx_, "d_softmax_lse", &softmax_d);
@@ -1073,7 +1053,7 @@ class FlashAttnWithGating {
       VLOG(6) << TensorDebugString(&bias_d, "bias_d");
     }
 
-    // 6. flas_attn part one, get temp worksapce size.
+    // 5. flas_attn part one, get temp worksapce size.
     uint64_t workspace_size;
     cudaStream_t stream = dev_ctx_.stream();
     bool succ = phi::dynload::flash_attn_bwd_with_bias_and_mask(
@@ -1111,9 +1091,8 @@ class FlashAttnWithGating {
         nonbatched_bias ? nonbatched_bias->data() : nullptr,
         src_mask ? temp_mask_dim.data() : nullptr,
         nonbatched_bias ? temp_bias_dim.data() : nullptr);
-    if (!succ) {
-      PADDLE_THROW(phi::errors::External(phi::dynload::flash_attn_error()));
-    }
+    PADDLE_ENFORCE_EQ(
+        succ, true, phi::errors::External(phi::dynload::flash_attn_error()));
 
     phi::DenseTensor workspace = CreateWorkspace(workspace_size);
     succ = phi::dynload::flash_attn_bwd_with_bias_and_mask(
@@ -1151,11 +1130,9 @@ class FlashAttnWithGating {
         nonbatched_bias ? nonbatched_bias->data() : nullptr,
         src_mask ? temp_mask_dim.data() : nullptr,
         nonbatched_bias ? temp_bias_dim.data() : nullptr);
-    if (!succ) {
-      PADDLE_THROW(phi::errors::External(phi::dynload::flash_attn_error()));
-    }
+    PADDLE_ENFORCE_EQ(
+        succ, true, phi::errors::External(phi::dynload::flash_attn_error()));
     WaitWithDebugInfo(dev_ctx_);
-    VLOG(5) << "[ComputeBackward]: Run SUCCESS!!!";
 
     if (nonbatched_bias) {
       // compare block reduce
@@ -1239,17 +1216,20 @@ class FlashAttnWithGating {
     return gen->IncrementOffset(inc);
   }
 
-  void InitFlashAttnArguments(GateAttentionConfig<T>* config) {
+  void InitArgumentsAndSeqTensors(GateAttentionConfig<T>* config,
+                                  phi::DenseTensor* cu_seq_q,
+                                  phi::DenseTensor* cu_seq_k) {
     fa_batch_size_ = static_cast<int>(config->batch_size) *
                      static_cast<int>(config->seq_len_m);
-    fa_total_q_ =
-        fa_batch_size_ * static_cast<int>(config->seq_len_r);  // qkv_dims[1];
-    fa_total_k_ = fa_total_q_;                                 // qkv_dims[1];
-    fa_num_heads_ = static_cast<int>(config->num_heads);       // qkv_dims[2];
-    fa_head_size_ = static_cast<int>(config->head_dim);        // qkv_dims[3];
+    fa_num_heads_ = static_cast<int>(config->num_heads);  // qkv_dims[2];
+    fa_head_size_ = static_cast<int>(config->head_dim);   // qkv_dims[3];
     fa_max_seqlen_q_ = config->seq_len_r;
     fa_max_seqlen_k_ = config->m_size;
-    fa_num_splits_ = 0;  // 0 for an internal heuristic, which is optimal
+    fa_total_q_ = fa_batch_size_ * fa_max_seqlen_q_;
+    fa_total_k_ = fa_batch_size_ * fa_max_seqlen_k_;
+
+    // 0 for an internal heuristic, which is optimal
+    fa_num_splits_ = 0;
 
     fa_softmax_scale_ = static_cast<float>(1.0f / std::sqrt(fa_head_size_));
     fa_dropout_prob_ = 0.0f;
@@ -1260,6 +1240,19 @@ class FlashAttnWithGating {
     fa_offset_ = seed_offset_pair.second;
 
     fa_zero_tensors_ = false;
+
+    phi::ArangeNullaryKernel<int32_t, phi::GPUContext>(
+        dev_ctx_,
+        0,
+        (fa_batch_size_ + 1) * fa_max_seqlen_q_,
+        fa_max_seqlen_q_,
+        cu_seq_q);
+    phi::ArangeNullaryKernel<int32_t, phi::GPUContext>(
+        dev_ctx_,
+        0,
+        (fa_batch_size_ + 1) * fa_max_seqlen_k_,
+        fa_max_seqlen_k_,
+        cu_seq_k);
 
     if (VLOG_IS_ON(6)) {
       VLOG(6) << "fa_batch_size    : " << fa_batch_size_;
