@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/fluid/operators/optimizers/multi_tensor_apply.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/phi/backends/dynload/nccl.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
@@ -27,7 +28,6 @@
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/funcs/tensor_to_string.h"
-#include "paddle/phi/kernels/fusion/gpu/multi_tensor_apply.h"
 #include "paddle/utils/optional.h"
 
 #ifdef __NVCC__
