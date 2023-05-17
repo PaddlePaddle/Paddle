@@ -71,6 +71,10 @@ if(WITH_COVERAGE)
   set_tests_properties(test_hapi_hub PROPERTIES TIMEOUT 300)
 endif()
 
+if(NOT WITH_GPU)
+  list(REMOVE_ITEM TEST_OPS test_async_read_write)
+endif()
+
 if(APPLE)
   set_tests_properties(test_callback_early_stop PROPERTIES TIMEOUT 300)
   set_tests_properties(test_callback_reduce_lr_on_plateau PROPERTIES TIMEOUT
