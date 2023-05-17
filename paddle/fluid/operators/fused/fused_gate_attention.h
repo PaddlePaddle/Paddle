@@ -1270,8 +1270,8 @@ class FlashAttnWithGating {
       VLOG(6) << "fa_max_seqlen_q  : " << fa_max_seqlen_q_;
       VLOG(6) << "fa_max_seqlen_k  : " << fa_max_seqlen_k_;
       VLOG(6) << "fa_num_splits    : " << fa_num_splits_;
-      VLOG(6) << "fa_softmax_scale :" << fa_softmax_scale_;
-      VLOG(6) << "fa_dropout_prob  :" << fa_dropout_prob_;
+      VLOG(6) << "fa_softmax_scale : " << fa_softmax_scale_;
+      VLOG(6) << "fa_dropout_prob  : " << fa_dropout_prob_;
     }
   }
 

@@ -28,6 +28,7 @@
 #include "paddle/fluid/framework/ir/subgraph_detector.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/inference/analysis/helper.h"
+#include "paddle/fluid/inference/analysis/ir_passes/subgraph_util.h"
 #include "paddle/fluid/inference/analysis/passes/convert_to_mixed_precision.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"

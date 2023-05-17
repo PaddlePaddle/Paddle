@@ -57,13 +57,13 @@ struct SimpleRNNCell : Cell<T> {
                   DenseTensor* input,
                   const DenseTensor* weight_hh,
                   const DenseTensor* init_h,
-                  const DenseTensor* init_c,
-                  DenseTensor* last_h,
-                  DenseTensor* last_c,
-                  DenseTensor* last_c_act,
-                  DenseTensor* output,
-                  const DenseTensor* bias_hh,
-                  DenseTensor* weight_hh_gru) const override {
+                  const DenseTensor* init_c UNUSED,
+                  DenseTensor* last_h UNUSED,
+                  DenseTensor* last_c UNUSED,
+                  DenseTensor* last_c_act UNUSED,
+                  DenseTensor* output UNUSED,
+                  const DenseTensor* bias_hh UNUSED,
+                  DenseTensor* weight_hh_gru UNUSED) const override {
     auto blas = phi::funcs::GetBlas<CPUContext, T>(*dev_ctx);
     auto mat_dim_a =
         phi::funcs::CreateMatrixDescriptor(init_h->dims(), 0, false);
