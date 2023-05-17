@@ -205,16 +205,6 @@
     data_type : out_grad
   no_need_buffer : input
 
-- backward_op : cdist_grad
-  forward : cdist (Tensor x, Tensor y, float p=2.0, str compute_mode="use_mm_for_euclid_dist_if_necessary") -> Tensor(out)
-  args : (Tensor x, Tensor y, Tensor out, Tensor out_grad, float p, str compute_mode)
-  output : Tensor(x_grad), Tensor(y_grad)
-  infer_meta :
-    func : GeneralBinaryGradInferMeta
-    param : [x, y]
-  kernel :
-    func : cdist_grad
-
 - backward_op : ceil_grad
   forward : ceil(Tensor x) -> Tensor(out)
   args : (Tensor out_grad)
