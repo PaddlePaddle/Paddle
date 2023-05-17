@@ -28,11 +28,12 @@ class TestPad3dOneDNNOp(OpTest):
         paddle.enable_static()
         self.value = 0.0
         self.initTestCase()
-        self.dtype = self.get_dtype()
+        self.dtype = np.float64
         self.op_type = "pad3d"
         self.python_api = paddle.nn.functional.pad
         self._cpu_only = True
         self.use_onednn = True
+        self.init_data_type()
         self.inputs = {
             'X': np.random.uniform(-1.0, 1.0, self.shape).astype("float32")
             if self.dtype == np.uint16
@@ -93,8 +94,8 @@ class TestPad3dOneDNNOp(OpTest):
     def test_check_grad_normal(self):
         self.check_grad(['X'], 'Out')
 
-    def get_dtype(self):
-        return np.float64
+    def init_data_type(self):
+        pass
 
     def initTestCase(self):
         self.shape = (2, 3, 4, 5, 6)
