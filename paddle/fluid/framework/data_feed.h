@@ -958,6 +958,7 @@ struct GraphDataGeneratorConfig {
   int excluded_train_pair_len;
   int edge_to_id_len;
   int tensor_pair_num = 1;
+  uint32_t tensor_num_of_one_pair;
   size_t buf_size;
   size_t once_max_sample_keynum;
   int64_t reindex_table_size;
@@ -990,8 +991,8 @@ class GraphDataGenerator {
       int total_instance,
       bool gpu_graph_training,
       std::shared_ptr<phi::Allocation> final_sage_nodes = nullptr);
-  int FillSlotFeature(uint64_t* d_walk, size_t key_num);
-  int FillFloatFeature(uint64_t* d_walk, size_t key_num);
+  int FillSlotFeature(uint64_t* d_walk, size_t key_num, int tensor_pair_idx);
+  int FillFloatFeature(uint64_t* d_walk, size_t key_num, int tensor_pair_idx);
   int GetPathNum() { return total_row_[0]; }
   void ResetPathNum() { total_row_[0] = 0; }
   int GetGraphBatchsize() { return conf_.batch_size; }
