@@ -126,6 +126,7 @@ void LogsumexpKernel(const Context& dev_ctx,
     axis_vec.push_back(v);
   }
   if (axis.size() == 0 || reduce_all) {
+    axis_vec.clear();
     for (size_t i = 0; i < xdim.size(); i++) {
       axis_vec.push_back(i);
     }
@@ -153,7 +154,8 @@ void LogsumexpKernel(const Context& dev_ctx,
 
   auto outdim = phi::make_ddim(outdim_vec);
   if (compute_size <= 1024) {
-    perm.insert(perm.end(), axis_vec.begin(), axis_vec.end());
+    if (perm.size() != xdim.size())
+      perm.insert(perm.end(), axis_vec.begin(), axis_vec.end());
     for (auto i : axis_vec) transpose_shape.push_back(xdim[i]);
     DenseTensor transpose_x;
     if (xdim.size() == 0 ||
