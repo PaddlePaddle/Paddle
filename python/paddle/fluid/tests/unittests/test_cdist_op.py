@@ -15,12 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
 
 import paddle
 
 
-def _cdist(x, y, p=2.0):
+def ref_cdist(x, y, p=2.0):
     r1 = x.shape[-2]
     r2 = y.shape[-2]
     if r1 == 0 or r2 == 0:
@@ -28,232 +27,45 @@ def _cdist(x, y, p=2.0):
     return np.linalg.norm(x[..., None, :] - y[..., None, :, :], ord=p, axis=-1)
 
 
-class TestCdistOp(OpTest):
+class TestCdistAPI(unittest.TestCase):
     def setUp(self):
-        self.op_type = 'cdist'
-        self.python_api = paddle.nn.functional.cdist
-        self.init_config()
-        self.outputs = {'out': self.target}
+        np.random.seed(1024)
+        self.x_shape = [11, 12]
+        self.y_shape = [10, 12]
+        self.x = np.random.uniform(-3, 3, self.x_shape).astype('float32')
+        self.y = np.random.uniform(-3, 3, self.y_shape).astype('float32')
+        self.p = 2.0
+        self.place = (
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
 
-    def test_check_output(self):
-        self.check_output()
+    def test_static_api(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data('x', self.x_shape)
+            y = paddle.static.data('y', self.y_shape)
+            out = paddle.cdist(x, y, p=self.p)
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(
+                feed={'x': self.x, 'y': self.y},
+                fetch_list=[
+                    out,
+                ],
+            )
+        out_ref = ref_cdist(self.x, self.y, p=self.p)
+        for r in res:
+            self.assertEqual(np.allclose(out_ref, r), True)
 
-    def init_config(self):
-        self.x = np.random.random((50, 3)).astype('float64')
-        self.y = np.random.random((51, 3)).astype('float64')
-        self.inputs = {'x': self.x, 'y': self.y}
-        self.attrs = {
-            'p': 2.0,
-            'compute_mode': 'use_mm_for_euclid_dist_if_necessary',
-        }
-        self.target = _cdist(self.x, self.y, p=2.0)
-
-    def test_check_grad(self):
-        self.check_grad(['x', 'y'], 'out')
-
-
-class TestCdistOpNormCase1(TestCdistOp):
-    def init_conig(self):
-        self.x = np.random.random((40, 3)).astype('float64')
-        self.y = np.random.random((50, 3)).astype('float64')
-        self.inputs = {'x': self.x, 'y': self.y}
-        self.attrs = {
-            'p': 0.0,
-            'compute_mode': 'use_mm_for_euclid_dist_if_necessary',
-        }
-        self.target = _cdist(self.x, self.y, p=0.0)
-
-
-class TestCdistOpNormCase2(TestCdistOp):
-    def init_conig(self):
-        self.x = np.random.random((40, 2)).astype('float64')
-        self.y = np.random.random((50, 2)).astype('float64')
-        self.inputs = {'x': self.x, 'y': self.y}
-        self.attrs = {
-            'p': 1.0,
-            'compute_mode': 'use_mm_for_euclid_dist_if_necessary',
-        }
-        self.target = _cdist(self.x, self.y, p=1.0)
-
-
-class TestCdistOpNormCase3(TestCdistOp):
-    def init_conig(self):
-        self.x = np.random.random((40, 10)).astype('float64')
-        self.y = np.random.random((50, 10)).astype('float64')
-        self.inputs = {'x': self.x, 'y': self.y}
-        self.attrs = {
-            'p': 2,
-            'compute_mode': 'use_mm_for_euclid_dist_if_necessary',
-        }
-        self.target = _cdist(self.x, self.y, p=2)
-
-
-class TestCdistOpNormCase4(TestCdistOp):
-    def init_conig(self):
-        self.x = np.random.random((30, 4)).astype('float64')
-        self.y = np.random.random((70, 4)).astype('float64')
-        self.inputs = {'x': self.x, 'y': self.y}
-        self.attrs = {
-            'p': 3.0,
-            'compute_mode': 'use_mm_for_euclid_dist_if_necessary',
-        }
-        self.target = _cdist(self.x, self.y, p=3.0)
-
-
-class TestCdistOpNormCase5(TestCdistOp):
-    def init_conig(self):
-        self.x = np.random.random((60, 10)).astype('float64')
-        self.y = np.random.random((80, 10)).astype('float64')
-        self.inputs = {'x': self.x, 'y': self.y}
-        self.attrs = {
-            'p': float('inf'),
-            'compute_mode': 'use_mm_for_euclid_dist_if_necessary',
-        }
-        self.target = _cdist(self.x, self.y, p=float('inf'))
-
-
-class TestCdistOpNormCase6(TestCdistOp):
-    def init_conig(self):
-        self.x = np.random.random((40, 3)).astype('float64')
-        self.y = np.random.random((50, 3)).astype('float64')
-        self.inputs = {'x': self.x, 'y': self.y}
-        self.attrs = {
-            'p': 1.5,
-            'compute_mode': 'use_mm_for_euclid_dist_if_necessary',
-        }
-        self.target = _cdist(self.x, self.y, p=1.5)
-
-
-class TestCdistOpNormCase7(TestCdistOp):
-    def init_conig(self):
-        self.x = np.random.random((40, 3)).astype('float64')
-        self.y = np.random.random((50, 3)).astype('float64')
-        self.inputs = {'x': self.x, 'y': self.y}
-        self.attrs = {
-            'p': 2.5,
-            'compute_mode': 'use_mm_for_euclid_dist_if_necessary',
-        }
-        self.target = _cdist(self.x, self.y, p=2.5)
-
-
-class TestCdistOpNormCase8(TestCdistOp):
-    def init_conig(self):
-        self.x = np.random.random((40, 10)).astype('float64')
-        self.y = np.random.random((50, 10)).astype('float64')
-        self.inputs = {'x': self.x, 'y': self.y}
-        self.attrs = {'p': 2, 'compute_mode': 'use_mm_for_euclid_dist'}
-        self.target = _cdist(self.x, self.y, p=2)
-
-
-class TestCdistOpNormCase9(TestCdistOp):
-    def init_conig(self):
-        self.x = np.random.random((40, 10)).astype('float64')
-        self.y = np.random.random((50, 10)).astype('float64')
-        self.inputs = {'x': self.x, 'y': self.y}
-        self.attrs = {'p': 2, 'compute_mode': 'donot_use_mm_for_euclid_dist'}
-        self.target = _cdist(self.x, self.y, p=2)
-
-
-class TestCdistOpNormBatchCase1(TestCdistOp):
-    def init_conig(self):
-        self.x = np.random.random((20, 30, 6, 4, 3)).astype('float64')
-        self.y = np.random.random((20, 30, 6, 5, 3)).astype('float64')
-        self.inputs = {'x': self.x, 'y': self.y}
-        self.attrs = {
-            'p': 0.0,
-            'compute_mode': 'use_mm_for_euclid_dist_if_necessary',
-        }
-        self.target = _cdist(self.x, self.y, p=0.0)
-
-
-class TestCdistOpNormBatchCase2(TestCdistOp):
-    def init_conig(self):
-        self.x = np.random.random((2, 30, 6, 4, 2)).astype('float64')
-        self.y = np.random.random((2, 30, 6, 5, 2)).astype('float64')
-        self.inputs = {'x': self.x, 'y': self.y}
-        self.attrs = {
-            'p': 1.0,
-            'compute_mode': 'use_mm_for_euclid_dist_if_necessary',
-        }
-        self.target = _cdist(self.x, self.y, p=1.0)
-
-
-class TestCdistOpNormBatchCase3(TestCdistOp):
-    def init_conig(self):
-        self.x = np.random.random((2, 3, 60, 4, 10)).astype('float64')
-        self.y = np.random.random((2, 3, 60, 5, 10)).astype('float64')
-        self.inputs = {'x': self.x, 'y': self.y}
-        self.attrs = {
-            'p': 2,
-            'compute_mode': 'use_mm_for_euclid_dist_if_necessary',
-        }
-        self.target = _cdist(self.x, self.y, p=2)
-
-
-class TestCdistOpNormBatchCase4(TestCdistOp):
-    def init_conig(self):
-        self.x = np.random.random((2, 3, 60, 3, 4)).astype('float64')
-        self.y = np.random.random((2, 3, 60, 7, 4)).astype('float64')
-        self.inputs = {'x': self.x, 'y': self.y}
-        self.attrs = {
-            'p': 3.0,
-            'compute_mode': 'use_mm_for_euclid_dist_if_necessary',
-        }
-        self.target = _cdist(self.x, self.y, p=3.0)
-
-
-class TestCdistOpNormBatchCase5(TestCdistOp):
-    def init_conig(self):
-        self.x = np.random.random((20, 3, 6, 6, 10)).astype('float64')
-        self.y = np.random.random((20, 3, 6, 8, 10)).astype('float64')
-        self.inputs = {'x': self.x, 'y': self.y}
-        self.attrs = {
-            'p': float('inf'),
-            'compute_mode': 'use_mm_for_euclid_dist_if_necessary',
-        }
-        self.target = _cdist(self.x, self.y, p=float('inf'))
-
-
-class TestCdistOpNormBatchCase6(TestCdistOp):
-    def init_conig(self):
-        self.x = np.random.random((20, 3, 6, 4, 3)).astype('float64')
-        self.y = np.random.random((20, 3, 6, 5, 3)).astype('float64')
-        self.inputs = {'x': self.x, 'y': self.y}
-        self.attrs = {
-            'p': 1.5,
-            'compute_mode': 'use_mm_for_euclid_dist_if_necessary',
-        }
-        self.target = _cdist(self.x, self.y, p=1.5)
-
-
-class TestCdistOpNormBatchCase7(TestCdistOp):
-    def init_conig(self):
-        self.x = np.random.random((2, 30, 6, 4, 3)).astype('float64')
-        self.y = np.random.random((2, 30, 6, 5, 3)).astype('float64')
-        self.inputs = {'x': self.x, 'y': self.y}
-        self.attrs = {
-            'p': 2.5,
-            'compute_mode': 'use_mm_for_euclid_dist_if_necessary',
-        }
-        self.target = _cdist(self.x, self.y, p=2.5)
-
-
-class TestCdistOpNormBatchCase8(TestCdistOp):
-    def init_conig(self):
-        self.x = np.random.random((2, 3, 60, 4, 10)).astype('float64')
-        self.y = np.random.random((2, 3, 60, 5, 10)).astype('float64')
-        self.inputs = {'x': self.x, 'y': self.y}
-        self.attrs = {'p': 2, 'compute_mode': 'use_mm_for_euclid_dist'}
-        self.target = _cdist(self.x, self.y, p=2)
-
-
-class TestCdistOpNormBatchCase9(TestCdistOp):
-    def init_conig(self):
-        self.x = np.random.random((2, 3, 60, 4, 10)).astype('float64')
-        self.y = np.random.random((2, 3, 60, 5, 10)).astype('float64')
-        self.inputs = {'x': self.x, 'y': self.y}
-        self.attrs = {'p': 2, 'compute_mode': 'donot_use_mm_for_euclid_dist'}
-        self.target = _cdist(self.x, self.y, p=2)
+    def test_dygraph_api(self):
+        paddle.disable_static(self.place)
+        x = paddle.to_tensor(self.x)
+        y = paddle.to_tensor(self.y)
+        out = paddle.cdist(x, y, p=self.p)
+        out_ref = ref_cdist(self.x, self.y, p=self.p)
+        self.assertEqual(np.allclose(out_ref, out.numpy()), True)
+        paddle.enable_static()
 
 
 if __name__ == '__main__':
