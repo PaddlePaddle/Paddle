@@ -1488,6 +1488,8 @@ void AnalysisPredictor::PrepareArgument() {
         config_.mkldnn_quantizer_config()->enabled_op_types());
     argument_->SetQuantizeExcludedOpIds(
         config_.mkldnn_quantizer_config()->excluded_op_ids());
+    config_.pass_builder()->DeletePass(
+        "conv1x1_depthwise_conv_mkldnn_fuse_pass");
   }
   if (config_.use_mkldnn_bfloat16_) {
     LOG(INFO) << "Bfloat16 is enabled";

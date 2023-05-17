@@ -51,6 +51,8 @@ void ConvKernel(const Context& dev_ctx,
                 &filter,
                 nullptr,
                 nullptr,
+                nullptr,
+                nullptr,
                 strides,
                 paddings,
                 padding_algorithm,
@@ -62,6 +64,8 @@ void ConvKernel(const Context& dev_ctx,
                 "",
                 false,
                 force_fp32_output,
+                "",
+                "",
                 out);
 }
 

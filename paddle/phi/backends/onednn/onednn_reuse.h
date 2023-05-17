@@ -115,12 +115,27 @@ static void AppendActivation(const OneDNNContext& dev_ctx,
             ? PADDLE_GET_CONST(std::string,
                                dev_ctx.GetDnnAttr("fuse_activation"))
             : "";
-    fuse_alpha = dev_ctx.HasDnnAttr("fuse_alpha")
-                     ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("fuse_alpha"))
-                     : 0.0f;
-    fuse_beta = dev_ctx.HasDnnAttr("fuse_beta")
-                    ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("fuse_beta"))
-                    : 0.0f;
+
+    if (dev_ctx.HasDnnAttr("fuse_activation_dw") &&
+        PADDLE_GET_CONST(std::string,
+                         dev_ctx.GetDnnAttr("fuse_activation_dw")) != "") {
+      fuse_alpha =
+          dev_ctx.HasDnnAttr("fuse_alpha_dw")
+              ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("fuse_alpha_dw"))
+              : 0.0f;
+      fuse_beta =
+          dev_ctx.HasDnnAttr("fuse_beta_dw")
+              ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("fuse_beta_dw"))
+              : 0.0f;
+    } else {
+      fuse_alpha =
+          dev_ctx.HasDnnAttr("fuse_alpha")
+              ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("fuse_alpha"))
+              : 0.0f;
+      fuse_beta = dev_ctx.HasDnnAttr("fuse_beta")
+                      ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("fuse_beta"))
+                      : 0.0f;
+    }
   }
 
   const auto activation_map = OneDNNActivationMap();

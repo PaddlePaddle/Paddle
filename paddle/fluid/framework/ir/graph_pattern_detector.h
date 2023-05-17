@@ -613,6 +613,29 @@ struct OperatorReshape2 : public PatternBase {
   PATTERN_DECL_NODE(reshape2_out);
 };
 
+// Conv with DepthwiseConv
+// op: conv1x1 + depthwise_conv
+// named nodes:
+// conv_input, conv_weight,
+// conv_out, conv,
+// activation_out, activation
+struct ConvDepthwiseConv : public PatternBase {
+  ConvDepthwiseConv(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "conv1x1_depthwise_conv") {}
+
+  PDNode* operator()(const std::string& conv_type, bool with_bias);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(conv);
+  PATTERN_DECL_NODE(depthwise_conv);
+  // declare variable node's name
+  PATTERN_DECL_NODE(conv_weights);
+  PATTERN_DECL_NODE(conv_out);
+  PATTERN_DECL_NODE(depthwise_conv_weights);
+  PATTERN_DECL_NODE(depthwise_conv_bias);
+  PATTERN_DECL_NODE(depthwise_conv_out);
+};
+
 // SEQCONV with Elementwise_Add ReLU
 // op: seqconv + elementwise_add + relu
 // named nodes:

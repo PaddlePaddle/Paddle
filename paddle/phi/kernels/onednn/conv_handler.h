@@ -45,6 +45,8 @@ class ConvOneDNNHandlerT
                      const phi::DenseTensor* input,
                      const phi::DenseTensor* filter,
                      const phi::DenseTensor* bias,
+                     const phi::DenseTensor* filterDW,
+                     const phi::DenseTensor* biasDW,
                      const std::vector<int>& strides_in,
                      const std::vector<int>& paddings_in,
                      const std::string& padding_algorithm,
@@ -56,6 +58,8 @@ class ConvOneDNNHandlerT
                      const std::string& fuse_activation,
                      bool fuse_residual_conn,
                      bool force_fp32_output,
+                     const std::string& depthwise_type,
+                     const std::string& fuse_activation_dw,
                      phi::DenseTensor* output,
                      const std::string& unique_name)
       : funcs::OneDNNHandlerT<T,
@@ -183,11 +187,16 @@ class ConvOneDNNHandlerT
           dst_tz, funcs::OneDNNGetDataType<T_out>(), chosen_memory_format);
       const auto fwd_prop_kind = is_test ? dnnl::prop_kind::forward_inference
                                          : dnnl::prop_kind::forward_training;
-      const dnnl::primitive_attr conv_attr = CreateConvAttrs(filter,
-                                                             groups,
-                                                             force_fp32_output,
-                                                             fuse_residual_conn,
-                                                             fuse_activation);
+      const dnnl::primitive_attr conv_attr =
+          CreateConvAttrs(filter,
+                          filterDW,
+                          biasDW,
+                          groups,
+                          force_fp32_output,
+                          fuse_residual_conn,
+                          fuse_activation,
+                          depthwise_type,
+                          fuse_activation_dw);
 
       if (bias) {
         auto bias_tz = phi::vectorize(bias->dims());
@@ -502,10 +511,14 @@ class ConvOneDNNHandlerT
   }
 
   dnnl::primitive_attr CreateConvAttrs(const DenseTensor* filter,
+                                       const DenseTensor* filterDW,
+                                       const DenseTensor* biasDW,
                                        int groups,
                                        bool force_fp32_output,
                                        bool fuse_residual_conn,
-                                       const std::string& fuse_activation) {
+                                       const std::string& fuse_activation,
+                                       const std::string& depthwise_type,
+                                       const std::string& fuse_activation_dw) {
     dnnl::primitive_attr conv_attr;
     dnnl::post_ops post_operations;
 
@@ -551,10 +564,45 @@ class ConvOneDNNHandlerT
       post_operations.append_sum(sum_scale);
     }
 
+    if (filterDW) {
+      AppendDepthwiseConvPostop(this->dev_ctx_,
+                                &post_operations,
+                                depthwise_type,
+                                fuse_activation_dw,
+                                biasDW);
+    }
+
     funcs::AppendActivation(this->dev_ctx_, post_operations, activation_scale);
 
     conv_attr.set_post_ops(post_operations);
     return conv_attr;
+  }
+
+  void AppendDepthwiseConvPostop(const OneDNNContext& ctx,
+                                 dnnl::post_ops* post_ops,
+                                 const std::string& depthwise_type,
+                                 const std::string& fuse_activation_dw,
+                                 const DenseTensor* biasDW) {
+    const auto weights_dt = phi::funcs::OneDNNGetDataType<T>();
+    const auto bias_dt = biasDW ? phi::funcs::OneDNNGetDataType<T>()
+                                : dnnl::memory::data_type::undef;
+    const auto dst_dt = phi::funcs::OneDNNGetDataType<T>();
+    const int mask = 0;  // common scaling factor for whole output tensor
+    const std::vector<float> scales = {1.0f};
+
+    if (depthwise_type == "k3s1p1") {
+      post_ops->append_dw_k3s1p1(weights_dt, bias_dt, dst_dt, mask, scales);
+    } else if (depthwise_type == "k3s2p1") {
+      post_ops->append_dw_k3s2p1(weights_dt, bias_dt, dst_dt, mask, scales);
+    } else {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "OneDNN conv kernel doesn't support fusing with %s depthwise_type",
+          depthwise_type));
+    }
+
+    if (!fuse_activation_dw.empty()) {
+      funcs::AppendActivation(ctx, *post_ops, 1.0f);
+    }
   }
 
   std::shared_ptr<dnnl::memory>
@@ -648,10 +696,12 @@ class ConvOneDNNHandlerT
       const bool is_conv3d,
       const bool is_test,
       const std::vector<float>& scale_data = {1.0f},
-      int mask = 0) {
+      int mask = 0,
+      bool is_dw_fuse = false) {
     // This is workaround to make execution faster, delete
     // if statement after including md inside Tensor
-    auto weights_mem_p = this->AcquireMemory("@weights_mem_p_target");
+    auto weights_mem_p = this->AcquireMemory(
+        (is_dw_fuse ? "@dw_weights_mem_p_target" : "@weights_mem_p_target"));
     if (is_test && weights_mem_p) {
       return weights_mem_p;
     } else if (is_test) {
@@ -664,10 +714,21 @@ class ConvOneDNNHandlerT
                                funcs::OneDNNGetDataType<K>(),
                                GetWeightsFormat(groups, is_conv3d));
 
+      auto weight_desc = is_dw_fuse
+                             ? this->fwd_pd_->query_md(
+                                   dnnl::query::exec_arg_md,
+                                   DNNL_ARG_ATTR_POST_OP_DW | DNNL_ARG_WEIGHTS)
+                             : this->fwd_pd_->weights_desc();
+      if (is_dw_fuse) {
+        weight_desc = weight_desc.reshape(user_src_md.dims());
+      }
+      const std::string suffix =
+          is_dw_fuse ? "@dw_weights_mem_p" : "@weights_mem_p";
+
       return this->AcquireMemoryWithReorder(user_src_md,
-                                            this->fwd_pd_->weights_desc(),
+                                            weight_desc,
                                             funcs::to_void_cast<K>(filter_data),
-                                            "@weights_mem_p",
+                                            suffix,
                                             is_test,
                                             {},
                                             scale_data,
@@ -693,12 +754,25 @@ class ConvOneDNNHandlerT
     }
   }
 
+  std::shared_ptr<dnnl::memory> AcquireDepthwiseWeightsMemoryWithReorder(
+      const DenseTensor* dw_filter,
+      const bool is_test,
+      const std::vector<float>& scale_data = {1.0f},
+      int mask = 0) {
+    auto weights_tz = phi::vectorize(dw_filter->dims());
+    return AcquireWeightsMemoryWithReorder(
+        dw_filter, weights_tz[0], false, is_test, scale_data, mask, true);
+  }
+
   std::shared_ptr<dnnl::memory> AcquireBiasMemoryWithReorder(
       const phi::DenseTensor* bias,
       const bool is_test,
       const std::vector<float>& scale_data = {1.0f},
-      int mask = 0) {
-    auto bias_mem_p = this->AcquireMemory("@bias_mem_p_target");
+      int mask = 0,
+      bool is_dw_fuse = false) {
+    const std::string target_bias_suffix =
+        is_dw_fuse ? "@dw_bias_mem_p_target" : "@bias_mem_p_target";
+    auto bias_mem_p = this->AcquireMemory(target_bias_suffix);
     if (is_test && bias_mem_p) {
       return bias_mem_p;
     } else {
@@ -711,16 +785,32 @@ class ConvOneDNNHandlerT
       }
       const K_Bias* bias_data = bias->data<K_Bias>();
 
+      auto bias_mem_desc = is_dw_fuse
+                               ? this->fwd_pd_->query_md(
+                                     dnnl::query::exec_arg_md,
+                                     DNNL_ARG_ATTR_POST_OP_DW | DNNL_ARG_BIAS)
+                               : this->fwd_pd_->bias_desc();
+      if (is_dw_fuse) {
+        bias_mem_desc = bias_mem_desc.reshape(bias->mem_desc().dims());
+      }
+      const auto bias_suffix = is_dw_fuse ? "@dw_bias_mem_p" : "@bias_mem_p";
       return this->AcquireMemoryWithReorder(
           bias->mem_desc(),
-          this->fwd_pd_->bias_desc(),
+          bias_mem_desc,
           funcs::to_void_cast<K_Bias>(bias_data),
-          "@bias_mem_p",
+          bias_suffix,
           is_test,
           {},
           scale_data,
           mask);
     }
+  }
+
+  std::shared_ptr<dnnl::memory> AcquireDepthwiseBiasMemoryWithReorder(
+      const DenseTensor* dw_bias,
+      const std::vector<float>& scale_data = {1.0f},
+      int mask = 0) {
+    return AcquireBiasMemoryWithReorder(dw_bias, true, scale_data, mask, true);
   }
 
   std::shared_ptr<dnnl::memory> AcquireResidualMemory(

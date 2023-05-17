@@ -364,15 +364,16 @@ void CpuPassStrategy::EnableMKLDNN() {
              // Disabled due to topology-dependent speed-up
              "fc_mkldnn_pass",
              "fc_act_mkldnn_fuse_pass",
-             "fc_elementwise_add_mkldnn_fuse_pass",   //
-             "batch_norm_act_fuse_pass",              //
-             "softplus_activation_onednn_fuse_pass",  //
-             "shuffle_channel_mkldnn_detect_pass",    //
-             "elt_act_mkldnn_fuse_pass",              //
-             "layer_norm_onednn_optimization_pass",   //
-             "operator_scale_onednn_fuse_pass",       //
-             "operator_unsqueeze2_onednn_fuse_pass",  //
-             "operator_reshape2_onednn_fuse_pass",    //
+             "fc_elementwise_add_mkldnn_fuse_pass",      //
+             "batch_norm_act_fuse_pass",                 //
+             "softplus_activation_onednn_fuse_pass",     //
+             "shuffle_channel_mkldnn_detect_pass",       //
+             "elt_act_mkldnn_fuse_pass",                 //
+             "layer_norm_onednn_optimization_pass",      //
+             "operator_scale_onednn_fuse_pass",          //
+             "operator_unsqueeze2_onednn_fuse_pass",     //
+             "operator_reshape2_onednn_fuse_pass",       //
+             "conv1x1_depthwise_conv_mkldnn_fuse_pass",  //
          })) {
       passes_.push_back(pass);
     }

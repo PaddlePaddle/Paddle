@@ -33,6 +33,12 @@ class FusedConvOpMaker : public Conv2DOpMaker {
              "to which convolution output will be added."
              "Used with fuse_residual_connection fusion.")
         .AsDispensable();
+    AddInput("FilterDW",
+             "(Tensor) Obtained from conv1x1_depthwise_conv_mkldnn_fuse_pass.")
+        .AsDispensable();
+    AddInput("BiasDW",
+             "(Tensor) Obtained from conv1x1_depthwise_conv_mkldnn_fuse_pass.")
+        .AsDispensable();
     AddAttr<std::string>(
         "mkldnn_data_type",
         "(string, default \"float32\"). Data type of mkldnn kernel")
@@ -52,6 +58,14 @@ class FusedConvOpMaker : public Conv2DOpMaker {
         .SetDefault(false);
     AddAttr<bool>("use_mkldnn", "(bool, default false) Used in mkldnn kernel")
         .SetDefault(true);
+    AddAttr<std::string>(
+        "depthwise_type",
+        "Obtained from conv1x1_depthwise_conv_mkldnn_fuse_pass")
+        .SetDefault("");
+    AddAttr<std::string>(
+        "fuse_activation_dw",
+        "Obtained from conv1x1_depthwise_conv_mkldnn_fuse_pass")
+        .SetDefault("");
     AddComment(R"DOC(
 Convolution Operator.
 

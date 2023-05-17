@@ -18,19 +18,24 @@ namespace phi {
 
 KernelSignature FusedConv2dOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  return KernelSignature("fused_conv2d",
-                         {"Input", "Filter", "Bias", "ResidualData"},
-                         {"strides",
-                          "paddings",
-                          "padding_algorithm",
-                          "dilations",
-                          "groups",
-                          "data_format",
-                          "mkldnn_data_type",
-                          "fuse_activation",
-                          "fuse_residual_connection",
-                          "force_fp32_output"},
-                         {"Output"});
+  return KernelSignature(
+      "fused_conv2d",
+      {"Input", "Filter", "Bias", "ResidualData", "FilterDW", "BiasDW"},
+      {
+          "strides",
+          "paddings",
+          "padding_algorithm",
+          "dilations",
+          "groups",
+          "data_format",
+          "mkldnn_data_type",
+          "fuse_activation",
+          "fuse_residual_connection",
+          "force_fp32_output",
+          "depthwise_type",
+          "fuse_activation_dw",
+      },
+      {"Output"});
 }
 
 KernelSignature FusedConv3dOpArgumentMapping(
