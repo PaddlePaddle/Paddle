@@ -65,7 +65,7 @@ def mean(x, axis=None, keepdim=False, name=None):
                                    [17., 18., 19., 20.],
                                    [21., 22., 23., 24.]]])
             out1 = paddle.mean(x)
-            # [12.5]
+            # 12.5
             out2 = paddle.mean(x, axis=-1)
             # [[ 2.5  6.5 10.5]
             #  [14.5 18.5 22.5]]
@@ -140,7 +140,7 @@ def var(x, axis=None, unbiased=True, keepdim=False, name=None):
 
             x = paddle.to_tensor([[1.0, 2.0, 3.0], [1.0, 4.0, 5.0]])
             out1 = paddle.var(x)
-            # [2.66666667]
+            # 2.66666667
             out2 = paddle.var(x, axis=1)
             # [1.         4.33333333]
     """
@@ -205,9 +205,9 @@ def std(x, axis=None, unbiased=True, keepdim=False, name=None):
 
             x = paddle.to_tensor([[1.0, 2.0, 3.0], [1.0, 4.0, 5.0]])
             out1 = paddle.std(x)
-            # [1.63299316]
+            # 1.63299316
             out2 = paddle.std(x, unbiased=False)
-            # [1.49071205]
+            # 1.49071205
             out3 = paddle.std(x, axis=1)
             # [1.       2.081666]
 
@@ -222,8 +222,7 @@ def std(x, axis=None, unbiased=True, keepdim=False, name=None):
 
 def numel(x, name=None):
     """
-    Returns the number of elements for a tensor, which is a int64 Tensor with shape [1] in static graph mode
-    or a scalar value in imperative mode.
+    Returns the number of elements for a tensor, which is a 0-D int64 Tensor with shape [].
 
     Args:
         x (Tensor): The input Tensor, it's data type can be bool, float16, float32, float64, int32, int64.
@@ -231,7 +230,7 @@ def numel(x, name=None):
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: The number of elements for the input Tensor.
+        Tensor: The number of elements for the input Tensor, whose shape is [].
 
     Examples:
         .. code-block:: python
@@ -387,8 +386,8 @@ def median(x, axis=None, keepdim=False, name=None):
             #         [8 , 9 , 10, 11]])
 
             y1 = paddle.median(x)
-            # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-            #        [5.50000000])
+            # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        5.50000000)
 
             y2 = paddle.median(x, axis=0)
             # Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -416,7 +415,7 @@ def median(x, axis=None, keepdim=False, name=None):
             -1,
             0,
             None,
-        ], 'when input 0D, axis can only be [-1, 0] or default None'
+        ], 'when input 0-D, axis can only be [-1, 0] or default None'
         is_flatten = True
 
     if axis is None:
