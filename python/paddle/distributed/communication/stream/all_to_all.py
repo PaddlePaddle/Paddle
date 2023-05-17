@@ -78,7 +78,7 @@ def _all_to_all_in_static_mode(
     if isinstance(in_tensor_or_tensor_list, list):
         if len(in_tensor_or_tensor_list) == 0:
             raise RuntimeError("The input tensor_list should not be empty.")
-        # 0D use stack/unstack while others use concat/split
+        # 0-D use stack/unstack while others use concat/split
         if len(in_tensor_or_tensor_list[0].shape) == 0:
             in_tensor = paddle.stack(in_tensor_or_tensor_list, axis=0)
         else:
@@ -115,7 +115,7 @@ def _all_to_all_in_static_mode(
     if isinstance(out_tensor_or_tensor_list, list):
         if not sync_op:
             dist.wait(out_tensor, use_calc_stream=False)
-        # 0D use stack/unstack while others use concat/split
+        # 0-D use stack/unstack while others use concat/split
         if len(in_tensor_or_tensor_list[0].shape) == 0:
             out_tensor_or_tensor_list.extend(paddle.unstack(out_tensor, 0))
         else:
