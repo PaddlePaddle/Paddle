@@ -18,6 +18,10 @@ if(NOT WITH_COVERAGE)
   list(REMOVE_ITEM TEST_OPS test_hapi_hub)
 endif()
 
+if(NOT WITH_GPU)
+  list(REMOVE_ITEM TEST_OPS test_async_read_write)
+endif()
+
 foreach(src ${TEST_OPS})
   py_test(${src} SRCS ${src}.py)
 endforeach()
@@ -69,10 +73,6 @@ set_tests_properties(test_pretrained_model PROPERTIES TIMEOUT 600)
 set_tests_properties(test_callback_wandb PROPERTIES TIMEOUT 60)
 if(WITH_COVERAGE)
   set_tests_properties(test_hapi_hub PROPERTIES TIMEOUT 300)
-endif()
-
-if(NOT WITH_GPU)
-  list(REMOVE_ITEM TEST_OPS test_async_read_write)
 endif()
 
 if(APPLE)
