@@ -355,6 +355,7 @@ def batched_multiclass_nms(
     nms_top_k,
     keep_top_k,
     normalized=True,
+    gpu_logic=False,
 ):
     batch_size = scores.shape[0]
     num_boxes = scores.shape[2]
@@ -392,9 +393,14 @@ def batched_multiclass_nms(
                         idx + n * num_boxes,
                     ]
                 )
-        sorted_det_out = sorted(
-            tmp_det_out, key=lambda tup: tup[0], reverse=False
-        )
+        if gpu_logic:
+            sorted_det_out = sorted(
+                tmp_det_out, key=lambda tup: tup[1], reverse=True
+            )
+        else:
+            sorted_det_out = sorted(
+                tmp_det_out, key=lambda tup: tup[0], reverse=False
+            )
         det_outs.extend(sorted_det_out)
     return det_outs, lod
 
@@ -768,6 +774,7 @@ class TestMulticlassNMS3Op(TestMulticlassNMS2Op):
             nms_threshold,
             nms_top_k,
             keep_top_k,
+            gpu_logic=self.gpu_logic if hasattr(self, 'gpu_logic') else None,
         )
         det_outs = np.array(det_outs)
 
@@ -811,66 +818,14 @@ class TestMulticlassNMS3OpNoOutput(TestMulticlassNMS3Op):
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
-class TestMulticlassNMS3OpGPU(TestMulticlassNMS3Op):
+class TestMulticlassNMS3OpGPU(TestMulticlassNMS2Op):
     def test_check_output(self):
-        self.__class__.op_type = "multiclass_nms3"
-        main_program = paddle.static.Program()
-        startup_program = paddle.static.Program()
-        with paddle.static.program_guard(main_program, startup_program):
-            bboxes = paddle.static.data(
-                name='BBoxes',
-                shape=self.inputs['BBoxes'].shape,
-                dtype='float32',
-            )
-            scores = paddle.static.data(
-                name='Scores',
-                shape=self.inputs['Scores'].shape,
-                dtype='float32',
-            )
-            output, nms_rois_num, index = multiclass_nms3(
-                bboxes, scores, **self.attrs
-            )
-
         place = paddle.CUDAPlace(0)
-        exe = paddle.static.Executor(place)
-        exe.run(startup_program)
+        self.check_output_with_place(place)
 
-        output_, nms_rois_num_, index_ = exe.run(
-            main_program,
-            feed=self.inputs,
-            fetch_list=[output, nms_rois_num, index],
-        )
-
-        # Need to sort values before comparison
-        actual_outputs = {}
-        actual_outputs['Out'] = np.array(
-            sorted(output_, key=lambda i: [i[0], i[1]])
-        )
-        self.outputs['Out'] = np.array(
-            sorted(self.outputs['Out'], key=lambda i: [i[0], i[1]])
-        )
-        actual_outputs['Index'] = np.array(sorted(index_))
-        self.outputs['Index'] = np.array(sorted(self.outputs['Index']))
-        actual_outputs['NmsRoisNum'] = nms_rois_num_
-
-        for name in self.outputs:
-            np.testing.assert_allclose(
-                actual_outputs[name],
-                self.outputs[name],
-                rtol=1e-05,
-                equal_nan=False,
-                err_msg='Output ('
-                + name
-                + ') has diff at '
-                + str(place)
-                + '\nExpect '
-                + str(self.outputs[name])
-                + '\n'
-                + 'But Got'
-                + str(actual_outputs[name])
-                + ' in class '
-                + self.__class__.__name__,
-            )
+    def set_argument(self):
+        self.score_threshold = 0.01
+        self.gpu_logic = True
 
 
 @unittest.skipIf(
@@ -880,6 +835,7 @@ class TestMulticlassNMS3OpGPULessOutput(TestMulticlassNMS3OpGPU):
     def set_argument(self):
         # Here set 0.08 to make output box size less than keep_top_k
         self.score_threshold = 0.08
+        self.gpu_logic = True
 
 
 @unittest.skipIf(
@@ -890,6 +846,7 @@ class TestMulticlassNMS3OpGPUNoOutput(TestMulticlassNMS3OpGPU):
         # Here set 2.0 to test the case there is no outputs.
         # In practical use, 0.0 < score_threshold < 1.0
         self.score_threshold = 2.0
+        self.gpu_logic = True
 
 
 @unittest.skipIf(
@@ -900,6 +857,7 @@ class TestMulticlassNMS3OpGPUFallback(TestMulticlassNMS3OpGPU):
         # Setting keep_top_k < 0 will fall back to CPU kernel
         self.score_threshold = 0.01
         self.keep_top_k = -1
+        self.gpu_logic = True
 
 
 if __name__ == '__main__':
