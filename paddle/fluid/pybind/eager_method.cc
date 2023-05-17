@@ -1104,6 +1104,170 @@ static PyObject* tensor__getitem_from_offset(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* tensor_method__advanced_index(TensorObject* self,
+                                               PyObject* args,
+                                               PyObject* kwargs) {
+  EAGER_TRY
+  if (PyTuple_GET_SIZE(args) == 0) return nullptr;
+  PyObject* _index = PyTuple_GET_ITEM(args, 0);
+  PyObject* value_obj = PyTuple_GET_ITEM(args, 1);
+  PyObject* index_ptr =
+      !PyTuple_Check(_index) ? PyTuple_Pack(1, _index) : _index;
+  DEFINE_PADDLE_SCOPE_GUARD([index_ptr, &_index]() {
+    if (!PyTuple_Check(_index)) {
+      Py_DECREF(index_ptr);
+      VLOG(4) << "Call Py_DECREF";
+    }
+  });
+
+  paddle::Tensor value_tensor;
+  // deal with value type
+  if (py::isinstance<py::array>(value_obj)) {
+    value_tensor =
+        PyArrayToTensor(self->tensor.dtype(), self->tensor.place(), value_obj);
+  } else if (py::isinstance<py::float_>(value_obj) ||
+             py::isinstance<py::int_>(value_obj) ||
+             py::isinstance<py::bool_>(value_obj)) {
+    value_tensor =
+        PyValueToTensor(self->tensor.dtype(), self->tensor.place(), value_obj);
+  } else if (py::isinstance<py::list>(value_obj)) {
+    value_tensor =
+        PyListToTensor(self->tensor.dtype(), self->tensor.place(), value_obj);
+  } else if (PyCheckTensor(value_obj)) {
+    value_tensor = reinterpret_cast<TensorObject*>(value_obj)->tensor;
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "When assign a value to a paddle.Tensor, "
+        "the value must be a paddle tensor, "
+        "ndarray, list or built-in data type, "
+        "please check the type of value."));
+  }
+
+  std::vector<paddle::Tensor> indices_tensor;
+
+  bool isAdvanceIndex = true;
+  //  bool isBoolIndex = false;
+
+  const int size = PyTuple_GET_SIZE(index_ptr);
+  for (int dim = 0; dim < size; ++dim) {
+    PyObject* slice_item = PyTuple_GetItem(index_ptr, dim);
+    if (PyCheckTensor(slice_item)) {
+      auto dtype = reinterpret_cast<TensorObject*>(slice_item)->tensor.dtype();
+      if ((dtype == paddle::DataType::INT64) ||
+          (dtype == paddle::DataType::INT32)) {
+        indices_tensor.emplace_back(reinterpret_cast<TensorObject*>(slice_item)
+                                        ->tensor.cast(paddle::DataType::INT64));
+      } else if (dtype == paddle::DataType::BOOL) {
+        if (size != 1) {
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "When index contains a bool tensor, its length must be 1"));
+        }
+        indices_tensor.emplace_back(
+            reinterpret_cast<TensorObject*>(slice_item)->tensor);
+        //  isBoolIndex = true;
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "When assign a value to a paddle.Tensor, "
+            "the dtype of index tensor must be int32 ,int64 or bool"));
+      }
+    } else if (PyList_Check(slice_item)) {
+      auto list_size = PyList_GET_SIZE(slice_item);
+      bool isBoolType = false;
+
+      for (int i = 0; i < list_size; ++i) {
+        auto item = PyList_GET_ITEM(slice_item, i);
+        // Note(LiuYang):Here bool type shoule be check first because py::bool_
+        // is also py::int_
+        if (py::isinstance<py::bool_>(item)) {
+          isBoolType = true;
+        } else if (py::isinstance<py::int_>(item)) {
+          if (isBoolType) {
+            PADDLE_THROW(platform::errors::InvalidArgument(
+                "When index contains a list, the dtype of element of it must "
+                "be the same"));
+          }
+        } else {
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "When index contains a list, the dtype of element of it must be "
+              "int, int64 or bool"));
+        }
+      }
+
+      if (isBoolType) {
+        // Note(LiuYang):Here Paddle only support bool list when num of index
+        // list is 1 and dims of source tensor is 1
+        if (size != 1) {
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "When index contains bool list, the length of it must be 1"));
+        }
+        indices_tensor.emplace_back(PyListToTensor(
+            paddle::DataType::BOOL, self->tensor.place(), slice_item));
+        //  isBoolIndex = true;
+      } else {
+        indices_tensor.emplace_back(PyListToTensor(
+            paddle::DataType::INT64, self->tensor.place(), slice_item));
+      }
+    } else if (py::isinstance<py::int_>(slice_item)) {
+      indices_tensor.emplace_back(PyValueToTensor(
+          paddle::DataType::INT64, self->tensor.place(), slice_item));
+    } else if (py::isinstance<py::array>(slice_item)) {
+      if (py::isinstance<py::array_t<bool>>(slice_item)) {
+        if (size != 1) {
+          PADDLE_THROW(platform::errors::InvalidArgument(
+              "When index contains a bool ndarray, its length must be 1"));
+        }
+        indices_tensor.emplace_back(PyArrayToTensor(
+            paddle::DataType::BOOL, self->tensor.place(), slice_item));
+        //  isBoolIndex = true;
+      } else if (py::isinstance<py::array_t<int>>(slice_item) ||
+                 py::isinstance<py::array_t<int64_t>>(slice_item)) {
+        indices_tensor.emplace_back(PyArrayToTensor(
+            paddle::DataType::INT64, self->tensor.place(), slice_item));
+      } else {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "When index contains a ndarray, its dtype must be int, int64 or "
+            "bool"));
+      }
+    } else if (py::isinstance<py::float_>(slice_item) ||
+               py::isinstance<py::bool_>(slice_item)) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "When index contains a built-in data, its dtype must be int or "
+          "int64"));
+    } else {
+      isAdvanceIndex = false;
+      return ToPyObject(isAdvanceIndex);
+    }
+  }
+
+  //  if (indices_tensor.size() !=
+  //      static_cast<std::size_t>(self->tensor.dims().size())) {
+  //    return ToPyObject(false);
+  //  }
+
+  //  if (isBoolIndex) {
+  //    index_put__ad_func(self->tensor, indices_tensor, value_tensor);
+  //    return ToPyObject(isAdvanceIndex);
+  //  }
+
+  //  std::vector<paddle::Tensor> indices_tensor_bd(
+  //      BroadCastAllTensor(indices_tensor));
+
+  //  if ((value_tensor.dims() != indices_tensor_bd[0].dims()) &&
+  //      (value_tensor.numel() != 1)) {
+  //    return ToPyObject(false);
+  //  }
+  // Note(LiuYang): Here type of value_tensor may be complex and it can't be
+  // broadcast becase Paddle doesn't support expand tensor which's type is
+  // complex so we trans this task to tensor_method__setitem_eager_tensor
+  // temporarily.
+
+  //  index_put__ad_func(self->tensor, indices_tensor_bd, value_tensor,false);
+  index_put__ad_func(self->tensor, indices_tensor, value_tensor, false);
+  return ToPyObject(isAdvanceIndex);
+
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
                                                      PyObject* args,
                                                      PyObject* kwargs) {
@@ -2084,6 +2248,10 @@ PyMethodDef variable_methods[] = {
      NULL},
     {"_getitem_from_offset",
      (PyCFunction)(void (*)(void))tensor__getitem_from_offset,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"__advanced_index__",
+     (PyCFunction)(void (*)(void))tensor_method__advanced_index,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"__setitem_eager_tensor__",

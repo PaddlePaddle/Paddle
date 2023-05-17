@@ -791,6 +791,11 @@ def monkey_patch_tensor():
             return self._getitem_index_not_tensor(item)
 
     def __setitem__(self, item, value):
+        if framework.global_var._in_eager_mode_ and self.__advanced_index__(
+            item, value
+        ):
+            return
+
         def contain_tensor_or_list(item):
             if not isinstance(item, tuple):
                 item = [item]
