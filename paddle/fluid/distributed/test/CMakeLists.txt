@@ -117,8 +117,8 @@ cc_test_old(
   ps_framework_proto
   ${COMMON_DEPS})
 
-set_source_files_properties(.cc PROPERTIES COMPILE_FLAGS
-                                           ${DISTRIBUTE_COMPILE_FLAGS})
+set_source_files_properties(
+  feature_value_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 cc_test_old(
   feature_value_test
   SRCS
