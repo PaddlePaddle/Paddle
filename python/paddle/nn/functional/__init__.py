@@ -146,7 +146,6 @@ __all__ = [  # noqa
     'conv3d',
     'conv3d_transpose',
     'pairwise_distance',
-    'cdist',
     'elu',
     'elu_',
     'gelu',
