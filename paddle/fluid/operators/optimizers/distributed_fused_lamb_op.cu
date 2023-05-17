@@ -15,8 +15,13 @@
 #include "paddle/fluid/operators/optimizers/multi_tensor_apply.h"
 #include "paddle/fluid/platform/collective_helper.h"
 
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/core/cuda_stream.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
