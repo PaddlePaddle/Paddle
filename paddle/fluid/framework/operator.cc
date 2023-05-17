@@ -1870,6 +1870,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                   << phi_kernel_name << " | kernel key: " << phi_cpu_kernel_key
                   << " | kernel: " << *phi_kernel_;
           run_phi_kernel_ = true;
+          phi_kernel_key = phi_cpu_kernel_key;
         }
       }
     }
@@ -1890,12 +1891,11 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                                        1,
                                        platform::EventRole::kInnerOp);
     if (need_prepare_data_) {
-      transfer_scope =
-          PrepareData(scope,
-                      framework::TransOpKernelTypeToPhiKernelKey(*kernel_type_),
-                      &transfered_inplace_vars,
-                      runtime_ctx,
-                      dev_ctx->GetPlace());
+      transfer_scope = PrepareData(scope,
+                                   phi_kernel_key,
+                                   &transfered_inplace_vars,
+                                   runtime_ctx,
+                                   dev_ctx->GetPlace());
     }
   }
   // exec scope is the scope that kernel actually executed on.
