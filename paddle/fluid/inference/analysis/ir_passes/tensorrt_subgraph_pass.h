@@ -21,7 +21,6 @@
 
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/pass.h"
-#include "paddle/fluid/inference/analysis/ir_passes/subgraph_util.h"
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 
 namespace paddle {
@@ -42,10 +41,11 @@ class TensorRtSubgraphPass : public framework::ir::FusePassBase {
   void ApplyImpl(framework::ir::Graph *graph) const override;
 
  private:
-  void CreateTensorRTOp(framework::ir::Node *x,
-                        framework::ir::Graph *graph,
-                        const std::vector<std::string> &graph_params,
-                        std::vector<std::string> *repetitive_params) const;
+  std::string CreateTensorRTOp(framework::ir::Node *x,
+                               framework::ir::Graph *graph,
+                               const std::vector<std::string> &graph_params,
+                               std::vector<std::string> *repetitive_params,
+                               bool use_cuda_graph) const;
   void CleanIntermediateOutputs(framework::ir::Node *node);
 };
 

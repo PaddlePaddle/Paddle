@@ -237,14 +237,14 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     }
   }
 
-  void ShareAllLoD(const std::string& in,
-                   const std::string& out) const override {
+  void ShareAllLoD(const std::string& in UNUSED,
+                   const std::string& out UNUSED) const override {
     // do nothing
   }
-  void ShareLoD(const std::string& in,
-                const std::string& out,
-                size_t i = 0,
-                size_t j = 0) const override {
+  void ShareLoD(const std::string& in UNUSED,
+                const std::string& out UNUSED,
+                size_t i UNUSED = 0,
+                size_t j UNUSED = 0) const override {
     // do nothing
   }
 
@@ -415,14 +415,15 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     }
   }
 
-  int32_t GetLoDLevel(const std::string& in, size_t i = 0) const override {
+  int32_t GetLoDLevel(const std::string& in UNUSED,
+                      size_t i UNUSED = 0) const override {
     PADDLE_THROW(platform::errors::PermissionDenied(
         "GetLoDLevel function not support in dygraph mode"));
   }
 
-  void SetLoDLevel(const std::string& out,
-                   int32_t lod_level,
-                   size_t j = 0) const override {
+  void SetLoDLevel(const std::string& out UNUSED,
+                   int32_t lod_level UNUSED,
+                   size_t j UNUSED = 0) const override {
     PADDLE_THROW(platform::errors::PermissionDenied(
         "SetLoDLevel function not support in dygraph mode"));
   }
@@ -452,7 +453,8 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     }
   }
 
-  std::vector<DDim> GetRepeatedDims(const std::string& name) const override {
+  std::vector<DDim> GetRepeatedDims(
+      const std::string& name UNUSED) const override {
     PADDLE_THROW(platform::errors::PermissionDenied(
         "GetRepeatedDims not support in dygraph runtime"));
   }
@@ -486,8 +488,8 @@ class DygraphInferShapeContext : public framework::InferShapeContext {
     }
   }
 
-  void SetRepeatedDims(const std::string& name,
-                       const std::vector<DDim>& dims) override {
+  void SetRepeatedDims(const std::string& name UNUSED,
+                       const std::vector<DDim>& dims UNUSED) override {
     PADDLE_THROW(platform::errors::PermissionDenied(
         "SetRepeatedDims not support in dygraph runtime"));
   }

@@ -22,7 +22,6 @@ from .framework import (
     default_startup_program,
     _non_static_mode,
     _current_expected_place,
-    _in_eager_without_dygraph_check,
 )
 from . import unique_name
 from .param_attr import ParamAttr, WeightNormParamAttr

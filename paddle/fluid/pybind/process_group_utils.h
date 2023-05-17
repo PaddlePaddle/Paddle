@@ -56,7 +56,7 @@ struct ConcatDenseTensor<platform::CustomDeviceContext, T> {
   void operator()(const platform::CustomDeviceContext &context,
                   const std::vector<phi::DenseTensor> &in,
                   phi::DenseTensor *out,
-                  int axis = 0) {
+                  int axis UNUSED = 0) {
     auto *out_data = out->data<T>();
     auto *device = phi::DeviceManager::GetDeviceWithPlace(context.GetPlace());
     size_t offset = 0;
@@ -80,7 +80,7 @@ struct SplitDenseTensor<platform::CustomDeviceContext, T> {
   void operator()(const platform::CustomDeviceContext &context,
                   const phi::DenseTensor &in,
                   std::vector<phi::DenseTensor *> *out,
-                  int axis = 0) {
+                  int axis UNUSED = 0) {
     auto *in_data = in.data<T>();
     auto *device = phi::DeviceManager::GetDeviceWithPlace(context.GetPlace());
     size_t offset = 0;

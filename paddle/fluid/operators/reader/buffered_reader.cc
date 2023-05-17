@@ -98,7 +98,6 @@ BufferedReader::BufferedReader(
 
   cpu_buffer_.resize(buffer_size);
   cuda_buffer_.resize(buffer_size);
-  npu_buffer_.resize(buffer_size);
   xpu_buffer_.resize(buffer_size);
   custom_device_buffer_.resize(buffer_size);
   ReadTillBufferFullAsync();
@@ -268,7 +267,7 @@ void BufferedReader::ReadAsync(size_t i) {
         xpu_ptrs.emplace_back(xpu[i].mutable_data(place_, cpu[i].type()));
       }
 
-      platform::XPUDeviceGuard gurad(place_.device);
+      platform::XPUDeviceGuard guard(place_.device);
       int r = xpu_event_record(events_[i].get(), compute_stream_);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu_event_record");
       r = xpu_stream_wait_event(stream_.get(), events_[i].get());

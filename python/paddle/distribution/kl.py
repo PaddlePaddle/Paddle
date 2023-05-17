@@ -18,9 +18,11 @@ import paddle
 from paddle.distribution.bernoulli import Bernoulli
 from paddle.distribution.beta import Beta
 from paddle.distribution.categorical import Categorical
+from paddle.distribution.cauchy import Cauchy
 from paddle.distribution.dirichlet import Dirichlet
 from paddle.distribution.distribution import Distribution
 from paddle.distribution.exponential_family import ExponentialFamily
+from paddle.distribution.geometric import Geometric
 from paddle.distribution.laplace import Laplace
 from paddle.distribution.lognormal import LogNormal
 from paddle.distribution.normal import Normal
@@ -58,7 +60,7 @@ def kl_divergence(p, q):
 
             print(paddle.distribution.kl_divergence(p, q))
             # Tensor(shape=[], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #        [0.21193528])
+            #        0.21193528)
 
     """
     return _dispatch(type(p), type(q))(p, q)
@@ -185,6 +187,11 @@ def _kl_categorical_categorical(p, q):
     return p.kl_divergence(q)
 
 
+@register_kl(Cauchy, Cauchy)
+def _kl_cauchy_cauchy(p, q):
+    return p.kl_divergence(q)
+
+
 @register_kl(Normal, Normal)
 def _kl_normal_normal(p, q):
     return p.kl_divergence(q)
@@ -197,6 +204,11 @@ def _kl_uniform_uniform(p, q):
 
 @register_kl(Laplace, Laplace)
 def _kl_laplace_laplace(p, q):
+    return p.kl_divergence(q)
+
+
+@register_kl(Geometric, Geometric)
+def _kl_geometric_geometric(p, q):
     return p.kl_divergence(q)
 
 

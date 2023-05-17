@@ -31,6 +31,7 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/phi/core/macros.h"
 
 namespace google {
 namespace protobuf {
@@ -96,7 +97,9 @@ class PSServer {
   virtual int32_t StartS2S() { return 0; }
 
   virtual ::std::future<int32_t> SendPServer2PServerMsg(
-      int msg_type, int to_pserver_id, const std::string &msg) {
+      int msg_type UNUSED,
+      int to_pserver_id UNUSED,
+      const std::string &msg UNUSED) {
     LOG(FATAL) << "NotImplementError: PSServer::send_pserver2pserver_msg";
     std::promise<int32_t> promise;
     std::future<int> fut = promise.get_future();
@@ -124,9 +127,9 @@ class PSServer {
     }
     return itr->second(msg_type, from_pserver_id, msg);
   }
-  virtual int32_t ReceiveFromPServer(int msg_type,
-                                     int pserver_id,
-                                     const std::string &msg) {
+  virtual int32_t ReceiveFromPServer(int msg_type UNUSED,
+                                     int pserver_id UNUSED,
+                                     const std::string &msg UNUSED) {
     LOG(FATAL) << "NotImplementError::PSServer::ReceiveFromPServer";
     return -1;
   }
