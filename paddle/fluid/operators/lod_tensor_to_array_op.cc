@@ -44,8 +44,7 @@ struct LoDTensorToArrayFunctorImpl {
   void apply();
 };
 
-struct LoDTensorToArrayFunctor
-    : public std::unary_function<platform::Place, void> {
+struct LoDTensorToArrayFunctor {
   using argument_type = platform::Place;
   using result_type = void;
   std::vector<const phi::DenseTensor *> ref_inputs_;
