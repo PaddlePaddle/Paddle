@@ -15,9 +15,10 @@
 import unittest
 
 import numpy as np
-from amp_base_models import AmpTestBase, build_conv_model
+from amp_base_models import AmpTestBase
 
 import paddle
+from paddle import nn
 from paddle.static import amp
 
 
@@ -39,25 +40,46 @@ class TestAutoCast(AmpTestBase):
         self.assertEqual(out3.dtype, paddle.float32)
 
 
+class SimpleConvNet(nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self.conv = nn.Conv2D(in_channels=1, out_channels=6, kernel_size=3)
+        self.linear = nn.Linear(in_features=96, out_features=4)
+
+    def forward(self, x):
+        out = self.conv(x)
+        out = nn.functional.relu(out.cast("float32"))
+        out = out.flatten(start_axis=1, stop_axis=3)
+        out = self.linear(out)
+        return out
+
+
 class TestStaticDecorate(AmpTestBase):
     def check_results(
         self, use_amp, dtype, level, use_promote, expected_op_calls
     ):
-        (
-            main_program,
-            startup_program,
-            optimizer,
-            feed_vars,
-            fetch_vars,
-        ) = build_conv_model(use_amp, dtype, level, use_promote)
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.utils.unique_name.guard():
+            with paddle.static.program_guard(main_program, startup_program):
+                model = SimpleConvNet()
+                x = paddle.static.data(
+                    name='input', shape=[None, 1, 6, 6], dtype='float32'
+                )
+                out = model(x)
+                loss = paddle.mean(out)
+                optimizer = paddle.fluid.optimizer.Adadelta(learning_rate=0.001)
+                optimizer = paddle.static.amp.decorate(
+                    optimizer,
+                    init_loss_scaling=128.0,
+                    use_dynamic_loss_scaling=True,
+                    level=level,
+                )
+                optimizer.minimize(loss)
+
+        feed_vars = [x]
+        fetch_vars = [loss]
         self.assertEqual(main_program.num_blocks, 1)
-        optimizer = paddle.fluid.optimizer.Adadelta(learning_rate=0.001)
-        optimizer = paddle.static.amp.decorate(
-            optimizer,
-            init_loss_scaling=128.0,
-            use_dynamic_loss_scaling=True,
-            level=level,
-        )
 
         amp.debugging.collect_operator_stats(main_program)
         op_stats_list = amp.debugging._get_op_stats_list(main_program)
@@ -81,6 +103,7 @@ class TestStaticDecorate(AmpTestBase):
             exe,
             x_fp32,
             max_iters,
+            dtype,
             level,
         )
 
@@ -91,9 +114,7 @@ class TestStaticDecorate(AmpTestBase):
             "elementwise_add": 0,
             "relu": 0,
             "matmul_v2": 1,
-            "softmax": 0,
             "reduce_mean": 0,
-            "adamw": 0,
         }
         self.check_results(
             True,
