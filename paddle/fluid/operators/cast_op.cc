@@ -51,22 +51,6 @@ the input dtype, but it's fine if you do so.
   }
 };
 
-template <typename T>
-class CastOpGradMaker : public framework::SingleGradOpMaker<T> {
- public:
-  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
-
- protected:
-  void Apply(GradOpPtr<T> grad) const override {
-    grad->SetType("cast");
-    grad->SetInput("X", this->OutputGrad("Out"));
-    grad->SetOutput("Out", this->InputGrad("X"));
-    grad->SetAttr("out_dtype", this->GetAttr("in_dtype"));
-    grad->SetAttr("in_dtype", this->GetAttr("out_dtype"));
-    grad->SetAttr("use_mkldnn", this->GetAttr("use_mkldnn"));
-  }
-};
-
 class CastCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
  public:
   using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
@@ -138,8 +122,6 @@ DECLARE_INFER_SHAPE_FUNCTOR(cast,
 // cast use phi kernel, so no need to REGISTER_OP_CPU_KERNEL here.
 REGISTER_OPERATOR(cast,
                   ops::CastOp,
-                  ops::CastOpGradMaker<paddle::framework::OpDesc>,
-                  ops::CastOpGradMaker<paddle::imperative::OpBase>,
                   ops::CastCompositeGradOpMaker,
                   ops::CastOpProtoMaker,
                   CastInferShapeFunctor);
@@ -149,7 +131,5 @@ REGISTER_OPERATOR(cast,
 // which cast_op is inserted by new executor when we do profiling.
 REGISTER_OPERATOR(transfer_dtype,
                   ops::CastOp,
-                  ops::CastOpGradMaker<paddle::framework::OpDesc>,
-                  ops::CastOpGradMaker<paddle::imperative::OpBase>,
                   ops::CastOpProtoMaker,
                   CastInferShapeFunctor);
