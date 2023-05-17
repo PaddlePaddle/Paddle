@@ -1,15 +1,6 @@
 # The apis in this file are unstandardized that may caused by a variety of reasons,
 # we are trying to fix these apis and will move standardized apis into ops.yaml.
 
-- op : abs
-  args : (Tensor x)
-  output : Tensor
-  infer_meta :
-    func : RealAndImagInferMeta
-  kernel :
-    func : abs
-  backward : abs_grad
-
 - op : adadelta_
   args : (Tensor param, Tensor grad, Tensor avg_squared_grad, Tensor avg_squared_update, Tensor learning_rate, Tensor master_param, float rho, float epsilon, bool multi_precision)
   output : Tensor(param_out), Tensor(moment_out), Tensor(inf_norm_out), Tensor(master_param_out)
@@ -596,18 +587,6 @@
   kernel :
     func : increment
   inplace : (x -> out)
-
-- op : instance_norm
-  args : (Tensor x, Tensor scale, Tensor bias, float epsilon)
-  output : Tensor(y), Tensor(saved_mean), Tensor(saved_variance)
-  infer_meta :
-    func : InstanceNormInferMeta
-  kernel :
-    func : instance_norm
-    data_type : x
-  optional : scale, bias
-  intermediate : saved_mean, saved_variance
-  backward : instance_norm_grad
 
 - op : layer_norm
   args : (Tensor x, Tensor scale, Tensor bias, float epsilon, int begin_norm_axis)
@@ -1197,6 +1176,16 @@
   kernel :
     func : unique
     data_type : x
+
+- op : unpool
+  args: (Tensor x, Tensor indices, int[] ksize, int[] strides, int[] padding, IntArray output_size, str data_format)
+  output: Tensor(out)
+  infer_meta:
+    func: UnpoolInferMeta
+  kernel:
+    func: unpool
+    data_type: x
+  backward: unpool_grad
 
 - op : zeros
   args : (IntArray shape, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())

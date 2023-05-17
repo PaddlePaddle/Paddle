@@ -5,6 +5,16 @@
 # are consistent and correspond one-to-one. It's forbidden that the
 # operator configured in this yaml file does not have Python API.
 
+- op : abs
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : RealAndImagInferMeta
+  kernel :
+    func : abs
+    data_type : x
+  backward : abs_grad
+
 - op : accuracy
   args : (Tensor x, Tensor indices, Tensor label)
   output : Tensor(accuracy), Tensor(correct), Tensor(total)
@@ -938,6 +948,24 @@
     func : i0e
   backward : i0e_grad
 
+- op : i1
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : i1
+  backward : i1_grad
+
+- op : i1e
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : i1e
+  backward : i1e_grad
+
 - op : imag
   args : (Tensor x)
   output : Tensor (out)
@@ -988,6 +1016,18 @@
     func : index_select
     data_type : x
   backward : index_select_grad
+
+- op : instance_norm
+  args : (Tensor x, Tensor scale, Tensor bias, float epsilon=1e-5)
+  output : Tensor(y), Tensor(saved_mean), Tensor(saved_variance)
+  infer_meta :
+    func : InstanceNormInferMeta
+  kernel :
+    func : instance_norm
+    data_type : x
+  optional : scale, bias
+  intermediate : saved_mean, saved_variance
+  backward : instance_norm_grad
 
 - op : inverse
   args : (Tensor x)
@@ -2190,16 +2230,6 @@
     func : unique_consecutive
     data_type : x
   optional : index, counts
-
-- op : unpool
-  args: (Tensor x, Tensor indices, int[] ksize, int[] strides = {1,1}, int[] paddings ={0,0} ,IntArray output_size = {0,0}, str data_format="NCHW")
-  output: Tensor(out)
-  infer_meta:
-    func: UnpoolInferMeta
-  kernel:
-    func: unpool
-    data_type: x
-  backward: unpool_grad
 
 - op : unpool3d
   args: (Tensor x, Tensor indices, int[] ksize, int[] strides={1,1,1}, int[] paddings={0,0,0}, int[] output_size={0,0,0}, str data_format="NCDHW")

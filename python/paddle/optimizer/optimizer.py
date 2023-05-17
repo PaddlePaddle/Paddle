@@ -24,7 +24,6 @@ from paddle.fluid import core
 from paddle.fluid.framework import (
     Variable,
     _current_expected_place,
-    _in_eager_without_dygraph_check,
     default_main_program,
     device_guard,
     in_dygraph_mode,
@@ -736,9 +735,7 @@ class Optimizer:
             name=var_name,
             persistable=True,
             dtype=dtype or param.dtype,
-            type=core.VarDesc.VarType.LOD_TENSOR
-            if framework._in_eager_without_dygraph_check()
-            else (param.type if type is None else type),
+            type=core.VarDesc.VarType.LOD_TENSOR,
             shape=shape,
             belong_to_optimizer=True,
         )
@@ -1380,11 +1377,8 @@ class Optimizer:
                     if not p.stop_gradient:
                         param_list.append(p)
 
-        if _in_eager_without_dygraph_check():
-            for p in param_list:
-                p.clear_gradient(set_to_zero)
-        else:
-            core.clear_gradients(param_list, set_to_zero)
+        for p in param_list:
+            p.clear_gradient(set_to_zero)
 
     @imperative_base.no_grad()
     def minimize(

@@ -15,11 +15,13 @@
 #pragma once
 
 #include "paddle/ir/attribute_base.h"
+#include "paddle/ir/dialect_interface.h"
 #include "paddle/ir/ir_context.h"
 #include "paddle/ir/op_info_impl.h"
 #include "paddle/ir/type_base.h"
 
 namespace ir {
+class DialectInterface;
 ///
 /// \brief Dialect can basically be understood as a namespace. In Dialect, we
 /// can define a series of types, attributes, operations, etc. An instance of
@@ -30,6 +32,8 @@ namespace ir {
 class Dialect {
  public:
   Dialect(std::string name, ir::IrContext *context, ir::TypeId id);
+
+  virtual ~Dialect();
 
   const std::string &name() const { return name_; }
 
@@ -49,8 +53,6 @@ class Dialect {
   template <typename T>
   void RegisterType() {
     VLOG(4) << "Type registered into Dialect. --->";
-    // if (this->ir_context()->registed_abstract_type().count(
-    //         ir::TypeId::get<T>()) == 0) {
     if (this->ir_context()->GetRegisteredAbstractType(ir::TypeId::get<T>()) ==
         nullptr) {
       ir::AbstractType *abstract_type =
@@ -118,11 +120,50 @@ class Dialect {
 
   void RegisterOp(const std::string &name, OpInfoImpl *op_info);
 
+  ///
+  /// \brief Register interface methods.
+  ///
+
+  DialectInterface *GetRegisteredInterface(TypeId id) {
+    auto it = registered_interfaces_.find(id);
+    return it != registered_interfaces_.end() ? it->second.get() : nullptr;
+  }
+
+  template <typename InterfaceT>
+  InterfaceT *GetRegisteredInterface() {
+    return static_cast<InterfaceT *>(
+        GetRegisteredInterface(TypeId::get<InterfaceT>()));
+  }
+
+  /// Register a dialect interface with this dialect instance.
+  void RegisterInterface(std::unique_ptr<DialectInterface> interface);
+
+  /// Register a set of dialect interfaces with this dialect instance.
+  template <typename... Args>
+  void RegisterInterfaces() {
+    (void)std::initializer_list<int>{
+        0, (RegisterInterface(std::make_unique<Args>(this)), 0)...};
+  }
+
+  template <typename InterfaceT, typename... Args>
+  InterfaceT &RegisterInterface(Args &&...args) {
+    InterfaceT *interface = new InterfaceT(this, std::forward<Args>(args)...);
+    RegisterInterface(std::unique_ptr<DialectInterface>(interface));
+    return *interface;
+  }
+
  private:
+  Dialect(const Dialect &) = delete;
+
+  Dialect &operator=(Dialect &) = delete;
+
   std::string name_;
 
   ir::IrContext *context_;  // not owned
 
   ir::TypeId id_;
+
+  std::unordered_map<TypeId, std::unique_ptr<DialectInterface>>
+      registered_interfaces_;
 };
 }  // namespace ir
