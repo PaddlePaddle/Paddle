@@ -1,4 +1,17 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,7 +40,6 @@ from paddle.distributed.communication.group import (
 )
 
 from ...utils import timer_helper as timer
-from ...utils.log_util import logger
 from .utils import number_2_dtype, paddle_2_number
 
 _hcg = None
@@ -68,24 +80,6 @@ def initialize_p2p_groups(
     _enable_partial_send_recv = enable_partial_send_recv
     if enable_timer:
         _timers = timer.get_timers()
-    (
-        send_next_group,
-        send_prev_group,
-        recv_next_group,
-        recv_prev_group,
-    ) = _hcg.get_p2p_groups()
-
-    debug_str = (
-        "P2pInfo: send_next_group: %s, send_prev_group: %s, "
-        "recv_next_group: %s, recv_prev_group: %s"
-        % (
-            repr(send_next_group),
-            repr(send_prev_group),
-            repr(recv_next_group),
-            repr(recv_prev_group),
-        )
-    )
-    logger.info(debug_str)
 
 
 class SendRecvMeta:
@@ -245,51 +239,6 @@ def _partial_recv_op(tensor, group, src, nranks, rank_id):
         )
 
 
-def send_partial(
-    tensor, dst=0, nranks=1, rank_id=0, group=None, use_calc_stream=True
-):
-    # dst: local rank in group
-    if group is not None and not group.is_member():
-        return
-    ring_id = 0 if group is None else group.id
-
-    dst_rank = (
-        _hcg._get_p2p_next_rank() if dst == 1 else _hcg._get_p2p_prev_rank()
-    )
-
-    if _is_valid_send_recv_partial(tensor, nranks):
-        return _partial_send_op(
-            tensor, group, use_calc_stream, ring_id, dst_rank, nranks, rank_id
-        )
-    else:
-        send_op = paddle.distributed.isend
-        return send_op(tensor.detach(), dst=dst_rank, group=group)
-
-
-def recv_partial(
-    tensor, src=0, nranks=1, rank_id=0, group=None, use_calc_stream=True
-):
-    # src: local rank in group
-    if group is not None and not group.is_member():
-        return
-    ring_id = 0 if group is None else group.id
-
-    src_rank = (
-        _hcg._get_p2p_prev_rank() if src == 0 else _hcg._get_p2p_next_rank()
-    )
-
-    if _is_valid_send_recv_partial(tensor, nranks):
-        return _partial_recv_op(
-            tensor, group, use_calc_stream, ring_id, src_rank, nranks, rank_id
-        )
-    else:
-        if use_calc_stream:
-            recv_op = paddle.distributed.recv
-        elif framework.in_dygraph_mode():
-            recv_op = paddle.distributed.irecv
-        return recv_op(tensor.detach(), src=src_rank, group=group)
-
-
 def _partial_allgather_op(
     tensor, group, use_calc_stream, ring_id, nranks, rank_id
 ):
@@ -414,52 +363,6 @@ def _p2p_helper(
             tensor_recv_next = paddle.empty(
                 shape=send_shape_msg, dtype=number_2_dtype(send_dtype_msg)
             )
-
-    '''
-    tasks = []
-    # start to p2p communicate
-    if tensor_send_prev is not None:
-       if isinstance(tensor_send_prev, tuple):
-           for d in tensor_send_prev:
-               paddle.distributed.wait(d, use_calc_stream=True)
-               paddle.distributed.isend(d, dst=_hcg._get_p2p_prev_rank(), group=_hcg.send_prev_group)
-       else:
-           paddle.distributed.wait(tensor_send_prev, use_calc_stream=True)
-           paddle.distributed.isend(tensor_send_prev, dst=_hcg._get_p2p_prev_rank(), group=_hcg.send_prev_group)
-
-    if tensor_recv_prev is not None:
-       if isinstance(tensor_recv_prev, tuple):
-           for d in tensor_recv_prev:
-               task = paddle.distributed.irecv(d, src=_hcg._get_p2p_prev_rank(), group=_hcg.recv_prev_group)
-               tasks.append(task)
-       else:
-           task = paddle.distributed.irecv(tensor_recv_prev, src=_hcg._get_p2p_prev_rank(), group=_hcg.recv_prev_group)
-           tasks.append(task)
-
-    if tensor_send_next is not None:
-       if isinstance(tensor_send_next, tuple):
-           for d in tensor_send_next:
-               paddle.distributed.wait(d, use_calc_stream=True)
-               paddle.distributed.isend(d, dst=_hcg._get_p2p_next_rank(), group=_hcg.send_next_group)
-       else:
-           paddle.distributed.wait(tensor_send_next, use_calc_stream=True)
-           paddle.distributed.isend(tensor_send_next, dst=_hcg._get_p2p_next_rank(), group=_hcg.send_next_group)
-
-    if tensor_recv_next is not None:
-       if isinstance(tensor_recv_next, tuple):
-           for d in tensor_recv_next:
-               task = paddle.distributed.irecv(d, src=_hcg._get_p2p_next_rank(), group=_hcg.recv_next_group)
-               tasks.append(task)
-       else:
-           task = paddle.distributed.irecv(tensor_recv_next, src=_hcg._get_p2p_next_rank(), group=_hcg.recv_next_group)
-           tasks.append(task)
-
-    if framework.in_dygraph_mode():
-       # wait irecv tasks in eager dygraph mode with new comm library
-       for task in tasks:
-           assert task is not None
-           task.wait()
-    '''
 
     ops = []
     partial_ops = []
@@ -668,171 +571,6 @@ def _p2p_helper(
             group=mp_group,
             use_calc_stream=True,
         )
-
-    '''
-    # TODO(Yuang Liu): use batch_isend_irecv replace all these comm ops
-    tasks = []
-    # start to p2p communicate
-    if tensor_send_prev is not None:
-       if isinstance(tensor_send_prev, tuple):
-           for d in tensor_send_prev:
-               paddle.distributed.wait(d, use_calc_stream=True)
-               send_partial(
-                   d,
-                   dst=0,
-                   nranks=mp_degree,
-                   rank_id=mp_rank,
-                   group=_hcg.send_prev_group,
-                   use_calc_stream=False,
-               )
-       else:
-           paddle.distributed.wait(tensor_send_prev, use_calc_stream=True)
-           send_partial(
-               tensor_send_prev,
-               dst=0,
-               nranks=mp_degree,
-               rank_id=mp_rank,
-               group=_hcg.send_prev_group,
-               use_calc_stream=False,
-           )
-
-    if tensor_recv_prev is not None:
-       if isinstance(tensor_recv_prev, tuple):
-           for d in tensor_recv_prev:
-               task = recv_partial(
-                   d,
-                   src=0,
-                   nranks=mp_degree,
-                   rank_id=mp_rank,
-                   group=_hcg.recv_prev_group,
-                   use_calc_stream=sync_recv,
-               )
-               if sync_recv:
-                   allgather_partial(
-                       d,
-                       nranks=mp_degree,
-                       rank_id=mp_rank,
-                       group=mp_group,
-                       use_calc_stream=True,
-                   )
-               else:
-                   tasks.append(task)
-       else:
-           task = recv_partial(
-               tensor_recv_prev,
-               src=0,
-               nranks=mp_degree,
-               rank_id=mp_rank,
-               group=_hcg.recv_prev_group,
-               use_calc_stream=sync_recv,
-           )
-
-           if sync_recv:
-               allgather_partial(
-                   tensor_recv_prev,
-                   nranks=mp_degree,
-                   rank_id=mp_rank,
-                   group=mp_group,
-                   use_calc_stream=True,
-               )
-           else:
-               tasks.append(task)
-
-    if tensor_send_next is not None:
-       if isinstance(tensor_send_next, tuple):
-           for d in tensor_send_next:
-               paddle.distributed.wait(d, use_calc_stream=True)
-               send_partial(
-                   d,
-                   dst=1,
-                   nranks=mp_degree,
-                   rank_id=mp_rank,
-                   group=_hcg.send_next_group,
-                   use_calc_stream=False,
-               )
-       else:
-           paddle.distributed.wait(tensor_send_next, use_calc_stream=True)
-           send_partial(
-               tensor_send_next,
-               dst=1,
-               nranks=mp_degree,
-               rank_id=mp_rank,
-               group=_hcg.send_next_group,
-               use_calc_stream=False,
-           )
-
-    if tensor_recv_next is not None:
-       if isinstance(tensor_recv_next, tuple):
-           for d in tensor_recv_next:
-               task = recv_partial(
-                   d,
-                   src=1,
-                   nranks=mp_degree,
-                   rank_id=mp_rank,
-                   group=_hcg.recv_next_group,
-                   use_calc_stream=sync_recv,
-               )
-
-               if sync_recv:
-                   allgather_partial(
-                       d,
-                       nranks=mp_degree,
-                       rank_id=mp_rank,
-                       group=mp_group,
-                       use_calc_stream=True,
-                   )
-               else:
-                   tasks.append(task)
-
-       else:
-           task = recv_partial(
-               tensor_recv_next,
-               src=1,
-               nranks=mp_degree,
-               rank_id=mp_rank,
-               group=_hcg.recv_next_group,
-               use_calc_stream=sync_recv,
-           )
-           if sync_recv:
-               allgather_partial(
-                   tensor_recv_next,
-                   nranks=mp_degree,
-                   rank_id=mp_rank,
-                   group=mp_group,
-                   use_calc_stream=True,
-               )
-           else:
-               tasks.append(task)
-    if not sync_recv:
-       if framework.in_dygraph_mode():
-           # wait irecv tasks in eager dygraph mode with new comm library
-           for task in tasks:
-               assert task is not None
-               task.wait()
-
-       tensors_for_all_gather = []
-       if tensor_recv_prev is not None:
-           if isinstance(tensor_recv_prev, tuple):
-               for d in tensor_recv_prev:
-                   tensors_for_all_gather.append(d)
-           else:
-               tensors_for_all_gather.append(tensor_recv_prev)
-       if tensor_recv_next is not None:
-           if isinstance(tensor_recv_next, tuple):
-               for d in tensor_recv_next:
-                   tensors_for_all_gather.append(d)
-           else:
-               tensors_for_all_gather.append(tensor_recv_next)
-
-       for tensor in tensors_for_all_gather:
-           allgather_partial(
-               tensor,
-               nranks=mp_degree,
-               rank_id=mp_rank,
-               group=mp_group,
-               use_calc_stream=True,
-           )
-    '''
 
     return tensor_recv_prev, tensor_recv_next
 
