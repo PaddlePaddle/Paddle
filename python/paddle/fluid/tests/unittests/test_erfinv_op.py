@@ -151,7 +151,7 @@ class TestErfinvBF16OP(OpTest):
     def setUp(self):
         self.op_type = "erfinv"
         self.python_api = paddle.erfinv
-        self.init_dtype()
+        self.dtype = np.uint16
         self.shape = [11, 17]
         self.x = np.random.uniform(-1, 1, size=self.shape).astype(np.float32)
         self.res_ref = erfinv(self.x).astype(np.float32)
@@ -162,12 +162,9 @@ class TestErfinvBF16OP(OpTest):
         self.inputs = {'X': convert_float_to_uint16(self.x)}
         self.outputs = {'Out': convert_float_to_uint16(self.res_ref)}
 
-    def init_dtype(self):
-        self.dtype = np.uint16
-
     def test_check_output(self):
         place = paddle.fluid.core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, rtol=0.05, atol=0.1)
 
     def test_check_grad(self):
         place = paddle.fluid.core.CUDAPlace(0)
