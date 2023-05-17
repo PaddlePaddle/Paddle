@@ -2271,4 +2271,17 @@ PD_REGISTER_KERNEL(distributed_fused_lamb,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::DistributedFusedLambKernel,
-                   float) {}
+                   float) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::FLOAT32);
+  kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT16);
+  kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
+  kernel->OutputAt(3).SetDataType(phi::DataType::FLOAT16);
+  kernel->OutputAt(4).SetDataType(phi::DataType::FLOAT32);
+  kernel->OutputAt(5).SetDataType(phi::DataType::FLOAT32);
+  kernel->OutputAt(6).SetDataType(phi::DataType::FLOAT32);
+  kernel->OutputAt(7).SetDataType(phi::DataType::FLOAT32);
+  kernel->OutputAt(9).SetDataType(phi::DataType::BOOL);
+  kernel->OutputAt(10).SetDataType(phi::DataType::INT64);
+  kernel->OutputAt(11).SetDataType(phi::DataType::BOOL);
+  kernel->OutputAt(12).SetDataType(phi::DataType::INT64);
+}
