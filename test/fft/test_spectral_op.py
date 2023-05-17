@@ -167,7 +167,7 @@ class TestFFTC2COp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(
-            "X",
+            ["X"],
             "Out",
         )
 
@@ -343,6 +343,6 @@ class TestFFTR2COp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(
-            "X",
+            ["X"],
             "Out",
         )
