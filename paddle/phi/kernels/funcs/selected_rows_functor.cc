@@ -288,7 +288,7 @@ template struct SelectedRowsSumTo<phi::CPUContext, double>;
 
 template <typename T>
 struct SelectedRowsAddToTensor<phi::CPUContext, T> {
-  void operator()(const phi::CPUContext& context,
+  void operator()(const phi::CPUContext& context UNUSED,
                   const phi::SelectedRows& input1,
                   phi::DenseTensor* input2) {
     if (UNLIKELY(input1.rows().size() == 0)) {

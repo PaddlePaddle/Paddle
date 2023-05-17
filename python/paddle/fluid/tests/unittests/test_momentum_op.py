@@ -687,9 +687,7 @@ class TestMomentumOpWithDecayAPI(unittest.TestCase):
 
     def test_momentum_dygraph_1(self):
         self._test_momentum_dygraph_common(
-            regularization=paddle.fluid.regularizer.L2Decay(
-                regularization_coeff=0.1
-            )
+            regularization=paddle.regularizer.L2Decay(coeff=0.1)
         )
 
     def test_momentum_static(self):
@@ -825,9 +823,7 @@ class TestMomentumOpVsMomentumOpWithDecayAPI(unittest.TestCase):
             learning_rate=0.01,
             momentum=0.9,
             parameter_list=linear_old.parameters(),
-            regularization=paddle.fluid.regularizer.L2Decay(
-                regularization_coeff=0.1
-            ),
+            regularization=paddle.regularizer.L2Decay(coeff=0.1),
         )
         self.__update_params(momentum=momentum_old, linear=linear_old)
 
@@ -841,9 +837,7 @@ class TestMomentumOpVsMomentumOpWithDecayAPI(unittest.TestCase):
             learning_rate=0.01,
             momentum=0.9,
             parameter_list=linear_new.parameters(),
-            regularization=paddle.fluid.regularizer.L2Decay(
-                regularization_coeff=0.1
-            ),
+            regularization=paddle.regularizer.L2Decay(coeff=0.1),
         )
         self.__update_params(momentum=momentum_new, linear=linear_new)
 

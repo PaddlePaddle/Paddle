@@ -12,12 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <algorithm>
-
-#include "paddle/phi/backends/gpu/gpu_launch_config.h"
-#include "paddle/phi/common/float16.h"
-#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/dist_kernel.h"
+#include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/elementwise_subtract_kernel.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
@@ -27,56 +24,47 @@ namespace phi {
 
 #define FULL_MASK 0xffffffff
 
-template <typename Tx, typename Ty = Tx>
+template <typename T>
 struct ZeroOrderFunctor {
-  HOSTDEVICE explicit inline ZeroOrderFunctor() {}
-
-  HOSTDEVICE inline Ty operator()(const Tx& x, const Tx& y) const {
-    return static_cast<Ty>(x != y);
+ public:
+  __device__ T operator()(const T& x, const T& y) const {
+    return static_cast<T>((x - y) != 0);
   }
 };
 
-template <typename Tx, typename Ty = Tx>
+template <typename T>
 struct OtherOrderFunctor {
-  HOSTDEVICE explicit inline OtherOrderFunctor(const Ty& _p_order)
-      : p_order(_p_order) {}
-
-  HOSTDEVICE inline Ty operator()(const Tx& x, const Tx& y) const {
-    return static_cast<Ty>(
-        pow(abs(static_cast<Ty>(x) - static_cast<Ty>(y)), p_order));
+  explicit OtherOrderFunctor(const T& p_order) : p_order_(p_order) {}
+  __device__ T operator()(const T& x, const T& y) const {
+    return static_cast<T>(pow(abs(x - y), p_order_));
   }
 
  private:
-  Ty p_order;
+  T p_order_;
 };
 
-template <typename Tx, typename Ty = Tx>
+template <typename T>
 struct PowFunctor {
-  HOSTDEVICE explicit inline PowFunctor(const Ty& _p_order)
-      : p_order(_p_order) {}
-
-  HOSTDEVICE inline Tx operator()(const Tx x) const {
-    return static_cast<Tx>(pow(static_cast<Ty>(x), p_order));
+  explicit PowFunctor(const T& p_order) : p_order_(p_order) {}
+  HOSTDEVICE inline T operator()(const T x) const {
+    return static_cast<T>(pow(x, p_order_));
   }
-
- private:
-  Ty p_order;
+  T p_order_;
 };
 
 template <typename T, typename Functor>
 __global__ void ReduceSumWithSubtract(
     const T* x, const T* y, T* out, int64_t N, Functor func) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
-  MT sum_val(0.0);
+  T sum_val = 0;
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
        i += blockDim.x * gridDim.x) {
-    sum_val += static_cast<MT>(func(x[i], y[i]));
+    sum_val += func(x[i], y[i]);
   }
 
   __syncthreads();
-  sum_val = phi::funcs::BlockReduceSum<MT>(sum_val, FULL_MASK);
+  sum_val = phi::funcs::BlockReduceSum<T>(sum_val, FULL_MASK);
   if (threadIdx.x == 0) {
-    out[blockIdx.x] = static_cast<T>(sum_val);
+    out[blockIdx.x] = sum_val;
   }
 }
 
@@ -85,10 +73,10 @@ __global__ void ReduceMaxWithSubtract(const T* x,
                                       const T* y,
                                       T* out,
                                       int64_t N) {
-  T max_val = std::numeric_limits<T>::min();
+  T max_val = -1e10f;
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
        i += blockDim.x * gridDim.x) {
-    max_val = std::max(max_val, abs(x[i] - y[i]));
+    max_val = max(max_val, abs(x[i] - y[i]));
   }
 
   __syncthreads();
@@ -103,10 +91,10 @@ __global__ void ReduceMinWithSubtract(const T* x,
                                       const T* y,
                                       T* out,
                                       int64_t N) {
-  T min_val = std::numeric_limits<T>::max();
+  T min_val = 1e10f;
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
        i += blockDim.x * gridDim.x) {
-    min_val = std::min(min_val, abs(x[i] - y[i]));
+    min_val = min(min_val, abs(x[i] - y[i]));
   }
 
   __syncthreads();
@@ -122,7 +110,6 @@ void DistKernel(const Context& dev_ctx,
                 const DenseTensor& y,
                 float p,
                 DenseTensor* out) {
-  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   DenseTensor intermediate;
   const T* x_ptr = x.data<T>();
   const T* y_ptr = y.data<T>();
@@ -144,8 +131,9 @@ void DistKernel(const Context& dev_ctx,
       ReduceSumWithSubtract<T>
           <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
               x_ptr, y_ptr, i_ptr, n, ZeroOrderFunctor<T>());
-      phi::funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<MT>>(
-          dev_ctx, intermediate, out, kps::IdentityFunctor<MT>(), reduce_axis);
+      phi::funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+          dev_ctx, intermediate, out, kps::IdentityFunctor<T>(), reduce_axis);
+
     } else if (p == INFINITY) {
       ReduceMaxWithSubtract<T>
           <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
@@ -162,19 +150,19 @@ void DistKernel(const Context& dev_ctx,
           dev_ctx, intermediate, out, kps::IdentityFunctor<T>(), reduce_axis);
 
     } else {
-      MT p_order = static_cast<MT>(p);
+      T p_order = static_cast<T>(p);
       ReduceSumWithSubtract<T>
           <<<config.block_per_grid.x, config.thread_per_block.x, 0, stream>>>(
-              x_ptr, y_ptr, i_ptr, n, OtherOrderFunctor<T, MT>(p_order));
-      phi::funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<MT>>(
-          dev_ctx, intermediate, out, kps::IdentityFunctor<MT>(), reduce_axis);
+              x_ptr, y_ptr, i_ptr, n, OtherOrderFunctor<T>(p_order));
+      phi::funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+          dev_ctx, intermediate, out, kps::IdentityFunctor<T>(), reduce_axis);
 
       const DenseTensor* tmp_norm = out;
       std::vector<const DenseTensor*> ins = {tmp_norm};
       std::vector<DenseTensor*> outs = {out};
-      MT p_order_ = static_cast<MT>(static_cast<MT>(1.) / p_order);
+      T p_order_ = static_cast<T>(1. / p_order);
       phi::funcs::ElementwiseKernel<T>(
-          dev_ctx, ins, &outs, PowFunctor<T, MT>(p_order_));
+          dev_ctx, ins, &outs, PowFunctor<T>(p_order_));
     }
 
   } else {
@@ -185,10 +173,4 @@ void DistKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(dist,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::DistKernel,
-                   phi::dtype::float16,
-                   float,
-                   double) {}
+PD_REGISTER_KERNEL(dist, GPU, ALL_LAYOUT, phi::DistKernel, float, double) {}

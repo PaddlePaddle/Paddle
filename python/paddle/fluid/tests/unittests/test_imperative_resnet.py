@@ -70,7 +70,7 @@ def optimizer_setting(params, parameter_list=None):
         #  learning_rate=fluid.layers.piecewise_decay(
         #  boundaries=bd, values=lr),
         #  momentum=0.9,
-        #  regularization=fluid.regularizer.L2Decay(1e-4))
+        #  regularization=paddle.regularizer.L2Decay(1e-4))
 
     return optimizer
 

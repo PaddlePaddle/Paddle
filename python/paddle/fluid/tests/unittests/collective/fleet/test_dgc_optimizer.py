@@ -15,7 +15,8 @@
 import unittest
 
 import paddle
-from paddle.fluid import framework, optimizer, regularizer
+from paddle import regularizer
+from paddle.fluid import framework, optimizer
 from paddle.nn import clip
 
 paddle.enable_static()
@@ -49,7 +50,7 @@ class TestDGCMomentumOptimizer(unittest.TestCase):
             optimize_attr={'learning_rate': 1.1},
             regularizer=None
             if regularization is not None
-            else regularizer.L2DecayRegularizer(2e-4),
+            else regularizer.L2Decay(2e-4),
         )
         mul_y = block.create_var(
             dtype="float32", shape=[dims[1], dims[2]], lod_level=0, name="mul.y"
