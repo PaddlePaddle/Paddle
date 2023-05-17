@@ -1163,6 +1163,7 @@ set(STATIC_BUILD_TESTS
     test_fetch_lod_tensor_array
     test_fused_attention_op
     test_fused_attention_op_api
+    test_fuse_bn_act_pass
     test_fused_feedforward_op
     test_fused_feedforward_pass
     test_imperative_optimizer
@@ -1206,6 +1207,13 @@ endforeach()
 
 set_tests_properties(test_decoupled_py_reader_static_build PROPERTIES TIMEOUT
                                                                       120)
+set_tests_properties(test_fuse_bn_act_pass_static_build PROPERTIES TIMEOUT 120)
+set_tests_properties(
+  test_fuse_bn_act_pass_static_build
+  PROPERTIES
+    ENVIRONMENT
+    "FLAGS_cudnn_deterministic=1;FLAGS_cudnn_batchnorm_spatial_persistent=1;FLAGS_conv_workspace_size_limit=1000"
+)
 set_tests_properties(test_imperative_optimizer_static_build PROPERTIES TIMEOUT
                                                                        250)
 set_tests_properties(test_matmul_op_static_build PROPERTIES TIMEOUT 120)

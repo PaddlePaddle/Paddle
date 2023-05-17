@@ -251,4 +251,65 @@ ChebyshevCoefficientsI1e_B() {
   return std::make_tuple(coeff, 7);
 }
 
+template <typename T>
+struct I1Functor {
+  I1Functor(const T* input, T* output, int64_t numel)
+      : input_(input), output_(output), numel_(numel) {}
+
+  HOSTDEVICE void operator()(int64_t idx) const {
+    T x = std::abs(input_[idx]);
+    if (x <= T{8.0}) {
+      auto coeff_pair_A = ChebyshevCoefficientsI1e_A<T>();
+      auto A = std::get<0>(coeff_pair_A);
+      auto len = std::get<1>(coeff_pair_A);
+      T y = (x / T{2.0}) - T{2.0};
+      const T out = std::exp(x) * x * Chbevl(y, A, len);
+      output_[idx] = (input_[idx] < T{0.0}) ? -out : out;
+    } else {
+      auto coeff_pair_B = ChebyshevCoefficientsI1e_B<T>();
+      auto B = std::get<0>(coeff_pair_B);
+      auto len = std::get<1>(coeff_pair_B);
+      T y = (T{32.0} / x) - T{2.0};
+      const T out = (std::exp(x) * Chbevl(y, B, len)) / std::sqrt(x);
+      output_[idx] = (input_[idx] < T{0.0}) ? -out : out;
+    }
+  }
+
+ private:
+  const T* input_;
+  T* output_;
+  int64_t numel_;
+};
+
+template <typename T>
+struct I1eFunctor {
+  I1eFunctor(const T* input, T* output, int64_t numel)
+      : input_(input), output_(output), numel_(numel) {}
+
+  HOSTDEVICE void operator()(int64_t idx) const {
+    T x = std::abs(input_[idx]);
+    if (x <= T{8.0}) {
+      auto coeff_pair_A = ChebyshevCoefficientsI1e_A<T>();
+      auto A = std::get<0>(coeff_pair_A);
+      auto len = std::get<1>(coeff_pair_A);
+      T y = (x / T{2.0}) - T{2.0};
+      const T out = Chbevl<T>(y, A, len) * x;
+      output_[idx] = (input_[idx] < T{0.0}) ? -out : out;
+    } else {
+      auto coeff_pair_B = ChebyshevCoefficientsI1e_B<T>();
+      auto B = std::get<0>(coeff_pair_B);
+      auto len = std::get<1>(coeff_pair_B);
+      T y = (T{32.0} / x) - T{2.0};
+
+      const T out = Chbevl<T>(y, B, len) / std::sqrt(x);
+      output_[idx] = (input_[idx] < T{0.0}) ? -out : out;
+    }
+  }
+
+ private:
+  const T* input_;
+  T* output_;
+  int64_t numel_;
+};
+
 }  // namespace phi

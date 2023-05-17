@@ -288,13 +288,8 @@ def is_empty(x, name=None):
 
             input = paddle.rand(shape=[4, 32, 32], dtype='float32')
             res = paddle.is_empty(x=input)
-            print("res:", res)
-            # ('res:', Tensor: eager_tmp_1
-            #    - place: CPUPlace
-            #    - shape: [1]
-            #    - layout: NCHW
-            #    - dtype: bool
-            #    - data: [0])
+            # res: Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
+            #        False)
 
     """
     if in_dygraph_mode():
@@ -339,9 +334,9 @@ def equal_all(x, y, name=None):
           y = paddle.to_tensor([1, 2, 3])
           z = paddle.to_tensor([1, 4, 3])
           result1 = paddle.equal_all(x, y)
-          print(result1) # result1 = [True ]
+          print(result1) # result1 = True
           result2 = paddle.equal_all(x, z)
-          print(result2) # result2 = [False ]
+          print(result2) # result2 = False
     """
     if in_dygraph_mode():
         return _C_ops.equal_all(x, y)
@@ -388,21 +383,21 @@ def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
           y = paddle.to_tensor([10000.1, 1e-08])
           result1 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08,
                                   equal_nan=False, name="ignore_nan")
-          # [False]
+          # False
 
           result2 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08,
                                       equal_nan=True, name="equal_nan")
-          # [False]
+          # False
 
           x = paddle.to_tensor([1.0, float('nan')])
           y = paddle.to_tensor([1.0, float('nan')])
           result1 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08,
                                   equal_nan=False, name="ignore_nan")
-          # [False]
+          # False
 
           result2 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08,
                                       equal_nan=True, name="equal_nan")
-          # [True]
+          # True
     """
 
     if in_dygraph_mode():

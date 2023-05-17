@@ -564,6 +564,20 @@ struct RemainderFunctor<dtype::float16> {
   }
 };
 
+template <>
+struct RemainderFunctor<dtype::bfloat16> {
+  inline HOSTDEVICE dtype::bfloat16 operator()(const dtype::bfloat16 a,
+                                               const dtype::bfloat16 b) const {
+    float b_float = static_cast<float>(b);
+    float res = fmod(static_cast<float>(a), b_float);
+
+    // Accoding to #PR26732: in dividen % divsor
+    // remainder shall have the same sign as divsor.
+    if ((res != 0.0f) && ((res < 0.0f) != (b_float < 0.0f))) res += b_float;
+    return static_cast<dtype::bfloat16>(res);
+  }
+};
+
 template <typename T, typename Enable = void>
 struct InverseRemainderFunctor {
   inline HOSTDEVICE T operator()(const T a, const T b) const {

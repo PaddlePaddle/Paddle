@@ -108,7 +108,7 @@ def _all_gather_in_static_mode(tensor_list, tensor, group, sync_op):
         },
     )
     tensor_list.clear()
-    # 0D use stack/unstack while others use concat/split
+    # 0-D use stack/unstack while others use concat/split
     if len(tensor.shape) == 0:
         tensor_list.extend(paddle.unstack(out, 0))
     else:
