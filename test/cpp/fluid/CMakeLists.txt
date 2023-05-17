@@ -2,9 +2,11 @@ add_subdirectory(benchmark)
 if(WITH_CINN)
   add_subdirectory(cinn)
 endif()
-# add_subdirectory(controlflow)
-# add_subdirectory(detection)
-# add_subdirectory(dlnne)
+add_subdirectory(controlflow)
+add_subdirectory(detection)
+if(WITH_DLNNE)
+  add_subdirectory(dlnne)
+endif()
 add_subdirectory(elementwise)
 add_subdirectory(fused)
 if(WITH_LITE)
@@ -21,7 +23,10 @@ endif()
 add_subdirectory(prim_ops)
 add_subdirectory(reader)
 add_subdirectory(reduce_ops)
-# add_subdirectory(tensorrt)
+# TODO(gouzil): enable this after the bug is fixed. windows: Exit code 0xc000007b, pr: #53470
+# if(WITH_GPU AND TENSORRT_FOUND)
+#   add_subdirectory(tensorrt)
+# endif()
 
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} executor)
 
@@ -37,7 +42,7 @@ cc_test(
   test_common_infer_shape_functions
   SRCS test_common_infer_shape_functions.cc
   DEPS common_infer_shape_functions ${COMMON_OP_DEPS} activation_op
-       elementwise_add_op softmax_op softmax)
+       elementwise_add_op softmax generated_static_op)
 cc_test(
   gather_test
   SRCS gather_test.cc

@@ -259,8 +259,7 @@ register_unity_group(
   sign_op.cc
   similarity_focus_op.cc
   size_op.cc
-  slice_op.cc
-  softmax_op.cc)
+  slice_op.cc)
 register_unity_group(
   cc
   space_to_depth_op.cc

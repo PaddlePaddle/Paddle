@@ -24,7 +24,6 @@ from .framework import (
     default_main_program,
     _current_expected_place,
     _non_static_mode,
-    _in_eager_without_dygraph_check,
 )
 from .framework import _cpu_num, _cuda_ids
 
