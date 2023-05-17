@@ -12,11 +12,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/ir/builtin_attribute.h"
+#include "paddle/ir/program.h"
+#include "paddle/ir/ir_context.h"
 
 namespace ir {
-std::string StrAttribute::data() const { return storage()->GetAsKey(); }
+Program::~Program() {
+  for (auto op : ops_) {
+    op->destroy();
+  }
+}
 
-uint32_t StrAttribute::size() const { return storage()->GetAsKey().size(); }
+void Program::InsertOp(Operation* op) {
+  ops_.push_back(op);
+  op->set_parent_program(this);
+}
+
+Parameter* Program::GetParameter(std::string name) const {
+  if (parameters_.count(name) != 0) {
+    return parameters_.at(name).get();
+  }
+  return nullptr;
+}
+
+void Program::SetParameter(std::string name,
+                           std::unique_ptr<Parameter>&& parameter) {
+  parameters_[name].reset(parameter.release());
+}
 
 }  // namespace ir
