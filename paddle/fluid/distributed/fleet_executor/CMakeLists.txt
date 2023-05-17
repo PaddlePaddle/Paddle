@@ -53,7 +53,8 @@ cc_library(
        executor_gc_helper
        gflags
        glog
-       ${BRPC_DEPS})
+       ${BRPC_DEPS}
+       naive_executor)
 
 if(WITH_DISTRIBUTE)
   set(DISTRIBUTE_COMPILE_FLAGS

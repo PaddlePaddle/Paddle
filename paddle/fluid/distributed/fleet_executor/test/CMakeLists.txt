@@ -49,8 +49,7 @@ cc_test_old(
   elementwise_add_op
   scope
   device_context
-  ${BRPC_DEPS}
-  naive_executor)
+  ${BRPC_DEPS})
 
 if(WITH_DISTRIBUTE AND NOT WITH_PSLIB)
   set_source_files_properties(

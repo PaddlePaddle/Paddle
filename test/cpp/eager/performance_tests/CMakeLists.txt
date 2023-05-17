@@ -25,6 +25,7 @@ if(NOT (NOT WITH_PYTHON AND ON_INFER))
     SRCS
     benchmark_fluid_cpu.cc
     DEPS
+    dygraph_function
     performance_benchmark_utils
     ${eager_deps}
     ${fluid_deps})
@@ -42,6 +43,7 @@ if(NOT (NOT WITH_PYTHON AND ON_INFER))
     SRCS
     benchmark_fluid_cuda.cc
     DEPS
+    dygraph_function
     performance_benchmark_utils
     ${eager_deps}
     ${fluid_deps})
