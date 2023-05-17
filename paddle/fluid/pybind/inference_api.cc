@@ -673,7 +673,6 @@ void BindNativeConfig(py::module *m) {
       .def(py::init<>())
       .def_readwrite("use_gpu", &NativeConfig::use_gpu)
       .def_readwrite("use_xpu", &NativeConfig::use_xpu)
-      .def_readwrite("use_npu", &NativeConfig::use_npu)
       .def_readwrite("device", &NativeConfig::device)
       .def_readwrite("fraction_of_gpu_memory",
                      &NativeConfig::fraction_of_gpu_memory)
@@ -805,10 +804,8 @@ void BindAnalysisConfig(py::module *m) {
       .def("enable_ort_optimization", &AnalysisConfig::EnableORTOptimization)
       .def("use_gpu", &AnalysisConfig::use_gpu)
       .def("use_xpu", &AnalysisConfig::use_xpu)
-      .def("use_npu", &AnalysisConfig::use_npu)
       .def("gpu_device_id", &AnalysisConfig::gpu_device_id)
       .def("xpu_device_id", &AnalysisConfig::xpu_device_id)
-      .def("npu_device_id", &AnalysisConfig::npu_device_id)
       .def("memory_pool_init_size_mb",
            &AnalysisConfig::memory_pool_init_size_mb)
       .def("fraction_of_gpu_memory_for_pool",
@@ -885,6 +882,10 @@ void BindAnalysisConfig(py::module *m) {
            &AnalysisConfig::EnableTensorRtInspector)
       .def("tensorrt_inspector_enabled",
            &AnalysisConfig::tensorrt_inspector_enabled)
+      .def("enable_tensorrt_sparse_weights",
+           &AnalysisConfig::EnableTensorRtSparseWeights)
+      .def("tensorrt_sparse_weights_enabled",
+           &AnalysisConfig::tensorrt_sparse_weights_enabled)
       .def("tensorrt_engine_enabled", &AnalysisConfig::tensorrt_engine_enabled)
       .def("enable_dlnne",
            &AnalysisConfig::EnableDlnne,

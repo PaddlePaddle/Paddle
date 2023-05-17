@@ -422,12 +422,6 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \return bool Whether the XPU is turned on.
   ///
   bool use_xpu() const { return use_xpu_; }
-  ///
-  /// \brief A boolean state telling whether the NPU is turned on.
-  ///
-  /// \return bool Whether the NPU is turned on.
-  ///
-  bool use_npu() const { return use_npu_; }
   /// \brief A boolean state telling whether the IPU is turned on.
   ///
   /// \return bool Whether the IPU is turned on.
@@ -469,12 +463,6 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \return int The XPU device id.
   ///
   int xpu_device_id() const { return xpu_device_id_; }
-  ///
-  /// \brief Get the NPU device id.
-  ///
-  /// \return int The NPU device id.
-  ///
-  int npu_device_id() const { return npu_device_id_; }
   /// \brief Get the number of IPU device .
   ///
   /// \return int The number of IPU device.
@@ -761,6 +749,9 @@ struct PD_INFER_DECL AnalysisConfig {
 
   void EnableTensorRtInspector();
   bool tensorrt_inspector_enabled() { return trt_use_inspector_; }
+
+  void EnableTensorRtSparseWeights();
+  bool tensorrt_sparse_weights_enabled() { return trt_use_sparse_weights_; }
 
   void EnableDlnne(
       int min_subgraph_size = 3,
@@ -1091,10 +1082,6 @@ struct PD_INFER_DECL AnalysisConfig {
   bool use_external_stream_{false};
   void* exec_stream_{nullptr};
 
-  // NPU related
-  bool use_npu_{false};
-  int npu_device_id_{0};
-
   // CustomDevice related
   bool use_custom_device_{false};
   int custom_device_id_{0};
@@ -1142,6 +1129,7 @@ struct PD_INFER_DECL AnalysisConfig {
   // tune to get dynamic_shape info.
   bool trt_tuned_dynamic_shape_{false};
   bool trt_use_inspector_{false};
+  bool trt_use_sparse_weights_{false};
 
   // In CollectShapeInfo mode, we will collect the shape information of
   // all intermediate tensors in the compute graph and calculate the

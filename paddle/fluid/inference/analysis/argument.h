@@ -251,6 +251,9 @@ struct Argument {
                       TensorRtAllowBuildAtRuntime,
                       bool);
   DECL_ARGUMENT_FIELD(tensorrt_use_inspector, TensorRtUseInspector, bool);
+  DECL_ARGUMENT_FIELD(tensorrt_use_sparse_weights,
+                      TensorRtUseSparseWeights,
+                      bool);
 
   DECL_ARGUMENT_FIELD(use_dlnne, UseDlnne, bool);
   DECL_ARGUMENT_FIELD(dlnne_min_subgraph_size, DlnneMinSubgraphSize, int);
@@ -364,10 +367,6 @@ struct Argument {
   DECL_ARGUMENT_FIELD(ipu_enable_model_runtime_executor,
                       IpuEnableModelRuntimeExecutor,
                       bool);
-
-  // npu related
-  DECL_ARGUMENT_FIELD(use_npu, UseNpu, bool);
-  DECL_ARGUMENT_FIELD(npu_device_id, NPUDeviceId, int);
 
   // mixed precision related
   DECL_ARGUMENT_FIELD(model_precision, ModelPrecision, int);

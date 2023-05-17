@@ -620,7 +620,7 @@ class PostTrainingQuantization:
                 self._batch_nums if self._batch_nums else len(self._data_loader)
             )
             return
-        self._data_loader = io.DataLoader.from_generator(
+        self._data_loader = reader.DataLoader.from_generator(
             feed_list=feed_vars, capacity=3 * self._batch_size, iterable=True
         )
         if self._sample_generator is not None:

@@ -1028,6 +1028,18 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       target_link_libraries(test_analyzer_capi_exp_xpu paddle_inference_c)
     endif()
 
+    #TODO(inference): windows encounter a SEH error, we need to fix it.
+    if(NOT WIN32)
+      inference_analysis_test(
+        trt_rebind_stream_test
+        SRCS
+        trt_rebind_stream_test.cc
+        EXTRA_DEPS
+        paddle_inference_shared
+        ARGS
+        --infer_model=${TRT_MODEL_INSTALL_DIR}/trt_inference_test_models)
+    endif()
+
     set(TRT_MODEL_QUANT_RESNET_DIR
         "${INFERENCE_DEMO_INSTALL_DIR}/small_quant_model")
     if(NOT EXISTS ${INFERENCE_DEMO_INSTALL_DIR}/small_quant_model.tgz)
@@ -1378,6 +1390,10 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
   endif()
   if(WITH_GPU AND TENSORRT_FOUND)
     set_tests_properties(trt_mobilenet_test PROPERTIES TIMEOUT 240)
+    if(NOT WIN32)
+      set_tests_properties(trt_rebind_stream_test
+                           PROPERTIES TIMEOUT 360 LABELS "RUN_TYPE=EXCLUSIVE")
+    endif()
     if(WITH_MKLDNN)
       set_tests_properties(test_analyzer_bfloat16_resnet50 PROPERTIES TIMEOUT
                                                                       120)

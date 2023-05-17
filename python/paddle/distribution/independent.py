@@ -44,8 +44,8 @@ class Independent(distribution.Distribution):
             print(reinterpreted_beta.batch_shape, reinterpreted_beta.event_shape)
             # () (2,)
             print(reinterpreted_beta.log_prob(paddle.to_tensor([0.2,  0.2])))
-            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [-0.45687842])
+            # Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        -0.45687842)
     """
 
     def __init__(self, base, reinterpreted_batch_rank):
