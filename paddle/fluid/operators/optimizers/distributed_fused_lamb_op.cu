@@ -199,20 +199,21 @@ static void MultiTensorL2Norm(const phi::GPUPlace &place,
   auto *tmp_out_ptr = tmp_out.Alloc<MT>(n * max_chunk_num);
   FillZeroWithPtr(tmp_out_ptr, n * max_chunk_num, stream);
 
-#define PD_LAUNCH_MULTI_TENSOR_APPLY_L2_NORM_KERNEL                   \
-  do {                                                                \
-    using FunctorT = L2NormFunctor<InT, kBlockDim, kVecSize>;         \
-    VLOG(10) << __func__ << " " << typeid(InT).name()                 \
-             << " VecSize = " << kVecSize;                            \
-    MultiTensorApply<FunctorT, kNumTensor, kNumChunk>(FunctorT(),     \
-                                                      stream,         \
-                                                      offsets,        \
-                                                      n,              \
-                                                      chunk_size,     \
-                                                      kBlockDim,      \
-                                                      x,              \
-                                                      tmp_out_ptr,    \
-                                                      max_chunk_num); \
+#define PD_LAUNCH_MULTI_TENSOR_APPLY_L2_NORM_KERNEL                       \
+  do {                                                                    \
+    using FunctorT = L2NormFunctor<InT, kBlockDim, kVecSize>;             \
+    VLOG(10) << __func__ << " " << typeid(InT).name()                     \
+             << " VecSize = " << kVecSize;                                \
+    paddle::operators::MultiTensorApply<FunctorT, kNumTensor, kNumChunk>( \
+        FunctorT(),                                                       \
+        stream,                                                           \
+        offsets,                                                          \
+        n,                                                                \
+        chunk_size,                                                       \
+        kBlockDim,                                                        \
+        x,                                                                \
+        tmp_out_ptr,                                                      \
+        max_chunk_num);                                                   \
   } while (0)
 
   PD_VEC_LAUNCH_KERNEL(vec_size, PD_LAUNCH_MULTI_TENSOR_APPLY_L2_NORM_KERNEL);
@@ -849,21 +850,22 @@ static void MultiTensorUpdateLambParamAndBetaPows(
                     betapow_helper);                                     \
   } while (0)
 
-#define PD_LAUNCH_VEC_MULTI_TENSOR_UPDATE_PARAM_BETAPOW_CASE            \
-  do {                                                                  \
-    auto callback =                                                     \
-        [&](const MultiTensorLauncher<kNumTensor, kNumChunk> &launcher, \
-            int launch_n) {                                             \
-          if (has_beta_pow && launch_n == 0) {                          \
-            PD_LAUNCH_MULTI_TENSOR_UPDATE_PARAM_BETAPOW(true);          \
-            beta1pow = nullptr;                                         \
-            beta2pow = nullptr;                                         \
-          } else {                                                      \
-            PD_LAUNCH_MULTI_TENSOR_UPDATE_PARAM_BETAPOW(false);         \
-          }                                                             \
-        };                                                              \
-    MultiTensorApplyWithCallback<kNumTensor, kNumChunk>(                \
-        stream, offsets, n, chunk_size, block_dim, callback);           \
+#define PD_LAUNCH_VEC_MULTI_TENSOR_UPDATE_PARAM_BETAPOW_CASE                   \
+  do {                                                                         \
+    auto callback =                                                            \
+        [&](const paddle::operators::MultiTensorLauncher<kNumTensor,           \
+                                                         kNumChunk> &launcher, \
+            int launch_n) {                                                    \
+          if (has_beta_pow && launch_n == 0) {                                 \
+            PD_LAUNCH_MULTI_TENSOR_UPDATE_PARAM_BETAPOW(true);                 \
+            beta1pow = nullptr;                                                \
+            beta2pow = nullptr;                                                \
+          } else {                                                             \
+            PD_LAUNCH_MULTI_TENSOR_UPDATE_PARAM_BETAPOW(false);                \
+          }                                                                    \
+        };                                                                     \
+    paddle::operators::MultiTensorApplyWithCallback<kNumTensor, kNumChunk>(    \
+        stream, offsets, n, chunk_size, block_dim, callback);                  \
   } while (0)
 
   PD_VEC_LAUNCH_KERNEL(vec_size,

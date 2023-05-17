@@ -31,7 +31,7 @@ KernelSignature DistributedFusedLambOpArgumentMapping(
                           "Beta2Pow",
                           "FusedParamOffsets",
                           "FP32ShardFusedParamOffsets",
-                          "FP16ShardFusedParamOffsets"
+                          "FP16ShardFusedParamOffsets",
                           "ParamInfo",
                           "ParamOrder",
                           "LearningRate",

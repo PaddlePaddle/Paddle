@@ -18,8 +18,8 @@
 
 #include "math.h"  // NOLINT
 
-namespace phi {
-namespace fusion {
+namespace paddle {
+namespace operators {
 
 template <int MaxTensorNumPerLaunch, int MaxChunkNumPerLaunch>
 struct TensorMetaList {
@@ -214,5 +214,5 @@ static void MultiTensorApply(Functor functor,
       stream, offsets, n, chunk_size, block_dim, callback);
 }
 
-}  // namespace fusion
-}  // namespace phi
+}  // namespace operators
+}  // namespace paddle
