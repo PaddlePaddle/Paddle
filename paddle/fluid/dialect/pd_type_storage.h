@@ -36,7 +36,8 @@ struct hash<std::vector<T>> {
 
 }  // namespace std
 
-namespace ir {
+namespace paddle {
+namespace dialect {
 ///
 /// \brief Define Parameteric TypeStorage for DenseTensorType.
 ///
@@ -151,4 +152,5 @@ struct DenseTensorTypeStorage : public ir::TypeStorage {
   size_t offset_;
 };
 
-}  // namespace ir
+}  // namespace dialect
+}  // namespace paddle

@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/ir/builtin_attribute.h"
+#include "paddle/ir/builtin_op.h"
 
 namespace ir {
-std::string StrAttribute::data() const { return storage()->GetAsKey(); }
+const char *GetParameterOp::attributes_name_[] = {"parameter_name"};
 
-uint32_t StrAttribute::size() const { return storage()->GetAsKey().size(); }
+const char *SetParameterOp::attributes_name_[] = {"parameter_name"};
 
 }  // namespace ir
