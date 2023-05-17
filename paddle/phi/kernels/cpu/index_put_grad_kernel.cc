@@ -183,7 +183,7 @@ void IndexPutGradKernel(const Context& dev_ctx,
       x.dtype(),
       value.dtype(),
       phi::errors::InvalidArgument(
-          "The data type of tensor in indices must be same to the data type "
+          "The data type of tensor value must be same to the data type "
           "of tensor x."));
   std::vector<DenseTensor> tmp_args;
   std::vector<const phi::DenseTensor*> int_indices_v =

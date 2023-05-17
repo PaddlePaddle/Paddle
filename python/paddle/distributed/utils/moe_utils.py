@@ -35,19 +35,19 @@ def global_scatter(
 
     local_count[0] represents taking out 2 batches from x and sending 2 batches to the 0th expert of the 0th card;
 
-    local_count[1] represents taking out 0 batches from x and sending 0 batches to the 1th expert of the 0th card;
+    local_count[1] represents taking out 0 batches from x and sending 0 batches to the 1st expert of the 0th card;
 
-    local_count[2] represents taking out 2 batches from x and sending 2 batches to the 0th expert of the 1th card;
+    local_count[2] represents taking out 2 batches from x and sending 2 batches to the 0th expert of the 1st card;
 
-    local_count[3] represents taking out 0 batches from x and sending 0 batches to the 1th expert of the 1th card;
+    local_count[3] represents taking out 0 batches from x and sending 0 batches to the 1st expert of the 1st card;
 
     Therefore, the global_count[0] of the 0th card is equal to 2, which means that 2 batches of data are received from the 0th card to the 0th expert;
 
-    the global_count[1] of the 0th card is equal to 0, which means that 0 batches of data are received from the 0th card to the 1th expert;
+    the global_count[1] of the 0th card is equal to 0, which means that 0 batches of data are received from the 0th card to the 1st expert;
 
-    the global_count[0] of the 1th card is equal to 2, which means that 2 batches of data are received from the 0th card to the 0th expert;
+    the global_count[0] of the 1st card is equal to 2, which means that 2 batches of data are received from the 0th card to the 0th expert;
 
-    the global_count[1] of the 1th card is equal to 0, which means that 0 batches of data are received from the 0th card to the 1th expert.
+    the global_count[1] of the 1st card is equal to 0, which means that 0 batches of data are received from the 0th card to the 1st expert.
 
     .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/global_scatter_gather.png
         :width: 800
@@ -160,11 +160,11 @@ def global_gather(
 
     The global_count[0] of the 0th card represents sending 2 data to the 0th expert of the 0th card;
 
-    The global_count[1] of the 0th card represents sending 0 data to the 1th expert of the 0th card;
+    The global_count[1] of the 0th card represents sending 0 data to the 1st expert of the 0th card;
 
-    The global_count[0] of the 1th card represents sending 2 data to the 0th expert of the 0th card;
+    The global_count[0] of the 1st card represents sending 2 data to the 0th expert of the 0th card;
 
-    The global_count[1] of the 1th card represents sending 0 data to the 1th expert of the 0th card.
+    The global_count[1] of the 1st card represents sending 0 data to the 1st expert of the 0th card.
 
     .. image:: https://githubraw.cdn.bcebos.com/PaddlePaddle/docs/develop/docs/api/paddle/distributed/img/global_scatter_gather.png
         :width: 800

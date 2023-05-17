@@ -435,8 +435,8 @@ class AffineTransform(Transform):
             # Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
             #        [1., 2.])
             print(affine.forward_log_det_jacobian(x))
-            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [0.])
+            # Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        0.)
     """
     _type = Type.BIJECTION
 
@@ -1189,8 +1189,8 @@ class StickBreakingTransform(Transform):
             # Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
             #        [0.99999988, 2.        , 2.99999881])
             print(t.forward_log_det_jacobian(x))
-            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [-9.10835075])
+            # Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        -9.10835075)
     """
 
     _type = Type.BIJECTION
