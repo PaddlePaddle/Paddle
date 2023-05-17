@@ -1595,6 +1595,12 @@ void AnalysisPredictor::PrepareArgument() {
   argument_->SetEnableGPUMixed(config_.enable_gpu_mixed_);
   argument_->SetMixedPrecisionMode(static_cast<int>(
       paddle::ConvertPrecision(config_.mixed_precision_mode_)));
+
+  // offload fused_multi_transformer op params
+  if (config_.enable_offload_) {
+    argument_->SetEnableOffLoad(config_.enable_offload_);
+    argument_->SetCustomOffloadLayers(config_.custom_offload_layers_);
+  }
 }
 
 // NOTE All the members in AnalysisConfig should be copied to Argument.

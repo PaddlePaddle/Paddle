@@ -117,6 +117,7 @@ class PD_INFER_DECL PaddlePassBuilder {
       {"ir_graph_build_pass",
        "ir_analysis_pass",
        "ir_params_sync_among_devices_pass",
+       "offload_params_pass",
        "adjust_cudnn_workspace_size_pass",
        "inference_op_replace_pass"}};
   std::vector<std::string> passes_;

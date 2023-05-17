@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/offload_vars_pool.h"
 #include "paddle/fluid/operators/fused/fused_multi_transformer_op.cu.h"
 
 namespace paddle {
@@ -23,6 +24,13 @@ template <typename T, typename DeviceContext>
 class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+    bool offload = false;
+    int offload_vars_pool_idx = -1;
+    if (ctx.HasAttr("offload_params")) {
+      offload = true;
+      offload_vars_pool_idx = ctx.Attr<int>("offload_vars_pool_idx");
+    }
+
     using U = LayerNormParamType<T>;
     auto &dev_ctx = ctx.cuda_device_context();
 
@@ -319,6 +327,17 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     }
 
     for (int i = 0; i < layers; ++i) {
+      bool is_offload_layer = framework::OffloadVarsPoolVector::Instance()
+                                  .Get(offload_vars_pool_idx)
+                                  .IsOffloadLayer(i);
+      if (offload && is_offload_layer) {
+        framework::OffloadVarsPoolVector::Instance()
+            .Get(offload_vars_pool_idx)
+            .FillPool();
+        framework::OffloadVarsPoolVector::Instance()
+            .Get(offload_vars_pool_idx)
+            .WaitCopyCompleted(i);
+      }
       // step1. layer_norm
       if (i == 0 && pre_layer_norm) {
         auto *ln_scale_data = ln_scales[i]->data<U>();
@@ -662,6 +681,10 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
         x_data = buf1->data<T>();
         std::swap(buf0, buf1);
       }
+      if (offload && is_offload_layer)
+        framework::OffloadVarsPoolVector::Instance()
+            .Get(offload_vars_pool_idx)
+            .RecordEvent(i);
     }
     if (encoder_remove_padding) {
       if (pre_layer_norm) {
@@ -680,6 +703,10 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                              dim_embed);
       }
     }
+    if (offload)
+      framework::OffloadVarsPoolVector::Instance()
+          .Get(offload_vars_pool_idx)
+          .Reset();
   }
 };
 
@@ -689,6 +716,12 @@ template <typename T, typename DeviceContext>
 class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+    bool offload = false;
+    int offload_vars_pool_idx = -1;
+    if (ctx.HasAttr("offload_params")) {
+      offload = true;
+      offload_vars_pool_idx = ctx.Attr<int>("offload_vars_pool_idx");
+    }
     using U = LayerNormParamType<T>;
     auto &dev_ctx = ctx.cuda_device_context();
 
@@ -993,6 +1026,16 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
     }
 
     for (int i = 0; i < layers; ++i) {
+      if (offload && framework::OffloadVarsPoolVector::Instance()
+                         .Get(offload_vars_pool_idx)
+                         .IsOffloadLayer(i)) {
+        framework::OffloadVarsPoolVector::Instance()
+            .Get(offload_vars_pool_idx)
+            .FillPool();
+        framework::OffloadVarsPoolVector::Instance()
+            .Get(offload_vars_pool_idx)
+            .WaitCopyCompleted(i);
+      }
       // step1. layer_norm
       if (i == 0 && pre_layer_norm) {
         auto *ln_scale_data = ln_scales[i]->data<U>();
@@ -1342,6 +1385,10 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
         x_data = buf1->data<T>();
         std::swap(buf0, buf1);
       }
+      if (offload)
+        framework::OffloadVarsPoolVector::Instance()
+            .Get(offload_vars_pool_idx)
+            .RecordEvent(i);
     }
     if (encoder_remove_padding) {
       if (pre_layer_norm) {
@@ -1360,6 +1407,10 @@ class FusedMultiTransformerOpKernel : public framework::OpKernel<T> {
                              dim_embed);
       }
     }
+    if (offload)
+      framework::OffloadVarsPoolVector::Instance()
+          .Get(offload_vars_pool_idx)
+          .Reset();
   }
 };
 

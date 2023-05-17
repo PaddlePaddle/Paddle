@@ -205,6 +205,7 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToXpu(Argument *argument) {
 #endif
 
 void IrParamsSyncAmongDevicesPass::RunImpl(Argument *argument) {
+  if (argument->enable_offload_valid()) return;
   PADDLE_ENFORCE_EQ(
       argument->scope_valid(),
       true,

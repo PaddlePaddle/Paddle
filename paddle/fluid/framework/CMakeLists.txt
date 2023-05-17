@@ -1227,3 +1227,10 @@ cc_test(
   DEPS phi_utils)
 
 cc_test(convert_utils_test SRCS convert_utils_test.cc)
+
+if(WITH_GPU)
+  cc_library(
+    offload_vars_pool
+    SRCS offload_vars_pool.cc
+    DEPS op_registry phi_tensor device_context)
+endif()

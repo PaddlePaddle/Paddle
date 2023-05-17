@@ -42,8 +42,12 @@ cc_library(
        memory_optim_pass
        convert_to_mixed_precision
        inference_op_replace_pass
-       ir_graph_to_program_pass)
-
+       ir_graph_to_program_pass
+       offload_params_pass)
+cc_library(
+  offload_params_pass
+  SRCS offload_params_pass.cc
+  DEPS analysis_pass graph_to_program_pass)
 set(analysis_deps
     ${analysis_deps} analysis_passes subgraph_detector
     CACHE INTERNAL "")

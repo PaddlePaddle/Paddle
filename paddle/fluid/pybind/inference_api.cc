@@ -752,6 +752,7 @@ void BindAnalysisConfig(py::module *m) {
            [](AnalysisConfig &self, phi::CUDAStream &stream) {
              self.SetExecStream(stream.raw_stream());
            })
+      .def("enable_offload", &AnalysisConfig::EnableOffload)
 #endif
       .def("enable_xpu",
            &AnalysisConfig::EnableXpu,
