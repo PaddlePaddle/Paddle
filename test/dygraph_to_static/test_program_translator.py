@@ -300,13 +300,13 @@ class TestIfElseEarlyReturn(unittest.TestCase):
         answer = np.zeros([2, 2]) + 1
         static_func = paddle.jit.to_static(dyfunc_with_if_else_early_return1)
         out = static_func()
-        np.testing.assert_allclose(answer, out[0].numpy(), rtol=1e-05)
+        np.testing.assert_allclose(answer, out.numpy(), rtol=1e-05)
 
     def test_ifelse_early_return2(self):
         answer = np.zeros([2, 2]) + 3
         static_func = paddle.jit.to_static(dyfunc_with_if_else_early_return2)
         out = static_func()
-        np.testing.assert_allclose(answer, out[0].numpy(), rtol=1e-05)
+        np.testing.assert_allclose(answer, out.numpy(), rtol=1e-05)
 
 
 class TestRemoveCommentInDy2St(unittest.TestCase):
