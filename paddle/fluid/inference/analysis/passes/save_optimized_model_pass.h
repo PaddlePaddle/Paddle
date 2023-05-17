@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 
 #include <string>
-#include <unordered_set>
 
 #include "paddle/fluid/inference/analysis/analysis_pass.h"
 

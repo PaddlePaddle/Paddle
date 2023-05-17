@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/analysis/passes/save_optimized_model_pass.h"
 
+#include <unordered_set>
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"

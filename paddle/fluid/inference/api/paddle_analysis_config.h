@@ -204,7 +204,7 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \param save_optimized_model whether to enable save optimized model.
   ///
-  void EnableSaveOptimCacheModel(bool save_optimized_model) {
+  void EnableSaveOptimModel(bool save_optimized_model) {
     save_optimized_model_ = save_optimized_model;
   }
   ///

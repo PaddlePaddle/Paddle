@@ -137,7 +137,7 @@ TEST(AnalysisPredictor, save_optimized_model_on) {
   AnalysisConfig config;
   config.SetModel(FLAGS_dirname);
   config.SwitchIrOptim(true);
-  config.EnableSaveOptimCacheModel(true);
+  config.EnableSaveOptimModel(true);
   config.EnableXpu();
   config.SetXpuDeviceId(0);
   LOG(INFO) << config.Summary();
