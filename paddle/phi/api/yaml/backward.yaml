@@ -821,6 +821,26 @@
   kernel :
     func : i0e_grad
 
+- backward_op : i1_grad
+  forward : i1 (Tensor x) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : i1_grad
+
+- backward_op : i1e_grad
+  forward : i1e (Tensor x) -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : i1e_grad
+
 - backward_op : imag_grad
   forward : imag (Tensor x) -> Tensor(out)
   args : (Tensor out_grad)

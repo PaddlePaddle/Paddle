@@ -948,6 +948,24 @@
     func : i0e
   backward : i0e_grad
 
+- op : i1
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : i1
+  backward : i1_grad
+
+- op : i1e
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : i1e
+  backward : i1e_grad
+
 - op : imag
   args : (Tensor x)
   output : Tensor (out)
