@@ -304,6 +304,10 @@ from .tensor.math import trapezoid  # noqa: F401
 from .tensor.math import cumulative_trapezoid  # noqa: F401
 from .tensor.math import vander  # noqa: F401
 from .tensor.math import nextafter  # noqa: F401
+from .tensor.math import i0  # noqa: F401
+from .tensor.math import i0e  # noqa: F401
+from .tensor.math import i1  # noqa: F401
+from .tensor.math import i1e  # noqa: F401
 
 from .tensor.random import bernoulli  # noqa: F401
 from .tensor.random import poisson  # noqa: F401
@@ -698,4 +702,8 @@ __all__ = [  # noqa
     'vander',
     'unflatten',
     'nextafter',
+    'i0',
+    'i0e',
+    'i1',
+    'i1e',
 ]

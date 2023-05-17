@@ -100,7 +100,7 @@ class DGCMomentumOptimizer(Optimizer):
         regular_coeff = 0.0
 
         if regularization is not None:
-            regular_coeff = regularization._regularization_coeff
+            regular_coeff = regularization._coeff
 
             if isinstance(regularization, L1Decay):
                 regular_type = 1

@@ -17,7 +17,7 @@ import warnings
 import paddle
 from paddle import _C_ops
 from paddle.fluid.framework import in_dygraph_mode
-from paddle.regularizer import L2DecayRegularizer
+from paddle.regularizer import L2Decay
 
 from ..fluid import core, framework
 from .optimizer import Optimizer
@@ -136,9 +136,7 @@ class Momentum(Optimizer):
         if momentum is None:
             raise ValueError("momentum is not set")
 
-        predicate = lambda regular: isinstance(
-            regular, (L2DecayRegularizer, float)
-        )
+        predicate = lambda regular: isinstance(regular, (L2Decay, float))
         if isinstance(parameters, list):
             if isinstance(parameters[0], dict):
                 for param_group in parameters:
@@ -192,9 +190,9 @@ class Momentum(Optimizer):
         reg_method = ""
         reg_coeff = 0.0
 
-        if isinstance(weight_decay, L2DecayRegularizer):
+        if isinstance(weight_decay, L2Decay):
             reg_method = "l2_decay"
-            reg_coeff = weight_decay._regularization_coeff
+            reg_coeff = weight_decay._coeff
         if isinstance(weight_decay, float):
             reg_method = "l2_decay"
             reg_coeff = weight_decay
@@ -237,7 +235,7 @@ class Momentum(Optimizer):
         # If ParamAttr is set to L2Decay, we skip doing regularization here. And then we fused
         # L2Decay with momentum which can refer to _append_optimize_op below.
         if hasattr(param, 'regularizer') and isinstance(
-            param.regularizer, L2DecayRegularizer
+            param.regularizer, L2Decay
         ):
             return grad
         return super()._create_regularization_of_grad(
@@ -260,9 +258,9 @@ class Momentum(Optimizer):
         regularization_coeff = self._regularization_coeff
         if hasattr(param, 'regularizer'):
             # we skip param's l2decay before, so fuse it with momentum here.
-            if isinstance(param.regularizer, L2DecayRegularizer):
+            if isinstance(param.regularizer, L2Decay):
                 regularization_method = "l2_decay"
-                regularization_coeff = param.regularizer._regularization_coeff
+                regularization_coeff = param.regularizer._coeff
             # the param's regularization has been done before, we avoid do l2decay in momentum.
             elif param.regularizer is not None:
                 regularization_method = ""
@@ -348,11 +346,9 @@ class Momentum(Optimizer):
             regularization_coeff = self._regularization_coeff
             if hasattr(param, 'regularizer'):
                 # we skip param's l2decay before, so fuse it with momentum here.
-                if isinstance(param.regularizer, L2DecayRegularizer):
+                if isinstance(param.regularizer, L2Decay):
                     regularization_method = "l2_decay"
-                    regularization_coeff = (
-                        param.regularizer._regularization_coeff
-                    )
+                    regularization_coeff = param.regularizer._coeff
                 elif param.regularizer is not None:
                     regularization_method = ""
                     regularization_coeff = 0.0
