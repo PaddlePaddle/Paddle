@@ -25,7 +25,7 @@
 namespace ir {
 
 namespace {
-constexpr char newline[] = "/n";
+constexpr char newline[] = "\n";
 }  // namespace
 
 class ProgramPrinter {
@@ -33,9 +33,7 @@ class ProgramPrinter {
   explicit ProgramPrinter(std::ostream& os) : os(os), cur_var_number(0) {}
 
   void Print(ir::Program& program) {
-    VLOG(0) << "ffff1 " << &program << " " << program.ops().size();
     for (auto* op : program.ops()) {
-      VLOG(0) << "ffff1.1 " << op->op_name();
       PrintOperation(op);
       os << newline;
     }
@@ -48,6 +46,7 @@ class ProgramPrinter {
                        ForwardIterator end,
                        UnaryFunctor print_func,
                        NullFunctor between_func) {
+    if (begin == end) return;
     print_func(*begin);
     begin++;
     for (; begin != end; begin++) {
@@ -76,10 +75,8 @@ class ProgramPrinter {
   /// @param op
   /// @example
   void PrintOperation(ir::Operation* op) {
-    VLOG(0) << "ffff2 " << op->op_name();
     PrintOpResult(op);  // TODO(lyk): add API to get opresults directly
     os << " = ";
-    VLOG(0) << "ffff3";
 
     os << "\"" << op->op_name() << "\"";
     PrintOpOperands(op);  // TODO(lyk): add API to get operands directly
@@ -100,7 +97,6 @@ class ProgramPrinter {
     for (size_t idx = 0; idx < num_op_result; idx++) {
       op_results.push_back(op->GetResultByIndex(idx));
     }
-    VLOG(0) << "ffff5";
     PrintInterleave(
         op_results.begin(),
         op_results.end(),
@@ -108,15 +104,17 @@ class ProgramPrinter {
         [this]() { this->os << ","; });
   }
 
-  void PrintAttribute(ir::Operation* op) { os << "{Attribute PlaceHolder}"; }
+  void PrintAttribute(ir::Operation* op) {
+    os << " { Attribute PlaceHolder } ";
+  }
 
-  void PrintOpOperands(ir::Operation* op) { os << "Operands PlaceHolder"; }
+  void PrintOpOperands(ir::Operation* op) { os << " Operands PlaceHolder "; }
   void PrintOperandsType(ir::Operation* op) {
-    os << "OperandsType PlaceHolder";
+    os << " OperandsType PlaceHolder ";
   }
 
   void PrintOpReturnType(ir::Operation* op) {
-    os << "OpReturnType PlaceHolder";
+    os << " OpReturnType PlaceHolder ";
   }
 
  private:

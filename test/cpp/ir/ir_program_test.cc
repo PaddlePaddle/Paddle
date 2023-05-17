@@ -44,20 +44,19 @@ TEST(program_test, program) {
 
   // (3) Def a program:
   // a = GetParameterOp("a")
-  std::string op1_name =
-      builtin_dialect->name() + "." + std::string(ir::GetParameterOp::name());
+  std::string op1_name(ir::GetParameterOp::name());
   ir::OpInfoImpl *op1_info = ctx->GetRegisteredOpInfo(op1_name);
   std::map<ir::StrAttribute, ir::Attribute> op1_attribute_map{
       {ir::StrAttribute::get(ctx, "parameter_name"),
        ir::StrAttribute::get(ctx, "a")}};
   ir::DictionaryAttribute op1_attribute =
       ir::DictionaryAttribute::get(ctx, op1_attribute_map);
+  std::cout << "before create:" << op1_info << std::endl;
   ir::Operation *op1 = ir::Operation::create(
       {}, {ir::Float32Type::get(ctx)}, op1_attribute, op1_info, program);
 
   // b = GetParameterOp("b")
-  std::string op2_name =
-      builtin_dialect->name() + "." + std::string(ir::GetParameterOp::name());
+  std::string op2_name(ir::GetParameterOp::name());
   ir::OpInfoImpl *op2_info = ctx->GetRegisteredOpInfo(op2_name);
   std::map<ir::StrAttribute, ir::Attribute> op2_attribute_map{
       {ir::StrAttribute::get(ctx, "parameter_name"),
@@ -68,8 +67,7 @@ TEST(program_test, program) {
       {}, {ir::Float32Type::get(ctx)}, op2_attribute, op2_info, program);
 
   // c = AddOp(a, b)
-  std::string op3_name =
-      builtin_dialect->name() + "." + std::string(AddOp::name());
+  std::string op3_name(AddOp::name());
   ir::OpInfoImpl *op3_info = ctx->GetRegisteredOpInfo(op3_name);
   ir::Operation *op3 = ir::Operation::create(
       {op1->GetResultByIndex(0), op2->GetResultByIndex(0)},
@@ -79,8 +77,7 @@ TEST(program_test, program) {
       program);
 
   // SetParameterOp(c, "c")
-  std::string op4_name =
-      builtin_dialect->name() + "." + std::string(ir::SetParameterOp::name());
+  std::string op4_name(ir::SetParameterOp::name());
   ir::OpInfoImpl *op4_info = ctx->GetRegisteredOpInfo(op4_name);
   std::map<ir::StrAttribute, ir::Attribute> op4_attribute_map{
       {ir::StrAttribute::get(ctx, "parameter_name"),
@@ -94,10 +91,6 @@ TEST(program_test, program) {
   // (4) Traverse Program
   std::list<ir::Operation *> ops = program->ops();
   EXPECT_EQ(ops.size() == 4, true);
-
-  for (auto *op : ops) {
-    std::cout << op->op_name() << std::endl;
-  }
 
   delete program;
 }

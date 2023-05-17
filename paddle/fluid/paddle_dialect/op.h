@@ -19,7 +19,7 @@
 namespace paddle {
 namespace dialect {
 
-#define OPNAME(op_name) "paddle." #op_name
+#define OPNAME(op_name) "pd." #op_name
 
 #define REIGSTER_EMPTY_OP(op_name)                        \
   class op_name##Op : public ir::Op<op_name##Op> {        \

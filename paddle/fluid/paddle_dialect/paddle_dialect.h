@@ -22,7 +22,7 @@ class PaddleDialect : public ir::Dialect {
  public:
   explicit PaddleDialect(ir::IrContext *context);
 
-  static const char *name() { return "paddle"; }
+  static const char *name() { return "pd"; }
 
  private:
   void initialize();

@@ -61,7 +61,7 @@ void ProgramTranslator::ExtractParameterFromSingleBlock(
     if (!var->Persistable()) continue;
     if (param_map.count(var->Name()) != 0) continue;
 
-    std::string get_parameter_op_name = "builtin.GetParameterOp";
+    std::string get_parameter_op_name = "GetParameterOp";
     ir::OpInfoImpl* op_info = ctx->GetRegisteredOpInfo(get_parameter_op_name);
     std::map<ir::StrAttribute, ir::Attribute> op_attribute_map{
         {ir::StrAttribute::get(ctx, var->Name()),

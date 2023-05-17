@@ -183,8 +183,7 @@ std::string Operation::print() {
 }
 
 std::string Operation::op_name() const {
-  return op_info_.impl()->dialect()->name() + "." +
-         std::string(op_info_.impl()->name());
+  return std::string(op_info_.impl()->name());
 }
 
 }  // namespace ir

@@ -118,7 +118,7 @@ ir::Operation* GeneralOpHandler(ir::IrContext* ctx,
   OpOutputMapping arg_to_idx;
   OpOutputTypeList op_output_types = {};
   std::tie(op_output_types, arg_to_idx) = GenerateOperationOutput(ctx, op_desc);
-  auto* op_info = ctx->GetRegisteredOpInfo("paddle." + op_desc.Type());
+  auto* op_info = ctx->GetRegisteredOpInfo("pd." + op_desc.Type());
   PADDLE_ENFORCE_NE(
       op_info,
       nullptr,
@@ -140,7 +140,7 @@ ir::Operation* FeedOpHandler(ir::IrContext* ctx,
   OpOutputMapping arg_to_idx;
   OpOutputTypeList op_output_types = {};
   std::tie(op_output_types, arg_to_idx) = GenerateOperationOutput(ctx, op_desc);
-  auto* op_info = ctx->GetRegisteredOpInfo("paddle." + op_desc.Type());
+  auto* op_info = ctx->GetRegisteredOpInfo("pd." + op_desc.Type());
   PADDLE_ENFORCE_NE(
       op_info,
       nullptr,
@@ -160,7 +160,7 @@ ir::Operation* FetchOpHandler(ir::IrContext* ctx,
   auto op_inputs = GenerateOperationInput(param_map, op_desc);
 
   OpOutputTypeList op_output_types = {};
-  auto* op_info = ctx->GetRegisteredOpInfo("paddle." + op_desc.Type());
+  auto* op_info = ctx->GetRegisteredOpInfo("pd." + op_desc.Type());
   PADDLE_ENFORCE_NE(
       op_info,
       nullptr,
