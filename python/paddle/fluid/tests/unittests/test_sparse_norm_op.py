@@ -88,6 +88,20 @@ class TestSparseBatchNorm(unittest.TestCase):
         assert np.allclose(dense_out.numpy(), batch_norm_out.values().numpy())
         # [1, 6, 6, 6, 3]
 
+    def test_bn2d(self):
+        paddle.seed(123)
+        channels = 3
+        x = paddle.randn((2, 8, 8, channels))
+        bn = paddle.nn.BatchNorm2D(channels, data_format="NHWC")
+        y = bn(x)
+
+        sp_x = x.to_sparse_coo(3)
+        sp_bn = paddle.sparse.nn.BatchNorm(channels, data_format="NHWC")
+        sp_y = sp_bn(sp_x)
+        np.testing.assert_allclose(
+            y.numpy(), sp_y.to_dense().numpy(), rtol=1e-5
+        )
+
 
 class TestSyncBatchNorm(unittest.TestCase):
     def test_sync_batch_norm(self):
