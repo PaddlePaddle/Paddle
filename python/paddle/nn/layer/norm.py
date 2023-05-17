@@ -110,8 +110,8 @@ class _InstanceNormBase(Layer):
         )
 
     def extra_repr(self):
-        return 'num_features={}, epsilon={}, momentum={}'.format(
-            self._num_features, self._epsilon, self._momentum
+        return 'num_features={}, epsilon={}'.format(
+            self._num_features, self._epsilon
         )
 
 
