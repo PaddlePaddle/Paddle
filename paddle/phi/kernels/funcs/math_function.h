@@ -26,7 +26,8 @@ namespace phi {
 namespace funcs {
 
 template <typename T>
-void BatchTranspose(T* output, const T* input, int batch, int m, int n);
+void BatchTranspose(
+    T* output, const T* input, int batch, int m, int n, int max_grid_y);
 
 template <typename DeviceContext, typename T>
 struct TransposeNormal {

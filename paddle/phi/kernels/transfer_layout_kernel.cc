@@ -61,7 +61,7 @@ void TransferLayoutGeneral(const Context& dev_ctx,
                            DenseTensor* out) {
   auto src_dim = x.dims();
 
-  auto axis = GetAxis(src_layout, dst_layout);
+  auto axis = GetAxis(x.layout(), dst_layout);
 
   std::vector<int64_t> dst_dim;
   dst_dim.resize(axis.size());
@@ -101,6 +101,7 @@ void TransferLayoutKernelGPU(const Context& dev_ctx,
   // conv2d_fusion_layout_transfer_pass, so we optimize this kernel on GPU
   std::vector<int> axis_nchw_nhwc = {0, 2, 3, 1};
   std::vector<int> axis_nhwc_nchw = {0, 3, 1, 2};
+  // int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
   int64_t device_id = dev_ctx.GetPlace().GetDeviceId();
   const auto& prop = phi::backends::gpu::GetDeviceProperties(device_id);
   int max_grid_y = prop.maxGridSize[1];
