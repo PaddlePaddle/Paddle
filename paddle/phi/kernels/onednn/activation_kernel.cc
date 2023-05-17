@@ -190,7 +190,7 @@ void SwishKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  DenseTensor* out) {
   SwishOneDNNFunctor<T> functor;
-  functor(dev_ctx, x, 0, 1.0, out);
+  functor(dev_ctx, x, 1.0, 0, out);
 }
 
 }  // namespace phi
