@@ -466,7 +466,7 @@ class TestHessianFloat32(unittest.TestCase):
     def test_square(self):
         def pd_f(x):
             """Input is a square matrix."""
-            return paddle.matmul(x, x.T).flatten().sum()
+            return paddle.matmul(x, x.T).sum()
 
         def np_hess(x):
             dim = x.shape[0]

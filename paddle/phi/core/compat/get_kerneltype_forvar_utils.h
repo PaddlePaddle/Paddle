@@ -22,7 +22,7 @@ class KernelKey;
 class DenseTensor;
 /**
  * Note: GetKernelTypeForVarContext is currently designed for oneDNN kernel when
- * the related memeber function 'GetKernelTypeForVar' is special. It is
+ * the related member function 'GetKernelTypeForVar' is special. It is
  * possible to leverage to other vendor libraries in the future.
  */
 class GetKernelTypeForVarContext {
@@ -47,7 +47,7 @@ class GetKernelTypeForVarContext {
 
  private:
   const KernelKey* kernel_key_;  // not owned
-  // Use AttributeMap in namespace 'phi' to avoid depending 'fuild'
+  // Use AttributeMap in namespace 'phi' to avoid depending 'fluid'
   const AttributeMap* attrs_;  // not owned
   std::string* var_name_;      // not owned
   DenseTensor* tensor_;        // not owned

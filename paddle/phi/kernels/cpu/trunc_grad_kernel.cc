@@ -21,7 +21,7 @@ namespace phi {
 
 template <typename T, typename Context>
 void TruncGradKernel(const Context& dev_ctx,
-                     const DenseTensor& out_grad,
+                     const DenseTensor& out_grad UNUSED,
                      DenseTensor* in_grad) {
   T* dx_data = dev_ctx.template Alloc<T>(in_grad);
 

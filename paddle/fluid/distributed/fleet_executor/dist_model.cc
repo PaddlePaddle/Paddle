@@ -103,9 +103,26 @@ bool LoadDataFromDistModelTensor(const DistModelTensor &input_data,
     PADDLE_THROW(paddle::platform::errors::Fatal(
         "Paddle wasn't compiled with XPU, but place is XPU."));
 #endif
+  } else if (platform::is_custom_place(place)) {
+    VLOG(3) << "Loading data for CustomDevice: " << place;
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto *dev_ctx = dynamic_cast<const phi::CustomContext *>(pool.Get(place));
+    auto custom_place = place;
+    memory::Copy(custom_place,
+                 static_cast<void *>(input_tensor_ptr),
+                 platform::CPUPlace(),
+                 input_data.data.data(),
+                 input_data.data.length(),
+                 dev_ctx->stream());
+#else
+    PADDLE_THROW(paddle::platform::errors::Fatal(
+        "Paddle wasn't compiled with custom_device, but place is "
+        "CustomPlace."));
+#endif
   } else {
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "DistModel only supports CPU and GPU and XPU."));
+        "DistModel only supports CPU and GPU and XPU and CustomDevice."));
   }
 
   framework::LoD dst_lod;
@@ -204,6 +221,9 @@ bool DistModel::PreparePlace() {
     place_ = paddle::platform::CPUPlace();
   } else if (config_.place == "XPU") {
     place_ = paddle::platform::XPUPlace(config_.device_id);
+  } else if (config_.place == "CUSTOM_DEVICE") {
+    place_ =
+        paddle::platform::CustomPlace(config_.device_type, config_.device_id);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Place must be choosen from GPU or CPU or XPU, but got %s.",
@@ -307,6 +327,29 @@ void DistModel::InsertCommOp(std::string tmp_var_name,
     new_var->SetPersistable(true);
     framework::OpDesc *gen_bkcl_id_op = block->AppendOp();
     gen_bkcl_id_op->SetType("c_gen_bkcl_id");
+    gen_bkcl_id_op->SetOutput("Out", {tmp_var_name});
+    gen_bkcl_id_op->SetAttr("rank", rank);
+    gen_bkcl_id_op->SetAttr("endpoint", config_.current_endpoint);
+    gen_bkcl_id_op->SetAttr("other_endpoints", peer_endpoints);
+    gen_bkcl_id_op->SetAttr("ring_id", ring_id);
+    gen_bkcl_id_op->SetAttr("op_role",
+                            static_cast<int>(framework::OpRole::kForward));
+    gen_bkcl_id_op->CheckAttrs();
+    framework::OpDesc *comm_init_op = block->AppendOp();
+    comm_init_op->SetType("c_comm_init");
+    comm_init_op->SetInput("X", {tmp_var_name});
+    comm_init_op->SetAttr("rank", rank);
+    comm_init_op->SetAttr("nranks", nranks);
+    comm_init_op->SetAttr("ring_id", ring_id);
+    comm_init_op->SetAttr("op_role",
+                          static_cast<int>(framework::OpRole::kForward));
+    comm_init_op->CheckAttrs();
+  } else if (config_.place == "CUSTOM_DEVICE") {
+    framework::VarDesc *new_var = block->Var(tmp_var_name);
+    new_var->SetType(framework::proto::VarType::RAW);
+    new_var->SetPersistable(true);
+    framework::OpDesc *gen_bkcl_id_op = block->AppendOp();
+    gen_bkcl_id_op->SetType("c_gen_xccl_id");
     gen_bkcl_id_op->SetOutput("Out", {tmp_var_name});
     gen_bkcl_id_op->SetAttr("rank", rank);
     gen_bkcl_id_op->SetAttr("endpoint", config_.current_endpoint);
