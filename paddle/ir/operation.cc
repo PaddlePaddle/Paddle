@@ -18,6 +18,13 @@
 #include "paddle/ir/utils.h"
 
 namespace ir {
+Operation *Operation::create(const OperationArgument &argument) {
+  return create(argument.inputs_,
+                argument.output_types_,
+                argument.attribute_,
+                argument.info_);
+}
+
 // Allocate the required memory based on the size and number of inputs, outputs,
 // and operators, and construct it in the order of: OpOutlineResult,
 // OpInlineResult, Operation, Operand.
@@ -126,6 +133,8 @@ void Operation::destroy() {
   aligned_free(reinterpret_cast<void *>(aligned_ptr));
 }
 
+IrContext *Operation::ir_context() const { return op_info_.ir_context(); }
+
 Operation::Operation(uint32_t num_results,
                      uint32_t num_operands,
                      const AttributeMap &attribute,
@@ -190,9 +199,6 @@ std::string Operation::print() {
   return result.str();
 }
 
-std::string Operation::op_name() const {
-  return op_info_.impl()->dialect()->name() + "." +
-         std::string(op_info_.impl()->name());
-}
+std::string Operation::op_name() const { return op_info_.name(); }
 
 }  // namespace ir

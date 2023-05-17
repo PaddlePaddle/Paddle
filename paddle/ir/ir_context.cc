@@ -185,11 +185,6 @@ IrContext::IrContext() : impl_(new IrContextImpl()) {
   impl_->int64_type = TypeManager::get<Int64Type>(this);
 }
 
-void IrContext::RegisterAbstractType(ir::TypeId type_id,
-                                     AbstractType *abstract_type) {
-  impl().RegisterAbstractType(type_id, abstract_type);
-}
-
 StorageManager &IrContext::type_storage_manager() {
   return impl().registed_type_storage_manager_;
 }
@@ -203,8 +198,14 @@ AbstractType *IrContext::GetRegisteredAbstractType(TypeId id) {
 }
 
 void IrContext::RegisterAbstractAttribute(
-    ir::TypeId type_id, AbstractAttribute *abstract_attribute) {
-  impl().RegisterAbstractAttribute(type_id, abstract_attribute);
+    ir::TypeId type_id, AbstractAttribute &&abstract_attribute) {
+  if (GetRegisteredAbstractAttribute(type_id) == nullptr) {
+    impl().RegisterAbstractAttribute(
+        type_id, new AbstractAttribute(std::move(abstract_attribute)));
+    VLOG(4) << "<--- Attribute registered into IrContext. --->";
+  } else {
+    LOG(WARNING) << " Attribute already registered.";
+  }
 }
 
 StorageManager &IrContext::attribute_storage_manager() {
@@ -251,15 +252,42 @@ Dialect *IrContext::GetRegisteredDialect(const std::string &dialect_name) {
   return nullptr;
 }
 
-OpInfoImpl *IrContext::GetRegisteredOpInfo(const std::string &name) {
-  OpInfoImpl *rtn = impl().GetOpInfo(name);
-  return rtn ? rtn : nullptr;
+void IrContext::RegisterAbstractType(ir::TypeId type_id,
+                                     AbstractType &&abstract_type) {
+  if (GetRegisteredAbstractType(type_id) == nullptr) {
+    impl().RegisterAbstractType(type_id,
+                                new AbstractType(std::move(abstract_type)));
+    VLOG(4) << "<--- Type registered into IrContext. --->";
+  } else {
+    LOG(WARNING) << " type already registered.";
+  }
 }
 
-void IrContext::RegisterOpInfo(const std::string &name, OpInfoImpl *opinfo) {
-  if (impl().GetOpInfo(name) == nullptr) {
+void IrContext::RegisterOpInfo(Dialect *dialect,
+                               TypeId op_id,
+                               const char *name,
+                               std::vector<InterfaceValue> &&interface_map,
+                               const std::vector<TypeId> &trait_set,
+                               size_t attributes_num,
+                               const char **attributes_name) {
+  if (GetRegisteredOpInfo(name) == nullptr) {
+    OpInfoImpl *opinfo = OpInfoImpl::create(dialect,
+                                            op_id,
+                                            name,
+                                            std::move(interface_map),
+                                            trait_set,
+                                            attributes_num,
+                                            attributes_name);
     impl().RegisterOpInfo(name, opinfo);
+    VLOG(4) << "Op " << name << " registered into IrContext. --->";
+  } else {
+    LOG(WARNING) << name << " op already registered.";
   }
+}
+
+OpInfo IrContext::GetRegisteredOpInfo(const std::string &name) {
+  OpInfoImpl *rtn = impl().GetOpInfo(name);
+  return rtn ? rtn : nullptr;
 }
 
 const AbstractType &AbstractType::lookup(TypeId type_id, IrContext *ctx) {
