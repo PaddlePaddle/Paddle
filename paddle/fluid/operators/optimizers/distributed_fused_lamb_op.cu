@@ -16,12 +16,12 @@
 
 #include "paddle/fluid/operators/optimizers/multi_tensor_apply.h"
 #include "paddle/fluid/platform/collective_helper.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/cuda_stream.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/distributed/nccl_comm_context.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
@@ -1347,6 +1347,10 @@ void DistributedFusedLambKernel(
   auto stream = dev_ctx.stream();
   auto place = dev_ctx.GetPlace();
 
+  phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
+  auto *cpu_ctx =
+      reinterpret_cast<phi::CPUContext *>(pool.Get(phi::CPUPlace()));
+
   found_inf->Resize({1});
 
   // Step 1: Get fp16 param and grad tensors
@@ -1409,11 +1413,11 @@ void DistributedFusedLambKernel(
     bool is_initialized = acc_step->IsInitialized();
     int64_t *acc_step_data;
     if (is_initialized) {
-      acc_step_data = acc_step->mutable_data<int64_t>(phi::CPUPlace());
+      acc_step_data = cpu_ctx->template Alloc<int64_t>(acc_step);
       ++(*acc_step_data);
     } else {
       acc_step->Resize({1});
-      acc_step_data = acc_step->mutable_data<int64_t>(phi::CPUPlace());
+      acc_step_data = cpu_ctx->template Alloc<int64_t>(acc_step);
       *acc_step_data = 1;
     }
     int64_t rounded_step = (*acc_step_data) % acc_steps;
@@ -1426,7 +1430,7 @@ void DistributedFusedLambKernel(
                                   "when Attr(acc_steps) > 1."));
       if (!fp32_acc_grad->IsInitialized()) {
         fp32_acc_grad->Resize({static_cast<int64_t>(fp32_numel)});
-        fp32_acc_grad_data = fp32_acc_grad->mutable_data<float>(place);
+        fp32_acc_grad_data = dev_ctx.template Alloc<float>(fp32_acc_grad);
       } else {
         fp32_acc_grad_data = fp32_acc_grad->data<float>();
       }
@@ -1443,7 +1447,8 @@ void DistributedFusedLambKernel(
         auto acc_grad_size =
             use_master_acc_grad ? (3 * fp16_numel) : fp16_numel;
         fp16_acc_grad->Resize({static_cast<int64_t>(acc_grad_size)});
-        fp16_acc_grad_data = fp16_acc_grad->mutable_data<dtype::float16>(place);
+        fp16_acc_grad_data =
+            dev_ctx.template Alloc<dtype::float16>(fp16_acc_grad);
       } else {
         fp16_acc_grad_data = fp16_acc_grad->data<dtype::float16>();
       }
@@ -1525,13 +1530,11 @@ void DistributedFusedLambKernel(
     }
 
     stop_update->Resize({1});
-    auto *stop_update_data = stop_update->mutable_data<bool>(phi::CPUPlace());
-
-    auto *found_inf_cpu = found_inf->mutable_data<bool>(phi::CPUPlace());
+    auto *stop_update_data = cpu_ctx->template Alloc<bool>(stop_update);
+    auto *found_inf_cpu = cpu_ctx->template Alloc<bool>(found_inf);
 
     if (rounded_step != 0) {
       *stop_update_data = true;
-      auto *found_inf_cpu = found_inf->mutable_data<bool>(phi::CPUPlace());
       *found_inf_cpu = false;
       return;
     } else {
@@ -1615,7 +1618,7 @@ void DistributedFusedLambKernel(
   auto *beta2_pow_data =
       GetSameInOutTensorPtr<float, Context>(dev_ctx, &beta2_pow, beta2_pow_out);
 
-  auto *found_inf_data = found_inf->mutable_data<bool>(place);
+  auto *found_inf_data = dev_ctx.template Alloc<bool>(found_inf);
 
   // Step 5: Get attributes weight_decay, beta1, beta2, epsilon,
   // max_grad_norm, ring_id,
