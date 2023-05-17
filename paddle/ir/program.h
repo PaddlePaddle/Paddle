@@ -15,7 +15,6 @@
 #pragma once
 
 #include <list>
-#include <ostream>
 #include <unordered_map>
 
 #include "paddle/ir/builtin_attribute.h"
@@ -37,20 +36,24 @@ class Program {
 
   std::list<Operation*> ops() const { return ops_; }
 
-  void InsertOp(Operation* op);
+  size_t parameters_num() const { return parameters_.size(); }
 
-  std::unordered_map<StrAttribute, Parameter*> parameters() const {
-    return parameters_;
-  }
+  ///
+  /// \brief Insert the Operation* constructed by Operation::create(...) into
+  /// this Program. NOTE: At this time, the memory management permission of
+  /// Operation* will be owned by this Program. The user does not need to call
+  /// Operation::destroy() manually
+  ///
+  void InsertOp(Operation* op);
 
   Parameter* GetParameter(std::string name) const;
 
-  void SetParameter(std::string name, Parameter* parameter);
+  void SetParameter(std::string name, std::unique_ptr<Parameter>&& parameter);
 
  private:
-  std::list<Operation*> ops_;
+  std::list<Operation*> ops_;  // owned
 
-  std::unordered_map<StrAttribute, Parameter*> parameters_;
+  std::unordered_map<std::string, std::unique_ptr<Parameter>> parameters_;
 };
 
 std::ostream& operator<<(std::ostream& os, Program& program);

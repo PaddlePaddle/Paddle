@@ -33,6 +33,8 @@ class Dialect {
  public:
   Dialect(std::string name, ir::IrContext *context, ir::TypeId id);
 
+  virtual ~Dialect();
+
   const std::string &name() const { return name_; }
 
   ir::IrContext *ir_context() const { return context_; }
@@ -51,8 +53,6 @@ class Dialect {
   template <typename T>
   void RegisterType() {
     VLOG(4) << "Type registered into Dialect. --->";
-    // if (this->ir_context()->registed_abstract_type().count(
-    //         ir::TypeId::get<T>()) == 0) {
     if (this->ir_context()->GetRegisteredAbstractType(ir::TypeId::get<T>()) ==
         nullptr) {
       ir::AbstractType *abstract_type =
@@ -153,6 +153,10 @@ class Dialect {
   }
 
  private:
+  Dialect(const Dialect &) = delete;
+
+  Dialect &operator=(Dialect &) = delete;
+
   std::string name_;
 
   ir::IrContext *context_;  // not owned

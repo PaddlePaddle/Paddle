@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/translator/program_translator.h"
 
+#include <unordered_map>
+
 #include "glog/logging.h"
 
 #include "paddle/fluid/framework/program_desc.h"
@@ -63,14 +65,12 @@ void ProgramTranslator::ExtractParameterFromSingleBlock(
 
     std::string get_parameter_op_name = "GetParameterOp";
     ir::OpInfoImpl* op_info = ctx->GetRegisteredOpInfo(get_parameter_op_name);
-    std::map<ir::StrAttribute, ir::Attribute> op_attribute_map{
-        {ir::StrAttribute::get(ctx, var->Name()),
-         ir::StrAttribute::get(ctx, var->Name())},
+    std::unordered_map<std::string, ir::Attribute> op_attribute_map = {
+        {var->Name(), ir::StrAttribute::get(ctx, var->Name())},
     };
-    ir::DictionaryAttribute op_attribute =
-        ir::DictionaryAttribute::get(ctx, op_attribute_map);
     ir::Operation* operation = ir::Operation::create(
-        {}, {ir::Float32Type::get(ctx)}, op_attribute, op_info, program);
+        {}, {ir::Float32Type::get(ctx)}, op_attribute_map, op_info);
+    program->InsertOp(operation);
     param_map[var->Name()] = operation->GetResultByIndex(0);
     VLOG(10) << "[op translated][get parameter]" << operation;
 

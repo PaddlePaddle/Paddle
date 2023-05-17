@@ -84,12 +84,6 @@ inline std::tuple<OpOutputTypeList, OpOutputMapping> GenerateOperationOutput(
   return {op_output_types, arg_to_idx};
 }
 
-inline ir::DictionaryAttribute CreateEmptyAttribute() {
-  ir::IrContext* ctx = ir::IrContext::Instance();
-  std::map<ir::StrAttribute, ir::Attribute> named_attr;
-  return ir::DictionaryAttribute::get(ctx, named_attr);
-}
-
 inline void RecordOpResultMapping(TranslationContext* param_map,
                                   const OpDesc& op_desc,
                                   ir::Operation* operation,
@@ -124,8 +118,9 @@ ir::Operation* GeneralOpHandler(ir::IrContext* ctx,
       nullptr,
       platform::errors::PreconditionNotMet(
           "Op %d should have corresponding OpInfo", op_desc.Type()));
-  ir::Operation* operation = ir::Operation::create(
-      op_inputs, op_output_types, CreateEmptyAttribute(), op_info, program);
+  ir::Operation* operation =
+      ir::Operation::create(op_inputs, op_output_types, {}, op_info);
+  program->InsertOp(operation);
   RecordOpResultMapping(param_map, op_desc, operation, arg_to_idx);
 
   return operation;
@@ -146,8 +141,9 @@ ir::Operation* FeedOpHandler(ir::IrContext* ctx,
       nullptr,
       platform::errors::PreconditionNotMet(
           "Op %d should have corresponding OpInfo", op_desc.Type()));
-  ir::Operation* operation = ir::Operation::create(
-      op_inputs, op_output_types, CreateEmptyAttribute(), op_info, program);
+  ir::Operation* operation =
+      ir::Operation::create(op_inputs, op_output_types, {}, op_info);
+  program->InsertOp(operation);
   RecordOpResultMapping(param_map, op_desc, operation, arg_to_idx);
 
   return operation;
@@ -166,8 +162,9 @@ ir::Operation* FetchOpHandler(ir::IrContext* ctx,
       nullptr,
       platform::errors::PreconditionNotMet(
           "Op %d should have corresponding OpInfo", op_desc.Type()));
-  ir::Operation* operation = ir::Operation::create(
-      op_inputs, op_output_types, CreateEmptyAttribute(), op_info, program);
+  ir::Operation* operation =
+      ir::Operation::create(op_inputs, op_output_types, {}, op_info);
+  program->InsertOp(operation);
 
   return operation;
 }

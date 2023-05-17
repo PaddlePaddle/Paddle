@@ -18,6 +18,8 @@ namespace ir {
 Dialect::Dialect(std::string name, ir::IrContext *context, ir::TypeId id)
     : name_(std::move(name)), context_(context), id_(id) {}
 
+Dialect::~Dialect() = default;
+
 void Dialect::RegisterType(ir::AbstractType &&abstract_type) {
   ir::AbstractType *new_abstract_type =
       new ir::AbstractType(std::move(abstract_type));
@@ -37,6 +39,7 @@ void Dialect::RegisterOp(const std::string &name, OpInfoImpl *op_info) {
 }
 
 void Dialect::RegisterInterface(std::unique_ptr<DialectInterface> interface) {
+  VLOG(4) << "Register interface into dialect" << std::endl;
   auto it = registered_interfaces_.emplace(interface->interface_id(),
                                            std::move(interface));
   (void)it;

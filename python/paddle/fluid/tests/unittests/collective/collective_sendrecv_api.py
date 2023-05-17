@@ -35,6 +35,7 @@ def send_new(tensor, dst, group=None, sync_op=True):
             'int8',
             'uint8',
             'bool',
+            'uint16',
         ],
         op_type,
     )
@@ -67,6 +68,7 @@ def recv_new(tensor, src, group=None, sync_op=True, dtype='float32'):
             'int8',
             'uint8',
             'bool',
+            'uint16',
         ],
         op_type,
     )

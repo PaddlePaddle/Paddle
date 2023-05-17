@@ -18,10 +18,10 @@
 #include <map>
 #include <string>
 
+#include "paddle/fluid/dialect/pd_dialect.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/paddle_dialect/paddle_dialect.h"
 #include "paddle/fluid/translator/translate.h"
 #include "paddle/ir/builtin_dialect.h"
 #include "paddle/ir/dialect.h"
@@ -59,7 +59,7 @@ TEST(PaddleDialectTest, Translator) {
 
   std::list<ir::Operation *> ops = program->ops();
   std::cout << ops.size() << std::endl;
-  EXPECT_EQ(ops.size(), p.Block(0).OpSize() + program->parameters().size());
+  EXPECT_EQ(ops.size(), p.Block(0).OpSize() + program->parameters_num());
   std::cout << program.get() << (*program).ops().size() << std::endl;
   for (auto *op : (*program).ops()) {
     std::cout << op->op_name() << std::endl;

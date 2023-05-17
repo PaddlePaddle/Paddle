@@ -14,12 +14,17 @@
 
 #include "paddle/fluid/translator/type_translator.h"
 
+#include "paddle/fluid/dialect/pd_type.h"
+#include "paddle/fluid/dialect/pd_type_storage.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/ir/builtin_type.h"
 
 namespace paddle {
 namespace fluid {
 namespace translator {
+
+using DenseTensorType = paddle::dialect::DenseTensorType;
+using DenseTensorTypeStorage = paddle::dialect::DenseTensorTypeStorage;
 
 TypeTranslator::TypeTranslator() {
   handlers = {
@@ -42,12 +47,12 @@ TypeTranslator::TypeTranslator() {
 
          ir::Type dtype =
              this->operator[](var_desc.GetDataType())(ctx, var_desc);
-         ir::DenseTensorTypeStorage::Dim dim = var_desc.GetShape();
-         ir::DenseTensorTypeStorage::DataLayout layout =
-             ir::DenseTensorTypeStorage::DataLayout::UNDEFINED;
-         ir::DenseTensorTypeStorage::LoD lod = {};
+         DenseTensorTypeStorage::Dim dim = var_desc.GetShape();
+         DenseTensorTypeStorage::DataLayout layout =
+             DenseTensorTypeStorage::DataLayout::UNDEFINED;
+         DenseTensorTypeStorage::LoD lod = {};
          size_t offset = 0;
-         return ir::DenseTensorType::get(ctx, dtype, dim, layout, lod, offset);
+         return DenseTensorType::get(ctx, dtype, dim, layout, lod, offset);
        }},
   };
 }

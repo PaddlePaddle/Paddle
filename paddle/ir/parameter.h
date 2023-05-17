@@ -57,6 +57,9 @@ class Parameter {
  private:
   void* data_;
 
+  ///
+  /// \brief Number of bytes held in data_.
+  ///
   size_t size_;
 
   Type type_;

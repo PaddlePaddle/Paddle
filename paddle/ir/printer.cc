@@ -108,7 +108,21 @@ class ProgramPrinter {
     os << " { Attribute PlaceHolder } ";
   }
 
-  void PrintOpOperands(ir::Operation* op) { os << " Operands PlaceHolder "; }
+  void PrintOpOperands(ir::Operation* op) {
+    os << " (";
+    auto num_op_result = op->num_results();
+    std::vector<ir::OpResult> op_results;
+    op_results.reserve(num_op_result);
+    for (size_t idx = 0; idx < num_op_result; idx++) {
+      op_results.push_back(op->GetResultByIndex(idx));
+    }
+    PrintInterleave(
+        op_results.begin(),
+        op_results.end(),
+        [this](ir::Value v) { this->PrintValue(v); },
+        [this]() { this->os << ","; });
+    os << ") ";
+  }
   void PrintOperandsType(ir::Operation* op) {
     os << " OperandsType PlaceHolder ";
   }

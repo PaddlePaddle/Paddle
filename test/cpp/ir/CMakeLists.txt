@@ -3,7 +3,15 @@ if(WITH_NEWIR)
   cc_test_old(ir_attribute_test SRCS ir_attribute_test.cc DEPS new_ir gtest)
   cc_test_old(ir_value_test SRCS ir_value_test.cc DEPS new_ir gtest)
   cc_test_old(ir_op_test SRCS ir_op_test.cc DEPS new_ir gtest)
-  cc_test_old(ir_program_test SRCS ir_program_test.cc DEPS new_ir gtest)
+  cc_test_old(
+    ir_program_test
+    SRCS
+    ir_program_test.cc
+    DEPS
+    new_ir
+    pd_dialect
+    phi
+    gtest)
 
   file(
     DOWNLOAD
@@ -19,6 +27,6 @@ if(WITH_NEWIR)
     program_translator
     gtest
     new_ir
-    paddle_dialect)
+    pd_dialect)
 
 endif()

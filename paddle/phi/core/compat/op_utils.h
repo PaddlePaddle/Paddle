@@ -31,7 +31,7 @@ const static std::string deprecated_kernel_name = "deprecated";  // NOLINT
 
 const std::unordered_set<std::string> standard_kernel_suffixs({
     "sr",  // SelectedRows kernel
-    "raw"  // fallback kernel of origfinal fluid op
+    "raw"  // fallback kernel of original fluid op
 });
 
 /**
