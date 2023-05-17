@@ -27,8 +27,6 @@ void AddActXPUInferMeta(const MetaTensor& x,
                         const MetaTensor& x_max,
                         const MetaTensor& y,
                         const MetaTensor& y_max,
-                        const std::vector<int64_t>& x_shape,
-                        const std::vector<int64_t>& y_shape,
                         int act_type,
                         MetaTensor* out,
                         MetaTensor* out_max) {

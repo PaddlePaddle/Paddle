@@ -24,8 +24,6 @@ void AddActXPUKernel(const Context& ctx,
                      const paddle::optional<DenseTensor>& x_max,
                      const DenseTensor& y,
                      const paddle::optional<DenseTensor>& y_max,
-                     const std::vector<int64_t>& x_shape,
-                     const std::vector<int64_t>& y_shape,
                      int act_type,
                      DenseTensor* out,
                      DenseTensor* out_max) {
@@ -38,6 +36,9 @@ void AddActXPUKernel(const Context& ctx,
   const float* y_max_data =
       x_max.get_ptr() == nullptr ? nullptr : y_max.get_ptr()->data<float>();
   auto* out_data = reinterpret_cast<XPUType*>(ctx.template Alloc<T>(out));
+
+  std::vector<int64_t> x_shape = phi::vectorize(x.dims());
+  std::vector<int64_t> y_shape = phi::vectorize(y.dims());
 
   xpu::Activation_t act(static_cast<xpu::Activation_t::act_enum>(act_type));
   int r =

@@ -43,10 +43,10 @@ namespace patterns {
 fuse ele_add + activation block in to xpu_ele_fusion op
 For example:
 graph:
-                    input
+                    ele_x
                       |
                       |
-                 elementwise_add -----ele_y_in
+                 elementwise_add -----ele_y
                       |
                       |
                      act
@@ -56,10 +56,10 @@ graph:
 ------------------------------------------------------
 After the pass is applied:
                     Input
-                      |     ele_y_in
+                      |     ele_y
                       |    /
                       |   /
-  Input_max ---- add_act_fusion ---- ele_y_in_max
+  Input_max ---- add_act_fusion ---- ele_y_max
                       |    \
                       |     \
                       |      OutputMax
@@ -73,8 +73,8 @@ struct AddActXPUPattern : public PatternBase {
   PATTERN_DECL_NODE(ele_add);
   PATTERN_DECL_NODE(act);
   // declare variable node's name
-  PATTERN_DECL_NODE(input);
-  PATTERN_DECL_NODE(ele_y_in);
+  PATTERN_DECL_NODE(ele_x);
+  PATTERN_DECL_NODE(ele_y);
   PATTERN_DECL_NODE(ele_out);
   PATTERN_DECL_NODE(act_out);
 
@@ -88,25 +88,20 @@ AddActXPUPattern::AddActXPUPattern(PDPattern* pattern,
     : PatternBase(pattern, name_scope, name_scope), act_type_(act_type) {
   auto ele_add =
       pattern->NewNode(ele_add_repr())->assert_is_op("elementwise_add");
-  auto input = pattern->NewNode(input_repr())
+  auto ele_x = pattern->NewNode(ele_x_repr())
                    ->assert_is_op_input("elementwise_add", "X")
-                   ->assert_var_not_persistable();
-  auto ele_y_in = pattern->NewNode(ele_y_in_repr())
-                      ->assert_is_op_input("elementwise_add", "Y");
+                   ->AsInput();
+  auto ele_y = pattern->NewNode(ele_y_repr())
+                   ->assert_is_op_input("elementwise_add", "Y")
+                   ->AsInput();
   auto ele_out = pattern->NewNode(ele_out_repr())
-                     ->assert_is_op_output("elementwise_add", "Out")
-                     ->assert_var_not_persistable();
-  ele_add->LinksFrom({input, ele_y_in}).LinksTo({ele_out});
-  PDNode* act = nullptr;
-  PDNode* act_out = nullptr;
-  if (!act_type_.empty()) {
-    ele_out->assert_is_op_input(act_type_, "X");
-    act = pattern->NewNode(act_repr())->assert_is_op(act_type_);
-    act_out = pattern->NewNode(act_out_repr())
-                  ->assert_is_op_output(act_type_, "Out")
-                  ->assert_var_not_persistable();
-    act->LinksFrom({ele_out}).LinksTo({act_out});
-  }
+                     ->assert_is_op_output("elementwise_add", "Out");
+  ele_add->LinksFrom({ele_x, ele_y}).LinksTo({ele_out});
+  ele_out->assert_is_op_input(act_type_, "X");
+  auto act = pattern->NewNode(act_repr())->assert_is_op(act_type_);
+  auto act_out =
+      pattern->NewNode(act_out_repr())->assert_is_op_output(act_type_, "Out");
+  act->LinksFrom({ele_out}).LinksTo({act_out});
 }
 
 }  // namespace patterns
@@ -127,7 +122,7 @@ void AddActXPUFusePass::ApplyImpl(ir::Graph* graph) const {
   Init(name_scope_, graph);
 
   int found_subgraph_count = 0;
-  for (auto act_type : {"relu", "gelu", ""}) {
+  for (auto act_type : {"relu", "gelu"}) {
     found_subgraph_count += ApplyImpl(graph, act_type);
   }
   AddStatis(found_subgraph_count);
@@ -146,8 +141,8 @@ int AddActXPUFusePass::ApplyImpl(ir::Graph* graph,
     GET_IR_NODE(ele_add);
     GET_IR_NODE(act);
     /* declare variable node's name*/
-    GET_IR_NODE(input);
-    GET_IR_NODE(ele_y_in);
+    GET_IR_NODE(ele_x);
+    GET_IR_NODE(ele_y);
     GET_IR_NODE(ele_out);
     GET_IR_NODE(act_out);
 
@@ -157,11 +152,7 @@ int AddActXPUFusePass::ApplyImpl(ir::Graph* graph,
         scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
 
     std::string fused_op_out_name;
-    if (act) {
-      fused_op_out_name = act_out->Name();
-    } else {
-      fused_op_out_name = ele_out->Name();
-    }
+    fused_op_out_name = act_out->Name();
     std::string fused_op_out_max_name = fused_op_out_name + "_max";
     VarDesc fused_op_out_max_desc(fused_op_out_max_name);
     Node* fused_op_out_max = graph->CreateVarNode(&fused_op_out_max_desc);
@@ -169,46 +160,40 @@ int AddActXPUFusePass::ApplyImpl(ir::Graph* graph,
     framework::OpDesc fused_op_desc(block);
     fused_op_desc.SetType("add_act_xpu");
     // set attrs for fused op
-    VLOG(1) << "input name is :" << input->Name();
-    auto* input_var = scope->FindVar(input->Name());
-    PADDLE_ENFORCE_NOT_NULL(input_var,
-                            platform::errors::InvalidArgument(
-                                "input variable's pointer cannot be nullptr."));
-    const auto& input_t = input_var->Get<phi::DenseTensor>();
-    const std::vector<int64_t> x_shape = phi::vectorize(input_t.dims());
-    const auto& ele_y_t =
-        scope->FindVar(ele_y_in->Name())->Get<phi::DenseTensor>();
-    const std::vector<int64_t> y_shape = phi::vectorize(ele_y_t.dims());
-    fused_op_desc.SetAttr("x_shape", x_shape);
-    fused_op_desc.SetAttr("y_shape", y_shape);
-    fused_op_desc.SetAttr("act_type", 0);
-    if (act) {
-      fused_op_desc.SetAttr("act_type", ConvertActivationType(act_type));
-    }
-    fused_op_desc.SetInput("x", {input->Name()});
-    fused_op_desc.SetInput("y", {ele_y_in->Name()});
+    // VLOG(1) << "input name is :" << ele_x->Name();
+    // auto* ele_out_var = scope->GetVar(ele_out->Name());
+    // auto* ele_x_var = scope->FindVar(ele_x->Name());
+    // PADDLE_ENFORCE_NOT_NULL(
+    //   ele_x_var, platform::errors::NotFound("Cannot find %s in scope.",
+    //   ele_x->Name()));
+    // const auto* ele_x_t = ele_x_var->GetMutable<phi::DenseTensor>();
+    // const std::vector<int64_t> x_shape = phi::vectorize(ele_x_t->dims());
+    // fused_op_desc.SetAttr("x_shape", x_shape);
+
+    // auto* ele_y_var = scope->FindVar(ele_y->Name());
+    // PADDLE_ENFORCE_NOT_NULL(
+    //   ele_y_var, platform::errors::NotFound("Cannot find %s in scope.",
+    //   ele_y->Name()));
+    // const auto* ele_y_t = ele_y_var->GetMutable<phi::DenseTensor>();
+    // const std::vector<int64_t> y_shape = phi::vectorize(ele_y_t->dims());
+    // fused_op_desc.SetAttr("y_shape", y_shape);
+    fused_op_desc.SetAttr("act_type", ConvertActivationType(act_type));
+    fused_op_desc.SetInput("x", {ele_x->Name()});
+    fused_op_desc.SetInput("y", {ele_y->Name()});
     fused_op_desc.SetOutput("out", {fused_op_out_name});
     fused_op_desc.SetOutput("out_max", {fused_op_out_max_name});
     // relink fused op
-    VLOG(1) << "55555555555555";
     auto* fused_op = graph->CreateOpNode(&fused_op_desc);
-    IR_NODE_LINK_TO(input, fused_op);
-    IR_NODE_LINK_TO(ele_y_in, fused_op);
-    if (act) {
-      IR_NODE_LINK_TO(fused_op, act_out);
-    } else {
-      IR_NODE_LINK_TO(fused_op, ele_out);
-    }
+    IR_NODE_LINK_TO(ele_x, fused_op);
+    IR_NODE_LINK_TO(ele_y, fused_op);
+    IR_NODE_LINK_TO(fused_op, act_out);
     IR_NODE_LINK_TO(fused_op, fused_op_out_max);
     // delete useless node
-    std::unordered_set<const Node*> delete_nodes = {ele_add};
-    if (act != nullptr) {
-      delete_nodes.insert(act);
-      delete_nodes.insert(ele_out);
-    }
+    std::unordered_set<const Node*> delete_nodes = {ele_add, act, ele_out};
     GraphSafeRemoveNodes(graph, delete_nodes);
     found_subgraph_count++;
   };
+
   gpd(graph, handler);
   return found_subgraph_count;
 }

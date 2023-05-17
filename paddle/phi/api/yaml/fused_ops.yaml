@@ -5,7 +5,7 @@
 # otherwise the operator only could be used in static mode.
 
 - op : add_act_xpu
-  args : (Tensor x, Tensor x_max, Tensor y, Tensor y_max, int64_t[] x_shape, int64_t[] y_shape, int act_type)
+  args : (Tensor x, Tensor x_max, Tensor y, Tensor y_max, int act_type)
   output : Tensor(out), Tensor(out_max)
   infer_meta :
     func : AddActXPUInferMeta
