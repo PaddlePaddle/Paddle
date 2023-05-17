@@ -110,7 +110,7 @@ TEST(DistAttr, ctor) {
   x_dist_attr.mark_annotated("dynamic_dims");
   EXPECT_EQ(y_dist_attr.process_mesh(), process_mesh);
   EXPECT_EQ(y_dist_attr.dims_mapping(), std::vector<int64_t>({-1, 0}));
-  EXPECT_EQ(y_dist_attr.batch_dim(), 1);
+  EXPECT_EQ(y_dist_attr.batch_dim(), -1);
   EXPECT_EQ(y_dist_attr.dynamic_dims(), std::vector<bool>({false, true}));
   EXPECT_EQ(x_dist_attr.is_annotated("batch_dim"), true);
   EXPECT_EQ(x_dist_attr.is_annotated("dynamic_dims"), true);
@@ -128,7 +128,7 @@ TEST(DistAttr, ctor) {
 
   OperatorDistAttr mul_dist_attr(*op);
   EXPECT_EQ(mul_dist_attr.impl_type(), kDefault);
-  // EXPECT_EQ(mul_dist_attr.impl_idx(), -1);
+  EXPECT_EQ(mul_dist_attr.impl_idx(), 0);
   EXPECT_EQ(mul_dist_attr.is_recompute(), false);
   EXPECT_EQ(mul_dist_attr.is_annotated("process_mesh"), false);
   EXPECT_EQ(mul_dist_attr.is_annotated("impl_type"), false);
