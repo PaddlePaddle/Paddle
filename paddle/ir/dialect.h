@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <ostream>
+
 #include "paddle/ir/attribute_base.h"
 #include "paddle/ir/dialect_interface.h"
 #include "paddle/ir/ir_context.h"
@@ -150,6 +152,10 @@ class Dialect {
     InterfaceT *interface = new InterfaceT(this, std::forward<Args>(args)...);
     RegisterInterface(std::unique_ptr<DialectInterface>(interface));
     return *interface;
+  }
+
+  virtual void PrintType(ir::Type type, std::ostream &os) {
+    throw std::logic_error("dialect has no registered type printing hook");
   }
 
  private:

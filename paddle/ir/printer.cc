@@ -18,6 +18,8 @@
 #include <unordered_map>
 
 #include "paddle/ir/builtin_attribute.h"
+#include "paddle/ir/builtin_type.h"
+#include "paddle/ir/dialect.h"
 #include "paddle/ir/operation.h"
 #include "paddle/ir/program.h"
 #include "paddle/ir/value.h"
@@ -28,9 +30,45 @@ namespace {
 constexpr char newline[] = "\n";
 }  // namespace
 
-class ProgramPrinter {
+class Printer {
  public:
-  explicit ProgramPrinter(std::ostream& os) : os(os), cur_var_number(0) {}
+  explicit Printer(std::ostream& os) : os(os) {}
+
+  void PrintType(ir::Type type) {
+    if (type.isa<ir::Float16Type>()) {
+      os << "f16";
+    } else if (type.isa<ir::Float32Type>()) {
+      os << "f32";
+    } else if (type.isa<ir::Float64Type>()) {
+      os << "f64";
+    } else if (type.isa<ir::Int16Type>()) {
+      os << "i16";
+    } else if (type.isa<ir::Int32Type>()) {
+      os << "i32";
+    } else if (type.isa<ir::Int64Type>()) {
+      os << "i64";
+    } else {
+      auto& dialect = type.dialect();
+      dialect.PrintType(type, os);
+    }
+  }
+
+ public:
+  std::ostream& os;
+};
+
+void Type::print(std::ostream& os) const {
+  if (!*this) {
+    os << "<!TypeNull>";
+    return;
+  }
+  Printer p(os);
+  p.PrintType(*this);
+}
+
+class ProgramPrinter : public Printer {
+ public:
+  explicit ProgramPrinter(std::ostream& os) : Printer(os), cur_var_number(0) {}
 
   void Print(ir::Program& program) {
     for (auto* op : program.ops()) {
@@ -54,8 +92,6 @@ class ProgramPrinter {
       print_func(*begin);
     }
   }
-
-  void PrintType(ir::Type type) {}
 
   void PrintValue(ir::Value v) {
     const void* key = static_cast<const void*>(v.impl());
@@ -91,24 +127,6 @@ class ProgramPrinter {
   }
 
   void PrintOpResult(ir::Operation* op) {
-    auto num_op_result = op->num_results();
-    std::vector<ir::OpResult> op_results;
-    op_results.reserve(num_op_result);
-    for (size_t idx = 0; idx < num_op_result; idx++) {
-      op_results.push_back(op->GetResultByIndex(idx));
-    }
-    PrintInterleave(
-        op_results.begin(),
-        op_results.end(),
-        [this](ir::Value v) { this->PrintValue(v); },
-        [this]() { this->os << ","; });
-  }
-
-  void PrintAttribute(ir::Operation* op) {
-    os << " { Attribute PlaceHolder } ";
-  }
-
-  void PrintOpOperands(ir::Operation* op) {
     os << " (";
     auto num_op_result = op->num_results();
     std::vector<ir::OpResult> op_results;
@@ -123,16 +141,55 @@ class ProgramPrinter {
         [this]() { this->os << ","; });
     os << ") ";
   }
+
+  void PrintAttribute(ir::Operation* op) { os << " { ATTRIBUTE } "; }
+
+  void PrintOpOperands(ir::Operation* op) {
+    os << " (";
+    auto num_op_operands = op->num_operands();
+    std::vector<ir::Value> op_operands;
+    op_operands.reserve(num_op_operands);
+    for (size_t idx = 0; idx < num_op_operands; idx++) {
+      op_operands.push_back(op->GetOperandByIndex(idx).impl()->source());
+    }
+    PrintInterleave(
+        op_operands.begin(),
+        op_operands.end(),
+        [this](ir::Value v) { this->PrintValue(v); },
+        [this]() { this->os << ","; });
+    os << ") ";
+  }
+
   void PrintOperandsType(ir::Operation* op) {
-    os << " OperandsType PlaceHolder ";
+    auto num_op_operands = op->num_operands();
+    std::vector<ir::Type> op_operand_types;
+    op_operand_types.reserve(num_op_operands);
+    for (size_t idx = 0; idx < num_op_operands; idx++) {
+      op_operand_types.push_back(
+          op->GetOperandByIndex(idx).impl()->source().type());
+    }
+    PrintInterleave(
+        op_operand_types.begin(),
+        op_operand_types.end(),
+        [this](ir::Type t) { this->PrintType(t); },
+        [this]() { this->os << ","; });
   }
 
   void PrintOpReturnType(ir::Operation* op) {
-    os << " OpReturnType PlaceHolder ";
+    auto num_op_result = op->num_results();
+    std::vector<ir::Type> op_result_types;
+    op_result_types.reserve(num_op_result);
+    for (size_t idx = 0; idx < num_op_result; idx++) {
+      op_result_types.push_back(op->GetResultByIndex(idx).type());
+    }
+    PrintInterleave(
+        op_result_types.begin(),
+        op_result_types.end(),
+        [this](ir::Type t) { this->PrintType(t); },
+        [this]() { this->os << ","; });
   }
 
  private:
-  std::ostream& os;
   size_t cur_var_number;
   std::unordered_map<const void*, std::string> aliases;
 };
