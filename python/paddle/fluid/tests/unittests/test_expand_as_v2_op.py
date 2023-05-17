@@ -65,7 +65,9 @@ class TestExpandAsBasicFP16OP(TestExpandAsBasic):
         self.check_output_with_place(place=paddle.CUDAPlace(0))
 
     def test_check_grad(self):
-        self.check_grad_with_place(paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True)
+        self.check_grad_with_place(
+            paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True
+        )
 
 
 @unittest.skipIf(
@@ -80,10 +82,13 @@ class TestExpandAsBasicBFP16OP(TestExpandAsBasic):
     def init_inputs_and_outputs(self):
         x = np.random.rand(100).astype(np.float32)
         target_tensor = np.random.rand(2, 100).astype(np.float32)
-        self.inputs = {'X': convert_float_to_uint16(x), "Y": convert_float_to_uint16(target_tensor)}
+        self.inputs = {
+            'X': convert_float_to_uint16(x),
+            "Y": convert_float_to_uint16(target_tensor),
+        }
         self.attrs = {'target_shape': target_tensor.shape}
         bcast_dims = [2, 1]
-        output = np.tile(x , bcast_dims)
+        output = np.tile(x, bcast_dims)
         self.outputs = {'Out': convert_float_to_uint16(output)}
 
     def if_enable_cinn(self):
@@ -93,7 +98,9 @@ class TestExpandAsBasicBFP16OP(TestExpandAsBasic):
         self.check_output_with_place(place=paddle.CUDAPlace(0))
 
     def test_check_grad(self):
-        self.check_grad_with_place(paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True)
+        self.check_grad_with_place(
+            paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True
+        )
 
 
 class TestExpandAsOpRank2(TestExpandAsBasic):
@@ -118,7 +125,9 @@ class TestExpandAsOpRank2FP16OP(TestExpandAsOpRank2):
         self.check_output_with_place(place=paddle.CUDAPlace(0))
 
     def test_check_grad(self):
-        self.check_grad_with_place(paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True)
+        self.check_grad_with_place(
+            paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True
+        )
 
 
 @unittest.skipIf(
@@ -133,10 +142,13 @@ class TestExpandAsOpRank2BFP16OP(TestExpandAsOpRank2):
     def init_inputs_and_outputs(self):
         x = np.random.rand(10, 12).astype(np.float32)
         target_tensor = np.random.rand(10, 12).astype(np.float32)
-        self.inputs = {'X': convert_float_to_uint16(x), "Y": convert_float_to_uint16(target_tensor)}
+        self.inputs = {
+            'X': convert_float_to_uint16(x),
+            "Y": convert_float_to_uint16(target_tensor),
+        }
         self.attrs = {'target_shape': target_tensor.shape}
         bcast_dims = [1, 1]
-        output = np.tile(x , bcast_dims)
+        output = np.tile(x, bcast_dims)
         self.outputs = {'Out': convert_float_to_uint16(output)}
 
     def if_enable_cinn(self):
@@ -146,7 +158,9 @@ class TestExpandAsOpRank2BFP16OP(TestExpandAsOpRank2):
         self.check_output_with_place(place=paddle.CUDAPlace(0))
 
     def test_check_grad(self):
-        self.check_grad_with_place(paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True)
+        self.check_grad_with_place(
+            paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True
+        )
 
 
 class TestExpandAsOpRank3(TestExpandAsBasic):
@@ -171,7 +185,9 @@ class TestExpandAsOpRank3FP16OP(TestExpandAsOpRank3):
         self.check_output_with_place(place=paddle.CUDAPlace(0))
 
     def test_check_grad(self):
-        self.check_grad_with_place(paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True)
+        self.check_grad_with_place(
+            paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True
+        )
 
 
 @unittest.skipIf(
@@ -186,10 +202,13 @@ class TestExpandAsOpRank3BFP16OP(TestExpandAsOpRank3):
     def init_inputs_and_outputs(self):
         x = np.random.rand(2, 3, 20).astype(np.float32)
         target_tensor = np.random.rand(2, 3, 20).astype(np.float32)
-        self.inputs = {'X': convert_float_to_uint16(x), "Y": convert_float_to_uint16(target_tensor)}
+        self.inputs = {
+            'X': convert_float_to_uint16(x),
+            "Y": convert_float_to_uint16(target_tensor),
+        }
         self.attrs = {'target_shape': target_tensor.shape}
         bcast_dims = [1, 1, 1]
-        output = np.tile(x , bcast_dims)
+        output = np.tile(x, bcast_dims)
         self.outputs = {'Out': convert_float_to_uint16(output)}
 
     def if_enable_cinn(self):
@@ -199,7 +218,9 @@ class TestExpandAsOpRank3BFP16OP(TestExpandAsOpRank3):
         self.check_output_with_place(place=paddle.CUDAPlace(0))
 
     def test_check_grad(self):
-        self.check_grad_with_place(paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True)
+        self.check_grad_with_place(
+            paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True
+        )
 
 
 class TestExpandAsOpRank4(TestExpandAsBasic):
@@ -224,7 +245,9 @@ class TestExpandAsOpRank4FP16OP(TestExpandAsOpRank3):
         self.check_output_with_place(place=paddle.CUDAPlace(0))
 
     def test_check_grad(self):
-        self.check_grad_with_place(paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True)
+        self.check_grad_with_place(
+            paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True
+        )
 
 
 @unittest.skipIf(
@@ -239,10 +262,13 @@ class TestExpandAsOpRank4BFP16OP(TestExpandAsOpRank3):
     def init_inputs_and_outputs(self):
         x = np.random.rand(1, 1, 7, 16).astype(np.float32)
         target_tensor = np.random.rand(4, 6, 7, 16).astype(np.float32)
-        self.inputs = {'X': convert_float_to_uint16(x), "Y": convert_float_to_uint16(target_tensor)}
+        self.inputs = {
+            'X': convert_float_to_uint16(x),
+            "Y": convert_float_to_uint16(target_tensor),
+        }
         self.attrs = {'target_shape': target_tensor.shape}
         bcast_dims = [4, 6, 1, 1]
-        output = np.tile(x , bcast_dims)
+        output = np.tile(x, bcast_dims)
         self.outputs = {'Out': convert_float_to_uint16(output)}
 
     def if_enable_cinn(self):
@@ -252,7 +278,9 @@ class TestExpandAsOpRank4BFP16OP(TestExpandAsOpRank3):
         self.check_output_with_place(place=paddle.CUDAPlace(0))
 
     def test_check_grad(self):
-        self.check_grad_with_place(paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True)
+        self.check_grad_with_place(
+            paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True
+        )
 
 
 class TestExpandAsOpRank5(TestExpandAsBasic):
@@ -320,7 +348,7 @@ class TestExpandAsOpRank5BFP16OP(TestExpandAsOpRank5):
 
     def test_check_output(self):
         self.check_output_with_place(place=paddle.CUDAPlace(0))
-        
+
     def test_check_grad(self):
         pass
 

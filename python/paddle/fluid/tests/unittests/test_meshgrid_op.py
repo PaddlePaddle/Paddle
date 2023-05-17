@@ -105,19 +105,29 @@ class TestMeshgridOpBFP16OP(TestMeshgridOp):
             out_reshape[i] = self.shape[i]
             out_temp = np.reshape(ins[i], out_reshape)
             outs.append(np.broadcast_to(out_temp, self.shape))
-        self.inputs = {'X': [('x%d' % i, convert_float_to_uint16(ins[i])) for i in range(len(ins))]}
+        self.inputs = {
+            'X': [
+                ('x%d' % i, convert_float_to_uint16(ins[i]))
+                for i in range(len(ins))
+            ]
+        }
         self.outputs = {
-            'Out': [('out%d' % i, convert_float_to_uint16(outs[i])) for i in range(len(outs))]
+            'Out': [
+                ('out%d' % i, convert_float_to_uint16(outs[i]))
+                for i in range(len(outs))
+            ]
         }
 
     def if_enable_cinn(self):
         self.enable_cinn = False
-        
+
     def test_check_output(self):
         self.check_output_with_place(place=paddle.CUDAPlace(0))
 
     def test_check_grad(self):
-        self.check_grad_with_place(paddle.CUDAPlace(0), ['x0'], ['out0', 'out1'], check_prim=True)
+        self.check_grad_with_place(
+            paddle.CUDAPlace(0), ['x0'], ['out0', 'out1'], check_prim=True
+        )
 
 
 class TestMeshgridOp3(unittest.TestCase):

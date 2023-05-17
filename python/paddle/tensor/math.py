@@ -3718,7 +3718,10 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
     """
     if dtype is not None:
         check_dtype(
-            dtype, 'dtype', ['float32', 'float64', 'int32', 'int64', "float16", "uint16"], 'prod'
+            dtype,
+            'dtype',
+            ['float32', 'float64', 'int32', 'int64', "float16", "uint16"],
+            'prod',
         )
         if x.dtype != convert_np_dtype_to_dtype_(dtype):
             x = cast(x, dtype)

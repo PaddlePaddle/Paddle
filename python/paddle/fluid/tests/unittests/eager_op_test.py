@@ -2661,22 +2661,17 @@ class OpTest(unittest.TestCase):
             if self.dtype == np.uint16:
                 cast_inputs = []
                 for output_name in output_names:
-                    cast_input = self._find_var_in_dygraph(
-                        outputs, output_name
-                    )
+                    cast_input = self._find_var_in_dygraph(outputs, output_name)
                     cast_inputs = cast_inputs + cast_input
                 cast_outputs = []
                 for cast_input in cast_inputs:
                     if isinstance(cast_input, paddle.Tensor):
                         cast_outputs.append(
-                            paddle.cast(
-                                cast_input, core.VarDesc.VarType.FP32
-                            )
+                            paddle.cast(cast_input, core.VarDesc.VarType.FP32)
                         )
                     else:
                         raise TypeError(
-                            "Unsupported test data type %s."
-                            % type(cast_input)
+                            "Unsupported test data type %s." % type(cast_input)
                         )
 
                 outputs = {}

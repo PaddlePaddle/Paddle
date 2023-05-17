@@ -3275,7 +3275,15 @@ def expand_as(x, y, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['bool', 'float32', 'float64', 'int32', 'int64', 'float16', 'uint16'],
+            [
+                'bool',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'float16',
+                'uint16',
+            ],
             'expand_as',
         )
         check_type(y, 'y', Variable, 'expand_as')
@@ -3348,7 +3356,15 @@ def broadcast_to(x, shape, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['bool', 'uint16', 'float16', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'bool',
+                'uint16',
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+            ],
             'broadcast_to',
         )
         check_type(shape, 'shape', (list, tuple, Variable), 'broadcast_to')

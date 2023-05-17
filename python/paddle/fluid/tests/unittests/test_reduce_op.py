@@ -528,7 +528,9 @@ class TestProdFP16OP(TestProdOp):
         self.check_output_with_place(place=paddle.CUDAPlace(0))
 
     def test_check_grad(self):
-        self.check_grad_with_place(paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True)
+        self.check_grad_with_place(
+            paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True
+        )
 
 
 @unittest.skipIf(
@@ -548,12 +550,14 @@ class TestProdBFP16OP(TestProdOp):
 
     def if_enable_cinn(self):
         self.enable_cinn = False
-        
+
     def test_check_output(self):
         self.check_output_with_place(place=paddle.CUDAPlace(0))
 
     def test_check_grad(self):
-        self.check_grad_with_place(paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True)
+        self.check_grad_with_place(
+            paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True
+        )
 
 
 class TestProdOpFp64(TestProdOp):
@@ -578,7 +582,7 @@ class TestProdOp_ZeroDim(OpTest):
         self.inputs = {'X': np.random.random([]).astype("float64")}
         self.outputs = {'Out': self.inputs['X'].prod()}
         self.attrs = {'dim': [], 'reduce_all': True}
-        
+
     def test_check_output(self):
         self.check_output()
 
@@ -631,7 +635,9 @@ class TestProd6DFP16OP(TestProd6DOp):
         self.check_output_with_place(place=paddle.CUDAPlace(0))
 
     def test_check_grad(self):
-        self.check_grad_with_place(paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True)
+        self.check_grad_with_place(
+            paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True
+        )
 
 
 @unittest.skipIf(
@@ -652,12 +658,14 @@ class TestProd6DBFP16OP(TestProd6DOp):
 
     def if_enable_cinn(self):
         self.enable_cinn = False
-        
+
     def test_check_output(self):
         self.check_output_with_place(place=paddle.CUDAPlace(0))
 
     def test_check_grad(self):
-        self.check_grad_with_place(paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True)
+        self.check_grad_with_place(
+            paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True
+        )
 
 
 class TestProd8DOp(OpTest):
@@ -720,7 +728,7 @@ class TestProd8DBFP16OP(TestProd8DOp):
         out = x.prod(axis=tuple(self.attrs['dim']))
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.outputs = {'Out': convert_float_to_uint16(out)}
-        
+
     def test_check_output(self):
         self.check_output_with_place(place=paddle.CUDAPlace(0))
 
