@@ -30,7 +30,7 @@ def _c_identity(tensor, group=None):
     Args:
         tensor (Tensor): The input Tensor. Its data type
             should be float16, float32, float64, int32 or int64.
-        group (int): The id of the process group to work on.
+        group (Group): The process group to work on.
 
     Returns:
         Tensor.
@@ -70,7 +70,7 @@ def _c_identity(tensor, group=None):
         check_variable_and_dtype(
             tensor,
             'tensor',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            ['uint16', 'float16', 'float32', 'float64', 'int32', 'int64'],
             '_c_identity',
         )
 
@@ -130,7 +130,7 @@ def _c_concat(tensor, group=None):
         check_variable_and_dtype(
             tensor,
             'tensor',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            ['uint16', 'float16', 'float32', 'float64', 'int32', 'int64'],
             '_c_concat',
         )
 
@@ -196,7 +196,7 @@ def _c_split(tensor, group=None):
         check_variable_and_dtype(
             tensor,
             'tensor',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            ['uint16', 'float16', 'float32', 'float64', 'int32', 'int64'],
             '_c_split',
         )
 
@@ -278,7 +278,7 @@ def _mp_allreduce(
         check_variable_and_dtype(
             tensor,
             'tensor',
-            ['float16', 'float32', 'float64', 'int32', 'int64'],
+            ['uint16', 'float16', 'float32', 'float64', 'int32', 'int64'],
             op_type,
         )
 
@@ -469,9 +469,14 @@ def _linear(x, weight, bias=None, name=None):
         ), "X latitude is not supported greater than 3 now."
 
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64'], 'linear'
+            x, 'x', ['uint16', 'float16', 'float32', 'float64'], 'linear'
         )
-        check_dtype(dtype, 'dtype', ['float16', 'float32', 'float64'], 'linear')
+        check_dtype(
+            dtype,
+            'dtype',
+            ['uint16', 'float16', 'float32', 'float64'],
+            'linear',
+        )
 
         inputs = {'X': [x], 'Y': [weight]}
         attrs = {
