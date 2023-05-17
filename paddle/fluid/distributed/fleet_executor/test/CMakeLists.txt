@@ -49,6 +49,7 @@ cc_test_old(
   elementwise_add_op
   scope
   device_context
+  naive_executor
   ${BRPC_DEPS})
 
 if(WITH_DISTRIBUTE AND NOT WITH_PSLIB)
