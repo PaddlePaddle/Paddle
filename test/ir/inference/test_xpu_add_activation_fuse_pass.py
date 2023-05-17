@@ -13,27 +13,28 @@
 # limitations under the License.
 
 import unittest
+from functools import partial
 
 import hypothesis.strategies as st
+import numpy as np
 from auto_scan_test import PassAutoScanTest
 from program_config import OpConfig, ProgramConfig, TensorConfig
 
 
-class TestFcXPUFusePass(PassAutoScanTest):
+class TestAddActXPUFusePass(PassAutoScanTest):
+    def sample_predictor_configs(self, program_config):
+        config = self.create_inference_config(use_xpu=True)
+        yield config, ["add_act_xpu"], (1e-3, 1e-3)
+
     def sample_program_config(self, draw):
-        # 1. elementwise_add
-        # Generate shape of input:X of ele_add
-        x_shape = draw(
-            st.lists(
-                st.integers(min_value=1, max_value=4), min_size=2, max_size=4
+        batch_size = draw(st.integers(min_value=1, max_value=50))
+
+        # Generate shape of input:X Y of ele_add
+        def generate_input():
+            return np.random.random([batch_size, 3, 100, 100]).astype(
+                np.float32
             )
-        )
-        # Generate legal shape of input:Y of ele_add
-        y_shape = draw(
-            st.lists(
-                st.integers(min_value=1, max_value=8), min_size=2, max_size=4
-            )
-        )
+
         axis = -1
 
         # Here we will compose a program
@@ -47,7 +48,9 @@ class TestFcXPUFusePass(PassAutoScanTest):
             axis=axis,
         )
         relu_op = OpConfig(
-            "relu", inputs={"X": ["add_out"]}, outputs={"Out": ["relu_out"]}
+            "relu",
+            inputs={"X": ["eltwise_output"]},
+            outputs={"Out": ["relu_out"]},
         )
         mini_graph = [elementwise_op, relu_op]
 
@@ -55,16 +58,12 @@ class TestFcXPUFusePass(PassAutoScanTest):
             ops=mini_graph,
             weights={},
             inputs={
-                "eltwise_X": TensorConfig(shape=x_shape),
-                "eltwise_Y": TensorConfig(shape=y_shape),
+                "eltwise_X": TensorConfig(data_gen=partial(generate_input)),
+                "eltwise_Y": TensorConfig(data_gen=partial(generate_input)),
             },
             outputs=mini_graph[-1].outputs["Out"],
         )
         return program_config
-
-    def sample_predictor_configs(self, program_config):
-        config = self.create_inference_config(use_xpu=True)
-        yield config, ["add_act_xpu"], (1e-3, 1e-3)
 
     def test(self):
         self.run_and_statis(
