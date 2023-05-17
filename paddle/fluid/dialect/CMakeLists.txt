@@ -6,4 +6,4 @@ file(GLOB PD_DIALECT_SRCS "*.cc")
 cc_library(
   pd_dialect
   SRCS ${PD_DIALECT_SRCS}
-  DEPS new_ir framework_proto dense_tensor)
+  DEPS new_ir framework_proto phi)
