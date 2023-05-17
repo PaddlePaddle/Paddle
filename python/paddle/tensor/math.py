@@ -830,8 +830,8 @@ def floor_divide(x, y, name=None):
         Also note that the name ``floor_divide`` can be misleading, as the quotinents are actually rounded toward zero, not toward negative infinite.
 
     Args:
-        x (Tensor): the input tensor, it's data type should be int32, int64, float32, float64.
-        y (Tensor): the input tensor, it's data type should be int32, int64, float32, float64.
+        x (Tensor): the input tensor, it's data type should be uint8, int8, int32, int64, float32, float64, float16, bfloat16.
+        y (Tensor): the input tensor, it's data type should be uint8, int8, int32, int64, float32, float64, float16, bfloat16.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
