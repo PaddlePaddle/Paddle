@@ -20,6 +20,7 @@ KernelSignature DistributedFusedLambOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   return KernelSignature("distributed_fused_lamb",
                          {"Param",
+                          "Grad",
                           "FP32FusedParam",
                           "FP32FusedGrad",
                           "FP16FusedParam",
@@ -43,6 +44,7 @@ KernelSignature DistributedFusedLambOpArgumentMapping(
                           "weight_decay",
                           "clip_after_allreduce",
                           "use_master_param_norm",
+                          "use_master_acc_grad",
                           "is_grad_scaled_by_nranks",
                           "use_hierarchical_allreduce",
                           "nranks",
@@ -55,6 +57,7 @@ KernelSignature DistributedFusedLambOpArgumentMapping(
                           "Moment2Out",
                           "Beta1PowOut",
                           "Beta2PowOut",
+                          "ParamOut",
                           "FoundInf",
                           "AccStep",
                           "StopUpdate",
