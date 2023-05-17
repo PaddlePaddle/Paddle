@@ -32,13 +32,12 @@ void DataFlowSolver::InitializeAndRun(Operation* top) {
 
 DataFlowAnalysis::DataFlowAnalysis(DataFlowSolver& solver) : solver_{solver} {}
 
-void DataFlowAnalysis::AddDependency(AnalysisState* state,
-                                     DataFlowAnalysis* analysis,
-                                     ProgramPoint point) {
+void DataFlowAnalysis::AddDependency(AnalysisState* state, ProgramPoint point) {
   solver_.AddDependency(state, this, point);
 }
 
-void DataFlowAnalysis::PropagateIfChanged(AnalysisState* state, bool changed) {
+void DataFlowAnalysis::PropagateIfChanged(AnalysisState* state,
+                                          ChangeStatus changed) {
   solver_.PropagateIfChanged(state, changed);
 }
 
