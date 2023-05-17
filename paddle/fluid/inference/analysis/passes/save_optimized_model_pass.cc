@@ -15,14 +15,9 @@ limitations under the License. */
 #include "paddle/fluid/inference/analysis/passes/save_optimized_model_pass.h"
 
 #include <unordered_set>
-#include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/executor.h"
-#include "paddle/fluid/framework/ir/fuse_pass_base.h"
-#include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
-#include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/phi/common/backend.h"
 
 namespace paddle {
 namespace inference {
@@ -75,7 +70,7 @@ void SaveOptimizedModelPass::SaveOptimizedModel(Argument* argument) {
   auto SerializeParams = [&](const std::string& path) {
     framework::ProgramDesc save_program;
     auto* save_block = save_program.MutableBlock(0);
-    std::set<std::string> save_var_set;
+    std::unordered_set<std::string> save_var_set;
     for (size_t i = 0; i < optimized_program_desc.Size(); ++i) {
       const auto& global_block = optimized_program_desc.Block(i);
       for (framework::VarDesc* var : global_block.AllVars()) {
