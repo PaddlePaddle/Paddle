@@ -25,8 +25,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-
 import numpy as np
 
 import paddle
@@ -46,29 +44,6 @@ _hcg = None
 _use_cache = False
 _enable_partial_send_recv = True
 _timers = None
-
-_xpu_comm_group_started = False
-
-_sync_send = os.environ.get("PADDLE_P2P_SYNC_SEND", "0")
-_sync_send = _sync_send.lower() in ['1', 'true']
-
-
-def _xpu_comm_group_start():
-    if not paddle.is_compiled_with_xpu():
-        return
-    global _xpu_comm_group_started
-    assert not _xpu_comm_group_started
-    framework.core.ProcessGroupBKCL.group_start()
-    _xpu_comm_group_started = True
-
-
-def _xpu_comm_group_end():
-    if not paddle.is_compiled_with_xpu():
-        return
-    global _xpu_comm_group_started
-    if _xpu_comm_group_started:
-        framework.core.ProcessGroupBKCL.group_end()
-        _xpu_comm_group_started = False
 
 
 def initialize_p2p_groups(
