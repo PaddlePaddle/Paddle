@@ -62,7 +62,7 @@ class AbstractType {
   ///
   /// \return The dialect this type was registered to.
   ///
-  const Dialect &dialect() const { return dialect_; }
+  Dialect &dialect() const { return const_cast<Dialect &>(dialect_); }
 
   ///
   /// \brief Find the AbstractType instance whose TypeId is type_id from

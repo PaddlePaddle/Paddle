@@ -716,10 +716,10 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
         We use the dtype conversion rules following this:
                 Keep dtype
         np.number ───────────► paddle.Tensor
-                                (0D-Tensor)
+                                (0-D Tensor)
                     default_dtype
         Python Number ───────────────► paddle.Tensor
-                                        (0D-Tensor)
+                                        (0-D Tensor)
                     Keep dtype
         np.ndarray ───────────► paddle.Tensor
 
@@ -752,7 +752,6 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
         #        1)
 
         x = paddle.to_tensor(1, stop_gradient=False)
-        print(x)
         # Tensor(shape=[], dtype=int64, place=CPUPlace, stop_gradient=False,
         #        1)
 

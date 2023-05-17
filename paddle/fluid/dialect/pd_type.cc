@@ -12,23 +12,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/ir/builtin_type.h"
+#include "paddle/fluid/dialect/pd_type.h"
 
-namespace ir {
+namespace paddle {
+namespace dialect {
 const ir::Type& DenseTensorType::dtype() const { return storage()->dtype_; }
 
-const ir::DenseTensorTypeStorage::Dim& DenseTensorType::dim() const {
+const paddle::dialect::DenseTensorTypeStorage::Dim& DenseTensorType::dim()
+    const {
   return storage()->dims_;
 }
 
-const ir::DenseTensorTypeStorage::DataLayout& DenseTensorType::data_layout()
-    const {
+const paddle::dialect::DenseTensorTypeStorage::DataLayout&
+DenseTensorType::data_layout() const {
   return storage()->layout_;
 }
 
-const ir::DenseTensorTypeStorage::LoD& DenseTensorType::lod() const {
+const paddle::dialect::DenseTensorTypeStorage::LoD& DenseTensorType::lod()
+    const {
   return storage()->lod_;
 }
 
 const size_t& DenseTensorType::offset() const { return storage()->offset_; }
-}  // namespace ir
+
+}  // namespace dialect
+}  // namespace paddle

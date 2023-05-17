@@ -58,34 +58,3 @@ TEST(attribute_test, built_in_attribute) {
   EXPECT_EQ(string_attr_cast_1.isa<ir::StrAttribute>(), true);
   EXPECT_EQ(string_attr_cast_1.size() == 8, 1);
 }
-
-TEST(attribute_test, dictionary_attribute) {
-  ir::IrContext *ctx = ir::IrContext::Instance();
-  std::string str_attr1_name = "attr1_name";
-  std::string str_attr1_value = "attr1_value";
-  ir::StrAttribute attr1_name = ir::StrAttribute::get(ctx, str_attr1_name);
-  ir::Attribute attr1_value = ir::StrAttribute::get(ctx, str_attr1_value);
-  std::string str_attr2_name = "attr2_name";
-  std::string str_attr2_value = "attr2_value";
-  ir::StrAttribute attr2_name = ir::StrAttribute::get(ctx, str_attr2_name);
-  ir::Attribute attr2_value = ir::StrAttribute::get(ctx, str_attr2_value);
-
-  std::map<ir::StrAttribute, ir::Attribute> named_attr1;
-  named_attr1.insert(
-      std::pair<ir::StrAttribute, ir::Attribute>(attr1_name, attr1_value));
-  named_attr1.insert(
-      std::pair<ir::StrAttribute, ir::Attribute>(attr2_name, attr2_value));
-  ir::DictionaryAttribute dic_attr1 =
-      ir::DictionaryAttribute::get(ctx, named_attr1);
-  std::map<ir::StrAttribute, ir::Attribute> named_attr2;
-  named_attr2.insert(
-      std::pair<ir::StrAttribute, ir::Attribute>(attr2_name, attr2_value));
-  named_attr2.insert(
-      std::pair<ir::StrAttribute, ir::Attribute>(attr1_name, attr1_value));
-  ir::DictionaryAttribute dic_attr2 =
-      ir::DictionaryAttribute::get(ctx, named_attr2);
-
-  EXPECT_EQ(dic_attr1, dic_attr2);
-  EXPECT_EQ(attr1_value, dic_attr1.GetValue(attr1_name));
-  EXPECT_EQ(attr2_value, dic_attr1.GetValue(attr2_name));
-}

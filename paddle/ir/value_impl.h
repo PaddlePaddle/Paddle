@@ -31,6 +31,10 @@ class OpOperandImpl {
 
   ir::detail::OpOperandImpl *next_use();
 
+  ir::Value source() const;
+
+  void release_source();
+
   /// Remove this operand from the current use list.
   void remove_from_ud_chain();
 

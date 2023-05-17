@@ -91,7 +91,7 @@ def _scatter_in_static_mode(
                 )
         else:
             tensor_list = [tensor for _ in range(nranks)]
-        # 0D use stack/unstack while others use concat/split
+        # 0-D use stack/unstack while others use concat/split
         if len(tensor_list[0].shape) == 0:
             input_tensor = paddle.stack(tensor_list, axis=0)
         else:
