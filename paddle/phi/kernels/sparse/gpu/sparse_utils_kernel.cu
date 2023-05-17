@@ -164,18 +164,20 @@ void DenseToCooKernel(const Context& dev_ctx,
   T* sparse_data = dev_ctx.template Alloc<T>(&values);
 
   // 3. calc indices by indexs and get values by indexs
-  config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, non_zero_num, 1);
-  GetNonZeroElementsAndIndices<<<config.block_per_grid.x,
-                                 config.thread_per_block.x,
-                                 0,
-                                 dev_ctx.stream()>>>(x_data,
-                                                     sparse_dim,
-                                                     cols,
-                                                     d_x_dims.data<int64_t>(),
-                                                     non_zero_num,
-                                                     temp_indexs_ptr,
-                                                     indices_data,
-                                                     sparse_data);
+  if (non_zero_num > 0) {
+    config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, non_zero_num, 1);
+    GetNonZeroElementsAndIndices<<<config.block_per_grid.x,
+                                   config.thread_per_block.x,
+                                   0,
+                                   dev_ctx.stream()>>>(x_data,
+                                                       sparse_dim,
+                                                       cols,
+                                                       d_x_dims.data<int64_t>(),
+                                                       non_zero_num,
+                                                       temp_indexs_ptr,
+                                                       indices_data,
+                                                       sparse_data);
+  }
 
   out->SetMember(indices, values, x_dims, true);
 }
@@ -218,7 +220,19 @@ void CsrToCooGPUKernel(const GPUContext& dev_ctx,
                        SparseCooTensor* out) {
   const DDim& x_dims = x.dims();
   const int64_t non_zero_num = x.cols().numel();
+  int64_t sparse_dim = 2;
+  if (x_dims.size() == 3) {
+    sparse_dim = 3;
+  }
+
   if (x.nnz() <= 0) {
+#ifdef PADDLE_WITH_HIP
+    DenseTensor indices = phi::Empty<int>(dev_ctx, {sparse_dim, non_zero_num});
+#else
+    DenseTensor indices = phi::Empty<IntT>(dev_ctx, {sparse_dim, non_zero_num});
+#endif
+    DenseTensor values = phi::EmptyLike<T, GPUContext>(dev_ctx, x.values());
+    out->SetMember(indices, values, x_dims, true);
     return;
   }
 
@@ -238,10 +252,6 @@ void CsrToCooGPUKernel(const GPUContext& dev_ctx,
   const auto& csr_values = x.values();
   const T* csr_values_data = csr_values.data<T>();
 
-  int64_t sparse_dim = 2;
-  if (x_dims.size() == 3) {
-    sparse_dim = 3;
-  }
   int batches = x_dims.size() == 2 ? 1 : x_dims[0];
   int rows = x_dims.size() == 2 ? x_dims[0] : x_dims[1];
 
@@ -398,9 +408,6 @@ void CooToCsrGPUKernel(const GPUContext& dev_ctx,
                     phi::errors::InvalidArgument(
                         "SparseCsrTensor only support 2-D or 3-D matrix"));
   const int64_t non_zero_num = x.nnz();
-  if (non_zero_num <= 0) {
-    return;
-  }
 
   int batchs = x_dims.size() == 2 ? 1 : x_dims[0];
   int rows = x_dims.size() == 2 ? x_dims[0] : x_dims[1];
@@ -408,6 +415,10 @@ void CooToCsrGPUKernel(const GPUContext& dev_ctx,
   phi::DenseTensor crows = phi::Empty<IntT>(dev_ctx, {batchs * (rows + 1)});
   phi::DenseTensor cols = phi::Empty<IntT>(dev_ctx, {non_zero_num});
   phi::DenseTensor values = phi::EmptyLike<T, GPUContext>(dev_ctx, x.values());
+  if (non_zero_num <= 0) {
+    out->SetMember(crows, cols, values, x_dims);
+    return;
+  }
   IntT* csr_crows_data = crows.data<IntT>();
   IntT* csr_cols_data = cols.data<IntT>();
   T* csr_values_data = values.data<T>();
@@ -508,7 +519,6 @@ void CooToDenseGPUKernel(const GPUContext& dev_ctx,
   const int64_t dense_dim = values.dims().size() - 1;
 
   const auto place = dev_ctx.GetPlace();
-  const T* x_data = values.data<T>();
   dev_ctx.template Alloc<T>(out);
 
   T* out_data = out->data<T>();
@@ -519,6 +529,7 @@ void CooToDenseGPUKernel(const GPUContext& dev_ctx,
     return;
   }
 
+  const T* x_data = values.data<T>();
   int64_t base_offset = 1;
   for (int64_t i = 0; i < dense_dim; i++) {
     base_offset *= dense_dims[sparse_dim + i];
