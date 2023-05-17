@@ -3583,11 +3583,27 @@ int GraphDataGenerator::FillInferBuf() {
     }
 
     size_t device_key_size = h_device_keys_len_[0][infer_cursor];
-    total_row_[0] =
-        (global_infer_node_type_start[infer_cursor] + conf_.buf_size <=
-         device_key_size)
-            ? conf_.buf_size
-            : device_key_size - global_infer_node_type_start[infer_cursor];
+    if (conf_.is_multi_node) {
+      int local_reach_end = global_infer_node_type_start[infer_cursor] + conf_.buf_size >= 
+                            device_key_size;
+      int global_reach_end = dynamic_adjust_total_row_for_infer(local_reach_end);
+      int remain = device_key_size - global_infer_node_type_start[infer_cursor];
+      if (global_reach_end) {
+        total_row_[0] = remain;
+      } else {
+        if (local_reach_end) {
+          total_row_[0] = remain / 2;
+        } else {
+          total_row_[0] = conf_.buf_size;
+        }
+      }
+    } else {
+      total_row_[0] =
+          (global_infer_node_type_start[infer_cursor] + conf_.buf_size <=
+           device_key_size)
+              ? conf_.buf_size
+              : device_key_size - global_infer_node_type_start[infer_cursor];
+    }
 
     uint64_t *d_type_keys =
         reinterpret_cast<uint64_t *>(d_device_keys_[0][infer_cursor]->ptr());
@@ -3600,9 +3616,11 @@ int GraphDataGenerator::FillInferBuf() {
                       sample_stream_);
       cudaStreamSynchronize(sample_stream_);
     }
-    VLOG(1) << "cursor: " << infer_cursor
+    VLOG(1) << "gpuid: " << conf_.gpuid
+            << " cursor: " << infer_cursor
             << " start: " << global_infer_node_type_start[infer_cursor]
-            << " num: " << total_row_[0];
+            << " num: " << total_row_[0]
+            << " device_key_size: " << device_key_size;
     infer_node_start_ = global_infer_node_type_start[infer_cursor];
     global_infer_node_type_start[infer_cursor] += total_row_[0];
     infer_node_end_ = global_infer_node_type_start[infer_cursor];
@@ -4083,6 +4101,37 @@ int GraphDataGenerator::dynamic_adjust_batch_num_for_sage() {
           << " max_batch_num: " << thread_max_batch_num
           << " new_batch_size:  " << new_batch_size;
   return new_batch_size;
+}
+
+int GraphDataGenerator::dynamic_adjust_total_row_for_infer(int local_reach_end) {
+  auto send_buff = memory::Alloc(
+      place_,
+      2 * sizeof(int),
+      phi::Stream(reinterpret_cast<phi::StreamId>(sample_stream_)));
+  int *send_buff_ptr = reinterpret_cast<int *>(send_buff->ptr());
+  cudaMemcpyAsync(send_buff_ptr,
+                  &local_reach_end,
+                  sizeof(int),
+                  cudaMemcpyHostToDevice,
+                  sample_stream_);
+  cudaStreamSynchronize(sample_stream_);
+  auto comm =
+      platform::NCCLCommContext::Instance().Get(0, place_.GetDeviceId());
+  PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(&send_buff_ptr[0],
+                                                              &send_buff_ptr[1],
+                                                              1,
+                                                              ncclInt,
+                                                              ncclProd,
+                                                              comm->comm(),
+                                                              sample_stream_));
+  int global_reach_end = 0;
+  cudaMemcpyAsync(&global_reach_end,
+                  &send_buff_ptr[1],
+                  sizeof(int),
+                  cudaMemcpyDeviceToHost,
+                  sample_stream_);
+  cudaStreamSynchronize(sample_stream_);
+  return global_reach_end;
 }
 
 }  // namespace framework
