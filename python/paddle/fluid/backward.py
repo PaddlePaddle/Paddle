@@ -387,7 +387,7 @@ def _create_op_desc_(op_type, inputs, outputs, attrs):
 
 
 def _create_loss_op_desc_(loss):
-    # 0D Tensor or 0-Size Tensor
+    # 0-D Tensor or 0-Size Tensor
     if len(loss.shape) == 0 or 0 in loss.shape:
         create_shape = loss.shape
     else:
@@ -464,9 +464,10 @@ def _strip_grad_suffix_(name):
          x@GRAD@GRAD ==> x
          y@GRAD@RENAME@1 ==> y
          z@GRAD_slice_0@GRAD ==> z@GRAD_slice_0
+         grad/grad/z@GRAD@RENAME@block0@1@GRAD ==> z
     """
-    pos = re.search(f'{core.grad_var_suffix()}$', name) or re.search(
-        f'{core.grad_var_suffix()}@', name
+    pos = re.search(f'{core.grad_var_suffix()}+@', name) or re.search(
+        f'{core.grad_var_suffix()}$', name
     )
     new_name = name[: pos.start()] if pos is not None else name
     new_pos = name.rfind('grad/')
@@ -2347,7 +2348,7 @@ def _find_op_path_(
         for i, op in enumerate(block.ops):
             if _some_in_set_(
                 op.desc.input_arg_names(), input_names
-            ) and core.has_non_empty_grad_op_maker(op.type):
+            ) and not core.has_empty_grad_op_maker(op.type):
                 for name in op.desc.output_arg_names():
                     if name not in no_grad_set:
                         input_names.add(name)
@@ -2366,7 +2367,7 @@ def _find_op_path_(
 
         if _some_in_set_(
             op.desc.output_arg_names(), output_names
-        ) and core.has_non_empty_grad_op_maker(op.type):
+        ) and not core.has_empty_grad_op_maker(op.type):
             for name in op.desc.input_arg_names():
                 if name not in no_grad_set:
                     output_names.add(name)
@@ -2381,7 +2382,7 @@ def _find_op_path_(
                 op.desc.output_arg_names(), output_names
             ):
                 relevant_op_flags[i] = True
-                if core.has_non_empty_grad_op_maker(op.type):
+                if not core.has_empty_grad_op_maker(op.type):
                     for name in op.desc.input_arg_names():
                         if name not in no_grad_set:
                             output_names.add(name)
