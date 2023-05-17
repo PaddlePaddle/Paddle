@@ -16,7 +16,7 @@ import os
 import unittest
 
 from paddle.distributed.fleet.utils.fs import HDFSClient, LocalFS
-from paddle.fluid.tests.unittests.hdfs_test_utils import FSTestBase
+from legacy_test.hdfs_test_utils import FSTestBase
 
 java_home = os.environ["JAVA_HOME"]
 

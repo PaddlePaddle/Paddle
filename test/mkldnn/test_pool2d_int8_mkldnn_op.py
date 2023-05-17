@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 from paddle.fluid import core
-from paddle.fluid.tests.unittests.eager_op_test import OpTest
-from paddle.fluid.tests.unittests.test_pool2d_op import (
+from legacy_test.eager_op_test import OpTest
+from legacy_test.test_pool2d_op import (
     TestPool2D_Op,
     max_pool2D_forward_naive,
 )

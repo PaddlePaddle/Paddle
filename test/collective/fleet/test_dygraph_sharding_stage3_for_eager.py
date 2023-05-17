@@ -13,10 +13,8 @@
 # limitations under the License.
 
 import unittest
-import sys
 
-sys.path.append("../../legacy_test")
-from test_parallel_dygraph_dataparallel import TestMultipleGpus
+from legacy_test.test_parallel_dygraph_dataparallel import TestMultipleGpus
 
 
 class TestDygraphShardingStage3(TestMultipleGpus):

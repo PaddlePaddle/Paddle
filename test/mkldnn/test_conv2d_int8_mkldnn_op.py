@@ -18,8 +18,8 @@ import unittest
 import numpy as np
 
 from paddle.fluid import core
-from paddle.fluid.tests.unittests.eager_op_test import OpTest
-from paddle.fluid.tests.unittests.test_conv2d_op import (
+from legacy_test.eager_op_test import OpTest
+from legacy_test.test_conv2d_op import (
     TestConv2DOp,
     conv2d_forward_naive,
 )

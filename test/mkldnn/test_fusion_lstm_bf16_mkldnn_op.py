@@ -17,11 +17,11 @@ import unittest
 import numpy as np
 
 from paddle.fluid import core
-from paddle.fluid.tests.unittests.eager_op_test import (
+from legacy_test.eager_op_test import (
     OpTest,
     convert_float_to_uint16,
 )
-from paddle.fluid.tests.unittests.test_fusion_lstm_op import (
+from legacy_test.test_fusion_lstm_op import (
     ACTIVATION,
     fusion_lstm,
 )

@@ -14,7 +14,7 @@
 
 import unittest
 
-from paddle.fluid.tests.unittests.test_fusion_lstm_op import TestFusionLSTMOp
+from legacy_test.test_fusion_lstm_op import TestFusionLSTMOp
 
 
 class TestFusionLSTMONEDNNOp(TestFusionLSTMOp):

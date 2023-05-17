@@ -16,7 +16,7 @@ import os
 import shutil
 import unittest
 
-from test_parallel_dygraph_dataparallel import TestMultipleGpus
+from legacy_test.test_parallel_dygraph_dataparallel import TestMultipleGpus
 
 import paddle
 from paddle.distributed.fleet.utils.pp_parallel_adaptor import (

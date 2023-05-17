@@ -18,7 +18,7 @@ import numpy as np
 
 import paddle
 from paddle.fluid import core
-from paddle.fluid.tests.unittests.eager_op_test import OpTest, OpTestTool
+from legacy_test.eager_op_test import OpTest, OpTestTool
 
 
 class TestShape3DFP32OneDNNOp(OpTest):

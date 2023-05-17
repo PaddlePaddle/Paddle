@@ -21,12 +21,12 @@ from paddle import enable_static
 from paddle.fluid import core
 
 sys.path.append("..")
-from paddle.fluid.tests.unittests.eager_op_test import (
+from legacy_test.eager_op_test import (
     OpTest,
     OpTestTool,
     convert_float_to_uint16,
 )
-from paddle.fluid.tests.unittests.test_pool2d_op import (
+from legacy_test.test_pool2d_op import (
     TestPool2D_Op_Mixin,
     adaptive_end_index,
     adaptive_start_index,

@@ -29,7 +29,9 @@ set(third_party_deps)
 
 include(ProcessorCount)
 ProcessorCount(NPROC)
-
+if(NOT WITH_SETUP_INSTALL)
+  execute_process(COMMAND git submodule update --init --recursive)
+endif()
 # cache funciton to avoid repeat download code of third_party.
 # This function has 4 parameters, URL / REPOSITOR / TAG / DIR:
 # 1. URL:           specify download url of 3rd party

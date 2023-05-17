@@ -19,7 +19,7 @@ import numpy as np
 from paddle import enable_static
 from paddle.fluid import core
 from paddle.fluid.framework import _current_expected_place
-from paddle.fluid.tests.unittests.eager_op_test import (
+from legacy_test.eager_op_test import (
     OpTest,
     OpTestTool,
     convert_float_to_uint16,

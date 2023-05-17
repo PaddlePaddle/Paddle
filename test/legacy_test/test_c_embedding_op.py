@@ -14,7 +14,7 @@
 
 import unittest
 
-from paddle.fluid.tests.unittests.c_embedding_op_base import (
+from legacy_test.c_embedding_op_base import (
     TestCEmbeddingCPU,
     TestCEmbeddingOpBase,
     TestCEmbeddingOpFP32,

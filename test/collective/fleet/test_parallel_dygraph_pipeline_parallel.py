@@ -15,7 +15,7 @@
 import os
 import unittest
 
-from test_parallel_dygraph_dataparallel import TestMultipleGpus
+from legacy_test.test_parallel_dygraph_dataparallel import TestMultipleGpus
 
 
 class TestHybridPipeParallel(TestMultipleGpus):

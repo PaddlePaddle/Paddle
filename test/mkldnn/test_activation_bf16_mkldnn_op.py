@@ -19,12 +19,12 @@ import numpy as np
 from scipy.special import erf
 
 from paddle.fluid import core
-from paddle.fluid.tests.unittests.eager_op_test import (
+from eager_op_test import (
     OpTestTool,
     convert_float_to_uint16,
 )
-from paddle.fluid.tests.unittests.test_activation_op import TestActivation
-from paddle.fluid.tests.unittests.test_gelu_op import gelu
+from test_activation_op import TestActivation
+from test_gelu_op import gelu
 
 
 @OpTestTool.skip_if_not_cpu_bf16()

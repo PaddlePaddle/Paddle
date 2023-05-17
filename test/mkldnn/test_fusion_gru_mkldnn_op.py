@@ -14,7 +14,7 @@
 
 import unittest
 
-from paddle.fluid.tests.unittests.test_fusion_gru_op import TestFusionGRUOp
+from legacy_test.test_fusion_gru_op import TestFusionGRUOp
 
 
 class TestFusionGRUMKLDNNOp(TestFusionGRUOp):

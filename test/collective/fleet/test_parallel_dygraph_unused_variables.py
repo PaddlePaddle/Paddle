@@ -13,13 +13,11 @@
 # limitations under the License.
 
 import os
-import sys
 import unittest
 
-sys.path.append("../../legacy_test")
-from parallel_dygraph_unused_variables import TestSparseEmbeddingUnusedVars
-from spawn_runner_base import TestDistSpawnRunner
-from test_dist_base import TestDistBase
+from legacy_test.parallel_dygraph_unused_variables import TestSparseEmbeddingUnusedVars
+from legacy_test.spawn_runner_base import TestDistSpawnRunner
+from legacy_test.test_dist_base import TestDistBase
 
 from paddle import fluid
 

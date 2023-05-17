@@ -14,7 +14,7 @@
 
 import unittest
 
-import test_collective_api_base as test_base
+from legacy_test import test_collective_api_base as test_base
 
 
 class TestCollectiveIsendIrecvAPI(test_base.TestDistBase):
