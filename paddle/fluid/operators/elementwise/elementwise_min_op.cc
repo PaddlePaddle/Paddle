@@ -87,7 +87,14 @@ class ElementwiseMinCompositeGradOpMaker
     auto* dy_ptr = this->GetOutputPtr(&dy);
     std::string dy_name = this->GetOutputName(dy);
     VLOG(6) << "Runing minimum_grad composite func";
-    prim::minimum_grad<prim::DescTensor>(x, y, out_grad, dx_ptr, dy_ptr);
+    int axis = static_cast(this->Attr("axis"));
+    PADDLE_ENFORCE_EQ(
+        axis,
+        -1,
+        phi::errors::InvalidArgument(
+            "We only support axis = -1 in composite minimum_grad but we got: ",
+            axis));
+    prim::minimum_grad<prim::DescTensor>(x, y, out_grad, axis, dx_ptr, dy_ptr);
     this->RecoverOutputName(dx, dx_name);
     this->RecoverOutputName(dy, dy_name);
   }
