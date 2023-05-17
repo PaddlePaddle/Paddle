@@ -113,7 +113,15 @@ void CsrToCooCPUKernel(const CPUContext& dev_ctx,
                        SparseCooTensor* out) {
   const DDim& x_dims = x.dims();
   const int64_t non_zero_num = x.cols().numel();
+  int64_t sparse_dim = 2;
+  if (x_dims.size() == 3) {
+    sparse_dim = 3;
+  }
+  phi::DenseTensor indices =
+      phi::Empty<IntT>(dev_ctx, {sparse_dim, non_zero_num});
+  phi::DenseTensor values = phi::Empty<T>(dev_ctx, {non_zero_num});
   if (x.nnz() <= 0) {
+    out->SetMember(indices, values, x_dims, true);
     return;
   }
   const auto& csr_crows = x.crows();
@@ -123,13 +131,6 @@ void CsrToCooCPUKernel(const CPUContext& dev_ctx,
   const IntT* csr_cols_data = csr_cols.data<IntT>();
   const T* csr_values_data = csr_values.data<T>();
 
-  int64_t sparse_dim = 2;
-  if (x_dims.size() == 3) {
-    sparse_dim = 3;
-  }
-  phi::DenseTensor indices =
-      phi::Empty<IntT>(dev_ctx, {sparse_dim, non_zero_num});
-  phi::DenseTensor values = phi::Empty<T>(dev_ctx, {non_zero_num});
   IntT* coo_indices = indices.data<IntT>();
   IntT* batch_ptr = x_dims.size() == 2 ? nullptr : coo_indices;
   IntT* coo_rows_data =
@@ -180,9 +181,6 @@ void CooToCsrCPUKernel(const CPUContext& dev_ctx,
                     phi::errors::InvalidArgument(
                         "SparseCsrTensor only support 2-D or 3-D matrix"));
   const int64_t non_zero_num = x.nnz();
-  if (non_zero_num <= 0) {
-    return;
-  }
 
   int batchs = x_dims.size() == 2 ? 1 : x_dims[0];
   int rows = x_dims.size() == 2 ? x_dims[0] : x_dims[1];
@@ -190,6 +188,10 @@ void CooToCsrCPUKernel(const CPUContext& dev_ctx,
   phi::DenseTensor crows = phi::Empty<IntT>(dev_ctx, {batchs * (rows + 1)});
   phi::DenseTensor cols = phi::Empty<IntT>(dev_ctx, {non_zero_num});
   phi::DenseTensor values = phi::EmptyLike<T, CPUContext>(dev_ctx, x.values());
+  if (non_zero_num <= 0) {
+    out->SetMember(crows, cols, values, x_dims);
+    return;
+  }
   IntT* csr_crows_data = crows.data<IntT>();
   IntT* csr_cols_data = cols.data<IntT>();
   T* csr_values_data = values.data<T>();
