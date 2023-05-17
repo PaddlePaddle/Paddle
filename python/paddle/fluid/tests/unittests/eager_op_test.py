@@ -2664,7 +2664,7 @@ class OpTest(unittest.TestCase):
                     cast_outputs = paddle.cast(
                         cast_inputs, core.VarDesc.VarType.FP32
                     )
-                elif isinstance(cast_inputs, list):
+                elif isinstance(cast_inputs, (list, tuple)):
                     cast_outputs = []
                     for cast_input in cast_inputs:
                         if isinstance(cast_input, paddle.Tensor):
