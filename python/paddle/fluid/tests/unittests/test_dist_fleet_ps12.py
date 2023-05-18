@@ -54,14 +54,18 @@ class TestPSPassWithBow(unittest.TestCase):
         def get_loss(cos_q_pt, cos_q_nt):
             loss_op1 = paddle.subtract(
                 paddle.full(
-                    shape=[cos_q_pt[0], 1], fill_value=margin, dtype='float32'
+                    shape=[cos_q_pt.shape[0], 1],
+                    fill_value=margin,
+                    dtype='float32',
                 ),
                 cos_q_pt,
             )
             loss_op2 = paddle.add(loss_op1, cos_q_nt)
             loss_op3 = paddle.maximum(
                 paddle.full(
-                    shape=[loss_op2[0], 1], fill_value=0.0, dtype='float32'
+                    shape=[loss_op2.shape[0], 1],
+                    fill_value=0.0,
+                    dtype='float32',
                 ),
                 loss_op2,
             )

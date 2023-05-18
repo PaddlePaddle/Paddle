@@ -342,12 +342,12 @@ class MultiHeadAttention(Layer):
             return self.StaticCache(k, v)
         elif value is None:  # incremental_state
             k = paddle.full(
-                shape=[key[0], self.num_heads, 0, self.head_dim],
+                shape=[key.shape[0], self.num_heads, 0, self.head_dim],
                 fill_value=0,
                 dtype=key.dtype,
             )
             v = paddle.full(
-                shape=[key[0], self.num_heads, 0, self.head_dim],
+                shape=[key.shape[0], self.num_heads, 0, self.head_dim],
                 fill_value=0,
                 dtype=key.dtype,
             )

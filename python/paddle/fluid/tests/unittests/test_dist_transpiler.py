@@ -425,10 +425,12 @@ class TestFakeInit(TranspilerTest):
         neg_logits = paddle.add(neg_matmul_re, neg_emb_b_vec)
         # nce loss
         label_ones = paddle.full(
-            shape=[true_logits[0], 1], fill_value=1.0, dtype='float32'
+            shape=[true_logits.shape[0], 1], fill_value=1.0, dtype='float32'
         )
         label_zeros = paddle.full(
-            shape=[true_logits[0], neg_num], fill_value=0.0, dtype='float32'
+            shape=[true_logits.shape[0], neg_num],
+            fill_value=0.0,
+            dtype='float32',
         )
 
         true_xent = paddle.nn.functional.binary_cross_entropy_with_logits(
