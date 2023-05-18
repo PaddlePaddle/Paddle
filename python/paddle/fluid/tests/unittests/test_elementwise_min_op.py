@@ -121,7 +121,7 @@ class TestElementwiseMinOp_ZeroDim1(TestElementwiseOp):
         self.python_api = paddle.minimum
         self.public_python_api = paddle.minimum
         self.prim_op_type = "prim"
-        self.enable_cinn = False
+        self.if_enable_cinn()
         x = np.random.uniform(0.1, 1, []).astype("float64")
         y = np.random.uniform(0.1, 1, []).astype("float64")
         self.inputs = {'X': x, 'Y': y}
@@ -146,7 +146,7 @@ class TestElementwiseMinOp_ZeroDim2(TestElementwiseOp):
         self.python_api = paddle.minimum
         self.public_python_api = paddle.minimum
         self.prim_op_type = "prim"
-        self.enable_cinn = False
+        self.if_enable_cinn()
         x = np.random.uniform(0.1, 1, [13, 17]).astype("float64")
         y = np.random.uniform(0.1, 1, []).astype("float64")
         self.inputs = {'X': x, 'Y': y}
@@ -256,6 +256,7 @@ class TestElementwiseMinOp_broadcast_2(TestElementwiseOp):
         self.python_api = broadcast_wrapper(shape=[1, 1, 100])
         self.public_python_api = paddle.minimum
         self.prim_op_type = "prim"
+        self.if_enable_cinn()
         x = np.random.uniform(0.5, 1, (2, 3, 100)).astype(np.float64)
         sgn = np.random.choice([-1, 1], (100,)).astype(np.float64)
         y = x[0, 0, :] + sgn * np.random.uniform(1, 2, (100,)).astype(
@@ -276,6 +277,7 @@ class TestElementwiseMinFP16Op_broadcast_2(TestElementwiseFP16Op):
         self.python_api = broadcast_wrapper(shape=[1, 1, 100])
         self.public_python_api = paddle.minimum
         self.prim_op_type = "prim"
+        self.if_enable_cinn()
         x = np.random.uniform(0.5, 1, (2, 3, 100)).astype(np.float16)
         sgn = np.random.choice([-1, 1], (100,)).astype(np.float16)
         y = x[0, 0, :] + sgn * np.random.uniform(1, 2, (100,)).astype(
@@ -296,6 +298,7 @@ class TestElementwiseMinOp_broadcast_4(TestElementwiseOp):
         self.python_api = paddle.minimum
         self.prim_op_type = "prim"
         self.public_python_api = paddle.minimum
+        self.if_enable_cinn()
         x = np.random.uniform(0.5, 1, (2, 10, 2, 5)).astype(np.float64)
         sgn = np.random.choice([-1, 1], (2, 10, 1, 5)).astype(np.float64)
         y = x + sgn * np.random.uniform(1, 2, (2, 10, 1, 5)).astype(np.float64)
@@ -310,6 +313,7 @@ class TestElementwiseMinFP16Op_broadcast_4(TestElementwiseFP16Op):
         self.python_api = paddle.minimum
         self.public_python_api = paddle.minimum
         self.prim_op_type = "prim"
+        self.if_enable_cinn()
         x = np.random.uniform(0.5, 1, (2, 10, 2, 5)).astype(np.float16)
         sgn = np.random.choice([-1, 1], (2, 10, 1, 5)).astype(np.float16)
         y = x + sgn * np.random.uniform(1, 2, (2, 10, 1, 5)).astype(np.float16)
@@ -343,7 +347,7 @@ class TestElementwiseBF16Op(OpTest):
         self.python_api = paddle.minimum
         self.public_python_api = paddle.minimum
         self.prim_op_type = "prim"
-        self.enable_cinn = False
+        self.if_enable_cinn()
         self.dtype = np.uint16
         self.inputs = {
             'X': convert_float_to_uint16(self.x),
@@ -430,6 +434,9 @@ class TestElementwiseBF16Op(OpTest):
                 atol=1e-5,
                 check_cinn=False,
             )
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
 
 
 class TestElementwiseMinBF16Op_ZeroDim1(TestElementwiseBF16Op):
