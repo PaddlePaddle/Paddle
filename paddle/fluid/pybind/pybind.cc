@@ -676,6 +676,7 @@ PYBIND11_MODULE(libpaddle, m) {
   BindCudaStream(&m);
   BindXpuStream(&m);
   BindJit(&m);
+  BindEvalFrame(&m);
   BindCustomDevicePy(&m);
 
   // Not used, just make sure cpu_info.cc is linked.
@@ -1209,7 +1210,7 @@ All parameter, weight, gradient are variables in Paddle.
            Delete all sub-scopes of the current scope.
            )DOC")
       .def("_kids", &Scope::kids)
-      .def_property("_can_reuesd", &Scope::CanReuesd, &Scope::SetCanReuesd);
+      .def_property("_can_reused", &Scope::CanReused, &Scope::SetCanReused);
 
   m.def(
       "Scope",

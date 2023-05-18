@@ -71,6 +71,7 @@ if(NOT WITH_COVERAGE)
   list(REMOVE_ITEM DIST_TEST_OPS test_dist_hapi_model)
 endif()
 
+<<<<<<< HEAD
 if(NOT WITH_PYTHON AND ON_INFER)
   list(REMOVE_ITEM TEST_OPS test_eager_trace_op)
 endif()
@@ -251,6 +252,10 @@ if(NOT WITH_MKLML)
   # this op is not support on openblas
   list(REMOVE_ITEM TEST_OPS test_fusion_seqexpand_concat_fc_op)
 endif()
+
+foreach(src ${TEST_OPS})
+  py_test(${src} SRCS ${src}.py)
+endforeach()
 
 if(NOT WITH_MKL OR NOT WITH_AVX)
   list(REMOVE_ITEM TEST_OPS test_match_matrix_tensor_op)
@@ -1266,6 +1271,13 @@ endforeach()
 
 set_tests_properties(test_decoupled_py_reader_static_build PROPERTIES TIMEOUT
                                                                       120)
+set_tests_properties(test_fuse_bn_act_pass_static_build PROPERTIES TIMEOUT 120)
+set_tests_properties(
+  test_fuse_bn_act_pass_static_build
+  PROPERTIES
+    ENVIRONMENT
+    "FLAGS_cudnn_deterministic=1;FLAGS_cudnn_batchnorm_spatial_persistent=1;FLAGS_conv_workspace_size_limit=1000"
+)
 set_tests_properties(test_imperative_optimizer_static_build PROPERTIES TIMEOUT
                                                                        250)
 set_tests_properties(test_matmul_op_static_build PROPERTIES TIMEOUT 120)
