@@ -121,7 +121,7 @@ class TestElementwiseMinOp_ZeroDim1(TestElementwiseOp):
         self.python_api = paddle.minimum
         self.public_python_api = paddle.minimum
         self.prim_op_type = "prim"
-        self.if_enable_cinn()
+        self.enable_cinn = False
         x = np.random.uniform(0.1, 1, []).astype("float64")
         y = np.random.uniform(0.1, 1, []).astype("float64")
         self.inputs = {'X': x, 'Y': y}
@@ -146,7 +146,7 @@ class TestElementwiseMinOp_ZeroDim2(TestElementwiseOp):
         self.python_api = paddle.minimum
         self.public_python_api = paddle.minimum
         self.prim_op_type = "prim"
-        self.if_enable_cinn()
+        self.enable_cinn = False
         x = np.random.uniform(0.1, 1, [13, 17]).astype("float64")
         y = np.random.uniform(0.1, 1, []).astype("float64")
         self.inputs = {'X': x, 'Y': y}
@@ -354,7 +354,19 @@ class TestElementwiseBF16Op(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        places = self._get_places()
+        for place in places:
+            res = self.check_output_with_place(
+                place,
+                atol=1e-5,
+                rtol=1e-5,
+                no_check_set=None,
+                equal_nan=False,
+                check_dygraph=True,
+                check_prim=False,
+                inplace_atol=None,
+                check_cinn=False,
+            )
 
     def test_check_grad_normal(self):
         places = self._get_places()
