@@ -280,13 +280,19 @@ std::string GetExternalErrorMsg(T status) {
       if (std::string::npos != last_slash_idx) {
         strModule.erase(last_slash_idx, std::string::npos);
       }
-      if (compare_path.compare("avx.so") == 0) {
+      // TODO(lizhiyu02): I don't know what the 'compare_path.compare("avx.so")
+      // == 0' means, while
+      //  'compare_path.find("dist-packages") != std::string::npos' means that
+      //  after using 'pip install paddle'.
+      if (compare_path.compare("avx.so") == 0 ||
+          strModule.find("dist-packages") != std::string::npos) {
         filePath =
             strModule +
             "/../include/third_party/externalError/data/externalErrorMsg.pb";
       } else {
+        // Just for unittest
         filePath = strModule +
-                   "/../../third_party/externalError/data/externalErrorMsg.pb";
+                   "/../third_party/externalError/data/externalErrorMsg.pb";
       }
     }
 #else
@@ -303,14 +309,15 @@ std::string GetExternalErrorMsg(T status) {
     if (std::string::npos != last_slash_idx) {
       strModule.erase(last_slash_idx, std::string::npos);
     }
-    if (compare_path.compare("avx.pyd") == 0) {
+    if (compare_path.compare("avx.pyd") == 0 ||
+        strModule.find("dist-packages") != std::string::npos) {
       filePath = strModule +
                  "\\..\\include\\third_"
                  "party\\externalerror\\data\\externalErrorMsg.pb";
     } else {
-      filePath =
-          strModule +
-          "\\..\\..\\third_party\\externalerror\\data\\externalErrorMsg.pb";
+      filePath = strModule +
+                 "\\..\\paddle\\third_"
+                 "party\\externalerror\\data\\externalErrorMsg.pb";
     }
 #endif
     std::ifstream fin(filePath, std::ios::in | std::ios::binary);
