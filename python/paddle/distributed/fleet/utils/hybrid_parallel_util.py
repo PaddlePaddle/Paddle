@@ -167,6 +167,7 @@ def broadcast_input_data(hcg, *inputs, **kwargs):
         place = paddle.CUDAPlace(dev_idx)
     elif dev in paddle.device.get_all_custom_device_type():
         place = paddle.CustomPlace(dev, dev_idx)
+        dev = 'custom'
     else:
         place = eval(f"paddle.{dev.upper()}Place")(dev_idx)
 

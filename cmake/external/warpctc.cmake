@@ -22,9 +22,8 @@ set(WARPCTC_PREFIX_DIR ${THIRD_PARTY_PATH}/warpctc)
 set(WARPCTC_INSTALL_DIR ${THIRD_PARTY_PATH}/install/warpctc)
 # in case of low internet speed
 #set(WARPCTC_REPOSITORY  https://gitee.com/tianjianhe/warp-ctc.git)
-set(WARPCTC_REPOSITORY ${GIT_URL}/baidu-research/warp-ctc.git)
 set(WARPCTC_TAG bdc2b4550453e0ef2d3b5190f9c6103a84eff184)
-
+set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/warpctc)
 set(WARPCTC_SOURCE_DIR ${THIRD_PARTY_PATH}/warpctc/src/extern_warpctc)
 set(WARPCTC_PATCH_COMMAND "")
 set(WARPCTC_CCBIN_OPTION "")
@@ -85,9 +84,8 @@ endif()
 
 ExternalProject_Add(
   extern_warpctc
-  ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}
-  GIT_REPOSITORY ${WARPCTC_REPOSITORY}
-  GIT_TAG ${WARPCTC_TAG}
+  ${EXTERNAL_PROJECT_LOG_ARGS}
+  SOURCE_DIR ${SOURCE_DIR}
   PREFIX ${WARPCTC_PREFIX_DIR}
   UPDATE_COMMAND ""
   PATCH_COMMAND ${WARPCTC_PATCH_COMMAND}

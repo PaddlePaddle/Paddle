@@ -24,31 +24,43 @@ template <class ConcreteTrait>
 class OpTraitBase;
 template <typename ConcreteInterface>
 class OpInterfaceBase;
+class Program;
+
+using AttributeMap = std::unordered_map<std::string, Attribute>;
 
 class alignas(8) Operation final {
  public:
   ///
   /// \brief Malloc memory and construct objects in the following order:
   /// OpResultImpls|Operation|OpOperandImpls.
+  /// NOTE: Similar to new and delete, the destroy() and the create() need to be
+  /// used in conjunction.
   ///
   static Operation *create(const std::vector<ir::OpResult> &inputs,
                            const std::vector<ir::Type> &output_types,
-                           ir::DictionaryAttribute attribute,
+                           const AttributeMap &attribute,
                            ir::OpInfo op_info);
 
+  ///
+  /// \brief Destroy the operation objects and free memeory by create().
+  ///
   void destroy();
 
   ir::OpResult GetResultByIndex(uint32_t index);
 
+  ir::OpOperand GetOperandByIndex(uint32_t index);
+
   std::string print();
 
-  ir::DictionaryAttribute attribute() const { return attribute_; }
+  const AttributeMap &attribute() const { return attribute_; }
 
   ir::OpInfo op_info() const { return op_info_; }
 
   uint32_t num_results() const { return num_results_; }
 
   uint32_t num_operands() const { return num_operands_; }
+
+  std::string op_name() const;
 
   template <typename T>
   T dyn_cast() const {
@@ -65,10 +77,16 @@ class alignas(8) Operation final {
     return op_info_.HasInterface<Interface>();
   }
 
+  Program *parent_program() const { return parent_program_; }
+
+  void set_parent_program(Program *parent_program) {
+    parent_program_ = parent_program;
+  }
+
  private:
   Operation(uint32_t num_results,
             uint32_t num_operands,
-            ir::DictionaryAttribute attribute,
+            const AttributeMap &attribute,
             ir::OpInfo op_info);
 
   template <typename T, typename Enabler = void>
@@ -92,13 +110,15 @@ class alignas(8) Operation final {
     }
   };
 
-  ir::DictionaryAttribute attribute_;
+  AttributeMap attribute_;
 
   ir::OpInfo op_info_;
 
   uint32_t num_results_ = 0;
 
   uint32_t num_operands_ = 0;
+
+  ir::Program *parent_program_{nullptr};
 };
 
 }  // namespace ir

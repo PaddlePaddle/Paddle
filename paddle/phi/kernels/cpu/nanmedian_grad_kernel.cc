@@ -26,7 +26,7 @@ void CalcMedianGradKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const DenseTensor& median_index,
                           const DenseTensor& out_grad,
-                          const IntArray& axes,
+                          const IntArray& axes UNUSED,
                           DenseTensor* x_grad,
                           T* x_grad_ptr) {
   phi::funcs::SetConstant<Context, T> set_zero;
@@ -83,7 +83,7 @@ void NanmedianGradKernel(const Context& dev_ctx,
                          const DenseTensor& median_index,
                          const DenseTensor& out_grad,
                          const IntArray& axes,
-                         bool keep_dim,
+                         bool keep_dim UNUSED,
                          DenseTensor* x_grad) {
   BaseMedianGradKernel<T, Context>(
       dev_ctx, input, median_index, out_grad, axes, x_grad);

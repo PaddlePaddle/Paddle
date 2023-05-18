@@ -79,16 +79,16 @@ class Bernoulli(exponential_family.ExponentialFamily):
             rv = Bernoulli(probs=0.3)
 
             print(rv.mean)
-            # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-            #        [0.30000001])
+            # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        0.30000001)
 
             print(rv.variance)
-            # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-            #        [0.21000001])
+            # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        0.21000001)
 
             print(rv.entropy())
-            # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-            #        [0.61086434])
+            # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        0.61086434)
     """
 
     def __init__(self, probs, name=None):
@@ -247,12 +247,12 @@ class Bernoulli(exponential_family.ExponentialFamily):
 
                 # The smaller the `temperature`, the distribution of `rsample` closer to `sample`, with `probs` of 0.3.
                 print(paddle.nn.functional.sigmoid(rv.rsample([1000, ], temperature=1.0)).sum())
-                # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-                #        [361.06829834])
+                # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+                #        361.06829834)
 
                 print(paddle.nn.functional.sigmoid(rv.rsample([1000, ], temperature=0.1)).sum())
-                # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-                #        [288.66418457])
+                # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+                #        288.66418457)
         """
         name = self.name + '_rsample'
         if not _non_static_mode():
@@ -420,8 +420,8 @@ class Bernoulli(exponential_family.ExponentialFamily):
 
                 rv = Bernoulli(0.3)
                 print(rv.entropy())
-                # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-                #        [0.61086434])
+                # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+                #        0.61086434)
         """
         name = self.name + '_entropy'
 
@@ -455,8 +455,8 @@ class Bernoulli(exponential_family.ExponentialFamily):
                 rv_other = Bernoulli(0.7)
 
                 print(rv.kl_divergence(rv_other))
-                # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-                #        [0.33891910])
+                # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+                #        0.33891910)
         """
         name = self.name + '_kl_divergence'
         if not _non_static_mode():
