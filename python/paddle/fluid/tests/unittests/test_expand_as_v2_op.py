@@ -103,10 +103,7 @@ class TestExpandAsOpRank2(TestExpandAsBasic):
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA or not support the bfloat16",
 )
-class TestExpandAsOpRank2BFP16OP(TestExpandAsOpRank2):
-    def init_dtype(self):
-        self.dtype = np.uint16
-
+class TestExpandAsOpRank2BFP16OP(TestExpandAsBasicBFP16OP):
     def init_inputs_and_outputs(self):
         x = np.random.rand(10, 12).astype(np.float32)
         target_tensor = np.random.rand(10, 12).astype(np.float32)
@@ -118,17 +115,6 @@ class TestExpandAsOpRank2BFP16OP(TestExpandAsOpRank2):
         bcast_dims = [1, 1]
         output = np.tile(x, bcast_dims)
         self.outputs = {'Out': convert_float_to_uint16(output)}
-
-    def if_enable_cinn(self):
-        self.enable_cinn = False
-
-    def test_check_output(self):
-        self.check_output_with_place(place=paddle.CUDAPlace(0))
-
-    def test_check_grad(self):
-        self.check_grad_with_place(
-            paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True
-        )
 
 
 class TestExpandAsOpRank3(TestExpandAsBasic):
@@ -147,10 +133,7 @@ class TestExpandAsOpRank3(TestExpandAsBasic):
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA or not support the bfloat16",
 )
-class TestExpandAsOpRank3BFP16OP(TestExpandAsOpRank3):
-    def init_dtype(self):
-        self.dtype = np.uint16
-
+class TestExpandAsOpRank3BFP16OP(TestExpandAsBasicBFP16OP):
     def init_inputs_and_outputs(self):
         x = np.random.rand(2, 3, 20).astype(np.float32)
         target_tensor = np.random.rand(2, 3, 20).astype(np.float32)
@@ -162,17 +145,6 @@ class TestExpandAsOpRank3BFP16OP(TestExpandAsOpRank3):
         bcast_dims = [1, 1, 1]
         output = np.tile(x, bcast_dims)
         self.outputs = {'Out': convert_float_to_uint16(output)}
-
-    def if_enable_cinn(self):
-        self.enable_cinn = False
-
-    def test_check_output(self):
-        self.check_output_with_place(place=paddle.CUDAPlace(0))
-
-    def test_check_grad(self):
-        self.check_grad_with_place(
-            paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True
-        )
 
 
 class TestExpandAsOpRank4(TestExpandAsBasic):
@@ -191,10 +163,7 @@ class TestExpandAsOpRank4(TestExpandAsBasic):
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA or not support the bfloat16",
 )
-class TestExpandAsOpRank4BFP16OP(TestExpandAsOpRank3):
-    def init_dtype(self):
-        self.dtype = np.uint16
-
+class TestExpandAsOpRank4BFP16OP(TestExpandAsBasicBFP16OP):
     def init_inputs_and_outputs(self):
         x = np.random.rand(1, 1, 7, 16).astype(np.float32)
         target_tensor = np.random.rand(4, 6, 7, 16).astype(np.float32)
@@ -206,17 +175,6 @@ class TestExpandAsOpRank4BFP16OP(TestExpandAsOpRank3):
         bcast_dims = [4, 6, 1, 1]
         output = np.tile(x, bcast_dims)
         self.outputs = {'Out': convert_float_to_uint16(output)}
-
-    def if_enable_cinn(self):
-        self.enable_cinn = False
-
-    def test_check_output(self):
-        self.check_output_with_place(place=paddle.CUDAPlace(0))
-
-    def test_check_grad(self):
-        self.check_grad_with_place(
-            paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True
-        )
 
 
 class TestExpandAsOpRank5(TestExpandAsBasic):
