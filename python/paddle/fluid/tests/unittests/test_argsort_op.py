@@ -522,11 +522,11 @@ class TestArgsortOpFp16(unittest.TestCase):
 )
 class TestArgsortBF16OP(OpTest):
     def setUp(self):
-        self.op_type = 'argsort'
+        self.op_type = "argsort"
         self.dtype = np.uint16
         self.axis = -1
         self.descending = False
-        x = paddle.static.data(shape=[10000, 1], name='x', dtype=np.float32)
+        x = np.random.uniform(-1, 1, size=[10000, 1]).astype(np.float32)
         out = np.argsort(x).astype(np.float32)
         self.indices = np.argsort(x, axis=self.axis)
         self.inputs = {'X': convert_float_to_uint16(x)}
