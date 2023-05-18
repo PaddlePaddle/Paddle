@@ -160,23 +160,6 @@ int AddActXPUFusePass::ApplyImpl(ir::Graph* graph,
     framework::OpDesc fused_op_desc(block);
     fused_op_desc.SetType("add_act_xpu");
     // set attrs for fused op
-    // VLOG(1) << "input name is :" << ele_x->Name();
-    // auto* ele_out_var = scope->GetVar(ele_out->Name());
-    // auto* ele_x_var = scope->FindVar(ele_x->Name());
-    // PADDLE_ENFORCE_NOT_NULL(
-    //   ele_x_var, platform::errors::NotFound("Cannot find %s in scope.",
-    //   ele_x->Name()));
-    // const auto* ele_x_t = ele_x_var->GetMutable<phi::DenseTensor>();
-    // const std::vector<int64_t> x_shape = phi::vectorize(ele_x_t->dims());
-    // fused_op_desc.SetAttr("x_shape", x_shape);
-
-    // auto* ele_y_var = scope->FindVar(ele_y->Name());
-    // PADDLE_ENFORCE_NOT_NULL(
-    //   ele_y_var, platform::errors::NotFound("Cannot find %s in scope.",
-    //   ele_y->Name()));
-    // const auto* ele_y_t = ele_y_var->GetMutable<phi::DenseTensor>();
-    // const std::vector<int64_t> y_shape = phi::vectorize(ele_y_t->dims());
-    // fused_op_desc.SetAttr("y_shape", y_shape);
     fused_op_desc.SetAttr("act_type", ConvertActivationType(act_type));
     fused_op_desc.SetInput("x", {ele_x->Name()});
     fused_op_desc.SetInput("y", {ele_y->Name()});
