@@ -546,9 +546,6 @@ if((NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS "test_dist_mnist_batch_merge")
 endif()
 
-foreach(TEST_OP ${TEST_OPS})
-  py_test_modules(${TEST_OP} MODULES ${TEST_OP})
-endforeach()
 set_tests_properties(test_logcumsumexp_op PROPERTIES TIMEOUT 30)
 py_test_modules(test_adam_op_multi_thread MODULES test_adam_op ENVS
                 FLAGS_inner_op_parallelism=4)
