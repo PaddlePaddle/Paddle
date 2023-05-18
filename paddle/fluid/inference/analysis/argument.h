@@ -250,9 +250,6 @@ struct Argument {
                       TensorRtAllowBuildAtRuntime,
                       bool);
   DECL_ARGUMENT_FIELD(tensorrt_use_inspector, TensorRtUseInspector, bool);
-  DECL_ARGUMENT_FIELD(tensorrt_use_sparse_weights,
-                      TensorRtUseSparseWeights,
-                      bool);
 
   DECL_ARGUMENT_FIELD(use_dlnne, UseDlnne, bool);
   DECL_ARGUMENT_FIELD(dlnne_min_subgraph_size, DlnneMinSubgraphSize, int);

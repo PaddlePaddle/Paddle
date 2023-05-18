@@ -742,9 +742,6 @@ struct PD_INFER_DECL AnalysisConfig {
   void EnableTensorRtInspector();
   bool tensorrt_inspector_enabled() { return trt_use_inspector_; }
 
-  void EnableTensorRtSparseWeights();
-  bool tensorrt_sparse_weights_enabled() { return trt_use_sparse_weights_; }
-
   void EnableDlnne(
       int min_subgraph_size = 3,
       int max_batch_size = 1,
@@ -1121,7 +1118,6 @@ struct PD_INFER_DECL AnalysisConfig {
   // tune to get dynamic_shape info.
   bool trt_tuned_dynamic_shape_{false};
   bool trt_use_inspector_{false};
-  bool trt_use_sparse_weights_{false};
 
   // In CollectShapeInfo mode, we will collect the shape information of
   // all intermediate tensors in the compute graph and calculate the

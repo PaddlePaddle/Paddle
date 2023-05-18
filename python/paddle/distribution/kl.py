@@ -60,7 +60,7 @@ def kl_divergence(p, q):
 
             print(paddle.distribution.kl_divergence(p, q))
             # Tensor(shape=[], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #        [0.21193528])
+            #        0.21193528)
 
     """
     return _dispatch(type(p), type(q))(p, q)
@@ -73,7 +73,7 @@ def register_kl(cls_p, cls_q):
     functions registered by ``register_kl``, according to multi-dispatch pattern.
     If an implemention function is found, it will return the result, otherwise,
     it will raise ``NotImplementError`` exception. Users can register
-    implemention funciton by the decorator.
+    implemention function by the decorator.
 
     Args:
         cls_p (Distribution): The Distribution type of Instance p. Subclass derived from ``Distribution``.

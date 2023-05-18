@@ -19,6 +19,7 @@ import numpy as np
 import paddle
 import paddle.nn.functional as F
 from paddle import fluid, static
+from paddle.fluid import backward
 
 
 class BackwardNet:
@@ -447,6 +448,19 @@ class TestBackwardUninitializedVariable(unittest.TestCase):
                 fetch_list=[loss],
             )
             print(out)
+
+
+class TestStripGradSuffix(unittest.TestCase):
+    def test_strip_grad_suffix(self):
+        cases = (
+            ('x@GRAD', 'x'),
+            ('x@GRAD@GRAD', 'x'),
+            ('x@GRAD@RENAME@1', 'x'),
+            ('x@GRAD_slice_0@GRAD', 'x@GRAD_slice_0'),
+            ('grad/grad/x@GRAD@RENAME@block0@1@GRAD', 'x'),
+        )
+        for input_, desired in cases:
+            self.assertEqual(backward._strip_grad_suffix_(input_), desired)
 
 
 if __name__ == '__main__':

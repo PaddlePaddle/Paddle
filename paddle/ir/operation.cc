@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/ir/operation.h"
+#include "paddle/ir/dialect.h"
+#include "paddle/ir/program.h"
 #include "paddle/ir/utils.h"
 
 namespace ir {
@@ -21,7 +23,7 @@ namespace ir {
 // OpInlineResult, Operation, Operand.
 Operation *Operation::create(const std::vector<ir::OpResult> &inputs,
                              const std::vector<ir::Type> &output_types,
-                             ir::DictionaryAttribute attribute,
+                             const AttributeMap &attribute,
                              ir::OpInfo op_info) {
   // 1. Calculate the required memory size for OpResults + Operation +
   // OpOperands.
@@ -63,7 +65,7 @@ Operation *Operation::create(const std::vector<ir::OpResult> &inputs,
     new (base_ptr) detail::OpOperandImpl(inputs[idx].impl_, op);
     base_ptr += sizeof(detail::OpOperandImpl);
   }
-  VLOG(4) << "Construct an Operation: " << op->print();
+
   return op;
 }
 
@@ -83,9 +85,18 @@ void Operation::destroy() {
   // 2.1. Deconstruct OpResult.
   char *base_ptr = aligned_ptr;
   for (size_t idx = num_results_; idx > 0; idx--) {
-    if (!reinterpret_cast<detail::OpResultImpl *>(base_ptr)->use_empty()) {
-      throw("Cannot destroy a value that still has uses!");
+    // release the uses of this result
+    detail::OpOperandImpl *first_use =
+        reinterpret_cast<detail::OpResultImpl *>(base_ptr)->first_use();
+    if (first_use != nullptr) {
+      first_use->release_source();
+      detail::OpOperandImpl *next_use = first_use->next_use();
+      while (next_use != nullptr) {
+        next_use->release_source();
+        next_use = next_use->next_use();
+      }
     }
+    // destory the result
     if (idx > max_inline_result_num) {
       reinterpret_cast<detail::OpOutlineResultImpl *>(base_ptr)
           ->~OpOutlineResultImpl();
@@ -117,11 +128,8 @@ void Operation::destroy() {
 
 Operation::Operation(uint32_t num_results,
                      uint32_t num_operands,
-                     ir::DictionaryAttribute attribute,
+                     const AttributeMap &attribute,
                      ir::OpInfo op_info) {
-  if (!attribute) {
-    throw("unexpected null attribute dictionary");
-  }
   num_results_ = num_results;
   num_operands_ = num_operands;
   attribute_ = attribute;
@@ -153,6 +161,15 @@ ir::OpResult Operation::GetResultByIndex(uint32_t index) {
   }
 }
 
+ir::OpOperand Operation::GetOperandByIndex(uint32_t index) {
+  if (index >= num_operands_) {
+    throw("index exceeds OP input range.");
+  }
+  char *ptr = reinterpret_cast<char *>(this) + sizeof(Operation) +
+              (index) * sizeof(detail::OpOperandImpl);
+  return ir::OpOperand(reinterpret_cast<detail::OpOperandImpl *>(ptr));
+}
+
 std::string Operation::print() {
   std::stringstream result;
   result << "{ " << num_results_ << " outputs, " << num_operands_
@@ -171,6 +188,11 @@ std::string Operation::print() {
   }
   result << ")";
   return result.str();
+}
+
+std::string Operation::op_name() const {
+  return op_info_.impl()->dialect()->name() + "." +
+         std::string(op_info_.impl()->name());
 }
 
 }  // namespace ir
