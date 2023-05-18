@@ -71,7 +71,6 @@ if(NOT WITH_COVERAGE)
   list(REMOVE_ITEM DIST_TEST_OPS test_dist_hapi_model)
 endif()
 
-<<<<<<< HEAD
 if(NOT WITH_PYTHON AND ON_INFER)
   list(REMOVE_ITEM TEST_OPS test_eager_trace_op)
 endif()
