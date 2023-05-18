@@ -2142,7 +2142,7 @@ bool AnalysisPredictor::ExpRunWithExternalStream(const gpuStream_t stream) {
 }
 #endif
 
-bool AnalysisPredictor::ExpRunWithExternalConfig(void *config) {
+bool AnalysisPredictor::ExpRunWithRuntimeConfig(void *config) {
 #ifdef PADDLE_WITH_XPU
   PADDLE_ENFORCE(
       private_context_,
@@ -2156,9 +2156,9 @@ bool AnalysisPredictor::ExpRunWithExternalConfig(void *config) {
   auto *dev_ctx =
       static_cast<InferXPUContext *>(dev_ctxs->at(place_).get().get());
 
-  auto xpu_external_config =
-      reinterpret_cast<paddle_infer::experimental::XpuExternalConfig *>(config);
-  auto *stream = xpu_external_config->stream;
+  auto xpu_runtime_config =
+      reinterpret_cast<paddle_infer::experimental::XpuRuntimeConfig *>(config);
+  auto *stream = xpu_runtime_config->stream;
   if (stream != nullptr && stream != predictor_stream_) {
     paddle::platform::XPUStreamSync(
         static_cast<paddle::xpuStream>(predictor_stream_));
@@ -2166,9 +2166,9 @@ bool AnalysisPredictor::ExpRunWithExternalConfig(void *config) {
     dev_ctx->SetStream(stream);
   }
 
-  size_t l3_size = xpu_external_config->l3_size;
-  void *l3_ptr = xpu_external_config->l3_ptr;
-  size_t l3_autotune_size = xpu_external_config->l3_autotune_size;
+  size_t l3_size = xpu_runtime_config->l3_size;
+  void *l3_ptr = xpu_runtime_config->l3_ptr;
+  size_t l3_autotune_size = xpu_runtime_config->l3_autotune_size;
   PADDLE_ENFORCE_LE(
       l3_autotune_size,
       l3_size,
@@ -3059,10 +3059,10 @@ bool InternalUtils::RunWithExternalStream(paddle_infer::Predictor *p,
   return false;
 }
 
-bool InternalUtils::RunWithExternalConfig(paddle_infer::Predictor *p,
-                                          void *config) {
+bool InternalUtils::RunWithRuntimeConfig(paddle_infer::Predictor *p,
+                                         void *config) {
   auto pred = dynamic_cast<paddle::AnalysisPredictor *>(p->predictor_.get());
-  return pred->ExpRunWithExternalConfig(config);
+  return pred->ExpRunWithRuntimeConfig(config);
 }
 
 void InternalUtils::UpdateConfigInterleaved(paddle_infer::Config *c,

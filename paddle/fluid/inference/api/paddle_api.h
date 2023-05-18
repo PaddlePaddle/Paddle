@@ -471,7 +471,7 @@ class Predictor;
 class Tensor;
 using Config = paddle::AnalysisConfig;
 namespace experimental {
-struct XpuExternalConfig {
+struct XpuRuntimeConfig {
   void* stream{nullptr};
   size_t l3_size{16773120};
   void* l3_ptr{nullptr};
@@ -486,8 +486,7 @@ class PD_INFER_DECL InternalUtils {
                                     cudaStream_t stream);
   static bool RunWithExternalStream(paddle_infer::Predictor* pred,
                                     hipStream_t stream);
-  static bool RunWithExternalConfig(paddle_infer::Predictor* pred,
-                                    void* config);
+  static bool RunWithRuntimeConfig(paddle_infer::Predictor* pred, void* config);
 
   static void UpdateConfigInterleaved(paddle_infer::Config* c,
                                       bool with_interleaved);
