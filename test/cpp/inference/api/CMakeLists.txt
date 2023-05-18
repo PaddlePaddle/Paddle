@@ -1463,9 +1463,9 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
 
   if(WITH_XPU)
     inference_analysis_test(
-      xpu_external_config_resnet50_test
+      xpu_runtime_config_resnet50_test
       SRCS
-      xpu_external_config_resnet50_test.cc
+      xpu_runtime_config_resnet50_test.cc
       EXTRA_DEPS
       paddle_inference_shared
       ARGS

@@ -88,12 +88,12 @@ TEST(resnet50_xpu, basic) {
   CompareOutput(predictor##idx_);                                          \
   CHECK_EQ(predictor##idx_->GetExecStream(), config_.stream);
 
-TEST(external_stream, null_stream) {
+TEST(runtime_stream, null_stream) {
   experimental::XpuRuntimeConfig xpu_runtime_config = {nullptr, 0, nullptr, 0};
   RUN_WITH_RUNTIME_CONFIG(0, xpu_runtime_config);
 }
 
-TEST(external_stream, new_stream) {
+TEST(runtime_stream, new_stream) {
   void* stream = nullptr;
   xpu_stream_create(&stream);
   CHECK_NOTNULL(stream);
@@ -104,13 +104,13 @@ TEST(external_stream, new_stream) {
   xpu_stream_destroy(stream);
 }
 
-TEST(external_stream, 2_null_stream) {
+TEST(runtime_stream, 2_null_stream) {
   experimental::XpuRuntimeConfig xpu_runtime_config = {nullptr, 0, nullptr, 0};
   RUN_WITH_RUNTIME_CONFIG(0, xpu_runtime_config);
   RUN_WITH_RUNTIME_CONFIG(1, xpu_runtime_config);
 }
 
-TEST(external_stream, null_and_new_stream) {
+TEST(runtime_stream, null_and_new_stream) {
   experimental::XpuRuntimeConfig xpu_runtime_config0 = {nullptr, 0, nullptr, 0};
   void* stream = nullptr;
   xpu_stream_create(&stream);
@@ -124,7 +124,7 @@ TEST(external_stream, null_and_new_stream) {
   xpu_stream_destroy(stream);
 }
 
-TEST(external_stream, 2_new_same_stream) {
+TEST(runtime_stream, 2_new_same_stream) {
   void* stream = nullptr;
   xpu_stream_create(&stream);
   CHECK_NOTNULL(stream);
@@ -136,7 +136,7 @@ TEST(external_stream, 2_new_same_stream) {
   xpu_stream_destroy(stream);
 }
 
-TEST(external_stream, 2_new_different_stream) {
+TEST(runtime_stream, 2_new_different_stream) {
   void* stream0 = nullptr;
   xpu_stream_create(&stream0);
   CHECK_NOTNULL(stream0);
@@ -153,17 +153,17 @@ TEST(external_stream, 2_new_different_stream) {
   xpu_stream_destroy(stream1);
 }
 
-void RunPredictorWithExternalConfig(
+void RunPredictorWithRuntimeConfig(
     std::shared_ptr<Predictor> predictor,
-    experimental::XpuRuntimeConfig external_config) {
+    experimental::XpuRuntimeConfig runtime_config) {
   PrepareInput(predictor);
   experimental::InternalUtils::RunWithRuntimeConfig(predictor.get(),
-                                                    &external_config);
+                                                    &runtime_config);
   CompareOutput(predictor);
-  CHECK_EQ(predictor->GetExecStream(), external_config.stream);
+  CHECK_EQ(predictor->GetExecStream(), runtime_config.stream);
 }
 
-TEST(external_stream, 2_thread) {
+TEST(runtime_stream, 2_thread) {
   void* stream0 = nullptr;
   xpu_stream_create(&stream0);
   CHECK_NOTNULL(stream0);
@@ -178,9 +178,9 @@ TEST(external_stream, 2_thread) {
     RUN_WITH_RUNTIME_CONFIG(0, xpu_runtime_config0);
     RUN_WITH_RUNTIME_CONFIG(1, xpu_runtime_config1);
     std::thread t0(
-        RunPredictorWithExternalConfig, predictor0, xpu_runtime_config0);
+        RunPredictorWithRuntimeConfig, predictor0, xpu_runtime_config0);
     std::thread t1(
-        RunPredictorWithExternalConfig, predictor1, xpu_runtime_config1);
+        RunPredictorWithRuntimeConfig, predictor1, xpu_runtime_config1);
     t0.join();
     t1.join();
   }
