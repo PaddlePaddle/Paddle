@@ -133,8 +133,8 @@ class PADDLE_API CustomOpKernelContext {
     return output_range_;
   }
   Tensor* MutableOutputAt(size_t idx);
-  std::vector<Tensor*> MutableOutputBetweeen(size_t start, size_t end);
-  std::vector<Tensor> OutputsBetweeen(size_t start, size_t end);
+  std::vector<Tensor*> MutableOutputBetween(size_t start, size_t end);
+  std::vector<Tensor> OutputsBetween(size_t start, size_t end);
   std::vector<Tensor>* AllMutableOutput();
 
   template <typename AttrType>
@@ -391,7 +391,7 @@ struct KernelFuncImpl<Return (*)(Args...), impl_fn> {
     template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
     static void Compute(CustomOpKernelContext* ctx, PreviousArgs&... pargs) {
       auto& range = ctx->OutputRangeAt(out_idx);
-      auto arg = ctx->MutableOutputBetweeen(range.first, range.second);
+      auto arg = ctx->MutableOutputBetween(range.first, range.second);
       ComputeCallHelper<
           Tail...>::template Compute<in_idx, attr_idx, out_idx + 1>(ctx,
                                                                     pargs...,
