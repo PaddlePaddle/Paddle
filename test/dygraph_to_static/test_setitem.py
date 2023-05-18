@@ -149,5 +149,34 @@ class TestCase9(TestSetItemBase):
         return foo
 
 
+class TestCase10(TestSetItemBase):
+    def init_func(self):
+        def foo(x):
+            y = x + 1
+            y[..., 4:6] = y[..., 4:6] * 10000
+            return y
+
+        return foo
+
+
+class TestCase11(TestSetItemBase):
+    # Test gradient of value tensor
+    def init_func(self):
+        def foo(x, value):
+            y = x + 1
+            y[2, 4] = value
+            return y
+
+        return foo
+
+    def run_dygrah(self, func):
+        x = self.init_data()
+        value = paddle.ones((16, 32))
+        value.stop_gradient = False
+        y = func(x, value)
+        x_grad, value_grad = paddle.grad(y, [x, value])
+        return y, x_grad, value_grad
+
+
 if __name__ == '__main__':
     unittest.main()
