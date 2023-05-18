@@ -1234,7 +1234,7 @@ class LambdaDecay(_LearningRateEpochDecay):
     :api_attr: imperative
 
     Sets the learning rate of ``optimizer`` to the initial lr times a multiplicative factor, and this multiplicative
-    factor is computed by function ``lr_lambda`` . ``lr_lambda`` is funciton which receives ``epoch`` .
+    factor is computed by function ``lr_lambda`` . ``lr_lambda`` is function which receives ``epoch`` .
 
     The algorithm can be described as the code below.
 

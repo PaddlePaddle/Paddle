@@ -44,7 +44,7 @@ class ElementwiseMaxOpMaker : public ElementwiseOpMaker {
     AddInput("Y", "The second tensor holding the elements to be compared.");
   }
 
-  std::string GetOpFuntionality() const override {
+  std::string GetOpFunctionality() const override {
     return "Compare two tensors and returns a new tensor containing the "
            "element-wise maxima.";
   }
@@ -63,7 +63,7 @@ class ElementwiseFMaxOpMaker : public ElementwiseOpMaker {
     AddInput("Y", "The second tensor holding the elements to be compared.");
   }
 
-  std::string GetOpFuntionality() const override {
+  std::string GetOpFunctionality() const override {
     return "Compare two tensors and returns a new tensor containing the "
            "element-wise maxima. If the element of one tensor is nan, "
            "return the element value of the other tensor, if both are nan, "

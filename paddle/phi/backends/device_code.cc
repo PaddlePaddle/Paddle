@@ -12,20 +12,22 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/platform/device_code.h"
+#include "paddle/phi/backends/device_code.h"
 
+#include <glog/logging.h>
 #include <sys/stat.h>
 
 #include <algorithm>
 #include <set>
 #include <utility>
 
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/backends/context_pool.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/flags.h"
 
 PHI_DECLARE_string(cuda_dir);
 
-namespace paddle {
-namespace platform {
+namespace phi {
 
 DeviceCodePool* DeviceCodePool::pool = nullptr;
 
@@ -35,7 +37,7 @@ void DeviceCodePool::Set(std::unique_ptr<DeviceCode>&& code) {
 
   auto iter = device_codes_.find(place);
   if (iter == device_codes_.end()) {
-    PADDLE_THROW(platform::errors::NotFound(
+    PADDLE_THROW(phi::errors::NotFound(
         "Place %s is not supported for runtime compiling.", place));
   }
 
@@ -43,18 +45,18 @@ void DeviceCodePool::Set(std::unique_ptr<DeviceCode>&& code) {
   codes_map.emplace(name, std::move(code));
 }
 
-platform::DeviceCode* DeviceCodePool::Get(const platform::Place& place,
-                                          const std::string& name) {
+DeviceCode* DeviceCodePool::Get(const phi::Place& place,
+                                const std::string& name) {
   auto iter = device_codes_.find(place);
   if (iter == device_codes_.end()) {
-    PADDLE_THROW(platform::errors::NotFound(
+    PADDLE_THROW(phi::errors::NotFound(
         "Place %s is not supported for runtime compiling.", place));
   }
 
   auto& codes_map = iter->second;
   auto code_iter = codes_map.find(name);
   if (code_iter == codes_map.end()) {
-    PADDLE_THROW(platform::errors::NotFound(
+    PADDLE_THROW(phi::errors::NotFound(
         "Device code named %s for place %s does not exist.",
         name.c_str(),
         place));
@@ -63,7 +65,7 @@ platform::DeviceCode* DeviceCodePool::Get(const platform::Place& place,
   return code_iter->second.get();
 }
 
-DeviceCodePool::DeviceCodePool(const std::vector<platform::Place>& places) {
+DeviceCodePool::DeviceCodePool(const std::vector<phi::Place>& places) {
   PADDLE_ENFORCE_GT(places.size(),
                     0,
                     errors::InvalidArgument(
@@ -75,11 +77,11 @@ DeviceCodePool::DeviceCodePool(const std::vector<platform::Place>& places) {
     set.insert(p);
   }
   for (auto& p : set) {
-    if (is_gpu_place(p)) {
+    if (p.GetType() == phi::AllocationType::GPU) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       device_codes_.emplace(p, DeviceCodeMap());
 #else
-      PADDLE_THROW(platform::errors::PreconditionNotMet(
+      PADDLE_THROW(phi::errors::PreconditionNotMet(
           "CUDAPlace or HIPPlace is not supported, please re-compile with "
           "WITH_GPU=ON or WITH_ROCM=ON."));
 #endif
@@ -87,7 +89,7 @@ DeviceCodePool::DeviceCodePool(const std::vector<platform::Place>& places) {
   }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  CUDADeviceCode::CheckAvailableStatus();
+  GPUDeviceCode::CheckAvailableStatus();
 #endif
 }
 
@@ -114,8 +116,8 @@ static bool CheckCUDADriverResult(CUresult result,
   return true;
 }
 
-bool CUDADeviceCode::available_ = false;
-void CUDADeviceCode::CheckAvailableStatus() {
+bool GPUDeviceCode::available_ = false;
+void GPUDeviceCode::CheckAvailableStatus() {
   available_ = false;
   if (!dynload::HasNVRTC() || !dynload::HasCUDADriver()) {
     LOG_FIRST_N(WARNING, 1)
@@ -215,12 +217,12 @@ static std::string FindCUDAIncludePath() {
   return "";
 }
 
-CUDADeviceCode::CUDADeviceCode(const Place& place,
-                               const std::string& name,
-                               const std::string& kernel) {
-  if (!is_gpu_place(place)) {
-    PADDLE_THROW(platform::errors::PermissionDenied(
-        "CUDADeviceCode can only launch on GPU place."));
+GPUDeviceCode::GPUDeviceCode(const Place& place,
+                             const std::string& name,
+                             const std::string& kernel) {
+  if (place.GetType() != phi::AllocationType::GPU) {
+    PADDLE_THROW(phi::errors::PermissionDenied(
+        "GPUDeviceCode can only launch on GPU place."));
   }
 
   place_ = place;
@@ -232,7 +234,7 @@ CUDADeviceCode::CUDADeviceCode(const Place& place,
 #endif
 }
 
-bool CUDADeviceCode::Compile(bool include_path) {
+bool GPUDeviceCode::Compile(bool include_path) {
   is_compiled_ = false;
   if (!dynload::HasNVRTC() || !dynload::HasCUDADriver()) {
     LOG_FIRST_N(WARNING, 1)
@@ -403,7 +405,7 @@ bool CUDADeviceCode::Compile(bool include_path) {
   return true;
 }
 
-void CUDADeviceCode::Launch(const size_t n, std::vector<void*>* args) const {
+void GPUDeviceCode::Launch(const size_t n, std::vector<void*>* args) const {
   PADDLE_ENFORCE_EQ(
       is_compiled_,
       true,
@@ -454,8 +456,8 @@ void CUDADeviceCode::Launch(const size_t n, std::vector<void*>* args) const {
 }
 
 #ifdef PADDLE_WITH_HIP
-bool CUDADeviceCode::CheckNVRTCResult(hiprtcResult result,
-                                      std::string function) {
+bool GPUDeviceCode::CheckNVRTCResult(hiprtcResult result,
+                                     std::string function) {
   if (result != HIPRTC_SUCCESS) {
     LOG_FIRST_N(WARNING, 1)
         << "Call " << function << " for < " << name_
@@ -463,8 +465,7 @@ bool CUDADeviceCode::CheckNVRTCResult(hiprtcResult result,
     return false;
   }
 #else
-bool CUDADeviceCode::CheckNVRTCResult(nvrtcResult result,
-                                      std::string function) {
+bool GPUDeviceCode::CheckNVRTCResult(nvrtcResult result, std::string function) {
   if (result != NVRTC_SUCCESS) {
     LOG_FIRST_N(WARNING, 1)
         << "Call " << function << " for < " << name_
@@ -476,5 +477,4 @@ bool CUDADeviceCode::CheckNVRTCResult(nvrtcResult result,
 }
 #endif
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace phi

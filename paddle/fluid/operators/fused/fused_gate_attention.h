@@ -19,7 +19,6 @@ limitations under the License. */
 #endif
 
 #include "paddle/phi/kernels/arange_kernel.h"
-#include "paddle/phi/kernels/check_numerics_kernel.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
