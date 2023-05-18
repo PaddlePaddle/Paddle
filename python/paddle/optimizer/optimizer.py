@@ -275,6 +275,14 @@ class Optimizer:
         self._auxiliary_vars = {}
         self._already_create_accumulater = set()
 
+        # create master gradients' states
+        self._create_master_grad_states()
+
+    def _create_master_grad_states(self):
+        # master gradients states
+        self._master_grads = {}
+        self._master_grad = False
+
     def _set_auxiliary_var(self, key, val):
         self._auxiliary_vars[key] = val
 
@@ -667,6 +675,25 @@ class Optimizer:
                 },
             )
             self._master_weights[param.name] = var
+        return var
+
+    def _create_master_grad(self, grad):
+        assert self._is_dtype_fp16_or_bf16(grad.dtype)
+        if grad.name in self._master_grads:
+            var = self._master_grads[grad.name]
+        else:
+            var_name = grad.name + "_fp32_master"
+            var_name = unique_name.generate(var_name)
+            var = grad.block.create_var(
+                name=var_name,
+                shape=grad.shape,
+                value=0,
+                dtype='float32',
+                lod_level=grad.lod_level,
+                persistable=grad.persistable,
+                is_data=grad.is_data,
+            )
+            self._master_grads[grad.name] = var
         return var
 
     def _create_accumulators(self, block, parameters):
@@ -1168,7 +1195,6 @@ class Optimizer:
         if self._grad_clip is not None:
             params_grads = self._grad_clip(params_grads)
         else:
-
             params_grads = paddle.nn.clip.append_gradient_clip_ops(params_grads)
 
         # Add regularization if any
