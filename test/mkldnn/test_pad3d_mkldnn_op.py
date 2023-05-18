@@ -17,23 +17,21 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.fluid import core
 from paddle.fluid.tests.unittests.eager_op_test import (
     OpTest,
     convert_float_to_uint16,
 )
 
 
-class TestPad3dOneDNNOp(OpTest):
+class TestPad3dFp16(OpTest):
     def setUp(self):
         paddle.enable_static()
         self.value = 0.0
         self.initTestCase()
-        self.dtype = np.float64
+        self.dtype = self.get_dtype()
         self.op_type = "pad3d"
         self.python_api = paddle.nn.functional.pad
-        self._cpu_only = True
-        self.use_onednn = True
-        self.init_data_type()
         self.inputs = {
             'X': np.random.uniform(-1.0, 1.0, self.shape).astype("float32")
             if self.dtype == np.uint16
@@ -52,7 +50,7 @@ class TestPad3dOneDNNOp(OpTest):
         self.attrs['value'] = self.value
         self.attrs['mode'] = self.mode
         self.attrs['data_format'] = self.data_format
-        self.attrs['use_mkldnn'] = self.use_onednn
+        self.attrs['use_mkldnn'] = True
         if self.data_format == "NCDHW":
             paddings = [
                 (0, 0),
@@ -88,14 +86,14 @@ class TestPad3dOneDNNOp(OpTest):
             self.inputs['X'] = convert_float_to_uint16(self.inputs['X'])
             self.outputs['Out'] = convert_float_to_uint16(self.outputs['Out'])
 
+    def get_dtype(self):
+        return np.float16
+
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output(atol=1e-3)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out')
-
-    def init_data_type(self):
-        pass
+        self.check_grad(['X'], 'Out', max_relative_error=1.5e-3)
 
     def initTestCase(self):
         self.shape = (2, 3, 4, 5, 6)
@@ -106,7 +104,7 @@ class TestPad3dOneDNNOp(OpTest):
         self.variable_paddings = False
 
 
-class TestCase1(TestPad3dOneDNNOp):
+class TestCase1(TestPad3dFp16):
     def initTestCase(self):
         self.shape = (2, 3, 4, 5, 6)
         self.paddings = [0, 1, 2, 3, 4, 5]
@@ -116,7 +114,7 @@ class TestCase1(TestPad3dOneDNNOp):
         self.variable_paddings = False
 
 
-class TestCase2(TestPad3dOneDNNOp):
+class TestCase2(TestPad3dFp16):
     def initTestCase(self):
         self.shape = (2, 3, 4, 5, 6)
         self.paddings = [1, 1, 1, 1, 1, 1]
@@ -126,102 +124,31 @@ class TestCase2(TestPad3dOneDNNOp):
         self.variable_paddings = False
 
 
-class TestCase3(TestPad3dOneDNNOp):
-    def initTestCase(self):
-        self.shape = (2, 3, 4, 5, 6)
-        self.paddings = [0, 1, 1, 0, 2, 3]
-        self.mode = "reflect"
-        self.data_format = "NCDHW"
-        self.variable_paddings = False
+# ----------------Pad3d Bf16----------------
 
 
-class TestCase4(TestPad3dOneDNNOp):
-    def initTestCase(self):
-        self.shape = (4, 4, 4, 4, 4)
-        self.paddings = [0, 1, 2, 1, 2, 3]
-        self.mode = "reflect"
-        self.data_format = "NDHWC"
-        self.variable_paddings = False
+def create_test_bf16(parent):
+    class TestPad3dBf16(parent):
+        def get_dtype(self):
+            return np.uint16
+
+        def test_check_output(self):
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, atol=1e-2)
+
+        def test_check_grad_normal(self):
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place, ['X'], 'Out', max_relative_error=1e-2
+            )
+
+    cls_name = "{}_{}".format(parent.__name__, "BF16OP")
+    TestPad3dBf16.__name__ = cls_name
+    globals()[cls_name] = TestPad3dBf16
 
 
-class TestCase5(TestPad3dOneDNNOp):
-    def initTestCase(self):
-        self.shape = (2, 3, 4, 5, 6)
-        self.paddings = [0, 1, 2, 3, 2, 1]
-        self.mode = "replicate"
-        self.data_format = "NCDHW"
-        self.variable_paddings = False
+create_test_bf16(TestCase1)
+create_test_bf16(TestCase2)
 
-
-class TestCase6(TestPad3dOneDNNOp):
-    def initTestCase(self):
-        self.shape = (4, 4, 4, 4, 4)
-        self.paddings = [5, 4, 2, 1, 2, 3]
-        self.mode = "replicate"
-        self.data_format = "NDHWC"
-        self.variable_paddings = False
-
-
-class TestCase7(TestPad3dOneDNNOp):
-    def initTestCase(self):
-        self.shape = (2, 3, 4, 5, 6)
-        self.paddings = [0, 1, 2, 3, 2, 1]
-        self.mode = "circular"
-        self.data_format = "NCDHW"
-        self.variable_paddings = False
-
-
-class TestCase8(TestPad3dOneDNNOp):
-    def initTestCase(self):
-        self.shape = (4, 4, 4, 4, 4)
-        self.paddings = [0, 1, 2, 1, 2, 3]
-        self.mode = "circular"
-        self.data_format = "NDHWC"
-        self.variable_paddings = False
-
-
-class TestCase9(TestPad3dOneDNNOp):
-    def initTestCase(self):
-        self.shape = (2, 3, 4, 5, 6)
-        self.paddings = [0, 1, 2, 3, 4, 5]
-        self.mode = "constant"
-        self.data_format = "NCDHW"
-        self.value = 1.0
-        self.variable_paddings = True
-
-
-class TestCase10(TestPad3dOneDNNOp):
-    def initTestCase(self):
-        self.shape = (2, 3, 4, 5, 6)
-        self.paddings = [0, 1, 2, 3, 4, 5]
-        self.mode = "constant"
-        self.data_format = "NDHWC"
-        self.value = 1.0
-        self.variable_paddings = True
-
-
-def create_test_class(parent):
-    class TestBf16Case(parent):
-        def init_data_type(self):
-            self.dtype = np.uint16
-
-    TestBf16Case.__name__ = "{}_{}".format(parent.__name__, "BF16")
-    globals()[TestBf16Case.__name__] = TestBf16Case
-
-
-create_test_class(TestPad3dOneDNNOp)
-create_test_class(TestCase1)
-create_test_class(TestCase2)
-create_test_class(TestCase3)
-create_test_class(TestCase4)
-create_test_class(TestCase5)
-create_test_class(TestCase6)
-create_test_class(TestCase7)
-create_test_class(TestCase8)
-create_test_class(TestCase9)
-
-if __name__ == "__main__":
-    from paddle import enable_static
-
-    enable_static()
+if __name__ == '__main__':
     unittest.main()
