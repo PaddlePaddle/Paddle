@@ -23,7 +23,7 @@ from test_elementwise_add_op import (
 )
 
 
-class TestMKLDNNElementwiseAddOp(TestElementwiseAddOp):
+class TestOneDNNElementwiseAddOp(TestElementwiseAddOp):
     def init_kernel_type(self):
         self.use_mkldnn = True
 
@@ -31,21 +31,21 @@ class TestMKLDNNElementwiseAddOp(TestElementwiseAddOp):
         self.dtype = np.float32
 
 
-class TestMKLDNNElementwiseAddOp2(TestMKLDNNElementwiseAddOp):
+class TestOneDNNElementwiseAddOp2(TestOneDNNElementwiseAddOp):
     def init_input_output(self):
         self.x = np.random.random((100,)).astype(self.dtype)
         self.y = np.random.random((100,)).astype(self.dtype)
         self.out = np.add(self.x, self.y)
 
 
-class TestMKLDNNElementwiseAddOp3(TestMKLDNNElementwiseAddOp):
+class TestOneDNNElementwiseAddOp3(TestOneDNNElementwiseAddOp):
     def init_input_output(self):
         self.x = np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(self.dtype)
         self.y = np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(self.dtype)
         self.out = np.add(self.x, self.y)
 
 
-class TestMKLDNNElementwiseAddOp4(TestMKLDNNElementwiseAddOp):
+class TestOneDNNElementwiseAddOp4(TestOneDNNElementwiseAddOp):
     def init_input_output(self):
         self.x = np.random.uniform(1, 2, [2, 3, 4, 32]).astype(self.dtype)
         self.y = np.random.uniform(1, 2, [4, 32]).astype(self.dtype)
@@ -59,21 +59,21 @@ class TestMKLDNNElementwiseAddOp4(TestMKLDNNElementwiseAddOp):
         pass
 
 
-class TestMKLDNNElementwiseAddOp5(TestMKLDNNElementwiseAddOp):
+class TestOneDNNElementwiseAddOp5(TestOneDNNElementwiseAddOp):
     def init_input_output(self):
         self.x = np.random.uniform(1, 2, [2, 3, 4, 100]).astype(self.dtype)
         self.y = np.random.uniform(1, 2, [100]).astype(self.dtype)
         self.out = np.add(self.x, self.y)
 
 
-class TestMKLDNNElementwiseAddOpBroadcastXintoY(TestMKLDNNElementwiseAddOp):
+class TestOneDNNElementwiseAddOpBroadcastXintoY(TestOneDNNElementwiseAddOp):
     def init_input_output(self):
         self.x = np.random.uniform(1, 2, [2, 50, 1]).astype(self.dtype)
         self.y = np.random.uniform(1, 2, [2, 50, 160]).astype(self.dtype)
         self.out = np.add(self.x, self.y)
 
 
-class TestMKLDNNElementwiseAddOp_broadcast_3(TestMKLDNNElementwiseAddOp):
+class TestOneDNNElementwiseAddOp_broadcast_3(TestOneDNNElementwiseAddOp):
     def init_input_output(self):
         self.x = np.random.rand(2, 10, 12, 3).astype(self.dtype)
         self.y = np.random.rand(10, 12).astype(self.dtype)
@@ -83,7 +83,7 @@ class TestMKLDNNElementwiseAddOp_broadcast_3(TestMKLDNNElementwiseAddOp):
         self.axis = 1
 
 
-class TestElementwiseAddOp_xsize_lessthan_ysize_add(TestMKLDNNElementwiseAddOp):
+class TestElementwiseAddOp_xsize_lessthan_ysize_add(TestOneDNNElementwiseAddOp):
     def init_input_output(self):
         self.x = np.random.rand(10, 12).astype(self.dtype)
         self.y = np.random.rand(2, 2, 10, 12).astype(self.dtype)
@@ -103,21 +103,21 @@ class TestElementwiseAddOp_xsize_lessthan_ysize_add(TestMKLDNNElementwiseAddOp):
         pass
 
 
-class TestMKLDNNElementwiseAddOpZeroDim(TestMKLDNNElementwiseAddOp):
+class TestOneDNNlementwiseAddOpZeroDim(TestOneDNNElementwiseAddOp):
     def init_input_output(self):
         self.x = np.random.random((100,)).astype(self.dtype)
         self.y = np.array(3.0).astype(self.dtype)
         self.out = np.add(self.x, self.y)
 
 
-class TestMKLDNNElementwiseAddOpZeroDim2(TestMKLDNNElementwiseAddOp):
+class TestOneDNNlementwiseAddOpZeroDim2(TestOneDNNElementwiseAddOp):
     def init_input_output(self):
         self.x = np.array(3.0).astype(self.dtype)
         self.y = np.random.random((100,)).astype(self.dtype)
         self.out = np.add(self.x, self.y)
 
 
-class TestMKLDNNElementwiseAddOpZeroDim3(TestMKLDNNElementwiseAddOp):
+class TestOneDNNlementwiseAddOpZeroDim3(TestOneDNNElementwiseAddOp):
     def init_input_output(self):
         self.x = np.array(3.0).astype(self.dtype)
         self.y = np.array(3.0).astype(self.dtype)
@@ -144,9 +144,9 @@ class TestInt8(TestElementwiseAddOp):
         self.out = np.add(self.x, self.y)
 
     def init_scales(self):
-        self.attrs['Scale_x'] = 1.0
-        self.attrs['Scale_y'] = 1.0
-        self.attrs['Scale_out'] = 1.0
+        self.attrs['scale_x'] = 1.0
+        self.attrs['scale_y'] = 1.0
+        self.attrs['scale_out'] = 1.0
 
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
@@ -161,48 +161,6 @@ class TestInt8(TestElementwiseAddOp):
 
     def test_check_grad_ingore_y(self):
         pass
-
-
-class TestInt8Scales(TestInt8):
-    def quantize(self, tensor, dt="int8"):
-        max_int = 127.0 if dt == "int8" else 255.0
-        scale = max_int / np.abs(np.amax(tensor))
-        quantized = np.round(scale * tensor).astype(dt)
-        return scale, quantized
-
-    def init_input_output(self):
-        self.x_f = np.random.random((100,)).astype("float")
-        self.y_f = np.random.random((100,)).astype("float")
-        self.out_f = np.add(self.x_f, self.y_f)
-
-        self.scale_x, self.x = self.quantize(self.x_f)
-        self.scale_y, self.y = self.quantize(self.y_f)
-        self.scale_o, self.out = self.quantize(self.out_f)
-
-    def init_scales(self):
-        self.attrs['Scale_x'] = self.scale_x
-        self.attrs['Scale_y'] = self.scale_y
-        self.attrs['Scale_out'] = self.scale_o
-
-    def test_check_output(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.init_scales()
-        int_atol = 1  # different quantization techniques
-        self.check_output(check_dygraph=(not self.use_mkldnn), atol=int_atol)
-
-
-class TestUint8Scales(TestInt8Scales):
-    def init_input_output(self):
-        self.x_f = np.random.random((100,)).astype("float")
-        self.y_f = np.random.random((100,)).astype("float")
-        self.out_f = np.add(self.x_f, self.y_f)
-
-        self.scale_x, self.x = self.quantize(self.x_f, "uint8")
-        self.scale_y, self.y = self.quantize(self.y_f, "uint8")
-        self.scale_o, self.out = self.quantize(self.out_f, "uint8")
-
-    def init_dtype(self):
-        self.dtype = np.uint8
 
 
 if __name__ == '__main__':

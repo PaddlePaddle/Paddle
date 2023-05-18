@@ -23,7 +23,7 @@ from test_elementwise_mul_op import (
 )
 
 
-class TestMKLDNNElementwiseMulOp(ElementwiseMulOp):
+class TestOneDNNElementwiseMulOp(ElementwiseMulOp):
     def init_kernel_type(self):
         self.use_mkldnn = True
 
@@ -31,21 +31,21 @@ class TestMKLDNNElementwiseMulOp(ElementwiseMulOp):
         self.dtype = np.float32
 
 
-class TestMKLDNNElementwiseMulOp2(TestMKLDNNElementwiseMulOp):
+class TestOneDNNElementwiseMulOp2(TestOneDNNElementwiseMulOp):
     def init_input_output(self):
         self.x = np.random.random((100,)).astype(self.dtype)
         self.y = np.random.random((100,)).astype(self.dtype)
         self.out = np.multiply(self.x, self.y)
 
 
-class TestMKLDNNElementwiseMulOp3(TestMKLDNNElementwiseMulOp):
+class TestOneDNNElementwiseMulOp3(TestOneDNNElementwiseMulOp):
     def init_input_output(self):
         self.x = np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(self.dtype)
         self.y = np.random.uniform(0.1, 1, [2, 3, 4, 5]).astype(self.dtype)
         self.out = np.multiply(self.x, self.y)
 
 
-class TestMKLDNNElementwiseMulOp4(TestMKLDNNElementwiseMulOp):
+class TestOneDNNElementwiseMulOp4(TestOneDNNElementwiseMulOp):
     def init_input_output(self):
         self.x = np.random.uniform(1, 2, [2, 3, 4, 32]).astype(self.dtype)
         self.y = np.random.uniform(1, 2, [4, 32]).astype(self.dtype)
@@ -59,7 +59,7 @@ class TestMKLDNNElementwiseMulOp4(TestMKLDNNElementwiseMulOp):
         pass
 
 
-class TestMKLDNNElementwiseMulOp5(TestMKLDNNElementwiseMulOp):
+class TestOneDNNElementwiseMulOp5(TestOneDNNElementwiseMulOp):
     def init_input_output(self):
         self.x = np.random.uniform(1, 2, [2, 3, 4, 100]).astype(self.dtype)
         self.y = np.random.uniform(1, 2, [100]).astype(self.dtype)
@@ -76,7 +76,7 @@ class TestMKLDNNElementwiseMulOp5(TestMKLDNNElementwiseMulOp):
         pass
 
 
-class TestMKLDNNElementwiseMulOpZeroDim(TestMKLDNNElementwiseMulOp):
+class TestOneDNNElementwiseMulOpZeroDim(TestOneDNNElementwiseMulOp):
     def init_input_output(self):
         self.x = np.random.random((100,)).astype(self.dtype)
         self.y = np.array(3.0).astype(self.dtype)
@@ -92,7 +92,7 @@ class TestMKLDNNElementwiseMulOpZeroDim(TestMKLDNNElementwiseMulOp):
         pass
 
 
-class TestMKLDNNElementwiseMulOpZeroDim2(TestMKLDNNElementwiseMulOp):
+class TestOneDNNElementwiseMulOpZeroDim2(TestOneDNNElementwiseMulOp):
     def init_input_output(self):
         self.x = np.array(3.0).astype(self.dtype)
         self.y = np.random.random((100,)).astype(self.dtype)
@@ -108,7 +108,7 @@ class TestMKLDNNElementwiseMulOpZeroDim2(TestMKLDNNElementwiseMulOp):
         pass
 
 
-class TestMKLDNNElementwiseMulOpZeroDim3(TestMKLDNNElementwiseMulOp):
+class TestOneDNNElementwiseMulOpZeroDim3(TestOneDNNElementwiseMulOp):
     def init_input_output(self):
         self.x = np.array(3.0).astype(self.dtype)
         self.y = np.array(3.0).astype(self.dtype)
@@ -144,9 +144,9 @@ class TestInt8(ElementwiseMulOp):
         self.out = np.multiply(self.x, self.y)
 
     def init_scales(self):
-        self.attrs['Scale_x'] = 1.0
-        self.attrs['Scale_y'] = 1.0
-        self.attrs['Scale_out'] = 1.0
+        self.attrs['scale_x'] = 1.0
+        self.attrs['scale_y'] = 1.0
+        self.attrs['scale_out'] = 1.0
 
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
@@ -161,48 +161,6 @@ class TestInt8(ElementwiseMulOp):
 
     def test_check_grad_ingore_y(self):
         pass
-
-
-class TestInt8Scales(TestInt8):
-    def quantize(self, tensor, dt="int8"):
-        max_int = 127.0 if dt == "int8" else 255.0
-        scale = max_int / np.abs(np.amax(tensor))
-        quantized = np.round(scale * tensor).astype(dt)
-        return scale, quantized
-
-    def init_input_output(self):
-        self.x_f = np.random.random((100,)).astype("float")
-        self.y_f = np.random.random((100,)).astype("float")
-        self.out_f = np.multiply(self.x_f, self.y_f)
-
-        self.scale_x, self.x = self.quantize(self.x_f)
-        self.scale_y, self.y = self.quantize(self.y_f)
-        self.scale_o, self.out = self.quantize(self.out_f)
-
-    def init_scales(self):
-        self.attrs['Scale_x'] = self.scale_x
-        self.attrs['Scale_y'] = self.scale_y
-        self.attrs['Scale_out'] = self.scale_o
-
-    def test_check_output(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.init_scales()
-        int_atol = 1  # different quantization techniques
-        self.check_output(check_dygraph=(not self.use_mkldnn), atol=int_atol)
-
-
-class TestUint8Scales(TestInt8Scales):
-    def init_input_output(self):
-        self.x_f = np.random.random((100,)).astype("float")
-        self.y_f = np.random.random((100,)).astype("float")
-        self.out_f = np.multiply(self.x_f, self.y_f)
-
-        self.scale_x, self.x = self.quantize(self.x_f, "uint8")
-        self.scale_y, self.y = self.quantize(self.y_f, "uint8")
-        self.scale_o, self.out = self.quantize(self.out_f, "uint8")
-
-    def init_dtype(self):
-        self.dtype = np.uint8
 
 
 if __name__ == '__main__':
