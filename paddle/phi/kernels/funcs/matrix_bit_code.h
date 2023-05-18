@@ -123,7 +123,7 @@ class CustomCode {
  public:
   CustomCode(const phi::DenseTensor& path_table,
              const phi::DenseTensor& path_code,
-             const int64_t* ids,
+             const int64_t* ids UNUSED,
              int index) {
     seq_len_ = path_table.dims()[1];
     path_table_data_ = path_table.data<T>() + seq_len_ * index;

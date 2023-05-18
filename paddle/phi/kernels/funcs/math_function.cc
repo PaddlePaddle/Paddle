@@ -149,9 +149,10 @@ struct TensorSetConstantCPU {
 };
 
 template <>
-void set_constant_with_place<phi::XPUPlace>(const phi::DeviceContext& context,
-                                            phi::DenseTensor* tensor,
-                                            float value) {
+void set_constant_with_place<phi::XPUPlace>(const phi::DeviceContext& context
+                                                UNUSED,
+                                            phi::DenseTensor* tensor UNUSED,
+                                            float value UNUSED) {
 #ifdef PADDLE_WITH_XPU
   phi::VisitDataType(
       tensor->dtype(),
@@ -162,9 +163,10 @@ void set_constant_with_place<phi::XPUPlace>(const phi::DeviceContext& context,
 }
 
 template <>
-void set_constant_with_place<phi::IPUPlace>(const phi::DeviceContext& context,
-                                            phi::DenseTensor* tensor,
-                                            float value) {
+void set_constant_with_place<phi::IPUPlace>(const phi::DeviceContext& context
+                                                UNUSED,
+                                            phi::DenseTensor* tensor UNUSED,
+                                            float value UNUSED) {
   PADDLE_THROW(phi::errors::Unimplemented("IPUPlace is not supported"));
 }
 
@@ -184,7 +186,8 @@ void set_constant_with_place<phi::CustomPlace>(
 }
 
 template <>
-void set_constant_with_place<phi::CPUPlace>(const phi::DeviceContext& context,
+void set_constant_with_place<phi::CPUPlace>(const phi::DeviceContext& context
+                                                UNUSED,
                                             phi::DenseTensor* tensor,
                                             float value) {
   phi::VisitDataType(tensor->dtype(), TensorSetConstantCPU(tensor, value));
@@ -192,7 +195,9 @@ void set_constant_with_place<phi::CPUPlace>(const phi::DeviceContext& context,
 
 template <>
 void set_constant_with_place<phi::GPUPinnedPlace>(
-    const phi::DeviceContext& context, phi::DenseTensor* tensor, float value) {
+    const phi::DeviceContext& context UNUSED,
+    phi::DenseTensor* tensor,
+    float value) {
   phi::VisitDataType(tensor->dtype(), TensorSetConstantCPU(tensor, value));
 }
 

@@ -24,7 +24,7 @@ namespace strings {
 template <typename Context>
 void Copy(const Context& dev_ctx,
           const StringTensor& src,
-          bool blocking,
+          bool blocking UNUSED,
           StringTensor* dst) {
   auto* src_ptr = src.data();
   const auto& src_place = src.place();

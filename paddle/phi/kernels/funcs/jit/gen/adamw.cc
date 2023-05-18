@@ -145,10 +145,10 @@ void AdamWJitCode::genCode() {
 
 class AdamWCreator : public JitCodeCreator<int> {
  public:
-  bool CanBeUsed(const int& attr) const override {
+  bool CanBeUsed(const int& attr UNUSED) const override {
     return phi::backends::cpu::MayIUse(phi::backends::cpu::avx512f);
   }
-  size_t CodeSize(const int& attr) const override { return 96 + 32 * 8; }
+  size_t CodeSize(const int& attr UNUSED) const override { return 96 + 32 * 8; }
   std::unique_ptr<GenBase> CreateJitCode(const int& attr) const override {
     return make_unique<AdamWJitCode>(attr, CodeSize(attr));
   }

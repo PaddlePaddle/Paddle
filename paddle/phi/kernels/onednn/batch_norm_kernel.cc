@@ -33,7 +33,7 @@ void BatchNormKernel(const Context &dev_ctx,
                      bool is_test,
                      float momentum,
                      float epsilon,
-                     const std::string &data_layout,
+                     const std::string &data_layout UNUSED,
                      bool use_global_stats,
                      bool trainable_statistics,
                      DenseTensor *y,
@@ -41,7 +41,7 @@ void BatchNormKernel(const Context &dev_ctx,
                      DenseTensor *variance_out,
                      DenseTensor *saved_mean,
                      DenseTensor *saved_variance,
-                     DenseTensor *reserve_space) {
+                     DenseTensor *reserve_space UNUSED) {
   const bool test_mode = is_test && (!trainable_statistics);
   const bool global_stats = test_mode || use_global_stats;
   const bool fuse_with_relu =

@@ -46,7 +46,7 @@ inline std::vector<int64_t> CalculateBroadcastedDims(
 }
 
 inline void AddSubNonBroadcast(ReorderOneDNNHandler* reorder_handler,
-                               phi::DenseTensor* grad_tensor,
+                               phi::DenseTensor* grad_tensor UNUSED,
                                const std::shared_ptr<dnnl::memory>& src_memory,
                                const std::shared_ptr<dnnl::memory>& dst_memory,
                                const std::vector<float>& scales) {

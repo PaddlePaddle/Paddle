@@ -25,7 +25,7 @@ void GaussianKernel(const Context& ctx,
                     float mean,
                     float std,
                     int seed,
-                    DataType dtype,
+                    DataType dtype UNUSED,
                     DenseTensor* out) {
   std::normal_distribution<T> dist(mean, std);
   std::shared_ptr<std::mt19937_64> engine;
