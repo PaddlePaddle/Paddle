@@ -25,7 +25,7 @@ namespace paddle {
 namespace distributed {
 namespace auto_parallel {
 
-class MatmulRule : public SPMDRuleBase {
+class MatmulSPMDRule : public SPMDRuleBase {
  public:
   std::vector<DistTensorSpec> InferForward(
       const std::vector<DistTensorSpec>& input_specs,
