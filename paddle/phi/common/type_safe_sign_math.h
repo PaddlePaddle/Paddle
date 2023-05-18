@@ -19,6 +19,7 @@
 
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/float16.h"
+#include "paddle/phi/core/hostdevice.h"
 
 namespace phi {
 
@@ -44,19 +45,19 @@ inline constexpr bool is_negative(const T& x) {
 // is needed to workaround g++-7/8 crash on aarch64, but also makes
 // copysign faster for the half-precision types
 template <typename T, typename U>
-inline auto copysign(const T& a, const U& b) {
+inline HOSTDEVICE auto copysign(const T& a, const U& b) {
   return std::copysign(a, b);
 }
 
 // Implement copysign for half precision floats using bit ops
 // Sign is the most significant bit for both float16 and bfloat16 types
-inline phi::dtype::float16 copysign(phi::dtype::float16 a,
-                                    phi::dtype::float16 b) {
+inline HOSTDEVICE phi::dtype::float16 copysign(phi::dtype::float16 a,
+                                               phi::dtype::float16 b) {
   return phi::dtype::raw_uint16_to_float16((a.x & 0x7fff) | (b.x & 0x8000));
 }
 
-inline phi::dtype::bfloat16 copysign(phi::dtype::bfloat16 a,
-                                     phi::dtype::bfloat16 b) {
+inline HOSTDEVICE phi::dtype::bfloat16 copysign(phi::dtype::bfloat16 a,
+                                                phi::dtype::bfloat16 b) {
   return phi::dtype::raw_uint16_to_bfloat16((a.x & 0x7fff) | (b.x & 0x8000));
 }
 
