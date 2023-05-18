@@ -61,10 +61,10 @@ void BatchNormInferKernel(const Context& dev_ctx,
 
 phi::KernelKey BatchNormGetKernelTypeForVar(
     const GetKernelTypeForVarContext* ctx) {
-  const std::string& var_name = ctx->GetVarName();
   const phi::DenseTensor& tensor = ctx->GetTensor();
   const phi::KernelKey& expected_kernel_type = ctx->GetKernelKey();
 #ifdef PADDLE_WITH_MKLDNN
+  const std::string& var_name = ctx->GetVarName();
   // Only input require reshaping, weights and
   // bias are having shape in NCHW order
   if ((var_name == "X") &&
