@@ -20,18 +20,18 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 
-#include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/enforce.h"
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/platform/dynload/cuda_driver.h"
-#include "paddle/fluid/platform/dynload/nvrtc.h"
+#include "paddle/phi/backends/dynload/cuda_driver.h"
+#include "paddle/phi/backends/dynload/nvrtc.h"
 #endif
 #ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/platform/dynload/hiprtc.h"
-#include "paddle/fluid/platform/dynload/rocm_driver.h"
+#include "paddle/phi/backends/dynload/hiprtc.h"
+#include "paddle/phi/backends/dynload/rocm_driver.h"
 #endif
 
-namespace paddle {
-namespace platform {
+namespace phi {
 
 class DeviceCode {
  public:
@@ -49,11 +49,11 @@ class DeviceCode {
 };
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-class CUDADeviceCode : public DeviceCode {
+class GPUDeviceCode : public DeviceCode {
  public:
-  explicit CUDADeviceCode(const Place& place,
-                          const std::string& name,
-                          const std::string& kernel);
+  explicit GPUDeviceCode(const Place& place,
+                         const std::string& name,
+                         const std::string& kernel);
   bool Compile(bool include_path = false) override;
   void Launch(const size_t n, std::vector<void*>* args) const override;
 
@@ -94,7 +94,7 @@ class DeviceCodePool {
   using DeviceCodeMap =
       std::unordered_map<std::string, std::unique_ptr<DeviceCode>>;
 
-  explicit DeviceCodePool(const std::vector<platform::Place>& places);
+  explicit DeviceCodePool(const std::vector<Place>& places);
 
   static DeviceCodePool& Instance() {
     PADDLE_ENFORCE_NOT_NULL(
@@ -104,7 +104,7 @@ class DeviceCodePool {
     return *pool;
   }
 
-  static DeviceCodePool& Init(const std::vector<platform::Place>& places) {
+  static DeviceCodePool& Init(const std::vector<Place>& places) {
     if (pool == nullptr) {
       pool = new DeviceCodePool(places);
     }
@@ -113,10 +113,9 @@ class DeviceCodePool {
 
   void Set(std::unique_ptr<DeviceCode>&& code);
 
-  platform::DeviceCode* Get(const platform::Place& place,
-                            const std::string& name);
+  DeviceCode* Get(const Place& place, const std::string& name);
 
-  size_t size(const platform::Place& place) const {
+  size_t size(const Place& place) const {
     auto iter = device_codes_.find(place);
     if (iter == device_codes_.end()) {
       return 0;
@@ -130,5 +129,4 @@ class DeviceCodePool {
   DISABLE_COPY_AND_ASSIGN(DeviceCodePool);
 };
 
-}  // namespace platform
-}  // namespace paddle
+}  // namespace phi

@@ -1,4 +1,4 @@
-/* Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,16 +12,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/fused/fusion_group_op.h"
+#include "paddle/phi/core/compat/op_utils.h"
 
-#include "paddle/fluid/platform/float16.h"
+namespace phi {
 
-namespace ops = paddle::operators;
-namespace plat = paddle::platform;
-PD_REGISTER_STRUCT_KERNEL(fusion_group,
-                          GPU,
-                          ALL_LAYOUT,
-                          ops::FusionGroupKernel,
-                          float,
-                          double,
-                          plat::float16) {}
+KernelSignature FusionGroupOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature("fusion_group",
+                         {"Inputs"},
+                         {"outs_dtype", "inputs_dtype", "func_name", "type"},
+                         {"Outs"});
+}
+
+}  // namespace phi
+
+PD_REGISTER_ARG_MAPPING_FN(fusion_group, phi::FusionGroupOpArgumentMapping);
