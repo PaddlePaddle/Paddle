@@ -478,12 +478,9 @@ def op_need_keep_fp32(op, amp_lists, use_fp16_guard, params_list):
         need_keep_fp32 = True
         for in_name in op.input_names:
             for params in params_list:
-                if (
-                    len(op.input(in_name)) > 0
-                    and op.input(in_name)[0] == params.name
-                ):
+                if params.name in op.input(in_name):
                     fp16_varname_list_in_fp32_op = (
-                        fp16_varname_list_in_fp32_op.union(op.input(in_name))
+                        fp16_varname_list_in_fp32_op.union([params.name])
                     )
 
     return need_keep_fp32, fp16_varname_list_in_fp32_op
