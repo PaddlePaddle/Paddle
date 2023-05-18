@@ -80,6 +80,7 @@ class OptimizerWithMixedPrecision:
                            the loss scaling.
         use_amp_guard(bool): Whether to use `fp16_guard` when constructing the program.
                            Default None, which means that its value is equal to `use_pure_fp16`.
+        use_master_grad(bool): Whether to use fp32 master gradients during optimizer. Default is False.
         use_promote(bool): Whether to promotes to fp32 when op has any float32 inputs. Default is False.
     """
 
@@ -96,6 +97,7 @@ class OptimizerWithMixedPrecision:
         incr_ratio,
         decr_ratio,
         use_amp_guard=None,
+        use_master_grad=False,
         use_promote=False,
     ):
         self._optimizer = optimizer
@@ -104,6 +106,7 @@ class OptimizerWithMixedPrecision:
         self._train_program = None
 
         self._is_distributed = False
+        self._use_master_grad = False
         self._scaled_loss = None
         self._loss_scaling = None
         self._init_loss_scaling = init_loss_scaling
@@ -122,6 +125,9 @@ class OptimizerWithMixedPrecision:
         self._learning_rate = optimizer._learning_rate
         self._learning_rate_map = optimizer._learning_rate_map
         self._use_pure_fp16 = level == "O2"
+        if self._use_pure_fp16 and (dtype == "bfloat16" or dtype == "float16"):
+            self._use_master_grad = use_master_grad
+            self._optimizer._master_grad = use_master_grad
         self._amp_level = level
         self._use_fp16_guard = use_amp_guard
         self._to_fp16_var_names = None
@@ -384,6 +390,51 @@ class OptimizerWithMixedPrecision:
                     use_promote=self.use_promote,
                 )
 
+    def _append_cast_to_master_grad_op(self, param_grads):
+        """
+        Create master gradient vars and add cast gradient to master gradient op in main program
+
+        Args:
+          param_grads(list(tuple(Tensor, Tensor))): A list of (parameter, gradient) pair to update.
+
+        Returns:
+          list: A list of (parameter, master_gradient) pair. In the following grad clip step and optimizer step, params can be updated by master gradient. main_prog will also append cast ops before grad clip ops.
+
+        """
+
+        if not self._use_master_grad:
+            return param_grads
+
+        global_block = self._train_program.global_block()
+        target_block = global_block
+        current_block = self._train_program.current_block()
+        if current_block.idx != global_block.idx:
+            target_block = self._train_program.blocks[
+                current_block.backward_block_idx
+            ]
+        params_master_grads = []
+
+        assert isinstance(target_block, paddle.fluid.framework.Block)
+        # create
+        for p, g in param_grads:
+            if g.name not in self._optimizer._master_grads.keys():
+                if self._optimizer._is_dtype_fp16_or_bf16(g.dtype):
+                    master_g = self._optimizer._create_master_grad(g)
+                    params_master_grads.append((p, master_g))
+                    target_block.append_op(
+                        type="cast",
+                        inputs={"X": [g]},
+                        outputs={"Out": [master_g]},
+                        attrs={
+                            "in_dtype": g.dtype,
+                            "out_dtype": master_g.dtype,
+                        },
+                    )
+                else:
+                    params_master_grads.append((p, g))
+
+        return params_master_grads
+
     def apply_gradients(self, params_grads):
         """
         Check scaled gradients to determine whether to update loss scaling and update
@@ -399,6 +450,9 @@ class OptimizerWithMixedPrecision:
         # Change the op_role_var attr for some ops, so that gradients
         # transferred across GPUs can be FP16.
         update_role_var_grad(self._train_program, params_grads)
+
+        # Create master grad and add cast op into program
+        params_grads = self._append_cast_to_master_grad_op(params_grads)
 
         # When not using dynamic loss scaling and the init loss scaling value is equal to 1.0,
         # the model can be optimized.
@@ -756,6 +810,7 @@ def decorate(
     level='O1',
     dtype='float16',
     master_weight=None,
+    master_grad=False,
     init_loss_scaling=2**15,
     incr_every_n_steps=1000,
     decr_every_n_nan_or_inf=2,
@@ -782,6 +837,9 @@ def decorate(
         master_weight(bool, optinal): For level='O2', whether to use multi-precision
             during weight updating. If master_weight is None, in O2 level optimizer
             will use multi-precision. Default is None.
+        master_grad(bool, optinal): For level='O2', whether to use master_grad
+            during weight updating. If master_grad is False, in O2 level optimizer
+            will not use master grad. Default is False.
         init_loss_scaling(float, optional): The initial loss scaling factor.
             Default is 32768.
         incr_every_n_steps(int, optional): Increases loss scaling every n
@@ -883,6 +941,7 @@ def decorate(
         decr_ratio=decr_ratio,
         use_amp_guard=use_amp_guard,
         use_promote=use_promote,
+        use_master_grad=master_grad,
     )
 
     return mp_optimizer
