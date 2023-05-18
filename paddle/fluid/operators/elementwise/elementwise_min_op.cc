@@ -87,7 +87,7 @@ class ElementwiseMinCompositeGradOpMaker
     auto* dy_ptr = this->GetOutputPtr(&dy);
     std::string dy_name = this->GetOutputName(dy);
     VLOG(6) << "Runing minimum_grad composite func";
-    int axis = static_cast(this->Attr("axis"));
+    int axis = static_cast<int>(this->Attr<int>("axis"));
     PADDLE_ENFORCE_EQ(
         axis,
         -1,
