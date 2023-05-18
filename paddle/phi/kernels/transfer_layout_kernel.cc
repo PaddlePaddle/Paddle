@@ -72,71 +72,47 @@ void TransferLayoutGeneral(const Context& dev_ctx,
   out->Resize(phi::make_ddim(dst_dim));
   dev_ctx.Alloc(out, x.dtype());
 
-  PD_VISIT_ALL_TYPES(x.dtype(), "CastDataLayout", ([&] {
-                       CastDataLayout<data_t, Context>(dev_ctx, x, axis, out);
-                     }));
-}
-
-template <typename Context>
-void TransferLayoutKernelGPU(const Context& dev_ctx,
-                             const DenseTensor& x,
-                             int src_layout,
-                             int dst_layout,
-                             DenseTensor* out) {
-  auto src_dim = x.dims();
-
-  auto axis = GetAxis(static_cast<DataLayout>(src_layout),
-                      static_cast<DataLayout>(dst_layout));
-
-  std::vector<int64_t> dst_dim;
-  dst_dim.resize(axis.size());
-  for (size_t i = 0; i < axis.size(); i++) {
-    dst_dim[i] = src_dim[axis[i]];
-  }
-
-  out->Resize(phi::make_ddim(dst_dim));
-  dev_ctx.Alloc(out, x.dtype());
-
   // In GPU fp16 model, we will insert many transfer_layout ops in
   // conv2d_fusion_layout_transfer_pass, so we optimize this kernel on GPU
-  std::vector<int> axis_nchw_nhwc = {0, 2, 3, 1};
-  std::vector<int> axis_nhwc_nchw = {0, 3, 1, 2};
-  // int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
-  int64_t device_id = dev_ctx.GetPlace().GetDeviceId();
-  const auto& prop = phi::backends::gpu::GetDeviceProperties(device_id);
-  int max_grid_y = prop.maxGridSize[1];
-
-  const int batch = src_dim[0];
-  int row_len = src_dim[1];
-  int col_len = src_dim[2] * src_dim[3];
-  if (axis == axis_nhwc_nchw) {
-    row_len = src_dim[1] * src_dim[2];
-    col_len = src_dim[3];
-  }
-  if (x.dtype() == phi::DataType::FLOAT16) {
-    funcs::BatchTranspose(out->data<phi::dtype::float16>(),
-                          x.data<phi::dtype::float16>(),
-                          batch,
-                          row_len,
-                          col_len,
-                          max_grid_y);
-    return;
-  } else if (x.dtype() == phi::DataType::FLOAT32) {
-    funcs::BatchTranspose(out->data<float>(),
-                          x.data<float>(),
-                          batch,
-                          row_len,
-                          col_len,
-                          max_grid_y);
-    return;
-  } else if (x.dtype() == phi::DataType::BFLOAT16) {
-    funcs::BatchTranspose(out->data<phi::dtype::bfloat16>(),
-                          x.data<phi::dtype::bfloat16>(),
-                          batch,
-                          row_len,
-                          col_len,
-                          max_grid_y);
-    return;
+  if (std::is_same<Context, phi::GPUContext>::value) {
+    std::vector<int> axis_nchw_nhwc = {0, 2, 3, 1};
+    std::vector<int> axis_nhwc_nchw = {0, 3, 1, 2};
+    auto* gpu_ctx = reinterpret_cast<const phi::GPUContext*>(&dev_ctx);
+    int64_t device_id = gpu_ctx->GetPlace().GetDeviceId();
+    const auto& prop = phi::backends::gpu::GetDeviceProperties(device_id);
+    int max_grid_y = prop.maxGridSize[1];
+    const int batch = src_dim[0];
+    int row_len = src_dim[1];
+    int col_len = src_dim[2] * src_dim[3];
+    if (axis == axis_nhwc_nchw) {
+      row_len = src_dim[1] * src_dim[2];
+      col_len = src_dim[3];
+    }
+    if (x.dtype() == phi::DataType::FLOAT16) {
+      funcs::BatchTranspose(out->data<phi::dtype::float16>(),
+                            x.data<phi::dtype::float16>(),
+                            batch,
+                            row_len,
+                            col_len,
+                            max_grid_y);
+      return;
+    } else if (x.dtype() == phi::DataType::FLOAT32) {
+      funcs::BatchTranspose(out->data<float>(),
+                            x.data<float>(),
+                            batch,
+                            row_len,
+                            col_len,
+                            max_grid_y);
+      return;
+    } else if (x.dtype() == phi::DataType::BFLOAT16) {
+      funcs::BatchTranspose(out->data<phi::dtype::bfloat16>(),
+                            x.data<phi::dtype::bfloat16>(),
+                            batch,
+                            row_len,
+                            col_len,
+                            max_grid_y);
+      return;
+    }
   }
 
   PD_VISIT_ALL_TYPES(x.dtype(), "CastDataLayout", ([&] {
@@ -248,9 +224,8 @@ PD_REGISTER_KERNEL_FOR_ALL_DTYPE(transfer_layout,
                                  ALL_LAYOUT,
                                  phi::TransferLayoutKernel<phi::CPUContext>) {}
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_REGISTER_KERNEL_FOR_ALL_DTYPE(
-    transfer_layout,
-    GPU,
-    ALL_LAYOUT,
-    phi::TransferLayoutKernelGPU<phi::GPUContext>) {}
+PD_REGISTER_KERNEL_FOR_ALL_DTYPE(transfer_layout,
+                                 GPU,
+                                 ALL_LAYOUT,
+                                 phi::TransferLayoutKernel<phi::GPUContext>) {}
 #endif
