@@ -147,12 +147,10 @@ int AddActXPUFusePass::ApplyImpl(ir::Graph* graph,
     GET_IR_NODE(ele_y);
     GET_IR_NODE(ele_out);
     GET_IR_NODE(act_out);
-
     auto* block = ele_add->Op()->Block();
     auto* scope = param_scope();
     PADDLE_ENFORCE_NOT_NULL(
         scope, platform::errors::InvalidArgument("Scope cannot be nullptr."));
-
     std::string fused_op_out_name;
     fused_op_out_name = act_out->Name();
     std::string fused_op_out_max_name = fused_op_out_name + "_max";
