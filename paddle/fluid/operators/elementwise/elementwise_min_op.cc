@@ -94,7 +94,7 @@ class ElementwiseMinCompositeGradOpMaker
         phi::errors::InvalidArgument(
             "We only support axis = -1 in composite minimum_grad but we got: ",
             axis));
-    prim::minimum_grad<prim::DescTensor>(x, y, out_grad, axis, dx_ptr, dy_ptr);
+    prim::minimum_grad<prim::DescTensor>(x, y, out_grad, dx_ptr, dy_ptr);
     this->RecoverOutputName(dx, dx_name);
     this->RecoverOutputName(dy, dy_name);
   }
