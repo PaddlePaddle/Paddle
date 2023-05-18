@@ -24,7 +24,6 @@ from paddle.fluid import core
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__),"..","build","test")))
-import legacy_test
 import static_mode_white_list
 
 

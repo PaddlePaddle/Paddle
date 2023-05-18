@@ -12,10 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import unittest
-
-sys.path.append("../legacy_test")
 
 import numpy as np
 from eager_op_test import skip_check_grad_ci

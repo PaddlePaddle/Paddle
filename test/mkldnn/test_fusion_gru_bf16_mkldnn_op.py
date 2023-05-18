@@ -17,12 +17,12 @@ import unittest
 import numpy as np
 
 from paddle.fluid import core
-from legacy_test.eager_op_test import (
+from eager_op_test import (
     OpTest,
     convert_float_to_uint16,
 )
-from legacy_test.test_fusion_gru_op import fusion_gru
-from legacy_test.test_fusion_lstm_op import ACTIVATION
+from test_fusion_gru_op import fusion_gru
+from test_fusion_lstm_op import ACTIVATION
 
 
 @unittest.skipIf(

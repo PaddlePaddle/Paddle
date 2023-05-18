@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
+
 import unittest
 from copy import deepcopy
 
 import numpy as np
 
-sys.path.append("../legacy_test")
+
 from eager_op_test import OpTest
 
 

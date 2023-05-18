@@ -13,14 +13,14 @@
 # limitations under the License.
 
 import random
-import sys
+
 
 import numpy as np
 
 import paddle
 from paddle.distributed.fleet import auto
 
-sys.path.append("../legacy_test")
+
 import auto_parallel_gpt_model as modeling
 from auto_parallel_gpt_model import (
     GPTForPretraining,

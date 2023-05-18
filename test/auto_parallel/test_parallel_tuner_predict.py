@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
+
 import unittest
 
 import paddle
@@ -26,7 +26,7 @@ from paddle.distributed.auto_parallel.dist_context import (
 from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
 from paddle.distributed.auto_parallel.tuner.parallel_tuner import ParallelTuner
 
-sys.path.append("../legacy_test")
+
 import auto_parallel_gpt_model as modeling
 from auto_parallel_gpt_model import (
     GPTForPretraining,

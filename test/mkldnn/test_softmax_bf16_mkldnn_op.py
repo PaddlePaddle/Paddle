@@ -18,8 +18,8 @@ import numpy as np
 
 from paddle import enable_static
 from paddle.fluid import core
-from legacy_test.eager_op_test import convert_float_to_uint16
-from legacy_test.test_softmax_op import (
+from eager_op_test import convert_float_to_uint16
+from test_softmax_op import (
     TestSoftmaxOp,
     TestSoftmaxOp2,
     TestSoftmaxOp3,

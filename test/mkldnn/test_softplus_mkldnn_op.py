@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from legacy_test.eager_op_test import (
+from eager_op_test import (
     OpTest,
     OpTestTool,
     convert_float_to_uint16,

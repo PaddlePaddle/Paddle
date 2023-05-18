@@ -15,7 +15,7 @@
 import os
 import unittest
 
-from legacy_test.test_dist_base import TestDistBase
+from test_dist_base import TestDistBase
 
 import paddle
 

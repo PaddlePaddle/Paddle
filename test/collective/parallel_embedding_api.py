@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import numpy as np
-from legacy_test.test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
+from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
 
 import paddle
 from paddle import fluid

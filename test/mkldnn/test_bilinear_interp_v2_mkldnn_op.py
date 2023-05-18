@@ -17,7 +17,7 @@ import unittest
 
 import numpy as np
 
-from legacy_test.eager_op_test import (
+from eager_op_test import (
     OpTest,
     convert_float_to_uint16,
     skip_check_grad_ci,

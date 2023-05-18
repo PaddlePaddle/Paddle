@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
+
 import unittest
 
 import numpy as np
 
 from paddle.fluid import core
 
-sys.path.append("../legacy_test")
+
 from eager_op_test import OpTest
 from test_softmax_op import stable_softmax
 

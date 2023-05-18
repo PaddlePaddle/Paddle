@@ -14,12 +14,12 @@
 
 import logging
 import random
-import sys
+
 import unittest
 
 import numpy as np
 
-sys.path.append("../legacy_test")
+
 from auto_parallel_pass_test_base import AutoPallelPassTestBase
 
 import paddle

@@ -14,11 +14,11 @@
 
 import unittest
 
-import sys
+
 
 import paddle
 
-sys.path.append("../legacy_test")
+
 from c_embedding_op_base import (
     TestCEmbeddingCPU,
     TestCEmbeddingOpBase,

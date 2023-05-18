@@ -13,14 +13,14 @@
 # limitations under the License.
 
 import random
-import sys
+
 import unittest
 
 import numpy as np
 
 import paddle
 
-sys.path.append("../legacy_test")
+
 from eager_op_test import OpTest
 
 

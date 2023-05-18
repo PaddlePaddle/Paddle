@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from legacy_test.eager_op_test import OpTest
-from legacy_test.test_gaussian_random_op import (
+from eager_op_test import OpTest
+from test_gaussian_random_op import (
     TestGaussianRandomOp,
 )
 

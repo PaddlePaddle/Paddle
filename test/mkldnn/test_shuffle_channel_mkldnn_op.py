@@ -18,7 +18,7 @@ import numpy as np
 
 import paddle
 from paddle.fluid import core
-from legacy_test.eager_op_test import OpTest, OpTestTool
+from eager_op_test import OpTest, OpTestTool
 
 
 @OpTestTool.skip_if_not_cpu_bf16()

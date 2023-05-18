@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import re
-import sys
+
 
 import numpy as np
 from spectral_op_np import (
@@ -28,7 +28,7 @@ from spectral_op_np import (
 import paddle
 from paddle import _C_ops
 
-sys.path.append("../legacy_test")
+
 from eager_op_test import OpTest
 
 paddle.enable_static()

@@ -18,7 +18,7 @@ import numpy as np
 
 from paddle import fluid
 from paddle.fluid import core
-from legacy_test.op import Operator
+from op import Operator
 
 g_array_size = 102400
 

@@ -16,7 +16,7 @@ import unittest
 
 import numpy as np
 
-from legacy_test.eager_op_test import OpTest
+from eager_op_test import OpTest
 
 
 def fully_connected_naive(input, weights, bias_data):

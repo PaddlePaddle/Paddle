@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import random
-import sys
+
 import unittest
 
 import numpy as np
@@ -22,7 +22,7 @@ from get_gpt_model import FakeDataset, generate_model
 import paddle
 from paddle.distributed.fleet import auto
 
-sys.path.append("../../python/legacy_test")
+sys.path.append("../../python/)
 from test_sparse_addmm_op import get_cuda_version
 
 

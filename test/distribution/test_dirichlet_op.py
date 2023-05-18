@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
+
 
 import numpy as np
 import scipy.stats
 
 import paddle
 
-sys.path.append("../legacy_test")
+
 import unittest
 
 from eager_op_test import (

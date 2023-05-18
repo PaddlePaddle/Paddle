@@ -20,11 +20,11 @@ from mkldnn_op_test import check_if_mkldnn_primitives_exist_in_bwd
 import paddle
 import paddle.nn.functional as F
 from paddle.fluid import core
-from legacy_test.eager_op_test import (
+from eager_op_test import (
     OpTest,
     convert_float_to_uint16,
 )
-from legacy_test.test_activation_op import (
+from test_activation_op import (
     TestAbs,
     TestAbs_ZeroDim,
     TestActivation,
@@ -48,7 +48,7 @@ from legacy_test.test_activation_op import (
     TestTanh,
     TestTanh_ZeroDim,
 )
-from legacy_test.test_gelu_op import gelu
+from test_gelu_op import gelu
 
 
 class TestMKLDNNReluDim2(TestRelu):

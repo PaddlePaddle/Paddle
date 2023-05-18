@@ -16,11 +16,11 @@ import unittest
 
 import numpy as np
 
-from legacy_test.eager_op_test import (
+from eager_op_test import (
     OpTest,
     skip_check_grad_ci,
 )
-from legacy_test.test_conv2d_op import (
+from test_conv2d_op import (
     TestConv2DOp,
     TestConv2DOp_v2,
 )

@@ -14,7 +14,7 @@
 
 import unittest
 
-from legacy_test.test_lrn_op import TestLRNOp
+from test_lrn_op import TestLRNOp
 
 
 class TestLRNMKLDNNOp(TestLRNOp):

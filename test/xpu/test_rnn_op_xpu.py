@@ -11,10 +11,10 @@
 # limitations under the License.
 
 import random
-import sys
+
 import unittest
 
-sys.path.append('../legacy_test')
+
 
 import numpy as np
 from op_test_xpu import XPUOpTest

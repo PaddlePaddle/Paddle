@@ -14,7 +14,7 @@
 
 import unittest
 
-from legacy_test.test_collective_api_base import TestDistBase
+from test_collective_api_base import TestDistBase
 
 import paddle
 

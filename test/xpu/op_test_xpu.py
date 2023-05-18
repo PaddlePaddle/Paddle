@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
+
 
 import numpy as np
 
 sys.path.append('..')
-sys.path.append('../legacy_test')
+
 
 from eager_op_test import OpTest
 from get_test_cover_info import (

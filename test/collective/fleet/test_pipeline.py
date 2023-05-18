@@ -13,10 +13,10 @@
 # limitations under the License.
 
 import os
-import sys
+
 import unittest
 
-from legacy_test.test_dist_base import TestDistBase
+from test_dist_base import TestDistBase
 
 import paddle
 from paddle import fluid

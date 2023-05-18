@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 from paddle import enable_static
-from legacy_test.eager_op_test import skip_check_grad_ci
-from legacy_test.test_elementwise_add_op import (
+from eager_op_test import skip_check_grad_ci
+from test_elementwise_add_op import (
     TestElementwiseAddOp,
 )
 

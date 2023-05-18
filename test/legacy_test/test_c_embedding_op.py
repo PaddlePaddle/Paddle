@@ -14,7 +14,7 @@
 
 import unittest
 
-from legacy_test.c_embedding_op_base import (
+from c_embedding_op_base import (
     TestCEmbeddingCPU,
     TestCEmbeddingOpBase,
     TestCEmbeddingOpFP32,

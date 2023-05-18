@@ -14,7 +14,7 @@
 
 import unittest
 
-from legacy_test.test_fusion_lstm_op import TestFusionLSTMOp
+from test_fusion_lstm_op import TestFusionLSTMOp
 
 
 class TestFusionLSTMONEDNNOp(TestFusionLSTMOp):

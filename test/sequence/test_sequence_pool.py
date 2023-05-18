@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
+
 import unittest
 
 import numpy as np
 
 import paddle
 
-sys.path.append("../legacy_test")
+
 from eager_op_test import OpTest, skip_check_grad_ci
 
 paddle.enable_static()

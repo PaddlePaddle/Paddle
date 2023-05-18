@@ -26,9 +26,9 @@ import paddle
 from paddle import fluid
 from paddle.fluid import core
 
-import sys
 
-sys.path.append("../legacy_test")
+
+
 from op import Operator
 
 paddle.enable_static()

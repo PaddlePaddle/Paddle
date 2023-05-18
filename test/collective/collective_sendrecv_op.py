@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from legacy_test.test_collective_base import TestCollectiveRunnerBase, runtime_main
+from test_collective_base import TestCollectiveRunnerBase, runtime_main
 
 import paddle
 from paddle import fluid

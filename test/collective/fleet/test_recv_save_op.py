@@ -21,7 +21,7 @@ from multiprocessing import Process
 
 import numpy as np
 
-from legacy_test.dist_test_utils import remove_ps_flag
+from dist_test_utils import remove_ps_flag
 
 from paddle import fluid
 from paddle.fluid import core

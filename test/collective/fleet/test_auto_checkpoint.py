@@ -19,7 +19,7 @@ import paddle
 import paddle.fluid.incubate.checkpoint.auto_checkpoint as acp
 from paddle.distributed.fleet.utils.fs import HDFSClient, LocalFS
 from paddle.fluid.incubate.checkpoint.checkpoint_saver import PaddleModel
-from legacy_test.auto_checkpoint_utils import (
+from auto_checkpoint_utils import (
     AutoCheckpointBase,
     get_logger,
 )

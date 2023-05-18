@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 from paddle.fluid import core
-from legacy_test.op import Operator
-from legacy_test.test_sum_op import TestSumOp
+from op import Operator
+from test_sum_op import TestSumOp
 
 
 class TestSumMKLDNN(TestSumOp):

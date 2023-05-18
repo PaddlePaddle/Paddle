@@ -17,7 +17,7 @@ import unittest
 
 from paddle import fluid
 from paddle.distributed.fleet.utils.fs import FSTimeOut, HDFSClient
-from legacy_test.hdfs_test_utils import FSTestBase
+from hdfs_test_utils import FSTestBase
 
 java_home = os.environ["JAVA_HOME"]
 

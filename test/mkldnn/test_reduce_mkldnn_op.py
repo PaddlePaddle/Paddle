@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from legacy_test.eager_op_test import (
+from eager_op_test import (
     OpTest,
     OpTestTool,
     skip_check_grad_ci,

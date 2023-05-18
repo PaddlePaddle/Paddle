@@ -14,7 +14,7 @@
 
 import unittest
 
-from legacy_test.test_fusion_gru_op import TestFusionGRUOp
+from test_fusion_gru_op import TestFusionGRUOp
 
 
 class TestFusionGRUMKLDNNOp(TestFusionGRUOp):

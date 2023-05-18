@@ -16,7 +16,7 @@ import unittest
 
 import numpy as np
 
-from legacy_test.test_conv3d_op import (
+from test_conv3d_op import (
     TestCase1,
     TestConv3DOp,
     TestWith1x1,

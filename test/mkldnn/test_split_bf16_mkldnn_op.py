@@ -18,7 +18,7 @@ import numpy as np
 
 import paddle
 from paddle.fluid import core
-from legacy_test.eager_op_test import OpTest
+from eager_op_test import OpTest
 
 
 @unittest.skipIf(

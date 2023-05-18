@@ -18,7 +18,7 @@ import unittest
 from test_auto_checkpoint import AutoCheckPointACLBase
 
 import paddle
-from legacy_test.auto_checkpoint_utils import get_logger
+from auto_checkpoint_utils import get_logger
 
 paddle.enable_static()
 logger = get_logger()

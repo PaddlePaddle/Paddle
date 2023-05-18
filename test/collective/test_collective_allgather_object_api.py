@@ -14,7 +14,7 @@
 
 import unittest
 
-from legacy_test import test_collective_api_base as test_base
+from import test_collective_api_base as test_base
 
 
 class TestCollectiveAllgatherObjectAPI(test_base.TestDistBase):

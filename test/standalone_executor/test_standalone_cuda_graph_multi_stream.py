@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
+
 import unittest
 
 import numpy as np
@@ -20,7 +20,7 @@ import numpy as np
 import paddle
 from paddle.device.cuda.graphs import CUDAGraph
 
-sys.path.append("../legacy_test")
+
 from test_cuda_graph_static_mode import (
     build_program,
 )

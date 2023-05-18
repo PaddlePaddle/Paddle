@@ -16,7 +16,7 @@ import unittest
 
 import numpy as np
 
-from legacy_test.test_pool2d_op import (
+from test_pool2d_op import (
     TestCase1,
     TestCase2,
     TestCase3,

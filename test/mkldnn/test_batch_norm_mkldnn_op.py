@@ -18,8 +18,8 @@ import numpy as np
 from mkldnn_op_test import check_if_mkldnn_batchnorm_primitives_exist_in_bwd
 
 from paddle.fluid import core
-from legacy_test.eager_op_test import _set_use_system_allocator
-from legacy_test.test_batch_norm_op import (
+from eager_op_test import _set_use_system_allocator
+from test_batch_norm_op import (
     TestBatchNormOpInference,
     TestBatchNormOpTraining,
     _reference_grad,

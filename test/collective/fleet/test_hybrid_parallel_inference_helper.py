@@ -14,7 +14,7 @@
 
 import unittest
 
-from legacy_test.test_parallel_dygraph_dataparallel import TestMultipleGpus
+from test_parallel_dygraph_dataparallel import TestMultipleGpus
 
 
 class TestHybridParallelInferenceHelper(TestMultipleGpus):
