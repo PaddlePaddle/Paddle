@@ -26,6 +26,7 @@
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/matrix_reduce.h"
 #include "paddle/phi/kernels/funcs/tril_triu_compute.h"
+#include "paddle/phi/kernels/legacy/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 
 namespace phi {

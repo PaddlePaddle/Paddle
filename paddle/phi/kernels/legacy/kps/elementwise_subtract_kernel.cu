@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,27 +22,14 @@
 
 namespace phi {
 
-template <typename T, typename Context>
-void SubtractKernel(const Context& dev_ctx,
-                    const DenseTensor& x,
-                    const DenseTensor& y,
-                    DenseTensor* out) {
-  std::vector<const DenseTensor*> inputs;
-  inputs.reserve(2);
-  std::vector<DenseTensor*> outputs;
-  outputs.reserve(1);
-  inputs.emplace_back(&x);
-  inputs.emplace_back(&y);
-  outputs.emplace_back(out);
-  dev_ctx.template Alloc<T>(out);
-  funcs::BroadcastKernel<T>(
-      dev_ctx, inputs, &outputs, funcs::SubtractFunctor<T>(), -1);
-}
+// Create the definition of Subtract
+DEFINE_CUDA_ELEMENTWISE_OP(Subtract)
 
 }  // namespace phi
 
 #ifdef PADDLE_WITH_XPU_KP
-PD_REGISTER_KERNEL(subtract, KPS, ALL_LAYOUT, phi::SubtractKernel, float) {}
+PD_REGISTER_KERNEL(
+    subtract_raw, KPS, ALL_LAYOUT, phi::SubtractRawKernel, float) {}
 #else
 
 using float16 = phi::dtype::float16;
@@ -50,10 +37,10 @@ using bfloat16 = phi::dtype::bfloat16;
 using complex64 = ::phi::dtype::complex<float>;
 using complex128 = ::phi::dtype::complex<double>;
 
-PD_REGISTER_KERNEL(subtract,
+PD_REGISTER_KERNEL(subtract_raw,
                    KPS,
                    ALL_LAYOUT,
-                   phi::SubtractKernel,
+                   phi::SubtractRawKernel,
                    float,
                    double,
                    int16_t,

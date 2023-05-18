@@ -26,6 +26,8 @@
 #include "paddle/phi/kernels/funcs/slice_utils.h"
 #include "paddle/phi/kernels/funcs/tril_triu_compute.h"
 #include "paddle/phi/kernels/impl/set_value_kernel_impl.h"
+#include "paddle/phi/kernels/legacy/elementwise_add_kernel.h"
+#include "paddle/phi/kernels/legacy/elementwise_subtract_kernel.h"
 
 namespace phi {
 

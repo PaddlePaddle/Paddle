@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,27 +22,9 @@
 
 namespace phi {
 
-template <typename T, typename Context>
-void SubtractKernel(const Context& dev_ctx,
-                    const DenseTensor& x,
-                    const DenseTensor& y,
-                    DenseTensor* out) {
-  dev_ctx.template Alloc<T>(out);
-  if (x.dims() == y.dims()) {
-    SameDimsElementwiseCompute<SameDimsSubtractFunctor<CPUContext, T>>()(
-        dev_ctx, x, y, out);
-  } else {
-    auto x_dims = x.dims();
-    auto y_dims = y.dims();
-    if (x_dims.size() >= y_dims.size()) {
-      funcs::ElementwiseCompute<funcs::SubtractFunctor<T>, T>(
-          dev_ctx, x, y, funcs::SubtractFunctor<T>(), out, -1);
-    } else {
-      funcs::ElementwiseCompute<funcs::InverseSubtractFunctor<T>, T>(
-          dev_ctx, x, y, funcs::InverseSubtractFunctor<T>(), out, -1);
-    }
-  }
-}
+// Create the definition of Add
+DEFINE_CPU_ELEMENTWISE_OP(Add)
+
 }  // namespace phi
 
 using complex64 = ::phi::dtype::complex<float>;
@@ -51,15 +33,14 @@ using complex128 = ::phi::dtype::complex<double>;
 // NOTE(chenweihang): using bfloat16 will cause redefine with xpu bfloat16
 // using bfloat16 = ::phi::dtype::bfloat16;
 
-PD_REGISTER_KERNEL(subtract,
+PD_REGISTER_KERNEL(add_raw,
                    CPU,
                    ALL_LAYOUT,
-                   phi::SubtractKernel,
+                   phi::AddRawKernel,
                    float,
                    double,
                    int16_t,
                    int,
                    int64_t,
                    complex64,
-                   complex128,
-                   phi::dtype::bfloat16) {}
+                   complex128) {}

@@ -19,23 +19,48 @@
 #endif
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/elementwise_kernel_impl.h"
+#include "paddle/phi/kernels/legacy/elementwise_add_kernel.h"
 
 namespace phi {
 
-DEFINE_CUDA_ELEMENTWISE_OP(Add)
+template <typename T, typename Context>
+void AddCudaFunctor(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& y,
+                    int axis,
+                    DenseTensor* out) {
+  std::vector<const DenseTensor*> inputs;
+  inputs.reserve(2);
+  std::vector<DenseTensor*> outputs;
+  outputs.reserve(1);
+  inputs.emplace_back(&x);
+  inputs.emplace_back(&y);
+  outputs.emplace_back(out);
+  dev_ctx.template Alloc<T>(out);
+  funcs::BroadcastKernel<T>(
+      dev_ctx, inputs, &outputs, funcs::AddFunctor<T>(), axis);
+}
+
+template <typename T, typename Context>
+void AddKernel(const Context& dev_ctx,
+               const DenseTensor& x,
+               const DenseTensor& y,
+               DenseTensor* out) {
+  AddCudaFunctor<T, Context>(dev_ctx, x, y, -1, out);
+}
 
 template <typename T, typename Context>
 void GradAddKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const DenseTensor& y,
                    DenseTensor* out) {
-  AddRawKernel<T>(dev_ctx, x, y, -1, out);
+  AddCudaFunctor<T>(dev_ctx, x, y, -1, out);
 }
 
 }  // namespace phi
 
 #ifdef PADDLE_WITH_XPU_KP
-PD_REGISTER_KERNEL(add_raw, KPS, ALL_LAYOUT, phi::AddRawKernel, float) {}
+PD_REGISTER_KERNEL(add, KPS, ALL_LAYOUT, phi::AddKernel, float) {}
 #else
 
 using float16 = phi::dtype::float16;
@@ -43,17 +68,17 @@ using bfloat16 = phi::dtype::bfloat16;
 using complex64 = ::phi::dtype::complex<float>;
 using complex128 = ::phi::dtype::complex<double>;
 
-PD_REGISTER_KERNEL(add_raw,
+PD_REGISTER_KERNEL(add,
                    KPS,
                    ALL_LAYOUT,
-                   phi::AddRawKernel,
+                   phi::AddKernel,
                    float,
                    double,
                    int16_t,
                    int,
                    int64_t,
-                   float16,
-                   bfloat16,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    complex64,
                    complex128) {}
 

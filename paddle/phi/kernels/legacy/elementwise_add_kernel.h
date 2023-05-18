@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,20 +19,10 @@
 
 namespace phi {
 template <typename T, typename Context>
-void AddKernel(const Context& dev_ctx,
-               const DenseTensor& x,
-               const DenseTensor& y,
-               DenseTensor* out);
-
-template <typename T, typename Context>
-DenseTensor Add(const Context& dev_ctx,
-                const DenseTensor& x,
-                const DenseTensor& y) {
-  DenseTensor dense_out;
-  MetaTensor meta_out(&dense_out);
-  ElementwiseInferMeta(x, y, &meta_out);
-  AddKernel<T, Context>(dev_ctx, x, y, &dense_out);
-  return dense_out;
-}
+void AddRawKernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  const DenseTensor& y,
+                  int axis,
+                  DenseTensor* out);
 
 }  // namespace phi
