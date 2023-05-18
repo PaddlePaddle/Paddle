@@ -155,16 +155,12 @@ class TestErfinvBF16OP(OpTest):
         self.shape = [11, 17]
         self.x = np.random.uniform(-1, 1, size=self.shape).astype(np.float32)
         self.res_ref = erfinv(self.x).astype(np.float32)
-        self.grad_out = np.ones(self.shape, np.float32)
-        self.gradient = (
-            np.sqrt(np.pi) / 2 * np.exp(np.square(self.res_ref)) * self.grad_out
-        )
         self.inputs = {'X': convert_float_to_uint16(self.x)}
         self.outputs = {'Out': convert_float_to_uint16(self.res_ref)}
 
     def test_check_output(self):
         place = paddle.fluid.core.CUDAPlace(0)
-        self.check_output_with_place(place, rtol=0.05, atol=0.1)
+        self.check_output_with_place(place)
 
     def test_check_grad(self):
         place = paddle.fluid.core.CUDAPlace(0)
@@ -172,8 +168,6 @@ class TestErfinvBF16OP(OpTest):
             place,
             ['X'],
             'Out',
-            user_defined_grads=[convert_float_to_uint16(self.gradient)],
-            user_defined_grad_outputs=convert_float_to_uint16(self.grad_out),
         )
 
 
