@@ -367,6 +367,19 @@ if [ "${PHI_INCLUDE_THIRD_PARTY_FILES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; the
     check_approval 1 jiahy0825 zyfncg chenwhql YuanRisheng heavyrain-lzy
 fi
 
+HAS_MODIFIED_PADDLE_API_FILES=`git diff --name-only upstream/$BRANCH | grep "paddle/.*\.h" || true`
+INCLUDE_PADDLE_API_FILES=""
+for CHANGE_FILE in ${HAS_MODIFIED_PHI_HEADER_FILES}; do
+    PADDLE_API_ADDED_LINES=`git diff -U0 upstream/$BRANCH -- ${PADDLE_ROOT}/${CHANGE_FILE} | grep -E "PADDLE_API" || true`
+    if [ "${PADDLE_API_ADDED_LINES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+        INCLUDE_PADDLE_API_FILES="${INCLUDE_PADDLE_API_FILES} ${CHANGE_FILE}"
+    fi
+done
+if [ "${PHI_INCLUDE_THIRD_PARTY_FILES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="You must have one RD (sunzhongkai588/SunZhongKai, Ligoml/LiMengLiu, jiahy0825) approval for PADDLE_API. Need to confirm if additional descriptions are needed\n"
+    check_approval 1 sunzhongkai588/SunZhongKai Ligoml/LiMengLiu jiahy0825
+fi
+
 HAS_MODIFIED_PHI_OR_FLUID_FILES=`git diff --name-only upstream/$BRANCH | grep -E "paddle/phi|paddle/fluid" || true`
 USE_MUTABLE_DATA_FILES=""
 for CHANGE_FILE in ${HAS_MODIFIED_PHI_OR_FLUID_FILES}; do
