@@ -214,7 +214,7 @@ def _partial_send_op(
     tensor, group, use_calc_stream, ring_id, dst, nranks, rank_id
 ):
     dst_rank_in_group = dst if group is None else group.get_group_rank(dst)
-    if framework.in_dygraph_mode():
+    if framework.in_dynamic_mode():
         group = (
             paddle.distributed.collective._get_default_group()
             if group is None
@@ -285,7 +285,7 @@ def recv_partial(
     else:
         if use_calc_stream:
             recv_op = paddle.distributed.recv
-        elif framework.in_dygraph_mode():
+        elif framework.in_dynamic_mode():
             recv_op = paddle.distributed.irecv
         return recv_op(tensor.detach(), src=src_rank, group=group)
 
@@ -650,7 +650,7 @@ def _p2p_helper(
                     tasks.append(task)
         _xpu_comm_group_end()
     if not sync_recv:
-        if framework.in_dygraph_mode():
+        if framework.in_dynamic_mode():
             # wait irecv tasks in eager dygraph mode with new comm library
             for task in tasks:
                 assert task is not None

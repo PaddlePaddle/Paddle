@@ -13,8 +13,8 @@
 # limitations under the License.
 
 from paddle import _legacy_C_ops
-from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
+from paddle.framework import in_dynamic_mode
 from paddle.tensor.linalg import matmul
 
 
@@ -53,7 +53,7 @@ def fused_matmul_bias(
     """
     if bias is None:
         return matmul(x, y, transpose_x, transpose_y, name)
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _legacy_C_ops.fused_gemm_epilogue(
             x, y, bias, 'trans_x', transpose_x, 'trans_y', transpose_y
         )

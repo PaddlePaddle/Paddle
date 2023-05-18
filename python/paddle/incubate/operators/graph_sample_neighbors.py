@@ -14,8 +14,8 @@
 
 from paddle import _legacy_C_ops
 from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
+from paddle.framework import in_dynamic_mode
 from paddle.utils import deprecated
 
 
@@ -109,7 +109,7 @@ def graph_sample_neighbors(
                 "is True."
             )
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         (
             out_neighbors,
             out_count,

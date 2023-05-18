@@ -18,8 +18,8 @@ import numpy as np
 import paddle
 from paddle.distribution import exponential_family
 from paddle.fluid.data_feeder import check_type, convert_dtype
-from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.layers import tensor
+from paddle.framework import in_dynamic_mode
 from paddle.nn.functional import (
     binary_cross_entropy_with_logits,
     sigmoid,
@@ -93,7 +93,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
 
     def __init__(self, probs, name=None):
         self.name = name or 'Bernoulli'
-        if not in_dygraph_mode():
+        if not in_dynamic_mode():
             check_type(
                 probs,
                 'probs',
@@ -110,7 +110,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
             self.dtype = paddle.get_default_dtype()
 
         # Check probs range [0, 1].
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             """Not use `paddle.any` in static mode, which always be `True`."""
             if (
                 paddle.any(self.probs < 0)
@@ -176,7 +176,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
                 # [100, 2, 2]
         """
         name = self.name + '_sample'
-        if not in_dygraph_mode():
+        if not in_dynamic_mode():
             check_type(
                 shape,
                 'shape',
@@ -255,7 +255,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
                 #        [288.66418457])
         """
         name = self.name + '_rsample'
-        if not in_dygraph_mode():
+        if not in_dynamic_mode():
             check_type(
                 shape,
                 'shape',
@@ -317,7 +317,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
                 #        [1.])
         """
         name = self.name + '_cdf'
-        if not in_dygraph_mode():
+        if not in_dynamic_mode():
             check_type(value, 'value', tensor.Variable, name)
 
         value = self._check_values_dtype_in_probs(self.probs, value)
@@ -355,7 +355,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
                 #        [-1.20397282])
         """
         name = self.name + '_log_prob'
-        if not in_dygraph_mode():
+        if not in_dynamic_mode():
             check_type(value, 'value', tensor.Variable, name)
 
         value = self._check_values_dtype_in_probs(self.probs, value)
@@ -394,7 +394,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
                 #        [0.29999998])
         """
         name = self.name + '_prob'
-        if not in_dygraph_mode():
+        if not in_dynamic_mode():
             check_type(value, 'value', tensor.Variable, name)
 
         return self.log_prob(value).exp(name=name)
@@ -459,7 +459,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
                 #        [0.33891910])
         """
         name = self.name + '_kl_divergence'
-        if not in_dygraph_mode():
+        if not in_dynamic_mode():
             check_type(other, 'other', Bernoulli, name)
 
         a_logits = self.logits

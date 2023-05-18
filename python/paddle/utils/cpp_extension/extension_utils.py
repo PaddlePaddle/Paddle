@@ -1144,13 +1144,13 @@ def _custom_api_content(op_name):
     API_TEMPLATE = textwrap.dedent(
         """
         import paddle.fluid.core as core
-        from paddle.fluid.framework import in_dygraph_mode
+        from paddle.framework import in_dynamic_mode
         from paddle.fluid.layer_helper import LayerHelper
 
         def {op_name}({params_list}):
             # The output variable's dtype use default value 'float32',
             # and the actual dtype of output variable will be inferred in runtime.
-            if in_dygraph_mode():
+            if in_dynamic_mode():
                 outs = core.eager._run_custom_op("{op_name}", {params_list})
                 {dynamic_content}
             else:

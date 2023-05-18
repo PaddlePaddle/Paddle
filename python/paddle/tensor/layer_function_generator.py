@@ -27,7 +27,7 @@ from ..framework import (
     OpProtoHolder,
     convert_np_dtype_to_dtype_,
     core,
-    in_dygraph_mode,
+    in_dynamic_mode,
 )
 
 __all__ = []
@@ -267,7 +267,7 @@ def generate_activation_fn(op_type):
     op_proto = OpProtoHolder.instance().get_op_proto(op_type)
 
     def func(x, name=None):
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             if hasattr(_C_ops, op_type):
                 op = getattr(_C_ops, op_type)
                 return op(x)
@@ -346,7 +346,7 @@ def generate_inplace_fn(inplace_op_type):
 
     def func(x, name=None):
 
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             if hasattr(_C_ops, inplace_op_type):
                 op = getattr(_C_ops, inplace_op_type)
                 return op(x)

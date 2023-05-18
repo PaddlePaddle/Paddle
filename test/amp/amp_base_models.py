@@ -20,7 +20,7 @@ import numpy as np
 import paddle
 from paddle import nn
 from paddle.fluid import core
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.framework import in_dynamic_mode
 
 _fixed_add_param = np.random.random(size=[16, 16]).astype("float32")
 
@@ -38,7 +38,7 @@ def _build_optimizer(
         grad_clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
     else:
         grad_clip = None
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         assert model is not None
         parameters = model.parameters()
     else:
@@ -52,7 +52,7 @@ def _build_optimizer(
         epsilon=1e-4,
         weight_decay=0.01,
     )
-    if not in_dygraph_mode() and use_amp:
+    if not in_dynamic_mode() and use_amp:
         optimizer = paddle.static.amp.decorate(
             optimizer,
             amp_lists,
@@ -137,7 +137,7 @@ class SimpleConvNet(nn.Layer):
 def build_conv_model(
     use_amp, amp_dtype="float16", amp_level="O1", use_promote=False
 ):
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         model = SimpleConvNet()
         optimizer = _build_optimizer(use_amp=False, model=model)
         if use_amp and amp_dtype == "float16":

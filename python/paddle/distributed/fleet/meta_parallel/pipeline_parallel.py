@@ -521,7 +521,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
         super().__init__(layers=layers, hcg=hcg, strategy=strategy)
         assert layers.get_num_virtual_stages() > 1
         assert (
-            framework.in_dygraph_mode()
+            framework.in_dynamic_mode()
         ), "virtual pipeline stage with interleave only support eager dygraph mode"
         # setup for interleave scheduler
         self.num_model_chunks = layers.get_num_virtual_stages()

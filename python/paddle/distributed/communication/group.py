@@ -231,7 +231,7 @@ def get_group(id=0):
 
 
 def _sync_calc_stream(tensor):
-    if framework.in_dygraph_mode():
+    if framework.in_dynamic_mode():
         return paddle._legacy_C_ops.c_sync_calc_stream(tensor, tensor)
     else:
         op_type = 'c_sync_calc_stream'
@@ -244,7 +244,7 @@ def _sync_calc_stream(tensor):
 
 
 def _sync_comm_stream(tensor, ring_id=0):
-    if framework.in_dygraph_mode():
+    if framework.in_dynamic_mode():
         return paddle._legacy_C_ops.c_sync_comm_stream(
             [tensor], [tensor], 'ring_id', ring_id
         )
@@ -318,7 +318,7 @@ def barrier(group=None):
     if group is not None and not group.is_member():
         return
 
-    if framework.in_dygraph_mode():
+    if framework.in_dynamic_mode():
         group = _get_global_group() if group is None else group
         place = framework._current_expected_place()
         if isinstance(place, framework.CPUPlace):
@@ -332,7 +332,7 @@ def barrier(group=None):
     ring_id = 0 if group is None else group.id
 
     barrier_tensor = paddle.full([1], 1, dtype="int32")
-    if framework.in_dygraph_mode():
+    if framework.in_dynamic_mode():
         return paddle._legacy_C_ops.barrier(
             barrier_tensor, barrier_tensor, 'ring_id', ring_id
         )

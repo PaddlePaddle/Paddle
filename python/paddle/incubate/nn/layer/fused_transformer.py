@@ -17,7 +17,8 @@ import paddle
 from paddle.fluid import core
 from paddle.fluid.core import VarDesc
 from paddle.fluid.dygraph import no_grad
-from paddle.fluid.framework import convert_np_dtype_to_dtype_, in_dygraph_mode
+from paddle.fluid.framework import convert_np_dtype_to_dtype_
+from paddle.framework import in_dynamic_mode
 from paddle.incubate.nn import functional as incubate_f
 from paddle.nn import Layer
 from paddle.nn.initializer import Constant
@@ -34,7 +35,7 @@ def _set_var_distributed(var):
 
     var.is_distributed = True
 
-    if not in_dygraph_mode():
+    if not in_dynamic_mode():
         # NOTE: use current_block and find_var_recursive to support while_loop
         startup_block = paddle.static.default_startup_program().current_block()
         main_block = paddle.static.default_main_program().current_block()

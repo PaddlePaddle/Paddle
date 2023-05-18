@@ -23,7 +23,7 @@ from paddle.utils import deprecated
 
 from ...common_ops_import import Variable
 from ...fluid.data_feeder import check_variable_and_dtype
-from ...fluid.framework import _current_expected_place, in_dygraph_mode
+from ...fluid.framework import _current_expected_place
 from ...fluid.layer_helper import LayerHelper
 from ...tensor.manipulation import reshape
 
@@ -143,7 +143,7 @@ def log_loss(input, label, epsilon=1e-4, name=None):
           prob = paddle.randn((10,1))
           cost = F.log_loss(input=prob, label=label)
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.log_loss(input, label, epsilon)
 
     helper = LayerHelper('log_loss', **locals())
@@ -268,7 +268,7 @@ def fluid_softmax_with_cross_entropy(
         )
     if input_dims - 1 == label_dims:
         label = paddle.unsqueeze(label, axis=axis)
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         softmax, loss = _C_ops.cross_entropy_with_softmax(
             logits,
             label,
@@ -418,7 +418,7 @@ def square_error_cost(input, label):
             # [0.01, 0.01]
 
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         minus_out = _C_ops.subtract(input, label)
         square_out = _C_ops.square(minus_out)
         return square_out
@@ -545,7 +545,7 @@ def edit_distance(
         )
         label = erased_label
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.edit_distance(
             input, label, input_length, label_length, normalized
         )
@@ -644,7 +644,7 @@ def binary_cross_entropy(
             % reduction
         )
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         out = _C_ops.bce_loss(input, label)
         if weight is not None:
             out = _C_ops.multiply(out, weight, 'axis', -1)
@@ -784,7 +784,7 @@ def binary_cross_entropy_with_logits(
             % reduction
         )
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         one = _C_ops.full(
             [1],
             float(1.0),
@@ -963,7 +963,7 @@ def hsigmoid_loss(
     if num_classes < 2:
         raise ValueError(f'Expected num_classes >= 2 (got {num_classes})')
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         out, _, _ = _C_ops.hsigmoid_loss(
             input,
             label,
@@ -1080,7 +1080,7 @@ def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
             # [0.068004]
     """
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         out = _C_ops.huber_loss(input, label, delta)
     else:
         check_variable_and_dtype(
@@ -1166,7 +1166,7 @@ def margin_ranking_loss(
             "The value of 'reduction' in MarginRankingLoss should be 'sum', 'mean' or 'none', but "
             "received %s, which is not allowed." % reduction
         )
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         out = _C_ops.subtract(other, input)
         out = _C_ops.multiply(out, label)
         if margin != 0.0:
@@ -1297,7 +1297,7 @@ def l1_loss(input, label, reduction='mean', name=None):
             "received %s, which is not allowed." % reduction
         )
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         unreduced = _C_ops.abs(_C_ops.subtract(input, label))
 
         if reduction == 'mean':
@@ -1410,7 +1410,7 @@ def nll_loss(
 
     n = input_shape[0]
     c = input_shape[1]
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         if input_dims != 2 and input_dims != 4:
             input = _C_ops.reshape(input, [n, c, 1, -1])
             label = _C_ops.reshape(label, [n, 1, -1])
@@ -1640,7 +1640,7 @@ def kl_div(input, label, reduction='mean', name=None):
     ):
         label = paddle.cast(label, 'float64')
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         out = _C_ops.kldiv_loss(input, label, 'none')
         if reduction == 'mean':
             out = paddle.mean(out)
@@ -1847,7 +1847,7 @@ def ctc_loss(
         input_length=None,
         label_length=None,
     ):
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             if input_length is None or label_length is None:
                 raise ValueError(
                     "input_length and label_length must not be None in dygraph mode!"
@@ -1968,7 +1968,7 @@ def rnnt_loss(
     def warprnnt(
         input, label, input_length, label_length, blank=0, fastemit_lambda=0.001
     ):
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             loss_out = _C_ops.warprnnt(
                 input,
                 label,
@@ -2262,7 +2262,7 @@ def margin_cross_entropy(
     if input_dims - 1 == label_dims:
         label = paddle.unsqueeze(label, axis=-1)
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         softmax, loss = _C_ops.margin_cross_entropy(
             logits,
             label,
@@ -2693,7 +2693,7 @@ def cross_entropy(
             )
         )
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         if not soft_label:
             valid_label = (
                 paddle.cast(label != ignore_index, dtype=label.dtype) * label
@@ -3052,7 +3052,7 @@ def sigmoid_focal_loss(
                 )
             )
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         place = _current_expected_place()
         one = _C_ops.full(logit.shape, float(1.0), logit.dtype, place)
 
@@ -3197,7 +3197,7 @@ def multi_label_soft_margin_loss(
             "but received {}!={}".format(input.shape, label.shape)
         )
 
-    if not in_dygraph_mode():
+    if not in_dynamic_mode():
         check_variable_and_dtype(
             input,
             'input',
@@ -3217,7 +3217,7 @@ def multi_label_soft_margin_loss(
     )
 
     if weight is not None:
-        if not in_dygraph_mode():
+        if not in_dynamic_mode():
             check_variable_and_dtype(
                 weight,
                 'weight',
@@ -3316,7 +3316,7 @@ def hinge_embedding_loss(input, label, margin=1.0, reduction='mean', name=None):
             "but received {}.".format(reduction)
         )
 
-    if not in_dygraph_mode():
+    if not in_dynamic_mode():
         check_variable_and_dtype(
             input, 'input', ['float32', 'float64'], 'hinge_embedding_loss'
         )
@@ -3541,7 +3541,7 @@ def triplet_margin_with_distance_loss(
         raise ValueError(
             "The margin between positive samples and negative samples should be greater than 0."
         )
-    if not in_dygraph_mode():
+    if not in_dynamic_mode():
         check_variable_and_dtype(
             input,
             'input',
@@ -3690,7 +3690,7 @@ def triplet_margin_loss(
         raise ValueError(
             "The margin between positive samples and negative samples should be greater than 0."
         )
-    if not in_dygraph_mode():
+    if not in_dynamic_mode():
         check_variable_and_dtype(
             input, 'input', ['float32', 'float64'], 'triplet_margin_loss'
         )
@@ -3800,7 +3800,7 @@ def multi_margin_loss(
             "but received {}.".format(reduction)
         )
 
-    if not in_dygraph_mode():
+    if not in_dynamic_mode():
         check_variable_and_dtype(
             input, 'input', ['float32', 'float64'], 'multi_margin_loss'
         )
@@ -3817,7 +3817,7 @@ def multi_margin_loss(
     label = label.reshape((-1, 1))
     index_sample = paddle.index_sample(input, label)
     if weight is not None:
-        if not in_dygraph_mode():
+        if not in_dynamic_mode():
             check_variable_and_dtype(
                 weight, 'weight', ['float32', 'float64'], 'multi_margin_loss'
             )
@@ -3921,7 +3921,7 @@ def soft_margin_loss(input, label, reduction='mean', name=None):
             % reduction
         )
 
-    if not in_dygraph_mode():
+    if not in_dynamic_mode():
         fluid.data_feeder.check_variable_and_dtype(
             input, 'input', ['float32', 'float64'], 'soft_margin_loss'
         )
@@ -4065,7 +4065,7 @@ def gaussian_nll_loss(
         'gaussian_nll_loss',
     )
     # Entries of variance must be non-negative
-    if not in_dygraph_mode():
+    if not in_dynamic_mode():
         condition = paddle.all(variance > 0)
         Assert(condition, [variance], 6)
     else:

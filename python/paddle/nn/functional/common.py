@@ -18,7 +18,7 @@ import paddle
 from paddle import _C_ops
 from paddle.common_ops_import import Variable, default_main_program
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.framework import core, in_dygraph_mode
+from paddle.framework import core, in_dynamic_mode
 from paddle.tensor.creation import full
 
 from ...fluid.data_feeder import (
@@ -146,7 +146,7 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
             "of 2 or 4 integers"
         )
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.unfold(x, kernel_sizes, strides, paddings, dilations)
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -483,11 +483,11 @@ def interpolate(
     if out_shape is not None and scale is not None:
         raise ValueError("Only one of size or scale_factor should be defined.")
     if out_shape is not None:
-        if isinstance(out_shape, Variable) and not in_dygraph_mode():
+        if isinstance(out_shape, Variable) and not in_dynamic_mode():
             out_shape.stop_gradient = True
             inputs['OutSize'] = out_shape
         else:
-            if in_dygraph_mode():
+            if in_dynamic_mode():
                 if isinstance(out_shape, Variable):
                     out_shape = list(out_shape.numpy(False))
                 else:
@@ -566,7 +566,7 @@ def interpolate(
                     attrs['out_w'] = out_shape[2]
 
     else:
-        if in_dygraph_mode() and isinstance(scale, Variable):
+        if in_dynamic_mode() and isinstance(scale, Variable):
             if scale.shape == []:
                 scale = float(scale)
             else:
@@ -596,7 +596,7 @@ def interpolate(
                 "Attr(scale)'s type should be float, int, list, tuple, or Tensor."
             )
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         attr_list = []
         for k, v in attrs.items():
             attr_list.append(k)
@@ -925,7 +925,7 @@ def bilinear(x1, x2, weight, bias=None, name=None):
             # [5, 1000]
     """
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.bilinear(x1, x2, weight, bias)
     else:
         check_variable_and_dtype(x1, 'x1', ['float32', 'float64'], 'bilinear')
@@ -1116,7 +1116,7 @@ def dropout(
             'downgrade_in_infer' if mode == 'downscale_in_infer' else mode
         )  # semantic transfer
 
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             if default_main_program().random_seed != 0:
                 seed = default_main_program().random_seed
 
@@ -1173,14 +1173,14 @@ def dropout(
             )
             return out
     else:  # sometimes called dropout_nd #TODO: optimize with c++
-        if not in_dygraph_mode():
+        if not in_dynamic_mode():
             check_variable_and_dtype(
                 x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'dropout'
             )
         dtype = x.dtype
         keep_prob = 1 - p
         if training:
-            if in_dygraph_mode() and p == 1.0:
+            if in_dynamic_mode() and p == 1.0:
                 return paddle.scale(x, scale=0.0)
 
             scale_input = (
@@ -1191,7 +1191,7 @@ def dropout(
 
             # get mask shape
             input_shape = x.shape
-            if not in_dygraph_mode():
+            if not in_dynamic_mode():
                 input_shape_tensor = paddle.shape(x)
             drop_axes = [axis] if isinstance(axis, int) else list(axis)
             if min(drop_axes) < 0 or max(drop_axes) > len(input_shape) - 1:
@@ -1207,7 +1207,7 @@ def dropout(
                     )
                 )
             mask_shape = [1] * len(input_shape)
-            if not in_dygraph_mode():
+            if not in_dynamic_mode():
                 for i in drop_axes:
                     mask_shape[i] = input_shape_tensor[i]
             else:
@@ -1389,7 +1389,7 @@ def alpha_dropout(x, p=0.5, training=True, name=None):
     if p < 0 or p > 1:
         raise ValueError("p argument should between 0 and 1")
 
-    if not in_dygraph_mode():
+    if not in_dynamic_mode():
         check_variable_and_dtype(
             x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'alpha_dropout'
         )
@@ -1567,7 +1567,7 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
         paddings = pad
         pad_value = value
 
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             out = _C_ops.pad(x, paddings, float(pad_value))
             return out
 
@@ -1665,7 +1665,7 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
                 unsqueezed_dim = [1]
                 x = unsqueeze(x, axis=unsqueezed_dim)
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         if isinstance(pad, Variable):
             pad = pad.tolist()
         out = _C_ops.pad3d(x, pad, mode, value, data_format)
@@ -1837,7 +1837,7 @@ def linear(x, weight, bias=None, name=None):
           #     [0.9440598  0.9440598  0.9440598  0.9440598 ]
           #     [2.1077576  2.1077576  2.1077576  2.1077576 ]]
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         # TODO(jiabin): using addmm for fast forward route
         return _C_ops.linear(x, weight, bias)
     else:
@@ -1935,7 +1935,7 @@ def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
     if epsilon > 1.0 or epsilon < 0.0:
         raise ValueError("The value of epsilon must be between 0 and 1.")
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.label_smooth(label, prior_dist, float(epsilon))
 
     check_variable_and_dtype(
@@ -2120,7 +2120,7 @@ def class_center_sample(label, num_classes, num_samples, group=None):
     if (seed is None or seed == 0) and default_main_program().random_seed != 0:
         seed = default_main_program().random_seed
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.class_center_sample(
             label,
             num_classes,
@@ -2278,7 +2278,7 @@ def fold(
             "of 2 or 4 integers"
         )
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         out = _C_ops.fold(
             x, output_sizes, kernel_sizes, strides, paddings, dilations
         )

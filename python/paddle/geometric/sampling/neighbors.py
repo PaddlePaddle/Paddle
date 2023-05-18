@@ -14,8 +14,8 @@
 
 from paddle import _C_ops, _legacy_C_ops
 from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
+from paddle.framework import in_dynamic_mode
 
 __all__ = []
 
@@ -100,7 +100,7 @@ def sample_neighbors(
 
     use_perm_buffer = True if perm_buffer is not None else False
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         (
             out_neighbors,
             out_count,
@@ -251,7 +251,7 @@ def weighted_sample_neighbors(
                 "`eids` should not be None if `return_eids` is True."
             )
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         (
             out_neighbors,
             out_count,

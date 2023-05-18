@@ -27,9 +27,8 @@ from ..fluid.framework import (
     _current_expected_place,
     _get_paddle_place,
     _get_paddle_place_list,
-    in_dygraph_mode,
 )
-from ..framework import core
+from ..framework import core, in_dynamic_mode
 from .dataloader import BatchSampler, IterableDataset, Subset
 from .dataloader.batch_sampler import _InfiniteIterableSampler
 from .dataloader.dataloader_iter import (
@@ -413,7 +412,7 @@ class DataLoader:
 
         self.dataset = dataset
 
-        if not return_list and not in_dygraph_mode():
+        if not return_list and not in_dynamic_mode():
             assert (
                 feed_list is not None
             ), "feed_list should be set when return_list=False"
@@ -494,7 +493,7 @@ class DataLoader:
         self.auto_collate_batch = self.batch_sampler is not None
 
         self.pin_memory = False
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             self.pin_memory = (
                 True if use_pinned_memory() is None else use_pinned_memory()
             )

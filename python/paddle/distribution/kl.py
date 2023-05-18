@@ -27,7 +27,7 @@ from paddle.distribution.laplace import Laplace
 from paddle.distribution.lognormal import LogNormal
 from paddle.distribution.normal import Normal
 from paddle.distribution.uniform import Uniform
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.framework import in_dynamic_mode
 
 __all__ = ["register_kl", "kl_divergence"]
 
@@ -229,7 +229,7 @@ def _kl_expfamily_expfamily(p, q):
     p_log_norm = p._log_normalizer(*p_natural_params)
 
     try:
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             p_grads = paddle.grad(
                 p_log_norm, p_natural_params, create_graph=True
             )

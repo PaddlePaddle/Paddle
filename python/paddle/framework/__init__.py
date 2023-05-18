@@ -54,7 +54,7 @@ from ..fluid.framework import set_flags  # noqa: F401
 from ..fluid.framework import Parameter
 from ..fluid.dygraph.base import enable_dygraph as disable_static  # noqa: F401
 from ..fluid.dygraph.base import disable_dygraph as enable_static  # noqa: F401
-from ..fluid.framework import in_dygraph_mode  # noqa: F401
+from ..fluid.framework import in_dygraph_mode as in_dynamic_mode  # noqa: F401
 from ..fluid.framework import (
     _current_expected_place,
     _get_paddle_place,

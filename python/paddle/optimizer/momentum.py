@@ -16,7 +16,7 @@ import warnings
 
 import paddle
 from paddle import _C_ops
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.framework import in_dynamic_mode
 from paddle.regularizer import L2Decay
 
 from ..fluid import core, framework
@@ -200,7 +200,7 @@ class Momentum(Optimizer):
 
     def _create_accumulators(self, block, parameters):
         '''
-        if framework.in_dygraph_mode():
+        if framework.in_dynamic_mode():
             return
         '''
         assert isinstance(block, framework.Block)
@@ -275,7 +275,7 @@ class Momentum(Optimizer):
             else None
         )
 
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             if isinstance(param_and_grad, dict):
                 self._update_regularization(param_and_grad['weight_decay'])
             return _C_ops.momentum_(
@@ -471,7 +471,7 @@ class Momentum(Optimizer):
                     else None
                 )
 
-                if in_dygraph_mode():
+                if in_dynamic_mode():
                     found_inf = self._get_auxiliary_var('found_inf')
                     if found_inf:
                         if isinstance(found_inf, core.eager.Tensor):
