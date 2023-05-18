@@ -63,10 +63,10 @@ class Dirichlet(exponential_family.ExponentialFamily):
 
             print(dirichlet.entropy())
             # Tensor(shape=[], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #        [-1.24434423])
+            #        -1.24434423)
             print(dirichlet.prob(paddle.to_tensor([.3, .5, .6])))
             # Tensor(shape=[], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #        [10.80000114])
+            #        10.80000114)
 
     """
 

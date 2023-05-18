@@ -2512,7 +2512,7 @@ class Variable(metaclass=VariableMetaClass):
     def size(self):
         """
 
-        Returns the number of elements for current Variable, which is a int64 Variable with shape [1]
+        Returns the number of elements for current Variable, which is a int64 Variable with shape [] .
 
         Returns:
             Variable, the number of elements for current Variable
