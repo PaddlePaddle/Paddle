@@ -71,7 +71,7 @@ void TransferLayoutGeneral(const Context& dev_ctx,
 
   out->Resize(phi::make_ddim(dst_dim));
   dev_ctx.Alloc(out, x.dtype());
-
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // In GPU fp16 model, we will insert many transfer_layout ops in
   // conv2d_fusion_layout_transfer_pass, so we optimize this kernel on GPU
   if (std::is_same<Context, phi::GPUContext>::value) {
@@ -114,7 +114,7 @@ void TransferLayoutGeneral(const Context& dev_ctx,
       return;
     }
   }
-
+#endif
   PD_VISIT_ALL_TYPES(x.dtype(), "CastDataLayout", ([&] {
                        CastDataLayout<data_t, Context>(dev_ctx, x, axis, out);
                      }));
