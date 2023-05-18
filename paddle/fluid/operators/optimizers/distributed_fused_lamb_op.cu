@@ -1346,10 +1346,6 @@ void DistributedFusedLambKernel(
   auto stream = dev_ctx.stream();
   auto place = dev_ctx.GetPlace();
 
-  phi::DeviceContextPool &pool = phi::DeviceContextPool::Instance();
-  auto *cpu_ctx =
-      reinterpret_cast<phi::CPUContext *>(pool.Get(phi::CPUPlace()));
-
   found_inf->Resize({1});
 
   // Step 1: Get fp16 param and grad tensors
@@ -1412,11 +1408,11 @@ void DistributedFusedLambKernel(
     bool is_initialized = acc_step->IsInitialized();
     int64_t *acc_step_data;
     if (is_initialized) {
-      acc_step_data = cpu_ctx->template Alloc<int64_t>(acc_step);
+      acc_step_data = dev_ctx.template HostAlloc<int64_t>(acc_step);
       ++(*acc_step_data);
     } else {
       acc_step->Resize({1});
-      acc_step_data = cpu_ctx->template Alloc<int64_t>(acc_step);
+      acc_step_data = dev_ctx.template HostAlloc<int64_t>(acc_step);
       *acc_step_data = 1;
     }
     int64_t rounded_step = (*acc_step_data) % acc_steps;
@@ -1529,8 +1525,8 @@ void DistributedFusedLambKernel(
     }
 
     stop_update->Resize({1});
-    auto *stop_update_data = cpu_ctx->template Alloc<bool>(stop_update);
-    auto *found_inf_cpu = cpu_ctx->template Alloc<bool>(found_inf);
+    auto *stop_update_data = dev_ctx.template HostAlloc<bool>(stop_update);
+    auto *found_inf_cpu = dev_ctx.template HostAlloc<bool>(found_inf);
 
     if (rounded_step != 0) {
       *stop_update_data = true;
