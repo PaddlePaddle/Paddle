@@ -265,9 +265,11 @@ static bool IsFinite(const phi::GPUContext &dev_ctx, const float *ptr) {
 
 template <typename T>
 static const T *GetInputTensorPtr(const DenseTensor *in_tensor,
+                                  const char *in_name,
                                   int64_t *numel = nullptr) {
   PADDLE_ENFORCE_NOT_NULL(
-      in_tensor, phi::errors::InvalidArgument("Input cannot be NULL."));
+      in_tensor,
+      phi::errors::InvalidArgument("Input(%s) cannot be NULL.", in_name));
   if (in_tensor->IsInitialized()) {
     if (numel) *numel = in_tensor->numel();
     return in_tensor->data<T>();
@@ -281,26 +283,33 @@ template <typename T, typename Context, bool AllowNotExist = false>
 static T *GetSameInOutTensorPtr(const Context &dev_ctx,
                                 const DenseTensor *in_tensor,
                                 DenseTensor *out_tensor,
+                                const char *in_name,
+                                const char *out_name,
                                 int64_t *numel = nullptr) {
   if (in_tensor == nullptr || !in_tensor->IsInitialized()) {
-    PADDLE_ENFORCE_EQ(AllowNotExist,
-                      true,
-                      phi::errors::InvalidArgument("Input cannot be NULL."));
+    PADDLE_ENFORCE_EQ(
+        AllowNotExist,
+        true,
+        phi::errors::InvalidArgument("Input(%s) cannot be NULL.", in_name));
     if (numel) *numel = 0;
     return nullptr;
   }
 
   PADDLE_ENFORCE_NOT_NULL(
-      in_tensor, phi::errors::InvalidArgument("Input cannot be NULL."));
+      in_tensor,
+      phi::errors::InvalidArgument("Input(%s) cannot be NULL.", in_name));
   PADDLE_ENFORCE_NOT_NULL(
-      out_tensor, phi::errors::InvalidArgument("Output cannot be NULL."));
+      out_tensor,
+      phi::errors::InvalidArgument("Output(%s) cannot be NULL.", out_name));
   const T *in_data = in_tensor->data<T>();
 
   T *out_data = dev_ctx.template Alloc<T>(out_tensor);
   PADDLE_ENFORCE_EQ(in_data,
                     out_data,
                     phi::errors::InvalidArgument(
-                        "Input and Output must be the same Tensor."));
+                        "Input(%s) and Output(%s) must be the same Tensor.",
+                        in_name,
+                        out_name));
   if (numel) *numel = out_tensor->numel();
   return out_data;
 }
@@ -1350,20 +1359,31 @@ void DistributedFusedLambKernel(
 
   // Step 1: Get fp16 param and grad tensors
   int64_t fp16_numel;
-  auto *fp16_param_data = GetSameInOutTensorPtr<dtype::float16, Context, true>(
-      dev_ctx, fp16_param.get_ptr(), fp16_param_out, &fp16_numel);
+  auto *fp16_param_data =
+      GetSameInOutTensorPtr<dtype::float16, Context, true>(dev_ctx,
+                                                           fp16_param.get_ptr(),
+                                                           fp16_param_out,
+                                                           "FP16FusedParam",
+                                                           "FP16FusedParamOut",
+                                                           &fp16_numel);
   bool has_fp16_param = (fp16_numel > 0);
   const dtype::float16 *fp16_grad_data = nullptr;
   if (has_fp16_param) {
-    fp16_grad_data = GetInputTensorPtr<dtype::float16>(fp16_grad.get_ptr());
+    fp16_grad_data =
+        GetInputTensorPtr<dtype::float16>(fp16_grad.get_ptr(), "FP16FusedGrad");
   } else {
     fp16_param_data = nullptr;
   }
 
   // Step 2: Get fp32 param and grad tensors
   int64_t fp32_numel = 0;
-  auto *fp32_param_data = GetSameInOutTensorPtr<float, Context, true>(
-      dev_ctx, fp32_param.get_ptr(), fp32_param_out, &fp32_numel);
+  auto *fp32_param_data =
+      GetSameInOutTensorPtr<float, Context, true>(dev_ctx,
+                                                  fp32_param.get_ptr(),
+                                                  fp32_param_out,
+                                                  "FP32FusedParam",
+                                                  "FP32FusedParamOut",
+                                                  &fp32_numel);
   PADDLE_ENFORCE_GE(fp32_numel,
                     fp16_numel,
                     phi::errors::InvalidArgument(
@@ -1375,7 +1395,8 @@ void DistributedFusedLambKernel(
   bool has_fp32_param = (fp32_numel > 0);
   const float *fp32_grad_data = nullptr;
   if (has_fp32_param) {
-    fp32_grad_data = GetInputTensorPtr<float>(fp32_grad.get_ptr());
+    fp32_grad_data =
+        GetInputTensorPtr<float>(fp32_grad.get_ptr(), "FP32FusedGrad");
   } else {
     PADDLE_ENFORCE_EQ(
         has_fp16_param,
@@ -1542,7 +1563,8 @@ void DistributedFusedLambKernel(
   }
 
   // Step 3: Get ParamInfo
-  const auto *param_info_data = GetInputTensorPtr<int>(&param_info);
+  const auto *param_info_data =
+      GetInputTensorPtr<int>(&param_info, "ParamInfo");
   auto fp32_local_start_idx = param_info_data[0];
   auto fp32_local_param_num = param_info_data[1];
   auto fp32_global_param_num = param_info_data[2];
@@ -1570,11 +1592,13 @@ void DistributedFusedLambKernel(
 
   // Step 4: Get LearningRate, Moment1, Moment2, Beta1Pow, Beta2Pow,
   // GlobalScale
-  const auto *global_scale_data = GetInputTensorPtr<float>(&global_scale);
-  const auto *lr_data = GetInputTensorPtr<float>(&learning_rate);
+  const auto *global_scale_data =
+      GetInputTensorPtr<float>(&global_scale, "GlobalScale");
+  const auto *lr_data =
+      GetInputTensorPtr<float>(&learning_rate, "LearningRate");
   int64_t partial_numel = 0;
   auto *moment1_data = GetSameInOutTensorPtr<float, Context>(
-      dev_ctx, &moment1, moment1_out, &partial_numel);
+      dev_ctx, &moment1, moment1_out, "Moment1", "Moment1Out", &partial_numel);
 
   PADDLE_ENFORCE_EQ(numel % partial_numel,
                     0,
@@ -1606,12 +1630,12 @@ void DistributedFusedLambKernel(
                         fp16_numel,
                         num_devices));
 
-  auto *moment2_data =
-      GetSameInOutTensorPtr<float, Context>(dev_ctx, &moment2, moment2_out);
-  auto *beta1_pow_data =
-      GetSameInOutTensorPtr<float, Context>(dev_ctx, &beta1_pow, beta1_pow_out);
-  auto *beta2_pow_data =
-      GetSameInOutTensorPtr<float, Context>(dev_ctx, &beta2_pow, beta2_pow_out);
+  auto *moment2_data = GetSameInOutTensorPtr<float, Context>(
+      dev_ctx, &moment2, moment2_out, "Moment2", "Moment2Out");
+  auto *beta1_pow_data = GetSameInOutTensorPtr<float, Context>(
+      dev_ctx, &beta1_pow, beta1_pow_out, "Beta1Pow", "Beta1PowOut");
+  auto *beta2_pow_data = GetSameInOutTensorPtr<float, Context>(
+      dev_ctx, &beta2_pow, beta2_pow_out, "Beta2Pow", "Beta2PowOut");
 
   auto *found_inf_data = dev_ctx.template Alloc<bool>(found_inf);
 
