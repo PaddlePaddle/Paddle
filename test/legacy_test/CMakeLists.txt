@@ -66,11 +66,6 @@ foreach(TEST_OP ${MIXED_DIST_TEST_OPS})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
 endforeach()
 
-if(NOT WITH_COVERAGE)
-  list(REMOVE_ITEM TEST_OPS test_hapi_hub)
-  list(REMOVE_ITEM DIST_TEST_OPS test_dist_hapi_model)
-endif()
-
 if(NOT WITH_PYTHON AND ON_INFER)
   list(REMOVE_ITEM TEST_OPS test_eager_trace_op)
 endif()
@@ -84,12 +79,8 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS test_fused_transformer_encoder_layer)
   list(REMOVE_ITEM TEST_OPS test_fused_bias_dropout_residual_layer_norm_op)
   list(REMOVE_ITEM TEST_OPS test_fused_bias_dropout_residual_layer_norm_op_api)
-  list(REMOVE_ITEM TEST_OPS test_fused_attention_pass)
-  list(REMOVE_ITEM TEST_OPS test_fused_feedforward_pass)
-  list(REMOVE_ITEM TEST_OPS test_async_read_write)
 endif()
 
-list(REMOVE_ITEM TEST_OPS test_fused_ec_moe_op)
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_op)
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_grad_op)
 list(REMOVE_ITEM TEST_OPS test_fuse_gemm_epilogue_pass)
@@ -110,7 +101,6 @@ if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_fleet_executor_task_node)
   list(REMOVE_ITEM TEST_OPS test_fleet_exe_dist_model_run)
   list(REMOVE_ITEM TEST_OPS test_fleet_exe_dist_model_tensor)
-  list(REMOVE_ITEM TEST_OPS test_fleet_executor_cond_interceptor)
 endif()
 
 list(REMOVE_ITEM TEST_OPS test_deprecated_decorator)
@@ -155,9 +145,7 @@ if(WIN32)
   list(REMOVE_ITEM TEST_OPS test_complex_matmul)
   list(REMOVE_ITEM TEST_OPS test_ops_nms)
   list(REMOVE_ITEM TEST_OPS test_trt_convert_preln_residual_bias)
-  list(REMOVE_ITEM TEST_OPS test_trt_convert_preln_residual_no_bias)
   list(REMOVE_ITEM TEST_OPS test_fused_multi_transformer_int8_op)
-  list(REMOVE_ITEM TEST_OPS test_fused_ec_moe_op)
 endif()
 list(REMOVE_ITEM TEST_OPS test_checkpoint_saver)
 
@@ -251,10 +239,6 @@ if(NOT WITH_MKLML)
   # this op is not support on openblas
   list(REMOVE_ITEM TEST_OPS test_fusion_seqexpand_concat_fc_op)
 endif()
-
-foreach(src ${TEST_OPS})
-  py_test(${src} SRCS ${src}.py)
-endforeach()
 
 if(NOT WITH_MKL OR NOT WITH_AVX)
   list(REMOVE_ITEM TEST_OPS test_match_matrix_tensor_op)
@@ -440,7 +424,10 @@ endfunction()
 list(REMOVE_ITEM TEST_OPS test_feed_data_check_shape_type)
 list(REMOVE_ITEM TEST_OPS test_fetch_lod_tensor_array)
 list(REMOVE_ITEM TEST_OPS test_warpctc_op)
+list(REMOVE_ITEM TEST_OPS test_parallel_executor_crf)
+list(REMOVE_ITEM TEST_OPS test_parallel_executor_profiler)
 list(REMOVE_ITEM TEST_OPS test_data_norm_op)
+list(REMOVE_ITEM TEST_OPS test_parallel_executor_fetch_feed)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_transformer)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_transformer_auto_growth)
 list(REMOVE_ITEM TEST_OPS test_bilinear_interp_op)
@@ -466,6 +453,8 @@ list(REMOVE_ITEM TEST_OPS test_basic_lstm_unit_op)
 list(REMOVE_ITEM TEST_OPS test_fuse_all_reduce_pass)
 list(REMOVE_ITEM TEST_OPS test_fuse_bn_act_pass)
 list(REMOVE_ITEM TEST_OPS test_fuse_bn_add_act_pass)
+list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_mnist)
+list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_while)
 
 # disable this unittest temporarily
 list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
@@ -546,6 +535,9 @@ if((NOT WITH_GPU)
   list(REMOVE_ITEM TEST_OPS "test_dist_mnist_batch_merge")
 endif()
 
+foreach(TEST_OP ${TEST_OPS})
+  py_test_modules(${TEST_OP} MODULES ${TEST_OP})
+endforeach()
 set_tests_properties(test_logcumsumexp_op PROPERTIES TIMEOUT 30)
 py_test_modules(test_adam_op_multi_thread MODULES test_adam_op ENVS
                 FLAGS_inner_op_parallelism=4)
@@ -585,6 +577,12 @@ py_test_modules(
 py_test_modules(test_install_check MODULES test_install_check ENVS
                 FLAGS_cudnn_deterministic=1)
 set_tests_properties(test_install_check PROPERTIES LABELS "RUN_TYPE=DIST")
+py_test_modules(
+  test_imperative_static_runner_mnist MODULES
+  test_imperative_static_runner_mnist ENVS FLAGS_cudnn_deterministic=1)
+py_test_modules(
+  test_imperative_static_runner_while MODULES
+  test_imperative_static_runner_while ENVS FLAGS_cudnn_deterministic=1)
 
 if((WITH_GPU) AND (CUDA_VERSION GREATER_EQUAL 11.6))
   py_test_modules(test_fused_gemm_epilogue_op MODULES
@@ -630,11 +628,6 @@ if(WITH_DISTRIBUTE)
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_word2vec")
 
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_gloo")
-
-  if(NOT WITH_GPU)
-    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_spmt")
-    list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_minimize")
-  endif()
 
   if(NOT WITH_HETERPS)
     list(REMOVE_ITEM DIST_TEST_OPS "test_communicator_ps_gpu")
@@ -748,6 +741,18 @@ if(WITH_DISTRIBUTE)
   endif()
 endif()
 
+py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf)
+# profiler will random hang in linux cuda 10.1 or 10.2
+# see https://github.com/PaddlePaddle/Paddle/issues/29082 for details.
+# We guess there are some bugs in linux cuda 10.1 or 10.2,
+# since this unittest is stable in cuda 11.2 and 10.2 (windows-ci pipeline) now.
+if(NOT (LINUX AND CUDA_VERSION LESS 11.0))
+  py_test_modules(test_parallel_executor_profiler MODULES
+                  test_parallel_executor_profiler)
+  set_tests_properties(test_parallel_executor_profiler
+                       PROPERTIES LABELS "RUN_TYPE=DIST")
+  set_tests_properties(test_parallel_executor_profiler PROPERTIES TIMEOUT 120)
+endif()
 py_test_modules(test_parallel_executor_transformer MODULES
                 test_parallel_executor_transformer)
 if(WIN32)
@@ -772,30 +777,6 @@ else()
   py_test_modules(test_fetch_lod_tensor_array MODULES
                   test_fetch_lod_tensor_array)
 endif()
-
-set_tests_properties(test_dataset_cifar PROPERTIES TIMEOUT 120)
-set_tests_properties(test_pretrained_model PROPERTIES TIMEOUT 120)
-set_tests_properties(test_model PROPERTIES TIMEOUT 300)
-set_tests_properties(test_dataset_movielens PROPERTIES TIMEOUT 120)
-set_tests_properties(test_datasets PROPERTIES TIMEOUT 300)
-set_tests_properties(test_dataset_wmt PROPERTIES TIMEOUT 120)
-set_tests_properties(test_vision_models PROPERTIES TIMEOUT 120)
-set_tests_properties(test_dataset_uci_housing PROPERTIES TIMEOUT 120)
-set_tests_properties(test_dataset_imdb PROPERTIES TIMEOUT 300)
-set_tests_properties(test_pretrained_model PROPERTIES TIMEOUT 600)
-set_tests_properties(test_callback_wandb PROPERTIES TIMEOUT 60)
-if(WITH_COVERAGE)
-  set_tests_properties(test_hapi_hub PROPERTIES TIMEOUT 300)
-endif()
-
-if(APPLE)
-  set_tests_properties(test_callback_early_stop PROPERTIES TIMEOUT 300)
-  set_tests_properties(test_callback_reduce_lr_on_plateau PROPERTIES TIMEOUT
-                                                                     300)
-  set_tests_properties(test_vision_models PROPERTIES TIMEOUT 300)
-endif()
-set_tests_properties(test_decorator PROPERTIES TIMEOUT 120)
-
 
 py_test_modules(test_data_norm_op MODULES test_data_norm_op)
 py_test_modules(
@@ -847,6 +828,10 @@ if(NOT WIN32)
                   FLAGS_cudnn_deterministic=1)
   py_test_modules(test_ir_memory_optimize_transformer MODULES
                   test_ir_memory_optimize_transformer)
+  # FIXME(zcd): temporally disable test_parallel_executor_fetch_feed in Windows CI because of the random failure.
+  py_test_modules(test_parallel_executor_fetch_feed MODULES
+                  test_parallel_executor_fetch_feed)
+  set_tests_properties(test_parallel_executor_fetch_feed PROPERTIES TIMEOUT 450)
 endif()
 
 # dist xpu tests:
@@ -875,6 +860,7 @@ set_tests_properties(
   test_buffer_shared_memory_reuse_pass
   PROPERTIES LABELS "RUN_TYPE=DIST")
 set_tests_properties(
+  test_parallel_executor_crf
   test_sync_batch_norm_op
   test_inplace_abn_op
   test_parallel_executor_seresnext_base_gpu
@@ -1005,7 +991,7 @@ set_tests_properties(test_imperative_selected_rows_to_lod_tensor
                      PROPERTIES TIMEOUT 200)
 set_tests_properties(test_index_select_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_index_add_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_index_put_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_parallel_executor_crf PROPERTIES TIMEOUT 120)
 set_tests_properties(test_tensordot PROPERTIES TIMEOUT 200)
 set_tests_properties(test_partial_eager_deletion_transformer PROPERTIES TIMEOUT
                                                                         120)
@@ -1047,6 +1033,7 @@ set_tests_properties(test_svd_op PROPERTIES TIMEOUT 80)
 set_tests_properties(test_einsum_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_qr_op PROPERTIES TIMEOUT 60)
 set_tests_properties(test_trilinear_interp_v2_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_imperative_static_runner_mnist PROPERTIES TIMEOUT 120)
 set_tests_properties(test_masked_select_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_sigmoid_cross_entropy_with_logits_op
                      PROPERTIES TIMEOUT 120)
@@ -1127,6 +1114,8 @@ if(APPLE)
                        PROPERTIES TIMEOUT 300)
   set_tests_properties(test_multiclass_nms_op PROPERTIES TIMEOUT 300)
   set_tests_properties(test_weight_decay PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_imperative_static_runner_mnist PROPERTIES TIMEOUT
+                                                                      300)
 endif()
 
 if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
@@ -1207,9 +1196,11 @@ if(WITH_CINN AND WITH_TESTING)
 endif()
 
 set_tests_properties(
-  test_buffer_shared_memory_reuse_pass
-  test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
-  PROPERTIES ENVIRONMENT FLAGS_CONVERT_GRAPH_TO_PROGRAM=true)
+  test_cuda_graph_static_mode
+  PROPERTIES ENVIRONMENT "FLAGS_CUDA_GRAPH_USE_STANDALONE_EXECUTOR=1")
+set_tests_properties(
+  test_cuda_graph_static_mode_error
+  PROPERTIES ENVIRONMENT "FLAGS_CUDA_GRAPH_USE_STANDALONE_EXECUTOR=1")
 
 # These UTs are to temporarily test static build for standalone_executor, will be removed after static build is enabled by default.
 set(STATIC_BUILD_TESTS
@@ -1224,6 +1215,7 @@ set(STATIC_BUILD_TESTS
     test_fetch_lod_tensor_array
     test_fused_attention_op
     test_fused_attention_op_api
+    test_fuse_bn_act_pass
     test_fused_feedforward_op
     test_fused_feedforward_pass
     test_imperative_optimizer
