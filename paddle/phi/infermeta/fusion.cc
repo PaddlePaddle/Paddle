@@ -165,7 +165,10 @@ void Conv2dXPUInferMeta(const MetaTensor& x,
 void EmbeddingWithEltwiseAddXPUInferMeta(
     const std::vector<const MetaTensor*>& ids,
     const std::vector<const MetaTensor*>& tables,
-    MetaTensor* out) {
+    const MetaTensor& mask,
+    MetaTensor* out,
+    MetaTensor* seq_lod,
+    MetaTensor* max_seq_len) {
   PADDLE_ENFORCE_GT(ids.size(),
                     0UL,
                     phi::errors::InvalidArgument(
@@ -182,6 +185,8 @@ void EmbeddingWithEltwiseAddXPUInferMeta(
   out->set_dims(phi::make_ddim({id_dims[0], id_dims[1], table_dims[1]}));
   out->set_dtype(tables[0]->dtype());
   out->set_layout(ids[0]->layout());
+  seq_lod->set_dims({id_dims[0] + 1});
+  max_seq_len->set_dims({1});
 }
 
 void FcXPUInferMeta(const MetaTensor& x,
@@ -226,6 +231,8 @@ void MultiEncoderXPUInferMeta(
     const std::vector<const MetaTensor*>& ln_scale,
     const std::vector<const MetaTensor*>& ln_bias,
     const MetaTensor& mask,
+    const MetaTensor& seq_lod,
+    const MetaTensor& max_seq_len,
     int layer_num,
     bool norm_before,
     int hidden_dim,
