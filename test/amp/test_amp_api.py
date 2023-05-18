@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from amp_base_models import AmpTestBase, build_conv_model
+from amp_base_models import AmpTestBase
 
 import paddle
 from paddle import nn
@@ -51,6 +51,20 @@ class SimpleConvNet(nn.Layer):
         out = out.flatten(start_axis=1, stop_axis=3)
         out = self.linear(out)
         return out
+
+class SimpleConvNet(nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self.conv = nn.Conv2D(in_channels=1, out_channels=6, kernel_size=3)
+        self.linear = nn.Linear(in_features=96, out_features=4)
+
+    def forward(self, x):
+        out = self.conv(x)
+        out = nn.functional.relu(out.cast("float32"))
+        out = out.flatten(start_axis=1, stop_axis=3)
+        out = self.linear(out)
+        return out
+
 
 class TestStaticDecorate(AmpTestBase):
     def check_results(
