@@ -27,30 +27,30 @@ ProcessMesh::ProcessMesh(const std::vector<int64_t> &shape,
                          const std::vector<std::string> &dim_names) {
   shape_ = shape;
   int64_t size = this->size();
-  PADDLE_ENFORCE_EQ(size,
-                    process_ids.size(),
-                    paddle::platform::errors::InvalidArgument(
-                        "The size of this process mesh must be "
-                        "equal to the size of its process ids.",
-                        size,
-                        process_ids.size()));
+  PADDLE_ENFORCE_EQ(
+      size,
+      process_ids.size(),
+      errors::InvalidArgument("The size of this process mesh must be "
+                              "equal to the size of its process ids.",
+                              size,
+                              process_ids.size()));
   PADDLE_ENFORCE_EQ(
       has_duplicates(process_ids),
       false,
-      paddle::platform::errors::InvalidArgument(
-          "The process ids [%s] must be unique.", str_join(process_ids_)));
+      errors::InvalidArgument("The process ids [%s] must be unique.",
+                              str_join(process_ids_)));
   process_ids_ = process_ids;
 
   PADDLE_ENFORCE_EQ(shape_.size(),
                     dim_names.size(),
-                    paddle::platform::errors::InvalidArgument(
+                    errors::InvalidArgument(
                         "The size of mesh shape must be equal to the size "
                         "of the dimension names.",
                         shape_.size(),
                         dim_names_.size()));
   PADDLE_ENFORCE_EQ(has_duplicates(dim_names),
                     false,
-                    paddle::platform::errors::InvalidArgument(
+                    errors::InvalidArgument(
                         "The names [%s] of each dimension must be unique.",
                         str_join(dim_names)));
   dim_names_ = dim_names;

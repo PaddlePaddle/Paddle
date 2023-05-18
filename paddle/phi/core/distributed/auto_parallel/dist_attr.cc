@@ -113,8 +113,8 @@ void TensorDistAttr::mark_annotated(const std::string& name) {
 
 bool TensorDistAttr::verify_process_mesh(
     const ProcessMesh& process_mesh) const {
-  VLOG(4) << "[TensorDistAttr verify_process_mesh] "
-          << process_mesh.to_string();
+  // VLOG(4) << "[TensorDistAttr verify_process_mesh] "
+  //         << process_mesh.to_string();
   if (!process_mesh_.empty()) {
     for (int64_t dim_mapping : dims_mapping_) {
       if (dim_mapping >= process_mesh_.ndim()) {
@@ -128,7 +128,8 @@ bool TensorDistAttr::verify_process_mesh(
 bool TensorDistAttr::verify_dims_mapping(
     const std::vector<int64_t>& dims_mapping,
     const std::vector<int64_t>& tensor_shape) const {
-  VLOG(4) << "[TensorDistAttr verify_dims_mapping] " << str_join(dims_mapping);
+  // VLOG(4) << "[TensorDistAttr verify_dims_mapping] " <<
+  // str_join(dims_mapping);
   if (dims_mapping.size() != tensor_shape.size()) {
     return false;
   }
@@ -156,7 +157,7 @@ bool TensorDistAttr::verify_dims_mapping(
 
 bool TensorDistAttr::verify_batch_dim(
     int64_t dim, const std::vector<int64_t>& tensor_shape) const {
-  VLOG(4) << "[TensorDistAttr verify_batch_dim] " << dim;
+  // VLOG(4) << "[TensorDistAttr verify_batch_dim] " << dim;
   int64_t ndim = tensor_shape.size();
   if (ndim > 0) {
     if (dim < 0) {
@@ -172,7 +173,8 @@ bool TensorDistAttr::verify_batch_dim(
 bool TensorDistAttr::verify_dynamic_dims(
     const std::vector<bool>& dynamic_dims,
     const std::vector<int64_t>& tensor_shape) const {
-  VLOG(4) << "[TensorDistAttr verify_dynamic_dims] " << str_join(dynamic_dims);
+  // VLOG(4) << "[TensorDistAttr verify_dynamic_dims] " <<
+  // str_join(dynamic_dims);
   if (dynamic_dims.size() > 0 && dynamic_dims.size() != tensor_shape.size()) {
     return false;
   }
@@ -181,7 +183,7 @@ bool TensorDistAttr::verify_dynamic_dims(
 
 bool TensorDistAttr::verify_annotated(
     const std::map<std::string, bool>& annotated) const {
-  VLOG(4) << "[TensorDistAttr verify_annotated] " << str_join(annotated);
+  // VLOG(4) << "[TensorDistAttr verify_annotated] " << str_join(annotated);
   for (const auto& item : annotated) {
     auto result = std::find(std::begin(fields_), std::end(fields_), item.first);
     if (result == std::end(fields_)) {
@@ -253,17 +255,17 @@ std::string TensorDistAttr::serialize_to_string() {
   proto.SerializeToString(&data);
   PADDLE_ENFORCE_EQ(to_proto().SerializeToString(&data),
                     true,
-                    paddle::platform::errors::InvalidArgument(
+                    errors::InvalidArgument(
                         "Failed to serialize tensor dist attr to string."));
   return data;
 }
 
 void TensorDistAttr::parse_from_string(const std::string& data) {
   TensorDistAttrProto proto;
-  PADDLE_ENFORCE_EQ(proto.ParseFromString(data),
-                    true,
-                    paddle::platform::errors::InvalidArgument(
-                        "Failed to parse tensor dist attr from string."));
+  PADDLE_ENFORCE_EQ(
+      proto.ParseFromString(data),
+      true,
+      errors::InvalidArgument("Failed to parse tensor dist attr from string."));
   from_proto(proto);
 }
 

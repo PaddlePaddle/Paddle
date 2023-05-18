@@ -23,9 +23,9 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/core/distributed/auto_parallel/auto_parallel.pb.h"
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace phi {
 namespace distributed {
@@ -259,7 +259,7 @@ class DeviceMesh {
         return shape_[i];
       }
     }
-    PADDLE_THROW(paddle::platform::errors::InvalidArgument(
+    PADDLE_THROW(errors::InvalidArgument(
         "Cannot find the dimension of %s in this device mesh.", dim_name));
   }
 

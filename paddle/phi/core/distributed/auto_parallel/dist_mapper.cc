@@ -32,7 +32,7 @@ void DistributedMapper::set_process_id_to_device_ids(
     PADDLE_ENFORCE_GE(
         item.first,
         0,
-        paddle::platform::errors::InvalidArgument(
+        errors::InvalidArgument(
             "The process id %d must be greater than or equal to 0.",
             item.first));
     std::string device_mesh_name = item.second.first;
@@ -40,14 +40,14 @@ void DistributedMapper::set_process_id_to_device_ids(
     PADDLE_ENFORCE_EQ(
         device_meshes_.count(device_mesh_name),
         1,
-        paddle::platform::errors::InvalidArgument(
+        errors::InvalidArgument(
             "Cannot find the device mesh %d in device_mesh ids [%s].",
             device_mesh_name,
             str_join(device_mesh_names)));
     PADDLE_ENFORCE_EQ(
         has_duplicates(device_ids),
         false,
-        paddle::platform::errors::InvalidArgument(
+        errors::InvalidArgument(
             "The mapped device ids [%s] of process_mesh %d must be unique.",
             str_join(device_ids),
             item.first));
@@ -60,7 +60,7 @@ void DistributedMapper::set_process_id_to_device_ids(
       PADDLE_ENFORCE_EQ(
           found,
           true,
-          paddle::platform::errors::InvalidArgument(
+          errors::InvalidArgument(
               "The device id %d cannot be find in the device mesh [%s].",
               device_id,
               str_join(cur_device_ids)));
