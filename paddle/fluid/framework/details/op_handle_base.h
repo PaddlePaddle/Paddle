@@ -55,7 +55,7 @@ class OpHandleBase {
   explicit OpHandleBase(ir::Node *node) : node_(node) {
     node_->WrappedBy(this);
   }
-
+  OpHandleBase() = default;
   virtual ~OpHandleBase() PADDLE_MAY_THROW;
 
   std::string DebugString() const;

@@ -20,7 +20,6 @@ set(PYBIND_TAG v2.10.3)
 
 set(PYBIND_INCLUDE_DIR ${THIRD_PARTY_PATH}/pybind/src/extern_pybind/include)
 include_directories(${PYBIND_INCLUDE_DIR})
-
 set(PYBIND_PATCH_COMMAND "")
 if(NOT WIN32)
   file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/pybind/cast.h.patch

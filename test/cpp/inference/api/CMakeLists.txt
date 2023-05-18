@@ -523,6 +523,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     analyzer_transformer_fuse_tester.cc
     EXTRA_DEPS
     paddle_inference_shared
+    pybind
     ARGS
     --infer_model=${TRANSFORMER_INSTALL_DIR}/model
     --infer_data=${TRANSFORMER_INSTALL_DIR}/data.txt
