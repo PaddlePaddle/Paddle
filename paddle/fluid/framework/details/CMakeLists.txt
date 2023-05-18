@@ -209,7 +209,6 @@ else()
     nan_inf_utils
     SRCS nan_inf_utils_detail.cc
     DEPS framework_proto scope place eager_nan_inf_utils)
-endif()
   cc_library(
     all_reduce_op_handle
     SRCS all_reduce_op_handle.cc
