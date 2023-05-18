@@ -1362,7 +1362,7 @@ void FusionGroupInferMeta(const std::vector<const MetaTensor*>& ins,
 
   // Only lod of Inputs[0] would be shared with Outs.
   for (size_t j = 0; j < num_outs; ++j) {
-    outs[j]->share_lod(ins[0]);
+    outs[j]->share_lod(*ins[0]);
   }
 }
 
