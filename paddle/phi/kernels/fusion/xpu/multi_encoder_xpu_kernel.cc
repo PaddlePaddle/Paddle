@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "glog/logging.h"
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -43,6 +44,7 @@ void MultiEncoderXPUKernel(const Context& ctx,
                            DenseTensor* out,
                            DenseTensor* x_fp16,
                            DenseTensor* out_fp16) {
+  LOG(INFO) << "MultiEncoderXPUKernel, 0";
   // XPU2 only support fp16 input/output.
   auto x_dtype = x.dtype();
   const XPUTypeFP16* x_fp16_data = nullptr;
@@ -217,6 +219,6 @@ PD_REGISTER_KERNEL(multi_encoder_xpu,
                    phi::fusion::MultiEncoderXPUKernel,
                    float,
                    phi::dtype::float16) {
-  kernel->InputAt(6).SetBackend(phi::Backend::CPU);
   kernel->InputAt(7).SetBackend(phi::Backend::CPU);
+  kernel->InputAt(8).SetBackend(phi::Backend::CPU);
 }

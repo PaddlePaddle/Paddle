@@ -116,7 +116,7 @@ void EmbeddingWithEltwiseAddXpuKernel(
               cur_batch_seq_len));
       seq_lod_data[batch_idx + 1] = seq_lod_data[batch_idx] + cur_batch_seq_len;
     }
-    out->Resize({batch_size, seq_lod_data[batch_size + 1], emb_dim});
+    out->Resize({batch_size, seq_lod_data[batch_size], emb_dim});
 
     for (int i = 0; i < emb_layer_num; i++) {
       if (ids[i]->dtype() == DataType::INT64) {
