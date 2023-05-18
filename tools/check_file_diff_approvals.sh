@@ -375,7 +375,7 @@ for CHANGE_FILE in ${HAS_MODIFIED_PHI_HEADER_FILES}; do
         INCLUDE_PADDLE_API_FILES="${INCLUDE_PADDLE_API_FILES} ${CHANGE_FILE}"
     fi
 done
-if [ "${PHI_INCLUDE_THIRD_PARTY_FILES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+if [ "${HAS_MODIFIED_PADDLE_API_FILES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="You must have one RD (sunzhongkai588/SunZhongKai, Ligoml/LiMengLiu, jiahy0825) approval for PADDLE_API. Need to confirm if additional descriptions are needed\n"
     check_approval 1 sunzhongkai588/SunZhongKai Ligoml/LiMengLiu jiahy0825
 fi
