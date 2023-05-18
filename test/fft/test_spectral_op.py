@@ -16,14 +16,7 @@ import re
 import sys
 
 import numpy as np
-from spectral_op_np import (
-    fft_c2c,
-    fft_c2c_backward,
-    fft_c2r,
-    fft_c2r_backward,
-    fft_r2c,
-    fft_r2c_backward,
-)
+from spectral_op_np import fft_c2c, fft_c2r, fft_r2c
 
 import paddle
 from paddle import _C_ops
@@ -155,13 +148,6 @@ class TestFFTC2COp(OpTest):
         }
         self.outputs = {'Out': out}
 
-        self.out_grad = (
-            np.random.random(self.x.shape) + 1j * np.random.random(self.x.shape)
-        ).astype(self.x.dtype)
-        self.x_grad = fft_c2c_backward(
-            self.out_grad, self.axes, self.norm, self.forward
-        )
-
     def test_check_output(self):
         self.check_output()
 
@@ -246,16 +232,6 @@ class TestFFTC2ROp(OpTest):
         }
         self.outputs = {'Out': out}
 
-        self.out_grad = np.random.random(out.shape).astype(out.dtype)
-        self.x_grad = fft_c2r_backward(
-            self.x,
-            self.out_grad,
-            self.axes,
-            self.norm,
-            self.forward,
-            self.last_dim_size,
-        )
-
     def test_check_output(self):
         self.check_output()
 
@@ -327,16 +303,6 @@ class TestFFTR2COp(OpTest):
             'onesided': self.onesided,
         }
         self.outputs = {'Out': out}
-
-        self.out_grad = np.random.random(out.shape).astype(out.dtype)
-        self.x_grad = fft_r2c_backward(
-            self.x,
-            self.out_grad,
-            self.axes,
-            self.norm,
-            self.forward,
-            self.onesided,
-        )
 
     def test_check_output(self):
         self.check_output()
