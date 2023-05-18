@@ -41,39 +41,5 @@ template <typename T>
 using ConstEigenVectorArrayMap =
     Eigen::Map<const Eigen::Array<T, Eigen::Dynamic, 1>>;
 
-class BatchNormDoubleGradOp : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext* ctx) const override;
-};
-
-template <typename T>
-class BatchNormGradMaker : public framework::SingleGradOpMaker<T> {
- public:
-  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
-
- protected:
-  void Apply(GradOpPtr<T> op) const override;
-};
-
-template <typename T>
-class BatchNormDoubleGradMaker : public framework::SingleGradOpMaker<T> {
- public:
-  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
-
- protected:
-  void Apply(GradOpPtr<T> op) const override;
-};
-
-class BatchNormOpInferVarType
-    : public framework::PassInDtypeAndVarTypeToOutput {
- protected:
-  std::unordered_map<std::string, std::string>& GetInputOutputWithSameType()
-      const override {
-    static std::unordered_map<std::string, std::string> m{{"X", /*->*/ "Y"}};
-    return m;
-  }
-};
-
 }  // namespace operators
 }  // namespace paddle
