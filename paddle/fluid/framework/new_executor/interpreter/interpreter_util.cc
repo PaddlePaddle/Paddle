@@ -36,6 +36,9 @@
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/phi/backends/device_manager.h"
+#endif
 PADDLE_DEFINE_EXPORTED_bool(
     new_executor_log_memory_stats,
     false,
@@ -397,6 +400,40 @@ void ApplyDeviceGuard(const OperatorBase* op_base,
         LOG_FIRST_N(WARNING, 1)
             << "Op(" << op_base->Type()
             << ") has no XPU implementation. It will be assigned to CPUPlace.";
+      }
+      VLOG(3) << "Switch into " << expected_kernel_key->place_
+              << " by device_guard.";
+    } else if (platform::is_custom_place(place)) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+      auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+      bool is_custom_device_op = false;
+      for (auto dev_type : device_types) {
+        if (op_device.find(dev_type) != std::string::npos) {
+          is_custom_device_op = true;
+          break;
+        }
+      }
+      PADDLE_ENFORCE_EQ(
+          is_custom_device_op,
+          true,
+          phi::errors::Unimplemented(
+              "Unsupported current device %s with Paddle CustomDevice ",
+              op_device));
+#else
+      VLOG(1) << string::Sprintf(
+          "Cannot use get_all_custom_device_type because you have installed"
+          "CPU/GPU version PaddlePaddle.\n"
+          "If you want to use get_all_custom_device_type, please try to "
+          "install CustomDevice version "
+          "PaddlePaddle by: pip install paddlepaddle\n");
+#endif
+      if (op_base->SupportCustomDevice()) {
+        expected_kernel_key->place_ = place;
+      } else {
+        expected_kernel_key->place_ = platform::CPUPlace();
+        LOG_FIRST_N(WARNING, 1) << "Op(" << op_base->Type()
+                                << ") has no Custom Place implementation. It "
+                                   "will be assigned to CPUPlace.";
       }
       VLOG(3) << "Switch into " << expected_kernel_key->place_
               << " by device_guard.";

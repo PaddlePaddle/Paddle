@@ -2476,7 +2476,7 @@ class Variable(metaclass=VariableMetaClass):
     def size(self):
         """
 
-        Returns the number of elements for current Variable, which is a int64 Variable with shape [1]
+        Returns the number of elements for current Variable, which is a int64 Variable with shape [] .
 
         Returns:
             Variable, the number of elements for current Variable
@@ -7431,9 +7431,12 @@ def device_guard(device=None):
         device, index = device.split(':')
         if device == 'cpu':
             raise ValueError("Should not set device id for cpu.")
-    if device not in ['cpu', 'gpu', 'xpu', '', None]:
+    if (
+        device not in ['cpu', 'gpu', 'xpu', '', None]
+        and device not in core.get_all_custom_device_type()
+    ):
         raise ValueError(
-            "The Attr(device) should be 'cpu' or 'gpu', and it can also be empty string or None "
+            "The Attr(device) should be 'cpu', 'xpu', 'gpu' or custom device, and it can also be empty string or None "
             "when there is no need to specify device. But received %s" % device
         )
     if index:

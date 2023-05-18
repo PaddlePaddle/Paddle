@@ -763,9 +763,9 @@ class TrtConvertVitToMultiHeadMatmulTest(TrtLayerAutoScanTest):
                         },
                         "op_outputs": {"Out": ["elementwise_add1_output"]},
                         "op_attrs": {
-                            "Scale_out": 1.0,
-                            "Scale_x": 1.0,
-                            "Scale_y": 1.0,
+                            "scale_out": 1.0,
+                            "scale_x": 1.0,
+                            "scale_y": 1.0,
                             "axis": 2,
                             "Out": 1.0,
                         },

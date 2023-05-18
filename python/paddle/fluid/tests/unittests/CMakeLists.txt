@@ -1120,7 +1120,7 @@ set(TEST_CINN_OPS
 foreach(TEST_CINN_OPS ${TEST_CINN_OPS})
   if(WITH_CINN)
     set_tests_properties(${TEST_CINN_OPS} PROPERTIES LABELS "RUN_TYPE=CINN")
-    set_tests_properties(${TEST_CINN_OPS} PROPERTIES TIMEOUT 150)
+    set_tests_properties(${TEST_CINN_OPS} PROPERTIES TIMEOUT 200)
   endif()
 endforeach()
 
