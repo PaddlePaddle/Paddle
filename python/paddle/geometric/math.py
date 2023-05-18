@@ -56,7 +56,7 @@ def segment_sum(data, segment_ids, name=None):
         check_variable_and_dtype(
             data,
             "X",
-            ("float32", "float64", "int32", "int64", "float16"),
+            ("float32", "float64", "int32", "int64", "float16", "uint16"),
             "segment_pool",
         )
         check_variable_and_dtype(
@@ -114,7 +114,7 @@ def segment_mean(data, segment_ids, name=None):
         check_variable_and_dtype(
             data,
             "X",
-            ("float32", "float64", "int32", "int64", "float16"),
+            ("float32", "float64", "int32", "int64", "float16", "uint16"),
             "segment_pool",
         )
         check_variable_and_dtype(
@@ -170,7 +170,7 @@ def segment_min(data, segment_ids, name=None):
         check_variable_and_dtype(
             data,
             "X",
-            ("float32", "float64", "int32", "int64", "float16"),
+            ("float32", "float64", "int32", "int64", "float16", "uint16"),
             "segment_pool",
         )
         check_variable_and_dtype(
@@ -226,7 +226,7 @@ def segment_max(data, segment_ids, name=None):
         check_variable_and_dtype(
             data,
             "X",
-            ("float32", "float64", "int32", "int64", "float16"),
+            ("float32", "float64", "int32", "int64", "float16", "uint16"),
             "segment_pool",
         )
         check_variable_and_dtype(

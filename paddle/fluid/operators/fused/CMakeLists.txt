@@ -73,7 +73,7 @@ if(WITH_GPU OR WITH_ROCM)
   op_library(fused_gate_attention_op)
   # fusion_group
   if(NOT APPLE AND NOT WIN32)
-    op_library(fusion_group_op DEPS device_code)
+    op_library(fusion_group_op)
   endif()
   # fused_bn_add_activation
   # HIP not support bn act fuse in MIOPEN
