@@ -176,7 +176,9 @@ class TestArangeImperative(unittest.TestCase):
         for i in [x1, x2, x3, x4]:
             self.assertEqual((i.numpy() == expected_data).all(), True)
 
-        x5 = paddle.arange(start, np.array([0.5], 'float32'), step)
+        x5 = paddle.arange(
+            start, paddle.to_tensor(np.array([0.5], 'float32')), step
+        )
         x5_expected_data = np.arange(0, 0.5, 1).astype(np.float32)
         self.assertEqual((x5.numpy() == x5_expected_data).all(), True)
 
