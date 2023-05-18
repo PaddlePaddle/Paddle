@@ -281,7 +281,7 @@ def source_include(header_file_path, fw_header_file_path):
 #include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
-#include "paddle/phi/api/lib/utils/tensor_utils.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "{fw_header_file_path}"
