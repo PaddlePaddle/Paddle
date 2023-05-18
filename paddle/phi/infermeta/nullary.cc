@@ -74,9 +74,9 @@ void EyeInferMeta(const Scalar& num_rows,
 }
 
 void GaussianInferMeta(const IntArray& shape,
-                       float mean,
-                       float std,
-                       int seed,
+                       float mean UNUSED,
+                       float std UNUSED,
+                       int seed UNUSED,
                        DataType dtype,
                        MetaTensor* out) {
   auto out_dims = phi::make_ddim(shape.GetData());
@@ -164,9 +164,9 @@ void PRecvArrayInferMeta(int peer,
 }
 
 void TruncatedGaussianRandomInferMeta(const std::vector<int>& shape,
-                                      float mean,
-                                      float std,
-                                      int seed,
+                                      float mean UNUSED,
+                                      float std UNUSED,
+                                      int seed UNUSED,
                                       DataType dtype,
                                       MetaTensor* out) {
   auto out_dims = phi::make_ddim(shape);

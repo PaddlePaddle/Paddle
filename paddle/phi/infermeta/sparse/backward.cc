@@ -20,14 +20,14 @@ limitations under the License. */
 namespace phi {
 namespace sparse {
 
-void FusedAttentionGradInferMeta(const MetaTensor& query,
-                                 const MetaTensor& key,
-                                 const MetaTensor& value,
-                                 const MetaTensor& softmax,
-                                 const MetaTensor& out_grad,
-                                 MetaTensor* query_grad,
-                                 MetaTensor* key_grad,
-                                 MetaTensor* value_grad) {
+void FusedAttentionGradInferMeta(const MetaTensor& query UNUSED,
+                                 const MetaTensor& key UNUSED,
+                                 const MetaTensor& value UNUSED,
+                                 const MetaTensor& softmax UNUSED,
+                                 const MetaTensor& out_grad UNUSED,
+                                 MetaTensor* query_grad UNUSED,
+                                 MetaTensor* key_grad UNUSED,
+                                 MetaTensor* value_grad UNUSED) {
   // TODO(zhouwei, zhangkaihuo) add correct infer meta
 }
 

@@ -96,15 +96,15 @@ DECLARE_ACT_CREATOR(VSigmoid);
 DECLARE_ACT_CREATOR(VTanh);
 
 // TODO(TJ): tuning use me
-bool VReluCreator::CanBeUsed(const int& d) const {
+bool VReluCreator::CanBeUsed(const int& d UNUSED) const {
   return phi::backends::cpu::MayIUse(phi::backends::cpu::avx);
 }
 
-bool VSquareCreator::CanBeUsed(const int& d) const {
+bool VSquareCreator::CanBeUsed(const int& d UNUSED) const {
   return phi::backends::cpu::MayIUse(phi::backends::cpu::avx);
 }
 
-bool VIdentityCreator::CanBeUsed(const int& d) const {
+bool VIdentityCreator::CanBeUsed(const int& d UNUSED) const {
   return phi::backends::cpu::MayIUse(phi::backends::cpu::avx);
 }
 
@@ -112,7 +112,7 @@ bool VExpCreator::CanBeUsed(const int& d) const {
   return phi::backends::cpu::MayIUse(phi::backends::cpu::avx) && d < 32;
 }
 
-bool VSigmoidCreator::CanBeUsed(const int& d) const {
+bool VSigmoidCreator::CanBeUsed(const int& d UNUSED) const {
   return phi::backends::cpu::MayIUse(phi::backends::cpu::avx);
 }
 

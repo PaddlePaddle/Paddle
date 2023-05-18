@@ -20,10 +20,10 @@
 namespace phi {
 
 template <typename T, typename Context>
-void DecodeJpegKernel(const Context& dev_ctx,
-                      const DenseTensor& x,
-                      const std::string& mode,
-                      DenseTensor* out) {
+void DecodeJpegKernel(const Context& dev_ctx UNUSED,
+                      const DenseTensor& x UNUSED,
+                      const std::string& mode UNUSED,
+                      DenseTensor* out UNUSED) {
   PADDLE_THROW(errors::Unimplemented("DecodeJpeg op only supports GPU now."));
 }
 }  // namespace phi

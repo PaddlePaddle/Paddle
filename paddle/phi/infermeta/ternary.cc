@@ -865,8 +865,8 @@ void NllLossRawInferMeta(const MetaTensor& input,
 void PutAlongAxisInferMeta(const MetaTensor& x,
                            const MetaTensor& index,
                            const MetaTensor& value,
-                           int axis,
-                           const std::string& reduce,
+                           int axis UNUSED,
+                           const std::string& reduce UNUSED,
                            MetaTensor* out) {
   out->set_dims(x.dims());
   out->set_dtype(x.dtype());

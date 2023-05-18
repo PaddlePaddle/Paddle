@@ -57,7 +57,7 @@ struct CBlas<int8_t> {
 template <>
 struct CBlas<int16_t> {
   template <typename... ARGS>
-  static void VCOPY(ARGS... args) {
+  static void VCOPY(ARGS... args UNUSED) {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Blas VCOPY do not supported on CPU, please check your code"));
   }

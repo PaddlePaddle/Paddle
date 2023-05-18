@@ -14,6 +14,7 @@ limitations under the License. */
 
 #ifdef __AVX__
 
+#include "paddle/phi/core/macros.h"
 #include "paddle/phi/kernels/funcs/detail/activation_functions.h"
 #include "paddle/phi/kernels/funcs/detail/avx_mathfun.h"
 
@@ -91,7 +92,7 @@ __m256 Tanh(const __m256 a, const __m256 b) {
       a, _mm256_sub_ps(_mm256_set1_ps(1.0f), _mm256_mul_ps(b, b)));
 }
 
-__m256 Identity(const __m256 a, const __m256 b) { return a; }
+__m256 Identity(const __m256 a, const __m256 b UNUSED) { return a; }
 }  // namespace avx
 }  // namespace backward
 
