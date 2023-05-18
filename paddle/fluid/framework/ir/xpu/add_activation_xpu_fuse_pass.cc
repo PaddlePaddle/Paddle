@@ -90,9 +90,11 @@ AddActXPUPattern::AddActXPUPattern(PDPattern* pattern,
       pattern->NewNode(ele_add_repr())->assert_is_op("elementwise_add");
   auto ele_x = pattern->NewNode(ele_x_repr())
                    ->assert_is_op_input("elementwise_add", "X")
+                   ->assert_var_not_persistable()
                    ->AsInput();
   auto ele_y = pattern->NewNode(ele_y_repr())
                    ->assert_is_op_input("elementwise_add", "Y")
+                   ->assert_var_not_persistable()
                    ->AsInput();
   auto ele_out = pattern->NewNode(ele_out_repr())
                      ->assert_is_op_output("elementwise_add", "Out");
