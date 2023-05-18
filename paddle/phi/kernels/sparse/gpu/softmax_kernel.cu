@@ -139,6 +139,8 @@ static int GetNumThreads(int nElem) {
   return threadSizes[4];
 }
 
+/* Given the indices of a sparse tensor, return a vector of offsets
+for the entries in the equivalent dense tensor. */
 template <typename IntT, typename Context>
 DenseTensor GetOffsets(const Context& dev_ctx,
                        const DenseTensor& indices,
@@ -149,7 +151,7 @@ DenseTensor GetOffsets(const Context& dev_ctx,
 #else
   const auto& policy = thrust::cuda::par.on(dev_ctx.stream());
 #endif
-  // printf("->indices size: %d\n", indices.dims().size());
+
   auto ndim = indices.dims()[0];
   auto nnz = indices.dims()[1];
   std::vector<IntT> host_strides(ndim, 1);
@@ -191,6 +193,8 @@ DenseTensor GetOffsets(const Context& dev_ctx,
   return offsets;
 }
 
+/* Return pools of indices that align with the given dimension and the
+corresponding max values for each pool. */
 template <typename T,
           typename IntT,
           typename Context,
@@ -217,6 +221,7 @@ std::tuple<DenseTensor, DenseTensor, DenseTensor, DenseTensor> ComputePoolMax(
   thrust::sequence(
       policy, sorted_indices_thrust_ptr, sorted_indices_thrust_ptr + nnz, 0);
 
+  /* sort indices corresponding to offsets */
   thrust::sort(policy,
                sorted_indices_thrust_ptr,
                sorted_indices_thrust_ptr + nnz,
@@ -225,6 +230,9 @@ std::tuple<DenseTensor, DenseTensor, DenseTensor, DenseTensor> ComputePoolMax(
                });
 
   DenseTensor pool_sizes = phi::Empty<IntT>(dev_ctx, {nnz});
+
+  /* reduce the elements which are groupped by pool index,
+  returns all the pool indexes with unique offset value for each. */
   auto new_end =
       thrust::reduce_by_key(policy,
                             sorted_indices_thrust_ptr,
@@ -244,6 +252,7 @@ std::tuple<DenseTensor, DenseTensor, DenseTensor, DenseTensor> ComputePoolMax(
   dev_ctx.template Alloc<T>(&pool_offsets);
   phi::Copy(dev_ctx, pool_sizes, dev_ctx.GetPlace(), false, &pool_offsets);
 
+  /* accumulate value for each pool index */
   thrust_ptr pool_offsets_thrust_ptr(pool_offsets.data<IntT>());
   thrust::exclusive_scan(policy,
                          pool_offsets_thrust_ptr,
@@ -260,6 +269,8 @@ std::tuple<DenseTensor, DenseTensor, DenseTensor, DenseTensor> ComputePoolMax(
     auto sorted_indices_ptr = sorted_indices.data<IntT>();
     auto pool_offsets_ptr = pool_offsets.data<IntT>();
     auto values_ptr = values.data<T>();
+
+    /* calculate max value in each pool. */
     thrust::for_each(policy,
                      thrust::make_counting_iterator(IntT(0)),
                      thrust::make_counting_iterator(IntT(new_sz)),
@@ -343,6 +354,9 @@ void SoftmaxCooGPUKernel(const Context& dev_ctx,
   out->SetMember(out_indices, out_values, x.dims(), x.coalesced());
 
   int dim = axis < 0 ? x_dims.size() + axis : axis;
+
+  /* If dim is greater than or equal to sparse_dim, the dense softmax is used.
+   */
   if (dim >= sparse_dim) {
     SoftmaxKernel<T, Context>(
         dev_ctx, values, dim - sparse_dim + 1, &out_values);
@@ -358,6 +372,7 @@ void SoftmaxCooGPUKernel(const Context& dev_ctx,
   auto values_2 = values.Resize({x_nnz, nvalues});
   auto out_values_2 = out_values.Resize({x_nnz, nvalues});
 
+  /* Compute independent pools of indices */
   DenseTensor sorted_indices;
   DenseTensor pool_offsets;
   DenseTensor pool_sizes;
@@ -371,6 +386,8 @@ void SoftmaxCooGPUKernel(const Context& dev_ctx,
   const int grid_size = (pool_size + block_size - 1) / block_size;
   auto out_values_ptr = out_values.data<T>();
   auto values_ptr = values.data<T>();
+
+  /* Compute softmax results with pool indices */
   SoftmaxCooGPURawKernel<T, IntT>
       <<<grid_size, block_size, 0, stream>>>(sorted_indices.data<IntT>(),
                                              pool_size,

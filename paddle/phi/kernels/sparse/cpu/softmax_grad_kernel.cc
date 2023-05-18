@@ -124,7 +124,7 @@ template <typename IntT>
 void GetPoolsSoftmaxGrad(const DenseTensor& indices,
                          const std::vector<IntT>& sizes,
                          const int dim,
-                         std::vector<std::vector<IntT>>* pools) {
+                         std::map<IntT, std::vector<IntT>>* pools) {
   auto ndim = indices.dims()[0];
   auto nnz = indices.dims()[1];
   std::vector<IntT> strides(ndim, 1);
@@ -141,9 +141,6 @@ void GetPoolsSoftmaxGrad(const DenseTensor& indices,
     for (IntT j = 0; j < ndim; j++) {
       if (j == dim) continue;
       pool_index += strides[j] * indices_data[j * nnz + i];
-    }
-    if (static_cast<IntT>(pools->size()) <= pool_index) {
-      pools->resize(pool_index + 1);
     }
     pools->at(pool_index).push_back(i);
   }
@@ -245,7 +242,7 @@ void SoftmaxCooGradCPUKernel(const Context& dev_ctx,
 
   DenseTensor grad_values_2(grad_values);
   grad_values_2.Resize(phi::make_ddim({nnz, nvalues}));
-  std::vector<std::vector<IntT>> pools;
+  std::map<IntT, std::vector<IntT>> pools;
   GetPoolsSoftmaxGrad(out_indices, sizes, dim, &pools);
 
   for (size_t p = 0; p < pools.size(); p++) {

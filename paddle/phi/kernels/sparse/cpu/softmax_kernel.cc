@@ -91,7 +91,7 @@ template <typename IntT>
 void GetPoolsSoftmax(const DenseTensor& indices,
                      const std::vector<IntT>& sizes,
                      const int dim,
-                     std::vector<std::vector<IntT>>* pools) {
+                     std::map<IntT, std::vector<IntT>>* pools) {
   auto ndim = indices.dims()[0];
   auto nnz = indices.dims()[1];
   std::vector<IntT> strides(ndim, 1);
@@ -108,9 +108,6 @@ void GetPoolsSoftmax(const DenseTensor& indices,
     for (IntT j = 0; j < ndim; j++) {
       if (j == dim) continue;
       pool_index += strides[j] * indices_data[j * nnz + i];
-    }
-    if (static_cast<IntT>(pools->size()) <= pool_index) {
-      pools->resize(pool_index + 1);
     }
     pools->at(pool_index).push_back(i);
   }
@@ -130,6 +127,9 @@ void SoftmaxCooCPUKernel(const Context& dev_ctx,
   out->SetMember(out_indices, out_values, x.dims(), x.coalesced());
 
   int dim = axis < 0 ? x_dims.size() + axis : axis;
+
+  /* If dim is greater than or equal to sparse_dim, the dense softmax is used.
+   */
   if (dim >= sparse_dim) {
     SoftmaxKernel<T, Context>(
         dev_ctx, values, dim - sparse_dim + 1, &out_values);
@@ -137,7 +137,7 @@ void SoftmaxCooCPUKernel(const Context& dev_ctx,
   }
 
   const std::vector<IntT> sizes = phi::vectorize<IntT>(x_dims);
-  std::vector<std::vector<IntT>> pools;
+  std::map<IntT, std::vector<IntT>> pools;
   IntT nvalues = std::accumulate(sizes.begin() + sparse_dim,
                                  sizes.end(),
                                  static_cast<IntT>(1),
