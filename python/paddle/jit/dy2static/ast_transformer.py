@@ -94,7 +94,6 @@ class DygraphToStaticAst(BaseTransformer):
         self.visit(node_wrapper.node)
 
         transformers = [
-            SliceTransformer,
             RegisterHookTransformer,
             EarlyReturnTransformer,
             BasicApiTransformer,  # Basic Api
@@ -111,6 +110,7 @@ class DygraphToStaticAst(BaseTransformer):
             DecoratorTransformer,  # transform decorators to function call
             NameloadJstTransformer,
             TypeHintTransformer,  # remove all typehint in gast.Name
+            SliceTransformer,
         ]
 
         apply_optimization(transformers)

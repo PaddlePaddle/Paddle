@@ -2903,7 +2903,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         x = paddle.arange(2 * 3 * 4 * 5).reshape((2, 3, 4, 5))
         x.stop_gradient = False
         out = x * 2
-        out[1, 2, 3, 4] = 10
+        out = paddle.static.setitem(out, (1, 2, 3, 4), 10)
         paddle.static.append_backward(out.sum())
         prog = paddle.static.default_main_program()
         res = self.exe.run(prog, fetch_list=[out, x.grad_name])
@@ -2924,7 +2924,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         x.stop_gradient = False
         indice = paddle.full([], 1, dtype='int32')
         out = x * 1
-        out[indice, indice] = 0.5
+        out = paddle.static.setitem(out, (indice, indice), 0.5)
         paddle.static.append_backward(out.sum())
         prog = paddle.static.default_main_program()
         res = self.exe.run(prog, fetch_list=[out, x.grad_name])
@@ -2943,7 +2943,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         v.stop_gradient = False
         indice = paddle.full([], 1, dtype='int32')
         out = x * 1
-        out[indice] = v
+        out = paddle.static.setitem(out, indice, v)
         paddle.static.append_backward(out.sum())
         prog = paddle.static.default_main_program()
         res = self.exe.run(prog, fetch_list=[out, x.grad_name, v.grad_name])

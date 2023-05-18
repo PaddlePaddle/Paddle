@@ -130,7 +130,9 @@ class Multinomial(distribution.Distribution):
         logits, value = paddle.broadcast_tensors(
             [paddle.log(self.probs), value]
         )
-        logits[(value == 0) & (paddle.isinf(logits))] = 0
+        logits = paddle.static.setitem(
+            logits, (value == 0) & (paddle.isinf(logits)), 0
+        )
 
         return (
             paddle.lgamma(value.sum(-1) + 1)

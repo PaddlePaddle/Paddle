@@ -5542,10 +5542,18 @@ def vander(x, n=None, increasing=False, name=None):
     res = paddle.empty([x.shape[0], n], dtype=x.dtype)
 
     if n > 0:
-        res[:, 0] = paddle.to_tensor([1], dtype=x.dtype)
+        res = paddle.static.setitem(
+            res, (slice(None), 0), paddle.to_tensor([1], dtype=x.dtype)
+        )
     if n > 1:
-        res[:, 1:] = x[:, None]
-        res[:, 1:] = paddle.cumprod(res[:, 1:], dim=-1)
+        res = paddle.static.setitem(
+            res, (slice(None), slice(1, None)), x[:, None]
+        )
+        res = paddle.static.setitem(
+            res,
+            (slice(None), slice(1, None)),
+            paddle.cumprod(res[:, 1:], dim=-1),
+        )
     res = res[:, ::-1] if not increasing else res
     return res
 

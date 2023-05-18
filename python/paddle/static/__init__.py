@@ -127,5 +127,4 @@ __all__ = [  # noqa
     'set_ipu_shard',
     'ctr_metric_bundle',
     'exponential_decay',
-    'setitem',
 ]
