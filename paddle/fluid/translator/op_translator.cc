@@ -14,6 +14,9 @@
 
 #include "paddle/fluid/translator/op_translator.h"
 
+#include <algorithm>
+#include <numeric>
+#include <string>
 #include <tuple>
 #include <unordered_map>
 #include <vector>
@@ -31,8 +34,56 @@ namespace translator {
 
 namespace {
 
+using ResultIdx = size_t;
+using OpDesc = paddle::framework::OpDesc;
+using BlockDesc = paddle::framework::BlockDesc;
+using VarDesc = paddle::framework::VarDesc;
 using OpOutputTypeList = std::vector<ir::Type>;
 using OpOutputMapping = std::unordered_map<std::string, ResultIdx>;
+
+static const char kTargetDialectPrefix[] = "pd.";
+
+inline bool IsInplace(const OpDesc& op_desc) {
+  bool inplace = false;
+  auto input_names = op_desc.InputArgumentNames();
+  auto output_names = op_desc.OutputArgumentNames();
+
+  std::vector<std::string> name_intersection;
+  std::set_intersection(input_names.begin(),
+                        input_names.end(),
+                        output_names.begin(),
+                        output_names.end(),
+                        std::back_inserter(name_intersection));
+
+  if (name_intersection.size() > 0) {
+    std::string redundant_variables = std::accumulate(
+        std::next(name_intersection.begin()),
+        name_intersection.end(),
+        name_intersection[0],
+        [](std::string a, std::string b) { return a + "," + b; });
+    VLOG(4) << "Following variables occur both in inputs and outputs: "
+            << redundant_variables;
+    return true;
+  }
+
+  return inplace;
+}
+
+inline ir::OpInfoImpl* LoopkUpOpInfo(ir::IrContext* ctx,
+                                     const OpDesc& op_desc) {
+  std::string target_op_name = kTargetDialectPrefix + op_desc.Type();
+  if (IsInplace(op_desc)) {
+    target_op_name += "_";
+  }
+  auto* op_info = ctx->GetRegisteredOpInfo(target_op_name);
+  PADDLE_ENFORCE_NE(op_info,
+                    nullptr,
+                    platform::errors::PreconditionNotMet(
+                        "Op %d should have corresponding OpInfo %d",
+                        op_desc.Type(),
+                        target_op_name));
+  return op_info;
+}
 
 inline std::vector<ir::OpResult> GenerateOperationInput(
     TranslationContext* param_map, const OpDesc& op_desc) {
@@ -112,12 +163,7 @@ ir::Operation* GeneralOpHandler(ir::IrContext* ctx,
   OpOutputMapping arg_to_idx;
   OpOutputTypeList op_output_types = {};
   std::tie(op_output_types, arg_to_idx) = GenerateOperationOutput(ctx, op_desc);
-  auto* op_info = ctx->GetRegisteredOpInfo("pd." + op_desc.Type());
-  PADDLE_ENFORCE_NE(
-      op_info,
-      nullptr,
-      platform::errors::PreconditionNotMet(
-          "Op %d should have corresponding OpInfo", op_desc.Type()));
+  auto* op_info = LoopkUpOpInfo(ctx, op_desc);
   ir::Operation* operation =
       ir::Operation::create(op_inputs, op_output_types, {}, op_info);
   program->InsertOp(operation);
@@ -135,12 +181,7 @@ ir::Operation* FeedOpHandler(ir::IrContext* ctx,
   OpOutputMapping arg_to_idx;
   OpOutputTypeList op_output_types = {};
   std::tie(op_output_types, arg_to_idx) = GenerateOperationOutput(ctx, op_desc);
-  auto* op_info = ctx->GetRegisteredOpInfo("pd." + op_desc.Type());
-  PADDLE_ENFORCE_NE(
-      op_info,
-      nullptr,
-      platform::errors::PreconditionNotMet(
-          "Op %d should have corresponding OpInfo", op_desc.Type()));
+  auto* op_info = LoopkUpOpInfo(ctx, op_desc);
   ir::Operation* operation =
       ir::Operation::create(op_inputs, op_output_types, {}, op_info);
   program->InsertOp(operation);
@@ -156,12 +197,7 @@ ir::Operation* FetchOpHandler(ir::IrContext* ctx,
   auto op_inputs = GenerateOperationInput(param_map, op_desc);
 
   OpOutputTypeList op_output_types = {};
-  auto* op_info = ctx->GetRegisteredOpInfo("pd." + op_desc.Type());
-  PADDLE_ENFORCE_NE(
-      op_info,
-      nullptr,
-      platform::errors::PreconditionNotMet(
-          "Op %d should have corresponding OpInfo", op_desc.Type()));
+  auto* op_info = LoopkUpOpInfo(ctx, op_desc);
   ir::Operation* operation =
       ir::Operation::create(op_inputs, op_output_types, {}, op_info);
   program->InsertOp(operation);

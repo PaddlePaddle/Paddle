@@ -33,6 +33,7 @@ namespace dialect {
 REIGSTER_EMPTY_OP(conv2d);
 REIGSTER_EMPTY_OP(feed);
 REIGSTER_EMPTY_OP(batch_norm);
+REIGSTER_EMPTY_OP(batch_norm_);
 REIGSTER_EMPTY_OP(relu);
 REIGSTER_EMPTY_OP(elementwise_add);
 REIGSTER_EMPTY_OP(pool2d);
@@ -55,8 +56,8 @@ REIGSTER_EMPTY_OP(relu_grad);
 REIGSTER_EMPTY_OP(batch_norm_grad);
 REIGSTER_EMPTY_OP(conv2d_grad);
 REIGSTER_EMPTY_OP(sum);
-REIGSTER_EMPTY_OP(merged_momentum);
 REIGSTER_EMPTY_OP(fetch_v2);
+REIGSTER_EMPTY_OP(merged_momentum_);
 
 }  // namespace dialect
 }  // namespace paddle

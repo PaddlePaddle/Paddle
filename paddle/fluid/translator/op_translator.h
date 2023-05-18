@@ -29,15 +29,17 @@ namespace paddle {
 namespace fluid {
 namespace translator {
 
-using ResultIdx = size_t;
-using OpDesc = paddle::framework::OpDesc;
-using BlockDesc = paddle::framework::BlockDesc;
-using VarDesc = paddle::framework::VarDesc;
 using TranslationContext = std::unordered_map<std::string, ir::OpResult>;
-using OpTranslateFn = std::function<ir::Operation*(
-    ir::IrContext*, TranslationContext*, ir::Program*, const OpDesc&)>;
 
 class OpTranslator {
+ public:
+  using ResultIdx = size_t;
+  using OpDesc = paddle::framework::OpDesc;
+  using BlockDesc = paddle::framework::BlockDesc;
+  using VarDesc = paddle::framework::VarDesc;
+  using OpTranslateFn = std::function<ir::Operation*(
+      ir::IrContext*, TranslationContext*, ir::Program*, const OpDesc&)>;
+
  private:
   OpTranslator();  // Disallow instantiation outside of the class.
   std::unordered_map<std::string, OpTranslateFn> special_handlers;
@@ -62,6 +64,8 @@ class OpTranslator {
     }
   }
 };
+
+using OpTranslateFn = OpTranslator::OpTranslateFn;
 
 }  // namespace translator
 }  // namespace fluid

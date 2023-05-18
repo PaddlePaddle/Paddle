@@ -96,6 +96,7 @@ void PaddleDialect::initialize() {
   RegisterOps<conv2dOp,
               feedOp,
               batch_normOp,
+              batch_norm_Op,
               reluOp,
               elementwise_addOp,
               pool2dOp,
@@ -118,7 +119,7 @@ void PaddleDialect::initialize() {
               batch_norm_gradOp,
               conv2d_gradOp,
               sumOp,
-              merged_momentumOp,
+              merged_momentum_Op,
               fetch_v2Op>();
 }
 
