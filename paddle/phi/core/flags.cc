@@ -1253,7 +1253,7 @@ PHI_DEFINE_EXPORTED_string(tensor_operants_mode,
  * Example:
  * Note: enable api dump.
  */
-PADDLE_DEFINE_EXPORTED_bool(api_dump, false, "Enable api dump");
+PHI_DEFINE_EXPORTED_bool(api_dump, false, "Enable api dump");
 
 /**
  * CUDNN related FLAG
@@ -1263,7 +1263,7 @@ PADDLE_DEFINE_EXPORTED_bool(api_dump, false, "Enable api dump");
  * Example:
  * Note: enable ordered api dump.
  */
-PADDLE_DEFINE_EXPORTED_bool(ordered_api_dump, false, "Enable ordered api dump");
+PHI_DEFINE_EXPORTED_bool(ordered_api_dump, false, "Enable ordered api dump");
 
 /**
  * CUDNN related FLAG
@@ -1273,7 +1273,7 @@ PADDLE_DEFINE_EXPORTED_bool(ordered_api_dump, false, "Enable ordered api dump");
  * Example:
  * Note: enable binary api dump.
  */
-PADDLE_DEFINE_EXPORTED_bool(binary_api_dump, false, "Enable binary api dump");
+PHI_DEFINE_EXPORTED_bool(binary_api_dump, false, "Enable binary api dump");
 
 /**
  * CUDNN related FLAG
@@ -1283,5 +1283,4 @@ PADDLE_DEFINE_EXPORTED_bool(binary_api_dump, false, "Enable binary api dump");
  * Example:
  * Note: the api in the list needs to be dumped.
  */
-PADDLE_DEFINE_EXPORTED_string(api_dump_list, "", "api dump list");
-
+PHI_DEFINE_EXPORTED_string(api_dump_list, "", "api dump list");
