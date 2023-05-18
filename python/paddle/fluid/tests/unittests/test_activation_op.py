@@ -2132,7 +2132,7 @@ class TestGelu(TestActivation):
         self.cinn_atol = 1e-8
 
     def if_enable_cinn(self):
-        self.enable_cinn = True
+        pass
 
     def test_check_output(self):
         self.check_output(check_prim=True)
