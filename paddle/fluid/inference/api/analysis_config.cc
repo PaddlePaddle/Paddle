@@ -451,7 +451,6 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(collect_shape_range_info_);
   CP_MEMBER(shape_range_info_path_);
   CP_MEMBER(trt_use_inspector_);
-  CP_MEMBER(trt_use_sparse_weights_);
   CP_MEMBER(trt_engine_memory_sharing_);
   CP_MEMBER(trt_engine_memory_sharing_identifier_);
   // Dlnne related
@@ -805,10 +804,6 @@ void AnalysisConfig::EnableTensorRtDLA(int dla_core) {
 }
 
 void AnalysisConfig::EnableTensorRtInspector() { trt_use_inspector_ = true; }
-
-void AnalysisConfig::EnableTensorRtSparseWeights() {
-  trt_use_sparse_weights_ = true;
-}
 
 void AnalysisConfig::Exp_DisableTensorRtOPs(
     const std::vector<std::string> &ops) {

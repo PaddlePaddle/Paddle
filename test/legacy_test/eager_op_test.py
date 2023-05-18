@@ -2011,12 +2011,6 @@ class OpTest(unittest.TestCase):
                     return True
                 return super()._is_skip_name(name)
 
-        if check_prim:
-            prim_checker = PrimForwardChecker(self, place)
-            prim_checker.check()
-            # Support operators which are not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
-            self.__class__.check_prim = True
-            self.__class__.op_type = self.op_type
         # set some flags by the combination of arguments.
         if self.is_float16_op():
             self.dtype = np.float16
@@ -2060,6 +2054,14 @@ class OpTest(unittest.TestCase):
                 raise AssertionError(
                     "no_check_set of op %s must be set to None." % self.op_type
                 )
+
+        if check_prim:
+            prim_checker = PrimForwardChecker(self, place)
+            prim_checker.check()
+            # Support operators which are not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
+            self.__class__.check_prim = True
+            self.__class__.op_type = self.op_type
+
         static_checker = StaticChecker(self, self.outputs)
         static_checker.check()
         outs, fetch_list = static_checker.outputs, static_checker.fetch_list
@@ -2406,6 +2408,7 @@ class OpTest(unittest.TestCase):
         core._set_prim_all_enabled(False)
         core.set_prim_eager_enabled(False)
         if check_prim:
+            self._check_grad_helper()
             prim_grad_checker = PrimGradChecker(
                 self,
                 place,
@@ -2417,7 +2420,6 @@ class OpTest(unittest.TestCase):
             prim_grad_checker.check()
             # Support operators which are not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
             self.__class__.check_prim = True
-            self._check_grad_helper()
             if only_check_prim:
                 return
         self.scope = core.Scope()
@@ -2659,33 +2661,24 @@ class OpTest(unittest.TestCase):
             outputs = dygraph_outputs
 
             if self.dtype == np.uint16:
-                cast_inputs = self._find_var_in_dygraph(
-                    outputs, output_names[0]
-                )
-                if isinstance(cast_inputs, paddle.Tensor):
-                    cast_outputs = paddle.cast(
-                        cast_inputs, core.VarDesc.VarType.FP32
-                    )
-                elif isinstance(cast_inputs, list):
-                    cast_outputs = []
-                    for cast_input in cast_inputs:
-                        if isinstance(cast_input, paddle.Tensor):
-                            cast_outputs.append(
-                                paddle.cast(
-                                    cast_input, core.VarDesc.VarType.FP32
-                                )
-                            )
-                        else:
-                            raise TypeError(
-                                "Unsupported test data type %s."
-                                % type(cast_input)
-                            )
-                else:
-                    raise TypeError(
-                        "Unsupported test data type %s." % type(cast_inputs)
-                    )
-                outputs = {output_names[0]: cast_outputs}
+                cast_inputs = []
+                for output_name in output_names:
+                    cast_input = self._find_var_in_dygraph(outputs, output_name)
+                    cast_inputs = cast_inputs + cast_input
+                cast_outputs = []
+                for cast_input in cast_inputs:
+                    if isinstance(cast_input, paddle.Tensor):
+                        cast_outputs.append(
+                            paddle.cast(cast_input, core.VarDesc.VarType.FP32)
+                        )
+                    else:
+                        raise TypeError(
+                            "Unsupported test data type %s." % type(cast_input)
+                        )
 
+                outputs = {}
+                for i in range(len(output_names)):
+                    outputs.update({output_names[i]: [cast_outputs[i]]})
             outputs_valid = {}
             for output_name in output_names:
                 outputs_valid[output_name] = self._find_var_in_dygraph(
@@ -2793,7 +2786,7 @@ class OpTest(unittest.TestCase):
             if user_defined_grad_outputs is None:
                 if self.dtype == np.uint16:
                     cast_inputs = list(map(block.var, output_names))
-                    if self.op_type == "broadcast_tensors":
+                    if self.op_type in ["broadcast_tensors", "meshgrid"]:
                         output_names = self.cast_bf16_output(block, cast_inputs)
                     else:
                         cast_outputs = block.create_var(
