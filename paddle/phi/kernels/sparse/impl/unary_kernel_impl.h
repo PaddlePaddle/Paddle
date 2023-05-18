@@ -89,26 +89,9 @@ DEFINE_SPARSE_UNARY_KERNEL(Log1p)
 DEFINE_SPARSE_UNARY_KERNEL(Relu)
 DEFINE_SPARSE_UNARY_KERNEL(Abs)
 DEFINE_SPARSE_UNARY_KERNEL(Expm1)
+DEFINE_SPARSE_UNARY_KERNEL(Relu6)
 DEFINE_SPARSE_UNARY_KERNEL_WITH_ONE_ATTR(Pow, factor)
 DEFINE_SPARSE_UNARY_KERNEL_WITH_ONE_ATTR(LeakyRelu, alpha)
-
-template <typename T, typename Context>
-void Relu6CooKernel(const Context& dev_ctx,
-                    const SparseCooTensor& x,
-                    SparseCooTensor* out) {
-  EmptyLikeCooKernel<T, Context>(dev_ctx, x, out);
-  phi::Relu6Kernel<T, Context>(
-      dev_ctx, x.non_zero_elements(), out->mutable_non_zero_elements());
-}
-
-template <typename T, typename Context>
-void Relu6CsrKernel(const Context& dev_ctx,
-                    const SparseCsrTensor& x,
-                    SparseCsrTensor* out) {
-  EmptyLikeCsrKernel<T, Context>(dev_ctx, x, out);
-  phi::Relu6Kernel<T, Context>(
-      dev_ctx, x.non_zero_elements(), out->mutable_non_zero_elements());
-}
 
 template <typename T, typename Context>
 void ScaleCooKernel(const Context& dev_ctx,
