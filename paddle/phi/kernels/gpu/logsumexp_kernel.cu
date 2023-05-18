@@ -37,12 +37,10 @@ struct ComputeType<phi::dtype::float16> {
   using type = float;
 };
 
-#if CUDA_VERSION >= 11000
 template <>
 struct ComputeType<phi::dtype::bfloat16> {
   using type = float;
 };
-#endif
 
 template <typename T>
 struct LogCUDAFunctor {
