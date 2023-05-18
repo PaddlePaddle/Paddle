@@ -411,6 +411,14 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
       phi::DenseTensor *qkv_out = config.GetQKVOut();
       ComputeMergedQKVMatmulForward<T>(ctx, config, query, qkv_out);
 
+      if (config.CanUseFlashAttn()) {
+        qkv_transpose_out->Resize(phi::make_ddim({3,
+                                                  config.batch_size,
+                                                  config.seq_len_m,
+                                                  config.seq_len_r,
+                                                  config.num_heads,
+                                                  config.head_dim}));
+      }
       AllocWithDebugInfo<T>(dev_ctx, "qkv_transpose_out", qkv_transpose_out);
     } else {
       // 1. Separated QKV Matmul
@@ -434,7 +442,6 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
                                   qkv_transpose_out,
                                   softmax_lse,
                                   fmha_out,
-                                  gate_out,
                                   &config);
     } else {
       auto *softmax_out = ctx.Output<phi::DenseTensor>("SoftmaxOut");
@@ -545,7 +552,7 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
     }
 
     if (config.CanUseFlashAttn()) {
-      const auto *non_batched_bias =
+      const auto *nonbatched_bias =
           ctx.Input<phi::DenseTensor>("NonbatchedBias");
       const auto *src_mask = ctx.Input<phi::DenseTensor>("SrcMask");
       const auto *softmax_lse = ctx.Input<phi::DenseTensor>("SoftmaxLse");
@@ -553,7 +560,7 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
       auto fmha_compute = FlashAttnWithGating<T>(dev_ctx, merge_qkv);
       fmha_compute.ComputeBackward(qkv_transpose_out,
                                    src_mask,
-                                   non_batched_bias,
+                                   nonbatched_bias,
                                    softmax_lse,
                                    fmha_out,
                                    &fmha_out_grad,
