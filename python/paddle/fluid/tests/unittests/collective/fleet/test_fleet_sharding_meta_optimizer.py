@@ -539,7 +539,7 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
         )
         avg_cost, strategy = self.net(train_prog, startup_prog)
         self.set_strategy(strategy, 'sharding')
-        regularization = paddle.fluid.regularizer.L2Decay(0.0001)
+        regularization = paddle.regularizer.L2Decay(0.0001)
         self.optimizer(
             avg_cost,
             strategy,
