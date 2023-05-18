@@ -69,6 +69,109 @@ void SliceCooGradKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
+void SliceCsrGrad2D(const Context& dev_ctx,
+                    const SparseCsrTensor& x,
+                    const SparseCsrTensor& out_grad,
+                    const std::vector<int64_t>& axes,
+                    const std::vector<int64_t>& starts,
+                    const std::vector<int64_t>& ends,
+                    SparseCsrTensor* x_grad) {
+  const int64_t out_grad_nnz = out_grad.nnz();
+  const int64_t n_rows = x.dims()[0];
+  const auto* out_grad_crows_data = out_grad.crows().data<int64_t>();
+  const auto* out_grad_cols_data = out_grad.cols().data<int64_t>();
+  const auto* out_grad_values_data = out_grad.values().data<T>();
+
+  DenseTensor dx_crows = phi::Empty<int64_t>(dev_ctx, {n_rows + 1});
+  DenseTensor dx_cols = phi::Empty<int64_t>(dev_ctx, {out_grad_nnz});
+  DenseTensor dx_values = phi::Empty<T, Context>(dev_ctx, {out_grad_nnz});
+  auto* dx_crows_data = dx_crows.data<int64_t>();
+  auto* dx_cols_data = dx_cols.data<int64_t>();
+  auto* dx_values_data = dx_values.data<int64_t>();
+
+  // set cols
+  for (int64_t i = 0; i < out_grad_nnz; ++i) {
+    dx_cols_data[i] = out_grad_cols_data[i] + starts[1];
+  }
+  // set values
+  for (int64_t i = 0; i < out_grad_nnz; ++i) {
+    dx_values_data[i] = out_grad_values_data[i];
+  }
+  // set crows
+  for (int64_t i = 0; i < starts[0]; ++i) {
+    dx_crows_data[i] = 0;
+  }
+  int64_t out_grad_n_rows = out_grad.dims()[0];
+  for (int64_t i = 0; i < out_grad_n_rows + 1; ++i) {
+    int64_t idx = i + starts[0];
+    dx_crows_data[idx] = out_grad_crows_data[i];
+  }
+  for (int64_t i = 0; i < n_rows - ends[0]; ++i) {
+    int64_t idx = i + starts[0] + out_grad_n_rows + 1;
+    dx_crows_data[idx] = out_grad_crows_data[out_grad_n_rows - 1];
+  }
+  x_grad->SetMember(dx_crows, dx_cols, dx_values, x.dims());
+}
+
+template <typename T, typename Context>
+void SliceCsrGrad3D(const Context& dev_ctx,
+                    const SparseCsrTensor& x,
+                    const SparseCsrTensor& out_grad,
+                    const std::vector<int64_t>& axes,
+                    const std::vector<int64_t>& starts,
+                    const std::vector<int64_t>& ends,
+                    SparseCsrTensor* x_grad) {
+  const int64_t dim0 = x.dims()[0], n_rows = x.dims()[1];
+  const int64_t out_grad_nnz = out_grad.nnz();
+  const auto* out_grad_crows_data = out_grad.crows().data<int64_t>();
+  const auto* out_grad_cols_data = out_grad.cols().data<int64_t>();
+  const auto* out_grad_values_data = out_grad.values().data<T>();
+
+  DenseTensor dx_crows = phi::Empty<int64_t>(dev_ctx, {dim0 * (n_rows + 1)});
+  DenseTensor dx_cols = phi::Empty<int64_t>(dev_ctx, {out_grad_nnz});
+  DenseTensor dx_values = phi::Empty<T, Context>(dev_ctx, {out_grad_nnz});
+  auto* dx_crows_data = dx_crows.data<int64_t>();
+  auto* dx_cols_data = dx_cols.data<int64_t>();
+  auto* dx_values_data = dx_values.data<int64_t>();
+
+  // set cols
+  for (int64_t i = 0; i < out_grad_nnz; ++i) {
+    dx_cols_data[i] = out_grad_cols_data[i] + starts[2];
+  }
+  // set values
+  for (int64_t i = 0; i < out_grad_nnz; ++i) {
+    dx_values_data[i] = out_grad_values_data[i];
+  }
+  // set crows
+  int64_t out_grad_n_rows = out_grad.dims()[1];
+  for (int64_t i = 0; i < dim0; ++i) {
+    if (i < starts[0] || i >= ends[0]) {
+      for (int64_t j = 0; j < n_rows + 1; ++j) {
+        dx_crows_data[i * (n_rows + 1) + j] = 0;
+      }
+    } else {
+      int64_t dx_crows_start = i * (n_rows + 1);
+      int64_t out_grad_crows_start = (i - starts[0]) * (out_grad_n_rows + 1);
+      for (int64_t j = 0; j < starts[1]; ++j) {
+        int64_t idx = dx_crows_start + j;
+        dx_crows_data[idx] = 0;
+      }
+      for (int64_t j = 0; j < out_grad_n_rows + 1; ++j) {
+        int64_t idx = dx_crows_start + starts[1] + j;
+        int64_t out_grad_idx = out_grad_crows_start + j;
+        dx_crows_data[idx] = out_grad_crows_data[out_grad_idx];
+      }
+      for (int64_t j = 0; j < n_rows - ends[1]; ++j) {
+        int64_t idx = dx_crows_start + starts[1] + out_grad_n_rows + 1 + j;
+        int64_t out_grad_idx = out_grad_crows_start + out_grad_n_rows - 1;
+        dx_crows_data[idx] = out_grad_crows_data[out_grad_idx];
+      }
+    }
+  }
+  x_grad->SetMember(dx_crows, dx_cols, dx_values, x.dims());
+}
+
+template <typename T, typename Context>
 void SliceCsrGradKernel(const Context& dev_ctx,
                         const SparseCsrTensor& x,
                         const SparseCsrTensor& out_grad,
@@ -90,90 +193,13 @@ void SliceCsrGradKernel(const Context& dev_ctx,
   funcs::ConstructNewSliceAttrs(
       x_dims, axes, starts, ends, &new_axes, &new_starts, &new_ends);
 
-  const int64_t out_grad_nnz = out_grad.nnz();
   const int64_t sparse_dim = x_dims.size();
-
-  const auto* out_grad_crows_data = out_grad.crows().data<int64_t>();
-  const auto* out_grad_cols_data = out_grad.cols().data<int64_t>();
-  const auto* out_grad_values_data = out_grad.values().data<T>();
-
   if (sparse_dim == 2) {
-    const int64_t n_rows = x_dims[0];
-    DenseTensor dx_crows = phi::Empty<int64_t>(dev_ctx, {n_rows + 1});
-    DenseTensor dx_cols = phi::Empty<int64_t>(dev_ctx, {out_grad_nnz});
-    DenseTensor dx_values = phi::Empty<T, Context>(dev_ctx, {out_grad_nnz});
-    auto* dx_crows_data = dx_crows.data<int64_t>();
-    auto* dx_cols_data = dx_cols.data<int64_t>();
-    auto* dx_values_data = dx_values.data<int64_t>();
-    // set cols
-    for (int64_t i = 0; i < out_grad_nnz; ++i) {
-      dx_cols_data[i] = out_grad_cols_data[i] + new_starts[1];
-    }
-    // set values
-    for (int64_t i = 0; i < out_grad_nnz; ++i) {
-      dx_values_data[i] = out_grad_values_data[i];
-    }
-    // set crows
-    for (int64_t i = 0; i < new_starts[0]; ++i) {
-      dx_crows_data[i] = 0;
-    }
-    int64_t out_grad_n_rows = out_grad.dims()[0];
-    for (int64_t i = 0; i < out_grad_n_rows + 1; ++i) {
-      int64_t idx = i + new_starts[0];
-      dx_crows_data[idx] = out_grad_crows_data[i];
-    }
-    for (int64_t i = 0; i < n_rows - new_ends[0]; ++i) {
-      int64_t idx = i + new_starts[0] + out_grad_n_rows + 1;
-      dx_crows_data[idx] = out_grad_crows_data[out_grad_n_rows - 1];
-    }
-    x_grad->SetMember(dx_crows, dx_cols, dx_values, x_dims);
+    SliceCsrGrad2D<T, Context>(
+        dev_ctx, x, out_grad, new_axes, new_starts, new_ends, x_grad);
   } else if (sparse_dim == 3) {
-    const int64_t dim0 = x_dims[0], n_rows = x_dims[1];
-    DenseTensor dx_crows = phi::Empty<int64_t>(dev_ctx, {dim0 * (n_rows + 1)});
-    DenseTensor dx_cols = phi::Empty<int64_t>(dev_ctx, {out_grad_nnz});
-    DenseTensor dx_values = phi::Empty<T, Context>(dev_ctx, {out_grad_nnz});
-    auto* dx_crows_data = dx_crows.data<int64_t>();
-    auto* dx_cols_data = dx_cols.data<int64_t>();
-    auto* dx_values_data = dx_values.data<int64_t>();
-
-    // set cols
-    for (int64_t i = 0; i < out_grad_nnz; ++i) {
-      dx_cols_data[i] = out_grad_cols_data[i] + new_starts[2];
-    }
-    // set values
-    for (int64_t i = 0; i < out_grad_nnz; ++i) {
-      dx_values_data[i] = out_grad_values_data[i];
-    }
-    // set crows
-    int64_t out_grad_n_rows = out_grad.dims()[1];
-    for (int64_t i = 0; i < dim0; ++i) {
-      if (i < new_starts[0] || i >= new_ends[0]) {
-        for (int64_t j = 0; j < n_rows + 1; ++j) {
-          dx_crows_data[i * (n_rows + 1) + j] = 0;
-        }
-      } else {
-        int64_t dx_crows_start = i * (n_rows + 1);
-        int64_t out_grad_crows_start =
-            (i - new_starts[0]) * (out_grad_n_rows + 1);
-        for (int64_t j = 0; j < new_starts[1]; ++j) {
-          int64_t idx = dx_crows_start + j;
-          dx_crows_data[idx] = 0;
-        }
-        for (int64_t j = 0; j < out_grad_n_rows + 1; ++j) {
-          int64_t idx = dx_crows_start + new_starts[1] + j;
-          int64_t out_grad_idx = out_grad_crows_start + j;
-          dx_crows_data[idx] = out_grad_crows_data[out_grad_idx];
-        }
-        for (int64_t j = 0; j < n_rows - new_ends[1]; ++j) {
-          int64_t idx =
-              dx_crows_start + new_starts[1] + out_grad_n_rows + 1 + j;
-          int64_t out_grad_idx = out_grad_crows_start + out_grad_n_rows - 1;
-          dx_crows_data[idx] = out_grad_crows_data[out_grad_idx];
-        }
-      }
-    }
-    x_grad->SetMember(dx_crows, dx_cols, dx_values, x_dims);
-
+    SliceCsrGrad3D<T, Context>(
+        dev_ctx, x, out_grad, new_axes, new_starts, new_ends, x_grad);
   } else {
     // throw exception
     phi::errors::InvalidArgument(
