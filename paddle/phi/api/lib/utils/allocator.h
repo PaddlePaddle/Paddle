@@ -17,6 +17,8 @@ limitations under the License. */
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/allocator.h"
+#include "paddle/phi/core/selected_rows.h"
+#include "paddle/utils/optional.h"
 
 namespace paddle {
 namespace experimental {
