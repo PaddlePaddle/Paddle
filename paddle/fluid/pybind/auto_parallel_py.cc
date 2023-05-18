@@ -250,9 +250,14 @@ void BindAutoParallel(py::module *m) {
       .def("is_annotated", &TensorDistAttr::is_annotated)
       .def("mark_annotated", &TensorDistAttr::mark_annotated)
       .def("clear_annotated", &TensorDistAttr::clear_annotated)
-      .def("verify",
-           &TensorDistAttr::verify,
-           py::arg("tensor") = static_cast<VarDesc *>(nullptr))
+      .def(
+          "verify",
+          [](TensorDistAttr &self, const VarDesc *tensor) {
+            auto shape =
+                paddle::distributed::auto_parallel::get_tensor_shape(tensor);
+            return self.verify(shape);
+          },
+          py::arg("tensor") = static_cast<VarDesc *>(nullptr))
       .def("reset", &reset_tensor_dist_attr)
       .def("serialize_to_string",
            [](TensorDistAttr &self) {
