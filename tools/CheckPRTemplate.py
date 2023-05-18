@@ -144,10 +144,12 @@ def get_a_pull(pull_id):
 
 def main(org, repo, pull_id):
     pull_info = get_a_pull(pull_id)
+    print(pull_info)
     pull_request_event_template(pull_info, repo)
 
 
 if __name__ == "__main__":
     AGILE_PULL_ID = os.getenv("AGILE_PULL_ID")
     GITHUB_API_TOKEN = os.getenv("GITHUB_API_TOKEN")
+    print(GITHUB_API_TOKEN)
     main("PaddlePaddle", "Paddle", AGILE_PULL_ID)
