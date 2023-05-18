@@ -120,7 +120,7 @@ class Beta(exponential_family.ExponentialFamily):
         return paddle.exp(self.log_prob(value))
 
     def log_prob(self, value):
-        """Log probability density funciton evaluated at value
+        """Log probability density function evaluated at value
 
         Args:
             value (Tensor): Value to be evaluated

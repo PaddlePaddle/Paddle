@@ -106,6 +106,10 @@ ir::Operation *OpOperandImpl::owner() const { return owner_; }
 
 ir::detail::OpOperandImpl *OpOperandImpl::next_use() { return next_use_; }
 
+ir::Value OpOperandImpl::source() const { return source_; }
+
+void OpOperandImpl::release_source() { source_ = nullptr; }
+
 OpOperandImpl::OpOperandImpl(ir::Value source, ir::Operation *owner)
     : source_(source), owner_(owner) {
   prev_use_addr_ = source.impl()->first_use_addr();

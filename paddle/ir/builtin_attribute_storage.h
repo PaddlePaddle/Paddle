@@ -54,36 +54,4 @@ struct StrAttributeStorage : public ir::AttributeStorage {
   uint32_t size_;
 };
 
-///
-/// \brief Define Parameteric AttributeStorage for DictionaryAttributeStorage.
-///
-class StrAttribute;
-class NamedAttribute;
-struct DictionaryAttributeStorage : public AttributeStorage {
-  using ParamKey = std::map<StrAttribute, Attribute>;
-
-  explicit DictionaryAttributeStorage(const ParamKey &key);
-
-  ~DictionaryAttributeStorage() { free(data_); }
-
-  static DictionaryAttributeStorage *Construct(ParamKey key) {
-    return new DictionaryAttributeStorage(key);
-  }
-
-  static std::size_t HashValue(const ParamKey &key);
-
-  bool operator==(const ParamKey &key) const;
-
-  ParamKey GetAsKey() const;
-
-  Attribute GetValue(const StrAttribute &name) const;
-
-  NamedAttribute *data() const { return data_; }
-
-  uint32_t size() const { return size_; }
-
- private:
-  NamedAttribute *data_;
-  uint32_t size_;
-};
 }  // namespace ir
