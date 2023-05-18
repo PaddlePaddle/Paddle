@@ -660,7 +660,7 @@ phi::KernelKey BatchNormGradGetKernelTypeForVar(
 #ifdef PADDLE_WITH_MKLDNN
   // Only input require reshaping, weights and
   // bias are having shape in NCHW order
-  if (((var_name == "X") || (var_name == framework::GradVarName("Y"))) &&
+  if (((var_name == "X") || (var_name == "Y@GRAD")) &&
       (expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
       (tensor.layout() != phi::DataLayout::ONEDNN)) {
     auto attrs = ctx->GetAttrs();
