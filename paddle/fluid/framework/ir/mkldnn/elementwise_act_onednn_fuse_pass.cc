@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/mkldnn/elt_act_mkldnn_fuse_pass.h"
+#include "paddle/fluid/framework/ir/mkldnn/elementwise_act_onednn_fuse_pass.h"
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/mkldnn/activation_onednn_fuse_pass.h"
@@ -62,6 +62,7 @@ void ElementwiseActivationOneDNNPass::FuseElementwiseAct(
     GET_IR_NODE_FROM_SUBGRAPH(
         activation_out, activation_out, elementwise_act_pattern);
 
+    ConvertToFusedOp(elementwise->Op());
     SetActivationAttrs(elementwise->Op(), activation->Op(), act_type);
     elementwise->Op()->SetOutput("Out", {activation_out->Name()});
 
@@ -84,9 +85,9 @@ void ElementwiseActivationOneDNNPass::FuseElementwiseAct(
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(elt_act_mkldnn_fuse_pass,
+REGISTER_PASS(elementwise_act_onednn_fuse_pass,
               paddle::framework::ir::ElementwiseActivationOneDNNPass);
-REGISTER_PASS_CAPABILITY(elt_act_mkldnn_fuse_pass)
+REGISTER_PASS_CAPABILITY(elementwise_act_onednn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("elementwise_add", 1)

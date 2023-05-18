@@ -103,6 +103,48 @@ function(register_cu_kernel TARGET)
   endforeach()
 endfunction()
 
+# Just for those mkldnn kernels locating at "fluid/operators/mkldnn/", such as 'layer_norm_mkldnn_op.cc'.
+# Add other file modes if need in the future.
+function(register_mkldnn_kernel TARGET)
+  set(options "")
+  set(oneValueArgs "")
+  set(multiValueArgs SRCS DEPS)
+  cmake_parse_arguments(register_mkldnn_kernel "${options}" "${oneValueArgs}"
+                        "${multiValueArgs}" ${ARGN})
+
+  set(mkldnn_cc_srcs)
+  set(op_common_deps operator op_registry math_function layer
+                     common_infer_shape_functions)
+  foreach(mkldnn_src ${register_mkldnn_kernel_SRCS})
+    if(${mkldnn_src} MATCHES ".*_mkldnn_op.cc$")
+      list(APPEND mkldnn_cc_srcs mkldnn/${mkldnn_src})
+    endif()
+  endforeach()
+  list(LENGTH mkldnn_cc_srcs mkldnn_cc_srcs_len)
+  if(${mkldnn_cc_srcs_len} EQUAL 0)
+    message(
+      FATAL_ERROR
+        "The MKLDNN kernel file of ${TARGET} should contains at least one *.*_mkldnn_op.cc file"
+    )
+  endif()
+  if(WITH_MKLDNN)
+    cc_library(
+      ${TARGET}
+      SRCS ${mkldnn_cc_srcs}
+      DEPS ${op_library_DEPS} ${op_common_deps})
+  endif()
+  set(OP_LIBRARY
+      ${TARGET} ${OP_LIBRARY}
+      CACHE INTERNAL "op libs")
+  foreach(mkldnn_src ${mkldnn_cc_srcs})
+    set(op_name "")
+    find_register(${mkldnn_src} "REGISTER_OP_KERNEL" op_name)
+    if(NOT ${op_name} EQUAL "")
+      file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${op_name}, MKLDNN);\n")
+    endif()
+  endforeach()
+endfunction()
+
 function(op_library TARGET)
   # op_library is a function to create op library. The interface is same as
   # cc_library. But it handle split GPU/CPU code and link some common library

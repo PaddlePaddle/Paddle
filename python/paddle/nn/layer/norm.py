@@ -70,10 +70,12 @@ class _InstanceNormBase(Layer):
             assert (
                 weight_attr == bias_attr
             ), "weight_attr and bias_attr must be set to False at the same time in InstanceNorm"
+        self._momentum = momentum
         self._epsilon = epsilon
         self._weight_attr = weight_attr
         self._bias_attr = bias_attr
         self._num_features = num_features
+        self._data_format = data_format
 
         if weight_attr is not False and bias_attr is not False:
             self.scale = self.create_parameter(
@@ -99,7 +101,12 @@ class _InstanceNormBase(Layer):
         self._check_input_dim(input)
 
         return instance_norm(
-            input, weight=self.scale, bias=self.bias, eps=self._epsilon
+            input,
+            weight=self.scale,
+            bias=self.bias,
+            momentum=self._momentum,
+            eps=self._epsilon,
+            data_format=self._data_format,
         )
 
     def extra_repr(self):
