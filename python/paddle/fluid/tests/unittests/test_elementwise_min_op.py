@@ -354,19 +354,7 @@ class TestElementwiseBF16Op(OpTest):
         }
 
     def test_check_output(self):
-        places = self._get_places()
-        for place in places:
-            res = self.check_output_with_place(
-                place,
-                atol=1e-5,
-                rtol=1e-5,
-                no_check_set=None,
-                equal_nan=False,
-                check_dygraph=True,
-                check_prim=False,
-                inplace_atol=None,
-                check_cinn=False,
-            )
+        self.check_output()
 
     def test_check_grad_normal(self):
         places = self._get_places()
