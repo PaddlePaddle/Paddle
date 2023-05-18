@@ -23,7 +23,7 @@
 namespace phi {
 
 template <typename T, typename XPUType, typename Context>
-void XPUCompareKernelImpl(const Context& dev_ctx,
+void XPUCompareRawKernelImpl(const Context& dev_ctx,
                           const DenseTensor& x,
                           const DenseTensor& y,
                           DenseTensor* out,
@@ -52,12 +52,13 @@ void XPUCompareKernelImpl(const Context& dev_ctx,
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "compare op");
 }
 
-#define DEFINE_XPU_COMPARE_KERNEL(name, functor)                      \                                                                 \
+#define DEFINE_XPU_COMPARE_RAW_KERNEL(name, functor)                      \
   template <typename T, typename Context>                             \
-  void name##Kernel(const Context& dev_ctx,                           \
-                    const DenseTensor& x,                             \
-                    const DenseTensor& y,                             \
-                    DenseTensor* out) {                               \
+  void name##RawKernel(const Context& dev_ctx,                        \
+                       const DenseTensor& x,                          \
+                       const DenseTensor& y,                          \
+                       int axis,                                      \
+                       DenseTensor* out) {                            \
     using XPUType = typename XPUTypeTrait<T>::Type;                   \
     auto f = [](xpu::Context* ctx,                                    \
                 const XPUType* x,                                     \
@@ -67,24 +68,26 @@ void XPUCompareKernelImpl(const Context& dev_ctx,
                 const std::vector<int>& yshape) {                     \
       return functor(ctx, x, y, z, xshape, yshape);                   \
     };                                                                \
-    XPUCompareKernelImpl<T, XPUType, Context>(dev_ctx, x, y, out, f); \
+    XPUCompareRawKernelImpl<T, XPUType, Context>(dev_ctx, x, y, out, f); \
   }
 
-DEFINE_XPU_COMPARE_KERNEL(Equal, xpu::broadcast_equal<XPUType>)
-DEFINE_XPU_COMPARE_KERNEL(NotEqual, xpu::broadcast_not_equal<XPUType>)
-DEFINE_XPU_COMPARE_KERNEL(LessThan, xpu::broadcast_less_than<XPUType>)
-DEFINE_XPU_COMPARE_KERNEL(LessEqual, xpu::broadcast_less_equal<XPUType>)
-DEFINE_XPU_COMPARE_KERNEL(GreaterThan, xpu::broadcast_greater_than<XPUType>)
-DEFINE_XPU_COMPARE_KERNEL(GreaterEqual, xpu::broadcast_greater_equal<XPUType>)
 
-#undef DEFINE_XPU_COMPARE_KERNEL
+DEFINE_XPU_COMPARE_RAW_KERNEL(Equal, xpu::broadcast_equal<XPUType>)
+DEFINE_XPU_COMPARE_RAW_KERNEL(NotEqual, xpu::broadcast_not_equal<XPUType>)
+DEFINE_XPU_COMPARE_RAW_KERNEL(LessThan, xpu::broadcast_less_than<XPUType>)
+DEFINE_XPU_COMPARE_RAW_KERNEL(LessEqual, xpu::broadcast_less_equal<XPUType>)
+DEFINE_XPU_COMPARE_RAW_KERNEL(GreaterThan, xpu::broadcast_greater_than<XPUType>)
+DEFINE_XPU_COMPARE_RAW_KERNEL(GreaterEqual, xpu::broadcast_greater_equal<XPUType>)
+
+#undef DEFINE_XPU_COMPARE_RAW_KERNEL
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(less_than,
+
+PD_REGISTER_KERNEL(less_than_raw,
                    XPU,
                    ALL_LAYOUT,
-                   phi::LessThanKernel,
+                   phi::LessThanRawKernel,
                    int,
                    int64_t,
                    float,
@@ -92,11 +95,11 @@ PD_REGISTER_KERNEL(less_than,
   kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
 }
 
-#define PD_REGISTER_COMPARE_KERNEL(name, func)            \
-  PD_REGISTER_KERNEL(name,                                \
+#define PD_REGISTER_COMPARE_RAW_KERNEL(name, func)            \                                                     \
+  PD_REGISTER_KERNEL(name##_raw,                          \
                      XPU,                                 \
                      ALL_LAYOUT,                          \
-                     phi::func##Kernel,                   \
+                     phi::func##RawKernel,                \
                      int,                                 \
                      int64_t,                             \
                      float,                               \
@@ -104,8 +107,9 @@ PD_REGISTER_KERNEL(less_than,
                      bool) {                              \
     kernel->OutputAt(0).SetDataType(phi::DataType::BOOL); \
   }
-PD_REGISTER_COMPARE_KERNEL(less_equal, LessEqual)
-PD_REGISTER_COMPARE_KERNEL(greater_than, GreaterThan)
-PD_REGISTER_COMPARE_KERNEL(greater_equal, GreaterEqual)
-PD_REGISTER_COMPARE_KERNEL(equal, Equal)
-PD_REGISTER_COMPARE_KERNEL(not_equal, NotEqual)
+
+PD_REGISTER_COMPARE_RAW_KERNEL(less_equal, LessEqual)
+PD_REGISTER_COMPARE_RAW_KERNEL(greater_than, GreaterThan)
+PD_REGISTER_COMPARE_RAW_KERNEL(greater_equal, GreaterEqual)
+PD_REGISTER_COMPARE_RAW_KERNEL(equal, Equal)
+PD_REGISTER_COMPARE_RAW_KERNEL(not_equal, NotEqual)

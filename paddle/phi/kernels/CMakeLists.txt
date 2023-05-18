@@ -100,7 +100,7 @@ endif()
 copy_if_different(${kernel_declare_file} ${kernel_declare_file_final})
 
 file(GLOB kernel_h "*.h" "selected_rows/*.h" "sparse/*.h" "strings/*.h")
-file(GLOB kernel_impl_h "impl/*.h" "selected_rows/impl/*.h")
+file(GLOB kernel_impl_h "impl/*.h" "legacy/impl/*.h" "selected_rows/impl/*.h")
 file(GLOB kernel_primitive_h "primitive/*.h")
 
 # fusion ops would be included here

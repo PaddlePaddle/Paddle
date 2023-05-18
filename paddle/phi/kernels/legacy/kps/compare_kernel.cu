@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
-#include "paddle/phi/kernels/impl/compare_kernel_impl.h"
+#include "paddle/phi/kernels/legacy/impl/compare_kernel_impl.h"
 
 #ifdef PADDLE_WITH_XPU_KP
 #include "paddle/phi/backends/xpu/xpu_context.h"
@@ -47,7 +47,7 @@ template <typename T,
           typename Context,
           typename Functor,
           typename InverseFunctor>
-inline void CompareKernelImpl(const Context& ctx,
+inline void CompareRawKernelImpl(const Context& ctx,
                               const DenseTensor& x,
                               const DenseTensor& y,
                               int axis,
@@ -58,81 +58,40 @@ inline void CompareKernelImpl(const Context& ctx,
   funcs::BroadcastKernel<bool>(ctx, ins, &outs, Functor(), axis);
 }
 
-#ifndef PADDLE_WITH_XPU_KP
-template <typename T, typename Context, typename Functor>
-inline void CompareAllKernelImpl(const Context& ctx,
-                                 const DenseTensor& x,
-                                 const DenseTensor& y,
-                                 DenseTensor* out) {
-  bool* out_data = ctx.template Alloc<bool>(out);
-
-  if (x.dims() != y.dims()) {
-    thrust::device_ptr<bool> out_dev_ptr(out_data);
-    thrust::fill(out_dev_ptr, out_dev_ptr + 1, false);
-    return;
-  }
-
-  DenseTensor tmp;
-  tmp.Resize(x.dims());
-  ctx.template Alloc<bool>(&tmp);
-
-  std::vector<const DenseTensor*> ins{&x, &y};
-  std::vector<DenseTensor*> outs{&tmp};
-  funcs::ElementwiseKernel<bool>(ctx, ins, &outs, Functor());
-
-  // Reduce by 'bitwise and' operator
-  std::vector<int> reduce_dims;
-  reduce_dims.resize(tmp.dims().size());
-  for (int i = 0; i < reduce_dims.size(); ++i) {
-    reduce_dims[i] = i;
-  }
-  funcs::ReduceKernel<bool, bool, BitwiseAdd, kps::IdentityFunctor<bool>>(
-      ctx, tmp, out, kps::IdentityFunctor<bool>(), reduce_dims);
-}
-#endif
-
 }  // namespace phi
 
 #ifdef PADDLE_WITH_XPU_KP
-PD_REGISTER_KERNEL(less_than, KPS, ALL_LAYOUT, phi::LessThanKernel, int) {
-  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
-}
-PD_REGISTER_KERNEL(less_equal, KPS, ALL_LAYOUT, phi::LessEqualKernel, int) {
-  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
-}
-PD_REGISTER_KERNEL(greater_than, KPS, ALL_LAYOUT, phi::GreaterThanKernel, int) {
+PD_REGISTER_KERNEL(
+    less_than_raw, KPS, ALL_LAYOUT, phi::LessThanRawKernel, int) {
   kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
 }
 PD_REGISTER_KERNEL(
-    greater_equal, KPS, ALL_LAYOUT, phi::GreaterEqualKernel, int) {
+    less_equal_raw, KPS, ALL_LAYOUT, phi::LessEqualRawKernel, int) {
   kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
 }
-PD_REGISTER_KERNEL(equal, KPS, ALL_LAYOUT, phi::EqualKernel, int) {
+PD_REGISTER_KERNEL(
+    greater_than_raw, KPS, ALL_LAYOUT, phi::GreaterThanRawKernel, int) {
   kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
 }
-PD_REGISTER_KERNEL(not_equal, KPS, ALL_LAYOUT, phi::NotEqualKernel, int) {
+PD_REGISTER_KERNEL(
+    greater_equal_raw, KPS, ALL_LAYOUT, phi::GreaterEqualRawKernel, int) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
+}
+PD_REGISTER_KERNEL(equal_raw, KPS, ALL_LAYOUT, phi::EqualRawKernel, int) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
+}
+PD_REGISTER_KERNEL(
+    not_equal_raw, KPS, ALL_LAYOUT, phi::NotEqualRawKernel, int) {
   kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
 }
 
 #else
 
-PD_REGISTER_KERNEL(equal_all,
-                   KPS,
-                   ALL_LAYOUT,
-                   phi::EqualAllKernel,
-                   bool,
-                   int,
-                   int64_t,
-                   float,
-                   double) {
-  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
-}
-
-#define PD_REGISTER_COMPARE_KERNEL(name, func)            \
-  PD_REGISTER_KERNEL(name,                                \
+#define PD_REGISTER_COMPARE_RAW_KERNEL(name, func)            \                                                   \
+  PD_REGISTER_KERNEL(name##_raw,                          \
                      KPS,                                 \
                      ALL_LAYOUT,                          \
-                     phi::func##Kernel,                   \
+                     phi::func##RawKernel,                \
                      bool,                                \
                      int16_t,                             \
                      int,                                 \
@@ -144,11 +103,11 @@ PD_REGISTER_KERNEL(equal_all,
     kernel->OutputAt(0).SetDataType(phi::DataType::BOOL); \
   }
 
-PD_REGISTER_COMPARE_KERNEL(less_than, LessThan)
-PD_REGISTER_COMPARE_KERNEL(less_equal, LessEqual)
-PD_REGISTER_COMPARE_KERNEL(greater_than, GreaterThan)
-PD_REGISTER_COMPARE_KERNEL(greater_equal, GreaterEqual)
-PD_REGISTER_COMPARE_KERNEL(equal, Equal)
-PD_REGISTER_COMPARE_KERNEL(not_equal, NotEqual)
+PD_REGISTER_COMPARE_RAW_KERNEL(less_than, LessThan)
+PD_REGISTER_COMPARE_RAW_KERNEL(less_equal, LessEqual)
+PD_REGISTER_COMPARE_RAW_KERNEL(greater_than, GreaterThan)
+PD_REGISTER_COMPARE_RAW_KERNEL(greater_equal, GreaterEqual)
+PD_REGISTER_COMPARE_RAW_KERNEL(equal, Equal)
+PD_REGISTER_COMPARE_RAW_KERNEL(not_equal, NotEqual)
 
 #endif
