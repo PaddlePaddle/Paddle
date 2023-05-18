@@ -594,7 +594,7 @@
     param: [x, y]
   kernel :
     func : minimum_grad
-  composite : minimum_grad(x, y, out_grad, axis, x_grad, y_grad)
+  composite : minimum_grad(x, y, out_grad, x_grad, y_grad)
 
 - backward_op : mish_grad
   forward : mish (Tensor x, float threshold) -> Tensor(out)
