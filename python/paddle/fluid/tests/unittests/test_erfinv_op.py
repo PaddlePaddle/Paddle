@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
 from scipy.special import erfinv
 
 import paddle
@@ -153,9 +153,10 @@ class TestErfinvBF16OP(OpTest):
         self.python_api = paddle.erfinv
         self.dtype = np.uint16
         self.shape = [11, 17]
-        self.x = np.random.uniform(-1, 1, size=self.shape).astype(np.float32)
-        self.res_ref = erfinv(self.x).astype(np.float32)
-        self.inputs = {'X': convert_float_to_uint16(self.x)}
+        self.x = np.random.uniform(-1, 1, size=self.shape).astype(self.dtype)
+        self.x_s = convert_uint16_to_float(self.x)
+        self.res_ref = erfinv(self.x_s).astype(np.float32)
+        self.inputs = {'X': self.x}
         self.outputs = {'Out': convert_float_to_uint16(self.res_ref)}
 
     def test_check_output(self):
