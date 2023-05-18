@@ -55,22 +55,6 @@ class TestExpandAsBasic(OpTest):
 
 
 @unittest.skipIf(
-    not paddle.is_compiled_with_cuda(), "FP16 test runs only on GPU"
-)
-class TestExpandAsBasicFP16OP(TestExpandAsBasic):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        self.check_output_with_place(place=paddle.CUDAPlace(0))
-
-    def test_check_grad(self):
-        self.check_grad_with_place(
-            paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True
-        )
-
-
-@unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA or not support the bfloat16",
@@ -112,22 +96,6 @@ class TestExpandAsOpRank2(TestExpandAsBasic):
         bcast_dims = [1, 1]
         output = np.tile(self.inputs['X'], bcast_dims)
         self.outputs = {'Out': output}
-
-
-@unittest.skipIf(
-    not paddle.is_compiled_with_cuda(), "FP16 test runs only on GPU"
-)
-class TestExpandAsOpRank2FP16OP(TestExpandAsOpRank2):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        self.check_output_with_place(place=paddle.CUDAPlace(0))
-
-    def test_check_grad(self):
-        self.check_grad_with_place(
-            paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True
-        )
 
 
 @unittest.skipIf(
@@ -175,22 +143,6 @@ class TestExpandAsOpRank3(TestExpandAsBasic):
 
 
 @unittest.skipIf(
-    not paddle.is_compiled_with_cuda(), "FP16 test runs only on GPU"
-)
-class TestExpandAsOpRank3FP16OP(TestExpandAsOpRank3):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        self.check_output_with_place(place=paddle.CUDAPlace(0))
-
-    def test_check_grad(self):
-        self.check_grad_with_place(
-            paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True
-        )
-
-
-@unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
     "core is not compiled with CUDA or not support the bfloat16",
@@ -232,22 +184,6 @@ class TestExpandAsOpRank4(TestExpandAsBasic):
         bcast_dims = [4, 6, 1, 1]
         output = np.tile(self.inputs['X'], bcast_dims)
         self.outputs = {'Out': output}
-
-
-@unittest.skipIf(
-    not paddle.is_compiled_with_cuda(), "FP16 test runs only on GPU"
-)
-class TestExpandAsOpRank4FP16OP(TestExpandAsOpRank3):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-    def test_check_output(self):
-        self.check_output_with_place(place=paddle.CUDAPlace(0))
-
-    def test_check_grad(self):
-        self.check_grad_with_place(
-            paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True
-        )
 
 
 @unittest.skipIf(
@@ -298,30 +234,6 @@ class TestExpandAsOpRank5(TestExpandAsBasic):
         bcast_dims = [4, 6, 1, 1]
         output = np.tile(self.inputs['X'], bcast_dims)
         self.outputs = {'Out': output}
-
-    def test_check_grad(self):
-        pass
-
-
-@unittest.skipIf(
-    not paddle.is_compiled_with_cuda(), "FP16 test runs only on GPU"
-)
-class TestExpandAsOpRank5FP16OP(TestExpandAsOpRank5):
-    def setUp(self):
-        self.op_type = "expand_as_v2"
-        self.prim_op_type = "comp"
-        self.python_api = paddle.expand_as
-        self.public_python_api = paddle.expand_as
-        x = np.random.rand(1, 1, 7, 16).astype("int64")
-        target_tensor = np.random.rand(4, 6, 7, 16).astype("float16")
-        self.inputs = {'X': x, "Y": target_tensor}
-        self.attrs = {'target_shape': target_tensor.shape}
-        bcast_dims = [4, 6, 1, 1]
-        output = np.tile(self.inputs['X'], bcast_dims)
-        self.outputs = {'Out': output}
-
-    def test_check_output(self):
-        self.check_output_with_place(place=paddle.CUDAPlace(0))
 
     def test_check_grad(self):
         pass
