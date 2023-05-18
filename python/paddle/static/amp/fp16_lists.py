@@ -99,7 +99,7 @@ def _get_sys_unsupported_list(dtype):
         device = 'XPU'
     else:
         device = 'GPU'
-    _, _, sys_unsupported_list = core.op_supported_infos(device, var_type)
+    all_ops, _, sys_unsupported_list = core.op_supported_infos(device, var_type)
 
     # sys_unsupported_list will include the following ops.
     supported_fp16_list = {
@@ -114,13 +114,13 @@ def _get_sys_unsupported_list(dtype):
     }
     sys_unsupported_list -= supported_fp16_list
 
-    return device, sys_unsupported_list
+    return device, sys_unsupported_list, all_ops
 
 
 def _get_unsupported_list(dtype):
     # The set of ops that don't support fp16 calculation
-    _, _sys_unsupported_list = _get_sys_unsupported_list(dtype)
-    return _sys_unsupported_list
+    _, _sys_unsupported_list, _sys_all_list = _get_sys_unsupported_list(dtype)
+    return _sys_unsupported_list, _sys_all_list
 
 
 # The three sets listed below are changed dynamiclly. They don't contain all
@@ -200,7 +200,9 @@ class AutoMixedPrecisionLists:
         self.white_list = copy.copy(_get_white_list(self.amp_dtype))
         self.black_list = copy.copy(_get_black_list())
         self.gray_list = copy.copy(gray_list)
-        self.unsupported_list = copy.copy(_get_unsupported_list(self.amp_dtype))
+        unsupported_list, sys_all_list = _get_unsupported_list(self.amp_dtype)
+        self.unsupported_list = copy.copy(unsupported_list)
+        self.all_list = copy.copy(sys_all_list)
         self.black_varnames = copy.copy(custom_black_varnames)
         self._update_list()
 
@@ -232,7 +234,9 @@ class AutoMixedPrecisionLists:
                     self.gray_list.remove(op_name)
                 self.black_list.add(op_name)
                 self.unsupported_list.add(op_name)
-        device, sys_unsupported_list = _get_sys_unsupported_list(self.amp_dtype)
+        device, sys_unsupported_list, _ = _get_sys_unsupported_list(
+            self.amp_dtype
+        )
         actual_unsupported_list = []
         for op_name in sys_unsupported_list:
             if op_name in self.white_list:

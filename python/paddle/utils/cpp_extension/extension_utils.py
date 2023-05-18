@@ -562,8 +562,6 @@ def normalize_extension_kwargs(kwargs, use_cuda=False):
                 extra_compile_args[compiler] = []
 
     if IS_WINDOWS:
-        # TODO(zhouwei): may append compile flags in future
-        pass
         # append link flags
         extra_link_args = kwargs.get('extra_link_args', [])
         extra_link_args.extend(MSVC_LINK_FLAGS)
