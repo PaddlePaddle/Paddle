@@ -528,7 +528,7 @@ class TestArgsortBF16OP(OpTest):
         self.descending = False
         x = paddle.static.data(shape=[10000, 1], name='x', dtype=np.float32)
         out = np.argsort(x).astype(np.float32)
-        self.indices = np.argsort(x, axis=self.axis, descending=self.descending)
+        self.indices = np.argsort(x, axis=self.axis)
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.outputs = {'Out': convert_float_to_uint16(out)}
 
