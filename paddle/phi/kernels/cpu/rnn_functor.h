@@ -79,7 +79,7 @@ void CreateMaskMatrix(const CPUContext& dev_ctx,
 template <typename TensorType>
 void ResetParameterVector(const std::vector<TensorType>& raw_params_vec,
                           int num_layers,
-                          int gate_num,
+                          int gate_num UNUSED,
                           bool is_bidirec,
                           std::vector<std::vector<DenseTensor>>* params_vec) {
   // the parameter raw seuquence is [FWhi, FWhh, BWhi, BWhh] * num_layers

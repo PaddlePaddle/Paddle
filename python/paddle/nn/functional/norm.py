@@ -332,7 +332,7 @@ def layer_norm(
         )
 
     if in_dygraph_mode():
-        out, _, _ = _C_ops.layer_norm(x, weight, bias, epsilon, begin_norm_axis)
+        out = _C_ops.layer_norm(x, weight, bias, epsilon, begin_norm_axis)
         return out
 
     else:

@@ -8,5 +8,8 @@ add_subdirectory(pybind)
 add_subdirectory(eager)
 add_subdirectory(prim)
 add_subdirectory(jit)
+if(WITH_NEWIR)
+  add_subdirectory(dialect)
+endif()
 # NOTE: please add subdirectory inference at last.
 add_subdirectory(inference)

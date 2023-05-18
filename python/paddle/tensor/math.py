@@ -187,7 +187,7 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
 
     Args:
         x (Tensor): Input N-D Tensor of scale operator. Data type can be float32, float64, int8, int16, int32, int64, uint8.
-        scale (float|Tensor): The scale factor of the input, it should be a float number or a Tensor with shape [1] and data type as float32.
+        scale (float|Tensor): The scale factor of the input, it should be a float number or a 0-D Tensor with shape [] and data type as float32.
         bias (float): The bias to be put on the input.
         bias_after_scale (bool): Apply bias addition after or before scaling. It is useful for numeric stability in some circumstances.
         act (str, optional): Activation applied to the output such as tanh, softmax, sigmoid, relu.
@@ -1337,9 +1337,9 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
             # Each example is followed by the corresponding output tensor.
             x = paddle.to_tensor([[0.2, 0.3, 0.5, 0.9],
                                   [0.1, 0.2, 0.6, 0.7]])
-            out1 = paddle.sum(x)  # [3.5]
+            out1 = paddle.sum(x)          # 3.5
             out2 = paddle.sum(x, axis=0)  # [0.3, 0.5, 1.1, 1.6]
-            out3 = paddle.sum(x, axis=-1)  # [1.9, 1.6]
+            out3 = paddle.sum(x, axis=-1) # [1.9, 1.6]
             out4 = paddle.sum(x, axis=1, keepdim=True)  # [[1.9], [1.6]]
 
             # y is a Tensor with shape [2, 2, 2] and elements as below:
@@ -1357,7 +1357,7 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
             # Each example is followed by the corresponding output tensor.
             x = paddle.to_tensor([[True, True, True, True],
                                   [False, False, False, False]])
-            out7 = paddle.sum(x)  # [4]
+            out7 = paddle.sum(x)          # 4
             out8 = paddle.sum(x, axis=0)  # [1, 1, 1, 1]
             out9 = paddle.sum(x, axis=1)  # [4, 0]
     """
@@ -1493,9 +1493,9 @@ def nansum(x, axis=None, dtype=None, keepdim=False, name=None):
             # Each example is followed by the corresponding output tensor.
             x = paddle.to_tensor([[float('nan'), 0.3, 0.5, 0.9],
                             [0.1, 0.2, float('-nan'), 0.7]],dtype="float32")
-            out1 = paddle.nansum(x)  # [2.7]
+            out1 = paddle.nansum(x)          # 2.7
             out2 = paddle.nansum(x, axis=0)  # [0.1, 0.5, 0.5, 1.6]
-            out3 = paddle.nansum(x, axis=-1)  # [1.7, 1.0]
+            out3 = paddle.nansum(x, axis=-1) # [1.7, 1.0]
             out4 = paddle.nansum(x, axis=1, keepdim=True)  # [[1.7], [1.0]]
 
             # y is a Tensor with shape [2, 2, 2] and elements as below:
@@ -1553,7 +1553,7 @@ def nanmean(x, axis=None, keepdim=False, name=None):
             x = paddle.to_tensor([[float('nan'), 0.3, 0.5, 0.9],
                                   [0.1, 0.2, float('-nan'), 0.7]])
             out1 = paddle.nanmean(x)
-            # [0.44999996]
+            # 0.44999996
             out2 = paddle.nanmean(x, axis=0)
             # [0.1, 0.25, 0.5, 0.79999995]
             out3 = paddle.nanmean(x, axis=0, keepdim=True)
@@ -2263,7 +2263,7 @@ def logsumexp(x, axis=None, keepdim=False, name=None):
         import paddle
 
         x = paddle.to_tensor([[-1.5, 0., 2.], [3., 1.2, -2.4]])
-        out1 = paddle.logsumexp(x) # [3.4691226]
+        out1 = paddle.logsumexp(x)    # 3.4691226
         out2 = paddle.logsumexp(x, 1) # [2.15317821, 3.15684602]
 
     """
@@ -2375,7 +2375,7 @@ def max(x, axis=None, keepdim=False, name=None):
             result1 = paddle.max(x)
             result1.backward()
             print(result1, x.grad)
-            #[0.9], [[0., 0., 0., 1.], [0., 0., 0., 0.]]
+            # 0.9, [[0., 0., 0., 1.], [0., 0., 0., 0.]]
 
             x.clear_grad()
             result2 = paddle.max(x, axis=0)
@@ -2476,7 +2476,7 @@ def min(x, axis=None, keepdim=False, name=None):
             result1 = paddle.min(x)
             result1.backward()
             print(result1, x.grad)
-            #[0.1], [[0., 0., 0., 0.], [1., 0., 0., 0.]]
+            # 0.1, [[0., 0., 0., 0.], [1., 0., 0., 0.]]
 
             x.clear_grad()
             result2 = paddle.min(x, axis=0)
@@ -2580,13 +2580,13 @@ def amax(x, axis=None, keepdim=False, name=None):
             result1 = paddle.amax(x)
             result1.backward()
             print(result1, x.grad)
-            #[0.9], [[0., 0.2, 0.2, 0.2], [0.2, 0.2, 0., 0.]]
+            # 0.9, [[0., 0.2, 0.2, 0.2], [0.2, 0.2, 0., 0.]]
 
             x.clear_grad()
             result1_max = paddle.max(x)
             result1_max.backward()
             print(result1_max, x.grad)
-            #[0.9], [[0., 1.0, 1.0, 1.0], [1.0, 1.0, 0., 0.]]
+            # 0.9, [[0., 1.0, 1.0, 1.0], [1.0, 1.0, 0., 0.]]
 
             ###############################
 
@@ -2690,13 +2690,13 @@ def amin(x, axis=None, keepdim=False, name=None):
             result1 = paddle.amin(x)
             result1.backward()
             print(result1, x.grad)
-            #[0.1], [[0., 0.2, 0.2, 0.2], [0.2, 0.2, 0., 0.]]
+            # 0.1, [[0., 0.2, 0.2, 0.2], [0.2, 0.2, 0., 0.]]
 
             x.clear_grad()
             result1_min = paddle.min(x)
             result1_min.backward()
             print(result1_min, x.grad)
-            #[0.1], [[0., 1.0, 1.0, 1.0], [1.0, 1.0, 0., 0.]]
+            # 0.1, [[0., 1.0, 1.0, 1.0], [1.0, 1.0, 0., 0.]]
 
             ###############################
 
@@ -2907,10 +2907,10 @@ def clip(x, min=None, max=None, name=None):
 
     Args:
         x (Tensor): An N-D Tensor with data type float16, float32, float64, int32 or int64.
-        min (float|int|Tensor, optional): The lower bound with type ``float`` , ``int`` or a ``Tensor``
-            with shape [1] and type ``int32``, ``float16``, ``float32``, ``float64``.
-        max (float|int|Tensor, optional): The upper bound with type ``float``, ``int`` or a ``Tensor``
-            with shape [1] and type ``int32``, ``float16``, ``float32``, ``float64``.
+        min (float|int|Tensor, optional): The lower bound with type ``float`` , ``int`` or a ``0-D Tensor``
+            with shape [] and type ``int32``, ``float16``, ``float32``, ``float64``.
+        max (float|int|Tensor, optional): The upper bound with type ``float``, ``int`` or a ``0-D Tensor``
+            with shape [] and type ``int32``, ``float16``, ``float32``, ``float64``.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -3064,7 +3064,7 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
             case1 = paddle.randn([2, 3])
             case2 = paddle.randn([3, 10, 10])
             case3 = paddle.randn([3, 10, 5, 10])
-            data1 = paddle.trace(case1) # data1.shape = [1]
+            data1 = paddle.trace(case1) # data1.shape = []
             data2 = paddle.trace(case2, offset=1, axis1=1, axis2=2) # data2.shape = [3]
             data3 = paddle.trace(case3, offset=-3, axis1=1, axis2=-1) # data2.shape = [3, 5]
     """
@@ -3692,7 +3692,7 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
             x = paddle.to_tensor([[0.2, 0.3, 0.5, 0.9],
                                   [0.1, 0.2, 0.6, 0.7]])
             out1 = paddle.prod(x)
-            # [0.0002268]
+            # 0.0002268
 
             out2 = paddle.prod(x, -1)
             # [0.027  0.0084]
@@ -3898,8 +3898,8 @@ def all(x, axis=None, keepdim=False, name=None):
             print(x)
             x = paddle.cast(x, 'bool')
 
-            # out1 should be [False]
-            out1 = paddle.all(x)  # [False]
+            # out1 should be False
+            out1 = paddle.all(x)          # False
             print(out1)
 
             # out2 should be [True, False]
@@ -3907,7 +3907,7 @@ def all(x, axis=None, keepdim=False, name=None):
             print(out2)
 
             # keepdim=False, out3 should be [False, True], out.shape should be (2,)
-            out3 = paddle.all(x, axis=-1)  # [False, True]
+            out3 = paddle.all(x, axis=-1) # [False, True]
             print(out3)
 
             # keepdim=True, out4 should be [[False], [True]], out.shape should be (2,1)
@@ -3972,12 +3972,12 @@ def any(x, axis=None, keepdim=False, name=None):
             #    [[True, False]
             #     [True, True]]
 
-            # out1 should be [True]
-            out1 = paddle.any(x)  # [True]
+            # out1 should be True
+            out1 = paddle.any(x)           # True
             print(out1)
 
             # out2 should be [True, True]
-            out2 = paddle.any(x, axis=0)  # [True, True]
+            out2 = paddle.any(x, axis=0)   # [True, True]
             print(out2)
 
             # keepdim=False, out3 should be [True, True], out.shape should be (2,)
@@ -4481,8 +4481,8 @@ def rad2deg(x, name=None):
             x2 = paddle.to_tensor(math.pi/2)
             result2 = paddle.rad2deg(x2)
             print(result2)
-            # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #         [90.])
+            # Tensor(shape=[], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #         90.)
 
             x3 = paddle.to_tensor(1)
             result3 = paddle.rad2deg(x3)
@@ -5382,27 +5382,27 @@ def trapezoid(y, x=None, dx=None, axis=-1, name=None):
             y = paddle.to_tensor([4, 5, 6], dtype='float32')
 
             print(paddle.trapezoid(y))
-            # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-            #        [10.])
+            # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        10.)
 
             print(paddle.trapezoid(y, dx=2.))
-            # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-            #        [20.])
+            # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        20.)
 
             y = paddle.to_tensor([4, 5, 6], dtype='float32')
             x = paddle.to_tensor([1, 2, 3], dtype='float32')
 
             print(paddle.trapezoid(y, x))
-            # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-            #        [10.])
+            # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        10.)
 
 
             y = paddle.to_tensor([1, 2, 3], dtype='float64')
             x = paddle.to_tensor([8, 6, 4], dtype='float64')
 
             print(paddle.trapezoid(y, x))
-            # Tensor(shape=[1], dtype=float64, place=Place(cpu), stop_gradient=True,
-            #        [-8.])
+            # Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
+            #        -8.)
             y = paddle.arange(6).reshape((2, 3)).astype('float32')
 
             print(paddle.trapezoid(y, axis=0))
@@ -5583,4 +5583,144 @@ def nextafter(x, y, name=None):
         out = helper.create_variable_for_type_inference(dtype=paddle.float32)
         outputs = {"out": out}
         helper.append_op(type=op_type, inputs=inputs, outputs=outputs)
+    return out
+
+
+def i0(x, name=None):
+    r"""
+    The function used to calculate modified bessel function of order 0.
+
+    Equation:
+        ..  math::
+
+            I_0(x) = \sum^{\infty}_{k=0}\frac{(x^2/4)^k}{(k!)^2}
+
+    Args:
+        x (Tensor): The input tensor, it's data type should be float32, float64.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        - out (Tensor), A Tensor. the value of the modified bessel function of order 0 at x.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([0, 1, 2, 3, 4], dtype="float32")
+            print(paddle.i0(x))
+            # (Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True, [0.99999994 , 1.26606596 , 2.27958512 , 4.88079262 , 11.30192089]),
+    """
+    if in_dygraph_mode():
+        return _C_ops.i0(x)
+    else:
+        check_variable_and_dtype(x, "x", ["float32", "float64"], "i0")
+
+        helper = LayerHelper("i0", **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(type='i0', inputs={'x': x}, outputs={'out': out})
+    return out
+
+
+def i0e(x, name=None):
+    r"""
+    The function used to calculate exponentially scaled modified Bessel function of order 0.
+
+    Equation:
+        ..  math::
+
+            I_0(x) = \sum^{\infty}_{k=0}\frac{(x^2/4)^k}{(k!)^2} \\
+            I_{0e}(x) = e^{-|x|}I_0(x)
+
+    Args:
+        x (Tensor): The input tensor, it's data type should be float32, float64.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        - out (Tensor), A Tensor. the value of the exponentially scaled modified Bessel function of order 0 at x.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([0, 1, 2, 3, 4], dtype="float32")
+            print(paddle.i0e(x))
+            # (Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True, [1., 0.46575961, 0.30850832, 0.24300035, 0.20700192]),
+    """
+    if in_dygraph_mode():
+        return _C_ops.i0e(x)
+    else:
+        check_variable_and_dtype(x, "x", ["float32", "float64"], "i0e")
+
+        helper = LayerHelper("i0e", **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(type='i0e', inputs={'x': x}, outputs={'out': out})
+    return out
+
+
+def i1(x, name=None):
+    """
+    The function is used to calculate modified bessel function of order 1.
+
+    Args:
+        x (Tensor): The input tensor, it's data type should be float32, float64.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        - out (Tensor), A Tensor. the value of the modified bessel function of order 1 at x.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([0, 1, 2, 3, 4], dtype="float32")
+            print(paddle.i1(x))
+            # (Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True, [0., 0.5651591 , 1.59063685 , 3.95337022 , 9.75946515]),
+    """
+    if in_dygraph_mode():
+        return _C_ops.i1(x)
+    else:
+        check_variable_and_dtype(x, "x", ["float32", "float64"], "i1")
+
+        helper = LayerHelper("i1", **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type='i1', inputs={'x': x}, outputs={'out': out}, attrs={}
+        )
+    return out
+
+
+def i1e(x, name=None):
+    """
+    The function is used to calculate exponentially scaled modified Bessel function of order 1.
+
+    Args:
+
+        x (Tensor): The input tensor, it's data type should be float32, float64.
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        - out (Tensor), A Tensor. the value of the exponentially scaled modified Bessel function of order 1 at x.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([0, 1, 2, 3, 4], dtype="float32")
+            print(paddle.i1e(x))
+            # (Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True, [0., 0.20791042, 0.21526929, 0.24300035, 0.17875084]),
+    """
+    if in_dygraph_mode():
+        return _C_ops.i1e(x)
+    else:
+        check_variable_and_dtype(x, "x", ["float32", "float64"], "i1e")
+
+        helper = LayerHelper("i1e", **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        helper.append_op(
+            type='i1e', inputs={'x': x}, outputs={'out': out}, attrs={}
+        )
     return out
