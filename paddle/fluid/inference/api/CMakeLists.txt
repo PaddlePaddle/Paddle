@@ -47,8 +47,7 @@ endif()
 cc_library(
   paddle_inference_api
   SRCS api.cc api_impl.cc helper.cc
-  DEPS executor paddle_inference_io feed_fetch_method
-       ${paddle_inference_api_deps})
+  DEPS ${paddle_inference_api_deps})
 
 if(WIN32)
   target_link_libraries(paddle_inference_api gflags)
