@@ -158,23 +158,10 @@ class TestLogSoftmaxBF16Op(OpTest):
         )
 
 
-class TestLogSoftmaxLargeDim(TestLogSoftmaxOp):
+class TestLogSoftmaxLargeDimFP16OP(TestLogSoftmaxOp):
     def set_attrs(self):
+        self.dtype = np.float16
         self.shape = [16, 100000]
-
-    # run only on GPU to avoid timeout
-    def test_check_output(self):
-        place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
-
-    def test_check_grad(self):
-        place = core.CUDAPlace(0)
-        self.check_grad_with_place(
-            place,
-            ['X'],
-            ['Out'],
-            user_defined_grads=[self.x_grad],
-        )
 
 
 class TestNNLogSoftmaxAPI(unittest.TestCase):
