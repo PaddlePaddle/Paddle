@@ -193,7 +193,6 @@ int LinkXPUOpMaxPass::ApplyImpl(ir::Graph* graph,
     GET_IR_NODE(x);
     GET_IR_NODE(branch);
     GET_IR_NODE(ele_y);
-    
     auto* fusion_op_desc = fusion_op->Op();
     if (fusion_op_desc->HasInput("x_max")) {
       auto* x_pre_op = x->inputs[0]->Op();
