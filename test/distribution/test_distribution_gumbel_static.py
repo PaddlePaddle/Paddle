@@ -14,7 +14,7 @@
 
 import unittest
 
-import config
+from distribution import config
 import numpy as np
 import parameterize
 import scipy.stats

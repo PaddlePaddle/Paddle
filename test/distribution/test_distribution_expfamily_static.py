@@ -14,7 +14,7 @@
 
 import unittest
 
-import config
+from distribution import config
 import mock_data as mock
 import numpy as np
 import parameterize

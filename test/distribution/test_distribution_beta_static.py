@@ -13,11 +13,11 @@
 # limitations under the License.
 import unittest
 
-import config
+from distribution import config
 import numpy as np
 import parameterize as param
 import scipy.stats
-from config import ATOL, RTOL
+from distribution.config import ATOL, RTOL
 from parameterize import xrand
 
 import paddle

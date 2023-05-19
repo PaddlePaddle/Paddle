@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from utils import SUB_TOLERANCE
+from prim.composite_ops.utils import SUB_TOLERANCE
 
 import paddle
 from paddle import _C_ops

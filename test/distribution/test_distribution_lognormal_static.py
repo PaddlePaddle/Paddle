@@ -14,7 +14,7 @@
 
 import unittest
 
-import config
+from distribution import config
 import numpy as np
 import scipy.stats
 from parameterize import TEST_CASE_NAME, parameterize_cls, place, xrand

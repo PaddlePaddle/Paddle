@@ -13,7 +13,7 @@
 # limitations under the License.
 import unittest
 
-import config
+from distribution import config
 import numpy as np
 import parameterize as param
 
