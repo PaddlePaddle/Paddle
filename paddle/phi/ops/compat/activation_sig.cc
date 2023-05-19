@@ -42,28 +42,33 @@ namespace phi {
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(HardTanh, "hardtanh", "t_min" comma "t_max");
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Mish, "mish", "threshold");
 
-KernelSignature SwishGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature SwishGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("swish_grad", {"X", "Out@GRAD"}, {}, {"X@GRAD"});
 }
 
-KernelSignature Relu6GradOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature Relu6GradOpArgumentMapping(
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("relu6_grad", {"Out", "Out@GRAD"}, {}, {"X@GRAD"});
 }
 
 KernelSignature HardSwishGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("hardswish_grad", {"X", "Out@GRAD"}, {}, {"X@GRAD"});
 }
 
-KernelSignature HardSwishOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature HardSwishOpArgumentMapping(
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("hardswish", {"X"}, {}, {"Out"});
 }
 
-KernelSignature SwishOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature SwishOpArgumentMapping(
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("swish_raw", {"X"}, {"beta"}, {"Out"});
 }
 
-KernelSignature Relu6OpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature Relu6OpArgumentMapping(
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("relu6_raw", {"X"}, {"threshold"}, {"Out"});
 }
 
