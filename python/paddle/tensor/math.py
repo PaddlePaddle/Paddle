@@ -5763,8 +5763,6 @@ def ldexp(x, y, name=None):
             #        [4., 16., 48.])
 
     """
-    two = paddle.to_tensor(2, dtype='int32')
-
     if isinstance(y, float) or (
         isinstance(y, (paddle.Tensor, Variable))
         and y.dtype in ['float32', 'float64']
@@ -5773,5 +5771,5 @@ def ldexp(x, y, name=None):
             'y must be integer or integer tensor type, but received: %s '
             % (y.dtype)
         )
-
+    two = paddle.to_tensor(2, dtype=y.dtype)
     return paddle.multiply(x, paddle.cast(paddle.pow(two, y), dtype=x.dtype))
