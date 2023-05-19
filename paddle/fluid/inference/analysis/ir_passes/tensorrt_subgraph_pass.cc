@@ -693,7 +693,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
     }
   }
 
-  // If with_dynamic_shape is configured，but min_input_shape is empty,
+  // If with_dynamic_shape is configured, but min_input_shape is empty,
   // create trt engine in runtime instead of in pass.
   if (with_dynamic_shape && min_input_shape.empty()) {
     return engine_key + std::to_string(predictor_id);

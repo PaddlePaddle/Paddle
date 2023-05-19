@@ -178,7 +178,7 @@ def _prune_gate_by_capacity(gate_idx, expert_count, n_expert, n_worker):
     Args:
         gate_idx (Tensor): Represents the gate_id sequence corresponding to the input data with type int32, int64.
         expert_count (Tensor): The quantity value counted on the gate_id sequence of the input data with type int32, int64.
-        n_worker(int，optional): The number of workers on the trainer with type int64.
+        n_worker(int, optional): The number of workers on the trainer with type int64.
 
     Returns:
         new_gate_idx (Tensor): The gate_id sequence corresponding to the new input data after passing through prune.

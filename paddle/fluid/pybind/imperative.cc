@@ -288,7 +288,7 @@ static void InitVarBaseFromTensorWithArgDefault(imperative::VarBase *self,
   self->SetType(framework::proto::VarType::LOD_TENSOR);
   self->SetDataType(framework::TransToProtoVarType(tensor.dtype()));
   auto *new_tensor = self->MutableVar()->GetMutable<phi::DenseTensor>();
-  // Same place，share data directly
+  // Same place, share data directly
   if (place == tensor.place()) {
     new_tensor->ShareDataWith(tensor);
     VLOG(4) << "Same place, do ShareDataWith";
@@ -312,7 +312,7 @@ static void InitVarBaseFromTensorWithArg(imperative::VarBase *self,
   self->SetType(framework::proto::VarType::LOD_TENSOR);
   self->SetDataType(framework::TransToProtoVarType(tensor.dtype()));
   auto *new_tensor = self->MutableVar()->GetMutable<phi::DenseTensor>();
-  // Same place，share data directly
+  // Same place, share data directly
   if (platform::is_same_place(place, tensor.place())) {
     new_tensor->ShareDataWith(tensor);
     VLOG(4) << "Same place, do ShareDataWith";
