@@ -409,7 +409,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(model_dir_);
   CP_MEMBER(model_from_memory_);  // the memory model reuses prog_file_ and
                                   // params_file_ fields.
-
+  CP_MEMBER(save_optimized_model_);
   CP_MEMBER(opt_cache_dir_);
   CP_MEMBER(prog_file_);
   CP_MEMBER(params_file_);
@@ -451,7 +451,6 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(collect_shape_range_info_);
   CP_MEMBER(shape_range_info_path_);
   CP_MEMBER(trt_use_inspector_);
-  CP_MEMBER(trt_use_sparse_weights_);
   CP_MEMBER(trt_engine_memory_sharing_);
   CP_MEMBER(trt_engine_memory_sharing_identifier_);
   // Dlnne related
@@ -806,10 +805,6 @@ void AnalysisConfig::EnableTensorRtDLA(int dla_core) {
 
 void AnalysisConfig::EnableTensorRtInspector() { trt_use_inspector_ = true; }
 
-void AnalysisConfig::EnableTensorRtSparseWeights() {
-  trt_use_sparse_weights_ = true;
-}
-
 void AnalysisConfig::Exp_DisableTensorRtOPs(
     const std::vector<std::string> &ops) {
   trt_disabled_ops_.insert(trt_disabled_ops_.end(), ops.begin(), ops.end());
@@ -1030,6 +1025,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << model_dir_;
   ss << prog_file_;
   ss << params_file_;
+  ss << save_optimized_model_;
 
   ss << use_gpu_;
   ss << enable_gpu_mixed_;
@@ -1352,6 +1348,8 @@ std::string AnalysisConfig::Summary() {
   os.InsertRow({"use_cinn_compiler", use_cinn_compiler_ ? "true" : "false"});
 
   // ir info
+  os.InsertRow(
+      {"save_optimized_model", save_optimized_model_ ? "true" : "false"});
   os.InsertRow({"ir_optim", enable_ir_optim_ ? "true" : "false"});
   os.InsertRow({"ir_debug", ir_debug_ ? "true" : "false"});
   os.InsertRow({"memory_optim", enable_memory_optim_ ? "true" : "false"});

@@ -26,7 +26,7 @@ void RandintWithSeedKernel(const Context& dev_ctx,
                            int low,
                            int high,
                            const IntArray& shape,
-                           DataType dtype,
+                           DataType dtype UNUSED,
                            int seed,
                            DenseTensor* out) {
   out->Resize(phi::make_ddim(shape.GetData()));

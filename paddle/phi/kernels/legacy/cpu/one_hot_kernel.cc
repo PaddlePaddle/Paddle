@@ -67,7 +67,7 @@ void OneHotRawKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const Scalar& depth,
                      DataType dtype,
-                     bool allow_out_of_range,
+                     bool allow_out_of_range UNUSED,
                      DenseTensor* out) {
   auto depth_v = depth.to<int>();
   auto out_dims = out->dims();
