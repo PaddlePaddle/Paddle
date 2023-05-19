@@ -147,7 +147,6 @@ int AddActXPUFusePass::ApplyImpl(ir::Graph* graph,
     GET_IR_NODE(ele_y);
     GET_IR_NODE(ele_out);
     GET_IR_NODE(act_out);
-    
     auto* block = ele_add->Op()->Block();
     auto* scope = param_scope();
     PADDLE_ENFORCE_NOT_NULL(
