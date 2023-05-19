@@ -158,12 +158,6 @@ void TensorRTEngine::FreezeNetwork() {
   infer_builder_config_->setMaxWorkspaceSize(max_workspace_);
 #endif
 
-#if IS_TRT_VERSION_GE(8500)
-  infer_builder_config_->setPreviewFeature(
-      nvinfer1::PreviewFeature::kFASTER_DYNAMIC_SHAPES_0805, true);
-#else
-#endif
-
   bool enable_fp16 = (precision_ == AnalysisConfig::Precision::kHalf);
   if (enable_fp16) {
     bool support_fp16 = infer_builder_->platformHasFastFp16();
@@ -325,7 +319,6 @@ void TensorRTEngine::FreezeNetwork() {
   infer_engine_.reset(infer_builder_->buildEngineWithConfig(
       *network(), *infer_builder_config_));
 #else
-  infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kSPARSE_WEIGHTS);
   ihost_memory_.reset(infer_builder_->buildSerializedNetwork(
       *network(), *infer_builder_config_));
   infer_ptr<nvinfer1::IRuntime> runtime(createInferRuntime(&logger_));
