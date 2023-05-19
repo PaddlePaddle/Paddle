@@ -97,21 +97,20 @@ class alignas(8) Operation final {
       throw("Can't dyn_cast to T, T should be a Trait or Interface");
     }
   };
+
   template <typename T>
-  struct CastUtil<T,
-                  typename std::enable_if<
-                      std::is_base_of<OpTraitBase<T>, T>::value>::type> {
+  struct CastUtil<
+      T,
+      typename std::enable_if<std::is_base_of<OpBase, T>::value>::type> {
     static T call(const Operation *op) {
-      return T(op->HasTrait<T>() ? op : nullptr);
-    }
-  };
-  template <typename T>
-  struct CastUtil<T,
-                  typename std::enable_if<
-                      std::is_base_of<OpInterfaceBase<T>, T>::value>::type> {
-    static T call(const Operation *op) {
-      typename T::Concept *interface_impl = op->op_info().GetInterfaceImpl<T>();
-      return interface_impl ? T(op, interface_impl) : T(nullptr, nullptr);
+      if (op->op_info().id() == TypeId::get<T>()) {
+        return T(op);
+      } else if (op->HasTrait<T>()) {
+        return T(op);
+      } else if (op->HasInterface<T>()) {
+        return T(op, op->op_info().GetInterfaceImpl<T>());
+      }
+      return nullptr;
     }
   };
 
