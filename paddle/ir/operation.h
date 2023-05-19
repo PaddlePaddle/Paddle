@@ -22,6 +22,8 @@
 
 namespace ir {
 class OpBase;
+template <typename ConcreteInterface>
+class OpInterfaceBase;
 class Program;
 
 class alignas(8) Operation final {
@@ -106,6 +108,9 @@ class alignas(8) Operation final {
         return T(op);
       } else if (op->HasInterface<T>()) {
         return T(op, op->op_info().GetInterfaceImpl<T>());
+      }
+      if (std::is_base_of<OpInterfaceBase<T>, T>::value) {
+        return T(nullptr, nullptr);
       }
       return nullptr;
     }
