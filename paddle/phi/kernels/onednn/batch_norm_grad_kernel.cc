@@ -130,4 +130,3 @@ void BatchNormGradKernel(const Context& dev_ctx,
 
 PD_REGISTER_KERNEL(
     batch_norm_grad, OneDNN, ONEDNN, phi::BatchNormGradKernel, float) {}
-PD_REGISTER_KERNEL(
