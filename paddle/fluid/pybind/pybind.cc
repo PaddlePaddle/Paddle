@@ -1210,7 +1210,7 @@ All parameter, weight, gradient are variables in Paddle.
            Delete all sub-scopes of the current scope.
            )DOC")
       .def("_kids", &Scope::kids)
-      .def_property("_can_reuesd", &Scope::CanReuesd, &Scope::SetCanReuesd);
+      .def_property("_can_reused", &Scope::CanReused, &Scope::SetCanReused);
 
   m.def(
       "Scope",
@@ -1363,12 +1363,12 @@ All parameter, weight, gradient are variables in Paddle.
             }
           } else {
             if (grad_op_maker != nullptr) {
-              VLOG(3) << "Prim Flag Close: Runing origin grad fun for "
+              VLOG(6) << "Prim Flag Close: Runing origin grad fun for "
                       << op_desc.Type();
               grad_op_descs = grad_op_maker(
                   op_desc, no_grad_set, &grad_to_var, grad_sub_block);
             } else {
-              VLOG(3) << "Prim Flag Close: Runing composite grad fun for "
+              VLOG(6) << "Prim Flag Close: Runing composite grad fun for "
                       << op_desc.Type();
               grad_op_descs = grad_comp_op_maker(op_desc,
                                                  no_grad_set,
