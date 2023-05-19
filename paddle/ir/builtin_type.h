@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include "paddle/ir/builtin_type_storage.h"
 #include "paddle/ir/type.h"
 
 namespace ir {
@@ -25,7 +24,7 @@ namespace ir {
 ///
 #define GET_BUILT_IN_TYPE_LIST                                      \
   ir::Float16Type, ir::Float32Type, ir::Float64Type, ir::Int16Type, \
-      ir::Int32Type, ir::Int64Type, ir::DenseTensorType
+      ir::Int32Type, ir::Int64Type
 
 ///
 /// \brief Define built-in parameterless types. Please add the necessary
@@ -95,26 +94,6 @@ class Int64Type : public ir::Type {
   DECLARE_TYPE_UTILITY_FUNCTOR(Int64Type, ir::TypeStorage);
 
   static Int64Type get(ir::IrContext *context);
-};
-
-///
-/// \brief Define built-in parameteric types.
-///
-class DenseTensorType : public ir::Type {
- public:
-  using Type::Type;
-
-  DECLARE_TYPE_UTILITY_FUNCTOR(DenseTensorType, DenseTensorTypeStorage);
-
-  const ir::Type &dtype() const;
-
-  const ir::DenseTensorTypeStorage::Dim &dim() const;
-
-  const ir::DenseTensorTypeStorage::DataLayout &data_layout() const;
-
-  const ir::DenseTensorTypeStorage::LoD &lod() const;
-
-  const size_t &offset() const;
 };
 
 }  // namespace ir
