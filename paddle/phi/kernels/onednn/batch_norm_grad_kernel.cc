@@ -20,7 +20,7 @@
 namespace phi {
 
 template <typename T, typename Context>
-void BatchNormGradRawKernel(const Context& dev_ctx,
+void BatchNormGradFunctor(const Context& dev_ctx,
                             const DenseTensor& x,
                             const DenseTensor& scale,
                             const DenseTensor& bias,
@@ -104,7 +104,7 @@ void BatchNormGradKernel(const Context& dev_ctx,
                          DenseTensor* x_grad,
                          DenseTensor* scale_grad,
                          DenseTensor* bias_grad) {
-  BatchNormGradRawKernel<T, Context>(dev_ctx,
+  BatchNormGradFunctor<T, Context>(dev_ctx,
                                      x,
                                      scale,
                                      bias,
@@ -131,4 +131,3 @@ void BatchNormGradKernel(const Context& dev_ctx,
 PD_REGISTER_KERNEL(
     batch_norm_grad, OneDNN, ONEDNN, phi::BatchNormGradKernel, float) {}
 PD_REGISTER_KERNEL(
-    batch_norm_grad_raw, OneDNN, ONEDNN, phi::BatchNormGradRawKernel, float) {}

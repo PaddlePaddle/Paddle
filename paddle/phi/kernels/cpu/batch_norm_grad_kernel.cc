@@ -36,7 +36,7 @@ using ConstEigenVectorArrayMap =
     Eigen::Map<const Eigen::Array<T, Eigen::Dynamic, 1>>;
 
 template <typename T, typename Context>
-void BatchNormGradRawKernel(const Context& ctx,
+void BatchNormGradFunctor(const Context& ctx,
                             const DenseTensor& x,
                             const DenseTensor& scale,
                             const DenseTensor& bias,
@@ -312,7 +312,7 @@ void BatchNormGradKernel(const Context& dev_ctx,
                          DenseTensor* x_grad,
                          DenseTensor* scale_grad,
                          DenseTensor* bias_grad) {
-  BatchNormGradRawKernel<T, Context>(dev_ctx,
+  BatchNormGradFunctor<T, Context>(dev_ctx,
                                      x,
                                      scale,
                                      bias,
@@ -656,13 +656,6 @@ void BatchNormDoubleGradKernel(
 PD_REGISTER_KERNEL(
     batch_norm_grad, CPU, ALL_LAYOUT, phi::BatchNormGradKernel, float, double) {
 }
-
-PD_REGISTER_KERNEL(batch_norm_grad_raw,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::BatchNormGradRawKernel,
-                   float,
-                   double) {}
 
 PD_REGISTER_KERNEL(batch_norm_double_grad,
                    CPU,

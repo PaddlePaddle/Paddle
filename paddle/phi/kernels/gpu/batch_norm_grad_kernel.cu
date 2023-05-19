@@ -485,7 +485,7 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void BNBackwardData(
 }
 
 template <typename T, typename Context>
-void BatchNormGradRawKernel(const Context &ctx,
+void BatchNormGradFunctor(const Context &ctx,
                             const DenseTensor &x,
                             const DenseTensor &scale,
                             const DenseTensor &bias,
@@ -1221,7 +1221,7 @@ void BatchNormGradKernel(const Context &dev_ctx,
                          DenseTensor *x_grad,
                          DenseTensor *scale_grad,
                          DenseTensor *bias_grad) {
-  BatchNormGradRawKernel<T, Context>(dev_ctx,
+  BatchNormGradFunctor<T, Context>(dev_ctx,
                                      x,
                                      scale,
                                      bias,
@@ -1308,13 +1308,6 @@ PD_REGISTER_KERNEL(batch_norm_grad,
                    phi::BatchNormGradKernel,
                    float,
                    phi::dtype::float16) {}
-
-PD_REGISTER_KERNEL(batch_norm_grad_raw,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::BatchNormGradRawKernel,
-                   float,
-                   phi::dtype::float16) {}
 #else
 #if CUDNN_VERSION_MIN(8, 1, 0)
 
@@ -1334,21 +1327,6 @@ PD_REGISTER_KERNEL(batch_norm_grad,
   }
 }
 
-PD_REGISTER_KERNEL(batch_norm_grad_raw,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::BatchNormGradRawKernel,
-                   float,
-                   double,
-                   phi::dtype::bfloat16,
-                   phi::dtype::float16) {
-  if (kernel_key.dtype() == phi::DataType::FLOAT16 ||
-      kernel_key.dtype() == phi::DataType::BFLOAT16) {
-    kernel->OutputAt(0).SetDataType(phi::DataType::FLOAT32);  // x_grad
-    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);  // scale_grad
-    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);  // bias_grad
-  }
-}
 #else
 PD_REGISTER_KERNEL(batch_norm_grad,
                    GPU,
@@ -1364,19 +1342,6 @@ PD_REGISTER_KERNEL(batch_norm_grad,
   }
 }
 
-PD_REGISTER_KERNEL(batch_norm_grad_raw,
-                   GPU,
-                   ALL_LAYOUT,
-                   phi::BatchNormGradRawKernel,
-                   float,
-                   double,
-                   phi::dtype::float16) {
-  if (kernel_key.dtype() == phi::DataType::FLOAT16) {
-    kernel->OutputAt(0).SetDataType(phi::DataType::FLOAT32);  // x_grad
-    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);  // scale_grad
-    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);  // bias_grad
-  }
-}
 #endif
 #endif
 
