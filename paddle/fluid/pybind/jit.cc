@@ -1,4 +1,5 @@
 /* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+ *
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -146,7 +147,8 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
     //  NOTE: Cache is not supported now
     PyCodeObject *code = reinterpret_cast<PyCodeObject *>(
         PyObject_GetAttrString(result, "code"));
-    PyObject *disable_eval_frame = PyObject_GetAttrString(result, "disable_eval_frame");
+    PyObject *disable_eval_frame =
+        PyObject_GetAttrString(result, "disable_eval_frame");
     if (disable_eval_frame != Py_True) {
       // Re-enable custom behavior
       eval_frame_callback_set(callback);
