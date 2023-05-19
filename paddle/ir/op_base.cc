@@ -12,25 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/ir/dialect.h"
-
+#include "paddle/ir/op_base.h"
 namespace ir {
-Dialect::Dialect(std::string name, ir::IrContext *context, ir::TypeId id)
-    : name_(std::move(name)), context_(context), id_(id) {}
-
-Dialect::~Dialect() = default;
-
-void Dialect::RegisterInterface(std::unique_ptr<DialectInterface> interface) {
-  VLOG(4) << "Register interface into dialect" << std::endl;
-  auto it = registered_interfaces_.emplace(interface->interface_id(),
-                                           std::move(interface));
-  (void)it;
+InterfaceValue::~InterfaceValue() {
+  if (model_) free(model_);
 }
 
-DialectInterface::~DialectInterface() = default;
-
-IrContext *DialectInterface::ir_context() const {
-  return dialect_->ir_context();
+InterfaceValue::InterfaceValue(InterfaceValue&& val) {
+  type_id_ = val.type_id_;
+  model_ = val.model_;
+  val.model_ = nullptr;
 }
 
+InterfaceValue& InterfaceValue::operator=(InterfaceValue&& val) {
+  swap(std::move(val));
+  return *this;
+}
 }  // namespace ir

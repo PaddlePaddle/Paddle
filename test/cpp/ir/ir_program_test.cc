@@ -31,11 +31,10 @@
 class AddOp : public ir::Op<AddOp> {
  public:
   using Op::Op;
-  static const char *name() { return "Add"; }
-  static const char **attributes_name_;
-  static uint32_t attributes_num() { return 0; }
+  static const char *name() { return "test.add"; }
+  static constexpr const char **attributes_name = nullptr;
+  static constexpr uint32_t attributes_num = 0;
 };
-const char **AddOp::attributes_name_ = nullptr;
 
 TEST(program_test, program) {
   // (1) Init environment.
@@ -78,9 +77,8 @@ TEST(program_test, program) {
   EXPECT_EQ(program.parameters_num() == 2, true);
 
   // (4) Def a = GetParameterOp("a"), and create DenseTensor for a.
-  std::string op1_name =
-      builtin_dialect->name() + "." + std::string(ir::GetParameterOp::name());
-  ir::OpInfoImpl *op1_info = ctx->GetRegisteredOpInfo(op1_name);
+  std::string op1_name = ir::GetParameterOp::name();
+  ir::OpInfo op1_info = ctx->GetRegisteredOpInfo(op1_name);
   std::unordered_map<std::string, ir::Attribute> op1_attribute{
       {"parameter_name", ir::StrAttribute::get(ctx, "a")}};
   ir::Operation *op1 =
@@ -112,7 +110,7 @@ TEST(program_test, program) {
   // (5) Def b = GetParameterOp("b"), and create DenseTensor for b.
   std::string op2_name =
       builtin_dialect->name() + "." + std::string(ir::GetParameterOp::name());
-  ir::OpInfoImpl *op2_info = ctx->GetRegisteredOpInfo(op2_name);
+  ir::OpInfo op2_info = ctx->GetRegisteredOpInfo(op2_name);
   std::unordered_map<std::string, ir::Attribute> op2_attribute{
       {"parameter_name", ir::StrAttribute::get(ctx, "b")}};
   ir::Operation *op2 =
@@ -142,7 +140,7 @@ TEST(program_test, program) {
   // (6) Def c = AddOp(a, b), execute this op.
   std::string op3_name =
       builtin_dialect->name() + "." + std::string(AddOp::name());
-  ir::OpInfoImpl *op3_info = ctx->GetRegisteredOpInfo(op3_name);
+  ir::OpInfo op3_info = ctx->GetRegisteredOpInfo(op3_name);
   std::unordered_map<std::string, ir::Attribute> op3_attribute;
   ir::Operation *op3 = ir::Operation::create(
       {op1->GetResultByIndex(0), op2->GetResultByIndex(0)},
@@ -173,7 +171,7 @@ TEST(program_test, program) {
   // (7) Def SetParameterOp(c, "c")
   std::string op4_name =
       builtin_dialect->name() + "." + std::string(ir::SetParameterOp::name());
-  ir::OpInfoImpl *op4_info = ctx->GetRegisteredOpInfo(op4_name);
+  ir::OpInfo op4_info = ctx->GetRegisteredOpInfo(op4_name);
   std::unordered_map<std::string, ir::Attribute> op4_attribute{
       {"parameter_name", ir::StrAttribute::get(ctx, "c")}};
   ir::Operation *op4 = ir::Operation::create(
