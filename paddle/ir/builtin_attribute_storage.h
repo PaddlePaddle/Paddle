@@ -53,7 +53,7 @@ struct StrAttributeStorage : public AttributeStorage {
 
   explicit StrAttributeStorage(const ParamKey &key) {
     data_ = reinterpret_cast<char *>(malloc(key.size()));
-    memcpy(data_, const_cast<char *>(key.c_str()), key.size());
+    memcpy(data_, key.c_str(), key.size());
     size_ = key.size();
   }
 
@@ -68,7 +68,7 @@ struct StrAttributeStorage : public AttributeStorage {
   }
 
   bool operator==(const ParamKey &key) const {
-    return std::equal(data_, data_ + size_, const_cast<char *>(key.c_str()));
+    return std::equal(data_, data_ + size_, key.c_str());
   }
 
   ParamKey GetAsKey() const { return ParamKey(data_, size_); }
@@ -92,7 +92,7 @@ struct ArrayAttributeStorage : public AttributeStorage {
     data_ =
         reinterpret_cast<Attribute *>(malloc(sizeof(Attribute) * key.size()));
     memcpy(reinterpret_cast<void *>(data_),
-           reinterpret_cast<void *>(const_cast<Attribute *>(key.data())),
+           reinterpret_cast<const void *>(key.data()),
            sizeof(Attribute) * key.size());
     length_ = key.size();
   }
