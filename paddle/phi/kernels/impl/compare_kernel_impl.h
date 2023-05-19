@@ -43,7 +43,7 @@ inline void CompareAllKernelImpl(const Context& ctx,
                     const DenseTensor& y,                          \
                     DenseTensor* out) {                            \
     CompareKernelImpl<T, Context, functor<T>, inverse_functor<T>>( \
-        ctx, x, y, -1, out);                                     \
+        ctx, x, y, -1, out);                                       \
   }
 
 DEFINE_COMPARE_KERNEL(LessThan,

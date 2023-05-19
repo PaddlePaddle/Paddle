@@ -18,11 +18,11 @@ limitations under the License. */
 
 namespace phi {
 
-#define DECALRE_COMPARE_KERNEL(name)         \
-  template <typename T, typename Context>    \
-  void name##Kernel(const Context& ctx,      \
-                    const DenseTensor& x,    \
-                    const DenseTensor& y,    \
+#define DECALRE_COMPARE_KERNEL(name)      \
+  template <typename T, typename Context> \
+  void name##Kernel(const Context& ctx,   \
+                    const DenseTensor& x, \
+                    const DenseTensor& y, \
                     DenseTensor* out);
 
 DECALRE_COMPARE_KERNEL(LessThan)

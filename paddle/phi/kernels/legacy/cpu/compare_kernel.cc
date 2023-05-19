@@ -17,7 +17,6 @@
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
-#include "paddle/phi/kernels/legacy/impl/compare_kernel_impl.h"
 
 namespace phi {
 
@@ -26,10 +25,10 @@ template <typename T,
           typename Functor,
           typename InverseFunctor>
 inline void CompareRawKernelImpl(const Context& ctx,
-                              const DenseTensor& x,
-                              const DenseTensor& y,
-                              int axis,
-                              DenseTensor* out) {
+                                 const DenseTensor& x,
+                                 const DenseTensor& y,
+                                 int axis,
+                                 DenseTensor* out) {
   ctx.template Alloc<bool>(out);
   if (x.dims().size() >= y.dims().size()) {
     funcs::ElementwiseCompute<Functor, T, bool>(
@@ -40,22 +39,77 @@ inline void CompareRawKernelImpl(const Context& ctx,
   }
 }
 
+template <typename T, typename Context>
+void LessThanRawKernel(const Context& ctx,
+                       const DenseTensor& x,
+                       const DenseTensor& y,
+                       int axis,
+                       DenseTensor* out) {
+  CompareRawKernelImpl<T,
+                       Context,
+                       funcs::LessThanFunctor<T>,
+                       funcs::GreaterThanFunctor<T>>(ctx, x, y, axis, out);
+}
+
+template <typename T, typename Context>
+void GreaterThanRawKernel(const Context& ctx,
+                          const DenseTensor& x,
+                          const DenseTensor& y,
+                          int axis,
+                          DenseTensor* out) {
+  CompareRawKernelImpl<T,
+                       Context,
+                       funcs::GreaterThanFunctor<T>,
+                       funcs::LessThanFunctor<T>>(ctx, x, y, axis, out);
+}
+template <typename T, typename Context>
+void GreaterEqualRawKernel(const Context& ctx,
+                           const DenseTensor& x,
+                           const DenseTensor& y,
+                           int axis,
+                           DenseTensor* out) {
+  CompareRawKernelImpl<T,
+                       Context,
+                       funcs::GreaterEqualFunctor<T>,
+                       funcs::LessEqualFunctor<T>>(ctx, x, y, axis, out);
+}
+template <typename T, typename Context>
+void EqualRawKernel(const Context& ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& y,
+                    int axis,
+                    DenseTensor* out) {
+  CompareRawKernelImpl<T,
+                       Context,
+                       funcs::EqualFunctor<T>,
+                       funcs::EqualFunctor<T>>(ctx, x, y, axis, out);
+}
+template <typename T, typename Context>
+void NotEqualRawKernel(const Context& ctx,
+                       const DenseTensor& x,
+                       const DenseTensor& y,
+                       int axis,
+                       DenseTensor* out) {
+  CompareRawKernelImpl<T,
+                       Context,
+                       funcs::NotEqualFunctor<T>,
+                       funcs::NotEqualFunctor<T>>(ctx, x, y, axis, out);
+}
 }  // namespace phi
 
-
-#define PD_REGISTER_COMPARE_RAW_KERNEL(name, func)            \                                                  \
-  PD_REGISTER_KERNEL(name##_raw,                          \
-                     CPU,                                 \
-                     ALL_LAYOUT,                          \
-                     phi::func##RawKernel,                \
-                     bool,                                \
-                     int16_t,                             \
-                     int,                                 \
-                     int64_t,                             \
-                     float,                               \
-                     double,                              \
-                     phi::dtype::float16,                 \
-                     phi::dtype::bfloat16) {              \
+#define PD_REGISTER_COMPARE_RAW_KERNEL(name, func)        \
+  \ PD_REGISTER_KERNEL(name##_raw,                        \
+                       CPU,                               \
+                       ALL_LAYOUT,                        \
+                       phi::func##RawKernel,              \
+                       bool,                              \
+                       int16_t,                           \
+                       int,                               \
+                       int64_t,                           \
+                       float,                             \
+                       double,                            \
+                       phi::dtype::float16,               \
+                       phi::dtype::bfloat16) {            \
     kernel->OutputAt(0).SetDataType(phi::DataType::BOOL); \
   }
 PD_REGISTER_COMPARE_RAW_KERNEL(less_than, LessThan)

@@ -14,7 +14,6 @@
 
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
-#include "paddle/phi/kernels/legacy/impl/compare_kernel_impl.h"
 
 #ifdef PADDLE_WITH_XPU_KP
 #include "paddle/phi/backends/xpu/xpu_context.h"
@@ -47,15 +46,72 @@ template <typename T,
           typename Context,
           typename Functor,
           typename InverseFunctor>
-inline void CompareRawKernelImpl(const Context& ctx,
-                              const DenseTensor& x,
-                              const DenseTensor& y,
-                              int axis,
-                              DenseTensor* out) {
+inline void CompareCudaRawKernelImpl(const Context& ctx,
+                                     const DenseTensor& x,
+                                     const DenseTensor& y,
+                                     int axis,
+                                     DenseTensor* out) {
   ctx.template Alloc<bool>(out);
   std::vector<const DenseTensor*> ins{&x, &y};
   std::vector<DenseTensor*> outs{out};
   funcs::BroadcastKernel<bool>(ctx, ins, &outs, Functor(), axis);
+}
+
+template <typename T, typename Context>
+void LessThanRawKernel(const Context& ctx,
+                       const DenseTensor& x,
+                       const DenseTensor& y,
+                       int axis,
+                       DenseTensor* out) {
+  CompareCudaRawKernelImpl<T,
+                           Context,
+                           funcs::LessThanFunctor<T>,
+                           funcs::GreaterThanFunctor<T>>(ctx, x, y, axis, out);
+}
+
+template <typename T, typename Context>
+void GreaterThanRawKernel(const Context& ctx,
+                          const DenseTensor& x,
+                          const DenseTensor& y,
+                          int axis,
+                          DenseTensor* out) {
+  CompareCudaRawKernelImpl<T,
+                           Context,
+                           funcs::GreaterThanFunctor<T>,
+                           funcs::LessThanFunctor<T>>(ctx, x, y, axis, out);
+}
+template <typename T, typename Context>
+void GreaterEqualRawKernel(const Context& ctx,
+                           const DenseTensor& x,
+                           const DenseTensor& y,
+                           int axis,
+                           DenseTensor* out) {
+  CompareCudaRawKernelImpl<T,
+                           Context,
+                           funcs::GreaterEqualFunctor<T>,
+                           funcs::LessEqualFunctor<T>>(ctx, x, y, axis, out);
+}
+template <typename T, typename Context>
+void EqualRawKernel(const Context& ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& y,
+                    int axis,
+                    DenseTensor* out) {
+  CompareCudaRawKernelImpl<T,
+                           Context,
+                           funcs::EqualFunctor<T>,
+                           funcs::EqualFunctor<T>>(ctx, x, y, axis, out);
+}
+template <typename T, typename Context>
+void NotEqualRawKernel(const Context& ctx,
+                       const DenseTensor& x,
+                       const DenseTensor& y,
+                       int axis,
+                       DenseTensor* out) {
+  CompareCudaRawKernelImpl<T,
+                           Context,
+                           funcs::NotEqualFunctor<T>,
+                           funcs::NotEqualFunctor<T>>(ctx, x, y, axis, out);
 }
 
 }  // namespace phi
@@ -87,7 +143,7 @@ PD_REGISTER_KERNEL(
 
 #else
 
-#define PD_REGISTER_COMPARE_RAW_KERNEL(name, func)            \                                                   \
+#define PD_REGISTER_COMPARE_RAW_KERNEL(name, func)        \
   PD_REGISTER_KERNEL(name##_raw,                          \
                      KPS,                                 \
                      ALL_LAYOUT,                          \

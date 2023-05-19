@@ -24,15 +24,15 @@ namespace phi {
 
 template <typename T, typename XPUType, typename Context>
 void XPUCompareRawKernelImpl(const Context& dev_ctx,
-                          const DenseTensor& x,
-                          const DenseTensor& y,
-                          DenseTensor* out,
-                          std::function<int(xpu::Context*,
-                                            const XPUType*,
-                                            const XPUType*,
-                                            bool*,
-                                            const std::vector<int>&,
-                                            const std::vector<int>&)> func) {
+                             const DenseTensor& x,
+                             const DenseTensor& y,
+                             DenseTensor* out,
+                             std::function<int(xpu::Context*,
+                                               const XPUType*,
+                                               const XPUType*,
+                                               bool*,
+                                               const std::vector<int>&,
+                                               const std::vector<int>&)> func) {
   auto x_shape = vectorize<int>(x.dims());
   auto y_shape = vectorize<int>(y.dims());
 
@@ -52,37 +52,36 @@ void XPUCompareRawKernelImpl(const Context& dev_ctx,
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "compare op");
 }
 
-#define DEFINE_XPU_COMPARE_RAW_KERNEL(name, functor)                      \
-  template <typename T, typename Context>                             \
-  void name##RawKernel(const Context& dev_ctx,                        \
-                       const DenseTensor& x,                          \
-                       const DenseTensor& y,                          \
-                       int axis,                                      \
-                       DenseTensor* out) {                            \
-    using XPUType = typename XPUTypeTrait<T>::Type;                   \
-    auto f = [](xpu::Context* ctx,                                    \
-                const XPUType* x,                                     \
-                const XPUType* y,                                     \
-                bool* z,                                              \
-                const std::vector<int>& xshape,                       \
-                const std::vector<int>& yshape) {                     \
-      return functor(ctx, x, y, z, xshape, yshape);                   \
-    };                                                                \
+#define DEFINE_XPU_COMPARE_RAW_KERNEL(name, functor)                     \
+  template <typename T, typename Context>                                \
+  void name##RawKernel(const Context& dev_ctx,                           \
+                       const DenseTensor& x,                             \
+                       const DenseTensor& y,                             \
+                       int axis,                                         \
+                       DenseTensor* out) {                               \
+    using XPUType = typename XPUTypeTrait<T>::Type;                      \
+    auto f = [](xpu::Context* ctx,                                       \
+                const XPUType* x,                                        \
+                const XPUType* y,                                        \
+                bool* z,                                                 \
+                const std::vector<int>& xshape,                          \
+                const std::vector<int>& yshape) {                        \
+      return functor(ctx, x, y, z, xshape, yshape);                      \
+    };                                                                   \
     XPUCompareRawKernelImpl<T, XPUType, Context>(dev_ctx, x, y, out, f); \
   }
-
 
 DEFINE_XPU_COMPARE_RAW_KERNEL(Equal, xpu::broadcast_equal<XPUType>)
 DEFINE_XPU_COMPARE_RAW_KERNEL(NotEqual, xpu::broadcast_not_equal<XPUType>)
 DEFINE_XPU_COMPARE_RAW_KERNEL(LessThan, xpu::broadcast_less_than<XPUType>)
 DEFINE_XPU_COMPARE_RAW_KERNEL(LessEqual, xpu::broadcast_less_equal<XPUType>)
 DEFINE_XPU_COMPARE_RAW_KERNEL(GreaterThan, xpu::broadcast_greater_than<XPUType>)
-DEFINE_XPU_COMPARE_RAW_KERNEL(GreaterEqual, xpu::broadcast_greater_equal<XPUType>)
+DEFINE_XPU_COMPARE_RAW_KERNEL(GreaterEqual,
+                              xpu::broadcast_greater_equal<XPUType>)
 
 #undef DEFINE_XPU_COMPARE_RAW_KERNEL
 
 }  // namespace phi
-
 
 PD_REGISTER_KERNEL(less_than_raw,
                    XPU,
@@ -95,7 +94,7 @@ PD_REGISTER_KERNEL(less_than_raw,
   kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
 }
 
-#define PD_REGISTER_COMPARE_RAW_KERNEL(name, func)            \                                                     \
+#define PD_REGISTER_COMPARE_RAW_KERNEL(name, func)        \
   PD_REGISTER_KERNEL(name##_raw,                          \
                      XPU,                                 \
                      ALL_LAYOUT,                          \

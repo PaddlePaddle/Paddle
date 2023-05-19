@@ -52,8 +52,8 @@ void XPUCompareKernelImpl(const Context& dev_ctx,
   PADDLE_ENFORCE_XDNN_SUCCESS(ret, "compare op");
 }
 
-#define DEFINE_XPU_COMPARE_KERNEL(name, functor)                      \                                                                 \
-  template <typename T, typename Context>                             \
+#define DEFINE_XPU_COMPARE_KERNEL(name, functor)                      \
+  \ template <typename T, typename Context>                           \
   void name##Kernel(const Context& dev_ctx,                           \
                     const DenseTensor& x,                             \
                     const DenseTensor& y,                             \
