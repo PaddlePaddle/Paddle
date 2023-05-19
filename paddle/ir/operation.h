@@ -21,10 +21,7 @@
 #include "paddle/ir/value_impl.h"
 
 namespace ir {
-template <class ConcreteTrait>
-class OpTraitBase;
-template <typename ConcreteInterface>
-class OpInterfaceBase;
+class OpBase;
 class Program;
 
 class alignas(8) Operation final {
