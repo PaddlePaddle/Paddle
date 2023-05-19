@@ -14,6 +14,9 @@
 import unittest
 import uuid
 
+import sys
+sys.path.insert(0,'.')
+
 import config
 import numpy as np
 import utils

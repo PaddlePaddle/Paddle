@@ -15,6 +15,8 @@
 import collections
 import typing
 import unittest
+import sys
+sys.path.insert(0,'.')
 
 import config
 import numpy as np

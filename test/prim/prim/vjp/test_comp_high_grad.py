@@ -14,8 +14,6 @@
 
 import unittest
 
-sys.path.append("../../../)
-
 import gradient_checker
 import numpy as np
 import parameterized as param

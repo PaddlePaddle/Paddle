@@ -71,6 +71,7 @@ if(NOT WITH_PYTHON AND ON_INFER)
 endif()
 
 if(NOT WITH_GPU)
+  list(REMOVE_ITEM TEST_OPS test_async_read_write)
   list(REMOVE_ITEM TEST_OPS test_fused_feedforward_op)
   list(REMOVE_ITEM TEST_OPS test_fused_attention_op)
   list(REMOVE_ITEM TEST_OPS test_fused_attention_op_api)
@@ -104,6 +105,7 @@ if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_fleet_executor_task_node)
   list(REMOVE_ITEM TEST_OPS test_fleet_exe_dist_model_run)
   list(REMOVE_ITEM TEST_OPS test_fleet_exe_dist_model_tensor)
+  list(REMOVE_ITEM TEST_OPS test_fleet_executor_cond_interceptor)
 endif()
 
 list(REMOVE_ITEM TEST_OPS test_deprecated_decorator)
@@ -428,8 +430,6 @@ endfunction()
 list(REMOVE_ITEM TEST_OPS test_feed_data_check_shape_type)
 list(REMOVE_ITEM TEST_OPS test_fetch_lod_tensor_array)
 list(REMOVE_ITEM TEST_OPS test_warpctc_op)
-list(REMOVE_ITEM TEST_OPS test_parallel_executor_crf)
-list(REMOVE_ITEM TEST_OPS test_parallel_executor_profiler)
 list(REMOVE_ITEM TEST_OPS test_data_norm_op)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_fetch_feed)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_transformer)
@@ -745,18 +745,6 @@ if(WITH_DISTRIBUTE)
   endif()
 endif()
 
-py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf)
-# profiler will random hang in linux cuda 10.1 or 10.2
-# see https://github.com/PaddlePaddle/Paddle/issues/29082 for details.
-# We guess there are some bugs in linux cuda 10.1 or 10.2,
-# since this unittest is stable in cuda 11.2 and 10.2 (windows-ci pipeline) now.
-if(NOT (LINUX AND CUDA_VERSION LESS 11.0))
-  py_test_modules(test_parallel_executor_profiler MODULES
-                  test_parallel_executor_profiler)
-  set_tests_properties(test_parallel_executor_profiler
-                       PROPERTIES LABELS "RUN_TYPE=DIST")
-  set_tests_properties(test_parallel_executor_profiler PROPERTIES TIMEOUT 120)
-endif()
 py_test_modules(test_parallel_executor_transformer MODULES
                 test_parallel_executor_transformer)
 if(WIN32)
@@ -864,7 +852,6 @@ set_tests_properties(
   test_buffer_shared_memory_reuse_pass
   PROPERTIES LABELS "RUN_TYPE=DIST")
 set_tests_properties(
-  test_parallel_executor_crf
   test_sync_batch_norm_op
   test_inplace_abn_op
   test_parallel_executor_seresnext_base_gpu
@@ -995,7 +982,6 @@ set_tests_properties(test_imperative_selected_rows_to_lod_tensor
                      PROPERTIES TIMEOUT 200)
 set_tests_properties(test_index_select_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_index_add_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_parallel_executor_crf PROPERTIES TIMEOUT 120)
 set_tests_properties(test_tensordot PROPERTIES TIMEOUT 200)
 set_tests_properties(test_partial_eager_deletion_transformer PROPERTIES TIMEOUT
                                                                         120)
