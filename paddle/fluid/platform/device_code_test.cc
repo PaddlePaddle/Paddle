@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/platform/device_code.h"
+#include "paddle/phi/backends/device_code.h"
 
 #include <utility>
 
@@ -47,14 +47,13 @@ void saxpy_kernel(float a, float *x, float* y, float* z, size_t n) {
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(DeviceCode, cuda) {
-  if (!paddle::platform::dynload::HasNVRTC() ||
-      !paddle::platform::dynload::HasCUDADriver()) {
+  if (!phi::dynload::HasNVRTC() || !phi::dynload::HasCUDADriver()) {
     return;
   }
 
   paddle::framework::InitDevices({0});
-  paddle::platform::CUDAPlace place = paddle::platform::CUDAPlace(0);
-  paddle::platform::CUDADeviceCode code(place, "saxpy_kernel", saxpy_code);
+  phi::GPUPlace place = phi::GPUPlace(0);
+  phi::GPUDeviceCode code(place, "saxpy_kernel", saxpy_code);
 
   phi::DenseTensor cpu_x;
   phi::DenseTensor cpu_y;
@@ -63,8 +62,12 @@ TEST(DeviceCode, cuda) {
   float scale = 2;
   auto dims =
       phi::make_ddim({static_cast<int64_t>(256), static_cast<int64_t>(1024)});
-  cpu_x.mutable_data<float>(dims, paddle::platform::CPUPlace());
-  cpu_y.mutable_data<float>(dims, paddle::platform::CPUPlace());
+  phi::DeviceContextPool& pool = phi::DeviceContextPool::Instance();
+  auto* cpu_ctx = reinterpret_cast<phi::CPUContext*>(pool.Get(phi::CPUPlace()));
+  cpu_x.Resize(dims);
+  cpu_ctx->template Alloc<float>(&cpu_x);
+  cpu_y.Resize(dims);
+  cpu_ctx->template Alloc<float>(&cpu_y);
 
   size_t n = cpu_x.numel();
   for (size_t i = 0; i < n; ++i) {
@@ -78,9 +81,13 @@ TEST(DeviceCode, cuda) {
   phi::DenseTensor y;
   phi::DenseTensor z;
 
-  float* x_data = x.mutable_data<float>(dims, place);
-  float* y_data = y.mutable_data<float>(dims, place);
-  float* z_data = z.mutable_data<float>(dims, place);
+  auto* dev_ctx = reinterpret_cast<phi::GPUContext*>(pool.Get(place));
+  x.Resize(dims);
+  float* x_data = dev_ctx->template Alloc<float>(&x);
+  y.Resize(dims);
+  float* y_data = dev_ctx->template Alloc<float>(&y);
+  z.Resize(dims);
+  float* z_data = dev_ctx->template Alloc<float>(&z);
 
   paddle::framework::TensorCopySync(cpu_x, place, &x);
   paddle::framework::TensorCopySync(cpu_y, place, &y);
@@ -92,36 +99,33 @@ TEST(DeviceCode, cuda) {
   code.SetWorkloadPerThread(1);
   code.Launch(n, &args);
 
-  auto* dev_ctx = paddle::platform::DeviceContextPool::Instance().Get(place);
   dev_ctx->Wait();
 
-  paddle::framework::TensorCopySync(z, paddle::platform::CPUPlace(), &cpu_z);
+  paddle::framework::TensorCopySync(z, phi::CPUPlace(), &cpu_z);
   for (size_t i = 0; i < n; i++) {
     EXPECT_EQ(cpu_z.data<float>()[i], static_cast<float>(i) * scale + 0.5);
   }
 }
 
 TEST(DeviceCodePool, cuda) {
-  if (!paddle::platform::dynload::HasNVRTC() ||
-      !paddle::platform::dynload::HasCUDADriver()) {
+  if (!phi::dynload::HasNVRTC() || !phi::dynload::HasCUDADriver()) {
     return;
   }
 
   paddle::framework::InitDevices({0});
-  paddle::platform::CUDAPlace place = paddle::platform::CUDAPlace(0);
-  paddle::platform::DeviceCodePool& pool =
-      paddle::platform::DeviceCodePool::Init({place});
+  phi::GPUPlace place = phi::GPUPlace(0);
+  phi::DeviceCodePool& pool = phi::DeviceCodePool::Init({place});
   size_t num_device_codes_before = pool.size(place);
   EXPECT_EQ(num_device_codes_before, 0UL);
 
-  std::unique_ptr<paddle::platform::DeviceCode> code(
-      new paddle::platform::CUDADeviceCode(place, "saxpy_kernel", saxpy_code));
+  std::unique_ptr<phi::DeviceCode> code(
+      new phi::GPUDeviceCode(place, "saxpy_kernel", saxpy_code));
   LOG(INFO) << "origin ptr: " << code.get();
   pool.Set(std::move(code));
   size_t num_device_codes_after = pool.size(place);
   EXPECT_EQ(num_device_codes_after, 1UL);
 
-  paddle::platform::DeviceCode* code_get = pool.Get(place, "saxpy_kernel");
+  phi::DeviceCode* code_get = pool.Get(place, "saxpy_kernel");
   LOG(INFO) << "get ptr: " << code_get;
 }
 #endif

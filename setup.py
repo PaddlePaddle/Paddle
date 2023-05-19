@@ -22,6 +22,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 from contextlib import contextmanager
 from distutils.spawn import find_executable
 from subprocess import CalledProcessError
@@ -1618,13 +1619,52 @@ def install_cpp_dist_and_build_test(install_dir, lib_test_dir, headers, libs):
     subprocess.check_call([CMAKE, "--build", lib_test_dir])
 
 
+def check_submodules():
+    def get_submodule_folder():
+        git_submodules_path = os.path.join(TOP_DIR, ".gitmodules")
+        with open(git_submodules_path) as f:
+            return [
+                os.path.join(TOP_DIR, line.split("=", 1)[1].strip())
+                for line in f.readlines()
+                if line.strip().startswith("path")
+            ]
+
+    def submodules_not_exists_or_empty(folder):
+        return not os.path.exists(folder) or (
+            os.path.isdir(folder) and len(os.listdir(folder)) == 0
+        )
+
+    submodule_folders = get_submodule_folder()
+    # f none of the submodule folders exists, try to initialize them
+    if any(
+        submodules_not_exists_or_empty(folder) for folder in submodule_folders
+    ):
+        try:
+            print(' --- Trying to initialize submodules')
+            start = time.time()
+            subprocess.check_call(
+                ["git", "submodule", "update", "--init", "--recursive"],
+                cwd=TOP_DIR,
+            )
+            end = time.time()
+            print(
+                ' --- Submodule initialization took {:.2f} sec'.format(
+                    end - start
+                )
+            )
+        except Exception:
+            print(' --- Submodule initalization failed')
+            print('Please run:\n\tgit submodule update --init --recursive')
+            sys.exit(1)
+
+
 def main():
     # Parse the command line and check arguments before we proceed with building steps and setup
     parse_input_command(filter_args_list)
 
     # check build dependency
     check_build_dependency()
-
+    check_submodules()
     # Execute the build process,cmake and make
     if cmake_and_build:
         build_steps()

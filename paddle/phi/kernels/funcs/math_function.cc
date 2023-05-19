@@ -243,7 +243,7 @@ template struct RowwiseMean<phi::CPUContext, double>;
 
 template <typename T>
 struct RowwiseAdd<phi::CPUContext, T> {
-  void operator()(const phi::CPUContext& context,
+  void operator()(const phi::CPUContext& context UNUSED,
                   const phi::DenseTensor& input,
                   const phi::DenseTensor& vector,
                   phi::DenseTensor* output) {

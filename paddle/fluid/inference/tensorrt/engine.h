@@ -738,9 +738,6 @@ class TensorRTEngine {
   void GetEngineInfo();
 
   void SetUseInspector(bool use_inspector) { use_inspector_ = use_inspector; }
-  void SetUseSparseWeights(bool use_sparse_weights) {
-    use_sparse_weights_ = use_sparse_weights;
-  }
   void SetScope(const framework::Scope& scope) { scope_ = &scope; }
 
   void SetContextMemorySharing(bool context_memory_sharing) {
@@ -829,7 +826,6 @@ class TensorRTEngine {
 #endif
   std::mutex mutex_;
   bool use_inspector_;
-  bool use_sparse_weights_{false};
 
  public:
   thread_local static int predictor_id_per_thread;

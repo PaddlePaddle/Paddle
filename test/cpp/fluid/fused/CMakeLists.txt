@@ -13,7 +13,7 @@ if(WITH_GPU OR WITH_ROCM)
       DEPS tensor
            op_registry
            dropout_op
-           layer_norm_op
+           generated_op
            device_context
            phi
            memory)
@@ -23,7 +23,7 @@ if(WITH_GPU OR WITH_ROCM)
       DEPS tensor
            op_registry
            dropout_op
-           layer_norm_op
+           generated_op
            device_context
            phi
            memory)
@@ -33,7 +33,7 @@ if(WITH_GPU OR WITH_ROCM)
       DEPS tensor
            op_registry
            dropout_op
-           layer_norm_op
+           generated_op
            device_context
            phi
            memory)
