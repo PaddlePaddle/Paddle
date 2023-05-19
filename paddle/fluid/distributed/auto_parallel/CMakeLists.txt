@@ -4,3 +4,4 @@ cc_library(
   DEPS phi auto_parallel_proto proto_desc)
 
 add_subdirectory(test)
+

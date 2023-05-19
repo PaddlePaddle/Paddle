@@ -379,6 +379,8 @@ def source_include(header_file_path):
 #include "paddle/phi/api/profiler/event_tracing.h"
 #include "paddle/phi/api/profiler/supplement_tracing.h"
 
+#include "paddle/fluid/distributed/auto_parallel/spmd_rules/dist_tensor_spec.h"
+
 DECLARE_bool(conv2d_disable_cudnn);
 DECLARE_int32(low_precision_op_list);
 """
