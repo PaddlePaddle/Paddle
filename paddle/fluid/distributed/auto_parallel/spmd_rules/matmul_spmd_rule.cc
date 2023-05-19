@@ -123,11 +123,10 @@ std::vector<DistTensorSpec> MatmulSPMDRule::InferForward(
     std::iter_swap(y_dims_mapping.end() - 2, y_dims_mapping.end() - 1);
   }
   // step2.1: Sharding Merge
-  std::pair<std::string*, std::vector<int64_t>*> x_pair(&x_string,
-                                                        &x_dims_mapping);
-  std::pair<std::string*, std::vector<int64_t>*> y_pair(&y_string,
-                                                        &y_dims_mapping);
-  std::vector<std::pair<std::string, std::vector<int64_t>>> input_pairs;
+  std::pair<std::string, std::vector<int64_t>> x_pair(x_string, x_dims_mapping);
+  std::pair<std::string, std::vector<int64_t>> y_pair(y_string, y_dims_mapping);
+  std::vector<std::pair<const std::string, const std::vector<int64_t>>>
+      input_pairs;
   input_pairs.push_back(x_pair);
   input_pairs.push_back(y_pair);
   auto dim_to_sharding = ShardingMerge(input_pairs);
