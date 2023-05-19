@@ -17,6 +17,7 @@
 #ifdef PADDLE_WITH_XPU
 #include "xpu/runtime.h"
 #endif
+#include "glog/logging.h"
 
 namespace paddle {
 
