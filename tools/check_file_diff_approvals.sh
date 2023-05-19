@@ -376,7 +376,7 @@ for CHANGE_FILE in ${HAS_MODIFIED_PHI_HEADER_FILES}; do
     fi
 done
 if [ "${INCLUDE_PADDLE_API_FILES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
-    echo_line="You must have one RD (sunzhongkai588/SunZhongKai, Ligoml/LiMengLiu, jiahy0825) approval for PADDLE_API. Need to confirm if additional descriptions are needed\n"
+    echo_line="You must have one RD (jiahy0825, zyfncg, chenwhql) or PM (sunzhongkai588, Ligoml) approval for code changes about PADDLE_API. If you add a new PADDLE_API, please make sure you have written detailed comments about the parameter and usage of this PADDLE_API .\n"
     check_approval 1 sunzhongkai588/SunZhongKai Ligoml/LiMengLiu jiahy0825
 fi
 
