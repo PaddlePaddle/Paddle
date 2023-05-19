@@ -126,6 +126,7 @@ void MultiEncoderXPUAdaptiveSeqlenFusePass::ApplyImpl(ir::Graph* graph) const {
     embedding_xpu->Op()->SetOutput("max_seq_len", {max_seq_len_name});
     multi_encoder_xpu->Op()->SetInput("seq_lod", {seq_lod_name});
     multi_encoder_xpu->Op()->SetInput("max_seq_len", {max_seq_len_name});
+    multi_encoder_xpu->Op()->RemoveInput("mask");
     IR_NODE_LINK_TO(mask, embedding_xpu);
     IR_NODE_LINK_TO(embedding_xpu, seq_lod);
     IR_NODE_LINK_TO(embedding_xpu, max_seq_len);

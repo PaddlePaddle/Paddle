@@ -185,8 +185,6 @@ void EmbeddingWithEltwiseAddXPUInferMeta(
   out->set_dims(phi::make_ddim({id_dims[0], id_dims[1], table_dims[1]}));
   out->set_dtype(tables[0]->dtype());
   out->set_layout(ids[0]->layout());
-  seq_lod->set_dims({id_dims[0] + 1});
-  max_seq_len->set_dims({1});
 }
 
 void FcXPUInferMeta(const MetaTensor& x,

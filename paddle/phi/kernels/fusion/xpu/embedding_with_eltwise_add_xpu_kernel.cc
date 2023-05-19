@@ -78,7 +78,6 @@ void EmbeddingWithEltwiseAddXpuKernel(
   auto& id_dims = ids[0]->dims();
   int batch_size = id_dims[0];
   int max_seq_len_value = id_dims[1];
-  ctx.template HostAlloc<int>(max_seq_len)[0] = max_seq_len_value;
   int ids_len = id_dims[0] * id_dims[1];
   std::vector<std::vector<int>> int_ids(emb_layer_num,
                                         std::vector<int>(ids_len, 0));
@@ -92,7 +91,10 @@ void EmbeddingWithEltwiseAddXpuKernel(
         errors::InvalidArgument(
             "The data type of mask should be int64 or float32, but got %s.",
             DataTypeToString(mask_dtype)));
+    max_seq_len->Resize({1});
+    ctx.template HostAlloc<int>(max_seq_len)[0] = max_seq_len_value;
 
+    seq_lod->Resize({batch_size + 1});
     int* seq_lod_data = ctx.template HostAlloc<int>(seq_lod);
     seq_lod_data[0] = 0;
     for (int batch_idx = 0; batch_idx < batch_size; batch_idx++) {

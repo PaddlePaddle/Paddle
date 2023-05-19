@@ -44,7 +44,6 @@ void MultiEncoderXPUKernel(const Context& ctx,
                            DenseTensor* out,
                            DenseTensor* x_fp16,
                            DenseTensor* out_fp16) {
-  LOG(INFO) << "MultiEncoderXPUKernel, 0";
   // XPU2 only support fp16 input/output.
   auto x_dtype = x.dtype();
   const XPUTypeFP16* x_fp16_data = nullptr;
