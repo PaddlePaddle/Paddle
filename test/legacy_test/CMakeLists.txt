@@ -86,8 +86,6 @@ list(REMOVE_ITEM TEST_OPS test_fused_ec_moe_op)
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_op)
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_grad_op)
 list(REMOVE_ITEM TEST_OPS test_fuse_gemm_epilogue_pass)
-list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_mnist)
-list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_while)
 
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_c_comm_init_all_op)
@@ -431,7 +429,6 @@ list(REMOVE_ITEM TEST_OPS test_feed_data_check_shape_type)
 list(REMOVE_ITEM TEST_OPS test_fetch_lod_tensor_array)
 list(REMOVE_ITEM TEST_OPS test_warpctc_op)
 list(REMOVE_ITEM TEST_OPS test_data_norm_op)
-list(REMOVE_ITEM TEST_OPS test_parallel_executor_fetch_feed)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_transformer)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_transformer_auto_growth)
 list(REMOVE_ITEM TEST_OPS test_bilinear_interp_op)
@@ -457,8 +454,6 @@ list(REMOVE_ITEM TEST_OPS test_basic_lstm_unit_op)
 list(REMOVE_ITEM TEST_OPS test_fuse_all_reduce_pass)
 list(REMOVE_ITEM TEST_OPS test_fuse_bn_act_pass)
 list(REMOVE_ITEM TEST_OPS test_fuse_bn_add_act_pass)
-list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_mnist)
-list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_while)
 
 # disable this unittest temporarily
 list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
@@ -581,12 +576,6 @@ py_test_modules(
 py_test_modules(test_install_check MODULES test_install_check ENVS
                 FLAGS_cudnn_deterministic=1)
 set_tests_properties(test_install_check PROPERTIES LABELS "RUN_TYPE=DIST")
-py_test_modules(
-  test_imperative_static_runner_mnist MODULES
-  test_imperative_static_runner_mnist ENVS FLAGS_cudnn_deterministic=1)
-py_test_modules(
-  test_imperative_static_runner_while MODULES
-  test_imperative_static_runner_while ENVS FLAGS_cudnn_deterministic=1)
 
 if((WITH_GPU) AND (CUDA_VERSION GREATER_EQUAL 11.6))
   py_test_modules(test_fused_gemm_epilogue_op MODULES
@@ -820,10 +809,6 @@ if(NOT WIN32)
                   FLAGS_cudnn_deterministic=1)
   py_test_modules(test_ir_memory_optimize_transformer MODULES
                   test_ir_memory_optimize_transformer)
-  # FIXME(zcd): temporally disable test_parallel_executor_fetch_feed in Windows CI because of the random failure.
-  py_test_modules(test_parallel_executor_fetch_feed MODULES
-                  test_parallel_executor_fetch_feed)
-  set_tests_properties(test_parallel_executor_fetch_feed PROPERTIES TIMEOUT 450)
 endif()
 
 # dist xpu tests:
@@ -1023,7 +1008,6 @@ set_tests_properties(test_svd_op PROPERTIES TIMEOUT 80)
 set_tests_properties(test_einsum_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_qr_op PROPERTIES TIMEOUT 60)
 set_tests_properties(test_trilinear_interp_v2_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_imperative_static_runner_mnist PROPERTIES TIMEOUT 120)
 set_tests_properties(test_masked_select_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_sigmoid_cross_entropy_with_logits_op
                      PROPERTIES TIMEOUT 120)
@@ -1104,8 +1088,6 @@ if(APPLE)
                        PROPERTIES TIMEOUT 300)
   set_tests_properties(test_multiclass_nms_op PROPERTIES TIMEOUT 300)
   set_tests_properties(test_weight_decay PROPERTIES TIMEOUT 300)
-  set_tests_properties(test_imperative_static_runner_mnist PROPERTIES TIMEOUT
-                                                                      300)
 endif()
 
 if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)

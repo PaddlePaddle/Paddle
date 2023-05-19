@@ -18,7 +18,7 @@ import re
 import sys
 from unittest import SkipTest
 
-from distribution from distribution import config
+from distribution import config
 import numpy as np
 
 TEST_CASE_NAME = 'suffix'
