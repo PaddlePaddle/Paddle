@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -137,7 +137,7 @@ void TransferLayoutElimPass::PutTranferlayoutAfterOp(Node *op_node,
   GraphSafeRemoveNodes(graph, remove_nodes);
 }
 
-bool TransferLayoutElimPass::InputAllTransferlayout(
+bool TransferLayoutElimPass::AllInputIsTransferlayout(
     const ir::Node *op_node) const {
   std::set<int> dst_layouts;
   std::set<int> src_layouts;
@@ -277,7 +277,7 @@ void TransferLayoutElimPass::ApplyImpl(ir::Graph *graph) const {
             is_elim_op))
         continue;
 
-      if (InputAllTransferlayout(op_node)) {
+      if (AllInputIsTransferlayout(op_node)) {
         if (is_concat_like_op) {
           PutTranferlayoutAfterOp(op_node, graph);
           int axis = op_node->Op()->GetAttrIfExists<int>("axis");

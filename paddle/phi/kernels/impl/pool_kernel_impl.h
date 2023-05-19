@@ -250,6 +250,15 @@ void Pool2dKernel(const Context& ctx,
                             adaptive,
                             padding_algorithm,
                             out);
+
+  if (data_format == "NCHW") {
+    out->set_layout(DataLayout::NCHW);
+  } else if (data_format == "NHWC") {
+    out->set_layout(DataLayout::NHWC);
+  } else {
+    PADDLE_THROW(errors::InvalidArgument(
+        "Pool2d op only supports NCHW or NHWC data_format."));
+  }
 }
 
 template <typename T, typename Context>

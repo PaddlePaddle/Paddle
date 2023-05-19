@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ class TransferLayoutElimPass : public FusePassBase {
 
  protected:
   void ApplyImpl(ir::Graph *graph) const override;
-  bool InputAllTransferlayout(const Node *op_node) const;
+  bool AllInputIsTransferlayout(const Node *op_node) const;
   void PutTranferlayoutAfterOp(Node *op_node, ir::Graph *graph) const;
   void ElimTwoTranferlayout(Node *op_node,
                             ir::Graph *graph,
