@@ -98,7 +98,7 @@ void NotEqualRawKernel(const Context& ctx,
 }  // namespace phi
 
 #define PD_REGISTER_COMPARE_RAW_KERNEL(name, func)        \
-  \ PD_REGISTER_KERNEL(name##_raw,                        \
+    PD_REGISTER_KERNEL(name##_raw,                        \
                        CPU,                               \
                        ALL_LAYOUT,                        \
                        phi::func##RawKernel,              \
