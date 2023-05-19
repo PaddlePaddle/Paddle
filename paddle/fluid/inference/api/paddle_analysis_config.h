@@ -76,6 +76,34 @@ struct LiteNNAdapterConfig {
   LiteNNAdapterConfig& Disable();
 };
 
+struct XpuConfig {
+  // l3 related
+  size_t l3_size{0};
+  void* l3_ptr{nullptr};
+  size_t l3_autotune_size{0};
+
+  // stream related
+  void* stream{nullptr};
+  // enable_multi_stream?
+
+  // fc autotune related, only for Paddle-Lite now
+  int fc_autotune_level{0};
+  std::string fc_autotune_file;
+  bool fc_autotune_file_writeback{false};
+
+  // only for Paddle-Lite now
+  bool local_quant{true};
+  std::string gemm_precision_mode{"int16"};
+  int transformer_softmax_optimize_level{0};
+  float quant_gelu_out_threshold{0.f};
+
+  // adaptive_seqlen?
+
+  // only for PaddleInference now
+  int quant_post_dynamic_weight_bits{-1};
+  std::vector<std::string> quant_post_dynamic_op_types;
+};
+
 struct DistConfig {
   bool use_dist_model() const { return use_dist_model_; }
   void EnableDistModel(bool use_dist_model) {
@@ -296,9 +324,7 @@ struct PD_INFER_DECL AnalysisConfig {
   /// the recommended way. \param quant_post_dynamic_op_types Ops used in
   /// dynamic post quantization.
   ///
-  void SetXpuConfig(
-      int quant_post_dynamic_weight_bits = -1,
-      const std::vector<std::string>& quant_post_dynamic_op_types = {});
+  void SetXpuConfig(const XpuConfig& config);
 
   ///
   /// \brief configs of IPU
