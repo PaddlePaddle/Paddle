@@ -420,7 +420,7 @@ typename std::enable_if<!std::is_integral<T>::value>::type elementwise_add_to(
 
 template <typename T, typename DeviceContext>
 typename std::enable_if<std::is_integral<T>::value>::type elementwise_add_to(
-    phi::funcs::BlasT<DeviceContext, T>* blas,
+    phi::funcs::BlasT<DeviceContext, T>* blas UNUSED,
     size_t data_len,
     const T* in,
     T* out) {

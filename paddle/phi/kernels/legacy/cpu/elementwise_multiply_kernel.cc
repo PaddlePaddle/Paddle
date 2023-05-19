@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,28 +22,8 @@
 
 namespace phi {
 
-template <typename T, typename Context>
-void DivideKernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  const DenseTensor& y,
-                  DenseTensor* out) {
-  // allocate memory for out
-  dev_ctx.template Alloc<T>(out);
-  if (x.dims() == y.dims() && std::is_floating_point<T>::value) {
-    SameDimsElementwiseCompute<SameDimsDivideFunctor<CPUContext, T>>()(
-        dev_ctx, x, y, out);
-  } else {
-    auto x_dims = x.dims();
-    auto y_dims = y.dims();
-    if (x_dims.size() >= y_dims.size()) {
-      funcs::ElementwiseCompute<funcs::DivideFunctor<T>, T>(
-          dev_ctx, x, y, funcs::DivideFunctor<T>(), out, -1);
-    } else {
-      funcs::ElementwiseCompute<funcs::InverseDivideFunctor<T>, T>(
-          dev_ctx, x, y, funcs::InverseDivideFunctor<T>(), out, -1);
-    }
-  }
-}
+// Create the definition of Multiply
+DEFINE_CPU_ELEMENTWISE_OP(Multiply)
 
 }  // namespace phi
 
@@ -53,13 +33,15 @@ using complex128 = ::phi::dtype::complex<double>;
 // NOTE(chenweihang): using bfloat16 will cause redefine with xpu bfloat16
 // using bfloat16 = ::phi::dtype::bfloat16;
 
-PD_REGISTER_KERNEL(divide,
+PD_REGISTER_KERNEL(multiply_raw,
                    CPU,
                    ALL_LAYOUT,
-                   phi::DivideKernel,
+                   phi::MultiplyRawKernel,
                    float,
                    double,
                    int,
                    int64_t,
+                   bool,
                    complex64,
-                   complex128) {}
+                   complex128,
+                   phi::dtype::bfloat16) {}

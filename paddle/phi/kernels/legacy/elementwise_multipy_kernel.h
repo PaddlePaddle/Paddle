@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,14 +11,18 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include <iostream>
-#include <string>
 
-#include "paddle/phi/core/kernel_factory.h"
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/declarations.h"
+#pragma once
 
-int main(int argc UNUSED, char** argv UNUSED) {
-  std::cout << phi::KernelFactory::Instance() << std::endl;
-  return 0;
-}
+#include "paddle/phi/core/dense_tensor.h"
+
+namespace phi {
+
+template <typename T, typename Context>
+void MultiplyRawKernel(const Context& dev_ctx,
+                       const DenseTensor& x,
+                       const DenseTensor& y,
+                       int axis,
+                       DenseTensor* out);
+
+}  // namespace phi

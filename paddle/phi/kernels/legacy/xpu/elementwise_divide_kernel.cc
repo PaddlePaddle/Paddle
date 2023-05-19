@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,10 +25,11 @@
 namespace phi {
 
 template <typename T, typename Context>
-void DivideKernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  const DenseTensor& y,
-                  DenseTensor* out) {
+void DivideRawKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     const DenseTensor& y,
+                     int axis,
+                     DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   auto f = [](xpu::Context* ctx,
               const XPUType* x,
@@ -39,10 +40,14 @@ void DivideKernel(const Context& dev_ctx,
     return xpu::broadcast_div<XPUType>(ctx, x, y, z, xshape, yshape);
   };
 
-  XPUElementwise<T, XPUType>(dev_ctx, x, y, -1, out, f);
+  XPUElementwise<T, XPUType>(dev_ctx, x, y, axis, out, f);
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    divide, XPU, ALL_LAYOUT, phi::DivideKernel, phi::dtype::float16, float) {}
+PD_REGISTER_KERNEL(divide_raw,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::DivideRawKernel,
+                   phi::dtype::float16,
+                   float) {}
