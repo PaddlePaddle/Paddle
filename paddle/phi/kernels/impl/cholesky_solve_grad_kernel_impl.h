@@ -26,7 +26,6 @@
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/funcs/matrix_reduce.h"
 #include "paddle/phi/kernels/funcs/tril_triu_compute.h"
-#include "paddle/phi/kernels/legacy/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
 
 namespace phi {
@@ -85,7 +84,7 @@ void CholeskySolveGradKernel(const Context& dev_ctx,
   DenseTensor commonterm_conj = Conj<T, Context>(dev_ctx, commonterm);
   commonterm_conj = phi::TransposeLast2Dim<T>(dev_ctx, commonterm_conj);
 
-  phi::AddRawKernel<T>(dev_ctx, commonterm, commonterm_conj, -1, &commonterm);
+  phi::AddKernel<T>(dev_ctx, commonterm, commonterm_conj, &commonterm);
 
   DenseTensor dy_bst = phi::Empty<T, Context>(dev_ctx, y_bst_dims);
   if (upper) {

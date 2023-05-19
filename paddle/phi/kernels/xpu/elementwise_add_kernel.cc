@@ -24,7 +24,6 @@
 #include "paddle/phi/backends/xpu/xpu_info.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/elementwise_kernel_impl.h"
-#include "paddle/phi/kernels/legacy/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/xpu/elementwise.h"
 
 namespace phi {
