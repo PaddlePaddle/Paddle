@@ -78,12 +78,9 @@ void TransferLayoutGeneral(const Context& dev_ctx,
     std::vector<int> axis_nchw_nhwc = {0, 2, 3, 1};
     std::vector<int> axis_nhwc_nchw = {0, 3, 1, 2};
     auto* gpu_ctx = reinterpret_cast<const phi::GPUContext*>(&dev_ctx);
-    int64_t device_id = gpu_ctx->GetPlace().GetDeviceId();
-    const auto& prop = phi::backends::gpu::GetDeviceProperties(device_id);
-    int max_grid_y = prop.maxGridSize[1];
-    const int batch = src_dim[0];
-    int row_len = src_dim[1];
-    int col_len = src_dim[2] * src_dim[3];
+    const int64_t batch = src_dim[0];
+    int64_t row_len = src_dim[1];
+    int64_t col_len = src_dim[2] * src_dim[3];
     if (axis == axis_nhwc_nchw) {
       row_len = src_dim[1] * src_dim[2];
       col_len = src_dim[3];
@@ -94,7 +91,7 @@ void TransferLayoutGeneral(const Context& dev_ctx,
                             batch,
                             row_len,
                             col_len,
-                            max_grid_y);
+                            gpu_ctx);
       return;
     } else if (x.dtype() == phi::DataType::FLOAT32) {
       funcs::BatchTranspose(out->data<float>(),
@@ -102,7 +99,7 @@ void TransferLayoutGeneral(const Context& dev_ctx,
                             batch,
                             row_len,
                             col_len,
-                            max_grid_y);
+                            gpu_ctx);
       return;
     } else if (x.dtype() == phi::DataType::BFLOAT16) {
       funcs::BatchTranspose(out->data<phi::dtype::bfloat16>(),
@@ -110,7 +107,7 @@ void TransferLayoutGeneral(const Context& dev_ctx,
                             batch,
                             row_len,
                             col_len,
-                            max_grid_y);
+                            gpu_ctx);
       return;
     }
   }

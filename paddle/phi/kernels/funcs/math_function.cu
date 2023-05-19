@@ -91,8 +91,22 @@ __global__ void batch_transpose_kernel(T* output,
 }
 
 template <typename T>
-void BatchTranspose(
-    T* output, const T* input, int batch, int m, int n, int max_grid_y) {
+void BatchTranspose(T* output,
+                    const T* input,
+                    int64_t batch,
+                    int64_t m,
+                    int64_t n,
+                    const phi::GPUContext* dev_ctx) {
+  int64_t device_id = dev_ctx->GetPlace().GetDeviceId();
+  const auto& prop = phi::backends::gpu::GetDeviceProperties(device_id);
+  int max_grid_y = prop.maxGridSize[1];
+  int64_t input_num = batch * m * n;
+
+  if (input_num >= std::numeric_limits<int>::max()) {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Unsupported input size, batch: %ld,m: %ld, n: %ld", batch, m, n));
+  }
+
   dim3 logical_grid((n + 31) / 32, (m + 31) / 32, batch);
   dim3 block(32, 8);
   // we set swizzle to 2 default.
@@ -110,18 +124,22 @@ using bfloat16 = phi::dtype::bfloat16;
 
 template void BatchTranspose(float16* output,
                              const float16* input,
-                             int batch,
-                             int m,
-                             int n,
-                             int max_grid_y);
-template void BatchTranspose(
-    float* output, const float* input, int batch, int m, int n, int max_grid_y);
+                             int64_t batch,
+                             int64_t m,
+                             int64_t n,
+                             const phi::GPUContext* dev_ctx);
+template void BatchTranspose(float* output,
+                             const float* input,
+                             int64_t batch,
+                             int64_t m,
+                             int64_t n,
+                             const phi::GPUContext* dev_ctx);
 template void BatchTranspose(bfloat16* output,
                              const bfloat16* input,
-                             int batch,
-                             int m,
-                             int n,
-                             int max_grid_y);
+                             int64_t batch,
+                             int64_t m,
+                             int64_t n,
+                             const phi::GPUContext* dev_ctx);
 
 template struct SetConstant<phi::GPUContext, float16>;
 template struct SetConstant<phi::GPUContext, bfloat16>;
