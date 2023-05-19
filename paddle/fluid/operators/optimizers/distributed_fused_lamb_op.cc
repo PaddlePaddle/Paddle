@@ -230,4 +230,4 @@ PD_REGISTER_KERNEL(distributed_fused_lamb,
                    CPU,
                    ALL_LAYOUT,
                    phi::fusion::DistributedFusedLambKernel,
-                   float)
+                   float) {}
