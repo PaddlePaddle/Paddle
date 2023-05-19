@@ -613,9 +613,8 @@ class PipelineParallelWithInterleave(PipelineParallel):
             len(self.output_tensor_grads[virtual_pp_rank]) == 1
         ), f"output_tensor_grads is empty for virtual_pp_rank {virtual_pp_rank}"
 
-        assert len(self.input_tensors[virtual_pp_rank]) == (
-            len(self.output_tensors[virtual_pp_rank]) + 1
-        )
+        assert len(self.input_tensors[virtual_pp_rank]) > 0
+        assert len(self.output_tensors[virtual_pp_rank]) > 0
 
         input_tensor = self.input_tensors[virtual_pp_rank].pop(0)
         output_tensor = self.output_tensors[virtual_pp_rank].pop(0)
