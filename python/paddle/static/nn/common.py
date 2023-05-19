@@ -26,7 +26,7 @@ from paddle.common_ops_import import (
 )
 from paddle.fluid import core
 from paddle.fluid.data_feeder import check_dtype
-from paddle.fluid.framework import Variable, _non_static_mode, static_only
+from paddle.fluid.framework import Variable, in_dygraph_mode, static_only
 from paddle.fluid.layers.layer_function_generator import templatedoc
 from paddle.fluid.param_attr import ParamAttr
 from paddle.nn.initializer import Constant, Normal
@@ -1656,7 +1656,7 @@ def conv2d_transpose(
     if filter_size is None:
         if output_size is []:
             raise ValueError("output_size must be set when filter_size is None")
-        if not _non_static_mode():
+        if not in_dygraph_mode():
             if isinstance(output_size, Variable) or paddle.utils._contain_var(
                 output_size
             ):
@@ -2808,7 +2808,7 @@ def batch_norm(
     # variance and variance_out share the same memory
     variance_out = variance
 
-    if _non_static_mode():
+    if in_dygraph_mode():
         inputs_has_MomemtumTensor = False
         attrs_has_momentum = False
         tmp_tensor_type = core.eager.Tensor
@@ -3583,7 +3583,7 @@ def layer_norm(
             print(output.shape)  # [8, 32, 32]
     """
     assert (
-        _non_static_mode() is not True
+        in_dygraph_mode() is not True
     ), "please use LayerNorm instead of layer_norm in dygraph mode!"
     helper = LayerHelper('layer_norm', **locals())
     check_variable_and_dtype(
