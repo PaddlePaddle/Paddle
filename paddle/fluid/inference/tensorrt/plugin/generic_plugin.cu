@@ -360,14 +360,30 @@ bool GenericPlugin::supportsFormatCombination(
       return (in_out[pos].type == nvinfer1::DataType::kINT32 &&
               (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR));
     if (pos == 1)
-      return (in_out[pos].type == nvinfer1::DataType::kFLOAT) ||
-             ((isFp16Supported() &&
+      return (in_out[pos].type == nvinfer1::DataType::kFLOAT ||
+              (isFp16Supported() &&
                in_out[pos].type == nvinfer1::DataType::kHALF)) &&
-                 (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
+             (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
     // output
     if (pos == 2)
       return in_out[1].type == in_out[pos].type &&
              in_out[1].format == in_out[pos].format;
+  } else if (op_desc_.Type() == "instance_norm") {
+    if (pos == 0)
+      return (in_out[pos].type == nvinfer1::DataType::kFLOAT ||
+              (isFp16Supported() &&
+               in_out[pos].type == nvinfer1::DataType::kHALF)) &&
+             (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
+    if (pos == 1)
+      return (in_out[pos].type == nvinfer1::DataType::kFLOAT) &&
+             (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
+    if (pos == 2)
+      return in_out[1].type == in_out[pos].type &&
+             in_out[1].format == in_out[pos].format;
+    // output
+    if (pos == 3)
+      return in_out[0].type == in_out[pos].type &&
+             in_out[0].format == in_out[pos].format;
   } else {
     return (in_out[pos].type == nvinfer1::DataType::kFLOAT ||
             (isFp16Supported() &&
@@ -492,14 +508,14 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
   // TODO(inference): generic plugin do not support INT8 precision now.
   auto protoType2PhiType =
       [&](int proto_type,
-          nvinfer1::DataType nv_dtype) -> std::pair<phi::DataType, int> {
+          phi::DataType dtype) -> std::pair<phi::DataType, int> {
     if (proto_type ==
         static_cast<int>(framework::proto::VarType_Type::VarType_Type_FP16)) {
       return {phi::DataType::FLOAT16, sizeof(half)};
     } else if (proto_type ==
                static_cast<int>(
                    framework::proto::VarType_Type::VarType_Type_FP32)) {
-      if (isFp16Supported() && nv_dtype == nvinfer1::DataType::kHALF) {
+      if (isFp16Supported() && dtype == phi::DataType::FLOAT16) {
         return {phi::DataType::FLOAT16, sizeof(half)};
       } else {
         return {phi::DataType::FLOAT32, sizeof(float)};
@@ -542,8 +558,8 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
     int input_numel = 1;
     for (int k = 0; k < input_shape.size(); k++) input_numel *= input_shape[k];
 
-    auto data_type_and_size =
-        protoType2PhiType(inputs_data_type_[i], data_type);
+    auto data_type_and_size = protoType2PhiType(
+        inputs_data_type_[i], phi_kernels_[data_type]->InputAt(i).dtype);
 
     phi::DenseTensorMeta input_meta(data_type_and_size.first,
                                     phi::make_ddim(input_shape));
@@ -568,8 +584,8 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
     for (int k = 0; k < output_shape.size(); k++)
       output_numel *= output_shape[k];
 
-    auto data_type_and_size =
-        protoType2PhiType(inputs_data_type_[i], data_type);
+    auto data_type_and_size = protoType2PhiType(
+        inputs_data_type_[i], phi_kernels_[data_type]->OutputAt(i).dtype);
     phi::DenseTensorMeta output_meta(data_type_and_size.first,
                                      phi::make_ddim(output_shape));
     std::shared_ptr<phi::Allocation> output_alloc(
