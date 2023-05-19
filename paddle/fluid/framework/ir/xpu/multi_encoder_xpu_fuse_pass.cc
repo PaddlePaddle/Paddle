@@ -1206,7 +1206,9 @@ std::vector<PatternParam> MultiEncoderXPUFusePass::GeneratePatternParams()
   return std::vector<PatternParam>{
       // Params are arranged in alphabetic order
       {"gelu", "matmul_v2", "matmul", "matmul_v2", false, false, true},
-      {"gelu", "mul", "matmul", "matmul", false, true, true}};
+      {"gelu", "matmul_v2", "matmul_v2", "matmul_v2", false, true, true},
+      {"gelu", "mul", "matmul", "matmul", false, true, true},
+  };
 }
 
 }  // namespace ir

@@ -15,7 +15,7 @@
   optional : bias, branch, branch_max ,x_max
 
 - op : embedding_with_eltwise_add_xpu
-  args : (Tensor[] ids, Tensor[] tables, Tensor[] mask, int64_t padding_idx)
+  args : (Tensor[] ids, Tensor[] tables, Tensor mask, int64_t padding_idx)
   output: Tensor(out), Tensor(seq_lod), Tensor(max_seq_len)
   infer_meta :
     func: EmbeddingWithEltwiseAddXPUInferMeta
