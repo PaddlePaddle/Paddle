@@ -15,7 +15,7 @@
 import os
 import unittest
 
-from test_dist_base import TestDistBase
+from legacy_test.test_dist_base import TestDistBase
 
 import paddle
 from paddle import fluid

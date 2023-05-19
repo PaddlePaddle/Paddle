@@ -16,19 +16,9 @@ import re
 import sys
 
 import numpy as np
-<<<<<<< HEAD
+
 from eager_op_test import OpTest
-from spectral_op_np import (
-    fft_c2c,
-    fft_c2c_backward,
-    fft_c2r,
-    fft_c2r_backward,
-    fft_r2c,
-    fft_r2c_backward,
-)
-=======
 from spectral_op_np import fft_c2c, fft_c2r, fft_r2c
->>>>>>> d29c1f8e07d1330ed0128ac4dce7fab67654a0b5
 
 import paddle
 from paddle import _C_ops
