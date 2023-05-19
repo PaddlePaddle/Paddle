@@ -26,10 +26,7 @@ from .tracer import Tracer
 import logging
 from ..data_feeder import convert_dtype
 import warnings
-from ..framework import (
-    _get_paddle_place,
-    _in_eager_without_dygraph_check,
-)
+from ..framework import _get_paddle_place
 import paddle
 import warnings
 
@@ -125,7 +122,7 @@ def param_guard(parameters):
 
 def _convert_into_variable(tensor):
     """
-    Convert Varbase into Variable.
+    Convert Tensor into Variable.
     """
     if isinstance(tensor, core.eager.Tensor):
         # Check whether has been created before.
@@ -796,14 +793,9 @@ def grad(
                 var, core.eager.Tensor
             ), "no_grad_vars can only contains Tensor"
     else:
-        if _in_eager_without_dygraph_check():
-            raise AssertionError(
-                "no_grad_vars must be None, Tensor or list/tuple/set of Tensors"
-            )
-        else:
-            raise AssertionError(
-                "no_grad_vars must be None, Variable or list/tuple/set of Variables"
-            )
+        raise AssertionError(
+            "no_grad_vars must be None, Tensor or list/tuple/set of Tensors"
+        )
 
     assert isinstance(create_graph, bool), "create_graph must be True or False"
 
@@ -819,31 +811,16 @@ def grad(
     assert isinstance(only_inputs, bool), "only_inputs must be True or False"
     assert only_inputs, "only_inputs=False is not supported yet"
 
-    if _in_eager_without_dygraph_check():
-        return core.eager.run_partial_grad(
-            outputs,
-            inputs,
-            grad_outputs,
-            retain_graph,
-            create_graph,
-            only_inputs,
-            allow_unused,
-            no_grad_vars,
-        )
-    else:
-        place = core.Place()
-        place.set_place(framework._current_expected_place())
-        return core.dygraph_partial_grad(
-            inputs,
-            outputs,
-            grad_outputs,
-            no_grad_vars,
-            place,
-            create_graph,
-            retain_graph,
-            allow_unused,
-            only_inputs,
-        )
+    return core.eager.run_partial_grad(
+        outputs,
+        inputs,
+        grad_outputs,
+        retain_graph,
+        create_graph,
+        only_inputs,
+        allow_unused,
+        no_grad_vars,
+    )
 
 
 @framework.dygraph_only

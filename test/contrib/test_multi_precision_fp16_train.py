@@ -134,7 +134,7 @@ def train(use_pure_fp16=True, use_nesterov=False, optimizer=""):
                 learning_rate=0.001,
                 momentum=0.9,
                 use_nesterov=use_nesterov,
-                weight_decay=fluid.regularizer.L2Decay(1e-4),
+                weight_decay=paddle.regularizer.L2Decay(1e-4),
                 multi_precision=use_pure_fp16,
             )
 
@@ -178,7 +178,7 @@ def train(use_pure_fp16=True, use_nesterov=False, optimizer=""):
                 (loss,) = exe.run(
                     train_program, feed=feeder.feed(data), fetch_list=[sum_cost]
                 )
-                loss_v = loss[0] if isinstance(loss, np.ndarray) else loss
+                loss_v = float(loss) if isinstance(loss, np.ndarray) else loss
                 print(
                     'PassID {:1}, Train Batch ID {:04}, train loss {:2.4}'.format(
                         pass_id, batch_id + 1, float(loss_v)

@@ -30,7 +30,7 @@ void CrossEntropyWithSoftmaxGradCPUKernel(const CPUContext& dev_ctx,
                                           const DenseTensor& loss_grad,
                                           bool soft_label,
                                           bool use_softmax,
-                                          bool numeric_stable_mode,
+                                          bool numeric_stable_mode UNUSED,
                                           int ignore_index,
                                           int axis,
                                           DenseTensor* logits_grad) {

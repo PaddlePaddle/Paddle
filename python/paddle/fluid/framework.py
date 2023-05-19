@@ -83,7 +83,6 @@ class GlobalThreadLocal(threading.local):
         self._in_declarative_mode_ = False
         self._functional_dygraph_context_manager = None
         self._dygraph_tracer_ = _dygraph_tracer_
-        self._in_eager_mode_ = True
 
     def __str__(self):
         strings = []
@@ -95,7 +94,6 @@ class GlobalThreadLocal(threading.local):
             + str(self._functional_dygraph_context_manager)
         )
         strings.append("_dygraph_tracer_:" + str(self._dygraph_tracer_))
-        strings.append("_in_eager_mode_:" + str(self._in_eager_mode_))
         return "\n".join(strings)
 
     def __setattr__(self, name, val):
@@ -180,10 +178,6 @@ extra_op_attrs = {
 # to make sure in most case, we find new dygraph mode first with only one if statement.
 
 
-def _in_eager_without_dygraph_check():
-    return global_var._in_eager_mode_
-
-
 # FIXME(dev): We haven't fully verified eager mode on XPU et.al but
 # only GPU/CPU. Remove this after we improve this feature.
 _is_first_import_ = True
@@ -216,9 +210,7 @@ def in_dygraph_mode():
             print(paddle.in_dynamic_mode())  # True, Now we are in dynamic mode
 
     """
-    return (
-        global_var._dygraph_tracer_ is not None
-    ) and global_var._in_eager_mode_
+    return global_var._dygraph_tracer_ is not None
 
 
 def _non_static_mode():
@@ -595,21 +587,6 @@ def _current_expected_place():
             else:
                 warnings.warn(
                     "You are using XPU version Paddle, but your XPU device is not set properly. CPU device will be used by default."
-                )
-                _global_expected_place_ = core.CPUPlace()
-        elif core.is_compiled_with_custom_device("npu"):
-            # TODO(duanyanhui): Optimize DeviceManager and Return all expected places when device registered in DeviceManager is greater than 1.
-            try:
-                device_count = core.get_custom_device_count("npu")
-            except Exception as e:
-                device_count = 0
-            if device_count > 0:
-                _global_expected_place_ = core.CustomPlace(
-                    "npu", _custom_device_ids("npu")[0]
-                )
-            else:
-                warnings.warn(
-                    "You are using NPU version Paddle, but your NPU device is not set properly. CPU device will be used by default."
                 )
                 _global_expected_place_ = core.CPUPlace()
         else:
@@ -1645,8 +1622,6 @@ class Variable(metaclass=VariableMetaClass):
 
         def backward_hook_wrapper(dy):
             """call the backward hook in ."""
-            import numpy as np
-
             return hook(np.array(dy))
 
         def forward_hook_wrapper(x):
@@ -2501,7 +2476,7 @@ class Variable(metaclass=VariableMetaClass):
     def size(self):
         """
 
-        Returns the number of elements for current Variable, which is a int64 Variable with shape [1]
+        Returns the number of elements for current Variable, which is a int64 Variable with shape [] .
 
         Returns:
             Variable, the number of elements for current Variable
@@ -7456,9 +7431,12 @@ def device_guard(device=None):
         device, index = device.split(':')
         if device == 'cpu':
             raise ValueError("Should not set device id for cpu.")
-    if device not in ['cpu', 'gpu', 'xpu', 'npu', '', None]:
+    if (
+        device not in ['cpu', 'gpu', 'xpu', '', None]
+        and device not in core.get_all_custom_device_type()
+    ):
         raise ValueError(
-            "The Attr(device) should be 'cpu' 'npu' or 'gpu', and it can also be empty string or None "
+            "The Attr(device) should be 'cpu', 'xpu', 'gpu' or custom device, and it can also be empty string or None "
             "when there is no need to specify device. But received %s" % device
         )
     if index:

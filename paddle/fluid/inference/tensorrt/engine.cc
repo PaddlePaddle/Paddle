@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/common/data_type.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace paddle {
 namespace inference {
@@ -129,12 +130,60 @@ void TensorRTEngine::Execute(int batch_size,
                 phi::Stream(reinterpret_cast<phi::StreamId>(stream)));
     infer_context->setDeviceMemory(context_memory);
   }
+
+  // TODO(wilber): Is cudaGraph has conflict with memory sharing?
+  if (startup_with_cudagraph_ && !cudagraph_inited_) {
+    // Avoid capturing initialization calls by executing the enqueue function at
+    // least once before starting CUDA graph capture.
+    const auto ret = Enqueue(infer_context, buffers, batch_size, stream);
+    PADDLE_ENFORCE_EQ(
+        ret,
+        true,
+        phi::errors::PreconditionNotMet("Trt CudaGraph test run failed."));
+    cudaStreamSynchronize(stream);
+
+    cuda_graph_.BeginCapture(stream);
+    // The built TRT engine may contain operations that are not permitted under
+    // CUDA graph capture mode. When the stream is capturing, the call may
+    // return false if the current CUDA graph capture fails.
+    if (Enqueue(infer_context, buffers, batch_size, stream)) {
+      cuda_graph_.EndCapture(stream);
+      cudagraph_inited_ = true;
+    } else {
+      cuda_graph_.EndCaptureOnError(stream);
+      // Ensure any CUDA error has been cleaned up.
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaGetLastError());
+      LOG(WARNING) << "The built TensorRT engine contains operations that are "
+                      "not permitted under "
+                      "CUDA graph capture mode. The specified UseCudaGraph "
+                      "flag has been ignored. The inference will be "
+                      "launched without using CUDA graph launch.";
+      cudagraph_inited_ = false;
+    }
+    startup_with_cudagraph_ = false;
+  }
+
+  Enqueue(infer_context, buffers, batch_size, stream);
+}
+
+bool TensorRTEngine::Enqueue(nvinfer1::IExecutionContext *context,
+                             std::vector<void *> *buffers,
+                             int batch_size,
+                             cudaStream_t stream) {
+  if (cudagraph_inited_) {
+    VLOG(1) << "cuda_graph init success, so we will use cuda graph launch the "
+               "entire graph.";
+    return cuda_graph_.Launch(stream);
+  }
+
+  bool ret;
   if (!with_dynamic_shape()) {
-    infer_context->enqueue(batch_size, buffers->data(), stream, nullptr);
+    ret = context->enqueue(batch_size, buffers->data(), stream, nullptr);
   } else {
-    infer_context->enqueueV2(buffers->data(), stream, nullptr);
+    ret = context->enqueueV2(buffers->data(), stream, nullptr);
   }
   SetRuntimeBatch(batch_size);
+  return ret;
 }
 
 void TensorRTEngine::FreezeNetwork() {
@@ -156,12 +205,6 @@ void TensorRTEngine::FreezeNetwork() {
       nvinfer1::MemoryPoolType::kWORKSPACE, max_workspace_);
 #else
   infer_builder_config_->setMaxWorkspaceSize(max_workspace_);
-#endif
-
-#if IS_TRT_VERSION_GE(8500)
-  infer_builder_config_->setPreviewFeature(
-      nvinfer1::PreviewFeature::kFASTER_DYNAMIC_SHAPES_0805, true);
-#else
 #endif
 
   bool enable_fp16 = (precision_ == AnalysisConfig::Precision::kHalf);
@@ -325,7 +368,6 @@ void TensorRTEngine::FreezeNetwork() {
   infer_engine_.reset(infer_builder_->buildEngineWithConfig(
       *network(), *infer_builder_config_));
 #else
-  infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kSPARSE_WEIGHTS);
   ihost_memory_.reset(infer_builder_->buildSerializedNetwork(
       *network(), *infer_builder_config_));
   infer_ptr<nvinfer1::IRuntime> runtime(createInferRuntime(&logger_));

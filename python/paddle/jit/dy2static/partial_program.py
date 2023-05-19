@@ -259,7 +259,7 @@ class PartialProgramLayer:
                 return scope
             else:
                 for scope in self._scope_cache[program_id]:
-                    if scope._can_reuesd:
+                    if scope._can_reused:
                         return scope
                 scope = core.Scope()
                 self._scope_cache[program_id].append(scope)
@@ -913,27 +913,26 @@ class PartialProgramLayer:
             input_vars.append(var)
 
         # mapping from name(string) -> Tensor
-        out_varbase_map = {}
+        out_tensor_map = {}
 
         def create_out(var_id):
             var = self._outputs[var_id]
             assert isinstance(var, framework.Variable)
             var_desc = var.desc
-            varbase = None
 
-            if var_desc.name() in out_varbase_map:
-                return out_varbase_map[var_desc.name()]
+            if var_desc.name() in out_tensor_map:
+                return out_tensor_map[var_desc.name()]
 
-            var_base = core.eager.Tensor(
+            out = core.eager.Tensor(
                 var_desc.dtype(),
                 var_desc.shape(),
                 var_desc.name(),
                 var_desc.type(),
                 False,
             )
-            var_base.stop_gradient = var.stop_gradient
-            out_varbase_map[var_desc.name()] = var_base
-            return var_base
+            out.stop_gradient = var.stop_gradient
+            out_tensor_map[var_desc.name()] = out
+            return out
 
         # Create Tensor to receive output data.
         out_vars = list(map(create_out, self._outputs.var_ids))

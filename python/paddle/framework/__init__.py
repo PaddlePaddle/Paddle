@@ -24,8 +24,8 @@ from ..fluid.core import CPUPlace  # noqa: F401
 from ..fluid.core import IPUPlace  # noqa: F401
 from ..fluid.core import CUDAPlace  # noqa: F401
 from ..fluid.core import CUDAPinnedPlace  # noqa: F401
-from ..fluid.core import NPUPlace  # noqa: F401
 from ..fluid.core import CustomPlace  # noqa: F401
+from ..fluid.core import XPUPlace  # noqa: F401
 
 from ..fluid import core  # noqa: F401
 from ..fluid.dygraph import base, to_variable

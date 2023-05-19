@@ -51,7 +51,6 @@ class TestPadOp(OpTest):
         }
         self.prim_op_type = "prim"
         self.public_python_api = pad_wrapper
-        self.enable_cinn = False
 
     def get_dtype(self):
         return np.float64
