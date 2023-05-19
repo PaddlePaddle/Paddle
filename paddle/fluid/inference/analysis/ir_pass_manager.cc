@@ -310,7 +310,7 @@ void IRPassManager::CreatePasses(Argument *argument,
       }
       bool use_fc_padding = !fc_mkldnn_pass && argument->use_fc_padding();
       pass->Set("use_fc_padding", new bool(use_fc_padding));
-    } else if (pass_name == "fused_multi_transformer_xpu_quant_pass") {
+    } else if (pass_name == "fused_multi_transformer_xpu_pass") {
       auto op_types = argument->xpu_quant_post_dynamic_op_types();
       if (std::count(op_types.begin(),
                      op_types.end(),

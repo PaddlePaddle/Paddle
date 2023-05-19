@@ -36,13 +36,10 @@ class TrtConvertRollTest(TrtLayerAutoScanTest):
         self.trt_param.workspace_size = 1 << 30
 
         def generate_input1(attrs: List[Dict[str, Any]]):
-            return np.ones([1, 96, 96, 128]).astype(np.float32)
-            # return np.ones([1, 56, 56, 192]).astype(np.float32)
+            return np.ones([1, 56, 56, 192]).astype(np.float32)
 
-        # for axis in [[1, 2]]:
-        #     for shifts in [[-1, -1], [-3, -3]]:
         for axis in [[1, 2]]:
-            for shifts in [[4, 2]]:
+            for shifts in [[-1, -1], [-3, -3]]:
                 dics = [
                     {
                         "axis": axis,
@@ -78,25 +75,14 @@ class TrtConvertRollTest(TrtLayerAutoScanTest):
     ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
-                "input_data": [1, 96, 96, 128]
+                "input_data": [1, 56, 56, 192]
             }
             self.dynamic_shape.max_input_shape = {
-                "input_data": [8, 96, 96, 128]
+                "input_data": [8, 56, 56, 192]
             }
             self.dynamic_shape.opt_input_shape = {
-                "input_data": [4, 96, 96, 128]
+                "input_data": [4, 56, 56, 192]
             }
-
-        # def generate_dynamic_shape(attrs):
-        #     self.dynamic_shape.min_input_shape = {
-        #         "input_data": [1, 56, 56, 192]
-        #     }
-        #     self.dynamic_shape.max_input_shape = {
-        #         "input_data": [8, 56, 56, 192]
-        #     }
-        #     self.dynamic_shape.opt_input_shape = {
-        #         "input_data": [4, 56, 56, 192]
-        #     }
 
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}

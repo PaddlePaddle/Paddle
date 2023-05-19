@@ -77,8 +77,6 @@ class RollOpConverter : public OpConverter {
       fill_layer1->setInput(1, *start2);
       fill_layer1->setInput(2, *step);
       auto* index_tensor1 = fill_layer1->getOutput(0);
-      LOG(INFO) << "index_tensor0" << index_tensor0->getDimensions().d[0];
-      LOG(INFO) << "index_tensor1" << index_tensor1->getDimensions().d[0];
       std::vector<nvinfer1::ITensor*> itensors;
       itensors.push_back(index_tensor0);
       itensors.push_back(index_tensor1);
