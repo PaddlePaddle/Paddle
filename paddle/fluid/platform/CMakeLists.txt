@@ -344,7 +344,7 @@ if(NOT APPLE AND NOT WIN32)
     cc_test(
       device_code_test
       SRCS device_code_test.cc
-      DEPS phi_backends lod_tensor)
+      DEPS phi lod_tensor)
   endif()
 endif()
 

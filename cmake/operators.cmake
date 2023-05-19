@@ -112,7 +112,7 @@ function(register_mkldnn_kernel TARGET)
                         "${multiValueArgs}" ${ARGN})
 
   set(mkldnn_cc_srcs)
-  set(op_common_deps operator op_registry math_function layer
+  set(op_common_deps operator op_registry phi layer
                      common_infer_shape_functions)
   foreach(mkldnn_src ${register_mkldnn_kernel_SRCS})
     if(${mkldnn_src} MATCHES ".*_mkldnn_op.cc$")
