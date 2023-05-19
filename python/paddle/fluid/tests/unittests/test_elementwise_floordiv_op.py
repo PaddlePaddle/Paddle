@@ -129,7 +129,6 @@ class TestFloorDivideOp(unittest.TestCase):
                 'float32',
                 'float64',
             ):
-                print(dtype, "pos floor div")
                 np_x = np.array([2, 3, 8, 7]).astype(dtype)
                 np_y = np.array([1, 5, 3, 3]).astype(dtype)
                 x = paddle.to_tensor(np_x)
@@ -157,7 +156,6 @@ class TestFloorDivideOp(unittest.TestCase):
                 'float32',
                 'float64',
             ):
-                print(dtype, "neg floor div")
                 np_x = -np.array([2, 3, 8, 7]).astype(dtype)
                 np_y = np.array([1, 5, 3, 3]).astype(dtype)
                 x = paddle.to_tensor(np_x)
@@ -177,7 +175,6 @@ class TestFloorDivideOp(unittest.TestCase):
             self.assertEqual((np_z == z_expected).all(), True)
 
             for dtype in ('float32', 'float64', 'float16'):
-                print(dtype)
                 try:
                     # divide by zero
                     np_x = np.array([2])
@@ -190,7 +187,7 @@ class TestFloorDivideOp(unittest.TestCase):
                     z_expected = np.floor_divide(np_x, np_y)
                     self.assertEqual((np_z == z_expected).all(), True)
                 except Exception as e:
-                    print(dtype, e)
+                    pass
 
             # divide by zero
             np_x = np.array([2])
@@ -211,11 +208,10 @@ class TestFloorDivideOp(unittest.TestCase):
             try:
                 z = x // y
             except Exception as e:
-                print("Error: Divide by zero encounter in floor_divide\n")
+                pass
 
             # divide by zero
             for dtype in ("uint8", 'int8', 'int16', 'int32', 'int64'):
-                print(dtype)
                 np_x = np.array([2])
                 np_y = np.array([0, 0, 0])
                 x = paddle.to_tensor(np_x, dtype=dtype)
@@ -223,7 +219,7 @@ class TestFloorDivideOp(unittest.TestCase):
                 try:
                     z = x // y
                 except Exception as e:
-                    print("Error: Divide by zero encounter in floor_divide\n")
+                    pass
 
         paddle.enable_static()
 
