@@ -233,7 +233,7 @@ void WarpctcKernel(const Context& dev_ctx,
                    const paddle::optional<DenseTensor>& logits_length,
                    const paddle::optional<DenseTensor>& labels_length,
                    int blank,
-                   bool norm_by_times,
+                   bool norm_by_times UNUSED,
                    DenseTensor* loss,
                    DenseTensor* warpctcgrad) {
   size_t num_sequences, sequence_width, max_sequence_length;

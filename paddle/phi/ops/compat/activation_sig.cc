@@ -18,7 +18,7 @@ namespace phi {
 
 #define DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(func_name, op_name, attrs) \
   KernelSignature func_name##GradOpArgumentMapping(               \
-      const ArgumentMappingContext& ctx) {                        \
+      const ArgumentMappingContext& ctx UNUSED) {                 \
     return KernelSignature(                                       \
         op_name "_grad", {"X", "Out@GRAD"}, {attrs}, {"X@GRAD"}); \
   }
@@ -42,20 +42,23 @@ namespace phi {
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(HardTanh, "hardtanh", "t_min" comma "t_max");
 DEFINE_ACT_GRAD_DEPX_OP_ARGMAP(Mish, "mish", "threshold");
 
-KernelSignature SwishGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature SwishGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("swish_grad", {"X", "Out@GRAD"}, {}, {"X@GRAD"});
 }
 
-KernelSignature Relu6GradOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature Relu6GradOpArgumentMapping(
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("relu6_grad", {"Out", "Out@GRAD"}, {}, {"X@GRAD"});
 }
 
 KernelSignature HardSwishGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("hardswish_grad", {"X", "Out@GRAD"}, {}, {"X@GRAD"});
 }
 
-KernelSignature HardSwishOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature HardSwishOpArgumentMapping(
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("hardswish", {"X"}, {}, {"Out"});
 }
 

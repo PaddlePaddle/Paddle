@@ -29,7 +29,6 @@ from .framework import (
     _non_static_mode,
     cpu_places,
     _current_expected_place,
-    _in_eager_without_dygraph_check,
 )
 from .executor import global_scope
 from .data_feeder import DataFeeder, BatchedTensorProvider
@@ -663,12 +662,9 @@ class DygraphGeneratorLoader(DataLoaderBase):
 
     def __next__(self):
         try:
-            if _in_eager_without_dygraph_check():
-                return core.eager.read_next_tensor_list(
-                    self._reader.read_next_list()[0]
-                )
-            else:
-                return self._reader.read_next_var_list()
+            return core.eager.read_next_tensor_list(
+                self._reader.read_next_list()[0]
+            )
         except StopIteration:
             self._reset()
             raise

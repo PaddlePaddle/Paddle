@@ -351,7 +351,7 @@ struct EnforceNotMet : public std::exception {
   // Complete error message
   // e.g. InvalidArgumentError: ***
   std::string err_str_;
-  // Simple errror message used when no C++ stack and python compile stack
+  // Simple error message used when no C++ stack and python compile stack
   // e.g. (InvalidArgument) ***
   std::string simple_err_str_;
 };

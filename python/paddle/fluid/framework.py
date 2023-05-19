@@ -83,7 +83,6 @@ class GlobalThreadLocal(threading.local):
         self._in_declarative_mode_ = False
         self._functional_dygraph_context_manager = None
         self._dygraph_tracer_ = _dygraph_tracer_
-        self._in_eager_mode_ = True
 
     def __str__(self):
         strings = []
@@ -95,7 +94,6 @@ class GlobalThreadLocal(threading.local):
             + str(self._functional_dygraph_context_manager)
         )
         strings.append("_dygraph_tracer_:" + str(self._dygraph_tracer_))
-        strings.append("_in_eager_mode_:" + str(self._in_eager_mode_))
         return "\n".join(strings)
 
     def __setattr__(self, name, val):
@@ -180,10 +178,6 @@ extra_op_attrs = {
 # to make sure in most case, we find new dygraph mode first with only one if statement.
 
 
-def _in_eager_without_dygraph_check():
-    return global_var._in_eager_mode_
-
-
 # FIXME(dev): We haven't fully verified eager mode on XPU et.al but
 # only GPU/CPU. Remove this after we improve this feature.
 _is_first_import_ = True
@@ -216,9 +210,7 @@ def in_dygraph_mode():
             print(paddle.in_dynamic_mode())  # True, Now we are in dynamic mode
 
     """
-    return (
-        global_var._dygraph_tracer_ is not None
-    ) and global_var._in_eager_mode_
+    return global_var._dygraph_tracer_ is not None
 
 
 def _non_static_mode():
@@ -2484,7 +2476,7 @@ class Variable(metaclass=VariableMetaClass):
     def size(self):
         """
 
-        Returns the number of elements for current Variable, which is a int64 Variable with shape [1]
+        Returns the number of elements for current Variable, which is a int64 Variable with shape [] .
 
         Returns:
             Variable, the number of elements for current Variable
@@ -7439,9 +7431,12 @@ def device_guard(device=None):
         device, index = device.split(':')
         if device == 'cpu':
             raise ValueError("Should not set device id for cpu.")
-    if device not in ['cpu', 'gpu', 'xpu', '', None]:
+    if (
+        device not in ['cpu', 'gpu', 'xpu', '', None]
+        and device not in core.get_all_custom_device_type()
+    ):
         raise ValueError(
-            "The Attr(device) should be 'cpu' or 'gpu', and it can also be empty string or None "
+            "The Attr(device) should be 'cpu', 'xpu', 'gpu' or custom device, and it can also be empty string or None "
             "when there is no need to specify device. But received %s" % device
         )
     if index:

@@ -28,6 +28,7 @@
 #include "paddle/fluid/framework/ir/subgraph_detector.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/inference/analysis/helper.h"
+#include "paddle/fluid/inference/analysis/ir_passes/subgraph_util.h"
 #include "paddle/fluid/inference/analysis/passes/convert_to_mixed_precision.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
@@ -523,7 +524,6 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   op_desc->SetAttr("allow_build_at_runtime", allow_build_at_runtime);
   op_desc->SetAttr("shape_range_info_path", shape_range_info_path);
   op_desc->SetAttr("use_inspector", Get<bool>("use_inspector"));
-  op_desc->SetAttr("use_sparse_weights", Get<bool>("use_sparse_weights"));
   op_desc->SetAttr("model_precision", Get<int>("model_precision"));
   op_desc->SetAttr("with_dynamic_shape", with_dynamic_shape);
 
@@ -664,7 +664,6 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   trt_engine->SetUseDLA(Get<bool>("trt_use_dla"));
   trt_engine->SetDLACore(Get<int>("trt_dla_core"));
   trt_engine->SetUseInspector(Get<bool>("use_inspector"));
-  trt_engine->SetUseSparseWeights(Get<bool>("use_sparse_weights"));
   trt_engine->SetWithErnie(
       graph->Has(framework::ir::kEmbEltwiseLayernormPass) &&
       graph->Has(framework::ir::kMultiheadMatmulPass));
