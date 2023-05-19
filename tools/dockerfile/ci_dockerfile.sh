@@ -43,7 +43,7 @@ function make_ubuntu_dockerfile(){
 
 function make_ubuntu_trt7_dockerfile(){
   dockerfile_name="Dockerfile.cuda102_cudnn8_gcc82_ubuntu16"
-  sed "s/<baseimg>/10.2-cudnn8-devel-ubuntu16.04/g" ./Dockerfile.ubuntu >${dockerfile_name}
+  sed "s/<baseimg>/nvidia/cuda:12.0.1-devel-ubuntu20.04/g" ./Dockerfile.coverage >${dockerfile_name}
   sed -i "s#liblzma-dev#liblzma-dev openmpi-bin openmpi-doc libopenmpi-dev#g" ${dockerfile_name} 
   dockerfile_line=$(wc -l ${dockerfile_name}|awk '{print $1}')
   sed -i "${dockerfile_line}i RUN apt remove -y libcudnn* --allow-change-held-packages \&\& \
