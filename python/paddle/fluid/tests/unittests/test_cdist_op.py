@@ -30,275 +30,108 @@ def ref_cdist(x, y, p=2.0):
 class TestCdistAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(1024)
+        self.x = np.random.rand(10, 20).astype('float32')
+        self.y = np.random.rand(11, 20).astype('float32')
+        self.p = 2.0
+        self.compute_mode = "use_mm_for_euclid_dist_if_necessary"
+        self.init_input()
         self.place = (
             paddle.CUDAPlace(0)
             if paddle.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
 
+    def init_input(self):
+        pass
+
     def test_static_api(self):
         paddle.enable_static()
-
-        # case 1
         with paddle.static.program_guard(paddle.static.Program()):
-            x_np = np.random.rand(10, 20).astype('float32')
-            y_np = np.random.rand(11, 20).astype('float32')
-            p = 2.0
-            x = paddle.static.data('x', x_np.shape, dtype=x_np.dtype)
-            y = paddle.static.data('y', y_np.shape, dtype=y_np.dtype)
-            out = paddle.cdist(x, y, p)
+            x = paddle.static.data('x', self.x.shape, dtype=self.x.dtype)
+            y = paddle.static.data('y', self.y.shape, dtype=self.y.dtype)
+            out = paddle.cdist(x, y, self.p, self.compute_mode)
             exe = paddle.static.Executor(self.place)
-            res = exe.run(feed={'x': x_np, 'y': y_np}, fetch_list=[out])
-            out_ref = ref_cdist(x_np, y_np, p)
-            self.assertEqual(np.allclose(out_ref, res[0]), True)
-
-        # case 2
-        with paddle.static.program_guard(paddle.static.Program()):
-            x_np = np.random.rand(10, 20).astype('float32')
-            y_np = np.random.rand(11, 20).astype('float32')
-            p = 0
-            x = paddle.static.data('x', x_np.shape, dtype=x_np.dtype)
-            y = paddle.static.data('y', y_np.shape, dtype=y_np.dtype)
-            out = paddle.cdist(x, y, p)
-            exe = paddle.static.Executor(self.place)
-            res = exe.run(feed={'x': x_np, 'y': y_np}, fetch_list=[out])
-            out_ref = ref_cdist(x_np, y_np, p)
-            self.assertEqual(np.allclose(out_ref, res[0]), True)
-
-        # case 3
-        with paddle.static.program_guard(paddle.static.Program()):
-            x_np = np.random.rand(10, 20).astype('float32')
-            y_np = np.random.rand(11, 20).astype('float32')
-            p = 1.0
-            x = paddle.static.data('x', x_np.shape, dtype=x_np.dtype)
-            y = paddle.static.data('y', y_np.shape, dtype=y_np.dtype)
-            out = paddle.cdist(x, y, p)
-            exe = paddle.static.Executor(self.place)
-            res = exe.run(feed={'x': x_np, 'y': y_np}, fetch_list=[out])
-            out_ref = ref_cdist(x_np, y_np, p)
-            self.assertEqual(np.allclose(out_ref, res[0]), True)
-
-        # case 4
-        with paddle.static.program_guard(paddle.static.Program()):
-            x_np = np.random.rand(10, 20).astype('float32')
-            y_np = np.random.rand(11, 20).astype('float32')
-            p = 3.0
-            x = paddle.static.data('x', x_np.shape, dtype=x_np.dtype)
-            y = paddle.static.data('y', y_np.shape, dtype=y_np.dtype)
-            out = paddle.cdist(x, y, p)
-            exe = paddle.static.Executor(self.place)
-            res = exe.run(feed={'x': x_np, 'y': y_np}, fetch_list=[out])
-            out_ref = ref_cdist(x_np, y_np, p)
-            self.assertEqual(np.allclose(out_ref, res[0]), True)
-
-        # case 5
-        with paddle.static.program_guard(paddle.static.Program()):
-            x_np = np.random.rand(10, 20).astype('float32')
-            y_np = np.random.rand(11, 20).astype('float32')
-            p = 1.5
-            x = paddle.static.data('x', x_np.shape, dtype=x_np.dtype)
-            y = paddle.static.data('y', y_np.shape, dtype=y_np.dtype)
-            out = paddle.cdist(x, y, p)
-            exe = paddle.static.Executor(self.place)
-            res = exe.run(feed={'x': x_np, 'y': y_np}, fetch_list=[out])
-            out_ref = ref_cdist(x_np, y_np, p)
-            self.assertEqual(np.allclose(out_ref, res[0]), True)
-
-        # case 6
-        with paddle.static.program_guard(paddle.static.Program()):
-            x_np = np.random.rand(10, 20).astype('float32')
-            y_np = np.random.rand(11, 20).astype('float32')
-            p = 2.5
-            x = paddle.static.data('x', x_np.shape, dtype=x_np.dtype)
-            y = paddle.static.data('y', y_np.shape, dtype=y_np.dtype)
-            out = paddle.cdist(x, y, p)
-            exe = paddle.static.Executor(self.place)
-            res = exe.run(feed={'x': x_np, 'y': y_np}, fetch_list=[out])
-            out_ref = ref_cdist(x_np, y_np, p)
-            self.assertEqual(np.allclose(out_ref, res[0]), True)
-
-        # case 7
-        with paddle.static.program_guard(paddle.static.Program()):
-            x_np = np.random.rand(10, 20).astype('float32')
-            y_np = np.random.rand(11, 20).astype('float32')
-            p = 2
-            x = paddle.static.data('x', x_np.shape, dtype=x_np.dtype)
-            y = paddle.static.data('y', y_np.shape, dtype=y_np.dtype)
-            out = paddle.cdist(x, y, p, 'use_mm_for_euclid_dist')
-            exe = paddle.static.Executor(self.place)
-            res = exe.run(feed={'x': x_np, 'y': y_np}, fetch_list=[out])
-            out_ref = ref_cdist(x_np, y_np, p)
-            self.assertEqual(np.allclose(out_ref, res[0]), True)
-
-        # case 8
-        with paddle.static.program_guard(paddle.static.Program()):
-            x_np = np.random.rand(50, 10).astype('float32')
-            y_np = np.random.rand(40, 10).astype('float32')
-            p = 2
-            x = paddle.static.data('x', x_np.shape, dtype=x_np.dtype)
-            y = paddle.static.data('y', y_np.shape, dtype=y_np.dtype)
-            out = paddle.cdist(x, y, p, 'donot_use_mm_for_euclid_dist')
-            exe = paddle.static.Executor(self.place)
-            res = exe.run(feed={'x': x_np, 'y': y_np}, fetch_list=[out])
-            out_ref = ref_cdist(x_np, y_np, p)
-            self.assertEqual(np.allclose(out_ref, res[0]), True)
-
-        # case 9
-        with paddle.static.program_guard(paddle.static.Program()):
-            x_np = np.random.rand(500, 100).astype('float64')
-            y_np = np.random.rand(400, 100).astype('float64')
-            p = 2
-            x = paddle.static.data('x', x_np.shape, dtype=x_np.dtype)
-            y = paddle.static.data('y', y_np.shape, dtype=y_np.dtype)
-            out = paddle.cdist(x, y, p)
-            exe = paddle.static.Executor(self.place)
-            res = exe.run(feed={'x': x_np, 'y': y_np}, fetch_list=[out])
-            out_ref = ref_cdist(x_np, y_np, p)
-            self.assertEqual(np.allclose(out_ref, res[0]), True)
-
-        # case 10
-        with paddle.static.program_guard(paddle.static.Program()):
-            x_np = np.random.rand(4, 500, 100).astype('float64')
-            y_np = np.random.rand(4, 400, 100).astype('float64')
-            p = 2
-            x = paddle.static.data('x', x_np.shape, dtype=x_np.dtype)
-            y = paddle.static.data('y', y_np.shape, dtype=y_np.dtype)
-            out = paddle.cdist(x, y, p)
-            exe = paddle.static.Executor(self.place)
-            res = exe.run(feed={'x': x_np, 'y': y_np}, fetch_list=[out])
-            out_ref = ref_cdist(x_np, y_np, p)
-            self.assertEqual(np.allclose(out_ref, res[0]), True)
-
-        # case 11
-        with paddle.static.program_guard(paddle.static.Program()):
-            x_np = np.random.rand(3, 4, 500, 100).astype('float64')
-            y_np = np.random.rand(3, 4, 400, 100).astype('float64')
-            p = 2
-            x = paddle.static.data('x', x_np.shape, dtype=x_np.dtype)
-            y = paddle.static.data('y', y_np.shape, dtype=y_np.dtype)
-            out = paddle.cdist(x, y, p)
-            exe = paddle.static.Executor(self.place)
-            res = exe.run(feed={'x': x_np, 'y': y_np}, fetch_list=[out])
-            out_ref = ref_cdist(x_np, y_np, p)
-            self.assertEqual(np.allclose(out_ref, res[0]), True)
-
-        # case 12
-        with paddle.static.program_guard(paddle.static.Program()):
-            x_np = np.random.rand(3, 4, 500, 100).astype('float64')
-            y_np = np.random.rand(3, 4, 400, 100).astype('float64')
-            p = 3
-            x = paddle.static.data('x', x_np.shape, dtype=x_np.dtype)
-            y = paddle.static.data('y', y_np.shape, dtype=y_np.dtype)
-            out = paddle.cdist(x, y, p)
-            exe = paddle.static.Executor(self.place)
-            res = exe.run(feed={'x': x_np, 'y': y_np}, fetch_list=[out])
-            out_ref = ref_cdist(x_np, y_np, p)
+            res = exe.run(feed={'x': self.x, 'y': self.y}, fetch_list=[out])
+            out_ref = ref_cdist(self.x, self.y, self.p)
             self.assertEqual(np.allclose(out_ref, res[0]), True)
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
-
-        # case 1
-        x_np = np.random.rand(10, 20).astype('float32')
-        y_np = np.random.rand(11, 20).astype('float32')
-        p = 2
-        x = paddle.to_tensor(x_np)
-        y = paddle.to_tensor(y_np)
-        out = paddle.cdist(x, y, p)
-        out_ref = ref_cdist(x_np, y_np, p)
+        x = paddle.to_tensor(self.x)
+        y = paddle.to_tensor(self.y)
+        out = paddle.cdist(x, y, self.p, self.compute_mode)
+        out_ref = ref_cdist(self.x, self.y, self.p)
         self.assertEqual(np.allclose(out_ref, out.numpy()), True)
-
-        # case 2
-        x_np = np.random.rand(10, 20).astype('float32')
-        y_np = np.random.rand(11, 20).astype('float32')
-        p = 0
-        x = paddle.to_tensor(x_np)
-        y = paddle.to_tensor(y_np)
-        out = paddle.cdist(x, y, p)
-        out_ref = ref_cdist(x_np, y_np, p)
-        self.assertEqual(np.allclose(out_ref, out.numpy()), True)
-
-        # case 3
-        x_np = np.random.rand(10, 20).astype('float32')
-        y_np = np.random.rand(11, 20).astype('float32')
-        p = 1.5
-        x = paddle.to_tensor(x_np)
-        y = paddle.to_tensor(y_np)
-        out = paddle.cdist(x, y, p)
-        out_ref = ref_cdist(x_np, y_np, p)
-        self.assertEqual(np.allclose(out_ref, out.numpy()), True)
-
-        # case 4
-        x_np = np.random.rand(10, 20).astype('float32')
-        y_np = np.random.rand(11, 20).astype('float32')
-        p = float('inf')
-        x = paddle.to_tensor(x_np)
-        y = paddle.to_tensor(y_np)
-        out = paddle.cdist(x, y, p)
-        out_ref = ref_cdist(x_np, y_np, p)
-        self.assertEqual(np.allclose(out_ref, out.numpy()), True)
-
-        # case 5
-        x_np = np.random.rand(10, 20).astype('float32')
-        y_np = np.random.rand(11, 20).astype('float32')
-        p = 2
-        x = paddle.to_tensor(x_np)
-        y = paddle.to_tensor(y_np)
-        out = paddle.cdist(x, y, p, 'use_mm_for_euclid_dist')
-        out_ref = ref_cdist(x_np, y_np, p)
-        self.assertEqual(np.allclose(out_ref, out.numpy()), True)
-
-        # case 6
-        x_np = np.random.rand(10, 20).astype('float32')
-        y_np = np.random.rand(11, 20).astype('float32')
-        p = 2
-        x = paddle.to_tensor(x_np)
-        y = paddle.to_tensor(y_np)
-        out = paddle.cdist(x, y, p, 'donot_use_mm_for_euclid_dist')
-        out_ref = ref_cdist(x_np, y_np, p)
-        self.assertEqual(np.allclose(out_ref, out.numpy()), True)
-
-        # case 7
-        x_np = np.random.rand(100, 200).astype('float64')
-        y_np = np.random.rand(110, 200).astype('float64')
-        p = 2
-        x = paddle.to_tensor(x_np)
-        y = paddle.to_tensor(y_np)
-        out = paddle.cdist(x, y, p)
-        out_ref = ref_cdist(x_np, y_np, p)
-        self.assertEqual(np.allclose(out_ref, out.numpy()), True)
-
-        # case 7
-        x_np = np.random.rand(100, 200).astype('float64')
-        y_np = np.random.rand(110, 200).astype('float64')
-        p = 3
-        x = paddle.to_tensor(x_np)
-        y = paddle.to_tensor(y_np)
-        out = paddle.cdist(x, y, p)
-        out_ref = ref_cdist(x_np, y_np, p)
-        self.assertEqual(np.allclose(out_ref, out.numpy()), True)
-
-        # case 8
-        x_np = np.random.rand(3, 100, 200).astype('float64')
-        y_np = np.random.rand(3, 110, 200).astype('float64')
-        p = 2
-        x = paddle.to_tensor(x_np)
-        y = paddle.to_tensor(y_np)
-        out = paddle.cdist(x, y, p)
-        out_ref = ref_cdist(x_np, y_np, p)
-        self.assertEqual(np.allclose(out_ref, out.numpy()), True)
-
-        # case 9
-        x_np = np.random.rand(2, 3, 100, 200).astype('float64')
-        y_np = np.random.rand(2, 3, 110, 200).astype('float64')
-        p = 3
-        x = paddle.to_tensor(x_np)
-        y = paddle.to_tensor(y_np)
-        out = paddle.cdist(x, y, p)
-        out_ref = ref_cdist(x_np, y_np, p)
-        self.assertEqual(np.allclose(out_ref, out.numpy()), True)
-
         paddle.enable_static()
+
+
+class TestCdistAPICase1(TestCdistAPI):
+    def init_input(self):
+        self.p = 0
+
+
+class TestCdistAPICase2(TestCdistAPI):
+    def init_input(self):
+        self.p = 1.0
+
+
+class TestCdistAPICase3(TestCdistAPI):
+    def init_input(self):
+        self.p = 3.0
+
+
+class TestCdistAPICase4(TestCdistAPI):
+    def init_input(self):
+        self.p = 1.5
+
+
+class TestCdistAPICase5(TestCdistAPI):
+    def init_input(self):
+        self.p = 2.5
+
+
+class TestCdistAPICase6(TestCdistAPI):
+    def init_input(self):
+        self.p = float('inf')
+
+
+class TestCdistAPICase7(TestCdistAPI):
+    def init_input(self):
+        self.x = np.random.rand(50, 20).astype('float64')
+        self.y = np.random.rand(40, 20).astype('float64')
+        self.compute_mode = "use_mm_for_euclid_dist"
+
+
+class TestCdistAPICase8(TestCdistAPI):
+    def init_input(self):
+        self.x = np.random.rand(50, 20).astype('float64')
+        self.y = np.random.rand(40, 20).astype('float64')
+        self.compute_mode = "donot_use_mm_for_euclid_dist"
+
+
+class TestCdistAPICase9(TestCdistAPI):
+    def init_input(self):
+        self.x = np.random.rand(500, 100).astype('float64')
+        self.y = np.random.rand(400, 100).astype('float64')
+
+
+class TestCdistAPICase10(TestCdistAPI):
+    def init_input(self):
+        self.x = np.random.rand(3, 500, 100).astype('float64')
+        self.y = np.random.rand(3, 400, 100).astype('float64')
+
+
+class TestCdistAPICase11(TestCdistAPI):
+    def init_input(self):
+        self.x = np.random.rand(3, 4, 500, 100).astype('float64')
+        self.y = np.random.rand(3, 4, 400, 100).astype('float64')
+
+
+class TestCdistAPICase12(TestCdistAPI):
+    def init_input(self):
+        self.x = np.random.rand(3, 4, 500, 100).astype('float64')
+        self.y = np.random.rand(3, 4, 400, 100).astype('float64')
+        self.p = 3.0
 
 
 if __name__ == '__main__':
