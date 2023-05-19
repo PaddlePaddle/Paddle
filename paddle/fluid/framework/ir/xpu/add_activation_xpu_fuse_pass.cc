@@ -97,7 +97,8 @@ AddActXPUPattern::AddActXPUPattern(PDPattern* pattern,
                    ->assert_var_not_persistable()
                    ->AsInput();
   auto ele_out = pattern->NewNode(ele_out_repr())
-                     ->assert_is_op_output("elementwise_add", "Out");
+                     ->assert_is_op_output("elementwise_add", "Out")
+                     ->assert_has_n_outputs(1);
   ele_add->LinksFrom({ele_x, ele_y}).LinksTo({ele_out});
   ele_out->assert_is_op_input(act_type_, "X");
   auto act = pattern->NewNode(act_repr())->assert_is_op(act_type_);
