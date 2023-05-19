@@ -88,10 +88,8 @@ MultiEncoderXPUAdaptiveSeqlenPattern::MultiEncoderXPUAdaptiveSeqlenPattern(
 
 }  // namespace patterns
 
-void MultiEncoderXPUAdaptiveSeqlenFusePass::ApplyImpl(ir::Graph* graph) const {
-  PADDLE_ENFORCE_NOT_NULL(
-      graph, platform::errors::PreconditionNotMet("graph should not be null."));
-  Init(name_scope_, graph);
+int MultiEncoderXPUAdaptiveSeqlenFusePass::ApplyAdaptiveSeqlenPassV1(
+    ir::Graph* graph) const {
   GraphPatternDetector gpd;
   patterns::MultiEncoderXPUAdaptiveSeqlenPattern pattern(gpd.mutable_pattern(),
                                                          name_scope_);
@@ -141,6 +139,16 @@ void MultiEncoderXPUAdaptiveSeqlenFusePass::ApplyImpl(ir::Graph* graph) const {
   };
 
   gpd(graph, handler);
+  return found_subgraph_count;
+}
+
+void MultiEncoderXPUAdaptiveSeqlenFusePass::ApplyImpl(ir::Graph* graph) const {
+  PADDLE_ENFORCE_NOT_NULL(
+      graph, platform::errors::PreconditionNotMet("graph should not be null."));
+  Init(name_scope_, graph);
+
+  int found_subgraph_count = ApplyAdaptiveSeqlenPassV1(graph);
+
   AddStatis(found_subgraph_count);
 }
 

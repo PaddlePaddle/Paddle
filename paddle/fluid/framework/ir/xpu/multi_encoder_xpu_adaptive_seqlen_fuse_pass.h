@@ -31,47 +31,54 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-/*
-case0 before:
-support adaptive seq len for bert/ernie
-    inpu_var*   mask_var**
-        |             |
-        |             |
-  embedding_xpu     matmul
-        |             |
-        |             |
-    layer_norm       scale
-        |             |
-        |             |
-        |           stack
-        \            /
-         \          /
-      multi_encoder_xpu
-              |
-              |
-          out_var*
-
-case0 after:
-      inpu_var*   mask_var**
-        \             /
-         \           /
-        embedding_xpu
-        /           \
-       /             \
-embedding_out_var*  seq_lod_var*
-      |               |
-      |               |
-  layer_norm          |
-      \               /
-       \             /
-      multi_encoder_xpu
-            |
-            |
-         out_var*
-*/
+// support adaptive seq len for bert/ernie
 class MultiEncoderXPUAdaptiveSeqlenFusePass : public FusePassBase {
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
+
+ private:
+  /*
+  adaptive seqlen V1, before:
+
+      inpu_var*   mask_var**
+          |             |
+          |             |
+    embedding_xpu     matmul
+          |             |
+          |             |
+      layer_norm       scale
+          |             |
+          |             |
+          |           stack
+          \            /
+           \          /
+        multi_encoder_xpu
+                |
+                |
+            out_var*
+
+  case0 after:
+
+        inpu_var*   mask_var**
+          \             /
+           \           /
+          embedding_xpu
+          /           \
+         /             \
+  embedding_out_var*  seq_lod_var*
+        |               |
+        |               |
+    layer_norm          |
+        \               /
+         \             /
+        multi_encoder_xpu
+              |
+              |
+           out_var*
+  */
+  int ApplyAdaptiveSeqlenPassV1(ir::Graph* graph) const;
+
+  // void ApplyAdaptiveSeqlenPassV1(ir::Graph* graph) const;
 
  private:
   const std::string name_scope_{"multi_encoder_xpu_adaptive_seqlen_fuse_pass"};
