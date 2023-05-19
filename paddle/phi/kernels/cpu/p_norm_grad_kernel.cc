@@ -51,7 +51,7 @@ void PNormGradKernel(const Context& dev_ctx,
                      float porder,
                      int axis,
                      float epsilon,
-                     bool keepdim,
+                     bool keepdim UNUSED,
                      bool asvector,
                      DenseTensor* x_grad) {
   auto* in_x = &x;
