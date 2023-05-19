@@ -5763,7 +5763,7 @@ def ldexp(x, y, name=None):
             #        [4., 16., 48.])
 
     """
-    two = paddle.to_tensor(2, dtype='int64')
+    two = paddle.to_tensor(2, dtype='int32')
 
     if isinstance(y, float) or (
         isinstance(y, (paddle.Tensor, Variable))
