@@ -1312,8 +1312,9 @@ void batch_norm_grad(const Tensor& x,
     out_grad_data = cast<T>(out_grad, phi::DataType::FLOAT32);
   }
   auto x_dims = x_data.dims();
-  const int C = (data_layout_ == DataLayout::kNCHW ? x_dims[1]
-                                                   : x_dims[x_dims.size() - 1]);
+  int C = 1;
+  C = (data_layout_ == DataLayout::kNCHW ? x_dims[1]
+                                         : x_dims[x_dims.size() - 1]);
   int nume = 1;
   for (auto i = 0; i < x_dims.size(); i++) {
     nume = nume * x_dims[i];
