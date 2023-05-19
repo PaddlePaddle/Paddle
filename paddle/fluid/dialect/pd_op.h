@@ -25,10 +25,10 @@ namespace dialect {
   class className : public ir::Op<className> {            \
    public:                                                \
     static const char *name() { return OPNAME(op_name); } \
-    static const char **attributes_name_;                 \
+    static const char **attributes_name;                  \
     static constexpr uint32_t attributes_num = 0;         \
   };                                                      \
-  const char **op_name##Op::attributes_name_ = nullptr;
+  const char **className::attributes_name = nullptr;
 
 REIGSTER_EMPTY_OP(conv2d, Conv2DOp);
 REIGSTER_EMPTY_OP(feed, FeedOp);
