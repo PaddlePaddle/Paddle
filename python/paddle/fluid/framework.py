@@ -589,7 +589,7 @@ def _current_expected_place():
                     "You are using XPU version Paddle, but your XPU device is not set properly. CPU device will be used by default."
                 )
                 _global_expected_place_ = core.CPUPlace()
-        elif len(core.get_all_custom_device_type()):
+        elif len(core.get_all_custom_device_type()) > 0:
             dev_type = core.get_all_custom_device_type()[0]
             try:
                 device_count = core.get_custom_device_count(dev_type)
