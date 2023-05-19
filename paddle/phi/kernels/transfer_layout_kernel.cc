@@ -58,10 +58,35 @@ template <typename Context>
 void TransferLayoutGeneral(const Context& dev_ctx,
                            const DenseTensor& x,
                            DataLayout dst_layout,
+                           DataLayout src_layout,
                            DenseTensor* out) {
   auto src_dim = x.dims();
 
-  auto axis = GetAxis(x.layout(), dst_layout);
+  auto axis = GetAxis(src_layout, dst_layout);
+
+  std::vector<int64_t> dst_dim;
+  dst_dim.resize(axis.size());
+  for (size_t i = 0; i < axis.size(); i++) {
+    dst_dim[i] = src_dim[axis[i]];
+  }
+
+  out->Resize(phi::make_ddim(dst_dim));
+  dev_ctx.Alloc(out, x.dtype());
+
+  PD_VISIT_ALL_TYPES(x.dtype(), "CastDataLayout", ([&] {
+                       CastDataLayout<data_t, Context>(dev_ctx, x, axis, out);
+                     }));
+}
+
+template <typename Context>
+void TransferLayoutKernelGPU(const Context& dev_ctx,
+                          const DenseTensor& x,
+                          int src_layout,
+                          int dst_layout,
+                          DenseTensor* out) {
+  auto src_dim = x.dims();
+
+  auto axis = GetAxis(static_cast<DataLayout>(src_layout), static_cast<DataLayout>(dst_layout));
 
   std::vector<int64_t> dst_dim;
   dst_dim.resize(axis.size());
@@ -74,28 +99,36 @@ void TransferLayoutGeneral(const Context& dev_ctx,
 
   // In GPU fp16 model, we will insert many transfer_layout ops in
   // conv2d_fusion_layout_transfer_pass, so we optimize this kernel on GPU
-  if (std::is_same<Context, phi::GPUContext>::value) {
-    std::vector<int> axis_nchw_nhwc = {0, 2, 3, 1};
-    std::vector<int> axis_nhwc_nchw = {0, 3, 1, 2};
-    const int batch = src_dim[0];
-    int row_len = src_dim[1];
-    int col_len = src_dim[2] * src_dim[3];
-    if (axis == axis_nhwc_nchw) {
-      row_len = src_dim[1] * src_dim[2];
-      col_len = src_dim[3];
-    }
-    if (x.dtype() == phi::DataType::FLOAT16) {
-      funcs::BatchTranspose(out->data<phi::dtype::float16>(),
-                            x.data<phi::dtype::float16>(),
-                            batch,
-                            row_len,
-                            col_len);
-      return;
-    } else if (x.dtype() == phi::DataType::FLOAT32) {
-      funcs::BatchTranspose(
-          out->data<float>(), x.data<float>(), batch, row_len, col_len);
-      return;
-    }
+  std::vector<int> axis_nchw_nhwc = {0, 2, 3, 1};
+  std::vector<int> axis_nhwc_nchw = {0, 3, 1, 2};
+  //int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
+  int64_t device_id = dev_ctx.GetPlace().GetDeviceId();
+  const auto& prop = phi::backends::gpu::GetDeviceProperties(device_id);
+  int max_grid_y = prop.maxGridSize[1];
+
+  const int batch = src_dim[0];
+  int row_len = src_dim[1];
+  int col_len = src_dim[2] * src_dim[3];
+  if (axis == axis_nhwc_nchw) {
+    row_len = src_dim[1] * src_dim[2];
+    col_len = src_dim[3];
+  }
+  if (x.dtype() == phi::DataType::FLOAT16) {
+    funcs::BatchTranspose(out->data<phi::dtype::float16>(),
+                          x.data<phi::dtype::float16>(),
+                          batch,
+                          row_len,
+                          col_len,
+                          max_grid_y);
+    return;
+  } else if (x.dtype() == phi::DataType::FLOAT32) {
+    funcs::BatchTranspose(
+        out->data<float>(), x.data<float>(), batch, row_len, col_len, max_grid_y);
+    return;
+  } else if (x.dtype() == phi::DataType::BFLOAT16) {
+    funcs::BatchTranspose(
+        out->data<phi::dtype::bfloat16>(), x.data<phi::dtype::bfloat16>(), batch, row_len, col_len, max_grid_y);
+    return;
   }
 
   PD_VISIT_ALL_TYPES(x.dtype(), "CastDataLayout", ([&] {
@@ -163,7 +196,8 @@ void TransferLayoutMKLDNN(const Context& dev_ctx,
         errors::PreconditionNotMet(
             "No layout transform needed between two oneDNN OPKernels."));
   } else {
-    TransferLayoutGeneral<Context>(dev_ctx, x, dst_layout, out);
+    //TransferLayoutGeneral<Context>(dev_ctx, x, dst_layout, out);
+    TransferLayoutGeneral<Context>(dev_ctx, x, dst_layout, src_layout, out);
   }
 }
 #endif
@@ -182,8 +216,8 @@ void TransferLayoutKernel(const Context& dev_ctx,
            << " -> " << static_cast<DataLayout>(dst_layout);
 
   VLOG_IF(10, x.initialized()) << "TransDataLayout from " << x.layout();
-  if (x.layout() == static_cast<DataLayout>(dst_layout)) {
-    VLOG(10) << "No need to transform, already is " << x.layout();
+  if (x.layout() == static_cast<DataLayout>(dst_layout) && 0) {
+    std::cout << "No need to transform, already is " << x.layout() << std::endl;
     Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out);
     return;
   }
@@ -195,8 +229,11 @@ void TransferLayoutKernel(const Context& dev_ctx,
                                 static_cast<DataLayout>(dst_layout),
                                 out);
 #else
-  TransferLayoutGeneral<Context>(
-      dev_ctx, x, static_cast<DataLayout>(dst_layout), out);
+  TransferLayoutGeneral<Context>(dev_ctx,
+                                  x,
+                                  static_cast<DataLayout>(dst_layout),
+                                  static_cast<DataLayout>(src_layout),
+                                  out);
 #endif
 }
 
@@ -210,5 +247,5 @@ PD_REGISTER_KERNEL_FOR_ALL_DTYPE(transfer_layout,
 PD_REGISTER_KERNEL_FOR_ALL_DTYPE(transfer_layout,
                                  GPU,
                                  ALL_LAYOUT,
-                                 phi::TransferLayoutKernel<phi::GPUContext>) {}
+                                 phi::TransferLayoutKernelGPU<phi::GPUContext>) {}
 #endif
