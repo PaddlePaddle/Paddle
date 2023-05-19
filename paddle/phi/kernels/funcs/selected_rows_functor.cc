@@ -190,7 +190,7 @@ template struct SelectedRowsAddTensor<phi::CPUContext, double>;
 
 template <typename T>
 struct SelectedRowsAddTo<phi::CPUContext, T> {
-  void operator()(const phi::CPUContext& context,
+  void operator()(const phi::CPUContext& context UNUSED,
                   const phi::SelectedRows& input1,
                   const int64_t input2_offset,
                   phi::SelectedRows* input2) {
