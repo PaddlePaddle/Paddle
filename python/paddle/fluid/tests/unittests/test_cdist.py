@@ -22,17 +22,24 @@ from paddle.fluid import core
 
 
 def cdist(x, y, p):
-    new_y = np.concatenate([y] * x.shape[-2], axis=-2)
-    new_x = np.repeat(x, y.shape[-2], axis=-2)
+    x_shape = x.shape
+    y_shape = y.shape
+    if len(x_shape) > len(y_shape):
+        y_shape = [1] * (len(x_shape) - len(y_shape)) + y_shape
+    elif len(y_shape) > len(x_shape):
+        x_shape = [1] * (len(y_shape) - len(x_shape)) + x_shape
+    resize_shape = ()
+    for i in range(len(x.shape[:-2])):
+        resize_shape = resize_shape + (max(x_shape[i], y_shape[i]),)
+    new_y = np.concatenate([y] * x_shape[-2], axis=-2)
+    new_x = np.repeat(x, y_shape[-2], axis=-2)
     if p == 0:
         loss = np.sum(np.abs((new_x - new_y) ** p), axis=-1)
     elif p == float('inf'):
         loss = np.max(np.abs(new_x - new_y), axis=-1)
-    elif p == float('-inf'):
-        loss = np.min(np.abs(new_x - new_y), axis=-1)
     else:
         loss = np.sum(np.abs((new_x - new_y) ** p), axis=-1) ** (1 / p)
-    loss = loss.reshape((*x.shape[:-2], x.shape[-2], y.shape[-2]))
+    loss = loss.reshape((*resize_shape, x_shape[-2], y_shape[-2]))
     return loss
 
 
@@ -44,6 +51,7 @@ class TestDistAPI(unittest.TestCase):
 
     def test_static(self):
         self.init_data_type()
+        paddle.enable_static()
         main_program = fluid.Program()
         startup_program = fluid.Program()
 
@@ -70,11 +78,11 @@ class TestDistAPI(unittest.TestCase):
                 fetch_list=[result],
             )
             np.testing.assert_allclose(cdist(x_i, y_i, p), out[0], rtol=1e-05)
-
-    def test_order(self):
-        self.init_data_type()
         paddle.disable_static()
-        for p in [0, 2, float('inf'), float('-inf')]:
+
+    def test_p_order(self):
+        self.init_data_type()
+        for p in [0, 2, float('inf')]:
             a_i = np.random.random((2, 3, 4, 5)).astype(self.data_type)
             b_i = np.random.random((2, 3, 1, 5)).astype(self.data_type)
             a = paddle.to_tensor(a_i)
@@ -83,18 +91,28 @@ class TestDistAPI(unittest.TestCase):
             np.testing.assert_allclose(
                 cdist(a_i, b_i, p), c.numpy(), rtol=1e-05
             )
-        paddle.enable_static()
 
-    def test_grad_x(self):
-        paddle.disable_static()
+    def test_shape(self):
+        self.init_data_type()
+        p = 2
+        for x_shape, y_shape in [[(5, 6, 2), (1, 5, 2)]]:
+            a_i = np.random.random(x_shape).astype(self.data_type)
+            b_i = np.random.random(y_shape).astype(self.data_type)
+            a = paddle.to_tensor(a_i)
+            b = paddle.to_tensor(b_i)
+            c = paddle.cdist(a, b, p)
+            np.testing.assert_allclose(
+                cdist(a_i, b_i, p), c.numpy(), rtol=1e-05
+            )
+
+    def test_grad(self):
         a = paddle.rand([2, 2, 3, 2])
         b = paddle.rand([2, 2, 4, 2])
         a.stop_gradient = False
         c = paddle.cdist(a, b, 2)
         c.backward()
-        paddle.enable_static()
 
 
 if __name__ == '__main__':
-    paddle.enable_static()
+
     unittest.main()

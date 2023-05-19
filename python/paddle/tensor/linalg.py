@@ -3386,22 +3386,40 @@ def cdist(x, y, p=2, name=None):
     check_variable_and_dtype(y, 'dtype', ['float32', 'float64'], 'cdist')
     x_shape = x.shape
     y_shape = y.shape
+
+    if len(x_shape) > len(y_shape):
+        y_shape = [1] * (len(x_shape) - len(y_shape)) + y_shape
+    elif len(y_shape) > len(x_shape):
+        x_shape = [1] * (len(y_shape) - len(x_shape)) + x_shape
+
+    if p < 0:
+        raise ValueError('p only should be non-negative value.')
+
     if len(x_shape) < 2 or len(y_shape) < 2:
-        raise ValueError('The Input(x) and Input(y) should be 2-D tensor.')
-    if x_shape[:-2] != y_shape[:-2] or x_shape[-1] != y_shape[-1]:
         raise ValueError(
-            "Input(x) shape[:-2] should be same as Input(y) shape[:-2] "
-            "and Input(x) shape[-1] shoule be same as Input(y) shape[-1]"
+            'The Input(x) and Input(y) should be at least 2-D tensor.'
         )
+    if x_shape[-1] != y_shape[-1]:
+        raise ValueError(
+            "The shape[-1] of Input(x) shape should be same as Input(y) "
+            f"but got Input(x)'s shape[-1] {x_shape[-1]} and Input(y)'s shape[-1] {y_shape[-1]}"
+        )
+    resize_shape = ()
+    for i in range(len(x_shape[:-2])):
+        if x_shape[i] != y_shape[i] and (x_shape[i] != 1 and y_shape[i] != 1):
+            raise ValueError(
+                f"The shape of Input(x) should be same as Input(y) at dimension {i}"
+                f"but got Input(x) {x_shape[i]} and Input(y) shape[-1] {y_shape[i]}"
+            )
+        resize_shape = resize_shape + (max(x_shape[i], y_shape[i]),)
+
     y = paddle.concat([y] * x_shape[-2], axis=-2)
     x = paddle.repeat_interleave(x, y_shape[-2], axis=-2)
     if p == 0:
-        loss = ((x - y) ** p).abs().sum(axis=-1)
+        out = ((x - y) ** p).abs().sum(axis=-1)
     elif p == float('inf'):
-        loss = paddle.max((x - y).abs(), axis=-1)
-    elif p == float('-inf'):
-        loss = paddle.min((x - y).abs(), axis=-1)
+        out = paddle.max((x - y).abs(), axis=-1)
     else:
-        loss = ((x - y) ** p).abs().sum(axis=-1) ** (1 / p)
-    loss = loss.reshape((*x_shape[:-2], x_shape[-2], y_shape[-2]))
-    return loss
+        out = ((x - y) ** p).abs().sum(axis=-1) ** (1 / p)
+    out = out.reshape((*resize_shape, x_shape[-2], y_shape[-2]))
+    return out
