@@ -586,12 +586,9 @@ class PipelineParallelWithInterleave(PipelineParallel):
         assert hasattr(self, 'output_tensors')
         if not self._forward_only:
             assert hasattr(self, 'output_tensor_grads')
-
-        if self.is_pipeline_first_stage():
-            if len(self.input_tensors[virtual_pp_rank]) == len(
-                self.output_tensors[virtual_pp_rank]
-            ):
-                self.input_tensors[virtual_pp_rank].append(None)
+        assert len(self.input_tensors[virtual_pp_rank]) == (
+            len(self.output_tensors[virtual_pp_rank]) + 1
+        )
         input_tensor = self.input_tensors[virtual_pp_rank][-1]
         output_tensor = self._forward_step(input_tensor, virtual_pp_rank)
         self.output_tensors[virtual_pp_rank].append(output_tensor)
@@ -615,6 +612,8 @@ class PipelineParallelWithInterleave(PipelineParallel):
         assert (
             len(self.output_tensor_grads[virtual_pp_rank]) > 0
         ), f"output_tensor_grads is empty for virtual_pp_rank {virtual_pp_rank}"
+
+        assert len(self.input_tensors) == len(self.output_tensors)
 
         input_tensor = self.input_tensors[virtual_pp_rank].pop(0)
         output_tensor = self.output_tensors[virtual_pp_rank].pop(0)
@@ -784,15 +783,12 @@ class PipelineParallelWithInterleave(PipelineParallel):
                 recv_prev=recv_prev,
                 recv_next=recv_next,
             )
-
-            if recv_prev:
-                self.input_tensors[next_forward_virtual_pp_rank].append(
-                    input_tensor
-                )
-            if recv_next:
-                self.output_tensor_grads[next_backward_virtual_pp_rank].append(
-                    output_tensor_grad
-                )
+            self.input_tensors[next_forward_virtual_pp_rank].append(
+                input_tensor
+            )
+            self.output_tensor_grads[next_backward_virtual_pp_rank].append(
+                output_tensor_grad
+            )
 
         # remaining backward steps
         if not forward_only:
