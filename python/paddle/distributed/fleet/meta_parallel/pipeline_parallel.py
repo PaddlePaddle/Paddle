@@ -610,10 +610,12 @@ class PipelineParallelWithInterleave(PipelineParallel):
         assert hasattr(self, 'output_tensor_grads')
 
         assert (
-            len(self.output_tensor_grads[virtual_pp_rank]) > 0
+            len(self.output_tensor_grads[virtual_pp_rank]) == 1
         ), f"output_tensor_grads is empty for virtual_pp_rank {virtual_pp_rank}"
 
-        assert len(self.input_tensors) == len(self.output_tensors)
+        assert len(self.input_tensors[virtual_pp_rank]) == (
+            len(self.output_tensors[virtual_pp_rank]) + 1
+        )
 
         input_tensor = self.input_tensors[virtual_pp_rank].pop(0)
         output_tensor = self.output_tensors[virtual_pp_rank].pop(0)
@@ -705,6 +707,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
                     recv_next=recv_next,
                 )
                 # output_tensor_grad is not none if recv_next
+                # append output_tensor_grad no matter none or not
                 self.output_tensor_grads[self.num_model_chunks - 1].append(
                     output_tensor_grad
                 )
@@ -712,6 +715,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
                 input_tensor = p2p.send_forward_recv_forward(
                     output_tensor, recv_prev=recv_prev
                 )
+            # append input_tensor no matter none or not
             self.input_tensors[next_virtual_pp_rank].append(input_tensor)
 
         # run 1f1b steady steps
@@ -783,9 +787,11 @@ class PipelineParallelWithInterleave(PipelineParallel):
                 recv_prev=recv_prev,
                 recv_next=recv_next,
             )
+            # append input_tensor no matter none or not
             self.input_tensors[next_forward_virtual_pp_rank].append(
                 input_tensor
             )
+            # append output_tensor_grad no matter none or not
             self.output_tensor_grads[next_backward_virtual_pp_rank].append(
                 output_tensor_grad
             )
@@ -808,7 +814,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
                 if micro_step == (num_steps - 1):
                     recv_next = False
-
+                # append output_tensor_grad no matter none or not
                 self.output_tensor_grads[next_backward_virtual_pp_rank].append(
                     p2p.send_backward_recv_backward(
                         input_tensor_grad, recv_next=recv_next
