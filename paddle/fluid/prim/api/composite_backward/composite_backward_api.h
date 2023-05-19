@@ -1212,17 +1212,22 @@ void batch_norm_grad(const Tensor& x,
   if (out_grad.dtype() == phi::DataType::FLOAT16) {
     out_grad_data = cast<T>(out_grad, phi::DataType::FLOAT32);
   }
-  auto x_dims = x_data.dims();
-  const int C = (data_layout_ == DataLayout::kNCHW ? x_dims[1]
-                                                   : x_dims[x_dims.size() - 1]);
+
+  int C = 1;
+  if (data_layout_ == DataLayout::kNCHW) {
+    C = x_data.dims()[1];
+  } else {
+    C = x_data.dims()[x_data.dims().size() - 1];
+  }
+
   int nume = 1;
-  for (auto i = 0; i < x_dims.size(); i++) {
-    nume = nume * x_dims[i];
+  for (auto i = 0; i < x_data.dims().size(); i++) {
+    nume = nume * x_data.dims()[i];
   }
 
   const int nhw = nume / C;
 
-  if (x_dims.size() == 2 && data_layout_ == DataLayout::kNCHW) {
+  if (x_data.dims().size() == 2 && data_layout_ == DataLayout::kNCHW) {
     data_layout_ = DataLayout::kNHWC;
   }
 
