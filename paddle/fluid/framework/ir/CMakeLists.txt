@@ -456,7 +456,6 @@ if(WITH_MKLDNN)
       math_function
       im2col
       vol2col
-      batch_norm_op
       generated_op
       activation_op
       elementwise_add_op
