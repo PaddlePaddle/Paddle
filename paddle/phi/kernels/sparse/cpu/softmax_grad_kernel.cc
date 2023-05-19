@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/cpu_vec.h"
+#include "paddle/phi/kernels/funcs/sparse/softmax.h"
 #include "paddle/phi/kernels/softmax_grad_kernel.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
 
@@ -89,63 +90,6 @@ void SoftmaxCsrGradKernel(const Context& dev_ctx,
       }));
 }
 
-template <typename IntT>
-std::vector<IntT> GetOffsets(const DenseTensor& indices,
-                             const std::vector<IntT>& sizes,
-                             const int dim) {
-  auto ndim = indices.dims()[0];
-  auto nnz = indices.dims()[1];
-  std::vector<IntT> offsets(nnz);
-  std::vector<IntT> strides(ndim, 1);
-  auto indices_ptr = indices.data<IntT>();
-
-  if (ndim > 1) {
-    for (IntT i = ndim - 2; i >= 0; i--) {
-      strides[i] = strides[i + 1] * sizes[i + 1];
-    }
-  }
-
-  for (int i = 0; i < nnz; i++) {
-    IntT acc = 0;
-    for (int j = 0; j < ndim; j++) {
-      auto indices_cur = indices_ptr + j * nnz + i;
-      auto stride = strides[j];
-      if (j != dim) {
-        acc += stride * (*indices_cur);
-      }
-    }
-    offsets[i] = acc;
-  }
-
-  return offsets;
-}
-
-template <typename IntT>
-void GetPoolsSoftmaxGrad(const DenseTensor& indices,
-                         const std::vector<IntT>& sizes,
-                         const int dim,
-                         std::map<IntT, std::vector<IntT>>* pools) {
-  auto ndim = indices.dims()[0];
-  auto nnz = indices.dims()[1];
-  std::vector<IntT> strides(ndim, 1);
-
-  if (ndim > 1) {
-    for (IntT i = ndim - 2; i >= 0; i--) {
-      strides[i] = strides[i + 1] * (i + 1 == dim ? 1 : sizes[i + 1]);
-    }
-  }
-
-  auto* indices_data = indices.data<IntT>();
-  for (IntT i = 0; i < nnz; i++) {
-    IntT pool_index = 0;
-    for (IntT j = 0; j < ndim; j++) {
-      if (j == dim) continue;
-      pool_index += strides[j] * indices_data[j * nnz + i];
-    }
-    pools->at(pool_index).push_back(i);
-  }
-}
-
 template <typename T, typename IntT, typename Context>
 void SoftmaxCooGradCPUKernel(const Context& dev_ctx,
                              const SparseCooTensor& out,
@@ -173,8 +117,8 @@ void SoftmaxCooGradCPUKernel(const Context& dev_ctx,
   values->set_meta(out_values.meta());
   dev_ctx.template Alloc<T>(values);
 
-  auto out_offsets = GetOffsets(out_indices, sizes, -1);
-  auto grad_offsets = GetOffsets(grad_indices, sizes, -1);
+  auto out_offsets = phi::funcs::sparse::GetOffsets(out_indices, sizes, -1);
+  auto grad_offsets = phi::funcs::sparse::GetOffsets(grad_indices, sizes, -1);
 
   int dim = axis < 0 ? out_dims.size() + axis : axis;
 
@@ -243,7 +187,7 @@ void SoftmaxCooGradCPUKernel(const Context& dev_ctx,
   DenseTensor grad_values_2(grad_values);
   grad_values_2.Resize(phi::make_ddim({nnz, nvalues}));
   std::map<IntT, std::vector<IntT>> pools;
-  GetPoolsSoftmaxGrad(out_indices, sizes, dim, &pools);
+  phi::funcs::sparse::GetPoolsSoftmax(out_indices, sizes, dim, &pools);
 
   for (size_t p = 0; p < pools.size(); p++) {
     auto pool_indices = pools[p];

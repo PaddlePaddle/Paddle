@@ -30,6 +30,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/full_kernel.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/sparse/softmax.cu.h"
 #include "paddle/phi/kernels/softmax_grad_kernel.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
 
@@ -115,166 +116,6 @@ void SoftmaxCsrGradKernel(const Context& dev_ctx,
             row_number,
             total_row_number);
       }));
-}
-
-// Number of threads in a block given an input size up to MAX_BLOCK_SIZE
-static int GetNumThreads(int nElem) {
-#if defined(PADLDE_WITH_ROCM)
-  int threadSizes[5] = {16, 32, 64, 128, 256};
-#else
-  int threadSizes[5] = {32, 64, 128, 256, 512};
-#endif
-  for (int i = 0; i != 5; ++i) {
-    if (nElem <= threadSizes[i]) {
-      return threadSizes[i];
-    }
-  }
-  return threadSizes[4];
-}
-
-template <typename Context, typename IntT>
-DenseTensor GetOffsets(const Context& dev_ctx,
-                       const DenseTensor& indices,
-                       const std::vector<IntT>& sizes,
-                       const IntT dim) {
-#ifdef __HIPCC__
-  const auto& policy = thrust::hip::par.on(dev_ctx.stream());
-#else
-  const auto& policy = thrust::cuda::par.on(dev_ctx.stream());
-#endif
-  using thrust_ptr = thrust::device_ptr<IntT>;
-  auto ndim = indices.dims()[0];
-  auto nnz = indices.dims()[1];
-  std::vector<IntT> host_strides(ndim, 1);
-  if (ndim > 1) {
-    for (IntT i = ndim - 2; i >= 0; i--) {
-      host_strides[i] = host_strides[i + 1] * (i + 1 == dim ? 1 : sizes[i + 1]);
-    }
-  }
-
-  const IntArray strides_shape(phi::vectorize<IntT>(indices.dims()));
-  DenseTensor strides = phi::Empty<IntT>(dev_ctx, strides_shape);
-  auto strides_ptr = strides.data<IntT>();
-  memory_utils::Copy(dev_ctx.GetPlace(),
-                     strides_ptr,
-                     phi::CPUPlace(),
-                     host_strides.data(),
-                     sizeof(IntT) * host_strides.size(),
-                     dev_ctx.stream());
-
-  DenseTensor offsets = phi::Empty<IntT>(dev_ctx, {nnz});
-  auto indices_ptr = indices.data<IntT>();
-
-  thrust::transform(
-      policy,
-      thrust::make_counting_iterator(IntT(0)),
-      thrust::make_counting_iterator(IntT(nnz)),
-      thrust::device_ptr<IntT>(offsets.data<IntT>()),
-      [strides_ptr, indices_ptr, nnz, dim, ndim] __device__(IntT x) {
-        IntT pool_index = 0;
-        for (IntT j = 0; j < ndim; j++) {
-          if (j != dim) {
-            auto indice_cur_ptr = indices_ptr + j * nnz + x;
-            auto stride = strides_ptr[j];
-            pool_index += stride * (*indice_cur_ptr);
-          }
-        }
-        return pool_index;
-      });
-  return offsets;
-}
-
-template <typename T,
-          typename IntT,
-          typename Context,
-          bool requireMxRows = true>
-std::tuple<DenseTensor, DenseTensor, DenseTensor, DenseTensor> ComputePoolMax(
-    const Context& dev_ctx,
-    const DenseTensor& indices,
-    const DenseTensor& values,
-    const std::vector<IntT>& sizes,
-    IntT nvalues,
-    const IntT dim) {
-#ifdef __HIPCC__
-  const auto& policy = thrust::hip::par.on(dev_ctx.stream());
-#else
-  const auto& policy = thrust::cuda::par.on(dev_ctx.stream());
-#endif
-  using thrust_ptr = thrust::device_ptr<IntT>;
-  auto nnz = indices.dims()[1];
-  DenseTensor offsets = GetOffsets<Context, IntT>(dev_ctx, indices, sizes, dim);
-  auto offsets_ptr = offsets.data<IntT>();
-  phi::DenseTensor sorted_indices = phi::Empty<IntT>(dev_ctx, {nnz});
-
-  thrust_ptr sorted_indices_thrust_ptr(sorted_indices.data<IntT>());
-  thrust::sequence(
-      policy, sorted_indices_thrust_ptr, sorted_indices_thrust_ptr + nnz, 0);
-
-  thrust::sort(policy,
-               sorted_indices_thrust_ptr,
-               sorted_indices_thrust_ptr + nnz,
-               [offsets_ptr] __device__(IntT x, IntT y) {
-                 return offsets_ptr[x] < offsets_ptr[y];
-               });
-
-  DenseTensor pool_sizes = phi::Empty<IntT>(dev_ctx, {nnz});
-  auto new_end =
-      thrust::reduce_by_key(policy,
-                            sorted_indices_thrust_ptr,
-                            sorted_indices_thrust_ptr + nnz,
-                            thrust::make_constant_iterator(IntT(1)),
-                            thrust::make_discard_iterator(),
-                            thrust_ptr(pool_sizes.data<IntT>()),
-                            [offsets_ptr] __device__(IntT x, IntT y) {
-                              return offsets_ptr[x] == offsets_ptr[y];
-                            });
-  auto new_sz =
-      thrust::distance(thrust_ptr(pool_sizes.data<IntT>()), new_end.second);
-  pool_sizes.Resize(phi::make_ddim({new_sz}));
-
-  DenseTensor pool_offsets;
-  pool_offsets.Resize(phi::make_ddim({new_sz}));
-  dev_ctx.template Alloc<T>(&pool_offsets);
-  phi::Copy(dev_ctx, pool_sizes, dev_ctx.GetPlace(), false, &pool_offsets);
-
-  thrust_ptr pool_offsets_thrust_ptr(pool_offsets.data<IntT>());
-  thrust::exclusive_scan(policy,
-                         pool_offsets_thrust_ptr,
-                         pool_offsets_thrust_ptr + new_sz,
-                         pool_offsets_thrust_ptr);
-
-  DenseTensor mx_buffer;
-  if (requireMxRows) {
-    mx_buffer = phi::Full<T>(
-        dev_ctx, {new_sz * nvalues}, -std::numeric_limits<T>::infinity());
-    auto mx_buffer_ptr = mx_buffer.data<T>();
-
-    auto pool_sizes_ptr = pool_sizes.data<IntT>();
-    auto sorted_indices_ptr = sorted_indices.data<IntT>();
-    auto pool_offsets_ptr = pool_offsets.data<IntT>();
-    auto values_ptr = values.data<T>();
-    thrust::for_each(policy,
-                     thrust::make_counting_iterator(IntT(0)),
-                     thrust::make_counting_iterator(IntT(new_sz)),
-                     [sorted_indices_ptr,
-                      pool_sizes_ptr,
-                      pool_offsets_ptr,
-                      mx_buffer_ptr,
-                      values_ptr,
-                      nvalues] __device__(IntT index) {
-                       IntT curr_pool_size = pool_sizes_ptr[index];
-                       auto mx_row = mx_buffer_ptr + index * nvalues;
-                       IntT offset = pool_offsets_ptr[index];
-                       for (IntT p = 0; p < curr_pool_size; p++) {
-                         IntT i = *(sorted_indices_ptr + offset + p);
-                         for (IntT j = 0; j < nvalues; j++) {
-                           auto value_tmp = *(values_ptr);
-                           mx_row[j] = std::max(mx_row[j], value_tmp);
-                         }
-                       }
-                     });
-  }
-  return std::make_tuple(sorted_indices, pool_offsets, pool_sizes, mx_buffer);
 }
 
 template <typename T, typename IntT>
@@ -368,10 +209,10 @@ void SoftmaxCooGradGPUKernel(const Context& dev_ctx,
   phi::funcs::SetConstant<GPUContext, T> set_zero;
   set_zero(dev_ctx, values, static_cast<T>(0.0f));
 
-  DenseTensor out_offsets = GetOffsets<Context, IntT>(
+  DenseTensor out_offsets = phi::funcs::sparse::GetOffsets<IntT, Context>(
       dev_ctx, out_indices, sizes, static_cast<IntT>(-1));
   auto out_offsets_ptr = out_offsets.data<IntT>();
-  DenseTensor grad_offsets = GetOffsets<Context, IntT>(
+  DenseTensor grad_offsets = phi::funcs::sparse::GetOffsets<IntT, Context>(
       dev_ctx, grad_indices, sizes, static_cast<IntT>(-1));
   auto grad_offsets_ptr = grad_offsets.data<IntT>();
 
@@ -460,7 +301,7 @@ void SoftmaxCooGradGPUKernel(const Context& dev_ctx,
   DenseTensor pool_sizes;
 
   std::tie(sorted_indices, pool_offsets, pool_sizes, std::ignore) =
-      ComputePoolMax<T, IntT, Context, false>(
+      phi::funcs::sparse::ComputePoolMax<T, IntT, Context, false>(
           dev_ctx, out_indices, values_2, sizes, nvalues, dim);
 
   DenseTensor bound =
@@ -474,7 +315,7 @@ void SoftmaxCooGradGPUKernel(const Context& dev_ctx,
                       thrust_ptr(bound.data<IntT>()));
 
   auto pool_size = pool_offsets.dims()[0];
-  int block_size = GetNumThreads(pool_size);
+  int block_size = phi::funcs::sparse::GetNumThreads(pool_size);
   const int grid_size = (pool_size + block_size - 1) / block_size;
   SoftmaxCooGradGPURawKernel<T, IntT>
       <<<grid_size, block_size, 0, stream>>>(sorted_indices.data<IntT>(),

@@ -20,6 +20,7 @@ limitations under the License. */
 #include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/cpu_vec.h"
+#include "paddle/phi/kernels/funcs/sparse/softmax.h"
 #include "paddle/phi/kernels/softmax_kernel.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
 
@@ -87,32 +88,6 @@ void SoftmaxCsrKernel(const Context& dev_ctx,
       }));
 }
 
-template <typename IntT>
-void GetPoolsSoftmax(const DenseTensor& indices,
-                     const std::vector<IntT>& sizes,
-                     const int dim,
-                     std::map<IntT, std::vector<IntT>>* pools) {
-  auto ndim = indices.dims()[0];
-  auto nnz = indices.dims()[1];
-  std::vector<IntT> strides(ndim, 1);
-
-  if (ndim > 1) {
-    for (IntT i = ndim - 2; i >= 0; i--) {
-      strides[i] = strides[i + 1] * (i + 1 == dim ? 1 : sizes[i + 1]);
-    }
-  }
-
-  auto* indices_data = indices.data<IntT>();
-  for (IntT i = 0; i < nnz; i++) {
-    IntT pool_index = 0;
-    for (IntT j = 0; j < ndim; j++) {
-      if (j == dim) continue;
-      pool_index += strides[j] * indices_data[j * nnz + i];
-    }
-    pools->at(pool_index).push_back(i);
-  }
-}
-
 template <typename T, typename IntT, typename Context>
 void SoftmaxCooCPUKernel(const Context& dev_ctx,
                          const SparseCooTensor& x,
@@ -142,7 +117,7 @@ void SoftmaxCooCPUKernel(const Context& dev_ctx,
                                  sizes.end(),
                                  static_cast<IntT>(1),
                                  std::multiplies<>());
-  GetPoolsSoftmax(out_indices, sizes, dim, &pools);
+  phi::funcs::sparse::GetPoolsSoftmax(out_indices, sizes, dim, &pools);
 
   auto values_ptr = values.data<T>();
   auto out_values_ptr = out_values.data<T>();
