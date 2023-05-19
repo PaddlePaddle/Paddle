@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/optimizers/distributed_fused_lamb_op.h"
-
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/core/kernel_registry.h"
 
