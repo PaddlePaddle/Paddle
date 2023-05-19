@@ -2804,19 +2804,6 @@ class TestLog(TestActivation):
             return
         self.check_grad(['X'], 'Out', check_prim=True)
 
-    def test_error(self):
-        with paddle_static_guard():
-            with paddle_static_guard():
-                in1 = paddle.static.data(
-                    name="in1", shape=[11, 17], dtype="int32"
-                )
-                in2 = paddle.static.data(
-                    name="in2", shape=[11, 17], dtype="int64"
-                )
-
-                self.assertRaises(TypeError, paddle.log, in1)
-                self.assertRaises(TypeError, paddle.log, in2)
-
 
 class Test_Log_Op_Fp16(unittest.TestCase):
     def test_api_fp16(self):
@@ -2831,6 +2818,18 @@ class Test_Log_Op_Fp16(unittest.TestCase):
                     place = paddle.CUDAPlace(0)
                     exe = paddle.static.Executor(place)
                     (res,) = exe.run(fetch_list=[out])
+
+
+class Test_Log_Op_Int(unittest.TestCase):
+    def test_api_int(self):
+        paddle.disable_static()
+        for dtype in ['int32', 'int64']:
+            np_x = np.array([[2, 3, 4], [7, 8, 9]])
+            x = paddle.to_tensor(x, dtype=dtype)
+            y = paddle.log(x)
+            x_expect = np.log(np_x)
+            self.assertEqual(True, (y == x_expect).all())
+        paddle.enable_static()
 
 
 class TestLog_ZeroDim(TestLog):
@@ -2856,14 +2855,6 @@ class TestLog2(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out')
-
-    def test_error(self):
-        with paddle_static_guard():
-            in1 = paddle.static.data(name="in1", shape=[11, 17], dtype="int32")
-            in2 = paddle.static.data(name="in2", shape=[11, 17], dtype="int64")
-
-            self.assertRaises(TypeError, paddle.log2, in1)
-            self.assertRaises(TypeError, paddle.log2, in2)
 
     def test_api(self):
         with paddle_static_guard():
@@ -2901,6 +2892,18 @@ class TestLog2_ZeroDim(TestLog2):
         self.shape = []
 
 
+class TestLog2_Op_Int(unittest.TestCase):
+    def test_api_int(self):
+        paddle.disable_static()
+        for dtype in ['int32', 'int64']:
+            np_x = np.array([[2, 3, 4], [7, 8, 9]])
+            x = paddle.to_tensor(x, dtype=dtype)
+            y = paddle.log2(x)
+            x_expect = np.log2(np_x)
+            self.assertEqual(True, (y == x_expect).all())
+        paddle.enable_static()
+
+
 class TestLog10(TestActivation):
     def setUp(self):
         self.op_type = "log10"
@@ -2926,15 +2929,19 @@ class TestLog10_ZeroDim(TestLog10):
         self.shape = []
 
 
+class TestLog10_Op_Int(unittest.TestCase):
+    def test_api_int(self):
+        paddle.disable_static()
+        for dtype in ['int32', 'int64']:
+            np_x = np.array([[2, 3, 4], [7, 8, 9]])
+            x = paddle.to_tensor(x, dtype=dtype)
+            y = paddle.log10(x)
+            x_expect = np.log10(np_x)
+            self.assertEqual(True, (y == x_expect).all())
+        paddle.enable_static()
+
+
 class TestLog10API(unittest.TestCase):
-    def test_error(self):
-        with paddle_static_guard():
-            in1 = paddle.static.data(name="in1", shape=[11, 17], dtype="int32")
-            in2 = paddle.static.data(name="in2", shape=[11, 17], dtype="int64")
-
-            self.assertRaises(TypeError, paddle.log10, in1)
-            self.assertRaises(TypeError, paddle.log10, in2)
-
     def test_api(self):
         with paddle_static_guard():
             with paddle.static.program_guard(
@@ -3000,6 +3007,18 @@ class Test_Log1p_Op_Fp16(unittest.TestCase):
                     place = paddle.CUDAPlace(0)
                     exe = paddle.static.Executor(place)
                     (res,) = exe.run(fetch_list=[out])
+
+
+class TestLog1p_Op_Int(unittest.TestCase):
+    def test_api_int(self):
+        paddle.disable_static()
+        for dtype in ['int32', 'int64']:
+            np_x = np.array([[2, 3, 4], [7, 8, 9]])
+            x = paddle.to_tensor(x, dtype=dtype)
+            y = paddle.log1p(x)
+            x_expect = np.log1p(np_x)
+            self.assertEqual(True, (y == x_expect).all())
+        paddle.enable_static()
 
 
 class TestLog1p_ZeroDim(TestLog1p):
