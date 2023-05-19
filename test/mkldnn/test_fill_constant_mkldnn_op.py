@@ -15,9 +15,9 @@
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest, OpTestTool
 
 import paddle
-from eager_op_test import OpTest, OpTestTool
 
 
 @OpTestTool.skip_if_not_cpu_bf16()

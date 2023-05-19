@@ -15,15 +15,7 @@ list(REMOVE_ITEM DIST_TEST_OPS "test_dist_op")
 
 string(REPLACE ".py" "" DIST_TEST_OPS "${DIST_TEST_OPS}")
 
-if((NOT WITH_GPU)
-   AND (NOT WITH_XPU)
-   AND NOT (WITH_ASCEND OR WITH_ASCEND_CL))
-  list(REMOVE_ITEM DIST_TEST_OPS "test_dist_hapi_model")
-  list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_spmt")
-  list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_minimize")
-  list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_grad_clip")
-  list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_heter_ctr")
-  list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_ps_gpu_ctr")
+if((NOT WITH_GPU) AND (NOT WITH_XPU))
   list(REMOVE_ITEM DIST_TEST_OPS "test_dist_mnist_batch_merge")
 endif()
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_dataparallel)
@@ -833,11 +825,8 @@ endif()
 
 set_tests_properties(
   test_buffer_shared_memory_reuse_pass_and_fuse_optimization_op_pass
-  test_data_norm_op
-  test_dataloader_keep_order
-  test_dataloader_unkeep_order
-  test_buffer_shared_memory_reuse_pass
-  PROPERTIES LABELS "RUN_TYPE=DIST")
+  test_data_norm_op test_dataloader_keep_order test_dataloader_unkeep_order
+  test_buffer_shared_memory_reuse_pass PROPERTIES LABELS "RUN_TYPE=DIST")
 set_tests_properties(
   test_sync_batch_norm_op
   test_inplace_abn_op
@@ -1219,6 +1208,9 @@ set(STATIC_BUILD_TESTS
     test_one_hot_v2_op)
 
 if(NOT WITH_GPU)
+  list(REMOVE_ITEM DIST_TEST_OPS "test_dist_hapi_model")
+  list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_spmt")
+  list(REMOVE_ITEM DIST_TEST_OPS "test_dist_fleet_minimize")
   list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_attention_op)
   list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_attention_op_api)
   list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_feedforward_op)

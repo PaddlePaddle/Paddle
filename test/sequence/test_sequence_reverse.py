@@ -16,11 +16,9 @@
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest
 
 import paddle
-
-
-from eager_op_test import OpTest
 
 
 class TestSequenceReverseBase(OpTest):

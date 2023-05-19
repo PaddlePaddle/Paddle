@@ -15,8 +15,8 @@
 import re
 import sys
 
-
 import numpy as np
+from eager_op_test import OpTest
 from spectral_op_np import (
     fft_c2c,
     fft_c2c_backward,
@@ -28,9 +28,6 @@ from spectral_op_np import (
 
 import paddle
 from paddle import _C_ops
-
-
-from eager_op_test import OpTest
 
 paddle.enable_static()
 

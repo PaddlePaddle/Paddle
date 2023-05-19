@@ -15,15 +15,11 @@
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest, convert_uint16_to_float, paddle_static_guard
 
 import paddle
 from paddle import fluid
 from paddle.fluid import core
-from eager_op_test import (
-    OpTest,
-    convert_uint16_to_float,
-    paddle_static_guard,
-)
 from paddle.tensor import random
 
 

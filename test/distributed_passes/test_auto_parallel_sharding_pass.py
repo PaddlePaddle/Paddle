@@ -13,18 +13,13 @@
 # limitations under the License.
 
 import random
-
 import unittest
 
 import numpy as np
-
-
 from auto_parallel_pass_test_base import AutoPallelPassTestBase
 
 import paddle
 from paddle.distributed import fleet
-
-sys.path.append("..")
 
 
 class TestShardingPass(AutoPallelPassTestBase):

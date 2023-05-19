@@ -15,10 +15,6 @@
 import unittest
 
 import numpy as np
-
-import paddle
-from paddle import fluid
-from paddle.fluid import core
 from eager_op_test import convert_uint16_to_float
 from test_lookup_table_bf16_op import (
     TestLookupTableBF16Op,
@@ -27,6 +23,10 @@ from test_lookup_table_bf16_op import (
     TestLookupTableBF16OpWIsSelectedRows4DIds,
     _lookup,
 )
+
+import paddle
+from paddle import fluid
+from paddle.fluid import core
 
 
 class TestLookupTableV2BF16Op(TestLookupTableBF16Op):

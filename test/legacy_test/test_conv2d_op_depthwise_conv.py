@@ -19,6 +19,7 @@ import numpy as np
 import paddle
 
 paddle.enable_static()
+from eager_op_test import get_numeric_gradient
 from test_conv2d_op import (
     TestConv2DOp,
     TestConv2DOp_v2,
@@ -28,10 +29,9 @@ from test_conv2d_op import (
     create_test_padding_SAME_class,
     create_test_padding_VALID_class,
 )
+from testsuite import create_op
 
 from paddle.fluid import core
-from eager_op_test import get_numeric_gradient
-from testsuite import create_op
 
 # ----------------TestDepthwiseConv -----
 

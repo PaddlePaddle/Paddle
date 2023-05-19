@@ -13,21 +13,17 @@
 # limitations under the License.
 
 
+import unittest
 
 import numpy as np
 import scipy.stats
-
-import paddle
-
-
-import unittest
-
 from eager_op_test import (
     OpTest,
     convert_float_to_uint16,
     convert_uint16_to_float,
 )
 
+import paddle
 from paddle.fluid import core
 
 paddle.enable_static()

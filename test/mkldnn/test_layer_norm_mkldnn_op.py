@@ -18,13 +18,10 @@ from functools import reduce
 from operator import mul
 
 import numpy as np
+from eager_op_test import OpTestTool, _set_use_system_allocator
 
 from paddle import enable_static, fluid
 from paddle.fluid import core
-from eager_op_test import (
-    OpTestTool,
-    _set_use_system_allocator,
-)
 
 np.random.random(123)
 

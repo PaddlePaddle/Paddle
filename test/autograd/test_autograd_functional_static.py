@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import typing
 import unittest
 
-import sys
-sys.path.insert(0,'.')
+sys.path.insert(0, '.')
 
 import config
 import numpy as np

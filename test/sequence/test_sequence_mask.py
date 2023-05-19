@@ -16,6 +16,7 @@
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest
 
 import paddle
 from paddle.fluid.framework import (
@@ -23,9 +24,6 @@ from paddle.fluid.framework import (
     convert_np_dtype_to_dtype_,
     program_guard,
 )
-
-
-from eager_op_test import OpTest
 
 
 def sequence_mask_wraper(x, maxlen_tensor=None, maxlen=-1, mask_dtype='int64'):

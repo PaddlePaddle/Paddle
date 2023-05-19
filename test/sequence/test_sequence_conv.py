@@ -13,15 +13,12 @@
 # limitations under the License.
 
 import random
-
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest
 
 import paddle
-
-
-from eager_op_test import OpTest
 
 
 def seqconv(

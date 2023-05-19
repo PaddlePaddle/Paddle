@@ -15,12 +15,8 @@
 import unittest
 
 import numpy as np
-
 from eager_op_test import OpTest
-from test_fusion_lstm_op import (
-    ACTIVATION,
-    fusion_lstm,
-)
+from test_fusion_lstm_op import ACTIVATION, fusion_lstm
 
 
 class TestFusionLSTMINT8MKLDNNOp(OpTest):

@@ -16,14 +16,10 @@
 import unittest
 
 import numpy as np
+from test_cuda_graph_static_mode import build_program
 
 import paddle
 from paddle.device.cuda.graphs import CUDAGraph
-
-
-from test_cuda_graph_static_mode import (
-    build_program,
-)
 
 paddle.enable_static()
 

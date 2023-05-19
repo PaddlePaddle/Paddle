@@ -15,9 +15,10 @@
 import os
 import unittest
 
+from hdfs_test_utils import FSTestBase
+
 from paddle import fluid
 from paddle.distributed.fleet.utils.fs import FSTimeOut, HDFSClient
-from hdfs_test_utils import FSTestBase
 
 java_home = os.environ["JAVA_HOME"]
 
@@ -53,16 +54,16 @@ class FSTest1(FSTestBase):
         s = """
 java.io.IOException: Input/output error
  responseErrorMsg : failed to getFileStatus, errorCode: 3, path: /user/PUBLIC_KM_Data/wangxi16/data/serving_model, lparam: d868f6bb6822c621, errorMessage: inner error
-	at org.apache.hadoop.util.FileSystemUtil.throwException(FileSystemUtil.java:164)
-	at org.apache.hadoop.util.FileSystemUtil.dealWithResponse(FileSystemUtil.java:118)
-	at org.apache.hadoop.lite.client.LiteClientImpl.getFileStatus(LiteClientImpl.java:696)
-	at org.apache.hadoop.fs.LibDFileSystemImpl.getFileStatus(LibDFileSystemImpl.java:297)
-	at org.apache.hadoop.fs.LiteFileSystem.getFileStatus(LiteFileSystem.java:514)
-	at org.apache.hadoop.fs.FsShell.test(FsShell.java:1092)
-	at org.apache.hadoop.fs.FsShell.run(FsShell.java:2285)
-	at org.apache.hadoop.util.ToolRunner.run(ToolRunner.java:65)
-	at org.apache.hadoop.util.ToolRunner.run(ToolRunner.java:79)
-	at org.apache.hadoop.fs.FsShell.main(FsShell.java:2353)
+    at org.apache.hadoop.util.FileSystemUtil.throwException(FileSystemUtil.java:164)
+    at org.apache.hadoop.util.FileSystemUtil.dealWithResponse(FileSystemUtil.java:118)
+    at org.apache.hadoop.lite.client.LiteClientImpl.getFileStatus(LiteClientImpl.java:696)
+    at org.apache.hadoop.fs.LibDFileSystemImpl.getFileStatus(LibDFileSystemImpl.java:297)
+    at org.apache.hadoop.fs.LiteFileSystem.getFileStatus(LiteFileSystem.java:514)
+    at org.apache.hadoop.fs.FsShell.test(FsShell.java:1092)
+    at org.apache.hadoop.fs.FsShell.run(FsShell.java:2285)
+    at org.apache.hadoop.util.ToolRunner.run(ToolRunner.java:65)
+    at org.apache.hadoop.util.ToolRunner.run(ToolRunner.java:79)
+    at org.apache.hadoop.fs.FsShell.main(FsShell.java:2353)
         """  # fmt: off, avoid remove tabs in string
 
         print("split lines:", s.splitlines())

@@ -16,17 +16,17 @@ import struct
 import unittest
 
 import numpy as np
-from op import Operator
-
-import paddle
-from paddle import fluid
-from paddle.fluid import core
 from eager_op_test import (
     OpTest,
     OpTestTool,
     convert_float_to_uint16,
     convert_uint16_to_float,
 )
+from op import Operator
+
+import paddle
+from paddle import fluid
+from paddle.fluid import core
 from paddle.static import amp
 
 

@@ -15,8 +15,6 @@
 
 import unittest
 
-
-
 from get_test_cover_info import record_op_test
 
 import paddle

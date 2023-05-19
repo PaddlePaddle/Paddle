@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
+from op import Operator
 
 from paddle import fluid
 from paddle.fluid import core
-from op import Operator
 
 
 class TestDGCMomentumOp1(unittest.TestCase):

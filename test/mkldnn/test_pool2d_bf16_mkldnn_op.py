@@ -16,22 +16,16 @@
 import unittest
 
 import numpy as np
-
-from paddle import enable_static
-from paddle.fluid import core
-
-sys.path.append("..")
-from eager_op_test import (
-    OpTest,
-    OpTestTool,
-    convert_float_to_uint16,
-)
+from eager_op_test import OpTest, OpTestTool, convert_float_to_uint16
 from test_pool2d_op import (
     TestPool2D_Op_Mixin,
     adaptive_end_index,
     adaptive_start_index,
     max_pool2D_forward_naive,
 )
+
+from paddle import enable_static
+from paddle.fluid import core
 
 
 def pool2d_backward_naive(

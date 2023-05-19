@@ -15,7 +15,6 @@
 import unittest
 
 import numpy as np
-
 from test_pool2d_op import (
     TestCase1,
     TestCase2,

@@ -15,15 +15,11 @@
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest, OpTestTool, convert_float_to_uint16
 
 from paddle import enable_static
 from paddle.fluid import core
 from paddle.fluid.framework import _current_expected_place
-from eager_op_test import (
-    OpTest,
-    OpTestTool,
-    convert_float_to_uint16,
-)
 
 
 @OpTestTool.skip_if(

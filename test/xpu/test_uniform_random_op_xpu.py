@@ -15,8 +15,6 @@
 
 import unittest
 
-
-
 import numpy as np
 from test_uniform_random_op import (
     TestUniformRandomOp,

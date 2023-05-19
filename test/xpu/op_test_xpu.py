@@ -13,12 +13,7 @@
 # limitations under the License.
 
 
-
 import numpy as np
-
-sys.path.append('..')
-
-
 from eager_op_test import OpTest
 from get_test_cover_info import (
     get_xpu_op_support_types,

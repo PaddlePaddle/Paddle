@@ -17,8 +17,6 @@ import unittest
 from copy import deepcopy
 
 import numpy as np
-
-
 from eager_op_test import OpTest
 
 

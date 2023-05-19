@@ -21,10 +21,10 @@ from eager_op_test import (
     get_numeric_gradient,
     paddle_static_guard,
 )
+from testsuite import create_op
 
 import paddle
 from paddle.fluid import core
-from testsuite import create_op
 
 
 def conv3d_forward_naive(

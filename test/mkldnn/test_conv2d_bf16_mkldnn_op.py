@@ -15,17 +15,10 @@
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest, OpTestTool, convert_float_to_uint16
+from test_conv2d_op import TestConv2DOp, conv2d_forward_naive
 
 from paddle.fluid import core
-from eager_op_test import (
-    OpTest,
-    OpTestTool,
-    convert_float_to_uint16,
-)
-from test_conv2d_op import (
-    TestConv2DOp,
-    conv2d_forward_naive,
-)
 
 
 def conv2d_residual_naive(out, residual):

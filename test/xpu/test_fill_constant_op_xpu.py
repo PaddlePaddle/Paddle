@@ -15,8 +15,6 @@
 
 import unittest
 
-
-
 import numpy as np
 from eager_op_test import convert_float_to_uint16
 from get_test_cover_info import (

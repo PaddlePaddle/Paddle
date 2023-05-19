@@ -15,12 +15,10 @@
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest
+from test_conv2d_transpose_op import TestConv2DTransposeOp
 
 from paddle import enable_static
-from eager_op_test import OpTest
-from test_conv2d_transpose_op import (
-    TestConv2DTransposeOp,
-)
 
 
 def conv2d_bias_naive(out, bias):

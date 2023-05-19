@@ -15,12 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle import fluid
 from paddle.fluid import Program, program_guard
-from eager_op_test import convert_float_to_uint16
 
 
 def call_nonzero(x):

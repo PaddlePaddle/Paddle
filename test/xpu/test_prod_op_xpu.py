@@ -15,8 +15,6 @@
 
 import unittest
 
-
-
 import numpy as np
 from test_sum_op import TestReduceOPTensorAxisBase
 

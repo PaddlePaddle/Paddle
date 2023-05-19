@@ -15,7 +15,7 @@
 import os
 
 import numpy as np
-from import test_collective_api_base as test_collective_base
+import test_collective_api_base as test_collective_base
 
 import paddle
 import paddle.distributed as dist

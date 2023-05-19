@@ -15,6 +15,13 @@
 
 import unittest
 
+import auto_parallel_gpt_model as modeling
+from auto_parallel_gpt_model import (
+    GPTForPretraining,
+    GPTModel,
+    GPTPretrainingCriterion,
+)
+
 import paddle
 from paddle import static
 from paddle.distributed import fleet
@@ -27,14 +34,6 @@ from paddle.distributed.auto_parallel.planner_v2 import Planner
 from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
 from paddle.distributed.auto_parallel.strategy import Strategy
 from paddle.distributed.auto_parallel.tuner.parallel_tuner import ParallelTuner
-
-
-import auto_parallel_gpt_model as modeling
-from auto_parallel_gpt_model import (
-    GPTForPretraining,
-    GPTModel,
-    GPTPretrainingCriterion,
-)
 
 paddle.enable_static()
 

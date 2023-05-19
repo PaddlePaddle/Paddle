@@ -15,10 +15,8 @@
 import unittest
 
 import numpy as np
-from mkldnn_op_test import check_if_mkldnn_primitives_exist_in_bwd
-
-from paddle.fluid import core
 from eager_op_test import OpTest
+from mkldnn_op_test import check_if_mkldnn_primitives_exist_in_bwd
 from test_softmax_op import (
     TestSoftmaxOp,
     TestSoftmaxOp2,
@@ -28,6 +26,8 @@ from test_softmax_op import (
     TestSoftmaxOp6,
     TestSoftmaxOp_ZeroDim1,
 )
+
+from paddle.fluid import core
 
 
 def stable_softmax(x):

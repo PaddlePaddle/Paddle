@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-
 import unittest
 
 from test_dist_base import TestDistBase

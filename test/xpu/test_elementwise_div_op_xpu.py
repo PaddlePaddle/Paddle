@@ -14,8 +14,6 @@
 
 import unittest
 
-
-
 import numpy as np
 from eager_op_test import skip_check_grad_ci
 from get_test_cover_info import (

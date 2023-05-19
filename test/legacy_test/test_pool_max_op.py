@@ -21,10 +21,10 @@ from eager_op_test import (
     convert_uint16_to_float,
     get_numeric_gradient,
 )
+from testsuite import create_op
 
 import paddle
 from paddle.fluid import core
-from testsuite import create_op
 
 
 def adaptive_start_index(index, input_size, output_size):

@@ -23,10 +23,10 @@ from paddle import nn
 paddle.enable_static()
 from eager_op_test import OpTest, convert_float_to_uint16, get_numeric_gradient
 from test_attribute_var import UnittestBase
+from testsuite import create_op
 
 from paddle import fluid
 from paddle.fluid import Program, core, program_guard
-from testsuite import create_op
 
 
 def conv2dtranspose_forward_naive(input_, filter_, attrs):

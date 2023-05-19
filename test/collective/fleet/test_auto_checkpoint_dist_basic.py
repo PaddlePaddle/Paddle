@@ -15,13 +15,13 @@
 import os
 import unittest
 
+from auto_checkpoint_utils import get_logger
 from test_auto_checkpoint import AutoCheckPointACLBase
 
 import paddle
 import paddle.fluid.incubate.checkpoint.auto_checkpoint as acp
 from paddle import fluid
 from paddle.distributed.fleet.utils.fs import HDFSClient, LocalFS
-from auto_checkpoint_utils import get_logger
 from paddle.incubate.distributed.fleet import role_maker
 from paddle.incubate.distributed.fleet.collective import fleet
 

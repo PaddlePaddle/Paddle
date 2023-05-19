@@ -15,10 +15,10 @@
 import os
 import unittest
 
+from auto_checkpoint_utils import get_logger
 from test_auto_checkpoint import AutoCheckPointACLBase
 
 import paddle
-from auto_checkpoint_utils import get_logger
 
 paddle.enable_static()
 logger = get_logger()

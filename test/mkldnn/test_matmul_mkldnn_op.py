@@ -16,7 +16,6 @@ import os
 import unittest
 
 import numpy as np
-
 from eager_op_test import OpTest
 
 

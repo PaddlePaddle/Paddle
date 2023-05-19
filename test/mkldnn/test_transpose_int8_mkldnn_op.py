@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
+from eager_op_test import OpTest
 from mkldnn_op_test import format_reorder
 
 from paddle.fluid import core
-from eager_op_test import OpTest
 
 
 class TestTransposeOp(OpTest):

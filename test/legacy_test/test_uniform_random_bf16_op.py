@@ -17,14 +17,11 @@ import unittest
 import numpy as np
 from eager_op_test import OpTest, convert_uint16_to_float
 from op import Operator
+from test_uniform_random_op import output_hist, output_hist_diag
 
 import paddle
 from paddle import fluid
 from paddle.fluid import core
-from test_uniform_random_op import (
-    output_hist,
-    output_hist_diag,
-)
 from paddle.tensor import random
 
 

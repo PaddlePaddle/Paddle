@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-
-from paddle.fluid import core
 from op import Operator
 from test_sum_op import TestSumOp
+
+from paddle.fluid import core
 
 
 class TestSumMKLDNN(TestSumOp):
