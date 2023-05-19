@@ -470,9 +470,9 @@ class TestOptimizerLearningRate(unittest.TestCase):
             bd = [2, 4, 6, 8]
             value = [0.2, 0.4, 0.6, 0.8, 1.0]
 
-            adam = fluid.optimizer.Adam(
-                fluid.dygraph.PiecewiseDecay(bd, value, 0),
-                parameter_list=linear.parameters(),
+            adam = paddle.optimizer.Adam(
+                paddle.optimizer.lr.PiecewiseDecay(bd, value),
+                parameters=linear.parameters(),
             )
 
             np.testing.assert_allclose(

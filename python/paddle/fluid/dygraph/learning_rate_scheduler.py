@@ -23,7 +23,6 @@ from ..data_feeder import check_type
 
 __all__ = [
     'NoamDecay',
-    'PiecewiseDecay',
     'NaturalExpDecay',
     'ExponentialDecay',
     'InverseTimeDecay',
@@ -133,68 +132,6 @@ class LearningRateDecay:
 
     def step(self):
         raise NotImplementedError()
-
-
-class PiecewiseDecay(LearningRateDecay):
-    """
-    :api_attr: imperative
-
-    Piecewise decay scheduler.
-
-    The algorithm can be described as the code below.
-
-    .. code-block:: text
-
-        boundaries = [10000, 20000]
-        values = [1.0, 0.5, 0.1]
-        if global_step < 10000:
-            learning_rate = 1.0
-        elif 10000 <= global_step < 20000:
-            learning_rate = 0.5
-        else:
-            learning_rate = 0.1
-
-    Parameters:
-        boundaries(list): A list of steps numbers. The type of element in the list is python int.
-        values(list): A list of learning rate values that will be picked during
-            different step boundaries. The type of element in the list is python float.
-        begin(int): The begin step to initialize the global_step in the description above.
-        step(int, optional): The step size used to calculate the new global_step in the description above.
-            The default value is 1.
-        dtype(str, optional): The data type used to create the learning rate variable. The data type can be set as
-            'float32', 'float64'. The default value is 'float32'.
-
-    Returns:
-        None.
-
-    Examples:
-        .. code-block:: python
-
-          import paddle.fluid as fluid
-          import paddle
-          boundaries = [10000, 20000]
-          values = [1.0, 0.5, 0.1]
-          with fluid.dygraph.guard():
-              emb = paddle.nn.Embedding(10, 10)
-              optimizer = fluid.optimizer.SGD(
-                 learning_rate=fluid.dygraph.PiecewiseDecay(boundaries, values, 0),
-                 parameter_list = emb.parameters() )
-    """
-
-    def __init__(self, boundaries, values, begin, step=1, dtype='float32'):
-        super().__init__(begin, step, dtype)
-        self.boundaries = boundaries
-        self.values = values
-
-        self.vars = []
-        for value in values:
-            self.vars.append(value)
-
-    def step(self):
-        for i in range(len(self.boundaries)):
-            if self.step_num < self.boundaries[i]:
-                return self.vars[i]
-        return self.create_lr_var(self.vars[len(self.values) - 1])
 
 
 class NaturalExpDecay(LearningRateDecay):
