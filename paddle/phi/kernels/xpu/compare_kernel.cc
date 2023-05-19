@@ -15,10 +15,8 @@
 #include "paddle/phi/kernels/compare_kernel.h"
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
-#include "paddle/phi/backends/xpu/xpu_context.h"
-#include "paddle/phi/backends/xpu/xpu_header.h"
-#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
 
@@ -46,6 +44,10 @@ void XPUCompareKernelImpl(const Context& dev_ctx,
   auto x_data = reinterpret_cast<const XPUType*>(x.data<T>());
   auto y_data = reinterpret_cast<const XPUType*>(y.data<T>());
   auto* out_data = dev_ctx.template Alloc<bool>(out);
+
+  if (x.numel() == 0 && y.numel() == 0) {
+    return;
+  }
 
   int ret =
       func(dev_ctx.x_context(), x_data, y_data, out_data, x_shape, y_shape);
