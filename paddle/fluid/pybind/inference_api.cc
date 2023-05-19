@@ -879,10 +879,6 @@ void BindAnalysisConfig(py::module *m) {
            &AnalysisConfig::EnableTensorRtInspector)
       .def("tensorrt_inspector_enabled",
            &AnalysisConfig::tensorrt_inspector_enabled)
-      .def("enable_tensorrt_sparse_weights",
-           &AnalysisConfig::EnableTensorRtSparseWeights)
-      .def("tensorrt_sparse_weights_enabled",
-           &AnalysisConfig::tensorrt_sparse_weights_enabled)
       .def("tensorrt_engine_enabled", &AnalysisConfig::tensorrt_engine_enabled)
       .def("enable_dlnne",
            &AnalysisConfig::EnableDlnne,

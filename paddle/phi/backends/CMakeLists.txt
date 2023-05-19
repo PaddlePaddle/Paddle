@@ -14,6 +14,10 @@ if(WITH_XBYAK)
   list(APPEND BACKENDS_DEPS xbyak)
 endif()
 
+if(NOT APPLE AND NOT WIN32)
+  list(APPEND BACKENDS_SRCS device_code.cc)
+endif()
+
 if(WITH_GPU OR WITH_ROCM)
   list(APPEND BACKENDS_SRCS gpu/gpu_context.cc gpu/gpu_info.cc
        gpu/gpu_resources.cc)

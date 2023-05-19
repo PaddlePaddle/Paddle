@@ -283,6 +283,8 @@ class AdamW(Optimizer):
         self._auxiliary_vars = {}
         self._already_create_accumulater = set()
 
+        self._create_master_grad_states()
+
     def _set_auxiliary_var(self, key, val):
         self._auxiliary_vars[key] = val
 
