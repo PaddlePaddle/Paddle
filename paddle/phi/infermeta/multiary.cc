@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/meta_tensor.h"
+#include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
 
@@ -1363,6 +1364,18 @@ void FusionGroupInferMeta(const std::vector<const MetaTensor*>& ins,
   // Only lod of Inputs[0] would be shared with Outs.
   for (size_t j = 0; j < num_outs; ++j) {
     outs[j]->share_lod(*ins[0]);
+  }
+
+  for (size_t j = 0; j < num_outs; ++j) {
+    if (outs_dtype[j] == phi::TransToProtoVarType(phi::DataType::FLOAT16)) {
+      outs[j]->set_dtype(phi::DataType::FLOAT16);
+    } else if (outs_dtype[j] ==
+               phi::TransToProtoVarType(phi::DataType::FLOAT32)) {
+      outs[j]->set_dtype(phi::DataType::FLOAT32);
+    } else if (outs_dtype[j] ==
+               phi::TransToProtoVarType(phi::DataType::FLOAT64)) {
+      outs[j]->set_dtype(phi::DataType::FLOAT64);
+    }
   }
 }
 
