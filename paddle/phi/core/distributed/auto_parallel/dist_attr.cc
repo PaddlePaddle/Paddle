@@ -253,16 +253,18 @@ std::string TensorDistAttr::serialize_to_string() {
   std::string data;
   auto proto = to_proto();
   proto.SerializeToString(&data);
-  PADDLE_ENFORCE(to_proto().SerializeToString(&data),
-                 errors::InvalidArgument(
-                     "Failed to serialize tensor dist attr to string."));
+  PADDLE_ENFORCE_EQ(to_proto().SerializeToString(&data),
+                    true,
+                    errors::InvalidArgument(
+                        "Failed to serialize tensor dist attr to string."));
   return data;
 }
 
 void TensorDistAttr::parse_from_string(const std::string& data) {
   TensorDistAttrProto proto;
-  PADDLE_ENFORCE(
+  PADDLE_ENFORCE_EQ(
       proto.ParseFromString(data),
+      true,
       errors::InvalidArgument(
           "Failed to parse tensor dist attr from string: %s.", data));
   from_proto(proto);
