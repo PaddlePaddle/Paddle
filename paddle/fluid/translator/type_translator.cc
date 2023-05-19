@@ -20,7 +20,6 @@
 #include "paddle/ir/builtin_type.h"
 
 namespace paddle {
-namespace fluid {
 namespace translator {
 
 using DenseTensorType = paddle::dialect::DenseTensorType;
@@ -58,5 +57,4 @@ TypeTranslator::TypeTranslator() {
 }
 
 }  // namespace translator
-}  // namespace fluid
 }  // namespace paddle

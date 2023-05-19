@@ -29,7 +29,6 @@
 #include "paddle/phi/core/enforce.h"
 
 namespace paddle {
-namespace fluid {
 namespace translator {
 
 namespace {
@@ -212,5 +211,4 @@ OpTranslator::OpTranslator() : general_handler(GeneralOpHandler) {
 }
 
 }  // namespace translator
-}  // namespace fluid
 }  // namespace paddle

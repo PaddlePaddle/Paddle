@@ -59,5 +59,5 @@ TEST(PaddleDialectTest, Translator) {
 
   std::list<ir::Operation *> ops = program->ops();
   EXPECT_EQ(ops.size(), p.Block(0).OpSize() + program->parameters_num());
-  std::cout << *program << std::endl;
+  VLOG(0) << *program << std::endl;
 }

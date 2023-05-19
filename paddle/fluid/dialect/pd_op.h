@@ -21,43 +21,44 @@ namespace dialect {
 
 #define OPNAME(op_name) "pd." #op_name
 
-#define REIGSTER_EMPTY_OP(op_name)                        \
-  class op_name##Op : public ir::Op<op_name##Op> {        \
+#define REIGSTER_EMPTY_OP(op_name, className)             \
+  class className : public ir::Op<className> {            \
    public:                                                \
     static const char *name() { return OPNAME(op_name); } \
     static const char **attributes_name_;                 \
-    static uint32_t attributes_num() { return 0; }        \
+    static constexpr uint32_t attributes_num = 0;         \
   };                                                      \
   const char **op_name##Op::attributes_name_ = nullptr;
 
-REIGSTER_EMPTY_OP(conv2d);
-REIGSTER_EMPTY_OP(feed);
-REIGSTER_EMPTY_OP(batch_norm);
-REIGSTER_EMPTY_OP(batch_norm_);
-REIGSTER_EMPTY_OP(relu);
-REIGSTER_EMPTY_OP(elementwise_add);
-REIGSTER_EMPTY_OP(pool2d);
-REIGSTER_EMPTY_OP(flatten_contiguous_range);
-REIGSTER_EMPTY_OP(matmul_v2);
-REIGSTER_EMPTY_OP(reshape2);
-REIGSTER_EMPTY_OP(softmax_with_cross_entropy);
-REIGSTER_EMPTY_OP(reduce_mean);
-REIGSTER_EMPTY_OP(top_k_v2);
-REIGSTER_EMPTY_OP(scale);
-REIGSTER_EMPTY_OP(accuracy);
-REIGSTER_EMPTY_OP(fill_constant);
-REIGSTER_EMPTY_OP(reduce_mean_grad);
-REIGSTER_EMPTY_OP(softmax_with_cross_entropy_grad);
-REIGSTER_EMPTY_OP(elementwise_add_grad);
-REIGSTER_EMPTY_OP(matmul_v2_grad);
-REIGSTER_EMPTY_OP(flatten_contiguous_range_grad);
-REIGSTER_EMPTY_OP(pool2d_grad);
-REIGSTER_EMPTY_OP(relu_grad);
-REIGSTER_EMPTY_OP(batch_norm_grad);
-REIGSTER_EMPTY_OP(conv2d_grad);
-REIGSTER_EMPTY_OP(sum);
-REIGSTER_EMPTY_OP(fetch_v2);
-REIGSTER_EMPTY_OP(merged_momentum_);
+REIGSTER_EMPTY_OP(conv2d, Conv2DOp);
+REIGSTER_EMPTY_OP(feed, FeedOp);
+REIGSTER_EMPTY_OP(batch_norm, BatchNormOp);
+REIGSTER_EMPTY_OP(batch_norm_, BatchNormOp_);
+REIGSTER_EMPTY_OP(relu, ReluOp);
+REIGSTER_EMPTY_OP(elementwise_add, ElementwiseAddOp);
+REIGSTER_EMPTY_OP(pool2d, Pool2DOp);
+REIGSTER_EMPTY_OP(flatten_contiguous_range, FlattenContiguousRangeOp);
+REIGSTER_EMPTY_OP(matmul_v2, MatmulV2Op);
+REIGSTER_EMPTY_OP(reshape2, Reshape2Op);
+REIGSTER_EMPTY_OP(softmax_with_cross_entropy, SoftmaxWithCrossEntropyOp);
+REIGSTER_EMPTY_OP(reduce_mean, ReduceMeanOp);
+REIGSTER_EMPTY_OP(top_k_v2, TopKV2Op);
+REIGSTER_EMPTY_OP(scale, ScaleOp);
+REIGSTER_EMPTY_OP(accuracy, AccuracyOp);
+REIGSTER_EMPTY_OP(fill_constant, FillConstantOp);
+REIGSTER_EMPTY_OP(reduce_mean_grad, ReduceMeanGradOp);
+REIGSTER_EMPTY_OP(softmax_with_cross_entropy_grad,
+                  SoftmaxWithCrossEntropyGradOp);
+REIGSTER_EMPTY_OP(elementwise_add_grad, ElementwiseAddGradOp);
+REIGSTER_EMPTY_OP(matmul_v2_grad, MatmulV2GradOp);
+REIGSTER_EMPTY_OP(flatten_contiguous_range_grad, FlattenContiguousRangeGradOp);
+REIGSTER_EMPTY_OP(pool2d_grad, Pool2DGradOp);
+REIGSTER_EMPTY_OP(relu_grad, ReluGradOp);
+REIGSTER_EMPTY_OP(batch_norm_grad, BatchNormGradOp);
+REIGSTER_EMPTY_OP(conv2d_grad, Conv2DGradOp);
+REIGSTER_EMPTY_OP(sum, SumOp);
+REIGSTER_EMPTY_OP(fetch_v2, FetchV2Op);
+REIGSTER_EMPTY_OP(merged_momentum_, MergedMomentumOp_);
 
 }  // namespace dialect
 }  // namespace paddle
