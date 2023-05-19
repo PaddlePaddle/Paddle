@@ -21,5 +21,3 @@ cc_library(
   DEPS device_mesh auto_parallel_proto phi_enforce)
 
 cc_library(auto_parallel DEPS device_mesh process_mesh dist_attr dist_mapper)
-
-add_subdirectory(test)
