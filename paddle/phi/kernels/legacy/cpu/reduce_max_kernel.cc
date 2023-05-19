@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,12 +22,13 @@
 namespace phi {
 
 template <typename T, typename Context>
-void MaxKernel(const Context& dev_ctx,
-               const DenseTensor& x,
-               const IntArray& dims,
-               bool keep_dim,
-               DenseTensor* out) {
-  bool reduce_all = recompute_reduce_all(x, dims);
+void MaxRawKernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  const IntArray& dims,
+                  bool keep_dim,
+                  bool reduce_all,
+                  DenseTensor* out) {
+  reduce_all = recompute_reduce_all(x, dims, reduce_all);
   auto out_dtype = x.dtype();
   phi::Reduce<CPUContext, T, phi::funcs::MaxFunctor>(
       dev_ctx, x, reduce_all, dims.GetData(), keep_dim, out_dtype, out);
@@ -36,4 +37,4 @@ void MaxKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    max, CPU, ALL_LAYOUT, phi::MaxKernel, float, double, int, int64_t) {}
+    max_raw, CPU, ALL_LAYOUT, phi::MaxRawKernel, float, double, int, int64_t) {}
