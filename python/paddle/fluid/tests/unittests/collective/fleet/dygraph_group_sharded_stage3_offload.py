@@ -24,7 +24,7 @@ from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage3 import
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_utils import (
     GroupShardedScaler,
 )
-from paddle.distributed.utils.nccl_utils import get_nccl_version_str
+from paddle.fluid import core
 from paddle.nn import Linear
 
 epoch = 10
@@ -214,14 +214,8 @@ def test_stage3_offload():
         )
 
     # bfp16 offload
-    # NOTE: this is a hack to get int format nccl version, like 2134
-    # if current platform is not linux, version number will be 0
-    nccl_version_str = get_nccl_version_str()
-    nccl_version = (
-        int("".join(nccl_version_str.split("."))) if nccl_version_str else 0
-    )
-
-    if nccl_version >= 2100:
+    nccl_version = core.nccl_version()
+    if nccl_version >= 21000:
         stage3_params = train_mlp(mlp7, use_pure_fp16=True, use_bfp16=True)
         stage3_params_offload = train_mlp(
             mlp8, use_pure_fp16=True, offload=True, use_bfp16=True

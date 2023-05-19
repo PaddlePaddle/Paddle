@@ -12,51 +12,42 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
-import subprocess
+
+from paddle.fluid import core
 
 
-def get_nccl_version_str():
-    nccl_version_str = subprocess.check_output(
-        r"ldconfig -v | grep 'libnccl.so' | tail -n1 | sed -r 's/^.*\.so\.//'",
-        stderr=subprocess.DEVNULL,
-        shell=True,
-    ).decode('utf-8')
+def get_nccl_version_str(ver):
+    if ver >= 10000:
+        NCCL_MAJOR_VERSION = int(ver // 10000)
+        ver = ver % 10000
+    else:
+        NCCL_MAJOR_VERSION = int(ver // 1000)
+        ver = ver % 1000
 
-    # NOTE: This is a hacking method to get nccl version, but it will return None
-    # if current platform is not Linux. So we only check nccl version for Linux
-    # platform while training with pipeline parallelism.
-    if nccl_version_str:
-        nccl_version_str = nccl_version_str.replace("\n", "")
+    NCCL_MINOR_VERSION = int(ver // 100)
+    NCCL_PATCH_VERSION = int(ver % 100)
 
-    return nccl_version_str
+    return "{}.{}.{}".format(
+        NCCL_MAJOR_VERSION, NCCL_MINOR_VERSION, NCCL_PATCH_VERSION
+    )
 
 
 def check_nccl_version_for_p2p():
-    nccl_version_str = get_nccl_version_str()
-    if nccl_version_str:
-        nccl_version_str = nccl_version_str.replace("\n", "")
-        nccl_version_int = [int(s) for s in nccl_version_str.split(".")]
-        nccl_version_baseline = [2, 8, 4]
-        assert nccl_version_int >= nccl_version_baseline, (
-            "The version of NCCL is required to be at least v2.8.4 while training with "
-            "pipeline/MoE parallelism, but we found v{}. The previous version of NCCL has "
-            "some bugs in p2p communication, and you can see more detailed description "
-            "about this issue from ReleaseNotes of NCCL v2.8.4 "
-            "(https://docs.nvidia.com/deeplearning/nccl/release-notes/rel_2-8-4.html#rel_2-8-4).".format(
-                nccl_version_str
-            )
+    nccl_version = core.nccl_version()
+    nccl_version_str = get_nccl_version_str(nccl_version)
+    nccl_version_baseline = 2804
+    assert nccl_version >= nccl_version_baseline, (
+        "The version of NCCL is required to be at least v2.8.4 while training with "
+        "pipeline/MoE parallelism, but we found v{}. The previous version of NCCL has "
+        "some bugs in p2p communication, and you can see more detailed description "
+        "about this issue from ReleaseNotes of NCCL v2.8.4 "
+        "(https://docs.nvidia.com/deeplearning/nccl/release-notes/rel_2-8-4.html#rel_2-8-4).".format(
+            nccl_version_str
         )
-    else:
-        logging.warning("No version for NCCL library found!")
+    )
 
 
 def check_nccl_version_for_bf16():
-    nccl_version_str = get_nccl_version_str()
-    if nccl_version_str:
-        nccl_version_str = nccl_version_str.replace("\n", "")
-        nccl_version_int = [int(s) for s in nccl_version_str.split(".")]
-        nccl_version_baseline = [2, 10, 0]
-        return nccl_version_int >= nccl_version_baseline
-
-    return False
+    nccl_version = core.nccl_version()
+    nccl_version_baseline = [2, 10, 0]
+    return nccl_version >= nccl_version_baseline
