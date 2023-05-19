@@ -26,7 +26,6 @@
 #include "paddle/phi/core/enforce.h"
 
 namespace paddle {
-namespace fluid {
 namespace translator {
 
 using ProgramDesc = ::paddle::framework::ProgramDesc;
@@ -88,5 +87,4 @@ void ProgramTranslator::InsertOperationToSingleBlock(const BlockDesc& block) {
 }
 
 }  // namespace translator
-}  // namespace fluid
 }  // namespace paddle

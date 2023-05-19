@@ -25,7 +25,6 @@
 #include "paddle/ir/ir_context.h"
 
 namespace paddle {
-namespace fluid {
 namespace translator {
 
 using OpDesc = paddle::framework::OpDesc;
@@ -62,5 +61,4 @@ class TypeTranslator {
 };
 
 }  // namespace translator
-}  // namespace fluid
 }  // namespace paddle

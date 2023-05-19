@@ -21,7 +21,6 @@
 #include "paddle/ir/program.h"
 
 namespace paddle {
-namespace fluid {
 
 using LegacyProgramDesc = ::paddle::framework::ProgramDesc;
 using Program = ::ir::Program;
@@ -29,5 +28,4 @@ using Program = ::ir::Program;
 std::unique_ptr<Program> TranslateLegacyProgramToProgram(
     const LegacyProgramDesc& legacy_program);
 
-}  // namespace fluid
 }  // namespace paddle

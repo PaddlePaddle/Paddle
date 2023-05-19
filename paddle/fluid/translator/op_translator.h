@@ -26,7 +26,6 @@
 #include "paddle/ir/value.h"
 
 namespace paddle {
-namespace fluid {
 namespace translator {
 
 using TranslationContext = std::unordered_map<std::string, ir::OpResult>;
@@ -68,5 +67,4 @@ class OpTranslator {
 using OpTranslateFn = OpTranslator::OpTranslateFn;
 
 }  // namespace translator
-}  // namespace fluid
 }  // namespace paddle
