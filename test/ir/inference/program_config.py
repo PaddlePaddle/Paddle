@@ -54,8 +54,8 @@ class TensorConfig:
         if data_gen is not None:
             self.data_gen = data_gen
             self.data = data_gen()
-            self.dtype = data_gen().dtype
-            self.shape = data_gen().shape
+            self.dtype = self.data.dtype
+            self.shape = self.data.shape
         else:
             assert (
                 shape is not None
@@ -66,6 +66,11 @@ class TensorConfig:
 
     def __repr__(self):
         return str({'shape': self.shape, 'lod': self.lod, 'dtype': self.dtype})
+
+    def astype(self, type: np.dtype):
+        self.data = self.data.astype(type)
+        self.dtype = self.data.dtype
+        return self
 
 
 class VarType(enum.Enum):
@@ -269,6 +274,16 @@ class ProgramConfig:
             log_str += '[' + t + ': ' + str(v) + ']'
 
         return log_str
+
+    def set_input_type(self, type: np.dtype):
+        for inp in self.inputs.values():
+            inp.astype(type)
+        for weight in self.weights.values():
+            weight.astype(type)
+        return self
+
+    def get_input_type(self) -> np.dtype:
+        return next(iter(self.inputs.values())).dtype
 
 
 def create_fake_model(program_config):
