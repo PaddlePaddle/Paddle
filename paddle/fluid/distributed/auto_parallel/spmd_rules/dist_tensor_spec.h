@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/distributed/auto_parallel/dist_attr.h"
+#include "paddle/phi/api/include/tensor.h"
 
 namespace paddle {
 namespace distributed {
@@ -28,6 +29,8 @@ class DistTensorSpec {
  public:
   DistTensorSpec(const std::vector<int64_t>& shape,
                  const TensorDistAttr& dist_attr);
+
+  explicit DistTensorSpec(const Tensor& tensor);
 
   ~DistTensorSpec();
 
