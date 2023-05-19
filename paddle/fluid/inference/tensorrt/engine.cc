@@ -207,7 +207,7 @@ void TensorRTEngine::FreezeNetwork() {
   infer_builder_config_->setMaxWorkspaceSize(max_workspace_);
 #endif
 
-  bool enable_fp16 = (precision_ == AnalysisConfig::Precision::kHalf);
+  bool enable_fp16 = (precision_ == phi::DataType::FLOAT16);
   if (enable_fp16) {
     bool support_fp16 = infer_builder_->platformHasFastFp16();
     infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kFP16);
@@ -219,7 +219,7 @@ void TensorRTEngine::FreezeNetwork() {
     }
   }
 
-  bool enable_int8 = (precision_ == AnalysisConfig::Precision::kInt8);
+  bool enable_int8 = (precision_ == phi::DataType::INT8);
   if (enable_int8) {
     if (!use_dla_) {
       infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kFP16);
@@ -562,8 +562,8 @@ void TensorRTEngine::Deserialize(const std::string &engine_serialized_data) {
   infer_ptr<nvinfer1::IRuntime> runtime(createInferRuntime(&logger_));
 
   if (use_dla_) {
-    if (precision_ != AnalysisConfig::Precision::kInt8 &&
-        precision_ != AnalysisConfig::Precision::kHalf) {
+    if (precision_ != phi::DataType::INT8 &&
+        precision_ != phi::DataType::FLOAT16) {
       LOG(WARNING) << "TensorRT DLA must be used with int8 or fp16, but you "
                       "set float32, so DLA is not used.";
     } else if (runtime->getNbDLACores() == 0) {
