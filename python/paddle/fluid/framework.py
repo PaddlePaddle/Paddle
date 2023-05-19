@@ -589,6 +589,21 @@ def _current_expected_place():
                     "You are using XPU version Paddle, but your XPU device is not set properly. CPU device will be used by default."
                 )
                 _global_expected_place_ = core.CPUPlace()
+        elif len(core.get_all_custom_device_type()):
+            dev_type = core.get_all_custom_device_type()[0]
+            try:
+                device_count = core.get_custom_device_count(dev_type)
+            except Exception as e:
+                device_count = 0
+            if device_count > 0:
+                _global_expected_place_ = core.CustomPlace(
+                    dev_type, _custom_device_ids(dev_type)[0]
+                )
+            else:
+                warnings.warn(
+                    "You are using CUSTOM_DEVICE version Paddle, but your custom device is not set properly. CPU device will be used by default."
+                )
+                _global_expected_place_ = core.CPUPlace()
         else:
             _global_expected_place_ = core.CPUPlace()
 
@@ -2622,6 +2637,12 @@ class OpProtoHolder:
         Returns(framework_pb2.OpProto): The OpProto
 
         """
+        op_protos = get_all_op_protos()
+        if len(self.op_proto_map) != len(op_protos):
+            self.op_proto_map = {}
+            for proto in op_protos:
+                self.op_proto_map[proto.type] = proto
+
         if type not in self.op_proto_map:
             raise ValueError("Operator \"%s\" has not been registered." % type)
         return self.op_proto_map[type]
