@@ -48,5 +48,4 @@ struct hash<ir::StrAttribute> {
     return std::hash<const ir::StrAttribute::Storage *>()(obj.storage());
   }
 };
-
 }  // namespace std
