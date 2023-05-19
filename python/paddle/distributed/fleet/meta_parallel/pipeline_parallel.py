@@ -557,6 +557,9 @@ class PipelineParallelWithInterleave(PipelineParallel):
         assert (
             framework.in_dygraph_mode()
         ), "virtual pipeline stage with interleave only support eager dygraph mode"
+        assert (
+            self.accumulate_steps % self.num_stages == 0
+        ), "accumulate_steps should be evenly divisible by num_stages for pipeline with interleave"
         # setup for interleave scheduler
         self.num_model_chunks = layers.get_num_virtual_stages()
         self.model_chunks = layers.get_model_chunks()
@@ -752,18 +755,14 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
             # determine whether to recv input tensor from upstream
             recv_prev = True
-            if self.is_pipeline_first_stage(ignore_virtual=True):
-                next_forward_virtual_pp_rank = self._get_virtual_pp_rank(
-                    forward_micro_step_id - (self.num_stages - 1), forward=True
-                )
-                if next_forward_virtual_pp_rank == (self.num_model_chunks - 1):
-                    # first pp stage and first virtual stage
-                    recv_prev = False
-                next_forward_virtual_pp_rank += 1
-            else:
-                next_forward_virtual_pp_rank = self._get_virtual_pp_rank(
-                    forward_micro_step_id + 1, forward=True
-                )
+            next_forward_virtual_pp_rank = self._get_virtual_pp_rank(
+                forward_micro_step_id + 1, forward=True
+            )
+            if self.is_pipeline_first_stage(ignore_virtual=True) and (
+                next_forward_virtual_pp_rank == 0
+            ):
+                # first pp stage and first virtual stage
+                recv_prev = False
 
             # last iteration doesn't need recv from upstream
             if micro_step == (steady_steps - 1):
@@ -771,19 +770,14 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
             # determine whether to recv grad from downstream
             recv_next = True
-            if self.is_pipeline_last_stage(ignore_virtual=True):
-                next_backward_virtual_pp_rank = self._get_virtual_pp_rank(
-                    backward_micro_step_id - (self.num_stages - 1),
-                    forward=False,
-                )
-                if next_backward_virtual_pp_rank == 0:
-                    # last pp stage and last virtual stage
-                    recv_next = False
-                next_backward_virtual_pp_rank -= 1
-            else:
-                next_backward_virtual_pp_rank = self._get_virtual_pp_rank(
-                    backward_micro_step_id + 1, forward=False
-                )
+            next_backward_virtual_pp_rank = self._get_virtual_pp_rank(
+                backward_micro_step_id + 1, forward=False
+            )
+            if self.is_pipeline_last_stage(ignore_virtual=True) and (
+                next_backward_virtual_pp_rank == (self.num_model_chunks - 1)
+            ):
+                # last pp stage and last virtual stage
+                recv_next = False
 
             (
                 input_tensor,
