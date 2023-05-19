@@ -22,14 +22,27 @@
 
 namespace phi {
 
-// Create the definition of Multiply
-DEFINE_CUDA_ELEMENTWISE_OP(Multiply)
+template <typename T, typename Context>
+void MultiplyKernel(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& y,
+                    DenseTensor* out) {
+  std::vector<const DenseTensor*> inputs;
+  inputs.reserve(2);
+  std::vector<DenseTensor*> outputs;
+  outputs.reserve(1);
+  inputs.emplace_back(&x);
+  inputs.emplace_back(&y);
+  outputs.emplace_back(out);
+  dev_ctx.template Alloc<T>(out);
+  funcs::BroadcastKernel<T>(
+      dev_ctx, inputs, &outputs, funcs::MultiplyFunctor<T>(), -1);
+}
 
 }  // namespace phi
 
 #ifdef PADDLE_WITH_XPU_KP
-PD_REGISTER_KERNEL(
-    multiply_raw, KPS, ALL_LAYOUT, phi::MultiplyRawKernel, float) {}
+PD_REGISTER_KERNEL(multiply, KPS, ALL_LAYOUT, phi::MultiplyKernel, float) {}
 #else
 
 using float16 = phi::dtype::float16;
@@ -37,10 +50,10 @@ using bfloat16 = phi::dtype::bfloat16;
 using complex64 = ::phi::dtype::complex<float>;
 using complex128 = ::phi::dtype::complex<double>;
 
-PD_REGISTER_KERNEL(multiply_raw,
+PD_REGISTER_KERNEL(multiply,
                    KPS,
                    ALL_LAYOUT,
-                   phi::MultiplyRawKernel,
+                   phi::MultiplyKernel,
                    float,
                    double,
                    int,

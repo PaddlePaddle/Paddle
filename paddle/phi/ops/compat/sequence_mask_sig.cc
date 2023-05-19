@@ -14,7 +14,7 @@ limitations under the License. */
 namespace phi {
 
 KernelSignature SequenceMaskOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature(
       "sequence_mask", {"X", "MaxLenTensor"}, {"maxlen", "out_dtype"}, {"Y"});
 }

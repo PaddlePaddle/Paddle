@@ -55,7 +55,7 @@ void LogsumexpGradKernel(const Context& dev_ctx,
                          const DenseTensor& out,
                          const DenseTensor& out_grad,
                          const std::vector<int64_t>& axis,
-                         bool keepdim,
+                         bool keepdim UNUSED,
                          bool reduce_all,
                          DenseTensor* in_grad) {
   dev_ctx.template Alloc<T>(in_grad);
