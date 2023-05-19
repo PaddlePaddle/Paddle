@@ -170,7 +170,6 @@ class TestArangeImperative(unittest.TestCase):
         end = paddle.to_tensor(np.array([5], 'float32'))
         step = paddle.to_tensor(np.array([1], 'float32'))
         x4 = paddle.arange(start, end, step, 'int64')
-        paddle.enable_static()
 
         expected_data = np.arange(0, 5, 1).astype(np.int64)
         for i in [x1, x2, x3, x4]:
@@ -203,6 +202,8 @@ class TestArangeImperative(unittest.TestCase):
         x9 = paddle.arange(1)
         x9_expected_data = np.arange(1).astype(np.int64)
         self.assertEqual((x9.numpy() == x9_expected_data).all(), True)
+
+        paddle.enable_static()
 
 
 if __name__ == "__main__":
