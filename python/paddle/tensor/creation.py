@@ -1312,7 +1312,6 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
                     break
             elif not isinstance(val, int) and not isinstance(val, Variable):
                 dtype = paddle.get_default_dtype()
-                dtype = paddle.get_default_dtype()
                 break
             else:
                 dtype = 'int64'
