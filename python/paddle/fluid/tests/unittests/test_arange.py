@@ -176,11 +176,33 @@ class TestArangeImperative(unittest.TestCase):
         for i in [x1, x2, x3, x4]:
             self.assertEqual((i.numpy() == expected_data).all(), True)
 
-        x5 = paddle.arange(
-            start, paddle.to_tensor(np.array([0.5], 'float32')), step
-        )
-        x5_expected_data = np.arange(0, 0.5, 1).astype(np.float32)
+        start_float = paddle.to_tensor(np.array([0.5], 'float32'))
+        end_float = paddle.to_tensor(np.array([1.5], 'float32'))
+        step_float = paddle.to_tensor(np.array([0.5], 'float32'))
+        # all [start, end, step] is float
+        x5 = paddle.arange(start_float, end_float, step_float)
+        x5_expected_data = np.arange(0.5, 1.5, 0.5).astype(np.float32)
         self.assertEqual((x5.numpy() == x5_expected_data).all(), True)
+
+        # [start, end] is float , [step] is int
+        x6 = paddle.arange(start_float, end_float, 1)
+        x6_expected_data = np.arange(0.5, 1.5, 1).astype(np.float32)
+        self.assertEqual((x6.numpy() == x6_expected_data).all(), True)
+
+        # [start] is float , [end] is int
+        x7 = paddle.arange(start_float, 1)
+        x7_expected_data = np.arange(0.5, 1).astype(np.float32)
+        self.assertEqual((x7.numpy() == x7_expected_data).all(), True)
+
+        # [start] is float
+        x8 = paddle.arange(start_float)
+        x8_expected_data = np.arange(0.5).astype(np.float32)
+        self.assertEqual((x8.numpy() == x8_expected_data).all(), True)
+
+        # [start] is int
+        x9 = paddle.arange(1)
+        x9_expected_data = np.arange(1).astype(np.int64)
+        self.assertEqual((x9.numpy() == x9_expected_data).all(), True)
 
 
 if __name__ == "__main__":

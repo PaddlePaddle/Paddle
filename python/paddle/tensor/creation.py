@@ -1305,12 +1305,17 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
         start = 0
 
     if dtype is None:
-        if not all(
-            paddle.to_tensor(val).is_integer() for val in [start, end, step]
-        ):
-            dtype = paddle.get_default_dtype()
-        else:
-            dtype = 'int64'
+        for val in [start, end, step]:
+            if not isinstance(val, int) and isinstance(val, Variable):
+                if not paddle.to_tensor(val).is_integer():
+                    dtype = paddle.get_default_dtype()
+                    break
+            elif not isinstance(val, int) and not isinstance(val, Variable):
+                dtype = paddle.get_default_dtype()
+                dtype = paddle.get_default_dtype()
+                break
+            else:
+                dtype = 'int64'
 
     out_shape = None
     if not in_dygraph_mode() and (
