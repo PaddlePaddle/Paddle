@@ -76,5 +76,9 @@ phi::KernelKey GetYoloLossExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr);
 
+phi::KernelKey GetLayerNormExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr);
+
 }  // namespace operators
 }  // namespace paddle

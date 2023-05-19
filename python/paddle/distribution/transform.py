@@ -66,7 +66,7 @@ class Transform:
 
     Suppose :math:`X` is a K-dimensional random variable with probability
     density function :math:`p_X(x)`. A new random variable :math:`Y = f(X)` may
-    be defined by transforming :math:`X` with a suitably well-behaved funciton
+    be defined by transforming :math:`X` with a suitably well-behaved function
     :math:`f`. It suffices for what follows to note that if `f` is one-to-one and
     its inverse :math:`f^{-1}` have a well-defined Jacobian, then the density of
     :math:`Y` is

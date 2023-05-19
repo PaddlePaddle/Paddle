@@ -236,6 +236,12 @@ class OpInfoImpl {
 
   ir::Dialect *dialect() const { return dialect_; }
 
+  uint32_t AttributeNum() const { return num_attributes_; }
+
+  const char *GetAttributeByIndex(size_t idx) const {
+    return idx < num_attributes_ ? p_attributes_[idx] : nullptr;
+  }
+
  private:
   OpInfoImpl(uint32_t num_interfaces,
              uint32_t num_traits,

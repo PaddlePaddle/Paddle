@@ -17,7 +17,7 @@
 namespace phi {
 
 KernelSignature DepthwiseConv2dOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("depthwise_conv2d",
                          {"Input", "Filter"},
                          {"strides",
@@ -30,7 +30,7 @@ KernelSignature DepthwiseConv2dOpArgumentMapping(
 }
 
 KernelSignature DepthwiseConv2dGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("depthwise_conv2d_grad",
                          {"Input", "Filter", "Output@GRAD"},
                          {"strides",
@@ -43,7 +43,7 @@ KernelSignature DepthwiseConv2dGradOpArgumentMapping(
 }
 
 KernelSignature DepthwiseConv2dDoubleGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("depthwise_conv2d_double_grad",
                          {"Input", "Filter", "DOutput", "DDInput", "DDFilter"},
                          {"strides",

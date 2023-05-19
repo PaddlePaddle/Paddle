@@ -16,7 +16,8 @@
 
 namespace phi {
 
-KernelSignature PriorBoxOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature PriorBoxOpArgumentMapping(
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("prior_box",
                          {"Input", "Image"},
                          {"min_sizes",
