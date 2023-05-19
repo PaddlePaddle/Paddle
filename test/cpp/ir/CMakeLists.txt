@@ -12,21 +12,4 @@ if(WITH_NEWIR)
     pd_dialect
     phi
     gtest)
-
-  file(
-    DOWNLOAD
-    https://paddle-ci.gz.bcebos.com/ir_translator_test/restnet50_main.prog
-    ${CMAKE_CURRENT_BINARY_DIR}/restnet50_main.prog
-    EXPECTED_MD5 b64c0ad3c96d99fc37d12094623ce1ad)
-
-  cc_test_old(
-    program_translator_test
-    SRCS
-    program_translator_test.cc
-    DEPS
-    program_translator
-    gtest
-    new_ir
-    pd_dialect)
-
 endif()
