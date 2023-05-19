@@ -22,8 +22,8 @@ namespace ir {
 ///
 /// \brief All built-in attributes.
 ///
-#define GET_BUILT_IN_ATTRIBUTE_LIST                                           \
-  StrAttribute, BoolAttribute, FloatAttribute, DoubleAttribute, IntAttribute, \
+#define GET_BUILT_IN_ATTRIBUTE_LIST                             \
+  StrAttribute, BoolAttribute, FloatAttribute, DoubleAttribute, \
       Int32_tAttribute, Int64_tAttribute, ArrayAttribute
 
 class StrAttribute : public Attribute {
@@ -68,15 +68,6 @@ class DoubleAttribute : public Attribute {
   double data() const;
 };
 
-class IntAttribute : public Attribute {
- public:
-  using Attribute::Attribute;
-
-  DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(IntAttribute, IntAttributeStorage);
-
-  int data() const;
-};
-
 class Int32_tAttribute : public Attribute {
  public:
   using Attribute::Attribute;
@@ -111,23 +102,3 @@ class ArrayAttribute : public Attribute {
 };
 
 }  // namespace ir
-
-namespace std {
-#define DECLARE_ATTRIBUTE_HASH_METHOD(attribute)                     \
-  template <>                                                        \
-  struct hash<attribute> {                                           \
-    std::size_t operator()(const attribute &obj) const {             \
-      return std::hash<const attribute::Storage *>()(obj.storage()); \
-    }                                                                \
-  };
-
-DECLARE_ATTRIBUTE_HASH_METHOD(ir::StrAttribute);
-DECLARE_ATTRIBUTE_HASH_METHOD(ir::BoolAttribute);
-DECLARE_ATTRIBUTE_HASH_METHOD(ir::FloatAttribute);
-DECLARE_ATTRIBUTE_HASH_METHOD(ir::DoubleAttribute);
-DECLARE_ATTRIBUTE_HASH_METHOD(ir::IntAttribute);
-DECLARE_ATTRIBUTE_HASH_METHOD(ir::Int32_tAttribute);
-DECLARE_ATTRIBUTE_HASH_METHOD(ir::Int64_tAttribute);
-DECLARE_ATTRIBUTE_HASH_METHOD(ir::ArrayAttribute);
-
-}  // namespace std

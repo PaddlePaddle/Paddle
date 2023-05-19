@@ -15,12 +15,21 @@
 #pragma once
 
 #include "paddle/ir/type.h"
+#include "paddle/ir/utils.h"
 
 namespace ir {
 struct VectorTypeStorage : public TypeStorage {
-  using ParamKey = Type;
+  using ParamKey = std::vector<Type>;
 
-  explicit VectorTypeStorage(Type value_type) : value_type_(value_type) {}
+  explicit VectorTypeStorage(const ParamKey &key) {
+    data_ = reinterpret_cast<Type *>(malloc(key.size() * sizeof(Type)));
+    memcpy(reinterpret_cast<void *>(data_),
+           reinterpret_cast<const void *>(key.data()),
+           key.size() * sizeof(Type));
+    size_ = key.size();
+  }
+
+  ~VectorTypeStorage() { free(data_); }
 
   ///
   /// \brief Each derived TypeStorage must define a Construc method, which
@@ -34,21 +43,36 @@ struct VectorTypeStorage : public TypeStorage {
   /// \brief Each derived TypeStorage must provide a HashValue method.
   ///
   static std::size_t HashValue(const ParamKey &key) {
-    return std::hash<Type>()(key);
+    std::size_t hash_value = 0;
+    for (size_t i = 0; i < key.size(); ++i) {
+      hash_value = hash_combine(hash_value, std::hash<Type>()(key[i]));
+    }
+    return hash_value;
   }
 
   ///
   /// \brief Each derived TypeStorage needs to overload operator==.
   ///
-  bool operator==(const ParamKey &key) const { return value_type_ == key; }
+  bool operator==(const ParamKey &key) const {
+    if (key.size() != size_) {
+      return false;
+    }
+    for (size_t i = 0; i < size_; ++i) {
+      if (data_[i] != key[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
 
-  ParamKey GetAsKey() const { return value_type_; }
+  ParamKey GetAsKey() const { return ParamKey(data_, data_ + size_); }
 
   ///
   /// \brief DenseTensorTypeStorage include five parameters: dims, dtype,
   /// layout, lod, offset.
   ///
-  Type value_type_;
+  Type *data_;
+  size_t size_;
 };
 
 }  // namespace ir

@@ -25,8 +25,6 @@ float FloatAttribute::data() const { return storage()->GetAsKey(); }
 
 double DoubleAttribute::data() const { return storage()->GetAsKey(); }
 
-int IntAttribute::data() const { return storage()->GetAsKey(); }
-
 int32_t Int32_tAttribute::data() const { return storage()->GetAsKey(); }
 
 int64_t Int64_tAttribute::data() const { return storage()->GetAsKey(); }

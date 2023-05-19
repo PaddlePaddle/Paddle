@@ -126,7 +126,13 @@ class VectorType : public Type {
 
   DECLARE_TYPE_UTILITY_FUNCTOR(VectorType, VectorTypeStorage);
 
-  Type element_type() const;
+  std::vector<Type> data() const;
+
+  size_t size() const { return data().size(); }
+
+  bool empty() const { return data().empty(); }
+
+  Type operator[](size_t index) const { return data()[index]; }
 };
 
 }  // namespace ir
