@@ -50,6 +50,9 @@ class HybridParallelClipGrad:
         self._clip = clip
         self._hcg = hcg
 
+        # NOTE: the flag use for distinguish sharding stage, the behavior of stage1 is different from stage2 and stage3.
+        self.not_sharding_stage1 = True
+
     @no_grad()
     def _dygraph_clip(self, params_grads):
         sum_square_dist_fp16 = []
@@ -191,7 +194,10 @@ class HybridParallelClipGrad:
 
         # In Sharding mode, param and grad is mapping different rank in optimizer.
         # ClipGradByGlobalNorm need allreduce to get globol norm
-        if self._hcg.get_sharding_parallel_world_size() > 1:
+        if (
+            self._hcg.get_sharding_parallel_world_size() > 1
+            and self.not_sharding_stage1
+        ):
             paddle.distributed.all_reduce(
                 global_norm_var_not_dist,
                 group=self._hcg.get_sharding_parallel_group(),
