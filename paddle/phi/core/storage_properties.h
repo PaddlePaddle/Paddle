@@ -68,6 +68,12 @@ struct OneDNNStorageProperties
   /// \brief memory descriptor of tensor which have layout set as ONEDNN
   dnnl::memory::desc mem_desc;
 };
+
+template <>
+const TypeInfo<StorageProperties>
+    TypeInfoTraits<StorageProperties, OneDNNStorageProperties>::kType =
+        RegisterStaticType<StorageProperties>(OneDNNStorageProperties::name());
+
 #endif
 
 static std::unique_ptr<StorageProperties> CopyStorageProperties(
@@ -94,5 +100,10 @@ static std::unique_ptr<StorageProperties> CopyStorageProperties(
   }
   return nullptr;
 }
+
+template <>
+const TypeInfo<StorageProperties>
+    TypeInfoTraits<StorageProperties, NPUStorageProperties>::kType =
+        RegisterStaticType<StorageProperties>(NPUStorageProperties::name());
 
 }  // namespace phi

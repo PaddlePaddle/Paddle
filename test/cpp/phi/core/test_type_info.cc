@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/phi/core/utils/type_registry.h"
 
 namespace phi {
+
 namespace tests {
 
 template <typename T>
@@ -68,4 +69,27 @@ TEST(type_info, base) {
 }
 
 }  // namespace tests
+}  // namespace phi
+
+namespace phi {
+template <>
+const TypeInfo<tests::Base<int>>
+    TypeInfoTraits<tests::Base<int>, tests::DerivedA<int>>::kType =
+        RegisterStaticType<tests::Base<int>>(tests::DerivedA<int>::name());
+
+template <>
+const TypeInfo<tests::Base<float>>
+    TypeInfoTraits<tests::Base<float>, tests::DerivedA<float>>::kType =
+        RegisterStaticType<tests::Base<float>>(tests::DerivedA<float>::name());
+
+template <>
+const TypeInfo<tests::Base<int>>
+    TypeInfoTraits<tests::Base<int>, tests::DerivedB<int>>::kType =
+        RegisterStaticType<tests::Base<int>>(tests::DerivedB<int>::name());
+
+template <>
+const TypeInfo<tests::Base<float>>
+    TypeInfoTraits<tests::Base<float>, tests::DerivedB<float>>::kType =
+        RegisterStaticType<tests::Base<float>>(tests::DerivedB<float>::name());
+
 }  // namespace phi

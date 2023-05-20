@@ -16,6 +16,11 @@ limitations under the License. */
 
 namespace phi {
 
+template <>
+const TypeInfo<phi::TensorBase>
+    TypeInfoTraits<phi::TensorBase, SparseCsrTensor>::kType =
+        RegisterStaticType<phi::TensorBase>(SparseCsrTensor::name());
+
 SparseCsrTensor::SparseCsrTensor() {
   DenseTensor crows, cols, values;
   this->non_zero_crows_ = crows;

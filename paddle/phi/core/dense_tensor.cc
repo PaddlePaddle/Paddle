@@ -42,6 +42,11 @@ limitations under the License. */
 
 namespace phi {
 
+template <>
+const TypeInfo<phi::TensorBase>
+    TypeInfoTraits<phi::TensorBase, DenseTensor>::kType =
+        RegisterStaticType<phi::TensorBase>(DenseTensor::name());
+
 DenseTensor::DenseTensor(Allocator* a, const DenseTensorMeta& meta)
     : meta_(meta), holder_(a->Allocate(SizeOf(dtype()) * numel())) {}
 

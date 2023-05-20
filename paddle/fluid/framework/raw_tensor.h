@@ -98,3 +98,11 @@ class RawTensor : public phi::ExtendedTensor,
 
 }  // namespace framework
 }  // namespace paddle
+
+namespace phi {
+template <>
+const TypeInfo<phi::TensorBase>
+    TypeInfoTraits<phi::TensorBase, paddle::framework::RawTensor>::kType =
+        RegisterStaticType<phi::TensorBase>(
+            paddle::framework::RawTensor::name());
+}

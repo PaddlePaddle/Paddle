@@ -21,6 +21,11 @@ limitations under the License. */
 
 namespace phi {
 
+template <>
+const TypeInfo<phi::TensorBase>
+    TypeInfoTraits<phi::TensorBase, StringTensor>::kType =
+        RegisterStaticType<phi::TensorBase>(StringTensor::name());
+
 StringTensor::StringTensor() { meta_.offset = 0; }
 
 StringTensor::StringTensor(Allocator* a, const StringTensorMeta& meta)

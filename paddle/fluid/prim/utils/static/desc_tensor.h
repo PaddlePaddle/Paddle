@@ -66,3 +66,10 @@ class DescTensor : public phi::ExtendedTensor,
 
 }  // namespace prim
 }  // namespace paddle
+
+namespace phi {
+template <>
+const TypeInfo<phi::TensorBase>
+    TypeInfoTraits<phi::TensorBase, paddle::prim::DescTensor>::kType =
+        RegisterStaticType<phi::TensorBase>(paddle::prim::DescTensor::name());
+}

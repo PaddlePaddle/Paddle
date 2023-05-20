@@ -190,3 +190,15 @@ void StringMapFromStream(std::istream& is,
                          std::unordered_map<std::string, int32_t>* data);
 }  // namespace framework
 }  // namespace paddle
+
+namespace phi {
+template <>
+const TypeInfo<phi::TensorBase>
+    TypeInfoTraits<phi::TensorBase, paddle::framework::Vocab>::kType =
+        RegisterStaticType<phi::TensorBase>(paddle::framework::Vocab::name());
+
+template <>
+const TypeInfo<phi::TensorBase>
+    TypeInfoTraits<phi::TensorBase, paddle::framework::Strings>::kType =
+        RegisterStaticType<phi::TensorBase>(paddle::framework::Strings::name());
+}  // namespace phi
