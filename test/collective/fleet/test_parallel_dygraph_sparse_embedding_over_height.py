@@ -15,11 +15,11 @@
 import os
 import unittest
 
-from parallel_dygraph_sparse_embedding_over_height import (
+from legacy_test.parallel_dygraph_sparse_embedding_over_height import (
     TestSparseEmbeddingOverHeight,
 )
+from legacy_test.test_dist_base import TestDistBase
 from spawn_runner_base import TestDistSpawnRunner
-from test_dist_base import TestDistBase
 
 from paddle import fluid
 

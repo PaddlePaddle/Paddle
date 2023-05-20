@@ -15,7 +15,9 @@
 import os
 import unittest
 
-from legacy_test.parallel_dygraph_unused_variables import TestSparseEmbeddingUnusedVars
+from legacy_test.parallel_dygraph_unused_variables import (
+    TestSparseEmbeddingUnusedVars,
+)
 from legacy_test.spawn_runner_base import TestDistSpawnRunner
 from legacy_test.test_dist_base import TestDistBase
 

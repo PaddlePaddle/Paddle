@@ -14,7 +14,7 @@
 
 import unittest
 
-import test_communication_api_base as test_base
+import legacy_test.test_communication_api_base as test_base
 
 
 class TestCommunicationStreamBroadcastAPI(test_base.CommunicationTestDistBase):

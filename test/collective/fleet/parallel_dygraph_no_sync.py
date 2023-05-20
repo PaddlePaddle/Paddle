@@ -16,7 +16,7 @@ import os
 import random
 
 import numpy as np
-from test_dist_base import (
+from legacy_test.test_dist_base import (
     TestParallelDyGraphRunnerBase,
     print_to_err,
     print_to_out,

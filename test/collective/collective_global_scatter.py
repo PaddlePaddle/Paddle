@@ -17,7 +17,10 @@ import pickle
 import sys
 
 import numpy as np
-from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
+from legacy_test.test_collective_api_base import (
+    TestCollectiveAPIRunnerBase,
+    runtime_main,
+)
 
 import paddle
 from paddle import fluid

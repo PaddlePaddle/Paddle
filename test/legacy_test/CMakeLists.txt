@@ -1069,6 +1069,30 @@ set_tests_properties(test_cumprod_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_split_program PROPERTIES TIMEOUT 120)
 set_tests_properties(test_graph_send_ue_recv_op PROPERTIES TIMEOUT 60)
 set_tests_properties(test_graph_send_uv_op PROPERTIES TIMEOUT 60)
+
+set_tests_properties(test_dataset_cifar PROPERTIES TIMEOUT 120)
+set_tests_properties(test_pretrained_model PROPERTIES TIMEOUT 120)
+set_tests_properties(test_model PROPERTIES TIMEOUT 300)
+set_tests_properties(test_dataset_movielens PROPERTIES TIMEOUT 120)
+set_tests_properties(test_datasets PROPERTIES TIMEOUT 300)
+set_tests_properties(test_dataset_wmt PROPERTIES TIMEOUT 120)
+set_tests_properties(test_vision_models PROPERTIES TIMEOUT 120)
+set_tests_properties(test_dataset_uci_housing PROPERTIES TIMEOUT 120)
+set_tests_properties(test_dataset_imdb PROPERTIES TIMEOUT 300)
+set_tests_properties(test_pretrained_model PROPERTIES TIMEOUT 600)
+set_tests_properties(test_callback_wandb PROPERTIES TIMEOUT 60)
+if(WITH_COVERAGE)
+  set_tests_properties(test_hapi_hub PROPERTIES TIMEOUT 300)
+endif()
+
+if(APPLE)
+  set_tests_properties(test_callback_early_stop PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_callback_reduce_lr_on_plateau PROPERTIES TIMEOUT
+                                                                     300)
+  set_tests_properties(test_vision_models PROPERTIES TIMEOUT 300)
+endif()
+set_tests_properties(test_decorator PROPERTIES TIMEOUT 120)
+
 if(WITH_DISTRIBUTE
    AND WITH_GPU
    AND WITH_NCCL)

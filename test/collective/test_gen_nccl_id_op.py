@@ -16,7 +16,7 @@ import os
 import unittest
 from multiprocessing import Process
 
-from launch_function_helper import _find_free_port, wait
+from legacy_test.launch_function_helper import _find_free_port, wait
 
 os.environ['GLOG_vmodule'] = "gen_nccl_id_op*=10,gen_comm_id*=10"
 
