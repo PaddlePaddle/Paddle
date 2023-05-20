@@ -25,11 +25,11 @@ def cdist(x, y, p):
     x_shape = x.shape
     y_shape = y.shape
     if len(x_shape) > len(y_shape):
-        y_shape = [1] * (len(x_shape) - len(y_shape)) + y_shape
+        y_shape = (1,) * (len(x_shape) - len(y_shape)) + y_shape
     elif len(y_shape) > len(x_shape):
-        x_shape = [1] * (len(y_shape) - len(x_shape)) + x_shape
+        x_shape = (1,) * (len(y_shape) - len(x_shape)) + x_shape
     resize_shape = ()
-    for i in range(len(x.shape[:-2])):
+    for i in range(len(x_shape[:-2])):
         resize_shape = resize_shape + (max(x_shape[i], y_shape[i]),)
     new_y = np.concatenate([y] * x_shape[-2], axis=-2)
     new_x = np.repeat(x, y_shape[-2], axis=-2)
@@ -95,7 +95,11 @@ class TestDistAPI(unittest.TestCase):
     def test_shape(self):
         self.init_data_type()
         p = 2
-        for x_shape, y_shape in [[(5, 6, 2), (1, 5, 2)]]:
+        for x_shape, y_shape in [
+            [(5, 6, 2), (1, 5, 2)],
+            [(4, 4, 3, 1), (1, 5, 1)],
+            [(2, 5), (3, 1, 5, 5)],
+        ]:
             a_i = np.random.random(x_shape).astype(self.data_type)
             b_i = np.random.random(y_shape).astype(self.data_type)
             a = paddle.to_tensor(a_i)
@@ -114,5 +118,4 @@ class TestDistAPI(unittest.TestCase):
 
 
 if __name__ == '__main__':
-
     unittest.main()
