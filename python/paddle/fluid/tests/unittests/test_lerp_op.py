@@ -263,7 +263,7 @@ class TestLerpBF16(TestLerp):
             place,
             ['X', 'Y'],
             'Out',
-            user_defined_grads=[np.zeros(self.xshape), np.ones(self.yshape)],
+            user_defined_grads=[np.zeros(self.xshape), np.zeros(self.yshape)],
         )
 
 
