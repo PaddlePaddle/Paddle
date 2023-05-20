@@ -18,6 +18,10 @@ if(NOT WITH_COVERAGE)
   list(REMOVE_ITEM TEST_OPS test_hapi_hub)
 endif()
 
+if(NOT WITH_GPU)
+  list(REMOVE_ITEM TEST_OPS test_async_read_write)
+endif()
+
 foreach(src ${TEST_OPS})
   py_test(${src} SRCS ${src}.py)
 endforeach()

@@ -29,7 +29,6 @@ class DeviceType(IntEnum):
     CPU = 1
     GPU = 2
     XPU = 3
-    NPU = 4
     DCU = 5
     NIC = 6
 

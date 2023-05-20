@@ -357,7 +357,6 @@ void TensorRTEngine::FreezeNetwork() {
                    "opt_shape, false /*disable_trt_plugin_fp16*/)'";
     }
   }
-
 #if IS_TRT_VERSION_GE(8200)
   if (use_inspector_) {
     infer_builder_config_->setProfilingVerbosity(
@@ -369,9 +368,6 @@ void TensorRTEngine::FreezeNetwork() {
   infer_engine_.reset(infer_builder_->buildEngineWithConfig(
       *network(), *infer_builder_config_));
 #else
-  if (use_sparse_weights_) {
-    infer_builder_config_->setFlag(nvinfer1::BuilderFlag::kSPARSE_WEIGHTS);
-  }
   ihost_memory_.reset(infer_builder_->buildSerializedNetwork(
       *network(), *infer_builder_config_));
   infer_ptr<nvinfer1::IRuntime> runtime(createInferRuntime(&logger_));
