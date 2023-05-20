@@ -1311,7 +1311,8 @@ void batch_norm_grad(const Tensor& x,
   if (out_grad.dtype() == phi::DataType::FLOAT16) {
     out_grad_data = cast<T>(out_grad, phi::DataType::FLOAT32);
   }
-  phi::DDim x_dims = x_data.dims();
+  phi::DDim x_dims({0});
+  x_dims = x_data.dims();
 
   int C = 1;
   if (data_layout_ == DataLayout::kNCHW) {
