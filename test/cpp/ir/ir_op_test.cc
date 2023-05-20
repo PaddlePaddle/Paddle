@@ -52,7 +52,7 @@ class InferShapeInterface : public ir::OpInterfaceBase<InferShapeInterface> {
     }
   };
 
-  explicit InferShapeInterface(const ir::Operation *op, Concept *impl = nullptr)
+  InferShapeInterface(const ir::Operation *op, Concept *impl)
       : ir::OpInterfaceBase<InferShapeInterface>(op), impl_(impl) {}
 
   void InferShape() { impl_->infer_shape_(operation()); }
