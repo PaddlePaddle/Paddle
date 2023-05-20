@@ -120,7 +120,7 @@ class MixPrecisionOptimizer:
                 if param.stop_gradient:
                     continue
                 grad_var = param.main_grad
-                if framework.in_dynamic_mode():
+                if paddle.in_dynamic_mode():
                     if (
                         hasattr(grad_var, "is_selected_rows")
                         and grad_var.is_selected_rows()
@@ -151,7 +151,7 @@ class MixPrecisionOptimizer:
                     if param.stop_gradient:
                         continue
                     grad_var = param.main_grad
-                    if framework.in_dynamic_mode():
+                    if paddle.in_dynamic_mode():
                         if (
                             hasattr(grad_var, "is_selected_rows")
                             and grad_var.is_selected_rows()

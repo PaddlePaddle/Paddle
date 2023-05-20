@@ -1174,7 +1174,7 @@ def bilateral_slice(x, guide, grid, has_offset, name=None):
             output = paddle.incubate.layers.bilateral_slice(x, guide, grid, has_offset=True)
 
     """
-    if paddle.framework.in_dynamic_mode():
+    if paddle.in_dynamic_mode():
         attrs = ('has_offset', has_offset)
         return _legacy_C_ops.bilateral_slice(x, grid, guide, *attrs)
 
@@ -1252,7 +1252,7 @@ def correlation(
 
     """
 
-    if paddle.framework.in_dynamic_mode():
+    if paddle.in_dynamic_mode():
         attrs = (
             "pad_size",
             pad_size,
@@ -1501,7 +1501,7 @@ def fused_bn_add_act(
 def pow2_decay_with_linear_warmup(
     warmup_steps, total_steps, base_lr, end_lr, dtype='float32', name=None
 ):
-    if paddle.framework.in_dynamic_mode():
+    if paddle.in_dynamic_mode():
         raise NotImplementedError(
             "pow2_decay_with_linear_warmup does not support dygraph mode yet."
         )
