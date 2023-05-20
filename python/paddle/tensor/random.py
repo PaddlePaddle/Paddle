@@ -76,7 +76,9 @@ def bernoulli(x, name=None):
     if in_dygraph_mode():
         return _C_ops.bernoulli(x)
     else:
-        check_variable_and_dtype(x, "x", ["float32", "float64"], "bernoulli")
+        check_variable_and_dtype(
+            x, "x", ["float16", "float32", "float64"], "bernoulli"
+        )
 
         helper = LayerHelper("randint", **locals())
         out = helper.create_variable_for_type_inference(

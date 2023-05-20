@@ -15,9 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
+from paddle.fluid import core
 
 
 def output_hist(out):
@@ -31,9 +32,14 @@ def output_hist(out):
 class TestBernoulliOp(OpTest):
     def setUp(self):
         self.op_type = "bernoulli"
-        self.inputs = {"X": np.random.uniform(size=(1000, 784))}
+        self.inputs = {
+            "X": np.random.uniform(size=(1000, 784)).astype(self.dtype)
+        }
         self.attrs = {}
-        self.outputs = {"Out": np.zeros((1000, 784)).astype("float32")}
+        self.outputs = {"Out": np.zeros((1000, 784)).astype(self.dtype)}
+
+    def init_dtype(self):
+        self.dtype = np.float32
 
     def test_check_output(self):
         self.check_output_customized(self.verify_output)
@@ -96,6 +102,36 @@ class TestRandomValue(unittest.TestCase):
         np.testing.assert_array_equal(y[16, 500, 500:510], expect)
 
         paddle.enable_static()
+
+
+class TestBernoulliFP16Op(TestBernoulliOp):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestBernoulliBF16Op(OpTest):
+    def setUp(self):
+        self.python_api = paddle.bernoulli
+        self.op_type = "bernoulli"
+        self.dtype = np.uint16
+        self.init_test_case()
+
+        self.inputs = {'X': convert_float_to_uint16(self.x)}
+        self.attrs = {}
+        self.outputs = {'Out': convert_float_to_uint16(self.out)}
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
+
+    def init_test_case(self):
+        self.x = np.random.uniform(size=(1000, 784)).astype("float32")
+        self.out = np.zeros((1000, 784)).astype("float32")
 
 
 if __name__ == "__main__":
