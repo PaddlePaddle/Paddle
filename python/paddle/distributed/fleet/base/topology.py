@@ -262,6 +262,11 @@ class HybridCommunicateGroup:
         assert len(parallel_group) > 0
         assert parallel_comm_group is not None
 
+        logger.info(
+            "Total {} {} comm group(s) create successfully!".format(
+                len(parallel_groups), parallel_method
+            )
+        )
         return parallel_group, parallel_comm_group
 
     def _set_check_group(self, parallel_method="data"):
