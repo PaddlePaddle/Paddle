@@ -128,7 +128,7 @@ def train(conf_dict, to_static):
             parameter_list=net.parameters(),
         )
 
-        metric = fluid.metrics.Auc(name="auc")
+        metric = paddle.metric.Auc(name="auc")
 
         global_step = 0
         losses = []

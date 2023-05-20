@@ -41,7 +41,7 @@ class XPUTestUnbindOP(XPUOpTestWrapper):
             x_1 = paddle.static.data(shape=[2, 3], dtype=self.dtype, name='x_1')
             [out_0, out_1] = tensor.unbind(input=x_1, axis=0)
             input_1 = np.random.random([2, 3]).astype(self.dtype)
-            axis = paddle.static.data(shape=[1], dtype='int32', name='axis')
+            axis = paddle.static.data(shape=[], dtype='int32', name='axis')
             exe = fluid.Executor(place=self.place)
 
             [res_1, res_2] = exe.run(
@@ -80,7 +80,7 @@ class XPUTestUnbindOP(XPUOpTestWrapper):
             x_1 = paddle.static.data(shape=[2, 3], dtype=self.dtype, name='x_1')
             [out_0, out_1] = paddle.unbind(input=x_1, axis=0)
             input_1 = np.random.random([2, 3]).astype(self.dtype)
-            axis = paddle.static.data(shape=[1], dtype='int32', name='axis')
+            axis = paddle.static.data(shape=[], dtype='int32', name='axis')
             exe = fluid.Executor(place=self.place)
 
             [res_1, res_2] = exe.run(
@@ -195,6 +195,11 @@ class XPUTestUnbindOP(XPUOpTestWrapper):
                     tensor.unbind(input=x, axis=2.0)
 
                 self.assertRaises(TypeError, test_table_Variable)
+
+                def test_invalid_axis():
+                    tensor.unbind(input=x, axis=2)
+
+                self.assertRaises(ValueError, test_invalid_axis)
 
 
 support_types = get_xpu_op_support_types('unbind')

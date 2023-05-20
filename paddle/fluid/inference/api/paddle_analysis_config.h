@@ -200,6 +200,14 @@ struct PD_INFER_DECL AnalysisConfig {
   void SetParamsFile(const std::string& x) { params_file_ = x; }
 
   ///
+  /// \brief Save optimized model.
+  ///
+  /// \param save_optimized_model whether to enable save optimized model.
+  ///
+  void EnableSaveOptimModel(bool save_optimized_model) {
+    save_optimized_model_ = save_optimized_model;
+  }
+  ///
   /// \brief Set the path of optimization cache directory.
   ///
   /// \param opt_cache_dir the path of optimization cache directory.
@@ -287,6 +295,18 @@ struct PD_INFER_DECL AnalysisConfig {
                  const std::string& precision = "int16",
                  bool adaptive_seqlen = false,
                  bool enable_multi_stream = false);
+
+  ///
+  /// \brief configs of XPU
+  ///
+  /// \param quant_post_dynamic_weight_bits Weight bits used in dynamic post
+  /// quantization. Optional value: -1, 8, 16. Default value is -1, means using
+  /// the recommended way. \param quant_post_dynamic_op_types Ops used in
+  /// dynamic post quantization.
+  ///
+  void SetXpuConfig(
+      int quant_post_dynamic_weight_bits = -1,
+      const std::vector<std::string>& quant_post_dynamic_op_types = {});
 
   ///
   /// \brief configs of IPU
@@ -402,12 +422,6 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \return bool Whether the XPU is turned on.
   ///
   bool use_xpu() const { return use_xpu_; }
-  ///
-  /// \brief A boolean state telling whether the NPU is turned on.
-  ///
-  /// \return bool Whether the NPU is turned on.
-  ///
-  bool use_npu() const { return use_npu_; }
   /// \brief A boolean state telling whether the IPU is turned on.
   ///
   /// \return bool Whether the IPU is turned on.
@@ -449,12 +463,6 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \return int The XPU device id.
   ///
   int xpu_device_id() const { return xpu_device_id_; }
-  ///
-  /// \brief Get the NPU device id.
-  ///
-  /// \return int The NPU device id.
-  ///
-  int npu_device_id() const { return npu_device_id_; }
   /// \brief Get the number of IPU device .
   ///
   /// \return int The number of IPU device.
@@ -574,6 +582,9 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \param use_static Serialize optimization information to disk for reusing.
   /// \param use_calib_mode Use TRT int8 calibration(post training
   /// quantization).
+  /// \param use_cuda_graph Use CudaGraph to reduce the time consumption of
+  /// enqueue. Note that this option can only be enabled when your input is
+  /// constant (including the batch dimension).
   ///
   ///
   void EnableTensorRtEngine(int64_t workspace_size = 1 << 30,
@@ -581,7 +592,8 @@ struct PD_INFER_DECL AnalysisConfig {
                             int min_subgraph_size = 3,
                             Precision precision = Precision::kFloat32,
                             bool use_static = false,
-                            bool use_calib_mode = true);
+                            bool use_calib_mode = true,
+                            bool use_cuda_graph = false);
   ///
   /// \brief A boolean state telling whether the TensorRT engine is used.
   ///
@@ -1067,10 +1079,6 @@ struct PD_INFER_DECL AnalysisConfig {
   bool use_external_stream_{false};
   void* exec_stream_{nullptr};
 
-  // NPU related
-  bool use_npu_{false};
-  int npu_device_id_{0};
-
   // CustomDevice related
   bool use_custom_device_{false};
   int custom_device_id_{0};
@@ -1102,6 +1110,7 @@ struct PD_INFER_DECL AnalysisConfig {
   Precision tensorrt_precision_mode_{Precision::kFloat32};
   bool trt_use_static_engine_{false};
   bool trt_use_calib_mode_{true};
+  bool trt_use_cuda_graph_{false};
   bool trt_use_varseqlen_{false};
   bool trt_with_interleaved_{false};
   std::string tensorrt_transformer_posid_{""};
@@ -1181,6 +1190,8 @@ struct PD_INFER_DECL AnalysisConfig {
   std::string xpu_precision_;
   bool xpu_adaptive_seqlen_;
   bool xpu_enable_multi_stream_;
+  int xpu_quant_post_dynamic_weight_bits_{-1};
+  std::vector<std::string> xpu_quant_post_dynamic_op_types_;
 
   // LITE OPENCL SETTINGS
   bool use_opencl_{false};
@@ -1236,6 +1247,7 @@ struct PD_INFER_DECL AnalysisConfig {
   // Variables held by config can take up a lot of memory in some cases.
   // So we release the memory when the predictor is set up.
   mutable bool is_valid_{true};
+  bool save_optimized_model_{false};
   std::string opt_cache_dir_;
   friend class paddle_infer::experimental::InternalUtils;
 

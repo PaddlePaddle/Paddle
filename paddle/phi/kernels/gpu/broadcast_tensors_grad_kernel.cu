@@ -16,7 +16,7 @@
 
 #include <vector>
 
-#include "paddle/phi/common/float16.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -104,6 +104,7 @@ PD_REGISTER_KERNEL(broadcast_tensors_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::BroadcastTensorsGradKernel,
+                   bool,
                    int,
                    int64_t,
                    float,

@@ -45,8 +45,6 @@ DeviceType Place2DeviceType(const platform::Place& place) {
     return platform::DeviceType::XPU;
   } else if (platform::is_ipu_place(place)) {
     return platform::DeviceType::IPU;
-  } else if (platform::is_npu_place(place)) {
-    return platform::DeviceType::NPU;
   } else if (platform::is_custom_place(place)) {
     return platform::DeviceType::CUSTOM_DEVICE;
   } else {
@@ -59,7 +57,8 @@ DeviceType Place2DeviceType(const platform::Place& place) {
 template <typename DevCtx>
 typename std::enable_if<!std::is_same<DevCtx, phi::GPUContext>::value,
                         DevCtx*>::type
-ConstructDevCtx(const phi::Place& p, /*unused*/ int stream_priority = 0) {
+ConstructDevCtx(const phi::Place& p,
+                /*unused*/ int stream_priority UNUSED = 0) {
   return new DevCtx(p);
 }
 
@@ -109,6 +108,9 @@ inline std::unique_ptr<DeviceContext> CreateDeviceContext(
     dev_ctx->SetAllocator(instance.GetAllocator(p).get());
     dev_ctx->SetGenerator(phi::DefaultXPUGenerator(p.GetDeviceId()).get());
 #endif
+  } else if (p.GetType() == phi::AllocationType::CUSTOM) {
+    dev_ctx->SetAllocator(instance.GetAllocator(p).get());
+    dev_ctx->SetGenerator(phi::DefaultCustomDeviceGenerator(p).get());
   } else {
     dev_ctx->SetAllocator(instance.GetAllocator(p).get());
     dev_ctx->SetGenerator(phi::DefaultCPUGenerator().get());

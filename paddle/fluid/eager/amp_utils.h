@@ -96,8 +96,6 @@ inline phi::DataType GetDtypeWithPlace(
       is_right_place = (paddle::platform::is_gpu_place(place) ||
                         paddle::platform::is_cuda_pinned_place(place) ||
                         paddle::platform::is_xpu_place(place) ||
-                        paddle::platform::is_npu_place(place) ||
-                        paddle::platform::is_npu_pinned_place(place) ||
                         paddle::platform::is_custom_place(place));
       if (is_right_place) {
         break;
@@ -122,15 +120,36 @@ inline phi::DataType GetAmpDestDtype(
       egr::Controller::Instance().GetCurrentTracer()->GetAmpPhiDtype();
   auto dst_type = amp_setting_dtype;
 
-  if (paddle::imperative::AmpOperators::Instance().GetMutableAllowOps()->count(
-          op_name)) {
-    dst_type = amp_setting_dtype;
-  } else if (paddle::imperative::AmpOperators::Instance()
-                 .GetMutableBlockOps()
-                 ->count(op_name)) {
-    dst_type = phi::DataType::FLOAT32;
+  bool use_promote = true;
+  if (amp_level == paddle::imperative::AmpLevel::O2) {
+    use_promote =
+        egr::Controller::Instance().GetCurrentTracer()->GetUsePromote();
+  }
+
+  if (use_promote) {
+    if (paddle::imperative::AmpOperators::Instance()
+            .GetMutableAllowOps()
+            ->count(op_name)) {
+      dst_type = amp_setting_dtype;
+    } else if (paddle::imperative::AmpOperators::Instance()
+                   .GetMutableBlockOps()
+                   ->count(op_name)) {
+      dst_type = phi::DataType::FLOAT32;
+    } else {
+      if (amp_level == paddle::imperative::AmpLevel::OD) {
+        dst_type = phi::DataType::FLOAT32;
+      } else {
+        dst_type =
+            GetPromoteType(op_name, amp_tensors_vector, amp_setting_dtype);
+      }
+    }
   } else {
-    dst_type = GetPromoteType(op_name, amp_tensors_vector, amp_setting_dtype);
+    // use_promote can be set to false only for O2 training.
+    if (paddle::imperative::AmpOperators::Instance()
+            .GetMutableBlockOps()
+            ->count(op_name)) {
+      dst_type = phi::DataType::FLOAT32;
+    }
   }
 
   if (dst_type == amp_setting_dtype &&

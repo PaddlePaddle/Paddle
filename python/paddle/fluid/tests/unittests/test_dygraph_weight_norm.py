@@ -46,7 +46,7 @@ class TestDygraphWeightNorm(unittest.TestCase):
     def norm_except_dim(self, w, dim=None):
         shape = w.shape
         ndims = len(shape)
-        shape_numel = reduce(lambda x, y: x * y, shape)
+        shape_numel = reduce(lambda x, y: x * y, shape, 1)
         if dim == -1:
             return np.linalg.norm(w, axis=None, keepdims=True).flatten()
         elif dim == 0:
@@ -68,7 +68,7 @@ class TestDygraphWeightNorm(unittest.TestCase):
     def weight_normalize(self, w, dim=None):
         shape = w.shape
         ndims = len(shape)
-        shape_numel = reduce(lambda x, y: x * y, shape)
+        shape_numel = reduce(lambda x, y: x * y, shape, 1)
         v = w
         g = self.norm_except_dim(w, dim)
         g_mul = g

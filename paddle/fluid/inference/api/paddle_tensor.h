@@ -21,12 +21,14 @@
 
 #include "paddle_infer_declare.h"  // NOLINT
 
-#include "paddle/phi/api/include/tensor.h"  // expose paddle::Tensor
-
 #ifdef PADDLE_WITH_ONNXRUNTIME
 #include "onnxruntime_c_api.h"    // NOLINT
 #include "onnxruntime_cxx_api.h"  // NOLINT
 #endif
+
+namespace paddle {
+class Tensor;
+}
 
 namespace paddle_infer {
 
@@ -65,7 +67,7 @@ enum DataType {
   // TODO(Inference): support more data types if needed.
 };
 
-enum class PlaceType { kUNK = -1, kCPU, kGPU, kXPU, kNPU, kIPU, kCUSTOM };
+enum class PlaceType { kUNK = -1, kCPU, kGPU, kXPU, kIPU, kCUSTOM };
 
 enum class DataLayout { kUNK = -1, kAny, kNHWC, kNCHW };
 

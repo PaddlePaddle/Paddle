@@ -32,7 +32,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/flags.h"
 
-DECLARE_string(tensor_operants_mode);
+PHI_DECLARE_string(tensor_operants_mode);
 
 namespace paddle {
 namespace prim {
@@ -350,10 +350,7 @@ class CompositeGradOpMakerBase {
   framework::VarDesc* SingleOutputGrad(const std::string& name) const {
     auto* var = this->SingleForwardOutput(name);
     if (!var) {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "GetSingleOutputGrad for %s_grad faild, if it is Optional input,"
-          "please use GetOptionalSingleOutputGrad replaced. ",
-          name));
+      return nullptr;
     }
     auto var_name = var->Name();
     auto grad_var_name = framework::GradVarName(var_name);
@@ -371,7 +368,7 @@ class CompositeGradOpMakerBase {
       return StaticCompositeContext::Instance().GetBlock()->FindVar(
           grad_var_name);
     } else {
-      return StaticCompositeContext::Instance().GetBlock()->Var(grad_var_name);
+      return nullptr;
     }
   }
 
@@ -405,15 +402,6 @@ class CompositeGradOpMakerBase {
       }
     }
     return input_grads;
-    PADDLE_ENFORCE_LE(
-        var_names.size(),
-        1UL,
-        platform::errors::Unavailable(
-            "BUG from operator developer:"
-            " for input argument with a list of variables, "
-            " drop_empty_grad is not allowed because it makes"
-            " the correspondence bewteen a variable and its gradient"
-            " ambiguous."));
   }
 
   std::vector<framework::VarDesc*> MultiOutputGrad(
