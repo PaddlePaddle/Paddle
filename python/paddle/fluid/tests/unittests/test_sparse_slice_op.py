@@ -47,10 +47,10 @@ data_2d = [
     [[3, 4], [0], [0], [2]],
     [[3, 4], [1], [-3], [2]],
     [[3, 4], [-2, -1], [-3, 0], [2, -1]],
+    [[78, 78], [0, -1], [32, 58], [-2, -1]],
 ]
 
-# devices = ['cpu']
-devices = []
+devices = ['cpu']
 if paddle.device.get_device() != "cpu":
     devices.append(paddle.device.get_device())
 
@@ -82,14 +82,14 @@ class TestSparseSlice(unittest.TestCase):
             sp_out.to_dense().numpy(), dense_out.numpy(), rtol=1e-5
         )
 
-        # dense_out.backward()
-        # sp_out.backward()
+        dense_out.backward()
+        sp_out.backward()
 
-        # np.testing.assert_allclose(
-        #     sp_x.grad.to_dense().numpy(),
-        #     dense_x.grad.numpy() * np_x.astype('bool').astype('int'),
-        #     rtol=1e-5,
-        # )
+        np.testing.assert_allclose(
+            sp_x.grad.to_dense().numpy(),
+            dense_x.grad.numpy() * np_x.astype('bool').astype('int'),
+            rtol=1e-5,
+        )
 
     def check_result_with_shape(
         self, x_shape, axes, starts, ends, format='coo'
