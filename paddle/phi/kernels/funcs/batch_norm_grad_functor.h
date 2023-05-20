@@ -43,7 +43,7 @@ void BatchNormGradFunctor(const Context& dev_ctx,
                             DenseTensor* bias_grad);
 
 template<> 
-void BatchNormGradFunctor<double>(const phi::CPUContext& dev_ctx,
+void BatchNormGradFunctor<double, phi::CPUContext>(const phi::CPUContext& dev_ctx,
                                                             const DenseTensor& x,
                                                             const DenseTensor& scale,
                                                             const DenseTensor& bias,
@@ -65,7 +65,7 @@ void BatchNormGradFunctor<double>(const phi::CPUContext& dev_ctx,
                                                             DenseTensor* bias_grad);
 
 template<>
-void BatchNormGradFunctor<float>(const phi::CPUContext& dev_ctx,
+void BatchNormGradFunctor<float, phi::CPUContext>(const phi::CPUContext& dev_ctx,
                                                             const DenseTensor& x,
                                                             const DenseTensor& scale,
                                                             const DenseTensor& bias,
