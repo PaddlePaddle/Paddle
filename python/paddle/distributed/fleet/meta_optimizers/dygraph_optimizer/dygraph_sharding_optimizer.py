@@ -171,23 +171,23 @@ class DygraphShardingOptimizer:
 
     @framework.dygraph_only
     def set_state_dict(self, state_dict):
-        filter_state = {"LR_Scheduler": state_dict.pop("LR_Scheduler")}
+        inner_state = {"LR_Scheduler": state_dict.pop("LR_Scheduler")}
         parameters = self._rank2params[self._sharding_rank]
 
         if "master_weights" in state_dict:
             master = state_dict.pop("master_weights")
-            filter_state["master_weights"] = {}
+            inner_state["master_weights"] = {}
             for p in parameters:
                 for k, v in master.items():
                     if p.name in k:
-                        filter_state["master_weights"][k] = v
+                        inner_state["master_weights"][k] = v
 
         for p in parameters:
             for k, v in state_dict.items():
                 if p.name in k:
-                    filter_state[k] = v
+                    inner_state[k] = v
 
-        return filter_state
+        self._inner_optimizer.set_state_dict(inner_state)
 
     def minimize(
         self, loss, startup_program=None, parameters=None, no_grad_set=None
