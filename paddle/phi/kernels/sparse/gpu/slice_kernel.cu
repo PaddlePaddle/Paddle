@@ -198,6 +198,288 @@ void SliceCooKernel(const Context& dev_ctx,
                                                         out_values_data);
 }
 
+__global__ void GetCsrNonZeroNumsCudaKernel(const int64_t* x_crows_data,
+                                            const int64_t* x_cols_data,
+                                            const int64_t x_crows_start,
+                                            const int64_t x_crows_end,
+                                            const int64_t min_col,
+                                            const int64_t max_col,
+                                            int* out_nnz,
+                                            const int64_t offset = 0) {
+  CUDA_KERNEL_LOOP_TYPE(i, x_crows_end - x_crows_start, int64_t) {
+    int64_t st = x_crows_data[x_crows_start + i] + offset;
+    int64_t ed = x_crows_data[x_crows_start + i + 1] + offset;
+    for (int64_t jj = st; jj < ed; ++jj) {
+      if (x_cols_data[jj] >= min_col && x_cols_data[jj] < max_col) {
+        atomicAdd(out_nnz, 1);
+      }
+    }
+  }
+}
+
+template <typename T>
+__global__ void GetCsrSubMatrixCudaKernel(const int64_t* x_crows_data,
+                                          const int64_t* x_cols_data,
+                                          const T* x_values_data,
+                                          const int64_t x_crows_start,
+                                          const int64_t x_crows_end,
+                                          const int64_t min_col,
+                                          const int64_t max_col,
+                                          int64_t* out_crows_data,
+                                          int64_t* out_cols_data,
+                                          T* out_values_data,
+                                          const int64_t out_crows_offset = 0,
+                                          const int64_t x_cols_offset = 0,
+                                          const int64_t out_cols_offset = 0) {
+  int64_t tid = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
+  if (tid == 0) {
+    out_crows_data[out_crows_offset] = 0;
+    int64_t index = 0, new_n_rows = x_crows_end - x_crows_start;
+    for (int i = 0; i < new_n_rows; ++i) {
+      int64_t st = x_crows_data[x_crows_start + i] + x_cols_offset;
+      int64_t ed = x_crows_data[x_crows_start + i + 1] + x_cols_offset;
+      for (int64_t jj = st; jj < ed; ++jj) {
+        if (x_cols_data[jj] >= min_col && x_cols_data[jj] < max_col) {
+          out_cols_data[out_cols_offset + index] = x_cols_data[jj] - min_col;
+          out_values_data[out_cols_offset + index] = x_values_data[jj];
+          index++;
+        }
+      }
+      out_crows_data[out_crows_offset + i + 1] = index;
+    }
+  }
+}
+
+template <typename T, typename Context>
+void SliceCsrTensor2D(const Context& dev_ctx,
+                      const SparseCsrTensor& x,
+                      const std::vector<int64_t>& axes,
+                      const std::vector<int64_t>& starts,
+                      const std::vector<int64_t>& ends,
+                      const phi::DDim& out_dims,
+                      SparseCsrTensor* out) {
+  const auto* x_crows_data = x.crows().data<int64_t>();
+  const auto* x_cols_data = x.cols().data<int64_t>();
+  const auto* x_values_data = x.values().data<T>();
+  // Step1: Get the number of non zero elements for out
+  DenseTensor d_out_nnz = phi::Empty<int32_t>(dev_ctx, {1});
+  int* d_out_nnz_ptr = d_out_nnz.data<int32_t>();
+  phi::backends::gpu::GpuMemsetAsync(
+      d_out_nnz_ptr, 0, sizeof(int32_t), dev_ctx.stream());
+  auto config =
+      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, ends[0] - starts[0], 1);
+  GetCsrNonZeroNumsCudaKernel<<<config.block_per_grid.x,
+                                config.thread_per_block.x,
+                                0,
+                                dev_ctx.stream()>>>(x_crows_data,
+                                                    x_cols_data,
+                                                    starts[0],
+                                                    ends[0],
+                                                    starts[1],
+                                                    ends[1],
+                                                    d_out_nnz_ptr,
+                                                    0);
+  int32_t out_nnz = 0;
+  phi::backends::gpu::GpuMemcpyAsync(&out_nnz,
+                                     d_out_nnz_ptr,
+                                     sizeof(int32_t),
+                                     gpuMemcpyDeviceToHost,
+                                     dev_ctx.stream());
+  // Step2: Set out
+  int64_t out_n_rows = ends[0] - starts[0];
+  DenseTensor out_crows =
+      phi::Empty<int64_t, Context>(dev_ctx, {out_n_rows + 1});
+  DenseTensor out_cols = phi::Empty<int64_t, Context>(dev_ctx, {out_nnz});
+  DenseTensor out_values = phi::Empty<T, Context>(dev_ctx, {out_nnz});
+  out->SetMember(out_crows, out_cols, out_values, out_dims);
+  GetCsrSubMatrixCudaKernel<T>
+      <<<1, 1, 0, dev_ctx.stream()>>>(x_crows_data,
+                                      x_cols_data,
+                                      x_values_data,
+                                      starts[0],
+                                      ends[0],
+                                      starts[1],
+                                      ends[1],
+                                      out_crows.data<int64_t>(),
+                                      out_cols.data<int64_t>(),
+                                      out_values.data<T>(),
+                                      0,
+                                      0,
+                                      0);
+}
+
+template <typename T, typename Context>
+void SliceCsrTensor3D(const Context& dev_ctx,
+                      const SparseCsrTensor& x,
+                      const std::vector<int64_t>& axes,
+                      const std::vector<int64_t>& starts,
+                      const std::vector<int64_t>& ends,
+                      const phi::DDim& out_dims,
+                      SparseCsrTensor* out) {
+  const auto* x_crows_data = x.crows().data<int64_t>();
+  const auto* x_cols_data = x.cols().data<int64_t>();
+  const auto* x_values_data = x.values().data<T>();
+  const int64_t x_dim0 = x.dims()[0], x_n_rows = x.dims()[1];
+  int64_t offset = 0;
+  int64_t out_nnz = 0;
+  int64_t* temp_x_crows_data = new int64_t[x_dim0 * (x_n_rows + 1)];
+  phi::backends::gpu::GpuMemcpyAsync(temp_x_crows_data,
+                                     x_crows_data,
+                                     sizeof(int64_t) * x_dim0 * (x_n_rows + 1),
+                                     gpuMemcpyDeviceToHost,
+                                     dev_ctx.stream());
+
+  // Step1: Get the number of non zero elements for out
+  std::vector<int64_t> all_nnzs(ends[0] - starts[0]);
+  DenseTensor d_nnz = phi::Empty<int32_t>(dev_ctx, {1});
+  int* d_nnz_ptr = d_nnz.data<int32_t>();
+
+  for (int64_t i = 0; i < x_dim0; ++i) {
+    if (i >= starts[0] && i < ends[0]) {  // slice dim 0
+      int64_t crows_st = i * (x_n_rows + 1) + starts[1];
+      int64_t crows_ed = i * (x_n_rows + 1) + ends[1];
+
+      phi::backends::gpu::GpuMemsetAsync(
+          d_nnz_ptr, 0, sizeof(int32_t), dev_ctx.stream());
+      auto config = phi::backends::gpu::GetGpuLaunchConfig1D(
+          dev_ctx, crows_ed - crows_st, 1);
+      GetCsrNonZeroNumsCudaKernel<<<config.block_per_grid.x,
+                                    config.thread_per_block.x,
+                                    0,
+                                    dev_ctx.stream()>>>(x_crows_data,
+                                                        x_cols_data,
+                                                        crows_st,
+                                                        crows_ed,
+                                                        starts[2],
+                                                        ends[2],
+                                                        d_nnz_ptr,
+                                                        offset);
+      int32_t nnz = 0;
+      phi::backends::gpu::GpuMemcpyAsync(&nnz,
+                                         d_nnz_ptr,
+                                         sizeof(int32_t),
+                                         gpuMemcpyDeviceToHost,
+                                         dev_ctx.stream());
+      out_nnz += static_cast<int64_t>(nnz);
+      all_nnzs[i - starts[0]] = static_cast<int64_t>(nnz);
+    }
+    // get the start index in non_zero_elements_ and non_zero_cols_
+    offset += temp_x_crows_data[(i + 1) * (x_n_rows + 1) - 1];
+  }
+
+  // Set out
+  const int64_t out_dim0 = out_dims[0], out_n_rows = out_dims[1];
+  DenseTensor out_crows =
+      phi::Empty<int64_t, Context>(dev_ctx, {out_dim0 * (out_n_rows + 1)});
+  DenseTensor out_cols = phi::Empty<int64_t, Context>(dev_ctx, {out_nnz});
+  DenseTensor out_values = phi::Empty<T, Context>(dev_ctx, {out_nnz});
+  out->SetMember(out_crows, out_cols, out_values, out_dims);
+
+  int64_t x_cols_offset = 0, out_crows_offset = 0, out_cols_offset = 0;
+  for (int64_t i = 0; i < x_dim0; ++i) {
+    if (i >= starts[0] && i < ends[0]) {  // slice dim 0
+      int64_t x_crows_start = i * (x_n_rows + 1) + starts[1];
+      int64_t x_crows_end = i * (x_n_rows + 1) + ends[1];
+
+      GetCsrSubMatrixCudaKernel<T>
+          <<<1, 1, 0, dev_ctx.stream()>>>(x_crows_data,
+                                          x_cols_data,
+                                          x_values_data,
+                                          x_crows_start,
+                                          x_crows_end,
+                                          starts[2],
+                                          ends[2],
+                                          out_crows.data<int64_t>(),
+                                          out_cols.data<int64_t>(),
+                                          out_values.data<T>(),
+                                          out_crows_offset,
+                                          x_cols_offset,
+                                          out_cols_offset);
+      out_crows_offset += (out_n_rows + 1);
+      out_cols_offset += all_nnzs[i - starts[0]];
+    }
+    x_cols_offset += temp_x_crows_data[(i + 1) * (x_n_rows + 1) - 1];
+  }
+}
+
+template <typename T, typename Context>
+void SliceCsrKernel(const Context& dev_ctx,
+                    const SparseCsrTensor& x,
+                    const phi::IntArray& axes_arr,
+                    const phi::IntArray& starts_arr,
+                    const phi::IntArray& ends_arr,
+                    SparseCsrTensor* out) {
+  const phi::DDim& x_dims = x.dims();
+
+  std::vector<int64_t> axes = axes_arr.GetData();
+  std::vector<int64_t> starts = starts_arr.GetData();
+  std::vector<int64_t> ends = ends_arr.GetData();
+
+  // Step1: Check and update attr
+  funcs::CheckAndUpdateSparseSliceAttrs<int64_t>(x_dims, &axes, &starts, &ends);
+
+  // Step2: Infer output dims
+  auto out_dims = funcs::GetSliceDims<int64_t>(
+      x_dims, axes, starts, ends, nullptr, nullptr);
+
+  // copy axes to device
+  auto d_axes_tensor = memory_utils::Alloc(
+      dev_ctx.GetPlace(),
+      sizeof(int64_t) * axes.size(),
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+  int64_t* d_axes = reinterpret_cast<int64_t*>(d_axes_tensor->ptr());
+  memory_utils::Copy(dev_ctx.GetPlace(),
+                     d_axes,
+                     phi::CPUPlace(),
+                     axes.data(),
+                     sizeof(int64_t) * axes.size(),
+                     dev_ctx.stream());
+
+  // Step3: Construct new axes, starts and ends.
+  std::vector<int64_t> new_axes(3), new_starts(3), new_ends(3);
+  funcs::ConstructNewSliceAttrs(
+      x_dims, axes, starts, ends, &new_axes, &new_starts, &new_ends);
+
+  // copy starts to device
+  auto d_starts_tensor = memory_utils::Alloc(
+      dev_ctx.GetPlace(),
+      sizeof(int64_t) * starts.size(),
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+  int64_t* d_starts = reinterpret_cast<int64_t*>(d_starts_tensor->ptr());
+  memory_utils::Copy(dev_ctx.GetPlace(),
+                     d_starts,
+                     phi::CPUPlace(),
+                     starts.data(),
+                     sizeof(int64_t) * starts.size(),
+                     dev_ctx.stream());
+
+  // copy ends to device
+  auto d_ends_tensor = memory_utils::Alloc(
+      dev_ctx.GetPlace(),
+      sizeof(int64_t) * ends.size(),
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+  int64_t* d_ends = reinterpret_cast<int64_t*>(d_ends_tensor->ptr());
+  memory_utils::Copy(dev_ctx.GetPlace(),
+                     d_ends,
+                     phi::CPUPlace(),
+                     ends.data(),
+                     sizeof(int64_t) * ends.size(),
+                     dev_ctx.stream());
+
+  // Setp4: Slice csr tensor according to its dimension
+  if (x_dims.size() == 2) {
+    SliceCsrTensor2D<T, Context>(
+        dev_ctx, x, new_axes, new_starts, new_ends, out_dims, out);
+  } else if (x_dims.size() == 3) {
+    SliceCsrTensor3D<T, Context>(
+        dev_ctx, x, new_axes, new_starts, new_ends, out_dims, out);
+  } else {
+    // throw exception
+    phi::errors::InvalidArgument(
+        "Slice for Sparse CSR Tensor only support 2-D or 3-D, but got %d-D.",
+        x_dims.size());
+  }
+}
 }  // namespace sparse
 }  // namespace phi
 
@@ -205,6 +487,19 @@ PD_REGISTER_KERNEL(slice_coo,
                    GPU,
                    ALL_LAYOUT,
                    phi::sparse::SliceCooKernel,
+                   float,
+                   double,
+                   int8_t,
+                   uint8_t,
+                   int16_t,
+                   int,
+                   int64_t,
+                   bool) {}
+
+PD_REGISTER_KERNEL(slice_csr,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::sparse::SliceCsrKernel,
                    float,
                    double,
                    int8_t,
