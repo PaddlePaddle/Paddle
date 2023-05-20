@@ -22,8 +22,6 @@
 
 namespace ir {
 class OpBase;
-template <typename ConcreteInterface>
-class OpInterfaceBase;
 class Program;
 
 class alignas(8) Operation final {
@@ -93,7 +91,7 @@ class alignas(8) Operation final {
   template <typename T, typename Enabler = void>
   struct CastUtil {
     static T call(const Operation *op) {
-      throw("Can't dyn_cast to T, T should be a Trait or Interface");
+      throw("Can't dyn_cast to T, T should be a Op or Trait or Interface");
     }
   };
 
@@ -101,19 +99,7 @@ class alignas(8) Operation final {
   struct CastUtil<
       T,
       typename std::enable_if<std::is_base_of<OpBase, T>::value>::type> {
-    static T call(const Operation *op) {
-      if (op->op_info().id() == TypeId::get<T>()) {
-        return T(op);
-      } else if (op->HasTrait<T>()) {
-        return T(op);
-      } else if (op->HasInterface<T>()) {
-        return T(op, op->op_info().GetInterfaceImpl<T>());
-      }
-      if (std::is_base_of<OpInterfaceBase<T>, T>::value) {
-        return T(nullptr, nullptr);
-      }
-      return nullptr;
-    }
+    static T call(const Operation *op) { return T::dyn_cast(op); }
   };
 
   AttributeMap attribute_;
