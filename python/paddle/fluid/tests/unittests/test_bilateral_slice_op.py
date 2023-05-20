@@ -19,6 +19,7 @@ import numpy as np
 from eager_op_test import OpTest, paddle_static_guard
 
 import paddle
+from paddle.incubate.layers.nn import bilateral_slice
 
 
 class Gsz:
@@ -202,7 +203,7 @@ class TestBilateralSliceApi(unittest.TestCase):
             grid = paddle.static.data(
                 name='grid', shape=[None, None, 8, 5, 3], dtype='float32'
             )
-            paddle.fluid.contrib.layers.bilateral_slice(x, guide, grid, False)
+            bilateral_slice(x, guide, grid, False)
 
             if not paddle.fluid.is_compiled_with_cuda():
                 return
@@ -212,7 +213,7 @@ class TestBilateralSliceApi(unittest.TestCase):
                 guide1 = paddle.rand([3, 50, 30])
                 grid1 = paddle.rand([3, 2, 2, 5, 3])
 
-                paddle.fluid.contrib.bilateral_slice(x1, guide1, grid1, False)
+                bilateral_slice(x1, guide1, grid1, False)
 
 
 if __name__ == "__main__":

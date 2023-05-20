@@ -19,17 +19,13 @@
 namespace paddle {
 namespace operators {
 
-template <ElementwiseType ET,
-          typename InT,
-          typename OutT,
-          typename Functor,
-          int NumOuts = 1>
+template <typename OutT, typename Functor, int NumOuts = 1>
 void LaunchElementwiseCudaKernel(
     const KPDevice &ctx,
     const std::vector<const phi::DenseTensor *> &ins,
     std::vector<phi::DenseTensor *> *outs,
-    int axis,
-    Functor func) {
+    Functor func,
+    int axis = -1) {
   std::vector<const phi::DenseTensor *> pt_inputs;
   std::vector<phi::DenseTensor *> pt_outputs;
   // TODO(YuanRisheng) *_tmp for cache DenseTensor, because the temporary
@@ -53,8 +49,8 @@ void LaunchElementwiseCudaKernel(
   for (int i = 0; i < pt_outputs_tmp.size(); i++) {
     pt_outputs.push_back(pt_outputs_tmp[i].get());
   }
-  phi::funcs::BroadcastKernel<ET, InT, OutT, Functor, NumOuts>(
-      ctx, pt_inputs, &pt_outputs, axis, func);
+  phi::funcs::BroadcastKernel<OutT, Functor, NumOuts>(
+      ctx, pt_inputs, &pt_outputs, func, axis);
 }
 
 }  // namespace operators

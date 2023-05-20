@@ -36,6 +36,7 @@ def all_reduce_new(tensor, reduce_type=str(dist.ReduceOp.SUM), group=None):
             'int8',
             'uint8',
             'bool',
+            'uint16',
         ],
         op_type,
     )

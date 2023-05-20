@@ -2750,32 +2750,33 @@ void PNormInferMeta(const MetaTensor& x,
                         x_rank,
                         x_dim));
 
-  std::vector<int> reduce_dims;
+  std::vector<int> out_dim_vector;
   if (asvector) {
-    reduce_dims.emplace_back(1);
     if (keepdim) {
-      for (int i = 1; i < x_dim.size(); ++i) {
-        reduce_dims.emplace_back(1);
+      for (int i = 0; i < x_rank; ++i) {
+        out_dim_vector.emplace_back(1);
       }
-      x_dim = phi::make_ddim(reduce_dims);
+    } else {
+      out_dim_vector = {};
     }
   } else {
-    if (axis < 0) axis = x_dim.size() + axis;
-    for (int i = 0; i < x_dim.size(); ++i) {
-      if (i != axis) reduce_dims.emplace_back(x_dim[i]);
+    if (axis < 0) axis = axis + x_rank;
+    if (keepdim) {
+      for (int i = 0; i < x_dim.size(); ++i) {
+        if (i != axis) {
+          out_dim_vector.emplace_back(x_dim[i]);
+        } else {
+          out_dim_vector.emplace_back(1);
+        }
+      }
+    } else {
+      for (int i = 0; i < x_dim.size(); ++i) {
+        if (i != axis) out_dim_vector.emplace_back(x_dim[i]);
+      }
     }
-    if (reduce_dims.size() == 0) {
-      reduce_dims.emplace_back(1);
-    }
-
-    x_dim[axis] = 1;
   }
 
-  if (keepdim) {
-    out->set_dims(x_dim);
-  } else {
-    out->set_dims(phi::make_ddim(reduce_dims));
-  }
+  out->set_dims(phi::make_ddim(out_dim_vector));
   out->set_dtype(x.dtype());
 }
 
@@ -3761,6 +3762,9 @@ void SqueezeInferMeta(const MetaTensor& x,
   if (!config.is_runtime && axes.FromTensor()) {
     // compile time infershape, set all elements to -1.
     int output_size = x.dims().size() - axes.GetData().size();
+    if (x.dims().size() == 0 && output_size == -1) {
+      output_size = 0;
+    }
     std::vector<int64_t> vec_out_dims(output_size, -1);
     out->set_dims(phi::make_ddim(vec_out_dims));
   } else {
@@ -4002,9 +4006,6 @@ DDim OriginReduceInferDim(const MetaTensor& x,
       out_dim_vector.push_back(x.dims().at(i));
     }
   }
-  if (x_rank > 0 && out_dim_vector.size() == 0) {
-    out_dim_vector.push_back(1);
-  }
 
   DDim out_dim = phi::make_ddim(out_dim_vector);
   return out_dim;
@@ -4021,14 +4022,14 @@ DDim OriginReduceInferDimForIntArrayAxis(const MetaTensor& x,
     if (keep_dim) {
       vec_dim = std::vector<int64_t>(x.dims().size(), 1);
     } else {
-      vec_dim = {1};
+      vec_dim = {};
     }
   } else {
     if (keep_dim) {
       vec_dim = std::vector<int64_t>(x.dims().size(), -1);
     } else {
       auto x_rank = static_cast<size_t>(x.dims().size());
-      if (vec_axis.size() >= x_rank) {
+      if (vec_axis.size() > x_rank) {
         vec_dim = {-1};
       } else {
         vec_dim = std::vector<int64_t>(x.dims().size() - vec_axis.size(), -1);
@@ -4220,7 +4221,7 @@ void TileInferMeta(const MetaTensor& x,
   auto repeat_times_data = repeat_times.GetData();
   auto x_dims = x.dims();
   if (repeat_times_data.size() == 0) {
-    repeat_times_data = std::vector<int64_t>(x_dims.size(), -1);
+    repeat_times_data = std::vector<int64_t>(x_dims.size(), 1);
   }
 
   PADDLE_ENFORCE_LE(
@@ -4253,10 +4254,10 @@ void TileInferMeta(const MetaTensor& x,
   auto x_dim_vec = phi::vectorize<int>(x_dims);
   if (x_dim_vec.size() > repeat_times_data.size()) {
     auto diff = x_dim_vec.size() - repeat_times_data.size();
-    repeat_times_data.insert(repeat_times_data.begin(), diff, -1);
+    repeat_times_data.insert(repeat_times_data.begin(), diff, 1);
   } else {
     auto diff = repeat_times_data.size() - x_dim_vec.size();
-    x_dim_vec.insert(x_dim_vec.begin(), diff, -1);
+    x_dim_vec.insert(x_dim_vec.begin(), diff, 1);
   }
   for (size_t i = 0; i < repeat_times_data.size(); ++i) {
     if (x_dim_vec[i] == -1 || repeat_times_data[i] == -1) {
@@ -4402,7 +4403,6 @@ void TraceInferMeta(
   auto sizes = vectorize(x_dims);
   if (x_dims.size() == 2) {
     sizes.clear();
-    sizes.push_back(1);
   } else {
     sizes.erase(sizes.begin() + std::max(dim1_, dim2_));
     sizes.erase(sizes.begin() + std::min(dim1_, dim2_));
@@ -4481,25 +4481,6 @@ void TransposeInferMeta(const MetaTensor& x,
 
   out->set_dims(out_dims);
   out->set_dtype(x.dtype());
-}
-
-void TransposeGradInferMeta(const MetaTensor& x,
-                            const std::vector<int>& axis,
-                            MetaTensor* out) {
-  size_t x_rank = x.dims().size();
-  std::vector<int> formated_axis = axis;
-  for (size_t i = 0; i < axis.size(); i++) {
-    if (axis[i] < 0) {
-      formated_axis[i] = axis[i] + x_rank;
-    }
-  }
-
-  std::vector<int> reversed_axis(axis);
-  for (size_t i = 0; i < formated_axis.size(); i++) {
-    reversed_axis[formated_axis[i]] = i;
-  }
-
-  TransposeInferMeta(x, reversed_axis, out);
 }
 
 void UnbindInferMeta(const MetaTensor& x,

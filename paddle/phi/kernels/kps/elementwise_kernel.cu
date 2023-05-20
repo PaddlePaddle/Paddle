@@ -72,8 +72,8 @@ void HeavisideKernel(const Context& dev_ctx,
   inputs.emplace_back(&y);
   outputs.emplace_back(out);
   dev_ctx.template Alloc<T>(out);
-  funcs::BroadcastKernel<ElementwiseType::kBinary, T, T>(
-      dev_ctx, inputs, &outputs, -1, funcs::ElementwiseHeavisideFunctor<T>());
+  funcs::BroadcastKernel<T>(
+      dev_ctx, inputs, &outputs, funcs::ElementwiseHeavisideFunctor<T>());
 }
 
 template <typename T, typename Context>
@@ -117,7 +117,8 @@ PD_REGISTER_KERNEL(remainder,
                    double,
                    int,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(
     floor_divide, KPS, ALL_LAYOUT, phi::FloorDivideKernel, int, int64_t) {}
 PD_REGISTER_KERNEL(elementwise_pow,
@@ -155,6 +156,7 @@ PD_REGISTER_KERNEL(fmax,
                    double,
                    int,
                    float16,
+                   bfloat16,
                    int64_t) {}
 
 PD_REGISTER_KERNEL(fmin,
@@ -165,6 +167,7 @@ PD_REGISTER_KERNEL(fmin,
                    double,
                    int,
                    float16,
+                   bfloat16,
                    int64_t) {}
 
 PD_REGISTER_KERNEL(heaviside,
@@ -175,5 +178,6 @@ PD_REGISTER_KERNEL(heaviside,
                    double,
                    int,
                    float16,
+                   bfloat16,
                    int64_t) {}
 #endif

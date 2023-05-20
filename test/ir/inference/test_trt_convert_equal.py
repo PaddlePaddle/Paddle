@@ -40,54 +40,64 @@ class TrtConvertEqualOneInputCornerCase(TrtLayerAutoScanTest):
             return np.random.random(shape).astype(np.float32)
 
         for op_type in ["equal", "not_equal"]:
-            for batch in [1, 2, 4]:
-                for shape in [[batch, 1], [batch, 1, 32], [batch, 1, 16, 32]]:
-                    for axis in [-1 if len(shape) == 1 else 1]:
-                        self.dims = len(shape)
-                        dics = [{"axis": axis}, {"in_dtype": 0, "out_dtype": 5}]
-                        ops_config = [
-                            {
-                                "op_type": op_type,
-                                "op_inputs": {
-                                    "X": ["input_data1"],
-                                    "Y": ["input_data2"],
-                                },
-                                "op_outputs": {"Out": ["compare_output_data"]},
-                                "op_attrs": dics[0],
-                                "outputs_dtype": {
-                                    "compare_output_data": np.bool_
-                                },
+            for shape in [[], [1, 1], [1, 1, 32], [1, 1, 16, 32]]:
+                for axis in [-1 if len(shape) == 1 or len(shape) == 0 else 1]:
+                    self.dims = len(shape)
+                    dics = [{"axis": axis}, {"in_dtype": 0, "out_dtype": 5}]
+                    ops_config = [
+                        {
+                            "op_type": op_type,
+                            "op_inputs": {
+                                "X": ["input_data1"],
+                                "Y": ["input_data2"],
                             },
-                            {
-                                "op_type": "cast",
-                                "op_inputs": {"X": ["compare_output_data"]},
-                                "op_outputs": {"Out": ["output_data"]},
-                                "op_attrs": dics[1],
-                                "outputs_dtype": {"output_data": np.float32},
-                            },
-                        ]
-                        ops = self.generate_op_config(ops_config)
+                            "op_outputs": {"Out": ["compare_output_data"]},
+                            "op_attrs": dics[0],
+                            "outputs_dtype": {"compare_output_data": np.bool_},
+                        },
+                        {
+                            "op_type": "cast",
+                            "op_inputs": {"X": ["compare_output_data"]},
+                            "op_outputs": {"Out": ["output_data"]},
+                            "op_attrs": dics[1],
+                            "outputs_dtype": {"output_data": np.float32},
+                        },
+                    ]
+                    ops = self.generate_op_config(ops_config)
 
-                        program_config = ProgramConfig(
-                            ops=ops,
-                            weights={},
-                            inputs={
-                                "input_data1": TensorConfig(
-                                    data_gen=partial(generate_input, shape)
-                                ),
-                                "input_data2": TensorConfig(
-                                    data_gen=partial(generate_input, shape)
-                                ),
-                            },
-                            outputs=["output_data"],
-                        )
-                        yield program_config
+                    program_config = ProgramConfig(
+                        ops=ops,
+                        weights={},
+                        inputs={
+                            "input_data1": TensorConfig(
+                                data_gen=partial(generate_input, shape)
+                            ),
+                            "input_data2": TensorConfig(
+                                data_gen=partial(generate_input, shape)
+                            ),
+                        },
+                        outputs=["output_data"],
+                    )
+                    yield program_config
 
     def sample_predictor_configs(
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
             # The input.dims[1] must be equal to the weight's length.
+            if self.dims == 0:
+                self.dynamic_shape.min_input_shape = {
+                    "input_data1": [],
+                    "input_data2": [],
+                }
+                self.dynamic_shape.max_input_shape = {
+                    "input_data1": [],
+                    "input_data2": [],
+                }
+                self.dynamic_shape.opt_input_shape = {
+                    "input_data1": [],
+                    "input_data2": [],
+                }
             if self.dims == 2:
                 self.dynamic_shape.min_input_shape = {
                     "input_data1": [1, 1],

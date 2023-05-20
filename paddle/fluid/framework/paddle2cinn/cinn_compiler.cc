@@ -47,10 +47,11 @@
 #include "paddle/fluid/operators/cinn/cinn_launch_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/phi/core/flags.h"
 
-DECLARE_bool(enable_pe_launch_cinn);
-DECLARE_bool(enable_cinn_auto_tune);
-DECLARE_string(cinn_subgraph_graphviz_dir);
+PHI_DECLARE_bool(enable_pe_launch_cinn);
+PHI_DECLARE_bool(enable_cinn_auto_tune);
+PHI_DECLARE_string(cinn_subgraph_graphviz_dir);
 namespace paddle {
 namespace framework {
 namespace paddle2cinn {

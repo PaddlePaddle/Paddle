@@ -128,14 +128,14 @@ void YoloLossGradKernel(const Context& dev_ctx,
                         const std::vector<int>& anchors,
                         const std::vector<int>& anchor_mask,
                         int class_num,
-                        float ignore_thresh,
+                        float ignore_thresh UNUSED,
                         int downsample_ratio,
                         bool use_label_smooth,
-                        float scale_x_y,
+                        float scale_x_y UNUSED,
                         DenseTensor* x_grad,
-                        DenseTensor* gt_box_grad,
-                        DenseTensor* gt_label_grad,
-                        DenseTensor* gt_score_grad) {
+                        DenseTensor* gt_box_grad UNUSED,
+                        DenseTensor* gt_label_grad UNUSED,
+                        DenseTensor* gt_score_grad UNUSED) {
   auto* input = &x;
   auto input_grad = x_grad;
   auto* objness_mask = &objectness_mask;

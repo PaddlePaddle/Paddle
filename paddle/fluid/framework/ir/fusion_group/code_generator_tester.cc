@@ -20,8 +20,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/fusion_group/code_generator.h"
 #include "paddle/fluid/framework/ir/fusion_group/operation.h"
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
-#include "paddle/fluid/platform/device_code.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/backends/device_code.h"
 
 namespace phi {
 class DenseTensor;
@@ -182,7 +182,7 @@ void TestMainImpl(std::string func_name,
                     std::type_index(typeid(paddle::platform::float16));
 
   paddle::platform::CUDAPlace place = paddle::platform::CUDAPlace(0);
-  paddle::platform::CUDADeviceCode device_code(place, func_name, code_str);
+  phi::GPUDeviceCode device_code(place, func_name, code_str);
 #ifdef PADDLE_WITH_HIP
   device_code.Compile(true);
 #else

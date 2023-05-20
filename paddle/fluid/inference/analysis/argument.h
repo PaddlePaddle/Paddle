@@ -116,7 +116,7 @@ struct Argument {
   }                                                                         \
   void Set##Field##NotOwned(type__* x) {                                    \
     valid_fields_.insert(#field__);                                         \
-    field__##_ = unique_ptr_t(x, [](void* x) {});                           \
+    field__##_ = unique_ptr_t(x, [](void* x UNUSED) {});                    \
   }                                                                         \
   DECL_ARGUMENT_FIELD_VALID(field__);                                       \
   type__* field__##_ptr() {                                                 \
@@ -146,6 +146,7 @@ struct Argument {
   DECL_ARGUMENT_FIELD(model_program_path, ModelProgramPath, std::string);
   DECL_ARGUMENT_FIELD(model_params_path, ModelParamsPath, std::string);
   DECL_ARGUMENT_FIELD(model_from_memory, ModelFromMemory, bool);
+  DECL_ARGUMENT_FIELD(save_optimized_model, SaveOptimizedModel, bool);
   DECL_ARGUMENT_FIELD(optim_cache_dir, OptimCacheDir, std::string);
   DECL_ARGUMENT_FIELD(enable_ir_optim, EnableIrOptim, bool);
 
@@ -231,6 +232,7 @@ struct Argument {
                       TensorRtUseStaticEngine,
                       bool);
   DECL_ARGUMENT_FIELD(tensorrt_use_calib_mode, TensorRtUseCalibMode, bool);
+  DECL_ARGUMENT_FIELD(tensorrt_use_cuda_graph, TensorRtUseCudaGraph, bool);
   DECL_ARGUMENT_FIELD(tensorrt_use_varseqlen, TensorRtUseOSS, bool);
   DECL_ARGUMENT_FIELD(tensorrt_with_interleaved, TensorRtWithInterleaved, bool);
   DECL_ARGUMENT_FIELD(tensorrt_transformer_posid,
@@ -289,6 +291,12 @@ struct Argument {
   DECL_ARGUMENT_FIELD(xpu_adaptive_seqlen, XpuAdaptiveSeqlen, bool);
   DECL_ARGUMENT_FIELD(xpu_device_id, XpuDeviceId, int);
   DECL_ARGUMENT_FIELD(xpu_enable_multi_stream, XpuEnableMultiStream, bool);
+  DECL_ARGUMENT_FIELD(xpu_quant_post_dynamic_weight_bits,
+                      XpuQuantPostDynamicWeightBits,
+                      int);
+  DECL_ARGUMENT_FIELD(xpu_quant_post_dynamic_op_types,
+                      XpuQuantPostDynamicOpTypes,
+                      std::vector<std::string>);
 
   DECL_ARGUMENT_FIELD(use_opencl, UseOpenCL, bool);
 
@@ -356,10 +364,6 @@ struct Argument {
   DECL_ARGUMENT_FIELD(ipu_enable_model_runtime_executor,
                       IpuEnableModelRuntimeExecutor,
                       bool);
-
-  // npu related
-  DECL_ARGUMENT_FIELD(use_npu, UseNpu, bool);
-  DECL_ARGUMENT_FIELD(npu_device_id, NPUDeviceId, int);
 
   // mixed precision related
   DECL_ARGUMENT_FIELD(model_precision, ModelPrecision, int);

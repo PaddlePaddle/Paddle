@@ -57,7 +57,7 @@ void TDMChildInner(const framework::ExecutionContext &context,
         input_data[input_ids],
         node_nums,
         platform::errors::InvalidArgument(
-            "input id of OP(fluid.contrib.layers.tdm_child) "
+            "input id of OP(paddle.incubate.layers.tdm_child) "
             "expected >= 0 and < %ld, but got %ld. Please check input "
             "value.",
             node_nums,
@@ -66,7 +66,7 @@ void TDMChildInner(const framework::ExecutionContext &context,
         0,
         input_data[input_ids],
         platform::errors::InvalidArgument(
-            "input id of OP(fluid.contrib.layers.tdm_child) "
+            "input id of OP(paddle.incubate.layers.tdm_child) "
             "expected >= 0 and < %ld, but got %ld. Please check input "
             "value.",
             node_nums,

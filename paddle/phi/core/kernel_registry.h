@@ -1365,7 +1365,7 @@ struct KernelRegistrar {
     return 0;                                                               \
   }                                                                         \
   void __PD_KERNEL_args_def_FN_##kernel_name##_##backend##_##layout(        \
-      const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel)
+      const ::phi::KernelKey& kernel_key UNUSED, ::phi::Kernel* kernel UNUSED)
 #else
 #define __PD_REGISTER_KERNEL_FOR_ALL_DTYPE(                                 \
     reg_type, kernel_name, backend, layout, kernel_fn)                      \
@@ -1433,16 +1433,16 @@ struct KernelRegistrar {
     reg_type, kernel_name, layout, meta_kernel_fn, N, ...)        \
   static void __PD_KERNEL_args_def_FN_##kernel_name##_##layout(   \
       const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel); \
-  PD_EXPAND(                                                      \
-      PD_CONCATENATE(_PD_FOR_ALL_BACKEND_DTYPE_, N)(              \
-          reg_type,                                               \
-          kernel_name,                                            \
-          layout,                                                 \
-          meta_kernel_fn,                                         \
-          __PD_KERNEL_args_def_FN_##kernel_name##_##layout,       \
-          __VA_ARGS__) void                                       \
-          __PD_KERNEL_args_def_FN_##kernel_name##_##layout(       \
-              const ::phi::KernelKey& kernel_key, ::phi::Kernel* kernel))
+  PD_EXPAND(PD_CONCATENATE(_PD_FOR_ALL_BACKEND_DTYPE_, N)(        \
+      reg_type,                                                   \
+      kernel_name,                                                \
+      layout,                                                     \
+      meta_kernel_fn,                                             \
+      __PD_KERNEL_args_def_FN_##kernel_name##_##layout,           \
+      __VA_ARGS__) void                                           \
+                __PD_KERNEL_args_def_FN_##kernel_name##_##layout( \
+                    const ::phi::KernelKey& kernel_key UNUSED,    \
+                    ::phi::Kernel* kernel UNUSED))
 #ifndef _WIN32
 #define ___PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(                  \
     reg_type, kernel_name, backend, layout, kernel_fn, args_def_fn)   \

@@ -595,9 +595,6 @@ class ShardingOptimizer(MetaOptimizerBase):
         # amp inf_var & clip global_norm_var
 
         rings = [self.mp_ring_id, self.pp_ring_id]
-        # FIXME(wangxi): some problem with NPU found_finite, need sync with DP
-        if core.is_compiled_with_custom_device('npu'):
-            rings += [self.dp_ring_id]
         FP16Utils.sync_amp_check_nan_inf(main_block, rings)
 
         gradientclip_helper = GradientClipHelper(None)
@@ -719,10 +716,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         self._recreate_not_persist_param_as_var()
 
         self._dump_program_for_debug()
-
-        # GPU need to wait server ready, GPU and NPU is Layered connection
-        if not core.is_compiled_with_custom_device('npu'):
-            self._wait()
+        self._wait()
         return optimize_ops, params_grads
 
     def _init_pair_comm(self, pair, ring_id):
@@ -754,9 +748,6 @@ class ShardingOptimizer(MetaOptimizerBase):
                 False,
                 sync=False,
             )
-
-        if core.is_compiled_with_custom_device('npu'):
-            return
 
         # GPU
         for pair in self.pipeline_pair:
@@ -1049,6 +1040,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                 "c_calc_comm_stream",
                 "c_gen_nccl_id",
                 "c_gen_bkcl_id",
+                "c_gen_xccl_id",
                 "c_comm_init",
                 'send_v2',
                 'recv_v2',
