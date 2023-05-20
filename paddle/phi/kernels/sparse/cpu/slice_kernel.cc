@@ -95,18 +95,18 @@ void SliceCooKernel(const Context& dev_ctx,
   out->SetMember(out_indices, out_values, out_dims, x.coalesced());
 }
 
-int64_t GetCsrNNZ(const SparseCsrTensor& x,
-                  const int64_t x_crows_start,
-                  const int64_t x_crows_end,
-                  const int64_t min_col,
-                  const int64_t max_col,
-                  const int64_t offset = 0) {
+int64_t GetCsrNonZeroNumber(const SparseCsrTensor& x,
+                            const int64_t x_crows_start,
+                            const int64_t x_crows_end,
+                            const int64_t min_col,
+                            const int64_t max_col,
+                            const int64_t x_cols_offset = 0) {
   const auto* x_crows_data = x.crows().data<int64_t>();
   const auto* x_cols_data = x.cols().data<int64_t>();
   int64_t out_nnz = 0;
   for (int64_t i = x_crows_start; i < x_crows_end; ++i) {
-    int64_t st = x_crows_data[i] + offset;
-    int64_t ed = x_crows_data[i + 1] + offset;
+    int64_t st = x_crows_data[i] + x_cols_offset;
+    int64_t ed = x_crows_data[i + 1] + x_cols_offset;
     for (int64_t jj = st; jj < ed; ++jj) {
       if (x_cols_data[jj] >= min_col && x_cols_data[jj] < max_col) {
         out_nnz++;
@@ -125,8 +125,8 @@ void GetCsrSubMatrix(const SparseCsrTensor& x,
                      DenseTensor* out_crows,
                      DenseTensor* out_cols,
                      DenseTensor* out_values,
-                     const int64_t out_crows_offset = 0,
                      const int64_t x_cols_offset = 0,
+                     const int64_t out_crows_offset = 0,
                      const int64_t out_cols_offset = 0) {
   const auto* x_crows_data = x.crows().data<int64_t>();
   const auto* x_cols_data = x.cols().data<int64_t>();
@@ -136,8 +136,8 @@ void GetCsrSubMatrix(const SparseCsrTensor& x,
   auto* out_cols_data = out_cols->data<int64_t>();
   auto* out_values_data = out_values->data<T>();
   out_crows_data[out_crows_offset] = 0;
-  int64_t index = 0, new_n_rows = x_crows_end - x_crows_start;
-  for (int i = 0; i < new_n_rows; ++i) {
+  int64_t index = 0, out_n_rows = x_crows_end - x_crows_start;
+  for (int i = 0; i < out_n_rows; ++i) {
     int64_t st = x_crows_data[x_crows_start + i] + x_cols_offset;
     int64_t ed = x_crows_data[x_crows_start + i + 1] + x_cols_offset;
     for (int64_t jj = st; jj < ed; ++jj) {
@@ -159,9 +159,10 @@ void SliceCsrTensor2D(const Context& dev_ctx,
                       const std::vector<int64_t>& ends,
                       const phi::DDim& out_dims,
                       SparseCsrTensor* out) {
-  // Get nnz of out
-  int64_t out_nnz = GetCsrNNZ(x, starts[0], ends[0], starts[1], ends[1], 0);
-  // Set out
+  // Step1: Get nnz of out
+  int64_t out_nnz =
+      GetCsrNonZeroNumber(x, starts[0], ends[0], starts[1], ends[1], 0);
+  // Step2: Set out
   int64_t out_n_rows = ends[0] - starts[0];
   DenseTensor out_crows =
       phi::Empty<int64_t, Context>(dev_ctx, {out_n_rows + 1});
@@ -190,32 +191,33 @@ void SliceCsrTensor3D(const Context& dev_ctx,
                       const phi::DDim& out_dims,
                       SparseCsrTensor* out) {
   const auto* x_crows_data = x.crows().data<int64_t>();
-  // Get nnz of out
+  // Step1: Get nnz of out
   const int64_t x_dim0 = x.dims()[0], x_n_rows = x.dims()[1];
-  int64_t offset = 0;
-  int64_t out_nnz = 0;
+  int64_t x_cols_offset = 0, out_nnz = 0;
+  // all_nnzs stores the nnz along with out_dim0, which will be used to set out.
   std::vector<int64_t> all_nnzs(ends[0] - starts[0]);
   for (int64_t i = 0; i < x_dim0; ++i) {
     if (i >= starts[0] && i < ends[0]) {  // slice dim 0
-      int64_t crows_st = i * (x_n_rows + 1) + starts[1];
-      int64_t crows_ed = i * (x_n_rows + 1) + ends[1];
-      int64_t nnz =
-          GetCsrNNZ(x, crows_st, crows_ed, starts[2], ends[2], offset);
+      int64_t x_crows_st = i * (x_n_rows + 1) + starts[1];
+      int64_t x_crows_ed = i * (x_n_rows + 1) + ends[1];
+      int64_t nnz = GetCsrNonZeroNumber(
+          x, x_crows_st, x_crows_ed, starts[2], ends[2], x_cols_offset);
       out_nnz += nnz;
       all_nnzs[i - starts[0]] = nnz;
     }
-    // get the start index in non_zero_elements_ and non_zero_cols_
-    offset += x_crows_data[(i + 1) * (x_n_rows + 1) - 1];
+    // get the start index in non_zero_cols_
+    x_cols_offset += x_crows_data[(i + 1) * (x_n_rows + 1) - 1];
   }
 
-  // Set out
+  // Step2: Set out
   const int64_t out_dim0 = out_dims[0], out_n_rows = out_dims[1];
   DenseTensor out_crows =
       phi::Empty<int64_t, Context>(dev_ctx, {out_dim0 * (out_n_rows + 1)});
   DenseTensor out_cols = phi::Empty<int64_t, Context>(dev_ctx, {out_nnz});
   DenseTensor out_values = phi::Empty<T, Context>(dev_ctx, {out_nnz});
 
-  int64_t x_cols_offset = 0, out_crows_offset = 0, out_cols_offset = 0;
+  x_cols_offset = 0;
+  int64_t out_crows_offset = 0, out_cols_offset = 0;
   for (int64_t i = 0; i < x_dim0; ++i) {
     if (i >= starts[0] && i < ends[0]) {  // slice dim 0
       int64_t x_crows_start = i * (x_n_rows + 1) + starts[1];
@@ -228,8 +230,8 @@ void SliceCsrTensor3D(const Context& dev_ctx,
                          &out_crows,
                          &out_cols,
                          &out_values,
-                         out_crows_offset,
                          x_cols_offset,
+                         out_crows_offset,
                          out_cols_offset);
       out_crows_offset += (out_n_rows + 1);
       out_cols_offset += all_nnzs[i - starts[0]];

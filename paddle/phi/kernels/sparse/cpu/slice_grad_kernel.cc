@@ -37,9 +37,10 @@ void SliceCooGradKernel(const Context& dev_ctx,
   std::vector<int64_t> starts = starts_arr.GetData();
   std::vector<int64_t> ends = ends_arr.GetData();
 
-  // update starts and ends
+  // Step1: update starts and ends
   funcs::CheckAndUpdateSparseSliceAttrs<int64_t>(x_dims, &axes, &starts, &ends);
 
+  // Step2: set x_grad
   const int64_t out_grad_nnz = out_grad.nnz();
   auto sparse_dim = static_cast<int64_t>(out_grad.sparse_dim());
   DenseTensor dx_indices =
@@ -68,6 +69,28 @@ void SliceCooGradKernel(const Context& dev_ctx,
   x_grad->SetMember(dx_indices, dx_values, x.dims(), x.coalesced());
 }
 
+template <typename T>
+void GetCsrInputGradCrows(const int64_t* out_grad_crows_data,
+                          const int64_t out_grad_n_rows,
+                          const int64_t x_n_rows,
+                          const int64_t rows_start,
+                          int64_t* dx_crows_data,
+                          const int64_t out_grad_crows_offset = 0,
+                          const int64_t dx_crows_offset = 0) {
+  for (int64_t i = 0; i < x_n_rows + 1; ++i) {
+    int64_t idx = i + dx_crows_offset;
+    if (i < rows_start) {
+      dx_crows_data[idx] = 0;
+    } else if (i < rows_start + out_grad_n_rows + 1) {
+      int64_t out_grad_idx = out_grad_crows_offset + (i - rows_start);
+      dx_crows_data[idx] = out_grad_crows_data[out_grad_idx];
+    } else {
+      int64_t out_grad_idx = out_grad_crows_offset + out_grad_n_rows;
+      dx_crows_data[idx] = out_grad_crows_data[out_grad_idx];
+    }
+  }
+}
+
 template <typename T, typename Context>
 void SliceCsrGrad2D(const Context& dev_ctx,
                     const SparseCsrTensor& x,
@@ -87,7 +110,7 @@ void SliceCsrGrad2D(const Context& dev_ctx,
   DenseTensor dx_values = phi::Empty<T, Context>(dev_ctx, {out_grad_nnz});
   auto* dx_crows_data = dx_crows.data<int64_t>();
   auto* dx_cols_data = dx_cols.data<int64_t>();
-  auto* dx_values_data = dx_values.data<int64_t>();
+  auto* dx_values_data = dx_values.data<T>();
 
   // set cols
   for (int64_t i = 0; i < out_grad_nnz; ++i) {
@@ -98,18 +121,14 @@ void SliceCsrGrad2D(const Context& dev_ctx,
     dx_values_data[i] = out_grad_values_data[i];
   }
   // set crows
-  for (int64_t i = 0; i < starts[0]; ++i) {
-    dx_crows_data[i] = 0;
-  }
-  int64_t out_grad_n_rows = out_grad.dims()[0];
-  for (int64_t i = 0; i < out_grad_n_rows + 1; ++i) {
-    int64_t idx = i + starts[0];
-    dx_crows_data[idx] = out_grad_crows_data[i];
-  }
-  for (int64_t i = 0; i < n_rows - ends[0]; ++i) {
-    int64_t idx = i + starts[0] + out_grad_n_rows + 1;
-    dx_crows_data[idx] = out_grad_crows_data[out_grad_n_rows - 1];
-  }
+  const int64_t out_grad_n_rows = out_grad.dims()[0];
+  GetCsrInputGradCrows<T>(out_grad_crows_data,
+                          out_grad_n_rows,
+                          n_rows,
+                          starts[0],
+                          dx_crows_data,
+                          0,
+                          0);
   x_grad->SetMember(dx_crows, dx_cols, dx_values, x.dims());
 }
 
@@ -132,7 +151,7 @@ void SliceCsrGrad3D(const Context& dev_ctx,
   DenseTensor dx_values = phi::Empty<T, Context>(dev_ctx, {out_grad_nnz});
   auto* dx_crows_data = dx_crows.data<int64_t>();
   auto* dx_cols_data = dx_cols.data<int64_t>();
-  auto* dx_values_data = dx_values.data<int64_t>();
+  auto* dx_values_data = dx_values.data<T>();
 
   // set cols
   for (int64_t i = 0; i < out_grad_nnz; ++i) {
@@ -150,22 +169,15 @@ void SliceCsrGrad3D(const Context& dev_ctx,
         dx_crows_data[i * (n_rows + 1) + j] = 0;
       }
     } else {
-      int64_t dx_crows_start = i * (n_rows + 1);
-      int64_t out_grad_crows_start = (i - starts[0]) * (out_grad_n_rows + 1);
-      for (int64_t j = 0; j < starts[1]; ++j) {
-        int64_t idx = dx_crows_start + j;
-        dx_crows_data[idx] = 0;
-      }
-      for (int64_t j = 0; j < out_grad_n_rows + 1; ++j) {
-        int64_t idx = dx_crows_start + starts[1] + j;
-        int64_t out_grad_idx = out_grad_crows_start + j;
-        dx_crows_data[idx] = out_grad_crows_data[out_grad_idx];
-      }
-      for (int64_t j = 0; j < n_rows - ends[1]; ++j) {
-        int64_t idx = dx_crows_start + starts[1] + out_grad_n_rows + 1 + j;
-        int64_t out_grad_idx = out_grad_crows_start + out_grad_n_rows - 1;
-        dx_crows_data[idx] = out_grad_crows_data[out_grad_idx];
-      }
+      int64_t out_grad_crows_offset = (i - starts[0]) * (out_grad_n_rows + 1);
+      int64_t dx_crows_offset = i * (n_rows + 1);
+      GetCsrInputGradCrows<T>(out_grad_crows_data,
+                              out_grad_n_rows,
+                              n_rows,
+                              starts[1],
+                              dx_crows_data,
+                              out_grad_crows_offset,
+                              dx_crows_offset);
     }
   }
   x_grad->SetMember(dx_crows, dx_cols, dx_values, x.dims());
@@ -185,10 +197,10 @@ void SliceCsrGradKernel(const Context& dev_ctx,
   std::vector<int64_t> starts = starts_arr.GetData();
   std::vector<int64_t> ends = ends_arr.GetData();
 
-  // update starts and ends
+  // Update starts and ends
   funcs::CheckAndUpdateSparseSliceAttrs<int64_t>(x_dims, &axes, &starts, &ends);
 
-  // construct new axes, starts, and ends
+  // Construct new axes, starts, and ends
   std::vector<int64_t> new_axes(3), new_starts(3), new_ends(3);
   funcs::ConstructNewSliceAttrs(
       x_dims, axes, starts, ends, &new_axes, &new_starts, &new_ends);
