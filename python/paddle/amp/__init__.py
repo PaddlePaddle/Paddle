@@ -20,6 +20,7 @@ from .auto_cast import FP16_WHITE_LIST  # noqa: F401
 from .auto_cast import FP16_BLACK_LIST  # noqa: F401
 from .auto_cast import PURE_FP16_WHITE_LIST  # noqa: F401
 from .auto_cast import PURE_FP16_BLACK_LIST  # noqa: F401
+from .auto_cast import _keep_layer_norm_scale_bias_to_fp32  # noqa: F401
 
 from . import grad_scaler  # noqa: F401
 from .grad_scaler import GradScaler  # noqa: F401

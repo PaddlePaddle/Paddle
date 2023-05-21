@@ -234,10 +234,30 @@ def pure_fp16_initialize(models):
     return models
 
 
+_keep_layer_norm_scale_bias_to_fp32_flag = False
+
+
+def _keep_layer_norm_scale_bias_to_fp32(*args):
+    global _keep_layer_norm_scale_bias_to_fp32_flag
+    if len(args) == 0:
+        return _keep_layer_norm_scale_bias_to_fp32_flag
+    else:
+        assert len(args) == 1 and isinstance(args[0], bool)
+        print(f"setting _keep_layer_norm_scale_bias_to_fp32_flag to {args[0]}")
+        old_value = _keep_layer_norm_scale_bias_to_fp32_flag
+        _keep_layer_norm_scale_bias_to_fp32_flag = args[0]
+        return old_value
+
+
 @dygraph_only
 def pure_bf16_initialize(models):
     for idx in range(len(models)):
         for layer in models[idx].sublayers(include_self=True):
+            if (
+                isinstance(layer, paddle.nn.LayerNorm)
+                and _keep_layer_norm_scale_bias_to_fp32()
+            ):
+                continue
             layer._to_impl(
                 dtype='bfloat16', include_sublayers=False, floating_only=True
             )
