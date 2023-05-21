@@ -767,7 +767,6 @@ function run_linux_cpu_test() {
     Running unit tests ...
     ========================================
 EOF
-    pip install numpy==1.21.6
 set -x
         export TEST_NUM_PERCENT_CASES=0.15
         bash $PADDLE_ROOT/tools/check_added_ut.sh
