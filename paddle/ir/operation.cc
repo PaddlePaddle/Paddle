@@ -95,13 +95,10 @@ void Operation::destroy() {
     // release the uses of this result
     detail::OpOperandImpl *first_use =
         reinterpret_cast<detail::OpResultImpl *>(base_ptr)->first_use();
-    if (first_use != nullptr) {
-      first_use->release_source();
-      detail::OpOperandImpl *next_use = first_use->next_use();
-      while (next_use != nullptr) {
-        next_use->release_source();
-        next_use = next_use->next_use();
-      }
+    while (first_use != nullptr) {
+      first_use->remove_from_ud_chain();
+      first_use =
+          reinterpret_cast<detail::OpResultImpl *>(base_ptr)->first_use();
     }
     // destory the result
     if (idx > max_inline_result_num) {

@@ -12,35 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include "paddle/fluid/dialect/pd_type_storage.h"
-#include "paddle/ir/type.h"
+#include "paddle/fluid/dialect/pd_attribute.h"
 
 namespace paddle {
 namespace dialect {
-#define GET_PD_DIALECT_TYPE_LIST paddle::dialect::DenseTensorType
+phi::IntArray IntArrayAttribute::data() const { return storage()->GetAsKey(); }
 
-///
-/// \brief Define built-in parametric types.
-///
-class DenseTensorType : public ir::Type {
- public:
-  using Type::Type;
+phi::Scalar ScalarAttribute::data() const { return storage()->GetAsKey(); }
 
-  DECLARE_TYPE_UTILITY_FUNCTOR(DenseTensorType, DenseTensorTypeStorage);
+phi::DataType DataTypeAttribute::data() const { return storage()->GetAsKey(); }
 
-  const ir::Type &dtype() const;
+phi::Place PlaceAttribute::data() const { return storage()->GetAsKey(); }
 
-  const paddle::dialect::DenseTensorTypeStorage::Dim &dim() const;
-
-  const paddle::dialect::DenseTensorTypeStorage::DataLayout &data_layout()
-      const;
-
-  const paddle::dialect::DenseTensorTypeStorage::LoD &lod() const;
-
-  const size_t &offset() const;
-};
+phi::DataLayout DataLayoutAttribute::data() const {
+  return storage()->GetAsKey();
+}
 
 }  // namespace dialect
 }  // namespace paddle
