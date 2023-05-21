@@ -68,19 +68,19 @@ inline bool IsInplace(const OpDesc& op_desc) {
   return inplace;
 }
 
-inline ir::OpInfoImpl* LoopkUpOpInfo(ir::IrContext* ctx,
-                                     const OpDesc& op_desc) {
+inline ir::OpInfo LoopkUpOpInfo(ir::IrContext* ctx, const OpDesc& op_desc) {
   std::string target_op_name = kTargetDialectPrefix + op_desc.Type();
   if (IsInplace(op_desc)) {
     target_op_name += "_";
   }
-  auto* op_info = ctx->GetRegisteredOpInfo(target_op_name);
-  PADDLE_ENFORCE_NE(op_info,
-                    nullptr,
-                    platform::errors::PreconditionNotMet(
-                        "Op %d should have corresponding OpInfo %d",
-                        op_desc.Type(),
-                        target_op_name));
+  auto op_info = ctx->GetRegisteredOpInfo(target_op_name);
+  if (!op_info) {
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "Op %d should have corresponding OpInfo %d",
+        op_desc.Type(),
+        target_op_name));
+  }
+
   return op_info;
 }
 
@@ -162,7 +162,7 @@ ir::Operation* GeneralOpHandler(ir::IrContext* ctx,
   OpOutputMapping arg_to_idx;
   OpOutputTypeList op_output_types = {};
   std::tie(op_output_types, arg_to_idx) = GenerateOperationOutput(ctx, op_desc);
-  auto* op_info = LoopkUpOpInfo(ctx, op_desc);
+  auto op_info = LoopkUpOpInfo(ctx, op_desc);
   ir::Operation* operation =
       ir::Operation::create(op_inputs, op_output_types, {}, op_info);
   program->InsertOp(operation);
@@ -180,7 +180,7 @@ ir::Operation* FeedOpHandler(ir::IrContext* ctx,
   OpOutputMapping arg_to_idx;
   OpOutputTypeList op_output_types = {};
   std::tie(op_output_types, arg_to_idx) = GenerateOperationOutput(ctx, op_desc);
-  auto* op_info = LoopkUpOpInfo(ctx, op_desc);
+  auto op_info = LoopkUpOpInfo(ctx, op_desc);
   ir::Operation* operation =
       ir::Operation::create(op_inputs, op_output_types, {}, op_info);
   program->InsertOp(operation);
@@ -196,7 +196,7 @@ ir::Operation* FetchOpHandler(ir::IrContext* ctx,
   auto op_inputs = GenerateOperationInput(param_map, op_desc);
 
   OpOutputTypeList op_output_types = {};
-  auto* op_info = LoopkUpOpInfo(ctx, op_desc);
+  auto op_info = LoopkUpOpInfo(ctx, op_desc);
   ir::Operation* operation =
       ir::Operation::create(op_inputs, op_output_types, {}, op_info);
   program->InsertOp(operation);

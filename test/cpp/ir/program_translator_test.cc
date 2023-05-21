@@ -55,7 +55,7 @@ TEST(PaddleDialectTest, Translator) {
   ir::IrContext *ctx = ir::IrContext::Instance();
   ctx->GetOrRegisterDialect<PaddleDialect>();
   ctx->GetOrRegisterDialect<ir::BuiltinDialect>();
-  auto program = paddle::fluid::TranslateLegacyProgramToProgram(p);
+  auto program = paddle::TranslateLegacyProgramToProgram(p);
 
   std::list<ir::Operation *> ops = program->ops();
   EXPECT_EQ(ops.size(), p.Block(0).OpSize() + program->parameters_num());

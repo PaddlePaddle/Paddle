@@ -21,6 +21,7 @@
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/translator/op_translator.h"
 #include "paddle/ir/attribute.h"
+#include "paddle/ir/builtin_op.h"
 #include "paddle/ir/builtin_type.h"
 #include "paddle/ir/operation.h"
 #include "paddle/phi/core/enforce.h"
@@ -62,8 +63,8 @@ void ProgramTranslator::ExtractParameterFromSingleBlock(
     if (!var->Persistable()) continue;
     if (param_map.count(var->Name()) != 0) continue;
 
-    std::string get_parameter_op_name = "GetParameterOp";
-    ir::OpInfoImpl* op_info = ctx->GetRegisteredOpInfo(get_parameter_op_name);
+    std::string get_parameter_op_name(ir::GetParameterOp::name());
+    ir::OpInfo op_info = ctx->GetRegisteredOpInfo(get_parameter_op_name);
     std::unordered_map<std::string, ir::Attribute> op_attribute_map = {
         {var->Name(), ir::StrAttribute::get(ctx, var->Name())},
     };
