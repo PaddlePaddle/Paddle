@@ -21,14 +21,14 @@ from ...utils.log_util import logger
 from .utils import number_2_dtype, paddle_2_number
 
 _hcg = None
-_use_cache = False
+# _use_cache = False
 _enable_partial_send_recv = True
 
 
-def initialize_p2p_groups(hcg, use_cache=True, enable_partial_send_recv=True):
-    global _hcg, _use_cache, _enable_partial_send_recv
+def initialize_p2p_groups(hcg, enable_partial_send_recv=True):
+    global _hcg, _enable_partial_send_recv
     _hcg = hcg
-    _use_cache = use_cache
+    # _use_cache = use_cache
     _enable_partial_send_recv = enable_partial_send_recv
     (
         send_next_group,
@@ -517,13 +517,13 @@ def _p2p_helper(
     return tensor_recv_prev, tensor_recv_next
 
 
-def recv_forward(pp_first_stage, sync_recv=True):
+def recv_forward(pp_first_stage, sync_recv=True, use_cache=True):
     if pp_first_stage:
         input_tensor = None
     else:
         if not _send_recv_meta.has_recv_meta:
             _send_recv_meta.recv_meta(_hcg.recv_prev_group)
-            _send_recv_meta.has_recv_meta = _use_cache
+            _send_recv_meta.has_recv_meta = use_cache
 
         input_tensor, _ = _p2p_helper(
             tensor_send_next=None,
@@ -549,12 +549,12 @@ def recv_backward(pp_last_stage, sync_recv=True):
     return output_tensor_grad
 
 
-def send_forward(output_tensor, pp_last_stage):
+def send_forward(output_tensor, pp_last_stage, use_cache=True):
     if not pp_last_stage:
         if not _send_recv_meta.has_send_meta:
             _send_recv_meta.set_send_message(output_tensor)
             _send_recv_meta.send_meta(output_tensor, _hcg.send_next_group)
-            _send_recv_meta.has_send_meta = _use_cache
+            _send_recv_meta.has_send_meta = use_cache
 
         _p2p_helper(
             tensor_send_next=output_tensor,
@@ -601,16 +601,16 @@ def send_backward_recv_forward(input_tensor_grad, pp_first_stage):
 
 
 def send_forward_backward_recv_forward_backward(
-    output_tensor, input_tensor_grad, recv_prev, recv_next
+    output_tensor, input_tensor_grad, recv_prev, recv_next, use_cache=True
 ):
     # always have to send dytpe info to downstream
     if not _send_recv_meta.has_send_meta:
         _send_recv_meta.set_send_message(output_tensor)
         _send_recv_meta.send_meta(output_tensor, _hcg.send_next_group)
-        _send_recv_meta.has_send_meta = _use_cache
+        _send_recv_meta.has_send_meta = use_cache
     if recv_prev and not _send_recv_meta.has_recv_meta:
         _send_recv_meta.recv_meta(_hcg.recv_prev_group)
-        _send_recv_meta.has_recv_meta = _use_cache
+        _send_recv_meta.has_recv_meta = use_cache
     input_tensor, output_tensor_grad = _p2p_helper(
         tensor_send_next=output_tensor,
         tensor_send_prev=input_tensor_grad,
@@ -621,15 +621,15 @@ def send_forward_backward_recv_forward_backward(
     return input_tensor, output_tensor_grad
 
 
-def send_forward_recv_forward(output_tensor, recv_prev):
+def send_forward_recv_forward(output_tensor, recv_prev, use_cache=True):
     # always have to send dytpe info to downstream
     if not _send_recv_meta.has_send_meta:
         _send_recv_meta.set_send_message(output_tensor)
         _send_recv_meta.send_meta(output_tensor, _hcg.send_next_group)
-        _send_recv_meta.has_send_meta = _use_cache
+        _send_recv_meta.has_send_meta = use_cache
     if recv_prev and not _send_recv_meta.has_recv_meta:
         _send_recv_meta.recv_meta(_hcg.recv_prev_group)
-        _send_recv_meta.has_recv_meta = _use_cache
+        _send_recv_meta.has_recv_meta = use_cache
 
     input_tensor, _ = _p2p_helper(
         tensor_send_next=output_tensor,
