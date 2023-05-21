@@ -15,7 +15,6 @@
 #include "paddle/phi/kernels/cast_kernel.h"
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
-#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
