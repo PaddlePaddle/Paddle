@@ -82,7 +82,7 @@ class TestDistAPI(unittest.TestCase):
 
     def test_p_order(self):
         self.init_data_type()
-        for p in [0, 2, float('inf')]:
+        for p in [0, 2, float('inf'), 1.5]:
             a_i = np.random.random((2, 3, 4, 5)).astype(self.data_type)
             b_i = np.random.random((2, 3, 1, 5)).astype(self.data_type)
             a = paddle.to_tensor(a_i)
@@ -115,6 +115,50 @@ class TestDistAPI(unittest.TestCase):
         a.stop_gradient = False
         c = paddle.cdist(a, b, 2)
         c.backward()
+
+    def test_cdist_shape_error1(self):
+        x = paddle.rand([2, 2, 3, 3])
+        y = paddle.rand([2, 2, 4, 4])
+        self.assertRaises(
+            ValueError,
+            paddle.cdist,
+            x=x,
+            y=y,
+            p=2,
+        )
+
+    def test_cdist_shape_error2(self):
+        x = paddle.rand([2, 4, 3, 3])
+        y = paddle.rand([2, 2, 4, 3])
+        self.assertRaises(
+            ValueError,
+            paddle.cdist,
+            x=x,
+            y=y,
+            p=2,
+        )
+
+    def test_cdist_shape_error3(self):
+        x = paddle.rand([3])
+        y = paddle.rand([3])
+        self.assertRaises(
+            ValueError,
+            paddle.cdist,
+            x=x,
+            y=y,
+            p=2,
+        )
+
+    def test_cdist_p_order_error(self):
+        x = paddle.rand([2, 4, 3, 3])
+        y = paddle.rand([2, 4, 4, 3])
+        self.assertRaises(
+            ValueError,
+            paddle.cdist,
+            x=x,
+            y=y,
+            p=-3,
+        )
 
 
 if __name__ == '__main__':
