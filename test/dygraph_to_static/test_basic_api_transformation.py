@@ -376,7 +376,7 @@ def dyfunc_NoamDecay():
 def dyfunc_PiecewiseDecay():
     boundaries = [10000, 20000]
     values = [1.0, 0.5, 0.1]
-    pd = fluid.dygraph.PiecewiseDecay(boundaries, values, begin=0)
+    pd = paddle.optimizer.lr.PiecewiseDecay(boundaries, values)
     lr = pd()
     return lr
 

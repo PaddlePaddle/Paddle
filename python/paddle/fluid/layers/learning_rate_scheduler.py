@@ -422,7 +422,7 @@ def piecewise_decay(boundaries, values):
             raise ValueError("len(values) - len(boundaries) should be 1")
 
         if in_dygraph_mode():
-            decay = imperate_lr.PiecewiseDecay(boundaries, values, 0)
+            decay = paddle.optimizer.lr.PiecewiseDecay(boundaries, values)
             return decay
         else:
             global_step = _decay_step_counter()
