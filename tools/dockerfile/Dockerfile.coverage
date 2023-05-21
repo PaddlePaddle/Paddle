@@ -58,9 +58,6 @@ RUN ln -s /usr/local/gcc-12.2/bin/gcc /usr/bin/gcc
 RUN ln -s /usr/local/gcc-12.2/bin/g++ /usr/bin/g++
 ENV PATH=/usr/local/gcc-12.2/bin:$PATH
 
-
-Run bash /build_scripts/install_cudnn.sh cudnn841
-ENV CUDNN_VERSION=8.4.1
 #RUN bash /build_scripts/install_nccl2.sh
 RUN rm -rf /build_script
 
