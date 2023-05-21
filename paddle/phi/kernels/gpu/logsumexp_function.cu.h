@@ -49,6 +49,23 @@ __inline__ __device__ T WarpAllReduce(T val) {
   return val;
 }
 
+#if PADDLE_WITH_HIP
+inline void GetNumBlocks(int64_t block_size,
+                         int64_t max_blocks,
+                         int64_t waves,
+                         int* num_blocks) {
+  int dev;
+  PADDLE_ENFORCE_GPU_SUCCESS(hipGetDevice(&dev));
+  int sm_count;
+  PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceGetAttribute(
+      &sm_count, hipDeviceAttributeMultiprocessorCount, dev));
+  int tpm;
+  PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceGetAttribute(
+      &tpm, hipDeviceAttributeMaxThreadsPerMultiProcessor, dev));
+  *num_blocks = std::max<int>(
+      1, std::min<int64_t>(max_blocks, sm_count * tpm / block_size * waves));
+}
+#else
 inline void GetNumBlocks(int64_t block_size,
                          int64_t max_blocks,
                          int64_t waves,
@@ -64,6 +81,7 @@ inline void GetNumBlocks(int64_t block_size,
   *num_blocks = std::max<int>(
       1, std::min<int64_t>(max_blocks, sm_count * tpm / block_size * waves));
 }
+#endif
 
 template <typename T,
           typename SourceType,
