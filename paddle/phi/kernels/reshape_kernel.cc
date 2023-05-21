@@ -22,6 +22,9 @@
 #ifdef PADDLE_WITH_XPU
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #endif
+#include <glog/logging.h>
+#include "gflags/gflags.h"
+DECLARE_string(throw_strided_error_op);
 
 namespace phi {
 
@@ -82,6 +85,23 @@ void ReshapeKernel(const Context& dev_ctx,
                    const IntArray& shape,
                    DenseTensor* out,
                    DenseTensor* xshape UNUSED) {
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
+  if (!xx.IsSharedBufferWith(*out)) {
+    if (xx.can_not_uses != out->can_not_uses) {
+      out->can_not_uses = xx.can_not_uses;
+      if (*out->canNotUse == false) {
+        *out->canNotUse = *xx.canNotUse;
+      }
+      xx.can_not_uses->insert(xx.canNotUse);
+
+      xx.can_not_uses->insert(out->canNotUse);
+      VLOG(1) << "stride api call log: ReshapeKernel";
+
+      if (FLAGS_throw_strided_error_op == "ReshapeKernel") {
+        PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+      }
+    }
+  }
   ReshapeInferKernel(dev_ctx, x, shape, out);
 }
 

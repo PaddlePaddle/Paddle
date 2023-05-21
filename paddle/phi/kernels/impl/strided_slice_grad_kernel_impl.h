@@ -13,8 +13,11 @@
 // limitations under the License.
 
 #pragma once
+#include <glog/logging.h>
+#include "gflags/gflags.h"
 #include "paddle/phi/kernels/funcs/strided_slice.h"
 #include "paddle/phi/kernels/strided_slice_grad_kernel.h"
+DECLARE_string(throw_strided_error_op);
 
 namespace phi {
 
@@ -29,6 +32,22 @@ void StridedSliceRawGradKernel(const Context& dev_ctx,
                                const std::vector<int>& infer_flags,
                                const std::vector<int>& decrease_axis,
                                DenseTensor* x_grad) {
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
+  if (!xx.IsSharedBufferWith(*x_grad)) {
+    if (xx.can_not_uses != x_grad->can_not_uses) {
+      x_grad->can_not_uses = xx.can_not_uses;
+      if (*x_grad->canNotUse == false) {
+        *x_grad->canNotUse = *xx.canNotUse;
+      }
+      xx.can_not_uses->insert(xx.canNotUse);
+      xx.can_not_uses->insert(x_grad->canNotUse);
+      VLOG(1) << "stride api call log: StridedSliceRawGradKernel";
+
+      if (FLAGS_throw_strided_error_op == "StridedSliceRawGradKernel") {
+        PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+      }
+    }
+  }
   int rank = x.dims().size();
 #define SLICE_CASE(Rank)                                            \
   case Rank:                                                        \

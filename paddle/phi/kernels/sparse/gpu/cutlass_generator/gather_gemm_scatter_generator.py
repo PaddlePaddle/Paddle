@@ -667,7 +667,7 @@ if __name__ == "__main__":
     )
     manifest = GatherGemmScatterManifest(args)
 
-    debug = False
+    debug = True
     GenerateSM75(manifest, args.cuda_version, debug)
     GenerateSM80(manifest, args.cuda_version, debug)
 

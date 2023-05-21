@@ -14,12 +14,15 @@
 
 #include "paddle/phi/kernels/index_select_kernel.h"
 
+#include <glog/logging.h>
+#include "gflags/gflags.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/gpu/index_select_impl.h"
+DECLARE_string(throw_strided_error_op);
 
 namespace phi {
 
@@ -31,6 +34,22 @@ void IndexSelectKernel(const Context& ctx,
                        const DenseTensor& index,
                        int dim,
                        DenseTensor* output) {
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
+  if (!xx.IsSharedBufferWith(*output)) {
+    if (xx.can_not_uses != output->can_not_uses) {
+      output->can_not_uses = xx.can_not_uses;
+      if (*output->canNotUse == false) {
+        *output->canNotUse = *xx.canNotUse;
+      }
+      xx.can_not_uses->insert(xx.canNotUse);
+      xx.can_not_uses->insert(output->canNotUse);
+      VLOG(1) << "stride api call log: IndexSelectKernel";
+
+      if (FLAGS_throw_strided_error_op == "IndexSelectKernel") {
+        PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+      }
+    }
+  }
   auto input_dim = x.dims();
   auto output_dim = output->dims();
   dim = dim >= 0 ? dim : dim + input_dim.size();

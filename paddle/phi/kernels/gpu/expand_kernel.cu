@@ -14,11 +14,14 @@
 
 #include "paddle/phi/kernels/expand_kernel.h"
 
+#include <glog/logging.h>
+#include "gflags/gflags.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
+DECLARE_string(throw_strided_error_op);
 
 namespace phi {
 
@@ -27,6 +30,22 @@ void ExpandKernel(const Context& ctx,
                   const DenseTensor& x,
                   const IntArray& shape,
                   DenseTensor* out) {
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
+  if (!xx.IsSharedBufferWith(*out)) {
+    if (xx.can_not_uses != out->can_not_uses) {
+      out->can_not_uses = xx.can_not_uses;
+      if (*out->canNotUse == false) {
+        *out->canNotUse = *xx.canNotUse;
+      }
+      xx.can_not_uses->insert(xx.canNotUse);
+      xx.can_not_uses->insert(out->canNotUse);
+      VLOG(1) << "stride api call log: ExpandKernel";
+
+      if (FLAGS_throw_strided_error_op == "ExpandKernel") {
+        PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+      }
+    }
+  }
   auto expand_shape = shape.GetData();
   auto diff = expand_shape.size() - x.dims().size();
   auto out_shape = phi::vectorize<int64_t>(x.dims());

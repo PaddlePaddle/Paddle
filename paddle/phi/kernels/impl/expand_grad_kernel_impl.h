@@ -14,10 +14,13 @@
 
 #pragma once
 
+#include <glog/logging.h>
+#include "gflags/gflags.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
 #include "paddle/phi/kernels/impl/expand_kernel_impl.h"
+DECLARE_string(throw_strided_error_op);
 
 namespace phi {
 template <typename Context, typename T, int Dims>
@@ -52,6 +55,22 @@ void ExpandGradKernel(const Context& ctx,
                       const DenseTensor& out_grad,
                       const IntArray& shape,
                       DenseTensor* in_grad) {
+  DenseTensor& xx = const_cast<DenseTensor&>(out_grad);
+  if (!xx.IsSharedBufferWith(*in_grad)) {
+    if (xx.can_not_uses != in_grad->can_not_uses) {
+      in_grad->can_not_uses = xx.can_not_uses;
+      if (*in_grad->canNotUse == false) {
+        *in_grad->canNotUse = *xx.canNotUse;
+      }
+      xx.can_not_uses->insert(xx.canNotUse);
+      xx.can_not_uses->insert(in_grad->canNotUse);
+      VLOG(1) << "stride api call log: ExpandGradKernel";
+
+      if (FLAGS_throw_strided_error_op == "ExpandGradKernel") {
+        PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+      }
+    }
+  }
   auto expand_shape = shape.GetData();
   auto x_dims = x.dims();
 

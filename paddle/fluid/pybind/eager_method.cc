@@ -65,6 +65,12 @@ typedef SSIZE_T ssize_t;
 
 PHI_DECLARE_bool(set_to_1d);
 
+DECLARE_string(throw_inplace_error_op);
+
+DECLARE_string(throw_use_error_op);
+
+DECLARE_string(throw_strided_error_op);
+
 namespace paddle {
 namespace pybind {
 
@@ -769,7 +775,24 @@ static PyObject* tensor_method_detach(TensorObject* self,
   if (obj) {
     auto v = reinterpret_cast<TensorObject*>(obj);
     new (&(v->tensor)) paddle::Tensor();
-    v->tensor.set_impl(self->tensor.impl());
+    phi::DenseTensor* tensor_src =
+        static_cast<phi::DenseTensor*>(self->tensor.impl().get());
+    if (tensor_src) {
+      auto tensor = std::make_shared<phi::DenseTensor>(*tensor_src);
+      tensor->can_not_uses = tensor_src->can_not_uses;
+      if (*tensor->canNotUse == false) {
+        *tensor->canNotUse = *tensor_src->canNotUse;
+      }
+      tensor_src->can_not_uses->insert(tensor->canNotUse);
+      tensor_src->can_not_uses->insert(tensor_src->canNotUse);
+      VLOG(1) << "stride api call log: detach";
+      if (FLAGS_throw_strided_error_op == "detach") {
+        PADDLE_THROW(platform::errors::PermissionDenied("wanghuan"));
+      }
+      v->tensor.set_impl(tensor);
+    } else {
+      v->tensor.set_impl(self->tensor.impl());
+    }
     v->tensor.set_name(egr::Controller::Instance().GenerateUniqueName());
     auto autograd_meta_src = egr::EagerUtils::autograd_meta(&(self->tensor));
     auto autograd_meta = egr::EagerUtils::autograd_meta(&(v->tensor));
@@ -1300,8 +1323,39 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
           value_tensor = cast_ad_func(value_tensor, self->tensor.dtype());
         }
       }
+      phi::DenseTensor* tensor_src =
+          static_cast<phi::DenseTensor*>(self->tensor.impl().get());
+
       self->tensor = set_value__dygraph_function(
           self->tensor, value_tensor, {}, {}, {}, attrs);
+
+      if (tensor_src) {
+        auto tensor = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
+        tensor->can_not_uses = tensor_src->can_not_uses;
+        if (*tensor->canNotUse == false) {
+          *tensor->canNotUse = *tensor_src->canNotUse;
+        }
+        tensor_src->can_not_uses->insert(tensor->canNotUse);
+        tensor_src->can_not_uses->insert(tensor_src->canNotUse);
+      }
+      VLOG(1) << "stride api call log: _setitem_";
+      if (FLAGS_throw_strided_error_op == "_setitem_") {
+        PADDLE_THROW(platform::errors::PermissionDenied("wanghuan"));
+      }
+
+      if (self_tensor->can_not_uses->size() > 0) {
+        for (auto it = self_tensor->can_not_uses->begin();
+             it != self_tensor->can_not_uses->end();
+             it++) {
+          if (*it != self_tensor->canNotUse) {
+            **it = true;
+            VLOG(1) << "inplace api call log: _setitem_";
+            if (FLAGS_throw_inplace_error_op == "_setitem_") {
+              PADDLE_THROW(platform::errors::PermissionDenied("wanghuan"));
+            }
+          }
+        }
+      }
     }
     if (PyCheckTensor(value_obj)) {
       // pass the stop_gradient from value to tensor.
@@ -1313,6 +1367,30 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
       }
     }
   } else {
+    if ((*self_tensor->canNotUse) == true) {
+      LOG(WARNING) << "Stride Test Log 20: op_name = "
+                   << "eager_method _setitem_"
+                   << ", var name = "
+                   << "self_tensor";
+      if (FLAGS_throw_use_error_op == "_setitem_") {
+        PADDLE_THROW(platform::errors::PermissionDenied("wanghuan"));
+      }
+    }
+
+    if (self_tensor->can_not_uses->size() > 0) {
+      for (auto it = self_tensor->can_not_uses->begin();
+           it != self_tensor->can_not_uses->end();
+           it++) {
+        if (*it != self_tensor->canNotUse) {
+          **it = true;
+          VLOG(1) << "inplace api call log: _setitem_";
+          if (FLAGS_throw_inplace_error_op == "_setitem_") {
+            PADDLE_THROW(platform::errors::PermissionDenied("wanghuan"));
+          }
+        }
+      }
+    }
+
     auto self_numpy = TensorToPyArray(*self_tensor);
     VLOG(4) << "parse_index is false";
     if (PyCheckTensor(_index)) {

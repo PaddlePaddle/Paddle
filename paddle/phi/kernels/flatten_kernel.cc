@@ -14,11 +14,14 @@
 
 #include "paddle/phi/kernels/flatten_kernel.h"
 
+#include <glog/logging.h>
+#include "gflags/gflags.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
+DECLARE_string(throw_strided_error_op);
 
 namespace phi {
 
@@ -44,6 +47,22 @@ void FlattenKernel(const Context& dev_ctx,
                    int stop_axis,
                    DenseTensor* out,
                    DenseTensor* xshape UNUSED) {
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
+  if (!xx.IsSharedBufferWith(*out)) {
+    if (xx.can_not_uses != out->can_not_uses) {
+      out->can_not_uses = xx.can_not_uses;
+      if (*out->canNotUse == false) {
+        *out->canNotUse = *xx.canNotUse;
+      }
+      xx.can_not_uses->insert(xx.canNotUse);
+      xx.can_not_uses->insert(out->canNotUse);
+      VLOG(1) << "stride api call log: FlattenKernel";
+
+      if (FLAGS_throw_strided_error_op == "FlattenKernel") {
+        PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+      }
+    }
+  }
   FlattenInferKernel<T, Context>(dev_ctx, x, start_axis, stop_axis, out);
 }
 

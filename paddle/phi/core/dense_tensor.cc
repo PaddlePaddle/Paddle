@@ -21,6 +21,13 @@ limitations under the License. */
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 
+#include "gflags/gflags.h"
+#include "paddle/fluid/platform/flags.h"
+
+PADDLE_DEFINE_EXPORTED_string(throw_inplace_error_op, "", "");
+PADDLE_DEFINE_EXPORTED_string(throw_use_error_op, "", "");
+PADDLE_DEFINE_EXPORTED_string(throw_strided_error_op, "", "");
+
 /**
  * [ Why still include the fluid headers? ]
  *
@@ -52,11 +59,27 @@ DenseTensor::DenseTensor(const std::shared_ptr<phi::Allocation>& holder,
                          const DenseTensorMeta& meta)
     : meta_(meta), holder_(holder) {}
 
-DenseTensor::DenseTensor(const DenseTensor& other) : meta_(other.meta()) {
+DenseTensor::DenseTensor(const DenseTensor& other) {
+  VLOG(10) << "other.meta().dims = " << other.meta().dims;
+  VLOG(10) << "other.meta().dims size = " << other.meta().dims.size();
+  meta_.dims = other.meta().dims;
+  meta_.dtype = other.meta().dtype;
+  meta_.is_scalar = other.meta().is_scalar;
+  meta_.layout = other.meta().layout;
+  meta_.lod = other.meta().lod;
+  meta_.offset = other.meta().offset;
+  meta_.use_gpudnn = other.meta().use_gpudnn;
+
   holder_ = other.holder_;
   storage_properties_ =
       std::move(CopyStorageProperties(other.storage_properties_));
   inplace_version_counter_ = other.inplace_version_counter_;
+  this->can_not_uses = other.can_not_uses;
+  this->canNotUse = other.canNotUse;
+  VLOG(1) << "stride api call log: DenseTensor";
+  if (FLAGS_throw_strided_error_op == "DenseTensor") {
+    PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+  }
 
 #ifdef PADDLE_WITH_MKLDNN
   mem_desc_ = other.mem_desc_;
@@ -66,6 +89,12 @@ DenseTensor::DenseTensor(const DenseTensor& other) : meta_(other.meta()) {
 DenseTensor& DenseTensor::operator=(const DenseTensor& other) {
   meta_ = other.meta();
   holder_ = other.holder_;
+  this->can_not_uses = other.can_not_uses;
+  this->canNotUse = other.canNotUse;
+  VLOG(1) << "stride api call log: DenseTensor=";
+  if (FLAGS_throw_strided_error_op == "DenseTensor=") {
+    PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+  }
   storage_properties_ =
       std::move(CopyStorageProperties(other.storage_properties_));
   inplace_version_counter_ = other.inplace_version_counter_;
@@ -80,6 +109,12 @@ DenseTensor& DenseTensor::operator=(DenseTensor&& other) {
   std::swap(holder_, other.holder_);
   storage_properties_ = std::move(other.storage_properties_);
   std::swap(inplace_version_counter_, other.inplace_version_counter_);
+  this->can_not_uses = other.can_not_uses;
+  this->canNotUse = other.canNotUse;
+  VLOG(1) << "stride api call log: DenseTensor=&&";
+  if (FLAGS_throw_strided_error_op == "DenseTensor=&&") {
+    PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+  }
 #ifdef PADDLE_WITH_MKLDNN
   mem_desc_ = other.mem_desc_;
 #endif

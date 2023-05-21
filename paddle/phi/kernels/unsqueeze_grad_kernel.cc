@@ -14,10 +14,13 @@
 
 #include "paddle/phi/kernels/unsqueeze_grad_kernel.h"
 
+#include <glog/logging.h>
+#include "gflags/gflags.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/unsqueeze.h"
+DECLARE_string(throw_strided_error_op);
 
 namespace phi {
 template <typename T, typename Context>
@@ -25,6 +28,22 @@ void UnsqueezeGradKernel(const Context& dev_ctx,
                          const DenseTensor& x_shape,
                          const DenseTensor& dout,
                          DenseTensor* dx) {
+  DenseTensor& xx = const_cast<DenseTensor&>(dout);
+  if (!xx.IsSharedBufferWith(*dx)) {
+    if (xx.can_not_uses != dx->can_not_uses) {
+      dx->can_not_uses = xx.can_not_uses;
+      if (*dx->canNotUse == false) {
+        *dx->canNotUse = *xx.canNotUse;
+      }
+      xx.can_not_uses->insert(xx.canNotUse);
+      xx.can_not_uses->insert(dx->canNotUse);
+      VLOG(1) << "stride api call log: UnsqueezeGradKernel";
+
+      if (FLAGS_throw_strided_error_op == "UnsqueezeGradKernel") {
+        PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+      }
+    }
+  }
   auto xshape_dims = x_shape.dims();
   auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());
   dev_ctx.template Alloc<T>(dx);

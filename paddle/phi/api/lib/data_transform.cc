@@ -16,13 +16,19 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
+#include "gflags/gflags.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/backends/context_pool.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/transfer_layout_kernel.h"
+
+DECLARE_string(throw_inplace_error_op);
+
+DECLARE_string(throw_use_error_op);
 
 namespace paddle {
 namespace experimental {
@@ -232,6 +238,8 @@ phi::DenseTensor TransformData(phi::DenseTensor* tensor,
 }
 
 std::shared_ptr<phi::DenseTensor> PrepareData(
+    const std::string& op_name,
+    const std::string& tensor_name,
     const Tensor& input,
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag) {
@@ -239,6 +247,15 @@ std::shared_ptr<phi::DenseTensor> PrepareData(
   if (tensor_in) {
     phi::DenseTensor& dense_tensor =
         *static_cast<phi::DenseTensor*>(tensor_in.get());
+
+    if ((*dense_tensor.canNotUse) == true) {
+      LOG(WARNING) << "Stride Test Log 17: op_name = " << op_name
+                   << ", var name = " << tensor_name;
+      if (FLAGS_throw_use_error_op == op_name) {
+        PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+      }
+    }
+
     if (!transform_flag.NeedTransform() || !dense_tensor.initialized() ||
         (!NeedTransformPlace(
              dense_tensor.place(), target_args_def.backend, transform_flag) &&
@@ -258,16 +275,21 @@ std::shared_ptr<phi::DenseTensor> PrepareData(
 }
 
 paddle::optional<phi::DenseTensor> PrepareData(
+    const std::string& op_name,
+    const std::string& tensor_name,
     const paddle::optional<Tensor>& input,
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag) {
   if (input) {
-    return {*PrepareData(*input, target_args_def, transform_flag)};
+    return {*PrepareData(
+        op_name, tensor_name, *input, target_args_def, transform_flag)};
   }
   return paddle::none;
 }
 
 std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(
+    const std::string& op_name,
+    const std::string& tensor_name,
     const std::vector<Tensor>& inputs,
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag) {
@@ -276,6 +298,16 @@ std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(
 
   for (const auto& input : inputs) {
     const auto& tensor_in = input.impl();
+    phi::DenseTensor& dense_tensor =
+        *static_cast<phi::DenseTensor*>(tensor_in.get());
+    if ((*dense_tensor.canNotUse) == true) {
+      LOG(WARNING) << "Stride Test Log 18: op_name = " << op_name
+                   << ", var name = " << tensor_name;
+      if (FLAGS_throw_use_error_op == op_name) {
+        PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+      }
+    }
+
     if (!transform_flag.NeedTransform() || !tensor_in->initialized() ||
         (!NeedTransformPlace(
              tensor_in->place(), target_args_def.backend, transform_flag) &&
@@ -299,16 +331,21 @@ std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(
 }
 
 paddle::optional<std::vector<phi::DenseTensor>> PrepareData(
+    const std::string& op_name,
+    const std::string& tensor_name,
     const paddle::optional<std::vector<Tensor>>& inputs,
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag) {
   if (inputs) {
-    return {*PrepareData(*inputs, target_args_def, transform_flag)};
+    return {*PrepareData(
+        op_name, tensor_name, *inputs, target_args_def, transform_flag)};
   }
   return paddle::none;
 }
 
 std::shared_ptr<phi::SelectedRows> PrepareDataForSelectedRows(
+    const std::string& op_name,
+    const std::string& tensor_name,
     const Tensor& input,
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag) {
@@ -316,6 +353,15 @@ std::shared_ptr<phi::SelectedRows> PrepareDataForSelectedRows(
   if (tensor_in) {
     phi::SelectedRows& selected_rows =
         *static_cast<phi::SelectedRows*>(tensor_in.get());
+
+    if ((*selected_rows.mutable_value()->canNotUse) == true) {
+      LOG(WARNING) << "Stride Test Log 19: op_name = " << op_name
+                   << ", var name = " << tensor_name;
+      if (FLAGS_throw_use_error_op == op_name) {
+        PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+      }
+    }
+
     if (!transform_flag.NeedTransform() || !selected_rows.initialized() ||
         (!NeedTransformPlace(
             selected_rows.place(), target_args_def.backend, transform_flag))) {
@@ -340,11 +386,14 @@ std::shared_ptr<phi::SelectedRows> PrepareDataForSelectedRows(
 }
 
 paddle::optional<phi::SelectedRows> PrepareDataForSelectedRows(
+    const std::string& op_name,
+    const std::string& tensor_name,
     const paddle::optional<Tensor>& input,
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag) {
   if (input) {
-    return *PrepareDataForSelectedRows(*input, target_args_def, transform_flag);
+    return *PrepareDataForSelectedRows(
+        op_name, tensor_name, *input, target_args_def, transform_flag);
   }
   return paddle::none;
 }

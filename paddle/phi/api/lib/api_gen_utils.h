@@ -87,21 +87,35 @@ std::vector<phi::MetaTensor> MakeMetaTensor(
 
 /* ------------------ for output ----------------------- */
 
-phi::DenseTensor* SetKernelOutput(Tensor* out);
+phi::DenseTensor* SetKernelOutput(const std::string& op_name,
+                                  const std::string& tensor_name,
+                                  Tensor* out);
 
-std::vector<phi::DenseTensor*> SetKernelOutput(size_t out_size,
+std::vector<phi::DenseTensor*> SetKernelOutput(const std::string& op_name,
+                                               const std::string& tensor_name,
+                                               size_t out_size,
                                                std::vector<Tensor>* out);
 
 std::vector<phi::DenseTensor*> SetInplaceVectorKernelOutput(
-    size_t out_size, std::vector<Tensor>* out);
+    const std::string& op_name,
+    const std::string& tensor_name,
+    size_t out_size,
+    std::vector<Tensor>* out);
 
 std::vector<phi::DenseTensor*> SetInplaceOptionalVectorKernelOutput(
-    size_t out_size, const paddle::optional<std::vector<Tensor>>& out);
+    const std::string& op_name,
+    const std::string& tensor_name,
+    size_t out_size,
+    const paddle::optional<std::vector<Tensor>>& out);
 
 // For backward api
-std::vector<phi::DenseTensor*> SetKernelOutput(std::vector<Tensor*>* out);
+std::vector<phi::DenseTensor*> SetKernelOutput(const std::string& op_name,
+                                               const std::string& tensor_name,
+                                               std::vector<Tensor*>* out);
 
-phi::SelectedRows* SetSelectedRowsKernelOutput(Tensor* out);
+phi::SelectedRows* SetSelectedRowsKernelOutput(const std::string& op_name,
+                                               const std::string& tensor_name,
+                                               Tensor* out);
 
 phi::TensorBase* SetSparseKernelOutput(Tensor* out, TensorType type);
 

@@ -13,10 +13,12 @@
 // limitations under the License.
 
 #pragma once
-
+#include "gflags/gflags.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/elementwise_grad_base.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
+
+DECLARE_string(throw_strided_error_op);
 
 namespace phi {
 
@@ -24,6 +26,20 @@ template <typename T, typename Context>
 void RealGradKernel(const Context& dev_ctx,
                     const DenseTensor& dout,
                     DenseTensor* dx) {
+  DenseTensor& xx = const_cast<DenseTensor&>(dout);
+  if (!xx.IsSharedBufferWith(*dx)) {
+    if (xx.can_not_uses != dx->can_not_uses) {
+      dx->can_not_uses = xx.can_not_uses;
+      *dx->canNotUse = *xx.canNotUse;
+      xx.can_not_uses->insert(dx->canNotUse);
+
+      VLOG(1) << "stride api call log: RealGradKernel";
+
+      if (FLAGS_throw_strided_error_op == "RealGradKernel") {
+        PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+      }
+    }
+  }
   auto numel = dout.numel();
   auto* dout_data = dout.data<phi::dtype::Real<T>>();
   auto* dx_data =
@@ -38,6 +54,20 @@ template <typename T, typename Context>
 void ImagGradKernel(const Context& dev_ctx,
                     const DenseTensor& dout,
                     DenseTensor* dx) {
+  DenseTensor& xx = const_cast<DenseTensor&>(dout);
+  if (!xx.IsSharedBufferWith(*dx)) {
+    if (xx.can_not_uses != dx->can_not_uses) {
+      dx->can_not_uses = xx.can_not_uses;
+      *dx->canNotUse = *xx.canNotUse;
+      xx.can_not_uses->insert(dx->canNotUse);
+
+      VLOG(1) << "stride api call log: ImagGradKernel";
+
+      if (FLAGS_throw_strided_error_op == "ImagGradKernel") {
+        PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+      }
+    }
+  }
   auto numel = dout.numel();
   auto* dout_data = dout.data<phi::dtype::Real<T>>();
   auto* dx_data =

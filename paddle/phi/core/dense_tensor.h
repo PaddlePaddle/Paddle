@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <set>
 #include "paddle/phi/core/allocator.h"
 #include "paddle/phi/core/storage_properties.h"
 #include "paddle/phi/core/stream.h"
@@ -182,7 +183,7 @@ class DenseTensor : public TensorBase,
  private:
   friend class DenseTensorUtils;
 
- protected:
+ public:
   DenseTensorMeta meta_;
   std::shared_ptr<phi::Allocation> holder_;
 
@@ -267,7 +268,7 @@ class DenseTensor : public TensorBase,
     uint32_t inplace_version_{0};
   };
 
- protected:
+ public:
   std::shared_ptr<InplaceVersion> inplace_version_counter_{
       std::make_shared<InplaceVersion>()};
 
@@ -286,6 +287,11 @@ following codes there.
 #ifndef PADDLE_WITH_CUSTOM_KERNEL
 #include "paddle/phi/core/dense_tensor.inl"
 #endif
+
+  std::shared_ptr<bool> canNotUse = std::make_shared<bool>(false);
+  std::shared_ptr<std::set<std::shared_ptr<bool>>> can_not_uses =
+      std::make_shared<std::set<std::shared_ptr<bool>>>(
+          std::set<std::shared_ptr<bool>>());
 };
 
 }  // namespace phi

@@ -14,11 +14,14 @@
 
 #pragma once
 
+#include <glog/logging.h>
 #include <algorithm>
 #include <vector>
 
+#include "gflags/gflags.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
+DECLARE_string(throw_strided_error_op);
 
 #define MAX_RANK_SUPPORTED 6
 
@@ -100,6 +103,22 @@ void ExpandAsKernel(const Context& ctx,
                     const paddle::optional<DenseTensor>& y,
                     const std::vector<int>& target_shape,
                     DenseTensor* out) {
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
+  if (!xx.IsSharedBufferWith(*out)) {
+    if (xx.can_not_uses != out->can_not_uses) {
+      out->can_not_uses = xx.can_not_uses;
+      if (*out->canNotUse == false) {
+        *out->canNotUse = *xx.canNotUse;
+      }
+      xx.can_not_uses->insert(xx.canNotUse);
+      xx.can_not_uses->insert(out->canNotUse);
+      VLOG(1) << "stride api call log: ExpandAsKernel";
+
+      if (FLAGS_throw_strided_error_op == "ExpandAsKernel") {
+        PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+      }
+    }
+  }
   auto rank = x.dims().size();
   auto target_rank = target_shape.size();
   PADDLE_ENFORCE_GE(target_rank,

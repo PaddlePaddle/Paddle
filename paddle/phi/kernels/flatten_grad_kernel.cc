@@ -14,9 +14,12 @@
 
 #include "paddle/phi/kernels/flatten_grad_kernel.h"
 
+#include <glog/logging.h>
+#include "gflags/gflags.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
+DECLARE_string(throw_strided_error_op);
 
 namespace phi {
 
@@ -25,6 +28,21 @@ void FlattenGradKernel(const Context& dev_ctx,
                        const DenseTensor& xshape,
                        const DenseTensor& out_grad,
                        DenseTensor* x_grad) {
+  DenseTensor& xx = const_cast<DenseTensor&>(out_grad);
+  if (!xx.IsSharedBufferWith(*x_grad)) {
+    if (xx.can_not_uses != x_grad->can_not_uses) {
+      x_grad->can_not_uses = xx.can_not_uses;
+      if (*x_grad->canNotUse == false) {
+        *x_grad->canNotUse = *xx.canNotUse;
+      }
+      xx.can_not_uses->insert(xx.canNotUse);
+      xx.can_not_uses->insert(x_grad->canNotUse);
+      VLOG(1) << "stride api call log: FlattenGradKernel";
+      if (FLAGS_throw_strided_error_op == "FlattenGradKernel") {
+        PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+      }
+    }
+  }
   auto xshape_dims = xshape.dims();
   dev_ctx.Alloc(x_grad, out_grad.dtype());
   auto x_dims = phi::slice_ddim(xshape_dims, 1, xshape_dims.size());

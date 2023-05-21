@@ -14,9 +14,12 @@
 
 #include "paddle/phi/kernels/diagonal_grad_kernel.h"
 
+#include <glog/logging.h>
+#include "gflags/gflags.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/diagonal.h"
+DECLARE_string(throw_strided_error_op);
 
 namespace phi {
 
@@ -28,6 +31,22 @@ void DiagonalGradKernel(const Context& dev_ctx,
                         int axis1,
                         int axis2,
                         DenseTensor* in_grad) {
+  DenseTensor& xx = const_cast<DenseTensor&>(out_grad);
+  if (!xx.IsSharedBufferWith(*in_grad)) {
+    if (xx.can_not_uses != in_grad->can_not_uses) {
+      in_grad->can_not_uses = xx.can_not_uses;
+      if (*in_grad->canNotUse == false) {
+        *in_grad->canNotUse = *xx.canNotUse;
+      }
+      xx.can_not_uses->insert(xx.canNotUse);
+      xx.can_not_uses->insert(in_grad->canNotUse);
+      VLOG(1) << "stride api call log: DiagonalGradKernel";
+
+      if (FLAGS_throw_strided_error_op == "DiagonalGradKernel") {
+        PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+      }
+    }
+  }
   const auto* dout = &out_grad;
   const T* dout_data = dout->data<T>();
   auto dout_dim = vectorize(dout->dims());

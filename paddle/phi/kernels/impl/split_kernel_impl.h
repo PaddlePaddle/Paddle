@@ -15,11 +15,14 @@
 #pragma once
 #include "paddle/phi/kernels/split_kernel.h"
 
+#include <glog/logging.h>
+#include "gflags/gflags.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
 #include "paddle/phi/kernels/funcs/strided_memcpy.h"
+DECLARE_string(throw_strided_error_op);
 
 namespace phi {
 template <typename T, typename Context>
@@ -28,6 +31,20 @@ void SplitKernel(const Context& dev_ctx,
                  const IntArray& sections UNUSED,
                  const Scalar& axis_scalar,
                  std::vector<DenseTensor*> outs) {
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
+  for (size_t i = 0; i < outs.size(); ++i) {
+    outs[i]->can_not_uses = xx.can_not_uses;
+    if (*outs[i]->canNotUse == false) {
+      *outs[i]->canNotUse = *xx.canNotUse;
+    }
+    xx.can_not_uses->insert(xx.canNotUse);
+    xx.can_not_uses->insert(outs[i]->canNotUse);
+  }
+  VLOG(1) << "stride api call log: SplitKernel";
+
+  if (FLAGS_throw_strided_error_op == "SplitKernel") {
+    PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+  }
   std::vector<const DenseTensor*> shape_refer;
   for (size_t j = 0; j < outs.size(); ++j) {
     dev_ctx.template Alloc<T>(outs[j]);

@@ -414,6 +414,8 @@ def require_version(min_version, max_version=None):
 
     if version_cmp(version_installed, zero_version) == 0:
         if max_version is not None:
+            import warnings
+
             warnings.warn(
                 "PaddlePaddle version in [%s, %s] required, but %s installed. "
                 "Maybe you are using a develop version, "
@@ -421,6 +423,8 @@ def require_version(min_version, max_version=None):
                 % (min_version, max_version, fluid_version.full_version)
             )
         else:
+            import warnings
+
             warnings.warn(
                 "PaddlePaddle version %s or higher is required, but %s installed, "
                 "Maybe you are using a develop version, "
@@ -536,6 +540,8 @@ def deprecate_stat_dict(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         if 'stat_dict' in kwargs:
+            import warnings
+
             warnings.warn(
                 "The argument `stat_dict` has deprecated, please change it to `state_dict`.",
                 DeprecationWarning,
@@ -573,6 +579,8 @@ def _current_expected_place():
             if device_count > 0:
                 _global_expected_place_ = core.CUDAPlace(_cuda_ids()[0])
             else:
+                import warnings
+
                 warnings.warn(
                     "You are using GPU version Paddle, but your CUDA device is not set properly. CPU device will be used by default."
                 )
@@ -585,8 +593,27 @@ def _current_expected_place():
             if device_count > 0:
                 _global_expected_place_ = core.XPUPlace(_xpu_ids()[0])
             else:
+                import warnings
+
                 warnings.warn(
                     "You are using XPU version Paddle, but your XPU device is not set properly. CPU device will be used by default."
+                )
+                _global_expected_place_ = core.CPUPlace()
+        elif core.is_compiled_with_custom_device("npu"):
+            # TODO(duanyanhui): Optimize DeviceManager and Return all expected places when device registered in DeviceManager is greater than 1.
+            try:
+                device_count = core.get_custom_device_count("npu")
+            except Exception as e:
+                device_count = 0
+            if device_count > 0:
+                _global_expected_place_ = core.CustomPlace(
+                    "npu", _custom_device_ids("npu")[0]
+                )
+            else:
+                import warnings
+
+                warnings.warn(
+                    "You are using NPU version Paddle, but your NPU device is not set properly. CPU device will be used by default."
                 )
                 _global_expected_place_ = core.CPUPlace()
         else:
@@ -1309,6 +1336,7 @@ class Variable(metaclass=VariableMetaClass):
         belong_to_optimizer=False,
         **kwargs,
     ):
+        self.is_view_var = False
         self.block = block
         if name is None:
             name = unique_name.generate('_generated_var')
@@ -2814,6 +2842,8 @@ class Operator:
                     op_device = op_maker.kOpDeviceAttrName()
                     op_attrs[op_device] = _current_device
                 else:
+                    import warnings
+
                     warnings.warn(
                         "The Op(%s) is not support to set device." % type
                     )
@@ -2822,6 +2852,8 @@ class Operator:
                         type == 'less_than'
                         and op_attrs['force_cpu'] is not None
                     ) or op_attrs['force_cpu'] != False:
+                        import warnings
+
                         warnings.warn(
                             "The Attr(force_cpu) of Op(%s) will be deprecated in the future, "
                             "please use 'device_guard' instead. 'device_guard' has higher priority when they are "
@@ -2945,6 +2977,8 @@ class Operator:
                     self._update_desc_attr(attr_name, attr_val)
                 for attr_name in extra_attrs_map.keys():
                     if os.environ.get('FLAGS_print_extra_attrs', '0') == '1':
+                        import warnings
+
                         warnings.warn(
                             "op %s use extra_attr: %s" % (type, attr_name)
                         )
@@ -2963,6 +2997,8 @@ class Operator:
                         attrs = extra_op_attrs.get(type, [])
                         for attr in attrs:
                             if attr in op_attrs.keys():
+                                import warnings
+
                                 warnings.warn(
                                     "op %s use extra_attr: %s" % (type, attr)
                                 )
@@ -2976,6 +3012,8 @@ class Operator:
                                 a_name in op_attrs.keys()
                                 and default_value != op_attrs[a_name]
                             ):
+                                import warnings
+
                                 warnings.warn(
                                     "op %s's attr %s = %s is not the default value: %s"
                                     % (
@@ -3957,8 +3995,13 @@ class Block:
         """
         op_type = kwargs.get("type", None)
         if _non_static_mode():
+            inputs = kwargs.get("inputs", None)
+            outputs = kwargs.get("outputs", None)
+
             attrs = kwargs.get("attrs", {})
             inplace_map = kwargs.get("inplace_map", None)
+            import warnings
+
             warnings.warn(
                 "Op `%s` is executed through `append_op` under the dynamic mode, "
                 "the corresponding API implementation needs to be upgraded to "
@@ -4019,6 +4062,29 @@ class Block:
                 'while',
                 'while_grad',
             }
+            if outputs is not None:
+                for k, v in outputs.items():
+                    if isinstance(v, Variable):
+                        if v.is_view_var:
+                            import warnings
+                            import inspect
+
+                            warnings.warn(
+                                'Write view var check 2: %s write view var %s, call stack: %s'
+                                % (op_type, k, inspect.stack())
+                            )
+                    elif isinstance(v, list):
+                        for var in v:
+                            if isinstance(v, Variable):
+                                if var.is_view_var:
+                                    import warnings
+                                    import inspect
+
+                                    warnings.warn(
+                                        'Write view var check 3: %s write view var %s, call stack: %s'
+                                        % (op_type, k, inspect.stack())
+                                    )
+
             if op_type not in ignore_ops:
                 pass_stop_gradient(inputs, outputs)
             with param_guard(inputs), param_guard(outputs):
@@ -4032,6 +4098,212 @@ class Block:
                 )
 
             self.ops.append(op)
+        if op_type == "slice":
+            if inputs is not None and isinstance(inputs["Input"], list):
+                if hasattr(inputs["Input"][0], "is_view_var"):
+                    inputs["Input"][0].is_view_var = True
+            else:
+                if hasattr(inputs["Input"], "is_view_var"):
+                    inputs["Input"].is_view_var = True
+            if outputs is not None and isinstance(outputs["Out"], list):
+                if hasattr(outputs["Out"][0], "is_view_var"):
+                    outputs["Out"][0].is_view_var = True
+            else:
+                if hasattr(outputs["Out"], "is_view_var"):
+                    outputs["Out"].is_view_var = True
+        elif op_type == "strided_slice":
+            if inputs is not None and isinstance(inputs["Input"], list):
+                if hasattr(inputs["Input"][0], "is_view_var"):
+                    inputs["Input"][0].is_view_var = True
+            else:
+                if hasattr(inputs["Input"], "is_view_var"):
+                    inputs["Input"].is_view_var = True
+            if outputs is not None and isinstance(outputs["Out"], list):
+                if hasattr(outputs["Out"][0], "is_view_var"):
+                    outputs["Out"][0].is_view_var = True
+            else:
+                if hasattr(outputs["Out"], "is_view_var"):
+                    outputs["Out"].is_view_var = True
+        elif op_type == "split":
+            if inputs is not None and isinstance(inputs["X"], list):
+                if hasattr(inputs["X"][0], "is_view_var"):
+                    inputs["X"][0].is_view_var = True
+            else:
+                if hasattr(inputs["X"], "is_view_var"):
+                    inputs["X"].is_view_var = True
+            if outputs is not None:
+                for out in outputs["Out"]:
+                    if hasattr(out, "is_view_var"):
+                        out.is_view_var = True
+        elif op_type == "unsqueeze" or op_type == "unsqueeze2":
+            if inputs is not None and isinstance(inputs["X"], list):
+                if hasattr(inputs["X"][0], "is_view_var"):
+                    inputs["X"][0].is_view_var = True
+            else:
+                if hasattr(inputs["X"], "is_view_var"):
+                    inputs["X"].is_view_var = True
+            if outputs is not None and isinstance(outputs["Out"], list):
+                if hasattr(outputs["Out"][0], "is_view_var"):
+                    outputs["Out"][0].is_view_var = True
+            else:
+                if hasattr(outputs["Out"], "is_view_var"):
+                    outputs["Out"].is_view_var = True
+        elif op_type == "share_data":  # detach
+            if inputs is not None and isinstance(inputs["X"], list):
+                if hasattr(inputs["X"][0], "is_view_var"):
+                    inputs["X"][0].is_view_var = True
+            else:
+                if hasattr(inputs["X"], "is_view_var"):
+                    inputs["X"].is_view_var = True
+            if outputs is not None and isinstance(outputs["Out"], list):
+                if hasattr(outputs["Out"][0], "is_view_var"):
+                    outputs["Out"][0].is_view_var = True
+            else:
+                if hasattr(outputs["Out"], "is_view_var"):
+                    outputs["Out"].is_view_var = True
+        elif op_type == "squeeze" or op_type == "squeeze2":
+            if inputs is not None and isinstance(inputs["X"], list):
+                if hasattr(inputs["X"][0], "is_view_var"):
+                    inputs["X"][0].is_view_var = True
+            else:
+                if hasattr(inputs["X"], "is_view_var"):
+                    inputs["X"].is_view_var = True
+            if outputs is not None and isinstance(outputs["Out"], list):
+                if hasattr(outputs["Out"][0], "is_view_var"):
+                    outputs["Out"][0].is_view_var = True
+            else:
+                if hasattr(outputs["Out"], "is_view_var"):
+                    outputs["Out"].is_view_var = True
+        elif op_type == "expand" or op_type == "expand_v2":
+            if inputs is not None and isinstance(inputs["X"], list):
+                if hasattr(inputs["X"][0], "is_view_var"):
+                    inputs["X"][0].is_view_var = True
+            else:
+                if hasattr(inputs["X"], "is_view_var"):
+                    inputs["X"].is_view_var = True
+            if outputs is not None and isinstance(outputs["Out"], list):
+                if hasattr(outputs["Out"][0], "is_view_var"):
+                    outputs["Out"][0].is_view_var = True
+            else:
+                if hasattr(outputs["Out"], "is_view_var"):
+                    outputs["Out"].is_view_var = True
+        elif op_type == "expand_as" or op_type == "expand_as_v2":
+            if inputs is not None and isinstance(inputs["X"], list):
+                if hasattr(inputs["X"][0], "is_view_var"):
+                    inputs["X"][0].is_view_var = True
+            else:
+                if hasattr(inputs["X"], "is_view_var"):
+                    inputs["X"].is_view_var = True
+            if outputs is not None and isinstance(outputs["Out"], list):
+                if hasattr(outputs["Out"][0], "is_view_var"):
+                    outputs["Out"][0].is_view_var = True
+            else:
+                if hasattr(outputs["Out"], "is_view_var"):
+                    outputs["Out"].is_view_var = True
+        elif op_type == "transpose" or op_type == "transpose2":
+            if inputs is not None and isinstance(inputs["X"], list):
+                if hasattr(inputs["X"][0], "is_view_var"):
+                    inputs["X"][0].is_view_var = True
+            else:
+                if hasattr(inputs["X"], "is_view_var"):
+                    inputs["X"].is_view_var = True
+            if outputs is not None and isinstance(outputs["Out"], list):
+                if hasattr(outputs["Out"][0], "is_view_var"):
+                    outputs["Out"][0].is_view_var = True
+            else:
+                if hasattr(outputs["Out"], "is_view_var"):
+                    outputs["Out"].is_view_var = True
+        elif op_type == "unbind":
+            if inputs is not None and isinstance(inputs["X"], list):
+                if hasattr(inputs["X"][0], "is_view_var"):
+                    inputs["X"][0].is_view_var = True
+            else:
+                if hasattr(inputs["X"], "is_view_var"):
+                    inputs["X"].is_view_var = True
+            if outputs is not None and isinstance(outputs["Out"], list):
+                if hasattr(outputs["Out"][0], "is_view_var"):
+                    outputs["Out"][0].is_view_var = True
+            else:
+                if hasattr(outputs["Out"], "is_view_var"):
+                    outputs["Out"].is_view_var = True
+        elif op_type == "diagonal":
+            if inputs is not None and isinstance(inputs["Input"], list):
+                if hasattr(inputs["Input"][0], "is_view_var"):
+                    inputs["Input"][0].is_view_var = True
+            else:
+                if hasattr(inputs["Input"], "is_view_var"):
+                    inputs["Input"].is_view_var = True
+            if outputs is not None and isinstance(outputs["Out"], list):
+                if hasattr(outputs["Out"][0], "is_view_var"):
+                    outputs["Out"][0].is_view_var = True
+            else:
+                if hasattr(outputs["Out"], "is_view_var"):
+                    outputs["Out"].is_view_var = True
+        elif op_type == "flatten":
+            if inputs is not None and isinstance(inputs["X"], list):
+                if hasattr(inputs["X"][0], "is_view_var"):
+                    inputs["X"][0].is_view_var = True
+            else:
+                if hasattr(inputs["X"], "is_view_var"):
+                    inputs["X"].is_view_var = True
+            if outputs is not None and isinstance(outputs["Out"], list):
+                if hasattr(outputs["Out"][0], "is_view_var"):
+                    outputs["Out"][0].is_view_var = True
+            else:
+                if hasattr(outputs["Out"], "is_view_var"):
+                    outputs["Out"].is_view_var = True
+        elif op_type == "imag":
+            if inputs is not None and isinstance(inputs["X"], list):
+                if hasattr(inputs["X"][0], "is_view_var"):
+                    inputs["X"][0].is_view_var = True
+            else:
+                if hasattr(inputs["X"], "is_view_var"):
+                    inputs["X"].is_view_var = True
+            if outputs is not None and isinstance(outputs["Out"], list):
+                if hasattr(outputs["Out"][0], "is_view_var"):
+                    outputs["Out"][0].is_view_var = True
+            else:
+                if hasattr(outputs["Out"], "is_view_var"):
+                    outputs["Out"].is_view_var = True
+        elif op_type == "real":
+            if inputs is not None and isinstance(inputs["X"], list):
+                if hasattr(inputs["X"][0], "is_view_var"):
+                    inputs["X"][0].is_view_var = True
+            else:
+                if hasattr(inputs["X"], "is_view_var"):
+                    inputs["X"].is_view_var = True
+            if outputs is not None and isinstance(outputs["Out"], list):
+                if hasattr(outputs["Out"][0], "is_view_var"):
+                    outputs["Out"][0].is_view_var = True
+            else:
+                if hasattr(outputs["Out"], "is_view_var"):
+                    outputs["Out"].is_view_var = True
+        elif op_type == "reshape" or op_type == "reshape2":
+            if inputs is not None and isinstance(inputs["X"], list):
+                if hasattr(inputs["X"][0], "is_view_var"):
+                    inputs["X"][0].is_view_var = True
+            else:
+                if hasattr(inputs["X"], "is_view_var"):
+                    inputs["X"].is_view_var = True
+            if outputs is not None and isinstance(outputs["Out"], list):
+                if hasattr(outputs["Out"][0], "is_view_var"):
+                    outputs["Out"][0].is_view_var = True
+            else:
+                if hasattr(outputs["Out"], "is_view_var"):
+                    outputs["Out"].is_view_var = True
+        elif op_type == "as_real":
+            if inputs is not None and isinstance(inputs["X"], list):
+                if hasattr(inputs["X"][0], "is_view_var"):
+                    inputs["X"][0].is_view_var = True
+            else:
+                if hasattr(inputs["X"], "is_view_var"):
+                    inputs["X"].is_view_var = True
+            if outputs is not None and isinstance(outputs["Out"], list):
+                if hasattr(outputs["Out"][0], "is_view_var"):
+                    outputs["Out"][0].is_view_var = True
+            else:
+                if hasattr(outputs["Out"], "is_view_var"):
+                    outputs["Out"].is_view_var = True
 
         return op
 
@@ -6826,14 +7098,20 @@ class Program:
                 try:
                     vars_dict[name].set_value(value, scope)
                 except ValueError as err:
+                    import warnings
+
                     warnings.warn(
                         ("Skip loading for '{}'. ".format(name) + str(err))
                     )
                 except TypeError as err:
+                    import warnings
+
                     warnings.warn(
                         ("Skip loading for '{}'. ".format(name) + str(err))
                     )
             else:
+                import warnings
+
                 warnings.warn(
                     (
                         "Skip loading for '{0}'. Because '{0}' not in the program.".format(

@@ -14,9 +14,12 @@
 
 #pragma once
 
+#include <glog/logging.h>
+#include "gflags/gflags.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/transpose_grad_kernel.h"
 #include "paddle/phi/kernels/transpose_kernel.h"
+DECLARE_string(throw_strided_error_op);
 
 namespace phi {
 
@@ -25,6 +28,22 @@ void TransposeGradKernel(const Context& dev_ctx,
                          const DenseTensor& out_grad,
                          const std::vector<int>& axis,
                          DenseTensor* x_grad) {
+  DenseTensor& xx = const_cast<DenseTensor&>(out_grad);
+  if (!xx.IsSharedBufferWith(*x_grad)) {
+    if (xx.can_not_uses != x_grad->can_not_uses) {
+      x_grad->can_not_uses = xx.can_not_uses;
+      if (*x_grad->canNotUse == false) {
+        *x_grad->canNotUse = *xx.canNotUse;
+      }
+      xx.can_not_uses->insert(xx.canNotUse);
+      xx.can_not_uses->insert(x_grad->canNotUse);
+      VLOG(1) << "stride api call log: TransposeGradKernel";
+
+      if (FLAGS_throw_strided_error_op == "TransposeGradKernel") {
+        PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+      }
+    }
+  }
   size_t axis_size = axis.size();
   std::vector<int> formated_axis = axis;
   for (size_t i = 0; i < axis_size; i++) {

@@ -411,7 +411,6 @@ def slice(input, axes, starts, ends):
         helper.append_op(
             type='slice', inputs=inputs, attrs=attrs, outputs={'Out': out}
         )
-
         return out
 
 

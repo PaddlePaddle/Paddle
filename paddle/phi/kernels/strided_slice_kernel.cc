@@ -14,7 +14,10 @@
 
 #include "paddle/phi/kernels/strided_slice_kernel.h"
 
+#include <glog/logging.h>
+#include "gflags/gflags.h"
 #include "paddle/phi/core/kernel_registry.h"
+DECLARE_string(throw_strided_error_op);
 
 namespace phi {
 
@@ -26,6 +29,23 @@ void StridedSliceKernel(const Context& dev_ctx,
                         const IntArray& ends,
                         const IntArray& strides,
                         DenseTensor* out) {
+  DenseTensor& xx = const_cast<DenseTensor&>(x);
+  if (!xx.IsSharedBufferWith(*out)) {
+    if (xx.can_not_uses != out->can_not_uses) {
+      out->can_not_uses = xx.can_not_uses;
+      if (*out->canNotUse == false) {
+        *out->canNotUse = *xx.canNotUse;
+      }
+      xx.can_not_uses->insert(xx.canNotUse);
+
+      xx.can_not_uses->insert(out->canNotUse);
+      VLOG(1) << "stride api call log: StridedSliceKernel";
+
+      if (FLAGS_throw_strided_error_op == "StridedSliceKernel") {
+        PADDLE_THROW(phi::errors::PermissionDenied("wanghuan"));
+      }
+    }
+  }
   std::vector<int> infer_flags(axes.size(), 1);
   std::vector<int> decrease_axis;
   StridedSliceRawKernel<T, Context>(

@@ -142,6 +142,7 @@ PADDLE_API void {api_func_name}({self.get_declare_args()});
 
     def gene_output(
         self,
+        kernel_name,
         out_dtype_list,
         out_tensor_type_list=None,
         code_indent='',
@@ -175,14 +176,14 @@ PADDLE_API void {api_func_name}({self.get_declare_args()});
                 output_create = (
                     output_create
                     + f"""
-{code_indent}  auto kernel_out = {set_out_func}(&{self.outputs['names'][0]});"""
+{code_indent}  auto kernel_out = {set_out_func}("{kernel_name}", "&{self.outputs['names'][0]}", &{self.outputs['names'][0]});"""
                 )
 
             else:
                 output_create = (
                     output_create
                     + f"""
-{code_indent}  auto kernel_out = {set_out_func}({self.outputs['names'][0]});"""
+{code_indent}  auto kernel_out = {set_out_func}("{kernel_name}", "{self.outputs['names'][0]}", {self.outputs['names'][0]});"""
                 )
 
         elif len(out_dtype_list) > 1:
@@ -211,7 +212,7 @@ PADDLE_API void {api_func_name}({self.get_declare_args()});
                     output_create = (
                         output_create
                         + f"""
-{code_indent}  auto kernel_out_{i} = {set_out_func}({self.outputs['names'][i]});"""
+{code_indent}  auto kernel_out_{i} = {set_out_func}("{kernel_name}", "{self.outputs['names'][i]}", {self.outputs['names'][i]});"""
                     )
 
                 else:
@@ -232,7 +233,7 @@ PADDLE_API void {api_func_name}({self.get_declare_args()});
                     output_create = (
                         output_create
                         + f"""
-{code_indent}  auto kernel_out_{i} = {set_out_func}(&{self.outputs['names'][i]});"""
+{code_indent}  auto kernel_out_{i} = {set_out_func}("{kernel_name}", "&{self.outputs['names'][i]}", &{self.outputs['names'][i]});"""
                     )
 
         else:

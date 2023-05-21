@@ -86,7 +86,8 @@ Tensor add_n_impl(const std::vector<Tensor>& x) {
     for (size_t i = 0; i < x_meta_vec.size(); ++i) {
       x_metas[i] = &x_meta_vec[i];
     }
-    auto kernel_out = SetSelectedRowsKernelOutput(&api_output);
+    auto kernel_out = SetSelectedRowsKernelOutput(
+        "custom5" + kernel_name, "lala", &api_output);
     phi::MetaTensor meta_out(kernel_out);
     phi::AddNInferMeta(x_metas, &meta_out);
 
@@ -103,7 +104,8 @@ Tensor add_n_impl(const std::vector<Tensor>& x) {
     temp_dense_tensots.reserve(x.size());
     for (size_t i = 0; i < input_x.size(); ++i) {
       if (phi::DenseTensor::classof(x[i].impl().get())) {
-        temp_dense_tensots.push_back(PrepareData(x[i], kernel.InputAt(0), {}));
+        temp_dense_tensots.push_back(PrepareData(
+            "custom" + kernel_name, "lala", x[i], kernel.InputAt(0), {}));
         input_x[i] = temp_dense_tensots.back().get();
       } else {
         input_x[i] = x[i].impl().get();
@@ -114,7 +116,8 @@ Tensor add_n_impl(const std::vector<Tensor>& x) {
     for (size_t i = 0; i < x_meta_vec.size(); ++i) {
       x_metas[i] = &x_meta_vec[i];
     }
-    auto kernel_out = SetKernelOutput(&api_output);
+    auto kernel_out =
+        SetKernelOutput("custom" + kernel_name, "lala", &api_output);
     phi::MetaTensor meta_out(kernel_out);
     phi::AddNInferMeta(x_metas, &meta_out);
 
@@ -167,12 +170,16 @@ void embedding_grad_impl(const Tensor& x,
     auto* dev_ctx = GetDeviceContextByBackend(
         kernel_result.has_fallback_cpu ? Backend::CPU : kernel_key.backend());
 
-    auto input_x = PrepareData(x, kernel.InputAt(0), {});
-    auto input_weight = PrepareData(weight, kernel.InputAt(1), {});
-    auto input_out_grad = PrepareData(out_grad, kernel.InputAt(2), {});
+    auto input_x =
+        PrepareData("custom2" + kernel_name, "x", x, kernel.InputAt(0), {});
+    auto input_weight = PrepareData(
+        "custom2" + kernel_name, "weight", weight, kernel.InputAt(1), {});
+    auto input_out_grad = PrepareData(
+        "custom2" + kernel_name, "out_grad", out_grad, kernel.InputAt(2), {});
 
     if (sparse) {
-      auto* kernel_out = SetSelectedRowsKernelOutput(weight_grad);
+      auto* kernel_out = SetSelectedRowsKernelOutput(
+          "custom6" + kernel_name, "lala", weight_grad);
       phi::MetaTensor meta_out(kernel_out);
       meta_out.set_dims(input_weight->dims());
       meta_out.set_dtype(input_weight->dtype());
@@ -192,7 +199,8 @@ void embedding_grad_impl(const Tensor& x,
                    padding_idx,
                    kernel_out);
     } else {
-      auto* kernel_out = SetKernelOutput(weight_grad);
+      auto* kernel_out =
+          SetKernelOutput("custom2" + kernel_name, "lala", weight_grad);
       phi::MetaTensor meta_out(kernel_out);
       phi::UnchangedInferMeta(MakeMetaTensor(*input_weight), &meta_out);
       using kernel_signature = void (*)(const phi::DeviceContext&,
@@ -222,12 +230,15 @@ void embedding_grad_impl(const Tensor& x,
     auto* dev_ctx = GetDeviceContextByBackend(
         kernel_result.has_fallback_cpu ? Backend::CPU : kernel_key.backend());
 
-    auto input_x = PrepareData(x, kernel.InputAt(0), {});
+    auto input_x =
+        PrepareData("custom3" + kernel_name, "x", x, kernel.InputAt(0), {});
     auto input_weight = TensorToSelectedRows(weight);
-    auto input_out_grad = PrepareData(out_grad, kernel.InputAt(2), {});
+    auto input_out_grad = PrepareData(
+        "custom3" + kernel_name, "out_grad", out_grad, kernel.InputAt(2), {});
 
     if (sparse) {
-      auto* kernel_out = SetSelectedRowsKernelOutput(weight_grad);
+      auto* kernel_out = SetSelectedRowsKernelOutput(
+          "custom4" + kernel_name, "lala", weight_grad);
       phi::MetaTensor meta_out(kernel_out);
       phi::UnchangedInferMeta(MakeMetaTensor(*input_weight), &meta_out);
       using kernel_signature = void (*)(const phi::DeviceContext&,
@@ -244,7 +255,8 @@ void embedding_grad_impl(const Tensor& x,
                    padding_idx,
                    kernel_out);
     } else {
-      auto* kernel_out = SetKernelOutput(weight_grad);
+      auto* kernel_out =
+          SetKernelOutput("custom3" + kernel_name, "lala", weight_grad);
       phi::MetaTensor meta_out(kernel_out);
       meta_out.set_dims(input_weight->GetCompleteDims());
       meta_out.set_dtype(input_weight->dtype());

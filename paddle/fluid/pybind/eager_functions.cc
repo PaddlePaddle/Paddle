@@ -136,6 +136,40 @@ static PyObject* eager_api_scale(PyObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+static PyObject* eager_api_clear_can_not_use(PyObject* self,
+                                             PyObject* args,
+                                             PyObject* kwargs) {
+  EAGER_TRY
+  auto tensor = CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0);
+  auto dense_tensor = static_cast<phi::DenseTensor*>(tensor.impl().get());
+  auto iter = dense_tensor->can_not_uses->find(dense_tensor->canNotUse);
+  dense_tensor->can_not_uses->erase(iter);
+  *dense_tensor->canNotUse = false;
+  dense_tensor->can_not_uses =
+      std::make_shared<std::set<std::shared_ptr<bool>>>(
+          std::set<std::shared_ptr<bool>>());
+
+  RETURN_PY_NONE
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+static PyObject* eager_api_print_can_not_use(PyObject* self,
+                                             PyObject* args,
+                                             PyObject* kwargs) {
+  EAGER_TRY
+  auto tensor = CastPyArg2Tensor(PyTuple_GET_ITEM(args, 0), 0);
+  auto dense_tensor = static_cast<phi::DenseTensor*>(tensor.impl().get());
+  std::cout << "print " << tensor.name() << " = " << *dense_tensor->canNotUse
+            << "---";
+  for (auto iter : *dense_tensor->can_not_uses) {
+    std::cout << *iter << " ";
+  }
+  std::cout << std::endl;
+
+  RETURN_PY_NONE
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
 static PyObject* eager_api_run_backward(PyObject* self,
                                         PyObject* args,
                                         PyObject* kwargs) {
@@ -1289,6 +1323,14 @@ PyMethodDef variable_functions[] = {
      NULL},
     {"run_backward",
      (PyCFunction)(void (*)(void))eager_api_run_backward,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"clear_can_not_use",
+     (PyCFunction)(void (*)(void))eager_api_clear_can_not_use,
+     METH_VARARGS | METH_KEYWORDS,
+     NULL},
+    {"print_can_not_use",
+     (PyCFunction)(void (*)(void))eager_api_print_can_not_use,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
     {"run_partial_grad",
