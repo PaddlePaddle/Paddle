@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <unordered_map>
 
+#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/extended_tensor.h"
 #include "paddle/utils/any.h"
 
@@ -52,7 +53,7 @@ class RawTensor : public phi::ExtendedTensor,
   T& Get() const {
     PADDLE_ENFORCE_EQ(data_.empty(),
                       false,
-                      platform::errors::PreconditionNotMet(
+                      phi::errors::PreconditionNotMet(
                           "The data in RawTensor is empty. Please set data "
                           "before using it."));
 
@@ -98,11 +99,3 @@ class RawTensor : public phi::ExtendedTensor,
 
 }  // namespace framework
 }  // namespace paddle
-
-namespace phi {
-template <>
-const TypeInfo<phi::TensorBase>
-    TypeInfoTraits<phi::TensorBase, paddle::framework::RawTensor>::kType =
-        RegisterStaticType<phi::TensorBase>(
-            paddle::framework::RawTensor::name());
-}

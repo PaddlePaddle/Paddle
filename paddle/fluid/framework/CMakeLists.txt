@@ -1182,6 +1182,8 @@ cc_library(
        imperative_flag
        layer)
 
+cc_library(type_info SRCS type_info.cc)
+
 set(FLUID_FRAMEWORK_MODULES
     proto_desc
     memory

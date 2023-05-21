@@ -319,10 +319,3 @@ class EagerVariable final {
   std::shared_ptr<phi::TensorBase> src_tensor_;
 };
 }  // namespace egr
-
-namespace phi {
-template <>
-const TypeInfo<phi::TensorBase>
-    TypeInfoTraits<phi::TensorBase, egr::VariableCompatTensor>::kType =
-        RegisterStaticType<phi::TensorBase>(egr::VariableCompatTensor::name());
-}

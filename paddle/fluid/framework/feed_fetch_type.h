@@ -75,11 +75,3 @@ static const char kFetchOpType[] = "fetch";
 
 }  // namespace framework
 }  // namespace paddle
-
-namespace phi {
-template <>
-const TypeInfo<phi::TensorBase>
-    TypeInfoTraits<phi::TensorBase, paddle::framework::FeedList>::kType =
-        RegisterStaticType<phi::TensorBase>(
-            paddle::framework::FeedList::name());
-}

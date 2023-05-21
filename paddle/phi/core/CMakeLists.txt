@@ -36,4 +36,5 @@ collect_srcs(
   mixed_vector.cc
   generator.cc
   kernel_factory.cc
-  tensor_utils.cc)
+  tensor_utils.cc
+  storage_properties.cc)
