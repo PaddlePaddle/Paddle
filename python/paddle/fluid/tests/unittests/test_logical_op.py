@@ -18,7 +18,7 @@ import numpy as np
 from eager_op_test import convert_float_to_uint16
 
 import paddle
-from paddle.framework import _non_static_mode
+from paddle.framework import in_dygraph_mode
 from paddle.static import Executor, Program, program_guard
 
 SUPPORTED_DTYPES = [
@@ -182,11 +182,11 @@ def test_type_error(unit_test, use_gpu, type_str_map):
         if binary_op:
             if type_str_map['x'] != type_str_map['y']:
                 unit_test.assertRaises(error_type, op, x=x, y=y)
-            if not _non_static_mode():
+            if not in_dygraph_mode():
                 error_type = TypeError
                 unit_test.assertRaises(error_type, op, x=x, y=y, out=1)
         else:
-            if not _non_static_mode():
+            if not in_dygraph_mode():
                 error_type = TypeError
                 unit_test.assertRaises(error_type, op, x=x, out=1)
 

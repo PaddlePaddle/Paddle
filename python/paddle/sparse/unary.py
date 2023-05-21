@@ -22,7 +22,7 @@ from paddle.fluid.framework import (
     core,
     dygraph_only,
 )
-from paddle.framework import LayerHelper, in_dygraph_mode
+from paddle.framework import LayerHelper
 
 __all__ = []
 
@@ -198,7 +198,7 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
         dtype_flag = True
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.sparse_sum(x, axis, dtype, keepdim)
     else:
         if axis is None:

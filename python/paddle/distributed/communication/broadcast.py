@@ -102,7 +102,7 @@ def broadcast_object_list(object_list, src, group=None):
             # [{"bar": [4, 5, 6]}] (2 GPUs)
     """
     assert (
-        framework.in_dygraph_mode()
+        framework.in_dynamic_mode()
     ), "broadcast_object_list doesn't support static graph mode."
 
     rank = dist.get_rank()

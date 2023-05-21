@@ -689,7 +689,7 @@ def _grad_for_jacobian(ys, xs, v=None):
             Tensor is the sum of gradients of outputs with respect to the i-th
             inputs.
     """
-    if paddle.fluid._non_static_mode():
+    if paddle.in_dynamic_mode():
         # paddle.grad returns a list though the inputs is a signle Tensor. The
         # follow code snippet fixes the problem by return the first element of
         # xs_grad when the xs is a signle Tensor.

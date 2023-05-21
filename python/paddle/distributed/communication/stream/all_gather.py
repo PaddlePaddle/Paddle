@@ -171,7 +171,7 @@ def all_gather(
             "use_calc_stream can only be true in sync op behavior."
         )
 
-    if framework.in_dygraph_mode():
+    if framework.in_dynamic_mode():
         if paddle.is_tensor(tensor_or_tensor_list):
             return _all_gather_into_tensor_in_dygraph(
                 tensor_or_tensor_list, tensor, group, sync_op, use_calc_stream

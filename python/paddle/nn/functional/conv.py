@@ -18,7 +18,7 @@ from paddle.device import (
     is_compiled_with_cuda,
     is_compiled_with_rocm,
 )
-from paddle.fluid.framework import _global_flags, in_dygraph_mode
+from paddle.fluid.framework import _global_flags
 from paddle.tensor.manipulation import reshape
 from paddle.tensor.math import _add_with_axis
 
@@ -129,7 +129,7 @@ def _conv_nd(
 ):
 
     # Due to the poor performance of NHWC, we transpose the input to NCHW.
-    if in_dygraph_mode() and op_type == "conv2d":
+    if in_dynamic_mode() and op_type == "conv2d":
         pre_bias = _C_ops.conv2d(
             x,
             weight,
@@ -158,7 +158,7 @@ def _conv_nd(
         else:
             return pre_bias
 
-    if in_dygraph_mode() and op_type == "depthwise_conv2d":
+    if in_dynamic_mode() and op_type == "depthwise_conv2d":
         pre_bias = _C_ops.depthwise_conv2d(
             x,
             weight,
@@ -177,7 +177,7 @@ def _conv_nd(
         else:
             return pre_bias
 
-    if in_dygraph_mode() and op_type == "conv3d":
+    if in_dynamic_mode() and op_type == "conv3d":
         pre_bias = _C_ops.conv3d(
             x,
             weight,
@@ -467,7 +467,7 @@ def conv1d(
     squeeze_aixs = -3 if channel_last else -2
     x = unsqueeze(x, axis=[squeeze_aixs])
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         if l_type == 'conv2d':
             out = _C_ops.conv2d(
                 x,
@@ -707,7 +707,7 @@ def conv2d(
         else:
             use_cudnn = False
     else:
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             pre_bias = _C_ops.conv2d(
                 x,
                 weight,
@@ -1012,7 +1012,7 @@ def conv1d_transpose(
     x = unsqueeze(x, axis=[squeeze_axis])
     weight = unsqueeze(weight, axis=[-1])
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         out = getattr(_C_ops, op_type)(
             x,
             weight,
@@ -1293,7 +1293,7 @@ def conv2d_transpose(
         op_type = 'depthwise_conv2d_transpose'
         use_cudnn = False
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         op = (
             _C_ops.conv2d_transpose
             if op_type == 'conv2d_transpose'
@@ -1776,7 +1776,7 @@ def conv3d_transpose(
     op_type = 'conv3d_transpose'
     data_format_ = "NHWC" if channel_last else "NCHW"
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         pre_bias = _C_ops.conv3d_transpose(
             x,
             weight,

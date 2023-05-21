@@ -13,8 +13,8 @@
 # limitations under the License.
 
 from paddle import _legacy_C_ops
-from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.layer_helper import LayerHelper
+from paddle.framework import in_dynamic_mode
 
 
 def softmax_mask_fuse_upper_triangle(x):
@@ -55,7 +55,7 @@ def softmax_mask_fuse_upper_triangle(x):
             #    [0.32674268, 0.28156221, 0.39169508, ..., 0., 0., 0.]
             #     ... ]]]
     """
-    if _non_static_mode():
+    if in_dynamic_mode():
         out = _legacy_C_ops.fused_softmax_mask_upper_triangle(x)
         return out
 

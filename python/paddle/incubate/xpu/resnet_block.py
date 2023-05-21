@@ -61,7 +61,7 @@ def resnet_basic_block(
     find_conv_max=True,
 ):
 
-    if fluid.framework._non_static_mode():
+    if fluid.framework.in_dygraph_mode():
         attrs = (
             'stride1',
             stride1,

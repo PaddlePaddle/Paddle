@@ -20,7 +20,7 @@ from .framework import (
     Variable,
     default_main_program,
     default_startup_program,
-    _non_static_mode,
+    in_dygraph_mode,
     _current_expected_place,
 )
 from . import unique_name
@@ -409,7 +409,7 @@ class LayerHelperBase:
             param = self._create_weight_normalize(attr, shape, dtype)
             WeightNormParamAttr.params_with_weight_norm.append(param)
             return param
-        if _non_static_mode():
+        if in_dygraph_mode():
             # In dygraph mode, we want the returned parameter to be
             # initialized so that it can be used imperatively.
             # check parameter name
@@ -527,7 +527,7 @@ class LayerHelperBase:
             initializer: initializer to use
         """
         assert isinstance(var, Variable)
-        if _non_static_mode():
+        if in_dygraph_mode():
             initializer(var, self.main_program.global_block())
         else:
             self.startup_program.global_block().create_var(

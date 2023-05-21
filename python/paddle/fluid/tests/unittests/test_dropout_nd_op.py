@@ -21,7 +21,7 @@ import paddle
 from paddle import _legacy_C_ops, fluid
 from paddle.fluid import core
 from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.fluid.framework import _non_static_mode
+from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.static import default_main_program
 
@@ -34,7 +34,7 @@ def dropout_nd(
     mode = (
         'downgrade_in_infer' if mode == 'downscale_in_infer' else mode
     )  # semantic transfer
-    if _non_static_mode():
+    if in_dygraph_mode():
         if default_main_program().random_seed != 0:
             seed = default_main_program().random_seed
 

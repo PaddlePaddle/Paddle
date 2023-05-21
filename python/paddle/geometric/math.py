@@ -14,8 +14,8 @@
 
 from paddle import _C_ops
 from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
+from paddle.framework import in_dynamic_mode
 
 __all__ = []
 
@@ -50,7 +50,7 @@ def segment_sum(data, segment_ids, name=None):
             #Outputs: [[4., 4., 4.], [4., 5., 6.]]
 
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.segment_pool(data, segment_ids, "SUM")
     else:
         check_variable_and_dtype(
@@ -107,7 +107,7 @@ def segment_mean(data, segment_ids, name=None):
 
     """
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.segment_pool(data, segment_ids, "MEAN")
     else:
 
@@ -164,7 +164,7 @@ def segment_min(data, segment_ids, name=None):
 
     """
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.segment_pool(data, segment_ids, "MIN")
     else:
         check_variable_and_dtype(
@@ -220,7 +220,7 @@ def segment_max(data, segment_ids, name=None):
 
     """
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.segment_pool(data, segment_ids, "MAX")
     else:
         check_variable_and_dtype(

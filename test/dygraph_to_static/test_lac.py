@@ -25,7 +25,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 import paddle
 from paddle import _legacy_C_ops, fluid
 from paddle.fluid.dygraph import to_variable
-from paddle.fluid.framework import _non_static_mode
+from paddle.framework import in_dynamic_mode
 from paddle.jit.api import to_static
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
@@ -172,7 +172,7 @@ class LinearChainCRF(paddle.nn.Layer):
         self._transition = value
 
     def forward(self, input, label, length=None):
-        if _non_static_mode():
+        if in_dynamic_mode():
             _, _, _, log_likelihood = _legacy_C_ops.linear_chain_crf(
                 input, self._transition, label, length, "is_test", self._is_test
             )
@@ -236,7 +236,7 @@ class CRFDecoding(paddle.nn.Layer):
         self._transition = value
 
     def forward(self, input, label=None, length=None):
-        if _non_static_mode():
+        if in_dynamic_mode():
             return _legacy_C_ops.crf_decoding(
                 input, self._transition, label, length, "is_test", self._is_test
             )
@@ -272,7 +272,7 @@ class ChunkEval(paddle.nn.Layer):
         self.excluded_chunk_types = excluded_chunk_types
 
     def forward(self, input, label, seq_length=None):
-        if _non_static_mode():
+        if in_dynamic_mode():
             return _legacy_C_ops.chunk_eval(
                 input,
                 label,

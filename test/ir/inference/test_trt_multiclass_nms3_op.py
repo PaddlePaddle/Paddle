@@ -22,8 +22,8 @@ import paddle
 from paddle import fluid
 from paddle.fluid import core
 from paddle.fluid.core import AnalysisConfig, PassVersionChecker
-from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
+from paddle.framework import in_dynamic_mode
 from paddle.static import nn
 
 
@@ -131,7 +131,7 @@ def multiclass_nms(
                                             normalized=False,
                                             return_index=True)
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         attrs = (
             'background_label',
             background_label,

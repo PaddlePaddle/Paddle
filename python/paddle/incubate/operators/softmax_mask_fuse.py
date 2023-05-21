@@ -13,8 +13,8 @@
 # limitations under the License.
 
 from paddle import _legacy_C_ops
-from paddle.fluid.framework import _non_static_mode
 from paddle.fluid.layer_helper import LayerHelper
+from paddle.framework import in_dynamic_mode
 
 
 def softmax_mask_fuse(x, mask, name=None):
@@ -55,7 +55,7 @@ def softmax_mask_fuse(x, mask, name=None):
             rst = incubate.softmax_mask_fuse(x, mask)
             # [[[[0.02404429, 0.04658398, 0.02746007, ..., 0.01489375, 0.02397441, 0.02851614] ... ]]]
     """
-    if _non_static_mode():
+    if in_dynamic_mode():
         out = _legacy_C_ops.fused_softmax_mask(x, mask)
         return out
     helper = LayerHelper('fused_softmax_mask', **locals())

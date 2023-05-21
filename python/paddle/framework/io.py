@@ -34,8 +34,8 @@ from paddle.fluid.framework import (
     _create_tensor,
     _current_expected_place,
     _dygraph_tracer,
-    _non_static_mode,
 )
+from paddle.framework import in_dynamic_mode
 
 from .io_utils import (
     _is_file_path,
@@ -438,7 +438,7 @@ def _to_LodTensor(ndarray):
 def _tuple_to_tensor(obj, return_numpy):
     if return_numpy:
         return obj[1]
-    if _non_static_mode():
+    if in_dynamic_mode():
         t = paddle.to_tensor(obj[1])
         # This function does modify the name of return value.
         # Loading the same variable multiple times may cause the same name.
@@ -451,7 +451,7 @@ def _tuple_to_tensor(obj, return_numpy):
 def _ndarray_to_tensor(obj, return_numpy):
     if return_numpy:
         return obj
-    if _non_static_mode():
+    if in_dynamic_mode():
         return paddle.to_tensor(obj)
     else:
         return _to_LodTensor(obj)
@@ -508,7 +508,7 @@ def _parse_load_result(obj, return_numpy):
         return obj
 
     if _contain_x(obj, is_layer):
-        if not _non_static_mode():
+        if not in_dynamic_mode():
             raise ValueError(
                 "Layer can only be loaded in dynamic graph mode, but now in static graph mode."
             )
@@ -819,7 +819,7 @@ def save(obj, path, protocol=4, **configs):
                 f.write(obj.desc.serialize_to_string())
 
         elif _is_state_dict(obj):
-            if _non_static_mode():
+            if in_dynamic_mode():
                 _legacy_save(obj, path, protocol)
             else:
                 _legacy_static_save(obj, path, protocol)
@@ -1110,7 +1110,7 @@ def load(path, **configs):
                     if config.return_numpy:
                         return np.array(tensor)
                     else:
-                        if _non_static_mode():
+                        if in_dynamic_mode():
                             return _lod_tensor2varbase(tensor)
                         return tensor
                 except:

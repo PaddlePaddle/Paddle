@@ -26,7 +26,7 @@ from .framework import (
     program_guard,
     default_main_program,
     default_startup_program,
-    _non_static_mode,
+    in_dygraph_mode,
     cpu_places,
     _current_expected_place,
 )
@@ -417,7 +417,7 @@ class DataLoader:
                             epoch_id, batch_id, np.mean(loss.numpy())))
 
         """
-        if _non_static_mode():
+        if in_dygraph_mode():
             return DygraphGeneratorLoader(
                 feed_list,
                 capacity,
@@ -1605,7 +1605,7 @@ class DatasetLoader(DataLoaderBase):
             dataset, paddle.distributed.fleet.dataset.DatasetBase
         ), "dataset must be type of DatasetBase"
         assert (
-            not _non_static_mode()
+            not in_dygraph_mode()
         ), "DatasetLoader is not supported in dygraph mode yet"
         if isinstance(places, (list, tuple)):
             places = _get_paddle_place_list(places)

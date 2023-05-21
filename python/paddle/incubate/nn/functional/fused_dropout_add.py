@@ -16,8 +16,7 @@
 from paddle import _C_ops
 from paddle.common_ops_import import default_main_program
 from paddle.fluid import core
-from paddle.fluid.framework import in_dygraph_mode
-from paddle.framework import LayerHelper
+from paddle.framework import LayerHelper, in_dynamic_mode
 
 
 def fused_dropout_add(
@@ -73,7 +72,7 @@ def fused_dropout_add(
             "mode argument should be 'downscale_in_infer' or 'upscale_in_train'"
         )
     seed = None
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         if default_main_program().random_seed != 0:
             seed = default_main_program().random_seed
         out, seed_offset = _C_ops.fused_dropout_add(

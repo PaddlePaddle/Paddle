@@ -20,11 +20,11 @@ from numpy import linalg as LA
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops
-from paddle.framework import in_dygraph_mode
+from paddle.framework import in_dynamic_mode
 
 
 def test_squared_l2_norm(x):
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.squared_l2_norm(x)
     else:
         return _legacy_C_ops.squared_l2_norm(x)

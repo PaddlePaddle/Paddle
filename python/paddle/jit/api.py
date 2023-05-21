@@ -69,9 +69,10 @@ from paddle.fluid.framework import (
     _dygraph_guard,
     _dygraph_tracer,
 )
-from paddle.fluid.framework import dygraph_only, _non_static_mode
+from paddle.fluid.framework import dygraph_only
 from paddle.fluid.wrapped_decorator import wrap_decorator
 from paddle.fluid.io import save_inference_model
+from paddle.framework import in_dynamic_mode
 
 
 def create_program_from_desc(program_desc):
@@ -154,7 +155,7 @@ def _dygraph_to_static_func_(dygraph_func):
     # TODO: remove this decorator after we finalize training API
     def __impl__(*args, **kwargs):
         program_translator = ProgramTranslator()
-        if _non_static_mode() or not program_translator.enable_to_static:
+        if in_dynamic_mode() or not program_translator.enable_to_static:
             logging_utils.warn(
                 "The decorator 'dygraph_to_static_func' doesn't work in "
                 "dygraph mode or set 'paddle.jit.enable_to_static' to False. "
@@ -1711,7 +1712,7 @@ class TracedLayer:
         ), "Inputs should be a list or tuple of variables"
         assert len(inputs) == len(self._feed_names)
         feed_dict = {}
-        if _non_static_mode():
+        if in_dynamic_mode():
             for x, name in zip(inputs, self._feed_names):
                 feed_dict[name] = x.value().get_tensor()
         else:

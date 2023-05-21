@@ -21,7 +21,7 @@ from paddle.autograd import PyLayer
 from paddle.distributed.fleet.meta_parallel.parallel_layers.random import (
     get_rng_state_tracker,
 )
-from paddle.framework import core, in_dygraph_mode
+from paddle.framework import core, in_dynamic_mode
 
 from ..utils.log_util import logger
 
@@ -198,7 +198,7 @@ class RecomputeFunction(PyLayer):
                     forward_outputs_with_grad, backward_inputs_with_grad
                 )
 
-            if in_dygraph_mode():
+            if in_dynamic_mode():
                 grads = tuple(
                     inp._grad_ivar()
                     for inp in detached_inputs

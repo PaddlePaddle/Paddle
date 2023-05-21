@@ -436,7 +436,7 @@ def _getitem_impl_(var, item):
                 start = 0 if step > 0 else MAX_INTEGER
             if end is None:
                 if (
-                    paddle.fluid.framework._non_static_mode()
+                    paddle.fluid.framework.in_dygraph_mode()
                     or not is_tensor_array
                 ) and var.shape[dim] != -1:
                     end = var.shape[dim] if step > 0 else -1
@@ -620,11 +620,11 @@ def _setitem_for_tensor_array(var, item, value):
     If item is case (1), we perform paddle.tensor.array_write,
     in other cases, we raise a NotImplementedError.
     """
-    from ..framework import LayerHelper, core, _non_static_mode
+    from ..framework import LayerHelper, core, in_dygraph_mode
     from .framework import Variable
 
     assert (
-        not _non_static_mode()
+        not in_dygraph_mode()
     ), "setitem for tensor_array must be called in static graph mode."
     if isinstance(item, (Variable, int)):
         from paddle.jit.dy2static.variable_trans_func import (
@@ -808,7 +808,7 @@ def _setitem_impl_(var, item, value):
             )
         )
 
-    if paddle.fluid.framework._non_static_mode():
+    if paddle.fluid.framework.in_dygraph_mode():
         var._bump_inplace_version()
 
     cur_block = default_main_program().current_block()

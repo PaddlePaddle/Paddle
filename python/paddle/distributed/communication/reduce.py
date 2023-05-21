@@ -56,7 +56,7 @@ class ReduceOp:
 
 
 def _get_reduce_op(reduce_op, func_name):
-    if framework.in_dygraph_mode():
+    if framework.in_dynamic_mode():
         if reduce_op == ReduceOp.SUM:
             return framework.core.ReduceOp.SUM
         elif reduce_op == ReduceOp.MAX:
