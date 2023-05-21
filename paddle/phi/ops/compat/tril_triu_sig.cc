@@ -16,12 +16,13 @@ limitations under the License. */
 
 namespace phi {
 
-KernelSignature TrilTriuOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature TrilTriuOpArgumentMapping(
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("tril_triu", {"X"}, {"diagonal", "lower"}, {"Out"});
 }
 
 KernelSignature TrilTriuGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature(
       "tril_triu_grad", {"Out@GRAD"}, {"diagonal", "lower"}, {"X@GRAD"});
 }

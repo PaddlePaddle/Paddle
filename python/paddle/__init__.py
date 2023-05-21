@@ -306,6 +306,8 @@ from .tensor.math import vander  # noqa: F401
 from .tensor.math import nextafter  # noqa: F401
 from .tensor.math import i0  # noqa: F401
 from .tensor.math import i0e  # noqa: F401
+from .tensor.math import i1  # noqa: F401
+from .tensor.math import i1e  # noqa: F401
 
 from .tensor.random import bernoulli  # noqa: F401
 from .tensor.random import poisson  # noqa: F401
@@ -347,6 +349,7 @@ from .framework import IPUPlace  # noqa: F401
 from .framework import CUDAPlace  # noqa: F401
 from .framework import CUDAPinnedPlace  # noqa: F401
 from .framework import CustomPlace  # noqa: F401
+from .framework import XPUPlace  # noqa: F401
 
 from .autograd import grad  # noqa: F401
 from .autograd import no_grad  # noqa: F401
@@ -378,7 +381,6 @@ from .device import is_compiled_with_cinn  # noqa: F401
 from .device import is_compiled_with_cuda  # noqa: F401
 from .device import is_compiled_with_rocm  # noqa: F401
 from .device import is_compiled_with_custom_device  # noqa: F401
-from .device import XPUPlace  # noqa: F401
 
 # high-level api
 from .hapi import Model  # noqa: F401
@@ -702,4 +704,6 @@ __all__ = [  # noqa
     'nextafter',
     'i0',
     'i0e',
+    'i1',
+    'i1e',
 ]

@@ -17,7 +17,7 @@
 namespace phi {
 
 KernelSignature MultiClassNMS3OpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("multiclass_nms3",
                          {"BBoxes", "Scores", "RoisNum"},
                          {"score_threshold",

@@ -146,6 +146,7 @@ struct Argument {
   DECL_ARGUMENT_FIELD(model_program_path, ModelProgramPath, std::string);
   DECL_ARGUMENT_FIELD(model_params_path, ModelParamsPath, std::string);
   DECL_ARGUMENT_FIELD(model_from_memory, ModelFromMemory, bool);
+  DECL_ARGUMENT_FIELD(save_optimized_model, SaveOptimizedModel, bool);
   DECL_ARGUMENT_FIELD(optim_cache_dir, OptimCacheDir, std::string);
   DECL_ARGUMENT_FIELD(enable_ir_optim, EnableIrOptim, bool);
 
@@ -250,9 +251,6 @@ struct Argument {
                       TensorRtAllowBuildAtRuntime,
                       bool);
   DECL_ARGUMENT_FIELD(tensorrt_use_inspector, TensorRtUseInspector, bool);
-  DECL_ARGUMENT_FIELD(tensorrt_use_sparse_weights,
-                      TensorRtUseSparseWeights,
-                      bool);
 
   DECL_ARGUMENT_FIELD(use_dlnne, UseDlnne, bool);
   DECL_ARGUMENT_FIELD(dlnne_min_subgraph_size, DlnneMinSubgraphSize, int);
@@ -297,7 +295,7 @@ struct Argument {
                       XpuQuantPostDynamicWeightBits,
                       int);
   DECL_ARGUMENT_FIELD(xpu_quant_post_dynamic_op_types,
-                      XpuQuantPostDynamicOpTypss,
+                      XpuQuantPostDynamicOpTypes,
                       std::vector<std::string>);
 
   DECL_ARGUMENT_FIELD(use_opencl, UseOpenCL, bool);

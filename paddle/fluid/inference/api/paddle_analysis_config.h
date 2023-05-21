@@ -200,6 +200,14 @@ struct PD_INFER_DECL AnalysisConfig {
   void SetParamsFile(const std::string& x) { params_file_ = x; }
 
   ///
+  /// \brief Save optimized model.
+  ///
+  /// \param save_optimized_model whether to enable save optimized model.
+  ///
+  void EnableSaveOptimModel(bool save_optimized_model) {
+    save_optimized_model_ = save_optimized_model;
+  }
+  ///
   /// \brief Set the path of optimization cache directory.
   ///
   /// \param opt_cache_dir the path of optimization cache directory.
@@ -742,9 +750,6 @@ struct PD_INFER_DECL AnalysisConfig {
   void EnableTensorRtInspector();
   bool tensorrt_inspector_enabled() { return trt_use_inspector_; }
 
-  void EnableTensorRtSparseWeights();
-  bool tensorrt_sparse_weights_enabled() { return trt_use_sparse_weights_; }
-
   void EnableDlnne(
       int min_subgraph_size = 3,
       int max_batch_size = 1,
@@ -1121,7 +1126,6 @@ struct PD_INFER_DECL AnalysisConfig {
   // tune to get dynamic_shape info.
   bool trt_tuned_dynamic_shape_{false};
   bool trt_use_inspector_{false};
-  bool trt_use_sparse_weights_{false};
 
   // In CollectShapeInfo mode, we will collect the shape information of
   // all intermediate tensors in the compute graph and calculate the
@@ -1243,6 +1247,7 @@ struct PD_INFER_DECL AnalysisConfig {
   // Variables held by config can take up a lot of memory in some cases.
   // So we release the memory when the predictor is set up.
   mutable bool is_valid_{true};
+  bool save_optimized_model_{false};
   std::string opt_cache_dir_;
   friend class paddle_infer::experimental::InternalUtils;
 

@@ -190,7 +190,7 @@ template struct SelectedRowsAddTensor<phi::CPUContext, double>;
 
 template <typename T>
 struct SelectedRowsAddTo<phi::CPUContext, T> {
-  void operator()(const phi::CPUContext& context,
+  void operator()(const phi::CPUContext& context UNUSED,
                   const phi::SelectedRows& input1,
                   const int64_t input2_offset,
                   phi::SelectedRows* input2) {
@@ -420,7 +420,7 @@ typename std::enable_if<!std::is_integral<T>::value>::type elementwise_add_to(
 
 template <typename T, typename DeviceContext>
 typename std::enable_if<std::is_integral<T>::value>::type elementwise_add_to(
-    phi::funcs::BlasT<DeviceContext, T>* blas,
+    phi::funcs::BlasT<DeviceContext, T>* blas UNUSED,
     size_t data_len,
     const T* in,
     T* out) {

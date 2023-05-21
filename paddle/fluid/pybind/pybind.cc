@@ -676,6 +676,7 @@ PYBIND11_MODULE(libpaddle, m) {
   BindCudaStream(&m);
   BindXpuStream(&m);
   BindJit(&m);
+  BindEvalFrame(&m);
   BindCustomDevicePy(&m);
 
   // Not used, just make sure cpu_info.cc is linked.
@@ -1209,7 +1210,7 @@ All parameter, weight, gradient are variables in Paddle.
            Delete all sub-scopes of the current scope.
            )DOC")
       .def("_kids", &Scope::kids)
-      .def_property("_can_reuesd", &Scope::CanReuesd, &Scope::SetCanReuesd);
+      .def_property("_can_reused", &Scope::CanReused, &Scope::SetCanReused);
 
   m.def(
       "Scope",
@@ -1327,8 +1328,7 @@ All parameter, weight, gradient are variables in Paddle.
           if ((grad_op_maker == nullptr) && (grad_comp_op_maker == nullptr)) {
             // Normally, proto_ should not be null, except some special
             // operators, such as LeaklyReluDoubleGrad op.
-            std::string type =
-                op_info.proto_ ? op_info.proto_->type() : "unknown";
+            std::string type = op_desc.Type();
             PADDLE_THROW(platform::errors::NotFound(
                 "Neither operator %s's GradOpMaker nor CompGradOpMaker has "
                 "been registered.\nPlease check whether (%s) operator has "
@@ -1350,7 +1350,8 @@ All parameter, weight, gradient are variables in Paddle.
           VLOG(3) << "need skip: " << need_skip << std::endl;
           if (paddle::prim::PrimCommonUtils::IsBwdPrimEnabled()) {
             if ((grad_comp_op_maker != nullptr) && (!need_skip)) {
-              VLOG(3) << "Runing composite fun for " << op_desc.Type();
+              VLOG(3) << "Prim Flag Open: Runing composite grad fun for "
+                      << op_desc.Type();
               grad_op_descs = grad_comp_op_maker(op_desc,
                                                  no_grad_set,
                                                  &grad_to_var,
@@ -1362,9 +1363,13 @@ All parameter, weight, gradient are variables in Paddle.
             }
           } else {
             if (grad_op_maker != nullptr) {
+              VLOG(6) << "Prim Flag Close: Runing origin grad fun for "
+                      << op_desc.Type();
               grad_op_descs = grad_op_maker(
                   op_desc, no_grad_set, &grad_to_var, grad_sub_block);
             } else {
+              VLOG(6) << "Prim Flag Close: Runing composite grad fun for "
+                      << op_desc.Type();
               grad_op_descs = grad_comp_op_maker(op_desc,
                                                  no_grad_set,
                                                  &grad_to_var,
@@ -1391,6 +1396,9 @@ All parameter, weight, gradient are variables in Paddle.
     return framework::OpInfoMap::Instance()
         .Get(op_type)
         .HasNonEmptyGradOpMaker();
+  });
+  m.def("has_empty_grad_op_maker", [](const std::string op_type) {
+    return framework::OpInfoMap::Instance().Get(op_type).HasEmptyGradOpMaker();
   });
   m.def("has_infer_inplace", [](const std::string op_type) {
     return framework::OpInfoMap::Instance().Get(op_type).HasInferInplace();

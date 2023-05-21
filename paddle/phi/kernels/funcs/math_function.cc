@@ -204,7 +204,7 @@ struct TensorSetConstantWithPlace
       : context_(context), tensor_(tensor), value_(value) {}
 
   template <typename Place>
-  void operator()(Place place) const {
+  void operator()(Place place UNUSED) const {
     set_constant_with_place<Place>(context_, tensor_, value_);
   }
 
@@ -243,7 +243,7 @@ template struct RowwiseMean<phi::CPUContext, double>;
 
 template <typename T>
 struct RowwiseAdd<phi::CPUContext, T> {
-  void operator()(const phi::CPUContext& context,
+  void operator()(const phi::CPUContext& context UNUSED,
                   const phi::DenseTensor& input,
                   const phi::DenseTensor& vector,
                   phi::DenseTensor* output) {

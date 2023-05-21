@@ -131,7 +131,7 @@ def monkey_patch_math_tensor():
         return int(np.array(var).flatten()[0])
 
     def _len_(var):
-        assert var.ndim > 0, "len() of a 0D tensor is wrong"
+        assert var.ndim > 0, "len() of a 0-D tensor is wrong"
         if var.type == core.VarDesc.VarType.VOCAB:
             return len(var.value().get_map_tensor())
         elif var.type == core.VarDesc.VarType.STRINGS:

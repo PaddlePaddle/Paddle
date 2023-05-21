@@ -132,6 +132,19 @@ TEST(AnalysisPredictor, analysis_on) {
   inference::CompareTensor(outputs.front(), naive_outputs.front());
 }
 
+#ifdef PADDLE_WITH_XPU
+TEST(AnalysisPredictor, save_optimized_model_on) {
+  AnalysisConfig config;
+  config.SetModel(FLAGS_dirname);
+  config.SwitchIrOptim(true);
+  config.EnableSaveOptimModel(true);
+  config.EnableXpu();
+  config.SetXpuDeviceId(0);
+  LOG(INFO) << config.Summary();
+  CreatePaddlePredictor<AnalysisConfig>(config);
+}
+#endif
+
 TEST(AnalysisPredictor, ZeroCopy) {
   AnalysisConfig config;
   config.SetModel(FLAGS_dirname);
