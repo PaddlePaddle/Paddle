@@ -2835,8 +2835,9 @@ USE_TRT_CONVERTER(qk_multihead_matmul)
 USE_TRT_CONVERTER(grid_sampler)
 #endif
 #if IS_TRT_VERSION_GE(8200)
+USE_TRT_CONVERTER(set_value)
 USE_TRT_CONVERTER(index_select);
-USE_TRT_CONVERTER(temporal_shift);
+USE_TRT_CONVERTER(temporal_shift)
 #endif
 #if PADDLE_WITH_CUSPARSELT && IS_TRT_VERSION_GE(8000)
 USE_TRT_CONVERTER(sparse_fc)
