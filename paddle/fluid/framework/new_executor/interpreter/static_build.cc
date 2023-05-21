@@ -43,16 +43,7 @@ std::set<std::string> OpsCanSkipedFakeAllocInStaticBuild = {
 // Cannot static analysis these Ops' output dtype or backend because their
 // kernels have not moved to PHI yet.
 std::set<std::string> OpsWithFluidKernelNeedMoveToPhi = {
-    "cudnn_lstm",
-    "dequantize",
-    "distributed_fused_lamb",
-    "fused_batch_norm_act",
-    "fused_batch_norm_act_grad",
-    "fusion_group",
-    "pow2_decay_with_linear_warmup",
-    "sequence_mask",
-    "sequence_pool",
-    "stft"};
+    "distributed_fused_lamb"};
 
 std::set<std::string> StaticBuildBlackList = {
     "batch_norm" /*: to handle reserve_space output*/,
