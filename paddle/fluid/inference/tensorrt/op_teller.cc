@@ -747,11 +747,12 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "flip") {
-      std::cout << "now in flip ==========" << std::endl;
-
-      std::cout << "now in flip ==========" << std::endl;
       if (!desc.HasAttr("axis")) {
         VLOG(3) << "flip need attributes : axis";
+        return false;
+      }
+      if (!with_dynamic_shape) {
+        VLOG(3) << "flip is not supported static shape";
         return false;
       }
 
