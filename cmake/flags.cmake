@@ -47,6 +47,7 @@ endif()
 # src_list: The list name which the flag name will be append to.
 # flag_name: the flag name for compiler, such as '-Werror' '-Wall' etc
 # rest arguments: not used.
+
 function(safe_set_flag is_c src_list flag_name)
   string(REPLACE "-" "_" safe_name ${flag_name})
   string(REPLACE "=" "_" safe_name ${safe_name})
