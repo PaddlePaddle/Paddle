@@ -29,7 +29,9 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/activation_functor.h"
 #include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/reduce_functor.h"
 #include "paddle/phi/kernels/funcs/sparse/softmax.cu.h"
+#include "paddle/phi/kernels/gpu/reduce.h"
 #include "paddle/phi/kernels/softmax_kernel.h"
 #include "paddle/phi/kernels/sparse/empty_kernel.h"
 
@@ -128,44 +130,59 @@ void SoftmaxCsrKernel(const Context& dev_ctx,
 
 template <typename T, typename IntT>
 __global__ void SoftmaxCooGPURawKernel(IntT* sorted_pool_indices,
-                                       IntT size,
                                        IntT* pool_sizes,
                                        IntT* pool_offsets,
                                        IntT nvalues,
-                                       T* mx_rows,
                                        T* input_values,
-                                       T* output_values) {
+                                       T* output_values,
+                                       int total_rows) {
+  int row = blockIdx.x * blockDim.y + threadIdx.y;
+  if (row >= total_rows) return;
+
   int tid = threadIdx.x;
-  int blkid = blockIdx.x;
-  int blksz = blockDim.x;
-  int gridsz = gridDim.x;
+  int index = row / nvalues;
+  int j = row % nvalues;
+  IntT offset = pool_offsets[index];
+  IntT* pool_indices = sorted_pool_indices + offset;
+  IntT pool_indices_size = pool_sizes[index];
 
-  int index = tid + blkid * blksz;
-  int step = blksz * gridsz;
+  int kIteration = (pool_indices_size + warpSize - 1) / warpSize;
+  T max_val = -std::numeric_limits<T>::infinity();
+  for (int k = 0; k < kIteration; ++k) {
+    int idx = tid + k * warpSize;
+    if (idx >= pool_indices_size) break;
 
-  while (index < size) {
-    IntT offset = pool_offsets[index];
-    IntT* pool_indices = sorted_pool_indices + offset;
-    IntT pool_indices_size = pool_sizes[index];
-    T* mx_row = mx_rows + index * nvalues;
-
-    for (IntT j = 0; j < nvalues; j++) {
-      T exp_sums = 0;
-      for (IntT p = 0; p < pool_indices_size; p++) {
-        auto i = pool_indices[p];
-        auto cur_value = input_values + i * nvalues + j;
-        auto cur_out_value = output_values + i * nvalues + j;
-        auto v = std::exp((*cur_value) - (*(mx_row + j)));
-        *cur_out_value = v;
-        exp_sums += v;
-      }
-      for (IntT p = 0; p < pool_indices_size; p++) {
-        auto i = pool_indices[p];
-        auto out_values_row = output_values + i * nvalues;
-        out_values_row[j] *= 1.0 / exp_sums;
-      }
+    auto i = pool_indices[idx];
+    auto cur_value = input_values + j + nvalues * i;
+    if (*cur_value > max_val) {
+      max_val = *cur_value;
     }
-    index += step;
+  }
+  T row_max_val = phi::funcs::WarpReduceMax<T>(max_val, 0xFFFFFFFF);
+
+  T exp_sum = 0;
+  for (int k = 0; k < kIteration; ++k) {
+    int idx = tid + k * warpSize;
+    if (idx >= pool_indices_size) break;
+
+    auto i = pool_indices[idx];
+    auto cur_value = input_values + j + nvalues * i;
+    auto cur_out_value = output_values + i * nvalues + j;
+
+    auto functor = phi::funcs::CudaExpFunctor<T>();
+    T exp = functor(*cur_value - row_max_val);
+    exp_sum += exp;
+    *cur_out_value = exp;
+  }
+  T row_exp_sum = phi::funcs::WarpReduceSum<T>(exp_sum, 0xFFFFFFFF);
+  row_exp_sum = 1.0 / row_exp_sum;
+
+  for (int k = 0; k < kIteration; ++k) {
+    int idx = tid + k * warpSize;
+    if (idx >= pool_indices_size) break;
+    auto i = pool_indices[idx];
+    auto cur_out_value = output_values + i * nvalues + j;
+    *cur_out_value *= row_exp_sum;
   }
 }
 
@@ -207,27 +224,24 @@ void SoftmaxCooGPUKernel(const Context& dev_ctx,
   DenseTensor sorted_indices;
   DenseTensor pool_offsets;
   DenseTensor pool_sizes;
-  DenseTensor mx_buffer;
-  std::tie(sorted_indices, pool_offsets, pool_sizes, mx_buffer) =
-      phi::funcs::sparse::ComputePoolMax<T, IntT, Context, true>(
+  std::tie(sorted_indices, pool_offsets, pool_sizes, std::ignore) =
+      phi::funcs::sparse::ComputePoolMax<T, IntT, Context, false>(
           dev_ctx, indices, values_2, sizes, nvalues, static_cast<IntT>(dim));
 
   auto pool_size = pool_offsets.dims()[0];
-  int block_size = phi::funcs::sparse::GetNumThreads(pool_size);
-  const int grid_size = (pool_size + block_size - 1) / block_size;
   auto out_values_ptr = out_values.data<T>();
   auto values_ptr = values.data<T>();
-
-  /* Compute softmax results with pool indices */
+  int total_rows = pool_size * nvalues;
+  dim3 grid((total_rows + 15) / 16);
+  dim3 block(32, 16);
   SoftmaxCooGPURawKernel<T, IntT>
-      <<<grid_size, block_size, 0, stream>>>(sorted_indices.data<IntT>(),
-                                             pool_size,
-                                             pool_sizes.data<IntT>(),
-                                             pool_offsets.data<IntT>(),
-                                             nvalues,
-                                             mx_buffer.data<T>(),
-                                             values_ptr,
-                                             out_values_ptr);
+      <<<grid, block, 0, stream>>>(sorted_indices.data<IntT>(),
+                                   pool_sizes.data<IntT>(),
+                                   pool_offsets.data<IntT>(),
+                                   nvalues,
+                                   values_ptr,
+                                   out_values_ptr,
+                                   total_rows);
 }
 
 template <typename T, typename Context>
