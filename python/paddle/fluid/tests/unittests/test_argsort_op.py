@@ -524,10 +524,10 @@ class TestArgsortBF16OP(OpTest):
     def setUp(self):
         self.op_type = "argsort"
         self.dtype = np.uint16
-        self.axis = -1
+        self.axis = 0
         self.descending = False
         x = np.random.uniform(-1, 1, size=[10000, 1]).astype(np.float32)
-        out = np.argsort(x).astype(np.float32)
+        out = np.argsort(x, axis=self.axis).astype(np.float32)
         self.indices = np.argsort(x, axis=self.axis)
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.outputs = {'Out': convert_float_to_uint16(out)}
