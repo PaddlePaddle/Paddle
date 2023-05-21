@@ -119,7 +119,7 @@ function make_cinn_dockerfile(){
 
 function make_ce_framework_dockcerfile(){
   dockerfile_name="Dockerfile.cuda11.2_cudnn8_gcc82_trt8"
-  sed "s/<baseimg>/12.0.1-cudnn8-devel-ubuntu20.04/g" ./Dockerfile.ubuntu20 >${dockerfile_name}
+  sed "s/<baseimg>/12.0.1-cudnn8-devel-ubuntu20.04/g" ./Dockerfile.build >${dockerfile_name}
   dockerfile_line=$(wc -l ${dockerfile_name}|awk '{print $1}')
   sed -i "7i RUN chmod 777 /tmp" ${dockerfile_name}
   sed -i "${dockerfile_line}i RUN wget --no-check-certificate -q https://paddle-edl.bj.bcebos.com/hadoop-2.7.7.tar.gz \&\& \
