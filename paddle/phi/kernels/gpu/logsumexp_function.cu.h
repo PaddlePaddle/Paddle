@@ -183,11 +183,19 @@ template <typename T,
           int RowsPerThread,
           int ThreadGroupWidth,
           bool NeedPadding>
+#if PADDLE_WITH_HIP
+inline hipError_t LaunchLogsumexpWarp(const Context& dev_ctx,
+                                      const int64_t num_row,
+                                      const int64_t num_col,
+                                      const SourceType* in,
+                                      SourceType* out) {
+#else
 inline cudaError_t LaunchLogsumexpWarp(const Context& dev_ctx,
                                        const int64_t num_row,
                                        const int64_t num_col,
                                        const SourceType* in,
                                        SourceType* out) {
+#endif
   constexpr int block_size = 128;
   constexpr int waves = 32;
   static_assert(block_size % ThreadGroupWidth == 0, "");
@@ -208,7 +216,11 @@ inline cudaError_t LaunchLogsumexpWarp(const Context& dev_ctx,
                     NeedPadding>
       <<<grid_dim_x, block_dim, 0, dev_ctx.stream()>>>(
           dev_ctx, num_row, num_col, in, out);
+#if PADDLE_WITH_HIP
+  return hipPeekAtLastError();
+#else
   return cudaPeekAtLastError();
+#endif
 }
 
 template <typename T,
@@ -218,11 +230,19 @@ template <typename T,
           int ColsPerThread,
           int RowsPerThread,
           int ThreadGroupWidth>
+#if PADDLE_WITH_HIP
+inline hipError_t DispatchLogsumexpWarpWithPadding(const Context& dev_ctx,
+                                                   const int64_t num_row,
+                                                   const int64_t num_col,
+                                                   const SourceType* in,
+                                                   SourceType* out) {
+#else
 inline cudaError_t DispatchLogsumexpWarpWithPadding(const Context& dev_ctx,
                                                     const int64_t num_row,
                                                     const int64_t num_col,
                                                     const SourceType* in,
                                                     SourceType* out) {
+#endif
   if (num_col == ColsPerThread * ThreadGroupWidth) {
     return LaunchLogsumexpWarp<T,
                                SourceType,
@@ -245,14 +265,27 @@ inline cudaError_t DispatchLogsumexpWarpWithPadding(const Context& dev_ctx,
 }
 
 template <typename T, typename SourceType, typename Context, int VecSize>
+#if PADDLE_WITH_HIP
+typename std::enable_if<VecSize == 1, hipError_t>::type
+DispatchLogsumexpWarpCols(const Context& dev_ctx,
+                          const int64_t num_row,
+                          const int64_t num_col,
+                          const SourceType* in,
+                          SourceType* out) {
+#else
 typename std::enable_if<VecSize == 1, cudaError_t>::type
 DispatchLogsumexpWarpCols(const Context& dev_ctx,
                           const int64_t num_row,
                           const int64_t num_col,
                           const SourceType* in,
                           SourceType* out) {
+#endif
   if (num_col <= 0) {
+#if PADDLE_WITH_HIP
+    return hipErrorInvalidValue;
+#else
     return cudaErrorInvalidValue;
+#endif
   }
 #define HANDLE_THREAD_GROUP(thread_group_width)                    \
   if (num_col <= (thread_group_width)*VecSize) {                   \
@@ -328,18 +361,35 @@ DispatchLogsumexpWarpCols(const Context& dev_ctx,
   HANDLE_COL(31)
   HANDLE_COL(32)
 #undef HANDLE_COL
+#if PADDLE_WITH_HIP
+  return hipErrorInvalidValue;
+#else
   return cudaErrorInvalidValue;
+#endif
 }
 
 template <typename T, typename SourceType, typename Context, int VecSize>
+#if PADDLE_WITH_HIP
+typename std::enable_if<VecSize == 2, hipError_t>::type
+DispatchLogsumexpWarpCols(const Context& dev_ctx,
+                          const int64_t num_row,
+                          const int64_t num_col,
+                          const SourceType* in,
+                          SourceType* out) {
+#else
 typename std::enable_if<VecSize == 2, cudaError_t>::type
 DispatchLogsumexpWarpCols(const Context& dev_ctx,
                           const int64_t num_row,
                           const int64_t num_col,
                           const SourceType* in,
                           SourceType* out) {
+#endif
   if (num_col <= 0) {
+#if PADDLE_WITH_HIP
+    return hipErrorInvalidValue;
+#else
     return cudaErrorInvalidValue;
+#endif
   }
 #define HANDLE_THREAD_GROUP(thread_group_width)                    \
   if (num_col <= (thread_group_width)*VecSize) {                   \
@@ -399,15 +449,27 @@ DispatchLogsumexpWarpCols(const Context& dev_ctx,
   HANDLE_COL(30)
   HANDLE_COL(32)
 #undef HANDLE_COL
+#if PADDLE_WITH_HIP
+  return hipErrorInvalidValue;
+#else
   return cudaErrorInvalidValue;
+#endif
 }
 
 template <typename T, typename SourceType, typename Context>
+#if PADDLE_WITH_HIP
+inline hipError_t DispatchLogsumexpWarp(const Context& dev_ctx,
+                                        const int64_t num_row,
+                                        const int64_t num_col,
+                                        const SourceType* in,
+                                        SourceType* out) {
+#else
 inline cudaError_t DispatchLogsumexpWarp(const Context& dev_ctx,
                                          const int64_t num_row,
                                          const int64_t num_col,
                                          const SourceType* in,
                                          SourceType* out) {
+#endif
   // dispatch logsumexp warp with vecsize
   if (num_col % 2 == 0) {
     return DispatchLogsumexpWarpCols<T, SourceType, Context, 2>(
