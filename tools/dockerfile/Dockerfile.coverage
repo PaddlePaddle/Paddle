@@ -11,7 +11,6 @@ ARG WITH_AVX
 ENV WITH_GPU=${WITH_GPU:-ON}
 ENV WITH_AVX=${WITH_AVX:-ON}
 ENV DEBIAN_FRONTEND=noninteractive
-<setcuda>
 
 ENV HOME /root
 # Add bash enhancements
