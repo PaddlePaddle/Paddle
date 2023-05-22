@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/phi/api/ext/exception.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/dist_tensor.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 
 namespace paddle {
 namespace experimental {

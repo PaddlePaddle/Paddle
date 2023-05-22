@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/core/allocator.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/storage_properties.h"
 #include "paddle/phi/core/stream.h"
 #include "paddle/phi/core/tensor_base.h"
@@ -99,7 +100,7 @@ class DistTensor : public TensorBase,
 
  private:
   // dist attribute
-  DistAttr dist_attr_;
+  std::unique_ptr<DistAttr> dist_attr_;
   // local shard of the tensor
   std::shared_ptr<DenseTensor> local_tensor_;
 };
