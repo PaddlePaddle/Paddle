@@ -128,6 +128,16 @@ TEST(type_test, built_in_type) {
   EXPECT_EQ(fp16_1.isa<ir::Float16Type>(), true);
   EXPECT_EQ(fp16_1.isa<ir::Float32Type>(), false);
   EXPECT_EQ(fp16_1.isa<ir::Type>(), true);
+
+  // Test 3: Test VectorType
+  std::vector<ir::Type> vec_type = {int32_1, int64_1};
+  ir::Type vector_type = ir::VectorType::get(ctx, vec_type);
+  EXPECT_EQ(vector_type.isa<ir::VectorType>(), true);
+  EXPECT_EQ(vector_type.dyn_cast<ir::VectorType>().size() == 2, true);
+  EXPECT_EQ(vector_type.dyn_cast<ir::VectorType>()[0].isa<ir::Int32Type>(),
+            true);
+  EXPECT_EQ(vector_type.dyn_cast<ir::VectorType>()[1].isa<ir::Int64Type>(),
+            true);
 }
 
 // Customize a parameterized TypeStorage IntegerTypeStorage.

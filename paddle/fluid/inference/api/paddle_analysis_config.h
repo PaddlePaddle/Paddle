@@ -200,6 +200,14 @@ struct PD_INFER_DECL AnalysisConfig {
   void SetParamsFile(const std::string& x) { params_file_ = x; }
 
   ///
+  /// \brief Save optimized model.
+  ///
+  /// \param save_optimized_model whether to enable save optimized model.
+  ///
+  void EnableSaveOptimModel(bool save_optimized_model) {
+    save_optimized_model_ = save_optimized_model;
+  }
+  ///
   /// \brief Set the path of optimization cache directory.
   ///
   /// \param opt_cache_dir the path of optimization cache directory.
@@ -1239,6 +1247,7 @@ struct PD_INFER_DECL AnalysisConfig {
   // Variables held by config can take up a lot of memory in some cases.
   // So we release the memory when the predictor is set up.
   mutable bool is_valid_{true};
+  bool save_optimized_model_{false};
   std::string opt_cache_dir_;
   friend class paddle_infer::experimental::InternalUtils;
 

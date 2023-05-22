@@ -16,6 +16,7 @@
 
 #include "paddle/ir/builtin_attribute.h"
 #include "paddle/ir/op_info.h"
+#include "paddle/ir/operation_utils.h"
 #include "paddle/ir/type.h"
 #include "paddle/ir/value_impl.h"
 
@@ -25,8 +26,6 @@ class OpTraitBase;
 template <typename ConcreteInterface>
 class OpInterfaceBase;
 class Program;
-
-using AttributeMap = std::unordered_map<std::string, Attribute>;
 
 class alignas(8) Operation final {
  public:
@@ -40,11 +39,14 @@ class alignas(8) Operation final {
                            const std::vector<ir::Type> &output_types,
                            const AttributeMap &attribute,
                            ir::OpInfo op_info);
+  static Operation *create(const OperationArgument &op_argument);
 
   ///
   /// \brief Destroy the operation objects and free memeory by create().
   ///
   void destroy();
+
+  IrContext *ir_context() const;
 
   ir::OpResult GetResultByIndex(uint32_t index);
 
@@ -99,14 +101,17 @@ class alignas(8) Operation final {
   struct CastUtil<T,
                   typename std::enable_if<
                       std::is_base_of<OpTraitBase<T>, T>::value>::type> {
-    static T call(const Operation *op) { return T(op); }
+    static T call(const Operation *op) {
+      return T(op->HasTrait<T>() ? op : nullptr);
+    }
   };
   template <typename T>
   struct CastUtil<T,
                   typename std::enable_if<
                       std::is_base_of<OpInterfaceBase<T>, T>::value>::type> {
     static T call(const Operation *op) {
-      return T(op, op->op_info_.impl()->GetInterfaceImpl<T>());
+      typename T::Concept *interface_impl = op->op_info().GetInterfaceImpl<T>();
+      return interface_impl ? T(op, interface_impl) : T(nullptr, nullptr);
     }
   };
 

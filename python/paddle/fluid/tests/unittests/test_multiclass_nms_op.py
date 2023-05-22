@@ -20,7 +20,7 @@ from eager_op_test import OpTest
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops
-from paddle.fluid import _non_static_mode, in_dygraph_mode
+from paddle.fluid import _non_static_mode, core, in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
 
 
@@ -355,6 +355,7 @@ def batched_multiclass_nms(
     nms_top_k,
     keep_top_k,
     normalized=True,
+    gpu_logic=False,
 ):
     batch_size = scores.shape[0]
     num_boxes = scores.shape[2]
@@ -392,9 +393,14 @@ def batched_multiclass_nms(
                         idx + n * num_boxes,
                     ]
                 )
-        sorted_det_out = sorted(
-            tmp_det_out, key=lambda tup: tup[0], reverse=False
-        )
+        if gpu_logic:
+            sorted_det_out = sorted(
+                tmp_det_out, key=lambda tup: tup[1], reverse=True
+            )
+        else:
+            sorted_det_out = sorted(
+                tmp_det_out, key=lambda tup: tup[0], reverse=False
+            )
         det_outs.extend(sorted_det_out)
     return det_outs, lod
 
@@ -747,7 +753,7 @@ class TestMulticlassNMS3Op(TestMulticlassNMS2Op):
         background = 0
         nms_threshold = 0.3
         nms_top_k = 400
-        keep_top_k = 200
+        keep_top_k = 200 if not hasattr(self, 'keep_top_k') else self.keep_top_k
         score_threshold = self.score_threshold
 
         scores = np.random.random((N * M, C)).astype('float32')
@@ -768,6 +774,7 @@ class TestMulticlassNMS3Op(TestMulticlassNMS2Op):
             nms_threshold,
             nms_top_k,
             keep_top_k,
+            gpu_logic=self.gpu_logic if hasattr(self, 'gpu_logic') else None,
         )
         det_outs = np.array(det_outs)
 
@@ -797,7 +804,8 @@ class TestMulticlassNMS3Op(TestMulticlassNMS2Op):
         }
 
     def test_check_output(self):
-        self.check_output()
+        place = paddle.CPUPlace()
+        self.check_output_with_place(place)
 
 
 class TestMulticlassNMS3OpNoOutput(TestMulticlassNMS3Op):
@@ -805,6 +813,51 @@ class TestMulticlassNMS3OpNoOutput(TestMulticlassNMS3Op):
         # Here set 2.0 to test the case there is no outputs.
         # In practical use, 0.0 < score_threshold < 1.0
         self.score_threshold = 2.0
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestMulticlassNMS3OpGPU(TestMulticlassNMS2Op):
+    def test_check_output(self):
+        place = paddle.CUDAPlace(0)
+        self.check_output_with_place(place)
+
+    def set_argument(self):
+        self.score_threshold = 0.01
+        self.gpu_logic = True
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestMulticlassNMS3OpGPULessOutput(TestMulticlassNMS3OpGPU):
+    def set_argument(self):
+        # Here set 0.08 to make output box size less than keep_top_k
+        self.score_threshold = 0.08
+        self.gpu_logic = True
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestMulticlassNMS3OpGPUNoOutput(TestMulticlassNMS3OpGPU):
+    def set_argument(self):
+        # Here set 2.0 to test the case there is no outputs.
+        # In practical use, 0.0 < score_threshold < 1.0
+        self.score_threshold = 2.0
+        self.gpu_logic = True
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestMulticlassNMS3OpGPUFallback(TestMulticlassNMS3OpGPU):
+    def set_argument(self):
+        # Setting keep_top_k < 0 will fall back to CPU kernel
+        self.score_threshold = 0.01
+        self.keep_top_k = -1
+        self.gpu_logic = True
 
 
 if __name__ == '__main__':
