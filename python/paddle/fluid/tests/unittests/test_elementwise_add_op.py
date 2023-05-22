@@ -123,18 +123,12 @@ class TestElementwiseAddOp_ZeroDim2(TestElementwiseAddOp_ZeroDim1):
         self.y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
         self.out = np.add(self.x, self.y)
 
-    def if_enable_cinn(self):
-        self.enable_cinn = False
-
 
 class TestElementwiseAddOp_ZeroDim3(TestElementwiseAddOp_ZeroDim1):
     def init_input_output(self):
         self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
         self.y = np.random.uniform(0.1, 1, []).astype(self.dtype)
         self.out = np.add(self.x, self.y)
-
-    def if_enable_cinn(self):
-        self.enable_cinn = False
 
 
 @unittest.skipIf(
