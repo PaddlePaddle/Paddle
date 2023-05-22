@@ -3413,24 +3413,13 @@ def cdist(x, y, p=2, name=None):
             )
         resize_shape = resize_shape + (max(x_shape[i], y_shape[i]),)
 
-    if p == 2:
-        x_norm = paddle.sum(x.pow(2), keepdim=True, axis=-1)
-        y_norm = paddle.sum(y.pow(2), keepdim=True, axis=-1)
-        x_pad = paddle.ones_like(x_norm)
-        y_pad = paddle.ones_like(y_norm)
-        x_ = paddle.concat([x * -2, x_norm, x_pad], -1)
-        y_ = paddle.concat([y, y_pad, y_norm], -1)
-        y_perm = list(range(len(y_.shape)))
-        y_perm[-1], y_perm[-2] = y_perm[-2], y_perm[-1]
-        out = paddle.clip(x_.matmul(paddle.transpose(y_, y_perm)), min=0).sqrt()
+    y = paddle.concat([y] * x_shape[-2], axis=-2)
+    x = paddle.repeat_interleave(x, y_shape[-2], axis=-2)
+    if p == 0:
+        out = ((x - y).abs() ** p).sum(axis=-1)
+    elif p == float('inf'):
+        out = paddle.max((x - y).abs(), axis=-1)
     else:
-        y = paddle.concat([y] * x_shape[-2], axis=-2)
-        x = paddle.repeat_interleave(x, y_shape[-2], axis=-2)
-        if p == 0:
-            out = ((x - y) ** p).abs().sum(axis=-1)
-        elif p == float('inf'):
-            out = paddle.max((x - y).abs(), axis=-1)
-        else:
-            out = ((x - y) ** p).abs().sum(axis=-1) ** (1 / p)
-        out = out.reshape((*resize_shape, x_shape[-2], y_shape[-2]))
+        out = ((x - y).abs() ** p).sum(axis=-1) ** (1 / p)
+    out = out.reshape((*resize_shape, x_shape[-2], y_shape[-2]))
     return out

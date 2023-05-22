@@ -34,11 +34,11 @@ def cdist(x, y, p):
     new_y = np.concatenate([y] * x_shape[-2], axis=-2)
     new_x = np.repeat(x, y_shape[-2], axis=-2)
     if p == 0:
-        loss = np.sum(np.abs((new_x - new_y) ** p), axis=-1)
+        loss = np.sum(np.abs(new_x - new_y) ** p, axis=-1)
     elif p == float('inf'):
         loss = np.max(np.abs(new_x - new_y), axis=-1)
     else:
-        loss = np.sum(np.abs((new_x - new_y) ** p), axis=-1) ** (1 / p)
+        loss = np.sum(np.abs(new_x - new_y) ** p, axis=-1) ** (1 / p)
     loss = loss.reshape((*resize_shape, x_shape[-2], y_shape[-2]))
     return loss
 
@@ -82,6 +82,7 @@ class TestDistAPI(unittest.TestCase):
 
     def test_p_order(self):
         self.init_data_type()
+
         for p in [0, 2, float('inf'), 1.5]:
             a_i = np.random.random((2, 3, 4, 5)).astype(self.data_type)
             b_i = np.random.random((2, 3, 1, 5)).astype(self.data_type)
@@ -92,22 +93,42 @@ class TestDistAPI(unittest.TestCase):
                 cdist(a_i, b_i, p), c.numpy(), rtol=1e-05
             )
 
-    def test_shape(self):
+    def test_shape1(self):
         self.init_data_type()
         p = 2
-        for x_shape, y_shape in [
-            [(5, 6, 2), (1, 5, 2)],
-            [(4, 4, 3, 1), (1, 5, 1)],
-            [(2, 5), (3, 1, 5, 5)],
-        ]:
-            a_i = np.random.random(x_shape).astype(self.data_type)
-            b_i = np.random.random(y_shape).astype(self.data_type)
-            a = paddle.to_tensor(a_i)
-            b = paddle.to_tensor(b_i)
-            c = paddle.cdist(a, b, p)
-            np.testing.assert_allclose(
-                cdist(a_i, b_i, p), c.numpy(), rtol=1e-05
-            )
+        x_shape = (5, 6, 2)
+        y_shape = (1, 5, 2)
+
+        a_i = np.random.random(x_shape).astype(self.data_type)
+        b_i = np.random.random(y_shape).astype(self.data_type)
+        a = paddle.to_tensor(a_i)
+        b = paddle.to_tensor(b_i)
+        c = paddle.cdist(a, b, p)
+        np.testing.assert_allclose(cdist(a_i, b_i, p), c.numpy(), rtol=1e-05)
+
+    def test_shape2(self):
+        self.init_data_type()
+        p = 2
+        x_shape = (4, 4, 3, 1)
+        y_shape = (1, 5, 1)
+        a_i = np.random.random(x_shape).astype(self.data_type)
+        b_i = np.random.random(y_shape).astype(self.data_type)
+        a = paddle.to_tensor(a_i)
+        b = paddle.to_tensor(b_i)
+        c = paddle.cdist(a, b, p)
+        np.testing.assert_allclose(cdist(a_i, b_i, p), c.numpy(), rtol=1e-05)
+
+    def test_shape3(self):
+        self.init_data_type()
+        p = 2
+        x_shape = (2, 5)
+        y_shape = (3, 1, 5, 5)
+        a_i = np.random.random(x_shape).astype(self.data_type)
+        b_i = np.random.random(y_shape).astype(self.data_type)
+        a = paddle.to_tensor(a_i)
+        b = paddle.to_tensor(b_i)
+        c = paddle.cdist(a, b, p)
+        np.testing.assert_allclose(cdist(a_i, b_i, p), c.numpy(), rtol=1e-05)
 
     def test_grad(self):
         a = paddle.rand([2, 2, 3, 2])
