@@ -358,6 +358,7 @@ class CutlassTeller {
   static const int CUTLASS_NHWC_ALIGNMENT = 8;
   const std::unordered_set<int> cutlass_sm = {
       75,
+      80,
   };
   const std::unordered_set<std::string> cba_act_set = {
       "relu", "swish", "identity", "leaky_relu", "sigmoid"};

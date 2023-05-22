@@ -84,11 +84,22 @@ void Conv2dFusionKernel(const Context& ctx,
   const int oh = out_dims[1];
   const int ow = out_dims[2];
 
-  ConvAllParams params = {reinterpret_cast<const half*>(x.data<T>()),
-                          reinterpret_cast<const half*>(filter.data<T>()),
-                          reinterpret_cast<const half*>(bias.data<T>()),
+  auto dtype2string = [&](decltype(x.dtype()) x_type) -> std::string {
+    switch (x_type) {
+      case phi::DataType::FLOAT32:
+        return "fp32";
+      case phi::DataType::FLOAT16:
+        return "fp16";
+      case phi::DataType::BFLOAT16:
+        return "bf16";
+    }
+    return "";
+  };
+  ConvAllParams params = {reinterpret_cast<const void*>(x.data<T>()),
+                          reinterpret_cast<const void*>(filter.data<T>()),
+                          reinterpret_cast<const void*>(bias.data<T>()),
                           nullptr,
-                          reinterpret_cast<half*>(output->data<T>()),
+                          reinterpret_cast<void*>(output->data<T>()),
                           batch,
                           ic,
                           ih,
@@ -107,7 +118,10 @@ void Conv2dFusionKernel(const Context& ctx,
                           oh,
                           ow,
                           groups,
-                          &ctx};
+                          &ctx,
+                          0,   // alpha
+                          80,  // sm_version
+                          dtype2string(x.dtype())};
 
   // conv2d_depthwise
   if (groups == ic && ic == oc) {
@@ -134,7 +148,7 @@ void Conv2dFusionKernel(const Context& ctx,
   // below: conv2d_fusion && groups == 1
   CHECK_EQ(groups == 1, true);
   if (residual) {
-    params.residual = reinterpret_cast<const half*>(residual->data<T>());
+    params.residual = reinterpret_cast<const void*>(residual->data<T>());
     if (activation == "relu") {
       Conv2dBiasAddRelu(params);
     } else if (activation == "identity_elementwise_add_identity") {
@@ -172,4 +186,5 @@ PD_REGISTER_KERNEL(conv2d_fusion_cutlass,
                    ALL_LAYOUT,
                    phi::fusion::cutlass_internal::Conv2dFusionKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

@@ -51,13 +51,12 @@ dict_for_declare_part = {
 cbr_kernel = (
     SubstituteTemplate(CommonCutlassConvKernelDeclare, dict_for_declare_part)
     + '''
-  const half *residual = params.residual;
   typename ImplicitGemm::Arguments arguments{
       problem_size,
-      {(cutlass::half_t *)input, {ic, ic * iw, ic * iw * ih}},
-      {(cutlass::half_t *)(weight), {kc, kc * kw, kc * kw * kh}},
-      {(cutlass::half_t *)residual, {oc, oc * ow, oc * ow * oh}},
-      {(cutlass::half_t *)output, {oc, oc * ow, oc * ow * oh}},
+      {input, {ic, ic * iw, ic * iw * ih}},
+      {weight, {kc, kc * kw, kc * kw * kh}},
+      {residual, {oc, oc * ow, oc * ow * oh}},
+      {output, {oc, oc * ow, oc * ow * oh}},
       {1.f, 1.f},
       cutlass::conv::SplitKMode::kSerial,
       (cutlass::half_t *)(bias), nullptr,
@@ -156,7 +155,9 @@ def generate_sm75_1688():
     sm75_code = ""
     for epi_res_block in SupportedEpilogue:
         op_dict = {}
-        op_dict["func_name"] = UnderScoreName[epi_res_block].lower() + "_sm75"
+        op_dict["func_name"] = (
+            UnderScoreName[epi_res_block].lower() + "_sm75_fp16"
+        )
         op_dict["enum_op_name"] = UnderScoreName[epi_res_block].upper()
         # for a op, we record all its kernels into a std::vector in C++ code
         all_kernel_names = ""
@@ -206,7 +207,9 @@ def generate_sm75_1688():
 
 
 if __name__ == "__main__":
-    sm_versions = ["75"]
+    sm_versions = [
+        ["75", "fp16"],
+    ]
     all_code = cbr_header
     all_code += generate_sm75_1688()
     all_code += GenerateFunctionForPhi(
