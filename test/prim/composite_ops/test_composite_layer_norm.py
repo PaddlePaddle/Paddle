@@ -234,27 +234,27 @@ class TestCompositelayer_norm(unittest.TestCase):
         b_p = paddle.to_tensor(b)
 
         expect = expect_forward(x_p, n_shape, w_p, b_p)
-        actual = self.cal_composite(x, n_shape, w, b)
+        actual, _a_mean, _a_var = self.cal_composite(x, n_shape, w, b)
 
-        assert expect[0].numpy().dtype == actual[0].dtype
-        for i in range(3):
-            np.testing.assert_allclose(
-                expect[i].numpy(),
-                actual[i],
-                rtol=attrs.get_rtol("forward"),
-                atol=attrs.get_atol("forward"),
-            )
+        assert expect.numpy().dtype == actual.dtype
+        np.testing.assert_allclose(
+            expect.numpy(),
+            actual,
+            rtol=attrs.get_rtol("forward"),
+            atol=attrs.get_atol("forward"),
+        )
 
         expect_2 = expect_forward(x_p, n_shape, None, None)
-        actual_2 = self.cal2_composite(x, n_shape, None, None)
-        assert expect_2[0].numpy().dtype == actual_2[0].dtype
-        for i in range(3):
-            np.testing.assert_allclose(
-                expect_2[i].numpy(),
-                actual_2[i],
-                rtol=attrs.get_rtol("forward"),
-                atol=attrs.get_atol("forward"),
-            )
+        actual_2, _a_mean_2, _a_var_2 = self.cal2_composite(
+            x, n_shape, None, None
+        )
+        assert expect_2.numpy().dtype == actual_2.dtype
+        np.testing.assert_allclose(
+            expect_2.numpy(),
+            actual_2,
+            rtol=attrs.get_rtol("forward"),
+            atol=attrs.get_atol("forward"),
+        )
 
     def test_forward(self):
         for j in self.dtypes:

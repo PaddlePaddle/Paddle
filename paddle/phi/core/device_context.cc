@@ -393,11 +393,8 @@ template <typename T>
 T* DeviceContext::Alloc(TensorBase* tensor,
                         size_t requested_size,
                         bool pinned) const {
-  if (pinned) {
-    return impl_->Alloc<T>(
-        tensor, GetPinnedPlace(GetPlace()), requested_size, pinned);
-  }
-  return impl_->Alloc<T>(tensor, GetPlace(), requested_size, pinned);
+  DataType dtype = phi::CppTypeToDataType<T>::Type();
+  return static_cast<T*>(this->Alloc(tensor, dtype, requested_size, pinned));
 }
 
 void* DeviceContext::HostAlloc(TensorBase* tensor,

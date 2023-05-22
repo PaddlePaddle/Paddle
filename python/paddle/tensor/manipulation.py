@@ -268,11 +268,11 @@ def slice(input, axes, starts, ends):
     Args:
         input (Tensor): A ``Tensor`` . The data type is ``float16``, ``float32``, ``float64``, ``int32`` or ``int64``.
         axes (list|tuple): The data type is ``int32`` . Axes that `starts` and `ends` apply to .
-        starts (list|tuple|Tensor): The data type is ``int32`` . If ``starts`` is a list or tuple, the elements of
-                it should be integers or Tensors with shape [1]. If ``starts`` is an Tensor, it should be an 1-D Tensor.
+        starts (list|tuple|Tensor): The data type is ``int32`` . If ``starts`` is a list or tuple, each element of
+                it should be integer or 0-D int Tensor with shape []. If ``starts`` is an Tensor, it should be an 1-D Tensor.
                 It represents starting indices of corresponding axis in ``axes``.
-        ends (list|tuple|Tensor): The data type is ``int32`` . If ``ends`` is a list or tuple, the elements of
-                it should be integers or Tensors with shape [1]. If ``ends`` is an Tensor, it should be an 1-D Tensor .
+        ends (list|tuple|Tensor): The data type is ``int32`` . If ``ends`` is a list or tuple, each element of
+                it should be integer or 0-D int Tensor with shape []. If ``ends`` is an Tensor, it should be an 1-D Tensor .
                 It represents ending indices of corresponding axis in ``axes``.
 
     Returns:
@@ -1065,21 +1065,21 @@ def tolist(x):
             print(expectlist)   #[0, 1, 2, 3, 4]
 
     """
-    # TODO(zhouwei): will remove 0D Tensor.numpy() hack
+    # TODO(zhouwei): will remove 0-D Tensor.numpy() hack
     return x.numpy(False).tolist()
 
 
 def concat(x, axis=0, name=None):
     """
 
-    Concatenates the input along the axis.
+    Concatenates the input along the axis. It doesn't support 0-D Tensor because it requires a certain axis, and 0-D Tensor
+    doesn't have any axis.
 
     Args:
         x (list|tuple): ``x`` is a Tensor list or Tensor tuple which is with data type bool, float16,
             float32, float64, int32, int64, int8, uint8. All the Tensors in ``x`` must have same data type.
         axis (int|Tensor, optional): Specify the axis to operate on the input Tensors.
-            It's a scalar with data type int or a Tensor with shape [1] and data type int32
-            or int64. The effective range is [-R, R), where R is Rank(x). When ``axis < 0``,
+            Tt should be integer or 0-D int Tensor with shape []. The effective range is [-R, R), where R is Rank(x). When ``axis < 0``,
             it works the same way as ``axis+R``. Default is 0.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -1550,11 +1550,11 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
     if x_dim == 0:
         if not (isinstance(start_axis, int)) or start_axis not in [0, -1]:
             raise ValueError(
-                "The start_axis should be int, and should be 0 or -1 when the input tensor is a 0D-Tensor"
+                "The start_axis should be int, and should be 0 or -1 when the input tensor is a 0-D-Tensor"
             )
         if not (isinstance(stop_axis, int)) or stop_axis not in [0, -1]:
             raise ValueError(
-                "The stop_axis should be int, and should be 0 or -1 when the input tensor is a 0D-Tensor"
+                "The stop_axis should be int, and should be 0 or -1 when the input tensor is a 0-D-Tensor"
             )
     else:
         if (
@@ -1913,8 +1913,8 @@ def split(x, num_or_sections, axis=0, name=None):
             If ``num_or_sections`` is a list or tuple, the length of it indicates the number of
             sub-Tensors and the elements in it indicate the sizes of sub-Tensors'  dimension orderly.
             The length of the list must not  be larger than the ``x`` 's size of specified ``axis``.
-        axis (int|Tensor, optional): The axis along which to split, it can be a scalar with type
-            ``int`` or a ``Tensor`` with shape [1] and data type  ``int32`` or ``int64``.
+        axis (int|Tensor, optional): The axis along which to split, it can be a integer or a ``0-D Tensor``
+            with shape [] and data type  ``int32`` or ``int64``.
             If :math::`axis < 0`, the axis to split along is :math:`rank(x) + axis`. Default is 0.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
@@ -2557,7 +2557,7 @@ def unsqueeze(x, axis, name=None):
     Args:
         x (Tensor): The input Tensor to be unsqueezed. Supported data type: bfloat16, float16, float32, float64, bool, int8, int32, int64.
         axis (int|list|tuple|Tensor): Indicates the dimensions to be inserted. The data type is ``int32`` .
-                                    If ``axis`` is a list or tuple, the elements of it should be integers or Tensors with shape [1].
+                                    If ``axis`` is a list or tuple, each element of it should be integer or 0-D Tensor with shape [].
                                     If ``axis`` is a Tensor, it should be an 1-D Tensor .
                                     If ``axis`` is negative, ``axis = axis + ndim(x) + 1``.
         name (str|None): Name for this layer. Please refer to :ref:`api_guide_Name`, Default None.
@@ -3083,8 +3083,8 @@ def chunk(x, chunks, axis=0, name=None):
     Args:
         x (Tensor): A N-D Tensor. The data type is bool, float16, float32, float64, int32 or int64.
         chunks(int): The number of tensor to be split along the certain axis.
-        axis (int|Tensor, optional): The axis along which to split, it can be a scalar with type
-            ``int`` or a ``Tensor`` with shape [1] and data type  ``int32`` or ``int64``.
+        axis (int|Tensor, optional): The axis along which to split, it can be a integer or a ``0-D Tensor``
+            with shape [] and data type  ``int32`` or ``int64``.
             If :math::`axis < 0`, the axis to split along is :math:`rank(x) + axis`. Default is 0.
         name (str, optional): The default value is None.  Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
@@ -3275,7 +3275,15 @@ def expand_as(x, y, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['bool', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'bool',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'float16',
+                'uint16',
+            ],
             'expand_as',
         )
         check_type(y, 'y', Variable, 'expand_as')
@@ -3348,7 +3356,15 @@ def broadcast_to(x, shape, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+            [
+                'bool',
+                'uint16',
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+            ],
             'broadcast_to',
         )
         check_type(shape, 'shape', (list, tuple, Variable), 'broadcast_to')
@@ -3523,7 +3539,7 @@ def reshape(x, shape, name=None):
     Args:
         x (Tensor): An N-D Tensor. The data type is ``float32``, ``float64``, ``int32``, ``int64`` or ``bool``
         shape (list|tuple|Tensor): Define the target shape. At most one dimension of the target shape can be -1.
-                        The data type is ``int32`` . If ``shape`` is a list or tuple, the elements of it should be integers or Tensors with shape [].
+                        The data type is ``int32`` . If ``shape`` is a list or tuple, each element of it should be integer or Tensor with shape [].
                         If ``shape`` is an Tensor, it should be an 1-D Tensor .
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -3843,11 +3859,15 @@ def strided_slice(x, axes, starts, ends, strides, name=None):
         x (Tensor): An N-D ``Tensor``. The data type is ``bool``, ``float16``, ``float32``, ``float64``, ``int32`` or ``int64``.
         axes (list|tuple): The data type is ``int32`` . Axes that `starts` and `ends` apply to.
                             It's optional. If it is not provides, it will be treated as :math:`[0,1,...,len(starts)-1]`.
-        starts (list|tuple|Tensor): The data type is ``int32`` . If ``starts`` is a list or tuple, the elements of                                                                                          it should be integers or Tensors with shape [1]. If ``starts`` is an Tensor, it should be an 1-D Tensor.                                                                                    It represents starting indices of corresponding axis in ``axes``.
-        ends (list|tuple|Tensor): The data type is ``int32`` . If ``ends`` is a list or tuple, the elements of
-                it should be integers or Tensors with shape [1]. If ``ends`` is an Tensor, it should be an 1-D Tensor .                                                                                     It represents ending indices of corresponding axis in ``axes``.
-        strides (list|tuple|Tensor): The data type is ``int32`` . If ``strides`` is a list or tuple, the elements of
-                it should be integers or Tensors with shape [1]. If ``strides`` is an Tensor, it should be an 1-D Tensor .                                                                                  It represents slice step of corresponding axis in ``axes``.
+        starts (list|tuple|Tensor): The data type is ``int32`` . If ``starts`` is a list or tuple, the elements of it should be
+            integers or Tensors with shape []. If ``starts`` is an Tensor, it should be an 1-D Tensor.
+            It represents starting indices of corresponding axis in ``axes``.
+        ends (list|tuple|Tensor): The data type is ``int32`` . If ``ends`` is a list or tuple, the elements of it should be
+            integers or Tensors with shape []. If ``ends`` is an Tensor, it should be an 1-D Tensor.
+            It represents ending indices of corresponding axis in ``axes``.
+        strides (list|tuple|Tensor): The data type is ``int32`` . If ``strides`` is a list or tuple, the elements of it should be
+            integers or Tensors with shape []. If ``strides`` is an Tensor, it should be an 1-D Tensor.
+            It represents slice step of corresponding axis in ``axes``.
         name(str, optional): The default value is None.  Normally there is no need for user to set this property.
                         For more information, please refer to :ref:`api_guide_Name` .
 
@@ -4074,7 +4094,7 @@ def tensordot(x, y, axes=2, name=None):
             y = paddle.arange(10, dtype=data_type)
             z1 = paddle.tensordot(x, y, axes=1)
             z2 = paddle.dot(x, y)
-            # z1 = z2 = [285.]
+            # z1 = z2 = 285.
 
 
             # For two 2-d tensor x and y, the case axes=1 is equivalent to matrix multiplication.

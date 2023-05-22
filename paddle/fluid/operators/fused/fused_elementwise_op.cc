@@ -62,6 +62,21 @@ class FusedElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+REGISTER_OPERATOR(
+    fused_elementwise_add,
+    ops::ElementwiseOp,
+    ops::FusedElementwiseOpMaker,
+    ops::ElementwiseOpInferVarType,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+
+REGISTER_OPERATOR(
+    fused_elementwise_sub,
+    ops::ElementwiseOp,
+    ops::FusedElementwiseOpMaker,
+    ops::ElementwiseOpInferVarType,
+    paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(
     fused_elementwise_mul,
