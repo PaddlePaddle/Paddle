@@ -13,9 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
+
 #include <algorithm>
 #include <iostream>
 #include <iterator>
+
+#include "glog/logging.h"
 
 namespace phi {
 namespace distributed {
@@ -24,23 +27,7 @@ namespace auto_parallel {
 std::vector<std::string> TensorDistAttr::fields_{
     "process_mesh", "dims_mapping", "batch_dim", "dynamic_dims"};
 
-// static inline std::vector<int64_t> get_tensor_shape(const VarDesc* tensor) {
-//  if (tensor == nullptr) return std::vector<int64_t>();
-//   switch (tensor->GetType()) {
-//     case framework::proto::VarType::READER:
-//     case framework::proto::VarType::LOD_TENSOR_ARRAY:
-//     case framework::proto::VarType::STEP_SCOPES:
-//     case framework::proto::VarType::FEED_MINIBATCH:
-//     case framework::proto::VarType::FETCH_LIST:
-//       return std::vector<int64_t>();
-//     default:
-//       return tensor->GetShape();
-//   }
-// }
-
 TensorDistAttr::TensorDistAttr(const std::vector<int64_t>& tensor_shape) {
-  // VLOG(4) << "[TensorDistAttr constructor] tensor name: " << tensor.Name();
-  // std::vector<int64_t> tensor_shape = get_tensor_shape(&tensor);
   set_default_dims_mapping(tensor_shape);
   set_default_dynamic_dims(tensor_shape);
 }
@@ -113,8 +100,8 @@ void TensorDistAttr::mark_annotated(const std::string& name) {
 
 bool TensorDistAttr::verify_process_mesh(
     const ProcessMesh& process_mesh) const {
-  // VLOG(4) << "[TensorDistAttr verify_process_mesh] "
-  //         << process_mesh.to_string();
+  VLOG(4) << "[TensorDistAttr verify_process_mesh] "
+          << process_mesh.to_string();
   if (!process_mesh_.empty()) {
     for (int64_t dim_mapping : dims_mapping_) {
       if (dim_mapping >= process_mesh_.ndim()) {
@@ -128,8 +115,7 @@ bool TensorDistAttr::verify_process_mesh(
 bool TensorDistAttr::verify_dims_mapping(
     const std::vector<int64_t>& dims_mapping,
     const std::vector<int64_t>& tensor_shape) const {
-  // VLOG(4) << "[TensorDistAttr verify_dims_mapping] " <<
-  // str_join(dims_mapping);
+  VLOG(4) << "[TensorDistAttr verify_dims_mapping] " << str_join(dims_mapping);
   if (dims_mapping.size() != tensor_shape.size()) {
     return false;
   }
@@ -157,7 +143,7 @@ bool TensorDistAttr::verify_dims_mapping(
 
 bool TensorDistAttr::verify_batch_dim(
     int64_t dim, const std::vector<int64_t>& tensor_shape) const {
-  // VLOG(4) << "[TensorDistAttr verify_batch_dim] " << dim;
+  VLOG(4) << "[TensorDistAttr verify_batch_dim] " << dim;
   int64_t ndim = tensor_shape.size();
   if (ndim > 0) {
     if (dim < 0) {
@@ -173,8 +159,7 @@ bool TensorDistAttr::verify_batch_dim(
 bool TensorDistAttr::verify_dynamic_dims(
     const std::vector<bool>& dynamic_dims,
     const std::vector<int64_t>& tensor_shape) const {
-  // VLOG(4) << "[TensorDistAttr verify_dynamic_dims] " <<
-  // str_join(dynamic_dims);
+  VLOG(4) << "[TensorDistAttr verify_dynamic_dims] " << str_join(dynamic_dims);
   if (dynamic_dims.size() > 0 && dynamic_dims.size() != tensor_shape.size()) {
     return false;
   }
@@ -183,7 +168,7 @@ bool TensorDistAttr::verify_dynamic_dims(
 
 bool TensorDistAttr::verify_annotated(
     const std::map<std::string, bool>& annotated) const {
-  // VLOG(4) << "[TensorDistAttr verify_annotated] " << str_join(annotated);
+  VLOG(4) << "[TensorDistAttr verify_annotated] " << str_join(annotated);
   for (const auto& item : annotated) {
     auto result = std::find(std::begin(fields_), std::end(fields_), item.first);
     if (result == std::end(fields_)) {
@@ -194,7 +179,6 @@ bool TensorDistAttr::verify_annotated(
 }
 
 bool TensorDistAttr::verify(const std::vector<int64_t>& tensor_shape) const {
-  // auto tensor_shape = get_tensor_shape(tensor);
   if (!verify_process_mesh(process_mesh_)) {
     return false;
   }
