@@ -262,7 +262,7 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "conv_elementwise_add_fuse_pass",      //
 #endif                                         //
         "transpose_flatten_concat_fuse_pass",  //
-        "conv2d_fusion_cutlass_elementwise",   // used by cutlass only.
+       // "conv2d_fusion_cutlass_elementwise",   // used by cutlass only.
         "conv2d_fusion_layout_transfer_pass",  //
         "transfer_layout_elim",
         "auto_mixed_precision_pass",           //
