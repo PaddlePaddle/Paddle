@@ -46,6 +46,8 @@ thread_local bool Tracer::enable_program_desc_tracing_ = false;
 
 thread_local bool Tracer::has_grad_ = true;
 
+thread_local bool Tracer::use_promote_ = true;
+
 thread_local bool Tracer::use_layout_autotune_ = false;
 
 thread_local AmpLevel Tracer::amp_level_ = AmpLevel::O0;

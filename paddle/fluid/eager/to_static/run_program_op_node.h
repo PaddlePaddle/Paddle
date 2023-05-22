@@ -443,11 +443,11 @@ inline void RunProgramAPI(
       VLOG(4) << "don't require any grad, set this scope can reused";
       VLOG(4) << "is_test: " << is_test
               << ", require_any_grad: " << require_any_grad;
-      global_inner_scope->SetCanReuesd(true);
+      global_inner_scope->SetCanReused(true);
       details::GcScope(global_inner_scope);
     } else {
       VLOG(4) << "not test, set this scope can not reused";
-      global_inner_scope->SetCanReuesd(false);
+      global_inner_scope->SetCanReused(false);
     }
   }
 
@@ -582,7 +582,7 @@ inline void RunProgramGradAPI(
                                                    *backward_global_block,
                                                    global_inner_scope);
     VLOG(4) << "after backward gc all vars";
-    global_inner_scope->SetCanReuesd(true);
+    global_inner_scope->SetCanReused(true);
     details::GcScope(global_inner_scope);
   }
 }
@@ -599,9 +599,9 @@ class GradNodeRunProgram : public egr::GradNodeBase {
       // Normally out_scope_vec.size() == 1. for safty, we add for-loop here.
       for (size_t i = 0; i < out_scope_vec->size(); ++i) {
         paddle::framework::Scope *global_inner_scope = out_scope_vec->at(i);
-        global_inner_scope->SetCanReuesd(true);
+        global_inner_scope->SetCanReused(true);
         details::GcScope(global_inner_scope);
-        VLOG(4) << "global_inner_scope SetCanReuesd";
+        VLOG(4) << "global_inner_scope SetCanReused";
       }
     }
   }

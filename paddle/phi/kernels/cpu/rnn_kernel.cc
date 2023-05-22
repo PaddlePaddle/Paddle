@@ -35,17 +35,17 @@ namespace phi {
 template <typename T>
 struct Cell {
   virtual ~Cell() {}
-  virtual void operator()(const CPUContext* dev_ctx,
-                          DenseTensor* input,
-                          const DenseTensor* weight_hh,
-                          const DenseTensor* init_h,
-                          const DenseTensor* init_c,
-                          DenseTensor* last_h,
-                          DenseTensor* last_c,
-                          DenseTensor* last_c_act,
-                          DenseTensor* output,
-                          const DenseTensor* bias_hh,
-                          DenseTensor* weight_hh_gru) const {}
+  virtual void operator()(const CPUContext* dev_ctx UNUSED,
+                          DenseTensor* input UNUSED,
+                          const DenseTensor* weight_hh UNUSED,
+                          const DenseTensor* init_h UNUSED,
+                          const DenseTensor* init_c UNUSED,
+                          DenseTensor* last_h UNUSED,
+                          DenseTensor* last_c UNUSED,
+                          DenseTensor* last_c_act UNUSED,
+                          DenseTensor* output UNUSED,
+                          const DenseTensor* bias_hh UNUSED,
+                          DenseTensor* weight_hh_gru UNUSED) const {}
 };
 
 template <typename T,
@@ -57,13 +57,13 @@ struct SimpleRNNCell : Cell<T> {
                   DenseTensor* input,
                   const DenseTensor* weight_hh,
                   const DenseTensor* init_h,
-                  const DenseTensor* init_c,
-                  DenseTensor* last_h,
-                  DenseTensor* last_c,
-                  DenseTensor* last_c_act,
-                  DenseTensor* output,
-                  const DenseTensor* bias_hh,
-                  DenseTensor* weight_hh_gru) const override {
+                  const DenseTensor* init_c UNUSED,
+                  DenseTensor* last_h UNUSED,
+                  DenseTensor* last_c UNUSED,
+                  DenseTensor* last_c_act UNUSED,
+                  DenseTensor* output UNUSED,
+                  const DenseTensor* bias_hh UNUSED,
+                  DenseTensor* weight_hh_gru UNUSED) const override {
     auto blas = phi::funcs::GetBlas<CPUContext, T>(*dev_ctx);
     auto mat_dim_a =
         phi::funcs::CreateMatrixDescriptor(init_h->dims(), 0, false);
@@ -96,10 +96,10 @@ struct GRUCell : Cell<T> {
                   DenseTensor* input,
                   const DenseTensor* weight_hh,
                   const DenseTensor* init_h,
-                  const DenseTensor* init_c,
-                  DenseTensor* last_h,
+                  const DenseTensor* init_c UNUSED,
+                  DenseTensor* last_h UNUSED,
                   DenseTensor* last_c,
-                  DenseTensor* last_c_act,
+                  DenseTensor* last_c_act UNUSED,
                   DenseTensor* output,
                   const DenseTensor* bias_hh,
                   DenseTensor* weight_hh_gru) const override {
@@ -146,12 +146,12 @@ struct LSTMCell : Cell<T> {
                   const DenseTensor* weight_hh,
                   const DenseTensor* init_h,
                   const DenseTensor* init_c,
-                  DenseTensor* last_h,
+                  DenseTensor* last_h UNUSED,
                   DenseTensor* last_c,
                   DenseTensor* last_c_act,
                   DenseTensor* output,
-                  const DenseTensor* bias_hh,
-                  DenseTensor* weight_hh_gru) const override {
+                  const DenseTensor* bias_hh UNUSED,
+                  DenseTensor* weight_hh_gru UNUSED) const override {
     auto blas = phi::funcs::GetBlas<CPUContext, T>(*dev_ctx);
     auto mat_dim_a =
         phi::funcs::CreateMatrixDescriptor(init_h->dims(), 0, false);

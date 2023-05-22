@@ -535,25 +535,25 @@ class HeterService : public PsService {
   bool IsExit() { return is_exit_; }
 
  private:
-  int32_t stop_profiler(const PsRequestMessage& request,
-                        PsResponseMessage& response,  // NOLINT
-                        brpc::Controller* cntl) {
+  int32_t stop_profiler(const PsRequestMessage& request UNUSED,
+                        PsResponseMessage& response UNUSED,  // NOLINT
+                        brpc::Controller* cntl UNUSED) {
     platform::DisableProfiler(
         platform::EventSortingKey::kDefault,
         string::Sprintf("heter_worker_%s_profile", endpoint_));
     return 0;
   }
 
-  int32_t start_profiler(const PsRequestMessage& request,
-                         PsResponseMessage& response,  // NOLINT
-                         brpc::Controller* cntl) {
+  int32_t start_profiler(const PsRequestMessage& request UNUSED,
+                         PsResponseMessage& response UNUSED,  // NOLINT
+                         brpc::Controller* cntl UNUSED) {
     platform::EnableProfiler(platform::ProfilerState::kAll);
     return 0;
   }
 
   int32_t stop_heter_worker(const PsRequestMessage& request,
-                            PsResponseMessage& response,  // NOLINT
-                            brpc::Controller* cntl) {
+                            PsResponseMessage& response UNUSED,  // NOLINT
+                            brpc::Controller* cntl UNUSED) {
     auto client_id = request.client_id();
     stop_cpu_worker_set_.insert(client_id);
     if (stop_cpu_worker_set_.size() == fan_in_) {

@@ -15,6 +15,9 @@
 
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/common/place.h"
+#ifdef PADDLE_WITH_XPU
+#include "paddle/phi/backends/xpu/xpu_l3_strategy.h"
+#endif
 
 namespace paddle {
 
@@ -46,14 +49,33 @@ class InferGPUContext : public phi::GPUContext {
 };
 #endif
 
-#if defined(PADDLE_WITH_XPU)
+#ifdef PADDLE_WITH_XPU
 class InferXPUContext : public phi::XPUContext {
  public:
   explicit InferXPUContext(const phi::Place& place);
-  using phi::XPUContext::SetDriverVersion;
-  using phi::XPUContext::SetRuntimeVersion;
-  using phi::XPUContext::SetStream;
-  using phi::XPUContext::SetXpuVersion;
+
+  void* Alloc(phi::TensorBase* tensor,
+              phi::DataType dtype,
+              size_t requested_size = 0,
+              bool pinned = false,
+              bool fake_alloc = false) const override;
+
+  void SetL3Info(size_t l3_size, void* l3_ptr, size_t l3_autotune_size);
+
+  void L3CacheAutotune();
+
+ private:
+  size_t l3_size_{0};
+  void* l3_ptr_{nullptr};
+  bool l3_owned_{false};
+  size_t l3_autotune_size_{0};
+  mutable std::vector<phi::XPUL3CacheBlock*> l3_blocks_;
+  mutable std::unordered_map<phi::Allocation*, phi::XPUL3CacheBlock*>
+      holder_l3_blocks_;
+  mutable std::unordered_map<phi::Allocation*,
+                             std::pair<phi::Allocation*, bool>>
+      holder_map_;
+  phi::XPUL3Planner l3_plan_;
 };
 #endif
 }  // namespace paddle

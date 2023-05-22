@@ -1321,7 +1321,7 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
       }
     }
   } else {
-    auto self_numpy = TensorToPyArray(*self_tensor);
+    auto self_numpy = TensorToPyArray(*self_tensor, true);
     VLOG(4) << "parse_index is false";
     if (PyCheckTensor(_index)) {
       VLOG(4) << "index is tensor";
