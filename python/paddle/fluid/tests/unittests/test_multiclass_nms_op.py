@@ -20,8 +20,7 @@ from eager_op_test import OpTest
 
 import paddle
 from paddle import _C_ops
-from paddle.fluid import in_dygraph_mode
-
+from paddle.fluid import core
 from paddle.fluid.layer_helper import LayerHelper
 
 
@@ -43,7 +42,7 @@ def multiclass_nms3(
 
     helper = LayerHelper('multiclass_nms3', **locals())
 
-    if in_dygraph_mode():
+    if paddle.in_dynamic_mode():
         attrs = (
             score_threshold,
             nms_top_k,
