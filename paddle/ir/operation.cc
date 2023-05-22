@@ -118,7 +118,7 @@ void Operation::destroy() {
   }
   reinterpret_cast<Operation *>(base_ptr)->~Operation();
   base_ptr += sizeof(Operation);
-  // 2.3. Deconstruct OpOpOerand.
+  // 2.3. Deconstruct OpOperand.
   for (size_t idx = 0; idx < num_operands_; idx++) {
     reinterpret_cast<detail::OpOperandImpl *>(base_ptr)->~OpOperandImpl();
     base_ptr += sizeof(detail::OpOperandImpl);

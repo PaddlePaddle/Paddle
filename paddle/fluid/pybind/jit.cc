@@ -193,7 +193,7 @@ static PyObject *custom_eval_frame_shim(PyFrameObject *frame, int throw_flag) {
 
 static PyObject *set_eval_frame(PyObject *new_callback, PyThreadState *tstate) {
   // Change the eval frame callback and return the old one
-  //  - None: disables: diable custom callback.
+  //  - None: disables: disable custom callback.
   //  - Python callable(): enables custom callback.
   //  NOTE: Cache is not supported now
   PyObject *old_callback = eval_frame_callback_get();
