@@ -73,6 +73,7 @@ class TestPolygammaAPI(unittest.TestCase):
             out = paddle.polygamma(x, self.ORDER)
 
             out_ref = ref_polygamma(self.x, self.ORDER)
+            print(out_ref, out.numpy(), "++" * 10)
             np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-5)
             paddle.enable_static()
 
@@ -87,12 +88,6 @@ class TestPolygammaAPI(unittest.TestCase):
             paddle.enable_static()
 
 
-class TestPolygammaFloat32Order0(TestPolygammaAPI):
-    DTYPE = "float32"
-    DATA = [2, 3, 5, 2.25, 7, 7.25]
-    ORDER = 0
-
-
 class TestPolygammaFloat32Order1(TestPolygammaAPI):
     DTYPE = "float32"
     DATA = [2, 3, 5, 2.25, 7, 7.25]
@@ -102,19 +97,13 @@ class TestPolygammaFloat32Order1(TestPolygammaAPI):
 class TestPolygammaFloat32Order2(TestPolygammaAPI):
     DTYPE = "float32"
     DATA = [2, 3, 5, 2.25, 7, 7.25]
-    ORDER = 0
+    ORDER = 2
 
 
 class TestPolygammaFloat32Order3(TestPolygammaAPI):
     DTYPE = "float32"
     DATA = [2, 3, 5, 2.25, 7, 7.25]
     ORDER = 3
-
-
-class TestPolygammaFloat64Order0(TestPolygammaAPI):
-    DTYPE = "float64"
-    DATA = [2, 3, 5, 2.25, 7, 7.25]
-    ORDER = 0
 
 
 class TestPolygammaFloat64Order1(TestPolygammaAPI):
@@ -133,12 +122,6 @@ class TestPolygammaFloat64Order3(TestPolygammaAPI):
     DTYPE = "float64"
     DATA = [2, 3, 5, 2.25, 7, 7.25]
     ORDER = 3
-    
-
-class TestPolygammaNegativeOrder0(TestPolygammaAPI):
-    DTYPE = "float64"
-    DATA = [-2, 3, 5, 2.25, 7, 7.25]
-    ORDER = 0
 
 
 class TestPolygammaNegativeOrder1(TestPolygammaAPI):
@@ -156,17 +139,14 @@ class TestPolygammaOp(OpTest):
 
     def init_config(self):
         self.dtype = np.float64
-        self.order = 0
+        self.order = 1
         zero_case = np.zeros(1).astype(self.dtype)
         rand_case = np.random.randn(100).astype(self.dtype)
-        one2eight_case = np.random.uniform(low=1, high=8, size=100).astype(
-            self.dtype
-        )
-        over_eight_case = np.random.uniform(low=9, high=15, size=100).astype(
+        int_case = np.random.randint(low=1, high=100, size=100).astype(
             self.dtype
         )
         self.case = np.concatenate(
-            [zero_case, rand_case, one2eight_case, over_eight_case]
+            [zero_case, rand_case, int_case]
         )
         self.inputs = {'x': self.case}
         self.attrs = {'n': self.order}

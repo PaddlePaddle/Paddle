@@ -67,7 +67,7 @@ static inline T zeta(T x, T q) {
   while ((i < 9) || (a <= T{9.0})) {
     i += 1;
     a += one;
-    b = ::pow(a, -x);
+    b = std::pow(a, -x);
     s += b;
     if ((-MACHEP * s < b) && (b < MACHEP * s)) {
       return static_cast<T>(s);
