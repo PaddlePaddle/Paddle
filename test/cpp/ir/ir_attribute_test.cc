@@ -45,7 +45,7 @@ TEST(attribute_test, attribute_base) {
 
 TEST(attribute_test, built_in_attribute) {
   ir::IrContext *ctx = ir::IrContext::Instance();
-  // Test 1: Test the parameteric built-in attribute of IrContext.
+  // Test 1: Test the parametric built-in attribute of IrContext.
   std::string str_tmp = "string_a";
   ir::Attribute string_attr_1 = ir::StrAttribute::get(ctx, str_tmp);
   ir::Attribute string_attr_2 = ir::StrAttribute::get(ctx, str_tmp);

@@ -19,10 +19,10 @@
 
 namespace paddle {
 namespace dialect {
-#define GET_PADDLE_TYPE_LIST paddle::dialect::DenseTensorType
+#define GET_PD_DIALECT_TYPE_LIST paddle::dialect::DenseTensorType
 
 ///
-/// \brief Define built-in parameteric types.
+/// \brief Define built-in parametric types.
 ///
 class DenseTensorType : public ir::Type {
  public:
