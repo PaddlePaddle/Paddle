@@ -390,11 +390,6 @@ class HybridCommunicateGroup:
     def _set_four_directions_p2p_group(self):
         comm_lists = self._topo.get_comm_list('pipe')
 
-        self.send_next_group = None
-        self.send_prev_group = None
-        self.recv_next_group = None
-        self.recv_prev_group = None
-
         for comm_ranks in comm_lists:
             assert len(comm_ranks) == self._pp_degree
             for idx, rank in enumerate(comm_ranks):
@@ -402,27 +397,9 @@ class HybridCommunicateGroup:
                 next_rank = comm_ranks[(idx + 1) % self._pp_degree]
                 prev_rank = comm_ranks[(idx - 1) % self._pp_degree]
 
-                next_group = paddle.distributed.new_group(
-                    ranks=[curr_rank, next_rank]
-                )
                 if self.global_rank == curr_rank:
-                    self.send_next_group = next_group
-                elif self.global_rank == next_rank:
-                    self.recv_prev_group = next_group
-
-                prev_group = paddle.distributed.new_group(
-                    ranks=[prev_rank, curr_rank]
-                )
-
-                if self.global_rank == curr_rank:
-                    self.send_prev_group = prev_group
-                elif self.global_rank == prev_rank:
-                    self.recv_next_group = prev_group
-
-        assert self.send_next_group is not None
-        assert self.send_prev_group is not None
-        assert self.recv_next_group is not None
-        assert self.recv_prev_group is not None
+                    self.next_rank = next_rank
+                    self.prev_rank = prev_rank
 
     def topology(self):
         return self._topo
@@ -491,17 +468,6 @@ class HybridCommunicateGroup:
 
     def get_pipe_parallel_group(self):
         return self._pp_comm_group
-
-    def get_p2p_groups(self):
-        assert (
-            _use_four_directions
-        ), "If you want to use four directions p2p group, set the environment variable PADDLE_USE_FOUR_DIRECTIONS_P2P to True."
-        return (
-            self.send_next_group,
-            self.send_prev_group,
-            self.recv_next_group,
-            self.recv_prev_group,
-        )
 
     # sharding parallel message:
     def _get_sharding_parallel_id(self):
