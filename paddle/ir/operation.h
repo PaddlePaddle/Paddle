@@ -21,10 +21,7 @@
 #include "paddle/ir/value_impl.h"
 
 namespace ir {
-template <class ConcreteTrait>
-class OpTraitBase;
-template <typename ConcreteInterface>
-class OpInterfaceBase;
+class OpBase;
 class Program;
 
 class alignas(8) Operation final {
@@ -94,25 +91,15 @@ class alignas(8) Operation final {
   template <typename T, typename Enabler = void>
   struct CastUtil {
     static T call(const Operation *op) {
-      throw("Can't dyn_cast to T, T should be a Trait or Interface");
+      throw("Can't dyn_cast to T, T should be a Op or Trait or Interface");
     }
   };
+
   template <typename T>
-  struct CastUtil<T,
-                  typename std::enable_if<
-                      std::is_base_of<OpTraitBase<T>, T>::value>::type> {
-    static T call(const Operation *op) {
-      return T(op->HasTrait<T>() ? op : nullptr);
-    }
-  };
-  template <typename T>
-  struct CastUtil<T,
-                  typename std::enable_if<
-                      std::is_base_of<OpInterfaceBase<T>, T>::value>::type> {
-    static T call(const Operation *op) {
-      typename T::Concept *interface_impl = op->op_info().GetInterfaceImpl<T>();
-      return interface_impl ? T(op, interface_impl) : T(nullptr, nullptr);
-    }
+  struct CastUtil<
+      T,
+      typename std::enable_if<std::is_base_of<OpBase, T>::value>::type> {
+    static T call(const Operation *op) { return T::dyn_cast(op); }
   };
 
   AttributeMap attribute_;

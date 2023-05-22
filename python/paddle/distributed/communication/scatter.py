@@ -108,7 +108,7 @@ def scatter_object_list(
             # [{'bar': [4, 5, 6]}] (2 GPUs, out for rank 1)
     """
     assert (
-        framework.in_dygraph_mode()
+        framework.in_dynamic_mode()
     ), "scatter_object_list doesn't support static graph mode."
 
     rank = dist.get_rank()
