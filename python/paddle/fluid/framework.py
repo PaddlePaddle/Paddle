@@ -2637,11 +2637,11 @@ class OpProtoHolder:
         Returns(framework_pb2.OpProto): The OpProto
 
         """
-        op_protos = get_all_op_protos()
-        if len(self.op_proto_map) != len(op_protos):
-            self.op_proto_map = {}
-            for proto in op_protos:
-                self.op_proto_map[proto.type] = proto
+        # op_protos = get_all_op_protos()
+        # if len(self.op_proto_map) != len(op_protos):
+        #     self.op_proto_map = {}
+        #     for proto in op_protos:
+        #         self.op_proto_map[proto.type] = proto
 
         if type not in self.op_proto_map:
             raise ValueError("Operator \"%s\" has not been registered." % type)
