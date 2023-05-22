@@ -1306,10 +1306,9 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
 
     if dtype is None:
         for val in [start, end, step]:
-            if not isinstance(val, int) and isinstance(val, Variable):
-                if not paddle.to_tensor(val).is_integer():
-                    dtype = paddle.get_default_dtype()
-                    break
+            if isinstance(val, Variable) and not val.is_integer():
+                dtype = paddle.get_default_dtype()
+                break
             elif not isinstance(val, int) and not isinstance(val, Variable):
                 dtype = paddle.get_default_dtype()
                 break
