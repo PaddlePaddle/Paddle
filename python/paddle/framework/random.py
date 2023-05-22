@@ -13,6 +13,7 @@
 # limitations under the License.
 
 # TODO: define random api
+import paddle
 from paddle import fluid
 from paddle.fluid import core
 
@@ -48,7 +49,18 @@ def seed(seed):
     elif core.is_compiled_with_xpu():
         for i in range(core.get_xpu_device_count()):
             core.default_xpu_generator(i).manual_seed(seed)
-
+    place = fluid.framework._current_expected_place()
+    if isinstance(place, core.CustomPlace):
+        dev_cnt = sum(
+            [
+                place.get_device_type() == s.split(':')[0]
+                for s in core.get_available_custom_device()
+            ]
+        )
+        for i in range(dev_cnt):
+            core.default_custom_device_generator(
+                core.CustomPlace(place.get_device_type(), i)
+            ).manual_seed(seed)
     return core.default_cpu_generator().manual_seed(seed)
 
 
@@ -70,7 +82,7 @@ def get_rng_state(device=None):
     if device is None:
         place = fluid.framework._current_expected_place()
     else:
-        place = device._convert_to_place(device)
+        place = paddle.device._convert_to_place(device)
 
     if isinstance(place, core.CPUPlace):
         state_list.append(core.default_cpu_generator().get_state())
@@ -80,6 +92,19 @@ def get_rng_state(device=None):
     elif isinstance(place, core.XPUPlace):
         for i in range(core.get_xpu_device_count()):
             state_list.append(core.default_xpu_generator(i).get_state())
+    elif isinstance(place, core.CustomPlace):
+        dev_cnt = sum(
+            [
+                place.get_device_type() == s.split(':')[0]
+                for s in core.get_available_custom_device()
+            ]
+        )
+        for i in range(dev_cnt):
+            state_list.append(
+                core.default_custom_device_generator(
+                    core.CustomPlace(place.get_device_type(), i)
+                ).get_state()
+            )
     else:
         raise ValueError(
             "get_rng_state is not implemented for current device: {}".format(
@@ -157,6 +182,21 @@ def set_rng_state(state_list, device=None):
             )
         for i in range(core.get_xpu_device_count()):
             core.default_xpu_generator(i).set_state(state_list[i])
+    elif isinstance(place, core.CustomPlace):
+        dev_cnt = sum(
+            [
+                place.get_device_type() == s.split(':')[0]
+                for s in core.get_available_custom_device()
+            ]
+        )
+        if not len(state_list) == dev_cnt:
+            raise ValueError(
+                f"Length of custom device state list shoule be equal to the {place.get_dtype_type()} device count"
+            )
+        for i in range(dev_cnt):
+            core.default_custom_device_generator(
+                core.CustomPlace(place.get_device_type(), i)
+            ).set_state(state_list[i])
     elif isinstance(place, core.CPUPlace):
         if not len(state_list) == 1:
             raise ValueError("Length of cpu state list shoule be equal to 1")

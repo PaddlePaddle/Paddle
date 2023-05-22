@@ -37,7 +37,7 @@ class PyRNNBase:
     def forward(self):
         for step_id in range(self.x.shape[0]):
             self.step(step_id, self.x[step_id])
-        return np.array([np.mean(self.y)])
+        return np.mean(self.y)
 
     def segment_inputs(self):
         return [self.x[i] for i in range(self.x.shape[0])]
@@ -239,7 +239,7 @@ class RecurrentOpTest1(unittest.TestCase):
 
                 f[...] = o
                 dout_dfeed = (y_pos - y_neg) / (delta * 2)
-                g[...] = dout_dfeed[0]
+                g[...] = dout_dfeed
 
         return grad_list
 

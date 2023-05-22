@@ -36,7 +36,7 @@ namespace operators {
 template <typename T>
 using Vector = phi::Vector<T>;
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class ShuffleBatchKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
@@ -122,7 +122,7 @@ class ShuffleBatchKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class ShuffleBatchGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {

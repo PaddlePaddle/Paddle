@@ -24,9 +24,9 @@
 #include <vector>
 
 #include "glog/logging.h"
+#include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/os_info.h"
 #include "paddle/fluid/platform/profiler/utils.h"
-#include "paddle/phi/core/flags.h"
 
 DECLARE_bool(use_stream_safe_cuda_allocator);
 PADDLE_DEFINE_EXPORTED_string(static_executor_perfstat_filepath,
@@ -181,8 +181,8 @@ void StatisticsEngine::InitStdEvents() {
   names_.push_back("CplusplusEnd");
   name2idx_["RunOp"] = names_.size();
   names_.push_back("RunOp");
-  name2idx_["LuanchKernel"] = names_.size();
-  names_.push_back("LuanchKernel");
+  name2idx_["LaunchKernel"] = names_.size();
+  names_.push_back("LaunchKernel");
   name2idx_["OpCompute"] = names_.size();
   names_.push_back("OpCompute");
   name2idx_["OpInfershape"] = names_.size();
@@ -227,7 +227,7 @@ void StatisticsEngine::InitInnerthreadPriorityForStdEvents() {
 
 void StatisticsEngine::InitInterthreadPriorityForStdEvents() {
   int prio = 0;
-  priorities_[name2idx_["LuanchKernel"]].interthread_priority = ++prio;
+  priorities_[name2idx_["LaunchKernel"]].interthread_priority = ++prio;
   priorities_[name2idx_["AllocateDeviceMem"]].interthread_priority = ++prio;
   priorities_[name2idx_["FreeDeviceMem"]].interthread_priority = ++prio;
   priorities_[name2idx_["ThreadpoolAddTask"]].interthread_priority = ++prio;
@@ -459,11 +459,11 @@ int StatisticsEngine::Stat(const platform::NodeTrees& trees) {
   python_end.total_time = totol.total_time - cplusplus_end.total_time;
   python_end.count = cplusplus_end.count + 1;
 
-  auto& luanch_kernel = statistics_[name2idx_["LuanchKernel"]];
+  auto& launch_kernel = statistics_[name2idx_["LaunchKernel"]];
   const auto& op_compute = statistics_[name2idx_["OpCompute"]];
   const auto& allocate = statistics_[name2idx_["AllocateDeviceMem"]];
-  luanch_kernel.total_time = op_compute.total_time - allocate.total_time;
-  luanch_kernel.count = op_compute.count;
+  launch_kernel.total_time = op_compute.total_time - allocate.total_time;
+  launch_kernel.count = op_compute.count;
 
   if (executor_type_ != ExecutorType::EXECUTOR &&
       statistics_[name2idx_["ThreadpoolAddTask"]].count == 0) {
@@ -536,7 +536,7 @@ int StatisticsEngine::MergeInnerthreadEvents(
       if (names_[evt.evt_idx] == "Total") {
         evt.evt_idx = name2idx_["PythonEnd"];
       } else if (names_[evt.evt_idx] == "OpCompute") {
-        evt.evt_idx = name2idx_["LuanchKernel"];
+        evt.evt_idx = name2idx_["LaunchKernel"];
       }
     }
   }

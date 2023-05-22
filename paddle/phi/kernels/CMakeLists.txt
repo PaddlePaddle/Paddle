@@ -111,10 +111,17 @@ file(
   "gpu/*.cu.cc"
   "gpudnn/*.cu"
   "kps/*.cu"
+  "legacy/kps/*.cu"
+  "legacy/gpu/*.cu"
   "selected_rows/gpu/*.cu"
   "sparse/gpu/*.cu"
   "strings/gpu/*.cu"
   "fusion/gpu/*.cu")
+
+if(DEFINED REDUCE_INFERENCE_LIB_SIZE)
+  list(FILTER kernel_cu EXCLUDE REGEX ".*_grad_kernel\\.cc$")
+  list(FILTER kernel_cu EXCLUDE REGEX ".*_grad_kernel\\.cu$")
+endif()
 
 if(WITH_CUTLASS)
   execute_process(
@@ -146,12 +153,19 @@ if(WITH_CUTLASS)
   list(APPEND kernel_cu ${cutlass_cu})
 endif()
 
+if(APPLE OR WIN32)
+  list(REMOVE_ITEM kernel_cu
+       "${CMAKE_CURRENT_SOURCE_DIR}/fusion/gpu/fusion_group_kernel.cu")
+endif()
+
 if(WITH_MKLDNN)
   file(
     GLOB
     kernel_cc
     "*.cc"
     "cpu/*.cc"
+    "legacy/*.cc"
+    "legacy/cpu/*.cc"
     "selected_rows/*.cc"
     "selected_rows/cpu/*.cc"
     "sparse/*.cc"
@@ -168,6 +182,8 @@ else()
     kernel_cc
     "*.cc"
     "cpu/*.cc"
+    "legacy/*.cc"
+    "legacy/cpu/*.cc"
     "selected_rows/*.cc"
     "selected_rows/cpu/*.cc"
     "sparse/*.cc"
@@ -178,7 +194,18 @@ else()
     "fusion/cpu/*.cc")
 endif()
 
-file(GLOB kernel_xpu "xpu/*.cc" "selected_rows/xpu/*.cc" "fusion/xpu/*.cc")
+if(DEFINED REDUCE_INFERENCE_LIB_SIZE)
+  list(FILTER kernel_cc EXCLUDE REGEX ".*_grad_kernel\\.cc$")
+endif()
+
+file(
+  GLOB
+  kernel_xpu
+  "xpu/*.cc"
+  "legacy/xpu/*.cc"
+  "selected_rows/xpu/*.cc"
+  "fusion/xpu/*.cc"
+  "sparse/xpu/*.cc")
 
 if(WITH_MKLDNN)
   set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} get_kerneltype_forvar_utils)
@@ -201,6 +228,8 @@ elseif(WITH_XPU)
   if(WITH_XPU_KP)
     file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/kps/
          DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/kps/)
+    file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/legacy/kps/
+         DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/kps/)
     file(GLOB kernel_xpu_kps "${CMAKE_CURRENT_BINARY_DIR}/kps/*.cu")
     foreach(kernel ${kernel_xpu_kps})
       get_filename_component(name ${kernel} NAME_WE)
@@ -212,6 +241,8 @@ elseif(WITH_XPU)
       RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
       "*.cc"
       "cpu/*.cc"
+      "legacy/*.cc"
+      "legacy/cpu/*.cc"
       "selected_rows/*.cc"
       "selected_rows/cpu/*.cc"
       "sparse/*.cc"

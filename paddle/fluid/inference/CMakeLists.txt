@@ -13,10 +13,6 @@
 # limitations under the License.
 #
 
-if(WITH_TESTING)
-  include(tests/test.cmake) # some generic cmake function for inference
-endif()
-
 cc_library(
   paddle_inference_io
   SRCS io.cc
@@ -91,10 +87,6 @@ endif()
 # C inference API
 add_subdirectory(capi_exp)
 
-if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
-  add_subdirectory(tests/api)
-endif()
-
 set(SHARED_INFERENCE_SRCS
     io.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/../framework/data_feed.cc
@@ -106,8 +98,7 @@ set(SHARED_INFERENCE_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/api/analysis_predictor.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/api/paddle_infer_contrib.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/api/details/zero_copy_tensor.cc
-    ${CMAKE_CURRENT_SOURCE_DIR}/utils/io_utils.cc
-    ${PADDLE_CUSTOM_OP_SRCS})
+    ${CMAKE_CURRENT_SOURCE_DIR}/utils/io_utils.cc)
 
 # shared inference library deps
 list(REMOVE_ITEM fluid_modules standalone_executor
@@ -159,6 +150,14 @@ if(NOT APPLE AND NOT WIN32)
   # TODO(liuyiqun): Temporarily disable the link flag because it is not support on Mac.
   set(LINK_FLAGS
       "-Wl,--version-script ${CMAKE_CURRENT_SOURCE_DIR}/paddle_inference.map")
+
+  # temporarily fix brpc double link issue(52842)
+  if(WITH_INFERENCE_API_TEST
+     AND (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+     AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 10.4)
+    set(LINK_FLAGS "${LINK_FLAGS} -Wl,-Bsymbolic")
+  endif()
+
   set_target_properties(paddle_inference_shared PROPERTIES LINK_FLAGS
                                                            "${LINK_FLAGS}")
   # check symbol hidden

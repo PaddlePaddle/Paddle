@@ -58,8 +58,8 @@ class AssertOp : public framework::OperatorBase {
                                 "Input(Condition) of AssertOp is not found."));
     const phi::DenseTensor &cond = cond_var_ptr->Get<phi::DenseTensor>();
     PADDLE_ENFORCE_EQ(
-        cond.dims(),
-        phi::make_ddim({1}),
+        cond.numel(),
+        1,
         platform::errors::InvalidArgument(
             "The numel of Input(Condition) of AssertOp must be 1. But now "
             "the Condition's shape is %s.",

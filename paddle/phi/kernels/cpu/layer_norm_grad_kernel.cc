@@ -30,7 +30,7 @@ template <typename T, typename Context>
 void LayerNormGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const paddle::optional<DenseTensor>& scale_opt,
-                         const paddle::optional<DenseTensor>& bias_opt,
+                         const paddle::optional<DenseTensor>& bias_opt UNUSED,
                          const DenseTensor& mean,
                          const DenseTensor& variance,
                          const DenseTensor& out_grad,
@@ -68,20 +68,15 @@ void LayerNormGradKernel(const Context& dev_ctx,
     temp_norm.Resize(matrix_shape);
     dev_ctx.template Alloc<T>(&temp_norm);
     // get x_norm
-    phi::funcs::ElementwiseCompute<funcs::SubtractFunctor<T>, T, T>(
-        dev_ctx,
-        x_tmp,
-        mean,
-        /*axis*/ 0,
-        funcs::SubtractFunctor<T>(),
-        &temp_norm);
-    phi::funcs::ElementwiseCompute<funcs::DivAndSqrtFunctor<T>, T, T>(
+    phi::funcs::ElementwiseCompute<funcs::SubtractFunctor<T>, T>(
+        dev_ctx, x_tmp, mean, funcs::SubtractFunctor<T>(), &temp_norm, 0);
+    phi::funcs::ElementwiseCompute<funcs::DivAndSqrtFunctor<T>, T>(
         dev_ctx,
         temp_norm,
         variance,
-        /*axis*/ 0,
         funcs::DivAndSqrtFunctor<T>(static_cast<T>(epsilon)),
-        &temp_norm);
+        &temp_norm,
+        0);
   }
 
   if (d_bias) {
@@ -90,8 +85,8 @@ void LayerNormGradKernel(const Context& dev_ctx,
   }
   if (d_scale) {
     dev_ctx.template Alloc<T>(d_scale);
-    phi::funcs::ElementwiseCompute<funcs::MultiplyFunctor<T>, T, T>(
-        dev_ctx, temp_norm, d_y, 0, funcs::MultiplyFunctor<T>(), &temp);
+    phi::funcs::ElementwiseCompute<funcs::MultiplyFunctor<T>, T>(
+        dev_ctx, temp_norm, d_y, funcs::MultiplyFunctor<T>(), &temp, 0);
     colwise_sum(dev_ctx, temp, d_scale);
   }
 
@@ -107,70 +102,45 @@ void LayerNormGradKernel(const Context& dev_ctx,
 
     if (d_scale) {
       // dy_dx
-      phi::funcs::ElementwiseCompute<funcs::MultiplyFunctor<T>, T, T>(
-          dev_ctx, d_y, *scale, /*axis*/ 1, funcs::MultiplyFunctor<T>(), &temp);
+      phi::funcs::ElementwiseCompute<funcs::MultiplyFunctor<T>, T>(
+          dev_ctx, d_y, *scale, funcs::MultiplyFunctor<T>(), &temp, 1);
       phi::Copy<Context>(dev_ctx, temp, dev_ctx.GetPlace(), false, d_x);
 
       // dy_dmean_dx
       row_mean(dev_ctx, temp, &temp_vec);
-      phi::funcs::ElementwiseCompute<funcs::SubtractFunctor<T>, T, T>(
-          dev_ctx,
-          *d_x,
-          temp_vec,
-          /*axis*/ 0,
-          funcs::SubtractFunctor<T>(),
-          d_x);
+      phi::funcs::ElementwiseCompute<funcs::SubtractFunctor<T>, T>(
+          dev_ctx, *d_x, temp_vec, funcs::SubtractFunctor<T>(), d_x, 0);
 
       // dy_var_dx
-      phi::funcs::ElementwiseCompute<funcs::MultiplyFunctor<T>, T, T>(
-          dev_ctx,
-          temp,
-          temp_norm,
-          /*axis*/ 0,
-          funcs::MultiplyFunctor<T>(),
-          &temp);
+      phi::funcs::ElementwiseCompute<funcs::MultiplyFunctor<T>, T>(
+          dev_ctx, temp, temp_norm, funcs::MultiplyFunctor<T>(), &temp, 0);
     } else {
       // dy_dx
       phi::Copy<Context>(dev_ctx, d_y, dev_ctx.GetPlace(), false, d_x);
 
       // dy_dmean_dx
       row_mean(dev_ctx, d_y, &temp_vec);
-      phi::funcs::ElementwiseCompute<funcs::SubtractFunctor<T>, T, T>(
-          dev_ctx,
-          *d_x,
-          temp_vec,
-          /*axis*/ 0,
-          funcs::SubtractFunctor<T>(),
-          d_x);
+      phi::funcs::ElementwiseCompute<funcs::SubtractFunctor<T>, T>(
+          dev_ctx, *d_x, temp_vec, funcs::SubtractFunctor<T>(), d_x, 0);
 
       // dy_var_dx
-      phi::funcs::ElementwiseCompute<funcs::MultiplyFunctor<T>, T, T>(
-          dev_ctx,
-          d_y,
-          temp_norm,
-          /*axis*/ 0,
-          funcs::MultiplyFunctor<T>(),
-          &temp);
+      phi::funcs::ElementwiseCompute<funcs::MultiplyFunctor<T>, T>(
+          dev_ctx, d_y, temp_norm, funcs::MultiplyFunctor<T>(), &temp, 0);
     }
     // dy_var_dx
     row_mean(dev_ctx, temp, &temp_vec);
-    phi::funcs::ElementwiseCompute<funcs::MultiplyFunctor<T>, T, T>(
-        dev_ctx,
-        temp_norm,
-        temp_vec,
-        /*axis*/ 0,
-        funcs::MultiplyFunctor<T>(),
-        &temp);
-    phi::funcs::ElementwiseCompute<funcs::SubtractFunctor<T>, T, T>(
-        dev_ctx, *d_x, temp, /*axis*/ 0, funcs::SubtractFunctor<T>(), d_x);
+    phi::funcs::ElementwiseCompute<funcs::MultiplyFunctor<T>, T>(
+        dev_ctx, temp_norm, temp_vec, funcs::MultiplyFunctor<T>(), &temp, 0);
+    phi::funcs::ElementwiseCompute<funcs::SubtractFunctor<T>, T>(
+        dev_ctx, *d_x, temp, funcs::SubtractFunctor<T>(), d_x, 0);
 
-    phi::funcs::ElementwiseCompute<funcs::DivAndSqrtFunctor<T>, T, T>(
+    phi::funcs::ElementwiseCompute<funcs::DivAndSqrtFunctor<T>, T>(
         dev_ctx,
         *d_x,
         variance,
-        /*axis*/ 0,
         funcs::DivAndSqrtFunctor<T>(static_cast<T>(epsilon)),
-        d_x);
+        d_x,
+        0);
     d_x->Resize(dx_dim);
   }
 }

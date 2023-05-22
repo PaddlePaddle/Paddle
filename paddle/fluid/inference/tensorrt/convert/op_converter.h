@@ -56,8 +56,9 @@ class OpConverter {
 
     OpConverter* it{nullptr};
 
-    auto op_converter_type_map = OpTeller::Global().GetOpConverterTypeMap();
-    switch (op_converter_type_map.at(op_desc.Type())) {
+    auto converter_type = static_cast<OpConverterType>(
+        PADDLE_GET_CONST(int, op_desc.GetAttr("converter_type")));
+    switch (converter_type) {
       case OpConverterType::Default:
         if (op_desc.Type().find("elementwise") != std::string::npos) {
           static std::unordered_set<std::string> add_tensor_op_set{
@@ -276,7 +277,7 @@ class OpConverter {
     }
   }
 
-  // The scope  here should be inited with the parameter vars.
+  // The scope here should be inited with the parameter vars.
   void ConvertBlockToTRTEngine(
       framework::BlockDesc* block_desc,
       const framework::Scope& scope,
@@ -285,9 +286,14 @@ class OpConverter {
       const std::vector<std::string>& outputs,
       TensorRTEngine* engine) {
     engine->InitNetwork();
-    bool all_dynamic_shape_set = true;
-    for (auto& input : inputs) {
+    for (auto input : inputs) {
       if (parameters.count(input)) continue;
+      // NOTE(liuyuanle): It is a trick. If you need a name [input], then you
+      // need to use [input.substr(0, idx)].
+      // Maybe we insert suffix of "_cast.tmp_" in auto_mixed_precision_pass.
+      auto idx = input.find("_cast.tmp_");
+      input = input.substr(0, idx);
+
       auto* var = block_desc->FindVar(input);
       PADDLE_ENFORCE_NOT_NULL(
           var,
@@ -298,6 +304,13 @@ class OpConverter {
           FluidDT::VarType_Type_LOD_TENSOR,
           platform::errors::InvalidArgument("TensorRT engine only takes "
                                             "LoDTensor as input"));
+      nvinfer1::DataType in_dtype = FluidDataType2TRT(var->GetDataType());
+      if (engine->WithFp16() && !engine->WithInt8() &&
+          in_dtype == nvinfer1::DataType::kFLOAT &&
+          engine->EnableLowPrecisionIO()) {
+        in_dtype = nvinfer1::DataType::kHALF;
+      }
+
       auto var_shape = var->GetShape();
       if (engine->with_dynamic_shape()) {
 #if IS_TRT_VERSION_GE(6000)
@@ -305,13 +318,7 @@ class OpConverter {
         auto max_input_shape = engine->max_input_shape()[input];
         auto optim_input_shape = engine->optim_input_shape()[input];
         size_t ranks = min_input_shape.size();
-        if (ranks == 0) {
-          all_dynamic_shape_set = false;
-          LOG(INFO) << "trt input [" << input.c_str()
-                    << "] dynamic shape info not set, please check and retry.";
-          // check other input
-          continue;
-        }
+
         std::vector<int64_t> input_shape;
         // input_shape.push_back(-1);
         for (size_t i = 0; i < ranks; i++) {
@@ -328,26 +335,14 @@ class OpConverter {
           }
         }
         engine->DeclareInput(
-            input,
-            FluidDataType2TRT(
-                var->Proto()->type().lod_tensor().tensor().data_type()),
-            Vec2TRT_Dims(input_shape, input, true));
+            input, in_dtype, Vec2TRT_Dims(input_shape, input, true));
 #endif
       } else {
-        engine->DeclareInput(
-            input,
-            FluidDataType2TRT(
-                var->Proto()->type().lod_tensor().tensor().data_type()),
-            Vec2TRT_Dims(var_shape, input));
-        VLOG(1) << "Set trt input [" << input << "] type is "
-                << var->Proto()->type().lod_tensor().tensor().data_type();
+        engine->DeclareInput(input, in_dtype, Vec2TRT_Dims(var_shape, input));
       }
+      VLOG(1) << "set trt engine input dtype " << static_cast<int>(in_dtype);
     }
-    PADDLE_ENFORCE_EQ(all_dynamic_shape_set,
-                      true,
-                      platform::errors::InvalidArgument(
-                          "some trt inputs dynamic shape info not set, "
-                          "check the INFO log above for more details."));
+
     framework::proto::BlockDesc* block_proto = block_desc->Proto();
     ConvertBlock(*block_proto, parameters, scope, engine);
 
@@ -362,12 +357,14 @@ class OpConverter {
           FluidDT::VarType_Type_LOD_TENSOR,
           platform::errors::InvalidArgument(
               "The output tensor in TensorRT subgraph should be LoDTensor"));
-      engine->DeclareOutput(
-          output,
-          FluidDataType2TRT(
-              var->Proto()->type().lod_tensor().tensor().data_type()));
-      VLOG(6) << "DeclareOutput(name: " << output << ", dtype: "
-              << var->Proto()->type().lod_tensor().tensor().data_type() << ")";
+      nvinfer1::DataType out_dtype = FluidDataType2TRT(var->GetDataType());
+      if (engine->WithFp16() && !engine->WithInt8() &&
+          out_dtype == nvinfer1::DataType::kFLOAT &&
+          engine->EnableLowPrecisionIO()) {
+        out_dtype = nvinfer1::DataType::kHALF;
+      }
+      engine->DeclareOutput(output, out_dtype);
+      VLOG(1) << "set trt engine output dtype " << static_cast<int>(out_dtype);
     }
 
     engine->FreezeNetwork();
@@ -404,13 +401,11 @@ class OpConverter {
   }
 
   nvinfer1::ITensor* Reshape(nvinfer1::ITensor* input,
-                             nvinfer1::ITensor* newShape) {
-    nvinfer1::ITensor* oldShape = Shape(input);
-    if (oldShape == newShape) {
-      return input;
-    }
+                             nvinfer1::ITensor* newShape,
+                             const std::string& name = "reshape") {
     auto* shuffle = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
     shuffle->setInput(1, *newShape);
+    shuffle->setName(name.c_str());
     return shuffle->getOutput(0);
   }
 

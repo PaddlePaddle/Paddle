@@ -1933,6 +1933,8 @@ class TestLeakyRelu(TestActivation):
     def setUp(self):
         self.op_type = "leaky_relu"
         self.python_api = paddle.nn.functional.leaky_relu
+        self.public_python_api = paddle.nn.functional.leaky_relu
+        self.prim_op_type = "comp"
         self.init_dtype()
         self.init_shape()
         alpha = self.get_alpha()
@@ -1948,10 +1950,13 @@ class TestLeakyRelu(TestActivation):
         self.attrs = {'alpha': alpha}
         self.convert_input_output()
 
+    def test_check_output(self):
+        self.check_output(check_prim=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestLeakyReluAlpha1(TestLeakyRelu):
@@ -1972,6 +1977,26 @@ class TestLeakyReluAlpha3(TestLeakyRelu):
 class TestLeakyRelu_ZeroDim(TestLeakyRelu):
     def init_shape(self):
         self.shape = []
+
+    def setUp(self):
+        self.op_type = "leaky_relu"
+        self.prim_op_type = "comp"
+        self.enable_cinn = False
+        self.python_api = paddle.nn.functional.leaky_relu
+        self.public_python_api = paddle.nn.functional.relu
+        self.init_dtype()
+        self.init_shape()
+        alpha = self.get_alpha()
+
+        np.random.seed(1024)
+        x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        # The same reason with TestAbs
+        x[np.abs(x) < 0.005] = 0.05
+        out = ref_leaky_relu(x, alpha)
+
+        self.inputs = {'X': x}
+        self.outputs = {'Out': out}
+        self.attrs = {'alpha': alpha}
 
 
 class TestLeakyReluAPI(unittest.TestCase):
@@ -2058,7 +2083,6 @@ class TestGeluApproximate(TestActivation):
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
         out = gelu(x, approximate)
-        self.enable_cinn = False
 
         self.inputs = {'X': x}
         self.outputs = {'Out': out}
@@ -2068,6 +2092,9 @@ class TestGeluApproximate(TestActivation):
         # cpu device, lower threshold to support 1e-8 for pass the unittest
         self.rev_comp_rtol = 1e-8
         self.rev_comp_atol = 1e-8
+        # Cumulative error occurs between comp and cinn, so that we also set cinn_rtol to 1e-8 as rev_comp_rtol = 1e-8
+        self.cinn_rtol = 1e-8
+        self.cinn_atol = 1e-8
 
     def test_check_output(self):
         self.check_output(check_prim=True)
@@ -2100,9 +2127,12 @@ class TestGelu(TestActivation):
         # cpu, lower threshold to support 1e-8 for pass the unittest
         self.rev_comp_rtol = 1e-8
         self.rev_comp_atol = 1e-8
+        # Cumulative error occurs between comp and cinn, so that we also set cinn_rtol to 1e-8 as rev_comp_rtol = 1e-8
+        self.cinn_rtol = 1e-8
+        self.cinn_atol = 1e-8
 
     def if_enable_cinn(self):
-        self.enable_cinn = False
+        pass
 
     def test_check_output(self):
         self.check_output(check_prim=True)
@@ -4003,9 +4033,11 @@ create_test_act_fp16_class(TestRelu, check_prim=True)
 create_test_act_fp16_class(
     TestGelu,
     check_prim=True,
-    enable_cinn=False,
+    enable_cinn=True,
     rev_comp_rtol=1e-3,
     rev_comp_atol=1e-3,
+    cinn_rtol=1e-3,
+    cinn_atol=1e-3,
 )
 create_test_act_fp16_class(TestBRelu)
 create_test_act_fp16_class(TestRelu6)
@@ -4031,11 +4063,13 @@ create_test_act_fp16_class(TestHardSigmoid)
 create_test_act_fp16_class(TestSwish)
 create_test_act_fp16_class(TestHardSwish, check_prim=True)
 create_test_act_fp16_class(TestMish)
-create_test_act_fp16_class(TestLeakyRelu)
-create_test_act_fp16_class(TestLeakyReluAlpha1)
-create_test_act_fp16_class(TestLeakyReluAlpha2)
-create_test_act_fp16_class(TestLeakyReluAlpha3)
-create_test_act_fp16_class(TestLeakyRelu_ZeroDim)
+create_test_act_fp16_class(TestLeakyRelu, check_prim=True)
+create_test_act_fp16_class(TestLeakyReluAlpha1, check_prim=True)
+create_test_act_fp16_class(TestLeakyReluAlpha2, check_prim=True)
+create_test_act_fp16_class(TestLeakyReluAlpha3, check_prim=True)
+create_test_act_fp16_class(
+    TestLeakyRelu_ZeroDim, check_prim=True, enable_cinn=False
+)
 create_test_act_fp16_class(TestRsqrt)
 
 
@@ -4114,9 +4148,11 @@ create_test_act_bf16_class(TestRelu, check_prim=True)
 create_test_act_bf16_class(
     TestGelu,
     check_prim=True,
-    enable_cinn=False,
+    enable_cinn=True,
     rev_comp_rtol=1e-2,
     rev_comp_atol=1e-2,
+    cinn_rtol=1e-2,
+    cinn_atol=1e-2,
 )
 create_test_act_bf16_class(TestBRelu)
 create_test_act_bf16_class(TestRelu6)
@@ -4142,11 +4178,19 @@ create_test_act_bf16_class(TestHardSigmoid)
 create_test_act_bf16_class(TestSwish)
 create_test_act_bf16_class(TestHardSwish, check_prim=True)
 create_test_act_bf16_class(TestMish)
-create_test_act_bf16_class(TestLeakyRelu)
-create_test_act_bf16_class(TestLeakyReluAlpha1)
-create_test_act_bf16_class(TestLeakyReluAlpha2)
-create_test_act_bf16_class(TestLeakyReluAlpha3)
-create_test_act_bf16_class(TestLeakyRelu_ZeroDim)
+create_test_act_bf16_class(TestLeakyRelu, check_prim=True, enable_cinn=False)
+create_test_act_bf16_class(
+    TestLeakyReluAlpha1, check_prim=True, enable_cinn=False
+)
+create_test_act_bf16_class(
+    TestLeakyReluAlpha2, check_prim=True, enable_cinn=False
+)
+create_test_act_bf16_class(
+    TestLeakyReluAlpha3, check_prim=True, enable_cinn=False
+)
+create_test_act_bf16_class(
+    TestLeakyRelu_ZeroDim, check_prim=True, enable_cinn=False
+)
 create_test_act_bf16_class(TestRsqrt)
 
 if __name__ == "__main__":

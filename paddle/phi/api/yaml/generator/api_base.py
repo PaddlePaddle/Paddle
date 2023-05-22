@@ -41,6 +41,7 @@ class BaseAPI:
         ) = self.parse_args(self.api, api_item_yaml)
 
         self.is_base_api = True
+        self.is_only_composite_api = False
         if 'invoke' in api_item_yaml:
             self.is_base_api = False
             self.invoke = api_item_yaml['invoke']
@@ -49,7 +50,12 @@ class BaseAPI:
                 self.infer_meta = self.parse_infer_meta(
                     api_item_yaml['infer_meta']
                 )
-            self.kernel = self.parse_kernel(api_item_yaml['kernel'])
+            if 'composite' in api_item_yaml and 'kernel' not in api_item_yaml:
+                self.is_base_api = False
+                self.is_only_composite_api = True
+                self.kernel = None
+            else:
+                self.kernel = self.parse_kernel(api_item_yaml['kernel'])
             self.data_transform = self.parse_data_transform(api_item_yaml)
             self.inplace_map, self.view_map = {}, {}
 
@@ -1349,23 +1355,10 @@ PADDLE_API {self.get_return_type()} {self.api}({params_code}) {{
                     api_code = ""
                 api_code = api_code + self.gene_base_api_code(inplace_flag=True)
             return api_code
-
+        elif self.is_only_composite_api:
+            # for composite and invoke api, dygraph use prim::xxx_grad method
+            return ''
         else:
-            invoke_func_name = self.invoke.split('(')[0].strip()
-            if invoke_func_name in self.attrs['names']:
-                # Adjust the param whose name is same with api invoked.
-                pattern = r'\W' + invoke_func_name + '[^A-Za-z0-9_(]'
-
-                def adjust_name(matched):
-                    matched_str = matched.group()
-                    return matched_str[0:-1] + '_val' + matched_str[-1]
-
-                invoke_code = re.sub(pattern, adjust_name, self.invoke)
-                params_code = re.sub(
-                    pattern, adjust_name, self.get_define_args()
-                )
-            else:
-                invoke_code = self.invoke
-                params_code = self.get_define_args()
-
+            invoke_code = self.invoke
+            params_code = self.get_define_args()
             return self.gene_invoke_code(invoke_code, params_code)

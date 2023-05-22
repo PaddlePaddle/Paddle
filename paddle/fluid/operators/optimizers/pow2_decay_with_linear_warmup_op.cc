@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/optimizers/pow2_decay_with_linear_warmup_op.h"
-
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -78,12 +76,7 @@ When step_num > total_steps, lr = end_lr
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 REGISTER_OP_WITHOUT_GRADIENT(pow2_decay_with_linear_warmup,
                              ops::Pow2DecayWithLinearWarmupOp,
                              ops::Pow2DecayWithLinearWarmupOpMaker);
-REGISTER_OP_CPU_KERNEL(
-    pow2_decay_with_linear_warmup,
-    ops::Pow2DecayWithLinearWarmupOpKernel<phi::CPUContext, double>,
-    ops::Pow2DecayWithLinearWarmupOpKernel<phi::CPUContext, float>);

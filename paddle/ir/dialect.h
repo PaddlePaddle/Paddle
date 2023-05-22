@@ -14,11 +14,16 @@
 
 #pragma once
 
+#include <ostream>
+
 #include "paddle/ir/attribute_base.h"
+#include "paddle/ir/dialect_interface.h"
 #include "paddle/ir/ir_context.h"
+#include "paddle/ir/op_base.h"
 #include "paddle/ir/type_base.h"
 
 namespace ir {
+class DialectInterface;
 ///
 /// \brief Dialect can basically be understood as a namespace. In Dialect, we
 /// can define a series of types, attributes, operations, etc. An instance of
@@ -29,6 +34,8 @@ namespace ir {
 class Dialect {
  public:
   Dialect(std::string name, ir::IrContext *context, ir::TypeId id);
+
+  virtual ~Dialect();
 
   const std::string &name() const { return name_; }
 
@@ -45,28 +52,12 @@ class Dialect {
     (void)std::initializer_list<int>{0, (RegisterType<Args>(), 0)...};
   }
 
-  ///
-  /// \brief Register type of class T.
-  ///
   template <typename T>
   void RegisterType() {
-    VLOG(4) << "Type registered into Dialect. --->";
-    ir::AbstractType *abstract_type =
-        new ir::AbstractType(std::move(ir::AbstractType::get<T>(*this)));
-    this->ir_context()->RegisterAbstractType(ir::TypeId::get<T>(),
-                                             abstract_type);
-    ir::TypeManager::RegisterType<T>(this->ir_context());
-    VLOG(4) << "----------------------------------";
+    ir_context()->RegisterAbstractType(TypeId::get<T>(),
+                                       AbstractType::get<T>(*this));
+    TypeManager::RegisterType<T>(ir_context());
   }
-
-  ///
-  /// \brief Register abstract_type into context.
-  /// NOTE: It's not recommended to use this interface directly. This interface
-  /// only registers abstract_type. To register TypeStorage into context, you
-  /// need to call ir::TypeManager::RegisterType<T>() additionally,
-  /// RegisterType<T>() is recommended to use.
-  ///
-  void RegisterType(ir::AbstractType &&abstract_type);
 
   ///
   /// \brief Register all attributes contained in the template parameter Args.
@@ -78,30 +69,82 @@ class Dialect {
     (void)std::initializer_list<int>{0, (RegisterAttribute<Args>(), 0)...};
   }
 
-  ///
-  /// \brief Register attribute of class T.
-  ///
   template <typename T>
   void RegisterAttribute() {
-    VLOG(4) << "Attribute registered into Dialect. --->";
-    ir::AbstractAttribute *abstract_attribute = new ir::AbstractAttribute(
-        std::move(ir::AbstractAttribute::get<T>(*this)));
-    this->ir_context()->RegisterAbstractAttribute(ir::TypeId::get<T>(),
-                                                  abstract_attribute);
-    ir::AttributeManager::RegisterAttribute<T>(this->ir_context());
-    VLOG(4) << "----------------------------------";
+    ir_context()->RegisterAbstractAttribute(TypeId::get<T>(),
+                                            AbstractAttribute::get<T>(*this));
+    AttributeManager::RegisterAttribute<T>(ir_context());
   }
 
   ///
-  /// \brief Register abstract_attribute into context.
+  /// \brief Register Ops.
   ///
-  void RegisterAttribute(ir::AbstractAttribute &&abstract_attribute);
+  template <typename... Args>
+  void RegisterOps() {
+    (void)std::initializer_list<int>{0, (RegisterOp<Args>(), 0)...};
+  }
+
+  template <typename ConcreteOp>
+  void RegisterOp() {
+    ir_context()->RegisterOpInfo(this,
+                                 TypeId::get<ConcreteOp>(),
+                                 ConcreteOp::name(),
+                                 ConcreteOp::GetInterfaceMap(),
+                                 ConcreteOp::GetTraitSet(),
+                                 ConcreteOp::attributes_num,
+                                 ConcreteOp::attributes_name);
+  }
+
+  void RegisterOp(const std::string &name, OpInfoImpl *op_info);
+
+  ///
+  /// \brief Register interface methods.
+  ///
+
+  DialectInterface *GetRegisteredInterface(TypeId id) {
+    auto it = registered_interfaces_.find(id);
+    return it != registered_interfaces_.end() ? it->second.get() : nullptr;
+  }
+
+  template <typename InterfaceT>
+  InterfaceT *GetRegisteredInterface() {
+    return static_cast<InterfaceT *>(
+        GetRegisteredInterface(TypeId::get<InterfaceT>()));
+  }
+
+  /// Register a dialect interface with this dialect instance.
+  void RegisterInterface(std::unique_ptr<DialectInterface> interface);
+
+  /// Register a set of dialect interfaces with this dialect instance.
+  template <typename... Args>
+  void RegisterInterfaces() {
+    (void)std::initializer_list<int>{
+        0, (RegisterInterface(std::make_unique<Args>(this)), 0)...};
+  }
+
+  template <typename InterfaceT, typename... Args>
+  InterfaceT &RegisterInterface(Args &&...args) {
+    InterfaceT *interface = new InterfaceT(this, std::forward<Args>(args)...);
+    RegisterInterface(std::unique_ptr<DialectInterface>(interface));
+    return *interface;
+  }
+
+  virtual void PrintType(ir::Type type, std::ostream &os) {
+    throw std::logic_error("dialect has no registered type printing hook");
+  }
 
  private:
+  Dialect(const Dialect &) = delete;
+
+  Dialect &operator=(Dialect &) = delete;
+
   std::string name_;
 
   ir::IrContext *context_;  // not owned
 
   ir::TypeId id_;
+
+  std::unordered_map<TypeId, std::unique_ptr<DialectInterface>>
+      registered_interfaces_;
 };
 }  // namespace ir

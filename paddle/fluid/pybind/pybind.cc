@@ -158,6 +158,7 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/fluid/operators/custom_device_common_op_registry.h"
+#include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/phi/capi/capi.h"
 #endif
 
@@ -193,11 +194,12 @@ limitations under the License. */
 #include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/phi/api/include/operants_manager.h"
 #include "paddle/phi/api/include/tensor_operants.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 #include "pybind11/stl.h"
 
-DECLARE_bool(use_mkldnn);
+PHI_DECLARE_bool(use_mkldnn);
 
 // disable auto conversion to list in Python
 PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
@@ -674,6 +676,7 @@ PYBIND11_MODULE(libpaddle, m) {
   BindCudaStream(&m);
   BindXpuStream(&m);
   BindJit(&m);
+  BindEvalFrame(&m);
   BindCustomDevicePy(&m);
 
   // Not used, just make sure cpu_info.cc is linked.
@@ -989,6 +992,7 @@ PYBIND11_MODULE(libpaddle, m) {
         []() { phi::KernelFactory::Instance().kernels().clear(); });
   m.def("clear_device_manager", []() {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
+    platform::XCCLCommContext::Release();
     phi::DeviceManager::Clear();
 #endif
   });
@@ -1206,7 +1210,7 @@ All parameter, weight, gradient are variables in Paddle.
            Delete all sub-scopes of the current scope.
            )DOC")
       .def("_kids", &Scope::kids)
-      .def_property("_can_reuesd", &Scope::CanReuesd, &Scope::SetCanReuesd);
+      .def_property("_can_reused", &Scope::CanReused, &Scope::SetCanReused);
 
   m.def(
       "Scope",
@@ -1324,8 +1328,7 @@ All parameter, weight, gradient are variables in Paddle.
           if ((grad_op_maker == nullptr) && (grad_comp_op_maker == nullptr)) {
             // Normally, proto_ should not be null, except some special
             // operators, such as LeaklyReluDoubleGrad op.
-            std::string type =
-                op_info.proto_ ? op_info.proto_->type() : "unknown";
+            std::string type = op_desc.Type();
             PADDLE_THROW(platform::errors::NotFound(
                 "Neither operator %s's GradOpMaker nor CompGradOpMaker has "
                 "been registered.\nPlease check whether (%s) operator has "
@@ -1347,7 +1350,8 @@ All parameter, weight, gradient are variables in Paddle.
           VLOG(3) << "need skip: " << need_skip << std::endl;
           if (paddle::prim::PrimCommonUtils::IsBwdPrimEnabled()) {
             if ((grad_comp_op_maker != nullptr) && (!need_skip)) {
-              VLOG(3) << "Runing composite fun for " << op_desc.Type();
+              VLOG(3) << "Prim Flag Open: Runing composite grad fun for "
+                      << op_desc.Type();
               grad_op_descs = grad_comp_op_maker(op_desc,
                                                  no_grad_set,
                                                  &grad_to_var,
@@ -1359,9 +1363,13 @@ All parameter, weight, gradient are variables in Paddle.
             }
           } else {
             if (grad_op_maker != nullptr) {
+              VLOG(6) << "Prim Flag Close: Runing origin grad fun for "
+                      << op_desc.Type();
               grad_op_descs = grad_op_maker(
                   op_desc, no_grad_set, &grad_to_var, grad_sub_block);
             } else {
+              VLOG(6) << "Prim Flag Close: Runing composite grad fun for "
+                      << op_desc.Type();
               grad_op_descs = grad_comp_op_maker(op_desc,
                                                  no_grad_set,
                                                  &grad_to_var,
@@ -1388,6 +1396,9 @@ All parameter, weight, gradient are variables in Paddle.
     return framework::OpInfoMap::Instance()
         .Get(op_type)
         .HasNonEmptyGradOpMaker();
+  });
+  m.def("has_empty_grad_op_maker", [](const std::string op_type) {
+    return framework::OpInfoMap::Instance().Get(op_type).HasEmptyGradOpMaker();
   });
   m.def("has_infer_inplace", [](const std::string op_type) {
     return framework::OpInfoMap::Instance().Get(op_type).HasInferInplace();
@@ -2670,8 +2681,20 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("use_layout_autotune",
         [] { return egr::Controller::Instance().UseLayoutAutoTune(); });
   // Add the api for nan op debug
+  m.def("set_nan_inf_stack_limit",
+        &paddle::framework::details::SetNanInfStackLimit);
+
+  // Add the api for nan op debug
   m.def("set_nan_inf_debug_path",
         &paddle::framework::details::SetNanInfDebugPath);
+
+  // Add check op lost
+  m.def("set_checked_op_list",
+        [](const std::string &op_list) { egr::SetCheckOpList(op_list); });
+
+  // Add skipped op list
+  m.def("set_skipped_op_list",
+        [](const std::string &op_list) { egr::SetSkipOpList(op_list); });
 
   m.def("check_numerics",
         [](const std::string &op_name, const paddle::Tensor &tensor) {

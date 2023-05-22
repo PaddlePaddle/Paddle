@@ -20,6 +20,8 @@ import paddle
 from paddle import fluid
 from paddle.fluid.backward import calc_gradient
 
+paddle.enable_static()
+
 
 class TestCalcGradient(unittest.TestCase):
     def test_calc_gradient(self):

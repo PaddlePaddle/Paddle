@@ -26,9 +26,7 @@ from ..fluid.data_feeder import (
 )
 from ..framework import LayerHelper, in_dygraph_mode
 from .creation import full
-from .logic import logical_not
 from .manipulation import cast
-from .math import add, multiply
 
 __all__ = []
 
@@ -335,8 +333,8 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
 
             # compute inf-order  norm
             out_pnorm = paddle.linalg.norm(x, p=float("inf"))
-            # out_pnorm  = Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-            #                    [12.])
+            # out_pnorm  = Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #                    12.)
 
             out_pnorm = paddle.linalg.norm(x, p=float("inf"), axis=0)
             # out_pnorm: Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -346,8 +344,8 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
 
             # compute -inf-order  norm
             out_pnorm = paddle.linalg.norm(x, p=-float("inf"))
-            # out_pnorm: Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-            #                  [0.])
+            # out_pnorm: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #                  0.)
 
             out_pnorm = paddle.linalg.norm(x, p=-float("inf"), axis=0)
             # out_pnorm: Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
@@ -415,7 +413,10 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             if axis is not None:
                 check_type(axis, 'axis', (int), 'p_norm')
             check_variable_and_dtype(
-                input, 'input', ['float32', 'float64'], 'p_norm'
+                input,
+                'input',
+                ['float16', 'uint16', 'float32', 'float64'],
+                'p_norm',
             )
 
             attrs = {
@@ -689,16 +690,16 @@ def dist(x, y, p=2, name=None):
             x = paddle.to_tensor([[3, 3],[3, 3]], dtype="float32")
             y = paddle.to_tensor([[3, 3],[3, 1]], dtype="float32")
             out = paddle.dist(x, y, 0)
-            print(out) # out = [1.]
+            print(out) # out = 1.
 
             out = paddle.dist(x, y, 2)
-            print(out) # out = [2.]
+            print(out) # out = 2.
 
             out = paddle.dist(x, y, float("inf"))
-            print(out) # out = [2.]
+            print(out) # out = 2.
 
             out = paddle.dist(x, y, float("-inf"))
-            print(out) # out = [0.]
+            print(out) # out = 0.
     """
     if in_dygraph_mode():
         return _C_ops.dist(x, y, p)
@@ -744,48 +745,48 @@ def cond(x, p=None, name=None):
 
             # compute conditional number when p is None
             out = paddle.linalg.cond(x)
-            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [1.41421342])
+            # Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        1.41421342)
 
             # compute conditional number when order of the norm is 'fro'
             out_fro = paddle.linalg.cond(x, p='fro')
-            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [3.16227770])
+            # Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        3.16227770)
 
             # compute conditional number when order of the norm is 'nuc'
             out_nuc = paddle.linalg.cond(x, p='nuc')
-            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [9.24263859])
+            # Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        9.24263859)
 
             # compute conditional number when order of the norm is 1
             out_1 = paddle.linalg.cond(x, p=1)
-            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [2.])
+            # Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        2.)
 
             # compute conditional number when order of the norm is -1
             out_minus_1 = paddle.linalg.cond(x, p=-1)
-            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [1.])
+            # Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        1.)
 
             # compute conditional number when order of the norm is 2
             out_2 = paddle.linalg.cond(x, p=2)
-            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [1.41421342])
+            # Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        1.41421342)
 
             # compute conditional number when order of the norm is -1
             out_minus_2 = paddle.linalg.cond(x, p=-2)
-            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [0.70710683])
+            # Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        0.70710683)
 
             # compute conditional number when order of the norm is inf
             out_inf = paddle.linalg.cond(x, p=float("inf"))
-            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [2.])
+            # Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        2.)
 
             # compute conditional number when order of the norm is -inf
             out_minus_inf = paddle.linalg.cond(x, p=-float("inf"))
-            # Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [1.])
+            # Tensor(shape=[], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+            #        1.)
 
             a = paddle.randn([2, 4, 4])
             # Tensor(shape=[2, 4, 4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
@@ -1094,13 +1095,13 @@ def dot(x, y, name=None):
         x = paddle.to_tensor([1, 2, 3])
         y = paddle.to_tensor([4, 5, 6])
         z = paddle.dot(x, y)
-        print(z)  # [32]
+        print(z)  # 32
 
         # 2-D Tensor * 2-D Tensor
         x = paddle.to_tensor([[1, 2, 3], [2, 4, 6]])
         y = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
         z = paddle.dot(x, y)
-        print(z)  # [[32], [64]]
+        print(z)  # [32, 64]
 
     """
     if in_dygraph_mode():
@@ -1112,10 +1113,16 @@ def dot(x, y, name=None):
         assert y is not None, f'y cannot be None in {op_type}'
 
         check_variable_and_dtype(
-            x, 'x', ['float32', 'float64', 'int32', 'int64'], op_type
+            x,
+            'x',
+            ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
+            op_type,
         )
         check_variable_and_dtype(
-            y, 'y', ['float32', 'float64', 'int32', 'int64'], op_type
+            y,
+            'y',
+            ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64'],
+            op_type,
         )
 
         helper = LayerHelper(op_type, **locals())
@@ -1156,7 +1163,7 @@ def cov(x, rowvar=True, ddof=True, fweights=None, aweights=None, name=None):
 
         import paddle
 
-        xt = paddle.rand((3,4))
+        xt = paddle.rand((3, 4))
         paddle.linalg.cov(xt)
 
         '''
@@ -1374,13 +1381,13 @@ def cross(x, y, axis=9, name=None):
         check_variable_and_dtype(
             x,
             'x',
-            ['float16', 'float32', 'float64', "int32", "int64"],
+            ['float16', 'uint16', 'float32', 'float64', "int32", "int64"],
             'cross',
         )
         check_variable_and_dtype(
             y,
             'y',
-            ['float16', 'float32', 'float64', "int32", "int64"],
+            ['float16', 'uint16', 'float32', 'float64', "int32", "int64"],
             'cross',
         )
         helper = LayerHelper("cross", **locals())
@@ -1478,7 +1485,7 @@ def matrix_rank(x, tol=None, hermitian=False, name=None):
             a = paddle.eye(10)
             b = paddle.linalg.matrix_rank(a)
             print(b)
-            # b = [10]
+            # b = 10
 
             c = paddle.ones(shape=[3, 4, 5, 5])
             d = paddle.linalg.matrix_rank(c, tol=0.01, hermitian=True)
@@ -1800,7 +1807,7 @@ def det(x, name=None):
     if in_dygraph_mode():
         return _C_ops.det(x)
     else:
-        check_dtype(x.dtype, 'Input', ['float32', 'float64'], 'det')
+        check_dtype(x.dtype, 'Input', ['float16', 'float32', 'float64'], 'det')
 
         input_shape = list(x.shape)
         assert len(input_shape) >= 2, (
@@ -2656,12 +2663,7 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
             y = float('inf')
             y = paddle.to_tensor(y, dtype=x.dtype)
 
-            condition = s > cutoff
-            cond_int = cast(condition, s.dtype)
-            cond_not_int = cast(logical_not(condition), s.dtype)
-            out1 = multiply(1 / s, cond_int)
-            out2 = multiply(1 / y, cond_not_int)
-            singular = add(out1, out2)
+            singular = paddle.where(s > cutoff, 1 / s, 1 / y)
             st = _C_ops.unsqueeze(singular, [-2])
 
             dims = list(range(len(vt.shape)))
@@ -2681,12 +2683,7 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
             y = float('inf')
             y = paddle.to_tensor(y, dtype=s.dtype)
 
-            condition = s_abs > cutoff
-            cond_int = cast(condition, s.dtype)
-            cond_not_int = cast(logical_not(condition), s.dtype)
-            out1 = multiply(1 / s, cond_int)
-            out2 = multiply(1 / y, cond_not_int)
-            singular = add(out1, out2)
+            singular = paddle.where(s_abs > cutoff, 1 / s, 1 / y)
             st = _C_ops.unsqueeze(singular, [-2])
 
             out_1 = u * st
@@ -2722,12 +2719,7 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
             y = float('inf')
             y = full(shape=[1], fill_value=y, dtype=dtype)
 
-            condition = s > cutoff
-            cond_int = cast(condition, dtype)
-            cond_not_int = cast(logical_not(condition), dtype)
-            out1 = multiply(1 / s, cond_int)
-            out2 = multiply(1 / y, cond_not_int)
-            singular = add(out1, out2)
+            singular = paddle.where(s > cutoff, 1 / s, 1 / y)
 
             st = helper.create_variable_for_type_inference(dtype=dtype)
             st_shape = helper.create_variable_for_type_inference(dtype=dtype)
@@ -2808,12 +2800,7 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
             y = float('inf')
             y = full(shape=[1], fill_value=y, dtype=s_type)
 
-            condition = s_abs > cutoff
-            cond_int = cast(condition, s_type)
-            cond_not_int = cast(logical_not(condition), s_type)
-            out1 = multiply(1 / s, cond_int)
-            out2 = multiply(1 / y, cond_not_int)
-            singular = add(out1, out2)
+            singular = paddle.where(s_abs > cutoff, 1 / s, 1 / y)
 
             st = helper.create_variable_for_type_inference(dtype=s_type)
             st_shape = helper.create_variable_for_type_inference(dtype=s_type)

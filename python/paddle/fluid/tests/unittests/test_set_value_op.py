@@ -1427,7 +1427,7 @@ class TestGradientTruncated(unittest.TestCase):
         paddle.enable_static()
 
         to_string = lambda x, i: x + '_' + str(i)
-        numel = lambda input_shape: reduce(lambda x, y: x * y, input_shape)
+        numel = lambda input_shape: reduce(lambda x, y: x * y, input_shape, 1)
 
         def op1(x):
             value = paddle.tensor.fill_constant([1], "float32", 1)
@@ -1590,7 +1590,7 @@ class TestSetValueInplace(unittest.TestCase):
             a.stop_gradient = False
             b = a[:]
             c = b
-            b[paddle.to_tensor(0)] = 1.0
+            b[paddle.zeros([], dtype='int32')] = 1.0
 
             self.assertTrue(id(b) == id(c))
             np.testing.assert_array_equal(b.numpy(), c.numpy())
@@ -1632,6 +1632,20 @@ class TestSetValueInplaceLeafVar(unittest.TestCase):
 
         np.testing.assert_array_equal(a_grad_1, a_grad_2)
         np.testing.assert_array_equal(b_grad_1, b_grad_2)
+        paddle.enable_static()
+
+
+class TestSetValueIsSamePlace(unittest.TestCase):
+    def test_is_same_place(self):
+        paddle.disable_static()
+        paddle.seed(100)
+        paddle.set_device('cpu')
+        a = paddle.rand(shape=[2, 3, 4])
+        origin_place = a.place
+        a[[0, 1], 1] = 10
+        self.assertEqual(origin_place._type(), a.place._type())
+        if paddle.is_compiled_with_cuda():
+            paddle.set_device('gpu')
         paddle.enable_static()
 
 

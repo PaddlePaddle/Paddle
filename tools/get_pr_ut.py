@@ -340,10 +340,8 @@ class PRChecker:
                         file_list.append(filename)
                     else:
                         filterFiles.append(filename)
-                elif (
-                    ('/xpu/' in filename.lower())
-                    or ('/npu/' in filename.lower())
-                    or ('/ipu/' in filename.lower())
+                elif ('/xpu/' in filename.lower()) or (
+                    '/ipu/' in filename.lower()
                 ):
                     filterFiles.append(filename)
                 else:
@@ -404,11 +402,7 @@ class PRChecker:
                     if f_judge.endswith('.md'):
                         ut_list.append('md_placeholder')
                         onlyCommentsFilesOrXpu.append(f_judge)
-                    elif (
-                        'test/xpu' in f_judge
-                        or 'tests/unittests/npu' in f_judge
-                        or 'op_npu.cc' in f_judge
-                    ):
+                    elif 'test/xpu' in f_judge:
                         ut_list.append('xpu_npu_placeholder')
                         onlyCommentsFilesOrXpu.append(f_judge)
                     elif f_judge.endswith(('.h', '.cu', '.cc', '.py')):

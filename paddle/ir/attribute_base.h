@@ -92,10 +92,10 @@ struct AttributeManager;
 /// \brief AttributeStorage is used to store all information of a Attribute. A
 /// Attribute object contains a AttributeStorage. For non-parameter attribute,
 /// the information includes: TypeId, so AttributeStorage only needs to include
-/// AbstractAttribute; For parameteric attribute, in addition to
-/// AbstractAttribute/TypeId, parameteric information needs to be included. So
-/// that, non-parameteric attribute can be constructed by AttributeStorage
-/// directly but parameteric attribute should be constructed by Derived
+/// AbstractAttribute; For parametric attribute, in addition to
+/// AbstractAttribute/TypeId, parametric information needs to be included. So
+/// that, non-parametric attribute can be constructed by AttributeStorage
+/// directly but parametric attribute should be constructed by Derived
 /// AttributeStorage.
 ///
 class AttributeStorage : public StorageManager::StorageBase {
@@ -144,7 +144,7 @@ class AttributeStorage : public StorageManager::StorageBase {
 struct AttributeManager {
   ///
   /// \brief Get a unique instance of Attribute T from IrContext. Note: For a
-  /// parameteric attribute, if not found in IrContext, it will try to create a
+  /// parametric attribute, if not found in IrContext, it will try to create a
   /// new instance and register it to IrContext; for a parameterless attribute,
   /// only search.
   ///
