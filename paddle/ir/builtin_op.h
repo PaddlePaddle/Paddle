@@ -12,18 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#ifdef GET_OP_LIST
+#undef GET_OP_LIST
+ir::GetParameterOp, ir::SetParameterOp
+#else
 
 #include "paddle/ir/op_base.h"
 
 namespace ir {
-///
-/// \brief This macro is used to get a list of all built-in OPs in this file.
-/// The built-in Dialect will use this macro to quickly register all built-in
-/// OPs.
-///
-#define GET_OP_LIST ir::GetParameterOp, ir::SetParameterOp
-
 ///
 /// \brief GetParameterOp: OpResult = GetParameterOp({StrAttribute,
 /// StrAttribute})
@@ -31,12 +27,12 @@ namespace ir {
 class GetParameterOp : public ir::Op<GetParameterOp> {
  public:
   using Op::Op;
-
-  static const char* name() { return "builtin.get_parameter"; }
-
+  static const char *name() { return "builtin.get_parameter"; }
   static constexpr uint32_t attributes_num = 1;
-
-  static const char* attributes_name[attributes_num];
+  static const char *attributes_name[attributes_num];
+  static void verify(const std::vector<ir::OpResult> &inputs,
+                     const std::vector<ir::Type> &outputs,
+                     const ir::AttributeMap &attributes);
 };
 
 ///
@@ -46,12 +42,13 @@ class GetParameterOp : public ir::Op<GetParameterOp> {
 class SetParameterOp : public ir::Op<SetParameterOp> {
  public:
   using Op::Op;
-
-  static const char* name() { return "builtin.set_parameter"; }
-
+  static const char *name() { return "builtin.set_parameter"; }
   static constexpr uint32_t attributes_num = 1;
-
-  static const char* attributes_name[attributes_num];
+  static const char *attributes_name[attributes_num];
+  static void verify(const std::vector<ir::OpResult> &inputs,
+                     const std::vector<ir::Type> &outputs,
+                     const ir::AttributeMap &attributes);
 };
 
 }  // namespace ir
+#endif

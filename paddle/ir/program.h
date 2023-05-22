@@ -17,7 +17,7 @@
 #include <list>
 #include <unordered_map>
 
-#include "paddle/ir/builtin_attribute.h"
+// #include "paddle/ir/builtin_attribute.h"
 #include "paddle/ir/operation.h"
 #include "paddle/ir/parameter.h"
 

@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/ir/builtin_attribute.h"
+#include "paddle/ir/attribute.h"
 #include "paddle/ir/op_info.h"
 #include "paddle/ir/type.h"
 #include "paddle/ir/value_impl.h"

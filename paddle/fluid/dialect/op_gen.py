@@ -24,16 +24,18 @@ NAMESPACE_GARD_TEMPLATE = """namespace {namespace} {{
 {input}
 }} // namespace {namespace}"""
 
-H_FILE_TEMPLATE = """#pragma once
+H_FILE_TEMPLATE = """#ifdef GET_OP_LIST
+#undef GET_OP_LIST
+{op_declare}
+#else
 
 #include "paddle/ir/op_base.h"
 
 {input}
+#endif
 """
 
-GET_OP_LIST_TEMPALTE = """
-// All defined pd_dialect operations in this file.
-#define GET_OP_LIST {}
+GET_OP_LIST_TEMPALTE = """{}
 """
 
 OP_DECLARE_TEMPLATE = """
@@ -87,7 +89,7 @@ void {op_name}::verify(const std::vector<ir::OpResult> &inputs, const std::vecto
   {inputs_type_check}
   // Verify outputs type:
   PADDLE_ENFORCE_EQ(outputs.size(), {outputs_size},
-                    phi::errors::PreconditionNotMet("The size %d of inputs must be equal to {outputs_size}.", outputs.size()));
+                    phi::errors::PreconditionNotMet("The size %d of outputs must be equal to {outputs_size}.", outputs.size()));
   {outputs_type_check}
   // Verify if attributes contain attribute name in attributes_name:
   {attributes_check}
@@ -97,15 +99,15 @@ void {op_name}::verify(const std::vector<ir::OpResult> &inputs, const std::vecto
 INPUT_TYPE_CHECK_TEMPLATE = """PADDLE_ENFORCE_EQ(inputs[{index}].type().isa<{standard}>(), true,
                     phi::errors::PreconditionNotMet("Type validation failed for the {index}th input."));
   """
-INPUT_VECTORTYPE_CHECK_TEMPLATE = """if (inputs[{index}].type().isa<ir::VectorType>()) {
+INPUT_VECTORTYPE_CHECK_TEMPLATE = """if (inputs[{index}].type().isa<ir::VectorType>()) {{
     for (size_t i = 0; i < inputs[{index}].type().dyn_cast<ir::VectorType>().size(); i++) {{
       PADDLE_ENFORCE_EQ(inputs[{index}].type().dyn_cast<ir::VectorType>()[i].isa<{standard}>(), true,
                         phi::errors::PreconditionNotMet("Type validation failed for the {index}th input."));
     }}
-  } else {
+  }} else {{
     PADDLE_ENFORCE_EQ(inputs[{index}].type().isa<{standard}>(), true,
                       phi::errors::PreconditionNotMet("Type validation failed for the {index}th input."));
-  }
+  }}
   """
 INPUT_OPTIONAL_TYPE_CHECK_TEMPLATE = """if (inputs[{index}]) {{
     PADDLE_ENFORCE_EQ(inputs[{index}].type().isa<{standard}>(), true,
@@ -113,30 +115,30 @@ INPUT_OPTIONAL_TYPE_CHECK_TEMPLATE = """if (inputs[{index}]) {{
   }}
   """
 INPUT_OPTIONAL_VECTORTYPE_CHECK_TEMPLATE = """if (inputs[{index}]) {{
-    if (inputs[{index}].type().isa<ir::VectorType>()) {
+    if (inputs[{index}].type().isa<ir::VectorType>()) {{
       for (size_t i = 0; i < inputs[{index}].type().dyn_cast<ir::VectorType>().size(); i++) {{
         PADDLE_ENFORCE_EQ(inputs[{index}].type().dyn_cast<ir::VectorType>()[i].isa<{standard}>(), true,
                           phi::errors::PreconditionNotMet("Type validation failed for the {index}th input."));
       }}
-    } else {
+    }} else {{
       PADDLE_ENFORCE_EQ(inputs[{index}].type().isa<{standard}>(), true,
                         phi::errors::PreconditionNotMet("Type validation failed for the {index}th input."));
-    }
+    }}
   }}
   """
 
 OUTPUT_TYPE_CHECK_TEMPLATE = """PADDLE_ENFORCE_EQ(outputs[{index}].isa<{standard}>(), true,
                     phi::errors::PreconditionNotMet("Type validation failed for the {index}th output."));
   """
-OUTPUT_VECTORTYPE_CHECK_TEMPLATE = """if (outputs[{index}].type().isa<ir::VectorType>()) {
-    for (size_t i = 0; i < outputs[{index}].type().dyn_cast<ir::VectorType>().size(); i++) {{
-      PADDLE_ENFORCE_EQ(outputs[{index}].type().dyn_cast<ir::VectorType>()[i].isa<{standard}>(), true,
+OUTPUT_VECTORTYPE_CHECK_TEMPLATE = """if (outputs[{index}].isa<ir::VectorType>()) {{
+    for (size_t i = 0; i < outputs[{index}].dyn_cast<ir::VectorType>().size(); i++) {{
+      PADDLE_ENFORCE_EQ(outputs[{index}].dyn_cast<ir::VectorType>()[i].isa<{standard}>(), true,
                         phi::errors::PreconditionNotMet("Type validation failed for the {index}th output."));
     }}
-  } else {
-    PADDLE_ENFORCE_EQ(outputs[{index}].type().isa<{standard}>(), true,
+  }} else {{
+    PADDLE_ENFORCE_EQ(outputs[{index}].isa<{standard}>(), true,
                       phi::errors::PreconditionNotMet("Type validation failed for the {index}th output."));
-  }
+  }}
   """
 OUTPUT_OPTIONAL_TYPE_CHECK_TEMPLATE = """if (outputs[{index}]) {{
     PADDLE_ENFORCE_EQ(outputs[{index}].isa<{standard}>(), true,
@@ -144,15 +146,15 @@ OUTPUT_OPTIONAL_TYPE_CHECK_TEMPLATE = """if (outputs[{index}]) {{
   }}
   """
 OUTPUT_OPTIONAL_VECTORTYPE_CHECK_TEMPLATE = """if (outputs[{index}]) {{
-    if (outputs[{index}].type().isa<ir::VectorType>()) {
-      for (size_t i = 0; i < outputs[{index}].type().dyn_cast<ir::VectorType>().size(); i++) {{
-        PADDLE_ENFORCE_EQ(outputs[{index}].type().dyn_cast<ir::VectorType>()[i].isa<{standard}>(), true,
+    if (outputs[{index}].isa<ir::VectorType>()) {{
+      for (size_t i = 0; i < outputs[{index}].dyn_cast<ir::VectorType>().size(); i++) {{
+        PADDLE_ENFORCE_EQ(outputs[{index}].dyn_cast<ir::VectorType>()[i].isa<{standard}>(), true,
                           phi::errors::PreconditionNotMet("Type validation failed for the {index}th output."));
       }}
-    } else {
-      PADDLE_ENFORCE_EQ(outputs[{index}].type().isa<{standard}>(), true,
+    }} else {{
+      PADDLE_ENFORCE_EQ(outputs[{index}].isa<{standard}>(), true,
                         phi::errors::PreconditionNotMet("Type validation failed for the {index}th output."));
-    }
+    }}
   }}
   """
 
@@ -273,7 +275,7 @@ class OpInfoParser:
             'Scalar(float)': 'paddle::dialect::ScalarAttribute',
             'Scalar(dobule)': 'paddle::dialect::ScalarAttribute',
             'Scalar[]': 'ir::ArrayAttribute<paddle::dialect::ScalarAttribute>',
-            'int': 'ir::IntAttribute',
+            'int': 'ir::Int32_tAttribute',
             'int32_t': 'ir::Int32_tAttribute',
             'int64_t': 'ir::Int64_tAttribute',
             'long': 'ir::LongAttribute',
@@ -289,7 +291,7 @@ class OpInfoParser:
             'DataLayout': 'paddle::dialect::DataLayoutAttribute',
             'DataType': 'paddle::dialect::DataTypeAttribute',
             'int64_t[]': 'ir::ArrayAttribute<ir::Int64_tAttribute>',
-            'int[]': 'ir::ArrayAttribute<ir::IntAttribute>',
+            'int[]': 'ir::ArrayAttribute<ir::Int32_tAttribute>',
         }
         type_list = []
         for attribute_info in self.op_yaml_item['attrs']:
@@ -301,26 +303,6 @@ class OpInfoParser:
 
     def parse_op_phi_name(self):
         return self.op_yaml_item['name']
-
-    # op_compat_yaml is used to convert op name from phi yaml to fluid
-    def parse_op_fluid_name(self, op_name_phi_to_fluid_dict):
-        # get fluid name
-        if self.op_phi_name in op_name_phi_to_fluid_dict:
-            return op_name_phi_to_fluid_dict[self.op_phi_name]
-        else:
-            return self.op_phi_name
-
-
-# get phi -> fluid name map: phi_op (fluid_op)
-def to_phi_and_fluid_op_name(op_item):
-    names = op_item.split('(')
-    if len(names) == 1:
-        phi_fluid_name = names[0].strip()
-        return phi_fluid_name, phi_fluid_name
-    else:
-        phi_name = names[0].strip()
-        fluid_name = names[1].split(')')[0].strip()
-        return phi_name, fluid_name
 
 
 def to_pascal_case(s):
@@ -336,7 +318,6 @@ def to_pascal_case(s):
 # =====================================
 def OpGenerator(
     op_yaml_files,
-    op_compat_yaml_file,
     namespaces,
     dialect_name,
     op_def_h_file,
@@ -358,31 +339,13 @@ def OpGenerator(
     for op in op_yaml_items:
         op_info_items.append(OpInfoParser(op))
 
-    op_name_phi_to_fluid_dict = {}
-    if op_compat_yaml_file is not None:
-        with open(op_compat_yaml_file, "r") as f:
-            op_compats = yaml.safe_load(f)
-        for op_compat in op_compats:
-            forward_phi_name, forward_fluid_name = to_phi_and_fluid_op_name(
-                op_compat['op']
-            )
-            op_name_phi_to_fluid_dict[forward_phi_name] = forward_fluid_name
-            if 'backward' in op_compat:
-                (
-                    backward_phi_name,
-                    backward_fluid_name,
-                ) = to_phi_and_fluid_op_name(op_compat['backward'])
-                op_name_phi_to_fluid_dict[
-                    backward_phi_name
-                ] = backward_fluid_name
-
     # (3) CodeGen: Traverse op_info_items and generate
     ops_name_list = []  # all op class name store in this list
     ops_declare_list = []  # all op class declare store in this list
     ops_defined_list = []  # all op class defined store in this list
     for op_info in op_info_items:
         # get op info
-        op_name = op_info.parse_op_fluid_name(op_name_phi_to_fluid_dict)
+        op_name = op_info.op_phi_name
         op_class_name = to_pascal_case(op_name) + "Op"
         op_dialect_name = dialect_name + "." + op_name
         op_input_name_list = op_info.input_name_list
@@ -555,15 +518,24 @@ def OpGenerator(
         ops_defined_list.append(op_verify_str)
 
     # (4) Generate head file str
-    head_file_str = GET_OP_LIST_TEMPALTE.format(
-        ", ".join(ops_name_list)
+    op_namespaces_prev = ""
+    for name in namespaces:
+        op_namespaces_prev += name + "::"
+    ops_name_with_namespace_list = []
+    for name in ops_name_list:
+        ops_name_with_namespace_list.append(op_namespaces_prev + name)
+    op_list_str = GET_OP_LIST_TEMPALTE.format(
+        ", ".join(ops_name_with_namespace_list)
     )  # Add GET_OP_LIST
+    head_file_str = ""
     head_file_str += "".join(ops_declare_list)  # Add op class
     for name in reversed(namespaces):
         head_file_str = NAMESPACE_GARD_TEMPLATE.format(
             namespace=name, input=head_file_str
         )  # Add namespaces
-    head_file_str = H_FILE_TEMPLATE.format(input=head_file_str)  # Add head
+    head_file_str = H_FILE_TEMPLATE.format(
+        op_declare=op_list_str, input=head_file_str
+    )  # Add head
 
     # (5) Generate source file str
     source_file_str = "".join(ops_defined_list)  # Add op define
@@ -616,7 +588,6 @@ if __name__ == "__main__":
     # auto code generate
     OpGenerator(
         op_yaml_files,
-        op_compat_yaml_file,
         namespaces,
         dialect_name,
         op_def_h_file,

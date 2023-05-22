@@ -12,17 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#ifdef GET_ATTRIBUTE_LIST  // NOLINT
+#undef GET_ATTRIBUTE_LIST
+paddle::dialect::IntArrayAttribute, paddle::dialect::ScalarAttribute,
+    paddle::dialect::DataTypeAttribute, paddle::dialect::PlaceAttribute,
+    paddle::dialect::DataLayoutAttribute
+#else
 
 #include "paddle/fluid/dialect/pd_attribute_storage.h"
 #include "paddle/ir/attribute.h"
 
 namespace paddle {
 namespace dialect {
-#define GET_ATTRIBUTE_LIST                                               \
-  IntArrayAttribute, ScalarAttribute, DataTypeAttribute, PlaceAttribute, \
-      DataLayoutAttribute
-
 class IntArrayAttribute : public ir::Attribute {
  public:
   using Attribute::Attribute;
@@ -93,3 +94,4 @@ class DataLayoutAttribute : public ir::Attribute {
 
 }  // namespace dialect
 }  // namespace paddle
+#endif

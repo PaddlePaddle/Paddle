@@ -25,9 +25,20 @@ BuiltinDialect::BuiltinDialect(ir::IrContext *context)
 
 void BuiltinDialect::initialize() {
   // Register all built-in types defined in builtin_type.h.
-  RegisterTypes<GET_TYPE_LIST>();
-  RegisterAttributes<GET_ATTRIBUTE_LIST>();
-  RegisterOps<GET_OP_LIST>();
+  RegisterTypes<
+#define GET_TYPE_LIST
+#include "paddle/ir/builtin_type.h"  // NOLINT
+      >();
+
+  RegisterAttributes<
+#define GET_ATTRIBUTE_LIST
+#include "paddle/ir/builtin_attribute.h"  // NOLINT
+      >();
+
+  RegisterOps<
+#define GET_OP_LIST
+#include "paddle/ir/builtin_op.h"  // NOLINT
+      >();
 }
 
 }  // namespace ir

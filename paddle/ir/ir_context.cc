@@ -269,7 +269,8 @@ void IrContext::RegisterOpInfo(Dialect *dialect,
                                std::vector<InterfaceValue> &&interface_map,
                                const std::vector<TypeId> &trait_set,
                                size_t attributes_num,
-                               const char **attributes_name) {
+                               const char **attributes_name,
+                               VerifyPtr verify) {
   if (GetRegisteredOpInfo(name) == nullptr) {
     OpInfoImpl *opinfo = OpInfoImpl::create(dialect,
                                             op_id,
@@ -277,7 +278,8 @@ void IrContext::RegisterOpInfo(Dialect *dialect,
                                             std::move(interface_map),
                                             trait_set,
                                             attributes_num,
-                                            attributes_name);
+                                            attributes_name,
+                                            verify);
     impl().RegisterOpInfo(name, opinfo);
     VLOG(4) << "Op " << name << " registered into IrContext. --->";
   } else {
