@@ -380,6 +380,7 @@ template <>
 void *Alloc<platform::CUDAPinnedPlace>(const platform::CUDAPinnedPlace &place,
                                        size_t size) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
   auto *buddy_allocator = GetCUDAPinnedBuddyAllocator();
   void *ptr = buddy_allocator->Alloc(size);
 
@@ -402,6 +403,7 @@ void Free<platform::CUDAPinnedPlace>(const platform::CUDAPinnedPlace &place,
                                      void *p,
                                      size_t size) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  VLOG(10) << "Free " << size << " bytes on " << platform::Place(place);
   GetCUDAPinnedBuddyAllocator()->Free(p);
 #else
   PADDLE_THROW(platform::errors::PermissionDenied(
@@ -413,6 +415,7 @@ template <>
 uint64_t Release<platform::CUDAPinnedPlace>(
     const platform::CUDAPinnedPlace &place) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  VLOG(10) << "Release on " << platform::Place(place);
   return GetCUDAPinnedBuddyAllocator()->Release();
 #else
   PADDLE_THROW(platform::errors::PermissionDenied(
