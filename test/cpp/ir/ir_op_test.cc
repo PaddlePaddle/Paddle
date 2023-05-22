@@ -138,14 +138,13 @@ TEST(op_test, op_test) {
                             CreateAttributeMap("op1_name", "op1_attr"),
                             op2_info);
 
-  if (op->HasTrait<ReadOnlyTrait>()) {
-    ReadOnlyTrait trait = op->dyn_cast<ReadOnlyTrait>();
-    EXPECT_EQ(trait.operation(), op);
-  }
-  if (op->HasInterface<InferShapeInterface>()) {
-    InferShapeInterface interface = op->dyn_cast<InferShapeInterface>();
-    interface.InferShape();
-  }
+  ReadOnlyTrait trait = op->dyn_cast<ReadOnlyTrait>();
+  EXPECT_EQ(trait.operation(), op);
+  InferShapeInterface interface = op->dyn_cast<InferShapeInterface>();
+  interface.InferShape();
+
+  Operation2 Op2 = op->dyn_cast<Operation2>();
+  EXPECT_EQ(Op2.operation(), op);
 
   op->destroy();
 }

@@ -42,6 +42,8 @@ class OpInfo {
 
   const char *name() const;
 
+  TypeId id() const;
+
   template <typename Trait>
   bool HasTrait() const {
     return HasTrait(TypeId::get<Trait>());
