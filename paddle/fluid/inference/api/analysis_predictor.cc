@@ -1371,7 +1371,8 @@ void AnalysisPredictor::PrepareArgument() {
   // For JITLayer
   argument_->SetSkipLoadParams(config_.skip_load_params_);
 
-  argument_->SetTensorRtPrecisionMode(config_.tensorrt_precision_mode_);
+  argument_->SetTensorRtPrecisionMode(static_cast<int>(
+      paddle::ConvertPrecision(config_.tensorrt_precision_mode_)));
   argument_->SetTensorRtUseOSS(config_.trt_use_varseqlen_);
   argument_->SetTensorRtWithInterleaved(config_.trt_with_interleaved_);
   argument_->SetTensorRtTransformerPosid(config_.tensorrt_transformer_posid_);
@@ -1412,14 +1413,16 @@ void AnalysisPredictor::PrepareArgument() {
         config_.dlnne_disable_nodes_by_outputs_);
     argument_->SetDlnneInputShapeDict(config_.dlnne_input_shape_dict_);
     argument_->SetDlnneUseCalibMode(config_.dlnne_use_calib_mode_);
-    argument_->SetDlnnePrecisionMode(config_.dlnne_precision_mode_);
+    argument_->SetDlnnePrecisionMode(static_cast<int>(
+        paddle::ConvertPrecision(config_.dlnne_precision_mode_)));
   }
 
   argument_->SetUseXpu(config_.use_xpu_);
   if (config_.lite_engine_enabled()) {
     argument_->SetCpuMathLibraryNumThreads(
         config_.cpu_math_library_num_threads());
-    argument_->SetLitePrecisionMode(config_.lite_precision_mode_);
+    argument_->SetLitePrecisionMode(static_cast<int>(
+        paddle::ConvertPrecision(config_.lite_precision_mode_)));
     argument_->SetLitePassesFilter(config_.lite_passes_filter_);
     argument_->SetLiteOpsFilter(config_.lite_ops_filter_);
     argument_->SetLiteZeroCopy(config_.lite_zero_copy_);
@@ -1561,18 +1564,18 @@ void AnalysisPredictor::PrepareArgument() {
       argument_->SetEnableIrOptim(true);
       pass_builder->ClearPasses();
       pass_builder->AppendPass("auto_mixed_precision_pass");
-      LOG(INFO)
-          << "This model run in Paddle-GPU mixed precision mode with no ir "
-             "optimization.";
+      LOG(INFO) << "This model run in GPU mixed precision mode with no ir "
+                   "optimization.";
     } else {
-      LOG(INFO) << "ir_optim is turned off, no IR pass will be executed.";
+      LOG(INFO)
+          << "Ir optimization is turned off, no ir pass will be executed.";
     }
   } else {
     if (config_.ir_debug_) {
       pass_builder->TurnOnDebug();
     }
     if (config_.enable_gpu_mixed_) {
-      LOG(INFO) << "This model run in Paddle-GPU mixed precision mode.";
+      LOG(INFO) << "This model run in GPU mixed precision mode.";
     }
   }
 
@@ -1595,6 +1598,7 @@ void AnalysisPredictor::PrepareArgument() {
   argument_->SetEnableGPUMixed(config_.enable_gpu_mixed_);
   argument_->SetMixedPrecisionMode(static_cast<int>(
       paddle::ConvertPrecision(config_.mixed_precision_mode_)));
+  argument_->SetEnableLowPrecisionIO(config_.enable_low_precision_io_);
 }
 
 // NOTE All the members in AnalysisConfig should be copied to Argument.

@@ -833,6 +833,9 @@ void BindAnalysisConfig(py::module *m) {
            &AnalysisConfig::SwitchSpecifyInputNames,
            py::arg("x") = true)
       .def("specify_input_name", &AnalysisConfig::specify_input_name)
+      .def("enable_low_precision_io",
+           &AnalysisConfig::EnableLowPrecisionIO,
+           py::arg("x") = true)
       .def("enable_tensorrt_engine",
            &AnalysisConfig::EnableTensorRtEngine,
            py::arg("workspace_size") = 1 << 30,
