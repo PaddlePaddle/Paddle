@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/dialect/pd_dialect.h"
+#include "paddle/fluid/dialect/pd_attribute.h"
 #include "paddle/fluid/dialect/pd_type.h"
 #include "paddle/fluid/dialect/utils.h"
 #include "paddle/fluid/framework/convert_utils.h"
@@ -89,7 +90,8 @@ PaddleDialect::PaddleDialect(ir::IrContext* context)
 }
 
 void PaddleDialect::initialize() {
-  RegisterTypes<GET_PADDLE_TYPE_LIST>();
+  RegisterTypes<GET_PD_DIALECT_TYPE_LIST>();
+  RegisterAttributes<GET_PD_DIALECT_ATTRIBUTE_LIST>();
   RegisterInterfaces<ParameterConvertInterface>();
 }
 
