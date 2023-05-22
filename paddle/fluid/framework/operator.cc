@@ -2044,7 +2044,31 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   }
 
   if (FLAGS_check_nan_inf) {
-    framework::details::CheckOpHasNanOrInf(*this, exec_scope, place);
+    try {
+      framework::details::CheckOpHasNanOrInf(*this, exec_scope, place);
+    } catch (...) {
+      const std::vector<std::string>* callstack = nullptr;
+      auto attrs = Attrs();
+      auto iter =
+          attrs.find(OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
+      if (iter != attrs.end()) {
+        callstack = &PADDLE_GET_CONST(std::vector<std::string>, iter->second);
+        if (callstack->empty()) callstack = nullptr;
+      }
+      std::ostringstream sout;
+      if (callstack) {
+        if (FLAGS_call_stack_level > 1) {
+          sout << "\n\n  Compile Traceback (most recent call last):";
+        } else {
+          sout << "In user code:\n";
+        }
+        for (auto& line : *callstack) {
+          sout << "\n  " << line;
+        }
+      }
+      std::cout << sout.str() << std::endl;
+      std::rethrow_exception(std::current_exception());
+    }
   }
 
   // To solve issue #15032, have a discussion with @Luotao for cpu inference,
