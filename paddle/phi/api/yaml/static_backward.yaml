@@ -67,7 +67,7 @@
 
 - backward_op : tril_triu_grad
   forward : tril_triu (Tensor x, int diagonal = 0, bool lower = false)  -> Tensor(out)
-  args : (Tensor x, Tensor out, Tensor out_grad, int diagonal, bool lower)
+  args : (Tensor out_grad, int diagonal, bool lower)
   output : Tensor(x_grad)
   infer_meta :
     func : TrilTriuInferMeta
