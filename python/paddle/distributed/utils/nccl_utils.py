@@ -49,5 +49,5 @@ def check_nccl_version_for_p2p():
 
 def check_nccl_version_for_bf16():
     nccl_version = core.nccl_version()
-    nccl_version_baseline = [2, 10, 0]
+    nccl_version_baseline = 21000
     return nccl_version >= nccl_version_baseline
