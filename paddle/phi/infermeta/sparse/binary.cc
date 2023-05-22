@@ -57,9 +57,9 @@ void Conv3dInferMeta(const MetaTensor& x,
                      const std::vector<int>& paddings,
                      const std::vector<int>& dilations,
                      const std::vector<int>& strides,
-                     const int groups,
+                     const int groups UNUSED,
                      const bool subm,
-                     const std::string& key,
+                     const std::string& key UNUSED,
                      MetaTensor* out,
                      MetaTensor* rulebook,
                      MetaTensor* counter) {
@@ -135,7 +135,7 @@ void Pool3dInferMeta(const MetaTensor& x,
 }
 
 void SparseCooTensorInferMeta(const MetaTensor& values,
-                              const MetaTensor& indices,
+                              const MetaTensor& indices UNUSED,
                               const std::vector<int64_t>& shape,
                               MetaTensor* out) {
   out->set_dims(phi::make_ddim(shape));

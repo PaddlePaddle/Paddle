@@ -17,14 +17,14 @@ limitations under the License. */
 namespace phi {
 namespace sparse {
 
-void FusedAttentionInferMeta(const MetaTensor& query,
-                             const MetaTensor& key,
-                             const MetaTensor& value,
-                             const MetaTensor& sparse_mask,
-                             const MetaTensor& key_padding_mask,
-                             const MetaTensor& attn_mask,
-                             MetaTensor* out,
-                             MetaTensor* softmax) {
+void FusedAttentionInferMeta(const MetaTensor& query UNUSED,
+                             const MetaTensor& key UNUSED,
+                             const MetaTensor& value UNUSED,
+                             const MetaTensor& sparse_mask UNUSED,
+                             const MetaTensor& key_padding_mask UNUSED,
+                             const MetaTensor& attn_mask UNUSED,
+                             MetaTensor* out UNUSED,
+                             MetaTensor* softmax UNUSED) {
   // TODO(zhouwei,zhangkaihuo) add correct infer meta
 }
 

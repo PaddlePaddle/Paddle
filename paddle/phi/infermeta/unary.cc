@@ -47,7 +47,7 @@ static DDim CheckAndGetOutputDim(const DDim& dim_x) {
 
 void AffineGridInferMeta(const MetaTensor& input,
                          const IntArray& outputShape,
-                         bool align_corners,
+                         bool align_corners UNUSED,
                          MetaTensor* output) {
   auto theta_dims = input.dims();
   bool is_from_tensor = outputShape.FromTensor();
@@ -253,7 +253,7 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
 
 void ArgsortInferMeta(const MetaTensor& input,
                       int axis,
-                      bool descending,
+                      bool descending UNUSED,
                       MetaTensor* output,
                       MetaTensor* indices) {
   auto in_dims = input.dims();
@@ -383,7 +383,9 @@ void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out) {
   out->share_lod(x);
 }
 
-void CholeskyInferMeta(const MetaTensor& x, bool upper, MetaTensor* out) {
+void CholeskyInferMeta(const MetaTensor& x,
+                       bool upper UNUSED,
+                       MetaTensor* out) {
   auto dims = x.dims();
   auto rank = dims.size();
   PADDLE_ENFORCE_GE(rank,
@@ -406,13 +408,13 @@ void CholeskyInferMeta(const MetaTensor& x, bool upper, MetaTensor* out) {
 }
 
 void ClassCenterSampleInferMeta(const MetaTensor& label,
-                                int num_classes,
+                                int num_classes UNUSED,
                                 int num_samples,
-                                int ring_id,
-                                int rank,
-                                int nranks,
-                                bool fix_seed,
-                                int seed,
+                                int ring_id UNUSED,
+                                int rank UNUSED,
+                                int nranks UNUSED,
+                                bool fix_seed UNUSED,
+                                int seed UNUSED,
                                 MetaTensor* remapped_label,
                                 MetaTensor* sampled_local_class_center) {
   PADDLE_ENFORCE_EQ(
@@ -455,8 +457,8 @@ void CreateLikeInferMeta(const MetaTensor& x, DataType dtype, MetaTensor* out) {
 void CumInferMeta(const MetaTensor& x,
                   int axis,
                   bool flatten,
-                  bool exclusive,
-                  bool reverse,
+                  bool exclusive UNUSED,
+                  bool reverse UNUSED,
                   MetaTensor* out) {
   auto x_dims = x.dims();
   if (flatten) {
@@ -633,7 +635,7 @@ void DiagEmbedInferMeta(
 
 void DiagInferMeta(const MetaTensor& x,
                    int offset,
-                   float padding_value,
+                   float padding_value UNUSED,
                    MetaTensor* out) {
   auto x_dims = x.dims();
 
@@ -816,7 +818,7 @@ void EigInferMeta(const MetaTensor& x, MetaTensor* out_w, MetaTensor* out_v) {
 }
 
 void EighInferMeta(const MetaTensor& x,
-                   const std::string& uplo,
+                   const std::string& uplo UNUSED,
                    MetaTensor* out_w,
                    MetaTensor* out_v) {
   auto input_dim = x.dims();
@@ -883,8 +885,8 @@ void EigvalsInferMeta(const MetaTensor& x, MetaTensor* out, MetaConfig config) {
 }
 
 void EigvalshInferMeta(const MetaTensor& x,
-                       const std::string& uplo,
-                       bool is_test,
+                       const std::string& uplo UNUSED,
+                       bool is_test UNUSED,
                        MetaTensor* out_w,
                        MetaTensor* out_v) {
   auto input_dim = x.dims();
@@ -968,7 +970,7 @@ void EinsumInferMeta(const std::vector<const MetaTensor*>& inputs,
 void EinsumRawInferMeta(const std::vector<const MetaTensor*>& inputs,
                         const std::string& equation,
                         MetaTensor* out,
-                        std::vector<MetaTensor*> inner_cache,
+                        std::vector<MetaTensor*> inner_cache UNUSED,
                         std::vector<MetaTensor*> xshape) {
   EinsumInferMeta(inputs, equation, out);
   for (size_t i = 0; i < xshape.size(); ++i) {
@@ -1048,8 +1050,11 @@ void ExpandInferMeta(const MetaTensor& x,
   }
 }
 
-void FillDiagonalInferMeta(
-    const MetaTensor& x, float value, int offset, bool wrap, MetaTensor* out) {
+void FillDiagonalInferMeta(const MetaTensor& x,
+                           float value UNUSED,
+                           int offset UNUSED,
+                           bool wrap UNUSED,
+                           MetaTensor* out UNUSED) {
   PADDLE_ENFORCE_NE(
       out,
       nullptr,
@@ -1061,8 +1066,8 @@ void FillDiagonalInferMeta(
 
 void FFTC2CInferMeta(const MetaTensor& x,
                      const std::vector<int64_t>& axes,
-                     const std::string& normalization,
-                     bool forward,
+                     const std::string& normalization UNUSED,
+                     bool forward UNUSED,
                      MetaTensor* out,
                      MetaConfig config) {
   PADDLE_ENFORCE_NOT_NULL(
@@ -1084,8 +1089,8 @@ void FFTC2CInferMeta(const MetaTensor& x,
 
 void FFTC2RInferMeta(const MetaTensor& x,
                      const std::vector<int64_t>& axes,
-                     const std::string& normalization,
-                     bool forward,
+                     const std::string& normalization UNUSED,
+                     bool forward UNUSED,
                      int64_t last_dim_size,
                      MetaTensor* out,
                      MetaConfig config) {
@@ -1131,8 +1136,8 @@ void FFTC2RInferMeta(const MetaTensor& x,
 
 void FFTR2CInferMeta(const MetaTensor& x,
                      const std::vector<int64_t>& axes,
-                     const std::string& normalization,
-                     bool forward,
+                     const std::string& normalization UNUSED,
+                     bool forward UNUSED,
                      bool onesided,
                      MetaTensor* out,
                      MetaConfig config) {
@@ -1614,7 +1619,7 @@ void FrameInferMeta(const MetaTensor& x,
 
 void FullBatchSizeLikeInferMeta(const MetaTensor& x,
                                 const std::vector<int>& shape,
-                                const Scalar& val,
+                                const Scalar& val UNUSED,
                                 DataType dtype,
                                 int x_batch_size_dim,
                                 int out_batch_size_dim,
@@ -1624,8 +1629,8 @@ void FullBatchSizeLikeInferMeta(const MetaTensor& x,
 }
 
 void GumbelSoftmaxInferMeta(const MetaTensor& x,
-                            float temperature,
-                            bool hard,
+                            float temperature UNUSED,
+                            bool hard UNUSED,
                             int axis,
                             MetaTensor* out) {
   UnchangedInferMetaCheckAxis(x, axis, out);
@@ -1664,7 +1669,9 @@ void IdentityLossInferMeta(const MetaTensor& x,
   }
 }
 
-void IncrementInferMeta(const MetaTensor& x, float value, MetaTensor* out) {
+void IncrementInferMeta(const MetaTensor& x,
+                        float value UNUSED,
+                        MetaTensor* out) {
   PADDLE_ENFORCE_EQ(
       product(x.dims()),
       1UL,
@@ -1838,7 +1845,7 @@ void InverseInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->share_lod(x);
 }
 
-void IsEmptyInferMeta(const MetaTensor& x, MetaTensor* out) {
+void IsEmptyInferMeta(const MetaTensor& x UNUSED, MetaTensor* out) {
   out->set_dims(phi::make_ddim({}));
   out->set_dtype(DataType::BOOL);
 }
@@ -1934,7 +1941,7 @@ void LogsumexpInferMeta(const MetaTensor& input,
   ReduceInferMetaBase(input, axis, keepdim, reduce_all, out);
 }
 
-void MatrixPowerInferMeta(const MetaTensor& x, int n, MetaTensor* out) {
+void MatrixPowerInferMeta(const MetaTensor& x, int n UNUSED, MetaTensor* out) {
   auto dims = x.dims();
   auto n_dim = dims.size();
   PADDLE_ENFORCE_GE(n_dim,
@@ -2006,7 +2013,7 @@ void LUInferMeta(const MetaTensor& x,
 }
 
 void MatrixRankInferMeta(const MetaTensor& x,
-                         bool use_default_tol,
+                         bool use_default_tol UNUSED,
                          bool hermitian,
                          MetaTensor* out) {
   auto dim_x = x.dims();
@@ -2201,7 +2208,7 @@ void ModeInferMeta(const MetaTensor& x,
 
 void MultinomialInferMeta(const MetaTensor& x,
                           const Scalar& num_samples,
-                          bool replacement,
+                          bool replacement UNUSED,
                           MetaTensor* out,
                           MetaConfig config) {
   auto int_num_samples = num_samples.to<int>();
@@ -2299,7 +2306,9 @@ void NanmedianInferMeta(const MetaTensor& x,
   out->set_dims(make_ddim(out_dim));
 }
 
-void NMSInferMeta(const MetaTensor& x, float threshold, MetaTensor* out) {
+void NMSInferMeta(const MetaTensor& x,
+                  float threshold UNUSED,
+                  MetaTensor* out) {
   auto boxes_dim = x.dims();
   PADDLE_ENFORCE_EQ(boxes_dim.size(),
                     2,
@@ -2325,7 +2334,7 @@ void NonZeroInferMeta(const MetaTensor& condition, MetaTensor* out) {
 
 void NormInferMeta(const MetaTensor& x,
                    int axis,
-                   float epsilon,
+                   float epsilon UNUSED,
                    bool is_test,
                    MetaTensor* out,
                    MetaTensor* norm) {
@@ -2344,7 +2353,7 @@ void NormInferMeta(const MetaTensor& x,
 void OneHotRawInferMeta(const MetaTensor& x,
                         const Scalar& depth,
                         DataType dtype,
-                        bool allow_out_of_range,
+                        bool allow_out_of_range UNUSED,
                         MetaTensor* out) {
   auto x_dims = x.dims();
   PADDLE_ENFORCE_GE(
@@ -2464,7 +2473,7 @@ void OverlapAddInferMeta(const MetaTensor& x,
 
 void PadInferMeta(const MetaTensor& input,
                   const std::vector<int>& paddings,
-                  const Scalar& padding_value,
+                  const Scalar& padding_value UNUSED,
                   MetaTensor* out,
                   MetaConfig config) {
   auto x_dim = input.dims();
@@ -2505,8 +2514,8 @@ void PadInferMeta(const MetaTensor& input,
 
 void Pad3dInferMeta(const MetaTensor& x,
                     const IntArray& paddings_int_array,
-                    const std::string& mode,
-                    float value,
+                    const std::string& mode UNUSED,
+                    float value UNUSED,
                     const std::string& data_format,
                     MetaTensor* out,
                     MetaConfig config) {
@@ -2722,9 +2731,9 @@ void PixelUnshuffleInferMeta(const MetaTensor& x,
 }
 
 void PNormInferMeta(const MetaTensor& x,
-                    float porder,
+                    float porder UNUSED,
                     int axis,
-                    float epsilon,
+                    float epsilon UNUSED,
                     bool keepdim,
                     bool asvector,
                     MetaTensor* out) {
@@ -2827,7 +2836,7 @@ void Pool2DInferMeta(const MetaTensor& x,
   }
 }
 
-void PSendInferMeta(const MetaTensor& x, int peer) {
+void PSendInferMeta(const MetaTensor& x UNUSED, int peer) {
   LOG(INFO) << "SendBaseInferMeta begin";
   PADDLE_ENFORCE_GE(
       peer,
@@ -2836,7 +2845,7 @@ void PSendInferMeta(const MetaTensor& x, int peer) {
           "The peer (%d) for p_send op must be non-negative.", peer));
 }
 
-void PSendArrayInferMeta(const MetaTensor& x, int peer) {
+void PSendArrayInferMeta(const MetaTensor& x UNUSED, int peer) {
   PADDLE_ENFORCE_GE(
       peer,
       0,
@@ -2849,9 +2858,9 @@ void PoolInferMeta(const MetaTensor& x,
                    const std::vector<int>& strides,
                    const std::vector<int>& paddings,
                    bool ceil_mode,
-                   bool exclusive,
+                   bool exclusive UNUSED,
                    const std::string& data_format,
-                   const std::string& pooling_type,
+                   const std::string& pooling_type UNUSED,
                    bool global_pooling,
                    bool adaptive,
                    const std::string& padding_algorithm,
@@ -3276,9 +3285,9 @@ void ReverseInferMeta(const MetaTensor& x,
   out->share_meta(x);
 }
 
-void ReverseArrayInferMeta(const std::vector<const phi::MetaTensor*>& x,
+void ReverseArrayInferMeta(const std::vector<const phi::MetaTensor*>& x UNUSED,
                            const IntArray& axis,
-                           std::vector<phi::MetaTensor*> out,
+                           std::vector<phi::MetaTensor*> out UNUSED,
                            MetaConfig config) {
   if (!config.is_runtime && axis.FromTensor()) {
     return;
@@ -3334,7 +3343,7 @@ void RollInferMeta(const MetaTensor& x,
 void RReluInferMeta(const MetaTensor& x,
                     float lower,
                     float upper,
-                    bool is_test,
+                    bool is_test UNUSED,
                     MetaTensor* out,
                     MetaTensor* noise) {
   auto x_dims = x.dims();
@@ -3372,7 +3381,7 @@ void RReluInferMeta(const MetaTensor& x,
 }
 
 void RReluGradInferMeta(const MetaTensor& out_grad,
-                        const MetaTensor& noise,
+                        const MetaTensor& noise UNUSED,
                         MetaTensor* x_grad) {
   auto do_dims = out_grad.dims();
   x_grad->set_dims(do_dims);
@@ -3398,10 +3407,10 @@ void ShapeInferMeta(const MetaTensor& input, MetaTensor* out) {
 }
 
 void ShardIndexInferMeta(const MetaTensor& in,
-                         int index_num,
-                         int nshards,
-                         int shard_id,
-                         int ignore_value,
+                         int index_num UNUSED,
+                         int nshards UNUSED,
+                         int shard_id UNUSED,
+                         int ignore_value UNUSED,
                          MetaTensor* out,
                          MetaConfig config) {
   auto x_dims = in.dims();
@@ -3425,7 +3434,7 @@ void ShardIndexInferMeta(const MetaTensor& in,
   out->set_dtype(in.dtype());
 }
 
-void NumelInferMeta(const MetaTensor& input, MetaTensor* out) {
+void NumelInferMeta(const MetaTensor& input UNUSED, MetaTensor* out) {
   out->set_dtype(DataType::INT64);
   out->set_dims(phi::make_ddim({}));
 }
@@ -3740,7 +3749,7 @@ void SplitWithNumInferMeta(const MetaTensor& x,
   }
 }
 
-void SquaredL2NormInferMeta(const MetaTensor& x, MetaTensor* out) {
+void SquaredL2NormInferMeta(const MetaTensor& x UNUSED, MetaTensor* out) {
   out->set_dims({1});
 }
 
@@ -4169,7 +4178,7 @@ void SvdInferMeta(const MetaTensor& x,
 void TemporalShiftInferMeta(const MetaTensor& x,
                             int seg_num,
                             float shift_ratio,
-                            const std::string& data_format,
+                            const std::string& data_format UNUSED,
                             MetaTensor* out,
                             MetaConfig config) {
   auto dim_x = x.dims();
@@ -4215,7 +4224,7 @@ void TemporalShiftInferMeta(const MetaTensor& x,
 void TileInferMeta(const MetaTensor& x,
                    const IntArray& repeat_times,
                    MetaTensor* out,
-                   MetaConfig config) {
+                   MetaConfig config UNUSED) {
 #define MAX_RANK_SUPPORTED 6
 
   auto repeat_times_data = repeat_times.GetData();
@@ -4284,11 +4293,11 @@ void TileInferMeta(const MetaTensor& x,
 void TopKInferMeta(const MetaTensor& x,
                    const Scalar& k_scalar,
                    int axis,
-                   bool largest,
-                   bool sorted,
+                   bool largest UNUSED,
+                   bool sorted UNUSED,
                    MetaTensor* out,
                    MetaTensor* indices,
-                   MetaConfig config) {
+                   MetaConfig config UNUSED) {
   auto input_dims = x.dims();
   const int& dim_size = input_dims.size();
   if (dim_size != 0) {
@@ -4340,8 +4349,11 @@ void TopKInferMeta(const MetaTensor& x,
   indices->set_dtype(DataType::INT64);
 }
 
-void TraceInferMeta(
-    const MetaTensor& x, int offset, int axis1, int axis2, MetaTensor* out) {
+void TraceInferMeta(const MetaTensor& x,
+                    int offset UNUSED,
+                    int axis1,
+                    int axis2,
+                    MetaTensor* out) {
   int dim1 = axis1;
   int dim2 = axis2;
 
@@ -4412,7 +4424,7 @@ void TraceInferMeta(
 }
 
 void TransferLayoutInferMeta(const MetaTensor& x,
-                             int src_layout,
+                             int src_layout UNUSED,
                              int dst_layout,
                              MetaTensor* out) {
   out->set_dims(x.dims());
@@ -4516,8 +4528,8 @@ void UnbindInferMeta(const MetaTensor& x,
 }
 
 void TrilTriuInferMeta(const MetaTensor& x,
-                       int diagonal,
-                       bool lower,
+                       int diagonal UNUSED,
+                       bool lower UNUSED,
                        MetaTensor* out) {
   const auto& x_dims = x.dims();
   PADDLE_ENFORCE_GE(x_dims.size(),
@@ -4743,10 +4755,10 @@ void UnfoldInferMeta(const MetaTensor& x,
 void UniformRandomInplaceInferMeta(const MetaTensor& x,
                                    float min,
                                    float max,
-                                   int seed,
+                                   int seed UNUSED,
                                    int diag_num,
                                    int diag_step,
-                                   float diag_val,
+                                   float diag_val UNUSED,
                                    MetaTensor* out) {
   PADDLE_ENFORCE_LT(
       min,
@@ -4781,7 +4793,7 @@ void UniqueConsecutiveInferMeta(const MetaTensor& x,
                                 bool return_inverse,
                                 bool return_counts,
                                 const std::vector<int>& axis,
-                                int dtype,
+                                int dtype UNUSED,
                                 MetaTensor* out,
                                 MetaTensor* index,
                                 MetaTensor* counts) {

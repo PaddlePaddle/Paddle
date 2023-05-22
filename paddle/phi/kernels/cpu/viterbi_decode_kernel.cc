@@ -77,7 +77,7 @@ struct Argmax {
 
 template <typename Context>
 struct ARange {
-  void operator()(const Context& dev_ctx,
+  void operator()(const Context& dev_ctx UNUSED,
                   int64_t* data,
                   int end,
                   int64_t scale) {
@@ -89,7 +89,7 @@ struct ARange {
 
 template <typename Context, typename T>
 struct GetMaxValue {
-  void operator()(const Context& dev_ctx,
+  void operator()(const Context& dev_ctx UNUSED,
                   const DenseTensor& input,
                   T* max_value) {
     auto input_ptr = input.data<T>();

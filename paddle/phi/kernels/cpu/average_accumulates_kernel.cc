@@ -21,7 +21,7 @@ limitations under the License. */
 namespace phi {
 
 template <>
-void GetAccumulators<phi::CPUContext>(const phi::CPUContext& dev_ctx,
+void GetAccumulators<phi::CPUContext>(const phi::CPUContext& dev_ctx UNUSED,
                                       const DenseTensor& in_num_accumulates,
                                       const DenseTensor& in_old_num_accumulates,
                                       const DenseTensor& in_num_updates,
@@ -34,7 +34,7 @@ void GetAccumulators<phi::CPUContext>(const phi::CPUContext& dev_ctx,
 }
 
 template <>
-void SetAccumulators<phi::CPUContext>(const phi::CPUContext& dev_ctx,
+void SetAccumulators<phi::CPUContext>(const phi::CPUContext& dev_ctx UNUSED,
                                       int64_t num_updates,
                                       int64_t num_accumulates,
                                       int64_t old_num_accumulates,

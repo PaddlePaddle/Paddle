@@ -82,7 +82,7 @@ void sgd_dense_param_sparse_grad_impl(const DenseTensor& param,
 
 template <>
 void sgd_dense_param_sparse_grad_impl<phi::dtype::bfloat16>(
-    const DenseTensor& param,
+    const DenseTensor& param UNUSED,
     const DenseTensor& learning_rate,
     const SelectedRows& grad,
     DenseTensor* param_out) {
