@@ -40,6 +40,10 @@ file(
   "strings/gpu/*.cu"
   "fusion/gpu/*.cu")
 
+if(APPLE OR WIN32)
+  list(REMOVE_ITEM kernel_cu "fusion/gpu/fusion_group_kernel.cu")
+endif()
+
 if(DEFINED REDUCE_INFERENCE_LIB_SIZE)
   list(FILTER kernel_cu EXCLUDE REGEX ".*_grad_kernel\\.cc$")
   list(FILTER kernel_cu EXCLUDE REGEX ".*_grad_kernel\\.cu$")
@@ -75,11 +79,6 @@ if(WITH_CUTLASS)
     "fusion/cutlass/*.cu"
     "fusion/cutlass/memory_efficient_attention/autogen/impl/*.cu")
   list(APPEND kernel_cu ${cutlass_cu})
-endif()
-
-if(APPLE OR WIN32)
-  list(REMOVE_ITEM kernel_cu
-       "${CMAKE_CURRENT_SOURCE_DIR}/fusion/gpu/fusion_group_kernel.cu")
 endif()
 
 if(WITH_MKLDNN)

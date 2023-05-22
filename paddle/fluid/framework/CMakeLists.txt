@@ -1185,7 +1185,7 @@ cc_library(
        layer)
 
 cc_library(type_info SRCS type_info.cc)
-add_dependencies(type_info framework_proto auto_parallel_proto xxhash)
+add_dependencies(type_info framework_proto auto_parallel_proto xxhash mkldnn)
 
 set(FLUID_FRAMEWORK_MODULES
     proto_desc
