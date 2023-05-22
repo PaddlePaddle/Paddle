@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
-import legacy_test.test_communication_api_base as test_base
+sys.path.append("../legacy_test")
+
+import test_communication_api_base as test_base
 
 
 class TestCommunicationStreamBroadcastAPI(test_base.CommunicationTestDistBase):

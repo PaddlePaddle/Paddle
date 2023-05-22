@@ -54,7 +54,7 @@ class TestDistMnistNCCL2DGC(TestDistBase):
 
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(
-                os.path.abspath("../../dist_mnist_dgc.py"),
+                os.path.abspath("../../legacy_test/dist_mnist_dgc.py"),
                 delta=1e-5,
                 check_error_log=True,
                 log_name=flag_name,

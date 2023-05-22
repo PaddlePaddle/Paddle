@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import numpy as np
-from test_dist_base import TestDistRunnerBase, runtime_main
+from legacy_test.test_dist_base import TestDistRunnerBase, runtime_main
 
 import paddle
 from paddle import fluid

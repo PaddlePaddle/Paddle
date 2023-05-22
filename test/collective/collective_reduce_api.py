@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from legacy_test.test_collective_api_base import (
-    TestCollectiveAPIRunnerBase,
-    runtime_main,
-)
+import sys
+
+sys.path.append("../legacy_test")
+
+from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
 
 import paddle
 import paddle.distributed as dist

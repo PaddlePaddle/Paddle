@@ -13,7 +13,9 @@
 # limitations under the License.
 
 import random
+import sys
 
+sys.path.append("../legacy_test")
 import auto_parallel_gpt_model as modeling
 import numpy as np
 from auto_parallel_gpt_model import (
