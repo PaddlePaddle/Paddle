@@ -69,21 +69,22 @@ def _reduce_scatter_in_dygraph(
 
 def _reduce_scatter_in_static_mode(tensor, tensor_or_tensor_list, group):
     op_type = 'reduce_scatter'
-    data_feeder.check_variable_and_dtype(
-        tensor,
-        'tensor',
-        [
-            'float16',
-            'float32',
-            'float64',
-            'int32',
-            'int64',
-            'int8',
-            'uint8',
-            'bool',
-        ],
-        op_type,
-    )
+    if tensor is not None:
+        data_feeder.check_variable_and_dtype(
+            tensor,
+            'tensor',
+            [
+                'float16',
+                'float32',
+                'float64',
+                'int32',
+                'int64',
+                'int8',
+                'uint8',
+                'bool',
+            ],
+            op_type,
+        )
 
     helper = framework.LayerHelper(op_type, **locals())
 
