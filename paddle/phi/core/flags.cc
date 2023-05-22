@@ -245,7 +245,7 @@ PHI_DEFINE_EXPORTED_bool(
  */
 PHI_DEFINE_EXPORTED_int64(
     embedding_deterministic,
-    0,
+    1,
     "Whether allow using an deterministic algorithm for embedding "
     "operator. The deterministic algorithm may be slower. If "
     "it is larger than 0, the algorithm is deterministic.");
