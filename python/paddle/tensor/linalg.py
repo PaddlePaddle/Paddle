@@ -27,6 +27,7 @@ from ..fluid.data_feeder import (
 from ..framework import LayerHelper, in_dygraph_mode
 from .creation import full
 from .manipulation import cast
+from .math import _get_reduce_axis
 
 __all__ = []
 
@@ -198,7 +199,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
             y = paddle.rand([10])
             z = paddle.matmul(x, y)
             print(z.shape)
-            # (1,)
+            # ()
 
             # matrix * vector
             x = paddle.rand([10, 5])
@@ -459,12 +460,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             reduce_out = helper.create_variable_for_type_inference(
                 dtype=helper.input_dtype()
             )
-
-            reduce_all = (
-                True if axis is None or axis == [] or asvector else False
-            )
-            axis = axis if axis is not None and axis != [] else [0]
-
+            reduce_all, axis = _get_reduce_axis(axis, x)
             reduce_type = (
                 'reduce_max' if porder == np.float64('inf') else 'reduce_min'
             )
@@ -516,6 +512,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
         sum_out = block.create_variable_for_type_inference(
             dtype=block.input_dtype()
         )
+        reduce_all, axis = _get_reduce_axis(axis, x)
         block.append_op(
             type='reduce_sum',
             inputs={'X': pow_out},
@@ -523,7 +520,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             attrs={
                 'dim': axis,
                 'keep_dim': keepdim,
-                'reduce_all': True if axis is None else False,
+                'reduce_all': reduce_all,
             },
         )
         block.append_op(
@@ -834,8 +831,6 @@ def cond(x, p=None, name=None):
             if porder == -1 or porder == -np.inf:
                 return _C_ops.min(sum_out, [-1], False)
         else:
-            reduce_all = True if axis is None or axis == [] else False
-            axis = axis if axis is not None and axis != [] else [0]
             block = LayerHelper('norm', **locals())
             abs_out = block.create_variable_for_type_inference(
                 dtype=block.input_dtype()
@@ -849,6 +844,8 @@ def cond(x, p=None, name=None):
             block.append_op(
                 type='abs', inputs={'X': input}, outputs={'Out': abs_out}
             )
+
+            reduce_all, axis = _get_reduce_axis(axis, x)
             block.append_op(
                 type='reduce_sum',
                 inputs={'X': abs_out},
@@ -894,7 +891,6 @@ def cond(x, p=None, name=None):
             sum_out_2 = _C_ops.sum(sum_out_1, axis, None, False)
             return _C_ops.pow(sum_out_2, float(1.0 / porder))
         else:
-            reduce_all = True if axis is None or axis == [] else False
             block = LayerHelper('norm', **locals())
             pow_out = block.create_variable_for_type_inference(
                 dtype=block.input_dtype()
@@ -914,6 +910,8 @@ def cond(x, p=None, name=None):
                 outputs={'Out': pow_out},
                 attrs={'factor': porder},
             )
+
+            reduce_all, axis = _get_reduce_axis(axis, x)
             block.append_op(
                 type='reduce_sum',
                 inputs={'X': pow_out},
@@ -960,7 +958,7 @@ def cond(x, p=None, name=None):
             if porder == -2:
                 return _C_ops.divide(min_out, max_out)
         else:
-            reduce_all = True if axis is None or axis == [] else False
+            reduce_all, axis = _get_reduce_axis(axis, x)
             block = LayerHelper('norm', **locals())
             out = block.create_variable_for_type_inference(
                 dtype=block.input_dtype()
