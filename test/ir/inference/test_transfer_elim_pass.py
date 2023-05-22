@@ -22,7 +22,7 @@ from program_config import OpConfig, ProgramConfig, TensorConfig
 os.environ['NVIDIA_TF32_OVERRIDE'] = '0'
 
 
-class TestConvEltwiseaddBnFusePass(PassAutoScanTest):
+class TestTransferElimPass0(PassAutoScanTest):
     r"""input0                    input1
            |                         |
      transfer_layout         transfer_layout
@@ -90,7 +90,7 @@ class TestConvEltwiseaddBnFusePass(PassAutoScanTest):
     def test(self):
         self.run_and_statis(
             quant=False,
-            max_examples=1,
+            max_examples=30,
             passes=["transfer_layout_elim"],
         )
 

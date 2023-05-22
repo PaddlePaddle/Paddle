@@ -321,3 +321,7 @@ void TransferLayoutElimPass::ApplyImpl(ir::Graph *graph) const {
 
 REGISTER_PASS(transfer_layout_elim,
               paddle::framework::ir::TransferLayoutElimPass);
+// Add below for test_transfer_elim_pass passing.
+REGISTER_PASS_CAPABILITY(transfer_layout_elim)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination());
