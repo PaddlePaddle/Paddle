@@ -30,13 +30,10 @@ class RollOpConverter : public OpConverter {
 
     framework::OpDesc op_desc(op, nullptr);
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
-    // nvinfer1::Dims input_dims = input->getDimensions();
-
     std::vector<int64_t> axis =
         PADDLE_GET_CONST(std::vector<int64_t>, op_desc.GetAttr("axis"));
     std::vector<int64_t> shifts =
         PADDLE_GET_CONST(std::vector<int64_t>, op_desc.GetAttr("shifts"));
-
     int axis_size = axis.size();
     nvinfer1::ITensor* input_shape_tensor = Shape(input);
     nvinfer1::ILayer* layer = nullptr;
