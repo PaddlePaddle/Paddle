@@ -39,31 +39,20 @@ class TestAutoCast(AmpTestBase):
         self.assertEqual(out2.dtype, paddle.float32)
         self.assertEqual(out3.dtype, paddle.float32)
 
-class SimpleConvNet(nn.Layer):
-    def __init__(self):
-        super().__init__()
-        self.conv = nn.Conv2D(in_channels=1, out_channels=6, kernel_size=3)
-        self.linear = nn.Linear(in_features=96, out_features=4)
-
-    def forward(self, x):
-        out = self.conv(x)
-        out = nn.functional.relu(out.cast("float32"))
-        out = out.flatten(start_axis=1, stop_axis=3)
-        out = self.linear(out)
-        return out
 
 class SimpleConvNet(nn.Layer):
     def __init__(self):
         super().__init__()
-        self.conv = nn.Conv2D(in_channels=1, out_channels=6, kernel_size=3)
-        self.linear = nn.Linear(in_features=96, out_features=4)
+        self._conv = paddle.nn.Conv2D(
+            in_channels=1, out_channels=6, kernel_size=3, bias_attr=False
+        )
+        self._linear = paddle.nn.Linear(in_features=4, out_features=4)
 
     def forward(self, x):
-        out = self.conv(x)
-        out = nn.functional.relu(out.cast("float32"))
-        out = out.flatten(start_axis=1, stop_axis=3)
-        out = self.linear(out)
-        return out
+        out1 = self._conv(paddle.rand(shape=[1, 1, 6, 6], dtype='float32'))
+        out2 = out1 + paddle.rand(shape=out1.shape, dtype='float16')
+        out3 = self._linear(out2)
+        return out3
 
 
 class TestStaticDecorate(AmpTestBase):
@@ -119,12 +108,11 @@ class TestStaticDecorate(AmpTestBase):
             level,
         )
 
-    def test_static_amp_o1(self):
+    def test_static_amp_OD(self):
         paddle.enable_static()
         expected_fp16_calls = {
             "conv2d": 1,
             "elementwise_add": 0,
-            "relu": 0,
             "matmul_v2": 1,
             "reduce_mean": 0,
         }
