@@ -37,6 +37,17 @@ template <>
 __inline__ __device__ double Inf<double>() {
   return CUDART_INF;
 }
+#if PADDLE_WITH_HIP
+template <typename T>
+__device__ T __shfl_xor_sync(T var, int laneMask, int width = warpSize) {
+  unsigned int bpermute = __ballot_sync(0xffffffff, true);
+  unsigned int src = __ballot_sync(0xffffffff, true) ^ laneMask;
+  unsigned int control = (width << 16) | 0x1;  // mode: warp shuffle, type: xor
+  unsigned int result = llvm_amdgcn_ds_bpermute(
+      *reinterpret_cast<unsigned int*>(&var), bpermute, control);
+  return *reinterpret_cast<T*>(&result);
+}
+#endif
 
 template <typename T,
           template <typename>
@@ -44,7 +55,11 @@ template <typename T,
           int ThreadGroupWidth = kWarpSize>
 __inline__ __device__ T WarpAllReduce(T val) {
   for (int mask = ThreadGroupWidth / 2; mask > 0; mask /= 2) {
+#if PADDLE_WITH_HIP
+    val = Functor<T>(cal, __shfl_xor_sync<T>(0xffffffff, val, mask));
+#else
     val = Functor<T>()(val, __shfl_xor_sync(0xffffffff, val, mask));
+#endif
   }
   return val;
 }
