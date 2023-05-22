@@ -309,15 +309,14 @@ std::string GetExternalErrorMsg(T status) {
     if (std::string::npos != last_slash_idx) {
       strModule.erase(last_slash_idx, std::string::npos);
     }
-    if (compare_path.compare("avx.pyd") == 0 ||
-        strModule.find("dist-packages") != std::string::npos) {
+    if (strModule.find("dist-packages") != std::string::npos) {
       filePath = strModule +
                  "\\..\\include\\third_"
                  "party\\externalerror\\data\\externalErrorMsg.pb";
     } else {
       filePath = strModule +
-                 "\\..\\paddle\\third_"
-                 "party\\externalerror\\data\\externalErrorMsg.pb";
+                 "\\..\\..\\third_party"
+                 "\\externalerror\\data\\externalErrorMsg.pb";
     }
 #endif
     std::ifstream fin(filePath, std::ios::in | std::ios::binary);
