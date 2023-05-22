@@ -29,8 +29,24 @@ void BitwiseNotKernel(const Context& ctx,
                            reinterpret_cast<const XPUDataType*>(x.data<T>()),
                            reinterpret_cast<XPUDataType*>(out->data<T>()),
                            x.numel());
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "bitwise not");
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "logical_not");
+}
+
+template <typename T, typename Context>
+void BitwiseAndKernel(const Context& ctx,
+                      const DenseTensor& x,
+                      const DenseTensor& y,
+                      DenseTensor* out) {
+  using XPUDataType = typename XPUTypeTrait<T>::Type;
+  ctx.template Alloc<T>(out);
+  int r = xpu::logical_and(ctx.x_context(),
+                           reinterpret_cast<const XPUDataType*>(x.data<T>()),
+                           reinterpret_cast<const XPUDataType*>(y.data<T>()),
+                           reinterpret_cast<XPUDataType*>(out->data<T>()),
+                           x.numel());
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "logical_and");
 }
 }  // namespace phi
 
 PD_REGISTER_KERNEL(bitwise_not, XPU, ALL_LAYOUT, phi::BitwiseNotKernel, bool) {}
+PD_REGISTER_KERNEL(bitwise_and, XPU, ALL_LAYOUT, phi::BitwiseAndKernel, bool) {}
