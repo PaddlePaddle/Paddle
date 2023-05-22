@@ -23,7 +23,7 @@ namespace ir {
 /// The built-in Dialect will use this macro to quickly register all built-in
 /// types.
 ///
-#define GET_BUILT_IN_TYPE_LIST                                              \
+#define GET_TYPE_LIST                                                       \
   BFloat16Type, Float16Type, Float32Type, Float64Type, Int8Type, Int16Type, \
       Int32Type, Int64Type, BoolType, VectorType
 

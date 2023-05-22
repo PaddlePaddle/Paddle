@@ -19,7 +19,7 @@
 
 namespace paddle {
 namespace dialect {
-#define GET_PD_DIALECT_TYPE_LIST paddle::dialect::DenseTensorType
+#define GET_TYPE_LIST paddle::dialect::DenseTensorType
 
 ///
 /// \brief Define built-in parametric types.

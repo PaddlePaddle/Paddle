@@ -22,7 +22,7 @@ namespace ir {
 /// The built-in Dialect will use this macro to quickly register all built-in
 /// OPs.
 ///
-#define GET_BUILT_IN_OP_LIST ir::GetParameterOp, ir::SetParameterOp
+#define GET_OP_LIST ir::GetParameterOp, ir::SetParameterOp
 
 ///
 /// \brief GetParameterOp: OpResult = GetParameterOp({StrAttribute,

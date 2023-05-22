@@ -19,7 +19,7 @@
 
 namespace paddle {
 namespace dialect {
-#define GET_PD_DIALECT_ATTRIBUTE_LIST                                    \
+#define GET_ATTRIBUTE_LIST                                               \
   IntArrayAttribute, ScalarAttribute, DataTypeAttribute, PlaceAttribute, \
       DataLayoutAttribute
 

@@ -45,9 +45,9 @@ class alignas(8) Operation final {
 
   IrContext *ir_context() const;
 
-  ir::OpResult GetResultByIndex(uint32_t index);
+  ir::OpResult GetResultByIndex(uint32_t index) const;
 
-  ir::OpOperand GetOperandByIndex(uint32_t index);
+  ir::OpOperand GetOperandByIndex(uint32_t index) const;
 
   std::string print();
 
