@@ -73,7 +73,6 @@ class TestPolygammaAPI(unittest.TestCase):
             out = paddle.polygamma(x, self.ORDER)
 
             out_ref = ref_polygamma(self.x, self.ORDER)
-            print(out_ref, out.numpy(), "++" * 10)
             np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-5)
             paddle.enable_static()
 

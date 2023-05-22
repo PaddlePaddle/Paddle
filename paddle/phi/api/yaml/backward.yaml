@@ -1496,7 +1496,7 @@
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
-    param : [out_grad]
+    param : [x]
   kernel :
     func : polygamma_grad
 

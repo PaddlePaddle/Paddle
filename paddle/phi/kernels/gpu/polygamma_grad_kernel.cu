@@ -16,6 +16,8 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/elementwise_base.h"
+#include "paddle/phi/kernels/impl/polygamma_kernel_impl.h"
 
 namespace phi {
 
@@ -26,7 +28,10 @@ void PolygammaGradKernel(const Context& ctx,
                        const int n,
                        DenseTensor* x_grad) {
   ctx.template Alloc<T>(x_grad);
-
+  std::vector<const DenseTensor*> ins = {&x, &out_grad};
+  std::vector<DenseTensor*> outs = {x_grad};
+  auto functor = CudaPolygammaGradFunctor<T>(n + 1);
+  phi::funcs::ElementwiseKernel<T>(ctx, ins, &outs, functor);
 }
 
 } // namespace phi

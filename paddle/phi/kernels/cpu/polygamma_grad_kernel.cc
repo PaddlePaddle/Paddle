@@ -17,6 +17,7 @@
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
+#include "paddle/phi/kernels/impl/polygamma_kernel_impl.h"
 
 namespace phi {
 
@@ -26,8 +27,14 @@ void PolygammaGradKernel(const Context& ctx,
                        const DenseTensor& out_grad,
                        const int n,
                        DenseTensor* x_grad) {
-  ctx.template Alloc<T>(x_grad);
+  auto size = x.numel();
+  auto* x_data = x.data<T>();
+  auto* out_grad_data = out_grad.data<T>();
+  auto* x_gard_data = ctx.template Alloc<T>(x_grad);
 
+  phi::funcs::ForRange<Context> for_range(ctx, size);
+  PolygammaGradFunctor<T> functor(x_data, n + 1, out_grad_data, x_gard_data, size);
+  for_range(functor);
 }
 
 } // namespace phi
