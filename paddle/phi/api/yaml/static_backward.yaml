@@ -65,6 +65,15 @@
     func : softmax_grad
   composite : softmax_grad(out, out_grad, axis, x_grad)
 
+- backward_op : tril_triu_grad
+  forward : tril_triu (Tensor x, int diagonal = 0, bool lower = false)  -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad, int diagonal, bool lower)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : TrilTriuInferMeta
+  kernel:
+    func : tril_triu_grad
+
 - backward_op: unpool_grad
   forward: unpool (Tensor x, Tensor indices, int[] ksize, str unpooling_type, int[] strides = {1,1}, int[] paddings ={0,0} ,IntArray output_size = {0,0}, str data_format="NCHW") -> Tensor(out)
   args: (Tensor x, Tensor indices, Tensor out, Tensor out_grad, int[] ksize, int[] strides, int[] paddings, IntArray output_size, str data_format)
