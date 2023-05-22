@@ -957,7 +957,7 @@ struct GraphDataGeneratorConfig {
   int debug_mode;
   int excluded_train_pair_len;
   int edge_to_id_len;
-  int tensor_pair_num = 1;
+  int tensor_pair_num;
   uint32_t tensor_num_of_one_pair;
   size_t buf_size;
   size_t once_max_sample_keynum;
@@ -968,6 +968,7 @@ struct GraphDataGeneratorConfig {
   std::vector<int> samples;
   std::shared_ptr<phi::Allocation> d_excluded_train_pair;
   std::shared_ptr<phi::Allocation> d_pair_label_conf;
+  std::set<int> infer_node_type_index_set;
 };
 
 class GraphDataGenerator {
@@ -980,7 +981,6 @@ class GraphDataGenerator {
   void SetFeedVec(std::vector<phi::DenseTensor*> feed_vec);
   void SetFeedInfo(std::vector<UsedSlotInfo>* feed_info);
   int GenerateBatch();
-  int FillInferBuf();
   void DoWalkandSage();
   int FillSlotFeature(uint64_t* d_walk);
   int FillIdShowClkTensor(int total_instance, bool gpu_graph_training);
@@ -1019,16 +1019,16 @@ class GraphDataGenerator {
   int get_pass_end() { return pass_end_; }
   void clear_gpu_mem();
   int dynamic_adjust_batch_num_for_sage();
-  int dynamic_adjust_total_row_for_infer(int local_reach_end);
 
  protected:
+  bool DoWalkForInfer();
   void DoSageForInfer();
   bool DoWalkForTrain();
   void DoSageForTrain();
 
   HashTable<uint64_t, uint64_t>* table_;
   GraphDataGeneratorConfig conf_;
-  size_t infer_cursor_;
+  std::vector<size_t> infer_cursor_;
   std::vector<size_t> jump_rows_;
   int64_t* id_tensor_ptr_;
   int* index_tensor_ptr_;
@@ -1052,7 +1052,7 @@ class GraphDataGenerator {
   std::shared_ptr<phi::Allocation> d_feature_;
   std::vector<std::shared_ptr<phi::Allocation>> d_random_row_;
   std::vector<std::shared_ptr<phi::Allocation>> d_random_row_col_shift_;
-  std::vector<std::shared_ptr<phi::Allocation>> d_uniq_node_num_;
+  std::shared_ptr<phi::Allocation> d_uniq_node_num_;
   std::shared_ptr<phi::Allocation> d_slot_feature_num_map_;
   std::shared_ptr<phi::Allocation> d_actual_slot_id_map_;
   std::shared_ptr<phi::Allocation> d_fea_offset_map_;
@@ -1094,11 +1094,10 @@ class GraphDataGenerator {
   std::vector<uint64_t> host_vec_;
   std::vector<std::vector<uint64_t>> h_device_keys_len_;
   std::vector<uint64_t> h_train_metapath_keys_len_;
-  std::vector<uint64_t> copy_unique_len_;
+  uint64_t copy_unique_len_;
   std::vector<int> total_row_;
-  size_t infer_node_start_;
-  size_t infer_node_end_;
-  std::set<int> infer_node_type_index_set_;
+  std::vector<size_t> infer_node_start_;
+  std::vector<size_t> infer_node_end_;
   std::string infer_node_type_;
   phi::DenseTensor multi_node_sync_stat_;
 };

@@ -33,8 +33,8 @@ void GraphGpuWrapper::set_device(std::vector<int> ids) {
   }
 }
 
-void GraphGpuWrapper::init_conf(const std::string &first_node_type,
-                                const std::string &meta_path,
+void GraphGpuWrapper::init_conf(const std::string &first_node_type_str,
+                                const std::string &meta_path_str,
                                 const std::string &excluded_train_pair,
                                 const std::string &pair_label) {
   static std::mutex mutex;
@@ -45,42 +45,70 @@ void GraphGpuWrapper::init_conf(const std::string &first_node_type,
     }
     VLOG(2) << "init path config";
     conf_initialized_ = true;
-    auto node_types =
-        paddle::string::split_string<std::string>(first_node_type, ";");
-    VLOG(2) << "node_types: " << first_node_type;
-    first_node_type_.resize(1);
-    for (auto &type : node_types) {
-      auto iter = node_to_id.find(type);
-      PADDLE_ENFORCE_NE(
-          iter,
-          node_to_id.end(),
-          platform::errors::NotFound("(%s) is not found in node_to_id.", type));
-      VLOG(2) << "node_to_id[" << type << "] = " << iter->second;
-      first_node_type_[0].push_back(iter->second);
-    }
-    meta_path_.resize(1);
-    meta_path_[0].resize(first_node_type_[0].size());
-    auto meta_paths = paddle::string::split_string<std::string>(meta_path, ";");
 
-    for (size_t i = 0; i < meta_paths.size(); i++) {
-      auto path = meta_paths[i];
-      auto edges = paddle::string::split_string<std::string>(path, "-");
-      for (auto &edge : edges) {
-        auto iter = edge_to_id.find(edge);
-        PADDLE_ENFORCE_NE(iter,
-                          edge_to_id.end(),
-                          platform::errors::NotFound(
-                              "(%s) is not found in edge_to_id.", edge));
-        VLOG(2) << "edge_to_id[" << edge << "] = " << iter->second;
-        meta_path_[0][i].push_back(iter->second);
-        if (edge_to_node_map_.find(iter->second) == edge_to_node_map_.end()) {
-          auto nodes = get_ntype_from_etype(edge);
-          uint64_t src_node_id = node_to_id.find(nodes[0])->second;
-          uint64_t dst_node_id = node_to_id.find(nodes[1])->second;
-          edge_to_node_map_[iter->second] = src_node_id << 32 | dst_node_id;
-        }
-      }
+    std::vector<std::string> first_node_type_vec;
+    if (first_node_type_str[0] == '[') {
+      assert(first_node_type_str[first_node_type_str.size() -1] == ']'); 
+      std::string tmp_first_node_type_str(first_node_type_str, 1, first_node_type_str.size() - 2);
+      auto tmp_first_node_types = paddle::string::split_string<std::string>(tmp_first_node_type_str, ",");
+      first_node_type_vec.assign(tmp_first_node_types.begin(), tmp_first_node_types.end());
+    } else {
+      first_node_type_vec.push_back(first_node_type_str);
     }
+    tensor_pair_num_ = first_node_type_vec.size();
+    first_node_type_.resize(tensor_pair_num_);
+    for (int tensor_pair_idx = 0; tensor_pair_idx < tensor_pair_num_; ++tensor_pair_idx) {
+      auto &first_node_type = first_node_type_vec[tensor_pair_idx];
+      auto node_types =
+          paddle::string::split_string<std::string>(first_node_type, ";");
+      VLOG(2) << "node_types: " << first_node_type;
+      for (auto &type : node_types) {
+        auto iter = node_to_id.find(type);
+        PADDLE_ENFORCE_NE(
+            iter,
+            node_to_id.end(),
+            platform::errors::NotFound("(%s) is not found in node_to_id.", type));
+        VLOG(2) << "node_to_id[" << type << "] = " << iter->second;
+        first_node_type_[tensor_pair_idx].push_back(iter->second);
+      } // end for (auto &type : node_types)
+    } // end for (int tensor_pair_idx = 0; tensor_pair_idx < tensor_pair_num_;
+
+    std::vector<std::string> meta_path_vec;
+    if (meta_path_str[0] == '[') {
+      assert(meta_path_str[meta_path_str.size() -1] == ']'); 
+      std::string tmp_meta_path(meta_path_str, 1, meta_path_str.size() - 2);
+      auto tmp_meta_paths = paddle::string::split_string<std::string>(tmp_meta_path, ",");
+      meta_path_vec.assign(tmp_meta_paths.begin(), tmp_meta_paths.end());
+    } else {
+      meta_path_vec.push_back(meta_path_str);
+    }
+    assert(tensor_pair_num_ == meta_path_vec.size());
+    meta_path_.resize(tensor_pair_num_);
+    for (int tensor_pair_idx = 0; tensor_pair_idx < tensor_pair_num_; ++tensor_pair_idx) {
+      auto &meta_path = meta_path_vec[tensor_pair_idx];
+      meta_path_[tensor_pair_idx].resize(first_node_type_[tensor_pair_idx].size());
+      auto meta_paths = paddle::string::split_string<std::string>(meta_path, ";");
+      
+      for (size_t i = 0; i < meta_paths.size(); i++) {
+        auto path = meta_paths[i];
+        auto edges = paddle::string::split_string<std::string>(path, "-");
+        for (auto &edge : edges) {
+          auto iter = edge_to_id.find(edge);
+          PADDLE_ENFORCE_NE(iter,
+                            edge_to_id.end(),
+                            platform::errors::NotFound(
+                                "(%s) is not found in edge_to_id.", edge));
+          VLOG(2) << "edge_to_id[" << edge << "] = " << iter->second;
+          meta_path_[tensor_pair_idx][i].push_back(iter->second);
+          if (edge_to_node_map_.find(iter->second) == edge_to_node_map_.end()) {
+            auto nodes = get_ntype_from_etype(edge);
+            uint64_t src_node_id = node_to_id.find(nodes[0])->second;
+            uint64_t dst_node_id = node_to_id.find(nodes[1])->second;
+            edge_to_node_map_[iter->second] = src_node_id << 32 | dst_node_id;
+          }
+        } // end for (auto &edge : edges) {
+      } // end for (size_t i = 0; i < meta_paths.size(); i++) {
+    } // end for (int tensor_pair_idx = 0; tensor_pair_idx < tensor_pair_num_;
 
     auto paths =
         paddle::string::split_string<std::string>(excluded_train_pair, ";");
@@ -138,30 +166,36 @@ void GraphGpuWrapper::init_conf(const std::string &first_node_type,
       }
     }
 
-    finish_node_type_.resize(1);
-    node_type_start_.resize(1);
-    finish_node_type_[0].resize(max_dev_id + 1);
-    node_type_start_[0].resize(max_dev_id + 1);
+    finish_node_type_.resize(tensor_pair_num_);
+    node_type_start_.resize(tensor_pair_num_);
     global_infer_node_type_start_.resize(max_dev_id + 1);
-    for (size_t i = 0; i < device_id_mapping.size(); i++) {
-      int dev_id = device_id_mapping[i];
-      auto &node_type_start = node_type_start_[0][i];
-      auto &infer_node_type_start = global_infer_node_type_start_[i];
-      auto &finish_node_type = finish_node_type_[0][i];
-      finish_node_type.clear();
-
-      for (size_t idx = 0; idx < node_to_id.size(); idx++) {
-        infer_node_type_start[idx] = 0;
+    infer_cursor_.resize(tensor_pair_num_);
+    for (int tensor_pair_idx = 0; tensor_pair_idx < tensor_pair_num_; ++tensor_pair_idx) {
+      finish_node_type_[tensor_pair_idx].resize(max_dev_id + 1);
+      node_type_start_[tensor_pair_idx].resize(max_dev_id + 1);
+      auto &first_node_type = first_node_type_vec[tensor_pair_idx];
+      auto node_types =
+          paddle::string::split_string<std::string>(first_node_type, ";");
+      for (size_t i = 0; i < device_id_mapping.size(); i++) {
+        int dev_id = device_id_mapping[i];
+        auto &node_type_start = node_type_start_[tensor_pair_idx][i];
+        auto &infer_node_type_start = global_infer_node_type_start_[i];
+        auto &finish_node_type = finish_node_type_[tensor_pair_idx][i];
+        finish_node_type.clear();
+      
+        for (size_t idx = 0; idx < node_to_id.size(); idx++) {
+          infer_node_type_start[idx] = 0;
+        }
+        for (auto &type : node_types) {
+          auto iter = node_to_id.find(type);
+          node_type_start[iter->second] = 0;
+          infer_node_type_start[iter->second] = 0;
+        }
+        infer_cursor_[tensor_pair_idx].push_back(0);
+        cursor_.push_back(0);
       }
-      for (auto &type : node_types) {
-        auto iter = node_to_id.find(type);
-        node_type_start[iter->second] = 0;
-        infer_node_type_start[iter->second] = 0;
-      }
-      infer_cursor_.push_back(0);
-      cursor_.push_back(0);
-    }
-  }
+    } // end for (int tensor_pair_idx = 0; tensor_pair_idx < tensor_pair_num_;
+  } // end static std::mutex mutex;
 }
 
 void GraphGpuWrapper::init_type_keys(

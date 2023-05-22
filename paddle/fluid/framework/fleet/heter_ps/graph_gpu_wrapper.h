@@ -239,8 +239,9 @@ class GraphGpuWrapper {
   std::vector<std::vector<std::unordered_map<int, size_t>>> node_type_start_;
   std::vector<size_t> cur_metapath_start_;
   std::vector<std::unordered_map<int, size_t>> global_infer_node_type_start_;
-  std::vector<size_t> infer_cursor_;
+  std::vector<std::vector<size_t>> infer_cursor_;
   std::vector<size_t> cursor_;
+  int tensor_pair_num_;
 
   std::vector<std::vector<std::shared_ptr<phi::Allocation>>>
       d_graph_all_type_total_keys_;
