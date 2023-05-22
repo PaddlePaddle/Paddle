@@ -130,7 +130,7 @@ class TestNormOp7(TestNormOp):
             ['X'],
             'Out',
             max_relative_error=0.05,
-            check_cinn=False,
+            check_cinn=True,
         )
 
 
