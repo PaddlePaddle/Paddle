@@ -34,12 +34,11 @@ void AddActXPUKernel(const Context& ctx,
       x_max.get_ptr() == nullptr ? nullptr : x_max.get_ptr()->data<float>();
   auto* y_data = reinterpret_cast<const XPUType*>(y.data<T>());
   const float* y_max_data =
-      x_max.get_ptr() == nullptr ? nullptr : y_max.get_ptr()->data<float>();
+      y_max.get_ptr() == nullptr ? nullptr : y_max.get_ptr()->data<float>();
   auto* out_data = reinterpret_cast<XPUType*>(ctx.template Alloc<T>(out));
 
   std::vector<int64_t> x_shape = phi::vectorize(x.dims());
   std::vector<int64_t> y_shape = phi::vectorize(y.dims());
-
   xpu::Activation_t act(static_cast<xpu::Activation_t::act_enum>(act_type));
   int r =
       xpu::add_activation_fusion<XPUType, XPUType, XPUType>(  // TX/TY/TZ/TID
