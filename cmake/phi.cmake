@@ -94,6 +94,13 @@ function(kernel_declare TARGET_LIST)
           continue()
         endif()
       endif()
+      # fusion group kernel is not supported in windows and mac
+      if(WIN32 OR APPLE)
+        string(FIND "${first_registry}" "fusion_group" pos)
+        if(pos GREATER 1)
+          continue()
+        endif()
+      endif()
       # some gpu kernel only can run on cuda, not support rocm, so we add this branch
       if(WITH_ROCM)
         string(FIND "${first_registry}" "cuda_only" pos)
