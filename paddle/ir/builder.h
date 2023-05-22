@@ -34,7 +34,7 @@ class Builder {
     OperationArgument argument(context_->GetRegisteredOpInfo(OpTy::name()));
     OpTy::build(*this, argument, std::forward<Args>(args)...);
     Operation *op = Operation::create(argument);
-    return dyn_cast<OpTy>(op);
+    return op->dyn_cast<OpTy>();
   }
 
  private:
