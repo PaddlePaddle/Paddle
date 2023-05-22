@@ -167,7 +167,7 @@ void LogsumexpKernel(const Context& dev_ctx,
     dev_ctx.template Alloc<T>(out);
     using compute_type = typename ComputeType<T>::type;
     const int64_t num_col = compute_size, num_row = other_size;
-    cudaError_t err = funcs::DispatchLogsumexpWarp<compute_type, T, Context>(
+    funcs::DispatchLogsumexpWarp<compute_type, T, Context>(
         dev_ctx, num_row, num_col, transpose_x.data<T>(), out->data<T>());
     out->Resize(outdim);
   } else {
