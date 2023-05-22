@@ -150,7 +150,8 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "conv_elementwise_add2_act_fuse_pass",  //
 #endif
 #endif
-      "transpose_flatten_concat_fuse_pass",
+      "transpose_flatten_concat_fuse_pass",  //
+      "auto_mixed_precision_pass",
 });
 
 const std::vector<std::string> kDlnneSubgraphPasses({

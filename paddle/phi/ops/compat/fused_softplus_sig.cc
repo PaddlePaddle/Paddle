@@ -17,7 +17,7 @@
 namespace phi {
 
 KernelSignature FusedSoftplusOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature(
       "fused_softplus",
       {"X"},

@@ -133,6 +133,9 @@ void OpOperandImpl::remove_from_ud_chain() {
   if (next_use_) {
     next_use_->prev_use_addr_ = prev_use_addr_;
   }
+  next_use_ = nullptr;
+  prev_use_addr_ = nullptr;
+  release_source();
 }
 
 OpOperandImpl::~OpOperandImpl() { remove_from_ud_chain(); }

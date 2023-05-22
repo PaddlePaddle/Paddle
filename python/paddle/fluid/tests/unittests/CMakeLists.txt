@@ -1116,6 +1116,7 @@ set(TEST_CINN_OPS
     test_tile_op
     test_roll_op
     test_sum_op
+    test_elementwise_min_op
     test_bitwise_op
     test_compare_op
     test_shape_op
