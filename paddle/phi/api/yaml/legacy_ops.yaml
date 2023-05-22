@@ -110,6 +110,17 @@
     data_type : dtype
     backend : place > output
 
+- op : batch_norm
+  args : (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias, bool is_test, float momentum, float epsilon, str data_layout, bool use_global_stats, bool trainable_statistics)
+  output : Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
+  infer_meta:
+    func : BatchNormInferMeta
+  kernel :
+    func : batch_norm
+    data_type : x
+  view : (mean -> mean_out), (variance -> variance_out)
+  backward : batch_norm_grad
+
 - op : bincount
   args: (Tensor x, Tensor weights, Scalar(int) minlength = 0)
   output: Tensor(out)
