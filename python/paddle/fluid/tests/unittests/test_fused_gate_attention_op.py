@@ -274,6 +274,7 @@ class TestFusedGateAttentionOp(OpTest):
             _,
             _,
             softmax_out,
+            _,
             fmha_out,
             gate_out,
             out,

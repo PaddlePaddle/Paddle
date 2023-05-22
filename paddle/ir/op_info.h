@@ -13,12 +13,13 @@
 // limitations under the License.
 
 #pragma once
-
 #include <functional>
-
-#include "paddle/ir/op_info_impl.h"
+#include "paddle/ir/type_id.h"
 
 namespace ir {
+class OpInfoImpl;
+class IrContext;
+
 class OpInfo {
  public:
   constexpr OpInfo() = default;
@@ -37,23 +38,41 @@ class OpInfo {
 
   bool operator!() const { return impl_ == nullptr; }
 
-  const OpInfoImpl *impl() const { return impl_; }
+  IrContext *ir_context() const;
+
+  const char *name() const;
 
   template <typename Trait>
   bool HasTrait() const {
-    return impl_->HasTrait<Trait>();
+    return HasTrait(TypeId::get<Trait>());
   }
+
+  bool HasTrait(TypeId trait_id) const;
 
   template <typename Interface>
   bool HasInterface() const {
-    return impl_->HasInterface<Interface>();
+    return HasInterface(TypeId::get<Interface>());
   }
+
+  bool HasInterface(TypeId interface_id) const;
+
+  template <typename Interface>
+  typename Interface::Concept *GetInterfaceImpl() const;
 
   friend struct std::hash<OpInfo>;
 
  private:
+  void *GetInterfaceImpl(TypeId interface_id) const;
+
+ private:
   const OpInfoImpl *impl_{nullptr};  // not owned
 };
+
+template <typename Interface>
+typename Interface::Concept *OpInfo::GetInterfaceImpl() const {
+  void *model = GetInterfaceImpl(TypeId::get<Interface>());
+  return reinterpret_cast<typename Interface::Concept *>(model);
+}
 
 }  // namespace ir
 
