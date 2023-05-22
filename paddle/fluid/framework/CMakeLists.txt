@@ -469,7 +469,8 @@ if(WITH_XPU)
          phi_utils
          infershape_utils
          phi
-         op_compat_infos)
+         op_compat_infos
+         type_info)
 else()
   cc_library(
     operator
@@ -494,7 +495,8 @@ else()
          phi_utils
          infershape_utils
          phi
-         op_compat_infos)
+         op_compat_infos
+         type_info)
 endif()
 
 cc_test(
