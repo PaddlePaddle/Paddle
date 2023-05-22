@@ -14,15 +14,6 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 namespace paddle {
-namespace framework {
-class Scope;
-namespace proto {
-class OpDesc;
-}  // namespace proto
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
 namespace inference {
 namespace tensorrt {
 
@@ -31,7 +22,7 @@ class MultiClassNMSOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(3) << "convert a fluid multiclassNMS op to tensorrt plugin";
+    VLOG(3) << "convert a multiclassNMS op to tensorrt plugin";
 
     // for now, only work for static shape and regular tensor
     framework::OpDesc op_desc(op, nullptr);

@@ -16,8 +16,8 @@ import unittest
 
 from simple_nets import simple_fc_net
 
-import paddle.distributed.transpiler as transpiler
-import paddle.fluid as fluid
+from paddle import fluid
+from paddle.distributed import transpiler
 
 
 class DeprecatedMemoryOptimizationInterfaceTest(unittest.TestCase):

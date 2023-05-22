@@ -73,4 +73,7 @@ void LUKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(lu, CPU, ALL_LAYOUT, phi::LUKernel, float, double) {}
+PD_REGISTER_KERNEL(lu, CPU, ALL_LAYOUT, phi::LUKernel, float, double) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT32);
+  kernel->OutputAt(2).SetDataType(phi::DataType::INT32);
+}

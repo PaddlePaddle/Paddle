@@ -17,7 +17,7 @@
 namespace phi {
 
 KernelSignature Conv2dTransposeOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("conv2d_transpose",
                          {"Input", "Filter"},
                          {"strides",
@@ -32,7 +32,7 @@ KernelSignature Conv2dTransposeOpArgumentMapping(
 }
 
 KernelSignature Conv2dTransposeGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("conv2d_transpose_grad",
                          {"Input", "Filter", "Output@GRAD"},
                          {"strides",
@@ -47,8 +47,8 @@ KernelSignature Conv2dTransposeGradOpArgumentMapping(
 }
 
 KernelSignature Conv2dTransposeDoubleGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature("conv2d_transpose_grad_grad",
+    const ArgumentMappingContext& ctx UNUSED) {
+  return KernelSignature("conv2d_transpose_double_grad",
                          {"Input", "Filter", "DOutput", "DDInput", "DDFilter"},
                          {"strides",
                           "paddings",
@@ -62,7 +62,7 @@ KernelSignature Conv2dTransposeDoubleGradOpArgumentMapping(
 }
 
 KernelSignature Conv3dTransposeOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("conv3d_transpose",
                          {"Input", "Filter"},
                          {"strides",
@@ -77,7 +77,7 @@ KernelSignature Conv3dTransposeOpArgumentMapping(
 }
 
 KernelSignature Conv3dTransposeGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("conv3d_transpose_grad",
                          {"Input", "Filter", "Output@GRAD"},
                          {"strides",
@@ -92,7 +92,7 @@ KernelSignature Conv3dTransposeGradOpArgumentMapping(
 }
 
 KernelSignature DepthwiseConv2dTransposeOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("depthwise_conv2d_transpose",
                          {"Input", "Filter"},
                          {"strides",
@@ -107,7 +107,7 @@ KernelSignature DepthwiseConv2dTransposeOpArgumentMapping(
 }
 
 KernelSignature DepthwiseConv2dTransposeGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("depthwise_conv2d_transpose_grad",
                          {"Input", "Filter", "Output@GRAD"},
                          {"strides",
@@ -122,6 +122,9 @@ KernelSignature DepthwiseConv2dTransposeGradOpArgumentMapping(
 }
 
 }  // namespace phi
+
+PD_REGISTER_BASE_KERNEL_NAME(conv2d_transpose_grad_grad,
+                             conv2d_transpose_double_grad);
 
 PD_REGISTER_ARG_MAPPING_FN(conv2d_transpose,
                            phi::Conv2dTransposeOpArgumentMapping);

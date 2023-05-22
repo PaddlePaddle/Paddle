@@ -29,7 +29,9 @@ set(third_party_deps)
 
 include(ProcessorCount)
 ProcessorCount(NPROC)
-
+if(NOT WITH_SETUP_INSTALL)
+  execute_process(COMMAND git submodule update --init --recursive)
+endif()
 # cache funciton to avoid repeat download code of third_party.
 # This function has 4 parameters, URL / REPOSITOR / TAG / DIR:
 # 1. URL:           specify download url of 3rd party
@@ -356,11 +358,6 @@ if(WITH_XPU)
   list(APPEND third_party_deps extern_xpu)
 endif()
 
-if(WITH_MLU)
-  include(external/concurrentqueue) # download, build, install concurrentqueue
-  list(APPEND third_party_deps extern_concurrentqueue)
-endif()
-
 if(WITH_PSLIB)
   include(external/pslib) # download, build, install pslib
   list(APPEND third_party_deps extern_pslib)
@@ -392,16 +389,6 @@ endif()
 if(WITH_BOX_PS)
   include(external/box_ps)
   list(APPEND third_party_deps extern_box_ps)
-endif()
-
-if(WITH_ASCEND OR WITH_ASCEND_CL)
-  include(external/ascend)
-  if(WITH_ASCEND OR WITH_ASCEND_CL)
-    list(APPEND third_party_deps extern_ascend)
-  endif()
-  if(WITH_ASCEND_CL)
-    list(APPEND third_party_deps extern_ascend_cl)
-  endif()
 endif()
 
 if(WITH_PSCORE)
@@ -508,11 +495,6 @@ if(WIN32)
   list(APPEND third_party_deps extern_dirent)
 endif()
 
-if(WITH_INFRT)
-  include(external/llvm)
-  list(APPEND third_party_deps ${llvm_libs})
-endif()
-
 if(WITH_IPU)
   include(external/poplar)
   list(APPEND third_party_deps extern_poplar)
@@ -531,6 +513,8 @@ if(WITH_GPU
     include(external/cutlass) # download, build, install cusparselt
     list(APPEND third_party_deps extern_cutlass)
     set(WITH_CUTLASS ON)
+  endif()
+  if(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 11.2)
     include(external/flashattn)
     list(APPEND third_party_deps extern_flashattn)
     set(WITH_FLASHATTN ON)

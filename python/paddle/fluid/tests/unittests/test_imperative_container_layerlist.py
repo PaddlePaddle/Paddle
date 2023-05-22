@@ -17,10 +17,10 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 
-class MyLayer(fluid.Layer):
+class MyLayer(paddle.nn.Layer):
     def __init__(self, layerlist):
         super().__init__()
         self.layerlist = layerlist

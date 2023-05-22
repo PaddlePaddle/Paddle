@@ -16,6 +16,8 @@
 
 #include <vector>
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"

@@ -174,7 +174,7 @@ void Communicator::RpcSendDenseParam(const std::vector<std::string> &varnames,
       float *w = tensor->mutable_data<float>(place);
       paddle::distributed::Region reg(w, tensor->numel());
       regions.emplace_back(reg);
-      VLOG(1) << "rpc_send_dense_param Var " << t << " talbe_id " << table_id
+      VLOG(1) << "rpc_send_dense_param Var " << t << " table_id " << table_id
               << " Temp_data[0] " << w[0] << " Temp_data[-1] "
               << w[tensor->numel() - 1];
     }
@@ -1514,7 +1514,7 @@ void FLCommunicator::InitBrpcClient(
   if (_worker_ptr.get() == nullptr) {
     VLOG(0) << "fl-ps > FLCommunicator::InitBrpcClient get _worker_ptr";
     _worker_ptr =
-        fleet->worker_ptr_;  // FleetWrapper::InitWorker must be excuted
+        fleet->worker_ptr_;  // FleetWrapper::InitWorker must be executed
                              // before, but no need for Coordinator
   }
   if (coordinator_client_ptr_ == nullptr) {

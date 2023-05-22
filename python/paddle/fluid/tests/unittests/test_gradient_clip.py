@@ -18,8 +18,8 @@ import numpy as np
 from fake_reader import fake_imdb_reader
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 from paddle.nn.clip import _allow_pure_fp16_global_norm_clip
 
 paddle.enable_static()
@@ -80,8 +80,10 @@ class TestGradientClip(unittest.TestCase):
         with fluid.program_guard(
             main_program=prog, startup_program=startup_program
         ):
-            image = fluid.data(name="a", shape=[-1, 784], dtype='float32')
-            label = fluid.data(name="b", shape=[-1, 1], dtype='int64')
+            image = paddle.static.data(
+                name="a", shape=[-1, 784], dtype='float32'
+            )
+            label = paddle.static.data(name="b", shape=[-1, 1], dtype='int64')
             if dtype != 'float32':
                 image_cast = paddle.cast(image, dtype)
                 hidden = paddle.static.nn.fc(
@@ -134,10 +136,12 @@ class TestGradientClip(unittest.TestCase):
         with fluid.program_guard(
             main_program=prog, startup_program=startup_program
         ):
-            data = fluid.data(
+            data = paddle.static.data(
                 name="words", shape=[-1, 1], dtype="int64", lod_level=1
             )
-            label = fluid.data(name="label", shape=[-1, 1], dtype="int64")
+            label = paddle.static.data(
+                name="label", shape=[-1, 1], dtype="int64"
+            )
             cost = bow_net(data, label, self.word_dict_len)
 
             self.backward_and_optimize(cost)
@@ -148,7 +152,7 @@ class TestGradientClip(unittest.TestCase):
 
         data = next(self.train_data())
         val = exe.run(prog, feed=feeder.feed(data), fetch_list=[cost])[0]
-        self.assertEqual((1,), val.shape)
+        self.assertEqual(val.shape, ())
         self.assertFalse(np.isnan(val))
 
     def backward_and_optimize(self, cost):

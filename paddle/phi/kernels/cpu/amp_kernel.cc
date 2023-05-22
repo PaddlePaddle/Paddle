@@ -31,7 +31,7 @@ namespace phi {
 template <typename T, bool IsFoundInfOnCPU>
 class UpdateLossScalingFunctor<phi::CPUContext, T, IsFoundInfOnCPU> {
  public:
-  void operator()(const phi::CPUContext& ctx,
+  void operator()(const phi::CPUContext& ctx UNUSED,
                   const bool* found_inf_data,
                   const T* pre_loss_scaling_data,
                   const int* good_in_data,
@@ -112,7 +112,7 @@ PD_REGISTER_KERNEL(check_finite_and_unscale,
                    phi::CheckFiniteAndUnscaleKernel,
                    float,
                    double) {
-  kernel->OutputAt(1).SetDataType(paddle::experimental::DataType::BOOL);
+  kernel->OutputAt(1).SetDataType(phi::DataType::BOOL);
 }
 
 PD_REGISTER_KERNEL(update_loss_scaling,
@@ -120,4 +120,7 @@ PD_REGISTER_KERNEL(update_loss_scaling,
                    ALL_LAYOUT,
                    phi::UpdateLossScalingKernel,
                    float,
-                   double) {}
+                   double) {
+  kernel->OutputAt(2).SetDataType(phi::DataType::INT32);
+  kernel->OutputAt(3).SetDataType(phi::DataType::INT32);
+}

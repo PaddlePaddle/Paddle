@@ -37,7 +37,7 @@ class TestCreateParameterError(unittest.TestCase):
 
             def test_attr():
                 paddle.create_parameter(
-                    [1, 2, 3], np.float32, attr=np.array([i for i in range(6)])
+                    [1, 2, 3], np.float32, attr=np.array(list(range(6)))
                 )
 
             self.assertRaises(TypeError, test_attr)
@@ -46,7 +46,7 @@ class TestCreateParameterError(unittest.TestCase):
                 paddle.create_parameter(
                     [1, 2, 3],
                     np.float32,
-                    default_initializer=np.array([i for i in range(6)]),
+                    default_initializer=np.array(list(range(6))),
                 )
 
             self.assertRaises(TypeError, test_default_initializer)

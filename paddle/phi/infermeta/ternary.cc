@@ -66,11 +66,11 @@ void AccuracyInferMeta(const MetaTensor& out,
             label_dim[0]));
   }
 
-  accuracy->set_dims({1});
+  accuracy->set_dims(phi::make_ddim({}));
+  correct->set_dims(phi::make_ddim({}));
+  total->set_dims(phi::make_ddim({}));
   accuracy->set_dtype(out.dtype());
-  correct->set_dims({1});
   correct->set_dtype(out.dtype());
-  total->set_dims({1});
   total->set_dtype(out.dtype());
   accuracy->share_lod(out);
 }
@@ -259,10 +259,12 @@ void FlashAttnInferMeta(const MetaTensor& q,
                         const MetaTensor& k,
                         const MetaTensor& v,
                         MetaTensor* out,
-                        MetaTensor* softmax_lse,
                         MetaTensor* softmax,
+                        MetaTensor* softmax_lse,
                         MetaTensor* seed_offset) {
-  out->set_dims(q.dims());
+  auto out_dims = q.dims();
+  out_dims[3] = v.dims()[3];
+  out->set_dims(out_dims);
   out->set_dtype(q.dtype());
   out->set_layout(q.layout());
 }
@@ -501,8 +503,20 @@ void GroupNormInferMeta(const MetaTensor& x,
   y->set_dims(x_dim);
   y->set_dtype(x.dtype());
   y->share_lod(x);
-  mean->set_dims({batch_size, groups});
-  variance->set_dims({batch_size, groups});
+
+  phi::DataType x_dtype = x.dtype();
+  phi::DataType param_type =
+      (x_dtype == phi::DataType::BFLOAT16 || x_dtype == phi::DataType::FLOAT16)
+          ? phi::DataType::FLOAT32
+          : x_dtype;
+  if (mean) {
+    mean->set_dims({batch_size, groups});
+    mean->set_dtype(param_type);
+  }
+  if (variance) {
+    variance->set_dims({batch_size, groups});
+    variance->set_dtype(param_type);
+  }
 }
 
 void LayerNormInferMeta(const MetaTensor& x,
@@ -515,6 +529,12 @@ void LayerNormInferMeta(const MetaTensor& x,
                         MetaTensor* variance,
                         MetaConfig config) {
   auto x_dim = x.dims();
+  PADDLE_ENFORCE_GT(begin_norm_axis,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "'begin_norm_axis' in Op(LayerNorm) should be"
+                        "greater than zero. But received [%d].",
+                        begin_norm_axis));
   PADDLE_ENFORCE_LT(
       begin_norm_axis,
       x_dim.size(),
@@ -574,14 +594,30 @@ void LayerNormInferMeta(const MetaTensor& x,
             right));
   }
 
+  PADDLE_ENFORCE_EQ(epsilon >= 0.0f && epsilon <= 0.001f,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "'epsilon' in Op(LayerNorm) should be between"
+                        "0.0 and 0.001, But received [%s].",
+                        epsilon));
+
+  phi::DataType x_dtype = x.dtype();
   out->set_dims(x_dim);
+  out->set_dtype(x_dtype);
+  out->share_lod(x);
+
+  phi::DataType param_type =
+      (x_dtype == phi::DataType::BFLOAT16 || x_dtype == phi::DataType::FLOAT16)
+          ? phi::DataType::FLOAT32
+          : x_dtype;
   if (mean) {
     mean->set_dims({left});
+    mean->set_dtype(param_type);
   }
   if (variance) {
     variance->set_dims({left});
+    variance->set_dtype(param_type);
   }
-  out->share_lod(x);
 }
 
 void LayerNormGradInferMeta(const MetaTensor& x,
@@ -1073,7 +1109,7 @@ void ScatterNdAddInferMeta(const MetaTensor& x,
             index_dims[index_dims_size - 1],
             ref_dims_size));
     PADDLE_ENFORCE_GE(index_dims_size,
-                      2UL,
+                      1UL,
                       phi::errors::InvalidArgument(
                           "The rank of Input(Index) should be greater than 1, "
                           "but received the rank of Input(Index) is %d.",

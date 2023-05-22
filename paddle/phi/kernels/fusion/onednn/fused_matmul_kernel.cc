@@ -26,6 +26,7 @@ using dnnl::stream;
 using phi::ReshapeToMatrix;
 
 namespace phi {
+namespace fusion {
 
 template <typename XT, typename YT, typename OT>
 class FusedMatmulOneDNNHandler
@@ -141,7 +142,7 @@ class FusedMatmulOneDNNHandler
   float ComputeOutputScale(float matmul_alpha,
                            const float scale_x,
                            const float scale_y,
-                           const float scale_in_eltwise,
+                           const float scale_in_eltwise UNUSED,
                            const float scale_out,
                            const bool force_fp32_output) {
     float f_scale_out = force_fp32_output ? 1.0f : scale_out;
@@ -369,7 +370,7 @@ void FusedMatmulKernel(const Context &dev_ctx,
                        const std::vector<int> &fused_transpose_Y,
                        const std::vector<int> &fused_reshape_Out,
                        const std::vector<int> &fused_transpose_Out,
-                       const std::string &mkldnn_data_type,
+                       const std::string &mkldnn_data_type UNUSED,
                        const float scale_x,
                        const float scale_y,
                        const float scale_in_eltwise,
@@ -514,13 +515,16 @@ void FusedMatmulKernel(const Context &dev_ctx,
   }
 }
 
+}  // namespace fusion
 }  // namespace phi
 
 PD_REGISTER_KERNEL(fused_matmul,
                    OneDNN,
                    ONEDNN,
-                   phi::FusedMatmulKernel,
+                   phi::fusion::FusedMatmulKernel,
                    float,
                    phi::dtype::bfloat16,
                    int8_t,
-                   uint8_t) {}
+                   uint8_t) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+}

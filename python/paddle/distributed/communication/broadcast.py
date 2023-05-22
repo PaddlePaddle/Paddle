@@ -14,8 +14,8 @@
 
 import paddle
 import paddle.distributed as dist
-import paddle.distributed.communication.stream as stream
-import paddle.framework as framework
+from paddle import framework
+from paddle.distributed.communication import stream
 
 from .serialization_utils import (
     convert_object_to_tensor,
@@ -115,10 +115,10 @@ def broadcast_object_list(object_list, src, group=None):
             obj_tensor, obj_size = convert_object_to_tensor(obj)
             obj_tensors.append(obj_tensor)
             obj_sizes.append(obj_size)
-        obj_size_tensor = paddle.concat(obj_sizes)
+        obj_size_tensor = paddle.stack(obj_sizes)
     else:
         obj_size_tensor = paddle.empty([obj_nums], dtype="int64")
-    broadcast(obj_size_tensor, src)
+    broadcast(obj_size_tensor, src, group)
 
     if rank == src:
         # cast to uint8 to keep the same dtype
@@ -126,7 +126,7 @@ def broadcast_object_list(object_list, src, group=None):
     else:
         data_len = paddle.sum(obj_size_tensor).item()
         obj_data_tensor = paddle.empty([data_len], dtype="uint8")
-    broadcast(obj_data_tensor, src)
+    broadcast(obj_data_tensor, src, group)
 
     offset = 0
     for i in range(obj_nums):

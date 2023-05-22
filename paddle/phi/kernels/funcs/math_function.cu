@@ -14,7 +14,6 @@ limitations under the License. */
 #include <algorithm>
 #include <vector>
 
-#include "paddle/fluid/platform/device_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/data_type.h"
@@ -32,8 +31,12 @@ namespace funcs {
 // Copyright (c) 2017 - 2022 NVIDIA CORPORATION & AFFILIATES. All rights
 // reserved. SPDX-License-Identifier: BSD-3-Clause
 template <typename T>
-__global__ void batch_transpose_kernel(
-    T* output, const T* input, const int batch, const int M, const int N) {
+__global__ void batch_transpose_kernel(T* output,
+                                       const T* input,
+                                       const int batch,
+                                       const int M,
+                                       const int N,
+                                       int swizzle) {
   const int num = M * N;
   // "+1" to avoid smem bank conflict
   __shared__ T shbuf[32 * (32 + 1)];
@@ -41,8 +44,8 @@ __global__ void batch_transpose_kernel(
   const int32_t wid = tid / 32;
   const int32_t lid = tid % 32;
   const int32_t batch_i = blockIdx.z;
-  const int32_t mi0 = blockIdx.y * 32;
-  const int32_t ni0 = blockIdx.x * 32;
+  const int32_t mi0 = (blockIdx.y * swizzle + blockIdx.x % swizzle) * 32;
+  const int32_t ni0 = blockIdx.x / swizzle * 32;
 
   const size_t input_idx = batch_i * num + (mi0 + wid) * N + ni0;
   const T* A = input + input_idx;
@@ -88,19 +91,55 @@ __global__ void batch_transpose_kernel(
 }
 
 template <typename T>
-void BatchTranspose(T* output, const T* input, int batch, int m, int n) {
-  dim3 grid((n + 31) / 32, (m + 31) / 32, batch);
+void BatchTranspose(T* output,
+                    const T* input,
+                    int64_t batch,
+                    int64_t m,
+                    int64_t n,
+                    const phi::GPUContext* dev_ctx) {
+  int64_t device_id = dev_ctx->GetPlace().GetDeviceId();
+  const auto& prop = phi::backends::gpu::GetDeviceProperties(device_id);
+  int max_grid_y = prop.maxGridSize[1];
+  int64_t input_num = batch * m * n;
+
+  if (input_num >= std::numeric_limits<int>::max()) {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Unsupported input size, batch: %ld,m: %ld, n: %ld", batch, m, n));
+  }
+
+  dim3 logical_grid((n + 31) / 32, (m + 31) / 32, batch);
   dim3 block(32, 8);
-  batch_transpose_kernel<<<grid, block>>>(output, input, batch, m, n);
+  // we set swizzle to 2 default.
+  int swizzle = (logical_grid.y + max_grid_y - 1) / max_grid_y;
+  swizzle = std::max(swizzle, 2);
+  dim3 physical_grid(logical_grid.x * swizzle,
+                     (logical_grid.y + swizzle - 1) / swizzle,
+                     batch);
+  batch_transpose_kernel<<<physical_grid, block>>>(
+      output, input, batch, m, n, swizzle);
 }
 
 using float16 = phi::dtype::float16;
 using bfloat16 = phi::dtype::bfloat16;
 
-template void BatchTranspose(
-    float16* output, const float16* input, int batch, int m, int n);
-template void BatchTranspose(
-    float* output, const float* input, int batch, int m, int n);
+template void BatchTranspose(float16* output,
+                             const float16* input,
+                             int64_t batch,
+                             int64_t m,
+                             int64_t n,
+                             const phi::GPUContext* dev_ctx);
+template void BatchTranspose(float* output,
+                             const float* input,
+                             int64_t batch,
+                             int64_t m,
+                             int64_t n,
+                             const phi::GPUContext* dev_ctx);
+template void BatchTranspose(bfloat16* output,
+                             const bfloat16* input,
+                             int64_t batch,
+                             int64_t m,
+                             int64_t n,
+                             const phi::GPUContext* dev_ctx);
 
 template struct SetConstant<phi::GPUContext, float16>;
 template struct SetConstant<phi::GPUContext, bfloat16>;
@@ -114,20 +153,17 @@ template struct SetConstant<phi::GPUContext, bool>;
 template struct SetConstant<phi::GPUContext, phi::dtype::complex<float>>;
 template struct SetConstant<phi::GPUContext, phi::dtype::complex<double>>;
 
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext, float16>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext,
-                            bfloat16>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext, float>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext, double>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext, uint8_t>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext, int>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext, int16_t>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext, int64_t>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext, bool>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext,
-                            phi::dtype::complex<float>>;
-template struct SetConstant<paddle::platform::CUDAPinnedDeviceContext,
-                            phi::dtype::complex<double>>;
+template struct SetConstant<phi::GPUPinnedContext, float16>;
+template struct SetConstant<phi::GPUPinnedContext, bfloat16>;
+template struct SetConstant<phi::GPUPinnedContext, float>;
+template struct SetConstant<phi::GPUPinnedContext, double>;
+template struct SetConstant<phi::GPUPinnedContext, uint8_t>;
+template struct SetConstant<phi::GPUPinnedContext, int>;
+template struct SetConstant<phi::GPUPinnedContext, int16_t>;
+template struct SetConstant<phi::GPUPinnedContext, int64_t>;
+template struct SetConstant<phi::GPUPinnedContext, bool>;
+template struct SetConstant<phi::GPUPinnedContext, phi::dtype::complex<float>>;
+template struct SetConstant<phi::GPUPinnedContext, phi::dtype::complex<double>>;
 
 #define DEFINE_GPU_TRANS(RANK)                                     \
   template struct Transpose<phi::GPUContext, bool, RANK>;          \

@@ -104,8 +104,8 @@ if [ "$slim_approve" != "" ]; then
 fi
 
 if [ "$inference_approve" != "" ]; then
-    echo_line="You must have one RD (Superjomn(Recommend), Shixiaowei02, cyj1986) approval for the changes of `def` Inputs/Output/Attrs of OPs. \n For more details, please click [https://github.com/PaddlePaddle/Paddle/wiki/OP-Input-Output-Attribute-Compatibility-Modification].\n${inference_approve}\n"
-    check_approval 1 39645414 328693 39303645
+    echo_line="You must have one RD (qingqing01(Recommend), jiweibo, Shixiaowei02) approval for the changes of `def` Inputs/Output/Attrs of OPs. \n For more details, please click [https://github.com/PaddlePaddle/Paddle/wiki/OP-Input-Output-Attribute-Compatibility-Modification].\n${inference_approve}\n"
+    check_approval 1 7845005 26377421 39303645
 fi
 
 DEV_OP_USE_DEFAULT_GRAD_MAKER_SPEC=${PADDLE_ROOT}/paddle/fluid/op_use_default_grad_maker_DEV.spec

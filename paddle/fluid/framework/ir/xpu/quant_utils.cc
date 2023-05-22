@@ -53,7 +53,7 @@ void Transpose2D(phi::DenseTensor* in, phi::DenseTensor* out) {
   std::vector<int> axis{1, 0};
   switch (in->dtype()) {
     case phi::DataType::FLOAT16:
-      phi::TransposeKernel<float16>(*cpu_ctx, *in, axis, out_ptr);
+      phi::TransposeKernel<phi::dtype::float16>(*cpu_ctx, *in, axis, out_ptr);
       break;
     case phi::DataType::FLOAT32:
       phi::TransposeKernel<float>(*cpu_ctx, *in, axis, out_ptr);
@@ -82,7 +82,8 @@ void CastToFp32(phi::DenseTensor* in, phi::DenseTensor* out) {
 
   switch (in->dtype()) {
     case phi::DataType::FLOAT16:
-      phi::CastKernel<float16>(*cpu_ctx, *in, phi::DataType::FLOAT32, out_ptr);
+      phi::CastKernel<phi::dtype::float16>(
+          *cpu_ctx, *in, phi::DataType::FLOAT32, out_ptr);
       break;
     case phi::DataType::FLOAT32:
       if (out == nullptr) {
@@ -206,6 +207,16 @@ void QuantFP32ToIntX<int16_t>(const float* src_ptr,
   }
 }
 
+template <>
+void QuantFP32ToIntX<int8_t>(const float* src_ptr,
+                             int8_t* dst_ptr,
+                             float max_val,
+                             int numel) {
+  for (int i = 0; i < numel; i++) {
+    dst_ptr[i] = Fp32ToIntx<int8_t, 127>(src_ptr[i], max_val);
+  }
+}
+
 template <typename T>
 void PrepareWeight(phi::DenseTensor* weight,
                    phi::DenseTensor* weight_max,
@@ -244,7 +255,7 @@ void PrepareWeight(phi::DenseTensor* weight,
          max_ptr_size * sizeof(float));
 
   // Quant
-  weight->set_type(paddle::experimental::CppTypeToDataType<T>::Type());
+  weight->set_type(phi::CppTypeToDataType<T>::Type());
   weight->Resize(weight_fp32.dims());
   QuantFP32ToIntX(weight_data, cpu_ctx->Alloc<T>(weight), max_val, size);
 }
@@ -252,6 +263,9 @@ void PrepareWeight(phi::DenseTensor* weight,
 template void PrepareWeight<int16_t>(phi::DenseTensor* weight,
                                      phi::DenseTensor* weight_max,
                                      bool transpose);
+template void PrepareWeight<int8_t>(phi::DenseTensor* weight,
+                                    phi::DenseTensor* weight_max,
+                                    bool transpose);
 
 }  // namespace ir
 }  // namespace framework

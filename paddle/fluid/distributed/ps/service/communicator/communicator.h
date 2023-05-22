@@ -41,6 +41,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/split.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/selected_rows_functor.h"
@@ -52,7 +53,7 @@ struct CommContext;
 }  // namespace distributed
 }  // namespace paddle
 
-DECLARE_bool(communicator_is_sgd_optimizer);
+PHI_DECLARE_bool(communicator_is_sgd_optimizer);
 
 namespace paddle {
 namespace distributed {
@@ -277,7 +278,7 @@ class Communicator {
   virtual void RpcRecvSparse(const std::string &varname,
                              int table_id,
                              Scope *scope);
-  // 7. send gloabl step
+  // 7. send global step
   virtual void SendGlobalStep(const CommContext &ctx,
                               int batches,
                               Scope *send_scope);
@@ -286,10 +287,10 @@ class Communicator {
     return {};
   }
   virtual void SaveFLStrategy(
-      const std::unordered_map<uint32_t, std::string> &fl_strategy) {}
+      const std::unordered_map<uint32_t, std::string> &fl_strategy UNUSED) {}
   virtual void StartCoordinator(
-      const std::string &self_endpoint,
-      const std::vector<std::string> &trainer_endpoints) {}
+      const std::string &self_endpoint UNUSED,
+      const std::vector<std::string> &trainer_endpoints UNUSED) {}
 
   virtual ~Communicator() {}
   virtual void RpcProfilerControl();
@@ -336,13 +337,13 @@ class Communicator {
 
   virtual void BarrierTriggerDecrement() {}
 
-  virtual void BarrierTriggerReset(int init_counter) {}
+  virtual void BarrierTriggerReset(int init_counter UNUSED) {}
 
   virtual void InitEnvs() = 0;
 
-  virtual void InitImpl(const RpcCtxMap &send_varname_to_ctx,
-                        const RecvCtxMap &recv_varname_to_ctx,
-                        Scope *recv_scope) {}
+  virtual void InitImpl(const RpcCtxMap &send_varname_to_ctx UNUSED,
+                        const RecvCtxMap &recv_varname_to_ctx UNUSED,
+                        Scope *recv_scope UNUSED) {}
 
   static Communicator *GetInstance() { return communicator_.get(); }
 
@@ -572,7 +573,7 @@ class SyncCommunicator : public HalfAsyncCommunicator {
       : HalfAsyncCommunicator(envs) {}
 
   void InitEnvs() {
-    // enfore to recv after send
+    // enforce to recv after send
     independent_recv_ = false;
     min_send_grad_num_before_recv_ = 0;
     max_merge_var_num_ = std::stoi(envs.at("communicator_max_merge_var_num"));
@@ -681,9 +682,9 @@ class FLCommunicator : public GeoCommunicator {
   virtual void InitBrpcClient(const std::string &dist_desc,
                               const std::vector<std::string> &host_sign_list);
 
-  void InitImpl(const RpcCtxMap &send_varname_to_ctx,
-                const RecvCtxMap &recv_varname_to_ctx,
-                Scope *recv_scope) {}
+  void InitImpl(const RpcCtxMap &send_varname_to_ctx UNUSED,
+                const RecvCtxMap &recv_varname_to_ctx UNUSED,
+                Scope *recv_scope UNUSED) {}
 
   void StartCoordinatorClient(
       const std::vector<std::string> &trainer_endpoints);

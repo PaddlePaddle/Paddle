@@ -20,7 +20,8 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/kernels/autotune/cache.h"
@@ -53,7 +54,7 @@ static size_t CalcWorkspaceLimitInBytes(bool use_fixed_workspace) {
         memory_utils::DeviceMemoryStatCurrentValue("Allocated", device_id);
     int64_t reserved =
         memory_utils::DeviceMemoryStatCurrentValue("Reserved", device_id);
-    int64_t availble = paddle::platform::GpuAvailableMemToAlloc();
+    int64_t availble = phi::backends::gpu::GpuAvailableMemToAlloc();
     VLOG(3) << "[memory] allocated=" << ToMegaBytes(allocated)
             << " MB, reserved=" << ToMegaBytes(reserved)
             << " MB, available_to_alloc=" << ToMegaBytes(availble) << " MB.";
@@ -149,19 +150,18 @@ struct ConvArgsBase {
     auto w_shape = phi::vectorize(w->dims());
     VLOG(10) << "[ConvArgs] x_dims=" << x_shape << ", w_dims=" << w_shape
              << ", strides=" << s << ", paddings=" << p << ", dilations=" << d
-             << ", data=" << paddle::experimental::CppTypeToDataType<T>::Type()
+             << ", data=" << phi::CppTypeToDataType<T>::Type()
              << ", group=" << group
              << ", data layout=" << static_cast<int64_t>(data_layout);
 
-    return phi::autotune::ConvCacheKey(
-        x_shape,
-        w_shape,
-        p,
-        s,
-        d,
-        paddle::experimental::CppTypeToDataType<T>::Type(),
-        group,
-        static_cast<int64_t>(data_layout));
+    return phi::autotune::ConvCacheKey(x_shape,
+                                       w_shape,
+                                       p,
+                                       s,
+                                       d,
+                                       phi::CppTypeToDataType<T>::Type(),
+                                       group,
+                                       static_cast<int64_t>(data_layout));
   }
 };
 

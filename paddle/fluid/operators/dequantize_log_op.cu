@@ -60,5 +60,6 @@ template struct DequantizeFunctor<phi::GPUContext, int8_t>;
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CUDA = phi::GPUContext;
-REGISTER_OP_CUDA_KERNEL(dequantize_log, ops::DequantizeLogKernel<CUDA, int8_t>);
+
+PD_REGISTER_STRUCT_KERNEL(
+    dequantize_log, GPU, ALL_LAYOUT, ops::DequantizeLogKernel, int8_t) {}

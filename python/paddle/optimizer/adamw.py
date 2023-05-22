@@ -19,10 +19,9 @@ from collections.abc import Callable
 import paddle
 
 from .. import _C_ops
-from ..fluid import core, framework, unique_name
+from ..fluid import core, framework
 from ..fluid.dygraph import base as imperative_base
 from ..fluid.framework import Parameter, Variable
-from ..fluid.layer_helper import LayerHelper
 from ..nn.clip import GradientClipBase
 from .lr import LRScheduler
 from .optimizer import Optimizer
@@ -91,7 +90,7 @@ class AdamW(Optimizer):
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
-    **Notes**:
+    Notes:
         **Currently, AdamW doesn't support sparse parameter optimization.**
 
     Examples:
@@ -112,7 +111,7 @@ class AdamW(Optimizer):
                     beta1=beta1,
                     beta2=beta2,
                     weight_decay=0.01)
-            out.backward()
+            loss.backward()
             opt.step()
             opt.clear_grad()
 
@@ -136,7 +135,7 @@ class AdamW(Optimizer):
                 }],
                 weight_decay=0.01,
                 beta1=0.9)
-            out.backward()
+            loss.backward()
             opt.step()
             opt.clear_grad()
 
@@ -182,9 +181,7 @@ class AdamW(Optimizer):
                 not core.is_compiled_with_cuda()
                 and not core.is_compiled_with_xpu()
             ):
-                raise NotImplementedError(
-                    "'lr_ratio' is unimplemented in CPU, and NPU"
-                )
+                raise NotImplementedError("'lr_ratio' is unimplemented in CPU.")
 
         if parameters is not None:
             # paddle.Tensor is also iterable, so here we don't check whether
@@ -239,16 +236,16 @@ class AdamW(Optimizer):
 
         # each program should have a independent learning rate
         # program -> tensor(learning_rate)
-        self._learning_rate_map = dict()
+        self._learning_rate_map = {}
         # Dictionary of accumulators. Some optimizer subclasses need to
         # allocate and manage extra tensors associated with the parameters
         # to train. These tensors are called accumulators.
         # {accum_name : { paramter_name : accumulator_for_parameter, ...}, ...}
-        self._accumulators = defaultdict(lambda: dict())
+        self._accumulators = defaultdict(lambda: {})
         self.helper = None
         self._opti_name_list = []
         self._accumulators_holder = {}
-        self._param_device_map = dict()
+        self._param_device_map = {}
         self.clear_gradients = self.clear_grad
 
         self.type = "adamw"
@@ -284,6 +281,9 @@ class AdamW(Optimizer):
         self._use_multi_tensor = None
         self.regularization = None
         self._auxiliary_vars = {}
+        self._already_create_accumulater = set()
+
+        self._create_master_grad_states()
 
     def _set_auxiliary_var(self, key, val):
         self._auxiliary_vars[key] = val
@@ -333,62 +333,6 @@ class AdamW(Optimizer):
 
         self._param_groups.append(param_group)
 
-    def _create_master_weight(self, param):
-        if param.name in self._master_weights:
-            var = self._master_weights[param.name]
-        else:
-            assert isinstance(self.helper, LayerHelper)
-
-            var_name = param.name + "_fp32_master"
-            var_name = unique_name.generate(var_name)
-            var = paddle.static.create_global_var(
-                name=var_name,
-                shape=param.shape,
-                value=0,
-                dtype='float32',
-                persistable=True,
-            )
-            block = self.helper.startup_program.global_block()
-            block.append_op(
-                type="cast",
-                inputs={"X": [param]},
-                outputs={"Out": [var]},
-                attrs={
-                    "in_dtype": param.dtype,
-                    "out_dtype": core.VarDesc.VarType.FP32,
-                },
-            )
-            self._master_weights[param.name] = var
-        return var
-
-    def _get_accumulator(self, name, param):
-        """Utility function to fetch an accumulator for a parameter
-        Args:
-            name: name of the accumulator
-            param: parameter variable for which accumulator is to be fetched
-        Returns:
-            accumulator variable for the parameter
-        """
-        if self._name is not None:
-            name = self._name + "_" + name
-        find_master = self._multi_precision and self._is_dtype_fp16_or_bf16(
-            param.dtype
-        )
-        target_param = (
-            self._master_weights[param.name] if find_master else param
-        )
-        target_name = target_param.name
-        if (
-            name not in self._accumulators
-            or target_name not in self._accumulators[name]
-        ):
-            raise Exception(
-                "Accumulator {} does not exist for parameter {}".format(
-                    name, target_name
-                )
-            )
-        return self._accumulators[name][target_name]
-
     def _add_moments_pows(self, p):
         acc_dtype = p.dtype
         if self._is_dtype_fp16_or_bf16(acc_dtype):
@@ -425,9 +369,12 @@ class AdamW(Optimizer):
 
         # Create accumulator tensors for first and second moments
         for p in parameters:
+            if p.name in self._already_create_accumulater:
+                continue
             if self._multi_precision and self._is_dtype_fp16_or_bf16(p.dtype):
                 master_p = self._create_master_weight(p)
                 self._add_moments_pows(master_p)
+                self._already_create_accumulater.add(p.name)
                 continue
             if (
                 self._is_dtype_fp16_or_bf16(p.dtype)
@@ -438,6 +385,7 @@ class AdamW(Optimizer):
                     "Consider using multi_precision=True option of the Adam optimizer."
                 )
             self._add_moments_pows(p)
+            self._already_create_accumulater.add(p.name)
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
@@ -453,16 +401,16 @@ class AdamW(Optimizer):
         ):
             with_decay = False
 
-        moment1 = self._get_accumulator(
+        moment1 = self._get_accumulator_master(
             self._moment1_acc_str, param_and_grad[0]
         )
-        moment2 = self._get_accumulator(
+        moment2 = self._get_accumulator_master(
             self._moment2_acc_str, param_and_grad[0]
         )
-        beta1_pow_acc = self._get_accumulator(
+        beta1_pow_acc = self._get_accumulator_master(
             self._beta1_pow_acc_str, param_and_grad[0]
         )
-        beta2_pow_acc = self._get_accumulator(
+        beta2_pow_acc = self._get_accumulator_master(
             self._beta2_pow_acc_str, param_and_grad[0]
         )
         find_master = self._multi_precision and self._is_dtype_fp16_or_bf16(
@@ -486,15 +434,14 @@ class AdamW(Optimizer):
             _beta1 = (
                 self._beta1
                 if not isinstance(self._beta1, Variable)
-                else self._beta1.numpy().item(0)
+                else self._beta1.item(0)
             )
             _beta2 = (
                 self._beta2
                 if not isinstance(self._beta2, Variable)
-                else self._beta2.numpy().item(0)
+                else self._beta2.item(0)
             )
 
-            found_inf = self._get_auxiliary_var('found_inf')
             _, _, _, _, _, _ = _C_ops.adamw_(
                 param_and_grad[0],
                 param_and_grad[1],
@@ -504,7 +451,7 @@ class AdamW(Optimizer):
                 beta1_pow_acc,
                 beta2_pow_acc,
                 master_weight,
-                found_inf,
+                None,
                 _beta1,
                 _beta2,
                 self._epsilon,
@@ -583,7 +530,7 @@ class AdamW(Optimizer):
         return " ".join(["Weight Decay, params:", ",".join(self._params_name)])
 
     @imperative_base.no_grad
-    @framework.dygraph_only
+    @framework.non_static_only
     def step(self):
         """
         Execute the optimizer and update parameters once.
@@ -606,6 +553,10 @@ class AdamW(Optimizer):
                 opt.step()
                 opt.clear_grad()
         """
+        if paddle.fluid.dygraph.base.in_declarative_mode():
+            self._declarative_step()
+            return
+
         if not isinstance(self._parameter_list[0], dict):
             params_grads = []
             for param in self._parameter_list:
@@ -639,7 +590,7 @@ class AdamW(Optimizer):
         else:
             # optimize parameters in groups
             for param_group in self._param_groups:
-                params_grads = defaultdict(lambda: list())
+                params_grads = defaultdict(lambda: [])
                 for param in param_group['params']:
                     if param.stop_gradient:
                         continue

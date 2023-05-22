@@ -22,7 +22,7 @@ import warnings
 import numpy as np
 
 import paddle
-import paddle.nn as nn
+from paddle import nn
 from paddle.io import DataLoader, Dataset
 
 

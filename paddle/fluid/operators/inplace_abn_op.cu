@@ -14,16 +14,16 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/inplace_abn_op.h"
 #include "paddle/fluid/operators/batch_norm_op.h"
+#include "paddle/fluid/operators/sync_batch_norm_utils.h"
 #include "paddle/phi/kernels/batch_norm_grad_kernel.h"
 #include "paddle/phi/kernels/batch_norm_kernel.h"
-#include "paddle/phi/kernels/gpu/sync_batch_norm_utils.h"
 #include "paddle/phi/kernels/sync_batch_norm_grad_kernel.h"
 #include "paddle/phi/kernels/sync_batch_norm_kernel.h"
 
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class InplaceABNKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -109,7 +109,7 @@ class InplaceABNKernel : public framework::OpKernel<T> {
 
 // Deriving the Gradient for the Backward Pass of Batch Normalization
 // https://kevinzakka.github.io/2016/09/14/batch_normalization/
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class InplaceABNGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -221,15 +221,17 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 #ifdef PADDLE_WITH_HIP
 // MIOPEN do not support double
-REGISTER_OP_CUDA_KERNEL(inplace_abn,
-                        ops::InplaceABNKernel<phi::GPUContext, float>);
-REGISTER_OP_CUDA_KERNEL(inplace_abn_grad,
-                        ops::InplaceABNGradKernel<phi::GPUContext, float>);
+PD_REGISTER_STRUCT_KERNEL(
+    inplace_abn, GPU, ALL_LAYOUT, ops::InplaceABNKernel, float) {}
+PD_REGISTER_STRUCT_KERNEL(
+    inplace_abn_grad, GPU, ALL_LAYOUT, ops::InplaceABNGradKernel, float) {}
 #else
-REGISTER_OP_CUDA_KERNEL(inplace_abn,
-                        ops::InplaceABNKernel<phi::GPUContext, float>,
-                        ops::InplaceABNKernel<phi::GPUContext, double>);
-REGISTER_OP_CUDA_KERNEL(inplace_abn_grad,
-                        ops::InplaceABNGradKernel<phi::GPUContext, float>,
-                        ops::InplaceABNGradKernel<phi::GPUContext, double>);
+PD_REGISTER_STRUCT_KERNEL(
+    inplace_abn, GPU, ALL_LAYOUT, ops::InplaceABNKernel, float, double) {}
+PD_REGISTER_STRUCT_KERNEL(inplace_abn_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::InplaceABNGradKernel,
+                          float,
+                          double) {}
 #endif

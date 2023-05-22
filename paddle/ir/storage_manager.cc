@@ -19,7 +19,7 @@
 
 namespace ir {
 // This is a structure for creating, caching, and looking up Storage of
-// parameteric types.
+// parametric types.
 struct ParametricStorageManager {
   using StorageBase = StorageManager::StorageBase;
 
@@ -41,7 +41,7 @@ struct ParametricStorageManager {
       auto pr = parametric_instances_.equal_range(hash_value);
       while (pr.first != pr.second) {
         if (equal_func(pr.first->second)) {
-          VLOG(4) << "Found a cached parameteric storage of: [param_hash="
+          VLOG(4) << "Found a cached parametric storage of: [param_hash="
                   << hash_value << ", storage_ptr=" << pr.first->second << "].";
           return pr.first->second;
         }
@@ -50,7 +50,7 @@ struct ParametricStorageManager {
     }
     StorageBase *storage = constructor();
     parametric_instances_.emplace(hash_value, storage);
-    VLOG(4) << "No cache found, construct and cache a new parameteric storage "
+    VLOG(4) << "No cache found, construct and cache a new parametric storage "
                "of: [param_hash="
             << hash_value << ", storage_ptr=" << storage << "].";
     return storage;
@@ -66,7 +66,7 @@ StorageManager::StorageManager() {}
 
 StorageManager::~StorageManager() = default;
 
-StorageManager::StorageBase *StorageManager::GetParametricStorageTypeImpl(
+StorageManager::StorageBase *StorageManager::GetParametricStorageImpl(
     TypeId type_id,
     std::size_t hash_value,
     std::function<bool(const StorageBase *)> equal_func,
@@ -81,7 +81,7 @@ StorageManager::StorageBase *StorageManager::GetParametricStorageTypeImpl(
   return parametric_storage.GetOrCreate(hash_value, equal_func, constructor);
 }
 
-StorageManager::StorageBase *StorageManager::GetParameterlessStorageTypeImpl(
+StorageManager::StorageBase *StorageManager::GetParameterlessStorageImpl(
     TypeId type_id) {
   std::lock_guard<ir::SpinLock> guard(parameterless_instance_lock_);
   VLOG(4) << "Try to get a parameterless storage of: [TypeId_hash="
@@ -92,15 +92,15 @@ StorageManager::StorageBase *StorageManager::GetParameterlessStorageTypeImpl(
   return parameterless_instance;
 }
 
-void StorageManager::RegisterParametricStorageTypeImpl(TypeId type_id) {
+void StorageManager::RegisterParametricStorageImpl(TypeId type_id) {
   std::lock_guard<ir::SpinLock> guard(parametric_instance_lock_);
-  VLOG(4) << "Register a parameteric storage of: [TypeId_hash="
+  VLOG(4) << "Register a parametric storage of: [TypeId_hash="
           << std::hash<ir::TypeId>()(type_id) << "].";
   parametric_instance_.emplace(type_id,
                                std::make_unique<ParametricStorageManager>());
 }
 
-void StorageManager::RegisterParameterlessStorageTypeImpl(
+void StorageManager::RegisterParameterlessStorageImpl(
     TypeId type_id, std::function<StorageBase *()> constructor) {
   std::lock_guard<ir::SpinLock> guard(parameterless_instance_lock_);
   VLOG(4) << "Register a parameterless storage of: [TypeId_hash="

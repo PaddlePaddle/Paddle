@@ -15,15 +15,19 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
+from paddle.fluid import core
 
 
-def Heaviside_grad(x, y, dout):
-    tmp = np.zeros(x.shape).astype("float16")
+def Heaviside_grad(x, y, dout, astype="float16", is_bfloat16=False):
+    tmp = np.zeros(x.shape).astype(astype)
     dx = np.multiply(tmp, dout)
-    dy = np.multiply(np.equal(x, 0), dout).astype("float16")
+    dy = np.multiply(np.equal(x, 0), dout).astype(astype)
+    if is_bfloat16:
+        dx = convert_float_to_uint16(dx)
+        dy = convert_float_to_uint16(dy)
     return dx, dy
 
 
@@ -37,16 +41,16 @@ class TestElementwiseOp(OpTest):
         self.outputs = {'Out': np.heaviside(self.inputs['X'], self.inputs['Y'])}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', check_eager=True)
+        self.check_grad(['X', 'Y'], 'Out')
 
     def test_check_grad_ingore_x(self):
-        self.check_grad(['Y'], 'Out', no_grad_set=set("X"), check_eager=True)
+        self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
 
     def test_check_grad_ingore_y(self):
-        self.check_grad(['X'], 'Out', no_grad_set=set('Y'), check_eager=True)
+        self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
 
 
 class TestHeavisideBroadcast(unittest.TestCase):
@@ -161,7 +165,7 @@ class TestHeavisideAPI_int32(TestHeavisideAPI_float64):
         self.dtype = "int32"
 
 
-class TestHeavisideAPI_float16(OpTest):
+class TestHeavisideFP16Op(OpTest):
     def setUp(self):
         self.dtype = np.float16
         self.op_type = "elementwise_heaviside"
@@ -182,7 +186,46 @@ class TestHeavisideAPI_float16(OpTest):
             user_defined_grads=Heaviside_grad(
                 self.inputs['X'], self.inputs['Y'], 1 / self.inputs['X'].size
             ),
-            check_eager=True,
+        )
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support bfloat16",
+)
+class TestHeavisideBF16Op(OpTest):
+    def setUp(self):
+        self.dtype = np.uint16
+        self.np_dtype = np.float32
+        self.op_type = "elementwise_heaviside"
+        self.python_api = paddle.heaviside
+        self.inputs = {
+            'X': np.random.uniform(1, 2, [20, 5]).astype(self.np_dtype),
+            'Y': np.random.uniform(1, 2, [20, 5]).astype(self.np_dtype),
+        }
+        self.outputs = {'Out': np.heaviside(self.inputs['X'], self.inputs['Y'])}
+
+        self.place = core.CUDAPlace(0)
+        self.inputs['X'] = convert_float_to_uint16(self.inputs['X'])
+        self.inputs['Y'] = convert_float_to_uint16(self.inputs['Y'])
+        self.outputs['Out'] = convert_float_to_uint16(self.outputs['Out'])
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place)
+
+    def test_check_grad(self):
+        self.check_grad_with_place(
+            self.place,
+            ['X', 'Y'],
+            'Out',
+            user_defined_grads=Heaviside_grad(
+                self.inputs['X'],
+                self.inputs['Y'],
+                1 / self.inputs['X'].size,
+                self.np_dtype,
+                True,
+            ),
         )
 
 

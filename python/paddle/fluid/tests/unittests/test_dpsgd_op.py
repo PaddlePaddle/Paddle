@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 
 class TestDpsgdOp(OpTest):
@@ -43,7 +43,7 @@ class TestDpsgdOp(OpTest):
         self.outputs = {'ParamOut': param_out}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
 
 def dpsgd_step(inputs, attributes):

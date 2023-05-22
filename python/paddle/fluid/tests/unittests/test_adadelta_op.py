@@ -15,15 +15,41 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
+
+
+def adadelta_wrapper(
+    Param,
+    Grad,
+    AvgSquaredGrad,
+    AvgSquaredUpdate,
+    LearningRate,
+    master_weight=None,
+    rho=0.95,
+    epsilon=1e-6,
+):
+    paddle._C_ops.adadelta_(
+        Param,
+        Grad,
+        AvgSquaredGrad,
+        AvgSquaredUpdate,
+        LearningRate,
+        None,
+        rho,
+        epsilon,
+        False,
+    )
+    return Param, AvgSquaredGrad, AvgSquaredUpdate, LearningRate
 
 
 class TestAdadeltaOp1(OpTest):
     def setUp(self):
         self.op_type = "adadelta"
+        self.python_api = adadelta_wrapper
+        self.python_out_sig = ['Out']
         param = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         grad = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         # The squared gradient is positive
@@ -34,11 +60,13 @@ class TestAdadeltaOp1(OpTest):
         rho = 0.95
         epsilon = 1e-6
 
+        learning_rate = 1.0
         self.inputs = {
             'Param': param,
             'Grad': grad,
             'AvgSquaredGrad': avg_squared_grad,
             'AvgSquaredUpdate': avg_squared_update,
+            'LearningRate': np.array([learning_rate]).astype("float32"),
         }
 
         self.attrs = {'rho': rho, 'epsilon': epsilon}
@@ -76,6 +104,8 @@ class TestAdadeltaOp2(OpTest):
 
     def setUp(self):
         self.op_type = "adadelta"
+        self.python_api = adadelta_wrapper
+        self.python_out_sig = ['Out']
         param = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         grad = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         # The squared gradient is positive
@@ -86,11 +116,14 @@ class TestAdadeltaOp2(OpTest):
         rho = 0.95
         epsilon = 1e-6
 
+        self.attrs = {'rho': rho, 'epsilon': epsilon}
+        learning_rate = 1.0
         self.inputs = {
             'Param': param,
             'Grad': grad,
             'AvgSquaredGrad': avg_squared_grad,
             'AvgSquaredUpdate': avg_squared_update,
+            'LearningRate': np.array([learning_rate]).astype("float32"),
         }
 
         avg_squared_grad_out = rho * avg_squared_grad + (1 - rho) * np.square(
@@ -323,7 +356,9 @@ class TestAdadeltaMultiPrecision2_0(unittest.TestCase):
         exe.run(startup_program)
 
         if use_amp:
-            optimizer.amp_init(place='gpu', scope=paddle.static.global_scope())
+            optimizer.amp_init(
+                place=paddle.CUDAPlace(0), scope=paddle.static.global_scope()
+            )
             x = np.random.random(size=(2, 2)).astype('float16')
         else:
             x = np.random.random(size=(2, 2)).astype('float32')
@@ -434,7 +469,9 @@ class TestAdadeltaMultiPrecision1_0(unittest.TestCase):
         exe.run(startup_program)
 
         if use_amp:
-            optimizer.amp_init(place='gpu', scope=paddle.static.global_scope())
+            optimizer.amp_init(
+                place=paddle.CUDAPlace(0), scope=paddle.static.global_scope()
+            )
             x = np.random.random(size=(2, 2)).astype('float16')
         else:
             x = np.random.random(size=(2, 2)).astype('float32')

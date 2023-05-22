@@ -20,14 +20,14 @@ namespace funcs {
 template <typename T>
 class CopyMatrixRowsFunctor<phi::CPUContext, T> {
  public:
-  void operator()(const phi::CPUContext& context,
+  void operator()(const phi::CPUContext& context UNUSED,
                   const phi::DenseTensor& src,
                   phi::Vector<size_t> index_lod,
                   phi::DenseTensor* dst,
                   bool is_src_index) {
     size_t* index = index_lod.data();
-    auto src_dims = src.dims();
-    auto dst_dims = dst->dims();
+    const auto& src_dims = vectorize<int>(src.dims());
+    const auto& dst_dims = vectorize<int>(dst->dims());
     PADDLE_ENFORCE_EQ(src_dims.size(),
                       2UL,
                       phi::errors::InvalidArgument(

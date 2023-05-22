@@ -19,9 +19,8 @@ import numpy as np
 from test_attribute_var import UnittestBase
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
+from paddle import fluid
+from paddle.fluid import Program, core, program_guard
 
 
 def adaptive_start_index(index, input_size, output_size):
@@ -121,7 +120,9 @@ class TestAdaptiveAvgPool2DAPI(unittest.TestCase):
         ):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
             paddle.enable_static()
-            x = paddle.fluid.data(name="x", shape=[2, 3, 7, 7], dtype="float32")
+            x = paddle.static.data(
+                name="x", shape=[2, 3, 7, 7], dtype="float32"
+            )
 
             out_1 = paddle.nn.functional.adaptive_avg_pool2d(
                 x=x, output_size=[3, 3]
@@ -230,7 +231,9 @@ class TestAdaptiveAvgPool2DClassAPI(unittest.TestCase):
         ):
             place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
             paddle.enable_static()
-            x = paddle.fluid.data(name="x", shape=[2, 3, 7, 7], dtype="float32")
+            x = paddle.static.data(
+                name="x", shape=[2, 3, 7, 7], dtype="float32"
+            )
 
             adaptive_avg_pool = paddle.nn.AdaptiveAvgPool2D(output_size=[3, 3])
             out_1 = adaptive_avg_pool(x=x)

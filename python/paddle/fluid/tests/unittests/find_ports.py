@@ -24,14 +24,14 @@ def train():
     worker_endpoints = worker_endpoints_env
     trainers_num = len(worker_endpoints.split(','))
 
-    name = "worker_endpoints:{}".format(worker_endpoints)
+    name = f"worker_endpoints:{worker_endpoints}"
 
     print(name)
     file_name = os.getenv("PADDLE_LAUNCH_LOG")
     if file_name is None or file_name == "":
         print("can't find PADDLE_LAUNCH_LOG")
         sys.exit(1)
-    with open("{}_{}.log".format(file_name, trainer_id), "w") as f:
+    with open(f"{file_name}_{trainer_id}.log", "w") as f:
         f.write(name)
 
 

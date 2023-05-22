@@ -29,10 +29,10 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class AllToAllOpCPUKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
+  void Compute(const framework::ExecutionContext& ctx UNUSED) const override {
     PADDLE_THROW(platform::errors::Unavailable(
         "Do not support alltoall for cpu kernel now."));
   }

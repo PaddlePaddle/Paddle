@@ -125,11 +125,10 @@ void ProductRuleBook(const Context& dev_ctx,
 
   f_calc_rulebook(nullptr);
   // alloc the rulebook
-  *rulebook = phi::Empty(
-      dev_ctx,
-      DenseTensorMeta(paddle::experimental::CppTypeToDataType<IntT>::Type(),
-                      {3, rulebook_len},
-                      DataLayout::NCHW));
+  *rulebook = phi::Empty(dev_ctx,
+                         DenseTensorMeta(phi::CppTypeToDataType<IntT>::Type(),
+                                         {3, rulebook_len},
+                                         DataLayout::NCHW));
   IntT* rulebook_ptr = rulebook->data<IntT>();
   f_calc_rulebook(rulebook_ptr);
 }
@@ -137,7 +136,7 @@ void ProductRuleBook(const Context& dev_ctx,
 template <typename T, typename Context, typename IntT = int>
 void UpdateRulebookAndOutIndex(const Context& dev_ctx,
                                const SparseCooTensor& x,
-                               const int kernel_size,
+                               const int kernel_size UNUSED,
                                const int out_channels,
                                const DDim& out_dims,
                                DenseTensor* rulebook,
@@ -151,10 +150,9 @@ void UpdateRulebookAndOutIndex(const Context& dev_ctx,
 
   int out_non_zero_num = out_indexs.size();
   const int64_t sparse_dim = 4;
-  DenseTensorMeta indices_meta(
-      paddle::experimental::CppTypeToDataType<IntT>::Type(),
-      {sparse_dim, out_non_zero_num},
-      DataLayout::NCHW);
+  DenseTensorMeta indices_meta(phi::CppTypeToDataType<IntT>::Type(),
+                               {sparse_dim, out_non_zero_num},
+                               DataLayout::NCHW);
   DenseTensorMeta values_meta(
       x.dtype(), {out_non_zero_num, out_channels}, x.values().layout());
   phi::DenseTensor out_indices = phi::Empty(dev_ctx, std::move(indices_meta));

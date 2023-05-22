@@ -18,9 +18,9 @@ import os
 import paddle
 from paddle.fluid import compiler
 from paddle.fluid.framework import in_dygraph_mode
-from paddle.fluid.ir import apply_build_strategy
 from paddle.fluid.wrapped_decorator import wrap_decorator
 from paddle.framework import _global_flags
+from paddle.framework.ir import apply_build_strategy
 
 from .base import topology as tp
 from .base.distributed_strategy import DistributedStrategy
@@ -267,7 +267,7 @@ class Fleet:
                 )
         self._role_maker._generate_role()
 
-        import paddle.distributed.fleet as fleet
+        from paddle.distributed import fleet
 
         fleet.util._set_role_maker(self._role_maker)
 
@@ -405,14 +405,28 @@ class Fleet:
 
         self.dp_degree = max(self.dp_degree, 1)
 
+        d_hybrid_degree = {
+            "dp": ["data", self.dp_degree],
+            "pp": ['pipe', self.pp_degree],
+            "sharding": ['sharding', self.sharding_degree],
+            "mp": ['model', self.mp_degree],
+        }
+
+        order = self._user_defined_strategy.hybrid_parallel_order
+        if order[:].sort() != list(d_hybrid_degree.keys())[:].sort():
+            raise AssertionError(
+                'The order of hybrid_config setting is incorrect.'
+            )
+
+        hybrid_group_names = []
+        dims = []
+        for h_name in order:
+            name, degree = d_hybrid_degree[h_name]
+            hybrid_group_names.append(name)
+            dims.append(degree)
+
         self._topology = tp.CommunicateTopology(
-            hybrid_group_names=["data", "pipe", "sharding", "model"],
-            dims=[
-                self.dp_degree,
-                self.pp_degree,
-                self.sharding_degree,
-                self.mp_degree,
-            ],
+            hybrid_group_names=hybrid_group_names, dims=dims
         )
 
         self._hcg = tp.HybridCommunicateGroup(self._topology)
@@ -1282,7 +1296,7 @@ class Fleet:
             self.origin_main_program = loss.block.program
             # add distributed attr
             if not hasattr(self.origin_main_program, "distributed_info_"):
-                setattr(self.origin_main_program, "distributed_info_", dict())
+                self.origin_main_program.distributed_info_ = {}
                 self.origin_main_program.distributed_info_[
                     "dp_degree"
                 ] = self._user_defined_strategy.sharding_configs["dp_degree"]
@@ -1367,6 +1381,10 @@ class Fleet:
                     copy_user_defined_strategy,
                 )
                 can_not_apply_optimizer_list.append(meta_optimizer)
+
+                # meaningless, just for compatibility with other code
+                graph_optimizer = None
+
             else:
                 # compile time
                 distributed_optimizer_list = (
@@ -1516,7 +1534,7 @@ class Fleet:
                 # i.e. users can not modify current computation graph anymore
                 context["graph_optimize_ops"] = optimize_ops
                 context["graph_optimize_grads"] = params_grads
-            else:
+            elif loss.block.program._pass_applied is None:
                 apply_ir_passes(loss.block.program, startup_program, self)
 
             if not self._role_maker._is_heter_parameter_server_mode:
@@ -1537,7 +1555,7 @@ class Fleet:
             if self._runtime_handle is None:
                 self._runtime_handle = RuntimeFactory()._create_runtime(context)
 
-            import paddle.distributed.fleet as fleet
+            from paddle.distributed import fleet
 
             fleet.util._set_strategy(context["valid_strategy"])
 
@@ -1631,7 +1649,7 @@ class Fleet:
         if self._runtime_handle is None:
             self._runtime_handle = RuntimeFactory()._create_runtime(context)
 
-        import paddle.distributed.fleet as fleet
+        from paddle.distributed import fleet
 
         fleet.util._set_strategy(context["valid_strategy"])
 

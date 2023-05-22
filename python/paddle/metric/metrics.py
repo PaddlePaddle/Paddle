@@ -20,7 +20,7 @@ import paddle
 from paddle import _legacy_C_ops
 
 from ..fluid.data_feeder import check_variable_and_dtype
-from ..fluid.framework import _non_static_mode, _varbase_creator
+from ..fluid.framework import _create_tensor, _non_static_mode
 from ..fluid.layer_helper import LayerHelper
 
 __all__ = []
@@ -292,7 +292,7 @@ class Accuracy(Metric):
             Tensor: the accuracy of current step.
         """
         if isinstance(correct, (paddle.Tensor, paddle.fluid.core.eager.Tensor)):
-            correct = correct.numpy()
+            correct = np.array(correct)
         num_samples = np.prod(np.array(correct.shape[:-1]))
         accs = []
         for i, k in enumerate(self.topk):
@@ -324,7 +324,7 @@ class Accuracy(Metric):
     def _init_name(self, name):
         name = name or 'acc'
         if self.maxk != 1:
-            self._name = ['{}_top{}'.format(name, k) for k in self.topk]
+            self._name = [f'{name}_top{k}' for k in self.topk]
         else:
             self._name = [name]
 
@@ -420,12 +420,12 @@ class Precision(Metric):
                 The data type is 'int32' or 'int64'.
         """
         if isinstance(preds, (paddle.Tensor, paddle.fluid.core.eager.Tensor)):
-            preds = preds.numpy()
+            preds = np.array(preds)
         elif not _is_numpy_(preds):
             raise ValueError("The 'preds' must be a numpy ndarray or Tensor.")
 
         if isinstance(labels, (paddle.Tensor, paddle.fluid.core.eager.Tensor)):
-            labels = labels.numpy()
+            labels = np.array(labels)
         elif not _is_numpy_(labels):
             raise ValueError("The 'labels' must be a numpy ndarray or Tensor.")
 
@@ -553,12 +553,12 @@ class Recall(Metric):
                 Shape: [batch_size, 1], Dtype: 'int32' or 'int64'.
         """
         if isinstance(preds, (paddle.Tensor, paddle.fluid.core.eager.Tensor)):
-            preds = preds.numpy()
+            preds = np.array(preds)
         elif not _is_numpy_(preds):
             raise ValueError("The 'preds' must be a numpy ndarray or Tensor.")
 
         if isinstance(labels, (paddle.Tensor, paddle.fluid.core.eager.Tensor)):
-            labels = labels.numpy()
+            labels = np.array(labels)
         elif not _is_numpy_(labels):
             raise ValueError("The 'labels' must be a numpy ndarray or Tensor.")
 
@@ -705,12 +705,12 @@ class Auc(Metric):
                 representing the label of the instance i.
         """
         if isinstance(labels, (paddle.Tensor, paddle.fluid.core.eager.Tensor)):
-            labels = labels.numpy()
+            labels = np.array(labels)
         elif not _is_numpy_(labels):
             raise ValueError("The 'labels' must be a numpy ndarray or Tensor.")
 
         if isinstance(preds, (paddle.Tensor, paddle.fluid.core.eager.Tensor)):
-            preds = preds.numpy()
+            preds = np.array(preds)
         elif not _is_numpy_(preds):
             raise ValueError("The 'preds' must be a numpy ndarray or Tensor.")
 
@@ -798,15 +798,15 @@ def accuracy(input, label, k=1, correct=None, total=None, name=None):
             predictions = paddle.to_tensor([[0.2, 0.1, 0.4, 0.1, 0.1], [0.2, 0.3, 0.1, 0.15, 0.25]], dtype='float32')
             label = paddle.to_tensor([[2], [0]], dtype="int64")
             result = paddle.metric.accuracy(input=predictions, label=label, k=1)
-            # [0.5]
+            # 0.5
     """
     if label.dtype == paddle.int32:
         label = paddle.cast(label, paddle.int64)
     if _non_static_mode():
         if correct is None:
-            correct = _varbase_creator(dtype="int32")
+            correct = _create_tensor(dtype="int32")
         if total is None:
-            total = _varbase_creator(dtype="int32")
+            total = _create_tensor(dtype="int32")
 
         topk_out, topk_indices = paddle.topk(input, k=k)
         _acc, _, _ = _legacy_C_ops.accuracy(
@@ -817,7 +817,7 @@ def accuracy(input, label, k=1, correct=None, total=None, name=None):
 
     helper = LayerHelper("accuracy", **locals())
     check_variable_and_dtype(
-        input, 'input', ['float16', 'float32', 'float64'], 'accuracy'
+        input, 'input', ['float16', 'uint16', 'float32', 'float64'], 'accuracy'
     )
     topk_out, topk_indices = paddle.topk(input, k=k)
     acc_out = helper.create_variable_for_type_inference(dtype="float32")

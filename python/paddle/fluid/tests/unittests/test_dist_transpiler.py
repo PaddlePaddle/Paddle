@@ -22,7 +22,7 @@ import numpy as np
 gc.set_debug(gc.DEBUG_COLLECTABLE)
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 class TranspilerTest(unittest.TestCase):
@@ -574,7 +574,7 @@ class TestL2Decay(TranspilerTest):
             x,
             size=1000,
             weight_attr=fluid.ParamAttr(
-                name='fc_w', regularizer=fluid.regularizer.L2Decay()
+                name='fc_w', regularizer=paddle.regularizer.L2Decay()
             ),
             bias_attr=fluid.ParamAttr(name='fc_b'),
         )
@@ -625,7 +625,7 @@ class TestL2DecayWithPiecewise(TranspilerTest):
                 boundaries=bd, values=lr
             ),
             momentum=0.9,
-            regularization=fluid.regularizer.L2Decay(1e-4),
+            regularization=paddle.regularizer.L2Decay(1e-4),
         )
         sgd_optimizer.minimize(avg_cost)
 
@@ -1467,7 +1467,7 @@ class TestRemoteHsigmoid(TestDistLookupTableBase):
 
     def transpiler_test_impl(self):
         trainer, _ = self.get_trainer()
-        params_to_check = list()
+        params_to_check = []
         for op in trainer.blocks[0].ops:
             if op.type == "hierarchical_sigmoid":
                 params_to_check = [op.input("W")[0], op.input("Bias")[0]]

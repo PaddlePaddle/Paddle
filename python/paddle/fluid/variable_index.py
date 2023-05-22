@@ -17,6 +17,7 @@ import numpy as np
 from . import unique_name
 from . import core
 import paddle
+import warnings
 
 MAX_INTEGER = 2**31 - 1
 
@@ -117,7 +118,7 @@ class SliceInfo:
         return s
 
     def numel(self, shape):
-        return reduce(lambda x, y: x * y, shape)
+        return reduce(lambda x, y: x * y, shape, 1)
 
     def get_offset_stride(self, tensor_shape):
         for index in self.indexes:
@@ -185,7 +186,8 @@ class SliceInfo:
 
         for i in range(len(gather_tensor_shape)):
             if not (
-                value_dims_bd[i] == gather_tensor_shape[i]
+                len(value_dims_bd) == 0
+                or value_dims_bd[i] == gather_tensor_shape[i]
                 or value_dims_bd[i] == 1
             ):
                 raise ValueError(
@@ -282,7 +284,16 @@ def is_integer_or_scalar_tensor(ele):
     if isinstance(ele, int):
         return True
     elif isinstance(ele, Variable):
-        if len(ele.shape) == 1 and ele.shape[0] == 1:
+        # NOTE(zoooo0820): For compatibility, if FLAGS_set_to_1d is set to True,
+        # 1-D tensor is still treated as a scalar, which means basic indexing.
+        # This will be removed in future.
+        if paddle.get_flags('FLAGS_set_to_1d')['FLAGS_set_to_1d']:
+            if len(ele.shape) == 1 and ele.shape[0] == 1:
+                warnings.warn(
+                    "1-D Tensor will be treat as advanced indexing in future version. Currently, 1-D Tensor means a scalar, not vector, and please modify it to 0-D Tensor. If advanced indexing is needed, please use `export FLAGS_set_to_1d=False` to set the flag."
+                )
+                return True
+        if len(ele.shape) == 0:
             return True
     return False
 
@@ -297,10 +308,9 @@ def is_bool_tensor(ele):
 
 def deal_attrs(attrs, attr, attr_name, tensor_attr_name, inputs, infer_flags):
     from .framework import Variable
-    from .layers import utils
 
-    if utils._contain_var(attr):
-        inputs[tensor_attr_name] = utils._convert_to_tensor_list(
+    if paddle.utils._contain_var(attr):
+        inputs[tensor_attr_name] = paddle.utils._convert_to_tensor_list(
             attr, dtype="int64"
         )
         for i, dim in enumerate(attr):
@@ -321,14 +331,19 @@ def get_value_for_bool_tensor(var, item):
             "the dims of bool index except to be equal or less "
             "than {}, but received {}.".format(len(var.shape), len(item.shape))
         )
-    for i, dim_len in enumerate(item.shape):
-        if dim_len != var.shape[i]:
+    i = 0
+    item_shape = item.shape
+    while i < len(item.shape):
+        dim_len = item_shape[i]
+        if dim_len != -1 and var.shape[i] != -1 and dim_len != var.shape[i]:
             raise IndexError(
                 "The dimension of bool index doesn't match indexed array along "
                 "dimension {}, the target dimension is {}, but received {}.".format(
                     i, var.shape[i], dim_len
                 )
             )
+        i += 1
+    empty_shape = [0] + list(var.shape[i:])
 
     def idx_not_empty(var, item):
         from ..tensor import gather_nd
@@ -336,15 +351,12 @@ def get_value_for_bool_tensor(var, item):
         bool_2_idx = paddle.nonzero(item == True)
         return gather_nd(var, bool_2_idx)
 
-    def idx_empty(var):
-        var_shape = list(var.shape)
-        var_shape[0] = 0
-        return paddle.empty(var_shape, dtype=var.dtype)
-
     from paddle.static.nn import cond
 
     return cond(
-        item.any(), lambda: idx_not_empty(var, item), lambda: idx_empty(var)
+        item.any(),
+        lambda: idx_not_empty(var, item),
+        lambda: paddle.empty(empty_shape, var.dtype),
     )
 
 
@@ -572,13 +584,14 @@ def _getitem_impl_(var, item):
 
         out = reverse(out, axis=reverse_axes)
 
-    # Deal with cases when all axes are decreased.
-    # After slice, the shape of out is [1], which should have been [], but Paddle doesn't support scalar.
-    # In order to ensure the correctness of the final shape of out, one dimension of out needs to be decreased.
-    # For example:
-    # # x.shape: (2,3,4)
-    # out = x[0, 1, 1, None] # out.shape : (1)
-    if len(decrease_axes) == len(var.shape):
+    # NOTE(zoooo0820): When all axes are decreased, the output will be 1-D
+    # with FLAGS_set_to_1d=True. In this case, one `None` should be pop out,
+    # otherwise the output shape will be not correct.
+    set_to_1d = paddle.get_flags('FLAGS_set_to_1d')['FLAGS_set_to_1d']
+    if set_to_1d and len(decrease_axes) == len(var.shape):
+        warnings.warn(
+            "Warning: In Tensor '__getitem__', if the number of scalar elements in the index is equal to the rank of the Tensor, the output should be 0-D. In order to be consistent with the behavior of previous versions, it will be processed to 1-D. But it is not correct and will be removed in release 2.6. If 1-D is still wanted, please modify the index element from scalar to slice (e.g. 'x[i]' => 'x[i:i+1]')."
+        )
         none_axes = none_axes[1:]
 
     if len(none_axes) > 0:
@@ -590,13 +603,6 @@ def _getitem_impl_(var, item):
             l = len([i for i in decrease_axes if i < axis])
             new_axis = axis - l
             none_axes[idx] = new_axis
-
-        # Deal with cases when all axes are decreased.
-        # After slice, the shape of out is [1], which should have been [], but Paddle doesn't support scalar.
-        # In order to ensure the correctness of the final shape of out, one dimension of out needs to be decreased.
-        # For example:
-        # # x.shape: (2,3,4)
-        # out = x[0, 1, 1, None] # out.shape : (1)
 
         from ..tensor import unsqueeze
 
@@ -763,16 +769,16 @@ def _setitem_impl_(var, item, value):
         'none_axes': none_axes,
     }
 
-    from .layers import utils
-
-    if utils._contain_var(starts):
-        inputs['StartsTensorList'] = utils._convert_to_tensor_list(starts)
+    if paddle.utils._contain_var(starts):
+        inputs['StartsTensorList'] = paddle.utils._convert_to_tensor_list(
+            starts
+        )
         del attrs['starts']
-    if utils._contain_var(ends):
-        inputs['EndsTensorList'] = utils._convert_to_tensor_list(ends)
+    if paddle.utils._contain_var(ends):
+        inputs['EndsTensorList'] = paddle.utils._convert_to_tensor_list(ends)
         del attrs['ends']
-    if utils._contain_var(steps):
-        inputs['StepsTensorList'] = utils._convert_to_tensor_list(steps)
+    if paddle.utils._contain_var(steps):
+        inputs['StepsTensorList'] = paddle.utils._convert_to_tensor_list(steps)
         del attrs['steps']
 
     # 2. Parse value
@@ -781,38 +787,15 @@ def _setitem_impl_(var, item, value):
 
     from .data_feeder import convert_dtype
 
-    #  2.1 value is an integer of float
-    if isinstance(value, (int, float)):
+    #  2.1 value is an integer, float or complex
+    if isinstance(value, (bool, int, float, complex)):
         value = np.array([value]).astype(convert_dtype(dtype))
 
     #  2.2 value is a np.ndarray
     if isinstance(value, np.ndarray):
         shape = list(value.shape)
-        if dtype == core.VarDesc.VarType.BOOL:
-            value_name = "bool_values"
-            values = [int(v) for v in value.flat]
-        elif dtype == core.VarDesc.VarType.FP32:
-            value_name = "fp32_values"
-            values = [float(v) for v in value.flat]
-        elif dtype == core.VarDesc.VarType.FP64:
-            value_name = "fp64_values"
-            values = [float(v) for v in value.flat]
-        elif dtype == core.VarDesc.VarType.INT32:
-            value_name = "int32_values"
-            values = [int(v) for v in value.flat]
-        elif dtype == core.VarDesc.VarType.INT64:
-            value_name = "int64_values"
-            values = [int(v) for v in value.flat]
-        elif dtype == core.VarDesc.VarType.FP16:
-            value_name = "fp16_values"
-            values = [float(v) for v in value.flat]
-        else:
-            raise TypeError(
-                "When assign a numpy.ndarray, integer or float to a paddle.Tensor, "
-                "the data type of the paddle.Tensor must be bool, float32, int32, int64 or float16, but "
-                "received %s." % convert_dtype(dtype)
-            )
-        attrs[value_name] = values
+        values = value.ravel().tolist()
+        attrs["values"] = values
         attrs["shape"] = shape
 
     elif isinstance(value, (Variable, core.eager.Tensor)):
@@ -849,7 +832,7 @@ def set_value_for_bool_tensor(var, item, value):
             "than {}, but received {}.".format(len(var.shape), len(item.shape))
         )
     for i, dim_len in enumerate(item.shape):
-        if dim_len != var.shape[i]:
+        if dim_len != -1 and var.shape[i] != -1 and dim_len != var.shape[i]:
             raise IndexError(
                 "The dimension of bool index doesn't match indexed array along "
                 "dimension {}, the target dimension is {}, but received {}.".format(

@@ -24,10 +24,10 @@ namespace ir {
 class Graph;
 
 void DeleteWeightDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
-  std::unordered_set<std::string> op_list = {"matmul_v2",
+  std::unordered_set<std::string> op_list = {"matrix_multiply",
+                                             "matmul_v2",
                                              "matmul",
                                              "mul",
-                                             "fc",
                                              "depthwise_conv2d",
                                              "conv2d",
                                              "conv2d_transpose"};
@@ -45,8 +45,8 @@ void DeleteWeightDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
     if (n->IsOp()) {
       auto* op = n->Op();
       if (op->Type() == "dequantize_linear") {
-        Node *weight_var_node, *dequantized_weight_var_node, *scale_var_node,
-            *calcu_op_node, *while_op_node;
+        Node *weight_var_node, *calcu_op_node, *while_op_node;
+        Node *dequantized_weight_var_node = nullptr, *scale_var_node = nullptr;
         // 1. Judge whether for dequant weight and find
         // weight_var_node/scale_var_node
         for (auto* input_node : n->inputs) {
@@ -89,15 +89,14 @@ void DeleteWeightDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
                           ->GetMutable<phi::DenseTensor>();
                   auto weight_scale_nums = weight_scale_tensor->numel();
 
-                  if (weight_scale_tensor->dtype() ==
-                      paddle::experimental::DataType::FLOAT32) {
+                  if (weight_scale_tensor->dtype() == phi::DataType::FLOAT32) {
                     float* weight_scale_data =
                         weight_scale_tensor->data<float>();
                     for (int i = 0; i < weight_scale_nums; i++) {
                       weight_scale.push_back(weight_scale_data[i]);
                     }
                   } else if (weight_scale_tensor->dtype() ==
-                             paddle::experimental::DataType::FLOAT16) {
+                             phi::DataType::FLOAT16) {
                     phi::dtype::float16* weight_scale_data =
                         weight_scale_tensor->data<phi::dtype::float16>();
                     for (int i = 0; i < weight_scale_nums; i++) {

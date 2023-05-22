@@ -16,9 +16,6 @@
 #include <memory>
 
 #include "paddle/fluid/memory/allocation/allocator.h"
-#ifdef PADDLE_WITH_ASCEND_CL
-#include "paddle/fluid/memory/allocation/npu_pinned_allocator.h"
-#endif
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
@@ -28,10 +25,6 @@
 namespace paddle {
 namespace memory {
 namespace allocation {
-
-#ifdef PADDLE_WITH_ASCEND_CL
-using NPUPinnedAllocator = paddle::memory::allocation::NPUPinnedAllocator;
-#endif
 
 // Allocator Facade is the interface exposed to other modules.
 // All the configuration or dirty code under development should

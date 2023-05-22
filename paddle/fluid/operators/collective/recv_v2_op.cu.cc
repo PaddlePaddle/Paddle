@@ -40,25 +40,24 @@ framework::DDim recv_shape_info(const platform::Place &place,
                           "to send the shape info."));
   }
 
-  paddle::experimental::DataType shape_dytpe =
-      paddle::experimental::DataType::INT32;
+  phi::DataType shape_dtype = phi::DataType::INT32;
   ncclDataType_t nccl_dtype =
-      platform::ToNCCLDataType(framework::TransToProtoVarType(shape_dytpe));
+      platform::ToNCCLDataType(framework::TransToProtoVarType(shape_dtype));
 
   // step1: recv the shape size
-  phi::DenseTensor gpu_shape_size_tensor(shape_dytpe);
+  phi::DenseTensor gpu_shape_size_tensor(shape_dtype);
   if (!group) {
     gpu_shape_size_tensor.Resize({1});
-    gpu_shape_size_tensor.mutable_data(place, shape_dytpe);
+    gpu_shape_size_tensor.mutable_data(place, shape_dtype);
     auto *gpu_data = gpu_shape_size_tensor.data<int>();
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
         gpu_data, 1, nccl_dtype, peer, comm->comm(), stream));
   }
 
   // copy the shape size tensor to cpu
-  phi::DenseTensor *cpu_shape_size_tensor = new phi::DenseTensor(shape_dytpe);
+  phi::DenseTensor *cpu_shape_size_tensor = new phi::DenseTensor(shape_dtype);
   cpu_shape_size_tensor->Resize({1});
-  cpu_shape_size_tensor->mutable_data(platform::CPUPlace(), shape_dytpe);
+  cpu_shape_size_tensor->mutable_data(platform::CPUPlace(), shape_dtype);
   if (group) {
     std::vector<phi::DenseTensor> shape_size_tensor;
     shape_size_tensor.emplace_back(*cpu_shape_size_tensor);
@@ -72,19 +71,19 @@ framework::DDim recv_shape_info(const platform::Place &place,
   VLOG(3) << "recv the shape size: " << shape_size << " from peer";
 
   // step2: recv the shape
-  phi::DenseTensor gpu_shape_tensor(shape_dytpe);
+  phi::DenseTensor gpu_shape_tensor(shape_dtype);
   if (!group) {
     gpu_shape_tensor.Resize({shape_size});
-    gpu_shape_tensor.mutable_data(place, shape_dytpe);
+    gpu_shape_tensor.mutable_data(place, shape_dtype);
     auto *gpu_shape_data = gpu_shape_tensor.data<int>();
     PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclRecv(
         gpu_shape_data, shape_size, nccl_dtype, peer, comm->comm(), stream));
   }
 
   // copy the shape tensor to cpu
-  phi::DenseTensor *cpu_shape_tensor = new phi::DenseTensor(shape_dytpe);
+  phi::DenseTensor *cpu_shape_tensor = new phi::DenseTensor(shape_dtype);
   cpu_shape_tensor->Resize({shape_size});
-  cpu_shape_tensor->mutable_data(platform::CPUPlace(), shape_dytpe);
+  cpu_shape_tensor->mutable_data(platform::CPUPlace(), shape_dtype);
   if (group) {
     std::vector<phi::DenseTensor> shape_tensor;
     shape_tensor.emplace_back(*cpu_shape_tensor);
@@ -106,7 +105,7 @@ framework::DDim recv_shape_info(const platform::Place &place,
 }
 #endif
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -233,13 +232,17 @@ class RecvOpV2CUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_CUDA_KERNEL(recv_v2,
-                        ops::RecvOpV2CUDAKernel<float>,
-                        ops::RecvOpV2CUDAKernel<double>,
+PD_REGISTER_STRUCT_KERNEL(recv_v2,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::RecvOpV2CUDAKernel,
+                          float,
+                          double,
 #if NCCL_VERSION_CODE >= 21000
-                        ops::RecvOpV2CUDAKernel<plat::bfloat16>,
+                          plat::bfloat16,
 #endif
-                        ops::RecvOpV2CUDAKernel<int>,
-                        ops::RecvOpV2CUDAKernel<int64_t>,
-                        ops::RecvOpV2CUDAKernel<int8_t>,
-                        ops::RecvOpV2CUDAKernel<plat::float16>);
+                          int,
+                          int64_t,
+                          int8_t,
+                          plat::float16) {
+}

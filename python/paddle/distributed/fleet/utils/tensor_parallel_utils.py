@@ -111,7 +111,7 @@ def copy_parameters(block_, params):
         )
         assert (
             param.is_distributed is False
-        ), "Try to sync Distribted Parameter: {}".format(param)
+        ), f"Try to sync Distribted Parameter: {param}"
         new_p.is_distributed = False
 
     block_.vars[new_p.name] = new_p
@@ -156,7 +156,7 @@ def insert_sync_op(
         )
     else:
         raise NotImplementedError(
-            'Sync mode of [{}] is NOT supported.'.format(sync_mode)
+            f'Sync mode of [{sync_mode}] is NOT supported.'
         )
 
 

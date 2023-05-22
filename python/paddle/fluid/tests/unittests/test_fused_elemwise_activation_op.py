@@ -16,9 +16,9 @@ import unittest
 from functools import partial
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 #   TestFusedElementwiseActivationOp
 #   TestFusedElementwiseActivationOp_scalar

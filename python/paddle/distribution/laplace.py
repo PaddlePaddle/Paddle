@@ -18,7 +18,7 @@ import numpy as np
 
 import paddle
 from paddle.distribution import distribution
-from paddle.fluid import framework as framework
+from paddle.fluid import framework
 
 
 class Laplace(distribution.Distribution):
@@ -44,12 +44,12 @@ class Laplace(distribution.Distribution):
     Examples:
         .. code-block:: python
 
-                        import paddle
+            import paddle
 
-                        m = paddle.distribution.Laplace(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
-                        m.sample()  # Laplace distributed with loc=0, scale=1
-                        # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-                        # [3.68546247])
+            m = paddle.distribution.Laplace(paddle.to_tensor(0.0), paddle.to_tensor(1.0))
+            m.sample()  # Laplace distributed with loc=0, scale=1
+            # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        3.68546247)
 
     """
 
@@ -173,13 +173,13 @@ class Laplace(distribution.Distribution):
         Examples:
             .. code-block:: python
 
-                            import paddle
+                import paddle
 
-                            m = paddle.distribution.Laplace(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
-                            value = paddle.to_tensor([0.1])
-                            m.log_prob(value)
-                            # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-                            # [-0.79314721])
+                m = paddle.distribution.Laplace(paddle.to_tensor(0.0), paddle.to_tensor(1.0))
+                value = paddle.to_tensor(0.1)
+                m.log_prob(value)
+                # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+                #        -0.79314721)
 
         """
         loc, scale, value = self._validate_value(value)
@@ -205,12 +205,12 @@ class Laplace(distribution.Distribution):
         Examples:
             .. code-block:: python
 
-                            import paddle
+                import paddle
 
-                            m = paddle.distribution.Laplace(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
-                            m.entropy()
-                            # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-                            # [1.69314718])
+                m = paddle.distribution.Laplace(paddle.to_tensor(0.0), paddle.to_tensor(1.0))
+                m.entropy()
+                # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+                #        1.69314718)
         """
         return 1 + paddle.log(2 * self.scale)
 
@@ -236,13 +236,13 @@ class Laplace(distribution.Distribution):
         Examples:
             .. code-block:: python
 
-                            import paddle
+                import paddle
 
-                            m = paddle.distribution.Laplace(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
-                            value = paddle.to_tensor([0.1])
-                            m.cdf(value)
-                            # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-                            # [0.54758132])
+                m = paddle.distribution.Laplace(paddle.to_tensor(0.0), paddle.to_tensor(1.0))
+                value = paddle.to_tensor(0.1)
+                m.cdf(value)
+                # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+                #        0.54758132)
         """
         loc, scale, value = self._validate_value(value)
         iterm = (
@@ -277,11 +277,11 @@ class Laplace(distribution.Distribution):
 
                             import paddle
 
-                            m = paddle.distribution.Laplace(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
-                            value = paddle.to_tensor([0.1])
+                            m = paddle.distribution.Laplace(paddle.to_tensor(0.0), paddle.to_tensor(1.0))
+                            value = paddle.to_tensor(0.1)
                             m.icdf(value)
-                            # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-                            # [-1.60943794])
+                            # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+                            #        -1.60943794)
         """
         loc, scale, value = self._validate_value(value)
         term = value - 0.5
@@ -302,16 +302,12 @@ class Laplace(distribution.Distribution):
 
                             import paddle
 
-                            m = paddle.distribution.Laplace(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
+                            m = paddle.distribution.Laplace(paddle.to_tensor(0.0), paddle.to_tensor(1.0))
                             m.sample()  # Laplace distributed with loc=0, scale=1
-                            # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-                            # [3.68546247])
+                            # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+                            #        3.68546247)
         """
-        if not isinstance(shape, tuple):
-            raise TypeError(
-                f'Expected shape should be tuple[int], but got {type(shape)}'
-            )
-
+        shape = shape if isinstance(shape, tuple) else tuple(shape)
         with paddle.no_grad():
             return self.rsample(shape)
 
@@ -336,22 +332,16 @@ class Laplace(distribution.Distribution):
         """
 
         eps = self._get_eps()
-        shape = self._extend_shape(shape) or (1,)
+        shape = self._extend_shape(shape)
         uniform = paddle.uniform(
             shape=shape,
             min=float(np.nextafter(-1, 1)) + eps / 2,
             max=1.0 - eps / 2,
             dtype=self.loc.dtype,
         )
-
-        if len(self.scale.shape) == 0 and len(self.loc.shape) == 0:
-            loc, scale, uniform = paddle.broadcast_tensors(
-                [self.loc, self.scale, uniform]
-            )
-        else:
-            loc, scale = self.loc, self.scale
-
-        return loc - scale * uniform.sign() * paddle.log1p(-uniform.abs())
+        return self.loc - self.scale * uniform.sign() * paddle.log1p(
+            -uniform.abs()
+        )
 
     def _get_eps(self):
         """
@@ -405,13 +395,13 @@ class Laplace(distribution.Distribution):
         Examples:
             .. code-block:: python
 
-                            import paddle
+                import paddle
 
-                            m1 = paddle.distribution.Laplace(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
-                            m2 = paddle.distribution.Laplace(paddle.to_tensor([1.0]), paddle.to_tensor([0.5]))
-                            m1.kl_divergence(m2)
-                            # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-                            # [1.04261160])
+                m1 = paddle.distribution.Laplace(paddle.to_tensor([0.0]), paddle.to_tensor([1.0]))
+                m2 = paddle.distribution.Laplace(paddle.to_tensor([1.0]), paddle.to_tensor([0.5]))
+                m1.kl_divergence(m2)
+                # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                # [1.04261160])
         """
 
         var_ratio = other.scale / self.scale

@@ -31,13 +31,14 @@ limitations under the License. */
 #include "paddle/fluid/framework/fleet/heter_ps/hashtable.h"
 #include "paddle/fluid/framework/fleet/ps_gpu_wrapper.h"
 #include "paddle/fluid/framework/io/fs.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/gpu/graph_reindex_funcs.h"
 #include "paddle/phi/kernels/graph_reindex_kernel.h"
 
-DECLARE_bool(enable_opt_get_features);
-DECLARE_bool(graph_metapath_split_opt);
-DECLARE_int32(gpugraph_storage_mode);
-DECLARE_double(gpugraph_hbm_table_load_factor);
+PHI_DECLARE_bool(enable_opt_get_features);
+PHI_DECLARE_bool(graph_metapath_split_opt);
+PHI_DECLARE_int32(gpugraph_storage_mode);
+PHI_DECLARE_double(gpugraph_hbm_table_load_factor);
 
 namespace paddle {
 namespace framework {
@@ -320,11 +321,8 @@ void SlotRecordInMemoryDataFeed::FillSlotValueOffset(
     const int uint64_slot_size,
     const int *float_offsets,
     const int float_slot_size,
-    const UsedSlotGpuType *used_slots) {
-  auto stream =
-      dynamic_cast<phi::GPUContext *>(
-          paddle::platform::DeviceContextPool::Instance().Get(this->place_))
-          ->stream();
+    const UsedSlotGpuType *used_slots,
+    cudaStream_t stream) {
   FillSlotValueOffsetKernel<<<GET_BLOCKS(used_slot_num),
                               CUDA_NUM_THREADS,
                               0,
@@ -399,12 +397,8 @@ void SlotRecordInMemoryDataFeed::CopyForTensor(
     const int *float_offsets,
     const int *float_ins_lens,
     const int float_slot_size,
-    const UsedSlotGpuType *used_slots) {
-  auto stream =
-      dynamic_cast<phi::GPUContext *>(
-          paddle::platform::DeviceContextPool::Instance().Get(this->place_))
-          ->stream();
-
+    const UsedSlotGpuType *used_slots,
+    cudaStream_t stream) {
   CopyForTensorKernel<<<GET_BLOCKS(used_slot_num * ins_num),
                         CUDA_NUM_THREADS,
                         0,

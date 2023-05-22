@@ -21,10 +21,12 @@
 namespace phi {
 
 template <typename T, typename Context>
-void RandpermRawKernel(
-    const Context& dev_ctx, int n, DataType dtype, int seed, DenseTensor* out) {
+void RandpermKernel(const Context& dev_ctx,
+                    int n,
+                    DataType dtype,
+                    DenseTensor* out) {
   std::shared_ptr<std::mt19937_64> engine;
-
+  int seed = 0;
   if (seed) {
     engine = std::make_shared<std::mt19937_64>();
     engine->seed(seed);
@@ -51,24 +53,7 @@ void RandpermRawKernel(
   }
 }
 
-template <typename T, typename Context>
-void RandpermKernel(const Context& dev_ctx,
-                    int n,
-                    DataType dtype,
-                    DenseTensor* out) {
-  RandpermRawKernel<T, Context>(dev_ctx, n, dtype, 0, out);
-}
-
 }  // namespace phi
-
-PD_REGISTER_KERNEL(randperm_raw,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::RandpermRawKernel,
-                   int,
-                   int64_t,
-                   float,
-                   double) {}
 
 PD_REGISTER_KERNEL(randperm,
                    XPU,

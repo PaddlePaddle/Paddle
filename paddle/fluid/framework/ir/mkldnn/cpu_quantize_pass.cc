@@ -435,7 +435,7 @@ bool CPUQuantizePass::IsOpQuantized(const Node* node) const {
 }
 
 void CPUQuantizePass::GetQuantInfo(Graph* graph) const {
-  GetInfoFromTheFirstOp(
+  GetInfoFromTheTmpOp(
       graph, "has_quant_info", "var_quant_scales", var_quant_scales_);
 }
 
@@ -1045,14 +1045,14 @@ void CPUQuantizePass::QuantizeElementwise(
                   "X",
                   input_x_scale,
                   is_x_unsigned,
-                  "Scale_x");
+                  "scale_x");
     QuantizeInput(g,
                   elementwise_op,
                   elementwise_y,
                   "Y",
                   input_y_scale,
                   is_y_unsigned,
-                  "Scale_y");
+                  "scale_y");
 
     bool is_output_unsigned{false};
     auto output_scale =
@@ -1064,7 +1064,7 @@ void CPUQuantizePass::QuantizeElementwise(
                      "Out",
                      output_scale,
                      is_output_unsigned,
-                     "Scale_out");
+                     "scale_out");
 
     ++quantize_elementwise_count;
   };
@@ -1250,6 +1250,10 @@ void CPUQuantizePass::QuantizeFusionLSTM(Graph* graph) const {
     bool is_x_unsigned{false};
     auto input_x_scale = GetScaleValueForNode(x, &is_x_unsigned);
 
+    // In the QAT process scales are prepared for only int8 data type,
+    // lstm scales should behave as input is int8 to get correct accuracy
+    is_x_unsigned = false;
+
     double input_x_shift{128.};
     if (is_x_unsigned) input_x_shift = 0.;
 
@@ -1305,14 +1309,14 @@ void CPUQuantizePass::ApplyImpl(ir::Graph* graph) const {
   QuantizeMatmul(graph, false /* with_residual_data */);
   QuantizeMatmul(graph, true /* with_residual_data */);
   QuantizeImmutable(graph, "reshape2", "X");
-  QuantizeImmutable(graph, "transpose2", "X");
+  QuantizeImmutable(graph, "fused_transpose", "X");
   QuantizeImmutable(graph, "slice", "Input");
   QuantizeImmutable(graph, "nearest_interp", "X");
   QuantizeImmutable(graph, "nearest_interp_v2", "X");
   QuantizeImmutable(graph, "split", "X");
-  QuantizeElementwise(graph, "elementwise_add");
-  QuantizeElementwise(graph, "elementwise_mul");
-  QuantizeElementwise(graph, "elementwise_sub");
+  QuantizeElementwise(graph, "fused_elementwise_add");
+  QuantizeElementwise(graph, "fused_elementwise_mul");
+  QuantizeElementwise(graph, "fused_elementwise_sub");
   QuantizeFusionGru(graph);
   QuantizeMultiGru(graph);
   QuantizeFusionLSTM(graph);

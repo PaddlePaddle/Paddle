@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/gather.cu.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/segment_pooling.h"
@@ -450,6 +451,8 @@ template class SegmentPoolFunctor<GPU, int64_t, int>;
 template class SegmentPoolFunctor<GPU, int64_t, int64_t>;
 template class SegmentPoolFunctor<GPU, float16, int>;
 template class SegmentPoolFunctor<GPU, float16, int64_t>;
+template class SegmentPoolFunctor<GPU, phi::dtype::bfloat16, int>;
+template class SegmentPoolFunctor<GPU, phi::dtype::bfloat16, int64_t>;
 
 template class SegmentPoolGradFunctor<GPU, float, int>;
 template class SegmentPoolGradFunctor<GPU, float, int64_t>;
@@ -461,6 +464,8 @@ template class SegmentPoolGradFunctor<GPU, int64_t, int>;
 template class SegmentPoolGradFunctor<GPU, int64_t, int64_t>;
 template class SegmentPoolGradFunctor<GPU, float16, int>;
 template class SegmentPoolGradFunctor<GPU, float16, int64_t>;
+template class SegmentPoolGradFunctor<GPU, phi::dtype::bfloat16, int>;
+template class SegmentPoolGradFunctor<GPU, phi::dtype::bfloat16, int64_t>;
 
 }  // namespace funcs
 }  // namespace phi

@@ -157,14 +157,11 @@ DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(Mish, MishOneDNNFunctor, threshold)
 DEFINE_ONEDNN_ACT_KERNEL_WITH_ONE_ATTRS(SwishRaw, SwishOneDNNFunctor, beta)
 
 template <typename T, typename Context>
-void HardSwishRawKernel(const Context& dev_ctx,
-                        const DenseTensor& x,
-                        float threshold,
-                        float scale,
-                        float offset,
-                        DenseTensor* out) {
+void HardSwishKernel(const Context& dev_ctx,
+                     const DenseTensor& x,
+                     DenseTensor* out) {
   HardSwishOneDNNFunctor<T> functor;
-  functor(dev_ctx, x, threshold, 0, out);
+  functor(dev_ctx, x, 6, 0, out);
 }
 
 template <typename T, typename Context>
@@ -202,7 +199,7 @@ PD_REGISTER_ACTIVATION_KERNEL(abs, AbsKernel)
 PD_REGISTER_ACTIVATION_KERNEL(elu, EluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(exp, ExpKernel)
 PD_REGISTER_ACTIVATION_KERNEL(gelu, GeluKernel)
-PD_REGISTER_ACTIVATION_KERNEL(hardswish_raw, HardSwishRawKernel)
+PD_REGISTER_ACTIVATION_KERNEL(hardswish, HardSwishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(leaky_relu, LeakyReluKernel)
 PD_REGISTER_ACTIVATION_KERNEL(mish, MishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(relu, ReluKernel)

@@ -16,8 +16,9 @@ import os
 
 import paddle
 import paddle.distributed.transpiler.distribute_transpiler as dist_transpiler
-import paddle.fluid as fluid
-import paddle.fluid.io as io
+from paddle import fluid
+from paddle.distributed.fleet.meta_optimizers import RawProgramOptimizer
+from paddle.fluid import io
 from paddle.fluid.compiler import CompiledProgram
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program
@@ -81,6 +82,7 @@ class Collective(Fleet):
         target_vars=None,
         main_program=None,
         export_for_deployment=True,
+        legacy_format=False,
     ):
         """
         Prune the given `main_program` to build a new program especially for
@@ -108,6 +110,7 @@ class Collective(Fleet):
             None,
             None,
             export_for_deployment,
+            legacy_format=legacy_format,
         )
 
     def save_persistables(
@@ -300,7 +303,7 @@ class CollectiveOptimizer(DistributedOptimizer):
     def _check_condition(self, name, **kwargs):
         for k, v in kwargs.items():
             if v is True:
-                assert False, "you can't use %s and %s together" % (name, k)
+                raise AssertionError(f"you can't use {name} and {k} together")
 
     def _check_collective_mode(self, main_program, optimizer, strategy):
         """
@@ -472,21 +475,27 @@ class CollectiveOptimizer(DistributedOptimizer):
         self._strategy.trainers_endpoints = fleet.worker_endpoints()
         self._strategy.enable_backward_optimizer_op_deps = True
 
-        self._compiled_program = CompiledProgram(main_program)
+        comm_opt = RawProgramOptimizer(self._optimizer)
+        comm_opt.fuse_all_reduce_ops = True
+        comm_opt.fuse_grad_size_in_num = True
+        comm_opt.endpoints = self._strategy.trainers_endpoints
+        comm_opt.current_endpoint = comm_opt.endpoints[fleet.worker_index()]
+        comm_opt.rank = fleet.worker_index()
+        comm_opt.nranks = fleet.worker_num()
+        comm_opt.main_program = main_program
+        if comm_opt.nranks > 1:
+            comm_opt._transpile_main_program(self._loss)
 
-        self._compiled_program.with_data_parallel(
-            loss_name=self._loss.name,
-            build_strategy=self._strategy,
-            exec_strategy=self._strategy.exec_strategy,
-            share_vars_from=None,
+        self._compiled_program = CompiledProgram(
+            comm_opt.main_program, build_strategy=self._strategy
         )
 
         return self._compiled_program
 
     def raiseOptimizeError(self, strategy_name, optimize_name):
         raise ValueError(
-            "can not use {0} when you set DistStrategy.{1} "
-            "as True".format(optimize_name, strategy_name)
+            f"can not use {optimize_name} when you set DistStrategy.{strategy_name} "
+            "as True"
         )
 
     def minimize(

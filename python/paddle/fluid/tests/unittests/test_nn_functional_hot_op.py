@@ -15,13 +15,13 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.nn.functional as functional
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.framework import Program, program_guard
+from paddle.nn import functional
 
 
 class TestOneHotOp(OpTest):

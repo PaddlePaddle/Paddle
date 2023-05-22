@@ -17,12 +17,12 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from op_test import OpTest, convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_uint16
+from op import Operator
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid.op import Operator
+from paddle import fluid
+from paddle.fluid import core
 from paddle.static import Program, program_guard
 
 
@@ -42,10 +42,10 @@ class TestScaleOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_cinn=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out')
 
 
 class TestScaleOpScaleVariable(OpTest):
@@ -66,10 +66,10 @@ class TestScaleOpScaleVariable(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_cinn=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out')
 
 
 class TestScaleOpSelectedRows(unittest.TestCase):
@@ -148,12 +148,10 @@ class TestScaleFp16Op(TestScaleOp):
         self.dtype = np.float16
 
     def test_check_output(self):
-        place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_eager=True)
+        self.check_output(check_cinn=True)
 
     def test_check_grad(self):
-        place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ["X"], "Out", check_eager=True)
+        self.check_grad(["X"], "Out")
 
 
 class TestScaleBF16Op(OpTest):
@@ -168,10 +166,14 @@ class TestScaleBF16Op(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(out)}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', numeric_grad_delta=0.8, check_eager=True)
+        self.check_grad(
+            ['X'],
+            'Out',
+            numeric_grad_delta=0.8,
+        )
 
 
 @unittest.skipIf(

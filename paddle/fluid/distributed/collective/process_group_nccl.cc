@@ -23,9 +23,10 @@
 #include "paddle/phi/core/distributed/check/nccl_dynamic_check.h"
 #include "paddle/phi/core/distributed/check/static_check.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/utils/data_type.h"
 
-DECLARE_bool(nccl_blocking_wait);
+PHI_DECLARE_bool(nccl_blocking_wait);
 DECLARE_bool(use_stream_safe_cuda_allocator);
 
 // set this flag to `true` and recompile to enable dynamic checks
@@ -129,7 +130,7 @@ ncclComm_t ProcessGroupNCCL::NCCLComm(const Place& place) const {
       iter,
       place_to_comm_ctx_.end(),
       phi::errors::NotFound(
-          "Cannot find the NCCL commmunicator in this process group."));
+          "Cannot find the NCCL communicator in this process group."));
   return iter->second->nccl_comm();
 }
 
@@ -473,6 +474,71 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Scatter(
       CommType::SCATTER,
       sync_op,
       use_calc_stream);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Gather(
+    phi::DenseTensor* out_tensor,
+    const phi::DenseTensor& in_tensor,
+    const GatherOptions& opts,
+    bool sync_op,
+    bool use_calc_stream) {
+  std::vector<phi::DenseTensor> partial_tensors;
+  if (rank_ == opts.root_rank) {
+    partial_tensors.reserve(size_);
+    size_t offset = 0;
+    size_t numel = out_tensor->numel() / size_;
+    for (auto i = 0; i < size_; i++) {
+      partial_tensors.push_back(GetPartialTensor(*out_tensor, offset, numel));
+      offset += numel;
+    }
+  }
+  return Gather(&partial_tensors, in_tensor, opts, sync_op, use_calc_stream);
+}
+
+std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Gather(
+    std::vector<phi::DenseTensor>* gather_tensors_ptr,
+    const phi::DenseTensor& in_tensor,
+    const GatherOptions& opts,
+    bool sync_op,
+    bool use_calc_stream) {
+  auto& gather_tensors = *gather_tensors_ptr;
+  PADDLE_ENFORCE_GT(size_,
+                    opts.root_rank,
+                    phi::errors::InvalidArgument(
+                        "root world size [%d]  is less than root rank [%d]",
+                        size_,
+                        opts.root_rank));
+  auto gather_func = [&](ncclComm_t comm, gpuStream_t stream) {
+    // shape check
+    if (FLAGS_enable_nccl_dynamic_check) {
+      phi::distributed::NCCLDynamicCheck::CheckGatherShape(
+          in_tensor, gather_tensors, opts.root_rank, rank_, size_, comm);
+    }
+    GroupStart();
+    // root receive from all devices
+    if (rank_ == opts.root_rank) {
+      for (auto i = 0; i < size_; i++) {
+        auto& gather_tensor = gather_tensors[i];
+        NCCL_CHECK(
+            phi::dynload::ncclRecv(gather_tensor.data(),
+                                   gather_tensor.numel(),
+                                   phi::ToNCCLDataType(gather_tensor.dtype()),
+                                   i,
+                                   comm,
+                                   stream));
+      }
+    }
+    // send to root
+    NCCL_CHECK(phi::dynload::ncclSend(in_tensor.data(),
+                                      in_tensor.numel(),
+                                      phi::ToNCCLDataType(in_tensor.dtype()),
+                                      opts.root_rank,
+                                      comm,
+                                      stream));
+    GroupEnd();
+  };
+  return RunFnInNCCLEnv(
+      gather_func, in_tensor, CommType::GATHER, sync_op, use_calc_stream);
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Recv(
@@ -993,34 +1059,32 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllGather(
       CommType::ALLGATHER);
 }
 
-void* GetPointerByOffset(void* raw_pointer,
-                         size_t offset,
-                         experimental::DataType type) {
-  if (type == experimental::DataType::FLOAT32) {
+void* GetPointerByOffset(void* raw_pointer, size_t offset, phi::DataType type) {
+  if (type == phi::DataType::FLOAT32) {
     return reinterpret_cast<void*>(reinterpret_cast<float*>(raw_pointer) +
                                    offset);
-  } else if (type == experimental::DataType::FLOAT64) {
+  } else if (type == phi::DataType::FLOAT64) {
     return reinterpret_cast<void*>(reinterpret_cast<double*>(raw_pointer) +
                                    offset);
-  } else if (type == experimental::DataType::FLOAT16) {
+  } else if (type == phi::DataType::FLOAT16) {
     return reinterpret_cast<void*>(reinterpret_cast<int16_t*>(raw_pointer) +
                                    offset);
-  } else if (type == experimental::DataType::INT32) {
+  } else if (type == phi::DataType::INT32) {
     return reinterpret_cast<void*>(reinterpret_cast<int32_t*>(raw_pointer) +
                                    offset);
-  } else if (type == experimental::DataType::INT64) {
+  } else if (type == phi::DataType::INT64) {
     return reinterpret_cast<void*>(reinterpret_cast<int64_t*>(raw_pointer) +
                                    offset);
-  } else if (type == experimental::DataType::INT8) {
+  } else if (type == phi::DataType::INT8) {
     return reinterpret_cast<void*>(reinterpret_cast<int8_t*>(raw_pointer) +
                                    offset);
-  } else if (type == experimental::DataType::UINT8) {
+  } else if (type == phi::DataType::UINT8) {
     return reinterpret_cast<void*>(reinterpret_cast<uint8_t*>(raw_pointer) +
                                    offset);
-  } else if (type == experimental::DataType::BOOL) {
+  } else if (type == phi::DataType::BOOL) {
     return reinterpret_cast<void*>(reinterpret_cast<bool*>(raw_pointer) +
                                    offset);
-  } else if (type == experimental::DataType::BFLOAT16) {
+  } else if (type == phi::DataType::BFLOAT16) {
     return reinterpret_cast<void*>(reinterpret_cast<uint16_t*>(raw_pointer) +
                                    offset);
   } else {

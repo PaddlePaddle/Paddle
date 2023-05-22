@@ -16,6 +16,7 @@
 
 #include <vector>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
@@ -77,13 +78,13 @@ inline void TensorContainsNAN(const phi::DenseTensor& tensor,
                               phi::DenseTensor* out) {
   auto place = tensor.place();
   if (platform::is_cpu_place(tensor.place())) {
-    VisitDataTypeNormal(TransToProtoVarType(tensor.dtype()),
+    VisitDataTypeNormal(paddle::framework::TransToProtoVarType(tensor.dtype()),
                         IsnanVisitorCPU(tensor, out));
     return;
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(place)) {
-    VisitDataTypeNormal(TransToProtoVarType(tensor.dtype()),
+    VisitDataTypeNormal(paddle::framework::TransToProtoVarType(tensor.dtype()),
                         IsnanVisitorGPU(tensor, out));
     return;
   }
@@ -94,13 +95,13 @@ inline void TensorContainsInf(const phi::DenseTensor& tensor,
                               phi::DenseTensor* out) {
   auto place = tensor.place();
   if (platform::is_cpu_place(tensor.place())) {
-    VisitDataTypeNormal(TransToProtoVarType(tensor.dtype()),
+    VisitDataTypeNormal(paddle::framework::TransToProtoVarType(tensor.dtype()),
                         IsinfVisitorCPU(tensor, out));
     return;
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(place)) {
-    VisitDataTypeNormal(TransToProtoVarType(tensor.dtype()),
+    VisitDataTypeNormal(paddle::framework::TransToProtoVarType(tensor.dtype()),
                         IsinfVisitorGPU(tensor, out));
     return;
   }
@@ -111,13 +112,13 @@ inline void TensorIsfinite(const phi::DenseTensor& tensor,
                            phi::DenseTensor* out) {
   auto place = tensor.place();
   if (platform::is_cpu_place(tensor.place())) {
-    VisitDataTypeNormal(TransToProtoVarType(tensor.dtype()),
+    VisitDataTypeNormal(paddle::framework::TransToProtoVarType(tensor.dtype()),
                         IsfiniteVisitorCPU(tensor, out));
     return;
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(place)) {
-    VisitDataTypeNormal(TransToProtoVarType(tensor.dtype()),
+    VisitDataTypeNormal(paddle::framework::TransToProtoVarType(tensor.dtype()),
                         IsfiniteVisitorGPU(tensor, out));
     return;
   }

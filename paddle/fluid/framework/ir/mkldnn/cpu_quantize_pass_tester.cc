@@ -59,8 +59,9 @@ void SetOp(ProgramDesc* prog,
       op->SetAttr("fuse_residual_connection", false);
     }
     op->SetOutput("Output", {outputs[0]});
-  } else if (type == "pool2d" || type == "transpose2" || type == "reshape2" ||
-             type == "nearest_interp" || type == "nearest_interp_v2") {
+  } else if (type == "pool2d" || type == "fused_transpose" ||
+             type == "reshape2" || type == "nearest_interp" ||
+             type == "nearest_interp_v2") {
     op->SetInput("X", {inputs[0]});
     op->SetOutput("Out", {outputs[0]});
   } else if (type == "slice") {
@@ -96,14 +97,15 @@ void SetOp(ProgramDesc* prog,
     op->SetAttr("Scale_x", 1.0f);
     op->SetAttr("Scale_y", 1.0f);
     op->SetAttr("Scale_out", 1.0f);
-  } else if (type == "elementwise_add" || type == "elementwise_mul" ||
-             type == "elementwise_sub") {
+  } else if (type == "fused_elementwise_add" ||
+             type == "fused_elementwise_sub" ||
+             type == "fused_elementwise_mul") {
     op->SetInput("X", {inputs[0]});
     if (inputs.size() > 1) op->SetInput("Y", {inputs[1]});
     op->SetOutput("Out", {outputs[0]});
-    op->SetAttr("Scale_x", 1.0f);
-    op->SetAttr("Scale_y", 1.0f);
-    op->SetAttr("Scale_out", 1.0f);
+    op->SetAttr("scale_x", 1.0f);
+    op->SetAttr("scale_y", 1.0f);
+    op->SetAttr("scale_out", 1.0f);
   } else if (type == "fusion_gru") {
     op->SetInput("X", {inputs[0]});
     op->SetInput("Bias", {inputs[1]});
@@ -177,16 +179,19 @@ void CheckScales(const OpDesc* op, float scale, float shift) {
               scale);
     scale_names.push_back("Scale_in");
     scale_names.push_back("Scale_out");
-  } else if (type == "fused_matmul" || type == "elementwise_add" ||
-             type == "elementwise_mul" || type == "elementwise_sub") {
+  } else if (type == "fused_matmul") {
     scale_names.push_back("Scale_x");
     scale_names.push_back("Scale_y");
     scale_names.push_back("Scale_out");
-    if (type == "fused_matmul") {
-      auto const& names = op->InputNames();
-      if (std::find(names.begin(), names.end(), "ResidualData") != names.end())
-        scale_names.push_back("Scale_in_eltwise");
-    }
+    auto const& names = op->InputNames();
+    if (std::find(names.begin(), names.end(), "ResidualData") != names.end())
+      scale_names.push_back("Scale_in_eltwise");
+  } else if (type == "fused_elementwise_add" ||
+             type == "fused_elementwise_sub" ||
+             type == "fused_elementwise_mul") {
+    scale_names.push_back("scale_x");
+    scale_names.push_back("scale_y");
+    scale_names.push_back("scale_out");
   } else if (type == "fusion_gru" || type == "fusion_lstm") {
     EXPECT_EQ(op->GetAttrIfExists<float>("Shift_data"), shift);
     EXPECT_EQ(op->GetAttrIfExists<std::vector<float>>("Scale_weights")[0],
@@ -558,7 +563,7 @@ void TestImmutableOpWithManyOutputs(const std::string tested_op) {
 }
 
 const std::vector<std::string> immutables = {"reshape2",
-                                             "transpose2",
+                                             "fused_transpose",
                                              "slice",
                                              "nearest_interp",
                                              "nearest_interp_v2",
@@ -709,9 +714,9 @@ void TestElementwiseUnsignedAndSignedInput(
 }
 
 const std::vector<std::vector<std::string>> elementwises = {
-    {"elementwise_add", "ElementwiseAdd"},
-    {"elementwise_mul", "ElementwiseMul"},
-    {"elementwise_sub", "ElementwiseSub"}};
+    {"fused_elementwise_add", "FusedElementwiseAdd"},
+    {"fused_elementwise_mul", "FusedElementwiseMul"},
+    {"fused_elementwise_sub", "FusedElementwiseSub"}};
 
 class TestElementwises
     : public testing::TestWithParam<std::vector<std::string>> {};

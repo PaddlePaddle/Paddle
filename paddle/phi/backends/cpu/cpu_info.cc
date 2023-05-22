@@ -43,9 +43,9 @@ DECLARE_double(fraction_of_cuda_pinned_memory_to_use);
 // between host and device.  Allocates too much would reduce the amount
 // of memory available to the system for paging.  So, by default, we
 // should set false to use_pinned_memory.
-PADDLE_DEFINE_EXPORTED_bool(use_pinned_memory,
-                            true,
-                            "If set, allocate cpu pinned memory.");
+PHI_DEFINE_EXPORTED_bool(use_pinned_memory,
+                         true,
+                         "If set, allocate cpu pinned memory.");
 
 namespace phi {
 namespace backends {
@@ -110,23 +110,6 @@ size_t CUDAPinnedMaxChunkSize() {
   return CUDAPinnedMaxAllocSize() / 256;
 }
 
-size_t NPUPinnedMaxAllocSize() {
-  // For distributed systems, it requires configuring and limiting
-  // the fraction of memory to use.
-  return FLAGS_fraction_of_cuda_pinned_memory_to_use * CpuTotalPhysicalMemory();
-}
-
-size_t NPUPinnedMinChunkSize() {
-  // Allow to allocate the minimum chunk size is 64 KB.
-  return 1 << 16;
-}
-
-size_t NPUPinnedMaxChunkSize() {
-  // Allow to allocate the maximum chunk size is roughly 1/256 of NPU_PINNED
-  // memory.
-  return NPUPinnedMaxAllocSize() / 256;
-}
-
 #ifdef PADDLE_WITH_XBYAK
 static Xbyak::util::Cpu cpu;
 bool MayIUse(const cpu_isa_t cpu_isa) {
@@ -165,8 +148,9 @@ bool MayIUse(const cpu_isa_t cpu_isa) {
   if (cpu_isa == isa_any) {
     return true;
   } else {
-#if !defined(WITH_NV_JETSON) && !defined(PADDLE_WITH_ARM) && \
-    !defined(PADDLE_WITH_SW) && !defined(PADDLE_WITH_MIPS)
+#if !defined(WITH_NV_JETSON) && !defined(PADDLE_WITH_ARM) &&  \
+    !defined(PADDLE_WITH_SW) && !defined(PADDLE_WITH_MIPS) && \
+    !defined(PADDLE_WITH_LOONGARCH)
     int reg[4];
     cpuid(reg, 0);
     int nIds = reg[0];

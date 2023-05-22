@@ -51,12 +51,12 @@ def segment_sum(data, segment_ids, name=None):
 
     """
     if in_dygraph_mode():
-        return _C_ops.segment_pool(data, segment_ids, "SUM")[0]
+        return _C_ops.segment_pool(data, segment_ids, "SUM")
     else:
         check_variable_and_dtype(
             data,
             "X",
-            ("float32", "float64", "int32", "int64", "float16"),
+            ("float32", "float64", "int32", "int64", "float16", "uint16"),
             "segment_pool",
         )
         check_variable_and_dtype(
@@ -108,13 +108,13 @@ def segment_mean(data, segment_ids, name=None):
     """
 
     if in_dygraph_mode():
-        return _C_ops.segment_pool(data, segment_ids, "MEAN")[0]
+        return _C_ops.segment_pool(data, segment_ids, "MEAN")
     else:
 
         check_variable_and_dtype(
             data,
             "X",
-            ("float32", "float64", "int32", "int64", "float16"),
+            ("float32", "float64", "int32", "int64", "float16", "uint16"),
             "segment_pool",
         )
         check_variable_and_dtype(
@@ -165,12 +165,12 @@ def segment_min(data, segment_ids, name=None):
     """
 
     if in_dygraph_mode():
-        return _C_ops.segment_pool(data, segment_ids, "MIN")[0]
+        return _C_ops.segment_pool(data, segment_ids, "MIN")
     else:
         check_variable_and_dtype(
             data,
             "X",
-            ("float32", "float64", "int32", "int64", "float16"),
+            ("float32", "float64", "int32", "int64", "float16", "uint16"),
             "segment_pool",
         )
         check_variable_and_dtype(
@@ -221,12 +221,12 @@ def segment_max(data, segment_ids, name=None):
     """
 
     if in_dygraph_mode():
-        return _C_ops.segment_pool(data, segment_ids, "MAX")[0]
+        return _C_ops.segment_pool(data, segment_ids, "MAX")
     else:
         check_variable_and_dtype(
             data,
             "X",
-            ("float32", "float64", "int32", "int64", "float16"),
+            ("float32", "float64", "int32", "int64", "float16", "uint16"),
             "segment_pool",
         )
         check_variable_and_dtype(

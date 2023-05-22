@@ -416,7 +416,7 @@ class PADDLE_API Tensor final {
   /**
    * @brief Return the name of Tensor.
    * @note Used to adapt original execution mechanism and debug analysis
-   * in the development of new dygraph. It may be removed in the future.
+   * in the development of new dygraph.
    *
    * @return const std::string&
    */
@@ -425,7 +425,7 @@ class PADDLE_API Tensor final {
   /**
    * @brief Set name of Tensor.
    * @note Used to adapt original execution mechanism and debug analysis
-   * in the development of new dygraph. It may be removed in the future.
+   * in the development of new dygraph.
    *
    * @param const std::string& name
    */
@@ -534,29 +534,23 @@ class PADDLE_API Tensor final {
    * @return Tensor
    */
   Tensor operator+(const Tensor& other) const;
-
   Tensor operator-(const Tensor& other) const;
-
   Tensor operator*(const Tensor& other) const;
-
   Tensor operator/(const Tensor& other) const;
-
   Tensor operator+(const Scalar& other) const;
-
   Tensor operator-(const Scalar& other) const;
-
   Tensor operator*(const Scalar& other) const;
-
   Tensor operator/(const Scalar& other) const;
-
+  Tensor operator<(const Tensor& other) const;
+  Tensor operator<=(const Tensor& other) const;
+  Tensor operator==(const Tensor& other) const;
+  Tensor operator!=(const Tensor& other) const;
+  Tensor operator>(const Tensor& other) const;
+  Tensor operator>=(const Tensor& other) const;
   Tensor operator-() const;
-
   Tensor operator~() const;
-
   Tensor operator&(const Tensor& other) const;
-
   Tensor operator|(const Tensor& other) const;
-
   Tensor operator^(const Tensor& other) const;
 
   /* Part 8: Autograd methods */
@@ -635,7 +629,7 @@ class PADDLE_API Tensor final {
    * unified to Tensor, but Tensor itself is heterogeneous.
    *
    * Tensor can generally be represented by void* and size_t, place.
-   * This is suitable for most scenarios including CPU, GPU, HIP, NPU, etc.,
+   * This is suitable for most scenarios including CPU, GPU, HIP, etc.,
    * but there are a few cases where this definition cannot be described,
    * such as the Tensor representation in third-party lib such as Metal,
    * OpenCL, etc., as well as some special Tensor implementations, including
@@ -663,7 +657,7 @@ class PADDLE_API Tensor final {
 
   /**
    * Tensor name: used to adapt original execution mechanism and debug analysis
-   * in the development of new dygraph. It may be removed in the future.
+   * in the development of new dygraph.
    */
   std::string name_{""};
 
@@ -678,6 +672,12 @@ class PADDLE_API Tensor final {
   Tensor divide(const Scalar& y) const;
   Tensor multiply(const Scalar& y) const;
   Tensor subtract(const Scalar& y) const;
+  Tensor less_equal(const Tensor& y) const;
+  Tensor less_than(const Tensor& y) const;
+  Tensor equal(const Tensor& y) const;
+  Tensor not_equal(const Tensor& y) const;
+  Tensor greater_equal(const Tensor& y) const;
+  Tensor greater_than(const Tensor& y) const;
   Tensor bitwise_and(const Tensor& y) const;
   Tensor bitwise_or(const Tensor& y) const;
   Tensor bitwise_xor(const Tensor& y) const;

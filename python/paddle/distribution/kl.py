@@ -15,11 +15,14 @@ import functools
 import warnings
 
 import paddle
+from paddle.distribution.bernoulli import Bernoulli
 from paddle.distribution.beta import Beta
 from paddle.distribution.categorical import Categorical
+from paddle.distribution.cauchy import Cauchy
 from paddle.distribution.dirichlet import Dirichlet
 from paddle.distribution.distribution import Distribution
 from paddle.distribution.exponential_family import ExponentialFamily
+from paddle.distribution.geometric import Geometric
 from paddle.distribution.laplace import Laplace
 from paddle.distribution.lognormal import LogNormal
 from paddle.distribution.normal import Normal
@@ -56,8 +59,8 @@ def kl_divergence(p, q):
             q = paddle.distribution.Beta(alpha=0.3, beta=0.7)
 
             print(paddle.distribution.kl_divergence(p, q))
-            # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #        [0.21193528])
+            # Tensor(shape=[], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        0.21193528)
 
     """
     return _dispatch(type(p), type(q))(p, q)
@@ -70,7 +73,7 @@ def register_kl(cls_p, cls_q):
     functions registered by ``register_kl``, according to multi-dispatch pattern.
     If an implemention function is found, it will return the result, otherwise,
     it will raise ``NotImplementError`` exception. Users can register
-    implemention funciton by the decorator.
+    implemention function by the decorator.
 
     Args:
         cls_p (Distribution): The Distribution type of Instance p. Subclass derived from ``Distribution``.
@@ -143,6 +146,11 @@ class _Compare:
         return True
 
 
+@register_kl(Bernoulli, Bernoulli)
+def _kl_bernoulli_bernoulli(p, q):
+    return p.kl_divergence(q)
+
+
 @register_kl(Beta, Beta)
 def _kl_beta_beta(p, q):
     return (
@@ -179,6 +187,11 @@ def _kl_categorical_categorical(p, q):
     return p.kl_divergence(q)
 
 
+@register_kl(Cauchy, Cauchy)
+def _kl_cauchy_cauchy(p, q):
+    return p.kl_divergence(q)
+
+
 @register_kl(Normal, Normal)
 def _kl_normal_normal(p, q):
     return p.kl_divergence(q)
@@ -191,6 +204,11 @@ def _kl_uniform_uniform(p, q):
 
 @register_kl(Laplace, Laplace)
 def _kl_laplace_laplace(p, q):
+    return p.kl_divergence(q)
+
+
+@register_kl(Geometric, Geometric)
+def _kl_geometric_geometric(p, q):
     return p.kl_divergence(q)
 
 

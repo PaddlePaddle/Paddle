@@ -39,17 +39,12 @@
 #endif
 #endif
 
-#ifdef PADDLE_WITH_ASCEND_CL
-#include <hccl/hccl.h>
-#include <hccl/hccl_types.h>
-#endif
-
 #if defined(PADDLE_WITH_XPU_BKCL)
 #include "xpu/bkcl.h"
 #endif
 
-#if defined(PADDLE_WITH_CNCL)
-#include <cncl.h>
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+#include "paddle/phi/backends/c_comm_lib.h"
 #endif
 
 namespace phi {
@@ -68,10 +63,6 @@ namespace platform {
 class Communicator;
 class NCCLCommunicator;
 #endif
-#endif
-#ifdef PADDLE_WITH_ASCEND_CL
-class Communicator;
-class HCCLCommunicator;
 #endif
 
 #if defined(PADDLE_WITH_XPU_BKCL)
@@ -205,15 +196,12 @@ using VarTypeRegistry = detail::VarTypeRegistryImpl<
 #endif
     operators::CudnnRNNCache,
 #endif
-#if defined(PADDLE_WITH_ASCEND_CL)
-    HcclRootInfo,
-#endif
 #if defined(PADDLE_WITH_XPU_BKCL)
     BKCLUniqueId,
     platform::BKCLCommunicator,
 #endif
-#if defined(PADDLE_WITH_CNCL)
-    cnclCliqueId,
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+    phi::ccl::CCLRootId,
 #endif
     std::vector<std::unique_ptr<operators::CUDAGraphWithInOuts>>,
     int,

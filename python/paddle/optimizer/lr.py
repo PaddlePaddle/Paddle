@@ -17,8 +17,8 @@ import warnings
 
 import numpy
 
-import paddle.fluid.core as core
 from paddle import Tensor
+from paddle.fluid import core
 
 __all__ = [  # noqa
     'LRScheduler',
@@ -156,12 +156,10 @@ class LRScheduler:
                 continue
             value = self.__dict__[key]
             if isinstance(value, Tensor):
-                assert value.shape == [
-                    1
-                ], "shape of Tensor in state_dict must be [1] {}".format(
-                    value.shape
-                )
-                value = value.numpy()[0]
+                assert (
+                    value.size == 1
+                ), "numel of Tensor in state_dict must be 1"
+                value = float(value)
             state_dict[key] = value
 
         return state_dict
@@ -793,11 +791,7 @@ class LinearWarmup(LRScheduler):
         last_epoch=-1,
         verbose=False,
     ):
-        type_check = (
-            isinstance(learning_rate, float)
-            or isinstance(learning_rate, int)
-            or isinstance(learning_rate, LRScheduler)
-        )
+        type_check = isinstance(learning_rate, (float, int, LRScheduler))
         if not type_check:
             raise TypeError(
                 "the type of learning_rate should be [int, float or LRScheduler], the current type is {}".format(
@@ -813,7 +807,7 @@ class LinearWarmup(LRScheduler):
         self.end_lr = end_lr
         assert (
             end_lr > start_lr
-        ), "end_lr {} must be greater than start_lr {}".format(end_lr, start_lr)
+        ), f"end_lr {end_lr} must be greater than start_lr {start_lr}"
         super().__init__(start_lr, last_epoch, verbose)
 
     def state_dict(self):
@@ -1144,7 +1138,7 @@ class StepDecay(LRScheduler):
 
 class LambdaDecay(LRScheduler):
     """
-    Sets the learning rate of ``optimizer`` by function ``lr_lambda`` . ``lr_lambda`` is funciton which receives ``epoch`` .
+    Sets the learning rate of ``optimizer`` by function ``lr_lambda`` . ``lr_lambda`` is function which receives ``epoch`` .
 
     The algorithm can be described as the code below.
 
@@ -1236,7 +1230,7 @@ class ReduceOnPlateau(LRScheduler):
     Reduce learning rate when ``metrics`` has stopped descending. Models often benefit from reducing the learning rate
     by 2 to 10 times once model performance has no longer improvement.
 
-    The ``metrics`` is the one which has been pass into ``step`` , it must be 1-D Tensor with shape [1]. When ``metrics``
+    The ``metrics`` is the one which has been pass into ``step`` , it's shape must [] or [1]. When ``metrics``
     stop descending for a ``patience`` number of epochs, the learning rate will be reduced to ``learning_rate * factor`` .
     (Specially, ``mode`` can also be set to ``'max`` , in this case, when ``metrics`` stop ascending for a ``patience``
     number of epochs, the learning rate will be reduced.)
@@ -1390,7 +1384,7 @@ class ReduceOnPlateau(LRScheduler):
         Args:
             metrics (Tensor|numpy.ndarray|float): Which will be monitored to determine whether the learning rate will reduce.
                 If it stop descending for a ``patience`` number of epochs, the learning rate will reduce. If it's 'Tensor' or
-                'numpy.ndarray', its shape must be [1].
+                'numpy.ndarray', its numel must be 1.
             epoch (int, None): specify current epoch. Default: None. Auto-increment from last_epoch=-1.
 
         Returns:
@@ -1404,13 +1398,12 @@ class ReduceOnPlateau(LRScheduler):
         else:
             self.last_epoch = epoch
 
-        # loss must be float, numpy.ndarray or 1-D Tensor with shape [1]
+        # loss must be float, numpy.ndarray or 1-D Tensor with numel 1
         if isinstance(metrics, (core.eager.Tensor, numpy.ndarray)):
-            assert len(metrics.shape) == 1 and metrics.shape[0] == 1, (
-                "the metrics.shape "
-                "should be (1L,), but the current metrics.shape is {}. Maybe that "
+            assert metrics.size == 1, (
+                "the size of metrics must be 1, but the current metrics.size is {}. Maybe that "
                 "you should call paddle.mean to process it first.".format(
-                    metrics.shape
+                    metrics.size
                 )
             )
         elif not isinstance(

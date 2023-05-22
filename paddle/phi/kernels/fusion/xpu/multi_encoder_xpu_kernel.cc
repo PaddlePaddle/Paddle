@@ -15,6 +15,7 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/xpu/xpu_api_wrapper.h"
 
 namespace phi {
 namespace fusion {
@@ -28,6 +29,8 @@ void MultiEncoderXPUKernel(const Context& ctx,
                            const std::vector<const DenseTensor*>& ln_scale,
                            const std::vector<const DenseTensor*>& ln_bias,
                            const paddle::optional<DenseTensor>& mask,
+                           const paddle::optional<DenseTensor>& seq_lod,
+                           const paddle::optional<DenseTensor>& max_seq_len,
                            int layer_num,
                            bool norm_before,
                            int hidden_dim,
@@ -42,22 +45,22 @@ void MultiEncoderXPUKernel(const Context& ctx,
                            DenseTensor* out_fp16) {
   // XPU2 only support fp16 input/output.
   auto x_dtype = x.dtype();
-  const float16* x_fp16_data = nullptr;
-  float16* out_fp16_data = nullptr;
+  const XPUTypeFP16* x_fp16_data = nullptr;
+  XPUTypeFP16* out_fp16_data = nullptr;
   if (x_dtype == phi::DataType::FLOAT32) {
-    auto* x_fp16_data_t = reinterpret_cast<float16*>(
+    auto* x_fp16_data_t = reinterpret_cast<XPUTypeFP16*>(
         ctx.template Alloc<phi::dtype::float16>(x_fp16));
-    int r_cast_x = xpu::cast_v2<float, float16>(
+    int r_cast_x = xpu::cast_v2<float, XPUTypeFP16>(
         ctx.x_context(), x.data<float>(), x_fp16_data_t, x.numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(r_cast_x,
                                 "multi_encoder_xpu(cast x from fp32 to fp16)");
     x_fp16_data = x_fp16_data_t;
-    out_fp16_data = reinterpret_cast<float16*>(
+    out_fp16_data = reinterpret_cast<XPUTypeFP16*>(
         ctx.template Alloc<phi::dtype::float16>(out_fp16));
   } else {
     x_fp16_data =
-        reinterpret_cast<const float16*>(x.data<phi::dtype::float16>());
-    out_fp16_data = reinterpret_cast<float16*>(
+        reinterpret_cast<const XPUTypeFP16*>(x.data<phi::dtype::float16>());
+    out_fp16_data = reinterpret_cast<XPUTypeFP16*>(
         ctx.template Alloc<phi::dtype::float16>(out));
   }
 
@@ -88,19 +91,52 @@ void MultiEncoderXPUKernel(const Context& ctx,
   }
   const float* mask_data =
       mask.get_ptr() == nullptr ? nullptr : mask.get_ptr()->data<float>();
+  const int* seq_lod_data =
+      seq_lod.get_ptr() == nullptr ? nullptr : seq_lod.get_ptr()->data<int>();
+  const int* max_seq_len_data = max_seq_len.get_ptr() == nullptr
+                                    ? nullptr
+                                    : max_seq_len.get_ptr()->data<int>();
   xpu::Activation_t qkv_act(static_cast<xpu::Activation_t::act_enum>(act_type));
 
   int batch = x.dims()[0];
-  int max_seqlen = x.dims()[1];
   // matmul_size * layer_num
   std::vector<xpu::QuantType> quant_types(8 * layer_num,
                                           xpu::QuantType::NOT_QUANT);
-  if (mask_data) {
+  if (seq_lod_data) {
+    xpu::VectorParam<int> query_lod = {
+        seq_lod_data, seq_lod.get_ptr()->numel(), nullptr};
+    int max_seq_len_value = slice_idx == -1 ? max_seq_len_data[0] : -1;
+    xpu::QKVAttnParam qkv_attn_param(query_lod,
+                                     head_num,
+                                     size_per_head,
+                                     qkv_act,
+                                     slice_idx,
+                                     true,
+                                     max_seq_len_value,
+                                     hidden_dim,
+                                     norm_before,
+                                     false);
+    qkv_attn_param.quant_type_.assign(quant_types.begin(), quant_types.end());
+    qkv_attn_param.scale_of_hidden_units = ffn_hidden_dim_scale;
+    int r = xpu::transformer_encoder<XPUTypeFP16, int16_t, int16_t>(
+        ctx.x_context(),
+        x_fp16_data,
+        fc_weight_data,
+        out_fp16_data,
+        fc_input_max_data,
+        fc_weight_max_data,
+        fc_bias_data,
+        ln_scale_data,
+        ln_bias_data,
+        qkv_attn_param);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "multi_encoder_xpu");
+  } else if (mask_data) {
     auto mask_dims = mask.get_ptr()->dims();
     std::vector<int> mask_shape(mask_dims.Get(),
                                 mask_dims.Get() + mask_dims.size());
+    int max_seq_len_value = x.dims()[1];
     xpu::QKVAttnParam qkv_attn_param(batch,
-                                     max_seqlen,
+                                     max_seq_len_value,
                                      head_num,
                                      size_per_head,
                                      mask_shape,
@@ -112,24 +148,25 @@ void MultiEncoderXPUKernel(const Context& ctx,
                                      false);
     qkv_attn_param.quant_type_.assign(quant_types.begin(), quant_types.end());
     qkv_attn_param.scale_of_hidden_units = ffn_hidden_dim_scale;
-    int r =
-        xpu::transformer_encoder<float16, int16_t, int16_t>(ctx.x_context(),
-                                                            x_fp16_data,
-                                                            fc_weight_data,
-                                                            out_fp16_data,
-                                                            fc_input_max_data,
-                                                            fc_weight_max_data,
-                                                            fc_bias_data,
-                                                            ln_scale_data,
-                                                            ln_bias_data,
-                                                            qkv_attn_param,
-                                                            mask_data);
+    int r = xpu::transformer_encoder<XPUTypeFP16, int16_t, int16_t>(
+        ctx.x_context(),
+        x_fp16_data,
+        fc_weight_data,
+        out_fp16_data,
+        fc_input_max_data,
+        fc_weight_max_data,
+        fc_bias_data,
+        ln_scale_data,
+        ln_bias_data,
+        qkv_attn_param,
+        mask_data);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "multi_encoder_xpu");
   } else {
     // When no mask input, like VIT, create LOD to act as vsl.
+    int max_seq_len_value = x.dims()[1];
     std::vector<int> lod;
     for (int i = 0; i < batch + 1; i++) {
-      lod.push_back(i * max_seqlen);
+      lod.push_back(i * max_seq_len_value);
     }
     xpu::VectorParam<int> query_lod = {
         lod.data(), static_cast<int>(lod.size()), nullptr};
@@ -146,26 +183,26 @@ void MultiEncoderXPUKernel(const Context& ctx,
                                      false);
     qkv_attn_param.quant_type_.assign(quant_types.begin(), quant_types.end());
     qkv_attn_param.scale_of_hidden_units = ffn_hidden_dim_scale;
-    int r =
-        xpu::transformer_encoder<float16, int16_t, int16_t>(ctx.x_context(),
-                                                            x_fp16_data,
-                                                            fc_weight_data,
-                                                            out_fp16_data,
-                                                            fc_input_max_data,
-                                                            fc_weight_max_data,
-                                                            fc_bias_data,
-                                                            ln_scale_data,
-                                                            ln_bias_data,
-                                                            qkv_attn_param);
+    int r = xpu::transformer_encoder<XPUTypeFP16, int16_t, int16_t>(
+        ctx.x_context(),
+        x_fp16_data,
+        fc_weight_data,
+        out_fp16_data,
+        fc_input_max_data,
+        fc_weight_max_data,
+        fc_bias_data,
+        ln_scale_data,
+        ln_bias_data,
+        qkv_attn_param);
     PADDLE_ENFORCE_XDNN_SUCCESS(r, "multi_encoder_xpu");
   }
 
   if (x_dtype == phi::DataType::FLOAT32) {
     int r_cast_out =
-        xpu::cast_v2<float16, float>(ctx.x_context(),
-                                     out_fp16_data,
-                                     ctx.template Alloc<float>(out),
-                                     out->numel());
+        xpu::cast_v2<XPUTypeFP16, float>(ctx.x_context(),
+                                         out_fp16_data,
+                                         ctx.template Alloc<float>(out),
+                                         out->numel());
     PADDLE_ENFORCE_XDNN_SUCCESS(
         r_cast_out, "multi_encoder_xpu(cast out from fp16 to fp32)");
   }
@@ -179,4 +216,7 @@ PD_REGISTER_KERNEL(multi_encoder_xpu,
                    ALL_LAYOUT,
                    phi::fusion::MultiEncoderXPUKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16) {
+  kernel->InputAt(7).SetBackend(phi::Backend::CPU);
+  kernel->InputAt(8).SetBackend(phi::Backend::CPU);
+}

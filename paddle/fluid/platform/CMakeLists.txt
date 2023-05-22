@@ -32,18 +32,6 @@ cc_test(
   SRCS os_info_test.cc
   DEPS phi_os_info)
 
-if(WITH_GPU)
-  nv_library(
-    cuda_graph_with_memory_pool
-    SRCS cuda_graph_with_memory_pool.cc
-    DEPS device_context allocator phi_backends)
-else()
-  cc_library(
-    cuda_graph_with_memory_pool
-    SRCS cuda_graph_with_memory_pool.cc
-    DEPS device_context allocator)
-endif()
-
 cc_library(
   place
   SRCS place.cc
@@ -86,21 +74,6 @@ else()
   set(IPU_CTX_DEPS)
 endif()
 
-if(WITH_ASCEND_CL)
-  set(NPU_CTX_DEPS npu_stream npu_info)
-endif()
-
-if(WITH_MLU)
-  set(MLU_CTX_DEPS mlu_device_context)
-endif()
-
-if(WITH_ASCEND_CL OR WITH_MLU)
-  cc_library(
-    stream_callback_manager
-    SRCS stream_callback_manager.cc
-    DEPS simple_threadpool enforce)
-endif()
-
 if(WITH_GPU)
   nv_library(
     stream_callback_manager
@@ -115,8 +88,6 @@ if(WITH_ROCM)
 endif()
 
 if(WITH_GPU OR WITH_ROCM)
-  set(STREAM_CALLBACK_DEPS stream_callback_manager)
-elseif(WITH_ASCEND_CL)
   set(STREAM_CALLBACK_DEPS stream_callback_manager)
 else()
   set(STREAM_CALLBACK_DEPS)
@@ -152,43 +123,27 @@ cc_library(
        framework_proto
        ${IPU_CTX_DEPS}
        ${GPU_CTX_DEPS}
-       ${NPU_CTX_DEPS}
        ${MKLDNN_CTX_DEPS}
        ${dgc_deps}
        dlpack
        cudnn_workspace_helper
        ${XPU_CTX_DEPS}
-       ${MLU_CTX_DEPS}
        phi_backends
        phi_device_context
-       generator)
+       generator
+       phi_enforce)
 
 cc_library(
   collective_helper
   SRCS collective_helper.cc gen_comm_id_helper.cc
   DEPS framework_proto device_context enforce)
-if(WITH_ASCEND_CL)
-  target_link_libraries(collective_helper npu_collective_helper)
-endif()
-
-if(WITH_CNCL)
-  target_link_libraries(collective_helper mlu_collective_helper)
-endif()
 
 if(WITH_GPU OR WITH_ROCM)
   target_link_libraries(device_context gpu_resource_pool)
 endif()
 
-if(WITH_ASCEND_CL)
-  target_link_libraries(device_context npu_resource_pool)
-endif()
-
 if(WITH_XPU)
   target_link_libraries(device_context xpu_resource_pool)
-endif()
-
-if(WITH_MLU)
-  target_link_libraries(device_context mlu_resource_pool)
 endif()
 
 if(WITH_CUSTOM_DEVICE)
@@ -210,16 +165,6 @@ set(DEVICE_EVENT_LIBS
     device_event_base
     CACHE INTERNAL "device event libs")
 
-if(WITH_ASCEND_CL)
-  cc_library(
-    device_event_npu
-    SRCS device_event_npu.cc
-    DEPS device_event_base npu_resource_pool)
-  set(DEVICE_EVENT_LIBS
-      device_event_npu
-      CACHE INTERNAL "device event libs")
-endif()
-
 if(WITH_GPU)
   nv_library(
     device_event_gpu
@@ -239,6 +184,18 @@ if(WITH_GPU)
       SRCS device_event_test.cc
       DEPS device_event_gpu)
   endif()
+  if(WITH_CUSTOM_DEVICE)
+    nv_library(
+      cuda_graph_with_memory_pool
+      SRCS cuda_graph_with_memory_pool.cc
+      DEPS ${DEVICE_EVENT_LIBS} device_event_custom_device device_context
+           allocator phi_backends)
+  else()
+    nv_library(
+      cuda_graph_with_memory_pool
+      SRCS cuda_graph_with_memory_pool.cc
+      DEPS ${DEVICE_EVENT_LIBS} device_context allocator phi_backends)
+  endif()
   nv_test(
     device_context_test
     SRCS device_context_test.cu
@@ -247,6 +204,11 @@ if(WITH_GPU)
     device_context_test_cuda_graph
     SRCS device_context_test_cuda_graph.cu
     DEPS device_context gpu_info cuda_graph_with_memory_pool)
+else()
+  cc_library(
+    cuda_graph_with_memory_pool
+    SRCS cuda_graph_with_memory_pool.cc
+    DEPS device_context allocator)
 endif()
 
 if(WITH_ROCM)
@@ -394,15 +356,11 @@ if(WITH_ROCM)
 endif()
 
 if(NOT APPLE AND NOT WIN32)
-  cc_library(
-    device_code
-    SRCS device_code.cc
-    DEPS device_context)
   if(WITH_GPU OR WITH_ROCM)
     cc_test(
       device_code_test
       SRCS device_code_test.cc
-      DEPS device_code lod_tensor)
+      DEPS phi_backends lod_tensor)
   endif()
 endif()
 
@@ -415,3 +373,13 @@ if(WITH_CUSTOM_DEVICE)
       ${DEVICE_EVENT_LIBS} device_event_custom_device
       CACHE INTERNAL "device event libs")
 endif()
+
+cc_library(
+  init_phi
+  SRCS init_phi.cc
+  DEPS init)
+
+cc_test(
+  init_phi_test
+  SRCS init_phi_test.cc
+  DEPS phi_tensor init_phi)

@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
 import paddle.nn.functional as F
+from paddle import fluid
 from paddle.fluid import core
 
 paddle.enable_static()
@@ -97,7 +97,7 @@ class TestFusedBnAddActAPI(unittest.TestCase):
                 act=None,
                 data_layout='NHWC',
             )
-            fused_bn_add_act = fluid.contrib.layers.fused_bn_add_act(
+            fused_bn_add_act = paddle.incubate.layers.nn.fused_bn_add_act(
                 conv1_2,
                 bn,
                 param_attr=self.bn_param_attr2,
@@ -216,7 +216,7 @@ class TestFusedBnAddActAPI(unittest.TestCase):
                 loss_v = exe.run(
                     binary_fused, feed={"x": x, "y": y}, fetch_list=[loss]
                 )
-                loss_vals_fused.append(loss_v[0][0])
+                loss_vals_fused.append(loss_v[0])
 
         # build_origin_program: turn off fused_bn_act_ops
         build_strategy = fluid.BuildStrategy()
@@ -234,7 +234,7 @@ class TestFusedBnAddActAPI(unittest.TestCase):
                     feed={"x": x_data[i], "y": y_data[i]},
                     fetch_list=[loss],
                 )
-                loss_vals.append(loss_v[0][0])
+                loss_vals.append(loss_v[0])
 
         # check loss
         for i in range(iters):

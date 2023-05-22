@@ -20,8 +20,7 @@ import numpy as np
 from test_imperative_resnet import ResNet, optimizer_setting, train_parameters
 
 import paddle
-import paddle.fluid as fluid
-import paddle.nn as nn
+from paddle import fluid, nn
 from paddle.autograd import PyLayer
 from paddle.static import InputSpec
 
@@ -29,7 +28,7 @@ if fluid.core.is_compiled_with_cuda():
     fluid.set_flags({"FLAGS_cudnn_deterministic": True})
 
 
-class SimpleConv(fluid.dygraph.Layer):
+class SimpleConv(paddle.nn.Layer):
     def __init__(
         self,
         num_channels,
@@ -89,8 +88,8 @@ class TestAutoCast(unittest.TestCase):
     def custom_op_list(self):
         with fluid.dygraph.guard():
             tracer = fluid.framework._dygraph_tracer()
-            base_white_list = paddle.amp.WHITE_LIST
-            base_black_list = paddle.amp.BLACK_LIST
+            base_white_list = paddle.amp.white_list()["float16"]["O1"]
+            base_black_list = paddle.amp.black_list()["float16"]["O1"]
             with paddle.amp.amp_guard(
                 custom_white_list=["log"], custom_black_list=["conv2d"]
             ):
@@ -105,8 +104,8 @@ class TestAutoCast(unittest.TestCase):
                     == (set(base_black_list) - {"log"}) | {"conv2d"}
                 )
 
-            base_white_list = paddle.amp.PURE_FP16_WHITE_LIST
-            base_black_list = paddle.amp.PURE_FP16_BLACK_LIST
+            base_white_list = paddle.amp.white_list()["float16"]["O2"]
+            base_black_list = paddle.amp.black_list()["float16"]["O2"]
             with paddle.amp.amp_guard(
                 custom_white_list=["log"],
                 custom_black_list=["conv2d"],
@@ -195,8 +194,11 @@ class TestAutoCast(unittest.TestCase):
 
 class TestAmpScaler(unittest.TestCase):
     def scale(self):
+        if not paddle.amp.is_float16_supported():
+            return
         with fluid.dygraph.guard():
-            data = paddle.rand([10, 1024])
+            with paddle.amp.auto_cast(dtype='float16'):
+                data = paddle.rand([10, 1024])
             scaler = paddle.amp.AmpScaler(init_loss_scaling=1024)
             scaled_data = scaler.scale(data)
             self.assertEqual(
@@ -334,9 +336,9 @@ class TestAmpScaler(unittest.TestCase):
             )
             scaler = paddle.amp.AmpScaler(init_loss_scaling=1024)
             data = fluid.dygraph.to_variable(inp_np)
-
-            out = model(data)
-            loss = paddle.mean(out)
+            with paddle.amp.auto_cast(dtype='float16'):
+                out = model(data)
+                loss = paddle.mean(out)
             scaled_loss = scaler.scale(loss)
             scaled_loss.backward()
             optimize_ops, params_grads = scaler.minimize(optimizer, scaled_loss)
@@ -349,6 +351,8 @@ class TestAmpScaler(unittest.TestCase):
                 )
 
     def test_nan_inf(self):
+        if not paddle.amp.is_float16_supported():
+            return
         self.nan_inf()
 
     def step_update_exception(self):

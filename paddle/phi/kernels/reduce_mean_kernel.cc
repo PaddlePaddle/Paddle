@@ -31,8 +31,15 @@ void MeanKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    mean, CPU, ALL_LAYOUT, phi::MeanKernel, float, double, bool) {}
+PD_REGISTER_KERNEL(mean,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::MeanKernel,
+                   float,
+                   double,
+                   bool,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(mean,
@@ -44,7 +51,10 @@ PD_REGISTER_KERNEL(mean,
                    bool,
                    int,
                    int64_t,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 #endif
 
 #if defined(PADDLE_WITH_XPU_KP) && !defined(PADDLE_WITH_XPU)
@@ -57,5 +67,6 @@ PD_REGISTER_KERNEL(
 #endif
 
 #if defined(PADDLE_WITH_XPU)
-PD_REGISTER_KERNEL(mean, XPU, ALL_LAYOUT, phi::MeanKernel, float) {}
+PD_REGISTER_KERNEL(
+    mean, XPU, ALL_LAYOUT, phi::MeanKernel, float, phi::dtype::float16) {}
 #endif

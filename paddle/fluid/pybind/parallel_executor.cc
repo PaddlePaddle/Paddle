@@ -87,25 +87,16 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler/event_python.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/platform/profiler/profiler.h"
-#include "paddle/fluid/pybind/cuda_streams_py.h"
-#include "paddle/fluid/pybind/distributed_py.h"
-#include "paddle/fluid/pybind/eager.h"
-#include "paddle/fluid/pybind/imperative.h"
-#include "paddle/fluid/pybind/io.h"
-#include "paddle/phi/backends/cpu/cpu_info.h"
-#include "paddle/phi/core/compat/convert_utils.h"
-#include "paddle/phi/core/lod_utils.h"
-#include "paddle/utils/none.h"
-#ifdef PADDLE_WITH_ASCEND
-#include "paddle/fluid/pybind/ascend_wrapper_py.h"
-#endif
 #include "paddle/fluid/pybind/bind_cost_model.h"
 #include "paddle/fluid/pybind/bind_fleet_executor.h"
 #include "paddle/fluid/pybind/box_helper_py.h"
 #include "paddle/fluid/pybind/communication.h"
 #include "paddle/fluid/pybind/compatible.h"
 #include "paddle/fluid/pybind/const_value.h"
+#include "paddle/fluid/pybind/cuda_streams_py.h"
 #include "paddle/fluid/pybind/data_set_py.h"
+#include "paddle/fluid/pybind/distributed_py.h"
+#include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/exception.h"
 #include "paddle/fluid/pybind/fleet_wrapper_py.h"
 #include "paddle/fluid/pybind/generator_py.h"
@@ -113,12 +104,18 @@ limitations under the License. */
 #include "paddle/fluid/pybind/gloo_context_py.h"
 #include "paddle/fluid/pybind/gloo_wrapper_py.h"
 #include "paddle/fluid/pybind/heter_wrapper_py.h"
+#include "paddle/fluid/pybind/imperative.h"
 #include "paddle/fluid/pybind/inference_api.h"
+#include "paddle/fluid/pybind/io.h"
 #include "paddle/fluid/pybind/ir.h"
 #include "paddle/fluid/pybind/metrics_py.h"
 #include "paddle/fluid/pybind/ps_gpu_wrapper_py.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
+#include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/backends/device_manager.h"
+#include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/core/lod_utils.h"
+#include "paddle/utils/none.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/pybind/nccl_wrapper_py.h"
@@ -139,11 +136,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
 
-#ifdef PADDLE_WITH_ASCEND_CL
-#include "paddle/fluid/platform/collective_helper.h"
-#include "paddle/fluid/platform/device/npu/npu_info.h"
-#endif
-
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
@@ -158,10 +150,6 @@ limitations under the License. */
 #ifdef PADDLE_WITH_IPU
 #include "paddle/fluid/platform/device/ipu/ipu_backend.h"
 #include "paddle/fluid/platform/device/ipu/ipu_info.h"
-#endif
-
-#ifdef PADDLE_WITH_MLU
-#include "paddle/fluid/platform/device/mlu/mlu_info.h"
 #endif
 
 #ifdef PADDLE_WITH_CRYPTO
@@ -181,11 +169,12 @@ limitations under the License. */
 #include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/fluid/pybind/parallel_executor.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/autotune/cache.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 #include "pybind11/stl.h"
 
-DECLARE_bool(use_mkldnn);
+PHI_DECLARE_bool(use_mkldnn);
 
 // disable auto conversion to list in Python
 PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
@@ -199,39 +188,7 @@ using namespace paddle::framework;                // NOLINT
 void BindParallelExecutor(pybind11::module &m) {  // NOLINT
   // -- python binds for parallel executor.
   py::class_<ParallelExecutor> pe(m, "ParallelExecutor");
-  py::class_<ExecutionStrategy> exec_strategy(pe, "ExecutionStrategy", R"DOC(
-    ExecutionStrategy allows the user to more preciously control how to run
-    the program in ParallelExecutor by setting the property.
-
-    Returns:
-        ExecutionStrategy: An ExecutionStrategy object.
-
-    Examples:
-        .. code-block:: python
-
-          import paddle
-          import paddle.static as static
-          import paddle.nn.functional as F
-
-          paddle.enable_static()
-
-          x = static.data(name='x', shape=[None, 13], dtype='float32')
-          y = static.data(name='y', shape=[None, 1], dtype='float32')
-          y_predict = static.nn.fc(input=x, size=1, act=None)
-
-          cost = F.square_error_cost(input=y_predict, label=y)
-          avg_loss = paddle.mean(cost)
-
-          sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.001)
-          sgd_optimizer.minimize(avg_loss)
-
-          exec_strategy = static.ExecutionStrategy()
-          exec_strategy.num_threads = 4
-
-          train_exe = static.ParallelExecutor(use_cuda=False,
-                                              loss_name=avg_loss.name,
-                                              exec_strategy=exec_strategy)
-        )DOC");
+  py::class_<ExecutionStrategy> exec_strategy(pe, "ExecutionStrategy");
 
   py::enum_<paddle::platform::DeviceType>(m, "DeviceType", py::arithmetic())
       .value("CPU", paddle::platform::DeviceType::CPU)
@@ -244,29 +201,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
           [](const ExecutionStrategy &self) { return self.num_threads_; },
           [](ExecutionStrategy &self, size_t num_threads) {
             self.num_threads_ = num_threads;
-          },
-          R"DOC(
-            The type is INT, num_threads represents the size of thread pool that
-            used to run the operators of the current program in ParallelExecutor.
-            If :math:`num\_threads=1`, all the operators will execute one by one,
-            but the order maybe difference between iterations.
-            If it is not set, it will be set in ParallelExecutor according to the
-            device type and device count, for GPU, :math:`num\_threads=device\_count*4`, for CPU,
-            :math:`num\_threads=CPU\_NUM*4`, the explanation of:math:`CPU\_NUM` is in ParallelExecutor.
-            if it is not set, ParallelExecutor will get the cpu count by calling
-            `multiprocessing.cpu_count()`. Default 0.
-
-            Examples:
-                .. code-block:: python
-
-                    import paddle
-                    import paddle.static as static
-
-                    paddle.enable_static()
-
-                    exec_strategy = static.ExecutionStrategy()
-                    exec_strategy.num_threads = 4
-            )DOC")
+          })
       .def_property(
           "_use_device",
           [](const ExecutionStrategy &self) { return self.use_device_; },
@@ -279,11 +214,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
           [](const ExecutionStrategy &self) { return self.allow_op_delay_; },
           [](ExecutionStrategy &self, bool allow_op_delay) {
             self.allow_op_delay_ = allow_op_delay;
-          },
-          R"DOC(The type is BOOL, allow_op_delay represents whether to delay the
-                communication operators to run, it may make the execution faster.
-                Note that this option is invalid now, and it will be removed in
-                next version. Default False.)DOC")
+          })
       .def_property(
           "num_iteration_per_drop_scope",
           [](const ExecutionStrategy &self) {
@@ -291,30 +222,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
           },
           [](ExecutionStrategy &self, size_t num_iteration_per_drop_scope) {
             self.num_iteration_per_drop_scope_ = num_iteration_per_drop_scope;
-          },
-          R"DOC(The type is INT, num_iteration_per_drop_scope indicates how
-                many iterations to clean up the temp variables which
-                is generated during execution. It may make the execution faster,
-                because the temp variable's shape maybe the same between two iterations.
-                Default 100.
-
-                .. note::
-                    1. If you fetch data when calling the 'run', the ParallelExecutor
-                    will clean up the temp variables at the end of the current iteration.
-                    2. In some NLP model, it may cause the GPU memory is insufficient,
-                    in this case, you should reduce `num_iteration_per_drop_scope`.
-
-                Examples:
-                    .. code-block:: python
-
-                        import paddle
-                        import paddle.static as static
-
-                        paddle.enable_static()
-
-                        exec_strategy = static.ExecutionStrategy()
-                        exec_strategy.num_iteration_per_drop_scope = 10
-              )DOC")
+          })
       .def_property(
           "num_iteration_per_run",
           [](const ExecutionStrategy &self) {
@@ -322,29 +230,13 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
           },
           [](ExecutionStrategy &self, size_t num_iteration_per_run) {
             self.num_iteration_per_run_ = num_iteration_per_run;
-          },
-          R"DOC(This config that how many iteration the executor will run when
-                user call exe.run() in python。Default: 1.
-
-                Examples:
-                    .. code-block:: python
-
-                        import paddle
-                        import paddle.static as static
-
-                        paddle.enable_static()
-
-                        exec_strategy = static.ExecutionStrategy()
-                        exec_strategy.num_iteration_per_run = 10
-              )DOC")
+          })
       .def_property(
           "use_thread_barrier",
           [](const ExecutionStrategy &self) { return self.thread_barrier_; },
           [](ExecutionStrategy &self, bool use_thread_barrier) {
             self.thread_barrier_ = use_thread_barrier;
-          },
-          R"DOC(This config that the this is distributed training with parameter server
-              )DOC")
+          })
       .def_property(
           "_dry_run",
           [](const ExecutionStrategy &self) { return self.dry_run_; },
@@ -372,17 +264,13 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
     Examples:
         .. code-block:: python
 
-            import os
             import paddle
             import paddle.static as static
 
             paddle.enable_static()
 
-            os.environ['CPU_NUM'] = str(2)
-            places = static.cpu_places()
-
             data = static.data(name="x", shape=[None, 1], dtype="float32")
-            hidden = static.nn.fc(input=data, size=10)
+            hidden = static.nn.fc(data, size=10)
             loss = paddle.mean(hidden)
             paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
 
@@ -390,10 +278,7 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
             build_strategy.enable_inplace = True
             build_strategy.memory_optimize = True
             build_strategy.reduce_strategy = static.BuildStrategy.ReduceStrategy.Reduce
-            program = static.CompiledProgram(static.default_main_program())
-            program = program.with_data_parallel(loss_name=loss.name,
-                                                  build_strategy=build_strategy,
-                                                  places=places)
+            program = static.CompiledProgram(static.default_main_program(), build_strategy=build_strategy)
 )DOC");
 
   py::enum_<BuildStrategy::ReduceStrategy>(build_strategy, "ReduceStrategy")
@@ -461,7 +346,6 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
                     .. code-block:: python
 
                         import numpy
-                        import os
                         import paddle
                         import paddle.static as static
 
@@ -471,20 +355,8 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
                         place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
                         exe = static.Executor(place)
 
-                        # NOTE: If you use CPU to run the program, you need
-                        # to specify the CPU_NUM, otherwise, paddle will use
-                        # all the number of the logic core as the CPU_NUM,
-                        # in that case, the batch size of the input should be
-                        # greater than CPU_NUM, if not, the process will be
-                        # failed by an exception.
-                        if not use_cuda:
-                            os.environ['CPU_NUM'] = str(2)
-                            places = static.cpu_places()
-                        else:
-                            places = static.cuda_places()
-
                         data = static.data(name='X', shape=[None, 1], dtype='float32')
-                        hidden = static.nn.fc(input=data, size=10)
+                        hidden = static.nn.fc(data, size=10)
                         loss = paddle.mean(hidden)
                         paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
 
@@ -492,19 +364,18 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
 
                         build_strategy = static.BuildStrategy()
                         build_strategy.gradient_scale_strategy = \
-                                  static.BuildStrategy.GradientScaleStrategy.Customized
+                                    static.BuildStrategy.GradientScaleStrategy.Customized
                         compiled_prog = static.CompiledProgram(
-                                  static.default_main_program()).with_data_parallel(
-                                          loss_name=loss.name, build_strategy=build_strategy,
-                                          places=places)
+                                    static.default_main_program(),
+                                    build_strategy=build_strategy,
+                        )
 
-                        dev_count =  len(places)
                         x = numpy.random.random(size=(10, 1)).astype('float32')
-                        loss_grad = numpy.ones((dev_count)).astype("float32") * 0.01
+                        loss_grad = numpy.ones((1)).astype("float32") * 0.01
                         loss_grad_name = loss.name+"@GRAD"
                         loss_data = exe.run(compiled_prog,
-                                              feed={"X": x, loss_grad_name : loss_grad},
-                                              fetch_list=[loss.name, loss_grad_name])
+                                                feed={"X": x, loss_grad_name : loss_grad},
+                                                fetch_list=[loss.name, loss_grad_name])
                    )DOC")
       .def_property(
           "debug_graphviz_path",
@@ -719,6 +590,28 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
                         build_strategy.fuse_gemm_epilogue = True
                      )DOC")
       .def_property(
+          "fuse_adamw",
+          [](const BuildStrategy &self) { return self.fuse_adamw_; },
+          [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE_NE(self.IsFinalized(),
+                              true,
+                              platform::errors::PreconditionNotMet(
+                                  "BuildStrategy has been finlaized, cannot be "
+                                  "configured again."));
+            self.fuse_adamw_ = b;
+          },
+          R"DOC((bool, optional): fuse_adamw indicate whether
+                to fuse all adamw optimizers with multi_tensor_adam,
+                it may make the execution faster. Default is False.
+                Examples:
+                    .. code-block:: python
+                        import paddle
+                        import paddle.static as static
+                        paddle.enable_static()
+                        build_strategy = static.BuildStrategy()
+                        build_strategy.fuse_adamw = True
+                     )DOC")
+      .def_property(
           "fused_attention",
           [](const BuildStrategy &self) { return self.fused_attention_; },
           [](BuildStrategy &self, bool b) {
@@ -743,6 +636,57 @@ void BindParallelExecutor(pybind11::module &m) {  // NOLINT
 
                         build_strategy = static.BuildStrategy()
                         build_strategy.fused_attention = True
+                     )DOC")
+      .def_property(
+          "fused_feedforward",
+          [](const BuildStrategy &self) { return self.fused_feedforward_; },
+          [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE_NE(self.IsFinalized(),
+                              true,
+                              platform::errors::PreconditionNotMet(
+                                  "BuildStrategy has been finlaized, cannot be "
+                                  "configured again."));
+            self.fused_feedforward_ = b;
+          },
+          R"DOC((bool, optional): fused_feedforward indicate whether
+                to fuse the whole feed_forward part with one op,
+                it may make the execution faster. Default is False.
+
+                Examples:
+                    .. code-block:: python
+
+                        import paddle
+                        import paddle.static as static
+
+                        paddle.enable_static()
+
+                        build_strategy = static.BuildStrategy()
+                        build_strategy.fused_feedforward = True
+                     )DOC")
+      .def_property(
+          "sequential_run",
+          [](const BuildStrategy &self) { return self.sequential_run_; },
+          [](BuildStrategy &self, bool b) {
+            PADDLE_ENFORCE_NE(self.IsFinalized(),
+                              true,
+                              platform::errors::PreconditionNotMet(
+                                  "BuildStrategy has been finlaized, cannot be "
+                                  "configured again."));
+            self.sequential_run_ = b;
+          },
+          R"DOC((bool, optional): sequential_run is used to let the `StandaloneExecutor` run ops by the
+          order of `ProgramDesc`. Default is False.
+
+                Examples:
+                    .. code-block:: python
+
+                        import paddle
+                        import paddle.static as static
+
+                        paddle.enable_static()
+
+                        build_strategy = static.BuildStrategy()
+                        build_strategy.sequential_run = True
                      )DOC")
       .def_property(
           "fuse_bn_act_ops",

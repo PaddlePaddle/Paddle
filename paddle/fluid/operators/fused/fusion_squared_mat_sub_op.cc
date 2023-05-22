@@ -84,7 +84,7 @@ void FusionSquaredMatSubOpMaker::Make() {
 )DOC");
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class FusionSquaredMatSubKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -151,6 +151,9 @@ REGISTER_OPERATOR(fusion_squared_mat_sub,
                   ops::FusionSquaredMatSubOp,
                   ops::FusionSquaredMatSubOpMaker);
 
-REGISTER_OP_CPU_KERNEL(fusion_squared_mat_sub,
-                       ops::FusionSquaredMatSubKernel<float>,
-                       ops::FusionSquaredMatSubKernel<double>);
+PD_REGISTER_STRUCT_KERNEL(fusion_squared_mat_sub,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::FusionSquaredMatSubKernel,
+                          float,
+                          double) {}

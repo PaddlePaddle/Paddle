@@ -26,6 +26,7 @@ from .creation import diag  # noqa: F401
 from .creation import diagflat  # noqa: F401
 from .creation import eye  # noqa: F401
 from .creation import linspace  # noqa: F401
+from .creation import fill_constant  # noqa: F401
 from .creation import ones  # noqa: F401
 from .creation import ones_like  # noqa: F401
 from .creation import zeros  # noqa: F401
@@ -39,6 +40,7 @@ from .creation import meshgrid  # noqa: F401
 from .creation import empty  # noqa: F401
 from .creation import empty_like  # noqa: F401
 from .creation import complex  # noqa: F401
+from .creation import polar  # noqa: F401
 from .linalg import matmul  # noqa: F401
 from .linalg import dot  # noqa: F401
 from .linalg import cov  # noqa: F401
@@ -133,6 +135,9 @@ from .manipulation import moveaxis  # noqa: F401
 from .manipulation import repeat_interleave  # noqa: F401
 from .manipulation import index_add  # noqa: F401
 from .manipulation import index_add_  # noqa: F401
+from .manipulation import index_put  # noqa: F401
+from .manipulation import index_put_  # noqa: F401
+from .manipulation import unflatten  # noqa: F401
 from .math import abs  # noqa: F401
 from .math import acos  # noqa: F401
 from .math import asin  # noqa: F401
@@ -192,12 +197,14 @@ from .math import remainder_  # noqa: F401
 from .math import mod  # noqa: F401
 from .math import floor_mod  # noqa: F401
 from .math import multiply  # noqa: F401
+from .math import multiply_  # noqa: F401
 from .math import add  # noqa: F401
 from .math import add_  # noqa: F401
 from .math import subtract  # noqa: F401
 from .math import subtract_  # noqa: F401
 from .math import atan2  # noqa: F401
 from .math import logsumexp  # noqa: F401
+from .math import logaddexp  # noqa: F401
 from .math import inverse  # noqa: F401
 from .math import log2  # noqa: F401
 from .math import log10  # noqa: F401
@@ -243,6 +250,16 @@ from .math import frac  # noqa: F401
 from .math import sgn  # noqa: F401
 from .math import take  # noqa: F401
 from .math import frexp  # noqa: F401
+from .math import trapezoid  # noqa: F401
+from .math import cumulative_trapezoid  # noqa: F401
+from .math import sigmoid  # noqa: F401
+from .math import sigmoid_  # noqa: F401
+from .math import vander  # noqa: F401
+from .math import nextafter  # noqa: F401
+from .math import i0  # noqa: F401
+from .math import i0e  # noqa: F401
+from .math import i1  # noqa: F401
+from .math import i1e  # noqa: F401
 
 from .random import multinomial  # noqa: F401
 from .random import standard_normal  # noqa: F401
@@ -332,6 +349,7 @@ tensor_method_func = [  # noqa
     'floor',
     'floor_',
     'increment',
+    'logaddexp',
     'log',
     'log2',
     'log10',
@@ -380,6 +398,7 @@ tensor_method_func = [  # noqa
     'mod',
     'floor_mod',
     'multiply',
+    'multiply_',
     'add',
     'add_',
     'subtract',
@@ -521,10 +540,24 @@ tensor_method_func = [  # noqa
     'heaviside',
     'index_add',
     "index_add_",
+    'index_put',
+    'index_put_',
     'take',
     'bucketize',
     'sgn',
     'frexp',
+    'trapezoid',
+    'cumulative_trapezoid',
+    'polar',
+    'sigmoid',
+    'sigmoid_',
+    'vander',
+    'nextafter',
+    'unflatten',
+    'i0',
+    'i0e',
+    'i1',
+    'i1e',
 ]
 
 # this list used in math_op_patch.py for magic_method bind

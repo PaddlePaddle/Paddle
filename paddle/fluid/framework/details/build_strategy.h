@@ -131,6 +131,11 @@ struct BuildStrategy {
   bool fuse_gemm_epilogue_{false};
   // Fused multi head attention
   bool fused_attention_{false};
+  // Fuse adamw
+  bool fuse_adamw_{false};
+  // Fused feed forward
+  bool fused_feedforward_{false};
+  bool sequential_run_{false};
 
   // mkldnn_enabled_op_types specify the operator type list to
   // use MKLDNN acceleration. It is null in default, means
@@ -264,6 +269,8 @@ inline std::ostream &operator<<(std::ostream &os,
   os << "sync_batch_norm_: " << strategy.sync_batch_norm_ << std::endl;
   os << "fuse_gemm_epilogue_: " << strategy.fuse_gemm_epilogue_ << std::endl;
   os << "fused_attention_: " << strategy.fused_attention_ << std::endl;
+  os << "fused_feedforward_: " << strategy.fused_feedforward_ << std::endl;
+  os << "sequential_run_: " << strategy.sequential_run_ << std::endl;
   os << "mkldnn_enabled_op_types_: ";
   for (auto str : strategy.mkldnn_enabled_op_types_) {
     os << str << ", ";

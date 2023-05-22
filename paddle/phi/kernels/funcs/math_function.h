@@ -17,18 +17,21 @@ limitations under the License. */
 #include <memory>
 #include <vector>
 
-#include "paddle/fluid/framework/operator.h"
 #include "paddle/phi/backends/all_context.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
-#include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/utils/data_type.h"
-#include "paddle/phi/kernels/funcs/eigen/common.h"
 
 namespace phi {
 namespace funcs {
 
 template <typename T>
-void BatchTranspose(T* output, const T* input, int batch, int m, int n);
+void BatchTranspose(T* output,
+                    const T* input,
+                    int64_t batch,
+                    int64_t m,
+                    int64_t n,
+                    const phi::GPUContext* dev_ctx);
 
 template <typename DeviceContext, typename T>
 struct TransposeNormal {

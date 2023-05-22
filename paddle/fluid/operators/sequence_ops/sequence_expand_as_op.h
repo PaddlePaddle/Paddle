@@ -67,7 +67,7 @@ struct SequenceExpandAsFunctor<phi::CPUContext, T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class SequenceExpandAsKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
@@ -144,7 +144,7 @@ struct SequenceExpandAsGradFunctor<phi::CPUContext, T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class SequenceExpandAsGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {

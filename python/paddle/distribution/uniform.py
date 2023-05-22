@@ -117,7 +117,6 @@ class Uniform(distribution.Distribution):
             high = float(high)
 
         if self._validate_args(low, high):
-            self.batch_size_unknown = True
             self.low = low
             self.high = high
             self.dtype = convert_dtype(low.dtype)
@@ -159,7 +158,7 @@ class Uniform(distribution.Distribution):
 
         name = self.name + '_sample'
         batch_shape = list((self.low + self.high).shape)
-        if self.batch_size_unknown:
+        if -1 in batch_shape:
             output_shape = shape + batch_shape
             zero_tmp = tensor.fill_constant_batch_size_like(
                 self.low + self.high, batch_shape + shape, self.dtype, 0.0
@@ -186,7 +185,7 @@ class Uniform(distribution.Distribution):
             output = paddle.uniform(
                 output_shape, dtype=self.dtype, min=0.0, max=1.0, seed=seed
             ) * (
-                tensor.zeros(output_shape, dtype=self.dtype)
+                paddle.zeros(output_shape, dtype=self.dtype)
                 + (self.high - self.low)
             )
             output = paddle.add(output, self.low, name=name)

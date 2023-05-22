@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest, paddle_static_guard
 
 import paddle
 
@@ -69,27 +69,28 @@ class TestFlattenOpSixDims(TestFlattenOp):
 class TestFlattenOpFP16(unittest.TestCase):
     def test_fp16_with_gpu(self):
         if paddle.fluid.core.is_compiled_with_cuda():
-            place = paddle.CUDAPlace(0)
-            with paddle.static.program_guard(
-                paddle.static.Program(), paddle.static.Program()
-            ):
-                input = np.random.random([12, 14]).astype("float16")
-                x = paddle.static.data(
-                    name="x", shape=[12, 14], dtype="float16"
-                )
+            with paddle_static_guard():
+                place = paddle.CUDAPlace(0)
+                with paddle.static.program_guard(
+                    paddle.static.Program(), paddle.static.Program()
+                ):
+                    input = np.random.random([12, 14]).astype("float16")
+                    x = paddle.static.data(
+                        name="x", shape=[12, 14], dtype="float16"
+                    )
 
-                y = paddle.flatten(x)
+                    y = paddle.flatten(x)
 
-                exe = paddle.static.Executor(place)
-                res = exe.run(
-                    paddle.static.default_main_program(),
-                    feed={
-                        "x": input,
-                    },
-                    fetch_list=[y],
-                )
+                    exe = paddle.static.Executor(place)
+                    res = exe.run(
+                        paddle.static.default_main_program(),
+                        feed={
+                            "x": input,
+                        },
+                        fetch_list=[y],
+                    )
 
-                assert np.array_equal(res[0].shape, [12 * 14])
+                    assert np.array_equal(res[0].shape, [12 * 14])
 
 
 if __name__ == "__main__":

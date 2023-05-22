@@ -39,7 +39,7 @@ int GetGPURuntimeVersion(int id);
 //! Get the driver version of the ith GPU
 int GetGPUDriverVersion(int id);
 
-//! Wheter the current device support TensorCore
+//! Whether the current device support TensorCore
 bool TensorCoreAvailable();
 
 //! Get the MultiProcessors of the ith GPU.
@@ -82,7 +82,8 @@ size_t GpuInitAllocSize();
 //! Get the re-allocation size of current GPU device.
 size_t GpuReallocSize();
 
-using phi::backends::gpu::GpuMinChunkSize;
+//! Get the minimum chunk size for GPU buddy allocator.
+size_t GpuMinChunkSize();
 
 //! Get the maximum chunk size for GPU buddy allocator.
 size_t GpuMaxChunkSize();

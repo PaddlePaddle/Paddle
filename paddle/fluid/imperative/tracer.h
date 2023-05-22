@@ -156,6 +156,13 @@ class Tracer {
 
   void SetHasGrad(bool has_grad) { has_grad_ = has_grad; }
 
+  void SetUsePromote(bool use_promote) {
+    VLOG(4) << "set use_promote to " << use_promote;
+    use_promote_ = use_promote;
+  }
+
+  bool GetUsePromote() const { return use_promote_; }
+
   void SetAmpLevel(AmpLevel level) {
     VLOG(4) << "set amp_level to " << static_cast<unsigned int>(level);
     amp_level_ = level;
@@ -184,6 +191,8 @@ class Tracer {
     }
   }
 
+  phi::DataType GetAmpPhiDtype() const { return amp_dtype_; }
+
   void DisableLayoutAutoTune() { use_layout_autotune_ = false; }
 
   void EnableLayoutAutoTune() { use_layout_autotune_ = true; }
@@ -197,7 +206,8 @@ class Tracer {
     use_layout_autotune_ = false;
     return false;
   }
-
+  void SetPythonStack(std::string stack_str) { python_stack_ = stack_str; }
+  std::string GetPythonStack() { return python_stack_; }
   phi::KernelSignature GetExpectedKernelSignature(
       const std::string& type,
       const NameTensorMap& ins,
@@ -213,9 +223,11 @@ class Tracer {
   std::unique_ptr<UniqueNameGenerator> generator_;
   platform::Place expected_place_;
   GarbageCollectorMap gcs_;
+  static thread_local std::string python_stack_;
   static thread_local bool enable_program_desc_tracing_;
   static thread_local bool use_layout_autotune_;
   static thread_local bool has_grad_;
+  static thread_local bool use_promote_;
   static thread_local AmpLevel amp_level_;
   static thread_local phi::DataType amp_dtype_;
 };

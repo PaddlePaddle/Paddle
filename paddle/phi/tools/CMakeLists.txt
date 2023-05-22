@@ -6,7 +6,7 @@ if(WITH_GPU)
 endif()
 
 add_executable(print_phi_kernels print_phi_kernels.cc)
-target_link_libraries(print_phi_kernels phi phi_api_utils)
+target_link_libraries(print_phi_kernels phi)
 if(WIN32)
   target_link_libraries(print_phi_kernels shlwapi.lib)
 endif()

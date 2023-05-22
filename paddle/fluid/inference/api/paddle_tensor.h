@@ -26,6 +26,10 @@
 #include "onnxruntime_cxx_api.h"  // NOLINT
 #endif
 
+namespace paddle {
+class Tensor;
+}
+
 namespace paddle_infer {
 
 /// \brief  Experimental.
@@ -52,17 +56,18 @@ class InternalUtils;
 
 /// \brief Paddle data type.
 enum DataType {
+  FLOAT32,
   INT64,
   INT32,
   UINT8,
   INT8,
-  FLOAT32,
   FLOAT16,
   BOOL,
+  FLOAT64,
   // TODO(Inference): support more data types if needed.
 };
 
-enum class PlaceType { kUNK = -1, kCPU, kGPU, kXPU, kNPU, kIPU, kCUSTOM };
+enum class PlaceType { kUNK = -1, kCPU, kGPU, kXPU, kIPU, kCUSTOM };
 
 enum class DataLayout { kUNK = -1, kAny, kNHWC, kNCHW };
 
@@ -176,7 +181,10 @@ class PD_INFER_DECL Tensor {
   template <typename T>
   void* FindTensor() const;
 
-  void SetPlace(PlaceType place, int device = -1);
+  void SetPlace(PlaceType place,
+                int device = -1,
+                const std::string device_type = "");
+
   void SetName(const std::string& name);
 
   template <typename T>
@@ -195,6 +203,7 @@ class PD_INFER_DECL Tensor {
   const void* device_contexs_{nullptr};
   PlaceType place_;
   int device_;
+  std::string device_type_;
 
 #ifdef PADDLE_WITH_ONNXRUNTIME
   bool is_ort_tensor_{false};

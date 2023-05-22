@@ -17,10 +17,10 @@
 namespace phi {
 
 KernelSignature HierarchicalSigmoidOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("hsigmoid_loss",
                          {"X", "Label", "W", "Bias", "PathTable", "PathCode"},
-                         {"num_classes", "remote_prefetch", "is_sparse"},
+                         {"num_classes", "is_sparse"},
                          {"Out", "PreOut", "W_Out"});
 }
 
@@ -36,7 +36,7 @@ KernelSignature HierarchicalSigmoidGradOpArgumentMapping(
                             "Bias",
                             "PreOut",
                             "Out@GRAD"},
-                           {"num_classes", "remote_prefetch", "is_sparse"},
+                           {"num_classes", "is_sparse"},
                            {"X@GRAD", "W@GRAD", "Bias@GRAD"});
   } else if (ctx.IsSelectedRowsOutput("W@GRAD")) {
     return KernelSignature("hsigmoid_loss_grad_sr",
@@ -48,7 +48,7 @@ KernelSignature HierarchicalSigmoidGradOpArgumentMapping(
                             "Bias",
                             "PreOut",
                             "Out@GRAD"},
-                           {"num_classes", "remote_prefetch", "is_sparse"},
+                           {"num_classes", "is_sparse"},
                            {"X@GRAD", "W@GRAD", "Bias@GRAD"});
   } else {
     return KernelSignature("unregistered", {}, {}, {});

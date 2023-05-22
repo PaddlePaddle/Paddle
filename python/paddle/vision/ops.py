@@ -16,11 +16,12 @@ import numpy as np
 
 from paddle import _C_ops, _legacy_C_ops
 from paddle.tensor.math import _add_with_axis
+from paddle.utils import convert_to_list
 
+from ..fluid import core
 from ..fluid.data_feeder import check_type, check_variable_and_dtype
 from ..fluid.framework import Variable, in_dygraph_mode
 from ..fluid.layer_helper import LayerHelper
-from ..fluid.layers import utils
 from ..framework import _current_expected_place
 from ..nn import BatchNorm2D, Conv2D, Layer, ReLU, Sequential
 from ..nn.initializer import Normal
@@ -191,7 +192,7 @@ def yolo_loss(
     """
 
     if in_dygraph_mode():
-        loss, _, _ = _C_ops.yolo_loss(
+        loss = _C_ops.yolo_loss(
             x,
             gt_box,
             gt_label,
@@ -494,7 +495,7 @@ def prior_box(
     """
 
     def _is_list_or_tuple_(data):
-        return isinstance(data, list) or isinstance(data, tuple)
+        return isinstance(data, (list, tuple))
 
     if not _is_list_or_tuple_(min_sizes):
         min_sizes = [min_sizes]
@@ -523,9 +524,9 @@ def prior_box(
             input,
             image,
             min_sizes,
+            max_sizes,
             aspect_ratios,
             variance,
-            max_sizes,
             flip,
             clip,
             step_w,
@@ -680,7 +681,7 @@ def box_coder(
 
     """
     if in_dygraph_mode():
-        if isinstance(prior_box_var, Variable):
+        if isinstance(prior_box_var, core.eager.Tensor):
             output_box = _C_ops.box_coder(
                 prior_box,
                 prior_box_var,
@@ -863,9 +864,9 @@ def deform_conv2d(
           # returns
           [8, 16, 26, 26]
     """
-    stride = utils.convert_to_list(stride, 2, 'stride')
-    padding = utils.convert_to_list(padding, 2, 'padding')
-    dilation = utils.convert_to_list(dilation, 2, 'dilation')
+    stride = convert_to_list(stride, 2, 'stride')
+    padding = convert_to_list(padding, 2, 'padding')
+    dilation = convert_to_list(dilation, 2, 'dilation')
 
     use_deform_conv2d_v1 = True if mask is None else False
 
@@ -899,9 +900,9 @@ def deform_conv2d(
         helper = LayerHelper('deformable_conv', **locals())
         dtype = helper.input_dtype()
 
-        stride = utils.convert_to_list(stride, 2, 'stride')
-        padding = utils.convert_to_list(padding, 2, 'padding')
-        dilation = utils.convert_to_list(dilation, 2, 'dilation')
+        stride = convert_to_list(stride, 2, 'stride')
+        padding = convert_to_list(padding, 2, 'padding')
+        dilation = convert_to_list(dilation, 2, 'dilation')
 
         pre_bias = helper.create_variable_for_type_inference(dtype)
 
@@ -1106,14 +1107,14 @@ class DeformConv2D(Layer):
         self._out_channels = out_channels
         self._channel_dim = 1
 
-        self._stride = utils.convert_to_list(stride, 2, 'stride')
-        self._dilation = utils.convert_to_list(dilation, 2, 'dilation')
-        self._kernel_size = utils.convert_to_list(kernel_size, 2, 'kernel_size')
+        self._stride = convert_to_list(stride, 2, 'stride')
+        self._dilation = convert_to_list(dilation, 2, 'dilation')
+        self._kernel_size = convert_to_list(kernel_size, 2, 'kernel_size')
 
         if in_channels % groups != 0:
             raise ValueError("in_channels must be divisible by groups.")
 
-        self._padding = utils.convert_to_list(padding, 2, 'padding')
+        self._padding = convert_to_list(padding, 2, 'padding')
 
         filter_shape = [out_channels, in_channels // groups] + self._kernel_size
 
@@ -1318,7 +1319,7 @@ def read_file(filename, name=None):
     if in_dygraph_mode():
         return _legacy_C_ops.read_file('filename', filename)
     else:
-        inputs = dict()
+        inputs = {}
         attrs = {'filename': filename}
 
         helper = LayerHelper("read_file", **locals())

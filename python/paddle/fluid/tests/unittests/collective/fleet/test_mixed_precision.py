@@ -17,8 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.nn as nn
-import paddle.static as static
+from paddle import nn, static
 
 paddle.enable_static()
 

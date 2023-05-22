@@ -15,18 +15,23 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import Program, program_guard
+
+np.random.seed(1024)
 
 
 class TestIndexSelectOp(OpTest):
     def setUp(self):
         self.python_api = paddle.index_select
+        self.public_python_api = paddle.index_select
         self.op_type = "index_select"
+        self.prim_op_type = "comp"
         self.init_dtype_type()
+
         index_np = np.random.randint(
             low=0, high=self.x_shape[self.dim], size=self.index_size
         )
@@ -55,10 +60,10 @@ class TestIndexSelectOp(OpTest):
         self.index_size = 100
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output(check_prim=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestIndexSelectOpCase2(TestIndexSelectOp):
@@ -81,6 +86,58 @@ class TestIndexSelectOpCaseSingleThread(TestIndexSelectOp):
         self.index_size = 10
 
 
+class TestIndexSelectFP16OP(TestIndexSelectOp):
+    def init_dtype_type(self):
+        self.dim = 1
+        self.x_type = np.float16
+        self.index_type = np.int64
+        self.x_shape = (100, 4, 5)
+        self.index_size = 100
+
+
+# no scatter op (the backward op of index_select/gather) for bf16
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda(), "paddle is not compiled with cuda"
+)
+class TestIndexSelectBF16Op(OpTest):
+    def setUp(self):
+        self.python_api = paddle.index_select
+        self.op_type = "index_select"
+        self.init_dtype_type()
+        index_np = np.random.randint(
+            low=0, high=self.x_shape[self.dim], size=self.index_size
+        )
+        x_np = np.random.random(self.x_shape).astype(np.float32)
+        self.inputs = {'X': convert_float_to_uint16(x_np), 'Index': index_np}
+        self.attrs = {'dim': self.dim}
+        outer_loop = np.prod(self.x_shape[: self.dim])
+        x_reshape = [outer_loop] + list(self.x_shape[self.dim :])
+        x_np_reshape = np.reshape(x_np, tuple(x_reshape))
+        out_list = []
+        for i in range(outer_loop):
+            for j in range(self.index_size):
+                out_list.append(x_np_reshape[i, index_np[j]])
+        self.out_shape = list(self.x_shape)
+        self.out_shape[self.dim] = self.index_size
+        self.out_shape = tuple(self.out_shape)
+
+        out = np.reshape(out_list, self.out_shape)
+        self.outputs = {'Out': convert_float_to_uint16(out)}
+
+    def init_dtype_type(self):
+        self.dim = 1
+        self.x_type = np.uint16
+        self.index_type = np.int64
+        self.x_shape = (20, 4, 5)
+        self.index_size = 100
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X'], 'Out')
+
+
 class TestIndexSelectAPI(unittest.TestCase):
     def input_data(self):
         self.data_x = np.array(
@@ -89,10 +146,11 @@ class TestIndexSelectAPI(unittest.TestCase):
                 [5.0, 6.0, 7.0, 8.0],
                 [9.0, 10.0, 11.0, 12.0],
             ]
-        )
+        ).astype("float32")
         self.data_index = np.array([0, 1, 1]).astype('int32')
 
     def test_index_select_api(self):
+        paddle.enable_static()
         self.input_data()
 
         # case 1:
@@ -128,6 +186,7 @@ class TestIndexSelectAPI(unittest.TestCase):
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
     def test_dygraph_api(self):
+        paddle.disable_static()
         self.input_data()
         # case 1:
         with fluid.dygraph.guard():

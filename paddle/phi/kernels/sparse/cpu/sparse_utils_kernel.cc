@@ -1,4 +1,4 @@
-/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -258,7 +258,7 @@ void CooToDenseCPUKernel(const CPUContext& dev_ctx,
   const auto dense_dims = x.dims();
   const auto indices = x.indices();
   const auto values = x.values();
-  const auto indices_dims = indices.dims();
+  const auto indices_dims = phi::vectorize<int>(indices.dims());
   int64_t sparse_dim = indices_dims[0];
   if (indices_dims.size() == 1) {
     sparse_dim = 1;
@@ -370,7 +370,8 @@ PD_REGISTER_KERNEL(coo_to_dense,
                    int8_t,
                    int16_t,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   bool) {}
 
 PD_REGISTER_KERNEL(csr_to_dense,
                    CPU,
@@ -383,7 +384,8 @@ PD_REGISTER_KERNEL(csr_to_dense,
                    int8_t,
                    int16_t,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   bool) {}
 
 PD_REGISTER_KERNEL(values_coo,
                    CPU,
@@ -396,7 +398,8 @@ PD_REGISTER_KERNEL(values_coo,
                    int8_t,
                    int16_t,
                    int,
-                   int64_t) {
+                   int64_t,
+                   bool) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
 }
 
@@ -426,7 +429,8 @@ PD_REGISTER_KERNEL(values_csr,
                    int8_t,
                    int16_t,
                    int,
-                   int64_t) {
+                   int64_t,
+                   bool) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
 

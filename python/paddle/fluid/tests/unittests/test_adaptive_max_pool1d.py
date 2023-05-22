@@ -15,12 +15,12 @@
 import unittest
 
 import numpy as np
-from op_test import check_out_dtype
+from eager_op_test import check_out_dtype, paddle_static_guard
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 import paddle.nn.functional as F
+from paddle import fluid
+from paddle.fluid import core
 
 
 def adaptive_start_index(index, input_size, output_size):
@@ -93,22 +93,29 @@ class TestPool1D_API(unittest.TestCase):
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
     def check_adaptive_max_static_results(self, place):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input = fluid.data(name="input", shape=[2, 3, 32], dtype="float32")
-            result = F.adaptive_max_pool1d(input, output_size=16)
+        with paddle_static_guard():
+            with fluid.program_guard(fluid.Program(), fluid.Program()):
+                input = paddle.static.data(
+                    name="input", shape=[2, 3, 32], dtype="float32"
+                )
+                result = F.adaptive_max_pool1d(input, output_size=16)
 
-            input_np = np.random.random([2, 3, 32]).astype("float32")
-            result_np = max_pool1D_forward_naive(
-                input_np, ksize=[16], strides=[2], paddings=[0], adaptive=True
-            )
+                input_np = np.random.random([2, 3, 32]).astype("float32")
+                result_np = max_pool1D_forward_naive(
+                    input_np,
+                    ksize=[16],
+                    strides=[2],
+                    paddings=[0],
+                    adaptive=True,
+                )
 
-            exe = fluid.Executor(place)
-            fetches = exe.run(
-                fluid.default_main_program(),
-                feed={"input": input_np},
-                fetch_list=[result],
-            )
-            np.testing.assert_allclose(fetches[0], result_np, rtol=1e-05)
+                exe = fluid.Executor(place)
+                fetches = exe.run(
+                    fluid.default_main_program(),
+                    feed={"input": input_np},
+                    fetch_list=[result],
+                )
+                np.testing.assert_allclose(fetches[0], result_np, rtol=1e-05)
 
     def test_adaptive_max_pool1d(self):
         for place in self.places:

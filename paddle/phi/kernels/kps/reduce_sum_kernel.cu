@@ -147,7 +147,7 @@ void SumRawKernel(const Context& dev_ctx,
 
 #ifdef PADDLE_WITH_XPU_KP
 PD_REGISTER_KERNEL(sum_raw, KPS, ALL_LAYOUT, phi::SumRawKernel, float) {
-  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }
 #else
 using float16 = phi::dtype::float16;
@@ -169,6 +169,6 @@ PD_REGISTER_KERNEL(sum_raw,
                    int64_t,
                    complex64,
                    complex128) {
-  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }
 #endif

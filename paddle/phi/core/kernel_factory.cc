@@ -14,10 +14,12 @@
 
 #include "paddle/phi/core/kernel_factory.h"
 
+#include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "paddle/phi/core/enforce.h"
 #if defined(PADDLE_WITH_XPU)
 #include "paddle/phi/backends/xpu/xpu_op_list.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #endif
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
@@ -93,6 +95,14 @@ const Kernel& KernelFactory::SelectKernel(const std::string& kernel_name,
         kernel_key.backend(), phi::DataLayout::ALL_LAYOUT, kernel_key.dtype());
     kernel_iter = iter->second.find(any_layout_kernel_key);
   }
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+  if (kernel_iter == iter->second.end() &&
+      kernel_key.backend() > phi::Backend::NUM_BACKENDS) {
+    kernel_iter = iter->second.find({phi::Backend::CUSTOM,
+                                     phi::DataLayout::ALL_LAYOUT,
+                                     kernel_key.dtype()});
+  }
+#endif
 
   if (kernel_iter == iter->second.end()) {
     return empty_kernel;
@@ -126,8 +136,7 @@ bool KernelFactory::HasKernel(const std::string& kernel_name,
 }
 
 void KernelFactory::AddToLowPrecisionKernelList(
-    const std::string& name,
-    const paddle::experimental::DataType& kernel_key_type) {
+    const std::string& name, const phi::DataType& kernel_key_type) {
   if (FLAGS_low_precision_op_list >= 1) {
     auto op_name = phi::TransToFluidOpName(name);
     if (op_name.find("_grad") != std::string::npos) {
@@ -138,11 +147,11 @@ void KernelFactory::AddToLowPrecisionKernelList(
       auto count = OpCount();
       low_precision_kernels_[op_name] = count;
     }
-    if (kernel_key_type == paddle::experimental::DataType::FLOAT16) {
+    if (kernel_key_type == phi::DataType::FLOAT16) {
       low_precision_kernels_[op_name].fp16_called_ += 1;
-    } else if (kernel_key_type == paddle::experimental::DataType::BFLOAT16) {
+    } else if (kernel_key_type == phi::DataType::BFLOAT16) {
       low_precision_kernels_[op_name].bf16_called_ += 1;
-    } else if (kernel_key_type == paddle::experimental::DataType::FLOAT32) {
+    } else if (kernel_key_type == phi::DataType::FLOAT32) {
       low_precision_kernels_[op_name].fp32_called_ += 1;
     } else {
       low_precision_kernels_[op_name].other_called_ += 1;
@@ -220,6 +229,12 @@ KernelResult KernelFactory::SelectKernelOrThrowError(
       !phi::backends::xpu::is_xpu_support_op(TransToFluidOpName(kernel_name),
                                              kernel_key.dtype())
 #elif defined(PADDLE_WITH_CUSTOM_DEVICE)
+  if (kernel_iter == iter->second.end() &&
+      kernel_key.backend() > phi::Backend::NUM_BACKENDS) {
+    kernel_iter = iter->second.find({phi::Backend::CUSTOM,
+                                     phi::DataLayout::ALL_LAYOUT,
+                                     kernel_key.dtype()});
+  }
   if (FLAGS_enable_api_kernel_fallback &&
       (kernel_iter == iter->second.end() ||
        phi::backends::custom_device::is_in_custom_black_list(
@@ -455,14 +470,13 @@ std::string KernelSelectionErrorMessage(const std::string& kernel_name,
       if (kernel_key.dtype() == target_key.dtype()) {
         support_dtype = true;
       }
-      dtype_set.insert(
-          paddle::experimental::DataTypeToString(kernel_key.dtype()));
+      dtype_set.insert(DataTypeToString(kernel_key.dtype()));
     }
     backend_set.insert(
         paddle::experimental::BackendToString(kernel_key.backend()));
     all_kernel_key[paddle::experimental::BackendToString(kernel_key.backend()) +
                    ", " + phi::DataLayoutToString(kernel_key.layout())]
-        .push_back(paddle::experimental::DataTypeToString(kernel_key.dtype()));
+        .push_back(DataTypeToString(kernel_key.dtype()));
   }
   // 1. If target_key not supports target backend, output "Selected wrong
   // Backend ..."
@@ -476,8 +490,7 @@ std::string KernelSelectionErrorMessage(const std::string& kernel_name,
   // DataType ..."
   if (!support_dtype) {
     std::string error_message = paddle::string::join_strings(dtype_set, ", ");
-    return "Selected wrong DataType `" +
-           paddle::experimental::DataTypeToString(target_key.dtype()) +
+    return "Selected wrong DataType `" + DataTypeToString(target_key.dtype()) +
            "`. Paddle support following DataTypes: " + error_message + ".";
   }
   // 3. `target_key` is still not supported, output all kernel keys of

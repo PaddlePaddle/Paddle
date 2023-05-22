@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, convert_float_to_uint16
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.framework import core
 
@@ -34,7 +34,9 @@ class TestGatherOp(OpTest):
     def setUp(self):
         self.op_type = "gather"
         self.python_api = paddle.gather
+        self.public_python_api = paddle.gather
         self.config()
+        self.prim_op_type = "prim"
         xnp = np.random.random(self.x_shape).astype(self.x_type)
         self.inputs = {
             'X': xnp,
@@ -43,19 +45,27 @@ class TestGatherOp(OpTest):
         self.outputs = {'Out': self.inputs["X"][self.inputs["Index"]]}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out', check_prim=True)
 
     def config(self):
         """
         For multi-dimension input
         """
         self.x_shape = (10, 20)
-        self.x_type = "float64"
+        self.config_dtype()
         self.index = [1, 3, 5]
         self.index_type = "int32"
+
+    def config_dtype(self):
+        self.x_type = "float64"
+
+
+class TestGatherOpFP16(TestGatherOp):
+    def config_dtype(self):
+        self.x_type = "float16"
 
 
 class TestCase1(TestGatherOp):
@@ -64,9 +74,17 @@ class TestCase1(TestGatherOp):
         For one dimension input
         """
         self.x_shape = 100
-        self.x_type = "float64"
+        self.config_dtype()
         self.index = [1, 3, 5]
         self.index_type = "int32"
+
+    def config_dtype(self):
+        self.x_type = "float64"
+
+
+class TestCase1FP16(TestCase1):
+    def config_dtype(self):
+        self.x_type = "float16"
 
 
 class TestCase2(TestGatherOp):
@@ -75,9 +93,17 @@ class TestCase2(TestGatherOp):
         For int64_t index type
         """
         self.x_shape = 100
-        self.x_type = "float64"
+        self.config_dtype()
         self.index = [1, 3, 5]
         self.index_type = "int64"
+
+    def config_dtype(self):
+        self.x_type = "float64"
+
+
+class TestCase2FP16(TestCase2):
+    def config_dtype(self):
+        self.x_type = "float16"
 
 
 class TestCase3(TestGatherOp):
@@ -86,36 +112,68 @@ class TestCase3(TestGatherOp):
         For other input type
         """
         self.x_shape = (10, 20)
-        self.x_type = "float64"
+        self.config_dtype()
         self.index = [1, 3, 5]
         self.index_type = "int64"
+
+    def config_dtype(self):
+        self.x_type = "float64"
+
+
+class TestCase3Fp16(TestCase3):
+    def config_dtype(self):
+        self.x_type = "float16"
 
 
 class TestCase4(TestGatherOp):
     def config(self):
         self.x_shape = (10, 20)
         self.attrs = {'overwrite': False}
-        self.x_type = "double"
+        self.config_dtype()
         self.index = [1, 1]
         self.index_type = "int32"
+
+    def config_dtype(self):
+        self.x_type = "float64"
+
+
+class TestCase4FP16(TestCase4):
+    def config_dtype(self):
+        self.x_type = "float16"
 
 
 class TestCase5(TestGatherOp):
     def config(self):
         self.x_shape = (10, 20)
         self.attrs = {'overwrite': False}
-        self.x_type = "float64"
+        self.config_dtype()
         self.index = [1, 1, 3]
         self.index_type = "int32"
+
+    def config_dtype(self):
+        self.x_type = "float64"
+
+
+class TestCase5FP16(TestCase5):
+    def config_dtype(self):
+        self.x_type = "float16"
 
 
 class TestCase6(TestGatherOp):
     def config(self):
         self.x_shape = (10, 20)
         self.attrs = {'overwrite': True}
-        self.x_type = "float64"
+        self.config_dtype()
         self.index = [1, 3]
         self.index_type = "int32"
+
+    def config_dtype(self):
+        self.x_type = "float64"
+
+
+class TestCase6FP16(TestCase6):
+    def config_dtype(self):
+        self.x_type = "float16"
 
 
 class TestGatherBF16Op(OpTest):
@@ -136,10 +194,10 @@ class TestGatherBF16Op(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', numeric_grad_delta=0.5, check_eager=True)
+        self.check_grad(['X'], 'Out', numeric_grad_delta=0.5)
 
     def config(self):
         """
@@ -165,21 +223,29 @@ class TestGatherOp1(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_eager=True)
+        self.check_grad(['X'], 'Out')
 
     def config(self):
         """
         For multi-dimension input
         """
         self.x_shape = (3, 88, 3)
-        self.x_type = "float64"
+        self.config_dtype()
         self.index = [1, 3, 5]
         self.index_type = "int32"
         self.axis = [1]
         self.axis_type = "int32"
+
+    def config_dtype(self):
+        self.x_type = "float64"
+
+
+class TestGatherOp1FP16(TestGatherOp1):
+    def config_dtype(self):
+        self.x_type = "float16"
 
 
 class TestGatherOp2(TestGatherOp1):
@@ -188,11 +254,19 @@ class TestGatherOp2(TestGatherOp1):
         For multi-dimension input
         """
         self.x_shape = (10, 88, 10)
-        self.x_type = "float64"
+        self.config_dtype()
         self.index = [1, 3, 5]
         self.index_type = "int64"
         self.axis = [0]
         self.axis_type = "int32"
+
+    def config_dtype(self):
+        self.x_type = "float64"
+
+
+class TestGatherOp2FP16(TestGatherOp2):
+    def config_dtype(self):
+        self.x_type = "float16"
 
 
 class TestGatherOp3(TestGatherOp1):
@@ -201,11 +275,19 @@ class TestGatherOp3(TestGatherOp1):
         For multi-dimension input
         """
         self.x_shape = (10, 88, 10)
-        self.x_type = "float64"
+        self.config_dtype()
         self.index = [1, 3, 5]
         self.index_type = "int64"
         self.axis = [2]
         self.axis_type = "int32"
+
+    def config_dtype(self):
+        self.x_type = "float64"
+
+
+class TestGatherOp3FP16(TestGatherOp3):
+    def config_dtype(self):
+        self.x_type = "float16"
 
 
 class TestGatherOp4(TestGatherOp1):
@@ -214,12 +296,20 @@ class TestGatherOp4(TestGatherOp1):
         For multi-dimension input
         """
         self.x_shape = (3, 100, 10)
-        self.x_type = "float64"
+        self.config_dtype()
         self.index = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         self.index_type = "int64"
         self.axis = [0]
         self.axis_type = "int32"
         self.attrs = {'overwrite': False}
+
+    def config_dtype(self):
+        self.x_type = "float64"
+
+
+class TestGatherOp4FP16(TestGatherOp4):
+    def config_dtype(self):
+        self.x_type = "float16"
 
 
 class API_TestGather(unittest.TestCase):
@@ -244,9 +334,9 @@ class API_TestGather(unittest.TestCase):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
-            x = paddle.fluid.data('x', shape=[-1, 2], dtype='float64')
-            index = paddle.fluid.data('index', shape=[-1, 1], dtype='int32')
-            axis = paddle.fluid.data('axis', shape=[1], dtype='int32')
+            x = paddle.static.data('x', shape=[-1, 2], dtype='float64')
+            index = paddle.static.data('index', shape=[-1, 1], dtype='int32')
+            axis = paddle.static.data('axis', shape=[1], dtype='int32')
             out = paddle.gather(x, index, axis)
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
@@ -338,10 +428,10 @@ class TestGathertError(unittest.TestCase):
         ):
 
             shape = [8, 9, 6]
-            x = paddle.fluid.data(shape=shape, dtype='int8', name='x')
-            axis = paddle.fluid.data(shape=[1], dtype='float32', name='axis')
-            index = paddle.fluid.data(shape=shape, dtype='int32', name='index')
-            index_float = paddle.fluid.data(
+            x = paddle.static.data(shape=shape, dtype='int8', name='x')
+            axis = paddle.static.data(shape=[1], dtype='float32', name='axis')
+            index = paddle.static.data(shape=shape, dtype='int32', name='index')
+            index_float = paddle.static.data(
                 shape=shape, dtype='float32', name='index_float'
             )
 
@@ -369,9 +459,9 @@ class TestGathertError(unittest.TestCase):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
 
             shape = [8, 9, 6]
-            x = fluid.data(shape=shape, dtype='int8', name='x')
-            index = fluid.data(shape=shape, dtype='int32', name='mask')
-            index_float = fluid.data(
+            x = paddle.static.data(shape=shape, dtype='int8', name='x')
+            index = paddle.static.data(shape=shape, dtype='int32', name='mask')
+            index_float = paddle.static.data(
                 shape=shape, dtype='float32', name='index_float'
             )
 
@@ -391,10 +481,10 @@ class TestGathertError(unittest.TestCase):
         ):
 
             shape = [8, 9, 6]
-            x = paddle.fluid.data(shape=shape, dtype='int32', name='x')
-            axis = paddle.fluid.data(shape=[1], dtype='int32', name='axis')
-            index = paddle.fluid.data(shape=shape, dtype='int32', name='index')
-            index_float = paddle.fluid.data(
+            x = paddle.static.data(shape=shape, dtype='int32', name='x')
+            axis = paddle.static.data(shape=[1], dtype='int32', name='axis')
+            index = paddle.static.data(shape=shape, dtype='int32', name='index')
+            index_float = paddle.static.data(
                 shape=shape, dtype='float32', name='index_float'
             )
 

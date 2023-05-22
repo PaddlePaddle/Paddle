@@ -182,13 +182,13 @@ def monkey_patch_variable():
             In Static Graph Mode:
 
             .. code-block:: python
-
+                import paddle
                 import paddle.fluid as fluid
-
+                paddle.enable_static()
                 startup_prog = fluid.Program()
                 main_prog = fluid.Program()
                 with fluid.program_guard(startup_prog, main_prog):
-                    original_variable = fluid.data(name = "new_variable", shape=[2,2], dtype='float32')
+                    original_variable = paddle.static.data(name = "new_variable", shape=[2,2], dtype='float32')
                     new_variable = original_variable.astype('int64')
                     print("new var's dtype is: {}".format(new_variable.dtype))
 
@@ -408,11 +408,19 @@ def monkey_patch_variable():
                 self = other_var
                 other_var = tmp
 
+            if (
+                op_type == "divide" or op_type == "elementwise_div"
+            ) and self.dtype in _supported_int_dtype_:
+                self = astype(self, 'float32')
+                other_var = astype(other_var, 'float32')
+
             # NOTE(zhiqiu): the output of compare operator should be bool.
             if method_name in compare_ops:
                 out = create_new_tmp_var(current_block(self), dtype="bool")
             else:
-                out = create_new_tmp_var(current_block(self), dtype=lhs_dtype)
+                out = create_new_tmp_var(
+                    current_block(self), dtype=safe_get_dtype(self)
+                )
 
             axis = -1
             if other_var.ndim > 0 and other_var.shape[0] == -1:

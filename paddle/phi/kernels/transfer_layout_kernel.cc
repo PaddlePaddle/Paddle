@@ -17,6 +17,8 @@ limitations under the License. */
 #include <sstream>
 #include <string>
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/visit_type.h"
@@ -69,15 +71,16 @@ void TransferLayoutGeneral(const Context& dev_ctx,
 
   out->Resize(phi::make_ddim(dst_dim));
   dev_ctx.Alloc(out, x.dtype());
-
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   // In GPU fp16 model, we will insert many transfer_layout ops in
   // conv2d_fusion_layout_transfer_pass, so we optimize this kernel on GPU
   if (std::is_same<Context, phi::GPUContext>::value) {
     std::vector<int> axis_nchw_nhwc = {0, 2, 3, 1};
     std::vector<int> axis_nhwc_nchw = {0, 3, 1, 2};
-    const int batch = src_dim[0];
-    int row_len = src_dim[1];
-    int col_len = src_dim[2] * src_dim[3];
+    auto* gpu_ctx = reinterpret_cast<const phi::GPUContext*>(&dev_ctx);
+    const int64_t batch = src_dim[0];
+    int64_t row_len = src_dim[1];
+    int64_t col_len = src_dim[2] * src_dim[3];
     if (axis == axis_nhwc_nchw) {
       row_len = src_dim[1] * src_dim[2];
       col_len = src_dim[3];
@@ -87,15 +90,28 @@ void TransferLayoutGeneral(const Context& dev_ctx,
                             x.data<phi::dtype::float16>(),
                             batch,
                             row_len,
-                            col_len);
+                            col_len,
+                            gpu_ctx);
       return;
     } else if (x.dtype() == phi::DataType::FLOAT32) {
-      funcs::BatchTranspose(
-          out->data<float>(), x.data<float>(), batch, row_len, col_len);
+      funcs::BatchTranspose(out->data<float>(),
+                            x.data<float>(),
+                            batch,
+                            row_len,
+                            col_len,
+                            gpu_ctx);
+      return;
+    } else if (x.dtype() == phi::DataType::BFLOAT16) {
+      funcs::BatchTranspose(out->data<phi::dtype::bfloat16>(),
+                            x.data<phi::dtype::bfloat16>(),
+                            batch,
+                            row_len,
+                            col_len,
+                            gpu_ctx);
       return;
     }
   }
-
+#endif
   PD_VISIT_ALL_TYPES(x.dtype(), "CastDataLayout", ([&] {
                        CastDataLayout<data_t, Context>(dev_ctx, x, axis, out);
                      }));
@@ -136,9 +152,6 @@ void TransferLayoutMKLDNN(const Context& dev_ctx,
   if (src_layout != DataLayout::ONEDNN && dst_layout == DataLayout::ONEDNN) {
     // Case1 - transform from Non-MKLDNN OPKernel to MKLDNN OPKernel
     // Just set layout/format. No real transform occur
-    auto out_format = funcs::OneDNNFormatForSize(
-        x.dims().size(), funcs::ToOneDNNFormat(src_layout));
-
     out->ShareDataWith(x);
     // For NHWC data we need reshape of tensors as MKL-DNN
     // is expecting NHWC dims description order
@@ -148,9 +161,7 @@ void TransferLayoutMKLDNN(const Context& dev_ctx,
       OneDNNContext::tls().set_cur_paddle_data_layout(src_layout);
     }
 
-    dnnl::memory::desc out_mem_desc(vectorize<int64_t>(out->dims()),
-                                    funcs::ToOneDNNDataType(x.dtype()),
-                                    out_format);
+    dnnl::memory::desc out_mem_desc = funcs::make_memory_desc(*out, src_layout);
     out->set_mem_desc(out_mem_desc);
   } else if (src_layout == DataLayout::ONEDNN &&
              dst_layout != DataLayout::ONEDNN) {
@@ -205,15 +216,13 @@ void TransferLayoutKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_GENERAL_KERNEL(transfer_layout,
-                           CPU,
-                           ALL_LAYOUT,
-                           phi::TransferLayoutKernel<phi::CPUContext>,
-                           ALL_DTYPE) {}
+PD_REGISTER_KERNEL_FOR_ALL_DTYPE(transfer_layout,
+                                 CPU,
+                                 ALL_LAYOUT,
+                                 phi::TransferLayoutKernel<phi::CPUContext>) {}
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_REGISTER_GENERAL_KERNEL(transfer_layout,
-                           GPU,
-                           ALL_LAYOUT,
-                           phi::TransferLayoutKernel<phi::GPUContext>,
-                           ALL_DTYPE) {}
+PD_REGISTER_KERNEL_FOR_ALL_DTYPE(transfer_layout,
+                                 GPU,
+                                 ALL_LAYOUT,
+                                 phi::TransferLayoutKernel<phi::GPUContext>) {}
 #endif

@@ -78,8 +78,16 @@ def shard_tensor(x, process_mesh=None, shard_spec=None):
         ), "Specify the process mesh argument or use ProcessMesh context manager first."
     assert isinstance(
         shard_spec, list
-    ), "Argument shard_spec {} is not an instance of list".format(shard_spec)
-    dist_tensor = DistributedTensor(x)
+    ), f"Argument shard_spec {shard_spec} is not an instance of list"
+    if isinstance(x, str):
+        x = (
+            paddle.static.default_main_program()
+            .global_block()
+            ._var_recursive(x)
+        )
+        dist_tensor = DistributedTensor(x)
+    else:
+        dist_tensor = DistributedTensor(x)
     serial_tensor = dist_tensor.serial_tensor
     dist_tensor.dist_attr.process_mesh = process_mesh
     if serial_tensor.type in __no_shape_var_type__:
@@ -102,6 +110,7 @@ def shard_tensor(x, process_mesh=None, shard_spec=None):
     default_dist_ctx = get_default_distributed_context()
     default_dist_ctx.add_dist_tensor_for_program(dist_tensor)
     dist_tensor = default_dist_ctx.get_dist_tensor_for_program(x)
+    default_dist_ctx.add_process_mesh(process_mesh)
     return x
 
 

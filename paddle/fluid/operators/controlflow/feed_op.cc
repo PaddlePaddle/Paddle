@@ -97,7 +97,7 @@ void FeedSparseCooTensorKernel(const Context& dev_ctx,
 }
 
 template <typename Context>
-void FeedStringsKernel(const Context& dev_ctx,
+void FeedStringsKernel(const Context& dev_ctx UNUSED,
                        const phi::ExtendedTensor& x,
                        int col,
                        phi::ExtendedTensor* out) {
@@ -212,74 +212,29 @@ REGISTER_OPERATOR(
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     paddle::operators::FeedOpInfoMaker);
 
-PD_REGISTER_GENERAL_KERNEL(
-    feed_dense_tensor,
-    CPU,
-    ALL_LAYOUT,
-    paddle::operators::FeedDenseTensorKernel<phi::CPUContext>,
-    ALL_DTYPE) {}
-
-PD_REGISTER_GENERAL_KERNEL(
+PD_REGISTER_KERNEL_FOR_ALL_DTYPE(
     feed_sparse_coo_tensor,
     CPU,
     ALL_LAYOUT,
-    paddle::operators::FeedSparseCooTensorKernel<phi::CPUContext>,
-    ALL_DTYPE) {}
-
-PD_REGISTER_GENERAL_KERNEL(
-    feed_strings,
-    CPU,
-    ALL_LAYOUT,
-    paddle::operators::FeedStringsKernel<phi::CPUContext>,
-    ALL_DTYPE) {}
+    paddle::operators::FeedSparseCooTensorKernel<phi::CPUContext>) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_REGISTER_GENERAL_KERNEL(
-    feed_dense_tensor,
-    GPU,
-    ALL_LAYOUT,
-    paddle::operators::FeedDenseTensorKernel<phi::GPUContext>,
-    ALL_DTYPE) {}
-PD_REGISTER_GENERAL_KERNEL(
+PD_REGISTER_KERNEL_FOR_ALL_DTYPE(
     feed_sparse_coo_tensor,
     GPU,
     ALL_LAYOUT,
-    paddle::operators::FeedSparseCooTensorKernel<phi::GPUContext>,
-    ALL_DTYPE) {}
-PD_REGISTER_GENERAL_KERNEL(
-    feed_strings,
-    GPU,
-    ALL_LAYOUT,
-    paddle::operators::FeedStringsKernel<phi::GPUContext>,
-    ALL_DTYPE) {}
+    paddle::operators::FeedSparseCooTensorKernel<phi::GPUContext>) {}
 #elif defined(PADDLE_WITH_XPU)
-PD_REGISTER_GENERAL_KERNEL(
-    feed_dense_tensor,
-    XPU,
-    ALL_LAYOUT,
-    paddle::operators::FeedDenseTensorKernel<phi::XPUContext>,
-    ALL_DTYPE) {}
-PD_REGISTER_GENERAL_KERNEL(
+PD_REGISTER_KERNEL_FOR_ALL_DTYPE(
     feed_sparse_coo_tensor,
     XPU,
     ALL_LAYOUT,
-    paddle::operators::FeedSparseCooTensorKernel<phi::XPUContext>,
-    ALL_DTYPE) {}
-PD_REGISTER_GENERAL_KERNEL(
-    feed_strings,
-    XPU,
-    ALL_LAYOUT,
-    paddle::operators::FeedStringsKernel<phi::XPUContext>,
-    ALL_DTYPE) {}
+    paddle::operators::FeedSparseCooTensorKernel<phi::XPUContext>) {}
 #endif
-#ifdef PADDLE_WITH_CUSTOM_DEVICE
-namespace paddle {
-namespace operators {
-template void FeedDenseTensorKernel<phi::CustomContext>(
-    const phi::CustomContext& dev_ctx,
-    const phi::ExtendedTensor& x,
-    int col,
-    phi::DenseTensor* out);
-}  // namespace operators
-}  // namespace paddle
-#endif
+
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(
+    feed_dense_tensor, ALL_LAYOUT, paddle::operators::FeedDenseTensorKernel) {}
+PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(feed_strings,
+                                         ALL_LAYOUT,
+                                         paddle::operators::FeedStringsKernel) {
+}

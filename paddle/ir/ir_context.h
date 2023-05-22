@@ -13,22 +13,22 @@
 // limitations under the License.
 
 #pragma once
-
-#include <glog/logging.h>
 #include <functional>
 #include <memory>
-#include <unordered_map>
+#include <vector>
 
 namespace ir {
 class IrContextImpl;
 class StorageManager;
 class AbstractType;
+class AbstractAttribute;
 class TypeId;
 class Dialect;
-
+class OpInfo;
+class InterfaceValue;
 ///
 /// \brief IrContext is a global parameterless class used to store and manage
-/// Type and its related data structures.
+/// Type, Attribute and other related data structures.
 ///
 class IrContext {
  public:
@@ -46,12 +46,12 @@ class IrContext {
   IrContextImpl &impl() { return *impl_; }
 
   ///
-  /// \brief Register an AbstractType to IrContext
+  /// \brief Register an AbstractType to IrContext.
   ///
   /// \param type_id The type id of the AbstractType.
   /// \param abstract_type AbstractType* provided by user.
   ///
-  void RegisterAbstractType(ir::TypeId type_id, AbstractType *abstract_type);
+  void RegisterAbstractType(TypeId type_id, AbstractType &&abstract_type);
 
   ///
   /// \brief Returns the storage uniquer used for constructing TypeStorage
@@ -60,16 +60,51 @@ class IrContext {
   /// \return The storage uniquer used for constructing TypeStorage
   /// instances.
   ///
-  StorageManager &storage_manager();
+  StorageManager &type_storage_manager();
 
   ///
-  /// \brief Returns the storage uniquer used for constructing TypeStorage
+  /// \brief Get registered AbstractType from IrContext.
+  ///
+  AbstractType *GetRegisteredAbstractType(TypeId id);
+
+  ///
+  /// \brief Register an AbstractAttribute to IrContext
+  ///
+  /// \param type_id The type id of the AbstractAttribute.
+  /// \param abstract_attribute AbstractAttribute provided by user.
+  ///
+  void RegisterAbstractAttribute(ir::TypeId type_id,
+                                 AbstractAttribute &&abstract_attribute);
+
+  ///
+  /// \brief Returns the storage uniquer used for constructing AttributeStorage
   /// instances.
   ///
-  /// \return The storage uniquer used for constructing TypeStorage
+  /// \return The storage uniquer used for constructing AttributeStorage
   /// instances.
   ///
-  std::unordered_map<TypeId, AbstractType *> &registed_abstracted_type();
+  StorageManager &attribute_storage_manager();
+
+  ///
+  /// \brief Get registered AbstractAttribute from IrContext.
+  ///
+  AbstractAttribute *GetRegisteredAbstractAttribute(TypeId id);
+
+  ///
+  /// \brief Register an op infomation to IrContext
+  ///
+  void RegisterOpInfo(Dialect *dialect,
+                      TypeId op_id,
+                      const char *name,
+                      std::vector<InterfaceValue> &&interface_map,
+                      const std::vector<TypeId> &trait_set,
+                      size_t attributes_num,
+                      const char **attributes_name);
+
+  ///
+  /// \brief Get registered operaiton infomation.
+  ///
+  OpInfo GetRegisteredOpInfo(const std::string &name);
 
   ///
   /// \brief Get the dialect of the DialectT class in the context, ff not found,
@@ -134,7 +169,6 @@ class IrContext {
 
  private:
   IrContext();
-
   const std::unique_ptr<IrContextImpl> impl_;
 };
 

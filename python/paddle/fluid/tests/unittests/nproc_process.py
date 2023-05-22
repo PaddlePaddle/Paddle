@@ -15,7 +15,7 @@
 import os
 import sys
 
-import paddle.fluid as fluid
+from paddle import fluid
 
 
 def train(prefix):
@@ -38,7 +38,7 @@ def train(prefix):
     )
 
     print(name)
-    with open("{}.check_{}.log".format(prefix, trainer_id), "w") as f:
+    with open(f"{prefix}.check_{trainer_id}.log", "w") as f:
         f.write(name)
 
 

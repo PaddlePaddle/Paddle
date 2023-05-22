@@ -29,7 +29,7 @@ namespace operators {
 template <typename Tx,
           typename Ty,
           template <typename>
-          class ReduceOp,
+          class ReduceBaseOp,
           typename TransformOp>
 void TensorReduceImpl(const phi::GPUContext& dev_ctx,
                       const phi::DenseTensor& x,
@@ -40,7 +40,7 @@ void TensorReduceImpl(const phi::GPUContext& dev_ctx,
                       bool is_mean = false) {
   y->mutable_data<Ty>(x.place());
 
-  phi::funcs::ReduceKernel<Tx, Ty, ReduceOp, TransformOp>(
+  phi::funcs::ReduceKernel<Tx, Ty, ReduceBaseOp, TransformOp>(
       static_cast<const phi::GPUContext&>(dev_ctx),
       x,
       y,

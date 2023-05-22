@@ -19,9 +19,8 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.fluid.framework as framework
+from paddle import fluid
+from paddle.fluid import core, framework
 from paddle.fluid.optimizer import SGDOptimizer
 from paddle.fluid.tests.unittests.test_imperative_base import new_program_scope
 from paddle.fluid.tests.unittests.test_static_save_load import PtbModel

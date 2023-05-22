@@ -110,7 +110,6 @@ static void BilinearInterpolationGrad(const DenseTensor& output_grad,
         for (int j = 0; j < c; j++) {  // loop for channels
           // bilinear interpolation grad
           if (data_layout == DataLayout::kNCHW) {
-            // const T grad = output_grad_t(i, j, k, l);
             const MT grad = static_cast<MT>(output_grad_t(i, j, k, l));
             input_grad_t(i, j, y_n, x_w) += static_cast<T>(grad * d_s * d_e);
             input_grad_t(i, j, y_s, x_w) += static_cast<T>(grad * d_n * d_e);

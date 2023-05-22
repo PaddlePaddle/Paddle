@@ -18,8 +18,8 @@ import numpy as np
 from numpy.random import random as rand
 
 import paddle
-import paddle.fluid as fluid
 import paddle.fluid.dygraph as dg
+from paddle import fluid
 
 paddle_apis = {
     "add": paddle.add,

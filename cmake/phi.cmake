@@ -64,6 +64,11 @@ function(generate_unify_header DIR_NAME)
       endif()
     endif()
   endforeach()
+  if(DEFINED REDUCE_INFERENCE_LIB_SIZE)
+    if(${kernel_name} MATCHES ".*_grad")
+      continue()
+    endif()
+  endif()
   # append header into extension.h
   string(REPLACE "${PADDLE_SOURCE_DIR}\/" "" header_file "${header_file}")
   file(APPEND ${phi_extension_header_file} "#include \"${header_file}\"\n")
@@ -78,29 +83,50 @@ function(kernel_declare TARGET_LIST)
     string(
       REGEX
         MATCH
-        "(PD_REGISTER_KERNEL|PD_REGISTER_GENERAL_KERNEL)\\([ \t\r\n]*[a-z0-9_]*,[[ \\\t\r\n\/]*[a-z0-9_]*]?[ \\\t\r\n]*[a-zA-Z]*,[ \\\t\r\n]*[A-Z_]*"
+        "(PD_REGISTER_KERNEL|PD_REGISTER_KERNEL_FOR_ALL_DTYPE|PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE)\\([ \t\r\n]*[a-z0-9_]*,[[ \\\t\r\n\/]*[a-z0-9_]*]?[ \\\t\r\n]*[a-zA-Z_]*,[ \\\t\r\n]*[A-Z_]*"
         first_registry
         "${kernel_impl}")
     if(NOT first_registry STREQUAL "")
+      # some gpu kernel can run on cuda, but not support jetson, so we add this branch
+      if(WITH_NV_JETSON)
+        string(FIND "${first_registry}" "decode_jpeg" pos)
+        if(pos GREATER 1)
+          continue()
+        endif()
+      endif()
       # some gpu kernel only can run on cuda, not support rocm, so we add this branch
-      if(WITH_ROCM OR WITH_NV_JETSON)
+      if(WITH_ROCM)
         string(FIND "${first_registry}" "cuda_only" pos)
         if(pos GREATER 1)
           continue()
         endif()
       endif()
+
+      string(
+        REGEX
+          MATCH
+          "(PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE)\\([ \t\r\n]*[a-z0-9_]*,[[ \\\t\r\n\/]*[a-z0-9_]*]?[ \\\t\r\n]*[a-zA-Z_]*,[ \\\t\r\n]*[A-Z_]*"
+          is_all_backend
+          "${first_registry}")
+
       # parse the registerd kernel message
-      string(REPLACE "PD_REGISTER_KERNEL(" "" kernel_msg "${first_registry}")
-      string(REPLACE "PD_REGISTER_GENERAL_KERNEL(" "" kernel_msg
+      string(REPLACE "PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(" "" kernel_msg
+                     "${first_registry}")
+      string(REPLACE "PD_REGISTER_KERNEL(" "" kernel_msg "${kernel_msg}")
+      string(REPLACE "PD_REGISTER_KERNEL_FOR_ALL_DTYPE(" "" kernel_msg
                      "${kernel_msg}")
       string(REPLACE "," ";" kernel_msg "${kernel_msg}")
       string(REGEX REPLACE "[ \\\t\r\n]+" "" kernel_msg "${kernel_msg}")
       string(REGEX REPLACE "//cuda_only" "" kernel_msg "${kernel_msg}")
 
       list(GET kernel_msg 0 kernel_name)
-      list(GET kernel_msg 1 kernel_backend)
-      list(GET kernel_msg 2 kernel_layout)
-
+      if(NOT is_all_backend STREQUAL "")
+        list(GET kernel_msg 1 kernel_layout)
+        set(kernel_backend "CPU")
+      else()
+        list(GET kernel_msg 1 kernel_backend)
+        list(GET kernel_msg 2 kernel_layout)
+      endif()
       # append kernel declare into declarations.h
       file(
         APPEND ${kernel_declare_file}

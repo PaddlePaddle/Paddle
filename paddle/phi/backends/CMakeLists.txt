@@ -2,10 +2,20 @@ add_subdirectory(dynload)
 add_subdirectory(gpu)
 
 set(BACKENDS_SRCS all_context.cc cpu/cpu_context.cc cpu/cpu_info.cc)
-set(BACKENDS_DEPS enforce place flags eigen3 phi_device_context)
-set(BACKENDS_DEPS allocator generator)
+set(BACKENDS_DEPS
+    enforce
+    place
+    flags
+    eigen3
+    phi_device_context
+    generator
+    phi_os_info)
 if(WITH_XBYAK)
   list(APPEND BACKENDS_DEPS xbyak)
+endif()
+
+if(NOT APPLE AND NOT WIN32)
+  list(APPEND BACKENDS_SRCS device_code.cc)
 endif()
 
 if(WITH_GPU OR WITH_ROCM)
@@ -28,7 +38,7 @@ endif()
 if(WITH_XPU)
   list(APPEND BACKENDS_SRCS xpu/xpu_context.cc xpu/xpu_info.cc)
   list(APPEND BACKENDS_SRCS xpu/xpu_op_list.cc xpu/xpu1_op_list.cc
-       xpu/xpu2_op_list.cc)
+       xpu/xpu2_op_list.cc xpu/xpu_l3_strategy.cc)
 endif()
 
 if(WITH_MKLDNN)
@@ -68,15 +78,3 @@ if(WITH_CUSTOM_DEVICE)
     SRCS custom/capi_test.cc
     DEPS phi_capi)
 endif()
-
-set(COMM_UTILS_DEPS process_group)
-if(WITH_NCCL OR WITH_RCCL)
-  set(COMM_UTILS_DEPS ${PROCESS_GROUP_UTILS_DEPS} process_group_nccl)
-endif()
-if(WITH_CUSTOM_DEVICE)
-  set(COMM_UTILS_DEPS ${PROCESS_GROUP_UTILS_DEPS} process_group_custom)
-endif()
-cc_library(
-  processgroup_comm_utils
-  SRCS processgroup_comm_utils.cc
-  DEPS ${COMM_UTILS_DEPS})

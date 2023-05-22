@@ -115,7 +115,7 @@ class TestSpectralNormOp(TestSpectralNormOpNoGrad):
         self.check_grad(
             ['Weight'],
             'Out',
-            no_grad_set=set(["U", "V"]),
+            no_grad_set={"U", "V"},
         )
 
     def initTestCase(self):

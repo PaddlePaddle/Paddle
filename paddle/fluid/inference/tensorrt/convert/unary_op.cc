@@ -24,16 +24,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
-namespace framework {
-class Scope;
-
-namespace proto {
-class OpDesc;
-}  // namespace proto
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
 namespace inference {
 namespace tensorrt {
 
@@ -46,20 +36,20 @@ class UnaryOpConverter : public OpConverter {
     // Here the two nullptr looks strange, that's because the
     // framework::OpDesc's constructor is strange.
     framework::OpDesc op_desc(op, nullptr);
-    VLOG(3) << "convert a fluid unary op to tensorrt unary layer whose "
+    VLOG(3) << "convert a unary op to tensorrt unary layer whose "
                "type is "
             << op_type_;
     nvinfer1::ITensor* input_tensor =
         engine_->GetITensor(op_desc.Input("X")[0]);
     auto op_pair = ops.find(op_type_);
-    nvinfer1::ILayer* layer;
+    nvinfer1::ILayer* layer = nullptr;
 #if !IS_TRT_VERSION_GE(8500)
     nvinfer1::DataType org_type = input_tensor->getType();
     bool cast = org_type == nvinfer1::DataType::kINT8 ||
                 org_type == nvinfer1::DataType::kINT32;
     if (cast) {
       layer = TRT_ENGINE_ADD_LAYER(engine_, Identity, *input_tensor);
-      if (engine_->precision() == AnalysisConfig::Precision::kFloat32) {
+      if (engine_->precision() == phi::DataType::FLOAT32) {
         layer->setOutputType(0, nvinfer1::DataType::kFLOAT);
       } else {
         layer->setOutputType(0, nvinfer1::DataType::kHALF);

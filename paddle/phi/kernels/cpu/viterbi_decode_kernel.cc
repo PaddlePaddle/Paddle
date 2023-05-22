@@ -34,7 +34,7 @@ namespace phi {
 
 template <typename Context, typename T, typename IndType>
 struct Argmax {
-  void operator()(const Context& dev_ctx,
+  void operator()(const Context& dev_ctx UNUSED,
                   const DenseTensor& input,
                   DenseTensor* out_idx,
                   DenseTensor* out,
@@ -113,7 +113,7 @@ template <typename Context,
           class CompareFunctor,
           typename T>
 struct GetMask {
-  void operator()(const Context& dev_ctx,
+  void operator()(const Context& dev_ctx UNUSED,
                   const DenseTensor& lhs,
                   const DenseTensor& rhs,
                   DenseTensor* mask) {
@@ -127,7 +127,7 @@ template <typename Context,
           class BinaryFunctor,
           typename T>
 struct BinaryOperation {
-  void operator()(const Context& dev_ctx,
+  void operator()(const Context& dev_ctx UNUSED,
                   const DenseTensor& lhs,
                   const DenseTensor& rhs,
                   DenseTensor* output) {
@@ -318,4 +318,6 @@ void ViterbiDecodeKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    viterbi_decode, CPU, ALL_LAYOUT, phi::ViterbiDecodeKernel, float, double) {}
+    viterbi_decode, CPU, ALL_LAYOUT, phi::ViterbiDecodeKernel, float, double) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
+}

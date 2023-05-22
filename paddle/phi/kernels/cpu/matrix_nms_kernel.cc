@@ -15,6 +15,8 @@
 #include "paddle/phi/kernels/matrix_nms_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/core/ddim.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -71,7 +73,7 @@ struct decay_score<T, true> {
 
 template <typename T>
 struct decay_score<T, false> {
-  T operator()(T iou, T max_iou, T sigma) {
+  T operator()(T iou, T max_iou, T sigma UNUSED) {
     return (1. - iou) / (1. - max_iou);
   }
 };
@@ -255,7 +257,7 @@ void MatrixNMSKernel(const Context& ctx,
                      DenseTensor* out,
                      DenseTensor* index,
                      DenseTensor* roisnum) {
-  auto score_dims = scores.dims();
+  auto score_dims = phi::vectorize<int>(scores.dims());
   auto batch_size = score_dims[0];
   auto num_boxes = score_dims[2];
   auto box_dim = bboxes.dims()[2];
@@ -318,4 +320,7 @@ void MatrixNMSKernel(const Context& ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    matrix_nms, CPU, ALL_LAYOUT, phi::MatrixNMSKernel, float, double) {}
+    matrix_nms, CPU, ALL_LAYOUT, phi::MatrixNMSKernel, float, double) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT32);
+  kernel->OutputAt(2).SetDataType(phi::DataType::INT32);
+}

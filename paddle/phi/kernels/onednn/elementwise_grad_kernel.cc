@@ -97,8 +97,10 @@ inline void BroadcastReduction(const Place& place,
                            {DNNL_ARG_DST, *dst_memory},
                        });
   astream.wait();
-  grad_tensor->set_mem_desc(dst_memory->get_desc().reshape(
-      phi::vectorize<int64_t>(grad_tensor->dims())));
+  auto grad_shape = grad_tensor->dims().size() == 0
+                        ? std::vector<int64_t>{1}
+                        : phi::vectorize<int64_t>(grad_tensor->dims());
+  grad_tensor->set_mem_desc(dst_memory->get_desc().reshape(grad_shape));
 }
 
 }  // namespace funcs

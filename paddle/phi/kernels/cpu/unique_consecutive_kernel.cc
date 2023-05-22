@@ -12,8 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/unique_consecutive_kernel.h"
+#include <climits>
+
 #include "paddle/phi/kernels/cpu/unique_consecutive_functor.h"
+#include "paddle/phi/kernels/unique_consecutive_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/errors.h"
@@ -74,4 +76,7 @@ PD_REGISTER_KERNEL(unique_consecutive,
                    float,
                    double,
                    int32_t,
-                   int64_t) {}
+                   int64_t) {
+  kernel->OutputAt(1).SetDataType(kernel_key.dtype());
+  kernel->OutputAt(2).SetDataType(kernel_key.dtype());
+}

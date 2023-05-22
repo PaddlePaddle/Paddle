@@ -8,6 +8,7 @@
 #include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
 #include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
 #include "paddle/fluid/prim/utils/static/desc_tensor.h"
+#include "paddle/fluid/operators/generator/get_expected_kernel_func.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/infermeta/binary.h"
@@ -37,6 +38,8 @@ using paddle::framework::GradVarName;
 {{backward_op_maker(op, op_dict[op["forward"]["name"]])}}
 
 {{operator(op)}}
+  {% elif op is only_composite_op %}
+
   {% else %}
 {{backward_op_reused_maker(op, op_dict[op["forward"]["name"]], op["invoke"])}}
   {% endif %}

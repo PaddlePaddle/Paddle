@@ -15,13 +15,18 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest, check_out_dtype, skip_check_grad_ci
+from eager_op_test import (
+    OpTest,
+    check_out_dtype,
+    paddle_static_guard,
+    skip_check_grad_ci,
+)
+from op import Operator
 
-import paddle.fluid as fluid
-import paddle.fluid.core as core
+import paddle
 import paddle.nn.functional as F
-from paddle.fluid import Program, program_guard
-from paddle.fluid.op import Operator
+from paddle import fluid
+from paddle.fluid import Program, core, program_guard
 
 
 class TestLookupTableOp(OpTest):
@@ -157,33 +162,42 @@ class TestLookupTableWithTensorIdsWIsSelectedRows(
 
 class TestEmbedOpError(unittest.TestCase):
     def test_errors(self):
-        with program_guard(Program(), Program()):
-            input_data = np.random.randint(0, 10, (4, 1)).astype("int64")
+        with paddle_static_guard():
+            with program_guard(Program(), Program()):
+                input_data = np.random.randint(0, 10, (4, 1)).astype("int64")
 
-            def test_Variable():
-                # the input type must be Variable
-                fluid.layers.embedding(input=input_data, size=(10, 64))
+                def test_Variable():
+                    # the input type must be Variable
+                    fluid.layers.embedding(input=input_data, size=(10, 64))
 
-            self.assertRaises(TypeError, test_Variable)
+                self.assertRaises(TypeError, test_Variable)
 
-            def test_input_dtype():
-                # the input dtype must be int64
-                input = fluid.data(name='x', shape=[4, 1], dtype='float32')
-                fluid.layers.embedding(input=input, size=(10, 64))
+                def test_input_dtype():
+                    # the input dtype must be int64
+                    input = paddle.static.data(
+                        name='x', shape=[4, 1], dtype='float32'
+                    )
+                    fluid.layers.embedding(input=input, size=(10, 64))
 
-            self.assertRaises(TypeError, test_input_dtype)
+                self.assertRaises(TypeError, test_input_dtype)
 
-            def test_param_dtype():
-                # dtype must be float32 or float64
-                input2 = fluid.data(name='x2', shape=[4, 1], dtype='int64')
-                fluid.layers.embedding(
-                    input=input2, size=(10, 64), dtype='int64'
+                def test_param_dtype():
+                    # dtype must be float32 or float64
+                    input2 = paddle.static.data(
+                        name='x2', shape=[4, 1], dtype='int64'
+                    )
+                    fluid.layers.embedding(
+                        input=input2, size=(10, 64), dtype='int64'
+                    )
+
+                self.assertRaises(TypeError, test_param_dtype)
+
+                input3 = paddle.static.data(
+                    name='x3', shape=[4, 1], dtype='int64'
                 )
-
-            self.assertRaises(TypeError, test_param_dtype)
-
-            input3 = fluid.data(name='x3', shape=[4, 1], dtype='int64')
-            fluid.layers.embedding(input=input3, size=(10, 64), dtype='float16')
+                fluid.layers.embedding(
+                    input=input3, size=(10, 64), dtype='float16'
+                )
 
 
 class TestLookupTableOpInt8(OpTest):

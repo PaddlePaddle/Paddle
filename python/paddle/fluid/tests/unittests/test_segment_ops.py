@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 
 def compute_segment_sum(x, segment_ids):
@@ -84,7 +84,10 @@ def segment_pool_split(X, SegmentIds, pooltype):
 
 class TestSegmentOps(OpTest):
     def set_data(self):
-        x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        if self.dtype == np.uint16:
+            x = np.random.uniform(-1, 1, self.shape).astype(self.np_dtype)
+        else:
+            x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
         segment_ids = self.set_segment(len(x), len(x) // 5 + 1)
         return x, segment_ids
 
@@ -110,16 +113,26 @@ class TestSegmentOps(OpTest):
         x, segment_ids = self.set_data()
         result = self.compute(x, segment_ids)
         self.inputs = {
-            'X': x.astype(self.dtype),
+            'X': x,
             'SegmentIds': segment_ids.astype(np.int64),
         }
-        self.outputs = {'Out': result.astype(self.dtype)}
+        if self.dtype == np.uint16:
+            self.outputs = {'Out': result.astype(self.np_dtype)}
+        else:
+            self.outputs = {'Out': result.astype(self.dtype)}
+        self.convert_bf16()
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out", check_eager=True)
+        self.check_grad(["X"], "Out")
+
+    def convert_bf16(self):
+        if self.dtype == np.uint16:
+            self.inputs['X'] = convert_float_to_uint16(self.inputs['X'])
+            self.outputs['Out'] = convert_float_to_uint16(self.outputs['Out'])
+            self.place = core.CUDAPlace(0)
 
 
 class TestSegmentSum2(TestSegmentOps):
@@ -141,22 +154,15 @@ class TestSegmentSum2(TestSegmentOps):
 
 class TestSegmentMax(TestSegmentOps):
     def compute(self, x, segment_ids):
-        return compute_segment_min_max(x, segment_ids, pooltype="MAX")
+        result, self.gradient = compute_segment_min_max(
+            x, segment_ids, pooltype="MAX"
+        )
+        return result
 
     def prepare(self):
         super().prepare()
         self.shape = [40, 20]
         self.attrs = {'pooltype': "MAX"}
-
-    def setUp(self):
-        self.prepare()
-        x, segment_ids = self.set_data()
-        result, self.gradient = self.compute(x, segment_ids)
-        self.inputs = {
-            'X': x.astype(self.dtype),
-            'SegmentIds': segment_ids.astype(np.int32),
-        }
-        self.outputs = {'Out': result.astype(self.dtype)}
 
     def test_check_grad(self):
         self.check_grad(["X"], "Out", user_defined_grads=[self.gradient])
@@ -170,7 +176,10 @@ class TestSegmentMax2(TestSegmentMax):
 
 class TestSegmentMin(TestSegmentMax):
     def compute(self, x, segment_ids):
-        return compute_segment_min_max(x, segment_ids, pooltype="MIN")
+        result, self.gradient = compute_segment_min_max(
+            x, segment_ids, pooltype="MIN"
+        )
+        return result
 
     def prepare(self):
         super().prepare()
@@ -197,12 +206,17 @@ class TestSegmentMean(TestSegmentOps):
         x, segment_ids = self.set_data()
         result = self.compute(x, segment_ids)
         self.inputs = {'X': x, 'SegmentIds': segment_ids}
+        if self.dtype == np.uint16:
+            astype = self.np_dtype
+        else:
+            astype = self.dtype
         self.outputs = {
             'Out': result,
             'SummedIds': compute_segment_sum(
-                np.ones([len(x), 1]).astype(self.dtype), segment_ids
+                np.ones([len(x), 1]).astype(astype), segment_ids
             ),
         }
+        self.convert_bf16()
 
 
 class TestSegmentMean2(TestSegmentMean):
@@ -211,6 +225,106 @@ class TestSegmentMean2(TestSegmentMean):
         self.dtype = np.float32
         self.shape = [30, 20]
         self.attrs = {'pooltype': "MEAN"}
+
+
+class TestSegmentSumFP16Op(TestSegmentOps):
+    def prepare(self):
+        super().prepare()
+        self.dtype = np.float16
+
+
+class TestSegmentMaxFP16Op(TestSegmentMax):
+    def prepare(self):
+        super().prepare()
+        self.dtype = np.float16
+
+
+class TestSegmentMinFP16Op(TestSegmentMin):
+    def prepare(self):
+        super().prepare()
+        self.dtype = np.float16
+
+
+class TestSegmentMeanFP16Op(TestSegmentMean):
+    def prepare(self):
+        super().prepare()
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support bfloat16",
+)
+class TestSegmentSumBF16Op(TestSegmentOps):
+    def prepare(self):
+        super().prepare()
+        self.dtype = np.uint16
+        self.np_dtype = np.float32
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place)
+
+    def test_check_grad(self):
+        self.check_grad_with_place(self.place, ["X"], "Out")
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support bfloat16",
+)
+class TestSegmentMaxBF16Op(TestSegmentMax):
+    def prepare(self):
+        super().prepare()
+        self.dtype = np.uint16
+        self.np_dtype = np.float32
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place)
+
+    def test_check_grad(self):
+        self.check_grad_with_place(
+            self.place, ["X"], "Out", user_defined_grads=[self.gradient]
+        )
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support bfloat16",
+)
+class TestSegmentMinBF16Op(TestSegmentMin):
+    def prepare(self):
+        super().prepare()
+        self.dtype = np.uint16
+        self.np_dtype = np.float32
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place)
+
+    def test_check_grad(self):
+        self.check_grad_with_place(
+            self.place, ["X"], "Out", user_defined_grads=[self.gradient]
+        )
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support bfloat16",
+)
+class TestSegmentMeanBF16Op(TestSegmentMean):
+    def prepare(self):
+        super().prepare()
+        self.dtype = np.uint16
+        self.np_dtype = np.float32
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place)
+
+    def test_check_grad(self):
+        self.check_grad_with_place(self.place, ["X"], "Out")
 
 
 class API_SegmentOpsTest(unittest.TestCase):

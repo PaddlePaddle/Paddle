@@ -19,6 +19,7 @@ import platform
 import re
 import ssl
 import subprocess
+import sys
 import time
 import urllib.request
 
@@ -52,7 +53,7 @@ class PRChecker:
         pr_id = os.getenv('GIT_PR_ID')
         if not pr_id:
             print('PREC No PR ID')
-            exit(0)
+            sys.exit(0)
         suffix = os.getenv('PREC_SUFFIX')
         if suffix:
             self.suffix = suffix
@@ -63,7 +64,7 @@ class PRChecker:
             try:
                 commits = self.pr.get_commits().get_page(ix)
                 if len(commits) == 0:
-                    raise ValueError("no commit found in {} page".format(ix))
+                    raise ValueError(f"no commit found in {ix} page")
                 last_commit = commits[-1].commit
             except Exception as e:
                 break
@@ -86,7 +87,7 @@ class PRChecker:
                 else:
                     proxy = '--no-proxy'
             code = subprocess.call(
-                'wget -q {} --no-check-certificate {}'.format(proxy, url),
+                f'wget -q {proxy} --no-check-certificate {url}',
                 shell=True,
             )
             if code == 0:
@@ -161,7 +162,7 @@ class PRChecker:
         )
         if 'cmakelist' in filename.lower():
             isWhiteFile = False
-        elif filename.startswith((not_white_files)):
+        elif filename.startswith(not_white_files):
             isWhiteFile = False
         else:
             isWhiteFile = True
@@ -264,12 +265,12 @@ class PRChecker:
         for l in diff_lines:
             if l not in comment_lines:
                 return False
-        print('PREC {} is only comment'.format(f))
+        print(f'PREC {f} is only comment')
         return True
 
     def get_all_count(self):
         p = subprocess.Popen(
-            "cd {}build && ctest -N".format(PADDLE_ROOT),
+            f"cd {PADDLE_ROOT}build && ctest -N",
             shell=True,
             stdout=subprocess.PIPE,
         )
@@ -311,7 +312,7 @@ class PRChecker:
         )
         if not ret:
             print('PREC download file_ut.json failed')
-            exit(1)
+            sys.exit(1)
 
         with open('ut_file_map.json') as jsonfile:
             file_ut_map = json.load(jsonfile)
@@ -329,9 +330,7 @@ class PRChecker:
             if filename.startswith(PADDLE_ROOT + 'python/'):
                 file_list.append(filename)
             elif filename.startswith(PADDLE_ROOT + 'paddle/'):
-                if filename.startswith((PADDLE_ROOT + 'paddle/infrt')):
-                    filterFiles.append(filename)
-                elif filename.startswith(PADDLE_ROOT + 'paddle/scripts'):
+                if filename.startswith(PADDLE_ROOT + 'paddle/scripts'):
                     if filename.startswith(
                         (
                             PADDLE_ROOT + 'paddle/scripts/paddle_build.sh',
@@ -341,15 +340,14 @@ class PRChecker:
                         file_list.append(filename)
                     else:
                         filterFiles.append(filename)
-                elif (
-                    ('/xpu/' in filename.lower())
-                    or ('/npu/' in filename.lower())
-                    or ('/mlu/' in filename.lower())
-                    or ('/ipu/' in filename.lower())
+                elif ('/xpu/' in filename.lower()) or (
+                    '/ipu/' in filename.lower()
                 ):
                     filterFiles.append(filename)
                 else:
                     file_list.append(filename)
+            elif filename.startswith(PADDLE_ROOT + 'test/'):
+                file_list.append(filename)
             else:
                 if file_dict[filename] == 'added':
                     file_list.append(filename)
@@ -371,7 +369,7 @@ class PRChecker:
                         ut_list.append(ut.rstrip('\r\n'))
             else:
                 print('PREC download prec_delta failed')
-                exit(1)
+                sys.exit(1)
             PRECISION_TEST_Cases_ratio = format(
                 float(len(ut_list)) / float(self.get_all_count()), '.2f'
             )
@@ -404,11 +402,7 @@ class PRChecker:
                     if f_judge.endswith('.md'):
                         ut_list.append('md_placeholder')
                         onlyCommentsFilesOrXpu.append(f_judge)
-                    elif (
-                        'tests/unittests/xpu' in f_judge
-                        or 'tests/unittests/npu' in f_judge
-                        or 'op_npu.cc' in f_judge
-                    ):
+                    elif 'test/xpu' in f_judge:
                         ut_list.append('xpu_npu_placeholder')
                         onlyCommentsFilesOrXpu.append(f_judge)
                     elif f_judge.endswith(('.h', '.cu', '.cc', '.py')):
@@ -484,7 +478,7 @@ class PRChecker:
                                     ut_list.append(ut.rstrip('\r\n'))
                     else:
                         print('PREC download prec_delta failed')
-                        exit(1)
+                        sys.exit(1)
                     print("hitMapFiles: %s" % hitMapFiles)
                     print("ipipe_log_param_PRECISION_TEST: true")
                     print(

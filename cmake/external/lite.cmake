@@ -84,7 +84,7 @@ if(NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
   if(WITH_ARM)
     set(LITE_BUILD_COMMAND ${CMAKE_COMMAND} --build . --target
                            publish_inference -j)
-    message(WARNING "BUILD_COMMAND: ${LITE_BUILD_COMMAND}")
+    message(STATUS "BUILD_COMMAND: ${LITE_BUILD_COMMAND}")
     set(LITE_OPTIONAL_ARGS
         -DWITH_MKL=OFF
         -DLITE_WITH_CUDA=OFF
@@ -120,11 +120,7 @@ if(NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
         ${LITE_PREFIX_DIR}/src/extern_lite/cmake/os/armlinux.cmake
       UPDATE_COMMAND ""
       BUILD_COMMAND ${LITE_BUILD_COMMAND}
-      INSTALL_COMMAND
-        cp ${PADDLE_BINARY_DIR}/paddle/fluid/framework/framework.pb.cc
-        ${LITE_PREFIX_DIR}/src/extern_lite-build/lite/core/ && cp
-        ${PADDLE_BINARY_DIR}/paddle/fluid/framework/framework.pb.h
-        ${LITE_PREFIX_DIR}/src/extern_lite-build/lite/core/
+      INSTALL_COMMAND ""
       CMAKE_ARGS -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                  -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
                  -DCMAKE_CXX_FLAGS=${LITE_CMAKE_CXX_FLAGS}
@@ -141,6 +137,7 @@ if(NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
   else()
     set(LITE_BUILD_COMMAND ${CMAKE_COMMAND} --build . --target
                            publish_inference -j)
+    message(STATUS "BUILD_COMMAND: ${LITE_BUILD_COMMAND}")
     set(LITE_OPTIONAL_ARGS
         -DWITH_MKL=ON
         -DLITE_WITH_CUDA=OFF
@@ -173,11 +170,7 @@ if(NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
         "s?NNadapter_bridges_path = os.path.abspath('..')+\"\/lite\/kernels\/nnadapter\/bridges\/paddle_use_bridges.h\"?NNadapter_bridges_path = os.path.abspath(\'..\')+\"\/extern_lite\/lite\/kernels\/nnadapter\/bridges\/paddle_use_bridges.h\"?"
         ${LITE_PREFIX_DIR}/src/extern_lite//lite/tools/cmake_tools/record_supported_kernel_op.py
       BUILD_COMMAND ${LITE_BUILD_COMMAND}
-      INSTALL_COMMAND
-        cp ${PADDLE_BINARY_DIR}/paddle/fluid/framework/framework.pb.cc
-        ${LITE_PREFIX_DIR}/src/extern_lite-build/lite/core/ && cp
-        ${PADDLE_BINARY_DIR}/paddle/fluid/framework/framework.pb.h
-        ${LITE_PREFIX_DIR}/src/extern_lite-build/lite/core/
+      INSTALL_COMMAND ""
       CMAKE_ARGS -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                  -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
                  -DCMAKE_CXX_FLAGS=${LITE_CMAKE_CXX_FLAGS}
@@ -190,14 +183,14 @@ if(NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
                  -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
                  ${EXTERNAL_OPTIONAL_ARGS}
                  ${LITE_OPTIONAL_ARGS}
+      CMAKE_GENERATOR "Unix Makefiles"
       BUILD_BYPRODUCTS ${LITE_SHARED_LIB})
   endif()
 endif()
 
 message(STATUS "Paddle-lite BINARY_DIR: ${LITE_BINARY_DIR}")
 message(STATUS "Paddle-lite SOURCE_DIR: ${LITE_SOURCE_DIR}")
-include_directories(${LITE_SOURCE_DIR})
-include_directories(${LITE_BINARY_DIR})
+include_directories(${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/include)
 if(LITE_WITH_XPU)
   include_directories(${LITE_BINARY_DIR}/third_party/install/xpu/xdnn/include/)
   include_directories(${LITE_BINARY_DIR}/third_party/install/xpu/xre/include/)

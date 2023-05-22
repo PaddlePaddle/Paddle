@@ -17,7 +17,9 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
+
+np.random.seed(2021)
 
 
 def tensordot_np(x, y, axes):

@@ -63,36 +63,6 @@ BufferedReader::BufferedReader(
   }
 #endif
 
-#ifdef PADDLE_WITH_ASCEND_CL
-  if (platform::is_npu_place(place_)) {
-    int dev_idx = place_.device;
-    compute_stream_ =
-        ((platform::NPUDeviceContext *)(platform::DeviceContextPool::Instance()
-                                            .Get(place_)))
-            ->stream();
-    events_.resize(buffer_size);
-    for (auto &event : events_) {
-      event = platform::NpuEventResourcePool::Instance().New(dev_idx);
-    }
-    stream_ = platform::NpuStreamResourcePool::Instance().New(dev_idx);
-  }
-#endif
-
-#ifdef PADDLE_WITH_MLU
-  if (platform::is_mlu_place(place_)) {
-    int dev_idx = place_.device;
-    compute_stream_ =
-        ((platform::MLUDeviceContext *)(platform::DeviceContextPool::Instance()
-                                            .Get(place_)))
-            ->stream();
-    events_.resize(buffer_size);
-    for (auto &event : events_) {
-      event = platform::MluEventResourcePool::Instance().New(dev_idx);
-    }
-    stream_ = platform::MluStreamResourcePool::Instance().New(dev_idx);
-  }
-#endif
-
 #ifdef PADDLE_WITH_XPU
   if (platform::is_xpu_place(place_)) {
     int dev_idx = place_.device;
@@ -128,8 +98,6 @@ BufferedReader::BufferedReader(
 
   cpu_buffer_.resize(buffer_size);
   cuda_buffer_.resize(buffer_size);
-  npu_buffer_.resize(buffer_size);
-  mlu_buffer_.resize(buffer_size);
   xpu_buffer_.resize(buffer_size);
   custom_device_buffer_.resize(buffer_size);
   ReadTillBufferFullAsync();
@@ -275,107 +243,6 @@ void BufferedReader::ReadAsync(size_t i) {
     }
 #endif
 
-#ifdef PADDLE_WITH_ASCEND_CL
-    if (platform::is_npu_place(place_)) {
-      TensorVec &npu = npu_buffer_[i];
-      if (npu.empty()) {
-        npu.resize(cpu.size());
-      } else {
-        PADDLE_ENFORCE_EQ(
-            npu.size(),
-            cpu.size(),
-            platform::errors::InvalidArgument(
-                "Input tensor number on NPU and CPU devices are not matched. "
-                "The number on NPU is %d, on CPU is %d",
-                npu.size(),
-                cpu.size()));
-      }
-
-      std::vector<void *> npu_ptrs;
-      npu_ptrs.reserve(cpu.size());
-      for (size_t i = 0; i < cpu.size(); ++i) {
-        npu[i].Resize(cpu[i].dims());
-        npu[i].set_layout(cpu[i].layout());
-        npu_ptrs.emplace_back(npu[i].mutable_data(place_, cpu[i].type()));
-      }
-
-      platform::SetNPUDeviceId(place_.device);
-      platform::NPUEventRecord(events_[i].get(), compute_stream_);
-      platform::NPUStreamWaitEvent(stream_.get(), events_[i].get());
-
-      platform::RecordEvent record_event("BufferedReader:MemoryCopy",
-                                         platform::TracerEventType::UserDefined,
-                                         1);
-      for (size_t i = 0; i < cpu.size(); ++i) {
-        auto cpu_place = cpu[i].place();
-        auto cpu_ptr = cpu[i].data();
-        auto npu_ptr = npu_ptrs[i];
-        auto size = cpu[i].numel() * phi::SizeOf(cpu[i].dtype());
-        if ((platform::is_npu_place(cpu_place))) {
-          memory::Copy(
-              place_, npu_ptr, cpu_place, cpu_ptr, size, stream_.get());
-        } else {
-          memory::Copy(
-              place_, npu_ptr, cpu_place, cpu_ptr, size, stream_.get());
-          platform::NPUStreamSync(stream_.get());
-        }
-        npu[i].set_lod(cpu[i].lod());
-      }
-      platform::NPUStreamSync(stream_.get());
-    }
-#endif
-
-#ifdef PADDLE_WITH_MLU
-    if (platform::is_mlu_place(place_)) {
-      TensorVec &mlu = mlu_buffer_[i];
-      if (mlu.empty()) {
-        mlu.resize(cpu.size());
-      } else {
-        PADDLE_ENFORCE_EQ(
-            mlu.size(),
-            cpu.size(),
-            platform::errors::InvalidArgument(
-                "Input tensor number on MLU and CPU devices are not matched. "
-                "The number on MLU is %d, on CPU is %d",
-                mlu.size(),
-                cpu.size()));
-      }
-
-      std::vector<void *> mlu_ptrs;
-      mlu_ptrs.reserve(cpu.size());
-      for (size_t i = 0; i < cpu.size(); ++i) {
-        mlu[i].Resize(cpu[i].dims());
-        mlu[i].set_layout(cpu[i].layout());
-        mlu_ptrs.emplace_back(mlu[i].mutable_data(place_, cpu[i].type()));
-      }
-
-      platform::SetMLUDeviceId(place_.device);
-      PADDLE_ENFORCE_MLU_SUCCESS(
-          cnPlaceNotifier(events_[i].get(), compute_stream_));
-      PADDLE_ENFORCE_MLU_SUCCESS(cnWaitNotifier(events_[i].get()));
-
-      platform::RecordEvent record_event("BufferedReader:MemoryCopy",
-                                         platform::TracerEventType::UserDefined,
-                                         1);
-      for (size_t i = 0; i < cpu.size(); ++i) {
-        auto cpu_place = cpu[i].place();
-        auto cpu_ptr = cpu[i].data();
-        auto mlu_ptr = mlu_ptrs[i];
-        auto size = cpu[i].numel() * phi::SizeOf(cpu[i].dtype());
-        if ((platform::is_mlu_place(cpu_place))) {
-          memory::Copy(
-              place_, mlu_ptr, cpu_place, cpu_ptr, size, stream_.get());
-        } else {
-          memory::Copy(
-              place_, mlu_ptr, cpu_place, cpu_ptr, size, stream_.get());
-          platform::MLUStreamSync(stream_.get());
-        }
-        mlu[i].set_lod(cpu[i].lod());
-      }
-      platform::MLUStreamSync(stream_.get());
-    }
-#endif
-
 #ifdef PADDLE_WITH_XPU
     if (platform::is_xpu_place(place_)) {
       TensorVec &xpu = xpu_buffer_[i];
@@ -400,7 +267,7 @@ void BufferedReader::ReadAsync(size_t i) {
         xpu_ptrs.emplace_back(xpu[i].mutable_data(place_, cpu[i].type()));
       }
 
-      platform::XPUDeviceGuard gurad(place_.device);
+      platform::XPUDeviceGuard guard(place_.device);
       int r = xpu_event_record(events_[i].get(), compute_stream_);
       PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu_event_record");
       r = xpu_stream_wait_event(stream_.get(), events_[i].get());
@@ -435,6 +302,8 @@ void BufferedReader::ReadAsync(size_t i) {
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
     if (platform::is_custom_place(place_)) {
+      phi::DeviceManager::SetDevice(place_);
+
       TensorVec &custom_device = custom_device_buffer_[i];
       if (custom_device.empty()) {
         custom_device.resize(cpu.size());
@@ -458,7 +327,6 @@ void BufferedReader::ReadAsync(size_t i) {
             custom_device[i].mutable_data(place_, cpu[i].type()));
       }
 
-      phi::DeviceManager::SetDevice(place_);
       phi::DeviceManager::GetDeviceWithPlace(place_)->RecordEvent(
           custom_device_events_[i].get(), custom_device_compute_stream_.get());
       phi::DeviceManager::GetDeviceWithPlace(place_)->StreamWaitEvent(
@@ -516,10 +384,6 @@ void BufferedReader::ReadNextImpl(paddle::framework::LoDTensorArray *out) {
 
   if (platform::is_gpu_place(place_)) {
     *out = std::move(cuda_buffer_[i]);
-  } else if (platform::is_npu_place(place_)) {
-    *out = std::move(npu_buffer_[i]);
-  } else if (platform::is_mlu_place(place_)) {
-    *out = std::move(mlu_buffer_[i]);
   } else if (platform::is_xpu_place(place_)) {
     *out = std::move(xpu_buffer_[i]);
   } else if (platform::is_custom_place(place_)) {

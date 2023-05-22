@@ -101,7 +101,6 @@ class Normal(distribution.Distribution):
                 'Normal',
             )
 
-        self.batch_size_unknown = False
         self.all_arg_is_float = False
         self.name = name if name is not None else 'Normal'
         self.dtype = 'float32'
@@ -112,7 +111,6 @@ class Normal(distribution.Distribution):
             scale = float(scale)
 
         if self._validate_args(loc, scale):
-            self.batch_size_unknown = True
             self.loc = loc
             self.scale = scale
             self.dtype = convert_dtype(loc.dtype)
@@ -174,8 +172,7 @@ class Normal(distribution.Distribution):
         shape = list(shape)
         batch_shape = list((self.loc + self.scale).shape)
         name = self.name + '_sample'
-
-        if self.batch_size_unknown:
+        if -1 in batch_shape:
             output_shape = shape + batch_shape
             zero_tmp = tensor.fill_constant_batch_size_like(
                 self.loc + self.scale, batch_shape + shape, self.dtype, 0.0
@@ -193,7 +190,7 @@ class Normal(distribution.Distribution):
             output_shape = shape + batch_shape
             output = random.gaussian(
                 output_shape, mean=0.0, std=1.0, seed=seed, dtype=self.dtype
-            ) * (tensor.zeros(output_shape, dtype=self.dtype) + self.scale)
+            ) * (paddle.zeros(output_shape, dtype=self.dtype) + self.scale)
             output = paddle.add(output, self.loc, name=name)
             if self.all_arg_is_float:
                 return paddle.reshape(output, shape, name=name)
@@ -236,12 +233,15 @@ class Normal(distribution.Distribution):
         """
         name = self.name + '_entropy'
         batch_shape = list((self.loc + self.scale).shape)
-        zero_tmp = tensor.fill_constant_batch_size_like(
-            self.loc + self.scale, batch_shape, self.dtype, 0.0
-        )
+        if -1 in batch_shape:
+            zero_tmp = tensor.fill_constant_batch_size_like(
+                self.loc + self.scale, batch_shape, self.dtype, 0.0
+            )
+        else:
+            zero_tmp = paddle.full(batch_shape, 0.0, self.dtype)
         return paddle.add(
             0.5 + zero_tmp,
-            0.5 * math.log(2 * math.pi) + paddle.log((self.scale + zero_tmp)),
+            0.5 * math.log(2 * math.pi) + paddle.log(self.scale + zero_tmp),
             name=name,
         )
 

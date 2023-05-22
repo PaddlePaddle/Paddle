@@ -16,16 +16,6 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
 namespace paddle {
-namespace framework {
-class Scope;
-
-namespace proto {
-class OpDesc;
-}  // namespace proto
-}  // namespace framework
-}  // namespace paddle
-
-namespace paddle {
 namespace inference {
 namespace tensorrt {
 
@@ -37,7 +27,7 @@ class AffineChannelOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(3) << "convert a fluid affine_channel op to tensorrt scale nd layer";
+    VLOG(3) << "convert a affine_channel op to tensorrt scale nd layer";
 
     framework::OpDesc op_desc(op, nullptr);
     std::string input_name = op_desc.Input("X").front();

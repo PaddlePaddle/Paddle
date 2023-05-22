@@ -24,7 +24,7 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(3) << "convert a fluid multihead_mamul_roformer op to a corresponding "
+    VLOG(3) << "convert a multihead_mamul_roformer op to a corresponding "
                "tensorrt "
                "network structure";
     framework::OpDesc op_desc(op, nullptr);
@@ -178,7 +178,7 @@ class MultiheadMatMulRoformerOpConverter : public OpConverter {
         bool with_fp16 =
             engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
 
-        if (engine_->precision() == AnalysisConfig::Precision::kInt8) {
+        if (engine_->precision() == phi::DataType::INT8) {
           with_fp16 = true;
         }
         plugin::DynamicPluginTensorRT* plugin =

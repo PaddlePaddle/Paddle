@@ -18,6 +18,9 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/phi_utils.h"
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
+#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
+#include "paddle/fluid/prim/utils/static/desc_tensor.h"
 #include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
@@ -204,6 +207,43 @@ Example:
   }
 };
 
+class SplitCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
+ public:
+  void Apply() override {
+    paddle::optional<std::vector<paddle::Tensor>> tensor_sections =
+        this->GetOptionalMultiForwardInput("SectionsTensorList");
+    paddle::optional<paddle::Tensor> tensor_axis =
+        this->GetOptionalSingleForwardInput("AxisTensor");
+    int axis = static_cast<int>(this->Attr<int>("axis"));
+    std::vector<int> sections =
+        static_cast<std::vector<int>>(this->Attr<std::vector<int>>("sections"));
+
+    paddle::Tensor input_grad = this->GetSingleInputGrad("X");
+    auto dx_ptr = this->GetOutputPtr(&input_grad);
+    std::string dx_name = this->GetOutputName(input_grad);
+    std::vector<paddle::Tensor> out_grad = this->GetMultiOutputGrad("Out");
+
+    if (tensor_axis.is_initialized() || tensor_sections.is_initialized()) {
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "We don't support dynamic index or sections from tensor for split "
+          "composite grad for now. "));
+    } else {
+      VLOG(6) << "Runing split_grad composite func";
+      prim::split_grad<prim::DescTensor>(out_grad, axis, dx_ptr);
+      this->RecoverOutputName(input_grad, dx_name);
+    }
+  }
+};
+
+class SplitInferVarType : public framework::VarTypeInference {
+ public:
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    ctx->SyncTypeAndDataType("X", "Out");
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -212,5 +252,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(split,
                   ops::SplitOp,
                   ops::SplitOpMaker,
+                  ops::SplitCompositeGradOpMaker,
+                  ops::SplitInferVarType,
                   ops::SplitGradMaker<paddle::framework::OpDesc>,
                   ops::SplitGradMaker<paddle::imperative::OpBase>);

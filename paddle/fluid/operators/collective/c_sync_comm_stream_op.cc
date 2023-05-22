@@ -48,13 +48,8 @@ Call communication stream synchronization.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 
 REGISTER_OP_WITHOUT_GRADIENT(c_sync_comm_stream,
                              ops::CSyncCommStreamOp,
                              ops::CSyncCommStreamOpMaker);
-
-REGISTER_OP_CUDA_KERNEL(c_sync_comm_stream, ops::CSyncCommStreamKernel<float>);
-
-REGISTER_OP_NPU_KERNEL(c_sync_comm_stream, ops::CSyncCommStreamKernel<float>);
-
-REGISTER_OP_MLU_KERNEL(c_sync_comm_stream, ops::CSyncCommStreamKernel<float>);

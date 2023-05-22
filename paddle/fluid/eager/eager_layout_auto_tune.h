@@ -65,7 +65,7 @@ inline std::shared_ptr<EagerLayoutTransformer> EagerLayoutAutotune(
     const std::string& op_name,
     const paddle::small_vector<std::vector<paddle::Tensor>,
                                kSlotSmallVectorSize>& tensors_vector,
-    T* attr) {
+    T* attr UNUSED) {
   // For lightly op like reduce
   if (!(DesiredLayout() == phi::DataLayout::UNDEFINED)) {
     VLOG(4) << "LayoutAutotune was unstarted. Current op :" << op_name;
@@ -81,7 +81,7 @@ inline std::shared_ptr<EagerLayoutTransformer> EagerLayoutAutotune(
     const paddle::small_vector<std::vector<paddle::Tensor>,
                                kSlotSmallVectorSize>& tensors_vector,
     T1* axis,
-    T2* keep_dim) {
+    T2* keep_dim UNUSED) {
   // For lightly op like argmax
   return EagerLayoutAutotune<T1>(op_name, tensors_vector, axis);
 }
@@ -103,11 +103,9 @@ inline std::shared_ptr<EagerLayoutTransformer> EagerLayoutAutotune(
     } else {
       auto data_type = tensors_vector[0][0].dtype();
       bool is_tune_fp32 =
-          (data_type == paddle::experimental::DataType::FLOAT32) &&
-          (*attr == "NHWC");
+          (data_type == phi::DataType::FLOAT32) && (*attr == "NHWC");
       bool is_tune_fp16 =
-          (data_type == paddle::experimental::DataType::FLOAT16) &&
-          (*attr == "NCHW");
+          (data_type == phi::DataType::FLOAT16) && (*attr == "NCHW");
       VLOG(4) << "LayoutAutoTune assert with dtype and layout, Current op : "
               << op_name;
       if (is_tune_fp32) {
@@ -152,7 +150,7 @@ inline std::shared_ptr<EagerLayoutTransformer> EagerLayoutAutotune(
         op_name, tensors_vector, tensors_vector[0][0].layout());
   }
 
-  if (op_name == "transpose2" &&
+  if ((op_name == "transpose2" || op_name == "trans_layout") &&
       (tensors_vector[0][0].layout() == DesiredLayout())) {
     auto trans = std::make_shared<EagerTransposeOpTransformer>(op_name);
     trans->SetAttr(attr,

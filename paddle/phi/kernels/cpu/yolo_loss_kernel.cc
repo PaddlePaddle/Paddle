@@ -371,4 +371,6 @@ void YoloLossKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    yolo_loss, CPU, ALL_LAYOUT, phi::YoloLossKernel, float, double) {}
+    yolo_loss, CPU, ALL_LAYOUT, phi::YoloLossKernel, float, double) {
+  kernel->OutputAt(2).SetDataType(phi::DataType::INT32);
+}

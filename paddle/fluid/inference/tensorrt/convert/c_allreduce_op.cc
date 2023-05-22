@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/plugin/c_allreduce_op_plugin.h"
+#include "paddle/phi/common/data_type.h"
 
 namespace paddle {
 namespace inference {
@@ -30,7 +31,7 @@ class CAllReduceOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-    VLOG(4) << "convert fluid callreduce op to tensorrt layer";
+    VLOG(4) << "convert callreduce op to tensorrt layer";
     if (!engine_->with_dynamic_shape()) {
       PADDLE_THROW(
           platform::errors::Fatal("Unsupported static graph mode. Please set "
@@ -68,7 +69,7 @@ class CAllReduceOpConverter : public OpConverter {
 #if IS_TRT_VERSION_GE(6000)
     bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
 
-    if (engine_->precision() == AnalysisConfig::Precision::kInt8) {
+    if (engine_->precision() == phi::DataType::INT8) {
       with_fp16 = true;
     }
 

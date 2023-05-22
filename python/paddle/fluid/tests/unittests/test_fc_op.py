@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest, paddle_static_guard
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import Program, core, program_guard
 
 SEED = 2020
@@ -51,7 +51,7 @@ class MatrixGenerate:
         if bias_dims == 2:
             self.bias = np.random.random((1, oc)).astype("float32")
         else:
-            self.bias = np.random.random((oc)).astype("float32")
+            self.bias = np.random.random(oc).astype("float32")
 
 
 class TestFCOp(OpTest):
@@ -144,27 +144,28 @@ class TestFcOp_NumFlattenDims_NegOne(unittest.TestCase):
             startup_program = Program()
             main_program = Program()
 
-            with program_guard(main_program, startup_program):
-                input = np.random.random([2, 2, 25]).astype("float32")
-                x = paddle.static.data(
-                    name="x",
-                    shape=[2, 2, 25],
-                    dtype="float32",
-                )
+            with paddle_static_guard():
+                with program_guard(main_program, startup_program):
+                    input = np.random.random([2, 2, 25]).astype("float32")
+                    x = paddle.static.data(
+                        name="x",
+                        shape=[2, 2, 25],
+                        dtype="float32",
+                    )
 
-                out = paddle.static.nn.fc(
-                    x=x, size=1, num_flatten_dims=num_flatten_dims
-                )
+                    out = paddle.static.nn.fc(
+                        x=x, size=1, num_flatten_dims=num_flatten_dims
+                    )
 
-            place = (
-                fluid.CPUPlace()
-                if not core.is_compiled_with_cuda()
-                else fluid.CUDAPlace(0)
-            )
-            exe = fluid.Executor(place=place)
-            exe.run(startup_program)
-            out = exe.run(main_program, feed={"x": input}, fetch_list=[out])
-            return out
+                place = (
+                    fluid.CPUPlace()
+                    if not core.is_compiled_with_cuda()
+                    else fluid.CUDAPlace(0)
+                )
+                exe = fluid.Executor(place=place)
+                exe.run(startup_program)
+                out = exe.run(main_program, feed={"x": input}, fetch_list=[out])
+                return out
 
         res_1 = run_program(-1)
         res_2 = run_program(2)
@@ -177,27 +178,35 @@ class TestFCOpError(unittest.TestCase):
             input_data = np.random.random((2, 4)).astype("float32")
 
             def test_Variable():
-                # the input type must be Variable
-                paddle.static.nn.fc(x=input_data, size=1)
+                with paddle_static_guard():
+                    # the input type must be Variable
+                    paddle.static.nn.fc(x=input_data, size=1)
 
             self.assertRaises(TypeError, test_Variable)
 
             def test_input_list():
-                # each of input(list) must be Variable
-                paddle.static.nn.fc(x=[input_data], size=1)
+                with paddle_static_guard():
+                    # each of input(list) must be Variable
+                    paddle.static.nn.fc(x=[input_data], size=1)
 
             self.assertRaises(TypeError, test_input_list)
 
             def test_type():
-                # dtype must be float32 or float64
-                x2 = paddle.static.data(name='x2', shape=[-1, 4], dtype='int32')
-                paddle.static.nn.fc(x=x2, size=1)
+                with paddle_static_guard():
+                    # dtype must be float32 or float64
+                    x2 = paddle.static.data(
+                        name='x2', shape=[-1, 4], dtype='int32'
+                    )
+                    paddle.static.nn.fc(x=x2, size=1)
 
             self.assertRaises(TypeError, test_type)
 
-            # The input dtype of fc can be float16 in GPU, test for warning
-            x3 = paddle.static.data(name='x3', shape=[-1, 4], dtype='float16')
-            paddle.static.nn.fc(x=x3, size=1)
+            with paddle_static_guard():
+                # The input dtype of fc can be float16 in GPU, test for warning
+                x3 = paddle.static.data(
+                    name='x3', shape=[-1, 4], dtype='float16'
+                )
+                paddle.static.nn.fc(x=x3, size=1)
 
 
 if __name__ == "__main__":

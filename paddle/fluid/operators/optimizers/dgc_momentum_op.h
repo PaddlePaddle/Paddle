@@ -16,14 +16,15 @@
 
 #include <memory>
 
-#include "paddle/fluid/operators/optimizers/momentum_op.h"
+#include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/kernels/momentum_kernel.h"
 #include "paddle/phi/kernels/sgd_kernel.h"
 
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class DGCMomentumKernel : public framework::OpKernel<T> {
  public:
   DGCMomentumKernel() {}

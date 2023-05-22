@@ -22,7 +22,6 @@ import tempfile
 import numpy as np
 
 import paddle
-import paddle.fluid as fluid
 from paddle import distributed as dist
 from paddle.distributed import fleet
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_optimizer_stage2 import (
@@ -39,7 +38,7 @@ epoch = 2
 linear_size = 1000
 
 
-class MLP(fluid.Layer):
+class MLP(paddle.nn.Layer):
     def __init__(self, linear_size=1000, param_attr=None, bias_attr=None):
         super().__init__()
 
