@@ -59,6 +59,44 @@ def _all_gather_in_dygraph(
     return task
 
 
+def _all_gather_in_static_mode_2(out, tensor, group, sync_op):
+    op_type = 'c_allgather'
+    helper = framework.LayerHelper(op_type, **locals())
+    print("all gather", tensor.dtype)
+    out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
+    data_feeder.check_variable_and_dtype(
+        tensor,
+        'tensor',
+        [
+            'float16',
+            'float32',
+            'float64',
+            'bfloat16',
+            'int32',
+            'int64',
+            'bool',
+            'int8',
+            'uint8',
+        ],
+        'all_gather',
+    )
+
+    ring_id = 0 if group is None else group.id
+    nranks = dist.get_world_size()
+    helper.append_op(
+        type=op_type,
+        inputs={'X': [tensor]},
+        outputs={'Out': [out]},
+        attrs={
+            'ring_id': ring_id,
+            'use_calc_stream': True,
+            'nranks': nranks,
+        },
+    )
+
+    return out
+
+
 def _all_gather_in_static_mode(tensor_list, tensor, group, sync_op):
     op_type = 'c_allgather'
     helper = framework.LayerHelper(op_type, **locals())
@@ -184,9 +222,12 @@ def all_gather(
         assert (
             group is None
         ), "Group can not be used in static graph mode for now."
-        if paddle.is_tensor(tensor_or_tensor_list):
-            raise RuntimeError(
-                "Only support passing a tensor list to `all_gather` in static graph mode now."
+        if tensor_or_tensor_list is None or paddle.is_tensor(
+            tensor_or_tensor_list
+        ):
+            print("all gather use mode 2")
+            return _all_gather_in_static_mode_2(
+                tensor_or_tensor_list, tensor, group, sync_op
             )
         else:
             return _all_gather_in_static_mode(

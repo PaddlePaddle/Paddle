@@ -81,15 +81,22 @@ def _reduce_scatter_in_static_mode(tensor, tensor_or_tensor_list, group):
             'int8',
             'uint8',
             'bool',
-            'uint16',
         ],
         op_type,
     )
 
     helper = framework.LayerHelper(op_type, **locals())
-    ring_id = 0 if group is None else group.id
+
+    # group = _get_global_group() if group is None else group
+    # ring_id = 0 if group is None else group.id
+    ring_id = dist.get_rank()
     nranks = dist.get_world_size()
 
+    if tensor is None:
+        print("allocat output in reduce scatter")
+        tensor = helper.create_variable_for_type_inference(
+            dtype=tensor_or_tensor_list.dtype
+        )
     helper.append_op(
         type=op_type,
         inputs={'x': [tensor_or_tensor_list]},
@@ -99,7 +106,7 @@ def _reduce_scatter_in_static_mode(tensor, tensor_or_tensor_list, group):
             'nranks': nranks,
         },
     )
-    return None
+    return tensor
 
 
 def reduce_scatter(
