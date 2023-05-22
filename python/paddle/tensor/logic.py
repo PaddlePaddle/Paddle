@@ -18,7 +18,7 @@ import paddle
 
 from ..common_ops_import import Variable
 from ..fluid.data_feeder import check_type, check_variable_and_dtype
-from .layer_function_generator import templatedoc
+from ..utils.layer_function_generator import templatedoc
 
 Tensor = paddle.fluid.framework.core.eager.Tensor
 

@@ -17,7 +17,7 @@ from paddle.fluid.core import VarDesc
 from paddle.fluid.data_feeder import check_type, check_variable_and_dtype
 from paddle.fluid.framework import Variable, _non_static_mode
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.layers.layer_function_generator import templatedoc
+from paddle.utils.layer_function_generator import templatedoc
 
 __all__ = []
 

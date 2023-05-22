@@ -39,8 +39,8 @@ from ..framework import (
     core,
     in_dygraph_mode,
 )
+from ..utils.layer_function_generator import generate_layer_fn, templatedoc
 from .creation import _complex_to_real_dtype
-from .layer_function_generator import generate_layer_fn, templatedoc
 from .manipulation import cast
 from .ops import abs  # noqa: F401
 from .ops import acos  # noqa: F401

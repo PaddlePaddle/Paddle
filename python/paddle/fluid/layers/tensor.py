@@ -26,7 +26,6 @@ from ..framework import (
 from ..framework import Variable
 from ..core import VarDesc
 from .. import core
-from .layer_function_generator import templatedoc
 from ..data_feeder import (
     check_variable_and_dtype,
     check_type,
@@ -43,7 +42,6 @@ __all__ = [
 
 
 @deprecated(since='1.8.0', update_to="paddle.fluid.layers.fill_constant")
-@templatedoc()
 def fill_constant_batch_size_like(
     input,
     shape,
