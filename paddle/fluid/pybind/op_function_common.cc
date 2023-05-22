@@ -19,6 +19,10 @@
 #include <pybind11/functional.h>
 #include <pybind11/stl.h>
 
+#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
+#include <numpy/arrayobject.h>
+#include <numpy/arrayscalars.h>
+
 #include <memory>
 #include <string>
 #include <vector>
@@ -102,6 +106,21 @@ bool PyObject_CheckFloatOrToFloat(PyObject** obj) {
     auto to = PyNumber_Float(*obj);
     if (to) {
       *obj = to;
+      return true;
+    }
+  }
+  return false;
+}
+
+// The Python C API `PyComplex_Check` treats the `numpy.complex128`
+// as `complex` object in Python. But it cannot recognize `numpy.complex64`,
+// which is a new data type defined in NumPy. So we only use this function to
+// check the `numpy.complex64` type.
+bool PyObject_CheckNumpyComplex64(PyObject* obj) {
+  import_array();
+  if (PyArray_CheckScalar(obj)) {
+    PyArray_Descr* descr = PyArray_DescrFromScalar(obj);
+    if (descr->type_num == NPY_COMPLEX64) {
       return true;
     }
   }
@@ -250,6 +269,13 @@ phi::dtype::complex<float> CastPyArg2Complex(PyObject* obj,
   if (PyComplex_Check(obj)) {
     double real = PyComplex_RealAsDouble(obj);
     double imag = PyComplex_ImagAsDouble(obj);
+    return phi::dtype::complex<float>(real, imag);
+  } else if (PyObject_CheckNumpyComplex64(obj)) {
+    // PyArrayScalar_VAL is a macro defined in NumPy,
+    // and the file is localted in `core/include/numpy/arrayscalars.h`.
+    npy_cfloat complexData = PyArrayScalar_VAL(obj, CFloat);
+    double real = static_cast<double>(complexData.real);
+    double imag = static_cast<double>(complexData.imag);
     return phi::dtype::complex<float>(real, imag);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
