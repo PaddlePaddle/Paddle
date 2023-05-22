@@ -239,17 +239,6 @@
     data_type : param
   inplace : (in_sum_1 -> out_sum_1), (in_sum_2 -> out_sum_2), (in_sum_3 -> out_sum_3), (in_num_accumulates -> out_num_accumulates), (in_old_num_accumulates -> out_old_num_accumulates), (in_num_updates -> out_num_updates)
 
-- op : batch_norm
-  args : (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias, bool is_test, float momentum=0.9, float epsilon=1e-5, str data_layout="NCHW", bool use_global_stats=false, bool trainable_statistics=false)
-  output : Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
-  infer_meta:
-    func : BatchNormInferMeta
-  kernel :
-    func : batch_norm
-    data_type : x
-  view : (mean -> mean_out), (variance -> variance_out)
-  backward : batch_norm_grad
-
 - op : bce_loss
   args : (Tensor input, Tensor label)
   output : Tensor

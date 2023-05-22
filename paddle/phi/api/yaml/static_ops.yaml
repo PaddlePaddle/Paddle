@@ -58,6 +58,18 @@
     param : [shape, dtype, values]
     data_type : dtype
 
+- op : batch_norm
+  args : (Tensor x, Tensor mean, Tensor variance, Tensor scale, Tensor bias, Tensor MomentumTensor, bool is_test, float momentum=0.9, float epsilon=1e-5, str data_layout="NCHW", bool use_global_stats=false, bool trainable_statistics=false)
+  output : Tensor(out), Tensor(mean_out), Tensor(variance_out), Tensor(saved_mean), Tensor(saved_variance), Tensor(reserve_space)
+  optional : MomentumTensor, reserve_space
+  infer_meta:
+    func : BatchNormInferMeta
+  kernel :
+    func : batch_norm
+    data_type : x
+  view : (mean -> mean_out), (variance -> variance_out)
+  backward : batch_norm_grad
+
 - op : broadcast
   args : (Tensor x, int ring_id = 0, int root = 0)
   output : Tensor(out)
