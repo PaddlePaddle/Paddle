@@ -18,6 +18,13 @@
 #include "paddle/ir/utils.h"
 
 namespace ir {
+Operation *Operation::create(const OperationArgument &argument) {
+  return create(argument.inputs_,
+                argument.output_types_,
+                argument.attribute_,
+                argument.info_);
+}
+
 // Allocate the required memory based on the size and number of inputs, outputs,
 // and operators, and construct it in the order of: OpOutlineResult,
 // OpInlineResult, Operation, Operand.
@@ -88,13 +95,10 @@ void Operation::destroy() {
     // release the uses of this result
     detail::OpOperandImpl *first_use =
         reinterpret_cast<detail::OpResultImpl *>(base_ptr)->first_use();
-    if (first_use != nullptr) {
-      first_use->release_source();
-      detail::OpOperandImpl *next_use = first_use->next_use();
-      while (next_use != nullptr) {
-        next_use->release_source();
-        next_use = next_use->next_use();
-      }
+    while (first_use != nullptr) {
+      first_use->remove_from_ud_chain();
+      first_use =
+          reinterpret_cast<detail::OpResultImpl *>(base_ptr)->first_use();
     }
     // destory the result
     if (idx > max_inline_result_num) {
@@ -125,6 +129,8 @@ void Operation::destroy() {
           << ", size = " << result_mem_size << "}";
   aligned_free(reinterpret_cast<void *>(aligned_ptr));
 }
+
+IrContext *Operation::ir_context() const { return op_info_.ir_context(); }
 
 Operation::Operation(uint32_t num_results,
                      uint32_t num_operands,
@@ -190,9 +196,6 @@ std::string Operation::print() {
   return result.str();
 }
 
-std::string Operation::op_name() const {
-  return op_info_.impl()->dialect()->name() + "." +
-         std::string(op_info_.impl()->name());
-}
+std::string Operation::op_name() const { return op_info_.name(); }
 
 }  // namespace ir

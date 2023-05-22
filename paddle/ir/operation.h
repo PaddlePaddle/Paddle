@@ -16,17 +16,13 @@
 
 #include "paddle/ir/builtin_attribute.h"
 #include "paddle/ir/op_info.h"
+#include "paddle/ir/operation_utils.h"
 #include "paddle/ir/type.h"
 #include "paddle/ir/value_impl.h"
 
 namespace ir {
-template <class ConcreteTrait>
-class OpTraitBase;
-template <typename ConcreteInterface>
-class OpInterfaceBase;
+class OpBase;
 class Program;
-
-using AttributeMap = std::unordered_map<std::string, Attribute>;
 
 class alignas(8) Operation final {
  public:
@@ -40,11 +36,14 @@ class alignas(8) Operation final {
                            const std::vector<ir::Type> &output_types,
                            const AttributeMap &attribute,
                            ir::OpInfo op_info);
+  static Operation *create(const OperationArgument &op_argument);
 
   ///
   /// \brief Destroy the operation objects and free memeory by create().
   ///
   void destroy();
+
+  IrContext *ir_context() const;
 
   ir::OpResult GetResultByIndex(uint32_t index);
 
@@ -92,22 +91,15 @@ class alignas(8) Operation final {
   template <typename T, typename Enabler = void>
   struct CastUtil {
     static T call(const Operation *op) {
-      throw("Can't dyn_cast to T, T should be a Trait or Interface");
+      throw("Can't dyn_cast to T, T should be a Op or Trait or Interface");
     }
   };
+
   template <typename T>
-  struct CastUtil<T,
-                  typename std::enable_if<
-                      std::is_base_of<OpTraitBase<T>, T>::value>::type> {
-    static T call(const Operation *op) { return T(op); }
-  };
-  template <typename T>
-  struct CastUtil<T,
-                  typename std::enable_if<
-                      std::is_base_of<OpInterfaceBase<T>, T>::value>::type> {
-    static T call(const Operation *op) {
-      return T(op, op->op_info_.impl()->GetInterfaceImpl<T>());
-    }
+  struct CastUtil<
+      T,
+      typename std::enable_if<std::is_base_of<OpBase, T>::value>::type> {
+    static T call(const Operation *op) { return T::dyn_cast(op); }
   };
 
   AttributeMap attribute_;

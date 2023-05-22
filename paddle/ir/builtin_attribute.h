@@ -22,9 +22,11 @@ namespace ir {
 ///
 /// \brief All built-in attributes.
 ///
-#define GET_BUILT_IN_ATTRIBUTE_LIST ir::StrAttribute
+#define GET_BUILT_IN_ATTRIBUTE_LIST                             \
+  StrAttribute, BoolAttribute, FloatAttribute, DoubleAttribute, \
+      Int32_tAttribute, Int64_tAttribute, ArrayAttribute
 
-class StrAttribute : public ir::Attribute {
+class StrAttribute : public Attribute {
  public:
   using Attribute::Attribute;
 
@@ -39,13 +41,64 @@ class StrAttribute : public ir::Attribute {
   uint32_t size() const;
 };
 
-}  // namespace ir
+class BoolAttribute : public Attribute {
+ public:
+  using Attribute::Attribute;
 
-namespace std {
-template <>
-struct hash<ir::StrAttribute> {
-  std::size_t operator()(const ir::StrAttribute &obj) const {
-    return std::hash<const ir::StrAttribute::Storage *>()(obj.storage());
-  }
+  DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(BoolAttribute, BoolAttributeStorage);
+
+  bool data() const;
 };
-}  // namespace std
+
+class FloatAttribute : public Attribute {
+ public:
+  using Attribute::Attribute;
+
+  DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(FloatAttribute, FloatAttributeStorage);
+
+  float data() const;
+};
+
+class DoubleAttribute : public Attribute {
+ public:
+  using Attribute::Attribute;
+
+  DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(DoubleAttribute, DoubleAttributeStorage);
+
+  double data() const;
+};
+
+class Int32_tAttribute : public Attribute {
+ public:
+  using Attribute::Attribute;
+
+  DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(Int32_tAttribute, Int32_tAttributeStorage);
+
+  int32_t data() const;
+};
+
+class Int64_tAttribute : public Attribute {
+ public:
+  using Attribute::Attribute;
+
+  DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(Int64_tAttribute, Int64_tAttributeStorage);
+
+  int64_t data() const;
+};
+
+class ArrayAttribute : public Attribute {
+ public:
+  using Attribute::Attribute;
+
+  DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(ArrayAttribute, ArrayAttributeStorage);
+
+  std::vector<Attribute> data() const;
+
+  size_t size() const { return data().size(); }
+
+  bool empty() const { return data().empty(); }
+
+  Attribute operator[](size_t index) const { return data()[index]; }
+};
+
+}  // namespace ir

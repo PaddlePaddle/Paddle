@@ -32,11 +32,11 @@ class GetParameterOp : public ir::Op<GetParameterOp> {
  public:
   using Op::Op;
 
-  static const char* name() { return "GetParameterOp"; }
+  static const char* name() { return "builtin.get_parameter"; }
 
-  static uint32_t attributes_num() { return 1; }
+  static constexpr uint32_t attributes_num = 1;
 
-  static const char* attributes_name_[];
+  static const char* attributes_name[attributes_num];
 };
 
 ///
@@ -47,11 +47,11 @@ class SetParameterOp : public ir::Op<SetParameterOp> {
  public:
   using Op::Op;
 
-  static const char* name() { return "SetParameterOp"; }
+  static const char* name() { return "builtin.set_parameter"; }
 
-  static uint32_t attributes_num() { return 1; }
+  static constexpr uint32_t attributes_num = 1;
 
-  static const char* attributes_name_[];
+  static const char* attributes_name[attributes_num];
 };
 
 }  // namespace ir

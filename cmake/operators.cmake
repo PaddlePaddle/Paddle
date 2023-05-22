@@ -386,6 +386,7 @@ function(op_library TARGET)
     list(REMOVE_ITEM hip_srcs "eigh_op.cu")
     list(REMOVE_ITEM hip_srcs "lstsq_op.cu")
     list(REMOVE_ITEM hip_srcs "multinomial_op.cu")
+    list(REMOVE_ITEM hip_srcs "multiclass_nms3_op.cu")
     hip_library(
       ${TARGET}
       SRCS ${cc_srcs} ${hip_cc_srcs} ${miopen_cu_cc_srcs} ${miopen_cu_srcs}
