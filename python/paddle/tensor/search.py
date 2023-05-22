@@ -25,7 +25,7 @@ from ..framework import (
     LayerHelper,
     convert_np_dtype_to_dtype_,
     core,
-    in_dygraph_mode,
+    in_dynamic_mode,
 )
 
 # from ..fluid.layers import has_inf  #DEFINE_ALIAS
@@ -94,7 +94,7 @@ def argsort(x, axis=-1, descending=False, name=None):
             #  [1 1 0 2]
             #  [0 2 1 1]]]
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         _, ids = _C_ops.argsort(x, axis, descending)
         return ids
     else:
@@ -186,7 +186,7 @@ def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
         flatten = True
         axis = 0
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.argmax(x, axis, keepdim, flatten, var_dtype)
     else:
         helper = LayerHelper("argmax", **locals())
@@ -276,7 +276,7 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
         flatten = True
         axis = 0
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.argmin(x, axis, keepdim, flatten, var_dtype)
     else:
         helper = LayerHelper("argmin", **locals())
@@ -345,7 +345,7 @@ def index_select(x, index, axis=0, name=None):
             # [ 9. 10. 10.]]
     """
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.index_select(x, index, axis)
     else:
         helper = LayerHelper("index_select", **locals())
@@ -429,7 +429,7 @@ def nonzero(x, as_tuple=False):
     shape = x.shape
     rank = len(shape)
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         outs = _C_ops.nonzero(x)
     else:
         check_variable_and_dtype(
@@ -526,7 +526,7 @@ def sort(x, axis=-1, descending=False, name=None):
             #  [4. 7. 4. 6.]
             #  [5. 7. 7. 9.]]]
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         outs, _ = _C_ops.argsort(x, axis, descending)
         return outs
     else:
@@ -577,7 +577,7 @@ def mode(x, axis=-1, keepdim=False, name=None):
            #    [2, 1]]))
 
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.mode(x, axis, keepdim)
     else:
         helper = LayerHelper("mode", **locals())
@@ -676,7 +676,7 @@ def where(condition, x=None, y=None, name=None):
         broadcast_condition = paddle.add(cast_cond, broadcast_zeros)
         broadcast_condition = paddle.cast(broadcast_condition, 'bool')
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.where(broadcast_condition, broadcast_x, broadcast_y)
     else:
         check_variable_and_dtype(condition, 'condition', ['bool'], 'where')
@@ -781,7 +781,7 @@ def index_sample(x, index):
             # [1200 1100]]
 
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.index_sample(x, index)
     else:
         helper = LayerHelper("index_sample", **locals())
@@ -836,7 +836,7 @@ def masked_select(x, mask, name=None):
             #[1.0 5.0 6.0 9.0]
     """
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.masked_select(x, mask)
 
     else:
@@ -907,7 +907,7 @@ def topk(x, k, axis=None, largest=True, sorted=True, name=None):
 
     """
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         if axis is None:
             axis = -1
         out, indices = _C_ops.topk(x, k, axis, largest, sorted)
@@ -1040,7 +1040,7 @@ def searchsorted(
             #         [1, 3, 4, 5]])
 
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.searchsorted(sorted_sequence, values, out_int32, right)
     else:
         check_variable_and_dtype(
@@ -1107,7 +1107,7 @@ def kthvalue(x, k, axis=None, keepdim=False, name=None):
             #  [[0, 2],
             #  [1, 2]]))
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         if axis is not None:
             return _C_ops.kthvalue(x, k, axis, keepdim)
         else:
