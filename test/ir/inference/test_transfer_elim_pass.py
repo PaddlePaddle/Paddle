@@ -23,20 +23,16 @@ os.environ['NVIDIA_TF32_OVERRIDE'] = '0'
 
 
 class TestConvEltwiseaddBnFusePass(PassAutoScanTest):
-    r"""
-         x_var   f_var(persistable)
-           \       /
-               conv2d
-               |
-               conv2d_var    bias_var(persistable)
-                   \          /
-               elementwise_add
+    r"""input0                    input1
+           |                         |
+     transfer_layout         transfer_layout
+           |                       |
+    transfer_layout_out0    transfer_layout_out1
+                  \          /
+                elementwise_add
                        |
-               elementwise_add_var Scale(persistable) Bias(persistable) Mean(persistable) Variance(persistable)
-                       |
-                   batch_norm
-                       |
-    Y  MeanOut VarianceOut  SavedMeanSavedVariance
+                elementwise_add_out
+
     """
 
     def sample_predictor_configs(self, program_config):
