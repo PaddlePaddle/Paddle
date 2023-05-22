@@ -434,7 +434,7 @@ void SetTensorFromPyArrayT(
     }
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(
-        "Cannot use IPUPlace in CPU/GPU/XPU/NPU version, "
+        "Cannot use IPUPlace in CPU/GPU/XPU version, "
         "Please recompile or reinstall Paddle with IPU support."));
 #endif
   } else if (paddle::platform::is_custom_place(place)) {
@@ -1106,7 +1106,7 @@ inline py::array TensorToPyArray(const phi::DenseTensor &tensor,
     return py_arr;
 #else
     PADDLE_THROW(platform::errors::PermissionDenied(
-        "Cannot use CustomPlace in CPU/GPU/XPU/NPU version, "
+        "Cannot use CustomPlace in CPU/GPU/XPU version, "
         "Please recompile or reinstall Paddle with CustomPlace "
         "support."));
 #endif

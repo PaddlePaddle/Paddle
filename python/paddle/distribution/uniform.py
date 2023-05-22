@@ -84,7 +84,7 @@ class Uniform(distribution.Distribution):
             sample = uniform.sample([2])
             # a random tensor created by uniform distribution with shape: [2, 1]
             entropy = uniform.entropy()
-            # [0.6931472] with shape: []
+            # [0.6931472] with shape: [1]
             lp = uniform.log_prob(value_tensor)
             # [-0.6931472] with shape: [1]
             p = uniform.probs(value_tensor)

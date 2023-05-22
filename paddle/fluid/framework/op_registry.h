@@ -257,9 +257,9 @@ struct OpKernelRegistrarFunctorEx<PlaceType,
                                   true,
                                   I,
                                   DataTypeAndKernelType...> {
-  void operator()(const char* op_type,
-                  const char* library_type,
-                  int customized_type_value) const {}
+  void operator()(const char* op_type UNUSED,
+                  const char* library_type UNUSED,
+                  int customized_type_value UNUSED) const {}
 };
 
 template <typename PlaceType, size_t I, typename... DataTypeAndKernelType>

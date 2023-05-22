@@ -35,8 +35,6 @@ const char *AllocationTypeStr(AllocationType type) {
       return "gpu_pinned";
     case AllocationType::XPU:
       return "xpu";
-    case AllocationType::NPUPINNED:
-      return "npu_pinned";
     case AllocationType::IPU:
       return "ipu";
     default:
@@ -55,7 +53,6 @@ std::string Place::DebugString() const {
     os << AllocationTypeStr(alloc_type_);
   }
   if (alloc_type_ == AllocationType::GPUPINNED ||
-      alloc_type_ == AllocationType::NPUPINNED ||
       alloc_type_ == AllocationType::CPU) {
     os << ")";
   } else {

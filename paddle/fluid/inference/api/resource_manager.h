@@ -82,16 +82,6 @@ class GPUContextResource {
   int GetGpuMaxThreadsPerBlock() const;
   std::array<int, 3> GetGpuMaxGridDimSize() const;
 
-  // If stream changes, we need to rebind all handle to new stream.
-  void ReBindStream(gpuStream_t stream);
-  void ReBindDnnHandle(gpuStream_t stream) const;
-  void ReBindBlasHandle(gpuStream_t stream) const;
-  void ReBindBlasTensorCoreHandle(gpuStream_t stream) const;
-  void ReBindBlasTF32Handle(gpuStream_t stream) const;
-  void ReBindSolverDnHandle(gpuStream_t stream) const;
-  void ReBindSparseHandle(gpuStream_t stream) const;
-  void ReBindEigenDevice(gpuStream_t stream, GPUPlace place) const;
-
  private:
   void InitGPUResource(void* stream);
   void DestroyGPUResource();
@@ -134,33 +124,6 @@ class GPUContextResource {
 };
 #endif
 
-#if defined(PADDLE_WITH_XPU)
-class XPUContextResource {
- public:
-  explicit XPUContextResource(const phi::Place& place, void* stream);
-  ~XPUContextResource();
-  phi::Place Place() const;
-  void* GetStream() const;
-  int GetDriverVersion() const;
-  int GetRuntimeVersion() const;
-  int GetXpuVersion() const;
-  void ReBindStream(void* stream);
-
- private:
-  void InitXPUResource(void* stream);
-  void InitXpuProperties();
-
- private:
-  bool owned_stream_{true};
-  void* stream_;
-  phi::Place place_;
-
-  int driver_version_;
-  int runtime_version_;
-  int xpu_version_;
-};  // class XPUContextResource
-#endif
-
 class ResourceManager {
  public:
   ResourceManager() = default;
@@ -178,15 +141,14 @@ class ResourceManager {
   std::mutex cpu_mutex_;
   std::unique_ptr<CPUContextResource> cpu_resource_{nullptr};
 
-// GPU Resource
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-
+  // GPU Resource
  public:
   void* InitGPUResource(const phi::Place& place, void* stream);
   void DestroyGPUResource(void* stream);
   GPUContextResource* GetGPUResource(void* stream) const;
   int RefCount(void* stream) const;
-  void GpuResourceReBindStream(void* old_stream, void* new_stream);
+  void GpuResourceSwitchStream(void* old_stream, void* new_stream);
 
  private:
   void Decrease(void* stream);
@@ -198,28 +160,6 @@ class ResourceManager {
   std::map<void* /*stream*/, std::atomic<int>> ref_count_;
   std::map<void* /*stream*/, std::unique_ptr<GPUContextResource>>
       gpu_resources_;
-#endif
-
-// XPU Resource
-#if defined(PADDLE_WITH_XPU)
-
- public:
-  void* InitXPUResource(const phi::Place& place, void* stream);
-  void DestroyXPUResource(void* stream);
-  XPUContextResource* GetXPUResource(void* stream) const;
-  int RefCount(void* stream) const;
-  void XpuResourceReBindStream(void* old_stream, void* new_stream);
-
- private:
-  void Decrease(void* stream);
-  void Increase(void* stream);
-
- private:
-  std::mutex xpu_mutex_;
-  // a stream corresponding to a series of resource.
-  std::map<void* /*stream*/, std::atomic<int>> ref_count_;
-  std::map<void* /*stream*/, std::unique_ptr<XPUContextResource>>
-      xpu_resources_;
 #endif
 
  private:
