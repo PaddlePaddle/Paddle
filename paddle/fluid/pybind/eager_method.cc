@@ -931,7 +931,7 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
     // with FLAGS_set_to_1d=True. In this case, one `None` should be pop out,
     // otherwise the output shape will be not correct.
     if (static_cast<int>(decrease_axis.size()) == tensor->dims().size()) {
-      VLOG(0)
+      VLOG(1)
           << "Warning: In Tensor '__getitem__', if the number of scalar "
              "elements "
              "in the index is equal to the rank of the Tensor, the output "
@@ -1313,7 +1313,7 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
       }
     }
   } else {
-    auto self_numpy = TensorToPyArray(*self_tensor);
+    auto self_numpy = TensorToPyArray(*self_tensor, true);
     VLOG(4) << "parse_index is false";
     if (PyCheckTensor(_index)) {
       VLOG(4) << "index is tensor";

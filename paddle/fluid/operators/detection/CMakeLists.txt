@@ -54,7 +54,6 @@ detection_library(generate_proposal_labels_op SRCS
 detection_library(multiclass_nms_op SRCS multiclass_nms_op.cc DEPS gpc)
 detection_library(locality_aware_nms_op SRCS locality_aware_nms_op.cc DEPS gpc)
 detection_library(box_clip_op SRCS box_clip_op.cc box_clip_op.cu)
-detection_library(yolov3_loss_op SRCS yolov3_loss_op.cc)
 detection_library(box_decoder_and_assign_op SRCS box_decoder_and_assign_op.cc
                   box_decoder_and_assign_op.cu)
 detection_library(sigmoid_focal_loss_op SRCS sigmoid_focal_loss_op.cc
@@ -92,9 +91,5 @@ cc_library(
   mask_util
   SRCS mask_util.cc
   DEPS memory)
-cc_test(
-  mask_util_test
-  SRCS mask_util_test.cc
-  DEPS memory mask_util)
 detection_library(generate_mask_labels_op SRCS generate_mask_labels_op.cc DEPS
                   mask_util)

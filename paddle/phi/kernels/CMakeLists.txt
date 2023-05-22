@@ -118,6 +118,11 @@ file(
   "strings/gpu/*.cu"
   "fusion/gpu/*.cu")
 
+if(DEFINED REDUCE_INFERENCE_LIB_SIZE)
+  list(FILTER kernel_cu EXCLUDE REGEX ".*_grad_kernel\\.cc$")
+  list(FILTER kernel_cu EXCLUDE REGEX ".*_grad_kernel\\.cu$")
+endif()
+
 if(WITH_CUTLASS)
   execute_process(
     COMMAND ${CMAKE_COMMAND} -E make_directory
@@ -146,6 +151,11 @@ if(WITH_CUTLASS)
        "fusion/cutlass/memory_efficient_attention/autogen/impl/*.cu")
   add_definitions("-DPADDLE_WITH_MEMORY_EFFICIENT_ATTENTION")
   list(APPEND kernel_cu ${cutlass_cu})
+endif()
+
+if(APPLE OR WIN32)
+  list(REMOVE_ITEM kernel_cu
+       "${CMAKE_CURRENT_SOURCE_DIR}/fusion/gpu/fusion_group_kernel.cu")
 endif()
 
 if(WITH_MKLDNN)
@@ -184,8 +194,18 @@ else()
     "fusion/cpu/*.cc")
 endif()
 
-file(GLOB kernel_xpu "xpu/*.cc" "legacy/xpu/*.cc" "selected_rows/xpu/*.cc"
-     "fusion/xpu/*.cc")
+if(DEFINED REDUCE_INFERENCE_LIB_SIZE)
+  list(FILTER kernel_cc EXCLUDE REGEX ".*_grad_kernel\\.cc$")
+endif()
+
+file(
+  GLOB
+  kernel_xpu
+  "xpu/*.cc"
+  "legacy/xpu/*.cc"
+  "selected_rows/xpu/*.cc"
+  "fusion/xpu/*.cc"
+  "sparse/xpu/*.cc")
 
 if(WITH_MKLDNN)
   set(COMMON_KERNEL_DEPS ${COMMON_KERNEL_DEPS} get_kerneltype_forvar_utils)

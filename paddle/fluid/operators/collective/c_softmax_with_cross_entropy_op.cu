@@ -188,8 +188,7 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
 
     eigen_softmax.device(*dev_ctx.eigen_device()) =
         (eigen_logits -
-         eigen_logits_max.reshape(batch_by_one).broadcast(one_by_class))
-            .unaryExpr(phi::funcs::ValueClip<T>());
+         eigen_logits_max.reshape(batch_by_one).broadcast(one_by_class));
 
     // step 3, obtain predict target
     phi::DenseTensor predicted_logits;
@@ -346,8 +345,7 @@ struct CSoftmaxWithCrossEntropyProcessGroupFunctor<phi::GPUContext, T> {
 
     eigen_softmax.device(*dev_ctx.eigen_device()) =
         (eigen_logits -
-         eigen_logits_max.reshape(batch_by_one).broadcast(one_by_class))
-            .unaryExpr(phi::funcs::ValueClip<T>());
+         eigen_logits_max.reshape(batch_by_one).broadcast(one_by_class));
 
     // step 3, obtain predict target
     phi::DenseTensor predicted_logits;

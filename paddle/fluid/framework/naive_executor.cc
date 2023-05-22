@@ -93,7 +93,7 @@ void NaiveExecutor::Run() {
           // ugly, it does work. The following two loops seem time-consuming,
           // but once the memory reaches its peak, the cluster will not update,
           // so it's ok.
-          for (auto op_map : reuse_cache_) {
+          for (auto &op_map : reuse_cache_) {
             // op_map.second is std::unordered_map<phi::DenseTensor*, int>.
             for (auto &it2 : op_map.second) {
               if (it2.second == updated_cluster_id) {

@@ -16,7 +16,8 @@
 
 namespace phi {
 
-KernelSignature GroupNormOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature GroupNormOpArgumentMapping(
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("group_norm",
                          {"X", "Scale", "Bias"},
                          {"epsilon", "groups", "data_layout"},
@@ -24,7 +25,7 @@ KernelSignature GroupNormOpArgumentMapping(const ArgumentMappingContext& ctx) {
 }
 
 KernelSignature GroupNormGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature(
       "group_norm_grad",
       {"X", "Scale", "Bias", "Y", "Mean", "Variance", "Y@GRAD"},

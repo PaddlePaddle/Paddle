@@ -30,11 +30,7 @@ from ..fluid.data_feeder import (
     convert_dtype,
     convert_float_to_uint16,
 )
-from ..fluid.framework import (
-    Variable,
-    _in_eager_without_dygraph_check,
-    device_guard,
-)
+from ..fluid.framework import Variable, device_guard
 from ..fluid.param_attr import ParamAttr
 from ..framework import (
     LayerHelper,
@@ -625,7 +621,7 @@ def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
     if dtype:
         data = _handle_np_dtype(data, dtype)
 
-    if _in_eager_without_dygraph_check() and isinstance(data, np.ndarray):
+    if isinstance(data, np.ndarray):
         return core.eager.Tensor(
             value=data,
             place=place,
@@ -721,10 +717,10 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
         We use the dtype conversion rules following this:
                 Keep dtype
         np.number ───────────► paddle.Tensor
-                                (0D-Tensor)
+                                (0-D Tensor)
                     default_dtype
         Python Number ───────────────► paddle.Tensor
-                                        (0D-Tensor)
+                                        (0-D Tensor)
                     Keep dtype
         np.ndarray ───────────► paddle.Tensor
 
@@ -757,7 +753,6 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
         #        1)
 
         x = paddle.to_tensor(1, stop_gradient=False)
-        print(x)
         # Tensor(shape=[], dtype=int64, place=CPUPlace, stop_gradient=False,
         #        1)
 
@@ -1568,7 +1563,7 @@ def meshgrid(*args, **kwargs):
             check_dtype(
                 input_.dtype,
                 'create data type',
-                ['float16', 'float32', 'float64', 'int32', 'int64'],
+                ['uint16', 'float16', 'float32', 'float64', 'int32', 'int64'],
                 'meshgrid',
             )
 
