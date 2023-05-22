@@ -14,7 +14,9 @@
 
 #include "paddle/fluid/dialect/pd_dialect.h"
 #include "paddle/fluid/dialect/pd_attribute.h"
+#include "paddle/fluid/dialect/pd_op.h"
 #include "paddle/fluid/dialect/pd_type.h"
+#include "paddle/fluid/dialect/pd_type_storage.h"
 #include "paddle/fluid/dialect/utils.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
@@ -93,6 +95,47 @@ void PaddleDialect::initialize() {
   RegisterTypes<GET_PD_DIALECT_TYPE_LIST>();
   RegisterAttributes<GET_PD_DIALECT_ATTRIBUTE_LIST>();
   RegisterInterfaces<ParameterConvertInterface>();
+  RegisterOps<Conv2DOp,
+              FeedOp,
+              BatchNormOp,
+              BatchNormOp_,
+              ReluOp,
+              ElementwiseAddOp,
+              Pool2DOp,
+              FlattenContiguousRangeOp,
+              MatmulV2Op,
+              Reshape2Op,
+              SoftmaxWithCrossEntropyOp,
+              ReduceMeanOp,
+              TopKV2Op,
+              AccuracyOp,
+              ScaleOp,
+              FillConstantOp,
+              ReduceMeanGradOp,
+              SoftmaxWithCrossEntropyGradOp,
+              ElementwiseAddGradOp,
+              MatmulV2GradOp,
+              FlattenContiguousRangeGradOp,
+              Pool2DGradOp,
+              ReluGradOp,
+              BatchNormGradOp,
+              Conv2DGradOp,
+              SumOp,
+              MergedMomentumOp_,
+              FetchV2Op>();
+}
+
+void PaddleDialect::PrintType(ir::Type type, std::ostream& os) {
+  DenseTensorType tensor_type = type.dyn_cast<DenseTensorType>();
+
+  os << "tensor<";
+  auto& dims = tensor_type.dim();
+  for (auto d : dims) {
+    os << d;
+    os << "x";
+  }
+  tensor_type.dtype().print(os);
+  os << ">";
 }
 
 }  // namespace dialect
