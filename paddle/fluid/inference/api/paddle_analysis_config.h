@@ -545,6 +545,13 @@ struct PD_INFER_DECL AnalysisConfig {
   bool use_feed_fetch_ops_enabled() const { return use_feed_fetch_ops_; }
 
   ///
+  /// \brief Turn on the feed and fetch data with low precision.
+  ///
+  /// \param x Whether to enable feed and fetch data with low precision.
+  ///
+  void EnableLowPrecisionIO(bool x = true);
+
+  ///
   /// \brief Control whether to specify the inputs' names.
   /// The ZeroCopyTensor type has a name member, assign it with the
   /// corresponding
@@ -748,6 +755,7 @@ struct PD_INFER_DECL AnalysisConfig {
   bool tensorrt_dla_enabled() { return trt_use_dla_; }
 
   void EnableTensorRtInspector();
+
   bool tensorrt_inspector_enabled() { return trt_use_inspector_; }
 
   void EnableDlnne(
@@ -758,7 +766,8 @@ struct PD_INFER_DECL AnalysisConfig {
       std::unordered_set<std::string> disable_nodes_by_outputs = {},
       std::map<std::string, std::vector<int64_t>> input_dict = {},
       bool use_calib_mode = false,
-      AnalysisConfig::Precision precision_mode = Precision::kFloat32);
+      Precision precision_mode = Precision::kFloat32);
+
   bool dlnne_enabled() const { return use_dlnne_; }
 
   ///
@@ -768,11 +777,10 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \param passes_filter Set the passes used in Lite sub-graph engine.
   /// \param ops_filter Operators not supported by Lite.
   ///
-  void EnableLiteEngine(
-      AnalysisConfig::Precision precision_mode = Precision::kFloat32,
-      bool zero_copy = false,
-      const std::vector<std::string>& passes_filter = {},
-      const std::vector<std::string>& ops_filter = {});
+  void EnableLiteEngine(Precision precision_mode = Precision::kFloat32,
+                        bool zero_copy = false,
+                        const std::vector<std::string>& passes_filter = {},
+                        const std::vector<std::string>& ops_filter = {});
 
   ///
   /// \brief Turn on the usage of Lite sub-graph engine with opencl.
@@ -1066,6 +1074,7 @@ struct PD_INFER_DECL AnalysisConfig {
   // Mixed precision related.
   Precision mixed_precision_mode_{Precision::kFloat32};
   std::unordered_set<std::string> mixed_black_list_;
+  bool enable_low_precision_io_{false};
 
   // GPU related.
   bool use_gpu_{false};

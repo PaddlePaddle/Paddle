@@ -773,10 +773,6 @@ void BuildOpFuncList(const platform::Place& place,
         }
 
         // for debug nan/inf
-        if (FLAGS_check_nan_inf) {
-          VLOG(4) << "Check nan/inf";
-          framework::details::CheckOpHasNanOrInf(*op, *runtime_scope, place);
-        }
 
         vec_func_list->emplace_back(op_func_node);
 
@@ -846,6 +842,35 @@ void BuildOpFuncList(const platform::Place& place,
     } catch (...) {
       LOG(WARNING) << op_type << " raises an unknown exception";
       std::rethrow_exception(std::current_exception());
+    }
+
+    if (FLAGS_check_nan_inf) {
+      VLOG(4) << "Check nan/inf";
+      try {
+        framework::details::CheckOpHasNanOrInf(*op, *local_scope, place);
+      } catch (...) {
+        const std::vector<std::string>* callstack = nullptr;
+        auto attrs = op->Attrs();
+        auto iter =
+            attrs.find(OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
+        if (iter != attrs.end()) {
+          callstack = &PADDLE_GET_CONST(std::vector<std::string>, iter->second);
+          if (callstack->empty()) callstack = nullptr;
+        }
+        std::ostringstream sout;
+        if (callstack) {
+          if (FLAGS_call_stack_level > 1) {
+            sout << "\n\n  Compile Traceback (most recent call last):";
+          } else {
+            sout << "In user code:\n";
+          }
+          for (auto& line : *callstack) {
+            sout << "\n  " << line;
+          }
+        }
+        std::cout << sout.str() << std::endl;
+        std::rethrow_exception(std::current_exception());
+      }
     }
 
     VLOG(4) << "End run " << place << " "

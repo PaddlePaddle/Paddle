@@ -32,6 +32,8 @@ IrContext *OpInfo::ir_context() const {
 
 const char *OpInfo::name() const { return impl_ ? impl_->name() : nullptr; }
 
+TypeId OpInfo::id() const { return impl_ ? impl_->id() : TypeId(); }
+
 void *OpInfo::GetInterfaceImpl(TypeId interface_id) const {
   return impl_ ? impl_->interface_impl(interface_id) : nullptr;
 }
