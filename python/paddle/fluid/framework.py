@@ -3994,12 +3994,12 @@ class Block:
             Operator: the append Operator.
         """
         op_type = kwargs.get("type", None)
+        inplace_map = kwargs.get("inplace_map", None)
         if _non_static_mode():
             inputs = kwargs.get("inputs", None)
             outputs = kwargs.get("outputs", None)
 
             attrs = kwargs.get("attrs", {})
-            inplace_map = kwargs.get("inplace_map", None)
             import warnings
 
             warnings.warn(
@@ -4065,7 +4065,10 @@ class Block:
             if outputs is not None:
                 for k, v in outputs.items():
                     if isinstance(v, Variable):
-                        if v.is_view_var:
+                        if v.is_view_var and not (
+                            op_type == "set_value"
+                            and inplace_map.get("Input", None) == "Out"
+                        ):
                             import warnings
                             import inspect
 
@@ -4075,8 +4078,11 @@ class Block:
                             )
                     elif isinstance(v, list):
                         for var in v:
-                            if isinstance(v, Variable):
-                                if var.is_view_var:
+                            if isinstance(var, Variable):
+                                if var.is_view_var and not (
+                                    op_type == "set_value"
+                                    and inplace_map.get("Input", None) == "Out"
+                                ):
                                     import warnings
                                     import inspect
 

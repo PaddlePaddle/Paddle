@@ -670,16 +670,6 @@ def _setitem_for_tensor_array(var, item, value):
 
 
 def _setitem_impl_(var, item, value):
-    if hasattr(var, "is_view_var"):
-        if var.is_view_var:
-            import warnings
-            import inspect
-
-            warnings.warn(
-                'Write view var check: _setitem_impl_ write view var, call stack: %s'
-                % inspect.stack()
-            )
-
     from .framework import default_main_program, Variable
     from paddle.fluid import core
 
