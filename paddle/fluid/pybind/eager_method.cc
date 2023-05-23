@@ -304,7 +304,7 @@ static PyObject* tensor_method_numpy(TensorObject* self,
       VLOG(6) << "Getting DenseTensor's numpy value";
       auto dense_tensor =
           std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
-      // TODO(qili93): temporary for ascned npu performance to be removed along
+      // TODO(qili93): temporary for ascend npu performance to be removed along
       // with npu_identity op
       paddle::Tensor temp_tensor(std::make_shared<phi::DenseTensor>());
       if (dense_tensor->storage_properties_initialized()) {
@@ -431,7 +431,7 @@ static void IncreaseTensorReferenceCountUntilCopyComplete(
   // Note(dev): This is an empty callback, the only way is to "reference"
   // inner memory Holder, so it will not be destructed until the kernels
   // launched at current stream of given place is finished, such as
-  // CUDAPinned Mem -> CUDA by cudamemcpyAsync.
+  // CUDAPinned Mem -> CUDA by cudaMemcpyAsync.
   auto callback = [tensor, place_]() {
     VLOG(3) << "Run callback of Tensor:" << tensor.name() << " at place "
             << place_;
@@ -934,36 +934,49 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
   }
 
   bool set_to_1d = FLAGS_set_to_1d;
-  if (!none_axes.empty()) {
-    if (set_to_1d) {
-      // NOTE(zoooo0820): When all axes are decreased, the output will be 1-D
-      // with FLAGS_set_to_1d=True. In this case, one `None` should be pop out,
-      // otherwise the output shape will be not correct.
-      if (static_cast<int>(decrease_axis.size()) == tensor->dims().size()) {
+
+  if (set_to_1d) {
+    // NOTE(zoooo0820): When all axes are decreased, the output will be 1-D
+    // with FLAGS_set_to_1d=True. In this case, one `None` should be pop out,
+    // otherwise the output shape will be not correct.
+    if (static_cast<int>(decrease_axis.size()) == tensor->dims().size()) {
+      VLOG(1)
+          << "Warning: In Tensor '__getitem__', if the number of scalar "
+             "elements "
+             "in the index is equal to the rank of the Tensor, the output "
+             "should "
+             "be 0-D. In order to be consistent with the behavior of previous "
+             "versions, it will be processed to 1-D. But it is not correct and "
+             "will be "
+             "removed in release 2.6. "
+             "If 1-D is still wanted, please modify the index element from "
+             "scalar to slice "
+             "(e.g. 'x[i]' => 'x[i:i+1]'). ";
+      if (!none_axes.empty()) {
         none_axes.pop_back();
       }
     }
-    if (!none_axes.empty()) {
-      paddle::Tensor new_out;
-      {
-        eager_gil_scoped_release guard;
-        // Deal with cases that decrease_axes is not empty
-        // For example:
-        // # x.shape: (2,3,4)
-        // out = x[0, 0:2, None] # out.shape : (2, 1, 4)
-        for (auto& axis : none_axes) {
-          int len = 0;
-          for (int da : decrease_axis) {
-            if (da < axis) {
-              len++;
-            }
+  }
+  if (!none_axes.empty()) {
+    paddle::Tensor new_out;
+    {
+      eager_gil_scoped_release guard;
+      // Deal with cases that decrease_axes is not empty
+      // For example:
+      // # x.shape: (2,3,4)
+      // out = x[0, 0:2, None] # out.shape : (2, 1, 4)
+      for (auto& axis : none_axes) {
+        int len = 0;
+        for (int da : decrease_axis) {
+          if (da < axis) {
+            len++;
           }
-          axis -= len;
         }
-        new_out = unsqueeze_ad_func(out, none_axes);
+        axis -= len;
       }
-      return ToPyObject(new_out);
+      new_out = unsqueeze_ad_func(out, none_axes);
     }
+    return ToPyObject(new_out);
   }
 
   // the index is a list
@@ -1074,13 +1087,11 @@ static PyObject* tensor__getitem_from_offset(TensorObject* self,
     T b = paddle::pybind::TensorGetElement<T>(tensor, offset);               \
     Py_intptr_t py_dims[paddle::framework::DDim::kMaxRank];                  \
     Py_intptr_t py_strides[paddle::framework::DDim::kMaxRank];               \
-    py_dims[0] = 1;                                                          \
-    py_strides[0] = 1;                                                       \
     auto& api = pybind11::detail::npy_api::get();                            \
     PyObject* array = api.PyArray_NewFromDescr_(                             \
         api.PyArray_Type_,                                                   \
         api.PyArray_DescrFromType_(numpy_dtype),                             \
-        1,                                                                   \
+        0,                                                                   \
         py_dims,                                                             \
         py_strides,                                                          \
         nullptr,                                                             \
@@ -1310,7 +1321,7 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
       }
     }
   } else {
-    auto self_numpy = TensorToPyArray(*self_tensor);
+    auto self_numpy = TensorToPyArray(*self_tensor, true);
     VLOG(4) << "parse_index is false";
     if (PyCheckTensor(_index)) {
       VLOG(4) << "index is tensor";

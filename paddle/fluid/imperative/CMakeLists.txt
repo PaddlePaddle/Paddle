@@ -124,10 +124,26 @@ if(NOT WIN32)
       SRCS reducer.cc
       DEPS layer)
   endif()
-
+  if(WITH_CUSTOM_DEVICE)
+    cc_library(
+      xccl_context
+      SRCS xccl_context.cc
+      DEPS collective_helper device_context tensor var_type_traits)
+    if(NOT
+       (WITH_NCCL
+        OR WITH_RCCL
+        OR WITH_XPU_BKCL
+        OR WITH_GLOO))
+      cc_library(
+        reducer
+        SRCS reducer.cc
+        DEPS layer)
+    endif()
+  endif()
   if(WITH_NCCL
      OR WITH_RCCL
-     OR WITH_XPU_BKCL)
+     OR WITH_XPU_BKCL
+     OR WITH_CUSTOM_DEVICE)
     cc_library(
       heter_ccl_context
       SRCS heter_ccl_context.cc

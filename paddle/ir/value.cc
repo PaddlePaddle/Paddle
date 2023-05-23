@@ -75,6 +75,12 @@ Operation *Value::GetDefiningOp() const {
 
 std::string Value::print_ud_chain() { return impl_->print_ud_chain(); }
 
+Value::use_iterator Value::begin() const {
+  return ir::OpOperand(impl_->first_use());
+}
+
+Value::use_iterator Value::end() const { return Value::use_iterator(); }
+
 // OpResult
 bool OpResult::classof(Value value) {
   return ir::isa<detail::OpResultImpl>(value.impl());
@@ -100,6 +106,10 @@ ir::Operation *OpOperandImpl::owner() const { return owner_; }
 
 ir::detail::OpOperandImpl *OpOperandImpl::next_use() { return next_use_; }
 
+ir::Value OpOperandImpl::source() const { return source_; }
+
+void OpOperandImpl::release_source() { source_ = nullptr; }
+
 OpOperandImpl::OpOperandImpl(ir::Value source, ir::Operation *owner)
     : source_(source), owner_(owner) {
   prev_use_addr_ = source.impl()->first_use_addr();
@@ -123,6 +133,9 @@ void OpOperandImpl::remove_from_ud_chain() {
   if (next_use_) {
     next_use_->prev_use_addr_ = prev_use_addr_;
   }
+  next_use_ = nullptr;
+  prev_use_addr_ = nullptr;
+  release_source();
 }
 
 OpOperandImpl::~OpOperandImpl() { remove_from_ud_chain(); }

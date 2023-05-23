@@ -92,6 +92,11 @@ message(STATUS "C compiler: ${CMAKE_C_COMPILER}, version: "
                "${CMAKE_C_COMPILER_ID} ${CMAKE_C_COMPILER_VERSION}")
 message(STATUS "AR tools: ${CMAKE_AR}")
 
+if((CMAKE_CXX_COMPILER_ID STREQUAL "GNU") AND CMAKE_CXX_COMPILER_VERSION
+                                              VERSION_GREATER 10.4)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=uninitialized")
+endif()
+
 # MUSL build turn off warnings
 if(WITH_MUSL)
   set(CMAKE_CXX_FLAGS
@@ -338,6 +343,11 @@ endif()
 
 if(LINUX
    AND NOT WITH_CUSTOM_DEVICE
+   AND NOT WITH_GPU
+   AND NOT WITH_ROCM
+   AND NOT WITH_XPU
+   AND NOT WITH_XPU_KP
+   AND NOT WITH_XPU_XFT
    AND WITH_PYTHON)
   set(WITH_CUSTOM_DEVICE
       ON

@@ -15,7 +15,7 @@
 import os
 
 import paddle
-from paddle.fluid import core, framework, unique_name
+from paddle.fluid import core, unique_name
 from paddle.fluid.executor import global_scope
 from paddle.fluid.framework import Variable, name_scope
 from paddle.fluid.layer_helper import LayerHelper
@@ -49,6 +49,21 @@ def init_communicator(block, rank, ranks, ring_id):
     elif core.is_compiled_with_xpu():
         block.append_op(
             type='c_gen_bkcl_id',
+            inputs={},
+            outputs={'Out': comm_id_var},
+            attrs={
+                'rank': local_rank,
+                'endpoint': cur_ep,
+                'other_endpoints': other_eps,
+                'ring_id': ring_id,
+            },
+        )
+    elif (
+        paddle.distributed.ParallelEnv().device_type
+        in paddle.device.get_all_custom_device_type()
+    ):
+        block.append_op(
+            type='c_gen_xccl_id',
             inputs={},
             outputs={'Out': comm_id_var},
             attrs={
@@ -114,7 +129,7 @@ class DistributedFusedLamb(Optimizer):
         name=None,
     ):
         assert (
-            not framework._non_static_mode()
+            not paddle.in_dynamic_mode()
         ), "DistributedFusedLamb does not support dygraph mode"
         super().__init__(learning_rate=learning_rate, grad_clip=None, name=name)
 

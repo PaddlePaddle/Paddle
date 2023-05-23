@@ -1635,6 +1635,20 @@ class TestSetValueInplaceLeafVar(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestSetValueIsSamePlace(unittest.TestCase):
+    def test_is_same_place(self):
+        paddle.disable_static()
+        paddle.seed(100)
+        paddle.set_device('cpu')
+        a = paddle.rand(shape=[2, 3, 4])
+        origin_place = a.place
+        a[[0, 1], 1] = 10
+        self.assertEqual(origin_place._type(), a.place._type())
+        if paddle.is_compiled_with_cuda():
+            paddle.set_device('gpu')
+        paddle.enable_static()
+
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),

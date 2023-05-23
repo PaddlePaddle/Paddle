@@ -916,6 +916,7 @@ set_tests_properties(test_imperative_selected_rows_to_lod_tensor
                      PROPERTIES TIMEOUT 200)
 set_tests_properties(test_index_select_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_index_add_op PROPERTIES TIMEOUT 120)
+set_tests_properties(test_index_put_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_tensordot PROPERTIES TIMEOUT 200)
 set_tests_properties(test_partial_eager_deletion_transformer PROPERTIES TIMEOUT
                                                                         120)
@@ -1114,12 +1115,21 @@ set(TEST_CINN_OPS
     test_group_norm_op
     test_tile_op
     test_roll_op
-    test_sum_op)
+    test_sum_op
+    test_elementwise_min_op
+    test_bitwise_op
+    test_compare_op
+    test_shape_op
+    test_assign_value_op
+    test_lookup_table_op
+    test_lookup_table_v2_op
+    test_norm_op
+    test_one_hot_v2_op)
 
 foreach(TEST_CINN_OPS ${TEST_CINN_OPS})
   if(WITH_CINN)
     set_tests_properties(${TEST_CINN_OPS} PROPERTIES LABELS "RUN_TYPE=CINN")
-    set_tests_properties(${TEST_CINN_OPS} PROPERTIES TIMEOUT 150)
+    set_tests_properties(${TEST_CINN_OPS} PROPERTIES TIMEOUT 200)
   endif()
 endforeach()
 
@@ -1162,6 +1172,9 @@ set(STATIC_BUILD_TESTS
     test_fetch_lod_tensor_array
     test_fused_attention_op
     test_fused_attention_op_api
+    test_fuse_bn_act_pass
+    test_fused_feedforward_op
+    test_fused_feedforward_pass
     test_imperative_optimizer
     test_lamb_op
     test_layer_norm_op
@@ -1191,6 +1204,8 @@ set(STATIC_BUILD_TESTS
 if(NOT WITH_GPU)
   list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_attention_op)
   list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_attention_op_api)
+  list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_feedforward_op)
+  list(REMOVE_ITEM STATIC_BUILD_TESTS test_fused_feedforward_op_pass)
 endif()
 
 foreach(STATIC_BUILD_TEST ${STATIC_BUILD_TESTS})
@@ -1201,6 +1216,13 @@ endforeach()
 
 set_tests_properties(test_decoupled_py_reader_static_build PROPERTIES TIMEOUT
                                                                       120)
+set_tests_properties(test_fuse_bn_act_pass_static_build PROPERTIES TIMEOUT 120)
+set_tests_properties(
+  test_fuse_bn_act_pass_static_build
+  PROPERTIES
+    ENVIRONMENT
+    "FLAGS_cudnn_deterministic=1;FLAGS_cudnn_batchnorm_spatial_persistent=1;FLAGS_conv_workspace_size_limit=1000"
+)
 set_tests_properties(test_imperative_optimizer_static_build PROPERTIES TIMEOUT
                                                                        250)
 set_tests_properties(test_matmul_op_static_build PROPERTIES TIMEOUT 120)
