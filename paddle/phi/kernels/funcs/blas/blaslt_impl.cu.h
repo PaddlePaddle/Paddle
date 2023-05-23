@@ -512,7 +512,7 @@ struct CublasLtBase {
                       phi::errors::Unavailable("No GEMM algorithm avaliable."));
     phi::GpuTimer timer;
     int best_algo_idx = -1;
-    constexpr int repeats = 6;
+    constexpr int repeats = 10;
     float min_time_cost = std::numeric_limits<float>::max();
     for (int algo_idx = 0; algo_idx < returned_results; ++algo_idx) {
       ctx.Wait();
@@ -551,7 +551,7 @@ struct CublasLtBase {
         min_time_cost = cur_time;
       }
     }
-    VLOG(6) << "Best_algo_idx in MatmulWithCublaslt is : " << best_algo_idx;
+    VLOG(6) << "best_algo_idx in MatmulWithCublaslt is : " << best_algo_idx;
     *best_algo = heuristic_results[best_algo_idx].algo;
     PADDLE_ENFORCE_GPU_SUCCESS(
         dynload::cublasLtMatmulPreferenceDestroy(preference));
