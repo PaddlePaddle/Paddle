@@ -442,8 +442,7 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
           continue;
         }
         // reset tensor holder
-        if (persist_param_vars_.find(name) != persist_param_vars_.end() &&
-            platform::is_gpu_place(root_tensor->place())) {
+        if (persist_param_vars_.find(name) != persist_param_vars_.end()) {
           phi::DenseTensor cpu_tensor;
           TensorCopy(*root_tensor, platform::CPUPlace(), &cpu_tensor);
           root_tensor->MoveMemoryHolder();
