@@ -25,6 +25,10 @@
 
 namespace ir {
 class Dialect;
+typedef void (*VerifyPtr)(const std::vector<OpResult> &inputs,
+                          const std::vector<Type> &outputs,
+                          const AttributeMap &attributes);
+
 ///
 /// \brief OpInfoImpl class.
 ///
@@ -40,7 +44,8 @@ class OpInfoImpl {
                             std::vector<InterfaceValue> &&interface_map,
                             const std::vector<TypeId> &trait_set,
                             size_t attributes_num,
-                            const char *attributes_name[]);
+                            const char *attributes_name[],
+                            VerifyPtr verify);
 
   void destroy();
 
@@ -65,6 +70,8 @@ class OpInfoImpl {
     return idx < num_attributes_ ? p_attributes_[idx] : nullptr;
   }
 
+  VerifyPtr verify() const { return verify_; }
+
  private:
   OpInfoImpl(ir::Dialect *dialect,
              TypeId op_id,
@@ -72,14 +79,16 @@ class OpInfoImpl {
              uint32_t num_interfaces,
              uint32_t num_traits,
              uint32_t num_attributes,
-             const char **p_attributes)
+             const char **p_attributes,
+             VerifyPtr verify)
       : dialect_(dialect),
         op_id_(op_id),
         op_name_(op_name),
         num_interfaces_(num_interfaces),
         num_traits_(num_traits),
         num_attributes_(num_attributes),
-        p_attributes_(p_attributes) {}
+        p_attributes_(p_attributes),
+        verify_(verify) {}
 
   /// The dialect of this Op belong to.
   ir::Dialect *dialect_;
@@ -101,6 +110,8 @@ class OpInfoImpl {
 
   /// Attributes array address.
   const char **p_attributes_{nullptr};
+
+  VerifyPtr verify_{nullptr};
 };
 
 }  // namespace ir

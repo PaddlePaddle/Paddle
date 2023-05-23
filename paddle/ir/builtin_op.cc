@@ -13,13 +13,50 @@
 // limitations under the License.
 
 #include "paddle/ir/builtin_op.h"
+#include "paddle/ir/builtin_attribute.h"
 
 namespace ir {
 const char *GetParameterOp::attributes_name[attributes_num] = {
     "parameter_name"};
 
+void GetParameterOp::verify(const std::vector<ir::OpResult> &inputs,
+                            const std::vector<ir::Type> &outputs,
+                            const ir::AttributeMap &attributes) {
+  VLOG(4) << "Verifying inputs, outputs and attributes for: GetParameterOp.";
+  // Verify inputs type:
+  if (inputs.size() != 0) {
+    throw("The size of inputs must be equal to 0.");
+  }
+  // Verify outputs type:
+  if (outputs.size() != 1) {
+    throw("The size of outputs must be equal to 1.");
+  }
+  // Verify if attributes contain attribute name in attributes_name:
+  if (!attributes.at("parameter_name").isa<StrAttribute>()) {
+    throw("Type of attribute: parameter_name is not right.");
+  }
+}
+
 const char *SetParameterOp::attributes_name[attributes_num] = {
     "parameter_name"};
+
+void SetParameterOp::verify(const std::vector<ir::OpResult> &inputs,
+                            const std::vector<ir::Type> &outputs,
+                            const ir::AttributeMap &attributes) {
+  VLOG(4) << "Verifying inputs, outputs and attributes for: SetParameterOp.";
+  // Verify inputs type:
+  if (inputs.size() != 1) {
+    throw("The size of inputs must be equal to 1.");
+  }
+  // Verify outputs type:
+  if (outputs.size() != 0) {
+    throw("The size of outputs must be equal to 0.");
+  }
+  // Verify if attributes contain attribute name in attributes_name:
+  if (!attributes.at("parameter_name").isa<StrAttribute>()) {
+    throw("Type of attribute: parameter_name is not right.");
+  }
+}
 
 const char **CombineOp::attributes_name = nullptr;
 const char *SliceOp::attributes_name[attributes_num] = {"index"};

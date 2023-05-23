@@ -378,9 +378,15 @@ struct XPUSiluGradFunctor : public funcs::BaseActivationFunctor<T> {
     const XPUType* y_grad = reinterpret_cast<const XPUType*>(dout->data<T>());
     XPUType* x_grad = reinterpret_cast<XPUType*>(dx->data<T>());
 
-    int r = xpu::swish_grad(
-        dev_ctx.x_context(), x_data, y_grad, x_grad, dx->numel());
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "swish_grad");
+    if (std::getenv("XPU_PADDLE_ACT_LUT") != nullptr) {
+      int r = xpu::fast_swish_grad(
+          dev_ctx.x_context(), x_data, y_grad, x_grad, dx->numel());
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "fast_swish_grad");
+    } else {
+      int r = xpu::swish_grad(
+          dev_ctx.x_context(), x_data, y_grad, x_grad, dx->numel());
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "swish_grad");
+    }
   }
 };
 
