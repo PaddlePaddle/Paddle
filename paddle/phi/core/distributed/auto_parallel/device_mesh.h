@@ -23,11 +23,11 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/distributed/auto_parallel/auto_parallel.pb.h"
-#include "paddle/fluid/distributed/auto_parallel/utils.h"
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/phi/core/distributed/auto_parallel/auto_parallel.pb.h"
+#include "paddle/phi/core/distributed/auto_parallel/utils.h"
+#include "paddle/phi/core/enforce.h"
 
-namespace paddle {
+namespace phi {
 namespace distributed {
 namespace auto_parallel {
 struct DeviceCapability {
@@ -259,7 +259,7 @@ class DeviceMesh {
         return shape_[i];
       }
     }
-    PADDLE_THROW(platform::errors::InvalidArgument(
+    PADDLE_THROW(errors::InvalidArgument(
         "Cannot find the dimension of %s in this device mesh.", dim_name));
   }
 
@@ -298,4 +298,4 @@ inline bool operator!=(const DeviceMesh& lhs, const DeviceMesh& rhs) {
 
 }  // namespace auto_parallel
 }  // namespace distributed
-}  // namespace paddle
+}  // namespace phi
