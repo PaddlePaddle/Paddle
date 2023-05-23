@@ -43,7 +43,7 @@ TEST(value_test, value_test) {
                             op1_output_types,
                             CreateAttributeMap("op1_name", "op1_attr"),
                             nullptr);
-  std::cout << op1->print() << std::endl;
+  VLOG(0) << op1->print();
   // 2. Construct OP2: b = OP2();
   std::vector<ir::OpResult> op2_inputs = {};
   std::vector<ir::Type> op2_output_types = {ir::Float32Type::get(ctx)};
@@ -52,7 +52,7 @@ TEST(value_test, value_test) {
                             op2_output_types,
                             CreateAttributeMap("op2_name", "op2_attr"),
                             nullptr);
-  std::cout << op2->print() << std::endl;
+  VLOG(0) << op2->print() << std::endl;
   // 3. Construct OP3: c = OP3(a, b);
   std::vector<ir::OpResult> op3_inputs = {op1->GetResultByIndex(0),
                                           op2->GetResultByIndex(0)};
@@ -62,7 +62,7 @@ TEST(value_test, value_test) {
                             op3_output_types,
                             CreateAttributeMap("op3_name", "op3_attr"),
                             nullptr);
-  std::cout << op3->print() << std::endl;
+  VLOG(0) << op3->print() << std::endl;
   // 4. Construct OP4: d, e, f, g, h, i, j = OP4(a, c);
   std::vector<ir::OpResult> op4_inputs = {op1->GetResultByIndex(0),
                                           op3->GetResultByIndex(0)};
@@ -75,7 +75,7 @@ TEST(value_test, value_test) {
                             op4_output_types,
                             CreateAttributeMap("op4_name", "op4_attr"),
                             nullptr);
-  std::cout << op4->print() << std::endl;
+  VLOG(0) << op4->print() << std::endl;
 
   // Test 1:
   EXPECT_EQ(op1->GetResultByIndex(0).GetDefiningOp(), op1);
@@ -103,12 +103,12 @@ TEST(value_test, value_test) {
   EXPECT_EQ(iter.owner(), op3);
 
   // destroy
-  std::cout << op1->GetResultByIndex(0).print_ud_chain() << std::endl;
+  VLOG(0) << op1->GetResultByIndex(0).print_ud_chain() << std::endl;
   op4->destroy();
-  std::cout << op1->GetResultByIndex(0).print_ud_chain() << std::endl;
+  VLOG(0) << op1->GetResultByIndex(0).print_ud_chain() << std::endl;
   op3->destroy();
-  std::cout << op1->GetResultByIndex(0).print_ud_chain() << std::endl;
+  VLOG(0) << op1->GetResultByIndex(0).print_ud_chain() << std::endl;
   op2->destroy();
-  std::cout << op1->GetResultByIndex(0).print_ud_chain() << std::endl;
+  VLOG(0) << op1->GetResultByIndex(0).print_ud_chain() << std::endl;
   op1->destroy();
 }

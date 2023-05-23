@@ -105,9 +105,7 @@ class Operation2
       throw("Type of attribute: parameter_name is not right.");
     }
   }
-  static void InferShape() {
-    std::cout << "This is op2's InferShape interface." << std::endl;
-  }
+  static void InferShape() { VLOG(0) << "This is op2's InferShape interface."; }
 };
 const char *Operation2::attributes_name[attributes_num] = {"op2_attr1",
                                                            "op2_attr2"};
@@ -141,7 +139,7 @@ TEST(op_test, op_test) {
   // (1) Register Dialect, Operation1, Operation2 into IrContext.
   ir::IrContext *ctx = ir::IrContext::Instance();
   ir::Dialect *test_dialect = ctx->GetOrRegisterDialect<TestDialect>();
-  std::cout << test_dialect << std::endl;
+  EXPECT_EQ(test_dialect != nullptr, true);
 
   // (2) Get registered operations.
   std::string op1_name = Operation1::name();
