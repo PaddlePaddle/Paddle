@@ -222,8 +222,8 @@ def test_stage3_offload():
         )
         for i in range(len(stage3_params)):
             np.testing.assert_allclose(
-                stage3_params[i].numpy(),
-                stage3_params_offload[i].numpy(),
+                stage3_params[i].astype("float32").numpy(),
+                stage3_params_offload[i].astype("float32").numpy(),
                 rtol=1e-2,
                 atol=1e-2,
             )

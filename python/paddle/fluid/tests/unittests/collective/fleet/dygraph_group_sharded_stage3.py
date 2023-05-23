@@ -119,7 +119,7 @@ class RandomDataset(paddle.io.Dataset):
 
 def optimizer_setting(model, use_pure_fp16, opt_group=False):
     clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
-    optimizer = paddle.optimizer.Momentum(
+    optimizer = paddle.optimizer.AdamW(
         parameters=[{"params": list(model.parameters())}]
         if opt_group
         else list(model.parameters()),
@@ -383,8 +383,8 @@ def test_stage2_stage3():
         )
         for i in range(len(stage2_params)):
             np.testing.assert_allclose(
-                stage2_params[i].numpy(),
-                stage3_params[i].numpy(),
+                stage2_params[i].astype("float32").numpy(),
+                stage3_params[i].astype("float32").numpy(),
                 rtol=1e-4,
                 atol=1e-3,
             )
