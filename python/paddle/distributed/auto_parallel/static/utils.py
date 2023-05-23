@@ -26,9 +26,9 @@ from paddle.framework import core
 from paddle.framework.io_utils import is_belong_to_optimizer, is_parameter
 from paddle.static import Variable
 
+from ..process_mesh import ProcessMesh
 from .dist_attribute import OperatorDistAttr, TensorDistAttr
 from .process_group import get_all_process_groups
-from .process_mesh import ProcessMesh
 
 OpRole = core.op_proto_and_checker_maker.OpRole
 OP_ROLE_KEY = core.op_proto_and_checker_maker.kOpRoleAttrName()
@@ -1864,7 +1864,7 @@ def get_lr(optimizer):
 def initialize_pg_in_full_mode(all_process_groups, cur_rank):
     import socket
 
-    from ..collective import _get_global_env
+    from ...collective import _get_global_env
 
     has_recv_by_socket = []
     # This is a magic number
@@ -1942,7 +1942,7 @@ def is_recompute_op(op):
 
 
 def set_recompute_segments(model, losses, strategy, program):
-    from ..passes.auto_parallel_recompute import RecomputeState
+    from ...passes.auto_parallel_recompute import RecomputeState
 
     if not losses:
         return
@@ -2050,7 +2050,7 @@ def validate_opt(optimizer):
 
 
 def set_data_parallel(x):
-    from .interface import ProcessMesh, shard_tensor
+    from ..interface import ProcessMesh, shard_tensor
     from .process_group import get_world_process_group
 
     world_ranks = get_world_process_group().ranks
@@ -2091,7 +2091,7 @@ def _copy_tensor_dist_attr_to_cpp(cpp_dist_attr, py_dist_attr):
 
 
 def _copy_tensor_dist_attr_from_cpp(cpp_dist_attr, py_dist_attr):
-    from .process_mesh import ProcessMesh
+    from ..process_mesh import ProcessMesh
 
     cpp_process_mesh = cpp_dist_attr.process_mesh
     if cpp_process_mesh is not None:
@@ -2124,7 +2124,7 @@ def _copy_op_dist_attr_to_cpp(cpp_dist_attr, py_dist_attr):
 
 
 def _copy_op_dist_attr_from_cpp(cpp_dist_attr, py_dist_attr):
-    from .process_mesh import ProcessMesh
+    from ..process_mesh import ProcessMesh
 
     cpp_process_mesh = cpp_dist_attr.process_mesh
     if cpp_process_mesh is not None:

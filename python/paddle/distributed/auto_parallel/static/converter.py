@@ -19,7 +19,7 @@ import numpy as np
 
 import paddle
 
-from ..utils.log_utils import get_logger
+from ...utils.log_utils import get_logger
 
 
 class Converter:

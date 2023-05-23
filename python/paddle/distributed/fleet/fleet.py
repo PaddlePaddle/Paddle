@@ -1335,7 +1335,7 @@ class Fleet:
                 self._user_defined_strategy.semi_auto
                 or self._user_defined_strategy.auto_search
             ):
-                from ..auto_parallel.parallelizer import AutoParallelizer
+                from ..auto_parallel.static.parallelizer import AutoParallelizer
 
                 auto_parallelizer = AutoParallelizer(self)
                 (

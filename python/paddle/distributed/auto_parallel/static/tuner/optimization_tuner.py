@@ -27,16 +27,18 @@ import sys
 import time
 
 import paddle
-from paddle.distributed.auto_parallel.completion import Completer
-from paddle.distributed.auto_parallel.dist_context import DistributedContext
-from paddle.distributed.auto_parallel.partitioner import Partitioner
-from paddle.distributed.auto_parallel.process_group import (
+from paddle.distributed.auto_parallel.static.completion import Completer
+from paddle.distributed.auto_parallel.static.dist_context import (
+    DistributedContext,
+)
+from paddle.distributed.auto_parallel.static.partitioner import Partitioner
+from paddle.distributed.auto_parallel.static.process_group import (
     clear_all_process_groups,
     get_all_process_groups,
     new_process_group,
 )
-from paddle.distributed.auto_parallel.reshard import Resharder
-from paddle.distributed.auto_parallel.utils import (
+from paddle.distributed.auto_parallel.static.reshard import Resharder
+from paddle.distributed.auto_parallel.static.utils import (
     debug_program,
     set_grad_var_shape,
 )
@@ -465,7 +467,7 @@ class OptimizationTuner:
             ]
         )
         cmd_args = (
-            "-m paddle.distributed.auto_parallel.tuner.profiler"
+            "-m paddle.distributed.auto_parallel.static.tuner.profiler"
             + " "
             + profile_args
         )

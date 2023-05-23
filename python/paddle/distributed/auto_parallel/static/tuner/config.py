@@ -15,7 +15,7 @@
 import copy
 import os
 
-from ..strategy import Strategy
+from ...strategy import Strategy
 
 _tuning_supported_passes = ["sharding", "recompute"]
 

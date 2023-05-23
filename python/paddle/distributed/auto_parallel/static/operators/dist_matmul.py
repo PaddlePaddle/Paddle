@@ -15,7 +15,7 @@
 import copy
 
 from paddle.common_ops_import import check_dtype, check_variable_and_dtype
-from paddle.distributed.auto_parallel.cost.comm_op_cost import (
+from paddle.distributed.auto_parallel.static.cost.comm_op_cost import (
     AllreduceSumOpCost,
     IdentityOpCost,
 )

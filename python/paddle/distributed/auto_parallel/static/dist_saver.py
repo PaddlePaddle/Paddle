@@ -23,7 +23,7 @@ import numpy as np
 import paddle
 from paddle.framework import core
 
-from ..utils.log_utils import get_logger
+from ...utils.log_utils import get_logger
 from .process_group import _g_process_group_map
 from .utils import get_dist_attr
 

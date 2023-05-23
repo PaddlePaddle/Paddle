@@ -18,11 +18,11 @@ import logging
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
 from paddle.framework import core
 
+from ..process_mesh import ProcessMesh, compute_compatible_process_mesh
 from .dist_attribute import OperatorDistAttr, TensorDistAttr
 from .dist_context import _node_id
 from .operators import find_compatible_distributed_operator_impls
 from .process_group import get_world_process_group
-from .process_mesh import ProcessMesh, compute_compatible_process_mesh
 from .utils import (
     __no_shape_var_type__,
     get_logger,
@@ -1641,7 +1641,7 @@ class Completer:
         """Complete the annotation of vars and ops in the update phase for parallel program."""
         # Copy the dist tensors and dist ops annotated by users from the default context
         # global mesh
-        from paddle.distributed.auto_parallel.process_group import (
+        from paddle.distributed.auto_parallel.static.process_group import (
             get_world_process_group,
         )
 
@@ -1895,7 +1895,7 @@ class Completer:
     def _init_global_mesh_for_program(self):
         # Copy the dist tensors and dist ops annotated by users from the default context
         # global mesh
-        from paddle.distributed.auto_parallel.process_group import (
+        from paddle.distributed.auto_parallel.static.process_group import (
             get_world_process_group,
         )
 

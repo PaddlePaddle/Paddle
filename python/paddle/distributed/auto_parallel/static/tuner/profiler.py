@@ -21,10 +21,10 @@ import time
 import traceback
 
 import paddle
-from paddle.distributed.auto_parallel.dist_loader import (
+from paddle.distributed.auto_parallel.static.dist_loader import (
     DistributedDataLoaderFromGenerator,
 )
-from paddle.distributed.auto_parallel.process_group import (
+from paddle.distributed.auto_parallel.static.process_group import (
     get_all_process_groups,
     new_process_group,
 )

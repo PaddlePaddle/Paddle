@@ -18,10 +18,10 @@ import paddle
 from paddle.framework import core
 from paddle.utils import unique_name
 
-from ...utils.log_utils import get_logger
+from ....utils.log_utils import get_logger
 
 _logger = get_logger(logging.INFO)
-from ..random import determinate_rng, is_enable_auto_rand_ctrl
+from ...random import determinate_rng, is_enable_auto_rand_ctrl
 from ..utils import (
     naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
     set_var_dist_attr,
@@ -39,9 +39,7 @@ class DistributedDropout(DistributedOperatorImplContainer):
         super().__init__(op_type)
 
 
-register_distributed_operator_impl_container(
-    DistributedDropout("fused_dropout_add")
-)
+register_distributed_operator_impl_container(DistributedDropout("dropout"))
 
 
 # Dist Dropout with Random Control
@@ -52,17 +50,9 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
         self._forward_implemented = True
         self._backward_implemented = True
 
-    def is_input_compatible(self, dist_op):
-        return True
-
-    def is_output_compatible(self, dist_op):
-        return True
-
-    def is_auto_compatible(self, dist_op):
-        return True
-
     @staticmethod
     def forward(ctx, *args, **kwargs):
+
         dist_op_context = ctx.dist_op_context
         main_block = dist_op_context.work_block
         startup_block = dist_op_context.startup_block
@@ -76,9 +66,14 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
                 op_dist_attr is not None
             ), f"forward op [{str(src_op)}] don't have dist attribute !"
 
-            assert 'seed_tensor' in kwargs, "input [{}] is not given".format(
-                'seed_tensor'
+            # check validation of inputs / outputs
+            assert 'X' in kwargs, "input [{}] is not given".format('X')
+            assert (
+                len(kwargs['X']) == 1
+            ), "input X should be only one tensor but got {}".format(
+                kwargs['X']
             )
+            assert 'Seed' in kwargs, "input [{}] is not given".format('Seed')
 
             if (
                 src_op.has_attr("fix_seed")
@@ -93,11 +88,11 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
                 )
             elif rank_id not in op_dist_attr.process_mesh.process_ids:
                 pass
-            elif (
-                len(kwargs['seed_tensor']) > 0
-                or len(src_op.input("seed_tensor")) > 0
-            ):
-                seed_var_name = kwargs['seed_tensor'][0]
+            # NOTE Adopt for recompute
+            # If user already set seed, We should not modify it. But if the seed is added by recompute pass, it should be under control.
+            # TODO  in future recompute pass should happen after parallel partition. and remove this at that time.
+            elif len(kwargs['Seed']) > 0 or len(src_op.input("Seed")) > 0:
+                seed_var_name = kwargs['Seed'][0]
                 if seed_var_name.startswith('rc_seed'):
                     pre_op = main_block.ops[-1]
                     assert (
@@ -106,7 +101,7 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
                     ), f"found exception op {str(pre_op)}"
 
                     # determinate rng
-                    X_var = main_block._var_recursive(kwargs['x'][0])
+                    X_var = main_block._var_recursive(kwargs['X'][0])
                     X_dims_mapping = op_dist_attr.get_input_dims_mapping(
                         X_var.name
                     )
@@ -126,7 +121,7 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
                     )
             else:
                 # determinate rng
-                X_var = main_block._var_recursive(kwargs['x'][0])
+                X_var = main_block._var_recursive(kwargs['X'][0])
                 X_dims_mapping = op_dist_attr.get_input_dims_mapping(X_var.name)
                 process_mesh = op_dist_attr.process_mesh
 
@@ -170,13 +165,13 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
                 )
 
                 # modify dropout op
-                src_op.desc.set_input("seed_tensor", [seed_var.name])
+                src_op.desc.set_input("Seed", [seed_var.name])
                 src_op._remove_attr("fix_seed")
                 src_op._remove_attr("seed")
                 op_dist_attr.set_input_dist_attr(
                     seed_var.name, seed_var_dist_attr
                 )
-                kwargs['seed_tensor'] = [seed_var.name]
+                kwargs['Seed'] = [seed_var.name]
 
         DistributedDefaultImpl0.forward(ctx, *args, **kwargs)
 
@@ -187,5 +182,5 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
 
 
 register_distributed_operator_impl(
-    "fused_dropout_add", DistributedDropoutImpl0("random_control")
+    "dropout", DistributedDropoutImpl0("random_control")
 )

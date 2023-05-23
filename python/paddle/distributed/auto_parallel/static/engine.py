@@ -22,7 +22,7 @@ import random
 import numpy as np
 
 import paddle
-import paddle.distributed.auto_parallel.utils as auto_utils
+import paddle.distributed.auto_parallel.static.utils as auto_utils
 from paddle import static, utils
 from paddle.distributed import fleet
 from paddle.fluid.executor import _to_name_str
@@ -32,7 +32,9 @@ from paddle.framework import core, in_dynamic_mode
 from paddle.metric import Metric
 from paddle.static import InputSpec, Operator, Variable, global_scope
 
-from ..utils.log_utils import get_logger
+from ...utils.log_utils import get_logger
+from ..interface import CollectionNames, fetch, get_collection
+from ..strategy import Strategy
 from .callbacks import config_callbacks
 from .cluster import Cluster, get_default_cluster
 from .converter import Converter
@@ -45,11 +47,9 @@ from .dist_loader import (
 from .dist_op import DistributedOperator
 from .dist_saver import DistributedSaver
 from .helper import ProgramHelper
-from .interface import CollectionNames, fetch, get_collection
 from .parallelizer_v2 import Parallelizer
 from .planner_v2 import Planner
 from .process_group import get_all_process_groups, new_process_group
-from .strategy import Strategy
 
 
 class Engine:

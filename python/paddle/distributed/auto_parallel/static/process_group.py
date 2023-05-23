@@ -19,7 +19,7 @@ from paddle import _legacy_C_ops
 from paddle.framework import core, in_dynamic_mode
 from paddle.tensor import fill_constant
 
-from ..collective import _get_global_env, _new_ring_id
+from ...collective import _get_global_env, _new_ring_id
 
 
 def get_all_process_groups():

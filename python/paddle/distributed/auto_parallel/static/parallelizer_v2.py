@@ -20,10 +20,10 @@ from paddle.distributed.passes import PassManager, new_pass
 from paddle.static import append_backward, program_guard
 from paddle.utils import unique_name
 
-from ..utils.log_utils import get_logger
+from ...utils.log_utils import get_logger
+from ..random import init_auto_parallel_rng
 from .partitioner import Partitioner
 from .process_group import get_world_process_group
-from .random import init_auto_parallel_rng
 from .reshard import Resharder
 from .utils import set_grad_var_shape
 
