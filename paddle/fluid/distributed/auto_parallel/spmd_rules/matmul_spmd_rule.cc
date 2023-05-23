@@ -165,7 +165,7 @@ std::vector<DistTensorSpec> MatmulSPMDRule::InferForward(
 
 TensorDistAttr GetInferedDistAttr(
     const TensorDistAttr& origin_dist_attr,
-    const std::vector<int>& shape,
+    const std::vector<int64_t>& shape,
     const std::string& tensor_axis,
     const std::unordered_map<std::string, int64_t>& axis_to_dim_map) {
   TensorDistAttr dist_attr_ = CopyTensorDistAttrForOutput(origin_dist_attr);
