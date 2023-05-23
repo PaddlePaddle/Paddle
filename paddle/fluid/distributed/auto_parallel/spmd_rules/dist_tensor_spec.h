@@ -14,12 +14,15 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/fluid/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 
 namespace paddle {
 namespace distributed {
 namespace auto_parallel {
+
+using phi::distributed::auto_parallel::ProcessMesh;
+using phi::distributed::auto_parallel::TensorDistAttr;
 
 /**
  * A unified data class for inferring distributed attributes
@@ -27,26 +30,39 @@ namespace auto_parallel {
  */
 class DistTensorSpec {
  public:
+  DistTensorSpec() = default;
+
   DistTensorSpec(const std::vector<int64_t>& shape,
                  const TensorDistAttr& dist_attr);
 
+  DistTensorSpec(const DistTensorSpec& spec);
+
+  // temp function, only for test in dygraph mode
   explicit DistTensorSpec(const Tensor& tensor);
 
   ~DistTensorSpec();
 
+  DistTensorSpec& operator=(const DistTensorSpec& spec);
+
   // get dims_mapping from dist_attr_
-  const std::vector<int64_t>& get_dims_mapping();
+  const std::vector<int64_t>& get_dims_mapping() const;
 
   // set dims_mapping in dist_attr_
   void set_dims_mapping(const std::vector<int64_t>& dims_mapping);
 
   // get process_mesh from dist_attr_
-  const ProcessMesh& get_process_mesh();
+  const ProcessMesh& get_process_mesh() const;
 
   // set process_mesh in dist_attr_
   void set_process_mesh(const ProcessMesh& process_mesh);
 
-  const std::vector<int64_t>& get_shape();
+  const TensorDistAttr& get_dist_attr() const;
+
+  void set_dist_attr(const TensorDistAttr& dist_attr);
+
+  const std::vector<int64_t>& get_shape() const;
+
+  std::string to_string() const;
 
  private:
   std::vector<int64_t> shape_;

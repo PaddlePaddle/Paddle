@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/dist_tensor_spec.h"
-#include "paddle/fluid/distributed/auto_parallel/process_mesh.h"
+#include "paddle/phi/core/distributed/auto_parallel/utils.h"
 
 namespace paddle {
 namespace distributed {
@@ -27,28 +27,41 @@ DistTensorSpec::DistTensorSpec(const std::vector<int64_t>& shape,
   dist_attr_.copy_from(dist_attr);
 }
 
+DistTensorSpec::DistTensorSpec(const DistTensorSpec& spec) {
+  std::vector<int64_t> spec_shape = spec.get_shape();
+  shape_.assign(spec_shape.begin(), spec_shape.end());
+  dist_attr_.copy_from(spec.get_dist_attr());
+}
+
 DistTensorSpec::~DistTensorSpec() {}
 
 DistTensorSpec::DistTensorSpec(const Tensor& tensor) {
   shape_ = tensor.shape();
 
-  std::vector<int64_t> pm_shape, pm_ids;
-  pm_shape = {4};
-  pm_ids = {0, 1, 2, 3};
-  std::vector<std::string> dim_name = {"mp"};
+  // std::vector<int64_t> pm_shape, pm_ids;
+  // pm_shape = {4};
+  // pm_ids = {0, 1, 2, 3};
+  // std::vector<std::string> dim_name = {"mp"};
 
-  ProcessMesh pm(pm_shape, pm_ids, dim_name);
-  std::vector<int64_t> dims_mapping = {-1, 0};
-  TensorDistAttr dist_attr;
-  dist_attr.set_process_mesh(pm);
-  dist_attr.set_dims_mapping(dims_mapping);
+  // ProcessMesh pm(pm_shape, pm_ids, dim_name);
+  // std::vector<int64_t> dims_mapping = {-1, 0};
+  // TensorDistAttr dist_attr;
+  // dist_attr.set_process_mesh(pm);
+  // dist_attr.set_dims_mapping(dims_mapping);
 
-  dist_attr_.copy_from(dist_attr);
+  // dist_attr_.copy_from(dist_attr);
 
-  std::cout << dist_attr_;
+  // std::cout << dist_attr_;
 }
 
-const std::vector<int64_t>& DistTensorSpec::get_dims_mapping() {
+DistTensorSpec& DistTensorSpec::operator=(const DistTensorSpec& spec) {
+  std::vector<int64_t> spec_shape = spec.get_shape();
+  shape_ = spec_shape;
+  dist_attr_.copy_from(spec.get_dist_attr());
+  return *this;
+}
+
+const std::vector<int64_t>& DistTensorSpec::get_dims_mapping() const {
   return dist_attr_.dims_mapping();
 }
 
@@ -57,7 +70,7 @@ void DistTensorSpec::set_dims_mapping(
   dist_attr_.set_dims_mapping(dims_mapping);
 }
 
-const ProcessMesh& DistTensorSpec::get_process_mesh() {
+const ProcessMesh& DistTensorSpec::get_process_mesh() const {
   return dist_attr_.process_mesh();
 }
 
@@ -65,7 +78,22 @@ void DistTensorSpec::set_process_mesh(const ProcessMesh& process_mesh) {
   dist_attr_.set_process_mesh(process_mesh);
 }
 
-const std::vector<int64_t>& DistTensorSpec::get_shape() { return shape_; }
+const std::vector<int64_t>& DistTensorSpec::get_shape() const { return shape_; }
+
+const TensorDistAttr& DistTensorSpec::get_dist_attr() const {
+  return dist_attr_;
+}
+
+void DistTensorSpec::set_dist_attr(const TensorDistAttr& dist_attr) {
+  dist_attr_ = dist_attr;
+}
+
+std::string DistTensorSpec::to_string() const {
+  using phi::distributed::auto_parallel::str_join;
+  std::string spec_str = "{tensor_shape:[" + str_join(shape_) + "], ";
+  spec_str += "dist_attr:" + dist_attr_.to_string() + "}";
+  return spec_str;
+}
 
 }  // namespace auto_parallel
 }  // namespace distributed
