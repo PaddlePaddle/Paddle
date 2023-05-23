@@ -12,8 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
-
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/matmul_spmd_rule.h"
 
 namespace paddle {
@@ -129,10 +127,61 @@ std::vector<DistTensorSpec> MatmulSPMDRule::InferForward(
       input_pairs;
   input_pairs.push_back(x_pair);
   input_pairs.push_back(y_pair);
-  auto dim_to_sharding = ShardingMerge(input_pairs);
+  auto axis_to_dim_map = ShardingMergeForTensors(input_pairs);
 
-  // step2.3: Handle Broadcast
+  // step2.2: fill output's dim mapping.
+  TensorDistAttr output_dist_attr_dst =
+      CopyTensorDistAttrForOutput(input_specs[0].DistAttr) std::vector<int64_t>
+          out_dims_mapping;
+  out_dims_mapping.reserve(out_string.size());
+  for (int i = 0; i < out_string.size(); ++i) {
+    out_dims_mapping.push_back(axis_to_dim_map[out_string.substr(i, 1)]);
+  }
+  output_dist_attr_dst.set_dims_mapping(out_dims_mapping);
+
+  // step2.3: fill input's dim mapping.
+  TensorDistAttr x_dist_attr_dst = GetInferedDistAttr(
+      input_specs[0].DistAttr, input_specs[0].shape, x_string, axis_to_dim_map);
+  TensorDistAttr y_dist_attr_dst = GetInferedDistAttr(
+      input_specs[1].DistAttr, input_specs[1].shape, y_string, axis_to_dim_map);
+
   // step2.3: Handle Partial
+  // Step2.3.1 Output Partial
+  std::vector<int64_t> partial_on_dims =
+      ResoluteOutputPartialDimension(axis_to_dim_map, out_string);
+
+  // Step2.3.2  handle input tensor partial (TODO)
+
+  VLOG(4) << "MatmulSPMDRule InferForward: "
+          << "X shape: " << input_specs[0].shape
+          << ", src_dims_mapping: " << x_dims_mapping
+          << ", dst_dims_mapping: " << x_dist_attr_dst.dims_mapping
+          << "; Y shape: " << input_specs[1].shape
+          << ", src_dims_mapping: " << x_dims_mapping
+          << ", dst_dims_mapping: " << y_dist_attr_dst.dims_mapping
+          << "; Output dims_mapping: " << out_dims_mapping
+          << ", partial_on_dims: " << partial_on_dims;
+}
+
+TensorDistAttr GetInferedDistAttr(
+    const TensorDistAttr& origin_dist_attr,
+    const std::vector<int>& shape,
+    const std::string& tensor_axis,
+    const std::unordered_map<std::string, int64_t>& axis_to_dim_map) {
+  TensorDistAttr dist_attr_ = CopyTensorDistAttrForOutput(origin_dist_attr);
+  std::vector<int64_t> infered_dims_mapping;
+  infered_dims_mapping.reserve(tensor_string.size());
+
+  for (int i = 0; i < tensor_axis.size(); ++i) {
+    if (shape.size() > i && shape[i] == 1) {
+      infered_dims_mapping.push_back(-1);
+    } else {
+      infered_dims_mapping.push_back(axis_to_dim_map[tensor_axis.substr(i, 1)]);
+    }
+  }
+
+  dist_attr_.set_dims_mapping(infered_dims_mapping);
+  return dist_attr_;
 }
 
 std::vector<DistTensorSpec> MatmulSPMDRule::InferBackward(
@@ -142,40 +191,3 @@ std::vector<DistTensorSpec> MatmulSPMDRule::InferBackward(
 }  // namespace auto_parallel
 }  // namespace distributed
 }  // namespace paddle
-
-/// @brief
-// int max_dim = 0;
-// int ndim = 0;
-// std::vector<int> intput_ndims;
-// for (auto& input_spec : input_specs){
-//   ndim = input_spec.shape().size();
-//   intput_ndims.push_back(ndim);
-//   if (ndim > max_dim) {
-//     max_dim = ndim;
-//   }
-// }
-
-// std::string alphabet = "abcdefghijklmnopqrstuvwxyz";
-// std::vector<std::string> input_dim_chars;
-// for (auto& intput_ndim : intput_ndims){
-//   input_dim_chars.push_back(alphabet.substr(max_dim - intput_ndim,
-//   intput_ndim));
-// }
-
-// int max_dim = 0;
-// int ndim = 0;
-// std::vector<int> intput_ndims;
-// for (auto& input_spec : input_specs){
-//   ndim = input_spec.shape().size();
-//   intput_ndims.push_back(ndim);
-//   if (ndim > max_dim) {
-//     max_dim = ndim;
-//   }
-// }
-
-// std::string alphabet = "abcdefghijklmnopqrstuvwxyz";
-// std::vector<std::string> input_dim_chars;
-// for (auto& intput_ndim : intput_ndims){
-//   input_dim_chars.push_back(alphabet.substr(max_dim - intput_ndim,
-//   intput_ndim));
-// }

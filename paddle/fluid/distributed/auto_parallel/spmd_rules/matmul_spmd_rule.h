@@ -25,6 +25,12 @@ namespace paddle {
 namespace distributed {
 namespace auto_parallel {
 
+TensorDistAttr GetInferedDistAttr(
+    const TensorDistAttr& origin_dist_attr,
+    const std::vector<int>& shape,
+    const std::string& tensor_axis,
+    const std::unordered_map<std::string, int64_t>& axis_to_dim_map);
+
 class MatmulSPMDRule : public SPMDRuleBase {
  public:
   std::vector<DistTensorSpec> InferForward(
