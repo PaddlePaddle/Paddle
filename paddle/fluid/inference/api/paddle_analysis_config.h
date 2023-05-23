@@ -84,20 +84,24 @@ struct XpuConfig {
 
   // stream related
   void* stream{nullptr};
-  // enable_multi_stream?
+
+  // conv autotune related, only for Paddle-Lite now
+  int conv_autotune_level{0};  //
+  std::string conv_autotune_file;
+  bool conv_autotune_file_writeback{false};
 
   // fc autotune related, only for Paddle-Lite now
-  int fc_autotune_level{0};
+  int fc_autotune_level{0};  // 0-9
   std::string fc_autotune_file;
   bool fc_autotune_file_writeback{false};
 
   // only for Paddle-Lite now
-  bool local_quant{true};
+  bool local_quant{false};       // precision related
+  int precision_stable_mode{0};  // 0,1,2
   std::string gemm_precision_mode{"int16"};
   int transformer_softmax_optimize_level{0};
-  float quant_gelu_out_threshold{0.f};
-
-  // adaptive_seqlen?
+  float quant_gelu_out_threshold{10.f};
+  bool adaptive_seqlen{true};
 
   // only for PaddleInference now
   int quant_post_dynamic_weight_bits{-1};
