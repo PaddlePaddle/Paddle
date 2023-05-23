@@ -18,8 +18,7 @@ import paddle
 from paddle import _C_ops
 from paddle.distribution import distribution
 from paddle.fluid.data_feeder import check_type, convert_dtype
-from paddle.fluid.framework import _non_static_mode, in_dygraph_mode
-from paddle.fluid.layers import tensor
+from paddle.fluid.framework import Variable, _non_static_mode, in_dygraph_mode
 from paddle.tensor import random
 
 
@@ -96,13 +95,13 @@ class Uniform(distribution.Distribution):
             check_type(
                 low,
                 'low',
-                (int, float, np.ndarray, tensor.Variable, list, tuple),
+                (int, float, np.ndarray, Variable, list, tuple),
                 'Uniform',
             )
             check_type(
                 high,
                 'high',
-                (int, float, np.ndarray, tensor.Variable, list, tuple),
+                (int, float, np.ndarray, Variable, list, tuple),
                 'Uniform',
             )
 

@@ -26,7 +26,6 @@ import numbers
 import paddle
 from . import control_flow
 from . import nn
-from . import tensor
 from ..framework import (
     default_main_program,
     Parameter,
@@ -490,7 +489,7 @@ def cosine_decay(learning_rate, step_each_epoch, epochs):
             learning_rate = base_lr, step_each_epoch=10000, epochs=120)
     """
     check_type(
-        learning_rate, 'learning_rate', (float, tensor.Variable), 'cosine_decay'
+        learning_rate, 'learning_rate', (float, Variable), 'cosine_decay'
     )
 
     with default_main_program()._lr_schedule_guard():

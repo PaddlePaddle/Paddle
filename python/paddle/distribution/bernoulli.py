@@ -18,8 +18,7 @@ import numpy as np
 import paddle
 from paddle.distribution import exponential_family
 from paddle.fluid.data_feeder import check_type, convert_dtype
-from paddle.fluid.framework import _non_static_mode
-from paddle.fluid.layers import tensor
+from paddle.fluid.framework import Variable, _non_static_mode
 from paddle.nn.functional import (
     binary_cross_entropy_with_logits,
     sigmoid,
@@ -97,7 +96,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
             check_type(
                 probs,
                 'probs',
-                (float, tensor.Variable),
+                (float, Variable),
                 self.name,
             )
 
@@ -180,7 +179,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
             check_type(
                 shape,
                 'shape',
-                (np.ndarray, tensor.Variable, list, tuple),
+                (np.ndarray, Variable, list, tuple),
                 name,
             )
 
@@ -259,7 +258,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
             check_type(
                 shape,
                 'shape',
-                (np.ndarray, tensor.Variable, list, tuple),
+                (np.ndarray, Variable, list, tuple),
                 name,
             )
             check_type(
@@ -318,7 +317,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
         """
         name = self.name + '_cdf'
         if not _non_static_mode():
-            check_type(value, 'value', tensor.Variable, name)
+            check_type(value, 'value', Variable, name)
 
         value = self._check_values_dtype_in_probs(self.probs, value)
         probs, value = paddle.broadcast_tensors([self.probs, value])
@@ -356,7 +355,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
         """
         name = self.name + '_log_prob'
         if not _non_static_mode():
-            check_type(value, 'value', tensor.Variable, name)
+            check_type(value, 'value', Variable, name)
 
         value = self._check_values_dtype_in_probs(self.probs, value)
         logits, value = paddle.broadcast_tensors([self.logits, value])
@@ -395,7 +394,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
         """
         name = self.name + '_prob'
         if not _non_static_mode():
-            check_type(value, 'value', tensor.Variable, name)
+            check_type(value, 'value', Variable, name)
 
         return self.log_prob(value).exp(name=name)
 

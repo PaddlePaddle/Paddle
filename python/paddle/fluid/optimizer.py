@@ -48,7 +48,6 @@ from .dygraph.learning_rate_scheduler import (
     _LearningRateEpochDecay,
 )
 from paddle.fluid import core
-from paddle.fluid.layers import tensor
 from functools import reduce
 from functools import cmp_to_key
 from .wrapped_decorator import signature_safe_contextmanager
