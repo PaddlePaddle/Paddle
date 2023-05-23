@@ -272,7 +272,7 @@
     param : [peer, dtype, out_shape]
 
 - op : pool2d
-  args : (Tensor x, str pooling_type, IntArray ksize, bool global_pooling = false, int[] strides = {1,1}, int[] paddings = {0,0}, bool exclusive = true, bool adaptive = false, bool ceil_mode = false, str data_format = "NCHW", str padding_algorithm = "EXPLICIT",bool use_cudnn = false)
+  args : (Tensor x, str pooling_type, IntArray ksize, bool global_pooling = false, int[] strides = {1,1}, int[] paddings = {0,0}, bool exclusive = true, bool adaptive = false, bool ceil_mode = false, str data_format = "NCHW", str padding_algorithm = "EXPLICIT")
   output : Tensor(out)
   infer_meta :
     func : Pool2DInferMeta
@@ -281,6 +281,17 @@
     func : pool2d
     param : [x, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
   backward : pool2d_grad
+
+- op : pool3d
+  args : (Tensor x,str pooling_type, int[] ksize, int[] strides = {1,1,1}, int[] paddings = {0,0,0}, bool ceil_mode = false, bool exclusive = true, str data_format = "NCDHW", bool global_pooling = false, bool adaptive = false, str padding_algorithm = "EXPLICIT")
+  output : Tensor(out)
+  infer_meta :
+    func : PoolInferMeta
+    param : [x, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
+  kernel :
+    func : pool3d
+    param : [x, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
+  backward : pool3d_grad
 
 - op : randint
   args : (int low, int high, IntArray shape = {}, DataType dtype = DataType::INT64, int seed = 0)

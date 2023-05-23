@@ -1793,6 +1793,13 @@
 
 - op : pool3d
   backward : pool3d_grad
+  inputs :
+    {x : X}
+  outputs :
+    {out : Out}
+  get_expected_kernel_type :
+    pool3d : GetPoolExpectedKernelType
+    pool3d_grad : GetPoolOpGradExpectedKernelType
   extra :
     attrs : [bool use_mkldnn = false]
 
