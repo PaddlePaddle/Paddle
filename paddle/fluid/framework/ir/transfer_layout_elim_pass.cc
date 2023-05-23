@@ -42,8 +42,10 @@ namespace ir {
 //                 |                                           |
 //              other ops                                  other ops
 // Put transfer_layout after op_node
-void TransferLayoutElimPass::PutTranferlayoutAfterOp(Node *op_node,
-                                                     ir::Graph *graph) const {
+// transfer_info is for case when we need know this transfer_layout info,
+// nchw_nhwc or nhwc_nchw
+void TransferLayoutElimPass::PutTranferlayoutAfterOp(
+    Node *op_node, ir::Graph *graph, std::string *transfer_info) const {
   std::unordered_set<const Node *> remove_nodes;
   // Ensure op_node has only one output!
   int op_node_useful_output = 0;
@@ -89,11 +91,13 @@ void TransferLayoutElimPass::PutTranferlayoutAfterOp(Node *op_node,
       new_transfer_layout_desc.GetAttrIfExists<int>("src_layout"));
   if (dst_layout == DataLayout::NCHW && src_layout == DataLayout::NHWC) {
     suffix = "_nhwc_to_nchw";
+    if (transfer_info) *transfer_info = "nhwc_nchw";
     new_var2_shape[1] = var2_shape[2];
     new_var2_shape[2] = var2_shape[3];
     new_var2_shape[3] = var2_shape[1];
   } else if (dst_layout == DataLayout::NHWC && src_layout == DataLayout::NCHW) {
     suffix = "_nchw_to_nhwc";
+    if (transfer_info) *transfer_info = "nchw_nhwc";
     new_var2_shape[1] = var2_shape[3];
     new_var2_shape[2] = var2_shape[1];
     new_var2_shape[3] = var2_shape[2];
@@ -281,20 +285,33 @@ void TransferLayoutElimPass::ApplyImpl(ir::Graph *graph) const {
 
       if (AllInputIsTransferlayout(op_node)) {
         if (is_concat_like_op) {
-          PutTranferlayoutAfterOp(op_node, graph);
+          std::string transfer_info;
+          PutTranferlayoutAfterOp(op_node, graph, &transfer_info);
           int axis = op_node->Op()->GetAttrIfExists<int>("axis");
-          if (axis == 1) {
-            op_node->Op()->SetAttr("axis", 3);
-          } else if (axis == 2) {
-            op_node->Op()->SetAttr("axis", 1);
-          } else if (axis == 3) {
-            op_node->Op()->SetAttr("axis", 2);
+          int modify_axis = axis;
+          if (transfer_info == "nhwc_nchw") {
+            if (axis == 1) {
+              modify_axis = 3;
+            } else if (axis == 2) {
+              modify_axis = 1;
+            } else if (axis == 3) {
+              modify_axis = 2;
+            }
+          } else if (transfer_info == "nchw_nhwc") {
+            if (axis == 1) {
+              modify_axis = 2;
+            } else if (axis == 2) {
+              modify_axis = 3;
+            } else if (axis == 3) {
+              modify_axis = 1;
+            }
           }
+          op_node->Op()->SetAttr("axis", modify_axis);
           modify = true;
           break;
         }
         if (is_pool_like_op) {
-          PutTranferlayoutAfterOp(op_node, graph);
+          PutTranferlayoutAfterOp(op_node, graph, nullptr);
           op_node->Op()->SetAttr(
               "data_format",
               transfer_format(
@@ -303,7 +320,7 @@ void TransferLayoutElimPass::ApplyImpl(ir::Graph *graph) const {
           break;
         }
         if (is_act_like_op) {
-          PutTranferlayoutAfterOp(op_node, graph);
+          PutTranferlayoutAfterOp(op_node, graph, nullptr);
           modify = true;
           break;
         }
