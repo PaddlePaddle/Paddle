@@ -202,13 +202,19 @@ class TestCooSoftmax(unittest.TestCase):
                     .detach()
                     .to_sparse_coo(sparse_dim)
                 )
-                coo.stop_gradient = False
 
                 size = coo.shape
                 dense_size = tuple(size[sparse_dim:])
                 dense_dim = len(dense_size)
 
                 for axis in range(sparse_dim + dense_dim):
+                    coo = (
+                        paddle.to_tensor(np_x, stop_gradient=False)
+                        .detach()
+                        .to_sparse_coo(sparse_dim)
+                    )
+                    coo.stop_gradient = False
+
                     py_out = self.sparse_softmax(
                         coo, dense_shape, sparse_dim, axis
                     )
@@ -227,18 +233,14 @@ class TestCooSoftmax(unittest.TestCase):
                     )
 
                     out.backward(coo.detach())
-
-                    if axis == 0:
-                        dense_tensor = paddle.to_tensor(
-                            np_x, stop_gradient=False
-                        )
-                        model_dense = paddle.nn.Softmax(axis=axis)
-                        dense_out = model_dense(dense_tensor)
-                        dense_out.backward(dense_tensor.detach())
-                        dg_npy = dense_tensor.grad.numpy()
-                        np.testing.assert_allclose(
-                            coo.grad.to_dense().numpy(), dg_npy, rtol=1e-05
-                        )
+                    dense_tensor = paddle.to_tensor(np_x, stop_gradient=False)
+                    model_dense = paddle.nn.Softmax(axis=axis)
+                    dense_out = model_dense(dense_tensor)
+                    dense_out.backward(dense_tensor.detach())
+                    dg_npy = dense_tensor.grad.numpy()
+                    np.testing.assert_allclose(
+                        coo.grad.to_dense().numpy(), dg_npy, rtol=1e-05
+                    )
 
     def test_softmax2d(self):
         self.check_run((16, 128))
