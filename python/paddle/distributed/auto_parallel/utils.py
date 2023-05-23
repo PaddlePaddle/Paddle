@@ -22,6 +22,7 @@ from functools import reduce
 import numpy as np
 
 import paddle
+from paddle.fluid.wrapped_decorator import wrap_decorator
 from paddle.framework import core
 from paddle.framework.io_utils import is_belong_to_optimizer, is_parameter
 from paddle.static import Variable
@@ -2355,3 +2356,17 @@ def is_dep_skip_op(op):
         return True
 
     return False
+
+
+def _dygraph_guard_(func):
+    def __impl__(*args, **kwargs):
+        if paddle.framework.in_dygraph_mode():
+            return func(*args, **kwargs)
+        else:
+            with paddle.fluid.dygraph.guard():
+                return func(*args, **kwargs)
+
+    return __impl__
+
+
+dygraph_guard = wrap_decorator(_dygraph_guard_)

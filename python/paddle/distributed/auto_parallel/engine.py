@@ -795,8 +795,6 @@ class Engine:
                 )
             else:
                 for process_group in all_process_groups:
-                    if self._cur_rank not in process_group.ranks:
-                        continue
                     process_group.instantiate()
 
     def _initialize(self, mode):
