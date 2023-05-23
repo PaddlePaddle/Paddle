@@ -300,7 +300,7 @@ class TestDistMPTraning(unittest.TestCase):
             if idx == 2 and paddle.distributed.get_rank() == 0:
                 self.assertTrue(
                     set(
-                        optimizer_a._inner_opt._inner_optimizer.state_dict().keys()
+                        optimizer_a._inner_opt._inner_opt.state_dict().keys()
                     )
                     == sharded_accumulators
                 )
