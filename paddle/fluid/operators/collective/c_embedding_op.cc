@@ -58,7 +58,7 @@ class CEmbeddingOp : public framework::OperatorWithKernel {
         (height > 0 && width > 0 && start_idx >= 0),
         true,
         platform::errors::InvalidArgument(
-            "height:%ld width:%ld start_idx:%ld must not have negtive values",
+            "height:%ld width:%ld start_idx:%ld must not have negative values",
             height,
             width,
             start_idx));
@@ -142,7 +142,7 @@ class CEmbeddingOpGrad : public framework::OperatorWithKernel {
         (height > 0 && width > 0 && start_idx >= 0),
         true,
         platform::errors::InvalidArgument(
-            "height:%ld width:%ld start_idx:%ld must not have negtive values",
+            "height:%ld width:%ld start_idx:%ld must not have negative values",
             height,
             width,
             start_idx));

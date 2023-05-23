@@ -69,7 +69,7 @@ def check_out_dtype(api_fn, in_specs, expect_dtypes, target_index=0, **configs):
     Args:
         api_fn(callable):  paddle api function
         in_specs(list[tuple]): list of shape and dtype information for constructing input tensor of api_fn, such as [(shape, dtype), (shape, dtype)].
-        expected_dtype(list[str]): expected dtype of output tensor.
+        expect_dtypes(list[str]): expected dtype of output tensor.
         target_index(int): indicate which one from in_specs to infer the dtype of output.
         config(dict): other arguments of paddle api function
 
@@ -1366,14 +1366,14 @@ class OpTest(unittest.TestCase):
 
     def _get_need_run_ops(self, op_desc, fwd_op_desc=None):
         """Postorder traversal of the 'grad' tree to get all ops that need to run during inplace test.
-        An op needs to run druing inplace check if,
+        An op needs to run during inplace check if,
         (1) it has infer_inplace,
         (2) it has infer_inplace in its grad descendants. (since we need its outputs as to construct its grad's inputs)
 
         Args:
             op_desc (OpDesc): The op_desc of current op.
             fwd_op_desc (OpDesc): The op_desc of current op's forward op, None if current op has no forward op.
-                Eg. relu's fwd_op is None, relu_grad's fwd_op is relu, relu_grad_grad's fwd_op is relu_grad, etc.
+                E.g. relu's fwd_op is None, relu_grad's fwd_op is relu, relu_grad_grad's fwd_op is relu_grad, etc.
 
         Returns:
             need_run_ops (list[(op_desc, fwd_op_desc)]): The ops that need to run during inplace test.
@@ -1542,7 +1542,7 @@ class OpTest(unittest.TestCase):
     def check_inplace_output_with_place(
         self, place, no_check_set=None, inplace_atol=None
     ):
-        """Chech the inplace correctness of given op, its grad op, its grad_grad op, etc.
+        """Check the inplace correctness of given op, its grad op, its grad_grad op, etc.
 
         (1) Get all ops need to run. (see conditions in _get_need_run_ops())
         (2) Run op in need_run_ops, and do inplace check if it has infer_inplace.
@@ -2117,7 +2117,7 @@ class OpTest(unittest.TestCase):
             for var_name in var_names:
                 i = find_fetch_index(var_name, fetch_list)
                 if i == -1:
-                    # The output is dispensiable or intermediate.
+                    # The output is dispensable or intermediate.
                     break
                 out = fetch_outs[i]
                 if isinstance(out, core.LoDTensor):
@@ -2820,7 +2820,7 @@ class OpTest(unittest.TestCase):
                     user_defined_grad_outputs = [user_defined_grad_outputs]
                 grad_outputs = []
                 for grad_out_value in user_defined_grad_outputs:
-                    # `presistable` is used to avoid executor create new var in local scope
+                    # `persistable` is used to avoid executor create new var in local scope
                     var = block.create_var(
                         shape=grad_out_value.shape,
                         dtype=grad_out_value.dtype,

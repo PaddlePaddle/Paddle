@@ -15,10 +15,10 @@ limitations under the License. */
 #include <algorithm>
 #include <iterator>
 
-#include "paddle/fluid/distributed/auto_parallel/process_mesh.h"
-#include "paddle/fluid/distributed/auto_parallel/utils.h"
+#include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
+#include "paddle/phi/core/distributed/auto_parallel/utils.h"
 
-namespace paddle {
+namespace phi {
 namespace distributed {
 namespace auto_parallel {
 
@@ -30,27 +30,27 @@ ProcessMesh::ProcessMesh(const std::vector<int64_t> &shape,
   PADDLE_ENFORCE_EQ(
       size,
       process_ids.size(),
-      platform::errors::InvalidArgument("The size of this process mesh must be "
-                                        "equal to the size of its process ids.",
-                                        size,
-                                        process_ids.size()));
+      errors::InvalidArgument("The size of this process mesh must be "
+                              "equal to the size of its process ids.",
+                              size,
+                              process_ids.size()));
   PADDLE_ENFORCE_EQ(
       has_duplicates(process_ids),
       false,
-      platform::errors::InvalidArgument("The process ids [%s] must be unique.",
-                                        str_join(process_ids_)));
+      errors::InvalidArgument("The process ids [%s] must be unique.",
+                              str_join(process_ids_)));
   process_ids_ = process_ids;
 
   PADDLE_ENFORCE_EQ(shape_.size(),
                     dim_names.size(),
-                    platform::errors::InvalidArgument(
+                    errors::InvalidArgument(
                         "The size of mesh shape must be equal to the size "
                         "of the dimension names.",
                         shape_.size(),
                         dim_names_.size()));
   PADDLE_ENFORCE_EQ(has_duplicates(dim_names),
                     false,
-                    platform::errors::InvalidArgument(
+                    errors::InvalidArgument(
                         "The names [%s] of each dimension must be unique.",
                         str_join(dim_names)));
   dim_names_ = dim_names;
@@ -131,4 +131,4 @@ bool operator==(const ProcessMesh &lhs, const ProcessMesh &rhs) {
 
 }  // namespace auto_parallel
 }  // namespace distributed
-}  // namespace paddle
+}  // namespace phi

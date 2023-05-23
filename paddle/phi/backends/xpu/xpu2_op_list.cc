@@ -525,6 +525,8 @@ XPUOpMap& get_kl2_ops() {
                      phi::DataType::FLOAT16,
                      phi::DataType::INT64})},
       {"nearest_interp_v2_grad", XPUKernelSet({phi::DataType::FLOAT32})},
+      {"nll_loss", XPUKernelSet({phi::DataType::FLOAT32})},
+      {"nll_loss_grad", XPUKernelSet({phi::DataType::FLOAT32})},
       {"not_equal",
        XPUKernelSet({phi::DataType::INT64,
                      phi::DataType::INT32,
