@@ -59,6 +59,13 @@ void SetParameterOp::verify(const std::vector<ir::OpResult> &inputs,
 }
 
 const char **CombineOp::attributes_name = nullptr;
+void CombineOp::verify(const std::vector<ir::OpResult> &inputs,
+                       const std::vector<ir::Type> &outputs,
+                       const ir::AttributeMap &attributes) {}
+
 const char *SliceOp::attributes_name[attributes_num] = {"index"};
+void SliceOp::verify(const std::vector<ir::OpResult> &inputs,
+                     const std::vector<ir::Type> &outputs,
+                     const ir::AttributeMap &attributes) {}
 
 }  // namespace ir
