@@ -70,7 +70,8 @@
   args : (Tensor out_grad, int diagonal, bool lower)
   output : Tensor(x_grad)
   infer_meta :
-    func : TrilTriuInferMeta
+      func : UnchangedInferMeta
+      param : [out_grad]
   kernel:
     func : tril_triu_grad
 
