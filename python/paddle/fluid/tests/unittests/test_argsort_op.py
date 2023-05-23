@@ -523,10 +523,11 @@ class TestArgsortOpFp16(unittest.TestCase):
 class TestArgsortBF16OP(OpTest):
     def setUp(self):
         self.op_type = "argsort"
+        self.python_api = paddle.argsort
         self.dtype = np.uint16
         self.descending = False
         self.axis = 0
-        self.x = np.random.random((2, 8)).astype(np.float32)
+        self.x = np.random.random((11, 17)).astype(np.float32)
         self.sorted_x = np.sort(
             self.x, kind='quicksort', axis=self.axis
         ).astype(np.float32)
