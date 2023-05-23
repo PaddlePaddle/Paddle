@@ -19,34 +19,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-class PoolOp : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
- protected:
-  phi::KernelKey GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override;
-
-  phi::KernelKey GetKernelTypeForVar(
-      const std::string& var_name,
-      const phi::DenseTensor& tensor,
-      const phi::KernelKey& expected_kernel_type) const override;
-};
-
-class PoolOpGrad : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
- protected:
-  phi::KernelKey GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override;
-
-  phi::KernelKey GetKernelTypeForVar(
-      const std::string& var_name,
-      const phi::DenseTensor& tensor,
-      const phi::KernelKey& expected_kernel_type) const override;
-};
-
 class Pool3dOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override;

@@ -71,6 +71,26 @@ void Pool2dGradKernel(const Context& dev_ctx,
 
   dx->set_mem_desc(diff_src_memory->get_desc());
 }
+
+phi::KernelKey PoolOpGradGetKernelTypeForVar(
+    const std::string& var_name,
+    const phi::DenseTensor& tensor,
+    const phi::KernelKey& expected_kernel_type) const {
+#ifdef PADDLE_WITH_MKLDNN
+  if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
+      (tensor.layout() != phi::DataLayout::ONEDNN)) {
+    auto attrs = Attrs();
+    auto ar = paddle::framework::AttrReader(attrs);
+    const std::string data_format = ar.Get<std::string>("data_format");
+    return phi::KernelKey(tensor.place(),
+                          phi::StringToDataLayout(data_format),
+                          expected_kernel_type.dtype());
+  }
+#endif
+  return phi::KernelKey(
+      tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(pool2d_grad,

@@ -44,7 +44,7 @@
     param : [x, out, out_grad, axis, keepdim, reduce_all]
 
 - backward_op : pool2d_double_grad
-  forward : pool2d_grad (Tensor x, str pooling_type, IntArray ksize, bool global_pooling = false, int[] strides = {1,1}, int[] paddings = {0,0}, bool exclusive = true, bool adaptive = false, bool ceil_mode = false, str data_format = "NCHW", str padding_algorithm = "EXPLICIT",bool use_cudnn = false) -> Tensor(grad_x)
+  forward : pool2d_grad (Tensor x, Tensor out, Tensor out_grad, str pooling_type, IntArray ksize, bool global_pooling, int[] strides, int[] paddings, bool exclusive, bool adaptive, bool ceil_mode, str data_format, str padding_algorithm, bool use_cudnn) -> Tensor(grad_x)
   args : (Tensor x, Tensor out, Tensor out_grad, str pooling_type, IntArray ksize, bool global_pooling, int[] strides, int[] paddings, bool exclusive, bool adaptive, bool ceil_mode, str data_format, str padding_algorithm, bool use_cudnn)
   output : Tensor(grad_out_grad)
   infer_meta :
