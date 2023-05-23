@@ -527,12 +527,13 @@ class TestArgsortBF16OP(OpTest):
         self.dtype = np.uint16
         self.descending = False
         self.axis = 0
-        self.x = np.random.random((11, 17)).astype(np.float32)
-        self.sorted_x = np.sort(
-            self.x, kind='quicksort', axis=self.axis
-        ).astype(np.float32)
+        self.attrs = {"axis": self.axis, "descending": self.descending}
+        self.x = np.random.random((10000, 1)).astype(np.float32)
+        self.sorted_x = np.sort(self.x, kind='heapsort', axis=self.axis).astype(
+            np.float32
+        )
         self.indices = np.argsort(
-            self.x, kind='quicksort', axis=self.axis
+            self.x, kind='heapsort', axis=self.axis
         ).astype(np.float32)
         self.inputs = {'X': convert_float_to_uint16(self.x)}
         self.outputs = {
@@ -542,7 +543,7 @@ class TestArgsortBF16OP(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, check_prim=True)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
@@ -550,6 +551,7 @@ class TestArgsortBF16OP(OpTest):
             place,
             {'X'},
             'Out',
+            check_prim=True,
         )
 
 
