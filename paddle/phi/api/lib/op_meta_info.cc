@@ -162,8 +162,8 @@ CustomOpKernelContext::OptionalInputsBetween(size_t start, size_t end) {
 Tensor* CustomOpKernelContext::MutableOutputAt(size_t idx) {
   return &(outputs_.at(idx));
 }
-std::vector<Tensor*> CustomOpKernelContext::MutableOutputBetweeen(size_t start,
-                                                                  size_t end) {
+std::vector<Tensor*> CustomOpKernelContext::MutableOutputBetween(size_t start,
+                                                                 size_t end) {
   std::vector<Tensor*> rlt;
   for (size_t i = start; i < end; ++i) {
     rlt.emplace_back(&(outputs_.at(i)));
@@ -171,8 +171,8 @@ std::vector<Tensor*> CustomOpKernelContext::MutableOutputBetweeen(size_t start,
   return rlt;
 }
 
-std::vector<Tensor> CustomOpKernelContext::OutputsBetweeen(size_t start,
-                                                           size_t end) {
+std::vector<Tensor> CustomOpKernelContext::OutputsBetween(size_t start,
+                                                          size_t end) {
   std::vector<Tensor> rlt;
   for (size_t i = start; i < end; ++i) {
     rlt.emplace_back(outputs_.at(i));

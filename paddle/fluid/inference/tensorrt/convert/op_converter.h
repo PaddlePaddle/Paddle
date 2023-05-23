@@ -27,6 +27,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #include "paddle/fluid/inference/tensorrt/op_teller.h"
 #include "paddle/fluid/inference/utils/singleton.h"
+#include "paddle/phi/common/data_type.h"
 
 namespace paddle {
 namespace inference {
@@ -305,7 +306,7 @@ class OpConverter {
           platform::errors::InvalidArgument("TensorRT engine only takes "
                                             "LoDTensor as input"));
       nvinfer1::DataType in_dtype = FluidDataType2TRT(var->GetDataType());
-      if (engine->WithFp16() && !engine->WithInt8() &&
+      if (engine->precision() == phi::DataType::FLOAT16 &&
           in_dtype == nvinfer1::DataType::kFLOAT &&
           engine->EnableLowPrecisionIO()) {
         in_dtype = nvinfer1::DataType::kHALF;
@@ -358,7 +359,7 @@ class OpConverter {
           platform::errors::InvalidArgument(
               "The output tensor in TensorRT subgraph should be LoDTensor"));
       nvinfer1::DataType out_dtype = FluidDataType2TRT(var->GetDataType());
-      if (engine->WithFp16() && !engine->WithInt8() &&
+      if (engine->precision() == phi::DataType::FLOAT16 &&
           out_dtype == nvinfer1::DataType::kFLOAT &&
           engine->EnableLowPrecisionIO()) {
         out_dtype = nvinfer1::DataType::kHALF;

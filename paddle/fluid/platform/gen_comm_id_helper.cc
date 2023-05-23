@@ -314,7 +314,7 @@ static int ConnectAddr(const std::string& ep, const CommHead head) {
     CHECK_SYS_CALL(SocketSend(sock, phead, sizeof(head)), "send");
     ret_val = SocketRecv(sock, buffer, sizeof(head));
     if (ret_val > 0 && memcmp(buffer, phead, sizeof(head)) == 0) {
-      // recv same message from recver, indicating that the link is correct
+      // recv same message from receiver, indicating that the link is correct
       break;  // accept client
     } else {
       VLOG(3) << "socket read failed with ret_val=" << ret_val;

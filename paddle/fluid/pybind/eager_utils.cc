@@ -1362,7 +1362,7 @@ paddle::experimental::Scalar CastNumpy2Scalar(PyObject* obj,
       return paddle::experimental::Scalar(value);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "%s(): argument (position %d) is numpy.ndarry, the inner elements "
+          "%s(): argument (position %d) is numpy.ndarray, the inner elements "
           "must be "
           "numpy.float32/float64 now, but got %s",
           op_type,

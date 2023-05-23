@@ -120,7 +120,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             dnn_out = fc
 
         # build lr model
-        lr_embbding = paddle.static.nn.sparse_embedding(
+        lr_embedding = paddle.static.nn.sparse_embedding(
             input=lr_data,
             size=[lr_input_dim, 1],
             is_test=inference,
@@ -132,7 +132,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
         )
 
         lr_pool = paddle.static.nn.sequence_lod.sequence_pool(
-            input=lr_embbding, pool_type="sum"
+            input=lr_embedding, pool_type="sum"
         )
         merge_layer = paddle.concat([dnn_out, lr_pool], axis=1)
 

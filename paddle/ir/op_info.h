@@ -14,11 +14,15 @@
 
 #pragma once
 #include <functional>
+#include <unordered_map>
 #include "paddle/ir/type_id.h"
 
 namespace ir {
 class OpInfoImpl;
 class IrContext;
+class OpResult;
+class Type;
+class Attribute;
 
 class OpInfo {
  public:
@@ -43,6 +47,12 @@ class OpInfo {
   const char *name() const;
 
   TypeId id() const;
+
+  void verify(const std::vector<OpResult> &inputs,
+              const std::vector<Type> &outputs,
+              const std::unordered_map<std::string, Attribute> &attributes);
+
+  const OpInfoImpl *impl() const;
 
   template <typename Trait>
   bool HasTrait() const {
