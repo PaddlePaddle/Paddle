@@ -16,7 +16,7 @@ import paddle
 from paddle import _legacy_C_ops
 from paddle.distributed import collective
 from paddle.fluid.data_feeder import check_dtype, check_variable_and_dtype
-from paddle.framework import LayerHelper, _create_tensor, in_dygraph_mode
+from paddle.framework import LayerHelper, _create_tensor, in_dynamic_mode
 from paddle.nn import Layer
 from paddle.nn.utils import dygraph_utils
 
@@ -39,7 +39,7 @@ def _c_identity(tensor, group=None):
         return
     ring_id = 0 if group is None else group.id
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         from paddle.autograd import PyLayer
 
         class c_identity_eager(PyLayer):
@@ -108,7 +108,7 @@ def _c_concat(tensor, group=None):
     rank = group.rank
     nranks = group.nranks
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _legacy_C_ops.c_concat(
             tensor,
             'ring_id',
@@ -174,7 +174,7 @@ def _c_split(tensor, group=None):
         else group.nranks
     )
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _legacy_C_ops.c_split(
             tensor,
             'use_calc_stream',
@@ -226,7 +226,7 @@ def _mp_allreduce(
     if group is not None and not group.is_member():
         return
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         group = collective._get_default_group() if group is None else group
         assert op == ReduceOp.SUM, f"Unknown parameter: {op}."
 
@@ -308,7 +308,7 @@ def _c_lookup_table(table, index, start_index=0, name=None):
     Returns:
         Tensor.
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _legacy_C_ops.c_embedding(
             table, index, "start_index", start_index
         )
@@ -401,7 +401,7 @@ def _c_softmax_with_cross_entropy(
     if input_dims - 1 == label_dims:
         label = paddle.unsqueeze(label, axis=-1)
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         softmax, loss = _legacy_C_ops.c_softmax_with_cross_entropy(
             logits,
             label,
@@ -445,7 +445,7 @@ def _linear(x, weight, bias=None, name=None):
     """
     Fuction Linear
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         pre_bias = _create_tensor(dtype=x.dtype)
         _legacy_C_ops.matmul(
             x,
@@ -810,7 +810,7 @@ def split(
             supported_operations
         )
     )
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         raise ValueError(
             "paddle.distributed.split cannot be used in dynamic "
             "graph mode, plese use ParallelEmbedding, ParallelRowLinear, "
