@@ -83,14 +83,16 @@ void TransferLayoutElimPass::PutTranferlayoutAfterOp(Node *op_node,
   auto new_var2_shape = var2_shape;
 
   std::string suffix = "_nchw_to_nhwc";
-  auto dst_layout = new_transfer_layout_desc.GetAttrIfExists<int>("dst_layout");
-  auto src_layout = new_transfer_layout_desc.GetAttrIfExists<int>("src_layout");
-  if (dst_layout == 2 && src_layout == 1) {
+  auto dst_layout = static_cast<DataLayout>(
+      new_transfer_layout_desc.GetAttrIfExists<int>("dst_layout"));
+  auto src_layout = static_cast<DataLayout>(
+      new_transfer_layout_desc.GetAttrIfExists<int>("src_layout"));
+  if (dst_layout == DataLayout::NCHW && src_layout == DataLayout::NHWC) {
     suffix = "_nhwc_to_nchw";
     new_var2_shape[1] = var2_shape[2];
     new_var2_shape[2] = var2_shape[3];
     new_var2_shape[3] = var2_shape[1];
-  } else if (dst_layout == 1 && src_layout == 2) {
+  } else if (dst_layout == DataLayout::NHWC && src_layout == DataLayout::NCHW) {
     suffix = "_nchw_to_nhwc";
     new_var2_shape[1] = var2_shape[3];
     new_var2_shape[2] = var2_shape[1];
