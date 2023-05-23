@@ -395,7 +395,7 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             fleet.save_persistables(exe, patch_dirname, None, 5)
             fleet.check_save_pre_patch_done()
 
-        # add for gpugrahp
+        # add for gpu graph
         fleet.save_cache_table(0, 0)
         fleet.shrink()
 
