@@ -22,11 +22,13 @@
 #include <vector>
 
 #include "paddle/fluid/framework/op_desc.h"
+#include "paddle/fluid/translator/attribute_translator.h"
 #include "paddle/fluid/translator/program_translator.h"
 #include "paddle/fluid/translator/type_translator.h"
 #include "paddle/ir/builtin_op.h"
 #include "paddle/ir/builtin_type.h"
 #include "paddle/ir/ir_context.h"
+#include "paddle/ir/operation.h"
 #include "paddle/ir/value.h"
 #include "paddle/phi/core/enforce.h"
 
@@ -237,6 +239,40 @@ inline std::tuple<OpOutputTypeList, OpOutputMapping> GenerateOperationOutput(
   return {op_output_types, arg_to_idx};
 }
 
+inline ir::AttributeMap TranslateOpAttribute(const OpDesc& op_desc) {
+  auto& attribute_translator = AttributeTranslator::instance();
+  ir::AttributeMap attribute_map = {};
+  for (auto attr_in_op_desc : op_desc.GetAttrMap()) {
+    const auto& attr_name = attr_in_op_desc.first;
+    const auto& attr_value = attr_in_op_desc.second;
+    ir::Attribute new_attr = attribute_translator[attr_value];
+    attribute_map[attr_name] = new_attr;
+    if (!new_attr) {
+      VLOG(0) << "empty attribute in " << op_desc.Type()
+              << " name: " << attr_name;
+    } else {
+      VLOG(10) << "new attribute in " << op_desc.Type()
+               << " name: " << attr_name << " " << new_attr.storage();
+    }
+  }
+
+  for (auto attr_in_op_desc : op_desc.GetRuntimeAttrMap()) {
+    const auto& attr_name = attr_in_op_desc.first;
+    const auto& attr_value = attr_in_op_desc.second;
+    ir::Attribute new_attr = attribute_translator[attr_value];
+    attribute_map[attr_name] = new_attr;
+    if (!new_attr) {
+      VLOG(0) << "empty runtime attribute in " << op_desc.Type()
+              << " name: " << attr_name;
+    } else {
+      VLOG(10) << "new runtime attribute in " << op_desc.Type()
+               << " name: " << attr_name << " " << new_attr.storage();
+    }
+  }
+
+  return std::move(attribute_map);
+}
+
 inline void RecordOpResultMapping(TranslationContext* param_map,
                                   const OpDesc& op_desc,
                                   ir::Operation* operation,
@@ -271,8 +307,10 @@ ir::Operation* GeneralOpHandler(ir::IrContext* ctx,
   OpOutputTypeList op_output_types = {};
   std::tie(op_output_types, arg_to_idx) = GenerateOperationOutput(ctx, op_desc);
   auto op_info = LoopkUpOpInfo(ctx, op_desc);
+  auto attribute_map = TranslateOpAttribute(op_desc);
+
   ir::Operation* operation =
-      ir::Operation::create(op_inputs, op_output_types, {}, op_info);
+      ir::Operation::create(op_inputs, op_output_types, attribute_map, op_info);
   program->InsertOp(operation);
   RecordOpResultMapping(param_map, op_desc, operation, arg_to_idx);
 
@@ -289,8 +327,10 @@ ir::Operation* FeedOpHandler(ir::IrContext* ctx,
   OpOutputTypeList op_output_types = {};
   std::tie(op_output_types, arg_to_idx) = GenerateOperationOutput(ctx, op_desc);
   auto op_info = LoopkUpOpInfo(ctx, op_desc);
+  auto attribute_map = TranslateOpAttribute(op_desc);
+
   ir::Operation* operation =
-      ir::Operation::create(op_inputs, op_output_types, {}, op_info);
+      ir::Operation::create(op_inputs, op_output_types, attribute_map, op_info);
   program->InsertOp(operation);
   RecordOpResultMapping(param_map, op_desc, operation, arg_to_idx);
 
@@ -305,8 +345,10 @@ ir::Operation* FetchOpHandler(ir::IrContext* ctx,
 
   OpOutputTypeList op_output_types = {};
   auto op_info = LoopkUpOpInfo(ctx, op_desc);
+  auto attribute_map = TranslateOpAttribute(op_desc);
+
   ir::Operation* operation =
-      ir::Operation::create(op_inputs, op_output_types, {}, op_info);
+      ir::Operation::create(op_inputs, op_output_types, attribute_map, op_info);
   program->InsertOp(operation);
 
   return operation;
