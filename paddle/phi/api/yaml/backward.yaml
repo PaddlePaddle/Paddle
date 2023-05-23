@@ -327,7 +327,7 @@
     param : [x]
   invoke : concat(grad_x_grad, axis)
   data_transform :
-    support_trans_dtype : grad_x_grad, axis
+    support_trans_dtype : grad_x_grad
   kernel:
     func : concat_double_grad
     data_type : grad_x_grad
