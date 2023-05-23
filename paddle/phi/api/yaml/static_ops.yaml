@@ -271,6 +271,17 @@
     func : p_recv_array
     param : [peer, dtype, out_shape]
 
+- op : pool2d
+  args : (Tensor x, str pooling_type, IntArray ksize, bool global_pooling = false, int[] strides = {1,1}, int[] paddings = {0,0}, bool exclusive = true, bool adaptive = false, bool ceil_mode = false, str data_format = "NCHW", str padding_algorithm = "EXPLICIT",bool use_cudnn = false)
+  output : Tensor(out)
+  infer_meta :
+    func : Pool2DInferMeta
+    param : [x, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
+  kernel :
+    func : pool2d
+    param : [x, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
+  backward : pool2d_grad
+
 - op : randint
   args : (int low, int high, IntArray shape = {}, DataType dtype = DataType::INT64, int seed = 0)
   output : Tensor(out)

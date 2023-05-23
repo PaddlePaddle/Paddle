@@ -47,11 +47,6 @@ class PoolOpGrad : public framework::OperatorWithKernel {
       const phi::KernelKey& expected_kernel_type) const override;
 };
 
-class Pool2dOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override;
-};
-
 class Pool3dOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override;

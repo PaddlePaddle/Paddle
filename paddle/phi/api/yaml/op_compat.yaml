@@ -1775,6 +1775,14 @@
 
 - op : pool2d
   backward : pool2d_grad
+  inputs :
+    {x : X}
+  outputs :
+    {out : Out}
+  int_array:
+    ksize :
+      data_type : int
+      support_tensor : true
   extra :
     attrs : [bool use_mkldnn = false, bool use_quantizer = false,
               str mkldnn_data_type = "float32", bool is_test = false]
