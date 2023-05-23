@@ -18,8 +18,8 @@ import unittest
 from legacy_test.parallel_dygraph_sparse_embedding_over_height import (
     TestSparseEmbeddingOverHeight,
 )
+from legacy_test.spawn_runner_base import TestDistSpawnRunner
 from legacy_test.test_dist_base import TestDistBase
-from spawn_runner_base import TestDistSpawnRunner
 
 from paddle import fluid
 
@@ -36,7 +36,7 @@ class TestParallelDygraphSparseEmdeddingOverHeight(TestDistBase):
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(
                 os.path.abspath(
-                    "../../parallel_dygraph_sparse_embedding_over_height.py"
+                    "../../legacy_test/parallel_dygraph_sparse_embedding_over_height.py"
                 ),
                 delta=1e-5,
                 check_error_log=True,

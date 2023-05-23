@@ -15,9 +15,9 @@
 import os
 import unittest
 
-from parallel_dygraph_mnist import TestMnist
-from spawn_runner_base import TestDistSpawnRunner
-from test_dist_base import TestDistBase
+from legacy_test.parallel_dygraph_mnist import TestMnist
+from legacy_test.spawn_runner_base import TestDistSpawnRunner
+from legacy_test.test_dist_base import TestDistBase
 
 from paddle import fluid
 
@@ -34,7 +34,7 @@ class TestParallelDygraphMnist(TestDistBase):
     def test_mnist(self):
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(
-                os.path.abspath("../../parallel_dygraph_mnist.py"),
+                os.path.abspath("../../legacy_test/parallel_dygraph_mnist.py"),
                 delta=1e-5,
                 check_error_log=True,
                 log_name=flag_name,
@@ -54,7 +54,7 @@ class TestParallelDygraphMnistXPU(TestDistBase):
     def test_mnist_xpu(self):
         if fluid.core.is_compiled_with_xpu():
             self.check_with_place(
-                os.path.abspath("../../parallel_dygraph_mnist.py"),
+                os.path.abspath("../../legacy_test/parallel_dygraph_mnist.py"),
                 delta=1e-4,
                 check_error_log=True,
                 log_name=flag_name,
@@ -79,7 +79,7 @@ class TestParallelDygraphMnistAccGrad(TestDistBase):
     def test_mnist(self):
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(
-                os.path.abspath("../../parallel_dygraph_mnist.py"),
+                os.path.abspath("../../legacy_test/parallel_dygraph_mnist.py"),
                 delta=1e-5,
                 check_error_log=True,
                 log_name=flag_name,
@@ -97,7 +97,7 @@ class TestFleetDygraphMnistXPU(TestDistBase):
     def test_mnist(self):
         if fluid.core.is_compiled_with_xpu():
             self.check_with_place(
-                os.path.abspath("../../parallel_dygraph_mnist.py"),
+                os.path.abspath("../../legacy_test/parallel_dygraph_mnist.py"),
                 delta=1e-4,
                 check_error_log=True,
                 log_name=flag_name,

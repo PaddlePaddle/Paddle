@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from parallel_dygraph_sparse_embedding import (
+from legacy_test.parallel_dygraph_sparse_embedding import (
     SimpleNet,
     TestSparseEmbedding,
     fake_sample_reader,
 )
-from test_dist_base import runtime_main
+from legacy_test.test_dist_base import runtime_main
 
 import paddle
 from paddle import fluid

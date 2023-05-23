@@ -23,7 +23,7 @@ from legacy_test.test_parallel_dygraph_dataparallel import TestMultipleGpus
 class TestHybridPipeParallel(TestMultipleGpus):
     def test_hybrid_parallel_pp_layer(self):
         self.run_mnist_2gpu(
-            os.path.abspath('../../hybrid_parallel_pp_layer.py')
+            os.path.abspath('../../legacy_test/hybrid_parallel_pp_layer.py')
         )
 
     def test_hybrid_parallel_pp_tuple_inputs(self):

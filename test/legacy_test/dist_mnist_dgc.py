@@ -14,7 +14,11 @@
 
 from functools import reduce
 
-from test_dist_base import TestDistRunnerBase, _insert_comm_op, runtime_main
+from legacy_test.test_dist_base import (
+    TestDistRunnerBase,
+    _insert_comm_op,
+    runtime_main,
+)
 
 import paddle
 from paddle import fluid

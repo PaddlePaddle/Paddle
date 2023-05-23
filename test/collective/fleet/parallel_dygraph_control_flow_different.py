@@ -13,7 +13,10 @@
 # limitations under the License.
 
 import numpy as np
-from test_dist_base import TestParallelDyGraphRunnerBase, runtime_main
+from legacy_test.test_dist_base import (
+    TestParallelDyGraphRunnerBase,
+    runtime_main,
+)
 
 import paddle
 import paddle.nn.functional as F

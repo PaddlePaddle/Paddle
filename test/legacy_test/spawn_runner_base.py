@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 # used by model.run_trainer in test_dist_base
-from test_dist_base import RUN_STEP
+from legacy_test.test_dist_base import RUN_STEP
 
 import paddle
 

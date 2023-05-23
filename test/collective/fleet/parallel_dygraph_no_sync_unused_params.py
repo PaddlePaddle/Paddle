@@ -13,8 +13,8 @@
 # limitations under the License.
 
 import numpy as np
+from legacy_test.test_dist_base import runtime_main
 from parallel_dygraph_no_sync import TestNoSync
-from test_dist_base import runtime_main
 
 import paddle
 from paddle.nn import Linear

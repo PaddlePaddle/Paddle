@@ -15,11 +15,11 @@
 import os
 import unittest
 
+from legacy_test.spawn_runner_base import TestDistSpawnRunner
 from legacy_test.test_dist_base import TestDistBase
 from parallel_dygraph_no_sync import TestNoSync
 from parallel_dygraph_no_sync_control_flow import TestNoSyncControlFlow
 from parallel_dygraph_no_sync_unused_params import TestNoSyncUnusedParam
-from spawn_runner_base import TestDistSpawnRunner
 
 from paddle import fluid
 
