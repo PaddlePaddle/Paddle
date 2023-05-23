@@ -209,7 +209,7 @@ void BindCudaStream(py::module *m_ptr) {
           Default: None.
 
       Returns:
-          The recored event.
+          The record event.
 
       Examples:
         .. code-block:: python
@@ -263,7 +263,7 @@ void BindCudaStream(py::module *m_ptr) {
               auto place_tmp = platform::CUDAPlace(curr_device_id);
               new (&self) phi::CUDAStream(place_tmp, priority - 2, stream_flag);
             } else {
-              // seting priority 1(high) and 2(normal) correspond to the actual
+              // setting priority 1(high) and 2(normal) correspond to the actual
               // cuda stream priority -1 and 0.
               new (&self) phi::CUDAStream(*place, priority - 2, stream_flag);
             }
@@ -295,7 +295,7 @@ void BindCudaStream(py::module *m_ptr) {
             }
 
             auto stream_flag = phi::CUDAStream::StreamFlag::kStreamNonBlocking;
-            // seting priority 1(high) and 2(normal) correspond to the actual
+            // setting priority 1(high) and 2(normal) correspond to the actual
             // cuda stream priority -1 and 0.
             new (&self) phi::CUDAStream(
                 platform::CUDAPlace(device), priority - 2, stream_flag);

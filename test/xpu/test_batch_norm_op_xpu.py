@@ -317,6 +317,11 @@ class XPUTestBatchNormGradOp(XPUOpTestWrapper):
             self.init_dtype()
             self.set_xpu()
             self.set_attrs()
+            self.rtol = 1e-5
+            self.atol = 1e-4
+            if self.dtype == np.float16:
+                self.rtol = 1e-2
+                self.atol = 1e-3
 
             if self.data_layout == "NHWC":
                 channel_size = self.shape[3]
@@ -451,7 +456,7 @@ class XPUTestBatchNormGradOp(XPUOpTestWrapper):
                 outs = exe.run(program, feed=inputs, fetch_list=fetch_list)
                 for id, name in enumerate(fetch_list):
                     np.testing.assert_allclose(
-                        outputs[name], outs[id], rtol=1e-05, atol=1e-4
+                        outputs[name], outs[id], rtol=self.rtol, atol=self.atol
                     )
 
 

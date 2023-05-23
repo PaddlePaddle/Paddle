@@ -574,7 +574,7 @@ class TestL2Decay(TranspilerTest):
             x,
             size=1000,
             weight_attr=fluid.ParamAttr(
-                name='fc_w', regularizer=fluid.regularizer.L2Decay()
+                name='fc_w', regularizer=paddle.regularizer.L2Decay()
             ),
             bias_attr=fluid.ParamAttr(name='fc_b'),
         )
@@ -625,7 +625,7 @@ class TestL2DecayWithPiecewise(TranspilerTest):
                 boundaries=bd, values=lr
             ),
             momentum=0.9,
-            regularization=fluid.regularizer.L2Decay(1e-4),
+            regularization=paddle.regularizer.L2Decay(1e-4),
         )
         sgd_optimizer.minimize(avg_cost)
 

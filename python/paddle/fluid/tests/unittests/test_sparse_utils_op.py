@@ -342,12 +342,12 @@ class TestSparseConvert(unittest.TestCase):
         verify(dense_x)
 
         dense_x = paddle.randn(shape)
-        # set the 1th batch to zero
+        # set the 1st batch to zero
         dense_x[1] = 0
         verify(dense_x)
 
         dense_x = paddle.randn(shape)
-        # set the 2th batch to zero
+        # set the 2nd batch to zero
         dense_x[2] = 0
         verify(dense_x)
 

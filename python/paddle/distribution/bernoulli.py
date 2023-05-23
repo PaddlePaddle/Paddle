@@ -18,7 +18,7 @@ import numpy as np
 import paddle
 from paddle.distribution import exponential_family
 from paddle.fluid.data_feeder import check_type, convert_dtype
-from paddle.fluid.framework import Variable, _non_static_mode
+from paddle.framework import in_dynamic_mode, Variable
 from paddle.nn.functional import (
     binary_cross_entropy_with_logits,
     sigmoid,
@@ -78,21 +78,21 @@ class Bernoulli(exponential_family.ExponentialFamily):
             rv = Bernoulli(probs=0.3)
 
             print(rv.mean)
-            # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-            #        [0.30000001])
+            # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        0.30000001)
 
             print(rv.variance)
-            # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-            #        [0.21000001])
+            # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        0.21000001)
 
             print(rv.entropy())
-            # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-            #        [0.61086434])
+            # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+            #        0.61086434)
     """
 
     def __init__(self, probs, name=None):
         self.name = name or 'Bernoulli'
-        if not _non_static_mode():
+        if not in_dynamic_mode():
             check_type(
                 probs,
                 'probs',
@@ -109,7 +109,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
             self.dtype = paddle.get_default_dtype()
 
         # Check probs range [0, 1].
-        if _non_static_mode():
+        if in_dynamic_mode():
             """Not use `paddle.any` in static mode, which always be `True`."""
             if (
                 paddle.any(self.probs < 0)
@@ -175,7 +175,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
                 # [100, 2, 2]
         """
         name = self.name + '_sample'
-        if not _non_static_mode():
+        if not in_dynamic_mode():
             check_type(
                 shape,
                 'shape',
@@ -246,15 +246,15 @@ class Bernoulli(exponential_family.ExponentialFamily):
 
                 # The smaller the `temperature`, the distribution of `rsample` closer to `sample`, with `probs` of 0.3.
                 print(paddle.nn.functional.sigmoid(rv.rsample([1000, ], temperature=1.0)).sum())
-                # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-                #        [361.06829834])
+                # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+                #        361.06829834)
 
                 print(paddle.nn.functional.sigmoid(rv.rsample([1000, ], temperature=0.1)).sum())
-                # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-                #        [288.66418457])
+                # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+                #        288.66418457)
         """
         name = self.name + '_rsample'
-        if not _non_static_mode():
+        if not in_dynamic_mode():
             check_type(
                 shape,
                 'shape',
@@ -316,7 +316,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
                 #        [1.])
         """
         name = self.name + '_cdf'
-        if not _non_static_mode():
+        if not in_dynamic_mode():
             check_type(value, 'value', Variable, name)
 
         value = self._check_values_dtype_in_probs(self.probs, value)
@@ -354,7 +354,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
                 #        [-1.20397282])
         """
         name = self.name + '_log_prob'
-        if not _non_static_mode():
+        if not in_dynamic_mode():
             check_type(value, 'value', Variable, name)
 
         value = self._check_values_dtype_in_probs(self.probs, value)
@@ -393,7 +393,7 @@ class Bernoulli(exponential_family.ExponentialFamily):
                 #        [0.29999998])
         """
         name = self.name + '_prob'
-        if not _non_static_mode():
+        if not in_dynamic_mode():
             check_type(value, 'value', Variable, name)
 
         return self.log_prob(value).exp(name=name)
@@ -419,8 +419,8 @@ class Bernoulli(exponential_family.ExponentialFamily):
 
                 rv = Bernoulli(0.3)
                 print(rv.entropy())
-                # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-                #        [0.61086434])
+                # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+                #        0.61086434)
         """
         name = self.name + '_entropy'
 
@@ -454,11 +454,11 @@ class Bernoulli(exponential_family.ExponentialFamily):
                 rv_other = Bernoulli(0.7)
 
                 print(rv.kl_divergence(rv_other))
-                # Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-                #        [0.33891910])
+                # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+                #        0.33891910)
         """
         name = self.name + '_kl_divergence'
-        if not _non_static_mode():
+        if not in_dynamic_mode():
             check_type(other, 'other', Bernoulli, name)
 
         a_logits = self.logits

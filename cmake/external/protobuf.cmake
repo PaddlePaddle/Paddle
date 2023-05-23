@@ -188,6 +188,7 @@ function(build_protobuf TARGET_NAME BUILD_FOR_HOST)
   set(PROTOBUF_SOURCE_DIR
       ${THIRD_PARTY_PATH}/${TARGET_DIR_NAME}/src/${TARGET_NAME})
   set(PROTOBUF_INSTALL_DIR ${THIRD_PARTY_PATH}/install/${TARGET_DIR_NAME})
+  set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/${TARGET_DIR_NAME})
 
   set(${TARGET_NAME}_INCLUDE_DIR
       "${PROTOBUF_INSTALL_DIR}/include"
@@ -241,6 +242,8 @@ function(build_protobuf TARGET_NAME BUILD_FOR_HOST)
     set(PROTOBUF_REPOSITORY ${GIT_URL}/protocolbuffers/protobuf.git)
     # Change the tag to support building with vs2019
     set(PROTOBUF_TAG 01a05a53f40ca2ac5f0af10c6cc0810bee39b792)
+    execute_process(COMMAND cd ${SOURCE_DIR} && git checkout
+                            01a05a53f40ca2ac5f0af10c6cc0810bee39b792)
   else()
     if(WITH_PSLIB)
       set(PROTOBUF_REPOSITORY "https://github.com/google/protobuf.git")
@@ -289,14 +292,15 @@ function(build_protobuf TARGET_NAME BUILD_FOR_HOST)
   else()
     ExternalProject_Add(
       ${TARGET_NAME}
-      ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}
-      GIT_REPOSITORY ${PROTOBUF_REPOSITORY}
-      GIT_TAG ${PROTOBUF_TAG}
+      ${EXTERNAL_PROJECT_LOG_ARGS}
       PREFIX ${PROTOBUF_PREFIX_DIR}
+      SOURCE_DIR ${SOURCE_DIR}
       UPDATE_COMMAND ""
+      PATCH_COMMAND
+      COMMAND cd ${SOURCE_DIR} && git checkout ${PROTOBUF_TAG}
       DEPENDS zlib
       CONFIGURE_COMMAND
-        ${CMAKE_COMMAND} ${PROTOBUF_SOURCE_DIR}/cmake ${OPTIONAL_ARGS}
+        ${CMAKE_COMMAND} ${SOURCE_DIR}/cmake ${OPTIONAL_ARGS}
         -G${CMAKE_GENERATOR} -Dprotobuf_BUILD_TESTS=OFF -DCMAKE_SKIP_RPATH=ON
         -DCMAKE_POSITION_INDEPENDENT_CODE=ON
         -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
