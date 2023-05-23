@@ -25,9 +25,12 @@ limitations under the License. */
 
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/autotune/gpu_timer.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 #endif
+
+PHI_DECLARE_int64(cublaslt_exhaustive_search_times);
 
 namespace phi {
 namespace funcs {
@@ -538,7 +541,7 @@ struct CublasLtBase {
                       0,
                       phi::errors::Unavailable("No GEMM algorithm avaliable."));
     int best_algo_idx = -1;
-    if (returned_results == 1) {
+    if (returned_results == 1 || FLAGS_cublaslt_exhaustive_search_times <= 0) {
       best_algo_idx = 0;
     } else {
       float min_time_cost = std::numeric_limits<float>::max();
@@ -584,8 +587,12 @@ struct CublasLtBase {
                                  void* workspace_ptr,
                                  size_t workspace_size,
                                  cublasLtMatmulAlgo_t* algo) {
+    int repeats = FLAGS_cublaslt_exhaustive_search_times;
+    if (repeats <= 0) {
+      return std::numeric_limits<float>::max();
+    }
+
     phi::GpuTimer timer;
-    constexpr int repeats = 101;
     float time_cost = 0.f;
     const auto& stream = ctx.stream();
 
