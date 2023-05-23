@@ -12,10 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifdef GET_OP_LIST
-#undef GET_OP_LIST
-ir::GetParameterOp, ir::SetParameterOp
-#else
+#pragma once
 
 #include "paddle/ir/op_base.h"
 
@@ -51,4 +48,3 @@ class SetParameterOp : public ir::Op<SetParameterOp> {
 };
 
 }  // namespace ir
-#endif

@@ -12,17 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifdef GET_ATTRIBUTE_LIST
-#undef GET_ATTRIBUTE_LIST
-ir::StrAttribute, ir::BoolAttribute, ir::FloatAttribute, ir::DoubleAttribute,
-    ir::Int32_tAttribute, ir::Int64_tAttribute, ir::ArrayAttribute
-#else
+#pragma once
 
 #include "paddle/ir/attribute.h"
 #include "paddle/ir/builtin_attribute_storage.h"
 #include "paddle/ir/utils.h"
 
 namespace ir {
+///
+/// \brief All built-in attributes.
+///
+#define GET_BUILT_IN_ATTRIBUTE_LIST                             \
+  StrAttribute, BoolAttribute, FloatAttribute, DoubleAttribute, \
+      Int32_tAttribute, Int64_tAttribute, ArrayAttribute
+
 class StrAttribute : public Attribute {
  public:
   using Attribute::Attribute;
@@ -99,4 +102,3 @@ class ArrayAttribute : public Attribute {
 };
 
 }  // namespace ir
-#endif

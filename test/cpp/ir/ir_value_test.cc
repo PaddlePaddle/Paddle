@@ -26,14 +26,10 @@
 ir::AttributeMap CreateAttributeMap(std::string attribute_name,
                                     std::string attribute) {
   ir::IrContext *ctx = ir::IrContext::Instance();
-  std::cout << "CreateAttributeMap1" << std::endl;
   ir::Attribute attr_value = ir::StrAttribute::get(ctx, attribute);
-  std::cout << "CreateAttributeMap2" << std::endl;
   ir::AttributeMap attr_map;
-  std::cout << "CreateAttributeMap3" << std::endl;
   attr_map.insert(
       std::pair<std::string, ir::Attribute>(attribute_name, attr_value));
-  std::cout << "CreateAttributeMap4" << std::endl;
   return attr_map;
 }
 

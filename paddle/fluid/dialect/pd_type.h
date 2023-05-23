@@ -12,16 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifdef GET_TYPE_LIST
-#undef GET_TYPE_LIST
-paddle::dialect::DenseTensorType
-#else
+#pragma once
 
 #include "paddle/fluid/dialect/pd_type_storage.h"
 #include "paddle/ir/type.h"
 
 namespace paddle {
 namespace dialect {
+#define GET_PD_DIALECT_TYPE_LIST paddle::dialect::DenseTensorType
+
 ///
 /// \brief Define built-in parametric types.
 ///
@@ -45,4 +44,3 @@ class DenseTensorType : public ir::Type {
 
 }  // namespace dialect
 }  // namespace paddle
-#endif

@@ -12,17 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifdef GET_TYPE_LIST
-#undef GET_TYPE_LIST
-ir::BFloat16Type, ir::Float16Type, ir::Float32Type, ir::Float64Type,
-    ir::Int8Type, ir::Int16Type, ir::Int32Type, ir::Int64Type, ir::BoolType,
-    ir::VectorType
-#else
+#pragma once
 
 #include "paddle/ir/builtin_type_storage.h"
 #include "paddle/ir/type.h"
 
 namespace ir {
+///
+/// \brief This macro is used to get a list of all built-in types in this file.
+/// The built-in Dialect will use this macro to quickly register all built-in
+/// types.
+///
+#define GET_BUILT_IN_TYPE_LIST                                              \
+  BFloat16Type, Float16Type, Float32Type, Float64Type, Int8Type, Int16Type, \
+      Int32Type, Int64Type, BoolType, VectorType
+
 ///
 /// \brief Define built-in parameterless types. Please add the necessary
 /// interface functions for built-in types through the macro
@@ -132,4 +136,3 @@ class VectorType : public Type {
 };
 
 }  // namespace ir
-#endif
