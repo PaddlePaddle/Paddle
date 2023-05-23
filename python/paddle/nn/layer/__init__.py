@@ -16,6 +16,7 @@
 
 from . import rnn  # noqa: F401
 from . import transformer  # noqa: F401
+from . import sparse_mask  # noqa: F401
 from . import container  # noqa: F401
 
 from .activation import CELU  # noqa: F401

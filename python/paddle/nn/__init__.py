@@ -146,6 +146,8 @@ from .layer.transformer import TransformerEncoder  # noqa: F401
 from .layer.transformer import TransformerDecoderLayer  # noqa: F401
 from .layer.transformer import TransformerDecoder  # noqa: F401
 from .layer.transformer import Transformer  # noqa: F401
+from .layer.sparse_mask import BertSparseMask  # noqa: F401
+from .layer.sparse_mask import ErineSparseMask  # noqa: F401
 from .layer.distance import PairwiseDistance  # noqa: F401
 
 from .layer.vision import PixelShuffle  # noqa: F401

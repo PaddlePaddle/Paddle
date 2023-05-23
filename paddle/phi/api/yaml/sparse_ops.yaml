@@ -467,7 +467,7 @@
     data_type : dtype
 
 - op: fused_attention
-  args : (Tensor query, Tensor key, Tensor value, Tensor sparse_mask, Tensor key_padding_mask, Tensor attn_mask)
+  args : (Tensor query, Tensor key, Tensor value, Tensor sparse_mask, Tensor key_padding_mask, Tensor attn_mask, float scale_qk_coeff=1.0)
   output : Tensor(out), Tensor(softmax)
   infer_meta :
     func : sparse::FusedAttentionInferMeta
@@ -476,7 +476,6 @@
     layout : sparse_mask
     data_type: query
   optional : key_padding_mask, attn_mask
-  intermediate : softmax
   backward: fused_attention_grad
 
 - op: masked_matmul

@@ -85,7 +85,7 @@ class TestMatmul(unittest.TestCase):
         self.check_result([16, 12], [12, 10], 'csr')
 
     @unittest.skipIf(
-        not paddle.is_compiled_with_cuda() or get_cuda_version() < 11080,
+        not paddle.is_compiled_with_cuda() or get_cuda_version() < 11070,
         "only support cuda>=11.8",
     )
     def test_matmul_3d(self):
@@ -133,7 +133,7 @@ class TestMaskedMatmul(unittest.TestCase):
         np.testing.assert_allclose(np_y_grad, y.grad.numpy(), rtol=1e-05)
 
     @unittest.skipIf(
-        not paddle.is_compiled_with_cuda() or get_cuda_version() < 11080,
+        not paddle.is_compiled_with_cuda() or get_cuda_version() < 11070,
         "only support on cuda>=11.8",
     )
     def test_masked_matmul_3d(self):

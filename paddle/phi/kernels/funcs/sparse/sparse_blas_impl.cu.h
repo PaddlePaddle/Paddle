@@ -103,7 +103,7 @@ inline void CreateCsrDescriptor(const phi::SparseCsrTensor& x,
                                     gpu_type);
   });
   if (batch_size > 1) {
-#if CUDA_VERSION >= 11080
+#if CUDA_VERSION >= 11070
     dev_ctx.CusparseCall([&](cusparseHandle_t handle) {
       phi::dynload::cusparseCsrSetStridedBatch(
           *descriptor, batch_size, M + 1, batch_nnz);
@@ -157,7 +157,7 @@ inline void CreateCooDescriptor(const phi::SparseCooTensor& x,
   });
 
   if (batch_size > 1) {
-#if CUDA_VERSION >= 11080
+#if CUDA_VERSION >= 11070
     dev_ctx.CusparseCall([&](cusparseHandle_t handle) {
       phi::dynload::cusparseCooSetStridedBatch(
           *descriptor, batch_size, batch_nnz);
@@ -243,7 +243,7 @@ class CuSparseDnMatDescriptor {
 
     PADDLE_ENFORCE_EQ(x.numel(), batch_size * M * N);
     if (batch_size > 1) {
-#if CUDA_VERSION >= 11080
+#if CUDA_VERSION >= 11070
       dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {
         phi::dynload::cusparseDnMatSetStridedBatch(
             descriptor_, batch_size, M * N);

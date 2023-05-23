@@ -165,6 +165,7 @@ class MultiHeadAttention(Layer):
         need_weights=False,
         weight_attr=None,
         bias_attr=None,
+        sparse=None,
     ):
         super().__init__()
 
@@ -201,6 +202,61 @@ class MultiHeadAttention(Layer):
         self.out_proj = Linear(
             embed_dim, embed_dim, weight_attr, bias_attr=bias_attr
         )
+
+        self.sparse = sparse
+        self.sparse_mask = None
+
+    def ernie_sparse_mask(self, seq_len, glb, wnd):
+        import numpy as np
+
+        pad_len = (seq_len + wnd - 1) // wnd * wnd
+        mask = np.zeros([pad_len, pad_len])
+        mask[:glb, :glb] = 1
+        pos = np.repeat(list(range((pad_len - glb) // wnd)), wnd)
+        local_visible_part = pos[None, :] == pos[:, None]
+        local_visible_part |= np.roll(local_visible_part, wnd, axis=1)
+        local_visible_part |= np.roll(local_visible_part, -wnd, axis=1)
+        mask[glb:, glb:][local_visible_part] = 1
+        if pad_len > seq_len:
+            mask = mask[:seq_len, :seq_len]
+        return mask
+
+    def bert_sparse_mask(self, seq_len, num_heads):
+        init_alphas = 1e-3 * paddle.randn((num_heads, seq_len, 2))
+        init_alphas = paddle.to_tensor(init_alphas)
+        logits = init_alphas
+
+        tau = 1
+        dim = -1
+        hard = True
+        eps = 1e-5
+
+        gumbels = -(
+            paddle.empty_like(logits).exponential_() + eps
+        ).log()  # ~Gumbel(0,1)
+        gumbels = (logits + gumbels) / tau  # ~Gumbel(logits,tau)
+        softmax = paddle.nn.Softmax(dim)
+        y_soft = softmax(gumbels)
+
+        if hard:
+            # Straight through.
+            index = y_soft.argmax(axis=dim, keepdim=True)
+            y_hard = paddle.zeros_like(logits).put_along_axis_(index, 1.0, dim)
+            mask = y_hard - y_soft + y_soft
+        else:
+            # Reparametrization trick.
+            mask = y_soft
+
+        mask = mask[:, :, 0].unsqueeze(2)  # (12, 128, 1)
+        mask = mask.expand((num_heads, seq_len, seq_len))
+        mask = paddle.triu(mask)
+        mask = paddle.rot90(mask, 1, (1, 2))
+        mask_tri = paddle.zeros((num_heads, seq_len, seq_len))
+        mask_tri[:, 0] = mask[:, 0]
+        for i in range(1, seq_len):
+            mask_tri[:, i, i:] = mask[:, i, :-i]
+        masks = mask_tri + paddle.transpose(paddle.triu(mask_tri, 1), (0, 2, 1))
+        return masks
 
     def _prepare_qkv(self, query, key, value, cache=None):
         r"""
@@ -419,24 +475,45 @@ class MultiHeadAttention(Layer):
         else:
             q, k, v, cache = self._prepare_qkv(query, key, value, cache)
 
-        # scale dot product attention
-        product = paddle.matmul(
-            x=q * (self.head_dim**-0.5), y=k, transpose_y=True
-        )
-        if attn_mask is not None:
-            # Support bool or int mask
-            attn_mask = _convert_attention_mask(attn_mask, product.dtype)
-            product = product + attn_mask
-        weights = F.softmax(product)
-        if self.dropout:
-            weights = F.dropout(
-                weights,
-                self.dropout,
-                training=self.training,
-                mode="upscale_in_train",
+        # if self.sparse is False or q.shape[2] <= 128:
+        if self.sparse is None:
+            # scale dot product attention
+            product = paddle.matmul(
+                x=q * (self.head_dim**-0.5), y=k, transpose_y=True
             )
+            if attn_mask is not None:
+                # Support bool or int mask
+                attn_mask = _convert_attention_mask(attn_mask, product.dtype)
+                product = product + attn_mask
+            weights = F.softmax(product)
+            if self.dropout:
+                weights = F.dropout(
+                    weights,
+                    self.dropout,
+                    training=self.training,
+                    mode="upscale_in_train",
+                )
 
-        out = tensor.matmul(weights, v)
+            out = tensor.matmul(weights, v)
+        else:
+            # call sparse self-attention
+            # TODO: support attn_mask and dropout
+            if (
+                self.sparse_mask is None
+                or self.sparse_mask.shape[0] != q.shape[0] * q.shape[1]
+                or self.sparse_mask.shape[1] != q.shape[2]
+            ):
+                mask = self.sparse.forward(q.shape[0], q.shape[2])
+                self.sparse_mask = mask.astype('float32').to_sparse_csr()
+
+            if attn_mask is not None:
+                attn_mask = _convert_attention_mask(attn_mask, q.dtype)
+                attn_mask = attn_mask.squeeze()
+                if len(attn_mask.shape) == 1:
+                    attn_mask = attn_mask.reshape((1, attn_mask.shape[0]))
+            out = paddle.sparse.nn.functional.attention(
+                q, k, v, self.sparse_mask, attn_mask=attn_mask
+            )
 
         # combine heads
         out = tensor.transpose(out, perm=[0, 2, 1, 3])
@@ -448,6 +525,69 @@ class MultiHeadAttention(Layer):
         outs = [out]
         if self.need_weights:
             outs.append(weights)
+        if cache is not None:
+            outs.append(cache)
+        return out if len(outs) == 1 else tuple(outs)
+
+
+class SparseAttention(MultiHeadAttention):
+    def __init__(
+        self,
+        embed_dim,
+        num_heads,
+        sparse,
+        dropout=0.0,
+        kdim=None,
+        vdim=None,
+        need_weights=False,
+        weight_attr=None,
+        bias_attr=None,
+    ):
+        super().__init__(
+            embed_dim,
+            num_heads,
+            dropout,
+            kdim,
+            vdim,
+            need_weights,
+            weight_attr,
+            bias_attr,
+        )
+
+    def forward(self, query, key=None, value=None, attn_mask=None, cache=None):
+        key = query if key is None else key
+        value = query if value is None else value
+        # compute q ,k ,v
+        if cache is None:
+            q, k, v = self._prepare_qkv(query, key, value, cache)
+        else:
+            q, k, v, cache = self._prepare_qkv(query, key, value, cache)
+
+        if (
+            self.sparse_mask is None
+            or self.sparse_mask.shape[0] != q.shape[0] * q.shape[1]
+            or self.sparse_mask.shape[1] != q.shape[2]
+        ):
+            mask = self.sparse.forward(q.shape[0], q.shape[2])
+            self.sparse_mask = mask.astype('float32').to_sparse_csr()
+
+        if attn_mask is not None:
+            attn_mask = _convert_attention_mask(attn_mask, q.dtype)
+            attn_mask = attn_mask.squeeze()
+            if len(attn_mask.shape) == 1:
+                attn_mask = attn_mask.reshape((1, attn_mask.shape[0]))
+        out, _ = paddle.sparse.nn.functional.attention(
+            q, k, v, self.sparse_mask, attn_mask=attn_mask
+        )
+
+        # combine heads
+        out = tensor.transpose(out, perm=[0, 2, 1, 3])
+        out = tensor.reshape(x=out, shape=[0, 0, out.shape[2] * out.shape[3]])
+
+        # project to output
+        out = self.out_proj(out)
+
+        outs = [out]
         if cache is not None:
             outs.append(cache)
         return out if len(outs) == 1 else tuple(outs)
@@ -522,6 +662,7 @@ class TransformerEncoderLayer(Layer):
         normalize_before=False,
         weight_attr=None,
         bias_attr=None,
+        sparse=False,
     ):
         self._config = locals()
         self._config.pop("self")
@@ -551,13 +692,23 @@ class TransformerEncoderLayer(Layer):
         weight_attrs = _convert_param_attr_to_list(weight_attr, 2)
         bias_attrs = _convert_param_attr_to_list(bias_attr, 2)
 
-        self.self_attn = MultiHeadAttention(
-            d_model,
-            nhead,
-            dropout=attn_dropout,
-            weight_attr=weight_attrs[0],
-            bias_attr=bias_attrs[0],
-        )
+        if sparse is None:
+            self.self_attn = MultiHeadAttention(
+                d_model,
+                nhead,
+                dropout=attn_dropout,
+                weight_attr=weight_attrs[0],
+                bias_attr=bias_attrs[0],
+            )
+        else:
+            self.self_attn = SparseAttention(
+                d_model,
+                nhead,
+                sparse,
+                dropout=attn_dropout,
+                weight_attr=weight_attrs[0],
+                bias_attr=bias_attrs[0],
+            )
         self.linear1 = Linear(
             d_model, dim_feedforward, weight_attrs[1], bias_attr=bias_attrs[1]
         )

@@ -34,9 +34,11 @@ __global__ void AttnSoftmaxGpuKernel(const int64_t* x_crows,
                                      const T* attn_mask,
                                      T* out_values,
                                      int M,
+                                     const int attn_mask_m,
                                      int total_row_num,
                                      int num_heads,
-                                     int batch_nnz) {
+                                     int batch_nnz,
+                                     float scale_qk_coeff) {
   // out = exp(x-x_max) / sum(exp(x-x_max))
   int row = blockIdx.x * blockDim.y + threadIdx.y;
   if (row >= total_row_num) return;
@@ -52,16 +54,20 @@ __global__ void AttnSoftmaxGpuKernel(const int64_t* x_crows,
   for (int idx = threadIdx.x; idx < row_nnz; idx += blockDim.x) {
     bool mask = false;
     int col_idx = static_cast<int>(x_cols[row_first + idx]);
+    T val = x_values[row_first + idx] * scale_qk_coeff;
     if (kp_mask != nullptr &&
         kp_mask[(cur_batch / num_heads) * M + col_idx] == 0) {
       mask = true;
     }
-    if (attn_mask != nullptr && attn_mask[cur_row * M + col_idx] == 0) {
-      mask = true;
+    if (attn_mask != nullptr) {
+      if (attn_mask_m == M) {
+        val += attn_mask[cur_row * M + col_idx];
+      } else {
+        val += attn_mask[(cur_batch / num_heads) * M + col_idx];
+      }
     }
 
     if (!mask) {
-      T val = x_values[row_first + idx];
       if (val > max_val) {
         max_val = val;
       }
@@ -97,9 +103,10 @@ void FusedAttentionCsrKernel(
     const SparseCsrTensor& sparse_mask,
     const paddle::optional<DenseTensor>& key_padding_mask,
     const paddle::optional<DenseTensor>& attn_mask,
+    const float scale_qk_coeff,
     DenseTensor* out,
     SparseCsrTensor* softmax) {
-#if CUDA_VERSION >= 11080
+#if CUDA_VERSION >= 11070
   /* Check Shape */
   auto q_dim = query.dims();
   auto q_rank = q_dim.size();
@@ -166,13 +173,16 @@ void FusedAttentionCsrKernel(
   }
 
   const auto attn_mask_ptr = attn_mask.get_ptr();
+  int attn_mask_m = 0;
   if (attn_mask_ptr) {
     PADDLE_ENFORCE_EQ(attn_mask_ptr->dims().size(),
                       2,
                       phi::errors::InvalidArgument(
                           "shape of 'attn_mask' must be [seq_len, seq_len]"));
-    PADDLE_ENFORCE_EQ(attn_mask_ptr->dims()[0],
-                      M,
+    attn_mask_m = attn_mask_ptr->dims()[0];
+    bool valid_mask_shape = attn_mask_m == q_dim[0] || attn_mask_m == M;
+    PADDLE_ENFORCE_EQ(valid_mask_shape,
+                      true,
                       phi::errors::InvalidArgument(
                           "shape of 'attn_mask' must be [seq_len, seq_len]"));
     PADDLE_ENFORCE_EQ(attn_mask_ptr->dims()[1],
@@ -187,7 +197,7 @@ void FusedAttentionCsrKernel(
   auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
   sparse_blas.SDDMM(false,
                     true,
-                    static_cast<T>(1 / std::sqrt(N)),
+                    static_cast<T>(1 / (scale_qk_coeff * std::sqrt(N))),
                     query,
                     key,
                     static_cast<T>(0),
@@ -207,12 +217,18 @@ void FusedAttentionCsrKernel(
       attn_mask_ptr ? attn_mask_ptr->data<T>() : nullptr,
       softmax->mutable_values()->data<T>(),
       M,
+      attn_mask_m,
       total_row_num,
       q_dim[1],
-      batch_nnz);
+      batch_nnz,
+      scale_qk_coeff);
 
   softmax->set_dims(phi::make_ddim({q_dim[0], q_dim[1], q_dim[2], q_dim[2]}));
+
+  // dropout
+
   MatmulCsrDenseKernel<T, Context>(dev_ctx, *softmax, value, out);
+
 #else
   PADDLE_THROW(
       phi::errors::Unimplemented("forward of 'sparse.nn.functional.attention' "

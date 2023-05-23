@@ -25,6 +25,7 @@ void FusedAttentionInferMeta(const MetaTensor& query,
                              const MetaTensor& sparse_mask,
                              const MetaTensor& key_padding_mask,
                              const MetaTensor& attn_mask,
+                             const float scale_qv_coeff,
                              MetaTensor* out,
                              MetaTensor* softmax);
 

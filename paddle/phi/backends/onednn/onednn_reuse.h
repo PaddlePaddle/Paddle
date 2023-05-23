@@ -83,7 +83,7 @@ static std::unordered_map<std::string, dnnl::algorithm> OneDNNActivationMap() {
           {"gelu", dnnl::algorithm::eltwise_gelu_erf},
           {"gelu_erf", dnnl::algorithm::eltwise_gelu_erf},
           {"gelu_tanh", dnnl::algorithm::eltwise_gelu_tanh},
-          {"hard_sigmoid", dnnl::algorithm::eltwise_hardsigmoid},
+          // {"hard_sigmoid", dnnl::algorithm::eltwise_hardsigmoid},
           {"hard_swish", dnnl::algorithm::eltwise_hardswish},
           {"leaky_relu", dnnl::algorithm::eltwise_relu},
           {"mish", dnnl::algorithm::eltwise_mish},
@@ -91,8 +91,8 @@ static std::unordered_map<std::string, dnnl::algorithm> OneDNNActivationMap() {
           {"relu6", dnnl::algorithm::eltwise_bounded_relu},
           {"sigmoid", dnnl::algorithm::eltwise_logistic},
           {"sqrt", dnnl::algorithm::eltwise_sqrt},
-          {"swish", dnnl::algorithm::eltwise_swish},
-          {"tanh", dnnl::algorithm::eltwise_tanh}};
+          {"swish", dnnl::algorithm::eltwise_swish}};
+  // {"tanh", dnnl::algorithm::eltwise_tanh}};
 }
 
 static void AppendActivation(const OneDNNContext& dev_ctx,

@@ -22,6 +22,13 @@ from .layer.activation import LeakyReLU
 from .layer.conv import Conv3D
 from .layer.conv import SubmConv3D
 from .layer.pooling import MaxPool3D
+from .layer.transformer import (
+    Transformer,
+    TransformerDecoder,
+    TransformerDecoderLayer,
+    TransformerEncoder,
+    TransformerEncoderLayer,
+)
 
 __all__ = [
     'ReLU',
@@ -33,4 +40,9 @@ __all__ = [
     'Conv3D',
     'SubmConv3D',
     'MaxPool3D',
+    'Transformer',
+    'TransformerDecoder',
+    'TransformerDecoderLayer',
+    'TransformerEncoder',
+    'TransformerEncoderLayer',
 ]
