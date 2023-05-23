@@ -627,7 +627,7 @@ class RNNCellBase(Layer):
             )
 
         init_states = paddle.utils.map_structure(
-            lambda shape, dtype: paddle.fluid.layers.fill_constant_batch_size_like(
+            lambda shape, dtype: paddle.tensor.fill_constant_batch_size_like(
                 input=batch_ref,
                 shape=shape.shape,
                 dtype=dtype,
@@ -1561,7 +1561,7 @@ class RNNBase(LayerList):
             )
             initial_states = tuple(
                 [
-                    paddle.fluid.layers.fill_constant_batch_size_like(
+                    paddle.tensor.fill_constant_batch_size_like(
                         inputs, state_shape, dtype, 0, batch_index, 1
                     )
                     for _ in range(self.state_components)

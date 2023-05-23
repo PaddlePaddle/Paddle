@@ -156,7 +156,7 @@ Strided Slice Operator.
 Instead of calling this op directly most users will want to use the
 NumPy-style slicing syntax.
 For Example:
-data = fluid.layers.fill_constant(shape=[3, 3], value=0, dtype='int64')
+data = paddle.tensor.fill_constant(shape=[3, 3], value=0, dtype='int64')
 y = fluid.layers.strided_slice(data, [0, 1], [1,0], [2, 3], [1, 1])
 )DOC");
   }

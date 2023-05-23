@@ -69,14 +69,14 @@ def get_acc(cos_q_nt, cos_q_pt, batch_size):
 
 def get_loss(cos_q_pt, cos_q_nt):
     loss_op1 = paddle.subtract(
-        fluid.layers.fill_constant_batch_size_like(
+        paddle.tensor.fill_constant_batch_size_like(
             input=cos_q_pt, shape=[-1, 1], value=margin, dtype='float32'
         ),
         cos_q_pt,
     )
     loss_op2 = paddle.add(loss_op1, cos_q_nt)
     loss_op3 = paddle.maximum(
-        fluid.layers.fill_constant_batch_size_like(
+        paddle.tensor.fill_constant_batch_size_like(
             input=loss_op2, shape=[-1, 1], value=0.0, dtype='float32'
         ),
         loss_op2,

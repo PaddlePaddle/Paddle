@@ -33,6 +33,7 @@ from .creation import zeros  # noqa: F401
 from .creation import zeros_like  # noqa: F401
 from .creation import arange  # noqa: F401
 from .creation import full  # noqa: F401
+from .creation import fill_constant_batch_size_like  # noqa: F401
 from .creation import full_like  # noqa: F401
 from .creation import triu  # noqa: F401
 from .creation import tril  # noqa: F401
