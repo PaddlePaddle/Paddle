@@ -18,21 +18,19 @@ namespace ir {
 Dialect::Dialect(std::string name, ir::IrContext *context, ir::TypeId id)
     : name_(std::move(name)), context_(context), id_(id) {}
 
-void Dialect::RegisterType(ir::AbstractType &&abstract_type) {
-  ir::AbstractType *new_abstract_type =
-      new ir::AbstractType(std::move(abstract_type));
-  this->ir_context()->RegisterAbstractType(new_abstract_type->type_id(),
-                                           new_abstract_type);
+Dialect::~Dialect() = default;
+
+void Dialect::RegisterInterface(std::unique_ptr<DialectInterface> interface) {
+  VLOG(4) << "Register interface into dialect" << std::endl;
+  auto it = registered_interfaces_.emplace(interface->interface_id(),
+                                           std::move(interface));
+  (void)it;
 }
 
-void Dialect::RegisterAttribute(ir::AbstractAttribute &&abstract_attribute) {
-  ir::AbstractAttribute *new_abstract_attribute =
-      new ir::AbstractAttribute(std::move(abstract_attribute));
-  this->ir_context()->RegisterAbstractAttribute(
-      new_abstract_attribute->type_id(), new_abstract_attribute);
+DialectInterface::~DialectInterface() = default;
+
+IrContext *DialectInterface::ir_context() const {
+  return dialect_->ir_context();
 }
 
-void Dialect::RegisterOp(const std::string &name, OpInfoImpl *op_info) {
-  this->ir_context()->RegisterOpInfo(name, op_info);
-}
 }  // namespace ir

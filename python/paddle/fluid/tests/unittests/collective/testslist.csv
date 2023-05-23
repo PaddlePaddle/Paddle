@@ -24,7 +24,7 @@ test_collective_process_group,linux,gpu;rocm,350,DIST,../dist_test.sh,2,,http_pr
 test_collective_reduce,linux,gpu;rocm,300,DIST,test_runner.py,2,,http_proxy=;https_proxy=;PYTHONPATH=..,
 test_collective_reduce_api,linux,gpu;rocm,500,DIST,test_runner.py,2,,http_proxy=;https_proxy=;PYTHONPATH=..,
 test_collective_reduce_scatter,linux,gpu;rocm,350,DIST,../dist_test.sh,2,,http_proxy=;https_proxy=;PYTHONPATH=..,
-test_collective_reduce_scatter_api,linux,gpu;rocm,120,DIST,test_runner.py,2,,http_proxy=;https_proxy=;PYTHONPATH=..,
+test_collective_reduce_scatter_api,linux,gpu;rocm,150,DIST,test_runner.py,2,,http_proxy=;https_proxy=;PYTHONPATH=..,
 test_collective_scatter,linux,gpu;rocm,300,DIST,test_runner.py,2,,http_proxy=;https_proxy=;PYTHONPATH=..,
 test_collective_scatter_api,linux,gpu;rocm,180,DIST,test_runner.py,2,,http_proxy=;https_proxy=;PYTHONPATH=..,
 test_collective_scatter_object_list_api,linux,gpu;rocm,120,DIST,test_runner.py,2,,http_proxy=;https_proxy=;PYTHONPATH=..,

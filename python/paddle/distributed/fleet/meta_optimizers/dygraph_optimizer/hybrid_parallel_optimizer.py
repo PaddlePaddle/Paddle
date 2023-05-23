@@ -432,7 +432,9 @@ class HybridParallelOptimizer:
         # minimize does not support parameters in the form of param_group,
         # so no need use _obtain_optimizer_parameters_list
         parameter_list = (
-            parameters if parameters else self._inner_opt._parameter_list
+            parameters
+            if parameters
+            else _obtain_optimizer_parameters_list(self._inner_opt)
         )
 
         # Here sharding should use global parameter list

@@ -567,7 +567,6 @@ DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Tanh, XPUTanhGradFunctor);
 DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Relu, XPUReluGradFunctor);
 DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Relu6, XPURelu6GradFunctor);
 
-DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPX(Silu, XPUSiluGradFunctor);
 DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPX(Log, XPULogGradFunctor);
 DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPX(Square, XPUSquareGradFunctor);
 DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPX(Swish, XPUSwishGradFunctor);
@@ -605,6 +604,16 @@ void HardSwishGradKernel(const Context& dev_ctx,
       dev_ctx, &x, nullptr, &dout, dx, functor);
 }
 
+template <typename T, typename Context>
+void SiluGradKernel(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& out,
+                    const DenseTensor& dout,
+                    DenseTensor* dx) {
+  XPUSiluGradFunctor<T> functor;
+  ActivationGradXPUImpl<T, Context, XPUSiluGradFunctor<T>>(
+      dev_ctx, &x, &out, &dout, dx, functor);
+}
 }  // namespace phi
 
 PD_REGISTER_KERNEL(relu_grad,

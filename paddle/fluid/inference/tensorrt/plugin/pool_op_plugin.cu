@@ -285,10 +285,10 @@ nvinfer1::DataType PoolPluginDynamic::getOutputDataType(
                         "The Pool Plugin only has one input, so the "
                         "index value should be 0, but get %d.",
                         index));
-  PADDLE_ENFORCE_EQ((input_types[0] == nvinfer1::DataType::kFLOAT),
-                    true,
-                    platform::errors::InvalidArgument(
-                        "The input type should be half or float"));
+  PADDLE_ENFORCE_EQ(
+      (input_types[0] == nvinfer1::DataType::kFLOAT),
+      true,
+      platform::errors::InvalidArgument("The input type should be float"));
   return input_types[0];
 }
 

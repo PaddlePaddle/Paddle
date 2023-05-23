@@ -77,8 +77,10 @@ class CustomPluginCreater : public OpConverter {
 
       // NOTE: to avoid string rewrite by iterator, deep copy here
       std::vector<char> plugin_attr_name(attr_name.length() + 1, 0);
-      snprintf(
-          plugin_attr_name.data(), attr_name.length() + 1, attr_name.c_str());
+      snprintf(plugin_attr_name.data(),
+               attr_name.length() + 1,
+               "%s",
+               attr_name.c_str());
       plugindata.name = plugin_attr_name.data();
 
       if (op_desc.GetAttrType(attr_name) == framework::proto::AttrType::INT) {

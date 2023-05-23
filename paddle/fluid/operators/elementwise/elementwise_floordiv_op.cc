@@ -48,7 +48,7 @@ class ElementwiseFloorDivOpMaker : public ElementwiseOpMaker {
         "should be int32, int64.");
   }
 
-  std::string GetOpFuntionality() const override {
+  std::string GetOpFunctionality() const override {
     return "Floor divide two tensors element-wise";
   }
 };
