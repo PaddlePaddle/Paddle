@@ -1208,6 +1208,7 @@ std::vector<PatternParam> MultiEncoderXPUFusePass::GeneratePatternParams()
       {"gelu", "matmul_v2", "matmul", "matmul_v2", false, false, true},
       {"gelu", "matmul_v2", "matmul_v2", "matmul_v2", false, true, true},
       {"gelu", "mul", "matmul", "matmul", false, true, true},
+      {"relu", "mul", "matmul", "matmul", false, true, true},
   };
 }
 
