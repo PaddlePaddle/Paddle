@@ -99,6 +99,18 @@ class TestCastOpError(unittest.TestCase):
             self.assertRaises(TypeError, paddle.cast, x1, 'int32')
 
 
+class TestCastOpEmpty(unittest.TestCase):
+    def test_cast_op_empty(self):
+        if paddle.is_compiled_with_xpu():
+            paddle.set_device('xpu')
+            paddle.disable_static()
+            data = paddle.ones([0, 10], dtype='float32')
+            out = paddle.cast(data, 'int32')
+            self.assertEqual(out.shape, data.shape)
+            self.assertEqual(out.dtype, paddle.int32)
+            paddle.enable_static()
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()
