@@ -32,33 +32,53 @@ namespace dialect {
                        const ir::AttributeMap &attributes) {    \
       LOG(WARNING) << "This is a fake verify";                  \
     }                                                           \
-  };                                                            \
-  const char **className::attributes_name = nullptr;
+  };
 
-REIGSTER_EMPTY_OP(conv2d, Conv2DOp);
-REIGSTER_EMPTY_OP(feed, FeedOp);
-REIGSTER_EMPTY_OP(batch_norm, BatchNormOp);
-REIGSTER_EMPTY_OP(batch_norm_, BatchNormOp_);
-REIGSTER_EMPTY_OP(elementwise_add, ElementwiseAddOp);
-REIGSTER_EMPTY_OP(pool2d, Pool2DOp);
-REIGSTER_EMPTY_OP(flatten_contiguous_range, FlattenContiguousRangeOp);
-REIGSTER_EMPTY_OP(matmul_v2, MatmulV2Op);
-REIGSTER_EMPTY_OP(reshape2, Reshape2Op);
-REIGSTER_EMPTY_OP(softmax_with_cross_entropy, SoftmaxWithCrossEntropyOp);
-REIGSTER_EMPTY_OP(reduce_mean, ReduceMeanOp);
-REIGSTER_EMPTY_OP(top_k_v2, TopKV2Op);
-REIGSTER_EMPTY_OP(fill_constant, FillConstantOp);
-REIGSTER_EMPTY_OP(reduce_mean_grad, ReduceMeanGradOp);
-REIGSTER_EMPTY_OP(softmax_with_cross_entropy_grad,
-                  SoftmaxWithCrossEntropyGradOp);
-REIGSTER_EMPTY_OP(elementwise_add_grad, ElementwiseAddGradOp);
-REIGSTER_EMPTY_OP(matmul_v2_grad, MatmulV2GradOp);
-REIGSTER_EMPTY_OP(flatten_contiguous_range_grad, FlattenContiguousRangeGradOp);
-REIGSTER_EMPTY_OP(pool2d_grad, Pool2DGradOp);
-REIGSTER_EMPTY_OP(batch_norm_grad, BatchNormGradOp);
-REIGSTER_EMPTY_OP(conv2d_grad, Conv2DGradOp);
-REIGSTER_EMPTY_OP(sum, SumOp);
-REIGSTER_EMPTY_OP(fetch_v2, FetchV2Op);
+// TODO(zhangbo): As operators are supplemented and defined, they are gradually
+// removed.
+REIGSTER_EMPTY_OP(conv2d, Conv2DOp);           // To be customized: conv2d
+REIGSTER_EMPTY_OP(feed, FeedOp);               // To be customized: feed
+REIGSTER_EMPTY_OP(batch_norm, BatchNormOp);    // To be customized: batch_norm
+REIGSTER_EMPTY_OP(batch_norm_, BatchNormOp_);  // To be customized: batch_norm_
+REIGSTER_EMPTY_OP(elementwise_add,
+                  ElementwiseAddOp);  // To be customized: add (elementwise_add)
+REIGSTER_EMPTY_OP(pool2d, Pool2DOp);  // To be customized: pool2d
+REIGSTER_EMPTY_OP(
+    flatten_contiguous_range,
+    FlattenContiguousRangeOp);  //  flatten (flatten_contiguous_range)
+REIGSTER_EMPTY_OP(matmul_v2,
+                  MatmulV2Op);  // To be customized: matmul (matmul_v2)
+REIGSTER_EMPTY_OP(reshape2, Reshape2Op);  // To be customized: reshape
+REIGSTER_EMPTY_OP(softmax_with_cross_entropy,
+                  SoftmaxWithCrossEntropyOp);  // cross_entropy_with_softmax
+                                               // (softmax_with_cross_entropy)
+REIGSTER_EMPTY_OP(reduce_mean,
+                  ReduceMeanOp);        // To be customized: mean (reduce_mean)
+REIGSTER_EMPTY_OP(top_k_v2, TopKV2Op);  //  topk (top_k_v2)
+REIGSTER_EMPTY_OP(fill_constant,
+                  FillConstantOp);  // To be customized: full (fill_constant)
+REIGSTER_EMPTY_OP(reduce_mean_grad,
+                  ReduceMeanGradOp);  // To be customized: reduce_mean_grad
+REIGSTER_EMPTY_OP(
+    softmax_with_cross_entropy_grad,
+    SoftmaxWithCrossEntropyGradOp);  // cross_entropy_with_softmax_grad
+                                     // (softmax_with_cross_entropy_grad)
+REIGSTER_EMPTY_OP(
+    elementwise_add_grad,
+    ElementwiseAddGradOp);  // To be customized: add_grad (elementwise_add_grad)
+REIGSTER_EMPTY_OP(
+    matmul_v2_grad,
+    MatmulV2GradOp);  // To be customized: matmul_grad (matmul_v2_grad)
+REIGSTER_EMPTY_OP(
+    flatten_contiguous_range_grad,
+    FlattenContiguousRangeGradOp);  //   flatten_grad
+                                    //   (flatten_contiguous_range_grad)
+REIGSTER_EMPTY_OP(pool2d_grad, Pool2DGradOp);  // To be customized: pool2d_grad
+REIGSTER_EMPTY_OP(batch_norm_grad,
+                  BatchNormGradOp);  // To be customized: batch_norm_grad
+REIGSTER_EMPTY_OP(conv2d_grad, Conv2DGradOp);  // To be customized: conv2d_grad
+REIGSTER_EMPTY_OP(sum, SumOp);           // To be customized: sum(reduce_sum)
+REIGSTER_EMPTY_OP(fetch_v2, FetchV2Op);  // To be customized: fetch_v2
 
 }  // namespace dialect
 }  // namespace paddle
