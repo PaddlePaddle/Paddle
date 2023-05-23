@@ -21,4 +21,7 @@ const char *GetParameterOp::attributes_name[attributes_num] = {
 const char *SetParameterOp::attributes_name[attributes_num] = {
     "parameter_name"};
 
+const char **CombineOp::attributes_name = nullptr;
+const char *SliceOp::attributes_name[attributes_num] = {"index"};
+
 }  // namespace ir

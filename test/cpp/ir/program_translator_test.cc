@@ -58,6 +58,7 @@ TEST(PaddleDialectTest, Translator) {
   auto program = paddle::TranslateLegacyProgramToProgram(p);
 
   std::list<ir::Operation *> ops = program->ops();
-  EXPECT_EQ(ops.size(), p.Block(0).OpSize() + program->parameters_num());
-  VLOG(0) << *program << std::endl;
+  // ops.size() = op size in BlockDesc + get_parameter_op + combine op
+  EXPECT_EQ(ops.size(), p.Block(0).OpSize() + program->parameters_num() + 20);
+  std::cout << *program << std::endl;
 }

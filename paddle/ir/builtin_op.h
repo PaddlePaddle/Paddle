@@ -22,7 +22,8 @@ namespace ir {
 /// The built-in Dialect will use this macro to quickly register all built-in
 /// OPs.
 ///
-#define GET_BUILT_IN_OP_LIST ir::GetParameterOp, ir::SetParameterOp
+#define GET_BUILT_IN_OP_LIST \
+  ir::GetParameterOp, ir::SetParameterOp, ir::CombineOp, ir::SliceOp
 
 ///
 /// \brief GetParameterOp: OpResult = GetParameterOp({StrAttribute,
@@ -40,7 +41,7 @@ class GetParameterOp : public ir::Op<GetParameterOp> {
 };
 
 ///
-/// \brief GetParameterOp: SetParameterOp(OpOperand, {StrAttribute,
+/// \brief SetParameterOp: SetParameterOp(OpOperand, {StrAttribute,
 /// StrAttribute})
 ///
 class SetParameterOp : public ir::Op<SetParameterOp> {
@@ -48,6 +49,36 @@ class SetParameterOp : public ir::Op<SetParameterOp> {
   using Op::Op;
 
   static const char* name() { return "builtin.set_parameter"; }
+
+  static constexpr uint32_t attributes_num = 1;
+
+  static const char* attributes_name[attributes_num];
+};
+
+///
+/// \brief CombineOp: CombineOp(OpOperand, {StrAttribute,
+/// StrAttribute})
+///
+class CombineOp : public ir::Op<CombineOp> {
+ public:
+  using Op::Op;
+
+  static const char* name() { return "builtin.combine"; }
+
+  static constexpr uint32_t attributes_num = 0;
+
+  static const char** attributes_name;
+};
+
+///
+/// \brief SliceOp: SliceOp(OpOperand, {StrAttribute,
+/// StrAttribute})
+///
+class SliceOp : public ir::Op<SliceOp> {
+ public:
+  using Op::Op;
+
+  static const char* name() { return "builtin.slice"; }
 
   static constexpr uint32_t attributes_num = 1;
 
