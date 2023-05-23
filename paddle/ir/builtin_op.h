@@ -56,8 +56,7 @@ class SetParameterOp : public ir::Op<SetParameterOp> {
 };
 
 ///
-/// \brief CombineOp: CombineOp(OpOperand, {StrAttribute,
-/// StrAttribute})
+/// \brief CombineOp: CombineOp(OpOperand)
 ///
 class CombineOp : public ir::Op<CombineOp> {
  public:
@@ -71,8 +70,7 @@ class CombineOp : public ir::Op<CombineOp> {
 };
 
 ///
-/// \brief SliceOp: SliceOp(OpOperand, {StrAttribute,
-/// StrAttribute})
+/// \brief SliceOp: SliceOp(OpOperand)
 ///
 class SliceOp : public ir::Op<SliceOp> {
  public:
