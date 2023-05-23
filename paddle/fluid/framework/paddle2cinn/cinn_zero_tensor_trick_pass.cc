@@ -59,7 +59,10 @@ void CinnZeroTensorTrickPass::ApplyImpl(ir::Graph* graph) const {
   }
 
   // CINN ops in this white list support 0D-Tensor
-  const std::unordered_set<std::string> white_op_list{"elementwise_add"};
+  const std::unordered_set<std::string> white_op_list{"elementwise_add",
+                                                      "elementwise_sub",
+                                                      "elementwise_mul",
+                                                      "elementwise_div"};
   std::unordered_set<std::string> white_tensor_name;
   // enable white_op_list only when graph_node_size = 1, which means single op
   // test
