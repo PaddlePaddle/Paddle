@@ -66,7 +66,7 @@ class IrContextImpl {
     std::lock_guard<ir::SpinLock> guard(registed_abstract_types_lock_);
     auto iter = registed_abstract_types_.find(type_id);
     if (iter != registed_abstract_types_.end()) {
-      VLOG(4) << "Fonund a cached abstract_type of: [TypeId_hash="
+      VLOG(4) << "Found a cached abstract_type of: [TypeId_hash="
               << std::hash<ir::TypeId>()(type_id)
               << ", AbstractType_ptr=" << iter->second << "].";
       return iter->second;
@@ -89,7 +89,7 @@ class IrContextImpl {
     std::lock_guard<ir::SpinLock> guard(registed_abstract_attributes_lock_);
     auto iter = registed_abstract_attributes_.find(type_id);
     if (iter != registed_abstract_attributes_.end()) {
-      VLOG(4) << "Fonund a cached abstract_attribute of: [TypeId_hash="
+      VLOG(4) << "Found a cached abstract_attribute of: [TypeId_hash="
               << std::hash<ir::TypeId>()(type_id)
               << ", AbstractAttribute_ptr=" << iter->second << "].";
       return iter->second;
@@ -110,7 +110,7 @@ class IrContextImpl {
     std::lock_guard<ir::SpinLock> guard(registed_op_infos_lock_);
     auto iter = registed_op_infos_.find(name);
     if (iter != registed_op_infos_.end()) {
-      VLOG(4) << "Fonund a cached operation of: [name=" << name
+      VLOG(4) << "Found a cached operation of: [name=" << name
               << ", OpInfoImpl ptr=" << iter->second << "].";
       return iter->second;
     }
@@ -129,11 +129,11 @@ class IrContextImpl {
     std::lock_guard<ir::SpinLock> guard(registed_dialect_lock_);
     auto iter = registed_dialect_.find(name);
     if (iter != registed_dialect_.end()) {
-      VLOG(4) << "Fonund a cached dialect of: [name=" << name
+      VLOG(4) << "Found a cached dialect of: [name=" << name
               << ", dialect_ptr=" << iter->second << "].";
       return iter->second;
     }
-    LOG(WARNING) << "No cache fonund dialect of: [name=" << name << "].";
+    LOG(WARNING) << "No cache found dialect of: [name=" << name << "].";
     return nullptr;
   }
 
@@ -156,7 +156,7 @@ class IrContextImpl {
   // AttributeStorage uniquer and cache instances.
   StorageManager registed_attribute_storage_manager_;
 
-  // The dialcet registered in the context.
+  // The dialect registered in the context.
   std::unordered_map<std::string, Dialect *> registed_dialect_;
   ir::SpinLock registed_dialect_lock_;
 

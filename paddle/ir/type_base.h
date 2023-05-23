@@ -77,7 +77,7 @@ class AbstractType {
  private:
   ///
   /// \brief The constructor is set to private and provides the user with the
-  /// get method to obtain and manage the AstractType.
+  /// get method to obtain and manage the AbstractType.
   ///
   /// \param type_id The type id of the AbstractType.
   /// \param dialect The Dialect which the type registered to.

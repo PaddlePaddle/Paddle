@@ -39,7 +39,7 @@ class alignas(8) Operation final {
   static Operation *create(const OperationArgument &op_argument);
 
   ///
-  /// \brief Destroy the operation objects and free memeory by create().
+  /// \brief Destroy the operation objects and free memory by create().
   ///
   void destroy();
 
