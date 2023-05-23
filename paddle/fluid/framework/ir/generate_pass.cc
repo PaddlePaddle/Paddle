@@ -420,13 +420,17 @@ GraphPatternDetector::handle_t GetGenerateRewrite(
   return handler;
 }
 
-GeneratePass::GeneratePass(const std::string& binary_str) {
+GeneratePass::GeneratePass(const std::string& pass_type,
+                           const std::string& binary_str) {
+  RegisterType(pass_type);
   multi_pass_desc_.ParseFromString(binary_str);
   VerifyDesc();
 }
 
-GeneratePass::GeneratePass(const proto::MultiPassDesc& multi_pass_desc)
+GeneratePass::GeneratePass(const std::string& pass_type,
+                           const proto::MultiPassDesc& multi_pass_desc)
     : multi_pass_desc_(multi_pass_desc) {
+  RegisterType(pass_type);
   VerifyDesc();
 }
 

@@ -2276,7 +2276,7 @@ All parameter, weight, gradient are variables in Paddle.
           py::gil_scoped_acquire guard;
           std::unique_ptr<framework::ir::Pass> pass(
               new framework::ir::GeneratePass(
-                  py::cast<std::string>(callable())));
+                  pass_type, py::cast<std::string>(callable())));
           return pass;
         });
   });

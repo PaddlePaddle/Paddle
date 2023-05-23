@@ -24,9 +24,11 @@ namespace ir {
 class GeneratePass : public Pass {
  public:
   // from binary_str
-  explicit GeneratePass(const std::string& binary_str);
+  explicit GeneratePass(const std::string& pass_type,
+                        const std::string& binary_str);
   // from PassDesc/MultiPassDesc
-  explicit GeneratePass(const proto::MultiPassDesc& multi_pass_desc);
+  explicit GeneratePass(const std::string& pass_type,
+                        const proto::MultiPassDesc& multi_pass_desc);
 
  protected:
   void ApplyImpl(Graph* graph) const override;
