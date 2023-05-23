@@ -20,4 +20,5 @@ cc_library(
   SRCS dist_mapper.cc
   DEPS device_mesh auto_parallel_proto phi_enforce)
 
-cc_library(auto_parallel DEPS device_mesh process_mesh dist_attr dist_mapper)
+cc_library(auto_parallel DEPS device_mesh process_mesh dist_attr dist_mapper
+                              dist_tensor_spec)

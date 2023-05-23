@@ -5,4 +5,4 @@ cc_library(
        phi_enforce)
 
 add_subdirectory(test)
-
+add_subdirectory(spmd_rules)

@@ -15,6 +15,7 @@
 #include <pybind11/operators.h>
 #include <pybind11/stl.h>
 
+#include "paddle/fluid/distributed/auto_parallel/spmd_rules/dist_tensor_spec.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/pybind/auto_parallel_py.h"
@@ -29,6 +30,7 @@ namespace py = pybind11;
 namespace paddle {
 namespace pybind {
 
+using paddle::distributed::auto_parallel::DistTensorSpec;
 using paddle::distributed::auto_parallel::OperatorDistAttr;
 using paddle::framework::OpDesc;
 using paddle::framework::VarDesc;
@@ -275,6 +277,25 @@ void BindAutoParallel(py::module *m) {
           },
           py::arg("memo"))
       .def("__str__", &TensorDistAttr::to_string);
+
+  py::class_<DistTensorSpec>(*m, "DistTensorSpec")
+      .def(py::init<>())
+      .def(py::init<const DistTensorSpec &>())
+      .def(py::init<const std::vector<int64_t> &, const TensorDistAttr &>())
+      .def("get_dims_mapping", &DistTensorSpec::get_dims_mapping)
+      .def("set_dims_mapping", &DistTensorSpec::set_dims_mapping)
+      .def("get_process_mesh", &DistTensorSpec::get_process_mesh)
+      .def("set_process_mesh", &DistTensorSpec::set_process_mesh)
+      .def_property_readonly("shape", &DistTensorSpec::get_shape)
+      .def("__str__", &DistTensorSpec::to_string)
+      .def("__copy__",
+           [](const DistTensorSpec &self) { return DistTensorSpec(self); })
+      .def(
+          "__deepcopy__",
+          [](const DistTensorSpec &self, py::dict) {
+            return DistTensorSpec(self);
+          },
+          py::arg("memo"));
 
   py::class_<OperatorDistAttr>(*m, "OperatorDistAttr")
       .def(py::init<>())
