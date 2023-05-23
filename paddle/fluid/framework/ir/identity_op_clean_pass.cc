@@ -63,8 +63,8 @@ void IdentityScaleOpCleanPass::ApplyImpl(ir::Graph* graph) const {
               }
             }
             if (x->Op()->Type() == "cast") {
-              auto in_dtype = x->Op()->GetAttrIfExists<float>("in_dtype");
-              auto out_dtype = x->Op()->GetAttrIfExists<float>("out_dtype");
+              auto in_dtype = x->Op()->GetAttrIfExists<int>("in_dtype");
+              auto out_dtype = x->Op()->GetAttrIfExists<int>("out_dtype");
               if (in_dtype == out_dtype) {
                 return true;
               }
