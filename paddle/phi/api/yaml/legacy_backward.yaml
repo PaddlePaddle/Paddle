@@ -592,27 +592,6 @@
   kernel :
     func : norm_grad
 
-- backward_op : pad3d_double_grad
-  forward : pad3d_grad(Tensor x, Tensor grad_out, IntArray paddings, str mode, float pad_value, str data_format) -> Tensor(grad_x)
-  args : (Tensor grad_x_grad, IntArray paddings, str mode, float pad_value, str data_format)
-  output : Tensor(grad_out_grad)
-  infer_meta :
-    func : Pad3dInferMeta
-  kernel :
-    func : pad3d
-
-- backward_op : pad3d_grad
-  forward : pad3d(Tensor x, IntArray paddings, str mode,  float pad_value, str data_format) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, IntArray paddings, str mode,  float pad_value, str data_format)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param: [x]
-  kernel :
-    func : pad3d_grad
-  no_need_buffer : x
-  backward : pad3d_double_grad
-
 - backward_op : pad_double_grad
   forward : pad_grad(Tensor x, Tensor grad_out, int[] paddings, Scalar pad_value) -> Tensor(grad_x)
   args : (Tensor grad_x_grad, int[] paddings, Scalar pad_value)

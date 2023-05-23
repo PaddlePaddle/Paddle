@@ -1741,7 +1741,17 @@
     attrs : [bool use_mkldnn = false]
 
 - op : pad3d
-  backward : pad3d_grad
+  backward : pad3d_grad, pad3d_double_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  int_array:
+    paddings :
+      data_type : int
+      tensor_name : Paddings
+  attrs :
+    pad_value : value
   extra :
     attrs : [bool use_mkldnn = false]
 
