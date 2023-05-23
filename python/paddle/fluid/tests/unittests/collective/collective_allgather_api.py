@@ -43,6 +43,7 @@ def all_gather_new(tensor_list, tensor, group=None):
                 'bool',
                 'int8',
                 'uint8',
+                'uint16',
             ],
             op_type,
         )
@@ -58,6 +59,7 @@ def all_gather_new(tensor_list, tensor, group=None):
             'bool',
             'int8',
             'uint8',
+            'uint16',
         ],
         op_type,
     )

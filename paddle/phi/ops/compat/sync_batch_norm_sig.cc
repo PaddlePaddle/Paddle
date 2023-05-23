@@ -17,7 +17,7 @@
 namespace phi {
 
 KernelSignature SyncBatchNormOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("sync_batch_norm",
                          {"X", "Mean", "Variance", "Scale", "Bias"},
                          {"is_test",
@@ -35,7 +35,7 @@ KernelSignature SyncBatchNormOpArgumentMapping(
 }
 
 KernelSignature SyncBatchNormGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("sync_batch_norm_grad",
                          {
                              "X",

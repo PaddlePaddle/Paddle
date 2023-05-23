@@ -158,6 +158,12 @@ class TestLogSoftmaxBF16Op(OpTest):
         )
 
 
+class TestLogSoftmaxLargeDimFP16OP(TestLogSoftmaxOp):
+    def set_attrs(self):
+        self.dtype = np.float16
+        self.shape = [16, 100000]
+
+
 class TestNNLogSoftmaxAPI(unittest.TestCase):
     def setUp(self):
         self.x_shape = [2, 3, 4, 5]

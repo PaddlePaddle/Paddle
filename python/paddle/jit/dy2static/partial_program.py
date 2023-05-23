@@ -259,7 +259,7 @@ class PartialProgramLayer:
                 return scope
             else:
                 for scope in self._scope_cache[program_id]:
-                    if scope._can_reuesd:
+                    if scope._can_reused:
                         return scope
                 scope = core.Scope()
                 self._scope_cache[program_id].append(scope)

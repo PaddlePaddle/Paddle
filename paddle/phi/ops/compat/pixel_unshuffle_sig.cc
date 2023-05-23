@@ -17,7 +17,7 @@
 namespace phi {
 
 KernelSignature PixelUnshuffleGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("pixel_unshuffle_grad",
                          {"Out@GRAD"},
                          {"downscale_factor", "data_format"},

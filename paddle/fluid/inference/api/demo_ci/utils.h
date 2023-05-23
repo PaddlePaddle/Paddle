@@ -21,7 +21,7 @@
 #include <string>
 #include <vector>
 
-#include "paddle/include/paddle_inference_api.h"
+#include "paddle_inference_api.h"  // NOLINT
 
 namespace paddle {
 namespace demo {
