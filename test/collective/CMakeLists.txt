@@ -4,6 +4,7 @@
 # and then run the command `python3 ${PADDLE_ROOT}/tools/gen_ut_cmakelists.py -f ${CURRENT_DIRECTORY}/testslist.csv`
 set(LOCAL_ALL_ARCH ON)
 set(LOCAL_ALL_PLAT ON)
+
 if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   py_test_modules(
     test_allreduce MODULES test_allreduce ENVS
