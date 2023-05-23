@@ -140,6 +140,144 @@ PADDLE_API void {api_func_name}({self.get_declare_args()});
     def get_return_type(self, inplace_flag=False):
         return 'void'
 
+    def dev2_gene_output(
+        self,
+        out_dtype_list,
+        out_tensor_type_list=None,
+        code_indent='',
+        inplace_flag=False,
+    ):
+        dev2_kernel_output = []
+        dev2_output_names = []
+        dev2_output_create = ""
+        dev2_output_declaration = ""
+
+        if len(out_dtype_list) == 1:
+            # 没有inplace的情况
+            dev2_kernel_output.append('dev2_kernel_out')
+            dev2_output_names.append('dev2_kernel_out')
+            # inplace_assign = (
+            #     f"dev2_{PREFIX_TENSOR_NAME}{self.inplace_map[self.outputs['names'][0]]}"
+            #     if inplace_flag and self.outputs['names'][0] in self.inplace_map and self.inplace_map[self.outputs['names'][0]] in kernel_param
+            #     else "kernel_out"
+            # )
+            set_out_func = (
+                'CopyDenseTensor'
+                if out_tensor_type_list is None
+                or out_tensor_type_list[0] == 'dense'
+                else 'CopySelectedRows'
+            )
+            dev2_kernel_out_type = (
+                'phi::DenseTensor*'
+                if out_tensor_type_list is None
+                or out_tensor_type_list[0] == 'dense'
+                else 'phi::SelectedRows*'
+            )
+            if out_dtype_list[0] == 'std::vector<Tensor>':
+                dev2_output_declaration += f"""
+{code_indent}std::unique_ptr<std::vector<phi::DenseTensor>> dev2_kernel_out_vec;
+{code_indent}std::vector<phi::DenseTensor*> dev2_kernel_out;"""
+
+                set_out_func = 'CopyVector'
+                dev2_output_create = (
+                    dev2_output_create
+                    + f"""
+{code_indent}  dev2_kernel_out_vec = paddle::experimental::{set_out_func}(kernel_out, paddle::experimental::GetDebugDev2Type());
+{code_indent}  dev2_kernel_out = paddle::experimental::DenseTensorToDenseTensorPtr(dev2_kernel_out_vec.get());"""
+                )
+
+            else:
+                dev2_output_declaration += f"""
+{code_indent}std::shared_ptr<{dev2_kernel_out_type[:-1]}> dev2_kernel_out_smart_ptr;
+{code_indent}{dev2_kernel_out_type} dev2_kernel_out = nullptr;"""
+
+                dev2_output_create = (
+                    dev2_output_create
+                    + f"""
+{code_indent}  dev2_kernel_out_smart_ptr = {set_out_func}(kernel_out, paddle::experimental::GetDebugDev2Type());
+{code_indent}  dev2_kernel_out = dev2_kernel_out_smart_ptr ? dev2_kernel_out_smart_ptr.get() : nullptr;"""
+                )
+        elif len(out_dtype_list) > 1:
+            for i, out_type_item in enumerate(out_dtype_list):
+                dev2_kernel_output.append(f'dev2_kernel_out_{i}')
+                dev2_output_names.append(f'dev2_kernel_out_{i}')
+                #                 # f"dev2_{PREFIX_TENSOR_NAME}{self.inplace_map[self.outputs['names'][0]]}"
+                #                 inplace_assign = (
+                #                     f"dev2_input_{self.inplace_map[self.outputs['names'][i]]}"
+                #                     if inplace_flag
+                #                     and self.inplace_map is not None
+                #                     and self.outputs['names'][i] in self.inplace_map
+                #                     else f"kernel_out_{i}"
+                #                 )
+                set_out_func = (
+                    'CopyDenseTensor'
+                    if out_tensor_type_list is None
+                    or out_tensor_type_list[0] == 'dense'
+                    else 'CopySelectedRows'
+                )
+                dev2_kernel_out_type = (
+                    'phi::DenseTensor*'
+                    if out_tensor_type_list is None
+                    or out_tensor_type_list[0] == 'dense'
+                    else 'phi::SelectedRows*'
+                )
+                # 反向算子 输出tensor类型没有optional的情况
+                if out_type_item == 'Tensor':
+                    dev2_output_declaration += f"""
+{code_indent}std::shared_ptr<{dev2_kernel_out_type[:-1]}> dev2_kernel_out_{i}_smart_ptr;
+{code_indent}{dev2_kernel_out_type} dev2_kernel_out_{i} = nullptr;"""
+                    if (
+                        inplace_flag
+                        and self.inplace_map is not None
+                        and self.outputs['names'][i] in self.inplace_map
+                    ):
+                        dev2_output_create = (
+                            dev2_output_create
+                            + f"""
+{code_indent}  dev2_kernel_out_{i} = dev2_input_{self.inplace_map[self.outputs['names'][i]]} ? dev2_input_{self.inplace_map[self.outputs['names'][i]]}.get() : nullptr;"""
+                        )
+                    else:
+                        dev2_output_create = (
+                            dev2_output_create
+                            + f"""
+{code_indent}  dev2_kernel_out_{i}_smart_ptr = paddle::experimental::{set_out_func}(kernel_out_{i}, paddle::experimental::GetDebugDev2Type());
+{code_indent}  dev2_kernel_out_{i} = dev2_kernel_out_{i}_smart_ptr ? dev2_kernel_out_{i}_smart_ptr.get() : nullptr;"""
+                        )
+                else:
+                    dev2_output_declaration += f"""
+{code_indent}std::unique_ptr<std::vector<phi::DenseTensor>> dev2_kernel_out_{i}_vec;
+{code_indent}std::vector<phi::DenseTensor*> dev2_kernel_out_{i};"""
+                    if (
+                        inplace_flag
+                        and self.inplace_map is not None
+                        and self.outputs['names'][i] in self.inplace_map
+                    ):
+                        dev2_output_create = (
+                            dev2_output_create
+                            + f"""
+{code_indent}  dev2_kernel_out_{i} = paddle::experimental::DenseTensorToDenseTensorPtr(dev2_input_{self.inplace_map[self.outputs['names'][i]]}_vec);"""
+                        )
+                    else:
+                        dev2_output_create = (
+                            dev2_output_create
+                            + f"""
+{code_indent}  dev2_kernel_out_{i}_vec = paddle::experimental::CopyVector(kernel_out_{i}, paddle::experimental::GetDebugDev2Type());
+{code_indent}  dev2_kernel_out_{i} = paddle::experimental::DenseTensorToDenseTensorPtr(dev2_kernel_out_{i}_vec.get());"""
+                        )
+        else:
+            raise ValueError(
+                "{} : Output error: the output should not be empty.".format(
+                    self.api
+                )
+            )
+
+        return (
+            dev2_kernel_output,
+            dev2_output_names,
+            dev2_output_create,
+            dev2_output_declaration,
+        )
+
     def gene_output(
         self,
         out_dtype_list,
@@ -152,6 +290,7 @@ PADDLE_API void {api_func_name}({self.get_declare_args()});
         output_create = ""
 
         if len(out_dtype_list) == 1:
+            # 没有inplace的情况
             kernel_output.append('kernel_out')
             output_names.append('kernel_out')
             inplace_assign = (
@@ -289,6 +428,7 @@ def source_include(header_file_path, fw_header_file_path):
 
 #include "paddle/phi/api/profiler/event_tracing.h"
 #include "paddle/phi/api/profiler/supplement_tracing.h"
+#include "paddle/phi/api/lib/debug_op.h"
 
 DECLARE_bool(conv2d_disable_cudnn);
 DECLARE_int32(low_precision_op_list);

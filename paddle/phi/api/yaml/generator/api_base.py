@@ -265,7 +265,10 @@ class BaseAPI:
                 out_type in output_type_map
             ), f"{api_name} : Output type error: the output type only support Tensor and Tensor[], \
                   but now is {out_type}."
-
+            # 以broadcast_tensors中 Tensor[]{input.size()}为例
+            # out_type = Tensor[]
+            # name = None
+            # expr = {input.size()}
             out_name = (
                 'out'
                 if result.group('name') is None
@@ -276,6 +279,8 @@ class BaseAPI:
                 if result.group('expr') is None
                 else result.group('expr')[1:-1]
             )
+            # out_name = out
+            # expr = input.size()
             return output_type_map[out_type], out_name, out_size_expr
 
         temp_list = output_config.split(',')
@@ -685,9 +690,17 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 """
 
     def gene_trans_flag(self, input_name):
+        """TransformFlag
+        stop_transform_ = false
+        trans_data_type_ = false
+        trans_backend_ = true
+        trans_layout_ = true
+        """
         trans_flag = "{}"
+        # 如果有skip_transform就不做转换
         if input_name in self.data_transform['skip_transform']:
             trans_flag = "{true}"
+        # 如果支持转换dtype就把trans_data_type_置为true
         elif input_name in self.data_transform['support_trans_dtype']:
             trans_flag = "{false, true}"
         return trans_flag
@@ -700,6 +713,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
         input_names = self.inputs['names']
         attr_names = self.attrs['names']
         kernel_param = self.kernel['param']
+        # 这个是为了后面找到实际是api接口参数的第几个位置
         if kernel_param is None:
             kernel_param = input_names + attr_names
 
@@ -807,6 +821,206 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
             )
         return input_tensor_code
 
+    def dev2_gene_input(self, kernel_tensor_type=None, code_indent=''):
+        # dense_dev2_input_trans_map = {
+        #     'const Tensor&': 'phi::DenseTensor',
+        #     'const std::vector<Tensor>&': 'std::vector<const phi::DenseTensor*>',
+        #     'const paddle::optional<Tensor&>': 'paddle::optional<phi::DenseTensor>',
+        #     'const paddle::optional<Tensor>&': 'paddle::optional<phi::DenseTensor>',
+        #     'const paddle::optional<std::vector<Tensor>>&': 'paddle::optional<std::vector<phi::DenseTensor*>>',
+        # }
+        self.dev2_input_trans_map = {
+            "const Tensor&": {
+                "dense": "std::shared_ptr<phi::DenseTensor>",
+                "selected_rows": "std::shared_ptr<phi::SelectedRows>",
+            },
+            "const paddle::optional<Tensor>&": {
+                "dense": "paddle::optional<phi::DenseTensor>",
+                "selected_rows": "paddle::optional<phi::SelectedRows>",
+            },
+            "const std::vector<Tensor>&": {
+                "dense": "std::vector<const phi::DenseTensor*>"
+            },
+            "const paddle::optional<std::vector<Tensor>>&": {
+                "dense": "paddle::optional<std::vector<const phi::DenseTensor*>>"
+            },
+        }
+
+        def dev2_gene_dense_input(
+            input_name, input_name_tensor_map, code_indent=''
+        ):
+            # 暂时input_name_tensor_map没有用
+            dev2_input_tensor_code = ""
+            input_names = self.inputs['names']
+            attr_names = self.attrs['names']
+            kernel_param = self.kernel['param']
+            # 这个是为了后面找到实际是api接口参数的第几个位置
+            if kernel_param is None:
+                kernel_param = input_names + attr_names
+
+            input_name_tensor_map[input_name].append(
+                (f"{PREFIX_TENSOR_NAME}{input_name}", "CopyDenseTensor")
+            )
+            dev2_input_tensor_code = (
+                dev2_input_tensor_code
+                + f"""
+{code_indent}  dev2_{PREFIX_TENSOR_NAME}{input_name} = paddle::experimental::CopyDenseTensor({PREFIX_TENSOR_NAME}{input_name}, paddle::experimental::GetDebugDev2Type());"""
+            )
+            return dev2_input_tensor_code
+
+        def dev2_gene_selected_rows_input(
+            input_name, input_name_tensor_map, code_indent=''
+        ):
+            # 暂时input_name_tensor_map没有用
+            dev2_input_tensor_code = ""
+            input_names = self.inputs['names']
+            attr_names = self.attrs['names']
+            kernel_param = self.kernel['param']
+            # 这个是为了后面找到实际是api接口参数的第几个位置
+            if kernel_param is None:
+                kernel_param = input_names + attr_names
+
+            input_name_tensor_map[input_name].append(
+                (f"{PREFIX_TENSOR_NAME}{input_name}", "CopySelectedRows")
+            )
+            dev2_input_tensor_code = (
+                dev2_input_tensor_code
+                + f"""
+{code_indent}  dev2_{PREFIX_TENSOR_NAME}{input_name} = paddle::experimental::CopySelectedRows({PREFIX_TENSOR_NAME}{input_name}, paddle::experimental::GetDebugDev2Type());"""
+            )
+            return dev2_input_tensor_code
+
+        def dev2_gene_optional_vec_dense_input(
+            input_name, input_name_tensor_map, code_indent=''
+        ):
+            # 暂时input_name_tensor_map没有用
+            dev2_input_tensor_code = ""
+            input_names = self.inputs['names']
+            attr_names = self.attrs['names']
+            kernel_param = self.kernel['param']
+            if kernel_param is None:
+                kernel_param = input_names + attr_names
+            if input_name in self.inplace_map.values():
+                input_name_tensor_map[input_name].append(
+                    (f"{PREFIX_TENSOR_NAME}{input_name}", "CopyOptionalVector")
+                )
+            else:
+                input_name_tensor_map[input_name].append(
+                    (
+                        f"{PREFIX_TENSOR_NAME}{input_name}_vec",
+                        "CopyOptionalVector",
+                    )
+                )
+            dev2_input_tensor_code = (
+                dev2_input_tensor_code
+                + f"""
+{code_indent}  dev2_{PREFIX_TENSOR_NAME}{input_name}_vec = paddle::experimental::CopyOptionalVector({PREFIX_TENSOR_NAME}{input_name}, paddle::experimental::GetDebugDev2Type());
+{code_indent}  dev2_{PREFIX_TENSOR_NAME}{input_name} = paddle::experimental::DenseTensorToConstDenseTensorPtr(dev2_{PREFIX_TENSOR_NAME}{input_name}_vec);"""
+            )
+            #             else:
+            #                 # input_name_tensor_map[input_name].append(
+            #                 #     (f"dev2_{PREFIX_TENSOR_NAME}{input_name}_vec", True)
+            #                 # )
+            #                 dev2_input_tensor_code = (
+            #                     dev2_input_tensor_code
+            #                     + f"""
+            # {code_indent}  auto dev2_{PREFIX_TENSOR_NAME}{input_name}_vec = paddle::experimental::CopyOptionalVector({PREFIX_TENSOR_NAME}{input_name}, paddle::experimental::GetDebugDev2Type());
+            # {code_indent}  dev2_{PREFIX_TENSOR_NAME}{input_name} = paddle::experimental::DenseTensorToConstDenseTensorPtr(dev2_{PREFIX_TENSOR_NAME}{input_name}_vec);"""
+            #                     )
+            return dev2_input_tensor_code
+
+        def dev2_gene_vec_dense_input(
+            input_name, input_name_tensor_map, code_indent=''
+        ):
+            # 暂时input_name_tensor_map没有用
+            dev2_input_tensor_code = ""
+            input_names = self.inputs['names']
+            attr_names = self.attrs['names']
+            kernel_param = self.kernel['param']
+            if kernel_param is None:
+                kernel_param = input_names + attr_names
+
+            if input_name in self.inplace_map.values():
+                input_name_tensor_map[input_name].append(
+                    (f"{PREFIX_TENSOR_NAME}{input_name}", "CopyVector")
+                )
+            else:
+                input_name_tensor_map[input_name].append(
+                    (f"{PREFIX_TENSOR_NAME}{input_name}_vec", "CopyVector")
+                )
+            # input_name_tensor_map[input_name].append(
+            #     (f"{PREFIX_TENSOR_NAME}{input_name}", CopyVector)
+            # )
+            dev2_input_tensor_code = (
+                dev2_input_tensor_code
+                + f"""
+{code_indent}  dev2_{PREFIX_TENSOR_NAME}{input_name}_vec = paddle::experimental::CopyVector({PREFIX_TENSOR_NAME}{input_name}, paddle::experimental::GetDebugDev2Type());
+{code_indent}  dev2_{PREFIX_TENSOR_NAME}{input_name} = paddle::experimental::DenseTensorToConstDenseTensorPtr(*dev2_{PREFIX_TENSOR_NAME}{input_name}_vec);"""
+            )
+            return dev2_input_tensor_code
+
+        gene_dev2_input_func = {
+            "const Tensor&": {
+                "dense": dev2_gene_dense_input,
+                "selected_rows": dev2_gene_selected_rows_input,
+            },
+            "const paddle::optional<Tensor>&": {
+                "dense": dev2_gene_dense_input,
+                "selected_rows": dev2_gene_selected_rows_input,
+            },
+            "const std::vector<Tensor>&": {"dense": dev2_gene_vec_dense_input},
+            "const paddle::optional<std::vector<Tensor>>&": {
+                "dense": dev2_gene_optional_vec_dense_input
+            },
+        }
+
+        input_names = self.inputs['names']
+        attr_names = self.attrs['names']
+        kernel_param = self.kernel['param']
+        if kernel_param is None:
+            kernel_param = input_names + attr_names
+        dev2_input_name_tensor_map = collections.defaultdict(list)
+        dev2_input_tensor_code = ""
+        dev2_input_declaration = ""
+        for i, input_name in enumerate(input_names):
+            # set dev2 input code
+            if input_name in kernel_param:
+                # input is dense tensor
+                api_tensor_type = self.inputs['input_info'][input_name]
+                phi_tensor_type = (
+                    'dense'
+                    if kernel_tensor_type is None
+                    else kernel_tensor_type[0][kernel_param.index(input_name)]
+                )
+                if api_tensor_type in gene_dev2_input_func.keys():
+                    if api_tensor_type == "const std::vector<Tensor>&":
+                        dev2_input_declaration += f"""
+{code_indent}std::unique_ptr<std::vector<phi::DenseTensor>> dev2_{PREFIX_TENSOR_NAME}{input_name}_vec;"""
+                    elif (
+                        api_tensor_type
+                        == "const paddle::optional<std::vector<Tensor>>&"
+                    ):
+                        dev2_input_declaration += f"""
+{code_indent}paddle::optional<std::vector<phi::DenseTensor>> dev2_{PREFIX_TENSOR_NAME}{input_name}_vec;"""
+                    dev2_input_declaration += f"""
+{code_indent}{self.dev2_input_trans_map[api_tensor_type][phi_tensor_type]} dev2_{PREFIX_TENSOR_NAME}{input_name};"""
+                    dev2_input_tensor_code += gene_dev2_input_func[
+                        api_tensor_type
+                    ][phi_tensor_type](
+                        input_name, dev2_input_name_tensor_map, code_indent
+                    )
+                else:
+                    pass
+            else:
+                pass
+        # print("self.inputs: ", self.inputs)
+        # pass
+        return (
+            dev2_input_name_tensor_map,
+            dev2_input_tensor_code,
+            dev2_input_declaration,
+        )
+
     def gene_input(self, kernel_tensor_type=None, code_indent=''):
         input_names = self.inputs['names']
         attr_names = self.attrs['names']
@@ -834,14 +1048,16 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                     pass
             else:
                 if input_name in self.infer_meta['param']:
+                    # 这个情况好像没有发生 全局搜过 没有相关的代码 可能日后有支持。
                     if input_name in self.optional_vars:
                         input_tensor_code = (
                             input_tensor_code
                             + f"""
 {code_indent}  paddle::optional<phi::TensorBase> {PREFIX_TENSOR_NAME}{input_name} = {input_name} ? paddle::optional<phi::TensorBase>(*{input_name}->impl()) : paddle::none;"""
                         )
-
+                        # print("1: ", self.kernel['func'])
                     else:
+                        # 这个情况好像没有发生 全局搜过 没有相关的代码 可能日后有支持。
                         if (
                             self.inputs['input_info'][input_name]
                             == "const std::vector<Tensor>&"
@@ -852,6 +1068,9 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_uq_ptr = TensorToDenseTensor({input_name});
 {code_indent}  const auto& {PREFIX_TENSOR_NAME}{input_name} = *{PREFIX_TENSOR_NAME}{input_name}_uq_ptr;"""
                             )
+                            # print("2: ", self.kernel['func'])
+                        # 这个情况反向有出现过, 分别是pad_grad, reshape_grad (有4个是有俩是在tmp里)
+                        # 但是这个不会作为输入输入进kernel, 只是用来infer output的shape的
                         else:
                             input_tensor_code = (
                                 input_tensor_code
@@ -860,6 +1079,89 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                             )
 
         return input_name_tensor_map, input_tensor_code
+
+    def dev2_get_kernel_args(self, kernel_tensor_type=None, code_indent=''):
+        input_names = self.inputs['names']
+        input_infos = self.inputs['input_info']
+        # kernel_args_type_list = ['const phi::DeviceContext&']
+
+        attr_names = self.attrs['names']
+        kernel_param = self.kernel['param']
+        if kernel_param is None:
+            kernel_param = input_names + attr_names
+
+        (
+            dev2_input_name_tensor_map,
+            dev2_input_tensor_code,
+            dev2_input_declaration,
+        ) = self.dev2_gene_input(kernel_tensor_type, code_indent)
+
+        #         dev2_input_tensor_code = (
+        #             f"""
+        # {code_indent}{dev2_input_declaration}
+        # {code_indent}if (paddle::experimental::DebugOrNot()) {{""" +
+        #             dev2_input_tensor_code
+        #         )
+
+        dev2_kernel_args = ["*dev2_ctx"]
+        kernel_input_list = []
+        dev2_kernel_input_list = []
+        for param in kernel_param:
+            if param in input_names:
+                if param in self.optional_vars:
+                    dev2_kernel_args.append(
+                        "dev2_" + PREFIX_TENSOR_NAME + param
+                    )
+                    dev2_kernel_input_list.append(
+                        "dev2_" + PREFIX_TENSOR_NAME + param
+                    )
+                    # kernel_input_list.append(PREFIX_TENSOR_NAME + param)
+                else:
+                    if self.inputs['input_info'][param] == "const Tensor&":
+                        dev2_kernel_args.append(
+                            "*dev2_" + PREFIX_TENSOR_NAME + param
+                        )
+                        dev2_kernel_input_list.append(
+                            "*dev2_" + PREFIX_TENSOR_NAME + param
+                        )
+                        # kernel_input_list.append("*" + PREFIX_TENSOR_NAME + param)
+                    elif (
+                        self.inputs['input_info'][param]
+                        == "const std::vector<Tensor>&"
+                    ):
+                        dev2_kernel_args.append(
+                            "dev2_" + PREFIX_TENSOR_NAME + param
+                        )
+                        dev2_kernel_input_list.append(
+                            "dev2_" + PREFIX_TENSOR_NAME + param
+                        )
+                        # kernel_input_list.append("*" + PREFIX_TENSOR_NAME + param)
+                    else:
+                        # do nothing
+                        pass
+            elif param in attr_names:
+                # set attr for kernel_context
+                if 'IntArray' in self.attrs['attr_info'][param][0]:
+                    param = 'phi::IntArray(' + param + ')'
+                elif 'vector<phi::Scalar>' in self.attrs['attr_info'][param][0]:
+                    param = param
+                elif 'Scalar' in self.attrs['attr_info'][param][0]:
+                    param = 'phi::Scalar(' + param + ')'
+                else:
+                    pass
+                dev2_kernel_args.append(param)
+            elif isinstance(param, bool):
+                dev2_kernel_args.append(str(param).lower())
+            else:
+                dev2_kernel_args.append(str(param))
+
+        return (
+            dev2_input_tensor_code,
+            ", ".join(dev2_kernel_args),
+            dev2_input_declaration,
+            kernel_input_list,
+            dev2_kernel_input_list,
+        )
 
     def get_kernel_args(self, kernel_tensor_type=None, code_indent=''):
         dense_input_trans_map = {
@@ -884,7 +1186,11 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 
         attr_names = self.attrs['names']
         kernel_param = self.kernel['param']
+        # print("self.kernel: ", self.kernel, ", self.inputs: ", self.inputs, ", self.attrs: ", self.attrs)
         if kernel_param is None:
+            # ex: batch_norm
+            #  kernel_param = None, so kernel_param = ['x', 'mean', 'variance', 'scale', 'bias'] + ['is_test', 'momentum', 'epsilon', 'data_layout', 'use_global_stats', 'trainable_statistics']
+            #  kernel_param = ['x', 'mean', 'variance', 'scale', 'bias', 'is_test', 'momentum', 'epsilon', 'data_layout', 'use_global_stats', 'trainable_statistics']
             kernel_param = input_names + attr_names
 
         input_name_tensor_map, input_tensor_code = self.gene_input(
@@ -1177,6 +1483,44 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
     def gene_return_code(self):
         return "return api_output;"
 
+    def check_acc(
+        self,
+        dev2_kernel_in_out_list,
+        kernel_name,
+        code_indent='',
+    ):
+        check_acc_code = ""
+        for i in dev2_kernel_in_out_list:
+            tensor_name = i.replace("*", "").replace("dev2_", "")
+            dev1_input = i.replace("dev2_", "")
+            ###########
+            #             if kernel_name == "meshgrid" and tensor_name == "kernel_out":
+            #                 check_acc_code = (
+            #                     check_acc_code
+            #                     + f"""
+            # {code_indent}    std::cout << "kernel_out.size() = " << kernel_out.size() <<std::endl;
+            # {code_indent}    std::cout << "&kernel_out = " << &kernel_out <<std::endl;
+            # {code_indent}    std::cout << "dev2_kernel_out_vec->size() = " << dev2_kernel_out_vec->size() <<std::endl;
+            # {code_indent}    std::cout << "dev2_kernel_out.size() = " << dev2_kernel_out.size() <<std::endl;"""
+            #             )
+            ###########
+            check_acc_code = (
+                check_acc_code
+                + f"""
+{code_indent}    debug_str += paddle::experimental::XPUDebugString("{kernel_name}", "{tensor_name}", {dev1_input}, {i});"""
+            )
+        return check_acc_code
+
+    # Override by child class
+    def dev2_gene_output(
+        self,
+        out_dtype_list,
+        out_tensor_type_list=None,
+        code_indent='',
+        inplace_flag=False,
+    ):
+        return None, None, None, None
+
     # Override by child class
     def gene_output(
         self,
@@ -1197,13 +1541,103 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
         input_tensors, kernel_args, kernel_signature = self.get_kernel_args(
             kernel_dispatch, code_indent
         )
+        # dev2_input_name_tensor_map, dev2_input_tensors = self.dev2_gene_input(kernel_dispatch, code_indent)
+        (
+            dev2_input_tensors,
+            dev2_kernel_args,
+            dev2_input_declaration,
+            kernel_input_list,
+            dev2_kernel_input_list,
+        ) = self.dev2_get_kernel_args(kernel_dispatch, "  ")
+        # print("self.kernel['dispatch']: ", self.kernel['dispatch'])
+        '''self.kernel['dispatch'] 不为None 说明输入里有带多种输入类型选择的Tensor，不同的输入对应不同的func
+        以sgd为例:
+        self.kernel['dispatch'] = {'sgd': (['dense', 'dense', 'dense', 'dense'], ['dense', 'dense']),
+                                   'sgd_dense_param_sparse_grad': (['dense', 'dense', 'selected_rows', 'dense'], ['dense', 'dense']),
+                                   'sgd_sparse_param_sparse_grad': (['selected_rows', 'dense', 'selected_rows', 'selected_rows'], ['selected_rows', 'selected_rows'])}
+        sgd有sgd，sgd_dense_param_sparse_grad，sgd_sparse_param_sparse_grad这三个kernel;
+        sgd的输入是['dense', 'dense', 'dense', 'dense'],
+        sgd_dense_param_sparse_grad的输入是['dense', 'dense', , 'selected_rows', 'dense']
+        会根据实际的输入类型来选择对应的kernel
+        所以self.kernel['dispatch'][kernel_name][0]是输入的type, self.kernel['dispatch'][kernel_name][1]是输出的type
+
+        self.kernel['dispatch'][kernel_name]不为None时，需要调用输入选择逻辑，在gene_base_api_code的gene_dispatch_code的get_condition_code函数里'''
+
         out_tensor_type_list = kernel_dispatch[1] if kernel_dispatch else None
+        # 这里gene_output是个空函数，重写的函数在api_gen.py、backward_gen.py里。
         outputs_args, kernel_output_names, output_create = self.gene_output(
             self.outputs['types'],
             out_tensor_type_list,
             code_indent,
             inplace_flag,
         )
+        (
+            dev2_outputs_args,
+            dev2_kernel_output_names,
+            dev2_output_create,
+            dev2_output_declaration,
+        ) = self.dev2_gene_output(
+            self.outputs['types'],
+            out_tensor_type_list,
+            "  ",
+            inplace_flag,
+        )
+
+        #         check_acc_code = ""
+        #         for i in dev2_kernel_input_list:
+        #             tensor_name = i.replace("*", "").replace("dev2_", "")
+        #             dev1_input = i.replace("dev2_", "")
+        #             check_acc_code = (
+        #                 check_acc_code + f"""
+        # {code_indent}    debug_str += paddle::experimental::XPUDebugString("{kernel_name}", "{tensor_name}", {dev1_input}, {i});"""
+        #             )
+        dev2_input_tensors = (
+            f"""
+{code_indent}  paddle::experimental::OpIdAdd();
+{code_indent}  VLOG(10) << "Op ID: " << paddle::experimental::OpId();
+{code_indent}  std::string debug_str = "";{dev2_input_declaration}{dev2_output_declaration}
+{code_indent}  if (paddle::experimental::DebugOrNot() && ContinueOrNot("{kernel_name}")) {{
+{code_indent}    VLOG(10) << "Start copy input and output!";"""
+            + dev2_input_tensors
+        )
+
+        dev2_output_create = (
+            dev2_output_create
+            + f"""
+{code_indent}    VLOG(10) << "End copy input and output!";
+{code_indent}    VLOG(10) << "Start check acc for input!";"""
+            + self.check_acc(dev2_kernel_input_list, kernel_name, code_indent)
+            + f"""
+{code_indent}    VLOG(10) << "End check acc for input!";
+{code_indent}  }}"""
+        )
+
+        #         dev2_run_kernel = f"""
+        # {code_indent}  if (paddle::experimental::DebugOrNot()) {{
+        # {code_indent}    auto* dev2_ctx = GetDeviceContextByBackend(GetDebugDev2Type());
+        # {code_indent}    (*kernel_fn)({dev2_kernel_args}, {", ".join(dev2_outputs_args)});
+        # {code_indent}  }}
+        # {code_indent}  }}"""
+
+        dev2_run_kernel = f"""
+{code_indent}  if (paddle::experimental::DebugOrNot() && ContinueOrNot("{kernel_name}")) {{
+{code_indent}    Backend dev2_kernel_backend = TransToPhiBackend(GetDebugDev2Type());
+{code_indent}    VLOG(6) << "{self.api} API kernel key Dev2: [" << dev2_kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
+{code_indent}    auto dev2_kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+{code_indent}        "{kernel_name}", {{dev2_kernel_backend, kernel_layout, kernel_data_type}});
+{code_indent}    const auto& dev2_kernel = dev2_kernel_result.kernel;
+{code_indent}    auto* dev2_ctx = GetDeviceContextByBackend(dev2_kernel_result.has_fallback_cpu ? Backend::CPU : dev2_kernel_backend);
+{code_indent}    auto* dev2_kernel_fn = dev2_kernel.GetVariadicKernelFn<kernel_signature>();
+{code_indent}    std::string debug_start_str = paddle::experimental::XPUDebugStartString("{kernel_name}", kernel_result.has_fallback_cpu ? Backend::CPU : kernel_backend, kernel_data_type);
+{code_indent}    VLOG(10) << "Strat run kernel on device 2";
+{code_indent}    (*dev2_kernel_fn)({dev2_kernel_args}, {", ".join(dev2_outputs_args)});
+{code_indent}    VLOG(10) << "End run kernel on device 2";
+{code_indent}    VLOG(10) << "Start check acc for output!";
+{code_indent}    debug_str += "out: ";{self.check_acc(dev2_outputs_args, kernel_name, code_indent)}
+{code_indent}    VLOG(10) << "End check acc for output!";
+{code_indent}    if (!debug_str.empty()) std::cout << debug_start_str << "in: " << debug_str << std::endl;
+{code_indent}  }}"""
+
         fallback_kernel_output_trans = ""
         for kernel_out in outputs_args:
             fallback_kernel_output_trans += f"""
@@ -1234,7 +1668,12 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}  if(phi::RecordEvent::IsEnabled()){{
 {code_indent}    kernel_record_event = new phi::RecordEvent(\"{self.api} compute\", phi::TracerEventType::OperatorInner, 1);
 {code_indent}  }}
+{dev2_input_tensors}
+{dev2_output_create}
+{code_indent}  {'std::cout << "before kernel_out.size() = " << kernel_out.size() <<std::endl;' if kernel_name == "meshgrid" else ""}
 {code_indent}    (*kernel_fn)({kernel_args}, {", ".join(outputs_args)});
+{code_indent}  {'std::cout << "after kernel_out.size() = " << kernel_out.size() <<std::endl;' if kernel_name == "meshgrid" else ""}
+{dev2_run_kernel}
 {code_indent}  if(kernel_record_event != nullptr){{
 {code_indent}    delete kernel_record_event;
 {code_indent}  }}
@@ -1280,6 +1719,8 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 
     def gene_base_api_code(self, inplace_flag=False):
         api_func_name = self.get_api_func_name()
+        # 这里同样是解析api接口名字里是否带'_'，inplace算子必须带'_'
+        # 这里产生接口代码
         if inplace_flag and api_func_name[-1] != '_':
             api_func_name += '_'
         api_code = f"""
@@ -1287,6 +1728,7 @@ PADDLE_API {self.get_return_type(inplace_flag)} {api_func_name}({self.get_define
 {self.gene_kernel_select()}
 """
 
+        # 一个op对应多个函数 参考sgd_
         if len(self.kernel['func']) > 1:
             kernel_dispatch_code = ''
             for kernel_name in self.kernel['func']:
@@ -1318,17 +1760,23 @@ PADDLE_API {self.get_return_type()} {self.api}({params_code}) {{
 }}"""
 
     def gene_api_code(self):
+        # 这里如果是inplace的算子需要生成两份接口
+        # 名字最后带_的是inpalce的接口 不带的是正常的接口
+        # base_api是标志是不是invoke算子的
         if self.is_base_api:
             api_code = self.gene_base_api_code()
             if len(self.inplace_map) > 0:
+                # yaml里解析的接口名字里带'_'说明上面生成错了，api_code置为空, 重新生成。
                 if self.api[-1] == '_':
                     api_code = ""
+                # yaml里解析的接口名字里带'_'，但本身是inplace算子，则需要生成两份接口
                 api_code = api_code + self.gene_base_api_code(inplace_flag=True)
             return api_code
         elif self.is_only_composite_api:
             # for composite and invoke api, dygraph use prim::xxx_grad method
             return ''
         else:
+            # invoke是直接调用了其他的接口(有的在manual里) 参考zeros 和 add_n
             invoke_code = self.invoke
             params_code = self.get_define_args()
             return self.gene_invoke_code(invoke_code, params_code)

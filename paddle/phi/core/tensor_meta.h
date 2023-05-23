@@ -80,6 +80,15 @@ inline bool operator==(const DenseTensorMeta& lhs, const DenseTensorMeta& rhs) {
          (lhs.offset == rhs.offset);
 }
 
+inline std::ostream& operator<<(std::ostream& os, DenseTensorMeta meta) {
+  os << "meta: is_scalar = " << meta.is_scalar << ", dims = " << meta.dims
+     << ", dtype = " << meta.dtype << ", layout = " << meta.layout
+     << ", lod = ";
+  paddle::string::operator<<(os, meta.lod);
+  os << ", offset = " << meta.offset;
+  return os;
+}
+
 struct StringTensorMeta {
   StringTensorMeta() = default;
   explicit StringTensorMeta(const DDim& dims);

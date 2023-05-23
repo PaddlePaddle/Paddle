@@ -34,6 +34,11 @@ bool is_xpu_kp_support_op(const std::string& fluid_op_name,
 bool is_in_xpu_black_list(const std::string& fluid_op_name);
 bool is_xpu_support_op(const std::string& fluid_op_name,
                        const phi::DataType type);
+bool is_in_xpu_debug_black_list(const std::string& fluid_op_name);
+bool is_in_xpu_debug_black_id_list(const std::string& op_id);
+bool is_in_xpu_debug_white_list(const std::string& fluid_op_name);
+bool is_in_xpu_debug_white_id_list(const std::string& op_id);
+bool is_in_xpu_debug_run_dev2_black_list(const std::string& fluid_op_name);
 
 }  // namespace xpu
 }  // namespace backends

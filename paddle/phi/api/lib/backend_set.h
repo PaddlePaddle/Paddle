@@ -61,6 +61,12 @@ class BackendSet final {
     return bitset_ == other.bitset();
   }
 
+  friend std::ostream& operator<<(std::ostream& os,
+                                  const BackendSet& backend_set) {
+    os << backend_set.bitset_;
+    return os;
+  }
+
  private:
   constexpr BackendSet(uint32_t bitset) : bitset_(bitset) {}
   uint32_t bitset_;

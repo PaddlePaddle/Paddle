@@ -94,6 +94,136 @@ bool is_xpu_support_op(const std::string& fluid_op_name,
   return false;
 }
 
+bool is_in_xpu_debug_black_list(const std::string& fluid_op_name) {
+  static bool inited = false;
+  static std::unordered_set<std::string> xpu_debug_black_list;
+  static std::mutex s_mtx;
+  if (!inited) {
+    std::lock_guard<std::mutex> guard(s_mtx);
+    if (!inited) {
+      if (std::getenv("XPU_PADDLE_DEBUG_BLACK_LIST") != nullptr) {
+        std::string ops(std::getenv("XPU_PADDLE_DEBUG_BLACK_LIST"));
+        tokenize(ops, ',', &xpu_debug_black_list);
+      }
+      inited = true;
+      VLOG(3) << "XPU Debug Black List: ";
+      for (auto iter = xpu_debug_black_list.begin();
+           iter != xpu_debug_black_list.end();
+           ++iter) {
+        VLOG(3) << *iter << " ";
+      }
+    }
+  }
+  if (xpu_debug_black_list.find(fluid_op_name) != xpu_debug_black_list.end()) {
+    return true;
+  }
+  return false;
+}
+
+bool is_in_xpu_debug_run_dev2_black_list(const std::string& fluid_op_name) {
+  static bool inited = false;
+  static std::unordered_set<std::string> xpu_debug_black_list;
+  static std::mutex s_mtx;
+  if (!inited) {
+    std::lock_guard<std::mutex> guard(s_mtx);
+    if (!inited) {
+      if (std::getenv("XPU_PADDLE_DEBUG_RUN_DEV2_BLACK_LIST") != nullptr) {
+        std::string ops(std::getenv("XPU_PADDLE_DEBUG_RUN_DEV2_BLACK_LIST"));
+        tokenize(ops, ',', &xpu_debug_black_list);
+      }
+      inited = true;
+      VLOG(3) << "XPU Debug Run Dev2 Black List: ";
+      for (auto iter = xpu_debug_black_list.begin();
+           iter != xpu_debug_black_list.end();
+           ++iter) {
+        VLOG(3) << *iter << " ";
+      }
+    }
+  }
+  if (xpu_debug_black_list.find(fluid_op_name) != xpu_debug_black_list.end()) {
+    return true;
+  }
+  return false;
+}
+
+bool is_in_xpu_debug_black_id_list(const std::string& op_id) {
+  static bool inited = false;
+  static std::unordered_set<std::string> xpu_debug_black_id_list;
+  static std::mutex s_mtx;
+  if (!inited) {
+    std::lock_guard<std::mutex> guard(s_mtx);
+    if (!inited) {
+      if (std::getenv("XPU_PADDLE_DEBUG_BLACK_ID_LIST") != nullptr) {
+        std::string ops(std::getenv("XPU_PADDLE_DEBUG_BLACK_ID_LIST"));
+        tokenize(ops, ',', &xpu_debug_black_id_list);
+      }
+      inited = true;
+      VLOG(3) << "XPU Debug Black ID List: ";
+      for (auto iter = xpu_debug_black_id_list.begin();
+           iter != xpu_debug_black_id_list.end();
+           ++iter) {
+        VLOG(3) << *iter << " ";
+      }
+    }
+  }
+  if (xpu_debug_black_id_list.find(op_id) != xpu_debug_black_id_list.end()) {
+    return true;
+  }
+  return false;
+}
+
+bool is_in_xpu_debug_white_list(const std::string& fluid_op_name) {
+  static bool inited = false;
+  static std::unordered_set<std::string> xpu_debug_white_list;
+  static std::mutex s_mtx;
+  if (!inited) {
+    std::lock_guard<std::mutex> guard(s_mtx);
+    if (!inited) {
+      if (std::getenv("XPU_PADDLE_DEBUG_WHITE_LIST") != nullptr) {
+        std::string ops(std::getenv("XPU_PADDLE_DEBUG_WHITE_LIST"));
+        tokenize(ops, ',', &xpu_debug_white_list);
+      }
+      inited = true;
+      VLOG(3) << "XPU Debug White List: ";
+      for (auto iter = xpu_debug_white_list.begin();
+           iter != xpu_debug_white_list.end();
+           ++iter) {
+        VLOG(3) << *iter << " ";
+      }
+    }
+  }
+  if (xpu_debug_white_list.find(fluid_op_name) != xpu_debug_white_list.end()) {
+    return true;
+  }
+  return false;
+}
+
+bool is_in_xpu_debug_white_id_list(const std::string& op_id) {
+  static bool inited = false;
+  static std::unordered_set<std::string> xpu_debug_white_id_list;
+  static std::mutex s_mtx;
+  if (!inited) {
+    std::lock_guard<std::mutex> guard(s_mtx);
+    if (!inited) {
+      if (std::getenv("XPU_PADDLE_DEBUG_WHITE_ID_LIST") != nullptr) {
+        std::string ops(std::getenv("XPU_PADDLE_DEBUG_WHITE_ID_LIST"));
+        tokenize(ops, ',', &xpu_debug_white_id_list);
+      }
+      inited = true;
+      VLOG(3) << "XPU Debug White ID List: ";
+      for (auto iter = xpu_debug_white_id_list.begin();
+           iter != xpu_debug_white_id_list.end();
+           ++iter) {
+        VLOG(3) << *iter << " ";
+      }
+    }
+  }
+  if (xpu_debug_white_id_list.find(op_id) != xpu_debug_white_id_list.end()) {
+    return true;
+  }
+  return false;
+}
+
 }  // namespace xpu
 }  // namespace backends
 }  // namespace phi

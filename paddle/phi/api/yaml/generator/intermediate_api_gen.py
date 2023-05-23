@@ -55,6 +55,7 @@ def source_include(header_file_path):
 
 #include "paddle/phi/api/profiler/event_tracing.h"
 #include "paddle/phi/api/profiler/supplement_tracing.h"
+#include "paddle/phi/api/lib/debug_op.h"
 
 DECLARE_int32(low_precision_op_list);
 """
@@ -143,6 +144,9 @@ def generate_intermediate_api(
 
 
 def main():
+    # 这个文件会产生dygraph_api.cc和dygraph_api.h，其中有两个部分api，
+    # 一个是域名为paddle::experimental的api，另一个是域名为paddle::experimental::sparse的api
+    # 后者不会被自动比对工具影响到。
     parser = argparse.ArgumentParser(
         description='Generate PaddlePaddle C++ Sparse API files'
     )

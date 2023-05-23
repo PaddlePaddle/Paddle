@@ -249,6 +249,7 @@ endforeach()
 collect_srcs(
   api_srcs
   SRCS
+  debug_op.cc
   tensor.cc
   op_meta_info.cc
   context_pool.cc

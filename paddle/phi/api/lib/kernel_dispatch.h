@@ -67,6 +67,21 @@ namespace detail {
 
 template <typename Functor>
 struct ArgsIterator {
+  // 在这里，ArgsIterator 类中有两个 apply 函数，
+  // 一个带有模板参数 typename T 和 typename... Args，另一个只有模板参数
+  // typename... Args。 编译器会根据参数的类型和数量选择合适的 apply
+  // 函数进行调用。
+
+  // 如果传入的 args 不为空，编译器会选择 ArgsIterator 类中的第二个 apply 函数
+  // （带有模板参数 typename T 和 typename... Args 的版本）。
+  // 这个函数会根据传入的参数调用 KernelKeyParser 类中的 operator() 函数，
+  // 然后递归地调用 apply 函数处理剩余的参数。
+
+  // 如果传入的 args 为空（即没有参数），编译器会选择 ArgsIterator 类中的第一个
+  // apply 函数 （只有模板参数 typename... Args 的版本）。这个函数仅仅返回
+  // Functor 类型的引用， 实际上就是 KernelKeyParser 类型的引用，因为我们将
+  // KernelKeyParser 作为 ArgsIterator 的模板参数传入。
+
   template <typename... Args>
   inline Functor& apply() {
     return self();
@@ -99,20 +114,24 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
   // TODO(chenweihang): add global device guard method to set backend
   inline void AssignKernelKeySet(const phi::TensorBase& tensor) {
     // assign Backend
+    // 这里把输入tensor的backend_set和之前存储的backend比较，获取更高优先级的backend
     BackendSet tensor_backend_set = detail::GetTensorBackendSet(tensor);
     key_set.backend_set = key_set.backend_set | tensor_backend_set;
+    VLOG(11) << "key_set.backend_set = " << key_set.backend_set;
     // tensor's attribute use_gpudnn=False, explicitly disable gpudnn kernel
     if (tensor_backend_set == BackendSet(Backend::GPU) || disable_gpudnn) {
       disable_gpudnn = true;
       key_set.backend_set = key_set.backend_set - BackendSet(Backend::GPUDNN);
     }
     // assign DataLayout
+    // 这里把输入tensor的layout和之前存储的layout比较，获取更高优先级的backend
     phi::DataLayout tensor_layout = tensor.layout();
     key_set.layout =
         tensor_layout > key_set.layout ? tensor_layout : key_set.layout;
     // assign DataType
     key_set.dtype = tensor.dtype();
     dtype_set = dtype_set | DataTypeSet(key_set.dtype);
+    // 如果输入类型的数据格式不一样会进行精度提升，会提升到complex
     auto promote_result = PromoteTypes(dtype_set);
     if (promote_result != DataType::UNDEFINED) {
       key_set.dtype = promote_result;
@@ -173,6 +192,15 @@ struct KernelTypeParser : ArgsIterator<KernelTypeParser> {
 
 template <typename... Args>
 KernelKeySet ParseKernelKeyByInputArgs(const Args&... args) {
+  // 当我们调用 detail::KernelKeyParser().apply(args...) 时，首先会创建一个
+  // KernelKeyParser 类型的临时对象。然后，通过这个临时对象调用 apply(args...)
+  // 函数， 这个函数是从父类 ArgsIterator 继承而来的。 在 apply(args...)
+  // 函数中，会根据输入参数的类型和数量，递归地处理参数列表并调用相应的
+  // operator() 函数。 KernelKeyParser
+  // 的临时对象在整个参数解析过程中负责存储解析得到的内核关键信息，这些信息存储在
+  // KernelKeySet 类型的成员变量 key_set
+  // 中。在参数解析过程结束后，可以通过访问这个临时对象的 key_set
+  // 成员变量获取解析得到的内核关键信息。
   return detail::KernelKeyParser().apply(args...).key_set;
 }
 
