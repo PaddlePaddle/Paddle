@@ -26,13 +26,9 @@ MSVC_STATIC_CRT=$8
 CUDA_LIB=$9/lib/x64
 inference_install_dir=${PADDLE_ROOT}/build/paddle_inference_install_dir
 WIN_DETECT=$(echo `uname` | grep "Win") # detect current platform
-phi_install_dir=${PADDLE_ROOT}/build/paddle/phi
 
 cd `dirname $0`
 current_dir=`pwd`
-
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${phi_install_dir}
-export LIBRARY_PATH=$LIBRARY_PATH:${phi_install_dir}
 
 if [ $2 == ON ]; then
   # You can export yourself if move the install path

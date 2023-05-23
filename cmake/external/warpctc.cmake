@@ -123,5 +123,4 @@ include_directories(${WARPCTC_INCLUDE_DIR}
 )# For warpctc code to include its headers.
 
 add_library(warpctc INTERFACE)
-#set_property(TARGET warpctc PROPERTY IMPORTED_IMPLIB ${WARPCTC_LIBRARIES})
 add_dependencies(warpctc extern_warpctc)

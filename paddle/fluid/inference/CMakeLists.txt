@@ -65,7 +65,6 @@ else()
   # message("${utils_modules}")
   create_static_lib(paddle_inference ${fluid_modules} ${STATIC_INFERENCE_API}
                     ${utils_modules})
-  #target_link_libraries(paddle_inference phi)
 endif()
 
 if(NOT APPLE)

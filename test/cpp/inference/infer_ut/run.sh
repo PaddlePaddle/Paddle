@@ -36,10 +36,7 @@ cd `dirname $0`
 current_dir=`pwd`
 build_dir=${current_dir}/build
 log_dir=${current_dir}/log
-phi_install_dir=${PADDLE_ROOT}/build/paddle/phi
 
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${phi_install_dir}
-export LIBRARY_PATH=$LIBRARY_PATH:${phi_install_dir}
 # check mkldnn installation
 if [ $2 == ON ]; then
   # You can export yourself if move the install path
