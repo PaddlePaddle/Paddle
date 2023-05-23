@@ -1783,6 +1783,10 @@
     ksize :
       data_type : int
       support_tensor : true
+  get_expected_kernel_type :
+    pool2d : GetPoolExpectedKernelType
+    pool2d_grad : GetPoolOpGradExpectedKernelType
+    pool2d_double_grad : GetPoolExpectedKernelType
   extra :
     attrs : [bool use_mkldnn = false, bool use_quantizer = false,
               str mkldnn_data_type = "float32", bool is_test = false]

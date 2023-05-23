@@ -143,7 +143,7 @@ phi::KernelKey GetPoolExpectedKernelType(
   return phi::KernelKey(data_type, ctx.GetPlace());
 }
 
-phi::KernelKey PoolOpGrad::GetExpectedKernelType(
+phi::KernelKey GetPoolOpGradExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr) {
   auto input_data_type =

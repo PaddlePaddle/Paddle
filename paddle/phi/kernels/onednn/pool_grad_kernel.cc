@@ -73,9 +73,10 @@ void Pool2dGradKernel(const Context& dev_ctx,
 }
 
 phi::KernelKey PoolOpGradGetKernelTypeForVar(
-    const std::string& var_name,
-    const phi::DenseTensor& tensor,
-    const phi::KernelKey& expected_kernel_type) const {
+    const GetKernelTypeForVarContext* ctx) {
+  const std::string& var_name = ctx->GetVarName();
+  const DenseTensor& tensor = ctx->GetTensor();
+  const KernelKey& expected_kernel_type = ctx->GetKernelKey();
 #ifdef PADDLE_WITH_MKLDNN
   if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
       (tensor.layout() != phi::DataLayout::ONEDNN)) {
@@ -98,4 +99,6 @@ PD_REGISTER_KERNEL(pool2d_grad,
                    ONEDNN,
                    phi::Pool2dGradKernel,
                    float,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16) {
+  kernel->get_kerneltype_forvar_fn_ = phi::PoolOpGradGetKernelTypeForVar;
+}
