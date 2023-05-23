@@ -91,7 +91,7 @@ class TestTransferElimPass0(PassAutoScanTest):
         self.run_and_statis(
             quant=False,
             max_examples=30,
-            passes=["transfer_layout_elim"],
+            passes=["transfer_layout_elim_pass"],
         )
 
 
