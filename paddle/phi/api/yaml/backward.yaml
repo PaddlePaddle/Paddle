@@ -1229,16 +1229,6 @@
     data_type : input
   optional : weight
 
-- backward_op : norm_grad
-  forward : norm (Tensor x, int axis, float epsilon, bool is_test) -> Tensor(out), Tensor(norm)
-  args : (Tensor x, Tensor norm, Tensor out_grad, int axis, float epsilon, bool is_test)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param : [x]
-  kernel :
-    func : norm_grad
-
 - backward_op : overlap_add_grad
   forward : overlap_add(Tensor x, int hop_length, int axis) -> Tensor(out)
   args : (Tensor x, Tensor out_grad, int hop_length, int axis)

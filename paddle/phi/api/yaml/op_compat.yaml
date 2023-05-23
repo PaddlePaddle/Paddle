@@ -1677,11 +1677,11 @@
 
 - op : norm
   inputs :
-    x : x
+    x : X
   outputs :
     {out : Out, norm : Norm}
   extra :
-    attrs : [bool use_mkldnn = false]
+    attrs : [norm]
 
 - op : not_equal
   inputs :

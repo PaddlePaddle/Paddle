@@ -794,7 +794,7 @@
   infer_meta :
     func : NormInferMeta
   kernel :
-      func : norm
+    func : norm
   backward : norm_grad
 
 - op : not_equal

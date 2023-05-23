@@ -230,7 +230,7 @@
     data_type : x
 
 - op : norm
-  args : (Tensor x, int axis, float epsilon, bool is_test)
+  args : (Tensor x, int axis, float epsilon = 1.0e-10f, bool is_test = false)
   output : Tensor(out), Tensor(norm)
   infer_meta :
     func : NormInferMeta

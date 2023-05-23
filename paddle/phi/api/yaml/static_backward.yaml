@@ -44,7 +44,7 @@
     param : [x, out, out_grad, axis, keepdim, reduce_all]
 
 - backward_op : norm_grad
-  forward : norm (Tensor x, int axis, float epsilon, bool is_test) -> Tensor(out), Tensor(norm)
+  forward : norm (Tensor x, int axis, float epsilon = 1.0e-10f, bool is_test = false) -> Tensor(out), Tensor(norm)
   args : (Tensor x, Tensor norm, Tensor out_grad, int axis, float epsilon, bool is_test)
   output : Tensor(x_grad)
   infer_meta :
@@ -52,7 +52,6 @@
     param : [x]
   kernel :
     func : norm_grad
-  intermediate : norm
 
 - backward_op : rnn_grad
   forward : rnn (Tensor x, Tensor[] pre_state, Tensor[] weight_list, Tensor sequence_length, float dropout_prob=0.0, bool is_bidirec=false, int input_size=10, int hidden_size=100, int num_layers=1, str mode="RNN_TANH", int seed=0, bool is_test=false) -> Tensor(out), Tensor(dropout_state_out), Tensor[](state), Tensor(reserve)

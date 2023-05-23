@@ -1488,15 +1488,6 @@
     func : nonzero
     data_type: condition
 
-- op : norm
-  args : (Tensor x, int axis, float epsilon = 1.0e-10f, bool is_test = false)
-  output : Tensor(out), Tensor(norm)
-  infer_meta :
-    func : NormInferMeta
-  kernel :
-    func : norm
-  backward : norm_grad
-
 - op : npu_identity
   args : (Tensor x, int format = -1)
   output : Tensor
