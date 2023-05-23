@@ -38,8 +38,6 @@ void ScatterNdAddKernel(const Context &ctx,
         static_cast<int>(index.dims().size() == 0 ? 1 : index.dims()[0]);
 
     for (int i = 0; i < loop_time; i++) {
-      // xpu::add only support float or float16 template typename
-      // now, register this op only with float type
       r = xpu::broadcast_add<T>(ctx.x_context(),
                                 updates_ptr + out->numel() * i,
                                 out_ptr,
