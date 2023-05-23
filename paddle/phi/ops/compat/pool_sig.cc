@@ -16,7 +16,8 @@
 
 namespace phi {
 
-KernelSignature Pool2dOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature Pool2dOpArgumentMapping(
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("pool2d",
                          {"X"},
                          {"ksize",
@@ -32,7 +33,8 @@ KernelSignature Pool2dOpArgumentMapping(const ArgumentMappingContext& ctx) {
                          {"Out"});
 }
 
-KernelSignature Pool2dGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature Pool2dGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("pool2d_grad",
                          {"X", "Out", "Out@GRAD"},
                          {"ksize",
@@ -49,7 +51,7 @@ KernelSignature Pool2dGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
 }
 
 KernelSignature Pool2dDoubleGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("pool2d_double_grad",
                          {"X"},
                          {"ksize",
@@ -65,7 +67,8 @@ KernelSignature Pool2dDoubleGradOpArgumentMapping(
                          {"Out"});
 }
 
-KernelSignature Pool3dOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature Pool3dOpArgumentMapping(
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("pool3d",
                          {"X"},
                          {"ksize",
@@ -81,7 +84,8 @@ KernelSignature Pool3dOpArgumentMapping(const ArgumentMappingContext& ctx) {
                          {"Out"});
 }
 
-KernelSignature Pool3dGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature Pool3dGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("pool3d_grad",
                          {"X", "Out", "Out@GRAD"},
                          {"ksize",

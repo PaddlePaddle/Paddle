@@ -43,7 +43,7 @@ class FeedForward {
                       T* output_data,
                       T* bias_out_data) {
     // Note: for blas.GEMM API in Paddle, it treats all inputs as row-major.
-    // To convert to col-major expression, transa<->transb, A<->B，m<->n.
+    // To convert to col-major expression, transa<->transb, A<->B, m<->n.
 
     // column-major: gemm-tn.
     CBLAS_TRANSPOSE transA = CblasNoTrans;

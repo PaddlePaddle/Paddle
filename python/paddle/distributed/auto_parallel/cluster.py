@@ -29,7 +29,6 @@ class DeviceType(IntEnum):
     CPU = 1
     GPU = 2
     XPU = 3
-    NPU = 4
     DCU = 5
     NIC = 6
 
@@ -884,7 +883,7 @@ def get_default_cluster(json_config=None):
             gpu_name = os.getenv("PADDLE_XCCL_BACKEND", None)
             gpu_model = gpu_name
             memory = int(
-                paddle.fluid.core._get_device_total_memory(gpu_name)
+                paddle.fluid.core.libpaddle._get_device_total_memory(gpu_name)
             ) // (1000**3)
         else:
             gpu_info = paddle.device.cuda.get_device_properties()

@@ -150,7 +150,8 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "conv_elementwise_add2_act_fuse_pass",  //
 #endif
 #endif
-      "transpose_flatten_concat_fuse_pass",
+      "transpose_flatten_concat_fuse_pass",  //
+      "auto_mixed_precision_pass",
 });
 
 const std::vector<std::string> kDlnneSubgraphPasses({
@@ -368,7 +369,7 @@ void CpuPassStrategy::EnableMKLDNN() {
              "batch_norm_act_fuse_pass",              //
              "softplus_activation_onednn_fuse_pass",  //
              "shuffle_channel_mkldnn_detect_pass",    //
-             "elt_act_mkldnn_fuse_pass",              //
+             "elementwise_act_onednn_fuse_pass",      //
              "layer_norm_onednn_optimization_pass",   //
              "operator_scale_onednn_fuse_pass",       //
              "operator_unsqueeze2_onednn_fuse_pass",  //
@@ -516,6 +517,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "generate_sequence_xpu_fuse_pass",
       "embedding_with_eltwise_add_xpu_fuse_pass",
       "multi_encoder_xpu_fuse_pass",
+      "multi_encoder_xpu_adaptive_seqlen_fuse_pass",
       "multi_encoder_xpu_slice_fuse_pass",
       "fused_multi_transformer_cachekv_layout_trans_pass",
       "one_beam_size_fuse_pass",

@@ -2388,7 +2388,7 @@ class DistributedStrategy:
         """
 
         The workspace limit size in MB unit for choosing cuDNN convolution algorithms.
-        The inner funciton of cuDNN obtain the fastest suited algorithm that fits within this memory limit.
+        The inner function of cuDNN obtain the fastest suited algorithm that fits within this memory limit.
         Usually, large workspace size may lead to choose faster algorithms,
         but significant increasing memory workspace. Users need to trade-off between memory and speed.
         Default Value: 4000

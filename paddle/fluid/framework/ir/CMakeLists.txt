@@ -180,7 +180,7 @@ if(WITH_MKLDNN)
   pass_library(softplus_activation_onednn_fuse_pass inference DIR mkldnn)
   pass_library(shuffle_channel_mkldnn_detect_pass inference DIR mkldnn)
   pass_library(fc_act_mkldnn_fuse_pass inference DIR mkldnn)
-  pass_library(elt_act_mkldnn_fuse_pass inference DIR mkldnn)
+  pass_library(elementwise_act_onednn_fuse_pass inference DIR mkldnn)
   pass_library(matmul_elementwise_add_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(matmul_activation_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(layer_norm_onednn_optimization_pass inference DIR mkldnn)
@@ -233,6 +233,8 @@ if(WITH_XPU)
   pass_library(fc_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(multi_encoder_xpu_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
+  pass_library(multi_encoder_xpu_adaptive_seqlen_fuse_pass inference DIR xpu
+               DEPS ${XPU_PASS_DEPS})
   pass_library(multi_encoder_xpu_slice_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
   pass_library(generate_sequence_xpu_fuse_pass inference DIR xpu DEPS
@@ -529,4 +531,8 @@ if(WITH_XPU)
     test_fused_multi_transformer_cachekv_layout_trans_pass
     SRCS xpu/fused_multi_transformer_cachekv_layout_trans_pass_test.cc
     DEPS fused_multi_transformer_cachekv_layout_trans_pass)
+  cc_test(
+    test_multi_encoder_xpu_adaptive_seqlen_fuse_pass
+    SRCS xpu/multi_encoder_xpu_adaptive_seqlen_fuse_pass_test.cc
+    DEPS multi_encoder_xpu_adaptive_seqlen_fuse_pass)
 endif()
