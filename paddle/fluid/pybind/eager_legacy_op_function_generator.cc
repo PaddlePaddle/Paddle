@@ -299,14 +299,14 @@ std::string GenerateOpFunctionsBody(
   }
   outs_initializer += "}";
   if (FindViewOpMap(op_type)) {
-    std::string viwe_input_name = view_op_map[op_type].first;
-    std::string viwe_output_name = view_op_map[op_type].second;
+    std::string view_input_name = view_op_map[op_type].first;
+    std::string view_output_name = view_op_map[op_type].second;
     view_strategy_str +=
         paddle::string::Sprintf(HANDLE_VIEW_BETWEEN_INPUT_AND_OUTPUT,
-                                viwe_input_name,
-                                viwe_output_name,
-                                viwe_input_name,
-                                viwe_output_name);
+                                view_input_name,
+                                view_output_name,
+                                view_input_name,
+                                view_output_name);
   }
   if (!inplace_map.empty()) {
     // For inplace op, Use the input PyObject directly.
