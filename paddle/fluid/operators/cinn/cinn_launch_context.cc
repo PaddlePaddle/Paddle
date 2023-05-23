@@ -257,14 +257,29 @@ void CinnLaunchContext::CheckTensorEquivalent(
   // check dimension
   auto cinn_tensor = GetCinnTensorOfVar(var_name);
   auto cinn_dims = phi::make_ddim(cinn_tensor->shape().data());
-  PADDLE_ENFORCE_EQ(paddle_tensor.dims(),
-                    cinn_dims,
-                    platform::errors::PreconditionNotMet(
-                        "Tensors' shape in variable(%s) are not equivalent, "
-                        "paddle is = [%s], but cinn is = [%s].",
-                        var_name,
-                        paddle_tensor.dims(),
-                        cinn_dims));
+  if (paddle_tensor.dims().size() == 0) {
+    // VLOG when paddle inputs 0D-Tensor
+    VLOG(4) << "Paddle inputs 0D-Tensor, CINN changes 0D-Tensor " << var_name
+            << " to 1D-Tensor";
+    PADDLE_ENFORCE_EQ(phi::make_ddim({1}),
+                      cinn_dims,
+                      phi::errors::PreconditionNotMet(
+                          "Tensor's shape of variable(%s) are not consistent, "
+                          "paddle inputs 0D-Tensor, cinn should get 1D-Tensor "
+                          "instead of [%s].",
+                          var_name,
+                          paddle_tensor.dims(),
+                          cinn_dims));
+  } else {
+    PADDLE_ENFORCE_EQ(paddle_tensor.dims(),
+                      cinn_dims,
+                      phi::errors::PreconditionNotMet(
+                          "Tensor's shape of variable(%s) are not equivalent, "
+                          "paddle is = [%s], but cinn is = [%s].",
+                          var_name,
+                          paddle_tensor.dims(),
+                          cinn_dims));
+  }
 
   auto cinn_dtype =
       framework::paddle2cinn::TransToPaddleDataType(cinn_tensor->type());
