@@ -16,6 +16,7 @@
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/logical_kernel.h"
 
 namespace phi {
 
@@ -37,14 +38,11 @@ void BitwiseAndKernel(const Context& ctx,
                       const DenseTensor& x,
                       const DenseTensor& y,
                       DenseTensor* out) {
-  using XPUDataType = typename XPUTypeTrait<T>::Type;
-  ctx.template Alloc<T>(out);
-  int r = xpu::logical_and(ctx.x_context(),
-                           reinterpret_cast<const XPUDataType*>(x.data<T>()),
-                           reinterpret_cast<const XPUDataType*>(y.data<T>()),
-                           reinterpret_cast<XPUDataType*>(out->data<T>()),
-                           x.numel());
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "logical_and");
+  // XPU api do not support bitwise operation now.
+  // However, because biwise and logical operation is identical for bool type,
+  // we can implement bitwise_and_bool kernel by calling their logical
+  // counterpart. Need to be changed when adding support to other types.
+  LogicalAndKernel<T, Context>(ctx, x, y, out);
 }
 }  // namespace phi
 
