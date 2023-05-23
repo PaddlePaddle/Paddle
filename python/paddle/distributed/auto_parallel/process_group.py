@@ -16,7 +16,7 @@ from collections import OrderedDict
 
 import paddle
 from paddle import _legacy_C_ops
-from paddle.framework import core, in_dygraph_mode
+from paddle.framework import core, in_dynamic_mode
 from paddle.tensor import fill_constant
 
 from ..collective import _get_global_env, _new_ring_id
@@ -177,7 +177,7 @@ class ProcessGroup:
                 )
             tmp = (
                 paddle.to_tensor([1], dtype="int32")
-                if in_dygraph_mode()
+                if in_dynamic_mode()
                 else fill_constant([0], dtype="int32", value="1")
             )
             # use legacy ops

@@ -159,7 +159,7 @@ def batch_isend_irecv(p2p_op_list):
     if _warn_cur_rank_not_in_group(group):
         return
 
-    if framework.in_dygraph_mode():
+    if framework.in_dynamic_mode():
         group = _get_global_group() if group is None else group
         backend = group.backend
         tasks = []

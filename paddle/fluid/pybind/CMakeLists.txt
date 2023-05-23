@@ -501,6 +501,11 @@ if(WITH_PYTHON)
     SRCS ${PYBIND_SRCS}
     DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
 
+  # cc_test do not respect deps, whole archive to link symbols that may need by test
+  if(WITH_TESTING)
+    #set_target_properties(${SHARD_LIB_NAME} PROPERTIES LINK_FLAGS "-Wl,--whole-archive")
+  endif()
+
   # TODO(zhiqiu): some symbols not exported even setting the following
   # property. Need to find a better way.
 

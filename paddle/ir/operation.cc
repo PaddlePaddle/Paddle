@@ -32,6 +32,10 @@ Operation *Operation::create(const std::vector<ir::OpResult> &inputs,
                              const std::vector<ir::Type> &output_types,
                              const AttributeMap &attribute,
                              ir::OpInfo op_info) {
+  // 0. Verify
+  if (op_info) {
+    op_info.verify(inputs, output_types, attribute);
+  }
   // 1. Calculate the required memory size for OpResults + Operation +
   // OpOperands.
   uint32_t num_results = output_types.size();
@@ -95,13 +99,10 @@ void Operation::destroy() {
     // release the uses of this result
     detail::OpOperandImpl *first_use =
         reinterpret_cast<detail::OpResultImpl *>(base_ptr)->first_use();
-    if (first_use != nullptr) {
-      first_use->release_source();
-      detail::OpOperandImpl *next_use = first_use->next_use();
-      while (next_use != nullptr) {
-        next_use->release_source();
-        next_use = next_use->next_use();
-      }
+    while (first_use != nullptr) {
+      first_use->remove_from_ud_chain();
+      first_use =
+          reinterpret_cast<detail::OpResultImpl *>(base_ptr)->first_use();
     }
     // destory the result
     if (idx > max_inline_result_num) {
@@ -121,7 +122,7 @@ void Operation::destroy() {
   }
   reinterpret_cast<Operation *>(base_ptr)->~Operation();
   base_ptr += sizeof(Operation);
-  // 2.3. Deconstruct OpOpOerand.
+  // 2.3. Deconstruct OpOperand.
   for (size_t idx = 0; idx < num_operands_; idx++) {
     reinterpret_cast<detail::OpOperandImpl *>(base_ptr)->~OpOperandImpl();
     base_ptr += sizeof(detail::OpOperandImpl);
@@ -145,38 +146,34 @@ Operation::Operation(uint32_t num_results,
   op_info_ = op_info;
 }
 
-ir::OpResult Operation::GetResultByIndex(uint32_t index) {
+ir::OpResult Operation::GetResultByIndex(uint32_t index) const {
   if (index >= num_results_) {
     throw("index exceeds OP output range.");
   }
   uint32_t max_inline_idx = detail::OpResultImpl::GetMaxInlineResultIndex();
-  char *ptr = nullptr;
+  const char *ptr =
+      (index > max_inline_idx)
+          ? reinterpret_cast<const char *>(this) -
+                (max_inline_idx + 1) * sizeof(detail::OpInlineResultImpl) -
+                (index - max_inline_idx) * sizeof(detail::OpOutlineResultImpl)
+          : reinterpret_cast<const char *>(this) -
+                (index + 1) * sizeof(detail::OpInlineResultImpl);
   if (index > max_inline_idx) {
-    ptr = reinterpret_cast<char *>(this) -
-          (max_inline_idx + 1) * sizeof(detail::OpInlineResultImpl) -
-          (index - max_inline_idx) * sizeof(detail::OpOutlineResultImpl);
+    return ir::OpResult(
+        reinterpret_cast<const detail::OpOutlineResultImpl *>(ptr));
   } else {
-    ptr = reinterpret_cast<char *>(this) -
-          (index + 1) * sizeof(detail::OpInlineResultImpl);
-  }
-  if (index > max_inline_idx) {
-    detail::OpOutlineResultImpl *result_impl_ptr =
-        reinterpret_cast<detail::OpOutlineResultImpl *>(ptr);
-    return ir::OpResult(result_impl_ptr);
-  } else {
-    detail::OpInlineResultImpl *result_impl_ptr =
-        reinterpret_cast<detail::OpInlineResultImpl *>(ptr);
-    return ir::OpResult(result_impl_ptr);
+    return ir::OpResult(
+        reinterpret_cast<const detail::OpInlineResultImpl *>(ptr));
   }
 }
 
-ir::OpOperand Operation::GetOperandByIndex(uint32_t index) {
+ir::OpOperand Operation::GetOperandByIndex(uint32_t index) const {
   if (index >= num_operands_) {
     throw("index exceeds OP input range.");
   }
-  char *ptr = reinterpret_cast<char *>(this) + sizeof(Operation) +
-              (index) * sizeof(detail::OpOperandImpl);
-  return ir::OpOperand(reinterpret_cast<detail::OpOperandImpl *>(ptr));
+  const char *ptr = reinterpret_cast<const char *>(this) + sizeof(Operation) +
+                    (index) * sizeof(detail::OpOperandImpl);
+  return ir::OpOperand(reinterpret_cast<const detail::OpOperandImpl *>(ptr));
 }
 
 std::string Operation::print() {

@@ -27,18 +27,22 @@ class TestEvalFrame(unittest.TestCase):
         pass
 
     def test_eval_frame(self):
-        CustomCode = collections.namedtuple("CustomCode", ["code"])
+        CustomCode = collections.namedtuple(
+            "CustomCode", ["code", "disable_eval_frame"]
+        )
 
         def mul(a, b):
             return a * b
 
-        code = CustomCode(mul.__code__)
+        code = CustomCode(mul.__code__, True)
 
         def callback(frame_obj):
             # Do your callback function here and return a object with `.code`
             if frame_obj.f_code.co_name == "add":
                 return code
-            return CustomCode(code=frame_obj.f_code)  # do nothing.
+            return CustomCode(
+                code=frame_obj.f_code, disable_eval_frame=True
+            )  # do nothing.
 
         def add(a, b):
             return a + b

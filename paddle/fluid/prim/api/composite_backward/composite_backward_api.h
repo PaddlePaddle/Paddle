@@ -1366,9 +1366,8 @@ void batch_norm_grad(const Tensor& x,
       auto nhwc_out_grad = transpose<T>(out_grad_data, nchw_to_nhwc_dim);
       auto nhwc_out_grad_sum = sum<T>(nhwc_out_grad, reduce_axis, dtype, false);
 
-      auto x_sub_mean = nhwc_x - mean_data;
-      auto sum_dout_mul_diff =
-          sum<T>(nhwc_out_grad * x_sub_mean, reduce_axis, dtype, false);
+      auto sum_dout_mul_diff = sum<T>(
+          nhwc_out_grad * (nhwc_x - mean_data), reduce_axis, dtype, false);
 
       if (x_grad) {
         if (use_global_stats) {
@@ -1382,7 +1381,8 @@ void batch_norm_grad(const Tensor& x,
           auto part1 = scale * rsqrt_var;
           auto mean_temp1 = nhwc_out_grad_sum / nhw;
           auto mean_temp2 = sum_dout_mul_diff / nhw * rsqrt_var * rsqrt_var;
-          auto part2 = nhwc_out_grad - mean_temp1 - x_sub_mean * mean_temp2;
+          auto part2 =
+              nhwc_out_grad - mean_temp1 - (nhwc_x - mean_data) * mean_temp2;
 
           auto x_grad_data = part1 * part2;
           auto nchw_x_grad = transpose<T>(x_grad_data, nhwc_to_nchw_dim);
@@ -1403,11 +1403,10 @@ void batch_norm_grad(const Tensor& x,
     }
     case DataLayout::kNHWC: {
       if (x_grad) {
-        auto x_sub_mean = x_data - mean_data;
         auto out_grad_data_sum =
             sum<T>(out_grad_data, reduce_axis, dtype, false);
-        auto nhwc_sum_dout_mul_diff =
-            sum<T>(out_grad_data * x_sub_mean, reduce_axis, dtype, false);
+        auto nhwc_sum_dout_mul_diff = sum<T>(
+            out_grad_data * (x_data - mean_data), reduce_axis, dtype, false);
         if (use_global_stats) {
           auto x_grad_data = scale * rsqrt_var * out_grad_data;
           if (x.dtype() == phi::DataType::FLOAT16) {
@@ -1420,7 +1419,8 @@ void batch_norm_grad(const Tensor& x,
           auto mean_temp1 = out_grad_data_sum / nhw;
           auto mean_temp2 =
               nhwc_sum_dout_mul_diff / nhw * rsqrt_var * rsqrt_var;
-          auto part2 = out_grad_data - mean_temp1 - x_sub_mean * mean_temp2;
+          auto part2 =
+              out_grad_data - mean_temp1 - (x_data - mean_data) * mean_temp2;
 
           auto x_grad_data = part1 * part2;
           if (x.dtype() == phi::DataType::FLOAT16) {
