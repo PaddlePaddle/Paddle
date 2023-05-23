@@ -72,7 +72,7 @@ StorageManager::StorageBase *StorageManager::GetParametricStorageImpl(
     std::function<bool(const StorageBase *)> equal_func,
     std::function<StorageBase *()> constructor) {
   std::lock_guard<ir::SpinLock> guard(parametric_instance_lock_);
-  VLOG(4) << "Try to get a parameteretric storage of: [TypeId_hash="
+  VLOG(4) << "Try to get a parametric storage of: [TypeId_hash="
           << std::hash<ir::TypeId>()(type_id) << ", param_hash=" << hash_value
           << "].";
   if (parametric_instance_.find(type_id) == parametric_instance_.end())

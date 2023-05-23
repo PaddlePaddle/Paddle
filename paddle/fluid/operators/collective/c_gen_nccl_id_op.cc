@@ -103,7 +103,7 @@ class CGenNCCLIdOp : public framework::OperatorBase {
 class CGenNCCLIdOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddOutput("Out", "Raw variable contains a NCCL UniqueId instaces.");
+    AddOutput("Out", "Raw variable contains a NCCL UniqueId instances.");
     AddComment(R"DOC(
 CGenNCCLId operator
 

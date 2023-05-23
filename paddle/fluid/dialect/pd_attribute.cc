@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,23 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/dialect/pd_attribute.h"
 
 namespace paddle {
-namespace operators {
+namespace dialect {
+phi::IntArray IntArrayAttribute::data() const { return storage()->GetAsKey(); }
 
-template <typename T, typename DevCtx>
-class DistributedFusedLambOpKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext &ctx) const override {
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "The distributed_fused_lamb operator does not support CPU yet."));
-  }
-};
+phi::Scalar ScalarAttribute::data() const { return storage()->GetAsKey(); }
 
-}  // namespace operators
+phi::DataType DataTypeAttribute::data() const { return storage()->GetAsKey(); }
+
+phi::Place PlaceAttribute::data() const { return storage()->GetAsKey(); }
+
+phi::DataLayout DataLayoutAttribute::data() const {
+  return storage()->GetAsKey();
+}
+
+}  // namespace dialect
 }  // namespace paddle

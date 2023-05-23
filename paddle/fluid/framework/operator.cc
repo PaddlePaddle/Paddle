@@ -1677,6 +1677,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                                  RuntimeContext* runtime_ctx) const {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   bool fallback_to_cpu = false;
+  phi::KernelKey phi_cpu_kernel_key;
   auto* dev_ctx = pool.Get(place);
   // using cache
   if (kernel_type_.get()) {
@@ -1895,7 +1896,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
         if (in_custom_back_list) {
           VLOG(3) << "fluid in black list: " << phi_kernel_name;
         }
-        auto phi_cpu_kernel_key = FallBackToCpu(phi_kernel_key, *this);
+        phi_cpu_kernel_key = FallBackToCpu(phi_kernel_key, *this);
         phi_kernel_.reset(
             new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
                 phi_kernel_name, phi_cpu_kernel_key)));
@@ -1926,12 +1927,20 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                                        1,
                                        platform::EventRole::kInnerOp);
     if (need_prepare_data_) {
-      transfer_scope =
-          PrepareData(scope,
-                      framework::TransOpKernelTypeToPhiKernelKey(*kernel_type_),
-                      &transfered_inplace_vars,
-                      runtime_ctx,
-                      dev_ctx->GetPlace());
+      if (fallback_to_cpu) {
+        transfer_scope = PrepareData(scope,
+                                     phi_cpu_kernel_key,
+                                     &transfered_inplace_vars,
+                                     runtime_ctx,
+                                     dev_ctx->GetPlace());
+      } else {
+        transfer_scope = PrepareData(
+            scope,
+            framework::TransOpKernelTypeToPhiKernelKey(*kernel_type_),
+            &transfered_inplace_vars,
+            runtime_ctx,
+            dev_ctx->GetPlace());
+      }
     }
   }
   // exec scope is the scope that kernel actually executed on.
@@ -2044,7 +2053,31 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   }
 
   if (FLAGS_check_nan_inf) {
-    framework::details::CheckOpHasNanOrInf(*this, exec_scope, place);
+    try {
+      framework::details::CheckOpHasNanOrInf(*this, exec_scope, place);
+    } catch (...) {
+      const std::vector<std::string>* callstack = nullptr;
+      auto attrs = Attrs();
+      auto iter =
+          attrs.find(OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
+      if (iter != attrs.end()) {
+        callstack = &PADDLE_GET_CONST(std::vector<std::string>, iter->second);
+        if (callstack->empty()) callstack = nullptr;
+      }
+      std::ostringstream sout;
+      if (callstack) {
+        if (FLAGS_call_stack_level > 1) {
+          sout << "\n\n  Compile Traceback (most recent call last):";
+        } else {
+          sout << "In user code:\n";
+        }
+        for (auto& line : *callstack) {
+          sout << "\n  " << line;
+        }
+      }
+      std::cout << sout.str() << std::endl;
+      std::rethrow_exception(std::current_exception());
+    }
   }
 
   // To solve issue #15032, have a discussion with @Luotao for cpu inference,

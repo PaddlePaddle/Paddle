@@ -223,7 +223,7 @@ PD_REGISTER_STRUCT_KERNEL(send_v2,
                           ops::SendOpV2CUDAKernel,
                           float,
                           double,
-#if NCCL_VERSION_CODE >= 21000
+#if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
                           plat::bfloat16,
 #endif
                           int,

@@ -34,7 +34,6 @@
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/inference/api/paddle_analysis_config.h"
 
 #include "paddle/phi/common/data_type.h"
 
@@ -146,6 +145,7 @@ struct Argument {
   DECL_ARGUMENT_FIELD(model_program_path, ModelProgramPath, std::string);
   DECL_ARGUMENT_FIELD(model_params_path, ModelParamsPath, std::string);
   DECL_ARGUMENT_FIELD(model_from_memory, ModelFromMemory, bool);
+  DECL_ARGUMENT_FIELD(save_optimized_model, SaveOptimizedModel, bool);
   DECL_ARGUMENT_FIELD(optim_cache_dir, OptimCacheDir, std::string);
   DECL_ARGUMENT_FIELD(enable_ir_optim, EnableIrOptim, bool);
 
@@ -224,9 +224,7 @@ struct Argument {
   DECL_ARGUMENT_FIELD(tensorrt_disabled_ops,
                       TensorRtDisabledOPs,
                       std::vector<std::string>);
-  DECL_ARGUMENT_FIELD(tensorrt_precision_mode,
-                      TensorRtPrecisionMode,
-                      AnalysisConfig::Precision);
+  DECL_ARGUMENT_FIELD(tensorrt_precision_mode, TensorRtPrecisionMode, int);
   DECL_ARGUMENT_FIELD(tensorrt_use_static_engine,
                       TensorRtUseStaticEngine,
                       bool);
@@ -262,9 +260,7 @@ struct Argument {
                       DlnneDisableNodesByOutputs,
                       std::unordered_set<std::string>);
   DECL_ARGUMENT_FIELD(dlnne_use_calib_mode, DlnneUseCalibMode, bool);
-  DECL_ARGUMENT_FIELD(dlnne_precision_mode,
-                      DlnnePrecisionMode,
-                      AnalysisConfig::Precision);
+  DECL_ARGUMENT_FIELD(dlnne_precision_mode, DlnnePrecisionMode, int);
 
   using dlnne_input_shape_type = std::map<std::string, std::vector<int64_t>>;
   DECL_ARGUMENT_FIELD(dlnne_input_shape_dict,
@@ -276,9 +272,7 @@ struct Argument {
                       LitePassesFilter,
                       std::vector<std::string>);
   DECL_ARGUMENT_FIELD(lite_ops_filter, LiteOpsFilter, std::vector<std::string>);
-  DECL_ARGUMENT_FIELD(lite_precision_mode,
-                      LitePrecisionMode,
-                      AnalysisConfig::Precision);
+  DECL_ARGUMENT_FIELD(lite_precision_mode, LitePrecisionMode, int);
   DECL_ARGUMENT_FIELD(lite_zero_copy, LiteZeroCopy, bool);
 
   DECL_ARGUMENT_FIELD(use_xpu, UseXpu, bool);
@@ -294,7 +288,7 @@ struct Argument {
                       XpuQuantPostDynamicWeightBits,
                       int);
   DECL_ARGUMENT_FIELD(xpu_quant_post_dynamic_op_types,
-                      XpuQuantPostDynamicOpTypss,
+                      XpuQuantPostDynamicOpTypes,
                       std::vector<std::string>);
 
   DECL_ARGUMENT_FIELD(use_opencl, UseOpenCL, bool);
@@ -371,6 +365,7 @@ struct Argument {
                       std::unordered_set<std::string>);
   DECL_ARGUMENT_FIELD(enable_gpu_mixed, EnableGPUMixed, bool);
   DECL_ARGUMENT_FIELD(mixed_precision_mode, MixedPrecisionMode, int);
+  DECL_ARGUMENT_FIELD(enable_low_precision_io, EnableLowPrecisionIO, bool);
 
   // cinn compiler related
   DECL_ARGUMENT_FIELD(use_cinn_compiler, UseCinnCompiler, bool);
