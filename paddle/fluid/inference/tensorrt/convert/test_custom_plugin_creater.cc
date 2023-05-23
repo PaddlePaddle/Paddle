@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/convert/test_custom_op_plugin.h"
 #include "paddle/phi/api/all.h"
+#include "paddle/phi/common/data_type.h"
 
 PD_BUILD_OP(custom_op)
     .Inputs({"Input"})
@@ -174,7 +175,7 @@ TEST(CustomPluginCreater, DynamicShapePlugin) {
 
   engine_.reset(new TensorRTEngine(5,
                                    1 << 15,
-                                   AnalysisConfig::Precision::kFloat32,
+                                   phi::DataType::FLOAT32,
                                    nullptr,
                                    0,
                                    true,

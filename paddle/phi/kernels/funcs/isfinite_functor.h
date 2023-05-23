@@ -31,7 +31,7 @@ struct IsNanFunctor {
 template <typename T>
 struct IsNanFunctor<T,
                     typename std::enable_if<std::is_integral<T>::value>::type> {
-  HOSTDEVICE bool operator()(const T& a) const { return false; }
+  HOSTDEVICE bool operator()(const T& a UNUSED) const { return false; }
 };
 
 // isnan is defined in namespace std in float16.h, but
@@ -66,7 +66,7 @@ struct IsInfFunctor {
 template <typename T>
 struct IsInfFunctor<T,
                     typename std::enable_if<std::is_integral<T>::value>::type> {
-  HOSTDEVICE bool operator()(const T& a) const { return false; }
+  HOSTDEVICE bool operator()(const T& a UNUSED) const { return false; }
 };
 
 template <>
@@ -98,7 +98,7 @@ template <typename T>
 struct IsFiniteFunctor<
     T,
     typename std::enable_if<std::is_integral<T>::value>::type> {
-  HOSTDEVICE bool operator()(const T& a) const { return true; }
+  HOSTDEVICE bool operator()(const T& a UNUSED) const { return true; }
 };
 
 template <>

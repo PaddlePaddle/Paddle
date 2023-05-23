@@ -1525,12 +1525,6 @@
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
-- op : maximum (elementwise_min)
-  backward : maximum_grad (elementwise_min_grad)
-  extra :
-    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
-             bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
-
 - op : maxout
   inputs :
     x : X
@@ -1590,6 +1584,12 @@
   outputs :
     out : Out
   drop_empty_grad : [inputs_grad]
+
+- op : minimum (elementwise_min)
+  backward : minimum_grad (elementwise_min_grad)
+  extra :
+    attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
+             bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
 - op : mish
   backward : mish_grad
@@ -1741,7 +1741,17 @@
     attrs : [bool use_mkldnn = false]
 
 - op : pad3d
-  backward : pad3d_grad
+  backward : pad3d_grad, pad3d_double_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  int_array:
+    paddings :
+      data_type : int
+      tensor_name : Paddings
+  attrs :
+    pad_value : value
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -2379,6 +2389,13 @@
     {x : X, y : Y}
   outputs :
     out : Out
+
+- op : tril_triu
+  backward : tril_triu_grad
+  inputs :
+    {x: X}
+  outputs :
+    {out : Out}
 
 - op : trilinear_interp (trilinear_interp_v2)
   backward : trilinear_interp_grad (trilinear_interp_v2_grad)

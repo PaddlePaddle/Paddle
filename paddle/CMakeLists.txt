@@ -17,7 +17,7 @@ add_subdirectory(ir)
 # (4) the tests binaries are generated in different directories, as the same as the
 # folder of source file.
 
-# Now, we want to make all cc tests dynamically linked to the main paddle labrary,
+# Now, we want to make all cc tests dynamically linked to the main paddle library,
 # i.e., `libpaddle.so`, so we changes the logic of (2), (3), (4):
 # (2) calling `cc_test()` in each `CMakeLists.txt` will not `exactly` add test, but
 # record all tests and its source files, the action of add tests is defered to HERE.
@@ -26,7 +26,7 @@ add_subdirectory(ir)
 # (3) the tests links dynamic libraries, `libpaddle.so`
 # (4) the tests are generated to the same directory, i.e., `CC_TESTS_DIR` defined above.
 
-# Next, (to be discusssed)
+# Next, (to be discussed)
 # (1) move all source files to same folder,
 # (2) naturally, and configure tests in only one `CMakeLists.txt`,
 # (3) cc tests support linking pre-built dynamic libraries. For example, use the dynamic
