@@ -873,6 +873,17 @@
     data_type : x
   backward : grid_sample_grad
 
+- op : group_norm
+  args : (Tensor x, Tensor scale, Tensor bias, float epsilon = 1e-5, int groups = -1, str data_layout = "NCHW")
+  output : Tensor(y), Tensor(mean), Tensor(variance)
+  infer_meta :
+    func : GroupNormInferMeta
+  kernel :
+    func : group_norm
+  optional : scale, bias
+  intermediate : mean, variance
+  backward : group_norm_grad
+
 - op : gumbel_softmax
   args : (Tensor x, float temperature = 1.0, bool hard = false, int axis = -1)
   output : Tensor
