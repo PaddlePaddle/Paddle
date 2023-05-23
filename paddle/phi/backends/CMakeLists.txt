@@ -21,7 +21,7 @@ endif()
 if(WITH_XPU)
   list(APPEND BACKENDS_SRCS xpu/xpu_context.cc xpu/xpu_info.cc)
   list(APPEND BACKENDS_SRCS xpu/xpu_op_list.cc xpu/xpu1_op_list.cc
-       xpu/xpu2_op_list.cc)
+       xpu/xpu2_op_list.cc xpu/xpu_l3_strategy.cc)
 endif()
 
 if(WITH_MKLDNN)

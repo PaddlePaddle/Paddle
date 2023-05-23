@@ -347,7 +347,8 @@ cc_library(
        selected_rows_utils
        data_device_transform
        data_type_transform
-       data_layout_transform)
+       data_layout_transform
+       phi_data_transform)
 
 cc_library(
   attribute
@@ -525,7 +526,7 @@ cc_library(
        glog
        version
        xxhash
-       dist_attr
+       op_dist_attr
        phi
        op_version_proto
        op_version_registry)

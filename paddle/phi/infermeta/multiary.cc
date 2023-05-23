@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/meta_tensor.h"
+#include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/concat_funcs.h"
 
@@ -1310,6 +1311,71 @@ void FusedLinearParamGradAddInferMeta(const MetaTensor& x,
   if (dweight_out) {
     dweight_out->set_dims(weight_dims);
     dweight_out->set_dtype(multi_precision ? mp_dtype : dtype);
+  }
+}
+
+void FusionGroupInferMeta(const std::vector<const MetaTensor*>& ins,
+                          const std::vector<int>& outs_dtype,
+                          const std::vector<int>& inputs_dtype,
+                          const std::string& func_name,
+                          int type,
+                          std::vector<MetaTensor*> outs) {
+  const size_t num_ins = ins.size();
+  const size_t num_outs = outs.size();
+
+  PADDLE_ENFORCE_GE(
+      num_ins,
+      1UL,
+      phi::errors::InvalidArgument(
+          "Expected the number of inputs >= 1. Received %d.", num_ins));
+  PADDLE_ENFORCE_GE(
+      num_outs,
+      1UL,
+      phi::errors::InvalidArgument(
+          "Expected the number of outputs >= 1. Recived %d.", num_outs));
+
+  PADDLE_ENFORCE_EQ(type,
+                    0UL,
+                    phi::errors::InvalidArgument(
+                        "Only support fusion of elementwise operations."));
+
+  std::vector<phi::DDim> x_dims;
+  for (size_t i = 0; i < num_ins; ++i) {
+    x_dims.push_back(ins[i]->dims());
+  }
+
+  if (type == 0) {
+    for (size_t i = 1; i < num_ins; ++i) {
+      PADDLE_ENFORCE_EQ(x_dims[0],
+                        x_dims[i],
+                        phi::errors::InvalidArgument(
+                            "All the inputs' dims is expected to be the same. "
+                            "But received [%s] (name: %s) vs [%s] (name: %s).",
+                            x_dims[0],
+                            ins[0],
+                            x_dims[i],
+                            ins[i]));
+    }
+    for (size_t j = 0; j < num_outs; ++j) {
+      outs[j]->set_dims(x_dims[0]);
+    }
+  }
+
+  // Only lod of Inputs[0] would be shared with Outs.
+  for (size_t j = 0; j < num_outs; ++j) {
+    outs[j]->share_lod(*ins[0]);
+  }
+
+  for (size_t j = 0; j < num_outs; ++j) {
+    if (outs_dtype[j] == phi::TransToProtoVarType(phi::DataType::FLOAT16)) {
+      outs[j]->set_dtype(phi::DataType::FLOAT16);
+    } else if (outs_dtype[j] ==
+               phi::TransToProtoVarType(phi::DataType::FLOAT32)) {
+      outs[j]->set_dtype(phi::DataType::FLOAT32);
+    } else if (outs_dtype[j] ==
+               phi::TransToProtoVarType(phi::DataType::FLOAT64)) {
+      outs[j]->set_dtype(phi::DataType::FLOAT64);
+    }
   }
 }
 

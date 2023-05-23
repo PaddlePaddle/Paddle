@@ -35,6 +35,7 @@ endif()
 
 set(PHI_DEPS
     phi_profiler_proto
+    auto_parallel_proto
     gflags
     glog
     warpctc

@@ -56,4 +56,6 @@ class Program {
   std::unordered_map<std::string, std::unique_ptr<Parameter>> parameters_;
 };
 
+std::ostream& operator<<(std::ostream& os, Program& program);
+
 }  // namespace ir

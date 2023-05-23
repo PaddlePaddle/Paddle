@@ -89,6 +89,13 @@ class OpTraitBase : public OpBase {
   explicit OpTraitBase(const Operation *op) : OpBase(op) {}
 
   static TypeId GetTraitId() { return TypeId::get<ConcreteTrait>(); }
+
+  static ConcreteTrait dyn_cast(const Operation *op) {
+    if (op->HasTrait<ConcreteTrait>()) {
+      return ConcreteTrait(op);
+    }
+    return ConcreteTrait(nullptr);
+  }
 };
 
 ///
@@ -102,6 +109,14 @@ class OpInterfaceBase : public OpBase {
   explicit OpInterfaceBase(const Operation *op) : OpBase(op) {}
 
   static TypeId GetInterfaceId() { return TypeId::get<ConcreteInterface>(); }
+
+  static ConcreteInterface dyn_cast(const Operation *op) {
+    if (op->HasInterface<ConcreteInterface>()) {
+      return ConcreteInterface(
+          op, op->op_info().GetInterfaceImpl<ConcreteInterface>());
+    }
+    return ConcreteInterface(nullptr, nullptr);
+  }
 };
 
 template <typename ConcreteOp, typename... Args>
@@ -167,6 +182,13 @@ class Op : public OpBase {
 
   using InterfaceList =
       typename Filter<OpInterfaceBase, std::tuple<TraitOrInterface...>>::Type;
+
+  static ConcreteOp dyn_cast(const Operation *op) {
+    if (op->op_info().id() == TypeId::get<ConcreteOp>()) {
+      return ConcreteOp(op);
+    }
+    return ConcreteOp(nullptr);
+  }
 
   static std::vector<InterfaceValue> GetInterfaceMap() {
     constexpr size_t interfaces_num = std::tuple_size<InterfaceList>::value;

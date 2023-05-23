@@ -18,10 +18,10 @@ from functools import partial, reduce
 import paddle
 from paddle.common_ops_import import (
     LayerHelper,
-    _non_static_mode,
     check_type,
     check_variable_and_dtype,
     convert_dtype,
+    in_dygraph_mode,
 )
 from paddle.fluid import core
 from paddle.fluid.framework import Operator, Program, Variable, static_only
@@ -469,7 +469,7 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
             f"but given shape as {list(pre_cond.shape)}."
         )
 
-    if _non_static_mode():
+    if in_dygraph_mode():
         now_cond = pre_cond.item()
         while now_cond:
             output_vars = body(*loop_vars)
@@ -969,7 +969,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
             #           [ True  True  True]]
 
     """
-    if _non_static_mode():
+    if in_dygraph_mode():
         assert isinstance(pred, Variable), "The pred in cond must be Variable"
         assert pred.size == 1, "condition input's numel should be 1"
         pred = pred.item()
