@@ -17,6 +17,8 @@ import unittest
 
 sys.path.append('../../python/paddle/fluid/tests/unittests')
 
+import os
+
 import numpy as np
 from eager_op_test import OpTest
 from get_test_cover_info import (
@@ -105,15 +107,37 @@ class XPUTestSiluOP(XPUOpTestWrapper):
             self.outputs = {'Out': out}
             self.attrs = {'use_xpu': True}
 
+        def test_check_output(self):
+            self.set_env()
+            self.check_output_with_place(self.place)
+            self.delete_env()
+
         def test_check_grad(self):
+            self.set_env()
             self.check_grad_with_place(self.place, ['X'], 'Out')
+            self.delete_env()
 
         def init_shape(self):
             self.shape = [11, 17]
 
+        def set_env(self):
+            pass
+
+        def delete_env(self):
+            pass
+
     class TestSilu_ZeroDim(XPUTestSilu):
         def init_shape(self):
             self.shape = []
+
+    class TestSilu_LUT(XPUTestSilu):
+        def set_env(self):
+            # set "XPU_PADDLE_ACT_LUT" env to enable lut
+            os.environ['XPU_PADDLE_ACT_LUT'] = "1"
+
+        def delete_env(self):
+            if os.getenv('XPU_PADDLE_ACT_LUT'):
+                del os.environ['XPU_PADDLE_ACT_LUT']
 
 
 class TestSiluAPI(unittest.TestCase):

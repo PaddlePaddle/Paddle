@@ -46,7 +46,7 @@ namespace ir {
   };
 
 ///
-/// \brief Define Parameteric AttributeStorage for StrAttribute.
+/// \brief Define Parametric AttributeStorage for StrAttribute.
 ///
 struct StrAttributeStorage : public AttributeStorage {
   using ParamKey = std::string;

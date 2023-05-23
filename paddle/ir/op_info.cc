@@ -34,6 +34,12 @@ const char *OpInfo::name() const { return impl_ ? impl_->name() : nullptr; }
 
 TypeId OpInfo::id() const { return impl_ ? impl_->id() : TypeId(); }
 
+void OpInfo::verify(const std::vector<OpResult> &inputs,
+                    const std::vector<Type> &outputs,
+                    const AttributeMap &attributes) {
+  impl_->verify()(inputs, outputs, attributes);
+}
+
 void *OpInfo::GetInterfaceImpl(TypeId interface_id) const {
   return impl_ ? impl_->interface_impl(interface_id) : nullptr;
 }
@@ -94,7 +100,8 @@ OpInfoImpl *OpInfoImpl::create(Dialect *dialect,
                                std::vector<InterfaceValue> &&interface_map,
                                const std::vector<TypeId> &trait_set,
                                size_t attributes_num,
-                               const char *attributes_name[]) {
+                               const char *attributes_name[],
+                               VerifyPtr verify) {
   // (1) Malloc memory for interfaces, traits, opinfo_impl.
   size_t interfaces_num = interface_map.size();
   size_t traits_num = trait_set.size();
@@ -128,7 +135,8 @@ OpInfoImpl *OpInfoImpl::create(Dialect *dialect,
                                                        interfaces_num,
                                                        traits_num,
                                                        attributes_num,
-                                                       attributes_name
+                                                       attributes_name,
+                                                       verify
 
   );
   return op_info;

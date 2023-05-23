@@ -242,6 +242,8 @@ function(build_protobuf TARGET_NAME BUILD_FOR_HOST)
     set(PROTOBUF_REPOSITORY ${GIT_URL}/protocolbuffers/protobuf.git)
     # Change the tag to support building with vs2019
     set(PROTOBUF_TAG 01a05a53f40ca2ac5f0af10c6cc0810bee39b792)
+    execute_process(COMMAND cd ${SOURCE_DIR} && git checkout
+                            01a05a53f40ca2ac5f0af10c6cc0810bee39b792)
   else()
     if(WITH_PSLIB)
       set(PROTOBUF_REPOSITORY "https://github.com/google/protobuf.git")

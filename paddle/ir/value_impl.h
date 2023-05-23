@@ -55,7 +55,7 @@ class OpOperandImpl {
 };
 
 ///
-/// \brief ValueImpl is the base class of all drived Value classes such as
+/// \brief ValueImpl is the base class of all derived Value classes such as
 /// OpResultImpl. This class defines all the information and usage interface in
 /// the IR Value. Each Value include three attributes:
 /// (1) type: ir::Type; (2) UD-chain of value: OpOperandImpl*, first operand
