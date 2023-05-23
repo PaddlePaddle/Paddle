@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include "paddle/ir/builtin_attribute.h"
 #include "paddle/ir/op_info.h"
 #include "paddle/ir/operation_utils.h"
 #include "paddle/ir/type.h"
@@ -45,9 +44,9 @@ class alignas(8) Operation final {
 
   IrContext *ir_context() const;
 
-  ir::OpResult GetResultByIndex(uint32_t index);
+  ir::OpResult GetResultByIndex(uint32_t index) const;
 
-  ir::OpOperand GetOperandByIndex(uint32_t index);
+  ir::OpOperand GetOperandByIndex(uint32_t index) const;
 
   std::string print();
 
