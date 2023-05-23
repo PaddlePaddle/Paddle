@@ -1286,7 +1286,7 @@ def fill_constant_batch_size_like(
              import paddle
              import paddle.fluid as fluid
              like = paddle.full(shape=[1,2], fill_value=10, dtype='int64') #like=[[10, 10]]
-             data = fluid.layers.fill_constant_batch_size_like(
+             data = paddle.tensor.fill_constant_batch_size_like(
                     input=like, shape=[1], value=0, dtype='int64') #like=[[10, 10]] data=[0]
 
     """
