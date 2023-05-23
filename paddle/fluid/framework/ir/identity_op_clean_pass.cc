@@ -69,6 +69,9 @@ void IdentityScaleOpCleanPass::ApplyImpl(ir::Graph* graph) const {
                 return true;
               }
             }
+            if (x->Op()->Type() == "c_identity") {
+              return true;
+            }
 
             return false;
           });
@@ -126,5 +129,6 @@ REGISTER_PASS(identity_op_clean_pass,
               paddle::framework::ir::IdentityScaleOpCleanPass);
 REGISTER_PASS_CAPABILITY(identity_op_clean_pass)
     .AddCombination(
-        paddle::framework::compatible::OpVersionComparatorCombination().EQ(
-            "scale", 0));
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("scale", 0)
+            .LE("c_identity", 1));
