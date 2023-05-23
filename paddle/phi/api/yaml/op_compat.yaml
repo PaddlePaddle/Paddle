@@ -2390,6 +2390,13 @@
   outputs :
     out : Out
 
+- op : tril_triu
+  backward : tril_triu_grad
+  inputs :
+    {x: X}
+  outputs :
+    {out : Out}
+
 - op : trilinear_interp (trilinear_interp_v2)
   backward : trilinear_interp_grad (trilinear_interp_v2_grad)
   inputs :
