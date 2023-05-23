@@ -11,7 +11,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
@@ -70,14 +69,7 @@ class XPUTestKLDivLossOp(XPUOpTestWrapper):
             self.outputs = {'Loss': loss.astype('float32')}
 
         def test_check_output(self):
-            # houjue debug
-            path = "houjue_debug_file_flag"
-            if os.path.isfile(path):
-                self.check_output(check_dygraph=True)
-            else:
-                with open(path, 'w') as fp:
-                    pass
-                raise AssertionError()
+            self.check_output(check_dygraph=True)
 
         def test_check_grad(self):
             self.check_grad_with_place(
