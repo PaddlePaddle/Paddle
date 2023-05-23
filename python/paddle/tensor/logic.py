@@ -25,13 +25,13 @@ Tensor = paddle.fluid.framework.core.eager.Tensor
 from paddle import _C_ops
 from paddle.tensor.creation import full
 
-from ..framework import LayerHelper, in_dygraph_mode
+from ..framework import LayerHelper, in_dynamic_mode
 
 __all__ = []
 
 
 def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         op = getattr(_C_ops, op_name)
         if binary_op:
             return op(x, y)
@@ -131,7 +131,7 @@ def logical_and(x, y, out=None, name=None):
             res = paddle.logical_and(x, y)
             print(res) # [True False True False]
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.logical_and(x, y)
 
     return _logical_op(
@@ -176,7 +176,7 @@ def logical_or(x, y, out=None, name=None):
             #        [[True , True ],
             #         [True , False]])
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.logical_or(x, y)
     return _logical_op(
         op_name="logical_or", x=x, y=y, name=name, out=out, binary_op=True
@@ -220,7 +220,7 @@ def logical_xor(x, y, out=None, name=None):
             #        [[False, True ],
             #         [True , False]])
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.logical_xor(x, y)
 
     return _logical_op(
@@ -260,7 +260,7 @@ def logical_not(x, out=None, name=None):
             res = paddle.logical_not(x)
             print(res) # [False  True False  True]
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.logical_not(x)
     return _logical_op(
         op_name="logical_not", x=x, y=None, name=name, out=out, binary_op=False
@@ -288,16 +288,11 @@ def is_empty(x, name=None):
 
             input = paddle.rand(shape=[4, 32, 32], dtype='float32')
             res = paddle.is_empty(x=input)
-            print("res:", res)
-            # ('res:', Tensor: eager_tmp_1
-            #    - place: CPUPlace
-            #    - shape: [1]
-            #    - layout: NCHW
-            #    - dtype: bool
-            #    - data: [0])
+            # res: Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
+            #        False)
 
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.is_empty(x)
     else:
         check_variable_and_dtype(
@@ -339,11 +334,11 @@ def equal_all(x, y, name=None):
           y = paddle.to_tensor([1, 2, 3])
           z = paddle.to_tensor([1, 4, 3])
           result1 = paddle.equal_all(x, y)
-          print(result1) # result1 = [True ]
+          print(result1) # result1 = True
           result2 = paddle.equal_all(x, z)
-          print(result2) # result2 = [False ]
+          print(result2) # result2 = False
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.equal_all(x, y)
     else:
         helper = LayerHelper("equal_all", **locals())
@@ -388,24 +383,24 @@ def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
           y = paddle.to_tensor([10000.1, 1e-08])
           result1 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08,
                                   equal_nan=False, name="ignore_nan")
-          # [False]
+          # False
 
           result2 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08,
                                       equal_nan=True, name="equal_nan")
-          # [False]
+          # False
 
           x = paddle.to_tensor([1.0, float('nan')])
           y = paddle.to_tensor([1.0, float('nan')])
           result1 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08,
                                   equal_nan=False, name="ignore_nan")
-          # [False]
+          # False
 
           result2 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08,
                                       equal_nan=True, name="equal_nan")
-          # [True]
+          # True
     """
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.allclose(x, y, rtol, atol, equal_nan)
     else:
         check_variable_and_dtype(
@@ -469,7 +464,7 @@ def equal(x, y, name=None):
     if not isinstance(y, Variable):
         y = full(shape=[], dtype=x.dtype, fill_value=y)
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.equal(x, y)
     else:
         check_variable_and_dtype(
@@ -538,7 +533,7 @@ def greater_equal(x, y, name=None):
             result1 = paddle.greater_equal(x, y)
             print(result1)  # result1 = [True False True]
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.greater_equal(x, y)
     else:
         check_variable_and_dtype(
@@ -607,7 +602,7 @@ def greater_than(x, y, name=None):
             result1 = paddle.greater_than(x, y)
             print(result1)  # result1 = [False False True]
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.greater_than(x, y)
     else:
         check_variable_and_dtype(
@@ -677,7 +672,7 @@ def less_equal(x, y, name=None):
             result1 = paddle.less_equal(x, y)
             print(result1)  # result1 = [True True False]
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.less_equal(x, y)
     else:
         check_variable_and_dtype(
@@ -747,7 +742,7 @@ def less_than(x, y, name=None):
             result1 = paddle.less_than(x, y)
             print(result1)  # result1 = [False True False]
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.less_than(x, y)
     else:
         check_variable_and_dtype(
@@ -817,7 +812,7 @@ def not_equal(x, y, name=None):
             result1 = paddle.not_equal(x, y)
             print(result1)  # result1 = [False True True]
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.not_equal(x, y)
     else:
         check_variable_and_dtype(
@@ -885,14 +880,14 @@ def is_tensor(x):
             print(check)  #False
 
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return isinstance(x, (Tensor, paddle.fluid.core.eager.Tensor))
     else:
         return isinstance(x, Variable)
 
 
 def _bitwise_op(op_name, x, y, out=None, name=None, binary_op=True):
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         op = getattr(_C_ops, op_name)
         if binary_op:
             return op(x, y)
@@ -964,7 +959,7 @@ def bitwise_and(x, y, out=None, name=None):
             res = paddle.bitwise_and(x, y)
             print(res)  # [0, 2, 1]
     """
-    if in_dygraph_mode() and out is None:
+    if in_dynamic_mode() and out is None:
         return _C_ops.bitwise_and(x, y)
     return _bitwise_op(
         op_name="bitwise_and", x=x, y=y, name=name, out=out, binary_op=True
@@ -1001,7 +996,7 @@ def bitwise_or(x, y, out=None, name=None):
             res = paddle.bitwise_or(x, y)
             print(res)  # [-1, -1, -3]
     """
-    if in_dygraph_mode() and out is None:
+    if in_dynamic_mode() and out is None:
         return _C_ops.bitwise_or(x, y)
 
     return _bitwise_op(
@@ -1039,7 +1034,7 @@ def bitwise_xor(x, y, out=None, name=None):
             res = paddle.bitwise_xor(x, y)
             print(res) # [-1, -3, -4]
     """
-    if in_dygraph_mode() and out is None:
+    if in_dynamic_mode() and out is None:
         return _C_ops.bitwise_xor(x, y)
     return _bitwise_op(
         op_name="bitwise_xor", x=x, y=y, name=name, out=out, binary_op=True
@@ -1074,7 +1069,7 @@ def bitwise_not(x, out=None, name=None):
             res = paddle.bitwise_not(x)
             print(res) # [4, 0, -2]
     """
-    if in_dygraph_mode() and out is None:
+    if in_dynamic_mode() and out is None:
         return _C_ops.bitwise_not(x)
 
     return _bitwise_op(
@@ -1131,7 +1126,7 @@ def isclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
           # [True, True]
     """
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.isclose(x, y, rtol, atol, equal_nan)
     else:
         check_variable_and_dtype(

@@ -12,13 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-This script simply removes all grad ops and kernels. You should use this script
-when cmake ON_INFER=ON, which can greatly reduce the volume of the prediction library.
+This script simply removes grad ops and kernels. You should use this script
+when cmake ON_INFER=ON, which can greatly reduce the volume of the inference library.
 """
 
+import argparse
 import glob
 import os
 import re
+
+import reduce_lib_size_util
+
+
+def parse_args():
+    """Parse input arguments."""
+    parser = argparse.ArgumentParser(description='Remove grad op and kernels.')
+    parser.add_argument('--only_kernel', action='store_true', default=False)
+    parser.add_argument('--dry_run', action='store_true', default=False)
+
+    args = parser.parse_args()
+    return args
 
 
 def find_type_files(cur_dir, file_type, file_list=[]):
@@ -42,6 +55,10 @@ def remove_grad_op_and_kernel(content, pattern1, pattern2):
 
 
 def update_operator_cmake(cmake_file):
+    """Update operator cmake.
+    Args:
+        cmake_file (str): cmake file path.
+    """
     pat1 = 'add_subdirectory(optimizers)'
     pat2 = r'register_operators\(EXCLUDES.*?py_func_op.*?\)'
 
@@ -65,6 +82,8 @@ def update_operator_cmake(cmake_file):
 
 
 if __name__ == '__main__':
+
+    args = parse_args()
 
     tool_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -92,14 +111,17 @@ if __name__ == '__main__':
         # remove all grad op
         op_pattern1 = r'REGISTER_OPERATOR\(.*?\);?'
         op_pattern2 = r'REGISTER_OPERATOR\(.*?_grad,.*?\);?'
+        if args.only_kernel:
+            op_pattern1 = 'DISABLE_REMOVE_GRAD_OP_' + op_pattern1
+            op_pattern2 = 'DISABLE_REMOVE_GRAD_OP_' + op_pattern2
 
         # remove all cpu grad kernel
-        cpu_kernel_pattern1 = r'REGISTER_OP_CPU_KERNEL\(.*?\);?'
-        cpu_kernel_pattern2 = r'REGISTER_OP_CPU_KERNEL\(.*?_grad,.*?\);?'
+        cpu_kernel_pattern1 = r'REGISTER_OP_CPU_KERNEL\(.*?\);?|REGISTER_OP_CPU_KERNEL_FUNCTOR\(.*?\);?'
+        cpu_kernel_pattern2 = r'REGISTER_OP_CPU_KERNEL\(.*?_grad,.*?\);?|REGISTER_OP_CPU_KERNEL_FUNCTOR\(.*?_grad,.*?\);?'
 
         # remove all gpu grad kernel
-        gpu_kernel_pattern1 = r'REGISTER_OP_CUDA_KERNEL\(.*?\);?'
-        gpu_kernel_pattern2 = r'REGISTER_OP_CUDA_KERNEL\(.*?_grad,.*?\);?'
+        gpu_kernel_pattern1 = r'REGISTER_OP_CUDA_KERNEL\(.*?\);?|REGISTER_OP_CUDA_KERNEL_FUNCTOR\(.*?\);?'
+        gpu_kernel_pattern2 = r'REGISTER_OP_CUDA_KERNEL\(.*?_grad,.*?\);?|REGISTER_OP_CUDA_KERNEL_FUNCTOR\(.*?_grad,.*?\);?'
 
         # remove all xpu grad kernel
         xpu_kernel_pattern1 = r'REGISTER_OP_XPU_KERNEL\(.*?\);?'
@@ -166,17 +188,24 @@ if __name__ == '__main__':
             all_matches.extend(op_kernel)
             all_matches.extend(custom_kernel)
 
-        for i in all_matches:
-            content = content.replace(i, '')
+        for to_remove in all_matches:
+            content = content.replace(to_remove, '')
+            if args.dry_run:
+                print(op_file, to_remove)
 
-        with open(op_file, 'w', encoding='utf-8') as f:
-            f.write(content)
+        if not args.dry_run:
+            with open(op_file, 'w', encoding='utf-8') as f:
+                f.write(content)
 
     # 2. update operators/CMakeLists.txt
     cmake_file = os.path.join(
         tool_dir, '../paddle/fluid/operators/CMakeLists.txt'
     )
     update_operator_cmake(cmake_file)
+
+    register_pd_kernel_count = reduce_lib_size_util.remove_grad_kernels(
+        args.dry_run
+    )
 
     print('We erase all grad op and kernel for Paddle-Inference lib.')
     print('%50s%10s' % ('type', 'count'))
@@ -194,3 +223,4 @@ if __name__ == '__main__':
             register_op_kernel_with_custom_type_count,
         )
     )
+    print('%50s%10s' % ('REGISTER_OP_PD_KERNEL', register_pd_kernel_count))

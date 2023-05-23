@@ -16,8 +16,40 @@
 
 namespace phi {
 
-KernelSignature FusedElementwiseMulOpArgumentMapping(
+KernelSignature FusedElementwiseAddOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
+  return KernelSignature("fused_elementwise_add",
+                         {"X", "Y"},
+                         {"axis",
+                          "fuse_activation",
+                          "fuse_alpha",
+                          "fuse_beta",
+                          "fused_output_scale",
+                          "fused_unsqueeze2_axes",
+                          "scale_x",
+                          "scale_y",
+                          "scale_out"},
+                         {"Out"});
+}
+
+KernelSignature FusedElementwiseSubOpArgumentMapping(
+    const ArgumentMappingContext& ctx) {
+  return KernelSignature("fused_elementwise_sub",
+                         {"X", "Y"},
+                         {"axis",
+                          "fuse_activation",
+                          "fuse_alpha",
+                          "fuse_beta",
+                          "fused_output_scale",
+                          "fused_unsqueeze2_axes",
+                          "scale_x",
+                          "scale_y",
+                          "scale_out"},
+                         {"Out"});
+}
+
+KernelSignature FusedElementwiseMulOpArgumentMapping(
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("fused_elementwise_mul",
                          {"X", "Y"},
                          {"axis",
@@ -33,7 +65,7 @@ KernelSignature FusedElementwiseMulOpArgumentMapping(
 }
 
 KernelSignature FusedElementwiseDivOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("fused_elementwise_div",
                          {"X", "Y"},
                          {"axis",
@@ -50,6 +82,10 @@ KernelSignature FusedElementwiseDivOpArgumentMapping(
 
 }  // namespace phi
 
+PD_REGISTER_ARG_MAPPING_FN(fused_elementwise_add,
+                           phi::FusedElementwiseAddOpArgumentMapping);
+PD_REGISTER_ARG_MAPPING_FN(fused_elementwise_sub,
+                           phi::FusedElementwiseSubOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(fused_elementwise_mul,
                            phi::FusedElementwiseMulOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(fused_elementwise_div,

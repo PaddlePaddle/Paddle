@@ -637,7 +637,6 @@ void BindPaddlePlace(py::module *m) {
       .value("CPU", PaddlePlace::kCPU)
       .value("GPU", PaddlePlace::kGPU)
       .value("XPU", PaddlePlace::kXPU)
-      .value("NPU", PaddlePlace::kNPU)
       .value("CUSTOM", PaddlePlace::kCUSTOM);
 }
 
@@ -674,7 +673,6 @@ void BindNativeConfig(py::module *m) {
       .def(py::init<>())
       .def_readwrite("use_gpu", &NativeConfig::use_gpu)
       .def_readwrite("use_xpu", &NativeConfig::use_xpu)
-      .def_readwrite("use_npu", &NativeConfig::use_npu)
       .def_readwrite("device", &NativeConfig::device)
       .def_readwrite("fraction_of_gpu_memory",
                      &NativeConfig::fraction_of_gpu_memory)
@@ -806,10 +804,8 @@ void BindAnalysisConfig(py::module *m) {
       .def("enable_ort_optimization", &AnalysisConfig::EnableORTOptimization)
       .def("use_gpu", &AnalysisConfig::use_gpu)
       .def("use_xpu", &AnalysisConfig::use_xpu)
-      .def("use_npu", &AnalysisConfig::use_npu)
       .def("gpu_device_id", &AnalysisConfig::gpu_device_id)
       .def("xpu_device_id", &AnalysisConfig::xpu_device_id)
-      .def("npu_device_id", &AnalysisConfig::npu_device_id)
       .def("memory_pool_init_size_mb",
            &AnalysisConfig::memory_pool_init_size_mb)
       .def("fraction_of_gpu_memory_for_pool",
@@ -824,6 +820,9 @@ void BindAnalysisConfig(py::module *m) {
       .def("enable_profile", &AnalysisConfig::EnableProfile)
       .def("disable_glog_info", &AnalysisConfig::DisableGlogInfo)
       .def("glog_info_disabled", &AnalysisConfig::glog_info_disabled)
+      .def("enable_save_optim_model",
+           &AnalysisConfig::EnableSaveOptimModel,
+           py::arg("save_optimized_model") = false)
       .def("set_optim_cache_dir", &AnalysisConfig::SetOptimCacheDir)
       .def("switch_use_feed_fetch_ops",
            &AnalysisConfig::SwitchUseFeedFetchOps,
@@ -834,6 +833,9 @@ void BindAnalysisConfig(py::module *m) {
            &AnalysisConfig::SwitchSpecifyInputNames,
            py::arg("x") = true)
       .def("specify_input_name", &AnalysisConfig::specify_input_name)
+      .def("enable_low_precision_io",
+           &AnalysisConfig::EnableLowPrecisionIO,
+           py::arg("x") = true)
       .def("enable_tensorrt_engine",
            &AnalysisConfig::EnableTensorRtEngine,
            py::arg("workspace_size") = 1 << 30,
@@ -841,7 +843,8 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("min_subgraph_size") = 3,
            py::arg("precision_mode") = AnalysisConfig::Precision::kFloat32,
            py::arg("use_static") = false,
-           py::arg("use_calib_mode") = true)
+           py::arg("use_calib_mode") = true,
+           py::arg("use_cuda_graph") = false)
       .def("enable_tensorrt_memory_optim",
            &AnalysisConfig::EnableTensorRTMemoryOptim,
            py::arg("engine_memory_sharing") = true,

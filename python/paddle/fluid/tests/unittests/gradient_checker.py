@@ -549,7 +549,7 @@ def get_static_double_grad(
         program (Program|None): a Program with forward pass.
             If None, use fluid.default_main_program().
     Returns:
-        A list of numpy array that stores second derivative result calulated by static graph.
+        A list of numpy array that stores second derivative result calculated by static graph.
     """
 
     if program is None:

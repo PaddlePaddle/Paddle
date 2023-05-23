@@ -20,9 +20,9 @@
 namespace phi {
 template <typename T, typename Context>
 void ExpandGradKernel(const Context& dev_ctx,
-                      const DenseTensor& x,
+                      const DenseTensor& x UNUSED,
                       const DenseTensor& out_grad,
-                      const IntArray& shape,
+                      const IntArray& shape UNUSED,
                       DenseTensor* in_grad) {
   const auto& onednn_engine = dev_ctx.GetEngine();
 

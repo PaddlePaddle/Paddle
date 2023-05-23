@@ -17,16 +17,16 @@ import abc
 import numpy as np
 
 import paddle
-from paddle.fluid.dataloader.batch_sampler import (
+from paddle.io import BatchSampler, IterableDataset
+from paddle.io.dataloader.batch_sampler import (
     DistributedBatchSampler,
     _InfiniteIterableSampler,
 )
-from paddle.fluid.dataloader.dataloader_iter import (
+from paddle.io.dataloader.dataloader_iter import (
     _DatasetKind,
     default_collate_fn,
     default_convert_fn,
 )
-from paddle.io import BatchSampler, IterableDataset
 
 
 class DistributedDataLoaderBase(metaclass=abc.ABCMeta):
@@ -272,7 +272,7 @@ class DistributedDataLoader(DistributedDataLoaderBase):
         return next(self.data)
 
     def _create_inner_dataloader(self):
-        dataloader = paddle.fluid.io.DataLoader(
+        dataloader = paddle.io.DataLoader(
             self.dataset,
             feed_list=self.feed_list,
             places=self.places,

@@ -345,6 +345,16 @@
   kernel :
     func : share_buffer
 
+- op : softmax
+  args : (Tensor x, int axis = -1)
+  output : Tensor(out)
+  infer_meta :
+    func : SoftmaxInferMeta
+  kernel :
+    func : softmax
+  inplace : (x -> out)
+  backward : softmax_grad
+
 - op : tril_indices
   args : (int rows = 0, int cols = 0, int offset = 0, DataType dtype = DataType::INT64)
   output : Tensor(out)
@@ -355,6 +365,15 @@
     func : tril_indices
     param : [rows, cols, offset, dtype]
     data_type : dtype
+
+- op : tril_triu
+  args : (Tensor x, int diagonal = 0, bool lower = false)
+  output : Tensor(out)
+  infer_meta :
+    func : TrilTriuInferMeta
+  kernel :
+    func : tril_triu
+  backward : tril_triu_grad
 
 - op : triu_indices
   args : (int row = 0, int col = 0, int offset = 0, DataType dtype = DataType::INT64)
@@ -398,3 +417,15 @@
   kernel :
     func : unique
     data_type : x
+
+- op : unpool
+  args: (Tensor x, Tensor indices, int[] ksize, str unpooling_type, int[] strides = {1,1}, int[] paddings ={0,0} ,IntArray output_size = {0,0}, str data_format="NCHW")
+  output: Tensor(out)
+  infer_meta:
+    func: UnpoolInferMeta
+    param : [x, indices, ksize, strides, paddings,output_size, data_format]
+  kernel:
+    func: unpool
+    data_type: x
+    param : [x, indices, ksize, strides, paddings,output_size, data_format]
+  backward: unpool_grad

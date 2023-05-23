@@ -15,15 +15,18 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
+from paddle.fluid import core
 
 
 def einsum_wrapper(a, b):
     if not isinstance(a, list):
         a = [a]
-    return paddle._C_ops.einsum(a, b)
+    ret = paddle._C_ops.einsum(a, b)
+    # ret include list: [Tensor(Not initialized)], skip the list
+    return ret[0]
 
 
 class TestEinsumBinary(OpTest):
@@ -33,10 +36,14 @@ class TestEinsumBinary(OpTest):
         self.python_api = einsum_wrapper
         self.python_out_sig = ['Out']
         self.disable = False
+        self.init_dtype()
         self.set_mandatory()
         self.init_input()
         np.random.seed(123)
         out = np.einsum(self.equation, *self.inputs)
+        # bfloat16 change inputs
+        if self.dtype == np.uint16:
+            self.inputs = self.bf16_inputs
         self.operands = []
         for idx, inp in enumerate(self.inputs):
             self.operands.append(("x" + str(idx), inp))
@@ -53,16 +60,28 @@ class TestEinsumBinary(OpTest):
                 for i in range(len(self.operands))
             ],
         }
+        if self.dtype == np.uint16:
+            self.place = core.CUDAPlace(0)
+            self.outputs["Out"] = convert_float_to_uint16(self.outputs["Out"])
+
+    def init_dtype(self):
+        self.dtype = np.float64
 
     def init_input(self):
         self.inputs = []
+        self.bf16_inputs = []
         for t, s in zip(self.types, self.shapes):
-            self.inputs.append(np.random.random(s).astype(t))
+            input_data = np.random.random(s).astype(t)
+            self.inputs.append(input_data)
+            if self.dtype == np.uint16:
+                self.bf16_inputs.append(convert_float_to_uint16(input_data))
 
     def set_mandatory(self):
         self.shapes = [(10, 10, 20), (20, 6)]
-        self.types = [np.float64, np.float64]
+        self.types = [self.dtype, self.dtype]
         self.equation = "mij,jk->ki"
+        if self.dtype == np.uint16:
+            self.types = [self.np_dtype, self.np_dtype]
 
     def test_check_output(self):
         if not self.disable:
@@ -211,6 +230,43 @@ class TestEinsumWithDiagonal8(TestEinsumBinary):
         self.shapes = [(3, 5, 7, 3), (5, 7, 5, 7)]
         self.types = [np.float64, np.float64]
         self.equation = "ijki,jkjk->"
+
+
+class TestEinsumFP16Op(TestEinsumBinary):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA or not support bfloat16",
+)
+class TestEinsumBF16Op(TestEinsumBinary):
+    def init_dtype(self):
+        self.dtype = np.uint16
+        self.np_dtype = np.float32
+
+    # If it is a complex calculation, the difference value is large
+    def set_mandatory(self):
+        self.shapes = [(10, 3, 10)]
+        self.types = [self.np_dtype]
+        self.equation = "iji->j"
+
+    def test_check_output(self):
+        if not self.disable:
+            self.check_output_with_place(
+                self.place, no_check_set=["InnerCache", "XShape"]
+            )
+
+    def test_grad(self):
+        if not self.disable:
+            self.check_grad_with_place(
+                self.place,
+                [op[0] for op in self.operands],
+                ["Out"],
+                numeric_grad_delta=0.05,
+            )
 
 
 if __name__ == "__main__":

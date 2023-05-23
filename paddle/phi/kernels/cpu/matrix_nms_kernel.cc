@@ -73,7 +73,7 @@ struct decay_score<T, true> {
 
 template <typename T>
 struct decay_score<T, false> {
-  T operator()(T iou, T max_iou, T sigma) {
+  T operator()(T iou, T max_iou, T sigma UNUSED) {
     return (1. - iou) / (1. - max_iou);
   }
 };
