@@ -1925,7 +1925,7 @@ def rnnt_loss(
     to compute Sequence Transduction with Recurrent Neural Networks (RNN-T) loss.
 
     Parameters:
-        input (Tensor): The logprobs sequence with padding, which is a 4-D Tensor. The tensor shape is [B, Tmax， Umax, D], where Tmax， is the longest length of input logit sequence. The data type should be float32 or float64.
+        input (Tensor): The logprobs sequence with padding, which is a 4-D Tensor. The tensor shape is [B, Tmax, Umax, D], where Tmax is the longest length of input logit sequence. The data type should be float32 or float64.
         label (Tensor): The ground truth sequence with padding, which must be a 2-D Tensor. The tensor shape is [B, Umax], where Umax is the longest length of label sequence. The data type must be int32.
         input_lengths (Tensor): The length for each input sequence, it should have shape [batch_size] and dtype int64.
         label_lengths (Tensor): The length for each label sequence, it should have shape [batch_size] and dtype int64.
