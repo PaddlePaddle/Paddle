@@ -171,11 +171,11 @@ class DygraphShardingOptimizer:
 
     @framework.dygraph_only
     def set_state_dict(self, state_dict):
+        inner_state = {}
         parameters = self._rank2params[self._sharding_rank]
 
-        inner_state = {}
         if "LR_Scheduler" in state_dict:
-            inner_state = {"LR_Scheduler": state_dict.pop("LR_Scheduler")}
+            inner_state["LR_Scheduler"] = state_dict.pop("LR_Scheduler")
 
         if "master_weights" in state_dict:
             master = state_dict.pop("master_weights")
@@ -183,6 +183,8 @@ class DygraphShardingOptimizer:
             for p in parameters:
                 for k, v in master.items():
                     if p.name in k:
+                        var_name = p.name + "_fp32_master"
+                        v.name = paddle.fluid.unique_name.generate(var_name)
                         inner_state["master_weights"][k] = v
 
         for p in parameters:
