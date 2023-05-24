@@ -130,52 +130,49 @@ __global__ void SoftmaxCooGradGPURawKernel(IntT* sorted_pool_indices,
                                            IntT* lower_bound_values,
                                            T* values,
                                            T* out_values,
-                                           T* grad_values) {
+                                           T* grad_values,
+                                           int total_rows) {
+  int row = blockIdx.x * blockDim.y + threadIdx.y;
+  if (row >= total_rows) return;
+
   int tid = threadIdx.x;
-  int blkid = blockIdx.x;
-  int blksz = blockDim.x;
-  int gridsz = gridDim.x;
+  int index = row / nvalues;
+  int nval = row % nvalues;
+  IntT offset = pool_offsets[index];
+  IntT* pool_indices = sorted_pool_indices + offset;
+  IntT pool_indices_size = pool_sizes[index];
 
-  int index = tid + blkid * blksz;
-  int step = blksz * gridsz;
+  int kIteration = (pool_indices_size + warpSize - 1) / warpSize;
+  T mul_result = 0;
+  for (int k = 0; k < kIteration; ++k) {
+    int idx = tid + k * warpSize;
+    if (idx >= pool_indices_size) break;
 
-  while (index < size) {
-    IntT offset = pool_offsets[index];
-    IntT* pool_indices = sorted_pool_indices + offset;
-    IntT pool_indices_size = pool_sizes[index];
-
-    for (IntT k = 0; k < nvalues; k++) {
-      T tmp_row{0};
-
-      /* Compute tmp = - sum_j output_j * grad_j */
-      for (IntT p = 0; p < pool_indices_size; p++) {
-        auto i = pool_indices[p];
-        auto cur_out_value = out_values + i * nvalues;
-        auto j = lower_bound_values[i];
-
-        /* Update `tmp_row` accumulator only when limits and pools are valid */
-        if (j < grad_nnz && (out_offsets[i] == grad_offsets[j])) {
-          auto cur_grad_value = grad_values + j * nvalues;
-          tmp_row -= (*(cur_out_value + k)) * (*(cur_grad_value + k));
-        }
-      }
-
-      /* Compute grad_input = output * (grad + tmp)*/
-      for (IntT p = 0; p < pool_indices_size; p++) {
-        auto i = pool_indices[p];
-        auto cur_out_value = out_values + i * nvalues;
-        auto cur_value = values + i * nvalues;
-        auto j = lower_bound_values[i];
-        if (j < grad_nnz && (out_offsets[i] == grad_offsets[j])) {
-          auto cur_grad_value = grad_values + j * nvalues;
-          cur_value[k] =
-              (*(cur_out_value + k)) * (*(cur_grad_value + k) + tmp_row);
-        } else {
-          cur_value[k] = (*(cur_out_value + k)) * tmp_row;
-        }
-      }
+    auto i = pool_indices[idx];
+    auto cur_out_value = out_values + i * nvalues;
+    auto j = lower_bound_values[i];
+    if (j < grad_nnz && (out_offsets[i] == grad_offsets[j])) {
+      auto cur_grad_value = grad_values + j * nvalues;
+      mul_result += (*(cur_out_value + nval)) * (*(cur_grad_value + nval));
     }
-    index += step;
+  }
+  T sum = phi::funcs::WarpReduceSum<T>(mul_result, 0xFFFFFFFF);
+
+  for (int k = 0; k < kIteration; ++k) {
+    int idx = tid + k * warpSize;
+    if (idx >= pool_indices_size) break;
+
+    auto i = pool_indices[idx];
+    auto j = lower_bound_values[i];
+    auto cur_out_value = out_values + i * nvalues;
+    auto cur_value = values + i * nvalues;
+    auto cur_grad_value = grad_values + j * nvalues;
+    if (j < grad_nnz && (out_offsets[i] == grad_offsets[j])) {
+      cur_value[nval] =
+          (*(cur_out_value + nval)) * (*(cur_grad_value + nval) - sum);
+    } else {
+      cur_value[nval] = -(*(cur_out_value + nval)) * sum;
+    }
   }
 }
 
@@ -229,55 +226,13 @@ void SoftmaxCooGradGPUKernel(const Context& dev_ctx,
 
   int dim = axis < 0 ? out_dims.size() + axis : axis;
   if (dim >= sparse_dim) {
-    if (is_same_offset) {
-      SoftmaxGradKernel<T, Context>(
-          dev_ctx, out_values, grad_values, dim - sparse_dim + 1, values);
-    } else {
-      DenseTensor cur_out_values, cur_grad_values, cur_values;
-      cur_out_values.Resize(phi::make_ddim({grad_nnz}));
-      dev_ctx.template Alloc<T>(&cur_out_values);
-      cur_grad_values.Resize(phi::make_ddim({grad_nnz}));
-      dev_ctx.template Alloc<T>(&cur_grad_values);
-      cur_values.Resize(phi::make_ddim({grad_nnz}));
-      dev_ctx.template Alloc<T>(&cur_values);
-
-      for (IntT i = 0; i < out_nnz; i++) {
-        auto low =
-            thrust::lower_bound(grad_offsets_ptr,
-                                grad_offsets_ptr + grad_offsets.dims()[0],
-                                out_offsets_ptr[i]);
-
-        auto j = *low - (*grad_offsets_ptr);
-        if (j < grad_nnz && out_offsets_ptr[i] == grad_offsets_ptr[j]) {
-          memory_utils::Copy(place,
-                             out_values_ptr + i * grad_nnz,
-                             place,
-                             cur_out_values.data<T>(),
-                             grad_nnz * sizeof(T),
-                             stream);
-
-          memory_utils::Copy(place,
-                             grad_values_ptr + i * grad_nnz,
-                             place,
-                             cur_grad_values.data<T>(),
-                             grad_nnz * sizeof(T),
-                             stream);
-
-          SoftmaxGradKernel<T, Context>(dev_ctx,
-                                        cur_out_values,
-                                        cur_grad_values,
-                                        dim - sparse_dim,
-                                        &cur_values);
-
-          memory_utils::Copy(place,
-                             cur_values.data<T>(),
-                             place,
-                             values->data<T>() + i * grad_nnz,
-                             grad_nnz * sizeof(T),
-                             stream);
-        }
-      }
-    }
+    PADDLE_ENFORCE_EQ(
+        is_same_offset,
+        true,
+        phi::errors::Unimplemented(
+            "SparseCooTensor only support same offsets for softmax."));
+    SoftmaxGradKernel<T, Context>(
+        dev_ctx, out_values, grad_values, dim - sparse_dim + 1, values);
     return;
   }
 
@@ -289,12 +244,6 @@ void SoftmaxCooGradGPUKernel(const Context& dev_ctx,
 
   DenseTensor values_2(*values);
   values_2.Resize(phi::make_ddim({nnz, nvalues}));
-
-  DenseTensor out_values_2(out_values);
-  out_values_2.Resize(phi::make_ddim({nnz, nvalues}));
-
-  DenseTensor grad_values_2(grad_values);
-  grad_values_2.Resize(phi::make_ddim({nnz, nvalues}));
 
   DenseTensor sorted_indices;
   DenseTensor pool_offsets;
@@ -315,21 +264,23 @@ void SoftmaxCooGradGPUKernel(const Context& dev_ctx,
                       thrust_ptr(bound.data<IntT>()));
 
   auto pool_size = pool_offsets.dims()[0];
-  int block_size = phi::funcs::sparse::GetNumThreads(pool_size);
-  const int grid_size = (pool_size + block_size - 1) / block_size;
+  int total_rows = pool_size * nvalues;
+  dim3 grid((total_rows + 15) / 16);
+  dim3 block(32, 16);
   SoftmaxCooGradGPURawKernel<T, IntT>
-      <<<grid_size, block_size, 0, stream>>>(sorted_indices.data<IntT>(),
-                                             pool_size,
-                                             pool_sizes.data<IntT>(),
-                                             pool_offsets.data<IntT>(),
-                                             nvalues,
-                                             grad_nnz,
-                                             grad_offsets.data<IntT>(),
-                                             out_offsets.data<IntT>(),
-                                             bound_ptr,
-                                             values_2.data<T>(),
-                                             out_values_2.data<T>(),
-                                             grad_values_2.data<T>());
+      <<<grid, block, 0, stream>>>(sorted_indices.data<IntT>(),
+                                   pool_size,
+                                   pool_sizes.data<IntT>(),
+                                   pool_offsets.data<IntT>(),
+                                   nvalues,
+                                   grad_nnz,
+                                   grad_offsets.data<IntT>(),
+                                   out_offsets.data<IntT>(),
+                                   bound_ptr,
+                                   values_2.data<T>(),
+                                   out_values.data<T>(),
+                                   grad_values.data<T>(),
+                                   total_rows);
 }
 
 template <typename T, typename Context>

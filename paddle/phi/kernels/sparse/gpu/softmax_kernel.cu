@@ -218,7 +218,6 @@ void SoftmaxCooGPUKernel(const Context& dev_ctx,
                                  std::multiplies<>());
 
   auto values_2 = values.Resize({x_nnz, nvalues});
-  auto out_values_2 = out_values.Resize({x_nnz, nvalues});
 
   /* Compute independent pools of indices */
   DenseTensor sorted_indices;

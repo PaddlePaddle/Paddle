@@ -98,18 +98,12 @@ void SoftmaxCooGradCPUKernel(const Context& dev_ctx,
                              SparseCooTensor* dx) {
   auto out_indices = out.indices();
   auto out_values = out.values();
-  auto out_values_ptr = out_values.data<T>();
   const auto out_dims = out.dims();
   auto sparse_dim = out.sparse_dim();
   auto sizes = phi::vectorize<IntT>(out_dims);
   auto grad_indices = dout.indices();
   auto grad_values = dout.values();
-  auto grad_values_ptr = grad_values.data<T>();
-  auto out_nnz = out.nnz();
   auto grad_nnz = dout.nnz();
-
-  auto place = dev_ctx.GetPlace();
-  auto stream = nullptr;
 
   *(dx->mutable_indices()) = out_indices;
   DenseTensor* values = dx->mutable_values();
@@ -123,52 +117,15 @@ void SoftmaxCooGradCPUKernel(const Context& dev_ctx,
   int dim = axis < 0 ? out_dims.size() + axis : axis;
 
   if (dim >= sparse_dim) {
-    if (out_offsets == grad_offsets) {
-      SoftmaxGradKernel<T, Context>(
-          dev_ctx, out_values, grad_values, dim - sparse_dim + 1, values);
-    } else {
-      DenseTensor cur_out_values, cur_grad_values, cur_values;
-      cur_out_values.Resize(phi::make_ddim({grad_nnz}));
-      dev_ctx.template Alloc<T>(&cur_out_values);
-      cur_grad_values.Resize(phi::make_ddim({grad_nnz}));
-      dev_ctx.template Alloc<T>(&cur_grad_values);
-      cur_values.Resize(phi::make_ddim({grad_nnz}));
-      dev_ctx.template Alloc<T>(&cur_values);
+    bool is_same_offset = out_offsets == grad_offsets;
+    PADDLE_ENFORCE_EQ(
+        is_same_offset,
+        true,
+        phi::errors::Unimplemented(
+            "SparseCooTensor only support same offsets for softmax."));
 
-      for (int i = 0; i < out_nnz; i++) {
-        auto low = std::lower_bound(
-            grad_offsets.begin(), grad_offsets.end(), out_offsets[i]);
-        auto j = low - grad_offsets.begin();
-        if (j < grad_nnz && out_offsets[i] == grad_offsets[j]) {
-          memory_utils::Copy(place,
-                             out_values_ptr + i * grad_nnz,
-                             place,
-                             cur_out_values.data<T>(),
-                             grad_nnz * sizeof(T),
-                             stream);
-
-          memory_utils::Copy(place,
-                             grad_values_ptr + i * grad_nnz,
-                             place,
-                             cur_grad_values.data<T>(),
-                             grad_nnz * sizeof(T),
-                             stream);
-
-          SoftmaxGradKernel<T, Context>(dev_ctx,
-                                        cur_out_values,
-                                        cur_grad_values,
-                                        dim - sparse_dim,
-                                        &cur_values);
-
-          memory_utils::Copy(place,
-                             cur_values.data<T>(),
-                             place,
-                             values->data<T>() + i * grad_nnz,
-                             grad_nnz * sizeof(T),
-                             stream);
-        }
-      }
-    }
+    SoftmaxGradKernel<T, Context>(
+        dev_ctx, out_values, grad_values, dim - sparse_dim + 1, values);
     return;
   }
 
