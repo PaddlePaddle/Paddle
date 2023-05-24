@@ -93,32 +93,6 @@ PaddleDialect::PaddleDialect(ir::IrContext *context)
   initialize();
 }
 
-// TODO(zhangbo): As operators are supplemented and defined, they are gradually
-// removed.
-const char **Conv2DOp::attributes_name = nullptr;
-const char **FeedOp::attributes_name = nullptr;
-const char **BatchNormOp::attributes_name = nullptr;
-const char **BatchNormOp_::attributes_name = nullptr;
-const char **ElementwiseAddOp::attributes_name = nullptr;
-const char **Pool2DOp::attributes_name = nullptr;
-const char **FlattenContiguousRangeOp::attributes_name = nullptr;
-const char **MatmulV2Op::attributes_name = nullptr;
-const char **Reshape2Op::attributes_name = nullptr;
-const char **SoftmaxWithCrossEntropyOp::attributes_name = nullptr;
-const char **ReduceMeanOp::attributes_name = nullptr;
-const char **TopKV2Op::attributes_name = nullptr;
-const char **FillConstantOp::attributes_name = nullptr;
-const char **ReduceMeanGradOp::attributes_name = nullptr;
-const char **SoftmaxWithCrossEntropyGradOp::attributes_name = nullptr;
-const char **ElementwiseAddGradOp::attributes_name = nullptr;
-const char **MatmulV2GradOp::attributes_name = nullptr;
-const char **FlattenContiguousRangeGradOp::attributes_name = nullptr;
-const char **Pool2DGradOp::attributes_name = nullptr;
-const char **BatchNormGradOp::attributes_name = nullptr;
-const char **Conv2DGradOp::attributes_name = nullptr;
-const char **SumOp::attributes_name = nullptr;
-const char **FetchV2Op::attributes_name = nullptr;
-
 void PaddleDialect::initialize() {
   RegisterTypes<paddle::dialect::DenseTensorType>();
 

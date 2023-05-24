@@ -25,7 +25,7 @@ namespace dialect {
   class className : public ir::Op<className> {                  \
    public:                                                      \
     static const char *name() { return OPNAME(op_name); }       \
-    static const char **attributes_name;                        \
+    static constexpr const char **attributes_name = nullptr;    \
     static constexpr uint32_t attributes_num = 0;               \
     static void verify(const std::vector<ir::OpResult> &inputs, \
                        const std::vector<ir::Type> &outputs,    \
