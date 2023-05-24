@@ -500,16 +500,6 @@
   optional : skip_update, master_params
   inplace : (params -> params_out), (moments1 -> moments1_out), (moments2 -> moments2_out), (beta1_pows -> beta1_pows_out), (beta2_pows -> beta2_pows_out), (master_params -> master_params_out)
 
-- op : gather
-  args : (Tensor x, Tensor index, Scalar(int) axis=0)
-  output : Tensor(out)
-  infer_meta :
-    func : GatherInferMeta
-  kernel :
-    func : gather
-    data_type: x
-  backward : gather_grad
-
 - op : gaussian
   args : (IntArray shape, float mean, float std, int seed, DataType dtype, Place place={})
   output: Tensor(out)

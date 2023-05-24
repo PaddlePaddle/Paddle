@@ -395,19 +395,6 @@
   kernel :
     func : frobenius_norm_grad
 
-- backward_op : gather_grad
-  forward : gather(Tensor x, Tensor index, Scalar axis=0) -> Tensor(out)
-  args : (Tensor x, Tensor index, Tensor out_grad, Scalar axis=0)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : UnchangedInferMeta
-    param: [x]
-  kernel :
-    data_type: x
-    func : gather_grad
-  composite : gather_grad(x, index, out_grad, axis, x_grad)
-  no_need_buffer : x
-
 - backward_op : hardswish_grad
   forward : hardswish (Tensor x) -> Tensor(out)
   args : (Tensor x, Tensor out_grad)

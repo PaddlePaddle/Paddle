@@ -823,6 +823,16 @@
     func : frame
   backward : frame_grad
 
+- op : gather
+  args : (Tensor x, Tensor index, Scalar axis=0)
+  output : Tensor(out)
+  infer_meta :
+    func : GatherInferMeta
+  kernel :
+    func : gather
+    data_type: x
+  backward : gather_grad
+
 - op : gather_nd
   args : (Tensor x, Tensor index)
   output : Tensor

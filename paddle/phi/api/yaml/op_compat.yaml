@@ -991,6 +991,10 @@
 
 - op : gather
   backward : gather_grad
+  inputs :
+    {x : X, index : Index}
+  outputs :
+    out : Out
 
 - op : gather_nd
   backward : gather_nd_grad
@@ -998,6 +1002,8 @@
     {x : X, index : Index}
   outputs :
     out : Out
+  attrs :
+    axis : axis
 
 - op : gather_tree
   inputs :
