@@ -15,11 +15,11 @@ limitations under the License. */
 
 #include <utility>
 
-#include "paddle/fluid/distributed/auto_parallel/auto_parallel.pb.h"
-#include "paddle/fluid/distributed/auto_parallel/device_mesh.h"
-#include "paddle/fluid/distributed/auto_parallel/process_mesh.h"
+#include "paddle/phi/core/distributed/auto_parallel/auto_parallel.pb.h"
+#include "paddle/phi/core/distributed/auto_parallel/device_mesh.h"
+#include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 
-namespace paddle {
+namespace phi {
 namespace distributed {
 namespace auto_parallel {
 
@@ -70,4 +70,4 @@ inline std::ostream& operator<<(std::ostream& os,
 
 }  // namespace auto_parallel
 }  // namespace distributed
-}  // namespace paddle
+}  // namespace phi

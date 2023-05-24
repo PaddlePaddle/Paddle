@@ -103,13 +103,28 @@ class TestMatMulV2Op(OpTest):
         self.outputs = {'Out': result}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(
+            check_cinn=self.check_cinn if hasattr(self, 'check_cinn') else True
+        )
 
     def test_check_grad(self):
         if core.is_compiled_with_rocm():
-            self.check_grad(['X', 'Y'], 'Out', max_relative_error=1e-2)
+            self.check_grad(
+                ['X', 'Y'],
+                'Out',
+                max_relative_error=1e-2,
+                check_cinn=self.check_cinn
+                if hasattr(self, 'check_cinn')
+                else True,
+            )
         else:
-            self.check_grad(['X', 'Y'], 'Out')
+            self.check_grad(
+                ['X', 'Y'],
+                'Out',
+                check_cinn=self.check_cinn
+                if hasattr(self, 'check_cinn')
+                else True,
+            )
 
 
 class TestMatMulOp2(TestMatMulV2Op):
@@ -290,6 +305,7 @@ class TestMatMulOp16(TestMatMulV2Op):
         self.y_shape = (1, 2, 2, 100, 2)
         self.trans_x = False
         self.trans_y = False
+        self.check_cinn = False
 
 
 class TestMatMulOp17(TestMatMulV2Op):
@@ -343,7 +359,13 @@ def create_test_fp16_class(parent, atol=0.001, max_relative_error=1.0):
             if core.is_compiled_with_cuda():
                 place = core.CUDAPlace(0)
                 if core.is_float16_supported(place):
-                    self.check_output_with_place(place, atol=atol)
+                    self.check_output_with_place(
+                        place,
+                        atol=atol,
+                        check_cinn=self.check_cinn
+                        if hasattr(self, 'check_cinn')
+                        else True,
+                    )
 
         def test_check_grad(self):
             place = core.CUDAPlace(0)
@@ -353,6 +375,9 @@ def create_test_fp16_class(parent, atol=0.001, max_relative_error=1.0):
                     ['X', 'Y'],
                     'Out',
                     max_relative_error=max_relative_error,
+                    check_cinn=self.check_cinn
+                    if hasattr(self, 'check_cinn')
+                    else True,
                 )
 
     cls_name = "{}_{}".format(parent.__name__, "Fp16")
@@ -405,7 +430,13 @@ def create_test_bf16_class(parent, atol=0.01):
 
         def test_check_output(self):
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=atol)
+            self.check_output_with_place(
+                place,
+                atol=atol,
+                check_cinn=self.check_cinn
+                if hasattr(self, 'check_cinn')
+                else True,
+            )
 
         def test_check_grad_x(self):
             place = core.CUDAPlace(0)
@@ -416,6 +447,9 @@ def create_test_bf16_class(parent, atol=0.01):
                 'Out',
                 no_grad_set={'Y'},
                 user_defined_grads=[numeric_grads],
+                check_cinn=self.check_cinn
+                if hasattr(self, 'check_cinn')
+                else True,
             )
 
         def test_check_grad_y(self):
@@ -427,6 +461,9 @@ def create_test_bf16_class(parent, atol=0.01):
                 'Out',
                 no_grad_set={'X'},
                 user_defined_grads=[numeric_grads],
+                check_cinn=self.check_cinn
+                if hasattr(self, 'check_cinn')
+                else True,
             )
 
         def test_check_grad(self):
@@ -588,12 +625,13 @@ class TestComplexMatMulOp(OpTest):
         self.out = np.dot(self.x, self.y)
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_cinn=False)
 
     def test_check_grad_normal(self):
         self.check_grad(
             ['X', 'Y'],
             'Out',
+            check_cinn=False,
         )
 
     def test_check_grad_ingore_x(self):
@@ -601,6 +639,7 @@ class TestComplexMatMulOp(OpTest):
             ['Y'],
             'Out',
             no_grad_set=set("X"),
+            check_cinn=False,
         )
 
     def test_check_grad_ingore_y(self):
@@ -608,6 +647,7 @@ class TestComplexMatMulOp(OpTest):
             ['X'],
             'Out',
             no_grad_set=set('Y'),
+            check_cinn=False,
         )
 
 
@@ -638,12 +678,13 @@ class TestComplexMatMulOpBroadcast(OpTest):
         self.out = np.dot(self.x, self.y)
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_cinn=False)
 
     def test_check_grad_normal(self):
         self.check_grad(
             ['X', 'Y'],
             'Out',
+            check_cinn=False,
         )
 
     def test_check_grad_ingore_x(self):
@@ -651,6 +692,7 @@ class TestComplexMatMulOpBroadcast(OpTest):
             ['Y'],
             'Out',
             no_grad_set=set("X"),
+            check_cinn=False,
         )
 
     def test_check_grad_ingore_y(self):
@@ -658,6 +700,7 @@ class TestComplexMatMulOpBroadcast(OpTest):
             ['X'],
             'Out',
             no_grad_set=set('Y'),
+            check_cinn=False,
         )
 
 

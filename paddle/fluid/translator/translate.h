@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,21 +14,15 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/platform/enforce.h"
+#include <memory>
+
+#include "paddle/fluid/dialect/pd_dialect.h"
+#include "paddle/fluid/framework/program_desc.h"
+#include "paddle/ir/program.h"
 
 namespace paddle {
-namespace operators {
 
-template <typename T, typename DevCtx>
-class DistributedFusedLambOpKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext &ctx) const override {
-    PADDLE_THROW(platform::errors::Unimplemented(
-        "The distributed_fused_lamb operator does not support CPU yet."));
-  }
-};
+std::unique_ptr<::ir::Program> TranslateLegacyProgramToProgram(
+    const ::paddle::framework::ProgramDesc& legacy_program);
 
-}  // namespace operators
 }  // namespace paddle
