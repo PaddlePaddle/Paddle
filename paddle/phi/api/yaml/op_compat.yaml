@@ -995,6 +995,8 @@
     {x : X, index : Index}
   outputs :
     out : Out
+  attrs :
+    axis : Axis
 
 - op : gather_nd
   backward : gather_nd_grad
