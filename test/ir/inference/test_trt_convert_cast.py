@@ -53,69 +53,97 @@ class TrtConvertCastTest(TrtLayerAutoScanTest):
 
     def sample_program_configs(self):
         def generate_input(type):
-            return np.ones([1, 3, 64, 64]).astype(type)
+            if self.dims == 0:
+                return np.ones([]).astype(type)
+            elif self.dims == 1:
+                return np.ones([1]).astype(type)
+            else:
+                return np.ones([1, 3, 64, 64]).astype(type)
 
-        for in_dtype in [np.bool_, np.int32, np.float32, np.float64, np.int64]:
-            for out_dtype in [
+        for dims in [0, 1, 4]:
+            self.dims = dims
+            for in_dtype in [
                 np.bool_,
                 np.int32,
                 np.float32,
                 np.float64,
                 np.int64,
             ]:
-                self.has_bool_dtype = (in_dtype == np.bool_) or (
-                    out_dtype == np.bool_
-                )
-                dics = [
-                    {
-                        "in_dtype": convert_np_dtype_to_dtype_(in_dtype),
-                        "out_dtype": convert_np_dtype_to_dtype_(out_dtype),
-                    },
-                    {
-                        "in_dtype": convert_np_dtype_to_dtype_(out_dtype),
-                        "out_dtype": convert_np_dtype_to_dtype_(in_dtype),
-                    },
-                ]
+                for out_dtype in [
+                    np.bool_,
+                    np.int32,
+                    np.float32,
+                    np.float64,
+                    np.int64,
+                ]:
+                    self.has_bool_dtype = (in_dtype == np.bool_) or (
+                        out_dtype == np.bool_
+                    )
+                    dics = [
+                        {
+                            "in_dtype": convert_np_dtype_to_dtype_(in_dtype),
+                            "out_dtype": convert_np_dtype_to_dtype_(out_dtype),
+                        },
+                        {
+                            "in_dtype": convert_np_dtype_to_dtype_(out_dtype),
+                            "out_dtype": convert_np_dtype_to_dtype_(in_dtype),
+                        },
+                    ]
 
-                ops_config = [
-                    {
-                        "op_type": "cast",
-                        "op_inputs": {"X": ["input_data"]},
-                        "op_outputs": {"Out": ["cast_output_data0"]},
-                        "op_attrs": dics[0],
-                        "outputs_dtype": {"cast_output_data0": out_dtype},
-                    },
-                    {
-                        "op_type": "cast",
-                        "op_inputs": {"X": ["cast_output_data0"]},
-                        "op_outputs": {"Out": ["cast_output_data1"]},
-                        "op_attrs": dics[1],
-                        "outputs_dtype": {"cast_output_data1": in_dtype},
-                    },
-                ]
+                    ops_config = [
+                        {
+                            "op_type": "cast",
+                            "op_inputs": {"X": ["input_data"]},
+                            "op_outputs": {"Out": ["cast_output_data0"]},
+                            "op_attrs": dics[0],
+                            "outputs_dtype": {"cast_output_data0": out_dtype},
+                        },
+                        {
+                            "op_type": "cast",
+                            "op_inputs": {"X": ["cast_output_data0"]},
+                            "op_outputs": {"Out": ["cast_output_data1"]},
+                            "op_attrs": dics[1],
+                            "outputs_dtype": {"cast_output_data1": in_dtype},
+                        },
+                    ]
 
-                ops = self.generate_op_config(ops_config)
+                    ops = self.generate_op_config(ops_config)
 
-                program_config = ProgramConfig(
-                    ops=ops,
-                    weights={},
-                    inputs={
-                        "input_data": TensorConfig(
-                            data_gen=partial(generate_input, in_dtype)
-                        )
-                    },
-                    outputs=["cast_output_data1"],
-                )
+                    program_config = ProgramConfig(
+                        ops=ops,
+                        weights={},
+                        inputs={
+                            "input_data": TensorConfig(
+                                data_gen=partial(generate_input, in_dtype)
+                            )
+                        },
+                        outputs=["cast_output_data1"],
+                    )
 
-                yield program_config
+                    yield program_config
 
     def sample_predictor_configs(
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
-            self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 64, 64]}
-            self.dynamic_shape.max_input_shape = {"input_data": [1, 3, 64, 64]}
-            self.dynamic_shape.opt_input_shape = {"input_data": [1, 3, 64, 64]}
+            if self.dims == 0:
+                self.dynamic_shape.min_input_shape = {"input_data": []}
+                self.dynamic_shape.max_input_shape = {"input_data": []}
+                self.dynamic_shape.opt_input_shape = {"input_data": []}
+            elif self.dims == 1:
+                self.dynamic_shape.min_input_shape = {"input_data": [1]}
+                self.dynamic_shape.max_input_shape = {"input_data": [1]}
+                self.dynamic_shape.opt_input_shape = {"input_data": [1]}
+            else:
+                self.dynamic_shape.min_input_shape = {
+                    "input_data": [1, 3, 64, 64]
+                }
+                self.dynamic_shape.max_input_shape = {
+                    "input_data": [1, 3, 64, 64]
+                }
+                self.dynamic_shape.opt_input_shape = {
+                    "input_data": [1, 3, 64, 64]
+                }
 
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
@@ -123,7 +151,9 @@ class TrtConvertCastTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            if not dynamic_shape and self.has_bool_dtype:
+            if not dynamic_shape and (
+                self.has_bool_dtype or self.dims == 1 or self.dims == 0
+            ):
                 return 0, 4
             return 1, 2
 
