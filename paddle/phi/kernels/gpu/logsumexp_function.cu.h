@@ -45,7 +45,7 @@ template <typename T,
 __inline__ __device__ T WarpAllReduce(T val) {
   for (int mask = ThreadGroupWidth / 2; mask > 0; mask /= 2) {
 #if PADDLE_WITH_HIP
-    val = Functor<T>(val, __shfl_xor(0xffffffff, val, mask));
+    val = Functor<T>()(val, __shfl_xor(0xffffffff, val, mask));
 #else
     val = Functor<T>()(val, __shfl_xor_sync(0xffffffff, val, mask));
 #endif
