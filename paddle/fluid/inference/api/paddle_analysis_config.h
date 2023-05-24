@@ -101,7 +101,7 @@ struct XpuConfig {
   std::string gemm_precision_mode{"int16"};
   int transformer_softmax_optimize_level{0};
   float quant_gelu_out_threshold{10.f};
-  bool adaptive_seqlen{true};
+  bool transformer_adaptive_seqlen{true};
 
   // only for PaddleInference now
   int quant_post_dynamic_weight_bits{-1};
