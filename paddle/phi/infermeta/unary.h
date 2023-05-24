@@ -717,4 +717,10 @@ void UnStackInferMeta(const MetaTensor& x,
                       int num,
                       std::vector<MetaTensor*> outs);
 
+void QuantInferMeta(const MetaTensor& x,
+                    int bits,
+                    int layout,
+                    MetaTensor* out,
+                    MetaTensor* scale);
+
 }  // namespace phi

@@ -3410,5 +3410,24 @@ void WeightedSampleNeighborsInferMeta(const MetaTensor& row,
   out_count->set_dims({-1});
   out_count->set_dtype(DataType::INT32);
 }
+
+void LLMInt8MatMulInferMeta(const MetaTensor& x,
+                            const MetaTensor& weight,
+                            MetaTensor* out) {
+  auto dims = x.dims();
+  dims[dims.size() - 1] = weight.dims()[0];
+  out->set_dims(dims);
+  out->set_dtype(x.dtype());
+}
+
+void WeightOnlyMatMulInferMeta(const MetaTensor& x,
+                               const MetaTensor& weight,
+                               MetaTensor* out) {
+  auto dims = x.dims();
+  dims[dims.size() - 1] = weight.dims()[1];
+  out->set_dims(dims);
+  out->set_dtype(x.dtype());
+}
+
 }  // namespace phi
 PD_REGISTER_INFER_META_FN(batch_norm_infer, phi::BatchNormInferInferMeta);

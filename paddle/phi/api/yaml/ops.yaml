@@ -1296,6 +1296,16 @@
   data_transform :
     skip_transform : out_size, size_tensor, scale_tensor
 
+- op : llm_int8_mat_mul
+  args : (Tensor x, Tensor weight, Tensor weight_scale, float threshold=6.0)
+  output : Tensor(out)
+  infer_meta :
+    func : LLMInt8MatMulInferMeta
+    param : [x, weight]
+  kernel :
+    func : llm_int8_mat_mul
+    data_type : x
+
 - op : log
   args : (Tensor x)
   output : Tensor
@@ -1832,6 +1842,15 @@
   kernel :
     func : qr
   backward : qr_grad
+
+- op : quant
+  args : (Tensor x, int bits = 8, int layout = 0)
+  output : Tensor(out), Tensor(scale)
+  infer_meta :
+    func : QuantInferMeta
+  kernel :
+    func : quant
+    data_type: x
 
 - op : real
   args : (Tensor x)
@@ -2475,6 +2494,16 @@
     data_type: input
   intermediate: warprnntgrad
   backward : warprnnt_grad
+
+- op : weight_only_mat_mul
+  args : (Tensor x, Tensor weight, Tensor weight_scale)
+  output : Tensor(out)
+  infer_meta :
+    func : WeightOnlyMatMulInferMeta
+    param : [x, weight]
+  kernel :
+    func : weight_only_mat_mul
+    data_type : x
 
 - op : weighted_sample_neighbors
   args : (Tensor row, Tensor colptr, Tensor edge_weight, Tensor input_nodes, Tensor eids, int sample_size, bool return_eids)
