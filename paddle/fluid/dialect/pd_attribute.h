@@ -47,7 +47,7 @@ class ScalarAttribute : public ir::Attribute {
     return storage() < right.storage();
   }
 
-  phi::Scalar data() const;
+  paddle::experimental::Scalar data() const;
 };
 
 class DataTypeAttribute : public ir::Attribute {

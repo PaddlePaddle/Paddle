@@ -245,6 +245,8 @@ inline ir::AttributeMap TranslateOpAttribute(const OpDesc& op_desc) {
   for (auto attr_in_op_desc : op_desc.GetAttrMap()) {
     const auto& attr_name = attr_in_op_desc.first;
     const auto& attr_value = attr_in_op_desc.second;
+    VLOG(0) << "attribute in " << op_desc.Type() << " name: " << attr_name
+            << " " << attr_value.index();
     ir::Attribute new_attr = attribute_translator[attr_value];
     attribute_map[attr_name] = new_attr;
     if (!new_attr) {

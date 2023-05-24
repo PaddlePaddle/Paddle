@@ -17,6 +17,8 @@
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/dialect/pd_attribute.h"
+#include "paddle/phi/common/scalar.h"
 #include "paddle/utils/variant.h"
 
 namespace paddle {
@@ -41,6 +43,74 @@ class AttributeVisitor {
 
   ir::Attribute operator()(std::string str) {
     return ir::StrAttribute::get(ctx, str);
+  }
+
+  ir::Attribute operator()(const paddle::experimental::Scalar& scalar) {
+    return paddle::dialect::ScalarAttribute::get(ctx, scalar);
+  }
+
+  ir::Attribute operator()(const std::vector<std::string>& strs) {
+    std::vector<ir::Attribute> attrs;
+    attrs.reserve(strs.size());
+    for (const auto& v : strs) {
+      attrs.push_back(ir::StrAttribute::get(ctx, v));
+    }
+    return ir::ArrayAttribute::get(ctx, attrs);
+  }
+
+  ir::Attribute operator()(const std::vector<float>& fs) {
+    std::vector<ir::Attribute> attrs;
+    attrs.reserve(fs.size());
+    for (const auto& v : fs) {
+      attrs.push_back(ir::FloatAttribute::get(ctx, v));
+    }
+    return ir::ArrayAttribute::get(ctx, attrs);
+  }
+
+  ir::Attribute operator()(const std::vector<int>& is) {
+    std::vector<ir::Attribute> attrs;
+    attrs.reserve(is.size());
+    for (const auto& v : is) {
+      attrs.push_back(ir::Int64_tAttribute::get(ctx, v));
+    }
+    return ir::ArrayAttribute::get(ctx, attrs);
+  }
+
+  ir::Attribute operator()(const std::vector<bool>& bs) {
+    std::vector<ir::Attribute> attrs;
+    attrs.reserve(bs.size());
+    for (const auto& v : bs) {
+      attrs.push_back(ir::BoolAttribute::get(ctx, v));
+    }
+    return ir::ArrayAttribute::get(ctx, attrs);
+  }
+
+  ir::Attribute operator()(const std::vector<int64_t>& i64s) {
+    std::vector<ir::Attribute> attrs;
+    attrs.reserve(i64s.size());
+    for (const auto& v : i64s) {
+      attrs.push_back(ir::Int64_tAttribute::get(ctx, v));
+    }
+    return ir::ArrayAttribute::get(ctx, attrs);
+  }
+
+  ir::Attribute operator()(const std::vector<double>& ds) {
+    std::vector<ir::Attribute> attrs;
+    attrs.reserve(ds.size());
+    for (const auto& v : ds) {
+      attrs.push_back(ir::DoubleAttribute::get(ctx, v));
+    }
+    return ir::ArrayAttribute::get(ctx, attrs);
+  }
+
+  ir::Attribute operator()(
+      const std::vector<paddle::experimental::Scalar>& ss) {
+    std::vector<ir::Attribute> attrs;
+    attrs.reserve(ss.size());
+    for (const auto& v : ss) {
+      attrs.push_back(paddle::dialect::ScalarAttribute::get(ctx, v));
+    }
+    return ir::ArrayAttribute::get(ctx, attrs);
   }
 
   template <typename T>
