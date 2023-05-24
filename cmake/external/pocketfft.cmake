@@ -33,7 +33,6 @@ if(APPLE)
       git checkout -- . && git checkout ${GLOO_TAG} &&patch -Nd
       ${POCKETFFT_INCLUDE_DIR}/src/extern_pocketfft < ${native_dst})
 endif()
-endif()
 ExternalProject_Add(
   extern_pocketfft
   ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}
