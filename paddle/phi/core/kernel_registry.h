@@ -60,6 +60,9 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
 #if defined(PADDLE_WITH_MKLDNN)
           || arg_type == std::type_index(typeid(const OneDNNContext&))
 #endif
+#if defined(PADDLE_WITH_ARM_DNN_LIBRARY)
+          || arg_type == std::type_index(typeid(const ArmDNNContext&))
+#endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
           || arg_type == std::type_index(typeid(const GPUContext&))
 #elif defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
