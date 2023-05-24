@@ -1996,12 +1996,34 @@ struct HardSigmoidGradFunctor : public BaseActivationFunctor<T> {
   }
 };
 
+template <typename T>
+struct Log {
+  HOSTDEVICE std::conditional_t<std::is_integral<T>::value, float, T>
+  operator()(const T& val) const {
+    return std::log(val);
+  }
+};
+
+template <>
+struct Log<dtype::float16> {
+  HOSTDEVICE dtype::float16 operator()(const dtype::float16& val) const {
+    return dtype::float16(std::log(static_cast<float>(val)));
+  }
+};
+
+template <>
+struct Log<dtype::bfloat16> {
+  HOSTDEVICE dtype::bfloat16 operator()(const dtype::bfloat16& val) const {
+    return dtype::bfloat16(std::log(static_cast<float>(val)));
+  }
+};
+
 // log(x) = natural logarithm of x
 template <typename T>
 struct LogFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.log();
+    out.device(d) = x.unaryExpr(Log<T>());
   }
 };
 
@@ -2019,12 +2041,34 @@ struct LogGradFunctor : public BaseActivationFunctor<T> {
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
 };
 
+template <typename T>
+struct Log2 {
+  HOSTDEVICE std::conditional_t<std::is_integral<T>::value, float, T>
+  operator()(const T& val) const {
+    return std::log2(val);
+  }
+};
+
+template <>
+struct Log2<dtype::float16> {
+  HOSTDEVICE dtype::float16 operator()(const dtype::float16& val) const {
+    return dtype::float16(std::log2(static_cast<float>(val)));
+  }
+};
+
+template <>
+struct Log2<dtype::bfloat16> {
+  HOSTDEVICE dtype::bfloat16 operator()(const dtype::bfloat16& val) const {
+    return dtype::bfloat16(std::log2(static_cast<float>(val)));
+  }
+};
+
 // log2(x) = logarithm to the base 2 of the elements of x
 template <typename T>
 struct Log2Functor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.log() / static_cast<T>(log(2));
+    out.device(d) = x.unaryExpr(Log2<T>());
   }
 };
 
@@ -2043,12 +2087,38 @@ struct Log2GradFunctor : public BaseActivationFunctor<T> {
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
 };
 
+template <typename T>
+struct Log10 {
+  HOSTDEVICE std::conditional_t<std::is_integral<T>::value, float, T>
+  operator()(const T& val) const {
+    return std::log10(val);
+  }
+};
+
+template <>
+struct Log10<dtype::float16> {
+  HOSTDEVICE dtype::float16 operator()(const dtype::float16& val) const {
+    return dtype::float16(std::log10(static_cast<float>(val)));
+  }
+};
+
+template <>
+struct Log10<dtype::bfloat16> {
+  HOSTDEVICE dtype::bfloat16 operator()(const dtype::bfloat16& val) const {
+    return dtype::bfloat16(std::log10(static_cast<float>(val)));
+  }
+};
+
 // log10(x) = logarithm to the base 10 of the elements of x
 template <typename T>
 struct Log10Functor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.log() / static_cast<T>(log(10));
+    out.device(d) = x.unaryExpr(Log10<T>());
+
+    // out.device(d) = x.unaryExpr([] HOSTDEVICE (T v) {
+    //   return v > static_cast<T>(0) ? v : static_cast<T>(0);
+    // });
   }
 };
 
@@ -2067,12 +2137,34 @@ struct Log10GradFunctor : public BaseActivationFunctor<T> {
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
 };
 
+template <typename T>
+struct Log1p {
+  HOSTDEVICE std::conditional_t<std::is_integral<T>::value, float, T>
+  operator()(const T& val) const {
+    return std::log1p(val);
+  }
+};
+
+template <>
+struct Log1p<dtype::float16> {
+  HOSTDEVICE dtype::float16 operator()(const dtype::float16& val) const {
+    return dtype::float16(std::log1p(static_cast<float>(val)));
+  }
+};
+
+template <>
+struct Log1p<dtype::bfloat16> {
+  HOSTDEVICE dtype::bfloat16 operator()(const dtype::bfloat16& val) const {
+    return dtype::bfloat16(std::log1p(static_cast<float>(val)));
+  }
+};
+
 // log1p(x) = natural logarithm of x+1
 template <typename T>
 struct Log1pFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = (static_cast<T>(1) + x).log();
+    out.device(d) = x.unaryExpr(Log1p<T>());
   }
 };
 
@@ -3662,13 +3754,34 @@ struct CudaHardSigmoidGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+__device__ __forceinline__
+    std::conditional_t<std::is_integral<T>::value, float, T>
+    log_local(T x) {
+  static_assert(!std::is_same<T, double>::value,
+                "this template must be used with float or less precise type");
+
+#if defined(__CUDA_ARCH__) || defined(__HIP_ARCH__)
+  // use __logf fast approximation for peak bandwidth
+  return __logf(x);
+#else
+  return ::log(x);
+#endif
+}
+
+template <>
+__device__ __forceinline__ double log_local<double>(double x) {
+  return ::log(x);
+}
+
+template <typename T>
 struct CudaLogFunctor : public BaseActivationFunctor<T> {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using U = typename std::conditional_t<std::is_integral<T>::value, float, T>;
 
   // log(x) = log(x)
-  __device__ __forceinline__ T operator()(const T arg_x) const {
+  __device__ __forceinline__ U operator()(const T arg_x) const {
     MPType x = static_cast<MPType>(arg_x);
-    return static_cast<T>(log(x));
+    return log_local(x);
   }
 };
 
@@ -3686,11 +3799,12 @@ template <typename T>
 struct CudaLog1pFunctor : public BaseActivationFunctor<T> {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   MPType one = static_cast<MPType>(1.0f);
+  using U = typename std::conditional_t<std::is_integral<T>::value, float, T>;
 
   // log1p(x) = log(1 + x)
-  __device__ __forceinline__ T operator()(const T arg_x) const {
+  __device__ __forceinline__ U operator()(const T arg_x) const {
     MPType x = static_cast<MPType>(arg_x);
-    return static_cast<T>(log(one + x));
+    return log_local(one + x);
   }
 };
 
@@ -3707,13 +3821,34 @@ struct CudaLog1pGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+__device__ __forceinline__
+    std::conditional_t<std::is_integral<T>::value, float, T>
+    log2_local(T x) {
+  static_assert(!std::is_same<T, double>::value,
+                "this template must be used with float or less precise type");
+
+#if defined(__CUDA_ARCH__) || defined(__HIP_ARCH__)
+  // use __logf fast approximation for peak bandwidth
+  return __log2f(x);
+#else
+  return ::log2(x);
+#endif
+}
+
+template <>
+__device__ __forceinline__ double log2_local<double>(double x) {
+  return ::log2(x);
+}
+
+template <typename T>
 struct CudaLog2Functor : public BaseActivationFunctor<T> {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using U = typename std::conditional_t<std::is_integral<T>::value, float, T>;
 
   // log2(x) = log2(x)
-  __device__ __forceinline__ T operator()(const T arg_x) const {
+  __device__ __forceinline__ U operator()(const T arg_x) const {
     MPType x = static_cast<MPType>(arg_x);
-    return static_cast<T>(log2(x));
+    return log2_local(x);
   }
 };
 
@@ -3731,13 +3866,34 @@ struct CudaLog2GradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+__device__ __forceinline__
+    std::conditional_t<std::is_integral<T>::value, float, T>
+    log10_local(T x) {
+  static_assert(!std::is_same<T, double>::value,
+                "this template must be used with float or less precise type");
+
+#if defined(__CUDA_ARCH__) || defined(__HIP_ARCH__)
+  // use __logf fast approximation for peak bandwidth
+  return __log10f(x);
+#else
+  return ::log10(x);
+#endif
+}
+
+template <>
+__device__ __forceinline__ double log10_local(double x) {
+  return ::log10(x);
+}
+
+template <typename T>
 struct CudaLog10Functor : public BaseActivationFunctor<T> {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  using U = typename std::conditional_t<std::is_integral<T>::value, float, T>;
 
   // log10(x) = log10(x)
-  __device__ __forceinline__ T operator()(const T arg_x) const {
+  __device__ __forceinline__ U operator()(const T arg_x) const {
     MPType x = static_cast<MPType>(arg_x);
-    return static_cast<T>(log10(x));
+    return log10_local(x);
   }
 };
 
