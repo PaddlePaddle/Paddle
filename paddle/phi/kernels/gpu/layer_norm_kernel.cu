@@ -24,6 +24,38 @@ DECLARE_bool(use_fast_math);
 namespace phi {
 
 #ifdef PADDLE_WITH_CUDA
+
+template <typename U>
+__device__ inline void LegacyOnline(U val, U *mean, U *square, U *count) {
+  *mean += val;
+  *square += val * val;
+  *count += 1;
+}
+
+template <typename U>
+__device__ inline void LegacyOnline(
+    U old_mean, U old_square, U old_cnt, U *mean, U *square, U *cnt) {
+  *mean += old_mean;
+  *square += old_square;
+  *cnt += old_cnt;
+}
+
+template <typename U>
+__device__ inline void LegacyWarpAllReduce(U *mean, U *square, U *count) {
+  constexpr int kWarpSize = 32;
+#pragma unroll
+  for (int mask = (kWarpSize >> 1); mask > 0; mask >>= 1) {
+    U b_mean = __shfl_down_sync(0xffffffff, *mean, mask);
+    U b_square = __shfl_down_sync(0xffffffff, *square, mask);
+    U b_cnt = __shfl_down_sync(0xffffffff, *count, mask);
+    LegacyOnline<U>(b_mean, b_square, b_cnt, mean, square, count);
+  }
+
+  *mean = __shfl_sync(0xffffffff, *mean, 0, kWarpSize);
+  *square = __shfl_sync(0xffffffff, *square, 0, kWarpSize);
+  *count = __shfl_sync(0xffffffff, *count, 0, kWarpSize);
+}
+
 template <typename U>
 __device__ inline void WelfordOnline(U val, U *mean, U *square, U *count) {
   *count += 1;
@@ -293,7 +325,12 @@ struct LayerNormDataWritter<T, U, IsSameType, 1> {
   }
 };
 
-template <typename IndexT, typename T, typename U, bool IsSameType, int VecSize>
+template <typename IndexT,
+          typename T,
+          typename U,
+          bool IsSameType,
+          int VecSize,
+          bool UseWelford = true>
 __global__ void LayerNormFwdWithWelford(
     const T *__restrict__ src_data,
     T *dst_data,
@@ -326,16 +363,34 @@ __global__ void LayerNormFwdWithWelford(
         row_src, buffer, last_tid_idx, read_times, cols_this_thread);
 
     for (int i = 0; i < cols_this_thread; i++) {
-      WelfordOnline<U>(buffer[i], &tid_mean, &tid_square, &tid_cnt);
+      if constexpr (UseWelford) {
+        WelfordOnline<U>(buffer[i], &tid_mean, &tid_square, &tid_cnt);
+      } else {
+        LegacyOnline<U>(buffer[i], &tid_mean, &tid_square, &tid_cnt);
+      }
     }
 
     U warp_cnt = tid_cnt;
     U warp_mean = tid_mean;
     U warp_square = tid_square;
-    WelfordWarpAllReduce<U>(&warp_mean, &warp_square, &warp_cnt);
 
-    U row_variance = max(warp_square / warp_cnt, 0.f);
-    U row_inv_var = funcs::rsqrt_(row_variance + epsilon);
+    if constexpr (UseWelford) {
+      WelfordWarpAllReduce<U>(&warp_mean, &warp_square, &warp_cnt);
+    } else {
+      LegacyWarpAllReduce<U>(&warp_mean, &warp_square, &warp_cnt);
+      warp_mean = warp_mean / warp_cnt;
+    }
+
+    U row_variance;
+    U row_inv_var;
+
+    if constexpr (UseWelford) {
+      row_variance = max(warp_square / warp_cnt, 0.f);
+      row_inv_var = funcs::rsqrt_(row_variance + epsilon);
+    } else {
+      row_variance = max(warp_square / warp_cnt - warp_mean * warp_mean, 0.f);
+      row_inv_var = funcs::rsqrt_(row_variance + epsilon);
+    }
 
     // TODO(limingshu): make code below vectorization.
     if (threadIdx.x == 0) {
