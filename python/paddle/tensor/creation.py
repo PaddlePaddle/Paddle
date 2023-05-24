@@ -1285,7 +1285,7 @@ def fill_constant_batch_size_like(
                     input=like, shape=[1], value=0, dtype='int64') #like=[[10, 10]] data=[0]
 
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
 
