@@ -6,7 +6,7 @@ file(
 cc_library(
   jit_kernel_jitcode
   SRCS ${jitcode_cc_srcs}
-  DEPS jit_kernel_base xbyak)
+  DEPS jit_kernel_refer jit_kernel_base xbyak)
 set(JIT_KERNEL_DEPS
     ${JIT_KERNEL_DEPS} xbyak jit_kernel_jitcode
     PARENT_SCOPE)
