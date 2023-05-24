@@ -29,8 +29,8 @@ if(APPLE)
   file(TO_NATIVE_PATH
        ${PADDLE_SOURCE_DIR}/patches/pocketfft/pocketfft_hdronly.h.patch
        native_dst)
-  set(GLOO_PATCH_COMMAND
-      git checkout -- . && git checkout ${GLOO_TAG} &&patch -Nd
+  set(POCKETFFT_PATCH_COMMAND
+      git checkout -- . && git checkout ${POCKETFFT_TAG} &&patch -Nd
       ${POCKETFFT_INCLUDE_DIR}/src/extern_pocketfft < ${native_dst})
 endif()
 ExternalProject_Add(
@@ -39,6 +39,7 @@ ExternalProject_Add(
   GIT_REPOSITORY ${POCKETFFT_REPOSITORY}
   GIT_TAG ${POCKETFFT_TAG}
   PREFIX ${POCKETFFT_PREFIX_DIR}
+  PATCH_COMMAND ${POCKETFFT_PATCH_COMMAND}
   UPDATE_COMMAND ""
   CONFIGURE_COMMAND ""
   BUILD_COMMAND ""
