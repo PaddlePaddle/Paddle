@@ -110,8 +110,6 @@ _quant_config_default = {
     'quant_post_first': False,
     # whether scale can be train
     'scale_trainable': True,
-    # Deploy backend, it could be: None, TensorRT, MKLDNN, ARM
-    'deploy_backend': None,
 }
 
 
@@ -216,40 +214,6 @@ def _parse_configs(user_config):
     assert isinstance(
         configs['moving_rate'], float
     ), "moving_rate must be float value, The decay coefficient of moving average, default is 0.9."
-
-    deploy_backend = configs['deploy_backend']
-    assert not deploy_backend or deploy_backend.lower() in [
-        'tensorrt',
-        'mkldnn',
-        'arm',
-    ], "Deploy Backend {} not support, please choose None, tensorrt or mkldnn.".format(
-        deploy_backend
-    )
-    try:
-        if not deploy_backend:
-            configs['quant_config'] = quant_config.BaseQuantizer(
-                quantizable_op_type=configs['quantize_op_types'],
-                quant_bits=configs['weight_bits'],
-            )
-        elif deploy_backend.lower() == "tensorrt":
-            configs['quant_config'] = quant_config.TensorRTQuantizer(
-                quantizable_op_type=configs['quantize_op_types'],
-                quant_bits=configs['weight_bits'],
-            )
-        elif deploy_backend.lower() == "mkldnn":
-            configs['quant_config'] = quant_config.MKLDNNQuantizer(
-                quantizable_op_type=configs['quantize_op_types'],
-                quant_bits=configs['weight_bits'],
-            )
-        elif deploy_backend.lower() == "arm":
-            configs['quant_config'] = quant_config.ARMCPUQuantizer(
-                quantizable_op_type=configs['quantize_op_types'],
-                quant_bits=configs['weight_bits'],
-            )
-    except:
-        _logger.warning(
-            "Set deploy_backend failed, Please update to PaddlePaddle Develop."
-        )
 
     return configs
 
