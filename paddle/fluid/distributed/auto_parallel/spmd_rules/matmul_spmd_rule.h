@@ -28,7 +28,7 @@ namespace auto_parallel {
 TensorDistAttr GetInferedDistAttr(
     const TensorDistAttr& origin_dist_attr,
     const std::vector<int64_t>& shape,
-    const std::string& tensor_axis,
+    const std::string& tensor_axes,
     const std::unordered_map<std::string, int64_t>& axis_to_dim_map);
 
 class MatmulSPMDRule : public SPMDRuleBase {

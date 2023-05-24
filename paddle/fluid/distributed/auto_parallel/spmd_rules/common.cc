@@ -18,7 +18,7 @@ namespace paddle {
 namespace distributed {
 namespace auto_parallel {
 
-std::vector<DistTensorSpec> SPMDRuleBase::InferForward(
+std::vector<TensorDistAttr> SPMDRuleBase::InferForward(
     const std::vector<DistTensorSpec>& input_specs,
     const paddle::framework::AttributeMap& attrs) {
   PADDLE_THROW(
@@ -26,7 +26,7 @@ std::vector<DistTensorSpec> SPMDRuleBase::InferForward(
                                  "derived class of SPMDRuleBase !"));
 }
 
-std::vector<DistTensorSpec> SPMDRuleBase::InferBackward(
+std::vector<TensorDistAttr> SPMDRuleBase::InferBackward(
     const std::vector<DistTensorSpec>& output_specs,
     const paddle::framework::AttributeMap& attrs) {
   PADDLE_THROW(
@@ -36,12 +36,12 @@ std::vector<DistTensorSpec> SPMDRuleBase::InferBackward(
 
 std::unordered_map<std::string, int64_t> ShardingMergeForTensors(
     const std::vector<std::pair<const std::string, const std::vector<int64_t>>>&
-        tensor_notation_to_dim_pairs) {
+        tensor_axes_to_dim_pairs) {
   std::unordered_map<std::string, int64_t> axis_to_dim_map;
   std::unordered_map<int64_t, std::string> dim_to_axis_map;
   int64_t merge_dim;
 
-  for (auto& pair : tensor_notation_to_dim_pairs) {
+  for (auto& pair : tensor_axes_to_dim_pairs) {
     for (int i = 0; i < pair.second.size(); i++) {
       auto tensor_axis = pair.first.substr(i, 1);
       auto mesh_dim = pair.second[i];
@@ -84,9 +84,9 @@ std::unordered_map<std::string, int64_t> ShardingMergeForTensors(
 // Rule2: A tensor axis could at most be sharded by one mesh dimension.
 // (TODO trigger heuristics cost model and reshard to handle axis sharded by
 // multiple dimension case.)
-int64_t ShardingMergeForAxis(const std::string axis,
-                             const int64_t mesh_dim1,
-                             const int64_t mesh_dim2) {
+int64_t ShardingMergeForAxis(const std::string& axis,
+                             const int64_t& mesh_dim1,
+                             const int64_t& mesh_dim2) {
   if (mesh_dim1 != mesh_dim2) {
     if (mesh_dim1 == -1) {
       return mesh_dim2;
@@ -118,8 +118,8 @@ TensorDistAttr CopyTensorDistAttrForOutput(
 }
 
 std::vector<int64_t> ResoluteOutputPartialDimension(
-    const std::unordered_map<std::string, int64_t>& in_axis_to_dim_map,
-    const std::string& out_axis) {
+    const std::unordered_map<std::string, int64_t>& axis_to_dim_map,
+    const std::string& tensor_axes) {
   std::vector<int64_t> partial_on_dims;
 
   for (auto& it : in_axis_to_dim_map) {
