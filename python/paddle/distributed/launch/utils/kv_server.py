@@ -71,8 +71,8 @@ class KVServer(HTTPServer):
     def __init__(self, port):
         super().__init__(('', port), KVHandler)
         self.kv_lock = threading.Lock()
-        self.port = port
         self.kv = {'/healthy': b'ok'}
+        self.port = port
         self.stopped = False
         self.started = False
         self.node_topo = None

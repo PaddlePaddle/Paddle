@@ -1075,8 +1075,6 @@ class Cluster:
                 mesh_link.link_level = "mesh"
                 self.mesh_group.add_link(mesh_link)
         self._topo = True
-        with open("mesh_group.json", "w") as wobj:
-            wobj.write(json.dumps(self.mesh_group.to_json(), indent=3))
 
     def build_from_file(self, json_file_path):
         with open(json_file_path) as json_file:
@@ -1174,9 +1172,14 @@ class Cluster:
             device = self.get_device(device_id)
             machine_id = device.machine.id
             machine_ids.add(machine_id)
-            mesh_id = device.machine.mesh.id
-            mesh_ids.add(mesh_id)
-        if len(mesh_ids) == 1 and len(machine_ids) == 1:
+            if self._topo:
+                mesh_id = device.machine.mesh.id
+                mesh_ids.add(mesh_id)
+        if self._topo:
+            if len(mesh_ids) == 1 and len(machine_ids) == 1:
+                return False
+            return True
+        elif len(machine_ids) == 1:
             return False
         else:
             return True
@@ -1335,11 +1338,8 @@ def get_default_cluster(json_config=None, auto_config=None):
             topo_dict = {
                 local_topo.machine["device_type_full"]: {
                     0: local_topo.machine,
-                    1: local_topo.machine,
                 }
             }
-            with open("local_topo.json", "w") as wobj:
-                wobj.write(json.dumps(topo_dict, indent=3))
             cluster._build_from_topo(topo_dict, local_size)
             return cluster
     else:

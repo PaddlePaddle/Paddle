@@ -165,7 +165,7 @@ def parse_args():
     base_group.add_argument(
         "--auto_cluster_config",
         type=strtobool,
-        default=False,
+        default=0,
         help="auto parallel auto cluster config switch",
     )
 

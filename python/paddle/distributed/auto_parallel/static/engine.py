@@ -192,7 +192,7 @@ class Engine:
         if cluster:
             self._cluster = cluster
         else:
-            auto_config = False
+            auto_config = None
             if os.getenv("PADDLE_AUTO_PARALLEL_CONFIG"):
                 try:
                     path = os.getenv("PADDLE_AUTO_PARALLEL_CONFIG")
@@ -204,7 +204,6 @@ class Engine:
                     )
                     self._json_config = None
             else:
-                auto_config = None
                 if os.getenv("PADDLE_AUTO_CLUSTER"):
                     auto_config = int(os.getenv("PADDLE_AUTO_CLUSTER"))
             self._cluster = get_default_cluster(self._json_config, auto_config)
