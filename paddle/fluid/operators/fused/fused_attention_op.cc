@@ -358,6 +358,14 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
              "(optional) Bias is a 1-dimensional tensor of size "
              "H. Here, H represents the last dimension of its input tensor.")
         .AsDispensable();
+    AddInput("Seed1",
+             "Attention dropout random seed. Its priority is higer than "
+             "attn_dropout_fix_seed and attn_dropout_seed.")
+        .AsDispensable();
+    AddInput("DropoutSeed",
+             "Dropout random seed. Its priority is higer than "
+             "dropout_fix_seed and dropout_seed.")
+        .AsDispensable();
     AddOutput("LnMean", "Mean of the current mini batch.").AsIntermediate();
     AddOutput("LnVariance", "Variance of the current mini batch.")
         .AsIntermediate();
@@ -689,15 +697,11 @@ class FusedAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
       op->SetOutput(framework::GradVarName("QKVBias"),
                     this->InputGrad("QKVBias"));
       op->SetInput("QKVBiasOut", this->Output("QKVBiasOut"));
-      op->SetOutput(framework::GradVarName("QKVBiasOut"),
-                    this->OutputGrad("QKVBiasOut"));
     }
 
     if (this->HasInput("SrcMask")) {
       op->SetInput("SrcMask", this->Input("SrcMask"));
       op->SetInput("SrcMaskOut", this->Output("SrcMaskOut"));
-      op->SetOutput(framework::GradVarName("SrcMaskOut"),
-                    this->OutputGrad("SrcMaskOut"));
     }
 
     op->SetInput("OutLinearW", this->Input("OutLinearW"));
@@ -757,7 +761,6 @@ class FusedAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
       op->SetInput("BiasDropoutResidualOut",
                    this->Output("BiasDropoutResidualOut"));
     }
-    op->SetInput("QKVOut", this->Output("QKVOut"));
 
     op->SetInput("TransposeOut2", this->Output("TransposeOut2"));
     op->SetInput("QKOut", this->Output("QKOut"));
@@ -770,34 +773,6 @@ class FusedAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("OutLinearOut", this->Output("OutLinearOut"));
     op->SetInput("DropoutMaskOut", this->Output("DropoutMaskOut"));
     op->SetInput("QKVOut", this->Output("QKVOut"));
-
-    // backward outputs: dinput
-    if (is_pre_layer_norm) {
-      if (this->HasOutput("LnOut")) {
-        op->SetOutput(framework::GradVarName("LnOut"),
-                      this->OutputGrad("LnOut"));
-      }
-    } else {
-      op->SetOutput(framework::GradVarName("BiasDropoutResidualOut"),
-                    this->OutputGrad("BiasDropoutResidualOut"));
-    }
-
-    op->SetOutput(framework::GradVarName("QKVOut"), this->OutputGrad("QKVOut"));
-
-    op->SetOutput(framework::GradVarName("QKTVOut"),
-                  this->OutputGrad("QKTVOut"));
-    op->SetOutput(framework::GradVarName("TransposeOut2"),
-                  this->OutputGrad("TransposeOut2"));
-    op->SetOutput(framework::GradVarName("QKOut"), this->OutputGrad("QKOut"));
-    op->SetOutput(framework::GradVarName("SoftmaxOut"),
-                  this->OutputGrad("SoftmaxOut"));
-    op->SetOutput(framework::GradVarName("AttnDropoutOut"),
-                  this->OutputGrad("AttnDropoutOut"));
-
-    op->SetOutput(framework::GradVarName("FMHAOut"),
-                  this->OutputGrad("FMHAOut"));
-    op->SetOutput(framework::GradVarName("OutLinearOut"),
-                  this->OutputGrad("OutLinearOut"));
   }
 };
 
