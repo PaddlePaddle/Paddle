@@ -19,7 +19,8 @@ if(NOT WITH_COVERAGE)
 endif()
 
 if(NOT WITH_GPU)
-  list(REMOVE_ITEM TEST_OPS test_async_read_write)
+  list(REMOVE_ITEM TEST_OPS test_async_read_write test_audio_logmel_feature
+       test_audio_mel_feature)
 endif()
 
 foreach(src ${TEST_OPS})

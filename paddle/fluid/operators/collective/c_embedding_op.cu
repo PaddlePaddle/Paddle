@@ -239,7 +239,7 @@ PD_REGISTER_STRUCT_KERNEL(c_embedding,
                           ops::CEmbeddingCUDAKernel,
                           float,
                           double,
-#if NCCL_VERSION_CODE >= 21000
+#if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
                           plat::bfloat16,
 #endif
                           plat::float16) {
@@ -251,7 +251,7 @@ PD_REGISTER_STRUCT_KERNEL(c_embedding_grad,
                           ops::CEmbeddingGradCUDAKernel,
                           float,
                           double,
-#if NCCL_VERSION_CODE >= 21000
+#if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
                           plat::bfloat16,
 #endif
                           plat::float16) {

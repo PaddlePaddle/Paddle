@@ -288,7 +288,6 @@ register_unity_group(
   transpose_op.cc
   mkldnn/transpose_mkldnn_op.cc
   tree_conv_op.cc
-  tril_triu_op.cc
   unbind_op.cc
   unfold_op.cc)
 register_unity_group(

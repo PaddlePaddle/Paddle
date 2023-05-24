@@ -38,7 +38,7 @@ from ..framework import (
     _get_paddle_place,
     convert_np_dtype_to_dtype_,
     core,
-    in_dygraph_mode,
+    in_dynamic_mode,
 )
 
 __all__ = []
@@ -312,7 +312,7 @@ def linspace(start, stop, num, dtype=None, name=None):
     if not isinstance(num, Variable):
         with device_guard("cpu"):
             tensor_num = fill_constant([1], 'int32', num, force_cpu=True)
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.linspace(
             tensor_start,
             tensor_stop,
@@ -445,7 +445,7 @@ def logspace(start, stop, num, base=10.0, dtype=None, name=None):
     if not isinstance(base, Variable):
         with device_guard("cpu"):
             tensor_base = fill_constant([1], dtype, base)
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.logspace(
             tensor_start,
             tensor_stop,
@@ -569,12 +569,12 @@ def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
                     "\n\tFaild to convert input data to a regular ndarray :\n\t - Usually "
                     "this means the input data contains nested lists with different lengths. "
                 )
-        elif isinstance(data, paddle.Tensor) and not in_dygraph_mode():
+        elif isinstance(data, paddle.Tensor) and not in_dynamic_mode():
             data = data._copy_to(place, False)
             data = _handle_tensor_dtype(data, dtype)
             data.stop_gradient = stop_gradient
             return data
-        elif isinstance(data, core.eager.Tensor) and in_dygraph_mode():
+        elif isinstance(data, core.eager.Tensor) and in_dynamic_mode():
             data = data._copy_to(place, False)
             data = _handle_tensor_dtype(data, dtype)
             data.stop_gradient = stop_gradient
@@ -583,7 +583,7 @@ def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
             # should't expose it to users, just for internal use.
             # convert core.Tensor/core.LoDTensor to Tensor first
             # Currenly, there is no copy when places are same
-            if in_dygraph_mode():
+            if in_dynamic_mode():
                 data = core.eager.Tensor(data)
             else:
                 data = paddle.Tensor(data)
@@ -777,7 +777,7 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
     if place is None:
         place = _current_expected_place()
 
-    if paddle.fluid.framework._non_static_mode():
+    if in_dynamic_mode():
         return _to_tensor_non_static(data, dtype, place, stop_gradient)
 
     # call assign for static graph
@@ -821,7 +821,7 @@ def full_like(x, fill_value, dtype=None, name=None):
     else:
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.full_like(x, fill_value, dtype, x.place)
     else:
         helper = LayerHelper("full_like", **locals())
@@ -868,7 +868,7 @@ def full_like(x, fill_value, dtype=None, name=None):
 
 
 def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         place = _current_expected_place()
         if force_cpu:
             place = core.CPUPlace()
@@ -1154,7 +1154,7 @@ def eye(num_rows, num_columns=None, dtype=None, name=None):
     else:
         num_columns = num_rows
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         out = _C_ops.eye(
             num_rows, num_columns, dtype, _current_expected_place()
         )
@@ -1295,14 +1295,23 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
             # [3, 4, 5, 6]
 
     """
-    if dtype is None:
-        dtype = 'int64'
     if end is None:
         end = start
         start = 0
 
+    if dtype is None:
+        for val in [start, end, step]:
+            if isinstance(val, Variable) and not val.is_integer():
+                dtype = paddle.get_default_dtype()
+                break
+            elif not isinstance(val, int) and not isinstance(val, Variable):
+                dtype = paddle.get_default_dtype()
+                break
+            else:
+                dtype = 'int64'
+
     out_shape = None
-    if not in_dygraph_mode() and (
+    if not in_dynamic_mode() and (
         not isinstance(start, Variable)
         and not isinstance(end, Variable)
         and not isinstance(step, Variable)
@@ -1330,7 +1339,7 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
     elif step.dtype != dtype:
         step = paddle.cast(step, dtype)
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.arange(start, end, step, dtype, _current_expected_place())
     else:
         check_dtype(
@@ -1445,7 +1454,7 @@ def tril(x, diagonal=0, name=None):
             #         [5 , 0 , 0 , 0 ],
             #         [9 , 10, 0 , 0 ]])
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.tril(x, diagonal)
     else:
         return _tril_triu_op(LayerHelper('tril', **locals()))
@@ -1507,7 +1516,7 @@ def triu(x, diagonal=0, name=None):
             #         [0 , 10, 11, 12]])
 
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.triu(x, diagonal)
     else:
         return _tril_triu_op(LayerHelper('triu', **locals()))
@@ -1548,7 +1557,7 @@ def meshgrid(*args, **kwargs):
 
     if len(args) == 1 and isinstance(args[0], (list, tuple)):
         args = args[0]
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.meshgrid(list(args))
     else:
         name = kwargs.get("name", None)
@@ -1664,7 +1673,7 @@ def diagflat(x, offset=0, name=None):
             #         [0, 0, 3, 0, 0],
             #         [0, 0, 0, 4, 0]])
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         if len(x.shape) <= 1:
             return _C_ops.diag(x, offset, 0)
         else:
@@ -1787,7 +1796,7 @@ def diag(x, offset=0, padding_value=0, name=None):
             # Tensor(shape=[1], dtype=int64, place=Place(cpu), stop_gradient=True,
             #        [4])
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.diag(x, offset, padding_value)
     else:
         check_type(x, 'x', (Variable), 'diag_v2')
@@ -1869,7 +1878,7 @@ def empty(shape, dtype=None, name=None):
 
     dtype = convert_dtype(dtype)
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         shape = paddle.utils.convert_shape_to_list(shape)
         out = _C_ops.empty(
             shape, convert_np_dtype_to_dtype_(dtype), _current_expected_place()
@@ -1950,7 +1959,7 @@ def empty_like(x, dtype=None, name=None):
         dtype = x.dtype
     dtype = convert_dtype(dtype)
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         out = _C_ops.empty(
             x.shape,
             convert_np_dtype_to_dtype_(dtype),
@@ -2056,11 +2065,11 @@ def assign(x, output=None):
         input = np.array(input)
     # NOTE(Aurelius84): Why we judge core.Tensor?
     # In case of @to_static, a Tensor can be as input of `assign`,
-    # but _non_static_mode()==False under @to_static, which means
+    # but in_dynamic_mode()==False under @to_static, which means
     # isinstance(Tensor, Variable) == False. It will cause return None
     # after this api.
     if isinstance(input, (Variable, core.eager.Tensor)):
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             if output is None:
                 output = _C_ops.assign(input)
             else:
@@ -2154,7 +2163,7 @@ def assign(x, output=None):
                 "The size of input is too big. Please consider "
                 "saving it to file and 'load_op' to load it"
             )
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             if output is None:
                 output = zeros(list(input.shape), dtype)
             _C_ops.assign_value_(
@@ -2313,7 +2322,7 @@ def complex(real, imag, name=None):
             #        [[0j    , 1j    , 2j    ],
             #         [(1+0j), (1+1j), (1+2j)]])
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.complex(real, imag)
     else:
         check_variable_and_dtype(
@@ -2385,7 +2394,7 @@ def tril_indices(row, col, offset=0, dtype='int64'):
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         if col is None:
             col = row
         out = _C_ops.tril_indices(
@@ -2464,7 +2473,7 @@ def triu_indices(row, col=None, offset=0, dtype='int64'):
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         if col is None:
             col = row
         out = _C_ops.triu_indices(

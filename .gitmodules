@@ -30,10 +30,6 @@
 	path = third_party/xxhash
 	url = https://github.com/Cyan4973/xxHash.git
 	ignore = dirty
-[submodule "third_party/eigen3"]
-	path = third_party/eigen3
-	url = https://gitlab.com/libeigen/eigen.git
-	ignore = dirty
 [submodule "third_party/leveldb"]
 	path = third_party/leveldb
 	url = https://github.com/google/leveldb
@@ -49,4 +45,8 @@
 [submodule "third_party/glog"]
 	path = third_party/glog
 	url = https://github.com/google/glog.git
+	ignore = dirty
+[submodule "third_party/eigen3"]
+	path = third_party/eigen3
+	url = https://gitlab.com/libeigen/eigen.git
 	ignore = dirty

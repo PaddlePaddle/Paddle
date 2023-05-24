@@ -39,10 +39,10 @@ class TestLookupTableOp(OpTest):
         self.outputs = {'Out': table[ids]}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_cinn=True)
 
     def test_check_grad(self):
-        self.check_grad(['W'], 'Out', no_grad_set=set('Ids'))
+        self.check_grad(['W'], 'Out', no_grad_set=set('Ids'), check_cinn=True)
 
 
 class TestLookupTableOpWithTensorIds(OpTest):
@@ -56,10 +56,10 @@ class TestLookupTableOpWithTensorIds(OpTest):
         self.outputs = {'Out': table[ids.flatten()].reshape((2, 4, 5, 31))}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_cinn=True)
 
     def test_check_grad(self):
-        self.check_grad(['W'], 'Out', no_grad_set=set('Ids'))
+        self.check_grad(['W'], 'Out', no_grad_set=set('Ids'), check_cinn=True)
 
 
 @skip_check_grad_ci(
@@ -73,7 +73,7 @@ class TestLookupTableOpWithPadding(TestLookupTableOp):
         padding_idx = np.random.choice(ids, 1)[0]
         self.outputs['Out'][ids == padding_idx] = np.zeros(31)
         self.attrs = {'padding_idx': int(padding_idx)}
-        self.check_output()
+        self.check_output(check_cinn=True)
 
 
 @skip_check_grad_ci(
@@ -88,7 +88,7 @@ class TestLookupTableOpWithTensorIdsAndPadding(TestLookupTableOpWithTensorIds):
         padding_idx = np.random.choice(flatten_idx, 1)[0]
         self.outputs['Out'][np.squeeze(ids == padding_idx)] = np.zeros(31)
         self.attrs = {'padding_idx': padding_idx}
-        self.check_output()
+        self.check_output(check_cinn=True)
 
 
 class TestLookupTableWIsSelectedRows(unittest.TestCase):
@@ -212,7 +212,7 @@ class TestLookupTableOpInt8(OpTest):
         self.outputs = {'Out': table[ids]}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_cinn=True)
 
     def test_check_grad(self):
         # since int8 type only be used in test and inference, there is
@@ -233,7 +233,7 @@ class TestLookupTableOpWithTensorIdsInt8(OpTest):
         self.outputs = {'Out': table[ids.flatten()].reshape((2, 4, 5, 31))}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_cinn=True)
 
     def test_check_grad(self):
         # since int8 type only be used in test and inference, there is
@@ -247,7 +247,7 @@ class TestLookupTableOpWithPaddingInt8(TestLookupTableOpInt8):
         padding_idx = np.random.choice(ids, 1)[0]
         self.outputs['Out'][ids == padding_idx] = np.zeros(31)
         self.attrs = {'padding_idx': int(padding_idx)}
-        self.check_output()
+        self.check_output(check_cinn=True)
 
     def test_check_grad(self):
         # Since paddings are not trainable and fixed in forward, the gradient of
@@ -264,7 +264,7 @@ class TestLookupTableOpWithTensorIdsAndPaddingInt8(
         padding_idx = np.random.choice(flatten_idx, 1)[0]
         self.outputs['Out'][np.squeeze(ids == padding_idx)] = np.zeros(31)
         self.attrs = {'padding_idx': padding_idx}
-        self.check_output()
+        self.check_output(check_cinn=True)
 
     def test_check_grad(self):
         # Since paddings are not trainable and fixed in forward, the gradient of
@@ -354,7 +354,7 @@ class TestLookupTableOpInt16(OpTest):
         self.outputs = {'Out': table[ids]}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_cinn=True)
 
 
 @skip_check_grad_ci(reason="Int16 type only be used in test and inference.")
@@ -371,7 +371,7 @@ class TestLookupTableOpWithTensorIdsInt16(OpTest):
         self.outputs = {'Out': table[ids.flatten()].reshape((2, 4, 5, 31))}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_cinn=True)
 
 
 @skip_check_grad_ci(reason="Int16 type only be used in test and inference.")
@@ -381,7 +381,7 @@ class TestLookupTableOpWithPaddingInt16(TestLookupTableOpInt16):
         padding_idx = np.random.choice(ids, 1)[0]
         self.outputs['Out'][ids == padding_idx] = np.zeros(31)
         self.attrs = {'padding_idx': int(padding_idx)}
-        self.check_output()
+        self.check_output(check_cinn=True)
 
 
 @skip_check_grad_ci(reason="Int16 type only be used in test and inference.")
@@ -394,7 +394,7 @@ class TestLookupTableOpWithTensorIdsAndPaddingInt16(
         padding_idx = np.random.choice(flatten_idx, 1)[0]
         self.outputs['Out'][np.squeeze(ids == padding_idx)] = np.zeros(31)
         self.attrs = {'padding_idx': padding_idx}
-        self.check_output()
+        self.check_output(check_cinn=True)
 
 
 class TestLookupTableWIsSelectedRowsInt16(unittest.TestCase):
