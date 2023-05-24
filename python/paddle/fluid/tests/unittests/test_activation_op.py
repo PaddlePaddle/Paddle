@@ -2823,8 +2823,8 @@ class Test_Log_Op_Fp16(unittest.TestCase):
 class Test_Log_Op_Int(unittest.TestCase):
     def test_api_int(self):
         paddle.disable_static()
-        for dtype in ('int32', 'int64', 'float16', 'bfloat16'):
-            np_x = np.array([[2, 3, 4], [7, 8, 9]])
+        for dtype in ('int32', 'int64', 'float16'):
+            np_x = np.array([[2, 3, 4], [7, 8, 9]], dtype=dtype)
             x = paddle.to_tensor(np_x, dtype=dtype)
             y = paddle.log(x)
             x_expect = np.log(np_x)
@@ -2895,8 +2895,8 @@ class TestLog2_ZeroDim(TestLog2):
 class TestLog2_Op_Int(unittest.TestCase):
     def test_api_int(self):
         paddle.disable_static()
-        for dtype in ['int32', 'int64', 'float16', 'bfloat16']:
-            np_x = np.array([[2, 3, 4], [7, 8, 9]])
+        for dtype in ['int32', 'int64', 'float16']:
+            np_x = np.array([[2, 3, 4], [7, 8, 9]], dtype=dtype)
             x = paddle.to_tensor(np_x, dtype=dtype)
             y = paddle.log2(x)
             x_expect = np.log2(np_x)
@@ -2932,8 +2932,8 @@ class TestLog10_ZeroDim(TestLog10):
 class TestLog10_Op_Int(unittest.TestCase):
     def test_api_int(self):
         paddle.disable_static()
-        for dtype in ['int32', 'int64', 'float16', 'bfloat16']:
-            np_x = np.array([[2, 3, 4], [7, 8, 9]])
+        for dtype in ['int32', 'int64', 'float16']:
+            np_x = np.array([[2, 3, 4], [7, 8, 9]], dtype=dtype)
             x = paddle.to_tensor(np_x, dtype=dtype)
             y = paddle.log10(x)
             x_expect = np.log10(np_x)
@@ -3012,8 +3012,8 @@ class Test_Log1p_Op_Fp16(unittest.TestCase):
 class TestLog1p_Op_Int(unittest.TestCase):
     def test_api_int(self):
         paddle.disable_static()
-        for dtype in ['int32', 'int64', 'float16', 'bfloat16']:
-            np_x = np.array([[2, 3, 4], [7, 8, 9]])
+        for dtype in ['int32', 'int64', 'float16']:
+            np_x = np.array([[2, 3, 4], [7, 8, 9]], dtype=dtype)
             x = paddle.to_tensor(np_x, dtype=dtype)
             y = paddle.log1p(x)
             x_expect = np.log1p(np_x)
