@@ -161,6 +161,8 @@ struct MatmulPlanner {
                                  static_cast<int>(trans_x),
                                  static_cast<int>(trans_y),
                                  static_cast<int>(dtype),
+                                 static_cast<int>(fused_type_),
+                                 static_cast<int>(use_addto_),
                                  static_cast<int>(no_exchange));
   }
 
@@ -168,10 +170,7 @@ struct MatmulPlanner {
   size_t GetKey() const { return key_; }
   MatmulFusedType GetFusedType() const { return fused_type_; }
 
-  size_t GenSubKey() const {
-    return phi::autotune::GenKey(
-        key_, static_cast<int>(use_addto_), static_cast<int>(fused_type_));
-  }
+  size_t GenSubKey() const { return key_; }
 
  private:
   MatmulFusedType fused_type_;
