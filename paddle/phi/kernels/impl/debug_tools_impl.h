@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-
+#include "glog/logging.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -27,9 +27,9 @@ void CheckModelNanInfKernel(const Context& dev_ctx,
                             const DenseTensor& x,
                             DenseTensor* out) {
   phi::CastKernel<T>(dev_ctx, x, x.dtype(), out);
-  std::cout << "1 FLAGS_check_nan_inf " << FLAGS_check_nan_inf << std::endl;
+  VLOG(4) << "Convert FLAGS_check_nan_inf from " << FLAGS_check_nan_inf
+          << " to " << !FLAGS_check_nan_inf;
   FLAGS_check_nan_inf = !(FLAGS_check_nan_inf);
-  std::cout << "2 FLAGS_check_nan_inf " << FLAGS_check_nan_inf << std::endl;
 }
 
 }  // namespace phi

@@ -35,6 +35,7 @@ __all__ = [
     "enable_tensor_checker",
     "disable_tensor_checker",
     "compare_accuracy",
+    "check_layer_numerics",
 ]
 
 
@@ -58,6 +59,46 @@ class DebugMode(Enum):
     CHECK_ALL = 3
     # CHECK_ALL_AND_ABORT = 4
     # DUMP_ALL = 5
+
+
+def check_layer_numerics(func):
+    """
+    This decorator is used to check the numerical values of the layer's input and output data.
+
+    Args:
+        func (callable): The function to be decorated.
+
+    Returns:
+        callable: The decorated function.
+
+    Raises:
+        None.
+
+    Example:
+        @check_layer_numerics
+        def forward(self, x):
+            return x * 2
+    """
+
+    def wrapper(self, *args, **kwargs):
+        if args:
+            # Set temp data and temp.gradient = False
+            start_data = args[0]
+            start_data.stop_gradient = False
+            modified_args = list(args)  # Convert args to a mutable list
+            # Set FLAGS_check_nan_inf = 1
+            modified_args[0] = _C_ops.disable_check_model_nan_inf(start_data)
+            # Call the forward function
+            out_data = func(self, *modified_args, **kwargs)
+            # Set FLAGS_check_nan_inf = 0
+            out = _C_ops.disable_check_model_nan_inf(out_data)
+            return out
+        else:
+            print("No elements found in args")
+        out = func(self, *args, **kwargs)
+        return out
+
+    return wrapper
 
 
 def set_checked_op_list(checked_op_list):
