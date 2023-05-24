@@ -137,7 +137,7 @@ phi::KernelKey GetPoolExpectedKernelType(
   auto data_type = op_ptr->OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
   // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
-  this->SetDnnFallback(!CanMKLDNNSupportPool(ctx));
+  op_ptr->SetDnnFallback(!CanMKLDNNSupportPool(ctx));
   // NOTE(jiahongyu) END: Above codes originally enclosed by PADDLE_WITH_MKLDNN
 
   return phi::KernelKey(data_type, ctx.GetPlace());
@@ -150,7 +150,7 @@ phi::KernelKey GetPoolOpGradExpectedKernelType(
       op_ptr->OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
   // NOTE(jiahongyu): Below codes originally enclosed by PADDLE_WITH_MKLDNN
-  this->SetDnnFallback(!CanMKLDNNSupportPool(ctx));
+  op_ptr->SetDnnFallback(!CanMKLDNNSupportPool(ctx));
   // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
 
   return phi::KernelKey(input_data_type, ctx.GetPlace());
