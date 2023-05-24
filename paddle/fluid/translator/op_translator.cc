@@ -122,7 +122,7 @@ inline ir::Operation* InsertCombineOperationForTarget(
 
   std::vector<ir::OpResult> src_values;
   std::vector<ir::Type> types_in_vec;
-  for (auto arg_name : args) {
+  for (const auto& arg_name : args) {
     auto defining_info = param_map->at(arg_name);
     src_values.push_back(defining_info.value);
     types_in_vec.push_back(defining_info.value.type());
@@ -139,7 +139,7 @@ inline std::vector<ir::OpResult> GenerateOperationInput(
     TranslationContext* param_map,
     ir::Program* program,
     const OpDesc& op_desc) {
-  std::vector<ir::OpResult> op_inputs = {};
+  std::vector<ir::OpResult> op_inputs;
 
   // scan all inputs to see if any of them is generated as a vector<Tensor>
   // so need an additional `SliceOp` to take it out.
