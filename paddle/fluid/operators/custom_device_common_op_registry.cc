@@ -60,6 +60,8 @@ class CConcatOpCustomDeviceKernel : public framework::OpKernel<T> {
     int nranks = ctx.Attr<int>("nranks");
     int rank = ctx.Attr<int>("rank");
     int rid = ctx.Attr<int>("ring_id");
+    auto place = ctx.GetPlace();
+
     PADDLE_ENFORCE_GE(rank,
                       0,
                       platform::errors::PreconditionNotMet(
@@ -110,16 +112,15 @@ class CConcatOpCustomDeviceKernel : public framework::OpKernel<T> {
       const T* send_buff = x->data<T>();
       T* recv_buff = temp_out.data<T>();
       // should ExecutionContext for calc stream.
-      auto& stream = *reinterpret_cast<const paddle::platform::CustomContext&>(
-                          ctx.device_context())
-                          .GetStream();
-      phi::DeviceManager::CCLAllGather(place.GetDeviceType(),
-                                       send_buff,
-                                       recv_buff,
-                                       send_numel,
-                                       phi::ccl::ToCCLDataType(x.dtype()),
-                                       comm->comm(),
-                                       stream);
+      auto& stream = *dev_ctx.GetStream();
+      phi::DeviceManager::CCLAllGather(
+          place.GetDeviceType(),
+          reinterpret_cast<void*>(const_cast<T*>(send_buff)),
+          recv_buff,
+          send_numel,
+          phi::ccl::ToCCLDataType(x->dtype()),
+          comm->comm(),
+          stream);
     }
     std::vector<phi::DenseTensor> inputs;
     int axis = x->dims().size() - 1;
