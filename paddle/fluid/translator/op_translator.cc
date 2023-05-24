@@ -24,6 +24,8 @@
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/translator/program_translator.h"
 #include "paddle/fluid/translator/type_translator.h"
+#include "paddle/ir/builtin_op.h"
+#include "paddle/ir/builtin_type.h"
 #include "paddle/ir/ir_context.h"
 #include "paddle/ir/value.h"
 #include "paddle/phi/core/enforce.h"
@@ -84,23 +86,101 @@ inline ir::OpInfo LoopkUpOpInfo(ir::IrContext* ctx, const OpDesc& op_desc) {
   return op_info;
 }
 
+inline ir::Operation* InsertSliceOperationForTarget(
+    ir::IrContext* ctx,
+    TranslationContext* param_map,
+    ir::Program* program,
+    const VariableDefiningInfo& defining_info,
+    const std::string& arg_name) {
+  std::string slice_op_name(ir::SliceOp::name());
+  ir::OpInfo op_info = ctx->GetRegisteredOpInfo(slice_op_name);
+  std::unordered_map<std::string, ir::Attribute> op_attribute_map = {
+      {"index", ir::Int32_tAttribute::get(ctx, defining_info.idx_in_vector)},
+  };
+  ir::VectorType src_vec_type =
+      defining_info.value.type().dyn_cast<ir::VectorType>();
+  ir::Operation* operation =
+      ir::Operation::create({defining_info.value},
+                            {src_vec_type[defining_info.idx_in_vector]},
+                            op_attribute_map,
+                            op_info);
+  program->InsertOp(operation);
+  ir::OpResult target_op_result = operation->GetResultByIndex(0);
+  (*param_map)[arg_name] = VariableDefiningInfo(target_op_result);
+  return operation;
+}
+
+inline ir::Operation* InsertCombineOperationForTarget(
+    ir::IrContext* ctx,
+    TranslationContext* param_map,
+    ir::Program* program,
+    const std::vector<std::string>& args) {
+  std::string combine_op_name(ir::CombineOp::name());
+  ir::OpInfo op_info = ctx->GetRegisteredOpInfo(combine_op_name);
+
+  std::vector<ir::OpResult> src_values;
+  std::vector<ir::Type> types_in_vec;
+  for (auto arg_name : args) {
+    auto defining_info = param_map->at(arg_name);
+    src_values.push_back(defining_info.value);
+    types_in_vec.push_back(defining_info.value.type());
+  }
+  ir::Type target_vec_type = ir::VectorType::get(ctx, types_in_vec);
+  ir::Operation* operation =
+      ir::Operation::create(src_values, {target_vec_type}, {}, op_info);
+  program->InsertOp(operation);
+  return operation;
+}
+
 inline std::vector<ir::OpResult> GenerateOperationInput(
-    TranslationContext* param_map, const OpDesc& op_desc) {
+    ir::IrContext* ctx,
+    TranslationContext* param_map,
+    ir::Program* program,
+    const OpDesc& op_desc) {
   std::vector<ir::OpResult> op_inputs = {};
+
+  // scan all inputs to see if any of them is generated as a vector<Tensor>
+  // so need an additional `SliceOp` to take it out.
   for (const auto& n : op_desc.Inputs()) {
     auto& name = n.first;
-    VLOG(10) << "[input retriving]"
-             << "[" << op_desc.Type() << "]" << name;
     auto& args = n.second;
+
     for (const auto& arg_name : args) {
       PADDLE_ENFORCE_NE(
           param_map->count(arg_name),
           0,
           platform::errors::PreconditionNotMet(
-              "arg %s as input should be exists before prasing %d",
+              "arg %s.%s as input should be exists before prasing %d",
+              name,
               arg_name,
               op_desc.Type()));
-      op_inputs.push_back((*param_map)[arg_name]);
+      auto defining_info = (*param_map)[arg_name];
+      if (defining_info.generated_by_vector) {
+        InsertSliceOperationForTarget(
+            ctx, param_map, program, defining_info, arg_name);
+      }
+    }
+  }
+
+  for (const auto& n : op_desc.Inputs()) {
+    auto& name = n.first;
+    VLOG(10) << "[input retriving]"
+             << "[" << op_desc.Type() << "]" << name;
+    auto& args = n.second;
+
+    // if src type is Tensor or a Vector<Tensor> with size <= 1
+    if (args.size() <= 1) {
+      for (const auto& arg_name : args) {
+        auto defining_info = (*param_map)[arg_name];
+        op_inputs.push_back(defining_info.value);
+      }
+
+      // if src type is Vector<Tesnor> , need an additional `CombineOp` to
+      // assemble them.
+    } else {
+      auto* combine_op =
+          InsertCombineOperationForTarget(ctx, param_map, program, args);
+      op_inputs.push_back(combine_op->GetResultByIndex(0));
     }
   }
   return op_inputs;
@@ -119,16 +199,39 @@ inline std::tuple<OpOutputTypeList, OpOutputMapping> GenerateOperationOutput(
     VLOG(10) << "[output translating]"
              << "[" << op_desc.Type() << "]" << name;
     auto& args = n.second;
-    for (const auto& arg_name : args) {
-      VarDesc* var = block->FindVarRecursive(arg_name);
-      VLOG(10) << "[output translating]"
-               << "[" << op_desc.Type() << "]" << name << " " << arg_name << " "
-               << var->GetType();
 
-      ir::Type translated_var_type = type_translator[var->GetType()](ctx, *var);
+    size_t cur_output_idx = op_output_types.size();
 
-      arg_to_idx[arg_name] = op_output_types.size();
-      op_output_types.push_back(translated_var_type);
+    // if src type is Tensor or a Vector<Tensor> with size <= 1
+    if (args.size() <= 1) {
+      for (const auto& arg_name : args) {
+        VarDesc* var = block->FindVarRecursive(arg_name);
+        VLOG(10) << "[output translating]"
+                 << "[" << op_desc.Type() << "]" << name << " " << arg_name
+                 << " " << var->GetType();
+
+        ir::Type translated_var_type =
+            type_translator[var->GetType()](ctx, *var);
+
+        arg_to_idx[arg_name] = cur_output_idx;
+        op_output_types.push_back(translated_var_type);
+      }
+
+      // if src type is Vector<Tesnor>
+    } else {
+      std::vector<ir::Type> types;
+      for (const auto& arg_name : args) {
+        VarDesc* var = block->FindVarRecursive(arg_name);
+        VLOG(10) << "[output translating]"
+                 << "[" << op_desc.Type() << "]" << name << " " << arg_name
+                 << " " << var->GetType();
+        ir::Type translated_var_type =
+            type_translator[var->GetType()](ctx, *var);
+        types.push_back(translated_var_type);
+        arg_to_idx[arg_name] = cur_output_idx;
+      }
+      ir::Type vec_type = ir::VectorType::get(ctx, types);
+      op_output_types.push_back(vec_type);
     }
   }
   return {op_output_types, arg_to_idx};
@@ -143,12 +246,17 @@ inline void RecordOpResultMapping(TranslationContext* param_map,
     VLOG(10) << "[output recording]"
              << "[" << op_desc.Type() << "]" << name;
     auto& args = n.second;
+    size_t idx_in_vector = 0;
     for (const auto& arg_name : args) {
       auto idx = arg_to_idx.at(arg_name);
       VLOG(10) << "[output recording]"
                << "[" << op_desc.Type() << "]" << arg_name << " " << idx;
 
-      (*param_map)[arg_name] = operation->GetResultByIndex(idx);
+      ir::OpResult value = operation->GetResultByIndex(idx);
+      bool generated_by_vector = value.type().isa<ir::VectorType>();
+      (*param_map)[arg_name] = VariableDefiningInfo(
+          value, generated_by_vector, generated_by_vector ? idx_in_vector : -1);
+      idx_in_vector++;
     }
   }
 }
@@ -157,7 +265,7 @@ ir::Operation* GeneralOpHandler(ir::IrContext* ctx,
                                 TranslationContext* param_map,
                                 ir::Program* program,
                                 const OpDesc& op_desc) {
-  auto op_inputs = GenerateOperationInput(param_map, op_desc);
+  auto op_inputs = GenerateOperationInput(ctx, param_map, program, op_desc);
 
   OpOutputMapping arg_to_idx;
   OpOutputTypeList op_output_types = {};
@@ -193,7 +301,7 @@ ir::Operation* FetchOpHandler(ir::IrContext* ctx,
                               TranslationContext* param_map,
                               ir::Program* program,
                               const OpDesc& op_desc) {
-  auto op_inputs = GenerateOperationInput(param_map, op_desc);
+  auto op_inputs = GenerateOperationInput(ctx, param_map, program, op_desc);
 
   OpOutputTypeList op_output_types = {};
   auto op_info = LoopkUpOpInfo(ctx, op_desc);
