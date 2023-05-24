@@ -71,14 +71,6 @@ class ProgramTranslator {
   /// `ExtractParameterFromSingleBlock`
   static const std::unordered_set<std::string> no_cast_var_names;
 
-  /// In the legacy program desc, there are two special named varibales:
-  /// 1. "feed", the input variable of feed op
-  /// 2. "fetch", the output variable of fetch op
-  /// However, new feed has no input and new fetch has no output
-  /// So we don't handle these two vairables when
-  /// `ExtractParameterFromSingleBlock`
-  static const std::unordered_set<std::string> no_cast_var_names;
-
   void ExtractParameterFromSingleBlock(const BlockDesc& block);
   void InsertOperationToSingleBlock(const BlockDesc& block);
 };
