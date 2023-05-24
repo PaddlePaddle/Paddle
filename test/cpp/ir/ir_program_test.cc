@@ -243,10 +243,9 @@ TEST(program_test, slice_combine_test) {
       ir::Operation::create({}, {fp32_dtype}, op2_attribute, op2_info);
   program.InsertOp(op2);
 
+  // (6) Def combine_op = CombineOp("a", "b")
   std::string combine_op_name = std::string(ir::CombineOp::name());
-
   ir::OpInfo combine_op_info = ctx->GetRegisteredOpInfo(combine_op_name);
-
   ir::Type output_type =
       ir::VectorType::get(ctx, std::vector<ir::Type>({fp32_dtype, fp32_dtype}));
   ir::Operation *combine_op = ir::Operation::create(
@@ -256,6 +255,7 @@ TEST(program_test, slice_combine_test) {
       combine_op_info);
   program.InsertOp(combine_op);
 
+  // (7) Def slice_op = SliceOp(combine_op, 0)
   std::string slice_op_name = std::string(ir::SliceOp::name());
   ir::OpInfo slice_op_info = ctx->GetRegisteredOpInfo(slice_op_name);
   ir::Attribute index_attr = ir::Int32_tAttribute::get(ctx, 0);
