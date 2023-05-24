@@ -143,7 +143,7 @@ class IrContext {
   ///
   /// \return The dialect named "dialect_name" in the context.
   ///
-  Dialect *GetOrRegisterDialect(std::string dialect_name,
+  Dialect *GetOrRegisterDialect(const std::string &dialect_name,
                                 std::function<Dialect *()> constructor);
 
   ///
