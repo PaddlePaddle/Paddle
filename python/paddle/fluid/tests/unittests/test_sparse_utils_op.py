@@ -351,6 +351,17 @@ class TestSparseConvert(unittest.TestCase):
         dense_x[2] = 0
         verify(dense_x)
 
+    def test_zero_nnz(self):
+        for device in devices:
+            if device == 'cpu' or (
+                device == 'gpu' and paddle.is_compiled_with_cuda()
+            ):
+                x = paddle.zeros([2, 2, 2])
+                sp_x = x.to_sparse_csr()
+
+                out = sp_x.to_dense()
+                assert np.allclose(out.numpy(), x.numpy())
+
 
 class TestCooError(unittest.TestCase):
     def test_small_shape(self):
