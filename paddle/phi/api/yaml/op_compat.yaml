@@ -436,12 +436,12 @@
 
 - op : concat
   backward : concat_grad
-  inputs:
-    x: X
-  outputs:
-    out: Out
-  attrs:
-    axis: axis
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  attrs :
+    axis : axis
   scalar :
     axis :
       data_type : int
