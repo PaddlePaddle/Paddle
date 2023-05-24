@@ -77,7 +77,7 @@ class GlobalGatherOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(false);
     AddComment(R"DOC(
 Global Gather Operator
-Gather data in X to n_expert * world_size exeperts according to
+Gather data in X to n_expert * world_size experts according to
 local_count and receive tensors from n_expert * world_size experts according
 to global_count.
 )DOC");

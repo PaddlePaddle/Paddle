@@ -87,7 +87,7 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
                 and src_op.attr("seed")
             ):
                 _logger.info(
-                    "Auto Parallel Random Control Skiped Since manul seed is set by user: {}".format(
+                    "Auto Parallel Random Control Skipped Since manul seed is set by user: {}".format(
                         src_op
                     )
                 )
@@ -120,7 +120,7 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
                     pre_op._set_attr("force_cpu", True)
                 else:
                     _logger.info(
-                        "Auto Parallel Random Control Skiped Since manul seed is set by user: {}".format(
+                        "Auto Parallel Random Control Skipped Since manul seed is set by user: {}".format(
                             src_op
                         )
                     )

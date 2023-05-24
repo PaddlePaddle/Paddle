@@ -24,7 +24,7 @@ class Dialect;
 ///
 /// \brief Abstract the properties and behaviors common to all Type classes into
 /// an AbstractType class. There are two types in Type system:
-/// non-parameter/parameterless type and parameteric-type. The common attributes
+/// non-parameter/parameterless type and parametric-type. The common attributes
 /// of all types is TypeId (and possibly others). Therefore, construct a class
 /// with TypeId as its member.
 ///
@@ -77,7 +77,7 @@ class AbstractType {
  private:
   ///
   /// \brief The constructor is set to private and provides the user with the
-  /// get method to obtain and manage the AstractType.
+  /// get method to obtain and manage the AbstractType.
   ///
   /// \param type_id The type id of the AbstractType.
   /// \param dialect The Dialect which the type registered to.
@@ -95,10 +95,10 @@ struct TypeManager;
 ///
 /// \brief TypeStorage is used to store all information of a Type. A Type object
 /// contains a TypeStorage. For non-parameter type, the information includes:
-/// TypeId, so TypeStorage only needs to include AbstractType; For parameteric
-/// type, in addition to AbstractType/TypeId, parameteric information needs to
-/// be included. So that, non-parameteric type can be constructed by TypeStorage
-/// directly but parameteric type should be constructed by Derived TypeStorage.
+/// TypeId, so TypeStorage only needs to include AbstractType; For parametric
+/// type, in addition to AbstractType/TypeId, parametric information needs to
+/// be included. So that, non-parametric type can be constructed by TypeStorage
+/// directly but parametric type should be constructed by Derived TypeStorage.
 ///
 class TypeStorage : public StorageManager::StorageBase {
   friend StorageManager;
@@ -144,7 +144,7 @@ class TypeStorage : public StorageManager::StorageBase {
 struct TypeManager {
   ///
   /// \brief Get a unique instance of Type T from IrContext. Note: For a
-  /// parameteric_type, if not found in IrContext, it will try to create a new
+  /// parametric_type, if not found in IrContext, it will try to create a new
   /// instance and register it to IrContext; for a parameterless type, only
   /// search.
   ///

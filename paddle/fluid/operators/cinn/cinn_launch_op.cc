@@ -17,6 +17,7 @@
 #include <functional>
 #include <vector>
 
+#include "cinn/common/target.h"
 #include "cinn/hlir/framework/graph_compiler.h"
 #include "cinn/runtime/cinn_runtime.h"
 #include "cinn/runtime/flags.h"
@@ -92,6 +93,11 @@ template <>
 void SetCinnRandomSeed<phi::CPUContext>() {
   auto seed = phi::DefaultCPUGenerator()->GetCurrentSeed();
   ::cinn::runtime::RandomSeed::GetOrSet(seed);
+}
+
+void SetCinnTarget(const ::cinn::common::Target& target) {
+  VLOG(4) << "Set CINN compile target to " << target;
+  ::cinn::runtime::CurrentTarget::SetCurrentTarget(target);
 }
 
 }  // namespace details

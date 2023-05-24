@@ -206,7 +206,7 @@ class EncoderNet(paddle.nn.Layer):
             initializer=paddle.nn.initializer.Normal(0.0, 0.02),
             learning_rate=2.0,
         )
-        if fluid.framework._non_static_mode():
+        if fluid.framework.in_dygraph_mode():
             h_0 = np.zeros(
                 (Config.batch_size, rnn_hidden_size), dtype="float32"
             )

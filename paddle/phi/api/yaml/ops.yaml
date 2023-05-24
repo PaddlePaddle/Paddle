@@ -873,6 +873,17 @@
     data_type : x
   backward : grid_sample_grad
 
+- op : group_norm
+  args : (Tensor x, Tensor scale, Tensor bias, float epsilon = 1e-5, int groups = -1, str data_layout = "NCHW")
+  output : Tensor(y), Tensor(mean), Tensor(variance)
+  infer_meta :
+    func : GroupNormInferMeta
+  kernel :
+    func : group_norm
+  optional : scale, bias
+  intermediate : mean, variance
+  backward : group_norm_grad
+
 - op : gumbel_softmax
   args : (Tensor x, float temperature = 1.0, bool hard = false, int axis = -1)
   output : Tensor
@@ -1134,6 +1145,18 @@
     data_type : param
   optional : master_param, skip_update, beta1_pow_out, beta2_pow_out, master_param_outs
   inplace : (param -> param_out), (moment1 -> moment1_out), (moment2 -> moment2_out), (beta1_pow -> beta1_pow_out), (beta2_pow -> beta2_pow_out), (master_param -> master_param_outs)
+
+- op : layer_norm
+  args : (Tensor x, Tensor scale, Tensor bias, float epsilon = 1e-5, int begin_norm_axis = 1)
+  output : Tensor(out), Tensor(mean), Tensor(variance)
+  infer_meta :
+    func : LayerNormInferMeta
+  kernel :
+    func : layer_norm
+    data_type : x
+  backward : layer_norm_grad
+  intermediate : mean, variance
+  optional : scale, bias
 
 - op : leaky_relu
   args : (Tensor x, float negative_slope = 0.02f)
@@ -1615,6 +1638,15 @@
   kernel :
     func : p_norm
   backward : p_norm_grad
+
+- op : pad3d
+  args : (Tensor x, IntArray paddings, str mode = "constant", float pad_value = 0.0, str data_format = "NCDHW")
+  output : Tensor(out)
+  infer_meta :
+    func : Pad3dInferMeta
+  kernel :
+    func : pad3d
+  backward : pad3d_grad
 
 - op : pixel_shuffle
   args : (Tensor x, int upscale_factor=1, str data_format="NCHW")

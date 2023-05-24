@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from paddle import _legacy_C_ops
-from paddle.fluid.framework import _non_static_mode
+from paddle.framework import in_dynamic_mode
 
 
 def fused_gate_attention(
@@ -83,6 +83,7 @@ def fused_gate_attention(
         attn_mask (Tensor, optional):  The attention mask. The shape is [batch_size, msa_len, 1, 1, res_len]. Default None.
         has_gating (bool, optional): Whether has the gating linear. Default True.
         merge_qkv (bool, optional): Whether has the gating linear. Default True.
+        use_flash_attn (bool, optional): Whether use flash-attention to speedup. Default False.
 
     Returns:
         Tensor: The output Tensor, the data type and shape is same as `query`.
@@ -141,8 +142,8 @@ def fused_gate_attention(
             # [2, 4, 2, 4]
 
     """
-    if _non_static_mode():
-        _, _, _, _, _, _, _, out = _legacy_C_ops.fused_gate_attention(
+    if in_dynamic_mode():
+        _, _, _, _, _, _, _, _, out = _legacy_C_ops.fused_gate_attention(
             query,
             key,
             query_weight,
