@@ -18,34 +18,16 @@ namespace phi {
 
 KernelSignature RepeatInterleaveOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  if (ctx.HasInput("RepeatsTensor")) {
-    VLOG(3) << "sig------ repeat_interleave_with_tensor_index";
-    return KernelSignature("repeat_interleave_with_tensor_index",
-                           {"X", "RepeatsTensor"},
-                           {"dim"},
-                           {"Out"});
-  } else {
-    VLOG(3) << "sig ------repeat_interleave";
-    return KernelSignature(
-        "repeat_interleave", {"X"}, {"Repeats", "dim"}, {"Out"});
-  }
+  return KernelSignature(
+      "repeat_interleave", {"X"}, {"Repeats", "dim"}, {"Out"});
 }
 
 KernelSignature RepeatInterleaveGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
-  if (ctx.HasInput("RepeatsTensor")) {
-    VLOG(3) << "sig ------repeat_interleave with tensor grad";
-    return KernelSignature("repeat_interleave_with_tensor_index_grad",
-                           {"X", "RepeatsTensor", "Out@GRAD"},
-                           {"dim"},
-                           {"X@GRAD"});
-  } else {
-    VLOG(3) << "sig repeat_interleave grad";
-    return KernelSignature("repeat_interleave_grad",
-                           {"X", "Out@GRAD"},
-                           {"Repeats", "dim"},
-                           {"X@GRAD"});
-  }
+  return KernelSignature("repeat_interleave_grad",
+                         {"X", "Out@GRAD"},
+                         {"Repeats", "dim"},
+                         {"X@GRAD"});
 }
 
 }  // namespace phi

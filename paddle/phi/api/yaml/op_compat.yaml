@@ -1919,6 +1919,13 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- op : repeat_interleave (repeat_interleave_with_tensor_index)
+  backward : repeat_interleave_grad (repeat_interleave_with_tensor_index_grad)
+  inputs :
+    {x : X}
+  outputs :
+    {out : Out}
+
 - op : reshape (reshape2)
   backward : reshape_grad (reshape2_grad)
   inputs:

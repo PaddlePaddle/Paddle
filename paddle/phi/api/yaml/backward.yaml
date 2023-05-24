@@ -1541,6 +1541,18 @@
   kernel :
     func : renorm_grad
 
+- backward_op : repeat_interleave_with_tensor_index_grad
+  forward : repeat_interleave_with_tensor_index(Tensor x, Tensor repeats, int axis) -> Tensor(out)
+  args : (Tensor x, Tensor repeats, Tensor out_grad, int axis)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : repeat_interleave_with_tensor_index_grad
+    data_type : x
+  no_need_buffer : x
+
 - backward_op : reverse_grad
   forward : reverse (Tensor x, IntArray axis) -> Tensor(out)
   args : (Tensor out_grad, IntArray axis)
