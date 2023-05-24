@@ -3251,8 +3251,7 @@ function check_coverage_build() {
     set -x
 }
 function run_setup(){
-    startTime_s=`date +%s`
-    rm -rf build
+    startTime_s=`date +%s`  
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
     # Build script will not fail if *.deb does not exist
@@ -3480,7 +3479,7 @@ EOF
             python setup.py $2;build_error=$?
         fi
     fi
-
+    sleep 10h
     # ci will collect ccache hit rate
     collect_ccache_hits
 
