@@ -131,7 +131,7 @@ class TestErfinvBF16OP(OpTest):
         self.dtype = np.uint16
         self.shape = [11, 17]
         x = np.random.uniform(-1, 1, size=self.shape).astype(np.float32)
-        res_ref = erfinv(self.x).astype(np.float32)
+        res_ref = erfinv(x)
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.outputs = {'Out': convert_float_to_uint16(res_ref)}
 
