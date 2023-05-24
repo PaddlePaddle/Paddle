@@ -1885,18 +1885,32 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "bitwise_not") {
-#if !IS_TRT_VERSION_GE(8400)
       auto* block = desc.Block();
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       auto dtype = x_var_desc->GetDataType();
-      if (dtype == framework::proto::VarType::BOOL ||
-          dtype == framework::proto::VarType::INT8 ||
+
+      if (dtype == framework::proto::VarType::INT8 ||
           dtype == framework::proto::VarType::UINT8) {
-        VLOG(3) << "BOOL / INT8 / UINT8 type support requires TensorRT 8.4";
+        VLOG(3) << "INT8 / UINT8 type convert to trt is not supported";
         return false;
       }
+
+      if (dtype == framework::proto::VarType::BOOL) {
+        const auto x_shape = x_var_desc->GetShape();
+#if !IS_TRT_VERSION_GE(8600)
+        if (x_shape.size() == 0) {
+          VLOG(3)
+              << "BOOL type does not support 0 dim input when TensorRT < 8.6.";
+          return false;
+        }
+#elif !IS_TRT_VERSION_GE(8400)
+        if (dtype == framework::proto::VarType::BOOL) {
+          VLOG(3) << "BOOL type support requires TensorRT 8.4";
+          return false;
+        }
 #endif
+      }
     }
 
     if (op_type == "one_hot" || op_type == "one_hot_v2") {

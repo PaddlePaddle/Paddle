@@ -34,6 +34,9 @@ class TrtConvertCumsum(TrtLayerAutoScanTest):
         self.trt_param.workspace_size = 1073741824
 
         def generate_input1():
+            if self.dims == 0:
+                self.input_shape = []
+                return np.random.random([]).astype(np.float32)
             if self.dims == 2:
                 self.input_shape = [2, 3]
                 return np.random.random([2, 3]).astype(np.int32)
@@ -44,8 +47,11 @@ class TrtConvertCumsum(TrtLayerAutoScanTest):
                 self.input_shape = [4, 3, 32, 32]
                 return np.random.random([4, 3, 32, 32]).astype(np.float32) - 0.5
 
-        for dims in [2, 3, 4]:
-            for axis in range(-1, dims):
+        for dims in [0, 2, 3, 4]:
+            test_dims = dims
+            if dims == 0:
+                test_dims = 1
+            for axis in range(-1, test_dims):
                 for type in ["int32", "int64", "float32", "float64"]:
                     self.dims = dims
                     ops_config = [
@@ -74,7 +80,7 @@ class TrtConvertCumsum(TrtLayerAutoScanTest):
                     yield program_config
 
         # no op_attrs
-        for dims in [2, 3, 4]:
+        for dims in [0, 2, 3, 4]:
             self.dims = dims
             ops_config = [
                 {
@@ -105,8 +111,17 @@ class TrtConvertCumsum(TrtLayerAutoScanTest):
         self, program_config
     ) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape():
-
-            if self.dims == 2:
+            if self.dims == 0:
+                self.dynamic_shape.min_input_shape = {
+                    "input_data": [],
+                }
+                self.dynamic_shape.max_input_shape = {
+                    "input_data": [],
+                }
+                self.dynamic_shape.opt_input_shape = {
+                    "input_data": [],
+                }
+            elif self.dims == 2:
                 self.dynamic_shape.min_input_shape = {
                     "input_data": [2, 3],
                 }
