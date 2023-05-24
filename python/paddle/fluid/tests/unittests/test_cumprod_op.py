@@ -132,7 +132,11 @@ class TestCumprod(OpTest):
             for zero_num in self.zero_nums:
                 self.prepare_inputs_outputs_attrs(dim, zero_num)
                 self.init_grad_input_output(dim)
-                if self.dtype == np.float64:
+                if (
+                    self.dtype == np.float64
+                    or self.dtype == np.float16
+                    or self.dtype == np.uint16
+                ):
                     self.check_grad(['X'], 'Out')
                 else:
                     self.check_grad(
@@ -141,6 +145,37 @@ class TestCumprod(OpTest):
                         user_defined_grads=[self.grad_x],
                         user_defined_grad_outputs=[self.grad_out],
                     )
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestCumprodBF16Op(TestCumprod):
+    def init_dtype(self):
+        self.dtype = np.uint16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestCumprodFP16Op(TestCumprod):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+    def prepare_inputs_outputs_attrs(self, dim, zero_num):
+        self.x = np.random.random(self.shape).astype(self.dtype)
+        if zero_num > 0:
+            zero_num = min(zero_num, self.x.size)
+            shape = self.x.shape
+            self.x = self.x.flatten()
+            indices = random.sample(range(self.x.size), zero_num)
+            for i in indices:
+                self.x[i] = 0
+            self.x = np.reshape(self.x, self.shape)
+        self.out = np.cumprod(self.x, axis=dim)
+        self.inputs = {'X': self.x}
+        self.outputs = {'Out': self.out}
+        self.attrs = {'dim': dim}
 
 
 # test float32 case.
@@ -239,6 +274,7 @@ class TestCumprodAPI(unittest.TestCase):
         def run(place):
             paddle.disable_static(place)
             x = paddle.to_tensor(self.x)
+
             out = paddle.cumprod(x, 1)
             out_ref = np.cumprod(self.x, 1)
             np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
