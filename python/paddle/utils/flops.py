@@ -176,7 +176,7 @@ def _elementwise_flops_compute(input_shapes, attrs):
 def _elementwise_add_flops(input_shapes, attrs):
     """FLOPs computation for elementwise_add op.
     For elementwise_add(input,other):
-        input_shapes = [shape_of_input, shape_of_ohther]
+        input_shapes = [shape_of_input, shape_of_other]
         shape_of_input = [dim1, dim2, dim3 ...]
         shape_of_other = [odim1, odim2, odim3...]
         equation: flops = max(dim1, odim1) * max(dim2, odim2) * max()...
@@ -188,7 +188,7 @@ def _elementwise_add_flops(input_shapes, attrs):
 def _elementwise_mul_flops(input_shapes, attrs):
     """FLOPs computation for elementwise_mul op.
     For elementwise_mul(input,other):
-        input_shapes = [shape_of_input, shape_of_ohther]
+        input_shapes = [shape_of_input, shape_of_other]
         shape_of_input = [dim1, dim2, dim3 ...]
         shape_of_other = [odim1, odim2, odim3...]
         equation: flops = max(dim1, odim1) * max(dim2, odim2)* max()...
@@ -200,7 +200,7 @@ def _elementwise_mul_flops(input_shapes, attrs):
 def _elementwise_div_flops(input_shapes, attrs):
     """FLOPs computation for elementwise_div op.
     For elementwise_div(input,other):
-        input_shapes = [shape_of_input, shape_of_ohther]
+        input_shapes = [shape_of_input, shape_of_other]
         shape_of_input = [dim1, dim2, dim3 ...]
         shape_of_other = [odim1, odim2, odim3...]
         equation: flops = max(dim1,odim1)*max(dim2,odim2)*max()...
@@ -237,7 +237,7 @@ def _layer_norm_flops(input_shapes, attrs):
 def _matmul_flops(input_shapes, attrs):
     """FLOPs computation for matmul op.
     For matmul(input,other):
-        input_shapes = [shape_of_input, shape_of_ohther]
+        input_shapes = [shape_of_input, shape_of_other]
         shape_of_input =                  [dim1,dim2 ...dim_n_1,dim_n]  length:n
         shape_of_other = [odim1,odim2 ... odim(n-m)... odim_m_1,dim_m]  length:m
         suppose n > m and dim_n = odim_m_1:
@@ -274,7 +274,7 @@ def _matmul_flops(input_shapes, attrs):
 def _matmul_v2_flops(input_shapes, attrs):
     """FLOPs computation for matmul_v2 op.
     For matmul_v2(input,other):
-        input_shapes = [shape_of_input, shape_of_ohther]
+        input_shapes = [shape_of_input, shape_of_other]
         shape_of_input =                   [dim1, dim2 ...dim_n_1, dim_n] length:n
         shape_of_other = [odim1, odim2 ... odim(n-m) ... odim_m_1, dim_m] length:m
         suppose n > m and dim_n = odim_m_1:

@@ -27,7 +27,6 @@ from eager_op_test import convert_float_to_uint16, convert_uint16_to_float
 import paddle
 import paddle.distributed as dist
 from paddle import fluid
-from paddle.distributed.utils.nccl_utils import get_nccl_version_str
 from paddle.fluid import core
 
 
@@ -194,10 +193,7 @@ class TestDistBase(unittest.TestCase):
 
         # NOTE: this is a hack to get int format nccl version, like 2134
         # if current platform is not linux, version number will be 0
-        nccl_version_str = get_nccl_version_str()
-        self._nccl_version = (
-            int("".join(nccl_version_str.split("."))) if nccl_version_str else 0
-        )
+        self._nccl_version = core.nccl_version()
 
     def tearDown(self):
         self.temp_dir.cleanup()

@@ -100,19 +100,29 @@ class Generator:
         self.outputs = {'Out': Out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_cinn=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=1e-3)
+        self.check_grad(
+            ['X', 'Y'], 'Out', max_relative_error=1e-3, check_cinn=True
+        )
 
     def test_check_grad_ignore_x(self):
         self.check_grad(
-            ['Y'], 'Out', max_relative_error=1e-3, no_grad_set=set("X")
+            ['Y'],
+            'Out',
+            max_relative_error=1e-3,
+            no_grad_set=set("X"),
+            check_cinn=True,
         )
 
     def test_check_grad_ignore_y(self):
         self.check_grad(
-            ['X'], 'Out', max_relative_error=1e-3, no_grad_set=set('Y')
+            ['X'],
+            'Out',
+            max_relative_error=1e-3,
+            no_grad_set=set('Y'),
+            check_cinn=True,
         )
 
 

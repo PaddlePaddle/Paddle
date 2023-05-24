@@ -20,7 +20,6 @@
 #include "paddle/ir/builtin_attribute.h"
 #include "paddle/ir/builtin_dialect.h"
 #include "paddle/ir/builtin_op.h"
-#include "paddle/ir/builtin_type.h"
 #include "paddle/ir/ir_context.h"
 #include "paddle/ir/program.h"
 #include "paddle/ir/utils.h"
@@ -34,6 +33,16 @@ class AddOp : public ir::Op<AddOp> {
   static const char *name() { return "test.add"; }
   static constexpr const char **attributes_name = nullptr;
   static constexpr uint32_t attributes_num = 0;
+  static void verify(const std::vector<ir::OpResult> &inputs,
+                     const std::vector<ir::Type> &outputs,
+                     const ir::AttributeMap &attributes) {
+    if (inputs.size() != 2) {
+      throw("The size of inputs must be equal to 2.");
+    }
+    if (outputs.size() != 1) {
+      throw("The size of outputs must be equal to 1.");
+    }
+  }
 };
 
 TEST(program_test, program) {
