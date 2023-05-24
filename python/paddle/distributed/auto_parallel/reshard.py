@@ -1733,9 +1733,9 @@ class Resharder:
             op_desc_list = op_desc_seq[rank_id]
             for op_desc in op_desc_list:
                 if isinstance(op_desc, AllGatherOpDesc):
-                    new_process_group(op_desc.groups)
+                    new_process_group(op_desc.group)
                 elif isinstance(op_desc, AllGatherConcatOpDesc):
-                    new_process_group(op_desc.groups)
+                    new_process_group(op_desc.group)
                 elif isinstance(op_desc, SendOpDesc):
                     new_process_group([op_desc.src, op_desc.dst])
                 elif isinstance(op_desc, RecvOpDesc):
