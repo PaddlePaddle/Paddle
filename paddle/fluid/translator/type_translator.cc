@@ -22,6 +22,10 @@
 namespace paddle {
 namespace translator {
 
+using OpDesc = paddle::framework::OpDesc;
+using BlockDesc = paddle::framework::BlockDesc;
+using VarDesc = paddle::framework::VarDesc;
+using VarType = paddle::framework::proto::VarType;
 using DenseTensorType = paddle::dialect::DenseTensorType;
 using DenseTensorTypeStorage = paddle::dialect::DenseTensorTypeStorage;
 

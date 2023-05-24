@@ -2323,7 +2323,7 @@
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : tanh
-  backward : tanh_grad, tanh_double_grad (tanh_grad_grad)
+  backward : tanh_grad, tanh_double_grad (tanh_grad_grad), tanh_triple_grad
   inputs :
     x : X
   outputs :
