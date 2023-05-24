@@ -350,7 +350,6 @@ class SingleNodeTopology:
         self.get_link_info()
 
         self.json_object = json.dumps(self.machine, indent=4)
-        # print(self.json_object)
 
     def dump(self, output_path):
         with open(output_path, "w") as outfile:
