@@ -65,7 +65,8 @@ class DygraphShardingOptimizer:
         # Note: The inner_opt should promise that it only use its self._parameter_list.
         # Recursively use the self._inner_opt._inner_opt._parameter_list is not allowed.
         print("inner_opt:", self._inner_opt)
-        print("self._inner_opt params len:{}, self._inner_opt._inner_opt params len:{}".format(len(self._inner_opt._parameter_list), len(self._inner_opt._inner_opt._parameter_list)))
+        if hasattr(self._inner_opt, '_inner_opt'):
+            print("self._inner_opt params len:{}, self._inner_opt._inner_opt params len:{}".format(len(self._inner_opt._parameter_list), len(self._inner_opt._inner_opt._parameter_list)))
         print("self._parameter_list len:{}".format(len(self._parameter_list)))
         inner_opt = self._inner_opt
         while hasattr(inner_opt, '_parameter_list'):

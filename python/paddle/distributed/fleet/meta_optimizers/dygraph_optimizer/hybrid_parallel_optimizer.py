@@ -227,7 +227,7 @@ class HybridParallelOptimizer:
         # TODO(pangengzheng): get sharding stage level to decide whether wrap optimzer with DygraphShardingOptimizer
         if hcg.get_sharding_parallel_world_size() > 1:
             optimizer = DygraphShardingOptimizer(optimizer, hcg)
-        print("Hybrid inner_opt:{}".format(optimizer))
+        # print("Hybrid inner_opt:{}".format(optimizer))
         self._inner_opt = optimizer
         self._strategy = strategy
         self._hcg = hcg
@@ -252,9 +252,9 @@ class HybridParallelOptimizer:
                 "While using ClipGradByGlobalNorm in TensorParallel, PipelineParallel "
                 "or Sharding, the grad clip of original optimizer will be changed."
             )
-            print("before unwrap, inner optimizer:", self._inner_opt)
+            # print("before unwrap, inner optimizer:", self._inner_opt)
             inner_opt = unwrap_optimizer(self._inner_opt, (MixPrecisionOptimizer, DygraphShardingOptimizer))
-            print("after unwrap, inner optimizer:", inner_opt)
+            # print("after unwrap, inner optimizer:", inner_opt)
 
             if (
                 inner_opt._parameter_list
@@ -402,7 +402,7 @@ class HybridParallelOptimizer:
         parameters_list = obtain_optimizer_parameters_list(self._inner_opt)
         if self._sharding_enable:
             assert isinstance(self._inner_opt, DygraphShardingOptimizer)
-            print("reduce_gradients parameters_list len:{}".format(len(parameters_list)))
+            # print("reduce_gradients parameters_list len:{}".format(len(parameters_list)))
             DygraphShardingOptimizer.reduce_gradients(list(parameters_list), self._hcg)
 
         if self._dp_enable:
