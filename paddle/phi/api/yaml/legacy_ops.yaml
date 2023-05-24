@@ -209,6 +209,16 @@
     data_type : x
   backward : depthwise_conv2d_transpose_grad
 
+- op : disable_check_model_nan_inf
+  args: (Tensor x)
+  output: Tensor(out)
+  infer_meta:
+    func: UnchangedInferMeta
+  kernel:
+    func: check_model_nan_inf
+    data_type: x
+  backward: disable_check_model_nan_inf_grad
+
 - op : distribute_fpn_proposals
   args : (Tensor fpn_rois, Tensor rois_num, int min_level, int max_level, int refer_level, int refer_scale, bool pixel_offset)
   output : Tensor[](multi_fpn_rois){max_level - min_level + 1}, Tensor[](multi_level_rois_num){max_level - min_level + 1}, Tensor(restore_index)
@@ -304,6 +314,16 @@
     param : [x, dtype]
     data_type : dtype > x
     backend : place > x
+
+- op : enable_check_model_nan_inf
+  args: (Tensor x)
+  output: Tensor(out)
+  infer_meta:
+    func: UnchangedInferMeta
+  kernel:
+    func: check_model_nan_inf
+    data_type: x
+  backward: enable_check_model_nan_inf_grad
 
 - op : equal
   args : (Tensor x, Tensor y)
