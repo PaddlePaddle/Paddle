@@ -18,7 +18,8 @@ import numpy as np
 import paddle
 from paddle.distribution import exponential_family
 from paddle.fluid.data_feeder import check_type, convert_dtype
-from paddle.framework import in_dynamic_mode, Variable
+from paddle.fluid.layers import Variable
+from paddle.framework import in_dynamic_mode
 from paddle.nn.functional import (
     binary_cross_entropy_with_logits,
     sigmoid,

@@ -26,7 +26,8 @@ import numpy as np
 import paddle
 from paddle import _C_ops
 from paddle.fluid.data_feeder import check_variable_and_dtype, convert_dtype
-from paddle.framework import in_dynamic_mode, Variable
+from paddle.fluid.layers import Variable
+from paddle.framework import in_dynamic_mode
 
 
 class Distribution:

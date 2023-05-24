@@ -18,7 +18,8 @@ import paddle
 from paddle import _C_ops
 from paddle.distribution import distribution
 from paddle.fluid.data_feeder import check_type, convert_dtype
-from paddle.framework import in_dynamic_mode, Variable
+from paddle.fluid.layers import Variable
+from paddle.framework import in_dynamic_mode
 from paddle.tensor import random
 
 
