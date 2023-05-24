@@ -35,7 +35,9 @@ class Program {
  public:
   ~Program();
 
-  std::list<Operation*>& ops() { return block.operations(); }
+  Block* block() { return &block_; }
+
+  std::list<Operation*>& ops() { return block_.operations(); }
 
   size_t parameters_num() const { return parameters_.size(); }
 
@@ -52,8 +54,7 @@ class Program {
   void SetParameter(std::string name, std::unique_ptr<Parameter>&& parameter);
 
  private:
-  Block block;
-
+  Block block_;
   std::unordered_map<std::string, std::unique_ptr<Parameter>> parameters_;
 };
 

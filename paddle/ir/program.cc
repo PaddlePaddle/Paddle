@@ -19,7 +19,7 @@ namespace ir {
 Program::~Program() = default;
 
 void Program::InsertOp(Operation* op) {
-  block.push_back(op);
+  block_.push_back(op);
   op->set_parent_program(this);
 }
 

@@ -16,7 +16,9 @@
 
 #include <list>
 
+#include "paddle/ir/block.h"
 #include "paddle/ir/operation.h"
+#include "paddle/ir/program.h"
 
 namespace ir {
 ///
@@ -26,26 +28,48 @@ namespace ir {
 class Builder {
  public:
   explicit Builder(IrContext *context) : context_(context) {}
-  explicit Builder(Operation *op) : Builder(op->ir_context()) {}
+
+  explicit Builder(IrContext *context,
+                   Block *block,
+                   Block::iterator insert_point)
+      : context_(context), block_(block), insert_point_(insert_point) {}
+
+  static Builder AtBlockBegin(IrContext *context, Block *block) {
+    return Builder(context, block, block->begin());
+  }
+
+  static Builder AtBlockEnd(IrContext *context, Block *block) {
+    return Builder(context, block, block->end());
+  }
 
   IrContext *context() const { return context_; }
+
+  Block *block() const { return block_; }
+
+  Operation *insert(Operation *op);
+
+  /// Creates an operation given the fields represented as an OperationState.
+  Operation *create(const OperationArgument &argument);
+
+  /// Creates an operation with the given fields.
+  Operation *create(const std::vector<ir::OpResult> &inputs,
+                    const std::vector<ir::Type> &output_types,
+                    const AttributeMap &attribute,
+                    ir::OpInfo op_info);
 
   /// Create an operation of specific op type at the current insertion point.
   template <typename OpTy, typename... Args>
   OpTy create(Args &&...args) {
     OperationArgument argument(context_->GetRegisteredOpInfo(OpTy::name()));
     OpTy::build(*this, argument, std::forward<Args>(args)...);
-    Operation *op = Operation::create(argument);
+    Operation *op = create(argument);
     return op->dyn_cast<OpTy>();
   }
 
  private:
   IrContext *context_;
-  // The current op list this builder is inserting into.
-  // After the design of the block data structure is completed,
-  // this member will be replaced by the block.
-  std::list<Operation *> *op_list_ = nullptr;
+  Block *block_ = nullptr;
   // The insertion point within the list that this builder is inserting before.
-  std::list<Operation *>::iterator insertPoint;
+  Block::iterator insert_point_;
 };
 }  // namespace ir
