@@ -224,7 +224,9 @@ class TestDistMPTraning(unittest.TestCase):
                 grad_clip=clip,
             )
             if is_sharding:
-                optimizer = DygraphShardingOptimizer(optimizer, fleet.get_hybrid_communicate_group())
+                optimizer = DygraphShardingOptimizer(
+                    optimizer, fleet.get_hybrid_communicate_group()
+                )
         else:
             optimizer = paddle.optimizer.Momentum(
                 learning_rate=0.001,
@@ -232,7 +234,9 @@ class TestDistMPTraning(unittest.TestCase):
                 grad_clip=clip,
             )
             if is_sharding:
-                optimizer = DygraphShardingOptimizer(optimizer, fleet.get_hybrid_communicate_group())
+                optimizer = DygraphShardingOptimizer(
+                    optimizer, fleet.get_hybrid_communicate_group()
+                )
         return optimizer
 
     def build_model_optimizer(self, Optimizer="adam"):
@@ -282,9 +286,7 @@ class TestDistMPTraning(unittest.TestCase):
 
             if idx == 2 and paddle.distributed.get_rank() == 0:
                 self.assertTrue(
-                    set(
-                        optimizer_a._inner_opt._inner_opt.state_dict().keys()
-                    )
+                    set(optimizer_a._inner_opt._inner_opt.state_dict().keys())
                     == sharded_accumulators
                 )
 

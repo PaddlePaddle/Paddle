@@ -21,7 +21,9 @@ import numpy as np
 import paddle
 from paddle import _legacy_C_ops, nn
 from paddle.distributed import fleet
-from paddle.distributed.fleet.utils.hybrid_parallel_util import obtain_optimizer_parameters_list
+from paddle.distributed.fleet.utils.hybrid_parallel_util import (
+    obtain_optimizer_parameters_list,
+)
 from paddle.fluid import framework
 from paddle.fluid.dygraph import base as imperative_base
 from paddle.fluid.dygraph import to_variable

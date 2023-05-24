@@ -47,9 +47,15 @@ class DygraphShardingOptimizer:
     def __init__(self, optimizer, hcg):
         # TODO(pangengzheng): support param_groups
         if isinstance(optimizer._parameter_list[0], dict):
-            raise TypeError("Do not support param_groups now, please set optimizer._parameter_list as a list of Parameter")
-        if not hasattr(optimizer, '_apply_optimize') or not hasattr(optimizer._apply_optimize, '__call__'):
-            raise ValueError("the optimzier object should have _apply_optimize function")
+            raise TypeError(
+                "Do not support param_groups now, please set optimizer._parameter_list as a list of Parameter"
+            )
+        if not hasattr(optimizer, '_apply_optimize') or not callable(
+            optimizer._apply_optimize
+        ):
+            raise ValueError(
+                "the optimzier object should have _apply_optimize function"
+            )
 
         # the self._parameter_list holds the whole model paramters
         self._parameter_list = optimizer._parameter_list
@@ -66,8 +72,13 @@ class DygraphShardingOptimizer:
         # Recursively use the self._inner_opt._inner_opt._parameter_list is not allowed.
         print("inner_opt:", self._inner_opt)
         if hasattr(self._inner_opt, '_inner_opt'):
-            print("self._inner_opt params len:{}, self._inner_opt._inner_opt params len:{}".format(len(self._inner_opt._parameter_list), len(self._inner_opt._inner_opt._parameter_list)))
-        print("self._parameter_list len:{}".format(len(self._parameter_list)))
+            print(
+                "self._inner_opt params len:{}, self._inner_opt._inner_opt params len:{}".format(
+                    len(self._inner_opt._parameter_list),
+                    len(self._inner_opt._inner_opt._parameter_list),
+                )
+            )
+        print(f"self._parameter_list len:{len(self._parameter_list)}")
         inner_opt = self._inner_opt
         while hasattr(inner_opt, '_parameter_list'):
             inner_opt._parameter_list = self._rank2params[self._sharding_rank]
@@ -77,8 +88,11 @@ class DygraphShardingOptimizer:
                 break
         #
         # self._set_inner_opt_attr('_parameter_list', self._rank2params[self._sharding_rank])
-        print("after parameters update, params len:%d" % (len(self._inner_opt._parameter_list)))
-        print("self._parameter_list len:{}".format(len(self._parameter_list)))
+        print(
+            "after parameters update, params len:%d"
+            % (len(self._inner_opt._parameter_list))
+        )
+        print(f"self._parameter_list len:{len(self._parameter_list)}")
 
     def clear_grad(self, set_to_zero=True):
         """
@@ -189,7 +203,6 @@ class DygraphShardingOptimizer:
     def minimize(
         self, loss, startup_program=None, parameters=None, no_grad_set=None
     ):
-
         # NOTE in dygraph mode, the only different between step and minimize is that minimize
         # allow user to customize the parameters for updating on each step
 
@@ -217,39 +230,80 @@ class DygraphShardingOptimizer:
         # hack to grad_clip all parameters,
         # otherwise the self._inner_opt will only grad_clip the self._rank2params[self._sharding_rank] params
         origin_clip = self._inner_opt._grad_clip
+
         def set_inner_opt_grad_clip(grad_clip_value):
             inner_opt = self._inner_opt
             while hasattr(inner_opt, '_grad_clip'):
                 inner_opt._grad_clip = grad_clip_value
-                if hasattr(inner_opt, '_inner_opt') and inner_opt._inner_opt is not None:
+                if (
+                    hasattr(inner_opt, '_inner_opt')
+                    and inner_opt._inner_opt is not None
+                ):
                     inner_opt = inner_opt._inner_opt
                 else:
                     break
+
         if not isinstance(self._parameter_list[0], dict):
             params_grads = []
             for param in self._parameter_list:
-                if hasattr(param, "regularizer") and param.regularizer is not None:
-                    raise ValueError("param {} should not has the regularizer attribute".format(param.name))
+                if (
+                    hasattr(param, "regularizer")
+                    and param.regularizer is not None
+                ):
+                    raise ValueError(
+                        "param {} should not has the regularizer attribute".format(
+                            param.name
+                        )
+                    )
                 if param.stop_gradient:
                     continue
                 grad_var = param._grad_ivar()
                 if hasattr(param, "main_grad") and param.main_grad is not None:
                     grad_var = param.main_grad
                 params_grads.append((param, grad_var))
-            print("dygraph_sharding inner_opt:{}, grad_clip:{}".format(self._inner_opt, self._inner_opt._grad_clip))
-            print("clip grad params_grads len:{}".format(len(params_grads)))
+            print(
+                "dygraph_sharding inner_opt:{}, grad_clip:{}".format(
+                    self._inner_opt, self._inner_opt._grad_clip
+                )
+            )
+            print(f"clip grad params_grads len:{len(params_grads)}")
             if hasattr(self._inner_opt._grad_clip, 'not_sharding_stage1'):
                 self._inner_opt._grad_clip.not_sharding_stage1 = False
+            # def set_inner_opt_grad_clip_attr(attr_name, value):
+            #     inner_opt = self._inner_opt
+            #     while hasattr(inner_opt._grad_clip, attr_name):
+            #         setattr(inner_opt._grad_clip, attr_name, value)
+            #         if hasattr(inner_opt, '_inner_opt'):
+            #             inner_opt = inner_opt._inner_opt
+            #         else:
+            #             break
+            # set_inner_opt_grad_clip_attr('not_sharding_stage1', False)
             params_grads = self._inner_opt._grad_clip(params_grads)
-            print("after grad clip, params_grads len:{}".format(len(params_grads)))
+            print(f"after grad clip, params_grads len:{len(params_grads)}")
             # set inner_opt._grad_clip None to avoid repeatedly grad_clip gradients inside inner_opt._apply_optimize
             set_inner_opt_grad_clip(None)
             # self._set_inner_opt_attr('_grad_clip', None)
-            update_param_names = [p.name for p in self._rank2params[self._sharding_rank]]
-            update_params_grads = [(p, g) for p, g in params_grads if p.name in update_param_names]
-            print("update_params_grads len:{}, non update params len:{}".format(len(update_params_grads), len(params_grads)))
-            self._apply_optimize(loss=None, startup_program=None, params_grads=update_params_grads)
-            print("after clip, dygraph_sharding inner_opt:{}, grad_clip:{}".format(self._inner_opt, self._inner_opt._grad_clip))
+            update_param_names = [
+                p.name for p in self._rank2params[self._sharding_rank]
+            ]
+            update_params_grads = [
+                (p, g) for p, g in params_grads if p.name in update_param_names
+            ]
+            print(
+                "update_params_grads len:{}, non update params len:{}".format(
+                    len(update_params_grads), len(params_grads)
+                )
+            )
+            self._apply_optimize(
+                loss=None,
+                startup_program=None,
+                params_grads=update_params_grads,
+            )
+            print(
+                "after clip, dygraph_sharding inner_opt:{}, grad_clip:{}".format(
+                    self._inner_opt, self._inner_opt._grad_clip
+                )
+            )
             # restore the grad clip
             set_inner_opt_grad_clip(origin_clip)
             # self._set_inner_opt_attr('_grad_clip', origin_clip)
@@ -261,10 +315,17 @@ class DygraphShardingOptimizer:
         inner_opt = self._inner_opt
         inner_opt_name = '_inner_opt'
         if not isinstance(attr_name, str):
-            raise TypeError("attr_name should be str type, but is {}".format(type(attr_name)))
+            raise TypeError(
+                "attr_name should be str type, but is {}".format(
+                    type(attr_name)
+                )
+            )
         while hasattr(inner_opt, attr_name):
             setattr(inner_opt, attr_name, value)
-            if hasattr(inner_opt, inner_opt_name) and getattr(inner_opt, inner_opt_name, None) is not None:
+            if (
+                hasattr(inner_opt, inner_opt_name)
+                and getattr(inner_opt, inner_opt_name, None) is not None
+            ):
                 inner_opt = getattr(inner_opt, inner_opt_name, None)
             else:
                 break
