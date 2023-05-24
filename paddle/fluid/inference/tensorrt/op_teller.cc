@@ -1897,16 +1897,14 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
 
       if (dtype == framework::proto::VarType::BOOL) {
+#if !IS_TRT_VERSION_GE(8400)
+        VLOG(3) << "BOOL type support requires TensorRT 8.4";
+        return false;
+#elif !IS_TRT_VERSION_GE(8600)
         const auto x_shape = x_var_desc->GetShape();
-#if !IS_TRT_VERSION_GE(8600)
         if (x_shape.size() == 0) {
           VLOG(3)
               << "BOOL type does not support 0 dim input when TensorRT < 8.6.";
-          return false;
-        }
-#elif !IS_TRT_VERSION_GE(8400)
-        if (dtype == framework::proto::VarType::BOOL) {
-          VLOG(3) << "BOOL type support requires TensorRT 8.4";
           return false;
         }
 #endif

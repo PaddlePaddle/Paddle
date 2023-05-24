@@ -14,11 +14,150 @@
 
 #include "paddle/ir/builtin_op.h"
 
+#include "paddle/ir/builtin_attribute.h"
+#include "paddle/ir/builtin_type.h"
+#include "paddle/phi/core/enforce.h"
+
 namespace ir {
 const char *GetParameterOp::attributes_name[attributes_num] = {
     "parameter_name"};
 
+void GetParameterOp::verify(const std::vector<ir::OpResult> &inputs,
+                            const std::vector<ir::Type> &outputs,
+                            const ir::AttributeMap &attributes) {
+  VLOG(4) << "Verifying inputs, outputs and attributes for: GetParameterOp.";
+  // Verify inputs type:
+  if (inputs.size() != 0) {
+    throw("The size of inputs must be equal to 0.");
+  }
+  // Verify outputs type:
+  if (outputs.size() != 1) {
+    throw("The size of outputs must be equal to 1.");
+  }
+  // Verify if attributes contain attribute name in attributes_name:
+  if (!attributes.at("parameter_name").isa<StrAttribute>()) {
+    throw("Type of attribute: parameter_name is not right.");
+  }
+}
+
 const char *SetParameterOp::attributes_name[attributes_num] = {
     "parameter_name"};
+
+void SetParameterOp::verify(const std::vector<ir::OpResult> &inputs,
+                            const std::vector<ir::Type> &outputs,
+                            const ir::AttributeMap &attributes) {
+  VLOG(4) << "Verifying inputs, outputs and attributes for: SetParameterOp.";
+  // Verify inputs type:
+  if (inputs.size() != 1) {
+    throw("The size of inputs must be equal to 1.");
+  }
+  // Verify outputs type:
+  if (outputs.size() != 0) {
+    throw("The size of outputs must be equal to 0.");
+  }
+  // Verify if attributes contain attribute name in attributes_name:
+  if (!attributes.at("parameter_name").isa<StrAttribute>()) {
+    throw("Type of attribute: parameter_name is not right.");
+  }
+}
+
+void CombineOp::verify(const std::vector<ir::OpResult> &inputs,
+                       const std::vector<ir::Type> &outputs,
+                       const ir::AttributeMap &attributes) {
+  // outputs.size() == 1
+  PADDLE_ENFORCE_EQ(
+      outputs.size(),
+      1,
+      phi::errors::PreconditionNotMet(
+          "The size %d of outputs must be equal to 1.", outputs.size()));
+  // outputs[0].type == Vector<Type>
+  PADDLE_ENFORCE(outputs[0].isa<ir::VectorType>(),
+                 phi::errors::PreconditionNotMet(
+                     "The type %s of outputs[0] must be equal to VectorType.",
+                     outputs[0]));
+  ir::VectorType output_type = outputs[0].dyn_cast<ir::VectorType>();
+  // inputs.size() == outputs[0].size()
+  PADDLE_ENFORCE_EQ(
+      output_type.size(),
+      inputs.size(),
+      phi::errors::PreconditionNotMet(
+          "The size %d of outputs[0] must be equal to size %d of inputs.",
+          output_type.size(),
+          inputs.size()));
+
+  // forall i in inputs.size(): inputs[i].type == outputs[0][i].type
+  for (size_t i = 0; i < inputs.size(); i++) {
+    PADDLE_ENFORCE_EQ(
+        output_type[i],
+        inputs[i].type(),
+        phi::errors::PreconditionNotMet("The type %s of outputs[0][%d] must be "
+                                        "equal to type %s of inputs[%d].",
+                                        output_type[i],
+                                        i,
+                                        inputs[i].type(),
+                                        i));
+  }
+}
+
+const char *SliceOp::attributes_name[attributes_num] = {"index"};
+void SliceOp::verify(const std::vector<ir::OpResult> &inputs,
+                     const std::vector<ir::Type> &outputs,
+                     const ir::AttributeMap &attributes) {
+  // inputs.size() == 1
+  PADDLE_ENFORCE_EQ(
+      inputs.size(),
+      1,
+      phi::errors::PreconditionNotMet(
+          "The size %d of inputs must be equal to 1.", inputs.size()));
+
+  // inputs[0].type == Vector<Type>
+  PADDLE_ENFORCE(inputs[0].type().isa<ir::VectorType>(),
+                 phi::errors::PreconditionNotMet(
+                     "The type %s of inputs[0] must be equal to VectorType.",
+                     inputs[0].type()));
+  ir::VectorType input_type = inputs[0].type().dyn_cast<ir::VectorType>();
+
+  // outputs.size() == 1
+  PADDLE_ENFORCE_EQ(
+      outputs.size(),
+      1,
+      phi::errors::PreconditionNotMet(
+          "The size %d of outputs must be equal to 1.", outputs.size()));
+
+  // attributes contains index: Int32
+  PADDLE_ENFORCE_NE(
+      attributes.count("index"),
+      0,
+      phi::errors::PreconditionNotMet("The attributes must contains index."));
+  const ir::Attribute &attr = attributes.at("index");
+  PADDLE_ENFORCE(
+      attr.isa<ir::Int32_tAttribute>(),
+      phi::errors::PreconditionNotMet("The attribute index must be INT32."));
+  auto index = attr.dyn_cast<ir::Int32_tAttribute>().data();
+
+  // index >= 0 and < inputs[0].size()
+  PADDLE_ENFORCE_GE(
+      index,
+      0,
+      phi::errors::PreconditionNotMet(
+          "The index %d must be greater or equal than 0.", index));
+  PADDLE_ENFORCE_LT(
+      index,
+      input_type.size(),
+      phi::errors::PreconditionNotMet(
+          "The index %d must be less or equal than size %d of inputs[0].",
+          index,
+          input_type.size()));
+
+  // inputs[index].type == outputs[0].type
+  PADDLE_ENFORCE_EQ(
+      input_type[index],
+      outputs[0],
+      phi::errors::PreconditionNotMet(
+          "The type %s of inputs[%d] must be equal to type %s of outputs[0].",
+          input_type[index],
+          index,
+          outputs[0]));
+}
 
 }  // namespace ir

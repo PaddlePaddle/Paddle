@@ -82,7 +82,7 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
                 and src_op.attr("seed")
             ):
                 _logger.info(
-                    "Auto Parallel Random Control Skiped Since manul seed is set by user: {}".format(
+                    "Auto Parallel Random Control Skipped Since manul seed is set by user: {}".format(
                         src_op
                     )
                 )
@@ -90,7 +90,7 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
                 pass
             # NOTE Adopt for recompute
             # If user already set seed, We should not modify it. But if the seed is added by recompute pass, it should be under control.
-            # TODO  in future recompute pass should happen after parallel partitione. and remove this at that time.
+            # TODO  in future recompute pass should happen after parallel partition. and remove this at that time.
             elif len(kwargs['Seed']) > 0 or len(src_op.input("Seed")) > 0:
                 seed_var_name = kwargs['Seed'][0]
                 if seed_var_name.startswith('rc_seed'):
@@ -115,7 +115,7 @@ class DistributedDropoutImpl0(DistributedElementwiseImpl0):
                     pre_op._set_attr("force_cpu", True)
                 else:
                     _logger.info(
-                        "Auto Parallel Random Control Skiped Since manul seed is set by user: {}".format(
+                        "Auto Parallel Random Control Skipped Since manul seed is set by user: {}".format(
                             src_op
                         )
                     )

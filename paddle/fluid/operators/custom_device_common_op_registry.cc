@@ -693,13 +693,19 @@ void RegisterCustomDeviceCommonKernel(const std::string& dev_type) {
       device_type,
       paddle::operators::CEmbeddingOpCustomDeviceKernel<
           paddle::platform::CustomDeviceContext,
-          float>);
+          float>,
+      paddle::operators::CEmbeddingOpCustomDeviceKernel<
+          paddle::platform::CustomDeviceContext,
+          paddle::platform::float16>);
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
       c_embedding_grad,
       device_type,
       paddle::operators::CEmbeddingGradOpCustomDeviceKernel<
           paddle::platform::CustomDeviceContext,
-          float>);
+          float>,
+      paddle::operators::CEmbeddingGradOpCustomDeviceKernel<
+          paddle::platform::CustomDeviceContext,
+          paddle::platform::float16>);
 
   REGISTER_OP_CUSTOM_DEVICE_KERNEL(
       c_softmax_with_cross_entropy,

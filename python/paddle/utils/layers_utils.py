@@ -27,7 +27,7 @@ from ..fluid.framework import Block, Variable, in_dygraph_mode
 def convert_to_list(value, n, name, dtype=int):
     """
     Converts a single numerical type or iterable of numerical
-    types into an numerical type list.
+    types into a numerical type list.
 
     Arguments:
       value: The value to validate and convert. Could an int, or any iterable

@@ -115,17 +115,17 @@ class CCommInitOp : public framework::OperatorBase {
 class CCommInitOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "Raw variable contains a NCCL UniqueId instaces.");
+    AddInput("X", "Raw variable contains a NCCL UniqueId instances.");
     AddComment(R"DOC(
 CCommInit operator
 
-Initialize collective communicatoin context within this trainer
+Initialize collective communication context within this trainer
 )DOC");
     AddAttr<int>("nranks", "(int) The number of ranks of distributed trainers");
     AddAttr<int>("rank",
                  "(int) The rank of the trainer in distributed training.");
     AddAttr<int>("device_id",
-                 "(int) The deivce_id on which to initialize the communicator."
+                 "(int) The device_id on which to initialize the communicator."
                  "Now, you only have to set this attr manually for pipeline "
                  "training. Otherwise, make it as default.")
         .SetDefault(-1);
