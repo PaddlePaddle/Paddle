@@ -499,6 +499,7 @@ def _elementwise_op(helper):
         "elementwise_sub",
         "elementwise_mul",
         "elementwise_div",
+        "elementwise_max",
     ]
     if original_op_type in bf16_and_complex_supported_ops:
         data_type = [
