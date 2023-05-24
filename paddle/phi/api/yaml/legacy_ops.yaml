@@ -982,6 +982,7 @@
     func : SliceRawInferMeta
   kernel :
     func : slice
+  view : (input -> out)
   backward : slice_grad
 
 - op : softmax
@@ -1019,6 +1020,7 @@
     func : StridedSliceInferMeta
   kernel :
     func : strided_slice
+  view : (x -> out)
   backward : strided_slice_grad
 
 - op : subtract
