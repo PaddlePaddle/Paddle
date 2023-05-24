@@ -306,7 +306,7 @@ ir::Operation* GeneralOpHandler(ir::IrContext* ctx,
   auto op_inputs = GenerateOperationInput(ctx, param_map, program, op_desc);
 
   OpOutputMapping arg_to_idx;
-  OpOutputTypeList op_output_types = {};
+  OpOutputTypeList op_output_types;
   std::tie(op_output_types, arg_to_idx) = GenerateOperationOutput(ctx, op_desc);
   auto op_info = LoopkUpOpInfo(ctx, op_desc);
   auto attribute_map = TranslateOpAttribute(op_desc);
@@ -323,10 +323,10 @@ ir::Operation* FeedOpHandler(ir::IrContext* ctx,
                              TranslationContext* param_map,
                              ir::Program* program,
                              const OpDesc& op_desc) {
-  std::vector<ir::OpResult> op_inputs = {};
+  std::vector<ir::OpResult> op_inputs;
 
   OpOutputMapping arg_to_idx;
-  OpOutputTypeList op_output_types = {};
+  OpOutputTypeList op_output_types;
   std::tie(op_output_types, arg_to_idx) = GenerateOperationOutput(ctx, op_desc);
   auto op_info = LoopkUpOpInfo(ctx, op_desc);
   auto attribute_map = TranslateOpAttribute(op_desc);
@@ -345,7 +345,7 @@ ir::Operation* FetchOpHandler(ir::IrContext* ctx,
                               const OpDesc& op_desc) {
   auto op_inputs = GenerateOperationInput(ctx, param_map, program, op_desc);
 
-  OpOutputTypeList op_output_types = {};
+  OpOutputTypeList op_output_types;
   auto op_info = LoopkUpOpInfo(ctx, op_desc);
   auto attribute_map = TranslateOpAttribute(op_desc);
 
