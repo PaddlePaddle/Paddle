@@ -40,7 +40,9 @@ set(PHI_DEPS
     string_tensor
     api_scalar
     api_int_array
-    extended_tensor)
+    extended_tensor
+    dist_attr
+    dist_mapper)
 
 get_property(phi_kernels GLOBAL PROPERTY PHI_KERNELS)
 set(PHI_DEPS ${PHI_DEPS} ${phi_kernels})

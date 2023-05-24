@@ -134,7 +134,7 @@ def train(use_pure_fp16=True, use_nesterov=False, optimizer=""):
                 learning_rate=0.001,
                 momentum=0.9,
                 use_nesterov=use_nesterov,
-                weight_decay=fluid.regularizer.L2Decay(1e-4),
+                weight_decay=paddle.regularizer.L2Decay(1e-4),
                 multi_precision=use_pure_fp16,
             )
 
@@ -178,7 +178,7 @@ def train(use_pure_fp16=True, use_nesterov=False, optimizer=""):
                 (loss,) = exe.run(
                     train_program, feed=feeder.feed(data), fetch_list=[sum_cost]
                 )
-                loss_v = loss[0] if isinstance(loss, np.ndarray) else loss
+                loss_v = float(loss) if isinstance(loss, np.ndarray) else loss
                 print(
                     'PassID {:1}, Train Batch ID {:04}, train loss {:2.4}'.format(
                         pass_id, batch_id + 1, float(loss_v)
@@ -295,12 +295,10 @@ class TestAmpWithNonIterableDataLoader(unittest.TestCase):
                 one_var = paddle.tensor.fill_constant(
                     shape=[1], dtype='int64', value=1
                 )
-                with fluid.layers.control_flow.Switch() as switch:
-                    with switch.case(label != zero_var):
-                        paddle.assign(zero_var, output=label)
-                    with switch.default():
-                        paddle.assign(one_var, output=label)
-
+                label_val = paddle.static.nn.cond(
+                    label != zero_var, lambda: zero_var, lambda: one_var
+                )
+                paddle.assign(label_val, output=label)
                 net = resnet_cifar10(image)
                 logits = paddle.static.nn.fc(
                     x=net, size=10, activation="softmax"

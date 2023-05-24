@@ -35,7 +35,7 @@ def create_test_class(op_type, typename, callback):
             self.op_type = op_type
 
         def test_output(self):
-            self.check_output()
+            self.check_output(check_cinn=True)
 
         def test_errors(self):
             paddle.enable_static()
@@ -96,7 +96,7 @@ def create_paddle_case(op_type, callback):
                 paddle.enable_static()
                 with program_guard(Program(), Program()):
                     x = paddle.static.data(name='x', shape=[4], dtype='int64')
-                    y = paddle.static.data(name='y', shape=[1], dtype='int64')
+                    y = paddle.static.data(name='y', shape=[], dtype='int64')
                     op = eval("paddle.%s" % (self.op_type))
                     out = op(x, y)
                     exe = fluid.Executor(self.place)
@@ -460,7 +460,7 @@ def create_bf16_case(op_type, callback):
             self.outputs = {'Out': real_result}
 
         def test_check_output(self):
-            self.check_output()
+            self.check_output(check_cinn=True)
 
     cls_name = f"BF16TestCase_{op_type}"
     TestCompareOpBF16Op.__name__ = cls_name

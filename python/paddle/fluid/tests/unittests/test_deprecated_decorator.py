@@ -111,14 +111,14 @@ class TestDeprecatedDocorator(unittest.TestCase):
     def test_tensor_gradient(self):
         paddle.__version__ = '2.1.0'
 
-        x = paddle.to_tensor(5.0, stop_gradient=False)
+        x = paddle.to_tensor([5.0], stop_gradient=False)
         y = paddle.pow(x, 4.0)
         y.backward()
 
         with warnings.catch_warnings(record=True) as w:
             grad = x.gradient()
             assert (
-                'API "paddle.fluid.dygraph.varbase_patch_methods.gradient" is '
+                'API "paddle.fluid.dygraph.tensor_patch_methods.gradient" is '
                 'deprecated since 2.1.0'
             ) in str(w[-1].message)
 

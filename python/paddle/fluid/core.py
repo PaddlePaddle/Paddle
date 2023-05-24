@@ -271,7 +271,7 @@ try:
     if avx_supported() and not libpaddle.is_compiled_with_avx():
         sys.stderr.write(
             "Hint: Your machine support AVX, but the installed paddlepaddle doesn't have avx core. "
-            "Hence, no-avx core with worse preformance will be imported.\nIf you like, you could "
+            "Hence, no-avx core with worse performance will be imported.\nIf you like, you could "
             "reinstall paddlepaddle by 'python -m pip install --force-reinstall paddlepaddle-gpu[==version]' "
             "to get better performance.\n"
         )
@@ -450,7 +450,7 @@ def _is_all_prim_enabled():
     return _is_fwd_prim_enabled() and _is_bwd_prim_enabled()
 
 
-# Alert!!! This method is only for test coveraget, user should never use it directly, this may cause serious system errors.
+# Alert!!! This method is only for test coverage, user should never use it directly, this may cause serious system errors.
 def _test_use_sync(value):
     __sync_stat_with_flag(value)
 

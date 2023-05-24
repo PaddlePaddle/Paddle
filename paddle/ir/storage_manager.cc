@@ -19,7 +19,7 @@
 
 namespace ir {
 // This is a structure for creating, caching, and looking up Storage of
-// parameteric types.
+// parametric types.
 struct ParametricStorageManager {
   using StorageBase = StorageManager::StorageBase;
 
@@ -41,7 +41,7 @@ struct ParametricStorageManager {
       auto pr = parametric_instances_.equal_range(hash_value);
       while (pr.first != pr.second) {
         if (equal_func(pr.first->second)) {
-          VLOG(4) << "Found a cached parameteric storage of: [param_hash="
+          VLOG(4) << "Found a cached parametric storage of: [param_hash="
                   << hash_value << ", storage_ptr=" << pr.first->second << "].";
           return pr.first->second;
         }
@@ -50,7 +50,7 @@ struct ParametricStorageManager {
     }
     StorageBase *storage = constructor();
     parametric_instances_.emplace(hash_value, storage);
-    VLOG(4) << "No cache found, construct and cache a new parameteric storage "
+    VLOG(4) << "No cache found, construct and cache a new parametric storage "
                "of: [param_hash="
             << hash_value << ", storage_ptr=" << storage << "].";
     return storage;
@@ -72,7 +72,7 @@ StorageManager::StorageBase *StorageManager::GetParametricStorageImpl(
     std::function<bool(const StorageBase *)> equal_func,
     std::function<StorageBase *()> constructor) {
   std::lock_guard<ir::SpinLock> guard(parametric_instance_lock_);
-  VLOG(4) << "Try to get a parameteretric storage of: [TypeId_hash="
+  VLOG(4) << "Try to get a parametric storage of: [TypeId_hash="
           << std::hash<ir::TypeId>()(type_id) << ", param_hash=" << hash_value
           << "].";
   if (parametric_instance_.find(type_id) == parametric_instance_.end())
@@ -94,7 +94,7 @@ StorageManager::StorageBase *StorageManager::GetParameterlessStorageImpl(
 
 void StorageManager::RegisterParametricStorageImpl(TypeId type_id) {
   std::lock_guard<ir::SpinLock> guard(parametric_instance_lock_);
-  VLOG(4) << "Register a parameteric storage of: [TypeId_hash="
+  VLOG(4) << "Register a parametric storage of: [TypeId_hash="
           << std::hash<ir::TypeId>()(type_id) << "].";
   parametric_instance_.emplace(type_id,
                                std::make_unique<ParametricStorageManager>());

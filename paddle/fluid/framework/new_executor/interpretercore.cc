@@ -33,6 +33,7 @@
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
+#include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/backends/device_manager.h"
 
 PADDLE_DEFINE_EXPORTED_bool(
@@ -51,11 +52,11 @@ PADDLE_DEFINE_EXPORTED_bool(new_executor_use_local_scope,
                             "Use local_scope in new executor(especially used "
                             "in UT), can turn off for better performance");
 
-DECLARE_bool(check_nan_inf);
+PHI_DECLARE_bool(check_nan_inf);
 DECLARE_bool(benchmark);
-DECLARE_bool(new_executor_use_cuda_graph);
+PHI_DECLARE_bool(new_executor_use_cuda_graph);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-DECLARE_bool(sync_nccl_allreduce);
+PHI_DECLARE_bool(sync_nccl_allreduce);
 #endif
 
 constexpr const char* kExceptionCaught = "ExceptionCaught";
@@ -982,10 +983,34 @@ void InterpreterCore::RunOperator(const Instruction& instr_node) {
   // for debug nan/inf
   if (op_with_kernel != nullptr && FLAGS_check_nan_inf) {
     VLOG(4) << "Check nan/inf";
-    framework::details::CheckOpHasNanOrInf(
-        *op,
-        *local_scope,
-        place);  // TODO(xiongkun03) change it to inner scope.
+    try {
+      framework::details::CheckOpHasNanOrInf(
+          *op,
+          *local_scope,
+          place);  // TODO(xiongkun03) change it to inner scope.
+    } catch (...) {
+      const std::vector<std::string>* callstack = nullptr;
+      auto attrs = op->Attrs();
+      auto iter =
+          attrs.find(OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
+      if (iter != attrs.end()) {
+        callstack = &PADDLE_GET_CONST(std::vector<std::string>, iter->second);
+        if (callstack->empty()) callstack = nullptr;
+      }
+      std::ostringstream sout;
+      if (callstack) {
+        if (FLAGS_call_stack_level > 1) {
+          sout << "\n\n  Compile Traceback (most recent call last):";
+        } else {
+          sout << "In user code:\n";
+        }
+        for (auto& line : *callstack) {
+          sout << "\n  " << line;
+        }
+      }
+      std::cout << sout.str() << std::endl;
+      std::rethrow_exception(std::current_exception());
+    }
   }
 }
 

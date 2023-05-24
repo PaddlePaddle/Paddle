@@ -2223,6 +2223,10 @@ set +x
             if [[ "$line" == "" ]]; then
                 continue
             fi
+            matchstr=$(echo $line|grep -oEi 'Test[ \t]+#') || true
+            if [[ "$matchstr" == "" ]]; then
+                continue
+            fi
             testcase=$(echo "$line"|grep -oEi "\w+$")
             if [[ "$single_card_tests" == "" ]]; then
                 single_card_tests="^$testcase$"
@@ -2231,14 +2235,70 @@ set +x
             fi
         done <<< "$test_cases";
         card_test "$single_card_tests" 1
+        failed_test_lists=''
         collect_failed_tests
+        xputest_error=0
+        retry_unittests_record=''
+        retry_time=3
+        exec_times=0
+        exec_time_array=('first' 'second' 'third')
+        exec_retry_threshold=10
+        is_retry_execuate=0
+        if [ -n "$failed_test_lists" ];then
+            xputest_error=1
+            need_retry_ut_str=$(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
+            need_retry_ut_arr=(${need_retry_ut_str})
+            need_retry_ut_count=${#need_retry_ut_arr[@]}
+            retry_unittests=$(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
+            if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
+                while ( [ $exec_times -lt $retry_time ] )
+                    do
+                        set +e
+                        retry_unittests_record="$retry_unittests_record$failed_test_lists"
+                        failed_test_lists_ult=`echo "${failed_test_lists}"`
+                        set -e
+                        if [[ "${exec_times}" == "1" ]];then
+                            if [[ "${failed_test_lists}" == "" ]];then
+                                break
+                            else
+                                retry_unittests=$(echo "$failed_test_lists" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
+                            fi
+                        fi
+                        echo "========================================="
+                        echo "This is the ${exec_time_array[$exec_times]} time to re-run"
+                        echo "========================================="
+                        echo "The following unittest will be re-run:"
+                        echo "${retry_unittests}"
+                        echo "========================================="
+
+                        retry_unittests_regular=''
+                        for line in ${retry_unittests[@]} ;
+                            do
+                                if [[ "$retry_unittests_regular" == "" ]];then
+                                    retry_unittests_regular="^$line$"
+                                else
+                                    retry_unittests_regular="$retry_unittests_regular|^$line$"
+                                fi
+                            done
+                        rm -f $tmp_dir/*
+                        failed_test_lists=''
+                        ctest -R "($retry_unittests_regular)" --output-on-failure -j $2 | tee $tmpfile
+                        collect_failed_tests
+                        exec_times=$[$exec_times+1]
+                    done
+            else
+                # There are more than 10 failed unit tests, so no unit test retry
+                is_retry_execuate=1
+            fi
+
+        fi
 set -x
         ut_endTime_s=`date +%s`
         echo "XPU testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
         python ${PADDLE_ROOT}/build/test/xpu/get_test_cover_info.py
         unset XPU_OP_LIST_DIR
-        if [[ "$EXIT_CODE" != "0" ]]; then
-            exit 8;
+        if [ "$xputest_error" != 0 ];then
+            show_ut_retry_result
         fi
     fi
 }
@@ -3004,7 +3064,7 @@ EOF
     echo "ipipe_log_param_Demo_Ci_Tests_Total_Time: $[ $demo_ci_endTime_s - $demo_ci_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
 
     infer_ut_startTime_s=`date +%s`
-    cd ${PADDLE_ROOT}/paddle/fluid/inference/tests/infer_ut
+    cd ${PADDLE_ROOT}/test/cpp/inference/infer_ut
     ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF} ${INFERENCE_DEMO_INSTALL_DIR} \
              ${TENSORRT_ROOT_DIR:-/usr} ${WITH_ONNXRUNTIME:-ON}
     TEST_EXIT_CODE=$?
@@ -3188,7 +3248,7 @@ function build_pr_and_develop() {
     mkdir ${PADDLE_ROOT}/build/pr_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/pr_whl
     rm -f ${PADDLE_ROOT}/build/python/dist/*.whl && rm -f ${PADDLE_ROOT}/build/python/build/.timestamp
 
-    git checkout develop
+    git checkout $BRANCH
     dev_commit=`git log -1|head -1|awk '{print $2}'`
     dev_url="https://xly-devops.bj.bcebos.com/PR/build_whl/0/${dev_commit}/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl"
     url_return=`curl -s -m 5 -IL ${dev_url} |awk 'NR==1{print $2}'`

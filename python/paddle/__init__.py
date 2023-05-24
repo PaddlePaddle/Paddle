@@ -24,11 +24,15 @@ except ImportError:
     )
 
 from .batch import batch  # noqa: F401
+
+# Do the *DUPLICATED* monkey-patch for the tensor object.
+# We need remove the duplicated code here once we fix
+# the illogical implement in the monkey-patch methods later.
 from .framework import monkey_patch_variable
-from .framework import monkey_patch_math_varbase
+from .framework import monkey_patch_math_tensor
 
 monkey_patch_variable()
-monkey_patch_math_varbase()
+monkey_patch_math_tensor()
 
 from .framework import disable_signal_handler  # noqa: F401
 from .framework import get_flags  # noqa: F401
@@ -194,6 +198,9 @@ from .tensor.manipulation import moveaxis  # noqa: F401
 from .tensor.manipulation import repeat_interleave  # noqa: F401
 from .tensor.manipulation import index_add  # noqa: F401
 from .tensor.manipulation import index_add_  # noqa: F401
+from .tensor.manipulation import index_put  # noqa: F401
+from .tensor.manipulation import index_put_  # noqa: F401
+from .tensor.manipulation import unflatten  # noqa: F401
 from .tensor.math import abs  # noqa: F401
 from .tensor.math import acos  # noqa: F401
 from .tensor.math import asin  # noqa: F401
@@ -254,6 +261,7 @@ from .tensor.math import renorm  # noqa: F401
 from .tensor.math import add  # noqa: F401
 from .tensor.math import subtract  # noqa: F401
 from .tensor.math import logsumexp  # noqa: F401
+from .tensor.math import logaddexp  # noqa: F401
 from .tensor.math import inverse  # noqa: F401
 from .tensor.math import log1p  # noqa: F401
 from .tensor.math import erf  # noqa: F401
@@ -295,6 +303,11 @@ from .tensor.math import frexp  # noqa: F401
 from .tensor.math import trapezoid  # noqa: F401
 from .tensor.math import cumulative_trapezoid  # noqa: F401
 from .tensor.math import vander  # noqa: F401
+from .tensor.math import nextafter  # noqa: F401
+from .tensor.math import i0  # noqa: F401
+from .tensor.math import i0e  # noqa: F401
+from .tensor.math import i1  # noqa: F401
+from .tensor.math import i1e  # noqa: F401
 
 from .tensor.random import bernoulli  # noqa: F401
 from .tensor.random import poisson  # noqa: F401
@@ -336,6 +349,7 @@ from .framework import IPUPlace  # noqa: F401
 from .framework import CUDAPlace  # noqa: F401
 from .framework import CUDAPinnedPlace  # noqa: F401
 from .framework import CustomPlace  # noqa: F401
+from .framework import XPUPlace  # noqa: F401
 
 from .autograd import grad  # noqa: F401
 from .autograd import no_grad  # noqa: F401
@@ -367,7 +381,6 @@ from .device import is_compiled_with_cinn  # noqa: F401
 from .device import is_compiled_with_cuda  # noqa: F401
 from .device import is_compiled_with_rocm  # noqa: F401
 from .device import is_compiled_with_custom_device  # noqa: F401
-from .device import XPUPlace  # noqa: F401
 
 # high-level api
 from .hapi import Model  # noqa: F401
@@ -432,6 +445,7 @@ __all__ = [  # noqa
     'eye',
     'cumsum',
     'cumprod',
+    'logaddexp',
     'logcumsumexp',
     'logit',
     'LazyGuard',
@@ -676,6 +690,8 @@ __all__ = [  # noqa
     'tril_indices',
     'index_add',
     "index_add_",
+    "index_put",
+    "index_put_",
     'sgn',
     'triu_indices',
     'take',
@@ -684,4 +700,10 @@ __all__ = [  # noqa
     'cumulative_trapezoid',
     'polar',
     'vander',
+    'unflatten',
+    'nextafter',
+    'i0',
+    'i0e',
+    'i1',
+    'i1e',
 ]

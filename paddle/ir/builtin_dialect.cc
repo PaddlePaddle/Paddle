@@ -14,6 +14,7 @@
 
 #include "paddle/ir/builtin_dialect.h"
 #include "paddle/ir/builtin_attribute.h"
+#include "paddle/ir/builtin_op.h"
 #include "paddle/ir/builtin_type.h"
 
 namespace ir {
@@ -24,8 +25,29 @@ BuiltinDialect::BuiltinDialect(ir::IrContext *context)
 
 void BuiltinDialect::initialize() {
   // Register all built-in types defined in builtin_type.h.
-  RegisterTypes<GET_BUILT_IN_TYPE_LIST>();
-  RegisterAttributes<GET_BUILT_IN_ATTRIBUTE_LIST>();
+  RegisterTypes<ir::BFloat16Type,
+                ir::Float16Type,
+                ir::Float32Type,
+                ir::Float64Type,
+                ir::Int8Type,
+                ir::Int16Type,
+                ir::Int32Type,
+                ir::Int64Type,
+                ir::BoolType,
+                ir::VectorType>();
+
+  RegisterAttributes<ir::StrAttribute,
+                     ir::BoolAttribute,
+                     ir::FloatAttribute,
+                     ir::DoubleAttribute,
+                     ir::Int32_tAttribute,
+                     ir::Int64_tAttribute,
+                     ir::ArrayAttribute>();
+
+  RegisterOps<ir::GetParameterOp,
+              ir::SetParameterOp,
+              ir::CombineOp,
+              ir::SliceOp>();
 }
 
 }  // namespace ir

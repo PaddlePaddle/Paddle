@@ -146,6 +146,8 @@ class DistributedStrategy:
             self.strategy.sync_nccl_allreduce = bool(_global_flags()[key])
 
         self.hybrid_parallel_order = ['dp', 'pp', 'sharding', 'mp']
+        self.sync_param_name = ["embedding", "layer_norm", ".b_"]
+
         self.__lock_attr = True
         logger.info("distributed strategy initialized")
 
@@ -1698,6 +1700,10 @@ class DistributedStrategy:
         )
 
         if "mp_configs" in configs:
+            if "sync_param_name" in configs["mp_configs"]:
+                self.sync_param_name = configs["mp_configs"]["sync_param_name"]
+                configs["mp_configs"].pop("sync_param_name")
+
             assign_configs_value(
                 self.strategy.hybrid_configs.mp_configs, configs["mp_configs"]
             )
@@ -2382,7 +2388,7 @@ class DistributedStrategy:
         """
 
         The workspace limit size in MB unit for choosing cuDNN convolution algorithms.
-        The inner funciton of cuDNN obtain the fastest suited algorithm that fits within this memory limit.
+        The inner function of cuDNN obtain the fastest suited algorithm that fits within this memory limit.
         Usually, large workspace size may lead to choose faster algorithms,
         but significant increasing memory workspace. Users need to trade-off between memory and speed.
         Default Value: 4000

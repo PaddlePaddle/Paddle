@@ -21,7 +21,7 @@ from paddle.autograd import PyLayer
 from paddle.distributed.fleet.meta_parallel.parallel_layers.random import (
     get_rng_state_tracker,
 )
-from paddle.framework import core, in_dygraph_mode
+from paddle.framework import core, in_dynamic_mode
 
 from ..utils.log_util import logger
 
@@ -198,7 +198,7 @@ class RecomputeFunction(PyLayer):
                     forward_outputs_with_grad, backward_inputs_with_grad
                 )
 
-            if in_dygraph_mode():
+            if in_dynamic_mode():
                 grads = tuple(
                     inp._grad_ivar()
                     for inp in detached_inputs
@@ -222,13 +222,19 @@ def _recompute_without_reentrant(
 
     if preserve_rng_state:
         cur_device = paddle.get_device()
-        if 'gpu:' not in cur_device:
+        if 'gpu:' in cur_device:
+            fw_cuda_rng_state = paddle.get_cuda_rng_state()
+        elif (
+            cur_device.split(':')[0]
+            in paddle.device.get_all_custom_device_type()
+        ):
+            fw_cuda_rng_state = paddle.get_rng_state(cur_device)
+        else:
             raise RuntimeError(
                 "Recompute with RNG perserve is not support current device: {}.".format(
                     cur_device
                 )
             )
-        fw_cuda_rng_state = paddle.get_cuda_rng_state()
         fwd_cuda_rng_state_tracker = (
             get_rng_state_tracker().get_states_tracker()
         )

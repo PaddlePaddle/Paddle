@@ -27,6 +27,7 @@
 #include "paddle/fluid/operators/controlflow/recurrent_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 #include "paddle/fluid/operators/ops_extra_info.h"
+#include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
@@ -35,13 +36,16 @@
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/phi/backends/device_manager.h"
+#endif
 PADDLE_DEFINE_EXPORTED_bool(
     new_executor_log_memory_stats,
     false,
     "Log memory stats after each op runs, just used for debug.");
 
-DECLARE_bool(use_mkldnn);
-DECLARE_bool(check_nan_inf);
+PHI_DECLARE_bool(use_mkldnn);
+PHI_DECLARE_bool(check_nan_inf);
 
 namespace paddle {
 namespace framework {
@@ -146,9 +150,8 @@ bool IsGradOp(const std::string& op_name) {
 }
 
 bool IsSupportedHeterPlace(const phi::Place& place) {
-  return platform::is_gpu_place(place) || platform::is_npu_place(place) ||
-         platform::is_xpu_place(place) || platform::is_ipu_place(place) ||
-         platform::is_custom_place(place);
+  return platform::is_gpu_place(place) || platform::is_xpu_place(place) ||
+         platform::is_ipu_place(place) || platform::is_custom_place(place);
 }
 
 bool IsMemcpyD2H(const Instruction& instr) {
@@ -400,6 +403,40 @@ void ApplyDeviceGuard(const OperatorBase* op_base,
       }
       VLOG(3) << "Switch into " << expected_kernel_key->place_
               << " by device_guard.";
+    } else if (platform::is_custom_place(place)) {
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+      auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+      bool is_custom_device_op = false;
+      for (auto dev_type : device_types) {
+        if (op_device.find(dev_type) != std::string::npos) {
+          is_custom_device_op = true;
+          break;
+        }
+      }
+      PADDLE_ENFORCE_EQ(
+          is_custom_device_op,
+          true,
+          phi::errors::Unimplemented(
+              "Unsupported current device %s with Paddle CustomDevice ",
+              op_device));
+#else
+      VLOG(1) << string::Sprintf(
+          "Cannot use get_all_custom_device_type because you have installed"
+          "CPU/GPU version PaddlePaddle.\n"
+          "If you want to use get_all_custom_device_type, please try to "
+          "install CustomDevice version "
+          "PaddlePaddle by: pip install paddlepaddle\n");
+#endif
+      if (op_base->SupportCustomDevice()) {
+        expected_kernel_key->place_ = place;
+      } else {
+        expected_kernel_key->place_ = platform::CPUPlace();
+        LOG_FIRST_N(WARNING, 1) << "Op(" << op_base->Type()
+                                << ") has no Custom Place implementation. It "
+                                   "will be assigned to CPUPlace.";
+      }
+      VLOG(3) << "Switch into " << expected_kernel_key->place_
+              << " by device_guard.";
     } else {
       PADDLE_THROW(
           platform::errors::Fatal("Unsupported current place %s", op_device));
@@ -445,7 +482,7 @@ void BuildOpFuncList(const platform::Place& place,
   // Step 1: create all ops for current block.
   CreateAllOps(block, &ops_unique);
 
-  VLOG(4) << "Static build: " << static_build;
+  VLOG(1) << "Static build: " << static_build;
 
   if (!execution_config.used_for_jit) {
     // If gc is enabled and block size > 1
@@ -736,10 +773,6 @@ void BuildOpFuncList(const platform::Place& place,
         }
 
         // for debug nan/inf
-        if (FLAGS_check_nan_inf) {
-          VLOG(4) << "Check nan/inf";
-          framework::details::CheckOpHasNanOrInf(*op, *runtime_scope, place);
-        }
 
         vec_func_list->emplace_back(op_func_node);
 
@@ -811,6 +844,35 @@ void BuildOpFuncList(const platform::Place& place,
       std::rethrow_exception(std::current_exception());
     }
 
+    if (FLAGS_check_nan_inf) {
+      VLOG(4) << "Check nan/inf";
+      try {
+        framework::details::CheckOpHasNanOrInf(*op, *local_scope, place);
+      } catch (...) {
+        const std::vector<std::string>* callstack = nullptr;
+        auto attrs = op->Attrs();
+        auto iter =
+            attrs.find(OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
+        if (iter != attrs.end()) {
+          callstack = &PADDLE_GET_CONST(std::vector<std::string>, iter->second);
+          if (callstack->empty()) callstack = nullptr;
+        }
+        std::ostringstream sout;
+        if (callstack) {
+          if (FLAGS_call_stack_level > 1) {
+            sout << "\n\n  Compile Traceback (most recent call last):";
+          } else {
+            sout << "In user code:\n";
+          }
+          for (auto& line : *callstack) {
+            sout << "\n  " << line;
+          }
+        }
+        std::cout << sout.str() << std::endl;
+        std::rethrow_exception(std::current_exception());
+      }
+    }
+
     VLOG(4) << "End run " << place << " "
             << op_func_node.operator_base_->DebugStringEx(local_scope);
 
@@ -844,6 +906,22 @@ void BuildOpFuncList(const platform::Place& place,
       interpreter::LogDeviceMemoryStats(place);
     }
   }
+
+  // in the unused_var_map, we did not record the variable who are created in
+  // ApplyDataTransform. So we erase these variables here.
+  std::deque<std::shared_ptr<memory::Allocation>>* garbages =
+      new std::deque<std::shared_ptr<memory::Allocation>>();
+  for (const auto& transferred_var : var_scope->DataTransferAddedVars()) {
+    const auto& var_name = transferred_var.first;
+    auto* var = local_scope->FindVar(var_name);
+    if (var == nullptr) continue;
+    VLOG(6) << "Erase variable " << var_name;
+    if (var->IsType<phi::DenseTensor>()) {
+      garbages->emplace_back(
+          var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder());
+    }
+  }
+  delete garbages;
 }
 
 void BuildVariableScope(const framework::BlockDesc& block,

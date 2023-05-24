@@ -20,8 +20,9 @@ import paddle
 from paddle import _legacy_C_ops
 
 from ..fluid.data_feeder import check_variable_and_dtype
-from ..fluid.framework import _create_tensor, _non_static_mode
+from ..fluid.framework import _create_tensor
 from ..fluid.layer_helper import LayerHelper
+from ..framework import in_dynamic_mode
 
 __all__ = []
 
@@ -798,11 +799,11 @@ def accuracy(input, label, k=1, correct=None, total=None, name=None):
             predictions = paddle.to_tensor([[0.2, 0.1, 0.4, 0.1, 0.1], [0.2, 0.3, 0.1, 0.15, 0.25]], dtype='float32')
             label = paddle.to_tensor([[2], [0]], dtype="int64")
             result = paddle.metric.accuracy(input=predictions, label=label, k=1)
-            # [0.5]
+            # 0.5
     """
     if label.dtype == paddle.int32:
         label = paddle.cast(label, paddle.int64)
-    if _non_static_mode():
+    if in_dynamic_mode():
         if correct is None:
             correct = _create_tensor(dtype="int32")
         if total is None:
@@ -817,7 +818,7 @@ def accuracy(input, label, k=1, correct=None, total=None, name=None):
 
     helper = LayerHelper("accuracy", **locals())
     check_variable_and_dtype(
-        input, 'input', ['float16', 'float32', 'float64'], 'accuracy'
+        input, 'input', ['float16', 'uint16', 'float32', 'float64'], 'accuracy'
     )
     topk_out, topk_indices = paddle.topk(input, k=k)
     acc_out = helper.create_variable_for_type_inference(dtype="float32")

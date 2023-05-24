@@ -102,6 +102,7 @@ if(WITH_TESTING)
   add_subdirectory(custom_op)
   add_subdirectory(custom_runtime)
   add_subdirectory(dataset)
+  add_subdirectory(cpp_extension)
   if(WITH_DISTRIBUTE)
     add_subdirectory(collective)
     add_subdirectory(auto_parallel)
@@ -126,12 +127,21 @@ if(WITH_TESTING)
   add_subdirectory(quantization)
   add_subdirectory(rnn)
   add_subdirectory(rpc)
-  # add_subdirectory(sequence)
+  add_subdirectory(sequence)
   add_subdirectory(standalone_executor)
   add_subdirectory(tokenizer)
   # add_subdirectory(white_list)
   if(WITH_XPU)
     add_subdirectory(xpu)
+  endif()
+endif()
+
+if(WITH_CPP_DIST)
+  add_test(NAME test_paddle_lib
+           COMMAND ${PADDLE_BINARY_DIR}/test/paddle_lib/test_paddle_lib)
+  if(WITH_GPU)
+    add_test(NAME test_paddle_lib_gpu
+             COMMAND ${PADDLE_BINARY_DIR}/test/paddle_lib/test_paddle_lib_gpu)
   endif()
 endif()
 
@@ -176,24 +186,14 @@ if(${len} GREATER_EQUAL 1)
       if(WITH_XPU)
         target_link_libraries(${test_name} xpulib)
       endif()
-      if(NOT
-         ("${test_name}" STREQUAL "c_broadcast_op_npu_test"
-          OR "${test_name}" STREQUAL "c_allreduce_sum_op_npu_test"
-          OR "${test_name}" STREQUAL "c_allreduce_max_op_npu_test"
-          OR "${test_name}" STREQUAL "c_reducescatter_op_npu_test"
-          OR "${test_name}" STREQUAL "c_allgather_op_npu_test"
-          OR "${test_name}" STREQUAL "send_v2_op_npu_test"
-          OR "${test_name}" STREQUAL "c_reduce_sum_op_npu_test"
-          OR "${test_name}" STREQUAL "recv_v2_op_npu_test"))
-        cc_test_run(
-          ${test_name}
-          COMMAND
-          ${test_name}
-          ARGS
-          ${test_arg}
-          DIR
-          ${CC_TESTS_DIR})
-      endif()
+      cc_test_run(
+        ${test_name}
+        COMMAND
+        ${test_name}
+        ARGS
+        ${test_arg}
+        DIR
+        ${CC_TESTS_DIR})
     elseif(WITH_TESTING AND NOT TEST ${test_name})
       add_test(NAME ${test_name} COMMAND ${CMAKE_COMMAND} -E echo CI skip
                                          ${test_name}.)

@@ -268,6 +268,13 @@ void FusedLinearParamGradAddInferMeta(const MetaTensor& x,
                                       MetaTensor* dweight_out,
                                       MetaTensor* dbias_out);
 
+void FusionGroupInferMeta(const std::vector<const MetaTensor*>& ins,
+                          const std::vector<int>& outs_dtype,
+                          const std::vector<int>& inputs_dtype,
+                          const std::string& func_name,
+                          int type,
+                          std::vector<MetaTensor*> outs);
+
 void GenerateProposalsV2InferMeta(const MetaTensor& scores,
                                   const MetaTensor& bbox_deltas,
                                   const MetaTensor& im_shape,
@@ -331,6 +338,12 @@ void InterpolateInferMeta(
     int align_mode,
     MetaTensor* output,
     MetaConfig config = MetaConfig());
+
+void IndexPutInferMeta(const MetaTensor& x,
+                       const std::vector<const MetaTensor*>& indices,
+                       const MetaTensor& value,
+                       bool accumulate,
+                       MetaTensor* out);
 
 void LambInferMeta(const MetaTensor& param,
                    const MetaTensor& grad,
@@ -549,6 +562,17 @@ void WarprnntInferMeta(const MetaTensor& input,
                        float fastemit_lambda,
                        MetaTensor* loss,
                        MetaTensor* warpctcgrad);
+
+void WeightedSampleNeighborsInferMeta(const MetaTensor& row,
+                                      const MetaTensor& col_ptr,
+                                      const MetaTensor& edge_weight,
+                                      const MetaTensor& x,
+                                      const MetaTensor& eids,
+                                      int sample_size,
+                                      bool return_eids,
+                                      MetaTensor* out,
+                                      MetaTensor* out_count,
+                                      MetaTensor* out_eids);
 
 void WhereInferMeta(const MetaTensor& condition,
                     const MetaTensor& x,

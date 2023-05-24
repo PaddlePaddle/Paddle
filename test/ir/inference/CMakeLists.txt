@@ -174,6 +174,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
   set_tests_properties(test_trt_dynamic_shape PROPERTIES TIMEOUT 120)
   set_tests_properties(test_trt_inspector PROPERTIES TIMEOUT 60)
   set_tests_properties(test_trt_inference_predictor PROPERTIES TIMEOUT 60)
+  set_tests_properties(test_trt_inference_fp16_io PROPERTIES TIMEOUT 300)
 
   if(WITH_NV_JETSON)
     set_tests_properties(
@@ -197,7 +198,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
   set_tests_properties(test_trt_fc_fuse_quant_dequant_pass PROPERTIES TIMEOUT
                                                                       100)
   set_tests_properties(test_trt_conv_quant_dequant_pass PROPERTIES TIMEOUT 100)
-  set_tests_properties(test_trt_matmul_quant_dequant PROPERTIES TIMEOUT 100)
+  set_tests_properties(test_trt_matmul_quant_dequant PROPERTIES TIMEOUT 180)
   set_tests_properties(test_trt_conv3d_op PROPERTIES TIMEOUT 60)
   set_tests_properties(test_trt_conv3d_transpose_op PROPERTIES TIMEOUT 60)
   set_tests_properties(test_trt_nearest_interp_v2_op PROPERTIES TIMEOUT 30)

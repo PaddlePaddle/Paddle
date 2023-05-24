@@ -67,7 +67,7 @@ def check_out_dtype(api_fn, in_specs, expect_dtypes, target_index=0, **configs):
     Args:
         api_fn(callable):  paddle api function
         in_specs(list[tuple]): list of shape and dtype information for constructing input tensor of api_fn, such as [(shape, dtype), (shape, dtype)].
-        expected_dtype(list[str]): expected dtype of output tensor.
+        expect_dtypes(list[str]): expected dtype of output tensor.
         target_index(int): indicate which one from in_specs to infer the dtype of output.
         config(dict): other arguments of paddle api function
 
@@ -200,6 +200,10 @@ def get_numeric_gradient(
             return tensor._get_float_element(i)
         elif tensor_to_check_dtype == np.float64:
             return tensor._get_double_element(i)
+        elif tensor_to_check_dtype == np.complex64:
+            return tensor._get_complex64_element(i)
+        elif tensor_to_check_dtype == np.complex128:
+            return tensor._get_complex128_element(i)
         else:
             raise TypeError(
                 "Unsupported test data type %s." % tensor_to_check_dtype
@@ -224,6 +228,10 @@ def get_numeric_gradient(
             tensor._set_float_element(i, e)
         elif tensor_to_check_dtype == np.float64:
             tensor._set_double_element(i, e)
+        elif tensor_to_check_dtype == np.complex64:
+            return tensor._set_complex64_element(i, e)
+        elif tensor_to_check_dtype == np.complex128:
+            return tensor._set_complex128_element(i, e)
         else:
             raise TypeError(
                 "Unsupported test data type %s." % tensor_to_check_dtype
@@ -242,6 +250,13 @@ def get_numeric_gradient(
         __set_elem__(tensor_to_check, i, x_pos)
         y_pos = get_output()
 
+        if tensor_to_check_dtype in [np.complex64, np.complex128]:
+            if in_place:
+                set_input(scope, op, inputs, place)
+            x_pos_j = origin + 1j * delta
+            __set_elem__(tensor_to_check, i, x_pos_j)
+            y_pos_j = get_output()
+
         if in_place:
             set_input(scope, op, inputs, place)
 
@@ -249,8 +264,44 @@ def get_numeric_gradient(
         __set_elem__(tensor_to_check, i, x_neg)
         y_neg = get_output()
 
+        if tensor_to_check_dtype in [np.complex64, np.complex128]:
+            if in_place:
+                set_input(scope, op, inputs, place)
+
+            x_neg_j = origin - 1j * delta
+            __set_elem__(tensor_to_check, i, x_neg_j)
+            y_neg_j = get_output()
+
         __set_elem__(tensor_to_check, i, origin)
-        gradient_flat[i] = (y_pos - y_neg) / delta / 2
+
+        if tensor_to_check_dtype in [np.complex64, np.complex128]:
+            # always assume real output, because this function has
+            # no input for dl/di, though it should do. so there di will be zero
+
+            # TODO: Here is a trick to be consistent with the existing OpTest, it
+            # need to support variable gradients input
+            f_ajoint = np.array(1 + 0j)
+            df_over_dr = (y_pos - y_neg) / delta / 2
+            df_over_di = (y_pos_j - y_neg_j) / delta / 2
+
+            dl_over_du, dl_over_dv = f_ajoint.real, f_ajoint.imag
+
+            du_over_dr, dv_over_dr = df_over_dr.real, df_over_dr.imag
+
+            du_over_di, dv_over_di = df_over_di.real, df_over_di.imag
+
+            dl_over_dr = np.sum(
+                dl_over_du * du_over_dr + dl_over_dv * dv_over_dr
+            )
+            dl_over_di = np.sum(
+                dl_over_du * du_over_di + dl_over_dv * dv_over_di
+            )
+            gradient_flat[i] = dl_over_dr + 1j * dl_over_di
+        else:
+            df_over_dr = y_pos - y_neg
+            gradient_flat[i] = df_over_dr / delta / 2
+
+        __set_elem__(tensor_to_check, i, origin)
 
     return gradient_flat.reshape(tensor_to_check.shape())
 
@@ -375,6 +426,13 @@ class OpTest(unittest.TestCase):
         def is_custom_device_op_test():
             return hasattr(cls, "use_custom_device") and cls.use_custom_device
 
+        def is_complex_test():
+            return (
+                hasattr(cls, "test_complex")
+                and cls.test_complex
+                or (cls.dtype in [np.complex64, np.complex128])
+            )
+
         if not hasattr(cls, "op_type"):
             raise AssertionError(
                 "This test do not have op_type in class attrs, "
@@ -382,8 +440,10 @@ class OpTest(unittest.TestCase):
             )
 
         # case in NO_FP64_CHECK_GRAD_CASES and op in NO_FP64_CHECK_GRAD_OP_LIST should be fixed
-        if not hasattr(cls, "no_need_check_grad") and not is_empty_grad_op(
-            cls.op_type
+        if (
+            not hasattr(cls, "no_need_check_grad")
+            and not is_empty_grad_op(cls.op_type)
+            and not is_complex_test()
         ):
             if cls.dtype is None or (
                 cls.dtype == np.float16
@@ -497,9 +557,9 @@ class OpTest(unittest.TestCase):
     def _enable_check_cinn_test(self, place, inputs, outputs):
         # if the test not run in cuda or the paddle not compile with CINN, skip cinn test
         if (
-            core.is_compiled_with_cinn()
-            and core.is_compiled_with_cuda()
-            and isinstance(place, fluid.CUDAPlace)
+            not core.is_compiled_with_cinn()
+            or not core.is_compiled_with_cuda()
+            or not isinstance(place, fluid.CUDAPlace)
         ):
             return False
         # CINN not support bfloat16 now, skip cinn test
@@ -1304,14 +1364,14 @@ class OpTest(unittest.TestCase):
 
     def _get_need_run_ops(self, op_desc, fwd_op_desc=None):
         """Postorder traversal of the 'grad' tree to get all ops that need to run during inplace test.
-        An op needs to run druing inplace check if,
+        An op needs to run during inplace check if,
         (1) it has infer_inplace,
         (2) it has infer_inplace in its grad descendants. (since we need its outputs as to construct its grad's inputs)
 
         Args:
             op_desc (OpDesc): The op_desc of current op.
             fwd_op_desc (OpDesc): The op_desc of current op's forward op, None if current op has no forward op.
-                Eg. relu's fwd_op is None, relu_grad's fwd_op is relu, relu_grad_grad's fwd_op is relu_grad, etc.
+                E.g. relu's fwd_op is None, relu_grad's fwd_op is relu, relu_grad_grad's fwd_op is relu_grad, etc.
 
         Returns:
             need_run_ops (list[(op_desc, fwd_op_desc)]): The ops that need to run during inplace test.
@@ -1480,7 +1540,7 @@ class OpTest(unittest.TestCase):
     def check_inplace_output_with_place(
         self, place, no_check_set=None, inplace_atol=None
     ):
-        """Chech the inplace correctness of given op, its grad op, its grad_grad op, etc.
+        """Check the inplace correctness of given op, its grad op, its grad_grad op, etc.
 
         (1) Get all ops need to run. (see conditions in _get_need_run_ops())
         (2) Run op in need_run_ops, and do inplace check if it has infer_inplace.
@@ -1949,12 +2009,6 @@ class OpTest(unittest.TestCase):
                     return True
                 return super()._is_skip_name(name)
 
-        if check_prim:
-            prim_checker = PrimForwardChecker(self, place)
-            prim_checker.check()
-            # Support operators which are not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
-            self.__class__.check_prim = True
-            self.__class__.op_type = self.op_type
         # set some flags by the combination of arguments.
         if self.is_float16_op():
             self.dtype = np.float16
@@ -1998,6 +2052,14 @@ class OpTest(unittest.TestCase):
                 raise AssertionError(
                     "no_check_set of op %s must be set to None." % self.op_type
                 )
+
+        if check_prim:
+            prim_checker = PrimForwardChecker(self, place)
+            prim_checker.check()
+            # Support operators which are not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
+            self.__class__.check_prim = True
+            self.__class__.op_type = self.op_type
+
         static_checker = StaticChecker(self, self.outputs)
         static_checker.check()
         outs, fetch_list = static_checker.outputs, static_checker.fetch_list
@@ -2053,7 +2115,7 @@ class OpTest(unittest.TestCase):
             for var_name in var_names:
                 i = find_fetch_index(var_name, fetch_list)
                 if i == -1:
-                    # The output is dispensiable or intermediate.
+                    # The output is dispensable or intermediate.
                     break
                 out = fetch_outs[i]
                 if isinstance(out, core.LoDTensor):
@@ -2344,6 +2406,7 @@ class OpTest(unittest.TestCase):
         core._set_prim_all_enabled(False)
         core.set_prim_eager_enabled(False)
         if check_prim:
+            self._check_grad_helper()
             prim_grad_checker = PrimGradChecker(
                 self,
                 place,
@@ -2355,7 +2418,6 @@ class OpTest(unittest.TestCase):
             prim_grad_checker.check()
             # Support operators which are not in the NO_FP64_CHECK_GRAD_OP_LIST list can be test prim with fp32
             self.__class__.check_prim = True
-            self._check_grad_helper()
             if only_check_prim:
                 return
         self.scope = core.Scope()
@@ -2496,7 +2558,6 @@ class OpTest(unittest.TestCase):
             max_relative_error = (
                 0.001 if max_relative_error < 0.001 else max_relative_error
             )
-
         self._assert_is_close(
             numeric_grads,
             analytic_grads,
@@ -2598,33 +2659,24 @@ class OpTest(unittest.TestCase):
             outputs = dygraph_outputs
 
             if self.dtype == np.uint16:
-                cast_inputs = self._find_var_in_dygraph(
-                    outputs, output_names[0]
-                )
-                if isinstance(cast_inputs, paddle.Tensor):
-                    cast_outputs = paddle.cast(
-                        cast_inputs, core.VarDesc.VarType.FP32
-                    )
-                elif isinstance(cast_inputs, list):
-                    cast_outputs = []
-                    for cast_input in cast_inputs:
-                        if isinstance(cast_input, paddle.Tensor):
-                            cast_outputs.append(
-                                paddle.cast(
-                                    cast_input, core.VarDesc.VarType.FP32
-                                )
-                            )
-                        else:
-                            raise TypeError(
-                                "Unsupported test data type %s."
-                                % type(cast_input)
-                            )
-                else:
-                    raise TypeError(
-                        "Unsupported test data type %s." % type(cast_inputs)
-                    )
-                outputs = {output_names[0]: cast_outputs}
+                cast_inputs = []
+                for output_name in output_names:
+                    cast_input = self._find_var_in_dygraph(outputs, output_name)
+                    cast_inputs = cast_inputs + cast_input
+                cast_outputs = []
+                for cast_input in cast_inputs:
+                    if isinstance(cast_input, paddle.Tensor):
+                        cast_outputs.append(
+                            paddle.cast(cast_input, core.VarDesc.VarType.FP32)
+                        )
+                    else:
+                        raise TypeError(
+                            "Unsupported test data type %s." % type(cast_input)
+                        )
 
+                outputs = {}
+                for i in range(len(output_names)):
+                    outputs.update({output_names[i]: [cast_outputs[i]]})
             outputs_valid = {}
             for output_name in output_names:
                 outputs_valid[output_name] = self._find_var_in_dygraph(
@@ -2689,6 +2741,26 @@ class OpTest(unittest.TestCase):
     def np_value_to_fluid_value(input):
         return input
 
+    def cast_bf16_output(self, block, cast_inputs):
+        output_names = []
+        for i in range(0, len(cast_inputs)):
+            cast_output = block.create_var(
+                dtype="float32", shape=cast_inputs[i].shape
+            )
+            cast_op = block.append_op(
+                inputs={"X": cast_inputs[i]},
+                outputs={"Out": cast_output},
+                type="cast",
+                attrs={
+                    "in_dtype": core.VarDesc.VarType.BF16,
+                    "out_dtype": core.VarDesc.VarType.FP32,
+                },
+            )
+            cast_op.desc.infer_var_type(block.desc)
+            cast_op.desc.infer_shape(block.desc)
+            output_names.append(cast_output.name)
+        return output_names
+
     def _get_gradient(
         self,
         input_to_check,
@@ -2712,21 +2784,24 @@ class OpTest(unittest.TestCase):
             if user_defined_grad_outputs is None:
                 if self.dtype == np.uint16:
                     cast_inputs = list(map(block.var, output_names))
-                    cast_outputs = block.create_var(
-                        dtype="float32", shape=cast_inputs[0].shape
-                    )
-                    cast_op = block.append_op(
-                        inputs={"X": cast_inputs},
-                        outputs={"Out": cast_outputs},
-                        type="cast",
-                        attrs={
-                            "in_dtype": core.VarDesc.VarType.BF16,
-                            "out_dtype": core.VarDesc.VarType.FP32,
-                        },
-                    )
-                    cast_op.desc.infer_var_type(block.desc)
-                    cast_op.desc.infer_shape(block.desc)
-                    output_names = [cast_outputs.name]
+                    if self.op_type in ["broadcast_tensors", "meshgrid"]:
+                        output_names = self.cast_bf16_output(block, cast_inputs)
+                    else:
+                        cast_outputs = block.create_var(
+                            dtype="float32", shape=cast_inputs[0].shape
+                        )
+                        cast_op = block.append_op(
+                            inputs={"X": cast_inputs},
+                            outputs={"Out": cast_outputs},
+                            type="cast",
+                            attrs={
+                                "in_dtype": core.VarDesc.VarType.BF16,
+                                "out_dtype": core.VarDesc.VarType.FP32,
+                            },
+                        )
+                        cast_op.desc.infer_var_type(block.desc)
+                        cast_op.desc.infer_shape(block.desc)
+                        output_names = [cast_outputs.name]
                 loss = append_loss_ops(block, output_names)
                 param_grad_list = append_backward(
                     loss=loss,
@@ -2743,7 +2818,7 @@ class OpTest(unittest.TestCase):
                     user_defined_grad_outputs = [user_defined_grad_outputs]
                 grad_outputs = []
                 for grad_out_value in user_defined_grad_outputs:
-                    # `presistable` is used to avoid executor create new var in local scope
+                    # `persistable` is used to avoid executor create new var in local scope
                     var = block.create_var(
                         shape=grad_out_value.shape,
                         dtype=grad_out_value.dtype,

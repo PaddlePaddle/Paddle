@@ -51,14 +51,13 @@ OpSupportedInfos(const std::string& place,
       {"GPU", &platform::is_gpu_place},
       {"CPU", &platform::is_cpu_place},
       {"XPU", &platform::is_xpu_place},
-      {"NPU", &platform::is_npu_place},
   };
-  PADDLE_ENFORCE_NE(is_target_place.count(query_place),
-                    0,
-                    platform::errors::InvalidArgument(
-                        "The argument `place` should be 'GPU', 'CPU', 'XPU', "
-                        "'NPU', 'MLU', but got '%s'.",
-                        place));
+  PADDLE_ENFORCE_NE(
+      is_target_place.count(query_place),
+      0,
+      platform::errors::InvalidArgument(
+          "The argument `place` should be 'GPU', 'CPU', 'XPU', but got '%s'.",
+          place));
 
   std::unordered_set<std::string> all_ops;
   const auto& op_info = framework::OpInfoMap::Instance().map();
@@ -148,7 +147,7 @@ AmpOperators::AmpOperators()
       OpSupportedInfos("GPU", paddle::framework::proto::VarType::BF16));
   unsupported_bf16_ops_->insert(unsupported_ops_gpu_bf16.begin(),
                                 unsupported_ops_gpu_bf16.end());
-// NOTE: GPU/NPU/XPU/MLU is compiled seperatly.
+// NOTE: GPU/XPU is compiled separately.
 #elif defined(PADDLE_WITH_XPU)
   auto unsupported_ops_xpu_fp16 = std::get<2>(
       OpSupportedInfos("XPU", paddle::framework::proto::VarType::FP16));
@@ -244,10 +243,8 @@ inline bool NeedCast(const std::shared_ptr<VarType>& var) {
   if (paddle::platform::is_gpu_place(place) ||
       paddle::platform::is_cuda_pinned_place(place) ||
       paddle::platform::is_xpu_place(place) ||
-      paddle::platform::is_custom_place(place) ||
-      paddle::platform::is_npu_place(place) ||
-      paddle::platform::is_npu_pinned_place(place)) {
-    // CudaPinndePlace is added for varbase created by dataloader
+      paddle::platform::is_custom_place(place)) {
+    // CudaPinnedPlace is added for varbase created by dataloader
     if (data_type == paddle::framework::proto::VarType::FP32 ||
         data_type == paddle::framework::proto::VarType::FP16 ||
         data_type == paddle::framework::proto::VarType::BF16) {

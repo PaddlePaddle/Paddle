@@ -25,7 +25,20 @@ std::set<std::string> OperatorBasesMustRunInStaticBuild = {
     "create_double_buffer_reader", "create_py_reader"};
 
 std::set<std::string> OpsCanSkipedFakeAllocInStaticBuild = {
-    "create_double_buffer_reader", "create_py_reader", "fetch_v2"};
+    "c_comm_init",
+    "c_comm_init_all",
+    "c_comm_init_multitrainer",
+    "c_gen_bkcl_id",
+    "c_gen_nccl_id",
+    "c_sync_calc_stream",
+    "c_sync_comm_stream",
+    "c_wait_comm",
+    "c_wait_compute",
+    "create_double_buffer_reader",
+    "create_py_reader",
+    "depend",
+    "fetch_v2",
+    "nop"};
 
 // Cannot static analysis these Ops' output dtype or backend because their
 // kernels have not moved to PHI yet.
@@ -33,8 +46,6 @@ std::set<std::string> OpsWithFluidKernelNeedMoveToPhi = {
     "cudnn_lstm",
     "dequantize",
     "distributed_fused_lamb",
-    "fused_attention",
-    "fused_attention_grad",
     "fused_batch_norm_act",
     "fused_batch_norm_act_grad",
     "fusion_group",
@@ -420,11 +431,8 @@ void FakeInitializeOutputsForFunctionKernel(
                 runtime_ctx.inputs.find("Beta1Pow")->second.at(0));
             phi::TensorBase* beta2_pow = GetTensorFormVar(
                 runtime_ctx.inputs.find("Beta2Pow")->second.at(0));
-            if (beta1_pow->place() == CPUPlace() &&
-                beta2_pow->place() == CPUPlace()) {
-              backend = phi::TransToPhiBackend(CPUPlace());
-            } else {
-              backend = phi::TransToPhiBackend(GPUPlace());
+            if (beta1_pow->place() == beta2_pow->place()) {
+              backend = phi::TransToPhiBackend(beta1_pow->place());
             }
           } else {
             PADDLE_THROW(phi::errors::Unimplemented(

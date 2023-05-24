@@ -120,7 +120,7 @@ class MixPrecisionOptimizer:
                 if param.stop_gradient:
                     continue
                 grad_var = param.main_grad
-                if framework.in_dygraph_mode():
+                if paddle.in_dynamic_mode():
                     if (
                         hasattr(grad_var, "is_selected_rows")
                         and grad_var.is_selected_rows()
@@ -151,7 +151,7 @@ class MixPrecisionOptimizer:
                     if param.stop_gradient:
                         continue
                     grad_var = param.main_grad
-                    if framework.in_dygraph_mode():
+                    if paddle.in_dynamic_mode():
                         if (
                             hasattr(grad_var, "is_selected_rows")
                             and grad_var.is_selected_rows()
@@ -242,7 +242,7 @@ def unscale_method(self, optimizer):
         paddle.distributed.all_reduce(
             is_found_inf, op=paddle.distributed.ReduceOp.MAX, group=None
         )
-        self._found_inf = is_found_inf.numpy()[0]
+        self._found_inf = int(is_found_inf)
 
 
 class MixPrecisionScaler:

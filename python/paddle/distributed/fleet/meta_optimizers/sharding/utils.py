@@ -898,7 +898,7 @@ def get_var_size(param):
     """
     assert -1 not in param.shape
     return (
-        reduce(lambda x, y: x * y, param.shape)
+        reduce(lambda x, y: x * y, param.shape, 1)
         * DtypeToSize[param.dtype]
         / 1024.0
         / 1024.0
