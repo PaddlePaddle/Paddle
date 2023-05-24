@@ -28,7 +28,6 @@ from paddle.framework.io_utils import is_belong_to_optimizer, is_parameter
 from paddle.static import Variable
 
 from .dist_attribute import OperatorDistAttr, TensorDistAttr
-from .process_group import get_all_process_groups
 from .process_mesh import ProcessMesh
 
 OpRole = core.op_proto_and_checker_maker.OpRole
@@ -56,6 +55,8 @@ def get_logger(log_level, name="auto_parallel"):
         )
         log_handler.setFormatter(log_format)
         logger.addHandler(log_handler)
+    else:
+        logger.setLevel(log_level)
     return logger
 
 
@@ -1817,6 +1818,8 @@ def debug_program(program, path, name):
 
 
 def ring_id_to_process_group(ring_id):
+    from .process_group import get_all_process_groups
+
     for g in get_all_process_groups():
         if g.id == ring_id:
             return g
@@ -2360,7 +2363,7 @@ def is_dep_skip_op(op):
 
 def _dygraph_guard_(func):
     def __impl__(*args, **kwargs):
-        if paddle.framework.in_dygraph_mode():
+        if paddle.framework.in_dynamic_mode():
             return func(*args, **kwargs)
         else:
             with paddle.fluid.dygraph.guard():

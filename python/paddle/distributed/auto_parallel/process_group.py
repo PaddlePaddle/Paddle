@@ -18,7 +18,10 @@ import paddle
 from paddle.framework import core
 
 from ..collective import _get_global_env, _new_ring_id
+from ..utils.log_utils import get_logger
 from .utils import dygraph_guard
+
+logger = get_logger("INFO", __name__)
 
 
 def get_all_process_groups():
@@ -130,7 +133,7 @@ class ProcessGroup:
         global_rank = genv.rank
 
         if self.nranks >= 2 and global_rank in self.ranks:
-            print(
+            logger.info(
                 f"group_id: {self.id}, ranks: {self.ranks}, nranks: {self.nranks}, trainer_endpoints: {genv.current_endpoint}"
             )
             strategy = core.ParallelStrategy()
