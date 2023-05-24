@@ -15,10 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import (
-    OpTest,
-    convert_float_to_uint16,
-)
+from eager_op_test import OpTest, convert_float_to_uint16
 from scipy.special import erfinv
 
 import paddle
@@ -128,17 +125,19 @@ class TestErfinvFP16OP(TestErfinv):
 class TestErfinvBF16OP(OpTest):
     def setUp(self):
         self.op_type = "erfinv"
+        self.prim_op_type = "prim"
+        self.public_python_api = paddle.erfinv
         self.python_api = paddle.erfinv
         self.dtype = np.uint16
         self.shape = [11, 17]
-        self.x = np.random.uniform(-1, 1, size=self.shape).astype(np.float32)
-        self.res_ref = erfinv(self.x).astype(np.float32)
-        self.inputs = {'X': convert_float_to_uint16(self.x)}
-        self.outputs = {'Out': convert_float_to_uint16(self.res_ref)}
+        x = np.random.uniform(-1, 1, size=self.shape).astype(np.float32)
+        res_ref = erfinv(self.x).astype(np.float32)
+        self.inputs = {'X': convert_float_to_uint16(x)}
+        self.outputs = {'Out': convert_float_to_uint16(res_ref)}
 
     def test_check_output(self):
         place = paddle.fluid.core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, check_prim=True)
 
     def test_check_grad(self):
         place = paddle.fluid.core.CUDAPlace(0)
@@ -146,6 +145,7 @@ class TestErfinvBF16OP(OpTest):
             place,
             ['X'],
             'Out',
+            check_prim=True,
         )
 
 
