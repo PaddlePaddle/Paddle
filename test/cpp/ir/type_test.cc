@@ -124,46 +124,20 @@ TEST(type_test, built_in_type) {
             &ir::AbstractType::lookup(int64_1.type_id(), ctx));
   EXPECT_EQ(ir::Int64Type::classof(int64_1), 1);
 
-  // Test 2: Test the parameteric built-in type of IrContext.
-  ir::DenseTensorTypeStorage::Dim dims = {1, 2, 3};
-  ir::DenseTensorTypeStorage::DataLayout data_layout =
-      ir::DenseTensorTypeStorage::DataLayout::NCHW;
-  ir::DenseTensorTypeStorage::LoD lod = {{1, 2, 3}, {4, 5, 6}};
-  size_t offset = 0;
-
-  ir::Type dense_tensor_1 =
-      ir::DenseTensorType::get(ctx, fp32_1, dims, data_layout, lod, offset);
-  ir::Type dense_tensor_2 =
-      ir::DenseTensorType::get(ctx, fp32_2, dims, data_layout, lod, offset);
-  ir::Type dense_tensor_3 =
-      ir::DenseTensorType::get(ctx, fp32_1, dims, data_layout, lod, 2);
-
-  EXPECT_EQ(dense_tensor_1, dense_tensor_2);
-  EXPECT_NE(dense_tensor_1, dense_tensor_3);
-  EXPECT_EQ(dense_tensor_1.type_id(), dense_tensor_2.type_id());
-  EXPECT_EQ(ir::DenseTensorType::classof(dense_tensor_1), 1);
-
-  ir::DenseTensorType dense_tensor_4 =
-      ir::DenseTensorType::get(ctx, fp32_1, dims, data_layout, lod, 2);
-  EXPECT_EQ(dense_tensor_4.offset() == 2, 1);
-  EXPECT_EQ(dense_tensor_4.dtype().isa<ir::Float32Type>(), true);
-  EXPECT_EQ(dense_tensor_4.data_layout(), data_layout);
-
-  // Test 3: Test isa and dyn_cast.
+  // Test 2: Test isa and dyn_cast.
   EXPECT_EQ(fp16_1.isa<ir::Float16Type>(), true);
   EXPECT_EQ(fp16_1.isa<ir::Float32Type>(), false);
-  EXPECT_EQ(fp16_1.isa<ir::DenseTensorType>(), false);
   EXPECT_EQ(fp16_1.isa<ir::Type>(), true);
-  EXPECT_EQ(dense_tensor_1.isa<ir::DenseTensorType>(), true);
 
-  ir::DenseTensorType dense_tensor_cast_1 =
-      dense_tensor_1.dyn_cast<ir::DenseTensorType>();
-  EXPECT_EQ(dense_tensor_cast_1.isa<ir::DenseTensorType>(), true);
-  EXPECT_EQ(dense_tensor_cast_1.offset() == 0, 1);
-  const ir::DenseTensorType dense_tensor_cast_2 =
-      ir::dyn_cast<ir::DenseTensorType>(dense_tensor_1);
-  EXPECT_EQ(dense_tensor_cast_2.isa<ir::DenseTensorType>(), true);
-  EXPECT_EQ(dense_tensor_cast_2.offset() == 0, 1);
+  // Test 3: Test VectorType
+  std::vector<ir::Type> vec_type = {int32_1, int64_1};
+  ir::Type vector_type = ir::VectorType::get(ctx, vec_type);
+  EXPECT_EQ(vector_type.isa<ir::VectorType>(), true);
+  EXPECT_EQ(vector_type.dyn_cast<ir::VectorType>().size() == 2, true);
+  EXPECT_EQ(vector_type.dyn_cast<ir::VectorType>()[0].isa<ir::Int32Type>(),
+            true);
+  EXPECT_EQ(vector_type.dyn_cast<ir::VectorType>()[1].isa<ir::Int64Type>(),
+            true);
 }
 
 // Customize a parameterized TypeStorage IntegerTypeStorage.

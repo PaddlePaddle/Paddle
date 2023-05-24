@@ -26,7 +26,12 @@ namespace phi {
 namespace funcs {
 
 template <typename T>
-void BatchTranspose(T* output, const T* input, int batch, int m, int n);
+void BatchTranspose(T* output,
+                    const T* input,
+                    int64_t batch,
+                    int64_t m,
+                    int64_t n,
+                    const phi::GPUContext* dev_ctx);
 
 template <typename DeviceContext, typename T>
 struct TransposeNormal {

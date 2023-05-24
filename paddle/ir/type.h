@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <ostream>
+
 #include "paddle/ir/cast_utils.h"
 #include "paddle/ir/type_base.h"
 
@@ -57,7 +59,7 @@ class Type {
 
   const Storage *storage() const { return storage_; }
 
-  const Dialect &dialect() const { return storage_->abstract_type().dialect(); }
+  Dialect &dialect() const { return storage_->abstract_type().dialect(); }
 
   IrContext *ir_context() const;
 
@@ -75,6 +77,8 @@ class Type {
   U dyn_cast() const {
     return ir::dyn_cast<U>(*this);
   }
+
+  void print(std::ostream &os) const;
 
   ///
   /// \brief Enable hashing Type.

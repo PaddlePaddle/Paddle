@@ -17,8 +17,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/platform/device_code.h"
 #include "paddle/fluid/platform/init.h"
+#include "paddle/phi/backends/device_code.h"
 
 namespace paddle {
 namespace operators {
@@ -93,11 +93,10 @@ framework::OpDesc* CreateFusionGroupOp(
 void PrepareDeviceCode(platform::Place place,
                        std::string func_name,
                        std::string cuda_kernel_str) {
-  paddle::platform::DeviceCodePool& pool =
-      paddle::platform::DeviceCodePool::Init({place});
+  phi::DeviceCodePool& pool = phi::DeviceCodePool::Init({place});
 
-  std::unique_ptr<paddle::platform::DeviceCode> code(
-      new paddle::platform::CUDADeviceCode(place, func_name, cuda_kernel_str));
+  std::unique_ptr<phi::DeviceCode> code(
+      new phi::GPUDeviceCode(place, func_name, cuda_kernel_str));
   code->Compile();
   pool.Set(std::move(code));
 }
@@ -183,7 +182,7 @@ void TestMain(const std::vector<std::string>& input_names,
 }
 
 TEST(FusionGroupOp, elementwise) {
-  if (!platform::dynload::HasNVRTC() || !platform::dynload::HasCUDADriver()) {
+  if (!phi::dynload::HasNVRTC() || !phi::dynload::HasCUDADriver()) {
     return;
   }
 
