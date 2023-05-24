@@ -100,7 +100,7 @@ class TestSparseAttentionAPI1(unittest.TestCase):
             output = paddle.matmul(softmax, value)
             output.backward()
 
-            output_sp = paddle.sparse.nn.functional.attention(
+            output_sp, _ = paddle.sparse.nn.functional.attention(
                 query_sp, key_sp, value_sp, sp_mask, kp_mask, attn_mask
             )
             output_sp.backward()
@@ -113,7 +113,7 @@ class TestSparseAttentionAPI1(unittest.TestCase):
             output = paddle.matmul(softmax, value)
             output.backward()
 
-            output_sp = paddle.sparse.nn.functional.attention(
+            output_sp, _ = paddle.sparse.nn.functional.attention(
                 query_sp, key_sp, value_sp, sp_mask
             )
             output_sp.backward()

@@ -476,7 +476,6 @@
     layout : sparse_mask
     data_type: query
   optional : key_padding_mask, attn_mask
-  intermediate : softmax
   backward: fused_attention_grad
 
 - op: masked_matmul
