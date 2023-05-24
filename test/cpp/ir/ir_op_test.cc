@@ -95,7 +95,7 @@ class Operation1 : public ir::Op<Operation1> {
     }
   }
   static void build(const ir::Builder &builder,
-                    const ir::OperationArgument &argument) {
+                    ir::OperationArgument &argument) {  // NOLINT
     std::vector<ir::OpResult> inputs = {};
     std::vector<ir::Type> output_types = {
         ir::Float32Type::get(builder.context())};
