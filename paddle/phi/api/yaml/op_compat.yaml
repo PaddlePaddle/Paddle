@@ -435,13 +435,14 @@
     out : Out
 
 - op : concat
-  backward : concat_grad
+  backward : concat_grad, concat_double_grad
   inputs :
     x : X
   outputs :
     out : Out
   attrs :
     axis : axis
+  drop_empty_grad : [x_grad]
   scalar :
     axis :
       data_type : int
