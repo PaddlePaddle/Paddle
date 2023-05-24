@@ -524,6 +524,8 @@ class TestArgsortBF16OP(OpTest):
     def setUp(self):
         self.op_type = "argsort"
         self.python_api = paddle.argsort
+        self.public_python_api = paddle.argsort
+        self.prim_op_type = "prim"
         self.dtype = np.uint16
         self.descending = False
         self.axis = 0
