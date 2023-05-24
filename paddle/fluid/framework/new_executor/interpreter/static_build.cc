@@ -40,11 +40,6 @@ std::set<std::string> OpsCanSkipedFakeAllocInStaticBuild = {
     "fetch_v2",
     "nop"};
 
-// Cannot static analysis these Ops' output dtype or backend because their
-// kernels have not moved to PHI yet.
-std::set<std::string> OpsWithFluidKernelNeedMoveToPhi = {
-    "distributed_fused_lamb"};
-
 std::set<std::string> StaticBuildBlackList = {
     "batch_norm" /*: to handle reserve_space output*/,
     "cinn_instruction_run" /*: to handle subgraph infermeta*/,
@@ -86,8 +81,7 @@ bool BlockCanBeStaticBuilt(const framework::BlockDesc& block) {
     bool has_fluid_kernel = OperatorWithKernel::AllOpKernels().count(op_type);
     bool has_structured_kernel =
         phi::KernelFactory::Instance().HasStructuredKernel(op_type);
-    bool need_move_to_phi = (has_fluid_kernel || has_structured_kernel) &&
-                            OpsWithFluidKernelNeedMoveToPhi.count(op_type);
+    bool need_move_to_phi = (has_fluid_kernel || has_structured_kernel);
 
     KernelCode kernel_code =
         (in_black_list << 7) + (is_operator_base << 6) + (is_custom_op << 5) +
