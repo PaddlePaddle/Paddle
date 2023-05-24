@@ -130,9 +130,7 @@ std::vector<T> split_string(const std::string& str, const std::string& delim) {
     pre_pos = pos + delim.size();
   }
   tmp_str.assign(str, pre_pos, str.length() - pre_pos);
-  if (!tmp_str.empty()) {
-    res_list.push_back(tmp_str);
-  }
+  res_list.push_back(tmp_str);
   return res_list;
 }
 
