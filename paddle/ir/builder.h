@@ -28,6 +28,8 @@ class Builder {
   explicit Builder(IrContext *context) : context_(context) {}
   explicit Builder(Operation *op) : Builder(op->ir_context()) {}
 
+  IrContext *context() const { return context_; }
+
   /// Create an operation of specific op type at the current insertion point.
   template <typename OpTy, typename... Args>
   OpTy create(Args &&...args) {
