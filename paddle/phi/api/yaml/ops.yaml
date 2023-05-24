@@ -2081,6 +2081,15 @@
   intermediate: warprnntgrad
   backward : warprnnt_grad
 
+- op : weighted_sample_neighbors
+  args : (Tensor row, Tensor colptr, Tensor edge_weight, Tensor input_nodes, Tensor eids, int sample_size, bool return_eids)
+  output : Tensor(out_neighbors), Tensor(out_count), Tensor(out_eids)
+  infer_meta :
+    func : WeightedSampleNeighborsInferMeta
+  kernel :
+    func : weighted_sample_neighbors
+  optional: eids
+
 - op : where
   args : (Tensor condition, Tensor x, Tensor y)
   output : Tensor

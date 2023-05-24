@@ -557,6 +557,17 @@ void WarprnntInferMeta(const MetaTensor& input,
                        MetaTensor* loss,
                        MetaTensor* warpctcgrad);
 
+void WeightedSampleNeighborsInferMeta(const MetaTensor& row,
+                                      const MetaTensor& col_ptr,
+                                      const MetaTensor& edge_weight,
+                                      const MetaTensor& x,
+                                      const MetaTensor& eids,
+                                      int sample_size,
+                                      bool return_eids,
+                                      MetaTensor* out,
+                                      MetaTensor* out_count,
+                                      MetaTensor* out_eids);
+
 void WhereInferMeta(const MetaTensor& condition,
                     const MetaTensor& x,
                     const MetaTensor& y,
