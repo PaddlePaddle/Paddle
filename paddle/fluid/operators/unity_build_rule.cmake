@@ -202,7 +202,6 @@ register_unity_group(
   cc
   partial_sum_op.cc
   pixel_shuffle_op.cc
-  pool_op.cc
   pool_with_index_op.cc
   positive_negative_pair_op.cc
   prelu_op.cc
