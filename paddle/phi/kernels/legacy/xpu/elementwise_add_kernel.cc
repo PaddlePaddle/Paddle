@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,10 +29,11 @@
 namespace phi {
 
 template <typename T, typename Context>
-void AddKernel(const Context& dev_ctx,
-               const DenseTensor& x,
-               const DenseTensor& y,
-               DenseTensor* out) {
+void AddRawKernel(const Context& dev_ctx,
+                  const DenseTensor& x,
+                  const DenseTensor& y,
+                  int axis,
+                  DenseTensor* out) {
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   auto f = [](xpu::Context* ctx,
@@ -44,41 +45,15 @@ void AddKernel(const Context& dev_ctx,
     return xpu::broadcast_add<XPUType>(ctx, x, y, z, xshape, yshape);
   };
 
-  XPUElementwise<T, XPUType>(dev_ctx, x, y, -1, out, f);
-}
-
-template <typename T, typename Context>
-void GradAddXPUKernel(const Context& dev_ctx,
-                      const DenseTensor& x,
-                      const DenseTensor& y,
-                      DenseTensor* out) {
-  using XPUType = typename XPUTypeTrait<T>::Type;
-
-  dev_ctx.template Alloc<T>(out);
-  auto x_shape = phi::vectorize<int>(x.dims());
-  auto y_shape = phi::vectorize<int>(y.dims());
-  int r = xpu::broadcast_add(dev_ctx.x_context(),
-                             reinterpret_cast<const XPUType*>(x.data<T>()),
-                             reinterpret_cast<const XPUType*>(y.data<T>()),
-                             reinterpret_cast<XPUType*>(out->data<T>()),
-                             x_shape,
-                             y_shape);
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "broadcast_add");
+  XPUElementwise<T, XPUType>(dev_ctx, x, y, axis, out, f);
 }
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(grad_add,
+PD_REGISTER_KERNEL(add_raw,
                    XPU,
                    ALL_LAYOUT,
-                   phi::GradAddXPUKernel,
-                   phi::dtype::float16,
-                   float) {}
-
-PD_REGISTER_KERNEL(add,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::AddKernel,
+                   phi::AddRawKernel,
                    phi::dtype::float16,
                    float,
                    int,
