@@ -31,7 +31,7 @@ if(APPLE)
        native_dst)
   set(POCKETFFT_PATCH_COMMAND
       git checkout -- . && git checkout ${POCKETFFT_TAG} && patch -Nd
-      ${POCKETFFT_INCLUDE_DIR}/src/extern_pocketfft < ${native_dst})
+      ${POCKETFFT_INCLUDE_DIR}/extern_pocketfft < ${native_dst})
 endif()
 ExternalProject_Add(
   extern_pocketfft

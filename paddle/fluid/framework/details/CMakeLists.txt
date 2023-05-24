@@ -162,12 +162,12 @@ elseif(WITH_ROCM)
     fused_all_reduce_op_handle
     SRCS fused_all_reduce_op_handle.cc
     DEPS op_handle_base
+         variable_visitor
          scope
          lod_tensor
          ddim
          memory
          dynload_cuda
-         variable_visitor
          place)
   hip_library(
     grad_merge_all_reduce_op_handle

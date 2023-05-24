@@ -28,14 +28,14 @@ cc_library(
 cc_library(paddle_pass_builder SRCS paddle_pass_builder.cc)
 
 set(paddle_inference_api_deps
-    lod_tensor
-    scope
     reset_tensor_array
     analysis_config
     paddle_infer_contrib
     zero_copy_tensor
     trainer_desc_proto
-    custom_operator)
+    custom_operator
+    lod_tensor
+    scope)
 
 if(WITH_CRYPTO)
   list(APPEND paddle_inference_api_deps paddle_crypto)
@@ -47,7 +47,7 @@ endif()
 cc_library(
   paddle_inference_api
   SRCS api.cc api_impl.cc helper.cc
-  DEPS executor ${paddle_inference_api_deps})
+  DEPS executor paddle_inference_io ${paddle_inference_api_deps})
 
 if(WIN32)
   target_link_libraries(paddle_inference_api gflags)
