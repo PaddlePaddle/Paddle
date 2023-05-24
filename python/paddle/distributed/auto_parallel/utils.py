@@ -26,7 +26,7 @@ from paddle.framework import core
 from paddle.framework.io_utils import is_belong_to_optimizer, is_parameter
 from paddle.static import Variable
 
-from .dist_attribute import OperatorDistAttr, TensorDistAttr
+from .dist_attribute import DistTensorSpec, OperatorDistAttr, TensorDistAttr
 from .process_group import get_all_process_groups
 from .process_mesh import ProcessMesh
 
@@ -2357,50 +2357,64 @@ def is_dep_skip_op(op):
     return False
 
 
-# def wrap_data_for_completion(
-#     dist_op: DistributedOperator,
-#     input_names: list,
-#     output_names: list,
-#     attr_names: list
-# ):
-#     """
-#     Get data used in inferring distributed attributes, including:
-#       1. DistTensorSpec for each input and output tensor of this dist_op.
-#       2. Operator attributes of this dist_op, e.g. transpose_x in matmul op.
-#
-#     Args:
-#       dist_op: the DistributedOperator
-#       input_names: list, name of the dist_op's input tensors
-#       output_names: list, name of the dist_op's output tensors
-#       attr_names: list, attribute name of the dist_op's corresponding serial op
-#
-#     Returns:
-#       input_specs: list, DistTensorSpec for each input tensor of the dist_op
-#       output_specs: list, DistTensorSpec for each output tensor of the dist_op
-#       attrs: dict, attribute map of the dist op
-#     """
-#
-#     input_specs = []
-#     output_specs = []
-#     attrs = {}
-#
-#     serial_op = dist_op.serial_op
-#
-#     # Construct each input tensor's DistTensorSpec with shape and dist_attr
-#     for name in input_names:
-#         tensor_dist_attr = dist_op.dist_attr.get_input_dist_attr(name)
-#         var = serial_op.block._var_recursive(name)
-#         tensor_shape = var.shape
-#         dist_spec = DistTensorSpec(tensor_shape, tensor_dist_attr)
-#         input_specs.append(dist_spec)
-#
-#     # Construct each output tensor's DistTensorSpec with shape and dist_attr
-#     for name in output_names:
-#         tensor_dist_attr = dist_op.dist_attr.get_output_dist_attr(name)
-#         var = serial_op.block._var_recursive(name)
-#         tensor_shape = var.shape
-#         dist_spec = DistTensorSpec(tensor_shape, tensor_dist_attr)
-#         output_specs.append(dist_spec)
-#
-#     for attr_name in attr_names:
-#         attrs[attr_name] = serial_op.desc.attr(attr_name)
+def wrap_data_for_completion(
+    dist_op, input_names: list, output_names: list, attr_names: list
+):
+    """
+    Get data used in inferring distributed attributes, including:
+      1. DistTensorSpec for each input and output tensor of this dist_op.
+      2. Operator attributes of this dist_op, e.g. transpose_x in matmul op.
+
+    Args:
+      dist_op: the DistributedOperator
+      input_names: list, name of the dist_op's input tensors
+      output_names: list, name of the dist_op's output tensors
+      attr_names: list, attribute name of the dist_op's corresponding serial op
+
+    Returns:
+      input_specs: list, DistTensorSpec for each input tensor of the dist_op
+      output_specs: list, DistTensorSpec for each output tensor of the dist_op
+      attrs: dict, attribute map of the dist op
+
+    Usage:
+      op_desc = dist_op.serial_op.desc
+      input_name_list = []
+      output_name_list = []
+      input_name_list.append(op_desc.input('X')[0]) # 'X' is the arg name for op
+      input_name_list.append(op_desc.input('Y')[0])
+      output_name_list.append(op_desc.output('Out')[0])
+      attr_name_list = ['trans_x', 'trans_y']
+      input_specs, output_specs, attrs = wrap_data_for_completion(
+          dist_op,
+          input_name_list,
+          output_name_list,
+          attr_name_list)
+
+    """
+
+    input_specs = []
+    output_specs = []
+    attrs = {}
+
+    serial_op = dist_op.serial_op
+
+    # Construct each input tensor's DistTensorSpec with shape and dist_attr
+    for name in input_names:
+        tensor_dist_attr = dist_op.dist_attr.get_input_dist_attr(name)
+        var = serial_op.block._var_recursive(name)
+        tensor_shape = var.shape
+        dist_spec = DistTensorSpec(tensor_shape, tensor_dist_attr)
+        input_specs.append(dist_spec)
+
+    # Construct each output tensor's DistTensorSpec with shape and dist_attr
+    for name in output_names:
+        tensor_dist_attr = dist_op.dist_attr.get_output_dist_attr(name)
+        var = serial_op.block._var_recursive(name)
+        tensor_shape = var.shape
+        dist_spec = DistTensorSpec(tensor_shape, tensor_dist_attr)
+        output_specs.append(dist_spec)
+
+    for attr_name in attr_names:
+        attrs[attr_name] = serial_op.desc.attr(attr_name)
+
+    return input_specs, output_specs, attrs
