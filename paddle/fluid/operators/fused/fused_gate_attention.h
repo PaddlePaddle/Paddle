@@ -14,9 +14,14 @@ limitations under the License. */
 
 #pragma once
 
+#ifdef PADDLE_WITH_FLASHATTN
+#include "paddle/phi/backends/dynload/flashattn.h"
+#endif
+
+#include "paddle/phi/kernels/arange_kernel.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
-#include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
+#include "paddle/phi/kernels/funcs/range_function.h"
 #include "paddle/phi/kernels/funcs/reduce_function.h"
 #include "paddle/phi/kernels/funcs/transpose_function.cu.h"
 #include "paddle/phi/kernels/gpudnn/softmax_gpudnn.h"
@@ -46,7 +51,45 @@ void AllocWithDebugInfo(const phi::GPUContext& dev_ctx,
                         const std::string& info,
                         phi::DenseTensor* t) {
   dev_ctx.Alloc<T>(t, t->numel() * sizeof(T));
-  VLOG(4) << info << ": " << MemoryDebugString(*t);
+  if (VLOG_IS_ON(4)) {
+    VLOG(4) << info << ": " << MemoryDebugString(*t);
+  }
+}
+
+inline std::string TensorDebugString(const phi::DenseTensor* t,
+                                     const std::string& info) {
+  std::stringstream ss;
+  ss << info << ": ";
+  if (t) {
+    if (t->initialized()) {
+      ss << "shape=[" << t->dims() << "], ptr=" << t->data();
+    } else {
+      ss << "not initialized";
+    }
+  } else {
+    ss << "nullptr";
+  }
+  return ss.str();
+}
+
+inline void WaitWithDebugInfo(const phi::GPUContext& dev_ctx) {
+  if (VLOG_IS_ON(5)) {
+    dev_ctx.Wait();
+    VLOG(5) << "[Flash attn Synchronize] ";
+  }
+}
+
+template <typename T>
+inline void TypeDebugInfo() {
+  if (VLOG_IS_ON(4)) {
+    if (std::is_same<T, phi::dtype::float16>::value) {
+      VLOG(4) << "[Grad]: T is phi::dtype::float16.";
+    } else if (std::is_same<T, phi::dtype::bfloat16>::value) {
+      VLOG(4) << "[Grad]: T is phi::dtype::bfloat16.";
+    } else if (std::is_same<T, float>::value) {
+      VLOG(4) << "[Grad]: T is float.";
+    }
+  }
 }
 
 template <typename T>
@@ -61,6 +104,7 @@ struct GateAttentionConfig {
 
   bool merge_qkv;
   bool has_gating;
+  bool use_flash_attn;
 
   int64_t batch_size;
   int64_t seq_len_m;
@@ -90,8 +134,12 @@ struct GateAttentionConfig {
                       const phi::DenseTensor* query_weight,
                       const phi::DenseTensor* qkv_weight,
                       bool merge_qkv,
-                      bool has_gating)
-      : dev_ctx(dev_ctx), merge_qkv(merge_qkv), has_gating(has_gating) {
+                      bool has_gating,
+                      bool use_flash_attn)
+      : dev_ctx(dev_ctx),
+        merge_qkv(merge_qkv),
+        has_gating(has_gating),
+        use_flash_attn(use_flash_attn) {
     // query: shape=[batch_size, seq_len_m, seq_len_r, q_dim]
     batch_size = query->dims()[0];
     seq_len_m = query->dims()[1];
@@ -144,6 +192,30 @@ struct GateAttentionConfig {
     softmax_out_dims = {batch_size, seq_len_m, num_heads, seq_len_r, m_size};
     qktv_out_dims = {batch_size, seq_len_m, num_heads, seq_len_r, head_dim};
     gate_out_dims = {batch_size, seq_len_m, seq_len_r, num_heads, head_dim};
+  }
+
+  bool CanUseFlashAttn() const {
+#ifdef PADDLE_WITH_FLASHATTN
+    if (!std::is_same<T, phi::dtype::bfloat16>::value) {
+      return false;
+    }
+
+    if (merge_qkv) {
+      switch (head_dim) {
+        case 16:
+        case 32:
+        case 64:
+        case 128:
+          return use_flash_attn;
+        default:
+          return false;
+      }
+    } else {
+      return false;
+    }
+#else
+    return false;
+#endif
   }
 
   int64_t GetQuerySize() const {
@@ -253,14 +325,16 @@ struct GateAttentionGradConfig : public GateAttentionConfig<T> {
                           const phi::DenseTensor* query_weight,
                           const phi::DenseTensor* qkv_weight,
                           bool merge_qkv,
-                          bool has_gating)
+                          bool has_gating,
+                          bool use_flash_attn)
       : GateAttentionConfig<T>(dev_ctx,
                                query,
                                key,
                                query_weight,
                                qkv_weight,
                                merge_qkv,
-                               has_gating) {}
+                               has_gating,
+                               use_flash_attn) {}
 
   phi::DenseTensor* GetQKVOutGrad() {
     if (!qkv_out_grad.IsInitialized()) {
@@ -318,6 +392,14 @@ struct GateAttentionGradConfig : public GateAttentionConfig<T> {
 };
 
 template <typename T>
+__global__ void FlashAttRange(int start, int step, int size, T* out1, T* out2) {
+  CUDA_KERNEL_LOOP(index, size) {
+    out1[index] = static_cast<T>(start + step * index);
+    out2[index] = static_cast<T>(start + step * index);
+  }
+}
+
+template <typename T>
 class FMHAGateRef {
  public:
   FMHAGateRef(const phi::GPUContext& dev_ctx, bool merge_qkv)
@@ -336,6 +418,7 @@ class FMHAGateRef {
     T* q_ptr = nullptr;
     T* k_ptr = nullptr;
     T* v_ptr = nullptr;
+
     if (merge_qkv_) {
       // qkv_transpose_out = transpose(qkv_out)
       PADDLE_ENFORCE_NOT_NULL(
@@ -381,7 +464,6 @@ class FMHAGateRef {
       k_ptr = k_transpose_out->data<T>();
       v_ptr = v_transpose_out->data<T>();
     }
-
     // qk_out = BatchedGEMM(Q, K^T)
     // [batch_size, seq_len_m, num_heads, seq_len_r, head_dim] *
     //                [batch_size, seq_len_m, num_heads, m_size, head_dim]
@@ -394,8 +476,8 @@ class FMHAGateRef {
     int64_t gemm_m = config->seq_len_r;
     int64_t gemm_n = config->m_size;
     int64_t gemm_k = config->head_dim;
-
     T alpha = static_cast<T>(1.0 / sqrt(config->head_dim));
+    // attn = matmul(q, k.transpose(-1, -2))
     ComputeBatchedGEMM(q_ptr,
                        k_ptr,
                        qk_out_ptr,
@@ -407,6 +489,7 @@ class FMHAGateRef {
                        gemm_batch_size,
                        alpha);
 
+    // attn = softmax_dropout(attn, 0, self.training, mask=mask, bias=bias)
     // softmax_out = softmax(qk_out + nonbatched_bias + src_mask)
     ComputeBiasMaskSoftmaxForward(
         nonbatched_bias, src_mask, qk_out, softmax_out);
@@ -414,7 +497,7 @@ class FMHAGateRef {
 
     // qktv_out = BatchedGEMM(softmax_out, V)
     // [batch_size, seq_len_m, num_heads, seq_len_r, m_size] *
-    //               [batch_size, seq_len_m, num_heads, m_size, head_dim]
+    // [batch_size, seq_len_m, num_heads, m_size,    head_dim]
     // -> [batch_size, seq_len_m, num_heads, seq_len_r, head_dim]
     phi::DenseTensor* qktv_out = config->GetQKTVOut(gate_out);
     T* qktv_out_ptr = qktv_out->data<T>();
@@ -423,6 +506,7 @@ class FMHAGateRef {
     gemm_n = config->head_dim;
     gemm_k = config->m_size;
 
+    // o = matmul(attn, v)
     T* softmax_out_ptr = softmax_out->data<T>();
     ComputeBatchedGEMM(softmax_out_ptr,
                        v_ptr,
@@ -435,7 +519,9 @@ class FMHAGateRef {
                        gemm_batch_size);
 
     // fmha_out = transpose(qktv_out)
+    // o = o.transpose(-2, -3).contiguous()
     ComputeQKTVTransposeForward(*qktv_out, fmha_out);
+
     config->ClearQKTVOut();
     if (config->has_gating) {
       gate_out->Resize(config->gate_out_dims);
@@ -463,6 +549,7 @@ class FMHAGateRef {
     phi::DenseTensor k_transpose_out_grad;
     phi::DenseTensor v_transpose_out_grad;
     phi::DenseTensor qkv_transpose_out_grad;
+
     if (merge_qkv_) {
       PADDLE_ENFORCE_NOT_NULL(
           qkv_transpose_out,
@@ -752,11 +839,11 @@ class FMHAGateRef {
                           int64_t batch_size,
                           T alpha = static_cast<T>(1.0),
                           T beta = static_cast<T>(0.0)) {
-    CBLAS_TRANSPOSE cblas_trans_a = trans_a ? CblasTrans : CblasNoTrans;
-    CBLAS_TRANSPOSE cblas_trans_b = trans_b ? CblasTrans : CblasNoTrans;
     int64_t stride_a = m * k;
     int64_t stride_b = k * n;
 
+    CBLAS_TRANSPOSE cblas_trans_a = trans_a ? CblasTrans : CblasNoTrans;
+    CBLAS_TRANSPOSE cblas_trans_b = trans_b ? CblasTrans : CblasNoTrans;
     auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx_);
     blas.BatchedGEMM(cblas_trans_a,
                      cblas_trans_b,
@@ -775,6 +862,471 @@ class FMHAGateRef {
 
   const phi::GPUContext& dev_ctx_;
   bool merge_qkv_;
+};
+
+template <typename T>
+class FlashAttnWithGating {
+ public:
+  FlashAttnWithGating(const phi::GPUContext& dev_ctx, bool merge_qkv)
+      : dev_ctx_(dev_ctx), merge_qkv_(merge_qkv) {}
+
+  void ComputeForward(const phi::DenseTensor* nonbatched_bias,
+                      const phi::DenseTensor* src_mask,
+                      phi::DenseTensor* qkv_transpose_out,
+                      phi::DenseTensor* softmax_lse,
+                      phi::DenseTensor* fmha_out,
+                      phi::DenseTensor* gate_out,
+                      GateAttentionConfig<T>* config) {
+#ifdef PADDLE_WITH_FLASHATTN
+    bool is_bf16 =
+        qkv_transpose_out->dtype() == DataType::BFLOAT16 ? true : false;
+    TypeDebugInfo<T>();
+
+    PADDLE_ENFORCE_NOT_NULL(
+        qkv_transpose_out,
+        platform::errors::NotFound("The input qkv_transpose_out can not be "
+                                   "nullptr when merge_qkv is true."));
+
+    // 1. Dealing with qkv_out for flash_attn.
+    phi::DenseTensor* qkv_out = config->GetQKVOut();
+    ComputeQKVTransposeForwardForFlashAttn(*qkv_out, qkv_transpose_out);
+    config->ClearQKVOut();
+
+    // q_size == k_size
+    int64_t q_size = config->GetQuerySize();
+    T* q_ptr = qkv_transpose_out->data<T>();
+    T* k_ptr = q_ptr + q_size;
+    T* v_ptr = k_ptr + q_size;
+
+    // 2. Dealing with cu_seq_q and cu_seq_k for flash_attn.
+    phi::DenseTensor cu_seq_q;
+    phi::DenseTensor cu_seq_k;
+    int seq_batch_size = static_cast<int>(config->batch_size) *
+                         static_cast<int>(config->seq_len_m);
+    int64_t step = static_cast<int64_t>(config->seq_len_r);
+    AllocAndInitSeqQK(seq_batch_size, step, &cu_seq_q, &cu_seq_k);
+
+    // 3. Dealing with mask and bias for flash_attn.
+    std::vector<int64_t> temp_mask_dim = GetCompressedDim(src_mask);
+    std::vector<int64_t> temp_bias_dim = GetCompressedDim(nonbatched_bias);
+
+    // 4. flash_attn parameter setting.
+    InitFlashAttnArguments(config);
+
+    // 5. construct softmax_lse
+    int softmax_lse_last_dim = ((fa_max_seqlen_q_ + 16 - 1) / 16) * 16;
+    softmax_lse->Resize({fa_batch_size_, fa_num_heads_, softmax_lse_last_dim});
+    AllocWithDebugInfo<float>(dev_ctx_, "flash_attn: softmax_lse", softmax_lse);
+
+    if (VLOG_IS_ON(6)) {
+      VLOG(6) << TensorDebugString(&cu_seq_q, "cu_seq_q");
+      VLOG(6) << TensorDebugString(&cu_seq_k, "cu_seq_k");
+      VLOG(6) << TensorDebugString(nonbatched_bias, "nonbatched_bias");
+      VLOG(6) << TensorDebugString(src_mask, "src_mask");
+      VLOG(6) << TensorDebugString(qkv_transpose_out, "qkv_transpose_out");
+      VLOG(6) << TensorDebugString(softmax_lse, "softmax_lse");
+      VLOG(6) << TensorDebugString(fmha_out, "fmha_out");
+      VLOG(6) << TensorDebugString(gate_out, "gate_out");
+    }
+
+    // 6. flas_attn part one, get temp worksapce size.
+    cudaStream_t stream = dev_ctx_.stream();
+    uint64_t workspace_size;
+    bool succ = phi::dynload::flash_attn_fwd_with_bias_and_mask(
+        static_cast<const void*>(q_ptr),
+        static_cast<const void*>(k_ptr),
+        static_cast<const void*>(v_ptr),
+        nullptr,  // set out to nullptr to calculate workspace size
+        cu_seq_q.data<int32_t>(),
+        cu_seq_k.data<int32_t>(),
+        fa_total_q_,
+        fa_total_k_,
+        fa_batch_size_,
+        fa_num_heads_,
+        fa_head_size_,
+        fa_max_seqlen_q_,
+        fa_max_seqlen_k_,
+        fa_dropout_prob_,
+        fa_softmax_scale_,
+        fa_zero_tensors_,
+        fa_is_causal_,
+        is_bf16,
+        fa_num_splits_,
+        softmax_lse->data(),
+        nullptr,  // softmax out,
+        nullptr,
+        &workspace_size,
+        stream,
+        fa_seed_,
+        fa_offset_,
+        src_mask ? src_mask->data() : nullptr,
+        nonbatched_bias ? nonbatched_bias->data() : nullptr,
+        src_mask ? temp_mask_dim.data() : nullptr,
+        nonbatched_bias ? temp_bias_dim.data() : nullptr);
+    if (!succ) {
+      PADDLE_THROW(phi::errors::External(phi::dynload::flash_attn_error()));
+    }
+
+    // 8. Run flash-attention kernel.
+    phi::DenseTensor workspace = CreateWorkspace(workspace_size);
+    succ = phi::dynload::flash_attn_fwd_with_bias_and_mask(
+        static_cast<const void*>(q_ptr),
+        static_cast<const void*>(k_ptr),
+        static_cast<const void*>(v_ptr),
+        static_cast<void*>(fmha_out->data()),
+        cu_seq_q.data<int32_t>(),
+        cu_seq_k.data<int32_t>(),
+        fa_total_q_,
+        fa_total_k_,
+        fa_batch_size_,
+        fa_num_heads_,
+        fa_head_size_,
+        fa_max_seqlen_q_,
+        fa_max_seqlen_k_,
+        fa_dropout_prob_,
+        fa_softmax_scale_,
+        fa_zero_tensors_,
+        fa_is_causal_,
+        is_bf16,
+        fa_num_splits_,
+        softmax_lse->data(),
+        nullptr,  // softmax out
+        (workspace_size > 0) ? static_cast<void*>(workspace.data()) : nullptr,
+        &workspace_size,
+        stream,
+        fa_seed_,
+        fa_offset_,
+        src_mask ? src_mask->data() : nullptr,
+        nonbatched_bias ? nonbatched_bias->data() : nullptr,
+        src_mask ? temp_mask_dim.data() : nullptr,
+        nonbatched_bias ? temp_bias_dim.data() : nullptr);
+    if (!succ) {
+      PADDLE_THROW(phi::errors::External(phi::dynload::flash_attn_error()));
+    }
+    WaitWithDebugInfo(dev_ctx_);
+    VLOG(5) << "[ComputeForward]: Run SUCCESS!!!";
+
+    if (config->has_gating) {
+      gate_out->Resize(config->gate_out_dims);
+    }
+#else
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "FlashAttention is unsupported, please set use_flash_attn to false."));
+#endif
+  }
+
+  void ComputeBackward(const phi::DenseTensor* qkv_transpose_out,
+                       const phi::DenseTensor* src_mask,
+                       const phi::DenseTensor* nonbatched_bias,
+                       const phi::DenseTensor* softmax_lse,
+                       const phi::DenseTensor* fmha_out,
+                       const phi::DenseTensor* fmha_out_grad,
+                       phi::DenseTensor* src_mask_grad,
+                       phi::DenseTensor* nonbatched_bias_grad,
+                       GateAttentionGradConfig<T>* config) {
+#ifdef PADDLE_WITH_FLASHATTN
+    bool is_bf16 =
+        qkv_transpose_out->dtype() == DataType::BFLOAT16 ? true : false;
+    TypeDebugInfo<T>();
+
+    PADDLE_ENFORCE_NOT_NULL(
+        qkv_transpose_out,
+        platform::errors::NotFound("The input qkv_transpose_out can not be"
+                                   "nullptr when merge_qkv is true."));
+
+    int64_t q_size = config->GetQuerySize();
+    const T* q_ptr = qkv_transpose_out->data<T>();
+    const T* k_ptr = q_ptr + q_size;
+    const T* v_ptr = k_ptr + q_size;
+
+    phi::DenseTensor qkv_transpose_out_grad;
+    qkv_transpose_out_grad.Resize(qkv_transpose_out->dims());
+    AllocWithDebugInfo<T>(
+        dev_ctx_, "qkv_transpose_out_grad", &qkv_transpose_out_grad);
+
+    T* q_grad_ptr = qkv_transpose_out_grad.data<T>();
+    T* k_grad_ptr = q_grad_ptr + q_size;
+    T* v_grad_ptr = k_grad_ptr + q_size;
+    WaitWithDebugInfo(dev_ctx_);
+
+    // 2. Init with cu_seq_q and cu_seq_k for flash_attn.
+    phi::DenseTensor cu_seq_q, cu_seq_k;
+    int seq_batch_size = static_cast<int>(config->batch_size) *
+                         static_cast<int>(config->seq_len_m);
+    int64_t step = static_cast<int64_t>(config->seq_len_r);
+    AllocAndInitSeqQK(seq_batch_size, step, &cu_seq_q, &cu_seq_k);
+    const int32_t* cu_seq_q_ptr = cu_seq_q.data<int32_t>();
+    const int32_t* cu_seq_k_ptr = cu_seq_k.data<int32_t>();
+
+    // 3. Dealing with mask and bias for flash_attn.
+    std::vector<int64_t> temp_mask_dim = GetCompressedDim(src_mask);
+    std::vector<int64_t> temp_bias_dim = GetCompressedDim(nonbatched_bias);
+
+    // 4. flash_attn parameter setting.
+    InitFlashAttnArguments(config);
+
+    // 5. construct softmax_lse
+    phi::DenseTensor softmax_d;
+    softmax_d.Resize(softmax_lse->dims());
+    AllocWithDebugInfo<float>(dev_ctx_, "d_softmax_lse", &softmax_d);
+
+    phi::DenseTensor bias_d;
+    if (nonbatched_bias) {
+      bias_d.Resize(
+          {fa_batch_size_, fa_num_heads_, fa_max_seqlen_q_, fa_max_seqlen_k_});
+      AllocWithDebugInfo<T>(dev_ctx_, "d_bias", &bias_d);
+    }
+
+    if (VLOG_IS_ON(6)) {
+      VLOG(6) << TensorDebugString(fmha_out, "fmha_out");
+      VLOG(6) << TensorDebugString(fmha_out_grad, "fmha_out_grad");
+      VLOG(6) << TensorDebugString(softmax_lse, "softmax_lse");
+      VLOG(6) << TensorDebugString(&softmax_d, "softmax_d");
+      VLOG(6) << TensorDebugString(nonbatched_bias, "nonbatched_bias");
+      VLOG(6) << TensorDebugString(&bias_d, "bias_d");
+    }
+
+    // 6. flas_attn part one, get temp worksapce size.
+    uint64_t workspace_size;
+    cudaStream_t stream = dev_ctx_.stream();
+    bool succ = phi::dynload::flash_attn_bwd_with_bias_and_mask(
+        static_cast<const void*>(q_ptr),
+        static_cast<const void*>(k_ptr),
+        static_cast<const void*>(v_ptr),
+        static_cast<void*>(q_grad_ptr),
+        static_cast<void*>(k_grad_ptr),
+        static_cast<void*>(v_grad_ptr),
+        nullptr,  // set out to nullptr to calculate workspace size
+        static_cast<const void*>(fmha_out_grad->data()),
+        cu_seq_q_ptr,
+        cu_seq_k_ptr,
+        fa_total_q_,
+        fa_total_k_,
+        fa_batch_size_,
+        fa_num_heads_,
+        fa_head_size_,
+        fa_max_seqlen_q_,
+        fa_max_seqlen_k_,
+        fa_dropout_prob_,
+        fa_softmax_scale_,
+        fa_zero_tensors_,
+        fa_is_causal_,
+        is_bf16,
+        fa_num_splits_,
+        softmax_lse->data(),
+        softmax_d.data(),
+        nonbatched_bias ? bias_d.data() : nullptr,
+        nullptr,
+        &workspace_size,
+        stream,
+        fa_seed_,
+        fa_offset_,
+        src_mask ? src_mask->data() : nullptr,
+        nonbatched_bias ? nonbatched_bias->data() : nullptr,
+        src_mask ? temp_mask_dim.data() : nullptr,
+        nonbatched_bias ? temp_bias_dim.data() : nullptr);
+    if (!succ) {
+      PADDLE_THROW(phi::errors::External(phi::dynload::flash_attn_error()));
+    }
+
+    phi::DenseTensor workspace = CreateWorkspace(workspace_size);
+    succ = phi::dynload::flash_attn_bwd_with_bias_and_mask(
+        static_cast<const void*>(q_ptr),
+        static_cast<const void*>(k_ptr),
+        static_cast<const void*>(v_ptr),
+        static_cast<void*>(q_grad_ptr),
+        static_cast<void*>(k_grad_ptr),
+        static_cast<void*>(v_grad_ptr),
+        static_cast<const void*>(fmha_out->data()),
+        static_cast<const void*>(fmha_out_grad->data()),
+        cu_seq_q_ptr,
+        cu_seq_k_ptr,
+        fa_total_q_,
+        fa_total_k_,
+        fa_batch_size_,
+        fa_num_heads_,
+        fa_head_size_,
+        fa_max_seqlen_q_,
+        fa_max_seqlen_k_,
+        fa_dropout_prob_,
+        fa_softmax_scale_,
+        fa_zero_tensors_,
+        fa_is_causal_,
+        is_bf16,
+        fa_num_splits_,
+        softmax_lse->data(),
+        softmax_d.data(),
+        nonbatched_bias ? bias_d.data() : nullptr,
+        (workspace_size > 0) ? static_cast<void*>(workspace.data()) : nullptr,
+        &workspace_size,
+        stream,
+        fa_seed_,
+        fa_offset_,
+        src_mask ? src_mask->data() : nullptr,
+        nonbatched_bias ? nonbatched_bias->data() : nullptr,
+        src_mask ? temp_mask_dim.data() : nullptr,
+        nonbatched_bias ? temp_bias_dim.data() : nullptr);
+    if (!succ) {
+      PADDLE_THROW(phi::errors::External(phi::dynload::flash_attn_error()));
+    }
+    WaitWithDebugInfo(dev_ctx_);
+    VLOG(5) << "[ComputeBackward]: Run SUCCESS!!!";
+
+    if (nonbatched_bias) {
+      // compare block reduce
+      auto dbias_first_dim = bias_d.numel() / nonbatched_bias->numel();
+      bias_d.Resize({dbias_first_dim,
+                     temp_bias_dim[0],
+                     temp_bias_dim[1],
+                     temp_bias_dim[2],
+                     temp_bias_dim[3]});
+      phi::funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
+          dev_ctx_,
+          bias_d,
+          nonbatched_bias_grad,
+          kps::IdentityFunctor<T>(),
+          {0});
+    }
+
+    phi::DenseTensor* qkv_out_grad = config->GetQKVOutGrad();
+    ComputeQKVTransposeBackward(qkv_transpose_out_grad, qkv_out_grad);
+#else
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "FlashAttention is unsupported, please set use_flash_attn to false."));
+#endif
+  }
+
+ private:
+  void AllocAndInitSeqQK(int64_t seq_batch_size,
+                         int64_t step,
+                         phi::DenseTensor* cu_seq_q,
+                         phi::DenseTensor* cu_seq_k) {
+    int64_t start = 0;
+    int64_t end_size = seq_batch_size + 1;
+    int64_t end = end_size;
+    int64_t seq_size = 0;
+    phi::funcs::GetSize<int64_t>(start, end, step, &seq_size);
+
+    cu_seq_q->Resize({end_size});
+    cu_seq_k->Resize({end_size});
+    AllocWithDebugInfo<int32_t>(dev_ctx_, "cu_seq_q", cu_seq_q);
+    AllocWithDebugInfo<int32_t>(dev_ctx_, "cu_seq_k", cu_seq_k);
+
+    int64_t block = std::min(seq_size, static_cast<int64_t>(256));
+    int64_t grid = (seq_size + block - 1) / block;
+    FlashAttRange<int32_t><<<grid, block, 0, dev_ctx_.stream()>>>(
+        start, step, end, cu_seq_q->data<int32_t>(), cu_seq_k->data<int32_t>());
+    VLOG(5) << "AllocAndInit cu_seq_q and cu_seq_k: start=" << start
+            << ", step=" << step << ", end=" << end;
+  }
+
+  std::vector<int64_t> GetCompressedDim(const phi::DenseTensor* tensor) {
+    std::vector<int64_t> compressed_dims;
+    if (tensor) {
+      int64_t first_dim = 1;
+      const auto& origin_dims = tensor->dims();
+      auto rank = origin_dims.size();
+      for (int i = 0; i < rank - 3; ++i) {
+        first_dim *= origin_dims[i];
+      }
+      compressed_dims = {first_dim,
+                         origin_dims[rank - 3],
+                         origin_dims[rank - 2],
+                         origin_dims[rank - 1]};
+    }
+    return compressed_dims;
+  }
+
+  phi::DenseTensor CreateWorkspace(uint64_t workspace_size) {
+    phi::DenseTensor workspace;
+    if (workspace_size > 0) {
+      workspace = phi::Empty<float, phi::GPUContext>(
+          dev_ctx_, {int64_t(workspace_size / sizeof(float))});
+    }
+    VLOG(5) << "Allocate workspace: workspace_size=" << workspace_size;
+    return workspace;
+  }
+
+  std::pair<uint64_t, uint64_t> GenerateSeedOffsetPair(int64_t batch_size,
+                                                       int64_t num_heads) {
+    auto gen = dev_ctx_.GetGenerator();
+    uint64_t inc = batch_size * num_heads * 32;
+    return gen->IncrementOffset(inc);
+  }
+
+  void InitFlashAttnArguments(GateAttentionConfig<T>* config) {
+    fa_batch_size_ = static_cast<int>(config->batch_size) *
+                     static_cast<int>(config->seq_len_m);
+    fa_total_q_ =
+        fa_batch_size_ * static_cast<int>(config->seq_len_r);  // qkv_dims[1];
+    fa_total_k_ = fa_total_q_;                                 // qkv_dims[1];
+    fa_num_heads_ = static_cast<int>(config->num_heads);       // qkv_dims[2];
+    fa_head_size_ = static_cast<int>(config->head_dim);        // qkv_dims[3];
+    fa_max_seqlen_q_ = config->seq_len_r;
+    fa_max_seqlen_k_ = config->m_size;
+    fa_num_splits_ = 0;  // 0 for an internal heuristic, which is optimal
+
+    fa_softmax_scale_ = static_cast<float>(1.0f / std::sqrt(fa_head_size_));
+    fa_dropout_prob_ = 0.0f;
+
+    auto seed_offset_pair =
+        GenerateSeedOffsetPair(fa_batch_size_, fa_num_heads_);
+    fa_seed_ = seed_offset_pair.first;
+    fa_offset_ = seed_offset_pair.second;
+
+    fa_zero_tensors_ = false;
+    fa_is_causal_ = false;
+
+    if (VLOG_IS_ON(6)) {
+      VLOG(6) << "fa_batch_size    : " << fa_batch_size_;
+      VLOG(6) << "fa_total_q       : " << fa_total_q_;
+      VLOG(6) << "fa_total_k       : " << fa_total_k_;
+      VLOG(6) << "fa_num_heads     : " << fa_num_heads_;
+      VLOG(6) << "fa_head_size     : " << fa_head_size_;
+      VLOG(6) << "fa_max_seqlen_q  : " << fa_max_seqlen_q_;
+      VLOG(6) << "fa_max_seqlen_k  : " << fa_max_seqlen_k_;
+      VLOG(6) << "fa_num_splits    : " << fa_num_splits_;
+      VLOG(6) << "fa_softmax_scale :" << fa_softmax_scale_;
+      VLOG(6) << "fa_dropout_prob  :" << fa_dropout_prob_;
+    }
+  }
+
+  // [batch_size, seq_len_m, seq_len_r, 3, num_heads, head_dim] ->
+  //         [3, batch_size, seq_len_m, seq_len_r, num_heads, head_dim]
+  void ComputeQKVTransposeForwardForFlashAttn(
+      const phi::DenseTensor& qkv_out, phi::DenseTensor* qkv_transpose_out) {
+    std::vector<int> perm = {3, 0, 1, 2, 4, 5};
+    phi::funcs::TransposeGPUKernelDriver<T>(
+        dev_ctx_, qkv_out, perm, qkv_transpose_out);
+  }
+
+  // [3, batch_size, seq_len_m, seq_len_r, num_heads, head_dim] ->
+  //        [batch_size, seq_len_m, seq_len_r, 3, num_heads, head_dim]
+  void ComputeQKVTransposeBackward(
+      const phi::DenseTensor& qkv_transpose_out_grad,
+      phi::DenseTensor* qkv_out_grad) {
+    std::vector<int> perm = {1, 2, 3, 0, 4, 5};
+    phi::funcs::TransposeGPUKernelDriver<T>(
+        dev_ctx_, qkv_transpose_out_grad, perm, qkv_out_grad);
+  }
+
+  const phi::GPUContext& dev_ctx_;
+  bool merge_qkv_;
+
+  int fa_batch_size_;
+  int fa_total_q_;
+  int fa_total_k_;
+  int fa_num_heads_;
+  int fa_head_size_;
+  int fa_max_seqlen_q_;
+  int fa_max_seqlen_k_;
+  int fa_num_splits_;
+  float fa_softmax_scale_{1.0f};
+  float fa_dropout_prob_{0.0f};
+  uint64_t fa_seed_{0};
+  uint64_t fa_offset_{0};
+  bool fa_zero_tensors_{false};
+  bool fa_is_causal_{false};
 };
 
 }  // namespace operators

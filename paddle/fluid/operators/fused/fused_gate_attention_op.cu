@@ -371,17 +371,16 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
     auto *v_transpose_out = ctx.Output<phi::DenseTensor>("ValueTransposeOut");
     auto *qkv_transpose_out = ctx.Output<phi::DenseTensor>("QKVTransposeOut");
 
-    auto *softmax_out = ctx.Output<phi::DenseTensor>("SoftmaxOut");
     auto *fmha_out = ctx.Output<phi::DenseTensor>("FMHAOut");
     auto *gate_out = ctx.Output<phi::DenseTensor>("GateOut");
     auto *out = ctx.Output<phi::DenseTensor>("Out");
 
     const bool merge_qkv = ctx.Attr<bool>("merge_qkv");
     const bool has_gating = ctx.Attr<bool>("has_gating");
+    const bool use_flash_attn = ctx.Attr<bool>("use_flash_attn");
 
     bool use_fused_matmul_bias = true;
     auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
-    AllocWithDebugInfo<T>(dev_ctx, "softmax_out", softmax_out);
     AllocWithDebugInfo<T>(dev_ctx, "fmha_out", fmha_out);
     if (has_gating) {
       AllocWithDebugInfo<T>(dev_ctx, "gate_out", gate_out);
@@ -389,8 +388,14 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
     AllocWithDebugInfo<T>(dev_ctx, "out", out);
 
     // When seq_len_r = m_size, q_dim = kv_dim, QKV matmul can be merged.
-    GateAttentionConfig<T> config(
-        dev_ctx, query, key, query_weight, qkv_weight, merge_qkv, has_gating);
+    GateAttentionConfig<T> config(dev_ctx,
+                                  query,
+                                  key,
+                                  query_weight,
+                                  qkv_weight,
+                                  merge_qkv,
+                                  has_gating,
+                                  use_flash_attn);
 
     if (merge_qkv) {
       PADDLE_ENFORCE_EQ(
@@ -421,17 +426,32 @@ class FusedGateAttentionOpKernel : public framework::OpKernel<T> {
     }
 
     // 2. FMHA
-    auto fmha_compute = FMHAGateRef<T>(dev_ctx, merge_qkv);
-    fmha_compute.ComputeForward(nonbatched_bias,
-                                src_mask,
-                                q_transpose_out,
-                                k_transpose_out,
-                                v_transpose_out,
-                                qkv_transpose_out,
-                                softmax_out,
-                                fmha_out,
-                                gate_out,
-                                &config);
+    if (config.CanUseFlashAttn()) {
+      auto *softmax_lse = ctx.Output<phi::DenseTensor>("SoftmaxLse");
+      auto fmha_compute = FlashAttnWithGating<T>(dev_ctx, merge_qkv);
+      fmha_compute.ComputeForward(nonbatched_bias,
+                                  src_mask,
+                                  qkv_transpose_out,
+                                  softmax_lse,
+                                  fmha_out,
+                                  gate_out,
+                                  &config);
+    } else {
+      auto *softmax_out = ctx.Output<phi::DenseTensor>("SoftmaxOut");
+      AllocWithDebugInfo<T>(dev_ctx, "softmax_out", softmax_out);
+
+      auto fmha_compute = FMHAGateRef<T>(dev_ctx, merge_qkv);
+      fmha_compute.ComputeForward(nonbatched_bias,
+                                  src_mask,
+                                  q_transpose_out,
+                                  k_transpose_out,
+                                  v_transpose_out,
+                                  qkv_transpose_out,
+                                  softmax_out,
+                                  fmha_out,
+                                  gate_out,
+                                  &config);
+    }
 
     // 3. Gating Linear
     if (has_gating) {
@@ -465,7 +485,6 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
         ctx.Input<phi::DenseTensor>("ValueTransposeOut");
     const auto *qkv_transpose_out =
         ctx.Input<phi::DenseTensor>("QKVTransposeOut");
-    const auto *softmax_out = ctx.Input<phi::DenseTensor>("SoftmaxOut");
     const auto *fmha_out = ctx.Input<phi::DenseTensor>("FMHAOut");
     const auto *gate_out = ctx.Input<phi::DenseTensor>("GateOut");
 
@@ -477,13 +496,20 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
 
     bool has_gating = ctx.Attr<bool>("has_gating");
     bool merge_qkv = ctx.Attr<bool>("merge_qkv");
+    bool use_flash_attn = ctx.Attr<bool>("use_flash_attn");
 
     bool use_fused_matmul_bias = true;
     auto &dev_ctx = ctx.template device_context<phi::GPUContext>();
     AllocWithDebugInfo<T>(dev_ctx, "query_grad", query_grad);
 
-    GateAttentionGradConfig<T> config(
-        dev_ctx, query, key, query_weight, qkv_weight, merge_qkv, has_gating);
+    GateAttentionGradConfig<T> config(dev_ctx,
+                                      query,
+                                      key,
+                                      query_weight,
+                                      qkv_weight,
+                                      merge_qkv,
+                                      has_gating,
+                                      use_flash_attn);
 
     phi::DenseTensor fmha_out_grad;
     fmha_out_grad.Resize(config.gate_out_dims);
@@ -518,16 +544,36 @@ class FusedGateAttentionGradKernel : public framework::OpKernel<T> {
           dev_ctx, "nonbatched_bias_grad", nonbatched_bias_grad);
     }
 
-    auto fmha_compute = FMHAGateRef<T>(dev_ctx, merge_qkv);
-    fmha_compute.ComputeBackward(q_transpose_out,
-                                 k_transpose_out,
-                                 v_transpose_out,
-                                 qkv_transpose_out,
-                                 softmax_out,
-                                 &fmha_out_grad,
-                                 nullptr,
-                                 nonbatched_bias_grad,
-                                 &config);
+    if (config.CanUseFlashAttn()) {
+      const auto *non_batched_bias =
+          ctx.Input<phi::DenseTensor>("NonbatchedBias");
+      const auto *src_mask = ctx.Input<phi::DenseTensor>("SrcMask");
+      const auto *softmax_lse = ctx.Input<phi::DenseTensor>("SoftmaxLse");
+
+      auto fmha_compute = FlashAttnWithGating<T>(dev_ctx, merge_qkv);
+      fmha_compute.ComputeBackward(qkv_transpose_out,
+                                   src_mask,
+                                   non_batched_bias,
+                                   softmax_lse,
+                                   fmha_out,
+                                   &fmha_out_grad,
+                                   nullptr,
+                                   nonbatched_bias_grad,
+                                   &config);
+    } else {
+      const auto *softmax_out = ctx.Input<phi::DenseTensor>("SoftmaxOut");
+
+      auto fmha_compute = FMHAGateRef<T>(dev_ctx, merge_qkv);
+      fmha_compute.ComputeBackward(q_transpose_out,
+                                   k_transpose_out,
+                                   v_transpose_out,
+                                   qkv_transpose_out,
+                                   softmax_out,
+                                   &fmha_out_grad,
+                                   nullptr,
+                                   nonbatched_bias_grad,
+                                   &config);
+    }
 
     bool use_addto = has_gating ? true : false;
     if (merge_qkv) {

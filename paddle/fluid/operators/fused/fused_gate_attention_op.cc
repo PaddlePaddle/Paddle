@@ -157,6 +157,9 @@ class FusedGateAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsIntermediate()
         .AsDispensable();
     AddOutput("SoftmaxOut", "Result in fmha.").AsIntermediate();
+    AddOutput("SoftmaxLse", "Result of the flash attention.")
+        .AsIntermediate()
+        .AsDispensable();
     AddOutput("FMHAOut", "Result in fmha.").AsIntermediate();
     AddOutput("GateOut", "Result of the gating module.")
         .AsIntermediate()
@@ -170,6 +173,11 @@ class FusedGateAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
                   "if true, calculation with merged qkv, "
                   "[default true].")
         .SetDefault(true);
+    AddAttr<bool>(
+        "use_flash_attn",
+        "if true, the attention op will be computed in flash_attn branch, "
+        "[default false].")
+        .SetDefault(false);
     AddComment(R"DOC(
   Add fused attention op whose logic is as follows:
   {
@@ -223,15 +231,15 @@ class FusedGateAttentionGradOp : public framework::OperatorWithKernel {
       OP_INOUT_CHECK(ctx->HasInput("QueryWeight"),
                      "Input",
                      "QueryWeight",
-                     "fused_aate_attention_arad");
+                     "fused_gate_attention_arad");
       OP_INOUT_CHECK(ctx->HasInput("KeyWeight"),
                      "Input",
                      "KeyWeight",
-                     "fused_aate_attention_arad");
+                     "fused_gate_attention_arad");
       OP_INOUT_CHECK(ctx->HasInput("ValueWeight"),
                      "Input",
                      "ValueWeight",
-                     "fused_aate_attention_arad");
+                     "fused_gate_attention_arad");
 
       for (auto& name : {"QueryWeight", "KeyWeight", "ValueWeight"}) {
         ctx->SetOutputDim(framework::GradVarName(name), ctx->GetInputDim(name));
@@ -259,6 +267,27 @@ class FusedGateAttentionGradOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim(framework::GradVarName("OutLinearBias"),
                       ctx->GetInputDim("OutLinearBias"));
   }
+
+ protected:
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto input = ctx.Input<phi::DenseTensor>("Query");
+    auto input_data_type = framework::TransToProtoVarType(input->dtype());
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
+  }
+
+  phi::KernelKey GetKernelTypeForVar(
+      const std::string& var_name,
+      const phi::DenseTensor& tensor,
+      const phi::KernelKey& expected_kernel_type) const override {
+    if (var_name == "SoftmaxLse") {
+      return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                            expected_kernel_type.layout(),
+                            expected_kernel_type.dtype());
+    }
+    return phi::KernelKey(
+        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+  }
 };
 
 template <typename T>
@@ -276,11 +305,18 @@ class FusedGateAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
 
     op->SetAttrMap(this->Attrs());
     bool merge_qkv = PADDLE_GET_CONST(bool, op->GetAttr("merge_qkv"));
+    bool use_flash_attn = PADDLE_GET_CONST(bool, op->GetAttr("use_flash_attn"));
+
     if (merge_qkv) {
       op->SetInput("QKVWeight", this->Input("QKVWeight"));
       op->SetOutput(framework::GradVarName("QKVWeight"),
                     this->InputGrad("QKVWeight"));
       op->SetInput("QKVTransposeOut", this->Output("QKVTransposeOut"));
+
+      if (use_flash_attn) {
+        op->SetInput("SrcMask", this->Input("SrcMask"));
+        op->SetInput("SoftmaxLse", this->Output("SoftmaxLse"));
+      }
     } else {
       op->SetInput("Key", this->Input("Key"));
       op->SetOutput(framework::GradVarName("Key"), this->InputGrad("Key"));
