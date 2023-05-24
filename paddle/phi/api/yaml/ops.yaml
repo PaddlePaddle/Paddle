@@ -446,7 +446,7 @@
   backward : complex_grad
 
 - op : concat
-  args : (Tensor[] x, Scalar(int64_t) axis = 0)
+  args : (Tensor[] x, Scalar axis = 0)
   output : Tensor
   infer_meta :
     func : ConcatInferMeta

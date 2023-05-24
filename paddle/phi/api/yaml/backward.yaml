@@ -333,7 +333,7 @@
     data_type : grad_x_grad
 
 - backward_op : concat_grad
-  forward : concat (Tensor[] x, Scalar axis) -> Tensor(out)
+  forward : concat (Tensor[] x, Scalar axis = 0) -> Tensor(out)
   args : (Tensor[] x, Tensor out_grad, Scalar axis = 0)
   output : Tensor[](x_grad){x.size()}
   infer_meta :

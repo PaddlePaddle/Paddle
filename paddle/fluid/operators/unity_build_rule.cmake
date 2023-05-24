@@ -169,7 +169,6 @@ register_unity_group(
   meshgrid_op.cc)
 register_unity_group(
   cc
-  concat_op.cc
   conv_shift_op.cc
   dequantize_log_op.cc
   dropout_op.cc
