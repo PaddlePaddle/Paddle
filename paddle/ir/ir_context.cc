@@ -66,7 +66,7 @@ class IrContextImpl {
     std::lock_guard<ir::SpinLock> guard(registed_abstract_types_lock_);
     auto iter = registed_abstract_types_.find(type_id);
     if (iter != registed_abstract_types_.end()) {
-      VLOG(4) << "Fonund a cached abstract_type of: [TypeId_hash="
+      VLOG(4) << "Found a cached abstract_type of: [TypeId_hash="
               << std::hash<ir::TypeId>()(type_id)
               << ", AbstractType_ptr=" << iter->second << "].";
       return iter->second;
@@ -89,7 +89,7 @@ class IrContextImpl {
     std::lock_guard<ir::SpinLock> guard(registed_abstract_attributes_lock_);
     auto iter = registed_abstract_attributes_.find(type_id);
     if (iter != registed_abstract_attributes_.end()) {
-      VLOG(4) << "Fonund a cached abstract_attribute of: [TypeId_hash="
+      VLOG(4) << "Found a cached abstract_attribute of: [TypeId_hash="
               << std::hash<ir::TypeId>()(type_id)
               << ", AbstractAttribute_ptr=" << iter->second << "].";
       return iter->second;
@@ -97,6 +97,10 @@ class IrContextImpl {
     LOG(WARNING) << "No cache found abstract_attribute of: [TypeId_hash="
                  << std::hash<ir::TypeId>()(type_id) << "].";
     return nullptr;
+  }
+
+  bool IsOpInfoRegistered(const std::string &name) {
+    return registed_op_infos_.find(name) != registed_op_infos_.end();
   }
 
   void RegisterOpInfo(const std::string &name, OpInfoImpl *opinfo) {
@@ -110,7 +114,7 @@ class IrContextImpl {
     std::lock_guard<ir::SpinLock> guard(registed_op_infos_lock_);
     auto iter = registed_op_infos_.find(name);
     if (iter != registed_op_infos_.end()) {
-      VLOG(4) << "Fonund a cached operation of: [name=" << name
+      VLOG(4) << "Found a cached operation of: [name=" << name
               << ", OpInfoImpl ptr=" << iter->second << "].";
       return iter->second;
     }
@@ -125,15 +129,19 @@ class IrContextImpl {
     registed_dialect_.emplace(name, dialect);
   }
 
-  Dialect *GetDialect(std::string name) {
+  bool IsDialectRegistered(const std::string &name) {
+    return registed_dialect_.find(name) != registed_dialect_.end();
+  }
+
+  Dialect *GetDialect(const std::string &name) {
     std::lock_guard<ir::SpinLock> guard(registed_dialect_lock_);
     auto iter = registed_dialect_.find(name);
     if (iter != registed_dialect_.end()) {
-      VLOG(4) << "Fonund a cached dialect of: [name=" << name
+      VLOG(4) << "Found a cached dialect of: [name=" << name
               << ", dialect_ptr=" << iter->second << "].";
       return iter->second;
     }
-    LOG(WARNING) << "No cache fonund dialect of: [name=" << name << "].";
+    LOG(WARNING) << "No cache found dialect of: [name=" << name << "].";
     return nullptr;
   }
 
@@ -156,7 +164,7 @@ class IrContextImpl {
   // AttributeStorage uniquer and cache instances.
   StorageManager registed_attribute_storage_manager_;
 
-  // The dialcet registered in the context.
+  // The dialect registered in the context.
   std::unordered_map<std::string, Dialect *> registed_dialect_;
   ir::SpinLock registed_dialect_lock_;
 
@@ -221,17 +229,15 @@ AbstractAttribute *IrContext::GetRegisteredAbstractAttribute(TypeId id) {
 }
 
 Dialect *IrContext::GetOrRegisterDialect(
-    std::string dialect_name, std::function<Dialect *()> constructor) {
+    const std::string &dialect_name, std::function<Dialect *()> constructor) {
   VLOG(4) << "Try to get or register a Dialect of: [name=" << dialect_name
           << "].";
-  Dialect *dialect = impl().GetDialect(dialect_name);
-  if (dialect == nullptr) {
+  if (!impl().IsDialectRegistered(dialect_name)) {
     VLOG(4) << "Create and register a new Dialect of: [name=" << dialect_name
             << "].";
-    dialect = constructor();
-    impl().RegisterDialect(dialect_name, dialect);
+    impl().RegisterDialect(dialect_name, constructor());
   }
-  return dialect;
+  return impl().GetDialect(dialect_name);
 }
 
 std::vector<Dialect *> IrContext::GetRegisteredDialects() {
@@ -269,19 +275,21 @@ void IrContext::RegisterOpInfo(Dialect *dialect,
                                std::vector<InterfaceValue> &&interface_map,
                                const std::vector<TypeId> &trait_set,
                                size_t attributes_num,
-                               const char **attributes_name) {
-  if (GetRegisteredOpInfo(name) == nullptr) {
+                               const char **attributes_name,
+                               VerifyPtr verify) {
+  if (impl().IsOpInfoRegistered(name)) {
+    LOG(WARNING) << name << " op already registered.";
+  } else {
     OpInfoImpl *opinfo = OpInfoImpl::create(dialect,
                                             op_id,
                                             name,
                                             std::move(interface_map),
                                             trait_set,
                                             attributes_num,
-                                            attributes_name);
+                                            attributes_name,
+                                            verify);
     impl().RegisterOpInfo(name, opinfo);
-    VLOG(4) << "Op " << name << " registered into IrContext. --->";
-  } else {
-    LOG(WARNING) << name << " op already registered.";
+    VLOG(4) << name << " op registered into IrContext. --->";
   }
 }
 

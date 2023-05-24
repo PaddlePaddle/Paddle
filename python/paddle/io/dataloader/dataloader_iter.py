@@ -29,7 +29,7 @@ from paddle.fluid.framework import _current_expected_place, _set_expected_place
 from paddle.profiler.timer import benchmark
 from paddle.profiler.utils import in_profiler_mode
 
-from ...framework import core, in_dygraph_mode
+from ...framework import core, in_dynamic_mode
 from ..multiprocess_utils import (
     MP_STATUS_CHECK_INTERVAL,
     CleanupFuncRegistrar,
@@ -286,7 +286,7 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
         try:
             benchmark().check_if_need_record(self)
             benchmark().before_reader()
-            if in_dygraph_mode():
+            if in_dynamic_mode():
                 data = core.eager.read_next_tensor_list(
                     self._reader.read_next_list()[0]
                 )
@@ -535,7 +535,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         # in order not to restart the thread, we just clear
         # the blocking_queue cachees instead of recreating one
         while self._blocking_queue.size() >= len(self._places):
-            if in_dygraph_mode():
+            if in_dynamic_mode():
                 data = core.eager.read_next_tensor_list(
                     self._reader.read_next_list()[0]
                 )
@@ -820,7 +820,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                     self._thread_done_event.set()
                     self._blocking_queue.close()
 
-            if in_dygraph_mode():
+            if in_dynamic_mode():
                 data = core.eager.read_next_tensor_list(
                     self._reader.read_next_list()[0]
                 )

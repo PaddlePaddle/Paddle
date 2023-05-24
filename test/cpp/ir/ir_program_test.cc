@@ -20,7 +20,6 @@
 #include "paddle/ir/builtin_attribute.h"
 #include "paddle/ir/builtin_dialect.h"
 #include "paddle/ir/builtin_op.h"
-#include "paddle/ir/builtin_type.h"
 #include "paddle/ir/ir_context.h"
 #include "paddle/ir/program.h"
 #include "paddle/ir/utils.h"
@@ -34,6 +33,16 @@ class AddOp : public ir::Op<AddOp> {
   static const char *name() { return "test.add"; }
   static constexpr const char **attributes_name = nullptr;
   static constexpr uint32_t attributes_num = 0;
+  static void verify(const std::vector<ir::OpResult> &inputs,
+                     const std::vector<ir::Type> &outputs,
+                     const ir::AttributeMap &attributes) {
+    if (inputs.size() != 2) {
+      throw("The size of inputs must be equal to 2.");
+    }
+    if (outputs.size() != 1) {
+      throw("The size of outputs must be equal to 1.");
+    }
+  }
 };
 
 TEST(program_test, program) {
@@ -201,4 +210,63 @@ TEST(program_test, program) {
   std::list<ir::Operation *> ops = program.ops();
   EXPECT_EQ(ops.size() == 4, true);
   EXPECT_EQ(program.parameters_num() == 3, true);
+}
+
+TEST(program_test, slice_combine_test) {
+  // (1) Init environment.
+  ir::IrContext *ctx = ir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<ir::BuiltinDialect>();
+
+  // (2) Create an empty program object
+  ir::Program program;
+  //   ir::Program *program = new ir::Program();
+  EXPECT_EQ(program.ops().size() == 0, true);
+
+  // (3) Create a float32 DenseTensor Parameter and save into Program
+  ir::Type fp32_dtype = ir::Float32Type::get(ctx);
+
+  // (4) Def a = GetParameterOp("a")
+  std::string op1_name = ir::GetParameterOp::name();
+  ir::OpInfo op1_info = ctx->GetRegisteredOpInfo(op1_name);
+  std::unordered_map<std::string, ir::Attribute> op1_attribute{
+      {"parameter_name", ir::StrAttribute::get(ctx, "a")}};
+  ir::Operation *op1 =
+      ir::Operation::create({}, {fp32_dtype}, op1_attribute, op1_info);
+  program.InsertOp(op1);
+
+  // (5) Def b = GetParameterOp("b")
+  std::string op2_name = std::string(ir::GetParameterOp::name());
+  ir::OpInfo op2_info = ctx->GetRegisteredOpInfo(op2_name);
+  std::unordered_map<std::string, ir::Attribute> op2_attribute{
+      {"parameter_name", ir::StrAttribute::get(ctx, "b")}};
+  ir::Operation *op2 =
+      ir::Operation::create({}, {fp32_dtype}, op2_attribute, op2_info);
+  program.InsertOp(op2);
+
+  // (6) Def combine_op = CombineOp("a", "b")
+  std::string combine_op_name = std::string(ir::CombineOp::name());
+  ir::OpInfo combine_op_info = ctx->GetRegisteredOpInfo(combine_op_name);
+  ir::Type output_type =
+      ir::VectorType::get(ctx, std::vector<ir::Type>({fp32_dtype, fp32_dtype}));
+  ir::Operation *combine_op = ir::Operation::create(
+      {op1->GetResultByIndex(0), op2->GetResultByIndex(0)},
+      {output_type},
+      {},
+      combine_op_info);
+  program.InsertOp(combine_op);
+
+  // (7) Def slice_op = SliceOp(combine_op, 0)
+  std::string slice_op_name = std::string(ir::SliceOp::name());
+  ir::OpInfo slice_op_info = ctx->GetRegisteredOpInfo(slice_op_name);
+  ir::Attribute index_attr = ir::Int32_tAttribute::get(ctx, 0);
+  ir::Operation *slice_op =
+      ir::Operation::create({combine_op->GetResultByIndex(0)},
+                            {fp32_dtype},
+                            {{"index", index_attr}},
+                            slice_op_info);
+  program.InsertOp(slice_op);
+
+  // (8) Traverse Program
+  std::list<ir::Operation *> ops = program.ops();
+  EXPECT_EQ(ops.size() == 4, true);
 }

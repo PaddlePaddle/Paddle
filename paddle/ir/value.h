@@ -67,6 +67,10 @@ class ValueUseIterator {
   bool operator==(const ValueUseIterator<OperandType> &rhs) const {
     return current_ == rhs.current_;
   }
+  bool operator!=(const ValueUseIterator<OperandType> &rhs) const {
+    return !(*this == rhs);
+  }
+
   ir::Operation *owner() const { return current_.impl()->owner(); }
 
   OperandType get() const { return current_; }

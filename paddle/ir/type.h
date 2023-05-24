@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <ostream>
+
 #include "paddle/ir/cast_utils.h"
 #include "paddle/ir/type_base.h"
 
@@ -76,6 +78,8 @@ class Type {
     return ir::dyn_cast<U>(*this);
   }
 
+  void print(std::ostream &os) const;
+
   ///
   /// \brief Enable hashing Type.
   ///
@@ -84,6 +88,8 @@ class Type {
  protected:
   const Storage *storage_{nullptr};
 };
+
+std::ostream &operator<<(std::ostream &os, Type type);
 
 }  // namespace ir
 
