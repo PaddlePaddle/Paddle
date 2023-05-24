@@ -356,11 +356,17 @@ class TestSparseConvert(unittest.TestCase):
             if device == 'cpu' or (
                 device == 'gpu' and paddle.is_compiled_with_cuda()
             ):
-                x = paddle.zeros([2, 2, 2])
-                sp_x = x.to_sparse_csr()
+                x1 = paddle.zeros([2, 2, 2])
+                x2 = paddle.zeros([2, 2, 2])
+                x2.stop_gradient = False
+                sp_csr_x = x1.to_sparse_csr()
+                sp_coo_x = x2.to_sparse_coo(1)
 
-                out = sp_x.to_dense()
-                assert np.allclose(out.numpy(), x.numpy())
+                out1 = sp_csr_x.to_dense()
+                out2 = sp_coo_x.to_dense()
+                out2.backward()
+                np.testing.assert_allclose(out1.numpy(), x1.numpy())
+                np.testing.assert_allclose(out2.numpy(), x2.numpy())
 
 
 class TestCooError(unittest.TestCase):
