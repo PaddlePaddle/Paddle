@@ -202,6 +202,7 @@ class TestDistMPSyncTraning(unittest.TestCase):
         self,
         batchs,
         fp16=False,
+        amp_level="O1",
         mp_sync_param=False,
         mp_sync_grad=False,
         mp_sync_moment=False,
@@ -232,6 +233,11 @@ class TestDistMPSyncTraning(unittest.TestCase):
             learning_rate=0.1, parameters=model.parameters()
         )
 
+        if fp16 and amp_level == "O2":
+            model, optimizer = paddle.amp.decorate(
+                models=model, optimizers=optimizer, level='O2'
+            )
+
         strategy = fleet.fleet._user_defined_strategy
         strategy.hybrid_configs = {
             "dp_degree": self.data_parallel_size,
@@ -246,15 +252,15 @@ class TestDistMPSyncTraning(unittest.TestCase):
 
         model = fleet.distributed_model(model)
         optimizer = fleet.distributed_optimizer(optimizer)
-        return self.train_batch(batchs, model, optimizer, fp16)
+        return self.train_batch(batchs, model, optimizer, fp16, amp_level)
 
-    def train_batch(self, batchs, model, optimizer, fp16=False):
+    def train_batch(self, batchs, model, optimizer, fp16=False, amp_level="O1"):
         losses = []
         if fp16:
             scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
             scaler = fleet.distributed_scaler(scaler)
         for batch in batchs:
-            with paddle.amp.auto_cast(enable=fp16, level='O1'):
+            with paddle.amp.auto_cast(enable=fp16, level=amp_level):
                 output = model(batch)
                 loss = output.mean()
                 losses.append(loss.numpy())
@@ -295,7 +301,7 @@ class TestDistMPSyncTraning(unittest.TestCase):
         for i in range(len(losses)):
             np.testing.assert_allclose(losses[i], losses_sync[i], rtol=1e-6)
 
-        # test fp16
+        # test fp16 O1
         losses_fp16 = self.build_model_optimizer_train(batchs, fp16=True)
         losses_sync_fp16 = self.build_model_optimizer_train(
             batchs,
@@ -308,6 +314,24 @@ class TestDistMPSyncTraning(unittest.TestCase):
         for i in range(len(losses_fp16)):
             np.testing.assert_allclose(
                 losses_fp16[i], losses_sync_fp16[i], rtol=1e-6
+            )
+
+        # test fp16 O2
+        losses_fp16_O2 = self.build_model_optimizer_train(
+            batchs, fp16=True, amp_level="O2"
+        )
+        losses_sync_fp16_O2 = self.build_model_optimizer_train(
+            batchs,
+            fp16=True,
+            amp_level="O2",
+            mp_sync_param=mp_sync_param,
+            mp_sync_grad=mp_sync_grad,
+            mp_sync_moment=mp_sync_moment,
+        )
+
+        for i in range(len(losses_fp16_O2)):
+            np.testing.assert_allclose(
+                losses_fp16_O2[i], losses_sync_fp16_O2[i], rtol=1e-6
             )
 
     def test_mp_sync_param(self):
@@ -323,6 +347,26 @@ class TestDistMPSyncTraning(unittest.TestCase):
         self.mp_sync_base(
             mp_sync_param=True, mp_sync_grad=True, mp_sync_moment=True
         )
+
+
+class TestDistMPSyncModelTraning(TestDistMPSyncTraning):
+    def setUp(self):
+        strategy = fleet.DistributedStrategy()
+        self.model_parallel_size = 2
+        self.data_parallel_size = 1
+        strategy.hybrid_configs = {
+            "dp_degree": self.data_parallel_size,
+            "mp_degree": self.model_parallel_size,
+            "pp_degree": 1,
+            "mp_configs": {
+                "sync_param": False,
+                "sync_grad": False,
+                "sync_moment": False,
+                "sync_mode": "average",
+                "sync_param_name": ["embedding", "layer_norm", ".b_"],
+            },
+        }
+        fleet.init(is_collective=True, strategy=strategy)
 
 
 class TestDistMPTraning(unittest.TestCase):
