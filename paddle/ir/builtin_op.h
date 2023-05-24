@@ -58,7 +58,7 @@ class CombineOp : public ir::Op<CombineOp> {
 
   static constexpr uint32_t attributes_num = 0;
 
-  static const char **attributes_name;
+  static constexpr const char **attributes_name = nullptr;
   static void verify(const std::vector<ir::OpResult> &inputs,
                      const std::vector<ir::Type> &outputs,
                      const ir::AttributeMap &attributes);
