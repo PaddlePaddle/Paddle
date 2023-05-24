@@ -925,7 +925,11 @@ struct MatMulDispatcher<phi::GPUContext, T> {
                                              trans_x,
                                              trans_y,
                                              phi::CppTypeToDataType<T>::Type(),
-                                             funcs::MatmulFusedType::kMatmul);
+                                             funcs::MatmulFusedType::kMatmul,
+                                             /* bias_data */ nullptr,
+                                             /* reserve_data */ nullptr,
+                                             /* use_addto */ flag,
+                                             /* no_exchange */ true);
     tuner->Run(ctx,
                matmul_planner.GetKey(),
                ctx,

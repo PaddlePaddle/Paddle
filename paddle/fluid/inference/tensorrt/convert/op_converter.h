@@ -359,7 +359,7 @@ class OpConverter {
           platform::errors::InvalidArgument(
               "The output tensor in TensorRT subgraph should be LoDTensor"));
       nvinfer1::DataType out_dtype = FluidDataType2TRT(var->GetDataType());
-      if (engine->WithFp16() && !engine->WithInt8() &&
+      if (engine->precision() == phi::DataType::FLOAT16 &&
           out_dtype == nvinfer1::DataType::kFLOAT &&
           engine->EnableLowPrecisionIO()) {
         out_dtype = nvinfer1::DataType::kHALF;
@@ -403,15 +403,18 @@ class OpConverter {
 
   nvinfer1::ITensor* Reshape(nvinfer1::ITensor* input,
                              nvinfer1::ITensor* newShape,
-                             const std::string& name = "reshape") {
+                             const std::string& name = "") {
     auto* shuffle = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
     shuffle->setInput(1, *newShape);
-    shuffle->setName(name.c_str());
+    if (name != "") {
+      shuffle->setName(name.c_str());
+    }
     return shuffle->getOutput(0);
   }
 
   nvinfer1::ITensor* BroadcastTensor(nvinfer1::ITensor* input,
-                                     const int nbDims) {
+                                     const int nbDims,
+                                     const std::string& name = "") {
     auto oldShape = Shape(input);
     auto oldShapeDims = oldShape->getDimensions();
     const int rank = oldShapeDims.nbDims;
@@ -427,22 +430,23 @@ class OpConverter {
       itensors.push_back(one_rank_tensor);
       itensors.push_back(oldShape);
       concat_shape_tensor = Concat(itensors);
-      input = Reshape(input, concat_shape_tensor);
+      input = Reshape(input, concat_shape_tensor, name);
     }
     return input;
   }
 
   nvinfer1::ITensor* BroadcastTensors(nvinfer1::ITensor* a,
-                                      nvinfer1::ITensor* b) {
+                                      nvinfer1::ITensor* b,
+                                      const std::string& name = "") {
     const int aDims = a->getDimensions().nbDims;
     const int bDims = b->getDimensions().nbDims;
     if (aDims == bDims) {
       VLOG(3) << "Broadcast two equal rank tensors";
     }
     if (aDims > bDims) {
-      return BroadcastTensor(b, aDims);
+      return BroadcastTensor(b, aDims, name);
     }
-    return BroadcastTensor(a, bDims);
+    return BroadcastTensor(a, bDims, name);
   }
 
   // Concat not make rank changed

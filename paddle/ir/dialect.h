@@ -92,7 +92,8 @@ class Dialect {
                                  ConcreteOp::GetInterfaceMap(),
                                  ConcreteOp::GetTraitSet(),
                                  ConcreteOp::attributes_num,
-                                 ConcreteOp::attributes_name);
+                                 ConcreteOp::attributes_name,
+                                 ConcreteOp::verify);
   }
 
   void RegisterOp(const std::string &name, OpInfoImpl *op_info);

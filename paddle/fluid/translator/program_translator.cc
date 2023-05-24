@@ -20,6 +20,7 @@
 
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/translator/op_translator.h"
+#include "paddle/fluid/translator/type_translator.h"
 #include "paddle/ir/attribute.h"
 #include "paddle/ir/builtin_op.h"
 #include "paddle/ir/builtin_type.h"
@@ -37,6 +38,11 @@ ProgramTranslator::ProgramTranslator(const ProgramDesc* legacy_program,
     : legacy_program(legacy_program), program(program) {
   ctx = ir::IrContext::Instance();
 }
+
+const std::unordered_set<std::string> ProgramTranslator::no_cast_var_names = {
+    "feed",
+    "fetch",
+};
 
 void ProgramTranslator::Translate() {
   PADDLE_ENFORCE_EQ(
@@ -59,19 +65,24 @@ void ProgramTranslator::Translate() {
 
 void ProgramTranslator::ExtractParameterFromSingleBlock(
     const BlockDesc& block) {
+  auto& type_translator = TypeTranslator::instance();
+
   for (auto& var : block.AllVars()) {
     if (!var->Persistable()) continue;
     if (param_map.count(var->Name()) != 0) continue;
+    if (no_cast_var_names.count(var->Name()) != 0) continue;
 
     std::string get_parameter_op_name(ir::GetParameterOp::name());
     ir::OpInfo op_info = ctx->GetRegisteredOpInfo(get_parameter_op_name);
     std::unordered_map<std::string, ir::Attribute> op_attribute_map = {
         {var->Name(), ir::StrAttribute::get(ctx, var->Name())},
     };
+    ir::Type translated_var_type = type_translator[var->GetType()](ctx, *var);
     ir::Operation* operation = ir::Operation::create(
-        {}, {ir::Float32Type::get(ctx)}, op_attribute_map, op_info);
+        {}, {translated_var_type}, op_attribute_map, op_info);
     program->InsertOp(operation);
-    param_map[var->Name()] = operation->GetResultByIndex(0);
+    param_map[var->Name()] =
+        VariableDefiningInfo(operation->GetResultByIndex(0));
     VLOG(10) << "[op translated][get parameter]" << operation;
 
     program->SetParameter(var->Name(), nullptr);

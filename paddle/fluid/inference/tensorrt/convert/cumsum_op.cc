@@ -130,7 +130,10 @@ class CumsumOpConverter : public OpConverter {
                               [axis](int x) { return x == axis; });
       subscripts.resize(p - subscripts.begin());
       auto newDims = Gather(Shape(inputSliced_output), subscripts);
-      inputSliced_output = Reshape(inputSliced_output, newDims);
+      inputSliced_output =
+          Reshape(inputSliced_output,
+                  newDims,
+                  ("cumsum: reshape: (Output(" + output_name + ")").c_str());
 
       // creat ZeroTensor
       std::vector<float> zero_vec{0.f};
@@ -142,7 +145,11 @@ class CumsumOpConverter : public OpConverter {
                  engine_,
                  ElementWise,
                  *inputSliced_output,
-                 *BroadcastTensors(cast->getOutput(0), inputSliced_output),
+                 *BroadcastTensors(cast->getOutput(0),
+                                   inputSliced_output,
+                                   ("cumsum: reshape_for_broadcast: (Output(" +
+                                    output_name + ")")
+                                       .c_str()),
                  nvinfer1::ElementWiseOperation::kPROD)
                  ->getOutput(0);
 
@@ -159,10 +166,11 @@ class CumsumOpConverter : public OpConverter {
           loop->addLoopOutput(*curSum->getOutput(0), reverseFlag, axis);
       loopOut->setInput(1, *tripLimit);
       RreplenishLayerAndOutput(loopOut, "cumsum", {output_name}, test_mode);
-    }
+
 #else
     VLOG(3) << "Cumsum is not supported when TensorRT < 7.2.2";
 #endif
+    }
   }
 };
 

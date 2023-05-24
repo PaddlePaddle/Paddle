@@ -81,7 +81,7 @@ class GlobalScatterOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Global Scatter Operator
 Scatter data in X which has been put together belong to one expert
-to n_expert * world_size exeperts according to local_count
+to n_expert * world_size experts according to local_count
 and receive tensors from n_expert * world_size experts according
 to global_count.
 )DOC");
