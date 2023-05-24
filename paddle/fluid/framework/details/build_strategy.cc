@@ -198,6 +198,8 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
 #if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060)
     AppendPassWithCheck(strategy_.fuse_gemm_epilogue_,
                         "fuse_gemm_epilogue_pass");
+    AppendPassWithCheck(strategy_.fused_linear_with_mp_scale_,
+                        "fused_linear_with_mp_scale_pass");
 #endif
     AppendPassWithCheck(strategy_.fuse_elewise_add_act_ops_,
                         "fuse_elewise_add_act_pass");
@@ -550,4 +552,5 @@ USE_PASS(fusion_group_pass);
 #endif
 #if (defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11060)
 USE_PASS(fuse_gemm_epilogue_pass);
+USE_PASS(fused_linear_with_mp_scale_pass);
 #endif
