@@ -18,6 +18,8 @@ import hypothesis.strategies as st
 from auto_scan_test import PassAutoScanTest
 from program_config import OpConfig, ProgramConfig, TensorConfig
 
+import paddle.inference as paddle_infer
+
 
 class TestIdentityScaleCleanPass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
@@ -52,6 +54,7 @@ class TestIdentityScaleCleanPass(PassAutoScanTest):
 
     def test(self):
         self.run_and_statis(max_examples=25, passes=["identity_op_clean_pass"])
+
 
 class TestDeleteCIdentityPass(PassAutoScanTest):
     def sample_predictor_configs(self, program_config):
@@ -90,6 +93,7 @@ class TestDeleteCIdentityPass(PassAutoScanTest):
             min_success_num=2,
             passes=["identity_op_clean_pass"],
         )
+
 
 if __name__ == "__main__":
     unittest.main()
