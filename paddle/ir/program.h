@@ -17,6 +17,7 @@
 #include <list>
 #include <unordered_map>
 
+#include "paddle/ir/block.h"
 #include "paddle/ir/builtin_attribute.h"
 #include "paddle/ir/operation.h"
 #include "paddle/ir/parameter.h"
@@ -34,7 +35,7 @@ class Program {
  public:
   ~Program();
 
-  std::list<Operation*> ops() const { return ops_; }
+  std::list<Operation*>& ops() { return block.operations(); }
 
   size_t parameters_num() const { return parameters_.size(); }
 
@@ -51,7 +52,7 @@ class Program {
   void SetParameter(std::string name, std::unique_ptr<Parameter>&& parameter);
 
  private:
-  std::list<Operation*> ops_;  // owned
+  Block block;
 
   std::unordered_map<std::string, std::unique_ptr<Parameter>> parameters_;
 };
