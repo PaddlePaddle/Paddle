@@ -165,9 +165,12 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
                 ),
             )
             np.save(filepath, data[id * stride : (id + 1) * stride])
-        data = create_or_get_tensor(
-            scope, "input", OpTest.np_dtype_to_fluid_dtype(data), place
-        )
+        if self.dtype == np.uint16:
+            data = {"input": convert_float_to_uint16(data)}
+        else:
+            data = create_or_get_tensor(
+                scope, "input", OpTest.np_dtype_to_fluid_dtype(data), place
+            )
 
         # Single-GPU, N = 32 per GPU
         main, startup, outs = self._build_program(
@@ -302,6 +305,22 @@ class TestBF16SyncBatchNormOpTraining(TestSyncBatchNormOpTraining):
         self.W = 32
         self.dshape = [self.N, self.C, self.H, self.W]
         self.atol = 1e-2
+        self.data_dir = tempfile.TemporaryDirectory()
+        self.fleet_log_dir = tempfile.TemporaryDirectory()
+
+
+class TestBF16SyncBatchNormOpTraining(TestSyncBatchNormOpTraining):
+    """sync_batch_norm op test for BF16 input."""
+
+    def setUp(self):
+        """Setup."""
+        self.dtype = np.uint16
+        self.N = 8
+        self.C = 16
+        self.H = 32
+        self.W = 32
+        self.dshape = [self.N, self.C, self.H, self.W]
+        self.atol = 1e-3
         self.data_dir = tempfile.TemporaryDirectory()
         self.fleet_log_dir = tempfile.TemporaryDirectory()
 
