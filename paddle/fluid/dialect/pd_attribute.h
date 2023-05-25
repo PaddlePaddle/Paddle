@@ -19,10 +19,6 @@
 
 namespace paddle {
 namespace dialect {
-#define GET_PD_DIALECT_ATTRIBUTE_LIST                                    \
-  IntArrayAttribute, ScalarAttribute, DataTypeAttribute, PlaceAttribute, \
-      DataLayoutAttribute
-
 class IntArrayAttribute : public ir::Attribute {
  public:
   using Attribute::Attribute;
