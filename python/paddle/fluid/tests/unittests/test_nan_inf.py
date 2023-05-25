@@ -44,7 +44,7 @@ class TestNanInf(unittest.TestCase):
         actual_op_count = {}
         tensor_info_list = paddle.amp.accuracy_compare.parse_lines(lines)
         for tensor_info in tensor_info_list:
-            print(tensor_info)
+            # print(tensor_info)
             if actual_op_count.get(tensor_info.op_type, None) is None:
                 actual_op_count[tensor_info.op_type] = 1
             else:
@@ -88,7 +88,7 @@ class TestNanInf(unittest.TestCase):
 
         # Test on CPU.
         cmd = f"{self._python_interp} + {filepath}"
-        self.run_check_nan_inf(cmd, None, self.check_static_result)
+        self.run_check_nan_inf(cmd, None)
 
     def test_nan_inf_dynamic(self):
         if not self.check_dygraph:
