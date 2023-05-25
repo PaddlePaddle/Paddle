@@ -257,12 +257,6 @@ class TestComplexDotOp2D(OpTest):
         ) + 1j * np.random.random((2, 100)).astype(self.dtype)
         self.out = np.diag(np.dot(self.x, self.y.T)).reshape(-1)
 
-    def _get_grad(self, grad_out, input):
-        grad = np.empty((0, input.shape[1]))
-        for i in range(grad_out.shape[0]):
-            grad = np.append(grad, [grad_out[i] * np.conj(input[i])], axis=0)
-        return grad
-
     def test_check_output(self):
         self.check_output()
 
