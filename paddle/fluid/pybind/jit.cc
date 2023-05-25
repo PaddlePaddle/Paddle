@@ -146,9 +146,19 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
     //  NOTE: Cache is not supported now
     PyCodeObject *code = reinterpret_cast<PyCodeObject *>(
         PyObject_GetAttrString(result, "code"));
-    // Re-enable custom behavior
-    eval_frame_callback_set(callback);
-    return eval_custom_code(tstate, frame, code, throw_flag);
+    PyObject *disable_eval_frame =
+        PyObject_GetAttrString(result, "disable_eval_frame");
+    if (disable_eval_frame != Py_True) {
+      // Re-enable custom behavior
+      eval_frame_callback_set(callback);
+      auto out = eval_custom_code(tstate, frame, code, throw_flag);
+      return out;
+    } else {
+      auto out = eval_custom_code(tstate, frame, code, throw_flag);
+      // Re-enable custom behavior
+      eval_frame_callback_set(callback);
+      return out;
+    }
   } else {
     // Re-enable custom behavior
     eval_frame_callback_set(callback);
@@ -183,7 +193,7 @@ static PyObject *custom_eval_frame_shim(PyFrameObject *frame, int throw_flag) {
 
 static PyObject *set_eval_frame(PyObject *new_callback, PyThreadState *tstate) {
   // Change the eval frame callback and return the old one
-  //  - None: disables: diable custom callback.
+  //  - None: disables: disable custom callback.
   //  - Python callable(): enables custom callback.
   //  NOTE: Cache is not supported now
   PyObject *old_callback = eval_frame_callback_get();

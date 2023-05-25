@@ -265,7 +265,7 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "transpose_flatten_concat_fuse_pass",  //
         // "conv2d_fusion_cutlass_elementwise",   // used by cutlass only.
         "conv2d_fusion_layout_transfer_pass",  //
-        "transfer_layout_elim",
+        "transfer_layout_elim_pass",
         "auto_mixed_precision_pass",  //
         "inplace_op_var_pass",        // should be the last pass.
   });
@@ -529,6 +529,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "sigmoid_elementmul_fuse_pass",
       "fc_xpu_fuse_pass",
       "conv2d_xpu_fuse_pass",
+      "add_activation_xpu_fuse_pass",
       "link_xpu_op_max_pass",
       "inplace_op_var_pass",
       "delete_isolated_node_pass",

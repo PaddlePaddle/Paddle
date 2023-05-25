@@ -15,6 +15,7 @@
 #pragma once
 #include <functional>
 #include <memory>
+#include <unordered_map>
 #include <vector>
 
 namespace ir {
@@ -26,6 +27,10 @@ class TypeId;
 class Dialect;
 class OpInfo;
 class InterfaceValue;
+class Type;
+class OpResult;
+class Attribute;
+
 ///
 /// \brief IrContext is a global parameterless class used to store and manage
 /// Type, Attribute and other related data structures.
@@ -93,13 +98,18 @@ class IrContext {
   ///
   /// \brief Register an op infomation to IrContext
   ///
-  void RegisterOpInfo(Dialect *dialect,
-                      TypeId op_id,
-                      const char *name,
-                      std::vector<InterfaceValue> &&interface_map,
-                      const std::vector<TypeId> &trait_set,
-                      size_t attributes_num,
-                      const char **attributes_name);
+  void RegisterOpInfo(
+      Dialect *dialect,
+      TypeId op_id,
+      const char *name,
+      std::vector<InterfaceValue> &&interface_map,
+      const std::vector<TypeId> &trait_set,
+      size_t attributes_num,
+      const char **attributes_name,
+      void (*verify)(
+          const std::vector<OpResult> &inputs,
+          const std::vector<Type> &outputs,
+          const std::unordered_map<std::string, Attribute> &attributes));
 
   ///
   /// \brief Get registered operaiton infomation.
@@ -133,7 +143,7 @@ class IrContext {
   ///
   /// \return The dialect named "dialect_name" in the context.
   ///
-  Dialect *GetOrRegisterDialect(std::string dialect_name,
+  Dialect *GetOrRegisterDialect(const std::string &dialect_name,
                                 std::function<Dialect *()> constructor);
 
   ///

@@ -15,10 +15,10 @@ limitations under the License. */
 #include <algorithm>
 #include <iterator>
 
-#include "paddle/fluid/distributed/auto_parallel/device_mesh.h"
-#include "paddle/fluid/distributed/auto_parallel/utils.h"
+#include "paddle/phi/core/distributed/auto_parallel/device_mesh.h"
+#include "paddle/phi/core/distributed/auto_parallel/utils.h"
 
-namespace paddle {
+namespace phi {
 namespace distributed {
 namespace auto_parallel {
 
@@ -169,7 +169,7 @@ void Machine::add_device(const Device &device) {
   } else {
     PADDLE_ENFORCE_EQ(device.machine_id(),
                       id(),
-                      platform::errors::InvalidArgument(
+                      errors::InvalidArgument(
                           "The machine id [%d] of the device should be equal "
                           "to this machine id [%d].",
                           device.machine_id(),
@@ -181,7 +181,7 @@ void Machine::add_device(const Device &device) {
 void Machine::add_link(const Link &link) {
   PADDLE_ENFORCE_EQ(contains(link.source_id()),
                     true,
-                    platform::errors::InvalidArgument(
+                    errors::InvalidArgument(
                         "The source device id of the added link [%s] "
                         "cannot be found in the device_ids. Please add the "
                         "source device before adding this link",
@@ -217,31 +217,31 @@ DeviceMesh::DeviceMesh(const std::string &name,
   shape_ = shape;
   int64_t size = this->size();
 
-  PADDLE_ENFORCE_EQ(size,
-                    device_ids.size(),
-                    platform::errors::InvalidArgument(
-                        "The size %d of this device mesh must be "
-                        "equal to the size %d of its device ids.",
-                        size,
-                        device_ids.size()));
+  PADDLE_ENFORCE_EQ(
+      size,
+      device_ids.size(),
+      errors::InvalidArgument("The size %d of this device mesh must be "
+                              "equal to the size %d of its device ids.",
+                              size,
+                              device_ids.size()));
   PADDLE_ENFORCE_EQ(
       has_duplicates(device_ids),
       false,
-      platform::errors::InvalidArgument("The device ids [%s] must be unique.",
-                                        str_join(device_ids)));
+      errors::InvalidArgument("The device ids [%s] must be unique.",
+                              str_join(device_ids)));
   device_ids_ = device_ids;
 
   PADDLE_ENFORCE_EQ(
       shape_.size(),
       dim_names.size(),
-      platform::errors::InvalidArgument(
+      errors::InvalidArgument(
           "The size %d of mesh shape must be equal to the size %d "
           "of the dimension names.",
           shape_.size(),
           dim_names.size()));
   PADDLE_ENFORCE_EQ(has_duplicates(dim_names),
                     false,
-                    platform::errors::InvalidArgument(
+                    errors::InvalidArgument(
                         "The names [%s] of each dimension must be unique.",
                         str_join(dim_names)));
   dim_names_ = dim_names;
@@ -268,7 +268,7 @@ void DeviceMesh::add_device(const Device &device) {
   PADDLE_ENFORCE_EQ(
       contains(device.global_id()),
       true,
-      platform::errors::InvalidArgument(
+      errors::InvalidArgument(
           "The added device id [%s] cannot be found in the device_ids.",
           std::to_string(device.global_id())));
   // Operator [] will create a new object if it cannot find one.
@@ -282,15 +282,15 @@ void DeviceMesh::add_link(const Link &link) {
   PADDLE_ENFORCE_EQ(
       contains(link.source_id()),
       true,
-      platform::errors::InvalidArgument("The source id of the added link [%s] "
-                                        "cannot be found in the device_ids.",
-                                        std::to_string(link.source_id())));
+      errors::InvalidArgument("The source id of the added link [%s] "
+                              "cannot be found in the device_ids.",
+                              std::to_string(link.source_id())));
   PADDLE_ENFORCE_EQ(
       contains(link.target_id()),
       true,
-      platform::errors::InvalidArgument("The source id of the added link [%s] "
-                                        "cannot be found in the device_ids.",
-                                        std::to_string(link.target_id())));
+      errors::InvalidArgument("The source id of the added link [%s] "
+                              "cannot be found in the device_ids.",
+                              std::to_string(link.target_id())));
   // Operator [] will create a new object if it cannot find one.
   // So we add the default constructor for Device and Machine
   // to make sure the new object can be created.
@@ -395,4 +395,4 @@ bool operator==(const DeviceMesh &lhs, const DeviceMesh &rhs) {
 
 }  // namespace auto_parallel
 }  // namespace distributed
-}  // namespace paddle
+}  // namespace phi

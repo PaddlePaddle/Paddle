@@ -294,6 +294,8 @@ function(build_protobuf TARGET_NAME BUILD_FOR_HOST)
       PREFIX ${PROTOBUF_PREFIX_DIR}
       SOURCE_DIR ${SOURCE_DIR}
       UPDATE_COMMAND ""
+      PATCH_COMMAND
+      COMMAND cd ${SOURCE_DIR} && git checkout ${PROTOBUF_TAG}
       DEPENDS zlib
       CONFIGURE_COMMAND
         ${CMAKE_COMMAND} ${SOURCE_DIR}/cmake ${OPTIONAL_ARGS}

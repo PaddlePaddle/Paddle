@@ -108,7 +108,7 @@ pass_library(constant_folding_pass inference)
 pass_library(auto_mixed_precision_pass inference)
 pass_library(conv2d_fusion_cutlass_elementwise inference)
 pass_library(conv2d_fusion_layout_transfer_pass inference)
-pass_library(transfer_layout_elim inference)
+pass_library(transfer_layout_elim_pass inference)
 pass_library(silu_fuse_pass inference)
 pass_library(simplify_with_basic_ops_pass base)
 pass_library(fc_elementwise_layernorm_fuse_pass base)
@@ -250,6 +250,8 @@ if(WITH_XPU)
   pass_library(stack_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(fused_multi_transformer_cachekv_layout_trans_pass inference DIR
                xpu DEPS ${XPU_PASS_DEPS})
+  pass_library(add_activation_xpu_fuse_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
 endif()
 
 cc_library(

@@ -734,7 +734,7 @@ class PrimForwardChecker:
     def check_jit_comp_with_cinn(self):
         if self.prim_op_type == "prim":
             return
-        # cinn doesn't suppoort cpu place
+        # cinn doesn't support cpu place
         if (
             type(self.place) == paddle.fluid.libpaddle.CPUPlace
             and self.enable_cinn
@@ -869,7 +869,7 @@ class PrimGradChecker(PrimForwardChecker):
 
     def get_output_dict(self, np_outputs, api_outputs, outputs_sig):
         assert len(api_outputs) <= len(outputs_sig), (
-            "forward api outputs length must be the less than or equal to KernelSignature outputs,but recive %s and %s"
+            "forward api outputs length must be the less than or equal to KernelSignature outputs,but receive %s and %s"
         ) % (len(api_outputs), len(outputs_sig))
         output_dict = {}
         for i in range(len(api_outputs)):
@@ -1249,7 +1249,7 @@ class PrimGradChecker(PrimForwardChecker):
         net.forward.program_cache.clear()
 
     def check_jit_comp_with_cinn(self):
-        # cinn doesen't support cpu place
+        # cinn doesn't support cpu place
         if (
             type(self.place) is paddle.fluid.libpaddle.CPUPlace
             and self.enable_cinn

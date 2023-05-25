@@ -39,7 +39,7 @@ struct hash<std::vector<T>> {
 namespace paddle {
 namespace dialect {
 ///
-/// \brief Define Parameteric TypeStorage for DenseTensorType.
+/// \brief Define Parametric TypeStorage for DenseTensorType.
 ///
 /// NOTE(zhangbo9674): The derived TypeStorage class needs to implement the
 /// following methods: (1)declare ParamKey, (2)define Construction method,
@@ -93,7 +93,7 @@ struct DenseTensorTypeStorage : public ir::TypeStorage {
         offset_(offset) {}
 
   ///
-  /// \brief Each derived TypeStorage must define a Construc method, which
+  /// \brief Each derived TypeStorage must define a Construct method, which
   /// StorageManager uses to construct a derived TypeStorage.
   ///
   static DenseTensorTypeStorage *Construct(ParamKey key) {

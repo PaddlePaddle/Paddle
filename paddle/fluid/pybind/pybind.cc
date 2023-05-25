@@ -1946,6 +1946,8 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("device_memory_stat_current_value",
         memory::DeviceMemoryStatCurrentValue);
   m.def("device_memory_stat_peak_value", memory::DeviceMemoryStatPeakValue);
+  m.def("host_memory_stat_current_value", memory::HostMemoryStatCurrentValue);
+  m.def("host_memory_stat_peak_value", memory::HostMemoryStatPeakValue);
   m.def(
       "run_cmd",
       [](const std::string &cmd,
@@ -2273,8 +2275,8 @@ All parameter, weight, gradient are variables in Paddle.
         pass_type, [pass_type, callable]() {
           py::gil_scoped_acquire guard;
           std::unique_ptr<framework::ir::Pass> pass(
-              new framework::ir::GeneratePass(
-                  py::cast<std::string>(callable())));
+              new framework::ir::GeneratePass(py::cast<std::string>(callable()),
+                                              pass_type));
           return pass;
         });
   });
