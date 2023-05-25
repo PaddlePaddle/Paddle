@@ -37,8 +37,6 @@ class Program {
 
   Block* block() { return &block_; }
 
-  std::list<Operation*>& ops() { return block_.operations(); }
-
   size_t parameters_num() const { return parameters_.size(); }
 
   ///

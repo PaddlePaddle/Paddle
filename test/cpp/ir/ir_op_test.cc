@@ -187,9 +187,4 @@ TEST(op_test, op_test) {
   Operation2 Op2 = op2->dyn_cast<Operation2>();
   EXPECT_EQ(Op2.operation(), op2);
   op2->destroy();
-
-  // (4) Test Builder
-  ir::Builder builder(ctx);
-  Operation1 op1 = builder.create<Operation1>();
-  op1.operation()->destroy();
 }

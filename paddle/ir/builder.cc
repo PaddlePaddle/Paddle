@@ -17,7 +17,9 @@
 namespace ir {
 Operation *Builder::insert(Operation *op) {
   if (block_) {
-    block_->operations().insert(insert_point_, op);
+    block_->insert(insert_point_, op);
+  } else {
+    LOG(WARNING) << "Builder's Block is nullptr, insert failed.";
   }
   return op;
 }

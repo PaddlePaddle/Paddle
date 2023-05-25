@@ -26,8 +26,6 @@ class Block {
   Block() = default;
   ~Block();
 
-  std::list<Operation *> &operations() { return ops_; }
-
   bool empty() const { return ops_.empty(); }
   size_t size() const { return ops_.size(); }
 
@@ -40,6 +38,10 @@ class Block {
   Operation *front() { return ops_.front(); }
   void push_back(Operation *op) { ops_.push_back(op); }
   void push_front(Operation *op) { ops_.push_front(op); }
+  std::list<Operation *>::iterator insert(
+      std::list<Operation *>::const_iterator iterator, Operation *op) {
+    return ops_.insert(iterator, op);
+  }
   void clear();
 
  private:

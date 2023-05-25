@@ -27,8 +27,6 @@ namespace ir {
 ///
 class Builder {
  public:
-  explicit Builder(IrContext *context) : context_(context) {}
-
   explicit Builder(IrContext *context,
                    Block *block,
                    Block::iterator insert_point)
