@@ -288,6 +288,7 @@ class OperatorBase {
 
   virtual bool SupportGPU() const { return false; }
   virtual bool SupportXPU() const { return false; }
+  virtual bool SupportCustomDevice() const { return false; }
 
   const std::string& Type() const { return type_; }
 
@@ -749,6 +750,8 @@ class OperatorWithKernel : public OperatorBase {
   bool SupportGPU() const override;
 
   bool SupportXPU() const override;
+
+  bool SupportCustomDevice() const override;
 
   bool SupportsMKLDNN(phi::DataType data_type) const;
 

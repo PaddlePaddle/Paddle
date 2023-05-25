@@ -320,7 +320,7 @@ class MultiDeviceFeedReader {
     PADDLE_ENFORCE_EQ(status,
                       Status::kSuccess,
                       platform::errors::NotFound(
-                          "The function executed sucessfully, but "
+                          "The function executed successfully, but "
                           "the result status is not Status::kSuccess"));
   }
 

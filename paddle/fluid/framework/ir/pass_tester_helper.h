@@ -824,6 +824,17 @@ struct Layers {
     return unary_op("logical_not", input);
   }
 
+  VarDesc* not_equal(VarDesc* x, VarDesc* y, int axis = -1) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("not_equal");
+    op->SetInput("X", {x->Name()});
+    op->SetInput("Y", {y->Name()});
+    op->SetAttr("axis", axis);
+    op->SetOutput("Out", {out->Name()});
+    return out;
+  }
+
   VarDesc* stack(std::vector<VarDesc*> inputs, int axis = -1) {
     VarDesc* out = lod_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
@@ -835,6 +846,16 @@ struct Layers {
     op->SetInput("X", input_names);
     op->SetAttr("axis", axis);
     op->SetOutput("Y", {out->Name()});
+    return out;
+  }
+
+  VarDesc* tile(VarDesc* x, const std::vector<int>& repeat_times = {2}) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("tile");
+    op->SetInput("X", {x->Name()});
+    op->SetAttr("repeat_times", repeat_times);
+    op->SetOutput("Out", {out->Name()});
     return out;
   }
 

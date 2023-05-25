@@ -32,6 +32,9 @@ void CPUQuantizePlacementPass::ApplyImpl(ir::Graph* graph) const {
                                        "fused_conv2d",
                                        "fused_conv3d",
                                        "fused_matmul",
+                                       "fused_elementwise_add",
+                                       "fused_elementwise_mul",
+                                       "fused_elementwise_sub",
                                        "elementwise_add",
                                        "elementwise_mul",
                                        "elementwise_sub",
@@ -87,12 +90,7 @@ void CPUQuantizePlacementPass::ApplyImpl(ir::Graph* graph) const {
       return;
     }
 
-    // Remove this condition when all fused_elementwise ops are merged
-    if (!(op->Op()->Type() == "elementwise_add" ||
-          op->Op()->Type() == "elementwise_sub" ||
-          op->Op()->Type() == "elementwise_mul")) {
-      ConvertToFusedOp(op->Op());
-    }
+    ConvertToFusedOp(op->Op());
     op->Op()->SetAttr("mkldnn_data_type", std::string("int8"));
   };
   gpd(graph, handler);

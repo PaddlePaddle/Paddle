@@ -92,7 +92,7 @@
 - op : add (elementwise_add)
   backward : add_grad (elementwise_add_grad)
   extra :
-    attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
 - op : add_n (sum)
@@ -661,7 +661,7 @@
   outputs :
     out: Out
   extra :
-    attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
 - op : dot
@@ -733,7 +733,7 @@
 - op : elementwise_pow
   backward : elementwise_pow_grad
   extra :
-    attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
 - op : elu
@@ -922,19 +922,19 @@
 
 - op : floor_divide (elementwise_floordiv)
   extra :
-    attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
 - op : fmax (elementwise_fmax)
   backward : fmax_grad (elementwise_fmax_grad)
   extra :
-    attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
 - op : fmin (elementwise_fmin)
   backward : fmin_grad (elementwise_fmin_grad)
   extra :
-    attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
 - op : fold
@@ -1036,7 +1036,7 @@
 
 - op : grad_add
   extra :
-    attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
 - op : greater_equal
@@ -1114,7 +1114,7 @@
 - op : heaviside (elementwise_heaviside)
   backward : heaviside_grad (elementwise_heaviside_grad)
   extra :
-    attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
 - op : histogram
@@ -1171,6 +1171,10 @@
     y : Y
     saved_mean : SavedMean
     saved_variance : SavedVariance
+  extra:
+    outputs: [ saved_mean, saved_variance ]
+  get_expected_kernel_type:
+    instance_norm: GetInstanceNormExpectedKernelType
 
 - op : inverse
   inputs :
@@ -1260,6 +1264,8 @@
     variance : Variance
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
+  get_expected_kernel_type :
+    layer_norm : GetLayerNormExpectedKernelType
 
 - op : leaky_relu
   backward : leaky_relu_grad, leaky_relu_double_grad (leaky_relu_grad_grad)
@@ -1516,13 +1522,7 @@
 - op : maximum (elementwise_max)
   backward : maximum_grad (elementwise_max_grad)
   extra :
-    attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
-             bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
-
-- op : maximum (elementwise_min)
-  backward : maximum_grad (elementwise_min_grad)
-  extra :
-    attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
 - op : maxout
@@ -1585,6 +1585,12 @@
     out : Out
   drop_empty_grad : [inputs_grad]
 
+- op : minimum (elementwise_min)
+  backward : minimum_grad (elementwise_min_grad)
+  extra :
+    attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
+             bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+
 - op : mish
   backward : mish_grad
   extra :
@@ -1636,7 +1642,7 @@
   outputs :
     out : Out
   extra :
-    attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
 - op : mv
@@ -1735,7 +1741,17 @@
     attrs : [bool use_mkldnn = false]
 
 - op : pad3d
-  backward : pad3d_grad
+  backward : pad3d_grad, pad3d_double_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  int_array:
+    paddings :
+      data_type : int
+      tensor_name : Paddings
+  attrs :
+    pad_value : value
   extra :
     attrs : [bool use_mkldnn = false]
 
@@ -1891,7 +1907,7 @@
 
 - op : remainder (elementwise_mod)
   extra :
-    attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
 - op : renorm
@@ -2143,8 +2159,13 @@
   backward : softmax_grad
   inputs :
     x : X
+  outputs :
+    out : Out
+  get_expected_kernel_type :
+    softmax : GetSoftmaxExpectedKernelType
+    softmax_grad : GetSoftmaxGradExpectedKernelType
   extra :
-    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
+    attrs : [str data_format = "AnyLayout", bool use_cudnn=false, bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
 
 - op : softplus
   backward : softplus_grad, softplus_double_grad
@@ -2249,7 +2270,7 @@
   outputs :
     out : Out
   extra :
-    attrs : [bool use_mkldnn = false, str x_data_format = "", str y_data_format = "", str mkldnn_data_type = "float32",
+    attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
 
 - op : sum (reduce_sum)
@@ -2302,7 +2323,7 @@
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
 - op : tanh
-  backward : tanh_grad, tanh_double_grad (tanh_grad_grad)
+  backward : tanh_grad, tanh_double_grad (tanh_grad_grad), tanh_triple_grad
   inputs :
     x : X
   outputs :
@@ -2368,6 +2389,13 @@
     {x : X, y : Y}
   outputs :
     out : Out
+
+- op : tril_triu
+  backward : tril_triu_grad
+  inputs :
+    {x: X}
+  outputs :
+    {out : Out}
 
 - op : trilinear_interp (trilinear_interp_v2)
   backward : trilinear_interp_grad (trilinear_interp_v2_grad)

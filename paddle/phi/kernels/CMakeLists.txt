@@ -153,6 +153,11 @@ if(WITH_CUTLASS)
   list(APPEND kernel_cu ${cutlass_cu})
 endif()
 
+if(APPLE OR WIN32)
+  list(REMOVE_ITEM kernel_cu
+       "${CMAKE_CURRENT_SOURCE_DIR}/fusion/gpu/fusion_group_kernel.cu")
+endif()
+
 if(WITH_MKLDNN)
   file(
     GLOB
@@ -161,6 +166,7 @@ if(WITH_MKLDNN)
     "cpu/*.cc"
     "legacy/*.cc"
     "legacy/cpu/*.cc"
+    "legacy/onednn/*.cc"
     "selected_rows/*.cc"
     "selected_rows/cpu/*.cc"
     "sparse/*.cc"

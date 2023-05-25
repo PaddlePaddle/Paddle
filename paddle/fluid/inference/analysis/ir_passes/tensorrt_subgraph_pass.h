@@ -22,7 +22,6 @@
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/inference/analysis/ir_passes/subgraph_util.h"
-#include "paddle/fluid/inference/api/paddle_analysis_config.h"
 
 namespace paddle {
 namespace framework {

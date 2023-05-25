@@ -33,7 +33,7 @@ struct ParametricStorageManager;
 /// Storage class must be a derived class of StorageManager::StorageBase.
 /// There are two types of Storage class:
 /// One is a parameterless type, which can directly obtain an instance through
-/// the get method; The other is a parameteric type, which needs to comply with
+/// the get method; The other is a parametric type, which needs to comply with
 /// the following conditions: (1) Need to define a type alias called ParamKey,
 /// it serves as the unique identifier for the Storage class; (2) Need to
 /// provide a hash method on the ParamKey for storage and access; (3) Need to
@@ -134,7 +134,7 @@ class StorageManager {
   void RegisterParameterlessStorageImpl(
       TypeId type_id, std::function<StorageBase *()> constructor);
 
-  // This map is a mapping between type id and parameteric type storage.
+  // This map is a mapping between type id and parametric type storage.
   std::unordered_map<TypeId, std::unique_ptr<ParametricStorageManager>>
       parametric_instance_;
 

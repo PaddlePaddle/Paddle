@@ -2237,7 +2237,8 @@ PDNode *patterns::OpRequant::operator()() {
   auto any_op = pattern->NewNode(any_op_repr())
                     ->assert_is_op()
                     ->assert_more([&](Node *node) {
-                      return node->Op()->HasAttr("Scale_out") ? true : false;
+                      return (node->Op()->HasAttr("Scale_out") ||
+                              node->Op()->HasAttr("scale_out"));
                     });
   auto requant_in = pattern->NewNode(requant_in_repr())
                         ->assert_is_op_input("requantize", "Input");
@@ -2265,7 +2266,10 @@ PDNode *patterns::RequantOp::operator()() {
                     ->assert_more([&](Node *node) {
                       return (node->Op()->HasAttr("Scale_in") ||
                               node->Op()->HasAttr("Scale_x") ||
-                              node->Op()->HasAttr("Scale_y"));
+                              node->Op()->HasAttr("Scale_y") ||
+                              node->Op()->HasAttr("scale_in") ||
+                              node->Op()->HasAttr("scale_x") ||
+                              node->Op()->HasAttr("scale_y"));
                     });
 
   requant_op->LinksFrom({requant_in}).LinksTo({requant_out});

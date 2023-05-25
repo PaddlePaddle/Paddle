@@ -42,7 +42,7 @@ cc_test(
   test_common_infer_shape_functions
   SRCS test_common_infer_shape_functions.cc
   DEPS common_infer_shape_functions ${COMMON_OP_DEPS} activation_op
-       elementwise_add_op softmax_op softmax)
+       elementwise_add_op softmax generated_static_op)
 cc_test(
   gather_test
   SRCS gather_test.cc
