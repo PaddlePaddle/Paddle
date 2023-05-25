@@ -433,9 +433,9 @@ def hard_swish_composite(x):
         maxmum(x + offset, 0), threshold
     ) * x / scale
     """
-    offset = 3.0
     threshold = 6.0
     scale = 6.0
+    offset = 3.0
     full_shape = x.shape if len(x.shape) == 0 else [1]
     res = (
         minimum(

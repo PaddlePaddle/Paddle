@@ -43,6 +43,18 @@
     func : frobenius_norm_grad
     param : [x, out, out_grad, axis, keepdim, reduce_all]
 
+- backward_op : hardswish_grad
+  forward : hardswish (Tensor x, float threshold = 6.0f, float scale = 6.0f, float offset = 3.0f) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : hardswish_grad
+    param : [x, out_grad]
+  inplace : (out_grad -> x_grad)
+
 - backward_op : relu6_grad
   forward : relu6 (Tensor x, float threshold = 6.0f) -> Tensor(out)
   args : (Tensor out, Tensor out_grad)

@@ -180,6 +180,17 @@
     backend : x
     force_backend : force_cpu
 
+- op : hardswish
+  args : (Tensor x, float threshold = 6.0f, float scale = 6.0f, float offset = 3.0f)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : hardswish
+    param : [x]
+  backward : hardswish_grad
+
 - op : less_equal
   args : (Tensor x, Tensor y, int axis = -1, bool force_cpu=false)
   output : Tensor(out)
