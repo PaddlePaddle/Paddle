@@ -122,7 +122,8 @@ void AsyncWorkQueue::AddTask(const OpFuncType& op_func_type,
   queue_group_->AddTask(op_func_type == OpFuncType::kGpuAsync, std::move(fn));
 }
 
-bool IsCommunicationOp(const std::string& op_name) {
+bool IsCommunicationOp(const OperatorBase* op) {
+  const std::string& op_name = op->Type();
   const std::set<std::string> special_comm_op_set = {
       "send",
       "recv",
@@ -134,11 +135,14 @@ bool IsCommunicationOp(const std::string& op_name) {
       special_comm_op_set.count(op_name)) {
     return true;
   }
+  if (op->HasAttr("ring_id")) {
+    return true;
+  }
   return false;
 }
 
 bool IsCommunicationOp(const Instruction& instr) {
-  return IsCommunicationOp(instr.OpBase()->Type());
+  return IsCommunicationOp(instr.OpBase());
 }
 
 bool IsCpuOp(const Instruction& instr) {
@@ -573,7 +577,7 @@ void BuildOpFuncList(const platform::Place& place,
       op_func_node.stream_priority_ = dist_attr->stream_priority();
       op_func_node.scheduling_priority_ = dist_attr->scheduling_priority();
     } else {
-      if (interpreter::IsCommunicationOp(op_type)) {
+      if (interpreter::IsCommunicationOp(op)) {
         // NOTE(Ruibiao): Dispatching computation before communication improves
         // multi-stream overlap when the time cost of communication less than
         // that of the calculation (e.g., ResNet50_bs128_pure_fp16 N4C32
