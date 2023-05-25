@@ -14,6 +14,7 @@
 
 #include <gtest/gtest.h>
 
+#include "paddle/ir/builder.h"
 #include "paddle/ir/builtin_attribute.h"
 #include "paddle/ir/builtin_type.h"
 #include "paddle/ir/dialect.h"
@@ -23,7 +24,7 @@
 /// \brief Define built-in Trait, derived from OpTraitBase.
 class ReadOnlyTrait : public ir::OpTraitBase<ReadOnlyTrait> {
  public:
-  explicit ReadOnlyTrait(const ir::Operation *op)
+  explicit ReadOnlyTrait(ir::Operation *op)
       : ir::OpTraitBase<ReadOnlyTrait>(op) {}
 };
 
@@ -34,14 +35,14 @@ class ReadOnlyTrait : public ir::OpTraitBase<ReadOnlyTrait> {
 class InferShapeInterface : public ir::OpInterfaceBase<InferShapeInterface> {
  public:
   struct Concept {
-    explicit Concept(void (*infer_shape)(const ir::Operation *))
+    explicit Concept(void (*infer_shape)(ir::Operation *))
         : infer_shape_(infer_shape) {}
-    void (*infer_shape_)(const ir::Operation *);
+    void (*infer_shape_)(ir::Operation *);
   };
 
   template <class ConcreteOp>
   struct Model : public Concept {
-    static void InferShape(const ir::Operation *op) {
+    static void InferShape(ir::Operation *op) {
       ConcreteOp concret_op = ConcreteOp(op);
       if (concret_op == nullptr) throw("concret_op is nullptr");
       concret_op.InferShape();
@@ -53,7 +54,7 @@ class InferShapeInterface : public ir::OpInterfaceBase<InferShapeInterface> {
     }
   };
 
-  InferShapeInterface(const ir::Operation *op, Concept *impl)
+  InferShapeInterface(ir::Operation *op, Concept *impl)
       : ir::OpInterfaceBase<InferShapeInterface>(op), impl_(impl) {}
 
   void InferShape() { impl_->infer_shape_(operation()); }
@@ -61,6 +62,18 @@ class InferShapeInterface : public ir::OpInterfaceBase<InferShapeInterface> {
  private:
   Concept *impl_;
 };
+
+ir::AttributeMap CreateAttributeMap(std::vector<std::string> attribute_names,
+                                    std::vector<std::string> attributes) {
+  ir::IrContext *ctx = ir::IrContext::Instance();
+  ir::AttributeMap attr_map;
+  for (size_t i = 0; i < attribute_names.size(); i++) {
+    ir::Attribute attr_value = ir::StrAttribute::get(ctx, attributes[i]);
+    attr_map.insert(
+        std::pair<std::string, ir::Attribute>(attribute_names[i], attr_value));
+  }
+  return attr_map;
+}
 
 // Define op1.
 class Operation1 : public ir::Op<Operation1> {
@@ -80,6 +93,22 @@ class Operation1 : public ir::Op<Operation1> {
         !attributes.at("op1_attr2").isa<ir::StrAttribute>()) {
       throw("Type of attribute: parameter_name is not right.");
     }
+  }
+  static void build(const ir::Builder &builder,
+                    ir::OperationArgument &argument) {  // NOLINT
+    std::vector<ir::OpResult> inputs = {};
+    std::vector<ir::Type> output_types = {
+        ir::Float32Type::get(builder.context())};
+    std::unordered_map<std::string, ir::Attribute> attributes =
+        CreateAttributeMap({"op1_attr1", "op1_attr2"},
+                           {"op1_attr1", "op1_attr2"});
+    argument.addOperands<std::vector<ir::OpResult>::iterator>(inputs.begin(),
+                                                              inputs.end());
+    argument.addTypes<std::vector<ir::Type>::iterator>(output_types.begin(),
+                                                       output_types.end());
+    argument.addAttributes<
+        std::unordered_map<std::string, ir::Attribute>::iterator>(
+        attributes.begin(), attributes.end());
   }
 };
 const char *Operation1::attributes_name[attributes_num] = {"op1_attr1",
@@ -105,9 +134,7 @@ class Operation2
       throw("Type of attribute: parameter_name is not right.");
     }
   }
-  static void InferShape() {
-    std::cout << "This is op2's InferShape interface." << std::endl;
-  }
+  static void InferShape() { VLOG(0) << "This is op2's InferShape interface."; }
 };
 const char *Operation2::attributes_name[attributes_num] = {"op2_attr1",
                                                            "op2_attr2"};
@@ -125,23 +152,11 @@ class TestDialect : public ir::Dialect {
   void initialize() { RegisterOps<Operation1, Operation2>(); }
 };
 
-ir::AttributeMap CreateAttributeMap(std::vector<std::string> attribute_names,
-                                    std::vector<std::string> attributes) {
-  ir::IrContext *ctx = ir::IrContext::Instance();
-  ir::AttributeMap attr_map;
-  for (size_t i = 0; i < attribute_names.size(); i++) {
-    ir::Attribute attr_value = ir::StrAttribute::get(ctx, attributes[i]);
-    attr_map.insert(
-        std::pair<std::string, ir::Attribute>(attribute_names[i], attr_value));
-  }
-  return attr_map;
-}
-
 TEST(op_test, op_test) {
   // (1) Register Dialect, Operation1, Operation2 into IrContext.
   ir::IrContext *ctx = ir::IrContext::Instance();
   ir::Dialect *test_dialect = ctx->GetOrRegisterDialect<TestDialect>();
-  std::cout << test_dialect << std::endl;
+  EXPECT_EQ(test_dialect != nullptr, true);
 
   // (2) Get registered operations.
   std::string op1_name = Operation1::name();
@@ -158,18 +173,18 @@ TEST(op_test, op_test) {
   // (3) Test uses for op.
   std::vector<ir::OpResult> op_inputs = {};
   std::vector<ir::Type> op_output_types = {ir::Float32Type::get(ctx)};
-  ir::Operation *op =
+  ir::Operation *op2 =
       ir::Operation::create(op_inputs,
                             op_output_types,
                             CreateAttributeMap({"op2_attr1", "op2_attr2"},
                                                {"op2_attr1", "op2_attr2"}),
                             op2_info);
 
-  ReadOnlyTrait trait = op->dyn_cast<ReadOnlyTrait>();
-  EXPECT_EQ(trait.operation(), op);
-  InferShapeInterface interface = op->dyn_cast<InferShapeInterface>();
+  ReadOnlyTrait trait = op2->dyn_cast<ReadOnlyTrait>();
+  EXPECT_EQ(trait.operation(), op2);
+  InferShapeInterface interface = op2->dyn_cast<InferShapeInterface>();
   interface.InferShape();
-  Operation2 Op2 = op->dyn_cast<Operation2>();
-  EXPECT_EQ(Op2.operation(), op);
-  op->destroy();
+  Operation2 Op2 = op2->dyn_cast<Operation2>();
+  EXPECT_EQ(Op2.operation(), op2);
+  op2->destroy();
 }

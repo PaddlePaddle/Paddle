@@ -93,25 +93,16 @@ class TestJacobianNoBatch(unittest.TestCase):
         )
         self._actual = paddle.autograd.jacobian(ys, xs, batch_axis=None)
         if isinstance(self._actual, (tuple, list)):
-            self._actual = paddle.concat([x[:] for x in self._actual], axis=1)
+            self._actual = paddle.concat([x[:] for x in self._actual], axis=0)
         self._expected = self._get_expected()
 
-        Index = collections.namedtuple('Index', ('type', 'value'))
-        indexes = (
-            Index('all', (slice(0, None, None), slice(0, None, None))),
-            Index('row', (0, slice(0, None, None))),
-            Index('col', (slice(0, None, None), 0)),
-            Index('multi-row', (slice(0, 2, 1), slice(0, None, None))),
+        self.assertEqual(self._actual.numpy().dtype, self._expected.dtype)
+        np.testing.assert_allclose(
+            self._actual.flatten(),
+            self._expected.flatten(),
+            rtol=self._rtol,
+            atol=self._atol,
         )
-        self.assertEqual(self._actual[:].numpy().dtype, self._expected.dtype)
-        for index in indexes:
-            np.testing.assert_allclose(
-                self._actual.__getitem__(index.value),
-                self._expected.__getitem__(index.value),
-                rtol=self._rtol,
-                atol=self._atol,
-                err_msg=f'Testcase {index.type} index not passed, value is {index.value}',
-            )
 
     def test_jacobian_attribute_operator(self):
         xs = (
@@ -124,25 +115,16 @@ class TestJacobianNoBatch(unittest.TestCase):
         )
         self._actual = paddle.autograd.jacobian(ys, xs, batch_axis=None)
         if isinstance(self._actual, (tuple, list)):
-            self._actual = paddle.concat([x[:] for x in self._actual], axis=1)
+            self._actual = paddle.concat([x[:] for x in self._actual], axis=0)
         self._expected = self._get_expected()
 
-        Index = collections.namedtuple('Index', ('type', 'value'))
-        indexes = (
-            Index('all', (slice(0, None, None), slice(0, None, None))),
-            Index('row', (0, slice(0, None, None))),
-            Index('col', (slice(0, None, None), 0)),
-            Index('multi-row', (slice(0, 2, 1), slice(0, None, None))),
-        )
         self.assertEqual(self._actual.numpy().dtype, self._expected.dtype)
-        for index in indexes:
-            np.testing.assert_allclose(
-                self._actual.__getitem__(index.value),
-                self._expected.__getitem__(index.value),
-                rtol=self._rtol,
-                atol=self._atol,
-                err_msg=f'Testcase {index.type} index not passed, value is {index.value}',
-            )
+        np.testing.assert_allclose(
+            self._actual.flatten(),
+            self._expected.flatten(),
+            rtol=self._rtol,
+            atol=self._atol,
+        )
 
     def _get_expected(self):
         xs = (

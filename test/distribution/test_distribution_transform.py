@@ -1029,8 +1029,8 @@ class TestReshapeTransform(unittest.TestCase):
 
         self.assertEqual(out.shape, [1, 1])
         self.assertEqual(reshape.inverse(out).shape, [])
-        # self.assertEqual(reshape.forward_log_det_jacobian(x).shape, [])
-        # self.assertEqual(reshape.inverse_log_det_jacobian(out).shape, [])
+        self.assertEqual(reshape.forward_log_det_jacobian(x).shape, [])
+        self.assertEqual(reshape.inverse_log_det_jacobian(out).shape, [])
         self.assertEqual(reshape.forward_shape(x.shape), (1, 1))
         self.assertEqual(reshape.inverse_shape(out.shape), ())
 

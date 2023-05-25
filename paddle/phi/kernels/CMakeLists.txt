@@ -166,6 +166,7 @@ if(WITH_MKLDNN)
     "cpu/*.cc"
     "legacy/*.cc"
     "legacy/cpu/*.cc"
+    "legacy/onednn/*.cc"
     "selected_rows/*.cc"
     "selected_rows/cpu/*.cc"
     "sparse/*.cc"
