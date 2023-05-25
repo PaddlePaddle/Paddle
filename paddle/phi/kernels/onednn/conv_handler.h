@@ -401,6 +401,14 @@ class ConvOneDNNHandlerT
       conv_attr.set_scales_mask(DNNL_ARG_SRC, 0);
 
       auto wei_scales = ConvertToDNNLScales("Scale_weights");
+      // By oneDNN API definition:
+      // - For per-tensor quantization: the mask should be 0
+      // - For per-dimension quantization: the mask should be 1 <<
+      // dimension_index Here, wei_scales.size() != 1 means per-channel
+      // quantization, the channel index in oneDNN is always 0, so we use mask =
+      // 1 << 0. If the conv is group, the weights shape will be [g, oc/g, ic,
+      // h, w], we need to do scaling along both group dim and oc dim, so the
+      // mask = (1 << 0) + (1 << 1).
       int mask = wei_scales.size() == 1
                      ? 0
                      : (groups > 1 ? ((1 << 0) + (1 << 1)) : 1 << 0);

@@ -255,10 +255,6 @@ class MulPrimitiveFactory {
             scale_out_data / (scale_x_data * scale_y_data[i]);
     }
     int mul_mask = is_multi_channel ? 1 : 0;
-    // TODO(qun): here we fold all scales into weights scales, just like we
-    // folded all scales to output scales when using oneDNN v2.7.3. But this is
-    // just a quick and dirty workaround and only valid when there is no
-    // post-ops. Finally, we need to correctly leverage the scales api in v3.
     mul_attr.set_scales_mask(DNNL_ARG_WEIGHTS, mul_mask);
 
     auto scales_md = dnnl::memory::desc(

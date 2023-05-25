@@ -38,6 +38,8 @@ void FusedElementwiseKernel(const OneDNNContext& dev_ctx,
   funcs::AppendActivation(
       dev_ctx, post_operations, fuse_activation, fuse_alpha, fuse_beta);
   if (fused_output_scale != 1.0) {
+    // linear post op's formula is `alpha * dst + beta`. Here we only want to
+    // scale the output not shift it, so the beta is set to 0.0f.
     post_operations.append_eltwise(
         dnnl::algorithm::eltwise_linear, fused_output_scale, 0.0f);
   }

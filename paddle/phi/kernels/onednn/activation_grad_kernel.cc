@@ -247,6 +247,10 @@ void HardSwishGradKernel(const Context& dev_ctx,
                          const DenseTensor& dout,
                          DenseTensor* dx) {
   HardSwishOneDNNGradFunctor<T> functor;
+  // the formula of oneDNN hardswish primitive is:
+  // d=s*max(0,min(1,alpha*s+beta)). here, we set alpha=1/6, beta=1/2, to make
+  // the formula equal to the hardswish definition in Paddle:
+  // https://www.paddlepaddle.org.cn/documentation/docs/en/api/paddle/nn/functional/hardswish_en.html
   functor(dev_ctx, x, dout, 1.0 / 6.0, 1.0 / 2.0, dx);
 }
 

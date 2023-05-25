@@ -46,9 +46,6 @@ GetDNNLScales(const ExecutionContext& ctx) {
   auto scale_in_data = ctx.Attr<float>("Scale_in");
   auto scale_out = ctx.Attr<float>("Scale_out");
   auto scale_weights_data = ctx.Attr<std::vector<float>>("Scale_weights");
-  // bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
-  // bool fuse_residual_conn = ctx.HasAttr("fuse_residual_connection") &&
-  //                           ctx.Attr<bool>("fuse_residual_connection");
   auto scale_in_eltwise_data = ctx.HasAttr("Scale_in_eltwise")
                                    ? ctx.Attr<float>("Scale_in_eltwise")
                                    : 1.0f;
@@ -149,7 +146,7 @@ class FCMKLDNNHandler
              src_scales.data(),
              src_scales.size() * sizeof(float));
 
-      int mask = wei_scales.size() > 1 ? 1 << 0 : 0;
+      int mask = wei_scales.size() > 1 ? 1 : 0;
       attributes.set_scales_mask(DNNL_ARG_WEIGHTS, mask);
 
       dnnl::memory::desc wei_scales_md(
@@ -186,7 +183,6 @@ class FCMKLDNNHandler
     }
     AppendActivation(ctx, post_operations, activation_scale);
 
-    // TODO(qun): how to know the order of fused scale and fused post_ops?
     if (ctx.HasAttr("fused_output_scale")) {
       float scale_alpha = ctx.Attr<float>("fused_output_scale");
       post_operations.append_eltwise(
@@ -197,7 +193,6 @@ class FCMKLDNNHandler
     return attributes;
   }
 
-  // TODO(jczaja): The same function is in onednn_reuse.h . Why?
   void AppendActivation(const ExecutionContext& ctx,
                         dnnl::post_ops& post_ops,  // NOLINT
                         float activation_scale = 1.0f) {
@@ -445,7 +440,6 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
                               ctx.InputName("W"),
                               phi::vectorize(x->dims())));
 
-    // temporarily disable cache for int8
     auto inner_product_cache =
         std::static_pointer_cast<InnerProductCache>(dev_ctx.GetBlob(cache_key));
 

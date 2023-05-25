@@ -166,7 +166,6 @@ void FusedTransposeKernel(const Context& dev_ctx,
     auto zps_md = dnnl::memory::desc(
         {1}, dnnl::memory::data_type::s32, dnnl::memory::format_tag::x);
     auto zps = dnnl::memory(zps_md, dev_ctx.GetEngine());
-    // TODO(qun): why this shift is float, can we directly cast it to int32_t?
     *reinterpret_cast<int32_t*>(zps.get_data_handle()) =
         static_cast<int32_t>(shift);
     auto arg = output_data_type == "fp32" ? DNNL_ARG_SRC : DNNL_ARG_DST;
