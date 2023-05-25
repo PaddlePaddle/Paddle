@@ -27,13 +27,13 @@
 namespace paddle {
 namespace translator {
 
-using OpDesc = paddle::framework::OpDesc;
-using BlockDesc = paddle::framework::BlockDesc;
-using VarDesc = paddle::framework::VarDesc;
-using VarType = paddle::framework::proto::VarType;
-using TypeTranslateFn = std::function<ir::Type(ir::IrContext*, const VarDesc&)>;
+using TypeTranslateFn =
+    std::function<ir::Type(ir::IrContext*, const framework::VarDesc&)>;
 
 class TypeTranslator {
+ public:
+  using VarType = paddle::framework::proto::VarType;
+
  private:
   TypeTranslator();  // Disallow instantiation outside of the class.
   std::unordered_map<VarType::Type, TypeTranslateFn> handlers;
