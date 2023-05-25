@@ -2105,6 +2105,16 @@
     func : stanh
   backward : stanh_grad
 
+- op : strided_slice
+  args : (Tensor x, int[] axes, IntArray starts, IntArray ends, IntArray strides, int[] infer_flags = {}, int[] decrease_axis = {})
+  output : Tensor
+  infer_meta :
+    func : StridedSliceInferMeta
+  kernel :
+    func : strided_slice
+    data_type : x
+  backward : strided_slice_grad
+
 - op : svd
   args : (Tensor x, bool full_matrices = false)
   output : Tensor(u), Tensor(s), Tensor(vh)
