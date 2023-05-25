@@ -68,7 +68,7 @@
   backward : pool2d_double_grad
 
 - backward_op : pool3d_grad
-  forward : pool3d(Tensor x, int[] ksize, int[] strides = {1,1,1}, int[] paddings = {0,0,0}, bool ceil_mode = false, bool exclusive = true, str data_format = "NCDHW", str pooling_type = "", bool global_pooling = false, bool adaptive = false, str padding_algorithm = "EXPLICIT") -> Tensor(out)
+  forward : pool3d(Tensor x, int[] kernel_size, int[] strides = {1,1,1}, int[] paddings = {0,0,0}, bool ceil_mode = false, bool exclusive = true, str data_format = "NCDHW", str pooling_type = "", bool global_pooling = false, bool adaptive = false, str padding_algorithm = "EXPLICIT") -> Tensor(out)
   args : (Tensor x, Tensor out, Tensor out_grad, int[] ksize, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
   output : Tensor(x_grad)
   infer_meta :

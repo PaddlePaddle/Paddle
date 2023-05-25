@@ -283,7 +283,7 @@
   backward : pool2d_grad
 
 - op : pool3d
-  args : (Tensor x, int[] ksize, int[] strides = {1,1,1}, int[] paddings = {0,0,0}, bool ceil_mode = false, bool exclusive = true, str data_format = "NCDHW", str pooling_type = "", bool global_pooling = false, bool adaptive = false, str padding_algorithm = "EXPLICIT")
+  args : (Tensor x, int[] kernel_size, int[] strides = {1,1,1}, int[] paddings = {0,0,0}, bool ceil_mode = false, bool exclusive = true, str data_format = "NCDHW", str pooling_type = "", bool global_pooling = false, bool adaptive = false, str padding_algorithm = "EXPLICIT")
   output : Tensor(out)
   infer_meta :
     func : PoolInferMeta

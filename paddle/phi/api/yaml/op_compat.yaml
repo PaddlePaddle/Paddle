@@ -1799,6 +1799,8 @@
     {x : X}
   outputs :
     {out : Out}
+  attrs :
+    {kernel_size : ksize}
   get_expected_kernel_type :
     pool3d : GetPoolExpectedKernelType
     pool3d_grad : GetPoolGradExpectedKernelType
