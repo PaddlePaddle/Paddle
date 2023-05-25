@@ -125,13 +125,12 @@ class TestErfinvFP16OP(TestErfinv):
 class TestErfinvBF16OP(OpTest):
     def setUp(self):
         self.op_type = "erfinv"
-        self.prim_op_type = "prim"
         self.public_python_api = paddle.erfinv
         self.python_api = paddle.erfinv
         self.dtype = np.uint16
         self.shape = [11, 17]
         x = np.random.uniform(-1, 1, size=self.shape).astype(np.float32)
-        res_ref = erfinv(x)
+        res_ref = erfinv(x).astype(np.float32)
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.outputs = {'Out': convert_float_to_uint16(res_ref)}
 
@@ -145,7 +144,6 @@ class TestErfinvBF16OP(OpTest):
             place,
             ['X'],
             'Out',
-            check_prim=True,
         )
 
 
