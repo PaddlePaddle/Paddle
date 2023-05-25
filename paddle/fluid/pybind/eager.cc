@@ -101,8 +101,8 @@ void EmptyTensorInitializer(TensorObject* self,
         std::make_shared<phi::SelectedRows>();
     self->tensor.set_impl(tensor);
   } else if (var_type == paddle::framework::proto::VarType::DIST_TENSOR) {
-    // TODO(liuzhenhai): simple implementation for test purpose, modify it as
-    // appropriate
+    // TODO(liuzhenhai): simple implementation for test purpose, modify it
+    // latter as appropriate
     auto dis_tensor = std::make_shared<phi::DistTensor>(
         std::make_shared<phi::Allocation>(),
         phi::DenseTensorMeta(paddle::framework::TransToPhiDataType(dtype),

@@ -376,9 +376,7 @@ class ForwardAPI(BaseAPI):
             if len(outputs) > 1
             else outputs[0]
         )
-        local_call += (
-            f"""    {output_arg} = {self.get_api_func_name()}({args});"""
-        )
+        local_call += f"""    {output_arg} = paddle::experimental::{self.get_api_func_name()}({args});"""
         return local_call
 
     def gen_dist_tensor_wrap_code(self):
@@ -407,18 +405,19 @@ class ForwardAPI(BaseAPI):
            6、add sharding inference and re-sharding logic
         """
         if not self.inputs["names"]:
-            return ""
+            return "  // dist tensor is not supported yet"
         # not supported yet
         if (
             not self.inputs_plain_tensor()
             or not self.outputs_plain_tensor()
-            or self.inplace_map
+            or (self.inplace_map and inplace_flag)
             or self.view_map
-            or inplace_flag
         ):
-            return f"""  if ({self.gen_dist_tensor_hijack_guard()}) {{
-   {self.gene_dist_tensor_unsupported_warning()}
-   }}"""
+            return "  // dist tensor is not supported yet"
+            # return f"""  if ({self.gen_dist_tensor_hijack_guard()}) {{
+        # {self.gene_dist_tensor_unsupported_warning(inplace_flag)}
+        # }}"""
+
         return f"""  if ({self.gen_dist_tensor_hijack_guard()}) {{
   {self.gen_dist_tensor_unwrap_code()}
   {self.gen_local_tensor_call()}

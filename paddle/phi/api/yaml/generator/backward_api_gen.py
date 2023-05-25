@@ -274,7 +274,7 @@ PADDLE_API {self.get_return_type()} {self.api}({params_code}) {{
         # output arg
         inputs.extend([f"{e}_local.get()" for e in self.outputs["names"]])
         args = ",".join(inputs)
-        local_call += f"""    {self.api}({args});"""
+        local_call += f"""    paddle::experimental::{self.api}({args});"""
         return local_call
 
     def gen_dist_tensor_unwrap_code(self):
@@ -304,18 +304,18 @@ PADDLE_API {self.get_return_type()} {self.api}({params_code}) {{
            6、add sharding inference and re-sharding logic
         """
         if not self.inputs["names"]:
-            return ""
+            return "  // dist tensor is not supported yet"
         # not supported yet
         if (
             not self.inputs_plain_tensor()
             or not self.outputs_plain_tensor()
-            or self.inplace_map
+            or (self.inplace_map and inplace_flag)
             or self.view_map
-            or inplace_flag
         ):
-            return f"""  if ({self.gen_dist_tensor_hijack_guard()}) {{
-    {self.gene_dist_tensor_unsupported_warning(inplace_flag)}
-  }}"""
+            return "  // dist tensor is not supported yet"
+            # return f"""  if ({self.gen_dist_tensor_hijack_guard()}) {{
+        # {self.gene_dist_tensor_unsupported_warning(inplace_flag)}
+        # }}"""
 
         return f"""  if ({self.gen_dist_tensor_hijack_guard()}) {{
   {self.gen_dist_tensor_unwrap_code()}
