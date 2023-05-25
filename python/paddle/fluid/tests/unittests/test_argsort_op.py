@@ -522,14 +522,12 @@ class TestArgsortOpFp16(unittest.TestCase):
 )
 class TestArgsortBF16OP(OpTest):
     def setUp(self):
+        self.init()
         self.op_type = "argsort"
         self.python_api = paddle.argsort
         self.public_python_api = paddle.argsort
-        self.prim_op_type = "prim"
         self.dtype = np.uint16
         self.descending = False
-        self.axis = 0
-        self.input_shape = [10000, 1]
         self.attrs = {"axis": self.axis, "descending": self.descending}
         self.x = np.random.rand(*self.input_shape).astype(np.float32)
         self.sorted_x = np.sort(self.x, kind='heapsort', axis=self.axis).astype(
@@ -544,6 +542,12 @@ class TestArgsortBF16OP(OpTest):
             "Indices": convert_float_to_uint16(self.indices),
         }
 
+    def init(self):
+        self.input_shape = [
+            10000,
+        ]
+        self.axis = 0
+
     def test_check_output(self):
         place = core.CUDAPlace(0)
         self.check_output_with_place(place)
@@ -554,7 +558,6 @@ class TestArgsortBF16OP(OpTest):
             place,
             ['X'],
             'Out',
-            check_prim=True,
         )
 
 
