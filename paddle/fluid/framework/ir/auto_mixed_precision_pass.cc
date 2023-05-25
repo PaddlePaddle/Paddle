@@ -479,7 +479,9 @@ void AutoMixedPrecisionPass::UpdateOpPrecision() const {
         auto op_type = op_node->Op()->Type();
 
         if (GetOpOriginalType(op_type) == "fetch") continue;
-        if (op_node->Op()->HasAttr("sub_block")) continue;
+        if (op_node->Op()->HasAttr("sub_block") &&
+            GetOpOriginalType(op_type) != "tensorrt_engine")
+          continue;
 
         for (auto* var_node : op_node->outputs) {
           CHECK_EQ(var_node->IsVar(), true);
