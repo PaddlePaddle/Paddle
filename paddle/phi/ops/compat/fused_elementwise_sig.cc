@@ -49,7 +49,7 @@ KernelSignature FusedElementwiseSubOpArgumentMapping(
 }
 
 KernelSignature FusedElementwiseMulOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("fused_elementwise_mul",
                          {"X", "Y"},
                          {"axis",
@@ -65,7 +65,7 @@ KernelSignature FusedElementwiseMulOpArgumentMapping(
 }
 
 KernelSignature FusedElementwiseDivOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("fused_elementwise_div",
                          {"X", "Y"},
                          {"axis",

@@ -21,8 +21,8 @@
 
 import paddle
 from paddle import _C_ops
-from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.layer_helper import LayerHelper
+from paddle.framework import in_dynamic_mode
 
 from .attn_bias import (
     BlockDiagonalCausalMask,
@@ -99,7 +99,7 @@ def memory_efficient_attention(
     bias = _get_tensor_bias(attn_bias)
     is_test = not training
 
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         output, logsumexp, seed_and_offset = _C_ops.memory_efficient_attention(
             query,
             key,

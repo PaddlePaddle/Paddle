@@ -69,7 +69,7 @@ Users can specify the following Docker build arguments with either "ON" or "OFF"
 | `WITH_PYTHON` | ON | Build with python support. Turn this off if build is only for capi. |
 | `WITH_STYLE_CHECK` | ON | Check the code style when building. |
 | `PYTHON_ABI` | "" | Build for different python ABI support, can be cp27-cp27m or cp27-cp27mu |
-| `RUN_TEST` | OFF | Run unit test immediently after the build. |
+| `RUN_TEST` | OFF | Run unit test immediately after the build. |
 
 ## Docker Images
 

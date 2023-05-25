@@ -100,7 +100,7 @@ def shortcut(input, ch_out, stride):
 
 def bottleneck_block(input, num_filters, stride, cardinality, reduction_ratio):
     # The number of first 1x1 convolutional channels for each bottleneck build block
-    # was halved to reduce the compution cost.
+    # was halved to reduce the computation cost.
     conv0 = conv_bn_layer(
         input=input, num_filters=num_filters, filter_size=1, act='relu'
     )

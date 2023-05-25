@@ -35,7 +35,7 @@ def create_test_class(op_type, typename, callback):
             self.op_type = op_type
 
         def test_output(self):
-            self.check_output()
+            self.check_output(check_cinn=True)
 
         def test_errors(self):
             paddle.enable_static()
@@ -460,7 +460,7 @@ def create_bf16_case(op_type, callback):
             self.outputs = {'Out': real_result}
 
         def test_check_output(self):
-            self.check_output()
+            self.check_output(check_cinn=True)
 
     cls_name = f"BF16TestCase_{op_type}"
     TestCompareOpBF16Op.__name__ = cls_name

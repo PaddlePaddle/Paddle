@@ -14,10 +14,12 @@
 
 #pragma once
 
+#include <ostream>
+
 #include "paddle/ir/attribute_base.h"
 #include "paddle/ir/dialect_interface.h"
 #include "paddle/ir/ir_context.h"
-#include "paddle/ir/op_info_impl.h"
+#include "paddle/ir/op_base.h"
 #include "paddle/ir/type_base.h"
 
 namespace ir {
@@ -52,26 +54,10 @@ class Dialect {
 
   template <typename T>
   void RegisterType() {
-    VLOG(4) << "Type registered into Dialect. --->";
-    if (this->ir_context()->GetRegisteredAbstractType(ir::TypeId::get<T>()) ==
-        nullptr) {
-      ir::AbstractType *abstract_type =
-          new ir::AbstractType(std::move(ir::AbstractType::get<T>(*this)));
-      this->ir_context()->RegisterAbstractType(ir::TypeId::get<T>(),
-                                               abstract_type);
-      ir::TypeManager::RegisterType<T>(this->ir_context());
-    }
-    VLOG(4) << "----------------------------------";
+    ir_context()->RegisterAbstractType(TypeId::get<T>(),
+                                       AbstractType::get<T>(*this));
+    TypeManager::RegisterType<T>(ir_context());
   }
-
-  ///
-  /// \brief Register abstract_type into context.
-  /// NOTE: It's not recommended to use this interface directly. This interface
-  /// only registers abstract_type. To register TypeStorage into context, you
-  /// need to call ir::TypeManager::RegisterType<T>() additionally,
-  /// RegisterType<T>() is recommended to use.
-  ///
-  void RegisterType(ir::AbstractType &&abstract_type);
 
   ///
   /// \brief Register all attributes contained in the template parameter Args.
@@ -85,37 +71,29 @@ class Dialect {
 
   template <typename T>
   void RegisterAttribute() {
-    VLOG(4) << "Attribute registered into Dialect. --->";
-    if (this->ir_context()->GetRegisteredAbstractAttribute(
-            ir::TypeId::get<T>()) == nullptr) {
-      ir::AbstractAttribute *abstract_attribute = new ir::AbstractAttribute(
-          std::move(ir::AbstractAttribute::get<T>(*this)));
-      this->ir_context()->RegisterAbstractAttribute(ir::TypeId::get<T>(),
-                                                    abstract_attribute);
-      ir::AttributeManager::RegisterAttribute<T>(this->ir_context());
-    }
-    VLOG(4) << "----------------------------------";
+    ir_context()->RegisterAbstractAttribute(TypeId::get<T>(),
+                                            AbstractAttribute::get<T>(*this));
+    AttributeManager::RegisterAttribute<T>(ir_context());
   }
 
-  void RegisterAttribute(ir::AbstractAttribute &&abstract_attribute);
-
   ///
-  /// \brief Register Operation methods.
+  /// \brief Register Ops.
   ///
   template <typename... Args>
   void RegisterOps() {
     (void)std::initializer_list<int>{0, (RegisterOp<Args>(), 0)...};
   }
 
-  template <typename ConcertOp>
+  template <typename ConcreteOp>
   void RegisterOp() {
-    std::string name = this->name() + "." + std::string(ConcertOp::name());
-    VLOG(4) << "Op " << name << " registered into Dialect. --->";
-    if (this->ir_context()->GetRegisteredOpInfo(name) == nullptr) {
-      ir::OpInfoImpl *op_info = ir::OpInfoImpl::create<ConcertOp>(this);
-      this->ir_context()->RegisterOpInfo(name, op_info);
-    }
-    VLOG(4) << "----------------------------------";
+    ir_context()->RegisterOpInfo(this,
+                                 TypeId::get<ConcreteOp>(),
+                                 ConcreteOp::name(),
+                                 ConcreteOp::GetInterfaceMap(),
+                                 ConcreteOp::GetTraitSet(),
+                                 ConcreteOp::attributes_num,
+                                 ConcreteOp::attributes_name,
+                                 ConcreteOp::verify);
   }
 
   void RegisterOp(const std::string &name, OpInfoImpl *op_info);
@@ -150,6 +128,10 @@ class Dialect {
     InterfaceT *interface = new InterfaceT(this, std::forward<Args>(args)...);
     RegisterInterface(std::unique_ptr<DialectInterface>(interface));
     return *interface;
+  }
+
+  virtual void PrintType(ir::Type type, std::ostream &os) {
+    throw std::logic_error("dialect has no registered type printing hook");
   }
 
  private:

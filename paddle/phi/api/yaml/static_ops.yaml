@@ -356,6 +356,15 @@
     param : [rows, cols, offset, dtype]
     data_type : dtype
 
+- op : tril_triu
+  args : (Tensor x, int diagonal = 0, bool lower = false)
+  output : Tensor(out)
+  infer_meta :
+    func : TrilTriuInferMeta
+  kernel :
+    func : tril_triu
+  backward : tril_triu_grad
+
 - op : triu_indices
   args : (int row = 0, int col = 0, int offset = 0, DataType dtype = DataType::INT64)
   output : Tensor(out)

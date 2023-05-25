@@ -280,5 +280,18 @@ class TestUnbindBool(unittest.TestCase):
         np.testing.assert_array_equal(xs[0].numpy(), [True, True])
 
 
+class TestUnbindGradOptionalInput(unittest.TestCase):
+    def test_grad(self):
+        a = paddle.zeros([3, 2, 3])
+        a.stop_gradient = False
+        x, y = a.unbind(-2)
+        x.sum().backward()  # y_grad is empty
+
+        a_grad = a.detach()
+        a_grad[:, 0, :] = 1
+
+        np.testing.assert_array_equal(a.grad.numpy(), a_grad.numpy())
+
+
 if __name__ == '__main__':
     unittest.main()
