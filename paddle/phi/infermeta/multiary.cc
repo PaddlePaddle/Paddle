@@ -1015,7 +1015,7 @@ void CudnnLSTMInferMeta(
 
   auto* sequence_length_ptr = sequence_length.get_ptr();
   if (sequence_length_ptr != nullptr) {
-    auto seq_dims = ctx->GetInputDim("SequenceLength");
+    auto seq_dims = sequence_length_ptr->dims();
     PADDLE_ENFORCE_EQ(
         in_dims[1],
         seq_dims[0],
@@ -1054,11 +1054,11 @@ void CudnnLSTMInferMeta(
   last_c->set_dtype(x.dtype());
 
   reserve->set_dtype(phi::DataType::UINT8);
-  bool state_initialized = state_out->IsInitialized() ? true : false;
+  bool state_initialized = state_out->initialized() ? true : false;
   if (!state_initialized) {
     state_out->set_dtype(phi::DataType::UINT8);
   } else {
-    state_out->set_dtype(x.dims());
+    state_out->set_dtype(x.dtype());
   }
 }
 
