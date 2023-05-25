@@ -176,27 +176,6 @@ $$out = \ln(1 + \exp(\max(\min(x, threshold), -threshold)))$$
   }
 };
 
-class Relu6OpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput("X",
-             "Input of relu6 operator, an N-D Tensor, "
-             "with data type float32, float64.");
-    AddOutput(
-        "Out",
-        "Output of relu6 operator, a Tensor with the same shape as input.");
-    AddAttr<float>("threshold",
-                   "The threshold value of Relu6. Default is 6.0. ")
-        .SetDefault(6.0f);
-    AddComment(R"DOC(
-Relu6 Activation Operator.
-
-$$out = \min(\max(0, x), threshold)$$
-
-)DOC");
-  }
-};
-
 class SwishOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -452,7 +431,6 @@ FOR_EACH_ACTIVATION_OP(REGISTER_ACTIVATION_OP);
 
 REGISTER_ACTIVATION_CPU_KERNEL(soft_relu, SoftRelu)
 
-REGISTER_ACTIVATION_OP(relu6, Relu6, Relu6Functor, Relu6GradFunctor);
 REGISTER_ACTIVATION_OP(mish, Mish, MishFunctor, MishGradFunctor);
 REGISTER_ACTIVATION_OP_WITH_COMP(hard_swish,
                                  HardSwish,
