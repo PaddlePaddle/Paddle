@@ -95,9 +95,11 @@ class ProgramPrinter : public Printer {
   explicit ProgramPrinter(std::ostream& os) : Printer(os), cur_var_number(0) {}
 
   void Print(ir::Program& program) {
-    for (auto* op : program.ops()) {
-      PrintOperation(op);
+    auto iterator = program.block()->begin();
+    while (iterator != program.block()->end()) {
+      PrintOperation(*iterator);
       os << newline;
+      iterator++;
     }
   }
 

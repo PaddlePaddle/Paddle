@@ -12,27 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/ir/program.h"
-#include "paddle/ir/ir_context.h"
+#include "paddle/ir/block.h"
 
 namespace ir {
-Program::~Program() = default;
+Block::~Block() { clear(); }
 
-void Program::InsertOp(Operation* op) {
-  block_.push_back(op);
-  op->set_parent_program(this);
-}
-
-Parameter* Program::GetParameter(std::string name) const {
-  if (parameters_.count(name) != 0) {
-    return parameters_.at(name).get();
+void Block::clear() {
+  while (!empty()) {
+    ops_.back()->destroy();
+    ops_.pop_back();
   }
-  return nullptr;
 }
-
-void Program::SetParameter(std::string name,
-                           std::unique_ptr<Parameter>&& parameter) {
-  parameters_[name].reset(parameter.release());
-}
-
 }  // namespace ir
