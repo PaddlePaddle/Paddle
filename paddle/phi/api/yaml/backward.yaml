@@ -1975,8 +1975,8 @@
     func : stanh_grad
 
 - backward_op : strided_slice_grad
-  forward : strided_slice (Tensor x, int[] axes, IntArray starts, IntArray ends, IntArray strides, int[] infer_flags, int[] decrease_axis) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, int[] axes, IntArray starts, IntArray ends, IntArray strides, int[] infer_flags, int[] decrease_axis)
+  forward : strided_slice (Tensor x, int[] axes, IntArray starts, IntArray ends, IntArray strides) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, int[] axes, IntArray starts, IntArray ends, IntArray strides)
   output : Tensor(x_grad)
   infer_meta :
     func : GeneralUnaryGradInferMeta

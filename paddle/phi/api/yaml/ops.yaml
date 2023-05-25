@@ -2106,7 +2106,7 @@
   backward : stanh_grad
 
 - op : strided_slice
-  args : (Tensor x, int[] axes, IntArray starts, IntArray ends, IntArray strides, int[] infer_flags = {}, int[] decrease_axis = {})
+  args : (Tensor x, int[] axes, IntArray starts, IntArray ends, IntArray strides)
   output : Tensor
   infer_meta :
     func : StridedSliceInferMeta
