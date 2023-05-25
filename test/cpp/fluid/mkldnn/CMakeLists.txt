@@ -39,7 +39,7 @@ cc_test_old(
   test_mkldnn_op_nhwc.cc
   DEPS
   op_registry
-  static_generated_op
+  generated_static_op
   shape_op
   crop_op
   activation_op

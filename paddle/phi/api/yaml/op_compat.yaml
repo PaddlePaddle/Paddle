@@ -1779,10 +1779,11 @@
     {x : X}
   outputs :
     {out : Out}
+  attrs :
+    {kernel_size : ksize}
   int_array:
     kernel_size :
       data_type : int
-      tensor_name : Ksize
       support_tensor : true
   get_expected_kernel_type :
     pool2d : GetPoolExpectedKernelType
