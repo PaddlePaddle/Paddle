@@ -2180,10 +2180,7 @@ bool AnalysisPredictor::ExpRunWithRuntimeConfig(void *config) {
           "l3_autotune_size(%zu) should be less than or equal to l3_size(%zu).",
           l3_autotune_size,
           l3_size));
-  dev_ctx->SetL3Info(l3_size, 
-                     l3_ptr, 
-                     l3_autotune_size, 
-                     place_);
+  dev_ctx->SetL3Info(l3_size, l3_ptr, l3_autotune_size, place_);
 
   bool ret = ZeroCopyRun();
   dev_ctx->L3CacheAutotune();
