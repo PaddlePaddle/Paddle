@@ -150,7 +150,6 @@ class OneDNNHandlerT {
         engine_(engine),
         place_(cpu_place),
         key_common_(base_key),
-        // By design, phi kernels are purely functional, how to cache weight?
         key_(ExtendKeyWithThreadInfoIfNeeded(dev_ctx, base_key)),
         fwd_pd_(nullptr),
         bwd_pd_(nullptr) {
@@ -1337,11 +1336,10 @@ class BatchNormOneDNNHandler
                                                                     cpu_place) {
     // Flags are added by bitwise OR operation
     auto flags = dnnl::normalization_flags::use_scale |
-                 dnnl::normalization_flags::use_shift;  // 001
-    if (global_stats)
-      flags |= dnnl::normalization_flags::use_global_stats;  // 010
+                 dnnl::normalization_flags::use_shift;
+    if (global_stats) flags |= dnnl::normalization_flags::use_global_stats;
     if (fuse_with_relu && test_mode)
-      flags |= dnnl::normalization_flags::fuse_norm_relu;  // 100
+      flags |= dnnl::normalization_flags::fuse_norm_relu;
 
     this->AcquireForwardPrimitiveDescriptor(
         global_stats ? dnnl::prop_kind::forward_inference
@@ -1529,7 +1527,7 @@ class PoolingOneDNNHandler
                        ? PADDLE_GET_CONST(bool, dev_ctx.GetDnnAttr("is_test"))
                        : false;
 
-    memory::dims dilation = {0, 0};  // dilation (no PP support)
+    memory::dims dilation = {0, 0};
 
     this->AcquireForwardPrimitiveDescriptor(
         is_test ? dnnl::prop_kind::forward_inference
@@ -1542,7 +1540,7 @@ class PoolingOneDNNHandler
         dst_md,
         copied_strides,
         copied_kernel_size,
-        dilation,  // dilation (no PP support)
+        dilation,
         onednn_paddings[0],
         onednn_paddings[1]);
   }
@@ -1617,7 +1615,7 @@ class PoolingOneDNNHandler
       ComputeAdaptivePoolParameters(
           diff_src_tz, &copied_kernel_size, &copied_strides);
     }
-    memory::dims dilation = {0, 0};  // dilation (no PP support)
+    memory::dims dilation = {0, 0};
 
     this->AcquireForwardPrimitiveDescriptor(
         dnnl::prop_kind::forward_training,
@@ -1718,7 +1716,6 @@ class PoolingOneDNNHandler
   }
 };
 
-// TODO(qun): re-implement this handler by using oneDNN eltwise primitive
 template <typename T>
 class SoftplusOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
  public:
@@ -1731,6 +1728,12 @@ class SoftplusOneDNNHandler : public OneDNNHandlerNoCachingT<T, dnnl::binary> {
       : OneDNNHandlerNoCachingT<T, dnnl::binary>(dev_ctx.GetEngine(),
                                                  dev_ctx.GetPlace()) {
     dnnl::post_ops post_ops;
+    // According to oneDNN document
+    // https://oneapi-src.github.io/oneDNN/dev_guide_eltwise.html, we set alpha
+    // to 1.0f here to make the soft_relu formula equal to loge(1+e^x). So that
+    // the whole handler formula will be (1.0f/beta)*loge(1+e^(x*beta)), equal
+    // to Paddle softplus definition:
+    // https://www.paddlepaddle.org.cn/documentation/docs/en/api/paddle/nn/Softplus_en.html
     post_ops.append_eltwise(dnnl::algorithm::eltwise_soft_relu, 1.0f, 0.0f);
     if (beta != 1.0f) {
       post_ops.append_eltwise(
