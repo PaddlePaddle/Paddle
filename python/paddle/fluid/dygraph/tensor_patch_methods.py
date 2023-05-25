@@ -33,7 +33,10 @@ from ..framework import (
 )
 from .base import switch_to_static_graph
 from .math_op_patch import monkey_patch_math_tensor
-from paddle.fluid.data_feeder import convert_dtype, _PADDLE_DTYPE_2_NUMPY_DTYPE
+from paddle.fluid.data_feeder import (
+    convert_uint16_to_float,
+    _PADDLE_DTYPE_2_NUMPY_DTYPE,
+)
 import paddle.utils.deprecated as deprecated
 import paddle.profiler as profiler
 from paddle.profiler.utils import in_profiler_mode
@@ -51,11 +54,7 @@ class TensorHookRemoveHelper:
     """
 
     def __init__(self, tensor, hook_id):
-        self._tensor = (
-            tensor
-            if framework.global_var._in_eager_mode_
-            else weakref.ref(tensor)
-        )
+        self._tensor = tensor
         self._hook_id = hook_id
 
     def remove(self):
@@ -65,11 +64,7 @@ class TensorHookRemoveHelper:
         Returns:
             bool: Return True if removed successfully
         """
-        tensor = (
-            self._tensor
-            if framework.global_var._in_eager_mode_
-            else self._tensor()
-        )
+        tensor = self._tensor
         if tensor is not None:
             res = tensor._remove_grad_hook(self._hook_id)
             if res is True:
@@ -275,61 +270,33 @@ def monkey_patch_tensor():
                 # 4: [5000.]
 
         """
-        from paddle.distributed.parallel import scale_loss
-
-        if framework._non_static_mode():
+        if framework.in_dygraph_mode():
             if in_profiler_mode():
                 record_event = profiler.RecordEvent(
                     "Gradient Backward", profiler.TracerEventType.Backward
                 )
                 record_event.begin()
             if grad_tensor is not None:
-                if framework.global_var._in_eager_mode_:
-                    assert isinstance(
-                        grad_tensor, core.eager.Tensor
-                    ), "The type of grad_tensor must be paddle.Tensor"
-                else:
-                    assert isinstance(
-                        grad_tensor, paddle.Tensor
-                    ), "The type of grad_tensor must be paddle.Tensor"
+                assert isinstance(
+                    grad_tensor, core.eager.Tensor
+                ), "The type of grad_tensor must be paddle.Tensor"
+
                 assert (
                     grad_tensor.shape == self.shape
                 ), "Tensor shape not match, Tensor of grad_tensor [ {} ] with shape {} mismatch Tensor [ {} ] with shape {}".format(
                     grad_tensor.name, grad_tensor.shape, self.name, self.shape
                 )
 
-            if framework.global_var._in_eager_mode_:
-                if grad_tensor is None:
-                    grad_tensor = []
-                else:
-                    grad_tensor = [grad_tensor]
+            if grad_tensor is None:
+                grad_tensor = []
+            else:
+                grad_tensor = [grad_tensor]
             if _grad_scalar:
                 # When using amp with Fleet DistributedStrategy, we do loss scaling implicitly.
                 self = _grad_scalar.scale(self)
-            if paddle.is_compiled_with_xpu():
-                # TODO(liuyuhui): Currently only for xpu. Will be removed in the future.
-                scaled_loss = scale_loss(self)
-                if framework.global_var._in_eager_mode_:
-                    core.eager.run_backward(
-                        [scaled_loss], grad_tensor, retain_graph
-                    )
-                else:
-                    core.dygraph_run_backward(
-                        [scaled_loss],
-                        [grad_tensor],
-                        retain_graph,
-                        framework._dygraph_tracer(),
-                    )
-            else:
-                if framework.global_var._in_eager_mode_:
-                    core.eager.run_backward([self], grad_tensor, retain_graph)
-                else:
-                    core.dygraph_run_backward(
-                        [self],
-                        [grad_tensor],
-                        retain_graph,
-                        framework._dygraph_tracer(),
-                    )
+
+            core.eager.run_backward([self], grad_tensor, retain_graph)
+
             if in_profiler_mode():
                 record_event.end()
         else:
@@ -366,31 +333,11 @@ def monkey_patch_tensor():
                 # [500.]
 
         """
-        if framework.global_var._in_eager_mode_:
-            if self.grad is None:
-                return None
-            if self.grad.is_selected_rows():
-                return (np.array(self.grad), np.array(self.grad.rows()))
-            return np.array(self.grad)
-        else:
-            if self._grad_ivar() is None:
-                return None
-
-            new_ivar = self._grad_ivar()
-            # TODO(qili93): temporary for ascned npu performance to be removed along with npu_identity op
-            if (
-                _global_flags()['FLAGS_npu_storage_format']
-                and 'npu' in get_all_custom_device_type()
-            ):
-                new_ivar = paddle.incubate._npu_identity(x=new_ivar, format=-1)
-            new_ivar = new_ivar._copy_to(core.CPUPlace(), True)
-            if self._grad_ivar().type == core.VarDesc.VarType.SELECTED_ROWS:
-                return (
-                    np.array(new_ivar.value().get_selected_rows().get_tensor()),
-                    np.array(new_ivar.value().get_selected_rows().rows()),
-                )
-            else:
-                return np.array(new_ivar.value().get_tensor())
+        if self.grad is None:
+            return None
+        if self.grad.is_selected_rows():
+            return (np.array(self.grad), np.array(self.grad.rows()))
+        return np.array(self.grad)
 
     @framework.dygraph_only
     def register_hook(self, hook):
@@ -569,7 +516,7 @@ def monkey_patch_tensor():
                 y = paddle.pow(x, 4.0)
                 y.backward()
                 print("grad of x: {}".format(x.grad))
-                # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=False, [500.])
+                # Tensor(shape=[], dtype=float32, place=CUDAPlace(0), stop_gradient=False, 500.)
 
         """
         msg = (
@@ -631,7 +578,10 @@ def monkey_patch_tensor():
                 print(x.item(0, 2))         #3.3
 
         """
-        return self._getitem_from_offset(*args).item()
+        scalar = self._getitem_from_offset(*args)
+        if scalar.dtype == np.uint16:
+            return convert_uint16_to_float(scalar).item()
+        return scalar.item()
 
     @property
     def inplace_version(self):
@@ -688,12 +638,12 @@ def monkey_patch_tensor():
                 y = copy.deepcopy(x)
 
                 print(x)
-                # Tensor(shape=[1], dtype=float32, place=CPUPlace, stop_gradient=True,
-                #        [2.])
+                # Tensor(shape=[], dtype=float32, place=CPUPlace, stop_gradient=True,
+                #        2.)
 
                 print(y)
-                # Tensor(shape=[1], dtype=float32, place=CPUPlace, stop_gradient=True,
-                #        [2.])
+                # Tensor(shape=[], dtype=float32, place=CPUPlace, stop_gradient=True,
+                #        2.)
 
         """
         if not self.is_leaf:
@@ -716,13 +666,8 @@ def monkey_patch_tensor():
         assert (
             numel == 1
         ), "When Variable is used as the condition of if/while , Variable can only contain one element."
-        if framework.global_var._in_eager_mode_:
-            assert self._is_initialized(), "tensor not initialized"
-            return bool(np.array(self) > 0)
-        else:
-            tensor = self.value().get_tensor()
-            assert tensor._is_initialized(), "tensor not initialized"
-            return bool(np.array(tensor) > 0)
+        assert self._is_initialized(), "tensor not initialized"
+        return bool(np.array(self) > 0)
 
     def __bool__(self):
         return self.__nonzero__()
@@ -841,11 +786,7 @@ def monkey_patch_tensor():
             return _setitem_impl_(self, item, value)
 
         else:
-            if framework.global_var._in_eager_mode_:
-                return self.__setitem_eager_tensor__(item, value)
-            else:
-                # Call c++ func __setitem_varbase__ to speedup.
-                return self.__setitem_varbase__(item, value)
+            return self.__setitem_eager_tensor__(item, value)
 
     @framework.dygraph_only
     def _set_grad_ivar(self, value):
@@ -1011,7 +952,7 @@ def monkey_patch_tensor():
     def __hash__(self):
         return hash(id(self))
 
-    if framework.global_var._in_eager_mode_ and not hasattr(core, "eager"):
+    if not hasattr(core, "eager"):
         return
 
     for method_name, method in (
@@ -1037,20 +978,19 @@ def monkey_patch_tensor():
         ("values", values),
         ("to_dense", to_dense),
         ("to_sparse_coo", to_sparse_coo),
+        ("_set_grad_ivar", _set_grad_ivar),
+        ("value", value),
+        ("cpu", cpu),
+        ("cuda", cuda),
+        ("pin_memory", pin_memory),
+        ("_slice", _slice),
+        ("_numel", _numel),
+        ("_uva", _uva),
+        ("_clear_data", _clear_data),
+        ("__hash__", __hash__),
+        ("_use_gpudnn", _use_gpudnn),
     ):
         setattr(core.eager.Tensor, method_name, method)
-
-    setattr(core.eager.Tensor, "_set_grad_ivar", _set_grad_ivar)
-    setattr(core.eager.Tensor, "value", value)
-    setattr(core.eager.Tensor, "cpu", cpu)
-    setattr(core.eager.Tensor, "cuda", cuda)
-    setattr(core.eager.Tensor, "pin_memory", pin_memory)
-    setattr(core.eager.Tensor, "_slice", _slice)
-    setattr(core.eager.Tensor, "_numel", _numel)
-    setattr(core.eager.Tensor, "_uva", _uva)
-    setattr(core.eager.Tensor, "_clear_data", _clear_data)
-    setattr(core.eager.Tensor, "__hash__", __hash__)
-    setattr(core.eager.Tensor, "_use_gpudnn", _use_gpudnn)
 
     global _already_patch_repr
     if not _already_patch_repr:

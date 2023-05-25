@@ -219,40 +219,35 @@ class PADDLE_API Tensor final {
   /**
    * @brief Determine whether tensor is DenseTensor
    *
-   * @return true
-   * @return false
+   * @return bool
    */
   bool is_dense_tensor() const;
 
   /**
    * @brief Determine whether tensor is SelectedRows
    *
-   * @return true
-   * @return false
+   * @return bool
    */
   bool is_selected_rows() const;
 
   /**
    * @brief Determine whether tensor is SparseCooTensor
    *
-   * @return true
-   * @return false
+   * @return bool
    */
   bool is_sparse_coo_tensor() const;
 
   /**
    * @brief Determine whether tensor is SparseCsrTensor
    *
-   * @return true
-   * @return false
+   * @return bool
    */
   bool is_sparse_csr_tensor() const;
 
   /**
    * @brief Determine whether tensor is StringTensor
    *
-   * @return true
-   * @return false
+   * @return bool
    */
   bool is_string_tensor() const;
 
@@ -268,40 +263,35 @@ class PADDLE_API Tensor final {
   /**
    * @brief Determine whether the tensor device is CPU
    *
-   * @return true
-   * @return false
+   * @return bool
    */
   bool is_cpu() const;
 
   /**
    * @brief Determine whether the tensor device is GPU
    *
-   * @return true
-   * @return false
+   * @return bool
    */
   bool is_gpu() const;
 
   /**
    * @brief Determine whether the tensor device is GPU_PINNED
    *
-   * @return true
-   * @return false
+   * @return bool
    */
   bool is_gpu_pinned() const;
 
   /**
    * @brief Determine whether the tensor device is XPU
    *
-   * @return true
-   * @return false
+   * @return bool
    */
   bool is_xpu() const;
 
   /**
    * @brief Determine whether the tensor device is CustomDevice
    *
-   * @return true
-   * @return false
+   * @return bool
    */
   bool is_custom_device() const;
 
@@ -482,16 +472,14 @@ class PADDLE_API Tensor final {
   /**
    * @brief Determine whether it is a meaningful Tensor
    *
-   * @return true
-   * @return false
+   * @return bool
    */
   bool defined() const;
 
   /**
    * @brief Determine whether Tensor is initialized.
    *
-   * @return true
-   * @return false
+   * @return bool
    */
   bool initialized() const;
 
@@ -499,8 +487,7 @@ class PADDLE_API Tensor final {
    * @brief Determine whether Tensor is initialized.
    * This is a deprecated method and may be removed in the future!
    *
-   * @return true
-   * @return false
+   * @return bool
    */
   bool is_initialized() const;
 
@@ -629,7 +616,7 @@ class PADDLE_API Tensor final {
    * unified to Tensor, but Tensor itself is heterogeneous.
    *
    * Tensor can generally be represented by void* and size_t, place.
-   * This is suitable for most scenarios including CPU, GPU, HIP, NPU, etc.,
+   * This is suitable for most scenarios including CPU, GPU, HIP, etc.,
    * but there are a few cases where this definition cannot be described,
    * such as the Tensor representation in third-party lib such as Metal,
    * OpenCL, etc., as well as some special Tensor implementations, including

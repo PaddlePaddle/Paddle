@@ -23,8 +23,8 @@
 
 namespace phi {
 namespace ccl {
-using CCLComm = void*;
-using CCLRootId = std::vector<uint8_t>;
+typedef void* CCLComm;
+typedef std::vector<uint8_t> CCLRootId;
 
 enum CCLReduceOp { SUM = 0, AVG, MAX, MIN, PRODUCT };
 enum CCLDataType {

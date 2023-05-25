@@ -35,6 +35,8 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
         self.trt_param.workspace_size = 1073741824
 
         def generate_input1(dims, batch, attrs: List[Dict[str, Any]]):
+            if dims == 0:
+                return np.random.random([]).astype(np.float32)
             if dims == 2:
                 return np.random.random([3, 32]).astype(np.float32)
             elif dims == 3:
@@ -43,6 +45,8 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                 return np.random.random([batch, 3, 32, 32]).astype(np.float32)
 
         def generate_int_input(dims, batch, attrs: List[Dict[str, Any]]):
+            if dims == 0:
+                return np.random.random([]).astype(np.int32)
             if dims == 2:
                 return np.random.random([3, 32]).astype(np.int32)
             elif dims == 3:
@@ -50,7 +54,7 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
             else:
                 return np.random.random([batch, 3, 32, 32]).astype(np.int32)
 
-        for dims in [2, 3, 4]:
+        for dims in [0, 2, 3, 4]:
             for batch in [1, 4]:
                 for op_type in [
                     "exp",
@@ -60,6 +64,7 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                     "sin",
                     "cos",
                     "tan",
+                    "tanh",
                     "sinh",
                     "cosh",
                     "asin",
@@ -177,6 +182,15 @@ class TrtConvertActivationTest(TrtLayerAutoScanTest):
                     not dynamic_shape
                     or ver[0] * 1000 + ver[1] * 100 + ver[2] * 10 < 8200
                 )
+            ):
+                return 0, 3
+            runtime_version = paddle_infer.get_trt_runtime_version()
+            if (
+                runtime_version[0] * 1000
+                + runtime_version[1] * 100
+                + runtime_version[2] * 10
+                < 8600
+                and self.dims == 0
             ):
                 return 0, 3
             return 1, 2

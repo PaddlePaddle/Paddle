@@ -35,9 +35,6 @@ bool gpu_place_used(const paddle::PaddlePlace& place) {
 bool xpu_place_used(const paddle::PaddlePlace& place) {
   return place == paddle::PaddlePlace::kXPU;
 }
-bool npu_place_used(const paddle::PaddlePlace& place) {
-  return place == paddle::PaddlePlace::kNPU;
-}
 bool cpu_place_used(const paddle::PaddlePlace& place) {
   return place == paddle::PaddlePlace::kCPU;
 }

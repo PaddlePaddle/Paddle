@@ -360,7 +360,6 @@ struct PD_INFER_DECL NativeConfig : public PaddlePredictor::Config {
   /// GPU related fields.
   bool use_xpu{false};
   bool use_gpu{false};
-  bool use_npu{false};
   int device{0};
   float fraction_of_gpu_memory{
       -1.f};  ///< Change to a float in (0,1] if needed.
@@ -472,6 +471,13 @@ class Predictor;
 class Tensor;
 using Config = paddle::AnalysisConfig;
 namespace experimental {
+struct XpuRuntimeConfig {
+  void* stream{nullptr};
+  size_t l3_size{16773120};
+  void* l3_ptr{nullptr};
+  size_t l3_autotune_size{0};
+};
+
 // Unstable interface, may be modified or deleted in the future.
 class PD_INFER_DECL InternalUtils {
  public:
@@ -480,6 +486,7 @@ class PD_INFER_DECL InternalUtils {
                                     cudaStream_t stream);
   static bool RunWithExternalStream(paddle_infer::Predictor* pred,
                                     hipStream_t stream);
+  static bool RunWithRuntimeConfig(paddle_infer::Predictor* pred, void* config);
 
   static void UpdateConfigInterleaved(paddle_infer::Config* c,
                                       bool with_interleaved);

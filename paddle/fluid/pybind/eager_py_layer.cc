@@ -137,7 +137,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
       PyObject_GetAttrString(cls, "_backward_function");
   if (!backward_function) {
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "Get _backward_function faild."));
+        "Get _backward_function failed."));
   }
   PyLayerObject* ctx = reinterpret_cast<PyLayerObject*>(
       PyObject_CallFunctionObjArgs(backward_function, nullptr));
@@ -255,7 +255,7 @@ PyObject* pylayer_method_apply(PyObject* cls,
   auto forward_fn = PyObject_GetAttrString(cls, "forward");
   if (!forward_fn) {
     PADDLE_THROW(paddle::platform::errors::InvalidArgument(
-        "Get forward function faild."));
+        "Get forward function failed."));
   }
   bool trace_backward = egr::Controller::Instance().HasGrad();
   egr::Controller::Instance().SetHasGrad(false);

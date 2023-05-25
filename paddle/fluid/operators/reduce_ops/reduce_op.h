@@ -622,13 +622,12 @@ class ReduceBaseOp : public framework::OperatorWithKernel {
     // NOTE(jiahongyu): Above codes originally enclosed by PADDLE_WITH_MKLDNN
 
     if (input_data_type == framework::proto::VarType::FP16) {
-      PADDLE_ENFORCE_EQ(
-          platform::is_gpu_place(ctx.GetPlace()) ||
-              platform::is_xpu_place(ctx.GetPlace()) ||
-              platform::is_custom_place(ctx.GetPlace()),
-          true,
-          platform::errors::InvalidArgument(
-              "float16 can only be used on GPU or NPU or XPU place"));
+      PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()) ||
+                            platform::is_xpu_place(ctx.GetPlace()) ||
+                            platform::is_custom_place(ctx.GetPlace()),
+                        true,
+                        platform::errors::InvalidArgument(
+                            "float16 can only be used on GPU or XPU place"));
     }
     return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
@@ -834,12 +833,11 @@ class ReduceCudaGradKernel : public framework::OpKernel<T> {
     }
 
     using MPType = typename kps::details::MPTypeTrait<T>::Type;
-    phi::ReduceGrad<T, TransformOp<T, MPType>>(
-        dev_ctx,
-        pt_d_out.get(),
-        pt_d_x.get(),
-        pt_out_dtype,
-        TransformOp<T, MPType>(reduce_num));
+    phi::ReduceGrad<TransformOp<T, MPType>>(dev_ctx,
+                                            pt_d_out.get(),
+                                            pt_d_x.get(),
+                                            pt_out_dtype,
+                                            TransformOp<T, MPType>(reduce_num));
   }
 };
 

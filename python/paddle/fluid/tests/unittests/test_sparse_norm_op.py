@@ -88,6 +88,39 @@ class TestSparseBatchNorm(unittest.TestCase):
         assert np.allclose(dense_out.numpy(), batch_norm_out.values().numpy())
         # [1, 6, 6, 6, 3]
 
+    def check(self, shape):
+        np.random.seed(0)
+        data = np.random.uniform(-0.01, 0.01, shape).astype("float32")
+        x = paddle.to_tensor(data)
+        x.stop_gradient = False
+        dim = len(shape)
+        data_format = "NHWC" if dim == 4 else "NDHWC"
+        if dim == 4:
+            bn = paddle.nn.BatchNorm2D(shape[-1], data_format=data_format)
+        else:
+            bn = paddle.nn.BatchNorm3D(shape[-1], data_format=data_format)
+        y = bn(x)
+        y.backward()
+
+        sp_x = paddle.to_tensor(data).to_sparse_coo(dim - 1)
+        sp_x.stop_gradient = False
+        sp_bn = paddle.sparse.nn.BatchNorm(shape[-1], data_format=data_format)
+        sp_y = sp_bn(sp_x)
+        sp_y.backward()
+
+        np.testing.assert_allclose(
+            y.numpy(), sp_y.to_dense().numpy(), rtol=1e-5
+        )
+        np.testing.assert_allclose(
+            x.grad.numpy(), sp_x.grad.to_dense().numpy(), rtol=1e-5
+        )
+
+    def test_nd(self):
+        # 2D
+        self.check([2, 8, 8, 3])
+        # 3D
+        self.check([2, 8, 8, 3, 4])
+
 
 class TestSyncBatchNorm(unittest.TestCase):
     def test_sync_batch_norm(self):

@@ -15,7 +15,9 @@
 #include "paddle/fluid/inference/analysis/passes/memory_optimize_pass.h"
 
 #include <string>
+#include <unordered_set>
 #include <utility>
+#include <vector>
 
 #include "glog/logging.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
@@ -356,7 +358,7 @@ void MemoryOptimizePass::RunImpl(Argument* argument) {
   // mapping table.
   if (!argument->enable_memory_optim()) return;
   // Because of pass is a singleton, graph can not be member
-  // variables，otherwise, errors will be caused under multithreading
+  // variables, otherwise, errors will be caused under multithreading
   // conditions.
   auto graph = argument->main_graph_ptr();
 

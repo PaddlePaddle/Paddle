@@ -19,24 +19,18 @@ std::string StrAttribute::data() const { return storage()->GetAsKey(); }
 
 uint32_t StrAttribute::size() const { return storage()->GetAsKey().size(); }
 
-NamedAttribute::NamedAttribute(StrAttribute name, Attribute value)
-    : name_(name), value_(value) {}
+bool BoolAttribute::data() const { return storage()->GetAsKey(); }
 
-bool NamedAttribute::operator<(const NamedAttribute &right) const {
-  return name() < right.name();
+float FloatAttribute::data() const { return storage()->GetAsKey(); }
+
+double DoubleAttribute::data() const { return storage()->GetAsKey(); }
+
+int32_t Int32_tAttribute::data() const { return storage()->GetAsKey(); }
+
+int64_t Int64_tAttribute::data() const { return storage()->GetAsKey(); }
+
+std::vector<Attribute> ArrayAttribute::data() const {
+  return storage()->GetAsKey();
 }
 
-bool NamedAttribute::operator==(const NamedAttribute &right) const {
-  return name() == right.name() && value() == right.value();
-}
-
-bool NamedAttribute::operator!=(const NamedAttribute &right) const {
-  return !(*this == right);
-}
-
-Attribute DictionaryAttribute::GetValue(const StrAttribute &name) {
-  return storage()->GetValue(name);
-}
-
-uint32_t DictionaryAttribute::size() const { return storage()->size(); }
 }  // namespace ir

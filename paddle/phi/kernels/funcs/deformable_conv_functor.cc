@@ -99,7 +99,7 @@ inline void ModulatedDeformableIm2colCPUKernel(
 }
 
 template <typename T, typename Context>
-void ModulatedDeformableIm2col(const Context& dev_ctx,
+void ModulatedDeformableIm2col(const Context& dev_ctx UNUSED,
                                const T* data_im,
                                const T* data_offset,
                                const T* data_mask,

@@ -23,16 +23,14 @@
 // This unittest is used to test the construction interfaces of value class and
 // operation. The constructed test scenario is: a = OP1(); b = OP2(); c = OP3(a,
 // b); d, e, f, g, h, i, j = OP4(a, c);
-
-ir::DictionaryAttribute CreateAttribute(std::string attribute_name,
-                                        std::string attribute) {
+ir::AttributeMap CreateAttributeMap(std::string attribute_name,
+                                    std::string attribute) {
   ir::IrContext *ctx = ir::IrContext::Instance();
-  ir::StrAttribute attr_name = ir::StrAttribute::get(ctx, attribute_name);
   ir::Attribute attr_value = ir::StrAttribute::get(ctx, attribute);
-  std::map<ir::StrAttribute, ir::Attribute> named_attr;
-  named_attr.insert(
-      std::pair<ir::StrAttribute, ir::Attribute>(attr_name, attr_value));
-  return ir::DictionaryAttribute::get(ctx, named_attr);
+  ir::AttributeMap attr_map;
+  attr_map.insert(
+      std::pair<std::string, ir::Attribute>(attribute_name, attr_value));
+  return attr_map;
 }
 
 TEST(value_test, value_test) {
@@ -40,22 +38,31 @@ TEST(value_test, value_test) {
   // 1. Construct OP1: a = OP1()
   std::vector<ir::OpResult> op1_inputs = {};
   std::vector<ir::Type> op1_output_types = {ir::Float32Type::get(ctx)};
-  ir::Operation *op1 = ir::Operation::create(
-      op1_inputs, op1_output_types, CreateAttribute("op1_name", "op1_attr"));
-  std::cout << op1->print() << std::endl;
+  ir::Operation *op1 =
+      ir::Operation::create(op1_inputs,
+                            op1_output_types,
+                            CreateAttributeMap("op1_name", "op1_attr"),
+                            nullptr);
+  VLOG(0) << op1->print();
   // 2. Construct OP2: b = OP2();
   std::vector<ir::OpResult> op2_inputs = {};
   std::vector<ir::Type> op2_output_types = {ir::Float32Type::get(ctx)};
-  ir::Operation *op2 = ir::Operation::create(
-      op2_inputs, op2_output_types, CreateAttribute("op2_name", "op2_attr"));
-  std::cout << op2->print() << std::endl;
+  ir::Operation *op2 =
+      ir::Operation::create(op2_inputs,
+                            op2_output_types,
+                            CreateAttributeMap("op2_name", "op2_attr"),
+                            nullptr);
+  VLOG(0) << op2->print() << std::endl;
   // 3. Construct OP3: c = OP3(a, b);
   std::vector<ir::OpResult> op3_inputs = {op1->GetResultByIndex(0),
                                           op2->GetResultByIndex(0)};
   std::vector<ir::Type> op3_output_types = {ir::Float32Type::get(ctx)};
-  ir::Operation *op3 = ir::Operation::create(
-      op3_inputs, op3_output_types, CreateAttribute("op3_name", "op3_attr"));
-  std::cout << op3->print() << std::endl;
+  ir::Operation *op3 =
+      ir::Operation::create(op3_inputs,
+                            op3_output_types,
+                            CreateAttributeMap("op3_name", "op3_attr"),
+                            nullptr);
+  VLOG(0) << op3->print() << std::endl;
   // 4. Construct OP4: d, e, f, g, h, i, j = OP4(a, c);
   std::vector<ir::OpResult> op4_inputs = {op1->GetResultByIndex(0),
                                           op3->GetResultByIndex(0)};
@@ -63,9 +70,12 @@ TEST(value_test, value_test) {
   for (size_t i = 0; i < 7; i++) {
     op4_output_types.push_back(ir::Float32Type::get(ctx));
   }
-  ir::Operation *op4 = ir::Operation::create(
-      op4_inputs, op4_output_types, CreateAttribute("op4_name", "op4_attr"));
-  std::cout << op4->print() << std::endl;
+  ir::Operation *op4 =
+      ir::Operation::create(op4_inputs,
+                            op4_output_types,
+                            CreateAttributeMap("op4_name", "op4_attr"),
+                            nullptr);
+  VLOG(0) << op4->print() << std::endl;
 
   // Test 1:
   EXPECT_EQ(op1->GetResultByIndex(0).GetDefiningOp(), op1);
@@ -86,13 +96,19 @@ TEST(value_test, value_test) {
   EXPECT_EQ(op4_first_input->next_use(), op3_first_input);
   EXPECT_EQ(op3_first_input->next_use(), nullptr);
 
+  // Test 3: Value iterator
+  ir::Value::use_iterator iter = op1->GetResultByIndex(0).begin();
+  EXPECT_EQ(iter.owner(), op4);
+  ++iter;
+  EXPECT_EQ(iter.owner(), op3);
+
   // destroy
-  std::cout << op1->GetResultByIndex(0).print_ud_chain() << std::endl;
+  VLOG(0) << op1->GetResultByIndex(0).print_ud_chain() << std::endl;
   op4->destroy();
-  std::cout << op1->GetResultByIndex(0).print_ud_chain() << std::endl;
+  VLOG(0) << op1->GetResultByIndex(0).print_ud_chain() << std::endl;
   op3->destroy();
-  std::cout << op1->GetResultByIndex(0).print_ud_chain() << std::endl;
+  VLOG(0) << op1->GetResultByIndex(0).print_ud_chain() << std::endl;
   op2->destroy();
-  std::cout << op1->GetResultByIndex(0).print_ud_chain() << std::endl;
+  VLOG(0) << op1->GetResultByIndex(0).print_ud_chain() << std::endl;
   op1->destroy();
 }

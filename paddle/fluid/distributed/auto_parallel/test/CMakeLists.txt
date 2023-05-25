@@ -11,7 +11,7 @@ cc_test(
 cc_test(
   dist_attr_test
   SRCS dist_attr_test.cc
-  DEPS dist_attr)
+  DEPS dist_attr proto_desc)
 
 cc_test(
   dist_mapper_test

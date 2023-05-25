@@ -608,6 +608,24 @@ nvinfer1::DimsExprs Conv2dFusionInferMeta(
   return output;
 }
 
+nvinfer1::DimsExprs LookupTableV2InferMeta(
+    int output_index,
+    const nvinfer1::DimsExprs* inputs,
+    int nb_inputs,
+    nvinfer1::IExprBuilder& expr_builder,  // NOLINT
+    const framework::OpDesc& op_desc) {
+  const auto x_dims = inputs[0];
+  const auto weight_dims = inputs[1];
+
+  nvinfer1::DimsExprs output;
+  output.nbDims = x_dims.nbDims + 1;
+  for (int i = 0; i < x_dims.nbDims; ++i) {
+    output.d[i] = x_dims.d[i];
+  }
+  output.d[x_dims.nbDims] = weight_dims.d[1];
+  return output;
+}
+
 PD_REGISTER_DYNAMIC_INFER_META_FN(gather_nd, GatherNdInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(yolo_box, YoloBoxInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(instance_norm, InstanceNormInferMeta);
@@ -620,6 +638,7 @@ PD_REGISTER_DYNAMIC_INFER_META_FN(grid_sampler, GridSamplerInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(conv2d_fusion, Conv2dFusionInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(conv2d, Conv2dFusionInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(p_norm, PNormInferMeta);
+
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle

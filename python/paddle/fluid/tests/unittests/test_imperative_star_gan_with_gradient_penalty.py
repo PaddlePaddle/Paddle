@@ -114,7 +114,7 @@ class InstanceNorm(paddle.nn.Layer):
         self.bias = self.create_parameter(shape=[num_channels], is_bias=True)
 
     def forward(self, input):
-        if fluid._non_static_mode():
+        if fluid.in_dygraph_mode():
             out, _, _ = _legacy_C_ops.instance_norm(
                 input, self.scale, self.bias, 'epsilon', self.epsilon
             )
@@ -387,7 +387,7 @@ def loss_cls(cls, label, cfg):
 
 
 def calc_gradients(outputs, inputs, no_grad_set):
-    if fluid._non_static_mode():
+    if fluid.in_dygraph_mode():
         return fluid.dygraph.grad(
             outputs=outputs,
             inputs=inputs,
@@ -481,7 +481,7 @@ def build_optimizer(layer, cfg, loss=None):
     learning_rate = 1e-3
     beta1 = 0.5
     beta2 = 0.999
-    if fluid._non_static_mode():
+    if fluid.in_dygraph_mode():
         return fluid.optimizer.Adam(
             learning_rate=learning_rate,
             beta1=beta1,
