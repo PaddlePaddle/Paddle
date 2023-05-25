@@ -219,7 +219,7 @@ TEST(program_test, slice_combine_test) {
   // (2) Create an empty program object
   ir::Program program;
   //   ir::Program *program = new ir::Program();
-  EXPECT_EQ(program.ops().size() == 0, true);
+  EXPECT_EQ(program.block()->size() == 0, true);
 
   // (3) Create a float32 DenseTensor Parameter and save into Program
   ir::Type fp32_dtype = ir::Float32Type::get(ctx);
@@ -266,6 +266,5 @@ TEST(program_test, slice_combine_test) {
   program.InsertOp(slice_op);
 
   // (8) Traverse Program
-  std::list<ir::Operation *> ops = program.ops();
-  EXPECT_EQ(ops.size() == 4, true);
+  EXPECT_EQ(program.block()->size() == 4, true);
 }
