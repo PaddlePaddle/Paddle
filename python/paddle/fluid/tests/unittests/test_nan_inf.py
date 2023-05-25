@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import os
 import subprocess
 import sys
@@ -30,9 +31,37 @@ class TestNanInf(unittest.TestCase):
 
         self.env = os.environ.copy()
 
-    def check_nan_inf(self):
-        cmd = self._python_interp
+        self.check_static = True
+        self.check_dygraph = True
+        self.check_nan_inf_level = 0
+        self.dygraph_expected_op_count = {"divide": 1}
 
+    def check_op_count(self, log, expected_op_count=None):
+        if expected_op_count is None:
+            return
+
+        lines = copy.copy(log).decode().split("\n")
+        actual_op_count = {}
+        tensor_info_list = paddle.amp.accuracy_compare.parse_lines(lines)
+        for tensor_info in tensor_info_list:
+            print(tensor_info)
+            if actual_op_count.get(tensor_info.op_type, None) is None:
+                actual_op_count[tensor_info.op_type] = 1
+            else:
+                actual_op_count[tensor_info.op_type] += 1
+        print(actual_op_count)
+
+        for op_type, expected_value in expected_op_count.items():
+            actual_value = actual_op_count.get(op_type, 0)
+            self.assertEqual(
+                actual_value,
+                expected_value,
+                f"The number of operator < {op_type} > is expected to be {expected_value}, but recieved {actual_value}.",
+            )
+        print("")
+
+    def run_check_nan_inf(self, cmd, expected_op_count=None):
+        print(f"Run command: {cmd}")
         proc = subprocess.Popen(
             cmd.split(" "),
             stdout=subprocess.PIPE,
@@ -42,20 +71,65 @@ class TestNanInf(unittest.TestCase):
 
         out, err = proc.communicate()
         returncode = proc.returncode
-        # in python3, type(out+err) is 'bytes', need use encode
-        assert (out + err).find(b'There are NAN or INF') != -1
+        self.check_op_count(out, expected_op_count)
+        if self.check_nan_inf_level == 0:
+            # in python3, type(out+err) is 'bytes', need use encode
+            self.assertNotEqual(
+                (out + err).find(b'There are NAN or INF'),
+                -1,
+                f"Cannot find NAN / INF keyword in:\n{out + err}",
+            )
 
-    def test_nan_inf_in_static_mode(self):
-        self._python_interp += (
-            " " + os.path.dirname(__file__) + "/check_nan_inf_base.py"
-        )
-        self.check_nan_inf()
+    def test_nan_inf_static(self):
+        if not self.check_static:
+            return
 
-    def test_nan_inf_in_dynamic_mode(self):
-        self._python_interp += (
-            " " + os.path.dirname(__file__) + "/check_nan_inf_base_dygraph.py"
-        )
-        self.check_nan_inf()
+        filepath = os.path.dirname(__file__) + "/check_nan_inf_base.py"
+
+        # Test on CPU.
+        cmd = f"{self._python_interp} + {filepath}"
+        self.run_check_nan_inf(cmd, None, self.check_static_result)
+
+    def test_nan_inf_dynamic(self):
+        if not self.check_dygraph:
+            return
+
+        filepath = os.path.dirname(__file__) + "/check_nan_inf_base_dygraph.py"
+
+        # Test on CPU.
+        cmd = f"{self._python_interp} {filepath} --check_nan_inf_level {self.check_nan_inf_level}"
+        self.run_check_nan_inf(cmd, self.dygraph_expected_op_count)
+
+        # Test on GPU.
+        if paddle.fluid.core.is_compiled_with_cuda():
+            cmd = f"{self._python_interp} {filepath} --use_cuda --check_nan_inf_level {self.check_nan_inf_level}"
+            self.run_check_nan_inf(cmd, self.dygraph_expected_op_count)
+
+
+class TestCheckAll(TestNanInf):
+    def setUp(self):
+        super().setUp()
+        self.check_static = False
+        self.check_dygraph = True
+        self.check_nan_inf_level = 3
+        self.dygraph_expected_op_count = {
+            'assign_value_': 2,
+            'full_': 3,
+            'matmul': 2,
+            'add': 2,
+            'sigmoid': 1,
+            'cast': 1,
+            'divide': 1,
+            'softmax': 1,
+            'mean': 1,
+            'mean_grad': 1,
+            'softmax_grad': 1,
+            'divide_grad': 1,
+            'add_grad': 4,
+            'matmul_grad': 3,
+            'sigmoid_grad': 1,
+            'sgd_': 4,
+        }
 
 
 class TestNanInfEnv(TestNanInf):
@@ -67,14 +141,10 @@ class TestNanInfEnv(TestNanInf):
         self.env["PADDLE_INF_NAN_SKIP_ROLE"] = "loss"
         self.env["PADDLE_INF_NAN_SKIP_VAR"] = "elementwise_add:fc_0.tmp_1"
 
-
-class TestCheckSkipEnv(TestNanInf):
-    def setUp(self):
-        super().setUp()
-        # windows python have some bug with env, so need use str to pass ci
-        # otherwise, "TypeError: environment can only contain strings"
-        self.env["Paddle_check_nan_inf_op_list"] = "mean"
-        self.env["Paddle_skip_nan_inf_op_list"] = "elementwise_add"
+        self.check_static = True
+        self.check_dygraph = False
+        self.check_nan_inf_level = 0
+        self.dygraph_expected_op_count = None
 
 
 class TestNanInfCheckResult(unittest.TestCase):

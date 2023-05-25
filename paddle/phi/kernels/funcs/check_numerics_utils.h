@@ -192,7 +192,7 @@ template <
 static void CheckNumericsCpuImpl(const T* value_ptr,
                                  const int64_t numel,
                                  const std::string& cpu_hint_str,
-                                 const bool check_nan_inf_level,
+                                 const int check_nan_inf_level,
                                  const std::string log_name = "cpu",
                                  const std::string output_filepath = "") {
   using MT = typename phi::dtype::template MPTypeTrait<T>::Type;
@@ -294,7 +294,7 @@ template <
 void CheckNumericsCpuImpl(const T* value_ptr,
                           const int64_t numel,
                           const std::string& cpu_hint_str,
-                          const bool check_nan_inf_level,
+                          const int check_nan_inf_level,
                           const std::string log_name = "cpu",
                           const std::string output_filepath = "") {
   using RealType = typename T::value_type;
