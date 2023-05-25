@@ -160,6 +160,7 @@ class HybridParallelClipGrad:
         )
 
         # add all reduce to get global norm of distributed params_and_grads
+        # TODO(pangengzheng): change the group name from get_check_parallel_group to get_mp_and_pp_group
         if self._hcg.get_model_parallel_world_size() > 1:
             paddle.distributed.all_reduce(
                 global_norm_var_dist, group=self._hcg.get_check_parallel_group()
@@ -174,7 +175,7 @@ class HybridParallelClipGrad:
 
         # In Sharding mode, param and grad is mapping different rank in optimizer.
         # ClipGradByGlobalNorm need allreduce to get globol norm
-        if self._hcg.get_sharding_parallel_world_size() > 1 and False:
+        if self._hcg.get_sharding_parallel_world_size() > 1:
             paddle.distributed.all_reduce(
                 global_norm_var_not_dist,
                 group=self._hcg.get_sharding_parallel_group(),

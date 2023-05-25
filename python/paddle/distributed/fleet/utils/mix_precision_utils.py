@@ -103,7 +103,7 @@ class MixPrecisionOptimizer:
     @imperative_base.no_grad
     @framework.dygraph_only
     def step(self):
-
+        print("amp optimizer step")
         if not isinstance(self._parameter_list[0], dict):
             params_grads = []
             for param in self._parameter_list:
