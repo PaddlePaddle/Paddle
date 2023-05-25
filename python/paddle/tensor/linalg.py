@@ -3352,7 +3352,7 @@ def corrcoef(x, rowvar=True, name=None):
     return c
 
 
-def cdist(x, y, p=2, name=None):
+def cdist(x, y, p=2, name=None, use_mm_for_euclid_dist=True):
     r"""
     Computes batched the p-norm distance between each pair of the two collections of row vectors.
 
@@ -3404,22 +3404,26 @@ def cdist(x, y, p=2, name=None):
             "The shape[-1] of Input(x) shape should be same as Input(y) "
             f"but got Input(x)'s shape[-1] {x_shape[-1]} and Input(y)'s shape[-1] {y_shape[-1]}"
         )
-    resize_shape = ()
+
     for i in range(len(x_shape[:-2])):
         if x_shape[i] != y_shape[i] and (x_shape[i] != 1 and y_shape[i] != 1):
             raise ValueError(
                 f"The shape of Input(x) should be same as Input(y) at dimension {i}"
                 f"but got Input(x) {x_shape[i]} and Input(y) shape[-1] {y_shape[i]}"
             )
-        resize_shape = resize_shape + (max(x_shape[i], y_shape[i]),)
 
-    y = paddle.concat([y] * x_shape[-2], axis=-2)
-    x = paddle.repeat_interleave(x, y_shape[-2], axis=-2)
-    if p == 0:
-        out = ((x - y).abs() ** p).sum(axis=-1)
-    elif p == float('inf'):
-        out = paddle.max((x - y).abs(), axis=-1)
-    else:
-        out = ((x - y).abs() ** p).sum(axis=-1) ** (1 / p)
-    out = out.reshape((*resize_shape, x_shape[-2], y_shape[-2]))
-    return out
+    p = float(p)
+
+    if p == 2 and use_mm_for_euclid_dist:
+        x_norm = paddle.sum(x.pow(2), keepdim=True, axis=-1)
+        y_norm = paddle.sum(y.pow(2), keepdim=True, axis=-1)
+        x_pad = paddle.ones_like(x_norm)
+        y_pad = paddle.ones_like(y_norm)
+        x_ = paddle.concat([x * -2, x_norm, x_pad], -1)
+        y_ = paddle.concat([y, y_pad, y_norm], -1)
+        y_perm = list(range(len(y_.shape)))
+        y_perm[-1], y_perm[-2] = y_perm[-2], y_perm[-1]
+        out = paddle.clip(x_.matmul(paddle.transpose(y_, y_perm)), min=0).sqrt()
+        return out
+
+    return paddle.norm(x[..., None, :] - y[..., None, :, :], p=p, axis=-1)
