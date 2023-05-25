@@ -77,12 +77,6 @@ def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
             Y = np.transpose(Y, tuple(dim))
 
     Out = np.matmul(X, Y)
-    if not Out.shape:
-        # We do not support 0-dimensional Tensors (scalars). So where
-        # np.matmul outputs a scalar, we must convert to a Tensor of
-        # shape (1, ) instead.
-        # Everywhere else, we are compatible with np.matmul.
-        Out = np.array([Out], dtype="float32")
     return Out
 
 
@@ -167,9 +161,6 @@ class API_TestMm(unittest.TestCase):
             with fluid.program_guard(fluid.Program()):
                 x = paddle.static.data(name="x", shape=[2], dtype="float64")
                 y = paddle.static.data(name='y', shape=[2], dtype='float64')
-                res = paddle.static.data(
-                    name="output", shape=[1], dtype="float64"
-                )
                 result = paddle.mm(x, y)
                 exe = fluid.Executor(fluid.CPUPlace())
                 data1 = np.random.rand(2)
@@ -177,9 +168,7 @@ class API_TestMm(unittest.TestCase):
                 np_res = exe.run(
                     feed={'x': data1, 'y': data2}, fetch_list=[result]
                 )
-                expected_result = np.matmul(
-                    data1.reshape(1, 2), data2.reshape(2, 1)
-                )
+                expected_result = np.matmul(data1, data2)
 
             np.testing.assert_allclose(
                 np_res,
