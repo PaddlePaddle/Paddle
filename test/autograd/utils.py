@@ -398,6 +398,7 @@ def _np_concat_matrix_sequence(src, src_format=MatrixFormat.NM):
         return src
     if not isinstance(src[0], typing.Sequence):
         src = [src]
+
     return concat_row(tuple(concat_col(xs) for xs in src))
 
 
