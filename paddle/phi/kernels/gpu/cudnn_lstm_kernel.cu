@@ -363,12 +363,12 @@ void CudnnLSTMKernel(
 #ifdef PADDLE_WITH_HIP
 PD_REGISTER_KERNEL(cudnn_lstm, GPU, ALL_LAYOUT, phi::CudnnLSTMKernel, float) {
   kernel->OutputAt(3).SetDataType(phi::DataType::UINT8);
-  kernel->OutputAt(4).SetDataType(phi::DataType::UINT8);
+  kernel->OutputAt(4).SetDataType(phi::DataType::UNDEFINED);
 }
 #else
 PD_REGISTER_KERNEL(
     cudnn_lstm, GPU, ALL_LAYOUT, phi::CudnnLSTMKernel, float, double) {
   kernel->OutputAt(3).SetDataType(phi::DataType::UINT8);
-  kernel->OutputAt(4).SetDataType(phi::DataType::UINT8);
+  kernel->OutputAt(4).SetDataType(phi::DataType::UNDEFINED);
 }
 #endif
