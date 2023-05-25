@@ -183,19 +183,22 @@ int DeleteRepeatedOpsPass::DeleteSlicePass(ir::Graph* graph) const {
     VLOG(4) << "handle DeleteSlicePass";
     GET_IR_NODE_FROM_SUBGRAPH(in_var, in_var, pattern);
 
+    std::vector<std::string> invalid_slice_out_ops{
+        "while", "conditional_block", "increment"};
     std::map<std::string, std::vector<Node*>> slice_ops;
     for (auto* next_op : in_var->outputs) {
       if (next_op->Name() != "slice") continue;
       auto* slice = next_op;
-      bool slice_out_has_control_flow_ops = false;
+      bool slice_out_op_is_invalid = false;
       for (auto* slice_out_op : slice->outputs[0]->outputs) {
-        if (slice_out_op->Name() == "while" ||
-            slice_out_op->Name() == "conditional_block") {
-          slice_out_has_control_flow_ops = true;
+        if (std::count(invalid_slice_out_ops.begin(),
+                       invalid_slice_out_ops.end(),
+                       slice_out_op->Name()) > 0) {
+          slice_out_op_is_invalid = true;
           break;
         }
       }
-      if (slice_out_has_control_flow_ops) continue;
+      if (slice_out_op_is_invalid) continue;
       auto attr_key = GenSliceAttrKey(slice->Op());
       slice_ops[attr_key].push_back(slice);
     }
@@ -217,7 +220,8 @@ int DeleteRepeatedOpsPass::DeleteSlicePass(ir::Graph* graph) const {
         auto* cur_slice_out = cur_slice->outputs[0];
         auto cur_slice_out_name = cur_slice_out->Name();
         for (auto* slice_out_op : cur_slice_out->outputs) {
-          slice_out_op->Op()->Rename(cur_slice_out_name, first_slice_out_name);
+          slice_out_op->Op()->RenameInput(cur_slice_out_name,
+                                          first_slice_out_name);
           IR_NODE_LINK_TO(first_slice_out, slice_out_op);
         }
         delete_nodes.insert(cur_slice);
