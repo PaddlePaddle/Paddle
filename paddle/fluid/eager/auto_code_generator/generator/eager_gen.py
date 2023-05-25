@@ -66,7 +66,6 @@ black_ops_list = [
 # kernel performs same to it.
 prim_white_list = [
     "matmul_double_grad",
-    "tanh_double_grad",
     "subtract_double_grad",
     "silu_double_grad",
 ]

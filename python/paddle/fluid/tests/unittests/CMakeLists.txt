@@ -1115,12 +1115,21 @@ set(TEST_CINN_OPS
     test_group_norm_op
     test_tile_op
     test_roll_op
-    test_sum_op)
+    test_sum_op
+    test_elementwise_min_op
+    test_bitwise_op
+    test_compare_op
+    test_shape_op
+    test_assign_value_op
+    test_lookup_table_op
+    test_lookup_table_v2_op
+    test_norm_op
+    test_one_hot_v2_op)
 
 foreach(TEST_CINN_OPS ${TEST_CINN_OPS})
   if(WITH_CINN)
     set_tests_properties(${TEST_CINN_OPS} PROPERTIES LABELS "RUN_TYPE=CINN")
-    set_tests_properties(${TEST_CINN_OPS} PROPERTIES TIMEOUT 150)
+    set_tests_properties(${TEST_CINN_OPS} PROPERTIES TIMEOUT 200)
   endif()
 endforeach()
 
