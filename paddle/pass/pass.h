@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <vector>
 
 #include "paddle/utils/optional.h"
