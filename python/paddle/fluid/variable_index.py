@@ -293,7 +293,7 @@ def is_integer_or_scalar_tensor(ele):
                     "1-D Tensor will be treat as advanced indexing in future version. Currently, 1-D Tensor means a scalar, not vector, and please modify it to 0-D Tensor. If advanced indexing is needed, please use `export FLAGS_set_to_1d=False` to set the flag."
                 )
                 return True
-        if len(ele.shape) == 0:
+        if len(ele.shape) == 0 and ele.dtype != paddle.bool:
             return True
     return False
 
@@ -858,3 +858,51 @@ def set_value_for_bool_tensor(var, item, value):
     cond(item.any(), lambda: idx_not_empty(var, item, value))
 
     return var
+
+
+def _getitem_iter(x, indices):
+    """
+    [WIP]: support __getitem__ by iteration strategy. combined indexing will be support by this.
+
+    Args:
+        x(Tensor): Tensor to be indexing.
+        indices(int|slice|None|Tensor|List|Tuple...): Indices, used to indicate the position of the element to be fetched.
+    """
+    advanced_index = []
+
+    # for slice/stride slice OP
+    decrease_axes = []
+    axes = []
+    starts = []
+    ends = []
+    steps = []
+
+    indices = replace_ndarray(indices)
+    indices = replace_ellipsis(x, indices)
+    indices, none_axes = replace_none(indices)
+
+    if not isinstance(indices, tuple):
+        indices = (indices,)
+
+    for dim, slice_item in enumerate(indices):
+        if is_integer_or_scalar_tensor(slice_item):
+            # not calculate result to reduce call times for slice OP.
+            decrease_axes.append(dim)
+            start = slice_item
+            step = 1
+            end = slice_item + 1 if slice_item != -1 else MAX_INTEGER
+        elif isinstance(slice_item, slice):
+            start = slice_item.start
+            end = slice_item.stop
+            step = slice_item.step
+
+            if start is None and end is None and step is None:
+                continue
+
+            if start is None:
+                start = 0 if step > 0 else MAX_INTEGER
+            if end is None:
+                end = MAX_INTEGER if step > 0 else -1
+            step = 1 if step is None else step
+        elif isinstance(slice_item, list):
+            pass
