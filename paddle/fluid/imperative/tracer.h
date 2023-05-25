@@ -31,6 +31,8 @@
 #include "paddle/fluid/imperative/layout_autotune.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/phi/core/compat/arg_map_context.h"
+
+DECLARE_bool(use_stride_kernel);
 namespace paddle {
 namespace imperative {
 
@@ -195,7 +197,10 @@ class Tracer {
 
   void DisableLayoutAutoTune() { use_layout_autotune_ = false; }
 
-  void EnableLayoutAutoTune() { use_layout_autotune_ = true; }
+  void EnableLayoutAutoTune() {
+    use_layout_autotune_ = true;
+    FLAGS_use_stride_kernel = false;
+  }
 
   bool UseLayoutAutoTune() {
 #if defined(PADDLE_WITH_CUDA)
