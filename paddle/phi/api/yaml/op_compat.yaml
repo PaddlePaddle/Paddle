@@ -14,6 +14,24 @@
 #   extra :
 #     attrs : [bool is_test = false]
 
+# - op : pool2d
+#   backward : pool2d_double_grad
+#   inputs :
+#     {x : X}
+#   outputs :
+#     {out : Out}
+#   int_array:
+#     ksize :
+#       data_type : int
+#       support_tensor : true
+#   get_expected_kernel_type :
+#     pool2d : GetPoolExpectedKernelType
+#     pool2d_grad : GetPoolGradExpectedKernelType
+#     pool2d_double_grad : GetPoolExpectedKernelType
+#   extra :
+#     attrs : [bool use_mkldnn = false, bool use_quantizer = false,
+#               str mkldnn_data_type = "float32", bool is_test = false]
+
 - op : abs
   backward : abs_grad
   inputs :
@@ -1780,8 +1798,9 @@
   outputs :
     {out : Out}
   int_array:
-    ksize :
+    kernel_size :
       data_type : int
+      tensor_name : Ksize
       support_tensor : true
   get_expected_kernel_type :
     pool2d : GetPoolExpectedKernelType

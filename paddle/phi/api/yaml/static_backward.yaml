@@ -44,7 +44,7 @@
     param : [x, out, out_grad, axis, keepdim, reduce_all]
 
 - backward_op : pool2d_double_grad
-  forward : pool2d_grad (Tensor x, Tensor out, Tensor out_grad, str pooling_type, IntArray ksize, bool global_pooling, int[] strides, int[] paddings, bool exclusive, bool adaptive, bool ceil_mode, str data_format, str padding_algorithm) -> Tensor(grad_x)
+  forward : pool2d_grad(Tensor x, Tensor out, Tensor out_grad, IntArray kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm) -> Tensor(grad_x)
   args : (Tensor x, str pooling_type, IntArray ksize, bool global_pooling, int[] strides, int[] paddings, bool exclusive, bool adaptive, bool ceil_mode, str data_format, str padding_algorithm)
   output : Tensor(out_grad)
   infer_meta :
@@ -56,8 +56,8 @@
   no_need_buffer : x
 
 - backward_op : pool2d_grad
-  forward : pool2d (Tensor x, str pooling_type, IntArray ksize, bool global_pooling = false, int[] strides = {1,1}, int[] paddings = {0,0}, bool exclusive = true, bool adaptive = false, bool ceil_mode = false, str data_format = "NCHW", str padding_algorithm = "EXPLICIT") -> Tensor(out)
-  args : (Tensor x, Tensor out, Tensor out_grad, str pooling_type, IntArray ksize, bool global_pooling, int[] strides, int[] paddings, bool exclusive, bool adaptive, bool ceil_mode, str data_format, str padding_algorithm)
+  forward : pool2d(Tensor x, IntArray kernel_size, int[] strides = {1,1}, int[] paddings = {0,0}, bool ceil_mode = false, bool exclusive = true, str data_format = "NCHW", str pooling_type = "", bool global_pooling = false, bool adaptive = false, str padding_algorithm = "EXPLICIT") -> Tensor(out)
+  args : (Tensor x, Tensor out, Tensor out_grad, IntArray kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta

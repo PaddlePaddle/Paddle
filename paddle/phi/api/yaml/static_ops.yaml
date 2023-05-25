@@ -272,7 +272,7 @@
     param : [peer, dtype, out_shape]
 
 - op : pool2d
-  args : (Tensor x, str pooling_type, IntArray ksize, bool global_pooling = false, int[] strides = {1,1}, int[] paddings = {0,0}, bool exclusive = true, bool adaptive = false, bool ceil_mode = false, str data_format = "NCHW", str padding_algorithm = "EXPLICIT")
+  args : (Tensor x, IntArray kernel_size, int[] strides = {1,1}, int[] paddings = {0,0}, bool ceil_mode = false, bool exclusive = true, str data_format = "NCHW", str pooling_type = "", bool global_pooling = false, bool adaptive = false, str padding_algorithm = "EXPLICIT")
   output : Tensor(out)
   infer_meta :
     func : Pool2DInferMeta
