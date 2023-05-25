@@ -166,11 +166,10 @@ class CumsumOpConverter : public OpConverter {
           loop->addLoopOutput(*curSum->getOutput(0), reverseFlag, axis);
       loopOut->setInput(1, *tripLimit);
       RreplenishLayerAndOutput(loopOut, "cumsum", {output_name}, test_mode);
-
+    }
 #else
     VLOG(3) << "Cumsum is not supported when TensorRT < 7.2.2";
 #endif
-    }
   }
 };
 
