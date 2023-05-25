@@ -84,6 +84,9 @@ void Conv2dFusionKernel(const Context& ctx,
   const int oh = out_dims[1];
   const int ow = out_dims[2];
 
+  int64_t device_id = ctx.GetPlace().GetDeviceId();
+  int sm_version = backends::gpu::GetGPUComputeCapability(device_id);
+
   auto dtype2string = [&](decltype(x.dtype()) x_type) -> std::string {
     switch (x_type) {
       case phi::DataType::FLOAT32:
@@ -119,8 +122,8 @@ void Conv2dFusionKernel(const Context& ctx,
                           ow,
                           groups,
                           &ctx,
-                          0,   // alpha
-                          80,  // sm_version
+                          0,           // alpha
+                          sm_version,  // sm_version
                           dtype2string(x.dtype())};
 
   // conv2d_depthwise

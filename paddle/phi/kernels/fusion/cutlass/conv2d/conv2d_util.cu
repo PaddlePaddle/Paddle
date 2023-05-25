@@ -277,8 +277,8 @@ int ProfileToGetBestConfig(
     const std::vector<std::function<cutlass::Status(ConvAllParams)>> &all_func,
     const ConvAllParams &params,
     OpType op_type) {
-  constexpr int WARMUP = 0;
-  constexpr int REPEAT = 1;
+  constexpr int WARMUP = 10;
+  constexpr int REPEAT = 10;
   float min_time = 100000.f;
   int min_time_index = -1;
   for (int i = 0; i < all_func.size(); i++) {
