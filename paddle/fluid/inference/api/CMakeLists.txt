@@ -15,17 +15,25 @@ if(WITH_MKLDNN)
       ${mkldnn_quantizer_cfg}
       PARENT_SCOPE)
 endif()
+if(WIN32)
+  cc_library(
+    analysis_config
+    SRCS analysis_config.cc
+    DEPS ${mkldnn_quantizer_cfg} lod_tensor paddle_pass_builder table_printer
+         utf8proc)
+else()
+  cc_library(
+    analysis_config
+    SRCS analysis_config.cc
+    DEPS analysis_helper
+         processgroup_comm_utils
+         ${mkldnn_quantizer_cfg}
+         lod_tensor
+         paddle_pass_builder
+         table_printer
+         utf8proc)
+endif()
 
-cc_library(
-  analysis_config
-  SRCS analysis_config.cc
-  DEPS analysis_helper
-       processgroup_comm_utils
-       ${mkldnn_quantizer_cfg}
-       lod_tensor
-       paddle_pass_builder
-       table_printer
-       utf8proc)
 cc_library(
   paddle_infer_contrib
   SRCS paddle_infer_contrib.cc
