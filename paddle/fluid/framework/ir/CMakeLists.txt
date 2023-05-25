@@ -200,6 +200,13 @@ if(WITH_MKLDNN)
   pass_library(multi_gru_seq_fuse_pass inference DIR mkldnn)
   pass_library(quant_dequant_mkldnn_pass inference DIR mkldnn)
   pass_library(compute_propagate_scales_mkldnn_pass inference DIR mkldnn)
+  pass_library(self_attention_fuse_pass inference DIR mkldnn)
+  if(WITH_AVX
+     AND AVX512F_FOUND
+     AND AVX512F_FLAG)
+    set_target_properties(self_attention_fuse_pass
+                          PROPERTIES COMPILE_FLAGS "-mfma ${AVX512F_FLAG}")
+  endif()
 endif()
 
 if(WITH_IPU)
