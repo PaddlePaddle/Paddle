@@ -871,7 +871,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
         }
         dense_out_trans_map = {
             'Tensor': 'phi::DenseTensor*',
-            'std::vector<Tensor>': 'std::vector<phi::DenseTensor*>&',
+            'std::vector<Tensor>': 'std::vector<phi::DenseTensor*>',
         }
         sr_input_trans_map = {
             'const Tensor&': 'const phi::SelectedRows&',
