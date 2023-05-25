@@ -767,7 +767,10 @@ inline void MatMulWithHeadQK(const phi::GPUContext &context,
 
     // Align block to 32, also limit seq_len to max block size.
     if (seq_len % 2 == 0) {
-      block = (seq_len <= 64) ? WARP_SIZE : ((seq_len + 63) / 64) * WARP_SIZE;
+      block =
+          (seq_len <= (2 * WARP_SIZE))
+              ? WARP_SIZE
+              : ((seq_len + (2 * WARP_SIZE - 1)) / (2 * WARP_SIZE)) * WARP_SIZE;
       if (std::is_same<T, float>::value) {
         SoftmaxKernelWithEltadd2<float2><<<grid, block, 0, stream>>>(
             reinterpret_cast<float2 *>(qk_buf_),

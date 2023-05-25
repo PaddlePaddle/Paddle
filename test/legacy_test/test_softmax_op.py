@@ -392,7 +392,8 @@ class TestSoftmaxFP16CUDNNOp2(TestSoftmaxFP16CUDNNOp):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not core.is_compiled_with_cuda() or core.is_compiled_with_rocm(),
+    "core is not compiled with CUDA",
 )
 class TestSoftmaxBF16Op(OpTest):
     def setUp(self):

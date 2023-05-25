@@ -179,7 +179,7 @@ typedef u_int64_t warp_mask_t;
 #define HALF_WARP 16
 #define WARP_SIZE 32
 #define WARP_SIZE_WIDTH 5
-#define WARP_SIZE_WIDTH_MASK WARP_SIZE_WIDTH_MASK
+#define WARP_SIZE_WIDTH_MASK 0x1f
 typedef unsigned warp_mask_t;
 #endif
 
