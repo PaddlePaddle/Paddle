@@ -334,8 +334,9 @@ void ExecuteMatMulV1(const ExecutionContext &ctx,
   matmul_p->execute(astream, matmul_args);
   astream.wait();
 
-  out->set_mem_desc(
-      dst_memory_p->get_desc().reshape(vectorize<int64_t>(out->dims())));
+  auto reshape_dims = out->dims().size() != 0 ? vectorize(out->dims())
+                                              : std::vector<int64_t>{1};
+  out->set_mem_desc(dst_memory_p->get_desc().reshape(reshape_dims));
 }
 
 template <typename T>

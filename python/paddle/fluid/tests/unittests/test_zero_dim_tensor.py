@@ -2557,6 +2557,47 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(x.grad.shape, [])
         np.testing.assert_allclose(x.grad, np.array(1.0))
 
+    def test_to_tensor(self):
+        out1 = paddle.to_tensor(1)
+        out2 = paddle.to_tensor(2.5)
+
+        out1.retain_grads()
+        out1.backward()
+        out2.retain_grads()
+        out2.backward()
+
+        self.assertEqual(out1.shape, [])
+        self.assertEqual(out1, 1)
+        self.assertEqual(out2.shape, [])
+        self.assertEqual(out2, 2.5)
+
+    def test_matmul(self):
+        # 1) no transpose
+        x = paddle.randn([10])
+        x.stop_gradient = False
+        y = paddle.randn([10])
+        y.stop_gradient = False
+        out1 = paddle.matmul(x, y)
+        out1.retain_grads()
+        out1.backward()
+
+        self.assertEqual(out1.shape, [])
+        self.assertEqual(x.grad.shape, [10])
+        self.assertEqual(y.grad.shape, [10])
+
+        # 2) transpose x and y
+        x = paddle.randn([10])
+        x.stop_gradient = False
+        y = paddle.randn([10])
+        y.stop_gradient = False
+        out2 = paddle.matmul(x, y, True, True)
+        out2.retain_grads()
+        out2.backward()
+
+        self.assertEqual(out2.shape, [])
+        self.assertEqual(x.grad.shape, [10])
+        self.assertEqual(y.grad.shape, [10])
+
     def test_linalg_slogdet(self):
         # 2-D input
         x = paddle.randn([3, 3])
@@ -2595,6 +2636,42 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(b.grad.shape, [4, 5])
         self.assertEqual(c.grad.shape, [5])
 
+    def test_cov(self):
+        xt = paddle.randn((3, 4))
+        xt.stop_gradient = False
+        xt_1 = paddle.randn((12,))
+        xt_1.stop_gradient = False
+
+        xt_out = paddle.linalg.cov(xt)
+        xt_out.retain_grads()
+        xt_out.backward()
+        self.assertEqual(xt_out.shape, [3, 3])
+        self.assertEqual(xt.grad.shape, [3, 4])
+
+        xt_1_out = paddle.linalg.cov(xt_1)
+        xt_1.retain_grads()
+        xt_1_out.backward()
+        self.assertEqual(xt_1_out.shape, [])
+        self.assertEqual(xt_1.grad.shape, [12])
+
+    def test_det(self):
+        xt = paddle.randn([3, 3, 3])
+        xt.stop_gradient = False
+        xt_1 = paddle.randn([3, 3])
+        xt_1.stop_gradient = False
+
+        xt_out = paddle.linalg.det(xt)
+        xt.retain_grads()
+        xt_out.backward()
+        self.assertEqual(xt_out.shape, [3])
+        self.assertEqual(xt.grad.shape, [3, 3, 3])
+
+        xt_1_out = paddle.linalg.det(xt_1)
+        xt_1.retain_grads()
+        xt_1_out.backward()
+        self.assertEqual(xt_1_out.shape, [])
+        self.assertEqual(xt_1.grad.shape, [3, 3])
+
     def test_dist(self):
         x = paddle.to_tensor([[3, 3], [3, 3]], dtype="float32")
         y = paddle.to_tensor([[3, 3], [3, 1]], dtype="float32")
@@ -2607,16 +2684,6 @@ class TestSundryAPI(unittest.TestCase):
         np.testing.assert_allclose(out, np.array(1))
         self.assertEqual(x.grad.shape, [2, 2])
         self.assertEqual(y.grad.shape, [2, 2])
-
-    def test_trace(self):
-        x = paddle.to_tensor([[3, 2], [1, 9]], dtype="float32")
-        x.stop_gradient = False
-        out = paddle.trace(x)
-        out.backward()
-
-        self.assertEqual(out.shape, [])
-        np.testing.assert_allclose(out, np.array(12))
-        self.assertEqual(x.grad.shape, [2, 2])
 
     def test_linalg_norm(self):
         # 1D input, p = fro ,axis = None, using reduceInferMeta
@@ -2769,55 +2836,15 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(len(a_cond_fro.shape), 1)
         self.assertEqual(a.grad.shape, [2, 4, 4])
 
-    def test_cov(self):
-        xt = paddle.randn((3, 4))
-        xt.stop_gradient = False
-        xt_1 = paddle.randn((12,))
-        xt_1.stop_gradient = False
+    def test_trace(self):
+        x = paddle.to_tensor([[3, 2], [1, 9]], dtype="float32")
+        x.stop_gradient = False
+        out = paddle.trace(x)
+        out.backward()
 
-        xt_out = paddle.linalg.cov(xt)
-        xt_out.retain_grads()
-        xt_out.backward()
-        self.assertEqual(xt_out.shape, [3, 3])
-        self.assertEqual(xt.grad.shape, [3, 4])
-
-        xt_1_out = paddle.linalg.cov(xt_1)
-        xt_1.retain_grads()
-        xt_1_out.backward()
-        self.assertEqual(xt_1_out.shape, [])
-        self.assertEqual(xt_1.grad.shape, [12])
-
-    def test_det(self):
-        xt = paddle.randn([3, 3, 3])
-        xt.stop_gradient = False
-        xt_1 = paddle.randn([3, 3])
-        xt_1.stop_gradient = False
-
-        xt_out = paddle.linalg.det(xt)
-        xt.retain_grads()
-        xt_out.backward()
-        self.assertEqual(xt_out.shape, [3])
-        self.assertEqual(xt.grad.shape, [3, 3, 3])
-
-        xt_1_out = paddle.linalg.det(xt_1)
-        xt_1.retain_grads()
-        xt_1_out.backward()
-        self.assertEqual(xt_1_out.shape, [])
-        self.assertEqual(xt_1.grad.shape, [3, 3])
-
-    def test_to_tensor(self):
-        out1 = paddle.to_tensor(1)
-        out2 = paddle.to_tensor(2.5)
-
-        out1.retain_grads()
-        out1.backward()
-        out2.retain_grads()
-        out2.backward()
-
-        self.assertEqual(out1.shape, [])
-        self.assertEqual(out1, 1)
-        self.assertEqual(out2.shape, [])
-        self.assertEqual(out2, 2.5)
+        self.assertEqual(out.shape, [])
+        np.testing.assert_allclose(out, np.array(12))
+        self.assertEqual(x.grad.shape, [2, 2])
 
 
 class TestSundryAPIStatic(unittest.TestCase):
@@ -4860,6 +4887,53 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(out2.shape, (2, 3))
 
     @prog_scope()
+    def test_to_tensor(self):
+        out1 = paddle.to_tensor(1)
+        out2 = paddle.to_tensor(2.5)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out1, out2])
+
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[0], 1)
+        self.assertEqual(res[1].shape, ())
+        self.assertEqual(res[1], 2.5)
+
+    @prog_scope()
+    def test_matmul(self):
+        # 1) no transpose
+        x = paddle.randn([10])
+        x.stop_gradient = False
+        y = paddle.randn([10])
+        y.stop_gradient = False
+        out = paddle.matmul(x, y)
+        paddle.static.append_backward(out)
+
+        self.assertEqual(out.shape, ())
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out, x.grad_name, y.grad_name])
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, (10,))
+        self.assertEqual(res[2].shape, (10,))
+
+        # 2) transpose x and y
+        x = paddle.randn([10])
+        x.stop_gradient = False
+        y = paddle.randn([10])
+        y.stop_gradient = False
+        out = paddle.matmul(x, y, True, True)
+        paddle.static.append_backward(out)
+
+        self.assertEqual(out.shape, ())
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out, x.grad_name, y.grad_name])
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, (10,))
+        self.assertEqual(res[2].shape, (10,))
+
+    @prog_scope()
     def test_linalg_slogdet(self):
         # 2-D input
         x = paddle.randn([3, 3])
@@ -4904,6 +4978,33 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[3].shape, (5,))
 
     @prog_scope()
+    def test_cov(self):
+        xt_1 = paddle.randn((12,))
+        xt_1.stop_gradient = False
+
+        out = paddle.linalg.cov(xt_1)
+        paddle.static.append_backward(out)
+
+        prog = paddle.static.default_main_program()
+
+        res = self.exe.run(prog, fetch_list=[out, xt_1.grad_name])
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, (12,))
+
+    @prog_scope()
+    def test_det(self):
+        xt_1 = paddle.randn((3, 3))
+        xt_1.stop_gradient = False
+
+        out = paddle.linalg.det(xt_1)
+        paddle.static.append_backward(out.sum())
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out, xt_1.grad_name])
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, (3, 3))
+
+    @prog_scope()
     def test_dist(self):
         x = paddle.to_tensor([[3, 3], [3, 3]], dtype="float32")
         y = paddle.to_tensor([[3, 3], [3, 1]], dtype="float32")
@@ -4919,20 +5020,6 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[1].shape, (2, 2))
         self.assertEqual(res[1].shape, (2, 2))
         np.testing.assert_array_equal(res[0], np.array(2).astype(np.float32))
-
-    @prog_scope()
-    def test_trace(self):
-        x = paddle.to_tensor([[3, 2], [1, 9]], dtype="float32")
-        x.stop_gradient = False
-        out = paddle.trace(x)
-        paddle.static.append_backward(out)
-
-        prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[out, x.grad_name])
-
-        self.assertEqual(res[0].shape, ())
-        self.assertEqual(res[1].shape, (2, 2))
-        np.testing.assert_allclose(res[0], np.array(12))
 
     @prog_scope()
     def test_linalg_norm(self):
@@ -5128,44 +5215,18 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[1].shape, (2, 4, 4))
 
     @prog_scope()
-    def test_cov(self):
-        xt_1 = paddle.randn((12,))
-        xt_1.stop_gradient = False
-
-        out = paddle.linalg.cov(xt_1)
+    def test_trace(self):
+        x = paddle.to_tensor([[3, 2], [1, 9]], dtype="float32")
+        x.stop_gradient = False
+        out = paddle.trace(x)
         paddle.static.append_backward(out)
 
         prog = paddle.static.default_main_program()
-
-        res = self.exe.run(prog, fetch_list=[out, xt_1.grad_name])
-        self.assertEqual(res[0].shape, ())
-        self.assertEqual(res[1].shape, (12,))
-
-    @prog_scope()
-    def test_det(self):
-        xt_1 = paddle.randn((3, 3))
-        xt_1.stop_gradient = False
-
-        out = paddle.linalg.det(xt_1)
-        paddle.static.append_backward(out.sum())
-
-        prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[out, xt_1.grad_name])
-        self.assertEqual(res[0].shape, ())
-        self.assertEqual(res[1].shape, (3, 3))
-
-    @prog_scope()
-    def test_to_tensor(self):
-        out1 = paddle.to_tensor(1)
-        out2 = paddle.to_tensor(2.5)
-
-        prog = paddle.static.default_main_program()
-        res = self.exe.run(prog, fetch_list=[out1, out2])
+        res = self.exe.run(prog, fetch_list=[out, x.grad_name])
 
         self.assertEqual(res[0].shape, ())
-        self.assertEqual(res[0], 1)
-        self.assertEqual(res[1].shape, ())
-        self.assertEqual(res[1], 2.5)
+        self.assertEqual(res[1].shape, (2, 2))
+        np.testing.assert_allclose(res[0], np.array(12))
 
 
 # Use to test API whose zero-dim input tensors don't have grad and not need to test backward in OpTest.
@@ -5994,6 +6055,30 @@ class TestLossAPI(unittest.TestCase):
         self.assertEqual(loss.shape, [])
         self.assertEqual(input.grad.shape, [3, 5])
 
+    def test_nll_loss(self):
+        input = paddle.rand([5, 3])
+        input.stop_gradient = False
+        log_softmax = paddle.nn.LogSoftmax(axis=1)
+        log_out = log_softmax(input)
+        label = paddle.randint(0, 3, [5], "int64")
+
+        loss = paddle.nn.functional.nll_loss(log_out, label)
+        loss.backward()
+
+        self.assertEqual(loss.shape, [])
+        self.assertEqual(input.grad.shape, [5, 3])
+
+        input = paddle.rand([5, 3, 2, 4])
+        input.stop_gradient = False
+        log_softmax = paddle.nn.LogSoftmax(axis=1)
+        log_out = log_softmax(input)
+        label = paddle.randint(0, 3, [5, 2, 4], "int64")
+        loss = paddle.nn.functional.nll_loss(log_out, label)
+        loss.backward()
+
+        self.assertEqual(loss.shape, [])
+        self.assertEqual(input.grad.shape, [5, 3, 2, 4])
+
 
 class TestLossAPIStatic(unittest.TestCase):
     def setUp(self):
@@ -6059,6 +6144,40 @@ class TestLossAPIStatic(unittest.TestCase):
         res = self.exe.run(prog, fetch_list=[loss, input.grad_name])
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (3, 5))
+
+    @prog_scope()
+    def test_nll_loss(self):
+        input = paddle.rand([5, 3])
+        input.stop_gradient = False
+        log_softmax = paddle.nn.LogSoftmax(axis=1)
+        log_out = log_softmax(input)
+
+        label = paddle.randint(0, 3, shape=[5])
+        label.stop_gradient = False
+
+        loss = paddle.nn.functional.nll_loss(log_out, label)
+        paddle.static.append_backward(loss)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[loss, input.grad_name])
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, (5, 3))
+
+        input = paddle.rand([5, 3, 2, 4])
+        input.stop_gradient = False
+        log_softmax = paddle.nn.LogSoftmax(axis=1)
+        log_out = log_softmax(input)
+
+        label = paddle.randint(0, 3, shape=[5, 2, 4])
+        label.stop_gradient = False
+
+        loss = paddle.nn.functional.nll_loss(log_out, label)
+        paddle.static.append_backward(loss)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[loss, input.grad_name])
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, (5, 3, 2, 4))
 
 
 if __name__ == "__main__":

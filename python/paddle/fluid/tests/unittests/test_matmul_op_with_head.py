@@ -102,12 +102,6 @@ def reference_matmul_mul_head(
         Y = transpose_mat(Y)
 
     Out = matmul_head(X, Y, head_number)
-    if not Out.shape:
-        # We do not support 0-dimensional Tensors (scalars). So where
-        # np.matmul outputs a scalar, we must convert to a Tensor of
-        # shape (1, ) instead.
-        # Everywhere else, we are compatible with np.matmul.
-        Out = np.array([Out], dtype="float32")
     return Out
 
 
@@ -196,12 +190,6 @@ def reference_matmul_mul_head2(
         Y = transpose_mat(Y)
 
     Out = matmul_head2(X, Y, head_number)
-    if not Out.shape:
-        # We do not support 0-dimensional Tensors (scalars). So where
-        # np.matmul outputs a scalar, we must convert to a Tensor of
-        # shape (1, ) instead.
-        # Everywhere else, we are compatible with np.matmul.
-        Out = np.array([Out], dtype="float32")
     return Out
 
 

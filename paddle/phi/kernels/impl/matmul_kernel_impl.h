@@ -126,7 +126,7 @@ void MatMulFunctionImplWithBlas(
             M,
             N));
     VLOG(3) << "MatMul's case 1";
-    Out->Resize({1});
+    Out->Resize(phi::make_ddim({}));
     dev_ctx.template Alloc<T>(Out);
     blas.GEMM(CblasNoTrans,
               CblasTrans,
@@ -516,7 +516,7 @@ void MatMulFunctionImplWithCublasLt(
             N));
 
     // MatMul's case 0  =>  vector * vector
-    Out->Resize({1});
+    Out->Resize(phi::make_ddim({}));
     dev_ctx.template Alloc<T>(Out);
     VLOG(3) << "MatMul with blaslt case 1";
     blaslt::Run(dev_ctx,

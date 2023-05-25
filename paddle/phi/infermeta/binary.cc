@@ -2056,9 +2056,6 @@ void MatmulInferMeta(const MetaTensor& x,
   if (!y_broadcasted) {
     new_dims.push_back(N);
   }
-  if (x_broadcasted && y_broadcasted) {
-    new_dims.push_back(1);
-  }
 
   auto ddim_out = phi::make_ddim(new_dims);
 
