@@ -17,10 +17,11 @@ limitations under the License. */
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/kernels/activation_kernel.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/cross_entropy.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
-#include "paddle/phi/kernels/softmax_kernel.h"
+#include "paddle/phi/kernels/log_softmax_kernel.h"
 
 namespace phi {
 
@@ -29,6 +30,7 @@ void CrossEntropy(const CPUContext& dev_ctx,
                   const DenseTensor& x,
                   const DenseTensor& label,
                   bool soft_label,
+                  bool use_softmax,
                   int ignore_index,
                   int axis,
                   DenseTensor* out) {
@@ -64,8 +66,14 @@ void CrossEntropy(const CPUContext& dev_ctx,
   DenseTensor out_2d(*out);
   out_2d.Resize({n, d / axis_dim});
 
-  phi::funcs::CrossEntropyFunctor<CPUContext, T>()(
-      dev_ctx, &out_2d, &x_2d, &label_2d, soft_label, ignore_index, axis_dim);
+  phi::funcs::CrossEntropyFunctor<CPUContext, T>()(dev_ctx,
+                                                   &out_2d,
+                                                   &x_2d,
+                                                   &label_2d,
+                                                   soft_label,
+                                                   use_softmax,
+                                                   ignore_index,
+                                                   axis_dim);
 }
 
 template <typename T, typename Context>
@@ -81,16 +89,34 @@ void CrossEntropyWithSoftmaxKernel(const Context& dev_ctx,
                                    DenseTensor* loss) {
   // do not with softmax op, and input is softmax
   if (!use_softmax) {
-    CrossEntropy<T>(
-        dev_ctx, logits, label, soft_label, ignore_index, axis, loss);
+    CrossEntropy<T>(dev_ctx,
+                    logits,
+                    label,
+                    soft_label,
+                    use_softmax,
+                    ignore_index,
+                    axis,
+                    loss);
     // cause of input is softmax, copy to output softmax, directly
     phi::Copy<Context>(dev_ctx, logits, dev_ctx.GetPlace(), false, softmax);
     return;
   }
 
-  phi::SoftmaxKernel<T, Context>(dev_ctx, logits, axis, softmax);
-  CrossEntropy<T>(
-      dev_ctx, *softmax, label, soft_label, ignore_index, axis, loss);
+  // [ Why call LogSoftmaxKernel instead of SoftmaxKernel? ]
+  // CrossEntropy needs to calculate log(softmax(logits)). However,
+  // SoftmaxKernel will cast exp^i to exp^(-64), which leads to unacceptable
+  // precision to CrossEntropy.
+  phi::LogSoftmaxKernel<T, Context>(dev_ctx, logits, axis, softmax);
+  CrossEntropy<T>(dev_ctx,
+                  *softmax,
+                  label,
+                  soft_label,
+                  use_softmax,
+                  ignore_index,
+                  axis,
+                  loss);
+  // Call ExpKernel to restore the right softmax value.
+  phi::ExpKernel<T, Context>(dev_ctx, *softmax, softmax);
 }
 
 }  // namespace phi

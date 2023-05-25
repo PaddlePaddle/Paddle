@@ -73,22 +73,20 @@ struct LogSoftmaxFunctor {
       // axis == -1, axis and class in same dimension, calculate along
       // class dimension directly for higher performance
       log_softmax.device(*context.eigen_device()) =
-          (logits - logits.maximum(along_axis)
-                        .eval()
-                        .reshape(batch_by_one)
-                        .broadcast(one_by_class))
-              .unaryExpr(ValueClip<T>());
+          logits - logits.maximum(along_axis)
+                       .eval()
+                       .reshape(batch_by_one)
+                       .broadcast(one_by_class);
     } else {
       // axis != -1, class dimension split into (axis, remain), max and sum
       // should be calculated along axis dimension
       log_softmax.device(*context.eigen_device()) =
-          (logits.reshape(batch_axis_remain) - logits.reshape(batch_axis_remain)
-                                                   .maximum(along_axis)
-                                                   .eval()
-                                                   .reshape(batch_one_remain)
-                                                   .broadcast(one_axis_one)
-                                                   .reshape(batch_classes))
-              .unaryExpr(ValueClip<T>());
+          logits.reshape(batch_axis_remain) - logits.reshape(batch_axis_remain)
+                                                  .maximum(along_axis)
+                                                  .eval()
+                                                  .reshape(batch_one_remain)
+                                                  .broadcast(one_axis_one)
+                                                  .reshape(batch_classes);
     }
 
     log_softmax.device(*context.eigen_device()) =

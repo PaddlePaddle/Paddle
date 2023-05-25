@@ -56,6 +56,7 @@ class CrossEntropyOpKernel : public framework::OpKernel<T> {
         &x_2d,
         &labels_2d,
         ctx.Attr<bool>("soft_label"),
+        false,
         ctx.Attr<int>("ignore_index"),
         axis_dim);
   }

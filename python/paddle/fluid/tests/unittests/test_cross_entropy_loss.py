@@ -20,7 +20,7 @@ from test_softmax_with_cross_entropy_op import cross_entropy
 
 import paddle
 from paddle import fluid
-from paddle.fluid import Program, program_guard
+from paddle.fluid import Program, core, program_guard
 
 
 def log_softmax(x, axis=-1):
@@ -1853,6 +1853,33 @@ class TestCrossEntropyFAPIError(unittest.TestCase):
                     self.assertIsNotNone(static_ret)
 
             self.assertRaises(ValueError, static_test_WeightLength_NotEqual)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
+class TestCrossEntropyNumericalStability(unittest.TestCase):
+    def test_numerical_stability(self):
+        paddle.disable_static()
+        input_data = paddle.rand(shape=[20, 100]) * 100
+        label_data = paddle.randint(0, 100, shape=[20, 1], dtype="int64")
+
+        cpu_input = paddle.to_tensor(input_data, place=paddle.CPUPlace())
+        cpu_label = paddle.to_tensor(label_data, place=paddle.CPUPlace())
+        cpu_loss = paddle.nn.functional.cross_entropy(
+            input=cpu_input, label=cpu_label
+        )
+        self.assertTrue(cpu_loss.place.is_cpu_place())
+
+        gpu_input = paddle.to_tensor(input_data, place=paddle.CUDAPlace(0))
+        gpu_label = paddle.to_tensor(label_data, place=paddle.CUDAPlace(0))
+        gpu_loss = paddle.nn.functional.cross_entropy(
+            input=gpu_input, label=gpu_label
+        )
+        self.assertTrue(gpu_loss.place.is_gpu_place())
+
+        # cross_entropy_loss_1d clip softmax value to -64, hence we can only compare cpu and gpu result
+        np.testing.assert_allclose(cpu_loss.numpy(), gpu_loss.numpy())
 
 
 if __name__ == "__main__":
