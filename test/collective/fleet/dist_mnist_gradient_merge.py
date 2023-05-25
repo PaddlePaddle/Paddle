@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
+
+sys.path.append("../../legacy_test")
+
 from dist_mnist import cnn_model
 from test_dist_base import TestDistRunnerBase, _insert_comm_op, runtime_main
 

@@ -13,6 +13,9 @@
 # limitations under the License.
 
 import os
+import sys
+
+sys.path.append("../../legacy_test")
 
 import numpy as np
 from dist_mnist import cnn_model

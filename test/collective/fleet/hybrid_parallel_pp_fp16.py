@@ -16,7 +16,7 @@ import random
 import unittest
 
 import numpy as np
-from hybrid_parallel_pp_layer import AlexNet, AlexNetPipeDesc
+from legacy_test.hybrid_parallel_pp_layer import AlexNet, AlexNetPipeDesc
 
 import paddle
 import paddle.distributed as dist

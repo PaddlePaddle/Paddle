@@ -14,7 +14,7 @@
 
 import unittest
 
-from hybrid_parallel_pp_alexnet import TestDistPPTraning
+from legacy_test.hybrid_parallel_pp_alexnet import TestDistPPTraning
 
 import paddle
 

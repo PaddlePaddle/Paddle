@@ -13,11 +13,14 @@
 # limitations under the License.
 
 import os
+import sys
 import unittest
 
-from legacy_test.parallel_dygraph_sparse_embedding import TestSparseEmbedding
-from legacy_test.spawn_runner_base import TestDistSpawnRunner
-from legacy_test.test_dist_base import TestDistBase
+sys.path.append("../../legacy_test")
+
+from parallel_dygraph_sparse_embedding import TestSparseEmbedding
+from spawn_runner_base import TestDistSpawnRunner
+from test_dist_base import TestDistBase
 
 from paddle import fluid
 
@@ -33,7 +36,9 @@ class TestParallelDygraphSparseEmdedding(TestDistBase):
     def test_sparse_embedding(self):
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(
-                os.path.abspath("../../parallel_dygraph_sparse_embedding.py"),
+                os.path.abspath(
+                    "../../legacy_test/parallel_dygraph_sparse_embedding.py"
+                ),
                 delta=1e-5,
                 check_error_log=True,
                 log_name=flag_name,
@@ -50,7 +55,7 @@ class TestParallelDygraphSparseEmdeddingFP64(TestDistBase):
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(
                 os.path.abspath(
-                    "../../parallel_dygraph_sparse_embedding_fp64.py"
+                    "../../legacy_test/parallel_dygraph_sparse_embedding_fp64.py"
                 ),
                 delta=1e-5,
                 check_error_log=True,

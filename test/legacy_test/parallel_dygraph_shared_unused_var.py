@@ -12,8 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
+
 import numpy as np
-from test_dist_base import TestParallelDyGraphRunnerBase, runtime_main
+
+sys.path.append("..")
+
+from legacy_test.test_dist_base import (
+    TestParallelDyGraphRunnerBase,
+    runtime_main,
+)
 
 import paddle
 from paddle.fluid.dygraph.base import to_variable

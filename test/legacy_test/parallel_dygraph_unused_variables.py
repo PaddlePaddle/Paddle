@@ -12,7 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
+
 import numpy as np
+
+sys.path.append("..")
+
 from legacy_test.test_dist_base import (
     TestParallelDyGraphRunnerBase,
     runtime_main,
