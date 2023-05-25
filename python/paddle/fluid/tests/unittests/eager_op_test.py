@@ -1228,6 +1228,7 @@ class OpTest(unittest.TestCase):
             # to check inplace result instead of numpy.array_equal.
             expect_out = np.array(expect_outs[i])
             actual_out = np.array(actual_outs[i])
+            assert expect_out.shape == actual_out.shape
             if inplace_atol is not None:
                 np.testing.assert_allclose(
                     expect_out,
@@ -1718,41 +1719,24 @@ class OpTest(unittest.TestCase):
                 raise NotImplementedError("base class, not implement!")
 
             def _compare_numpy(self, name, actual_np, expect_np):
-                if actual_np.shape == expect_np.shape:
-                    np.testing.assert_allclose(
-                        actual_np,
-                        expect_np,
-                        atol=self.atol if hasattr(self, 'atol') else atol,
-                        rtol=self.rtol if hasattr(self, 'rtol') else rtol,
-                        equal_nan=equal_nan,
-                        err_msg=(
-                            "Operator ("
-                            + self.op_type
-                            + ") Output ("
-                            + name
-                            + ") has diff at "
-                            + str(place)
-                            + " in "
-                            + self.checker_name
-                        ),
-                    )
-                    return
-                self.op_test.assertTrue(
-                    np.allclose(
-                        actual_np,
-                        expect_np,
-                        atol=self.atol if hasattr(self, 'atol') else atol,
-                        rtol=self.rtol if hasattr(self, 'rtol') else rtol,
-                        equal_nan=equal_nan,
+                expect_np = np.array(expect_np)
+                assert actual_np.shape == expect_np.shape
+                np.testing.assert_allclose(
+                    actual_np,
+                    expect_np,
+                    atol=self.atol if hasattr(self, 'atol') else atol,
+                    rtol=self.rtol if hasattr(self, 'rtol') else rtol,
+                    equal_nan=equal_nan,
+                    err_msg=(
+                        "Operator ("
+                        + self.op_type
+                        + ") Output ("
+                        + name
+                        + ") has diff at "
+                        + str(place)
+                        + " in "
+                        + self.checker_name
                     ),
-                    "Operator ("
-                    + self.op_type
-                    + ") Output ("
-                    + name
-                    + ") has diff at "
-                    + str(place)
-                    + " in "
-                    + self.checker_name,
                 )
 
             def _compare_list(self, name, actual, expect):
@@ -1903,49 +1887,27 @@ class OpTest(unittest.TestCase):
                     self.op_test.disable_cal_ref_output()
 
             def _compare_numpy(self, name, actual_np, expect_np):
-                if (
-                    functools.reduce(lambda x, y: x * y, actual_np.shape, 1)
-                    == 0
-                    and functools.reduce(lambda x, y: x * y, expect_np.shape, 1)
-                    == 0
-                ):
+                expect_np = np.array(expect_np)
+                assert actual_np.shape == expect_np.shape
+                if actual_np.size == 0 and expect_np.size == 0:
                     pass
                 else:
-                    if actual_np.shape == expect_np.shape:
-                        np.testing.assert_allclose(
-                            actual_np,
-                            expect_np,
-                            atol=atol,
-                            rtol=self.rtol if hasattr(self, 'rtol') else rtol,
-                            equal_nan=equal_nan,
-                            err_msg=(
-                                "Operator ("
-                                + self.op_type
-                                + ") Output ("
-                                + name
-                                + ") has diff at "
-                                + str(place)
-                                + " in "
-                                + self.checker_name
-                            ),
-                        )
-                        return
-                    self.op_test.assertTrue(
-                        np.allclose(
-                            actual_np,
-                            expect_np,
-                            atol=atol,
-                            rtol=self.rtol if hasattr(self, 'rtol') else rtol,
-                            equal_nan=equal_nan,
+                    np.testing.assert_allclose(
+                        actual_np,
+                        expect_np,
+                        atol=atol,
+                        rtol=self.rtol if hasattr(self, 'rtol') else rtol,
+                        equal_nan=equal_nan,
+                        err_msg=(
+                            "Operator ("
+                            + self.op_type
+                            + ") Output ("
+                            + name
+                            + ") has diff at "
+                            + str(place)
+                            + " in "
+                            + self.checker_name
                         ),
-                        "Operator ("
-                        + self.op_type
-                        + ") Output ("
-                        + name
-                        + ") has diff at "
-                        + str(place)
-                        + " in "
-                        + self.checker_name,
                     )
 
             def convert_uint16_to_float_ifneed(self, actual_np, expect_np):
@@ -2238,6 +2200,7 @@ class OpTest(unittest.TestCase):
         atol=1e-5,
     ):
         for a, b, name in zip(numeric_grads, analytic_grads, names):
+            assert a.shape == b.shape
             # Used by bfloat16 for now to solve precision problem
             if self.is_bfloat16_op():
                 if a.size == 0:
