@@ -148,9 +148,6 @@ class TestElementwiseMulOp_ZeroDim1(ElementwiseMulOp):
         self.y = np.random.uniform(0.1, 1, []).astype(self.dtype)
         self.out = np.multiply(self.x, self.y)
 
-    def if_enable_cinn(self):
-        self.enable_cinn = False
-
 
 class TestElementwiseMulOp_ZeroDim2(ElementwiseMulOp):
     def init_input_output(self):
@@ -158,18 +155,12 @@ class TestElementwiseMulOp_ZeroDim2(ElementwiseMulOp):
         self.y = np.random.uniform(0.1, 1, []).astype(self.dtype)
         self.out = np.multiply(self.x, self.y)
 
-    def if_enable_cinn(self):
-        self.enable_cinn = False
-
 
 class TestElementwiseMulOp_ZeroDim3(ElementwiseMulOp):
     def init_input_output(self):
         self.x = np.random.uniform(0.1, 1, []).astype(self.dtype)
         self.y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
         self.out = np.multiply(self.x, self.y)
-
-    def if_enable_cinn(self):
-        self.enable_cinn = False
 
 
 class TestBF16ElementwiseMulOp(OpTest):
