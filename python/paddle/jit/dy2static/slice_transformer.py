@@ -36,9 +36,14 @@ class GetSetter:
 
     def __setitem__(self, item, value):
         if isinstance(self.obj, Variable):
-            return paddle.fluid.framework._setitem_impl_(self.obj, item, value)
+            new_var = paddle.fluid.framework._setitem_impl_(
+                self.obj, item, value
+            )
+            # NOTE(dev): Update __dict__ will not modify the id(), but only move the
+            # pointed reference object to the new one.
+            self.obj.__dict__.update(new_var.__dict__)
         elif hasattr(self.obj, '__setitem__'):
-            return self.obj.__setitem__(item, value)
+            self.obj.__setitem__(item, value)
         else:
             raise RuntimeError(
                 "Unsupport _jst.GSet for {} because it has no __setitem__ method.".format(
