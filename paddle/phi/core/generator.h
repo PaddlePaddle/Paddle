@@ -65,7 +65,7 @@ class Generator {
 
   uint64_t Random64();
 
-  std::pair<uint64_t, uint64_t> IncrementOffset(uint64_t increament_offset);
+  std::pair<uint64_t, uint64_t> IncrementOffset(uint64_t increment_offset);
 
   uint64_t get_device_id() { return this->state_.device; }
 

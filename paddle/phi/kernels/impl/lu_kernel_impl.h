@@ -237,7 +237,7 @@ void Tensor_Add(const Context& dev_ctx,
   out->Resize(src1.dims());
   dev_ctx.template Alloc<T>(out);
 
-  phi::AddRawKernel<T, Context>(dev_ctx, src1, src2, -1, out);
+  phi::AddKernel<T, Context>(dev_ctx, src1, src2, out);
 }
 
 template <typename Context, typename T>
@@ -248,7 +248,7 @@ void Tensor_Sub(const Context& dev_ctx,
   out->Resize(src1.dims());
   dev_ctx.template Alloc<T>(out);
 
-  phi::SubtractRawKernel<T, Context>(dev_ctx, src1, src2, -1, out);
+  phi::SubtractKernel<T, Context>(dev_ctx, src1, src2, out);
 }
 
 template <typename Context, typename T, size_t D>
@@ -474,7 +474,7 @@ void Unpack_Pivot(const Context& dev_ctx,
                   const DenseTensor& Pivot,
                   DenseTensor* P,
                   int h,
-                  int w) {
+                  int w UNUSED) {
   auto dims = Pivot.dims();
   auto Pdimvec = vectorize(dims);
   auto prank = Pdimvec.size();

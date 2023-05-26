@@ -37,12 +37,12 @@ mkdir -p build && cd build
 
 
 ```bash
-# setup proxy addresss, when the speed of internet is not good.
+# setup proxy address, when the speed of internet is not good.
 # export HTTP_PROXY='http://127.0.0.1:8080'
 # export HTTPS_PROXY='https://127.0.0.1:8080'
 
 # invoke build paddle script
-# all arguments, such as -j8 optinal, is past to make procedure.
+# all arguments, such as -j8 optional, is past to make procedure.
 ../paddle/scripts/musl_build/build_paddle.sh -j8
 
 # find output wheel package
@@ -57,7 +57,7 @@ ls ./output/*.whl
 # checkout paddle source code
 git clone https://github.com/PaddlePaddle/Paddle.git
 
-# entery paddle directory
+# enter paddle directory
 cd ./Paddle
 
 # build docker image
@@ -87,7 +87,7 @@ make -j8
 
 # Scripts
 1. **build_docker.sh**
-   compiling docker building script. it use alpine linux 3.10 as musl linux build enironment. it will try to install all the compiling tools, development packages, and python requirements for paddle musl compiling.
+   compiling docker building script. it use alpine linux 3.10 as musl linux build environment. it will try to install all the compiling tools, development packages, and python requirements for paddle musl compiling.
 
     environment variables:
    - PYTHON_VERSION: the version of python used for image building, default=3.7.
@@ -104,10 +104,10 @@ make -j8
 
     environment variables:
     - BUILD_MAN: build the paddle manually, default=0.
-    - WITH_TEST: build with unitest, and run unitest check, default=0.
+    - WITH_TEST: build with unittest, and run unittest check, default=0.
     - WITH_PRUNE_CONTAINER: remove the container after building, default=1.
-    - CTEST_*: CTEST flages used for unit test.
-    - FLAGS_*: build flages used for paddle building.
+    - CTEST_*: CTEST flags used for unit test.
+    - FLAGS_*: build flags used for paddle building.
     - HTTP_PROXY: use http proxy.
     - HTTPS_PROXY: use https proxy.
 
@@ -118,4 +118,4 @@ make -j8
 - **config.sh**: build config script for configure compiling option setting.
 - **Dockerfile**: build docker definition file.
 - **package.txt**: build required develop packages for alpine linux.
-- **REAME.md**: this file.
+- **README.md**: this file.

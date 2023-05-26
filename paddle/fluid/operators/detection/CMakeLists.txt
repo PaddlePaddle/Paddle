@@ -91,9 +91,5 @@ cc_library(
   mask_util
   SRCS mask_util.cc
   DEPS memory)
-cc_test(
-  mask_util_test
-  SRCS mask_util_test.cc
-  DEPS memory mask_util)
 detection_library(generate_mask_labels_op SRCS generate_mask_labels_op.cc DEPS
                   mask_util)

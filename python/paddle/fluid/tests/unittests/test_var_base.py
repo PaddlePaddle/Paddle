@@ -1127,7 +1127,7 @@ class TestVarBase(unittest.TestCase):
                 )
                 self.assertTrue(
                     isinstance(
-                        static_var.regularizer, fluid.regularizer.L1Decay
+                        static_var.regularizer, paddle.regularizer.L1Decay
                     )
                 )
         else:

@@ -438,8 +438,7 @@ def _getitem_impl_(var, item):
                 start = 0 if step > 0 else MAX_INTEGER
             if end is None:
                 if (
-                    paddle.fluid.framework._non_static_mode()
-                    or not is_tensor_array
+                    paddle.in_dynamic_mode() or not is_tensor_array
                 ) and var.shape[dim] != -1:
                     end = var.shape[dim] if step > 0 else -1
                 else:
@@ -552,7 +551,7 @@ def _getitem_impl_(var, item):
     out = var
     if len(axes) > 0:
         op_type = "strided_slice" if use_strided_slice else "slice"
-        if paddle.fluid.framework.in_dygraph_mode() and op_type == "slice":
+        if paddle.in_dynamic_mode() and op_type == "slice":
             if "StartsTensorList" in inputs.keys():
                 st = inputs['StartsTensorList']
             else:
@@ -622,11 +621,11 @@ def _setitem_for_tensor_array(var, item, value):
     If item is case (1), we perform paddle.tensor.array_write,
     in other cases, we raise a NotImplementedError.
     """
-    from ..framework import core, _non_static_mode
+
     from .framework import Variable
 
     assert (
-        not _non_static_mode()
+        not paddle.in_dynamic_mode()
     ), "setitem for tensor_array must be called in static graph mode."
     if isinstance(item, (Variable, int)):
         from paddle.jit.dy2static.variable_trans_func import (
@@ -810,7 +809,7 @@ def _setitem_impl_(var, item, value):
             )
         )
 
-    if paddle.fluid.framework._non_static_mode():
+    if paddle.in_dynamic_mode():
         var._bump_inplace_version()
         output = var
     else:

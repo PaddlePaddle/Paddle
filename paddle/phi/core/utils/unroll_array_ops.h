@@ -32,7 +32,7 @@ struct UnrollFillConstant {
 template <size_t kStart, size_t kEnd>
 struct UnrollFillConstant<kStart, kEnd, true> {
   template <typename T>
-  HOSTDEVICE inline static void Run(T *data, T val) {}
+  HOSTDEVICE inline static void Run(T *data UNUSED, T val UNUSED) {}
 };
 
 template <size_t kStart, size_t kEnd, bool kStop>

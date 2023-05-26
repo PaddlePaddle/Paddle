@@ -67,7 +67,7 @@ class TensorRTDynamicShapeValueEngineTest : public ::testing::Test {
         {"shape", {18, 8, 4}}};
     engine_ = new TensorRTEngine(16,
                                  1 << 10,
-                                 AnalysisConfig::Precision::kFloat32,
+                                 phi::DataType::FLOAT32,
                                  nullptr,
                                  0,
                                  true,
@@ -194,7 +194,7 @@ class TensorRTDynamicEngineTest : public ::testing::Test {
 
     engine_ = new TensorRTEngine(16,
                                  1 << 10,
-                                 AnalysisConfig::Precision::kHalf,
+                                 phi::DataType::FLOAT16,
                                  nullptr,
                                  0,
                                  true,
@@ -372,7 +372,7 @@ class TensorRTDynamicTestFusedTokenPrune : public ::testing::Test {
 
     engine_ = new TensorRTEngine(16,
                                  1 << 10,
-                                 AnalysisConfig::Precision::kFloat32,
+                                 phi::DataType::FLOAT32,
                                  nullptr,
                                  0,
                                  true,
@@ -581,7 +581,7 @@ class TensorRTDynamicTestFusedTokenPruneHalf : public ::testing::Test {
 
     engine_ = new TensorRTEngine(16,
                                  1 << 10,
-                                 AnalysisConfig::Precision::kHalf,
+                                 phi::DataType::FLOAT16,
                                  nullptr,
                                  0,
                                  true,
@@ -784,7 +784,7 @@ class TensorRTDynamicShapeGNTest : public ::testing::Test {
 
     engine_ = new TensorRTEngine(16,
                                  1 << 10,
-                                 AnalysisConfig::Precision::kInt8,
+                                 phi::DataType::INT8,
                                  nullptr,
                                  0,
                                  true,

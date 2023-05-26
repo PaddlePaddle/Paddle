@@ -31,12 +31,17 @@ cc_library(
   inference_op_replace_pass
   SRCS inference_op_replace_pass.cc
   DEPS analysis_pass graph_to_program_pass)
+cc_library(
+  save_optimized_model_pass
+  SRCS save_optimized_model_pass.cc
+  DEPS analysis_pass argument ir_pass_manager graph_to_program_pass)
 
 cc_library(
   analysis_passes
   SRCS passes.cc
   DEPS ir_graph_build_pass
        ir_analysis_pass
+       save_optimized_model_pass
        ir_params_sync_among_devices_pass
        adjust_cudnn_workspace_size_pass
        memory_optim_pass

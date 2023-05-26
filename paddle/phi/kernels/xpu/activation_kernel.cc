@@ -195,13 +195,6 @@ void PowKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const Scalar& factor,
                DenseTensor* out) {
-  // using XPUType = typename XPUTypeTrait<T>::Type;
-  // // dev_ctx.template Alloc<T>(out);
-  // auto pow_factor = factor.to<T>();
-  // const auto* x_data = reinterpret_cast<const XPUType*>(x.data<T>());
-  // auto* y_data = reinterpret_cast<XPUType*>(dev_ctx.template Alloc<T>(out));
-  // // const T* x_data = x.data<T>();
-  // // T* y_data = out->data<T>();
   dev_ctx.template Alloc<T>(out);
   float pow_factor = factor.to<float>();
   const T* x_data = x.data<T>();
@@ -340,9 +333,15 @@ struct XPUSiluFunctor : public funcs::BaseActivationFunctor<T> {
     XPUType* y_data = reinterpret_cast<XPUType*>(out->data<T>());
 
     auto xpu_context = dev_ctx.x_context();
-    int r =
-        xpu::swish(xpu_context, x_data, y_data, x.numel(), nullptr, nullptr);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "swish");
+    if (std::getenv("XPU_PADDLE_ACT_LUT") != nullptr) {
+      int r = xpu::fast_swish(
+          xpu_context, x_data, y_data, x.numel(), nullptr, nullptr);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "fast_swish");
+    } else {
+      int r =
+          xpu::swish(xpu_context, x_data, y_data, x.numel(), nullptr, nullptr);
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "swish");
+    }
   }
 };
 
@@ -578,16 +577,11 @@ PD_REGISTER_KERNEL(
 
 PD_REGISTER_ACTIVATION_KERNEL(exp, ExpKernel)  // no grad
 PD_REGISTER_ACTIVATION_KERNEL(floor, FloorKernel)
-// PD_REGISTER_ACTIVATION_KERNEL(leaky_relu, LeakyReluKernel)
-// PD_REGISTER_ACTIVATION_KERNEL(hard_sigmoid, HardSigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(hardswish, HardSwishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(mish, MishKernel)
 PD_REGISTER_ACTIVATION_KERNEL(pow, PowKernel)
 PD_REGISTER_ACTIVATION_KERNEL(reciprocal, ReciprocalKernel)
 PD_REGISTER_ACTIVATION_KERNEL(relu6_raw, Relu6RawKernel)
-// PD_REGISTER_ACTIVATION_KERNEL(sigmoid, SigmoidKernel)
-// PD_REGISTER_ACTIVATION_KERNEL(sqrt, SqrtKernel)
-// PD_REGISTER_ACTIVATION_KERNEL(swish_raw, SwishRawKernel)
 PD_REGISTER_ACTIVATION_KERNEL(softplus, SoftplusKernel)
 PD_REGISTER_ACTIVATION_KERNEL(sin, SinKernel)
 PD_REGISTER_ACTIVATION_KERNEL(cos, CosKernel)

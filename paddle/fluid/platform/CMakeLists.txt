@@ -123,7 +123,6 @@ cc_library(
        framework_proto
        ${IPU_CTX_DEPS}
        ${GPU_CTX_DEPS}
-       ${NPU_CTX_DEPS}
        ${MKLDNN_CTX_DEPS}
        ${dgc_deps}
        dlpack
@@ -357,15 +356,11 @@ if(WITH_ROCM)
 endif()
 
 if(NOT APPLE AND NOT WIN32)
-  cc_library(
-    device_code
-    SRCS device_code.cc
-    DEPS device_context)
   if(WITH_GPU OR WITH_ROCM)
     cc_test(
       device_code_test
       SRCS device_code_test.cc
-      DEPS device_code lod_tensor)
+      DEPS phi_backends lod_tensor)
   endif()
 endif()
 

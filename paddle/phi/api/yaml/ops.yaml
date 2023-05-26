@@ -5,6 +5,16 @@
 # are consistent and correspond one-to-one. It's forbidden that the
 # operator configured in this yaml file does not have Python API.
 
+- op : abs
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : RealAndImagInferMeta
+  kernel :
+    func : abs
+    data_type : x
+  backward : abs_grad
+
 - op : accuracy
   args : (Tensor x, Tensor indices, Tensor label)
   output : Tensor(accuracy), Tensor(correct), Tensor(total)
@@ -863,6 +873,17 @@
     data_type : x
   backward : grid_sample_grad
 
+- op : group_norm
+  args : (Tensor x, Tensor scale, Tensor bias, float epsilon = 1e-5, int groups = -1, str data_layout = "NCHW")
+  output : Tensor(y), Tensor(mean), Tensor(variance)
+  infer_meta :
+    func : GroupNormInferMeta
+  kernel :
+    func : group_norm
+  optional : scale, bias
+  intermediate : mean, variance
+  backward : group_norm_grad
+
 - op : gumbel_softmax
   args : (Tensor x, float temperature = 1.0, bool hard = false, int axis = -1)
   output : Tensor
@@ -920,6 +941,42 @@
   intermediate : residual
   backward : huber_loss_grad
 
+- op : i0
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : i0
+  backward : i0_grad
+
+- op : i0e
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : i0e
+  backward : i0e_grad
+
+- op : i1
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : i1
+  backward : i1_grad
+
+- op : i1e
+  args : (Tensor x)
+  output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
+  kernel :
+    func : i1e
+  backward : i1e_grad
+
 - op : imag
   args : (Tensor x)
   output : Tensor (out)
@@ -940,6 +997,17 @@
   inplace : (x -> out)
   backward : index_add_grad
 
+- op : index_put
+  args : (Tensor x, Tensor[] indices, Tensor value, bool accumulate=false)
+  output : Tensor(out)
+  infer_meta :
+    func : IndexPutInferMeta
+  kernel :
+    func : index_put
+    data_type : x
+  inplace : (x -> out)
+  backward : index_put_grad
+
 - op : index_sample
   args : (Tensor x, Tensor index)
   output : Tensor
@@ -959,6 +1027,18 @@
     func : index_select
     data_type : x
   backward : index_select_grad
+
+- op : instance_norm
+  args : (Tensor x, Tensor scale, Tensor bias, float epsilon=1e-5)
+  output : Tensor(y), Tensor(saved_mean), Tensor(saved_variance)
+  infer_meta :
+    func : InstanceNormInferMeta
+  kernel :
+    func : instance_norm
+    data_type : x
+  optional : scale, bias
+  intermediate : saved_mean, saved_variance
+  backward : instance_norm_grad
 
 - op : inverse
   args : (Tensor x)
@@ -1065,6 +1145,18 @@
     data_type : param
   optional : master_param, skip_update, beta1_pow_out, beta2_pow_out, master_param_outs
   inplace : (param -> param_out), (moment1 -> moment1_out), (moment2 -> moment2_out), (beta1_pow -> beta1_pow_out), (beta2_pow -> beta2_pow_out), (master_param -> master_param_outs)
+
+- op : layer_norm
+  args : (Tensor x, Tensor scale, Tensor bias, float epsilon = 1e-5, int begin_norm_axis = 1)
+  output : Tensor(out), Tensor(mean), Tensor(variance)
+  infer_meta :
+    func : LayerNormInferMeta
+  kernel :
+    func : layer_norm
+    data_type : x
+  backward : layer_norm_grad
+  intermediate : mean, variance
+  optional : scale, bias
 
 - op : leaky_relu
   args : (Tensor x, float negative_slope = 0.02f)
@@ -1230,6 +1322,16 @@
   kernel :
     func : logsigmoid
   backward : logsigmoid_grad
+
+- op : lstsq
+  args : (Tensor x, Tensor y, Scalar rcond=0.0f, str driver="gels")
+  output : Tensor(solution), Tensor(residuals), Tensor(rank), Tensor(singular_values)
+  infer_meta :
+    func : LstsqInferMeta
+  kernel :
+    func : lstsq
+    data_type : x
+  optional : residuals
 
 - op : lu
   args : (Tensor x, bool pivot = true)
@@ -1536,6 +1638,15 @@
   kernel :
     func : p_norm
   backward : p_norm_grad
+
+- op : pad3d
+  args : (Tensor x, IntArray paddings, str mode = "constant", float pad_value = 0.0, str data_format = "NCDHW")
+  output : Tensor(out)
+  infer_meta :
+    func : Pad3dInferMeta
+  kernel :
+    func : pad3d
+  backward : pad3d_grad
 
 - op : pixel_shuffle
   args : (Tensor x, int upscale_factor=1, str data_format="NCHW")
@@ -2151,16 +2262,6 @@
     func : unique_consecutive
     data_type : x
   optional : index, counts
-
-- op : unpool
-  args: (Tensor x, Tensor indices, int[] ksize, int[] strides = {1,1}, int[] paddings ={0,0} ,IntArray output_size = {0,0}, str data_format="NCHW")
-  output: Tensor(out)
-  infer_meta:
-    func: UnpoolInferMeta
-  kernel:
-    func: unpool
-    data_type: x
-  backward: unpool_grad
 
 - op : unpool3d
   args: (Tensor x, Tensor indices, int[] ksize, int[] strides={1,1,1}, int[] paddings={0,0,0}, int[] output_size={0,0,0}, str data_format="NCDHW")

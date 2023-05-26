@@ -210,7 +210,7 @@ static T compute_factor(size_t size, FFTNormMode normalization) {
 
 template <typename Ti, typename To>
 struct FFTC2CFunctor<phi::CPUContext, Ti, To> {
-  void operator()(const phi::CPUContext& ctx,
+  void operator()(const phi::CPUContext& ctx UNUSED,
                   const DenseTensor& x,
                   DenseTensor* out,
                   const std::vector<int64_t>& axes,
@@ -253,7 +253,7 @@ struct FFTC2CFunctor<phi::CPUContext, Ti, To> {
 
 template <typename Ti, typename To>
 struct FFTR2CFunctor<phi::CPUContext, Ti, To> {
-  void operator()(const phi::CPUContext& ctx,
+  void operator()(const phi::CPUContext& ctx UNUSED,
                   const DenseTensor& x,
                   DenseTensor* out,
                   const std::vector<int64_t>& axes,
@@ -310,7 +310,7 @@ struct FFTR2CFunctor<phi::CPUContext, Ti, To> {
 
 template <typename Ti, typename To>
 struct FFTC2RFunctor<phi::CPUContext, Ti, To> {
-  void operator()(const phi::CPUContext& ctx,
+  void operator()(const phi::CPUContext& ctx UNUSED,
                   const DenseTensor& x,
                   DenseTensor* out,
                   const std::vector<int64_t>& axes,
