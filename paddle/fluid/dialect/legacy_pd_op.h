@@ -36,9 +36,10 @@ namespace dialect {
 
 // TODO(zhangbo): As operators are supplemented and defined, they are gradually
 // removed.
-REIGSTER_EMPTY_OP(conv2d, Conv2DOp);           // To be customized: conv2d
-REIGSTER_EMPTY_OP(feed, FeedOp);               // To be customized: feed
-REIGSTER_EMPTY_OP(batch_norm, BatchNormOp);    // To be customized: batch_norm
+REIGSTER_EMPTY_OP(conv2d, Conv2DOp);  // To be customized: conv2d
+REIGSTER_EMPTY_OP(feed, FeedOp);      // To be customized: feed
+// REIGSTER_EMPTY_OP(batch_norm, BatchNormOp);    // To be customized:
+// batch_norm
 REIGSTER_EMPTY_OP(batch_norm_, BatchNormOp_);  // To be customized: batch_norm_
 REIGSTER_EMPTY_OP(elementwise_add,
                   ElementwiseAddOp);  // To be customized: add (elementwise_add)
@@ -74,10 +75,10 @@ REIGSTER_EMPTY_OP(
     FlattenContiguousRangeGradOp);  //   flatten_grad
                                     //   (flatten_contiguous_range_grad)
 REIGSTER_EMPTY_OP(pool2d_grad, Pool2DGradOp);  // To be customized: pool2d_grad
-REIGSTER_EMPTY_OP(batch_norm_grad,
-                  BatchNormGradOp);  // To be customized: batch_norm_grad
+// REIGSTER_EMPTY_OP(batch_norm_grad,
+//                   BatchNormGradOp);  // To be customized: batch_norm_grad
 REIGSTER_EMPTY_OP(conv2d_grad, Conv2DGradOp);  // To be customized: conv2d_grad
-REIGSTER_EMPTY_OP(sum, SumOp);           // To be customized: sum(reduce_sum)
+// REIGSTER_EMPTY_OP(sum, SumOp);           // To be customized: sum(reduce_sum)
 REIGSTER_EMPTY_OP(fetch_v2, FetchV2Op);  // To be customized: fetch_v2
 
 }  // namespace dialect

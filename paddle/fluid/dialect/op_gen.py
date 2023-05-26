@@ -29,7 +29,10 @@ H_FILE_TEMPLATE = """#ifdef GET_OP_LIST
 {op_declare}
 #else
 
+#include <vector>
+
 #include "paddle/ir/op_base.h"
+#include "paddle/fluid/dialect/utils.h"
 
 {input}
 #endif
@@ -45,6 +48,9 @@ class {op_name} : public ir::Op<{op_name}{interfaces}{traits}> {{
   static const char *name() {{ return "{dialect_op_name}"; }}
   {attribute_declare}
   static constexpr uint32_t attributes_num = {attribute_num};
+  static std::vector<paddle::dialect::OpInputInfo> inputs_info();
+  static std::vector<paddle::dialect::OpOutputInfo> outputs_info();
+  static std::vector<paddle::dialect::OpAttributeInfo> attributes_info();
   static void verify(const std::vector<ir::OpResult> &inputs, const std::vector<ir::Type> &outputs, const ir::AttributeMap &attributes);
 {get_inputs_and_outputs}
 }};
@@ -79,6 +85,37 @@ OP_N_ATTRIBUTE_DEFINED_TEMPLATE = """
 const char *{op_name}::attributes_name[{attribute_num}] = {{ {attribute_names} }};
 """
 
+# get op input info
+OP_INPUT_INFO_TEMPLATE = """
+std::vector<paddle::dialect::OpInputInfo> {op_name}::inputs_info() {{
+  return {{ {impl} }};
+}}
+"""
+CONSTRUCT_INPUT_INFO_TEMPLATE = (
+    """OpInputInfo("{name}", "{typename}", {optional}, {no_need_buffer})"""
+)
+
+# get op output info
+OP_OUTPUT_INFO_TEMPLATE = """
+std::vector<paddle::dialect::OpOutputInfo> {op_name}::outputs_info() {{
+  return {{ {impl} }};
+}}
+"""
+CONSTRUCT_OUTPUT_INFO_TEMPLATE = (
+    """OpOutputInfo("{name}", "{typename}", {optional}, {intermediate})"""
+)
+
+# get op attribute info
+OP_ATTRIBUTE_INFO_TEMPLATE = """
+std::vector<paddle::dialect::OpAttributeInfo> {op_name}::attributes_info() {{
+  return {{ {impl} }};
+}}
+"""
+CONSTRUCT_ATTRIBUTE_INFO_TEMPLATE = (
+    """OpAttributeInfo("{name}", "{typename}", "{data_type}")"""
+)
+
+# verify
 OP_VERIFY_TEMPLATE = """
 void {op_name}::verify(const std::vector<ir::OpResult> &inputs, const std::vector<ir::Type> &outputs, const ir::AttributeMap &attributes) {{
   VLOG(4) << "Verifying inputs, outputs and attributes for: {op_name}.";
@@ -170,32 +207,65 @@ ATTRIBUTE_VECTOR_CHECK_TEMPLATE = """PADDLE_ENFORCE_EQ(attributes.at("{attribute
   """
 
 
+def to_phi_and_fluid_op_name(op_item):
+    # Templat: - op : phi_name (fluid_name)
+    names = op_item.split('(')
+    if len(names) == 1:
+        phi_fluid_name = names[0].strip()
+        return phi_fluid_name, phi_fluid_name
+    else:
+        phi_name = names[0].strip()
+        fluid_name = names[1].split(')')[0].strip()
+        return phi_name, fluid_name
+
+
 # =====================================
-# Parse Op information from Yaml item
+# Parse Op Compat From Yaml
+# =====================================
+class OpCompatParser:
+    def __init__(self, ops_compat_yaml_file):
+        self.ops_compat_yaml_file = ops_compat_yaml_file
+        with open(self.ops_compat_yaml_file, "r") as f:
+            self.ops_compat = yaml.safe_load(f)
+
+    def get_compat(self, op_name):
+        for compat in self.ops_compat:
+            phi_name, fluid_name = to_phi_and_fluid_op_name(compat['op'])
+            if op_name == phi_name:
+                return compat
+        return None
+
+
+# =====================================
+# Parse Op Information From Yaml
 # =====================================
 class OpInfoParser:
-    def __init__(self, op_yaml_item):
+    def __init__(self, op_yaml_item, op_compat_item):
         self.op_yaml_item = op_yaml_item
+        self.op_compat_item = op_compat_item
         self.op_phi_name = self.parse_op_phi_name()
-
+        # parse inputs
         self.input_name_list = self.parse_input_name_list()
         self.input_type_list = self.parse_input_type_list()
         self.input_optional_list = self.parse_input_optional_list()
+        self.input_no_need_buffer_list = self.parse_input_no_need_buffer_list()
         self.cross_check(
             self.input_name_list, self.input_type_list, self.input_optional_list
         )
-
+        # parse outputs
         self.output_name_list = self.parse_output_name_list()
         self.output_type_list = self.parse_output_type_list()
         self.output_optional_list = self.parse_output_optional_list()
+        self.output_intermediate_list = self.parse_output_intermediate_list()
         self.cross_check(
             self.output_name_list,
             self.output_type_list,
             self.output_optional_list,
         )
-
+        # parse attributes
         self.attribute_name_list = self.parse_attribute_name_list()
         self.attribute_type_list = self.parse_attribute_type_list()
+        self.attribute_data_type_list = self.parse_attribute_data_type_list()
         self.cross_check(self.attribute_name_list, self.attribute_type_list)
 
     def cross_check(self, name_list, type_list, optional_list=None):
@@ -229,8 +299,20 @@ class OpInfoParser:
     def parse_input_optional_list(self):
         optional_list = []
         for input_info in self.op_yaml_item['inputs']:
-            optional_list.append(input_info['optional'])
+            if input_info['optional']:
+                optional_list.append("true")
+            else:
+                optional_list.append("false")
         return optional_list
+
+    def parse_input_no_need_buffer_list(self):
+        no_need_buffer_list = []
+        for input_info in self.op_yaml_item['inputs']:
+            if input_info['no_need_buffer']:
+                no_need_buffer_list.append("true")
+            else:
+                no_need_buffer_list.append("false")
+        return no_need_buffer_list
 
     def parse_output_name_list(self):
         name_list = []
@@ -255,10 +337,25 @@ class OpInfoParser:
         optional_list = []
         for output_info in self.op_yaml_item['outputs']:
             if 'optional' in output_info:
-                optional_list.append(output_info['optional'])
+                if output_info['optional']:
+                    optional_list.append("true")
+                else:
+                    optional_list.append("false")
             else:
-                optional_list.append(False)
+                optional_list.append("false")
         return optional_list
+
+    def parse_output_intermediate_list(self):
+        intermediate_list = []
+        for output_info in self.op_yaml_item['outputs']:
+            if 'intermediate' in output_info:
+                if output_info['intermediate']:
+                    intermediate_list.append("true")
+                else:
+                    intermediate_list.append("false")
+            else:
+                intermediate_list.append("false")
+        return intermediate_list
 
     def parse_attribute_name_list(self):
         name_list = []
@@ -301,6 +398,15 @@ class OpInfoParser:
             type_list.append(attr_types_map[attribute_info['typename']])
         return type_list
 
+    def parse_attribute_data_type_list(self):
+        data_type_list = []
+        for attribute_info in self.op_yaml_item['attrs']:
+            if 'data_type' in attribute_info:
+                data_type_list.append(attribute_info['data_type'])
+            else:
+                data_type_list.append("")
+        return data_type_list
+
     def parse_op_phi_name(self):
         return self.op_yaml_item['name']
 
@@ -314,10 +420,11 @@ def to_pascal_case(s):
 
 
 # =====================================
-# Generate op definition files
+# Generate Op Definition Files
 # =====================================
 def OpGenerator(
     op_yaml_files,
+    op_compat_yaml_file,
     namespaces,
     dialect_name,
     op_def_h_file,
@@ -330,6 +437,8 @@ def OpGenerator(
         os.remove(op_def_cc_file)
 
     # (2) Prepare: Get all op item in all op_yaml_files
+    op_compat_parser = OpCompatParser(op_compat_yaml_file)
+
     op_yaml_items = []
     for yaml_file in op_yaml_files:
         with open(yaml_file, "r") as f:
@@ -337,7 +446,9 @@ def OpGenerator(
             op_yaml_items = op_yaml_items + ops
     op_info_items = []
     for op in op_yaml_items:
-        op_info_items.append(OpInfoParser(op))
+        op_info_items.append(
+            OpInfoParser(op, op_compat_parser.get_compat(op['name']))
+        )
 
     # (3) CodeGen: Traverse op_info_items and generate
     ops_name_list = []  # all op class name store in this list
@@ -351,11 +462,14 @@ def OpGenerator(
         op_input_name_list = op_info.input_name_list
         op_input_type_list = op_info.input_type_list
         op_input_optional_list = op_info.input_optional_list
+        op_input_no_need_buffer_list = op_info.input_no_need_buffer_list
         op_output_name_list = op_info.output_name_list
         op_output_type_list = op_info.output_type_list
         op_output_optional_list = op_info.output_optional_list
+        op_output_intermediate_list = op_info.output_intermediate_list
         op_attribute_name_list = op_info.attribute_name_list
         op_attribute_type_list = op_info.attribute_type_list
+        op_attribute_data_type_list = op_info.attribute_data_type_list
         op_interfaces = []
         op_traits = []
 
@@ -370,11 +484,16 @@ def OpGenerator(
         op_get_inputs_outputs_str = ""
         for idx in range(len(op_input_name_list)):
             op_get_inputs_outputs_str += OP_GET_INPUT_TEMPLATE.format(
-                input_name=op_input_name_list[idx], input_index=idx
+                input_name="input_" + str(idx) + "_" + op_input_name_list[idx],
+                input_index=idx,
             )
         for idx in range(len(op_output_name_list)):
             op_get_inputs_outputs_str += OP_GET_OUTPUT_TEMPLATE.format(
-                output_name=op_output_name_list[idx], output_index=idx
+                output_name="output_"
+                + str(idx)
+                + "_"
+                + op_output_name_list[idx],
+                output_index=idx,
             )
 
         # gen op_declare_str/op_defined_str
@@ -410,6 +529,59 @@ def OpGenerator(
                 attribute_names=attribute_names_str,
             )
 
+        # generate get op info funciton: inputs
+        inputs_info_str = ""
+        if len(op_input_name_list) > 0:
+            input_info_list = []
+            for idx in range(len(op_input_name_list)):
+                input_info_list.append(
+                    CONSTRUCT_INPUT_INFO_TEMPLATE.format(
+                        name=op_input_name_list[idx],
+                        typename=op_input_type_list[idx],
+                        optional=op_input_optional_list[idx],
+                        no_need_buffer=op_input_no_need_buffer_list[idx],
+                    )
+                )
+            inputs_info_str = ", ".join(input_info_list)
+        op_inputs_info_func_str = OP_INPUT_INFO_TEMPLATE.format(
+            op_name=op_class_name, impl=inputs_info_str
+        )
+
+        # generate get op info funciton: outputs
+        outputs_info_str = ""
+        if len(op_output_name_list) > 0:
+            output_info_list = []
+            for idx in range(len(op_output_name_list)):
+                output_info_list.append(
+                    CONSTRUCT_OUTPUT_INFO_TEMPLATE.format(
+                        name=op_output_name_list[idx],
+                        typename=op_output_type_list[idx],
+                        optional=op_output_optional_list[idx],
+                        intermediate=op_output_intermediate_list[idx],
+                    )
+                )
+            outputs_info_str = ", ".join(output_info_list)
+        op_outputs_info_func_str = OP_OUTPUT_INFO_TEMPLATE.format(
+            op_name=op_class_name, impl=outputs_info_str
+        )
+
+        # generate get op info funciton: attributes
+        attribute_info_str = ""
+        if len(op_attribute_name_list) > 0:
+            attribute_info_list = []
+            for idx in range(len(op_attribute_name_list)):
+                attribute_info_list.append(
+                    CONSTRUCT_ATTRIBUTE_INFO_TEMPLATE.format(
+                        name=op_attribute_name_list[idx],
+                        typename=op_attribute_type_list[idx],
+                        data_type=op_attribute_data_type_list[idx],
+                    )
+                )
+            attribute_info_str = ", ".join(attribute_info_list)
+        op_attributes_info_func_str = OP_ATTRIBUTE_INFO_TEMPLATE.format(
+            op_name=op_class_name, impl=attribute_info_str
+        )
+
         # generate op verify function: inputs_type_check_str
         if len(op_input_type_list) == 0:
             inputs_type_check_str = (
@@ -425,7 +597,7 @@ def OpGenerator(
                 is_vector = True
                 input_type = input_type[15:-1]
             check_str = ""
-            if is_optional:
+            if is_optional == "true":
                 if is_vector:
                     check_str = INPUT_OPTIONAL_VECTORTYPE_CHECK_TEMPLATE.format(
                         index=idx, standard=input_type
@@ -460,7 +632,7 @@ def OpGenerator(
                 is_vector = True
                 output_type = output_type[15:-1]
             check_str = ""
-            if is_optional:
+            if is_optional == "true":
                 if is_vector:
                     check_str = (
                         OUTPUT_OPTIONAL_VECTORTYPE_CHECK_TEMPLATE.format(
@@ -515,6 +687,9 @@ def OpGenerator(
         ops_name_list.append(op_class_name)
         ops_declare_list.append(op_declare_str)
         ops_defined_list.append(op_defined_str)
+        ops_defined_list.append(op_inputs_info_func_str)
+        ops_defined_list.append(op_outputs_info_func_str)
+        ops_defined_list.append(op_attributes_info_func_str)
         ops_defined_list.append(op_verify_str)
 
     # (4) Generate head file str
@@ -588,6 +763,7 @@ if __name__ == "__main__":
     # auto code generate
     OpGenerator(
         op_yaml_files,
+        op_compat_yaml_file,
         namespaces,
         dialect_name,
         op_def_h_file,

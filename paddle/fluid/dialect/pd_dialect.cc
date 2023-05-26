@@ -113,7 +113,7 @@ void PaddleDialect::initialize() {
   RegisterInterfaces<ParameterConvertInterface>();
   RegisterOps<Conv2DOp,
               FeedOp,
-              BatchNormOp,
+              // BatchNormOp,
               BatchNormOp_,
               ElementwiseAddOp,
               Pool2DOp,
@@ -130,9 +130,9 @@ void PaddleDialect::initialize() {
               MatmulV2GradOp,
               FlattenContiguousRangeGradOp,
               Pool2DGradOp,
-              BatchNormGradOp,
+              // BatchNormGradOp,
               Conv2DGradOp,
-              SumOp,
+              // SumOp,
               FetchV2Op>();
 }
 
