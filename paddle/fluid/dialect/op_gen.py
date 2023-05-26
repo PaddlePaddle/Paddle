@@ -33,6 +33,7 @@ H_FILE_TEMPLATE = """#ifdef GET_OP_LIST
 
 #include "paddle/ir/op_base.h"
 #include "paddle/fluid/dialect/utils.h"
+#include "paddle/fluid/dialect/pd_interface.h"
 
 {input}
 #endif
@@ -48,9 +49,7 @@ class {op_name} : public ir::Op<{op_name}{interfaces}{traits}> {{
   static const char *name() {{ return "{dialect_op_name}"; }}
   {attribute_declare}
   static constexpr uint32_t attributes_num = {attribute_num};
-  static std::vector<paddle::dialect::OpInputInfo> inputs_info();
-  static std::vector<paddle::dialect::OpOutputInfo> outputs_info();
-  static std::vector<paddle::dialect::OpAttributeInfo> attributes_info();
+  static OpInfoTuple GetOpInfo();
   static void verify(const std::vector<ir::OpResult> &inputs, const std::vector<ir::Type> &outputs, const ir::AttributeMap &attributes);
 {get_inputs_and_outputs}
 }};
@@ -86,6 +85,15 @@ const char *{op_name}::attributes_name[{attribute_num}] = {{ {attribute_names} }
 """
 
 # get op input info
+OP_INFO_TEMPLATE = """
+OpInfoTuple {op_name}::GetOpInfo() {{
+    std::vector<paddle::dialect::OpInputInfo> inputs = {{ {inputs} }};
+    std::vector<paddle::dialect::OpAttributeInfo> attributes = {{ {attributes} }};
+    std::vector<paddle::dialect::OpOutputInfo> outputs = {{ {outputs} }};
+    return std::make_tuple(inputs, attributes, outputs);
+}}
+"""
+
 OP_INPUT_INFO_TEMPLATE = """
 std::vector<paddle::dialect::OpInputInfo> {op_name}::inputs_info() {{
   return {{ {impl} }};
@@ -481,11 +489,10 @@ def OpGenerator(
         op_attribute_name_list = op_info.attribute_name_list
         op_attribute_type_list = op_info.attribute_type_list
         op_attribute_data_type_list = op_info.attribute_data_type_list
-        op_interfaces = []
+        op_interfaces = ["GetOpInfoInterface"]
         op_traits = []
 
         # If op has inplace info, we will generate inplace op and non-inplace op.
-        print("op_info.op_phi_name: ", op_info.op_phi_name)
         for op_name in op_info.op_phi_name:
             op_class_name = to_pascal_case(op_name) + "Op"
             op_dialect_name = dialect_name + "." + op_name
@@ -495,7 +502,7 @@ def OpGenerator(
             if len(op_interfaces) > 0:
                 op_interfaces_str = "," + ",".join(op_interfaces)
             op_traits_str = ""
-            if len(op_interfaces) > 0:
+            if len(op_traits) > 0:
                 op_traits_str = "," + ",".join(op_traits)
 
             op_get_inputs_outputs_str = ""
@@ -557,9 +564,6 @@ def OpGenerator(
                         )
                     )
                 inputs_info_str = ", ".join(input_info_list)
-            op_inputs_info_func_str = OP_INPUT_INFO_TEMPLATE.format(
-                op_name=op_class_name, impl=inputs_info_str
-            )
 
             # generate get op info funciton: outputs
             outputs_info_str = ""
@@ -575,9 +579,6 @@ def OpGenerator(
                         )
                     )
                 outputs_info_str = ", ".join(output_info_list)
-            op_outputs_info_func_str = OP_OUTPUT_INFO_TEMPLATE.format(
-                op_name=op_class_name, impl=outputs_info_str
-            )
 
             # generate get op info funciton: attributes
             attribute_info_str = ""
@@ -592,8 +593,12 @@ def OpGenerator(
                         )
                     )
                 attribute_info_str = ", ".join(attribute_info_list)
-            op_attributes_info_func_str = OP_ATTRIBUTE_INFO_TEMPLATE.format(
-                op_name=op_class_name, impl=attribute_info_str
+
+            op_info_func_str = OP_INFO_TEMPLATE.format(
+                op_name=op_class_name,
+                inputs=inputs_info_str,
+                attributes=attribute_info_str,
+                outputs=outputs_info_str,
             )
 
             # generate op verify function: inputs_type_check_str
@@ -706,9 +711,7 @@ def OpGenerator(
             ops_name_list.append(op_class_name)
             ops_declare_list.append(op_declare_str)
             ops_defined_list.append(op_defined_str)
-            ops_defined_list.append(op_inputs_info_func_str)
-            ops_defined_list.append(op_outputs_info_func_str)
-            ops_defined_list.append(op_attributes_info_func_str)
+            ops_defined_list.append(op_info_func_str)
             ops_defined_list.append(op_verify_str)
 
     # (4) Generate head file str
