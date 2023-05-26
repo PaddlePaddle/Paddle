@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+from collections import OrderedDict
 from functools import reduce
 
 import paddle
@@ -456,11 +457,11 @@ class Inserter:
             )
             inputs = {'X': [tensor]}
             outputs = {"Out": [out]}
-            attrs = {"in_place": False}
-            slice_op = block._insert_op(
+            attrs = {"in_place": False, "op_role": op_role}
+            assign_op = block._insert_op(
                 idx, type="assign", inputs=inputs, outputs=outputs, attrs=attrs
             )
-            slice_op._set_attr('op_namescope', "/auto_parallel/reshard")
+            assign_op._set_attr('op_namescope', "/auto_parallel/reshard")
             return out
 
         # use split once
@@ -1458,7 +1459,7 @@ class Resharder:
             if not serial
             else source_tensor.shape
         )
-        op_desc_seq = {}
+        op_desc_seq = OrderedDict()
 
         # TODO: if the target process group has the same process with source process group
         if set(target_process_group).intersection(
@@ -1723,6 +1724,23 @@ class Resharder:
         self, block, op_desc_seq, var_name, reshard_op, dist_attr
     ):
         """Parse op desc sequence and insert op in the block"""
+
+        # Parse all communicator groups for all ranks
+        # Ensure every rank has a global view of communicator groups for entire cluters.
+        # When initialize communicators for pipeline parallel, every rank could
+        # conduct a correct global synchronization.
+        for rank_id in op_desc_seq:
+            op_desc_list = op_desc_seq[rank_id]
+            for op_desc in op_desc_list:
+                if isinstance(op_desc, AllGatherOpDesc):
+                    new_process_group(op_desc.group)
+                elif isinstance(op_desc, AllGatherConcatOpDesc):
+                    new_process_group(op_desc.group)
+                elif isinstance(op_desc, SendOpDesc):
+                    new_process_group([op_desc.src, op_desc.dst])
+                elif isinstance(op_desc, RecvOpDesc):
+                    new_process_group([op_desc.src, op_desc.dst])
+
         tensor_list = []
         partition_tensor_list = []
         if self.rank_id not in op_desc_seq.keys():
@@ -2632,7 +2650,7 @@ class Resharder:
                                                 item,
                                                 recv_rank,
                                             )
-                                        if self.rank_id == recv_rank:
+                                        elif self.rank_id == recv_rank:
                                             # if recv bool data, recv then cast
                                             self._hadnle_recv(
                                                 block,
@@ -2642,6 +2660,11 @@ class Resharder:
                                                 item,
                                                 recv_rank,
                                             )
+                                        else:
+                                            # Ensure every rank has a global view of communicator groups for entire cluters.
+                                            # When initialize communicators for pipeline parallel, every rank could
+                                            # conduct a correct global synchronization.
+                                            new_process_group([item, recv_rank])
                             else:
                                 for index, tensor_process in enumerate(
                                     tensor_processes
@@ -2659,11 +2682,16 @@ class Resharder:
                                         self._handle_send(
                                             block, idx, var, op, item, recv_rank
                                         )
-                                    if self.rank_id == recv_rank:
+                                    elif self.rank_id == recv_rank:
                                         # if recv bool data, recv then cast
                                         self._hadnle_recv(
                                             block, idx, var, op, item, recv_rank
                                         )
+                                    else:
+                                        # Ensure every rank has a global view of communicator groups for entire cluters.
+                                        # When initialize communicators for pipeline parallel, every rank could
+                                        # conduct a correct global synchronization.
+                                        new_process_group([item, recv_rank])
 
                             cur_op_count = len(block.ops)
                             idx_offset = (
