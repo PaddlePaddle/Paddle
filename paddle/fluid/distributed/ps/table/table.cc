@@ -32,9 +32,9 @@ namespace distributed {
 REGISTER_PSCORE_CLASS(Table, GraphTable);
 REGISTER_PSCORE_CLASS(Table, MemoryDenseTable);
 REGISTER_PSCORE_CLASS(Table, BarrierTable);
-// REGISTER_PSCORE_CLASS(Table, TensorTable);
-// REGISTER_PSCORE_CLASS(Table, DenseTensorTable);
-// REGISTER_PSCORE_CLASS(Table, GlobalStepTable);
+REGISTER_PSCORE_CLASS(Table, TensorTable);
+REGISTER_PSCORE_CLASS(Table, DenseTensorTable);
+REGISTER_PSCORE_CLASS(Table, GlobalStepTable);
 REGISTER_PSCORE_CLASS(Table, MemorySparseTable);
 REGISTER_PSCORE_CLASS(Table, SSDSparseTable);
 REGISTER_PSCORE_CLASS(Table, MemorySparseGeoTable);
