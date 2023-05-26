@@ -1352,9 +1352,8 @@ def _append_backward_ops_(
     assert isinstance(rename_var_map, dict)
 
     if core._is_bwd_prim_enabled():
-        clone_block = program.clone().current_block()
         grad_name_set = set()
-        for op in reversed(clone_block.ops):
+        for op in reversed(block.ops):
             if op.type == "fill_any_like":
                 for out_name in op.desc.output_arg_names():
                     grad_name_set.add(out_name)
@@ -1369,11 +1368,10 @@ def _append_backward_ops_(
                         {'value': 1, 'dtype': target_vars[0].dtype},
                     )
                     block.desc.append_op().copy_from(op_desc)
-                    clone_block.desc.append_op().copy_from(op_desc)
-                    block.program._sync_with_cpp()
-                    clone_block.program._sync_with_cpp()
             break
-        composite_block = clone_block
+        block.program._sync_with_cpp()
+
+        composite_block = program.clone().current_block()
         # Create output and infer shape for operators whose output haven't
         # been created.
         for op in composite_block.ops:
