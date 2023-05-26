@@ -435,7 +435,7 @@ class PADDLE_API Tensor final {
    * data type template argument
    *
    * @tparam T
-   * @param target_place the target place of which the tensor will copy to.
+   * @param target_place The target place of which the tensor will copy to.
    * @return Tensor
    */
   template <typename T>
