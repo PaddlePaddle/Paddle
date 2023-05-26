@@ -176,7 +176,8 @@ if(WITH_MKLDNN)
     "onednn/*.cc"
     "fusion/*.cc"
     "fusion/onednn/*.cc"
-    "fusion/cpu/*.cc")
+    "fusion/cpu/*.cc"
+    "stride/*.cc")
 else()
   file(
     GLOB
@@ -192,7 +193,8 @@ else()
     "strings/*.cc"
     "strings/cpu/*.cc"
     "fusion/*.cc"
-    "fusion/cpu/*.cc")
+    "fusion/cpu/*.cc"
+    "stride/*.cc")
 endif()
 
 if(DEFINED REDUCE_INFERENCE_LIB_SIZE)
