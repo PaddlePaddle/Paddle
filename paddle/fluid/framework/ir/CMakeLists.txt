@@ -32,7 +32,7 @@ cc_library(
 cc_library(
   cost_model
   SRCS cost_model.cc
-  DEPS executor graph profiler proto_desc phi_device_tracer)
+  DEPS executor graph profiler proto_desc phi)
 
 set(GRAPH_PATTERN_DETECTOR_DEPS graph graph_helper graph_traits)
 if(WITH_TESTING)
@@ -458,9 +458,6 @@ if(WITH_MKLDNN)
       graph_to_program_pass
       conv_op
       conv_transpose_op
-      math_function
-      im2col
-      vol2col
       batch_norm_op
       generated_op
       activation_op
@@ -468,7 +465,7 @@ if(WITH_MKLDNN)
       concat_and_split
       naive_executor
       device_context
-      eigen_function)
+      phi)
   if(WITH_GPU OR WITH_ROCM)
     set(TEST_CONV_BN_PASS_DEPS ${TEST_CONV_BN_PASS_DEPS} depthwise_conv)
   endif()

@@ -410,7 +410,7 @@ class PADDLE_API Tensor final {
    *
    * @return const std::string&
    */
-  const std::string& name() const { return name_; }
+  const std::string& name() const;
 
   /**
    * @brief Set name of Tensor.
@@ -419,7 +419,7 @@ class PADDLE_API Tensor final {
    *
    * @param const std::string& name
    */
-  void set_name(const std::string& name) { name_ = name; }
+  void set_name(const std::string& name);
 
   /* Part 5: Data Transform methods */
   /* Alert!!!!: All copy method can only deep copy impl, autograd info only be

@@ -509,6 +509,7 @@ void AutoMixedPrecisionPass::UpdateOpPrecision() const {
         // when op_1 only support cpu kernel. if op_2's intput var is op_1's
         // output var, then op_2 should not run at low precision.
         if (GetOpOriginalType(op_type) != "feed" &&
+            GetOpOriginalType(op_type) != "tensorrt_engine" &&
             !KernelSupportPrecision(
                 GetOpOriginalType(op_type), backend_, phi::DataType::FLOAT32)) {
           for (auto* out_var_node : op_node->outputs) {
