@@ -152,6 +152,12 @@ def _new_process_group_impl(
         pg = core.ProcessGroupGloo.create(store, rank, world_size, group_id)
     elif backend == "nccl":
         pg = core.ProcessGroupNCCL.create(store, rank, world_size, group_id)
+
+        global_env = _get_global_env()
+        dev_id = global_env.device_id
+        core.CommContextManager.create_nccl_comm_context(
+            store, dev_id, group_id, rank, world_size
+        )
     elif backend == "xccl":
         pg = core.ProcessGroupCustom.create(
             store, genv.device_type, rank, world_size, group_id
