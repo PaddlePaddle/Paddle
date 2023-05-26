@@ -192,14 +192,46 @@ PD_REGISTER_ACTIVATION_KERNEL(sigmoid, SigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(logsigmoid, LogSigmoidKernel)
 PD_REGISTER_ACTIVATION_KERNEL(hard_sigmoid, HardSigmoidKernel)
 
-PD_REGISTER_KERNEL(
-    log, CPU, ALL_LAYOUT, phi::LogKernel, float, double, int, int64_t) {}
-PD_REGISTER_KERNEL(
-    log2, CPU, ALL_LAYOUT, phi::Log2Kernel, float, double, int, int64_t) {}
-PD_REGISTER_KERNEL(
-    log10, CPU, ALL_LAYOUT, phi::Log10Kernel, float, double, int, int64_t) {}
-PD_REGISTER_KERNEL(
-    log1p, CPU, ALL_LAYOUT, phi::Log1pKernel, float, double, int, int64_t) {}
+PD_REGISTER_KERNEL(log,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::LogKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(log2,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::Log2Kernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(log10,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::Log10Kernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+PD_REGISTER_KERNEL(log1p,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::Log1pKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 
 PD_REGISTER_ACTIVATION_KERNEL(swish_raw, SwishRawKernel)
 PD_REGISTER_ACTIVATION_KERNEL(hardswish, HardSwishKernel)
