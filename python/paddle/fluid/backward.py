@@ -1365,7 +1365,7 @@ def _append_backward_ops_(
                         "fill_any_like",
                         {"X": [var_name]},
                         {"Out": [grad_var_name]},
-                        {'value': 1, 'dtype': target_vars[0].dtype},
+                        {'value': 0, 'dtype': target_vars[0].dtype},
                     )
                     block.desc.append_op().copy_from(op_desc)
             break
