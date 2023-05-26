@@ -32,9 +32,9 @@ namespace distributed {
 REGISTER_PSCORE_CLASS(Table, GraphTable);
 REGISTER_PSCORE_CLASS(Table, MemoryDenseTable);
 REGISTER_PSCORE_CLASS(Table, BarrierTable);
-REGISTER_PSCORE_CLASS(Table, TensorTable);
-REGISTER_PSCORE_CLASS(Table, DenseTensorTable);
-REGISTER_PSCORE_CLASS(Table, GlobalStepTable);
+// REGISTER_PSCORE_CLASS(Table, TensorTable);
+// REGISTER_PSCORE_CLASS(Table, DenseTensorTable);
+// REGISTER_PSCORE_CLASS(Table, GlobalStepTable);
 REGISTER_PSCORE_CLASS(Table, MemorySparseTable);
 REGISTER_PSCORE_CLASS(Table, SSDSparseTable);
 REGISTER_PSCORE_CLASS(Table, MemorySparseGeoTable);
@@ -45,9 +45,9 @@ REGISTER_PSCORE_CLASS(ValueAccessor, CtrDoubleAccessor);
 REGISTER_PSCORE_CLASS(ValueAccessor, CtrDymfAccessor);
 REGISTER_PSCORE_CLASS(ValueAccessor, SparseAccessor);
 REGISTER_PSCORE_CLASS(SparseValueSGDRule, StdAdaGradSGDRule);
-// REGISTER_PSCORE_CLASS(SparseValueSGDRule, SparseAdamSGDRule);
-// REGISTER_PSCORE_CLASS(SparseValueSGDRule, SparseNaiveSGDRule);
-// REGISTER_PSCORE_CLASS(SparseValueSGDRule, SparseAdaGradSGDRule);
+REGISTER_PSCORE_CLASS(SparseValueSGDRule, SparseAdamSGDRule);
+REGISTER_PSCORE_CLASS(SparseValueSGDRule, SparseNaiveSGDRule);
+REGISTER_PSCORE_CLASS(SparseValueSGDRule, SparseAdaGradSGDRule);
 REGISTER_PSCORE_CLASS(SparseValueSGDRule, SparseSharedAdamSGDRule);
 
 int32_t TableManager::Initialize() {
