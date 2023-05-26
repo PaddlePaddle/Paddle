@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <thrust/device_vector.h>
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 
@@ -1669,6 +1670,56 @@ void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
     this->template GEMM<T>(
         transA, transB, M, N, K, alpha, A[k], B[k], beta, C[k]);
   }
+}
+
+template <>
+template <>
+inline void Blas<phi::GPUContext>::BatchedGEMM(CBLAS_TRANSPOSE transA,
+                                               CBLAS_TRANSPOSE transB,
+                                               int M,
+                                               int N,
+                                               int K,
+                                               float alpha,
+                                               const float **A,
+                                               const float **B,
+                                               float beta,
+                                               float **C,
+                                               int batchCount) const {
+  // Note that cublas follows fortran order, so the order is different from
+  // the cblas convention.
+  int lda = (transA == CblasNoTrans) ? K : M;
+  int ldb = (transB == CblasNoTrans) ? N : K;
+  int ldc = N;
+  cublasOperation_t cuTransA =
+      (transA == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
+  cublasOperation_t cuTransB =
+      (transB == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
+  thrust::device_vector<const float *> A_ptr(A, A + batchCount);
+  thrust::device_vector<const float *> B_ptr(B, B + batchCount);
+  thrust::device_vector<float *> C_ptr(C, C + batchCount);
+
+#if CUDA_VERSION >= 8000
+  context_.CublasCall([&](cublasHandle_t handle) {
+    phi::dynload::cublasSgemmBatched(handle,
+                                     cuTransB,
+                                     cuTransA,
+                                     N,
+                                     M,
+                                     K,
+                                     &alpha,
+                                     B_ptr.data().get(),
+                                     ldb,
+                                     A_ptr.data().get(),
+                                     lda,
+                                     &beta,
+                                     C_ptr.data().get(),
+                                     ldc,
+                                     batchCount);
+  });
+#else
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "SgemmBatched is not supported on cuda <= 7.5"));
+#endif
 }
 
 template <>
