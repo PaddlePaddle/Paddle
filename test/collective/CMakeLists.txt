@@ -43,7 +43,7 @@ if((WITH_ROCM OR WITH_GPU) AND (LINUX))
   bash_test_modules(
     test_collective_split_embedding
     START_BASH
-    ../dist_test.sh
+    ../legacy_test/dist_test.sh
     TIMEOUT
     "300"
     LABELS
@@ -86,7 +86,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   bash_test_modules(
     test_collective_alltoall_single
     START_BASH
-    ../dist_test.sh
+    ../legacy_test/dist_test.sh
     TIMEOUT
     "350"
     LABELS
@@ -115,7 +115,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   bash_test_modules(
     test_collective_batch_isend_irecv
     START_BASH
-    ../dist_test.sh
+    ../legacy_test/dist_test.sh
     TIMEOUT
     "350"
     LABELS
@@ -181,7 +181,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   bash_test_modules(
     test_collective_process_group
     START_BASH
-    ../dist_test.sh
+    ../legacy_test/dist_test.sh
     TIMEOUT
     "350"
     LABELS
@@ -209,7 +209,7 @@ if((WITH_GPU OR WITH_ROCM) AND (LINUX))
   bash_test_modules(
     test_collective_reduce_scatter
     START_BASH
-    ../dist_test.sh
+    ../legacy_test/dist_test.sh
     TIMEOUT
     "350"
     LABELS
@@ -382,7 +382,7 @@ if((WITH_GPU OR WITH_ROCM) AND LOCAL_ALL_PLAT)
   bash_test_modules(
     test_gen_nccl_id_op
     START_BASH
-    ../dist_test.sh
+    ../legacy_test/dist_test.sh
     LABELS
     "RUN_TYPE=DIST"
     ENVS
