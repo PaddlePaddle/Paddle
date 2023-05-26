@@ -2742,6 +2742,17 @@ void TriangularSolveInferMeta(const MetaTensor& x,
   out->share_lod(y);
 }
 
+void TopPSamplingInferMeta(const MetaTensor& x,
+                           const MetaTensor& ps,
+                           int random_seed,
+                           MetaTensor* out,
+                           MetaTensor* ids) {
+  ids->set_dims(phi::make_ddim({x.dims()[0], 1}));
+  out->set_dtype(DataType::INT64);
+  out->set_dims(phi::make_ddim({x.dims()[0], 1}));
+  out->set_dtype(x.dtype());
+}
+
 void LstsqInferMeta(const MetaTensor& x,
                     const MetaTensor& y,
                     const Scalar& rcond,
