@@ -456,3 +456,30 @@ def conv2d(
         data_format,
         name,
     )
+
+
+def subm_conv2d(
+    x,
+    weight,
+    bias=None,
+    stride=1,
+    padding=0,
+    dilation=1,
+    groups=1,
+    data_format="NHWC",
+    key=None,
+    name=None,
+):
+    return _conv2d(
+        x,
+        weight,
+        bias,
+        stride,
+        padding,
+        dilation,
+        groups,
+        True,
+        key,
+        data_format,
+        name,
+    )

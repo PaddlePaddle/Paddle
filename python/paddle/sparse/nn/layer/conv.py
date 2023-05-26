@@ -541,3 +541,36 @@ class SubmConv3D(_Conv3D):
             bias_attr=bias_attr,
             data_format=data_format,
         )
+
+
+class SubmConv2D(_Conv2D):
+    def __init__(
+        self,
+        in_channels,
+        out_channels,
+        kernel_size,
+        stride=1,
+        padding=0,
+        dilation=1,
+        groups=1,
+        padding_mode='zeros',
+        key=None,
+        weight_attr=None,
+        bias_attr=None,
+        data_format="NHWC",
+    ):
+        super().__init__(
+            in_channels,
+            out_channels,
+            kernel_size,
+            stride=stride,
+            padding=padding,
+            dilation=dilation,
+            groups=groups,
+            subm=True,
+            key=key,
+            padding_mode=padding_mode,
+            weight_attr=weight_attr,
+            bias_attr=bias_attr,
+            data_format=data_format,
+        )
