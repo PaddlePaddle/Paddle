@@ -304,9 +304,9 @@ void SignalHandle(const char *data, int size) {
       signal_info.replace(start_pos, useless_substr.length(), "");
       *signal_msg_dunmer_ptr << "  [SignalInfo: " << signal_info << "]\n";
 
-      // NOTE3: Final singal error message print.
+      // NOTE3: Final signal error message print.
       // Here does not throw an exception,
-      // otherwise it will casue "terminate called recursively"
+      // otherwise it will cause "terminate called recursively"
       std::ostringstream sout;
       sout << "\n\n--------------------------------------\n";
       sout << "C++ Traceback (most recent call last):";

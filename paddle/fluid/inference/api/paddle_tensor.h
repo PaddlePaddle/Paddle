@@ -67,7 +67,7 @@ enum DataType {
   // TODO(Inference): support more data types if needed.
 };
 
-enum class PlaceType { kUNK = -1, kCPU, kGPU, kXPU, kNPU, kIPU, kCUSTOM };
+enum class PlaceType { kUNK = -1, kCPU, kGPU, kXPU, kIPU, kCUSTOM };
 
 enum class DataLayout { kUNK = -1, kAny, kNHWC, kNCHW };
 

@@ -13,16 +13,29 @@
 // limitations under the License.
 
 #include "paddle/ir/operation.h"
+#include "paddle/ir/dialect.h"
+#include "paddle/ir/program.h"
 #include "paddle/ir/utils.h"
 
 namespace ir {
+Operation *Operation::create(const OperationArgument &argument) {
+  return create(argument.inputs_,
+                argument.output_types_,
+                argument.attribute_,
+                argument.info_);
+}
+
 // Allocate the required memory based on the size and number of inputs, outputs,
 // and operators, and construct it in the order of: OpOutlineResult,
 // OpInlineResult, Operation, Operand.
 Operation *Operation::create(const std::vector<ir::OpResult> &inputs,
                              const std::vector<ir::Type> &output_types,
-                             ir::DictionaryAttribute attribute,
+                             const AttributeMap &attribute,
                              ir::OpInfo op_info) {
+  // 0. Verify
+  if (op_info) {
+    op_info.verify(inputs, output_types, attribute);
+  }
   // 1. Calculate the required memory size for OpResults + Operation +
   // OpOperands.
   uint32_t num_results = output_types.size();
@@ -63,7 +76,7 @@ Operation *Operation::create(const std::vector<ir::OpResult> &inputs,
     new (base_ptr) detail::OpOperandImpl(inputs[idx].impl_, op);
     base_ptr += sizeof(detail::OpOperandImpl);
   }
-  VLOG(4) << "Construct an Operation: " << op->print();
+
   return op;
 }
 
@@ -83,9 +96,15 @@ void Operation::destroy() {
   // 2.1. Deconstruct OpResult.
   char *base_ptr = aligned_ptr;
   for (size_t idx = num_results_; idx > 0; idx--) {
-    if (!reinterpret_cast<detail::OpResultImpl *>(base_ptr)->use_empty()) {
-      throw("Cannot destroy a value that still has uses!");
+    // release the uses of this result
+    detail::OpOperandImpl *first_use =
+        reinterpret_cast<detail::OpResultImpl *>(base_ptr)->first_use();
+    while (first_use != nullptr) {
+      first_use->remove_from_ud_chain();
+      first_use =
+          reinterpret_cast<detail::OpResultImpl *>(base_ptr)->first_use();
     }
+    // destory the result
     if (idx > max_inline_result_num) {
       reinterpret_cast<detail::OpOutlineResultImpl *>(base_ptr)
           ->~OpOutlineResultImpl();
@@ -103,7 +122,7 @@ void Operation::destroy() {
   }
   reinterpret_cast<Operation *>(base_ptr)->~Operation();
   base_ptr += sizeof(Operation);
-  // 2.3. Deconstruct OpOpOerand.
+  // 2.3. Deconstruct OpOperand.
   for (size_t idx = 0; idx < num_operands_; idx++) {
     reinterpret_cast<detail::OpOperandImpl *>(base_ptr)->~OpOperandImpl();
     base_ptr += sizeof(detail::OpOperandImpl);
@@ -115,42 +134,46 @@ void Operation::destroy() {
   aligned_free(reinterpret_cast<void *>(aligned_ptr));
 }
 
+IrContext *Operation::ir_context() const { return op_info_.ir_context(); }
+
 Operation::Operation(uint32_t num_results,
                      uint32_t num_operands,
-                     ir::DictionaryAttribute attribute,
+                     const AttributeMap &attribute,
                      ir::OpInfo op_info) {
-  if (!attribute) {
-    throw("unexpected null attribute dictionary");
-  }
   num_results_ = num_results;
   num_operands_ = num_operands;
   attribute_ = attribute;
   op_info_ = op_info;
 }
 
-ir::OpResult Operation::GetResultByIndex(uint32_t index) {
+ir::OpResult Operation::GetResultByIndex(uint32_t index) const {
   if (index >= num_results_) {
     throw("index exceeds OP output range.");
   }
   uint32_t max_inline_idx = detail::OpResultImpl::GetMaxInlineResultIndex();
-  char *ptr = nullptr;
+  const char *ptr =
+      (index > max_inline_idx)
+          ? reinterpret_cast<const char *>(this) -
+                (max_inline_idx + 1) * sizeof(detail::OpInlineResultImpl) -
+                (index - max_inline_idx) * sizeof(detail::OpOutlineResultImpl)
+          : reinterpret_cast<const char *>(this) -
+                (index + 1) * sizeof(detail::OpInlineResultImpl);
   if (index > max_inline_idx) {
-    ptr = reinterpret_cast<char *>(this) -
-          (max_inline_idx + 1) * sizeof(detail::OpInlineResultImpl) -
-          (index - max_inline_idx) * sizeof(detail::OpOutlineResultImpl);
+    return ir::OpResult(
+        reinterpret_cast<const detail::OpOutlineResultImpl *>(ptr));
   } else {
-    ptr = reinterpret_cast<char *>(this) -
-          (index + 1) * sizeof(detail::OpInlineResultImpl);
+    return ir::OpResult(
+        reinterpret_cast<const detail::OpInlineResultImpl *>(ptr));
   }
-  if (index > max_inline_idx) {
-    detail::OpOutlineResultImpl *result_impl_ptr =
-        reinterpret_cast<detail::OpOutlineResultImpl *>(ptr);
-    return ir::OpResult(result_impl_ptr);
-  } else {
-    detail::OpInlineResultImpl *result_impl_ptr =
-        reinterpret_cast<detail::OpInlineResultImpl *>(ptr);
-    return ir::OpResult(result_impl_ptr);
+}
+
+ir::OpOperand Operation::GetOperandByIndex(uint32_t index) const {
+  if (index >= num_operands_) {
+    throw("index exceeds OP input range.");
   }
+  const char *ptr = reinterpret_cast<const char *>(this) + sizeof(Operation) +
+                    (index) * sizeof(detail::OpOperandImpl);
+  return ir::OpOperand(reinterpret_cast<const detail::OpOperandImpl *>(ptr));
 }
 
 std::string Operation::print() {
@@ -172,5 +195,7 @@ std::string Operation::print() {
   result << ")";
   return result.str();
 }
+
+std::string Operation::op_name() const { return op_info_.name(); }
 
 }  // namespace ir

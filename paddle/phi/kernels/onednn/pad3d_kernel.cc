@@ -20,13 +20,31 @@
 
 namespace phi {
 
+KernelKey Pad3dGetKernelTypeForVar(const GetKernelTypeForVarContext* ctx) {
+  const DenseTensor& tensor = ctx->GetTensor();
+  const KernelKey& expected_kernel_type = ctx->GetKernelKey();
+  const AttributeMap& attrs = ctx->GetAttrs();
+#ifdef PADDLE_WITH_MKLDNN
+  if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
+      (tensor.layout() != phi::DataLayout::ONEDNN)) {
+    auto it = attrs.find("data_format");
+    const std::string data_format = PADDLE_GET_CONST(std::string, it->second);
+    return phi::KernelKey(tensor.place(),
+                          phi::StringToDataLayout(data_format),
+                          expected_kernel_type.dtype());
+  }
+#endif
+  return phi::KernelKey(
+      tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+}
+
 template <typename T, typename Context>
 void Pad3dKernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  const IntArray& paddings,
-                 const std::string& mode,
+                 const std::string& mode UNUSED,
                  float pad_value,
-                 const std::string& data_format,
+                 const std::string& data_format UNUSED,
                  DenseTensor* out) {
   PadOpKernel<T, Context>(dev_ctx, x, paddings.GetData(), pad_value, out);
 }
@@ -38,4 +56,6 @@ PD_REGISTER_KERNEL(pad3d,
                    phi::Pad3dKernel,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
-                   float) {}
+                   float) {
+  kernel->get_kerneltype_forvar_fn_ = phi::Pad3dGetKernelTypeForVar;
+}

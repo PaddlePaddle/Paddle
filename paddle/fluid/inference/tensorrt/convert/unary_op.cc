@@ -49,7 +49,7 @@ class UnaryOpConverter : public OpConverter {
                 org_type == nvinfer1::DataType::kINT32;
     if (cast) {
       layer = TRT_ENGINE_ADD_LAYER(engine_, Identity, *input_tensor);
-      if (engine_->precision() == AnalysisConfig::Precision::kFloat32) {
+      if (engine_->precision() == phi::DataType::FLOAT32) {
         layer->setOutputType(0, nvinfer1::DataType::kFLOAT);
       } else {
         layer->setOutputType(0, nvinfer1::DataType::kHALF);

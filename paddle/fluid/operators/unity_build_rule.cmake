@@ -135,7 +135,7 @@ register_unity_group(
   kron_op.cc
   l1_norm_op.cc
   label_smooth_op.cc
-  layer_norm_op.cc
+  generated_op
   mkldnn/layer_norm_mkldnn_op.cc
   mkldnn/layer_norm_mkldnn_op.cc
   linspace_op.cc
@@ -259,8 +259,7 @@ register_unity_group(
   sign_op.cc
   similarity_focus_op.cc
   size_op.cc
-  slice_op.cc
-  softmax_op.cc)
+  slice_op.cc)
 register_unity_group(
   cc
   space_to_depth_op.cc
@@ -289,7 +288,6 @@ register_unity_group(
   transpose_op.cc
   mkldnn/transpose_mkldnn_op.cc
   tree_conv_op.cc
-  tril_triu_op.cc
   unbind_op.cc
   unfold_op.cc)
 register_unity_group(

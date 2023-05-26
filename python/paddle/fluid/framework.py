@@ -52,7 +52,6 @@ __all__ = [
     'cpu_places',
     'xpu_places',
     'cuda_pinned_places',
-    '_non_static_mode',
     'in_dygraph_mode',
     'is_compiled_with_cinn',
     'is_compiled_with_cuda',
@@ -83,7 +82,6 @@ class GlobalThreadLocal(threading.local):
         self._in_declarative_mode_ = False
         self._functional_dygraph_context_manager = None
         self._dygraph_tracer_ = _dygraph_tracer_
-        self._in_eager_mode_ = True
 
     def __str__(self):
         strings = []
@@ -95,7 +93,6 @@ class GlobalThreadLocal(threading.local):
             + str(self._functional_dygraph_context_manager)
         )
         strings.append("_dygraph_tracer_:" + str(self._dygraph_tracer_))
-        strings.append("_in_eager_mode_:" + str(self._in_eager_mode_))
         return "\n".join(strings)
 
     def __setattr__(self, name, val):
@@ -158,32 +155,6 @@ extra_op_attrs = {
     "unique": ["is_sorted"],
 }
 
-# Some explanation of our execution system 2022.03
-# For now we have 3 kinds of execution system, since we refactored dygraph mode to
-# build a fast execution system for dynamic mode. But we can't just remove all legacy
-# code once we present the new system for some historical reason. That's why we have
-# these flags.
-#
-# 1. _non_static_mode():
-# _non_static_mode means  we are now running in legacy dygraph mode or dygraph mode.
-# 2. dygraph_mode():
-# This flags inidicates we are now running in dygraph mode which called eager mode before.
-# 3. _in_legacy_dygraph():
-# This flags has been deprecated
-#
-# They have a relation ship as below:
-# Since _in_legacy_graph is deprecated, so dygraph_mode is _non_static_mode
-#
-# Why we have to make different of _in_legacy_dygraph and dygraph_mode?
-# In some performance issue, we find that python if statement cause server performance problem
-# and we need our new dygraph mode becomes as fast as it could be. That's why we make these flags
-# to make sure in most case, we find new dygraph mode first with only one if statement.
-
-
-def _in_eager_without_dygraph_check():
-    return global_var._in_eager_mode_
-
-
 # FIXME(dev): We haven't fully verified eager mode on XPU et.al but
 # only GPU/CPU. Remove this after we improve this feature.
 _is_first_import_ = True
@@ -216,12 +187,6 @@ def in_dygraph_mode():
             print(paddle.in_dynamic_mode())  # True, Now we are in dynamic mode
 
     """
-    return (
-        global_var._dygraph_tracer_ is not None
-    ) and global_var._in_eager_mode_
-
-
-def _non_static_mode():
     return global_var._dygraph_tracer_ is not None
 
 
@@ -467,7 +432,7 @@ def require_version(min_version, max_version=None):
 
 def _dygraph_not_support_(func):
     def __impl__(*args, **kwargs):
-        assert not _non_static_mode(), (
+        assert not in_dygraph_mode(), (
             "We don't support %s in dynamic graph mode" % func.__name__
         )
         return func(*args, **kwargs)
@@ -477,7 +442,7 @@ def _dygraph_not_support_(func):
 
 def _dygraph_only_(func):
     def __impl__(*args, **kwargs):
-        assert _non_static_mode(), (
+        assert in_dygraph_mode(), (
             "We only support '%s()' in dynamic graph mode, please call 'paddle.disable_static()' to enter dynamic graph mode."
             % func.__name__
         )
@@ -490,7 +455,7 @@ def _non_static_only_(func):
     def __impl__(*args, **kwargs):
         from .dygraph.base import in_declarative_mode
 
-        assert _non_static_mode() or in_declarative_mode(), (
+        assert in_dygraph_mode() or in_declarative_mode(), (
             "We only support '%s()' in dynamic graph mode, please call 'paddle.disable_static()' to enter dynamic graph mode."
             % func.__name__
         )
@@ -501,7 +466,7 @@ def _non_static_only_(func):
 
 def _static_only_(func):
     def __impl__(*args, **kwargs):
-        assert not _non_static_mode(), (
+        assert not in_dygraph_mode(), (
             "In PaddlePaddle 2.x, we turn on dynamic graph mode by default, and '%s()' is only supported in static graph mode. So if you want to use this api, please call 'paddle.enable_static()' before this api to enter static graph mode."
             % func.__name__
         )
@@ -597,19 +562,19 @@ def _current_expected_place():
                     "You are using XPU version Paddle, but your XPU device is not set properly. CPU device will be used by default."
                 )
                 _global_expected_place_ = core.CPUPlace()
-        elif core.is_compiled_with_custom_device("npu"):
-            # TODO(duanyanhui): Optimize DeviceManager and Return all expected places when device registered in DeviceManager is greater than 1.
+        elif len(core.get_all_custom_device_type()) > 0:
+            dev_type = core.get_all_custom_device_type()[0]
             try:
-                device_count = core.get_custom_device_count("npu")
+                device_count = core.get_custom_device_count(dev_type)
             except Exception as e:
                 device_count = 0
             if device_count > 0:
                 _global_expected_place_ = core.CustomPlace(
-                    "npu", _custom_device_ids("npu")[0]
+                    dev_type, _custom_device_ids(dev_type)[0]
                 )
             else:
                 warnings.warn(
-                    "You are using NPU version Paddle, but your NPU device is not set properly. CPU device will be used by default."
+                    "You are using CUSTOM_DEVICE version Paddle, but your custom device is not set properly. CPU device will be used by default."
                 )
                 _global_expected_place_ = core.CPUPlace()
         else:
@@ -994,7 +959,7 @@ def name_scope(prefix=None):
     """
     # TODO(panyx0718): Only [0-9a-z].
     # in dygraph we don't need namescope since it will cause mem leak
-    if _non_static_mode():
+    if in_dygraph_mode():
         yield
     else:
         assert prefix, "namescope prefix can not be empty."
@@ -2499,7 +2464,7 @@ class Variable(metaclass=VariableMetaClass):
     def size(self):
         """
 
-        Returns the number of elements for current Variable, which is a int64 Variable with shape [1]
+        Returns the number of elements for current Variable, which is a int64 Variable with shape [] .
 
         Returns:
             Variable, the number of elements for current Variable
@@ -2761,7 +2726,7 @@ class Operator:
         except ValueError:
             pass
 
-        if _non_static_mode():
+        if in_dygraph_mode():
             if type is None:
                 raise ValueError(
                     "`type` to initialized an Operator can not be None."
@@ -2947,7 +2912,7 @@ class Operator:
                         else:
                             out_arg_names.append(arg.name)
                         # TODO(minqiyang): could we remove variable's op in static graph mode?
-                        if not _non_static_mode():
+                        if not in_dygraph_mode():
                             if isinstance(arg, str):
                                 block.var(arg).op = self
                             else:
@@ -3822,7 +3787,7 @@ class Block:
         )
 
     def create_var(self, *args, **kwargs):
-        if _non_static_mode():
+        if in_dygraph_mode():
             var = _create_tensor(*args, **kwargs)
         else:
             var = Variable(block=self, *args, **kwargs)
@@ -3979,7 +3944,7 @@ class Block:
             Operator: the append Operator.
         """
         op_type = kwargs.get("type", None)
-        if _non_static_mode():
+        if in_dygraph_mode():
             attrs = kwargs.get("attrs", {})
             inplace_map = kwargs.get("inplace_map", None)
             warnings.warn(
@@ -4116,7 +4081,7 @@ class Block:
         return self.ops[start:end]
 
     def _prepend_op(self, *args, **kwargs):
-        if _non_static_mode():
+        if in_dygraph_mode():
             type = kwargs.get("type", None)
             attrs = kwargs.get("attrs", {})
             op = Operator(
@@ -7454,9 +7419,12 @@ def device_guard(device=None):
         device, index = device.split(':')
         if device == 'cpu':
             raise ValueError("Should not set device id for cpu.")
-    if device not in ['cpu', 'gpu', 'xpu', 'npu', '', None]:
+    if (
+        device not in ['cpu', 'gpu', 'xpu', '', None]
+        and device not in core.get_all_custom_device_type()
+    ):
         raise ValueError(
-            "The Attr(device) should be 'cpu' 'npu' or 'gpu', and it can also be empty string or None "
+            "The Attr(device) should be 'cpu', 'xpu', 'gpu' or custom device, and it can also be empty string or None "
             "when there is no need to specify device. But received %s" % device
         )
     if index:
@@ -7489,7 +7457,7 @@ def _cuda_graph_guard(cuda_graph_attr=None):
                                    cuda_graph_capture_mode;memory_pool_id;cuda_graph_id
     """
     assert (
-        not _non_static_mode()
+        not in_dygraph_mode()
     ), "cuda_graph_guard only works under static graph mode"
     assert (
         core.is_compiled_with_cuda()

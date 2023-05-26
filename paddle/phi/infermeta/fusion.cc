@@ -19,8 +19,65 @@ limitations under the License. */
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
+#include "paddle/phi/kernels/funcs/common_shape.h"
 
 namespace phi {
+
+void AddActXPUInferMeta(const MetaTensor& x,
+                        const MetaTensor& x_max,
+                        const MetaTensor& y,
+                        const MetaTensor& y_max,
+                        int act_type,
+                        MetaTensor* out,
+                        MetaTensor* out_max) {
+  int axis = -1;
+  if (x.dims() != y.dims()) {
+    auto x_dims = x.dims();
+    auto y_dims = y.dims();
+    int max_dim = std::max(x_dims.size(), y_dims.size());
+    if (x_dims.size() == y_dims.size()) {
+      PADDLE_ENFORCE_EQ((axis == -1) || (axis == 0),
+                        true,
+                        phi::errors::InvalidArgument(
+                            "axis should be -1 or 0 while the dimension of "
+                            "tensor X (%s) is equal to the dimension of "
+                            "tensor Y (%s), but received axis: %s",
+                            x_dims.size(),
+                            y_dims.size(),
+                            axis));
+    }
+    PADDLE_ENFORCE_EQ((axis >= (-1 * max_dim)) && (axis < max_dim),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "The axis range must be [%s, %s), but axis is %s. "
+                          "Please set the axis again.",
+                          -1 * max_dim,
+                          max_dim,
+                          axis));
+    axis = (axis < 0 ? (std::abs(x_dims.size() - y_dims.size()) + axis + 1)
+                     : axis);
+    std::vector<int> x_dims_array(max_dim);
+    std::vector<int> y_dims_array(max_dim);
+    std::vector<int> out_dims_array(max_dim);
+    funcs::GetBroadcastDimsArrays(x_dims,
+                                  y_dims,
+                                  x_dims_array.data(),
+                                  y_dims_array.data(),
+                                  out_dims_array.data(),
+                                  max_dim,
+                                  axis);
+    auto out_dims = phi::make_ddim(out_dims_array);
+    out->set_dims(out_dims);
+  } else {
+    out->set_dims(x.dims());
+  }
+  out->set_dtype(x.dtype());
+  out->set_layout(x.layout());
+  out->share_lod(x);
+  out_max->set_dims(phi::make_ddim({6}));
+  out_max->set_dtype(x.dtype());
+  out_max->set_layout(x.layout());
+}
 
 inline int ConvOutSize(int input_size,
                        int filter_size,
@@ -41,6 +98,7 @@ void Conv2dXPUInferMeta(const MetaTensor& x,
                         const MetaTensor& filter_max,
                         const MetaTensor& bias,
                         const MetaTensor& branch,
+                        const MetaTensor& branch_max,
                         const std::vector<int>& paddings,
                         const std::vector<int>& dilations,
                         const std::vector<int>& strides,
@@ -164,7 +222,10 @@ void Conv2dXPUInferMeta(const MetaTensor& x,
 void EmbeddingWithEltwiseAddXPUInferMeta(
     const std::vector<const MetaTensor*>& ids,
     const std::vector<const MetaTensor*>& tables,
-    MetaTensor* out) {
+    const MetaTensor& mask,
+    MetaTensor* out,
+    MetaTensor* seq_lod,
+    MetaTensor* max_seq_len) {
   PADDLE_ENFORCE_GT(ids.size(),
                     0UL,
                     phi::errors::InvalidArgument(
@@ -225,6 +286,8 @@ void MultiEncoderXPUInferMeta(
     const std::vector<const MetaTensor*>& ln_scale,
     const std::vector<const MetaTensor*>& ln_bias,
     const MetaTensor& mask,
+    const MetaTensor& seq_lod,
+    const MetaTensor& max_seq_len,
     int layer_num,
     bool norm_before,
     int hidden_dim,

@@ -226,7 +226,7 @@ class Metric {
                    const std::string& pred_varname,
                    const std::string& uid_varname,
                    int metric_phase,
-                   int bucket_size = 1000000) {
+                   int bucket_size UNUSED = 1000000) {
       label_varname_ = label_varname;
       pred_varname_ = pred_varname;
       uid_varname_ = uid_varname;
@@ -297,7 +297,7 @@ class Metric {
     }
     virtual ~MultiTaskMetricMsg() {}
     void add_data(const Scope* exe_scope,
-                  const paddle::platform::Place& place) override {
+                  const paddle::platform::Place& place UNUSED) override {
       std::vector<int64_t> cmatch_rank_data;
       get_data<int64_t>(exe_scope, cmatch_rank_varname_, &cmatch_rank_data);
       std::vector<int64_t> label_data;
@@ -378,7 +378,7 @@ class Metric {
     }
     virtual ~CmatchRankMetricMsg() {}
     void add_data(const Scope* exe_scope,
-                  const paddle::platform::Place& place) override {
+                  const paddle::platform::Place& place UNUSED) override {
       std::vector<int64_t> cmatch_rank_data;
       get_data<int64_t>(exe_scope, cmatch_rank_varname_, &cmatch_rank_data);
       std::vector<int64_t> label_data;
@@ -502,7 +502,7 @@ class Metric {
     }
     virtual ~CmatchRankMaskMetricMsg() {}
     void add_data(const Scope* exe_scope,
-                  const paddle::platform::Place& place) override {
+                  const paddle::platform::Place& place UNUSED) override {
       std::vector<int64_t> cmatch_rank_data;
       get_data<int64_t>(exe_scope, cmatch_rank_varname_, &cmatch_rank_data);
       std::vector<int64_t> label_data;

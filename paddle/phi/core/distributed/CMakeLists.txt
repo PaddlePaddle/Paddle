@@ -1,5 +1,6 @@
 add_subdirectory(check)
 add_subdirectory(store)
+add_subdirectory(auto_parallel)
 
 set(COMM_CONTEXT_MANAGER_DEPS tcp_store)
 

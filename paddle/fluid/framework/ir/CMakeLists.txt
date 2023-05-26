@@ -104,10 +104,10 @@ pass_library(delete_dropout_op_pass inference)
 pass_library(delete_concat_op_pass inference)
 pass_library(delete_c_identity_op_pass inference)
 pass_library(preln_residual_bias_fuse_pass inference)
-pass_library(delete_fill_constant_op_pass inference)
 pass_library(constant_folding_pass inference)
 pass_library(auto_mixed_precision_pass inference)
 pass_library(conv2d_fusion_layout_transfer_pass inference)
+pass_library(transfer_layout_elim_pass inference)
 pass_library(silu_fuse_pass inference)
 pass_library(simplify_with_basic_ops_pass base)
 pass_library(fc_elementwise_layernorm_fuse_pass base)
@@ -118,7 +118,6 @@ pass_library(fused_multi_transformer_encoder_pass inference)
 pass_library(fused_multi_transformer_decoder_pass inference)
 pass_library(fuse_multi_transformer_layer_pass inference)
 pass_library(adaptive_pool2d_convert_global_pass inference)
-pass_library(unsqueeze2_eltwise_fuse_pass inference)
 pass_library(yolo_box_fuse_pass inference)
 pass_library(layer_norm_fuse_pass inference)
 pass_library(add_support_int8_pass inference)
@@ -129,6 +128,7 @@ pass_library(dense_multihead_matmul_to_sparse_pass inference)
 pass_library(delete_cast_op_pass inference)
 pass_library(delete_elementwise_mul_op_pass inference)
 pass_library(delete_repeated_ops_pass inference)
+pass_library(sigmoid_elementmul_fuse_pass inference)
 pass_library(generate_pass DEPS pass_desc_proto)
 target_link_libraries(generate_pass pass_desc_proto)
 
@@ -181,7 +181,7 @@ if(WITH_MKLDNN)
   pass_library(softplus_activation_onednn_fuse_pass inference DIR mkldnn)
   pass_library(shuffle_channel_mkldnn_detect_pass inference DIR mkldnn)
   pass_library(fc_act_mkldnn_fuse_pass inference DIR mkldnn)
-  pass_library(elt_act_mkldnn_fuse_pass inference DIR mkldnn)
+  pass_library(elementwise_act_onednn_fuse_pass inference DIR mkldnn)
   pass_library(matmul_elementwise_add_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(matmul_activation_mkldnn_fuse_pass inference DIR mkldnn)
   pass_library(layer_norm_onednn_optimization_pass inference DIR mkldnn)
@@ -234,6 +234,8 @@ if(WITH_XPU)
   pass_library(fc_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(multi_encoder_xpu_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
+  pass_library(multi_encoder_xpu_adaptive_seqlen_fuse_pass inference DIR xpu
+               DEPS ${XPU_PASS_DEPS})
   pass_library(multi_encoder_xpu_slice_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
   pass_library(generate_sequence_xpu_fuse_pass inference DIR xpu DEPS
@@ -247,6 +249,8 @@ if(WITH_XPU)
   pass_library(stack_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})
   pass_library(fused_multi_transformer_cachekv_layout_trans_pass inference DIR
                xpu DEPS ${XPU_PASS_DEPS})
+  pass_library(add_activation_xpu_fuse_pass inference DIR xpu DEPS
+               ${XPU_PASS_DEPS})
 endif()
 
 cc_library(
@@ -392,10 +396,6 @@ cc_test(
   SRCS adaptive_pool2d_convert_global_pass_tester.cc
   DEPS adaptive_pool2d_convert_global_pass)
 cc_test(
-  test_unsqueeze2_eltwise_fuse_pass_cc
-  SRCS unsqueeze2_eltwise_fuse_pass_tester.cc
-  DEPS unsqueeze2_eltwise_fuse_pass)
-cc_test(
   test_generate_pass_cc
   SRCS generate_pass_tester.cc
   DEPS generate_pass pass_desc_proto)
@@ -534,4 +534,8 @@ if(WITH_XPU)
     test_fused_multi_transformer_cachekv_layout_trans_pass
     SRCS xpu/fused_multi_transformer_cachekv_layout_trans_pass_test.cc
     DEPS fused_multi_transformer_cachekv_layout_trans_pass)
+  cc_test(
+    test_multi_encoder_xpu_adaptive_seqlen_fuse_pass
+    SRCS xpu/multi_encoder_xpu_adaptive_seqlen_fuse_pass_test.cc
+    DEPS multi_encoder_xpu_adaptive_seqlen_fuse_pass)
 endif()
