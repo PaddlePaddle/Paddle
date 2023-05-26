@@ -208,6 +208,11 @@ class TestArangeImperative(unittest.TestCase):
         x10_expected_data = np.arange(1).astype(np.float32)
         self.assertEqual((x10.numpy() == x10_expected_data).all(), True)
 
+        # [start] is np.int
+        x11 = paddle.arange(np.int64(10))
+        x11_expected_data = np.arange(10).astype(np.int64)
+        self.assertEqual((x11.numpy() == x11_expected_data).all(), True)
+
         paddle.enable_static()
 
 

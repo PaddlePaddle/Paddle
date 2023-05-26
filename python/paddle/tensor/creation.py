@@ -1304,7 +1304,11 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
             if isinstance(val, Variable) and not val.is_integer():
                 dtype = paddle.get_default_dtype()
                 break
-            elif not isinstance(val, int) and not isinstance(val, Variable):
+            elif (
+                not isinstance(val, int)
+                and not isinstance(val, np.integer)
+                and not isinstance(val, Variable)
+            ):
                 dtype = paddle.get_default_dtype()
                 break
             else:
