@@ -9,17 +9,13 @@ file(APPEND ${jit_file} "\#include \"paddle/phi/kernels/funcs/jit/helper.h\"\n")
 file(APPEND ${jit_file}
      "\#include \"paddle/phi/kernels/funcs/jit/registry.h\"\n\n")
 
-set(JIT_KERNEL_DEPS device_context cblas gflags enforce place xxhash)
-
 file(
   GLOB jit_kernel_cc_srcs
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
   "*.cc")
 list(REMOVE_ITEM jit_kernel_cc_srcs test.cc benchmark.cc)
-cc_library(
-  jit_kernel_base
-  SRCS ${jit_kernel_cc_srcs}
-  DEPS ${JIT_KERNEL_DEPS})
+
+collect_srcs(kernels_srcs SRCS ${jit_kernel_cc_srcs})
 
 copy_if_different(${jit_file} ${jit_file_final})
 
@@ -30,14 +26,11 @@ if(WITH_XBYAK)
   add_subdirectory(gen)
 endif()
 
-cc_library(
-  jit_kernel_helper INTERFACE
-  SRCS ${jit_kernel_cc_srcs}
-  DEPS jit_kernel_base ${JIT_KERNEL_DEPS})
 cc_test(
   jit_kernel_test
   SRCS test.cc
-  DEPS jit_kernel_helper)
+  DEPS phi)
+
 if(NOT WIN32)
   set(cuda_less12_and_gcc_greater12 false)
   if(DEFINED CMAKE_CUDA_COMPILER_VERSION)
@@ -47,14 +40,7 @@ if(NOT WIN32)
     endif()
   endif()
   if(NOT cuda_less12_and_gcc_greater12)
-    cc_binary(
-      jit_kernel_benchmark
-      SRCS
-      benchmark.cc
-      DEPS
-      jit_kernel_helper
-      phi_device_tracer
-      tensor)
+    cc_binary(jit_kernel_benchmark SRCS benchmark.cc DEPS phi)
   endif()
 endif()
 if(WITH_TESTING AND TEST jit_kernel_test)

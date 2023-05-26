@@ -199,7 +199,7 @@ if(NOT WIN32)
       ${MATH_LIB}
       ${MKLDNN_LIB}
       glog
-      gflags
+      phi
       protobuf
       xxhash
       cryptopp

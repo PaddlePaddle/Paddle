@@ -8,12 +8,11 @@ if(WITH_HETERPS)
       ssl
       crypto
       protobuf
-      gflags
+      phi
       glog
       zlib
       leveldb
       snappy
-      gflags
       glog
       device_context
       rocksdb)
@@ -25,12 +24,11 @@ else()
       ssl
       crypto
       protobuf
-      gflags
+      phi
       glog
       zlib
       leveldb
       snappy
-      gflags
       glog
       device_context)
 
@@ -122,8 +120,7 @@ cc_library(
        simple_threadpool
        simple_rpc
        scope
-       math_function
-       selected_rows_functor
+       phi
        ps_gpu_wrapper
        ${RPC_DEPS})
 
@@ -150,7 +147,7 @@ cc_library(
 #cc_library(
 #  communicator
 #  SRCS communicator/communicator.cc
-#  DEPS scope client table math_function selected_rows_functor ${RPC_DEPS})
+#  DEPS scope client table phi ${RPC_DEPS})
 #cc_library(
 #  ps_service
 #  SRCS ps_service/service.cc

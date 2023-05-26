@@ -12,26 +12,21 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/core/selected_rows.h"
+#include "paddle/phi/core/storage_properties.h"
 
 namespace phi {
 
+#ifdef PADDLE_WITH_MKLDNN
 template <>
-const TypeInfo<phi::TensorBase>
-    TypeInfoTraits<phi::TensorBase, SelectedRows>::kType =
-        RegisterStaticType<phi::TensorBase>(SelectedRows::name());
+const TypeInfo<StorageProperties>
+    TypeInfoTraits<StorageProperties, OneDNNStorageProperties>::kType =
+        RegisterStaticType<StorageProperties>(OneDNNStorageProperties::name());
 
-SelectedRows::SelectedRows(const std::vector<int64_t>& rows,
-                           const int64_t& height)
-    : impl_(std::make_shared<phi::SelectedRowsImpl>(rows, height)) {}
+#endif
 
-SelectedRows::SelectedRows()
-    : impl_(std::make_shared<phi::SelectedRowsImpl>()) {}
-
-void SelectedRows::set_type(const DataType dtype) { impl_->set_type(dtype); }
-
-void SelectedRows::set_layout(const DataLayout layout) {
-  impl_->set_layout(layout);
-}
+template <>
+const TypeInfo<StorageProperties>
+    TypeInfoTraits<StorageProperties, NPUStorageProperties>::kType =
+        RegisterStaticType<StorageProperties>(NPUStorageProperties::name());
 
 }  // namespace phi
