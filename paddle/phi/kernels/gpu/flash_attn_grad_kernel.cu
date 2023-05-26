@@ -234,6 +234,132 @@ void FlashAttnGradKernel(const Context& ctx,
 #endif
 }
 
+template <typename T, typename Context>
+void FlashAttnUnpaddedBlockGradKernel(const Context& ctx,
+                                      const DenseTensor& q,
+                                      const DenseTensor& k,
+                                      const DenseTensor& v,
+                                      const DenseTensor& cu_seqlens_q,
+                                      const DenseTensor& cu_seqlens_k,
+                                      const DenseTensor& blockmask,
+                                      const DenseTensor& out,
+                                      const DenseTensor& softmax_lse,
+                                      const DenseTensor& seed_offset,
+                                      const DenseTensor& dout,
+                                      int64_t max_seqlen_q,
+                                      int64_t max_seqlen_k,
+                                      float scale,
+                                      float dropout,
+                                      bool causal,
+                                      DenseTensor* dq,
+                                      DenseTensor* dk,
+                                      DenseTensor* dv) {
+#ifdef PADDLE_WITH_FLASHATTN
+
+  ctx.template Alloc<T>(dq);
+  ctx.template Alloc<T>(dk);
+  ctx.template Alloc<T>(dv);
+
+  cudaStream_t stream = ctx.stream();
+
+  // q,k,v [total_*, num_heads, head_dim]
+
+  auto dims = q.dims();
+  int64_t total_q = dims[0];
+  int64_t num_heads = dims[1];
+  int64_t head_size = dims[2];
+
+  int64_t total_k = k.dims()[0];
+  int64_t batch_size = cu_seqlens_q.numel() - 1;
+
+  const int64_t* seed_offset_data = seed_offset.data<int64_t>();
+  uint64_t seed = static_cast<uint64_t>(seed_offset_data[0]);
+  uint64_t offset = static_cast<uint64_t>(seed_offset_data[1]);
+
+  VLOG(4) << "FlashAttn bwd seed: " << seed << ", offset: " << offset;
+
+  int64_t seq_len_q = ((max_seqlen_q + 16 - 1) / 16) * 16;
+  DenseTensor dsoftmax = Empty<float>(ctx, {batch_size, num_heads, seq_len_q});
+
+  uint64_t workspace_size;
+
+  // calculate workspace size before execution
+  bool succ = phi::dynload::flash_attn_bwd_block(
+      q.data(),
+      k.data(),
+      v.data(),
+      dq->data(),
+      dk->data(),
+      dv->data(),
+      nullptr,  // for calculation workspace size
+      dout.data(),
+      cu_seqlens_q.data(),
+      cu_seqlens_k.data(),
+      blockmask.data(),
+      total_q,
+      total_k,
+      batch_size,
+      num_heads,
+      head_size,
+      max_seqlen_q,
+      max_seqlen_k,
+      dropout,
+      scale,
+      causal,
+      const_cast<float*>(softmax_lse.data<float>()),
+      dsoftmax.data(),
+      nullptr,
+      &workspace_size,
+      stream,
+      seed,
+      offset);
+
+  if (!succ) {
+    PADDLE_THROW(phi::errors::External(phi::dynload::flash_attn_error()));
+  }
+
+  DenseTensor workspace;
+  if (workspace_size > 0) {
+    workspace = Empty<float>(ctx, {int64_t(workspace_size / sizeof(float))});
+  }
+
+  succ = phi::dynload::flash_attn_bwd_block(
+      q.data(),
+      k.data(),
+      v.data(),
+      dq->data(),
+      dk->data(),
+      dv->data(),
+      out.data(),
+      dout.data(),
+      cu_seqlens_q.data(),
+      cu_seqlens_k.data(),
+      blockmask.data(),
+      total_q,
+      total_k,
+      batch_size,
+      num_heads,
+      head_size,
+      max_seqlen_q,
+      max_seqlen_k,
+      dropout,
+      scale,
+      causal,
+      const_cast<float*>(softmax_lse.data<float>()),
+      dsoftmax.data(),
+      workspace_size > 0 ? workspace.data() : nullptr,
+      &workspace_size,
+      stream,
+      seed,
+      offset);
+
+  if (!succ) {
+    PADDLE_THROW(phi::errors::External(phi::dynload::flash_attn_error()));
+  }
+
+#endif
+}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(flash_attn_unpadded_grad,
@@ -252,4 +378,12 @@ PD_REGISTER_KERNEL(flash_attn_grad,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {
   kernel->InputAt(5).SetBackend(phi::Backend::ALL_BACKEND);  // seed_offset
+}
+
+PD_REGISTER_KERNEL(flash_attn_unpadded_block_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::FlashAttnUnpaddedBlockGradKernel,
+                   phi::dtype::float16) {
+  kernel->InputAt(8).SetBackend(phi::Backend::ALL_BACKEND);  // seed_offset
 }
