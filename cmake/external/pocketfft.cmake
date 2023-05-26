@@ -26,6 +26,15 @@ set(POCKETFFT_INCLUDE_DIR ${POCKETFFT_PREFIX_DIR}/src)
 message("POCKETFFT_INCLUDE_DIR is ${POCKETFFT_INCLUDE_DIR}")
 include_directories(${POCKETFFT_INCLUDE_DIR})
 
+if(APPLE)
+  file(TO_NATIVE_PATH
+       ${PADDLE_SOURCE_DIR}/patches/pocketfft/pocketfft_hdronly.h.patch
+       native_dst)
+  set(POCKETFFT_PATCH_COMMAND
+      git checkout -- . && git checkout ${GLOO_TAG} &&patch -Nd
+      ${POCKETFFT_INCLUDE_DIR}/extern_pocketfft < ${native_dst})
+endif()
+
 ExternalProject_Add(
   extern_pocketfft
   ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}
