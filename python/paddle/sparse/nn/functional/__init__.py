@@ -22,6 +22,7 @@ from .activation import leaky_relu  # noqa: F401
 from .activation import softmax  # noqa: F401
 
 __all__ = [
+    'conv2d',
     'conv3d',
     'subm_conv3d',
     'max_pool3d',
