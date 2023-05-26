@@ -130,6 +130,18 @@ class TestDistAPI(unittest.TestCase):
         c = paddle.cdist(a, b, p)
         np.testing.assert_allclose(cdist(a_i, b_i, p), c.numpy(), rtol=1e-05)
 
+    def test_shape4(self):
+        self.init_data_type()
+        p = 2
+        x_shape = (50, 2)
+        y_shape = (20, 2)
+        a_i = np.random.random(x_shape).astype(self.data_type)
+        b_i = np.random.random(y_shape).astype(self.data_type)
+        a = paddle.to_tensor(a_i)
+        b = paddle.to_tensor(b_i)
+        c = paddle.cdist(a, b, p)
+        np.testing.assert_allclose(cdist(a_i, b_i, p), c.numpy(), rtol=1e-05)
+
     def test_grad(self):
         a = paddle.rand([2, 2, 3, 2])
         b = paddle.rand([2, 2, 4, 2])
@@ -179,6 +191,35 @@ class TestDistAPI(unittest.TestCase):
             x=x,
             y=y,
             p=-3,
+        )
+
+    def test_cdist_compute_mode_error(self):
+        x = paddle.rand([2, 4, 3, 3])
+        y = paddle.rand([2, 4, 4, 3])
+        self.assertRaises(
+            ValueError,
+            paddle.cdist,
+            x=x,
+            y=y,
+            compute_mode='unspport_compute_mode',
+        )
+
+    def test_cdist_compute_mode_1(self):
+        x = paddle.rand([3, 3])
+        y = paddle.rand([4, 3])
+        paddle.cdist(
+            x,
+            y,
+            compute_mode='donot_use_mm_for_euclid_dist',
+        )
+
+    def test_cdist_compute_mode_2(self):
+        x = paddle.rand([3, 3])
+        y = paddle.rand([4, 3])
+        paddle.cdist(
+            x,
+            y,
+            compute_mode='use_mm_for_euclid_dist',
         )
 
 

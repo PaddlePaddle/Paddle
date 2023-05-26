@@ -3352,7 +3352,9 @@ def corrcoef(x, rowvar=True, name=None):
     return c
 
 
-def cdist(x, y, p=2, use_mm_for_euclid_dist=True, name=None):
+def cdist(
+    x, y, p=2, compute_mode='use_mm_for_euclid_dist_if_necessary', name=None
+):
     r"""
     Computes batched the p-norm distance between each pair of the two collections of row vectors.
 
@@ -3363,8 +3365,13 @@ def cdist(x, y, p=2, use_mm_for_euclid_dist=True, name=None):
     x (Tensor): input tensor of shape (*, P, M), its data type is float32 or float64.
     y (Tensor): input tensor of shape (*, R, M), its data type is float32 or float64.
     p (float, optional): The norm to be computed, its data type is float32 or float64. Default: 2.
-    use_mm_for_euclid_dist(bool, optional): The parameter determined whether using matrix multiply for
-                                            euclidean distance calculation. Default: True
+    compute_mode(str, optional): The parameter determined whether using matrix multiply for euclidean distance calculation.
+                                Default to 'use_mm_for_euclid_dist_if_necessary'
+                                'use_mm_for_euclid_dist_if_necessary': If p = 2 and P > 25 or R > 25
+                                (these values are based on performance metrics),
+                                it will try to compute distance using matrix multiplication approach
+                                'use_mm_for_euclid_dist': force to use matrix multiplication for p = 2
+                                'donot_use_mm_for_euclid_dist': do not use matrix multiplication for p = 2
     name (str, optional): The default value is `None`. Normally there is no need for
     user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
@@ -3386,7 +3393,18 @@ def cdist(x, y, p=2, use_mm_for_euclid_dist=True, name=None):
     """
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'cdist')
     check_variable_and_dtype(y, 'dtype', ['float32', 'float64'], 'cdist')
-    check_type(p, 'p', (float, int), 'dist')
+    check_type(p, 'p', (float, int), 'cdist')
+    if compute_mode not in [
+        'use_mm_for_euclid_dist_if_necessary',
+        'use_mm_for_euclid_dist',
+        'donot_use_mm_for_euclid_dist',
+    ]:
+        raise ValueError(
+            f'compute_mode only supported '
+            f'`use_mm_for_euclid_dist_if_necessary`,'
+            f'`use_mm_for_euclid_dist` and `donot_use_mm_for_euclid_dist`, but got `{compute_mode}`.'
+        )
+
     x_shape = x.shape
     y_shape = y.shape
 
@@ -3402,6 +3420,7 @@ def cdist(x, y, p=2, use_mm_for_euclid_dist=True, name=None):
         raise ValueError(
             'The Input(x) and Input(y) should be at least 2-D tensor.'
         )
+
     if x_shape[-1] != y_shape[-1]:
         raise ValueError(
             "The shape[-1] of Input(x) shape should be same as Input(y) "
@@ -3411,13 +3430,19 @@ def cdist(x, y, p=2, use_mm_for_euclid_dist=True, name=None):
     for i in range(len(x_shape[:-2])):
         if x_shape[i] != y_shape[i] and (x_shape[i] != 1 and y_shape[i] != 1):
             raise ValueError(
-                f"The shape of Input(x) should be same as Input(y) at dimension {i}"
+                f"The shape of Input(x) should be same as Input(y) or be broadcast at dimension {i}"
                 f"but got Input(x) {x_shape[i]} and Input(y) {y_shape[i]}"
             )
 
     p = float(p)
 
-    if p == 2 and use_mm_for_euclid_dist:
+    if p == 2 and (
+        compute_mode == 'use_mm_for_euclid_dist'
+        or (
+            compute_mode == 'use_mm_for_euclid_dist_if_necessary'
+            and (x_shape[-2] > 25 or y_shape[-2] > 25)
+        )
+    ):
         x_norm = paddle.sum(x.pow(2), keepdim=True, axis=-1)
         y_norm = paddle.sum(y.pow(2), keepdim=True, axis=-1)
         x_pad = paddle.ones_like(x_norm)
