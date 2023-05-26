@@ -67,32 +67,18 @@ class DygraphShardingOptimizer:
         self._rank2params = self._partition_parameters()
         self._param2rank = self._map_param_to_rank()
 
-        # update parameter_list of the inner_opt
-        # Note: The inner_opt should promise that it only use its self._parameter_list.
-        # Recursively use the self._inner_opt._inner_opt._parameter_list is not allowed.
-        print("inner_opt:", self._inner_opt)
-        if hasattr(self._inner_opt, '_inner_opt'):
-            print(
-                "self._inner_opt params len:{}, self._inner_opt._inner_opt params len:{}".format(
-                    len(self._inner_opt._parameter_list),
-                    len(self._inner_opt._inner_opt._parameter_list),
-                )
+        print(
+            "self._inner_opt._parameter_list len:{}".format(
+                len(self._inner_opt._parameter_list)
             )
-        print(f"self._parameter_list len:{len(self._parameter_list)}")
-        inner_opt = self._inner_opt
-        while hasattr(inner_opt, '_parameter_list'):
-            inner_opt._parameter_list = self._rank2params[self._sharding_rank]
-            if hasattr(inner_opt, '_inner_opt'):
-                inner_opt = inner_opt._inner_opt
-            else:
-                break
-        #
-        # self._set_inner_opt_attr('_parameter_list', self._rank2params[self._sharding_rank])
+        )
+        self._set_inner_opt_attr(
+            '_parameter_list', self._rank2params[self._sharding_rank]
+        )
         print(
             "after parameters update, params len:%d"
             % (len(self._inner_opt._parameter_list))
         )
-        print(f"self._parameter_list len:{len(self._parameter_list)}")
 
     def clear_grad(self, set_to_zero=True):
         """
@@ -151,9 +137,7 @@ class DygraphShardingOptimizer:
                 mapping[param.name] = rank
         return mapping
 
-    @staticmethod
-    def reduce_gradients(parameter_list, hcg):
-        # TODO allreduce --> reduce
+    def reduce_gradients(self, parameter_list, hcg):
         # TODO merge grad / nrank with dp
         logger.debug("sharding start gradients sync")
         with framework.no_grad():
@@ -169,8 +153,10 @@ class DygraphShardingOptimizer:
                     g_var = param.main_grad
                 if g_var is not None:
                     g_var.scale_(1.0 / sharding_nrank)
-                    paddle.distributed.all_reduce(
+                    param_rank = self._param2rank[param.name]
+                    paddle.distributed.reduce(
                         g_var,
+                        dst=hcg.get_sharding_parallel_group().ranks[param_rank],
                         group=hcg.get_sharding_parallel_group(),
                         sync_op=True,
                     )
@@ -228,98 +214,8 @@ class DygraphShardingOptimizer:
     def step(self):
         # TODO Check whether the model trainable param changed and update state accordingly
 
-        # # hack to grad_clip all parameters,
-        # # otherwise the self._inner_opt will only grad_clip the self._rank2params[self._sharding_rank] params
-        # origin_clip = self._inner_opt._grad_clip
-
-        # def set_inner_opt_grad_clip(grad_clip_value):
-        #     inner_opt = self._inner_opt
-        #     while hasattr(inner_opt, '_grad_clip'):
-        #         inner_opt._grad_clip = grad_clip_value
-        #         if (
-        #             hasattr(inner_opt, '_inner_opt')
-        #             and inner_opt._inner_opt is not None
-        #         ):
-        #             inner_opt = inner_opt._inner_opt
-        #         else:
-        #             break
-
-        # if not isinstance(self._parameter_list[0], dict):
-        #     params_grads = []
-        #     for param in self._parameter_list:
-        #         if (
-        #             hasattr(param, "regularizer")
-        #             and param.regularizer is not None
-        #         ):
-        #             raise ValueError(
-        #                 "param {} should not has the regularizer attribute".format(
-        #                     param.name
-        #                 )
-        #             )
-        #         if param.stop_gradient:
-        #             continue
-        #         grad_var = param._grad_ivar()
-        #         if hasattr(param, "main_grad") and param.main_grad is not None:
-        #             grad_var = param.main_grad
-        #         params_grads.append((param, grad_var))
-        #     print(
-        #         "dygraph_sharding inner_opt:{}, grad_clip:{}".format(
-        #             self._inner_opt, self._inner_opt._grad_clip
-        #         )
-        #     )
-        #     print(f"clip grad params_grads len:{len(params_grads)}")
-        #     if hasattr(self._inner_opt._grad_clip, 'not_sharding_stage1'):
-        #         self._inner_opt._grad_clip.not_sharding_stage1 = False
-        #     # def set_inner_opt_grad_clip_attr(attr_name, value):
-        #     #     inner_opt = self._inner_opt
-        #     #     while hasattr(inner_opt._grad_clip, attr_name):
-        #     #         setattr(inner_opt._grad_clip, attr_name, value)
-        #     #         if hasattr(inner_opt, '_inner_opt'):
-        #     #             inner_opt = inner_opt._inner_opt
-        #     #         else:
-        #     #             break
-        #     # set_inner_opt_grad_clip_attr('not_sharding_stage1', False)
-        #     params_grads = self._inner_opt._grad_clip(params_grads)
-        #     print(f"after grad clip, params_grads len:{len(params_grads)}")
-        #     # set inner_opt._grad_clip None to avoid repeatedly grad_clip gradients inside inner_opt._apply_optimize
-        #     set_inner_opt_grad_clip(None)
-        #     # self._set_inner_opt_attr('_grad_clip', None)
-        #     update_param_names = [
-        #         p.name for p in self._rank2params[self._sharding_rank]
-        #     ]
-        #     update_params_grads = [
-        #         (p, g) for p, g in params_grads if p.name in update_param_names
-        #     ]
-        #     print(
-        #         "update_params_grads len:{}, non update params len:{}".format(
-        #             len(update_params_grads), len(params_grads)
-        #         )
-        #     )
-
-        # self._inner_opt.step() might be ok? because we already update the self._inner_opt._parameter_list
+        # actually updating
         self._inner_opt.step()
-        # update_params_grads = []
-        # for param in self._rank2params[self._sharding_rank]:
-        #     if param.stop_gradient:
-        #         continue
-        #     grad_var = param._grad_ivar()
-        #     if hasattr(param, "main_grad") and param.main_grad is not None:
-        #         grad_var = param.main_grad
-        #     update_params_grads.append((param, grad_var))
-        # #
-        # self._apply_optimize(
-        #     loss=None,
-        #     startup_program=None,
-        #     params_grads=update_params_grads,
-        # )
-        # print(
-        #     "after clip, dygraph_sharding inner_opt:{}, grad_clip:{}".format(
-        #         self._inner_opt, self._inner_opt._grad_clip
-        #     )
-        # )
-        # # restore the grad clip
-        # set_inner_opt_grad_clip(origin_clip)
-        # # self._set_inner_opt_attr('_grad_clip', origin_clip)
 
         # sync parameters across sharding ranks
         self._sharding_sync_parameters()

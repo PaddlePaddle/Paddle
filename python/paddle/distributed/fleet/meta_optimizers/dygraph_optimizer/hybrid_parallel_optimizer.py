@@ -229,10 +229,10 @@ class HybridParallelClipGrad:
 class HybridParallelOptimizer:
     # adapter wrapper for optimizer
     def __init__(self, optimizer, hcg, strategy):
-        # TODO(pangengzheng): get sharding stage level to decide whether wrap optimzer with DygraphShardingOptimizer
+        # Note: Only sharding stage 1 is considered in HybridParallelOptimizer.
+        # The sharding stage2 and stage3 optimizers are invoked in other api.
         if hcg.get_sharding_parallel_world_size() > 1:
             optimizer = DygraphShardingOptimizer(optimizer, hcg)
-        # print("Hybrid inner_opt:{}".format(optimizer))
         self._inner_opt = optimizer
         self._strategy = strategy
         self._hcg = hcg
@@ -257,12 +257,10 @@ class HybridParallelOptimizer:
                 "While using ClipGradByGlobalNorm in TensorParallel, PipelineParallel "
                 "or Sharding, the grad clip of original optimizer will be changed."
             )
-            # print("before unwrap, inner optimizer:", self._inner_opt)
             inner_opt = unwrap_optimizer(
                 self._inner_opt,
                 (MixPrecisionOptimizer, DygraphShardingOptimizer),
             )
-            # print("after unwrap, inner optimizer:", inner_opt)
 
             if (
                 inner_opt._parameter_list
@@ -410,10 +408,7 @@ class HybridParallelOptimizer:
         parameters_list = obtain_optimizer_parameters_list(self._inner_opt)
         if self._sharding_enable:
             assert isinstance(self._inner_opt, DygraphShardingOptimizer)
-            # print("reduce_gradients parameters_list len:{}".format(len(parameters_list)))
-            DygraphShardingOptimizer.reduce_gradients(
-                list(parameters_list), self._hcg
-            )
+            self._inner_opt.reduce_gradients(list(parameters_list), self._hcg)
 
         if self._dp_enable:
             fused_allreduce_gradients(list(parameters_list), self._hcg)
@@ -434,9 +429,7 @@ class HybridParallelOptimizer:
         # Here sharding should use global parameter list
         if self._sharding_enable:
             assert isinstance(self._inner_opt, DygraphShardingOptimizer)
-            DygraphShardingOptimizer.reduce_gradients(
-                list(parameter_list), self._hcg
-            )
+            self._inner_opt.reduce_gradients(list(parameter_list), self._hcg)
 
         if self._dp_enable:
             fused_allreduce_gradients(list(parameter_list), self._hcg)

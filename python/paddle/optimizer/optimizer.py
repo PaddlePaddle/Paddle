@@ -1203,8 +1203,6 @@ class Optimizer:
                 framework.default_startup_program(),
             ):
                 if isinstance(params_grads, list):
-                    # print("Optimzier self._grad_clip:", self._grad_clip)
-                    # print("params_grads len:{}:".format(len(params_grads)))
                     if self._grad_clip is not None:
                         params_grads = self._grad_clip(params_grads)
                     params_grads = self.append_regularization_ops(
