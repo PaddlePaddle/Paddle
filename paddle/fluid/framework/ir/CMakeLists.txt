@@ -460,6 +460,7 @@ if(WITH_MKLDNN)
       conv_transpose_op
       batch_norm_op
       generated_op
+      generated_static_op
       activation_op
       elementwise_add_op
       concat_and_split
