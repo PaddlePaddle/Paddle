@@ -15,7 +15,6 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
 
 import paddle
 from paddle.fluid import core
@@ -54,55 +53,85 @@ def TopPProcess(probs, top_p):
     return next_scores, next_tokens
 
 
-class TestTopPSamplingOp(OpTest):
-    def init_args(self):
-        self.topp = 0.0
-        self.batch_size = 1
-        self.vocab_size = 10000
-        self.seed = 2023
-        self.dtype = "float32"
-
-    def _get_places(self):
-        places = []
-        places.append(core.CUDAPlace(0))
-        return places
-
+class TestTopPAPI(unittest.TestCase):
     def setUp(self):
-        self.init_args()
-        self.op_type = "top_p_sampling"
-        self.python_api = paddle.top_p_sampling
-        self.public_python_api = paddle.top_p_sampling
-        self.input_data = np.random.rand(self.batch_size, self.vocab_size)
-        self.topp_tensor = paddle.to_tensor(
-            [
-                self.topp,
-            ]
-            * self.batch_size,
-            self.dtype,
-        ).reshape((-1, 1))
-        self.inputs = {
-            'x': paddle.to_tensor(self.input_data, self.dtype),
-            'ps': self.topp_tensor,
-        }
-        self.attrs = {'seed': self.seed}
-        next_scores, next_tokens = TopPProcess(
-            paddle.to_tensor(self.input_data, self.dtype), self.topp
-        )
-        self.outputs = {'out': next_scores, 'ids': next_tokens}
-
-    def test_check_output(self):
-        self.check_output()
-
-
-class TestTopPSamplingOp1(TestTopPSamplingOp):
-    def init_args(self):
         self.topp = 0.0
-        self.batch_size = 10
-        self.vocab_size = 100000
-        self.seed = 2023
-        self.dtype = "float16"
+        self.seed = 6688
+        self.batch_size = 3
+        self.vocab_size = 10000
+        self.dtype = "float32"
+        self.input_data = np.random.rand(self.batch_size, self.vocab_size)
+
+    def run_dygraph(self, place):
+        with paddle.fluid.dygraph.guard(place):
+            input_tensor = paddle.to_tensor(self.input_data, self.dtype)
+            topp_tensor = paddle.to_tensor(
+                [
+                    self.topp,
+                ]
+                * self.batch_size,
+                self.dtype,
+            ).reshape((-1, 1))
+            # test case for basic test case 1
+            paddle_result = paddle.top_p_sampling(
+                input_tensor, topp_tensor, self.seed
+            )
+            ref_res = TopPProcess(input_tensor, self.topp)
+
+            np.testing.assert_allclose(
+                paddle_result[0].numpy(), ref_res[0].numpy(), rtol=1e-05
+            )
+            np.testing.assert_allclose(
+                paddle_result[1].numpy().flatten(),
+                ref_res[1].numpy().flatten(),
+                rtol=0,
+            )
+
+    def run_static(self, place):
+        paddle.enable_static()
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            input_tensor = paddle.static.data(
+                name="x", shape=[6, 1030], dtype=self.dtype
+            )
+            topp_tensor = paddle.static.data(
+                name="topp", shape=[6, 1], dtype=self.dtype
+            )
+            result = paddle.top_p_sampling(input_tensor, topp_tensor, self.seed)
+            ref_res = TopPProcess(input_tensor, self.topp)
+            exe = paddle.static.Executor(place)
+            input_data = np.random.rand(6, 1030).astype(self.dtype)
+            paddle_result = exe.run(
+                feed={
+                    "x": input_data,
+                    "topp": np.array(
+                        [
+                            self.topp,
+                        ]
+                        * 6
+                    ).astype(self.dtype),
+                },
+                fetch_list=[
+                    result[0],
+                    result[1],
+                    ref_res[0],
+                    ref_res[1],
+                ],
+            )
+            np.testing.assert_allclose(
+                paddle_result[0], paddle_result[2], rtol=1e-05
+            )
+            np.testing.assert_allclose(
+                paddle_result[1], paddle_result[3], rtol=1e-05
+            )
+
+    def test_cases(self):
+        places = [core.CUDAPlace(0)]
+        for place in places:
+            self.run_dygraph(place)
+            self.run_static(place)
 
 
 if __name__ == "__main__":
-    paddle.enable_static()
     unittest.main()
