@@ -97,7 +97,8 @@ if(WITH_GPU)
   nv_library(
     grad_merge_all_reduce_op_handle
     SRCS grad_merge_all_reduce_op_handle.cc
-    DEPS op_handle_base
+    DEPS fused_all_reduce_op_handle
+         op_handle_base
          scope
          lod_tensor
          ddim
@@ -105,8 +106,7 @@ if(WITH_GPU)
          dynload_cuda
          variable_visitor
          place
-         all_reduce_op_handle
-         fused_all_reduce_op_handle)
+         all_reduce_op_handle)
 
   if(WITH_DGC)
     nv_library(
@@ -162,7 +162,8 @@ elseif(WITH_ROCM)
   hip_library(
     fused_all_reduce_op_handle
     SRCS fused_all_reduce_op_handle.cc
-    DEPS op_handle_base
+    DEPS all_reduce_op_handle
+         op_handle_base
          variable_visitor
          scope
          lod_tensor
@@ -173,7 +174,8 @@ elseif(WITH_ROCM)
   hip_library(
     grad_merge_all_reduce_op_handle
     SRCS grad_merge_all_reduce_op_handle.cc
-    DEPS op_handle_base
+    DEPS fused_all_reduce_op_handle
+         op_handle_base
          scope
          lod_tensor
          ddim
@@ -181,8 +183,7 @@ elseif(WITH_ROCM)
          dynload_cuda
          variable_visitor
          place
-         all_reduce_op_handle
-         fused_all_reduce_op_handle)
+         all_reduce_op_handle)
 
   if(WITH_DISTRIBUTE)
     hip_library(
@@ -217,7 +218,8 @@ else()
   cc_library(
     fused_all_reduce_op_handle
     SRCS fused_all_reduce_op_handle.cc
-    DEPS op_handle_base
+    DEPS all_reduce_op_handle
+         op_handle_base
          scope
          lod_tensor
          ddim
@@ -227,15 +229,15 @@ else()
   cc_library(
     grad_merge_all_reduce_op_handle
     SRCS grad_merge_all_reduce_op_handle.cc
-    DEPS op_handle_base
+    DEPS fused_all_reduce_op_handle
+         op_handle_base
          scope
          lod_tensor
          ddim
          memory
          variable_visitor
          place
-         all_reduce_op_handle
-         fused_all_reduce_op_handle)
+         all_reduce_op_handle)
   if(WITH_DISTRIBUTE)
     cc_library(
       reduce_op_handle

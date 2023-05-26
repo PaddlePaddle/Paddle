@@ -45,9 +45,9 @@ REGISTER_PSCORE_CLASS(ValueAccessor, CtrDoubleAccessor);
 REGISTER_PSCORE_CLASS(ValueAccessor, CtrDymfAccessor);
 REGISTER_PSCORE_CLASS(ValueAccessor, SparseAccessor);
 REGISTER_PSCORE_CLASS(SparseValueSGDRule, StdAdaGradSGDRule);
-REGISTER_PSCORE_CLASS(SparseValueSGDRule, SparseAdamSGDRule);
-REGISTER_PSCORE_CLASS(SparseValueSGDRule, SparseNaiveSGDRule);
-REGISTER_PSCORE_CLASS(SparseValueSGDRule, SparseAdaGradSGDRule);
+// REGISTER_PSCORE_CLASS(SparseValueSGDRule, SparseAdamSGDRule);
+// REGISTER_PSCORE_CLASS(SparseValueSGDRule, SparseNaiveSGDRule);
+// REGISTER_PSCORE_CLASS(SparseValueSGDRule, SparseAdaGradSGDRule);
 REGISTER_PSCORE_CLASS(SparseValueSGDRule, SparseSharedAdamSGDRule);
 
 int32_t TableManager::Initialize() {
