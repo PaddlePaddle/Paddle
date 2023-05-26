@@ -13,10 +13,13 @@
 # limitations under the License.
 
 import random
+import sys
 import unittest
 
+sys.path.append("../legacy_test")
+
 import numpy as np
-from legacy_test.hybrid_parallel_pp_layer import AlexNet, AlexNetPipeDesc
+from hybrid_parallel_pp_layer import AlexNet, AlexNetPipeDesc
 
 import paddle
 import paddle.distributed as dist
