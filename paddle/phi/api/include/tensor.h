@@ -453,7 +453,7 @@ class PADDLE_API Tensor final {
   /**
    * @brief Transfer the source Tensor to current Tensor.
    *
-   * @param src the source Tensor to be copied.
+   * @param src The source Tensor to be copied.
    * @param blocking Should we copy this in sync way.
    * @return void
    */
