@@ -1132,6 +1132,18 @@ def kthvalue(x, k, axis=None, keepdim=False, name=None):
 
 
 def top_p_sampling(x, ps, seed=None, name=None):
+    """
+    Get the TopP scores and ids.
+
+    Args:
+        x(Tensor): A N-D Tensor with type float32, float16 and bfloat16.
+        ps(Tensor): A 1-D Tensor with type float32, float16 and bfloat16.
+        seed(int, optional): the random seed,
+        name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        tuple(Tensor), return the values and indices. The value data type is the same as the input `x`. The indices data type is int64.
+    """
 
     if seed is None:
         seed = -1
