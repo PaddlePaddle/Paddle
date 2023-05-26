@@ -23,7 +23,6 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 
-namespace paddle {
 namespace framework {
 namespace ir {
 class Node;

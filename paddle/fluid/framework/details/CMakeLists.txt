@@ -75,23 +75,24 @@ if(WITH_GPU)
   nv_library(
     all_reduce_op_handle
     SRCS all_reduce_op_handle.cc
-    DEPS op_handle_base
+    DEPS variable_visitor
+         op_handle_base
          scope
          lod_tensor
          ddim
          memory
-         dynload_cuda
-         variable_visitor)
+         dynload_cuda)
   nv_library(
     fused_all_reduce_op_handle
     SRCS fused_all_reduce_op_handle.cc
-    DEPS op_handle_base
+    DEPS all_reduce_op_handle
+         variable_visitor
+         op_handle_base
          scope
          lod_tensor
          ddim
          memory
          dynload_cuda
-         variable_visitor
          place)
   nv_library(
     grad_merge_all_reduce_op_handle
