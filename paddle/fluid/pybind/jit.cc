@@ -120,6 +120,7 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
   // NOTE:(xiongkun): Handle GeneratorExit exception: (Spend a day)
   // In Python, gen close is also a Python function call that will enter this
   // function with GeneratorExit set, which will cause the PyObject_CallObject
+
   // raise SystemError. So we disable the custom behavior for GeneratorExit. def
   // func():
   //     iter = iter([1, 2, 3])
@@ -127,6 +128,8 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
   //         return i # <--- Early return, cause a GeneratorExit thrown,
   //                  # <--- which Cause the PyObject_CallObject raise
   //                  SystemError.
+  // raise SystemError. So we disable the custom behavior for GeneratorExit.
+
   if (PyErr_ExceptionMatches(PyExc_GeneratorExit)) {
     return eval_frame_default(tstate, frame, throw_flag);
   }
@@ -138,6 +141,7 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
 
   PyObject *args = Py_BuildValue("(O)", frame);
   PyObject *result = PyObject_CallObject(callback, args);
+  Py_DECREF(args);
   // result: GuardedCode
   if (result == NULL) {
     // internal exception
@@ -151,8 +155,10 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
     if (disable_eval_frame != Py_True) {
       // Re-enable custom behavior
       eval_frame_callback_set(callback);
-      auto out = eval_custom_code(tstate, frame, code, throw_flag);
-      return out;
+      auto ret = eval_custom_code(tstate, frame, code, throw_flag);
+      Py_DECREF(result);
+      Py_DECREF(code);
+      return ret;
     } else {
       auto out = eval_custom_code(tstate, frame, code, throw_flag);
       // Re-enable custom behavior
