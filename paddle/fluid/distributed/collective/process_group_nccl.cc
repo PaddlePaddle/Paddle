@@ -26,6 +26,9 @@
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/utils/data_type.h"
 
+#include "paddle/phi/core/distributed/comm_context_manager.h"
+#include "paddle/phi/core/distributed/nccl_comm_context.h"
+
 PHI_DECLARE_bool(nccl_blocking_wait);
 DECLARE_bool(use_stream_safe_cuda_allocator);
 
@@ -326,18 +329,15 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Broadcast(
   return RunFnInNCCLEnv(
       [&](ncclComm_t comm, gpuStream_t stream) {
         int root = opts.source_rank + opts.source_root;
-        if (FLAGS_enable_nccl_dynamic_check) {
-          phi::distributed::NCCLDynamicCheck::CheckShape(
-              *out_tensor, root, rank_, comm);
-        }
-        NCCL_CHECK(
-            phi::dynload::ncclBroadcast(in_tensor.data(),
-                                        out_tensor->data(),
-                                        in_tensor.numel(),
-                                        phi::ToNCCLDataType(in_tensor.dtype()),
-                                        root,
-                                        comm,
-                                        stream));
+        const auto& comm_context_manager =
+            phi::distributed::CommContextManager::GetInstance();
+        auto comm_context = static_cast<phi::distributed::NCCLCommContext*>(
+            comm_context_manager.Get(this->gid_));
+        PADDLE_ENFORCE_NE(
+            comm_context,
+            nullptr,
+            phi::errors::Unavailable("NCCLCommContext is nullptr"));
+        comm_context->Broadcast(out_tensor, in_tensor, root, stream);
       },
       in_tensor,
       CommType::BROADCAST,
