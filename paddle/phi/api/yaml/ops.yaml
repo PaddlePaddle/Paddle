@@ -378,6 +378,18 @@
     func : celu
   backward : celu_grad
 
+- op : check_finite_and_unscale_
+  args : (Tensor[] x, Tensor scale)
+  output : Tensor[](out){x.size()}, Tensor(found_infinite)
+  infer_meta :
+    func : CheckFiniteAndUnscaleInferMeta
+    param : [x, scale]
+  kernel :
+    func : check_finite_and_unscale
+    param : [x, scale]
+    data_type : x
+  inplace : (x -> out)
+
 - op : cholesky
   args : (Tensor x, bool upper=false)
   output : Tensor
