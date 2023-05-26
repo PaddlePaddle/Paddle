@@ -3352,7 +3352,7 @@ def corrcoef(x, rowvar=True, name=None):
     return c
 
 
-def cdist(x, y, p=2, name=None, use_mm_for_euclid_dist=True):
+def cdist(x, y, p=2, use_mm_for_euclid_dist=True, name=None):
     r"""
     Computes batched the p-norm distance between each pair of the two collections of row vectors.
 
@@ -3363,6 +3363,8 @@ def cdist(x, y, p=2, name=None, use_mm_for_euclid_dist=True):
     x (Tensor): input tensor of shape (*, P, M), its data type is float32 or float64.
     y (Tensor): input tensor of shape (*, R, M), its data type is float32 or float64.
     p (float, optional): The norm to be computed, its data type is float32 or float64. Default: 2.
+    use_mm_for_euclid_dist(bool, optional): The parameter determined whether using matrix multiply for
+                                            euclidean distance calculation. Default: True
     name (str, optional): The default value is `None`. Normally there is no need for
     user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
@@ -3384,13 +3386,14 @@ def cdist(x, y, p=2, name=None, use_mm_for_euclid_dist=True):
     """
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'cdist')
     check_variable_and_dtype(y, 'dtype', ['float32', 'float64'], 'cdist')
+    check_type(p, 'p', (float, int), 'dist')
     x_shape = x.shape
     y_shape = y.shape
 
     if len(x_shape) > len(y_shape):
-        y_shape = [1] * (len(x_shape) - len(y_shape)) + y_shape
+        y_shape = [1] * (len(x_shape) - len(y_shape)) + list(y_shape)
     elif len(y_shape) > len(x_shape):
-        x_shape = [1] * (len(y_shape) - len(x_shape)) + x_shape
+        x_shape = [1] * (len(y_shape) - len(x_shape)) + list(x_shape)
 
     if p < 0:
         raise ValueError('p only should be non-negative value.')
@@ -3409,7 +3412,7 @@ def cdist(x, y, p=2, name=None, use_mm_for_euclid_dist=True):
         if x_shape[i] != y_shape[i] and (x_shape[i] != 1 and y_shape[i] != 1):
             raise ValueError(
                 f"The shape of Input(x) should be same as Input(y) at dimension {i}"
-                f"but got Input(x) {x_shape[i]} and Input(y) shape[-1] {y_shape[i]}"
+                f"but got Input(x) {x_shape[i]} and Input(y) {y_shape[i]}"
             )
 
     p = float(p)
@@ -3425,5 +3428,6 @@ def cdist(x, y, p=2, name=None, use_mm_for_euclid_dist=True):
         y_perm[-1], y_perm[-2] = y_perm[-2], y_perm[-1]
         out = paddle.clip(x_.matmul(paddle.transpose(y_, y_perm)), min=0).sqrt()
         return out
-
-    return paddle.norm(x[..., None, :] - y[..., None, :, :], p=p, axis=-1)
+    x = x.reshape((*x_shape[:-1], 1, x_shape[-1]))
+    y = y.reshape((*y_shape[:-2], 1, *y_shape[-2:]))
+    return paddle.norm(x - y, p=p, axis=-1)
