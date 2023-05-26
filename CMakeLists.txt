@@ -307,7 +307,7 @@ option(WITH_CUDNN_FRONTEND
        "Compile with CUDNN Frontend API support (experimental)" OFF)
 option(WITH_CUDNN_DSO "Compile PaddlePaddle with cuDNN dynamic-link libraries"
        OFF)
-option(WITH_NEWIR "Compile PaddlePaddle with NEWIR" OFF)
+option(WITH_NEWIR "Compile PaddlePaddle with NEWIR" ON)
 
 if(WITH_RECORD_BUILDTIME)
   set_property(
