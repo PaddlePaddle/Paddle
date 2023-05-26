@@ -3773,6 +3773,12 @@ __device__ __forceinline__ double log_local<double>(double x) {
   return ::log(x);
 }
 
+template <>
+__device__ __forceinline__ dtype::bfloat16 log_local<dtype::bfloat16>(
+    dtype::bfloat16 x) {
+  return dtype::bfloat16(__logf(static_cast<float>(x)));
+}
+
 template <typename T>
 struct CudaLogFunctor : public BaseActivationFunctor<T> {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
@@ -3840,6 +3846,12 @@ __device__ __forceinline__ double log2_local<double>(double x) {
   return ::log2(x);
 }
 
+template <>
+__device__ __forceinline__ dtype::bfloat16 log2_local<dtype::bfloat16>(
+    dtype::bfloat16 x) {
+  return dtype::bfloat16(__log2f(static_cast<float>(x)));
+}
+
 template <typename T>
 struct CudaLog2Functor : public BaseActivationFunctor<T> {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
@@ -3883,6 +3895,12 @@ __device__ __forceinline__
 template <>
 __device__ __forceinline__ double log10_local(double x) {
   return ::log10(x);
+}
+
+template <>
+__device__ __forceinline__ dtype::bfloat16 log10_local<dtype::bfloat16>(
+    dtype::bfloat16 x) {
+  return dtype::bfloat16(__log2f(static_cast<float>(x)));
 }
 
 template <typename T>
