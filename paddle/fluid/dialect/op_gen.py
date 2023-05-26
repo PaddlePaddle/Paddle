@@ -408,7 +408,21 @@ class OpInfoParser:
         return data_type_list
 
     def parse_op_phi_name(self):
-        return self.op_yaml_item['name']
+        if self.parse_op_inplace_info() is None:
+            return [self.op_yaml_item['name']]
+        else:
+            if self.op_yaml_item['name'][-1] == "_":
+                return [self.op_yaml_item['name']]
+            else:
+                return [
+                    self.op_yaml_item['name'],
+                    self.op_yaml_item['name'] + "_",
+                ]
+
+    def parse_op_inplace_info(self):
+        if 'inplace' in self.op_yaml_item:
+            return self.op_yaml_item['inplace']
+        return None
 
 
 def to_pascal_case(s):
@@ -456,9 +470,6 @@ def OpGenerator(
     ops_defined_list = []  # all op class defined store in this list
     for op_info in op_info_items:
         # get op info
-        op_name = op_info.op_phi_name
-        op_class_name = to_pascal_case(op_name) + "Op"
-        op_dialect_name = dialect_name + "." + op_name
         op_input_name_list = op_info.input_name_list
         op_input_type_list = op_info.input_type_list
         op_input_optional_list = op_info.input_optional_list
@@ -473,224 +484,232 @@ def OpGenerator(
         op_interfaces = []
         op_traits = []
 
-        # gen interface/trait str
-        op_interfaces_str = ""
-        if len(op_interfaces) > 0:
-            op_interfaces_str = "," + ",".join(op_interfaces)
-        op_traits_str = ""
-        if len(op_interfaces) > 0:
-            op_traits_str = "," + ",".join(op_traits)
+        # If op has inplace info, we will generate inplace op and non-inplace op.
+        print("op_info.op_phi_name: ", op_info.op_phi_name)
+        for op_name in op_info.op_phi_name:
+            op_class_name = to_pascal_case(op_name) + "Op"
+            op_dialect_name = dialect_name + "." + op_name
 
-        op_get_inputs_outputs_str = ""
-        for idx in range(len(op_input_name_list)):
-            op_get_inputs_outputs_str += OP_GET_INPUT_TEMPLATE.format(
-                input_name="input_" + str(idx) + "_" + op_input_name_list[idx],
-                input_index=idx,
-            )
-        for idx in range(len(op_output_name_list)):
-            op_get_inputs_outputs_str += OP_GET_OUTPUT_TEMPLATE.format(
-                output_name="output_"
-                + str(idx)
-                + "_"
-                + op_output_name_list[idx],
-                output_index=idx,
-            )
+            # gen interface/trait str
+            op_interfaces_str = ""
+            if len(op_interfaces) > 0:
+                op_interfaces_str = "," + ",".join(op_interfaces)
+            op_traits_str = ""
+            if len(op_interfaces) > 0:
+                op_traits_str = "," + ",".join(op_traits)
 
-        # gen op_declare_str/op_defined_str
-        if len(op_attribute_name_list) == 0:
-            op_declare_str = OP_DECLARE_TEMPLATE.format(
-                op_name=op_class_name,
-                dialect_op_name=op_dialect_name,
-                interfaces=op_interfaces_str,
-                traits=op_traits_str,
-                attribute_declare=op_0_attribute_declare_str,
-                attribute_num=0,
-                get_inputs_and_outputs=op_get_inputs_outputs_str,
-            )
-            op_defined_str = ""
-        else:
-            op_declare_str = OP_DECLARE_TEMPLATE.format(
-                op_name=op_class_name,
-                dialect_op_name=op_dialect_name,
-                interfaces=op_interfaces_str,
-                traits=op_traits_str,
-                attribute_declare=op_n_attribute_declare_str.format(
-                    attribute_num=len(op_attribute_name_list)
-                ),
-                attribute_num=len(op_attribute_name_list),
-                get_inputs_and_outputs=op_get_inputs_outputs_str,
-            )
-            attribute_names_str = (
-                '"' + '", "'.join(op_attribute_name_list) + '"'
-            )
-            op_defined_str = OP_N_ATTRIBUTE_DEFINED_TEMPLATE.format(
-                op_name=op_class_name,
-                attribute_num=len(op_attribute_name_list),
-                attribute_names=attribute_names_str,
-            )
-
-        # generate get op info funciton: inputs
-        inputs_info_str = ""
-        if len(op_input_name_list) > 0:
-            input_info_list = []
+            op_get_inputs_outputs_str = ""
             for idx in range(len(op_input_name_list)):
-                input_info_list.append(
-                    CONSTRUCT_INPUT_INFO_TEMPLATE.format(
-                        name=op_input_name_list[idx],
-                        typename=op_input_type_list[idx],
-                        optional=op_input_optional_list[idx],
-                        no_need_buffer=op_input_no_need_buffer_list[idx],
-                    )
+                op_get_inputs_outputs_str += OP_GET_INPUT_TEMPLATE.format(
+                    input_name=op_input_name_list[idx],
+                    input_index=idx,
                 )
-            inputs_info_str = ", ".join(input_info_list)
-        op_inputs_info_func_str = OP_INPUT_INFO_TEMPLATE.format(
-            op_name=op_class_name, impl=inputs_info_str
-        )
-
-        # generate get op info funciton: outputs
-        outputs_info_str = ""
-        if len(op_output_name_list) > 0:
-            output_info_list = []
             for idx in range(len(op_output_name_list)):
-                output_info_list.append(
-                    CONSTRUCT_OUTPUT_INFO_TEMPLATE.format(
-                        name=op_output_name_list[idx],
-                        typename=op_output_type_list[idx],
-                        optional=op_output_optional_list[idx],
-                        intermediate=op_output_intermediate_list[idx],
-                    )
+                op_get_inputs_outputs_str += OP_GET_OUTPUT_TEMPLATE.format(
+                    output_name=op_output_name_list[idx],
+                    output_index=idx,
                 )
-            outputs_info_str = ", ".join(output_info_list)
-        op_outputs_info_func_str = OP_OUTPUT_INFO_TEMPLATE.format(
-            op_name=op_class_name, impl=outputs_info_str
-        )
 
-        # generate get op info funciton: attributes
-        attribute_info_str = ""
-        if len(op_attribute_name_list) > 0:
-            attribute_info_list = []
-            for idx in range(len(op_attribute_name_list)):
-                attribute_info_list.append(
-                    CONSTRUCT_ATTRIBUTE_INFO_TEMPLATE.format(
-                        name=op_attribute_name_list[idx],
-                        typename=op_attribute_type_list[idx],
-                        data_type=op_attribute_data_type_list[idx],
-                    )
+            # gen op_declare_str/op_defined_str
+            if len(op_attribute_name_list) == 0:
+                op_declare_str = OP_DECLARE_TEMPLATE.format(
+                    op_name=op_class_name,
+                    dialect_op_name=op_dialect_name,
+                    interfaces=op_interfaces_str,
+                    traits=op_traits_str,
+                    attribute_declare=op_0_attribute_declare_str,
+                    attribute_num=0,
+                    get_inputs_and_outputs=op_get_inputs_outputs_str,
                 )
-            attribute_info_str = ", ".join(attribute_info_list)
-        op_attributes_info_func_str = OP_ATTRIBUTE_INFO_TEMPLATE.format(
-            op_name=op_class_name, impl=attribute_info_str
-        )
-
-        # generate op verify function: inputs_type_check_str
-        if len(op_input_type_list) == 0:
-            inputs_type_check_str = (
-                "// Inputs num is 0, not need to check inputs type."
-            )
-        else:
-            inputs_type_check_str = ""
-        for idx in range(len(op_input_type_list)):
-            input_type = op_input_type_list[idx]
-            is_optional = op_input_optional_list[idx]
-            is_vector = False
-            if input_type.startswith("ir::VectorType<"):
-                is_vector = True
-                input_type = input_type[15:-1]
-            check_str = ""
-            if is_optional == "true":
-                if is_vector:
-                    check_str = INPUT_OPTIONAL_VECTORTYPE_CHECK_TEMPLATE.format(
-                        index=idx, standard=input_type
-                    )
-                else:
-                    check_str = INPUT_OPTIONAL_TYPE_CHECK_TEMPLATE.format(
-                        index=idx, standard=input_type
-                    )
+                op_defined_str = ""
             else:
-                if is_vector:
-                    check_str = INPUT_VECTORTYPE_CHECK_TEMPLATE.format(
-                        index=idx, standard=input_type
-                    )
-                else:
-                    check_str = INPUT_TYPE_CHECK_TEMPLATE.format(
-                        index=idx, standard=input_type
-                    )
-            inputs_type_check_str += check_str
+                op_declare_str = OP_DECLARE_TEMPLATE.format(
+                    op_name=op_class_name,
+                    dialect_op_name=op_dialect_name,
+                    interfaces=op_interfaces_str,
+                    traits=op_traits_str,
+                    attribute_declare=op_n_attribute_declare_str.format(
+                        attribute_num=len(op_attribute_name_list)
+                    ),
+                    attribute_num=len(op_attribute_name_list),
+                    get_inputs_and_outputs=op_get_inputs_outputs_str,
+                )
+                attribute_names_str = (
+                    '"' + '", "'.join(op_attribute_name_list) + '"'
+                )
+                op_defined_str = OP_N_ATTRIBUTE_DEFINED_TEMPLATE.format(
+                    op_name=op_class_name,
+                    attribute_num=len(op_attribute_name_list),
+                    attribute_names=attribute_names_str,
+                )
 
-        # generate op verify function: outputs_type_check_str
-        if len(op_output_type_list) == 0:
-            outputs_type_check_str = (
-                "// Outputs num is 0, not need to check outputs type."
+            # generate get op info funciton: inputs
+            inputs_info_str = ""
+            if len(op_input_name_list) > 0:
+                input_info_list = []
+                for idx in range(len(op_input_name_list)):
+                    input_info_list.append(
+                        CONSTRUCT_INPUT_INFO_TEMPLATE.format(
+                            name=op_input_name_list[idx],
+                            typename=op_input_type_list[idx],
+                            optional=op_input_optional_list[idx],
+                            no_need_buffer=op_input_no_need_buffer_list[idx],
+                        )
+                    )
+                inputs_info_str = ", ".join(input_info_list)
+            op_inputs_info_func_str = OP_INPUT_INFO_TEMPLATE.format(
+                op_name=op_class_name, impl=inputs_info_str
             )
-        else:
-            outputs_type_check_str = ""
-        for idx in range(len(op_output_type_list)):
-            output_type = op_output_type_list[idx]
-            is_optional = op_output_optional_list[idx]
-            is_vector = False
-            if output_type.startswith("ir::VectorType<"):
-                is_vector = True
-                output_type = output_type[15:-1]
-            check_str = ""
-            if is_optional == "true":
-                if is_vector:
-                    check_str = (
-                        OUTPUT_OPTIONAL_VECTORTYPE_CHECK_TEMPLATE.format(
+
+            # generate get op info funciton: outputs
+            outputs_info_str = ""
+            if len(op_output_name_list) > 0:
+                output_info_list = []
+                for idx in range(len(op_output_name_list)):
+                    output_info_list.append(
+                        CONSTRUCT_OUTPUT_INFO_TEMPLATE.format(
+                            name=op_output_name_list[idx],
+                            typename=op_output_type_list[idx],
+                            optional=op_output_optional_list[idx],
+                            intermediate=op_output_intermediate_list[idx],
+                        )
+                    )
+                outputs_info_str = ", ".join(output_info_list)
+            op_outputs_info_func_str = OP_OUTPUT_INFO_TEMPLATE.format(
+                op_name=op_class_name, impl=outputs_info_str
+            )
+
+            # generate get op info funciton: attributes
+            attribute_info_str = ""
+            if len(op_attribute_name_list) > 0:
+                attribute_info_list = []
+                for idx in range(len(op_attribute_name_list)):
+                    attribute_info_list.append(
+                        CONSTRUCT_ATTRIBUTE_INFO_TEMPLATE.format(
+                            name=op_attribute_name_list[idx],
+                            typename=op_attribute_type_list[idx],
+                            data_type=op_attribute_data_type_list[idx],
+                        )
+                    )
+                attribute_info_str = ", ".join(attribute_info_list)
+            op_attributes_info_func_str = OP_ATTRIBUTE_INFO_TEMPLATE.format(
+                op_name=op_class_name, impl=attribute_info_str
+            )
+
+            # generate op verify function: inputs_type_check_str
+            if len(op_input_type_list) == 0:
+                inputs_type_check_str = (
+                    "// Inputs num is 0, not need to check inputs type."
+                )
+            else:
+                inputs_type_check_str = ""
+            for idx in range(len(op_input_type_list)):
+                input_type = op_input_type_list[idx]
+                is_optional = op_input_optional_list[idx]
+                is_vector = False
+                if input_type.startswith("ir::VectorType<"):
+                    is_vector = True
+                    input_type = input_type[15:-1]
+                check_str = ""
+                if is_optional == "true":
+                    if is_vector:
+                        check_str = (
+                            INPUT_OPTIONAL_VECTORTYPE_CHECK_TEMPLATE.format(
+                                index=idx, standard=input_type
+                            )
+                        )
+                    else:
+                        check_str = INPUT_OPTIONAL_TYPE_CHECK_TEMPLATE.format(
+                            index=idx, standard=input_type
+                        )
+                else:
+                    if is_vector:
+                        check_str = INPUT_VECTORTYPE_CHECK_TEMPLATE.format(
+                            index=idx, standard=input_type
+                        )
+                    else:
+                        check_str = INPUT_TYPE_CHECK_TEMPLATE.format(
+                            index=idx, standard=input_type
+                        )
+                inputs_type_check_str += check_str
+
+            # generate op verify function: outputs_type_check_str
+            if len(op_output_type_list) == 0:
+                outputs_type_check_str = (
+                    "// Outputs num is 0, not need to check outputs type."
+                )
+            else:
+                outputs_type_check_str = ""
+            for idx in range(len(op_output_type_list)):
+                output_type = op_output_type_list[idx]
+                is_optional = op_output_optional_list[idx]
+                is_vector = False
+                if output_type.startswith("ir::VectorType<"):
+                    is_vector = True
+                    output_type = output_type[15:-1]
+                check_str = ""
+                if is_optional == "true":
+                    if is_vector:
+                        check_str = (
+                            OUTPUT_OPTIONAL_VECTORTYPE_CHECK_TEMPLATE.format(
+                                index=idx, standard=output_type
+                            )
+                        )
+                    else:
+                        check_str = OUTPUT_OPTIONAL_TYPE_CHECK_TEMPLATE.format(
                             index=idx, standard=output_type
+                        )
+                else:
+                    if is_vector:
+                        check_str = OUTPUT_VECTORTYPE_CHECK_TEMPLATE.format(
+                            index=idx, standard=output_type
+                        )
+                    else:
+                        check_str = OUTPUT_TYPE_CHECK_TEMPLATE.format(
+                            index=idx, standard=output_type
+                        )
+                outputs_type_check_str += check_str
+
+            # generate op verify function: attributes_check_str
+            if len(op_attribute_name_list) == 0:
+                attributes_check_str = (
+                    "// Attributes num is 0, not need to check attributes type."
+                )
+            else:
+                attributes_check_str = ""
+            for idx in range(len(op_attribute_name_list)):
+                attribute_name = op_attribute_name_list[idx]
+                attribute_type = op_attribute_type_list[idx]
+                if attribute_type.startswith("ir::ArrayAttribute<"):
+                    attribute_type = attribute_type[19:-1]
+                    attributes_check_str += (
+                        ATTRIBUTE_VECTOR_CHECK_TEMPLATE.format(
+                            attribute_name=attribute_name,
+                            standard=attribute_type,
                         )
                     )
                 else:
-                    check_str = OUTPUT_OPTIONAL_TYPE_CHECK_TEMPLATE.format(
-                        index=idx, standard=output_type
+                    attributes_check_str += ATTRIBUTE_CHECK_TEMPLATE.format(
+                        attribute_name=attribute_name, standard=attribute_type
                     )
-            else:
-                if is_vector:
-                    check_str = OUTPUT_VECTORTYPE_CHECK_TEMPLATE.format(
-                        index=idx, standard=output_type
-                    )
-                else:
-                    check_str = OUTPUT_TYPE_CHECK_TEMPLATE.format(
-                        index=idx, standard=output_type
-                    )
-            outputs_type_check_str += check_str
 
-        # generate op verify function: attributes_check_str
-        if len(op_attribute_name_list) == 0:
-            attributes_check_str = (
-                "// Attributes num is 0, not need to check attributes type."
+            # generate op verify function
+            op_verify_str = OP_VERIFY_TEMPLATE.format(
+                op_name=op_class_name,
+                inputs_size=len(op_input_type_list),
+                outputs_size=len(op_output_type_list),
+                inputs_type_check=inputs_type_check_str,
+                outputs_type_check=outputs_type_check_str,
+                attributes_check=attributes_check_str,
             )
-        else:
-            attributes_check_str = ""
-        for idx in range(len(op_attribute_name_list)):
-            attribute_name = op_attribute_name_list[idx]
-            attribute_type = op_attribute_type_list[idx]
-            if attribute_type.startswith("ir::ArrayAttribute<"):
-                attribute_type = attribute_type[19:-1]
-                attributes_check_str += ATTRIBUTE_VECTOR_CHECK_TEMPLATE.format(
-                    attribute_name=attribute_name, standard=attribute_type
-                )
-            else:
-                attributes_check_str += ATTRIBUTE_CHECK_TEMPLATE.format(
-                    attribute_name=attribute_name, standard=attribute_type
-                )
 
-        # generate op verify function
-        op_verify_str = OP_VERIFY_TEMPLATE.format(
-            op_name=op_class_name,
-            inputs_size=len(op_input_type_list),
-            outputs_size=len(op_output_type_list),
-            inputs_type_check=inputs_type_check_str,
-            outputs_type_check=outputs_type_check_str,
-            attributes_check=attributes_check_str,
-        )
-
-        ops_name_list.append(op_class_name)
-        ops_declare_list.append(op_declare_str)
-        ops_defined_list.append(op_defined_str)
-        ops_defined_list.append(op_inputs_info_func_str)
-        ops_defined_list.append(op_outputs_info_func_str)
-        ops_defined_list.append(op_attributes_info_func_str)
-        ops_defined_list.append(op_verify_str)
+            ops_name_list.append(op_class_name)
+            ops_declare_list.append(op_declare_str)
+            ops_defined_list.append(op_defined_str)
+            ops_defined_list.append(op_inputs_info_func_str)
+            ops_defined_list.append(op_outputs_info_func_str)
+            ops_defined_list.append(op_attributes_info_func_str)
+            ops_defined_list.append(op_verify_str)
 
     # (4) Generate head file str
     op_namespaces_prev = ""

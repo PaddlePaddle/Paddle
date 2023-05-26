@@ -111,29 +111,7 @@ void PaddleDialect::initialize() {
       >();
 
   RegisterInterfaces<ParameterConvertInterface>();
-  RegisterOps<Conv2DOp,
-              FeedOp,
-              // BatchNormOp,
-              BatchNormOp_,
-              ElementwiseAddOp,
-              Pool2DOp,
-              FlattenContiguousRangeOp,
-              MatmulV2Op,
-              Reshape2Op,
-              SoftmaxWithCrossEntropyOp,
-              ReduceMeanOp,
-              TopKV2Op,
-              FillConstantOp,
-              ReduceMeanGradOp,
-              SoftmaxWithCrossEntropyGradOp,
-              ElementwiseAddGradOp,
-              MatmulV2GradOp,
-              FlattenContiguousRangeGradOp,
-              Pool2DGradOp,
-              // BatchNormGradOp,
-              Conv2DGradOp,
-              // SumOp,
-              FetchV2Op>();
+  RegisterOps<FeedOp, BatchNormOp_, FetchV2Op>();
 }
 
 void PaddleDialect::PrintType(ir::Type type, std::ostream &os) {
