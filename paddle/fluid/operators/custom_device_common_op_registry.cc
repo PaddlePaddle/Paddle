@@ -60,6 +60,8 @@ class CConcatOpCustomDeviceKernel : public framework::OpKernel<T> {
     int nranks = ctx.Attr<int>("nranks");
     int rank = ctx.Attr<int>("rank");
     int rid = ctx.Attr<int>("ring_id");
+    auto place = ctx.GetPlace();
+
     PADDLE_ENFORCE_GE(rank,
                       0,
                       platform::errors::PreconditionNotMet(
@@ -98,8 +100,27 @@ class CConcatOpCustomDeviceKernel : public framework::OpKernel<T> {
       auto task = pg->AllGather(in_tensor, out_tensor);
       task->Wait();
     } else {
-      PADDLE_THROW(phi::errors::Unavailable(
-          "CustomDevice c_concat only support ProcessGroup"));
+      auto comm = platform::XCCLCommContext::Instance(place.GetDeviceType())
+                      .Get(rid, place);
+      PADDLE_ENFORCE_EQ(
+          nranks,
+          comm->nranks(),
+          platform::errors::InvalidArgument(
+              "nranks: %s should equal to %s", nranks, comm->nranks()));
+
+      int64_t send_numel = x->numel();
+      const T* send_buff = x->data<T>();
+      T* recv_buff = temp_out.data<T>();
+      // should ExecutionContext for calc stream.
+      auto& stream = *dev_ctx.GetStream();
+      phi::DeviceManager::CCLAllGather(
+          place.GetDeviceType(),
+          reinterpret_cast<void*>(const_cast<T*>(send_buff)),
+          recv_buff,
+          send_numel,
+          phi::ccl::ToCCLDataType(x->dtype()),
+          comm->comm(),
+          stream);
     }
     std::vector<phi::DenseTensor> inputs;
     int axis = x->dims().size() - 1;

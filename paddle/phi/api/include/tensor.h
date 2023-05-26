@@ -219,40 +219,35 @@ class PADDLE_API Tensor final {
   /**
    * @brief Determine whether tensor is DenseTensor
    *
-   * @return true
-   * @return false
+   * @return bool
    */
   bool is_dense_tensor() const;
 
   /**
    * @brief Determine whether tensor is SelectedRows
    *
-   * @return true
-   * @return false
+   * @return bool
    */
   bool is_selected_rows() const;
 
   /**
    * @brief Determine whether tensor is SparseCooTensor
    *
-   * @return true
-   * @return false
+   * @return bool
    */
   bool is_sparse_coo_tensor() const;
 
   /**
    * @brief Determine whether tensor is SparseCsrTensor
    *
-   * @return true
-   * @return false
+   * @return bool
    */
   bool is_sparse_csr_tensor() const;
 
   /**
    * @brief Determine whether tensor is StringTensor
    *
-   * @return true
-   * @return false
+   * @return bool
    */
   bool is_string_tensor() const;
 
@@ -268,40 +263,35 @@ class PADDLE_API Tensor final {
   /**
    * @brief Determine whether the tensor device is CPU
    *
-   * @return true
-   * @return false
+   * @return bool
    */
   bool is_cpu() const;
 
   /**
    * @brief Determine whether the tensor device is GPU
    *
-   * @return true
-   * @return false
+   * @return bool
    */
   bool is_gpu() const;
 
   /**
    * @brief Determine whether the tensor device is GPU_PINNED
    *
-   * @return true
-   * @return false
+   * @return bool
    */
   bool is_gpu_pinned() const;
 
   /**
    * @brief Determine whether the tensor device is XPU
    *
-   * @return true
-   * @return false
+   * @return bool
    */
   bool is_xpu() const;
 
   /**
    * @brief Determine whether the tensor device is CustomDevice
    *
-   * @return true
-   * @return false
+   * @return bool
    */
   bool is_custom_device() const;
 
@@ -420,7 +410,7 @@ class PADDLE_API Tensor final {
    *
    * @return const std::string&
    */
-  const std::string& name() const { return name_; }
+  const std::string& name() const;
 
   /**
    * @brief Set name of Tensor.
@@ -429,7 +419,7 @@ class PADDLE_API Tensor final {
    *
    * @param const std::string& name
    */
-  void set_name(const std::string& name) { name_ = name; }
+  void set_name(const std::string& name);
 
   /* Part 5: Data Transform methods */
   /* Alert!!!!: All copy method can only deep copy impl, autograd info only be
@@ -482,16 +472,14 @@ class PADDLE_API Tensor final {
   /**
    * @brief Determine whether it is a meaningful Tensor
    *
-   * @return true
-   * @return false
+   * @return bool
    */
   bool defined() const;
 
   /**
    * @brief Determine whether Tensor is initialized.
    *
-   * @return true
-   * @return false
+   * @return bool
    */
   bool initialized() const;
 
@@ -499,8 +487,7 @@ class PADDLE_API Tensor final {
    * @brief Determine whether Tensor is initialized.
    * This is a deprecated method and may be removed in the future!
    *
-   * @return true
-   * @return false
+   * @return bool
    */
   bool is_initialized() const;
 

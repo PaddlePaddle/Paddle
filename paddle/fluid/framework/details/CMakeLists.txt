@@ -10,15 +10,15 @@ cc_library(
 cc_library(
   scale_loss_grad_op_handle
   SRCS scale_loss_grad_op_handle.cc
-  DEPS op_handle_base scope lod_tensor ddim memory)
+  DEPS op_handle_base scope lod_tensor phi memory)
 cc_library(
   fetch_op_handle
   SRCS fetch_op_handle.cc
-  DEPS op_handle_base scope lod_tensor ddim memory)
+  DEPS op_handle_base scope lod_tensor phi memory)
 cc_library(
   fetch_async_op_handle
   SRCS fetch_async_op_handle.cc
-  DEPS op_handle_base scope lod_tensor ddim memory)
+  DEPS op_handle_base scope lod_tensor phi memory)
 
 cc_library(
   share_tensor_buffer_functor
@@ -79,7 +79,7 @@ if(WITH_GPU)
          op_handle_base
          scope
          lod_tensor
-         ddim
+         phi
          memory
          dynload_cuda)
   nv_library(
@@ -90,7 +90,7 @@ if(WITH_GPU)
          op_handle_base
          scope
          lod_tensor
-         ddim
+         phi
          memory
          dynload_cuda
          place)
@@ -101,7 +101,7 @@ if(WITH_GPU)
          op_handle_base
          scope
          lod_tensor
-         ddim
+         phi
          memory
          dynload_cuda
          variable_visitor
@@ -115,7 +115,7 @@ if(WITH_GPU)
       DEPS op_handle_base
            scope
            lod_tensor
-           ddim
+           phi
            memory
            dynload_cuda
            variable_visitor
@@ -127,19 +127,17 @@ if(WITH_GPU)
     nv_library(
       reduce_op_handle
       SRCS reduce_op_handle.cc
-      DEPS op_handle_base variable_visitor scope ddim dynload_cuda
-           selected_rows_functor)
+      DEPS op_handle_base variable_visitor scope phi dynload_cuda)
   else()
     nv_library(
       reduce_op_handle
       SRCS reduce_op_handle.cc
-      DEPS op_handle_base variable_visitor scope ddim dynload_cuda
-           selected_rows_functor)
+      DEPS op_handle_base variable_visitor scope phi dynload_cuda)
   endif()
   nv_library(
     broadcast_op_handle
     SRCS broadcast_op_handle.cc
-    DEPS op_handle_base scope ddim memory variable_visitor dynload_cuda)
+    DEPS op_handle_base scope phi memory variable_visitor dynload_cuda)
   nv_library(
     fused_broadcast_op_handle
     SRCS fused_broadcast_op_handle.cc
@@ -155,7 +153,7 @@ elseif(WITH_ROCM)
     DEPS op_handle_base
          scope
          lod_tensor
-         ddim
+         phi
          memory
          dynload_cuda
          variable_visitor)
@@ -167,7 +165,7 @@ elseif(WITH_ROCM)
          variable_visitor
          scope
          lod_tensor
-         ddim
+         phi
          memory
          dynload_cuda
          place)
@@ -178,7 +176,7 @@ elseif(WITH_ROCM)
          op_handle_base
          scope
          lod_tensor
-         ddim
+         phi
          memory
          dynload_cuda
          variable_visitor
@@ -189,19 +187,17 @@ elseif(WITH_ROCM)
     hip_library(
       reduce_op_handle
       SRCS reduce_op_handle.cc
-      DEPS op_handle_base variable_visitor scope ddim dynload_cuda
-           selected_rows_functor)
+      DEPS op_handle_base variable_visitor scope phi dynload_cuda)
   else()
     hip_library(
       reduce_op_handle
       SRCS reduce_op_handle.cc
-      DEPS op_handle_base variable_visitor scope ddim dynload_cuda
-           selected_rows_functor)
+      DEPS op_handle_base variable_visitor scope phi dynload_cuda)
   endif()
   hip_library(
     broadcast_op_handle
     SRCS broadcast_op_handle.cc
-    DEPS op_handle_base scope ddim memory variable_visitor dynload_cuda)
+    DEPS op_handle_base scope phi memory variable_visitor dynload_cuda)
   hip_library(
     fused_broadcast_op_handle
     SRCS fused_broadcast_op_handle.cc
@@ -214,7 +210,7 @@ else()
   cc_library(
     all_reduce_op_handle
     SRCS all_reduce_op_handle.cc
-    DEPS op_handle_base scope lod_tensor ddim memory variable_visitor)
+    DEPS op_handle_base scope lod_tensor phi memory variable_visitor)
   cc_library(
     fused_all_reduce_op_handle
     SRCS fused_all_reduce_op_handle.cc
@@ -222,7 +218,7 @@ else()
          op_handle_base
          scope
          lod_tensor
-         ddim
+         phi
          memory
          variable_visitor
          place)
@@ -233,7 +229,7 @@ else()
          op_handle_base
          scope
          lod_tensor
-         ddim
+         phi
          memory
          variable_visitor
          place
@@ -242,17 +238,17 @@ else()
     cc_library(
       reduce_op_handle
       SRCS reduce_op_handle.cc
-      DEPS op_handle_base variable_visitor scope ddim selected_rows_functor)
+      DEPS op_handle_base variable_visitor scope phi)
   else()
     cc_library(
       reduce_op_handle
       SRCS reduce_op_handle.cc
-      DEPS op_handle_base variable_visitor scope ddim selected_rows_functor)
+      DEPS op_handle_base variable_visitor scope phi)
   endif()
   cc_library(
     broadcast_op_handle
     SRCS broadcast_op_handle.cc
-    DEPS op_handle_base scope ddim memory variable_visitor)
+    DEPS op_handle_base scope phi memory variable_visitor)
   cc_library(
     fused_broadcast_op_handle
     SRCS fused_broadcast_op_handle.cc
@@ -262,7 +258,7 @@ endif()
 cc_library(
   gather_op_handle
   SRCS gather_op_handle.cc
-  DEPS op_handle_base scope ddim memory variable_visitor)
+  DEPS op_handle_base scope phi memory variable_visitor)
 
 cc_library(
   eager_deletion_op_handle
@@ -308,7 +304,7 @@ cc_test(
   DEPS var_handle
        op_handle_base
        scope
-       ddim
+       phi
        memory
        device_context
        broadcast_op_handle)
@@ -320,7 +316,7 @@ cc_test_old(
   var_handle
   op_handle_base
   scope
-  ddim
+  phi
   memory
   device_context
   gather_op_handle)
@@ -333,12 +329,12 @@ cc_library(
   scope_buffered_ssa_graph_executor
   SRCS scope_buffered_ssa_graph_executor.cc
   DEPS ssa_graph_executor scope_buffered_monitor)
-#cc_test(reduce_op_handle_test SRCS reduce_op_handle_test.cc DEPS var_handle op_handle_base scope ddim memory
+#cc_test(reduce_op_handle_test SRCS reduce_op_handle_test.cc DEPS var_handle op_handle_base scope phi memory
 #        device_context reduce_op_handle )
 cc_library(
   bind_threaded_ssa_graph_executor
   SRCS bind_threaded_ssa_graph_executor.cc
-  DEPS fetch_op_handle gflags ssa_graph_executor scope simple_threadpool
+  DEPS fetch_op_handle phi ssa_graph_executor scope simple_threadpool
        device_context)
 cc_library(
   fast_threaded_ssa_graph_executor

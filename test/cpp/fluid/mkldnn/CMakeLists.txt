@@ -4,7 +4,7 @@ cc_test(
   DEPS op_registry
        elementwise_add_op
        activation_op
-       softmax
+       phi
        scope
        device_context
        enforce
@@ -17,9 +17,7 @@ set(TEST_MKLDNN_CACHING_DEPS
     elementwise_add_op
     activation_op
     conv_op
-    im2col
-    vol2col
-    softmax
+    phi
     scope
     device_context
     enforce
@@ -44,7 +42,7 @@ cc_test_old(
   crop_op
   activation_op
   generated_op
-  pooling
+  phi
   transpose_op
   fused_transpose_op
   scope

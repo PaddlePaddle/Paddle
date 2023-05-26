@@ -186,7 +186,7 @@ class TestAsLodTensor(unittest.TestCase):
         self.assertRaises(
             TypeError,
             fluid.executor._as_lodtensor,
-            [[1], [1, 2]],
+            [{1.2, 1.2}, {1, 2}],
             cpu,
             fluid.core.VarDesc.VarType.INT32,
         )
