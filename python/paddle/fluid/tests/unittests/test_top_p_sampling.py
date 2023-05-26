@@ -18,6 +18,7 @@ import numpy as np
 from eager_op_test import OpTest
 
 import paddle
+from paddle.fluid import core
 
 
 def TopPProcess(probs, top_p):
@@ -61,6 +62,11 @@ class TestTopPSamplingOp(OpTest):
         self.seed = 2023
         self.dtype = "float32"
 
+    def _get_places(self):
+        places = []
+        places.append(core.CUDAPlace(0))
+        return places
+
     def setUp(self):
         self.init_args()
         self.op_type = "top_p_sampling"
@@ -72,9 +78,12 @@ class TestTopPSamplingOp(OpTest):
                 self.topp,
             ]
             * self.batch_size,
-            self.type,
-        ).reshape(-1, 1)
-        self.inputs = {'x': self.input_data, 'ps': self.topp_tensor}
+            self.dtype,
+        ).reshape((-1, 1))
+        self.inputs = {
+            'x': paddle.to_tensor(self.input_data, self.dtype),
+            'ps': self.topp_tensor,
+        }
         self.attrs = {'seed': self.seed}
         next_scores, next_tokens = TopPProcess(
             paddle.to_tensor(self.input_data, self.dtype), self.topp
@@ -87,8 +96,10 @@ class TestTopPSamplingOp(OpTest):
 
 class TestTopPSamplingOp1(TestTopPSamplingOp):
     def init_args(self):
+        self.topp = 0.0
         self.batch_size = 10
         self.vocab_size = 100000
+        self.seed = 2023
         self.dtype = "float16"
 
 
