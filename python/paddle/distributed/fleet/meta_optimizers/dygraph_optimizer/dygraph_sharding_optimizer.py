@@ -220,6 +220,31 @@ class DygraphShardingOptimizer:
         # sync parameters across sharding ranks
         self._sharding_sync_parameters()
 
+    @framework.dygraph_only
+    def set_state_dict(self, state_dict):
+        inner_state = {}
+        parameters = self._rank2params[self._sharding_rank]
+
+        if "LR_Scheduler" in state_dict:
+            inner_state["LR_Scheduler"] = state_dict.pop("LR_Scheduler")
+
+        if "master_weights" in state_dict:
+            master = state_dict.pop("master_weights")
+            inner_state["master_weights"] = {}
+            for p in parameters:
+                for k, v in master.items():
+                    if p.name in k:
+                        var_name = p.name + "_fp32_master"
+                        v.name = paddle.fluid.unique_name.generate(var_name)
+                        inner_state["master_weights"][k] = v
+
+        for p in parameters:
+            for k, v in state_dict.items():
+                if p.name in k:
+                    inner_state[k] = v
+
+        self._inner_optimizer.set_state_dict(inner_state)
+
     def _set_inner_opt_attr(self, attr_name, value):
         inner_opt = self._inner_opt
         inner_opt_name = '_inner_opt'

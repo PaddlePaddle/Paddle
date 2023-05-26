@@ -162,8 +162,17 @@ class HybridParallelClipGrad:
         # add all reduce to get global norm of distributed params_and_grads
         # TODO(pangengzheng): change the group name from get_check_parallel_group to get_mp_and_pp_group
         if self._hcg.get_model_parallel_world_size() > 1:
+            sharding_flag = False
+            if (
+                self._hcg.get_sharding_parallel_world_size() > 1
+                and self._hcg.get_data_parallel_world_size() == 1
+            ):
+                sharding_flag = True
             paddle.distributed.all_reduce(
-                global_norm_var_dist, group=self._hcg.get_check_parallel_group()
+                global_norm_var_dist,
+                group=self._hcg.get_check_parallel_group(
+                    sharding=sharding_flag
+                ),
             )
 
         # add all reduce to get global norm of non-distributed params_and_grads in groups of pp
