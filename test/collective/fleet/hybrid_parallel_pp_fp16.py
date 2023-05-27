@@ -13,9 +13,13 @@
 # limitations under the License.
 
 import random
+import sys
 import unittest
 
 import numpy as np
+
+sys.path.append("../../")
+
 from legacy_test.hybrid_parallel_pp_layer import AlexNet, AlexNetPipeDesc
 
 import paddle
