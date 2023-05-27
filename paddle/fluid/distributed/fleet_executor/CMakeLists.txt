@@ -25,7 +25,7 @@ cc_library(
   task_loop_thread_pool
   SRCS task_loop_thread_pool.cc task_loop_thread.cc task_loop.cc
   DEPS enforce glog)
-if(WITH_XPU)
+if(WITH_XPU OR WITH_ROCM)
   cc_library(
     fleet_executor
     SRCS fleet_executor.cc
