@@ -870,7 +870,7 @@ def relu6(x, name=None):
             print(out)
             # [0, 0.3, 6]
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.relu6(x)
 
     check_variable_and_dtype(
