@@ -1,14 +1,14 @@
 cc_test(
   test_mkldnn_op_inplace
   SRCS test_mkldnn_op_inplace.cc
-  DEPS op_registry
+  DEPS executor
+       op_registry
        elementwise_add_op
        activation_op
        phi
        scope
        device_context
        enforce
-       executor
        generated_static_op)
 
 set(TEST_MKLDNN_CACHING_DEPS
@@ -36,6 +36,8 @@ cc_test_old(
   SRCS
   test_mkldnn_op_nhwc.cc
   DEPS
+  recurrent_op
+  executor
   op_registry
   pool_op
   shape_op
@@ -47,5 +49,4 @@ cc_test_old(
   fused_transpose_op
   scope
   device_context
-  enforce
-  executor)
+  enforce)
