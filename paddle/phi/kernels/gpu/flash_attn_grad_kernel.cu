@@ -261,6 +261,7 @@ void FlashAttnUnpaddedBlockGradKernel(const Context& ctx,
   ctx.template Alloc<T>(dv);
 
   cudaStream_t stream = ctx.stream();
+  bool is_bf16 = q.dtype() == DataType::BFLOAT16 ? true : false;
 
   // q,k,v [total_*, num_heads, head_dim]
 
@@ -306,6 +307,7 @@ void FlashAttnUnpaddedBlockGradKernel(const Context& ctx,
       dropout,
       scale,
       causal,
+      is_bf16,
       const_cast<float*>(softmax_lse.data<float>()),
       dsoftmax.data(),
       nullptr,
@@ -345,6 +347,7 @@ void FlashAttnUnpaddedBlockGradKernel(const Context& ctx,
       dropout,
       scale,
       causal,
+      is_bf16,
       const_cast<float*>(softmax_lse.data<float>()),
       dsoftmax.data(),
       workspace_size > 0 ? workspace.data() : nullptr,
@@ -384,6 +387,7 @@ PD_REGISTER_KERNEL(flash_attn_unpadded_block_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::FlashAttnUnpaddedBlockGradKernel,
-                   phi::dtype::float16) {
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
   kernel->InputAt(8).SetBackend(phi::Backend::ALL_BACKEND);  // seed_offset
 }
