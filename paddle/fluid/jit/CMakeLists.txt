@@ -47,4 +47,5 @@ cc_library(
        jit_interpreter_engine
        jit_predictor_engine
        jit_function
+       recurrent_op_helper
        recurrent_op)

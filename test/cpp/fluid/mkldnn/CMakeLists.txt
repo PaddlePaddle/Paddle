@@ -36,6 +36,7 @@ cc_test_old(
   SRCS
   test_mkldnn_op_nhwc.cc
   DEPS
+  ecurrent_op_helper
   recurrent_op
   executor
   op_registry
