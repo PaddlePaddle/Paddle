@@ -376,7 +376,8 @@ function(cc_library TARGET_NAME)
           target_link_libraries(${TARGET_NAME} "-Wl,-undefined,dynamic_lookup")
         endif()
       endif()
-      target_link_libraries(${TARGET_NAME} ${cc_library_DEPS})
+      target_link_libraries(${TARGET_NAME} -Wl,--start-group ${cc_library_DEPS}
+                            -Wl,--end-group)
       common_link(${TARGET_NAME})
     endif()
 

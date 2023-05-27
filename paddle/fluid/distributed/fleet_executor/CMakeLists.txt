@@ -50,8 +50,8 @@ if(WITH_XPU OR WITH_ROCM)
          interceptor_message_proto
          task_loop_thread_pool
          collective_helper
-         op_registry
          executor_gc_helper
+         op_registry
          phi
          glog
          ${BRPC_DEPS})
