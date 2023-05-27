@@ -46,4 +46,5 @@ cc_library(
        jit_function_schema
        jit_interpreter_engine
        jit_predictor_engine
-       jit_function)
+       jit_function
+       recurrent_op)
