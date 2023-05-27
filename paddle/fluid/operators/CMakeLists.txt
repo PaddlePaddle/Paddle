@@ -127,7 +127,7 @@ endif()
 
 op_library(lstm_op DEPS ${OP_HEADER_DEPS})
 if (WITH_ROCM)
-    op_library(recurrent_op DEPS exectuor ${OP_HEADER_DEPS})
+    op_library(recurrent_op DEPS executor ${OP_HEADER_DEPS})
 else()
     op_library(recurrent_op DEPS ${OP_HEADER_DEPS})
 endif()
