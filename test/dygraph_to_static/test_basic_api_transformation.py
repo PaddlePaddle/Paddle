@@ -378,7 +378,7 @@ def dyfunc_PiecewiseDecay():
     values = [1.0, 0.5, 0.1]
     pd = paddle.optimizer.lr.PiecewiseDecay(boundaries, values)
     lr = pd()
-    return lr
+    return paddle.to_tensor(lr)
 
 
 def dyfunc_PolynomialDecay():

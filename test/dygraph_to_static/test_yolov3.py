@@ -98,7 +98,7 @@ def train(to_static):
             boundaries=boundaries, values=values
         )
 
-        lr = fluid.layers.linear_lr_warmup(
+        lr = paddle.optimizer.lr.LinearWarmup(
             learning_rate=lr,
             warmup_steps=cfg.warm_up_iter,
             start_lr=0.0,
