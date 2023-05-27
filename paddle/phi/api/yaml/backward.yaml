@@ -2017,6 +2017,7 @@
     func : tanh_double_grad
   composite : tanh_double_grad(out, grad_out, grad_x_grad, out_grad, grad_out_grad)
   inplace : (grad_x_grad -> grad_out_grad)
+  backward : tanh_triple_grad
 
 - backward_op : tanh_grad
   forward : tanh (Tensor x) -> Tensor(out)
@@ -2041,6 +2042,18 @@
   kernel :
     func : tanh_shrink_grad
   inplace : (out_grad -> x_grad)
+
+- backward_op : tanh_triple_grad
+  forward : tanh_double_grad (Tensor out, Tensor grad_out_forward, Tensor grad_x_grad_forward) -> Tensor(grad_out_new), Tensor(grad_out_grad)
+  args : (Tensor out, Tensor grad_out_forward, Tensor grad_x_grad_forward, Tensor grad_out_new_grad, Tensor grad_out_grad_grad)
+  output : Tensor(out_grad), Tensor(grad_out_forward_grad), Tensor(grad_x_grad_forward_grad)
+  infer_meta :
+    func : GeneralTernaryGradInferMeta
+    param : [out, out, grad_x_grad_forward]
+  kernel :
+    func : tanh_triple_grad
+  inplace : (grad_x_grad_forward -> grad_out_forward_grad)
+  optional : grad_out_new_grad, grad_out_grad_grad
 
 - backward_op : temporal_shift_grad
   forward : temporal_shift(Tensor x, int seg_num, float shift_ratio = 0.25f, str data_format = "NCHW") -> Tensor(out)

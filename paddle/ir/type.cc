@@ -16,6 +16,11 @@
 #include "paddle/ir/dialect.h"
 
 namespace ir {
-IrContext *Type::ir_context() const { return dialect().ir_context(); }
+IrContext* Type::ir_context() const { return dialect().ir_context(); }
+
+std::ostream& operator<<(std::ostream& os, Type type) {
+  type.print(os);
+  return os;
+}
 
 }  // namespace ir

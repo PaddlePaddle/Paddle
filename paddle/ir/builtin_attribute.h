@@ -19,13 +19,6 @@
 #include "paddle/ir/utils.h"
 
 namespace ir {
-///
-/// \brief All built-in attributes.
-///
-#define GET_BUILT_IN_ATTRIBUTE_LIST                             \
-  StrAttribute, BoolAttribute, FloatAttribute, DoubleAttribute, \
-      Int32_tAttribute, Int64_tAttribute, ArrayAttribute
-
 class StrAttribute : public Attribute {
  public:
   using Attribute::Attribute;

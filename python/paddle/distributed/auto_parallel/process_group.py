@@ -15,11 +15,13 @@
 from collections import OrderedDict
 
 import paddle
-from paddle import _legacy_C_ops
-from paddle.framework import core, in_dynamic_mode
-from paddle.tensor import fill_constant
+from paddle.framework import core
 
 from ..collective import _get_global_env, _new_ring_id
+from ..utils.log_utils import get_logger
+from .utils import dygraph_guard
+
+logger = get_logger("INFO", __name__)
 
 
 def get_all_process_groups():
@@ -122,6 +124,7 @@ class ProcessGroup:
     def is_instantiate(self):
         return self._is_instantiate
 
+    @dygraph_guard
     def instantiate(self):
         if self._is_instantiate:
             return
@@ -129,7 +132,10 @@ class ProcessGroup:
         genv = _get_global_env()
         global_rank = genv.rank
 
-        if self.nranks >= 2:
+        if self.nranks >= 2 and global_rank in self.ranks:
+            logger.info(
+                f"group_id: {self.id}, ranks: {self.ranks}, nranks: {self.nranks}, trainer_endpoints: {genv.current_endpoint}"
+            )
             strategy = core.ParallelStrategy()
             strategy.nranks = self.nranks
             strategy.local_rank = self.local_rank(global_rank)
@@ -156,9 +162,6 @@ class ProcessGroup:
             else:
                 raise AssertionError('No CUDA device found')
 
-            # TODO(shenliang03): This is a temporary solution to solve the problem of
-            # hang caused by cross-creation of new_group
-            paddle.disable_static()
             if core.is_compiled_with_cuda():
                 paddle.set_device(
                     'gpu:%d' % paddle.distributed.ParallelEnv().dev_id
@@ -175,17 +178,19 @@ class ProcessGroup:
                         paddle.distributed.ParallelEnv().dev_id,
                     ),
                 )
-            tmp = (
-                paddle.to_tensor([1], dtype="int32")
-                if in_dynamic_mode()
-                else fill_constant([0], dtype="int32", value="1")
+
+            # TODO(shenliang03): This is a temporary solution to solve the problem of
+            # hang caused by cross-creation of new_group
+            barrier_tensor = paddle.full([1], 1, dtype="int32")
+            paddle._legacy_C_ops.barrier(
+                barrier_tensor, barrier_tensor, 'ring_id', ring_id
             )
-            # use legacy ops
-            _legacy_C_ops.c_allreduce_sum_(
-                tmp, 'use_calc_stream', True, 'ring_id', self.id
+
+        if self.nranks > 1:
+            barrier_tensor = paddle.full([1], 1, dtype="int32")
+            paddle._legacy_C_ops.barrier(
+                barrier_tensor, barrier_tensor, 'ring_id', 0
             )
-            _legacy_C_ops.c_sync_calc_stream(tmp, tmp)
-            paddle.enable_static()
 
         self._is_instantiate = True
 

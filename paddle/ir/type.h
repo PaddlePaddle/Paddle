@@ -89,6 +89,8 @@ class Type {
   const Storage *storage_{nullptr};
 };
 
+std::ostream &operator<<(std::ostream &os, Type type);
+
 }  // namespace ir
 
 namespace std {
