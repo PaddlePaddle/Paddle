@@ -101,4 +101,6 @@ PD_REGISTER_KERNEL(fusion_group,
                    phi::fusion::FusionGroupKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
+}
