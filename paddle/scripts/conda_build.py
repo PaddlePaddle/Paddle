@@ -53,7 +53,7 @@ requirements:
   run:
     - requests>=2.20.0
     - numpy>=1.13
-    - protobuf>=3.20.2, <=4.21.12
+    - protobuf>=3.20.2, <4.22.5
     - Pillow
     - decorator
     - astor
