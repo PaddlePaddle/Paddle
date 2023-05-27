@@ -1299,6 +1299,50 @@ void BatchNormDoubleGradKernel(
                                                 y_grad_grad);
 }
 
+template<> 
+void BatchNormGradFunctor<double, phi::GPUContext>(const phi::GPUContext& dev_ctx,
+                                                            const DenseTensor& x,
+                                                            const DenseTensor& scale,
+                                                            const DenseTensor& bias,
+                                                            const paddle::optional<DenseTensor>& mean,
+                                                            const paddle::optional<DenseTensor>& variance,
+                                                            const DenseTensor& saved_mean,
+                                                            const DenseTensor& saved_variance,
+                                                            const paddle::optional<DenseTensor>& reserve_space,
+                                                            const DenseTensor& y_grad,
+                                                            float momentum,
+                                                            float epsilon,
+                                                            const std::string& data_layout,
+                                                            bool is_test,
+                                                            bool use_global_stats,
+                                                            bool trainable_statistics,
+                                                            bool is_inplace,
+                                                            DenseTensor* x_grad,
+                                                            DenseTensor* scale_grad,
+                                                            DenseTensor* bias_grad);
+
+template<>
+void BatchNormGradFunctor<float, phi::GPUContext>(const phi::GPUContext& dev_ctx,
+                                                            const DenseTensor& x,
+                                                            const DenseTensor& scale,
+                                                            const DenseTensor& bias,
+                                                            const paddle::optional<DenseTensor>& mean,
+                                                            const paddle::optional<DenseTensor>& variance,
+                                                            const DenseTensor& saved_mean,
+                                                            const DenseTensor& saved_variance,
+                                                            const paddle::optional<DenseTensor>& reserve_space,
+                                                            const DenseTensor& y_grad,
+                                                            float momentum,
+                                                            float epsilon,
+                                                            const std::string& data_layout,
+                                                            bool is_test,
+                                                            bool use_global_stats,
+                                                            bool trainable_statistics,
+                                                            bool is_inplace,
+                                                            DenseTensor* x_grad,
+                                                            DenseTensor* scale_grad,
+                                                            DenseTensor* bias_grad);
+
 }  // namespace phi
 
 #ifdef PADDLE_WITH_HIP
