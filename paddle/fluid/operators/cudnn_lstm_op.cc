@@ -15,8 +15,12 @@ limitations under the License. */
 #include <memory>
 #include <string>
 
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+
+#include "paddle/phi/infermeta/multiary.h"
 
 namespace paddle {
 namespace operators {
@@ -226,12 +230,18 @@ class CudnnLSTMGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace operators
 }  // namespace paddle
 
+DECLARE_INFER_SHAPE_FUNCTOR(cudnn_lstm,
+                            CudnnLSTMInferShapeFunctor,
+                            PD_INFER_META(phi::CudnnLSTMInferMeta));
+
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(cudnn_lstm,
                   ops::CudnnLSTMOp,
                   ops::CudnnLSTMOpMaker,
                   ops::CudnnLSTMGradOpMaker<paddle::framework::OpDesc>,
-                  ops::CudnnLSTMGradOpMaker<paddle::imperative::OpBase>);
+                  ops::CudnnLSTMGradOpMaker<paddle::imperative::OpBase>,
+                  CudnnLSTMInferShapeFunctor);
+
 REGISTER_OPERATOR(cudnn_lstm_grad, ops::CudnnLSTMGradOp);
 
 // TODO(Shixiaowei02) Add ModifyInput support
