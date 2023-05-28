@@ -44,7 +44,7 @@ class ElementwiseDivOpMaker : public ElementwiseOpMaker {
         "should be int32, int64, float32, float64.");
   }
 
-  std::string GetOpFuntionality() const override {
+  std::string GetOpFunctionality() const override {
     return "Divide two tensors element-wise";
   }
 };

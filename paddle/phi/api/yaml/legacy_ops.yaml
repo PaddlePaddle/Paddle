@@ -1,15 +1,6 @@
 # The apis in this file are unstandardized that may caused by a variety of reasons,
 # we are trying to fix these apis and will move standardized apis into ops.yaml.
 
-- op : abs
-  args : (Tensor x)
-  output : Tensor
-  infer_meta :
-    func : RealAndImagInferMeta
-  kernel :
-    func : abs
-  backward : abs_grad
-
 - op : adadelta_
   args : (Tensor param, Tensor grad, Tensor avg_squared_grad, Tensor avg_squared_update, Tensor learning_rate, Tensor master_param, float rho, float epsilon, bool multi_precision)
   output : Tensor(param_out), Tensor(moment_out), Tensor(inf_norm_out), Tensor(master_param_out)
@@ -547,17 +538,6 @@
   kernel :
     func : greater_than
 
-- op : group_norm
-  args : (Tensor x, Tensor scale, Tensor bias, float epsilon, int groups, str data_layout)
-  output : Tensor(y), Tensor(mean), Tensor(variance)
-  infer_meta :
-    func : GroupNormInferMeta
-  kernel :
-    func : group_norm
-  optional : scale, bias
-  intermediate : mean, variance
-  backward : group_norm_grad
-
 - op : hardswish
   args : (Tensor x)
   output : Tensor(out)
@@ -596,29 +576,6 @@
   kernel :
     func : increment
   inplace : (x -> out)
-
-- op : instance_norm
-  args : (Tensor x, Tensor scale, Tensor bias, float epsilon)
-  output : Tensor(y), Tensor(saved_mean), Tensor(saved_variance)
-  infer_meta :
-    func : InstanceNormInferMeta
-  kernel :
-    func : instance_norm
-    data_type : x
-  optional : scale, bias
-  intermediate : saved_mean, saved_variance
-  backward : instance_norm_grad
-
-- op : layer_norm
-  args : (Tensor x, Tensor scale, Tensor bias, float epsilon, int begin_norm_axis)
-  output : Tensor(out), Tensor(mean), Tensor(variance)
-  infer_meta :
-    func : LayerNormInferMeta
-  kernel :
-    func : layer_norm
-    data_type : x
-  backward : layer_norm_grad
-  optional : scale, bias
 
 - op : less_equal
   args : (Tensor x, Tensor y)
@@ -813,15 +770,6 @@
   kernel :
     func : pad
   backward : pad_grad
-
-- op : pad3d
-  args : (Tensor x, IntArray paddings, str mode,  float pad_value, str data_format)
-  output : Tensor(out)
-  infer_meta :
-    func : Pad3dInferMeta
-  kernel :
-    func : pad3d
-  backward : pad3d_grad
 
 - op : pool2d
   args : (Tensor x, IntArray kernel_size, int[] strides, int[] paddings, bool ceil_mode, bool exclusive, str data_format, str pooling_type, bool global_pooling, bool adaptive, str padding_algorithm)
@@ -1103,6 +1051,15 @@
     func : tile
   backward : tile_grad
 
+- op : trans_layout
+  args : (Tensor x, int[] perm)
+  output : Tensor
+  infer_meta :
+    func : TransposeInferMeta
+  kernel :
+    func : transpose
+  backward : trans_layout_grad
+
 - op : transpose
   args : (Tensor x, int[] perm)
   output : Tensor
@@ -1188,6 +1145,16 @@
   kernel :
     func : unique
     data_type : x
+
+- op : unpool
+  args: (Tensor x, Tensor indices, int[] ksize, int[] strides, int[] padding, IntArray output_size, str data_format)
+  output: Tensor(out)
+  infer_meta:
+    func: UnpoolInferMeta
+  kernel:
+    func: unpool
+    data_type: x
+  backward: unpool_grad
 
 - op : zeros
   args : (IntArray shape, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())

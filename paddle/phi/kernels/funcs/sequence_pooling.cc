@@ -36,7 +36,7 @@ using EigenMatrix = phi::EigenMatrix<T, MajorType, IndexType>;
 template <typename T, bool is_test>
 class MaxSeqPoolFunctor {
  public:
-  void operator()(const phi::CPUContext& context,
+  void operator()(const phi::CPUContext& context UNUSED,
                   const phi::DenseTensor& input,
                   T pad_value,
                   phi::DenseTensor* output,
@@ -115,11 +115,11 @@ class MaxSeqPoolFunctor {
 template <typename T>
 class MaxSeqPoolFunctor<T, true> {
  public:
-  void operator()(const phi::CPUContext& context,
+  void operator()(const phi::CPUContext& context UNUSED,
                   const phi::DenseTensor& input,
                   T pad_value,
                   phi::DenseTensor* output,
-                  phi::DenseTensor* index) {
+                  phi::DenseTensor* index UNUSED) {
     auto in_dims = input.dims();
     auto out_dims = output->dims();
     PADDLE_ENFORCE_GT(in_dims.size(),
@@ -239,7 +239,7 @@ class MaxSeqPoolGradFunctor {
 template <typename T>
 class LastSeqPoolFunctor {
  public:
-  void operator()(const phi::CPUContext& context,
+  void operator()(const phi::CPUContext& context UNUSED,
                   const phi::DenseTensor& input,
                   T pad_value,
                   phi::DenseTensor* output) {
@@ -273,7 +273,7 @@ class LastSeqPoolFunctor {
 template <typename T>
 class FirstSeqPoolFunctor {
  public:
-  void operator()(const phi::CPUContext& context,
+  void operator()(const phi::CPUContext& context UNUSED,
                   const phi::DenseTensor& input,
                   T pad_value,
                   phi::DenseTensor* output) {

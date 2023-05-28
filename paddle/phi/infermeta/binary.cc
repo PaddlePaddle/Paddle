@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/infermeta/unary.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
@@ -2056,9 +2057,6 @@ void MatmulInferMeta(const MetaTensor& x,
   if (!y_broadcasted) {
     new_dims.push_back(N);
   }
-  if (x_broadcasted && y_broadcasted) {
-    new_dims.push_back(1);
-  }
 
   auto ddim_out = phi::make_ddim(new_dims);
 
@@ -2582,6 +2580,24 @@ void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
   } else {
     out->set_dtype(DataType::INT64);
   }
+}
+
+void SequenceMaskInferMeta(const MetaTensor& x,
+                           const MetaTensor& max_len_tensor,
+                           int maxlen,
+                           int out_dtype,
+                           MetaTensor* y) {
+  auto dim = phi::vectorize<int>(x.dims());
+
+  if (max_len_tensor) {
+    dim.push_back(-1);
+  } else {
+    dim.push_back(maxlen > 0 ? maxlen : -1);
+  }
+
+  y->set_dims(phi::make_ddim(dim));
+  auto out_phi_dtype = phi::TransToPhiDataType(out_dtype);
+  y->set_dtype(out_phi_dtype);
 }
 
 void SoftmaxMaskFuseInferMeta(const MetaTensor& x,

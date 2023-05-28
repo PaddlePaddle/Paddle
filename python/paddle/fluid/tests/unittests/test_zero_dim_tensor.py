@@ -2571,6 +2571,33 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out2.shape, [])
         self.assertEqual(out2, 2.5)
 
+    def test_matmul(self):
+        # 1) no transpose
+        x = paddle.randn([10])
+        x.stop_gradient = False
+        y = paddle.randn([10])
+        y.stop_gradient = False
+        out1 = paddle.matmul(x, y)
+        out1.retain_grads()
+        out1.backward()
+
+        self.assertEqual(out1.shape, [])
+        self.assertEqual(x.grad.shape, [10])
+        self.assertEqual(y.grad.shape, [10])
+
+        # 2) transpose x and y
+        x = paddle.randn([10])
+        x.stop_gradient = False
+        y = paddle.randn([10])
+        y.stop_gradient = False
+        out2 = paddle.matmul(x, y, True, True)
+        out2.retain_grads()
+        out2.backward()
+
+        self.assertEqual(out2.shape, [])
+        self.assertEqual(x.grad.shape, [10])
+        self.assertEqual(y.grad.shape, [10])
+
     def test_linalg_slogdet(self):
         # 2-D input
         x = paddle.randn([3, 3])
@@ -4873,6 +4900,40 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(res[1], 2.5)
 
     @prog_scope()
+    def test_matmul(self):
+        # 1) no transpose
+        x = paddle.randn([10])
+        x.stop_gradient = False
+        y = paddle.randn([10])
+        y.stop_gradient = False
+        out = paddle.matmul(x, y)
+        paddle.static.append_backward(out)
+
+        self.assertEqual(out.shape, ())
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out, x.grad_name, y.grad_name])
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, (10,))
+        self.assertEqual(res[2].shape, (10,))
+
+        # 2) transpose x and y
+        x = paddle.randn([10])
+        x.stop_gradient = False
+        y = paddle.randn([10])
+        y.stop_gradient = False
+        out = paddle.matmul(x, y, True, True)
+        paddle.static.append_backward(out)
+
+        self.assertEqual(out.shape, ())
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[out, x.grad_name, y.grad_name])
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, (10,))
+        self.assertEqual(res[2].shape, (10,))
+
+    @prog_scope()
     def test_linalg_slogdet(self):
         # 2-D input
         x = paddle.randn([3, 3])
@@ -5994,6 +6055,31 @@ class TestLossAPI(unittest.TestCase):
         self.assertEqual(loss.shape, [])
         self.assertEqual(input.grad.shape, [3, 5])
 
+    def test_nll_loss(self):
+        input = paddle.rand([5, 3])
+        input.stop_gradient = False
+        log_softmax = paddle.nn.LogSoftmax(axis=1)
+        log_out = log_softmax(input)
+        label = paddle.randint(0, 3, [5], "int64")
+
+        loss = paddle.nn.functional.nll_loss(log_out, label)
+        loss.backward()
+
+        self.assertEqual(loss.shape, [])
+        self.assertEqual(input.grad.shape, [5, 3])
+
+        input = paddle.rand([5, 3, 2, 4])
+        input.stop_gradient = False
+        log_softmax = paddle.nn.LogSoftmax(axis=1)
+        log_out = log_softmax(input)
+        label = paddle.randint(0, 3, [5, 2, 4], "int64")
+
+        loss = paddle.nn.functional.nll_loss(log_out, label)
+        loss.backward()
+
+        self.assertEqual(loss.shape, [])
+        self.assertEqual(input.grad.shape, [5, 3, 2, 4])
+
 
 class TestLossAPIStatic(unittest.TestCase):
     def setUp(self):
@@ -6059,6 +6145,40 @@ class TestLossAPIStatic(unittest.TestCase):
         res = self.exe.run(prog, fetch_list=[loss, input.grad_name])
         self.assertEqual(res[0].shape, ())
         self.assertEqual(res[1].shape, (3, 5))
+
+    @prog_scope()
+    def test_nll_loss(self):
+        input = paddle.rand([5, 3])
+        input.stop_gradient = False
+        log_softmax = paddle.nn.LogSoftmax(axis=1)
+        log_out = log_softmax(input)
+
+        label = paddle.randint(0, 3, shape=[5])
+        label.stop_gradient = False
+
+        loss = paddle.nn.functional.nll_loss(log_out, label)
+        paddle.static.append_backward(loss)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[loss, input.grad_name])
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, (5, 3))
+
+        input = paddle.rand([5, 3, 2, 4])
+        input.stop_gradient = False
+        log_softmax = paddle.nn.LogSoftmax(axis=1)
+        log_out = log_softmax(input)
+
+        label = paddle.randint(0, 3, shape=[5, 2, 4])
+        label.stop_gradient = False
+
+        loss = paddle.nn.functional.nll_loss(log_out, label)
+        paddle.static.append_backward(loss)
+
+        prog = paddle.static.default_main_program()
+        res = self.exe.run(prog, fetch_list=[loss, input.grad_name])
+        self.assertEqual(res[0].shape, ())
+        self.assertEqual(res[1].shape, (5, 3, 2, 4))
 
 
 if __name__ == "__main__":
