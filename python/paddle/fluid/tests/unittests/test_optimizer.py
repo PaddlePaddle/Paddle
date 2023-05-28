@@ -386,7 +386,7 @@ class TestAdamOptimizer(unittest.TestCase):
 
 
 class TestAdamaxOptimizer(unittest.TestCase):
-    class MockAdamax(optimizer.AdamaxOptimizer):
+    class MockAdamax(paddle.optimizer.Adamax):
         def get_accumulators(self):
             return self._accumulators
 

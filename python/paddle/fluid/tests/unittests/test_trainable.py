@@ -74,7 +74,7 @@ class TestTrainable(unittest.TestCase):
             test_trainable,
             feed_dict,
             op_count={'adamax': 1, 'scale': 1, 'mul_grad': 0},
-            optimizer=fluid.optimizer.Adamax(learning_rate=0.2),
+            optimizer=paddle.optimizer.Adamax(learning_rate=0.2),
         )
 
 
