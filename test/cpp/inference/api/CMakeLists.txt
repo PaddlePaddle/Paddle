@@ -1524,8 +1524,8 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       DEPS
       analysis_predictor
       benchmark
-      ${inference_deps
-      pybind}
+      ${inference_deps}
+      pybind
       ARGS
       --dirname=${WORD2VEC_MODEL_DIR})
   endif()
