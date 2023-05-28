@@ -180,12 +180,12 @@ def SE_ResNeXt50Small(use_feed):
 
 
 def optimizer(learning_rate=0.01):
-    optimizer = fluid.optimizer.Momentum(
+    optimizer = paddle.optimizer.Momentum(
         learning_rate=cosine_decay(
             learning_rate=learning_rate, step_each_epoch=2, epochs=1
         ),
         momentum=0.9,
-        regularization=fluid.regularizer.L2Decay(1e-4),
+        weight_decay=fluid.regularizer.L2Decay(1e-4),
     )
     return optimizer
 

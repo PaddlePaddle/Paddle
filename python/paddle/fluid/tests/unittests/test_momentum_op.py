@@ -821,11 +821,11 @@ class TestMomentumOpVsMomentumOpWithDecayAPI(unittest.TestCase):
             weight_attr=paddle.nn.initializer.Constant(value=2.0),
             bias_attr=paddle.nn.initializer.Constant(value=2.0),
         )
-        momentum_old = paddle.fluid.optimizer.Momentum(
+        momentum_old = paddle.optimizer.Momentum(
             learning_rate=0.01,
             momentum=0.9,
-            parameter_list=linear_old.parameters(),
-            regularization=paddle.fluid.regularizer.L2Decay(
+            parameters=linear_old.parameters(),
+            weight_decay=paddle.fluid.regularizer.L2Decay(
                 regularization_coeff=0.1
             ),
         )

@@ -105,7 +105,7 @@ class TestDistMnist2x2(TestDistRunnerBase):
         # TODO(typhoonzero): fix distributed adam optimizer
         # opt = fluid.optimizer.AdamOptimizer(
         #     learning_rate=0.001, beta1=0.9, beta2=0.999)
-        opt = fluid.optimizer.Momentum(learning_rate=self.lr, momentum=0.9)
+        opt = paddle.optimizer.Momentum(learning_rate=self.lr, momentum=0.9)
         if single_device:
             opt.minimize(avg_cost)
         else:

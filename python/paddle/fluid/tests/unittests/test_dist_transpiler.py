@@ -620,12 +620,12 @@ class TestL2DecayWithPiecewise(TranspilerTest):
         base_lr = 1.0
         bd = [1, 10, 20, 30]
         lr = [base_lr * (0.1**i) for i in range(len(bd) + 1)]
-        sgd_optimizer = fluid.optimizer.Momentum(
+        sgd_optimizer = paddle.optimizer.Momentum(
             learning_rate=fluid.layers.piecewise_decay(
                 boundaries=bd, values=lr
             ),
             momentum=0.9,
-            regularization=fluid.regularizer.L2Decay(1e-4),
+            weight_decay=fluid.regularizer.L2Decay(1e-4),
         )
         sgd_optimizer.minimize(avg_cost)
 
