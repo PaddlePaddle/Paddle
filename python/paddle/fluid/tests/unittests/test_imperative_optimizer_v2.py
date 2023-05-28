@@ -23,7 +23,6 @@ from paddle import fluid
 from paddle.distributed.fleet.meta_optimizers import DGCMomentumOptimizer
 from paddle.fluid import core
 from paddle.fluid.optimizer import (
-    AdadeltaOptimizer,
     AdagradOptimizer,
     AdamaxOptimizer,
     DecayedAdagradOptimizer,
@@ -757,16 +756,16 @@ class TestImperativeDecayedAdagradOptimizer(TestImperativeOptimizerBase):
 
 class TestImperativeAdadeltaOptimizer(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
-        optimizer = AdadeltaOptimizer(
+        optimizer = paddle.optimizer.adadelta(
             learning_rate=0.0003,
             epsilon=1.0e-6,
             rho=0.95,
-            parameter_list=parameter_list,
+            parameters=parameter_list,
         )
         return optimizer
 
     def get_optimizer(self):
-        optimizer = AdadeltaOptimizer(
+        optimizer = paddle.optimizer.adadelta(
             learning_rate=0.0003, epsilon=1.0e-6, rho=0.95
         )
         return optimizer

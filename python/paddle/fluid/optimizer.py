@@ -77,8 +77,6 @@ __all__ = [
     'DecayedAdagradOptimizer',
     'RMSPropOptimizer',
     'FtrlOptimizer',
-    'Adadelta',
-    'AdadeltaOptimizer',
     'ModelAverage',
     'LarsMomentum',
     'LarsMomentumOptimizer',
@@ -3078,183 +3076,6 @@ class DecayedAdagradOptimizer(Optimizer):
             return decayed_adagrad_op
 
 
-class AdadeltaOptimizer(Optimizer):
-    r"""
-    **Notes: This API does not support sparse parameter optimization.**
-
-    Adadelta Optimizer. Please refer to this for details:
-    `ADADELTA: AN ADAPTIVE LEARNING RATE METHOD <https://arxiv.org/abs/1212.5701>`_.
-
-    The update is done as follows:
-
-    .. math::
-
-        E(g_t^2) &= \\rho * E(g_{t-1}^2) + (1-\\rho) * g^2
-
-        learning\_rate &= \sqrt{ ( E(dx_{t-1}^2) + \\epsilon ) / ( E(g_t^2) + \\epsilon ) }
-
-        E(dx_t^2) &= \\rho * E(dx_{t-1}^2) + (1-\\rho) * (-g*learning\_rate)^2
-
-    Args:
-        learning_rate (float|Variable): global learning rate.
-        epsilon (float): a small float number for numeric stability. Default 1.0e-6.
-        rho (float): a floating point value indicating the decay rate. Default 0.95.
-        parameter_list (Iterable, optional):  Iterable of ``Variable`` names to update to minimize ``loss``. \
-            This parameter is required in dygraph mode. \
-            The default value is None in static graph mode, at this time all parameters will be updated.
-        regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
-             :ref:`api_fluid_regularizer_L1Decay` , :ref:`api_fluid_regularizer_L2Decay` . If a parameter has set \
-            regularizer using :ref:`api_fluid_ParamAttr` already, the regularization setting here in optimizer will be \
-            ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
-            Default None, meaning there is no regularization.
-        grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
-            some derived class of ``GradientClipBase`` . There are three cliping strategies
-            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
-            :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
-        name (str, optional): The default value is None. Normally there is no need for user
-                to set this property. For more information, please refer to
-                :ref:`api_guide_Name` .
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            import paddle.fluid as fluid
-
-            paddle.enable_static()
-            image = paddle.static.data(name='image', shape=[None, 28], dtype='float32')
-            fc = paddle.static.nn.fc(image, size=10)
-            cost = paddle.mean(fc)
-            optimizer = fluid.optimizer.Adadelta(
-                learning_rate=0.0003, epsilon=1.0e-6, rho=0.95)
-
-            # optimizer_ops is a list of optimizer operators to update parameters
-            # params_grads is a list of (param, param_grad), where param is each
-            # parameter and param_grad is the gradient variable of param.
-            optimizer_ops, params_grads = optimizer.minimize(cost)
-    """
-
-    _avg_squared_grad_acc_str = "_avg_squared_grad"
-    _avg_squared_update_acc_str = "_avg_squared_update"
-
-    def __init__(
-        self,
-        learning_rate,
-        epsilon=1.0e-6,
-        rho=0.95,
-        parameter_list=None,
-        regularization=None,
-        grad_clip=None,
-        name=None,
-    ):
-        if learning_rate is None:
-            raise ValueError("learning_rate is not set.")
-        if epsilon is None:
-            raise ValueError("epsilon is not set.")
-        if rho is None:
-            raise ValueError("rho is not set.")
-        super().__init__(
-            learning_rate=learning_rate,
-            parameter_list=parameter_list,
-            regularization=regularization,
-            grad_clip=grad_clip,
-            name=name,
-        )
-        self.type = "adadelta"
-        self._multi_precision = False
-        self._master_weights = {}
-        self._epsilon = epsilon
-        self._rho = rho
-
-    def _create_accumulators(self, block, parameters):
-        if not isinstance(block, framework.Block):
-            raise TypeError("block is not instance of framework.Block.")
-
-        for p in parameters:
-            if self._multi_precision and self._is_dtype_fp16_or_bf16(p.dtype):
-                master_p = self._create_master_weight(p)
-                self._add_accumulator(self._avg_squared_grad_acc_str, master_p)
-                self._add_accumulator(
-                    self._avg_squared_update_acc_str, master_p
-                )
-                continue
-            if (
-                self._is_dtype_fp16_or_bf16(p.dtype)
-                and not self._multi_precision
-            ):
-                warnings.warn(
-                    "Accumulating with FP16/BF16 in optimizer can lead to poor accuracy or slow convergence."
-                    "Consider using multi_precision=True option of the Lars optimizer."
-                )
-            self._add_accumulator(self._avg_squared_grad_acc_str, p)
-            self._add_accumulator(self._avg_squared_update_acc_str, p)
-
-    def _append_optimize_op(self, block, param_and_grad):
-        if not isinstance(block, framework.Block):
-            raise TypeError("block is not instance of framework.Block.")
-
-        avg_squared_grad_acc = self._get_accumulator_master(
-            self._avg_squared_grad_acc_str, param_and_grad[0]
-        )
-        avg_squared_update_acc = self._get_accumulator_master(
-            self._avg_squared_update_acc_str, param_and_grad[0]
-        )
-
-        find_master = self._multi_precision and self._is_dtype_fp16_or_bf16(
-            param_and_grad[0].dtype
-        )
-        master_weight = (
-            self._master_weights[param_and_grad[0].name]
-            if find_master
-            else None
-        )
-
-        if in_dygraph_mode():
-            _C_ops.adadelta_(
-                param_and_grad[0],
-                param_and_grad[1],
-                avg_squared_grad_acc,
-                avg_squared_update_acc,
-                self._create_param_lr(param_and_grad),
-                master_weight,
-                self._rho,
-                self._epsilon,
-                find_master,
-            )
-        else:
-            # Create the adadelta optimizer op
-            inputs = {
-                "Param": param_and_grad[0],
-                "Grad": param_and_grad[1],
-                "AvgSquaredGrad": avg_squared_grad_acc,
-                "AvgSquaredUpdate": avg_squared_update_acc,
-                "LearningRate": self._create_param_lr(param_and_grad),
-            }
-            outputs = {
-                "ParamOut": param_and_grad[0],
-                "AvgSquaredGradOut": avg_squared_grad_acc,
-                "AvgSquaredUpdateOut": avg_squared_update_acc,
-            }
-
-            if find_master:
-                inputs["MasterParam"] = master_weight
-                outputs["MasterParamOut"] = master_weight
-
-            adadelta_op = block.append_op(
-                type=self.type,
-                inputs=inputs,
-                outputs=outputs,
-                attrs={
-                    "epsilon": self._epsilon,
-                    "rho": self._rho,
-                    "multi_precision": find_master,
-                },
-                stop_gradient=True,
-            )
-
-            return adadelta_op
-
-
 class RMSPropOptimizer(Optimizer):
     r"""
     Root Mean Squared Propagation (RMSProp) is an unpublished, adaptive learning
@@ -3900,7 +3721,6 @@ Adam = AdamOptimizer
 Adamax = AdamaxOptimizer
 Dpsgd = DpsgdOptimizer
 DecayedAdagrad = DecayedAdagradOptimizer
-Adadelta = AdadeltaOptimizer
 RMSProp = RMSPropOptimizer
 Ftrl = FtrlOptimizer
 LarsMomentum = LarsMomentumOptimizer
