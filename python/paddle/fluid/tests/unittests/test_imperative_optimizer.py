@@ -37,7 +37,6 @@ from paddle.fluid.optimizer import (
     MomentumOptimizer,
     PipelineOptimizer,
     RecomputeOptimizer,
-    RMSPropOptimizer,
     SGDOptimizer,
 )
 
@@ -661,7 +660,7 @@ class TestImperativeDecayedAdagradOptimizer(TestImperativeOptimizerBase):
 
 class TestImperativeAdadeltaOptimizer(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
-        optimizer = paddle.optimizer.adadelta(
+        optimizer = paddle.optimizer.Adadelta(
             learning_rate=0.0003,
             epsilon=1.0e-6,
             rho=0.95,
@@ -670,7 +669,7 @@ class TestImperativeAdadeltaOptimizer(TestImperativeOptimizerBase):
         return optimizer
 
     def get_optimizer(self):
-        optimizer = paddle.optimizer.adadelta(
+        optimizer = paddle.optimizer.Adadelta(
             learning_rate=0.0003, epsilon=1.0e-6, rho=0.95
         )
         return optimizer
@@ -681,13 +680,13 @@ class TestImperativeAdadeltaOptimizer(TestImperativeOptimizerBase):
 
 class TestImperativeRMSPropOptimizer(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
-        optimizer = RMSPropOptimizer(
-            learning_rate=0.1, parameter_list=parameter_list
+        optimizer = paddle.optimizer.RMSProp(
+            learning_rate=0.1, parameters=parameter_list
         )
         return optimizer
 
     def get_optimizer(self):
-        optimizer = RMSPropOptimizer(learning_rate=0.1)
+        optimizer = paddle.optimizer.RMSProp(learning_rate=0.1)
         return optimizer
 
     def test_rmsprop(self):
