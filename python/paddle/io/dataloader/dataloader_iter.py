@@ -429,7 +429,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
     def _init_workers(self):
         from paddle.incubate import multiprocessing
 
-        multiprocessing.set_start_method('spawn')
+        multiprocessing.set_start_method('spawn', force=True)
 
         # multiprocess worker and indice queue list initial as empty
         self._workers = []
