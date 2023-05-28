@@ -126,6 +126,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       ${filename}
       EXTRA_DEPS
       paddle_inference_shared
+      pybind
       ARGS
       --infer_model=${install_dir}/model
       --infer_data=${install_dir}/data.txt
@@ -467,6 +468,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     analyzer_ernie_tester.cc
     EXTRA_DEPS
     paddle_inference_shared
+    pybind
     ARGS
     --infer_model=${ERNIE_INSTALL_DIR}/model
     --infer_data=${ERNIE_INSTALL_DIR}/data.txt
@@ -512,6 +514,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     analyzer_transformer_compare_tester.cc
     EXTRA_DEPS
     paddle_inference_shared
+    pybind
     ARGS
     --infer_model=${TRANSFORMER_INSTALL_DIR}/model
     --infer_data=${TRANSFORMER_INSTALL_DIR}/data.txt
@@ -576,6 +579,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     analyzer_detect_functional_mkldnn_tester.cc
     EXTRA_DEPS
     paddle_inference_shared
+    pybind
     ARGS
     --infer_model=${DENSEBOX_INSTALL_DIR}/model
     --infer_data=${DENSEBOX_INSTALL_DIR}/detect_input_50.txt
@@ -1171,6 +1175,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     lite_mul_model_test.cc
     EXTRA_DEPS
     paddle_inference_shared
+    pybind
     ARGS
     --infer_model=${LITE_MODEL_INSTALL_DIR})
   inference_analysis_test(
@@ -1179,6 +1184,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     lite_resnet50_test.cc
     EXTRA_DEPS
     paddle_inference_shared
+    pybind
     ARGS
     --infer_model=${RESNET50_MODEL_DIR})
 
@@ -1202,6 +1208,7 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
     analyzer_capi_exp_pd_config_tester.cc
     EXTRA_DEPS
     ${INFERENCE_C_EXTRA_DEPS}
+    pybind
     ARGS
     --infer_model=${MOBILENET_INSTALL_DIR}/model)
   if(WIN32)
@@ -1517,7 +1524,8 @@ if(WITH_TESTING AND WITH_INFERENCE_API_TEST)
       DEPS
       analysis_predictor
       benchmark
-      ${inference_deps}
+      ${inference_deps
+      pybind}
       ARGS
       --dirname=${WORD2VEC_MODEL_DIR})
   endif()

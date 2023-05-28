@@ -45,8 +45,10 @@ if(NOT (NOT WITH_PYTHON AND ON_INFER))
     SRCS
     benchmark_fluid_cuda.cc
     DEPS
-    dygraph_function
+    conditional_block_op
+    standalone_executor
     performance_benchmark_utils
+    dygraph_function
     ${eager_deps}
     ${fluid_deps})
 endif()

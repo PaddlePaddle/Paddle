@@ -695,14 +695,14 @@ endif()
 cc_library(
   executor_gc_helper
   SRCS executor_gc_helper.cc
-  DEPS scope
+  DEPS while_op_helper
+       recurrent_op_helper
+       conditional_block_op_helper
+       scope
        proto_desc
        operator
        garbage_collector
-       op_registry
-       while_op_helper
-       recurrent_op_helper
-       conditional_block_op_helper)
+       op_registry)
 if(WITH_DISTRIBUTE)
   if(WITH_PSLIB)
     cc_library(
@@ -731,6 +731,7 @@ if(WITH_DISTRIBUTE)
            data_set.cc
       DEPS fleet_executor
            fleet_wrapper
+           recurrent_op_helper
            op_registry
            device_context
            scope
@@ -806,7 +807,8 @@ if(WITH_DISTRIBUTE)
            heter_section_worker.cc
            device_worker_factory.cc
            data_set.cc
-      DEPS op_registry
+      DEPS recurrent_op_helper
+           op_registry
            device_context
            scope
            framework_proto
@@ -883,7 +885,8 @@ if(WITH_DISTRIBUTE)
            section_worker.cc
            device_worker_factory.cc
            data_set.cc
-      DEPS op_registry
+      DEPS recurrent_op_helper
+           op_registry
            device_context
            scope
            framework_proto
@@ -944,7 +947,8 @@ elseif(WITH_PSLIB)
          section_worker.cc
          device_worker_factory.cc
          data_set.cc
-    DEPS op_registry
+    DEPS recurrent_op_helper
+         op_registry
          device_context
          scope
          framework_proto
@@ -992,7 +996,8 @@ else()
          section_worker.cc
          device_worker_factory.cc
          data_set.cc
-    DEPS op_registry
+    DEPS recurrent_op_helper
+         op_registry
          device_context
          scope
          framework_proto
