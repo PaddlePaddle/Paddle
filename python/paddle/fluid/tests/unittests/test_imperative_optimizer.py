@@ -30,7 +30,6 @@ from paddle.fluid.optimizer import (
     DpsgdOptimizer,
     ExponentialMovingAverage,
     FtrlOptimizer,
-    LambOptimizer,
     LarsMomentumOptimizer,
     LookaheadOptimizer,
     ModelAverage,
@@ -714,15 +713,15 @@ def exclude_fn(param):
 
 class TestImperativeLambOptimizer(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
-        optimizer = LambOptimizer(
+        optimizer = paddle.optimizer.Lamb(
             learning_rate=0.002,
             exclude_from_weight_decay_fn=exclude_fn,
-            parameter_list=parameter_list,
+            parameters=parameter_list,
         )
         return optimizer
 
     def get_optimizer(self):
-        optimizer = LambOptimizer(
+        optimizer = paddle.optimizer.Lamb(
             learning_rate=0.002, exclude_from_weight_decay_fn=exclude_fn
         )
         return optimizer
