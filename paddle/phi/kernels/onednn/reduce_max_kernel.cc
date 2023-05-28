@@ -18,13 +18,12 @@ limitations under the License. */
 
 namespace phi {
 template <typename T, typename Context>
-void MaxRawKernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  const IntArray& dims,
-                  bool keep_dim,
-                  bool reduce_all,
-                  DenseTensor* out) {
-  reduce_all = recompute_reduce_all(x, dims, reduce_all);
+void MaxKernel(const Context& dev_ctx,
+               const DenseTensor& x,
+               const IntArray& dims,
+               bool keep_dim,
+               DenseTensor* out) {
+  bool reduce_all = recompute_reduce_all(x, dims);
   ReduceKernel<T, Context>(dev_ctx,
                            x,
                            dims,
@@ -36,4 +35,4 @@ void MaxRawKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    max_raw, OneDNN, ONEDNN, phi::MaxRawKernel, float, phi::dtype::bfloat16) {}
+    max, OneDNN, ONEDNN, phi::MaxKernel, float, phi::dtype::bfloat16) {}

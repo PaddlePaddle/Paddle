@@ -364,20 +364,7 @@ function(cc_library TARGET_NAME)
         list(REMOVE_ITEM cc_library_DEPS warpctc)
         add_dependencies(${TARGET_NAME} warpctc)
       endif()
-      # Only deps libmklml.so, not link
-      if("${cc_library_DEPS};" MATCHES "mklml;")
-        list(REMOVE_ITEM cc_library_DEPS mklml)
-        if(NOT "${TARGET_NAME}" MATCHES "dynload_mklml")
-          list(APPEND cc_library_DEPS dynload_mklml)
-        endif()
-        add_dependencies(${TARGET_NAME} mklml)
-        if(WIN32)
-          target_link_libraries(${TARGET_NAME} ${MKLML_IOMP_LIB})
-        else()
-          target_link_libraries(${TARGET_NAME}
-                                "-L${MKLML_LIB_DIR} -liomp5 -Wl,--as-needed")
-        endif()
-      endif()
+
       # remove link to python, see notes at:
       # https://github.com/pybind/pybind11/blob/master/docs/compiling.rst#building-manually
       if("${cc_library_DEPS};" MATCHES "python;")
@@ -457,25 +444,10 @@ function(cc_test_build TARGET_NAME)
       endif()
     endif()
     get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
-    target_link_libraries(
-      ${TARGET_NAME}
-      ${cc_test_DEPS}
-      ${os_dependency_modules}
-      paddle_gtest_main
-      lod_tensor
-      memory
-      gtest
-      gflags
-      glog)
-    add_dependencies(
-      ${TARGET_NAME}
-      ${cc_test_DEPS}
-      paddle_gtest_main
-      lod_tensor
-      memory
-      gtest
-      gflags
-      glog)
+    target_link_libraries(${TARGET_NAME} ${cc_test_DEPS}
+                          ${os_dependency_modules} paddle_gtest_main gtest glog)
+    add_dependencies(${TARGET_NAME} ${cc_test_DEPS} paddle_gtest_main gtest
+                     glog)
     common_link(${TARGET_NAME})
     if(WITH_ROCM)
       target_link_libraries(${TARGET_NAME} ${ROCM_HIPRTC_LIB})
@@ -670,7 +642,7 @@ function(nv_test TARGET_NAME)
     add_executable(${TARGET_NAME} ${nv_test_SRCS})
     get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
     target_link_libraries(${TARGET_NAME} ${nv_test_DEPS}
-                          ${os_dependency_modules} paddle_gtest_main)
+                          ${os_dependency_modules} paddle_gtest_main phi)
     add_dependencies(${TARGET_NAME} ${nv_test_DEPS} paddle_gtest_main)
     common_link(${TARGET_NAME})
     add_test(${TARGET_NAME} ${TARGET_NAME})
@@ -774,8 +746,8 @@ function(hip_test TARGET_NAME)
       lod_tensor
       memory
       gtest
-      gflags
       glog
+      phi
       ${os_dependency_modules})
     add_dependencies(
       ${TARGET_NAME}
@@ -784,7 +756,7 @@ function(hip_test TARGET_NAME)
       lod_tensor
       memory
       gtest
-      gflags
+      phi
       glog)
     common_link(${TARGET_NAME})
     add_test(${TARGET_NAME} ${TARGET_NAME})
@@ -881,7 +853,7 @@ function(xpu_test TARGET_NAME)
       lod_tensor
       memory
       gtest
-      gflags
+      phi
       glog
       ${os_dependency_modules})
     add_dependencies(
@@ -891,7 +863,7 @@ function(xpu_test TARGET_NAME)
       lod_tensor
       memory
       gtest
-      gflags
+      phi
       glog)
     common_link(${TARGET_NAME})
     add_test(${TARGET_NAME} ${TARGET_NAME})

@@ -22,10 +22,7 @@
 
 namespace paddle {
 
-using LegacyProgramDesc = ::paddle::framework::ProgramDesc;
-using Program = ::ir::Program;
-
-std::unique_ptr<Program> TranslateLegacyProgramToProgram(
-    const LegacyProgramDesc& legacy_program);
+std::unique_ptr<::ir::Program> TranslateLegacyProgramToProgram(
+    const ::paddle::framework::ProgramDesc& legacy_program);
 
 }  // namespace paddle

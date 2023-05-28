@@ -16,14 +16,10 @@
 #include "paddle/ir/ir_context.h"
 
 namespace ir {
-Program::~Program() {
-  for (auto op : ops_) {
-    op->destroy();
-  }
-}
+Program::~Program() = default;
 
 void Program::InsertOp(Operation* op) {
-  ops_.push_back(op);
+  block_.push_back(op);
   op->set_parent_program(this);
 }
 
