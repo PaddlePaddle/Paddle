@@ -23,58 +23,19 @@
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 
 namespace phi {
-
-template <typename T>
-struct AbsMaxAndMinGradFunctor {
-  template <typename Context,
-            typename X,
-            typename Y,
-            typename DX,
-            typename DY,
-            typename Dim>
-  void operator()(const Context& place,
-                  X* x,
-                  Y* y,
-                  DX* dx,
-                  DY* dy,
-                  const Dim& dim,
-                  int size) {
-    dx->device(place) = dy->broadcast(dim) * (*x).sign() *
-                        ((*x).abs() == y->broadcast(dim)).template cast<T>();
-  }
-};
-
-template <typename T>
-struct PNormGradFunctor {
-  HOSTDEVICE explicit inline PNormGradFunctor(float porder, float eps) {
-    this->porder = static_cast<T>(porder - 1.);
-    this->eps = static_cast<T>(eps);
-  }
-  template <typename Context,
-            typename X,
-            typename Y,
-            typename DX,
-            typename DY,
-            typename Dim>
-  void operator()(const Context& place,
-                  X* x,
-                  Y* y,
-                  DX* dx,
-                  DY* dy,
-                  const Dim& dim,
-                  int size) {
-    dx->device(place) =
-        (*x).abs().pow(this->porder) * (*x).sign() * dy->broadcast(dim) *
-        (*y + y->constant(eps)).pow(-this->porder).broadcast(dim);
-  }
-  T porder;
-  T eps;
-};
-
 template <typename T>
 __device__ __forceinline__ int sgn(T val) {
   return (T(0) < val) - (val < T(0));
 }
+
+__device__ __forceinline__ int inline_sign(dtype::float16 x) {
+  return sgn<dtype::float16>(x);
+}
+__device__ __forceinline__ int inline_sign(dtype::bfloat16 x) {
+  return sgn<dtype::bfloat16>(x);
+}
+__device__ __forceinline__ int inline_sign(float x) { return sgn<float>(x); }
+__device__ __forceinline__ int inline_sign(double x) { return sgn<double>(x); }
 
 __device__ __forceinline__ dtype::float16 inline_abs(dtype::float16 x) {
   return static_cast<dtype::float16>(abs(static_cast<float>(x)));
@@ -85,16 +46,8 @@ __device__ __forceinline__ dtype::bfloat16 inline_abs(dtype::bfloat16 x) {
 }
 
 __device__ __forceinline__ float inline_abs(float x) { return abs(x); }
-__device__ __forceinline__ double inline_abs(double x) { return abs(x); }
 
-__device__ __forceinline__ int inline_sign(dtype::float16 x) {
-  return sgn<dtype::float16>(x);
-}
-__device__ __forceinline__ int inline_sign(dtype::bfloat16 x) {
-  return sgn<dtype::bfloat16>(x);
-}
-__device__ __forceinline__ int inline_sign(float x) { return sgn<float>(x); }
-__device__ __forceinline__ int inline_sign(double x) { return sgn<double>(x); }
+__device__ __forceinline__ double inline_abs(double x) { return abs(x); }
 
 __device__ __forceinline__ dtype::float16 inline_pow(dtype::float16 base,
                                                      dtype::float16 exponent) {
@@ -125,7 +78,7 @@ dtype::bfloat16 host_pow(dtype::bfloat16 base, dtype::bfloat16 exponent) {
 float host_pow(float base, float exponent) { return pow(base, exponent); }
 double host_pow(double base, double exponent) { return pow(base, exponent); }
 
-template <typename T>  // 这里T可能有问题
+template <typename T>
 struct PNormGradScalarDirectCUDAFunctor {
   const T scalar_;
   const T porder_;
@@ -135,15 +88,35 @@ struct PNormGradScalarDirectCUDAFunctor {
       : scalar_(scalar), porder_(porder) {}
 
   HOSTDEVICE inline T operator()(const T x) const {
-    return static_cast<T>(
-        static_cast<T>(inline_sign(x)) *
-        static_cast<T>(inline_pow(static_cast<T>(inline_abs(x)),
-                                  static_cast<T>(porder_))) *
-        scalar_);
+    return static_cast<T>(static_cast<T>(inline_sign(x)) *
+                          inline_pow(inline_abs(x), porder_) * scalar_);
   }
 };
 
-template <typename T>  // 这里T可能有问题
+template <typename T>
+struct InfinityNormGradScalarDirectCUDAFunctor {
+  const T y_;
+  const T dy_;
+
+  HOSTDEVICE inline InfinityNormGradScalarDirectCUDAFunctor(const T y,
+                                                            const T dy)
+      : y_(y), dy_(dy) {}
+
+  HOSTDEVICE inline T operator()(const T x) const {
+    return static_cast<T>(dy_ * static_cast<T>(inline_sign(x)) *
+                          static_cast<T>((inline_abs(x) == y_)));
+  }
+};
+
+template <typename T>
+struct InfinityNormGradTensorDirectCUDAFunctor {
+  HOSTDEVICE inline T operator()(const T x, const T y, const T dy) const {
+    return static_cast<T>(dy * static_cast<T>(inline_sign(x)) *
+                          static_cast<T>(inline_abs(x) == y));
+  }
+};
+
+template <typename T>
 struct PNormGradTensorDirectCUDAFunctor {
   const T epsilon_;
   const T porder_;
@@ -152,19 +125,10 @@ struct PNormGradTensorDirectCUDAFunctor {
                                                      const T porder)
       : epsilon_(epsilon), porder_(porder) {}
 
-  // template <typename X, typename Y, typename DY>
-  // HOSTDEVICE inline T operator()(const X x, const Y y, const DY dy) const {
   HOSTDEVICE inline T operator()(const T x, const T y, const T dy) const {
-    // return inline_sign(x) *
-    //        static_cast<T>(inline_pow(inline_abs(static_cast<T>(x)),
-    //                                  static_cast<T>(porder_))) *
-    //        dy *
-    //        static_cast<T>(inline_pow(
-    //            static_cast<T>(static_cast<T>(y) + static_cast<T>(epsilon_)),
-    //            static_cast<T>(-1.0) * porder_));
-
-    return static_cast<T>(inline_sign(x)) * inline_pow(inline_abs(x), porder_) *
-           dy * inline_pow(y + epsilon_, static_cast<T>(-1.0) * porder_);
+    return static_cast<T>(
+        static_cast<T>(inline_sign(x)) * inline_pow(inline_abs(x), porder_) *
+        dy * inline_pow(y + epsilon_, static_cast<T>(-1.0) * porder_));
   }
 };
 
@@ -179,49 +143,40 @@ void PNormGradKernel(const Context& dev_ctx,
                      bool keepdim,
                      bool asvector,
                      DenseTensor* x_grad) {
-  auto* in_x = &x;
-  auto* in_norm = &out;
-  auto* in_norm_dy = &out_grad;
-  auto* out_dx = x_grad;
-  dev_ctx.template Alloc<T>(out_dx);
-
-  auto xdim = in_x->dims();
-  bool reduce_all = (in_norm->numel() == 1);
-  if (axis < 0) axis = xdim.size() + axis;
-  const std::vector<int> dims = {axis};
-
+  dev_ctx.template Alloc<T>(x_grad);
+  bool reduce_all = (out.numel() == 1);
   if (porder == 0) {
     phi::funcs::SetConstant<Context, T> set_zero;
-    set_zero(dev_ctx, out_dx, static_cast<T>(0));
-  } else if (porder == INFINITY || porder == -INFINITY) {
-    AbsMaxAndMinGradFunctor<T> functor;
-    funcs::LaunchReduceGradKernel<Context, T, AbsMaxAndMinGradFunctor<T>>(
-        dev_ctx, in_x, in_norm, in_norm_dy, out_dx, functor, dims, reduce_all);
-
+    set_zero(dev_ctx, x_grad, static_cast<T>(0));
   } else {
-    // dims没处理
+    std::vector<DenseTensor*> outputs = {x_grad};
     if (reduce_all) {
-      auto functor = PNormGradScalarDirectCUDAFunctor<T>(
-          static_cast<T>(static_cast<T>((*out_grad.data<T>())) *
-                         host_pow(static_cast<T>((*out.data<T>())) +
-                                      static_cast<T>(epsilon),
-                                  static_cast<T>(-1.0 * porder))),
-          static_cast<T>(porder));
       std::vector<const DenseTensor*> inputs = {&x};
-      std::vector<DenseTensor*> outputs = {x_grad};
-      funcs::ElementwiseKernel<T>(dev_ctx, inputs, &outputs, functor);
+      if (porder == INFINITY || porder == -INFINITY) {
+        auto functor = InfinityNormGradScalarDirectCUDAFunctor<T>(
+            static_cast<T>((*out.data<T>())),
+            static_cast<T>((*out_grad.data<T>())));
+        funcs::ElementwiseKernel<T>(dev_ctx, inputs, &outputs, functor);
+      } else {
+        auto functor = PNormGradScalarDirectCUDAFunctor<T>(
+            static_cast<T>(static_cast<T>((*out_grad.data<T>())) *
+                           host_pow(static_cast<T>((*out.data<T>())) +
+                                        static_cast<T>(epsilon),
+                                    static_cast<T>(-1.0 * porder))),
+            static_cast<T>(porder));
+        funcs::ElementwiseKernel<T>(dev_ctx, inputs, &outputs, functor);
+      }
     } else {
-      auto functor = PNormGradTensorDirectCUDAFunctor<T>(
-          static_cast<T>(epsilon), static_cast<T>(porder));
       std::vector<const DenseTensor*> inputs = {&x, &out, &out_grad};
-      std::vector<DenseTensor*> outputs = {x_grad};
-      funcs::BroadcastKernel<T>(dev_ctx, inputs, &outputs, functor, 0);
+      if (porder == INFINITY || porder == -INFINITY) {
+        auto functor = InfinityNormGradTensorDirectCUDAFunctor<T>();
+        funcs::BroadcastKernel<T>(dev_ctx, inputs, &outputs, functor, 0);
+      } else {
+        auto functor = PNormGradTensorDirectCUDAFunctor<T>(
+            static_cast<T>(epsilon), static_cast<T>(porder));
+        funcs::BroadcastKernel<T>(dev_ctx, inputs, &outputs, functor, 0);
+      }
     }
-
-    // auto functor = PNormGradFunctor<T>(porder, epsilon);
-    // funcs::LaunchReduceGradKernel<Context, T, PNormGradFunctor<T>>(
-    //     dev_ctx, in_x, in_norm, in_norm_dy, out_dx, functor, dims,
-    //     reduce_all);
   }
 }
 }  // namespace phi
