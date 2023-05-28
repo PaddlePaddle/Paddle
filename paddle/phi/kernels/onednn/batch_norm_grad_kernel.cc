@@ -126,7 +126,7 @@ void BatchNormGradKernel(const Context& dev_ctx,
                                      bias_grad);
 }
 
-template<> 
+template
 void BatchNormGradFunctor<double, phi::ONEDNNContext>(const phi::ONEDNNContext& dev_ctx,
                                                             const DenseTensor& x,
                                                             const DenseTensor& scale,
@@ -148,7 +148,7 @@ void BatchNormGradFunctor<double, phi::ONEDNNContext>(const phi::ONEDNNContext& 
                                                             DenseTensor* scale_grad,
                                                             DenseTensor* bias_grad);
 
-template<>
+template
 void BatchNormGradFunctor<float, phi::ONEDNNContext>(const phi::ONEDNNContext& dev_ctx,
                                                             const DenseTensor& x,
                                                             const DenseTensor& scale,
