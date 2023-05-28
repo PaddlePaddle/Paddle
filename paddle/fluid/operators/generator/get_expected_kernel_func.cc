@@ -285,5 +285,15 @@ phi::KernelKey GetLayerNormExpectedKernelType(
   return phi::KernelKey(input_data_type, ctx.GetPlace());
 }
 
+phi::KernelKey GetTransposeExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  auto data_type = op_ptr->OperatorWithKernel::IndicateVarDataType(ctx, "X");
+  auto& data_format = ctx.Attr<std::string>("data_format");
+  phi::DataLayout layout_ = phi::StringToDataLayout(data_format);
+  return phi::KernelKey(
+      ctx.GetPlace(), layout_, phi::TransToPhiDataType(data_type));
+}
+
 }  // namespace operators
 }  // namespace paddle
