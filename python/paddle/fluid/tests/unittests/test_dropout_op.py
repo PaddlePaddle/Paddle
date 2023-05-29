@@ -1585,7 +1585,11 @@ def apply_to_static(net, use_cinn):
 class TestCompositeDropout(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.x = cls.x.astype(cls.dtype) if cls.dtype != "bfloat16" else cls.x.astype("float32")
+        cls.x = (
+            cls.x.astype(cls.dtype)
+            if cls.dtype != "bfloat16"
+            else cls.x.astype("float32")
+        )
         core._set_prim_all_enabled(True)
 
     @classmethod
@@ -1610,7 +1614,10 @@ class TestCompositeDropout(unittest.TestCase):
             paddle.set_device("gpu")
         core.set_prim_eager_enabled(False)
         input_ = paddle.to_tensor(
-            data=self.x, dtype=self.dtype if self.dtype != "bfloat16" else "float32", place=place, stop_gradient=False
+            data=self.x,
+            dtype=self.dtype if self.dtype != "bfloat16" else "float32",
+            place=place,
+            stop_gradient=False,
         )
         output = paddle.nn.functional.dropout(
             input_, self.p, training=(not self.is_test), mode=self.mode
@@ -1631,7 +1638,11 @@ class TestCompositeDropout(unittest.TestCase):
                 mp, sp = paddle.static.Program(), paddle.static.Program()
                 with paddle.static.program_guard(mp, sp):
                     input_ = paddle.static.data(
-                        'x', shape=self.x.shape, dtype=self.x.dtype if self.dtype != "bfloat16" else "float32"
+                        'x',
+                        shape=self.x.shape,
+                        dtype=self.x.dtype
+                        if self.dtype != "bfloat16"
+                        else "float32",
                     )
                     input_.stop_gradient = False
                     output = paddle.nn.functional.dropout(
@@ -1682,7 +1693,10 @@ class TestCompositeDropout(unittest.TestCase):
                 paddle.set_device("gpu")
             paddle.seed(self.seed)
             input_ = paddle.to_tensor(
-                data=self.x, dtype=self.dtype if self.dtype != "bfloat16" else "float32", place=place, stop_gradient=False
+                data=self.x,
+                dtype=self.dtype if self.dtype != "bfloat16" else "float32",
+                place=place,
+                stop_gradient=False,
             )
             net = PrimNet()
             net = apply_to_static(net, False)
@@ -1719,7 +1733,10 @@ class TestCompositeDropout(unittest.TestCase):
             paddle.set_device("gpu")
             paddle.seed(self.seed)
             input_ = paddle.to_tensor(
-                data=self.x, dtype=self.dtype if self.dtype != "bfloat16" else "float32", place=place, stop_gradient=False
+                data=self.x,
+                dtype=self.dtype if self.dtype != "bfloat16" else "float32",
+                place=place,
+                stop_gradient=False,
             )
             net = PrimNet()
             net = apply_to_static(net, True)
