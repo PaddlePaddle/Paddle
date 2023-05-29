@@ -12,9 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 import os
 import re
 import unittest
+
+logging.basicConfig(
+    format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO
+)
+logger = logging.getLogger(__name__)
 
 import numpy as np
 
@@ -72,7 +78,7 @@ class TestFlashAttentionAPI(unittest.TestCase):
         self.use_sdp_kernel = False
 
     def test_unpadded(self):
-        print(
+        logger.info(
             f"Test unpadded case shape {self.shape} dtype {self.dtype} causal {self.causal}"
         )
 
@@ -161,7 +167,7 @@ class TestFlashAttentionAPI(unittest.TestCase):
             )
 
     def test_all(self):
-        print(
+        logger.info(
             f"Test case shape {self.shape} dtype {self.dtype} causal {self.causal}"
         )
         # test dynamic
@@ -339,7 +345,7 @@ class TestFlashAttentionBlockSparseAPI(unittest.TestCase):
         self.use_sdp_kernel = False
 
     def test_blocksparse(self):
-        print(
+        logger.info(
             f"Test blocksparse case shape {self.shape} dtype {self.dtype} causal {self.causal}"
         )
 

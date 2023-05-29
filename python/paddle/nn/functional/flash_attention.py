@@ -499,11 +499,11 @@ def flash_blocksparse_attn_unpadded(
                         used to index query.
         cu_seqlens_k(Tensor): The cumulative sequence lengths of the sequences in the batch,
                         used to index key and value.
+        max_seqlen_q(int): Maximum sequence length of query in the batch.
+        max_seqlen_k(int): Maximum sequence length of key/value in the batch.
         blockmask(Tensor): (row, col) a 0-1 tensor,
                         0 means the block is skipped,
                         nonzero means the block is not skipped.
-        max_seqlen_q(int): Maximum sequence length of query in the batch.
-        max_seqlen_k(int): Maximum sequence length of key/value in the batch.
         scale(float): The scaling of QK^T before applying softmax.
         dropout(float): The dropout ratio.
         causal(bool): Whether enable causal mode.
@@ -528,11 +528,13 @@ def flash_blocksparse_attn_unpadded(
             import paddle
 
             q = paddle.rand((1, 128, 2, 16), dtype=paddle.float16)
+            cu_q = paddle.arange(0, (bs + 1) * ms, ms, dtype='int32')
+            blockmask = paddle.full([256 // 16, 1], 1, dtype='int32')
+            scale = 1.0 / np.sqrt(q.shape[-1])
 
-            output = paddle.nn.functional.flash_attn_unpadded(q, q, q, 0.9, False, False)
+            output = paddle.nn.functional.flash_blocksparse_attn_unpadded(q, q, q, cu_q, cu_q, ms, ms, blockmask, scale)
             print(output)
     """
-    print("blockmask converted:", convert_blockmask(blockmask, causal))
     if in_dynamic_mode():
         (result_attention, result_softmax,) = _C_ops.flash_attn_unpadded_block(
             query,
