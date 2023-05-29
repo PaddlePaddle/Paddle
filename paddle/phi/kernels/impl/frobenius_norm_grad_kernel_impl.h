@@ -15,7 +15,6 @@
 #pragma once
 
 #include "paddle/phi/kernels/frobenius_norm_grad_kernel.h"
-
 #include "paddle/phi/kernels/funcs/reduce_functor.h"
 #include "paddle/phi/kernels/impl/reduce_grad.h"
 
@@ -29,11 +28,10 @@ void FrobeniusNormGradKernel(const Context& ctx,
                              const std::vector<int64_t>& axis,
                              bool keep_dim,
                              bool reduce_all,
-                             DataType in_dtype,
-                             DataType out_dtype,
                              DenseTensor* dx) {
+  reduce_all = recompute_reduce_all(x, axis, reduce_all);
   ReduceGradKernel<Context, T, funcs::FrobeniusNormGradFunctor>(
-      ctx, x, out, dout, axis, keep_dim, reduce_all, in_dtype, out_dtype, dx);
+      ctx, x, out, dout, axis, keep_dim, reduce_all, dx);
 }
 
 }  // namespace phi

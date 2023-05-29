@@ -12,11 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
-import paddle.profiler.statistic_helper as statistic_helper
+from paddle.profiler import statistic_helper
 
 
 class TestStatisticHelper(unittest.TestCase):

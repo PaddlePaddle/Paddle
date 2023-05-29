@@ -17,10 +17,11 @@ limitations under the License. */
 #include <algorithm>
 #include <string>
 #include <vector>
-#include "paddle/fluid/platform/macros.h"  // import FLT_MAX
+
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/hostdevice.h"
+#include "paddle/phi/core/macros.h"  // import FLT_MAX
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/backends/gpu/gpu_decls.h"
@@ -44,7 +45,7 @@ class MaxPool {
  public:
   DEVICE inline T initial() { return static_cast<T>(-FLT_MAX); }
   HOSTDEVICE inline void compute(const T& x, T* y) { *y = *y > x ? *y : x; }
-  DEVICE inline void finalize(const T& pool_field, T* y) {}
+  DEVICE inline void finalize(const T& pool_field UNUSED, T* y UNUSED) {}
 };
 
 template <class T>
@@ -58,7 +59,7 @@ class AvgPool {
     return static_cast<T>(0);
   }
 
-  DEVICE inline void compute(const T& x, T* y) {
+  DEVICE inline void compute(const T& x, T* y UNUSED) {
     intermediate_res += static_cast<MT>(x);
   }
 
@@ -72,7 +73,7 @@ class MaxPoolGrad {
  public:
   static constexpr bool use_x = true;
   HOSTDEVICE inline void compute(
-      const T& x, const T& y, const T& dy, T scale, T* dx) {
+      const T& x, const T& y, const T& dy, T scale UNUSED, T* dx) {
     *dx += dy * static_cast<T>(x == y);
   }
 };
@@ -82,7 +83,7 @@ class AvgPoolGrad {
  public:
   static constexpr bool use_x = false;
   HOSTDEVICE inline void compute(
-      const T& x, const T& y, const T& dy, T scale, T* dx) {
+      const T& x UNUSED, const T& y UNUSED, const T& dy, T scale, T* dx) {
     *dx += (scale * dy);
   }
 };
@@ -91,12 +92,12 @@ class AvgPoolGrad {
  */
 HOSTDEVICE inline int AdaptStartIndex(int ph, int input_size, int output_size) {
   return static_cast<int>(
-      floor(static_cast<double>(ph * input_size) / output_size));
+      floor(static_cast<float>(ph * input_size) / output_size));
 }
 
 HOSTDEVICE inline int AdaptEndIndex(int ph, int input_size, int output_size) {
   return static_cast<int>(
-      ceil(static_cast<double>((ph + 1) * input_size) / output_size));
+      ceil(static_cast<float>((ph + 1) * input_size) / output_size));
 }
 
 /*
@@ -370,6 +371,13 @@ inline int PoolOutputSize(int input_size,
                           int padding_2,
                           int stride,
                           bool ceil_mode) {
+  PADDLE_ENFORCE_NE(
+      stride,
+      0,
+      phi::errors::InvalidArgument(
+          "The stride of PoolOutputSize shall not be 0, but received %d.",
+          stride));
+
   int output_size;
   if (!ceil_mode) {
     output_size =
@@ -401,6 +409,11 @@ inline int MaxPoolOutputSize(int input_size,
                              int filter_size,
                              int padding,
                              int stride) {
+  PADDLE_ENFORCE_NE(
+      stride,
+      0,
+      phi::errors::InvalidArgument(
+          "The stride of MaxPool shall not be 0, but received %d.", stride));
   int output_size = (input_size - filter_size + 2 * padding) / stride + 1;
   return output_size;
 }

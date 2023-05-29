@@ -14,12 +14,25 @@
 
 #pragma once
 
+#if defined(_M_X64) || defined(__x86_64__) || defined(_M_IX86) || \
+    defined(__i386__)
+#define __PADDLE_x86__
+// Note(risemeup1):undef __SSE2__ to avoid fp16 conflict between cuda and gcc12
+#ifdef __SSE2__
+#undef __SSE2__
+#include <immintrin.h>
+#define __SSE2__
+#else
+#include <immintrin.h>
+#endif
+#endif
 #include <stdint.h>
 
 #include <cmath>
 #include <iostream>
 #include <limits>
 
+#include "paddle/phi/core/hostdevice.h"
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #endif  // PADDLE_WITH_CUDA
@@ -45,16 +58,6 @@
 #endif
 
 #define CUDA_ARCH_FP16_SUPPORTED(CUDA_ARCH) (CUDA_ARCH >= 600)
-
-#if (defined(__CUDACC__) || defined(__HIPCC__))
-#define HOSTDEVICE __host__ __device__
-#define DEVICE __device__
-#define HOST __host__
-#else
-#define HOSTDEVICE
-#define DEVICE
-#define HOST
-#endif
 
 namespace phi {
 namespace dtype {
@@ -108,7 +111,7 @@ struct PADDLE_ALIGN(2) float16 {
     float16_t res = vget_lane_f16(vcvt_f16_f32(tmp), 0);
     x = *reinterpret_cast<uint16_t*>(&res);
 
-#elif defined(__F16C__)
+#elif defined(__F16C__) and defined(__PADDLE_x86__)
     x = _cvtss_sh(val, 0);
 
 #else
@@ -212,7 +215,7 @@ struct PADDLE_ALIGN(2) float16 {
     return *this;
   }
 
-// Conversion opertors
+// Conversion operators
 #ifdef PADDLE_CUDA_FP16
   HOSTDEVICE inline half to_half() const {
 #if defined(PADDLE_WITH_HIP) || CUDA_VERSION >= 9000
@@ -1028,6 +1031,10 @@ inline bool isnan(const phi::dtype::float16& a) { return phi::dtype::isnan(a); }
 
 inline bool isinf(const phi::dtype::float16& a) { return phi::dtype::isinf(a); }
 
+inline bool isfinite(const phi::dtype::float16& a) {
+  return phi::dtype::isfinite(a);
+}
+
 template <>
 struct numeric_limits<phi::dtype::float16> {
   static const bool is_specialized = true;
@@ -1064,7 +1071,7 @@ struct numeric_limits<phi::dtype::float16> {
     return phi::dtype::raw_uint16_to_float16(0x7bff);
   }
   HOSTDEVICE static phi::dtype::float16 epsilon() {
-    return phi::dtype::raw_uint16_to_float16(0x0800);
+    return phi::dtype::raw_uint16_to_float16(0x1400);
   }
   HOSTDEVICE static phi::dtype::float16 round_error() {
     return phi::dtype::float16(0.5);

@@ -1,11 +1,11 @@
 # Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -28,7 +28,7 @@ def Singleton(cls):
     return _singleton
 
 
-class OpUpdateInfoHelper(object):
+class OpUpdateInfoHelper:
     def __init__(self, info):
         self._info = info
 
@@ -47,7 +47,7 @@ class OpUpdateInfoHelper(object):
 
 
 @Singleton
-class OpLastCheckpointChecker(object):
+class OpLastCheckpointChecker:
     def __init__(self):
         self.raw_version_map = core.get_op_version_map()
         self.checkpoints_map = {}
@@ -64,7 +64,8 @@ class OpLastCheckpointChecker(object):
         if op_name in self.checkpoints_map:
             for update in self.checkpoints_map[op_name]:
                 if (update.type() == type) or (
-                        type == core.OpUpdateType.kInvalid):
+                    type == core.OpUpdateType.kInvalid
+                ):
                     if OpUpdateInfoHelper(update.info()).verify_key_value(key):
                         updates.append(update.info())
         return updates

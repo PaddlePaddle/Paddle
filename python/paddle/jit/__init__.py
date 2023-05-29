@@ -13,28 +13,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
+from .api import save
+from .api import load
+from .api import to_static
+from .api import not_to_static
+from .api import ignore_module
+from .dy2static.program_translator import enable_to_static
 
-from ..fluid.dygraph.jit import save  # noqa: F401
-from ..fluid.dygraph.jit import load  # noqa: F401
-from ..fluid.dygraph.jit import TracedLayer  # noqa: F401
-from ..fluid.dygraph.jit import set_code_level  # noqa: F401
-from ..fluid.dygraph.jit import set_verbosity  # noqa: F401
-from ..fluid.dygraph.jit import declarative as to_static  # noqa: F401
-from ..fluid.dygraph.jit import not_to_static  # noqa: F401
-from ..fluid.dygraph import ProgramTranslator  # noqa: F401
-from ..fluid.dygraph.io import TranslatedLayer  # noqa: F401
-
-from . import dy2static  # noqa: F401
+from .dy2static.logging_utils import set_code_level, set_verbosity
+from .translated_layer import TranslatedLayer
 
 __all__ = [  # noqa
     'save',
     'load',
-    'TracedLayer',
     'to_static',
-    'ProgramTranslator',
+    'ignore_module',
     'TranslatedLayer',
     'set_code_level',
     'set_verbosity',
-    'not_to_static'
+    'not_to_static',
+    'enable_to_static',
 ]

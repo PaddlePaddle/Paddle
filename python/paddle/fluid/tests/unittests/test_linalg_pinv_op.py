@@ -12,17 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
+
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-import paddle.fluid.core as core
-from op_test import OpTest, skip_check_grad_ci
-from gradient_checker import grad_check
-from decorator_helper import prog_scope
+from paddle import fluid
+from paddle.fluid import core
 
 
 class LinalgPinvTestCase(unittest.TestCase):
@@ -38,11 +34,13 @@ class LinalgPinvTestCase(unittest.TestCase):
         self._input_shape = (5, 5)
         np.random.seed(123)
         self._input_data = np.random.random(self._input_shape).astype(
-            self.dtype)
+            self.dtype
+        )
 
     def generate_output(self):
-        self._output_data = np.linalg.pinv(self._input_data, \
-            rcond=self.rcond, hermitian=self.hermitian)
+        self._output_data = np.linalg.pinv(
+            self._input_data, rcond=self.rcond, hermitian=self.hermitian
+        )
 
     def init_config(self):
         self.dtype = 'float64'
@@ -54,7 +52,8 @@ class LinalgPinvTestCase(unittest.TestCase):
             paddle.disable_static(place)
             x = paddle.to_tensor(self._input_data, place=place)
             out = paddle.linalg.pinv(
-                x, rcond=self.rcond, hermitian=self.hermitian).numpy()
+                x, rcond=self.rcond, hermitian=self.hermitian
+            ).numpy()
             if (np.abs(out - self._output_data) < 1e-6).any():
                 pass
             else:
@@ -69,16 +68,20 @@ class LinalgPinvTestCase(unittest.TestCase):
             places.append(fluid.CUDAPlace(0))
         for place in places:
             with fluid.program_guard(fluid.Program(), fluid.Program()):
-                x = paddle.fluid.data(
+                x = paddle.static.data(
                     name="input",
                     shape=self._input_shape,
-                    dtype=self._input_data.dtype)
+                    dtype=self._input_data.dtype,
+                )
                 out = paddle.linalg.pinv(
-                    x, rcond=self.rcond, hermitian=self.hermitian)
+                    x, rcond=self.rcond, hermitian=self.hermitian
+                )
                 exe = fluid.Executor(place)
-                fetches = exe.run(fluid.default_main_program(),
-                                  feed={"input": self._input_data},
-                                  fetch_list=[out])
+                fetches = exe.run(
+                    fluid.default_main_program(),
+                    feed={"input": self._input_data},
+                    fetch_list=[out],
+                )
                 if (np.abs(fetches[0] - self._output_data) < 1e-6).any():
                     pass
                 else:
@@ -89,9 +92,11 @@ class LinalgPinvTestCase(unittest.TestCase):
     def test_grad(self):
         for place in self.places:
             x = paddle.to_tensor(
-                self._input_data, place=place, stop_gradient=False)
+                self._input_data, place=place, stop_gradient=False
+            )
             out = paddle.linalg.pinv(
-                x, rcond=self.rcond, hermitian=self.hermitian)
+                x, rcond=self.rcond, hermitian=self.hermitian
+            )
             try:
                 out.backward()
                 x_grad = x.grad
@@ -105,7 +110,8 @@ class LinalgPinvTestCase1(LinalgPinvTestCase):
         self._input_shape = (4, 5)
         np.random.seed(123)
         self._input_data = np.random.random(self._input_shape).astype(
-            self.dtype)
+            self.dtype
+        )
 
 
 class LinalgPinvTestCase2(LinalgPinvTestCase):
@@ -113,7 +119,8 @@ class LinalgPinvTestCase2(LinalgPinvTestCase):
         self._input_shape = (5, 4)
         np.random.seed(123)
         self._input_data = np.random.random(self._input_shape).astype(
-            self.dtype)
+            self.dtype
+        )
 
 
 class LinalgPinvTestCaseBatch1(LinalgPinvTestCase):
@@ -121,7 +128,8 @@ class LinalgPinvTestCaseBatch1(LinalgPinvTestCase):
         self._input_shape = (3, 5, 5)
         np.random.seed(123)
         self._input_data = np.random.random(self._input_shape).astype(
-            self.dtype)
+            self.dtype
+        )
 
 
 class LinalgPinvTestCaseBatch2(LinalgPinvTestCase):
@@ -129,7 +137,8 @@ class LinalgPinvTestCaseBatch2(LinalgPinvTestCase):
         self._input_shape = (3, 4, 5)
         np.random.seed(123)
         self._input_data = np.random.random(self._input_shape).astype(
-            self.dtype)
+            self.dtype
+        )
 
 
 class LinalgPinvTestCaseBatch3(LinalgPinvTestCase):
@@ -137,7 +146,8 @@ class LinalgPinvTestCaseBatch3(LinalgPinvTestCase):
         self._input_shape = (3, 5, 4)
         np.random.seed(123)
         self._input_data = np.random.random(self._input_shape).astype(
-            self.dtype)
+            self.dtype
+        )
 
 
 class LinalgPinvTestCaseBatch4(LinalgPinvTestCase):
@@ -145,7 +155,8 @@ class LinalgPinvTestCaseBatch4(LinalgPinvTestCase):
         self._input_shape = (3, 6, 5, 4)
         np.random.seed(123)
         self._input_data = np.random.random(self._input_shape).astype(
-            self.dtype)
+            self.dtype
+        )
 
 
 class LinalgPinvTestCaseBatchBig(LinalgPinvTestCase):
@@ -153,7 +164,8 @@ class LinalgPinvTestCaseBatchBig(LinalgPinvTestCase):
         self._input_shape = (2, 200, 300)
         np.random.seed(123)
         self._input_data = np.random.random(self._input_shape).astype(
-            self.dtype)
+            self.dtype
+        )
 
 
 class LinalgPinvTestCaseFP32(LinalgPinvTestCase):
@@ -161,7 +173,8 @@ class LinalgPinvTestCaseFP32(LinalgPinvTestCase):
         self._input_shape = (3, 5, 5)
         np.random.seed(123)
         self._input_data = np.random.random(self._input_shape).astype(
-            self.dtype)
+            self.dtype
+        )
 
     def init_config(self):
         self.dtype = 'float32'
@@ -174,7 +187,8 @@ class LinalgPinvTestCaseRcond(LinalgPinvTestCase):
         self._input_shape = (3, 5, 5)
         np.random.seed(123)
         self._input_data = np.random.random(self._input_shape).astype(
-            self.dtype)
+            self.dtype
+        )
 
     def init_config(self):
         self.dtype = 'float64'
@@ -186,8 +200,9 @@ class LinalgPinvTestCaseHermitian1(LinalgPinvTestCase):
     def generate_input(self):
         self._input_shape = (5, 5)
         np.random.seed(123)
-        x = np.random.random(self._input_shape).astype(self.dtype) + \
-            1J * np.random.random(self._input_shape).astype(self.dtype)
+        x = np.random.random(self._input_shape).astype(
+            self.dtype
+        ) + 1j * np.random.random(self._input_shape).astype(self.dtype)
         self._input_data = x + x.transpose().conj()
 
     def init_config(self):
@@ -200,8 +215,9 @@ class LinalgPinvTestCaseHermitian2(LinalgPinvTestCase):
     def generate_input(self):
         self._input_shape = (3, 5, 5)
         np.random.seed(123)
-        x = np.random.random(self._input_shape).astype(self.dtype) + \
-            1J * np.random.random(self._input_shape).astype(self.dtype)
+        x = np.random.random(self._input_shape).astype(
+            self.dtype
+        ) + 1j * np.random.random(self._input_shape).astype(self.dtype)
         self._input_data = x + x.transpose((0, 2, 1)).conj()
 
     def init_config(self):
@@ -214,8 +230,9 @@ class LinalgPinvTestCaseHermitian3(LinalgPinvTestCase):
     def generate_input(self):
         self._input_shape = (3, 5, 5)
         np.random.seed(123)
-        x = np.random.random(self._input_shape).astype(self.dtype) + \
-            1J * np.random.random(self._input_shape).astype(self.dtype)
+        x = np.random.random(self._input_shape).astype(
+            self.dtype
+        ) + 1j * np.random.random(self._input_shape).astype(self.dtype)
         self._input_data = x + x.transpose((0, 2, 1)).conj()
 
     def init_config(self):
@@ -250,6 +267,19 @@ class LinalgPinvTestCaseHermitian5(LinalgPinvTestCase):
         self.hermitian = True
 
 
+class LinalgPinvTestCaseHermitian6(LinalgPinvTestCase):
+    def generate_input(self):
+        self._input_shape = (3, 5, 5)
+        np.random.seed(123)
+        x = np.ones(self._input_shape).astype(self.dtype)
+        self._input_data = x + 0.01
+
+    def init_config(self):
+        self.dtype = 'float64'
+        self.rcond = 1e-15
+        self.hermitian = True
+
+
 class LinalgPinvTestCaseHermitianFP32(LinalgPinvTestCase):
     def generate_input(self):
         self._input_shape = (3, 5, 5)
@@ -261,6 +291,28 @@ class LinalgPinvTestCaseHermitianFP32(LinalgPinvTestCase):
         self.dtype = 'float32'
         self.rcond = 1e-15
         self.hermitian = True
+
+
+class TestDivByZero(unittest.TestCase):
+    def pinv_zero_input_static(self):
+
+        paddle.enable_static()
+        array = np.array([], dtype=np.float32)
+        x = paddle.to_tensor(np.reshape(array, [0, 0]), dtype='float32')
+        paddle.linalg.pinv(x)
+
+    def pinv_zero_input_dynamic(self):
+
+        paddle.disable_static()
+        array = np.array([], dtype=np.float32)
+        x = paddle.to_tensor(np.reshape(array, [0, 0]), dtype='float32')
+        paddle.linalg.pinv(x)
+
+    def test_div_by_zero(self):
+
+        with self.assertRaises(ValueError):
+            self.pinv_zero_input_dynamic()
+            self.pinv_zero_input_static()
 
 
 if __name__ == '__main__':

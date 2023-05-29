@@ -12,12 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-
-DECLARE_uint64(gpu_memory_limit_mb);
+#include "paddle/phi/core/flags.h"
+PHI_DECLARE_uint64(gpu_memory_limit_mb);
 
 namespace paddle {
 namespace platform {
@@ -37,8 +36,8 @@ TEST(test_record_malloc, test_limit_gpu_memory) {
   size_t avail, total;
   {
     size_t actual_avail, actual_total;
-    RecordedGpuMemGetInfo(&avail, &total, &actual_avail, &actual_total,
-                          DEVICE_ID);
+    RecordedGpuMemGetInfo(
+        &avail, &total, &actual_avail, &actual_total, DEVICE_ID);
     ASSERT_EQ(total, limit);
     ASSERT_EQ(paddle::platform::GpuGetLastError(), gpuSuccess);
   }

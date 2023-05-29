@@ -121,6 +121,22 @@ void lapackGelss(int m,
                  int *info);
 
 template <typename T>
+void lapackSvd(char jobz,
+               int m,
+               int n,
+               T *a,
+               int lda,
+               T *s,
+               T *u,
+               int ldu,
+               T *vt,
+               int ldvt,
+               T *work,
+               int lwork,
+               int *iwork,
+               int *info);
+
+template <typename T>
 void lapackCholeskySolve(
     char uplo, int n, int nrhs, T *a, int lda, T *b, int ldb, int *info);
 

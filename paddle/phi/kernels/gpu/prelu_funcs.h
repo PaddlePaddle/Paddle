@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <string>
 #include <vector>
+
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
@@ -27,157 +28,83 @@ inline static int PADDLE_GET_BLOCKS(const int N) {
 }
 
 template <typename T>
-__global__ void PReluChannelFirstWiseKernel(const T *input,
-                                            const T *alpha,
-                                            T *output,
-                                            size_t channel_num,
-                                            size_t plane_size,
-                                            size_t numel) {
-  CUDA_KERNEL_LOOP(index, numel) {
-    size_t temp = index / plane_size;
-    size_t channel_index = temp % channel_num;
-    T scale = alpha[channel_index];
-    T x = input[index];
-    T zero = static_cast<T>(0);
-    output[index] = (x > zero) ? x : scale * x;
-  }
-}
+struct PReluChannelFirstWiseCUDAFunctor {
+  const T* x_;
+  const T* alpha_;
+  size_t channel_num_;
+  size_t plane_size_;
+  int numel_;
 
-template <typename T>
-__global__ void PReluChannelLastWiseKernel(const T *input,
-                                           const T *alpha,
-                                           T *output,
-                                           size_t channel_num,
-                                           size_t numel) {
-  CUDA_KERNEL_LOOP(index, numel) {
-    size_t channel_index = index % channel_num;
-    T scale = alpha[channel_index];
-    T x = input[index];
-    T zero = static_cast<T>(0);
-    output[index] = (x > zero) ? x : scale * x;
-  }
-}
+  HOSTDEVICE inline PReluChannelFirstWiseCUDAFunctor(const T* x,
+                                                     const T* alpha,
+                                                     int numel,
+                                                     size_t channel_num,
+                                                     size_t plane_size)
+      : x_(x),
+        alpha_(alpha),
+        numel_(numel),
+        channel_num_(channel_num),
+        plane_size_(plane_size) {}
 
-template <typename T>
-__global__ void PReluElementWiseKernel(const T *input,
-                                       const T *alpha,
-                                       T *output,
-                                       size_t spatial_size,
-                                       size_t numel) {
-  CUDA_KERNEL_LOOP(index, numel) {
-    size_t element_index = index % spatial_size;
-    T scale = alpha[element_index];
-    T x = input[index];
+  HOSTDEVICE inline T operator()(const unsigned int n) const {
     T zero = static_cast<T>(0);
-    output[index] = (x > zero) ? x : scale * x;
+    size_t temp = n / plane_size_;
+    size_t channel_index = temp % channel_num_;
+    T scale = alpha_[channel_index];
+    T x = x_[n];
+    return (x > zero) ? x : scale * x;
   }
-}
-
-template <typename T>
-__global__ void PReluScalarKernel(const T *input,
-                                  const T *alpha,
-                                  T *output,
-                                  size_t numel) {
-  T scale = alpha[0];
-  CUDA_KERNEL_LOOP(index, numel) {
-    T x = input[index];
-    T zero = static_cast<T>(0);
-    output[index] = (x > zero) ? x : scale * x;
-  }
-}
-
-template <typename T>
-class PreluChannelWiseDirectCUDAFunctor {
- public:
-  void operator()(gpuStream_t stream,
-                  const T *input,
-                  const T *alpha,
-                  T *output,
-                  size_t batch_size,
-                  size_t channel,
-                  bool channel_last,
-                  size_t numel);
 };
 
 template <typename T>
-class PreluElementWiseDirectCUDAFunctor {
- public:
-  void operator()(gpuStream_t stream,
-                  const T *input,
-                  const T *alpha,
-                  T *output,
-                  size_t batch_size,
-                  size_t numel);
-};
+struct PReluChannelLastWiseCUDAFunctor {
+  const T* x_;
+  const T* alpha_;
+  size_t channel_num_;
 
-template <typename T>
-class PreluScalarDirectCUDAFunctor {
- public:
-  void operator()(gpuStream_t stream,
-                  const T *input,
-                  const T *alpha,
-                  T *output,
-                  size_t numel);
-};
+  HOSTDEVICE inline PReluChannelLastWiseCUDAFunctor(const T* x,
+                                                    const T* alpha,
+                                                    size_t channel_num)
+      : x_(x), alpha_(alpha), channel_num_(channel_num) {}
 
-template <typename T>
-void PreluChannelWiseDirectCUDAFunctor<T>::operator()(gpuStream_t stream,
-                                                      const T *input,
-                                                      const T *alpha,
-                                                      T *output,
-                                                      size_t batch_size,
-                                                      size_t channel,
-                                                      bool channel_last,
-                                                      size_t numel) {
-  if (channel_last) {
-    PReluChannelLastWiseKernel<<<PADDLE_GET_BLOCKS(numel),
-                                 CUDA_NUM_THREADS,
-                                 0,
-                                 stream>>>(
-        input, alpha, output, channel, numel);
-  } else {
-    PReluChannelFirstWiseKernel<<<PADDLE_GET_BLOCKS(numel),
-                                  CUDA_NUM_THREADS,
-                                  0,
-                                  stream>>>(
-        input, alpha, output, channel, numel / batch_size / channel, numel);
+  HOSTDEVICE inline T operator()(const unsigned int n) const {
+    T zero = static_cast<T>(0);
+    size_t channel_index = n % channel_num_;
+    T scale = alpha_[channel_index];
+    T x = x_[n];
+    return (x > zero) ? x : scale * x;
   }
-}
+};
 
 template <typename T>
-void PreluElementWiseDirectCUDAFunctor<T>::operator()(gpuStream_t stream,
-                                                      const T *input,
-                                                      const T *alpha,
-                                                      T *output,
-                                                      size_t batch_size,
-                                                      size_t numel) {
-  PReluElementWiseKernel<<<PADDLE_GET_BLOCKS(numel),
-                           CUDA_NUM_THREADS,
-                           0,
-                           stream>>>(
-      input, alpha, output, numel / batch_size, numel);
-}
+struct PreluElementWiseDirectCUDAFunctor {
+  const T* x_;
+  const T* alpha_;
+  size_t spatial_size_;
+
+  HOSTDEVICE inline PreluElementWiseDirectCUDAFunctor(const T* x,
+                                                      const T* alpha,
+                                                      size_t spatial_size)
+      : x_(x), alpha_(alpha), spatial_size_(spatial_size) {}
+
+  HOSTDEVICE inline T operator()(const unsigned int n) const {
+    T zero = static_cast<T>(0);
+    size_t element_index = n % spatial_size_;
+    T scale = alpha_[element_index];
+    T x = x_[n];
+    return (x > zero) ? x : scale * x;
+  }
+};
 
 template <typename T>
-void PreluScalarDirectCUDAFunctor<T>::operator()(gpuStream_t stream,
-                                                 const T *input,
-                                                 const T *alpha,
-                                                 T *output,
-                                                 size_t numel) {
-  PReluScalarKernel<<<PADDLE_GET_BLOCKS(numel), CUDA_NUM_THREADS, 0, stream>>>(
-      input, alpha, output, numel);
-}
-
-template class PreluChannelWiseDirectCUDAFunctor<float>;
-template class PreluChannelWiseDirectCUDAFunctor<phi::dtype::float16>;
-template class PreluChannelWiseDirectCUDAFunctor<double>;
-
-template class PreluElementWiseDirectCUDAFunctor<float>;
-template class PreluElementWiseDirectCUDAFunctor<phi::dtype::float16>;
-template class PreluElementWiseDirectCUDAFunctor<double>;
-
-template class PreluScalarDirectCUDAFunctor<float>;
-template class PreluScalarDirectCUDAFunctor<phi::dtype::float16>;
-template class PreluScalarDirectCUDAFunctor<double>;
+struct PreluScalarDirectCUDAFunctor {
+  const T* scalar_;
+  HOSTDEVICE inline PreluScalarDirectCUDAFunctor(const T* scalar)
+      : scalar_(scalar) {}
+  HOSTDEVICE inline T operator()(const T x) const {
+    T zero = static_cast<T>(0);
+    return (x > zero) ? x : scalar_[0] * x;
+  }
+};
 
 }  // namespace phi

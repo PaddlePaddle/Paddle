@@ -82,36 +82,31 @@ struct FastDivMod {
  * index of the output data. if input or output shape is [dim0, dim1] then dims
  * must be [dim1, dim0].
  */
-template <int kDims>
 struct BroadcastConfig {
-  FastDivMod divmoders[kDims];
+  FastDivMod divmoders[phi::DDim::kMaxRank];
   uint32_t strides[phi::DDim::kMaxRank];
-  HOSTDEVICE BroadcastConfig() {}
+  int rank{0};
 
-  HOSTDEVICE BroadcastConfig(const std::vector<int64_t>& out_dims,
-                             const std::vector<int64_t>& in_dims,
-                             int dim_size) {
-    std::vector<uint32_t> strides_in;
-    std::vector<FastDivMod> divmoders_in;
-    // for divmoders
-    divmoders_in.resize(dim_size);
+  // BroadcastConfig should be defined on host used on device.
+  BroadcastConfig() {}
+
+  BroadcastConfig(const std::vector<int64_t>& out_dims,
+                  const std::vector<int64_t>& in_dims,
+                  int dim_size) {
     for (int i = 0; i < dim_size; ++i) {
-      divmoders_in[i] = FastDivMod(out_dims[i]);
-    }
-    // for strides
-    strides_in.resize(dim_size, 1);
-    for (int i = 0; i < dim_size; ++i) {
-      strides_in[i] = in_dims[i] == 1 ? 0 : strides_in[i];
-      strides_in[i] = (i != 0 && strides_in[i] != 0)
-                          ? std::accumulate(in_dims.begin(),
-                                            in_dims.begin() + i,
-                                            1,
-                                            std::multiplies<int64_t>())
-                          : strides_in[i];
+      divmoders[i] = FastDivMod(out_dims[i]);
     }
 
-    memcpy(strides, strides_in.data(), kDims * sizeof(uint32_t));
-    memcpy(divmoders, divmoders_in.data(), kDims * sizeof(FastDivMod));
+    for (int i = 0; i < dim_size; ++i) {
+      strides[i] = in_dims[i] == 1 ? 0 : 1;
+      strides[i] = (i != 0 && strides[i] != 0)
+                       ? std::accumulate(in_dims.begin(),
+                                         in_dims.begin() + i,
+                                         1,
+                                         std::multiplies<int64_t>())
+                       : strides[i];
+    }
+    rank = dim_size;
   }
 };
 
@@ -144,7 +139,6 @@ __device__ __forceinline__ void ReadData(T* dst,
  * Ty: The type of data that needs to be stored in registers.
  * NX: The number of data columns loaded by each thread.
  * NY: The number of data rows loaded by each thread.
- * BlockSize: Identifies the current device thread index method. For GPU,
  * threadIdx.x is used as the thread index. Currently only GPU was supported.
  * IsBoundary: Indicates whether to perform block access storage out-of-bounds
  * judgment. When the number of data processed by the block is less than
@@ -161,12 +155,7 @@ __device__ __forceinline__ void ReadData(T* dst,
  * stride_nx: Each read one element stride stride_nx elements in the last dim.
  * stride_ny: Each read one element stride stride_ny elements in the first dim.
  */
-template <typename Tx,
-          typename Ty,
-          int NX,
-          int NY,
-          int BlockSize,
-          bool IsBoundary = false>
+template <typename Tx, typename Ty, int NX, int NY, bool IsBoundary = false>
 __device__ __forceinline__ void ReadData(Ty* dst,
                                          const Tx* __restrict__ src,
                                          int size_nx,
@@ -246,6 +235,26 @@ __device__ __forceinline__ void Init(T* dst, T init_data) {
   }
 }
 
+template <typename T, int NX>
+__device__ __forceinline__ void Init(T* dst, T init_data, int read_lens) {
+#pragma unroll
+  for (int i = 0; i < NX; i++) {
+    dst[i] = init_data;
+  }
+}
+
+/**
+ * The difference from the above function is that
+ * it supports different data types of inputs.
+ */
+template <typename T, typename ArgsT, int Index, int NX>
+__device__ __forceinline__ void Init(ArgsT* dst, T init_data, int read_lens) {
+#pragma unroll
+  for (int i = 0; i < NX; i++) {
+    std::get<Index>(dst[i]) = init_data;
+  }
+}
+
 /**
  * The difference from the above function is that
  * it supports different data types of inputs.
@@ -267,7 +276,6 @@ __device__ __forceinline__ void Init(ArgsT* dst, T init_data) {
  * T: The type of data.
  * NX: Each thread load NX data from global memory continuously.
  * NY: Each thread need to load NY rows, only NY = 1 was supported.
- * BlockSize: Identifies the current device thread index method. For GPU,
  * threadIdx.x is used as the thread index. Currently only GPU was supported.
  * IsBoundary: Whether to make an out-of-bounds judgment on access to memory.
  * When the number of data processed by this block is less than
@@ -279,7 +287,7 @@ __device__ __forceinline__ void Init(ArgsT* dst, T init_data) {
  * src: The data pointer of the current block.
  * size: The current block needs to load size data continuously.
  */
-template <typename T, int NX, int NY, int BlockSize, bool IsBoundary = false>
+template <typename T, int NX, int NY, bool IsBoundary = false>
 __device__ __forceinline__ void ReadData(T* dst,
                                          const T* __restrict__ src,
                                          int num) {
@@ -312,6 +320,55 @@ __device__ __forceinline__ void ReadData(T* dst,
 }
 
 /**
+ * @brief Read 1D data from global memory to register.
+ * @template paraments
+ * T: The type of data.
+ * NX: Each thread load NX data from global memory continuously.
+ * NY: Each thread need to load NY rows, only NY = 1 was supported.
+ * IsBoundary: Whether to make an out-of-bounds judgment on access to memory.
+ * When the number of data processed by this block is less than
+ * NX x NY x blockDim.x, boundary judgment is required to avoid memory access
+ * crossing the boundary.
+ *
+ * @param：
+ * dst: The register pointer of the thread, the size is NX * NY.
+ * src: The data pointer of the current block.
+ * size: The current block needs to load size data continuously.
+ */
+
+template <typename T, int NX, int NY, bool IsBoundary = false>
+__device__ __forceinline__ void ReadData(T* dst,
+                                         const T* __restrict__ src,
+                                         int num,
+                                         int read_lens) {
+  if (IsBoundary) {  // blockDim.x * NX > num
+    int thread_offset = threadIdx.x * NX;
+#pragma unroll
+    for (int idx = 0; idx < NX; ++idx) {
+      if (idx + thread_offset < num) {
+        dst[idx] = src[thread_offset + idx];
+      }
+    }
+  } else {  // blockDim,x * NX < num
+    constexpr int kVectorSize = (NX % 4 == 0) ? 4 : (NX % 2 == 0) ? 2 : 1;
+    constexpr int kVectorsPerThread = NX / kVectorSize;
+    int thread_offset = threadIdx.x * kVectorsPerThread;
+
+    using VecType = details::VectorType<T, kVectorSize>;
+    const VecType* vec_input = reinterpret_cast<const VecType*>(src);
+    VecType vec_temp[kVectorsPerThread];
+
+#pragma unroll
+    for (int i = 0; i < kVectorsPerThread; ++i) {
+      vec_temp[i] = vec_input[thread_offset + i];
+#pragma unroll
+      for (int idx = 0; idx < NX; ++idx) {
+        dst[idx] = *(reinterpret_cast<T*>(vec_temp) + idx);
+      }
+    }
+  }
+}
+/**
  * @brief Read 1D data from global memory to register. The difference
  * from the above function is that it supports different data types of inputs.
  *
@@ -319,10 +376,8 @@ __device__ __forceinline__ void ReadData(T* dst,
  * T: The type of data.
  * NX: Each thread load NX data from global memory continuously.
  * NY: Each thread need to load NY rows, only NY = 1 was supported.
- * ArgsT: The Type if dst, ArgsT can be std::tuple<T> or std::tuple<Args>
+ * ArgsT: The Type of dst, ArgsT can be std::tuple<T> or std::tuple<Args>
  * Index: The index of data stored in dst.
- * BlockSize: Identifies the current device thread index method. For GPU,
- * threadIdx.x is used as the thread index. Currently only GPU was supported.
  * IsBoundary: Whether to make an out-of-bounds judgment on access to memory.
  * When the number of data processed by this block is less than
  * NX x NY x blockDim.x, boundary judgment is required to avoid memory access
@@ -336,13 +391,13 @@ __device__ __forceinline__ void ReadData(T* dst,
 template <typename T,
           int NX,
           int NY,
-          int BlockSize,
           typename ArgsT,
           int Index,
           bool IsBoundary = false>
 __device__ __forceinline__ void ReadData(ArgsT* dst,
                                          const T* __restrict__ src,
-                                         int num) {
+                                         int num,
+                                         int read_lens = 0) {
   if (IsBoundary) {  // blockDim.x * NX > num
     int thread_offset = threadIdx.x * NX;
 #pragma unroll
@@ -378,7 +433,6 @@ __device__ __forceinline__ void ReadData(ArgsT* dst,
  * T: The type of data stored in the global memory.
  * NX: The number of data columns loaded by each thread.
  * NY: The number of data rows loaded by each thread.
- * BlockSize: Identifies the current device thread index method. For GPU,
  * threadIdx.x is used as the thread index. Currently only GPU was supported.
  * Rank: The shape size of out. eg in[1, 35], out[32, 35] then shape size is 2.
  * IsBoundary: Indicates whether to perform block access storage out-of-bounds
@@ -396,17 +450,12 @@ __device__ __forceinline__ void ReadData(ArgsT* dst,
  * stride_nx: Each read one element stride stride_nx elements in the last dim.
  * stride_ny: Each read one element stride stride_ny elements in the first dim.
  */
-template <typename T,
-          int NX,
-          int NY,
-          int BlockSize,
-          int Rank,
-          bool IsBoundary = false>
+template <typename T, int NX, int NY, bool IsBoundary = false>
 __device__ __forceinline__ void ReadDataBc(
     T* dst,
     const T* __restrict__ src,
     uint32_t block_offset,
-    details::BroadcastConfig<Rank> config,
+    const details::BroadcastConfig& config,
     int total_num_output,
     int stride_nx,
     int stride_ny) {
@@ -425,7 +474,8 @@ __device__ __forceinline__ void ReadDataBc(
         }
       }
 #pragma unroll
-      for (int i = 0; i < Rank; ++i) {
+      for (int i = 0; i < phi::DDim::kMaxRank; ++i) {
+        if (i >= config.rank) break;
         auto fast_divmoder = config.divmoders[i].Divmod(index_output);
         index_output = fast_divmoder.val[0];
         index_src += fast_divmoder.val[1] * config.strides[i];
@@ -442,7 +492,6 @@ __device__ __forceinline__ void ReadDataBc(
  * T: The type of data.
  * NX: The number of data columns loaded by each thread.
  * NY: The number of data rows loaded by each thread.
- * BlockSize: Identifies the current device thread index method. For GPU,
  * threadIdx.x is used as the thread index. Currently only GPU was supported.
  * Rank: The shape size of out. eg in[1, 35], out[32, 35] then shape size is 2.
  * IsBoundary: Indicates whether to perform block access storage out-of-bounds
@@ -470,7 +519,6 @@ template <typename Tx,
           typename Ty,
           int NX,
           int NY,
-          int BlockSize,
           int Rank,
           typename IndexCal,
           typename Functor,
@@ -535,7 +583,6 @@ __device__ __forceinline__ void ReadDataReduce(Ty* dst,
  * T: The type of data.
  * NX: The number of data continuously writed by each thread.
  * NY: The number of data rows loaded by each thread, only NY = 1 was supported.
- * BlockSize: Identifies the current device thread index method. For GPU,
  * threadIdx.x is used as the thread index. Currently only GPU was supported.
  * IsBoundary: Indicates whether to perform block access storage out-of-bounds
  * judgment. When the number of data processed by the block is less than
@@ -547,10 +594,40 @@ __device__ __forceinline__ void ReadDataReduce(Ty* dst,
  * src: The register pointer, the size is NX * NY.
  * size: The current block needs to load size elements continuously.
  */
-template <typename T, int NX, int NY, int BlockSize, bool IsBoundary = false>
+template <typename T, int NX, int NY, bool IsBoundary = false>
 __device__ __forceinline__ void WriteData(T* dst,
                                           T* __restrict__ src,
                                           int num) {
+  if (IsBoundary) {
+    int thread_offset = threadIdx.x * NX;
+#pragma unroll
+    for (int idx = 0; idx < NX; ++idx) {
+      if ((thread_offset + idx) < num) {
+        dst[thread_offset + idx] = src[idx];
+      }
+    }
+  } else {
+    // Vector type
+    constexpr int kVectorSize = (NX % 4 == 0) ? 4 : (NX % 2 == 0) ? 2 : 1;
+    constexpr int kVectorsPerThread = NX / kVectorSize;
+
+    int thread_offset = threadIdx.x * kVectorsPerThread;
+    using VecType = details::VectorType<T, kVectorSize>;
+    VecType* vec_dst = reinterpret_cast<VecType*>(dst);
+    VecType vec_temp[kVectorsPerThread];
+#pragma unroll
+    for (int idx = 0; idx < kVectorsPerThread; ++idx) {
+      vec_temp[idx] = *(reinterpret_cast<VecType*>(src) + idx);
+      vec_dst[thread_offset + idx] = vec_temp[idx];
+    }
+  }
+}
+
+template <typename T, int NX, int NY, bool IsBoundary = false>
+__device__ __forceinline__ void WriteData(T* dst,
+                                          T* __restrict__ src,
+                                          int num,
+                                          int read_lens) {
   if (IsBoundary) {
     int thread_offset = threadIdx.x * NX;
 #pragma unroll
@@ -585,7 +662,6 @@ __device__ __forceinline__ void WriteData(T* dst,
  * Ty: The type of data that stored in the global memory.
  * NX: The number of data columns loaded by each thread.
  * NY: The number of data rows loaded by each thread.
- * BlockSize: Identifies the current device thread index method. For GPU,
  * threadIdx.x is used as the thread index. Currently only GPU was supported.
  * IsBoundary: Indicates whether to perform block access storage out-of-bounds
  * judgment. When the number of data processed by the block is less than
@@ -602,12 +678,7 @@ __device__ __forceinline__ void WriteData(T* dst,
  * stride_nx: Each read one element stride stride_nx elements in the last dim.
  * stride_ny: Each read one element stride stride_ny elements in the first dim.
  */
-template <typename Tx,
-          typename Ty,
-          int NX,
-          int NY,
-          int BlockSize,
-          bool IsBoundary = false>
+template <typename Tx, typename Ty, int NX, int NY, bool IsBoundary = false>
 __device__ __forceinline__ void WriteData(Ty* dst,
                                           const Tx* __restrict__ src,
                                           int size_nx,
@@ -699,9 +770,7 @@ __device__ __forceinline__ void Init(T* dst, T* init_data, int num) {
  * T: The type of data stored in the global memory.
  * NX: The number of data continuously loaded by each thread.
  * NY: The number of data rows loaded by each thread, only NY = 1 was supported.
- * BlockSize: Identifies the current device thread index method. For GPU,
  * threadIdx.x is used as the thread index. Currently only GPU was supported.
- * Rank: The shape size of out. eg in[1, 35], out[32, 35] then shape size is 2.
  * IsBoundary: Indicates whether to perform block access storage out-of-bounds
  * judgment. When the number of data processed by the block is less than
  * NX x NY x blockDim.x, boundary judgment is required to avoid memory access
@@ -715,18 +784,14 @@ __device__ __forceinline__ void Init(T* dst, T* init_data, int num) {
  * coordinate mapping relationship between output data and input data.
  * total_num_output: Total number of original output.
  */
-template <typename T,
-          int NX,
-          int NY,
-          int BlockSize,
-          int Rank,
-          bool IsBoundary = false>
+template <typename T, int NX, int NY, bool IsBoundary = false>
 __device__ __forceinline__ void ReadDataBc(
     T* dst,
     const T* __restrict__ src,
     uint32_t block_offset,
-    details::BroadcastConfig<Rank> config,
-    int total_num_output) {
+    const details::BroadcastConfig& config,
+    int total_num_output,
+    int read_lens = NX) {
   uint32_t thread_offset = block_offset + threadIdx.x * NX;
   uint32_t index_src = 0;
 
@@ -740,12 +805,74 @@ __device__ __forceinline__ void ReadDataBc(
       }
     }
 #pragma unroll
-    for (int i = 0; i < Rank; ++i) {
+    for (int i = 0; i < phi::DDim::kMaxRank; ++i) {
+      if (i >= config.rank) break;
       auto fast_divmoder = config.divmoders[i].Divmod(index_output);
       index_output = fast_divmoder.val[0];
       index_src += fast_divmoder.val[1] * config.strides[i];
     }
     dst[nx] = src[index_src];
+  }
+}
+
+/**
+ * @brief Read 1D data from global memory to register with broadcast form.
+ * The difference from the above function is that it supports different data
+ * types of inputs.
+ *
+ * @template paraments
+ * T: The type of data stored in the global memory.
+ * NX: The number of data continuously loaded by each thread.
+ * NY: The number of data rows loaded by each thread, only NY = 1 was supported.
+ * ArgsT: The Type of dst, ArgsT can be std::tuple<T> or std::tuple<Args>
+ * Index: The index of data stored in dst.
+ * IsBoundary: Indicates whether to perform block access storage out-of-bounds
+ * judgment. When the number of data processed by the block is less than
+ * NX x NY x blockDim.x, boundary judgment is required to avoid memory access
+ * crossing the boundary.
+ *
+ * @param：
+ * dst: The register pointer of the thread, the size is NX * NY.
+ * src: The original input data pointer of kernel.
+ * block_offset: The data offset of this block, blockDim.x * blockIdx.x * NX;
+ * config: Calculation configuration of broadcast. It is used to calculate the
+ * coordinate mapping relationship between output data and input data.
+ * total_num_output: Total number of original output.
+ */
+
+template <typename T,
+          int NX,
+          int NY,
+          typename ArgsT,
+          int Index,
+          bool IsBoundary = false>
+__device__ __forceinline__ void ReadDataBc(
+    ArgsT* dst,
+    const T* __restrict__ src,
+    uint32_t block_offset,
+    const details::BroadcastConfig& config,
+    int total_num_output,
+    int read_lens = NX) {
+  uint32_t thread_offset = block_offset + threadIdx.x * NX;
+  uint32_t index_src = 0;
+
+#pragma unroll
+  for (uint32_t nx = 0; nx < NX; ++nx) {
+    uint32_t index_output = thread_offset + nx;
+    index_src = 0;
+    if (IsBoundary) {
+      if (index_output >= total_num_output) {
+        break;
+      }
+    }
+#pragma unroll
+    for (int i = 0; i < phi::DDim::kMaxRank; ++i) {
+      if (i >= config.rank) break;
+      auto fast_divmoder = config.divmoders[i].Divmod(index_output);
+      index_output = fast_divmoder.val[0];
+      index_src += fast_divmoder.val[1] * config.strides[i];
+    }
+    std::get<Index>(dst[nx]) = src[index_src];
   }
 }
 
@@ -756,14 +883,13 @@ __device__ __forceinline__ void ReadDataBc(
  * T: Data type of register.
  * NX: Number of data to initialize.
  * NY: Number of data to initialize, NY only can be 1.
- * BlockSize: Identifies the current device thread index method. For GPU,
  * threadIdx.x is used as the thread index. Currently only GPU was supported.
  *
  * @param：
  * dst: The register pointer of the thread, the size is NX.
  * init_data: The register pointer of init data, the size is NX.
  */
-template <typename T, int NX, int NY, int BlockSize>
+template <typename T, int NX, int NY>
 __device__ __forceinline__ void InitWithDataIndex(T* dst, int block_offset) {
   int thread_offset = block_offset + threadIdx.x * NX;
 #pragma unroll

@@ -13,11 +13,14 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/mkldnn/multi_gru_fuse_pass.h"
+
 #include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
-#include "paddle/fluid/platform/errors.h"
-#include "paddle/fluid/string/pretty_log.h"
+#include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/phi/core/errors.h"
+#include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
 namespace framework {
@@ -28,7 +31,8 @@ using string::PrettyLogDetail;
 
 namespace {
 
-std::vector<std::string> JoinInputs(Node* op1, Node* op2,
+std::vector<std::string> JoinInputs(Node* op1,
+                                    Node* op2,
                                     std::string input_name) {
   auto in1 = op1->Op()->Input(input_name);
   auto& in2 = op2->Op()->Input(input_name);
@@ -41,11 +45,11 @@ std::vector<std::string> JoinInputs(Node* op1, Node* op2,
 void MultiGRUFusePass::ApplyImpl(ir::Graph* graph) const {
   VLOG(3) << "Fusing two concatenated multi_gru ops.";
   PADDLE_ENFORCE_NOT_NULL(graph,
-                          platform::errors::InvalidArgument(
+                          phi::errors::InvalidArgument(
                               "Pointer to graph argument cannot be NULL."));
   FusePassBase::Init(name_scope_, graph);
-  PADDLE_ENFORCE_NOT_NULL(param_scope(), platform::errors::InvalidArgument(
-                                             "Scope cannot be nullptr."));
+  PADDLE_ENFORCE_NOT_NULL(
+      param_scope(), phi::errors::InvalidArgument("Scope cannot be nullptr."));
 
   GraphPatternDetector gpd;
   patterns::TwoFusionGruConcat pattern{gpd.mutable_pattern(), name_scope_};
@@ -54,6 +58,11 @@ void MultiGRUFusePass::ApplyImpl(ir::Graph* graph) const {
   int fused_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
+    if (!IsCompat(subgraph, g)) {
+      LOG(WARNING) << "Pass in op compat failed.";
+      return;
+    }
+
     GET_IR_NODE_FROM_SUBGRAPH(x, x, pattern);
     GET_IR_NODE_FROM_SUBGRAPH(gru1, gru1, pattern);
     GET_IR_NODE_FROM_SUBGRAPH(gru2, gru2, pattern);
@@ -96,7 +105,6 @@ void MultiGRUFusePass::ApplyImpl(ir::Graph* graph) const {
     multi_gru_desc.SetAttr("layers", 1);
     auto multi_gru =
         g->CreateOpNode(&multi_gru_desc);  // OpDesc will be copied.
-
     IR_NODE_LINK_TO(x, multi_gru);
     IR_NODE_LINK_TO(b1, multi_gru);
     IR_NODE_LINK_TO(b2, multi_gru);
@@ -116,8 +124,97 @@ void MultiGRUFusePass::ApplyImpl(ir::Graph* graph) const {
                     fused_count);
 }
 
+MultiGRUFusePass::MultiGRUFusePass() {
+  AddOpCompat(OpCompat("concat"))
+      .AddInput("X")
+      .End()
+      .AddInput("AxisTensor")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsNumEQ(1)
+      .End();
+
+  AddOpCompat(OpCompat("fusion_gru"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("H0")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddInput("WeightX")
+      .IsTensor()
+      .End()
+      .AddInput("WeightH")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Hidden")
+      .IsTensor()
+      .End()
+      .AddOutput("XX")
+      .IsTensor()
+      .End()
+      .AddOutput("ReorderedH0")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("BatchedInput")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("BatchedOut")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddAttr("activation")
+      .IsType<std::string>()
+      .End()
+      .AddAttr("is_reverse")
+      .IsType<bool>()
+      .End()
+      .AddAttr("use_seq")
+      .IsType<bool>()
+      .End()
+      .AddAttr("origin_mode")
+      .IsType<bool>()
+      .End()
+      .AddAttr("use_mkldnn")
+      .IsType<bool>()
+      .End()
+      .AddAttr("mkldnn_data_type")
+      .IsType<std::string>()
+      .End()
+      .AddAttr("Scale_data")
+      .IsType<float>()
+      .End()
+      .AddAttr("Shift_data")
+      .IsType<float>()
+      .End()
+      .AddAttr("Scale_weights")
+      .IsType<std::vector<float>>()
+      .End()
+      .AddAttr("force_fp32_output")
+      .IsType<bool>()
+      .End();
+}
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
 
 REGISTER_PASS(multi_gru_fuse_pass, paddle::framework::ir::MultiGRUFusePass);
+
+REGISTER_PASS_CAPABILITY(multi_gru_fuse_pass)
+    .AddCombination(
+        paddle::framework::compatible::OpVersionComparatorCombination()
+            .EQ("concat", 0)
+            .LE("fusion_gru", 1));

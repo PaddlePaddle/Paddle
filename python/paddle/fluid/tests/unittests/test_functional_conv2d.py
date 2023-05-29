@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.nn.functional as F
-from paddle import fluid
-import paddle.fluid.dygraph as dg
-import paddle.fluid.initializer as I
-import numpy as np
 import unittest
 from unittest import TestCase
+
+import numpy as np
+
+import paddle
+import paddle.fluid.dygraph as dg
+import paddle.nn.functional as F
+from paddle import fluid
 
 
 class TestFunctionalConv2D(TestCase):
@@ -41,27 +42,34 @@ class TestFunctionalConv2D(TestCase):
 
     def prepare(self):
         if isinstance(self.filter_shape, int):
-            filter_shape = (self.filter_shape, ) * 2
+            filter_shape = (self.filter_shape,) * 2
         else:
             filter_shape = tuple(self.filter_shape)
 
         self.weight = np.random.uniform(
-            -1, 1, (self.out_channels, self.in_channels // self.groups
-                    ) + filter_shape).astype(self.dtype)
+            -1,
+            1,
+            (self.out_channels, self.in_channels // self.groups) + filter_shape,
+        ).astype(self.dtype)
         if not self.no_bias:
-            self.bias = np.random.uniform(-1, 1, (
-                self.out_channels, )).astype(self.dtype)
+            self.bias = np.random.uniform(-1, 1, (self.out_channels,)).astype(
+                self.dtype
+            )
 
-        self.channel_last = (self.data_format == "NHWC")
+        self.channel_last = self.data_format == "NHWC"
         if self.channel_last:
-            self.input_shape = (self.batch_size, ) + self.spatial_shape + (
-                self.in_channels, )
+            self.input_shape = (
+                (self.batch_size,) + self.spatial_shape + (self.in_channels,)
+            )
         else:
-            self.input_shape = (self.batch_size, self.in_channels
-                                ) + self.spatial_shape
+            self.input_shape = (
+                self.batch_size,
+                self.in_channels,
+            ) + self.spatial_shape
 
-        self.input = np.random.uniform(-1, 1,
-                                       self.input_shape).astype(self.dtype)
+        self.input = np.random.uniform(-1, 1, self.input_shape).astype(
+            self.dtype
+        )
 
     def static_graph_case_1(self):
         main = fluid.Program()
@@ -69,14 +77,18 @@ class TestFunctionalConv2D(TestCase):
         with fluid.unique_name.guard():
             with fluid.program_guard(main, start):
                 if self.channel_last:
-                    x = fluid.data(
-                        "input", (-1, -1, -1, self.in_channels),
-                        dtype=self.dtype)
+                    x = paddle.static.data(
+                        "input",
+                        (-1, -1, -1, self.in_channels),
+                        dtype=self.dtype,
+                    )
                 else:
-                    x = fluid.data(
-                        "input", (-1, self.in_channels, -1, -1),
-                        dtype=self.dtype)
-                y = fluid.layers.conv2d(
+                    x = paddle.static.data(
+                        "input",
+                        (-1, self.in_channels, -1, -1),
+                        dtype=self.dtype,
+                    )
+                y = paddle.static.nn.conv2d(
                     x,
                     self.out_channels,
                     self.filter_shape,
@@ -84,14 +96,16 @@ class TestFunctionalConv2D(TestCase):
                     padding=self.padding,
                     dilation=self.dilation,
                     groups=self.groups,
-                    param_attr=I.NumpyArrayInitializer(self.weight),
+                    param_attr=paddle.nn.initializer.Assign(self.weight),
                     bias_attr=False
-                    if self.no_bias else I.NumpyArrayInitializer(self.bias),
+                    if self.no_bias
+                    else paddle.nn.initializer.Assign(self.bias),
                     act=self.act,
-                    data_format=self.data_format)
+                    data_format=self.data_format,
+                )
         exe = fluid.Executor(self.place)
         exe.run(start)
-        out, = exe.run(main, feed={"input": self.input}, fetch_list=[y])
+        (out,) = exe.run(main, feed={"input": self.input}, fetch_list=[y])
         return out
 
     def static_graph_case_2(self):
@@ -100,17 +114,24 @@ class TestFunctionalConv2D(TestCase):
         with fluid.unique_name.guard():
             with fluid.program_guard(main, start):
                 if self.channel_last:
-                    x = x = fluid.data(
-                        "input", (-1, -1, -1, self.in_channels),
-                        dtype=self.dtype)
+                    x = x = paddle.static.data(
+                        "input",
+                        (-1, -1, -1, self.in_channels),
+                        dtype=self.dtype,
+                    )
                 else:
-                    x = fluid.data(
-                        "input", (-1, self.in_channels, -1, -1),
-                        dtype=self.dtype)
-                weight = fluid.data(
-                    "weight", self.weight.shape, dtype=self.dtype)
+                    x = paddle.static.data(
+                        "input",
+                        (-1, self.in_channels, -1, -1),
+                        dtype=self.dtype,
+                    )
+                weight = paddle.static.data(
+                    "weight", self.weight.shape, dtype=self.dtype
+                )
                 if not self.no_bias:
-                    bias = fluid.data("bias", self.bias.shape, dtype=self.dtype)
+                    bias = paddle.static.data(
+                        "bias", self.bias.shape, dtype=self.dtype
+                    )
                 y = F.conv2d(
                     x,
                     weight,
@@ -119,7 +140,8 @@ class TestFunctionalConv2D(TestCase):
                     stride=self.stride,
                     dilation=self.dilation,
                     groups=self.groups,
-                    data_format=self.data_format)
+                    data_format=self.data_format,
+                )
 
                 if self.act == 'sigmoid':
                     y = F.sigmoid(y)
@@ -129,7 +151,7 @@ class TestFunctionalConv2D(TestCase):
         feed_dict = {"input": self.input, "weight": self.weight}
         if not self.no_bias:
             feed_dict["bias"] = self.bias
-        out, = exe.run(main, feed=feed_dict, fetch_list=[y])
+        (out,) = exe.run(main, feed=feed_dict, fetch_list=[y])
         return out
 
     def dygraph_case(self):
@@ -145,7 +167,8 @@ class TestFunctionalConv2D(TestCase):
                 stride=self.stride,
                 dilation=self.dilation,
                 groups=self.groups,
-                data_format=self.data_format)
+                data_format=self.data_format,
+            )
 
             if self.act == 'sigmoid':
                 y = F.sigmoid(y)
@@ -165,8 +188,9 @@ class TestFunctionalConv2D(TestCase):
         self.place = fluid.CPUPlace()
         self._test_identity()
 
-    @unittest.skipIf(not fluid.core.is_compiled_with_cuda(),
-                     "core is not compiled with CUDA")
+    @unittest.skipIf(
+        not fluid.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    )
     def test_identity_gpu(self):
         self.place = fluid.CUDAPlace(0)
         self._test_identity()
@@ -196,12 +220,14 @@ class TestFunctionalConv2DError(TestCase):
 
     def prepare(self):
         if isinstance(self.filter_shape, int):
-            filter_shape = (self.filter_shape, ) * 2
+            filter_shape = (self.filter_shape,) * 2
         else:
             filter_shape = tuple(self.filter_shape)
-        self.weight_shape = (self.out_channels, self.in_channels // self.groups
-                             ) + filter_shape
-        self.bias_shape = (self.out_channels, )
+        self.weight_shape = (
+            self.out_channels,
+            self.in_channels // self.groups,
+        ) + filter_shape
+        self.bias_shape = (self.out_channels,)
 
     def static_graph_case(self):
         main = fluid.Program()
@@ -210,17 +236,24 @@ class TestFunctionalConv2DError(TestCase):
             with fluid.program_guard(main, start):
                 self.channel_last = self.data_format == "NHWC"
                 if self.channel_last:
-                    x = x = fluid.data(
-                        "input", (-1, -1, -1, self.in_channels),
-                        dtype=self.dtype)
+                    x = x = paddle.static.data(
+                        "input",
+                        (-1, -1, -1, self.in_channels),
+                        dtype=self.dtype,
+                    )
                 else:
-                    x = fluid.data(
-                        "input", (-1, self.in_channels, -1, -1),
-                        dtype=self.dtype)
-                weight = fluid.data(
-                    "weight", self.weight_shape, dtype=self.dtype)
+                    x = paddle.static.data(
+                        "input",
+                        (-1, self.in_channels, -1, -1),
+                        dtype=self.dtype,
+                    )
+                weight = paddle.static.data(
+                    "weight", self.weight_shape, dtype=self.dtype
+                )
                 if not self.no_bias:
-                    bias = fluid.data("bias", self.bias_shape, dtype=self.dtype)
+                    bias = paddle.static.data(
+                        "bias", self.bias_shape, dtype=self.dtype
+                    )
                 y = F.conv2d(
                     x,
                     weight,
@@ -229,7 +262,8 @@ class TestFunctionalConv2DError(TestCase):
                     stride=self.stride,
                     dilation=self.dilation,
                     groups=self.groups,
-                    data_format=self.data_format)
+                    data_format=self.data_format,
+                )
 
 
 class TestFunctionalConv2DCase2(TestFunctionalConv2D):
@@ -475,8 +509,10 @@ class TestFunctionalConv2DErrorCase12(TestCase):
         start = fluid.Program()
         with fluid.unique_name.guard():
             with fluid.program_guard(main, start):
-                x = fluid.data("input", self.input.shape, dtype=paddle.float32)
-                y = fluid.layers.conv2d(
+                x = paddle.static.data(
+                    "input", self.input.shape, dtype=paddle.float32
+                )
+                y = paddle.static.nn.conv2d(
                     x,
                     self.num_filters,
                     self.filter_size,
@@ -484,22 +520,27 @@ class TestFunctionalConv2DErrorCase12(TestCase):
                     padding=self.padding,
                     dilation=self.dilation,
                     groups=self.groups,
-                    param_attr=I.NumpyArrayInitializer(self.filter),
-                    bias_attr=False if self.bias is None else
-                    I.NumpyArrayInitializer(self.bias),
+                    param_attr=paddle.nn.initializer.Assign(self.filter),
+                    bias_attr=False
+                    if self.bias is None
+                    else paddle.nn.initializer.Assign(self.bias),
                     act=None,
-                    data_format=self.data_format)
+                    data_format=self.data_format,
+                )
         exe = fluid.Executor()
         exe.run(start)
-        out, = exe.run(main, feed={"input": self.input}, fetch_list=[y])
+        (out,) = exe.run(main, feed={"input": self.input}, fetch_list=[y])
         return out
 
     def dygraph_case(self):
         with dg.guard():
             x = dg.to_variable(self.input, dtype=paddle.float32)
             w = dg.to_variable(self.filter, dtype=paddle.float32)
-            b = None if self.bias is None else dg.to_variable(
-                self.bias, dtype=paddle.float32)
+            b = (
+                None
+                if self.bias is None
+                else dg.to_variable(self.bias, dtype=paddle.float32)
+            )
             y = F.conv2d(
                 x,
                 w,
@@ -508,7 +549,8 @@ class TestFunctionalConv2DErrorCase12(TestCase):
                 stride=self.stride,
                 dilation=self.dilation,
                 groups=self.groups,
-                data_format=self.data_format)
+                data_format=self.data_format,
+            )
 
     def test_dygraph_exception(self):
         with self.assertRaises(ValueError):
@@ -530,6 +572,20 @@ class TestFunctionalConv2DErrorCase13(TestFunctionalConv2DErrorCase12):
         self.stride = 1
         self.dilation = 1
         self.groups = 0
+        self.data_format = "NCHW"
+
+
+class TestFunctionalConv2DErrorCase14(TestFunctionalConv2DErrorCase12):
+    def setUp(self):
+        self.input = np.random.randn(0, 0, 0, 0)
+        self.filter = np.random.randn(1, 0, 0, 0)
+        self.num_filters = 0
+        self.filter_size = 0
+        self.bias = None
+        self.padding = 0
+        self.stride = 1
+        self.dilation = 1
+        self.groups = 1
         self.data_format = "NCHW"
 
 

@@ -13,67 +13,106 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/split_op.h"
+
 #include <string>
 
 #include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/phi_utils.h"
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
+#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
+#include "paddle/fluid/prim/utils/static/desc_tensor.h"
 #include "paddle/phi/infermeta/unary.h"
 
 namespace paddle {
 namespace operators {
-using framework::Tensor;
+
+using framework::Variable;
 
 class SplitOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("X"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Input(X) of SplitOp should not be null."));
-    PADDLE_ENFORCE_GE(ctx->Outputs("Out").size(), 1UL,
+    PADDLE_ENFORCE_GE(ctx->Outputs("Out").size(),
+                      1UL,
                       platform::errors::InvalidArgument(
                           "Outputs(Out) of SplitOp should not be empty."));
-    auto in_dims = ctx->GetInputDim("X");
-    auto outs_names = ctx->Outputs("Out");
-    size_t axis = static_cast<size_t>(ctx->Attrs().Get<int>("axis"));
-    size_t num = static_cast<size_t>(ctx->Attrs().Get<int>("num"));
+    int axis = static_cast<int>(ctx->Attrs().Get<int>("axis"));
+    int num = static_cast<int>(ctx->Attrs().Get<int>("num"));
     std::vector<int> sections = static_cast<std::vector<int>>(
         ctx->Attrs().Get<std::vector<int>>("sections"));
-    const size_t outs_number = outs_names.size();
-
-    if (sections.size() > 0) {
-      PADDLE_ENFORCE_EQ(
-          sections.size(), outs_number,
-          platform::errors::InvalidArgument("tensor split sections size "
-                                            "should be equal to output size."));
+    // Construct MetaTensor for InferMeta Func
+    using CompatMetaTensor = framework::CompatMetaTensor;
+    CompatMetaTensor x(ctx->GetInputVarPtrs("X")[0], ctx->IsRuntime());
+    std::vector<CompatMetaTensor> out;
+    size_t out_size = ctx->GetOutputVarPtrs("Out").size();
+    out.reserve(out_size);
+    for (size_t i = 0; i < out_size; i++) {
+      out.emplace_back(
+          CompatMetaTensor(ctx->GetOutputVarPtrs("Out")[i], ctx->IsRuntime()));
+    }
+    std::vector<phi::MetaTensor *> out_ptr(out_size);
+    for (size_t i = 0; i < out_size; i++) {
+      out_ptr[i] = &out[i];
+    }
+    phi::Scalar axis_final;
+    phi::IntArray sections_final;
+    // Construct axis_final
+    if (ctx->IsRuntime() && ctx->HasInput("AxisTensor")) {
+      Variable *var =
+          PADDLE_GET_CONST(Variable *, ctx->GetInputVarPtrs("AxisTensor")[0]);
+      axis_final = std::move(framework::MakePhiScalarFromVar(*var));
+    } else if (!ctx->IsRuntime() && ctx->HasInput("AxisTensor")) {
+      axis_final = std::move(phi::Scalar(-1));
+      axis_final.SetFromTensor(true);
+    } else {
+      axis_final = std::move(phi::Scalar(axis));
     }
 
-    if (ctx->HasInput("AxisTensor")) {
-      auto out_dims = phi::make_ddim(std::vector<int>(in_dims.size(), -1));
-      std::vector<framework::DDim> outs_dims(outs_number, out_dims);
-      ctx->SetOutputsDim("Out", outs_dims);
-      for (size_t i = 0; i < outs_number; ++i) {
-        ctx->ShareLoD("X", "Out", 0, i);
+    // Construct sections_final
+    if (ctx->IsRuntime() && ctx->HasInputs("SectionsTensorList")) {
+      int sections_tensor_list_size =
+          ctx->GetInputVarPtrs("SectionsTensorList").size();
+      const paddle::small_vector<framework::InferShapeVarPtr,
+                                 phi::kInputSmallVectorSize>
+          &sections_varptr_list = ctx->GetInputVarPtrs("SectionsTensorList");
+      std::vector<phi::DenseTensor> sections_from_tensor;
+      sections_from_tensor.reserve(sections_tensor_list_size);
+      for (const auto &section_varptr : sections_varptr_list) {
+        Variable *var = PADDLE_GET_CONST(Variable *, section_varptr);
+        sections_from_tensor.emplace_back(var->Get<phi::DenseTensor>());
       }
-      return;
+      sections_final = std::move(phi::IntArray(sections_from_tensor));
+    } else if (!ctx->IsRuntime() && ctx->HasInputs("SectionsTensorList")) {
+      sections_final = std::move(phi::IntArray(std::vector<int>(
+          ctx->GetInputVarPtrs("SectionsTensorList").size(), -1)));
+      sections_final.SetFromTensor(true);
+    } else {
+      sections_final = std::move(phi::IntArray(sections));
     }
-
-    bool each_section_is_known =
-        (sections.size() > 0 && !ctx->HasInputs("SectionsTensorList"));
-
-    auto outs_dims = UpdateOutsDims(ctx->IsRuntime(), each_section_is_known,
-                                    in_dims, num, sections, axis, outs_number);
-    ctx->SetOutputsDim("Out", outs_dims);
-    if (axis != 0) {
-      // Only pass LoD when not spliting along the first dim.
-      for (size_t i = 0; i < outs_number; ++i) {
-        ctx->ShareLoD("X", "Out", 0, i);
+    if (sections.size() > 0) {
+      if (ctx->IsRuntime()) {
+        phi::SplitInferMeta(
+            x, sections_final, axis_final, out_ptr, {true, false});
+      } else {
+        phi::SplitInferMeta(
+            x, sections_final, axis_final, out_ptr, {false, false});
+      }
+    } else {
+      if (ctx->IsRuntime()) {
+        phi::SplitWithNumInferMeta(x, num, axis_final, out_ptr, {true, false});
+      } else {
+        phi::SplitWithNumInferMeta(x, num, axis_final, out_ptr, {false, false});
       }
     }
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
@@ -84,26 +123,28 @@ class SplitOp : public framework::OperatorWithKernel {
       // reorders, because if blocked dimension is not divisible by 8 or
       // 16(depending on which blocking format is used) submemory cannot be
       // created, so in that scenario a fallback is needed
-      auto tmp_md = dnnl::memory::desc(
-          phi::vectorize(ctx.Input<Tensor>("X")->dims()),
-          dnnl::memory::data_type::f32, ctx.Input<Tensor>("X")->format());
-      if (tmp_md.data.format_desc.blocking.inner_nblks == 0)
-        return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-                                       framework::DataLayout::kMKLDNN,
-                                       framework::LibraryType::kMKLDNN);
+      const auto x_md = ctx.Input<phi::DenseTensor>("X")->mem_desc();
+      if (x_md.data.format_desc.blocking.inner_nblks == 0) {
+        return phi::KernelKey(phi::Backend::ONEDNN,
+                              phi::DataLayout::ONEDNN,
+                              phi::TransToPhiDataType(input_data_type));
+      }
     }
 #endif
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const Tensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const override {
+  phi::KernelKey GetKernelTypeForVar(
+      const std::string &var_name,
+      const phi::DenseTensor &tensor,
+      const phi::KernelKey &expected_kernel_type) const override {
     if (var_name == "AxisTensor" || var_name == "SectionsTensorList") {
-      return expected_kernel_type;
+      return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                            expected_kernel_type.layout(),
+                            expected_kernel_type.dtype());
     }
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return phi::KernelKey(
+        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
   }
 };
 
@@ -162,7 +203,44 @@ Example:
         "mkldnn_data_type",
         "(string, default \"float32\"). Data type of mkldnn kernel")
         .SetDefault("float32")
-        .InEnum({"float32", "bfloat16"});
+        .InEnum({"float32", "bfloat16", "int8", "uint8"});
+  }
+};
+
+class SplitCompositeGradOpMaker : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
+ public:
+  void Apply() override {
+    paddle::optional<std::vector<paddle::Tensor>> tensor_sections =
+        this->GetOptionalMultiForwardInput("SectionsTensorList");
+    paddle::optional<paddle::Tensor> tensor_axis =
+        this->GetOptionalSingleForwardInput("AxisTensor");
+    int axis = static_cast<int>(this->Attr<int>("axis"));
+    std::vector<int> sections =
+        static_cast<std::vector<int>>(this->Attr<std::vector<int>>("sections"));
+
+    paddle::Tensor input_grad = this->GetSingleInputGrad("X");
+    auto dx_ptr = this->GetOutputPtr(&input_grad);
+    std::string dx_name = this->GetOutputName(input_grad);
+    std::vector<paddle::Tensor> out_grad = this->GetMultiOutputGrad("Out");
+
+    if (tensor_axis.is_initialized() || tensor_sections.is_initialized()) {
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "We don't support dynamic index or sections from tensor for split "
+          "composite grad for now. "));
+    } else {
+      VLOG(6) << "Runing split_grad composite func";
+      prim::split_grad<prim::DescTensor>(out_grad, axis, dx_ptr);
+      this->RecoverOutputName(input_grad, dx_name);
+    }
+  }
+};
+
+class SplitInferVarType : public framework::VarTypeInference {
+ public:
+  void operator()(framework::InferVarTypeContext *ctx) const override {
+    ctx->SyncTypeAndDataType("X", "Out");
   }
 };
 
@@ -171,6 +249,10 @@ Example:
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(split, ops::SplitOp, ops::SplitOpMaker,
+REGISTER_OPERATOR(split,
+                  ops::SplitOp,
+                  ops::SplitOpMaker,
+                  ops::SplitCompositeGradOpMaker,
+                  ops::SplitInferVarType,
                   ops::SplitGradMaker<paddle::framework::OpDesc>,
                   ops::SplitGradMaker<paddle::imperative::OpBase>);

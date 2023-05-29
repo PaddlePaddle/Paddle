@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 
 def calc_precision(tp_count, fp_count):
@@ -92,10 +91,16 @@ class TestPrecisionRecallOp_0(OpTest):
         ins_num = 64
         cls_num = 10
         max_probs = np.random.uniform(0, 1.0, (ins_num, 1)).astype('float32')
-        idxs = np.random.choice(range(cls_num), ins_num).reshape(
-            (ins_num, 1)).astype('int32')
-        labels = np.random.choice(range(cls_num), ins_num).reshape(
-            (ins_num, 1)).astype('int32')
+        idxs = (
+            np.random.choice(range(cls_num), ins_num)
+            .reshape((ins_num, 1))
+            .astype('int32')
+        )
+        labels = (
+            np.random.choice(range(cls_num), ins_num)
+            .reshape((ins_num, 1))
+            .astype('int32')
+        )
         states = get_states(idxs, labels, cls_num)
         metrics = compute_metrics(states, cls_num)
 
@@ -106,7 +111,7 @@ class TestPrecisionRecallOp_0(OpTest):
         self.outputs = {
             'BatchMetrics': metrics,
             'AccumMetrics': metrics,
-            'AccumStatesInfo': states
+            'AccumStatesInfo': states,
         }
 
     def test_check_output(self):
@@ -119,11 +124,17 @@ class TestPrecisionRecallOp_1(OpTest):
         ins_num = 64
         cls_num = 10
         max_probs = np.random.uniform(0, 1.0, (ins_num, 1)).astype('float32')
-        idxs = np.random.choice(range(cls_num), ins_num).reshape(
-            (ins_num, 1)).astype('int32')
+        idxs = (
+            np.random.choice(range(cls_num), ins_num)
+            .reshape((ins_num, 1))
+            .astype('int32')
+        )
         weights = np.random.uniform(0, 1.0, (ins_num, 1)).astype('float32')
-        labels = np.random.choice(range(cls_num), ins_num).reshape(
-            (ins_num, 1)).astype('int32')
+        labels = (
+            np.random.choice(range(cls_num), ins_num)
+            .reshape((ins_num, 1))
+            .astype('int32')
+        )
 
         states = get_states(idxs, labels, cls_num, weights)
         metrics = compute_metrics(states, cls_num)
@@ -134,13 +145,13 @@ class TestPrecisionRecallOp_1(OpTest):
             'MaxProbs': max_probs,
             'Indices': idxs,
             'Labels': labels,
-            'Weights': weights
+            'Weights': weights,
         }
 
         self.outputs = {
             'BatchMetrics': metrics,
             'AccumMetrics': metrics,
-            'AccumStatesInfo': states
+            'AccumStatesInfo': states,
         }
 
     def test_check_output(self):
@@ -153,11 +164,17 @@ class TestPrecisionRecallOp_2(OpTest):
         ins_num = 64
         cls_num = 10
         max_probs = np.random.uniform(0, 1.0, (ins_num, 1)).astype('float32')
-        idxs = np.random.choice(range(cls_num), ins_num).reshape(
-            (ins_num, 1)).astype('int32')
+        idxs = (
+            np.random.choice(range(cls_num), ins_num)
+            .reshape((ins_num, 1))
+            .astype('int32')
+        )
         weights = np.random.uniform(0, 1.0, (ins_num, 1)).astype('float32')
-        labels = np.random.choice(range(cls_num), ins_num).reshape(
-            (ins_num, 1)).astype('int32')
+        labels = (
+            np.random.choice(range(cls_num), ins_num)
+            .reshape((ins_num, 1))
+            .astype('int32')
+        )
         states = np.random.randint(0, 30, (cls_num, 4)).astype('float32')
 
         accum_states = get_states(idxs, labels, cls_num, weights)
@@ -172,13 +189,13 @@ class TestPrecisionRecallOp_2(OpTest):
             'Indices': idxs,
             'Labels': labels,
             'Weights': weights,
-            'StatesInfo': states
+            'StatesInfo': states,
         }
 
         self.outputs = {
             'BatchMetrics': batch_metrics,
             'AccumMetrics': accum_metrics,
-            'AccumStatesInfo': accum_states
+            'AccumStatesInfo': accum_states,
         }
 
     def test_check_output(self):

@@ -45,6 +45,16 @@ __pd_give PD_OneDimArrayInt32* CvtVecToOneDimArrayInt32(
     const std::vector<int>& vec);
 
 ///
+/// \brief Convert the 'std::vector<int64_t>' object to a 'PD_OneDimArrayInt64'
+/// object.
+///
+/// \param[in] vec source object.
+/// \return target object.
+///
+__pd_give PD_OneDimArrayInt64* CvtVecToOneDimArrayInt64(
+    const std::vector<int64_t>& vec);
+
+///
 /// \brief Convert the 'PD_OneDimArrayInt32' object to a 'std::vector<int>'
 /// object.
 ///
@@ -53,6 +63,16 @@ __pd_give PD_OneDimArrayInt32* CvtVecToOneDimArrayInt32(
 ///
 std::vector<int> CvtOneDimArrayToVecInt32(
     __pd_keep const PD_OneDimArrayInt32* array);
+
+///
+/// \brief Convert the 'PD_OneDimArrayInt64' object to a 'std::vector<int64_t>'
+/// object.
+///
+/// \param[in] array source object.
+/// \return target object.
+///
+std::vector<int64_t> CvtOneDimArrayToVecInt64(
+    __pd_keep const PD_OneDimArrayInt64* array);
 
 ///
 /// \brief Convert the 'std::vector<size_t>' object to a 'PD_OneDimArraySize'

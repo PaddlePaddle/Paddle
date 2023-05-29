@@ -16,11 +16,11 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/platform/cpu_helper.h"
-#include "paddle/fluid/platform/cpu_info.h"
-#include "paddle/fluid/platform/device/npu/npu_info.h"
 #include "paddle/fluid/string/split.h"
+#include "paddle/phi/backends/cpu/cpu_info.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/cupti.h"
@@ -34,10 +34,6 @@ limitations under the License. */
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
-#endif
-
-#ifdef PADDLE_WITH_MLU
-#include "paddle/fluid/platform/device/mlu/mlu_info.h"
 #endif
 
 #ifdef WITH_WIN_DUMP_DBG
@@ -55,23 +51,18 @@ limitations under the License. */
 #include "paddle/fluid/platform/device/ipu/ipu_info.h"
 #endif
 
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
+#include "paddle/fluid/memory/memory.h"
+#include "paddle/fluid/platform/flags.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/custom_kernel.h"
 
-DECLARE_int32(paddle_num_threads);
+PHI_DECLARE_int32(paddle_num_threads);
 PADDLE_DEFINE_EXPORTED_int32(
-    multiple_of_cupti_buffer_size, 1,
+    multiple_of_cupti_buffer_size,
+    1,
     "Multiple of the CUPTI device buffer size. If the timestamps have "
     "been dropped when you are profiling, try increasing this value.");
-
-namespace paddle {
-namespace platform {
-
-void ParseCommandLineFlags(int argc, char **argv, bool remove) {
-  ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, remove);
-}
-
-}  // namespace platform
-}  // namespace paddle
 
 namespace paddle {
 namespace framework {
@@ -82,7 +73,7 @@ namespace framework {
 
 std::once_flag gflags_init_flag;
 std::once_flag glog_init_flag;
-std::once_flag npu_init_flag;
+std::once_flag memory_method_init_flag;
 
 bool InitGflags(std::vector<std::string> args) {
   bool successed = false;
@@ -106,6 +97,7 @@ bool InitGflags(std::vector<std::string> args) {
             << ", Init commandline: " << line;
 
     char **arr = argv.data();
+    ::GFLAGS_NAMESPACE::AllowCommandLineReparsing();
     ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &arr, true);
     successed = true;
 
@@ -119,18 +111,20 @@ void InitCupti() {
 #ifdef PADDLE_WITH_CUPTI
   if (FLAGS_multiple_of_cupti_buffer_size == 1) return;
   size_t attrValue = 0, attrValueSize = sizeof(size_t);
-#define MULTIPLY_ATTR_VALUE(attr)                                            \
-  {                                                                          \
-    PADDLE_ENFORCE_EQ(                                                       \
-        !platform::dynload::cuptiActivityGetAttribute(attr, &attrValueSize,  \
-                                                      &attrValue),           \
-        true, platform::errors::Unavailable("Get cupti attribute failed.")); \
-    attrValue *= FLAGS_multiple_of_cupti_buffer_size;                        \
-    LOG(WARNING) << "Set " #attr " " << attrValue << " byte";                \
-    PADDLE_ENFORCE_EQ(                                                       \
-        !platform::dynload::cuptiActivitySetAttribute(attr, &attrValueSize,  \
-                                                      &attrValue),           \
-        true, platform::errors::Unavailable("Set cupti attribute failed.")); \
+#define MULTIPLY_ATTR_VALUE(attr)                                      \
+  {                                                                    \
+    PADDLE_ENFORCE_EQ(                                                 \
+        !platform::dynload::cuptiActivityGetAttribute(                 \
+            attr, &attrValueSize, &attrValue),                         \
+        true,                                                          \
+        platform::errors::Unavailable("Get cupti attribute failed.")); \
+    attrValue *= FLAGS_multiple_of_cupti_buffer_size;                  \
+    LOG(WARNING) << "Set " #attr " " << attrValue << " byte";          \
+    PADDLE_ENFORCE_EQ(                                                 \
+        !platform::dynload::cuptiActivitySetAttribute(                 \
+            attr, &attrValueSize, &attrValue),                         \
+        true,                                                          \
+        platform::errors::Unavailable("Set cupti attribute failed.")); \
   }
   MULTIPLY_ATTR_VALUE(CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE);
   MULTIPLY_ATTR_VALUE(CUPTI_ACTIVITY_ATTR_DEVICE_BUFFER_SIZE_CDP);
@@ -161,61 +155,46 @@ void LoadCustomDevice(const std::string &library_dir) {
 }
 #endif
 
+static std::once_flag init_devices_flag;
+
 void InitDevices() {
-  // set name at the entry point of Paddle
-  platform::SetCurrentThreadName("MainThread");
+  std::call_once(init_devices_flag, []() {
+    // set name at the entry point of Paddle
+    platform::SetCurrentThreadName("MainThread");
 // CUPTI attribute should be set before any CUDA context is created (see CUPTI
 // documentation about CUpti_ActivityAttribute).
 #ifdef PADDLE_WITH_CUDA
-  InitCupti();
+    InitCupti();
 #endif
-  /*Init all available devices by default */
-  std::vector<int> devices;
+    /*Init all available devices by default */
+    std::vector<int> devices;
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  try {
-    // use user specified GPUs in single-node multi-process mode.
-    devices = platform::GetSelectedDevices();
-  } catch (const std::exception &exp) {
-    LOG(WARNING) << "Compiled with WITH_GPU, but no GPU found in runtime.";
-  }
+    try {
+      // use user specified GPUs in single-node multi-process mode.
+      devices = platform::GetSelectedDevices();
+    } catch (const std::exception &exp) {
+      LOG(WARNING) << "Compiled with WITH_GPU, but no GPU found in runtime.";
+    }
 #endif
 #ifdef PADDLE_WITH_XPU
-  try {
-    // use user specified XPUs in single-node multi-process mode.
-    devices = platform::GetXPUSelectedDevices();
-  } catch (const std::exception &exp) {
-    LOG(WARNING) << "Compiled with WITH_XPU, but no XPU found in runtime.";
-  }
-#endif
-#ifdef PADDLE_WITH_ASCEND_CL
-  // NOTE(zhiqiu): use singleton to explicitly init and finalize ACL
-  platform::AclInstance::Instance();  // NOLINT
-  try {
-    // use user specified XPUs in single-node multi-process mode.
-    devices = platform::GetSelectedNPUDevices();
-  } catch (const std::exception &exp) {
-    LOG(WARNING)
-        << "Compiled with PADDLE_WITH_ASCEND_CL, but no NPU found in runtime.";
-  }
+    try {
+      // use user specified XPUs in single-node multi-process mode.
+      devices = platform::GetXPUSelectedDevices();
+    } catch (const std::exception &exp) {
+      LOG(WARNING) << "Compiled with WITH_XPU, but no XPU found in runtime.";
+    }
 #endif
 #ifdef PADDLE_WITH_IPU
-  try {
-    // use user specified IPUs.
-    devices = platform::GetSelectedIPUDevices();
-  } catch (const std::exception &exp) {
-    LOG(WARNING)
-        << "Compiled with PADDLE_WITH_IPU, but no IPU found in runtime.";
-  }
+    try {
+      // use user specified IPUs.
+      devices = platform::GetSelectedIPUDevices();
+    } catch (const std::exception &exp) {
+      LOG(WARNING)
+          << "Compiled with PADDLE_WITH_IPU, but no IPU found in runtime.";
+    }
 #endif
-#ifdef PADDLE_WITH_MLU
-  try {
-    // use user specified MLUs in single-node multi-process mode.
-    devices = platform::GetMLUSelectedDevices();
-  } catch (const std::exception &exp) {
-    LOG(WARNING) << "Compiled with WITH_MLU, but no MLU found in runtime.";
-  }
-#endif
-  InitDevices(devices);
+    InitDevices(devices);
+  });
 }
 
 void InitDevices(const std::vector<int> devices) {
@@ -238,12 +217,6 @@ void InitDevices(const std::vector<int> devices) {
 #ifdef PADDLE_WITH_IPU
     places.emplace_back(platform::IPUPlace(devices[i]));
 #endif
-#ifdef PADDLE_WITH_ASCEND_CL
-    places.emplace_back(platform::NPUPlace(devices[i]));
-#endif
-#ifdef PADDLE_WITH_MLU
-    places.emplace_back(platform::MLUPlace(devices[i]));
-#endif
   }
   places.emplace_back(platform::CPUPlace());
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -261,11 +234,11 @@ void InitDevices(const std::vector<int> devices) {
 
       auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
       for (auto &dev_type : device_types) {
-        auto device_count = phi::DeviceManager::GetDeviceCount(dev_type);
+        auto device_list = phi::DeviceManager::GetSelectedDeviceList(dev_type);
         LOG(INFO) << "CustomDevice: " << dev_type
-                  << ", visible devices count: " << device_count;
-        for (size_t i = 0; i < device_count; i++) {
-          places.push_back(platform::CustomPlace(dev_type, i));
+                  << ", visible devices count: " << device_list.size();
+        for (auto &dev_id : device_list) {
+          places.push_back(platform::CustomPlace(dev_type, dev_id));
         }
       }
     } else {
@@ -277,52 +250,6 @@ void InitDevices(const std::vector<int> devices) {
 
 #ifndef PADDLE_WITH_MKLDNN
   platform::SetNumThreads(FLAGS_paddle_num_threads);
-#endif
-
-#if !defined(_WIN32) && !defined(__APPLE__) && !defined(__OSX__)
-  if (platform::MayIUse(platform::avx)) {
-#ifndef __AVX__
-    LOG(WARNING) << "AVX is available, Please re-compile on local machine";
-#endif
-  }
-
-// Throw some informations when CPU instructions mismatch.
-#define AVX_GUIDE(compiletime, runtime)                                  \
-  PADDLE_THROW(platform::errors::Unavailable(                            \
-      "This version is compiled on higher instruction(" #compiletime     \
-      ") system, you may encounter illegal instruction error running on" \
-      " your local CPU machine. Please reinstall the " #runtime          \
-      " version or compile from source code."))
-
-#ifdef __AVX512F__
-  if (!platform::MayIUse(platform::avx512f)) {
-    if (platform::MayIUse(platform::avx2)) {
-      AVX_GUIDE(AVX512, AVX2);
-    } else if (platform::MayIUse(platform::avx)) {
-      AVX_GUIDE(AVX512, AVX);
-    } else {
-      AVX_GUIDE(AVX512, NonAVX);
-    }
-  }
-#endif
-
-#ifdef __AVX2__
-  if (!platform::MayIUse(platform::avx2)) {
-    if (platform::MayIUse(platform::avx)) {
-      AVX_GUIDE(AVX2, AVX);
-    } else {
-      AVX_GUIDE(AVX2, NonAVX);
-    }
-  }
-#endif
-
-#ifdef __AVX__
-  if (!platform::MayIUse(platform::avx)) {
-    AVX_GUIDE(AVX, NonAVX);
-  }
-#endif
-#undef AVX_GUIDE
-
 #endif
 }
 
@@ -350,7 +277,8 @@ bool StartsWith(const char *str, const char *prefix) {
 
 const char *ParseSignalErrorString(const std::string &str) {
   for (size_t i = 0;
-       i < (sizeof(SignalErrorStrings) / sizeof(*(SignalErrorStrings))); ++i) {
+       i < (sizeof(SignalErrorStrings) / sizeof(*(SignalErrorStrings)));
+       ++i) {
     if (std::string::npos != str.find(SignalErrorStrings[i].name)) {
       return SignalErrorStrings[i].error_string;
     }
@@ -376,9 +304,9 @@ void SignalHandle(const char *data, int size) {
       signal_info.replace(start_pos, useless_substr.length(), "");
       *signal_msg_dunmer_ptr << "  [SignalInfo: " << signal_info << "]\n";
 
-      // NOTE3: Final singal error message print.
+      // NOTE3: Final signal error message print.
       // Here does not throw an exception,
-      // otherwise it will casue "terminate called recursively"
+      // otherwise it will cause "terminate called recursively"
       std::ostringstream sout;
       sout << "\n\n--------------------------------------\n";
       sout << "C++ Traceback (most recent call last):";
@@ -410,7 +338,8 @@ void SignalHandle(const char *data, int size) {
 void DisableSignalHandler() {
 #ifndef _WIN32
   for (size_t i = 0;
-       i < (sizeof(SignalErrorStrings) / sizeof(*(SignalErrorStrings))); ++i) {
+       i < (sizeof(SignalErrorStrings) / sizeof(*(SignalErrorStrings)));
+       ++i) {
     int signal_number = SignalErrorStrings[i].signal_number;
     struct sigaction sig_action;
     memset(&sig_action, 0, sizeof(sig_action));
@@ -423,15 +352,22 @@ void DisableSignalHandler() {
 
 #ifdef WITH_WIN_DUMP_DBG
 typedef BOOL(WINAPI *MINIDUMP_WRITE_DUMP)(
-    IN HANDLE hProcess, IN DWORD ProcessId, IN HANDLE hFile,
+    IN HANDLE hProcess,
+    IN DWORD ProcessId,
+    IN HANDLE hFile,
     IN MINIDUMP_TYPE DumpType,
     IN CONST PMINIDUMP_EXCEPTION_INFORMATION ExceptionParam,
     OPTIONAL IN PMINIDUMP_USER_STREAM_INFORMATION UserStreamParam,
     OPTIONAL IN PMINIDUMP_CALLBACK_INFORMATION CallbackParam OPTIONAL);
 void CreateDumpFile(LPCSTR lpstrDumpFilePathName,
                     EXCEPTION_POINTERS *pException) {
-  HANDLE hDumpFile = CreateFile(lpstrDumpFilePathName, GENERIC_WRITE, 0, NULL,
-                                CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+  HANDLE hDumpFile = CreateFile(lpstrDumpFilePathName,
+                                GENERIC_WRITE,
+                                0,
+                                NULL,
+                                CREATE_ALWAYS,
+                                FILE_ATTRIBUTE_NORMAL,
+                                NULL);
   MINIDUMP_EXCEPTION_INFORMATION dumpInfo;
   dumpInfo.ExceptionPointers = pException;
   dumpInfo.ThreadId = GetCurrentThreadId();
@@ -440,8 +376,13 @@ void CreateDumpFile(LPCSTR lpstrDumpFilePathName,
   HMODULE hDbgHelp = LoadLibrary("DBGHELP.DLL");
   MiniDumpWriteDump_ =
       (MINIDUMP_WRITE_DUMP)GetProcAddress(hDbgHelp, "MiniDumpWriteDump");
-  MiniDumpWriteDump_(GetCurrentProcess(), GetCurrentProcessId(), hDumpFile,
-                     MiniDumpWithPrivateReadWriteMemory, &dumpInfo, NULL, NULL);
+  MiniDumpWriteDump_(GetCurrentProcess(),
+                     GetCurrentProcessId(),
+                     hDumpFile,
+                     MiniDumpWithPrivateReadWriteMemory,
+                     &dumpInfo,
+                     NULL,
+                     NULL);
   CloseHandle(hDumpFile);
 }
 
@@ -451,9 +392,14 @@ LONG ApplicationCrashHandler(EXCEPTION_POINTERS *pException) {
   localtime_s(&now_time, &time_seconds);
 
   char buf[1024];
-  sprintf_s(buf, "C:\\Paddle%04d%02d%02d-%02d%02d%02d.dmp",
-            1900 + now_time.tm_year, 1 + now_time.tm_mon, now_time.tm_mday,
-            now_time.tm_hour, now_time.tm_min, now_time.tm_sec);
+  sprintf_s(buf,
+            "C:\\Paddle%04d%02d%02d-%02d%02d%02d.dmp",
+            1900 + now_time.tm_year,
+            1 + now_time.tm_mon,
+            now_time.tm_mday,
+            now_time.tm_hour,
+            now_time.tm_min,
+            now_time.tm_sec);
 
   CreateDumpFile(buf, pException);
   return EXCEPTION_EXECUTE_HANDLER;
@@ -473,6 +419,35 @@ void InitGLOG(const std::string &prog_name) {
     google::InstallFailureSignalHandler();
     google::InstallFailureWriter(&SignalHandle);
 #endif
+  });
+}
+
+void InitMemoryMethod() {
+  std::call_once(memory_method_init_flag, [&]() {
+    auto &memory_utils = phi::MemoryUtils::Instance();
+    auto memory_method = std::make_unique<phi::MemoryInterface>();
+    memory_method->alloc = paddle::memory::Alloc;
+    memory_method->alloc_with_stream = paddle::memory::Alloc;
+    memory_method->alloc_shared = paddle::memory::AllocShared;
+    memory_method->alloc_shared_with_stream = paddle::memory::AllocShared;
+    memory_method->in_same_stream = paddle::memory::InSameStream;
+    memory_method->allocation_deleter =
+        paddle::memory::allocation::Allocator::AllocationDeleter;
+#if defined(PADDLE_WITH_CUSTOM_DEVICE) || defined(PADDLE_WITH_CUDA) || \
+    defined(PADDLE_WITH_HIP)
+    memory_method->copy_with_stream =
+        paddle::memory::Copy<phi::Place, phi::Place>;
+#endif
+    memory_method->copy = paddle::memory::Copy<phi::Place, phi::Place>;
+    memory_method->device_memory_stat_current_value =
+        paddle::memory::DeviceMemoryStatCurrentValue;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    memory_method->gpu_memory_usage = paddle::platform::GpuMemoryUsage;
+#endif
+    memory_method->emplace_device_contexts =
+        paddle::platform::EmplaceDeviceContexts;
+    memory_method->init_devices = InitDevices;
+    memory_utils.Init(std::move(memory_method));
   });
 }
 

@@ -27,10 +27,19 @@ struct MeanFunctor {
 };
 
 struct MeanGradFunctor {
-  template <typename DeviceContext, typename X, typename Y, typename DX,
-            typename DY, typename Dim>
-  void operator()(const DeviceContext& place, X* x, Y* y, DX* dx, DY* dy,
-                  const Dim& dim, int size) {
+  template <typename DeviceContext,
+            typename X,
+            typename Y,
+            typename DX,
+            typename DY,
+            typename Dim>
+  void operator()(const DeviceContext& place,
+                  X* x,
+                  Y* y,
+                  DX* dx,
+                  DY* dy,
+                  const Dim& dim,
+                  int size) {
     dx->device(place) = dy->broadcast(dim) / dx->constant(size);
   }
 };
@@ -38,10 +47,19 @@ struct MeanGradFunctor {
 // TODO(zengjinle): Should refine the numeric stability of FP16 reduce_mean
 // and reduce_mean_grad later.
 struct FP16MeanGradFunctor {
-  template <typename DeviceContext, typename X, typename Y, typename DX,
-            typename DY, typename Dim>
-  void operator()(const DeviceContext& place, X* x, Y* y, DX* dx, DY* dy,
-                  const Dim& dim, int size) {
+  template <typename DeviceContext,
+            typename X,
+            typename Y,
+            typename DX,
+            typename DY,
+            typename Dim>
+  void operator()(const DeviceContext& place,
+                  X* x,
+                  Y* y,
+                  DX* dx,
+                  DY* dy,
+                  const Dim& dim,
+                  int size) {
     dx->device(place) = (dy->template cast<float>().broadcast(dim) /
                          dx->template cast<float>().constant(size))
                             .template cast<platform::float16>();

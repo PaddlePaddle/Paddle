@@ -15,18 +15,19 @@
 #include "paddle/phi/kernels/accuracy_kernel.h"
 
 #include <algorithm>
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
 template <typename T, typename Context>
-void AccuracyRawKernel(const Context& dev_ctx,
-                       const DenseTensor& inference,
-                       const DenseTensor& indices,
-                       const DenseTensor& label,
-                       DenseTensor* accuracy,
-                       DenseTensor* correct,
-                       DenseTensor* total) {
+void AccuracyKernel(const Context& dev_ctx,
+                    const DenseTensor& inference,
+                    const DenseTensor& indices,
+                    const DenseTensor& label,
+                    DenseTensor* accuracy,
+                    DenseTensor* correct,
+                    DenseTensor* total) {
   int* correct_data = dev_ctx.template Alloc<int>(correct);
   int* total_data = dev_ctx.template Alloc<int>(total);
   float* accuracy_data = dev_ctx.template Alloc<float>(accuracy);
@@ -34,9 +35,32 @@ void AccuracyRawKernel(const Context& dev_ctx,
   const int64_t* indices_data = indices.data<int64_t>();
   const int64_t* label_data = label.data<int64_t>();
 
+  PADDLE_ENFORCE_EQ(
+      inference.dims().size(),
+      2,
+      phi::errors::InvalidArgument(
+          "Rank(Input) of AccuracyOp must be 2, with shape "
+          "[sample_number, class_dim], But received rank(Input) is %d",
+          inference.dims().size()));
+
   size_t num_samples = inference.dims()[0];
   size_t class_dim = inference.dims()[1];
   *accuracy_data = 0.0f;
+
+  PADDLE_ENFORCE_GT(label.dims().size(),
+                    0,
+                    phi::errors::InvalidArgument(
+                        "Rank(Label) of AccuracyOp must greater than 0, "
+                        "But received rank(Label) is %d",
+                        label.dims().size()));
+
+  PADDLE_ENFORCE_GE(
+      label.dims()[0],
+      inference.dims()[0],
+      phi::errors::InvalidArgument("num_samples(%d) of Label should less than "
+                                   "or equal to num_samples(%d) of Input",
+                                   label.dims()[0],
+                                   num_samples));
 
   if (num_samples == 0) {
     return;
@@ -69,4 +93,10 @@ void AccuracyRawKernel(const Context& dev_ctx,
 
 // TODO(add supported dtype.)
 PD_REGISTER_KERNEL(
-    accuracy, CPU, ALL_LAYOUT, phi::AccuracyRawKernel, float, double) {}
+    accuracy, CPU, ALL_LAYOUT, phi::AccuracyKernel, float, double) {
+  kernel->InputAt(1).SetDataType(phi::DataType::INT64);
+  kernel->InputAt(2).SetDataType(phi::DataType::INT64);
+  kernel->OutputAt(0).SetDataType(phi::DataType::FLOAT32);
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT32);
+  kernel->OutputAt(2).SetDataType(phi::DataType::INT32);
+}

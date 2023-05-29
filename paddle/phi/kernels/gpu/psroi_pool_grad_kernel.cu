@@ -12,16 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/psroi_pool_kernel.h"
-
 #include <algorithm>
 #include <vector>
-#include "paddle/fluid/memory/memory.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/psroi_pool_kernel.h"
 
 namespace phi {
 
@@ -97,7 +97,7 @@ __global__ void GPUPSROIPoolBackward(const int nthreads,
     for (int ih = hstart; ih < hend; ++ih) {
       for (int iw = wstart; iw < wend; ++iw) {
         int input_index = ih * width + iw;
-        paddle::platform::CudaAtomicAdd(offset_dx_data + input_index, diff_val);
+        phi::CudaAtomicAdd(offset_dx_data + input_index, diff_val);
       }
     }
   }
@@ -107,7 +107,7 @@ template <typename T, typename Context>
 void PsroiPoolGradKernel(const Context& ctx,
                          const DenseTensor& x,
                          const DenseTensor& rois,
-                         paddle::optional<const DenseTensor&> rois_num,
+                         const paddle::optional<DenseTensor>& rois_num,
                          const DenseTensor& dout,
                          int pooled_height,
                          int pooled_width,
@@ -128,12 +128,12 @@ void PsroiPoolGradKernel(const Context& ctx,
     if (rois_num.get_ptr()) {
       rois_batch_size = rois_num->numel();
       std::vector<int> rois_num_list(rois_batch_size);
-      paddle::memory::Copy(CPUPlace(),
-                           rois_num_list.data(),
-                           ctx.GetPlace(),
-                           rois_num->data<int>(),
-                           sizeof(int) * rois_batch_size,
-                           0);
+      memory_utils::Copy(CPUPlace(),
+                         rois_num_list.data(),
+                         ctx.GetPlace(),
+                         rois_num->data<int>(),
+                         sizeof(int) * rois_batch_size,
+                         0);
       int start = 0;
       for (int n = 0; n < rois_batch_size; ++n) {
         for (int i = start; i < start + rois_num_list[n]; ++i) {
@@ -188,6 +188,5 @@ void PsroiPoolGradKernel(const Context& ctx,
 
 PD_REGISTER_KERNEL(
     psroi_pool_grad, GPU, ALL_LAYOUT, phi::PsroiPoolGradKernel, float, double) {
-  kernel->InputAt(2).SetDataType(
-      paddle::experimental::CppTypeToDataType<int>::Type());
+  kernel->InputAt(2).SetDataType(phi::CppTypeToDataType<int>::Type());
 }

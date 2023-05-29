@@ -12,10 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/kernels/diag_kernel.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/diag_kernel.h"
 #include "paddle/phi/kernels/funcs/diag_functor.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -74,10 +73,10 @@ void DiagGradKernel(const Context& dev_ctx,
     return std::tuple<int64_t, int64_t>{block_size, grid_size};
   };
 
-  if (dx_dims.size() == 1) {
-    auto dx_length = dx_dims[0];
+  if (dx_dims.size() <= 1) {
+    auto dx_length = (dx_dims.size() == 1 ? dx_dims[0] : int64_t(1));
     auto size = (offset > 0) ? dx_length + offset : dx_length - offset;
-    int dx_stride = phi::funcs::ComputeStride(0, dx_dims);
+    int dx_stride = 1;
     if (size > 0) {
       auto dout_stride_0 = phi::funcs::ComputeStride(0, dout_dims);
       auto dout_stride_1 = phi::funcs::ComputeStride(1, dout_dims);
@@ -85,16 +84,16 @@ void DiagGradKernel(const Context& dev_ctx,
           (offset >= 0 ? offset * dout_stride_1 : -offset * dout_stride_0);
 
       std::tuple<int64_t, int64_t> block_grid_size = GetBlockGridSize(size);
-      ExtractDiagonalKernel<T><<<std::get<1>(block_grid_size),
-                                 std::get<0>(block_grid_size),
-                                 0,
-                                 dev_ctx.stream()>>>(
-          dout_data,
-          dx_data,
-          start,
-          dx_length,
-          dout_stride_0 + dout_stride_1,
-          dx_stride);
+      ExtractDiagonalKernel<T>
+          <<<std::get<1>(block_grid_size),
+             std::get<0>(block_grid_size),
+             0,
+             dev_ctx.stream()>>>(dout_data,
+                                 dx_data,
+                                 start,
+                                 dx_length,
+                                 dout_stride_0 + dout_stride_1,
+                                 dx_stride);
     }
   } else {
     phi::funcs::SetConstant<Context, T> set_padding_value;
@@ -133,6 +132,7 @@ PD_REGISTER_KERNEL(diag_grad,
                    ALL_LAYOUT,
                    phi::DiagGradKernel,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    int,
                    int64_t,
                    float,

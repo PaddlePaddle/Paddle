@@ -12,22 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
+
 import paddle
-import paddle.nn.functional as F
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.tensor as tensor
 
 paddle.enable_static()
 
 
 class TestDeterminantOp(OpTest):
     def setUp(self):
+        self.python_api = paddle.linalg.det
         self.init_data()
         self.op_type = "determinant"
         self.outputs = {'Out': self.target}
@@ -53,6 +50,14 @@ class TestDeterminantOpCase1(TestDeterminantOp):
         self.target = np.linalg.det(self.case)
 
 
+class TestDeterminantOpCase1FP16(TestDeterminantOp):
+    def init_data(self):
+        np.random.seed(0)
+        self.case = np.random.rand(10, 10).astype(np.float16)
+        self.inputs = {'Input': self.case}
+        self.target = np.linalg.det(self.case.astype(np.float32))
+
+
 class TestDeterminantOpCase2(TestDeterminantOp):
     def init_data(self):
         np.random.seed(0)
@@ -60,6 +65,17 @@ class TestDeterminantOpCase2(TestDeterminantOp):
         self.case = np.ones([4, 2, 4, 4]).astype('float64')
         self.inputs = {'Input': self.case}
         self.target = np.linalg.det(self.case)
+
+
+class TestDeterminantOpCase2FP16(TestDeterminantOp):
+    def init_data(self):
+        np.random.seed(0)
+        # not invertible matrix
+        self.case = np.ones([4, 2, 4, 4]).astype(np.float16)
+        self.inputs = {'Input': self.case}
+        self.target = np.linalg.det(self.case.astype(np.float32)).astype(
+            np.float16
+        )
 
 
 class TestDeterminantAPI(unittest.TestCase):
@@ -72,27 +88,28 @@ class TestDeterminantAPI(unittest.TestCase):
     def test_api_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('X', self.shape)
+            x = paddle.static.data('X', self.shape)
             out = paddle.linalg.det(x)
             exe = paddle.static.Executor(self.place)
             res = exe.run(feed={'X': self.x}, fetch_list=[out])
         out_ref = np.linalg.det(self.x)
 
         for out in res:
-            self.assertEqual(np.allclose(out, out_ref, rtol=1e-03), True)
+            np.testing.assert_allclose(out, out_ref, rtol=0.001)
 
     def test_api_dygraph(self):
         paddle.disable_static(self.place)
         x_tensor = paddle.to_tensor(self.x)
         out = paddle.linalg.det(x_tensor)
         out_ref = np.linalg.det(self.x)
-        self.assertEqual(np.allclose(out.numpy(), out_ref, rtol=1e-03), True)
+        np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
         paddle.enable_static()
 
 
 class TestSlogDeterminantOp(OpTest):
     def setUp(self):
         self.op_type = "slogdeterminant"
+        self.python_api = paddle.linalg.slogdet
         self.init_data()
         self.outputs = {'Out': self.target}
 
@@ -128,20 +145,20 @@ class TestSlogDeterminantAPI(unittest.TestCase):
     def test_api_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('X', self.shape)
+            x = paddle.static.data('X', self.shape)
             out = paddle.linalg.slogdet(x)
             exe = paddle.static.Executor(self.place)
             res = exe.run(feed={'X': self.x}, fetch_list=[out])
         out_ref = np.array(np.linalg.slogdet(self.x))
         for out in res:
-            self.assertEqual(np.allclose(out, out_ref, rtol=1e-03), True)
+            np.testing.assert_allclose(out, out_ref, rtol=0.001)
 
     def test_api_dygraph(self):
         paddle.disable_static(self.place)
         x_tensor = paddle.to_tensor(self.x)
         out = paddle.linalg.slogdet(x_tensor)
         out_ref = np.array(np.linalg.slogdet(self.x))
-        self.assertEqual(np.allclose(out.numpy(), out_ref, rtol=1e-03), True)
+        np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
         paddle.enable_static()
 
 

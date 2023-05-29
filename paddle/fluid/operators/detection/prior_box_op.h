@@ -15,15 +15,15 @@ limitations under the License. */
 #pragma once
 #include <algorithm>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/transform.h"
+#include "paddle/phi/common/transform.h"
+#include "paddle/phi/core/visit_type.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
-
-constexpr int kPriorBoxFLOAT = 1;
-constexpr int kPriorBoxDOUBLE = 2;
 
 inline void ExpandAspectRatios(const std::vector<float>& input_aspect_ratior,
                                bool flip,
@@ -49,14 +49,23 @@ inline void ExpandAspectRatios(const std::vector<float>& input_aspect_ratior,
   }
 }
 
-template <typename T, typename K>
+template <typename T>
 class PriorBoxOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<paddle::framework::Tensor>("Input");
-    auto* image = ctx.Input<paddle::framework::Tensor>("Image");
-    auto* boxes = ctx.Output<paddle::framework::Tensor>("Boxes");
-    auto* vars = ctx.Output<paddle::framework::Tensor>("Variances");
+    auto* image = ctx.Input<phi::DenseTensor>("Image");
+
+    PD_VISIT_FLOATING_TYPES(image->dtype(), "PriorBoxOpHandler", ([&] {
+                              PriorBoxOpHandler<data_t>(ctx);
+                            }));
+  }
+
+  template <typename K>
+  void PriorBoxOpHandler(const framework::ExecutionContext& ctx) const {
+    auto* input = ctx.Input<phi::DenseTensor>("Input");
+    auto* image = ctx.Input<phi::DenseTensor>("Image");
+    auto* boxes = ctx.Output<phi::DenseTensor>("Boxes");
+    auto* vars = ctx.Output<phi::DenseTensor>("Variances");
 
     auto min_sizes = ctx.Attr<std::vector<float>>("min_sizes");
     auto max_sizes = ctx.Attr<std::vector<float>>("max_sizes");
@@ -170,11 +179,11 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
       });
     }
 
-    framework::Tensor var_t;
+    phi::DenseTensor var_t;
     var_t.mutable_data<K>(
         phi::make_ddim({1, static_cast<int>(variances.size())}),
         ctx.GetPlace());
-    auto var_et = framework::EigenTensor<K, 2>::From(var_t);
+    auto var_et = phi::EigenTensor<K, 2>::From(var_t);
 
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
@@ -187,7 +196,7 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
     auto var_dim = vars->dims();
     vars->Resize({box_num, static_cast<int>(variances.size())});
 
-    auto e_vars = framework::EigenMatrix<K, Eigen::RowMajor>::From(*vars);
+    auto e_vars = phi::EigenMatrix<K, Eigen::RowMajor>::From(*vars);
 
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for collapse(2)
@@ -199,7 +208,7 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
     }
     vars->Resize(var_dim);
   }
-};  // namespace operators
+};
 
 }  // namespace operators
 }  // namespace paddle

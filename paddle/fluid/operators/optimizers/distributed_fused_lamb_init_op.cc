@@ -24,10 +24,10 @@ class DistributedFusedLambInitOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext *ctx) const override {}
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto dtype = framework::proto::VarType::FP32;  // dtype is not important
-    return framework::OpKernelType(dtype, ctx.GetPlace());
+    return phi::KernelKey(dtype, ctx.GetPlace());
   }
 };
 
@@ -94,6 +94,7 @@ class DistributedFusedLambInitOpMaker
     AddOutput("GradOut", "The output gradient list.").AsDuplicable();
     AddOutput("GlobalScale",
               "The global scale. It is usually the scale factor for AMP.");
+    AddOutput("Step", "The global step which excludes the NaN/Inf step.");
 
     AddAttr<float>("beta1", "The initial value of Beta1Pow.");
     AddAttr<float>("beta2", "The initial value of Beta2Pow.");
@@ -117,6 +118,8 @@ REGISTER_OP_WITHOUT_GRADIENT(distributed_fused_lamb_init,
                              ops::DistributedFusedLambInitOp,
                              ops::DistributedFusedLambInitOpMaker);
 
-REGISTER_OP_CPU_KERNEL(
-    distributed_fused_lamb_init,
-    ops::DistributedFusedLambInitOpKernel<plat::CPUDeviceContext, float>);
+PD_REGISTER_STRUCT_KERNEL(distributed_fused_lamb_init,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::DistributedFusedLambInitOpKernel,
+                          float) {}

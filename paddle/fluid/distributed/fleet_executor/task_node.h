@@ -14,8 +14,10 @@
 
 #pragma once
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
@@ -26,23 +28,33 @@ namespace paddle {
 namespace framework {
 class OperatorBase;
 class OpDesc;
-}
+}  // namespace framework
 namespace distributed {
+
+enum class DependType { NORMAL, LOOP, STOP_LOOP };
 
 class TaskNode final {
  public:
   using OperatorBase = paddle::framework::OperatorBase;
-  TaskNode(int32_t role, int64_t rank, int64_t task_id, int64_t max_run_times,
-           int64_t max_slot_nums);
-  TaskNode(int32_t role, const std::vector<framework::OpDesc*>& op_descs,
-           int64_t rank, int64_t task_id, int64_t max_run_times,
-           int64_t max_slot_nums);
-  TaskNode(int32_t role, const std::vector<framework::OperatorBase*>& ops,
-           int64_t rank, int64_t task_id, int64_t max_run_times,
-           int64_t max_slot_nums);
-  TaskNode(paddle::framework::ProgramDesc* program, int64_t rank,
-           int64_t max_run_times, int64_t max_slot_nums);
+  TaskNode(int64_t rank, int64_t task_id, int64_t max_run_times);
+  TaskNode(int32_t role, int64_t rank, int64_t task_id, int64_t max_run_times);
+  TaskNode(int32_t role,
+           const std::vector<framework::OpDesc*>& op_descs,
+           int64_t rank,
+           int64_t task_id,
+           int64_t max_run_times);
+  TaskNode(int32_t role,
+           const std::vector<framework::OperatorBase*>& ops,
+           int64_t rank,
+           int64_t task_id,
+           int64_t max_run_times);
   TaskNode(paddle::framework::ProgramDesc* program, int64_t rank);
+  // TODO(liyurui): This will be the only constructor for task node
+  TaskNode(paddle::framework::ProgramDesc* program,
+           int64_t task_id,
+           int64_t rank,
+           int64_t max_run_times);
+
   ~TaskNode() = default;
 
   void SetProgram(paddle::framework::ProgramDesc* program);
@@ -51,11 +63,11 @@ class TaskNode final {
   int64_t task_id() const { return task_id_; }
   int32_t role() const { return role_; }
   int64_t max_run_times() const { return max_run_times_; }
-  int64_t max_slot_nums() const { return max_slot_nums_; }
   int64_t run_per_steps() const { return run_per_steps_; }
   int64_t run_at_offset() const { return run_at_offset_; }
   int64_t reply_up_per_steps() const { return reply_up_per_steps_; }
   int64_t send_down_per_steps() const { return send_down_per_steps_; }
+  const std::string& cond_var() const { return cond_var_; }
   const std::unordered_map<int64_t, int64_t>& upstream() const {
     return upstream_;
   }
@@ -68,11 +80,20 @@ class TaskNode final {
   const std::vector<std::unique_ptr<OperatorBase>>& unique_ops() const {
     return ops_vec_;
   }
+  const std::unordered_map<int64_t, DependType> id_to_dep_type() const {
+    return id_to_dep_type_;
+  }
   const std::unordered_map<const OperatorBase*, std::vector<std::string>>&
   unused_vars() const {
     return unused_vars_;
   }
+  const std::vector<std::string> while_block_vars() const {
+    return while_block_vars_;
+  }
 
+  void SetCondVarName(const std::string& cond_var_name) {
+    cond_var_ = cond_var_name;
+  }
   void SetRunPerSteps(int64_t value);
   void SetRunAtOffset(int64_t value);
   void SetReplyUpPerSteps(int64_t value);
@@ -83,11 +104,27 @@ class TaskNode final {
           unused_vars) {
     unused_vars_ = unused_vars;
   }
+  void SetWhileBlockVars(const std::vector<std::string>& vars) {
+    while_block_vars_ = vars;
+  }
 
   // upstream need buffs?
-  bool AddUpstreamTask(int64_t task_id, int64_t buff_size = 1);
-  bool AddDownstreamTask(int64_t task_id, int64_t buff_size = 1);
+  bool AddUpstreamTask(int64_t task_id,
+                       int64_t buff_size = 1,
+                       DependType type = DependType::NORMAL);
+  bool AddDownstreamTask(int64_t task_id,
+                         int64_t buff_size = 1,
+                         DependType type = DependType::NORMAL);
   std::string DebugString() const;
+  void SetVarsToDtype(const std::map<std::string, std::string>& vars_to_dtype);
+  const std::map<std::string, std::vector<int64_t>>& vars_to_shape() const {
+    return vars_to_shape_;
+  }
+  const std::map<std::string, std::string>& vars_to_dtype() const {
+    return vars_to_dtype_;
+  }
+  void SetVarsToShape(
+      const std::map<std::string, std::vector<int64_t>>& vars_to_shape);
 
  private:
   DISABLE_COPY_AND_ASSIGN(TaskNode);
@@ -97,16 +134,20 @@ class TaskNode final {
   // task_id-->buff_size
   std::unordered_map<int64_t, int64_t> upstream_;
   std::unordered_map<int64_t, int64_t> downstream_;
-  framework::ProgramDesc* program_;
+  // task_id-->type
+  std::unordered_map<int64_t, DependType> id_to_dep_type_;
+
+  framework::ProgramDesc* program_{nullptr};
+  std::string cond_var_;
   std::vector<std::unique_ptr<OperatorBase>> ops_vec_;
   std::unordered_map<const OperatorBase*, std::vector<std::string>>
       unused_vars_;
+  std::vector<std::string> while_block_vars_;
 
   int32_t role_;
   int64_t rank_;
   int64_t task_id_;
   int64_t max_run_times_;
-  int64_t max_slot_nums_;
 
   int64_t run_per_steps_{1};
   int64_t run_at_offset_{0};
@@ -116,6 +157,8 @@ class TaskNode final {
   int64_t send_down_per_steps_{1};
 
   std::string type_;
+  std::map<std::string, std::string> vars_to_dtype_;
+  std::map<std::string, std::vector<int64_t>> vars_to_shape_;
 };
 
 }  // namespace distributed

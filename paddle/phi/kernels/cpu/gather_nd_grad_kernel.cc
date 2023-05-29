@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/gather_nd_grad_kernel.h"
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
@@ -22,7 +23,7 @@ namespace phi {
 
 template <typename T, typename Context>
 void GatherNdGradKernel(const Context &ctx,
-                        const DenseTensor &x,
+                        const DenseTensor &x UNUSED,
                         const DenseTensor &index,
                         const DenseTensor &out_grad,
                         DenseTensor *x_grad) {

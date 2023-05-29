@@ -10,9 +10,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <math.h>
+
 #include <algorithm>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detection/bbox_util.h"
@@ -23,12 +25,12 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
 const int kBoxDim = 4;
 
 template <typename T>
-void AppendMask(LoDTensor* out, int64_t offset, Tensor* to_add) {
+void AppendMask(phi::DenseTensor* out,
+                int64_t offset,
+                phi::DenseTensor* to_add) {
   auto* out_data = out->data<T>();
   auto* to_add_data = to_add->data<T>();
   memcpy(out_data + offset, to_add_data, to_add->numel() * sizeof(T));
@@ -40,46 +42,58 @@ class GenerateMaskLabelsOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("ImInfo"), true,
+        ctx->HasInput("ImInfo"),
+        true,
         platform::errors::InvalidArgument("Input(ImInfo) shouldn't be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("GtClasses"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("GtClasses"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Input(GtClasses) shouldn't be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("IsCrowd"), true,
+        ctx->HasInput("IsCrowd"),
+        true,
         platform::errors::InvalidArgument("Input(IsCrowd) shouldn't be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("GtSegms"), true,
+        ctx->HasInput("GtSegms"),
+        true,
         platform::errors::InvalidArgument("Input(GtSegms) shouldn't be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("Rois"), true,
+        ctx->HasInput("Rois"),
+        true,
         platform::errors::InvalidArgument("Input(Rois) shouldn't be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("LabelsInt32"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("LabelsInt32"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Input(LabelsInt32) shouldn't be null."));
 
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("MaskRois"), true,
+        ctx->HasOutput("MaskRois"),
+        true,
         platform::errors::InvalidArgument(
             "Output(MaskRois) of GenerateMaskLabelsOp should not be null"));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("RoiHasMaskInt32"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("RoiHasMaskInt32"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Output(RoiHasMaskInt32) of GenerateMaskLabelsOp "
                           "should not be null"));
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("MaskInt32"), true,
+        ctx->HasOutput("MaskInt32"),
+        true,
         platform::errors::InvalidArgument(
             "Output(MaskInt32) of GenerateMaskLabelsOp should not be null"));
 
     auto im_info_dims = ctx->GetInputDim("ImInfo");
     auto gt_segms_dims = ctx->GetInputDim("GtSegms");
-    PADDLE_ENFORCE_EQ(im_info_dims.size(), 2,
+    PADDLE_ENFORCE_EQ(im_info_dims.size(),
+                      2,
                       platform::errors::InvalidArgument(
                           "The rank of Input(ImInfo) must be 2."));
-    PADDLE_ENFORCE_EQ(gt_segms_dims.size(), 2,
+    PADDLE_ENFORCE_EQ(gt_segms_dims.size(),
+                      2,
                       platform::errors::InvalidArgument(
                           "The rank of Input(GtSegms) must be 2."));
-    PADDLE_ENFORCE_EQ(gt_segms_dims[1], 2,
+    PADDLE_ENFORCE_EQ(gt_segms_dims[1],
+                      2,
                       platform::errors::InvalidArgument(
                           "The second dim of Input(GtSegms) must be 2."));
     int num_classes = ctx->Attrs().Get<int>("num_classes");
@@ -96,10 +110,10 @@ class GenerateMaskLabelsOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Rois");
-    return framework::OpKernelType(data_type, platform::CPUPlace());
+    return phi::KernelKey(data_type, platform::CPUPlace());
   }
 };
 
@@ -108,11 +122,12 @@ class GenerateMaskLabelsOp : public framework::OperatorWithKernel {
  * to encode class specific mask targets.
  */
 template <typename T>
-static inline void ExpandMaskTarget(const platform::CPUDeviceContext& ctx,
-                                    const Tensor& masks,
-                                    const Tensor& mask_class_labels,
-                                    const int resolution, const int num_classes,
-                                    Tensor* mask_targets) {
+static inline void ExpandMaskTarget(const phi::CPUContext& ctx,
+                                    const phi::DenseTensor& masks,
+                                    const phi::DenseTensor& mask_class_labels,
+                                    const int resolution,
+                                    const int num_classes,
+                                    phi::DenseTensor* mask_targets) {
   const uint8_t* masks_data = masks.data<uint8_t>();
   int64_t num_mask = masks.dims()[0];
   const int* mask_class_labels_data = mask_class_labels.data<int>();
@@ -135,11 +150,17 @@ static inline void ExpandMaskTarget(const platform::CPUDeviceContext& ctx,
 }
 
 template <typename T>
-std::vector<Tensor> SampleMaskForOneImage(
-    const platform::CPUDeviceContext& ctx, const Tensor& im_info,
-    const Tensor& gt_classes, const Tensor& is_crowd, const Tensor& gt_segms,
-    const Tensor& rois, const Tensor& label_int32, const int num_classes,
-    const int resolution, const framework::LoD& segm_length) {
+std::vector<phi::DenseTensor> SampleMaskForOneImage(
+    const phi::CPUContext& ctx,
+    const phi::DenseTensor& im_info,
+    const phi::DenseTensor& gt_classes,
+    const phi::DenseTensor& is_crowd,
+    const phi::DenseTensor& gt_segms,
+    const phi::DenseTensor& rois,
+    const phi::DenseTensor& label_int32,
+    const int num_classes,
+    const int resolution,
+    const framework::LoD& segm_length) {
   // Prepare the mask targets by associating one gt mask to each training roi
   // that has a fg (non-bg) class label.
   const int64_t gt_size = static_cast<int64_t>(gt_classes.dims()[0]);
@@ -147,11 +168,13 @@ std::vector<Tensor> SampleMaskForOneImage(
   const int* gt_classes_data = gt_classes.data<int>();
   const int* is_crowd_data = is_crowd.data<int>();
   const int* label_int32_data = label_int32.data<int>();
-  PADDLE_ENFORCE_EQ(roi_size, label_int32.dims()[0],
+  PADDLE_ENFORCE_EQ(roi_size,
+                    label_int32.dims()[0],
                     platform::errors::InvalidArgument(
                         "The first dim of label [%d] is the different from "
                         "roi_size [%d], they should be same.",
-                        label_int32.dims()[0], roi_size));
+                        label_int32.dims()[0],
+                        roi_size));
 
   std::vector<int> mask_gt_inds, fg_inds;
   std::vector<std::vector<std::vector<T>>> gt_polys;
@@ -172,12 +195,15 @@ std::vector<Tensor> SampleMaskForOneImage(
       for (int j = 0; j < poly_num; ++j) {
         int s = lod2[s_idx + j];
         int e = lod2[s_idx + j + 1];
-        PADDLE_ENFORCE_NE(s, e,
+        PADDLE_ENFORCE_NE(s,
+                          e,
                           platform::errors::InvalidArgument(
                               "The start point and the end point in the poly "
                               "segment [%d] should not be same, but received "
                               "the start point [%d] and the end point [%d].",
-                              i, s, e));
+                              i,
+                              s,
+                              e));
         std::vector<T> plts(polys_data + s * 2, polys_data + e * 2);
         polys.push_back(plts);
       }
@@ -192,21 +218,24 @@ std::vector<Tensor> SampleMaskForOneImage(
   int gt_num = mask_gt_inds.size();
   int fg_num = fg_inds.size();
 
-  Tensor boxes_from_polys;
+  phi::DenseTensor boxes_from_polys;
   boxes_from_polys.mutable_data<T>({gt_num, 4}, platform::CPUPlace());
   Poly2Boxes(gt_polys, boxes_from_polys.data<T>());
 
   std::vector<int> roi_has_mask =
       std::vector<int>(fg_inds.begin(), fg_inds.end());
-  Tensor mask_class_labels;
-  Tensor masks;
-  Tensor rois_fg;
+  phi::DenseTensor mask_class_labels;
+  phi::DenseTensor masks;
+  phi::DenseTensor rois_fg;
 
   auto im_scale = im_info.data<T>()[2];
   if (fg_num > 0) {
     // Class labels for the foreground rois
     mask_class_labels.mutable_data<int>({fg_num, 1}, ctx.GetPlace());
-    Gather<int>(label_int32_data, 1, fg_inds.data(), fg_inds.size(),
+    Gather<int>(label_int32_data,
+                1,
+                fg_inds.data(),
+                fg_inds.size(),
                 mask_class_labels.data<int>());
 
     uint8_t* masks_data = masks.mutable_data<uint8_t>(
@@ -215,14 +244,14 @@ std::vector<Tensor> SampleMaskForOneImage(
     // Find overlap between all foreground rois and the bounding boxes
     // enclosing each segmentation
     T* rois_fg_data = rois_fg.mutable_data<T>({fg_num, 4}, ctx.GetPlace());
-    Gather<T>(rois.data<T>(), 4, fg_inds.data(), fg_inds.size(),
-              rois_fg.data<T>());
+    Gather<T>(
+        rois.data<T>(), 4, fg_inds.data(), fg_inds.size(), rois_fg.data<T>());
 
     for (int k = 0; k < rois_fg.numel(); ++k) {
       rois_fg_data[k] = rois_fg_data[k] / im_scale;
     }
 
-    Tensor overlaps_bbfg_bbpolys;
+    phi::DenseTensor overlaps_bbfg_bbpolys;
     overlaps_bbfg_bbpolys.mutable_data<T>({fg_num, gt_num}, ctx.GetPlace());
     BboxOverlaps<T>(rois_fg, boxes_from_polys, &overlaps_bbfg_bbpolys);
 
@@ -277,74 +306,81 @@ std::vector<Tensor> SampleMaskForOneImage(
     roi_has_mask = std::vector<int>(bg_inds.begin(), bg_inds.end());
   }
 
-  Tensor masks_expand;
-  ExpandMaskTarget<T>(ctx, masks, mask_class_labels, resolution, num_classes,
-                      &masks_expand);
+  phi::DenseTensor masks_expand;
+  ExpandMaskTarget<T>(
+      ctx, masks, mask_class_labels, resolution, num_classes, &masks_expand);
 
   T* rois_fg_data = rois_fg.data<T>();
   for (int k = 0; k < rois_fg.numel(); ++k) {
     rois_fg_data[k] = rois_fg_data[k] * im_scale;
   }
 
-  Tensor roi_has_mask_t;
+  phi::DenseTensor roi_has_mask_t;
   int roi_has_mask_size = roi_has_mask.size();
   int* roi_has_mask_data =
       roi_has_mask_t.mutable_data<int>({roi_has_mask_size, 1}, ctx.GetPlace());
   std::copy(roi_has_mask.begin(), roi_has_mask.end(), roi_has_mask_data);
 
-  std::vector<Tensor> res;
+  std::vector<phi::DenseTensor> res;
   res.emplace_back(rois_fg);
   res.emplace_back(roi_has_mask_t);
   res.emplace_back(masks_expand);
   return res;
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class GenerateMaskLabelsKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* im_info = ctx.Input<LoDTensor>("ImInfo");
-    auto* gt_classes = ctx.Input<LoDTensor>("GtClasses");
-    auto* is_crowd = ctx.Input<LoDTensor>("IsCrowd");
-    auto* gt_segms = ctx.Input<LoDTensor>("GtSegms");
-    auto* rois = ctx.Input<LoDTensor>("Rois");
-    auto* label_int32 = ctx.Input<LoDTensor>("LabelsInt32");
+    auto* im_info = ctx.Input<phi::DenseTensor>("ImInfo");
+    auto* gt_classes = ctx.Input<phi::DenseTensor>("GtClasses");
+    auto* is_crowd = ctx.Input<phi::DenseTensor>("IsCrowd");
+    auto* gt_segms = ctx.Input<phi::DenseTensor>("GtSegms");
+    auto* rois = ctx.Input<phi::DenseTensor>("Rois");
+    auto* label_int32 = ctx.Input<phi::DenseTensor>("LabelsInt32");
 
-    auto* mask_rois = ctx.Output<LoDTensor>("MaskRois");
-    auto* roi_has_mask_int32 = ctx.Output<LoDTensor>("RoiHasMaskInt32");
-    auto* mask_int32 = ctx.Output<LoDTensor>("MaskInt32");
+    auto* mask_rois = ctx.Output<phi::DenseTensor>("MaskRois");
+    auto* roi_has_mask_int32 = ctx.Output<phi::DenseTensor>("RoiHasMaskInt32");
+    auto* mask_int32 = ctx.Output<phi::DenseTensor>("MaskInt32");
 
     int num_classes = ctx.Attr<int>("num_classes");
     int resolution = ctx.Attr<int>("resolution");
 
     PADDLE_ENFORCE_EQ(
-        gt_classes->lod().size(), 1UL,
+        gt_classes->lod().size(),
+        1UL,
         platform::errors::InvalidArgument(
             "GenerateMaskLabelsOp gt_classes needs 1 level of LoD"));
     PADDLE_ENFORCE_EQ(
-        is_crowd->lod().size(), 1UL,
+        is_crowd->lod().size(),
+        1UL,
         platform::errors::InvalidArgument(
             "GenerateMaskLabelsOp is_crowd needs 1 level of LoD"));
-    PADDLE_ENFORCE_EQ(rois->lod().size(), 1UL,
+    PADDLE_ENFORCE_EQ(rois->lod().size(),
+                      1UL,
                       platform::errors::InvalidArgument(
                           "GenerateMaskLabelsOp rois needs 1 level of LoD"));
     PADDLE_ENFORCE_EQ(
-        label_int32->lod().size(), 1UL,
+        label_int32->lod().size(),
+        1UL,
         platform::errors::InvalidArgument(
             "GenerateMaskLabelsOp label_int32 needs 1 level of LoD"));
 
     PADDLE_ENFORCE_EQ(
-        gt_segms->lod().size(), 3UL,
+        gt_segms->lod().size(),
+        3UL,
         platform::errors::InvalidArgument(
             "GenerateMaskLabelsOp gt_segms needs 3 level of LoD"));
 
     int64_t n = static_cast<int64_t>(gt_classes->lod().back().size() - 1);
     PADDLE_ENFORCE_EQ(
-        gt_segms->lod()[0].size() - 1, n,
+        gt_segms->lod()[0].size() - 1,
+        n,
         platform::errors::InvalidArgument(
             "Batchsize of Input(gt_segms) and Input(gt_classes) should be "
             "same, but received gt_segms[%d], gt_classes[%d].",
-            gt_segms->lod()[0].size() - 1, n));
+            gt_segms->lod()[0].size() - 1,
+            n));
 
     int mask_dim = num_classes * resolution * resolution;
     int roi_num = rois->lod().back()[n];
@@ -356,7 +392,7 @@ class GenerateMaskLabelsKernel : public framework::OpKernel<T> {
     std::vector<size_t> lod0(1, 0);
 
     int64_t num_mask = 0;
-    auto& dev_ctx = ctx.device_context<platform::CPUDeviceContext>();
+    auto& dev_ctx = ctx.device_context<phi::CPUContext>();
 
     auto gt_classes_lod = gt_classes->lod().back();
     auto is_crowd_lod = is_crowd->lod().back();
@@ -369,34 +405,41 @@ class GenerateMaskLabelsKernel : public framework::OpKernel<T> {
         lod0.emplace_back(num_mask);
         continue;
       }
-      Tensor im_info_slice = im_info->Slice(i, i + 1);
-      Tensor gt_classes_slice =
+      phi::DenseTensor im_info_slice = im_info->Slice(i, i + 1);
+      phi::DenseTensor gt_classes_slice =
           gt_classes->Slice(gt_classes_lod[i], gt_classes_lod[i + 1]);
-      Tensor is_crowd_slice =
+      phi::DenseTensor is_crowd_slice =
           is_crowd->Slice(is_crowd_lod[i], is_crowd_lod[i + 1]);
-      Tensor label_int32_slice =
+      phi::DenseTensor label_int32_slice =
           label_int32->Slice(label_int32_lod[i], label_int32_lod[i + 1]);
-      Tensor rois_slice = rois->Slice(rois_lod[i], rois_lod[i + 1]);
+      phi::DenseTensor rois_slice = rois->Slice(rois_lod[i], rois_lod[i + 1]);
 
       auto sub_lod_and_offset =
           framework::GetSubLoDAndAbsoluteOffset(gt_segms_lod, i, i + 1, 0);
       auto lod_length = sub_lod_and_offset.first;
       size_t s = sub_lod_and_offset.second.first;
       size_t e = sub_lod_and_offset.second.second;
-      Tensor gt_segms_slice = gt_segms->Slice(s, e);
+      phi::DenseTensor gt_segms_slice = gt_segms->Slice(s, e);
 
-      std::vector<Tensor> tensor_output = SampleMaskForOneImage<T>(
-          dev_ctx, im_info_slice, gt_classes_slice, is_crowd_slice,
-          gt_segms_slice, rois_slice, label_int32_slice, num_classes,
-          resolution, lod_length);
+      std::vector<phi::DenseTensor> tensor_output =
+          SampleMaskForOneImage<T>(dev_ctx,
+                                   im_info_slice,
+                                   gt_classes_slice,
+                                   is_crowd_slice,
+                                   gt_segms_slice,
+                                   rois_slice,
+                                   label_int32_slice,
+                                   num_classes,
+                                   resolution,
+                                   lod_length);
 
-      Tensor sampled_mask_rois = tensor_output[0];
-      Tensor sampled_roi_has_mask_int32 = tensor_output[1];
-      Tensor sampled_mask_int32 = tensor_output[2];
+      phi::DenseTensor sampled_mask_rois = tensor_output[0];
+      phi::DenseTensor sampled_roi_has_mask_int32 = tensor_output[1];
+      phi::DenseTensor sampled_mask_int32 = tensor_output[2];
 
       AppendMask<T>(mask_rois, kBoxDim * num_mask, &sampled_mask_rois);
-      AppendMask<int>(roi_has_mask_int32, num_mask,
-                      &sampled_roi_has_mask_int32);
+      AppendMask<int>(
+          roi_has_mask_int32, num_mask, &sampled_roi_has_mask_int32);
       AppendMask<int>(mask_int32, mask_dim * num_mask, &sampled_mask_int32);
 
       num_mask += sampled_mask_rois.dims()[0];
@@ -421,17 +464,20 @@ class GenerateMaskLabelsOpMaker : public framework::OpProtoAndCheckerMaker {
              "B is the number of input images, "
              "each element consists of im_height, im_width, im_scale.");
     AddInput("GtClasses",
-             "(LoDTensor), This input is a 2D LoDTensor with shape [M, 1]. "
+             "(phi::DenseTensor), This input is a 2D phi::DenseTensor with "
+             "shape [M, 1]. "
              "M is the number of groundtruth, "
              "each element is a class label of groundtruth.");
     AddInput(
         "IsCrowd",
-        "(LoDTensor), This input is a 2D LoDTensor with shape [M, 1]. "
+        "(phi::DenseTensor), This input is a 2D phi::DenseTensor with shape "
+        "[M, 1]. "
         "M is the number of groundtruth, "
         "each element is a flag indicates whether a groundtruth is crowd.");
     AddInput(
         "GtSegms",
-        "(LoDTensor), This input is a 2D LoDTensor with shape [S, 2], it's LoD "
+        "(phi::DenseTensor), This input is a 2D phi::DenseTensor with shape "
+        "[S, 2], it's LoD "
         "level is 3. The LoD[0] represents the gt objects number of each "
         "instance. LoD[1] represents the segmentation counts of each objects. "
         "LoD[2] represents the polygons number of each segmentation. S the "
@@ -439,24 +485,29 @@ class GenerateMaskLabelsOpMaker : public framework::OpProtoAndCheckerMaker {
         "coordinate points.");
     AddInput(
         "Rois",
-        "(LoDTensor), This input is a 2D LoDTensor with shape [R, 4]. "
+        "(phi::DenseTensor), This input is a 2D phi::DenseTensor with shape "
+        "[R, 4]. "
         "R is the number of rois which is the output of "
         "generate_proposal_labels, "
         "each element is a bounding box with (xmin, ymin, xmax, ymax) format.");
     AddInput("LabelsInt32",
-             "(LoDTensor), This intput is a 2D LoDTensor with shape [R, 1], "
+             "(phi::DenseTensor), This intput is a 2D phi::DenseTensor with "
+             "shape [R, 1], "
              "each element represents a class label of a roi");
     AddOutput(
         "MaskRois",
-        "(LoDTensor), This output is a 2D LoDTensor with shape [P, 4]. "
+        "(phi::DenseTensor), This output is a 2D phi::DenseTensor with shape "
+        "[P, 4]. "
         "P is the number of mask, "
         "each element is a bounding box with [xmin, ymin, xmax, ymax] format.");
     AddOutput("RoiHasMaskInt32",
-              "(LoDTensor), This output is a 2D LoDTensor with shape [P, 1], "
+              "(phi::DenseTensor), This output is a 2D phi::DenseTensor with "
+              "shape [P, 1], "
               "each element represents the output mask rois index with regard "
               "to input rois");
     AddOutput("MaskInt32",
-              "(LoDTensor), This output is a 4D LoDTensor with shape [P, Q], "
+              "(phi::DenseTensor), This output is a 4D phi::DenseTensor with "
+              "shape [P, Q], "
               "Q equal to num_classes * resolution * resolution");
 
     AddAttr<int>("num_classes", "Class number.");
@@ -477,9 +528,14 @@ K classes. This mask targets are used to compute loss of mask branch.
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    generate_mask_labels, ops::GenerateMaskLabelsOp,
+    generate_mask_labels,
+    ops::GenerateMaskLabelsOp,
     ops::GenerateMaskLabelsOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(generate_mask_labels,
-                       ops::GenerateMaskLabelsKernel<float>);
+
+PD_REGISTER_STRUCT_KERNEL(generate_mask_labels,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::GenerateMaskLabelsKernel,
+                          float) {}

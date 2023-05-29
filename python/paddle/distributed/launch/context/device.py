@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -14,16 +14,21 @@
 
 import os
 
+from paddle.device import get_available_custom_device
+
+# (TODO: GhostScreaming) It will be removed later.
+from paddle.fluid import core
+
 
 class DeviceType:
     CPU = 'cpu'
     GPU = 'gpu'
     XPU = 'xpu'
-    NPU = 'npu'
-    MLU = 'mlu'
+    IPU = 'ipu'
+    CUSTOM_DEVICE = 'custom_device'
 
 
-class Device(object):
+class Device:
     def __init__(self, dtype=None, memory="", labels=""):
         self._dtype = dtype
         self._memory = memory
@@ -57,50 +62,52 @@ class Device(object):
         else:
             self._labels = []
 
-    def get_selected_flag_key(self):
+    def get_selected_device_key(self):
         if self._dtype == DeviceType.CPU:
             return 'FLAGS_selected_cpus'
         if self._dtype == DeviceType.GPU:
             return 'FLAGS_selected_gpus'
-        if self._dtype == DeviceType.NPU:
-            return 'FLAGS_selected_npus'
         if self._dtype == DeviceType.XPU:
             return 'FLAGS_selected_xpus'
-        if self._dtype == DeviceType.MLU:
-            return 'FLAGS_selected_mlus'
+        if self._dtype == DeviceType.IPU:
+            return 'FLAGS_selected_ipus'
+        if self._dtype == DeviceType.CUSTOM_DEVICE:
+            return 'FLAGS_selected_{}s'.format(os.getenv('PADDLE_XCCL_BACKEND'))
         return 'FLAGS_selected_devices'
 
-    def get_selected_flag_label(self, idx):
-        if idx < len(self._labels):
-            return self._labels[idx]
+    def get_selected_devices(self, devices=''):
+        '''
+        return the device label/id relative to the visible devices
+        '''
+        if not devices:
+            return [str(x) for x in range(0, len(self._labels))]
         else:
-            return '0'
+            devs = [x.strip() for x in devices.split(',')]
+            return [str(self._labels.index(d)) for d in devs]
 
-    def selected_flags(self, idx=None):
-        if idx is None:
-            return {self.get_selected_flag_key(): ','.join(self._labels)}
-        else:
-            return {
-                self.get_selected_flag_key(): self.get_selected_flag_label(idx)
-            }
+    def get_custom_device_envs(self):
+        return {
+            'PADDLE_DISTRI_BACKEND': 'xccl',
+            'PADDLE_XCCL_BACKEND': os.getenv('PADDLE_XCCL_BACKEND'),
+        }
 
     @classmethod
     def parse_device(self):
         dev = Device()
         visible_devices = None
-        if 'CUDA_VISIBLE_DEVICES' in os.environ or 'NVIDIA_VISIBLE_DEVICES' in os.environ:
+        if 'PADDLE_XCCL_BACKEND' in os.environ:
+            dev._dtype = DeviceType.CUSTOM_DEVICE
+            visible_devices_str = '{}_VISIBLE_DEVICES'.format(
+                os.getenv('PADDLE_XCCL_BACKEND').upper()
+            )
+            if visible_devices_str in os.environ:
+                visible_devices = os.getenv(visible_devices_str)
+        elif 'CUDA_VISIBLE_DEVICES' in os.environ:
             dev._dtype = DeviceType.GPU
-            visible_devices = os.getenv("CUDA_VISIBLE_DEVICES") or os.getenv(
-                "NVIDIA_VISIBLE_DEVICES")
+            visible_devices = os.getenv("CUDA_VISIBLE_DEVICES")
         elif 'XPU_VISIBLE_DEVICES' in os.environ:
             dev._dtype = DeviceType.XPU
             visible_devices = os.getenv("XPU_VISIBLE_DEVICES")
-        elif 'ASCEND_VISIBLE_DEVICES' in os.environ:
-            dev._dtype = DeviceType.NPU
-            visible_devices = os.getenv("ASCEND_VISIBLE_DEVICES")
-        elif 'MLU_VISIBLE_DEVICES' in os.environ:
-            dev._dtype = DeviceType.MLU
-            visible_devices = os.getenv("MLU_VISIBLE_DEVICES")
 
         if visible_devices is not None and visible_devices != 'all':
             dev._labels = visible_devices.split(',')
@@ -111,28 +118,40 @@ class Device(object):
 
     @classmethod
     def detect_device(self):
-        import paddle.fluid as fluid
+        def get_custom_devices_count(device_type):
+            all_custom_devices = get_available_custom_device()
+            all_custom_devices = [
+                device.split(':')[0] for device in all_custom_devices
+            ]
+            custom_devices_count = all_custom_devices.count(device_type)
+            return custom_devices_count
 
         dev = Device()
         num = 0
         visible_devices = None
-        if fluid.core.is_compiled_with_cuda():
+        if 'PADDLE_XCCL_BACKEND' in os.environ:
+            custom_device_type = os.getenv('PADDLE_XCCL_BACKEND')
+            dev._dtype = DeviceType.CUSTOM_DEVICE
+            num = get_custom_devices_count(custom_device_type)
+            visible_devices_str = '{}_VISIBLE_DEVICES'.format(
+                custom_device_type.upper()
+            )
+            if visible_devices_str in os.environ:
+                visible_devices = os.getenv(visible_devices_str)
+        elif core.is_compiled_with_cuda():
             dev._dtype = DeviceType.GPU
-            num = fluid.core.get_cuda_device_count()
-            visible_devices = os.getenv("CUDA_VISIBLE_DEVICES") or os.getenv(
-                "NVIDIA_VISIBLE_DEVICES")
-        elif fluid.core.is_compiled_with_xpu():
+            num = core.get_cuda_device_count()
+            visible_devices = os.getenv("CUDA_VISIBLE_DEVICES")
+        elif core.is_compiled_with_xpu():
             dev._dtype = DeviceType.XPU
-            num = fluid.core.get_xpu_device_count()
+            num = core.get_xpu_device_count()
             visible_devices = os.getenv("XPU_VISIBLE_DEVICES")
-        elif fluid.core.is_compiled_with_npu():
-            dev._dtype = DeviceType.NPU
-            num = fluid.core.get_npu_device_count()
-            visible_devices = os.getenv("ASCEND_VISIBLE_DEVICES")
-        elif fluid.core.is_compiled_with_mlu():
-            dev._dtype = DeviceType.MLU
-            num = fluid.core.get_mlu_device_count()
-            visible_devices = os.getenv("MLU_VISIBLE_DEVICES")
+        elif core.is_compiled_with_ipu():
+            dev._dtype = DeviceType.IPU
+            num = core.get_ipu_device_count()
+            # For IPUs, 'labels' is a list which contains the available numbers of IPU devices.
+            dev._labels = [str(x) for x in range(0, num + 1)]
+            return dev
 
         if num == 0:
             dev._dtype = DeviceType.CPU
@@ -146,4 +165,4 @@ class Device(object):
 
 if __name__ == '__main__':
     d = Device.parse_device()
-    print(d.get_selected_flag())
+    print(d.get_selected_devices())

@@ -14,18 +14,21 @@
 
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
+
 #include "paddle/fluid/operators/sequence_ops/sequence_enumerate_op.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
-using platform::PADDLE_CUDA_NUM_THREADS;
-using LoDTensor = framework::LoDTensor;
+using phi::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T>
-__global__ void CalcOutPut(const T* in_data, const size_t* in_lod,
-                           const size_t lod_len, const int64_t win_size,
-                           const int64_t pad_value, T* out_data) {
+__global__ void CalcOutPut(const T* in_data,
+                           const size_t* in_lod,
+                           const size_t lod_len,
+                           const int64_t win_size,
+                           const int64_t pad_value,
+                           T* out_data) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   if (index < in_lod[lod_len - 1]) {
     int end_idx = 0;
@@ -44,12 +47,12 @@ __global__ void CalcOutPut(const T* in_data, const size_t* in_lod,
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class SequenceEnumerateOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* in = context.Input<LoDTensor>("X");
-    auto* out = context.Output<LoDTensor>("Out");
+    auto* in = context.Input<phi::DenseTensor>("X");
+    auto* out = context.Output<phi::DenseTensor>("Out");
     int win_size = context.Attr<int>("win_size");
     int pad_value = context.Attr<int>("pad_value");
 
@@ -57,11 +60,13 @@ class SequenceEnumerateOpCUDAKernel : public framework::OpKernel<T> {
     auto in_lod = in->lod();
 
     PADDLE_ENFORCE_EQ(
-        static_cast<uint64_t>(in_dims[0]), in_lod[0].back(),
+        static_cast<uint64_t>(in_dims[0]),
+        in_lod[0].back(),
         platform::errors::InvalidArgument(
             "The actual input data's size mismatched with LoD information."
             "Received input data size is %d (actual) vs %d (loD information).",
-            static_cast<uint64_t>(in_dims[0]), in_lod[0].back()));
+            static_cast<uint64_t>(in_dims[0]),
+            in_lod[0].back()));
 
     /* Generate enumerate sequence set */
     auto stream = context.cuda_device_context().stream();
@@ -71,11 +76,13 @@ class SequenceEnumerateOpCUDAKernel : public framework::OpKernel<T> {
     out->Resize({in_dims[0], win_size});
     auto out_data = out->mutable_data<T>(context.GetPlace());
     // Copy LoD to GPU
-    paddle::framework::MixVector<size_t> mixv_lod0(&lod0);
+    phi::MixVector<size_t> mixv_lod0(&lod0);
     const size_t* dev_in_lod_ptr = mixv_lod0.CUDAData(context.GetPlace());
     // Calc output tensor
     CalcOutPut<<<(in_len - 1) / PADDLE_CUDA_NUM_THREADS + 1,
-                 PADDLE_CUDA_NUM_THREADS, 0, stream>>>(
+                 PADDLE_CUDA_NUM_THREADS,
+                 0,
+                 stream>>>(
         in_data, dev_in_lod_ptr, lod0.size(), win_size, pad_value, out_data);
     out->set_lod(in->lod());
   }
@@ -84,7 +91,10 @@ class SequenceEnumerateOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_CUDA_KERNEL(
-    sequence_enumerate,
-    paddle::operators::SequenceEnumerateOpCUDAKernel<int32_t>,
-    paddle::operators::SequenceEnumerateOpCUDAKernel<int64_t>);
+namespace ops = paddle::operators;
+PD_REGISTER_STRUCT_KERNEL(sequence_enumerate,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::SequenceEnumerateOpCUDAKernel,
+                          int32_t,
+                          int64_t) {}

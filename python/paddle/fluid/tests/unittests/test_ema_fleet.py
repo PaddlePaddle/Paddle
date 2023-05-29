@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
+
 import paddle
-import paddle.utils as utils
-import paddle.static as static
+from paddle import static, utils
 
 
 def gen_data():
@@ -42,17 +41,19 @@ class TestFleetStaticEMA(unittest.TestCase):
         with static.program_guard(self._train_program, self._startup_prog):
             with utils.unique_name.guard():
                 data = static.data(name='x', shape=[-1, 5], dtype='float32')
-                hidden = static.nn.fc(x=data,
-                                      size=10,
-                                      weight_attr=self._param_name)
+                hidden = static.nn.fc(
+                    x=data, size=10, weight_attr=self._param_name
+                )
                 cost = paddle.mean(hidden)
 
                 self._test_program = static.default_main_program().clone(
-                    for_test=True)
+                    for_test=True
+                )
 
                 optimizer = paddle.optimizer.Adam(learning_rate=0.001)
                 optimizer = paddle.distributed.fleet.distributed_optimizer(
-                    optimizer, strategy)
+                    optimizer, strategy
+                )
                 optimizer.minimize(cost)
 
                 self._ema = static.ExponentialMovingAverage(self._ema_decay)
@@ -66,13 +67,19 @@ class TestFleetStaticEMA(unittest.TestCase):
         for pass_id in range(2):
             for batch_id in range(3):
                 exe.run(program=self._train_program, feed={'x': gen_data()})
-                tmp_param = np.array(static.global_scope().find_var(
-                    self._param_name).get_tensor())
+                tmp_param = np.array(
+                    static.global_scope()
+                    .find_var(self._param_name)
+                    .get_tensor()
+                )
                 params.append(tmp_param)
 
             with self._ema.apply(exe, restore):
-                final_ema = np.array(static.global_scope().find_var(
-                    self._param_name).get_tensor())
+                final_ema = np.array(
+                    static.global_scope()
+                    .find_var(self._param_name)
+                    .get_tensor()
+                )
                 exe.run(program=self._test_program, feed={'x': gen_data()})
             if not restore:
                 self._ema.restore(exe)
@@ -86,10 +93,12 @@ class TestFleetStaticEMA(unittest.TestCase):
                 manu_ema = np.zeros_like(final_ema)
                 if len(params) > 0:
                     for param in params:
-                        manu_ema = self._ema_decay * manu_ema + (
-                            1 - self._ema_decay) * param
-                    manu_ema = manu_ema / (1.0 - self._ema_decay**len(params))
-                self.assertTrue(np.allclose(manu_ema, final_ema))
+                        manu_ema = (
+                            self._ema_decay * manu_ema
+                            + (1 - self._ema_decay) * param
+                        )
+                    manu_ema = manu_ema / (1.0 - self._ema_decay ** len(params))
+                np.testing.assert_allclose(manu_ema, final_ema, rtol=1e-05)
 
 
 if __name__ == '__main__':

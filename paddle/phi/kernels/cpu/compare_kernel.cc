@@ -13,11 +13,11 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/compare_kernel.h"
-#include "paddle/phi/kernels/impl/compare_kernel_impl.h"
 
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
+#include "paddle/phi/kernels/impl/compare_kernel_impl.h"
 
 namespace phi {
 
@@ -33,10 +33,10 @@ inline void CompareKernelImpl(const Context& ctx,
   ctx.template Alloc<bool>(out);
   if (x.dims().size() >= y.dims().size()) {
     funcs::ElementwiseCompute<Functor, T, bool>(
-        ctx, x, y, axis, Functor(), out);
+        ctx, x, y, Functor(), out, axis);
   } else {
     funcs::ElementwiseCompute<InverseFunctor, T, bool>(
-        ctx, x, y, axis, InverseFunctor(), out);
+        ctx, x, y, InverseFunctor(), out, axis);
   }
 }
 
@@ -59,7 +59,7 @@ inline void CompareAllKernelImpl(const Context& ctx,
       tmp_data[0] = Functor()(x.data<T>()[0], y.data<T>()[0]);
     } else {
       funcs::ElementwiseCompute<Functor, T, bool>(
-          ctx, x, y, 0, Functor(), &tmp);
+          ctx, x, y, Functor(), &tmp, 0);
     }
     auto tmp_flat = EigenVector<bool>::Flatten(tmp);
     auto out_es = EigenScalar<bool>::From(*out);
@@ -71,67 +71,6 @@ inline void CompareAllKernelImpl(const Context& ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(less_than,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::LessThanKernel,
-                   bool,
-                   int16_t,
-                   int,
-                   int64_t,
-                   float,
-                   double) {}
-PD_REGISTER_KERNEL(less_equal,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::LessEqualKernel,
-                   bool,
-                   int16_t,
-                   int,
-                   int64_t,
-                   float,
-                   double) {}
-PD_REGISTER_KERNEL(greater_than,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::GreaterThanKernel,
-                   bool,
-                   int16_t,
-                   int,
-                   int64_t,
-                   float,
-                   double) {}
-PD_REGISTER_KERNEL(greater_equal,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::GreaterEqualKernel,
-                   bool,
-                   int16_t,
-                   int,
-                   int64_t,
-                   float,
-                   double) {}
-PD_REGISTER_KERNEL(equal,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::EqualKernel,
-                   bool,
-                   int16_t,
-                   int,
-                   int64_t,
-                   float,
-                   double) {}
-PD_REGISTER_KERNEL(not_equal,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::NotEqualKernel,
-                   bool,
-                   int16_t,
-                   int,
-                   int64_t,
-                   float,
-                   double) {}
-
 PD_REGISTER_KERNEL(equal_all,
                    CPU,
                    ALL_LAYOUT,
@@ -140,4 +79,42 @@ PD_REGISTER_KERNEL(equal_all,
                    int,
                    int64_t,
                    float,
-                   double) {}
+                   double) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
+}
+
+#define PD_REGISTER_COMPARE_KERNEL(name, func)            \
+  PD_REGISTER_KERNEL(name,                                \
+                     CPU,                                 \
+                     ALL_LAYOUT,                          \
+                     phi::func##Kernel,                   \
+                     bool,                                \
+                     int16_t,                             \
+                     int,                                 \
+                     int64_t,                             \
+                     float,                               \
+                     double,                              \
+                     phi::dtype::float16,                 \
+                     phi::dtype::bfloat16) {              \
+    kernel->OutputAt(0).SetDataType(phi::DataType::BOOL); \
+  }                                                       \
+  PD_REGISTER_KERNEL(name##_raw,                          \
+                     CPU,                                 \
+                     ALL_LAYOUT,                          \
+                     phi::func##RawKernel,                \
+                     bool,                                \
+                     int16_t,                             \
+                     int,                                 \
+                     int64_t,                             \
+                     float,                               \
+                     double,                              \
+                     phi::dtype::float16,                 \
+                     phi::dtype::bfloat16) {              \
+    kernel->OutputAt(0).SetDataType(phi::DataType::BOOL); \
+  }
+PD_REGISTER_COMPARE_KERNEL(less_than, LessThan)
+PD_REGISTER_COMPARE_KERNEL(less_equal, LessEqual)
+PD_REGISTER_COMPARE_KERNEL(greater_than, GreaterThan)
+PD_REGISTER_COMPARE_KERNEL(greater_equal, GreaterEqual)
+PD_REGISTER_COMPARE_KERNEL(equal, Equal)
+PD_REGISTER_COMPARE_KERNEL(not_equal, NotEqual)

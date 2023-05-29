@@ -37,7 +37,8 @@ class RetryAllocator : public Allocator {
         platform::errors::InvalidArgument(
             "Underlying allocator of RetryAllocator is NULL"));
     PADDLE_ENFORCE_EQ(
-        underlying_allocator_->IsAllocThreadSafe(), true,
+        underlying_allocator_->IsAllocThreadSafe(),
+        true,
         platform::errors::PreconditionNotMet(
             "Underlying allocator of RetryAllocator is not thread-safe"));
   }

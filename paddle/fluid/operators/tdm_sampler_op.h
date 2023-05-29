@@ -20,27 +20,28 @@
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "gflags/gflags.h"
-#include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/sampler.h"
+#include "paddle/phi/core/mixed_vector.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
 using Sampler = math::Sampler;
 using DDim = framework::DDim;
 using LoD = framework::LoD;
-using LoDTensor = framework::LoDTensor;
 using LoDAndOffset = std::pair<LoD, std::pair<size_t, size_t>>;
 
 template <typename T, typename TreeT = int, typename OutT = int>
 void TDMSamplerInner(const framework::ExecutionContext &context,
-                     const LoDTensor &input_tensor,
-                     const LoDTensor &travel_lod_tensor,
-                     const LoDTensor &layer_lod_tensor, LoDTensor *out_tensor,
-                     LoDTensor *label_tensor, LoDTensor *mask_tensor) {
+                     const phi::DenseTensor &input_tensor,
+                     const phi::DenseTensor &travel_lod_tensor,
+                     const phi::DenseTensor &layer_lod_tensor,
+                     phi::DenseTensor *out_tensor,
+                     phi::DenseTensor *label_tensor,
+                     phi::DenseTensor *mask_tensor) {
   auto neg_samples_num_vec =
       context.Attr<std::vector<int>>("neg_samples_num_list");
   auto layer_offset_lod = context.Attr<std::vector<int>>("layer_offset_lod");
@@ -59,7 +60,7 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
   }
   VLOG(3) << "TDM: sample res length: " << sample_res_length;
 
-  auto travel_dim = travel_lod_tensor.dims();
+  auto travel_dim = phi::vectorize<int>(travel_lod_tensor.dims());
   auto total_sample_nums = input_ids_num * sample_res_length;
 
   // get all data
@@ -90,19 +91,23 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
     // find leaf node travel path
     T input_id = input_data[i];
     PADDLE_ENFORCE_LT(
-        -1, input_id,
+        -1,
+        input_id,
         platform::errors::InvalidArgument(
             "Variable value (input) of OP(fluid.layers.tdm_sampler) "
             "expected >= 0 and < %ld, but got %ld. Please check input "
             "value.",
-            travel_dim[0], input_id));
+            travel_dim[0],
+            input_id));
     PADDLE_ENFORCE_LT(
-        input_id, travel_dim[0],
+        input_id,
+        travel_dim[0],
         platform::errors::InvalidArgument(
             "Variable value (input) of OP(fluid.layers.tdm_sampler) "
             "expected >= 0 and < %ld, but got %ld. Please check input "
             "value.",
-            travel_dim[0], input_id));
+            travel_dim[0],
+            input_id));
 
     VLOG(3) << "TDM: input id: " << input_id;
     int start_offset = static_cast<int>(input_id * layer_nums);
@@ -119,12 +124,15 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
               << " - has node_nums: " << node_nums;
 
       PADDLE_ENFORCE_LE(
-          sample_num, node_nums - 1,
+          sample_num,
+          node_nums - 1,
           platform::errors::InvalidArgument(
               "Neg sample nums id of OP(fluid.layers.tdm_sampler) at layer %ld "
               "expected <= %ld - 1 (positive included), but got %ld. Please "
               "check neg_samples_num_list.",
-              layer_idx, node_nums, sample_num));
+              layer_idx,
+              node_nums,
+              sample_num));
 
       int node_id_min = layer_offset_lod[layer_idx];
       int node_id_max = layer_offset_lod[layer_idx + 1];
@@ -153,19 +161,27 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
       }
 
       PADDLE_ENFORCE_LE(
-          positive_node_id, node_id_max,
+          positive_node_id,
+          node_id_max,
           platform::errors::InvalidArgument(
               "Positive node id of OP(fluid.layers.tdm_sampler) at layer %ld "
               "expected >= %ld and <= %ld, but got %ld. Please check input "
               "value.",
-              layer_idx, node_id_min, node_id_max, positive_node_id));
+              layer_idx,
+              node_id_min,
+              node_id_max,
+              positive_node_id));
       PADDLE_ENFORCE_LE(
-          node_id_min, positive_node_id,
+          node_id_min,
+          positive_node_id,
           platform::errors::InvalidArgument(
               "Positive node id of OP(fluid.layers.tdm_sampler) at layer %ld "
               "expected >= %ld and <= %ld, but got %ld. Please check input "
               "value.",
-              layer_idx, node_id_min, node_id_max, positive_node_id));
+              layer_idx,
+              node_id_min,
+              node_id_max,
+              positive_node_id));
 
       // If output positive, add itself
       if (output_positive_flag) {
@@ -188,7 +204,8 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
           sample_res = sampler_vec[layer_idx]->Sample();
         } while (positive_node_id ==
                      layer_data[layer_offset_lod[layer_idx] + sample_res] ||
-                 find(sample_res_vec.begin(), sample_res_vec.end(),
+                 find(sample_res_vec.begin(),
+                      sample_res_vec.end(),
                       sample_res) != sample_res_vec.end());
         sample_res_vec.push_back(sample_res);
 
@@ -205,12 +222,15 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
                 << mask_vec[i * sample_res_length + offset];
 
         PADDLE_ENFORCE_LE(
-            layer_data[layer_offset_lod[layer_idx] + sample_res], node_id_max,
+            layer_data[layer_offset_lod[layer_idx] + sample_res],
+            node_id_max,
             platform::errors::InvalidArgument(
                 "Negative node id of OP(fluid.layers.tdm_sampler) at layer %ld"
                 "expected >= %ld and <= %ld, but got %ld. Please check input "
                 "tdm tree structure and tdm travel info.",
-                layer_idx, node_id_min, node_id_max,
+                layer_idx,
+                node_id_min,
+                node_id_max,
                 layer_data[layer_offset_lod[layer_idx] + sample_res]));
 
         offset += 1;
@@ -231,7 +251,7 @@ void TDMSamplerInner(const framework::ExecutionContext &context,
   }
 }
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class TDMSamplerKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
@@ -240,15 +260,16 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
     auto *layer_var = context.InputVar("Layer");
 
     // get all tensor
-    auto &input_tensor = input_var->Get<framework::LoDTensor>();
-    auto &travel_lod_tensor = travel_var->Get<framework::LoDTensor>();
-    auto &layer_lod_tensor = layer_var->Get<framework::LoDTensor>();
+    auto &input_tensor = input_var->Get<phi::DenseTensor>();
+    auto &travel_lod_tensor = travel_var->Get<phi::DenseTensor>();
+    auto &layer_lod_tensor = layer_var->Get<phi::DenseTensor>();
 
     const auto &input_type =
         framework::TransToProtoVarType(input_tensor.dtype());
     bool input_type_match = input_type == framework::proto::VarType::INT32 ||
                             input_type == framework::proto::VarType::INT64;
-    PADDLE_ENFORCE_EQ(input_type_match, true,
+    PADDLE_ENFORCE_EQ(input_type_match,
+                      true,
                       platform::errors::InvalidArgument(
                           "Input(X) holds the wrong type, it holds %s, but "
                           "desires to be %s or %s",
@@ -263,7 +284,8 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
     bool travel_type_match = travel_type == framework::proto::VarType::INT32 ||
                              travel_type == framework::proto::VarType::INT64;
     PADDLE_ENFORCE_EQ(
-        travel_type_match, true,
+        travel_type_match,
+        true,
         platform::errors::InvalidArgument(
             "Input(Travel) holds the wrong type, it holds %s, but "
             "desires to be %s or %s",
@@ -277,7 +299,8 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
         framework::TransToProtoVarType(layer_lod_tensor.dtype());
     bool layer_type_match = layer_type == framework::proto::VarType::INT32 ||
                             layer_type == framework::proto::VarType::INT64;
-    PADDLE_ENFORCE_EQ(layer_type_match, true,
+    PADDLE_ENFORCE_EQ(layer_type_match,
+                      true,
                       platform::errors::InvalidArgument(
                           "Input(Layer) holds the wrong type, it holds %s, but "
                           "desires to be %s or %s",
@@ -287,7 +310,8 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
                           paddle::framework::DataTypeToString(
                               framework::proto::VarType::INT64)));
     PADDLE_ENFORCE_EQ(
-        travel_type, layer_type,
+        travel_type,
+        layer_type,
         platform::errors::InvalidArgument(
             "Input(Travel) must holds the same type with "
             "Input(Layer), but Travel holds %s, and Layer holds %s",
@@ -297,33 +321,49 @@ class TDMSamplerKernel : public framework::OpKernel<T> {
     auto *out_var = context.OutputVar("Out");
     auto *label_var = context.OutputVar("Labels");
     auto *mask_var = context.OutputVar("Mask");
-    auto *out_tensor = out_var->GetMutable<framework::LoDTensor>();
-    auto *label_tensor = label_var->GetMutable<framework::LoDTensor>();
-    auto *mask_tensor = mask_var->GetMutable<framework::LoDTensor>();
+    auto *out_tensor = out_var->GetMutable<phi::DenseTensor>();
+    auto *label_tensor = label_var->GetMutable<phi::DenseTensor>();
+    auto *mask_tensor = mask_var->GetMutable<phi::DenseTensor>();
 
     auto output_type = static_cast<framework::proto::VarType::Type>(
         context.Attr<int>("dtype"));
 
     if (travel_type == framework::proto::VarType::INT32 &&
         output_type == framework::proto::VarType::INT32) {
-      TDMSamplerInner<T, int, int>(context, input_tensor, travel_lod_tensor,
-                                   layer_lod_tensor, out_tensor, label_tensor,
+      TDMSamplerInner<T, int, int>(context,
+                                   input_tensor,
+                                   travel_lod_tensor,
+                                   layer_lod_tensor,
+                                   out_tensor,
+                                   label_tensor,
                                    mask_tensor);
     } else if (travel_type == framework::proto::VarType::INT64 &&
                output_type == framework::proto::VarType::INT32) {
-      TDMSamplerInner<T, int64_t, int>(context, input_tensor, travel_lod_tensor,
-                                       layer_lod_tensor, out_tensor,
-                                       label_tensor, mask_tensor);
+      TDMSamplerInner<T, int64_t, int>(context,
+                                       input_tensor,
+                                       travel_lod_tensor,
+                                       layer_lod_tensor,
+                                       out_tensor,
+                                       label_tensor,
+                                       mask_tensor);
     } else if (travel_type == framework::proto::VarType::INT32 &&
                output_type == framework::proto::VarType::INT64) {
-      TDMSamplerInner<T, int, int64_t>(context, input_tensor, travel_lod_tensor,
-                                       layer_lod_tensor, out_tensor,
-                                       label_tensor, mask_tensor);
+      TDMSamplerInner<T, int, int64_t>(context,
+                                       input_tensor,
+                                       travel_lod_tensor,
+                                       layer_lod_tensor,
+                                       out_tensor,
+                                       label_tensor,
+                                       mask_tensor);
     } else if (travel_type == framework::proto::VarType::INT64 &&
                output_type == framework::proto::VarType::INT64) {
-      TDMSamplerInner<T, int64_t, int64_t>(
-          context, input_tensor, travel_lod_tensor, layer_lod_tensor,
-          out_tensor, label_tensor, mask_tensor);
+      TDMSamplerInner<T, int64_t, int64_t>(context,
+                                           input_tensor,
+                                           travel_lod_tensor,
+                                           layer_lod_tensor,
+                                           out_tensor,
+                                           label_tensor,
+                                           mask_tensor);
     }
   }
 };

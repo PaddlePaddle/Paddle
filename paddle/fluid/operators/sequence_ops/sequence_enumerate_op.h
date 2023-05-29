@@ -18,38 +18,42 @@
 
 namespace paddle {
 namespace operators {
-using LoDTensor = framework::LoDTensor;
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class SequenceEnumerateKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* in = context.Input<LoDTensor>("X");
-    auto* out = context.Output<LoDTensor>("Out");
+    auto* in = context.Input<phi::DenseTensor>("X");
+    auto* out = context.Output<phi::DenseTensor>("Out");
     int win_size = context.Attr<int>("win_size");
     auto pad_value = static_cast<T>(context.Attr<int>("pad_value"));
 
     PADDLE_ENFORCE_EQ(
-        in->lod().empty(), false,
+        in->lod().empty(),
+        false,
         platform::errors::InvalidArgument(
-            "Input(X) Tensor of SequenceEnumerateOp does not contain "
+            "Input(X) phi::DenseTensor of SequenceEnumerateOp does not contain "
             "LoD information."));
 
-    auto in_dims = in->dims();
+    auto in_dims = phi::vectorize<int>(in->dims());
     auto lod0 = in->lod()[0];
     PADDLE_ENFORCE_EQ(
-        static_cast<uint64_t>(in_dims[0]), lod0.back(),
+        static_cast<uint64_t>(in_dims[0]),
+        lod0.back(),
         platform::errors::InvalidArgument(
             "The actual input data's size mismatched with LoD information."
             "Received input data size is %d (actual) vs %d (loD information).",
-            static_cast<uint64_t>(in_dims[0]), lod0.back()));
+            static_cast<uint64_t>(in_dims[0]),
+            lod0.back()));
     PADDLE_ENFORCE_EQ(
-        in_dims.size(), 2UL,
+        in_dims.size(),
+        2UL,
         platform::errors::InvalidArgument(
             "Input(X) of SequenceEnumerate operator's rank should be 2."
             "Received %d instead.",
             in_dims.size()));
-    PADDLE_ENFORCE_EQ(in_dims[1], 1,
+    PADDLE_ENFORCE_EQ(in_dims[1],
+                      1,
                       platform::errors::InvalidArgument(
                           "Input(X) of SequenceEnumerate operator's 2nd "
                           "dimension should be 1. Received %d instead.",

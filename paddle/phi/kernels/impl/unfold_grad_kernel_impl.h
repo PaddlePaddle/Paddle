@@ -15,8 +15,9 @@
 #pragma once
 
 #include <vector>
-#include "paddle/fluid/operators/math/im2col.h"
+
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/funcs/im2col.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/unfold_functor.h"
 
@@ -24,7 +25,7 @@ namespace phi {
 
 template <typename T, typename Context>
 void UnfoldGradKernel(const Context& ctx,
-                      const DenseTensor& x,
+                      const DenseTensor& x UNUSED,
                       const DenseTensor& out_grad,
                       const std::vector<int>& kernel_sizes,
                       const std::vector<int>& strides,
@@ -35,7 +36,7 @@ void UnfoldGradKernel(const Context& ctx,
 
   if (!x_grad) return;
 
-  auto x_dims = x_grad->dims();
+  const auto& x_dims = x_grad->dims();
   const int batch_size = static_cast<int>(x_dims[0]);
 
   int out_height = phi::funcs::CalcOutputSize(x_dims[2],
@@ -55,9 +56,7 @@ void UnfoldGradKernel(const Context& ctx,
   DDim out_matrix_shape = make_ddim(
       {x_dims[1], kernel_sizes[0], kernel_sizes[1], out_height, out_width});
 
-  paddle::operators::math::
-      Col2ImFunctor<paddle::operators::math::ColFormat::kCFO, Context, T>
-          col2im;
+  phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::kCFO, Context, T> col2im;
 
   phi::funcs::SetConstant<Context, T> set_zero;
   set_zero(ctx, x_grad, static_cast<T>(0));

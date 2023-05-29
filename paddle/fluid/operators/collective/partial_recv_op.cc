@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/collective/partial_recv_op.h"
+
 #include <string>
 
 namespace paddle {
@@ -31,39 +32,47 @@ class PartialRecvOp : public framework::OperatorWithKernel {
     auto out_shape = ctx->Attrs().Get<std::vector<int>>("out_shape");
 
     PADDLE_ENFORCE_GE(
-        peer, 0,
+        peer,
+        0,
         platform::errors::InvalidArgument(
             "The peer (%d) for partial_recv op must be non-negative.", peer));
     PADDLE_ENFORCE_GE(
-        ring_id, 0,
+        ring_id,
+        0,
         platform::errors::InvalidArgument(
             "The ring_id (%d) for partial_recv op must be non-negative.",
             ring_id));
-    PADDLE_ENFORCE_GE(num, 1,
+    PADDLE_ENFORCE_GE(num,
+                      1,
                       platform::errors::InvalidArgument(
                           "The num (%d) for partial_send op must >=1", num));
     PADDLE_ENFORCE_EQ(
-        (id >= 0 && id < num), true,
+        (id >= 0 && id < num),
+        true,
         platform::errors::InvalidArgument(
             "The id (%d) for partial_send op must >=0 and <num (%d)", id, num));
-    PADDLE_ENFORCE_GE(out_shape.size(), 1,
+    PADDLE_ENFORCE_GE(out_shape.size(),
+                      1,
                       platform::errors::InvalidArgument(
                           "The size of the output shape must be greater than 0 "
                           "but the value given is %d.",
                           out_shape.size()));
 
     for (size_t i = 0; i < out_shape.size(); ++i) {
-      PADDLE_ENFORCE_GE(out_shape[i], 1,
+      PADDLE_ENFORCE_GE(out_shape[i],
+                        1,
                         platform::errors::InvalidArgument(
                             "The shape attribute for partial_recv must be set "
                             "explicitly, but the %dth element is %d which "
                             "is less than 1.",
-                            i, out_shape[i]));
+                            i,
+                            out_shape[i]));
     }
     auto out_dims = phi::make_ddim(out_shape);
-    int numel = phi::product(out_dims);
+    int64_t numel = phi::product(out_dims);
     PADDLE_ENFORCE_EQ(
-        (numel % num), 0,
+        (numel % num),
+        0,
         platform::errors::InvalidArgument(
             "The output numel (%d) must be divisible by num(%d)", numel, num));
 
@@ -71,12 +80,12 @@ class PartialRecvOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     int dtype = ctx.Attr<int>("dtype");
     framework::proto::VarType::Type type =
         framework::proto::VarType::Type(dtype);
-    return framework::OpKernelType(type, ctx.GetPlace());
+    return phi::KernelKey(type, ctx.GetPlace());
   }
 };
 
@@ -89,12 +98,7 @@ class PartialRecvOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("peer", "(int default 0) rank id for sender.").SetDefault(0);
     AddAttr<int>("dtype", "(int default 5('float32')) data type of tensor.")
         .SetDefault(5);
-#if defined(PADDLE_WITH_ASCEND_CL)
-    AddAttr<std::string>("tag", "(string default tag) tag for broadcasting.")
-        .SetDefault("tag");
-    AddAttr<int>("srTag", "(string default tag) tag for broadcasting.")
-        .SetDefault(0);
-#endif
+
     AddAttr<std::vector<int>>("out_shape", "shape of the output tensor.")
         .SetDefault(std::vector<int>());
     AddAttr<bool>(
@@ -121,11 +125,16 @@ Reference: https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/p2p.h
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_WITHOUT_GRADIENT(partial_recv, ops::PartialRecvOp,
+REGISTER_OP_WITHOUT_GRADIENT(partial_recv,
+                             ops::PartialRecvOp,
                              ops::PartialRecvOpMaker);
 
-REGISTER_OP_CPU_KERNEL(partial_recv, ops::PartialRecvOpCPUKernel<float>,
-                       ops::PartialRecvOpCPUKernel<double>,
-                       ops::PartialRecvOpCPUKernel<int>,
-                       ops::PartialRecvOpCPUKernel<int64_t>,
-                       ops::PartialRecvOpCPUKernel<plat::float16>);
+PD_REGISTER_STRUCT_KERNEL(partial_recv,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::PartialRecvOpCPUKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t,
+                          plat::float16) {}

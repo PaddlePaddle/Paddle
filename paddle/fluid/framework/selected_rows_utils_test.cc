@@ -9,11 +9,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/selected_rows_utils.h"
+
 #include <time.h>
+
 #include <thread>  // NOLINT
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/framework/selected_rows_utils.h"
 
 namespace paddle {
 namespace framework {
@@ -26,7 +28,7 @@ class SelectedRowsTester : public ::testing::Test {
     int64_t row_numel = 100;
     selected_rows_.reset(new phi::SelectedRows(rows, height));
 
-    Tensor* value = selected_rows_->mutable_value();
+    phi::DenseTensor* value = selected_rows_->mutable_value();
     auto* data = value->mutable_data<float>(
         phi::make_ddim({static_cast<int64_t>(rows.size()), row_numel}), place_);
     for (int64_t i = 0; i < value->numel(); ++i) {
@@ -51,7 +53,7 @@ TEST_F(SelectedRowsTester, complete_dims) {
 
 TEST_F(SelectedRowsTester, SerializeAndDeseralize) {
   phi::SelectedRows dst_tensor;
-  platform::CPUDeviceContext cpu_ctx(place_);
+  phi::CPUContext cpu_ctx(place_);
   std::ostringstream oss;
 
   SerializeToStream(oss, *selected_rows_, cpu_ctx);
@@ -96,7 +98,7 @@ TEST(SelectedRows, SparseTable) {
   ASSERT_TRUE(table.HasKey(6));
   ASSERT_EQ(table.rows().size(), 3UL);
 
-  framework::Tensor ids;
+  phi::DenseTensor ids;
   ids.Resize(phi::make_ddim({4}));
   auto* ids_data = ids.mutable_data<int64_t>(cpu);
   ids_data[0] = static_cast<int64_t>(6);
@@ -104,7 +106,7 @@ TEST(SelectedRows, SparseTable) {
   ids_data[2] = static_cast<int64_t>(8);
   ids_data[3] = static_cast<int64_t>(10);
 
-  framework::Tensor get_value;
+  phi::DenseTensor get_value;
   auto* value_data =
       get_value.mutable_data<float>(phi::make_ddim({4, embedding_width}), cpu);
   table.Get(ids, &get_value);

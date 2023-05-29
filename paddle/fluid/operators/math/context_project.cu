@@ -17,8 +17,8 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-template class ContextProjectFunctor<platform::CUDADeviceContext, float>;
-template class ContextProjectFunctor<platform::CUDADeviceContext, double>;
+template class ContextProjectFunctor<phi::GPUContext, float>;
+template class ContextProjectFunctor<phi::GPUContext, double>;
 
 }  // namespace math
 }  // namespace operators

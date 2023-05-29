@@ -15,6 +15,10 @@ limitations under the License. */
 #pragma once
 
 #include <Python.h>
+// Avoid a problem with copysign defined in pyconfig.h on Windows.
+#ifdef copysign
+#undef copysign
+#endif
 
 #include "pybind11/chrono.h"
 #include "pybind11/complex.h"
@@ -26,6 +30,7 @@ namespace paddle {
 namespace pybind {
 
 void BindTCPStore(pybind11::module* m);
+void BindCommContextManager(pybind11::module* m);
 
 }  // namespace pybind
 }  // namespace paddle

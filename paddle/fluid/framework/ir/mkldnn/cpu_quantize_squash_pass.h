@@ -44,17 +44,13 @@ class CPUQuantizeSquashPass : public FusePassBase {
       std::unordered_map<const Node*, int>* nodes_keep_counter) const;
 
   /*
-   * Check if input to dequantize is uint8
-   */
-  bool IsDequantizeInputUint8(const Node* dequant_in) const;
-
-  /*
    * Don't squash unsigned dequantize with signed quantize.
    * This is important for concat and elementwise ops.
    * When inputs have different sign, concat will assume signed type and
    * elementwise assumes first input type.
    */
-  bool IsDequantizeQuantizeIncompatible(Node* quant_op, Node* dequant_in,
+  bool IsDequantizeQuantizeIncompatible(Node* quant_op,
+                                        Node* dequant_op,
                                         Node* next_op) const;
 
   /*
@@ -95,9 +91,11 @@ class CPUQuantizeSquashPass : public FusePassBase {
   void ScaleQuantSquash(Graph* graph) const;
 
   /*
-   * Squash quantize if is before bfloat16 conv2d
+   * Squash quantize if is before bfloat16 conv2d or fused_conv2d
    */
   void QuantizeBf16Conv(Graph* graph) const;
+
+  void QuantizeBf16ConvImpl(Graph* graph, const std::string& conv_type) const;
 
   const std::string name_scope_{"squash"};
 };

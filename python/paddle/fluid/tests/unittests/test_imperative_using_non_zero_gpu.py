@@ -12,21 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.fluid as fluid
 import unittest
-from paddle.fluid.dygraph import to_variable, guard
+
 import numpy as np
-from paddle.fluid.framework import _test_eager_guard
+
+import paddle
+from paddle import fluid
+from paddle.fluid.dygraph import guard, to_variable
 
 
 class TestImperativeUsingNonZeroGpu(unittest.TestCase):
     def run_main(self, np_arr, place):
         with guard(place):
             var = to_variable(np_arr)
-            self.assertTrue(np.array_equal(np_arr, var.numpy()))
+            np.testing.assert_array_equal(np_arr, var.numpy())
 
-    def func_non_zero_gpu(self):
+    def test_non_zero_gpu(self):
         if not fluid.is_compiled_with_cuda():
             return
 
@@ -36,11 +37,6 @@ class TestImperativeUsingNonZeroGpu(unittest.TestCase):
             self.run_main(np_arr, fluid.CUDAPlace(1))
         else:
             self.run_main(np_arr, fluid.CUDAPlace(0))
-
-    def test_non_zero_gpu(self):
-        with _test_eager_guard():
-            self.func_non_zero_gpu()
-        self.func_non_zero_gpu()
 
 
 if __name__ == '__main__':

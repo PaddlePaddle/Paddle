@@ -12,13 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/save_op.h"
+
 #include <stdint.h>
+
 #include <fstream>
 #include <numeric>
 #include <string>
 #include <vector>
-
-#include "paddle/fluid/operators/save_op.h"
 
 namespace paddle {
 namespace operators {
@@ -29,21 +30,22 @@ class SaveOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {}
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return framework::OpKernelType(data_type, ctx.device_context());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
 class SaveOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(Tensor ) Input LoDTensor and SelectedRows to be saved");
+    AddInput("X",
+             "(Tensor ) Input phi::DenseTensor and SelectedRows to be saved");
     AddComment(R"DOC(
 Save operator
 
-This operator will serialize and write LoDTensor / SelectedRows variable to file on disk.
+This operator will serialize and write phi::DenseTensor / SelectedRows variable to file on disk.
 )DOC");
     AddAttr<bool>("overwrite",
                   "(boolean, default true)"
@@ -82,18 +84,65 @@ class SaveOpVarTypeInference : public framework::VarTypeInference {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(save, ops::SaveOp, ops::SaveOpProtoMaker,
+REGISTER_OPERATOR(save,
+                  ops::SaveOp,
+                  ops::SaveOpProtoMaker,
                   ops::SaveOpVarTypeInference);
 
-REGISTER_OP_CPU_KERNEL(
-    save, ops::SaveOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SaveOpKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SaveOpKernel<paddle::platform::CPUDeviceContext,
-                      paddle::platform::float16>,
-    ops::SaveOpKernel<paddle::platform::CPUDeviceContext,
-                      paddle::platform::bfloat16>,
-    ops::SaveOpKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SaveOpKernel<paddle::platform::CPUDeviceContext, uint8_t>,
-    ops::SaveOpKernel<paddle::platform::CPUDeviceContext, int8_t>,
-    ops::SaveOpKernel<paddle::platform::CPUDeviceContext, int16_t>,
-    ops::SaveOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
+PD_REGISTER_KERNEL(save,
+                   CPU,
+                   ALL_LAYOUT,
+                   ops::SaveKernel,
+                   float,
+                   double,
+                   int,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(save_sr,
+                   CPU,
+                   ALL_LAYOUT,
+                   ops::SaveSelectedRowsKernel,
+                   float,
+                   double,
+                   int,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_REGISTER_KERNEL(save,
+                   GPU,
+                   ALL_LAYOUT,
+                   ops::SaveKernel,
+                   float,
+                   double,
+                   int,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(save_sr,
+                   GPU,
+                   ALL_LAYOUT,
+                   ops::SaveSelectedRowsKernel,
+                   float,
+                   double,
+                   int,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
+#endif

@@ -18,66 +18,18 @@
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/deformable_conv_functor.h"
+#include "paddle/phi/kernels/transpose_kernel.h"
+#include "paddle/utils/optional.h"
 
 namespace phi {
-
-template <typename T>
-HOSTDEVICE T DmcnIm2colBilinear(const T* bottom_data,
-                                const int data_width,
-                                const int height,
-                                const int width,
-                                T h,
-                                T w) {
-  int h_low = floor(h);
-  int w_low = floor(w);
-  int h_high = h_low + 1;
-  int w_high = w_low + 1;
-
-  T lh = h - h_low;
-  T lw = w - w_low;
-  T hh = 1 - lh;
-  T hw = 1 - lw;
-
-  T v1 =
-      (h_low >= 0 && w_low >= 0) ? bottom_data[h_low * data_width + w_low] : 0;
-  T v2 = (h_low >= 0 && w_high <= width - 1)
-             ? bottom_data[h_low * data_width + w_high]
-             : 0;
-  T v3 = (h_high <= height - 1 && w_low >= 0)
-             ? bottom_data[h_high * data_width + w_low]
-             : 0;
-  T v4 = (h_high <= height - 1 && w_high <= width - 1)
-             ? bottom_data[h_high * data_width + w_high]
-             : 0;
-
-  T w1 = hh * hw;
-  T w2 = hh * lw;
-  T w3 = lh * hw;
-  T w4 = lh * lw;
-
-  return w1 * v1 + w2 * v2 + w3 * v3 + w4 * v4;
-}
-
-template <typename T, typename Context>
-void ModulatedDeformableIm2col(const Context& dev_ctx,
-                               const T* data_im,
-                               const T* data_offset,
-                               const T* data_mask,
-                               const std::vector<int64_t>& im_shape,
-                               const std::vector<int64_t>& col_shape,
-                               const std::vector<int64_t>& filter_shape,
-                               const std::vector<int>& paddings,
-                               const std::vector<int>& strides,
-                               const std::vector<int>& dilations,
-                               const int deformable_groups,
-                               T* data_col);
 
 template <typename T, typename Context>
 void DeformableConvKernel(const Context& dev_ctx,
                           const DenseTensor& x,
                           const DenseTensor& offset,
                           const DenseTensor& filter,
-                          const DenseTensor& mask,
+                          const paddle::optional<DenseTensor>& mask,
                           const std::vector<int>& strides,
                           const std::vector<int>& paddings,
                           const std::vector<int>& dilations,
@@ -86,6 +38,11 @@ void DeformableConvKernel(const Context& dev_ctx,
                           int im2col_step,
                           DenseTensor* out) {
   const int batch_size = static_cast<int>(x.dims()[0]);
+
+  int temp_step = std::min(64, batch_size);
+  if (batch_size % temp_step == 0) {
+    im2col_step = temp_step;
+  }
 
   std::vector<int64_t> filter_shape_vec(phi::vectorize(filter.dims()));
   std::vector<int64_t> output_shape_vec(phi::vectorize(out->dims()));
@@ -125,30 +82,36 @@ void DeformableConvKernel(const Context& dev_ctx,
 
   int input_dim = x.numel() / x.dims()[0];
   int input_offset_dim = offset.numel() / offset.dims()[0];
-  int input_mask_dim = mask.numel() / mask.dims()[0];
-
-  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+  int input_mask_dim = mask ? mask->numel() / mask->dims()[0] : 0;
 
   const T* input_ptr = x.data<T>();
   const T* offset_ptr = offset.data<T>();
-  const T* mask_ptr = mask.data<T>();
+  const T* mask_ptr = mask ? mask->data<T>() : nullptr;
   T* col_buffer_ptr = col_buffer.data<T>();
 
+  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+
   for (int i = 0; i < batch_size / im2col_step; ++i) {
-    ModulatedDeformableIm2col(dev_ctx,
-                              input_ptr + i * im2col_step * input_dim,
-                              offset_ptr + i * im2col_step * input_offset_dim,
-                              mask_ptr + i * im2col_step * input_mask_dim,
-                              input_shape_vec,
-                              col_buffer_shape_vec,
-                              filter_shape_vec,
-                              paddings,
-                              strides,
-                              dilations,
-                              deformable_groups,
-                              col_buffer_ptr);
-    DenseTensor output_3d = output_4d.Slice(i, i + 1).Resize(
-        phi::slice_ddim(output_4d.dims(), 1, output_4d.dims().size()));
+    const T* temp_mask_ptr =
+        mask_ptr ? mask_ptr + i * im2col_step * input_mask_dim : nullptr;
+    funcs::ModulatedDeformableIm2col(
+        dev_ctx,
+        input_ptr + i * im2col_step * input_dim,
+        offset_ptr + i * im2col_step * input_offset_dim,
+        temp_mask_ptr,
+        input_shape_vec,
+        col_buffer_shape_vec,
+        filter_shape_vec,
+        paddings,
+        strides,
+        dilations,
+        deformable_groups,
+        col_buffer_ptr);
+    DenseTensor output_3d = output_4d.Slice(i, i + 1).Resize(phi::slice_ddim(
+        output_4d.dims(),
+        1,
+        output_4d.dims().size()));  // group * C/group * (im2step * H * W)
+
     // get the product of pixel and weight
     for (int g = 0; g < groups; ++g) {
       DenseTensor weight_3d_slice = weight_3d.Slice(g, g + 1).Resize(
@@ -156,8 +119,11 @@ void DeformableConvKernel(const Context& dev_ctx,
       DenseTensor col_buffer_3d_slice =
           col_buffer_3d.Slice(g, g + 1).Resize(phi::slice_ddim(
               col_buffer_3d.dims(), 1, col_buffer_3d.dims().size()));
-      DenseTensor output_3d_slice = output_3d.Slice(g, g + 1).Resize(
-          phi::slice_ddim(output_3d.dims(), 1, output_3d.dims().size()));
+      DenseTensor output_3d_slice =
+          output_3d.Slice(g, g + 1).Resize(phi::slice_ddim(
+              output_3d.dims(),
+              1,
+              output_3d.dims().size()));  // C * ((im2col_step)*H*W))
       blas.MatMul(weight_3d_slice,
                   false,
                   col_buffer_3d_slice,
@@ -167,7 +133,29 @@ void DeformableConvKernel(const Context& dev_ctx,
                   T(0.0));
     }
   }
-  out->ShareDataWith(output_buffer).Resize(phi::make_ddim(output_shape_vec));
+
+  //  swap axis to get the right result when im2col_step is greater than 1
+  if (im2col_step > 1) {
+    std::vector<int> axis(4);
+    axis[0] = 0;
+    axis[1] = 2;
+    axis[2] = 1;
+    axis[3] = 3;
+
+    DenseTensor real_output_buffer = phi::Transpose<T, Context>(
+        dev_ctx,
+        output_4d.Resize(
+            phi::make_ddim({batch_size / im2col_step,
+                            output_shape_vec[1],
+                            im2col_step,
+                            output_shape_vec[2] * output_shape_vec[3]})),
+        axis);
+
+    out->ShareDataWith(real_output_buffer)
+        .Resize(phi::make_ddim(output_shape_vec));
+  } else {
+    out->ShareDataWith(output_buffer).Resize(phi::make_ddim(output_shape_vec));
+  }
 }
 
 }  // namespace phi

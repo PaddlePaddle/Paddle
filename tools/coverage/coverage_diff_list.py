@@ -1,14 +1,13 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 # Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -24,8 +23,8 @@ import sys
 def filter_by(list_file, max_rate):
     """
     Args:
-        list_file (str): File of list.  
-        max_rate (float): Max rate.  
+        list_file (str): File of list.
+        max_rate (float): Max rate.
 
     Returns:
         tuple: File and coverage rate.
@@ -41,7 +40,7 @@ def filter_by(list_file, max_rate):
             name = split[0].strip()
 
             if name.startswith('/paddle/'):
-                name = name[len('/paddle/'):]
+                name = name[len('/paddle/') :]
 
             # rate
 
@@ -59,7 +58,7 @@ def filter_by(list_file, max_rate):
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
-        exit()
+        sys.exit()
 
     list_file = sys.argv[1]
     max_rate = float(sys.argv[2])

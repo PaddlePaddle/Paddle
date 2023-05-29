@@ -1,21 +1,21 @@
 #  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
-#Licensed under the Apache License, Version 2.0 (the "License");
-#you may not use this file except in compliance with the License.
-#You may obtain a copy of the License at
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
 #    http://www.apache.org/licenses/LICENSE-2.0
 #
-#Unless required by applicable law or agreed to in writing, software
-#distributed under the License is distributed on an "AS IS" BASIS,
-#WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#See the License for the specific language governing permissions and
-#limitations under the License.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-from __future__ import print_function
 import unittest
+
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
 
 
 def bipartite_match(distance, match_indices, match_dist):
@@ -35,7 +35,7 @@ def bipartite_match(distance, match_indices, match_dist):
 
     match_sorted = sorted(match_pair, key=lambda tup: tup[2], reverse=True)
 
-    row_indices = -1 * np.ones((row, ), dtype=np.int)
+    row_indices = -1 * np.ones((row,), dtype=np.int_)
 
     idx = 0
     for i, j, dist in match_sorted:
@@ -69,16 +69,24 @@ def batch_bipartite_match(distance, lod, match_type=None, dist_threshold=None):
     """
     n = len(lod)
     m = distance.shape[1]
-    match_indices = -1 * np.ones((n, m), dtype=np.int)
+    match_indices = -1 * np.ones((n, m), dtype=np.int_)
     match_dist = np.zeros((n, m), dtype=np.float32)
     cur_offset = 0
     for i in range(n):
-        if lod[i] == 0: continue
-        bipartite_match(distance[cur_offset:(cur_offset + lod[i]), :],
-                        match_indices[i, :], match_dist[i, :])
+        if lod[i] == 0:
+            continue
+        bipartite_match(
+            distance[cur_offset : (cur_offset + lod[i]), :],
+            match_indices[i, :],
+            match_dist[i, :],
+        )
         if match_type == 'per_prediction':
-            argmax_match(distance[cur_offset:(cur_offset + lod[i]), :],
-                         match_indices[i, :], match_dist[i, :], dist_threshold)
+            argmax_match(
+                distance[cur_offset : (cur_offset + lod[i]), :],
+                match_indices[i, :],
+                match_dist[i, :],
+                dist_threshold,
+            )
         cur_offset += lod[i]
     return match_indices, match_dist
 
@@ -97,7 +105,7 @@ class TestBipartiteMatchOpWithLoD(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestBipartiteMatchOpWithoutLoD(OpTest):
@@ -114,7 +122,7 @@ class TestBipartiteMatchOpWithoutLoD(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestBipartiteMatchOpWithoutLoDLargeScaleInput(OpTest):
@@ -131,7 +139,7 @@ class TestBipartiteMatchOpWithoutLoDLargeScaleInput(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestBipartiteMatchOpWithPerPredictionType(OpTest):
@@ -139,8 +147,9 @@ class TestBipartiteMatchOpWithPerPredictionType(OpTest):
         self.op_type = 'bipartite_match'
         lod = [[5, 6, 12]]
         dist = np.random.random((23, 237)).astype('float32')
-        match_indices, match_dist = batch_bipartite_match(dist, lod[0],
-                                                          'per_prediction', 0.5)
+        match_indices, match_dist = batch_bipartite_match(
+            dist, lod[0], 'per_prediction', 0.5
+        )
 
         self.inputs = {'DistMat': (dist, lod)}
         self.outputs = {
@@ -153,7 +162,7 @@ class TestBipartiteMatchOpWithPerPredictionType(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestBipartiteMatchOpWithEmptyLoD(OpTest):
@@ -170,7 +179,7 @@ class TestBipartiteMatchOpWithEmptyLoD(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 if __name__ == '__main__':

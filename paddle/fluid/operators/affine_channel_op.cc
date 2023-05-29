@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <string>
 #include <unordered_map>
+
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -69,39 +70,45 @@ class AffineChannelOp : public framework::OperatorWithKernel {
     auto x_dims = ctx->GetInputDim("X");
     auto scale_dims = ctx->GetInputDim("Scale");
     auto b_dims = ctx->GetInputDim("Bias");
-    const framework::DataLayout data_layout = framework::StringToDataLayout(
-        ctx->Attrs().Get<std::string>("data_layout"));
+    const phi::DataLayout data_layout =
+        phi::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
 
-    const int64_t C = (data_layout == framework::DataLayout::kNCHW
-                           ? x_dims[1]
-                           : x_dims[x_dims.size() - 1]);
+    const int64_t C =
+        (data_layout == phi::DataLayout::kNCHW ? x_dims[1]
+                                               : x_dims[x_dims.size() - 1]);
 
     PADDLE_ENFORCE_EQ(
-        scale_dims.size(), 1UL,
+        scale_dims.size(),
+        1UL,
         platform::errors::InvalidArgument(
             "The dimensions of Input(Scale) must be 1,"
             "But received the dimensions of Input(Scale) is [%d] ",
             scale_dims.size()));
-    PADDLE_ENFORCE_EQ(b_dims.size(), 1UL,
+    PADDLE_ENFORCE_EQ(b_dims.size(),
+                      1UL,
                       platform::errors::InvalidArgument(
                           "The dimensions of Input(Bias) must be 1,"
                           "But received the dimensions of Input(Bias) is [%d] ",
                           scale_dims.size()));
     if (ctx->IsRuntime() || scale_dims[0] > 0) {
       PADDLE_ENFORCE_EQ(
-          scale_dims[0], C,
+          scale_dims[0],
+          C,
           platform::errors::InvalidArgument(
               "The first dimension value of Input(Scale) must be [%d],"
               "But received [%d].",
-              C, scale_dims[0]));
+              C,
+              scale_dims[0]));
     }
     if (ctx->IsRuntime() || b_dims[0] > 0) {
       PADDLE_ENFORCE_EQ(
-          b_dims[0], C,
+          b_dims[0],
+          C,
           platform::errors::InvalidArgument(
               "The first dimension value of Input(Bias) must be [%d],"
               "But received [%d].",
-              C, b_dims[0]));
+              C,
+              b_dims[0]));
     }
 
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
@@ -113,18 +120,22 @@ class AffineChannelOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "AffineChannelGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   framework::GradVarName("Out"),
+                   "AffineChannelGrad");
     if (ctx->HasOutput(framework::GradVarName("X"))) {
-      OP_INOUT_CHECK(ctx->HasInput("Scale"), "Input", "Scale",
-                     "AffineChannelGrad");
+      OP_INOUT_CHECK(
+          ctx->HasInput("Scale"), "Input", "Scale", "AffineChannelGrad");
       ctx->SetOutputDim(framework::GradVarName("X"),
                         ctx->GetInputDim(framework::GradVarName("Out")));
     }
     if (ctx->HasOutput(framework::GradVarName("Scale"))) {
       // Scale@GRAD and Bias@GRAD must exist at the same time.
-      OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Bias")), "Output",
-                     framework::GradVarName("Bias"), "AffineChannelGrad");
+      OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Bias")),
+                     "Output",
+                     framework::GradVarName("Bias"),
+                     "AffineChannelGrad");
       OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "AffineChannelGrad");
       ctx->SetOutputDim(framework::GradVarName("Scale"),
                         ctx->GetInputDim("Scale"));
@@ -134,11 +145,11 @@ class AffineChannelOpGrad : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("Out")),
+                          ctx.GetPlace());
   }
 };
 
@@ -173,24 +184,23 @@ template <typename T>
 using ConstEigenVectorArrayMap =
     Eigen::Map<const Eigen::Array<T, Eigen::Dynamic, 1>>;
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class AffineChannelKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::Tensor>("X");
-    auto* scale = ctx.Input<framework::Tensor>("Scale");
-    auto* bias = ctx.Input<framework::Tensor>("Bias");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* scale = ctx.Input<phi::DenseTensor>("Scale");
+    auto* bias = ctx.Input<phi::DenseTensor>("Bias");
 
-    auto* y = ctx.Output<framework::Tensor>("Out");
+    auto* y = ctx.Output<phi::DenseTensor>("Out");
     y->mutable_data<T>(ctx.GetPlace());
 
-    const framework::DataLayout layout =
-        framework::StringToDataLayout(ctx.Attr<std::string>("data_layout"));
+    const phi::DataLayout layout =
+        phi::StringToDataLayout(ctx.Attr<std::string>("data_layout"));
 
     auto dims = x->dims();
     int N = dims[0];
-    int C = layout == framework::DataLayout::kNCHW ? dims[1]
-                                                   : dims[dims.size() - 1];
+    int C = layout == phi::DataLayout::kNCHW ? dims[1] : dims[dims.size() - 1];
     int HxW = x->numel() / N / C;
 
     auto* scale_d = scale->data<T>();
@@ -200,7 +210,7 @@ class AffineChannelKernel : public framework::OpKernel<T> {
 
     auto* x_d = x->data<T>();
     auto* y_d = y->data<T>();
-    if (layout == framework::DataLayout::kNCHW) {
+    if (layout == phi::DataLayout::kNCHW) {
       int stride = C * HxW;
       for (int i = 0; i < N; i++) {
         ConstEigenArrayMap<T> x_e(x_d, HxW, C);
@@ -218,26 +228,25 @@ class AffineChannelKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class AffineChannelGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<framework::Tensor>("X");
-    auto* scale = ctx.Input<framework::Tensor>("Scale");
-    auto* dy = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* scale = ctx.Input<phi::DenseTensor>("Scale");
+    auto* dy = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
 
-    auto* dx = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto* dscale =
-        ctx.Output<framework::Tensor>(framework::GradVarName("Scale"));
-    auto* dbias = ctx.Output<framework::Tensor>(framework::GradVarName("Bias"));
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Scale"));
+    auto* dbias = ctx.Output<phi::DenseTensor>(framework::GradVarName("Bias"));
 
-    const framework::DataLayout layout =
-        framework::StringToDataLayout(ctx.Attr<std::string>("data_layout"));
+    const phi::DataLayout layout =
+        phi::StringToDataLayout(ctx.Attr<std::string>("data_layout"));
 
     auto dims = x->dims();
     int N = dims[0];
-    int C = layout == framework::DataLayout::kNCHW ? dims[1]
-                                                   : dims[dims.size() - 1];
+    int C = layout == phi::DataLayout::kNCHW ? dims[1] : dims[dims.size() - 1];
     int HxW = x->numel() / N / C;
 
     auto* dy_d = dy->data<T>();
@@ -250,7 +259,7 @@ class AffineChannelGradKernel : public framework::OpKernel<T> {
     EigenVectorArrayMap<T> dscale_e(dscale_d, C);
     EigenVectorArrayMap<T> dbias_e(dbias_d, C);
 
-    if (layout == framework::DataLayout::kNCHW) {
+    if (layout == phi::DataLayout::kNCHW) {
       // compute dscale and dbias
       int stride = C * HxW;
       auto* original_dy_d = dy_d;
@@ -331,19 +340,25 @@ DECLARE_INPLACE_OP_INFERER(AffineChannelGradInplaceInferer,
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using CPU = paddle::platform::CPUDeviceContext;
+using CPU = phi::CPUContext;
 
-REGISTER_OPERATOR(affine_channel, ops::AffineChannelOp,
+REGISTER_OPERATOR(affine_channel,
+                  ops::AffineChannelOp,
                   ops::AffineChannelOpMaker,
                   ops::AffineChannelGradMaker<paddle::framework::OpDesc>,
                   ops::AffineChannelGradMaker<paddle::imperative::OpBase>,
                   ops::AffineChannelInplaceInferer);
-REGISTER_OPERATOR(affine_channel_grad, ops::AffineChannelOpGrad,
+REGISTER_OPERATOR(affine_channel_grad,
+                  ops::AffineChannelOpGrad,
                   ops::AffineChannelNoNeedBufferVarsInference,
                   ops::AffineChannelGradInplaceInferer);
 
-REGISTER_OP_CPU_KERNEL(affine_channel, ops::AffineChannelKernel<CPU, float>,
-                       ops::AffineChannelKernel<CPU, double>);
-REGISTER_OP_CPU_KERNEL(affine_channel_grad,
-                       ops::AffineChannelGradKernel<CPU, float>,
-                       ops::AffineChannelGradKernel<CPU, double>);
+PD_REGISTER_STRUCT_KERNEL(
+    affine_channel, CPU, ALL_LAYOUT, ops::AffineChannelKernel, float, double) {}
+
+PD_REGISTER_STRUCT_KERNEL(affine_channel_grad,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::AffineChannelGradKernel,
+                          float,
+                          double) {}

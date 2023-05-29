@@ -47,7 +47,7 @@ AttentionLSTMFusePass::AttentionLSTMFusePass() {
       .IsTensor()
       .IsOptional()
       .End()
-      .AddInput("ShapeTensorList")  // vector<Tensor<int>>
+      .AddInput("ShapeTensorList")  // vector<phi::DenseTensor<int>>
       .IsOptional()
       .End()
       .AddOutput("Out")
@@ -107,11 +107,7 @@ void AttentionLSTMFusePass::FindWhileOp(Graph* graph) const {
   gpd.mutable_pattern()->NewNode(
       [&](Node* n) { return fused_external_ops.count(n->id()); }, "while");
 
-  if (!graph->Has(kGraphvizMarkedNodeAttr)) {
-    graph->Set(kGraphvizMarkedNodeAttr, new GraphVizPass::marked_nodes_t);
-  }
-  auto& marked_nodes =
-      graph->Get<GraphVizPass::marked_nodes_t>(kGraphvizMarkedNodeAttr);
+  auto& marked_nodes = GetMarkedNodes(graph);
 
   auto handle = [&](const GraphPatternDetector::subgraph_t& subgraph,
                     Graph* g) {
@@ -183,28 +179,34 @@ void AttentionLSTMFusePass::FindWhileOp(Graph* graph) const {
   CHECK_P4(x0, x1, x2, x3);          \
   CHECK_P1(x4);
 
-void PrepareLSTMWeight(const LoDTensor& W_forget_w0,
-                       const LoDTensor& W_forget_w1,
-                       const LoDTensor& W_input_w0, const LoDTensor& W_input_w1,
-                       const LoDTensor& W_output_w0,
-                       const LoDTensor& W_output_w1, const LoDTensor& W_cell_w0,
-                       const LoDTensor& W_cell_w1, LoDTensor* out);
+void PrepareLSTMWeight(const phi::DenseTensor& W_forget_w0,
+                       const phi::DenseTensor& W_forget_w1,
+                       const phi::DenseTensor& W_input_w0,
+                       const phi::DenseTensor& W_input_w1,
+                       const phi::DenseTensor& W_output_w0,
+                       const phi::DenseTensor& W_output_w1,
+                       const phi::DenseTensor& W_cell_w0,
+                       const phi::DenseTensor& W_cell_w1,
+                       phi::DenseTensor* out);
 
-void PrepareLSTMBias(const LoDTensor& B_forget, const LoDTensor& B_input,
-                     const LoDTensor& B_output, const LoDTensor& B_cell,
-                     LoDTensor* out);
+void PrepareLSTMBias(const phi::DenseTensor& B_forget,
+                     const phi::DenseTensor& B_input,
+                     const phi::DenseTensor& B_output,
+                     const phi::DenseTensor& B_cell,
+                     phi::DenseTensor* out);
 
 void PrepareParameters(Graph* graph, const Param& param, ir::Node* lstm_op) {
   // Check parameters
-  PADDLE_ENFORCE_EQ(graph->Has(kParamScopeAttr), true,
+  PADDLE_ENFORCE_EQ(graph->Has(kParamScopeAttr),
+                    true,
                     platform::errors::InvalidArgument(
                         "Graph have no attribute: kParamScopeAttr."));
   auto& scope = graph->Get<Scope>(kParamScopeAttr);
 
   // Create new parameters.
   // AddInput
-  scope.Var(param.LSTMWeight)->GetMutable<LoDTensor>();
-  scope.Var(param.LSTMBias)->GetMutable<LoDTensor>();
+  scope.Var(param.LSTMWeight)->GetMutable<phi::DenseTensor>();
+  scope.Var(param.LSTMBias)->GetMutable<phi::DenseTensor>();
 // AddOutput
 #define IR_NODE(x)                                 \
   VarDesc key_##x(param.x);                        \
@@ -220,20 +222,20 @@ void PrepareParameters(Graph* graph, const Param& param, ir::Node* lstm_op) {
   IR_NODE(LSTMOUT);
 #undef IR_NODE
 
-#define GATE_W(name__)                                               \
-  auto* W_##name__##_w0 = scope.FindVar(#name__ ".w_0");             \
-  auto* W_##name__##_w1 = scope.FindVar(#name__ ".w_1");             \
-  auto* W_##name__##_b0 = scope.FindVar(#name__ ".b_0");             \
-  CHECK_P3(W_##name__##_w0, W_##name__##_w1, W_##name__##_b0);       \
-  VLOG(4) << #name__ "_w0"                                           \
-          << " shape: " << W_##name__##_w0->Get<LoDTensor>().dims(); \
-  VLOG(4) << #name__ "_w1"                                           \
-          << " shape: " << W_##name__##_w1->Get<LoDTensor>().dims(); \
-  VLOG(4) << #name__ "_b0"                                           \
-          << " shape: " << W_##name__##_b0->Get<LoDTensor>().dims(); \
-  auto& W_##name__##_w0_t = W_##name__##_w0->Get<LoDTensor>();       \
-  auto& W_##name__##_w1_t = W_##name__##_w1->Get<LoDTensor>();       \
-  auto& W_##name__##_b0_t = W_##name__##_b0->Get<LoDTensor>();
+#define GATE_W(name__)                                                      \
+  auto* W_##name__##_w0 = scope.FindVar(#name__ ".w_0");                    \
+  auto* W_##name__##_w1 = scope.FindVar(#name__ ".w_1");                    \
+  auto* W_##name__##_b0 = scope.FindVar(#name__ ".b_0");                    \
+  CHECK_P3(W_##name__##_w0, W_##name__##_w1, W_##name__##_b0);              \
+  VLOG(4) << #name__ "_w0"                                                  \
+          << " shape: " << W_##name__##_w0->Get<phi::DenseTensor>().dims(); \
+  VLOG(4) << #name__ "_w1"                                                  \
+          << " shape: " << W_##name__##_w1->Get<phi::DenseTensor>().dims(); \
+  VLOG(4) << #name__ "_b0"                                                  \
+          << " shape: " << W_##name__##_b0->Get<phi::DenseTensor>().dims(); \
+  auto& W_##name__##_w0_t = W_##name__##_w0->Get<phi::DenseTensor>();       \
+  auto& W_##name__##_w1_t = W_##name__##_w1->Get<phi::DenseTensor>();       \
+  auto& W_##name__##_b0_t = W_##name__##_b0->Get<phi::DenseTensor>();
 
   GATE_W(forget);
   GATE_W(input);
@@ -245,54 +247,67 @@ void PrepareParameters(Graph* graph, const Param& param, ir::Node* lstm_op) {
   auto* attention_fc_b = scope.FindVar("attention_fc.b_0");
   auto* attention_output_w = scope.FindVar("attention_output.w_0");
   auto* attention_output_b = scope.FindVar("attention_output.b_0");
-  CHECK_P4(attention_fc_w, attention_fc_b, attention_output_w,
-           attention_output_b);
+  CHECK_P4(
+      attention_fc_w, attention_fc_b, attention_output_w, attention_output_b);
 
   auto* lstm_weight = scope.Var(param.LSTMWeight);
-  auto* lstm_weight_t = lstm_weight->GetMutable<LoDTensor>();
+  auto* lstm_weight_t = lstm_weight->GetMutable<phi::DenseTensor>();
   auto* lstm_bias = scope.Var(param.LSTMBias);
-  auto* lstm_bias_t = lstm_bias->GetMutable<LoDTensor>();
+  auto* lstm_bias_t = lstm_bias->GetMutable<phi::DenseTensor>();
 
   // reshape attention_bias
   auto* attention_bias_t =
-      scope.FindVar(param.AttentionBias)->GetMutable<LoDTensor>();
-  PADDLE_ENFORCE_EQ(attention_bias_t->dims().size(), 1,
-                    platform::errors::InvalidArgument(
-                        "Tensor attention bias dimension size(%d) must be 1.",
-                        attention_bias_t->dims().size()));
+      scope.FindVar(param.AttentionBias)->GetMutable<phi::DenseTensor>();
+  PADDLE_ENFORCE_EQ(
+      attention_bias_t->dims().size(),
+      1,
+      platform::errors::InvalidArgument(
+          "phi::DenseTensor attention bias dimension size(%d) must be 1.",
+          attention_bias_t->dims().size()));
   attention_bias_t->Resize(phi::make_ddim({1, attention_bias_t->dims()[0]}));
 
   auto* attention_scalar_bias_t =
-      scope.FindVar(param.AttentionScalarBias)->GetMutable<LoDTensor>();
+      scope.FindVar(param.AttentionScalarBias)->GetMutable<phi::DenseTensor>();
   attention_scalar_bias_t->Resize(
       phi::make_ddim({1, attention_scalar_bias_t->dims()[0]}));
 
-  PrepareLSTMWeight(W_forget_w0_t, W_forget_w1_t, W_input_w0_t, W_input_w1_t,
-                    W_output_w0_t, W_output_w1_t, W_c_w0_t, W_c_w1_t,
+  PrepareLSTMWeight(W_forget_w0_t,
+                    W_forget_w1_t,
+                    W_input_w0_t,
+                    W_input_w1_t,
+                    W_output_w0_t,
+                    W_output_w1_t,
+                    W_c_w0_t,
+                    W_c_w1_t,
                     lstm_weight_t);
-  PrepareLSTMBias(W_forget_b0_t, W_input_b0_t, W_output_b0_t, W_c_b0_t,
-                  lstm_bias_t);
+  PrepareLSTMBias(
+      W_forget_b0_t, W_input_b0_t, W_output_b0_t, W_c_b0_t, lstm_bias_t);
 }
 
 // Prepare parameters
-void PrepareLSTMWeight(const LoDTensor& W_forget_w0,
-                       const LoDTensor& W_forget_w1,
-                       const LoDTensor& W_input_w0, const LoDTensor& W_input_w1,
-                       const LoDTensor& W_output_w0,
-                       const LoDTensor& W_output_w1, const LoDTensor& W_cell_w0,
-                       const LoDTensor& W_cell_w1, LoDTensor* out) {
+void PrepareLSTMWeight(const phi::DenseTensor& W_forget_w0,
+                       const phi::DenseTensor& W_forget_w1,
+                       const phi::DenseTensor& W_input_w0,
+                       const phi::DenseTensor& W_input_w1,
+                       const phi::DenseTensor& W_output_w0,
+                       const phi::DenseTensor& W_output_w1,
+                       const phi::DenseTensor& W_cell_w0,
+                       const phi::DenseTensor& W_cell_w1,
+                       phi::DenseTensor* out) {
   int D = W_forget_w0.dims()[0];
   int M = W_forget_w1.dims()[0];
   out->Resize(phi::make_ddim({D + M, 4 * D}));
   VLOG(3) << "LSTMWeight resized to " << out->dims();
 
   float* out_data = out->mutable_data<float>(platform::CPUPlace());
-  std::array<const float*, 4> tensors{
-      W_forget_w0.data<float>(), W_input_w0.data<float>(),
-      W_output_w0.data<float>(), W_cell_w0.data<float>()};
-  std::array<const float*, 4> tensors1{
-      W_forget_w1.data<float>(), W_input_w1.data<float>(),
-      W_output_w1.data<float>(), W_cell_w1.data<float>()};
+  std::array<const float*, 4> tensors{W_forget_w0.data<float>(),
+                                      W_input_w0.data<float>(),
+                                      W_output_w0.data<float>(),
+                                      W_cell_w0.data<float>()};
+  std::array<const float*, 4> tensors1{W_forget_w1.data<float>(),
+                                       W_input_w1.data<float>(),
+                                       W_output_w1.data<float>(),
+                                       W_cell_w1.data<float>()};
 
   for (int row = 0; row < D; row++) {
     for (int col = 0; col < 4; col++) {
@@ -311,17 +326,22 @@ void PrepareLSTMWeight(const LoDTensor& W_forget_w0,
   }
 }
 
-void PrepareLSTMBias(const LoDTensor& B_forget, const LoDTensor& B_input,
-                     const LoDTensor& B_output, const LoDTensor& B_cell,
-                     LoDTensor* out) {
-  std::array<const float*, 4> tensors{
-      B_forget.data<float>(), B_input.data<float>(), B_output.data<float>(),
-      B_cell.data<float>()};
+void PrepareLSTMBias(const phi::DenseTensor& B_forget,
+                     const phi::DenseTensor& B_input,
+                     const phi::DenseTensor& B_output,
+                     const phi::DenseTensor& B_cell,
+                     phi::DenseTensor* out) {
+  std::array<const float*, 4> tensors{B_forget.data<float>(),
+                                      B_input.data<float>(),
+                                      B_output.data<float>(),
+                                      B_cell.data<float>()};
 
-  PADDLE_ENFORCE_EQ(B_forget.dims().size(), 1,
-                    platform::errors::InvalidArgument(
-                        "Tensor B forget dimension size(%d) must be 1.",
-                        B_forget.dims().size()));
+  PADDLE_ENFORCE_EQ(
+      B_forget.dims().size(),
+      1,
+      platform::errors::InvalidArgument(
+          "phi::DenseTensor B forget dimension size(%d) must be 1.",
+          B_forget.dims().size()));
   int D = B_forget.dims()[0];
   out->Resize(phi::make_ddim({1, 4 * D}));
   auto* out_data = out->mutable_data<float>(platform::CPUPlace());
@@ -338,8 +358,11 @@ void AttentionLSTMFusePass::ApplyImpl(ir::Graph* graph) const {
   // Use the following variables to tell whether this model is RNN1.
   // This fuse can only works on the RNN1 model.
   std::unordered_set<std::string> specified_vars({"data_lod_attention",
-                                                  "cell_init", "hidden_init",
-                                                  "data", "week", "minute"});
+                                                  "cell_init",
+                                                  "hidden_init",
+                                                  "data",
+                                                  "week",
+                                                  "minute"});
   size_t count = 0;
   for (auto* node : graph->Nodes()) {
     if (node->IsVar() && specified_vars.count(node->Name())) {

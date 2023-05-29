@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/distributed/fleet_executor/message_bus.h"
+
 #include <chrono>
 #include <memory>
 #include <set>
@@ -19,17 +21,19 @@
 
 #include "paddle/fluid/distributed/fleet_executor/carrier.h"
 #include "paddle/fluid/distributed/fleet_executor/global.h"
-#include "paddle/fluid/distributed/fleet_executor/message_bus.h"
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
 
 namespace paddle {
 namespace distributed {
 
 void MessageBus::Init(
-    int64_t rank, const std::unordered_map<int64_t, std::string>& rank_to_addr,
+    int64_t rank,
+    const std::unordered_map<int64_t, std::string>& rank_to_addr,
     const std::string& addr) {
-  PADDLE_ENFORCE_EQ(is_init_, false, platform::errors::AlreadyExists(
-                                         "MessageBus is already init."));
+  PADDLE_ENFORCE_EQ(
+      is_init_,
+      false,
+      platform::errors::AlreadyExists("MessageBus is already init."));
   rank_ = rank;
   is_init_ = true;
   rank_to_addr_ = rank_to_addr;
@@ -37,16 +41,18 @@ void MessageBus::Init(
 
   if (addr_ != "") {
     const auto& addr = GetAddr(rank_);
-    PADDLE_ENFORCE_EQ(addr, addr_,
+    PADDLE_ENFORCE_EQ(addr,
+                      addr_,
                       platform::errors::Fatal(
                           "The current rank's addr is %s, while the "
                           "message bus's addr is %s, which are different. "
                           "Init error.",
-                          addr, addr_));
+                          addr,
+                          addr_));
   }
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_ASCEND_CL)
+    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_CUSTOM_DEVICE)
   // NOTE: To make the brpc is compatible with collective,
   // need release the handler holding the ip address.
   if (addr_ != "") {
@@ -67,7 +73,7 @@ bool MessageBus::IsInit() const { return is_init_; }
 
 MessageBus::~MessageBus() {
   VLOG(3) << "Message bus releases resource.";
-#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
+#if defined(PADDLE_WITH_DISTRIBUTE) && !defined(PADDLE_WITH_PSLIB)
   server_.Stop(1000);
   server_.Join();
 #endif
@@ -75,7 +81,8 @@ MessageBus::~MessageBus() {
 
 const std::string& MessageBus::GetAddr(int64_t rank) const {
   PADDLE_ENFORCE_NE(
-      rank_to_addr_.find(rank), rank_to_addr_.end(),
+      rank_to_addr_.find(rank),
+      rank_to_addr_.end(),
       platform::errors::NotFound("Cannot find addr rank id %lld.", rank));
   return rank_to_addr_.at(rank);
 }
@@ -83,10 +90,11 @@ const std::string& MessageBus::GetAddr(int64_t rank) const {
 bool MessageBus::Send(int64_t dst_rank,
                       const InterceptorMessage& interceptor_message) {
   PADDLE_ENFORCE_EQ(
-      IsInit(), true,
+      IsInit(),
+      true,
       platform::errors::PreconditionNotMet(
           "Using message bus since it has not been initialized."));
-#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
+#if defined(PADDLE_WITH_DISTRIBUTE) && !defined(PADDLE_WITH_PSLIB)
   int retry_time = 0;  // message bus will retry sending for 10 times
   while (retry_time < 10) {
     ++retry_time;
@@ -103,8 +111,7 @@ bool MessageBus::Send(int64_t dst_rank,
 #else
   PADDLE_THROW(platform::errors::Unavailable(
       "Fleet executor does not support sending message between different "
-      "ranks when Paddle is compiled with npu or "
-      "isn't compiled with distributed for now."));
+      "ranks when Paddle isn't compiled with distributed for now."));
 #endif
   return true;
 }
@@ -171,10 +178,11 @@ void MessageBus::ListenPort() {
     LOG(INFO) << "No need listen to port since training on single card.";
     return;
   }
-#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
+#if defined(PADDLE_WITH_DISTRIBUTE) && !defined(PADDLE_WITH_PSLIB)
   // function keep listen the port and handle the message
   PADDLE_ENFORCE_EQ(
-      server_.AddService(&message_service_, brpc::SERVER_DOESNT_OWN_SERVICE), 0,
+      server_.AddService(&message_service_, brpc::SERVER_DOESNT_OWN_SERVICE),
+      0,
       platform::errors::Unavailable("Message bus: init brpc service error."));
 
   // start the server
@@ -193,14 +201,13 @@ void MessageBus::ListenPort() {
   }
   LOG(INFO) << "Message bus's listen port thread starts successful.";
 #else
-  LOG(WARNING)
-      << "Fleet executor's ListenPort() is a fake function when Paddle is "
-         "compiled with npu or Paddle isn't compiled "
-         "with distributed for now.";
+  LOG(WARNING) << "Fleet executor's ListenPort() is a fake function when "
+                  "Paddle isn't compiled "
+                  "with distributed for now.";
 #endif
 }
 
-#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
+#if defined(PADDLE_WITH_DISTRIBUTE) && !defined(PADDLE_WITH_PSLIB)
 bool MessageBus::SendInterRank(int64_t dst_rank,
                                const InterceptorMessage& interceptor_message) {
   const auto& dst_addr = GetAddr(dst_rank);
@@ -213,7 +220,8 @@ bool MessageBus::SendInterRank(int64_t dst_rank,
   options.timeout_ms = 1000;
   options.max_retry = 5;
   PADDLE_ENFORCE_EQ(
-      channel.Init(dst_addr_for_brpc, &options), 0,
+      channel.Init(dst_addr_for_brpc, &options),
+      0,
       platform::errors::Unavailable("Message bus: init brpc channel error."));
   MessageService_Stub stub(&channel);
   InterceptorResponse response;
@@ -222,8 +230,8 @@ bool MessageBus::SendInterRank(int64_t dst_rank,
   if (interceptor_message.ctrl_message()) {
     stub.IncreaseBarrierCount(&ctrl, &interceptor_message, &response, NULL);
   } else {
-    stub.ReceiveInterceptorMessage(&ctrl, &interceptor_message, &response,
-                                   NULL);
+    stub.ReceiveInterceptorMessage(
+        &ctrl, &interceptor_message, &response, NULL);
   }
   if (!ctrl.Failed()) {
     if (response.rst()) {

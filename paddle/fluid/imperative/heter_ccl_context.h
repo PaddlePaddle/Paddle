@@ -24,11 +24,6 @@
 #ifdef PADDLE_WITH_XPU_BKCL
 #include "paddle/fluid/imperative/bkcl_context.h"
 #endif
-
-#ifdef PADDLE_WITH_ASCEND_CL
-#include "paddle/fluid/imperative/hccl_context.h"
-#endif
-
 #include "paddle/fluid/imperative/gloo_context.h"
 #include "paddle/fluid/imperative/parallel_context.h"
 
@@ -53,7 +48,8 @@ class HeterParallelContext : public ParallelContext {
   void InitWithRingID(int ring_id) override;
 
   void AllReduceByStream(const framework::Variable& src,
-                         framework::Variable* dst, int ring_id,
+                         framework::Variable* dst,
+                         int ring_id,
                          bool use_calc_stream) override;
 
   void Broadcast(framework::Variable* src, int ring_id) override;

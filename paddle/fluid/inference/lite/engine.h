@@ -22,10 +22,7 @@
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wall"
-#include "lite/api/cxx_api.h"
-#include "lite/api/paddle_api.h"
-#include "lite/api/paddle_place.h"
-#include "lite/api/paddle_use_passes.h"
+#include <paddle_api.h>  // NOLINT
 #pragma GCC diagnostic pop
 
 namespace paddle {
@@ -50,6 +47,7 @@ struct EngineConfig {
   std::string autotune_file = "";
   std::string precision = "int16";
   bool adaptive_seqlen = false;
+  bool enable_multi_stream = false;
 
   // for x86 or arm
   int cpu_math_library_num_threads{1};
@@ -65,6 +63,12 @@ struct EngineConfig {
   std::string nnadapter_subgraph_partition_config_path;
   std::vector<std::string> nnadapter_model_cache_token;
   std::vector<std::vector<char>> nnadapter_model_cache_buffer;
+
+  bool use_opencl{};
+  std::string opencl_bin_path = "./";
+  std::string opencl_bin_name = "lite_opencl_kernel.bin";
+  paddle::lite_api::CLTuneMode opencl_tune_mode{};
+  paddle::lite_api::CLPrecisionType opencl_precision_type{};
 };
 
 class EngineManager {

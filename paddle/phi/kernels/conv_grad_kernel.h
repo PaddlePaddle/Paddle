@@ -20,54 +20,79 @@ namespace phi {
 
 template <typename T, typename Context>
 void ConvGradKernel(const Context& dev_ctx,
-                    const DenseTensor& out_grad,
                     const DenseTensor& input,
                     const DenseTensor& filter,
+                    const DenseTensor& out_grad,
                     const std::vector<int>& strides,
                     const std::vector<int>& paddings,
-                    const std::string& paddding_algorithm,
-                    int groups,
+                    const std::string& padding_algorithm,
                     const std::vector<int>& dilations,
+                    int groups,
                     const std::string& data_format,
-                    bool use_addto,
-                    int workspace_size_MB,
-                    bool exhaustive_search,
                     DenseTensor* input_grad,
                     DenseTensor* filter_grad);
 
 template <typename T, typename Context>
 void Conv3DGradKernel(const Context& dev_ctx,
-                      const DenseTensor& out_grad,
                       const DenseTensor& input,
                       const DenseTensor& filter,
+                      const DenseTensor& out_grad,
                       const std::vector<int>& strides,
                       const std::vector<int>& paddings,
-                      const std::string& paddding_algorithm,
+                      const std::string& padding_algorithm,
                       int groups,
                       const std::vector<int>& dilations,
                       const std::string& data_format,
-                      bool use_addto,
-                      int workspace_size_MB,
-                      bool exhaustive_search,
                       DenseTensor* input_grad,
                       DenseTensor* filter_grad);
 
 template <typename T, typename Context>
 void DepthwiseConvGradKernel(const Context& dev_ctx,
-                             const DenseTensor& out_grad,
                              const DenseTensor& input,
                              const DenseTensor& filter,
+                             const DenseTensor& out_grad,
                              const std::vector<int>& strides,
                              const std::vector<int>& paddings,
-                             const std::string& paddding_algorithm,
+                             const std::string& padding_algorithm,
                              int groups,
                              const std::vector<int>& dilations,
                              const std::string& data_format,
-                             bool use_addto,
-                             int workspace_size_MB,
-                             bool exhaustive_search,
-                             bool fuse_relu,
                              DenseTensor* input_grad,
                              DenseTensor* filter_grad);
+
+template <typename T, typename Context>
+void ConvGradGradKernel(const Context& dev_ctx,
+                        const DenseTensor& input,
+                        const DenseTensor& filter,
+                        const DenseTensor& out_grad,
+                        const paddle::optional<DenseTensor>& input_grad_grad,
+                        const paddle::optional<DenseTensor>& filter_grad_grad,
+                        const std::vector<int>& strides,
+                        const std::vector<int>& paddings,
+                        const std::string& padding_algorithm,
+                        const std::vector<int>& dilations,
+                        int groups,
+                        const std::string& data_format,
+                        DenseTensor* input_grad,
+                        DenseTensor* filter_grad,
+                        DenseTensor* out_grad_grad);
+
+template <typename T, typename Context>
+void Conv3DDoubleGradKernel(
+    const Context& dev_ctx,
+    const DenseTensor& input,
+    const DenseTensor& filter,
+    const DenseTensor& out_grad,
+    const paddle::optional<DenseTensor>& input_grad_grad,
+    const paddle::optional<DenseTensor>& filter_grad_grad,
+    const std::vector<int>& strides,
+    const std::vector<int>& paddings,
+    const std::string& padding_algorithm,
+    int groups,
+    const std::vector<int>& dilations,
+    const std::string& data_format,
+    DenseTensor* input_grad,
+    DenseTensor* filter_grad,
+    DenseTensor* out_grad_grad);
 
 }  // namespace phi

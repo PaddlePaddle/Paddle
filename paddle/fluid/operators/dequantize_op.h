@@ -16,13 +16,13 @@ limitations under the License. */
 
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
 
-using framework::OpKernelType;
-using framework::Tensor;
+using phi::KernelKey;
 
 class DeQuantOp : public framework::OperatorWithKernel {
  public:
@@ -34,7 +34,7 @@ class DeQuantOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override;
 };
 

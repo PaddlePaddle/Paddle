@@ -35,11 +35,18 @@ namespace framework {
 namespace details {
 
 struct ScaleLossGradOpHandle : public OpHandleBase {
-  ScaleLossGradOpHandle(ir::Node *node, size_t num_dev, Scope *scope,
-                        platform::Place place, platform::DeviceContext *context,
+  ScaleLossGradOpHandle(ir::Node *node,
+                        size_t num_dev,
+                        Scope *scope,
+                        platform::Place place,
+                        platform::DeviceContext *context,
                         proto::VarType::Type dtype);
 
   ~ScaleLossGradOpHandle() final;
+
+  proto::VarType::Type DType() const { return out_dtype_; }
+
+  float Coeff() const { return coeff_; }
 
   std::string Name() const override;
 

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/fleet_executor/task_node.h"
+
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -23,29 +24,35 @@ namespace {
 using OperatorBase = TaskNode::OperatorBase;
 }
 
-TaskNode::TaskNode(paddle::framework::ProgramDesc* program, int64_t rank,
-                   int64_t max_run_times, int64_t max_slot_nums)
+TaskNode::TaskNode(paddle::framework::ProgramDesc* program,
+                   int64_t rank,
+                   int64_t task_id,
+                   int64_t max_run_times)
     : program_(program),
       rank_(rank),
-      max_run_times_(max_run_times),
-      max_slot_nums_(max_slot_nums) {
-  // Should be serially invoked, not thread-safe
-  // NOTE: when instantiate TaskNode with program, won't init task node
-  // immediately, since the provided program may be updated later (with
-  // high probability) by adding_feed_fetch_ops or by RuntimeGraph.
-  // So, delay the init part to the Init() function.
-  static int64_t task_node_cnt = 0;
-  task_id_ = task_node_cnt++;
+      task_id_(task_id),
+      max_run_times_(max_run_times) {
+  // TODO(liyurui): Will be removed when execute program is supported.
+  Init();
 }
 
 TaskNode::TaskNode(paddle::framework::ProgramDesc* program, int64_t rank)
     : program_(program), rank_(rank), task_id_(rank) {
   max_run_times_ = 1;
-  max_slot_nums_ = 1;
   LOG(INFO)
       << "Constructing TaskNode for DistModelInf. The TaskNode's id is: "
       << rank
       << ". And the TaskNode's max_run_time and max_slot_num will be set to 1.";
+}
+
+void TaskNode::SetVarsToDtype(
+    const std::map<std::string, std::string>& vars_to_dtype) {
+  vars_to_dtype_ = vars_to_dtype;
+}
+
+void TaskNode::SetVarsToShape(
+    const std::map<std::string, std::vector<int64_t>>& vars_to_shape) {
+  vars_to_shape_ = vars_to_shape;
 }
 
 void TaskNode::SetProgram(paddle::framework::ProgramDesc* program) {
@@ -74,15 +81,18 @@ void TaskNode::Init(bool use_feed_fetch_ops) {
   }
 }
 
+TaskNode::TaskNode(int64_t rank, int64_t task_id, int64_t max_run_times)
+    : rank_(rank), task_id_(task_id), max_run_times_(max_run_times) {}
+
 TaskNode::TaskNode(int32_t role,
                    const std::vector<framework::OpDesc*>& op_descs,
-                   int64_t rank, int64_t task_id, int64_t max_run_times,
-                   int64_t max_slot_nums)
+                   int64_t rank,
+                   int64_t task_id,
+                   int64_t max_run_times)
     : role_(role),
       rank_(rank),
       task_id_(task_id),
-      max_run_times_(max_run_times),
-      max_slot_nums_(max_slot_nums) {
+      max_run_times_(max_run_times) {
   if (op_descs.empty()) {
     return;
   }
@@ -97,30 +107,37 @@ TaskNode::TaskNode(int32_t role,
 
 TaskNode::TaskNode(int32_t role,
                    const std::vector<framework::OperatorBase*>& ops,
-                   int64_t rank, int64_t task_id, int64_t max_run_times,
-                   int64_t max_slot_nums)
+                   int64_t rank,
+                   int64_t task_id,
+                   int64_t max_run_times)
     : ops_(ops),
       role_(role),
       rank_(rank),
       task_id_(task_id),
-      max_run_times_(max_run_times),
-      max_slot_nums_(max_slot_nums) {}
+      max_run_times_(max_run_times) {}
 
-TaskNode::TaskNode(int32_t role, int64_t rank, int64_t task_id,
-                   int64_t max_run_times, int64_t max_slot_nums)
+TaskNode::TaskNode(int32_t role,
+                   int64_t rank,
+                   int64_t task_id,
+                   int64_t max_run_times)
     : role_(role),
       rank_(rank),
       task_id_(task_id),
-      max_run_times_(max_run_times),
-      max_slot_nums_(max_slot_nums) {}
+      max_run_times_(max_run_times) {}
 
-bool TaskNode::AddUpstreamTask(int64_t task_id, int64_t buff_size) {
+bool TaskNode::AddUpstreamTask(int64_t task_id,
+                               int64_t buff_size,
+                               DependType type) {
   const auto& ret = upstream_.emplace(task_id, buff_size);
+  id_to_dep_type_.emplace(task_id, type);
   return ret.second;
 }
 
-bool TaskNode::AddDownstreamTask(int64_t task_id, int64_t buff_size) {
+bool TaskNode::AddDownstreamTask(int64_t task_id,
+                                 int64_t buff_size,
+                                 DependType type) {
   const auto& ret = downstream_.emplace(task_id, buff_size);
+  id_to_dep_type_.emplace(task_id, type);
   return ret.second;
 }
 
@@ -135,14 +152,16 @@ std::string TaskNode::DebugString() const {
 }
 
 void TaskNode::SetRunPerSteps(int64_t value) {
-  PADDLE_ENFORCE_GE(value, 1,
+  PADDLE_ENFORCE_GE(value,
+                    1,
                     platform::errors::InvalidArgument(
                         "run_per_steps must >= 1, but received %ld", value));
   run_per_steps_ = value;
 }
 
 void TaskNode::SetRunAtOffset(int64_t value) {
-  PADDLE_ENFORCE_GE(value, 0,
+  PADDLE_ENFORCE_GE(value,
+                    0,
                     platform::errors::InvalidArgument(
                         "run_at_offset must >= 0, but received %ld", value));
   run_at_offset_ = value;
@@ -150,15 +169,19 @@ void TaskNode::SetRunAtOffset(int64_t value) {
 
 void TaskNode::SetReplyUpPerSteps(int64_t value) {
   PADDLE_ENFORCE_GE(
-      value, 1, platform::errors::InvalidArgument(
-                    "reply_up_per_steps must >= 1, but received %ld", value));
+      value,
+      1,
+      platform::errors::InvalidArgument(
+          "reply_up_per_steps must >= 1, but received %ld", value));
   reply_up_per_steps_ = value;
 }
 
 void TaskNode::SetSendDownPerSteps(int64_t value) {
   PADDLE_ENFORCE_GE(
-      value, 1, platform::errors::InvalidArgument(
-                    "send_down_per_steps must >= 1, but received %ld", value));
+      value,
+      1,
+      platform::errors::InvalidArgument(
+          "send_down_per_steps must >= 1, but received %ld", value));
   send_down_per_steps_ = value;
 }
 

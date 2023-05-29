@@ -17,6 +17,8 @@
 #include <assert.h>
 #include <ctype.h>
 #include <stdio.h>
+
+#include <algorithm>
 #include <cstring>
 #include <sstream>
 #include <string>
@@ -100,6 +102,14 @@ inline int str_to_float(const char* str, float* v) {
   return index;
 }
 
+inline float* str_to_float(std::string& str) {
+  return (float*)const_cast<char*>(str.c_str());
+}
+
+inline float* str_to_float(const char* str) {
+  return (float*)const_cast<char*>(str);
+}
+
 // checks whether the test string is a suffix of the input string.
 bool ends_with(std::string const& input, std::string const& test);
 
@@ -117,12 +127,10 @@ std::vector<T> split_string(const std::string& str, const std::string& delim) {
   while ((pos = str.find(delim, pre_pos)) != std::string::npos) {
     tmp_str.assign(str, pre_pos, pos - pre_pos);
     res_list.push_back(tmp_str);
-    pre_pos = pos + 1;
+    pre_pos = pos + delim.size();
   }
   tmp_str.assign(str, pre_pos, str.length() - pre_pos);
-  if (!tmp_str.empty()) {
-    res_list.push_back(tmp_str);
-  }
+  res_list.push_back(tmp_str);
   return res_list;
 }
 
@@ -212,7 +220,154 @@ std::string join_strings(const Container& strs,
 
   return ss.str();
 }
+struct str_ptr {
+  const char* ptr;
+  size_t len;
+  str_ptr(const char* p, size_t n) : ptr(p), len(n) {}
+  str_ptr(str_ptr& other) {
+    ptr = other.ptr;
+    len = other.len;
+  }
+  str_ptr(str_ptr&& other) {
+    ptr = other.ptr;
+    len = other.len;
+  }
+  size_t find_ptr(const char c) {
+    for (size_t i = 0; i < len; ++i) {
+      if (ptr[i] == c) {
+        return i;
+      }
+    }
+    return -1;
+  }
+  std::string to_string(void) { return std::string(ptr, len); }
+};
 
+struct str_ptr_stream {
+  char* ptr = NULL;
+  char* end = NULL;
+  str_ptr_stream() {}
+  str_ptr_stream(const str_ptr& p) { reset(p.ptr, p.len); }
+  void reset(const str_ptr& p) { reset(p.ptr, p.len); }
+  void reset(const char* p, size_t len) {
+    ptr = const_cast<char*>(p);
+    end = ptr + len;
+  }
+  char* cursor(void) { return ptr; }
+  char* finish(void) { return end; }
+  void set_cursor(char* p) { ptr = p; }
+  bool is_finish(void) { return (ptr == end); }
+  template <typename T>
+  str_ptr_stream& operator>>(T& x) {
+    *this >> x;
+    return *this;
+  }
+};
+inline str_ptr_stream& operator>>(str_ptr_stream& ar, float& c) {
+  char* next = NULL;
+  c = strtof(ar.cursor(), &next);
+  ar.set_cursor(std::min(++next, ar.finish()));
+  return ar;
+}
+inline str_ptr_stream& operator>>(str_ptr_stream& ar, double& c) {
+  char* next = NULL;
+  c = strtod(ar.cursor(), &next);
+  ar.set_cursor(std::min(++next, ar.finish()));
+  return ar;
+}
+inline str_ptr_stream& operator>>(str_ptr_stream& ar, int32_t& c) {
+  char* next = NULL;
+  c = strtol(ar.cursor(), &next, 10);
+  ar.set_cursor(std::min(++next, ar.finish()));
+  return ar;
+}
+inline str_ptr_stream& operator>>(str_ptr_stream& ar, uint32_t& c) {
+  char* next = NULL;
+  c = strtoul(ar.cursor(), &next, 10);
+  ar.set_cursor(std::min(++next, ar.finish()));
+  return ar;
+}
+inline str_ptr_stream& operator>>(str_ptr_stream& ar, uint64_t& c) {
+  char* next = NULL;
+  c = strtoul(ar.cursor(), &next, 10);
+  ar.set_cursor(std::min(++next, ar.finish()));
+  return ar;
+}
+inline str_ptr_stream& operator>>(str_ptr_stream& ar, int64_t& c) {
+  char* next = NULL;
+  c = strtoll(ar.cursor(), &next, 10);
+  ar.set_cursor(std::min(++next, ar.finish()));
+  return ar;
+}
+inline int split_string_ptr(const char* str,
+                            size_t len,
+                            char delim,
+                            std::vector<str_ptr>* values) {
+  if (len <= 0) {
+    return 0;
+  }
+
+  int num = 0;
+  const char* p = str;
+  const char* end = str + len;
+  const char* last = str;
+  while (p < end) {
+    if (*p != delim) {
+      ++p;
+      continue;
+    }
+    values->emplace_back(last, (size_t)(p - last));
+    ++num;
+    ++p;
+    // skip continue delim
+    while (*p == delim) {
+      ++p;
+    }
+    last = p;
+  }
+  if (p > last) {
+    values->emplace_back(last, (size_t)(p - last));
+    ++num;
+  }
+  return num;
+}
+
+inline int split_string_ptr(const char* str,
+                            size_t len,
+                            char delim,
+                            std::vector<str_ptr>* values,
+                            int max_num) {
+  if (len <= 0) {
+    return 0;
+  }
+
+  int num = 0;
+  const char* p = str;
+  const char* end = str + len;
+  const char* last = str;
+  while (p < end) {
+    if (*p != delim) {
+      ++p;
+      continue;
+    }
+    values->emplace_back(last, (size_t)(p - last));
+    ++num;
+    ++p;
+    if (num >= max_num) {
+      return num;
+    }
+    // skip continue delim
+    while (*p == delim) {
+      ++p;
+    }
+    last = p;
+  }
+  if (p > last) {
+    values->emplace_back(last, (size_t)(p - last));
+    ++num;
+  }
+  return num;
+}
 // A helper class for reading lines from file. A line buffer is maintained. It
 // doesn't need to know the maximum possible length of a line.
 

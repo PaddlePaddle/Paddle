@@ -12,15 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
+from eager_op_test import OpTest
 
 import paddle
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-from op_test import OpTest
+
+paddle.enable_static()
 
 
 def dmc_bilinear(data_im, height, width, h, w):
@@ -62,8 +61,11 @@ def dconv_im2col_gemm(input, offset, mask, filter, group, conv_param):
     assert f_c * group == in_c
     assert np.mod(out_c, group) == 0
 
-    stride, pad, dilation = conv_param['stride'], conv_param['pad'],\
-        conv_param['dilation']
+    stride, pad, dilation = (
+        conv_param['stride'],
+        conv_param['pad'],
+        conv_param['dilation'],
+    )
     out_h = 1 + (in_h + 2 * pad[0] - (dilation[0] * (f_h - 1) + 1)) // stride[0]
     out_w = 1 + (in_w + 2 * pad[1] - (dilation[1] * (f_w - 1) + 1)) // stride[1]
     assert out_h == in_h
@@ -76,31 +78,47 @@ def dconv_im2col_gemm(input, offset, mask, filter, group, conv_param):
                 for w in range(out_w):
                     for kh in range(f_h):
                         for kw in range(f_w):
-                            offset_h_table = \
-                                    offset[n, ::2, h, w].reshape(f_h, f_w)
-                            offset_w_table = \
-                                    offset[n, 1::2, h, w].reshape(f_h, f_w)
-                            mask_table = \
-                                mask[n, :, h, w].reshape(f_h, f_w)
+                            offset_h_table = offset[n, ::2, h, w].reshape(
+                                f_h, f_w
+                            )
+                            offset_w_table = offset[n, 1::2, h, w].reshape(
+                                f_h, f_w
+                            )
+                            mask_table = mask[n, :, h, w].reshape(f_h, f_w)
                             offset_h = offset_h_table[kh, kw]
                             offset_w = offset_w_table[kh, kw]
                             val = 0
-                            im_h = h * stride[0] + kh * dilation[0] \
-                                + offset_h - pad[0]
-                            im_w = w * stride[0] + kw * dilation[0] \
-                                + offset_w - pad[1]
-                            if im_h > -1 and im_w > -1 and \
-                                im_h < in_h and im_w < in_h:
-                                val = dmc_bilinear(input[n, c], in_h, in_w,
-                                                   im_h, im_w)
+                            im_h = (
+                                h * stride[0]
+                                + kh * dilation[0]
+                                + offset_h
+                                - pad[0]
+                            )
+                            im_w = (
+                                w * stride[0]
+                                + kw * dilation[0]
+                                + offset_w
+                                - pad[1]
+                            )
+                            if (
+                                im_h > -1
+                                and im_w > -1
+                                and im_h < in_h
+                                and im_w < in_h
+                            ):
+                                val = dmc_bilinear(
+                                    input[n, c], in_h, in_w, im_h, im_w
+                                )
                             val_out = val * mask_table[kh, kw]
-                            col_buffer[n, c * f_h * f_w + kh * f_w + kw, h *
-                                       in_w + w] = val_out
+                            col_buffer[
+                                n, c * f_h * f_w + kh * f_w + kw, h * in_w + w
+                            ] = val_out
 
     out = np.zeros((in_n, group, int(out_c // group), out_h * out_w))
     weight = filter.reshape(group, int(out_c // group), f_c * f_h * f_w)
     col_buffer = col_buffer.reshape(
-        (in_n, group, int(in_c // group * f_h * f_w), in_h * in_w))
+        (in_n, group, int(in_c // group * f_h * f_w), in_h * in_w)
+    )
     for n in range(in_n):
         for g in range(group):
             out[n, g] = np.matmul(weight[g], col_buffer[n, g])
@@ -108,8 +126,35 @@ def dconv_im2col_gemm(input, offset, mask, filter, group, conv_param):
     return out
 
 
+def deform_conv2d_wrapper(
+    x,
+    offset,
+    weight,
+    mask=None,
+    stride=1,
+    padding=0,
+    dilation=1,
+    deformable_groups=1,
+    groups=1,
+    im2col_step=1,
+):
+    return paddle.vision.ops.deform_conv2d(
+        x,
+        offset,
+        weight,
+        None,
+        stride,
+        padding,
+        dilation,
+        deformable_groups,
+        groups,
+        mask,
+    )
+
+
 class TestModulatedDeformableConvOp(OpTest):
     def setUp(self):
+        self.python_api = deform_conv2d_wrapper
         self.op_type = "deformable_conv"
         self.init_type()
         self.init_group()
@@ -119,7 +164,7 @@ class TestModulatedDeformableConvOp(OpTest):
         conv_param = {
             'stride': self.stride,
             'pad': self.pad,
-            'dilation': self.dilations
+            'dilation': self.dilations,
         }
 
         input = np.random.random(self.input_size).astype(self.dtype)
@@ -127,15 +172,16 @@ class TestModulatedDeformableConvOp(OpTest):
         mask = 10 * np.random.random(self.mask_size).astype(self.dtype)
         filter = np.random.random(self.filter_size).astype(self.dtype)
 
-        output = dconv_im2col_gemm(input, offset, mask, filter, self.groups,
-                                   conv_param)
+        output = dconv_im2col_gemm(
+            input, offset, mask, filter, self.groups, conv_param
+        )
         output = output.astype(self.dtype)
 
         self.inputs = {
             'Input': OpTest.np_dtype_to_fluid_dtype(input),
             'Offset': OpTest.np_dtype_to_fluid_dtype(offset),
             'Mask': OpTest.np_dtype_to_fluid_dtype(mask),
-            'Filter': OpTest.np_dtype_to_fluid_dtype(filter)
+            'Filter': OpTest.np_dtype_to_fluid_dtype(filter),
         }
         self.attrs = {
             'strides': self.stride,
@@ -154,7 +200,8 @@ class TestModulatedDeformableConvOp(OpTest):
         self.check_grad(
             {'Input', 'Offset', 'Mask', 'Filter'},
             'Output',
-            max_relative_error=0.05)
+            max_relative_error=0.05,
+        )
 
     def init_test_case(self):
         self.pad = [1, 1]
@@ -166,15 +213,26 @@ class TestModulatedDeformableConvOp(OpTest):
         self.filter_size = [4, f_c, 3, 3]
         self.im2col_step = 1
         self.deformable_groups = 1
-        offset_c = 2 * self.deformable_groups * self.filter_size[
-            2] * self.filter_size[3]
-        mask_c = self.deformable_groups * self.filter_size[
-            2] * self.filter_size[3]
+        offset_c = (
+            2
+            * self.deformable_groups
+            * self.filter_size[2]
+            * self.filter_size[3]
+        )
+        mask_c = (
+            self.deformable_groups * self.filter_size[2] * self.filter_size[3]
+        )
         self.offset_size = [
-            self.input_size[0], offset_c, self.input_size[2], self.input_size[3]
+            self.input_size[0],
+            offset_c,
+            self.input_size[2],
+            self.input_size[3],
         ]
         self.mask_size = [
-            self.input_size[0], mask_c, self.input_size[2], self.input_size[3]
+            self.input_size[0],
+            mask_c,
+            self.input_size[2],
+            self.input_size[3],
         ]
 
     def init_dilation(self):
@@ -197,15 +255,26 @@ class TestWithStride(TestModulatedDeformableConvOp):
         self.filter_size = [6, f_c, 3, 3]
         self.im2col_step = 1
         self.deformable_groups = 1
-        offset_c = 2 * self.deformable_groups * self.filter_size[
-            2] * self.filter_size[3]
-        mask_c = self.deformable_groups * self.filter_size[
-            2] * self.filter_size[3]
+        offset_c = (
+            2
+            * self.deformable_groups
+            * self.filter_size[2]
+            * self.filter_size[3]
+        )
+        mask_c = (
+            self.deformable_groups * self.filter_size[2] * self.filter_size[3]
+        )
         self.offset_size = [
-            self.input_size[0], offset_c, self.input_size[2], self.input_size[3]
+            self.input_size[0],
+            offset_c,
+            self.input_size[2],
+            self.input_size[3],
         ]
         self.mask_size = [
-            self.input_size[0], mask_c, self.input_size[2], self.input_size[3]
+            self.input_size[0],
+            mask_c,
+            self.input_size[2],
+            self.input_size[3],
         ]
 
 
@@ -219,15 +288,26 @@ class TestWithDilation(TestModulatedDeformableConvOp):
         self.filter_size = [6, f_c, 3, 3]
         self.im2col_step = 1
         self.deformable_groups = 1
-        offset_c = 2 * self.deformable_groups * self.filter_size[
-            2] * self.filter_size[3]
-        mask_c = self.deformable_groups * self.filter_size[
-            2] * self.filter_size[3]
+        offset_c = (
+            2
+            * self.deformable_groups
+            * self.filter_size[2]
+            * self.filter_size[3]
+        )
+        mask_c = (
+            self.deformable_groups * self.filter_size[2] * self.filter_size[3]
+        )
         self.offset_size = [
-            self.input_size[0], offset_c, self.input_size[2], self.input_size[3]
+            self.input_size[0],
+            offset_c,
+            self.input_size[2],
+            self.input_size[3],
         ]
         self.mask_size = [
-            self.input_size[0], mask_c, self.input_size[2], self.input_size[3]
+            self.input_size[0],
+            mask_c,
+            self.input_size[2],
+            self.input_size[3],
         ]
 
     def init_dilation(self):
@@ -244,15 +324,26 @@ class TestWith3x3(TestModulatedDeformableConvOp):
         self.filter_size = [6, f_c, 3, 3]
         self.im2col_step = 1
         self.deformable_groups = 1
-        offset_c = 2 * self.deformable_groups * self.filter_size[
-            2] * self.filter_size[3]
-        mask_c = self.deformable_groups * self.filter_size[
-            2] * self.filter_size[3]
+        offset_c = (
+            2
+            * self.deformable_groups
+            * self.filter_size[2]
+            * self.filter_size[3]
+        )
+        mask_c = (
+            self.deformable_groups * self.filter_size[2] * self.filter_size[3]
+        )
         self.offset_size = [
-            self.input_size[0], offset_c, self.input_size[2], self.input_size[3]
+            self.input_size[0],
+            offset_c,
+            self.input_size[2],
+            self.input_size[3],
         ]
         self.mask_size = [
-            self.input_size[0], mask_c, self.input_size[2], self.input_size[3]
+            self.input_size[0],
+            mask_c,
+            self.input_size[2],
+            self.input_size[3],
         ]
 
 
@@ -275,15 +366,26 @@ class TestWithDouble(TestModulatedDeformableConvOp):
         self.filter_size = [4, f_c, 3, 3]
         self.im2col_step = 1
         self.deformable_groups = 1
-        offset_c = 2 * self.deformable_groups * self.filter_size[
-            2] * self.filter_size[3]
-        mask_c = self.deformable_groups * self.filter_size[
-            2] * self.filter_size[3]
+        offset_c = (
+            2
+            * self.deformable_groups
+            * self.filter_size[2]
+            * self.filter_size[3]
+        )
+        mask_c = (
+            self.deformable_groups * self.filter_size[2] * self.filter_size[3]
+        )
         self.offset_size = [
-            self.input_size[0], offset_c, self.input_size[2], self.input_size[3]
+            self.input_size[0],
+            offset_c,
+            self.input_size[2],
+            self.input_size[3],
         ]
         self.mask_size = [
-            self.input_size[0], mask_c, self.input_size[2], self.input_size[3]
+            self.input_size[0],
+            mask_c,
+            self.input_size[2],
+            self.input_size[3],
         ]
 
 
@@ -292,40 +394,68 @@ class TestModulatedDeformableConvInvalidInput(unittest.TestCase):
         def test_invalid_input():
             paddle.enable_static()
             input = [1, 3, 32, 32]
-            offset = fluid.data(
-                name='offset', shape=[None, 3, 32, 32], dtype='float32')
-            mask = fluid.data(
-                name='mask', shape=[None, 3, 32, 32], dtype='float32')
-            loss = fluid.layers.deformable_conv(
-                input, offset, mask, num_filters=4, filter_size=1)
+            offset = paddle.static.data(
+                name='offset', shape=[None, 3, 32, 32], dtype='float32'
+            )
+            mask = paddle.static.data(
+                name='mask', shape=[None, 3, 32, 32], dtype='float32'
+            )
+            loss = paddle.static.nn.common.deformable_conv(
+                input, offset, mask, num_filters=4, filter_size=1
+            )
 
         self.assertRaises(TypeError, test_invalid_input)
 
         def test_invalid_offset():
             paddle.enable_static()
-            input = fluid.data(
-                name='input', shape=[None, 3, 32, 32], dtype='int32')
-            offset = fluid.data(
-                name='offset', shape=[None, 3, 32, 32], dtype='float32')
-            mask = fluid.data(
-                name='mask', shape=[None, 3, 32, 32], dtype='float32')
-            loss = fluid.layers.deformable_conv(
-                input, offset, mask, num_filters=4, filter_size=1)
+            input = paddle.static.data(
+                name='input', shape=[None, 3, 32, 32], dtype='int32'
+            )
+            offset = paddle.static.data(
+                name='offset', shape=[None, 3, 32, 32], dtype='float32'
+            )
+            mask = paddle.static.data(
+                name='mask', shape=[None, 3, 32, 32], dtype='float32'
+            )
+            loss = paddle.static.nn.common.deformable_conv(
+                input, offset, mask, num_filters=4, filter_size=1
+            )
 
         self.assertRaises(TypeError, test_invalid_offset)
 
         def test_invalid_filter():
             paddle.enable_static()
-            input = fluid.data(
-                name='input_filter', shape=[None, 3, 32, 32], dtype='float32')
-            offset = fluid.data(
-                name='offset_filter', shape=[None, 3, 32, 32], dtype='float32')
-            mask = fluid.data(
-                name='mask_filter', shape=[None, 3, 32, 32], dtype='float32')
-            loss = fluid.layers.deformable_conv(
-                input, offset, mask, num_filters=4, filter_size=0)
+            input = paddle.static.data(
+                name='input_filter', shape=[None, 3, 32, 32], dtype='float32'
+            )
+            offset = paddle.static.data(
+                name='offset_filter', shape=[None, 3, 32, 32], dtype='float32'
+            )
+            mask = paddle.static.data(
+                name='mask_filter', shape=[None, 3, 32, 32], dtype='float32'
+            )
+            loss = paddle.static.nn.common.deformable_conv(
+                input, offset, mask, num_filters=4, filter_size=0
+            )
 
         self.assertRaises(ValueError, test_invalid_filter)
+
+        def test_invalid_groups():
+            paddle.enable_static()
+            input = paddle.static.data(
+                name='input_groups', shape=[1, 1, 1, 1], dtype='float32'
+            )
+            offset = paddle.static.data(
+                name='offset_groups', shape=[1, 1], dtype='float32'
+            )
+            mask = paddle.static.data(
+                name='mask_groups', shape=[1], dtype='float32'
+            )
+            paddle.static.nn.deform_conv2d(
+                input, offset, mask, 1, 1, padding=1, groups=0
+            )
+
+        self.assertRaises(ValueError, test_invalid_groups)
 
 
 class TestDeformConv2DAPI(unittest.TestCase):
@@ -333,28 +463,35 @@ class TestDeformConv2DAPI(unittest.TestCase):
         def test_deform_conv2d_v1():
             paddle.enable_static()
             input = paddle.static.data(
-                name='input_v1', shape=[None, 3, 32, 32], dtype='float32')
+                name='input_v1', shape=[None, 3, 32, 32], dtype='float32'
+            )
             offset = paddle.static.data(
-                name='offset_v1', shape=[None, 4, 32, 32], dtype='float32')
+                name='offset_v1', shape=[None, 4, 32, 32], dtype='float32'
+            )
             out = paddle.static.nn.deform_conv2d(
-                input, offset, None, num_filters=4, filter_size=1)
+                input, offset, None, num_filters=4, filter_size=1
+            )
 
-            assert (out.shape == (-1, 4, 32, 32))
+            assert out.shape == (-1, 4, 32, 32)
 
         test_deform_conv2d_v1()
 
         def test_deform_conv2d_v2():
             paddle.enable_static()
             input = paddle.static.data(
-                name='input_v2', shape=[None, 3, 32, 32], dtype='float32')
+                name='input_v2', shape=[None, 3, 32, 32], dtype='float32'
+            )
             offset = paddle.static.data(
-                name='offset_v2', shape=[None, 4, 32, 32], dtype='float32')
+                name='offset_v2', shape=[None, 4, 32, 32], dtype='float32'
+            )
             mask = paddle.static.data(
-                name='mask_v2', shape=[None, 2, 32, 32], dtype='float32')
+                name='mask_v2', shape=[None, 2, 32, 32], dtype='float32'
+            )
             out = paddle.static.nn.deform_conv2d(
-                input, offset, mask, num_filters=4, filter_size=1)
+                input, offset, mask, num_filters=4, filter_size=1
+            )
 
-            assert (out.shape == (-1, 4, 32, 32))
+            assert out.shape == (-1, 4, 32, 32)
 
         test_deform_conv2d_v2()
 

@@ -15,16 +15,19 @@ limitations under the License. */
 #include "paddle/fluid/operators/sequence_ops/sequence_slice_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    sequence_slice,
-    ops::SequenceSliceOpKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::SequenceSliceOpKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::SequenceSliceOpKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::SequenceSliceOpKernel<paddle::platform::CUDADeviceContext, int64_t>);
-REGISTER_OP_CUDA_KERNEL(
-    sequence_slice_grad,
-    ops::SequenceSliceGradOpKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::SequenceSliceGradOpKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::SequenceSliceGradOpKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::SequenceSliceGradOpKernel<paddle::platform::CUDADeviceContext,
-                                   int64_t>);
+PD_REGISTER_STRUCT_KERNEL(sequence_slice,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::SequenceSliceOpKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}
+PD_REGISTER_STRUCT_KERNEL(sequence_slice_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::SequenceSliceGradOpKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}

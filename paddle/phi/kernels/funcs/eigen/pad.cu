@@ -42,11 +42,11 @@ struct EigenPad<Eigen::GpuDevice, T, Rank> {
     out.device(dev) = in.pad(padding, value);
   }
 
-  static void Eval(const Eigen::GpuDevice& dev,
-                   OutType32BitIndex out,
-                   const InType32BitIndex& in,
-                   const Array32Bit& padding,
-                   const T value) {
+  static void Eval32(const Eigen::GpuDevice& dev,
+                     OutType32BitIndex out,
+                     const InType32BitIndex& in,
+                     const Array32Bit& padding,
+                     const T value) {
     out.device(dev) = in.pad(padding, value);
   }
 };
@@ -59,6 +59,7 @@ struct EigenPad<Eigen::GpuDevice, T, Rank> {
   template struct FUNCTOR<Eigen::GpuDevice, TYPE, 5>; \
   template struct FUNCTOR<Eigen::GpuDevice, TYPE, 6>
 INSTANTIATION(EigenPad, bool);
+INSTANTIATION(EigenPad, uint8_t);
 INSTANTIATION(EigenPad, int);
 INSTANTIATION(EigenPad, int64_t);
 INSTANTIATION(EigenPad, float);

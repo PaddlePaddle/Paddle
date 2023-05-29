@@ -9,9 +9,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/detection/box_decoder_and_assign_op.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
@@ -19,8 +19,10 @@ namespace operators {
 template <typename T>
 __global__ void DecodeBoxKernel(const T* prior_box_data,
                                 const T* prior_box_var_data,
-                                const T* target_box_data, const int roi_num,
-                                const int class_num, const T box_clip,
+                                const T* target_box_data,
+                                const int roi_num,
+                                const int class_num,
+                                const T box_clip,
                                 T* output_box_data) {
   const int idx = threadIdx.x + blockIdx.x * blockDim.x;
   if (idx < roi_num * class_num) {
@@ -63,8 +65,10 @@ __global__ void DecodeBoxKernel(const T* prior_box_data,
 
 template <typename T>
 __global__ void AssignBoxKernel(const T* prior_box_data,
-                                const T* box_score_data, T* output_box_data,
-                                const int roi_num, const int class_num,
+                                const T* box_score_data,
+                                T* output_box_data,
+                                const int roi_num,
+                                const int class_num,
                                 T* output_assign_box_data) {
   const int idx = threadIdx.x + blockIdx.x * blockDim.x;
   if (idx < roi_num) {
@@ -91,17 +95,17 @@ __global__ void AssignBoxKernel(const T* prior_box_data,
   }
 }
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class BoxDecoderAndAssignCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* prior_box = context.Input<framework::LoDTensor>("PriorBox");
-    auto* prior_box_var = context.Input<framework::Tensor>("PriorBoxVar");
-    auto* target_box = context.Input<framework::LoDTensor>("TargetBox");
-    auto* box_score = context.Input<framework::LoDTensor>("BoxScore");
-    auto* output_box = context.Output<framework::Tensor>("DecodeBox");
+    auto* prior_box = context.Input<phi::DenseTensor>("PriorBox");
+    auto* prior_box_var = context.Input<phi::DenseTensor>("PriorBoxVar");
+    auto* target_box = context.Input<phi::DenseTensor>("TargetBox");
+    auto* box_score = context.Input<phi::DenseTensor>("BoxScore");
+    auto* output_box = context.Output<phi::DenseTensor>("DecodeBox");
     auto* output_assign_box =
-        context.Output<framework::Tensor>("OutputAssignBox");
+        context.Output<phi::DenseTensor>("OutputAssignBox");
 
     auto roi_num = target_box->dims()[0];
     auto class_num = box_score->dims()[1];
@@ -118,16 +122,25 @@ class BoxDecoderAndAssignCUDAKernel : public framework::OpKernel<T> {
     int grid = (roi_num * class_num + block - 1) / block;
     auto& device_ctx = context.cuda_device_context();
 
-    const T box_clip = context.Attr<T>("box_clip");
+    const T box_clip = static_cast<T>(context.Attr<float>("box_clip"));
 
-    DecodeBoxKernel<T><<<grid, block, 0, device_ctx.stream()>>>(
-        prior_box_data, prior_box_var_data, target_box_data, roi_num, class_num,
-        box_clip, output_box_data);
+    DecodeBoxKernel<T>
+        <<<grid, block, 0, device_ctx.stream()>>>(prior_box_data,
+                                                  prior_box_var_data,
+                                                  target_box_data,
+                                                  roi_num,
+                                                  class_num,
+                                                  box_clip,
+                                                  output_box_data);
 
     context.device_context().Wait();
     int assign_grid = (roi_num + block - 1) / block;
     AssignBoxKernel<T><<<assign_grid, block, 0, device_ctx.stream()>>>(
-        prior_box_data, box_score_data, output_box_data, roi_num, class_num,
+        prior_box_data,
+        box_score_data,
+        output_box_data,
+        roi_num,
+        class_num,
         output_assign_box_data);
     context.device_context().Wait();
   }
@@ -137,9 +150,10 @@ class BoxDecoderAndAssignCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    box_decoder_and_assign,
-    ops::BoxDecoderAndAssignCUDAKernel<paddle::platform::CUDADeviceContext,
-                                       float>,
-    ops::BoxDecoderAndAssignCUDAKernel<paddle::platform::CUDADeviceContext,
-                                       double>);
+
+PD_REGISTER_STRUCT_KERNEL(box_decoder_and_assign,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::BoxDecoderAndAssignCUDAKernel,
+                          float,
+                          double) {}

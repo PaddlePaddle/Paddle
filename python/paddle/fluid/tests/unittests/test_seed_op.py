@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
+
 import paddle
-import paddle.static as static
+from paddle import static
 
 paddle.enable_static()
 
@@ -28,7 +28,7 @@ class TestSeedOpFixSeed(OpTest):
         self.op_type = "seed"
         self.inputs = {}
         self.attrs = {"seed": 123}
-        self.outputs = {"Out": np.asarray((123)).astype('int')}
+        self.outputs = {"Out": np.asarray(123).astype('int')}
 
     def test_check_output(self):
         self.check_output()
@@ -39,7 +39,7 @@ class TestSeedOpDiffSeed(OpTest):
         self.op_type = "seed"
         self.inputs = {}
         self.attrs = {"seed": 0}
-        self.outputs = {"Out": np.asarray((123)).astype('int')}
+        self.outputs = {"Out": np.asarray(123).astype('int')}
 
     def test_check_output(self):
         self.check_output(no_check_set=["Out"])
@@ -56,15 +56,19 @@ class TestDropoutWithRandomSeedGenerator(unittest.TestCase):
             self.places.append(paddle.CUDAPlace(0))
 
     def check_static_result(self, place):
-        import paddle.distributed.fleet.meta_parallel.parallel_layers.random as random
+        from paddle.distributed.fleet.meta_parallel.parallel_layers import (
+            random,
+        )
+
         with static.program_guard(static.Program(), static.Program()):
             res1 = random.determinate_seed('seed0')
 
             exe = static.Executor(place)
             res_list = [res1]
             for i in range(2):
-                out1, = exe.run(static.default_main_program(),
-                                fetch_list=res_list)
+                (out1,) = exe.run(
+                    static.default_main_program(), fetch_list=res_list
+                )
                 self.assertEqual(out1, np.cast['int32'](self.rng1.random()))
 
     def test_static(self):

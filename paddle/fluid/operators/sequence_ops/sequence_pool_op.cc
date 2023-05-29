@@ -12,9 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/sequence_ops/sequence_pool_op.h"
-#include <memory>
-#include <string>
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -30,18 +28,20 @@ class SequencePoolOp : public framework::OperatorWithKernel {
     if (!ctx->IsRuntime()) {
       // Check the lod_level for compile-time.
       auto in_lod_level = ctx->GetLoDLevel("X");
-      PADDLE_ENFORCE_GT(in_lod_level, 0, platform::errors::InvalidArgument(
-                                             "The LoD level of Input(X) should "
-                                             "be larger than 0, but received: "
-                                             "lod level %u.",
-                                             in_lod_level));
+      PADDLE_ENFORCE_GT(
+          in_lod_level,
+          0,
+          platform::errors::InvalidArgument("The LoD level of Input(X) should "
+                                            "be larger than 0, but received: "
+                                            "lod level %u.",
+                                            in_lod_level));
       ctx->SetLoDLevel("Out", in_lod_level - 1);
     }
 
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     if (ctx->Attrs().Get<std::string>("pooltype") == "MAX") {
-      OP_INOUT_CHECK(ctx->HasOutput("MaxIndex"), "Output", "MaxIndex",
-                     "SequencePool");
+      OP_INOUT_CHECK(
+          ctx->HasOutput("MaxIndex"), "Output", "MaxIndex", "SequencePool");
       ctx->SetOutputDim("MaxIndex", ctx->GetInputDim("X"));
     }
   }
@@ -50,12 +50,15 @@ class SequencePoolOp : public framework::OperatorWithKernel {
 class SequencePoolOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(LoDTensor) The variable-length input of SequencePoolOp");
-    AddOutput("Out",
-              "(Tensor) The output of SequencePoolOp does not contain LoD "
-              "information.");
+    AddInput("X",
+             "(phi::DenseTensor) The variable-length input of SequencePoolOp");
+    AddOutput(
+        "Out",
+        "(phi::DenseTensor) The output of SequencePoolOp does not contain LoD "
+        "information.");
     AddOutput("MaxIndex",
-              "(Tensor<int>) This tensor is used for the sequence max-pooling "
+              "(phi::DenseTensor<int>) This tensor is used for the sequence "
+              "max-pooling "
               "to record the max indexes.")
         .AsIntermediate();
     AddAttr<bool>("is_test",
@@ -89,11 +92,11 @@ The following example explains how this works:
 For a mini-batch of 3 variable-length sentences,
 containing 2, 3, and 2 time-steps:
 
-Assume X is a [7,M,N] LoDTensor, and X->lod()[0] = [0, 2, 5, 7], 7=2+3+2.
+Assume X is a [7,M,N] phi::DenseTensor, and X->lod()[0] = [0, 2, 5, 7], 7=2+3+2.
 Besides, for the sake of simplicity, we assume M=1 and N=1,
 and the value of X = [[1, 3], [2, 4, 6], [5, 1]].
 
-Thus, Out is a [3,1,1] Tensor without LoD information.
+Thus, Out is a [3,1,1] phi::DenseTensor without LoD information.
 And for different pooltype, the value of Out is as follows:
 
 - AVERAGE: [2, 4, 3], where 2=(1+3)/2, 4=(2+4+6)/3, 3=(5+1)/2
@@ -113,26 +116,34 @@ class SequencePoolGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "SequencePoolGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   framework::GradVarName("Out"),
+                   "SequencePoolGrad");
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "SequencePoolGrad");
 
     auto og_dims = ctx->GetInputDim(framework::GradVarName("Out"));
     auto x_dims = ctx->GetInputDim("X");
-    PADDLE_ENFORCE_EQ(og_dims.size(), x_dims.size(),
+    PADDLE_ENFORCE_EQ(og_dims.size(),
+                      x_dims.size(),
                       platform::errors::InvalidArgument(
                           "The rank of output grad must equal to Input(X). But "
                           "received: input rank %u, input shape [%s].",
-                          og_dims.size(), og_dims));
+                          og_dims.size(),
+                          og_dims));
     for (int64_t i = 1; i < og_dims.size(); ++i) {
       PADDLE_ENFORCE_EQ(
-          og_dims[i], x_dims[i],
+          og_dims[i],
+          x_dims[i],
           platform::errors::InvalidArgument(
               "The dimension mismatch between Input(OUT@GRAD) and "
               "Input(X). Received Input(OUT@GRAD): input rank %u, "
               "input shape [%s]; received Input(X): input rank %u, "
               "input shape [%s].",
-              og_dims.size(), og_dims, x_dims.size(), x_dims));
+              og_dims.size(),
+              og_dims,
+              x_dims.size(),
+              x_dims));
     }
 
     ctx->ShareDim("X", /*->*/ framework::GradVarName("X"));
@@ -140,11 +151,11 @@ class SequencePoolGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("Out")),
+                          ctx.GetPlace());
   }
 };
 
@@ -157,7 +168,7 @@ class SequencePoolGradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> op_desc_ptr) const override {
     op_desc_ptr->SetType("sequence_pool_grad");
     op_desc_ptr->SetInput("X", this->Input("X"));
-    if (BOOST_GET_CONST(std::string, this->GetAttr("pooltype")) == "MAX") {
+    if (PADDLE_GET_CONST(std::string, this->GetAttr("pooltype")) == "MAX") {
       op_desc_ptr->SetInput("MaxIndex", this->Output("MaxIndex"));
     }
     op_desc_ptr->SetInput(framework::GradVarName("Out"),
@@ -174,17 +185,11 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(SequencePoolGradOpNoNeedBufferVarsInferer,
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(sequence_pool, ops::SequencePoolOp, ops::SequencePoolOpMaker,
+REGISTER_OPERATOR(sequence_pool,
+                  ops::SequencePoolOp,
+                  ops::SequencePoolOpMaker,
                   ops::SequencePoolGradOpMaker<paddle::framework::OpDesc>,
                   ops::SequencePoolGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(sequence_pool_grad, ops::SequencePoolGradOp,
+REGISTER_OPERATOR(sequence_pool_grad,
+                  ops::SequencePoolGradOp,
                   ops::SequencePoolGradOpNoNeedBufferVarsInferer);
-REGISTER_OP_CPU_KERNEL(
-    sequence_pool,
-    ops::SequencePoolKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SequencePoolKernel<paddle::platform::CPUDeviceContext, double>);
-
-REGISTER_OP_CPU_KERNEL(
-    sequence_pool_grad,
-    ops::SequencePoolGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SequencePoolGradKernel<paddle::platform::CPUDeviceContext, double>);

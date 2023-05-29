@@ -13,14 +13,16 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
 
 
 def ref_std(x, axis=None, unbiased=True, keepdim=False):
     ddof = 1 if unbiased else 0
     if isinstance(axis, int):
-        axis = (axis, )
+        axis = (axis,)
     if axis is not None:
         axis = tuple(axis)
     return np.std(x, axis=axis, ddof=ddof, keepdims=keepdim)
@@ -35,16 +37,18 @@ class TestStdAPI(unittest.TestCase):
         self.unbiased = True
         self.set_attrs()
         self.x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
-        self.place=paddle.CUDAPlace(0) \
-            if paddle.fluid.core.is_compiled_with_cuda() \
+        self.place = (
+            paddle.CUDAPlace(0)
+            if paddle.fluid.core.is_compiled_with_cuda()
             else paddle.CPUPlace()
+        )
 
     def set_attrs(self):
         pass
 
     def static(self):
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('X', self.shape, self.dtype)
+            x = paddle.static.data('X', self.shape, self.dtype)
             out = paddle.std(x, self.axis, self.unbiased, self.keepdim)
             exe = paddle.static.Executor(self.place)
             res = exe.run(feed={'X': self.x}, fetch_list=[out])
@@ -62,7 +66,7 @@ class TestStdAPI(unittest.TestCase):
         out_dygraph = self.dygraph()
         out_static = self.static()
         for out in [out_dygraph, out_static]:
-            self.assertTrue(np.allclose(out_ref, out))
+            np.testing.assert_allclose(out_ref, out, rtol=1e-05)
             self.assertTrue(np.equal(out_ref.shape, out.shape).all())
 
 
@@ -103,16 +107,41 @@ class TestStdAPI_alias(unittest.TestCase):
         out1 = paddle.std(x).numpy()
         out2 = paddle.tensor.std(x).numpy()
         out3 = paddle.tensor.stat.std(x).numpy()
-        self.assertTrue(np.allclose(out1, out2))
-        self.assertTrue(np.allclose(out1, out3))
+        np.testing.assert_allclose(out1, out2, rtol=1e-05)
+        np.testing.assert_allclose(out1, out3, rtol=1e-05)
         paddle.enable_static()
 
 
 class TestStdError(unittest.TestCase):
     def test_error(self):
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('X', [2, 3, 4], 'int32')
+            x = paddle.static.data('X', [2, 3, 4], 'int32')
             self.assertRaises(TypeError, paddle.std, x)
+
+
+class Testfp16Std(unittest.TestCase):
+    def test_fp16_with_gpu(self):
+        paddle.enable_static()
+        if paddle.fluid.core.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                input = np.random.random([12, 14]).astype("float16")
+                x = paddle.static.data(
+                    name="x", shape=[12, 14], dtype="float16"
+                )
+
+                y = paddle.std(x)
+
+                exe = paddle.static.Executor(place)
+                res = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={
+                        "x": input,
+                    },
+                    fetch_list=[y],
+                )
 
 
 if __name__ == '__main__':

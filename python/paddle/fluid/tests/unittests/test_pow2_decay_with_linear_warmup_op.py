@@ -1,30 +1,31 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from paddle.fluid.contrib.layers.nn import pow2_decay_with_linear_warmup
-from paddle.optimizer.lr import LinearWarmup
-from paddle.optimizer.lr import PolynomialDecay
 import unittest
+
+import paddle
+from paddle.incubate.layers.nn import pow2_decay_with_linear_warmup
+from paddle.optimizer.lr import LinearWarmup, PolynomialDecay
 
 
 def gen_pow2_warmup_op_lr(warmup_steps, total_steps, base_lr, end_lr, place):
     main = paddle.static.Program()
     startup = paddle.static.Program()
     with paddle.static.program_guard(main, startup):
-        lr = pow2_decay_with_linear_warmup(warmup_steps, total_steps, base_lr,
-                                           end_lr)
+        lr = pow2_decay_with_linear_warmup(
+            warmup_steps, total_steps, base_lr, end_lr
+        )
         exe = paddle.static.Executor(place)
     with paddle.static.scope_guard(paddle.static.Scope()):
         exe.run(startup)
@@ -40,13 +41,15 @@ class Pow2Warmup(LinearWarmup):
             learning_rate=base_lr,
             decay_steps=total_steps - warmup_steps,
             end_lr=end_lr,
-            power=2)
+            power=2,
+        )
 
-        super(Pow2Warmup, self).__init__(
+        super().__init__(
             learning_rate=lr_sch,
             warmup_steps=warmup_steps,
             start_lr=0.0,
-            end_lr=base_lr)
+            end_lr=base_lr,
+        )
 
 
 def gen_pow2_warmup_py_lr(warmup_steps, total_steps, base_lr, end_lr, place):

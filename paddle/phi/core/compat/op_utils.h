@@ -17,6 +17,7 @@ limitations under the License. */
 #include <string>
 #include <unordered_set>
 
+#include "glog/logging.h"
 #include "paddle/phi/core/compat/arg_map_context.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/infermeta_utils.h"
@@ -26,9 +27,11 @@ limitations under the License. */
 
 namespace phi {
 
+const static std::string deprecated_kernel_name = "deprecated";  // NOLINT
+
 const std::unordered_set<std::string> standard_kernel_suffixs({
     "sr",  // SelectedRows kernel
-    "raw"  // fallback kernel of origfinal fluid op
+    "raw"  // fallback kernel of original fluid op
 });
 
 /**
@@ -37,36 +40,51 @@ const std::unordered_set<std::string> standard_kernel_suffixs({
  * after 2.0, and can no longer be occupied by the previously abandoned ops.
  * They are marked here uniformly.
  */
-const std::unordered_set<std::string> deprecated_op_names({"diag",
-                                                           "flatten",
-                                                           "flatten_grad",
-                                                           "isinf",
-                                                           "isnan",
-                                                           "isfinite",
-                                                           "matmul",
-                                                           "matmul_grad",
-                                                           "matmul_grad_grad",
-                                                           "mean",
-                                                           "mean_grad",
-                                                           "max",
-                                                           "max_grad",
-                                                           "min",
-                                                           "min_grad",
-                                                           "prod",
-                                                           "prod_grad",
-                                                           "any",
-                                                           "all",
-                                                           "reshape",
-                                                           "reshape_grad",
-                                                           "expand",
-                                                           "expand_as",
-                                                           "expand_grad",
-                                                           "expand_as_grad",
-                                                           "sum",
-                                                           "one_hot",
-                                                           "sum_grad",
-                                                           "top_k",
-                                                           "top_k_grad"});
+static const std::unordered_set<std::string> deprecated_op_names(
+    {"diag",
+     "flatten",
+     "flatten_grad",
+     "isinf",
+     "isnan",
+     "unsqueeze",
+     "unsqueeze_grad",
+     "squeeze",
+     "squeeze_grad",
+     "isfinite",
+     "fill",
+     "matmul",
+     "matmul_grad",
+     "matmul_grad_grad",
+     "max",
+     "max_grad",
+     "min",
+     "min_grad",
+     "prod",
+     "prod_grad",
+     "any",
+     "all",
+     "reshape",
+     "reshape_grad",
+     "expand",
+     "expand_as",
+     "expand_grad",
+     "expand_as_grad",
+     "one_hot",
+     "top_k",
+     "top_k_grad",
+     "linear_interp",
+     "linear_interp_grad",
+     "bilinear_interp",
+     "bilinear_interp_grad",
+     "trilinear_interp",
+     "trilinear_interp_grad",
+     "nearest_interp",
+     "nearest_interp_grad",
+     "bicubic_interp",
+     "bicubic_interp_grad",
+     "crop",
+     "crop_grad",
+     "generate_proposals"});
 
 class DefaultKernelSignatureMap {
  public:
@@ -84,12 +102,20 @@ class DefaultKernelSignatureMap {
     return it->second;
   }
 
+  const KernelSignature* GetNullable(const std::string& op_type) const {
+    auto it = map_.find(op_type);
+    if (it != map_.end()) {
+      return &it->second;
+    }
+    return nullptr;
+  }
+
   void Insert(std::string op_type, KernelSignature signature) {
     PADDLE_ENFORCE_NE(
         Has(op_type),
         true,
         phi::errors::AlreadyExists(
-            "Operator (%s)'s Kernel Siginature has been registered.", op_type));
+            "Operator (%s)'s Kernel Signature has been registered.", op_type));
     map_.insert({std::move(op_type), std::move(signature)});
   }
 
@@ -106,18 +132,27 @@ class OpUtilsMap {
   static OpUtilsMap& Instance();
 
   bool Contains(const std::string& op_type) const {
-    return base_kernel_name_map_.count(op_type) ||
+    return fluid_op_to_phi_kernel_.count(op_type) ||
            arg_mapping_fn_map_.count(op_type);
   }
 
-  void InsertBaseKernelName(std::string op_type, std::string base_kernel_name) {
+  void InsertBaseKernelName(const std::string& op_type,
+                            const std::string& base_kernel_name) {
+    fluid_op_to_phi_kernel_.insert({op_type, base_kernel_name});
+  }
+  void InsertFluidOplName(std::string op_type, std::string base_kernel_name) {
     PADDLE_ENFORCE_EQ(
-        base_kernel_name_map_.count(op_type),
+        phi_kernel_to_fluid_op_.count(base_kernel_name),
         0UL,
         phi::errors::AlreadyExists(
-            "Operator (%s)'s api name has been registered.", op_type));
-    base_kernel_name_map_.insert(
-        {std::move(op_type), std::move(base_kernel_name)});
+            "Operator (%s)'s kernel name (%s) has been registered.",
+            op_type,
+            base_kernel_name));
+    phi_kernel_to_fluid_op_.insert({base_kernel_name, op_type});
+  }
+
+  bool HasArgumentMappingFn(const std::string& op_type) const {
+    return arg_mapping_fn_map_.count(op_type);
   }
 
   void InsertArgumentMappingFn(std::string op_type, ArgumentMappingFn fn) {
@@ -125,79 +160,80 @@ class OpUtilsMap {
         arg_mapping_fn_map_.count(op_type),
         0UL,
         phi::errors::AlreadyExists(
-            "Operator (%s)'s argu,emt mapping function has been registered.",
+            "Operator (%s)'s argument mapping function has been registered.",
             op_type));
     arg_mapping_fn_map_.insert({std::move(op_type), std::move(fn)});
   }
 
-  std::string GetBaseKernelName(const std::string& op_type) const {
+  const std::string& GetBaseKernelName(const std::string& op_type) const {
     if (deprecated_op_names.find(op_type) != deprecated_op_names.end()) {
-      return "deprecated";
+      return deprecated_kernel_name;
     }
-    auto it = base_kernel_name_map_.find(op_type);
-    if (it == base_kernel_name_map_.end()) {
+    auto it = fluid_op_to_phi_kernel_.find(op_type);
+    if (it == fluid_op_to_phi_kernel_.end()) {
       return op_type;
     } else {
       return it->second;
     }
   }
 
-  ArgumentMappingFn GetArgumentMappingFn(const std::string& op_type) const {
+  const ArgumentMappingFn* GetArgumentMappingFn(
+      const std::string& op_type) const {
     auto it = arg_mapping_fn_map_.find(op_type);
     if (it == arg_mapping_fn_map_.end()) {
-      auto func =
-          [op_type](const ArgumentMappingContext& ctx) -> KernelSignature {
-        return DefaultKernelSignatureMap::Instance().Get(op_type);
-      };
-      return func;
+      return nullptr;
     } else {
-      return it->second;
+      return &it->second;
     }
   }
 
-  const paddle::flat_hash_map<std::string, std::string>& base_kernel_name_map()
-      const {
-    return base_kernel_name_map_;
+  const paddle::flat_hash_map<std::string, std::string>&
+  fluid_op_to_phi_kernel() const {
+    return fluid_op_to_phi_kernel_;
+  }
+
+  const paddle::flat_hash_map<std::string, std::string>&
+  phi_kernel_to_fluid_op() const {
+    return phi_kernel_to_fluid_op_;
   }
 
  private:
   OpUtilsMap() = default;
 
-  paddle::flat_hash_map<std::string, std::string> base_kernel_name_map_;
+  paddle::flat_hash_map<std::string, std::string> fluid_op_to_phi_kernel_;
+
+  paddle::flat_hash_map<std::string, std::string> phi_kernel_to_fluid_op_;
+
   paddle::flat_hash_map<std::string, ArgumentMappingFn> arg_mapping_fn_map_;
 
   DISABLE_COPY_AND_ASSIGN(OpUtilsMap);
 };
 
 struct BaseKernelNameRegistrar {
-  BaseKernelNameRegistrar(const char* op_type, const char* base_kernel_name) {
-    OpUtilsMap::Instance().InsertBaseKernelName(op_type, base_kernel_name);
-  }
+  BaseKernelNameRegistrar(const char* op_type, const char* base_kernel_name);
 };
 
 struct ArgumentMappingFnRegistrar {
   ArgumentMappingFnRegistrar(const char* op_type,
-                             ArgumentMappingFn arg_mapping_fn) {
-    OpUtilsMap::Instance().InsertArgumentMappingFn(op_type,
-                                                   std::move(arg_mapping_fn));
-  }
+                             ArgumentMappingFn arg_mapping_fn);
 };
 
-#define PD_REGISTER_BASE_KERNEL_NAME(op_type, base_kernel_name)                \
-  PD_STATIC_ASSERT_GLOBAL_NAMESPACE(                                           \
-      PD_REGISTER_base_kernel_name_ns_check_##op_type,                         \
-      "PD_REGISTER_BASE_KERNEL_NAME must be called in global namespace.");     \
-  static const ::phi::BaseKernelNameRegistrar                                  \
-      __registrar_base_kernel_name_for_##op_type(#op_type, #base_kernel_name); \
-  int TouchBaseKernelNameSymbol_##op_type() { return 0; }
+#define PD_REGISTER_BASE_KERNEL_NAME(op_type, base_kernel_name)               \
+  PD_STATIC_ASSERT_GLOBAL_NAMESPACE(                                          \
+      PD_REGISTER_base_kernel_name_ns_check_##base_kernel_name,               \
+      "PD_REGISTER_BASE_KERNEL_NAME must be called in global namespace.");    \
+  static const ::phi::BaseKernelNameRegistrar                                 \
+      __registrar_base_kernel_name_for_##base_kernel_name(#op_type,           \
+                                                          #base_kernel_name); \
+  int TouchBaseKernelNameSymbol_##base_kernel_name() { return 0; }
 
-#define PD_DECLARE_BASE_KERNEL_NAME(op_type)                              \
-  PD_STATIC_ASSERT_GLOBAL_NAMESPACE(                                      \
-      PD_DECLARE_ai_name_ns_check_##op_type,                              \
-      "PD_DECLARE_BASE_KERNEL_NAME must be called in global namespace."); \
-  extern int TouchBaseKernelNameSymbol_##op_type();                       \
-  UNUSED static int __declare_base_kernel_name_symbol_for_##op_type =     \
-      TouchBaseKernelNameSymbol_##op_type()
+#define PD_DECLARE_BASE_KERNEL_NAME(op_type, base_kernel_name)                 \
+  PD_STATIC_ASSERT_GLOBAL_NAMESPACE(                                           \
+      PD_DECLARE_ai_name_ns_check_##base_kernel_name,                          \
+      "PD_DECLARE_BASE_KERNEL_NAME must be called in global namespace.");      \
+  extern int TouchBaseKernelNameSymbol_##base_kernel_name();                   \
+  UNUSED static int __declare_base_kernel_name_symbol_for_##base_kernel_name = \
+      TouchBaseKernelNameSymbol_##base_kernel_name()
 
 #define PD_REGISTER_ARG_MAPPING_FN(op_type, arg_mapping_fn)              \
   PD_STATIC_ASSERT_GLOBAL_NAMESPACE(                                     \

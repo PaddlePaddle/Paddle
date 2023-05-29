@@ -12,23 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
-import paddle.fluid as fluid
+
+from paddle import fluid
 
 fluid.core._set_eager_deletion_mode(0.0, 1.0, True)
-
-# FIXME(zjl): It seems that this unittest fails randomly 
-# when comparing all reduce last loss and reduce last loss
-# e.g.: AssertionError: 1.0357145 != 1.0673475 within 0.01 delta
-# Disable it temporarily.
-'''
-from test_parallel_executor_mnist import TestMNIST
-
-
-class EagerDeletionTestMNIST(TestMNIST):
-    pass
-'''
 
 if __name__ == '__main__':
     unittest.main()

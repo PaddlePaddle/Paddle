@@ -16,6 +16,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/fleet/fleet_wrapper.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -25,23 +26,22 @@ namespace operators {
 
 template <typename T>
 void PullSparseFunctor(const framework::ExecutionContext& ctx) {
-  auto inputs = ctx.MultiInput<framework::LoDTensor>("Ids");
-  auto outputs = ctx.MultiOutput<framework::LoDTensor>("Out");
+  auto inputs = ctx.MultiInput<phi::DenseTensor>("Ids");
+  auto outputs = ctx.MultiOutput<phi::DenseTensor>("Out");
   uint32_t fea_dim = static_cast<uint32_t>(ctx.Attr<int>("EmbeddingDim"));
   uint64_t padding_id = static_cast<uint64_t>(ctx.Attr<int>("PaddingId"));
   auto table_id = static_cast<uint32_t>(ctx.Attr<int>("TableId"));
   // note: GetInstance() is not thread-safe
   // we assume FleetWrapper has been already initialized
   auto fleet_ptr = framework::FleetWrapper::GetInstance();
-  fleet_ptr->PullSparseToTensorSync(table_id, fea_dim, padding_id,
-                                    ctx.GetPlace(), &inputs, &outputs);
+  fleet_ptr->PullSparseToTensorSync(
+      table_id, fea_dim, padding_id, ctx.GetPlace(), &inputs, &outputs);
 }
 
 template <typename T>
 void PushSparseFunctor(const framework::ExecutionContext& ctx) {
-  auto inputs = ctx.MultiInput<framework::LoDTensor>("Ids");
-  auto grads =
-      ctx.MultiInput<framework::LoDTensor>(framework::GradVarName("Out"));
+  auto inputs = ctx.MultiInput<phi::DenseTensor>("Ids");
+  auto grads = ctx.MultiInput<phi::DenseTensor>(framework::GradVarName("Out"));
   uint32_t fea_dim = static_cast<uint32_t>(ctx.Attr<int>("EmbeddingDim"));
   std::string accesor = ctx.Attr<std::string>("AccessorClass");
   bool scale_sparse = ctx.Attr<bool>("ScaleSparseGrad");
@@ -53,12 +53,20 @@ void PushSparseFunctor(const framework::ExecutionContext& ctx) {
   // note: GetInstance() is not thread-safe
   // we assume FleetWrapper has been already initialized
   auto fleet_ptr = framework::FleetWrapper::GetInstance();
-  fleet_ptr->PushSparseFromTensorWithLabelAsync(
-      scope, table_id, fea_dim, padding_id, scale_sparse, accesor, label_name,
-      ctx.GetPlace(), input_names, &inputs, &grads);
+  fleet_ptr->PushSparseFromTensorWithLabelAsync(scope,
+                                                table_id,
+                                                fea_dim,
+                                                padding_id,
+                                                scale_sparse,
+                                                accesor,
+                                                label_name,
+                                                ctx.GetPlace(),
+                                                input_names,
+                                                &inputs,
+                                                &grads);
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class PullSparseCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -66,7 +74,7 @@ class PullSparseCPUKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class PushSparseCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {

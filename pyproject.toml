@@ -1,0 +1,95 @@
+[tool.black]
+exclude = "build"
+line-length = 80
+skip-string-normalization = true
+
+[tool.isort]
+profile = "black"
+line_length = 80
+known_first_party = ["paddle"]
+skip = ["build", "__init__.py"]
+extend_skip_glob = [
+    # These files do not need to be formatted,
+    # see .flake8 for more details
+    "python/paddle/fluid/[!t]**",
+    "python/paddle/fluid/tra**",
+    "python/paddle/utils/gast/**",
+]
+
+[tool.ruff]
+exclude = [
+    "./build",
+    "./python/paddle/fluid/[!t]**",
+    "./python/paddle/fluid/tra**",
+    "./python/paddle/utils/gast/**",
+]
+target-version = "py37"
+select = [
+    # Pyflakes
+    "F401",
+
+    # Comprehensions
+    "C4",
+
+    # Pyupgrade
+    "UP",
+
+    # NumPy-specific rules
+    "NPY001",
+
+    # Bugbear
+    "B002",
+    "B003",
+    "B004",
+    "B009",
+    "B010",
+    "B011",
+    "B012",
+    "B013",
+    "B014",
+    "B015",
+    "B016",
+    "B017",
+    "B018",
+    "B019",
+    "B020",
+    "B021",
+    "B022",
+    "B025",
+    "B029",
+    "B032",
+
+    # Pylint
+    "PLC0414",
+    "PLC3002",
+    "PLE0100",
+    "PLE0101",
+    "PLE0604",
+    "PLE0605",
+    "PLE1142",
+    "PLE1205",
+    "PLE1206",
+    "PLE1307",
+    "PLE2502",
+    "PLR0206",
+    "PLR0402",
+]
+unfixable = [
+    "NPY001"
+]
+ignore = [
+    # It not met the "Explicit is better than implicit" rule
+    "UP015",
+    # It will cause the performance regression on python3.10
+    "UP038",
+]
+
+[tool.ruff.per-file-ignores]
+# Ignore unused imports in __init__.py
+"__init__.py" = ["F401"]
+# Ignore version check in setup.py
+"setup.py" = ["UP036"]
+# Ignore unnecessary comprehension in dy2st unittest test_loop
+"test/dygraph_to_static/test_loop.py" = ["C416"]
+# Ignore unnecessary lambda in dy2st unittest test_lambda
+"test/dygraph_to_static/test_lambda.py" = ["PLC3002"]

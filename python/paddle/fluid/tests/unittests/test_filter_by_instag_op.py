@@ -13,17 +13,11 @@
 # limitations under the License.
 """This is unit test of Test filter_instag Op."""
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.fluid.layers as layers
-from op_test import OpTest
-import random
-from decorator_helper import prog_scope
-from paddle.fluid.op import Operator
+from eager_op_test import OpTest
+
 """This is Test Case 1"""
 
 
@@ -55,8 +49,9 @@ class TestFilterByInstagOp(OpTest):
                     out[ln, k] = cur
                 ln += 1
 
-        mmap = np.array(
-            [[0, 1, 2], [2, 6, 4], [6, 15, 6], [12, 28, 8]]).astype('int64')
+        mmap = np.array([[0, 1, 2], [2, 6, 4], [6, 15, 6], [12, 28, 8]]).astype(
+            'int64'
+        )
         mmap_lod = [[1, 1, 1, 1]]
 
         loss_weight = np.array([[1], [1], [1], [1]]).astype('double')
@@ -69,7 +64,7 @@ class TestFilterByInstagOp(OpTest):
         self.outputs = {
             'Out': (out, out_lod),
             'LossWeight': (loss_weight, mmap_lod),
-            'IndexMap': (mmap, mmap_lod)
+            'IndexMap': (mmap, mmap_lod),
         }
 
         self.attrs = {'is_lod': True, 'out_val_if_empty': 0}
@@ -78,8 +73,7 @@ class TestFilterByInstagOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(
-            ['Ins'], 'Out', no_grad_set=set(['Ins_tag', 'Filter_tag']))
+        self.check_grad(['Ins'], 'Out', no_grad_set={'Ins_tag', 'Filter_tag'})
 
 
 """This is Test Case 2"""
@@ -115,7 +109,7 @@ class TestFilterByInstagOp2(OpTest):
         self.outputs = {
             'Out': (out, out_lod),
             'LossWeight': (loss_weight, mmap_lod),
-            'IndexMap': (mmap, mmap_lod)
+            'IndexMap': (mmap, mmap_lod),
         }
         self.attrs = {'is_lod': True, 'out_val_if_empty': 0}
 
@@ -123,8 +117,7 @@ class TestFilterByInstagOp2(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(
-            ['Ins'], 'Out', no_grad_set=set(['Ins_tag', 'Filter_tag']))
+        self.check_grad(['Ins'], 'Out', no_grad_set={'Ins_tag', 'Filter_tag'})
 
 
 """This is Test Case 3"""
@@ -157,7 +150,7 @@ class TestFilterByInstagOp3(OpTest):
         self.outputs = {
             'Out': (out, out_lod),
             'LossWeight': (loss_weight, mmap_lod),
-            'IndexMap': (mmap, mmap_lod)
+            'IndexMap': (mmap, mmap_lod),
         }
         self.attrs = {'is_lod': True, 'out_val_if_empty': 0}
 
@@ -165,8 +158,7 @@ class TestFilterByInstagOp3(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(
-            ['Ins'], 'Out', no_grad_set=set(['Ins_tag', 'Filter_tag']))
+        self.check_grad(['Ins'], 'Out', no_grad_set={'Ins_tag', 'Filter_tag'})
 
 
 """This is Test Case 4"""
@@ -198,7 +190,7 @@ class TestFilterByInstagOp4(OpTest):
         self.outputs = {
             'Out': (out, out_lod),
             'LossWeight': (loss_weight, mmap_lod),
-            'IndexMap': (mmap, mmap_lod)
+            'IndexMap': (mmap, mmap_lod),
         }
         self.attrs = {'is_lod': False, 'out_val_if_empty': 0}
 
@@ -206,8 +198,7 @@ class TestFilterByInstagOp4(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(
-            ['Ins'], 'Out', no_grad_set=set(['Ins_tag', 'Filter_tag']))
+        self.check_grad(['Ins'], 'Out', no_grad_set={'Ins_tag', 'Filter_tag'})
 
 
 class TestFilterByInstagOp6(OpTest):
@@ -236,7 +227,7 @@ class TestFilterByInstagOp6(OpTest):
         self.outputs = {
             'Out': (out, out_lod),
             'LossWeight': (loss_weight, mmap_lod),
-            'IndexMap': (mmap, mmap_lod)
+            'IndexMap': (mmap, mmap_lod),
         }
         self.attrs = {'is_lod': False, 'out_val_if_empty': 0}
 
@@ -273,7 +264,7 @@ class TestFilterByInstagOp7(OpTest):
         self.outputs = {
             'Out': (out, out_lod),
             'LossWeight': (loss_weight, mmap_lod),
-            'IndexMap': (mmap, mmap_lod)
+            'IndexMap': (mmap, mmap_lod),
         }
         self.attrs = {'is_lod': False, 'out_val_if_empty': 0}
 

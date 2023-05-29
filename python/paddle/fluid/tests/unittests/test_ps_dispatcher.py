@@ -12,17 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
-from paddle.fluid.incubate.fleet.parameter_server.ir.ps_dispatcher import RoundRobin, HashName, PSDispatcher
+
+from paddle.incubate.distributed.fleet.parameter_server.ir.ps_dispatcher import (
+    HashName,
+    PSDispatcher,
+    RoundRobin,
+)
 
 
 class TestPsDispatcher(unittest.TestCase):
     def setUp(self):
         self.points = [
-            "127.0.0.1:1001", "127.0.0.1:1002", "127.0.0.1:1003",
-            "127.0.0.1:1004"
+            "127.0.0.1:1001",
+            "127.0.0.1:1002",
+            "127.0.0.1:1003",
+            "127.0.0.1:1004",
         ]
 
     def test_base(self):
@@ -36,7 +41,7 @@ class TestPsDispatcher(unittest.TestCase):
     def test_hash(self):
         class Var:
             def __init__(self, index):
-                self._name = "var_{}".format(index)
+                self._name = f"var_{index}"
 
             def name(self):
                 return self._name
@@ -54,7 +59,7 @@ class TestPsDispatcher(unittest.TestCase):
     def test_round_rodin(self):
         class Var:
             def __init__(self, index):
-                self._name = "var_{}".format(index)
+                self._name = f"var_{index}"
 
             def name(self):
                 return self._name

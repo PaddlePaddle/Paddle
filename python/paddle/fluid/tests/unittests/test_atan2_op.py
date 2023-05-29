@@ -12,16 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import unittest
 
-from op_test import OpTest
+import numpy as np
+from eager_op_test import OpTest, convert_float_to_uint16
+
 import paddle
-import paddle.nn as nn
-import paddle.nn.functional as F
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import compiler, Program, program_guard
+from paddle.fluid import core
 
 paddle.enable_static()
 np.random.seed(0)
@@ -47,10 +44,10 @@ class TestAtan2(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_grad(self):
-        self.check_grad(['X1', 'X2'], 'Out', check_eager=True)
+        self.check_grad(['X1', 'X2'], 'Out')
 
     def test_check_output(self):
-        self.check_output(check_eager=True)
+        self.check_output()
 
     def init_dtype(self):
         self.dtype = np.float64
@@ -65,10 +62,12 @@ class TestAtan2_float(TestAtan2):
             self.check_grad(
                 ['X1', 'X2'],
                 'Out',
-                user_defined_grads=atan2_grad(self.inputs['X1'],
-                                              self.inputs['X2'],
-                                              1 / self.inputs['X1'].size),
-                check_eager=True)
+                user_defined_grads=atan2_grad(
+                    self.inputs['X1'],
+                    self.inputs['X2'],
+                    1 / self.inputs['X1'].size,
+                ),
+            )
 
 
 class TestAtan2_float16(TestAtan2_float):
@@ -104,14 +103,14 @@ class TestAtan2API(unittest.TestCase):
 
         def run(place):
             with paddle.static.program_guard(paddle.static.Program()):
-                X1 = paddle.fluid.data('X1', self.shape, dtype=self.dtype)
-                X2 = paddle.fluid.data('X2', self.shape, dtype=self.dtype)
+                X1 = paddle.static.data('X1', self.shape, dtype=self.dtype)
+                X2 = paddle.static.data('X2', self.shape, dtype=self.dtype)
                 out = paddle.atan2(X1, X2)
                 exe = paddle.static.Executor(place)
                 res = exe.run(feed={'X1': self.x1, 'X2': self.x2})
             out_ref = np.arctan2(self.x1, self.x2)
             for r in res:
-                self.assertEqual(np.allclose(out_ref, r), True)
+                np.testing.assert_allclose(out_ref, r, rtol=1e-05)
 
         for place in self.place:
             run(place)
@@ -123,11 +122,52 @@ class TestAtan2API(unittest.TestCase):
             X2 = paddle.to_tensor(self.x2)
             out = paddle.atan2(X1, X2)
             out_ref = np.arctan2(self.x1, self.x2)
-            self.assertEqual(np.allclose(out_ref, out.numpy()), True)
+            np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-05)
             paddle.enable_static()
 
         for place in self.place:
             run(place)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA and not support the bfloat16",
+)
+class TestAtan2BF16OP(OpTest):
+    def setUp(self):
+        self.op_type = 'atan2'
+        self.python_api = paddle.atan2
+        self.dtype = np.uint16
+        x1 = np.random.uniform(-1, -0.1, [15, 17]).astype('float32')
+        x2 = np.random.uniform(0.1, 1, [15, 17]).astype('float32')
+        out = np.arctan2(x1, x2)
+
+        self.inputs = {
+            'X1': convert_float_to_uint16(x1),
+            'X2': convert_float_to_uint16(x2),
+        }
+        self.outputs = {'Out': convert_float_to_uint16(out)}
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X1', 'X2'], 'Out')
+
+
+class TestAtan2Error(unittest.TestCase):
+    def test_mismatch(self):
+        paddle.enable_static()
+
+        def test_mismatch_numel():
+            X = paddle.static.data('X', (1,), dtype=np.float64)
+            Y = paddle.static.data('Y', (0,), dtype=np.float64)
+            out = paddle.atan2(X, Y)
+
+        self.assertRaises(ValueError, test_mismatch_numel)
 
 
 if __name__ == '__main__':

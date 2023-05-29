@@ -12,15 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 
+import gradient_checker
 import numpy as np
+from decorator_helper import prog_scope
+from eager_op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid as fluid
-from op_test import OpTest, convert_float_to_uint16
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 paddle.enable_static()
 
@@ -31,6 +32,29 @@ class TestUnsqueezeOp(OpTest):
         self.init_test_case()
         self.op_type = "unsqueeze"
         self.inputs = {"X": np.random.random(self.ori_shape).astype("float64")}
+        self.init_attrs()
+        self.outputs = {"Out": self.inputs["X"].reshape(self.new_shape)}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(["X"], "Out")
+
+    def init_test_case(self):
+        self.ori_shape = (3, 40)
+        self.axes = (1, 2)
+        self.new_shape = (3, 1, 1, 40)
+
+    def init_attrs(self):
+        self.attrs = {"axes": self.axes}
+
+
+class TestUnsqueezeFP16Op(OpTest):
+    def setUp(self):
+        self.init_test_case()
+        self.op_type = "unsqueeze"
+        self.inputs = {"X": np.random.random(self.ori_shape).astype("float16")}
         self.init_attrs()
         self.outputs = {"Out": self.inputs["X"].reshape(self.new_shape)}
 
@@ -79,7 +103,7 @@ class TestUnsqueezeBF16Op(OpTest):
 class TestUnsqueezeOp1(TestUnsqueezeOp):
     def init_test_case(self):
         self.ori_shape = (20, 5)
-        self.axes = (-1, )
+        self.axes = (-1,)
         self.new_shape = (20, 5, 1)
 
 
@@ -107,31 +131,72 @@ class TestUnsqueezeOp4(TestUnsqueezeOp):
         self.new_shape = (10, 1, 1, 2, 5, 1)
 
 
+# axis is empty, x is ND
+class TestUnsqueezeOp5(TestUnsqueezeOp):
+    def init_test_case(self):
+        self.ori_shape = ()
+        self.axes = ()
+        self.new_shape = ()
+
+
+# axis is empty, x is 0D
+class TestUnsqueezeOp6(TestUnsqueezeOp):
+    def init_test_case(self):
+        self.ori_shape = (10, 2, 5)
+        self.axes = ()
+        self.new_shape = (10, 2, 5)
+
+
+class TestUnsqueezeOp_ZeroDim1(TestUnsqueezeOp):
+    def init_test_case(self):
+        self.ori_shape = ()
+        self.axes = (-1,)
+        self.new_shape = 1
+
+
+class TestUnsqueezeOp_ZeroDim2(TestUnsqueezeOp):
+    def init_test_case(self):
+        self.ori_shape = ()
+        self.axes = (-1, 1)
+        self.new_shape = (1, 1)
+
+
+class TestUnsqueezeOp_ZeroDim3(TestUnsqueezeOp):
+    def init_test_case(self):
+        self.ori_shape = ()
+        self.axes = (0, 1, 2)
+        self.new_shape = (1, 1, 1)
+
+
 class API_TestUnsqueeze(unittest.TestCase):
     def test_out(self):
         paddle.enable_static()
-        with paddle.static.program_guard(paddle.static.Program(),
-                                         paddle.static.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             data1 = paddle.static.data('data1', shape=[-1, 10], dtype='float64')
             result_squeeze = paddle.unsqueeze(data1, axis=[1])
             place = paddle.CPUPlace()
             exe = paddle.static.Executor(place)
             input1 = np.random.random([5, 1, 10]).astype('float64')
             input = np.squeeze(input1, axis=1)
-            result, = exe.run(feed={"data1": input},
-                              fetch_list=[result_squeeze])
-            self.assertTrue(np.allclose(input1, result))
+            (result,) = exe.run(
+                feed={"data1": input}, fetch_list=[result_squeeze]
+            )
+            np.testing.assert_allclose(input1, result, rtol=1e-05)
 
 
 class TestUnsqueezeOpError(unittest.TestCase):
     def test_errors(self):
         paddle.enable_static()
-        with paddle.static.program_guard(paddle.static.Program(),
-                                         paddle.static.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             # The type of axis in split_op should be int or Variable.
             def test_axes_type():
                 x6 = paddle.static.data(
-                    shape=[-1, 10], dtype='float16', name='x3')
+                    shape=[-1, 10], dtype='float16', name='x3'
+                )
                 paddle.unsqueeze(x6, axis=3.2)
 
             self.assertRaises(TypeError, test_axes_type)
@@ -140,8 +205,9 @@ class TestUnsqueezeOpError(unittest.TestCase):
 class API_TestUnsqueeze2(unittest.TestCase):
     def test_out(self):
         paddle.enable_static()
-        with paddle.static.program_guard(paddle.static.Program(),
-                                         paddle.static.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             data1 = paddle.static.data('data1', shape=[-1, 10], dtype='float64')
             data2 = paddle.static.data('data2', shape=[1], dtype='int32')
             result_squeeze = paddle.unsqueeze(data1, axis=data2)
@@ -150,17 +216,19 @@ class API_TestUnsqueeze2(unittest.TestCase):
             input1 = np.random.random([5, 1, 10]).astype('float64')
             input2 = np.array([1]).astype('int32')
             input = np.squeeze(input1, axis=1)
-            result1, = exe.run(feed={"data1": input,
-                                     "data2": input2},
-                               fetch_list=[result_squeeze])
-            self.assertTrue(np.allclose(input1, result1))
+            (result1,) = exe.run(
+                feed={"data1": input, "data2": input2},
+                fetch_list=[result_squeeze],
+            )
+            np.testing.assert_allclose(input1, result1, rtol=1e-05)
 
 
 class API_TestUnsqueeze3(unittest.TestCase):
     def test_out(self):
         paddle.enable_static()
-        with paddle.static.program_guard(paddle.static.Program(),
-                                         paddle.static.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             data1 = paddle.static.data('data1', shape=[-1, 10], dtype='float64')
             data2 = paddle.static.data('data2', shape=[1], dtype='int32')
             result_squeeze = paddle.unsqueeze(data1, axis=[data2, 3])
@@ -169,10 +237,11 @@ class API_TestUnsqueeze3(unittest.TestCase):
             input1 = np.random.random([5, 1, 10, 1]).astype('float64')
             input2 = np.array([1]).astype('int32')
             input = np.squeeze(input1)
-            result1, = exe.run(feed={"data1": input,
-                                     "data2": input2},
-                               fetch_list=[result_squeeze])
-            self.assertTrue(np.array_equal(input1, result1))
+            (result1,) = exe.run(
+                feed={"data1": input, "data2": input2},
+                fetch_list=[result_squeeze],
+            )
+            np.testing.assert_array_equal(input1, result1)
             self.assertEqual(input1.shape, result1.shape)
 
 
@@ -184,7 +253,7 @@ class API_TestDyUnsqueeze(unittest.TestCase):
         input = paddle.to_tensor(input_1)
         output = paddle.unsqueeze(input, axis=[1])
         out_np = output.numpy()
-        self.assertTrue(np.array_equal(input1, out_np))
+        np.testing.assert_array_equal(input1, out_np)
         self.assertEqual(input1.shape, out_np.shape)
 
 
@@ -196,7 +265,7 @@ class API_TestDyUnsqueeze2(unittest.TestCase):
         input = paddle.to_tensor(input1)
         output = paddle.unsqueeze(input, axis=1)
         out_np = output.numpy()
-        self.assertTrue(np.array_equal(out1, out_np))
+        np.testing.assert_array_equal(out1, out_np)
         self.assertEqual(out1.shape, out_np.shape)
 
 
@@ -209,7 +278,7 @@ class API_TestDyUnsqueezeAxisTensor(unittest.TestCase):
         input = paddle.to_tensor(input1)
         output = paddle.unsqueeze(input, axis=paddle.to_tensor([1, 2]))
         out_np = output.numpy()
-        self.assertTrue(np.array_equal(out1, out_np))
+        np.testing.assert_array_equal(out1, out_np)
         self.assertEqual(out1.shape, out_np.shape)
 
 
@@ -223,9 +292,10 @@ class API_TestDyUnsqueezeAxisTensorList(unittest.TestCase):
         input = paddle.to_tensor(input1)
         output = paddle.unsqueeze(
             paddle.to_tensor(input1),
-            axis=[paddle.to_tensor([1]), paddle.to_tensor([2])])
+            axis=[paddle.to_tensor([1]), paddle.to_tensor([2])],
+        )
         out_np = output.numpy()
-        self.assertTrue(np.array_equal(out1, out_np))
+        np.testing.assert_array_equal(out1, out_np)
         self.assertEqual(out1.shape, out_np.shape)
 
 
@@ -243,7 +313,7 @@ class API_TestDygraphUnSqueeze(unittest.TestCase):
         output = self.unsqueeze(input, axis=[1])
         out_np = output.numpy()
         expected_out = np.expand_dims(input_1, axis=1)
-        self.assertTrue(np.allclose(expected_out, out_np))
+        np.testing.assert_allclose(expected_out, out_np, rtol=1e-05)
 
     def test_out_int8(self):
         paddle.disable_static()
@@ -252,7 +322,7 @@ class API_TestDygraphUnSqueeze(unittest.TestCase):
         output = self.unsqueeze(input, axis=[1])
         out_np = output.numpy()
         expected_out = np.expand_dims(input_1, axis=1)
-        self.assertTrue(np.allclose(expected_out, out_np))
+        np.testing.assert_allclose(expected_out, out_np, rtol=1e-05)
 
     def test_out_uint8(self):
         paddle.disable_static()
@@ -261,7 +331,7 @@ class API_TestDygraphUnSqueeze(unittest.TestCase):
         output = self.unsqueeze(input, axis=1)
         out_np = output.numpy()
         expected_out = np.expand_dims(input_1, axis=1)
-        self.assertTrue(np.allclose(expected_out, out_np))
+        np.testing.assert_allclose(expected_out, out_np, rtol=1e-05)
 
     def test_axis_not_list(self):
         paddle.disable_static()
@@ -270,7 +340,7 @@ class API_TestDygraphUnSqueeze(unittest.TestCase):
         output = self.unsqueeze(input, axis=1)
         out_np = output.numpy()
         expected_out = np.expand_dims(input_1, axis=1)
-        self.assertTrue(np.allclose(expected_out, out_np))
+        np.testing.assert_allclose(expected_out, out_np, rtol=1e-05)
 
     def test_dimension_not_1(self):
         paddle.disable_static()
@@ -278,13 +348,75 @@ class API_TestDygraphUnSqueeze(unittest.TestCase):
         input = paddle.to_tensor(input_1)
         output = self.unsqueeze(input, axis=(1, 2))
         out_np = output.numpy()
-        expected_out = np.expand_dims(input_1, axis=1)
-        self.assertTrue(np.allclose(expected_out, out_np))
+        expected_out = np.expand_dims(input_1, axis=(1, 2))
+        np.testing.assert_allclose(expected_out, out_np, rtol=1e-05)
 
 
 class API_TestDygraphUnSqueezeInplace(API_TestDygraphUnSqueeze):
     def executed_api(self):
         self.unsqueeze = paddle.unsqueeze_
+
+
+class TestUnsqueezeDoubleGradCheck(unittest.TestCase):
+    def unsqueeze_wrapper(self, x):
+        return paddle.unsqueeze(x[0], [0, 2])
+
+    @prog_scope()
+    def func(self, place):
+        # the shape of input variable should be clearly specified, not inlcude -1.
+        eps = 0.005
+        dtype = np.float32
+
+        data = paddle.static.data('data', [2, 3, 4], dtype)
+        data.persistable = True
+        out = paddle.unsqueeze(data, [0, 2])
+        data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
+
+        gradient_checker.double_grad_check(
+            [data], out, x_init=[data_arr], place=place, eps=eps
+        )
+        gradient_checker.double_grad_check_for_dygraph(
+            self.unsqueeze_wrapper, [data], out, x_init=[data_arr], place=place
+        )
+
+    def test_grad(self):
+        paddle.enable_static()
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestUnsqueezeTripleGradCheck(unittest.TestCase):
+    def unsqueeze_wrapper(self, x):
+        return paddle.unsqueeze(x[0], [0, 2])
+
+    @prog_scope()
+    def func(self, place):
+        # the shape of input variable should be clearly specified, not inlcude -1.
+        eps = 0.005
+        dtype = np.float32
+
+        data = paddle.static.data('data', [2, 3, 4], dtype)
+        data.persistable = True
+        out = paddle.unsqueeze(data, [0, 2])
+        data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
+
+        gradient_checker.triple_grad_check(
+            [data], out, x_init=[data_arr], place=place, eps=eps
+        )
+        gradient_checker.triple_grad_check_for_dygraph(
+            self.unsqueeze_wrapper, [data], out, x_init=[data_arr], place=place
+        )
+
+    def test_grad(self):
+        paddle.enable_static()
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
 
 
 if __name__ == "__main__":

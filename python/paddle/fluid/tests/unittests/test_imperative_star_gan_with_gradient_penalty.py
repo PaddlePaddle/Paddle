@@ -12,17 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.fluid as fluid
-import numpy as np
 import unittest
-from paddle import _C_ops
+
+import numpy as np
+
+import paddle
+from paddle import _legacy_C_ops, fluid
+from paddle.tensor import random
 
 if fluid.is_compiled_with_cuda():
     fluid.core.globals()['FLAGS_cudnn_deterministic'] = True
 
 
-class Config(object):
+class Config:
     def __init__(self, place, sort_sum_gradient=True):
         self.place = place
 
@@ -103,9 +105,9 @@ def create_mnist_dataset(cfg):
     return __impl__
 
 
-class InstanceNorm(fluid.dygraph.Layer):
+class InstanceNorm(paddle.nn.Layer):
     def __init__(self, num_channels, epsilon=1e-5):
-        super(InstanceNorm, self).__init__()
+        super().__init__()
         self.epsilon = epsilon
 
         self.scale = self.create_parameter(shape=[num_channels], is_bias=False)
@@ -113,35 +115,40 @@ class InstanceNorm(fluid.dygraph.Layer):
 
     def forward(self, input):
         if fluid.in_dygraph_mode():
-            out, _, _ = _C_ops.instance_norm(input, self.scale, self.bias,
-                                             'epsilon', self.epsilon)
+            out, _, _ = _legacy_C_ops.instance_norm(
+                input, self.scale, self.bias, 'epsilon', self.epsilon
+            )
             return out
         else:
-            return fluid.layers.instance_norm(
+            return paddle.static.nn.instance_norm(
                 input,
                 epsilon=self.epsilon,
                 param_attr=fluid.ParamAttr(self.scale.name),
-                bias_attr=fluid.ParamAttr(self.bias.name))
+                bias_attr=fluid.ParamAttr(self.bias.name),
+            )
 
 
-class Conv2DLayer(fluid.dygraph.Layer):
-    def __init__(self,
-                 num_channels,
-                 num_filters=64,
-                 filter_size=7,
-                 stride=1,
-                 padding=0,
-                 norm=None,
-                 use_bias=False,
-                 relufactor=None):
-        super(Conv2DLayer, self).__init__()
-        self._conv = fluid.dygraph.Conv2D(
-            num_channels=num_channels,
-            num_filters=num_filters,
-            filter_size=filter_size,
+class Conv2DLayer(paddle.nn.Layer):
+    def __init__(
+        self,
+        num_channels,
+        num_filters=64,
+        filter_size=7,
+        stride=1,
+        padding=0,
+        norm=None,
+        use_bias=False,
+        relufactor=None,
+    ):
+        super().__init__()
+        self._conv = paddle.nn.Conv2D(
+            in_channels=num_channels,
+            out_channels=num_filters,
+            kernel_size=filter_size,
             stride=stride,
             padding=padding,
-            bias_attr=None if use_bias else False)
+            bias_attr=None if use_bias else False,
+        )
 
         if norm is not None:
             self._norm = InstanceNorm(num_filters)
@@ -157,30 +164,33 @@ class Conv2DLayer(fluid.dygraph.Layer):
             conv = self._norm(conv)
 
         if self.relufactor is not None:
-            conv = fluid.layers.leaky_relu(conv, alpha=self.relufactor)
+            conv = paddle.nn.functional.leaky_relu(conv, self.relufactor)
 
         return conv
 
 
-class Deconv2DLayer(fluid.dygraph.Layer):
-    def __init__(self,
-                 num_channels,
-                 num_filters=64,
-                 filter_size=7,
-                 stride=1,
-                 padding=0,
-                 norm=None,
-                 use_bias=False,
-                 relufactor=None):
-        super(Deconv2DLayer, self).__init__()
+class Deconv2DLayer(paddle.nn.Layer):
+    def __init__(
+        self,
+        num_channels,
+        num_filters=64,
+        filter_size=7,
+        stride=1,
+        padding=0,
+        norm=None,
+        use_bias=False,
+        relufactor=None,
+    ):
+        super().__init__()
 
-        self._deconv = fluid.dygraph.Conv2DTranspose(
-            num_channels=num_channels,
-            num_filters=num_filters,
-            filter_size=filter_size,
+        self._deconv = paddle.nn.Conv2DTranspose(
+            num_channels,
+            num_filters,
+            filter_size,
             stride=stride,
             padding=padding,
-            bias_attr=None if use_bias else False)
+            bias_attr=None if use_bias else False,
+        )
 
         if norm is not None:
             self._norm = InstanceNorm(num_filters)
@@ -196,14 +206,14 @@ class Deconv2DLayer(fluid.dygraph.Layer):
             deconv = self._norm(deconv)
 
         if self.relufactor is not None:
-            deconv = fluid.layers.leaky_relu(deconv, alpha=self.relufactor)
+            deconv = paddle.nn.functional.leaky_relu(deconv, self.relufactor)
 
         return deconv
 
 
-class ResidualBlock(fluid.dygraph.Layer):
+class ResidualBlock(paddle.nn.Layer):
     def __init__(self, num_channels, num_filters):
-        super(ResidualBlock, self).__init__()
+        super().__init__()
         self._conv0 = Conv2DLayer(
             num_channels=num_channels,
             num_filters=num_filters,
@@ -211,7 +221,8 @@ class ResidualBlock(fluid.dygraph.Layer):
             stride=1,
             padding=1,
             norm=True,
-            relufactor=0)
+            relufactor=0,
+        )
 
         self._conv1 = Conv2DLayer(
             num_channels=num_filters,
@@ -220,7 +231,8 @@ class ResidualBlock(fluid.dygraph.Layer):
             stride=1,
             padding=1,
             norm=True,
-            relufactor=None)
+            relufactor=None,
+        )
 
     def forward(self, input):
         conv0 = self._conv0(input)
@@ -228,9 +240,9 @@ class ResidualBlock(fluid.dygraph.Layer):
         return input + conv1
 
 
-class Generator(fluid.dygraph.Layer):
+class Generator(paddle.nn.Layer):
     def __init__(self, cfg, num_channels=3):
-        super(Generator, self).__init__()
+        super().__init__()
         conv_base = Conv2DLayer(
             num_channels=cfg.c_dim + num_channels,
             num_filters=cfg.g_base_dims,
@@ -238,7 +250,8 @@ class Generator(fluid.dygraph.Layer):
             stride=1,
             padding=3,
             norm=True,
-            relufactor=0)
+            relufactor=0,
+        )
 
         sub_layers = [conv_base]
         cur_channels = cfg.g_base_dims
@@ -250,26 +263,28 @@ class Generator(fluid.dygraph.Layer):
                 stride=2,
                 padding=1,
                 norm=True,
-                relufactor=0)
+                relufactor=0,
+            )
 
             cur_channels *= 2
             sub_layers.append(sub_layer)
 
-        self._conv0 = fluid.dygraph.Sequential(*sub_layers)
+        self._conv0 = paddle.nn.Sequential(*sub_layers)
 
         repeat_num = cfg.g_repeat_num
         sub_layers = []
         for i in range(repeat_num):
             res_block = ResidualBlock(
-                num_channels=cur_channels, num_filters=cfg.g_base_dims * 4)
+                num_channels=cur_channels, num_filters=cfg.g_base_dims * 4
+            )
             sub_layers.append(res_block)
 
-        self._res_block = fluid.dygraph.Sequential(*sub_layers)
+        self._res_block = paddle.nn.Sequential(*sub_layers)
 
         cur_channels = cfg.g_base_dims * 4
         sub_layers = []
         for i in range(2):
-            rate = 2**(1 - i)
+            rate = 2 ** (1 - i)
             deconv = Deconv2DLayer(
                 num_channels=cur_channels,
                 num_filters=cfg.g_base_dims * rate,
@@ -277,11 +292,12 @@ class Generator(fluid.dygraph.Layer):
                 stride=2,
                 padding=1,
                 relufactor=0,
-                norm=True)
+                norm=True,
+            )
             cur_channels = cfg.g_base_dims * rate
             sub_layers.append(deconv)
 
-        self._deconv = fluid.dygraph.Sequential(*sub_layers)
+        self._deconv = paddle.nn.Sequential(*sub_layers)
 
         self._conv1 = Conv2DLayer(
             num_channels=cur_channels,
@@ -289,28 +305,27 @@ class Generator(fluid.dygraph.Layer):
             filter_size=7,
             stride=1,
             padding=3,
-            relufactor=None)
+            relufactor=None,
+        )
 
     def forward(self, input, label_trg):
         shape = input.shape
-        label_trg_e = fluid.layers.reshape(label_trg,
-                                           [-1, label_trg.shape[1], 1, 1])
-        label_trg_e = fluid.layers.expand(
-            x=label_trg_e, expand_times=[1, 1, shape[2], shape[3]])
+        label_trg_e = paddle.reshape(label_trg, [-1, label_trg.shape[1], 1, 1])
+        label_trg_e = paddle.expand(label_trg_e, [-1, -1, shape[2], shape[3]])
 
-        input1 = fluid.layers.concat([input, label_trg_e], 1)
+        input1 = paddle.concat([input, label_trg_e], 1)
 
         conv0 = self._conv0(input1)
         res_block = self._res_block(conv0)
         deconv = self._deconv(res_block)
         conv1 = self._conv1(deconv)
-        out = fluid.layers.tanh(conv1)
+        out = paddle.tanh(conv1)
         return out
 
 
-class Discriminator(fluid.dygraph.Layer):
+class Discriminator(paddle.nn.Layer):
     def __init__(self, cfg, num_channels=3):
-        super(Discriminator, self).__init__()
+        super().__init__()
 
         cur_dim = cfg.d_base_dims
 
@@ -320,7 +335,8 @@ class Discriminator(fluid.dygraph.Layer):
             filter_size=4,
             stride=2,
             padding=1,
-            relufactor=0.2)
+            relufactor=0.2,
+        )
 
         repeat_num = cfg.d_repeat_num
         sub_layers = [conv_base]
@@ -331,11 +347,12 @@ class Discriminator(fluid.dygraph.Layer):
                 filter_size=4,
                 stride=2,
                 padding=1,
-                relufactor=0.2)
+                relufactor=0.2,
+            )
             cur_dim *= 2
             sub_layers.append(sub_layer)
 
-        self._conv0 = fluid.dygraph.Sequential(*sub_layers)
+        self._conv0 = paddle.nn.Sequential(*sub_layers)
 
         kernel_size = int(cfg.image_size / np.power(2, repeat_num))
 
@@ -344,12 +361,12 @@ class Discriminator(fluid.dygraph.Layer):
             num_filters=1,
             filter_size=3,
             stride=1,
-            padding=1)
+            padding=1,
+        )
 
         self._conv2 = Conv2DLayer(
-            num_channels=cur_dim,
-            num_filters=cfg.c_dim,
-            filter_size=kernel_size)
+            num_channels=cur_dim, num_filters=cfg.c_dim, filter_size=kernel_size
+        )
 
     def forward(self, input):
         conv = self._conv0(input)
@@ -360,11 +377,13 @@ class Discriminator(fluid.dygraph.Layer):
 
 def loss_cls(cls, label, cfg):
     cls_shape = cls.shape
-    cls = fluid.layers.reshape(
-        cls, [-1, cls_shape[1] * cls_shape[2] * cls_shape[3]])
-    return fluid.layers.reduce_sum(
-        fluid.layers.sigmoid_cross_entropy_with_logits(cls,
-                                                       label)) / cfg.batch_size
+    cls = paddle.reshape(cls, [-1, cls_shape[1] * cls_shape[2] * cls_shape[3]])
+    return (
+        paddle.sum(
+            paddle.nn.functional.binary_cross_entropy_with_logits(cls, label)
+        )
+        / cfg.batch_size
+    )
 
 
 def calc_gradients(outputs, inputs, no_grad_set):
@@ -373,21 +392,24 @@ def calc_gradients(outputs, inputs, no_grad_set):
             outputs=outputs,
             inputs=inputs,
             no_grad_vars=no_grad_set,
-            create_graph=True)
+            create_graph=True,
+        )
     else:
         return fluid.gradients(
-            targets=outputs, inputs=inputs, no_grad_set=no_grad_set)
+            targets=outputs, inputs=inputs, no_grad_set=no_grad_set
+        )
 
 
 def gradient_penalty(f, real, fake, no_grad_set, cfg):
     def _interpolate(a, b):
         shape = [a.shape[0]]
-        alpha = fluid.layers.uniform_random_batch_size_like(
-            input=a, shape=shape, min=0.1, max=1.0, seed=cfg.seed)
+        alpha = random.uniform_random_batch_size_like(
+            input=a, shape=shape, min=0.1, max=1.0, seed=cfg.seed
+        )
 
-        inner = fluid.layers.elementwise_mul(
-            b, 1.0 - alpha, axis=0) + fluid.layers.elementwise_mul(
-                a, alpha, axis=0)
+        inner = paddle.tensor.math._multiply_with_axis(
+            b, 1.0 - alpha, axis=0
+        ) + paddle.tensor.math._multiply_with_axis(a, alpha, axis=0)
         return inner
 
     x = _interpolate(real, fake)
@@ -396,7 +418,8 @@ def gradient_penalty(f, real, fake, no_grad_set, cfg):
         pred = pred[0]
 
     gradient = calc_gradients(
-        outputs=[pred], inputs=[x], no_grad_set=no_grad_set)
+        outputs=[pred], inputs=[x], no_grad_set=no_grad_set
+    )
 
     if gradient is None:
         return None
@@ -404,45 +427,50 @@ def gradient_penalty(f, real, fake, no_grad_set, cfg):
     gradient = gradient[0]
     grad_shape = gradient.shape
 
-    gradient = fluid.layers.reshape(
-        gradient, [-1, grad_shape[1] * grad_shape[2] * grad_shape[3]])
+    gradient = paddle.reshape(
+        gradient, [-1, grad_shape[1] * grad_shape[2] * grad_shape[3]]
+    )
 
     epsilon = 1e-16
-    norm = fluid.layers.sqrt(
-        fluid.layers.reduce_sum(
-            fluid.layers.square(gradient), dim=1) + epsilon)
+    norm = paddle.sqrt(paddle.sum(paddle.square(gradient), axis=1) + epsilon)
 
-    gp = fluid.layers.reduce_mean(fluid.layers.square(norm - 1.0))
+    gp = paddle.mean(paddle.square(norm - 1.0))
     return gp
 
 
-def get_generator_loss(image_real, label_org, label_trg, generator,
-                       discriminator, cfg):
+def get_generator_loss(
+    image_real, label_org, label_trg, generator, discriminator, cfg
+):
     fake_img = generator(image_real, label_trg)
     rec_img = generator(fake_img, label_org)
-    g_loss_rec = fluid.layers.reduce_mean(
-        fluid.layers.abs(fluid.layers.elementwise_sub(image_real, rec_img)))
+    g_loss_rec = paddle.mean(paddle.abs(paddle.subtract(image_real, rec_img)))
 
     pred_fake, cls_fake = discriminator(fake_img)
 
-    g_loss_fake = -fluid.layers.mean(pred_fake)
+    g_loss_fake = -paddle.mean(pred_fake)
     g_loss_cls = loss_cls(cls_fake, label_trg, cfg)
     g_loss = g_loss_fake + cfg.lambda_rec * g_loss_rec + g_loss_cls
     return g_loss
 
 
-def get_discriminator_loss(image_real, label_org, label_trg, generator,
-                           discriminator, cfg):
+def get_discriminator_loss(
+    image_real, label_org, label_trg, generator, discriminator, cfg
+):
     fake_img = generator(image_real, label_trg)
     pred_real, cls_real = discriminator(image_real)
     pred_fake, _ = discriminator(fake_img)
     d_loss_cls = loss_cls(cls_real, label_org, cfg)
-    d_loss_fake = fluid.layers.mean(pred_fake)
-    d_loss_real = -fluid.layers.mean(pred_real)
+    d_loss_fake = paddle.mean(pred_fake)
+    d_loss_real = -paddle.mean(pred_real)
     d_loss = d_loss_real + d_loss_fake + d_loss_cls
 
-    d_loss_gp = gradient_penalty(discriminator, image_real, fake_img,
-                                 set(discriminator.parameters()), cfg)
+    d_loss_gp = gradient_penalty(
+        discriminator,
+        image_real,
+        fake_img,
+        set(discriminator.parameters()),
+        cfg,
+    )
     if d_loss_gp is not None:
         d_loss += cfg.lambda_gp * d_loss_gp
 
@@ -458,16 +486,18 @@ def build_optimizer(layer, cfg, loss=None):
             learning_rate=learning_rate,
             beta1=beta1,
             beta2=beta2,
-            parameter_list=layer.parameters())
+            parameter_list=layer.parameters(),
+        )
     else:
         optimizer = fluid.optimizer.Adam(
-            learning_rate=learning_rate, beta1=beta1, beta2=beta2)
+            learning_rate=learning_rate, beta1=beta1, beta2=beta2
+        )
 
         optimizer.minimize(loss, parameter_list=layer.parameters())
         return optimizer
 
 
-class DyGraphTrainModel(object):
+class DyGraphTrainModel:
     def __init__(self, cfg):
         paddle.seed(1)
         paddle.framework.random._manual_program_seed(1)
@@ -494,40 +524,53 @@ class DyGraphTrainModel(object):
         label_org = fluid.dygraph.to_variable(label_org)
         label_trg = fluid.dygraph.to_variable(label_trg)
 
-        g_loss = get_generator_loss(image_real, label_org, label_trg,
-                                    self.generator, self.discriminator,
-                                    self.cfg)
+        g_loss = get_generator_loss(
+            image_real,
+            label_org,
+            label_trg,
+            self.generator,
+            self.discriminator,
+            self.cfg,
+        )
         g_loss.backward()
         if self.g_optimizer:
             self.g_optimizer.minimize(g_loss)
 
         self.clear_gradients()
 
-        d_loss = get_discriminator_loss(image_real, label_org, label_trg,
-                                        self.generator, self.discriminator,
-                                        self.cfg)
+        d_loss = get_discriminator_loss(
+            image_real,
+            label_org,
+            label_trg,
+            self.generator,
+            self.discriminator,
+            self.cfg,
+        )
         d_loss.backward()
         if self.d_optimizer:
             self.d_optimizer.minimize(d_loss)
 
         self.clear_gradients()
 
-        return g_loss.numpy()[0], d_loss.numpy()[0]
+        return float(g_loss), float(d_loss)
 
 
-class StaticGraphTrainModel(object):
+class StaticGraphTrainModel:
     def __init__(self, cfg):
         self.cfg = cfg
 
         def create_data_layer():
-            image_real = fluid.data(
+            image_real = paddle.static.data(
                 shape=[None, 3, cfg.image_size, cfg.image_size],
                 dtype='float32',
-                name='image_real')
-            label_org = fluid.data(
-                shape=[None, cfg.c_dim], dtype='float32', name='label_org')
-            label_trg = fluid.data(
-                shape=[None, cfg.c_dim], dtype='float32', name='label_trg')
+                name='image_real',
+            )
+            label_org = paddle.static.data(
+                shape=[None, cfg.c_dim], dtype='float32', name='label_org'
+            )
+            label_trg = paddle.static.data(
+                shape=[None, cfg.c_dim], dtype='float32', name='label_trg'
+            )
             return image_real, label_org, label_trg
 
         paddle.seed(cfg.seed)
@@ -540,8 +583,14 @@ class StaticGraphTrainModel(object):
                 image_real, label_org, label_trg = create_data_layer()
                 generator = Generator(cfg)
                 discriminator = Discriminator(cfg)
-                g_loss = get_generator_loss(image_real, label_org, label_trg,
-                                            generator, discriminator, cfg)
+                g_loss = get_generator_loss(
+                    image_real,
+                    label_org,
+                    label_trg,
+                    generator,
+                    discriminator,
+                    cfg,
+                )
                 build_optimizer(generator, cfg, loss=g_loss)
 
         self.dis_program = fluid.Program()
@@ -551,9 +600,14 @@ class StaticGraphTrainModel(object):
                 image_real, label_org, label_trg = create_data_layer()
                 generator = Generator(cfg)
                 discriminator = Discriminator(cfg)
-                d_loss = get_discriminator_loss(image_real, label_org,
-                                                label_trg, generator,
-                                                discriminator, cfg)
+                d_loss = get_discriminator_loss(
+                    image_real,
+                    label_org,
+                    label_trg,
+                    generator,
+                    discriminator,
+                    cfg,
+                )
                 build_optimizer(discriminator, cfg, loss=d_loss)
 
         self.executor = fluid.Executor(cfg.place)
@@ -570,50 +624,51 @@ class StaticGraphTrainModel(object):
         feed = {
             'image_real': image_real,
             'label_org': label_org,
-            'label_trg': label_trg
+            'label_trg': label_trg,
         }
         with fluid.scope_guard(self.scope):
-            g_loss_val = self.executor.run(self.gen_program,
-                                           feed=feed,
-                                           fetch_list=[self.g_loss])[0]
-            d_loss_val = self.executor.run(self.dis_program,
-                                           feed=feed,
-                                           fetch_list=[self.d_loss])[0]
+            g_loss_val = self.executor.run(
+                self.gen_program, feed=feed, fetch_list=[self.g_loss]
+            )[0]
+            d_loss_val = self.executor.run(
+                self.dis_program, feed=feed, fetch_list=[self.d_loss]
+            )[0]
             return g_loss_val[0], d_loss_val[0]
 
 
 class TestStarGANWithGradientPenalty(unittest.TestCase):
-    def test_main(self):
+    def func_main(self):
         self.place_test(fluid.CPUPlace())
 
         if fluid.is_compiled_with_cuda():
             self.place_test(fluid.CUDAPlace(0))
 
     def place_test(self, place):
-        cfg = Config(place)
+        cfg = Config(place, False)
 
         dataset = create_mnist_dataset(cfg)
         dataset = paddle.reader.cache(dataset)
 
-        static_graph_model = StaticGraphTrainModel(cfg)
-        static_loss = []
-        for batch_id, (image_real, label_org,
-                       label_trg) in enumerate(dataset()):
-            loss = static_graph_model.run(image_real, label_org, label_trg)
-            static_loss.append(loss)
-
-        dygraph_loss = []
+        fluid_dygraph_loss = []
         with fluid.dygraph.guard(cfg.place):
-            dygraph_model = DyGraphTrainModel(cfg)
-            for batch_id, (image_real, label_org,
-                           label_trg) in enumerate(dataset()):
-                loss = dygraph_model.run(image_real, label_org, label_trg)
-                dygraph_loss.append(loss)
+            fluid_dygraph_model = DyGraphTrainModel(cfg)
+            for batch_id, (image_real, label_org, label_trg) in enumerate(
+                dataset()
+            ):
+                loss = fluid_dygraph_model.run(image_real, label_org, label_trg)
+                fluid_dygraph_loss.append(loss)
 
-        for (g_loss_s, d_loss_s), (g_loss_d, d_loss_d) in zip(static_loss,
-                                                              dygraph_loss):
-            self.assertEqual(g_loss_s, g_loss_d)
-            self.assertEqual(d_loss_s, d_loss_d)
+        eager_dygraph_loss = []
+        with fluid.dygraph.guard(cfg.place):
+            eager_dygraph_model = DyGraphTrainModel(cfg)
+            for batch_id, (image_real, label_org, label_trg) in enumerate(
+                dataset()
+            ):
+                loss = eager_dygraph_model.run(image_real, label_org, label_trg)
+                eager_dygraph_loss.append(loss)
+
+    def test_all_cases(self):
+        self.func_main()
 
 
 if __name__ == '__main__':

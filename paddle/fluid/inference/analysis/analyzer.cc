@@ -13,8 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/analysis/analyzer.h"
+
 #include <string>
-#include <vector>
+
 #include "paddle/fluid/inference/analysis/passes/passes.h"
 #include "paddle/fluid/string/pretty_log.h"
 
@@ -27,7 +28,8 @@ Analyzer::Analyzer() {}
 void Analyzer::Run(Argument *argument) { RunAnalysis(argument); }
 
 void Analyzer::RunAnalysis(Argument *argument) {
-  PADDLE_ENFORCE_EQ(argument->analysis_passes_valid(), true,
+  PADDLE_ENFORCE_EQ(argument->analysis_passes_valid(),
+                    true,
                     platform::errors::InvalidArgument(
                         "analsis_passes is not valid in the argument."));
   const bool disable_logs = argument->disable_logs();
@@ -35,12 +37,12 @@ void Analyzer::RunAnalysis(Argument *argument) {
     if (!disable_logs) {
       string::PrettyLogH1("--- Running analysis [%s]", pass);
     }
-    if (!argument->enable_analysis_optim() && pass == "ir_analysis_pass")
-      continue;
+    if (!argument->enable_ir_optim() && pass == "ir_analysis_pass") continue;
 
     auto *ptr = PassRegistry::Global().Retreive(pass);
-    PADDLE_ENFORCE_NOT_NULL(ptr, platform::errors::PreconditionNotMet(
-                                     "no analysis pass called %s", pass));
+    PADDLE_ENFORCE_NOT_NULL(ptr,
+                            platform::errors::PreconditionNotMet(
+                                "no analysis pass called %s", pass));
     ptr->Run(argument);
   }
 }

@@ -12,15 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from simple_nets import simple_fc_net, fc_with_batchnorm, init_data, bow_net
-from fake_reader import fake_imdb_reader
-from parallel_executor_test_base import TestParallelExecutorBase, DeviceType
-from functools import partial
-import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import unittest
 import os
+import unittest
+from functools import partial
+
+from fake_reader import fake_imdb_reader
+from parallel_executor_test_base import DeviceType, TestParallelExecutorBase
+from simple_nets import bow_net, fc_with_batchnorm, init_data
+
+import paddle
+from paddle import fluid
+from paddle.fluid import core
 
 
 class TestFuseOptimizationOps(TestParallelExecutorBase):
@@ -32,42 +34,58 @@ class TestFuseOptimizationOps(TestParallelExecutorBase):
         img, label = init_data()
         return {"image": img, "label": label}
 
-    def _compare_fused_optimizer_ops(self,
-                                     model,
-                                     use_device,
-                                     feed_dict=None,
-                                     get_data_from_feeder=None,
-                                     optimizer=fluid.optimizer.Adam):
+    def _compare_fused_optimizer_ops(
+        self,
+        model,
+        use_device,
+        feed_dict=None,
+        get_data_from_feeder=None,
+        optimizer=fluid.optimizer.Adam,
+    ):
         if use_device == DeviceType.CUDA and not core.is_compiled_with_cuda():
             return
 
-        not_fuse_op_first_loss, not_fuse_op_last_loss = self.check_network_convergence(
+        (
+            not_fuse_op_first_loss,
+            not_fuse_op_last_loss,
+            _,
+        ) = self.check_network_convergence(
             model,
             feed_dict=feed_dict,
             get_data_from_feeder=get_data_from_feeder,
             use_device=use_device,
             fuse_all_optimizer_ops=False,
-            optimizer=optimizer)
-        fuse_op_first_loss, fuse_op_last_loss = self.check_network_convergence(
+            optimizer=optimizer,
+        )
+        (
+            fuse_op_first_loss,
+            fuse_op_last_loss,
+            _,
+        ) = self.check_network_convergence(
             model,
             feed_dict=feed_dict,
             get_data_from_feeder=get_data_from_feeder,
             use_device=use_device,
             fuse_all_optimizer_ops=True,
-            optimizer=optimizer)
+            optimizer=optimizer,
+        )
 
-        for loss in zip(not_fuse_op_first_loss, fuse_op_first_loss):
-            self.assertAlmostEquals(loss[0], loss[1], delta=1e-6)
-        for loss in zip(not_fuse_op_last_loss, fuse_op_last_loss):
-            self.assertAlmostEquals(loss[0], loss[1], delta=1e-6)
+        self.assertAlmostEqual(
+            not_fuse_op_first_loss, fuse_op_first_loss, delta=1e-6
+        )
+        self.assertAlmostEqual(
+            not_fuse_op_last_loss, fuse_op_last_loss, delta=1e-6
+        )
 
-    def _decorate_compare_fused_optimizer_ops(self, model, use_device,
-                                              optimizer):
+    def _decorate_compare_fused_optimizer_ops(
+        self, model, use_device, optimizer
+    ):
         self._compare_fused_optimizer_ops(
             model,
             use_device,
             feed_dict=self._get_feed_dict(),
-            optimizer=optimizer)
+            optimizer=optimizer,
+        )
 
 
 class TestFuseAdamOps(TestFuseOptimizationOps):
@@ -76,9 +94,11 @@ class TestFuseAdamOps(TestFuseOptimizationOps):
 
     def test_batchnorm_fc_with_fuse_op(self):
         self._decorate_compare_fused_optimizer_ops(
-            fc_with_batchnorm, DeviceType.CUDA, optimizer=self.optimizer)
+            fc_with_batchnorm, DeviceType.CUDA, optimizer=self.optimizer
+        )
         self._decorate_compare_fused_optimizer_ops(
-            fc_with_batchnorm, DeviceType.CPU, optimizer=self.optimizer)
+            fc_with_batchnorm, DeviceType.CPU, optimizer=self.optimizer
+        )
 
 
 class TestFuseSGDOps(TestFuseAdamOps):
@@ -89,7 +109,8 @@ class TestFuseSGDOps(TestFuseAdamOps):
 class TestFuseMomentumOps(TestFuseAdamOps):
     def optimizer(self, learning_rate=1e-3):
         return fluid.optimizer.Momentum(
-            learning_rate=learning_rate, momentum=0.1)
+            learning_rate=learning_rate, momentum=0.1
+        )
 
 
 class TestSpareFuseAdamOps(TestFuseOptimizationOps):
@@ -107,13 +128,15 @@ class TestSpareFuseAdamOps(TestFuseOptimizationOps):
         feeder = fluid.DataFeeder(feed_list=["words", "label"], place=place)
         return feeder.feed(self.train_data)
 
-    def _decorate_compare_fused_optimizer_ops(self, model, use_device,
-                                              optimizer):
+    def _decorate_compare_fused_optimizer_ops(
+        self, model, use_device, optimizer
+    ):
         self._compare_fused_optimizer_ops(
             model,
             use_device,
             get_data_from_feeder=self._get_data_from_feeder,
-            optimizer=optimizer)
+            optimizer=optimizer,
+        )
 
     def optimizer(self, learning_rate=1e-4):
         return fluid.optimizer.Adam(learning_rate=learning_rate)
@@ -121,9 +144,11 @@ class TestSpareFuseAdamOps(TestFuseOptimizationOps):
     def test_simple_bow_net_with_fuse_op(self):
         model = partial(bow_net, dict_dim=self.word_dict_len, is_sparse=True)
         self._decorate_compare_fused_optimizer_ops(
-            model, DeviceType.CUDA, optimizer=self.optimizer)
+            model, DeviceType.CUDA, optimizer=self.optimizer
+        )
         self._decorate_compare_fused_optimizer_ops(
-            model, DeviceType.CPU, optimizer=self.optimizer)
+            model, DeviceType.CPU, optimizer=self.optimizer
+        )
 
 
 class TestSpareFuseSGDOps(TestSpareFuseAdamOps):
@@ -134,16 +159,19 @@ class TestSpareFuseSGDOps(TestSpareFuseAdamOps):
 class TestSpareFuseMomentumOps(TestSpareFuseAdamOps):
     def optimizer(self, learning_rate=1e-3):
         return fluid.optimizer.Momentum(
-            learning_rate=learning_rate, momentum=0.1)
+            learning_rate=learning_rate, momentum=0.1
+        )
 
 
 class TestPassConflictBase(TestFuseAdamOps):
-    def _compare_fused_optimizer_ops(self,
-                                     model,
-                                     use_device,
-                                     feed_dict=None,
-                                     get_data_from_feeder=None,
-                                     optimizer=fluid.optimizer.Adam):
+    def _compare_fused_optimizer_ops(
+        self,
+        model,
+        use_device,
+        feed_dict=None,
+        get_data_from_feeder=None,
+        optimizer=fluid.optimizer.Adam,
+    ):
         if use_device == DeviceType.CUDA and not core.is_compiled_with_cuda():
             return
 
@@ -154,7 +182,8 @@ class TestPassConflictBase(TestFuseAdamOps):
             use_device=use_device,
             fuse_all_optimizer_ops=True,
             optimizer=optimizer,
-            enable_sequential_execution=True)
+            enable_sequential_execution=True,
+        )
 
 
 class TestFuseAdamOpsPassConflict(TestPassConflictBase):
@@ -163,9 +192,11 @@ class TestFuseAdamOpsPassConflict(TestPassConflictBase):
 
     def test_batchnorm_fc_with_fuse_op(self):
         self._decorate_compare_fused_optimizer_ops(
-            fc_with_batchnorm, DeviceType.CPU, optimizer=self.optimizer)
+            fc_with_batchnorm, DeviceType.CPU, optimizer=self.optimizer
+        )
         self._decorate_compare_fused_optimizer_ops(
-            fc_with_batchnorm, DeviceType.CUDA, optimizer=self.optimizer)
+            fc_with_batchnorm, DeviceType.CUDA, optimizer=self.optimizer
+        )
 
 
 class TestFuseSGDOpsPassConflict(TestFuseAdamOpsPassConflict):
@@ -176,7 +207,8 @@ class TestFuseSGDOpsPassConflict(TestFuseAdamOpsPassConflict):
 class TestFuseMomentumOpsPassConflict(TestFuseAdamOpsPassConflict):
     def optimizer(self, learning_rate=1e-3):
         return fluid.optimizer.Momentum(
-            learning_rate=learning_rate, momentum=0.1)
+            learning_rate=learning_rate, momentum=0.1
+        )
 
 
 if __name__ == '__main__':

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <random>
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"

@@ -23,10 +23,10 @@ KernelSignature AssignOpArgumentMapping(const ArgumentMappingContext& ctx) {
     } else if (ctx.IsSelectedRowsInput("X")) {
       return KernelSignature("assign_sr", {"X"}, {}, {"Out"});
     } else {
-      return KernelSignature("assign", {"X"}, {}, {"Out"});
+      return KernelSignature("assign_raw", {"X"}, {}, {"Out"});
     }
   } else {
-    return KernelSignature("assign", {"X"}, {}, {"Out"});
+    return KernelSignature("assign_raw", {"X"}, {}, {"Out"});
   }
 }
 

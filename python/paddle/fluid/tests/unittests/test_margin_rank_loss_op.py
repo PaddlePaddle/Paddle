@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest, paddle_static_guard
+
+import paddle
 from paddle import fluid
 
 
@@ -26,14 +27,16 @@ class TestMarginRankLossOp(OpTest):
         batch_size = 5
         margin = 0.5
         # labels_{i} = {-1, 1}
-        label = 2 * np.random.randint(
-            0, 2, size=(batch_size, 1)).astype("float32") - 1
+        label = (
+            2 * np.random.randint(0, 2, size=(batch_size, 1)).astype("float32")
+            - 1
+        )
         x1 = np.random.random((batch_size, 1)).astype("float32")
         x2 = np.random.random((batch_size, 1)).astype("float32")
         # loss = max(0, -label * (x1 - x2) + margin)
         loss = -label * (x1 - x2) + margin
         loss = np.where(loss > 0, loss, 0)
-        act = np.where(loss > 0, 1., 0.)
+        act = np.where(loss > 0, 1.0, 0.0)
 
         self.attrs = {'margin': margin}
         self.inputs = {'Label': label, 'X1': x1, 'X2': x2}
@@ -57,8 +60,13 @@ class TestMarginRankLossLayer(unittest.TestCase):
         self.batch_size = 5
         self.margin = 0.5
         # labels_{i} = {-1, 1}
-        self.label = 2 * np.random.randint(
-            0, 2, size=(self.batch_size, 1)).astype("float32") - 1
+        self.label = (
+            2
+            * np.random.randint(0, 2, size=(self.batch_size, 1)).astype(
+                "float32"
+            )
+            - 1
+        )
         self.x1 = np.random.random((self.batch_size, 1)).astype("float32")
         self.x2 = np.random.random((self.batch_size, 1)).astype("float32")
         # loss = max(0, -label * (x1 - x2) + margin)
@@ -75,24 +83,32 @@ class TestMarginRankLossLayer(unittest.TestCase):
             self.check_identity(place)
 
     def check_identity(self, place):
-        main = fluid.Program()
-        start = fluid.Program()
-        with fluid.unique_name.guard():
-            with fluid.program_guard(main, start):
-                label = fluid.data("label", (self.batch_size, 1), "float32")
-                x1 = fluid.data("x1", (self.batch_size, 1), "float32")
-                x2 = fluid.data("x2", (self.batch_size, 1), "float32")
-                out = fluid.layers.margin_rank_loss(label, x1, x2, self.margin)
+        with paddle_static_guard():
+            main = fluid.Program()
+            start = fluid.Program()
+            with fluid.unique_name.guard():
+                with fluid.program_guard(main, start):
+                    label = paddle.static.data(
+                        "label", (self.batch_size, 1), "float32"
+                    )
+                    x1 = paddle.static.data(
+                        "x1", (self.batch_size, 1), "float32"
+                    )
+                    x2 = paddle.static.data(
+                        "x2", (self.batch_size, 1), "float32"
+                    )
+                    out = paddle.nn.functional.margin_ranking_loss(
+                        x1, x2, label, self.margin, 'none'
+                    )
 
-        exe = fluid.Executor(place)
-        exe.run(start)
-        out_np, = exe.run(
-            main,
-            feed={"label": self.label,
-                  "x1": self.x1,
-                  "x2": self.x2},
-            fetch_list=[out])
-        np.testing.assert_allclose(out_np, self.loss)
+            exe = fluid.Executor(place)
+            exe.run(start)
+            (out_np,) = exe.run(
+                main,
+                feed={"label": self.label, "x1": self.x1, "x2": self.x2},
+                fetch_list=[out],
+            )
+            np.testing.assert_allclose(out_np, self.loss)
 
 
 if __name__ == '__main__':

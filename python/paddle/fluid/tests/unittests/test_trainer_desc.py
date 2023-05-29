@@ -16,16 +16,13 @@ TestCases for TrainerDesc,
 including config, etc.
 """
 
-from __future__ import print_function
-import paddle.fluid as fluid
-import numpy as np
-import os
-import shutil
 import unittest
+
+from paddle import fluid
 
 
 class TestTrainerDesc(unittest.TestCase):
-    """  TestCases for TrainerDesc. """
+    """TestCases for TrainerDesc."""
 
     def test_config(self):
         """
@@ -44,6 +41,17 @@ class TestTrainerDesc(unittest.TestCase):
         self.assertEqual(dump_fields[1], "b")
         self.assertEqual(mpi_rank, 1)
         self.assertEqual(dump_fields_path, "path")
+
+    def test_config_dump_simple(self):
+        """
+        Testcase for dump_in_simple_mode
+        """
+        trainer_desc = fluid.trainer_desc.TrainerDesc()
+        trainer_desc._set_dump_fields(["a", "b"])
+        trainer_desc._set_is_dump_in_simple_mode(True)
+
+        is_dump_in_simple_mode = trainer_desc.proto_desc.is_dump_in_simple_mode
+        self.assertEqual(is_dump_in_simple_mode, 1)
 
 
 if __name__ == '__main__':

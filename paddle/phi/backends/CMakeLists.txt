@@ -1,34 +1,61 @@
 add_subdirectory(dynload)
+add_subdirectory(gpu)
 
-add_subdirectory(cpu)
+set(BACKENDS_SRCS all_context.cc cpu/cpu_context.cc cpu/cpu_info.cc)
 
-add_subdirectory(custom)
+if(NOT APPLE AND NOT WIN32)
+  list(APPEND BACKENDS_SRCS device_code.cc)
+endif()
 
 if(WITH_GPU OR WITH_ROCM)
-  add_subdirectory(gpu)
+  list(APPEND BACKENDS_SRCS gpu/gpu_context.cc gpu/gpu_info.cc
+       gpu/gpu_resources.cc)
+  if(WITH_GPU)
+    list(APPEND BACKENDS_SRCS gpu/cuda/cuda_info.cc gpu/cuda/cuda_graph.cc)
+  endif()
+  if(WITH_ROCM)
+    list(APPEND BACKENDS_SRCS gpu/rocm/rocm_info.cc)
+  endif()
 endif()
 
 if(WITH_XPU)
-  add_subdirectory(xpu)
+  list(APPEND BACKENDS_SRCS xpu/xpu_context.cc xpu/xpu_info.cc)
+  list(APPEND BACKENDS_SRCS xpu/xpu_op_list.cc xpu/xpu1_op_list.cc
+       xpu/xpu2_op_list.cc xpu/xpu_l3_strategy.cc)
 endif()
 
-cc_library(phi_context SRCS all_context.cc DEPS device_context cpu_context)
-
-if(WITH_XPU)
-  add_dependencies(phi_context xpu_context)
+if(WITH_MKLDNN)
+  list(APPEND BACKENDS_SRCS onednn/onednn_context.cc)
+  list(APPEND BACKENDS_SRCS onednn/axpy_handler.cc)
+  list(APPEND BACKENDS_SRCS onednn/matmul_utils.cc)
 endif()
 
-if(WITH_GPU)
-  add_dependencies(phi_context gpu_context)
+list(
+  APPEND
+  BACKENDS_SRCS
+  callback_manager.cc
+  device_guard.cc
+  stream.cc
+  event.cc
+  device_manager.cc
+  context_pool.cc)
+
+if(WITH_GPU
+   OR WITH_ROCM
+   OR WITH_CUSTOM_DEVICE)
+  list(APPEND BACKENDS_SRCS device_base.cc)
 endif()
 
 if(WITH_CUSTOM_DEVICE)
-  add_dependencies(phi_context custom_context)
-  cc_library(callback_manager SRCS callback_manager.cc DEPS enforce place)
-  cc_library(device_guard SRCS device_guard.cc DEPS enforce place)
-  cc_library(stream SRCS stream.cc DEPS callback_manager)
-  cc_library(event SRCS event.cc DEPS enforce place)
-  cc_library(device_base SRCS device_base.cc DEPS stream event callback_manager device_guard device_context flags)
-  cc_library(device_manager SRCS device_manager.cc DEPS custom_device)
-  set(GLOB_DEV_LIB device_manager custom_device CACHE INTERNAL "Global DEV library")
+  list(APPEND BACKENDS_SRCS custom/custom_context.cc custom/custom_device.cc
+       custom/custom_device_op_list.cc)
+endif()
+
+collect_srcs(backends_srcs SRCS ${BACKENDS_SRCS})
+
+if(WITH_CUSTOM_DEVICE)
+  cc_test(
+    capi_test
+    SRCS custom/capi_test.cc
+    DEPS phi)
 endif()

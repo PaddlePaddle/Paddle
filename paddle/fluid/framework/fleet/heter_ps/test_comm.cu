@@ -13,14 +13,16 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>
+
 #include <vector>
+
 #include "paddle/fluid/framework/fleet/heter_ps/feature_value.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_comm.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_resource.h"
 #include "paddle/fluid/framework/fleet/heter_ps/optimizer.cuh.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 
-using namespace paddle::framework;
+using paddle::framework;
 
 TEST(TEST_FLEET, heter_comm) {
   int gpu_count = 3;

@@ -34,7 +34,8 @@ namespace operators {
 
 class SendOp : public framework::OperatorBase {
  public:
-  SendOp(const std::string& type, const framework::VariableNameMap& inputs,
+  SendOp(const std::string& type,
+         const framework::VariableNameMap& inputs,
          const framework::VariableNameMap& outputs,
          const framework::AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
@@ -47,13 +48,13 @@ class SendOp : public framework::OperatorBase {
 
     auto send_varnames = Attr<std::vector<std::string>>("send_varnames");
 
-    // for common_dense_table, distributed_push_sparse op for push sparse in
+    // for memory_dense_table, distributed_push_sparse op for push sparse in
     // async
     if (is_sparse == 0 && send_varnames.size() >= 1 &&
         send_varnames[0] != "@PS_STEP_COUNTER@") {
       auto fleet = paddle::distributed::FleetWrapper::GetInstance();
       std::vector<::std::future<int32_t>> status;
-      fleet->PushDenseVarsAsync(scope, table_id, ins, &status, 0, -1);
+      fleet->PushDenseVarsAsync(scope, table_id, ins, &status, -1, -1);
     } else {
       auto* communicator = paddle::distributed::Communicator::GetInstance();
       if (communicator->Check(send_varnames)) {
@@ -107,7 +108,9 @@ class SendOpShapeInference : public framework::InferShapeBase {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(
-    send, ops::SendOp,
+    send,
+    ops::SendOp,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
-    ops::SendOpMaker, ops::SendOpShapeInference);
+    ops::SendOpMaker,
+    ops::SendOpShapeInference);

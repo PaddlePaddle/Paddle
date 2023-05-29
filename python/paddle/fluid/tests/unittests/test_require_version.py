@@ -12,30 +12,39 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
-import paddle.fluid as fluid
-import paddle.version as fluid_version
 import warnings
+
 import paddle
+import paddle.version as fluid_version
+from paddle import fluid
 
 
 class VersionTest(unittest.TestCase):
     def test_check_output(self):
         warnings.warn(
             "paddle.__version__: %s, fluid_version.full_version: %s, fluid_version.major: %s, fluid_version.minor: %s, fluid_version.patch: %s, fluid_version.rc: %s."
-            % (paddle.__version__, fluid_version.full_version,
-               fluid_version.major, fluid_version.minor, fluid_version.patch,
-               fluid_version.rc))
+            % (
+                paddle.__version__,
+                fluid_version.full_version,
+                fluid_version.major,
+                fluid_version.minor,
+                fluid_version.patch,
+                fluid_version.rc,
+            )
+        )
         ori_full_version = fluid_version.full_version
         ori_sep_version = [
-            fluid_version.major, fluid_version.minor, fluid_version.patch,
-            fluid_version.rc
+            fluid_version.major,
+            fluid_version.minor,
+            fluid_version.patch,
+            fluid_version.rc,
         ]
         [
-            fluid_version.major, fluid_version.minor, fluid_version.patch,
-            fluid_version.rc
+            fluid_version.major,
+            fluid_version.minor,
+            fluid_version.patch,
+            fluid_version.rc,
         ] = ['1', '4', '1', '0']
 
         fluid.require_version('1')
@@ -53,15 +62,19 @@ class VersionTest(unittest.TestCase):
 
         # if installed version is 0.0.0.0, throw warning and skip the checking.
         [
-            fluid_version.major, fluid_version.minor, fluid_version.patch,
-            fluid_version.rc
+            fluid_version.major,
+            fluid_version.minor,
+            fluid_version.patch,
+            fluid_version.rc,
         ] = ['0', '0', '0', '0']
         fluid.require_version('0.0.0')
 
         fluid_version.full_version = ori_full_version
         [
-            fluid_version.major, fluid_version.minor, fluid_version.patch,
-            fluid_version.rc
+            fluid_version.major,
+            fluid_version.minor,
+            fluid_version.patch,
+            fluid_version.rc,
         ] = ori_sep_version
 
 
@@ -118,12 +131,16 @@ class TestErrors(unittest.TestCase):
 
         ori_full_version = fluid_version.full_version
         ori_sep_version = [
-            fluid_version.major, fluid_version.minor, fluid_version.patch,
-            fluid_version.rc
+            fluid_version.major,
+            fluid_version.minor,
+            fluid_version.patch,
+            fluid_version.rc,
         ]
         [
-            fluid_version.major, fluid_version.minor, fluid_version.patch,
-            fluid_version.rc
+            fluid_version.major,
+            fluid_version.minor,
+            fluid_version.patch,
+            fluid_version.rc,
         ] = ['1', '4', '1', '0']
 
         self.assertRaises(Exception, test_version)
@@ -132,8 +149,10 @@ class TestErrors(unittest.TestCase):
 
         fluid_version.full_version = ori_full_version
         [
-            fluid_version.major, fluid_version.minor, fluid_version.patch,
-            fluid_version.rc
+            fluid_version.major,
+            fluid_version.minor,
+            fluid_version.patch,
+            fluid_version.rc,
         ] = ori_sep_version
 
 

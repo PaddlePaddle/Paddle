@@ -12,23 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from parallel_executor_test_base import TestParallelExecutorBase, DeviceType
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import numpy as np
-import paddle
-import paddle.dataset.mnist as mnist
 import unittest
-import os
+
+import numpy as np
+from parallel_executor_test_base import DeviceType, TestParallelExecutorBase
+
+import paddle
+import paddle.nn.functional as F
+from paddle import fluid
+from paddle.fluid import core
 
 
 def norm(*args, **kargs):
-    return fluid.layers.batch_norm(*args, **kargs)
+    return paddle.static.nn.batch_norm(*args, **kargs)
 
 
 def sep_conv(input, channel, stride, filter, dilation=1, act=None):
     # with scope('depthwise'):
-    input = fluid.layers.conv2d(
+    input = paddle.static.nn.conv2d(
         input,
         input.shape[1],
         filter,
@@ -37,28 +38,34 @@ def sep_conv(input, channel, stride, filter, dilation=1, act=None):
         padding=(filter // 2) * dilation,
         dilation=dilation,
         use_cudnn=False,
-        bias_attr=False)
+        bias_attr=False,
+    )
     input = norm(input)
-    if act: input = act(input)
+    if act:
+        input = act(input)
     # with scope('pointwise'):
-    input = fluid.layers.conv2d(
-        input, channel, 1, 1, groups=1, padding=0, bias_attr=False)
+    input = paddle.static.nn.conv2d(
+        input, channel, 1, 1, groups=1, padding=0, bias_attr=False
+    )
     input = norm(input)
-    if act: input = act(input)
+    if act:
+        input = act(input)
     return input
 
 
 def simple_depthwise_net(use_feed):
     assert use_feed
-    img = fluid.layers.data(name='image', shape=[784], dtype='float32')
-    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-    hidden = fluid.layers.reshape(img, (-1, 1, 28, 28))
+    img = paddle.static.data(name='image', shape=[-1, 784], dtype='float32')
+    label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
+    hidden = paddle.reshape(img, (-1, 1, 28, 28))
     for _ in range(4):
         hidden = sep_conv(hidden, channel=200, stride=2, filter=5)
-        hidden = fluid.layers.relu(hidden)
-    prediction = fluid.layers.fc(hidden, size=10, act='softmax')
-    loss = fluid.layers.cross_entropy(input=prediction, label=label)
-    loss = fluid.layers.mean(loss)
+        hidden = F.relu(hidden)
+    prediction = paddle.static.nn.fc(hidden, size=10, activation='softmax')
+    loss = paddle.nn.functional.cross_entropy(
+        input=prediction, label=label, reduction='none', use_softmax=False
+    )
+    loss = paddle.mean(loss)
     return loss
 
 
@@ -80,32 +87,43 @@ class TestMNIST(TestParallelExecutorBase):
         def _optimizer(learning_rate=1e-6):
             optimizer = fluid.optimizer.SGD(
                 learning_rate=learning_rate,
-                regularization=fluid.regularizer.L2Decay(1e-6))
+                regularization=paddle.regularizer.L2Decay(1e-6),
+            )
             return optimizer
 
         if only_forward:
-            _optimizer = None
+            _optimizer = None  # noqa: F811
 
-        fuse_op_first_loss, fuse_op_last_loss = self.check_network_convergence(
+        (
+            fuse_op_first_loss,
+            fuse_op_last_loss,
+            _,
+        ) = self.check_network_convergence(
             model,
-            feed_dict={"image": img,
-                       "label": label},
+            feed_dict={"image": img, "label": label},
             use_device=use_device,
             fuse_relu_depthwise_conv=True,
             use_ir_memory_optimize=True,
-            optimizer=_optimizer)
-        not_fuse_op_first_loss, not_fuse_op_last_loss = self.check_network_convergence(
+            optimizer=_optimizer,
+        )
+        (
+            not_fuse_op_first_loss,
+            not_fuse_op_last_loss,
+            _,
+        ) = self.check_network_convergence(
             model,
-            feed_dict={"image": img,
-                       "label": label},
+            feed_dict={"image": img, "label": label},
             use_device=use_device,
             fuse_relu_depthwise_conv=False,
-            optimizer=_optimizer)
+            optimizer=_optimizer,
+        )
 
-        for loss in zip(not_fuse_op_first_loss, fuse_op_first_loss):
-            self.assertAlmostEquals(loss[0], loss[1], delta=1e-6)
-        for loss in zip(not_fuse_op_last_loss, fuse_op_last_loss):
-            self.assertAlmostEquals(loss[0], loss[1], delta=1e-6)
+        self.assertAlmostEqual(
+            not_fuse_op_first_loss, fuse_op_first_loss, delta=1e-6
+        )
+        self.assertAlmostEqual(
+            not_fuse_op_last_loss, fuse_op_last_loss, delta=1e-6
+        )
 
     def test_simple_depthwise_with_fuse_op(self):
         self._compare(simple_depthwise_net, DeviceType.CUDA)

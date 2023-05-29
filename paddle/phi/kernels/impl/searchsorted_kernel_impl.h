@@ -39,8 +39,8 @@ class GpuAndCpuSearchSortedCompute {
     return std::isnan(x);
 #endif
   }
-  static HOSTDEVICE bool IsNan(int x) { return false; }
-  static HOSTDEVICE bool IsNan(int64_t x) { return false; }
+  static HOSTDEVICE bool IsNan(int x UNUSED) { return false; }
+  static HOSTDEVICE bool IsNan(int64_t x UNUSED) { return false; }
 
   static HOSTDEVICE bool IsInf(float x) {
 #ifdef __NVCC__
@@ -56,8 +56,8 @@ class GpuAndCpuSearchSortedCompute {
     return std::isinf(x);
 #endif
   }
-  static HOSTDEVICE bool IsInf(int x) { return false; }
-  static HOSTDEVICE bool IsInf(int64_t x) { return false; }
+  static HOSTDEVICE bool IsInf(int x UNUSED) { return false; }
+  static HOSTDEVICE bool IsInf(int64_t x UNUSED) { return false; }
 
   HOSTDEVICE GpuAndCpuSearchSortedCompute(const T1* sequence_data,
                                           const T2* value_data,
@@ -147,7 +147,7 @@ class SearchSortedFunctor {
 };
 
 template <typename Visitor>
-static void VisitDataType(DataType type, Visitor visitor) {
+void VisitDataTypeForSearchSorted(DataType type, Visitor visitor) {
   if (type == DataType::FLOAT32) {
     visitor.template apply<float>();
   } else if (type == DataType::FLOAT64) {
@@ -158,7 +158,7 @@ static void VisitDataType(DataType type, Visitor visitor) {
     visitor.template apply<int64_t>();
   } else {
     PADDLE_THROW(errors::InvalidArgument(
-        "The recieved values data type %s can not meet input requirements. "
+        "The received values data type %s can not meet input requirements. "
         "Because the given values data type of searchsorted operators must be "
         "float32, float64, int32 or int64. Please input appropriate "
         "sorted_sequence again! ",
@@ -178,13 +178,13 @@ void SearchsortedKernel(const Context& ctx,
     int* out_data = out->data<int>();
     SearchSortedFunctor<Context, T, int> functor(
         ctx, &sorted_sequence, &value, right, out_data);
-    VisitDataType(value.dtype(), functor);
+    VisitDataTypeForSearchSorted(value.dtype(), functor);
   } else {
     ctx.template Alloc<int64_t>(out);
     int64_t* out_data = out->data<int64_t>();
     SearchSortedFunctor<Context, T, int64_t> functor(
         ctx, &sorted_sequence, &value, right, out_data);
-    VisitDataType(value.dtype(), functor);
+    VisitDataTypeForSearchSorted(value.dtype(), functor);
   }
 }
 

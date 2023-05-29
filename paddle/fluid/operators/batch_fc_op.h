@@ -19,12 +19,13 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class BatchFCKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(ctx.GetPlace()), true,
+        platform::is_gpu_place(ctx.GetPlace()),
+        true,
         platform::errors::Unimplemented("BatchFC only supports GPU now."));
   }
 };

@@ -12,26 +12,55 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import unittest
-import numpy as np
-import math
-import paddle.fluid.core as core
-import paddle
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
 import random
 import sys
+import unittest
 
-from op_test import OpTest
-sys.path.append("./rnn")
-from rnn_numpy import SimpleRNN, LSTM, GRU
+import numpy as np
+from eager_op_test import OpTest
+
+import paddle
+from paddle.fluid import core
+
+sys.path.append("../../../../../test/rnn")
 from convert import get_params_for_net
+from rnn_numpy import LSTM
 
 random.seed(2)
 np.set_printoptions(threshold=np.inf)
 paddle.enable_static()
+
+
+def rnn_wrapper(
+    Input,
+    PreState,
+    WeightList=None,
+    SequenceLength=None,
+    dropout_prob=0.0,
+    is_bidirec=False,
+    input_size=10,
+    hidden_size=100,
+    num_layers=1,
+    mode="LSTM",
+    seed=0,
+    is_test=False,
+):
+    dropout_state_in = paddle.Tensor()
+    return paddle._C_ops.rnn(
+        Input,
+        PreState,
+        WeightList,
+        SequenceLength,
+        dropout_state_in,
+        dropout_prob,
+        is_bidirec,
+        input_size,
+        hidden_size,
+        num_layers,
+        mode,
+        seed,
+        is_test,
+    )
 
 
 class TestRNNOp(OpTest):
@@ -39,18 +68,23 @@ class TestRNNOp(OpTest):
         weight_names = []
         for i in range(self.num_layers):
             for j in range(0, 2 * self.direction_num):
-                weight_names.append("{}.weight_{}".format(i, j))
+                weight_names.append(f"{i}.weight_{j}")
         for i in range(self.num_layers):
             for j in range(0, 2 * self.direction_num):
-                weight_names.append("{}.bias_{}".format(i, j))
+                weight_names.append(f"{i}.bias_{j}")
         return weight_names
 
     def setUp(self):
         self.op_type = "rnn"
+        self.python_api = rnn_wrapper
+        self.python_out_sig = ["Out", "DropoutState", "State"]
+        self.python_out_sig_sub_name = {"State": ["last_hidden", "last_cell"]}
         self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
-        self.sequence_length = None if core.is_compiled_with_rocm(
-        ) else np.array(
-            [12, 11, 10, 9, 8], dtype=np.int32)
+        self.sequence_length = (
+            None
+            if core.is_compiled_with_rocm()
+            else np.array([12, 11, 10, 9, 8], dtype=np.int32)
+        )
         self.num_layers = 1
         self.is_bidirec = False
         self.mode = "LSTM"
@@ -66,8 +100,8 @@ class TestRNNOp(OpTest):
         hidden_size = 2
 
         input = np.random.uniform(
-            low=-0.1, high=0.1,
-            size=(seq_length, batch_size, input_size)).astype(self.dtype)
+            low=-0.1, high=0.1, size=(seq_length, batch_size, input_size)
+        ).astype(self.dtype)
         if self.sequence_length is not None:
             input[11][1:][:] = 0
             input[10][2:][:] = 0
@@ -81,11 +115,13 @@ class TestRNNOp(OpTest):
             time_major=True,
             direction=direction,
             dropout=self.dropout,
-            dtype=self.dtype)
+            dtype=self.dtype,
+        )
 
         flat_w = get_params_for_net(rnn1)
         output, (last_hidden, last_cell) = rnn1(
-            input, sequence_length=self.sequence_length)
+            input, sequence_length=self.sequence_length
+        )
 
         if core.is_compiled_with_rocm():
 
@@ -95,17 +131,19 @@ class TestRNNOp(OpTest):
 
             self._get_places = rocm_rnn_get_place
 
-        init_h = np.zeros((self.num_layers * self.direction_num, batch_size,
-                           hidden_size)).astype(self.dtype)
-        init_c = np.zeros((self.num_layers * self.direction_num, batch_size,
-                           hidden_size)).astype(self.dtype)
-        state_out = np.ndarray((300)).astype("uint8")
+        init_h = np.zeros(
+            (self.num_layers * self.direction_num, batch_size, hidden_size)
+        ).astype(self.dtype)
+        init_c = np.zeros(
+            (self.num_layers * self.direction_num, batch_size, hidden_size)
+        ).astype(self.dtype)
+        state_out = np.ndarray(300).astype("uint8")
 
         self.inputs = {
             'Input': input,
             'WeightList': flat_w,
             'PreState': [('init_h', init_h), ('init_c', init_c)],
-            'SequenceLength': self.sequence_length
+            'SequenceLength': self.sequence_length,
         }
         if self.sequence_length is None:
             self.inputs = {
@@ -120,13 +158,13 @@ class TestRNNOp(OpTest):
             'hidden_size': hidden_size,
             'num_layers': self.num_layers,
             'mode': self.mode,
-            'is_test': self.is_test
+            'is_test': self.is_test,
         }
         self.outputs = {
             'Out': output,
             "State": [('last_hidden', last_hidden), ('last_cell', last_cell)],
-            'Reserve': np.ndarray((400)).astype("uint8"),
-            'DropoutState': state_out
+            'Reserve': np.ndarray(400).astype("uint8"),
+            'DropoutState': state_out,
         }
 
     def test_output(self):
@@ -141,7 +179,35 @@ class TestRNNOp(OpTest):
             grad_check_list = ['Input', 'init_h', 'init_c']
             grad_check_list.extend(var_name_list)
             self.check_grad(
-                set(grad_check_list), ['Out', 'last_hidden', 'last_cell'])
+                set(grad_check_list), ['Out', 'last_hidden', 'last_cell']
+            )
+
+    def test_grad_only_input(self):
+        if not self.is_test:
+            var_name_list = self.get_weight_names()
+            grad_check_list = ['Input']
+            grad_check_list.extend(var_name_list)
+            self.check_grad(
+                set(grad_check_list), ['Out', 'last_hidden', 'last_cell']
+            )
+
+    def test_grad_only_h(self):
+        if not self.is_test:
+            var_name_list = self.get_weight_names()
+            grad_check_list = ['init_h']
+            grad_check_list.extend(var_name_list)
+            self.check_grad(
+                set(grad_check_list), ['Out', 'last_hidden', 'last_cell']
+            )
+
+    def test_grad_only_c(self):
+        if not self.is_test:
+            var_name_list = self.get_weight_names()
+            grad_check_list = ['init_c']
+            grad_check_list.extend(var_name_list)
+            self.check_grad(
+                set(grad_check_list), ['Out', 'last_hidden', 'last_cell']
+            )
 
 
 class TestRNNOp1(TestRNNOp):

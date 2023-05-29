@@ -14,9 +14,10 @@
 
 #include "paddle/phi/kernels/multiplex_grad_kernel.h"
 
-#include "paddle/phi/api/lib/utils/tensor_utils.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
 namespace phi {
@@ -40,18 +41,18 @@ void MultiplexGradKernel(const Context& ctx,
   auto rows = ins_grad[idx]->dims()[0];
   auto cols = ins_grad[idx]->numel() / rows;
   DenseTensor index_t_cpu;
-  paddle::framework::TensorCopySync(ids, phi::CPUPlace(), &index_t_cpu);
+  phi::Copy(ctx, ids, phi::CPUPlace(), true, &index_t_cpu);
   auto* index = index_t_cpu.data<int32_t>();
   auto stream = ctx.stream();
   for (auto i = 0; i < rows; i++) {
     size_t k = static_cast<size_t>(index[i]);
     if (ins_grad[k]) {
-      paddle::memory::Copy(ctx.GetPlace(),
-                           ins_grad[k]->data<T>() + i * cols,
-                           ctx.GetPlace(),
-                           out_grad.data<T>() + i * cols,
-                           cols * sizeof(T),
-                           stream);
+      memory_utils::Copy(ctx.GetPlace(),
+                         ins_grad[k]->data<T>() + i * cols,
+                         ctx.GetPlace(),
+                         out_grad.data<T>() + i * cols,
+                         cols * sizeof(T),
+                         stream);
     }
   }
 }

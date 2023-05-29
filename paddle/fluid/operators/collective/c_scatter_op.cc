@@ -27,18 +27,21 @@ class CScatterOp : public framework::OperatorWithKernel {
     int root_id = ctx->Attrs().Get<int>("root");
     int ring_id = ctx->Attrs().Get<int>("ring_id");
     int nranks = ctx->Attrs().Get<int>("nranks");
-    PADDLE_ENFORCE_GE(nranks, 2,
+    PADDLE_ENFORCE_GE(nranks,
+                      2,
                       platform::errors::InvalidArgument(
                           "The number of ranks (%d) must be greater than 1 "
                           "to use collective op (c_scatter op).",
                           nranks));
     PADDLE_ENFORCE_GE(
-        root_id, 0,
+        root_id,
+        0,
         platform::errors::InvalidArgument(
             "The root_id (%d) for c_scatter_op must be non-negative.",
             root_id));
     PADDLE_ENFORCE_GE(
-        ring_id, 0,
+        ring_id,
+        0,
         platform::errors::InvalidArgument(
             "The ring_id (%d) for c_scatter_op must be non-negative.",
             root_id));
@@ -49,10 +52,10 @@ class CScatterOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 
@@ -85,8 +88,12 @@ namespace plat = paddle::platform;
 
 REGISTER_OP_WITHOUT_GRADIENT(c_scatter, ops::CScatterOp, ops::CScatterOpMaker);
 
-REGISTER_OP_CPU_KERNEL(c_scatter, ops::CScatterOpCPUKernel<float>,
-                       ops::CScatterOpCPUKernel<double>,
-                       ops::CScatterOpCPUKernel<int>,
-                       ops::CScatterOpCPUKernel<int64_t>,
-                       ops::CScatterOpCPUKernel<plat::float16>);
+PD_REGISTER_STRUCT_KERNEL(c_scatter,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::CScatterOpCPUKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t,
+                          plat::float16) {}

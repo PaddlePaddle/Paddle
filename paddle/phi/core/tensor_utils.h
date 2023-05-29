@@ -15,14 +15,31 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/device_context.h"
+#include "paddle/phi/core/selected_rows.h"
+#include "paddle/phi/core/sparse_coo_tensor.h"
+#include "paddle/phi/core/sparse_csr_tensor.h"
+#include "paddle/phi/core/tensor_array.h"
 #include "paddle/phi/core/tensor_meta.h"
-
 namespace phi {
 
 class DenseTensorUtils {
  public:
   static DenseTensorMeta* GetMutableMeta(DenseTensor* tensor) {
     return &(tensor->meta_);
+  }
+
+  static SparseTensorMeta* GetMutableMeta(SparseCooTensor* tensor) {
+    return &(tensor->meta_);
+  }
+
+  static SparseTensorMeta* GetMutableMeta(SparseCsrTensor* tensor) {
+    return &(tensor->meta_);
+  }
+
+  static const std::shared_ptr<phi::Allocation>& GetHolder(
+      const DenseTensor& tensor) {
+    return tensor.holder_;
   }
 
   static DenseTensor Slice(const DenseTensor& tensor,
@@ -59,10 +76,82 @@ class DenseTensorUtils {
       ret.meta_.dims[0] = end_idx - begin_idx;
       ret.meta_.offset = tensor.meta_.offset +
                          begin_idx * (tensor.numel() / tensor.dims()[0]) *
-                             paddle::experimental::SizeOf(tensor.dtype());
+                             phi::SizeOf(tensor.dtype());
     }
     return ret;
   }
 };
+
+template <typename Context>
+void Copy(const Context& dev_ctx,
+          const DenseTensor& src,
+          Place dst_place,
+          bool blocking,
+          DenseTensor* dst);
+
+template <typename Context>
+void Copy(const Context& dev_ctx,
+          const SelectedRows& src,
+          Place dst_place,
+          bool blocking,
+          SelectedRows* dst);
+
+template <typename Context>
+void Copy(const Context& dev_ctx,
+          const SparseCooTensor& src,
+          Place dst_place,
+          bool blocking,
+          SparseCooTensor* dst);
+
+template <typename Context>
+void Copy(const Context& dev_ctx,
+          const SparseCsrTensor& src,
+          Place dst_place,
+          bool blocking,
+          SparseCsrTensor* dst);
+
+template <typename Context>
+void Copy(const Context& dev_ctx,
+          const TensorArray& src,
+          Place dst_place,
+          bool blocking,
+          TensorArray* dst);
+
+template <typename T>
+void TensorFromVector(const std::vector<T>& src,
+                      const phi::DeviceContext& ctx,
+                      phi::DenseTensor* dst);
+
+template <typename T>
+void TensorFromArray(const T* src,
+                     const size_t& array_size,
+                     const phi::DeviceContext& ctx,
+                     phi::DenseTensor* dst);
+
+template <typename T>
+void TensorToVector(const phi::DenseTensor& src,
+                    const phi::DeviceContext& ctx,
+                    std::vector<T>* dst);
+
+phi::DenseTensor ReshapeToMatrix(const phi::DenseTensor& src, int num_col_dims);
+
+template <typename T>
+T GetValue(const phi::DenseTensor* x);
+
+template <typename T, typename Context>
+inline T GetValue(const Context& dev_ctx, const DenseTensor& x) {
+  T value = static_cast<T>(0);
+  if (x.place() != CPUPlace()) {
+    DenseTensor cpu_x;
+    Copy(dev_ctx, x, CPUPlace(), true, &cpu_x);
+    value = cpu_x.data<T>()[0];
+  } else {
+    value = x.data<T>()[0];
+  }
+  return value;
+}
+
+template <typename T = int32_t>
+std::vector<T> GetVectorFromTensor(const phi::DenseTensor* x);
 
 }  // namespace phi

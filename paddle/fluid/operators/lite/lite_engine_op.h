@@ -26,11 +26,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/inference/analysis/helper.h"
-#include "paddle/fluid/platform/device/gpu/gpu_info.h"
-
 #include "paddle/fluid/inference/lite/engine.h"
 #include "paddle/fluid/inference/lite/tensor_utils.h"
 #include "paddle/fluid/inference/utils/singleton.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
 
 namespace paddle {
 namespace operators {
@@ -75,38 +74,26 @@ class LiteEngineOp : public framework::OperatorBase {
     const platform::DeviceContext *ctx =
         platform::DeviceContextPool::Instance().Get(dev_place);
     for (size_t i = 0; i < in_names_.size(); i++) {
-      framework::LoDTensor src_t =
-          inference::analysis::GetFromScope<framework::LoDTensor>(scope,
-                                                                  in_names_[i]);
+      phi::DenseTensor src_t =
+          inference::analysis::GetFromScope<phi::DenseTensor>(scope,
+                                                              in_names_[i]);
       paddle::lite_api::Tensor dst_t = *(engine_->GetInput(i));
       VLOG(3) << "== fluid -> lite (" << in_names_[i] << " -> "
               << engine_->GetInputNames()[i] << ")";
       inference::lite::utils::TensorCopy(&dst_t, &src_t, *ctx, zero_copy_);
     }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    if (platform::is_gpu_place(dev_place)) {
-      platform::GpuStreamSync(
-          static_cast<const platform::CUDADeviceContext *>(ctx)->stream());
-    }
-#endif
     VLOG(3) << "lite engine run";
     engine_->Run();
     VLOG(3) << "lite engine run done";
     for (size_t i = 0; i < out_names_.size(); i++) {
       paddle::lite_api::Tensor src_t = *(engine_->GetOutput(i));
-      framework::LoDTensor *dst_t =
-          &inference::analysis::GetFromScope<framework::LoDTensor>(
-              scope, out_names_[i]);
+      phi::DenseTensor *dst_t =
+          &inference::analysis::GetFromScope<phi::DenseTensor>(scope,
+                                                               out_names_[i]);
       VLOG(3) << "== lite -> fluid (" << out_names_[i] << " -> "
               << engine_->GetOutputNames()[i] << ")";
       inference::lite::utils::TensorCopy(dst_t, &src_t, *ctx, zero_copy_);
     }
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    if (platform::is_gpu_place(dev_place)) {
-      platform::GpuStreamSync(
-          static_cast<const platform::CUDADeviceContext *>(ctx)->stream());
-    }
-#endif
   }
 };
 

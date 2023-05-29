@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
-from op_test import OpTest
-from paddle.fluid.tests.unittests.test_lstm_op import lstm, ACTIVATION
+from eager_op_test import OpTest
+
+from paddle.fluid.tests.unittests.test_lstm_op import ACTIVATION, lstm
 
 
 def fc(x, w, b):
@@ -25,22 +25,33 @@ def fc(x, w, b):
 
 
 def fusion_lstm(
-        x,  # T x M
-        lod,  # 1 x N
-        wx=None,  # M x 4D
-        bx=None,  # 1 x 4D
-        h0=None,  # N x D
-        c0=None,  # N x D
-        w_h=None,  # D x 4D
-        w_b=None,  # 1 x 4D
-        w_c=None,  # 1 x 3D
-        is_reverse=False,
-        act_gate=None,
-        act_cell=None,
-        act_cand=None):
+    x,  # T x M
+    lod,  # 1 x N
+    wx=None,  # M x 4D
+    bx=None,  # 1 x 4D
+    h0=None,  # N x D
+    c0=None,  # N x D
+    w_h=None,  # D x 4D
+    w_b=None,  # 1 x 4D
+    w_c=None,  # 1 x 3D
+    is_reverse=False,
+    act_gate=None,
+    act_cell=None,
+    act_cand=None,
+):
     return lstm(
-        fc(x, wx, bx), lod, h0, c0, w_h, w_b, w_c, is_reverse, act_gate,
-        act_cell, act_cand)
+        fc(x, wx, bx),
+        lod,
+        h0,
+        c0,
+        w_h,
+        w_b,
+        w_c,
+        is_reverse,
+        act_gate,
+        act_cell,
+        act_cand,
+    )
 
 
 class TestFusionLSTMOp(OpTest):
@@ -78,24 +89,36 @@ class TestFusionLSTMOp(OpTest):
             b = np.random.normal(size=(1, 7 * self.D)).astype('float32')
         else:
             b = np.random.normal(size=(1, 4 * self.D)).astype('float32')
-        w_b = np.copy(b[:, 0:4 * self.D])
-        w_c = b[:, 4 * self.D:] if self.use_peepholes else None
+        w_b = np.copy(b[:, 0 : 4 * self.D])
+        w_c = b[:, 4 * self.D :] if self.use_peepholes else None
 
         # this is the weight of fc
         wx = np.random.normal(size=(self.M, 4 * self.D)).astype('float32')
         # this is the bias of fc
         # and it should be manually added into the bias of this fusion LSTM
         bx = np.random.normal(size=(1, 4 * self.D)).astype('float32')
-        b[0, 0:4 * self.D] += bx[0, :]
-        h, c = fusion_lstm(x, self.lod, wx, bx, h0, c0, wh, w_b, w_c,
-                           self.is_reverse, ACTIVATION[self.act_gate],
-                           ACTIVATION[self.act_cell], ACTIVATION[self.act_cand])
+        b[0, 0 : 4 * self.D] += bx[0, :]
+        h, c = fusion_lstm(
+            x,
+            self.lod,
+            wx,
+            bx,
+            h0,
+            c0,
+            wh,
+            w_b,
+            w_c,
+            self.is_reverse,
+            ACTIVATION[self.act_gate],
+            ACTIVATION[self.act_cell],
+            ACTIVATION[self.act_cand],
+        )
 
         self.inputs = {
             'X': (x, self.lod),
             'WeightX': wx,
             'WeightH': wh,
-            'Bias': b
+            'Bias': b,
         }
 
         if self.has_initial_state:
@@ -112,7 +135,7 @@ class TestFusionLSTMOp(OpTest):
             'gate_activation': self.act_gate,
             'cell_activation': self.act_cell,
             'candidate_activation': self.act_cand,
-            'use_mkldnn': self.use_mkldnn
+            'use_mkldnn': self.use_mkldnn,
         }
 
     def test_check_output(self):
@@ -194,5 +217,6 @@ class TestFusionLSTMOpPeepholesBS1(TestFusionLSTMOp):
 
 if __name__ == '__main__':
     from paddle import enable_static
+
     enable_static()
     unittest.main()

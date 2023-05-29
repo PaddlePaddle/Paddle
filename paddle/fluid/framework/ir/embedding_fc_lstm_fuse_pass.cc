@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/ir/embedding_fc_lstm_fuse_pass.h"
 
 #include <string>
+
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
@@ -23,8 +24,10 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-static int BuildFusion(Graph* graph, const std::string& name_scope,
-                       Scope* scope, bool with_fc_bias) {
+static int BuildFusion(Graph* graph,
+                       const std::string& name_scope,
+                       Scope* scope,
+                       bool with_fc_bias) {
   GraphPatternDetector gpd;
   auto* pattern = gpd.mutable_pattern();
 
@@ -33,9 +36,8 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
                   ->assert_is_op_input("lookup_table_v2")
                   ->assert_var_not_persistable();
   patterns::Embedding embedding_pattern(pattern, name_scope);
-  // TODO(jczaja): Intermediate can only be for val that are not used anywhere
-  //               but lookup table output may go into other LSTM (for reverse
-  //               direction)
+  // Intermediate can only be for val that are not used anywhere but
+  // lookup table output may go into other LSTM (for reverse direction)
   auto* embedding_out = embedding_pattern(x);
   patterns::FC fc_pattern(pattern, name_scope);
 
@@ -46,10 +48,17 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
   lstm_pattern(fc_out);
 
   // Create New OpDesc
-  auto embedding_lstm_creator = [&](Node* embedding, Node* W, Node* lstm,
-                                    Node* input, Node* weight_x, Node* weight_h,
-                                    Node* bias, Node* hidden, Node* cell,
-                                    Node* xx, Node* fc_bias) {
+  auto embedding_lstm_creator = [&](Node* embedding,
+                                    Node* W,
+                                    Node* lstm,
+                                    Node* input,
+                                    Node* weight_x,
+                                    Node* weight_h,
+                                    Node* bias,
+                                    Node* hidden,
+                                    Node* cell,
+                                    Node* xx,
+                                    Node* fc_bias) {
     OpDesc op_desc;
     op_desc.SetType("fused_embedding_fc_lstm");
 #define SET_IN(Key, node__) op_desc.SetInput(#Key, {node__->Name()});
@@ -68,19 +77,19 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
         embeddings_var,
         platform::errors::InvalidArgument(
             "Embeddings variable's pointer cannot be nullptr."));
-    auto* embeddings_tensor =
-        embeddings_var->GetMutable<framework::LoDTensor>();
+    auto* embeddings_tensor = embeddings_var->GetMutable<phi::DenseTensor>();
     // Get WeightX size: [single_embedding, fc_size]
     // and embedding size: [dict_size, single_embedding]
     // and create new size of embeddings eg. [dict_size , hidden_size]
     auto* embedding_var = scope->FindVar(W->Name());
     PADDLE_ENFORCE_NOT_NULL(
-        embedding_var, platform::errors::InvalidArgument(
-                           "Embedding variable's pointer cannot be nullptr."));
-    const auto& embedding_tensor = embedding_var->Get<framework::LoDTensor>();
+        embedding_var,
+        platform::errors::InvalidArgument(
+            "Embedding variable's pointer cannot be nullptr."));
+    const auto& embedding_tensor = embedding_var->Get<phi::DenseTensor>();
 
     const auto& weightx_tensor =
-        scope->FindVar(weight_x->Name())->Get<framework::LoDTensor>();
+        scope->FindVar(weight_x->Name())->Get<phi::DenseTensor>();
     embeddings_tensor->Resize(
         {embedding_tensor.dims()[0], weightx_tensor.dims()[1]});
 
@@ -95,7 +104,7 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
     PADDLE_ENFORCE_NOT_NULL(lstm_bias_var,
                             platform::errors::InvalidArgument(
                                 "Lstm bias var ptr cannot be nullptr."));
-    const auto& lstm_bias_tensor = lstm_bias_var->Get<framework::LoDTensor>();
+    const auto& lstm_bias_tensor = lstm_bias_var->Get<phi::DenseTensor>();
 
     auto alpha = 1.0f;
     auto beta = 1.0f;
@@ -107,13 +116,13 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
     // weights)
     std::vector<float> combined_biases;
     combined_biases.reserve(n);
-    std::copy_n(lstm_bias_tensor.data<float>(), n,
-                std::back_inserter(combined_biases));
+    std::copy_n(
+        lstm_bias_tensor.data<float>(), n, std::back_inserter(combined_biases));
 
     if (with_fc_bias) {
       // Add FC-bias with LSTM-bias (into GEMM result to be)
       auto* fc_bias_var = scope->FindVar(fc_bias->Name());
-      const auto& fc_bias_tensor = fc_bias_var->Get<framework::LoDTensor>();
+      const auto& fc_bias_tensor = fc_bias_var->Get<phi::DenseTensor>();
       for (int i = 0; i < fc_bias_tensor.numel(); i++) {
         combined_biases[i] += fc_bias_tensor.data<float>()[i];
       }
@@ -121,14 +130,36 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
 
     // broadcast biases
     std::vector<float> ones(m, 1.0f);
-    phi::funcs::CBlas<float>::GEMM(
-        CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, 1, alpha, &ones[0], 1,
-        &combined_biases[0], n, 0.0f, embeddings_data, n);
+    phi::funcs::CBlas<float>::GEMM(CblasRowMajor,
+                                   CblasNoTrans,
+                                   CblasNoTrans,
+                                   m,
+                                   n,
+                                   1,
+                                   alpha,
+                                   &ones[0],
+                                   1,
+                                   &combined_biases[0],
+                                   n,
+                                   0.0f,
+                                   embeddings_data,
+                                   n);
 
     // Wx*embeddings + biases
-    phi::funcs::CBlas<float>::GEMM(CblasRowMajor, CblasNoTrans, CblasNoTrans, m,
-                                   n, k, alpha, embedding_data, k, weightx_data,
-                                   n, beta, embeddings_data, n);
+    phi::funcs::CBlas<float>::GEMM(CblasRowMajor,
+                                   CblasNoTrans,
+                                   CblasNoTrans,
+                                   m,
+                                   n,
+                                   k,
+                                   alpha,
+                                   embedding_data,
+                                   k,
+                                   weightx_data,
+                                   n,
+                                   beta,
+                                   embeddings_data,
+                                   n);
     op_desc.SetInput("Embeddings", {embeddings});
 
     op_desc.SetInput("H0", {});
@@ -195,13 +226,13 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
     GET_IR_NODE_FROM_SUBGRAPH(w, w, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(mul, mul, fc_pattern);
 
-    // TODO(jczaja): Add support for is_sparse / is_distributed
     auto is_sparse =
-        BOOST_GET_CONST(bool, lookup_table->Op()->GetAttr("is_sparse"));
+        PADDLE_GET_CONST(bool, lookup_table->Op()->GetAttr("is_sparse"));
     auto is_distributed =
-        BOOST_GET_CONST(bool, lookup_table->Op()->GetAttr("is_distributed"));
+        PADDLE_GET_CONST(bool, lookup_table->Op()->GetAttr("is_distributed"));
 
-    if (is_sparse == true || is_distributed == true) {
+    if (is_sparse || is_distributed) {
+      VLOG(4) << "Only dense embedding is supported in oneDNN";
       return;
     }
 
@@ -209,22 +240,33 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
       GET_IR_NODE_FROM_SUBGRAPH(fc_out, elementwise_add_out, fc_pattern);
       GET_IR_NODE_FROM_SUBGRAPH(fc_bias, bias, fc_pattern);
       GET_IR_NODE_FROM_SUBGRAPH(elementwise_add, elementwise_add, fc_pattern);
-      embedding_lstm_creator(lookup_table, W, lstm, subgraph.at(x), w, Weight,
-                             Bias, Hidden, Cell, fc_out, fc_bias);
-      // Remove unneeded nodes.
-      // TODO(jczaja): Proper removing of lookup table
+      embedding_lstm_creator(lookup_table,
+                             W,
+                             lstm,
+                             subgraph.at(x),
+                             w,
+                             Weight,
+                             Bias,
+                             Hidden,
+                             Cell,
+                             fc_out,
+                             fc_bias);
       std::unordered_set<const Node*> marked_nodes(
-          // {lookup_table, mul, lstm, elementwise_add, fc_bias, W});
           {mul, lstm, elementwise_add, fc_bias});
       GraphSafeRemoveNodes(graph, marked_nodes);
     } else {
       GET_IR_NODE_FROM_SUBGRAPH(fc_out, mul_out, fc_pattern);
-      embedding_lstm_creator(lookup_table, W, lstm, subgraph.at(x), w, Weight,
-                             Bias, Hidden, Cell, fc_out, nullptr);
-      // Remove unneeded nodes.
-      // TODO(jczaja): Proper removing of lookup table
-      // std::unordered_set<const Node*> marked_nodes({lookup_table, W, mul,
-      // lstm});
+      embedding_lstm_creator(lookup_table,
+                             W,
+                             lstm,
+                             subgraph.at(x),
+                             w,
+                             Weight,
+                             Bias,
+                             Hidden,
+                             Cell,
+                             fc_out,
+                             nullptr);
       std::unordered_set<const Node*> marked_nodes({mul, lstm});
       GraphSafeRemoveNodes(graph, marked_nodes);
     }

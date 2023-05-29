@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
+
 import paddle
 from paddle.static import Program, program_guard
 
@@ -50,23 +50,23 @@ class TestDiagFlatAPI(unittest.TestCase):
     def run_imperative(self):
         x = paddle.to_tensor(self.input_np)
         y = paddle.diagflat(x)
-        self.assertTrue(np.allclose(y.numpy(), self.expected0))
+        np.testing.assert_allclose(y.numpy(), self.expected0, rtol=1e-05)
 
         y = paddle.diagflat(x, offset=1)
-        self.assertTrue(np.allclose(y.numpy(), self.expected1))
+        np.testing.assert_allclose(y.numpy(), self.expected1, rtol=1e-05)
 
         y = paddle.diagflat(x, offset=-1)
-        self.assertTrue(np.allclose(y.numpy(), self.expected2))
+        np.testing.assert_allclose(y.numpy(), self.expected2, rtol=1e-05)
 
         x = paddle.to_tensor(self.input_np2)
         y = paddle.diagflat(x)
-        self.assertTrue(np.allclose(y.numpy(), self.expected3))
+        np.testing.assert_allclose(y.numpy(), self.expected3, rtol=1e-05)
 
         y = paddle.diagflat(x, offset=1)
-        self.assertTrue(np.allclose(y.numpy(), self.expected4))
+        np.testing.assert_allclose(y.numpy(), self.expected4, rtol=1e-05)
 
         y = paddle.diagflat(x, offset=-1)
-        self.assertTrue(np.allclose(y.numpy(), self.expected5))
+        np.testing.assert_allclose(y.numpy(), self.expected5, rtol=1e-05)
 
     def run_static(self, use_gpu=False):
         x = paddle.static.data(name='input', shape=[10, 10], dtype='float64')
@@ -78,12 +78,12 @@ class TestDiagFlatAPI(unittest.TestCase):
         exe = paddle.static.Executor(place)
         exe.run(paddle.static.default_startup_program())
         res0, res3 = exe.run(
-            feed={"input": self.input_np,
-                  'input2': self.input_np2},
-            fetch_list=[result0, result3])
+            feed={"input": self.input_np, 'input2': self.input_np2},
+            fetch_list=[result0, result3],
+        )
 
-        self.assertTrue(np.allclose(res0, self.expected0))
-        self.assertTrue(np.allclose(res3, self.expected3))
+        np.testing.assert_allclose(res0, self.expected0, rtol=1e-05)
+        np.testing.assert_allclose(res3, self.expected3, rtol=1e-05)
 
     def test_cpu(self):
         paddle.disable_static(place=paddle.CPUPlace())
@@ -103,6 +103,29 @@ class TestDiagFlatAPI(unittest.TestCase):
 
         with paddle.static.program_guard(Program()):
             self.run_static(use_gpu=True)
+
+    def test_fp16_with_gpu(self, use_gpu=False):
+        if paddle.fluid.core.is_compiled_with_cuda():
+            place = paddle.CUDAPlace(0)
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                input = np.random.random([10, 10]).astype("float16")
+                x = paddle.static.data(
+                    name="x", shape=[10, 10], dtype="float16"
+                )
+
+                y = paddle.diagflat(x)
+                expected = np.diagflat(input)
+
+                exe = paddle.static.Executor(place)
+                res = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={
+                        "x": input,
+                    },
+                    fetch_list=[y],
+                )
 
 
 if __name__ == "__main__":

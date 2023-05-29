@@ -13,12 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/device/ipu/ipu_backend.h"
-#include "paddle/fluid/platform/device/ipu/ipu_utils.h"
 
-#include "paddle/fluid/framework/framework.pb.h"
-#include "paddle/fluid/framework/ir/graph.h"
-#include "paddle/fluid/framework/ir/graph_helper.h"
-#include "paddle/fluid/framework/ir/node.h"
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/platform/device/ipu/ipu_compiler.h"
+#include "paddle/fluid/platform/device/ipu/ipu_executor.h"
 
 namespace paddle {
 namespace platform {
@@ -40,7 +38,7 @@ IpuBackend::~IpuBackend() {
   executor_.reset();
 }
 
-void IpuBackend::Compile(Graph* graph,
+void IpuBackend::Compile(framework::ir::Graph* graph,
                          const std::vector<std::string>& feed_list,
                          const std::vector<std::string>& fetch_list) {
   VLOG(10) << "enter IpuBackend::Compile";
@@ -54,20 +52,35 @@ void IpuBackend::Compile(Graph* graph,
   if (ipu_strategy_->is_training) {
     compiler_->LowerOptimizer(scope_);
   }
+
+  // environment variable IPU_ONNX_DUMP_PATH have higher priority
+  std::string onnx_dump_path;
   if (!ipu_strategy_->onnx_dump_path.empty()) {
-    SaveModelProto(ipu_strategy_->onnx_dump_path);
+    onnx_dump_path = ipu_strategy_->onnx_dump_path;
   }
+  auto* ipu_onnx_dump_path = getenv("IPU_ONNX_DUMP_PATH");
+  if (ipu_onnx_dump_path) {
+    onnx_dump_path = std::string{ipu_onnx_dump_path};
+  }
+  if (!onnx_dump_path.empty()) {
+    SaveModelProto(onnx_dump_path);
+  }
+
   executor_->SetCompilerResources(compiler_->GetResources());
   executor_->Prepare(compiler_->GetModelProto());
   is_compiled_ = true;
   VLOG(10) << "leave IpuBackend::Compile";
 }
 
-void IpuBackend::Run(const std::vector<const Tensor*>& inputs,
-                     const std::vector<Tensor*>& outputs,
+void IpuBackend::Run(const std::vector<const phi::DenseTensor*>& inputs,
+                     const std::vector<phi::DenseTensor*>& outputs,
                      const framework::ExecutionContext& ctx) {
   timer_->Start();
-  executor_->Run(inputs, outputs, ctx);
+  if (ipu_strategy_->enable_model_runtime_executor) {
+    executor_->RunPopef(inputs, outputs, ctx);
+  } else {
+    executor_->Run(inputs, outputs, ctx);
+  }
   timer_->Pause();
   VLOG(10) << "[IPU Run]: " << timer_->ElapsedMS() << " (ms)";
 }
@@ -76,13 +89,9 @@ void IpuBackend::WeightsToHost() { executor_->WeightsToHost(); }
 
 void IpuBackend::Detach() { executor_->Detach(); }
 
-void IpuBackend::Reset() {
-  executor_->Detach();
-  compiler_.reset();
-  executor_.reset();
-}
+void IpuBackend::Reset() { executor_->Reset(); }
 
-void IpuBackend::SetScope(const Scope& scope) {
+void IpuBackend::SetScope(const framework::Scope& scope) {
   scope_ = &scope;
   executor_->SetScope(&scope);
 }

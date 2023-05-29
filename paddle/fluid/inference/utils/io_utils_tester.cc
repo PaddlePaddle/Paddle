@@ -12,11 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/utils/io_utils.h"
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+
 #include <utility>
+
 #include "paddle/fluid/inference/api/helper.h"
+#include "paddle/fluid/inference/utils/io_utils.h"
 
 namespace paddle {
 namespace inference {
@@ -98,28 +100,55 @@ TEST(infer_io_utils, tensors) {
 TEST(shape_info_io, read_and_write) {
   const std::string path = "test_shape_info_io";
   std::map<std::string, std::vector<int32_t>> min_shape, max_shape, opt_shape;
+  std::map<std::string, std::vector<int32_t>> min_value, max_value, opt_value;
   min_shape.insert(
       std::make_pair("test1", std::vector<int32_t>{1, 3, 112, 112}));
   max_shape.insert(
       std::make_pair("test1", std::vector<int32_t>{1, 3, 224, 224}));
   opt_shape.insert(
       std::make_pair("test1", std::vector<int32_t>{1, 3, 224, 224}));
-  paddle::inference::SerializeShapeRangeInfo(path, min_shape, max_shape,
-                                             opt_shape);
+  min_value.insert(
+      std::make_pair("test1", std::vector<int32_t>{1, 3, 112, 112}));
+  max_value.insert(
+      std::make_pair("test1", std::vector<int32_t>{1, 3, 224, 224}));
+  opt_value.insert(
+      std::make_pair("test1", std::vector<int32_t>{1, 3, 224, 224}));
+  paddle::inference::SerializeShapeRangeInfo(
+      path, min_shape, max_shape, opt_shape, min_value, max_value, opt_value);
   min_shape.clear();
   max_shape.clear();
   opt_shape.clear();
+  min_value.clear();
+  max_value.clear();
+  opt_value.clear();
   opt_shape.insert(
       std::make_pair("test2", std::vector<int32_t>{1, 3, 224, 224}));
-  paddle::inference::DeserializeShapeRangeInfo(path, &min_shape, &max_shape,
-                                               &opt_shape);
+  paddle::inference::DeserializeShapeRangeInfo(path,
+                                               &min_shape,
+                                               &max_shape,
+                                               &opt_shape,
+                                               &min_value,
+                                               &max_value,
+                                               &opt_value);
 
   min_shape.insert(std::make_pair("test1", std::vector<int32_t>{1, 3, 56, 56}));
   std::vector<std::string> names{"test1"};
-  paddle::inference::UpdateShapeRangeInfo(path, min_shape, max_shape, opt_shape,
+  paddle::inference::UpdateShapeRangeInfo(path,
+                                          min_shape,
+                                          max_shape,
+                                          opt_shape,
+                                          min_value,
+                                          max_value,
+                                          opt_value,
+                                          names,
                                           names);
 
-  ASSERT_THROW(paddle::inference::DeserializeShapeRangeInfo(
-                   "no_exists_file", &min_shape, &max_shape, &opt_shape);
+  ASSERT_THROW(paddle::inference::DeserializeShapeRangeInfo("no_exists_file",
+                                                            &min_shape,
+                                                            &max_shape,
+                                                            &opt_shape,
+                                                            &min_value,
+                                                            &max_value,
+                                                            &opt_value);
                , paddle::platform::EnforceNotMet);
 }

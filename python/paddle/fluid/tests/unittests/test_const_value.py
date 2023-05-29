@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
-import paddle.fluid.framework as framework
+
+from paddle.fluid import framework
 
 
 class ConstantTest(unittest.TestCase):

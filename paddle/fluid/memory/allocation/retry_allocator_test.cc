@@ -15,10 +15,10 @@
 #include "paddle/fluid/memory/allocation/retry_allocator.h"
 
 #include <thread>  // NOLINT
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/allocation/best_fit_allocator.h"
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"
-#include "paddle/fluid/memory/allocation/locked_allocator.h"
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/memory/allocation/cuda_allocator.h"
 #endif
@@ -33,11 +33,6 @@ TEST(RetryAllocator, RetryAllocator) {
   size_t size = (1 << 20);
   auto cpu_allocation = cpu_allocator.Allocate(size);
 
-  std::unique_ptr<BestFitAllocator> best_fit_allocator(
-      new BestFitAllocator(cpu_allocation.get()));
-  std::unique_ptr<LockedAllocator> locked_allocator(
-      new LockedAllocator(std::move(best_fit_allocator)));
-
   size_t thread_num = 4;
   size_t sleep_time = 40;
   size_t extra_time = 20;
@@ -47,10 +42,8 @@ TEST(RetryAllocator, RetryAllocator) {
   {
     std::unique_ptr<BestFitAllocator> best_fit_allocator(
         new BestFitAllocator(cpu_allocation.get()));
-    std::unique_ptr<LockedAllocator> locked_allocator(
-        new LockedAllocator(std::move(best_fit_allocator)));
     allocators.push_back(std::make_shared<RetryAllocator>(
-        std::move(locked_allocator),
+        std::move(best_fit_allocator),
         (thread_num - 1) * (sleep_time + extra_time)));
   }
 
@@ -86,7 +79,8 @@ TEST(RetryAllocator, RetryAllocator) {
     }
 
     void *val = cpu_allocation->ptr();
-    bool is_all_equal = std::all_of(addresses.begin(), addresses.end(),
+    bool is_all_equal = std::all_of(addresses.begin(),
+                                    addresses.end(),
                                     [val](void *p) { return p == val; });
     ASSERT_TRUE(is_all_equal);
     allocator->Release(platform::CPUPlace());

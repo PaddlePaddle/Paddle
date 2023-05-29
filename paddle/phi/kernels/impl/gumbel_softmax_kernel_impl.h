@@ -15,17 +15,19 @@
 #pragma once
 
 #include <random>
-#include "paddle/fluid/operators/math/softmax.h"
-#include "paddle/fluid/operators/math/softmax_impl.h"
+
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/axis_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/softmax.h"
+#include "paddle/phi/kernels/funcs/softmax_impl.h"
 
 namespace phi {
 
 template <typename Context, typename T, int64_t Rank>
 struct ArgMaxFunctor {
-  void operator()(const Context& ctx,
+  void operator()(const Context& ctx UNUSED,
                   const DenseTensor& in,
                   DenseTensor* index_tensor,
                   const int64_t& axis) {
@@ -42,12 +44,12 @@ template <typename Context, typename T>
 struct OneHotGenerator;
 
 template <typename T, typename Context>
-void GumbelSoftmaxKernel(const Context& ctx,
-                         const DenseTensor& x,
-                         float temperature,
-                         bool hard,
-                         int axis,
-                         DenseTensor* out) {
+void GumbelSoftmaxKernelHelper(const Context& ctx,
+                               const DenseTensor& x,
+                               float temperature,
+                               bool hard,
+                               int axis,
+                               DenseTensor* out) {
   const int rank = x.dims().size();
   axis = funcs::CanonicalAxis(axis, rank);
   int axis_dim = x.dims()[axis];
@@ -65,6 +67,12 @@ void GumbelSoftmaxKernel(const Context& ctx,
     return;
   }
 
+  // For 0D Tensor
+  if (rank == 0) {
+    phi::funcs::set_constant(ctx, out, 1.0);
+    return;
+  }
+
   const int size_to_axis = funcs::SizeToAxis(axis, x.dims());
   const int size_from_axis = funcs::SizeFromAxis(axis, x.dims());
   DenseTensor x_noise_2d, out_2d(*out);
@@ -79,18 +87,21 @@ void GumbelSoftmaxKernel(const Context& ctx,
                                               size_to_axis,
                                               size_from_axis,
                                               temperature);
-
-#ifdef PADDLE_ON_INFERENCE
-  paddle::operators::math::SoftmaxFunctor<Context, T, true>()(
-      ctx, axis_dim, &x_noise_2d, &out_2d);
-#else
-  paddle::operators::math::SoftmaxFunctor<Context, T, false>()(
-      ctx, axis_dim, &x_noise_2d, &out_2d);
-#endif
+  phi::funcs::SoftmaxFunctor<Context, T>()(ctx, axis_dim, &x_noise_2d, &out_2d);
 
   if (hard) {
     OneHotGenerator<Context, T>::Transform(ctx, x, out, axis);
   }
+}
+
+template <typename T, typename Context>
+void GumbelSoftmaxKernel(const Context& ctx,
+                         const DenseTensor& x,
+                         float temperature,
+                         bool hard,
+                         int axis,
+                         DenseTensor* out) {
+  GumbelSoftmaxKernelHelper<T, Context>(ctx, x, temperature, hard, axis, out);
 }
 
 }  // namespace phi

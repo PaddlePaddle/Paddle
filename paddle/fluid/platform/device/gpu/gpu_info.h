@@ -14,11 +14,13 @@ limitations under the License. */
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 
 #include <stddef.h>
+
 #include <array>
 #include <string>
 #include <vector>
 
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
 
 namespace paddle {
 namespace platform {
@@ -37,7 +39,7 @@ int GetGPURuntimeVersion(int id);
 //! Get the driver version of the ith GPU
 int GetGPUDriverVersion(int id);
 
-//! Wheter the current device support TensorCore
+//! Whether the current device support TensorCore
 bool TensorCoreAvailable();
 
 //! Get the MultiProcessors of the ith GPU.
@@ -87,20 +89,29 @@ size_t GpuMinChunkSize();
 size_t GpuMaxChunkSize();
 
 //! Copy memory from address src to dst asynchronously.
-void GpuMemcpyAsync(void *dst, const void *src, size_t count,
-                    gpuMemcpyKind kind, gpuStream_t stream);
+void GpuMemcpyAsync(void *dst,
+                    const void *src,
+                    size_t count,
+                    gpuMemcpyKind kind,
+                    gpuStream_t stream);
 
 //! Copy memory from address src to dst synchronously.
-void GpuMemcpySync(void *dst, const void *src, size_t count,
+void GpuMemcpySync(void *dst,
+                   const void *src,
+                   size_t count,
                    gpuMemcpyKind kind);
 
 //! Copy memory from one device to another device asynchronously.
-void GpuMemcpyPeerAsync(void *dst, int dst_device, const void *src,
-                        int src_device, size_t count, gpuStream_t stream);
+void GpuMemcpyPeerAsync(void *dst,
+                        int dst_device,
+                        const void *src,
+                        int src_device,
+                        size_t count,
+                        gpuStream_t stream);
 
 //! Copy memory from one device to another device synchronously.
-void GpuMemcpyPeerSync(void *dst, int dst_device, const void *src,
-                       int src_device, size_t count);
+void GpuMemcpyPeerSync(
+    void *dst, int dst_device, const void *src, int src_device, size_t count);
 
 //! Set memory dst with value count size asynchronously
 void GpuMemsetAsync(void *dst, int value, size_t count, gpuStream_t stream);
@@ -114,7 +125,9 @@ void GpuDestroyStream(gpuStream_t stream);
 void GpuDeviceSync();
 
 //! CudaMalloc with recorded info
-gpuError_t RecordedGpuMalloc(void **ptr, size_t size, int dev_id,
+gpuError_t RecordedGpuMalloc(void **ptr,
+                             size_t size,
+                             int dev_id,
                              bool malloc_managed_memory = false);
 
 //! CudaFree with recorded info
@@ -125,19 +138,25 @@ gpuError_t GpuGetLastError();
 #ifdef PADDLE_WITH_CUDA
 #if CUDA_VERSION >= 10020
 //! cuMemCreate with recorded info
-CUresult RecordedGpuMemCreate(CUmemGenericAllocationHandle *handle, size_t size,
+CUresult RecordedGpuMemCreate(CUmemGenericAllocationHandle *handle,
+                              size_t size,
                               const CUmemAllocationProp *prop,
-                              unsigned long long flags, int dev_id);  // NOLINT
+                              unsigned long long flags,  // NOLINT
+                              int dev_id);
 
 //! cuMemRelease with recorded info
-CUresult RecordedGpuMemRelease(CUmemGenericAllocationHandle handle, size_t size,
+CUresult RecordedGpuMemRelease(CUmemGenericAllocationHandle handle,
+                               size_t size,
                                int dev_id);
 #endif
 #endif
 
 //! Get available and total gpu memory with considering limitation
-bool RecordedGpuMemGetInfo(size_t *avail, size_t *total, size_t *actual_avail,
-                           size_t *actual_total, int dev_id);
+bool RecordedGpuMemGetInfo(size_t *avail,
+                           size_t *total,
+                           size_t *actual_avail,
+                           size_t *actual_total,
+                           int dev_id);
 
 //! Get recorded cudaMalloc size. If record is disabled, return 0.
 uint64_t RecordedGpuMallocSize(int dev_id);

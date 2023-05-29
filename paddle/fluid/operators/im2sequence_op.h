@@ -15,32 +15,30 @@
 #pragma once
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/eigen/eigen_function.h"
-#include "paddle/fluid/operators/math/im2col.h"
+#include "paddle/phi/kernels/funcs/im2col.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
-
-inline int Im2SeqOutputSize(int input_size, int filter_size, int padding_0,
-                            int padding_1, int stride) {
+inline int Im2SeqOutputSize(
+    int input_size, int filter_size, int padding_0, int padding_1, int stride) {
   const int output_size =
       (input_size + padding_0 + padding_1 - filter_size) / stride + 1;
   return output_size;
 }
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class Im2SequenceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    const Tensor* in = ctx.Input<Tensor>("X");
-    LoDTensor* out = ctx.Output<LoDTensor>("Out");
+    const phi::DenseTensor* in = ctx.Input<phi::DenseTensor>("X");
+    phi::DenseTensor* out = ctx.Output<phi::DenseTensor>("Out");
     auto in_dim = in->dims();
     int batch_size = in_dim[0];
     int img_channels = in_dim[1];
@@ -50,11 +48,11 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
     auto strides = ctx.Attr<std::vector<int>>("strides");
     auto paddings = ctx.Attr<std::vector<int>>("paddings");
     if (ctx.HasInput("Y") && batch_size > 1) {
-      const Tensor* imgrealsize = ctx.Input<Tensor>("Y");
+      const phi::DenseTensor* imgrealsize = ctx.Input<phi::DenseTensor>("Y");
       auto out_stride = ctx.Attr<std::vector<int>>("out_stride");
-      Tensor cpu_shape_tensor;
-      paddle::framework::TensorCopySync(*imgrealsize, platform::CPUPlace(),
-                                        &cpu_shape_tensor);
+      phi::DenseTensor cpu_shape_tensor;
+      paddle::framework::TensorCopySync(
+          *imgrealsize, platform::CPUPlace(), &cpu_shape_tensor);
       std::vector<int> imgreal_h;
       std::vector<int> imgreal_w;
       std::vector<int> output_height;
@@ -89,15 +87,20 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
       const std::vector<int> dilations({1, 1});
       int offset_out = 0;
       for (int i = 0; i < batch_size; i++) {
-        const Tensor src =
+        const phi::DenseTensor src =
             in->Slice(i, i + 1).Resize({img_channels, img_height, img_width});
-        Tensor dst = out->Slice(offset_out,
-                                offset_out + output_height[i] * output_width[i])
-                         .Resize({output_height[i], output_width[i],
-                                  img_channels, kernels[0], kernels[1]});
+        phi::DenseTensor dst =
+            out->Slice(offset_out,
+                       offset_out + output_height[i] * output_width[i])
+                .Resize({output_height[i],
+                         output_width[i],
+                         img_channels,
+                         kernels[0],
+                         kernels[1]});
         offset_out += output_height[i] * output_width[i];
 
-        math::Im2ColFunctor<math::ColFormat::kOCF, DeviceContext, T> f;
+        phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T>
+            f;
         auto& dev_ctx = ctx.template device_context<DeviceContext>();
         f(dev_ctx, src, dilations, strides, paddings, &dst);
       }
@@ -111,10 +114,10 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
       }
       out->set_lod(lod);
     } else {
-      int output_height = Im2SeqOutputSize(img_height, kernels[0], paddings[0],
-                                           paddings[2], strides[0]);
-      int output_width = Im2SeqOutputSize(img_width, kernels[1], paddings[1],
-                                          paddings[3], strides[1]);
+      int output_height = Im2SeqOutputSize(
+          img_height, kernels[0], paddings[0], paddings[2], strides[0]);
+      int output_width = Im2SeqOutputSize(
+          img_width, kernels[1], paddings[1], paddings[3], strides[1]);
       out->mutable_data<T>(
           {static_cast<int64_t>(batch_size) * output_height * output_width,
            static_cast<int64_t>(img_channels) * kernels[0] * kernels[1]},
@@ -123,13 +126,16 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
       auto out_dims = out->dims();
       out->Resize({batch_size, out->numel() / batch_size});
       for (int i = 0; i < batch_size; i++) {
-        const Tensor src =
+        const phi::DenseTensor src =
             in->Slice(i, i + 1).Resize({img_channels, img_height, img_width});
-        Tensor dst =
-            out->Slice(i, i + 1).Resize({output_height, output_width,
-                                         img_channels, kernels[0], kernels[1]});
+        phi::DenseTensor dst = out->Slice(i, i + 1).Resize({output_height,
+                                                            output_width,
+                                                            img_channels,
+                                                            kernels[0],
+                                                            kernels[1]});
 
-        math::Im2ColFunctor<math::ColFormat::kOCF, DeviceContext, T> f;
+        phi::funcs::Im2ColFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T>
+            f;
         auto& dev_ctx = ctx.template device_context<DeviceContext>();
         f(dev_ctx, src, dilations, strides, paddings, &dst);
       }
@@ -147,14 +153,14 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class Im2SequenceGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* in = ctx.Input<Tensor>("X");
-    Tensor* d_out =
-        const_cast<Tensor*>(ctx.Input<Tensor>(framework::GradVarName("Out")));
-    auto* d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* in = ctx.Input<phi::DenseTensor>("X");
+    phi::DenseTensor* d_out = const_cast<phi::DenseTensor*>(
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("Out")));
+    auto* d_x = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
     d_x->mutable_data<T>(ctx.GetPlace());
 
     auto x_v = framework::EigenVector<T>::Flatten(*d_x);
@@ -170,21 +176,22 @@ class Im2SequenceGradKernel : public framework::OpKernel<T> {
     auto kernels = ctx.Attr<std::vector<int>>("kernels");
     auto strides = ctx.Attr<std::vector<int>>("strides");
     auto paddings = ctx.Attr<std::vector<int>>("paddings");
-    int output_height = Im2SeqOutputSize(img_height, kernels[0], paddings[0],
-                                         paddings[2], strides[0]);
-    int output_width = Im2SeqOutputSize(img_width, kernels[1], paddings[1],
-                                        paddings[3], strides[1]);
+    int output_height = Im2SeqOutputSize(
+        img_height, kernels[0], paddings[0], paddings[2], strides[0]);
+    int output_width = Im2SeqOutputSize(
+        img_width, kernels[1], paddings[1], paddings[3], strides[1]);
 
     const std::vector<int> dilations({1, 1});
 
     auto d_out_dims = d_out->dims();
     d_out->Resize({batch_size, d_out->numel() / batch_size});
     for (int i = 0; i < batch_size; i++) {
-      Tensor dst =
+      phi::DenseTensor dst =
           d_x->Slice(i, i + 1).Resize({img_channels, img_height, img_width});
-      const Tensor src = d_out->Slice(i, i + 1).Resize(
+      const phi::DenseTensor src = d_out->Slice(i, i + 1).Resize(
           {output_height, output_width, img_channels, kernels[0], kernels[1]});
-      math::Col2ImFunctor<math::ColFormat::kOCF, DeviceContext, T> f;
+      phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::kOCF, DeviceContext, T>
+          f;
       auto& dev_ctx = ctx.template device_context<DeviceContext>();
       f(dev_ctx, src, dilations, strides, paddings, &dst);
     }

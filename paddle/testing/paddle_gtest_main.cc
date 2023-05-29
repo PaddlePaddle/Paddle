@@ -14,10 +14,14 @@ limitations under the License. */
 
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
+#include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
-#include "paddle/fluid/platform/device/npu/npu_info.h"
-#include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/init.h"
+#include "paddle/phi/core/flags.h"
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+DECLARE_bool(enable_gpu_memory_usage_log);
+#endif
 
 int main(int argc, char** argv) {
   paddle::memory::allocation::UseAllocatorStrategyGFlag();
@@ -38,7 +42,7 @@ int main(int argc, char** argv) {
   }
 #endif
 
-  const auto& flag_map = paddle::platform::GetExportedFlagInfoMap();
+  const auto& flag_map = phi::GetExportedFlagInfoMap();
   for (const auto& pair : flag_map) {
     const std::string& name = pair.second.name;
     // NOTE(zhiqiu): some names may not linked in some tests, so add to
@@ -80,17 +84,23 @@ int main(int argc, char** argv) {
     VLOG(1) << "gtest undefok_string:" << undefok_string;
   }
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (strstr(undefok_str, "enable_gpu_memory_usage_log")) {
+    VLOG(1) << "Set FLAGS_enable_gpu_memory_usage_log to true";
+    FLAGS_enable_gpu_memory_usage_log = true;
+  }
+#endif
+
   int new_argc = static_cast<int>(new_argv.size());
   char** new_argv_address = new_argv.data();
   ::GFLAGS_NAMESPACE::ParseCommandLineFlags(
       &new_argc, &new_argv_address, false);
+  paddle::framework::InitMemoryMethod();
   paddle::framework::InitDevices();
+  paddle::framework::InitDefaultKernelSignatureMap();
 
   int ret = RUN_ALL_TESTS();
 
-#ifdef PADDLE_WITH_ASCEND_CL
-  paddle::platform::AclInstance::Instance().Finalize();
-#endif
   if (env_str) free(env_str);
   if (undefok_str) free(undefok_str);
   return ret;

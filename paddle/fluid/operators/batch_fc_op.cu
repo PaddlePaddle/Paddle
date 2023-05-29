@@ -13,15 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <string>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/operators/batch_fc_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace paddle {
 namespace operators {
-using framework::Tensor;
 
 const int CUDA_NUM_THREADS = 1024;
 static inline int GET_BLOCKS(const int N) {
@@ -29,8 +29,8 @@ static inline int GET_BLOCKS(const int N) {
 }
 
 template <typename T>
-__global__ void add_bias_kernel(T* data, int slot_pairs_num, int ins_num,
-                                int out_dim, const T* bias) {
+__global__ void add_bias_kernel(
+    T* data, int slot_pairs_num, int ins_num, int out_dim, const T* bias) {
   CUDA_KERNEL_LOOP(idx, slot_pairs_num * ins_num * out_dim) {
     int block_len = ins_num * out_dim;
     int slot_index = idx / block_len;
@@ -41,16 +41,24 @@ __global__ void add_bias_kernel(T* data, int slot_pairs_num, int ins_num,
 }
 
 template <typename T>
-void add_bias(gpuStream_t stream, T* data, int slot_pairs_num, int ins_num,
-              int out_dim, const T* bias) {
+void add_bias(gpuStream_t stream,
+              T* data,
+              int slot_pairs_num,
+              int ins_num,
+              int out_dim,
+              const T* bias) {
   add_bias_kernel<<<GET_BLOCKS(slot_pairs_num * ins_num * out_dim),
-                    CUDA_NUM_THREADS, 0, stream>>>(data, slot_pairs_num,
-                                                   ins_num, out_dim, bias);
+                    CUDA_NUM_THREADS,
+                    0,
+                    stream>>>(data, slot_pairs_num, ins_num, out_dim, bias);
 }
 
 template <typename T>
-__global__ void add_bias_grad_kernel(const T* dout_data, int slot_pairs_num,
-                                     int ins_num, int out_dim, T* db_data) {
+__global__ void add_bias_grad_kernel(const T* dout_data,
+                                     int slot_pairs_num,
+                                     int ins_num,
+                                     int out_dim,
+                                     T* db_data) {
   CUDA_KERNEL_LOOP(idx, slot_pairs_num * out_dim) {
     int row = idx / out_dim;
     int col = idx % out_dim;
@@ -64,14 +72,20 @@ __global__ void add_bias_grad_kernel(const T* dout_data, int slot_pairs_num,
 }
 
 template <typename T>
-void add_bias_grad(gpuStream_t stream, const T* dout_data, int slot_pairs_num,
-                   int ins_num, int out_dim, T* db_data) {
-  add_bias_grad_kernel<<<GET_BLOCKS(slot_pairs_num * out_dim), CUDA_NUM_THREADS,
-                         0, stream>>>(dout_data, slot_pairs_num, ins_num,
-                                      out_dim, db_data);
+void add_bias_grad(gpuStream_t stream,
+                   const T* dout_data,
+                   int slot_pairs_num,
+                   int ins_num,
+                   int out_dim,
+                   T* db_data) {
+  add_bias_grad_kernel<<<GET_BLOCKS(slot_pairs_num * out_dim),
+                         CUDA_NUM_THREADS,
+                         0,
+                         stream>>>(
+      dout_data, slot_pairs_num, ins_num, out_dim, db_data);
 }
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class BatchFCCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -79,10 +93,10 @@ class BatchFCCUDAKernel : public framework::OpKernel<T> {
     // W.dim = slot_pairs_num * in_dim * out_dim
     // b.dim = slot_pairs_num * out_dim
     // output.dim = slot_pairs_num * ins_num * out_dim
-    auto* input = ctx.Input<framework::LoDTensor>("Input");
-    auto* w = ctx.Input<Tensor>("W");
-    auto* bias = ctx.Input<Tensor>("Bias");
-    auto* output = ctx.Output<framework::LoDTensor>("Out");
+    auto* input = ctx.Input<phi::DenseTensor>("Input");
+    auto* w = ctx.Input<phi::DenseTensor>("W");
+    auto* bias = ctx.Input<phi::DenseTensor>("Bias");
+    auto* output = ctx.Output<phi::DenseTensor>("Out");
     auto input_dims = input->dims();
     auto w_dims = w->dims();
     auto slot_pairs_num = input_dims[0];
@@ -99,9 +113,9 @@ class BatchFCCUDAKernel : public framework::OpKernel<T> {
     T* out_data = output->mutable_data<T>(ctx.GetPlace());
     // initialize
     auto out_eigen = framework::EigenVector<T>::Flatten(*output);
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    auto& place = *ctx.template device_context<platform::CUDADeviceContext>()
-                       .eigen_device();
+    auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
+    auto& place =
+        *ctx.template device_context<phi::GPUContext>().eigen_device();
     out_eigen.device(place) = out_eigen.constant(static_cast<T>(0));
 
     CBLAS_TRANSPOSE transA = CblasNoTrans;
@@ -112,25 +126,40 @@ class BatchFCCUDAKernel : public framework::OpKernel<T> {
     int64_t strideA = ins_num * in_dim;
     int64_t strideB = in_dim * out_dim;
 
-    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx);
-    blas.BatchedGEMM(transA, transB, ins_num, out_dim, in_dim, alpha, in_data,
-                     w_data, beta, out_data, slot_pairs_num, strideA, strideB);
-    add_bias<T>(ctx.cuda_device_context().stream(), out_data, slot_pairs_num,
-                ins_num, out_dim, bias_data);
+    auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx);
+    blas.BatchedGEMM(transA,
+                     transB,
+                     ins_num,
+                     out_dim,
+                     in_dim,
+                     alpha,
+                     in_data,
+                     w_data,
+                     beta,
+                     out_data,
+                     slot_pairs_num,
+                     strideA,
+                     strideB);
+    add_bias<T>(ctx.cuda_device_context().stream(),
+                out_data,
+                slot_pairs_num,
+                ins_num,
+                out_dim,
+                bias_data);
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class BatchFCGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<Tensor>("Input");
-    auto* w = ctx.Input<Tensor>("W");
-    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* input = ctx.Input<phi::DenseTensor>("Input");
+    auto* w = ctx.Input<phi::DenseTensor>("W");
+    auto* dout = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
 
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("Input"));
-    auto* dw = ctx.Output<Tensor>(framework::GradVarName("W"));
-    auto* db = ctx.Output<Tensor>(framework::GradVarName("Bias"));
+    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("Input"));
+    auto* dw = ctx.Output<phi::DenseTensor>(framework::GradVarName("W"));
+    auto* db = ctx.Output<phi::DenseTensor>(framework::GradVarName("Bias"));
 
     auto input_dims = input->dims();
     auto w_dims = w->dims();
@@ -139,9 +168,9 @@ class BatchFCGradOpCUDAKernel : public framework::OpKernel<T> {
     auto in_dim = input_dims[2];
     auto out_dim = w_dims[2];
 
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    auto& place = *ctx.template device_context<platform::CUDADeviceContext>()
-                       .eigen_device();
+    auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
+    auto& place =
+        *ctx.template device_context<phi::GPUContext>().eigen_device();
     // initialize
     dx->mutable_data<T>(ctx.GetPlace());
     auto dx_eigen = framework::EigenVector<T>::Flatten(*dx);
@@ -162,21 +191,45 @@ class BatchFCGradOpCUDAKernel : public framework::OpKernel<T> {
     auto db_eigen = framework::EigenVector<T>::Flatten(*db);
     db_eigen.device(place) = db_eigen.constant(static_cast<T>(0));
     T* db_data = db->data<T>();
-    add_bias_grad<T>(ctx.cuda_device_context().stream(), dout_data,
-                     slot_pairs_num, ins_num, out_dim, db_data);
+    add_bias_grad<T>(ctx.cuda_device_context().stream(),
+                     dout_data,
+                     slot_pairs_num,
+                     ins_num,
+                     out_dim,
+                     db_data);
 
-    auto blas = phi::funcs::GetBlas<platform::CUDADeviceContext, T>(dev_ctx);
+    auto blas = phi::funcs::GetBlas<phi::GPUContext, T>(dev_ctx);
     T alpha = 1;
     T beta = 0;
 
     // dx = dout_data * y^T
-    blas.BatchedGEMM(CblasNoTrans, CblasTrans, ins_num, in_dim, out_dim, alpha,
-                     dout_data, w_data, beta, dx_data, slot_pairs_num,
-                     ins_num * out_dim, out_dim * in_dim);
+    blas.BatchedGEMM(CblasNoTrans,
+                     CblasTrans,
+                     ins_num,
+                     in_dim,
+                     out_dim,
+                     alpha,
+                     dout_data,
+                     w_data,
+                     beta,
+                     dx_data,
+                     slot_pairs_num,
+                     ins_num * out_dim,
+                     out_dim * in_dim);
     // dy = x^T * dout_data
-    blas.BatchedGEMM(CblasTrans, CblasNoTrans, in_dim, out_dim, ins_num, alpha,
-                     x_data, dout_data, beta, dw_data, slot_pairs_num,
-                     in_dim * ins_num, ins_num * out_dim);
+    blas.BatchedGEMM(CblasTrans,
+                     CblasNoTrans,
+                     in_dim,
+                     out_dim,
+                     ins_num,
+                     alpha,
+                     x_data,
+                     dout_data,
+                     beta,
+                     dw_data,
+                     slot_pairs_num,
+                     in_dim * ins_num,
+                     ins_num * out_dim);
   }
 };
 
@@ -184,10 +237,14 @@ class BatchFCGradOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-using GPUCtx = paddle::platform::CUDADeviceContext;
-REGISTER_OP_CUDA_KERNEL(batch_fc, ops::BatchFCCUDAKernel<GPUCtx, float>,
-                        ops::BatchFCCUDAKernel<GPUCtx, double>);
+using GPUCtx = phi::GPUContext;
 
-REGISTER_OP_CUDA_KERNEL(batch_fc_grad,
-                        ops::BatchFCGradOpCUDAKernel<GPUCtx, float>,
-                        ops::BatchFCGradOpCUDAKernel<GPUCtx, double>);
+PD_REGISTER_STRUCT_KERNEL(
+    batch_fc, GPU, ALL_LAYOUT, ops::BatchFCCUDAKernel, float, double) {}
+
+PD_REGISTER_STRUCT_KERNEL(batch_fc_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::BatchFCGradOpCUDAKernel,
+                          float,
+                          double) {}

@@ -17,7 +17,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
 class ProximalGDOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -26,34 +25,37 @@ class ProximalGDOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Param"), "Input", "Param", "ProximalGDOp");
     OP_INOUT_CHECK(ctx->HasInput("Grad"), "Input", "Grad", "ProximalGDOp");
-    OP_INOUT_CHECK(ctx->HasInput("LearningRate"), "Input", "LearningRate",
-                   "ProximalGDOp");
+    OP_INOUT_CHECK(
+        ctx->HasInput("LearningRate"), "Input", "LearningRate", "ProximalGDOp");
 
-    OP_INOUT_CHECK(ctx->HasOutput("ParamOut"), "Output", "Paramout",
-                   "ProximalGDOp");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("ParamOut"), "Output", "Paramout", "ProximalGDOp");
 
     auto param_dim = ctx->GetInputDim("Param");
-    PADDLE_ENFORCE_EQ(param_dim, ctx->GetInputDim("Grad"),
+    PADDLE_ENFORCE_EQ(param_dim,
+                      ctx->GetInputDim("Grad"),
                       platform::errors::InvalidArgument(
                           "The shape of Intput(Param) should be equal to the "
                           "Input(Grad) of ProximalGD Op. But received "
                           "Input(Param).dimensions=[%s], "
                           "Input(Grad).dimensions=[%s]",
-                          param_dim, ctx->GetInputDim("Grad")));
+                          param_dim,
+                          ctx->GetInputDim("Grad")));
 
     auto lr_dim = ctx->GetInputDim("LearningRate");
     PADDLE_ENFORCE_EQ(
-        phi::product(lr_dim), 1,
+        phi::product(lr_dim),
+        1,
         platform::errors::InvalidArgument(
             "Learning Rate should be a scalar. But received dimmensions:[%s]",
             lr_dim));
 
     ctx->SetOutputDim("ParamOut", param_dim);
   }
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "Param"), ctx.GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Param"),
+                          ctx.GetPlace());
   }
 };
 
@@ -89,7 +91,7 @@ $$
 prox\_param = param - learning\_rate * grad \\
 param = sign(prox\_param) / (1 + learning\_rate * l2) *
         \max(|prox\_param| - learning\_rate * l1, 0)
-$$        
+$$
 
 The paper that proposed Proximal Gradient Descent:
 (http://papers.nips.cc/paper/3793-efficient-learning-using-forward-backward-splitting.pdf)
@@ -101,8 +103,9 @@ The paper that proposed Proximal Gradient Descent:
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(proximal_gd, ops::ProximalGDOp,
+REGISTER_OP_WITHOUT_GRADIENT(proximal_gd,
+                             ops::ProximalGDOp,
                              ops::ProximalGDOpMaker);
-REGISTER_OP_CPU_KERNEL(
-    proximal_gd,
-    ops::ProximalGDOpKernel<paddle::platform::CPUDeviceContext, float>);
+
+PD_REGISTER_STRUCT_KERNEL(
+    proximal_gd, CPU, ALL_LAYOUT, ops::ProximalGDOpKernel, float) {}

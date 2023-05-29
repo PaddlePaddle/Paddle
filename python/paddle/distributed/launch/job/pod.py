@@ -1,37 +1,38 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from collections import OrderedDict
-from .container import Container
-
-from .status import Status
+from __future__ import annotations
 
 import random
 import time
 
+from .container import Container
+from .status import Status
 
-class PodSepc(object):
+
+class PodSepc:
     def __init__(self):
         self._name = ''.join(
-            random.choice('abcdefghijklmnopqrstuvwxyz') for _ in range(6))
+            random.choice('abcdefghijklmnopqrstuvwxyz') for _ in range(6)
+        )
 
         # by controller
-        self._init_containers: List[Container] = []
-        self._containers: List[Container] = []
+        self._init_containers: list[Container] = []
+        self._containers: list[Container] = []
 
-        #self.resource: Resource = None
-        #self.status: Status = None
+        # self.resource: Resource = None
+        # self.status: Status = None
 
         self._rank = -1
         self._init_timeout = None
@@ -46,7 +47,8 @@ class Pod(PodSepc):
 
     def __str__(self):
         return "Pod: {}, replicas {}, status {}".format(
-            self.name, self.replicas, self.status)
+            self.name, self.replicas, self.status
+        )
 
     def failed_container(self):
         cs = []
@@ -107,20 +109,31 @@ class Pod(PodSepc):
         for i in self._init_containers:
             i.start()
             i.wait(self._init_timeout)
-
         for c in self._containers:
             c.start()
 
         self._restart += 1
 
-    def stop(self, sigint=0):
+    def stop(self, sigint=15, timeout=None):
         for c in self._containers:
-            force = True if sigint == 9 else False
-            c.terminate(force)
+            if isinstance(sigint, int) and timeout is None:
+                c.send_signal(sigint)
+            else:
+                c.terminate()
 
-    def join(self):
+        if isinstance(timeout, int):
+            if not self.join(timeout):
+                for c in self._containers:
+                    c.terminate(force=True)
+                return False
+            else:
+                return True
+
+    def join(self, timeout=None):
         for c in self._containers:
-            c.wait(None)
+            if not c.wait(timeout):
+                return False
+        return True
 
     @property
     def status(self):
@@ -159,7 +172,10 @@ class Pod(PodSepc):
 
     def logs(self, idx=None):
         if idx is None:
-            self._containers[0].logs()
+            if len(self._containers) > 0:
+                self._containers[0].logs()
+            if len(self._init_containers) > 0:
+                self._init_containers[0].logs()
         else:
             self._containers[idx].logs()
 
@@ -169,22 +185,24 @@ class Pod(PodSepc):
         else:
             self._containers[idx].tail()
 
-    def watch(self,
-              all_list=[Status.COMPLETED],
-              any_list=[Status.FAILED],
-              interval=1,
-              timeout=-1):
+    def watch(
+        self,
+        all_list=[Status.COMPLETED],
+        any_list=[Status.FAILED],
+        interval=1,
+        timeout=-1,
+    ):
         '''
         watch return if any container status in any_list
         or all container status in all_list
         '''
         end = time.time() + timeout
         while timeout < 0 or time.time() < end:
-            for c in self._containers:
+            for c in self._init_containers + self._containers:
                 if c.status in any_list:
                     return c.status
 
-            s = [c.status for c in self._containers]
+            s = [c.status for c in self._init_containers + self._containers]
             if len(set(s)) == 1 and s[0] in all_list:
                 return s[0]
 

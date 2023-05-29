@@ -12,21 +12,24 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/operators/mean_iou_op.h"
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
 
-using platform::PADDLE_CUDA_NUM_THREADS;
+using phi::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T>
-__global__ void CountCUDAKernel(const int num_classes, const int count,
-                                const T* predictions, const T* labels,
-                                int* wrong, int* correct) {
+__global__ void CountCUDAKernel(const int num_classes,
+                                const int count,
+                                const T* predictions,
+                                const T* labels,
+                                int* wrong,
+                                int* correct) {
   extern __shared__ int blcok_cache[];
   int* wrong_c = blcok_cache;
   int* correct_c = blcok_cache + num_classes;
@@ -57,8 +60,8 @@ __global__ void CountCUDAKernel(const int num_classes, const int count,
   }
 }
 
-__global__ void ComputeIoUCUDAKernel(const int num_classes, int* wrong,
-                                     int* correct, float* ious, float* iou) {
+__global__ void ComputeIoUCUDAKernel(
+    const int num_classes, int* wrong, int* correct, float* ious, float* iou) {
   __shared__ int valid_count_c;
   if (threadIdx.x == 0) {
     valid_count_c = 0;
@@ -85,18 +88,18 @@ __global__ void ComputeIoUCUDAKernel(const int num_classes, int* wrong,
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class MeanIoUCUDAOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
     auto& place = *dev_ctx.eigen_device();
     // get input and output tensor
-    auto* predictions = ctx.Input<Tensor>("Predictions");
-    auto* labels = ctx.Input<Tensor>("Labels");
-    auto* out_mean_iou = ctx.Output<Tensor>("OutMeanIou");
-    auto* out_wrong = ctx.Output<Tensor>("OutWrong");
-    auto* out_correct = ctx.Output<Tensor>("OutCorrect");
+    auto* predictions = ctx.Input<phi::DenseTensor>("Predictions");
+    auto* labels = ctx.Input<phi::DenseTensor>("Labels");
+    auto* out_mean_iou = ctx.Output<phi::DenseTensor>("OutMeanIou");
+    auto* out_wrong = ctx.Output<phi::DenseTensor>("OutWrong");
+    auto* out_correct = ctx.Output<phi::DenseTensor>("OutCorrect");
     int num_classes = static_cast<int>(ctx.Attr<int>("num_classes"));
 
     // Get data ptr
@@ -113,7 +116,10 @@ class MeanIoUCUDAOpKernel : public framework::OpKernel<T> {
     auto out_correct_t = EigenTensor<int, 1>::From(*out_correct);
 
     // Temporary memory
-    auto tmp_ious_data = memory::Alloc(dev_ctx, num_classes * sizeof(float));
+    auto tmp_ious_data = memory::Alloc(
+        dev_ctx.GetPlace(),
+        num_classes * sizeof(float),
+        phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
     float* ious_data = static_cast<float*>(tmp_ious_data->ptr());
 
     // Init out_wrong, out_correct and out_mean_iou
@@ -122,16 +128,16 @@ class MeanIoUCUDAOpKernel : public framework::OpKernel<T> {
     out_mean_iou_t.device(place) = out_mean_iou_t.constant(0.0f);
 
     // collect pre wrong, correct and mean_iou
-    auto in_mean_ious = ctx.MultiInput<Tensor>("InMeanIou");
+    auto in_mean_ious = ctx.MultiInput<phi::DenseTensor>("InMeanIou");
     for (int i = 0; i < in_mean_ious.size(); ++i) {
       out_mean_iou_t.device(place) +=
           EigenTensor<float, 1>::From(*in_mean_ious[i]);
     }
-    auto in_wrongs = ctx.MultiInput<Tensor>("InWrongs");
+    auto in_wrongs = ctx.MultiInput<phi::DenseTensor>("InWrongs");
     for (int i = 0; i < in_wrongs.size(); ++i) {
       out_wrong_t.device(place) += EigenTensor<int, 1>::From(*in_wrongs[i]);
     }
-    auto in_corrects = ctx.MultiInput<Tensor>("InCorrects");
+    auto in_corrects = ctx.MultiInput<phi::DenseTensor>("InCorrects");
     for (int i = 0; i < in_corrects.size(); ++i) {
       out_correct_t.device(place) += EigenTensor<int, 1>::From(*in_corrects[i]);
     }
@@ -140,12 +146,18 @@ class MeanIoUCUDAOpKernel : public framework::OpKernel<T> {
     int block = PADDLE_CUDA_NUM_THREADS;
     int grid = (predictions->numel() + block - 1) / block;
     int cache_size = (num_classes * 2 + 1) * sizeof(int);
-    CountCUDAKernel<T><<<grid, block, cache_size, stream>>>(
-        num_classes, predictions->numel(), predictions_data, labels_data,
-        out_wrong_data, out_correct_data);
+    CountCUDAKernel<T>
+        <<<grid, block, cache_size, stream>>>(num_classes,
+                                              predictions->numel(),
+                                              predictions_data,
+                                              labels_data,
+                                              out_wrong_data,
+                                              out_correct_data);
 
-    ComputeIoUCUDAKernel<<<1, block, 0, stream>>>(num_classes, out_wrong_data,
-                                                  out_correct_data, ious_data,
+    ComputeIoUCUDAKernel<<<1, block, 0, stream>>>(num_classes,
+                                                  out_wrong_data,
+                                                  out_correct_data,
+                                                  ious_data,
                                                   out_mean_iou_data);
   }
 };
@@ -154,6 +166,5 @@ class MeanIoUCUDAOpKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(mean_iou, ops::MeanIoUCUDAOpKernel<int>,
-                        ops::MeanIoUCUDAOpKernel<int64_t>,
-                        ops::MeanIoUCUDAOpKernel<int32_t>);
+PD_REGISTER_STRUCT_KERNEL(
+    mean_iou, GPU, ALL_LAYOUT, ops::MeanIoUCUDAOpKernel, int, int64_t) {}

@@ -10,9 +10,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <math.h>
+
 #include <algorithm>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/operators/detection/bbox_util.h"
@@ -23,12 +25,12 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
 const int kBoxDim = 4;
 
 template <typename T>
-void AppendRois(LoDTensor* out, int64_t offset, Tensor* to_add) {
+void AppendRois(phi::DenseTensor* out,
+                int64_t offset,
+                phi::DenseTensor* to_add) {
   auto* out_data = out->data<T>();
   auto* to_add_data = to_add->data<T>();
   memcpy(out_data + offset, to_add_data, to_add->numel() * sizeof(T));
@@ -38,8 +40,10 @@ void AppendRois(LoDTensor* out, int64_t offset, Tensor* to_add) {
 // The ground-truth has max overlap with itself so the max_overlap is 1
 // and the corresponding RoI will be removed.
 template <typename T>
-void FilterRoIs(const platform::DeviceContext& ctx, const Tensor& rpn_rois,
-                const Tensor& max_overlap, Tensor* keep) {
+void FilterRoIs(const platform::DeviceContext& ctx,
+                const phi::DenseTensor& rpn_rois,
+                const phi::DenseTensor& max_overlap,
+                phi::DenseTensor* keep) {
   const T* rpn_rois_dt = rpn_rois.data<T>();
   const T* max_overlap_dt = max_overlap.data<T>();
   int rois_num = max_overlap.numel();
@@ -62,40 +66,50 @@ class GenerateProposalLabelsOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("RpnRois"), true,
+        ctx->HasInput("RpnRois"),
+        true,
         platform::errors::NotFound("Input(RpnRois) shouldn't be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("GtClasses"), true,
+        ctx->HasInput("GtClasses"),
+        true,
         platform::errors::NotFound("Input(GtClasses) shouldn't be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("IsCrowd"), true,
+        ctx->HasInput("IsCrowd"),
+        true,
         platform::errors::NotFound("Input(IsCrowd) shouldn't be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("GtBoxes"), true,
+        ctx->HasInput("GtBoxes"),
+        true,
         platform::errors::NotFound("Input(GtBoxes) shouldn't be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("ImInfo"), true,
+        ctx->HasInput("ImInfo"),
+        true,
         platform::errors::NotFound("Input(ImInfo) shouldn't be null."));
 
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("Rois"), true,
+        ctx->HasOutput("Rois"),
+        true,
         platform::errors::NotFound(
             "Output(Rois) of GenerateProposalLabelsOp should not be null"));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("LabelsInt32"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("LabelsInt32"),
+                      true,
                       platform::errors::NotFound("Output(LabelsInt32) of "
                                                  "GenerateProposalLabelsOp "
                                                  "should not be null"));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("BboxTargets"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("BboxTargets"),
+                      true,
                       platform::errors::NotFound("Output(BboxTargets) of "
                                                  "GenerateProposalLabelsOp "
                                                  "should not be null"));
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("BboxInsideWeights"), true,
+        ctx->HasOutput("BboxInsideWeights"),
+        true,
         platform::errors::NotFound(
             "Output(BboxInsideWeights) of GenerateProposalLabelsOp "
             "should not be null"));
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("BboxOutsideWeights"), true,
+        ctx->HasOutput("BboxOutsideWeights"),
+        true,
         platform::errors::NotFound(
             "Output(BboxOutsideWeights) of GenerateProposalLabelsOp "
             "should not be null"));
@@ -104,27 +118,34 @@ class GenerateProposalLabelsOp : public framework::OperatorWithKernel {
     auto gt_boxes_dims = ctx->GetInputDim("GtBoxes");
     auto im_info_dims = ctx->GetInputDim("ImInfo");
 
-    PADDLE_ENFORCE_EQ(rpn_rois_dims.size(), 2,
+    PADDLE_ENFORCE_EQ(rpn_rois_dims.size(),
+                      2,
                       platform::errors::InvalidArgument(
                           "The dimensions size of Input(RpnRois) must be 2. "
                           "But received dimensions size=[%d], dimensions=[%s].",
-                          rpn_rois_dims.size(), rpn_rois_dims));
-    PADDLE_ENFORCE_EQ(gt_boxes_dims.size(), 2,
+                          rpn_rois_dims.size(),
+                          rpn_rois_dims));
+    PADDLE_ENFORCE_EQ(gt_boxes_dims.size(),
+                      2,
                       platform::errors::InvalidArgument(
                           "The dimensions size of Input(GtBoxes) must be 2. "
                           "But received dimensions size=[%d], dimensions=[%s].",
-                          gt_boxes_dims.size(), gt_boxes_dims));
-    PADDLE_ENFORCE_EQ(im_info_dims.size(), 2,
+                          gt_boxes_dims.size(),
+                          gt_boxes_dims));
+    PADDLE_ENFORCE_EQ(im_info_dims.size(),
+                      2,
                       platform::errors::InvalidArgument(
                           "The dimensions size of Input(ImInfo) must be 2. But "
                           "received dimensions size=[%d], dimensions=[%s].",
-                          im_info_dims.size(), im_info_dims));
+                          im_info_dims.size(),
+                          im_info_dims));
 
     int class_nums = ctx->Attrs().Get<int>("class_nums");
     bool is_cascade_rcnn = ctx->Attrs().Get<bool>("is_cascade_rcnn");
     if (is_cascade_rcnn) {
       PADDLE_ENFORCE_EQ(
-          ctx->HasInput("MaxOverlap"), true,
+          ctx->HasInput("MaxOverlap"),
+          true,
           platform::errors::NotFound(
               "Input(MaxOverlap) of GenerateProposalLabelsOp "
               "should not be null when is_cascade_rcnn is True."));
@@ -139,32 +160,39 @@ class GenerateProposalLabelsOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "RpnRois");
-    return framework::OpKernelType(data_type, platform::CPUPlace());
+    return phi::KernelKey(data_type, platform::CPUPlace());
   }
 };
 
 template <typename T>
-void Concat(const platform::CPUDeviceContext& context,
-            const Tensor& in_tensor_a, const Tensor& in_tensor_b,
-            Tensor* out_tensor) {
+void Concat(const phi::CPUContext& context,
+            const phi::DenseTensor& in_tensor_a,
+            const phi::DenseTensor& in_tensor_b,
+            phi::DenseTensor* out_tensor) {
   int axis = 0;
-  std::vector<Tensor> inputs;
+  std::vector<phi::DenseTensor> inputs;
   inputs.emplace_back(in_tensor_a);
   inputs.emplace_back(in_tensor_b);
-  math::ConcatFunctor<platform::CPUDeviceContext, T> concat_functor;
+  math::ConcatFunctor<phi::CPUContext, T> concat_functor;
   concat_functor(context, inputs, axis, out_tensor);
 }
 
 template <typename T>
-std::vector<std::vector<int>> SampleFgBgGt(
-    const platform::CPUDeviceContext& context, Tensor* iou,
-    const Tensor& is_crowd, const int batch_size_per_im,
-    const float fg_fraction, const float fg_thresh, const float bg_thresh_hi,
-    const float bg_thresh_lo, std::minstd_rand engine, const bool use_random,
-    const bool is_cascade_rcnn, const Tensor& rpn_rois) {
+std::vector<std::vector<int>> SampleFgBgGt(const phi::CPUContext& context,
+                                           phi::DenseTensor* iou,
+                                           const phi::DenseTensor& is_crowd,
+                                           const int batch_size_per_im,
+                                           const float fg_fraction,
+                                           const float fg_thresh,
+                                           const float bg_thresh_hi,
+                                           const float bg_thresh_lo,
+                                           std::minstd_rand engine,
+                                           const bool use_random,
+                                           const bool is_cascade_rcnn,
+                                           const phi::DenseTensor& rpn_rois) {
   std::vector<int> fg_inds;
   std::vector<int> bg_inds;
   std::vector<int> mapped_gt_inds;
@@ -257,17 +285,21 @@ std::vector<std::vector<int>> SampleFgBgGt(
 }
 
 template <typename T>
-void GatherBoxesLabels(const platform::CPUDeviceContext& context,
-                       const Tensor& boxes, const Tensor& max_overlap,
-                       const Tensor& gt_boxes, const Tensor& gt_classes,
+void GatherBoxesLabels(const phi::CPUContext& context,
+                       const phi::DenseTensor& boxes,
+                       const phi::DenseTensor& max_overlap,
+                       const phi::DenseTensor& gt_boxes,
+                       const phi::DenseTensor& gt_classes,
                        const std::vector<int>& fg_inds,
                        const std::vector<int>& bg_inds,
-                       const std::vector<int>& gt_inds, Tensor* sampled_boxes,
-                       Tensor* sampled_labels, Tensor* sampled_gts,
-                       Tensor* sampled_max_overlap) {
+                       const std::vector<int>& gt_inds,
+                       phi::DenseTensor* sampled_boxes,
+                       phi::DenseTensor* sampled_labels,
+                       phi::DenseTensor* sampled_gts,
+                       phi::DenseTensor* sampled_max_overlap) {
   int fg_num = fg_inds.size();
   int bg_num = bg_inds.size();
-  Tensor fg_inds_t, bg_inds_t, gt_box_inds_t, gt_label_inds_t;
+  phi::DenseTensor fg_inds_t, bg_inds_t, gt_box_inds_t, gt_label_inds_t;
   int* fg_inds_data = fg_inds_t.mutable_data<int>({fg_num}, context.GetPlace());
   int* bg_inds_data = bg_inds_t.mutable_data<int>({bg_num}, context.GetPlace());
   int* gt_box_inds_data =
@@ -279,7 +311,7 @@ void GatherBoxesLabels(const platform::CPUDeviceContext& context,
   std::copy(gt_inds.begin(), gt_inds.end(), gt_box_inds_data);
   std::copy(gt_inds.begin(), gt_inds.end(), gt_label_inds_data);
 
-  Tensor fg_boxes, bg_boxes, fg_labels, bg_labels;
+  phi::DenseTensor fg_boxes, bg_boxes, fg_labels, bg_labels;
   fg_boxes.mutable_data<T>({fg_num, kBoxDim}, context.GetPlace());
   phi::funcs::CPUGather<T>(context, boxes, fg_inds_t, &fg_boxes);
   bg_boxes.mutable_data<T>({bg_num, kBoxDim}, context.GetPlace());
@@ -292,7 +324,7 @@ void GatherBoxesLabels(const platform::CPUDeviceContext& context,
   phi::funcs::set_constant(context, &bg_labels, 0);
   Concat<int>(context, fg_labels, bg_labels, sampled_labels);
 
-  Tensor fg_max_overlap, bg_max_overlap;
+  phi::DenseTensor fg_max_overlap, bg_max_overlap;
   fg_max_overlap.mutable_data<T>({fg_num}, context.GetPlace());
   phi::funcs::CPUGather<T>(context, max_overlap, fg_inds_t, &fg_max_overlap);
   bg_max_overlap.mutable_data<T>({bg_num}, context.GetPlace());
@@ -301,17 +333,28 @@ void GatherBoxesLabels(const platform::CPUDeviceContext& context,
 }
 
 template <typename T>
-std::vector<Tensor> SampleRoisForOneImage(
-    const platform::CPUDeviceContext& context, const Tensor& rpn_rois_in,
-    const Tensor& gt_classes, const Tensor& is_crowd, const Tensor& gt_boxes,
-    const Tensor& im_info, const int batch_size_per_im, const float fg_fraction,
-    const float fg_thresh, const float bg_thresh_hi, const float bg_thresh_lo,
-    const std::vector<float>& bbox_reg_weights, const int class_nums,
-    std::minstd_rand engine, bool use_random, bool is_cascade_rcnn,
-    bool is_cls_agnostic, const Tensor& max_overlap) {
+std::vector<phi::DenseTensor> SampleRoisForOneImage(
+    const phi::CPUContext& context,
+    const phi::DenseTensor& rpn_rois_in,
+    const phi::DenseTensor& gt_classes,
+    const phi::DenseTensor& is_crowd,
+    const phi::DenseTensor& gt_boxes,
+    const phi::DenseTensor& im_info,
+    const int batch_size_per_im,
+    const float fg_fraction,
+    const float fg_thresh,
+    const float bg_thresh_hi,
+    const float bg_thresh_lo,
+    const std::vector<float>& bbox_reg_weights,
+    const int class_nums,
+    std::minstd_rand engine,
+    bool use_random,
+    bool is_cascade_rcnn,
+    bool is_cls_agnostic,
+    const phi::DenseTensor& max_overlap) {
   // 1.1 map to original image
   auto im_scale = im_info.data<T>()[2];
-  Tensor rpn_rois;
+  phi::DenseTensor rpn_rois;
   rpn_rois.mutable_data<T>(rpn_rois_in.dims(), context.GetPlace());
   const T* rpn_rois_in_dt = rpn_rois_in.data<T>();
   T* rpn_rois_dt = rpn_rois.data<T>();
@@ -323,12 +366,12 @@ std::vector<Tensor> SampleRoisForOneImage(
   int proposals_num = 1;
 
   if (is_cascade_rcnn) {
-    Tensor keep;
+    phi::DenseTensor keep;
     FilterRoIs<T>(context, rpn_rois, max_overlap, &keep);
-    Tensor roi_filter;
-    // Tensor box_filter;
+    phi::DenseTensor roi_filter;
+    // phi::DenseTensor box_filter;
     if (keep.numel() == 0) {
-      phi::funcs::SetConstant<platform::CPUDeviceContext, T> set_zero;
+      phi::funcs::SetConstant<phi::CPUContext, T> set_zero;
       roi_filter.mutable_data<T>({proposals_num, kBoxDim}, context.GetPlace());
       set_zero(context, &roi_filter, static_cast<T>(0));
     } else {
@@ -345,16 +388,16 @@ std::vector<Tensor> SampleRoisForOneImage(
   // 1.2 compute overlaps
   proposals_num += gt_boxes.dims()[0];
 
-  Tensor proposal_to_gt_overlaps;
+  phi::DenseTensor proposal_to_gt_overlaps;
   proposal_to_gt_overlaps.mutable_data<T>({proposals_num, gt_boxes.dims()[0]},
                                           context.GetPlace());
 
-  Tensor boxes;
+  phi::DenseTensor boxes;
   boxes.mutable_data<T>({proposals_num, kBoxDim}, context.GetPlace());
   Concat<T>(context, gt_boxes, rpn_rois, &boxes);
   BboxOverlaps<T>(boxes, gt_boxes, &proposal_to_gt_overlaps);
 
-  Tensor proposal_with_max_overlap;
+  phi::DenseTensor proposal_with_max_overlap;
   proposal_with_max_overlap.mutable_data<T>({proposals_num},
                                             context.GetPlace());
 
@@ -362,15 +405,25 @@ std::vector<Tensor> SampleRoisForOneImage(
 
   // Generate proposal index
   std::vector<std::vector<int>> fg_bg_gt =
-      SampleFgBgGt<T>(context, &proposal_to_gt_overlaps, is_crowd,
-                      batch_size_per_im, fg_fraction, fg_thresh, bg_thresh_hi,
-                      bg_thresh_lo, engine, use_random, is_cascade_rcnn, boxes);
+      SampleFgBgGt<T>(context,
+                      &proposal_to_gt_overlaps,
+                      is_crowd,
+                      batch_size_per_im,
+                      fg_fraction,
+                      fg_thresh,
+                      bg_thresh_hi,
+                      bg_thresh_lo,
+                      engine,
+                      use_random,
+                      is_cascade_rcnn,
+                      boxes);
   std::vector<int> fg_inds = fg_bg_gt[0];
   std::vector<int> bg_inds = fg_bg_gt[1];
   std::vector<int> mapped_gt_inds = fg_bg_gt[2];  // mapped_gt_labels
 
   // Gather boxes and labels
-  Tensor sampled_boxes, sampled_labels, sampled_gts, sampled_max_overlap;
+  phi::DenseTensor sampled_boxes, sampled_labels, sampled_gts,
+      sampled_max_overlap;
   int fg_num = fg_inds.size();
   int bg_num = bg_inds.size();
   int boxes_num = fg_num + bg_num;
@@ -379,26 +432,38 @@ std::vector<Tensor> SampleRoisForOneImage(
   sampled_labels.mutable_data<int>({boxes_num}, context.GetPlace());
   sampled_gts.mutable_data<T>({fg_num, kBoxDim}, context.GetPlace());
   sampled_max_overlap.mutable_data<T>({boxes_num}, context.GetPlace());
-  GatherBoxesLabels<T>(context, boxes, proposal_with_max_overlap, gt_boxes,
-                       gt_classes, fg_inds, bg_inds, mapped_gt_inds,
-                       &sampled_boxes, &sampled_labels, &sampled_gts,
+  GatherBoxesLabels<T>(context,
+                       boxes,
+                       proposal_with_max_overlap,
+                       gt_boxes,
+                       gt_classes,
+                       fg_inds,
+                       bg_inds,
+                       mapped_gt_inds,
+                       &sampled_boxes,
+                       &sampled_labels,
+                       &sampled_gts,
                        &sampled_max_overlap);
 
   // Compute targets
-  Tensor bbox_targets_single;
+  phi::DenseTensor bbox_targets_single;
   bbox_targets_single.mutable_data<T>(bbox_dim, context.GetPlace());
-  BoxToDelta<T>(fg_num, sampled_boxes, sampled_gts, bbox_reg_weights.data(),
-                false, &bbox_targets_single);
+  BoxToDelta<T>(fg_num,
+                sampled_boxes,
+                sampled_gts,
+                bbox_reg_weights.data(),
+                false,
+                &bbox_targets_single);
 
   // Scale rois
-  Tensor sampled_rois;
+  phi::DenseTensor sampled_rois;
   sampled_rois.mutable_data<T>(sampled_boxes.dims(), context.GetPlace());
   auto sampled_rois_et = framework::EigenTensor<T, 2>::From(sampled_rois);
   auto sampled_boxes_et = framework::EigenTensor<T, 2>::From(sampled_boxes);
   sampled_rois_et = sampled_boxes_et * im_scale;
 
   // Expand box targets
-  Tensor bbox_targets, bbox_inside_weights, bbox_outside_weights;
+  phi::DenseTensor bbox_targets, bbox_inside_weights, bbox_outside_weights;
   framework::DDim bbox_expand_dim({boxes_num, kBoxDim * class_nums});
   bbox_targets.mutable_data<T>(bbox_expand_dim, context.GetPlace());
   bbox_inside_weights.mutable_data<T>(bbox_expand_dim, context.GetPlace());
@@ -435,7 +500,7 @@ std::vector<Tensor> SampleRoisForOneImage(
       bbox_outside_weights_data[dst_idx + 3] = 1;
     }
   }
-  std::vector<Tensor> res;
+  std::vector<phi::DenseTensor> res;
   res.emplace_back(sampled_rois);
   res.emplace_back(sampled_labels);
   res.emplace_back(bbox_targets);
@@ -445,23 +510,25 @@ std::vector<Tensor> SampleRoisForOneImage(
   return res;
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* rpn_rois = context.Input<LoDTensor>("RpnRois");
-    auto* gt_classes = context.Input<LoDTensor>("GtClasses");
-    auto* is_crowd = context.Input<LoDTensor>("IsCrowd");
-    auto* gt_boxes = context.Input<LoDTensor>("GtBoxes");
-    auto* im_info = context.Input<LoDTensor>("ImInfo");
+    auto* rpn_rois = context.Input<phi::DenseTensor>("RpnRois");
+    auto* gt_classes = context.Input<phi::DenseTensor>("GtClasses");
+    auto* is_crowd = context.Input<phi::DenseTensor>("IsCrowd");
+    auto* gt_boxes = context.Input<phi::DenseTensor>("GtBoxes");
+    auto* im_info = context.Input<phi::DenseTensor>("ImInfo");
 
-    auto* rois = context.Output<LoDTensor>("Rois");
-    auto* labels_int32 = context.Output<LoDTensor>("LabelsInt32");
-    auto* bbox_targets = context.Output<LoDTensor>("BboxTargets");
-    auto* bbox_inside_weights = context.Output<LoDTensor>("BboxInsideWeights");
+    auto* rois = context.Output<phi::DenseTensor>("Rois");
+    auto* labels_int32 = context.Output<phi::DenseTensor>("LabelsInt32");
+    auto* bbox_targets = context.Output<phi::DenseTensor>("BboxTargets");
+    auto* bbox_inside_weights =
+        context.Output<phi::DenseTensor>("BboxInsideWeights");
     auto* bbox_outside_weights =
-        context.Output<LoDTensor>("BboxOutsideWeights");
-    auto* max_overlap_with_gt = context.Output<LoDTensor>("MaxOverlapWithGT");
+        context.Output<phi::DenseTensor>("BboxOutsideWeights");
+    auto* max_overlap_with_gt =
+        context.Output<phi::DenseTensor>("MaxOverlapWithGT");
 
     int batch_size_per_im = context.Attr<int>("batch_size_per_im");
     float fg_fraction = context.Attr<float>("fg_fraction");
@@ -475,29 +542,37 @@ class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
     bool is_cascade_rcnn = context.Attr<bool>("is_cascade_rcnn");
     bool is_cls_agnostic = context.Attr<bool>("is_cls_agnostic");
     PADDLE_ENFORCE_EQ(
-        rpn_rois->lod().size(), 1UL,
+        rpn_rois->lod().size(),
+        1UL,
         platform::errors::InvalidArgument(
             "GenerateProposalLabelsOp rpn_rois needs 1 level of LoD. But "
             "received level of LoD is [%d], LoD is [%s].",
-            rpn_rois->lod().size(), rpn_rois->lod()));
+            rpn_rois->lod().size(),
+            rpn_rois->lod()));
     PADDLE_ENFORCE_EQ(
-        gt_classes->lod().size(), 1UL,
+        gt_classes->lod().size(),
+        1UL,
         platform::errors::InvalidArgument(
             "GenerateProposalLabelsOp gt_classes needs 1 level of LoD. But "
             "received level of LoD is [%d], LoD is [%s].",
-            gt_classes->lod().size(), gt_classes->lod()));
+            gt_classes->lod().size(),
+            gt_classes->lod()));
     PADDLE_ENFORCE_EQ(
-        is_crowd->lod().size(), 1UL,
+        is_crowd->lod().size(),
+        1UL,
         platform::errors::InvalidArgument(
             "GenerateProposalLabelsOp is_crowd needs 1 level of LoD. But "
             "received level of LoD is [%d], LoD is [%s].",
-            is_crowd->lod().size(), is_crowd->lod()));
+            is_crowd->lod().size(),
+            is_crowd->lod()));
     PADDLE_ENFORCE_EQ(
-        gt_boxes->lod().size(), 1UL,
+        gt_boxes->lod().size(),
+        1UL,
         platform::errors::InvalidArgument(
             "GenerateProposalLabelsOp gt_boxes needs 1 level of LoD. But "
             "received level of LoD is [%d], LoD is [%s].",
-            gt_boxes->lod().size(), gt_boxes->lod()));
+            gt_boxes->lod().size(),
+            gt_boxes->lod()));
     int64_t n = static_cast<int64_t>(rpn_rois->lod().back().size() - 1);
     int64_t rois_num = rpn_rois->dims()[0];
     int64_t gts_num = gt_boxes->dims()[0];
@@ -524,7 +599,7 @@ class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
     std::vector<size_t> lod0(1, 0);
 
     int64_t num_rois = 0;
-    auto& dev_ctx = context.device_context<platform::CPUDeviceContext>();
+    auto& dev_ctx = context.device_context<phi::CPUContext>();
 
     auto rpn_rois_lod = rpn_rois->lod().back();
     auto gt_classes_lod = gt_classes->lod().back();
@@ -535,44 +610,57 @@ class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
         lod0.emplace_back(num_rois);
         continue;
       }
-      Tensor rpn_rois_slice =
+      phi::DenseTensor rpn_rois_slice =
           rpn_rois->Slice(rpn_rois_lod[i], rpn_rois_lod[i + 1]);
-      Tensor gt_classes_slice =
+      phi::DenseTensor gt_classes_slice =
           gt_classes->Slice(gt_classes_lod[i], gt_classes_lod[i + 1]);
-      Tensor is_crowd_slice =
+      phi::DenseTensor is_crowd_slice =
           is_crowd->Slice(is_crowd_lod[i], is_crowd_lod[i + 1]);
-      Tensor gt_boxes_slice =
+      phi::DenseTensor gt_boxes_slice =
           gt_boxes->Slice(gt_boxes_lod[i], gt_boxes_lod[i + 1]);
-      Tensor im_info_slice = im_info->Slice(i, i + 1);
-      Tensor max_overlap_slice;
+      phi::DenseTensor im_info_slice = im_info->Slice(i, i + 1);
+      phi::DenseTensor max_overlap_slice;
       if (is_cascade_rcnn) {
-        auto* max_overlap = context.Input<Tensor>("MaxOverlap");
+        auto* max_overlap = context.Input<phi::DenseTensor>("MaxOverlap");
         max_overlap_slice =
             max_overlap->Slice(rpn_rois_lod[i], rpn_rois_lod[i + 1]);
       } else {
         max_overlap_slice.mutable_data<T>({rpn_rois_slice.dims()[0]},
                                           context.GetPlace());
       }
-      std::vector<Tensor> tensor_output = SampleRoisForOneImage<T>(
-          dev_ctx, rpn_rois_slice, gt_classes_slice, is_crowd_slice,
-          gt_boxes_slice, im_info_slice, batch_size_per_im, fg_fraction,
-          fg_thresh, bg_thresh_hi, bg_thresh_lo, bbox_reg_weights, class_nums,
-          engine, use_random, is_cascade_rcnn, is_cls_agnostic,
-          max_overlap_slice);
-      Tensor sampled_rois = tensor_output[0];
-      Tensor sampled_labels_int32 = tensor_output[1];
-      Tensor sampled_bbox_targets = tensor_output[2];
-      Tensor sampled_bbox_inside_weights = tensor_output[3];
-      Tensor sampled_bbox_outside_weights = tensor_output[4];
-      Tensor sampled_max_overlap = tensor_output[5];
+      std::vector<phi::DenseTensor> tensor_output =
+          SampleRoisForOneImage<T>(dev_ctx,
+                                   rpn_rois_slice,
+                                   gt_classes_slice,
+                                   is_crowd_slice,
+                                   gt_boxes_slice,
+                                   im_info_slice,
+                                   batch_size_per_im,
+                                   fg_fraction,
+                                   fg_thresh,
+                                   bg_thresh_hi,
+                                   bg_thresh_lo,
+                                   bbox_reg_weights,
+                                   class_nums,
+                                   engine,
+                                   use_random,
+                                   is_cascade_rcnn,
+                                   is_cls_agnostic,
+                                   max_overlap_slice);
+      phi::DenseTensor sampled_rois = tensor_output[0];
+      phi::DenseTensor sampled_labels_int32 = tensor_output[1];
+      phi::DenseTensor sampled_bbox_targets = tensor_output[2];
+      phi::DenseTensor sampled_bbox_inside_weights = tensor_output[3];
+      phi::DenseTensor sampled_bbox_outside_weights = tensor_output[4];
+      phi::DenseTensor sampled_max_overlap = tensor_output[5];
 
       AppendRois<T>(rois, kBoxDim * num_rois, &sampled_rois);
       AppendRois<int>(labels_int32, num_rois, &sampled_labels_int32);
       int64_t offset = kBoxDim * num_rois * class_nums;
       AppendRois<T>(bbox_targets, offset, &sampled_bbox_targets);
       AppendRois<T>(bbox_inside_weights, offset, &sampled_bbox_inside_weights);
-      AppendRois<T>(bbox_outside_weights, offset,
-                    &sampled_bbox_outside_weights);
+      AppendRois<T>(
+          bbox_outside_weights, offset, &sampled_bbox_outside_weights);
       AppendRois<T>(max_overlap_with_gt, num_rois, &sampled_max_overlap);
 
       num_rois += sampled_rois.dims()[0];
@@ -600,21 +688,25 @@ class GenerateProposalLabelsOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput(
         "RpnRois",
-        "(LoDTensor), This input is a 2D LoDTensor with shape [N, 4]. "
+        "(phi::DenseTensor), This input is a 2D phi::DenseTensor with shape "
+        "[N, 4]. "
         "N is the number of the GenerateProposalOp's output, "
         "each element is a bounding box with [xmin, ymin, xmax, ymax] format.");
     AddInput("GtClasses",
-             "(LoDTensor), This input is a 2D LoDTensor with shape [M, 1]. "
+             "(phi::DenseTensor), This input is a 2D phi::DenseTensor with "
+             "shape [M, 1]. "
              "M is the number of groundtruth, "
              "each element is a class label of groundtruth.");
     AddInput(
         "IsCrowd",
-        "(LoDTensor), This input is a 2D LoDTensor with shape [M, 1]. "
+        "(phi::DenseTensor), This input is a 2D phi::DenseTensor with shape "
+        "[M, 1]. "
         "M is the number of groundtruth, "
         "each element is a flag indicates whether a groundtruth is crowd.");
     AddInput(
         "GtBoxes",
-        "(LoDTensor), This input is a 2D LoDTensor with shape [M, 4]. "
+        "(phi::DenseTensor), This input is a 2D phi::DenseTensor with shape "
+        "[M, 4]. "
         "M is the number of groundtruth, "
         "each element is a bounding box with [xmin, ymin, xmax, ymax] format.");
     AddInput("ImInfo",
@@ -622,7 +714,8 @@ class GenerateProposalLabelsOpMaker : public framework::OpProtoAndCheckerMaker {
              "B is the number of input images, "
              "each element consists of im_height, im_width, im_scale.");
     AddInput("MaxOverlap",
-             "(LoDTensor), This input is a 1D LoDTensor with shape [N]."
+             "(phi::DenseTensor), This input is a 1D phi::DenseTensor with "
+             "shape [N]."
              "N is the number of Input(RpnRois), "
              "each element is the maximum overlap between "
              "the proposal RoI and ground-truth.")
@@ -630,28 +723,34 @@ class GenerateProposalLabelsOpMaker : public framework::OpProtoAndCheckerMaker {
 
     AddOutput(
         "Rois",
-        "(LoDTensor), This output is a 2D LoDTensor with shape [P, 4]. "
+        "(phi::DenseTensor), This output is a 2D phi::DenseTensor with shape "
+        "[P, 4]. "
         "P usuall equal to  batch_size_per_im * batch_size, "
         "each element is a bounding box with [xmin, ymin, xmax, ymax] format.");
     AddOutput("LabelsInt32",
-              "(LoDTensor), This output is a 2D LoDTensor with shape [P, 1], "
+              "(phi::DenseTensor), This output is a 2D phi::DenseTensor with "
+              "shape [P, 1], "
               "each element represents a class label of a roi");
     AddOutput("BboxTargets",
-              "(LoDTensor), This output is a 2D LoDTensor with shape [P, 4 * "
+              "(phi::DenseTensor), This output is a 2D phi::DenseTensor with "
+              "shape [P, 4 * "
               "class_nums], "
               "each element represents a box label of a roi");
     AddOutput(
         "BboxInsideWeights",
-        "(LoDTensor), This output is a 2D LoDTensor with shape [P, 4 * "
+        "(phi::DenseTensor), This output is a 2D phi::DenseTensor with shape "
+        "[P, 4 * "
         "class_nums], "
         "each element indicates whether a box should contribute to loss.");
     AddOutput(
         "BboxOutsideWeights",
-        "(LoDTensor), This output is a 2D LoDTensor with shape [P, 4 * "
+        "(phi::DenseTensor), This output is a 2D phi::DenseTensor with shape "
+        "[P, 4 * "
         "class_nums], "
         "each element indicates whether a box should contribute to loss.");
     AddOutput("MaxOverlapWithGT",
-              "(LoDTensor), This output is a 1D LoDTensor with shape [P], "
+              "(phi::DenseTensor), This output is a 1D phi::DenseTensor with "
+              "shape [P], "
               "each element indicates the maxoverlap "
               "between output RoIs and ground-truth. "
               "The output RoIs may include ground-truth "
@@ -707,13 +806,17 @@ Finally BboxInsideWeights and BboxOutsideWeights are used to specify whether it 
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    generate_proposal_labels, ops::GenerateProposalLabelsOp,
+    generate_proposal_labels,
+    ops::GenerateProposalLabelsOp,
     ops::GenerateProposalLabelsOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(generate_proposal_labels,
-                       ops::GenerateProposalLabelsKernel<float>,
-                       ops::GenerateProposalLabelsKernel<double>);
+PD_REGISTER_STRUCT_KERNEL(generate_proposal_labels,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::GenerateProposalLabelsKernel,
+                          float,
+                          double) {}
 
 REGISTER_OP_VERSION(generate_proposal_labels)
     .AddCheckpoint(

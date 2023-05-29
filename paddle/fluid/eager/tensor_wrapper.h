@@ -28,13 +28,16 @@
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/utils.h"
+#include "paddle/phi/api/lib/utils/allocator.h"
+#ifndef PADDLE_NO_PYTHON
+#include "paddle/fluid/eager/hooks.h"
+#endif
 
 namespace egr {
 class TensorWrapper {
  public:
   TensorWrapper() = default;
-  explicit TensorWrapper(const paddle::experimental::Tensor& tensor,
-                         bool full_reserved = false,
+  explicit TensorWrapper(const paddle::Tensor& tensor,
                          bool no_need_buffer = false) {
     // set inplace_version_snapshot_ according to tensor's current inplace
     // version.
@@ -46,73 +49,143 @@ class TensorWrapper {
     }
 
     /**
-     * Normally, we should fully reserved all non-output or non-leaf fwd tensor
-     * here. And for fwd output tensor, we should not reserve its autogradmeta,
-     * to avoid recursive depends on GradNodeBase
+     * Normally, we should only save data and part of autograd_meta of fwd
+     * tensor, and should not reserve its original grad_node,
+     * to avoid recursive and additional depends on GradNodeBase
      * **/
-    full_reserved_ = full_reserved;
-    if (full_reserved_) {
-      VLOG(6) << "Fully reserved tensor: " << tensor.name();
-      intermidiate_tensor_ = tensor;
-      return;
-    }
-
-    // shallow copy tensor_impl here
+    auto* tensor_autograd_meta = EagerUtils::nullable_autograd_meta(tensor);
     no_need_buffer_ = no_need_buffer;
+    // shallow copy tensor_impl here
     if (no_need_buffer) {
       if (phi::DenseTensor::classof(tensor.impl().get())) {
         // Only Copy Meta
         phi::DenseTensor* dense_tensor =
             static_cast<phi::DenseTensor*>(tensor.impl().get());
-        auto tw_dense_tensor = std::make_shared<phi::DenseTensor>();
-        tw_dense_tensor->set_meta(dense_tensor->meta());
-        intermidiate_tensor_.set_impl(tw_dense_tensor);
+        // TODO(jiabin): It's not a good idea to set memory size to zero, find
+        // another way and change this.
+        intermidiate_tensor_.set_impl(
+            std::move(std::make_shared<phi::DenseTensor>(
+                std::make_shared<phi::Allocation>(nullptr, 0, tensor.place()),
+                std::move(dense_tensor->meta()))));
       } else {
         PADDLE_THROW(paddle::platform::errors::Fatal(
             "Unrecognized tensor type for no_need_buffer feature"));
       }
     } else {
-      intermidiate_tensor_.set_impl(tensor.impl());
+#ifndef PADDLE_NO_PYTHON
+      if (egr::SavedTensorsHooks::GetInstance().IsEnable() &&
+          tensor.is_dense_tensor() && tensor.initialized()) {
+        phi::DenseTensor* dense_tensor =
+            static_cast<phi::DenseTensor*>(tensor.impl().get());
+        intermidiate_tensor_.set_impl(
+            std::move(std::make_shared<phi::DenseTensor>(
+                std::make_shared<phi::Allocation>(nullptr, 0, tensor.place()),
+                dense_tensor->meta())));
+        auto pack_hook = egr::SavedTensorsHooks::GetInstance().GetPackHook();
+        unpack_hook_ = egr::SavedTensorsHooks::GetInstance().GetUnPackHook();
+        packed_value_ = (*pack_hook)(tensor);
+      } else {
+#endif
+        intermidiate_tensor_.set_impl(tensor.impl());
+#ifndef PADDLE_NO_PYTHON
+      }
+#endif
     }
 
-    intermidiate_tensor_.set_name(tensor.name() + "@Saved");
+    if (VLOG_IS_ON(7)) {
+      // TODO(jiabin): This may has server performance issue
+      intermidiate_tensor_.set_name(tensor.name() + "@Saved");
+    }
 
-    // If an output is marked "intermedaite", we won't create
-    // autograd_meta for it.
-    // In that case, simply skip OutRankInfo Copy
-    if (EagerUtils::nullable_autograd_meta(tensor)) {
-      out_rank_info_ = EagerUtils::OutRankInfo(tensor);
+    if (tensor_autograd_meta) {
+      auto autograd_meta =
+          std::make_shared<AutogradMeta>(*tensor_autograd_meta);
+      autograd_meta->ResetGradNode();
+      intermidiate_tensor_.set_autograd_meta(autograd_meta);
+      weak_grad_node_ = tensor_autograd_meta->GetMutableGradNode();
     }
   }
 
-  paddle::experimental::Tensor recover(
-      const std::shared_ptr<GradNodeBase>& grad_node) {
+#ifndef PADDLE_NO_PYTHON
+  TensorWrapper(const TensorWrapper& other) {
+    no_need_buffer_ = other.no_need_buffer_;
+    intermidiate_tensor_ = other.intermidiate_tensor_;
+    weak_grad_node_ = other.weak_grad_node_;
+    inplace_version_snapshot_ = other.inplace_version_snapshot_;
+    packed_value_ = other.packed_value_;
+    unpack_hook_ = other.unpack_hook_;
+    if (packed_value_) {
+      packed_value_->inc_ref();
+    }
+  }
+
+  TensorWrapper& operator=(const TensorWrapper& other) {
+    no_need_buffer_ = other.no_need_buffer_;
+    intermidiate_tensor_ = other.intermidiate_tensor_;
+    weak_grad_node_ = other.weak_grad_node_;
+    inplace_version_snapshot_ = other.inplace_version_snapshot_;
+    packed_value_ = other.packed_value_;
+    unpack_hook_ = other.unpack_hook_;
+    if (packed_value_) {
+      packed_value_->inc_ref();
+    }
+    return *this;
+  }
+#endif
+
+  paddle::Tensor recover() {
     VLOG(6) << "Recover tensor: " << intermidiate_tensor_.name()
             << " for wrapper";
     if (!intermidiate_tensor_.defined()) {
       VLOG(6) << "Return NULL tensor Here. ";
-      return paddle::experimental::Tensor();
+      return paddle::Tensor();
+    }
+#ifndef PADDLE_NO_PYTHON
+    if (packed_value_ && unpack_hook_) {
+      auto tensor_unpacked = (*unpack_hook_)(packed_value_);
+      auto src_dense_tensor =
+          static_cast<phi::DenseTensor*>(tensor_unpacked.impl().get());
+      static_cast<phi::DenseTensor*>(intermidiate_tensor_.impl().get())
+          ->ResetHolder(src_dense_tensor->MoveMemoryHolder());
+    } else {
+#endif
+      check_inplace_version();
+#ifndef PADDLE_NO_PYTHON
+    }
+#endif
+
+    paddle::Tensor recovered_tensor = intermidiate_tensor_;
+
+    std::shared_ptr<GradNodeBase> new_grad_node = weak_grad_node_.lock();
+    if (new_grad_node) {
+      VLOG(7) << "Recovered TensorWrapper with GradNode "
+              << new_grad_node->name() << " addr: " << new_grad_node.get();
+    } else {
+      VLOG(7) << "Recovered TensorWrapper with Empty GradNode";
+    }
+    auto* intermediate_autograd_meta =
+        EagerUtils::nullable_autograd_meta(intermidiate_tensor_);
+
+    if (intermediate_autograd_meta) {
+      auto p_ab_autograd_meta =
+          std::make_shared<AutogradMeta>(*intermediate_autograd_meta);
+      if (new_grad_node) {
+        p_ab_autograd_meta->SetGradNode(new_grad_node);
+      }
+      recovered_tensor.set_autograd_meta(p_ab_autograd_meta);
     }
 
-    // if it's full_reserved just return the full copy of tensor
-    if (full_reserved_) {
-      check_inplace_version();
-      return intermidiate_tensor_;
-    } else {
-      std::shared_ptr<GradNodeBase> new_grad_node = grad_node;
-      auto p_ab_autograd_meta =
-          std::make_shared<AutogradMeta>(Edge(new_grad_node, out_rank_info_));
-      intermidiate_tensor_.set_autograd_meta(
-          std::static_pointer_cast<paddle::experimental::AbstractAutogradMeta>(
-              p_ab_autograd_meta));
-      check_inplace_version();
-      return intermidiate_tensor_;
-    }
+    return recovered_tensor;
   }
 
+  paddle::Tensor get_intermidiate_tensor() { return intermidiate_tensor_; }
+
+  void clear() { intermidiate_tensor_.reset(); }
+
+ private:
   void check_inplace_version() {
     if (no_need_buffer_) {
-      VLOG(6) << "There's no need to check inplace_version because "
+      VLOG(7) << "There's no need to check inplace_version because "
                  "no_need_buffer_ is true.";
       return;
     }
@@ -122,10 +195,11 @@ class TensorWrapper {
           static_cast<phi::DenseTensor*>(intermidiate_tensor_.impl().get());
       auto& inplace_version_counter = dense_tensor->InplaceVersionCounter();
 
-      uint32_t current_inplace_version =
-          inplace_version_counter.CurrentVersion();
+      uint32_t wrapper_version_snapshot = inplace_version_snapshot_;
+      uint32_t tensor_version = inplace_version_counter.CurrentVersion();
       PADDLE_ENFORCE_EQ(
-          current_inplace_version, inplace_version_snapshot_,
+          tensor_version,
+          wrapper_version_snapshot,
           paddle::platform::errors::PermissionDenied(
               "Tensor '%s' used in gradient computation has been "
               "modified by an inplace operation. "
@@ -133,24 +207,29 @@ class TensorWrapper {
               "Please fix your code to void calling an inplace operator "
               "after using the Tensor which will used in gradient "
               "computation.",
-              intermidiate_tensor_.name(), current_inplace_version,
-              inplace_version_snapshot_));
-      VLOG(6) << " The inplace_version_snapshot_ of Tensor '"
+              intermidiate_tensor_.name(),
+              tensor_version,
+              wrapper_version_snapshot));
+      VLOG(7) << " The wrapper_version_snapshot of Tensor '"
               << intermidiate_tensor_.name() << "' is [ "
-              << inplace_version_snapshot_ << " ]";
-      VLOG(6) << " The current_inplace_version of Tensor '"
-              << intermidiate_tensor_.name() << "' is [ "
-              << current_inplace_version << " ]";
+              << wrapper_version_snapshot << " ]";
+      VLOG(7) << " The tensor_version of Tensor '"
+              << intermidiate_tensor_.name() << "' is [ " << tensor_version
+              << " ]";
     }
   }
 
-  void clear() { intermidiate_tensor_.reset(); }
-
  private:
-  bool full_reserved_ = false;
   bool no_need_buffer_ = false;
-  std::pair<size_t, size_t> out_rank_info_;
-  paddle::experimental::Tensor intermidiate_tensor_;
+  paddle::Tensor intermidiate_tensor_;
+  std::weak_ptr<egr::GradNodeBase> weak_grad_node_;
   uint32_t inplace_version_snapshot_ = 0;
+#ifndef PADDLE_NO_PYTHON
+  std::shared_ptr<egr::PyObjectHolderBase> packed_value_;
+  std::shared_ptr<egr::UnPackHookBase> unpack_hook_;
+#else
+  std::shared_ptr<void> packed_value_;
+  std::shared_ptr<void> unpack_hook_;
+#endif
 };
 }  // namespace egr

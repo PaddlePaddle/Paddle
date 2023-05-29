@@ -21,13 +21,26 @@ from .operators import softmax_mask_fuse_upper_triangle  # noqa: F401
 from .operators import softmax_mask_fuse  # noqa: F401
 from .operators import graph_send_recv
 from .operators import graph_khop_sampler
+from .operators import graph_sample_neighbors
+from .operators import graph_reindex
 from .tensor import segment_sum
 from .tensor import segment_mean
 from .tensor import segment_max
 from .tensor import segment_min
+from .tensor import _npu_identity
 from .passes import fuse_resnet_unit_pass
 
-from . import nn  #noqa: F401
+from . import autograd  # noqa: F401
+from . import autotune  # noqa: F401
+from . import nn  # noqa: F401
+from . import asp  # noqa: F401
+from . import multiprocessing  # noqa: F401
+from . import layers
+
+from .nn.loss import identity_loss
+
+from ..distributed import fleet
+from . import xpu
 
 __all__ = [
     'LookAhead',
@@ -36,8 +49,11 @@ __all__ = [
     'softmax_mask_fuse',
     'graph_send_recv',
     'graph_khop_sampler',
+    'graph_sample_neighbors',
+    'graph_reindex',
     'segment_sum',
     'segment_mean',
     'segment_max',
     'segment_min',
+    'identity_loss',
 ]

@@ -12,12 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
+import unittest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-import unittest
+from paddle import fluid
+from paddle.static.nn.control_flow import Assert
 
 
 class TestAssertOp(unittest.TestCase):
@@ -31,36 +30,41 @@ class TestAssertOp(unittest.TestCase):
 
     def test_assert_true(self):
         def net_func():
-            condition = layers.fill_constant(
-                shape=[1], dtype='bool', value=True)
-            layers.Assert(condition, [])
+            condition = paddle.tensor.fill_constant(
+                shape=[1], dtype='bool', value=True
+            )
+            Assert(condition, [])
 
         self.run_network(net_func)
 
     def test_assert_false(self):
         def net_func():
-            condition = layers.fill_constant(
-                shape=[1], dtype='bool', value=False)
-            layers.Assert(condition)
+            condition = paddle.tensor.fill_constant(
+                shape=[1], dtype='bool', value=False
+            )
+            Assert(condition)
 
         with self.assertRaises(ValueError):
             self.run_network(net_func)
 
     def test_assert_cond_numel_error(self):
         def net_func():
-            condition = layers.fill_constant(
-                shape=[1, 2], dtype='bool', value=True)
-            layers.Assert(condition, [])
+            condition = paddle.tensor.fill_constant(
+                shape=[1, 2], dtype='bool', value=True
+            )
+            Assert(condition, [])
 
         with self.assertRaises(ValueError):
             self.run_network(net_func)
 
     def test_assert_print_data(self):
         def net_func():
-            zero = layers.fill_constant(shape=[1], dtype='int64', value=0)
-            one = layers.fill_constant(shape=[1], dtype='int64', value=1)
-            condition = layers.less_than(one, zero)  # False
-            layers.Assert(condition, [zero, one])
+            zero = paddle.tensor.fill_constant(
+                shape=[1], dtype='int64', value=0
+            )
+            one = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=1)
+            condition = paddle.less_than(one, zero)  # False
+            Assert(condition, [zero, one])
 
         print("test_assert_print_data")
         with self.assertRaises(ValueError):
@@ -68,9 +72,11 @@ class TestAssertOp(unittest.TestCase):
 
     def test_assert_summary(self):
         def net_func():
-            x = layers.fill_constant(shape=[10], dtype='float32', value=2.0)
-            condition = layers.reduce_max(x) < 1.0
-            layers.Assert(condition, (x, ), 5)
+            x = paddle.tensor.fill_constant(
+                shape=[10], dtype='float32', value=2.0
+            )
+            condition = paddle.max(x) < 1.0
+            Assert(condition, (x,), 5)
 
         print("test_assert_summary")
         with self.assertRaises(ValueError):
@@ -78,9 +84,11 @@ class TestAssertOp(unittest.TestCase):
 
     def test_assert_summary_greater_than_size(self):
         def net_func():
-            x = layers.fill_constant(shape=[2, 3], dtype='float32', value=2.0)
-            condition = layers.reduce_max(x) < 1.0
-            layers.Assert(condition, [x], 10, name="test")
+            x = paddle.tensor.fill_constant(
+                shape=[2, 3], dtype='float32', value=2.0
+            )
+            condition = paddle.max(x) < 1.0
+            Assert(condition, [x], 10, name="test")
 
         print("test_assert_summary_greater_than_size")
         with self.assertRaises(ValueError):

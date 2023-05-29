@@ -78,17 +78,19 @@ class FuseGemmEpiloguePass : public FusePassBase {
   ir::Graph *FuseLinearFwd(ir::Graph *graph, bool is_training) const;
   ir::Graph *FuseLinearActFwd(ir::Graph *graph,
                               const std::unordered_set<std::string> &act_types,
-                              bool is_training, bool is_act_grad_x_from_act,
+                              bool is_training,
+                              bool is_act_grad_x_from_act,
                               EpiloguePassActivationCache *cache) const;
   ir::Graph *FuseLinearBwd(ir::Graph *graph, bool without_x_gradient) const;
   ir::Graph *FuseLinearActBwd(
-      ir::Graph *graph, const std::unordered_set<std::string> &act_grad_types,
-      bool is_act_grad_x_from_act, EpiloguePassActivationCache *cache) const;
+      ir::Graph *graph,
+      const std::unordered_set<std::string> &act_grad_types,
+      bool is_act_grad_x_from_act,
+      EpiloguePassActivationCache *cache) const;
 
  private:
   bool IsGemmFromLinear_(const std::vector<int64_t> &x_shape,
-                         const std::vector<int64_t> &w_shape,
-                         OpDesc *matmul_v2_op) const;
+                         const std::vector<int64_t> &w_shape) const;
   const std::string GetReserveSpaceCacheKey(const std::string var_name,
                                             int block_id) const {
     return std::to_string(block_id) + var_name;

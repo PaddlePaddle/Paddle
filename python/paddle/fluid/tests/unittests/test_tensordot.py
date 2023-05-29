@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import unittest
-import paddle.fluid.core as core
-import numpy as np
-import itertools as it
 
-np.set_printoptions(threshold=np.inf)
+import numpy as np
+
+import paddle
+from paddle.fluid import core
+
+np.random.seed(2021)
 
 
 def tensordot_np(x, y, axes):
@@ -28,7 +29,7 @@ def tensordot_np(x, y, axes):
     # np.tensordot does not support empty axes
     if not axes:
         axes = 0
-    if (isinstance(axes, (tuple, list))):
+    if isinstance(axes, (tuple, list)):
         if all(np.issubdtype(type(i), np.integer) for i in axes):
             axes = [axes, axes]
         else:
@@ -45,7 +46,7 @@ def tensordot_np(x, y, axes):
             axes = [axes_x, axes_y]
 
     # np.tensordot does not support broadcast
-    if (isinstance(axes, (tuple, list))):
+    if isinstance(axes, (tuple, list)):
         axes_x, axes_y = axes
     else:
         axes_x = list(range(x.ndim - axes, x.ndim))
@@ -68,9 +69,16 @@ def tensordot_np(x, y, axes):
 
 class TestTensordotAPI(unittest.TestCase):
     def setUp(self):
+        self.set_place()
         self.set_dtype()
         self.set_input_shape()
         self.set_input_data()
+        self.set_test_axes()
+
+    def set_place(self):
+        self.places = [core.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.places.append(core.CUDAPlace(0))
 
     def set_dtype(self):
         self.dtype = np.float32
@@ -82,69 +90,168 @@ class TestTensordotAPI(unittest.TestCase):
     def set_input_data(self):
         self.x = np.random.random(self.x_shape).astype(self.dtype)
         self.y = np.random.random(self.y_shape).astype(self.dtype)
-        self.all_axes = [2]
 
-    def run_dygraph(self, place):
+    def set_test_axes(self):
+        self.all_axes = [
+            [[3, 2], [3]],
+            [[2, 1, 0], [2, 1]],
+            [[1, 2, 0], [1, 3, 2]],
+            [3, 0],
+            [[], [0, 3, 1]],
+            [[2, 1, 0, 3], [2, 0, 1, 3]],
+            [[3, 1, 2], [1, 3, 2, 0]],
+            [[2, 1], [0, 2]],
+            [[2, 0, 1, 3], [2]],
+            [[1, 2, 0, 3], [0, 2, 1]],
+            [[2, 1, 3, 0], [1, 2, 3]],
+            [[2, 0, 1, 3], [3, 1, 0, 2]],
+            [[0, 3], [0, 3, 2, 1]],
+            [[1, 3, 2, 0], [2, 1, 0, 3]],
+            [[1, 3, 2, 0], [1, 3, 2, 0]],
+            [[1, 0, 2], [0, 1]],
+            [[2, 3, 0], [3, 1]],
+            [[1, 3, 2, 0], [3, 0, 1, 2]],
+            [[3, 2, 1], [2, 0, 1]],
+            [[0], []],
+            [[2, 3, 0], [1, 2, 0]],
+            [[3, 0, 2, 1], [2, 1, 0, 3]],
+            [[3, 1, 2], [2, 3, 1]],
+            [[1, 0, 2, 3], []],
+            [[1, 2], [1, 2, 3]],
+            [[2, 0, 1, 3], [2, 0, 1]],
+            [[3, 1, 2], [1, 3, 2]],
+            [[3, 1, 2, 0], [1, 2, 3, 0]],
+            [[0, 2, 3], [0, 1, 2]],
+            [[3, 2, 0], [2, 0, 3, 1]],
+            [[2, 1, 0, 3], [3, 1, 2, 0]],
+            [[1, 2, 3, 0], [1, 3, 0, 2]],
+            [[3, 0], [2, 1]],
+            [[0, 1, 3, 2], [0, 2, 1, 3]],
+            [[1, 0], [2, 1, 3]],
+            [[1, 0, 3, 2], [2, 3, 0, 1]],
+            [[1, 2], [3]],
+            [[1, 2, 3, 0], [3, 2, 1, 0]],
+            [[0, 3, 2, 1], [2, 1, 3, 0]],
+            [0],
+            [[0, 2, 3], [3, 2, 0, 1]],
+            [[1, 2, 3, 0], [3, 2, 1, 0]],
+            [[3, 1], [3]],
+            [[3, 2, 0, 1], [3, 2, 0]],
+            [[2, 3, 0, 1], [0, 3, 2]],
+            [[1], [1, 3]],
+            [[1, 2], [2, 1, 0]],
+            [[3, 1, 2], [3, 1, 0]],
+            [[1, 3], [3, 1, 2]],
+            [[2, 0, 1, 3], [3, 1, 0, 2]],
+            [[1, 3, 0], [1, 3]],
+            [[2, 3, 1], [1, 0, 2]],
+            [[1, 2, 0, 3], [0, 2, 1, 3]],
+            [[2], [0, 1, 3]],
+            [[1], [1, 2]],
+            [[1, 0, 2, 3], [3, 0, 1, 2]],
+            [[0, 1, 3, 2], [1, 3, 0, 2]],
+            [[3, 0, 2, 1], [0, 2, 3]],
+            [[1, 2, 0], [1, 2, 3]],
+            [[1, 0, 3], [2, 3, 0]],
+            [[2, 3, 0], [3, 1, 0]],
+            [[1, 3], [1, 0]],
+            [[2, 1, 0, 3], [2, 0, 3, 1]],
+            [[3, 2, 0], [2, 1, 0]],
+            [[0, 1, 3], [0, 3, 1]],
+            [[3, 1, 0], [3, 2, 1]],
+            [[3, 2], [3, 1]],
+            [[3], [2, 1, 0]],
+            [[1, 2, 3, 0], []],
+            [[1, 3, 2, 0], [3, 1, 2]],
+            [[1], [0, 2]],
+            [[3, 2, 0], [3, 2, 0]],
+            [[3], []],
+            [[1, 0, 3], [2, 1]],
+            [[3, 1, 0, 2], [2, 3, 1, 0]],
+            [[0, 1], [0, 3, 2]],
+            [[0, 2, 3], [0, 2, 1]],
+            [[1, 3, 0], [3, 0, 2]],
+            [[3, 1, 2], [1, 2, 3]],
+            [[3, 1, 2], [3, 1, 0]],
+            [[0, 3, 1, 2], [3, 2, 1, 0]],
+            [[0, 3], [3, 2, 1]],
+            [[2, 3], [1, 3, 0]],
+            [[0, 3, 2], [2, 0, 3, 1]],
+            [[2, 3], [1, 3]],
+            [[3, 1, 2, 0], [2, 3, 1, 0]],
+            [[1, 0, 3, 2], [3, 0, 1, 2]],
+            [[3, 2, 1, 0], [0, 1, 3, 2]],
+            [[3, 1, 2], [3]],
+            [[0, 1, 3, 2], [2, 3, 0, 1]],
+            [[1, 2, 3, 0], [1, 3, 0, 2]],
+            [3, 1, 2],
+            [[3, 1, 2], [0, 3, 2]],
+            [[2, 3, 0], [1, 2, 0]],
+            [[2, 0, 3], [2, 0]],
+            [[3, 1, 0, 2], [3, 1, 0, 2]],
+            [[0, 1, 2], [2, 0, 1]],
+            [[1, 0, 3], [2, 3, 0]],
+            [[2, 0, 1], [0, 1, 3]],
+            [[2, 1], [0, 1, 3]],
+        ]
+
+    def test_dygraph(self):
         paddle.disable_static()
-        x = paddle.to_tensor(self.x, place=place)
-        y = paddle.to_tensor(self.y, place=place)
-        paddle_res = paddle.tensordot(x, y, self.axes)
-        np_res = tensordot_np(self.x, self.y, self.axes)
-        np.testing.assert_allclose(paddle_res, np_res, rtol=1e-6)
-
-    def run_static(self, place):
-        paddle.enable_static()
-        with paddle.static.program_guard(paddle.static.Program(),
-                                         paddle.static.Program()):
-            x = paddle.static.data(
-                name='x', shape=self.x_shape, dtype=self.dtype)
-            y = paddle.static.data(
-                name='y', shape=self.y_shape, dtype=self.dtype)
-            z = paddle.tensordot(x, y, self.axes)
-            exe = paddle.static.Executor(place)
-            paddle_res = exe.run(feed={'x': self.x,
-                                       'y': self.y},
-                                 fetch_list=[z])
-            np_res = tensordot_np(self.x, self.y, self.axes)
-            np.testing.assert_allclose(paddle_res[0], np_res, rtol=1e-6)
-
-    def test_cases(self):
-        self.all_axes = []
-        axial_index = range(4)
-        all_permutations = list(it.permutations(axial_index, 0)) + list(
-            it.permutations(axial_index, 1)) + list(
-                it.permutations(axial_index, 2)) + list(
-                    it.permutations(axial_index, 3)) + list(
-                        it.permutations(axial_index, 4))
-        self.all_axes.extend(list(i) for i in all_permutations)
-
-        for axes_x in all_permutations:
-            for axes_y in all_permutations:
-                if len(axes_x) < len(axes_y):
-                    supplementary_axes_x = axes_x + axes_y[len(axes_x):]
-                    if any(
-                            supplementary_axes_x.count(i) > 1
-                            for i in supplementary_axes_x):
-                        continue
-                elif len(axes_y) < len(axes_x):
-                    supplementary_axes_y = axes_y + axes_x[len(axes_y):]
-                    if any(
-                            supplementary_axes_y.count(i) > 1
-                            for i in supplementary_axes_y):
-                        continue
-                self.all_axes.append([list(axes_x), list(axes_y)])
-
-        self.all_axes.extend(range(5))
-
-        places = [core.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
-
         for axes in self.all_axes:
-            self.axes = axes
-            for place in places:
-                self.run_dygraph(place)
-                self.run_static(place)
+            for place in self.places:
+                x = paddle.to_tensor(self.x, place=place)
+                y = paddle.to_tensor(self.y, place=place)
+                paddle_res = paddle.tensordot(x, y, axes)
+                np_res = tensordot_np(self.x, self.y, axes)
+                np.testing.assert_allclose(paddle_res, np_res, rtol=1e-6)
+
+    def test_static(self):
+        paddle.enable_static()
+        for axes in self.all_axes:
+            for place in self.places:
+                with paddle.static.program_guard(
+                    paddle.static.Program(), paddle.static.Program()
+                ):
+                    x = paddle.static.data(
+                        name='x', shape=self.x_shape, dtype=self.dtype
+                    )
+                    y = paddle.static.data(
+                        name='y', shape=self.y_shape, dtype=self.dtype
+                    )
+                    z = paddle.tensordot(x, y, axes)
+                    exe = paddle.static.Executor(place)
+                    paddle_res = exe.run(
+                        feed={'x': self.x, 'y': self.y}, fetch_list=[z]
+                    )
+                    np_res = tensordot_np(self.x, self.y, axes)
+                    np.testing.assert_allclose(paddle_res[0], np_res, rtol=1e-6)
+
+    def test_fp16_with_gpu(self):
+        paddle.enable_static()
+        if paddle.fluid.core.is_compiled_with_cuda():
+            for axes in self.all_axes:
+                place = paddle.CUDAPlace(0)
+                with paddle.static.program_guard(
+                    paddle.static.Program(), paddle.static.Program()
+                ):
+                    input_x = np.random.random([5, 5, 5, 5]).astype("float16")
+                    x = paddle.static.data(
+                        name="x", shape=[5, 5, 5, 5], dtype="float16"
+                    )
+
+                    input_y = np.random.random([5, 5, 5, 5]).astype("float16")
+                    y = paddle.static.data(
+                        name="y", shape=[5, 5, 5, 5], dtype="float16"
+                    )
+
+                    z = paddle.tensordot(x, y, axes)
+                    exe = paddle.static.Executor(place)
+
+                    paddle_res = exe.run(
+                        feed={'x': input_x, 'y': input_y}, fetch_list=[z]
+                    )
+                    np_res = tensordot_np(input_x, input_y, axes)
+                    np.testing.assert_allclose(paddle_res[0], np_res, rtol=1)
 
 
 class TestTensordotAPIFloat64(TestTensordotAPI):
@@ -152,45 +259,86 @@ class TestTensordotAPIFloat64(TestTensordotAPI):
         self.dtype = np.float64
 
 
+class TestTensordotAPIBroadcastCase1(TestTensordotAPIFloat64):
+    def set_input_shape(self):
+        self.x_shape = [1, 1, 1, 5]
+        self.y_shape = [1, 5, 1, 1]
+
+
+class TestTensordotAPIBroadcastCase2(TestTensordotAPIFloat64):
+    def set_input_shape(self):
+        self.x_shape = [1, 5, 5, 5]
+        self.y_shape = [1, 1, 1, 5]
+
+
+class TestTensordotAPIBroadcastCase3(TestTensordotAPIFloat64):
+    def set_input_shape(self):
+        self.x_shape = [5, 5, 5, 1]
+        self.y_shape = [5, 5, 1, 5]
+
+
+class TestTensordotAPIBroadcastCase4(TestTensordotAPIFloat64):
+    def set_input_shape(self):
+        self.x_shape = [5, 5, 5, 1]
+        self.y_shape = [1, 1, 1, 1]
+
+
+class TestTensordotAPIBroadcastCase5(TestTensordotAPIFloat64):
+    def set_input_shape(self):
+        self.x_shape = [1, 1, 5, 5]
+        self.y_shape = [5, 5, 1, 5]
+
+
 class TestTensordotAPIAxesType(TestTensordotAPI):
     def set_input_shape(self):
         self.x_shape = [3, 4, 4]
         self.y_shape = [4, 4, 5]
 
-    def test_cases(self):
+    def set_test_axes(self):
         self.all_axes = [
-            0, 1, 2, (1, ), [1], ((1, ), ), ([1], ), ((2, 1), (0, )), (
-                (1, 2), (0, 1)), ([1, 2], [0, 1]), ([1, 2], [0, 1]),
-            [[1, 2], [0, 1]]
+            0,
+            1,
+            2,
+            (1,),
+            [1],
+            ((1,),),
+            ([1],),
+            ((2, 1), (0,)),
+            ((1, 2), (0, 1)),
+            ([1, 2], [0, 1]),
+            ([1, 2], [0, 1]),
+            [[1, 2], [0, 1]],
         ]
 
-        places = [core.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
-
-        for axes in self.all_axes:
-            self.axes = axes
-            for place in places:
-                self.run_dygraph(place)
-                self.run_static(place)
-
-        # The 'axes' with type 'Tensor' in tensordot is not available in static mode
+    def test_tensor_axes(self):
+        # The 'axes' with type 'Tensor' in tensordot is not available in static graph mode
         paddle.disable_static()
-        for place in places:
-            self.all_axes = [
-                paddle.to_tensor([1]), (paddle.to_tensor([1])),
-                (paddle.to_tensor([1, 2]), paddle.to_tensor([0, 1])),
-                [paddle.to_tensor([1, 2]), paddle.to_tensor([0, 1])],
-                paddle.to_tensor([[1, 2], [0, 1]])
-            ]
-            for axes in self.all_axes:
-                self.axes = axes
-                for place in places:
-                    self.run_dygraph(place)
+        tensor_axes = [
+            paddle.to_tensor([1]),
+            (paddle.to_tensor([1])),
+            (paddle.to_tensor([1, 2]), paddle.to_tensor([0, 1])),
+            [paddle.to_tensor([1, 2]), paddle.to_tensor([0, 1])],
+            paddle.to_tensor([[1, 2], [0, 1]]),
+        ]
+
+        for place in self.places:
+            for axes in tensor_axes:
+                x = paddle.to_tensor(self.x, place=place)
+                y = paddle.to_tensor(self.y, place=place)
+                paddle_res = paddle.tensordot(x, y, axes)
+                np_res = tensordot_np(self.x, self.y, axes)
+                np.testing.assert_allclose(paddle_res, np_res, rtol=1e-6)
 
     def test_error(self):
-        self.all_axes = [[[[0], [1]]], 0.1, -1, 100, [[1, 2], [0, 0]],
-                         [[1, 2], [0, -1]], [0, 1, 2, 3]]
+        self.all_axes = [
+            [[[0], [1]]],
+            0.1,
+            -1,
+            100,
+            [[1, 2], [0, 0]],
+            [[1, 2], [0, -1]],
+            [0, 1, 2, 3],
+        ]
         paddle.disable_static()
         x = paddle.to_tensor(self.x)
         y = paddle.to_tensor(self.y)
@@ -202,36 +350,6 @@ class TestTensordotAPIAxesType(TestTensordotAPI):
 class TestTensordotAPIAxesTypeFloat64(TestTensordotAPIAxesType):
     def set_dtype(self):
         self.dtype = np.float64
-
-
-class TestTensordotAPIBroadcastCase1(TestTensordotAPI):
-    def set_input_shape(self):
-        self.x_shape = [1, 1, 1, 5]
-        self.y_shape = [1, 5, 1, 1]
-
-
-class TestTensordotAPIBroadcastCase2(TestTensordotAPI):
-    def set_input_shape(self):
-        self.x_shape = [1, 5, 5, 5]
-        self.y_shape = [1, 1, 1, 5]
-
-
-class TestTensordotAPIBroadcastCase3(TestTensordotAPI):
-    def set_input_shape(self):
-        self.x_shape = [5, 5, 5, 1]
-        self.y_shape = [5, 5, 1, 5]
-
-
-class TestTensordotAPIBroadcastCase4(TestTensordotAPI):
-    def set_input_shape(self):
-        self.x_shape = [5, 5, 5, 1]
-        self.y_shape = [1, 1, 1, 1]
-
-
-class TestTensordotAPIBroadcastCase5(TestTensordotAPI):
-    def set_input_shape(self):
-        self.x_shape = [1, 1, 5, 5]
-        self.y_shape = [5, 5, 1, 5]
 
 
 if __name__ == "__main__":

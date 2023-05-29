@@ -12,17 +12,49 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
+from op import Operator
+
 import paddle
-import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid.op import Operator
 
 paddle.enable_static()
+
+
+def lamb_wrapper(
+    param,
+    grad,
+    lr,
+    moment1,
+    moment2,
+    beta1Pow,
+    beta2Pow,
+    master_weight=None,
+    found_inf=None,
+    epsilon=1e-8,
+    beta1=0.9,
+    beta2=0.999,
+    weight_decay=0.01,
+):
+    return paddle._C_ops.lamb_(
+        param,
+        grad,
+        lr,
+        moment1,
+        moment2,
+        beta1Pow,
+        beta2Pow,
+        master_weight,
+        found_inf,
+        weight_decay,
+        beta1,
+        beta2,
+        epsilon,
+        False,
+    )
 
 
 class TestLambOp1(OpTest):
@@ -31,12 +63,11 @@ class TestLambOp1(OpTest):
             'epsilon': 1e-4,
             'beta1': 0.78,
             'beta2': 0.836,
-            'weight_decay': 0.01
+            'weight_decay': 0.01,
         }
 
     def setUp(self):
-        '''Test Lamb Op with supplied attributes
-        '''
+        '''Test Lamb Op with supplied attributes'''
         self.op_type = "lamb"
         param = np.random.uniform(-1, 1, (102, 105)).astype("float32")
         grad = np.random.uniform(-1, 1, (102, 105)).astype("float32")
@@ -45,6 +76,10 @@ class TestLambOp1(OpTest):
 
         learning_rate = 0.001
         self.set_attrs()
+
+        self.python_api = lamb_wrapper
+        self.python_out_sig = ['Out']
+
         beta1_pow = self.attrs['beta1']
         beta2_pow = self.attrs['beta2']
 
@@ -55,19 +90,23 @@ class TestLambOp1(OpTest):
             'Moment2': moment2,
             'LearningRate': np.array([learning_rate]).astype("float32"),
             'Beta1Pow': np.array([beta1_pow]).astype("float32"),
-            'Beta2Pow': np.array([beta2_pow]).astype("float32")
+            'Beta2Pow': np.array([beta2_pow]).astype("float32"),
         }
 
-
-        param_out, moment1_out, moment2_out, \
-            beta1_pow_out, beta2_pow_out = lamb_step(self.inputs, self.attrs)
+        (
+            param_out,
+            moment1_out,
+            moment2_out,
+            beta1_pow_out,
+            beta2_pow_out,
+        ) = lamb_step(self.inputs, self.attrs)
 
         self.outputs = {
             'Moment1Out': moment1_out,
             'Moment2Out': moment2_out,
             'ParamOut': param_out,
             'Beta1PowOut': beta1_pow_out,
-            'Beta2PowOut': beta2_pow_out
+            'Beta2PowOut': beta2_pow_out,
         }
 
     def test_check_output(self):
@@ -80,7 +119,7 @@ class TestLambOp2(TestLambOp1):
             'epsilon': 1e-8,
             'beta1': 0.9,
             'beta2': 0.999,
-            'weight_decay': 0.01
+            'weight_decay': 0.01,
         }
 
 
@@ -90,21 +129,26 @@ class TestLambOpMultipleSteps(TestLambOp1):
             'epsilon': 1e-8,
             'beta1': 0.9,
             'beta2': 0.999,
-            'weight_decay': 0.01
+            'weight_decay': 0.01,
         }
         self.num_steps = 10
 
     def test_check_output(self):
         for i in range(self.num_steps):
-            param_out, moment1_out, moment2_out, \
-                beta1_pow_out, beta2_pow_out = lamb_step(self.inputs, self.attrs)
+            (
+                param_out,
+                moment1_out,
+                moment2_out,
+                beta1_pow_out,
+                beta2_pow_out,
+            ) = lamb_step(self.inputs, self.attrs)
 
             self.outputs = {
                 'Moment1Out': moment1_out,
                 'Moment2Out': moment2_out,
                 'ParamOut': param_out,
                 'Beta1PowOut': beta1_pow_out,
-                'Beta2PowOut': beta2_pow_out
+                'Beta2PowOut': beta2_pow_out,
             }
 
             # Verify output for this step
@@ -120,8 +164,9 @@ class TestLambOpMultipleSteps(TestLambOp1):
             self.inputs['Beta2Pow'] = beta2_pow_out
 
             # Randomize gradient for next step
-            self.inputs['Grad'] = np.random.uniform(
-                -1, 1, (102, 105)).astype("float32")
+            self.inputs['Grad'] = np.random.uniform(-1, 1, (102, 105)).astype(
+                "float32"
+            )
 
 
 def lamb_step(inputs, attributes):
@@ -152,12 +197,16 @@ def lamb_step(inputs, attributes):
     moment2_unbiased = moment2_out / (1 - beta2_pow)
 
     r_1 = np.linalg.norm(param)
-    r_2 = np.linalg.norm(moment1_unbiased / (np.sqrt(moment2_unbiased) + epsilon
-                                             ) + weight_decay * param)
+    r_2 = np.linalg.norm(
+        moment1_unbiased / (np.sqrt(moment2_unbiased) + epsilon)
+        + weight_decay * param
+    )
     lr_t = lr * r_1 / r_2
 
-    param_out = param - lr_t * (moment1_unbiased / (
-        np.sqrt(moment2_unbiased) + epsilon) + weight_decay * param)
+    param_out = param - lr_t * (
+        moment1_unbiased / (np.sqrt(moment2_unbiased) + epsilon)
+        + weight_decay * param
+    )
 
     beta1_pow_out = beta1_pow * beta1
     beta2_pow_out = beta2_pow * beta2
@@ -193,24 +242,32 @@ def lamb_step_sparse(inputs, attributes, height, rows, row_numel, np_grad):
     moment2_unbiased = np.zeros(shape=[height, row_numel])
 
     def update_mom(row_id, update_value):
-        moment1_out[row_id] = beta1 * moment1[row_id] + (1 - beta1
-                                                         ) * update_value
-        moment2_out[row_id] = beta2 * moment2[row_id] + (
-            1 - beta2) * np.square(update_value)
+        moment1_out[row_id] = (
+            beta1 * moment1[row_id] + (1 - beta1) * update_value
+        )
+        moment2_out[row_id] = beta2 * moment2[row_id] + (1 - beta2) * np.square(
+            update_value
+        )
 
-        moment1_out[row_id] = beta1 * moment1[row_id] + (1 - beta1
-                                                         ) * update_value
-        moment2_out[row_id] = beta2 * moment2[row_id] + (
-            1 - beta2) * np.square(update_value)
+        moment1_out[row_id] = (
+            beta1 * moment1[row_id] + (1 - beta1) * update_value
+        )
+        moment2_out[row_id] = beta2 * moment2[row_id] + (1 - beta2) * np.square(
+            update_value
+        )
 
     def update_param():
         r_1 = np.linalg.norm(param)
-        r_2 = np.linalg.norm(moment1_out / (np.sqrt(moment2_out) + epsilon) +
-                             weight_decay * param)
+        r_2 = np.linalg.norm(
+            moment1_out / (np.sqrt(moment2_out) + epsilon)
+            + weight_decay * param
+        )
         lr_t = lr * r_1 / r_2
 
-        param_out = param - lr_t * (moment1_out / (
-            np.sqrt(moment2_out) + epsilon) + weight_decay * param)
+        param_out = param - lr_t * (
+            moment1_out / (np.sqrt(moment2_out) + epsilon)
+            + weight_decay * param
+        )
 
     for row_id in range(param_out.shape[0]):
         update_value = np.zeros(np_grad[0].shape).astype("float32")
@@ -242,14 +299,14 @@ class TestSparseLambOp(unittest.TestCase):
             "Moment2": np.full((height, row_numel), 5.0).astype("float32"),
             'Beta1Pow': np.array([beta1]).astype("float32"),
             'Beta2Pow': np.array([beta2]).astype("float32"),
-            "LearningRate": np.full((1), 2.0).astype("float32")
+            "LearningRate": np.full((1), 2.0).astype("float32"),
         }
         self.init_output = np.full((height, row_numel), 0.0).astype("float32")
         self.attrs = {
             'epsilon': epsilon,
             'beta1': beta1,
             'beta2': beta2,
-            'weight_decay': 0.05
+            'weight_decay': 0.05,
         }
 
         grad_selected_rows = scope.var('Grad').get_selected_rows()
@@ -265,20 +322,21 @@ class TestSparseLambOp(unittest.TestCase):
         self.sparse_inputs = ["Grad"]
 
         param_out, mom1, mom2, beta1_pow_out, beta2_pow_out = lamb_step_sparse(
-            self.dense_inputs, self.attrs, height, rows, row_numel, np_array)
+            self.dense_inputs, self.attrs, height, rows, row_numel, np_array
+        )
         self.outputs = {
             "ParamOut": param_out,
             "Moment1Out": mom1,
             "Moment2Out": mom2,
             'Beta1PowOut': beta1_pow_out,
-            'Beta2PowOut': beta2_pow_out
+            'Beta2PowOut': beta2_pow_out,
         }
 
     def check_with_place(self, place):
         scope = core.Scope()
         self.setup(scope, place)
 
-        op_args = dict()
+        op_args = {}
         for key, np_array in self.dense_inputs.items():
             var = scope.var(key).get_tensor()
             var.set(np_array, place)

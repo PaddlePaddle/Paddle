@@ -14,12 +14,15 @@
 
 #pragma once
 
+#include <queue>
 #include <utility>
 
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
 
 namespace paddle {
 namespace distributed {
+
+const int64_t INFINITE_BUFFER_SIZE = -1;
 
 class ComputeInterceptor : public Interceptor {
  public:
@@ -29,33 +32,30 @@ class ComputeInterceptor : public Interceptor {
   virtual void RunOps();
   virtual void SendDataReadyToDownStream();
   virtual void ReplyCompletedToUpStream();
-
-  int64_t step_{0};
-
- private:
-  void PrepareDeps();
-
-  void IncreaseReady(int64_t up_id);
-  void DecreaseBuff(int64_t down_id);
-  bool IsInputReady();
-  bool CanWriteOutput();
-
+  virtual void Compute(const InterceptorMessage& msg);
   void Run();
-  void Compute(const InterceptorMessage& msg);
+  void IncreaseReady(int64_t up_id, int64_t scope_id);
+  void DecreaseBuff(int64_t down_id);
 
-  void ReceivedStop(int64_t up_id);
-  void TryStop();
+  int64_t cur_scope_id_;
 
-  bool is_source_{false};
-  bool is_last_{false};
-
-  // upstream_id-->(max_ready_size, ready_size)
-  std::map<int64_t, std::pair<int64_t, int64_t>> in_readys_{};
+  // upstream_id-->(max_ready_size, scope-->ready_size)
+  std::map<int64_t, std::pair<int64_t, std::map<int64_t, int64_t>>>
+      in_readys_{};
   // downstream_id-->(max_buffer_size, used_size)
   std::map<int64_t, std::pair<int64_t, int64_t>> out_buffs_{};
 
-  bool received_stop_{false};
-  std::map<int64_t, bool> in_stops_{};
+ private:
+  void PrepareDeps();
+  InterceptorMessage PrepareVarsMsg();
+  void DecodeMsgVars(const InterceptorMessage& msg);
+
+  bool IsInputReady();
+  bool CanWriteOutput();
+  std::map<int64_t, std::map<int64_t, bool>>
+      gen_step_to_scope_id_to_finish_flag_;
+  int64_t start_micro_step_{-1};
+  int64_t num_micro_step_{-1};
 };
 
 }  // namespace distributed

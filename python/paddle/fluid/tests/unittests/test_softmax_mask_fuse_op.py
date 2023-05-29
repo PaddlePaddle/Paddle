@@ -12,15 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
-import paddle.fluid.core as core
-from op_test import OpTest
+from eager_op_test import OpTest
+
 import paddle
-import paddle.fluid as fluid
-import paddle.incubate as incubate
+from paddle import fluid, incubate
+from paddle.fluid import core
 
 paddle.enable_static()
 
@@ -37,11 +36,13 @@ def _get_softmax(x, mask, fp16=True):
     return rst
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestSoftmaxMaskFuseOp(OpTest):
     def setUp(self):
         self.op_type = "fused_softmax_mask"
+        self.python_api = paddle.incubate.softmax_mask_fuse
         x = np.random.random((1, 1, 8, 32))
         mask = np.random.randint(0, 2, (1, 1, 8, 32))
         mask_input = np.where(mask == 1, -10000.0, mask)
@@ -62,11 +63,13 @@ class TestSoftmaxMaskFuseOp(OpTest):
             pass
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestSoftmaxMaskFuseOp0(OpTest):
     def setUp(self):
         self.op_type = "fused_softmax_mask"
+        self.python_api = paddle.incubate.softmax_mask_fuse
         x = np.random.random((1, 1, 8, 32)).astype("float16")
         mask = np.random.randint(0, 2, (1, 1, 8, 32)).astype("float16")
         mask_input = np.where(mask == 1, -10000.0, mask)
@@ -81,14 +84,18 @@ class TestSoftmaxMaskFuseOp0(OpTest):
         self.check_grad_with_place(core.CUDAPlace(0), ["X"], "Out")
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+)
 class TestDropoutBiasFuseOp3(unittest.TestCase):
     def test_static_result(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input_x = fluid.data(name="x", shape=[1, 1, 8, 32], dtype="float32")
-            input_mask = fluid.data(
-                name="mask", shape=[1, 1, 8, 32], dtype="float32")
+            input_x = paddle.static.data(
+                name="x", shape=[1, 1, 8, 32], dtype="float32"
+            )
+            input_mask = paddle.static.data(
+                name="mask", shape=[1, 1, 8, 32], dtype="float32"
+            )
             rst = incubate.softmax_mask_fuse(input_x, input_mask)
 
             x_in_np = np.random.random((1, 1, 8, 32)).astype("float32")
@@ -97,11 +104,12 @@ class TestDropoutBiasFuseOp3(unittest.TestCase):
             rst_np = _get_softmax(x_in_np, mask_in_np, False)
 
             exe = fluid.Executor(fluid.CUDAPlace(0))
-            fetches = exe.run(fluid.default_main_program(),
-                              feed={"x": x_in_np,
-                                    "mask": mask_in_np},
-                              fetch_list=[rst])
-            self.assertTrue(np.allclose(fetches[0], rst_np))
+            fetches = exe.run(
+                fluid.default_main_program(),
+                feed={"x": x_in_np, "mask": mask_in_np},
+                fetch_list=[rst],
+            )
+            np.testing.assert_allclose(fetches[0], rst_np, rtol=1e-05)
 
     def test_dygraph(self):
         with fluid.dygraph.guard(fluid.CUDAPlace(0)):
@@ -113,7 +121,7 @@ class TestDropoutBiasFuseOp3(unittest.TestCase):
             input_mask = fluid.dygraph.to_variable(mask_in_np)
 
             rst = incubate.softmax_mask_fuse(input_x, input_mask)
-            self.assertTrue(np.allclose(rst, rst_np))
+            np.testing.assert_allclose(rst, rst_np, rtol=1e-05)
 
 
 if __name__ == '__main__':

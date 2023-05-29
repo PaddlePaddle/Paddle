@@ -12,18 +12,22 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/lookup_table_v2_op.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/lookup_table_v2_op.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
 
 template <typename T, typename IdT, bool PaddingFlag>
-__global__ void LookupTableV2(T *output, const T *table, const IdT *ids,
-                              const int64_t N, const int64_t K, const int64_t D,
+__global__ void LookupTableV2(T *output,
+                              const T *table,
+                              const IdT *ids,
+                              const int64_t N,
+                              const int64_t K,
+                              const int64_t D,
                               const int64_t padding_idx) {
   int idx = threadIdx.x;
   int idy = blockIdx.x + threadIdx.y * gridDim.x;
@@ -47,8 +51,11 @@ __global__ void LookupTableV2(T *output, const T *table, const IdT *ids,
 }
 
 template <typename T, typename IdT>
-__global__ void LookupTableV2Grad(T *table, const T *output, const IdT *ids,
-                                  const int64_t N, const int64_t K,
+__global__ void LookupTableV2Grad(T *table,
+                                  const T *output,
+                                  const IdT *ids,
+                                  const int64_t N,
+                                  const int64_t K,
                                   const int64_t D) {
   int idx = threadIdx.x;
   int idy = blockIdx.x + threadIdx.y * gridDim.x;
@@ -58,10 +65,10 @@ __global__ void LookupTableV2Grad(T *table, const T *output, const IdT *ids,
     const T *out = output + idy * D;
     T *tab = table + id * D;
 #ifdef PADDLE_WITH_CUDA
-    paddle::platform::VectorizedAtomicAddPerBlock(D, idx, blockDim.x, out, tab);
+    phi::VectorizedAtomicAddPerBlock(D, idx, blockDim.x, out, tab);
 #else
     for (int i = idx; i < D; i += blockDim.x) {
-      paddle::platform::CudaAtomicAdd(&tab[i], out[i]);
+      phi::CudaAtomicAdd(&tab[i], out[i]);
     }
 #endif
     idy += blockDim.y * gridDim.x;
@@ -71,13 +78,13 @@ __global__ void LookupTableV2Grad(T *table, const T *output, const IdT *ids,
 template <typename T>
 struct LookupTableV2CUDAFunctor {
   LookupTableV2CUDAFunctor(const framework::ExecutionContext &context,
-                           const framework::Tensor *ids_t)
+                           const phi::DenseTensor *ids_t)
       : context_(context), ids_t_(ids_t) {}
 
   template <typename IdT>
   void apply() {
-    auto *table_t = context_.Input<framework::Tensor>("W");
-    auto *output_t = context_.Output<framework::Tensor>("Out");
+    auto *table_t = context_.Input<phi::DenseTensor>("W");
+    auto *output_t = context_.Output<phi::DenseTensor>("Out");
     int64_t padding_idx = context_.Attr<int64_t>("padding_idx");
 
     size_t N = table_t->dims()[0];
@@ -104,14 +111,14 @@ struct LookupTableV2CUDAFunctor {
 
  private:
   const framework::ExecutionContext &context_;
-  const framework::Tensor *ids_t_;
+  const phi::DenseTensor *ids_t_;
 };
 
 template <typename T>
 class LookupTableV2CUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    const auto *ids_t = context.Input<framework::Tensor>("Ids");
+    const auto *ids_t = context.Input<phi::DenseTensor>("Ids");
     LookupTableV2CUDAFunctor<T> functor(context, ids_t);
     framework::VisitIntDataType(framework::TransToProtoVarType(ids_t->dtype()),
                                 functor);
@@ -119,7 +126,8 @@ class LookupTableV2CUDAKernel : public framework::OpKernel<T> {
 };
 
 template <typename InT, typename OutT>
-__global__ void InputTypeConvert(const InT *in_ids, const int64_t K,
+__global__ void InputTypeConvert(const InT *in_ids,
+                                 const int64_t K,
                                  OutT *out_ids) {
   for (int i = 0; i < K; i++) {
     out_ids[i] = static_cast<OutT>(in_ids[i]);
@@ -129,21 +137,20 @@ __global__ void InputTypeConvert(const InT *in_ids, const int64_t K,
 template <typename T>
 struct LookupTableV2GradCUDAFunctor {
   LookupTableV2GradCUDAFunctor(const framework::ExecutionContext &context,
-                               const framework::Tensor *ids_t)
+                               const phi::DenseTensor *ids_t)
       : context_(context), ids_t_(ids_t) {}
 
   template <typename IdT>
   void apply() {
-    auto &dev_ctx =
-        context_.template device_context<platform::CUDADeviceContext>();
+    auto &dev_ctx = context_.template device_context<phi::GPUContext>();
     bool is_sparse = context_.Attr<bool>("is_sparse");
 
     // Since paddings are not trainable and fixed in forward, the gradient of
     // paddings makes no sense and we don't deal with it in backward.
     if (is_sparse) {
-      auto *table = context_.Input<framework::Tensor>("W");
+      auto *table = context_.Input<phi::DenseTensor>("W");
       auto *d_output =
-          context_.Input<framework::Tensor>(framework::GradVarName("Out"));
+          context_.Input<phi::DenseTensor>(framework::GradVarName("Out"));
       auto *d_table =
           context_.Output<phi::SelectedRows>(framework::GradVarName("W"));
 
@@ -152,17 +159,21 @@ struct LookupTableV2GradCUDAFunctor {
       dim3 threads(128, 8);
       dim3 grids(8, 1);
       auto stream = dev_ctx.stream();
-      framework::Vector<int64_t> new_rows;
+      phi::Vector<int64_t> new_rows;
       new_rows.resize(ids_num);
       auto gpu_place = context_.GetPlace();
 
-      paddle::framework::MixVector<int64_t> mixv_new_rows(&new_rows);
+      phi::MixVector<int64_t> mixv_new_rows(&new_rows);
       if (!std::is_same<IdT, int64_t>::value) {
         InputTypeConvert<<<grids, threads, 0, stream>>>(
             ids_data, ids_num, mixv_new_rows.MutableData(gpu_place));
       } else {
-        memory::Copy(gpu_place, mixv_new_rows.CUDAMutableData(gpu_place),
-                     gpu_place, ids_data, ids_num * sizeof(int64_t), stream);
+        memory::Copy(gpu_place,
+                     mixv_new_rows.CUDAMutableData(gpu_place),
+                     gpu_place,
+                     ids_data,
+                     ids_num * sizeof(int64_t),
+                     stream);
       }
 
       mixv_new_rows.CopyToCPU();
@@ -177,21 +188,27 @@ struct LookupTableV2GradCUDAFunctor {
       auto d_output_dims = d_output->dims();
       auto d_output_dims_2d =
           phi::flatten_to_2d(d_output_dims, d_output_dims.size() - 1);
-      PADDLE_ENFORCE_EQ(d_table_value->dims(), d_output_dims_2d,
+      PADDLE_ENFORCE_EQ(d_table_value->dims(),
+                        d_output_dims_2d,
                         platform::errors::InvalidArgument(
                             "ShapeError: The shape of lookup_table@Grad and "
                             "output@Grad should be same. "
                             "But received lookup_table@Grad's shape = [%s], "
                             "output@Grad's shape = [%s].",
-                            d_table_value->dims(), d_output_dims_2d));
-      memory::Copy(gpu_place, d_table_data, gpu_place, d_output_data,
-                   d_output->numel() * sizeof(T), stream);
+                            d_table_value->dims(),
+                            d_output_dims_2d));
+      memory::Copy(gpu_place,
+                   d_table_data,
+                   gpu_place,
+                   d_output_data,
+                   d_output->numel() * sizeof(T),
+                   stream);
 
     } else {
       auto d_output_t =
-          context_.Input<framework::Tensor>(framework::GradVarName("Out"));
+          context_.Input<phi::DenseTensor>(framework::GradVarName("Out"));
       auto d_table_t =
-          context_.Output<framework::Tensor>(framework::GradVarName("W"));
+          context_.Output<phi::DenseTensor>(framework::GradVarName("W"));
 
       int N = d_table_t->dims()[0];
       int D = d_table_t->dims()[1];
@@ -219,14 +236,14 @@ struct LookupTableV2GradCUDAFunctor {
 
  private:
   const framework::ExecutionContext &context_;
-  const framework::Tensor *ids_t_;
+  const phi::DenseTensor *ids_t_;
 };
 
 template <typename T>
 class LookupTableV2GradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    const auto *ids_t = context.Input<framework::Tensor>("Ids");
+    const auto *ids_t = context.Input<phi::DenseTensor>("Ids");
     LookupTableV2GradCUDAFunctor<T> functor(context, ids_t);
     framework::VisitIntDataType(framework::TransToProtoVarType(ids_t->dtype()),
                                 functor);

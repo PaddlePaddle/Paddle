@@ -12,17 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
+import collections
 import re
-import six
 import string
 import tarfile
-import numpy as np
-import collections
 
-from paddle.io import Dataset
+import numpy as np
+
 from paddle.dataset.common import _check_exists_and_download
+from paddle.io import Dataset
 
 __all__ = []
 
@@ -54,7 +52,7 @@ class Imdb(Dataset):
 
             class SimpleNet(paddle.nn.Layer):
                 def __init__(self):
-                    super(SimpleNet, self).__init__()
+                    super().__init__()
 
                 def forward(self, doc, label):
                     return paddle.sum(doc), label
@@ -69,20 +67,25 @@ class Imdb(Dataset):
 
                 model = SimpleNet()
                 image, label = model(doc, label)
-                print(doc.numpy().shape, label.numpy().shape)
+                print(doc.shape, label.shape)
 
     """
 
     def __init__(self, data_file=None, mode='train', cutoff=150, download=True):
-        assert mode.lower() in ['train', 'test'], \
-            "mode should be 'train', 'test', but got {}".format(mode)
+        assert mode.lower() in [
+            'train',
+            'test',
+        ], f"mode should be 'train', 'test', but got {mode}"
         self.mode = mode.lower()
 
         self.data_file = data_file
         if self.data_file is None:
-            assert download, "data_file is not set and downloading automatically is disabled"
-            self.data_file = _check_exists_and_download(data_file, URL, MD5,
-                                                        'imdb', download)
+            assert (
+                download
+            ), "data_file is not set and downloading automatically is disabled"
+            self.data_file = _check_exists_and_download(
+                data_file, URL, MD5, 'imdb', download
+            )
 
         # Build a word dictionary from the corpus
         self.word_idx = self._build_work_dict(cutoff)
@@ -98,11 +101,11 @@ class Imdb(Dataset):
                 word_freq[word] += 1
 
         # Not sure if we should prune less-frequent words here.
-        word_freq = [x for x in six.iteritems(word_freq) if x[1] > cutoff]
+        word_freq = [x for x in word_freq.items() if x[1] > cutoff]
 
         dictionary = sorted(word_freq, key=lambda x: (-x[1], x[0]))
         words, _ = list(zip(*dictionary))
-        word_idx = dict(list(zip(words, six.moves.range(len(words)))))
+        word_idx = dict(list(zip(words, range(len(words)))))
         word_idx['<unk>'] = len(words)
         return word_idx
 
@@ -110,20 +113,24 @@ class Imdb(Dataset):
         data = []
         with tarfile.open(self.data_file) as tarf:
             tf = tarf.next()
-            while tf != None:
+            while tf is not None:
                 if bool(pattern.match(tf.name)):
                     # newline and punctuations removal and ad-hoc tokenization.
                     data.append(
-                        tarf.extractfile(tf).read().rstrip(six.b("\n\r"))
-                        .translate(None, six.b(string.punctuation)).lower(
-                        ).split())
+                        tarf.extractfile(tf)
+                        .read()
+                        .rstrip(b'\n\r')
+                        .translate(None, string.punctuation.encode('latin-1'))
+                        .lower()
+                        .split()
+                    )
                 tf = tarf.next()
 
         return data
 
     def _load_anno(self):
-        pos_pattern = re.compile(r"aclImdb/{}/pos/.*\.txt$".format(self.mode))
-        neg_pattern = re.compile(r"aclImdb/{}/neg/.*\.txt$".format(self.mode))
+        pos_pattern = re.compile(fr"aclImdb/{self.mode}/pos/.*\.txt$")
+        neg_pattern = re.compile(fr"aclImdb/{self.mode}/neg/.*\.txt$")
 
         UNK = self.word_idx['<unk>']
 

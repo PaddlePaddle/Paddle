@@ -12,17 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import gzip
 import tarfile
-import numpy as np
-import six
-from six.moves import cPickle as pickle
 
-from paddle.io import Dataset
-import paddle.compat as cpt
+import numpy as np
+
 from paddle.dataset.common import _check_exists_and_download
+from paddle.io import Dataset
 
 __all__ = []
 
@@ -76,7 +72,7 @@ class Conll05st(Dataset):
 
             class SimpleNet(paddle.nn.Layer):
                 def __init__(self):
-                    super(SimpleNet, self).__init__()
+                    super().__init__()
 
                 def forward(self, pred_idx, mark, label):
                     return paddle.sum(pred_idx), paddle.sum(mark), paddle.sum(label)
@@ -92,49 +88,75 @@ class Conll05st(Dataset):
 
                 model = SimpleNet()
                 pred_idx, mark, label= model(pred_idx, mark, label)
-                print(pred_idx.numpy(), mark.numpy(), label.numpy())
+                print(pred_idx, mark, label)
 
     """
 
-    def __init__(self,
-                 data_file=None,
-                 word_dict_file=None,
-                 verb_dict_file=None,
-                 target_dict_file=None,
-                 emb_file=None,
-                 download=True):
+    def __init__(
+        self,
+        data_file=None,
+        word_dict_file=None,
+        verb_dict_file=None,
+        target_dict_file=None,
+        emb_file=None,
+        download=True,
+    ):
         self.data_file = data_file
         if self.data_file is None:
-            assert download, "data_file is not set and downloading automatically is disabled"
+            assert (
+                download
+            ), "data_file is not set and downloading automatically is disabled"
             self.data_file = _check_exists_and_download(
-                data_file, DATA_URL, DATA_MD5, 'conll05st', download)
+                data_file, DATA_URL, DATA_MD5, 'conll05st', download
+            )
 
         self.word_dict_file = word_dict_file
         if self.word_dict_file is None:
-            assert download, "word_dict_file is not set and downloading automatically is disabled"
+            assert (
+                download
+            ), "word_dict_file is not set and downloading automatically is disabled"
             self.word_dict_file = _check_exists_and_download(
-                word_dict_file, WORDDICT_URL, WORDDICT_MD5, 'conll05st',
-                download)
+                word_dict_file,
+                WORDDICT_URL,
+                WORDDICT_MD5,
+                'conll05st',
+                download,
+            )
 
         self.verb_dict_file = verb_dict_file
         if self.verb_dict_file is None:
-            assert download, "verb_dict_file is not set and downloading automatically is disabled"
+            assert (
+                download
+            ), "verb_dict_file is not set and downloading automatically is disabled"
             self.verb_dict_file = _check_exists_and_download(
-                verb_dict_file, VERBDICT_URL, VERBDICT_MD5, 'conll05st',
-                download)
+                verb_dict_file,
+                VERBDICT_URL,
+                VERBDICT_MD5,
+                'conll05st',
+                download,
+            )
 
         self.target_dict_file = target_dict_file
         if self.target_dict_file is None:
-            assert download, "target_dict_file is not set and downloading automatically is disabled"
+            assert (
+                download
+            ), "target_dict_file is not set and downloading automatically is disabled"
             self.target_dict_file = _check_exists_and_download(
-                target_dict_file, TRGDICT_URL, TRGDICT_MD5, 'conll05st',
-                download)
+                target_dict_file,
+                TRGDICT_URL,
+                TRGDICT_MD5,
+                'conll05st',
+                download,
+            )
 
         self.emb_file = emb_file
         if self.emb_file is None:
-            assert download, "emb_file is not set and downloading automatically is disabled"
+            assert (
+                download
+            ), "emb_file is not set and downloading automatically is disabled"
             self.emb_file = _check_exists_and_download(
-                emb_file, EMB_URL, EMB_MD5, 'conll05st', download)
+                emb_file, EMB_URL, EMB_MD5, 'conll05st', download
+            )
 
         self.word_dict = self._load_dict(self.word_dict_file)
         self.predicate_dict = self._load_dict(self.verb_dict_file)
@@ -144,7 +166,7 @@ class Conll05st(Dataset):
         self._load_anno()
 
     def _load_label_dict(self, filename):
-        d = dict()
+        d = {}
         tag_dict = set()
         with open(filename, 'r') as f:
             for i, line in enumerate(f):
@@ -163,7 +185,7 @@ class Conll05st(Dataset):
         return d
 
     def _load_dict(self, filename):
-        d = dict()
+        d = {}
         with open(filename, 'r') as f:
             for i, line in enumerate(f):
                 d[line.strip()] = i
@@ -172,20 +194,23 @@ class Conll05st(Dataset):
     def _load_anno(self):
         tf = tarfile.open(self.data_file)
         wf = tf.extractfile(
-            "conll05st-release/test.wsj/words/test.wsj.words.gz")
+            "conll05st-release/test.wsj/words/test.wsj.words.gz"
+        )
         pf = tf.extractfile(
-            "conll05st-release/test.wsj/props/test.wsj.props.gz")
+            "conll05st-release/test.wsj/props/test.wsj.props.gz"
+        )
         self.sentences = []
         self.predicates = []
         self.labels = []
         with gzip.GzipFile(fileobj=wf) as words_file, gzip.GzipFile(
-                fileobj=pf) as props_file:
+            fileobj=pf
+        ) as props_file:
             sentences = []
             labels = []
             one_seg = []
             for word, label in zip(words_file, props_file):
-                word = cpt.to_text(word.strip())
-                label = cpt.to_text(label.strip().split())
+                word = word.strip().decode()
+                label = label.strip().decode().split()
 
                 if len(label) == 0:  # end of sentence
                     for i in range(len(one_seg[0])):
@@ -204,24 +229,25 @@ class Conll05st(Dataset):
                             lbl_seq = []
                             verb_word = ''
                             for l in lbl:
-                                if l == '*' and is_in_bracket == False:
+                                if l == '*' and not is_in_bracket:
                                     lbl_seq.append('O')
-                                elif l == '*' and is_in_bracket == True:
+                                elif l == '*' and is_in_bracket:
                                     lbl_seq.append('I-' + cur_tag)
                                 elif l == '*)':
                                     lbl_seq.append('I-' + cur_tag)
                                     is_in_bracket = False
                                 elif l.find('(') != -1 and l.find(')') != -1:
-                                    cur_tag = l[1:l.find('*')]
+                                    cur_tag = l[1 : l.find('*')]
                                     lbl_seq.append('B-' + cur_tag)
                                     is_in_bracket = False
                                 elif l.find('(') != -1 and l.find(')') == -1:
-                                    cur_tag = l[1:l.find('*')]
+                                    cur_tag = l[1 : l.find('*')]
                                     lbl_seq.append('B-' + cur_tag)
                                     is_in_bracket = True
                                 else:
-                                    raise RuntimeError('Unexpected label: %s' %
-                                                       l)
+                                    raise RuntimeError(
+                                        'Unexpected label: %s' % l
+                                    )
 
                             self.sentences.append(sentences)
                             self.predicates.append(verb_list[i])
@@ -285,9 +311,17 @@ class Conll05st(Dataset):
         pred_idx = [self.predicate_dict.get(predicate)] * sen_len
         label_idx = [self.label_dict.get(w) for w in labels]
 
-        return (np.array(word_idx), np.array(ctx_n2_idx), np.array(ctx_n1_idx),
-                np.array(ctx_0_idx), np.array(ctx_p1_idx), np.array(ctx_p2_idx),
-                np.array(pred_idx), np.array(mark), np.array(label_idx))
+        return (
+            np.array(word_idx),
+            np.array(ctx_n2_idx),
+            np.array(ctx_n1_idx),
+            np.array(ctx_0_idx),
+            np.array(ctx_p1_idx),
+            np.array(ctx_p2_idx),
+            np.array(pred_idx),
+            np.array(mark),
+            np.array(label_idx),
+        )
 
     def __len__(self):
         return len(self.sentences)
@@ -297,13 +331,13 @@ class Conll05st(Dataset):
         Get the word, verb and label dictionary of Wikipedia corpus.
 
         Examples:
-    
-            .. code-block:: python
-    
-            	from paddle.text.datasets import Conll05st
 
-            	conll05st = Conll05st()
-            	word_dict, predicate_dict, label_dict = conll05st.get_dict()
+            .. code-block:: python
+
+                from paddle.text.datasets import Conll05st
+
+                conll05st = Conll05st()
+                word_dict, predicate_dict, label_dict = conll05st.get_dict()
         """
         return self.word_dict, self.predicate_dict, self.label_dict
 
@@ -312,12 +346,12 @@ class Conll05st(Dataset):
         Get the embedding dictionary file.
 
         Examples:
-    
-            .. code-block:: python
-    
-            	from paddle.text.datasets import Conll05st
 
-            	conll05st = Conll05st()
-            	emb_file = conll05st.get_embedding()
+            .. code-block:: python
+
+                from paddle.text.datasets import Conll05st
+
+                conll05st = Conll05st()
+                emb_file = conll05st.get_embedding()
         """
         return self.emb_file

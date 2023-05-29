@@ -13,14 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/fused/fusion_lstm_op.h"
+
 #include <string>
-#include "paddle/fluid/operators/jit/kernels.h"
-#include "paddle/fluid/operators/math/fc.h"
+
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/fc_functor.h"
+#include "paddle/phi/kernels/funcs/jit/kernels.h"
 #include "paddle/phi/kernels/funcs/sequence2batch.h"
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
-#endif
 
 namespace paddle {
 namespace operators {
@@ -35,85 +34,106 @@ void FusionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
   OP_INOUT_CHECK(ctx->HasOutput("Cell"), "Output", "Cell", "fusion_lstm");
 
   auto x_dims = ctx->GetInputDim("X");
-  PADDLE_ENFORCE_EQ(x_dims.size(), 2,
+  PADDLE_ENFORCE_EQ(x_dims.size(),
+                    2,
                     platform::errors::InvalidArgument(
                         "Input(X)'s rank must be 2, but received x's rank "
                         "is:%d, x dim is:[%s]",
-                        x_dims.size(), x_dims));
+                        x_dims.size(),
+                        x_dims));
 
   if (ctx->HasInput("H0")) {
     OP_INOUT_CHECK(ctx->HasInput("C0"), "Input", "C0", "fusion_lstm");
     auto h_dims = ctx->GetInputDim("H0");
     auto c_dims = ctx->GetInputDim("C0");
-    PADDLE_ENFORCE_EQ(h_dims, c_dims,
+    PADDLE_ENFORCE_EQ(h_dims,
+                      c_dims,
                       platform::errors::InvalidArgument(
                           "The dimension of Input(H0) and Input(C0) should be "
                           "same, but received h0 dims is:[%s], c0 dims is:[%s]",
-                          h_dims, c_dims));
+                          h_dims,
+                          c_dims));
   }
 
   auto wx_dims = ctx->GetInputDim("WeightX");
-  PADDLE_ENFORCE_EQ(wx_dims.size(), 2,
+  PADDLE_ENFORCE_EQ(wx_dims.size(),
+                    2,
                     platform::errors::InvalidArgument(
                         "The rank of Input(WeightX) should be 2, but received "
                         "WeightX's rank is:%d, WeightX dim is:[%s]",
-                        wx_dims.size(), wx_dims));
-  PADDLE_ENFORCE_EQ(wx_dims[0], x_dims[1],
+                        wx_dims.size(),
+                        wx_dims));
+  PADDLE_ENFORCE_EQ(wx_dims[0],
+                    x_dims[1],
                     platform::errors::InvalidArgument(
                         "The first dimension of Input(WeightX) "
                         "should equal to second dimension of Input(X), but "
                         "received WeightX first dim is:%d, X second dim is:%d",
-                        wx_dims[0], x_dims[1]));
+                        wx_dims[0],
+                        x_dims[1]));
 
   int frame_size = wx_dims[1] / 4;
   auto wh_dims = ctx->GetInputDim("WeightH");
 
-  PADDLE_ENFORCE_EQ(wh_dims.size(), 2,
+  PADDLE_ENFORCE_EQ(wh_dims.size(),
+                    2,
                     platform::errors::InvalidArgument(
                         "The rank of Input(WeightH) should be 2, but received "
                         "WeightH rank is:%d, WeightH dim is:[%s]",
-                        wh_dims.size(), wh_dims));
-  PADDLE_ENFORCE_EQ(wh_dims[0], frame_size,
+                        wh_dims.size(),
+                        wh_dims));
+  PADDLE_ENFORCE_EQ(wh_dims[0],
+                    frame_size,
                     platform::errors::InvalidArgument(
                         "The first dimension of Input(WeightH) "
                         "should equal to frame size, but received WeightH "
                         "first dim is:%d, frame size is:%d.",
-                        wh_dims[0], frame_size));
+                        wh_dims[0],
+                        frame_size));
 
-  PADDLE_ENFORCE_EQ(wh_dims[1], 4 * frame_size,
+  PADDLE_ENFORCE_EQ(wh_dims[1],
+                    4 * frame_size,
                     platform::errors::InvalidArgument(
                         "The second dimension of Input(WeightH) "
                         "should equal to 4 * frame_size, but received WeightH "
                         "second dimension is:%d, frame size is:%d.",
-                        wh_dims[1], frame_size));
+                        wh_dims[1],
+                        frame_size));
 
   auto b_dims = ctx->GetInputDim("Bias");
-  PADDLE_ENFORCE_EQ(b_dims.size(), 2,
+  PADDLE_ENFORCE_EQ(b_dims.size(),
+                    2,
                     platform::errors::InvalidArgument(
                         "The rank of Input(Bias) should be 2, but received "
                         "Bias rank is:%d, Bias dim is:[%s]",
-                        b_dims.size(), b_dims));
-  PADDLE_ENFORCE_EQ(b_dims[0], 1,
+                        b_dims.size(),
+                        b_dims));
+  PADDLE_ENFORCE_EQ(b_dims[0],
+                    1,
                     platform::errors::InvalidArgument(
                         "The first dimension of Input(Bias) should be 1, but "
                         "received Bias's dimension is:[%s]",
                         b_dims));
 
   if (ctx->Attrs().Get<bool>("use_peepholes")) {
-    PADDLE_ENFORCE_EQ(b_dims[1], 7 * frame_size,
+    PADDLE_ENFORCE_EQ(b_dims[1],
+                      7 * frame_size,
                       platform::errors::InvalidArgument(
                           "The second dimension of Input(Bias) should be "
                           "7 * %d if enable peepholes connection, but received "
                           "Bias dim is:[%s]",
-                          frame_size, b_dims));
+                          frame_size,
+                          b_dims));
     ctx->SetOutputDim("CheckedCell", {2, frame_size});
   } else {
     PADDLE_ENFORCE_EQ(
-        b_dims[1], 4 * frame_size,
+        b_dims[1],
+        4 * frame_size,
         platform::errors::InvalidArgument(
             "The second dimension of Input(Bias) should be "
             "4 * %d if disable peepholes, but received Bias dim is:[%s]",
-            frame_size, b_dims));
+            frame_size,
+            b_dims));
   }
 
   framework::DDim out_dims({x_dims[0], frame_size});
@@ -127,16 +147,20 @@ void FusionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
   } else {
     xx_width = x_dims[1] > wx_dims[1] ? wx_dims[1] : x_dims[1];
 
-    OP_INOUT_CHECK(ctx->HasOutput("BatchedInput"), "Output", "BatchedInput",
+    OP_INOUT_CHECK(ctx->HasOutput("BatchedInput"),
+                   "Output",
+                   "BatchedInput",
                    "fusion_lstm");
-    OP_INOUT_CHECK(ctx->HasOutput("BatchedHidden"), "Output", "BatchedHidden",
+    OP_INOUT_CHECK(ctx->HasOutput("BatchedHidden"),
+                   "Output",
+                   "BatchedHidden",
                    "fusion_lstm");
-    OP_INOUT_CHECK(ctx->HasOutput("BatchedCell"), "Output", "BatchedCell",
-                   "fusion_lstm");
-    OP_INOUT_CHECK(ctx->HasOutput("ReorderedH0"), "Output", "ReorderedH0",
-                   "fusion_lstm");
-    OP_INOUT_CHECK(ctx->HasOutput("ReorderedC0"), "Output", "ReorderedC0",
-                   "fusion_lstm");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("BatchedCell"), "Output", "BatchedCell", "fusion_lstm");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("ReorderedH0"), "Output", "ReorderedH0", "fusion_lstm");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("ReorderedC0"), "Output", "ReorderedC0", "fusion_lstm");
 
     ctx->SetOutputDim("BatchedInput", {x_dims[0], wx_dims[1]});
     ctx->SetOutputDim("BatchedHidden", out_dims);
@@ -146,37 +170,31 @@ void FusionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
   ctx->ShareLoD("X", "XX");
 }
 
-framework::OpKernelType FusionLSTMOp::GetExpectedKernelType(
+phi::KernelKey FusionLSTMOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  framework::LibraryType library = framework::LibraryType::kPlain;
-  framework::DataLayout layout = framework::DataLayout::kAnyLayout;
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-#ifdef PADDLE_WITH_MKLDNN
-  if (this->CanMKLDNNBeUsed(ctx, data_type)) {
-    library = framework::LibraryType::kMKLDNN;
-    layout = framework::DataLayout::kMKLDNN;
-  }
-#endif
-  return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
+  return phi::KernelKey(data_type, ctx.GetPlace());
 }
 
 void FusionLSTMOpMaker::Make() {
-  AddInput("X",
-           "(LoDTensor) the input is a LodTensor, which support "
-           "variable-time length input sequence. The underlying tensor in "
-           "this LoDTensor is a matrix with shape (T X M), where T is the "
-           "total time steps in this mini-batch, M is the dim size of x.");
+  AddInput(
+      "X",
+      "(phi::DenseTensor) the input is a LodTensor, which support "
+      "variable-time length input sequence. The underlying tensor in "
+      "this phi::DenseTensor is a matrix with shape (T X M), where T is the "
+      "total time steps in this mini-batch, M is the dim size of x.");
   AddInput("WeightX",
-           "(Tensor) the learnable weights of X."
+           "(phi::DenseTensor) the learnable weights of X."
            " - The shape is (M x 4D), where M is the dim size of x, D is the "
            "hidden size. "
            " - Weight = {W_cx, W_ix, W_fx, W_ox}");
-  AddInput("WeightH",
-           "(Tensor) same as LSTMOp, the learnable hidden-hidden weights."
-           " - The shape is (D x 4D), where D is the hidden size. "
-           " - Weight = {W_ch, W_ih, W_fh, W_oh}");
+  AddInput(
+      "WeightH",
+      "(phi::DenseTensor) same as LSTMOp, the learnable hidden-hidden weights."
+      " - The shape is (D x 4D), where D is the hidden size. "
+      " - Weight = {W_ch, W_ih, W_fh, W_oh}");
   AddInput("Bias",
-           "(Tensor) the learnable weights. Almost same as LSTMOp"
+           "(phi::DenseTensor) the learnable weights. Almost same as LSTMOp"
            "Note: we should add the fc bias into this (1x4D) in bias."
            "input-hidden bias weight and peephole connections weight if "
            "setting `use_peepholes` True. "
@@ -187,35 +205,39 @@ void FusionLSTMOpMaker::Make() {
            " - The shape is (1 x 7D). "
            " - Bias = {b_c, b_i, b_f, b_o, W_ic, W_fc, W_oc}.");
   AddInput("H0",
-           "(Tensor, optional) (same as LSTMOp) the initial hidden state is an "
+           "(phi::DenseTensor, optional) (same as LSTMOp) the initial hidden "
+           "state is an "
            "optional "
            "input. This is a tensor with shape (N x D), where N is the "
            "batch size and D is the hidden size.")
       .AsDispensable();
   AddInput("C0",
-           "(Tensor, optional) (same as LSTMOp) (the initial cell state is an "
+           "(phi::DenseTensor, optional) (same as LSTMOp) (the initial cell "
+           "state is an "
            "optional "
            "input. This is a tensor with shape (N x D), where N is the "
            "batch size. `H0` and `C0` can be NULL but only at the same time.")
       .AsDispensable();
-  AddOutput("Hidden",
-            "(LoDTensor) (same as LSTMOp) the hidden state of LSTM operator. "
-            "The shape is (T x D), and lod is the same with the `Input`.");
-  AddOutput("Cell",
-            "(LoDTensor) (same as LSTMOp) the cell state of LSTM operator. "
-            "The shape is (T x D), and lod is the same with the `Input`.");
+  AddOutput(
+      "Hidden",
+      "(phi::DenseTensor) (same as LSTMOp) the hidden state of LSTM operator. "
+      "The shape is (T x D), and lod is the same with the `Input`.");
+  AddOutput(
+      "Cell",
+      "(phi::DenseTensor) (same as LSTMOp) the cell state of LSTM operator. "
+      "The shape is (T x D), and lod is the same with the `Input`.");
   AddOutput("XX",
-            "(LoDTensor) the result after X * WeightX (size is T x 4D)"
+            "(phi::DenseTensor) the result after X * WeightX (size is T x 4D)"
             " or batched_X (size is T x M), this will be automatically chosen,"
             " where T is the total time steps in this mini-batch,"
             " D is the hidden size, M is the dim size of x input.")
       .AsIntermediate();
-  AddOutput("BatchedInput", "(LoDTensor) (T x 4D).").AsIntermediate();
-  AddOutput("BatchedHidden", "(LoDTensor) (T x D).").AsIntermediate();
-  AddOutput("BatchedCell", "(LoDTensor) (T x D).").AsIntermediate();
-  AddOutput("ReorderedH0", "(LoDTensor) (N x D).").AsIntermediate();
-  AddOutput("ReorderedC0", "(LoDTensor) (N x D).").AsIntermediate();
-  AddOutput("CheckedCell", "(Tensor) (2 x D) only for peephole.")
+  AddOutput("BatchedInput", "(phi::DenseTensor) (T x 4D).").AsIntermediate();
+  AddOutput("BatchedHidden", "(phi::DenseTensor) (T x D).").AsIntermediate();
+  AddOutput("BatchedCell", "(phi::DenseTensor) (T x D).").AsIntermediate();
+  AddOutput("ReorderedH0", "(phi::DenseTensor) (N x D).").AsIntermediate();
+  AddOutput("ReorderedC0", "(phi::DenseTensor) (N x D).").AsIntermediate();
+  AddOutput("CheckedCell", "(phi::DenseTensor) (2 x D) only for peephole.")
       .AsIntermediate();
   AddAttr<bool>("use_peepholes",
                 "(bool, default: True) "
@@ -276,61 +298,72 @@ This operator fuse the X into LSTM, more details can refer to LSTM op.
 )DOC");
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class FuisonLSTMKernel : public framework::OpKernel<T> {
  public:
-#define INIT_BASE_DEFINES                                   \
-  using DeviceContext = paddle::platform::CPUDeviceContext; \
-  auto* x = ctx.Input<LoDTensor>("X");                      \
-  auto* h0 = ctx.Input<Tensor>("H0");                       \
-  auto* c0 = ctx.Input<Tensor>("C0");                       \
-  auto* wx = ctx.Input<Tensor>("WeightX");                  \
-  auto* wh = ctx.Input<Tensor>("WeightH");                  \
-  auto* bias = ctx.Input<Tensor>("Bias");                   \
-  auto* xx = ctx.Output<LoDTensor>("XX");                   \
-  auto* hidden_out = ctx.Output<LoDTensor>("Hidden");       \
-  auto* cell_out = ctx.Output<LoDTensor>("Cell");           \
-  bool is_reverse = ctx.Attr<bool>("is_reverse");           \
-  bool use_peepholes = ctx.Attr<bool>("use_peepholes");     \
-  auto x_dims = x->dims();   /* T x M*/                     \
-  auto wh_dims = wh->dims(); /* D x 4D*/                    \
-  const int M = x_dims[1];                                  \
-  const int D = wh_dims[0];                                 \
+#define INIT_BASE_DEFINES                                    \
+  auto* x = ctx.Input<phi::DenseTensor>("X");                \
+  auto* h0 = ctx.Input<phi::DenseTensor>("H0");              \
+  auto* c0 = ctx.Input<phi::DenseTensor>("C0");              \
+  auto* wx = ctx.Input<phi::DenseTensor>("WeightX");         \
+  auto* wh = ctx.Input<phi::DenseTensor>("WeightH");         \
+  auto* bias = ctx.Input<phi::DenseTensor>("Bias");          \
+  auto* xx = ctx.Output<phi::DenseTensor>("XX");             \
+  auto* hidden_out = ctx.Output<phi::DenseTensor>("Hidden"); \
+  auto* cell_out = ctx.Output<phi::DenseTensor>("Cell");     \
+  bool is_reverse = ctx.Attr<bool>("is_reverse");            \
+  bool use_peepholes = ctx.Attr<bool>("use_peepholes");      \
+  auto x_dims = x->dims();   /* T x M*/                      \
+  auto wh_dims = wh->dims(); /* D x 4D*/                     \
+  const int M = x_dims[1];                                   \
+  const int D = wh_dims[0];                                  \
   const int D4 = wh_dims[1]
 
-#define INIT_OTHER_DEFINES                                                     \
-  const T* x_data = x->data<T>();                                              \
-  const T* wx_data = wx->data<T>();                                            \
-  const T* wh_data = wh->data<T>();                                            \
-  /* diagonal weight*/                                                         \
-  const T* wp_data = bias->data<T>() + D4;                                     \
-  /* for peephole only*/                                                       \
-  T* checked_cell_data = nullptr;                                              \
-  auto place = ctx.GetPlace();                                                 \
-  if (use_peepholes) {                                                         \
-    /* w_ic * Ct-1, w_fc * Ct-1  ; w_oc * Ct => ih*/                           \
-    auto* checked_cell = ctx.Output<Tensor>("CheckedCell");                    \
-    checked_cell_data = checked_cell->mutable_data<T>(place);                  \
-  }                                                                            \
-  const jit::lstm_attr_t attr(                                                 \
-      D, jit::to_kerneltype(ctx.Attr<std::string>("gate_activation")),         \
-      jit::to_kerneltype(ctx.Attr<std::string>("candidate_activation")),       \
-      jit::to_kerneltype(ctx.Attr<std::string>("cell_activation")),            \
-      use_peepholes);                                                          \
-  jit::lstm_t one_step;                                                        \
-  one_step.wp = wp_data;                                                       \
-  one_step.checked = checked_cell_data;                                        \
-  auto ComputeC1H1 =                                                           \
-      jit::KernelFuncs<jit::LSTMC1H1Tuple<T>, platform::CPUPlace>::Cache().At( \
-          attr);                                                               \
-  auto ComputeCtHt =                                                           \
-      jit::KernelFuncs<jit::LSTMCtHtTuple<T>, platform::CPUPlace>::Cache().At( \
-          attr)
+#define INIT_OTHER_DEFINES                                                    \
+  const T* x_data = x->data<T>();                                             \
+  const T* wx_data = wx->data<T>();                                           \
+  const T* wh_data = wh->data<T>();                                           \
+  /* diagonal weight*/                                                        \
+  const T* wp_data = bias->data<T>() + D4;                                    \
+  /* for peephole only*/                                                      \
+  T* checked_cell_data = nullptr;                                             \
+  auto place = ctx.GetPlace();                                                \
+  if (use_peepholes) {                                                        \
+    /* w_ic * Ct-1, w_fc * Ct-1  ; w_oc * Ct => ih*/                          \
+    auto* checked_cell = ctx.Output<phi::DenseTensor>("CheckedCell");         \
+    checked_cell_data = checked_cell->mutable_data<T>(place);                 \
+  }                                                                           \
+  const phi::jit::lstm_attr_t attr(                                           \
+      D,                                                                      \
+      phi::jit::to_kerneltype(ctx.Attr<std::string>("gate_activation")),      \
+      phi::jit::to_kerneltype(ctx.Attr<std::string>("candidate_activation")), \
+      phi::jit::to_kerneltype(ctx.Attr<std::string>("cell_activation")),      \
+      use_peepholes);                                                         \
+  phi::jit::lstm_t one_step;                                                  \
+  one_step.wp = wp_data;                                                      \
+  one_step.checked = checked_cell_data;                                       \
+  auto ComputeC1H1 = phi::jit::KernelFuncs<phi::jit::LSTMC1H1Tuple<T>,        \
+                                           platform::CPUPlace>::Cache()       \
+                         .At(attr);                                           \
+  auto ComputeCtHt = phi::jit::KernelFuncs<phi::jit::LSTMCtHtTuple<T>,        \
+                                           platform::CPUPlace>::Cache()       \
+                         .At(attr)
 
 // Wh GEMM
-#define GEMM_WH_ADDON(bs, prev, out)                                           \
-  blas.GEMM(CblasNoTrans, CblasNoTrans, bs, D4, D, static_cast<T>(1), prev, D, \
-            wh_data, D4, static_cast<T>(1), out, D4)
+#define GEMM_WH_ADDON(bs, prev, out) \
+  blas.GEMM(CblasNoTrans,            \
+            CblasNoTrans,            \
+            bs,                      \
+            D4,                      \
+            D,                       \
+            static_cast<T>(1),       \
+            prev,                    \
+            D,                       \
+            wh_data,                 \
+            D4,                      \
+            static_cast<T>(1),       \
+            out,                     \
+            D4)
 
   void SeqCompute(const framework::ExecutionContext& ctx) const {
     INIT_BASE_DEFINES;
@@ -343,10 +376,10 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
     T* xx_data = xx->mutable_data<T>(place);
     T* h_out_data = hidden_out->mutable_data<T>(place);
     T* c_out_data = cell_out->mutable_data<T>(place);
-    auto blas = phi::funcs::GetBlas<DeviceContext, T>(ctx);
-
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    math::FCFunctor<DeviceContext, T> fc;
+    auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
+
+    phi::funcs::FCFunctor<DeviceContext, T> fc;
     fc(dev_ctx, total_T, D4, M, x_data, wx_data, xx_data, bias->data<T>());
 
     int xx_offset = D4;
@@ -409,11 +442,11 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
     }
     INIT_OTHER_DEFINES;
 
-    auto* reordered_h0 = ctx.Output<Tensor>("ReorderedH0");
-    auto* reordered_c0 = ctx.Output<Tensor>("ReorderedC0");
-    auto* batched_input = ctx.Output<LoDTensor>("BatchedInput");
-    auto* batched_c_out = ctx.Output<LoDTensor>("BatchedCell");
-    auto* batched_h_out = ctx.Output<LoDTensor>("BatchedHidden");
+    auto* reordered_h0 = ctx.Output<phi::DenseTensor>("ReorderedH0");
+    auto* reordered_c0 = ctx.Output<phi::DenseTensor>("ReorderedC0");
+    auto* batched_input = ctx.Output<phi::DenseTensor>("BatchedInput");
+    auto* batched_c_out = ctx.Output<phi::DenseTensor>("BatchedCell");
+    auto* batched_h_out = ctx.Output<phi::DenseTensor>("BatchedHidden");
     T* xx_data = xx->mutable_data<T>(place);
     T* batched_input_data = batched_input->mutable_data<T>(place);
     T* batched_c_out_data = batched_c_out->mutable_data<T>(place);
@@ -424,14 +457,20 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
     phi::funcs::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     auto blas = phi::funcs::GetBlas<DeviceContext, T>(dev_ctx);
-    math::FCFunctor<DeviceContext, T> fc;
+    phi::funcs::FCFunctor<DeviceContext, T> fc;
     if (M > D4) {
       fc(dev_ctx, x_dims[0], D4, M, x_data, wx_data, xx_data, bias->data<T>());
       to_batch(dev_ctx, *xx, batched_input, true, is_reverse);
     } else {
       to_batch(dev_ctx, *x, xx, true, is_reverse);
       batched_input->set_lod(xx->lod());
-      fc(dev_ctx, x_dims[0], D4, M, xx_data, wx_data, batched_input_data,
+      fc(dev_ctx,
+         x_dims[0],
+         D4,
+         M,
+         xx_data,
+         wx_data,
+         batched_input_data,
          bias->data<T>());
     }
 
@@ -540,5 +579,5 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(fusion_lstm, ops::FusionLSTMOp, ops::FusionLSTMOpMaker);
 
-REGISTER_OP_CPU_KERNEL(fusion_lstm, ops::FuisonLSTMKernel<float>,
-                       ops::FuisonLSTMKernel<double>);
+PD_REGISTER_STRUCT_KERNEL(
+    fusion_lstm, CPU, ALL_LAYOUT, ops::FuisonLSTMKernel, float, double) {}

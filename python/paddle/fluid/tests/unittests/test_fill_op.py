@@ -12,27 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
-from op_test import OpTest
-import paddle.fluid.core as core
-from paddle.fluid.op import Operator
+from eager_op_test import OpTest, convert_float_to_uint16
+from op import Operator
+
+from paddle.fluid import core
 
 
 class TestFillOp1(OpTest):
     def setUp(self):
         self.op_type = "fill"
+        self.init_dtype()
         val = np.random.random(size=[100, 200])
         self.inputs = {}
         self.attrs = {
             'value': val.flatten().tolist(),
             'shape': [100, 200],
             'dtype': int(core.VarDesc.VarType.FP64),
-            'force_cpu': False
+            'force_cpu': False,
         }
         self.outputs = {'Out': val.astype('float64')}
+
+    def init_dtype(self):
+        self.dtype = np.float64
 
     def test_check_output(self):
         self.check_output()
@@ -47,7 +51,7 @@ class TestFillOp2(OpTest):
             'value': val.flatten().tolist(),
             'shape': [100, 200],
             'dtype': int(core.VarDesc.VarType.FP64),
-            'force_cpu': True
+            'force_cpu': True,
         }
         self.outputs = {'Out': val.astype('float64')}
 
@@ -69,14 +73,15 @@ class TestFillOp3(unittest.TestCase):
             shape=[300, 200],
             dtype=int(core.VarDesc.VarType.FP32),
             force_cpu=f_cpu,
-            Out='Out')
+            Out='Out',
+        )
         fill_op.run(scope, place)
 
         # get result from Out
         result_array = np.array(out)
         full_array = np.array(val, 'float32')
 
-        self.assertTrue(np.array_equal(result_array, full_array))
+        np.testing.assert_array_equal(result_array, full_array)
 
     def test_fill_op(self):
         places = [core.CPUPlace()]
@@ -86,6 +91,35 @@ class TestFillOp3(unittest.TestCase):
         for place in places:
             self.check_with_place(place, True)
             self.check_with_place(place, False)
+
+
+class TestFillFP16OP(TestFillOp1):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestFillBF16OP(OpTest):
+    def setUp(self):
+        self.op_type = "fill"
+        self.dtype = np.uint16
+        val = np.random.random(size=[100, 200])
+        self.inputs = {}
+        self.attrs = {
+            'value': val.flatten().tolist(),
+            'shape': [100, 200],
+            'dtype': int(core.VarDesc.VarType.BF16),
+            'force_cpu': False,
+        }
+        self.outputs = {'Out': convert_float_to_uint16(val)}
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
 
 
 if __name__ == '__main__':

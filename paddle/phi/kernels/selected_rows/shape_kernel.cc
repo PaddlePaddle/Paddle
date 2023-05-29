@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/selected_rows/shape_kernel.h"
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/float16.h"
@@ -44,7 +45,11 @@ PD_REGISTER_KERNEL(shape_sr,
                    float,
                    double,
                    phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::dtype::complex<double>) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->OutputAt(0).SetBackend(phi::Backend::CPU);
+  kernel->OutputAt(0).SetDataType(phi::DataType::INT32);
+}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PD_REGISTER_KERNEL(shape_sr,
@@ -59,5 +64,29 @@ PD_REGISTER_KERNEL(shape_sr,
                    float,
                    double,
                    phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::dtype::complex<double>) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->OutputAt(0).SetBackend(phi::Backend::CPU);
+  kernel->OutputAt(0).SetDataType(phi::DataType::INT32);
+}
+#endif
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+PD_REGISTER_KERNEL(shape_sr,
+                   Custom,
+                   ALL_LAYOUT,
+                   phi::sr::ShapeKernel,
+                   bool,
+                   int,
+                   int8_t,
+                   uint8_t,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {
+  kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
+  kernel->OutputAt(0).SetBackend(phi::Backend::CPU);
+  kernel->OutputAt(0).SetDataType(phi::DataType::INT32);
+}
 #endif

@@ -2,13 +2,17 @@ add_subdirectory(eigen)
 add_subdirectory(blas)
 add_subdirectory(lapack)
 add_subdirectory(detail)
+add_subdirectory(jit)
 
-math_library(concat_and_split_functor DEPS dense_tensor)
-math_library(gru_compute DEPS activation_functions math_function)
-math_library(lstm_compute DEPS activation_functions)
-math_library(math_function DEPS blas dense_tensor tensor)
-math_library(matrix_reduce DEPS dense_tensor)
-math_library(matrix_inverse DEPS dense_tensor eigen3 blas)
-math_library(pooling DEPS dense_tensor)
-math_library(segment_pooling)
-math_library(sequence2batch)
+file(
+  GLOB func_cc_srcs
+  RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+  "*.cc")
+if(WITH_GPU OR WITH_ROCM)
+  file(
+    GLOB func_cu_srcs
+    RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+    "*.cu")
+endif()
+
+collect_srcs(kernels_srcs SRCS ${func_cc_srcs} ${func_cu_srcs})

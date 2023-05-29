@@ -11,12 +11,11 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/shuffle_channel_op.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
 static constexpr int kNumCUDAThreads = 512;
 static constexpr int kNumMaximumNumBlocks = 4096;
 
@@ -26,9 +25,13 @@ static inline int NumBlocks(const int N) {
 }
 
 template <typename T>
-__global__ void ShuffleChannel(const int nthreads, const int feature_map_size,
-                               T* output, const T* input, int group_row,
-                               int group_column, int len) {
+__global__ void ShuffleChannel(const int nthreads,
+                               const int feature_map_size,
+                               T* output,
+                               const T* input,
+                               int group_row,
+                               int group_column,
+                               int len) {
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   int offset = blockDim.x * gridDim.x;
   for (size_t ii = index; ii < nthreads; ii += offset) {
@@ -40,12 +43,12 @@ __global__ void ShuffleChannel(const int nthreads, const int feature_map_size,
     p_o[k] = input[index];
   }
 }
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class ShuffleChannelOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<framework::Tensor>("X");
-    auto* output = ctx.Output<framework::Tensor>("Out");
+    auto* input = ctx.Input<phi::DenseTensor>("X");
+    auto* output = ctx.Output<phi::DenseTensor>("Out");
     int group = ctx.Attr<int>("group");
 
     auto input_dims = input->dims();
@@ -67,21 +70,26 @@ class ShuffleChannelOpCUDAKernel : public framework::OpKernel<T> {
     const T* input_data = input->data<T>();
     T* output_data = output->mutable_data<T>(ctx.GetPlace());
 
-    ShuffleChannel<
-        T><<<blocks, threads, 0, ctx.cuda_device_context().stream()>>>(
-        count, feature_map_size, output_data, input_data, group_row,
-        group_column, sp_sz);
+    ShuffleChannel<T>
+        <<<blocks, threads, 0, ctx.cuda_device_context().stream()>>>(
+            count,
+            feature_map_size,
+            output_data,
+            input_data,
+            group_row,
+            group_column,
+            sp_sz);
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class ShuffleChannelGradOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* output_grad =
-        ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+        ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     auto* input_grad =
-        ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
 
     int group = ctx.Attr<int>("group");
 
@@ -103,24 +111,30 @@ class ShuffleChannelGradOpCUDAKernel : public framework::OpKernel<T> {
     int threads = kNumCUDAThreads;
     int count = num * group_column * group_row * sp_sz;
 
-    ShuffleChannel<
-        T><<<blocks, threads, 0, ctx.cuda_device_context().stream()>>>(
-        count, feature_map_size, input_grad_data, output_grad_data, group_row,
-        group_column, sp_sz);
+    ShuffleChannel<T>
+        <<<blocks, threads, 0, ctx.cuda_device_context().stream()>>>(
+            count,
+            feature_map_size,
+            input_grad_data,
+            output_grad_data,
+            group_row,
+            group_column,
+            sp_sz);
   }
 };
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    shuffle_channel,
-    ops::ShuffleChannelOpCUDAKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::ShuffleChannelOpCUDAKernel<paddle::platform::CUDADeviceContext,
-                                    double>);
-REGISTER_OP_CUDA_KERNEL(
-    shuffle_channel_grad,
-    ops::ShuffleChannelGradOpCUDAKernel<paddle::platform::CUDADeviceContext,
-                                        float>,
-    ops::ShuffleChannelGradOpCUDAKernel<paddle::platform::CUDADeviceContext,
-                                        double>);
+PD_REGISTER_STRUCT_KERNEL(shuffle_channel,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::ShuffleChannelOpCUDAKernel,
+                          float,
+                          double) {}
+PD_REGISTER_STRUCT_KERNEL(shuffle_channel_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::ShuffleChannelGradOpCUDAKernel,
+                          float,
+                          double) {}

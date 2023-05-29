@@ -16,7 +16,7 @@
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
@@ -46,15 +46,23 @@ static void kthvalueAssign(const Type& input_height,
 
 template <typename T, typename Context>
 void KthvalueGradKernel(const Context& dev_ctx,
-                        const DenseTensor& d_out,
                         const DenseTensor& x,
                         const DenseTensor& indices,
-                        int k,
+                        const DenseTensor& d_out,
+                        int k UNUSED,
                         int axis,
                         bool keepdim,
                         DenseTensor* d_x) {
   auto in_dims = x.dims();
   auto out_dims = indices.dims();
+  T* x_grad_data = dev_ctx.template Alloc<T>(d_x);
+
+  // For 0D Tensor
+  if (in_dims.size() == 0) {
+    phi::funcs::set_constant(dev_ctx, d_x, 1.0);
+    return;
+  }
+
   axis = (axis < 0) ? (in_dims.size() + axis) : axis;
   if (!keepdim) {
     std::vector<int> tmp_out_shape;
@@ -67,7 +75,7 @@ void KthvalueGradKernel(const Context& dev_ctx,
     }
     out_dims = phi::make_ddim(tmp_out_shape);
   }
-  T* x_grad_data = dev_ctx.template Alloc<T>(d_x);
+
   if (axis == in_dims.size() - 1) {
     const int64_t input_height =
         phi::product(phi::slice_ddim(in_dims, 0, in_dims.size() - 1));

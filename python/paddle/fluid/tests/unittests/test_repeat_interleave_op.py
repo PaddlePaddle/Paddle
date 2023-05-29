@@ -12,29 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
-import paddle
+
 import numpy as np
-import paddle.fluid.core as core
-from op_test import OpTest
-import paddle.fluid as fluid
+from eager_op_test import OpTest
+
+import paddle
+from paddle import fluid
 from paddle.fluid import Program, program_guard
 
 
 class TestRepeatInterleaveOp(OpTest):
     def setUp(self):
         self.op_type = "repeat_interleave"
+        self.python_api = paddle.repeat_interleave
         self.init_dtype_type()
         index_np = np.random.randint(
-            low=0, high=3, size=self.index_size).astype(self.index_type)
+            low=0, high=3, size=self.index_size
+        ).astype(self.index_type)
         x_np = np.random.random(self.x_shape).astype(self.x_type)
+
         self.inputs = {'X': x_np, 'RepeatsTensor': index_np}
         self.attrs = {'dim': self.dim}
 
-        outer_loop = np.prod(self.x_shape[:self.dim])
-        x_reshape = [outer_loop] + list(self.x_shape[self.dim:])
+        outer_loop = np.prod(self.x_shape[: self.dim])
+        x_reshape = [outer_loop] + list(self.x_shape[self.dim :])
         x_np_reshape = np.reshape(x_np, tuple(x_reshape))
         out_list = []
         for i in range(outer_loop):
@@ -65,14 +67,15 @@ class TestRepeatInterleaveOp(OpTest):
 class TestRepeatInterleaveOp2(OpTest):
     def setUp(self):
         self.op_type = "repeat_interleave"
+        self.python_api = paddle.repeat_interleave
         self.init_dtype_type()
         index_np = 2
         x_np = np.random.random(self.x_shape).astype(self.x_type)
-        self.inputs = {'X': x_np}  #, 'RepeatsTensor': None}
+        self.inputs = {'X': x_np}  # , 'RepeatsTensor': None}
         self.attrs = {'dim': self.dim, 'Repeats': index_np}
 
-        outer_loop = np.prod(self.x_shape[:self.dim])
-        x_reshape = [outer_loop] + list(self.x_shape[self.dim:])
+        outer_loop = np.prod(self.x_shape[: self.dim])
+        x_reshape = [outer_loop] + list(self.x_shape[self.dim :])
         x_np_reshape = np.reshape(x_np, tuple(x_reshape))
         out_list = []
         for i in range(outer_loop):
@@ -101,8 +104,14 @@ class TestRepeatInterleaveOp2(OpTest):
 
 class TestIndexSelectAPI(unittest.TestCase):
     def input_data(self):
-        self.data_x = np.array([[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0],
-                                [9.0, 10.0, 11.0, 12.0]])
+        self.data_zero_dim_x = np.array(0.5)
+        self.data_x = np.array(
+            [
+                [1.0, 2.0, 3.0, 4.0],
+                [5.0, 6.0, 7.0, 8.0],
+                [9.0, 10.0, 11.0, 12.0],
+            ]
+        )
         self.data_index = np.array([0, 1, 2, 1]).astype('int32')
 
     def test_repeat_interleave_api(self):
@@ -111,51 +120,93 @@ class TestIndexSelectAPI(unittest.TestCase):
 
         # case 1:
         with program_guard(Program(), Program()):
-            x = fluid.layers.data(name='x', shape=[-1, 4])
-            index = fluid.layers.data(
-                name='repeats',
+            x = paddle.static.data(name='x', shape=[-1, 4], dtype='float32')
+            x.desc.set_need_check_feed(False)
+            index = paddle.static.data(
+                name='repeats_',
                 shape=[4],
                 dtype='int32',
-                append_batch_size=False)
+            )
+            index.desc.set_need_check_feed(False)
             z = paddle.repeat_interleave(x, index, axis=1)
             exe = fluid.Executor(fluid.CPUPlace())
-            res, = exe.run(feed={'x': self.data_x,
-                                 'repeats': self.data_index},
-                           fetch_list=[z.name],
-                           return_numpy=False)
+            (res,) = exe.run(
+                feed={'x': self.data_x, 'repeats_': self.data_index},
+                fetch_list=[z.name],
+                return_numpy=False,
+            )
         expect_out = np.repeat(self.data_x, self.data_index, axis=1)
-        self.assertTrue(np.allclose(expect_out, np.array(res)))
+        np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
         # case 2:
         repeats = np.array([1, 2, 1]).astype('int32')
         with program_guard(Program(), Program()):
-            x = fluid.layers.data(name='x', shape=[-1, 4])
-            index = fluid.layers.data(
-                name='repeats',
+            x = paddle.static.data(name='x', shape=[-1, 4], dtype="float32")
+            x.desc.set_need_check_feed(False)
+            index = paddle.static.data(
+                name='repeats_',
                 shape=[3],
                 dtype='int32',
-                append_batch_size=False)
+            )
+            index.desc.set_need_check_feed(False)
             z = paddle.repeat_interleave(x, index, axis=0)
             exe = fluid.Executor(fluid.CPUPlace())
-            res, = exe.run(feed={
-                'x': self.data_x,
-                'repeats': repeats,
-            },
-                           fetch_list=[z.name],
-                           return_numpy=False)
+            (res,) = exe.run(
+                feed={
+                    'x': self.data_x,
+                    'repeats_': repeats,
+                },
+                fetch_list=[z.name],
+                return_numpy=False,
+            )
         expect_out = np.repeat(self.data_x, repeats, axis=0)
-        self.assertTrue(np.allclose(expect_out, np.array(res)))
+        np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
         repeats = 2
         with program_guard(Program(), Program()):
-            x = fluid.layers.data(name='x', shape=[-1, 4])
+            x = paddle.static.data(name='x', shape=[-1, 4], dtype='float32')
+            x.desc.set_need_check_feed(False)
             z = paddle.repeat_interleave(x, repeats, axis=0)
             exe = fluid.Executor(fluid.CPUPlace())
-            res, = exe.run(feed={'x': self.data_x},
-                           fetch_list=[z.name],
-                           return_numpy=False)
+            (res,) = exe.run(
+                feed={'x': self.data_x}, fetch_list=[z.name], return_numpy=False
+            )
         expect_out = np.repeat(self.data_x, repeats, axis=0)
-        self.assertTrue(np.allclose(expect_out, np.array(res)))
+        np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
+
+        # case 3 zero_dim:
+        with program_guard(Program(), Program()):
+            x = paddle.static.data(name='x', shape=[-1], dtype="float32")
+            x.desc.set_need_check_feed(False)
+            z = paddle.repeat_interleave(x, repeats)
+            exe = fluid.Executor(fluid.CPUPlace())
+            (res,) = exe.run(
+                feed={'x': self.data_zero_dim_x},
+                fetch_list=[z.name],
+                return_numpy=False,
+            )
+        expect_out = np.repeat(self.data_zero_dim_x, repeats)
+        np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
+
+        # case 4 negative axis:
+        with program_guard(Program(), Program()):
+            x = paddle.static.data(name='x', shape=[-1, 4], dtype='float32')
+            x.desc.set_need_check_feed(False)
+            index = paddle.static.data(
+                name='repeats_',
+                shape=[4],
+                dtype='int32',
+            )
+            index.desc.set_need_check_feed(False)
+            z = paddle.repeat_interleave(x, index, axis=-1)
+            exe = fluid.Executor(fluid.CPUPlace())
+            (res,) = exe.run(
+                feed={'x': self.data_x, 'repeats_': self.data_index},
+                fetch_list=[z.name],
+                return_numpy=False,
+            )
+        expect_out = np.repeat(self.data_x, self.data_index, axis=-1)
+        np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
     def test_dygraph_api(self):
         self.input_data()
@@ -169,7 +220,7 @@ class TestIndexSelectAPI(unittest.TestCase):
             z = paddle.repeat_interleave(x, index, None)
             np_z = z.numpy()
         expect_out = np.repeat(input_x, index_x, axis=None)
-        self.assertTrue(np.allclose(expect_out, np_z))
+        np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
 
         # case repeats int
         with fluid.dygraph.guard():
@@ -178,7 +229,7 @@ class TestIndexSelectAPI(unittest.TestCase):
             z = paddle.repeat_interleave(x, index, None)
             np_z = z.numpy()
         expect_out = np.repeat(input_x, index, axis=None)
-        self.assertTrue(np.allclose(expect_out, np_z))
+        np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
 
         # case 1:
         with fluid.dygraph.guard():
@@ -187,7 +238,7 @@ class TestIndexSelectAPI(unittest.TestCase):
             z = paddle.repeat_interleave(x, index, -1)
             np_z = z.numpy()
         expect_out = np.repeat(self.data_x, self.data_index, axis=-1)
-        self.assertTrue(np.allclose(expect_out, np_z))
+        np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
 
         with fluid.dygraph.guard():
             x = fluid.dygraph.to_variable(self.data_x)
@@ -195,7 +246,7 @@ class TestIndexSelectAPI(unittest.TestCase):
             z = paddle.repeat_interleave(x, index, 1)
             np_z = z.numpy()
         expect_out = np.repeat(self.data_x, self.data_index, axis=1)
-        self.assertTrue(np.allclose(expect_out, np_z))
+        np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
 
         # case 2:
         index_x = np.array([1, 2, 1]).astype('int32')
@@ -205,7 +256,16 @@ class TestIndexSelectAPI(unittest.TestCase):
             z = paddle.repeat_interleave(x, index, axis=0)
             np_z = z.numpy()
         expect_out = np.repeat(self.data_x, index, axis=0)
-        self.assertTrue(np.allclose(expect_out, np_z))
+        np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
+
+        # case 3 zero_dim:
+        with fluid.dygraph.guard():
+            x = fluid.dygraph.to_variable(self.data_zero_dim_x)
+            index = 2
+            z = paddle.repeat_interleave(x, index, None)
+            np_z = z.numpy()
+        expect_out = np.repeat(self.data_zero_dim_x, index, axis=None)
+        np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
 
 
 if __name__ == '__main__':

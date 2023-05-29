@@ -11,23 +11,29 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
-from __future__ import print_function
-from __future__ import division
 import os
-import collections
-import numpy as np
 
-import paddle.fluid as fluid
-from paddle.fluid import core, unique_name
-from paddle.fluid.dygraph import Layer, LayerList
-from ..base.private_helper_function import wait_server_ready
+from paddle import static
+from paddle.fluid import core
+from paddle.framework import _global_flags
+from paddle.framework.ir import apply_build_strategy
+from paddle.utils import unique_name
+
+from .common import (
+    OP_ROLE_KEY,
+    OP_ROLE_VAR_KEY,
+    CollectiveHelper,
+    OpRole,
+    is_backward_op,
+    is_loss_grad_op,
+    is_optimizer_op,
+)
 from .meta_optimizer_base import MetaOptimizerBase
-from .common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY, CollectiveHelper, is_loss_grad_op, is_backward_op, is_optimizer_op
 
 
 class RawProgramOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
-        super(RawProgramOptimizer, self).__init__(optimizer)
+        super().__init__(optimizer)
         self.inner_opt = optimizer
         self.meta_optimizers_white_list = [
             "RecomputeOptimizer",
@@ -38,24 +44,39 @@ class RawProgramOptimizer(MetaOptimizerBase):
             "DGCOptimizer",
             "LocalSGDOptimizer",
         ]
-        self.meta_optimizers_black_list = ["GraphExecutionOptimizer", ]
+        self.meta_optimizers_black_list = []
         self.global_ring_id = 0
 
-    def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
-                        user_defined_strategy):
-        super(RawProgramOptimizer, self)._set_basic_info(
-            loss, role_maker, user_defined_optimizer, user_defined_strategy)
-        self.without_graph_optimization = user_defined_strategy.without_graph_optimization
+    def _set_basic_info(
+        self, loss, role_maker, user_defined_optimizer, user_defined_strategy
+    ):
+        super()._set_basic_info(
+            loss, role_maker, user_defined_optimizer, user_defined_strategy
+        )
+        self.without_graph_optimization = (
+            user_defined_strategy.without_graph_optimization
+        )
         self.fuse_all_reduce_ops = user_defined_strategy.fuse_all_reduce_ops
         if self.fuse_all_reduce_ops:
-            self.fuse_grad_size_in_num = user_defined_strategy.fuse_grad_size_in_num
-            self.calc_comm_same_stream = user_defined_strategy._calc_comm_same_stream
+            self.fuse_grad_size_in_num = (
+                user_defined_strategy.fuse_grad_size_in_num
+            )
+            self.calc_comm_same_stream = (
+                user_defined_strategy._calc_comm_same_stream
+            )
+            self.sync_before_allreduce = os.environ.get(
+                'FLAGS_sync_before_allreduce', None
+            )
 
     def _can_apply(self):
         if not self.role_maker._is_collective:
             return False
+        if self.user_defined_strategy.tensor_parallel:
+            return False
+        if self.user_defined_strategy.sharding:
+            return False
 
-        if self.without_graph_optimization == True:
+        if self.without_graph_optimization:
             return True
         return False
 
@@ -79,16 +100,18 @@ class RawProgramOptimizer(MetaOptimizerBase):
                 attrs={
                     'ring_id': ring_id,
                     'root': 0,
-                    OP_ROLE_KEY: OpRole.Forward
-                })
+                    OP_ROLE_KEY: OpRole.Forward,
+                },
+            )
 
-        if not param: return  # no parameter on this device
+        if not param:
+            return  # no parameter on this device
         block.append_op(
             type='c_sync_comm_stream',
             inputs={'X': param},
             outputs={'Out': param},
-            attrs={'ring_id': ring_id,
-                   OP_ROLE_KEY: OpRole.Forward})
+            attrs={'ring_id': ring_id, OP_ROLE_KEY: OpRole.Forward},
+        )
 
     def _get_process_group_info(self):
         # global ring info
@@ -101,22 +124,26 @@ class RawProgramOptimizer(MetaOptimizerBase):
         collective_helper = CollectiveHelper(self.role_maker, wait_port=False)
         # Create global ring for all gpus (ring_id = 0)
         collective_helper._init_communicator(
-            self.startup_program, self.current_endpoint, self.global_endpoints,
-            self.global_rank, self.global_ring_id, True, self.global_ring_id,
-            True)
+            self.startup_program,
+            self.current_endpoint,
+            self.global_endpoints,
+            self.global_rank,
+            self.global_ring_id,
+            True,
+            self.global_ring_id,
+            True,
+        )
         self._broadcast_params(self.global_ring_id)
 
-    def minimize_impl(self,
-                      loss,
-                      startup_program=None,
-                      parameter_list=None,
-                      no_grad_set=None):
+    def minimize_impl(
+        self, loss, startup_program=None, parameter_list=None, no_grad_set=None
+    ):
         self.endpoints = self.role_maker._get_trainer_endpoints()
         self.current_endpoint = self.endpoints[self.role_maker._worker_index()]
         self.rank = self.role_maker._worker_index()
         self.nranks = self.role_maker._worker_num()
         if startup_program is None:
-            startup_program = fluid.default_startup_program()
+            startup_program = static.default_startup_program()
         self.startup_program = startup_program
 
         block = loss.block
@@ -124,7 +151,20 @@ class RawProgramOptimizer(MetaOptimizerBase):
         self.main_program = program
 
         optimize_ops, params_grads = self.inner_opt.minimize(
-            loss, startup_program, parameter_list, no_grad_set)
+            loss, startup_program, parameter_list, no_grad_set
+        )
+        if _global_flags()['FLAGS_apply_pass_to_program']:
+            pass_attrs = {"use_cuda": True}
+            build_strategy = self.user_defined_strategy.build_strategy._copy()
+            build_strategy.fuse_all_optimizer_ops = False
+            build_strategy.fuse_all_reduce_ops = False
+            apply_build_strategy(
+                self.main_program,
+                self.startup_program,
+                build_strategy,
+                pass_attrs,
+            )
+            self.main_program._pass_applied = True
         if self.nranks == 1:
             return optimize_ops, params_grads
         self._init_process_group()
@@ -149,7 +189,9 @@ class RawProgramOptimizer(MetaOptimizerBase):
         if gm_cond_var_name is None:
             return None
 
-        cond_op = None  # false_fn of gm is None, so we should only find one block
+        cond_op = (
+            None  # false_fn of gm is None, so we should only find one block
+        )
         for op in self.main_program.global_block().ops:
             if op.type != 'conditional_block' or 'Cond' not in op.input_names:
                 continue
@@ -175,8 +217,7 @@ class RawProgramOptimizer(MetaOptimizerBase):
         param_vars = []
         grad_vars = []
         for op in block.ops:
-            if is_backward_op(op) and \
-                    OP_ROLE_VAR_KEY in op.attr_names:
+            if is_backward_op(op) and OP_ROLE_VAR_KEY in op.attr_names:
                 op_role_var = op.attr(OP_ROLE_VAR_KEY)
                 assert len(op_role_var) % 2 == 0
                 for i in range(0, len(op_role_var), 2):
@@ -195,7 +236,8 @@ class RawProgramOptimizer(MetaOptimizerBase):
             type="c_sync_calc_stream",
             inputs={'X': grad_vars[0]},
             outputs={'Out': grad_vars[0]},
-            attrs={OP_ROLE_KEY: OpRole.Backward})
+            attrs={OP_ROLE_KEY: OpRole.Backward},
+        )
 
         insert_op_num = 1
         ring_id = self.global_ring_id
@@ -210,7 +252,8 @@ class RawProgramOptimizer(MetaOptimizerBase):
                 attrs={
                     'ring_id': ring_id,
                     OP_ROLE_KEY: OpRole.Backward,
-                })
+                },
+            )
             insert_op_num += 1
 
         gm_block._insert_op(
@@ -221,7 +264,8 @@ class RawProgramOptimizer(MetaOptimizerBase):
             attrs={
                 'ring_id': ring_id,
                 OP_ROLE_KEY: OpRole.Backward,
-            })
+            },
+        )
 
     def _transpile_main_program(self, loss):
         self._insert_loss_grad_ops(loss)
@@ -252,8 +296,9 @@ class RawProgramOptimizer(MetaOptimizerBase):
                     outputs={'Out': loss_grad_var},
                     attrs={
                         'scale': 1.0 / self.nranks,
-                        OP_ROLE_KEY: OpRole.Backward
-                    })
+                        OP_ROLE_KEY: OpRole.Backward,
+                    },
+                )
 
     def _insert_allreduce_ops(self):
         block = self.main_program.global_block()
@@ -261,8 +306,7 @@ class RawProgramOptimizer(MetaOptimizerBase):
         grad = None
         grad_vars = []
         for idx, op in reversed(list(enumerate(block.ops))):
-            if is_backward_op(op) and \
-                    OP_ROLE_VAR_KEY in op.attr_names:
+            if is_backward_op(op) and OP_ROLE_VAR_KEY in op.attr_names:
                 op_role_var = op.attr(OP_ROLE_VAR_KEY)
                 if len(op_role_var) == 0:
                     continue
@@ -276,14 +320,6 @@ class RawProgramOptimizer(MetaOptimizerBase):
                     if param.is_distributed:
                         continue
 
-                    grad_vars.append(grad)
-                    block._insert_op(
-                        idx + offset,
-                        type='c_sync_calc_stream',
-                        inputs={'X': grad},
-                        outputs={'Out': grad},
-                        attrs={OP_ROLE_KEY: OpRole.Backward, })
-                    offset += 1
                     block._insert_op(
                         idx + offset,
                         type='c_allreduce_sum',
@@ -291,22 +327,12 @@ class RawProgramOptimizer(MetaOptimizerBase):
                         outputs={'Out': grad},
                         attrs={
                             'ring_id': ring_id,
-                            OP_ROLE_KEY: OpRole.Backward
-                        })
+                            OP_ROLE_KEY: OpRole.Backward,
+                        },
+                    )
 
         if grad is None:
             return
-
-        for idx, op in enumerate(block.ops):
-            if is_optimizer_op(op):
-                block._insert_op(
-                    idx,
-                    type='c_sync_comm_stream',
-                    inputs={'X': grad_vars},
-                    outputs={'Out': grad_vars},
-                    attrs={'ring_id': ring_id,
-                           OP_ROLE_KEY: OpRole.Backward})
-                break
 
     # This function helps reduce the number of allreduce by integrating op, which can save communication time.
     # to use allreduce fuse, follow these codes:
@@ -323,16 +349,16 @@ class RawProgramOptimizer(MetaOptimizerBase):
 
         # find all grad params
         for idx, op in enumerate(block.ops):
-            if first_backward_idx == -1 and \
-                    is_backward_op(op):
+            if first_backward_idx == -1 and is_backward_op(op):
                 first_backward_idx = idx
-            if is_backward_op(op) and \
-                    OP_ROLE_VAR_KEY in op.attr_names:
+            if is_backward_op(op) and OP_ROLE_VAR_KEY in op.attr_names:
                 op_role_var = op.attr(OP_ROLE_VAR_KEY)
                 if len(op_role_var) == 0:
                     continue
-                assert len(op_role_var) % 2 == 0, "vars need to be one param var followed by one grad var, " \
-                                                  "but got odd number of vars"
+                assert len(op_role_var) % 2 == 0, (
+                    "vars need to be one param var followed by one grad var, "
+                    "but got odd number of vars"
+                )
                 for i in range(0, len(op_role_var), 2):
                     param_name = op_role_var[i]
                     param = block.var(param_name)
@@ -342,28 +368,46 @@ class RawProgramOptimizer(MetaOptimizerBase):
                         continue
                     param_grads.append((param, grad))
 
-        outputs_name_to_idx = self.__get_ouputs_name_to_idx(first_backward_idx,
-                                                            block)
+        outputs_name_to_idx = self.__get_ouputs_name_to_idx(
+            first_backward_idx, block
+        )
 
         # structure of grad_param_segments is
         # [([grad0, grad1], [param0, param1]), ([grad2, grad3], [param2, param3])]
         # each entry of the list is a tuple stores the grads segment list and
         # the corresponding params segment list
-        grad_param_segments = []
-        last_dtype = None
+
+        # its type is: dict[dtype, list[tuple[list[grad], list[param]]]]
+        grad_param_segments_by_dtype = {}
         # split the grad based on dtype and fused size
         for param, grad in param_grads:
-            if len(grad_param_segments) == 0 \
-                    or len(grad_param_segments[-1][0]) == self.fuse_grad_size_in_num \
-                    or grad.dtype != last_dtype:
-                grad_param_segments.append(([grad], [param]))
-                last_dtype = grad.dtype
-            else:
-                grad_param_segments[-1][0].append(grad)
-                grad_param_segments[-1][1].append(param)
+            if grad.dtype not in grad_param_segments_by_dtype:
+                grad_param_segments_by_dtype[grad.dtype] = [([], [])]
+            grad_segment, param_segment = grad_param_segments_by_dtype[
+                grad.dtype
+            ][-1]
+            if len(param_segment) == self.fuse_grad_size_in_num:
+                grad_param_segments_by_dtype[grad.dtype].append(([], []))
+                grad_segment, param_segment = grad_param_segments_by_dtype[
+                    grad.dtype
+                ][-1]
+            param_segment.append(param)
+            grad_segment.append(grad)
+
+        grad_param_segments = []
+        for _, group in grad_param_segments_by_dtype.items():
+            grad_param_segments.extend(group)
 
         if len(grad_param_segments) == 0:
             return
+
+        # because the regroup operation make the relative order invalid,
+        # we need to reorder these fuse group by after_idx
+        def get_after_idx_of_fuse_group(grad_param_segments):
+            grad_segment, param_segment = grad_param_segments
+            return max([outputs_name_to_idx[grad][1] for grad in grad_segment])
+
+        grad_param_segments.sort(key=get_after_idx_of_fuse_group)
 
         fused_vars = [None] * len(grad_param_segments)
         for i in range(len(grad_param_segments) - 1, -1, -1):
@@ -372,13 +416,17 @@ class RawProgramOptimizer(MetaOptimizerBase):
             grad_segment, param_segment = grad_param_segments[i]
             # insert coalesce tensor
             fused_var = block.create_var(
-                name=unique_name.generate('FusedOutput_{}'.format(grad_segment[
-                    0].name)),
+                name=unique_name.generate(
+                    f'FusedOutput_{grad_segment[0].name}'
+                ),
                 dtype=grad_segment[0].dtype,
                 persistable=False,
-                stop_gradient=True)
+                stop_gradient=True,
+            )
             fused_vars[i] = fused_var
-            after_idx = outputs_name_to_idx[grad_segment[-1]][1]
+            after_idx = max(
+                [outputs_name_to_idx[grad][1] for grad in grad_segment]
+            )
             block._insert_op_without_sync(
                 after_idx + 1,
                 type='c_allreduce_sum',
@@ -387,19 +435,39 @@ class RawProgramOptimizer(MetaOptimizerBase):
                 attrs={
                     'ring_id': ring_id,
                     'use_calc_stream': self.calc_comm_same_stream,
-                    OP_ROLE_KEY: OpRole.Backward
-                })
-            if not self.calc_comm_same_stream:
+                    OP_ROLE_KEY: OpRole.Backward,
+                },
+            )
+            if not self.calc_comm_same_stream and self.sync_before_allreduce:
                 block._insert_op_without_sync(
                     after_idx + 1,
                     type='c_sync_calc_stream',
                     inputs={'X': fused_var},
                     outputs={'Out': fused_var},
-                    attrs={OP_ROLE_KEY: OpRole.Backward})
+                    attrs={OP_ROLE_KEY: OpRole.Backward},
+                )
+        idx = 0
+        if not self.calc_comm_same_stream and not self.sync_before_allreduce:
+            for i in range(len(grad_param_segments)):
+                while (
+                    block.ops[idx].type != 'c_allreduce_sum'
+                    or fused_vars[i].name not in block.ops[idx].input_arg_names
+                ):
+                    idx += 1
+                grad_segment, param_segment = grad_param_segments[i]
+                for grad in grad_segment:
+                    block._insert_op_without_sync(
+                        idx + 1,
+                        type='depend',
+                        inputs={'X': grad, 'Dep': fused_vars[i]},
+                        outputs={'Out': grad},
+                    )
+                    idx += 1
 
         # update the outputs_name_to_idx after insertion of sync/allreduce ops
-        outputs_name_to_idx = self.__get_ouputs_name_to_idx(first_backward_idx,
-                                                            block)
+        outputs_name_to_idx = self.__get_ouputs_name_to_idx(
+            first_backward_idx, block
+        )
         # the before_idx is not guaranteed sorted, therefore we have to find the
         # topology to insert the coalesce ops
         pos_for_coalesce = {}
@@ -416,7 +484,8 @@ class RawProgramOptimizer(MetaOptimizerBase):
         pos_for_coalesce = sorted(
             pos_for_coalesce.items(),
             key=lambda kv: (kv[1], kv[0]),
-            reverse=True)
+            reverse=True,
+        )
         for i, before_idx in pos_for_coalesce:
             grad_segment, param_segment = grad_param_segments[i]
             fused_var = fused_vars[i]
@@ -424,16 +493,16 @@ class RawProgramOptimizer(MetaOptimizerBase):
                 before_idx,
                 type="coalesce_tensor",
                 inputs={"Input": param_segment},
-                outputs={"Output": grad_segment,
-                         "FusedOutput": fused_var},
+                outputs={"Output": grad_segment, "FusedOutput": fused_var},
                 attrs={
                     "copy_data": False,
                     "use_align": True,
                     "dtype": grad_segment[0].dtype,
-                    OP_ROLE_KEY: OpRole.Backward
-                })
+                    OP_ROLE_KEY: OpRole.Backward,
+                },
+            )
 
-        if self.calc_comm_same_stream:
+        if self.calc_comm_same_stream or not self.sync_before_allreduce:
             block._sync_with_cpp()
             return
 
@@ -445,8 +514,8 @@ class RawProgramOptimizer(MetaOptimizerBase):
                     type='c_sync_comm_stream',
                     inputs={'X': fused_vars},
                     outputs={'Out': fused_vars},
-                    attrs={'ring_id': ring_id,
-                           OP_ROLE_KEY: OpRole.Backward})
+                    attrs={'ring_id': ring_id, OP_ROLE_KEY: OpRole.Backward},
+                )
                 break
         block._sync_with_cpp()
 
@@ -470,6 +539,8 @@ class RawProgramOptimizer(MetaOptimizerBase):
                     # the first idx and the last ids are identical
                     outputs_name_to_idx[var] = (idx, idx)
                 else:
-                    outputs_name_to_idx[var] = (outputs_name_to_idx[var][0],
-                                                idx)
+                    outputs_name_to_idx[var] = (
+                        outputs_name_to_idx[var][0],
+                        idx,
+                    )
         return outputs_name_to_idx

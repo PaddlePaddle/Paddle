@@ -26,15 +26,11 @@ KernelSignature GatherOpArgumentMapping(const ArgumentMappingContext& ctx) {
 
 KernelSignature GatherGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.HasInput("Axis")) {
-    return KernelSignature("gather_grad",
-                           {"X", "Index", GradVarName("Out")},
-                           {"Axis", "overwrite"},
-                           {GradVarName("X")});
+    return KernelSignature(
+        "gather_grad", {"X", "Index", "Out@GRAD"}, {"Axis"}, {"X@GRAD"});
   } else {
-    return KernelSignature("gather_grad",
-                           {"X", "Index", GradVarName("Out")},
-                           {"axis", "overwrite"},
-                           {GradVarName("X")});
+    return KernelSignature(
+        "gather_grad", {"X", "Index", "Out@GRAD"}, {"axis"}, {"X@GRAD"});
   }
 }
 

@@ -14,6 +14,8 @@ limitations under the License. */
 #include <cstdlib>
 #include <string>
 
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/backends/xpu/xpu_header.h"
@@ -21,9 +23,9 @@ limitations under the License. */
 
 // TODO(wilber): The phi computing library requires a component to manage
 // flags.
-#include "paddle/fluid/platform/flags.h"
+#include "paddle/phi/core/flags.h"
 
-PADDLE_DEFINE_EXPORTED_string(
+PHI_DEFINE_EXPORTED_string(
     selected_xpus,
     "",
     "A list of device ids separated by comma, like: 0,1,2,3. "
@@ -140,8 +142,10 @@ std::vector<int> GetXPUSelectedDevices() {
 void MemcpySyncH2D(void* dst,
                    const void* src,
                    size_t count,
-                   const phi::XPUPlace& dst_place) {
+                   const phi::XPUPlace& dst_place,
+                   const phi::XPUContext& dev_ctx) {
   XPUDeviceGuard guard(dst_place.device);
+  dev_ctx.Wait();
   PADDLE_ENFORCE_XPU_SUCCESS(
       xpu_memcpy(dst, src, count, XPUMemcpyKind::XPU_HOST_TO_DEVICE));
 }
@@ -158,7 +162,7 @@ void MemcpySyncD2H(void* dst,
 }
 
 // if src.device == dst.device and you need sync , after call this function,
-// need to call xpu_wait()
+// need to call dev_ctx.Wait()
 void MemcpySyncD2D(void* dst,
                    const phi::XPUPlace& dst_place,
                    const void* src,

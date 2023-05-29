@@ -10,16 +10,17 @@
    limitations under the License. */
 
 #include "paddle/fluid/operators/bilateral_slice_op.h"
+
 #include <memory>
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-using DataLayout = framework::DataLayout;
+using DataLayout = phi::DataLayout;
 
 class BilateralSliceOp : public framework::OperatorWithKernel {
  public:
@@ -34,7 +35,8 @@ class BilateralSliceOp : public framework::OperatorWithKernel {
 
     auto dim_x = ctx->GetInputDim("X");  // NCHW format
     PADDLE_ENFORCE_EQ(
-        dim_x.size(), 4,
+        dim_x.size(),
+        4,
         platform::errors::Unimplemented(
             "Input(X) dimension must be 4, but got dimension = %d .",
             dim_x.size()));
@@ -54,7 +56,8 @@ class BilateralSliceOp : public framework::OperatorWithKernel {
       output_chans = -1;
     } else {
       if (has_offset) {
-        PADDLE_ENFORCE_EQ((coeffs_chans % (input_chans + 1)), 0,
+        PADDLE_ENFORCE_EQ((coeffs_chans % (input_chans + 1)),
+                          0,
                           platform::errors::InvalidArgument(
                               "Slicing with affine offset, coefficients grid "
                               "should have n_out*(n_in+1) channels, but got %d",
@@ -62,7 +65,8 @@ class BilateralSliceOp : public framework::OperatorWithKernel {
         output_chans = coeffs_chans / (input_chans + 1);
       } else {
         PADDLE_ENFORCE_EQ(
-            (coeffs_chans % input_chans), 0,
+            (coeffs_chans % input_chans),
+            0,
             platform::errors::InvalidArgument(
                 "Slicing without affine offset, coefficients grid "
                 "should have n_out*n_in channels, but got %d .",
@@ -81,17 +85,10 @@ class BilateralSliceOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
-  }
-
-  framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const override {
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 
@@ -127,11 +124,13 @@ class BilateralSliceOpGrad : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "BilateralSliceOpGrad");
-    OP_INOUT_CHECK(ctx->HasInput("Grid"), "Input", "Grid",
-                   "BilateralSliceOpGrad");
-    OP_INOUT_CHECK(ctx->HasInput("Guide"), "Input", "Guide",
-                   "BilateralSliceOpGrad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input", "Out",
+    OP_INOUT_CHECK(
+        ctx->HasInput("Grid"), "Input", "Grid", "BilateralSliceOpGrad");
+    OP_INOUT_CHECK(
+        ctx->HasInput("Guide"), "Input", "Guide", "BilateralSliceOpGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out",
                    "BilateralSliceOpGrad");
 
     auto dim_x = ctx->GetInputDim("X");
@@ -148,11 +147,11 @@ class BilateralSliceOpGrad : public framework::OperatorWithKernel {
     }
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("Out")),
+                          ctx.GetPlace());
   }
 };
 
@@ -176,11 +175,12 @@ class BilateralSliceGradMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class BilateralSliceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()),
+                      true,
                       platform::errors::Unimplemented(
                           "BilateralSlice only supports GPU now."));
   }
@@ -190,10 +190,16 @@ class BilateralSliceKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(bilateral_slice, ops::BilateralSliceOp,
+REGISTER_OPERATOR(bilateral_slice,
+                  ops::BilateralSliceOp,
                   ops::BilateralSliceOpMaker,
                   ops::BilateralSliceGradMaker<paddle::framework::OpDesc>,
                   ops::BilateralSliceGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(bilateral_slice_grad, ops::BilateralSliceOpGrad);
-REGISTER_OP_CPU_KERNEL(bilateral_slice, ops::BilateralSliceKernel<float>,
-                       ops::BilateralSliceKernel<double>);
+
+PD_REGISTER_STRUCT_KERNEL(bilateral_slice,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::BilateralSliceKernel,
+                          float,
+                          double) {}

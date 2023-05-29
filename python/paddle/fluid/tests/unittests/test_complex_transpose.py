@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import unittest
-import paddle
+
 import numpy as np
-import paddle.fluid as fluid
+
+import paddle
 import paddle.fluid.dygraph as dg
+from paddle import fluid
 
 
 class TestComplexTransposeLayer(unittest.TestCase):
@@ -28,16 +30,16 @@ class TestComplexTransposeLayer(unittest.TestCase):
 
     def test_transpose_by_complex_api(self):
         for dtype in self._dtypes:
-            data = np.random.random(
-                (2, 3, 4, 5)).astype(dtype) + 1J * np.random.random(
-                    (2, 3, 4, 5)).astype(dtype)
+            data = np.random.random((2, 3, 4, 5)).astype(
+                dtype
+            ) + 1j * np.random.random((2, 3, 4, 5)).astype(dtype)
             perm = [3, 2, 0, 1]
             np_trans = np.transpose(data, perm)
             for place in self._places:
                 with dg.guard(place):
                     var = dg.to_variable(data)
                     trans = paddle.transpose(var, perm=perm)
-                self.assertTrue(np.allclose(trans.numpy(), np_trans))
+                np.testing.assert_allclose(trans.numpy(), np_trans, rtol=1e-05)
 
 
 if __name__ == '__main__':

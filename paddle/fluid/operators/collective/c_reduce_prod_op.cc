@@ -33,18 +33,24 @@ class CReduceProdOpMaker : public CReduceOpMaker {
   std::string GetName() const override { return "Prod"; }
 };
 
+DEFINE_C_REDUCE_CPU_KERNEL(CReduceProd, kRedProd)
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_WITHOUT_GRADIENT(c_reduce_prod, ops::CReduceOp,
+REGISTER_OP_WITHOUT_GRADIENT(c_reduce_prod,
+                             ops::CReduceOp,
                              ops::CReduceProdOpMaker);
 
-REGISTER_OP_CPU_KERNEL(c_reduce_prod,
-                       ops::CReduceOpCPUKernel<ops::kRedProd, float>,
-                       ops::CReduceOpCPUKernel<ops::kRedProd, double>,
-                       ops::CReduceOpCPUKernel<ops::kRedProd, int>,
-                       ops::CReduceOpCPUKernel<ops::kRedProd, int64_t>,
-                       ops::CReduceOpCPUKernel<ops::kRedProd, plat::float16>)
+PD_REGISTER_STRUCT_KERNEL(c_reduce_prod,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::CReduceProdCPUKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t,
+                          plat::float16) {}

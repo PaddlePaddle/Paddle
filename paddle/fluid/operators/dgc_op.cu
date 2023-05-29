@@ -16,5 +16,4 @@ limitations under the License. */
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_CUDA_KERNEL(
-    dgc, ops::DGCOpKernel<paddle::platform::CUDADeviceContext, float>);
+PD_REGISTER_STRUCT_KERNEL(dgc, GPU, ALL_LAYOUT, ops::DGCOpKernel, float) {}

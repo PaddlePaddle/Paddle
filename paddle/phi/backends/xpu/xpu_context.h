@@ -14,19 +14,26 @@ limitations under the License. */
 
 #pragma once
 
+#ifdef PADDLE_WITH_XPU
+
 #include <memory>
+
 #include "paddle/phi/backends/xpu/forwards.h"
+#include "paddle/phi/backends/xpu/xpu_header.h"
+#include "paddle/phi/backends/xpu/xpu_info.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/device_context.h"
 
-#include "paddle/phi/backends/xpu/xpu_header.h"
-#include "paddle/phi/backends/xpu/xpu_info.h"
+namespace Eigen {
+struct DefaultDevice;
+}  // namespace Eigen
 
 namespace xpu = baidu::xpu::api;
 
 namespace phi {
 
-class XPUContext : public DeviceContext {
+class XPUContext : public DeviceContext,
+                   public TypeInfoTraits<DeviceContext, XPUContext> {
  public:
   XPUContext();
 
@@ -40,9 +47,17 @@ class XPUContext : public DeviceContext {
 
   xpu::Context* x_context() const;
 
+  // For multi-thread dataloader,
+  // check if the current thread is Dataloader thread
+  bool IsDataloader() const;
+
   // Return bkcl context.
   xpu::BKCLContext_t bkcl_context() const;
   void SetBkclContext(xpu::BKCLContext_t context);
+  void CreateStream();
+
+  // For share external stream.
+  void SetStream(void* stream);
 
   // Wait for all operations completion in the stream.
   void Wait() const override;
@@ -61,6 +76,18 @@ class XPUContext : public DeviceContext {
 
   void SetL3Cache(int l3_size = 14155776);
 
+  void SetXpuVersion(int version);
+
+  void SetRuntimeVersion(int runtime_version);
+
+  void SetDriverVersion(int driver_version);
+
+  Eigen::DefaultDevice* eigen_device() const { return nullptr; }
+
+  XPUStream stream() const;
+
+  static const char* name() { return "XPUContext"; }
+
  private:
   struct Impl;
   std::unique_ptr<Impl> impl_;
@@ -75,3 +102,5 @@ using KPSContext = XPUContext;
 #endif
 
 }  // namespace phi
+
+#endif

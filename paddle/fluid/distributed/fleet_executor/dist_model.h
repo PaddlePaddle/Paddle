@@ -31,7 +31,7 @@ namespace framework {
 class ProgramDesc;
 class Scope;
 class BlockDesc;
-}
+}  // namespace framework
 
 namespace distributed {
 
@@ -44,6 +44,7 @@ struct DistModelConfig {
   framework::Scope* scope{nullptr};
   std::string place{};
   int64_t device_id{0};
+  std::string device_type{};
   std::vector<std::string> trainer_endpoints{};
   std::string current_endpoint{};
   int64_t nranks{1};
@@ -72,19 +73,21 @@ class DistModel {
   bool CommInit();
   bool PrepareFeedAndFetch();
   bool PrepareFleetExe();
-  void InsertCommOp(std::string tmp_var_name, int nranks, int rank,
+  void InsertCommOp(std::string tmp_var_name,
+                    int nranks,
+                    int rank,
                     const std::vector<std::string>& peer_endpoints,
-                    framework::BlockDesc* block, int ring_id);
+                    framework::BlockDesc* block,
+                    int ring_id);
   bool FeedData(const std::vector<DistModelTensor>& input_data,
                 framework::Scope* scope);
   bool FetchResults(std::vector<DistModelTensor>* output_data,
                     framework::Scope* scope);
   template <typename T>
-  bool FetchResult(const framework::LoDTensor& fetch,
-                   DistModelTensor* output_data);
+  bool FetchResult(const phi::DenseTensor& fetch, DistModelTensor* output_data);
 
   std::string carrier_id_;
-  std::vector<framework::LoDTensor> feed_tensors_;
+  std::vector<phi::DenseTensor> feed_tensors_;
   std::vector<framework::OpDesc*> feeds_;
   std::map<std::string, int64_t> feed_names_;
   std::map<int64_t, std::string> idx_to_feeds_;

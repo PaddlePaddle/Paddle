@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
-from op_test import OpTest
-import paddle.fluid.core as core
+from eager_op_test import OpTest
+
+import paddle
 
 
 class TestTopkOp(OpTest):
@@ -57,8 +57,9 @@ class TestTopkOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(set(['X']), 'Out')
+        self.check_grad({'X'}, 'Out')
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

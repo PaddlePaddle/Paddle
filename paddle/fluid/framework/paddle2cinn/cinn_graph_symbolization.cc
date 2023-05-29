@@ -45,7 +45,7 @@ using FeedInfoMap = CinnGraphSymbolization::FeedInfoMap;
 namespace utils {
 
 OpMapperContext::FeedInfo GetCinnFeedInfoFromTensor(
-    const Tensor& tensor, bool skip_trans_type = false) {
+    const phi::DenseTensor& tensor, bool skip_trans_type = false) {
   OpMapperContext::FeedInfo info;
   const auto& dim = tensor.dims();
   for (int i = 0; i < dim.size(); i++) {
@@ -77,7 +77,8 @@ FeedInfoMap CinnGraphSymbolization::GetFeedInfoMapFromInput() const {
   for (auto& feed_pair : input_tensors_) {
     const auto& feed_name = feed_pair.first;
     const auto* tensor = feed_pair.second;
-    PADDLE_ENFORCE_NE(tensor, nullptr,
+    PADDLE_ENFORCE_NE(tensor,
+                      nullptr,
                       platform::errors::PreconditionNotMet(
                           "The input variable %s's tensor cannot be NULL,"
                           "we need the variable's dtype and shape from tensor.",
@@ -93,12 +94,8 @@ FeedInfoMap CinnGraphSymbolization::GetFeedInfoMapFromInput() const {
       feed_map[feed_name] = utils::GetCinnFeedInfoFromTensor(*tensor);
     }
 
-    PADDLE_ENFORCE_NE(
-        feed_map[feed_name].shape.size(), 0UL,
-        platform::errors::PreconditionNotMet(
-            "The input variable %s's tensor shape cannot be empty,"
-            "we need the variable's dtype and shape from tensor.",
-            feed_name.c_str()));
+    VLOG_IF(4, feed_map[feed_name].shape.size() == 0UL)
+        << "Shape is empty, Create 0D-Tensor for " << feed_name;
   }
   return feed_map;
 }
@@ -134,7 +131,8 @@ CinnGraphSymbolization::CreateCinnScope(const FeedInfoMap& feed_map) {
 
   for (const auto& param_name : parameter_names) {
     PADDLE_ENFORCE_GT(
-        feed_map.count(param_name), 0UL,
+        feed_map.count(param_name),
+        0UL,
         platform::errors::NotFound("Cannot find parameter %s from input list,"
                                    "please add the tensor into input.",
                                    param_name.c_str()));
@@ -159,13 +157,49 @@ CinnGraphSymbolization::CreateCinnScope(const FeedInfoMap& feed_map) {
 }
 
 std::vector<Node*> CinnGraphSymbolization::TopologicalSort() const {
-  std::unordered_set<Node*> op_nodes;
-  std::for_each(graph_.Nodes().begin(), graph_.Nodes().end(),
-                [&op_nodes](Node* n) {
-                  if (n->IsOp()) {
-                    op_nodes.emplace(n);
-                  }
-                });
+  std::unordered_set<Node*> node_set;
+  std::for_each(
+      graph_.Nodes().begin(), graph_.Nodes().end(), [&node_set](Node* n) {
+        if (n && n->IsOp()) {
+          node_set.emplace(n);
+        }
+      });
+
+  std::vector<Node*> op_nodes(node_set.begin(), node_set.end());
+  std::stable_sort(op_nodes.begin(), op_nodes.end(), [](Node* op1, Node* op2) {
+    auto out1 = op1->outputs;
+    auto out2 = op2->outputs;
+
+    if (out1.size() != out2.size()) {
+      return out1.size() < out2.size();
+    }
+
+    auto var_compare = [](Node* var1, Node* var2) {
+      if (!var1) {
+        // the null node one the front
+        return true;
+      } else if (!var2) {
+        return false;
+      }
+      // sorted by name
+      return var1->Name() < var2->Name();
+    };
+    std::stable_sort(out1.begin(), out1.end(), var_compare);
+    std::stable_sort(out2.begin(), out2.end(), var_compare);
+
+    for (int i = 0; i < out1.size(); ++i) {
+      if (!out1[i] && !out2[i]) {
+        continue;
+      } else if (!out1[i]) {
+        return true;
+      } else if (!out2[i]) {
+        return false;
+      } else if (out1[i]->Name() != out2[i]->Name()) {
+        return out1[i]->Name() < out2[i]->Name();
+      }
+    }
+    return true;
+  });
 
   std::unordered_map<Node*, std::unordered_map<Node*, size_t>> adj_list;
   std::unordered_map<Node*, size_t> in_degrees;
@@ -174,7 +208,7 @@ std::vector<Node*> CinnGraphSymbolization::TopologicalSort() const {
     for (auto* in_var : n->inputs) {
       // the var's input is op
       for (auto* in_op : in_var->inputs) {
-        if (op_nodes.count(in_op)) {
+        if (node_set.count(in_op)) {
           ++adj_list[in_op][n];
           ++in_degrees[n];
         }
@@ -208,7 +242,8 @@ std::vector<Node*> CinnGraphSymbolization::TopologicalSort() const {
     }
   }
 
-  PADDLE_ENFORCE_EQ(sorted_ops.size(), op_nodes.size(),
+  PADDLE_ENFORCE_EQ(sorted_ops.size(),
+                    op_nodes.size(),
                     platform::errors::PreconditionNotMet(
                         "The sorting graph contains cycles."));
   return sorted_ops;
@@ -232,7 +267,8 @@ void CinnGraphSymbolization::RunOp(const CinnOpDesc& op_desc,
                                    const OpMapperContext& ctx) const {
   const auto& op_type = op_desc.Type();
   auto* kernel = ::cinn::frontend::OpMapperRegistry::Global()->Find(op_type);
-  PADDLE_ENFORCE_NE(kernel, nullptr,
+  PADDLE_ENFORCE_NE(kernel,
+                    nullptr,
                     platform::errors::NotFound(
                         "Op %s is Not Supported by CINN, please register"
                         " this op in the CINN repo.",
@@ -253,15 +289,16 @@ void CinnGraphSymbolization::RunGraph(const OpMapperContext& ctx) const {
 std::unordered_set<std::string> CinnGraphSymbolization::GetFetchIds() const {
   std::unordered_set<std::string> fetch_names;
   fetch_names.reserve(fetch_var_names_.size());
-  std::for_each(
-      fetch_var_names_.begin(), fetch_var_names_.end(),
-      [this, &fetch_names](const std::string& name) {
-        PADDLE_ENFORCE_EQ(
-            var_model_to_program_map_.count(name), 1,
-            platform::errors::PreconditionNotMet(
-                "Cannot find %s in var_model_to_program_map_", name.c_str()));
-        fetch_names.insert(var_model_to_program_map_.at(name));
-      });
+  std::for_each(fetch_var_names_.begin(),
+                fetch_var_names_.end(),
+                [this, &fetch_names](const std::string& name) {
+                  PADDLE_ENFORCE_EQ(
+                      var_map_.count(name),
+                      1,
+                      platform::errors::PreconditionNotMet(
+                          "Cannot find %s in var_map_", name.c_str()));
+                  fetch_names.insert(var_map_.at(name)->id);
+                });
   return fetch_names;
 }
 
@@ -274,8 +311,12 @@ std::unordered_set<std::string> CinnGraphSymbolization::GetFetchIds() const {
   auto feed_map = GetFeedInfoMapFromInput();
   auto cinn_scope = CreateCinnScope(feed_map);
 
-  OpMapperContext ctx(*cinn_scope, target_, &builder, &var_map_,
-                      &var_model_to_program_map_, &fetch_var_names_);
+  OpMapperContext ctx(*cinn_scope,
+                      target_,
+                      &builder,
+                      &var_map_,
+                      &var_model_to_program_map_,
+                      &fetch_var_names_);
   // add all tensor's feed info into context
   for (auto& feed_pair : feed_map) {
     ctx.AddFeedInfo(feed_pair.first, feed_pair.second);

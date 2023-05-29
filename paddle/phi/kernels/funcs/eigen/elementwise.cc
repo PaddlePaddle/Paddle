@@ -55,5 +55,22 @@ struct EigenSub<Eigen::DefaultDevice, T> {
 
 template struct EigenSub<Eigen::DefaultDevice, float>;
 
+template <typename T>
+struct EigenDiv<Eigen::DefaultDevice, T> {
+  using InType = Eigen::TensorMap<
+      Eigen::Tensor<const T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  using OutType =
+      Eigen::TensorMap<Eigen::Tensor<T, 1, Eigen::RowMajor, Eigen::DenseIndex>>;
+  static void Eval(const Eigen::DefaultDevice& dev,
+                   OutType out,
+                   const InType& in,
+                   const T value) {
+    out.device(dev) = in / value;
+  }
+};
+
+template struct EigenDiv<Eigen::DefaultDevice, float>;
+template struct EigenDiv<Eigen::DefaultDevice, double>;
+
 }  // namespace funcs
 }  // namespace phi

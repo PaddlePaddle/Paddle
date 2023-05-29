@@ -15,6 +15,7 @@
 #pragma once
 
 #include <NvInfer.h>
+
 #include <cstring>
 #include <string>
 #include <unordered_map>
@@ -36,6 +37,13 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 namespace plugin {
+
+#if defined(_WIN32)
+#define UNUSED
+#define __builtin_expect(EXP, C) (EXP)
+#else
+#define UNUSED __attribute__((unused))
+#endif
 
 class PluginTensorRT;
 
@@ -79,8 +87,10 @@ class PluginTensorRT : public nvinfer1::IPluginV2 {
       const TRT_NOEXCEPT override;
 
   // Configure the layer
-  void configureWithFormat(const nvinfer1::Dims* input_dims, int num_inputs,
-                           const nvinfer1::Dims* output_dims, int num_outputs,
+  void configureWithFormat(const nvinfer1::Dims* input_dims,
+                           int num_inputs,
+                           const nvinfer1::Dims* output_dims,
+                           int num_outputs,
                            nvinfer1::DataType type,
                            nvinfer1::PluginFormat format,
                            int max_batch_size) TRT_NOEXCEPT override;
@@ -96,12 +106,16 @@ class PluginTensorRT : public nvinfer1::IPluginV2 {
 
 // Execute the layer
 #if IS_TRT_VERSION_LT(8000)
-  virtual int enqueue(int batch_size, const void* const* inputs, void** outputs,
+  virtual int enqueue(int batch_size,
+                      const void* const* inputs,
+                      void** outputs,
 #else
-  virtual int enqueue(int batch_size, const void* const* inputs,
+  virtual int enqueue(int batch_size,
+                      const void* const* inputs,
                       void* const* outputs,
 #endif
-                      void* workspace, cudaStream_t stream) TRT_NOEXCEPT = 0;
+                      void* workspace,
+                      cudaStream_t stream) TRT_NOEXCEPT = 0;
 
   // Find the size of the serialization buffer required
   virtual size_t getSerializationSize() const TRT_NOEXCEPT = 0;
@@ -156,12 +170,14 @@ class PluginTensorRTV2Ext : public nvinfer1::IPluginV2Ext {
 
   // The Func in IPluginV2Ext
   virtual nvinfer1::DataType getOutputDataType(
-      int index, const nvinfer1::DataType* input_types,
+      int index,
+      const nvinfer1::DataType* input_types,
       int nb_inputs) const TRT_NOEXCEPT = 0;
 
-  virtual bool isOutputBroadcastAcrossBatch(
-      int32_t output_index, const bool* input_is_broadcasted,
-      int32_t nb_inputs) const TRT_NOEXCEPT {
+  virtual bool isOutputBroadcastAcrossBatch(int32_t output_index,
+                                            const bool* input_is_broadcasted,
+                                            int32_t nb_inputs) const
+      TRT_NOEXCEPT {
     return false;
   }
 
@@ -170,8 +186,10 @@ class PluginTensorRTV2Ext : public nvinfer1::IPluginV2Ext {
     return false;
   }
 
-  void configurePlugin(const nvinfer1::Dims* input_dims, int32_t nb_inputs,
-                       const nvinfer1::Dims* output_dims, int32_t nb_outputs,
+  void configurePlugin(const nvinfer1::Dims* input_dims,
+                       int32_t nb_inputs,
+                       const nvinfer1::Dims* output_dims,
+                       int32_t nb_outputs,
                        const nvinfer1::DataType* input_types,
                        const nvinfer1::DataType* output_types,
                        const bool* input_is_broadcast,
@@ -181,7 +199,8 @@ class PluginTensorRTV2Ext : public nvinfer1::IPluginV2Ext {
 
   virtual IPluginV2Ext* clone() const TRT_NOEXCEPT = 0;
 
-  void attachToContext(cudnnContext*, cublasContext*,
+  void attachToContext(cudnnContext*,
+                       cublasContext*,
                        nvinfer1::IGpuAllocator*) TRT_NOEXCEPT override {}
 
   void detachFromContext() TRT_NOEXCEPT override {}
@@ -211,12 +230,16 @@ class PluginTensorRTV2Ext : public nvinfer1::IPluginV2Ext {
 
 // Execute the layer
 #if IS_TRT_VERSION_LT(8000)
-  virtual int enqueue(int batch_size, const void* const* inputs, void** outputs,
+  virtual int enqueue(int batch_size,
+                      const void* const* inputs,
+                      void** outputs,
 #else
-  virtual int enqueue(int batch_size, const void* const* inputs,
+  virtual int enqueue(int batch_size,
+                      const void* const* inputs,
                       void* const* outputs,
 #endif
-                      void* workspace, cudaStream_t stream) TRT_NOEXCEPT = 0;
+                      void* workspace,
+                      cudaStream_t stream) TRT_NOEXCEPT = 0;
 
   // Find the size of the serialization buffer required
   virtual size_t getSerializationSize() const TRT_NOEXCEPT = 0;
@@ -271,11 +294,15 @@ class DynamicPluginTensorRT : public nvinfer1::IPluginV2DynamicExt {
   // The Func in IPluginV2
   nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT = 0;
   virtual nvinfer1::DimsExprs getOutputDimensions(
-      int output_index, const nvinfer1::DimsExprs* inputs, int nb_inputs,
+      int output_index,
+      const nvinfer1::DimsExprs* inputs,
+      int nb_inputs,
       nvinfer1::IExprBuilder& expr_builder) TRT_NOEXCEPT = 0;  // NOLINT
 
   virtual bool supportsFormatCombination(
-      int pos, const nvinfer1::PluginTensorDesc* in_out, int nb_inputs,
+      int pos,
+      const nvinfer1::PluginTensorDesc* in_out,
+      int nb_inputs,
       int nb_outputs) TRT_NOEXCEPT = 0;
 
   virtual void configurePlugin(const nvinfer1::DynamicPluginTensorDesc* in,
@@ -292,11 +319,14 @@ class DynamicPluginTensorRT : public nvinfer1::IPluginV2DynamicExt {
 
   virtual int enqueue(const nvinfer1::PluginTensorDesc* input_desc,
                       const nvinfer1::PluginTensorDesc* output_desc,
-                      const void* const* inputs, void* const* outputs,
-                      void* workspace, cudaStream_t stream) TRT_NOEXCEPT = 0;
+                      const void* const* inputs,
+                      void* const* outputs,
+                      void* workspace,
+                      cudaStream_t stream) TRT_NOEXCEPT = 0;
 
   virtual nvinfer1::DataType getOutputDataType(
-      int index, const nvinfer1::DataType* input_types,
+      int index,
+      const nvinfer1::DataType* input_types,
       int nb_inputs) const TRT_NOEXCEPT = 0;
   void setPluginNamespace(const char* plugin_namespace) TRT_NOEXCEPT override {
     name_space_ = plugin_namespace;
@@ -333,9 +363,10 @@ class TensorRTPluginCreator : public nvinfer1::IPluginCreator {
                                     const nvinfer1::PluginFieldCollection* fc)
       TRT_NOEXCEPT override;
 
-  virtual nvinfer1::IPluginV2* deserializePlugin(
-      const char* name, const void* serial_data,
-      size_t serial_length) TRT_NOEXCEPT = 0;
+  virtual nvinfer1::IPluginV2* deserializePlugin(const char* name,
+                                                 const void* serial_data,
+                                                 size_t serial_length)
+      TRT_NOEXCEPT = 0;
 
   void setPluginNamespace(const char* lib_namespace) TRT_NOEXCEPT override;
 
@@ -346,6 +377,26 @@ class TensorRTPluginCreator : public nvinfer1::IPluginCreator {
   std::string plugin_name_;
   nvinfer1::PluginFieldCollection field_collection_{0, nullptr};
   std::vector<nvinfer1::PluginField> plugin_attributes_;
+};
+
+class TrtPluginRegistry {
+ public:
+  static TrtPluginRegistry* Global() {
+    static TrtPluginRegistry registry;
+    return &registry;
+  }
+  bool Regist(const std::string& name, const std::function<void()>& func) {
+    map.emplace(name, func);
+    return true;
+  }
+  void RegistToTrt() {
+    for (auto& it : map) {
+      it.second();
+    }
+  }
+
+ private:
+  std::unordered_map<std::string, std::function<void()>> map;
 };
 
 template <typename T>
@@ -362,9 +413,14 @@ class TrtPluginRegistrarV2 {
   T creator;
 };
 
-#define REGISTER_TRT_PLUGIN_V2(name)                                     \
-  static paddle::inference::tensorrt::plugin::TrtPluginRegistrarV2<name> \
-      plugin_registrar_##name {}
+#define REGISTER_TRT_PLUGIN_V2(name) REGISTER_TRT_PLUGIN_V2_HELPER(name)
+
+#define REGISTER_TRT_PLUGIN_V2_HELPER(name)                                    \
+  UNUSED static bool REGISTER_TRT_PLUGIN_V2_HELPER##name =                     \
+      TrtPluginRegistry::Global()->Regist(#name, []() -> void {                \
+        static paddle::inference::tensorrt::plugin::TrtPluginRegistrarV2<name> \
+            plugin_registrar_##name{};                                         \
+      });
 
 }  // namespace plugin
 }  // namespace tensorrt

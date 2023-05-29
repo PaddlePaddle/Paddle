@@ -17,18 +17,31 @@
 VERSION=$(nvcc --version | grep release | grep -oEi "release ([0-9]+)\.([0-9])"| sed "s/release //")
 if [ "$VERSION" == "10.0" ]; then
   DEB="nccl-repo-ubuntu1604-2.4.7-ga-cuda10.0_1-1_amd64.deb"
-elif [ "$VERSION" == "10.2" ] || [ "$VERSION" == "10.1" ] || [ "$VERSION" == "11.0" ] || [ "$VERSION" == "11.2" ]; then
+elif [ "$VERSION" == "10.2" ] || [ "$VERSION" == "10.1" ] || [ "$VERSION" == "11.0" ] || [ "$VERSION" == "11.2" ] || [ "$VERSION" == "11.3" ] || [ "$VERSION" == "11.4" ] || [ "$VERSION" == "11.5" ] || [ "$VERSION" == "11.6" ] || [ "$VERSION" == "11.7" ] || [ "$VERSION" == "11.8" ]; then
   if [ -f "/etc/redhat-release" ];then
-    rm -f /usr/local/lib/libnccl.so 
-    wget --no-check-certificate -q https://nccl2-deb.cdn.bcebos.com/libnccl-2.7.8-1+cuda10.2.x86_64.rpm
-    wget --no-check-certificate -q https://nccl2-deb.cdn.bcebos.com/libnccl-devel-2.7.8-1+cuda10.2.x86_64.rpm
-    wget --no-check-certificate -q https://nccl2-deb.cdn.bcebos.com/libnccl-static-2.7.8-1+cuda10.2.x86_64.rpm
-    rpm -ivh libnccl-2.7.8-1+cuda10.2.x86_64.rpm
-    rpm -ivh libnccl-devel-2.7.8-1+cuda10.2.x86_64.rpm
-    rpm -ivh libnccl-static-2.7.8-1+cuda10.2.x86_64.rpm && rm -f libnccl-*
+    rm -f /usr/local/lib/libnccl.so
+    wget --no-check-certificate -q https://nccl2-deb.cdn.bcebos.com/libnccl-2.10.3-1+cuda11.4.x86_64.rpm
+    wget --no-check-certificate -q https://nccl2-deb.cdn.bcebos.com/libnccl-devel-2.10.3-1+cuda11.4.x86_64.rpm
+    wget --no-check-certificate -q https://nccl2-deb.cdn.bcebos.com/libnccl-static-2.10.3-1+cuda11.4.x86_64.rpm
+    rpm -Fivh libnccl-2.10.3-1+cuda11.4.x86_64.rpm
+    rpm -Fivh libnccl-devel-2.10.3-1+cuda11.4.x86_64.rpm
+    rpm -Fivh libnccl-static-2.10.3-1+cuda11.4.x86_64.rpm && rm -f libnccl-*
     exit 0
   fi
-  DEB="nccl-repo-ubuntu1604-2.7.8-ga-cuda10.2_1-1_amd64.deb"
+  DEB="nccl-repo-ubuntu1804-2.10.3-cuda11.4_1.0-1_amd64.deb"
+elif [ "$VERSION" == "12.0" ]; then
+  if [ -f "/etc/redhat-release" ];then
+    rm -f /usr/local/lib/libnccl.so
+    wget --no-check-certificate https://nccl2-deb.cdn.bcebos.com/libnccl-2.16.5-1+cuda12.0.x86_64.rpm
+    wget --no-check-certificate https://nccl2-deb.cdn.bcebos.com/libnccl-devel-2.16.5-1+cuda12.0.x86_64.rpm
+    wget --no-check-certificate https://nccl2-deb.cdn.bcebos.com/libnccl-static-2.16.5-1+cuda12.0.x86_64.rpm
+    rpm -ivh libnccl-2.16.5-1+cuda12.0.x86_64.rpm
+    rpm -ivh libnccl-devel-2.16.5-1+cuda12.0.x86_64.rpm
+    rpm -ivh libnccl-static-2.16.5-1+cuda12.0.x86_64.rpm && rm -f
+libnccl-*
+    exit 0
+  fi
+  DEB="nccl-local-repo-ubuntu2004-2.16.5-cuda12.0_1.0-1_amd64.deb"
 elif [ "$VERSION" == "9.0" ]; then
   DEB="nccl-repo-ubuntu1604-2.3.7-ga-cuda9.0_1-1_amd64.deb"
 else

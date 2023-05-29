@@ -13,12 +13,11 @@
 # limitations under the License.
 """Test cases for role makers."""
 
-from __future__ import print_function
-import paddle
 import os
+import tempfile
 import unittest
 
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
+import paddle
 
 
 class TestCloudRoleMaker2(unittest.TestCase):
@@ -28,14 +27,23 @@ class TestCloudRoleMaker2(unittest.TestCase):
 
     def setUp(self):
         """Set up, set envs."""
-        pass
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
 
     def test_pslib_2(self):
         """Test cases for pslib."""
-        import paddle.fluid as fluid
-        from paddle.fluid.incubate.fleet.parameter_server.distribute_transpiler import fleet
-        from paddle.fluid.incubate.fleet.base.role_maker import GeneralRoleMaker
-        from paddle.fluid.incubate.fleet.base.role_maker import RoleMakerBase
+        from paddle import fluid
+        from paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler import (
+            fleet,
+        )
+        from paddle.incubate.distributed.fleet.role_maker import (
+            GeneralRoleMaker,
+            RoleMakerBase,
+        )
+
+        paddle.enable_static()
 
         os.environ["POD_IP"] = "127.0.0.1"
         os.environ["PADDLE_PORT"] = "36001"
@@ -55,13 +63,15 @@ class TestCloudRoleMaker2(unittest.TestCase):
         startup_program = fluid.Program()
         scope = fluid.Scope()
         with fluid.program_guard(train_program, startup_program):
-            show = fluid.layers.data(name="show", shape=[-1, 1], \
-                                     dtype="float32", lod_level=1, append_batch_size=False)
-            fc = fluid.layers.fc(input=show, size=1, act=None)
-            label = fluid.layers.data(name="click", shape=[-1, 1], \
-                                      dtype="int64", lod_level=1, append_batch_size=False)
-            label_cast = fluid.layers.cast(label, dtype='float32')
-            cost = fluid.layers.log_loss(fc, label_cast)
+            show = paddle.static.data(
+                name="show", shape=[-1, 1], dtype="float32", lod_level=1
+            )
+            fc = paddle.static.nn.fc(x=show, size=1, activation=None)
+            label = paddle.static.data(
+                name="click", shape=[-1, 1], dtype="int64", lod_level=1
+            )
+            label_cast = paddle.cast(label, dtype='float32')
+            cost = paddle.nn.functional.log_loss(fc, label_cast)
         try:
             adam = fluid.optimizer.Adam(learning_rate=0.000005)
             adam = fleet.distributed_optimizer(adam)
@@ -155,19 +165,22 @@ class TestCloudRoleMaker2(unittest.TestCase):
         role23 = GeneralRoleMaker(path="./test_gloo_23")
         role23._get_size()
         role23._get_size()
-        with open("test_fleet_gloo_role_maker_1.txt", "w") as f:
+
+        path = os.path.join(
+            self.temp_dir.name, "test_fleet_gloo_role_maker_1.txt"
+        )
+        with open(path, "w") as f:
             data = "1 1 1 1\n"
             f.write(data)
 
         dataset = paddle.distributed.InMemoryDataset()
-        dataset.set_filelist(["test_fleet_gloo_role_maker_1.txt"])
+        dataset.set_filelist([path])
         dataset._set_use_var([show, label])
         dataset.load_into_memory()
         dataset.get_memory_data_size(fleet)
         dataset.get_shuffle_data_size(fleet)
-        os.remove("./test_fleet_gloo_role_maker_1.txt")
 
-        class TmpClass():
+        class TmpClass:
             """
             dummy tmp class
             """
@@ -191,7 +204,7 @@ class TestCloudRoleMaker2(unittest.TestCase):
                 """
                 pass
 
-        from paddle.fluid.incubate.fleet.base.fleet_base import Fleet
+        from paddle.incubate.distributed.fleet.base import Fleet
 
         class TmpFleet(Fleet):
             """
@@ -199,7 +212,7 @@ class TestCloudRoleMaker2(unittest.TestCase):
             """
 
             def __init__(self):
-                super(TmpFleet, self).__init__()
+                super().__init__()
                 self._role_maker = None
 
             def init_worker(self):
@@ -256,14 +269,19 @@ class TestCloudRoleMaker2(unittest.TestCase):
         tmp._role_maker = TmpClass()
         tmp.all_reduce_worker([], [])
         tmp.barrier_worker()
-        from paddle.fluid.incubate.fleet.base.role_maker import GeneralRoleMaker
+        from paddle.incubate.distributed.fleet.role_maker import (
+            GeneralRoleMaker,
+        )
+
         tmp = RoleMakerBase()
         tmp.all_gather(1)
         tmp.all_reduce_worker([], [])
         tmp.barrier_worker()
         tmp.barrier_all()
-        from paddle.fluid.incubate.fleet.base.role_maker import \
-            MPISymetricRoleMaker
+        from paddle.incubate.distributed.fleet.role_maker import (
+            MPISymetricRoleMaker,
+        )
+
         tmp1 = MPISymetricRoleMaker()
         tmp1.all_gather(1)
         tmp1.all_gather(1)

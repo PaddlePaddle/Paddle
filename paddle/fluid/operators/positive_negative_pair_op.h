@@ -12,16 +12,14 @@ limitations under the License. */
 #pragma once
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
-
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class PositiveNegativePairKernel : public framework::OpKernel<T> {
  public:
   struct PredictionResult {
@@ -33,16 +31,19 @@ class PositiveNegativePairKernel : public framework::OpKernel<T> {
   };
 
   void Compute(const framework::ExecutionContext& context) const override {
-    auto score_t = context.Input<Tensor>("Score");
-    auto label_t = context.Input<Tensor>("Label");
-    auto query_t = context.Input<Tensor>("QueryID");
-    auto acc_positive_t = context.Input<Tensor>("AccumulatePositivePair");
-    auto acc_negative_t = context.Input<Tensor>("AccumulateNegativePair");
-    auto acc_neutral_t = context.Input<Tensor>("AccumulateNeutralPair");
-    auto positive_t = context.Output<Tensor>("PositivePair");
-    auto negative_t = context.Output<Tensor>("NegativePair");
-    auto neutral_t = context.Output<Tensor>("NeutralPair");
-    auto weight_t = context.Input<Tensor>("Weight");
+    auto score_t = context.Input<phi::DenseTensor>("Score");
+    auto label_t = context.Input<phi::DenseTensor>("Label");
+    auto query_t = context.Input<phi::DenseTensor>("QueryID");
+    auto acc_positive_t =
+        context.Input<phi::DenseTensor>("AccumulatePositivePair");
+    auto acc_negative_t =
+        context.Input<phi::DenseTensor>("AccumulateNegativePair");
+    auto acc_neutral_t =
+        context.Input<phi::DenseTensor>("AccumulateNeutralPair");
+    auto positive_t = context.Output<phi::DenseTensor>("PositivePair");
+    auto negative_t = context.Output<phi::DenseTensor>("NegativePair");
+    auto neutral_t = context.Output<phi::DenseTensor>("NeutralPair");
+    auto weight_t = context.Input<phi::DenseTensor>("Weight");
 
     auto score = score_t->data<T>();
     auto label = label_t->data<T>();
@@ -71,7 +72,8 @@ class PositiveNegativePairKernel : public framework::OpKernel<T> {
         predictions.emplace(
             std::make_pair(query[i], std::vector<PredictionResult>()));
       }
-      predictions[query[i]].emplace_back(score[i * width + column], label[i],
+      predictions[query[i]].emplace_back(score[i * width + column],
+                                         label[i],
                                          weight_t != nullptr ? weight[i] : 1.0);
     }
 
@@ -83,23 +85,23 @@ class PositiveNegativePairKernel : public framework::OpKernel<T> {
       neg = acc_negative_t->data<T>()[0];
       neu = acc_neutral_t->data<T>()[0];
     }
-    auto evaluate_one_list = [&pos, &neg,
-                              &neu](std::vector<PredictionResult> vec) {
-      for (auto ite1 = vec.begin(); ite1 != vec.end(); ++ite1) {
-        for (auto ite2 = ite1 + 1; ite2 != vec.end(); ++ite2) {
-          if (ite1->label == ite2->label) {  // labels are equal, ignore.
-            continue;
+    auto evaluate_one_list =
+        [&pos, &neg, &neu](std::vector<PredictionResult> vec) {
+          for (auto ite1 = vec.begin(); ite1 != vec.end(); ++ite1) {
+            for (auto ite2 = ite1 + 1; ite2 != vec.end(); ++ite2) {
+              if (ite1->label == ite2->label) {  // labels are equal, ignore.
+                continue;
+              }
+              T w = (ite1->weight + ite2->weight) * 0.5;
+              if (ite1->score == ite2->score) {
+                neu += w;
+              }
+              (ite1->score - ite2->score) * (ite1->label - ite2->label) > 0.0
+                  ? pos += w
+                  : neg += w;
+            }
           }
-          T w = (ite1->weight + ite2->weight) * 0.5;
-          if (ite1->score == ite2->score) {
-            neu += w;
-          }
-          (ite1->score - ite2->score) * (ite1->label - ite2->label) > 0.0
-              ? pos += w
-              : neg += w;
-        }
-      }
-    };
+        };
     for (auto prediction : predictions) {
       evaluate_one_list(prediction.second);
     }

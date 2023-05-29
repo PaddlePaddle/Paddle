@@ -14,16 +14,15 @@
 
 #pragma once
 
-#include "paddle/phi/kernels/conv_transpose_kernel.h"
-
-#include "paddle/fluid/operators/math/im2col.h"
-#include "paddle/fluid/operators/math/vol2col.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/ddim.h"
+#include "paddle/phi/kernels/conv_transpose_kernel.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
+#include "paddle/phi/kernels/funcs/im2col.h"
 #include "paddle/phi/kernels/funcs/slice.h"
+#include "paddle/phi/kernels/funcs/vol2col.h"
 
 namespace phi {
 
@@ -38,8 +37,7 @@ void ConvTransposeRawKernel(const Context& ctx,
                             const std::vector<int>& dilations,
                             const std::string& data_format,
                             DenseTensor* out) {
-  const DataLayout data_layout =
-      paddle::framework::StringToDataLayout(data_format);
+  const DataLayout data_layout = phi::StringToDataLayout(data_format);
   // The filter will be reshaped, so it should not be constant
   DenseTensor filter_ = filter;
   std::vector<int> paddings_ = paddings;
@@ -138,10 +136,8 @@ void ConvTransposeRawKernel(const Context& ctx,
       (data_layout != DataLayout::kNHWC
            ? static_cast<int>(out_dims[1]) / groups
            : static_cast<int>(out_dims[out_dims.size() - 1]) / groups);
-  paddle::operators::math::
-      Col2ImFunctor<paddle::operators::math::ColFormat::kCFO, Context, T>
-          col2im;
-  paddle::operators::math::Col2VolFunctor<Context, T> col2vol;
+  phi::funcs::Col2ImFunctor<phi::funcs::ColFormat::kCFO, Context, T> col2im;
+  phi::funcs::Col2VolFunctor<Context, T> col2vol;
   funcs::ConcatFunctor<Context, T> concat_functor;
 
   // convolution transpose: gemm + col2im or col2vol (similar to conv-backward
@@ -231,8 +227,8 @@ void Conv2dTransposeKernel(const Context& ctx,
                            const DenseTensor& filter,
                            const std::vector<int>& strides,
                            const std::vector<int>& paddings,
-                           const std::vector<int>& output_padding,
-                           const std::vector<int>& output_size,
+                           const std::vector<int>& output_padding UNUSED,
+                           const IntArray& output_size UNUSED,
                            const std::string& padding_algorithm,
                            int groups,
                            const std::vector<int>& dilations,
@@ -256,8 +252,8 @@ void Conv3dTransposeKernel(const Context& ctx,
                            const DenseTensor& filter,
                            const std::vector<int>& strides,
                            const std::vector<int>& paddings,
-                           const std::vector<int>& output_padding,
-                           const std::vector<int>& output_size,
+                           const std::vector<int>& output_padding UNUSED,
+                           const std::vector<int>& output_size UNUSED,
                            const std::string& padding_algorithm,
                            int groups,
                            const std::vector<int>& dilations,

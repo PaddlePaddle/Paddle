@@ -17,7 +17,7 @@
 namespace phi {
 
 KernelSignature DepthwiseConv2dOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("depthwise_conv2d",
                          {"Input", "Filter"},
                          {"strides",
@@ -25,49 +25,40 @@ KernelSignature DepthwiseConv2dOpArgumentMapping(
                           "padding_algorithm",
                           "groups",
                           "dilations",
-                          "data_format",
-                          "use_addto",
-                          "workspace_size_MB",
-                          "exhaustive_search",
-                          "fuse_relu_before_depthwise_conv"},
+                          "data_format"},
                          {"Output"});
 }
 
 KernelSignature DepthwiseConv2dGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("depthwise_conv2d_grad",
-                         {GradVarName("Output"), "Input", "Filter"},
+                         {"Input", "Filter", "Output@GRAD"},
                          {"strides",
                           "paddings",
                           "padding_algorithm",
                           "groups",
                           "dilations",
-                          "data_format",
-                          "use_addto",
-                          "workspace_size_MB",
-                          "exhaustive_search",
-                          "fuse_relu_before_depthwise_conv"},
-                         {GradVarName("Input"), GradVarName("Filter")});
+                          "data_format"},
+                         {"Input@GRAD", "Filter@GRAD"});
 }
 
 KernelSignature DepthwiseConv2dDoubleGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature("depthwise_conv2d_grad_grad",
-                         {"DDInput", "DDFilter", "DOutput", "Input", "Filter"},
+    const ArgumentMappingContext& ctx UNUSED) {
+  return KernelSignature("depthwise_conv2d_double_grad",
+                         {"Input", "Filter", "DOutput", "DDInput", "DDFilter"},
                          {"strides",
                           "paddings",
                           "padding_algorithm",
                           "groups",
                           "dilations",
-                          "data_format",
-                          "use_addto",
-                          "workspace_size_MB",
-                          "exhaustive_search",
-                          "fuse_relu_before_depthwise_conv"},
-                         {"DDOutput", "DInput", "DFilter"});
+                          "data_format"},
+                         {"DInput", "DFilter", "DDOutput"});
 }
 
 }  // namespace phi
+
+PD_REGISTER_BASE_KERNEL_NAME(depthwise_conv2d_grad_grad,
+                             depthwise_conv2d_double_grad);
 
 PD_REGISTER_ARG_MAPPING_FN(depthwise_conv2d,
                            phi::DepthwiseConv2dOpArgumentMapping);

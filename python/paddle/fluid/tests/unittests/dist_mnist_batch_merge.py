@@ -12,24 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import numpy as np
-import argparse
-import time
-import math
+from dist_mnist import cnn_model
+from test_dist_base import TestDistRunnerBase, runtime_main
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.profiler as profiler
-from paddle.fluid import core
-import unittest
-from multiprocessing import Process
-import os
-import signal
-from functools import reduce
-from test_dist_base import TestDistRunnerBase, runtime_main
-from dist_mnist import cnn_model
+from paddle import fluid
 
 DTYPE = "float32"
 
@@ -51,18 +38,23 @@ def test_merge_reader(repeat_batch_size=8):
 class TestDistMnist2x2(TestDistRunnerBase):
     def get_model(self, batch_size=2):
         # Input data
-        images = fluid.layers.data(name='pixel', shape=[1, 28, 28], dtype=DTYPE)
-        label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+        images = paddle.static.data(
+            name='pixel', shape=[-1, 1, 28, 28], dtype=DTYPE
+        )
+        label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
 
         # Train program
         predict = cnn_model(images)
-        cost = fluid.layers.cross_entropy(input=predict, label=label)
-        avg_cost = fluid.layers.mean(x=cost)
+        cost = paddle.nn.functional.cross_entropy(
+            input=predict, label=label, reduction='none', use_softmax=False
+        )
+        avg_cost = paddle.mean(x=cost)
 
         # Evaluator
-        batch_size_tensor = fluid.layers.create_tensor(dtype='int64')
-        batch_acc = fluid.layers.accuracy(
-            input=predict, label=label, total=batch_size_tensor)
+        batch_size_tensor = paddle.tensor.create_tensor(dtype='int64')
+        batch_acc = paddle.static.accuracy(
+            input=predict, label=label, total=batch_size_tensor
+        )
 
         inference_program = fluid.default_main_program().clone()
         # Optimization
@@ -71,9 +63,17 @@ class TestDistMnist2x2(TestDistRunnerBase):
         # Reader
         train_reader = paddle.batch(test_merge_reader, batch_size=batch_size)
         test_reader = paddle.batch(
-            paddle.dataset.mnist.test(), batch_size=batch_size)
+            paddle.dataset.mnist.test(), batch_size=batch_size
+        )
         opt.minimize(avg_cost)
-        return inference_program, avg_cost, train_reader, test_reader, batch_acc, predict
+        return (
+            inference_program,
+            avg_cost,
+            train_reader,
+            test_reader,
+            batch_acc,
+            predict,
+        )
 
 
 if __name__ == "__main__":

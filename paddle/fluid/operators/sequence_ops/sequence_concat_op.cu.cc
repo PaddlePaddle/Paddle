@@ -13,31 +13,22 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/sequence_ops/sequence_concat_op.h"
+
 #include "paddle/fluid/framework/op_registry.h"
 
-namespace paddle {
-namespace platform {
-class CUDADeviceContext;
-}  // namespace platform
-}  // namespace paddle
-
-REGISTER_OP_CUDA_KERNEL(
-    sequence_concat,
-    paddle::operators::SeqConcatKernel<paddle::platform::CUDADeviceContext,
-                                       float>,
-    paddle::operators::SeqConcatKernel<paddle::platform::CUDADeviceContext,
-                                       double>,
-    paddle::operators::SeqConcatKernel<paddle::platform::CUDADeviceContext,
-                                       int>,
-    paddle::operators::SeqConcatKernel<paddle::platform::CUDADeviceContext,
-                                       int64_t>);
-REGISTER_OP_CUDA_KERNEL(
-    sequence_concat_grad,
-    paddle::operators::SeqConcatGradKernel<paddle::platform::CUDADeviceContext,
-                                           float>,
-    paddle::operators::SeqConcatGradKernel<paddle::platform::CUDADeviceContext,
-                                           double>,
-    paddle::operators::SeqConcatGradKernel<paddle::platform::CUDADeviceContext,
-                                           int>,
-    paddle::operators::SeqConcatGradKernel<paddle::platform::CUDADeviceContext,
-                                           int64_t>);
+PD_REGISTER_STRUCT_KERNEL(sequence_concat,
+                          GPU,
+                          ALL_LAYOUT,
+                          paddle::operators::SeqConcatKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}
+PD_REGISTER_STRUCT_KERNEL(sequence_concat_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          paddle::operators::SeqConcatGradKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}

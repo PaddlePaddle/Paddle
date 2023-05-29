@@ -12,25 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
-import paddle.fluid as fluid
+
 import numpy as np
-from paddle.fluid.framework import _test_eager_guard
+
+import paddle
+from paddle import fluid
 
 
 class TestImperativePartitialBackward(unittest.TestCase):
-    def func_partitial_backward(self):
+    def test_partitial_backward(self):
         with fluid.dygraph.guard():
             x = np.random.randn(2, 4, 5).astype("float32")
             x = fluid.dygraph.to_variable(x)
-            linear1 = fluid.dygraph.Linear(5, 10)
-            linear2 = fluid.dygraph.Linear(5, 10)
+            linear1 = paddle.nn.Linear(5, 10)
+            linear2 = paddle.nn.Linear(5, 10)
 
             y = linear1(x[:, :2])
             z = linear2(x[:, 2:])
-            loss = fluid.layers.reduce_mean(y)
+            loss = paddle.mean(y)
             loss.backward()
 
             for param in linear1.parameters():
@@ -39,21 +39,18 @@ class TestImperativePartitialBackward(unittest.TestCase):
             for param in linear2.parameters():
                 self.assertIsNone(param._grad_ivar())
 
-            optimizer = fluid.optimizer.AdamOptimizer(parameter_list=(
-                linear1.parameters() + linear2.parameters()))
+            optimizer = fluid.optimizer.AdamOptimizer(
+                parameter_list=(linear1.parameters() + linear2.parameters())
+            )
             _, params_grads = optimizer.minimize(loss)
 
             self.assertListEqual(
                 sorted([p.name for p in linear1.parameters()]),
-                sorted([p_g[0].name for p_g in params_grads]))
+                sorted([p_g[0].name for p_g in params_grads]),
+            )
 
             linear1.clear_gradients()
             linear2.clear_gradients()
-
-    def test_partitial_backward(self):
-        with _test_eager_guard():
-            self.func_partitial_backward()
-        self.func_partitial_backward()
 
 
 if __name__ == '__main__':

@@ -18,12 +18,11 @@ import atexit
 
 from . import core
 
-# NOTE: queue has a different name in python2 and python3
 import queue
 
 # multi-process worker check indices queue interval, avoid
 # hanging in subprocess data loading
-MP_STATUS_CHECK_INTERVAL = 5.
+MP_STATUS_CHECK_INTERVAL = 5.0
 
 # NOTE: [ mmap files clear ] If there is still data in the multiprocess queue when the main process finishes reading,
 # the data in the queue needs to be popped. Then the LoDTensor read by the main process
@@ -45,7 +44,7 @@ def _clear_multiprocess_queue_set():
 def _cleanup():
     # NOTE: inter-process Queue shared memory objects clear function
     _clear_multiprocess_queue_set()
-    # NOTE: main process memory map files clear funciton
+    # NOTE: main process memory map files clear function
     core._cleanup_mmap_fds()
 
 
@@ -56,7 +55,7 @@ def _cleanup_mmap():
 
 
 # NOTE used for register a function to be executed at interpreter exit.
-class CleanupFuncRegistrar():
+class CleanupFuncRegistrar:
     # Record the cleanup functions that have been executed
     _executed_func_set = set()
     # Record the cleanup functions that have been registered
@@ -92,8 +91,10 @@ class CleanupFuncRegistrar():
             for sig in signals:
                 orig_handler = signal.signal(sig, _signal_handler)
                 if orig_handler not in (signal.SIG_DFL, signal.SIG_IGN):
-                    if (sig == signal.SIGINT and
-                            orig_handler is signal.default_int_handler):
+                    if (
+                        sig == signal.SIGINT
+                        and orig_handler is signal.default_int_handler
+                    ):
                         continue
                     if orig_handler not in cls._registered_func_set:
                         atexit.register(orig_handler)

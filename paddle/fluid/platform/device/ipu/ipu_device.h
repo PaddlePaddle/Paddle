@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include <popart/devicemanager.hpp>
+#include <vector>
 
 namespace paddle {
 namespace platform {

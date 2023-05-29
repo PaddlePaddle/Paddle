@@ -12,14 +12,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/save_combine_op.h"
+
 #include <string>
 
-#include "paddle/fluid/operators/save_combine_op.h"
+#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/core/kernel_registry.h"
 
 namespace paddle {
 namespace operators {
-
-using Tensor = framework::Tensor;
 
 class SaveCombineOp : public framework::OperatorWithKernel {
  public:
@@ -28,18 +30,19 @@ class SaveCombineOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {}
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(framework::proto::VarType::FP32,
-                                   ctx.GetPlace());
+    return phi::KernelKey(framework::proto::VarType::FP32, ctx.GetPlace());
   }
   // TODO(lujun): The override here is just to bypass transform
   //  in operator impl, which is not elegant enough.
-  framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const override {
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place());
+  phi::KernelKey GetKernelTypeForVar(
+      const std::string& var_name,
+      const phi::DenseTensor& tensor,
+      const phi::KernelKey& expected_kernel_type) const override {
+    return phi::KernelKey(tensor.place(),
+                          phi::DataLayout::ALL_LAYOUT,
+                          expected_kernel_type.dtype());
   }
 };
 
@@ -53,7 +56,7 @@ class SaveCombineOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 SaveCombine operator
 
-This operator will serialize and write a list of input LoDTensor variables
+This operator will serialize and write a list of input phi::DenseTensor variables
 to a file on disk.
 )DOC");
     AddAttr<bool>("overwrite",
@@ -69,7 +72,7 @@ to a file on disk.
     AddAttr<std::string>(
         "file_path",
         "(string)"
-        "The \"file_path\" where the LoDTensor variables will be saved.")
+        "The \"file_path\" where the phi::DenseTensor variables will be saved.")
         .AddCustomChecker(
             [](const std::string& path) { return !path.empty(); });
     AddAttr<bool>("save_to_memory",
@@ -86,8 +89,8 @@ to a file on disk.
 class SaveCombineOpInferVarType : public framework::VarTypeInference {
  public:
   void operator()(framework::InferVarTypeContext* ctx) const override {
-    ctx->SetOutputType("Y", framework::proto::VarType::RAW,
-                       framework::ALL_ELEMENTS);
+    ctx->SetOutputType(
+        "Y", framework::proto::VarType::RAW, framework::ALL_ELEMENTS);
   }
 };
 
@@ -96,14 +99,27 @@ class SaveCombineOpInferVarType : public framework::VarTypeInference {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(save_combine, ops::SaveCombineOp,
-                  ops::SaveCombineOpProtoMaker, ops::SaveCombineOpInferVarType);
+REGISTER_OPERATOR(save_combine,
+                  ops::SaveCombineOp,
+                  ops::SaveCombineOpProtoMaker,
+                  ops::SaveCombineOpInferVarType);
 
-REGISTER_OP_CPU_KERNEL(
-    save_combine,
-    ops::SaveCombineOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SaveCombineOpKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SaveCombineOpKernel<paddle::platform::CPUDeviceContext,
-                             paddle::platform::bfloat16>,
-    ops::SaveCombineOpKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SaveCombineOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
+PD_REGISTER_KERNEL(save_combine_tensor,
+                   CPU,
+                   ALL_LAYOUT,
+                   paddle::operators::SaveCombineTensorKernel,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::bfloat16) {}
+
+PD_REGISTER_KERNEL(save_combine_vocab,
+                   CPU,
+                   ALL_LAYOUT,
+                   paddle::operators::SaveCombineVocabKernel,
+                   int,
+                   int64_t,
+                   float,
+                   double,
+                   phi::dtype::bfloat16) {}

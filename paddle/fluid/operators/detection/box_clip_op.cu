@@ -12,23 +12,25 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <algorithm>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detection/box_clip_op.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/hostdevice.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTenso = framework::LoDTensor;
+using LoDTenso = phi::DenseTensor;
 
 static constexpr int ImInfoSize = 3;
 
 template <typename T, int BlockSize>
-static __global__ void GPUBoxClip(const T *input, const size_t *lod,
-                                  const size_t width, const T *im_info,
+static __global__ void GPUBoxClip(const T *input,
+                                  const size_t *lod,
+                                  const size_t width,
+                                  const T *im_info,
                                   T *output) {
   T im_w = round(im_info[blockIdx.x * ImInfoSize + 1] /
                  im_info[blockIdx.x * ImInfoSize + 2]);
@@ -42,13 +44,13 @@ static __global__ void GPUBoxClip(const T *input, const size_t *lod,
   }
 }
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class GPUBoxClipKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *input = context.Input<LoDTensor>("Input");
-    auto *im_info = context.Input<Tensor>("ImInfo");
-    auto *output = context.Output<LoDTensor>("Output");
+    auto *input = context.Input<phi::DenseTensor>("Input");
+    auto *im_info = context.Input<phi::DenseTensor>("ImInfo");
+    auto *output = context.Output<phi::DenseTensor>("Output");
     const int64_t num = input->dims()[0];
     const int64_t bbox_width = input->numel() / num;
     auto lod = input->lod();
@@ -57,10 +59,13 @@ class GPUBoxClipKernel : public framework::OpKernel<T> {
     auto stream = dev_ctx.stream();
     const size_t batch_size = lod.back().size() - 1;
     T *output_data = output->mutable_data<T>(dev_ctx.GetPlace());
-    paddle::framework::MixVector<size_t> mix_vector(&abs_offset_lod[0]);
+    phi::MixVector<size_t> mix_vector(&abs_offset_lod[0]);
     GPUBoxClip<T, 512><<<batch_size, 512, 0, stream>>>(
-        input->data<T>(), mix_vector.CUDAMutableData(dev_ctx.GetPlace()),
-        bbox_width, im_info->data<T>(), output_data);
+        input->data<T>(),
+        mix_vector.CUDAMutableData(dev_ctx.GetPlace()),
+        bbox_width,
+        im_info->data<T>(),
+        output_data);
     mix_vector.CopyToCPU();
   }
 };
@@ -69,6 +74,6 @@ class GPUBoxClipKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    box_clip, ops::GPUBoxClipKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::GPUBoxClipKernel<paddle::platform::CUDADeviceContext, double>);
+
+PD_REGISTER_STRUCT_KERNEL(
+    box_clip, GPU, ALL_LAYOUT, ops::GPUBoxClipKernel, float, double) {}

@@ -13,7 +13,10 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/new_executor/workqueue/workqueue.h"
+
 #include <atomic>
+#include <thread>
+
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/new_executor/workqueue/workqueue_utils.h"
@@ -26,27 +29,31 @@ TEST(WorkQueueUtils, TestEventsWaiter) {
   EXPECT_EQ(events_waiter.WaitEvent(), "test_register_lt");
   EXPECT_EQ(notifier->GetEventName(), "test_register_lt");
   EXPECT_EQ(events_waiter.WaitEvent(), "test_register_lt");
-  notifier->UnregisterEvent();
-  EXPECT_EQ(notifier->GetEventName(), "Unregistered");
+  notifier.reset();
   notifier = events_waiter.RegisterEvent("test_register_et");
   notifier->NotifyEvent();
   EXPECT_EQ(events_waiter.WaitEvent(), "test_register_et");
+  notifier->NotifyEvent();
+  notifier->CancelEvent();
 }
 
 TEST(WorkQueue, TestSingleThreadedWorkQueue) {
   VLOG(1) << "In Test";
-  using paddle::framework::WorkQueueOptions;
-  using paddle::framework::WorkQueue;
   using paddle::framework::CreateSingleThreadedWorkQueue;
   using paddle::framework::EventsWaiter;
+  using paddle::framework::WorkQueue;
+  using paddle::framework::WorkQueueOptions;
   std::atomic<bool> finished{false};
   std::atomic<unsigned> counter{0};
   constexpr unsigned kLoopNum = 1000000;
   // CreateSingleThreadedWorkQueue
   EventsWaiter events_waiter;
   WorkQueueOptions options(/*name*/ "SingleThreadedWorkQueueForTesting",
-                           /*num_threads*/ 1, /*allow_spinning*/ true,
-                           /*track_task*/ true, /*detached*/ true,
+                           /*num_threads*/ 1,
+                           /*allow_spinning*/ true,
+                           /*always_spinning*/ true,
+                           /*track_task*/ true,
+                           /*detached*/ true,
                            &events_waiter);
   auto work_queue = CreateSingleThreadedWorkQueue(options);
   // NumThreads
@@ -60,19 +67,30 @@ TEST(WorkQueue, TestSingleThreadedWorkQueue) {
     }
     finished = true;
   });
+  auto handle = work_queue->AddAwaitableTask([]() { return 1234; });
   // WaitQueueEmpty
   EXPECT_EQ(finished.load(), false);
   events_waiter.WaitEvent();
   EXPECT_EQ(finished.load(), true);
   EXPECT_EQ(counter.load(), kLoopNum);
+  EXPECT_EQ(handle.get(), 1234);
+  work_queue.reset();
+  // Test default_options with no spinning
+  WorkQueueOptions default_options("SingleThreadedWorkQueueForTesting",
+                                   /*num_threads*/ 1,
+                                   /*allow_spinning*/ false,
+                                   /*track_task*/ false);
+  work_queue = CreateSingleThreadedWorkQueue(default_options);
+  handle = work_queue->AddAwaitableTask([]() { return 5678; });
+  EXPECT_EQ(handle.get(), 5678);
 }
 
 TEST(WorkQueue, TestMultiThreadedWorkQueue) {
   VLOG(1) << "In Test";
-  using paddle::framework::WorkQueueOptions;
-  using paddle::framework::WorkQueue;
   using paddle::framework::CreateMultiThreadedWorkQueue;
   using paddle::framework::EventsWaiter;
+  using paddle::framework::WorkQueue;
+  using paddle::framework::WorkQueueOptions;
   std::atomic<bool> finished{false};
   std::atomic<unsigned> counter{0};
   constexpr unsigned kExternalLoopNum = 100;
@@ -80,8 +98,11 @@ TEST(WorkQueue, TestMultiThreadedWorkQueue) {
   // CreateMultiThreadedWorkQueue
   EventsWaiter events_waiter;
   WorkQueueOptions options(/*name*/ "MultiThreadedWorkQueueForTesting",
-                           /*num_threads*/ 10, /*allow_spinning*/ true,
-                           /*track_task*/ true, /*detached*/ false,
+                           /*num_threads*/ 10,
+                           /*allow_spinning*/ true,
+                           /*always_spinning*/ true,
+                           /*track_task*/ true,
+                           /*detached*/ false,
                            &events_waiter);
   auto work_queue = CreateMultiThreadedWorkQueue(options);
   // NumThreads
@@ -104,15 +125,28 @@ TEST(WorkQueue, TestMultiThreadedWorkQueue) {
   EXPECT_EQ(counter.load(), kLoopNum * kExternalLoopNum);
   // Cancel
   work_queue->Cancel();
+  // Wait kQueueDestructEvent
+  std::thread waiter_thread([&events_waiter]() {
+    EXPECT_EQ(events_waiter.WaitEvent(),
+              paddle::framework::kQueueDestructEvent);
+  });
   work_queue.reset();
-  EXPECT_EQ(events_waiter.WaitEvent(), paddle::framework::kQueueDestructEvent);
+  waiter_thread.join();
+  // Forever spin unittest
+  WorkQueueOptions default_options("MultiThreadedWorkQueueForTesting",
+                                   /*num_threads*/ 10,
+                                   /*allow_spinning*/ false,
+                                   /*track_task*/ false);
+  work_queue = CreateMultiThreadedWorkQueue(default_options);
+  auto handle = work_queue->AddAwaitableTask([]() { return 5678; });
+  EXPECT_EQ(handle.get(), 5678);
 }
 
 TEST(WorkQueue, TestWorkQueueGroup) {
-  using paddle::framework::WorkQueueOptions;
-  using paddle::framework::WorkQueueGroup;
   using paddle::framework::CreateWorkQueueGroup;
   using paddle::framework::EventsWaiter;
+  using paddle::framework::WorkQueueGroup;
+  using paddle::framework::WorkQueueOptions;
   std::atomic<bool> finished{false};
   std::atomic<unsigned> counter{0};
   constexpr unsigned kExternalLoopNum = 100;
@@ -120,12 +154,18 @@ TEST(WorkQueue, TestWorkQueueGroup) {
   // ThreadedWorkQueueGroup
   EventsWaiter events_waiter;
   WorkQueueOptions sq_options(/*name*/ "SingleThreadedWorkQueueForTesting",
-                              /*num_threads*/ 1, /*allow_spinning*/ true,
-                              /*track_task*/ true, /*detached*/ false,
+                              /*num_threads*/ 1,
+                              /*allow_spinning*/ true,
+                              /*always_spinning*/ true,
+                              /*track_task*/ true,
+                              /*detached*/ false,
                               &events_waiter);
   WorkQueueOptions mq_options(/*name*/ "MultiThreadedWorkQueueForTesting",
-                              /*num_threads*/ 10, /*allow_spinning*/ true,
-                              /*track_task*/ true, /*detached*/ false,
+                              /*num_threads*/ 10,
+                              /*allow_spinning*/ true,
+                              /*always_spinning*/ true,
+                              /*track_task*/ true,
+                              /*detached*/ false,
                               &events_waiter);
   auto queue_group = CreateWorkQueueGroup({sq_options, mq_options});
   // NumThreads
@@ -146,12 +186,21 @@ TEST(WorkQueue, TestWorkQueueGroup) {
       ++counter;
     }
   });
+  int random_num = 123456;
+  auto handle =
+      queue_group->AddAwaitableTask(1, [random_num]() { return random_num; });
   // WaitQueueGroupEmpty
   events_waiter.WaitEvent();
   EXPECT_EQ(counter.load(), kLoopNum * kExternalLoopNum + kLoopNum);
+  EXPECT_EQ(handle.get(), random_num);
   // Cancel
   queue_group->Cancel();
-  events_waiter.WaitEvent();
+  // Wait kQueueDestructEvent
+  std::thread waiter_thread([&events_waiter]() {
+    EXPECT_EQ(events_waiter.WaitEvent(),
+              paddle::framework::kQueueDestructEvent);
+    EXPECT_EQ(events_waiter.WaitEvent(), "NoEventNotifier");
+  });
   queue_group.reset();
-  EXPECT_EQ(events_waiter.WaitEvent(), paddle::framework::kQueueDestructEvent);
+  waiter_thread.join();
 }

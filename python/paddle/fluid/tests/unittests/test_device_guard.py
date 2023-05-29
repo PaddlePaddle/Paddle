@@ -12,16 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
-from op_test import OpTest
-
-import numpy as np
-import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
 import warnings
+
+import paddle
+from paddle.fluid import core
+
+paddle.enable_static()
 
 
 def execute(main_program, startup_program):
@@ -48,14 +45,16 @@ class TestDeviceGuard(unittest.TestCase):
         startup_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
             data1 = paddle.full(
-                shape=[1, 3, 8, 8], fill_value=0.5, dtype='float32')
+                shape=[1, 3, 8, 8], fill_value=0.5, dtype='float32'
+            )
             data2 = paddle.full(
-                shape=[1, 3, 5, 5], fill_value=0.5, dtype='float32')
+                shape=[1, 3, 5, 5], fill_value=0.5, dtype='float32'
+            )
             shape = paddle.shape(data2)
             with paddle.static.device_guard("cpu"):
                 shape = paddle.slice(shape, axes=[0], starts=[0], ends=[4])
                 with paddle.static.device_guard("gpu"):
-                    out = fluid.layers.crop_tensor(data1, shape=shape)
+                    out = paddle.crop(data1, shape=shape)
         # check if the device attr is set correctly
         all_ops = main_program.global_block().ops
         device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
@@ -72,14 +71,16 @@ class TestDeviceGuard(unittest.TestCase):
         startup_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
             data1 = paddle.full(
-                shape=[1, 3, 8, 8], fill_value=0.5, dtype='float32')
+                shape=[1, 3, 8, 8], fill_value=0.5, dtype='float32'
+            )
             data2 = paddle.full(
-                shape=[1, 3, 5, 5], fill_value=0.5, dtype='float32')
+                shape=[1, 3, 5, 5], fill_value=0.5, dtype='float32'
+            )
             shape = paddle.shape(data2)
             with paddle.static.device_guard("cpu"):
                 shape = paddle.slice(shape, axes=[0], starts=[0], ends=[4])
                 with paddle.static.device_guard("gpu:1"):
-                    out = fluid.layers.crop_tensor(data1, shape=shape)
+                    out = paddle.crop(data1, shape=shape)
         # check if the device attr is set correctly
         all_ops = main_program.global_block().ops
         device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
@@ -96,20 +97,39 @@ class TestDeviceGuard(unittest.TestCase):
         startup_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
             x = paddle.full(
-                shape=[2, 255, 13, 13], fill_value=0.3, dtype='float32')
+                shape=[2, 255, 13, 13], fill_value=0.3, dtype='float32'
+            )
             gt_box = paddle.full(
-                shape=[2, 6, 4], fill_value=0.5, dtype='float32')
+                shape=[2, 6, 4], fill_value=0.5, dtype='float32'
+            )
             gt_label = paddle.full(shape=[2, 6], fill_value=1.0, dtype='int32')
             gt_score = paddle.full(
-                shape=[2, 6], fill_value=0.5, dtype='float32')
+                shape=[2, 6], fill_value=0.5, dtype='float32'
+            )
             anchors = [
-                10, 13, 16, 30, 33, 23, 30, 61, 62, 45, 59, 119, 116, 90, 156,
-                198, 373, 326
+                10,
+                13,
+                16,
+                30,
+                33,
+                23,
+                30,
+                61,
+                62,
+                45,
+                59,
+                119,
+                116,
+                90,
+                156,
+                198,
+                373,
+                326,
             ]
             anchor_mask = [0, 1, 2]
             with paddle.static.device_guard("gpu"):
-                # yolov3_loss only has cpu kernel, so its cpu kernel will be executed
-                loss = fluid.layers.yolov3_loss(
+                # yolo_loss only has cpu kernel, so its cpu kernel will be executed
+                loss = paddle.vision.ops.yolo_loss(
                     x=x,
                     gt_box=gt_box,
                     gt_label=gt_label,
@@ -118,7 +138,8 @@ class TestDeviceGuard(unittest.TestCase):
                     anchor_mask=anchor_mask,
                     class_num=80,
                     ignore_thresh=0.7,
-                    downsample_ratio=32)
+                    downsample_ratio=32,
+                )
 
         execute(main_program, startup_program)
 
@@ -133,10 +154,10 @@ class TestDeviceGuard(unittest.TestCase):
             with warnings.catch_warnings(record=True) as w:
                 warnings.simplefilter("always")
                 with paddle.static.device_guard("cpu"):
-                    while_op = fluid.layers.While(cond=cond)
+                    while_op = paddle.static.nn.control_flow.While(cond=cond)
                     with while_op.block():
                         i = paddle.increment(x=i, value=1)
-                        fluid.layers.less_than(x=i, y=loop_len, cond=cond)
+                        paddle.assign(paddle.less_than(x=i, y=loop_len), cond)
 
         warning = "The Op(while) is not support to set device."
         warning_num = get_vaild_warning_num(warning, w)
@@ -168,14 +189,17 @@ class TestDeviceGuard(unittest.TestCase):
         startup_program = paddle.static.Program()
         with paddle.static.program_guard(main_program, startup_program):
             data1 = paddle.static.data(
-                name="data_1", shape=[4, 2], dtype="float32")
+                name="data_1", shape=[4, 2], dtype="float32"
+            )
             label = paddle.static.data(
-                name="label", shape=[4, 1], dtype="int64")
+                name="label", shape=[4, 1], dtype="int64"
+            )
             fc1 = paddle.static.nn.fc(x=data1, size=10)
             fc2 = paddle.static.nn.fc(x=fc1, size=10)
             with paddle.static.device_guard("gpu"):
                 out = paddle.nn.functional.softmax_with_cross_entropy(
-                    logits=fc1 + fc2, label=label)
+                    logits=fc1 + fc2, label=label
+                )
                 loss = paddle.mean(out)
                 opt = paddle.optimizer.SGD(0.1)
                 opt.minimize(loss)

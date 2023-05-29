@@ -12,23 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import contextlib
 import unittest
+
 import numpy as np
-import six
+from test_imperative_base import new_program_scope
+from utils import DyGraphProgramDescTracerTestHelper
 
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import core
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid import Conv2D, Pool2D, BatchNorm, Linear
 from paddle.fluid.dygraph.base import to_variable
-from test_imperative_base import new_program_scope
-from utils import DyGraphProgramDescTracerTestHelper, is_equal_program
-from paddle.fluid.dygraph import TracedLayer
-from paddle.fluid.framework import _test_eager_guard, _in_eager_mode
+from paddle.fluid.layer_helper import LayerHelper
+from paddle.nn import BatchNorm
 
-#NOTE(zhiqiu): run with FLAGS_cudnn_deterministic=1
+# NOTE(zhiqiu): run with FLAGS_cudnn_deterministic=1
 
 batch_size = 8
 train_parameters = {
@@ -39,7 +36,7 @@ train_parameters = {
         "name": "piecewise_decay",
         "batch_size": batch_size,
         "epochs": [30, 60, 90],
-        "steps": [0.1, 0.01, 0.001, 0.0001]
+        "steps": [0.1, 0.01, 0.001, 0.0001],
     },
     "batch_size": batch_size,
     "lr": 0.1,
@@ -62,8 +59,9 @@ def optimizer_setting(params, parameter_list=None):
         lr = []
         lr = [base_lr * (0.1**i) for i in range(len(bd) + 1)]
         if fluid.in_dygraph_mode():
-            optimizer = fluid.optimizer.SGD(learning_rate=0.01,
-                                            parameter_list=parameter_list)
+            optimizer = fluid.optimizer.SGD(
+                learning_rate=0.01, parameter_list=parameter_list
+            )
         else:
             optimizer = fluid.optimizer.SGD(learning_rate=0.01)
         # TODO(minqiyang): Add learning rate scheduler support to dygraph mode
@@ -72,32 +70,33 @@ def optimizer_setting(params, parameter_list=None):
         #  learning_rate=fluid.layers.piecewise_decay(
         #  boundaries=bd, values=lr),
         #  momentum=0.9,
-        #  regularization=fluid.regularizer.L2Decay(1e-4))
+        #  regularization=paddle.regularizer.L2Decay(1e-4))
 
     return optimizer
 
 
-class ConvBNLayer(fluid.Layer):
-    def __init__(self,
-                 num_channels,
-                 num_filters,
-                 filter_size,
-                 stride=1,
-                 groups=1,
-                 act=None,
-                 use_cudnn=False):
-        super(ConvBNLayer, self).__init__()
+class ConvBNLayer(paddle.nn.Layer):
+    def __init__(
+        self,
+        num_channels,
+        num_filters,
+        filter_size,
+        stride=1,
+        groups=1,
+        act=None,
+        use_cudnn=False,
+    ):
+        super().__init__()
 
-        self._conv = Conv2D(
-            num_channels=num_channels,
-            num_filters=num_filters,
-            filter_size=filter_size,
+        self._conv = paddle.nn.Conv2D(
+            in_channels=num_channels,
+            out_channels=num_filters,
+            kernel_size=filter_size,
             stride=stride,
             padding=(filter_size - 1) // 2,
             groups=groups,
-            act=None,
             bias_attr=False,
-            use_cudnn=use_cudnn)
+        )
 
         self._batch_norm = BatchNorm(num_filters, act=act)
 
@@ -108,34 +107,34 @@ class ConvBNLayer(fluid.Layer):
         return y
 
 
-class BottleneckBlock(fluid.Layer):
-    def __init__(self,
-                 num_channels,
-                 num_filters,
-                 stride,
-                 shortcut=True,
-                 use_cudnn=False):
-        super(BottleneckBlock, self).__init__()
+class BottleneckBlock(paddle.nn.Layer):
+    def __init__(
+        self, num_channels, num_filters, stride, shortcut=True, use_cudnn=False
+    ):
+        super().__init__()
 
         self.conv0 = ConvBNLayer(
             num_channels=num_channels,
             num_filters=num_filters,
             filter_size=1,
             act='relu',
-            use_cudnn=use_cudnn)
+            use_cudnn=use_cudnn,
+        )
         self.conv1 = ConvBNLayer(
             num_channels=num_filters,
             num_filters=num_filters,
             filter_size=3,
             stride=stride,
             act='relu',
-            use_cudnn=use_cudnn)
+            use_cudnn=use_cudnn,
+        )
         self.conv2 = ConvBNLayer(
             num_channels=num_filters,
             num_filters=num_filters * 4,
             filter_size=1,
             act=None,
-            use_cudnn=use_cudnn)
+            use_cudnn=use_cudnn,
+        )
 
         if not shortcut:
             self.short = ConvBNLayer(
@@ -143,7 +142,8 @@ class BottleneckBlock(fluid.Layer):
                 num_filters=num_filters * 4,
                 filter_size=1,
                 stride=stride,
-                use_cudnn=use_cudnn)
+                use_cudnn=use_cudnn,
+            )
 
         self.shortcut = shortcut
 
@@ -157,20 +157,23 @@ class BottleneckBlock(fluid.Layer):
         else:
             short = self.short(inputs)
 
-        y = fluid.layers.elementwise_add(x=short, y=conv2)
+        y = paddle.add(x=short, y=conv2)
 
         layer_helper = LayerHelper(self.full_name(), act='relu')
         return layer_helper.append_activation(y)
 
 
-class ResNet(fluid.Layer):
-    def __init__(self, layers=50, class_dim=102, use_cudnn=False):
-        super(ResNet, self).__init__()
+class ResNet(paddle.nn.Layer):
+    def __init__(self, layers=50, class_dim=102, use_cudnn=True):
+        super().__init__()
 
         self.layers = layers
         supported_layers = [50, 101, 152]
-        assert layers in supported_layers, \
-            "supported layers are {} but input layer is {}".format(supported_layers, layers)
+        assert (
+            layers in supported_layers
+        ), "supported layers are {} but input layer is {}".format(
+            supported_layers, layers
+        )
 
         if layers == 50:
             depth = [3, 4, 6, 3]
@@ -187,9 +190,11 @@ class ResNet(fluid.Layer):
             filter_size=7,
             stride=2,
             act='relu',
-            use_cudnn=use_cudnn)
-        self.pool2d_max = Pool2D(
-            pool_size=3, pool_stride=2, pool_padding=1, pool_type='max')
+            use_cudnn=use_cudnn,
+        )
+        self.pool2d_max = paddle.nn.MaxPool2D(
+            kernel_size=3, stride=2, padding=1
+        )
 
         self.bottleneck_block_list = []
         for block in range(len(depth)):
@@ -199,28 +204,31 @@ class ResNet(fluid.Layer):
                     'bb_%d_%d' % (block, i),
                     BottleneckBlock(
                         num_channels=num_channels[block]
-                        if i == 0 else num_filters[block] * 4,
+                        if i == 0
+                        else num_filters[block] * 4,
                         num_filters=num_filters[block],
                         stride=2 if i == 0 and block != 0 else 1,
                         shortcut=shortcut,
-                        use_cudnn=use_cudnn))
+                        use_cudnn=use_cudnn,
+                    ),
+                )
                 self.bottleneck_block_list.append(bottleneck_block)
                 shortcut = True
-
-        self.pool2d_avg = Pool2D(
-            pool_size=7, pool_type='avg', global_pooling=True)
+        self.pool2d_avg = paddle.nn.AdaptiveAvgPool2D(1)
 
         self.pool2d_avg_output = num_filters[-1] * 4 * 1 * 1
 
         import math
+
         stdv = 1.0 / math.sqrt(2048 * 1.0)
 
-        self.out = Linear(
+        self.out = paddle.nn.Linear(
             self.pool2d_avg_output,
             class_dim,
-            act='softmax',
-            param_attr=fluid.param_attr.ParamAttr(
-                initializer=fluid.initializer.Uniform(-stdv, stdv)))
+            weight_attr=fluid.param_attr.ParamAttr(
+                initializer=paddle.nn.initializer.Uniform(-stdv, stdv)
+            ),
+        )
 
     def forward(self, inputs):
         y = self.conv(inputs)
@@ -228,8 +236,9 @@ class ResNet(fluid.Layer):
         for bottleneck_block in self.bottleneck_block_list:
             y = bottleneck_block(y)
         y = self.pool2d_avg(y)
-        y = fluid.layers.reshape(y, shape=[-1, self.pool2d_avg_output])
+        y = paddle.reshape(y, shape=[-1, self.pool2d_avg_output])
         y = self.out(y)
+        y = paddle.nn.functional.softmax(y)
         return y
 
 
@@ -243,7 +252,7 @@ class TestDygraphResnet(unittest.TestCase):
 
         return _reader_imple
 
-    def func_test_resnet_float32(self):
+    def test_resnet_float32(self):
         seed = 90
 
         batch_size = train_parameters["batch_size"]
@@ -257,12 +266,14 @@ class TestDygraphResnet(unittest.TestCase):
 
             resnet = ResNet()
             optimizer = optimizer_setting(
-                train_parameters, parameter_list=resnet.parameters())
+                train_parameters, parameter_list=resnet.parameters()
+            )
             np.random.seed(seed)
 
             train_reader = paddle.batch(
                 paddle.dataset.flowers.train(use_xmap=False),
-                batch_size=batch_size)
+                batch_size=batch_size,
+            )
 
             dy_param_init_value = {}
             for param in resnet.parameters():
@@ -276,27 +287,20 @@ class TestDygraphResnet(unittest.TestCase):
                     break
 
                 dy_x_data = np.array(
-                    [x[0].reshape(3, 224, 224) for x in data]).astype('float32')
-                y_data = np.array([x[1] for x in data]).astype('int64').reshape(
-                    batch_size, 1)
+                    [x[0].reshape(3, 224, 224) for x in data]
+                ).astype('float32')
+                y_data = (
+                    np.array([x[1] for x in data])
+                    .astype('int64')
+                    .reshape(batch_size, 1)
+                )
 
                 img = to_variable(dy_x_data)
                 label = to_variable(y_data)
                 label.stop_gradient = True
 
                 out = None
-                if batch_id % 5 == 0 and not _in_eager_mode():
-                    out, traced_layer = TracedLayer.trace(resnet, img)
-                    if program is not None:
-                        self.assertTrue(
-                            is_equal_program(program, traced_layer.program))
-
-                    traced_layer.save_inference_model(
-                        './infer_imperative_resnet')
-
-                    program = traced_layer.program
-                else:
-                    out = resnet(img)
+                out = resnet(img)
 
                 if traced_layer is not None:
                     resnet.eval()
@@ -307,8 +311,10 @@ class TestDygraphResnet(unittest.TestCase):
                     helper.assertEachVar(out_dygraph, out_static)
                     resnet.train()
 
-                loss = fluid.layers.cross_entropy(input=out, label=label)
-                avg_loss = fluid.layers.mean(x=loss)
+                loss = paddle.nn.functional.cross_entropy(
+                    input=out, label=label, reduction='none', use_softmax=False
+                )
+                avg_loss = paddle.mean(x=loss)
 
                 dy_out = avg_loss.numpy()
 
@@ -322,10 +328,12 @@ class TestDygraphResnet(unittest.TestCase):
                 dy_grad_value = {}
                 for param in resnet.parameters():
                     if param.trainable:
-                        np_array = np.array(param._grad_ivar().value()
-                                            .get_tensor())
-                        dy_grad_value[param.name + core.grad_var_suffix(
-                        )] = np_array
+                        np_array = np.array(
+                            param._grad_ivar().value().get_tensor()
+                        )
+                        dy_grad_value[
+                            param.name + core.grad_var_suffix()
+                        ] = np_array
 
                 optimizer.minimize(avg_loss)
                 resnet.clear_gradients()
@@ -338,8 +346,11 @@ class TestDygraphResnet(unittest.TestCase):
             paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
 
-            exe = fluid.Executor(fluid.CPUPlace(
-            ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
+            exe = fluid.Executor(
+                fluid.CPUPlace()
+                if not core.is_compiled_with_cuda()
+                else fluid.CUDAPlace(0)
+            )
 
             resnet = ResNet()
             optimizer = optimizer_setting(train_parameters)
@@ -347,14 +358,20 @@ class TestDygraphResnet(unittest.TestCase):
             np.random.seed(seed)
             train_reader = paddle.batch(
                 paddle.dataset.flowers.train(use_xmap=False),
-                batch_size=batch_size)
+                batch_size=batch_size,
+            )
 
-            img = fluid.layers.data(
-                name='pixel', shape=[3, 224, 224], dtype='float32')
-            label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+            img = paddle.static.data(
+                name='pixel', shape=[-1, 3, 224, 224], dtype='float32'
+            )
+            label = paddle.static.data(
+                name='label', shape=[-1, 1], dtype='int64'
+            )
             out = resnet(img)
-            loss = fluid.layers.cross_entropy(input=out, label=label)
-            avg_loss = fluid.layers.mean(x=loss)
+            loss = paddle.nn.functional.cross_entropy(
+                input=out, label=label, reduction='none', use_softmax=False
+            )
+            avg_loss = paddle.mean(x=loss)
             optimizer.minimize(avg_loss)
 
             # initialize params and fetch them
@@ -365,11 +382,14 @@ class TestDygraphResnet(unittest.TestCase):
                 static_param_name_list.append(param.name)
             for param in resnet.parameters():
                 if param.trainable:
-                    static_grad_name_list.append(param.name +
-                                                 core.grad_var_suffix())
+                    static_grad_name_list.append(
+                        param.name + core.grad_var_suffix()
+                    )
 
-            out = exe.run(fluid.default_startup_program(),
-                          fetch_list=static_param_name_list)
+            out = exe.run(
+                fluid.default_startup_program(),
+                fetch_list=static_param_name_list,
+            )
 
             for i in range(len(static_param_name_list)):
                 static_param_init_value[static_param_name_list[i]] = out[i]
@@ -379,9 +399,13 @@ class TestDygraphResnet(unittest.TestCase):
                     break
 
                 static_x_data = np.array(
-                    [x[0].reshape(3, 224, 224) for x in data]).astype('float32')
-                y_data = np.array([x[1] for x in data]).astype('int64').reshape(
-                    [batch_size, 1])
+                    [x[0].reshape(3, 224, 224) for x in data]
+                ).astype('float32')
+                y_data = (
+                    np.array([x[1] for x in data])
+                    .astype('int64')
+                    .reshape([batch_size, 1])
+                )
 
                 if traced_layer is not None:
                     traced_layer([static_x_data])
@@ -389,53 +413,57 @@ class TestDygraphResnet(unittest.TestCase):
                 fetch_list = [avg_loss.name]
                 fetch_list.extend(static_param_name_list)
                 fetch_list.extend(static_grad_name_list)
-                out = exe.run(fluid.default_main_program(),
-                              feed={"pixel": static_x_data,
-                                    "label": y_data},
-                              fetch_list=fetch_list)
+                out = exe.run(
+                    fluid.default_main_program(),
+                    feed={"pixel": static_x_data, "label": y_data},
+                    fetch_list=fetch_list,
+                )
 
                 static_param_value = {}
                 static_grad_value = {}
                 static_out = out[0]
                 param_start_pos = 1
                 grad_start_pos = len(static_param_name_list) + param_start_pos
-                for i in range(param_start_pos,
-                               len(static_param_name_list) + param_start_pos):
-                    static_param_value[static_param_name_list[
-                        i - param_start_pos]] = out[i]
-                for i in range(grad_start_pos,
-                               len(static_grad_name_list) + grad_start_pos):
-                    static_grad_value[static_grad_name_list[
-                        i - grad_start_pos]] = out[i]
+                for i in range(
+                    param_start_pos,
+                    len(static_param_name_list) + param_start_pos,
+                ):
+                    static_param_value[
+                        static_param_name_list[i - param_start_pos]
+                    ] = out[i]
+                for i in range(
+                    grad_start_pos, len(static_grad_name_list) + grad_start_pos
+                ):
+                    static_grad_value[
+                        static_grad_name_list[i - grad_start_pos]
+                    ] = out[i]
 
         print("static", static_out)
         print("dygraph", dy_out)
-        self.assertTrue(np.allclose(static_out, dy_out))
+        np.testing.assert_allclose(static_out, dy_out, rtol=1e-05)
 
         self.assertEqual(len(dy_param_init_value), len(static_param_init_value))
 
-        for key, value in six.iteritems(static_param_init_value):
-            self.assertTrue(np.allclose(value, dy_param_init_value[key]))
+        for key, value in static_param_init_value.items():
+            np.testing.assert_allclose(
+                value, dy_param_init_value[key], rtol=1e-05
+            )
             self.assertTrue(np.isfinite(value.all()))
             self.assertFalse(np.isnan(value.any()))
 
         self.assertEqual(len(dy_grad_value), len(static_grad_value))
-        for key, value in six.iteritems(static_grad_value):
-            self.assertTrue(np.allclose(value, dy_grad_value[key]))
+        for key, value in static_grad_value.items():
+            np.testing.assert_allclose(value, dy_grad_value[key], rtol=1e-05)
             self.assertTrue(np.isfinite(value.all()))
             self.assertFalse(np.isnan(value.any()))
 
         self.assertEqual(len(dy_param_value), len(static_param_value))
-        for key, value in six.iteritems(static_param_value):
-            self.assertTrue(np.allclose(value, dy_param_value[key]))
+        for key, value in static_param_value.items():
+            np.testing.assert_allclose(value, dy_param_value[key], rtol=1e-05)
             self.assertTrue(np.isfinite(value.all()))
             self.assertFalse(np.isnan(value.any()))
 
-    def test_resnet_float32(self):
-        with _test_eager_guard():
-            self.func_test_resnet_float32()
-        self.func_test_resnet_float32()
-
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

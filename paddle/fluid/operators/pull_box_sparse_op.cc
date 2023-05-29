@@ -22,11 +22,13 @@ class PullBoxSparseOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_GE(
-        ctx->Inputs("Ids").size(), 1UL,
+        ctx->Inputs("Ids").size(),
+        1UL,
         platform::errors::InvalidArgument(
             "Inputs(Ids) of PullBoxSparseOp should not be empty."));
     PADDLE_ENFORCE_GE(
-        ctx->Outputs("Out").size(), 1UL,
+        ctx->Outputs("Out").size(),
+        1UL,
         platform::errors::InvalidArgument(
             "Outputs(Out) of PullBoxSparseOp should not be empty."));
     auto hidden_size = static_cast<int64_t>(ctx->Attrs().Get<int>("size"));
@@ -37,7 +39,8 @@ class PullBoxSparseOp : public framework::OperatorWithKernel {
     for (size_t i = 0; i < n_ids; ++i) {
       const auto ids_dims = all_ids_dim[i];
       int ids_rank = ids_dims.size();
-      PADDLE_ENFORCE_EQ(ids_dims[ids_rank - 1], 1,
+      PADDLE_ENFORCE_EQ(ids_dims[ids_rank - 1],
+                        1,
                         platform::errors::InvalidArgument(
                             "Shape error in %lu id, the last dimension of the "
                             "'Ids' tensor must be 1.",
@@ -53,10 +56,9 @@ class PullBoxSparseOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(framework::proto::VarType::FP32,
-                                   ctx.device_context());
+    return phi::KernelKey(framework::proto::VarType::FP32, ctx.GetPlace());
   }
 };
 
@@ -116,21 +118,25 @@ class PushBoxSparseOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {}
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("Out")),
+                          ctx.GetPlace());
   }
 };
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(pull_box_sparse, ops::PullBoxSparseOp,
+REGISTER_OPERATOR(pull_box_sparse,
+                  ops::PullBoxSparseOp,
                   ops::PullBoxSparseOpMaker,
                   ops::PushBoxSparseOpMaker<paddle::framework::OpDesc>,
                   ops::PushBoxSparseOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(push_box_sparse, ops::PushBoxSparseOp);
-REGISTER_OP_CPU_KERNEL(pull_box_sparse, ops::PullBoxSparseCPUKernel<float>)
-REGISTER_OP_CPU_KERNEL(push_box_sparse, ops::PushBoxSparseCPUKernel<float>)
+
+PD_REGISTER_STRUCT_KERNEL(
+    pull_box_sparse, CPU, ALL_LAYOUT, ops::PullBoxSparseKernel, float) {}
+PD_REGISTER_STRUCT_KERNEL(
+    push_box_sparse, CPU, ALL_LAYOUT, ops::PushBoxSparseKernel, float) {}

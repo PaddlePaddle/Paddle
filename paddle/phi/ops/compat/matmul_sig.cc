@@ -19,19 +19,19 @@ namespace phi {
 KernelSignature MatmulGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (ctx.HasAttr("use_addto")) {
     return KernelSignature("addto_matmul_grad",
-                           {"X", "Y", GradVarName("Out")},
+                           {"X", "Y", "Out@GRAD"},
                            {"trans_x", "trans_y", "use_addto"},
-                           {GradVarName("X"), GradVarName("Y")});
+                           {"X@GRAD", "Y@GRAD"});
   } else {
     return KernelSignature("matmul_grad",
-                           {"X", "Y", GradVarName("Out")},
+                           {"X", "Y", "Out@GRAD"},
                            {"trans_x", "trans_y"},
-                           {GradVarName("X"), GradVarName("Y")});
+                           {"X@GRAD", "Y@GRAD"});
   }
 }
 
 KernelSignature MatmulDoubleGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("matmul_double_grad",
                          {"X", "Y", "DOut", "DDX", "DDY"},
                          {"trans_x", "trans_y"},
@@ -39,7 +39,7 @@ KernelSignature MatmulDoubleGradOpArgumentMapping(
 }
 
 KernelSignature MatmulTripleGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature(
       "matmul_triple_grad",
       {"X", "Y", "DOut", "DDX", "DDY", "D_DX", "D_DY", "D_DDOut"},

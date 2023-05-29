@@ -17,7 +17,17 @@ limitations under the License. */
 #include <map>
 #include <memory>
 #include <vector>
+
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
+#endif
+
+#ifdef PADDLE_WITH_XPU_KP
+#include <xpu/runtime.h>  // NOLINT
+
+#include "paddle/fluid/platform/device/xpu/xpu_info.h"
+#endif
+
 #include "paddle/fluid/platform/enforce.h"
 
 #ifdef PADDLE_WITH_HETERPS
@@ -25,9 +35,17 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+#if defined(PADDLE_WITH_CUDA)
+using ppStream = cudaStream_t;
+
+#elif defined(PADDLE_WITH_XPU_KP)
+using ppStream = XPUStream;
+#endif
+
+#if defined(PADDLE_WITH_CUDA)
 class GPUResource {
  public:
-  GPUResource(std::vector<int>& device_id, int index);
+  GPUResource(std::vector<int>& device_id, int index);  // NOLINT
   virtual ~GPUResource();
   GPUResource(const GPUResource&) = delete;
   GPUResource& operator=(const GPUResource&) = delete;
@@ -46,26 +64,95 @@ class GPUResource {
   std::vector<gpuStream_t> comm_streams_;
 };
 
+#elif defined(PADDLE_WITH_XPU_KP)
+class XPUResource {
+ public:
+  XPUResource(std::vector<int>& device_id, int index);  // NOLINT
+  virtual ~XPUResource();
+  XPUResource(const XPUResource&) = delete;
+  XPUResource& operator=(const XPUResource&) = delete;
+
+  int dev_id() const { return dev_id_; }
+  int index() const { return index_; }
+  XPUStream local_stream(int num) { return local_streams_[num]; }
+  XPUStream remote_stream(int num) { return remote_streams_[num]; }
+  XPUStream comm_stream(int num) { return comm_streams_[num]; }
+
+  int dev_id_;
+  int index_;
+  std::vector<int> dev_ids_;
+  std::vector<XPUStream> remote_streams_;
+  std::vector<XPUStream> local_streams_;
+  std::vector<XPUStream> comm_streams_;
+};
+#endif
+
+#if defined(PADDLE_WITH_CUDA)
+using DevResource = GPUResource;
+using DevPlace = platform::CUDAPlace;
+using AnyDeviceGuard = platform::CUDADeviceGuard;
+#elif defined(PADDLE_WITH_XPU_KP)
+using DevResource = XPUResource;
+using DevPlace = platform::XPUPlace;
+using AnyDeviceGuard = platform::XPUDeviceGuard;
+#endif
+
+#if defined(PADDLE_WITH_CUDA)
+class GpuRDMAChecker {
+ public:
+  static GpuRDMAChecker* get(int device_num);
+
+ public:
+  explicit GpuRDMAChecker(int device_num);
+  // rdma
+  bool need_rdma_trans(void);
+  bool is_device_support_rdma(int devid);
+  // device num
+  int device_num(void) { return device_num_; }
+  // topo_aware
+  bool topo_aware(void) { return topo_aware_; }
+
+ private:
+  bool check_device_status(const int& device_count,
+                           std::vector<int>* gpu_status);
+
+ private:
+  int device_num_ = 0;
+  bool topo_aware_ = false;
+  // rdma
+  bool rdma_trans_ = false;
+  std::vector<int> rdma_status_;
+};
+#endif
+
 class HeterPsResource {
  public:
-  HeterPsResource(const std::vector<int>& dev_ids);
+  explicit HeterPsResource(const std::vector<int>& dev_ids);
   HeterPsResource(const HeterPsResource&) = delete;
   HeterPsResource& operator=(const HeterPsResource&) = delete;
   virtual ~HeterPsResource() {}
   void enable_p2p();
-  int total_gpu();
+  int total_device();
   int get_index_by_devid(int devid);
   int dev_id(int num);
   void set_multi_mf(int multi_mf_dim, int max_mf_dim);
-  gpuStream_t local_stream(int gpu_num, int stream_num);
-  gpuStream_t remote_stream(int gpu_num, int stream_num);
-  gpuStream_t comm_stream(int gpu_num, int stream_num);
+  int multi_mf() { return multi_mf_dim_; }
+  int max_mf_dim() { return max_mf_dim_; }
 
-  std::vector<std::shared_ptr<GPUResource>> resources_;
+  ppStream local_stream(int dev_num, int stream_num);
+  ppStream remote_stream(int dev_num, int stream_num);
+  ppStream comm_stream(int dev_num, int stream_num);
+  // node
+  bool multi_node(void) { return multi_node_; }
+  void set_multi_node(bool multi_node) { multi_node_ = multi_node; }
+
+  std::vector<std::shared_ptr<DevResource>> resources_;
   std::vector<int> dev_ids_;
   std::map<int, int> devid_2_index_;
   int multi_mf_dim_{0};
   int max_mf_dim_{0};
+  // multi node
+  bool multi_node_ = false;
 };
 
 }  // end namespace framework

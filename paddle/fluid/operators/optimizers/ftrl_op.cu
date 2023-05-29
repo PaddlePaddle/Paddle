@@ -13,5 +13,4 @@ specific language governing permissions and limitations under the License. */
 #include "paddle/fluid/operators/optimizers/ftrl_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    ftrl, ops::FTRLOpKernel<paddle::platform::CUDADeviceContext, float>);
+PD_REGISTER_STRUCT_KERNEL(ftrl, GPU, ALL_LAYOUT, ops::FTRLOpKernel, float) {}

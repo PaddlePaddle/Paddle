@@ -34,6 +34,10 @@ void ExpandAs(const Context& context,
   auto diff = target_shape.size() - vec_in_dims.size();
   vec_in_dims.insert(vec_in_dims.begin(), diff, 1);
   std::vector<int> repeat_times(vec_in_dims.size());
+  if (Rank == 0) {
+    phi::Copy<Context>(context, x, context.GetPlace(), false, out);
+    return;
+  }
   for (size_t i = 0; i < vec_in_dims.size(); ++i) {
     PADDLE_ENFORCE_NE(
         target_shape[i],
@@ -93,7 +97,7 @@ void ExpandAs(const Context& context,
 template <typename T, typename Context>
 void ExpandAsKernel(const Context& ctx,
                     const DenseTensor& x,
-                    paddle::optional<const DenseTensor&> y,
+                    const paddle::optional<DenseTensor>& y,
                     const std::vector<int>& target_shape,
                     DenseTensor* out) {
   auto rank = x.dims().size();
@@ -108,7 +112,7 @@ void ExpandAsKernel(const Context& ctx,
                         rank));
   PADDLE_ENFORCE_GE(
       rank,
-      1,
+      0,
       errors::InvalidArgument("The rank (%d) of the input 'x' for "
                               "expand_as_v2 op must be positive.",
                               rank));
@@ -120,24 +124,39 @@ void ExpandAsKernel(const Context& ctx,
                         target_rank,
                         MAX_RANK_SUPPORTED));
 
+  std::vector<int> real_target_shape = target_shape;
+  for (size_t i = 0; i < target_shape.size(); ++i) {
+    if (target_shape[i] == -1) {
+      if (y) {
+        if (y->IsInitialized()) {
+          real_target_shape = phi::vectorize<int>(y->dims());
+        }
+      }
+      break;
+    }
+  }
+
   switch (target_rank) {
+    case 0:
+      ExpandAs<Context, T, 0>(ctx, x, real_target_shape, out);
+      break;
     case 1:
-      ExpandAs<Context, T, 1>(ctx, x, target_shape, out);
+      ExpandAs<Context, T, 1>(ctx, x, real_target_shape, out);
       break;
     case 2:
-      ExpandAs<Context, T, 2>(ctx, x, target_shape, out);
+      ExpandAs<Context, T, 2>(ctx, x, real_target_shape, out);
       break;
     case 3:
-      ExpandAs<Context, T, 3>(ctx, x, target_shape, out);
+      ExpandAs<Context, T, 3>(ctx, x, real_target_shape, out);
       break;
     case 4:
-      ExpandAs<Context, T, 4>(ctx, x, target_shape, out);
+      ExpandAs<Context, T, 4>(ctx, x, real_target_shape, out);
       break;
     case 5:
-      ExpandAs<Context, T, 5>(ctx, x, target_shape, out);
+      ExpandAs<Context, T, 5>(ctx, x, real_target_shape, out);
       break;
     case 6:
-      ExpandAs<Context, T, 6>(ctx, x, target_shape, out);
+      ExpandAs<Context, T, 6>(ctx, x, real_target_shape, out);
       break;
   }
 }

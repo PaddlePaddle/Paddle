@@ -13,8 +13,12 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-import paddle.fluid as fluid
+
+import paddle
+from paddle import fluid
+from paddle.incubate.layers.nn import search_pyramid_hash
 
 
 class TestPyramidHashOpApi(unittest.TestCase):
@@ -22,8 +26,10 @@ class TestPyramidHashOpApi(unittest.TestCase):
         num_voc = 128
         embed_dim = 64
         x_shape, x_lod = [16, 10], [[3, 5, 2, 6]]
-        x = fluid.data(name='x', shape=x_shape, dtype='int32', lod_level=1)
-        hash_embd = fluid.contrib.search_pyramid_hash(
+        x = paddle.static.data(
+            name='x', shape=x_shape, dtype='int32', lod_level=1
+        )
+        hash_embd = search_pyramid_hash(
             input=x,
             num_emb=embed_dim,
             space_len=num_voc * embed_dim,
@@ -38,24 +44,27 @@ class TestPyramidHashOpApi(unittest.TestCase):
             lr=0.002,
             param_attr=fluid.ParamAttr(
                 name="PyramidHash_emb_0",
-                learning_rate=0, ),
+                learning_rate=0,
+            ),
             param_attr_wl=fluid.ParamAttr(
                 name="Filter",
-                learning_rate=0, ),
+                learning_rate=0,
+            ),
             param_attr_bl=None,
             distribute_update_vars=["PyramidHash_emb_0"],
-            name=None, )
+            name=None,
+        )
 
         place = fluid.CPUPlace()
         x_tensor = fluid.create_lod_tensor(
-            np.random.randint(0, num_voc, x_shape).astype('int32'), x_lod,
-            place)
+            np.random.randint(0, num_voc, x_shape).astype('int32'), x_lod, place
+        )
 
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
-        ret = exe.run(feed={'x': x_tensor},
-                      fetch_list=[hash_embd],
-                      return_numpy=False)
+        ret = exe.run(
+            feed={'x': x_tensor}, fetch_list=[hash_embd], return_numpy=False
+        )
 
 
 if __name__ == "__main__":

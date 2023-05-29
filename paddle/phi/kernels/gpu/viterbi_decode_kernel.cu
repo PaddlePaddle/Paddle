@@ -30,13 +30,14 @@ namespace cub = hipcub;
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/empty_kernel.h"
+#include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/compare_functors.h"
 #include "paddle/phi/kernels/funcs/concat_and_split_functor.h"
+#include "paddle/phi/kernels/funcs/elementwise_base.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
 #include "paddle/phi/kernels/funcs/gather.cu.h"
 #include "paddle/phi/kernels/funcs/viterbi_decode_functor.h"
@@ -80,7 +81,8 @@ int64_t ComputeBlockSize(int64_t col) {
 }
 
 template <typename Context,
-          template <typename T> typename BinaryFunctor,
+          template <typename T>
+          typename BinaryFunctor,
           typename T>
 struct BinaryOperation {
   void operator()(const Context& dev_ctx,
@@ -89,15 +91,13 @@ struct BinaryOperation {
                   DenseTensor* output) {
     std::vector<const DenseTensor*> ins{&lhs, &rhs};
     std::vector<DenseTensor*> outs{output};
-    paddle::operators::LaunchElementwiseCudaKernel<ElementwiseType::kBinary,
-                                                   T,
-                                                   T>(
-        dev_ctx, ins, &outs, -1, BinaryFunctor<T>());
+    phi::funcs::BroadcastKernel<T>(dev_ctx, ins, &outs, BinaryFunctor<T>(), 0);
   }
 };
 
 template <typename Context,
-          template <typename InT, typename OutT> typename CompareFunctor,
+          template <typename InT, typename OutT>
+          typename CompareFunctor,
           typename T>
 struct GetMask {
   void operator()(const Context& dev_ctx,
@@ -106,7 +106,7 @@ struct GetMask {
                   DenseTensor* mask) {
     std::vector<const DenseTensor*> ins = {&lhs, &rhs};
     std::vector<DenseTensor*> outs = {mask};
-    paddle::operators::LaunchSameDimsElementwiseCudaKernel<T>(
+    phi::funcs::ElementwiseKernel<T>(
         dev_ctx, ins, &outs, CompareFunctor<int64_t, T>());
   }
 };
@@ -188,9 +188,8 @@ struct Argmax {
     T* out_data = out->data<T>();
     switch (ComputeBlockSize(width)) {
       FIXED_BLOCK_DIM_CASE(
-          ArgmaxCUDAKernel<T,
-                           IndType,
-                           kBlockDim><<<grid_size, kBlockDim, 0, cu_stream>>>(
+          ArgmaxCUDAKernel<T, IndType, kBlockDim>
+          <<<grid_size, kBlockDim, 0, cu_stream>>>(
               height, width, post, in_data, out_idx_data, out_data));
     }
   }
@@ -206,15 +205,13 @@ struct GetMaxValue {
     dev_ctx.template Alloc<T>(&out_data);
     switch (ComputeBlockSize(input.numel())) {
       FIXED_BLOCK_DIM_CASE(
-          ArgmaxCUDAKernel<T,
-                           T,
-                           kBlockDim><<<1, kBlockDim, 0, dev_ctx.stream()>>>(
-              1,
-              input.numel(),
-              1,
-              input.data<int64_t>(),
-              nullptr,
-              out_data.data<int64_t>()));
+          ArgmaxCUDAKernel<T, T, kBlockDim>
+          <<<1, kBlockDim, 0, dev_ctx.stream()>>>(1,
+                                                  input.numel(),
+                                                  1,
+                                                  input.data<int64_t>(),
+                                                  nullptr,
+                                                  out_data.data<int64_t>()));
     }
     DenseTensor max_value_tensor;
     phi::Copy(dev_ctx, out_data, phi::CPUPlace(), false, &max_value_tensor);
@@ -399,4 +396,6 @@ void ViterbiDecodeKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    viterbi_decode, GPU, ALL_LAYOUT, phi::ViterbiDecodeKernel, float, double) {}
+    viterbi_decode, GPU, ALL_LAYOUT, phi::ViterbiDecodeKernel, float, double) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
+}

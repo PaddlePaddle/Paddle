@@ -12,11 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import contextlib
+import os
 import unittest
+
+import numpy as np
+
 import paddle
 from paddle.fluid import core
+
+os.environ['FLAGS_new_einsum'] = "0"
 
 
 class TestErrors(unittest.TestCase):
@@ -26,62 +30,99 @@ class TestErrors(unittest.TestCase):
     def test_diagonalize_errors(self):
         a = np.arange(4 * 3 * 4 * 4).reshape(4, 3, 4, 4).astype('float')
         a = paddle.to_tensor(a)
-        with self.assertRaisesRegex(AssertionError,
-                                    ('Duplicate labels are not supported.')):
+        with self.assertRaisesRegex(
+            AssertionError, ('Duplicate labels are not supported.')
+        ):
             paddle.einsum('...ii->...i', a)
-        with self.assertRaisesRegex(AssertionError,
-                                    ('Duplicate labels are not supported.')):
+        with self.assertRaisesRegex(
+            AssertionError, ('Duplicate labels are not supported.')
+        ):
             paddle.einsum('i...i', a)
-        with self.assertRaisesRegex(AssertionError,
-                                    ('Duplicate labels are not supported.')):
+        with self.assertRaisesRegex(
+            AssertionError, ('Duplicate labels are not supported.')
+        ):
             paddle.einsum('i...i->i...', a)
 
     def test_param_errors(self):
         a = np.arange(4 * 3 * 4 * 4).reshape(4, 3, 4, 4).astype('float')
         a = paddle.to_tensor(a)
-        with self.assertRaisesRegex(AssertionError,
-                                    ('At least one operand is expected.')):
+        with self.assertRaisesRegex(
+            AssertionError, ('At least one operand is expected.')
+        ):
             paddle.einsum('ijk')
-        with self.assertRaisesRegex(AssertionError, (
-                'Invalid equation: multiple `->` were found.')):
+        with self.assertRaisesRegex(
+            AssertionError, ('Invalid equation: multiple `->` were found.')
+        ):
             paddle.einsum('i -> j -> k', a)
-        with self.assertRaisesRegex(AssertionError, (
+        with self.assertRaisesRegex(
+            AssertionError,
+            (
                 "Invalid equation: the number of operands is 2, "
-                "but found 3 segments in the label equation.")):
+                "but found 3 segments in the label equation."
+            ),
+        ):
             paddle.einsum('i,j,k', a, a)
-        with self.assertRaisesRegex(AssertionError, (
+        with self.assertRaisesRegex(
+            AssertionError,
+            (
                 "Invalid equation: the number of operands is 2, "
-                "but found 1 segments in the label equation.")):
+                "but found 1 segments in the label equation."
+            ),
+        ):
             paddle.einsum('ij -> k', a, a)
-        with self.assertRaisesRegex(AssertionError, (
+        with self.assertRaisesRegex(
+            AssertionError,
+            (
                 "Invalid equation: the number of operands is 1, "
-                "but found 2 segments in the label equation.")):
+                "but found 2 segments in the label equation."
+            ),
+        ):
             paddle.einsum('i, -> k', a)
-        with self.assertRaisesRegex(AssertionError, (
-                "Invalid equation: the label string '' misses dimensions.")):
+        with self.assertRaisesRegex(
+            AssertionError,
+            ("Invalid equation: the label string '' misses dimensions."),
+        ):
             paddle.einsum('->', a)
-        with self.assertRaisesRegex(AssertionError, (
-                "Invalid equation: the label string 'i' misses dimensions.")):
+        with self.assertRaisesRegex(
+            AssertionError,
+            ("Invalid equation: the label string 'i' misses dimensions."),
+        ):
             paddle.einsum('i', a)
-        with self.assertRaisesRegex(AssertionError, (
+        with self.assertRaisesRegex(
+            AssertionError,
+            (
                 "Invalid equation: _ is not a valid label, "
-                "which should be letters.")):
+                "which should be letters."
+            ),
+        ):
             paddle.einsum('i_', a)
-        with self.assertRaisesRegex(AssertionError, (
-                "Invalid equation: `.` is found outside of an ellipsis.")):
+        with self.assertRaisesRegex(
+            AssertionError,
+            ("Invalid equation: `.` is found outside of an ellipsis."),
+        ):
             paddle.einsum('i..j', a)
-        with self.assertRaisesRegex(AssertionError, (
-                "Invalid equation: `.` is found outside of an ellipsis.")):
+        with self.assertRaisesRegex(
+            AssertionError,
+            ("Invalid equation: `.` is found outside of an ellipsis."),
+        ):
             paddle.einsum('...k...', a)
-        with self.assertRaisesRegex(AssertionError, (
-                "Invalid equation: missing ellipsis in output labels.")):
+        with self.assertRaisesRegex(
+            AssertionError,
+            ("Invalid equation: missing ellipsis in output labels."),
+        ):
             paddle.einsum('i...->i', a)
-        with self.assertRaisesRegex(AssertionError, (
-                "Invalid equation: duplicate output labels are found.")):
+        with self.assertRaisesRegex(
+            AssertionError,
+            ("Invalid equation: duplicate output labels are found."),
+        ):
             paddle.einsum('i...->i...i', a)
-        with self.assertRaisesRegex(AssertionError, (
+        with self.assertRaisesRegex(
+            AssertionError,
+            (
                 "Invalid operands: label i "
-                "corresponds to non-broadcastable dimensions.")):
+                "corresponds to non-broadcastable dimensions."
+            ),
+        ):
             paddle.einsum('ij...,ji...', a, a)
 
 
@@ -116,13 +157,17 @@ class TestEinsum(unittest.TestCase):
                 return core.CUDAPlace(0)
             return core.CPUPlace()
 
-    def check_output_equal(self, actual, expect, rtol=1.e-5, atol=1.e-8):
+    def check_output_equal(self, actual, expect, rtol=1.0e-5, atol=1.0e-8):
         error_msg = 'Output has diff at place:{}. \nExpect: {} \nBut Got: {} in class {}'
-        self.assertTrue(
-            np.allclose(
-                actual, expect, rtol=rtol, atol=atol),
-            error_msg.format(paddle.get_device(), expect, actual,
-                             self.__class__.__name__))
+        np.testing.assert_allclose(
+            actual,
+            expect,
+            rtol=rtol,
+            atol=atol,
+            err_msg=error_msg.format(
+                paddle.get_device(), expect, actual, self.__class__.__name__
+            ),
+        )
 
     def setUp(self):
         self.sample = {"paradigm": "i->", "data": ["x"]}
@@ -135,7 +180,8 @@ class TestEinsum(unittest.TestCase):
         equation = self.sample["paradigm"]
 
         with paddle.fluid.dygraph.guard(
-                self._get_place(force_to_use_cpu=False)):
+            self._get_place(force_to_use_cpu=False)
+        ):
             pd_operands = [paddle.to_tensor(operand) for operand in operands]
             result = paddle.einsum(equation, *pd_operands)
             self.check_output_equal(result.numpy(), expected_result)
@@ -288,18 +334,23 @@ class TestNumpyTests(unittest.TestCase):
                 return core.CUDAPlace(0)
             return core.CPUPlace()
 
-    def check_output_equal(self, actual, expect, rtol=1.e-5, atol=1.e-8):
+    def check_output_equal(self, actual, expect, rtol=1.0e-5, atol=1.0e-8):
         error_msg = 'Output has diff at place:{}. \nExpect: {} \nBut Got: {} in class {}'
-        self.assertTrue(
-            np.allclose(
-                actual, expect, rtol=rtol, atol=atol),
-            error_msg.format(paddle.get_device(), expect, actual,
-                             self.__class__.__name__))
+        np.testing.assert_allclose(
+            actual,
+            expect,
+            rtol=rtol,
+            atol=atol,
+            err_msg=error_msg.format(
+                paddle.get_device(), expect, actual, self.__class__.__name__
+            ),
+        )
 
     def check_output(self, eqn, *ops):
         expect = np.einsum(eqn, *ops)
         with paddle.fluid.dygraph.guard(
-                self._get_place(force_to_use_cpu=False)):
+            self._get_place(force_to_use_cpu=False)
+        ):
             pd_operands = [paddle.to_tensor(op) for op in ops]
             actual = paddle.einsum(eqn, *pd_operands)
             self.check_output_equal(actual.numpy(), expect)
@@ -374,13 +425,13 @@ class TestNumpyTests(unittest.TestCase):
         q = np.ones((1, 2)).astype('float')
         self.check_output('ij,ij->j', p, q)
 
-        x = np.array([2., 3.]).astype('float')
-        y = np.array([4.]).astype('float')
+        x = np.array([2.0, 3.0]).astype('float')
+        y = np.array([4.0]).astype('float')
         self.check_output("i, i", x, y)
 
         p = np.ones((1, 5)) / 2
         q = np.ones((5, 5)) / 2
-        self.check_output("...ij,...jk->...ik", p, p)
+        self.check_output("...ij,...jk->...ik", p, p.T)
         self.check_output("...ij,...jk->...ik", p, q)
 
         x = np.eye(2).astype('float')
@@ -407,15 +458,20 @@ class TestNumpyTests(unittest.TestCase):
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
             a = paddle.static.data(
-                name='a', shape=[3, None, None, None], dtype='float')
+                name='a', shape=[3, None, None, None], dtype='float'
+            )
             b = paddle.static.data(
-                name='b', shape=[2, None, None, None], dtype='float')
+                name='b', shape=[2, None, None, None], dtype='float'
+            )
             c = paddle.static.data(
-                name='c', shape=[None, None, 2, None], dtype='float')
+                name='c', shape=[None, None, 2, None], dtype='float'
+            )
             d = paddle.static.data(
-                name='d', shape=[None, None, 5], dtype='float')
+                name='d', shape=[None, None, 5], dtype='float'
+            )
             e = paddle.static.data(
-                name='e', shape=[None, 2, None], dtype='float')
+                name='e', shape=[None, 2, None], dtype='float'
+            )
 
             outs = []
             outs.append(paddle.einsum("ibnd,jbnd->bnij", a, b))

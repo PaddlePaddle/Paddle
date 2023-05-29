@@ -12,9 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/operators/array_operator.h"
-#include "paddle/phi/kernels/funcs/math_function.h"
-
 #include "paddle/phi/core/lod_utils.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace framework {
@@ -44,7 +43,7 @@ class ShrinkRNNMemoryOp : public ArrayOp {
     PADDLE_ENFORCE_NOT_NULL(x_var,
                             platform::errors::NotFound(
                                 "Input(X) of ShrinkRNNMemoryOp is not found."));
-    auto &x_tensor = x_var->Get<framework::LoDTensor>();
+    auto &x_tensor = x_var->Get<phi::DenseTensor>();
     size_t offset = this->GetOffset(scope, place);
     auto *rank_table_var = scope.FindVar(Input("RankTable"));
     PADDLE_ENFORCE_NOT_NULL(
@@ -55,24 +54,27 @@ class ShrinkRNNMemoryOp : public ArrayOp {
 
     auto &rank_items = rank_table.items();
     int dst_num_rows =
-        std::lower_bound(rank_items.begin(), rank_items.end(), offset,
+        std::lower_bound(rank_items.begin(),
+                         rank_items.end(),
+                         offset,
                          [](const framework::LoDRankTable::TableItem &a,
                             size_t b) { return a.length > b; }) -
         rank_items.begin();
 
     auto *out_var = scope.FindVar(Output("Out"));
     PADDLE_ENFORCE_NOT_NULL(
-        out_var, platform::errors::NotFound(
-                     "Output(Out) of ShrinkRNNMemoryOp is not found."));
-    auto &out_tensor = *out_var->GetMutable<framework::LoDTensor>();
+        out_var,
+        platform::errors::NotFound(
+            "Output(Out) of ShrinkRNNMemoryOp is not found."));
+    auto &out_tensor = *out_var->GetMutable<phi::DenseTensor>();
 
     size_t height = dst_num_rows;
 
     // do shrink for the top level LoD
     if (x_tensor.lod().size() > 0 &&
         x_tensor.lod()[0].size() > static_cast<size_t>(dst_num_rows)) {
-      auto lod_offset = framework::GetSubLoDAndAbsoluteOffset(x_tensor.lod(), 0,
-                                                              dst_num_rows, 0);
+      auto lod_offset = framework::GetSubLoDAndAbsoluteOffset(
+          x_tensor.lod(), 0, dst_num_rows, 0);
       height = lod_offset.second.second;
       auto out_lod = out_tensor.mutable_lod();
       phi::AppendLoD(out_lod, lod_offset.first);
@@ -81,8 +83,8 @@ class ShrinkRNNMemoryOp : public ArrayOp {
     if (dst_num_rows != 0) {
       out_tensor.mutable_data(place, x_tensor.dtype());
       auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-      framework::TensorCopy(x_tensor.Slice(0, height), place, *dev_ctx,
-                            &out_tensor);
+      framework::TensorCopy(
+          x_tensor.Slice(0, height), place, *dev_ctx, &out_tensor);
     }
   }
 };
@@ -90,12 +92,13 @@ class ShrinkRNNMemoryOp : public ArrayOp {
 class ShrinkRNNMemoryOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(LoDTensor) The RNN step memory to be shrank.");
+    AddInput("X", "(phi::DenseTensor) The RNN step memory to be shrank.");
     AddInput("RankTable", "(LoDRankTable) The lod_rank_table of dynamic RNN.");
-    AddInput("I",
-             "(LoDTensor) The step index. The RNN step memory 'X' will be "
-             "shrank to match the size of the input of the index'th step.");
-    AddOutput("Out", "(LoDTensor) The shrank RNN step memory.");
+    AddInput(
+        "I",
+        "(phi::DenseTensor) The step index. The RNN step memory 'X' will be "
+        "shrank to match the size of the input of the index'th step.");
+    AddOutput("Out", "(phi::DenseTensor) The shrank RNN step memory.");
     AddComment(R"DOC(
 This operator is used to shrink output batch of memory defined in dynamic RNN.
 
@@ -115,7 +118,9 @@ class ShrinkRNNMemoryInferShape : public framework::InferShapeBase {
   void operator()(framework::InferShapeContext *context) const override {
     OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", "ShrinkRNNMemory");
     OP_INOUT_CHECK(context->HasInput("I"), "Input", "I", "ShrinkRNNMemory");
-    OP_INOUT_CHECK(context->HasInput("RankTable"), "Input", "RankTable",
+    OP_INOUT_CHECK(context->HasInput("RankTable"),
+                   "Input",
+                   "RankTable",
                    "ShrinkRNNMemory");
     context->SetOutputDim("Out", context->GetInputDim("X"));
     // For runtime, output's lod is computed according to input's lod, but
@@ -140,14 +145,16 @@ class ShrinkRNNMemoryGradOp : public ArrayOp {
     auto *dout_var = scope.FindVar(Input(framework::GradVarName("Out")));
     auto *dx_var = scope.FindVar(Output(framework::GradVarName("X")));
     PADDLE_ENFORCE_NOT_NULL(
-        dx_var, platform::errors::NotFound(
-                    "Input(X@GRAD) of ShrinkRNNMemoryGradOp is not found."));
+        dx_var,
+        platform::errors::NotFound(
+            "Input(X@GRAD) of ShrinkRNNMemoryGradOp is not found."));
     auto *x_var = scope.FindVar(Input("X"));
     PADDLE_ENFORCE_NOT_NULL(
-        x_var, platform::errors::NotFound(
-                   "Input(x) of ShrinkRNNMemoryGradOp is not found."));
-    auto &x_tensor = x_var->Get<framework::LoDTensor>();
-    auto &dx_tensor = *dx_var->GetMutable<framework::LoDTensor>();
+        x_var,
+        platform::errors::NotFound(
+            "Input(x) of ShrinkRNNMemoryGradOp is not found."));
+    auto &x_tensor = x_var->Get<phi::DenseTensor>();
+    auto &dx_tensor = *dx_var->GetMutable<phi::DenseTensor>();
     dx_tensor.Resize(x_tensor.dims());
     dx_tensor.mutable_data(x_tensor.place(), x_tensor.dtype());
 
@@ -158,7 +165,7 @@ class ShrinkRNNMemoryGradOp : public ArrayOp {
     if (dout_var == nullptr) {  // dx_tensor fill zero
       phi::funcs::set_constant(dev_ctx, &dx_tensor, 0.0f);
     } else {
-      auto &dout_tensor = dout_var->Get<framework::LoDTensor>();
+      auto &dout_tensor = dout_var->Get<phi::DenseTensor>();
       auto height = dout_tensor.dims()[0];
       auto slice = dx_tensor.Slice(0, static_cast<int>(height));
       framework::TensorCopy(dout_tensor, dout_tensor.place(), dev_ctx, &slice);
@@ -176,8 +183,10 @@ class ShrinkRNNMemoryGradInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
     OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", "ShrinkRNNMemoryGrad");
-    OP_INOUT_CHECK(context->HasOutput(framework::GradVarName("X")), "Output",
-                   "X", "ShrinkRNNMemoryGrad");
+    OP_INOUT_CHECK(context->HasOutput(framework::GradVarName("X")),
+                   "Output",
+                   "X",
+                   "ShrinkRNNMemoryGrad");
 
     context->ShareDim("X", /*->*/ framework::GradVarName("X"));
     context->ShareLoD("X", /*->*/ framework::GradVarName("X"));
@@ -203,10 +212,12 @@ class ShrinkRNNGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(shrink_rnn_memory, ops::ShrinkRNNMemoryOp,
+REGISTER_OPERATOR(shrink_rnn_memory,
+                  ops::ShrinkRNNMemoryOp,
                   ops::ShrinkRNNMemoryInferShape,
                   ops::ShrinkRNNMemoryOpProtoMaker,
                   ops::ShrinkRNNGradOpMaker<paddle::framework::OpDesc>,
                   ops::ShrinkRNNGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(shrink_rnn_memory_grad, ops::ShrinkRNNMemoryGradOp,
+REGISTER_OPERATOR(shrink_rnn_memory_grad,
+                  ops::ShrinkRNNMemoryGradOp,
                   ops::ShrinkRNNMemoryGradInferShape);

@@ -13,9 +13,8 @@
 # limitations under the License.
 
 import paddle
-import paddle.fluid as fluid
-import paddle.distributed.fleet as fleet
-import paddle.distributed.fleet.base.role_maker as role_maker
+from paddle import fluid
+from paddle.distributed import fleet
 
 fluid.disable_dygraph()
 
@@ -31,35 +30,35 @@ def get_dataset(inputs):
 
 def net(batch_size=4, lr=0.01):
     """
-        network definition
+    network definition
 
-        Args:
-            batch_size(int): the size of mini-batch for training
-            lr(float): learning rate of training
-        Returns:
-            avg_cost: LoDTensor of cost.
-        """
+    Args:
+        batch_size(int): the size of mini-batch for training
+        lr(float): learning rate of training
+    Returns:
+        avg_cost: LoDTensor of cost.
+    """
     dnn_input_dim, lr_input_dim = int(2), int(2)
 
     with fluid.device_guard("cpu"):
-        dnn_data = fluid.layers.data(
+        dnn_data = paddle.static.data(
             name="dnn_data",
             shape=[-1, 1],
             dtype="int64",
             lod_level=1,
-            append_batch_size=False)
-        lr_data = fluid.layers.data(
+        )
+        lr_data = paddle.static.data(
             name="lr_data",
             shape=[-1, 1],
             dtype="int64",
             lod_level=1,
-            append_batch_size=False)
-        label = fluid.layers.data(
+        )
+        label = paddle.static.data(
             name="click",
             shape=[-1, 1],
             dtype="float32",
             lod_level=0,
-            append_batch_size=False)
+        )
 
         datas = [dnn_data, lr_data, label]
 
@@ -71,40 +70,53 @@ def net(batch_size=4, lr=0.01):
             size=[dnn_input_dim, dnn_layer_dims[0]],
             param_attr=fluid.ParamAttr(
                 name="deep_embedding",
-                initializer=fluid.initializer.Constant(value=0.01)),
-            is_sparse=True)
-        dnn_pool = fluid.layers.sequence_pool(
-            input=dnn_embedding, pool_type="sum")
+                initializer=paddle.nn.initializer.Constant(value=0.01),
+            ),
+            is_sparse=True,
+        )
+        dnn_pool = paddle.static.nn.sequence_lod.sequence_pool(
+            input=dnn_embedding, pool_type="sum"
+        )
         dnn_out = dnn_pool
 
         # build lr model
-        lr_embbding = fluid.layers.embedding(
+        lr_embedding = fluid.layers.embedding(
             is_distributed=False,
             input=lr_data,
             size=[lr_input_dim, 1],
             param_attr=fluid.ParamAttr(
                 name="wide_embedding",
-                initializer=fluid.initializer.Constant(value=0.01)),
-            is_sparse=True)
-        lr_pool = fluid.layers.sequence_pool(input=lr_embbding, pool_type="sum")
+                initializer=paddle.nn.initializer.Constant(value=0.01),
+            ),
+            is_sparse=True,
+        )
+        lr_pool = paddle.static.nn.sequence_lod.sequence_pool(
+            input=lr_embedding, pool_type="sum"
+        )
 
     with fluid.device_guard("gpu"):
         for i, dim in enumerate(dnn_layer_dims[1:]):
-            fc = fluid.layers.fc(
-                input=dnn_out,
+            fc = paddle.static.nn.fc(
+                x=dnn_out,
                 size=dim,
-                act="relu",
-                param_attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.Constant(value=0.01)),
-                name='dnn-fc-%d' % i)
+                activation="relu",
+                weight_attr=fluid.ParamAttr(
+                    initializer=paddle.nn.initializer.Constant(value=0.01)
+                ),
+                name='dnn-fc-%d' % i,
+            )
             dnn_out = fc
 
-        merge_layer = fluid.layers.concat(input=[dnn_out, lr_pool], axis=1)
-        label = fluid.layers.cast(label, dtype="int64")
-        predict = fluid.layers.fc(input=merge_layer, size=2, act='softmax')
+        merge_layer = paddle.concat([dnn_out, lr_pool], axis=1)
+        label = paddle.cast(label, dtype="int64")
+        predict = paddle.static.nn.fc(
+            x=merge_layer, size=2, activation='softmax'
+        )
 
-        cost = fluid.layers.cross_entropy(input=predict, label=label)
-        avg_cost = fluid.layers.mean(x=cost)
+        cost = paddle.nn.functional.cross_entropy(
+            input=predict, label=label, reduction='none', use_softmax=False
+        )
+        avg_cost = paddle.mean(x=cost)
     return datas, avg_cost
 
 
@@ -128,22 +140,22 @@ dataset = get_dataset(feeds)
 
 if fleet.is_server():
     pass
-    #fleet.init_server()
-    #fleet.run_server()
+    # fleet.init_server()
+    # fleet.run_server()
 elif fleet.is_heter_worker():
     pass
-    #fleet.init_heter_worker()
-    #fleet.run_heter_worker(dataset=dataset)
+    # fleet.init_heter_worker()
+    # fleet.run_heter_worker(dataset=dataset)
     fleet.stop_worker()
 elif fleet.is_worker():
     pass
-    #place = fluid.CPUPlace()
-    #exe = fluid.Executor(place)
-    #exe.run(fluid.default_startup_program())
-    #fleet.init_worker()
-    #step = 1
-    #for i in range(step):
+    # place = fluid.CPUPlace()
+    # exe = fluid.Executor(place)
+    # exe.run(fluid.default_startup_program())
+    # fleet.init_worker()
+    # step = 1
+    # for i in range(step):
     #    exe.train_from_dataset(
     #        program=fluid.default_main_program(), dataset=dataset, debug=False)
-    #exe.close()
-    #fleet.stop_worker()
+    # exe.close()
+    # fleet.stop_worker()

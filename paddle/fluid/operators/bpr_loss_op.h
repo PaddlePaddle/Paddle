@@ -16,12 +16,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
 /*Todo:
  *Find a way to adapt TolerableValue, using blas or eigen.
  */
@@ -35,23 +35,23 @@ struct TolerableValue {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class BprLossOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("X");
-    auto* label = ctx.Input<Tensor>("Label");
-    auto* y = ctx.Output<Tensor>("Y");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* label = ctx.Input<phi::DenseTensor>("Label");
+    auto* y = ctx.Output<phi::DenseTensor>("Y");
     y->mutable_data<T>(ctx.GetPlace());
     int rank = x->dims().size();
 
-    Tensor x_2d = framework::ReshapeToMatrix(*x, rank - 1);
-    Tensor labels_2d = framework::ReshapeToMatrix(*label, rank - 1);
-    Tensor y_2d = framework::ReshapeToMatrix(*y, rank - 1);
+    phi::DenseTensor x_2d = phi::ReshapeToMatrix(*x, rank - 1);
+    phi::DenseTensor labels_2d = phi::ReshapeToMatrix(*label, rank - 1);
+    phi::DenseTensor y_2d = phi::ReshapeToMatrix(*y, rank - 1);
 
-    const framework::Tensor* logits = &x_2d;
-    const framework::Tensor* labels = &labels_2d;
-    framework::Tensor* out = &y_2d;
+    const phi::DenseTensor* logits = &x_2d;
+    const phi::DenseTensor* labels = &labels_2d;
+    phi::DenseTensor* out = &y_2d;
 
     const int step_size = logits->dims()[0];
     const int class_num = logits->dims()[1];
@@ -61,9 +61,12 @@ class BprLossOpKernel : public framework::OpKernel<T> {
     const int64_t* label_data = labels->data<int64_t>();
     for (int i = 0; i < step_size; ++i) {
       int lbl_pos = label_data[i];
-      PADDLE_ENFORCE_GE(lbl_pos, 0, platform::errors::InvalidArgument(
-                                        "label data %d is illegal.", lbl_pos));
-      PADDLE_ENFORCE_LT(lbl_pos, class_num,
+      PADDLE_ENFORCE_GE(lbl_pos,
+                        0,
+                        platform::errors::InvalidArgument(
+                            "label data %d is illegal.", lbl_pos));
+      PADDLE_ENFORCE_LT(lbl_pos,
+                        class_num,
                         platform::errors::InvalidArgument(
                             "label data %d is illegal.", lbl_pos));
       int index_pos = i * class_num + lbl_pos;
@@ -80,14 +83,14 @@ class BprLossOpKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class BprLossGradientOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<Tensor>("X");
-    auto* dy = ctx.Input<Tensor>(framework::GradVarName("Y"));
-    auto* label = ctx.Input<Tensor>("Label");
-    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* dy = ctx.Input<phi::DenseTensor>(framework::GradVarName("Y"));
+    auto* label = ctx.Input<phi::DenseTensor>("Label");
+    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
 
     const size_t step_size = static_cast<size_t>(x->dims()[0]);
     const size_t num_classes = static_cast<size_t>(x->dims()[1]);
@@ -98,7 +101,8 @@ class BprLossGradientOpKernel : public framework::OpKernel<T> {
 
     for (size_t sample_id = 0; sample_id < step_size; sample_id++) {
       for (size_t x_offset = sample_id * num_classes;
-           x_offset < (sample_id + 1) * num_classes; x_offset++) {
+           x_offset < (sample_id + 1) * num_classes;
+           x_offset++) {
         dx_data[x_offset] = static_cast<T>(0);
       }
       auto p_index = sample_id * num_classes + label_data[sample_id];

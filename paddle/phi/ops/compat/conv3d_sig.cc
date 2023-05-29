@@ -16,53 +16,50 @@
 
 namespace phi {
 
-KernelSignature Conv3dOpArgumentMapping(const ArgumentMappingContext& ctx) {
+KernelSignature Conv3dOpArgumentMapping(
+    const ArgumentMappingContext& ctx UNUSED) {
   return KernelSignature("conv3d",
                          {"Input", "Filter"},
-                         {"strides",
-                          "paddings",
-                          "padding_algorithm",
-                          "groups",
-                          "dilations",
-                          "data_format",
-                          "use_addto",
-                          "workspace_size_MB",
-                          "exhaustive_search"},
+                         {
+                             "strides",
+                             "paddings",
+                             "padding_algorithm",
+                             "groups",
+                             "dilations",
+                             "data_format",
+                         },
                          {"Output"});
 }
 
-KernelSignature Conv3dGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("conv2d_grad",
-                         {GradVarName("Output"), "Input", "Filter"},
+KernelSignature Conv3dGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx UNUSED) {
+  return KernelSignature("conv3d_grad",
+                         {"Input", "Filter", "Output@GRAD"},
                          {"strides",
                           "paddings",
                           "padding_algorithm",
                           "groups",
                           "dilations",
-                          "data_format",
-                          "use_addto",
-                          "workspace_size_MB",
-                          "exhaustive_search"},
-                         {GradVarName("Input"), GradVarName("Filter")});
+                          "data_format"},
+                         {"Input@GRAD", "Filter@GRAD"});
 }
 
 KernelSignature Conv3dDoubleGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature("conv3d_grad_grad",
-                         {"DDInput", "DDFilter", "DOutput", "Input", "Filter"},
+    const ArgumentMappingContext& ctx UNUSED) {
+  return KernelSignature("conv3d_double_grad",
+                         {"Input", "Filter", "DOutput", "DDInput", "DDFilter"},
                          {"strides",
                           "paddings",
                           "padding_algorithm",
                           "groups",
                           "dilations",
-                          "data_format",
-                          "use_addto",
-                          "workspace_size_MB",
-                          "exhaustive_search"},
-                         {"DDOutput", "DInput", "DFilter"});
+                          "data_format"},
+                         {"DInput", "DFilter", "DDOutput"});
 }
 
 }  // namespace phi
+
+PD_REGISTER_BASE_KERNEL_NAME(conv3d_grad_grad, conv3d_double_grad);
 
 PD_REGISTER_ARG_MAPPING_FN(conv3d, phi::Conv3dOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(conv3d_grad, phi::Conv3dGradOpArgumentMapping);

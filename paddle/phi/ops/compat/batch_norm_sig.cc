@@ -33,19 +33,18 @@ KernelSignature BatchNormOpArgumentMapping(const ArgumentMappingContext& ctx) {
   if (is_test && !use_global_stats && !trainable_statistics &&
       !fuse_with_relu) {
     return KernelSignature("batch_norm_infer",
-                           {"X", "Scale", "Bias", "Mean", "Variance"},
+                           {"X", "Mean", "Variance", "Scale", "Bias"},
                            {"momentum", "epsilon", "data_layout"},
                            {"Y", "MeanOut", "VarianceOut"});
   } else {
     return KernelSignature("batch_norm",
-                           {"X", "Scale", "Bias", "Mean", "Variance"},
-                           {"momentum",
+                           {"X", "Mean", "Variance", "Scale", "Bias"},
+                           {"is_test",
+                            "momentum",
                             "epsilon",
                             "data_layout",
-                            "is_test",
                             "use_global_stats",
-                            "trainable_statistics",
-                            "fuse_with_relu"},
+                            "trainable_statistics"},
                            {"Y",
                             "MeanOut",
                             "VarianceOut",
@@ -56,48 +55,47 @@ KernelSignature BatchNormOpArgumentMapping(const ArgumentMappingContext& ctx) {
 }
 
 KernelSignature BatchNormGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature(
-      "batch_norm_grad",
-      {GradVarName("Y"),
-       "X",
-       "Scale",
-       "Bias",
-       "SavedMean",
-       "SavedVariance",
-       "ReserveSpace",
-       "Mean",
-       "Variance"},
-      {"momentum",
-       "epsilon",
-       "data_layout",
-       "is_test",
-       "use_global_stats",
-       "trainable_statistics",
-       "fuse_with_relu"},
-      {GradVarName("X"), GradVarName("Scale"), GradVarName("Bias")});
-}
-
-KernelSignature BatchNormGradGradOpArgumentMapping(
-    const ArgumentMappingContext& ctx) {
-  return KernelSignature("batch_norm_grad_grad",
-                         {"DDX",
-                          "DDScale",
-                          "DDBias",
-                          "DY",
-                          "X",
-                          "Scale",
-                          "SavedMean",
-                          "SavedVariance",
-                          "Mean",
-                          "Variance"},
+    const ArgumentMappingContext& ctx UNUSED) {
+  return KernelSignature("batch_norm_grad",
+                         {
+                             "X",
+                             "Scale",
+                             "Bias",
+                             "Mean",
+                             "Variance",
+                             "SavedMean",
+                             "SavedVariance",
+                             "ReserveSpace",
+                             "Y@GRAD",
+                         },
                          {"momentum",
                           "epsilon",
                           "data_layout",
                           "is_test",
                           "use_global_stats",
-                          "trainable_statistics",
-                          "fuse_with_relu"},
+                          "trainable_statistics"},
+                         {"X@GRAD", "Scale@GRAD", "Bias@GRAD"});
+}
+
+KernelSignature BatchNormGradGradOpArgumentMapping(
+    const ArgumentMappingContext& ctx UNUSED) {
+  return KernelSignature("batch_norm_double_grad",
+                         {"X",
+                          "Scale",
+                          "Mean",
+                          "Variance",
+                          "SavedMean",
+                          "SavedVariance",
+                          "DY",
+                          "DDX",
+                          "DDScale",
+                          "DDBias"},
+                         {"momentum",
+                          "epsilon",
+                          "data_layout",
+                          "is_test",
+                          "use_global_stats",
+                          "trainable_statistics"},
                          {"DX", "DScale", "DDY"});
 }
 

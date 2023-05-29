@@ -37,13 +37,14 @@ class ReorderLoDTensorByRankTableOpProtoMaker
     : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X",
-             "(LoDTensor), the input lod tensor to be reordered according to "
-             "Input(RankTable).");
+    AddInput(
+        "X",
+        "(phi::DenseTensor), the input lod tensor to be reordered according to "
+        "Input(RankTable).");
     AddInput("RankTable",
              "(LoDRankTable), the rank table according to which Input(X) is "
              "reordered.");
-    AddOutput("Out", "LoDTensor, the reordered lod tensor.");
+    AddOutput("Out", "phi::DenseTensor, the reordered lod tensor.");
     AddComment(R"DOC(ReorderLoDTensorByRankTable operator.
 
 Input(X) is a batch of sequences. Input(RankTable) stores new orders of the
@@ -70,7 +71,7 @@ X = [Slice0, Slice1, Slice2, Slice3] and its LoD information is empty. The
 indices in RankTable are [3, 0, 2, 1].
 Out = [Slice3, Slice0, Slice2, Slice1] with no LoD information is appended.
 
-**NOTE**: 
+**NOTE**:
 This operator sorts Input(X) according to a given LoDRankTable which does
 not need to be calculated according to Input(X). It can be calculated according
 to another different sequence, and then this operator sorts Input(X) according
@@ -91,16 +92,21 @@ class ReorderLoDTensorByRankTableBase : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &place) const override {
-    auto &x = GET_DATA_SAFELY(scope.FindVar(Input("X")), "Input", "X",
+    auto &x = GET_DATA_SAFELY(scope.FindVar(Input("X")),
+                              "Input",
+                              "X",
                               "ReorderLoDTensorByRankTable")
-                  .Get<framework::LoDTensor>();
-    auto &rank_table =
-        GET_DATA_SAFELY(scope.FindVar(Input("RankTable")), "Input", "RankTable",
-                        "ReorderLoDTensorByRankTable")
-            .Get<framework::LoDRankTable>();
-    auto &out = *(GET_DATA_SAFELY(scope.FindVar(Output("Out")), "Output", "Out",
+                  .Get<phi::DenseTensor>();
+    auto &rank_table = GET_DATA_SAFELY(scope.FindVar(Input("RankTable")),
+                                       "Input",
+                                       "RankTable",
+                                       "ReorderLoDTensorByRankTable")
+                           .Get<framework::LoDRankTable>();
+    auto &out = *(GET_DATA_SAFELY(scope.FindVar(Output("Out")),
+                                  "Output",
+                                  "Out",
                                   "ReorderLoDTensorByRankTable")
-                      .GetMutable<framework::LoDTensor>());
+                      .GetMutable<phi::DenseTensor>());
 
     out.Resize(x.dims());
     out.mutable_data(x.place(), x.type());
@@ -109,9 +115,9 @@ class ReorderLoDTensorByRankTableBase : public framework::OperatorBase {
 
  protected:
   virtual void process(const platform::Place &place,
-                       const framework::LoDTensor &x,
+                       const phi::DenseTensor &x,
                        const framework::LoDRankTable &rank_table,
-                       framework::LoDTensor *out) const = 0;
+                       phi::DenseTensor *out) const = 0;
 
   struct AbsoluteRankTableItem {
     size_t offset;  // the absolute/accumulated offset.
@@ -120,7 +126,7 @@ class ReorderLoDTensorByRankTableBase : public framework::OperatorBase {
   };
 
   std::vector<AbsoluteRankTableItem> GetAbsoluteOffsetAndLengthByLoDRankTable(
-      const framework::LoDTensor &x) const {
+      const phi::DenseTensor &x) const {
     std::vector<AbsoluteRankTableItem> absolute_table;
 
     if (x.lod().empty()) {
@@ -154,8 +160,9 @@ class ReorderLoDTensorByRankTableBase : public framework::OperatorBase {
 
   size_t CopyTensorAndLod(const platform::Place &place,
                           const AbsoluteRankTableItem &item,
-                          const framework::LoDTensor &x,
-                          framework::LoDTensor *out, size_t out_offset) const {
+                          const phi::DenseTensor &x,
+                          phi::DenseTensor *out,
+                          size_t out_offset) const {
     auto &out_lod = *out->mutable_lod();
     auto len = item.length;
     auto x_offset = item.offset;
@@ -195,18 +202,20 @@ class ReorderLoDTensorByRankTableOp : public ReorderLoDTensorByRankTableBase {
       : ReorderLoDTensorByRankTableBase(type, inputs, outputs, attrs) {}
 
  protected:
-  void process(const platform::Place &place, const framework::LoDTensor &x,
+  void process(const platform::Place &place,
+               const phi::DenseTensor &x,
                const framework::LoDRankTable &rank_table,
-               framework::LoDTensor *out) const override {
+               phi::DenseTensor *out) const override {
     auto absolute_table = GetAbsoluteOffsetAndLengthByLoDRankTable(x);
     size_t out_offset = 0;
     out->mutable_lod()->clear();
     for (auto &item : rank_table.items()) {
-      PADDLE_ENFORCE_LT(item.index, absolute_table.size(),
+      PADDLE_ENFORCE_LT(item.index,
+                        absolute_table.size(),
                         platform::errors::OutOfRange(
                             "The value of rank_table is out of range."));
-      out_offset = CopyTensorAndLod(place, absolute_table[item.index], x, out,
-                                    out_offset);
+      out_offset = CopyTensorAndLod(
+          place, absolute_table[item.index], x, out, out_offset);
     }
   }
 };
@@ -248,9 +257,10 @@ class ReorderLoDTensorByRankGradOp : public ReorderLoDTensorByRankTableBase {
       : ReorderLoDTensorByRankTableBase(type, inputs, outputs, attrs) {}
 
  protected:
-  void process(const platform::Place &place, const framework::LoDTensor &x,
+  void process(const platform::Place &place,
+               const phi::DenseTensor &x,
                const framework::LoDRankTable &rank_table,
-               framework::LoDTensor *out) const override {
+               phi::DenseTensor *out) const override {
     auto absolute_table = GetAbsoluteOffsetAndLengthByLoDRankTable(x);
 
     // offsets = enumerate([item.index for item in rank_table.items()])
@@ -262,15 +272,16 @@ class ReorderLoDTensorByRankGradOp : public ReorderLoDTensorByRankTableBase {
 
     // offsets.sort(key=lambda x: x[1])
     std::sort(
-        offsets.begin(), offsets.end(),
+        offsets.begin(),
+        offsets.end(),
         [](const std::pair<size_t, size_t> &a,
            const std::pair<size_t, size_t> &b) { return a.second < b.second; });
 
     // Copy TensorAndLod
     size_t out_offset = 0;
     for (auto &offset : offsets) {
-      out_offset = this->CopyTensorAndLod(place, absolute_table[offset.first],
-                                          x, out, out_offset);
+      out_offset = this->CopyTensorAndLod(
+          place, absolute_table[offset.first], x, out, out_offset);
     }
   }
 };
@@ -281,9 +292,12 @@ class ReorderLoDTensorByRankGradOp : public ReorderLoDTensorByRankTableBase {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(
-    reorder_lod_tensor_by_rank, ops::ReorderLoDTensorByRankTableOp,
+    reorder_lod_tensor_by_rank,
+    ops::ReorderLoDTensorByRankTableOp,
     ops::ReorderLodTensorByRankGradOpMaker<paddle::framework::OpDesc>,
     ops::ReorderLodTensorByRankGradOpMaker<paddle::imperative::OpBase>,
-    ops::ReorderLoDTensorByRankTableOpProtoMaker, ops::IdentityInferShape);
+    ops::ReorderLoDTensorByRankTableOpProtoMaker,
+    ops::IdentityInferShape);
 REGISTER_OPERATOR(reorder_lod_tensor_by_rank_grad,
-                  ops::ReorderLoDTensorByRankGradOp, ops::IdentityInferShape);
+                  ops::ReorderLoDTensorByRankGradOp,
+                  ops::IdentityInferShape);

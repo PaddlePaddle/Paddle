@@ -16,49 +16,43 @@
 
 namespace phi {
 
-KernelSignature EmbeddingOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  if (ctx.IsDenseTensorInput("W")) {
-    return KernelSignature("embedding", {"Ids", "W"}, {"padding_idx"}, {"Out"});
-  } else {
-    return KernelSignature(
-        "sparse_weight_embedding", {"Ids", "W"}, {"padding_idx"}, {"Out"});
-  }
-}
-
 KernelSignature EmbeddingGradOpArgumentMapping(
     const ArgumentMappingContext& ctx) {
   if (ctx.IsDenseTensorInput("W")) {
     if ((paddle::any_cast<bool>(ctx.Attr("is_sparse"))) == true) {
       return KernelSignature("embedding_sparse_grad",
-                             {"Ids", "W", GradVarName("Out")},
+                             {"Ids", "W", "Out@GRAD"},
                              {"padding_idx"},
-                             {GradVarName("W")});
+                             {"W@GRAD"});
     } else {
       return KernelSignature("embedding_grad",
-                             {"Ids", "W", GradVarName("Out")},
+                             {"Ids", "W", "Out@GRAD"},
                              {"padding_idx"},
-                             {GradVarName("W")});
+                             {"W@GRAD"});
     }
   } else {
     if ((paddle::any_cast<bool>(ctx.Attr("is_sparse"))) == true) {
       return KernelSignature("sparse_weight_embedding_sparse_grad",
-                             {"Ids", "W", GradVarName("Out")},
+                             {"Ids", "W", "Out@GRAD"},
                              {"padding_idx"},
-                             {GradVarName("W")});
+                             {"W@GRAD"});
     } else {
       return KernelSignature("sparse_weight_embedding_grad",
-                             {"Ids", "W", GradVarName("Out")},
+                             {"Ids", "W", "Out@GRAD"},
                              {"padding_idx"},
-                             {GradVarName("W")});
+                             {"W@GRAD"});
     }
   }
 }
 
 }  // namespace phi
 
-PD_REGISTER_BASE_KERNEL_NAME(lookup_table_v2, embedding);
 PD_REGISTER_BASE_KERNEL_NAME(lookup_table_v2_grad, embedding_grad);
+PD_REGISTER_BASE_KERNEL_NAME(lookup_table_v2_grad, embedding_sparse_grad);
+PD_REGISTER_BASE_KERNEL_NAME(lookup_table_v2_grad,
+                             sparse_weight_embedding_grad);
+PD_REGISTER_BASE_KERNEL_NAME(lookup_table_v2_grad,
+                             sparse_weight_embedding_sparse_grad);
 
-PD_REGISTER_ARG_MAPPING_FN(lookup_table_v2, phi::EmbeddingOpArgumentMapping);
 PD_REGISTER_ARG_MAPPING_FN(lookup_table_v2_grad,
                            phi::EmbeddingGradOpArgumentMapping);

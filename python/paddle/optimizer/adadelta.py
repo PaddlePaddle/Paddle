@@ -12,10 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .optimizer import Optimizer
-from ..fluid import core
+import warnings
+
+from paddle import _C_ops
+
 from ..fluid import framework
-from ..fluid.framework import Variable, name_scope
+from ..fluid.dygraph import no_grad
+from ..framework import in_dynamic_mode
+from .optimizer import Optimizer
 
 __all__ = []
 
@@ -47,14 +51,14 @@ class Adadelta(Optimizer):
             different parameter groups such as the learning rate, weight decay, etc, \
             then the parameters are list of dict. Note that the learning_rate in paramter groups \
             represents the scale of base learning_rate. \
-            The default value is None in static mode, at this time all parameters will be updated.
+            The default value is None in static graph mode, at this time all parameters will be updated.
         weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
             It canbe a float value as coeff of L2 regularization or \
             :ref:`api_fluid_regularizer_L1Decay`, :ref:`api_fluid_regularizer_L2Decay`.
             If a parameter has set regularizer using :ref:`api_fluid_ParamAttr` already, \
             the regularization setting here in optimizer will be ignored for this parameter. \
             Otherwise, the regularization setting here in optimizer will take effect. \
-            Default None, meaning there is no regularization. 
+            Default None, meaning there is no regularization.
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
             some derived class of ``GradientClipBase`` . There are three cliping strategies
             ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
@@ -65,12 +69,11 @@ class Adadelta(Optimizer):
 
     Examples:
         .. code-block:: python
-	
+
             import paddle
-            import numpy as np
-            inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
+
+            inp = paddle.uniform([10, 10], dtype="float32", min=-0.1, max=0.1)
             linear = paddle.nn.Linear(10, 10)
-            inp = paddle.to_tensor(inp)
             out = linear(inp)
             loss = paddle.mean(out)
             beta1 = paddle.to_tensor([0.9], dtype="float32")
@@ -96,7 +99,7 @@ class Adadelta(Optimizer):
                     'weight_decay': 0.001,
                     'learning_rate': 0.1,
                 }],
-                weight_decay=0.01)                   
+                weight_decay=0.01)
             out.backward()
             adadelta.step()
             adadelta.clear_grad()
@@ -106,26 +109,31 @@ class Adadelta(Optimizer):
     _avg_squared_grad_acc_str = "_avg_squared_grad"
     _avg_squared_update_acc_str = "_avg_squared_update"
 
-    def __init__(self,
-                 learning_rate=0.001,
-                 epsilon=1.0e-6,
-                 rho=0.95,
-                 parameters=None,
-                 weight_decay=None,
-                 grad_clip=None,
-                 name=None):
+    def __init__(
+        self,
+        learning_rate=0.001,
+        epsilon=1.0e-6,
+        rho=0.95,
+        parameters=None,
+        weight_decay=None,
+        grad_clip=None,
+        name=None,
+    ):
         if learning_rate is None:
             raise ValueError("learning_rate is not set.")
         if epsilon is None:
             raise ValueError("epsilon is not set.")
         if rho is None:
             raise ValueError("rho is not set.")
-        super(Adadelta, self).__init__(
+        super().__init__(
             learning_rate=learning_rate,
             parameters=parameters,
             weight_decay=weight_decay,
             grad_clip=grad_clip,
-            name=name)
+            name=name,
+        )
+        self._multi_precision = False
+        self._master_weights = {}
         self.type = "adadelta"
         self._epsilon = epsilon
         self._rho = rho
@@ -141,40 +149,94 @@ class Adadelta(Optimizer):
             parameters = parameters.get('params')
 
         for p in parameters:
+            if p.name in self._already_create_accumulater:
+                continue
+            if self._multi_precision and self._is_dtype_fp16_or_bf16(p.dtype):
+                master_p = self._create_master_weight(p)
+                self._add_accumulator(self._avg_squared_grad_acc_str, master_p)
+                self._add_accumulator(
+                    self._avg_squared_update_acc_str, master_p
+                )
+                self._already_create_accumulater.add(p.name)
+                continue
+            if (
+                self._is_dtype_fp16_or_bf16(p.dtype)
+                and not self._multi_precision
+            ):
+                warnings.warn(
+                    "Accumulating with FP16/BF16 in optimizer can lead to poor accuracy or slow convergence."
+                    "Consider using multi_precision=True option of the Lars optimizer."
+                )
             self._add_accumulator(self._avg_squared_grad_acc_str, p)
             self._add_accumulator(self._avg_squared_update_acc_str, p)
+            self._already_create_accumulater.add(p.name)
 
     def _append_optimize_op(self, block, param_and_grad):
-        if not isinstance(block, framework.Block):
-            raise TypeError("block is not instance of framework.Block.")
-
         if isinstance(param_and_grad, dict):
             param_and_grad = self._update_param_group(param_and_grad)
 
-        avg_squared_grad_acc = self._get_accumulator(
-            self._avg_squared_grad_acc_str, param_and_grad[0])
-        avg_squared_update_acc = self._get_accumulator(
-            self._avg_squared_update_acc_str, param_and_grad[0])
+        avg_squared_grad_acc = self._get_accumulator_master(
+            self._avg_squared_grad_acc_str, param_and_grad[0]
+        )
+        avg_squared_update_acc = self._get_accumulator_master(
+            self._avg_squared_update_acc_str, param_and_grad[0]
+        )
+        find_master = self._multi_precision and self._is_dtype_fp16_or_bf16(
+            param_and_grad[0].dtype
+        )
+        master_weight = (
+            self._master_weights[param_and_grad[0].name]
+            if find_master
+            else None
+        )
 
-        # Create the adadelta optimizer op
-        adadelta_op = block.append_op(
-            type=self.type,
-            inputs={
+        if in_dynamic_mode():
+            with no_grad():
+                _C_ops.adadelta_(
+                    param_and_grad[0],
+                    param_and_grad[1],
+                    avg_squared_grad_acc,
+                    avg_squared_update_acc,
+                    self._create_param_lr(param_and_grad),
+                    master_weight,
+                    self._rho,
+                    self._epsilon,
+                    find_master,
+                )
+            return None
+        else:
+            if not isinstance(block, framework.Block):
+                raise TypeError("block is not instance of framework.Block.")
+
+            # Create the adadelta optimizer op
+            inputs = {
                 "Param": param_and_grad[0],
                 "Grad": param_and_grad[1],
                 "AvgSquaredGrad": avg_squared_grad_acc,
-                "AvgSquaredUpdate": avg_squared_update_acc
-            },
-            outputs={
+                "AvgSquaredUpdate": avg_squared_update_acc,
+                "LearningRate": self._create_param_lr(param_and_grad),
+            }
+            outputs = {
                 "ParamOut": param_and_grad[0],
                 "AvgSquaredGradOut": avg_squared_grad_acc,
-                "AvgSquaredUpdateOut": avg_squared_update_acc
-            },
-            attrs={"epsilon": self._epsilon,
-                   "rho": self._rho},
-            stop_gradient=True)
+                "AvgSquaredUpdateOut": avg_squared_update_acc,
+            }
+            if find_master:
+                inputs["MasterParam"] = master_weight
+                outputs["MasterParamOut"] = master_weight
+            adadelta_op = block.append_op(
+                type=self.type,
+                inputs=inputs,
+                outputs=outputs,
+                attrs={
+                    "epsilon": self._epsilon,
+                    "rho": self._rho,
+                    "multi_precision": find_master,
+                },
+                stop_gradient=True,
+            )
 
-        return adadelta_op
+            return adadelta_op
 
     def _update_param_group(self, parameters):
         self._epsilon = parameters.get('epsilon', self._default_dict['epsilon'])

@@ -157,7 +157,7 @@ func (config *Config) UseFcPadding() bool {
 /// \param deviceId the GPU card to use.
 ///
 func (config *Config) EnableUseGpu(memorySize uint64, deviceId int32) {
-	C.PD_ConfigEnableUseGpu(config.c, C.uint64_t(memorySize), C.int32_t(deviceId))
+	C.PD_ConfigEnableUseGpu(config.c, C.uint64_t(memorySize), C.int32_t(deviceId), 0)
 }
 
 ///
@@ -199,8 +199,9 @@ func (config *Config) EnableORTOptimization() {
 /// \param autotune_file Specify the path of the autotune file. If autotune_file is specified, the algorithm specified in the file will be used and autotune will not be performed again.
 /// \param precision Calculation accuracy of multi_encoder
 /// \param adaptive_seqlen Is the input of multi_encoder variable length
+/// \param enable_multi_stream Whether to enable the multi stream of xpu
 ///
-func (config *Config) EnableXpu(l3WorkspaceSize int32, locked bool, autotune bool, autotuneFile string, precision string, adaptiveSeqlen bool) {
+func (config *Config) EnableXpu(l3WorkspaceSize int32, locked bool, autotune bool, autotuneFile string, precision string, adaptiveSeqlen bool, enableMultiStream bool) {
 	cAutotuneFile := C.CString(autotuneFile)
 	cPrecision := C.CString(precision)
 	defer func() {
@@ -208,16 +209,7 @@ func (config *Config) EnableXpu(l3WorkspaceSize int32, locked bool, autotune boo
 		C.free(unsafe.Pointer(cPrecision))
 	}()
 	C.PD_ConfigEnableXpu(config.c, C.int32_t(l3WorkspaceSize), cvtGoBoolToPD(locked), cvtGoBoolToPD(autotune),
-		cAutotuneFile, cPrecision, cvtGoBoolToPD(adaptiveSeqlen))
-}
-
-///
-/// \brief Turn on NPU.
-///
-/// \param deviceId the NPU card to use.
-///
-func (config *Config) EnableNpu(deviceId int32) {
-	C.PD_ConfigEnableNpu(config.c, C.int32_t(deviceId))
+		cAutotuneFile, cPrecision, cvtGoBoolToPD(adaptiveSeqlen), cvtGoBoolToPD(enableMultiStream))
 }
 
 ///
@@ -239,15 +231,6 @@ func (config *Config) UseXpu() bool {
 }
 
 ///
-/// \brief A boolean state telling whether the NPU is turned on.
-///
-/// \return bool Whether the NPU is turned on.
-///
-func (config *Config) UseNpu() bool {
-	return cvtPDBoolToGo(C.PD_ConfigUseNpu(config.c))
-}
-
-///
 /// \brief Get the GPU device id.
 ///
 /// \return int32 The GPU device id.
@@ -263,15 +246,6 @@ func (config *Config) GpuDeviceId() int32 {
 ///
 func (config *Config) XpuDeviceId() int32 {
 	return int32(C.PD_ConfigXpuDeviceId(config.c))
-}
-
-///
-/// \brief Get the NPU device id.
-///
-/// \return int32 The NPU device id.
-///
-func (config *Config) NpuDeviceId() int32 {
-	return int32(C.PD_ConfigNpuDeviceId(config.c))
 }
 
 ///
@@ -332,9 +306,9 @@ func (config *Config) IrOptim() bool {
 /// \param useCalibMode Use TRT int8 calibration(post training
 /// quantization).
 ///
-func (config *Config) EnableTensorRtEngine(workspaceSize int32, maxBatchSize int32, minSubgraphSize int32,
+func (config *Config) EnableTensorRtEngine(workspaceSize int64, maxBatchSize int32, minSubgraphSize int32,
 	precision Precision, useStatic bool, useCalibMode bool) {
-	C.PD_ConfigEnableTensorRtEngine(config.c, C.int32_t(workspaceSize), C.int32_t(maxBatchSize), C.int32_t(minSubgraphSize), C.int32_t(precision), cvtGoBoolToPD(useStatic), cvtGoBoolToPD(useCalibMode))
+	C.PD_ConfigEnableTensorRtEngine(config.c, C.int64_t(workspaceSize), C.int32_t(maxBatchSize), C.int32_t(minSubgraphSize), C.int32_t(precision), cvtGoBoolToPD(useStatic), cvtGoBoolToPD(useCalibMode))
 }
 
 ///
@@ -500,8 +474,8 @@ func (config *Config) DisableTensorRtOPs(ops []string) {
 /// may be more high-performance. Libnvinfer_plugin.so greater than
 /// V7.2.1 is needed.
 ///
-func (config *Config) EnableTensorRtOSS() {
-	C.PD_ConfigEnableTensorRtOSS(config.c)
+func (config *Config) EnableVarseqlen() {
+	C.PD_ConfigEnableVarseqlen(config.c)
 }
 
 ///

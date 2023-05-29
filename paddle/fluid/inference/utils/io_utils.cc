@@ -158,8 +158,10 @@ void SerializePDTensorsToFile(const std::string &path,
 void DeserializePDTensorsToFile(const std::string &path,
                                 std::vector<PaddleTensor> *tensors) {
   bool is_present = analysis::FileExists(path);
-  PADDLE_ENFORCE_EQ(is_present, true, platform::errors::InvalidArgument(
-                                          "Cannot open %s to read", path));
+  PADDLE_ENFORCE_EQ(
+      is_present,
+      true,
+      platform::errors::InvalidArgument("Cannot open %s to read", path));
   std::ifstream fin(path, std::ios::binary);
   DeserializePDTensorsToStream(fin, tensors);
   fin.close();
@@ -180,7 +182,10 @@ void SerializeShapeRangeInfo(
     const std::string &path,
     const std::map<std::string, std::vector<int32_t>> &min_shape,
     const std::map<std::string, std::vector<int32_t>> &max_shape,
-    const std::map<std::string, std::vector<int32_t>> &opt_shape) {
+    const std::map<std::string, std::vector<int32_t>> &opt_shape,
+    const std::map<std::string, std::vector<int32_t>> &min_value,
+    const std::map<std::string, std::vector<int32_t>> &max_value,
+    const std::map<std::string, std::vector<int32_t>> &opt_value) {
   paddle::inference::proto::ShapeRangeInfos shape_range_infos;
   for (auto it : min_shape) {
     auto *s = shape_range_infos.add_shape_range_info();
@@ -190,10 +195,18 @@ void SerializeShapeRangeInfo(
       s->add_max_shape(max_shape.at(it.first)[i]);
       s->add_opt_shape(opt_shape.at(it.first)[i]);
     }
+    // If it.first is a shape tensor, we should collect values from it.
+    if (min_value.count(it.first)) {
+      for (size_t i = 0; i < min_value.at(it.first).size(); ++i) {
+        s->add_min_value(min_value.at(it.first)[i]);
+        s->add_max_value(max_value.at(it.first)[i]);
+        s->add_opt_value(opt_value.at(it.first)[i]);
+      }
+    }
   }
-
   inference::SerializeShapeRangeInfo(path, shape_range_infos);
 }
+
 void DeserializeShapeRangeInfo(
     const std::string &path, paddle::inference::proto::ShapeRangeInfos *info) {
   int fd = open(path.c_str(), O_RDONLY);
@@ -211,7 +224,10 @@ void DeserializeShapeRangeInfo(
     const std::string &path,
     std::map<std::string, std::vector<int32_t>> *min_shape,
     std::map<std::string, std::vector<int32_t>> *max_shape,
-    std::map<std::string, std::vector<int32_t>> *opt_shape) {
+    std::map<std::string, std::vector<int32_t>> *opt_shape,
+    std::map<std::string, std::vector<int32_t>> *min_value,
+    std::map<std::string, std::vector<int32_t>> *max_value,
+    std::map<std::string, std::vector<int32_t>> *opt_value) {
   paddle::inference::proto::ShapeRangeInfos shape_range_infos;
   DeserializeShapeRangeInfo(path, &shape_range_infos);
   for (int i = 0; i < shape_range_infos.shape_range_info_size(); ++i) {
@@ -234,6 +250,26 @@ void DeserializeShapeRangeInfo(
       opt_shape->insert(std::make_pair(name, tmp));
     }
   }
+  for (int i = 0; i < shape_range_infos.shape_range_info_size(); ++i) {
+    auto info = shape_range_infos.shape_range_info(i);
+    auto name = info.name();
+    if (min_value->count(name) || max_value->count(name) ||
+        opt_value->count(name)) {
+      continue;
+    } else {
+      std::vector<int32_t> tmp(info.min_value_size());
+      for (size_t k = 0; k < tmp.size(); ++k) tmp[k] = info.min_value(k);
+      min_value->insert(std::make_pair(name, tmp));
+
+      tmp.resize(info.max_value_size());
+      for (size_t k = 0; k < tmp.size(); ++k) tmp[k] = info.max_value(k);
+      max_value->insert(std::make_pair(name, tmp));
+
+      tmp.resize(info.opt_value_size());
+      for (size_t k = 0; k < tmp.size(); ++k) tmp[k] = info.opt_value(k);
+      opt_value->insert(std::make_pair(name, tmp));
+    }
+  }
 }
 
 void UpdateShapeRangeInfo(
@@ -241,13 +277,18 @@ void UpdateShapeRangeInfo(
     const std::map<std::string, std::vector<int32_t>> &min_shape,
     const std::map<std::string, std::vector<int32_t>> &max_shape,
     const std::map<std::string, std::vector<int32_t>> &opt_shape,
-    const std::vector<std::string> &names) {
+    const std::map<std::string, std::vector<int32_t>> &min_value,
+    const std::map<std::string, std::vector<int32_t>> &max_value,
+    const std::map<std::string, std::vector<int32_t>> &opt_value,
+    const std::vector<std::string> &names,
+    const std::vector<std::string> &tensor_names) {
   paddle::inference::proto::ShapeRangeInfos shape_range_infos;
   DeserializeShapeRangeInfo(path, &shape_range_infos);
 
-  for (int i = 0; i < shape_range_infos.shape_range_info_size(); ++i) {
-    auto *info = shape_range_infos.mutable_shape_range_info(i);
-    for (const auto &name : names) {
+  for (const auto &name : names) {
+    bool has_name = false;
+    for (int i = 0; i < shape_range_infos.shape_range_info_size(); ++i) {
+      auto *info = shape_range_infos.mutable_shape_range_info(i);
       if (info->name() == name) {
         info->clear_min_shape();
         info->clear_max_shape();
@@ -258,10 +299,52 @@ void UpdateShapeRangeInfo(
           info->add_max_shape(max_shape.at(name)[j]);
         for (size_t j = 0; j < opt_shape.at(name).size(); ++j)
           info->add_opt_shape(opt_shape.at(name)[j]);
+        has_name = true;
         break;
       }
     }
+    if (!has_name) {
+      auto *info = shape_range_infos.add_shape_range_info();
+      info->set_name(name);
+      for (size_t j = 0; j < min_shape.at(name).size(); ++j)
+        info->add_min_shape(min_shape.at(name)[j]);
+      for (size_t j = 0; j < max_shape.at(name).size(); ++j)
+        info->add_max_shape(max_shape.at(name)[j]);
+      for (size_t j = 0; j < opt_shape.at(name).size(); ++j)
+        info->add_opt_shape(opt_shape.at(name)[j]);
+    }
   }
+
+  for (const auto &name : tensor_names) {
+    bool has_name = false;
+    for (int i = 0; i < shape_range_infos.shape_range_info_size(); ++i) {
+      auto *info = shape_range_infos.mutable_shape_range_info(i);
+      if (info->name() == name) {
+        info->clear_min_value();
+        info->clear_max_value();
+        info->clear_opt_value();
+        for (size_t j = 0; j < min_value.at(name).size(); ++j)
+          info->add_min_value(min_value.at(name)[j]);
+        for (size_t j = 0; j < max_value.at(name).size(); ++j)
+          info->add_max_value(max_value.at(name)[j]);
+        for (size_t j = 0; j < opt_value.at(name).size(); ++j)
+          info->add_opt_value(opt_value.at(name)[j]);
+        has_name = true;
+        break;
+      }
+    }
+    if (!has_name) {
+      auto *info = shape_range_infos.add_shape_range_info();
+      info->set_name(name);
+      for (size_t j = 0; j < min_value.at(name).size(); ++j)
+        info->add_min_value(min_value.at(name)[j]);
+      for (size_t j = 0; j < max_value.at(name).size(); ++j)
+        info->add_max_value(max_value.at(name)[j]);
+      for (size_t j = 0; j < opt_value.at(name).size(); ++j)
+        info->add_opt_value(opt_value.at(name)[j]);
+    }
+  }
+
   inference::SerializeShapeRangeInfo(path, shape_range_infos);
 }
 

@@ -16,10 +16,9 @@
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_registry.h"
-
-#include "paddle/fluid/memory/memory.h"
 
 namespace phi {
 
@@ -139,7 +138,7 @@ template <typename T, typename Context>
 void RoiAlignKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& boxes,
-                    paddle::optional<const DenseTensor&> boxes_num,
+                    const paddle::optional<DenseTensor>& boxes_num,
                     int pooled_height,
                     int pooled_width,
                     float spatial_scale,
@@ -180,12 +179,12 @@ void RoiAlignKernel(const Context& dev_ctx,
             batch_size));
 
     std::vector<int> boxes_num_list(boxes_batch_size);
-    paddle::memory::Copy(cplace,
-                         boxes_num_list.data(),
-                         gplace,
-                         boxes_num->data<int>(),
-                         sizeof(int) * boxes_batch_size,
-                         0);
+    memory_utils::Copy(cplace,
+                       boxes_num_list.data(),
+                       gplace,
+                       boxes_num->data<int>(),
+                       sizeof(int) * boxes_batch_size,
+                       0);
     int start = 0;
     for (int n = 0; n < boxes_batch_size; ++n) {
       for (int i = start; i < start + boxes_num_list[n]; ++i) {
@@ -228,24 +227,27 @@ void RoiAlignKernel(const Context& dev_ctx,
     }
   }
   int bytes = roi_batch_id_list.numel() * sizeof(int);
-  auto roi_ptr = paddle::memory::Alloc(dev_ctx, bytes);
+  auto roi_ptr = phi::memory_utils::Alloc(
+      dev_ctx.GetPlace(),
+      bytes,
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   int* roi_id_data = reinterpret_cast<int*>(roi_ptr->ptr());
-  paddle::memory::Copy(
+  memory_utils::Copy(
       gplace, roi_id_data, cplace, roi_batch_id_data, bytes, dev_ctx.stream());
-  GPURoiAlignForward<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
-      output_size,
-      x.data<T>(),
-      boxes.data<T>(),
-      spatial_scale,
-      channels,
-      height,
-      width,
-      pooled_height,
-      pooled_width,
-      sampling_ratio,
-      roi_id_data,
-      dev_ctx.template Alloc<T>(out),
-      aligned);
+  GPURoiAlignForward<T>
+      <<<blocks, threads, 0, dev_ctx.stream()>>>(output_size,
+                                                 x.data<T>(),
+                                                 boxes.data<T>(),
+                                                 spatial_scale,
+                                                 channels,
+                                                 height,
+                                                 width,
+                                                 pooled_height,
+                                                 pooled_width,
+                                                 sampling_ratio,
+                                                 roi_id_data,
+                                                 dev_ctx.template Alloc<T>(out),
+                                                 aligned);
 }
 
 }  // namespace phi

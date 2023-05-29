@@ -15,36 +15,35 @@ limitations under the License. */
 #pragma once
 
 #include <string.h>
+
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
-
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class CTCAlignKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<LoDTensor>("Input");
-    auto* output = ctx.Output<LoDTensor>("Output");
+    auto* input = ctx.Input<phi::DenseTensor>("Input");
+    auto* output = ctx.Output<phi::DenseTensor>("Output");
     size_t blank = static_cast<size_t>(ctx.Attr<int>("blank"));
     bool merge_repeated = ctx.Attr<bool>("merge_repeated");
     T* output_data = output->mutable_data<T>(ctx.GetPlace());
-    auto input_dims = input->dims();
+    auto input_dims = phi::vectorize<int>(input->dims());
     const T* input_data = input->data<T>();
 
     // support tensor input, no lod information
     if (input->lod().empty()) {
       size_t padding_value =
           static_cast<size_t>(ctx.Attr<int>("padding_value"));
-      auto* input_length = ctx.Input<LoDTensor>("InputLength");
+      auto* input_length = ctx.Input<phi::DenseTensor>("InputLength");
       const T* input_length_data = input_length->data<T>();
 
-      auto* output_length = ctx.Output<LoDTensor>("OutputLength");
+      auto* output_length = ctx.Output<phi::DenseTensor>("OutputLength");
       T* output_length_data = output_length->mutable_data<T>(ctx.GetPlace());
 
       for (size_t batch_id = 0; batch_id < (unsigned)input_dims[0];
@@ -71,12 +70,14 @@ class CTCAlignKernel : public framework::OpKernel<T> {
 
       // check input dims and lod
       PADDLE_ENFORCE_EQ(
-          input_dims[0], static_cast<int64_t>(input_lod[level].back()),
+          input_dims[0],
+          static_cast<int64_t>(input_lod[level].back()),
           platform::errors::InvalidArgument(
               "The first dimension %d of CTCAlign operator Input(Input) should "
               "be equal to "
               "the sum of all sequences' lengths %d.",
-              input_dims[0], static_cast<int64_t>(input_lod[level].back())));
+              input_dims[0],
+              static_cast<int64_t>(input_lod[level].back())));
 
       const size_t num_sequences = input_lod[level].size() - 1;
 
@@ -86,7 +87,8 @@ class CTCAlignKernel : public framework::OpKernel<T> {
       for (size_t seq_idx = 0; seq_idx < num_sequences; ++seq_idx) {
         T prev_token = -1;
         for (size_t i = input_lod[level][seq_idx];
-             i < input_lod[level][seq_idx + 1]; ++i) {
+             i < input_lod[level][seq_idx + 1];
+             ++i) {
           if ((unsigned)input_data[i] != blank &&
               !(merge_repeated && input_data[i] == prev_token)) {
             output_data[output_idx] = input_data[i];

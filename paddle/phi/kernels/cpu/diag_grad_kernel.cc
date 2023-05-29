@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/diag_grad_kernel.h"
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/diag_functor.h"
@@ -22,7 +23,7 @@ namespace phi {
 
 template <typename T, typename Context>
 void DiagGradKernel(const Context& dev_ctx,
-                    const DenseTensor& x,
+                    const DenseTensor& x UNUSED,
                     const DenseTensor& out_grad,
                     int offset,
                     DenseTensor* x_grad) {
@@ -31,9 +32,9 @@ void DiagGradKernel(const Context& dev_ctx,
   auto dx_dims = x_grad->dims();
   auto dout_dims = out_grad.dims();
 
-  if (dx_dims.size() == 1) {
-    auto dx_length = dx_dims[0];
-    int dx_stride = phi::funcs::ComputeStride(0, dx_dims);
+  if (dx_dims.size() <= 1) {
+    auto dx_length = (dx_dims.size() == 1 ? dx_dims[0] : int64_t(1));
+    int dx_stride = 1;
 
     auto dout_stride_0 = phi::funcs::ComputeStride(0, dout_dims);
     auto dout_stride_1 = phi::funcs::ComputeStride(1, dout_dims);

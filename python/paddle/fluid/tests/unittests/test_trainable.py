@@ -12,31 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-from collections import Counter
 import unittest
-import paddle.fluid as fluid
+from collections import Counter
+
 from simple_nets import init_data
+
+import paddle
+from paddle import fluid
 
 
 def test_trainable():
-    x = fluid.layers.data(name='image', shape=[784], dtype='float32')
-    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-    feature = fluid.layers.fc(input=x,
-                              size=10,
-                              param_attr=fluid.ParamAttr(trainable=False))
-    loss = fluid.layers.cross_entropy(input=feature, label=label)
-    loss = fluid.layers.mean(loss)
+    x = paddle.static.data(name='image', shape=[-1, 784], dtype='float32')
+    label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
+    feature = paddle.static.nn.fc(
+        x, size=10, weight_attr=fluid.ParamAttr(trainable=False)
+    )
+    loss = paddle.nn.functional.cross_entropy(
+        input=feature, label=label, reduction='none', use_softmax=False
+    )
+    loss = paddle.mean(loss)
     return loss
 
 
 class TestTrainable(unittest.TestCase):
-    def check_trainable(self,
-                        model,
-                        feed_dict,
-                        op_count,
-                        optimizer=fluid.optimizer.Adam()):
+    def check_trainable(
+        self, model, feed_dict, op_count, optimizer=fluid.optimizer.Adam()
+    ):
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
 
@@ -67,16 +68,14 @@ class TestTrainable(unittest.TestCase):
         self.check_trainable(
             test_trainable,
             feed_dict,
-            op_count={'adam': 1,
-                      'scale': 0,
-                      'mul_grad': 0})
+            op_count={'adam': 1, 'scale': 0, 'mul_grad': 0},
+        )
         self.check_trainable(
             test_trainable,
             feed_dict,
-            op_count={'adamax': 1,
-                      'scale': 1,
-                      'mul_grad': 0},
-            optimizer=fluid.optimizer.Adamax(learning_rate=0.2))
+            op_count={'adamax': 1, 'scale': 1, 'mul_grad': 0},
+            optimizer=fluid.optimizer.Adamax(learning_rate=0.2),
+        )
 
 
 if __name__ == '__main__':

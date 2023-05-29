@@ -12,20 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import contextlib
 import unittest
+
 import numpy as np
-import six
-
-import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.fluid.dygraph.base as base
-
 from test_imperative_lod_tensor_to_selected_rows import SimpleNet
-from paddle.fluid.framework import _test_eager_guard
+
+from paddle import fluid
+from paddle.fluid import core
+from paddle.fluid.dygraph import base
 
 call_forward_post_hook = False
 call_forward_pre_hook = False
@@ -52,7 +46,7 @@ def forward_pre_hook1(layer, input):
 
 class Test_Forward_Hook(unittest.TestCase):
     # test forward_pre_hook and forward_post_hook that have return value
-    def func_forward_hook_return_value(self):
+    def test_forward_hook_return_value(self):
         seed = 90
 
         places = [fluid.CPUPlace()]
@@ -65,15 +59,23 @@ class Test_Forward_Hook(unittest.TestCase):
                 fluid.default_main_program().random_seed = seed
                 fluid.set_flags({'FLAGS_sort_sum_gradient': True})
 
-                input_word = np.array(
-                    [0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7,
-                     8]).reshape(6, 3).astype('int64')
+                input_word = (
+                    np.array(
+                        [0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8]
+                    )
+                    .reshape(6, 3)
+                    .astype('int64')
+                )
                 input_word1 = input_word * 2
                 input_word = input_word.reshape((-1, 3, 1))
                 input_word1 = input_word1.reshape((-1, 3, 1))
-                y_data = np.array(
-                    [1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8,
-                     9]).reshape(6, 3).astype('int64')
+                y_data = (
+                    np.array(
+                        [1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+                    )
+                    .reshape(6, 3)
+                    .astype('int64')
+                )
                 y_data = y_data.reshape((-1, 1))
 
                 input = base.to_variable(input_word)
@@ -86,7 +88,8 @@ class Test_Forward_Hook(unittest.TestCase):
                     num_steps=3,
                     init_scale=0.1,
                     is_sparse=False,
-                    dtype="float32")
+                    dtype="float32",
+                )
 
                 # origin, don't register any hook
                 outs_origin = simplenet(input, y)
@@ -94,34 +97,38 @@ class Test_Forward_Hook(unittest.TestCase):
 
                 # register forward_pre_hook
                 forward_pre_hook_handle1 = simplenet.register_forward_pre_hook(
-                    forward_pre_hook1)
+                    forward_pre_hook1
+                )
                 outs_pre_hook = simplenet(input, y)
-                self.assertTrue(
-                    np.array_equal(outs_pre_hook.numpy(), outs_origin1.numpy()))
+                np.testing.assert_array_equal(
+                    outs_pre_hook.numpy(), outs_origin1.numpy()
+                )
 
                 # remove forward_pre_hook
                 forward_pre_hook_handle1.remove()
                 outs_pre_hook = simplenet(input, y)
-                self.assertTrue(
-                    np.array_equal(outs_pre_hook.numpy(), outs_origin.numpy()))
+                np.testing.assert_array_equal(
+                    outs_pre_hook.numpy(), outs_origin.numpy()
+                )
 
                 # register forward_posst_hook
-                forward_post_hook_handle1 = simplenet.register_forward_post_hook(
-                    forward_post_hook1)
+                forward_post_hook_handle1 = (
+                    simplenet.register_forward_post_hook(forward_post_hook1)
+                )
                 outs_forward_hook = simplenet(input, y)
-                self.assertTrue(
-                    np.array_equal(outs_forward_hook.numpy(),
-                                   outs_origin.numpy() * 2))
+                np.testing.assert_array_equal(
+                    outs_forward_hook.numpy(), outs_origin.numpy() * 2
+                )
 
                 # remove forward_post_hook
                 forward_post_hook_handle1.remove()
                 outs_forward_hook = simplenet(input, y)
-                self.assertTrue(
-                    np.array_equal(outs_forward_hook.numpy(),
-                                   outs_origin.numpy()))
+                np.testing.assert_array_equal(
+                    outs_forward_hook.numpy(), outs_origin.numpy()
+                )
 
     # test forward_pre_hook and forward_post_hook that don't have return value
-    def func_forward_hook(self):
+    def test_forward_hook(self):
         seed = 90
 
         places = [fluid.CPUPlace()]
@@ -137,13 +144,21 @@ class Test_Forward_Hook(unittest.TestCase):
                 global call_forward_post_hook
                 global call_forward_pre_hook
 
-                input_word = np.array(
-                    [0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7,
-                     8]).reshape(6, 3).astype('int64')
+                input_word = (
+                    np.array(
+                        [0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 1, 2, 3, 4, 5, 6, 7, 8]
+                    )
+                    .reshape(6, 3)
+                    .astype('int64')
+                )
                 input_word = input_word.reshape((-1, 3, 1))
-                y_data = np.array(
-                    [1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8,
-                     9]).reshape(6, 3).astype('int64')
+                y_data = (
+                    np.array(
+                        [1, 2, 3, 4, 5, 6, 7, 8, 9, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+                    )
+                    .reshape(6, 3)
+                    .astype('int64')
+                )
                 y_data = y_data.reshape((-1, 1))
 
                 input = base.to_variable(input_word)
@@ -155,7 +170,8 @@ class Test_Forward_Hook(unittest.TestCase):
                     num_steps=3,
                     init_scale=0.1,
                     is_sparse=False,
-                    dtype="float32")
+                    dtype="float32",
+                )
 
                 # origin, don't register any hook
                 outs_origin = simplenet(input, y)
@@ -164,9 +180,11 @@ class Test_Forward_Hook(unittest.TestCase):
 
                 # register forward_post_hook and forward_pre_hook
                 forward_post_hook_handle = simplenet.register_forward_post_hook(
-                    forward_post_hook)
+                    forward_post_hook
+                )
                 forward_pre_hook_handle = simplenet.register_forward_pre_hook(
-                    forward_pre_hook)
+                    forward_pre_hook
+                )
                 outs_hook = simplenet(input, y)
                 self.assertTrue(call_forward_post_hook)
                 self.assertTrue(call_forward_pre_hook)
@@ -190,13 +208,6 @@ class Test_Forward_Hook(unittest.TestCase):
                 outs_remove_hook = simplenet(input, y)
                 self.assertFalse(call_forward_post_hook)
                 self.assertFalse(call_forward_pre_hook)
-
-    def test_forward_hook_return_value(self):
-        with _test_eager_guard():
-            self.func_forward_hook()
-            self.func_forward_hook_return_value()
-        self.func_forward_hook()
-        self.func_forward_hook_return_value()
 
 
 if __name__ == '__main__':

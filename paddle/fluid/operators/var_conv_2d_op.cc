@@ -13,27 +13,29 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/var_conv_2d_op.h"
+
 #include <memory>
 #include <vector>
-#include "paddle/fluid/platform/dynload/mklml.h"
+
+#include "paddle/phi/backends/dynload/mklml.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
 using LoD = framework::LoD;
 
 void VarConv2dOpMaker::Make() {
   AddInput("X",
-           "X (LoDTensor, default LoDTensor<float>) Input variable which "
+           "X (phi::DenseTensor, default phi::DenseTensor<float>) Input "
+           "variable which "
            "should contain lod information.");
-  AddInput("ROW", "(LoDTensor) the row variable provides lod information");
+  AddInput("ROW",
+           "(phi::DenseTensor) the row variable provides lod information");
   AddInput("COLUMN",
-           "(LoDTensor) the column variable provides lod information");
-  AddInput("W", "W (Tensor), the filter.");
+           "(phi::DenseTensor) the column variable provides lod information");
+  AddInput("W", "W (phi::DenseTensor), the filter.");
   AddAttr<int>("InputChannel", "the input filter num").SetDefault(1);
   AddAttr<int>("OutputChannel", "the output filter num").SetDefault(1);
   AddAttr<int>("StrideH", "the height of Stride").SetDefault(1);
@@ -41,17 +43,20 @@ void VarConv2dOpMaker::Make() {
   AddAttr<int>("KernelH", "the height of Kernel").SetDefault(1);
   AddAttr<int>("KernelW", "the width of Kernel").SetDefault(1);
 
-  AddOutput("Out", "(LoDTensor, default LoDTensor<float>) Output variable");
+  AddOutput(
+      "Out",
+      "(phi::DenseTensor, default phi::DenseTensor<float>) Output variable");
   AddOutput("Col",
-            "(LoDTensor, default LoDTensor<float>) the intermediate result "
+            "(phi::DenseTensor, default phi::DenseTensor<float>) the "
+            "intermediate result "
             "variable");
 
   AddComment(R"DOC(
     Var Size Conv Operator
 
-    This operator calculate Out = \sigma \left ( W * X + b \right ), 
+    This operator calculate Out = \sigma \left ( W * X + b \right ),
     only support 2-D for X.
-    
+
     NOTE: only support 'float32' data type now.
 
   )DOC");
@@ -59,27 +64,34 @@ void VarConv2dOpMaker::Make() {
 
 void VarConv2dOP::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(
-      ctx->HasInput("X"), true,
+      ctx->HasInput("X"),
+      true,
       platform::errors::NotFound("X(Input) of VarConv2dOP is not found."));
   PADDLE_ENFORCE_EQ(
-      ctx->HasInput("W"), true,
+      ctx->HasInput("W"),
+      true,
       platform::errors::NotFound("W(Input) of VarConv2dOP is not found."));
   PADDLE_ENFORCE_EQ(
-      ctx->HasInput("ROW"), true,
+      ctx->HasInput("ROW"),
+      true,
       platform::errors::NotFound("Input(ROW) of VarConv2dOP is not found."));
   PADDLE_ENFORCE_EQ(
-      ctx->HasInput("COLUMN"), true,
+      ctx->HasInput("COLUMN"),
+      true,
       platform::errors::NotFound("Input(COLUMN) of VarConv2dOP is not found."));
   PADDLE_ENFORCE_EQ(
-      ctx->HasOutput("Out"), true,
+      ctx->HasOutput("Out"),
+      true,
       platform::errors::NotFound("Out(Output) of VarConv2dOP is not found."));
   PADDLE_ENFORCE_EQ(
-      ctx->HasOutput("Col"), true,
+      ctx->HasOutput("Col"),
+      true,
       platform::errors::NotFound("Col(Output) of VarConv2dOP is not found."));
 
   auto x_dims = ctx->GetInputDim("X");
   PADDLE_ENFORCE_EQ(
-      x_dims.size(), 2,
+      x_dims.size(),
+      2,
       platform::errors::InvalidArgument(
           "The rank of X(Input) can't be less than 2, but received rank is %u.",
           x_dims.size()));
@@ -87,7 +99,8 @@ void VarConv2dOP::InferShape(framework::InferShapeContext* ctx) const {
   auto w_dims = ctx->GetInputDim("W");
 
   PADDLE_ENFORCE_EQ(
-      w_dims.size(), 2,
+      w_dims.size(),
+      2,
       platform::errors::InvalidArgument(
           "Input W should be a 2-D tensor, but its actual dimension is %u.",
           w_dims.size()));
@@ -96,51 +109,63 @@ void VarConv2dOP::InferShape(framework::InferShapeContext* ctx) const {
   int kernel_h = ctx->Attrs().Get<int>("KernelH");
   int kernel_w = ctx->Attrs().Get<int>("KernelW");
   PADDLE_ENFORCE_EQ(
-      w_dims[0], output_channel,
+      w_dims[0],
+      output_channel,
       platform::errors::InvalidArgument(
           "Input W's dimension[0] should be equal to OutputChannel, the "
           "dimension[0] is %d, OutputChannel is %d.",
-          w_dims[0], output_channel));
+          w_dims[0],
+          output_channel));
   PADDLE_ENFORCE_EQ(
-      w_dims[1], input_channel * kernel_h * kernel_w,
+      w_dims[1],
+      input_channel * kernel_h * kernel_w,
       platform::errors::InvalidArgument(
           "Input W's dimension[1] should be equal to InputChannel * StrideH * "
           "StrideW, the dimension[1] is %d, expected value is %d.",
-          w_dims[1], input_channel * kernel_h * kernel_w));
+          w_dims[1],
+          input_channel * kernel_h * kernel_w));
 
   if (ctx->IsRuntime()) {
     framework::Variable* x_var =
-        BOOST_GET(framework::Variable*, ctx->GetInputVarPtrs("X")[0]);
-    const auto& x_lod = x_var->Get<LoDTensor>().lod();
-    PADDLE_ENFORCE_EQ(
-        !x_lod.empty(), true,
-        platform::errors::InvalidArgument("The Input(X) Tensor of VarConv2dOP "
-                                          "does not contain LoD information."));
+        PADDLE_GET(framework::Variable*, ctx->GetInputVarPtrs("X")[0]);
+    const auto& x_lod = x_var->Get<phi::DenseTensor>().lod();
+    PADDLE_ENFORCE_EQ(!x_lod.empty(),
+                      true,
+                      platform::errors::InvalidArgument(
+                          "The Input(X) phi::DenseTensor of VarConv2dOP "
+                          "does not contain LoD information."));
 
-    PADDLE_ENFORCE_GE(x_lod.size(), 1,
+    PADDLE_ENFORCE_GE(x_lod.size(),
+                      1,
                       platform::errors::InvalidArgument(
                           "The Input(X)'s lod info is corrupted."));
-    PADDLE_ENFORCE_EQ(x_dims[0], static_cast<int64_t>(x_lod[0].back()),
+    PADDLE_ENFORCE_EQ(x_dims[0],
+                      static_cast<int64_t>(x_lod[0].back()),
                       platform::errors::InvalidArgument(
                           "The Input(X)'s lod info mismatches the actual "
                           "tensor shape, input lod is %s, tensor shape is %s.",
-                          x_lod, x_dims));
+                          x_lod,
+                          x_dims));
 
     framework::Variable* row_var =
-        BOOST_GET(framework::Variable*, ctx->GetInputVarPtrs("ROW")[0]);
-    const auto& row_lod = row_var->Get<LoDTensor>().lod();
-    PADDLE_ENFORCE_EQ(!row_lod.empty(), true,
-                      platform::errors::InvalidArgument(
-                          "The Input(ROW) Tensor of VarConv2dOP does not "
-                          "contain LoD information."));
+        PADDLE_GET(framework::Variable*, ctx->GetInputVarPtrs("ROW")[0]);
+    const auto& row_lod = row_var->Get<phi::DenseTensor>().lod();
+    PADDLE_ENFORCE_EQ(
+        !row_lod.empty(),
+        true,
+        platform::errors::InvalidArgument(
+            "The Input(ROW) phi::DenseTensor of VarConv2dOP does not "
+            "contain LoD information."));
 
     framework::Variable* col_var =
-        BOOST_GET(framework::Variable*, ctx->GetInputVarPtrs("COLUMN")[0]);
-    const auto& col_lod = col_var->Get<LoDTensor>().lod();
-    PADDLE_ENFORCE_EQ(!col_lod.empty(), true,
-                      platform::errors::InvalidArgument(
-                          "The Input(COLUMN) Tensor of VarConv2dOP does not "
-                          "contain LoD information."));
+        PADDLE_GET(framework::Variable*, ctx->GetInputVarPtrs("COLUMN")[0]);
+    const auto& col_lod = col_var->Get<phi::DenseTensor>().lod();
+    PADDLE_ENFORCE_EQ(
+        !col_lod.empty(),
+        true,
+        platform::errors::InvalidArgument(
+            "The Input(COLUMN) phi::DenseTensor of VarConv2dOP does not "
+            "contain LoD information."));
   } else {
     std::vector<int64_t> out_dims_vec{-1};
     out_dims_vec.push_back(1);
@@ -151,14 +176,15 @@ void VarConv2dOP::InferShape(framework::InferShapeContext* ctx) const {
   }
 }
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class CPUVarConv2dOPKernel : public framework::OpKernel<T> {
  public:
-  void Im2Col(const framework::ExecutionContext& ctx, const LoDTensor& input,
-              LoDTensor* col) const {
+  void Im2Col(const framework::ExecutionContext& ctx,
+              const phi::DenseTensor& input,
+              phi::DenseTensor* col) const {
     int input_channel = ctx.Attr<int>("InputChannel");
-    auto* in_row = ctx.Input<LoDTensor>("ROW");
-    auto* in_col = ctx.Input<LoDTensor>("COLUMN");
+    auto* in_row = ctx.Input<phi::DenseTensor>("ROW");
+    auto* in_col = ctx.Input<phi::DenseTensor>("COLUMN");
     int kernel_h = ctx.Attr<int>("KernelH");
     int kernel_w = ctx.Attr<int>("KernelW");
     int stride_h = ctx.Attr<int>("StrideH");
@@ -246,12 +272,12 @@ class CPUVarConv2dOPKernel : public framework::OpKernel<T> {
   }
 
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* bottom = ctx.Input<LoDTensor>("X");
-    auto* in_row = ctx.Input<LoDTensor>("ROW");
-    auto* in_col = ctx.Input<LoDTensor>("COLUMN");
-    auto* w = ctx.Input<Tensor>("W");
-    auto* top = ctx.Output<LoDTensor>("Out");
-    auto* col = ctx.Output<LoDTensor>("Col");
+    auto* bottom = ctx.Input<phi::DenseTensor>("X");
+    auto* in_row = ctx.Input<phi::DenseTensor>("ROW");
+    auto* in_col = ctx.Input<phi::DenseTensor>("COLUMN");
+    auto* w = ctx.Input<phi::DenseTensor>("W");
+    auto* top = ctx.Output<phi::DenseTensor>("Out");
+    auto* col = ctx.Output<phi::DenseTensor>("Col");
 
     int output_channel = ctx.Attr<int>("OutputChannel");
     int input_channel = ctx.Attr<int>("InputChannel");
@@ -300,16 +326,24 @@ class CPUVarConv2dOPKernel : public framework::OpKernel<T> {
     auto* w_data = w->data<T>();
     auto* col_data = col->data<T>();
 
-    auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, T>(ctx);
+    auto& dev_ctx = ctx.template device_context<phi::CPUContext>();
+    auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
     for (int b = 0; b < batch; ++b) {
       int top_im_size = (top_offset[b + 1] - top_offset[b]) / output_channel;
       if (top_im_size == 0) {
         continue;
       }
 
-      blas.GEMM(CblasNoTrans, CblasNoTrans, output_channel, top_im_size,
-                input_channel * kernel_h * kernel_w, 1.0, w_data,
-                col_data + col_offset[b], 0.0, top_data + top_offset[b]);
+      blas.GEMM(CblasNoTrans,
+                CblasNoTrans,
+                output_channel,
+                top_im_size,
+                input_channel * kernel_h * kernel_w,
+                1.0,
+                w_data,
+                col_data + col_offset[b],
+                0.0,
+                top_data + top_offset[b]);
     }
   }
 };
@@ -336,13 +370,16 @@ class VarConv2dGradMaker : public framework::SingleGradOpMaker<T> {
 };
 
 void VarConv2dOpGrad::InferShape(framework::InferShapeContext* ctx) const {
-  PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
+  PADDLE_ENFORCE_EQ(ctx->HasInput("X"),
+                    true,
                     platform::errors::NotFound(
                         "Input(X) of SequencePadGradOp is not found."));
-  PADDLE_ENFORCE_EQ(ctx->HasInput("W"), true,
+  PADDLE_ENFORCE_EQ(ctx->HasInput("W"),
+                    true,
                     platform::errors::NotFound(
                         "Input(W) of SequencePadGradOp is not found."));
-  PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")), true,
+  PADDLE_ENFORCE_EQ(ctx->HasInput(framework::GradVarName("Out")),
+                    true,
                     platform::errors::NotFound(
                         "Input(Out@GRAD) of SequencePadGradOp is not found."));
 
@@ -355,14 +392,14 @@ void VarConv2dOpGrad::InferShape(framework::InferShapeContext* ctx) const {
   }
 }
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class CPUVarConv2dOPGradKernel : public framework::OpKernel<T> {
  public:
   void Im2ColGrad(const framework::ExecutionContext& ctx, T* top_diff) const {
-    auto* x = ctx.Input<LoDTensor>("X");
-    auto* in_row = ctx.Input<LoDTensor>("ROW");
-    auto* in_col = ctx.Input<LoDTensor>("COLUMN");
-    auto* col = ctx.Input<LoDTensor>("Col");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* in_row = ctx.Input<phi::DenseTensor>("ROW");
+    auto* in_col = ctx.Input<phi::DenseTensor>("COLUMN");
+    auto* col = ctx.Input<phi::DenseTensor>("Col");
 
     int input_channel = ctx.Attr<int>("InputChannel");
     int kernel_h = ctx.Attr<int>("KernelH");
@@ -370,7 +407,7 @@ class CPUVarConv2dOPGradKernel : public framework::OpKernel<T> {
     int stride_h = ctx.Attr<int>("StrideH");
     int stride_w = ctx.Attr<int>("StrideW");
 
-    auto* dx = ctx.Output<LoDTensor>(framework::GradVarName("X"));
+    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
 
     auto* dx_data = dx->mutable_data<T>(ctx.GetPlace());
     memset(dx_data, 0.0, x->dims()[0] * x->dims()[1] * sizeof(T));
@@ -419,21 +456,21 @@ class CPUVarConv2dOPGradKernel : public framework::OpKernel<T> {
   }
 
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* x = ctx.Input<LoDTensor>("X");
-    auto* w = ctx.Input<Tensor>("W");
-    auto* col = ctx.Input<LoDTensor>("Col");
-    auto* out = ctx.Input<LoDTensor>("Out");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* w = ctx.Input<phi::DenseTensor>("W");
+    auto* col = ctx.Input<phi::DenseTensor>("Col");
+    auto* out = ctx.Input<phi::DenseTensor>("Out");
 
     int output_channel = ctx.Attr<int>("OutputChannel");
     int input_channel = ctx.Attr<int>("InputChannel");
     int kernel_h = ctx.Attr<int>("KernelH");
     int kernel_w = ctx.Attr<int>("KernelW");
 
-    auto* d_out = ctx.Input<LoDTensor>(framework::GradVarName("Out"));
-    auto* dx = ctx.Output<LoDTensor>(framework::GradVarName("X"));
-    auto* d_w = ctx.Output<Tensor>(framework::GradVarName("W"));
+    auto* d_out = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* d_w = ctx.Output<phi::DenseTensor>(framework::GradVarName("W"));
 
-    Tensor col_grad;
+    phi::DenseTensor col_grad;
     col_grad.Resize(col->dims());
     auto* col_diff = col_grad.mutable_data<T>(ctx.GetPlace());
     auto* dx_data = dx->mutable_data<T>(ctx.GetPlace());
@@ -448,20 +485,34 @@ class CPUVarConv2dOPGradKernel : public framework::OpKernel<T> {
     int batch = x->lod()[0].size() - 1;
     const auto& top_offset = out->lod()[0];
     const auto& col_offset = col->lod()[0];
-    auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, T>(ctx);
+    auto& dev_ctx = ctx.template device_context<phi::CPUContext>();
+    auto blas = phi::funcs::GetBlas<phi::CPUContext, T>(dev_ctx);
     for (int b = 0; b < batch; ++b) {
       int top_im_size = (top_offset[b + 1] - top_offset[b]) / output_channel;
       if (top_im_size == 0) {
         continue;
       }
 
-      blas.GEMM(CblasTrans, CblasNoTrans, input_channel * kernel_h * kernel_w,
-                top_im_size, output_channel, 1.0, w_data,
-                top_diff + top_offset[b], 1.0, col_diff + col_offset[b]);
+      blas.GEMM(CblasTrans,
+                CblasNoTrans,
+                input_channel * kernel_h * kernel_w,
+                top_im_size,
+                output_channel,
+                1.0,
+                w_data,
+                top_diff + top_offset[b],
+                1.0,
+                col_diff + col_offset[b]);
 
-      blas.GEMM(CblasNoTrans, CblasTrans, output_channel,
-                input_channel * kernel_h * kernel_w, top_im_size, 1.0,
-                top_diff + top_offset[b], col_data + col_offset[b], 1.0,
+      blas.GEMM(CblasNoTrans,
+                CblasTrans,
+                output_channel,
+                input_channel * kernel_h * kernel_w,
+                top_im_size,
+                1.0,
+                top_diff + top_offset[b],
+                col_data + col_offset[b],
+                1.0,
                 w_diff);
     }
     Im2ColGrad(ctx, col_diff);
@@ -474,17 +525,14 @@ class CPUVarConv2dOPGradKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plt = paddle::platform;
 namespace frm = paddle::framework;
-REGISTER_OPERATOR(var_conv_2d, ops::VarConv2dOP, ops::VarConv2dOpMaker,
+REGISTER_OPERATOR(var_conv_2d,
+                  ops::VarConv2dOP,
+                  ops::VarConv2dOpMaker,
                   ops::VarConv2dGradMaker<paddle::framework::OpDesc>,
                   ops::VarConv2dGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(var_conv_2d_grad, ops::VarConv2dOpGrad);
 
-REGISTER_OP_CPU_KERNEL(var_conv_2d,
-                       ops::CPUVarConv2dOPKernel<plt::CPUDeviceContext, float>);
-//     ops::CPUVarConv2dOPKernel<plt::CPUDeviceContext,
-//                                       double>
-REGISTER_OP_CPU_KERNEL(
-    var_conv_2d_grad,
-    ops::CPUVarConv2dOPGradKernel<plt::CPUDeviceContext, float>);
-//     ops::CPUVarConv2dOPGradKernel<plt::CPUDeviceContext,
-//                                           double>
+PD_REGISTER_STRUCT_KERNEL(
+    var_conv_2d, CPU, ALL_LAYOUT, ops::CPUVarConv2dOPKernel, float) {}
+PD_REGISTER_STRUCT_KERNEL(
+    var_conv_2d_grad, CPU, ALL_LAYOUT, ops::CPUVarConv2dOPGradKernel, float) {}

@@ -13,12 +13,14 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/api/mkldnn_quantizer.h"
+
 #include <algorithm>
 #include <limits>
 #include <map>
 #include <numeric>
 #include <unordered_map>
 #include <utility>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
@@ -28,15 +30,14 @@
 #include "paddle/fluid/inference/analysis/analyzer.h"
 #include "paddle/fluid/inference/api/analysis_predictor.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
-#include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/string/pretty_log.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
 
-using platform::CPUPlace;
-using framework::LoDTensor;
 using framework::Variable;
 using framework::ir::Graph;
+using phi::CPUPlace;
 using ConstEigenVectorArrayMap =
     Eigen::Map<const Eigen::Array<float, Eigen::Dynamic, 1>>;
 using EigenMatrixDoubleArray =
@@ -46,19 +47,23 @@ using EigenMatrixArray =
 using ConstEigenMatrixArrayMap = Eigen::Map<const EigenMatrixArray>;
 using string::PrettyLogH1;
 using VariableNameMap = std::map<std::string, std::vector<std::string>>;
-static LoDTensor CreateScaleTensor(int64_t channels_num = 1);
+static phi::DenseTensor CreateScaleTensor(int64_t channels_num = 1);
 
 static void check_var(const Variable* var, const std::string& var_name) {
-  PADDLE_ENFORCE_NOT_NULL(var, platform::errors::PreconditionNotMet(
-                                   "%s is not in the scope", var_name));
+  PADDLE_ENFORCE_NOT_NULL(
+      var,
+      platform::errors::PreconditionNotMet("%s is not in the scope", var_name));
   PADDLE_ENFORCE_EQ(
-      var->IsType<LoDTensor>(), true,
+      var->IsType<phi::DenseTensor>(),
+      true,
       platform::errors::PreconditionNotMet("Only support lod tensor now."));
 }
 
-static void check_tensor(const LoDTensor& tensor) {
-  PADDLE_ENFORCE_GT(tensor.dims().size(), 0, platform::errors::InvalidArgument(
-                                                 "Tensor dimension is empty."));
+static void check_tensor(const phi::DenseTensor& tensor) {
+  PADDLE_ENFORCE_GT(
+      tensor.dims().size(),
+      0,
+      platform::errors::InvalidArgument("Tensor dimension is empty."));
 }
 
 void AnalysisPredictor::MkldnnQuantizer::CalculateScalesForRNNWeights(
@@ -72,8 +77,8 @@ void AnalysisPredictor::MkldnnQuantizer::CalculateScalesForRNNWeights(
     auto* wh_var = predictor_.sub_scope_->FindVar(wh_name);
     check_var(wx_var, wx_name);
     check_var(wh_var, wh_name);
-    LoDTensor* wx_tensor = wx_var->GetMutable<LoDTensor>();
-    LoDTensor* wh_tensor = wh_var->GetMutable<LoDTensor>();
+    phi::DenseTensor* wx_tensor = wx_var->GetMutable<phi::DenseTensor>();
+    phi::DenseTensor* wh_tensor = wh_var->GetMutable<phi::DenseTensor>();
     if (gru) {
       scales_[wx_name] = GetMaxChGRUScalingFactor(*wx_tensor, *wh_tensor);
     } else {
@@ -95,11 +100,11 @@ void AnalysisPredictor::MkldnnQuantizer::CalculateScalesForOpInputs(
       if (scales_.find(var_name) != scales_.end()) continue;
       auto* var = predictor_.sub_scope_->FindVar(var_name);
       check_var(var, var_name);
-      LoDTensor* var_tensor = var->GetMutable<LoDTensor>();
+      phi::DenseTensor* var_tensor = var->GetMutable<phi::DenseTensor>();
       // force unsigned type if already know it
       bool is_unsigned = false;
-      CalculateSingleScale(op->Type(), input.first, var_name, *var_tensor,
-                           is_unsigned);
+      CalculateSingleScale(
+          op->Type(), input.first, var_name, *var_tensor, is_unsigned);
     }
   }
 }
@@ -112,22 +117,25 @@ void AnalysisPredictor::MkldnnQuantizer::CalculateScalesForOpOutputs(
       if (scales_.find(var_name) != scales_.end()) continue;
       auto* var = predictor_.sub_scope_->FindVar(var_name);
       check_var(var, var_name);
-      LoDTensor* var_tensor = var->GetMutable<LoDTensor>();
+      phi::DenseTensor* var_tensor = var->GetMutable<phi::DenseTensor>();
       // force unsigned type if already know it
       bool is_unsigned = false;
       bool compute_scale = true;
-      if (op->Type() == "conv2d" || op->Type() == "fc") {
+      if (op->Type() == "conv2d" || op->Type() == "fused_conv2d" ||
+          op->Type() == "fc") {
         // output of conv2d with relu must be unsigned
         std::string fuse_activation =
             op->GetAttrIfExists<std::string>("fuse_activation");
         is_unsigned = (fuse_activation == "relu" || fuse_activation == "relu6");
       } else if (op->Type() == "relu") {
         is_unsigned = true;
-      } else if (op->Type() == "transpose2" || op->Type() == "reshape2" ||
+      } else if (op->Type() == "transpose2" ||
+                 op->Type() == "fused_transpose" || op->Type() == "reshape2" ||
                  op->Type() == "pool2d" || op->Type() == "nearest_interp" ||
-                 op->Type() == "nearest_interp_v2") {
+                 op->Type() == "nearest_interp_v2" || op->Type() == "split") {
         auto input_var_name = op->Input("X")[0];
-        PADDLE_ENFORCE_NE(scales_.find(input_var_name), scales_.end(),
+        PADDLE_ENFORCE_NE(scales_.find(input_var_name),
+                          scales_.end(),
                           platform::errors::PreconditionNotMet(
                               "Input scales must be calculated before the "
                               "output scales to infer if output is unsigned."));
@@ -135,9 +143,10 @@ void AnalysisPredictor::MkldnnQuantizer::CalculateScalesForOpOutputs(
           scales_[var_name] = scales_[input_var_name];
         }
         compute_scale = false;
-      } else if (op->Type() == "slice") {
+      } else if (op->Type() == "slice" || op->Type() == "shape") {
         auto input_var_name = op->Input("Input")[0];
-        PADDLE_ENFORCE_NE(scales_.find(input_var_name), scales_.end(),
+        PADDLE_ENFORCE_NE(scales_.find(input_var_name),
+                          scales_.end(),
                           platform::errors::PreconditionNotMet(
                               "Input scales must be calculated before the "
                               "output scales to infer if output is unsigned."));
@@ -151,7 +160,8 @@ void AnalysisPredictor::MkldnnQuantizer::CalculateScalesForOpOutputs(
         double min_scale = std::numeric_limits<double>::max();
         for (auto input_var_name : op->Input("X")) {
           PADDLE_ENFORCE_NE(
-              scales_.find(input_var_name), scales_.end(),
+              scales_.find(input_var_name),
+              scales_.end(),
               platform::errors::PreconditionNotMet(
                   "Input scales must be calculated before the "
                   "output scales to infer if output is unsigned."));
@@ -165,8 +175,8 @@ void AnalysisPredictor::MkldnnQuantizer::CalculateScalesForOpOutputs(
         compute_scale = false;
       }
       if (compute_scale) {
-        CalculateSingleScale(op->Type(), output.first, var_name, *var_tensor,
-                             is_unsigned);
+        CalculateSingleScale(
+            op->Type(), output.first, var_name, *var_tensor, is_unsigned);
       }
     }
   }
@@ -174,7 +184,7 @@ void AnalysisPredictor::MkldnnQuantizer::CalculateScalesForOpOutputs(
 
 bool AnalysisPredictor::MkldnnQuantizer::CalculateScales() {
   PrettyLogH1("--- Calculating scales for quantization");
-  std::map<std::string, std::map<std::string, LoDTensor>> gathered_data;
+  std::map<std::string, std::map<std::string, phi::DenseTensor>> gathered_data;
   for (const auto* op : predictor_.inference_program_->Block(0).AllOps()) {
     if (platform::HasOpINT8DataType(op)) {
       // handle inputs first to let is_unsigned be inferred for the outputs
@@ -186,29 +196,36 @@ bool AnalysisPredictor::MkldnnQuantizer::CalculateScales() {
 }
 
 void AnalysisPredictor::MkldnnQuantizer::CalculateSingleScale(
-    const std::string& op_type_name, const std::string& conn_name,
-    const std::string& var_name, const LoDTensor& var_tensor,
+    const std::string& op_type_name,
+    const std::string& conn_name,
+    const std::string& var_name,
+    const phi::DenseTensor& var_tensor,
     bool is_unsigned) {
   auto rule = qconfig_->scale_algo(op_type_name, conn_name);
   if (rule == ScaleAlgo::NONE) return;
 
-  PADDLE_ENFORCE_GT(
-      var_tensor.numel(), 0,
-      platform::errors::InvalidArgument(
-          "MkldnnQuantizer: LoDTensor of variable %s for quantization of op "
-          "%s of connection %s should not be empty.",
-          var_name, op_type_name, conn_name));
+  PADDLE_ENFORCE_GT(var_tensor.numel(),
+                    0,
+                    platform::errors::InvalidArgument(
+                        "MkldnnQuantizer: phi::DenseTensor of variable %s for "
+                        "quantization of op "
+                        "%s of connection %s should not be empty.",
+                        var_name,
+                        op_type_name,
+                        conn_name));
 
   switch (rule) {
     case ScaleAlgo::MAX:
       scales_[var_name] = GetMaxScalingFactor(var_tensor, is_unsigned);
       break;
     case ScaleAlgo::MAX_CH:
-      scales_[var_name] = GetMaxChScalingFactor(var_tensor, is_unsigned,
+      scales_[var_name] = GetMaxChScalingFactor(var_tensor,
+                                                is_unsigned,
                                                 /*is_transposed*/ false);
       break;
     case ScaleAlgo::MAX_CH_T:
-      scales_[var_name] = GetMaxChScalingFactor(var_tensor, is_unsigned,
+      scales_[var_name] = GetMaxChScalingFactor(var_tensor,
+                                                is_unsigned,
                                                 /*is_transposed*/ true);
       break;
     case ScaleAlgo::KL:
@@ -220,8 +237,8 @@ void AnalysisPredictor::MkldnnQuantizer::CalculateSingleScale(
   }
 }
 
-static LoDTensor CreateScaleTensor(int64_t channels_num) {
-  LoDTensor scale_tensor;
+static phi::DenseTensor CreateScaleTensor(int64_t channels_num) {
+  phi::DenseTensor scale_tensor;
   scale_tensor.Resize({channels_num});
   scale_tensor.mutable_data<double>(CPUPlace());
   return scale_tensor;
@@ -256,18 +273,19 @@ std::vector<int> AnalysisPredictor::MkldnnQuantizer::ExpandQuantizedBins(
   return expanded_quantized_bins;
 }
 
-std::pair<bool, LoDTensor>
+std::pair<bool, phi::DenseTensor>
 AnalysisPredictor::MkldnnQuantizer::GetKLScalingFactor(
-    const LoDTensor& var_tensor, bool is_unsigned) const {
-  ConstEigenVectorArrayMap eigen_tensor{var_tensor.data<float>(),
-                                        var_tensor.numel(), 1};
+    const phi::DenseTensor& var_tensor, bool is_unsigned) const {
+  ConstEigenVectorArrayMap eigen_tensor{
+      var_tensor.data<float>(), var_tensor.numel(), 1};
   int precision_hist_num_bins = 2048;
   float max_val = eigen_tensor.maxCoeff();
   float min_val = eigen_tensor.minCoeff();
   bool is_positive = min_val >= 0.0f;
   if (is_unsigned)
     PADDLE_ENFORCE_EQ(
-        is_positive, true,
+        is_positive,
+        true,
         platform::errors::InvalidArgument(
             "Tensor is claimed to be unsigned, but its min value (%f) is < 0.0",
             min_val));
@@ -364,43 +382,47 @@ AnalysisPredictor::MkldnnQuantizer::GetKLScalingFactor(
     min_kl_index = starting_iter;
   }
 
-  LoDTensor scale_tensor = CreateScaleTensor();
+  phi::DenseTensor scale_tensor = CreateScaleTensor();
   scale_tensor.data<double>()[0] = 1.0 / ((min_kl_index + 0.5) * bin_width);
 
   return std::make_pair(is_unsigned, scale_tensor);
 }
 
-std::pair<bool, LoDTensor>
+std::pair<bool, phi::DenseTensor>
 AnalysisPredictor::MkldnnQuantizer::GetMaxScalingFactor(
-    const LoDTensor& var_tensor, bool is_unsigned) const {
-  ConstEigenVectorArrayMap eigen_tensor{var_tensor.data<float>(),
-                                        var_tensor.numel(), 1};
+    const phi::DenseTensor& var_tensor, bool is_unsigned) const {
+  ConstEigenVectorArrayMap eigen_tensor{
+      var_tensor.data<float>(), var_tensor.numel(), 1};
   float max_abs = eigen_tensor.abs().maxCoeff();
   float min_val = eigen_tensor.minCoeff();
   if (is_unsigned)
     PADDLE_ENFORCE_GE(
-        min_val, 0.0f,
+        min_val,
+        0.0f,
         platform::errors::InvalidArgument(
             "Tensor is claimed to be unsigned, but its min value (%f) is < 0.0",
             min_val));
 
-  LoDTensor scale_tensor = CreateScaleTensor();
+  phi::DenseTensor scale_tensor = CreateScaleTensor();
   scale_tensor.data<double>()[0] = 1.0 / max_abs;
 
   return std::make_pair(is_unsigned, scale_tensor);
 }
 
-std::pair<bool, LoDTensor>
+std::pair<bool, phi::DenseTensor>
 AnalysisPredictor::MkldnnQuantizer::GetMaxChScalingFactor(
-    const LoDTensor& var_tensor, bool is_unsigned, bool is_transposed) const {
+    const phi::DenseTensor& var_tensor,
+    bool is_unsigned,
+    bool is_transposed) const {
   check_tensor(var_tensor);
 
-  ConstEigenVectorArrayMap eigen_tensor{var_tensor.data<float>(),
-                                        var_tensor.numel(), 1};
+  ConstEigenVectorArrayMap eigen_tensor{
+      var_tensor.data<float>(), var_tensor.numel(), 1};
   float min_val = eigen_tensor.minCoeff();
   if (is_unsigned)
     PADDLE_ENFORCE_GE(
-        min_val, 0.0f,
+        min_val,
+        0.0f,
         platform::errors::InvalidArgument(
             "Tensor is claimed to be unsigned, but its min value (%f) is < 0.0",
             min_val));
@@ -419,16 +441,17 @@ AnalysisPredictor::MkldnnQuantizer::GetMaxChScalingFactor(
   }
   int output_channel_axis = is_transposed;
   int channels = dims[output_channel_axis];
-  LoDTensor scale_tensor = CreateScaleTensor(channels);
+  phi::DenseTensor scale_tensor = CreateScaleTensor(channels);
   auto* scale_ptr = scale_tensor.mutable_data<double>(CPUPlace());
   std::copy(scales.data(), scales.data() + scales.size(), scale_ptr);
 
   return std::make_pair(is_unsigned, scale_tensor);
 }
 
-std::pair<bool, LoDTensor>
+std::pair<bool, phi::DenseTensor>
 AnalysisPredictor::MkldnnQuantizer::GetMaxChGRUScalingFactor(
-    const LoDTensor& wx_tensor, const LoDTensor& wh_tensor) const {
+    const phi::DenseTensor& wx_tensor,
+    const phi::DenseTensor& wh_tensor) const {
   check_tensor(wx_tensor);
   check_tensor(wh_tensor);
 
@@ -472,18 +495,20 @@ AnalysisPredictor::MkldnnQuantizer::GetMaxChGRUScalingFactor(
     if (abs_value > scale_o[col_id]) scale_o[col_id] = abs_value;
   }
   scale_ur.insert(scale_ur.end(), scale_o.begin(), scale_o.end());
-  transform(scale_ur.begin(), scale_ur.end(), scale_ur.begin(),
-            [](float& c) { return 1 / c; });
-  LoDTensor scale_tensor = CreateScaleTensor(scale_ur.size());
+  transform(scale_ur.begin(), scale_ur.end(), scale_ur.begin(), [](float& c) {
+    return 1 / c;
+  });
+  phi::DenseTensor scale_tensor = CreateScaleTensor(scale_ur.size());
   auto* scale_ptr = scale_tensor.mutable_data<double>(CPUPlace());
   std::copy(scale_ur.begin(), scale_ur.end(), scale_ptr);
   bool is_unsigned = false;
   return std::make_pair(is_unsigned, scale_tensor);
 }
 
-std::pair<bool, LoDTensor>
+std::pair<bool, phi::DenseTensor>
 AnalysisPredictor::MkldnnQuantizer::GetMaxChLSTMScalingFactor(
-    const LoDTensor& wx_tensor, const LoDTensor& wh_tensor) const {
+    const phi::DenseTensor& wx_tensor,
+    const phi::DenseTensor& wh_tensor) const {
   check_tensor(wx_tensor);
   check_tensor(wh_tensor);
 
@@ -507,9 +532,10 @@ AnalysisPredictor::MkldnnQuantizer::GetMaxChLSTMScalingFactor(
       if (abs_value > scale[col_id]) scale[col_id] = abs_value;
     }
   }
-  transform(scale.begin(), scale.end(), scale.begin(),
-            [](float& c) { return 1 / c; });
-  LoDTensor scale_tensor = CreateScaleTensor(scale.size());
+  transform(scale.begin(), scale.end(), scale.begin(), [](float& c) {
+    return 1 / c;
+  });
+  phi::DenseTensor scale_tensor = CreateScaleTensor(scale.size());
   auto* scale_ptr = scale_tensor.mutable_data<double>(CPUPlace());
   std::copy(scale.begin(), scale.end(), scale_ptr);
   bool is_unsigned = false;
@@ -518,24 +544,30 @@ AnalysisPredictor::MkldnnQuantizer::GetMaxChLSTMScalingFactor(
 
 std::pair<std::vector<int>, float>
 AnalysisPredictor::MkldnnQuantizer::Histogram(
-    const framework::LoDTensor& var_tensor, float min_val, float max_val,
+    const phi::DenseTensor& var_tensor,
+    float min_val,
+    float max_val,
     size_t num_bins) const {
-  PADDLE_ENFORCE_GT(num_bins, 0,
+  PADDLE_ENFORCE_GT(num_bins,
+                    0,
                     platform::errors::InvalidArgument(
                         "MkldnnQuantizer: To calculate Histogram, num_bins (" +
                         std::to_string(num_bins) + ") must be positive."));
-  PADDLE_ENFORCE_GT(var_tensor.numel(), 0,
+  PADDLE_ENFORCE_GT(var_tensor.numel(),
+                    0,
                     platform::errors::InvalidArgument(
                         "MkldnnQuantizer: To calculate Histogram, the tensor "
                         "must not be empty."));
-  PADDLE_ENFORCE_GE(max_val, min_val,
+  PADDLE_ENFORCE_GE(max_val,
+                    min_val,
                     platform::errors::InvalidArgument(
                         "MkldnnQuantizer: To calculate Histogram, max_val (" +
-                        std::to_string(max_val) + ") must be greater or equal"
-                                                  "to min_val (" +
+                        std::to_string(max_val) +
+                        ") must be greater or equal"
+                        "to min_val (" +
                         std::to_string(min_val) + ")."));
-  ConstEigenVectorArrayMap eigen_tensor{var_tensor.data<float>(),
-                                        var_tensor.numel(), 1};
+  ConstEigenVectorArrayMap eigen_tensor{
+      var_tensor.data<float>(), var_tensor.numel(), 1};
   auto bin_width = std::abs(max_val - min_val) / num_bins;
   std::vector<int> hist(num_bins);
 
@@ -551,34 +583,34 @@ AnalysisPredictor::MkldnnQuantizer::Histogram(
 
 void AnalysisPredictor::MkldnnQuantizer::ClearDeviceContext() const {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-  platform::MKLDNNDeviceContext* dev_ctx =
-      (platform::MKLDNNDeviceContext*)pool.Get(predictor_.place_);
-  dev_ctx->ResetBlobMap(
-      paddle::platform::MKLDNNDeviceContext::tls().get_curr_exec());
+  phi::OneDNNContext* dev_ctx =
+      (phi::OneDNNContext*)pool.Get(predictor_.place_);
+  dev_ctx->ResetBlobMap(phi::OneDNNContext::tls().get_curr_exec());
 }
 
 void AnalysisPredictor::MkldnnQuantizer::PrepareArgument() const {
   auto& arg = predictor_.argument_;
-  if (!arg.scope_valid()) arg.SetScope(new framework::Scope);
-  arg.SetMainProgramNotOwned(predictor_.inference_program_.get());
-  auto graph = std::unique_ptr<Graph>(new Graph(arg.main_program()));
-  arg.SetMainGraph(graph.release());
-  auto* scope_ptr = arg.scope_ptr();
-  PADDLE_ENFORCE_NOT_NULL(scope_ptr, platform::errors::PreconditionNotMet(
-                                         "The scope should not be nullptr."));
-  arg.main_graph().SetNotOwned(framework::ir::kParamScopeAttr, scope_ptr);
+  if (!arg->scope_valid()) arg->SetScope(new framework::Scope);
+  arg->SetMainProgramNotOwned(predictor_.inference_program_.get());
+  auto graph = std::unique_ptr<Graph>(new Graph(arg->main_program()));
+  arg->SetMainGraph(graph.release());
+  auto* scope_ptr = arg->scope_ptr();
+  PADDLE_ENFORCE_NOT_NULL(
+      scope_ptr,
+      platform::errors::PreconditionNotMet("The scope should not be nullptr."));
+  arg->main_graph().SetNotOwned(framework::ir::kParamScopeAttr, scope_ptr);
 
   auto* builder = predictor_.config_.pass_builder();
-  builder->SetPasses({
-      "cpu_quantize_pass", "cpu_quantize_squash_pass",
-  });
+  builder->SetPasses({"cpu_quantize_pass",
+                      "cpu_quantize_squash_pass",
+                      "int8_scale_calculation_mkldnn_pass",
+                      "params_quantization_mkldnn_pass"});
   if (predictor_.config_.ir_debug_) builder->TurnOnDebug();
   auto passes = builder->AllPasses();
-  predictor_.argument_.SetIrAnalysisPasses(passes);
-  predictor_.argument_.SetAnalysisPasses(
-      {"ir_graph_clean_pass", "ir_analysis_pass", "memory_optimize_pass",
-       "ir_graph_to_program_pass"});
-  predictor_.argument_.SetQuantVarScales(scales_);
+  predictor_.argument_->SetIrAnalysisPasses(passes);
+  predictor_.argument_->SetAnalysisPasses(
+      {"ir_analysis_pass", "memory_optimize_pass", "ir_graph_to_program_pass"});
+  predictor_.argument_->SetQuantVarScales(scales_);
 }
 
 bool AnalysisPredictor::MkldnnQuantizer::Quantize() {
@@ -594,21 +626,22 @@ bool AnalysisPredictor::MkldnnQuantizer::Quantize() {
 }
 
 bool AnalysisPredictor::MkldnnQuantizer::RunQuantizePasses() const {
-  predictor_.executor_->CreateVariables(*predictor_.inference_program_, 0, true,
-                                        predictor_.sub_scope_);
+  predictor_.executor_->CreateVariables(
+      *predictor_.inference_program_, 0, true, predictor_.sub_scope_);
   PrepareArgument();
   auto& arg = predictor_.argument_;
-  Analyzer().Run(&arg);
+  Analyzer().Run(arg.get());
   PADDLE_ENFORCE_EQ(
-      arg.scope_valid(), true,
+      arg->scope_valid(),
+      true,
       platform::errors::PreconditionNotMet("The scope should be valid."));
   VLOG(5) << "to prepare executor";
-  ARGUMENT_CHECK_FIELD((&arg), ir_analyzed_program);
+  ARGUMENT_CHECK_FIELD(arg.get(), ir_analyzed_program);
   predictor_.inference_program_.reset(
-      new framework::ProgramDesc(arg.ir_analyzed_program()));
+      new framework::ProgramDesc(arg->ir_analyzed_program()));
   LOG(INFO) << "== optimize 2 end ==";
-  predictor_.executor_->CreateVariables(*predictor_.inference_program_, 0,
-                                        false, predictor_.sub_scope_);
+  predictor_.executor_->CreateVariables(
+      *predictor_.inference_program_, 0, false, predictor_.sub_scope_);
   return true;
 }
 
@@ -628,12 +661,16 @@ bool AnalysisPredictor::MkldnnQuantizer::RunWarmup() const {
 }
 
 float AnalysisPredictor::MkldnnQuantizer::SafeEntropy(
-    std::vector<int> reference_distr_P, int P_sum,
-    std::vector<int> candidate_distr_Q, int Q_sum) const {
-  PADDLE_ENFORCE_EQ(reference_distr_P.size(), candidate_distr_Q.size(),
+    std::vector<int> reference_distr_P,
+    int P_sum,
+    std::vector<int> candidate_distr_Q,
+    int Q_sum) const {
+  PADDLE_ENFORCE_EQ(reference_distr_P.size(),
+                    candidate_distr_Q.size(),
                     platform::errors::InvalidArgument(
                         "The P size %d should be equal to Q size %d",
-                        reference_distr_P.size(), candidate_distr_Q.size()));
+                        reference_distr_P.size(),
+                        candidate_distr_Q.size()));
   float tmp_sum1 = 0;
   float tmp_sum2 = 0;
   for (size_t idx = 0; idx < reference_distr_P.size(); idx++) {
@@ -644,7 +681,8 @@ float AnalysisPredictor::MkldnnQuantizer::SafeEntropy(
       tmp_sum2 += 0;
     } else {
       PADDLE_ENFORCE_NE(
-          q_idx, 0,
+          q_idx,
+          0,
           platform::errors::PreconditionNotMet(
               "MkldnnQuantizer: Fatal error!, idx = " + std::to_string(idx) +
               " qindex = 0! p_idx = " + std::to_string(p_idx)));

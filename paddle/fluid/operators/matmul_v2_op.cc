@@ -1,4 +1,4 @@
-//   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+//   Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,365 +13,163 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/matmul_v2_op.h"
+
 #include <string>
 #include <vector>
 
 #include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/infermeta/backward.h"
 
 namespace paddle {
 namespace operators {
 
-static framework::DDim GetDimForInput(const framework::InferShapeContext& ctx,
-                                      const std::string input_name) {
-  auto shape = ctx.Attrs().Get<std::vector<int>>("fused_reshape_" + input_name);
-  auto axis =
-      ctx.Attrs().Get<std::vector<int>>("fused_transpose_" + input_name);
-  auto dim = ctx.GetInputDim(input_name);
+void MatMulV2Op::InferShape(framework::InferShapeContext* ctx) const {
+  OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "matmul_v2");
+  OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "matmul_v2");
+  OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "matmul_v2");
+  bool trans_x = ctx->Attrs().Get<bool>("trans_x");
+  bool trans_y = ctx->Attrs().Get<bool>("trans_y");
 
-  PADDLE_ENFORCE_GT(dim.size(), 0,
-                    platform::errors::InvalidArgument(
-                        "The Input(%s) has not been initialized properly. The "
-                        "shape of Input(%s) = [%s].",
-                        dim));
+  std::vector<int64_t> dims_x = phi::vectorize(ctx->GetInputDim("X"));
+  std::vector<int64_t> dims_y = phi::vectorize(ctx->GetInputDim("Y"));
+  auto ndims_x = dims_x.size();
+  auto ndims_y = dims_y.size();
+  PADDLE_ENFORCE_GT(ndims_x,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The Input(X) dims size must be greater than 0,"
+                        " but received dims size is 0. "));
+  PADDLE_ENFORCE_GT(ndims_y,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "The Input(Y) dims size must be greater than 0,"
+                        " but received dims size is 0. "));
 
-  // if mkldnn reshape+transpose+matmul fuse activated
-  if (!shape.empty() && !axis.empty()) {
-    PADDLE_ENFORCE_GE(
-        shape.size(), 2,
-        platform::errors::InvalidArgument(
-            "shape_%s attribute of MatMulOp was implemented for 2, 3 "
-            "or 4 dimensions.",
-            input_name));
-    PADDLE_ENFORCE_LE(
-        shape.size(), 4,
-        platform::errors::InvalidArgument(
-            "shape_%s attribute of MatMulOp was implemented for 2, 3 "
-            "or 4 dimensions.",
-            input_name));
-    PADDLE_ENFORCE_EQ(
-        shape.size(), axis.size(),
-        platform::errors::InvalidArgument(
-            "Ranks of shape_%s and axis_%s attributes of MatMulOp "
-            "must be equal.",
-            input_name, input_name));
+  bool x_broadcasted = false;
+  bool y_broadcasted = false;
 
-    int num_negative = std::count(shape.begin(), shape.end(), -1);
-    PADDLE_ENFORCE_LE(num_negative, 1,
-                      platform::errors::InvalidArgument(
-                          "The max number of -1 in fused_reshape_%s is 1 "
-                          "but received %d.",
-                          input_name, num_negative));
-
-    auto it_zero = std::find(shape.begin(), shape.end(), 0);
-    if (it_zero != shape.end()) {
-      for (uint64_t i = 0; i < shape.size(); i++) {
-        if (shape[i] == 0) {
-          PADDLE_ENFORCE_LT(i, dim.size(),
-                            platform::errors::InvalidArgument(
-                                "The index of 0 in fused_reshape_%s ",
-                                "should be less than output dim size, ",
-                                "but the index is %d and output dim size is %d",
-                                input_name, i, dim.size()));
-          shape[i] = dim.at(i);
-        }
-      }
-    }
-
-    // if "-1" is present then one of reshape dims must be infered
-    auto it_negative = std::find(shape.begin(), shape.end(), -1);
-    if (it_negative != shape.end()) {
-      int64_t dim_product = 1;
-      for (int i = 0; i < dim.size(); i++) {
-        dim_product *= dim.at(i);
-      }
-
-      int64_t shape_product = std::accumulate(shape.begin(), shape.end(), -1,
-                                              std::multiplies<int>());
-      int index = std::distance(shape.begin(), it_negative);
-      shape[index] = dim_product / shape_product;
-    }
-
-    dim = dim.reshape(shape).transpose(axis);
+  if (ndims_x == 1) {
+    dims_x.insert(dims_x.begin(), 1);
+    ndims_x = 2;
+    x_broadcasted = true;
   }
-  return dim;
+
+  if (ndims_y == 1) {
+    dims_y.push_back(1);
+    ndims_y = 2;
+    y_broadcasted = true;
+  }
+
+  size_t M, N;
+  if (trans_x) {
+    M = dims_x[ndims_x - 1];
+  } else {
+    M = dims_x[ndims_x - 2];
+  }
+  if (trans_y) {
+    N = dims_y[ndims_y - 2];
+  } else {
+    N = dims_y[ndims_y - 1];
+  }
+
+  std::vector<int64_t> new_dims;
+  if (ndims_x > ndims_y) {
+    new_dims.assign(dims_x.begin(), dims_x.end() - 2);
+  } else if (ndims_x < ndims_y) {
+    new_dims.assign(dims_y.begin(), dims_y.end() - 2);
+  } else {
+    new_dims.reserve(ndims_x);
+    for (size_t i = 0; i < ndims_x - 2; ++i) {
+      new_dims.push_back(std::max(dims_x[i], dims_y[i]));
+    }
+  }
+  if (!x_broadcasted) {
+    new_dims.push_back(M);
+  }
+  if (!y_broadcasted) {
+    new_dims.push_back(N);
+  }
+
+  ctx->SetOutputDim("Out", phi::make_ddim(new_dims));
+  ctx->ShareLoD("X", "Out");
 }
 
-class MatMulV2Op : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "matmul_v2");
-    OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "matmul_v2");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "matmul_v2");
-    bool trans_x = ctx->Attrs().Get<bool>("trans_x");
-    bool trans_y = ctx->Attrs().Get<bool>("trans_y");
+phi::KernelKey MatMulV2Op::GetExpectedKernelType(
+    const framework::ExecutionContext& ctx) const {
+  auto input_data_type =
+      OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
+  return phi::KernelKey(input_data_type, ctx.GetPlace());
+}
 
-    std::vector<int64_t> dims_x = phi::vectorize(GetDimForInput(*ctx, "X"));
-    std::vector<int64_t> dims_y = phi::vectorize(GetDimForInput(*ctx, "Y"));
-    auto ndims_x = dims_x.size();
-    auto ndims_y = dims_y.size();
-    PADDLE_ENFORCE_GT(ndims_x, 0,
-                      platform::errors::InvalidArgument(
-                          "The Input(X) dims size must be greater than 0,"
-                          " but reviced dims size is 0. "));
-    PADDLE_ENFORCE_GT(ndims_y, 0,
-                      platform::errors::InvalidArgument(
-                          "The Input(Y) dims size must be greater than 0,"
-                          " but reviced dims size is 0. "));
-
-    bool x_broadcasted = false, y_broadcasted = false;
-    if (ndims_x == 1) {
-      dims_x.insert(dims_x.begin(), 1);
-      ndims_x = 2;
-      x_broadcasted = true;
-    }
-
-    if (ndims_y == 1) {
-      dims_y.push_back(1);
-      ndims_y = 2;
-      y_broadcasted = true;
-    }
-
-    size_t M, N;
-    if (trans_x) {
-      M = dims_x[ndims_x - 1];
-    } else {
-      M = dims_x[ndims_x - 2];
-    }
-    if (trans_y) {
-      N = dims_y[ndims_y - 2];
-    } else {
-      N = dims_y[ndims_y - 1];
-    }
-
-    std::vector<int64_t> new_dims;
-    if (ndims_x > ndims_y) {
-      new_dims.assign(dims_x.begin(), dims_x.end() - 2);
-    } else if (ndims_x < ndims_y) {
-      new_dims.assign(dims_y.begin(), dims_y.end() - 2);
-    } else {
-      new_dims.reserve(ndims_x);
-      for (size_t i = 0; i < ndims_x - 2; ++i) {
-        new_dims.push_back(std::max(dims_x[i], dims_y[i]));
-      }
-    }
-    if (!x_broadcasted) {
-      new_dims.push_back(M);
-    }
-    if (!y_broadcasted) {
-      new_dims.push_back(N);
-    }
-    if (x_broadcasted && y_broadcasted) {
-      new_dims.push_back(1);
-    }
-
-    auto ddim_out = phi::make_ddim(new_dims);
-
+phi::KernelKey MatMulV2Op::GetKernelTypeForVar(
+    const std::string& var_name,
+    const phi::DenseTensor& tensor,
+    const phi::KernelKey& expected_kernel_type) const {
+  if (framework::IsComplexType(expected_kernel_type.dtype())) {
+    // only promote inputs’s types when contains complex input
+    return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
+  } else {
 #ifdef PADDLE_WITH_MKLDNN
-    //  if mkldnn matmul_v2+transpose+reshape fuse activated
-    auto reshape_out = ctx->Attrs().Get<std::vector<int>>("fused_reshape_Out");
-    auto transpose_out =
-        ctx->Attrs().Get<std::vector<int>>("fused_transpose_Out");
-
-    if (!reshape_out.empty() && !transpose_out.empty()) {
-      auto reshape_out_size = reshape_out.size();
-      auto transpose_out_size = transpose_out.size();
-      PADDLE_ENFORCE_EQ(transpose_out_size, 4,
-                        platform::errors::InvalidArgument(
-                            "transpose_out supported rank is 4, "
-                            "received %d",
-                            transpose_out_size));
-      const std::vector<int> supported_axis{0, 2, 1, 3};
-      const bool supported_transpose_axis = std::equal(
-          transpose_out.begin(), transpose_out.end(), supported_axis.begin());
-      PADDLE_ENFORCE_EQ(
-          supported_transpose_axis, true,
-          platform::errors::InvalidArgument(
-              "supported transpose axis for the fuse are {0, 2, 1, 3}"));
-      PADDLE_ENFORCE_EQ(
-          reshape_out_size, 3,
-          platform::errors::InvalidArgument("reshape_out supported rank is 3, "
-                                            "received %d",
-                                            reshape_out_size));
-
-      // int num_negative = std::count(reshape_out.begin(), reshape_out.end(),
-      // -1);
-      // PADDLE_ENFORCE_LE(num_negative, 1,
-      //                   platform::errors::InvalidArgument(
-      //                       "The max number of -1 in fused_reshape_Out is 1 "
-      //                       "but received %d.",
-      //                       num_negative));
-
-      // auto it_zero = std::find(reshape_out.begin(), reshape_out.end(), 0);
-      // if (it_zero != reshape_out.end()) {
-      //   for (uint64_t i = 0; i < reshape_out.size(); i++) {
-      //     if (reshape_out[i] == 0) {
-      //       PADDLE_ENFORCE_LT(
-      //           i, ddim_out.size(),
-      //           platform::errors::InvalidArgument(
-      //               "The index of 0 in fused_reshape_Out ",
-      //               "should be less than output dim size, ",
-      //               "but the index is %d and output dim size is %d", i,
-      //               ddim_out.size()));
-      //       reshape_out[i] = ddim_out.at(i);
-      //     }
-      //   }
-      // }
-
-      // if "-1" is present then one of reshape dims must be infered
-      auto it = std::find(reshape_out.begin(), reshape_out.end(), -1);
-      if (it != reshape_out.end()) {
-        int index = std::distance(reshape_out.begin(), it);
-
-        auto ddim_out_vec = phi::vectorize(ddim_out);
-
-        int ddim_out_product =
-            std::accumulate(ddim_out_vec.begin(), ddim_out_vec.end(), 1,
-                            std::multiplies<int>());
-        int reshape_out_product = std::accumulate(
-            reshape_out.begin(), reshape_out.end(), -1, std::multiplies<int>());
-
-        reshape_out[index] = ddim_out_product / reshape_out_product;
-      }
-
-      framework::DDim shape_out =
-          ddim_out.transpose(transpose_out).reshape(reshape_out);
-      ctx->SetOutputDim("Out", shape_out);
-    } else {
-      ctx->SetOutputDim("Out", ddim_out);
-    }
-#else
-    ctx->SetOutputDim("Out", ddim_out);
-#endif
-
-    ctx->ShareLoD("X", /* --> */ "Out");
-  }
-
- protected:
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    auto input_data_type =
-        OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
-
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
+    // When matmul_v2 is first oneDNN op in a chain (there was some non oneDNN
+    // op previously) then we also need to rotate shape NHWC -> NCWH
+    if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
+        (tensor.layout() != phi::DataLayout::ONEDNN) &&
+        phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
+            phi::DataLayout::kNHWC) {
+      return phi::KernelKey(
+          tensor.place(), phi::DataLayout::kNHWC, expected_kernel_type.dtype());
     }
 #endif
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return phi::KernelKey(
+        tensor.place(), tensor.layout(), expected_kernel_type.dtype());
   }
+}
 
-  framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const framework::Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const {
-    if (framework::IsComplexType(expected_kernel_type.data_type_)) {
-      // only promote inputs’s types when contains complex input
-      return framework::OpKernelType(
-          framework::TransToProtoVarType(tensor.dtype()), tensor.place(),
-          tensor.layout());
-    } else {
-      return framework::OpKernelType(expected_kernel_type.data_type_,
-                                     tensor.place(), tensor.layout());
-    }
-  }
-};
-
-class MatMulV2OpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput("X", "tensor of shape (d0, d1 ... M, K)");
-    AddInput("Y", "tensor of shape (d0, d1 ... K, N)");
-    AddOutput("Out", "tensor of shape (d0, d1 ... M, N)");
-    AddAttr<bool>("trans_x",
-                  "Set true to transpose the last two dimensions of X before "
-                  "doing multiplication")
-        .SetDefault(false);
-    AddAttr<bool>("trans_y",
-                  "Set true to transpose the last two dimensions of Y before "
-                  "doing multiplication")
-        .SetDefault(false);
-    AddAttr<std::vector<int>>(
-        "fused_reshape_Out",
-        R"DOC(When MKLDNN matmul_v2_transpose_reshape fuse activated, "
-              "it's a shape atribute of fused reshape for `Out` output.)DOC")
-        .SetDefault({})
-        .AsExtra();
-    AddAttr<std::vector<int>>(
-        "fused_transpose_Out",
-        R"DOC(When MKLDNN matmul_v2_transpose_reshape fuse activated, "
-              "it's a axis atribute of fused transpose for `Out` output.)DOC")
-        .SetDefault({})
-        .AsExtra();
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false)
-        .AsExtra();
-    AddAttr<std::string>(
-        "mkldnn_data_type",
-        "(string, default \"float32\"). Data type of mkldnn kernel")
-        .SetDefault("float32")
-        .InEnum({"float32", "bfloat16"})
-        .AsExtra();
-    AddAttr<std::vector<int>>("fused_reshape_X",
-                              R"DOC(Shape of fused reshape of `X` input.)DOC")
-        .SetDefault({})
-        .AsExtra();
-    AddAttr<std::vector<int>>("fused_reshape_Y",
-                              R"DOC(Shape of fused reshape of `Y` input.)DOC")
-        .SetDefault({})
-        .AsExtra();
-    AddAttr<std::vector<int>>("fused_transpose_X",
-                              R"DOC(Axis of fused transpose of `X` input.)DOC")
-        .SetDefault({})
-        .AsExtra();
-    AddAttr<std::vector<int>>("fused_transpose_Y",
-                              R"DOC(Axis of fused transpose of `Y` input.)DOC")
-        .SetDefault({})
-        .AsExtra();
-    AddComment(
-        R"DOC(Matrix multiplication Out = X * Y. A has shape (d0, d1 ... M, K), 
-        B has shape (d0, d1 ... K, N), Out has shape ((d0, d1 ... M, N)). 
+void MatMulV2OpMaker::Make() {
+  AddInput("X", "tensor of shape (d0, d1 ... M, K)");
+  AddInput("Y", "tensor of shape (d0, d1 ... K, N)");
+  AddOutput("Out", "tensor of shape (d0, d1 ... M, N)");
+  AddAttr<bool>("trans_x",
+                "Set true to transpose the last two dimensions of X before "
+                "doing multiplication")
+      .SetDefault(false);
+  AddAttr<bool>("trans_y",
+                "Set true to transpose the last two dimensions of Y before "
+                "doing multiplication")
+      .SetDefault(false);
+  AddComment(
+      R"DOC(Matrix multiplication Out = X * Y. A has shape (d0, d1 ... M, K),
+        B has shape (d0, d1 ... K, N), Out has shape ((d0, d1 ... M, N)).
         In addition, it also follows the broadcast rule which is similar as
         numpy.matmul.
 )DOC");
-  }
-};
+  Apply();
+}
 
 class MatMulV2OpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
-
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const framework::Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const {
-    if (framework::IsComplexType(expected_kernel_type.data_type_)) {
+  phi::KernelKey GetKernelTypeForVar(
+      const std::string& var_name,
+      const phi::DenseTensor& tensor,
+      const phi::KernelKey& expected_kernel_type) const override {
+    if (framework::IsComplexType(expected_kernel_type.dtype())) {
       // only promote inputs’s types when contains complex input
-      return framework::OpKernelType(
-          framework::TransToProtoVarType(tensor.dtype()), tensor.place(),
-          tensor.layout());
+      return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
     } else {
-      return framework::OpKernelType(expected_kernel_type.data_type_,
-                                     tensor.place(), tensor.layout());
+      return phi::KernelKey(
+          tensor.place(), tensor.layout(), expected_kernel_type.dtype());
     }
   }
 };
@@ -446,27 +244,73 @@ class MatMulV2OpDoubleGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetAttrMap(this->Attrs());
   }
 };
+
+class MatMulCompositeDoubleGradOpMaker : public prim::CompositeGradOpMakerBase {
+ public:
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+  void Apply() override {
+    // get inputs
+    paddle::Tensor x = this->GetSingleForwardInput("X");
+    paddle::Tensor y = this->GetSingleForwardInput("Y");
+    paddle::Tensor dout =
+        this->GetSingleForwardInput(framework::GradVarName("Out"));
+    paddle::optional<paddle::Tensor> ddx =
+        this->GetOptionalSingleOutputGrad(framework::GradVarName("X"));
+    paddle::optional<paddle::Tensor> ddy =
+        this->GetOptionalSingleOutputGrad(framework::GradVarName("Y"));
+
+    // get attr
+    bool trans_x = this->Attr<bool>("trans_x");
+    bool trans_y = this->Attr<bool>("trans_y");
+
+    // get output
+    paddle::Tensor x_grad_t = this->GetSingleInputGrad("X");
+    paddle::Tensor y_grad_t = this->GetSingleInputGrad("Y");
+    paddle::Tensor grad_out_grad_t =
+        this->GetSingleInputGrad(framework::GradVarName("Out"));
+
+    // get output ptr
+    paddle::Tensor* x_grad = this->GetOutputPtr(&x_grad_t);
+    paddle::Tensor* y_grad = this->GetOutputPtr(&y_grad_t);
+    paddle::Tensor* grad_out_grad = this->GetOutputPtr(&grad_out_grad_t);
+    // get output orginal name
+    std::string x_grad_name = this->GetOutputName(x_grad_t);
+    std::string y_grad_name = this->GetOutputName(y_grad_t);
+    std::string grad_out_grad_name = this->GetOutputName(grad_out_grad_t);
+    VLOG(3) << "Runing matmul_double_grad composite func";
+    // call composite backward func
+    prim::matmul_double_grad<prim::DescTensor>(
+        x, y, dout, ddx, ddy, trans_x, trans_y, x_grad, y_grad, grad_out_grad);
+    // recover output name
+    this->RecoverOutputName(x_grad_t, x_grad_name);
+    this->RecoverOutputName(y_grad_t, y_grad_name);
+    this->RecoverOutputName(grad_out_grad_t, grad_out_grad_name);
+  }
+};
+
 class MatMulV2OpTripleGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
   void InferShape(framework::InferShapeContext* context) const override {
-    OP_INOUT_CHECK(context->HasInput("X"), "Input", "X",
-                   "matmul_v2_triple_grad");
-    OP_INOUT_CHECK(context->HasInput("Y"), "Input", "Y",
-                   "matmul_v2_triple_grad");
-    OP_INOUT_CHECK(context->HasInput("DOut"), "Input", "DOut",
-                   "matmul_v2_triple_grad");
-    OP_INOUT_CHECK(context->HasInput("DDX"), "Input", "DDX",
-                   "matmul_v2_triple_grad");
-    OP_INOUT_CHECK(context->HasInput("DDY"), "Input", "DDY",
-                   "matmul_v2_triple_grad");
-    OP_INOUT_CHECK(context->HasInput("D_DX"), "Input", "D_DX",
-                   "matmul_v2_triple_grad");
-    OP_INOUT_CHECK(context->HasInput("D_DY"), "Input", "D_DY",
-                   "matmul_v2_triple_grad");
-    OP_INOUT_CHECK(context->HasInput("D_DDOut"), "Input", "D_DDOut",
+    OP_INOUT_CHECK(
+        context->HasInput("X"), "Input", "X", "matmul_v2_triple_grad");
+    OP_INOUT_CHECK(
+        context->HasInput("Y"), "Input", "Y", "matmul_v2_triple_grad");
+    OP_INOUT_CHECK(
+        context->HasInput("DOut"), "Input", "DOut", "matmul_v2_triple_grad");
+    OP_INOUT_CHECK(
+        context->HasInput("DDX"), "Input", "DDX", "matmul_v2_triple_grad");
+    OP_INOUT_CHECK(
+        context->HasInput("DDY"), "Input", "DDY", "matmul_v2_triple_grad");
+    OP_INOUT_CHECK(
+        context->HasInput("D_DX"), "Input", "D_DX", "matmul_v2_triple_grad");
+    OP_INOUT_CHECK(
+        context->HasInput("D_DY"), "Input", "D_DY", "matmul_v2_triple_grad");
+    OP_INOUT_CHECK(context->HasInput("D_DDOut"),
+                   "Input",
+                   "D_DDOut",
                    "matmul_v2_triple_grad");
 
     if (context->HasOutput("D_X_out")) {
@@ -520,18 +364,24 @@ class MatMulV2OpTripleGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(matmul_v2, ops::MatMulV2Op, ops::MatMulV2OpMaker,
+REGISTER_OPERATOR(matmul_v2,
+                  ops::MatMulV2Op,
+                  ops::MatMulV2OpMaker,
                   ops::MatMulV2GradOpMaker<paddle::framework::OpDesc>,
                   ops::MatMulV2GradOpMaker<paddle::imperative::OpBase>);
 
-DECLARE_INFER_SHAPE_FUNCTOR(matmul_v2_grad, MatMulV2GradInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(matmul_v2_grad,
+                            MatMulV2GradInferShapeFunctor,
                             PD_INFER_META(phi::GeneralBinaryGradInferMeta));
-REGISTER_OPERATOR(matmul_v2_grad, ops::MatMulV2OpGrad,
+REGISTER_OPERATOR(matmul_v2_grad,
+                  ops::MatMulV2OpGrad,
                   ops::MatMulV2OpDoubleGradMaker<paddle::framework::OpDesc>,
                   ops::MatMulV2OpDoubleGradMaker<paddle::imperative::OpBase>,
+                  ops::MatMulCompositeDoubleGradOpMaker,
                   MatMulV2GradInferShapeFunctor);
 
-REGISTER_OPERATOR(matmul_v2_grad_grad, ops::MatMulV2OpDoubleGrad,
+REGISTER_OPERATOR(matmul_v2_grad_grad,
+                  ops::MatMulV2OpDoubleGrad,
                   ops::MatMulV2OpTripleGradMaker<paddle::framework::OpDesc>,
                   ops::MatMulV2OpTripleGradMaker<paddle::imperative::OpBase>);
 

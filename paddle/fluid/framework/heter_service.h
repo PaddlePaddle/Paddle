@@ -22,6 +22,7 @@ limitations under the License. */
 #include <unordered_map>  // NOLINT
 #include <unordered_set>  // NOLINT
 #include <vector>
+
 #include "paddle/fluid/framework/heter_service.pb.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
@@ -45,7 +46,8 @@ class HeterXpuService : public HeterService {
   HeterXpuService() {}
   virtual ~HeterXpuService() {}
   void service(::google::protobuf::RpcController* controller,
-               const HeterRequest* request, HeterResponse* response,
+               const HeterRequest* request,
+               HeterResponse* response,
                ::google::protobuf::Closure* done) {
     brpc::ClosureGuard done_guard(done);
     int ret = 0;

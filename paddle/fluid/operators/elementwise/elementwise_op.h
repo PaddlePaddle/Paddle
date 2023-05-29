@@ -36,8 +36,6 @@ class ElementwiseOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  using Tensor = framework::Tensor;
-
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ElementwiseOp");
     OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "ElementwiseOp");
@@ -47,21 +45,24 @@ class ElementwiseOp : public framework::OperatorWithKernel {
         ctx->GetInputsVarType("Y").front(),
         framework::proto::VarType::LOD_TENSOR,
         platform::errors::InvalidArgument(
-            "The input var's type should be LoDTensor, but the "
+            "The input var's type should be phi::DenseTensor, but the "
             "received is %s [%s].",
-            ctx->GetInputsVarType("Y").front(), ctx->Inputs("Y").front()));
+            ctx->GetInputsVarType("Y").front(),
+            ctx->Inputs("Y").front()));
 
     if (ctx->GetInputsVarType("X").front() ==
         framework::proto::VarType::SELECTED_ROWS) {
       PADDLE_ENFORCE_EQ(
-          ctx->GetInputDim("Y").size(), 1u,
+          ctx->GetInputDim("Y").size(),
+          1u,
           platform::errors::InvalidArgument(
               "For elementwise_op, if X is Sparse(VarType.SELECTED_ROWS"
               "), Y must be scalar, the size of Y should be 1. "
               "But reveived the size of Y = %s.",
               ctx->GetInputDim("Y").size()));
       PADDLE_ENFORCE_EQ(
-          ctx->GetInputDim("Y")[0], 1,
+          ctx->GetInputDim("Y")[0],
+          1,
           platform::errors::InvalidArgument(
               "For elementwise_op, if X is Sparse(VarType.SELECTED_ROWS"
               "), Y must be scalar, the first dimension of Y should be 1. "
@@ -84,30 +85,37 @@ class ElementwiseOp : public framework::OperatorWithKernel {
       int max_dim = std::max(x_dims.size(), y_dims.size());
       int axis = ctx->Attrs().Get<int>("axis");
       if (x_dims.size() == y_dims.size()) {
-        PADDLE_ENFORCE_EQ((axis == -1) || (axis == 0), true,
+        PADDLE_ENFORCE_EQ((axis == -1) || (axis == 0),
+                          true,
                           platform::errors::InvalidArgument(
                               "axis should be -1 or 0 while the dimension of "
                               "tensor X (%s) is equal to the dimension of "
                               "tensor Y (%s), but received axis: %s",
-                              x_dims.size(), y_dims.size(), axis));
+                              x_dims.size(),
+                              y_dims.size(),
+                              axis));
       }
-      PADDLE_ENFORCE_EQ((axis >= (-1 * max_dim)) && (axis < max_dim), true,
+      PADDLE_ENFORCE_EQ((axis >= (-1 * max_dim)) && (axis < max_dim),
+                        true,
                         platform::errors::InvalidArgument(
                             "The axis range must be [%s, %s), but axis is %s. "
                             "Please set the axis again.",
-                            -1 * max_dim, max_dim, axis));
+                            -1 * max_dim,
+                            max_dim,
+                            axis));
       axis = (axis < 0 ? (std::abs(x_dims.size() - y_dims.size()) + axis + 1)
                        : axis);
       std::vector<int> x_dims_array(max_dim);
       std::vector<int> y_dims_array(max_dim);
       std::vector<int> out_dims_array(max_dim);
 #ifdef PADDLE_WITH_MKLDNN
-      // (jczaja): Broadcasting of dims has to be done on Paddle shapes (NHWC)
-      // if model is using NHWC.
+      // Broadcasting of dims has to be done on Paddle shapes (NHWC)
+      // if model is using NHWC and any of shapes in at least 3D
       bool should_rotate =
           ctx->IsRunMKLDNNKernel() &&
-          (platform::MKLDNNDeviceContext::tls().get_cur_paddle_data_layout() ==
-           framework::DataLayout::kNHWC);
+          (phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
+           phi::DataLayout::kNHWC) &&
+          (x_dims.size() >= 3 || y_dims.size() >= 3);
       if (should_rotate) {
         // Pick bigger shape and rotate this one
         bool x_over_y = (x_dims.size() > y_dims.size());
@@ -122,13 +130,18 @@ class ElementwiseOp : public framework::OperatorWithKernel {
       }
 #endif
 
-      GetBroadcastDimsArrays(x_dims, y_dims, x_dims_array.data(),
-                             y_dims_array.data(), out_dims_array.data(),
-                             max_dim, axis);
+      GetBroadcastDimsArrays(x_dims,
+                             y_dims,
+                             x_dims_array.data(),
+                             y_dims_array.data(),
+                             out_dims_array.data(),
+                             max_dim,
+                             axis);
 #ifdef PADDLE_WITH_MKLDNN
       // Now rotate shape back if needed (NHWC -> NCHW)
       if (should_rotate) {
-        std::rotate(out_dims_array.begin() + 1, out_dims_array.end() - 1,
+        std::rotate(out_dims_array.begin() + 1,
+                    out_dims_array.end() - 1,
                     out_dims_array.end());
       }
 #endif
@@ -138,47 +151,36 @@ class ElementwiseOp : public framework::OperatorWithKernel {
     }
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
         OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "X", "Y");
-
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const framework::Tensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const override {
-    if (framework::IsComplexType(expected_kernel_type.data_type_)) {
+  phi::KernelKey GetKernelTypeForVar(
+      const std::string &var_name UNUSED,
+      const phi::DenseTensor &tensor,
+      const phi::KernelKey &expected_kernel_type) const override {
+    if (framework::IsComplexType(expected_kernel_type.dtype())) {
       // only promote inputs’s types when contains complex input
-      return framework::OpKernelType(
-          framework::TransToProtoVarType(tensor.dtype()), tensor.place(),
-          tensor.layout());
+      return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
     } else {
 #ifdef PADDLE_WITH_MKLDNN
       // When elementwise is first oneDNN op (there was some non oneDNN op
       // previously)
       // then we also need to rotate shape NHWC -> NCWH
-      if ((expected_kernel_type.data_layout_ ==
-           framework::DataLayout::kMKLDNN) &&
-          (tensor.layout() != framework::DataLayout::kMKLDNN) &&
-          paddle::platform::MKLDNNDeviceContext::tls()
-                  .get_cur_paddle_data_layout() ==
-              framework::DataLayout::kNHWC) {
-        return framework::OpKernelType(expected_kernel_type.data_type_,
-                                       tensor.place(),
-                                       framework::DataLayout::kNHWC);
+      if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
+          (tensor.layout() != phi::DataLayout::ONEDNN) &&
+          phi::OneDNNContext::tls().get_cur_paddle_data_layout() ==
+              phi::DataLayout::kNHWC) {
+        return phi::KernelKey(tensor.place(),
+                              phi::DataLayout::kNHWC,
+                              expected_kernel_type.dtype());
       }
 #endif
-      return framework::OpKernelType(expected_kernel_type.data_type_,
-                                     tensor.place(), tensor.layout());
+      return phi::KernelKey(
+          tensor.place(), tensor.layout(), expected_kernel_type.dtype());
     }
   }
 };
@@ -199,47 +201,12 @@ class ElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInputX();
     AddInputY();
     AddOpOutput();
-
     AddAttr<int>("axis",
                  "(int, default -1). If X.dimension != Y.dimension,"
                  "Y.dimension must be a subsequence of x.dimension. And axis "
                  "is the start dimension index "
                  "for broadcasting Y onto X. ")
         .SetDefault(-1);
-    AddAttr<bool>("use_mkldnn", "(bool, default false). Used by MKLDNN.")
-        .SetDefault(false)
-        .AsExtra();
-    AddAttr<std::string>("x_data_format", "This parameter is no longer used.")
-        .SetDefault("")
-        .AsExtra();
-    AddAttr<std::string>("y_data_format", "This parameter is no longer used.")
-        .SetDefault("")
-        .AsExtra();
-    AddAttr<bool>(
-        "use_quantizer",
-        "(bool, default false) "
-        "This parameter is no longer used. Use 'mkldnn_data_type' instead.")
-        .SetDefault(false)
-        .AsExtra();
-    AddAttr<std::string>(
-        "mkldnn_data_type",
-        "(string, default \"float32\"). Data type of mkldnn kernel")
-        .SetDefault("float32")
-        .InEnum({"float32", "int8", "bfloat16"})
-        .AsExtra();
-    /* int8 parameters */
-    AddAttr<float>("Scale_x",
-                   "(float, default 1.0f), The quantize scale of X tensor")
-        .SetDefault(1.0f)
-        .AsExtra();
-    AddAttr<float>("Scale_y",
-                   "(float, default 1.0f), The quantize scale of Y tensor")
-        .SetDefault(1.0f)
-        .AsExtra();
-    AddAttr<float>("Scale_out",
-                   "(float, default 1.0f), The quantize scale of output data")
-        .SetDefault(1.0f)
-        .AsExtra();
     AddOpComment();
   }
 
@@ -258,7 +225,7 @@ class ElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
   }
   virtual void AddOpComment() { AddComment(GetCommentExamples()); }
 
-  virtual std::string GetOpFuntionality() const { return ""; }
+  virtual std::string GetOpFunctionality() const { return ""; }
 
   virtual std::string GetName() const = 0;
   virtual std::string GetEquation() const = 0;
@@ -301,19 +268,22 @@ For example:
     shape(X) = (2, 3, 4, 5), shape(Y) = (2, 1), with axis=0
 
 )DOC",
-                           GetName(), GetOpFuntionality(), GetEquation());
+                           GetName(),
+                           GetOpFunctionality(),
+                           GetEquation());
   }
 };
 
 class ElementwiseOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  using Tensor = framework::Tensor;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     auto out_grad_name = framework::GradVarName("Out");
     OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "ElementwiseOpGrad");
-    OP_INOUT_CHECK(ctx->HasInput(out_grad_name), "Input", out_grad_name,
+    OP_INOUT_CHECK(ctx->HasInput(out_grad_name),
+                   "Input",
+                   out_grad_name,
                    "ElementwiseOpGrad");
     auto x_grad_name = framework::GradVarName("X");
     auto y_grad_name = framework::GradVarName("Y");
@@ -327,32 +297,23 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
     }
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
-
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const framework::Tensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const override {
-    if (framework::IsComplexType(expected_kernel_type.data_type_)) {
+  phi::KernelKey GetKernelTypeForVar(
+      const std::string &var_name UNUSED,
+      const phi::DenseTensor &tensor,
+      const phi::KernelKey &expected_kernel_type) const override {
+    if (framework::IsComplexType(expected_kernel_type.dtype())) {
       // only promote inputs’s types when contains complex input
-      return framework::OpKernelType(
-          framework::TransToProtoVarType(tensor.dtype()), tensor.place(),
-          tensor.layout());
+      return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
     } else {
-      return framework::OpKernelType(expected_kernel_type.data_type_,
-                                     tensor.place(), tensor.layout());
+      return phi::KernelKey(
+          tensor.place(), tensor.layout(), expected_kernel_type.dtype());
     }
   }
 };
@@ -360,7 +321,6 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
 class ElementwiseOpDoubleGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  using Tensor = framework::Tensor;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     auto x_grad_name = framework::GradVarName("X");
@@ -379,31 +339,22 @@ class ElementwiseOpDoubleGrad : public framework::OperatorWithKernel {
     }
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "DOut");
-
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const framework::Tensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const {
-    if (framework::IsComplexType(expected_kernel_type.data_type_)) {
+  phi::KernelKey GetKernelTypeForVar(
+      const std::string &var_name UNUSED,
+      const phi::DenseTensor &tensor,
+      const phi::KernelKey &expected_kernel_type) const override {
+    if (framework::IsComplexType(expected_kernel_type.dtype())) {
       // only promote inputs’s types when contains complex input
-      return framework::OpKernelType(
-          framework::TransToProtoVarType(tensor.dtype()), tensor.place(),
-          tensor.layout());
+      return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
     } else {
-      return framework::OpKernelType(expected_kernel_type.data_type_,
-                                     tensor.place(), tensor.layout());
+      return phi::KernelKey(
+          tensor.place(), tensor.layout(), expected_kernel_type.dtype());
     }
   }
 };
@@ -412,7 +363,6 @@ class ElementwiseOpDoubleGradWithoutDXDY
     : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  using Tensor = framework::Tensor;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     if (ctx->HasOutput("DDOut")) {
@@ -421,43 +371,38 @@ class ElementwiseOpDoubleGradWithoutDXDY
     }
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     framework::proto::VarType::Type input_data_type;
     if (ctx.HasInput("DDX") == false) {
-      OP_INOUT_CHECK(ctx.HasInput("DDY"), "Input", "DDY",
+      OP_INOUT_CHECK(ctx.HasInput("DDY"),
+                     "Input",
+                     "DDY",
                      "ElementwiseOpDoubleGradWithoutDXDY");
       input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "DDY");
     } else if (ctx.HasInput("DDY") == false) {
-      OP_INOUT_CHECK(ctx.HasInput("DDX"), "Input", "DDX",
+      OP_INOUT_CHECK(ctx.HasInput("DDX"),
+                     "Input",
+                     "DDX",
                      "ElementwiseOpDoubleGradWithoutDXDY");
       input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "DDX");
     } else {
       input_data_type =
           OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "DDX", "DDY");
     }
-
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const framework::Tensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const {
-    if (framework::IsComplexType(expected_kernel_type.data_type_)) {
+  phi::KernelKey GetKernelTypeForVar(
+      const std::string &var_name UNUSED,
+      const phi::DenseTensor &tensor,
+      const phi::KernelKey &expected_kernel_type) const override {
+    if (framework::IsComplexType(expected_kernel_type.dtype())) {
       // only promote inputs’s types when contains complex input
-      return framework::OpKernelType(
-          framework::TransToProtoVarType(tensor.dtype()), tensor.place(),
-          tensor.layout());
+      return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
     } else {
-      return framework::OpKernelType(expected_kernel_type.data_type_,
-                                     tensor.place(), tensor.layout());
+      return phi::KernelKey(
+          tensor.place(), tensor.layout(), expected_kernel_type.dtype());
     }
   }
 };
@@ -465,7 +410,6 @@ class ElementwiseOpDoubleGradWithoutDXDY
 class ElementwiseOpTripleGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
-  using Tensor = framework::Tensor;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     if (ctx->HasOutput("D_DDX")) {
@@ -490,32 +434,23 @@ class ElementwiseOpTripleGrad : public framework::OperatorWithKernel {
     }
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     framework::proto::VarType::Type input_data_type;
     input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "D_DDOut");
-
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const framework::Tensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const {
-    if (framework::IsComplexType(expected_kernel_type.data_type_)) {
+  phi::KernelKey GetKernelTypeForVar(
+      const std::string &var_name UNUSED,
+      const phi::DenseTensor &tensor,
+      const phi::KernelKey &expected_kernel_type) const override {
+    if (framework::IsComplexType(expected_kernel_type.dtype())) {
       // only promote inputs’s types when contains complex input
-      return framework::OpKernelType(
-          framework::TransToProtoVarType(tensor.dtype()), tensor.place(),
-          tensor.layout());
+      return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
     } else {
-      return framework::OpKernelType(expected_kernel_type.data_type_,
-                                     tensor.place(), tensor.layout());
+      return phi::KernelKey(
+          tensor.place(), tensor.layout(), expected_kernel_type.dtype());
     }
   }
 };
@@ -524,10 +459,9 @@ template <typename T>
 class ElemwiseGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *dx =
-        context.Output<framework::LoDTensor>(framework::GradVarName("X"));
+    auto *dx = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
     auto &dout =
-        *context.Input<framework::LoDTensor>(framework::GradVarName("Out"));
+        *context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
     phi::funcs::ElementwiseGradPreProcess(dout, dx);
   }
 };
@@ -543,10 +477,12 @@ DECLARE_INPLACE_OP_INFERER(ElementwiseTripleGradOpInplaceInferer,
                            {"D_DDOut", "D_DDX"});
 
 DECLARE_NO_NEED_BUFFER_VARS_INFERER(ElementwiseGradNoBufVarsInferer, "X", "Y");
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(ElementwiseDoubleGradNoBufVarsInferer, "Y",
+DECLARE_NO_NEED_BUFFER_VARS_INFERER(ElementwiseDoubleGradNoBufVarsInferer,
+                                    "Y",
                                     "DOut");
 DECLARE_NO_NEED_BUFFER_VARS_INFERER(ElementwiseTripleGradNoBufVarsInferer,
-                                    "DDX", "DDY");
+                                    "DDX",
+                                    "DDY");
 
 }  // namespace operators
 }  // namespace paddle
@@ -573,7 +509,8 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(ElementwiseTripleGradNoBufVarsInferer,
   }
 
 #define REGISTER_ELEMWISE_EXPLICIT_OP_WITHOUT_GRAD(op_type, op_name)    \
-  REGISTER_OPERATOR(op_type, ::paddle::operators::ElementwiseOp,        \
+  REGISTER_OPERATOR(op_type,                                            \
+                    ::paddle::operators::ElementwiseOp,                 \
                     ::paddle::operators::Elementwise##op_name##OpMaker, \
                     ::paddle::operators::ElementwiseOpInferVarType,     \
                     op_type##GradMaker<::paddle::framework::OpDesc>,    \

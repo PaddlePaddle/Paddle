@@ -12,17 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
+
 import numpy as np
-import paddle.fluid.core as core
-from paddle.fluid.op import Operator
-import paddle.fluid as fluid
-from op_test import OpTest, _set_use_system_allocator
-from paddle.fluid.framework import grad_var_name
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
+
 import paddle
+from paddle import fluid
+from paddle.fluid import Program, core, program_guard
 
 
 class TestDygraphLayerNormv2(unittest.TestCase):
@@ -35,20 +31,51 @@ class TestDygraphLayerNormv2(unittest.TestCase):
 
             def compute_v1(x):
                 with fluid.dygraph.guard(p):
-                    ln = fluid.dygraph.LayerNorm(shape[1:])
-                    y = ln(fluid.dygraph.to_variable(x))
+                    ln = paddle.nn.LayerNorm(shape[1:])
+                    y = ln(paddle.to_tensor(x))
                 return y.numpy()
 
             def compute_v2(x):
                 with fluid.dygraph.guard(p):
                     ln = paddle.nn.LayerNorm(shape[1:])
-                    y = ln(fluid.dygraph.to_variable(x))
+                    y = ln(paddle.to_tensor(x))
                 return y.numpy()
 
             x = np.random.randn(*shape).astype("float32")
             y1 = compute_v1(x)
             y2 = compute_v2(x)
-            self.assertTrue(np.allclose(y1, y2))
+            np.testing.assert_allclose(y1, y2, rtol=1e-05)
+
+    def test_eager(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda() and core.op_support_gpu("layer_norm"):
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            shape = [4, 10, 4, 4]
+
+            def compute_v1(x):
+                with fluid.dygraph.guard(p):
+                    ln = paddle.nn.LayerNorm(shape[1:])
+                    x1 = paddle.to_tensor(x)
+                    x1.stop_gradient = False
+                    y = ln(x1)
+                    y.backward()
+                    return y.numpy(), x1.gradient()
+
+            def compute_v2(x):
+                with fluid.dygraph.guard(p):
+                    ln = paddle.nn.LayerNorm(shape[1:])
+                    x1 = paddle.to_tensor(x)
+                    x1.stop_gradient = False
+                    y = ln(x1)
+                    y.backward()
+                    return y.numpy(), x1.gradient()
+
+            x = np.random.randn(*shape).astype("float32")
+            y1, g1 = compute_v1(x)
+            y2, g2 = compute_v2(x)
+            np.testing.assert_allclose(y1, y2, rtol=1e-05)
+            np.testing.assert_allclose(g1, g2, rtol=1e-05)
 
     def test_static(self):
         paddle.enable_static()
@@ -61,8 +88,10 @@ class TestDygraphLayerNormv2(unittest.TestCase):
 
             def compute_v1(x_np):
                 with program_guard(Program(), Program()):
-                    ln = fluid.dygraph.LayerNorm(shape[1:])
-                    x = fluid.data(name='x', shape=x_np.shape, dtype=x_np.dtype)
+                    ln = paddle.nn.LayerNorm(shape[1:])
+                    x = paddle.static.data(
+                        name='x', shape=x_np.shape, dtype=x_np.dtype
+                    )
                     y = ln(x)
                     exe.run(fluid.default_startup_program())
                     r = exe.run(feed={'x': x_np}, fetch_list=[y])[0]
@@ -71,7 +100,9 @@ class TestDygraphLayerNormv2(unittest.TestCase):
             def compute_v2(x_np):
                 with program_guard(Program(), Program()):
                     ln = paddle.nn.LayerNorm(shape[1:])
-                    x = fluid.data(name='x', shape=x_np.shape, dtype=x_np.dtype)
+                    x = paddle.static.data(
+                        name='x', shape=x_np.shape, dtype=x_np.dtype
+                    )
                     y = ln(x)
                     exe.run(fluid.default_startup_program())
                     r = exe.run(feed={'x': x_np}, fetch_list=[y])[0]
@@ -80,7 +111,7 @@ class TestDygraphLayerNormv2(unittest.TestCase):
             x = np.random.randn(*shape).astype("float32")
             y1 = compute_v1(x)
             y2 = compute_v2(x)
-            self.assertTrue(np.allclose(y1, y2))
+            np.testing.assert_allclose(y1, y2, rtol=1e-05)
 
 
 class TestLayerNormFunction(unittest.TestCase):
@@ -93,31 +124,31 @@ class TestLayerNormFunction(unittest.TestCase):
 
             def compute_v0(x):
                 with fluid.dygraph.guard(p):
-                    ln = fluid.dygraph.LayerNorm(shape[1:])
-                    y = ln(fluid.dygraph.to_variable(x))
+                    ln = paddle.nn.LayerNorm(shape[1:])
+                    y = ln(paddle.to_tensor(x))
                 return y.numpy()
 
             def compute_v1(x):
                 with fluid.dygraph.guard(p):
-                    x = fluid.dygraph.to_variable(x)
+                    x = paddle.to_tensor(x)
                     y = paddle.nn.functional.layer_norm(x, shape[1:])
                 return y.numpy()
 
             def compute_v2(x):
                 with fluid.dygraph.guard(p):
-                    x = fluid.dygraph.to_variable(x)
+                    x = paddle.to_tensor(x)
                     y = paddle.nn.functional.layer_norm(x, tuple(shape[1:]))
                 return y.numpy()
 
             def compute_v3(x):
                 with fluid.dygraph.guard(p):
-                    ln = fluid.dygraph.LayerNorm(shape[-1])
-                    y = ln(fluid.dygraph.to_variable(x))
+                    ln = paddle.nn.LayerNorm(shape[-1])
+                    y = ln(paddle.to_tensor(x))
                 return y.numpy()
 
             def compute_v4(x):
                 with fluid.dygraph.guard(p):
-                    x = fluid.dygraph.to_variable(x)
+                    x = paddle.to_tensor(x)
                     y = paddle.nn.functional.layer_norm(x, shape[-1])
                 return y.numpy()
 
@@ -125,18 +156,20 @@ class TestLayerNormFunction(unittest.TestCase):
             y0 = compute_v0(x)
             y1 = compute_v1(x)
             y2 = compute_v2(x)
-            self.assertTrue(np.allclose(y0, y1))
-            self.assertTrue(np.allclose(y0, y2))
+            np.testing.assert_allclose(y0, y1, rtol=1e-05)
+            np.testing.assert_allclose(y0, y2, rtol=1e-05)
             y3 = compute_v3(x)
             y4 = compute_v4(x)
-            self.assertTrue(np.allclose(y3, y4))
+            np.testing.assert_allclose(y3, y4, rtol=1e-05)
 
             self.assertRaises(
                 ValueError,
                 paddle.nn.functional.layer_norm,
                 x=x,
-                normalized_shape=1.0)
+                normalized_shape=1.0,
+            )
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

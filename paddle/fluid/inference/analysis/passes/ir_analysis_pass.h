@@ -15,6 +15,7 @@
 #pragma once
 
 #include <string>
+
 #include "paddle/fluid/inference/analysis/analysis_pass.h"
 
 namespace paddle {

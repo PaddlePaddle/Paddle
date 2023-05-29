@@ -14,6 +14,8 @@
 
 #include "paddle/phi/kernels/where_kernel.h"
 
+#include "paddle/phi/core/kernel_registry.h"
+
 namespace phi {
 
 template <typename T, typename Context>

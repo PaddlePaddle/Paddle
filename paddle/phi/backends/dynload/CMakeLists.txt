@@ -1,57 +1,98 @@
-cc_library(phi_dynamic_loader SRCS dynamic_loader.cc DEPS enforce glog gflags)
+set(DYNLOAD_COMMON_SRCS dynamic_loader.cc port.cc warpctc.cc warprnnt.cc
+                        lapack.cc)
+if(WITH_ASCEND_CL)
+  list(REMOVE_ITEM DYNLOAD_COMMON_SRCS warprnnt.cc)
+endif()
+list(
+  APPEND
+  CUDA_SRCS
+  cublas.cc
+  cublasLt.cc
+  cudnn.cc
+  curand.cc
+  cusolver.cc
+  cusparse.cc
+  nvtx.cc
+  cufft.cc)
 
-list(APPEND CUDA_SRCS cublas.cc cublasLt.cc cudnn.cc curand.cc cusolver.cc cusparse.cc  nvtx.cc cufft.cc)
-
-if (NOT WITH_NV_JETSON)
+if(NOT WITH_NV_JETSON)
   list(APPEND CUDA_SRCS nvjpeg.cc)
 endif()
 
-if (WITH_ROCM)
-  list(APPEND HIP_SRCS rocblas.cc miopen.cc hiprand.cc hipfft.cc)
+if(WITH_ROCM)
+  list(
+    APPEND
+    HIP_SRCS
+    rocblas.cc
+    miopen.cc
+    hiprand.cc
+    hipfft.cc
+    rocsparse.cc)
 endif()
 
 # There is no macOS version of NCCL.
-# Disable nvrtc and cuda_driver api on MacOS, and only do a early test on Linux and Windows.
-if (NOT APPLE)
+# Disable nvrtc and cuda_driver api on macOS, and only do an early test on Linux and Windows.
+if(NOT APPLE)
   list(APPEND CUDA_SRCS nvrtc.cc cuda_driver.cc)
-  if (WITH_NCCL)
+  if(WITH_NCCL)
     list(APPEND CUDA_SRCS nccl.cc)
   endif()
-  if (WITH_ROCM)
+  if(WITH_ROCM)
     list(APPEND HIP_SRCS hiprtc.cc rocm_driver.cc)
-    if (WITH_RCCL)
+    if(WITH_RCCL)
       list(APPEND HIP_SRCS rccl.cc)
+    endif()
+    if(CUPTI_FOUND)
+      list(APPEND HIP_SRCS cupti.cc)
     endif()
   endif()
 endif()
 
-if (TENSORRT_FOUND)
+if(TENSORRT_FOUND)
   list(APPEND CUDA_SRCS tensorrt.cc)
 endif()
 
+if(CUSPARSELT_FOUND)
+  list(APPEND CUDA_SRCS cusparseLt.cc)
+endif()
+
 configure_file(cupti_lib_path.h.in ${CMAKE_CURRENT_BINARY_DIR}/cupti_lib_path.h)
-if (CUPTI_FOUND)
+if(CUPTI_FOUND)
   list(APPEND CUDA_SRCS cupti.cc)
-endif(CUPTI_FOUND)
-if(WITH_ROCM)
-  hip_library(phi_dynload_cuda SRCS ${HIP_SRCS} DEPS phi_dynamic_loader)
-  cc_library(phi_dynload_warpctc SRCS warpctc.cc DEPS phi_dynamic_loader warpctc)
-elseif (WITH_ASCEND_CL)
-  cc_library(phi_dynload_warpctc SRCS warpctc.cc DEPS phi_dynamic_loader warpctc npu_hccl)
-else()
-  nv_library(phi_dynload_cuda SRCS ${CUDA_SRCS} DEPS phi_dynamic_loader)
-  cc_library(phi_dynload_warpctc SRCS warpctc.cc DEPS phi_dynamic_loader warpctc)
-endif()
-if (WITH_MKLML)
-  cc_library(phi_dynload_mklml SRCS mklml.cc DEPS phi_dynamic_loader mklml)
 endif()
 
-cc_library(phi_dynload_lapack SRCS lapack.cc DEPS phi_dynamic_loader)
-add_dependencies(phi_dynload_lapack extern_lapack)
-# TODO(TJ): add iomp, mkldnn?
+if(WITH_MKLML)
+  # Only deps libmklml.so, not link
+  add_library(dynload_mklml STATIC mklml.cc)
+  add_dependencies(dynload_mklml mklml)
+  if(WIN32)
+    target_link_libraries(dynload_mklml ${MKLML_IOMP_LIB})
+  else()
+    target_link_libraries(dynload_mklml
+                          "-L${MKLML_LIB_DIR} -liomp5 -Wl,--as-needed")
+  endif()
+endif()
 
-if (MKL_FOUND AND WITH_ONEMKL)
+if(WITH_FLASHATTN)
+  list(APPEND DYNLOAD_COMMON_SRCS flashattn.cc)
+endif()
+
+if(MKL_FOUND AND WITH_ONEMKL)
   message("ONEMKL INCLUDE directory is ${MKL_INCLUDE}")
-  cc_library(phi_dynload_mklrt SRCS mklrt.cc DEPS phi_dynamic_loader)
-  target_include_directories(phi_dynload_mklrt PRIVATE ${MKL_INCLUDE})
+  list(APPEND DYNLOAD_COMMON_SRCS mklrt.cc)
+endif()
+
+if(WITH_ROCM)
+  collect_srcs(backends_srcs SRCS ${DYNLOAD_COMMON_SRCS} ${HIP_SRCS})
+elseif(WITH_GPU)
+  collect_srcs(backends_srcs SRCS ${DYNLOAD_COMMON_SRCS} ${CUDA_SRCS})
+else()
+  collect_srcs(backends_srcs SRCS ${DYNLOAD_COMMON_SRCS})
+endif()
+
+if(WITH_CUDNN_FRONTEND)
+  nv_test(
+    cudnn_frontend_test
+    SRCS cudnn_frontend_test.cc
+    DEPS phi cudnn-frontend)
 endif()

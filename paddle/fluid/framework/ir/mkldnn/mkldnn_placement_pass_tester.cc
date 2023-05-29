@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/mkldnn/mkldnn_placement_pass.h"
-
 #include <gtest/gtest.h>
-#include <boost/logic/tribool.hpp>
+
+#include "paddle/fluid/framework/ir/mkldnn/mkldnn_placement_pass.h"
+#include "paddle/fluid/framework/ir/pass_tester_helper.h"
+#include "paddle/utils/tribool.h"
 
 namespace paddle {
 namespace framework {
@@ -23,15 +24,17 @@ namespace ir {
 
 class PlacementPassTest {
  private:
-  void SetOp(ProgramDesc* prog, const std::string& type,
-             const std::string& name, const std::vector<std::string>& inputs,
+  void SetOp(ProgramDesc* prog,
+             const std::string& type,
+             const std::string& name,
+             const std::vector<std::string>& inputs,
              const std::vector<std::string>& outputs,
-             boost::tribool use_mkldnn) {
+             paddle::tribool use_mkldnn) {
     auto* op = prog->MutableBlock(0)->AppendOp();
 
     op->SetType(type);
 
-    if (!boost::indeterminate(use_mkldnn))
+    if (!paddle::indeterminate(use_mkldnn))
       op->SetAttr("use_mkldnn", use_mkldnn);
 
     if (type == "conv2d") {
@@ -63,30 +66,62 @@ class PlacementPassTest {
   ProgramDesc BuildProgramDesc() {
     ProgramDesc prog;
 
-    for (auto& v :
-         std::vector<std::string>({"a", "b", "c", "weights", "bias", "f", "g",
-                                   "h", "weights2", "bias2", "k", "l"})) {
+    for (auto& v : std::vector<std::string>({"a",
+                                             "b",
+                                             "c",
+                                             "weights",
+                                             "bias",
+                                             "f",
+                                             "g",
+                                             "h",
+                                             "weights2",
+                                             "bias2",
+                                             "k",
+                                             "l"})) {
       auto* var = prog.MutableBlock(0)->Var(v);
       var->SetType(proto::VarType::SELECTED_ROWS);
+      var->SetDataType(framework::proto::VarType::FP32);
       if (v == "weights" || v == "bias") {
         var->SetPersistable(true);
       }
     }
 
-    SetOp(&prog, "concat", "concat1", std::vector<std::string>({"a", "b"}),
-          std::vector<std::string>({"c"}), boost::indeterminate);
-    SetOp(&prog, "conv2d", "conv1",
+    SetOp(&prog,
+          "concat",
+          "concat1",
+          std::vector<std::string>({"a", "b"}),
+          std::vector<std::string>({"c"}),
+          paddle::indeterminate);
+    SetOp(&prog,
+          "conv2d",
+          "conv1",
           std::vector<std::string>({"c", "weights", "bias"}),
-          std::vector<std::string>({"f"}), boost::indeterminate);
-    SetOp(&prog, "relu", "relu1", std::vector<std::string>({"f"}),
-          std::vector<std::string>({"g"}), false);
-    SetOp(&prog, "pool2d", "pool1", std::vector<std::string>({"g"}),
-          std::vector<std::string>({"h"}), false);
-    SetOp(&prog, "conv2d", "conv2",
+          std::vector<std::string>({"f"}),
+          paddle::indeterminate);
+    SetOp(&prog,
+          "relu",
+          "relu1",
+          std::vector<std::string>({"f"}),
+          std::vector<std::string>({"g"}),
+          false);
+    SetOp(&prog,
+          "pool2d",
+          "pool1",
+          std::vector<std::string>({"g"}),
+          std::vector<std::string>({"h"}),
+          false);
+    SetOp(&prog,
+          "conv2d",
+          "conv2",
           std::vector<std::string>({"h", "weights2", "bias2"}),
-          std::vector<std::string>({"k"}), true);
-    SetOp(&prog, "relu", "relu2", std::vector<std::string>({"k"}),
-          std::vector<std::string>({"l"}), true);
+          std::vector<std::string>({"k"}),
+          true);
+    SetOp(&prog,
+          "relu",
+          "relu2",
+          std::vector<std::string>({"k"}),
+          std::vector<std::string>({"l"}),
+          true);
 
     return prog;
   }
@@ -95,7 +130,7 @@ class PlacementPassTest {
   void MainTest(std::initializer_list<std::string> mkldnn_enabled_op_types,
                 unsigned expected_use_mkldnn_true_count) {
     auto prog = BuildProgramDesc();
-
+    RegisterOpKernel({"conv2d", "pool2d", "concat", "relu"});
     std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
 
     auto pass = PassRegistry::Instance().Get("mkldnn_placement_pass");
@@ -111,7 +146,7 @@ class PlacementPassTest {
       if (node->IsOp()) {
         auto* op = node->Op();
         if (op->HasAttr("use_mkldnn") &&
-            BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn"))) {
+            PADDLE_GET_CONST(bool, op->GetAttr("use_mkldnn"))) {
           ++use_mkldnn_true_count;
         }
       }
@@ -128,8 +163,8 @@ class PlacementPassTest {
 };
 
 TEST(MKLDNNPlacementPass, enable_conv_relu) {
-  // 1 conv (1 conv is always true) + 2 relu (1 relu is always true) + 0 pool
-  PlacementPassTest().MainTest({"conv2d", "relu"}, 3);
+  // 2 conv (1 conv is always true) + 2 relu (1 relu is always true) + 0 pool
+  PlacementPassTest().MainTest({"conv2d", "relu"}, 4);
 }
 
 TEST(MKLDNNPlacementPass, enable_relu_pool) {
@@ -138,8 +173,9 @@ TEST(MKLDNNPlacementPass, enable_relu_pool) {
 }
 
 TEST(MKLDNNPlacementPass, enable_all) {
-  // 1 conv (1 conv is always true) + 2 relu (1 relu is always true) + 1 pool
-  PlacementPassTest().MainTest({}, 4);
+  // 2 conv (1 conv is always true) + 2 relu (1 relu is always true) + 1 pool +
+  // 1 concat
+  PlacementPassTest().MainTest({}, 6);
 }
 
 TEST(MKLDNNPlacementPass, placement_name) {

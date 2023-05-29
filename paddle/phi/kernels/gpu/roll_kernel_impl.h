@@ -14,13 +14,13 @@
 
 #pragma once
 
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
 #include "paddle/phi/core/utils/array.h"
 #include "paddle/phi/kernels/primitive/kernel_primitives.h"
 
 namespace phi {
 
-using paddle::platform::PADDLE_CUDA_NUM_THREADS;
+using phi::PADDLE_CUDA_NUM_THREADS;
 
 template <typename T, size_t Rank>
 __global__ void RollCudaKernel(const T* input,
@@ -39,7 +39,7 @@ __global__ void RollCudaKernel(const T* input,
 
 #pragma unroll
   for (size_t i = 0; i < Rank; i++) {
-    new_dim_idx = (idx / strides[i]) % sizes[i] + shifts[i];
+    new_dim_idx = (output_idx / strides[i]) % sizes[i] + shifts[i];
     if (new_dim_idx >= sizes[i]) {
       output_idx += (shifts[i] - sizes[i]) * strides[i];
     } else {
@@ -49,23 +49,22 @@ __global__ void RollCudaKernel(const T* input,
   output[output_idx] = input[idx];
 }
 
-#define CALL_ROLL_CUDA_KERNEL(N)                                              \
-  case N: {                                                                   \
-    phi::Array<int64_t, N> _strides;                                          \
-    phi::Array<int64_t, N> _shifts;                                           \
-    phi::Array<int64_t, N> _sizes;                                            \
-    for (size_t idx = 0; idx < N; ++idx) {                                    \
-      _strides[idx] = strides[idx];                                           \
-      _shifts[idx] = shifts_data[idx];                                        \
-      _sizes[idx] = sizes[idx];                                               \
-    }                                                                         \
-    RollCudaKernel<                                                           \
-        T,                                                                    \
-        N><<<(numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS, \
-             PADDLE_CUDA_NUM_THREADS,                                         \
-             0,                                                               \
-             stream>>>(in_data, out_data, numel, _shifts, _strides, _sizes);  \
-    break;                                                                    \
+#define CALL_ROLL_CUDA_KERNEL(N)                                            \
+  case N: {                                                                 \
+    phi::Array<int64_t, N> _strides;                                        \
+    phi::Array<int64_t, N> _shifts;                                         \
+    phi::Array<int64_t, N> _sizes;                                          \
+    for (size_t idx = 0; idx < N; ++idx) {                                  \
+      _strides[idx] = strides[idx];                                         \
+      _shifts[idx] = shifts_data[idx];                                      \
+      _sizes[idx] = sizes[idx];                                             \
+    }                                                                       \
+    RollCudaKernel<T, N>                                                    \
+        <<<(numel + PADDLE_CUDA_NUM_THREADS - 1) / PADDLE_CUDA_NUM_THREADS, \
+           PADDLE_CUDA_NUM_THREADS,                                         \
+           0,                                                               \
+           stream>>>(in_data, out_data, numel, _shifts, _strides, _sizes);  \
+    break;                                                                  \
   }
 
 }  // namespace phi

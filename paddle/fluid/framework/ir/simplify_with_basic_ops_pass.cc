@@ -70,7 +70,8 @@ void SimplifyWithBasicOpsPass::ApplyImpl(Graph* graph) const {
 }
 
 bool SimplifyWithBasicOpsPass::SimplifyDropout(
-    Graph* graph, Node* n,
+    Graph* graph,
+    Node* n,
     std::unordered_set<const Node*>* del_node_set) const {
   OpDesc* dropout_op_desc = n->Op();
   bool is_test = false;
@@ -78,10 +79,10 @@ bool SimplifyWithBasicOpsPass::SimplifyDropout(
   // dropout_op is INT.
   if (dropout_op_desc->HasAttr("is_test")) {
     if (dropout_op_desc->GetAttrType("is_test") == proto::AttrType::BOOLEAN) {
-      is_test = BOOST_GET_CONST(bool, dropout_op_desc->GetAttr("is_test"));
+      is_test = PADDLE_GET_CONST(bool, dropout_op_desc->GetAttr("is_test"));
     } else if (dropout_op_desc->GetAttrType("is_test") ==
                proto::AttrType::INT) {
-      is_test = BOOST_GET_CONST(int, dropout_op_desc->GetAttr("is_test")) == 0
+      is_test = PADDLE_GET_CONST(int, dropout_op_desc->GetAttr("is_test")) == 0
                     ? false
                     : true;
     }
@@ -99,14 +100,14 @@ bool SimplifyWithBasicOpsPass::SimplifyDropout(
   if (dropout_op_desc->HasAttr("dropout_implementation")) {
     if (dropout_op_desc->GetAttrType("dropout_implementation") ==
         proto::AttrType::BOOLEAN) {
-      upscale_in_train = BOOST_GET_CONST(
+      upscale_in_train = PADDLE_GET_CONST(
           bool, dropout_op_desc->GetAttr("dropout_implementation"));
     } else if (dropout_op_desc->GetAttrType("dropout_implementation") ==
                proto::AttrType::STRING) {
       upscale_in_train =
-          BOOST_GET_CONST(std::string,
-                          dropout_op_desc->GetAttr("dropout_implementation")) ==
-          "upscale_in_train";
+          PADDLE_GET_CONST(std::string,
+                           dropout_op_desc->GetAttr(
+                               "dropout_implementation")) == "upscale_in_train";
     }
   }
 
@@ -155,8 +156,8 @@ bool SimplifyWithBasicOpsPass::SimplifyDropout(
     //   |
     //  \|/
     // dropout_x -> scale_op -> dropout_out -> next_op -> next_out
-    float scale =
-        1.0f - BOOST_GET_CONST(float, dropout_op_desc->GetAttr("dropout_prob"));
+    float scale = 1.0f - PADDLE_GET_CONST(
+                             float, dropout_op_desc->GetAttr("dropout_prob"));
 
     framework::OpDesc new_op_desc(dropout_op_desc->Block());
     new_op_desc.SetType("scale");
@@ -200,7 +201,8 @@ Node* SimplifyWithBasicOpsPass::GetOutputVar(Node* n,
   return nullptr;
 }
 
-void SimplifyWithBasicOpsPass::ReplaceInputVar(Node* op, Node* old_var,
+void SimplifyWithBasicOpsPass::ReplaceInputVar(Node* op,
+                                               Node* old_var,
                                                Node* new_var) const {
   if (op->IsOp() && op->Op()) {
     new_var->outputs.push_back(op);
@@ -213,7 +215,8 @@ void SimplifyWithBasicOpsPass::ReplaceInputVar(Node* op, Node* old_var,
   }
 }
 
-void SimplifyWithBasicOpsPass::ReplaceOutputVar(Node* op, Node* old_var,
+void SimplifyWithBasicOpsPass::ReplaceOutputVar(Node* op,
+                                                Node* old_var,
                                                 Node* new_var) const {
   if (op->IsOp() && op->Op()) {
     new_var->inputs.push_back(op);

@@ -12,15 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
+
 import paddle
-import paddle.fluid as fluid
 from paddle.framework import core
-from paddle.fluid.dygraph.base import switch_to_static_graph
 
 paddle.enable_static()
 
@@ -29,12 +27,13 @@ class TestTakeAlongAxisOp(OpTest):
     def setUp(self):
         self.init_data()
         self.op_type = "take_along_axis"
+        self.python_api = paddle.tensor.take_along_axis
         self.xnp = np.random.random(self.x_shape).astype(self.x_type)
         self.target = np.take_along_axis(self.xnp, self.index, self.axis)
         broadcast_shape_list = list(self.x_shape)
         broadcast_shape_list[self.axis] = 1
-        self.braodcast_shape = tuple(broadcast_shape_list)
-        self.index_broadcast = np.broadcast_to(self.index, self.braodcast_shape)
+        self.broadcast_shape = tuple(broadcast_shape_list)
+        self.index_broadcast = np.broadcast_to(self.index, self.broadcast_shape)
         self.inputs = {
             'Input': self.xnp,
             'Index': self.index_broadcast,
@@ -52,8 +51,67 @@ class TestTakeAlongAxisOp(OpTest):
         self.x_type = "float64"
         self.x_shape = (5, 5, 5)
         self.index_type = "int32"
-        self.index = np.array(
-            [[[1]], [[1]], [[2]], [[4]], [[3]]]).astype(self.index_type)
+        self.index = np.array([[[1]], [[1]], [[2]], [[4]], [[3]]]).astype(
+            self.index_type
+        )
+        self.axis = 2
+        self.axis_type = "int64"
+
+
+class TestTakeAlongAxisFP16Op(TestTakeAlongAxisOp):
+    def init_data(self):
+        self.dtype = np.float16
+        self.x_type = "float16"
+        self.x_shape = (5, 5, 5)
+        self.index_type = "int32"
+        self.index = np.array([[[1]], [[1]], [[2]], [[4]], [[3]]]).astype(
+            self.index_type
+        )
+        self.axis = 2
+        self.axis_type = "int64"
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TestTakeAlongAxisBF16Op(OpTest):
+    def setUp(self):
+        self.init_data()
+        self.op_type = "take_along_axis"
+        self.python_api = paddle.tensor.take_along_axis
+        self.xnp = np.random.random(self.x_shape).astype(self.x_type)
+        self.target = np.take_along_axis(self.xnp, self.index, self.axis)
+        broadcast_shape_list = list(self.x_shape)
+        broadcast_shape_list[self.axis] = 1
+        self.broadcast_shape = tuple(broadcast_shape_list)
+        self.index_broadcast = np.broadcast_to(self.index, self.broadcast_shape)
+        self.inputs = {
+            'Input': self.xnp,
+            'Index': self.index_broadcast,
+        }
+        self.attrs = {'Axis': self.axis}
+        self.outputs = {'Result': self.target}
+
+        self.inputs['Input'] = convert_float_to_uint16(self.inputs['Input'])
+        self.outputs['Result'] = convert_float_to_uint16(self.outputs['Result'])
+        self.place = core.CUDAPlace(0)
+
+    def test_check_output(self):
+        self.check_output_with_place(self.place)
+
+    def test_check_grad(self):
+        self.check_grad_with_place(self.place, ['Input'], 'Result')
+
+    def init_data(self):
+        self.dtype = np.uint16
+        self.x_type = "float32"
+        self.x_shape = (5, 5, 5)
+        self.index_type = "int32"
+        self.index = np.array([[[1]], [[1]], [[2]], [[4]], [[3]]]).astype(
+            self.index_type
+        )
         self.axis = 2
         self.axis_type = "int64"
 
@@ -83,17 +141,18 @@ class TestTakeAlongAxisAPI(unittest.TestCase):
     def test_api_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            x = paddle.fluid.data('X', self.shape)
-            index = paddle.fluid.data('Index', self.index_shape, "int64")
+            x = paddle.static.data('X', self.shape)
+            index = paddle.static.data('Index', self.index_shape, "int64")
             out = paddle.take_along_axis(x, index, self.axis)
             exe = paddle.static.Executor(self.place[0])
-            res = exe.run(feed={'X': self.x_np,
-                                'Index': self.index_np},
-                          fetch_list=[out])
+            res = exe.run(
+                feed={'X': self.x_np, 'Index': self.index_np}, fetch_list=[out]
+            )
         out_ref = np.array(
-            np.take_along_axis(self.x_np, self.index_np, self.axis))
+            np.take_along_axis(self.x_np, self.index_np, self.axis)
+        )
         for out in res:
-            self.assertEqual(np.allclose(out, out_ref, rtol=1e-03), True)
+            np.testing.assert_allclose(out, out_ref, rtol=0.001)
 
     def test_api_dygraph(self):
         paddle.disable_static(self.place[0])
@@ -101,8 +160,9 @@ class TestTakeAlongAxisAPI(unittest.TestCase):
         self.index = paddle.to_tensor(self.index_np)
         out = paddle.take_along_axis(x_tensor, self.index, self.axis)
         out_ref = np.array(
-            np.take_along_axis(self.x_np, self.index_np, self.axis))
-        self.assertEqual(np.allclose(out.numpy(), out_ref, rtol=1e-03), True)
+            np.take_along_axis(self.x_np, self.index_np, self.axis)
+        )
+        np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
         paddle.enable_static()
 
 
@@ -111,8 +171,9 @@ class TestTakeAlongAxisAPICase1(TestTakeAlongAxisAPI):
         np.random.seed(0)
         self.shape = [2, 2]
         self.index_shape = [4, 2]
-        self.index_np = np.array(
-            [[0, 0], [1, 0], [0, 0], [1, 0]]).astype('int64')
+        self.index_np = np.array([[0, 0], [1, 0], [0, 0], [1, 0]]).astype(
+            'int64'
+        )
         self.x_np = np.random.random(self.shape).astype(np.float32)
         self.place = [paddle.CPUPlace()]
         self.axis = 0

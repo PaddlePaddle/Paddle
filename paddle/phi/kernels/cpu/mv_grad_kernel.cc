@@ -31,7 +31,7 @@ void MvGradKernel(const Context& dev_ctx,
   auto dx = x_grad;
   auto dvec = vec_grad;
 
-  auto dim_x = x.dims();
+  const auto& dim_x = x.dims();
   int m = dim_x[0];
   int n = dim_x[1];
 

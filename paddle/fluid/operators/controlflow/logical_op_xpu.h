@@ -42,16 +42,16 @@ template <XpuLogicalType xpu_type, typename T>
 class BinaryLogicalOpXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* x = context.Input<framework::Tensor>("X");
-    auto* y = context.Input<framework::Tensor>("Y");
-    auto* out = context.Output<framework::Tensor>("Out");
+    auto* x = context.Input<phi::DenseTensor>("X");
+    auto* y = context.Input<phi::DenseTensor>("Y");
+    auto* out = context.Output<phi::DenseTensor>("Out");
     bool* out_ptr = out->mutable_data<bool>(context.GetPlace());
     const T* x_ptr = x->data<T>();
     const T* y_ptr = y->data<T>();
     auto& dev_ctx =
         context.template device_context<paddle::platform::XPUDeviceContext>();
-    framework::Tensor broadcast_x;
-    framework::Tensor broadcast_y;
+    phi::DenseTensor broadcast_x;
+    phi::DenseTensor broadcast_y;
     bool need_broad_cast = false;
     if (x->numel() != out->numel()) {
       // x need broadcast
@@ -74,13 +74,18 @@ class BinaryLogicalOpXPUKernel : public framework::OpKernel<T> {
         bcast_ydims.push_back(x_dim[i]);
       }
 
-      int ret = xpu::broadcast<int8_t>(
-          dev_ctx.x_context(), reinterpret_cast<const int8_t*> x_ptr,
-          reinterpret_cast<int8_t*> broadcast_x_ptr, bcast_xdims, bcast_ydims);
-      PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
+      int ret =
+          xpu::broadcast<int8_t>(dev_ctx.x_context(),
+                                 reinterpret_cast<const int8_t*> x_ptr,
+                                 reinterpret_cast<int8_t*> broadcast_x_ptr,
+                                 bcast_xdims,
+                                 bcast_ydims);
+      PADDLE_ENFORCE_EQ(ret,
+                        XPU_SUCCESS,
                         platform::errors::External(
                             "XPU broadcast kernel return wrong value[%d %s]",
-                            ret, XPUAPIErrorMsg[ret]));
+                            ret,
+                            XPUAPIErrorMsg[ret]));
       x_ptr = (const T*)broadcast_x_ptr;
       need_broad_cast = true;
     }
@@ -105,13 +110,18 @@ class BinaryLogicalOpXPUKernel : public framework::OpKernel<T> {
         bcast_ydims.push_back(y_dim[i]);
       }
 
-      int ret = xpu::broadcast<int8_t>(
-          dev_ctx.x_context(), reinterpret_cast<const int8_t*> y_ptr,
-          reinterpret_cast<int8_t*> broadcast_y_ptr, bcast_xdims, bcast_ydims);
-      PADDLE_ENFORCE_EQ(ret, XPU_SUCCESS,
+      int ret =
+          xpu::broadcast<int8_t>(dev_ctx.x_context(),
+                                 reinterpret_cast<const int8_t*> y_ptr,
+                                 reinterpret_cast<int8_t*> broadcast_y_ptr,
+                                 bcast_xdims,
+                                 bcast_ydims);
+      PADDLE_ENFORCE_EQ(ret,
+                        XPU_SUCCESS,
                         platform::errors::External(
                             "XPU broadcast kernel return wrong value[%d %s]",
-                            ret, XPUAPIErrorMsg[ret]));
+                            ret,
+                            XPUAPIErrorMsg[ret]));
       y_ptr = (const T*)broadcast_y_ptr;
       need_broad_cast = true;
     }
@@ -120,48 +130,56 @@ class BinaryLogicalOpXPUKernel : public framework::OpKernel<T> {
     int ret = XPU_SUCCESS;
     switch (xpu_type) {
       case XpuLogicalType::XPU_OR:
-        ret = xpu::logical_or<bool>(dev_ctx.x_context(), x_ptr, y_ptr, out_ptr,
-                                    out->numel());
+        ret = xpu::logical_or<bool>(
+            dev_ctx.x_context(), x_ptr, y_ptr, out_ptr, out->numel());
         break;
       case XpuLogicalType::XPU_AND:
-        ret = xpu::logical_and<bool>(dev_ctx.x_context(), x_ptr, y_ptr, out_ptr,
-                                     out->numel());
+        ret = xpu::logical_and<bool>(
+            dev_ctx.x_context(), x_ptr, y_ptr, out_ptr, out->numel());
       default:
         LOG(ERROR) << "xpu not support logical xpu type = "
                    << XpuLogicalType2Str(xpu_type);
         break;
     }
     PADDLE_ENFORCE_EQ(
-        ret, XPU_SUCCESS,
+        ret,
+        XPU_SUCCESS,
         platform::errors::External("XPU API return wrong value[%d %s] in "
                                    "op_name[%s].",
-                                   ret, XPUAPIErrorMsg[ret],
+                                   ret,
+                                   XPUAPIErrorMsg[ret],
                                    XpuLogicalType2Str(xpu_type)));
 
     if (need_broad_cast && dev_ctx.x_context()->xpu_stream != nullptr) {
-      xpu_wait();
+      dev_ctx.Wait();
     }
   }
 };
 
-template <typename T>
+#define DEFINE_BINARY_LOGICAL_OP_XPU_KERNEL(op_name, xpu_type) \
+  template <typename T, typename DeviceContext>                \
+  class BinaryLogical##op_name##CPUKernel                      \
+      : public CReduceOpCPUKernel<xpu_type, T> {};
+
+template <typename T, typename DeviceContext>
 class UnaryLogicalOpXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* x = context.Input<framework::Tensor>("X");
-    auto* out = context.Output<framework::Tensor>("Out");
+    auto* x = context.Input<phi::DenseTensor>("X");
+    auto* out = context.Output<phi::DenseTensor>("Out");
     if (x->numel() == 0) {
       return;
     }
     out->mutable_data<bool>(context.GetPlace());
     auto& dev_ctx =
         context.template device_context<paddle::platform::XPUDeviceContext>();
-    int ret = xpu::logical_not<bool>(dev_ctx.x_context(), x->data<T>(),
-                                     out->data<T>(), x->numel());
+    int ret = xpu::logical_not<bool>(
+        dev_ctx.x_context(), x->data<T>(), out->data<T>(), x->numel());
     PADDLE_ENFORCE_EQ(
-        ret, XPU_SUCCESS,
-        platform::errors::External("XPU API return wrong value[%d %s].", ret,
-                                   XPUAPIErrorMsg[ret]));
+        ret,
+        XPU_SUCCESS,
+        platform::errors::External(
+            "XPU API return wrong value[%d %s].", ret, XPUAPIErrorMsg[ret]));
   }
 };
 

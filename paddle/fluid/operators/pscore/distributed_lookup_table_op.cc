@@ -9,11 +9,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/pscore/distributed_lookup_table_op.h"
+
 #include <algorithm>
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/pscore/distributed_lookup_table_op.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
@@ -26,13 +27,16 @@ class DistributedLookupTableOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInputs("Ids"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInputs("Ids"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Input(Ids) of LookupTableOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInput("W"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasInput("W"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Input(W) of LookupTableOp should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutputs("Outputs"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutputs("Outputs"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Output(Outs) of LookupTableOp should not be null."));
 
@@ -40,12 +44,14 @@ class DistributedLookupTableOp : public framework::OperatorWithKernel {
     auto table_dims = ctx->GetInputDim("W");
 
     PADDLE_ENFORCE_EQ(
-        table_dims.size(), 2,
+        table_dims.size(),
+        2,
         platform::errors::InvalidArgument(
             "Only 2 dimensions of the 'Embedding' is supported."));
 
     for (auto &ids_dim : ids_dims) {
-      PADDLE_ENFORCE_EQ(ids_dim.size(), 2,
+      PADDLE_ENFORCE_EQ(ids_dim.size(),
+                        2,
                         platform::errors::InvalidArgument(
                             "The dimension of the 'Ids' tensor must be 2."));
     }
@@ -60,9 +66,10 @@ class DistributedLookupTableOp : public framework::OperatorWithKernel {
       if (lookup_table_version == "lookup_table") {
         outputs_dims.push_back(phi::make_ddim({ids_dim[0], table_dims[1]}));
       } else if (lookup_table_version == "lookup_table_v2") {
-        outputs_dims.push_back(phi::make_ddim(
-            {static_cast<int64_t>(ids_dim[0]), static_cast<int64_t>(ids_dim[1]),
-             static_cast<int64_t>(table_dims[1])}));
+        outputs_dims.push_back(
+            phi::make_ddim({static_cast<int64_t>(ids_dim[0]),
+                            static_cast<int64_t>(ids_dim[1]),
+                            static_cast<int64_t>(table_dims[1])}));
       }
     }
 
@@ -71,9 +78,9 @@ class DistributedLookupTableOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
+    return phi::KernelKey(
         framework::proto::VarType::Type(ctx.Attr<int>("dtype")),
         ctx.GetPlace());
   }
@@ -83,7 +90,7 @@ class DistributedLookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Ids",
-             "(LoDTensor) Ids's type should be LoDTensor"
+             "(phi::DenseTensor) Ids's type should be phi::DenseTensor"
              "THe ids to be looked up in W.")
         .AsDuplicable();
 
@@ -91,8 +98,9 @@ class DistributedLookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor) The input represents embedding tensors, "
              "which is a learnable parameter.");
 
-    AddOutput("Outputs",
-              "(LoDTensor) The lookup results, which have the same type as W.")
+    AddOutput(
+        "Outputs",
+        "(phi::DenseTensor) The lookup results, which have the same type as W.")
         .AsDuplicable();
 
     AddAttr<int>("table_id", "sparse table id").SetDefault(0);
@@ -139,9 +147,12 @@ random value and set the value into the table for the next looking up.
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(distributed_lookup_table, ops::DistributedLookupTableOp,
+REGISTER_OPERATOR(distributed_lookup_table,
+                  ops::DistributedLookupTableOp,
                   ops::DistributedLookupTableOpMaker);
 
-REGISTER_OP_CPU_KERNEL(distributed_lookup_table,
-                       ops::DistributedLookupTableKernel<
-                           paddle::platform::CPUDeviceContext, float>);
+PD_REGISTER_STRUCT_KERNEL(distributed_lookup_table,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::DistributedLookupTableKernel,
+                          float) {}

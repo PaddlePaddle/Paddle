@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
+from paddle import _legacy_C_ops
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.framework import in_dygraph_mode
-from paddle.fluid import core
-from paddle import _C_ops
+from paddle.framework import in_dynamic_mode
 
 
 def softmax_mask_fuse(x, mask, name=None):
@@ -31,7 +28,7 @@ def softmax_mask_fuse(x, mask, name=None):
     .. math::
         out = softmax(x + mask)
 
-    **Note**:
+    Note:
         This API only supports GPU.
 
     Args:
@@ -58,14 +55,14 @@ def softmax_mask_fuse(x, mask, name=None):
             rst = incubate.softmax_mask_fuse(x, mask)
             # [[[[0.02404429, 0.04658398, 0.02746007, ..., 0.01489375, 0.02397441, 0.02851614] ... ]]]
     """
-    if in_dygraph_mode():
-        out = _C_ops.fused_softmax_mask(x, mask)
+    if in_dynamic_mode():
+        out = _legacy_C_ops.fused_softmax_mask(x, mask)
         return out
     helper = LayerHelper('fused_softmax_mask', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type='fused_softmax_mask',
-        inputs={'X': [x],
-                'Mask': [mask]},
-        outputs={'Out': [out]})
+        inputs={'X': [x], 'Mask': [mask]},
+        outputs={'Out': [out]},
+    )
     return out

@@ -13,12 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/dot_grad_kernel.h"
-#include "paddle/phi/kernels/impl/dot_grad_kernel_impl.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
-
+#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
+#include "paddle/phi/common/float16.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/dot_grad_kernel_impl.h"
 
 PD_REGISTER_KERNEL(dot_grad,
                    GPU,
@@ -29,4 +30,6 @@ PD_REGISTER_KERNEL(dot_grad,
                    int,
                    int64_t,
                    phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::dtype::complex<double>,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

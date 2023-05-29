@@ -15,15 +15,19 @@ limitations under the License. */
 #include "paddle/fluid/operators/sequence_ops/sequence_pad_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    sequence_pad,
-    ops::SequencePadOpKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::SequencePadOpKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::SequencePadOpKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::SequencePadOpKernel<paddle::platform::CUDADeviceContext, int64_t>);
-REGISTER_OP_CUDA_KERNEL(
-    sequence_pad_grad,
-    ops::SequencePadGradOpKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::SequencePadGradOpKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::SequencePadGradOpKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::SequencePadGradOpKernel<paddle::platform::CUDADeviceContext, int64_t>);
+PD_REGISTER_STRUCT_KERNEL(sequence_pad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::SequencePadOpKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}
+PD_REGISTER_STRUCT_KERNEL(sequence_pad_grad,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::SequencePadGradOpKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}

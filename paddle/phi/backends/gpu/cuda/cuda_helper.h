@@ -14,6 +14,14 @@
 
 #pragma once
 
+#ifdef PADDLE_WITH_CUDA
+#include <cuda_runtime.h>  // NOLINT
+
+#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/float16.h"
+#include "paddle/phi/core/enforce.h"
+
 namespace phi {
 namespace backends {
 namespace gpu {
@@ -60,13 +68,35 @@ namespace gpu {
  *      }
  *    }
  *
-*/
+ */
 
-#define CUDA_KERNEL_LOOP_TYPE(i, num, index_type)            \
-  int64_t __index__ = blockIdx.x * blockDim.x + threadIdx.x; \
-  for (index_type i = __index__; __index__ < (num);          \
-       __index__ += blockDim.x * gridDim.x, i = __index__)
+#define CUDA_KERNEL_LOOP_TYPE(i, num, index_type)                    \
+  int64_t __index__ =                                                \
+      static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;   \
+  int64_t __stride__ = static_cast<int64_t>(blockDim.x) * gridDim.x; \
+  for (index_type i = __index__; __index__ < (num);                  \
+       __index__ += __stride__, i = __index__)
+
+template <typename T>
+cudaDataType_t ToCudaDataType() {
+  if (std::is_same<T, float>::value) {
+    return CUDA_R_32F;
+  } else if (std::is_same<T, double>::value) {
+    return CUDA_R_64F;
+  } else if (std::is_same<T, phi::dtype::float16>::value) {
+    return CUDA_R_16F;
+#if CUDA_VERSION >= 11000
+  } else if (std::is_same<T, phi::dtype::bfloat16>::value) {
+    return CUDA_R_16BF;
+#endif
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "DataType %s is unsupported for CUDA.",
+        DataTypeToString(phi::CppTypeToDataType<T>::Type())));
+  }
+}
 
 }  // namespace gpu
 }  // namespace backends
 }  // namespace phi
+#endif

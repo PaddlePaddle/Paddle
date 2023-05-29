@@ -13,42 +13,36 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/conv_grad_kernel.h"
-#include "paddle/phi/kernels/impl/conv_grad_kernel_impl.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/conv_grad_kernel_impl.h"
 
 namespace phi {
 
 template <typename T, typename Context>
 void Conv3DGradKernel(const Context& dev_ctx,
-                      const DenseTensor& out_grad,
                       const DenseTensor& input,
                       const DenseTensor& filter,
+                      const DenseTensor& out_grad,
                       const std::vector<int>& strides,
                       const std::vector<int>& paddings,
-                      const std::string& paddding_algorithm,
+                      const std::string& padding_algorithm,
                       int groups,
                       const std::vector<int>& dilations,
                       const std::string& data_format,
-                      bool use_addto,
-                      int workspace_size_MB,
-                      bool exhaustive_search,
                       DenseTensor* input_grad,
                       DenseTensor* filter_grad) {
   ConvGradKernel<T>(dev_ctx,
-                    out_grad,
                     input,
                     filter,
+                    out_grad,
                     strides,
                     paddings,
-                    paddding_algorithm,
-                    groups,
+                    padding_algorithm,
                     dilations,
+                    groups,
                     data_format,
-                    use_addto,
-                    workspace_size_MB,
-                    exhaustive_search,
                     input_grad,
                     filter_grad);
 }
@@ -60,3 +54,10 @@ PD_REGISTER_KERNEL(
 
 PD_REGISTER_KERNEL(
     conv3d_grad, GPU, ALL_LAYOUT, phi::Conv3DGradKernel, float, double) {}
+
+PD_REGISTER_KERNEL(conv2d_double_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::ConvGradGradKernel,
+                   float,
+                   double) {}

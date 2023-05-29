@@ -13,8 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/analysis/passes/ir_graph_build_pass.h"
-#include <memory>
+
 #include <string>
+
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/inference/io.h"
@@ -31,7 +32,8 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
   if (!argument->scope_valid()) {
     argument->SetScope(new framework::Scope);
   }
-  PADDLE_ENFORCE_EQ(argument->use_gpu_valid(), true,
+  PADDLE_ENFORCE_EQ(argument->use_gpu_valid(),
+                    true,
                     platform::errors::PreconditionNotMet(
                         "The use_gpu field should be valid"));
 
@@ -48,9 +50,12 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
   } else if (argument->model_program_path_valid() &&
              argument->model_params_path_valid()) {
     auto program = LoadModel(
-        argument->model_program_path(), argument->model_params_path(),
-        argument->scope_ptr(), place,
-        argument->model_from_memory_valid() && argument->model_from_memory());
+        argument->model_program_path(),
+        argument->model_params_path(),
+        argument->scope_ptr(),
+        place,
+        argument->model_from_memory_valid() && argument->model_from_memory(),
+        argument->skip_load_params());
     argument->SetMainProgram(program.release());
   } else {
     PADDLE_THROW(platform::errors::PreconditionNotMet(
@@ -58,7 +63,8 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
         "set."));
   }
 
-  auto graph = std::unique_ptr<Graph>(new Graph(argument->main_program()));
+  auto graph = std::unique_ptr<framework::ir::Graph>(
+      new framework::ir::Graph(argument->main_program()));
   argument->SetMainGraph(graph.release());
   auto *scope_ptr = argument->scope_ptr();
   PADDLE_ENFORCE_NOT_NULL(scope_ptr,
@@ -87,31 +93,42 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
           &argument->ipu_available_memory_proportion());
       argument->main_graph().SetNotOwned("enable_half_partial",
                                          &argument->ipu_enable_half_partial());
+      argument->main_graph().SetNotOwned("custom_ops_info",
+                                         &argument->ipu_custom_ops_info());
+      argument->main_graph().SetNotOwned("custom_patterns",
+                                         &argument->ipu_custom_patterns());
+      argument->main_graph().SetNotOwned(
+          "enable_model_runtime_executor",
+          &argument->ipu_enable_model_runtime_executor());
     }
   }
 #endif
 }
 
 std::unique_ptr<framework::ProgramDesc> IrGraphBuildPass::LoadModel(
-    const std::string &path, framework::Scope *scope,
+    const std::string &path,
+    framework::Scope *scope,
     const platform::Place &place) {
   framework::Executor exe(place);
   return Load(&exe, scope, path);
 }
 
 std::unique_ptr<framework::ProgramDesc> IrGraphBuildPass::LoadModel(
-    const std::string &program_path, const std::string &params_path,
-    framework::Scope *scope, const platform::Place &place,
-    bool model_from_memory) {
+    const std::string &program_path,
+    const std::string &params_path,
+    framework::Scope *scope,
+    const platform::Place &place,
+    bool model_from_memory,
+    bool skip_load_params) {
   framework::Executor exe(place);
   if (!model_from_memory) {
-    return Load(&exe, scope, program_path, params_path);
+    return Load(&exe, scope, program_path, params_path, !skip_load_params);
   } else {
     return LoadFromMemory(&exe, scope, program_path, params_path);
   }
 }
 
-std::string IrGraphBuildPass::repr() const { return "ir-graph-build-pass"; }
+std::string IrGraphBuildPass::repr() const { return "ir_graph_build_pass"; }
 
 }  // namespace analysis
 }  // namespace inference

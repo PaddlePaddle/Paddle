@@ -45,8 +45,10 @@ static inline std::string VarName(int index) {
 class OperationExpression {
  public:
   explicit OperationExpression(
-      std::string op_type, const std::vector<int>& input_ids,
-      const std::vector<int>& output_ids, std::string rhs_type,
+      std::string op_type,
+      const std::vector<int>& input_ids,
+      const std::vector<int>& output_ids,
+      std::string rhs_type,
       std::string lhs_type,
       const std::vector<int>& intermediate_output_ids = {})
       : op_type_(op_type),
@@ -93,7 +95,7 @@ class TemplateVariable {
     strings_[identifier] = expression;
   }
 
-  void Remove(std::string identifier, std::string expression) {
+  void Remove(std::string identifier, std::string expression UNUSED) {
     for (auto it = strings_.begin(); it != strings_.end();) {
       if (it->first == identifier) {
         it = strings_.erase(it);
@@ -138,7 +140,8 @@ class CodeTemplate {
     }
 
     for (auto iter : template_var.Get()) {
-      PADDLE_ENFORCE_NE(found.find(iter.first), found.end(),
+      PADDLE_ENFORCE_NE(found.find(iter.first),
+                        found.end(),
                         platform::errors::PreconditionNotMet(
                             "Keyword %s in template is not set.", iter.first));
     }

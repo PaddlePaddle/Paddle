@@ -12,26 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
-import paddle
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-from paddle.fluid.backward import calc_gradient
 import numpy as np
 
+import paddle
+from paddle import fluid
 
-class ConvBNLayer(fluid.Layer):
-    def __init__(self,
-                 num_channels,
-                 num_filters,
-                 filter_size,
-                 stride=1,
-                 groups=1,
-                 data_format="NCHW"):
-        super(ConvBNLayer, self).__init__()
+
+class ConvBNLayer(paddle.nn.Layer):
+    def __init__(
+        self,
+        num_channels,
+        num_filters,
+        filter_size,
+        stride=1,
+        groups=1,
+        data_format="NCHW",
+    ):
+        super().__init__()
 
         self._conv = paddle.nn.Conv2D(
             in_channels=num_channels,
@@ -41,10 +40,12 @@ class ConvBNLayer(fluid.Layer):
             padding=(filter_size - 1) // 2,
             groups=groups,
             bias_attr=False,
-            data_format=data_format)
+            data_format=data_format,
+        )
 
         self._batch_norm = paddle.nn.BatchNorm(
-            num_filters, data_layout=data_format)
+            num_filters, data_layout=data_format
+        )
 
     def forward(self, inputs):
         y = self._conv(inputs)
@@ -56,19 +57,20 @@ def create_program(data_format="NCHW"):
     main = fluid.Program()
     startup = fluid.Program()
     with fluid.program_guard(main, startup):
-        x = fluid.data(name='img', shape=[-1, 3, 224, 224])
+        x = paddle.static.data(name='img', shape=[-1, 3, 224, 224])
         x.stop_gradient = False
         if data_format == "NHWC":
             x = paddle.transpose(x, [0, 2, 3, 1])
-        x = fluid.layers.prelu(x, mode="channel")
+        x = paddle.static.nn.prelu(x, mode="channel")
         conv = ConvBNLayer(
             num_channels=3,
             num_filters=3,
             filter_size=1,
-            data_format=data_format)
+            data_format=data_format,
+        )
         y = conv(x) + x
 
-        loss = fluid.layers.reduce_sum(y)
+        loss = paddle.sum(y)
 
         sgd = fluid.optimizer.SGD(learning_rate=0.01)
         sgd.minimize(loss)
@@ -86,28 +88,31 @@ class TestInplaceAddto(unittest.TestCase):
                 fluid.set_flags({"FLAGS_cudnn_deterministic": True})
             fluid.set_flags({"FLAGS_max_inplace_grad_add": 2})
             loss, main, startup, w = create_program(data_format=data_format)
-            place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
-            ) else fluid.CPUPlace()
+            place = (
+                fluid.CUDAPlace(0)
+                if fluid.core.is_compiled_with_cuda()
+                else fluid.CPUPlace()
+            )
             exe = fluid.Executor(place)
 
             strategy = fluid.BuildStrategy()
             strategy.enable_addto = enable_addto
-            compiled = fluid.CompiledProgram(main).with_data_parallel(
-                loss_name=loss.name, build_strategy=strategy)
+            compiled = fluid.CompiledProgram(main, build_strategy=strategy)
 
             exe.run(startup)
-            img = np.random.uniform(-128, 128,
-                                    [8, 3, 224, 224]).astype(np.float32)
+            img = np.random.uniform(-128, 128, [8, 3, 224, 224]).astype(
+                np.float32
+            )
             for i in range(10):
-                res = exe.run(compiled,
-                              feed={'img': img},
-                              fetch_list=[loss.name, w.name])
+                res = exe.run(
+                    compiled, feed={'img': img}, fetch_list=[loss.name, w.name]
+                )
             return res
 
         res1, w1 = run_program(True)
         res2, w2 = run_program(False)
 
-        self.assertTrue(np.array_equal(res1, res2))
+        np.testing.assert_array_equal(res1, res2)
 
     def test_nchw(self):
         self.check_result()

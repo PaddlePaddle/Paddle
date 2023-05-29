@@ -21,14 +21,13 @@ namespace phi {
 template <typename T, typename Context>
 void LayerNormGradKernel(const Context& ctx,
                          const DenseTensor& x,
+                         const paddle::optional<DenseTensor>& scale,
+                         const paddle::optional<DenseTensor>& bias,
                          const DenseTensor& mean,
                          const DenseTensor& variance,
-                         paddle::optional<const DenseTensor&> scale,
-                         paddle::optional<const DenseTensor&> bias,
                          const DenseTensor& out_grad,
                          float epsilon,
                          int begin_norm_axis,
-                         bool is_test,
                          DenseTensor* x_grad,
                          DenseTensor* scale_grad,
                          DenseTensor* bias_grad);

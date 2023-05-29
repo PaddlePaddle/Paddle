@@ -16,7 +16,6 @@
 
 #include "paddle/fluid/eager/eager_tensor.h"
 #include "paddle/fluid/framework/convert_utils.h"
-
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/imperative/infer_var_type_context.h"
 #include "paddle/fluid/imperative/op_base.h"
@@ -25,12 +24,13 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
-DECLARE_bool(use_mkldnn);
+PHI_DECLARE_bool(use_mkldnn);
 namespace paddle {
 namespace imperative {
 
@@ -44,7 +44,8 @@ void ThreadSafeNameSet::Remove(const std::string& name) {
   std::lock_guard<std::mutex> guard(mtx_);
   auto iter = set_.find(name);
   PADDLE_ENFORCE_EQ(
-      iter != set_.end(), true,
+      iter != set_.end(),
+      true,
       platform::errors::NotFound("Variable name %s does not exist", name));
   set_.erase(iter);
 }
@@ -97,8 +98,8 @@ static std::string DebugString(
     const framework::Variable& var = vars[i]->Var();
     if (!var.IsInitialized()) {
       ss << "NOT_INITED_VAR";
-    } else if (var.IsType<framework::LoDTensor>()) {
-      auto& tensor = var.Get<framework::LoDTensor>();
+    } else if (var.IsType<phi::DenseTensor>()) {
+      auto& tensor = var.Get<phi::DenseTensor>();
       ss << "LoDTensor<";
       if (tensor.IsInitialized()) {
         ss << framework::DataTypeToString(
@@ -121,8 +122,9 @@ static std::string DebugString(
            << ", ";
         ss << tensor.place() << ", ";
         ss << "height(" << selected_rows.height() << "), rows(";
-        std::for_each(rows.cbegin(), rows.cend(),
-                      [&ss](const int64_t r) { ss << r << " "; });
+        std::for_each(rows.cbegin(), rows.cend(), [&ss](const int64_t r) {
+          ss << r << " ";
+        });
         ss << "), dims(" << tensor.dims() << ")";
       } else {
         ss << "NOT_INITED";
@@ -186,7 +188,7 @@ template <typename VarType>
 static void SetForwardDataTypeOfGradVars(const NameVarMap<VarType>& outs) {
   for (auto& var_pair : outs) {
     for (auto& var : var_pair.second) {
-      // NOTE(zhiqu): The ouput may be NULL because of pruning.
+      // NOTE(zhiqu): The output may be NULL because of pruning.
       if (var) {
         SetForwardDataTypeOfGradVar(var);
       }
@@ -235,8 +237,7 @@ void VarBase::ClearGradient(bool set_to_zero) {
     } else {
       platform::RecordEvent record_event(
           "ClearGradient", platform::TracerEventType::UserDefined, 2);
-      auto* grad_t =
-          grad_var_->MutableVar()->GetMutable<framework::LoDTensor>();
+      auto* grad_t = grad_var_->MutableVar()->GetMutable<phi::DenseTensor>();
       if (grad_t->IsInitialized()) {
         if (set_to_zero) {
           auto* dev_ctx =
@@ -282,20 +283,20 @@ bool VarBase::_IsGradientSetEmpty() {
 std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
                                              const bool blocking) const {
   PADDLE_ENFORCE_EQ(
-      Var().IsInitialized() && (Var().IsType<framework::LoDTensor>() ||
+      Var().IsInitialized() && (Var().IsType<phi::DenseTensor>() ||
                                 Var().IsType<phi::SelectedRows>()),
-      true, platform::errors::InvalidArgument(
-                "Variable is not initialized or Variable's type is not "
-                "LoDTensor or SelectedRows when getting numpy tensor"));
+      true,
+      platform::errors::InvalidArgument(
+          "Variable is not initialized or Variable's type is not "
+          "LoDTensor or SelectedRows when getting numpy tensor"));
 
-  if (Var().IsType<framework::LoDTensor>()) {
-    auto& src_tensor = Var().Get<framework::LoDTensor>();
+  if (Var().IsType<phi::DenseTensor>()) {
+    auto& src_tensor = Var().Get<phi::DenseTensor>();
     // TODO(Jiabin): change this after move unique_name generator to CXX
     auto new_var = std::make_shared<VarBase>(
         true, Name() + std::to_string(copied_counter_++));
 
-    auto* dst_tensor =
-        new_var->MutableVar()->GetMutable<framework::LoDTensor>();
+    auto* dst_tensor = new_var->MutableVar()->GetMutable<phi::DenseTensor>();
     dst_tensor->set_lod(src_tensor.lod());
     new_var->SetPersistable(Persistable());
     new_var->SetDataType(DataType());
@@ -319,7 +320,8 @@ std::shared_ptr<VarBase> VarBase::NewVarBase(const platform::Place& dst_place,
     auto* dst_selected_rows =
         new_var->MutableVar()->GetMutable<phi::SelectedRows>();
 
-    framework::TensorCopy(src_selected_rows.value(), dst_place,
+    framework::TensorCopy(src_selected_rows.value(),
+                          dst_place,
                           dst_selected_rows->mutable_value());
     if (blocking) {
       platform::DeviceContextPool::Instance().Get(dst_place)->Wait();
@@ -343,16 +345,20 @@ void VarBase::CopyFrom(const VarBase& src, const bool blocking) {
 
   VLOG(3) << "Deep copy Tensor from " << src.Name() << " to " << Name();
   if (Var().IsInitialized()) {
-    PADDLE_ENFORCE_EQ(DataType(), src.DataType(),
+    PADDLE_ENFORCE_EQ(DataType(),
+                      src.DataType(),
                       platform::errors::PreconditionNotMet(
                           "Tensor %s has different data type with Tensor %s, "
                           "Tensor Copy cannot be performed!",
-                          Name(), src.Name()));
-    PADDLE_ENFORCE_EQ(Type(), src.Type(),
+                          Name(),
+                          src.Name()));
+    PADDLE_ENFORCE_EQ(Type(),
+                      src.Type(),
                       platform::errors::PreconditionNotMet(
                           "Tensor %s has different type with Tensor %s, Tensor "
                           "Copy cannot be performed!",
-                          Name(), src.Name()));
+                          Name(),
+                          src.Name()));
   } else {
     SetDataType(src.DataType());
     SetType(src.Type());
@@ -361,20 +367,24 @@ void VarBase::CopyFrom(const VarBase& src, const bool blocking) {
   }
 
   platform::Place place = src.Place();
-  if (src.Var().IsType<framework::LoDTensor>()) {
-    auto& src_tensor = src.Var().Get<framework::LoDTensor>();
-    auto* dst_tensor = MutableVar()->GetMutable<framework::LoDTensor>();
+  if (src.Var().IsType<phi::DenseTensor>()) {
+    auto& src_tensor = src.Var().Get<phi::DenseTensor>();
+    auto* dst_tensor = MutableVar()->GetMutable<phi::DenseTensor>();
     if (dst_tensor && dst_tensor->IsInitialized()) {
-      PADDLE_ENFORCE_EQ(dst_tensor->dims(), src_tensor.dims(),
+      PADDLE_ENFORCE_EQ(dst_tensor->dims(),
+                        src_tensor.dims(),
                         platform::errors::PreconditionNotMet(
                             "Tensor %s has different dims with Tensor %s, "
                             "Tensor Copy cannot be performed!",
-                            Name(), src.Name()));
-      PADDLE_ENFORCE_EQ(dst_tensor->lod(), src_tensor.lod(),
+                            Name(),
+                            src.Name()));
+      PADDLE_ENFORCE_EQ(dst_tensor->lod(),
+                        src_tensor.lod(),
                         platform::errors::PreconditionNotMet(
                             "Tensor %s has different dims with Tensor %s, "
                             "Tensor Copy cannot be performed!",
-                            Name(), src.Name()));
+                            Name(),
+                            src.Name()));
       place = Place();
     } else {
       dst_tensor->set_lod(src_tensor.lod());
@@ -390,11 +400,13 @@ void VarBase::CopyFrom(const VarBase& src, const bool blocking) {
     auto& src_tensor = src_selected_rows.value();
     auto* dst_tensor = dst_selected_rows->mutable_value();
     if (dst_tensor && dst_tensor->IsInitialized()) {
-      PADDLE_ENFORCE_EQ(dst_tensor->dims(), src_tensor.dims(),
+      PADDLE_ENFORCE_EQ(dst_tensor->dims(),
+                        src_tensor.dims(),
                         platform::errors::PreconditionNotMet(
                             "Tensor %s has different dims with Tensor %s, "
                             "Tensor Copy cannot be performed!",
-                            Name(), src.Name()));
+                            Name(),
+                            src.Name()));
       place = Place();
     } else {
       dst_tensor->Resize(src_tensor.dims());
@@ -408,7 +420,8 @@ void VarBase::CopyFrom(const VarBase& src, const bool blocking) {
 
 void VarBase::BumpInplaceVersion() {
   PADDLE_ENFORCE_EQ(
-      Var().IsInitialized(), true,
+      Var().IsInitialized(),
+      true,
       platform::errors::InvalidArgument(
           "Tensor %s has not been initialized, please check if it has no data.",
           Name()));
@@ -420,24 +433,29 @@ void VarBase::BumpInplaceVersion() {
 // and fill into the grad_var_ of the current varbase.
 void VarBase::_CopyGradientFrom(const VarBase& src) {
   if (Var().IsInitialized()) {
-    PADDLE_ENFORCE_EQ(DataType(), src.DataType(),
+    PADDLE_ENFORCE_EQ(DataType(),
+                      src.DataType(),
                       platform::errors::PreconditionNotMet(
                           "Tensor %s has different data type with Tensor %s",
-                          Name(), src.Name()));
-    PADDLE_ENFORCE_EQ(Type(), src.Type(),
+                          Name(),
+                          src.Name()));
+    PADDLE_ENFORCE_EQ(Type(),
+                      src.Type(),
                       platform::errors::PreconditionNotMet(
                           "Tensor %s has different type with Tensor %s, Tensor "
                           "ShareGradientDataWith cannot be performed!",
-                          Name(), src.Name()));
+                          Name(),
+                          src.Name()));
   }
   VLOG(4) << " VarBase copy gradient with " << src.Name();
   if (grad_var_) {
-    auto& src_tensor = src.Var().Get<framework::LoDTensor>();
-    PADDLE_ENFORCE_EQ(src_tensor.IsInitialized(), true,
+    auto& src_tensor = src.Var().Get<phi::DenseTensor>();
+    PADDLE_ENFORCE_EQ(src_tensor.IsInitialized(),
+                      true,
                       platform::errors::InvalidArgument(
                           "Tensor %s has not been initialized", src.Name()));
-    auto* grad_t = grad_var_->MutableVar()->GetMutable<framework::LoDTensor>();
-    auto* var_ = MutableVar()->GetMutable<framework::LoDTensor>();
+    auto* grad_t = grad_var_->MutableVar()->GetMutable<phi::DenseTensor>();
+    auto* var_ = MutableVar()->GetMutable<phi::DenseTensor>();
     grad_t->ShareDataWith(src_tensor);
     grad_t->Resize(var_->dims());
   }
@@ -459,14 +477,15 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
                           const framework::AttributeMap& attrs,
                           const framework::AttributeMap& default_attrs,
                           const platform::Place& place) {
-  auto* op_kernel = dynamic_cast<const framework::OperatorWithKernel*>(&op);
+  auto* op_kernel = static_cast<const framework::OperatorWithKernel*>(&op);
   PADDLE_ENFORCE_NOT_NULL(
-      op_kernel, platform::errors::PermissionDenied(
-                     "Only support operator with kernel in Dygraph mode."));
+      op_kernel,
+      platform::errors::PermissionDenied(
+          "Only support operator with kernel in Dygraph mode."));
   auto& info = op.Info();
   if (info.infer_var_type_) {
-    RuntimeInferVarTypeContext<VarType> infer_var_type_ctx(ins, outs, attrs,
-                                                           default_attrs);
+    RuntimeInferVarTypeContext<VarType> infer_var_type_ctx(
+        ins, outs, attrs, default_attrs);
     info.infer_var_type_(&infer_var_type_ctx);
   }
 
@@ -497,12 +516,12 @@ static void OpBaseRunImpl(const framework::OperatorBase& op,
    * `transfer_scope` is created before PrepareData, the data after
    * transform is stored in the temporary scope, and then discarded
    * after the execution of op, but the original input is directly
-   * overwritten in the previous dynamic graph implemention.
+   * overwritten in the previous dynamic graph implementation.
    */
   auto prepared_op =
       PreparedOp::Prepare(ins, outs, *op_kernel, place, attrs, default_attrs);
-  auto tmp_ins_ptr =
-      PrepareData<VarType>(*op_kernel, ins, prepared_op.kernel_type());
+  auto tmp_ins_ptr = PrepareData<VarType>(
+      *op_kernel, ins, prepared_op.kernel_key(), prepared_op.place());
   if (tmp_ins_ptr == nullptr) {
     prepared_op.Run(ins, outs, attrs, default_attrs);
   } else {
@@ -556,7 +575,8 @@ void ClearNoNeedBufferInputs(OpBase* op) {
     VLOG(2) << "Clear data buffer of " << slot << " in " << op->Type();
 
     PADDLE_ENFORCE_EQ(
-        iter->second.IsGrad(), false,
+        iter->second.IsGrad(),
+        false,
         platform::errors::InvalidArgument(
             "Only forward variable buffers can be clear, this may be a bug"));
 
@@ -564,32 +584,37 @@ void ClearNoNeedBufferInputs(OpBase* op) {
       if (!each_var) continue;
 
       auto& var = each_var->Var();
-      PADDLE_ENFORCE_EQ(var.IsType<framework::LoDTensor>(), true,
+      PADDLE_ENFORCE_EQ(var.IsType<phi::DenseTensor>(),
+                        true,
                         platform::errors::PermissionDenied(
                             "NoNeedBufferVars only support LoDTensor"));
       auto new_var = new VariableWrapper(each_var->Name());
-      auto* new_tensor =
-          new_var->MutableVar()->GetMutable<framework::LoDTensor>();
-      auto& old_tensor = var.Get<framework::LoDTensor>();
+      auto* new_tensor = new_var->MutableVar()->GetMutable<phi::DenseTensor>();
+      auto& old_tensor = var.Get<phi::DenseTensor>();
       new_tensor->Resize(old_tensor.dims());
       new_tensor->set_lod(old_tensor.lod());
+      new_tensor->set_type(old_tensor.dtype());
+      new_tensor->set_layout(old_tensor.layout());
       each_var.reset(new_var);
     }
   }
 }
 
 std::shared_ptr<GradOpNode> CreateGradOpNode(
-    const framework::OperatorBase& op, const NameVarBaseMap& ins,
-    const NameVarBaseMap& outs, const framework::AttributeMap& attrs,
-    const framework::AttributeMap& default_attrs, const platform::Place& place,
+    const framework::OperatorBase& op,
+    const NameVarBaseMap& ins,
+    const NameVarBaseMap& outs,
+    const framework::AttributeMap& attrs,
+    const framework::AttributeMap& default_attrs,
+    const platform::Place& place,
     const std::map<std::string, std::string>& inplace_map) {
   const auto& info = op.Info();
   if (!info.dygraph_grad_op_maker_) {
     return nullptr;
   }
 
-  auto grad_node = info.dygraph_grad_op_maker_(op.Type(), ins, outs, attrs,
-                                               default_attrs, inplace_map);
+  auto grad_node = info.dygraph_grad_op_maker_(
+      op.Type(), ins, outs, attrs, default_attrs, inplace_map);
   if (grad_node && !grad_node->empty()) {
     for (auto& grad_op : *grad_node) {
       grad_op.SetId(OpBase::GenerateUniqueId());
@@ -603,9 +628,12 @@ std::shared_ptr<GradOpNode> CreateGradOpNode(
 }
 
 std::shared_ptr<GradOpNode> CreateGradOpNode(
-    const framework::OperatorBase& op, const NameTensorMap& ins,
-    const NameTensorMap& outs, const framework::AttributeMap& attrs,
-    const framework::AttributeMap& default_attrs, const platform::Place& place,
+    const framework::OperatorBase& op,
+    const NameTensorMap& ins,
+    const NameTensorMap& outs,
+    const framework::AttributeMap& attrs,
+    const framework::AttributeMap& default_attrs,
+    const platform::Place& place,
     const std::map<std::string, std::string>& inplace_map) {
   // Do Nothing in Eager Mode.
   return nullptr;

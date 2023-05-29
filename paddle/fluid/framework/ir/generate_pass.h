@@ -24,9 +24,11 @@ namespace ir {
 class GeneratePass : public Pass {
  public:
   // from binary_str
-  explicit GeneratePass(const std::string& binary_str);
+  explicit GeneratePass(const std::string& binary_str,
+                        const std::string& pass_type = "");
   // from PassDesc/MultiPassDesc
-  explicit GeneratePass(const proto::MultiPassDesc& multi_pass_desc);
+  explicit GeneratePass(const proto::MultiPassDesc& multi_pass_desc,
+                        const std::string& pass_type = "");
 
  protected:
   void ApplyImpl(Graph* graph) const override;
@@ -129,14 +131,16 @@ class SubgraphHelper {
 
   void AddOutputVars(const VarHelper& var_helper);
 
-  template <size_t i, typename... Ts,
+  template <size_t i,
+            typename... Ts,
             std::enable_if_t<i + 1 < sizeof...(Ts)>* = nullptr>
   void AddOutputVars(const std::tuple<Ts...>& outputs) {
     AddOutputVars(std::get<i>(outputs));
     AddOutputVars<i + 1>(outputs);
   }
 
-  template <size_t i, typename... Ts,
+  template <size_t i,
+            typename... Ts,
             std::enable_if_t<i + 1 == sizeof...(Ts)>* = nullptr>
   void AddOutputVars(const std::tuple<Ts...>& outputs) {
     AddOutputVars(std::get<i>(outputs));

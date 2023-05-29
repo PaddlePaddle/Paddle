@@ -12,14 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
-import paddle.nn.functional as F
 import unittest
+
 import numpy as np
-import six
+from eager_op_test import OpTest, convert_float_to_uint16
+
 import paddle
-from op_test import OpTest
-from paddle.fluid.layers import core
+from paddle.fluid import core
 
 
 def fill_diagonal_ndarray(x, value, offset=0, dim1=0, dim2=1):
@@ -38,13 +37,15 @@ def fill_diagonal_ndarray(x, value, offset=0, dim1=0, dim2=1):
         diagonal = np.lib.stride_tricks.as_strided(
             x[:, offset:] if dim_sum == 1 else x[:, :, offset:],
             shape=(shape[dim3], diagdim),
-            strides=(strides[dim3], strides[dim1] + strides[dim2]))
+            strides=(strides[dim3], strides[dim1] + strides[dim2]),
+        )
     else:
         diagdim = min(shape[dim2], shape[dim1] + offset)
         diagonal = np.lib.stride_tricks.as_strided(
             x[-offset:, :] if dim_sum in [1, 2] else x[:, -offset:],
             shape=(shape[dim3], diagdim),
-            strides=(strides[dim3], strides[dim1] + strides[dim2]))
+            strides=(strides[dim3], strides[dim1] + strides[dim2]),
+        )
 
     diagonal[...] = value
     return x
@@ -85,9 +86,10 @@ def fill_gt(x, y, offset, dim1, dim2):
 class TensorFillDiagTensor_Test(OpTest):
     def setUp(self):
         self.op_type = "fill_diagonal_tensor"
+        self.python_api = paddle.tensor.manipulation.fill_diagonal_tensor
         self.init_kernel_type()
         x = np.random.random((10, 10)).astype(self.dtype)
-        y = np.random.random((10, )).astype(self.dtype)
+        y = np.random.random((10,)).astype(self.dtype)
         dim1 = 0
         dim2 = 1
         offset = 0
@@ -95,7 +97,7 @@ class TensorFillDiagTensor_Test(OpTest):
 
         self.inputs = {"X": x, "Y": y}
         self.outputs = {'Out': out}
-        self.attrs = {"dim1": dim1, "dim2": dim2, "offset": offset}
+        self.attrs = {"offset": offset, "dim1": dim1, "dim2": dim2}
 
     def init_kernel_type(self):
         self.dtype = np.float64
@@ -110,6 +112,7 @@ class TensorFillDiagTensor_Test(OpTest):
 class TensorFillDiagTensor_Test2(TensorFillDiagTensor_Test):
     def setUp(self):
         self.op_type = "fill_diagonal_tensor"
+        self.python_api = paddle.tensor.manipulation.fill_diagonal_tensor
         self.init_kernel_type()
         x = np.random.random((2, 20, 25)).astype(self.dtype)
         y = np.random.random((2, 20)).astype(self.dtype)
@@ -120,7 +123,7 @@ class TensorFillDiagTensor_Test2(TensorFillDiagTensor_Test):
 
         self.inputs = {"X": x, "Y": y}
         self.outputs = {'Out': out}
-        self.attrs = {"dim1": dim1, "dim2": dim2, "offset": offset}
+        self.attrs = {"offset": offset, "dim1": dim1, "dim2": dim2}
 
     def init_kernel_type(self):
         self.dtype = np.float32
@@ -129,6 +132,7 @@ class TensorFillDiagTensor_Test2(TensorFillDiagTensor_Test):
 class TensorFillDiagTensor_Test3(TensorFillDiagTensor_Test):
     def setUp(self):
         self.op_type = "fill_diagonal_tensor"
+        self.python_api = paddle.tensor.manipulation.fill_diagonal_tensor
         self.init_kernel_type()
         x = np.random.random((2, 20, 20, 3)).astype(self.dtype)
         y = np.random.random((2, 3, 18)).astype(self.dtype)
@@ -139,11 +143,63 @@ class TensorFillDiagTensor_Test3(TensorFillDiagTensor_Test):
 
         self.inputs = {"X": x, "Y": y}
         self.outputs = {'Out': out}
-        self.attrs = {"dim1": dim1, "dim2": dim2, "offset": offset}
+        self.attrs = {"offset": offset, "dim1": dim1, "dim2": dim2}
 
     def init_kernel_type(self):
         self.dtype = np.float16
 
 
+class TensorFillDiagTensorFP16OP(TensorFillDiagTensor_Test):
+    def init_kernel_type(self):
+        self.dtype = np.float16
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not complied with CUDA and not support the bfloat16",
+)
+class TensorFillDiagTensorBF16(OpTest):
+    def setUp(self):
+        self.op_type = "fill_diagonal_tensor"
+        self.python_api = paddle.tensor.manipulation.fill_diagonal_tensor
+        self.init_kernel_type()
+        self.init_config()
+        self.init_input_output()
+
+    def init_kernel_type(self):
+        self.dtype = np.uint16
+
+    def init_config(self):
+        self.x = np.random.random((10, 10)).astype(np.float32)
+        self.y = np.random.random((10,)).astype(np.float32)
+        self.dim1 = 0
+        self.dim2 = 1
+        self.offset = 0
+
+    def init_input_output(self):
+        out = fill_gt(self.x, self.y, self.offset, self.dim1, self.dim2)
+
+        self.inputs = {
+            "X": convert_float_to_uint16(self.x),
+            "Y": convert_float_to_uint16(self.y),
+        }
+        self.outputs = {'Out': convert_float_to_uint16(out)}
+        self.attrs = {
+            "offset": self.offset,
+            "dim1": self.dim1,
+            "dim2": self.dim2,
+        }
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place)
+
+    def test_check_grad(self):
+        place = core.CUDAPlace(0)
+        self.check_grad_with_place(place, ['X'], 'Out')
+
+
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

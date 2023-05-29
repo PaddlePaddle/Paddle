@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
-
+#include "paddle/phi/core/macros.h"
 namespace phi {
 namespace funcs {
 
@@ -29,7 +29,8 @@ struct ForRange {
 
 template <>
 struct ForRange<phi::CPUContext> {
-  ForRange(const phi::CPUContext& dev_ctx, size_t limit) : limit_(limit) {}
+  ForRange(const phi::CPUContext& dev_ctx UNUSED, size_t limit)
+      : limit_(limit) {}
 
   template <typename Function>
   void operator()(Function func) const {
@@ -38,22 +39,6 @@ struct ForRange<phi::CPUContext> {
     }
   }
 
-  size_t limit_;
-};
-
-// NOTE: After the pten kernel is migrated, it needs to be deleted.
-template <>
-struct ForRange<paddle::platform::CPUDeviceContext> {
-  ForRange(const paddle::platform::CPUDeviceContext& dev_ctx, size_t limit)
-      : dev_ctx_(dev_ctx), limit_(limit) {}
-
-  template <typename Function>
-  void operator()(Function func) const {
-    phi::funcs::ForRange<phi::CPUContext> for_range(dev_ctx_, limit_);
-    for_range(func);
-  }
-
-  const paddle::platform::CPUDeviceContext& dev_ctx_;
   size_t limit_;
 };
 
@@ -104,22 +89,6 @@ struct ForRange<phi::GPUContext> {
   }
 
   const phi::GPUContext& dev_ctx_;
-  size_t limit_;
-};
-
-// NOTE: After the pten kernel is migrated, it needs to be deleted.
-template <>
-struct ForRange<paddle::platform::CUDADeviceContext> {
-  ForRange(const paddle::platform::CUDADeviceContext& dev_ctx, size_t limit)
-      : dev_ctx_(dev_ctx), limit_(limit) {}
-
-  template <typename Function>
-  inline void operator()(Function func) const {
-    phi::funcs::ForRange<phi::GPUContext> for_range(dev_ctx_, limit_);
-    for_range(func);
-  }
-
-  const paddle::platform::CUDADeviceContext& dev_ctx_;
   size_t limit_;
 };
 

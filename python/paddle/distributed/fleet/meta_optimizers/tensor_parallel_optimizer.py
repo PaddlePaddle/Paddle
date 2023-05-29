@@ -11,20 +11,25 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 
-from __future__ import print_function
-from __future__ import division
+from paddle import static
 
-import paddle.fluid as fluid
-from paddle.fluid import core, unique_name
+from .common import (
+    OP_ROLE_KEY,
+    OP_ROLE_VAR_KEY,
+    CollectiveHelper,
+    OpRole,
+    is_backward_op,
+    is_loss_grad_op,
+    is_optimizer_op,
+)
 from .meta_optimizer_base import MetaOptimizerBase
-from .common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY, CollectiveHelper, is_update_op, is_loss_grad_op, is_backward_op, is_optimizer_op
 
 __all__ = []
 
 
 class TensorParallelOptimizer(MetaOptimizerBase):
     def __init__(self, optimizer):
-        super(TensorParallelOptimizer, self).__init__(optimizer)
+        super().__init__(optimizer)
         self.inner_opt = optimizer
         self.meta_optimizers_white_list = [
             "RecomputeOptimizer",
@@ -32,23 +37,26 @@ class TensorParallelOptimizer(MetaOptimizerBase):
             "LarsOptimizer",
             "LambOptimizer",
         ]
-        self.meta_optimizers_black_list = ["GraphExecutionOptimizer", ]
+        self.meta_optimizers_black_list = []
         self.mp_ring_id = 0
         self.global_ring_id = 1
         self.dp_ring_id = 2
 
-    def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
-                        user_defined_strategy):
-        super(TensorParallelOptimizer, self)._set_basic_info(
-            loss, role_maker, user_defined_optimizer, user_defined_strategy)
+    def _set_basic_info(
+        self, loss, role_maker, user_defined_optimizer, user_defined_strategy
+    ):
+        super()._set_basic_info(
+            loss, role_maker, user_defined_optimizer, user_defined_strategy
+        )
         self.mp_degree = user_defined_strategy.tensor_parallel_configs[
-            'tensor_parallel_degree']
+            'tensor_parallel_degree'
+        ]
 
     def _can_apply(self):
         if not self.role_maker._is_collective:
             return False
 
-        if self.user_defined_strategy.tensor_parallel == True:
+        if self.user_defined_strategy.tensor_parallel:
             return True
         return False
 
@@ -58,7 +66,9 @@ class TensorParallelOptimizer(MetaOptimizerBase):
 
     def _enable_strategy(self, dist_strategy, context):
         dist_strategy.tensor_parallel = True
-        dist_strategy.tensor_parallel_configs = {"tensor_parallel_degree": 1, }
+        dist_strategy.tensor_parallel_configs = {
+            "tensor_parallel_degree": 1,
+        }
 
     def _broadcast_params(self, ring_id, mp_mode):
         block = self.startup_program.global_block()
@@ -74,16 +84,18 @@ class TensorParallelOptimizer(MetaOptimizerBase):
                 attrs={
                     'ring_id': ring_id,
                     'root': 0,
-                    OP_ROLE_KEY: OpRole.Forward
-                })
+                    OP_ROLE_KEY: OpRole.Forward,
+                },
+            )
 
-        if not param: return  # no parameter on this device
+        if not param:
+            return  # no parameter on this device
         block.append_op(
             type='c_sync_comm_stream',
             inputs={'X': param},
             outputs={'Out': param},
-            attrs={'ring_id': ring_id,
-                   OP_ROLE_KEY: OpRole.Forward})
+            attrs={'ring_id': ring_id, OP_ROLE_KEY: OpRole.Forward},
+        )
 
     def _get_process_group_info(self):
         # global ring info
@@ -96,7 +108,8 @@ class TensorParallelOptimizer(MetaOptimizerBase):
         self.mp_nranks = self.mp_degree
         mp_group = self.rank // self.mp_degree
         self.mp_endpoints = [
-            self.endpoints[i] for i in range(self.global_nranks)
+            self.endpoints[i]
+            for i in range(self.global_nranks)
             if i // self.mp_degree == mp_group
         ]
 
@@ -116,36 +129,55 @@ class TensorParallelOptimizer(MetaOptimizerBase):
 
         # Create global ring for all gpus
         collective_helper._init_communicator(
-            self.startup_program, self.current_endpoint, self.global_endpoints,
-            self.global_rank, self.global_ring_id, True, self.global_ring_id,
-            True)
+            self.startup_program,
+            self.current_endpoint,
+            self.global_endpoints,
+            self.global_rank,
+            self.global_ring_id,
+            True,
+            self.global_ring_id,
+            True,
+        )
 
         # Create model parallel ring for all gpus
         collective_helper._init_communicator(
-            self.startup_program, self.current_endpoint, self.mp_endpoints,
-            self.mp_rank, self.mp_ring_id, True, self.global_ring_id, True)
+            self.startup_program,
+            self.current_endpoint,
+            self.mp_endpoints,
+            self.mp_rank,
+            self.mp_ring_id,
+            True,
+            self.global_ring_id,
+            True,
+        )
         self._broadcast_params(self.mp_ring_id, mp_mode=True)
 
         # Create dp rings
         if self.nranks > self.mp_degree:
             collective_helper._init_communicator(
-                self.startup_program, self.current_endpoint, self.dp_endpoints,
-                self.dp_rank, self.dp_ring_id, True, self.global_ring_id, True)
+                self.startup_program,
+                self.current_endpoint,
+                self.dp_endpoints,
+                self.dp_rank,
+                self.dp_ring_id,
+                True,
+                self.global_ring_id,
+                True,
+            )
             self._broadcast_params(self.dp_ring_id, mp_mode=False)
 
-    def minimize_impl(self,
-                      loss,
-                      startup_program=None,
-                      parameter_list=None,
-                      no_grad_set=None):
+    def minimize_impl(
+        self, loss, startup_program=None, parameter_list=None, no_grad_set=None
+    ):
         self.endpoints = self.role_maker._get_trainer_endpoints()
         self.current_endpoint = self.endpoints[self.role_maker._worker_index()]
         self.startup_program = startup_program
         if startup_program is None:
-            self.startup_program = fluid.default_startup_program()
+            self.startup_program = static.default_startup_program()
 
         optimize_ops, params_grads = self.inner_opt.minimize(
-            loss, self.startup_program, parameter_list, no_grad_set)
+            loss, self.startup_program, parameter_list, no_grad_set
+        )
 
         self.main_program = loss.block.program
         self.nranks = len(self.endpoints)
@@ -181,8 +213,9 @@ class TensorParallelOptimizer(MetaOptimizerBase):
                     outputs={'Out': loss_grad_var},
                     attrs={
                         'scale': 1.0 / dp_degree,
-                        OP_ROLE_KEY: OpRole.Backward
-                    })
+                        OP_ROLE_KEY: OpRole.Backward,
+                    },
+                )
                 break
 
     def _insert_allreduce_ops(self, loss, ring_id):
@@ -205,7 +238,8 @@ class TensorParallelOptimizer(MetaOptimizerBase):
                             type='c_sync_calc_stream',
                             inputs={'X': grad},
                             outputs={'Out': grad},
-                            attrs={OP_ROLE_KEY: OpRole.Backward})
+                            attrs={OP_ROLE_KEY: OpRole.Backward},
+                        )
                         offset += 1
 
                     block._insert_op(
@@ -215,8 +249,9 @@ class TensorParallelOptimizer(MetaOptimizerBase):
                         outputs={'Out': grad},
                         attrs={
                             'ring_id': ring_id,
-                            OP_ROLE_KEY: OpRole.Backward
-                        })
+                            OP_ROLE_KEY: OpRole.Backward,
+                        },
+                    )
 
         if grad is None:
             return
@@ -228,6 +263,6 @@ class TensorParallelOptimizer(MetaOptimizerBase):
                     type='c_sync_comm_stream',
                     inputs={'X': grad},
                     outputs={'Out': grad},
-                    attrs={'ring_id': ring_id,
-                           OP_ROLE_KEY: OpRole.Backward})
+                    attrs={'ring_id': ring_id, OP_ROLE_KEY: OpRole.Backward},
+                )
                 break

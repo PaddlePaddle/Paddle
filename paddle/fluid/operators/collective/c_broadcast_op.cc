@@ -26,10 +26,10 @@ class CBroadcastOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 
@@ -42,10 +42,7 @@ class CBroadcastOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(0);
     AddAttr<int>("root", "(int default 0) root id for broadcasting.")
         .SetDefault(0);
-#if defined(PADDLE_WITH_ASCEND_CL)
-    AddAttr<std::string>("tag", "(string default tag) tag for broadcasting.")
-        .SetDefault("tag");
-#endif
+
     AddAttr<bool>(
         "use_calc_stream",
         "(bool default false) eject CUDA operations to calculation stream.")
@@ -64,11 +61,16 @@ Reference: https://docs.nvidia.com/deeplearning/sdk/nccl-developer-guide/docs/us
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_WITHOUT_GRADIENT(c_broadcast, ops::CBroadcastOp,
+REGISTER_OP_WITHOUT_GRADIENT(c_broadcast,
+                             ops::CBroadcastOp,
                              ops::CBroadcastOpMaker);
 
-REGISTER_OP_CPU_KERNEL(c_broadcast, ops::CBroadcastOpCPUKernel<float>,
-                       ops::CBroadcastOpCPUKernel<double>,
-                       ops::CBroadcastOpCPUKernel<int>,
-                       ops::CBroadcastOpCPUKernel<int64_t>,
-                       ops::CBroadcastOpCPUKernel<plat::float16>);
+PD_REGISTER_STRUCT_KERNEL(c_broadcast,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::CBroadcastOpCPUKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t,
+                          plat::float16) {}

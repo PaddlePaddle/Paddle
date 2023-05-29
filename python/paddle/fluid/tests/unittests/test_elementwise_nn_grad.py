@@ -12,17 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
-import numpy as np
 
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
-import paddle.fluid.core as core
 import gradient_checker
-
+import numpy as np
 from decorator_helper import prog_scope
+
+import paddle
+from paddle import fluid
+from paddle.fluid import core
 
 
 class TestElementwiseMulDoubleGradCheck(unittest.TestCase):
@@ -33,18 +31,20 @@ class TestElementwiseMulDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
 
-        x = layers.data('x', shape, False, dtype)
-        y = layers.data('y', shape, False, dtype)
+        x = paddle.static.data('x', shape, dtype)
+        y = paddle.static.data('y', shape, dtype)
         x.persistable = True
         y.persistable = True
-        out = layers.elementwise_mul(x, y)
+        out = paddle.multiply(x, y)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         y_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
         gradient_checker.double_grad_check(
-            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps)
+            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps
+        )
 
     def test_grad(self):
+        paddle.enable_static()
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -60,18 +60,20 @@ class TestElementwiseMulBroadcastDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
 
-        x = layers.data('x', shape, False, dtype)
-        y = layers.data('y', shape[:-1], False, dtype)
+        x = paddle.static.data('x', shape, dtype)
+        y = paddle.static.data('y', shape[:-1], dtype)
         x.persistable = True
         y.persistable = True
-        out = layers.elementwise_mul(x, y, axis=0)
+        out = paddle.tensor.math._multiply_with_axis(x, y, axis=0)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         y_arr = np.random.uniform(-1, 1, shape[:-1]).astype(dtype)
 
         gradient_checker.double_grad_check(
-            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps)
+            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps
+        )
 
     def test_grad(self):
+        paddle.enable_static()
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -87,18 +89,20 @@ class TestElementwiseAddDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
 
-        x = layers.data('x', shape, False, dtype)
-        y = layers.data('y', shape, False, dtype)
+        x = paddle.static.data('x', shape, dtype)
+        y = paddle.static.data('y', shape, dtype)
         x.persistable = True
         y.persistable = True
-        out = layers.elementwise_add(x, y)
+        out = paddle.add(x, y)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         y_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
         gradient_checker.double_grad_check(
-            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps)
+            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps
+        )
 
     def test_grad(self):
+        paddle.enable_static()
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -114,18 +118,20 @@ class TestElementwiseAddBroadcastDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
 
-        x = layers.data('x', shape, False, dtype)
-        y = layers.data('y', shape[:-1], False, dtype)
+        x = paddle.static.data('x', shape, dtype)
+        y = paddle.static.data('y', shape[:-1], dtype)
         x.persistable = True
         y.persistable = True
-        out = layers.elementwise_add(x, y, axis=0)
+        out = paddle.tensor.math._add_with_axis(x, y, axis=0)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         y_arr = np.random.uniform(-1, 1, shape[:-1]).astype(dtype)
 
         gradient_checker.double_grad_check(
-            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps)
+            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps
+        )
 
     def test_grad(self):
+        paddle.enable_static()
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -134,6 +140,9 @@ class TestElementwiseAddBroadcastDoubleGradCheck(unittest.TestCase):
 
 
 class TestElementwiseSubDoubleGradCheck(unittest.TestCase):
+    def subtract_wrapper(self, x):
+        return paddle.subtract(x[0], x[1])
+
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.
@@ -141,18 +150,27 @@ class TestElementwiseSubDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
 
-        x = layers.data('x', shape, False, dtype)
-        y = layers.data('y', shape, False, dtype)
+        x = paddle.static.data('x', shape, dtype)
+        y = paddle.static.data('y', shape, dtype)
         x.persistable = True
         y.persistable = True
-        out = layers.elementwise_sub(x, y)
+        out = paddle.subtract(x, y)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         y_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
         gradient_checker.double_grad_check(
-            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps)
+            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps
+        )
+        gradient_checker.double_grad_check_for_dygraph(
+            self.subtract_wrapper,
+            [x, y],
+            out,
+            x_init=[x_arr, y_arr],
+            place=place,
+        )
 
     def test_grad(self):
+        paddle.enable_static()
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -168,18 +186,20 @@ class TestElementwiseSubBroadcastDoubleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
 
-        x = layers.data('x', shape, False, dtype)
-        y = layers.data('y', shape[:-1], False, dtype)
+        x = paddle.static.data('x', shape, dtype)
+        y = paddle.static.data('y', shape[:-1], dtype)
         x.persistable = True
         y.persistable = True
-        out = layers.elementwise_sub(x, y, axis=0)
+        out = paddle.tensor.math._subtract_with_axis(x, y, axis=0)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         y_arr = np.random.uniform(-1, 1, shape[:-1]).astype(dtype)
 
         gradient_checker.double_grad_check(
-            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps)
+            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps
+        )
 
     def test_grad(self):
+        paddle.enable_static()
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -188,6 +208,9 @@ class TestElementwiseSubBroadcastDoubleGradCheck(unittest.TestCase):
 
 
 class TestElementwiseDivDoubleGradCheck(unittest.TestCase):
+    def divide_wrapper(self, x):
+        return paddle.divide(x[0], x[1])
+
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.
@@ -195,19 +218,29 @@ class TestElementwiseDivDoubleGradCheck(unittest.TestCase):
         eps = 0.0001
         dtype = np.float64
 
-        x = layers.data('x', shape, False, dtype)
-        y = layers.data('y', shape, False, dtype)
+        x = paddle.static.data('x', shape, dtype)
+        y = paddle.static.data('y', shape, dtype)
         x.persistable = True
         y.persistable = True
-        out = layers.elementwise_div(x, y, axis=0)
+        out = paddle.tensor.math.divide(x, y)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         y_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         y_arr[np.abs(y_arr) < 0.005] = 0.02
 
         gradient_checker.double_grad_check(
-            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps, atol=1e-3)
+            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps, atol=1e-3
+        )
+        gradient_checker.double_grad_check_for_dygraph(
+            self.divide_wrapper,
+            [x, y],
+            out,
+            x_init=[x_arr, y_arr],
+            place=place,
+            atol=1e-3,
+        )
 
     def test_grad(self):
+        paddle.enable_static()
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -223,19 +256,21 @@ class TestElementwiseDivBroadcastDoubleGradCheck(unittest.TestCase):
         eps = 0.0001
         dtype = np.float64
 
-        x = layers.data('x', shape, False, dtype)
-        y = layers.data('y', shape[1:-1], False, dtype)
+        x = paddle.static.data('x', shape, dtype)
+        y = paddle.static.data('y', shape[1:-1], dtype)
         x.persistable = True
         y.persistable = True
-        out = layers.elementwise_div(x, y, axis=1)
+        out = paddle.tensor.math._divide_with_axis(x, y, axis=1)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         y_arr = np.random.uniform(-1, 1, shape[1:-1]).astype(dtype)
         y_arr[np.abs(y_arr) < 0.005] = 0.02
 
         gradient_checker.double_grad_check(
-            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps, atol=1e-3)
+            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps, atol=1e-3
+        )
 
     def test_grad(self):
+        paddle.enable_static()
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -251,18 +286,20 @@ class TestElementwiseAddTripleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
 
-        x = layers.data('x', shape, False, dtype)
-        y = layers.data('y', shape, False, dtype)
+        x = paddle.static.data('x', shape, dtype)
+        y = paddle.static.data('y', shape, dtype)
         x.persistable = True
         y.persistable = True
-        out = layers.elementwise_add(x, y)
+        out = paddle.add(x, y)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         y_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
         gradient_checker.triple_grad_check(
-            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps)
+            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps
+        )
 
     def test_grad(self):
+        paddle.enable_static()
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -278,18 +315,20 @@ class TestElementwiseAddBroadcastTripleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
 
-        x = layers.data('x', shape, False, dtype)
-        y = layers.data('y', shape[:-1], False, dtype)
+        x = paddle.static.data('x', shape, dtype)
+        y = paddle.static.data('y', shape[:-1], dtype)
         x.persistable = True
         y.persistable = True
-        out = layers.elementwise_add(x, y, axis=0)
+        out = paddle.tensor.math._add_with_axis(x, y, axis=0)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         y_arr = np.random.uniform(-1, 1, shape[:-1]).astype(dtype)
 
         gradient_checker.triple_grad_check(
-            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps)
+            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps
+        )
 
     def test_grad(self):
+        paddle.enable_static()
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -298,6 +337,9 @@ class TestElementwiseAddBroadcastTripleGradCheck(unittest.TestCase):
 
 
 class TestElementwiseMulTripleGradCheck(unittest.TestCase):
+    def multiply_wrapper(self, x):
+        return paddle.multiply(x[0], x[1])
+
     @prog_scope()
     def func(self, place):
         # the shape of input variable should be clearly specified, not inlcude -1.
@@ -305,18 +347,27 @@ class TestElementwiseMulTripleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
 
-        x = layers.data('x', shape, False, dtype)
-        y = layers.data('y', shape, False, dtype)
+        x = paddle.static.data('x', shape, dtype)
+        y = paddle.static.data('y', shape, dtype)
         x.persistable = True
         y.persistable = True
-        out = layers.elementwise_mul(x, y)
+        out = paddle.multiply(x, y)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         y_arr = np.random.uniform(-1, 1, shape).astype(dtype)
 
         gradient_checker.triple_grad_check(
-            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps)
+            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps
+        )
+        gradient_checker.triple_grad_check_for_dygraph(
+            self.multiply_wrapper,
+            [x, y],
+            out,
+            x_init=[x_arr, y_arr],
+            place=place,
+        )
 
     def test_grad(self):
+        paddle.enable_static()
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))
@@ -332,18 +383,20 @@ class TestElementwiseMulBroadcastTripleGradCheck(unittest.TestCase):
         eps = 0.005
         dtype = np.float64
 
-        x = layers.data('x', shape, False, dtype)
-        y = layers.data('y', shape[:-1], False, dtype)
+        x = paddle.static.data('x', shape, dtype)
+        y = paddle.static.data('y', shape[:-1], dtype)
         x.persistable = True
         y.persistable = True
-        out = layers.elementwise_add(x, y, axis=0)
+        out = paddle.tensor.math._add_with_axis(x, y, axis=0)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         y_arr = np.random.uniform(-1, 1, shape[:-1]).astype(dtype)
 
         gradient_checker.triple_grad_check(
-            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps)
+            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps
+        )
 
     def test_grad(self):
+        paddle.enable_static()
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(fluid.CUDAPlace(0))

@@ -12,14 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
-#include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/diagonal_kernel.h"
+
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/diagonal.h"
 
 namespace phi {
-using paddle::platform::PADDLE_CUDA_NUM_THREADS;
+using phi::PADDLE_CUDA_NUM_THREADS;
 template <typename T, typename Context>
 void DiagonalKernel(const Context& dev_ctx,
                     const DenseTensor& x,
@@ -34,8 +35,7 @@ void DiagonalKernel(const Context& dev_ctx,
 
   std::vector<int64_t> res_in = vectorize(phi::stride(input->dims()));
   DenseTensor input_stride_tensor;
-  paddle::framework::TensorFromVector<int64_t>(
-      res_in, dev_ctx, &input_stride_tensor);
+  phi::TensorFromVector<int64_t>(res_in, dev_ctx, &input_stride_tensor);
   int64_t* input_stride = input_stride_tensor.data<int64_t>();
 
   auto* output = out;
@@ -45,17 +45,17 @@ void DiagonalKernel(const Context& dev_ctx,
 
   std::vector<int64_t> res_out = vectorize(phi::stride(output->dims()));
   DenseTensor output_stride_tensor;
-  paddle::framework::TensorFromVector<int64_t>(
-      res_out, dev_ctx, &output_stride_tensor);
+  phi::TensorFromVector<int64_t>(res_out, dev_ctx, &output_stride_tensor);
   int64_t* output_stride = output_stride_tensor.data<int64_t>();
 
   const int64_t offset_ = offset;
   int64_t axis1_ = axis1 < 0 ? input_dim_size + axis1 : axis1;
   int64_t axis2_ = axis2 < 0 ? input_dim_size + axis2 : axis2;
   int64_t numel = input->numel();
+  int64_t out_numel = out->numel();
 
   int threads = PADDLE_CUDA_NUM_THREADS;
-  int blocks = (numel + threads - 1) / threads;
+  int blocks = (out_numel + threads - 1) / threads;
 
   switch (input_dim_size) {
     case 2:
@@ -67,6 +67,7 @@ void DiagonalKernel(const Context& dev_ctx,
                                                         input_stride,
                                                         output_stride,
                                                         numel,
+                                                        out_numel,
                                                         false);
       break;
     case 3:
@@ -78,6 +79,7 @@ void DiagonalKernel(const Context& dev_ctx,
                                                         input_stride,
                                                         output_stride,
                                                         numel,
+                                                        out_numel,
                                                         false);
       break;
     case 4:
@@ -89,6 +91,7 @@ void DiagonalKernel(const Context& dev_ctx,
                                                         input_stride,
                                                         output_stride,
                                                         numel,
+                                                        out_numel,
                                                         false);
       break;
     case 5:
@@ -100,6 +103,7 @@ void DiagonalKernel(const Context& dev_ctx,
                                                         input_stride,
                                                         output_stride,
                                                         numel,
+                                                        out_numel,
                                                         false);
       break;
     case 6:
@@ -111,6 +115,7 @@ void DiagonalKernel(const Context& dev_ctx,
                                                         input_stride,
                                                         output_stride,
                                                         numel,
+                                                        out_numel,
                                                         false);
       break;
     case 7:
@@ -122,6 +127,7 @@ void DiagonalKernel(const Context& dev_ctx,
                                                         input_stride,
                                                         output_stride,
                                                         numel,
+                                                        out_numel,
                                                         false);
       break;
     case 8:
@@ -133,6 +139,7 @@ void DiagonalKernel(const Context& dev_ctx,
                                                         input_stride,
                                                         output_stride,
                                                         numel,
+                                                        out_numel,
                                                         false);
       break;
     case 9:
@@ -144,6 +151,7 @@ void DiagonalKernel(const Context& dev_ctx,
                                                         input_stride,
                                                         output_stride,
                                                         numel,
+                                                        out_numel,
                                                         false);
       break;
     default:
@@ -162,4 +170,8 @@ PD_REGISTER_KERNEL(diagonal,
                    double,
                    int,
                    int64_t,
-                   bool) {}
+                   bool,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

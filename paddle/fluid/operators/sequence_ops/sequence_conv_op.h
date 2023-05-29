@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <algorithm>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/context_project.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -21,16 +22,13 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
-
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class SequenceConvKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* in = context.Input<LoDTensor>("X");
-    auto* out = context.Output<LoDTensor>("Out");
-    auto filter = *context.Input<Tensor>("Filter");
+    auto* in = context.Input<phi::DenseTensor>("X");
+    auto* out = context.Output<phi::DenseTensor>("Out");
+    auto filter = *context.Input<phi::DenseTensor>("Filter");
 
     out->mutable_data<T>(context.GetPlace());
 
@@ -39,20 +37,22 @@ class SequenceConvKernel : public framework::OpKernel<T> {
     int context_stride = context.Attr<int>("contextStride");
     bool padding_trainable = context.Attr<bool>("paddingTrainable");
 
+    PADDLE_ENFORCE_EQ(in->lod().empty(),
+                      false,
+                      platform::errors::InvalidArgument(
+                          "Input(X) phi::DenseTensor of SequenceConvOp "
+                          "does not contain LoD information."));
     PADDLE_ENFORCE_EQ(
-        in->lod().empty(), false,
-        platform::errors::InvalidArgument("Input(X) Tensor of SequenceConvOp "
-                                          "does not contain LoD information."));
-    PADDLE_ENFORCE_EQ(
-        in->lod().size(), 1UL,
+        in->lod().size(),
+        1UL,
         platform::errors::InvalidArgument(
             "Only support input sequence with lod level equal to 1 at "
             "present. But received: lod level %u.",
             in->lod().size()));
 
-    const Tensor* padding_data = nullptr;
+    const phi::DenseTensor* padding_data = nullptr;
     if (padding_trainable) {
-      padding_data = context.Input<Tensor>("PaddingData");
+      padding_data = context.Input<phi::DenseTensor>("PaddingData");
     }
 
     int up_pad = std::max(0, -context_start);
@@ -61,7 +61,7 @@ class SequenceConvKernel : public framework::OpKernel<T> {
 
     framework::DDim col_shape = {in->dims()[0],
                                  context_length * sequence_width};
-    Tensor col;
+    phi::DenseTensor col;
     col.mutable_data<T>(col_shape, context.GetPlace());
     // Because if padding_trainable is false, padding data should be zeros.
     phi::funcs::SetConstant<DeviceContext, T> set_zero;
@@ -70,25 +70,34 @@ class SequenceConvKernel : public framework::OpKernel<T> {
     set_zero(dev_ctx, &col, static_cast<T>(0));
     math::ContextProjectFunctor<DeviceContext, T> seq_project_functor;
 
-    seq_project_functor(dev_ctx, *in, padding_data, padding_trainable,
-                        context_start, context_length, context_stride, up_pad,
-                        down_pad, &col);
+    seq_project_functor(dev_ctx,
+                        *in,
+                        padding_data,
+                        padding_trainable,
+                        context_start,
+                        context_length,
+                        context_stride,
+                        up_pad,
+                        down_pad,
+                        &col);
 
     blas.MatMul(col, filter, out);
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class SequenceConvGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* in_g = context.Output<LoDTensor>(framework::GradVarName("X"));
-    auto* out_g = context.Input<LoDTensor>(framework::GradVarName("Out"));
-    auto* filter_g = context.Output<Tensor>(framework::GradVarName("Filter"));
+    auto* in_g = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
+    auto* out_g =
+        context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* filter_g =
+        context.Output<phi::DenseTensor>(framework::GradVarName("Filter"));
     auto* padding_data_g =
-        context.Output<Tensor>(framework::GradVarName("PaddingData"));
-    auto* in = context.Input<LoDTensor>("X");
-    auto* filter = context.Input<Tensor>("Filter");
+        context.Output<phi::DenseTensor>(framework::GradVarName("PaddingData"));
+    auto* in = context.Input<phi::DenseTensor>("X");
+    auto* filter = context.Input<phi::DenseTensor>("Filter");
 
     int context_start = context.Attr<int>("contextStart");
     int context_length = context.Attr<int>("contextLength");
@@ -96,7 +105,8 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
     bool padding_trainable = context.Attr<bool>("paddingTrainable");
 
     PADDLE_ENFORCE_EQ(
-        in->lod().size(), 1UL,
+        in->lod().size(),
+        1UL,
         platform::errors::InvalidArgument(
             "Only support input sequence with lod level equal to 1 at "
             "present. But received: lod level %u.",
@@ -113,7 +123,7 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
     // use col_shape in the im2col calculation
     framework::DDim col_shape = {in->dims()[0],
                                  sequence_width * context_length};
-    Tensor col;
+    phi::DenseTensor col;
 
     if (in_g || filter_g || (padding_trainable && padding_data_g)) {
       col.mutable_data<T>(col_shape, context.GetPlace());
@@ -129,36 +139,61 @@ class SequenceConvGradKernel : public framework::OpKernel<T> {
       in_g->set_lod(in->lod());
       set_zero(dev_ctx, in_g, static_cast<T>(0));
 
-      seq_project_grad_functor(dev_ctx, *in_g, padding_trainable, context_start,
-                               context_length, context_stride, up_pad, down_pad,
-                               false, true, padding_data_g, &col);
+      seq_project_grad_functor(dev_ctx,
+                               *in_g,
+                               padding_trainable,
+                               context_start,
+                               context_length,
+                               context_stride,
+                               up_pad,
+                               down_pad,
+                               false,
+                               true,
+                               padding_data_g,
+                               &col);
     }
 
     if (padding_trainable && padding_data_g) {
       padding_data_g->mutable_data<T>(context.GetPlace());
       set_zero(dev_ctx, padding_data_g, static_cast<T>(0));
 
-      LoDTensor* input = const_cast<LoDTensor*>(in);
-      seq_project_grad_functor(
-          dev_ctx, *input, padding_trainable, context_start, context_length,
-          context_stride, up_pad, down_pad, true, false, padding_data_g, &col);
+      phi::DenseTensor* input = const_cast<phi::DenseTensor*>(in);
+      seq_project_grad_functor(dev_ctx,
+                               *input,
+                               padding_trainable,
+                               context_start,
+                               context_length,
+                               context_stride,
+                               up_pad,
+                               down_pad,
+                               true,
+                               false,
+                               padding_data_g,
+                               &col);
     }
 
     if (filter_g) {
       filter_g->mutable_data<T>(context.GetPlace());
       set_zero(dev_ctx, filter_g, static_cast<T>(0));
 
-      Tensor filter_grad = *filter_g;
-      LoDTensor out_grad = *out_g;
+      phi::DenseTensor filter_grad = *filter_g;
+      phi::DenseTensor out_grad = *out_g;
 
-      const Tensor* padding_data = nullptr;
+      const phi::DenseTensor* padding_data = nullptr;
       if (padding_trainable) {
-        padding_data = context.Input<Tensor>("PaddingData");
+        padding_data = context.Input<phi::DenseTensor>("PaddingData");
       }
 
-      seq_project_functor(dev_ctx, *in, padding_data, padding_trainable,
-                          context_start, context_length, context_stride, up_pad,
-                          down_pad, &col);
+      seq_project_functor(dev_ctx,
+                          *in,
+                          padding_data,
+                          padding_trainable,
+                          context_start,
+                          context_length,
+                          context_stride,
+                          up_pad,
+                          down_pad,
+                          &col);
 
       blas.MatMul(col, true, out_grad, false, &filter_grad);
     }

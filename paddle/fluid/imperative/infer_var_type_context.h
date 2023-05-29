@@ -18,6 +18,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/framework/var_type_inference.h"
 #include "paddle/fluid/imperative/type_defs.h"
@@ -67,19 +68,20 @@ class RuntimeInferVarTypeContext : public framework::InferVarTypeContext {
     return (it != outputs_.end() && it->second.size() > 0);
   }
 
-  size_t InputSize(const std::string& name) const {
+  size_t InputSize(const std::string& name) const override {
     return inputs_.at(name).size();
   }
 
   const std::string& InputVarName(const std::string& name,
-                                  const int index = 0) const {
+                                  const int index = 0) const override {
     return GetNameFromVar(inputs_.at(name)[index]);
   }
 
   bool InputTypeAnyOf(const std::string& name,
                       framework::proto::VarType::Type type) const override {
     auto& inputs = inputs_.at(name);
-    return std::any_of(inputs.begin(), inputs.end(),
+    return std::any_of(inputs.begin(),
+                       inputs.end(),
                        [&type](const std::shared_ptr<VarType>& var) {
                          return GetType(var) == type;
                        });
@@ -88,7 +90,8 @@ class RuntimeInferVarTypeContext : public framework::InferVarTypeContext {
   bool InputTypeAllOf(const std::string& name,
                       framework::proto::VarType::Type type) const override {
     auto& inputs = inputs_.at(name);
-    return std::all_of(inputs.begin(), inputs.end(),
+    return std::all_of(inputs.begin(),
+                       inputs.end(),
                        [&type](const std::shared_ptr<VarType>& var) {
                          return GetType(var) == type;
                        });
@@ -142,8 +145,8 @@ class RuntimeInferVarTypeContext : public framework::InferVarTypeContext {
   }
 
   void SetOutputDataType(const std::string& name,
-                         framework::proto::VarType::Type type,
-                         int index = 0) override {
+                         framework::proto::VarType::Type type UNUSED,
+                         int index UNUSED = 0) override {
     VLOG(10) << "Set data type in infer var type of Eager mode is meaning less "
                 "for var: "
              << name;
@@ -152,77 +155,79 @@ class RuntimeInferVarTypeContext : public framework::InferVarTypeContext {
   bool IsDygraph() const override { return true; }
 
  protected:
-  bool HasVar(const std::string& name) const override {
+  bool HasVar(const std::string& name UNUSED) const override {
     PADDLE_THROW(platform::errors::PermissionDenied(
         "HasVar is not supported in runtime InferVarType"));
   }
 
   const std::vector<std::string>& InputVars(
-      const std::string& name) const override {
+      const std::string& name UNUSED) const override {
     PADDLE_THROW(platform::errors::PermissionDenied(
         "InputVars is not supported in runtime InferVarType"));
   }
 
   const std::vector<std::string>& OutputVars(
-      const std::string& name) const override {
+      const std::string& name UNUSED) const override {
     PADDLE_THROW(platform::errors::PermissionDenied(
         "OutputVars is not supported in runtime InferVarType"));
   }
 
   framework::proto::VarType::Type GetVarType(
-      const std::string& name) const override {
+      const std::string& name UNUSED) const override {
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Do not manipulate var in runtime InferVarType"));
   }
 
-  void SetVarType(const std::string& name,
-                  framework::proto::VarType::Type type) override {
+  void SetVarType(const std::string& name UNUSED,
+                  framework::proto::VarType::Type type UNUSED) override {
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Do not manipulate var in runtime InferVarType"));
   }
 
   framework::proto::VarType::Type GetVarDataType(
-      const std::string& name) const override {
+      const std::string& name UNUSED) const override {
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Do not manipulate var in runtime InferVarType"));
   }
 
-  void SetVarDataType(const std::string& name,
-                      framework::proto::VarType::Type type) override {
+  void SetVarDataType(const std::string& name UNUSED,
+                      framework::proto::VarType::Type type UNUSED) override {
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Do not manipulate var in runtime InferVarType"));
   }
 
   std::vector<framework::proto::VarType::Type> GetVarDataTypes(
-      const std::string& name) const override {
+      const std::string& name UNUSED) const override {
     PADDLE_THROW(platform::errors::PermissionDenied(
         "GetVarDataTypes is not supported in runtime InferVarType"));
   }
 
-  void SetVarDataTypes(const std::string& name,
+  void SetVarDataTypes(const std::string& name UNUSED,
                        const std::vector<framework::proto::VarType::Type>&
-                           multiple_data_type) override {
+                           multiple_data_type UNUSED) override {
     PADDLE_THROW(platform::errors::PermissionDenied(
         "SetVarDataTypes is not supported in runtime InferVarType"));
   }
 
-  std::vector<int64_t> GetVarShape(const std::string& name) const override {
+  std::vector<int64_t> GetVarShape(
+      const std::string& name UNUSED) const override {
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Do not handle Shape in runtime InferVarType"));
   }
 
-  void SetVarShape(const std::string& name,
-                   const std::vector<int64_t>& dims) override {
+  void SetVarShape(const std::string& name UNUSED,
+                   const std::vector<int64_t>& dims UNUSED) override {
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Do not handle Shape in runtime InferVarType"));
   }
 
-  int32_t GetVarLoDLevel(const std::string& name) const override {
+  int32_t GetVarLoDLevel(const std::string& name UNUSED) const override {
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Do not handle LoDLevel in runtime InferVarType"));
   }
 
-  void SetVarLoDLevel(const std::string& name, int32_t lod_level) override {
+  void SetVarLoDLevel(const std::string& name UNUSED,
+                      int32_t lod_level UNUSED) override {
     PADDLE_THROW(platform::errors::PermissionDenied(
         "Do not handle LoDLevel in runtime InferVarType"));
   }

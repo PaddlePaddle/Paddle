@@ -22,7 +22,7 @@ namespace framework {
 namespace ir {
 
 ///
-/// Fuse quant + conv2d/depthwise_conv2d/mul/fc + dequant
+/// Fuse quant + conv2d/depthwise_conv2d/matrix_multiply + dequant
 ///
 class QuantDequantFusePass : public FusePassBase {
  public:
@@ -33,9 +33,11 @@ class QuantDequantFusePass : public FusePassBase {
   void ApplyImpl(ir::Graph* graph) const override;
 
  private:
-  void DeleteQuant(ir::Graph* graph, Scope* scope,
+  void DeleteQuant(ir::Graph* graph,
+                   Scope* scope,
                    const std::string& quant_type) const;
-  void FuseDequant(ir::Graph* graph, Scope* scope,
+  void FuseDequant(ir::Graph* graph,
+                   Scope* scope,
                    const std::string& quantized_op_type,
                    const std::string& dequant_type) const;
 };

@@ -12,38 +12,64 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+from paddle import _C_ops
+from paddle.fluid import framework
+from paddle.fluid.framework import in_dygraph_mode
+
 __all__ = ['L1Decay', 'L2Decay']
 
-import paddle.fluid as fluid
+
+class WeightDecayRegularizer:
+    """Base class for weight decay regularizers
+
+    Defines the common interface of weight-decay regularizers.
+    Weight-decay regularizers are added only during the backward
+    pass for faster regularization. They add operations to the network
+    that correspond to gradient of the regularization function.
+    Users should not use this class directly, but need to use one
+    of its implementations
+    """
+
+    def __init__(self):
+        pass
+
+    def __call__(self, param, grad, block):
+        """Add corresponding weight decay operations to the network"""
+        raise NotImplementedError()
+
+    def __str__(self):
+        """Debug string"""
+        raise NotImplementedError()
 
 
-class L1Decay(fluid.regularizer.L1Decay):
+class L1Decay(WeightDecayRegularizer):
     r"""
     Implement the L1 Weight Decay Regularization, which encourages the weights to be sparse.
-    
-    It can be set in :ref:`api_paddle_ParamAttr` or ``optimizer`` (such as :ref:`api_paddle_optimizer_Momentum` ). 
-    When set in ``ParamAttr`` , it only takes effect for trainable parameters in this layer. When set in 
-    ``optimizer`` , it takes effect for all trainable parameters. When set together, ``ParamAttr`` has 
-    higher priority than ``optimizer`` , which means that for a trainable parameter, if regularizer is defined 
+
+    It can be set in :ref:`api_paddle_ParamAttr` or ``optimizer`` (such as :ref:`api_paddle_optimizer_Momentum` ).
+    When set in ``ParamAttr`` , it only takes effect for trainable parameters in this layer. When set in
+    ``optimizer`` , it takes effect for all trainable parameters. When set together, ``ParamAttr`` has
+    higher priority than ``optimizer`` , which means that for a trainable parameter, if regularizer is defined
     in its ParamAttr, then the regularizer in Optimizer will be ignored. Otherwise the  regularizer
     in Optimizer will be used.
-    
+
     In the implementation, the loss function of L1 Weight Decay Regularization is as follows:
-	
+
     .. math::
 
         loss = coeff * reduce\_sum(abs(x))
 
     Args:
         coeff(float, optional): regularization coeff. Default:0.0.
-	
+
     Examples:
         .. code-block:: python
 
             # Example1: set Regularizer in optimizer
             import paddle
             from paddle.regularizer import L1Decay
-            import numpy as np
+
             linear = paddle.nn.Linear(10, 10)
             inp = paddle.rand(shape=[10, 10], dtype="float32")
             out = linear(inp)
@@ -76,20 +102,65 @@ class L1Decay(fluid.regularizer.L1Decay):
     """
 
     def __init__(self, coeff=0.0):
-        super(L1Decay, self).__init__(coeff)
+        assert coeff is not None
+        super().__init__()
+        self._coeff = coeff
+
+    def __call__(self, param, grad, block):
+        """Add L1 weight decay ops to network
+
+        Adds L1 weight decay ops.
+        L1WeightDecay = reg_coeff * sign(parameter)
+
+        Args:
+            param: parameter variable for which regularization is applied
+            block: block in which variable is to be created
+
+        Returns:
+            new variable for weight decay
+        """
+        assert isinstance(param, framework.Variable)
+        assert isinstance(block, framework.Block)
+
+        if in_dygraph_mode():
+            sign = _C_ops.sign(param)
+            return _C_ops.scale(sign, self._coeff, 0.0, True)
+        else:
+            sign = block.create_var(
+                dtype=param.dtype, shape=param.shape, lod_level=param.lod_level
+            )
+            decay = block.create_var(
+                dtype=param.dtype, shape=param.shape, lod_level=param.lod_level
+            )
+            # Append sign op
+            block.append_op(
+                type='sign', inputs={"X": param}, outputs={"Out": sign}
+            )
+
+            # Append scale op to the output of sign op
+            block.append_op(
+                type='scale',
+                inputs={"X": sign},
+                outputs={"Out": decay},
+                attrs={"scale": self._coeff},
+            )
+            return decay
+
+    def __str__(self):
+        return "L1Decay, coeff=%f" % self._coeff
 
 
-class L2Decay(fluid.regularizer.L2Decay):
+class L2Decay(WeightDecayRegularizer):
     r"""
     Implement the L2 Weight Decay Regularization, which helps to prevent the model over-fitting.
-    
-    It can be set in :ref:`api_paddle_ParamAttr` or ``optimizer`` (such as :ref:`api_paddle_optimizer_Momentum` ). 
-    When set in ``ParamAttr`` , it only takes effect for trainable parameters in this layer. When set in 
-    ``optimizer`` , it takes effect for all trainable parameters. When set together, ``ParamAttr`` has 
-    higher priority than ``optimizer`` , which means that for a trainable parameter, if regularizer is defined 
+
+    It can be set in :ref:`api_paddle_ParamAttr` or ``optimizer`` (such as :ref:`api_paddle_optimizer_Momentum` ).
+    When set in ``ParamAttr`` , it only takes effect for trainable parameters in this layer. When set in
+    ``optimizer`` , it takes effect for all trainable parameters. When set together, ``ParamAttr`` has
+    higher priority than ``optimizer`` , which means that for a trainable parameter, if regularizer is defined
     in its ParamAttr, then the regularizer in Optimizer will be ignored. Otherwise the  regularizer
     in Optimizer will be used.
-    
+
     In the implementation, the loss function of L2 Weight Decay Regularization is as follows:
 
     .. math::
@@ -97,15 +168,14 @@ class L2Decay(fluid.regularizer.L2Decay):
         loss = 0.5 * coeff * reduce\_sum(square(x))
 
     Args:
-        regularization_coeff(float, optional): regularization coeff. Default:0.0
-	
+        coeff(float, optional): regularization coeff. Default:0.0
+
     Examples:
         .. code-block:: python
 
             # Example1: set Regularizer in optimizer
             import paddle
             from paddle.regularizer import L2Decay
-            import numpy as np
             linear = paddle.nn.Linear(10, 10)
             inp = paddle.rand(shape=[10, 10], dtype="float32")
             out = linear(inp)
@@ -138,4 +208,42 @@ class L2Decay(fluid.regularizer.L2Decay):
     """
 
     def __init__(self, coeff=0.0):
-        super(L2Decay, self).__init__(coeff)
+        assert coeff is not None
+        super().__init__()
+        self._coeff = coeff
+
+    def __call__(self, param, grad, block):
+        """Add L2 weight decay ops to network
+
+        Adds L2 weight decay ops.
+        L2WeightDecay = reg_coeff * parameter
+
+        Args:
+            param: parameter variable for which regularization is applied
+            block: block in which variable is to be created
+
+        Returns:
+            new variable for weight decay
+        """
+        assert isinstance(param, framework.Variable)
+        assert isinstance(block, framework.Block)
+
+        if in_dygraph_mode():
+            return _C_ops.scale(param, self._coeff, 0.0, True)
+        else:
+            decay = block.create_var(
+                dtype=param.dtype, shape=param.shape, lod_level=param.lod_level
+            )
+
+            # Append Op to calculate decay
+            block.append_op(
+                type='scale',
+                inputs={"X": param},
+                outputs={"Out": decay},
+                attrs={"scale": self._coeff},
+            )
+
+            return decay
+
+    def __str__(self):
+        return "L2Decay, coeff=%f" % self._coeff

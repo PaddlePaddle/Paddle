@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,29 +18,11 @@
 #include <map>
 #include <string>
 #include <type_traits>
-#include "gflags/gflags.h"
-#include "paddle/fluid/platform/macros.h"
-#include "paddle/fluid/platform/variant.h"
 
-namespace paddle {
-namespace platform {
+#include "paddle/phi/core/flags.h"
 
-struct FlagInfo {
-  using ValueType =
-      boost::variant<bool, int32_t, int64_t, uint64_t, double, std::string>;
-  std::string name;
-  mutable void *value_ptr;
-  ValueType default_value;
-  std::string doc;
-  bool is_writable;
-};
-
-using ExportedFlagInfoMap = std::map<std::string, FlagInfo>;
-const ExportedFlagInfoMap &GetExportedFlagInfoMap();
-ExportedFlagInfoMap *GetMutableExportedFlagInfoMap();
-
-#define __PADDLE_DEFINE_EXPORTED_FLAG(__name, __is_writable, __cpp_type,      \
-                                      __gflag_type, __default_value, __doc)   \
+#define __PADDLE_DEFINE_EXPORTED_FLAG(                                        \
+    __name, __is_writable, __cpp_type, __gflag_type, __default_value, __doc)  \
   DEFINE_##__gflag_type(__name, __default_value, __doc);                      \
   struct __PaddleRegisterFlag_##__name {                                      \
     __PaddleRegisterFlag_##__name() {                                         \
@@ -49,7 +31,7 @@ ExportedFlagInfoMap *GetMutableExportedFlagInfoMap();
       static_assert(std::is_same<FlagDeclaredType, ::std::string>::value ||   \
                         std::is_arithmetic<FlagDeclaredType>::value,          \
                     "FLAGS should be std::string or arithmetic type");        \
-      auto *instance = ::paddle::platform::GetMutableExportedFlagInfoMap();   \
+      auto *instance = ::phi::GetMutableExportedFlagInfoMap();                \
       auto &info = (*instance)[#__name];                                      \
       info.name = #__name;                                                    \
       info.value_ptr = &(FLAGS_##__name);                                     \
@@ -83,16 +65,13 @@ ExportedFlagInfoMap *GetMutableExportedFlagInfoMap();
 #define PADDLE_DEFINE_EXPORTED_int64(name, default_value, doc) \
   __PADDLE_DEFINE_EXPORTED_FLAG(name, true, int64_t, int64, default_value, doc)
 
-#define PADDLE_DEFINE_EXPORTED_uint64(name, default_value, doc)              \
-  __PADDLE_DEFINE_EXPORTED_FLAG(name, true, uint64_t, uint64, default_value, \
-                                doc)
+#define PADDLE_DEFINE_EXPORTED_uint64(name, default_value, doc) \
+  __PADDLE_DEFINE_EXPORTED_FLAG(                                \
+      name, true, uint64_t, uint64, default_value, doc)
 
 #define PADDLE_DEFINE_EXPORTED_double(name, default_value, doc) \
   __PADDLE_DEFINE_EXPORTED_FLAG(name, true, double, double, default_value, doc)
 
-#define PADDLE_DEFINE_EXPORTED_string(name, default_value, doc)    \
-  __PADDLE_DEFINE_EXPORTED_FLAG(name, true, ::std::string, string, \
-                                default_value, doc)
-
-}  // namespace platform
-}  // namespace paddle
+#define PADDLE_DEFINE_EXPORTED_string(name, default_value, doc) \
+  __PADDLE_DEFINE_EXPORTED_FLAG(                                \
+      name, true, ::std::string, string, default_value, doc)

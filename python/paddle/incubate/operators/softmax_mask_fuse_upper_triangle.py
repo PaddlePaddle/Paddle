@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
+from paddle import _legacy_C_ops
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.framework import in_dygraph_mode
-from paddle.fluid import core
-from paddle import _C_ops
+from paddle.framework import in_dynamic_mode
 
 
 def softmax_mask_fuse_upper_triangle(x):
@@ -32,7 +29,7 @@ def softmax_mask_fuse_upper_triangle(x):
     .. math::
         out = softmax(LowerTriangular(x))
 
-    **Note**:
+    Note:
         This API only supports GPU.
 
     Args:
@@ -58,8 +55,8 @@ def softmax_mask_fuse_upper_triangle(x):
             #    [0.32674268, 0.28156221, 0.39169508, ..., 0., 0., 0.]
             #     ... ]]]
     """
-    if in_dygraph_mode():
-        out = _C_ops.fused_softmax_mask_upper_triangle(x)
+    if in_dynamic_mode():
+        out = _legacy_C_ops.fused_softmax_mask_upper_triangle(x)
         return out
 
     helper = LayerHelper('fused_softmax_mask_upper_triangle', **locals())
@@ -69,5 +66,6 @@ def softmax_mask_fuse_upper_triangle(x):
     helper.append_op(
         type='fused_softmax_mask_upper_triangle',
         inputs={'X': [x]},
-        outputs={'Out': [out]})
+        outputs={'Out': [out]},
+    )
     return out

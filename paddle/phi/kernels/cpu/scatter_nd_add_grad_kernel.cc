@@ -13,9 +13,10 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/scatter_nd_add_grad_kernel.h"
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/copy_kernel.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/gather.h"
 
 namespace phi {
@@ -23,7 +24,7 @@ namespace phi {
 template <typename T, typename Context>
 void ScatterNdAddGradKernel(const Context &ctx,
                             const DenseTensor &index,
-                            const DenseTensor &updates,
+                            const DenseTensor &updates UNUSED,
                             const DenseTensor &out_grad,
                             DenseTensor *x_grad,
                             DenseTensor *updates_grad) {

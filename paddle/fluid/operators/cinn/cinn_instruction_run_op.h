@@ -18,11 +18,13 @@
 #include <memory>
 #include <string>
 #include <vector>
+
 #include "cinn/hlir/framework/graph_compiler.h"
 #include "cinn/hlir/framework/instruction.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
+#include "paddle/fluid/framework/paddle2cinn/transform_type.h"
 #include "paddle/fluid/operators/cinn/cinn_launch_context.h"
 #include "paddle/fluid/operators/cinn/cinn_op_helper.h"
 
@@ -32,7 +34,7 @@ using CinnInstruction = ::cinn::hlir::framework::Instruction;
 using CinnCompiledObject = framework::paddle2cinn::CinnCompiledObject;
 using CinnCompiler = framework::paddle2cinn::CinnCompiler;
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class CinnInstructionRunOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -43,9 +45,11 @@ class CinnInstructionRunOpKernel : public framework::OpKernel<T> {
         CinnCompiler::GetInstance()->GetCompiledObject(cached_index);
     const std::vector<std::unique_ptr<CinnInstruction>>& instructions =
         compiled_object.runtime_program->GetRunInstructions();
-    PADDLE_ENFORCE_LT(ins_index, instructions.size(),
+    PADDLE_ENFORCE_LT(ins_index,
+                      instructions.size(),
                       platform::errors::InvalidArgument(
-                          "Index(%ld) > instructions.size(%ld).", ins_index,
+                          "Index(%ld) > instructions.size(%ld).",
+                          ins_index,
                           instructions.size()));
     auto&& instruction = instructions.at(ins_index);
 
@@ -55,10 +59,12 @@ class CinnInstructionRunOpKernel : public framework::OpKernel<T> {
     auto share_argument_buffer_fn = [launch_context,
                                      &ctx](const std::string& var_name) {
       cinn_buffer_t* buffer = launch_context->GetCinnBufferOfVar(var_name);
-      framework::Variable* var = ctx.scope().GetVar(var_name);
-      auto* tensor = var->template GetMutable<framework::LoDTensor>();
-      buffer->memory =
-          reinterpret_cast<uint8_t*>(tensor->mutable_data<T>(ctx.GetPlace()));
+      std::string revise_var_name = launch_context->RedirectVarName(var_name);
+      framework::Variable* var = ctx.scope().GetVar(revise_var_name);
+      auto* tensor = var->template GetMutable<phi::DenseTensor>();
+      buffer->memory = reinterpret_cast<uint8_t*>(tensor->mutable_data(
+          ctx.GetPlace(),
+          framework::paddle2cinn::TransToPaddleDataType(buffer->type)));
     };
     std::vector<std::string> in_args = ctx.InputNames(kX);
     std::for_each(in_args.begin(), in_args.end(), share_argument_buffer_fn);
@@ -68,7 +74,8 @@ class CinnInstructionRunOpKernel : public framework::OpKernel<T> {
     // step 3: launch CINN runtime to execute the instruction
     // TODO(CtfGo): simplify format of arguments package as a vector in CINN
     // and update this usage call
-    instruction->Run(&launch_context->FinalizeArguments(), false,
+    instruction->Run(&launch_context->FinalizeArguments(),
+                     false,
                      details::GetStream<DeviceContext>(ctx));
   }
 };

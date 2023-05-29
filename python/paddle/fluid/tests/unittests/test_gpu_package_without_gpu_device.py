@@ -12,25 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import os
-import sys
 import subprocess
+import sys
+import tempfile
 import unittest
-import paddle
-import paddle.fluid as fluid
+
 from paddle.fluid import core
 
 
 class TestGPUPackagePaddle(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDwon(self):
+        self.temp_dir.cleanup()
+
     def test_import_paddle(self):
         if core.is_compiled_with_cuda():
             if core.is_compiled_with_rocm():
                 os.environ['HIP_VISIBLE_DEVICES'] = ''
             else:
                 os.environ['CUDA_VISIBLE_DEVICES'] = ''
-            test_file = 'test_no_gpu_run_rand.py'
+            test_file = os.path.join(
+                self.temp_dir.name, 'test_no_gpu_run_rand.py'
+            )
             with open(test_file, 'w') as wb:
                 cmd_test = """
 import paddle
@@ -42,12 +48,13 @@ assert x.place.is_gpu_place() is False, "There is no CUDA device, but Tensor's p
 
             _python = sys.executable
 
-            ps_cmd = '{} {}'.format(_python, test_file)
+            ps_cmd = f'{_python} {test_file}'
             ps_proc = subprocess.Popen(
                 ps_cmd.strip().split(" "),
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                env=os.environ)
+                env=os.environ,
+            )
             stdout, stderr = ps_proc.communicate()
 
             assert 'CPU device will be used by default' in str(

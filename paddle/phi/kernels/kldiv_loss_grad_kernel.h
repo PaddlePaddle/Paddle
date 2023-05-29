@@ -19,7 +19,6 @@
 namespace phi {
 
 template <typename T, typename Context>
-// XKTODO (change name)
 void KLDivLossGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
                          const DenseTensor& label,

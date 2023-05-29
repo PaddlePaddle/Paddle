@@ -19,6 +19,7 @@ limitations under the License. */
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -26,8 +27,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
+using Tensor = phi::DenseTensor;
+using LoDTensor = phi::DenseTensor;
 static constexpr int TopKPosPaddingId = -1;
 
 namespace details {
@@ -36,7 +37,8 @@ template <typename T>
 static void get_topk_pos(const T* data, int length, int k, int* pos) {
   VLOG(3) << "length: " << length << " , k : " << k;
 
-  std::priority_queue<std::pair<T, int>, std::vector<std::pair<T, int>>,
+  std::priority_queue<std::pair<T, int>,
+                      std::vector<std::pair<T, int>>,
                       std::greater<std::pair<T, int>>>
       topk_queue;
 
@@ -65,7 +67,7 @@ static void get_topk_pos(const T* data, int length, int k, int* pos) {
 }
 }  // namespace details
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class SequenceTopkAvgPoolingKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -73,20 +75,23 @@ class SequenceTopkAvgPoolingKernel : public framework::OpKernel<T> {
     auto* row = context.Input<LoDTensor>("ROW");
     auto* col = context.Input<LoDTensor>("COLUMN");
     auto* out = context.Output<LoDTensor>("Out");
-    auto* pos = context.Output<Tensor>("pos");
+    auto* pos = context.Output<phi::DenseTensor>("pos");
 
     PADDLE_ENFORCE_EQ(
-        in->lod().empty(), false,
+        in->lod().empty(),
+        false,
         platform::errors::InvalidArgument(
             "Input(X) Tensor of SequenceTopkAvgPoolingOp does not "
             "contain LoD information."));
     PADDLE_ENFORCE_EQ(
-        row->lod().empty(), false,
+        row->lod().empty(),
+        false,
         platform::errors::InvalidArgument(
             "Input(ROW) Tensor of SequenceTopkAvgPoolingOp does not "
             "contain LoD information."));
     PADDLE_ENFORCE_EQ(
-        col->lod().empty(), false,
+        col->lod().empty(),
+        false,
         platform::errors::InvalidArgument(
             "Input(COLUMN) Tensor of SequenceTopkAvgPoolingOp does "
             "not contain LoD information."));
@@ -95,7 +100,8 @@ class SequenceTopkAvgPoolingKernel : public framework::OpKernel<T> {
     auto topks = context.Attr<std::vector<int>>("topks");
     auto k_num = topks.size();
     auto max_k = topks[topks.size() - 1];
-    PADDLE_ENFORCE_GE(max_k, 0,
+    PADDLE_ENFORCE_GE(max_k,
+                      0,
                       platform::errors::InvalidArgument(
                           "Expected max_k >= 0, but received %d.", max_k));
     std::vector<int> vec_pos_shape;
@@ -110,7 +116,7 @@ class SequenceTopkAvgPoolingKernel : public framework::OpKernel<T> {
     auto pos_data = pos->mutable_data<int>(context.GetPlace());
 
     int offset = 0;
-    framework::Vector<size_t> vec_out_lod;
+    phi::Vector<size_t> vec_out_lod;
     vec_out_lod.reserve(batch_size + 1);
     for (int i = 0; i <= batch_size; ++i) {
       offset = row_lod[i];
@@ -129,11 +135,13 @@ class SequenceTopkAvgPoolingKernel : public framework::OpKernel<T> {
       int total_size = in_lod[i + 1] - in_lod[i];
       int row_size = row_lod[i + 1] - row_lod[i];
       int col_size = col_lod[i + 1] - col_lod[i];
-      PADDLE_ENFORCE_EQ(total_size, channel_num * row_size * col_size,
+      PADDLE_ENFORCE_EQ(total_size,
+                        channel_num * row_size * col_size,
                         platform::errors::PreconditionNotMet(
                             "Expected total_size == channel_num * row_size * "
                             "col_size, but got %d != %d.",
-                            total_size, channel_num * row_size * col_size));
+                            total_size,
+                            channel_num * row_size * col_size));
 
       int feature_num = row_size * col_size;
       for (int j = 0; j < channel_num; ++j) {
@@ -170,13 +178,13 @@ class SequenceTopkAvgPoolingKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class SequenceTopkAvgPoolingGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* d_out = context.Input<LoDTensor>(framework::GradVarName("Out"));
     auto* d_in = context.Output<LoDTensor>(framework::GradVarName("X"));
-    auto* pos_input = context.Input<Tensor>("pos");
+    auto* pos_input = context.Input<phi::DenseTensor>("pos");
     auto* row_input = context.Input<LoDTensor>("ROW");
     auto* col_input = context.Input<LoDTensor>("COLUMN");
     auto* forward_input = context.Input<LoDTensor>("X");
@@ -194,9 +202,8 @@ class SequenceTopkAvgPoolingGradKernel : public framework::OpKernel<T> {
     auto pos_data = pos_input->data<int>();
     auto dout_data = d_out->data<T>();
 
-    auto& dev_ctx =
-        context.template device_context<platform::CPUDeviceContext>();
-    phi::funcs::SetConstant<paddle::platform::CPUDeviceContext, T> zero;
+    auto& dev_ctx = context.template device_context<phi::CPUContext>();
+    phi::funcs::SetConstant<phi::CPUContext, T> zero;
     zero(dev_ctx, d_in, static_cast<T>(0.0));
 
     auto din_data = d_in->data<T>();

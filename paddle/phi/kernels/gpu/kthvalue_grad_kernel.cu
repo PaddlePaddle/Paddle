@@ -13,10 +13,10 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/kthvalue_grad_kernel.h"
-
-#include "paddle/fluid/operators/top_k_function_cuda.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/math_function.h"
+#include "paddle/phi/kernels/funcs/top_k_function_cuda.h"
 
 namespace phi {
 static int getBlockSize(int col) {
@@ -34,28 +34,35 @@ static int getBlockSize(int col) {
 
 template <typename T, typename Context>
 void KthvalueGradKernel(const Context& dev_ctx,
-                        const DenseTensor& d_out,
                         const DenseTensor& x,
                         const DenseTensor& indices,
+                        const DenseTensor& d_out,
                         int k,
                         int axis,
                         bool keepdim,
                         DenseTensor* d_x) {
   const auto& in_dims = x.dims();
   auto out_dims = indices.dims();
-  if (axis < 0) axis += in_dims.size();
   T* x_grad_data = dev_ctx.template Alloc<T>(d_x);
+  // For 0D Tensor
+  if (in_dims.size() == 0) {
+    phi::funcs::set_constant(dev_ctx, d_x, 1.0);
+    return;
+  }
+
+  if (axis < 0) axis += in_dims.size();
+
   const T* out_grad_data = d_out.data<T>();
   const int64_t* indices_data = indices.data<int64_t>();
   int pre, n, post;
-  paddle::operators::GetDims(in_dims, axis, &pre, &n, &post);
+  phi::funcs::GetDims(in_dims, axis, &pre, &n, &post);
   int block_size = getBlockSize(post * k);
   int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
   const int max_blocks = std::max(((max_threads - 1) / block_size + 1), 1);
   int grid_size = std::min(max_blocks, pre);
-  paddle::operators::AssignGradWithAxis<
-      T><<<grid_size, block_size, 64 * 4, dev_ctx.stream()>>>(
-      out_grad_data, indices_data, x_grad_data, pre, post, n, 1);
+  phi::funcs::AssignGradWithAxis<T>
+      <<<grid_size, block_size, 64 * 4, dev_ctx.stream()>>>(
+          out_grad_data, indices_data, x_grad_data, pre, post, n, 1);
 }
 
 }  // namespace phi
@@ -67,4 +74,6 @@ PD_REGISTER_KERNEL(kthvalue_grad,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::bfloat16,
+                   phi::dtype::float16) {}

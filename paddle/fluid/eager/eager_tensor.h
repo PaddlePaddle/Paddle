@@ -19,27 +19,184 @@
 #include "paddle/fluid/framework/variable.h"
 // Phi deps
 #include "paddle/phi/api/include/tensor.h"
-#include "paddle/phi/api/lib/api_declare.h"
-#include "paddle/phi/api/lib/utils/tensor_utils.h"
 #include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/core/macros.h"
+
+namespace egr {
+
+/**
+ * VariableCompatTensor class is used by Eager mode for now. It's painful to
+ * do this in Eager Mode, the better choice is to design the special Tensor
+ * directly in phi and use it in paddle::Tensor.
+ * However, we have some special operators, and they use special input variable
+ * type, such as vector<string>, unordered_map<wstring, int>, these type cannot
+ * cover by DenseTensor or SparseTensor. So, we have to provide a compatible
+ * Tensor type like variable to support these special input type. We should
+ * remove this as soon as we finish the ResourceTensor in phi.
+ *
+ * Note: Keep this class as clean as possible.
+ * This class should only support method declared in framework::Variable and
+ * necessary overridden methods.
+ *
+ * Note: This class is only used to support types that cannot be supported by
+ * the phi Tensor system temporarily. You CANNOT use this class to handle types
+ * such as DenseTensor, SelectedRows, etc.
+ **/
+class VariableCompatTensor
+    : public phi::TensorBase,
+      public phi::TypeInfoTraits<phi::TensorBase, VariableCompatTensor> {
+ public:
+  template <typename T>
+  const T& Get() const {
+    static_assert(
+        paddle::framework::IsRegisteredVarType<T>(),
+        "Not registered type. Please register T inside var_type_traits.h");
+    PADDLE_ENFORCE_NOT_NULL(
+        holder_,
+        paddle::platform::errors::NotFound("Variable is not initialized."));
+    PADDLE_ENFORCE_EQ(
+        holder_->Type(),
+        paddle::framework::VarTypeTrait<T>::kId,
+        paddle::platform::errors::InvalidArgument(
+            "The Variable type must be %s, but the type it holds is %s.",
+            paddle::framework::ToTypeName(
+                paddle::framework::VarTypeTrait<T>::kId),
+            paddle::framework::ToTypeName(holder_->Type())));
+    return *static_cast<const T*>(holder_->Ptr());
+  }
+
+  bool IsInitialized() const { return holder_ != nullptr; }
+
+  template <typename T>
+  T* GetMutable() {
+    if (!holder_) {
+      holder_.reset(new PlaceholderImpl<T>());
+    } else {
+      PADDLE_ENFORCE_EQ(
+          holder_->Type(),
+          paddle::framework::VarTypeTrait<T>::kId,
+          paddle::platform::errors::InvalidArgument(
+              "The Variable type must be %s, but the type it holds is %s.",
+              paddle::framework::ToTypeName(
+                  paddle::framework::VarTypeTrait<T>::kId),
+              paddle::framework::ToTypeName(holder_->Type())));
+    }
+    return static_cast<T*>(holder_->Ptr());
+  }
+
+  template <typename T>
+  bool IsType() const {
+    return holder_ &&
+           holder_->Type() == paddle::framework::VarTypeTrait<T>::kId;
+  }
+
+  void Clear() { holder_.reset(); }
+
+  int Type() const {
+    PADDLE_ENFORCE_NOT_NULL(
+        holder_,
+        paddle::platform::errors::NotFound("Variable is not initialized."));
+    return holder_->Type();
+  }
+
+  // necessary overridden methods
+
+  static const char* name() { return "VariableCompatTensor"; }
+
+  ~VariableCompatTensor() override = default;
+
+  int64_t numel() const override {
+    PADDLE_THROW(paddle::platform::errors::Unavailable(
+        "VariableCompatTensor does not support `numel` method."));
+  }
+
+  const phi::DDim& dims() const override {
+    PADDLE_THROW(paddle::platform::errors::Unavailable(
+        "VariableCompatTensor does not support `dims` method."));
+  }
+
+  phi::DataType dtype() const override {
+    PADDLE_THROW(paddle::platform::errors::Unavailable(
+        "VariableCompatTensor does not support `dtype` method."));
+  }
+
+  phi::DataLayout layout() const override {
+    PADDLE_THROW(paddle::platform::errors::Unavailable(
+        "VariableCompatTensor does not support `layout` method."));
+  }
+
+  const phi::Place& place() const override {
+    PADDLE_THROW(paddle::platform::errors::Unavailable(
+        "VariableCompatTensor does not support `place` method."));
+  }
+
+  bool valid() const override { return IsInitialized(); }
+
+  bool initialized() const override { return IsInitialized(); }
+
+  void* AllocateFrom(phi::Allocator* allocator UNUSED,
+                     phi::DataType dtype UNUSED,
+                     size_t requested_size UNUSED = 0,
+                     bool fake_alloc UNUSED = false) override {
+    PADDLE_THROW(paddle::platform::errors::Unavailable(
+        "VariableCompatTensor does not support `AllocateFrom` method."));
+  }
+
+ private:
+  struct Placeholder {
+    virtual ~Placeholder() PADDLE_MAY_THROW {}
+
+    inline int Type() const { return type_; }
+    inline const void* Ptr() const { return ptr_; }
+    inline void* Ptr() { return ptr_; }
+
+   protected:
+    inline void Init(void* p, int type) {
+      ptr_ = p;
+      type_ = type;
+    }
+
+    void* ptr_;
+    int type_;
+  };
+
+  // Placeholder hides type T, so it doesn't appear as a template
+  // parameter of Variable.
+  template <typename T>
+  struct PlaceholderImpl : public Placeholder {
+    static_assert(
+        paddle::framework::IsRegisteredVarType<T>(),
+        "Not registered type. Please register T inside var_type_traits.h");
+    PlaceholderImpl() {
+      this->Init(&obj_, paddle::framework::VarTypeTrait<T>::kId);
+    }
+
+   private:
+    T obj_;
+  };
+
+  // pointers to a PlaceholderImpl object indeed.
+  std::shared_ptr<Placeholder> holder_;
+};
+
+inline bool IsVariableCompatTensor(const paddle::Tensor& tensor) {
+  return VariableCompatTensor::classof(tensor.impl().get());
+}
+
 /**
  * This class is used by Eager mode for now. It's painful to do this in Eager
- * Mode, the better
- * choice is to use paddle::experimental::Tensor directly. However, we have a
- * punch of nested kernel code, and
- * they use paddle::framework::Variable in inner logic code. So, we have to
- * provide variable in
- * paddle::framework::ExecutionContext to support it. We should remove this as
- * soon as we finish our latest
- * Phi Lib, and use paddle::experimental::Tensor instead.
+ * Mode, the better choice is to use paddle::Tensor directly.
+ * However, we have a punch of nested kernel code, and they use
+ * paddle::framework::Variable in inner logic code. So, we have to provide
+ * variable in paddle::framework::ExecutionContext to support it. We should
+ * remove this as soon as we finish our latest Phi Lib, and use
+ * paddle::Tensor instead.
  *
  * Note: Keep this class as clean as possible.
  * This class should only support method declared in
- * paddle::experimental::Tensor with access method of
+ * paddle::Tensor with access method of
  * paddle::framework::Variable no more members are acceptable.
  * **/
-
-namespace egr {
 class EagerVariable final {
  public:
   /* Default constructor and name constructor should only be used for contruct
@@ -48,13 +205,21 @@ class EagerVariable final {
 
   explicit EagerVariable(const std::string& name) : name_(name) {}
 
-  explicit EagerVariable(const paddle::experimental::Tensor& tensor)
-      : name_(tensor.name()) {
+  explicit EagerVariable(const paddle::Tensor& tensor) : name_(tensor.name()) {
     if (tensor.defined()) {
       if (tensor.is_dense_tensor()) {
         ConstructVariableFromTensor<phi::DenseTensor>(tensor);
+        src_tensor_ = tensor.impl();
       } else if (tensor.is_selected_rows()) {
         ConstructVariableFromTensor<phi::SelectedRows>(tensor);
+      } else if (IsVariableCompatTensor(tensor) &&
+                 static_cast<const VariableCompatTensor*>(tensor.impl().get())
+                     ->IsType<paddle::framework::Vocab>()) {
+        ConstructVariableFromCompatTensor<paddle::framework::Vocab>(tensor);
+      } else if (IsVariableCompatTensor(tensor) &&
+                 static_cast<const VariableCompatTensor*>(tensor.impl().get())
+                     ->IsType<paddle::framework::Strings>()) {
+        ConstructVariableFromCompatTensor<paddle::framework::Strings>(tensor);
       } else {
         PADDLE_THROW(paddle::platform::errors::Fatal(
             "Unrecognized egr::EagerVariable type, only "
@@ -65,12 +230,24 @@ class EagerVariable final {
     }
   }
 
+  ~EagerVariable() {
+    if (src_tensor_) {
+      auto* framework_tensor = var_.GetMutable<phi::DenseTensor>();
+      auto tensor_dense = static_cast<phi::DenseTensor*>(src_tensor_.get());
+      if (framework_tensor->memory_size() > 0 &&
+          (!paddle::platform::is_same_place(framework_tensor->place(),
+                                            tensor_dense->place()) ||
+           framework_tensor->dtype() != tensor_dense->dtype())) {
+        tensor_dense->ShareBufferWith(*framework_tensor);
+      }
+    }
+  }
+
   /** Part 11: Construct paddle::framework::Variable with phi::Tensor **/
   std::shared_ptr<phi::TensorBase> GetTensorBase() {
     // Construct allocation only once.
     if (var_.IsInitialized()) {
-      if (var_.IsType<paddle::framework::LoDTensor>() ||
-          var_.IsType<paddle::framework::Tensor>()) {
+      if (var_.IsType<phi::DenseTensor>() || var_.IsType<phi::DenseTensor>()) {
         return SetImplWithLegacyTensor<phi::DenseTensor>();
       } else if (var_.IsType<phi::SelectedRows>()) {
         return SetImplWithLegacyTensor<phi::SelectedRows>();
@@ -106,12 +283,13 @@ class EagerVariable final {
   }
 
   template <typename VarType>
-  void ConstructVariableFromTensor(const paddle::experimental::Tensor& tensor) {
+  void ConstructVariableFromTensor(const paddle::Tensor& tensor) {
     auto* framework_tensor = var_.GetMutable<VarType>();
-    // Contruct framework::Tensor from egr::EagerVariable
+    // Contruct phi::DenseTensor from egr::EagerVariable
     auto tensor_dense = std::dynamic_pointer_cast<VarType>(tensor.impl());
     PADDLE_ENFORCE_EQ(
-        (tensor_dense.get() && tensor_dense), true,
+        (tensor_dense.get() && tensor_dense),
+        true,
         paddle::platform::errors::Fatal(
             "Tensor %s does not hold phi::SelectedRows or phi::DenseTensor. "
             "Or it holds empty impl, this should not happend since we should "
@@ -120,8 +298,24 @@ class EagerVariable final {
     *framework_tensor = *tensor_dense;
   }
 
+  template <typename VarType>
+  void ConstructVariableFromCompatTensor(const paddle::Tensor& tensor) {
+    auto* framework_holder = var_.GetMutable<VarType>();
+    // Contruct phi::DenseTensor from egr::EagerVariable
+    auto* compat_tensor =
+        static_cast<VariableCompatTensor*>(tensor.impl().get());
+    PADDLE_ENFORCE_NOT_NULL(compat_tensor,
+                            paddle::platform::errors::Fatal(
+                                "Tensor %s holds empty impl, this should not "
+                                "happend since we should "
+                                "treat all kinds of tensor as what they are.",
+                                tensor.name()));
+    *framework_holder = compat_tensor->Get<VarType>();
+  }
+
  private:
   std::string name_{""};
   paddle::framework::Variable var_;
+  std::shared_ptr<phi::TensorBase> src_tensor_;
 };
 }  // namespace egr

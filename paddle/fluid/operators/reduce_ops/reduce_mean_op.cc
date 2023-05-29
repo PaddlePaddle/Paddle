@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/reduce_ops/reduce_mean_op.h"
+
 #include <memory>
 #include <string>
 #include <utility>
@@ -78,6 +79,7 @@ class ReduceMeanDoubleGradOpBaseMaker : public imperative::GradOpBaseMakerBase {
         op.SetType("reduce_mean");
         op.SetInput("X", x_gg);
         op.SetAttrMap(Attrs());
+        op.SetDefaultAttrsMap(DefaultAttrsMap());
         op.SetOutput("Out", out_grads);
       }
       return node;
@@ -90,20 +92,24 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(ReduceMeanGradNoNeedBufferVarInferer, "X");
 }  // namespace operators
 }  // namespace paddle
 
-class __reduce_meanMaker__ : public ops::ReduceOpMaker {
+class __reduce_meanMaker__ : public ops::ReduceBaseOpMaker {
  protected:
   virtual std::string GetName() const { return "reduce_mean"; }
   virtual std::string GetOpType() const { return "Reduce reduce_mean"; }
 };
 
-DECLARE_INFER_SHAPE_FUNCTOR(reduce_mean, ReduceMeanInferShapeFunctor,
-                            PD_INFER_META(phi::ReduceInferMetaBase));
+DECLARE_INFER_SHAPE_FUNCTOR(reduce_mean,
+                            ReduceMeanInferShapeFunctor,
+                            PD_INFER_META(phi::OriginReduceInferMetaBase));
 
-REGISTER_OPERATOR(reduce_mean, ops::ReduceOp, __reduce_meanMaker__,
+REGISTER_OPERATOR(reduce_mean,
+                  ops::ReduceBaseOp,
+                  __reduce_meanMaker__,
                   ops::ReduceMeanOpGradMaker<paddle::framework::OpDesc>,
                   ops::ReduceMeanOpGradMaker<paddle::imperative::OpBase>,
                   ReduceMeanInferShapeFunctor);
-REGISTER_OPERATOR(reduce_mean_grad, ops::ReduceGradOp,
+REGISTER_OPERATOR(reduce_mean_grad,
+                  ops::ReduceGradOp,
                   ops::ReduceMeanDoubleGradDescMaker,
                   ops::ReduceMeanDoubleGradOpBaseMaker,
                   ops::ReduceMeanGradNoNeedBufferVarInferer);

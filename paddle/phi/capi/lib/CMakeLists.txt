@@ -1,0 +1,12 @@
+collect_srcs(
+  capi_srcs
+  SRCS
+  c_data_type.cc
+  c_device_context.cc
+  c_int_array.cc
+  c_kernel_context.cc
+  c_kernel_factory.cc
+  c_kernel_registry.cc
+  c_place.cc
+  c_scalar.cc
+  c_tensor.cc)

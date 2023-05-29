@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/pad3d_kernel.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -25,7 +26,7 @@ void ConstPad3DFuncNCDHW(const T* in_data,
                          const int in_depth,
                          const int in_height,
                          const int in_width,
-                         const int out_depth,
+                         const int out_depth UNUSED,
                          const int out_height,
                          const int out_width,
                          const int pad_front,
@@ -52,7 +53,7 @@ void ConstPad3DFuncNDHWC(const T* in_data,
                          const int in_depth,
                          const int in_height,
                          const int in_width,
-                         const int out_depth,
+                         const int out_depth UNUSED,
                          const int out_height,
                          const int out_width,
                          const int pad_front,
@@ -87,7 +88,7 @@ void ReflectPad3DFuncNCDHW(const T* in_data,
                            const int in_depth,
                            const int in_height,
                            const int in_width,
-                           const int out_depth,
+                           const int out_depth UNUSED,
                            const int out_height,
                            const int out_width,
                            const int pad_front,
@@ -96,7 +97,7 @@ void ReflectPad3DFuncNCDHW(const T* in_data,
                            const int out_d,
                            const int out_h,
                            const int out_w,
-                           const T value) {
+                           const T value UNUSED) {
   int in_d = out_d - pad_front;
   int in_h = out_h - pad_top;
   int in_w = out_w - pad_left;
@@ -119,7 +120,7 @@ void ReflectPad3DFuncNDHWC(const T* in_data,
                            const int in_depth,
                            const int in_height,
                            const int in_width,
-                           const int out_depth,
+                           const int out_depth UNUSED,
                            const int out_height,
                            const int out_width,
                            const int pad_front,
@@ -128,7 +129,7 @@ void ReflectPad3DFuncNDHWC(const T* in_data,
                            const int out_d,
                            const int out_h,
                            const int out_w,
-                           const T value) {
+                           const T value UNUSED) {
   int in_d = out_d - pad_front;
   int in_h = out_h - pad_top;
   int in_w = out_w - pad_left;
@@ -155,7 +156,7 @@ void ReplicatePad3DFuncNCDHW(const T* in_data,
                              const int in_depth,
                              const int in_height,
                              const int in_width,
-                             const int out_depth,
+                             const int out_depth UNUSED,
                              const int out_height,
                              const int out_width,
                              const int pad_front,
@@ -164,7 +165,7 @@ void ReplicatePad3DFuncNCDHW(const T* in_data,
                              const int out_d,
                              const int out_h,
                              const int out_w,
-                             const T value) {
+                             const T value UNUSED) {
   int in_d = std::min(in_depth - 1, std::max(out_d - pad_front, 0));
   int in_h = std::min(in_height - 1, std::max(out_h - pad_top, 0));
   int in_w = std::min(in_width - 1, std::max(out_w - pad_left, 0));
@@ -180,7 +181,7 @@ void ReplicatePad3DFuncNDHWC(const T* in_data,
                              const int in_depth,
                              const int in_height,
                              const int in_width,
-                             const int out_depth,
+                             const int out_depth UNUSED,
                              const int out_height,
                              const int out_width,
                              const int pad_front,
@@ -189,7 +190,7 @@ void ReplicatePad3DFuncNDHWC(const T* in_data,
                              const int out_d,
                              const int out_h,
                              const int out_w,
-                             const T value) {
+                             const T value UNUSED) {
   int in_d = std::min(in_depth - 1, std::max(out_d - pad_front, 0));
   int in_h = std::min(in_height - 1, std::max(out_h - pad_top, 0));
   int in_w = std::min(in_width - 1, std::max(out_w - pad_left, 0));
@@ -209,7 +210,7 @@ void CircularPad3DFuncNCDHW(const T* in_data,
                             const int in_depth,
                             const int in_height,
                             const int in_width,
-                            const int out_depth,
+                            const int out_depth UNUSED,
                             const int out_height,
                             const int out_width,
                             const int pad_front,
@@ -218,7 +219,7 @@ void CircularPad3DFuncNCDHW(const T* in_data,
                             const int out_d,
                             const int out_h,
                             const int out_w,
-                            const T value) {
+                            const T value UNUSED) {
   int in_d = ((out_d - pad_front) % in_depth + in_depth) % in_depth;
   int in_h = ((out_h - pad_top) % in_height + in_height) % in_height;
   int in_w = ((out_w - pad_left) % in_width + in_width) % in_width;
@@ -234,7 +235,7 @@ void CircularPad3DFuncNDHWC(const T* in_data,
                             const int in_depth,
                             const int in_height,
                             const int in_width,
-                            const int out_depth,
+                            const int out_depth UNUSED,
                             const int out_height,
                             const int out_width,
                             const int pad_front,
@@ -243,7 +244,7 @@ void CircularPad3DFuncNDHWC(const T* in_data,
                             const int out_d,
                             const int out_h,
                             const int out_w,
-                            const T value) {
+                            const T value UNUSED) {
   int in_d = ((out_d - pad_front) % in_depth + in_depth) % in_depth;
   int in_h = ((out_h - pad_top) % in_height + in_height) % in_height;
   int in_w = ((out_w - pad_left) % in_width + in_width) % in_width;
@@ -378,7 +379,7 @@ void Pad3DNDHWC(const T* in_data,
 template <typename T, typename Context>
 void Pad3dKernel(const Context& dev_ctx,
                  const DenseTensor& x,
-                 const ScalarArray& paddings,
+                 const IntArray& paddings,
                  const std::string& mode,
                  float pad_value,
                  const std::string& data_format,
@@ -574,5 +575,13 @@ void Pad3dKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    pad3d, CPU, ALL_LAYOUT, phi::Pad3dKernel, float, double, int, int64_t) {}
+PD_REGISTER_KERNEL(pad3d,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::Pad3dKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

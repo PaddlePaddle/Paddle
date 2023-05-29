@@ -15,14 +15,12 @@ limitations under the License. */
 #include <algorithm>
 #include <memory>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace paddle {
 namespace operators {
-
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
 
 template <typename T>
 bool GT_E(T a, T b) {
@@ -40,8 +38,8 @@ bool GT(T a, T b) {
 }
 
 /*
-*check if (x, y) is in the boundary of roi
-*/
+ *check if (x, y) is in the boundary of roi
+ */
 template <typename T>
 bool in_quad(T x, T y, T roi_x[], T roi_y[]) {
   for (int i = 0; i < 4; i++) {
@@ -108,7 +106,9 @@ bool in_quad(T x, T y, T roi_x[], T roi_y[]) {
  */
 template <typename T>
 void get_transform_matrix(const int transformed_width,
-                          const int transformed_height, T roi_x[], T roi_y[],
+                          const int transformed_height,
+                          T roi_x[],
+                          T roi_y[],
                           T matrix[]) {
   T x0 = roi_x[0];
   T x1 = roi_x[1];
@@ -183,8 +183,14 @@ void get_source_coords(T matrix[], int out_w, int out_h, T* in_w, T* in_h) {
  * Perform bilinear interpolation in the input feature map.
  */
 template <typename T>
-void bilinear_interpolate(const T* in_data, const int channels, const int width,
-                          const int height, int in_n, int in_c, T in_w, T in_h,
+void bilinear_interpolate(const T* in_data,
+                          const int channels,
+                          const int width,
+                          const int height,
+                          int in_n,
+                          int in_c,
+                          T in_w,
+                          T in_h,
                           T* val) {
   // Deal with cases that source coords are out of feature map boundary
   if (GT_E<T>(-0.5, in_w) || GT_E<T>(in_w, width - 0.5) ||
@@ -236,21 +242,21 @@ void bilinear_interpolate(const T* in_data, const int channels, const int width,
   val[0] = w1 * v1 + w2 * v2 + w3 * v3 + w4 * v4;
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class CPUROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* in = ctx.Input<framework::Tensor>("X");
-    auto* rois = ctx.Input<framework::LoDTensor>("ROIs");
-    auto* out = ctx.Output<framework::Tensor>("Out");
-    auto* mask = ctx.Output<framework::Tensor>("Mask");
+    auto* in = ctx.Input<phi::DenseTensor>("X");
+    auto* rois = ctx.Input<phi::DenseTensor>("ROIs");
+    auto* out = ctx.Output<phi::DenseTensor>("Out");
+    auto* mask = ctx.Output<phi::DenseTensor>("Mask");
     auto* out_transform_matrix =
-        ctx.Output<framework::Tensor>("TransformMatrix");
+        ctx.Output<phi::DenseTensor>("TransformMatrix");
     auto transformed_height = ctx.Attr<int>("transformed_height");
     auto transformed_width = ctx.Attr<int>("transformed_width");
     auto spatial_scale = ctx.Attr<float>("spatial_scale");
 
-    auto in_dims = in->dims();
+    auto in_dims = phi::vectorize<int64_t>(in->dims());
     int channels = in_dims[1];
     int in_height = in_dims[2];
     int in_width = in_dims[3];
@@ -259,7 +265,7 @@ class CPUROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
     const T* input_data = in->data<T>();
     int* mask_data = mask->mutable_data<int>(ctx.GetPlace());
 
-    framework::Tensor roi2image;
+    phi::DenseTensor roi2image;
     roi2image.Resize({rois_num});
     int* roi2image_data = roi2image.mutable_data<int>(ctx.GetPlace());
     auto lod = rois->lod().back();
@@ -286,8 +292,8 @@ class CPUROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
       int image_id = roi2image_data[n];
       // Get transform matrix
       T matrix[9];
-      get_transform_matrix<T>(transformed_width, transformed_height, roi_x,
-                              roi_y, matrix);
+      get_transform_matrix<T>(
+          transformed_width, transformed_height, roi_x, roi_y, matrix);
       for (int i = 0; i < 9; i++) {
         transform_matrix[n * 9 + i] = matrix[i];
       }
@@ -309,8 +315,14 @@ class CPUROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
                 mask_data[(n * transformed_height + out_h) * transformed_width +
                           out_w] = 0;
               } else {
-                bilinear_interpolate(input_data, channels, in_width, in_height,
-                                     image_id, c, in_w, in_h,
+                bilinear_interpolate(input_data,
+                                     channels,
+                                     in_width,
+                                     in_height,
+                                     image_id,
+                                     c,
+                                     in_w,
+                                     in_h,
                                      output_data + out_index);
                 mask_data[(n * transformed_height + out_h) * transformed_width +
                           out_w] = 1;
@@ -328,8 +340,8 @@ class CPUROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
 };
 
 template <typename T>
-T get_feature_gradient(T xs, T ys, int w, int h, const int width,
-                       const int height) {
+T get_feature_gradient(
+    T xs, T ys, int w, int h, const int width, const int height) {
   if (GT_E<T>(-0.5, xs) || GT_E<T>(xs, width - 0.5) || GT_E<T>(-0.5, ys) ||
       GT_E<T>(ys, height - 0.5)) {
     return 0;
@@ -378,21 +390,20 @@ T get_feature_gradient(T xs, T ys, int w, int h, const int width,
   return weight;
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class CPUROIPerspectiveTransformGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* in = ctx.Input<framework::Tensor>("X");
-    auto* rois = ctx.Input<framework::LoDTensor>("ROIs");
-    auto* out_grad =
-        ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
-    auto* in_grad = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto* in = ctx.Input<phi::DenseTensor>("X");
+    auto* rois = ctx.Input<phi::DenseTensor>("ROIs");
+    auto* out_grad = ctx.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* in_grad = ctx.Output<phi::DenseTensor>(framework::GradVarName("X"));
 
     auto transformed_height = ctx.Attr<int>("transformed_height");
     auto transformed_width = ctx.Attr<int>("transformed_width");
     auto spatial_scale = ctx.Attr<float>("spatial_scale");
 
-    auto in_dims = in->dims();
+    auto in_dims = phi::vectorize<int>(in->dims());
     int batch_size = in_dims[0];
     int channels = in_dims[1];
     int in_height = in_dims[2];
@@ -403,7 +414,7 @@ class CPUROIPerspectiveTransformGradOpKernel : public framework::OpKernel<T> {
     const T* out_grad_data = out_grad->data<T>();
     const T* rois_data = rois->data<T>();
 
-    framework::Tensor roi2image;
+    phi::DenseTensor roi2image;
     roi2image.Resize({rois_num});
     int* roi2image_data = roi2image.mutable_data<int>(ctx.GetPlace());
     auto lod = rois->lod().back();
@@ -429,12 +440,11 @@ class CPUROIPerspectiveTransformGradOpKernel : public framework::OpKernel<T> {
 
               // Get transform matrix
               T matrix[9];
-              get_transform_matrix<T>(transformed_width, transformed_height,
-                                      roi_x, roi_y, matrix);
-              const T* out_grad_ptr = out_grad_data +
-                                      (roi_idx * channels + c) *
-                                          transformed_height *
-                                          transformed_width;
+              get_transform_matrix<T>(
+                  transformed_width, transformed_height, roi_x, roi_y, matrix);
+              const T* out_grad_ptr = out_grad_data + (roi_idx * channels + c) *
+                                                          transformed_height *
+                                                          transformed_width;
               for (int out_h = 0; out_h < transformed_height; ++out_h) {
                 for (int out_w = 0; out_w < transformed_width; ++out_w) {
                   T src_w;
@@ -447,8 +457,8 @@ class CPUROIPerspectiveTransformGradOpKernel : public framework::OpKernel<T> {
                         GT_E<T>(src_h, static_cast<T>(in_height - 0.5))) {
                       continue;
                     }
-                    T weight = get_feature_gradient<T>(src_w, src_h, in_w, in_h,
-                                                       in_width, in_height);
+                    T weight = get_feature_gradient<T>(
+                        src_w, src_h, in_w, in_h, in_width, in_height);
                     gradient +=
                         out_grad_ptr[out_h * transformed_width + out_w] *
                         weight;
@@ -471,32 +481,35 @@ class ROIPerspectiveTransformOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X",
-                   "roi_perspective_transform");
-    OP_INOUT_CHECK(ctx->HasInput("ROIs"), "Input", "ROIs",
-                   "roi_perspective_transform");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Ountput", "Out",
-                   "roi_perspective_transform");
+    OP_INOUT_CHECK(
+        ctx->HasInput("X"), "Input", "X", "roi_perspective_transform");
+    OP_INOUT_CHECK(
+        ctx->HasInput("ROIs"), "Input", "ROIs", "roi_perspective_transform");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("Out"), "Ountput", "Out", "roi_perspective_transform");
 
     auto input_dims = ctx->GetInputDim("X");
     auto rois_dims = ctx->GetInputDim("ROIs");
 
-    PADDLE_ENFORCE_EQ(input_dims.size(), 4,
+    PADDLE_ENFORCE_EQ(input_dims.size(),
+                      4,
                       platform::errors::InvalidArgument(
                           "The format of input tensor must be NCHW. But "
                           "received input dims is %d.",
                           input_dims.size()));
     PADDLE_ENFORCE_EQ(
-        rois_dims.size(), 2,
+        rois_dims.size(),
+        2,
         platform::errors::InvalidArgument(
-            "ROIs should be a 2-D LoDTensor of shape (num_rois, 8)"
+            "ROIs should be a 2-D phi::DenseTensor of shape (num_rois, 8)"
             "given as [[x0, y0, x1, y1, x2, y2, x3, y3], ...]. But received "
             "rois dims is %d",
             rois_dims.size()));
     PADDLE_ENFORCE_EQ(
-        rois_dims[1], 8,
+        rois_dims[1],
+        8,
         platform::errors::InvalidArgument(
-            "ROIs should be a 2-D LoDTensor of shape (num_rois, 8)"
+            "ROIs should be a 2-D phi::DenseTensor of shape (num_rois, 8)"
             "given as [[x0, y0, x1, y1, x2, y2, x3, y3], ...]. But received %d",
             rois_dims[1]));
 
@@ -505,17 +518,20 @@ class ROIPerspectiveTransformOp : public framework::OperatorWithKernel {
     float spatial_scale = ctx->Attrs().Get<float>("spatial_scale");
 
     PADDLE_ENFORCE_GT(
-        transformed_height, 0,
+        transformed_height,
+        0,
         platform::errors::InvalidArgument("The transformed output height must "
                                           "greater than 0. But received %d.",
                                           transformed_height));
     PADDLE_ENFORCE_GT(
-        transformed_width, 0,
+        transformed_width,
+        0,
         platform::errors::InvalidArgument("The transformed output width must "
                                           "greater than 0. But received %d.",
                                           transformed_width));
     PADDLE_ENFORCE_GT(
-        spatial_scale, 0.0f,
+        spatial_scale,
+        0.0f,
         platform::errors::InvalidArgument(
             "The spatial scale must greater than 0. But received %f.",
             spatial_scale));
@@ -543,11 +559,10 @@ class ROIPerspectiveTransformOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 
@@ -556,20 +571,23 @@ class ROIPerspectiveTransformGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@Grad", "roi_perspective_transform_grad");
-    OP_INOUT_CHECK(ctx->HasOutputs(framework::GradVarName("X")), "Output",
-                   "X@Grad", "roi_perspective_transform_grad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   "Out@Grad",
+                   "roi_perspective_transform_grad");
+    OP_INOUT_CHECK(ctx->HasOutputs(framework::GradVarName("X")),
+                   "Output",
+                   "X@Grad",
+                   "roi_perspective_transform_grad");
 
     ctx->SetOutputsDim(framework::GradVarName("X"), ctx->GetInputsDim("X"));
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 
@@ -578,16 +596,16 @@ class ROIPerspectiveTransformOpMaker
  public:
   void Make() override {
     AddInput("X",
-             "(Tensor), "
+             "(phi::DenseTensor), "
              "the input of ROIPerspectiveTransformOp. "
              "The format of input tensor is NCHW. Where N is batch size, "
              "C is the number of input channels, "
              "H is the height of the feature, and "
              "W is the width of the feature.");
     AddInput("ROIs",
-             "(LoDTensor), "
+             "(phi::DenseTensor), "
              "ROIs (Regions of Interest) to be transformed. "
-             "should be a 2-D LoDTensor of shape (num_rois, 8)"
+             "should be a 2-D phi::DenseTensor of shape (num_rois, 8)"
              "given as [[x1, y1, x2, y2, x3, y3, x4, y4], ...]."
              "(x1, y1) is the top left coordinates, and "
              "(x2, y2) is the top right coordinates, and"
@@ -595,28 +613,28 @@ class ROIPerspectiveTransformOpMaker
              "(x4, y4) is the bottom left coordinates.");
     AddOutput(
         "Out",
-        "(Tensor), "
+        "(phi::DenseTensor), "
         "The output of ROIPerspectiveTransformOp is a 4-D tensor with shape "
         "(num_rois, channels, transformed_h, transformed_w).");
     AddOutput("Mask",
-              "(Tensor), "
+              "(phi::DenseTensor), "
               "The output mask of ROIPerspectiveTransformOp is a 4-D tensor "
               "with shape "
               "(num_rois, 1, transformed_h, transformed_w).");
     AddOutput("TransformMatrix",
-              "(Tensor), "
+              "(phi::DenseTensor), "
               "The output transform matrix of ROIPerspectiveTransformOp is a "
               "1-D tensor with shape "
               "(num_rois, 9).");
     AddOutput("Out2InIdx",
-              "(Tensor), "
+              "(phi::DenseTensor), "
               "An intermediate tensor used to map indexes of input feature map "
               "and indexes of output feature map."
               "The shape of the tensor is [out_size, 4] and out_size is the "
               "number of elements in output feature map.")
         .AsIntermediate();
     AddOutput("Out2InWeights",
-              "(Tensor), "
+              "(phi::DenseTensor), "
               "An intermediate tensor used to record the weights of bilinear "
               "interpolatein for each element in output. The shape of the "
               "tensor is [out_size, 4] and out_size is the number of elements "
@@ -665,13 +683,20 @@ class ROIPerspectiveTransformGradMaker
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    roi_perspective_transform, ops::ROIPerspectiveTransformOp,
+    roi_perspective_transform,
+    ops::ROIPerspectiveTransformOp,
     ops::ROIPerspectiveTransformOpMaker,
     ops::ROIPerspectiveTransformGradMaker<paddle::framework::OpDesc>,
     ops::ROIPerspectiveTransformGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(roi_perspective_transform_grad,
                   ops::ROIPerspectiveTransformGradOp);
-REGISTER_OP_CPU_KERNEL(roi_perspective_transform,
-                       ops::CPUROIPerspectiveTransformOpKernel<float>);
-REGISTER_OP_CPU_KERNEL(roi_perspective_transform_grad,
-                       ops::CPUROIPerspectiveTransformGradOpKernel<float>);
+PD_REGISTER_STRUCT_KERNEL(roi_perspective_transform,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::CPUROIPerspectiveTransformOpKernel,
+                          float) {}
+PD_REGISTER_STRUCT_KERNEL(roi_perspective_transform_grad,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::CPUROIPerspectiveTransformGradOpKernel,
+                          float) {}

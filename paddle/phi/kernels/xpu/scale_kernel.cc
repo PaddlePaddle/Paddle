@@ -14,11 +14,7 @@
 
 #include "paddle/phi/kernels/scale_kernel.h"
 
-#include "paddle/fluid/platform/device/xpu/xpu_header.h"
-#include "paddle/phi/backends/xpu/xpu_context.h"
-#include "paddle/phi/common/data_type.h"
-#include "paddle/phi/common/float16.h"
-#include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -30,7 +26,7 @@ void ScaleKernel(const Context& dev_ctx,
                  float bias,
                  bool bias_after_scale,
                  DenseTensor* out) {
-  out->mutable_data<T>(dev_ctx.GetPlace());
+  dev_ctx.template Alloc<T>(out);
 
   PADDLE_ENFORCE_EQ(
       x.dims(),
@@ -39,6 +35,9 @@ void ScaleKernel(const Context& dev_ctx,
                                    " expected %s, but got %s.",
                                    x.dims().to_str().c_str(),
                                    out->dims().to_str().c_str()));
+  if (x.numel() == 0 || !x.IsInitialized()) {
+    return;
+  }
   using XPUType = typename XPUTypeTrait<T>::Type;
   int r = xpu::scale(dev_ctx.x_context(),
                      reinterpret_cast<const XPUType*>(x.data<T>()),
@@ -47,11 +46,7 @@ void ScaleKernel(const Context& dev_ctx,
                      bias_after_scale,
                      scale.to<float>(),
                      bias);
-  PADDLE_ENFORCE_EQ(
-      r,
-      XPU_SUCCESS,
-      phi::errors::External(
-          "XPU scale kernel return wrong value[%d %s]", r, XPUAPIErrorMsg[r]));
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "scale");
 }
 
 }  // namespace phi
@@ -62,4 +57,5 @@ PD_REGISTER_KERNEL(scale,
                    phi::ScaleKernel,
                    float,
                    phi::dtype::float16,
+                   int,
                    int64_t) {}

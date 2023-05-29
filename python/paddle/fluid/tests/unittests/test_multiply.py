@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import unittest
 
 import numpy as np
 
 import paddle
-import paddle.tensor as tensor
+from paddle import tensor
 from paddle.static import Program, program_guard
 
 
@@ -27,18 +26,24 @@ class TestMultiplyApi(unittest.TestCase):
         with program_guard(Program(), Program()):
             paddle.enable_static()
             x = paddle.static.data(
-                name='x', shape=x_data.shape, dtype=x_data.dtype)
+                name='x', shape=x_data.shape, dtype=x_data.dtype
+            )
             y = paddle.static.data(
-                name='y', shape=y_data.shape, dtype=y_data.dtype)
+                name='y', shape=y_data.shape, dtype=y_data.dtype
+            )
             res = tensor.multiply(x, y)
 
-            place = paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda(
-            ) else paddle.CPUPlace()
+            place = (
+                paddle.CUDAPlace(0)
+                if paddle.is_compiled_with_cuda()
+                else paddle.CPUPlace()
+            )
             exe = paddle.static.Executor(place)
-            outs = exe.run(paddle.static.default_main_program(),
-                           feed={'x': x_data,
-                                 'y': y_data},
-                           fetch_list=[res])
+            outs = exe.run(
+                paddle.static.default_main_program(),
+                feed={'x': x_data, 'y': y_data},
+                fetch_list=[res],
+            )
             res = outs[0]
             return res
 
@@ -56,49 +61,49 @@ class TestMultiplyApi(unittest.TestCase):
         x_data = np.random.rand(200)
         y_data = np.random.rand(200)
         res = self._run_static_graph_case(x_data, y_data)
-        self.assertTrue(np.allclose(res, np.multiply(x_data, y_data)))
+        np.testing.assert_allclose(res, np.multiply(x_data, y_data), rtol=1e-05)
 
         # test static computation graph: 2-d array
         x_data = np.random.rand(2, 500)
         y_data = np.random.rand(2, 500)
         res = self._run_static_graph_case(x_data, y_data)
-        self.assertTrue(np.allclose(res, np.multiply(x_data, y_data)))
+        np.testing.assert_allclose(res, np.multiply(x_data, y_data), rtol=1e-05)
 
         # test static computation graph: broadcast
         x_data = np.random.rand(2, 500)
         y_data = np.random.rand(500)
         res = self._run_static_graph_case(x_data, y_data)
-        self.assertTrue(np.allclose(res, np.multiply(x_data, y_data)))
+        np.testing.assert_allclose(res, np.multiply(x_data, y_data), rtol=1e-05)
 
         # test static computation graph: boolean
         x_data = np.random.choice([True, False], size=[200])
         y_data = np.random.choice([True, False], size=[200])
         res = self._run_static_graph_case(x_data, y_data)
-        self.assertTrue(np.allclose(res, np.multiply(x_data, y_data)))
+        np.testing.assert_allclose(res, np.multiply(x_data, y_data), rtol=1e-05)
 
         # test dynamic computation graph: 1-d array
         x_data = np.random.rand(200)
         y_data = np.random.rand(200)
         res = self._run_dynamic_graph_case(x_data, y_data)
-        self.assertTrue(np.allclose(res, np.multiply(x_data, y_data)))
+        np.testing.assert_allclose(res, np.multiply(x_data, y_data), rtol=1e-05)
 
         # test dynamic computation graph: 2-d array
         x_data = np.random.rand(20, 50)
         y_data = np.random.rand(20, 50)
         res = self._run_dynamic_graph_case(x_data, y_data)
-        self.assertTrue(np.allclose(res, np.multiply(x_data, y_data)))
+        np.testing.assert_allclose(res, np.multiply(x_data, y_data), rtol=1e-05)
 
         # test dynamic computation graph: broadcast
         x_data = np.random.rand(2, 500)
         y_data = np.random.rand(500)
         res = self._run_dynamic_graph_case(x_data, y_data)
-        self.assertTrue(np.allclose(res, np.multiply(x_data, y_data)))
+        np.testing.assert_allclose(res, np.multiply(x_data, y_data), rtol=1e-05)
 
         # test dynamic computation graph: boolean
         x_data = np.random.choice([True, False], size=[200])
         y_data = np.random.choice([True, False], size=[200])
         res = self._run_dynamic_graph_case(x_data, y_data)
-        self.assertTrue(np.allclose(res, np.multiply(x_data, y_data)))
+        np.testing.assert_allclose(res, np.multiply(x_data, y_data), rtol=1e-05)
 
 
 class TestMultiplyError(unittest.TestCase):
@@ -110,7 +115,7 @@ class TestMultiplyError(unittest.TestCase):
             y = paddle.static.data(name='y', shape=[100], dtype=np.int8)
             self.assertRaises(TypeError, tensor.multiply, x, y)
 
-        # test static computation graph: inputs must be broadcastable 
+        # test static computation graph: inputs must be broadcastable
         with program_guard(Program(), Program()):
             x = paddle.static.data(name='x', shape=[20, 50], dtype=np.float64)
             y = paddle.static.data(name='y', shape=[20], dtype=np.float64)
@@ -139,7 +144,7 @@ class TestMultiplyError(unittest.TestCase):
         y = paddle.to_tensor(y_data)
         self.assertRaises(ValueError, paddle.multiply, x, y)
 
-        # test dynamic computation graph: dtype must be same	
+        # test dynamic computation graph: dtype must be same
         x_data = np.random.randn(200).astype(np.int64)
         y_data = np.random.randn(200).astype(np.float64)
         x = paddle.to_tensor(x_data)
@@ -174,6 +179,58 @@ class TestMultiplyError(unittest.TestCase):
         x_data = np.random.randn(200).astype(np.float32)
         y_data = np.random.randn(200).astype(np.float32)
         self.assertRaises(ValueError, paddle.multiply, x_data, y_data)
+
+
+class TestMultiplyInplaceApi(TestMultiplyApi):
+    def _run_static_graph_case(self, x_data, y_data):
+        with program_guard(Program(), Program()):
+            paddle.enable_static()
+            x = paddle.static.data(
+                name='x', shape=x_data.shape, dtype=x_data.dtype
+            )
+            y = paddle.static.data(
+                name='y', shape=y_data.shape, dtype=y_data.dtype
+            )
+            res = x.multiply_(y)
+
+            place = (
+                paddle.CUDAPlace(0)
+                if paddle.is_compiled_with_cuda()
+                else paddle.CPUPlace()
+            )
+            exe = paddle.static.Executor(place)
+            outs = exe.run(
+                paddle.static.default_main_program(),
+                feed={'x': x_data, 'y': y_data},
+                fetch_list=[res],
+            )
+            res = outs[0]
+            return res
+
+    def _run_dynamic_graph_case(self, x_data, y_data):
+        paddle.disable_static()
+        with paddle.no_grad():
+            x = paddle.to_tensor(x_data)
+            y = paddle.to_tensor(y_data)
+            x.multiply_(y)
+        return x.numpy()
+
+
+class TestMultiplyInplaceError(unittest.TestCase):
+    def test_errors(self):
+        paddle.disable_static()
+        # test dynamic computation graph: inputs must be broadcastable
+        x_data = np.random.rand(3, 4)
+        y_data = np.random.rand(2, 3, 4)
+        x = paddle.to_tensor(x_data)
+        y = paddle.to_tensor(y_data)
+
+        def multiply_shape_error():
+            with paddle.no_grad():
+                x.multiply_(y)
+
+        self.assertRaises(ValueError, multiply_shape_error)
+        paddle.enable_static()
 
 
 if __name__ == '__main__':

@@ -12,16 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/masked_select_grad_kernel.h"
+
 #include <thrust/device_ptr.h>
 #include <thrust/device_vector.h>
 #include <thrust/reverse.h>
 #include <thrust/scan.h>
 
-#include "paddle/phi/kernels/funcs/select_impl.cu.h"
-#include "paddle/phi/kernels/masked_select_grad_kernel.h"
-
-#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/select_impl.cu.h"
+
 namespace phi {
 
 template <typename MT, typename InT, typename OutT>
@@ -45,12 +46,12 @@ struct MaskedSelectGradFunctor {
 
 template <typename T, typename Context>
 void MaskedSelectGradKernel(const Context& dev_ctx,
-                            const DenseTensor& out_grad,
                             const DenseTensor& x,
                             const DenseTensor& mask,
+                            const DenseTensor& out_grad,
                             DenseTensor* x_grad) {
   auto mask_size = mask.numel();
-  auto* out_data = x_grad->mutable_data<T>(dev_ctx.GetPlace());
+  dev_ctx.template Alloc<T>(x_grad);
   if (mask_size <= 0) return;
   using Functor = MaskedSelectGradFunctor<bool, T, T>;
   phi::funcs::SelectKernel<bool, T, T, 2, Functor>(
@@ -66,4 +67,6 @@ PD_REGISTER_KERNEL(masked_select_grad,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

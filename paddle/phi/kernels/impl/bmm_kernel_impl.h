@@ -1,0 +1,42 @@
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#pragma once
+
+#include "paddle/phi/kernels/bmm_kernel.h"
+
+#include "paddle/phi/kernels/funcs/blas/blas.h"
+
+namespace phi {
+
+template <typename T, typename Context>
+void BmmKernel(const Context& dev_ctx,
+               const DenseTensor& x,
+               const DenseTensor& y,
+               DenseTensor* out) {
+  dev_ctx.template Alloc<T>(out);
+
+  if (x.numel() == 0 || y.numel() == 0) {
+    return;
+  }
+
+  auto blas = phi::funcs::GetBlas<Context, T>(dev_ctx);
+
+  auto mat_dim_a = phi::funcs::CreateMatrixDescriptor(x.dims(), 0, false);
+  auto mat_dim_b = phi::funcs::CreateMatrixDescriptor(y.dims(), 0, false);
+
+  blas.MatMul(x, mat_dim_a, y, mat_dim_b, T(1), out, T(0));
+}
+
+}  // namespace phi

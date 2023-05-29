@@ -12,10 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Notice that the following codes are modified from KerasTuner for a different purpose.
+# Please refer to https://github.com/keras-team/keras-tuner/blob/master/keras_tuner/engine/metrics_tracking.py.
+
 import numpy as np
 
 
-class MetricRecord(object):
+class MetricRecord:
     """
     One record for a single metric at a given execution step.
     """
@@ -56,10 +59,10 @@ class MetricRecord(object):
         return other.value == self.value and other.step == self.step
 
     def __repr__(self):
-        return "MetricRecord(value={}, step={})".format(self.value, self.step)
+        return f"MetricRecord(value={self.value}, step={self.step})"
 
 
-class MetricRecords(object):
+class MetricRecords:
     """
     Records of a single metric across different executions.
     """
@@ -67,8 +70,10 @@ class MetricRecords(object):
     def __init__(self, direction="min"):
         if direction not in {"min", "max"}:
             raise ValueError(
-                "direction should be one of {min, max}, but got: {}.".format(
-                    direction))
+                "direction should be one of {{min, max}}, but got: {}.".format(
+                    direction
+                )
+            )
         self._direction = direction
         self._records = {}
 
@@ -96,7 +101,7 @@ class MetricRecords(object):
             self._records[step] = MetricRecord(value, step=step)
 
     def get_best_value(self):
-        values = list(r.mean() for r in self._records.values())
+        values = [r.mean() for r in self._records.values()]
         if not values:
             return None
         if self._direction == "min":
@@ -135,11 +140,10 @@ class MetricRecords(object):
     def from_state(cls, state):
         records = cls(state["direction"])
         records.records = [MetricRecord.from_state(r) for r in state["records"]]
-        print("here 1", records.records)
         return records
 
 
-class MetricsRecorder(object):
+class MetricsRecorder:
     """
     Record the values for all metrics.
     """
@@ -162,7 +166,7 @@ class MetricsRecorder(object):
 
     def register(self, name, direction=None):
         if self.exists(name):
-            raise ValueError("Metric {} have been registered.".format(name))
+            raise ValueError(f"Metric {name} have been registered.")
         if direction is None:
             direction = "min"
         self._records[name] = MetricRecords(direction)

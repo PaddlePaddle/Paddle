@@ -17,57 +17,62 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
 class DecayedAdagradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("Param"), "Input", "Param",
-                   "DecayedAdagradOp");
+    OP_INOUT_CHECK(
+        ctx->HasInput("Param"), "Input", "Param", "DecayedAdagradOp");
     OP_INOUT_CHECK(ctx->HasInput("Grad"), "Input", "Grad", "DecayedAdagradOp");
-    OP_INOUT_CHECK(ctx->HasInput("Moment"), "Input", "Moment",
+    OP_INOUT_CHECK(
+        ctx->HasInput("Moment"), "Input", "Moment", "DecayedAdagradOp");
+    OP_INOUT_CHECK(ctx->HasInput("LearningRate"),
+                   "Input",
+                   "LearningRate",
                    "DecayedAdagradOp");
-    OP_INOUT_CHECK(ctx->HasInput("LearningRate"), "Input", "LearningRate",
-                   "DecayedAdagradOp");
-    PADDLE_ENFORCE_EQ(
-        ctx->GetInputsVarType("Param").front(),
-        framework::proto::VarType::LOD_TENSOR,
-        platform::errors::InvalidArgument(
-            "The input var's type should be LoDTensor, but the received is %s",
-            ctx->Inputs("Param").front(),
-            ctx->GetInputsVarType("Param").front()));
-    PADDLE_ENFORCE_EQ(
-        ctx->GetInputsVarType("Grad").front(),
-        framework::proto::VarType::LOD_TENSOR,
-        platform::errors::InvalidArgument(
-            "The input var's type should be LoDTensor, but the received is %s",
-            ctx->Inputs("Grad").front(),
-            ctx->GetInputsVarType("Grad").front()));
+    PADDLE_ENFORCE_EQ(ctx->GetInputsVarType("Param").front(),
+                      framework::proto::VarType::LOD_TENSOR,
+                      platform::errors::InvalidArgument(
+                          "The input var's type should be phi::DenseTensor, "
+                          "but the received is %s",
+                          ctx->Inputs("Param").front(),
+                          ctx->GetInputsVarType("Param").front()));
+    PADDLE_ENFORCE_EQ(ctx->GetInputsVarType("Grad").front(),
+                      framework::proto::VarType::LOD_TENSOR,
+                      platform::errors::InvalidArgument(
+                          "The input var's type should be phi::DenseTensor, "
+                          "but the received is %s",
+                          ctx->Inputs("Grad").front(),
+                          ctx->GetInputsVarType("Grad").front()));
 
-    OP_INOUT_CHECK(ctx->HasOutput("ParamOut"), "Output", "ParamOut",
-                   "DecayedAdagradOp");
-    OP_INOUT_CHECK(ctx->HasOutput("MomentOut"), "Output", "MomentOut",
-                   "DecayedAdagradOp");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("ParamOut"), "Output", "ParamOut", "DecayedAdagradOp");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("MomentOut"), "Output", "MomentOut", "DecayedAdagradOp");
 
     auto lr_dims = ctx->GetInputDim("LearningRate");
-    PADDLE_ENFORCE_NE(phi::product(lr_dims), 0,
+    PADDLE_ENFORCE_NE(phi::product(lr_dims),
+                      0,
                       platform::errors::InvalidArgument(
                           "Maybe the Input variable LearningRate has not "
                           "been initialized. You may need to confirm "
                           "if you put exe.run(startup_program) "
                           "after optimizer.minimize function."));
-    PADDLE_ENFORCE_EQ(phi::product(lr_dims), 1,
+    PADDLE_ENFORCE_EQ(phi::product(lr_dims),
+                      1,
                       platform::errors::InvalidArgument(
                           "LearningRate should have one element"));
     auto param_dims = ctx->GetInputDim("Param");
     PADDLE_ENFORCE_EQ(
-        param_dims, ctx->GetInputDim("Grad"),
+        param_dims,
+        ctx->GetInputDim("Grad"),
         platform::errors::InvalidArgument(
             "Param and Grad input of DecayedAdagradOp should have "
             "the same dimension."));
     PADDLE_ENFORCE_EQ(
-        param_dims, ctx->GetInputDim("Moment"),
+        param_dims,
+        ctx->GetInputDim("Moment"),
         platform::errors::InvalidArgument(
             "Param and Moment input of DecayedAdagradOp should have "
             "the same dimension."));
@@ -75,10 +80,10 @@ class DecayedAdagradOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("ParamOut", param_dims);
     ctx->SetOutputDim("MomentOut", param_dims);
   }
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "Param"), ctx.GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Param"),
+                          ctx.GetPlace());
   }
 };
 
@@ -122,8 +127,9 @@ stability to avoid the division by zero error.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_WITHOUT_GRADIENT(decayed_adagrad, ops::DecayedAdagradOp,
+REGISTER_OP_WITHOUT_GRADIENT(decayed_adagrad,
+                             ops::DecayedAdagradOp,
                              ops::DecayedAdagradOpMaker);
-REGISTER_OP_CPU_KERNEL(
-    decayed_adagrad,
-    ops::DecayedAdagradOpKernel<paddle::platform::CPUDeviceContext, float>);
+
+PD_REGISTER_STRUCT_KERNEL(
+    decayed_adagrad, CPU, ALL_LAYOUT, ops::DecayedAdagradOpKernel, float) {}

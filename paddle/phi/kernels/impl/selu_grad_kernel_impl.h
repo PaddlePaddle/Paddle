@@ -13,9 +13,8 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/phi/kernels/impl/selu_kernel_impl.h"
-
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/impl/selu_kernel_impl.h"
 
 namespace phi {
 template <typename T, typename Context>
@@ -29,7 +28,7 @@ void SeluGradKernel(const Context& dev_ctx,
   SeluGradFunctor<T> functor(
       out.data<T>(), dout.data<T>(), alpha, scale, dx_ptr);
   size_t limit = static_cast<size_t>(out.numel());
-  paddle::platform::ForRange<Context> for_range(dev_ctx, limit);
+  phi::funcs::ForRange<Context> for_range(dev_ctx, limit);
   for_range(functor);
 }
 }  // namespace phi

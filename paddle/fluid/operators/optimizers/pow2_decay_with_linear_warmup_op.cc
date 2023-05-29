@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/optimizers/pow2_decay_with_linear_warmup_op.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -30,11 +29,11 @@ class Pow2DecayWithLinearWarmupOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("StepOut", dim);
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto data_type =
         OperatorWithKernel::IndicateVarDataType(ctx, "LearningRate");
-    return framework::OpKernelType(data_type, ctx.device_context());
+    return phi::KernelKey(data_type, ctx.GetPlace());
   }
 };
 
@@ -61,11 +60,11 @@ class Pow2DecayWithLinearWarmupOpMaker
     AddComment(R"DOC(
 The Pow2DecayWithLinearWarmup learning rate scheduler.
 
-When step_num < warmup_steps, lr = base_lr * step_num / warmup_steps 
+When step_num < warmup_steps, lr = base_lr * step_num / warmup_steps
 
-When warmup_steps <= step_num <= total_steps, 
-   factor = 1 - (step_num - warmup_steps) / (total_steps - warmup_steps) 
-   lr = (base_lr - end_lr) * factor * factor + end_lr 
+When warmup_steps <= step_num <= total_steps,
+   factor = 1 - (step_num - warmup_steps) / (total_steps - warmup_steps)
+   lr = (base_lr - end_lr) * factor * factor + end_lr
 
 When step_num > total_steps, lr = end_lr
 
@@ -77,12 +76,7 @@ When step_num > total_steps, lr = end_lr
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 REGISTER_OP_WITHOUT_GRADIENT(pow2_decay_with_linear_warmup,
                              ops::Pow2DecayWithLinearWarmupOp,
                              ops::Pow2DecayWithLinearWarmupOpMaker);
-REGISTER_OP_CPU_KERNEL(
-    pow2_decay_with_linear_warmup,
-    ops::Pow2DecayWithLinearWarmupOpKernel<plat::CPUDeviceContext, double>,
-    ops::Pow2DecayWithLinearWarmupOpKernel<plat::CPUDeviceContext, float>);

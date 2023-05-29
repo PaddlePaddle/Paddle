@@ -13,10 +13,10 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/complex_kernel.h"
-#include "paddle/phi/kernels/impl/complex_kernel_impl.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/complex_kernel_impl.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/phi/common/complex.h"
@@ -26,6 +26,7 @@ PD_REGISTER_KERNEL(conj,
                    ALL_LAYOUT,
                    phi::ConjKernel,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>,
                    float,
@@ -49,4 +50,9 @@ PD_REGISTER_KERNEL(imag,
                    phi::dtype::complex<float>,
                    phi::dtype::complex<double>) {
   kernel->OutputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
+}
+
+PD_REGISTER_KERNEL(
+    complex, GPU, ALL_LAYOUT, phi::ComplexKernel, float, double) {
+  kernel->OutputAt(0).SetDataType(phi::dtype::ToComplex(kernel_key.dtype()));
 }

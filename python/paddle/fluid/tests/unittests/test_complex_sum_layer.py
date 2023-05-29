@@ -13,12 +13,13 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
-import paddle
 from numpy.random import random as rand
-from paddle import tensor
-import paddle.fluid as fluid
+
+import paddle
 import paddle.fluid.dygraph as dg
+from paddle import fluid, tensor
 
 
 class TestComplexSumLayer(unittest.TestCase):
@@ -31,13 +32,14 @@ class TestComplexSumLayer(unittest.TestCase):
     def test_complex_basic_api(self):
         for dtype in self._dtypes:
             input = rand([2, 10, 10]).astype(dtype) + 1j * rand(
-                [2, 10, 10]).astype(dtype)
+                [2, 10, 10]
+            ).astype(dtype)
             for place in self._places:
                 with dg.guard(place):
                     var_x = dg.to_variable(input)
                     result = tensor.sum(var_x, axis=[1, 2]).numpy()
                     target = np.sum(input, axis=(1, 2))
-                    self.assertTrue(np.allclose(result, target))
+                    np.testing.assert_allclose(result, target, rtol=1e-05)
 
 
 if __name__ == '__main__':

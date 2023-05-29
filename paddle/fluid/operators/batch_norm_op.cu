@@ -25,19 +25,19 @@ namespace cub = hipcub;
 #endif
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/operators/batch_norm_op.h"
-#include "paddle/fluid/operators/norm_utils.cu.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/phi/backends/gpu/gpu_dnn.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 
-DECLARE_bool(cudnn_batchnorm_spatial_persistent);
+PHI_DECLARE_bool(cudnn_batchnorm_spatial_persistent);
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using DataLayout = framework::DataLayout;
+using DataLayout = phi::DataLayout;
 template <typename T>
-using CudnnDataType = platform::CudnnDataType<T>;
+using CudnnDataType = phi::backends::gpu::CudnnDataType<T>;
 template <typename T>
 using BatchNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 

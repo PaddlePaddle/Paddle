@@ -13,49 +13,23 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 /* --------------------------- */
-/*   From framework::Tensor    */
+/*   From phi::DenseTensor    */
 /* --------------------------- */
-/* The following members & interfaces were copied from framework::Tensor,
+/* The following members & interfaces were copied from phi::DenseTensor,
     so as to facilitate the unification of different Tensors
 
     Will be adjusted/removed/moved in the near future
 */
-public:
-/* Temporarily put InplaceVersion inside DenseTensor.
-Will move to AutogradMeta as soon as we switch to Eager Dygraph.
-*/
-class InplaceVersion {
-public:
-  bool IsUnique() const { return inplace_version_ == 0; }
-  void Bump() { ++inplace_version_; }
-  uint32_t CurrentVersion() const { return inplace_version_; }
-  void SetInplaceVersionToZero() { inplace_version_ = 0; }
 
-private:
-  uint32_t inplace_version_{0};
-};
-
+public:
 /* @jim19930609: Remove dependency on protobuf after Tensor Unification.
-*/
-explicit DenseTensor(paddle::experimental::DataType dtype);
-
-/// \brief Use existing storage space to create dense tensor. This interface
-/// can be used to deliberately create an uninitialized dense tensor.
-/// \param storage The existing storage.
-/// \param meta The meta data of dense tensor.
-DenseTensor(intrusive_ptr<Storage> storage, const DenseTensorMeta& meta);
-
-/// \brief Use existing storage space to create dense tensor. This interface
-/// can be used to deliberately create an uninitialized dense tensor.
-/// \param storage The existing storage.
-/// \param meta The meta data of dense tensor.
-DenseTensor(intrusive_ptr<Storage> storage, DenseTensorMeta&& meta);
+ */
+explicit DenseTensor(phi::DataType dtype);
 
 inline bool IsInitialized() const { return holder_ != nullptr; }
 
 template <typename T>
-T* mutable_data(const phi::Place& place,
-                size_t requested_size = 0);
+T* mutable_data(const phi::Place& place, size_t requested_size = 0);
 
 template <typename T>
 T* mutable_data(const DDim& dims,
@@ -63,33 +37,32 @@ T* mutable_data(const DDim& dims,
                 size_t requested_size = 0);
 
 void* mutable_data(const phi::Place& place,
-                    paddle::experimental::DataType type,
-                    size_t requested_size = 0);
+                   phi::DataType type,
+                   size_t requested_size = 0);
+
+void* mutable_data(const phi::Place& place, size_t requested_size = 0);
 
 void* mutable_data(const phi::Place& place,
-                    size_t requested_size = 0);
-
-void* mutable_data(const phi::Place& place,
-                    paddle::experimental::DataType type,
-                    const phi::Stream& stream);
+                   phi::DataType type,
+                   const phi::Stream& stream);
 
 /* @jim19930609: Remove dependency on protobuf after Tensor Unification.
-*/
-paddle::experimental::DataType type() const;
+ */
+phi::DataType type() const;
 
 // memory size returns the holding memory size in byte.
 size_t memory_size() const;
 
 void check_memory_size() const;
 
-void set_layout(const paddle::framework::DataLayout layout);
+void set_layout(const DataLayout layout);
 
 void clear() {
   holder_.reset();
   meta_.offset = 0;
 }
 
-void ShareBufferWith(const DenseTensor& tensor);
+void ShareBufferWith(const DenseTensor& tensor, bool only_buffer=false);
 
 void ShareDataTypeWith(const DenseTensor& tensor) {
   meta_.dtype = tensor.meta().dtype;
@@ -111,13 +84,11 @@ std::shared_ptr<phi::Allocation> MoveMemoryHolder() {
 void ResetHolder(const std::shared_ptr<phi::Allocation>& holder);
 
 void ResetHolderWithType(const std::shared_ptr<phi::Allocation>& holder,
-                        paddle::experimental::DataType type);
+                         phi::DataType type);
 
-void set_type(paddle::experimental::DataType type);
+void set_type(phi::DataType type);
 
-InplaceVersion& InplaceVersionCounter() {
-  return *inplace_version_counter_;
-}
+InplaceVersion& InplaceVersionCounter() { return *inplace_version_counter_; }
 
 /*! The internal of two tensors share the same memory block. */
 DenseTensor& ShareDataWith(const DenseTensor& src);
@@ -131,9 +102,6 @@ std::vector<DenseTensor> Split(int64_t split_size, int64_t axis) const;
 
 std::vector<DenseTensor> Chunk(int64_t chunks, int64_t axis) const;
 
-protected:
-std::shared_ptr<InplaceVersion> inplace_version_counter_{std::make_shared<InplaceVersion>()};
-
 /* @jim19930609: This is a hack
 In general, it is badly designed to fuse MKLDNN-specific objects into a
 generic Tensor.
@@ -144,29 +112,19 @@ following codes there.
 #ifdef PADDLE_WITH_MKLDNN
 
 public:
-inline dnnl::memory::format_tag format() const { return format_; }
+const dnnl::memory::desc& mem_desc() const;
 
-inline void set_format(const dnnl::memory::format_tag format) {
-  format_ = format;
+inline void set_mem_desc(const dnnl::memory::desc& mem_desc) {
+  mem_desc_ = mem_desc;
+  meta_.layout = DataLayout::ONEDNN;
 }
 
-protected:
-/**
- * @brief the detail format of memory block which have layout as kMKLDNN
- *
- * @note MKLDNN lib support various memory format like nchw, nhwc, nChw8C,
- *       nChw16c, etc. For a MKLDNN memory block, layout will be set as
- *       DataLayout::kMKLDNN meanwhile detail memory format will be kept in
- *       this field.
- */
-
-dnnl::memory::format_tag format_ = dnnl::memory::format_tag::undef;
 #endif
 
 /* ------------------------------ */
-/*   From framework::LoDTensor    */
+/*   From phi::DenseTensor    */
 /* ------------------------------ */
-/* The following members & interfaces were copied from framework::Tensor,
+/* The following members & interfaces were copied from phi::DenseTensor,
     so as to facilitate the unification of different Tensors
 
     Will be adjusted/removed/moved in the near future
@@ -179,8 +137,8 @@ void set_lod(const LoD& lod);
 LoD* mutable_lod();
 
 /*
-* Get the start offset and end offset of an  element from LoD.
-*/
+ * Get the start offset and end offset of an  element from LoD.
+ */
 std::pair<size_t, size_t> lod_element(size_t level, size_t elem) const;
 
 size_t NumLevels() const;

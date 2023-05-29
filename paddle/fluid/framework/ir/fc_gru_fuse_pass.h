@@ -33,7 +33,9 @@ class FCGRUFusePass : public FusePassBase {
  protected:
   void ApplyImpl(ir::Graph* graph) const override;
   const std::string name_scope_{"fc_gru_fuse"};
-  int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
+  int BuildFusion(Graph* graph,
+                  const std::string& name_scope,
+                  Scope* scope,
                   bool with_fc_bias) const;
 };
 

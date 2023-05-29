@@ -12,23 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/isfinite_kernel.h"
+
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/isfinite_kernel_impl.h"
-#include "paddle/phi/kernels/isfinite_kernel.h"
-
-namespace phi {
-
-template <typename T, typename Context, typename Functor>
-inline void IsfiniteKernelImpl(const Context& dev_ctx,
-                               const DenseTensor& x,
-                               DenseTensor* out) {
-  dev_ctx.template Alloc<T>(out);
-  Functor functor;
-  functor(x, out);
-}
-
-}  // namespace phi
 
 PD_REGISTER_KERNEL(isinf,
                    GPU,
@@ -37,8 +25,11 @@ PD_REGISTER_KERNEL(isinf,
                    float,
                    double,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    int,
-                   int64_t) {}
+                   int64_t) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
+}
 
 PD_REGISTER_KERNEL(isnan,
                    GPU,
@@ -47,8 +38,11 @@ PD_REGISTER_KERNEL(isnan,
                    float,
                    double,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    int,
-                   int64_t) {}
+                   int64_t) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
+}
 
 PD_REGISTER_KERNEL(isfinite,
                    GPU,
@@ -57,5 +51,8 @@ PD_REGISTER_KERNEL(isfinite,
                    float,
                    double,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    int,
-                   int64_t) {}
+                   int64_t) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::BOOL);
+}

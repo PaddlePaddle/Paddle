@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.fluid as fluid
 import unittest
+
 import numpy as np
+
+import paddle
+from paddle import fluid
 
 
 class TestPyReader(unittest.TestCase):
@@ -29,25 +31,30 @@ class TestPyReader(unittest.TestCase):
             def reader():
                 for i in range(self.sample_num):
                     yield np.random.uniform(
-                        low=0, high=255, size=[height, width]),
+                        low=0, high=255, size=[height, width]
+                    ),
 
             return reader
 
         for return_list in [True, False]:
             with fluid.program_guard(fluid.Program(), fluid.Program()):
-                image = fluid.layers.data(
-                    name='image', shape=[784, 784], dtype='float32')
+                image = paddle.static.data(
+                    name='image', shape=[-1, 784, 784], dtype='float32'
+                )
                 reader = fluid.io.PyReader(
                     feed_list=[image],
                     capacity=4,
                     iterable=True,
-                    return_list=return_list)
+                    return_list=return_list,
+                )
 
                 user_defined_reader = reader_creator_random_image(784, 784)
                 reader.decorate_sample_list_generator(
                     paddle.batch(
-                        user_defined_reader, batch_size=self.batch_size),
-                    fluid.core.CPUPlace())
+                        user_defined_reader, batch_size=self.batch_size
+                    ),
+                    fluid.core.CPUPlace(),
+                )
                 # definition of network is omitted
                 executor = fluid.Executor(fluid.core.CPUPlace())
                 executor.run(fluid.default_main_program())
@@ -65,7 +72,8 @@ class TestPyReader(unittest.TestCase):
                 batch_py_reader.decorate_sample_generator(
                     user_defined_reader,
                     batch_size=self.batch_size,
-                    places=fluid.core.CPUPlace())
+                    places=fluid.core.CPUPlace(),
+                )
 
                 for epoch in range(self.epoch_num):
                     for _, data in enumerate(batch_py_reader()):

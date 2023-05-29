@@ -12,58 +12,75 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-INCLUDE(ExternalProject)
+include(ExternalProject)
 
-SET(GLOO_PROJECT       "extern_gloo")
-SET(GLOO_PREFIX_DIR    ${THIRD_PARTY_PATH}/gloo)
-SET(GLOO_SOURCE_DIR    ${THIRD_PARTY_PATH}/gloo/src/extern_gloo)
-SET(GLOO_INSTALL_DIR   ${THIRD_PARTY_PATH}/install/gloo)
-SET(GLOO_INCLUDE_DIR   "${GLOO_INSTALL_DIR}/include" CACHE PATH "gloo include directory." FORCE)
-SET(GLOO_LIBRARY_DIR   "${GLOO_INSTALL_DIR}/lib" CACHE PATH "gloo library directory." FORCE)
+set(GLOO_PROJECT "extern_gloo")
+set(GLOO_PREFIX_DIR ${THIRD_PARTY_PATH}/gloo)
+set(GLOO_SOURCE_DIR ${THIRD_PARTY_PATH}/gloo/src/extern_gloo)
+set(GLOO_INSTALL_DIR ${THIRD_PARTY_PATH}/install/gloo)
+set(GLOO_INCLUDE_DIR
+    "${GLOO_INSTALL_DIR}/include"
+    CACHE PATH "gloo include directory." FORCE)
+set(GLOO_LIBRARY_DIR
+    "${GLOO_INSTALL_DIR}/lib"
+    CACHE PATH "gloo library directory." FORCE)
 # As we add extra features for gloo, we use the non-official repo
-SET(GLOO_REPOSITORY    ${GIT_URL}/sandyhouse/gloo.git)
-SET(GLOO_TAG           v0.0.2)
-SET(GLOO_LIBRARIES     "${GLOO_INSTALL_DIR}/lib/libgloo.a" CACHE FILEPATH "gloo library." FORCE)
-
-INCLUDE_DIRECTORIES(${GLOO_INCLUDE_DIR})
-
-if(WITH_ASCEND OR WITH_ASCEND_CL)
-  ExternalProject_Add(
-      ${GLOO_PROJECT}
-      ${EXTERNAL_PROJECT_LOG_ARGS}
-      ${SHALLOW_CLONE}
-      GIT_REPOSITORY        ${GLOO_REPOSITORY}
-      GIT_TAG               ${GLOO_TAG}
-      PREFIX                "${GLOO_PREFIX_DIR}"
-      UPDATE_COMMAND        ""
-      CONFIGURE_COMMAND     ""
-      BUILD_COMMAND         mkdir -p ${GLOO_SOURCE_DIR}/build
-          && cd ${GLOO_SOURCE_DIR}/build && cmake .. -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS} && make
-          && mkdir -p ${GLOO_LIBRARY_DIR} ${GLOO_INCLUDE_DIR}/gloo
-      INSTALL_COMMAND      ${CMAKE_COMMAND} -E copy ${GLOO_SOURCE_DIR}/build/gloo/libgloo.a ${GLOO_LIBRARY_DIR}
-      COMMAND              ${CMAKE_COMMAND} -E copy_directory "${GLOO_SOURCE_DIR}/gloo/" "${GLOO_INCLUDE_DIR}/gloo"
-      BUILD_BYPRODUCTS     ${GLOO_LIBRARIES}
-  )
-else()
-  ExternalProject_Add(
-      ${GLOO_PROJECT}
-      ${EXTERNAL_PROJECT_LOG_ARGS}
-      ${SHALLOW_CLONE}
-      GIT_REPOSITORY        ${GLOO_REPOSITORY}
-      GIT_TAG               ${GLOO_TAG}
-      PREFIX                "${GLOO_PREFIX_DIR}"
-      UPDATE_COMMAND        ""
-      CONFIGURE_COMMAND     ""
-      BUILD_COMMAND         mkdir -p ${GLOO_SOURCE_DIR}/build
-          && cd ${GLOO_SOURCE_DIR}/build && cmake .. -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS} && make
-          && mkdir -p ${GLOO_LIBRARY_DIR} ${GLOO_INCLUDE_DIR}/gloo
-      INSTALL_COMMAND      ${CMAKE_COMMAND} -E copy ${GLOO_SOURCE_DIR}/build/gloo/libgloo.a ${GLOO_LIBRARY_DIR}
-      COMMAND              ${CMAKE_COMMAND} -E copy_directory "${GLOO_SOURCE_DIR}/gloo/" "${GLOO_INCLUDE_DIR}/gloo"
-      BUILD_BYPRODUCTS     ${GLOO_LIBRARIES}
-  )
+set(GLOO_TAG v0.0.3)
+set(GLOO_LIBRARIES
+    "${GLOO_INSTALL_DIR}/lib/libgloo.a"
+    CACHE FILEPATH "gloo library." FORCE)
+set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/gloo)
+set(GLOO_PATCH_COMMAND "")
+if(WITH_GPU)
+  if(${CMAKE_CUDA_COMPILER_VERSION} LESS 12.0 AND ${CMAKE_CXX_COMPILER_VERSION}
+                                                  VERSION_GREATER 12.0)
+    file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/gloo/device.cc.patch
+         native_dst)
+    set(GLOO_PATCH_COMMAND
+        git checkout -- . && git checkout ${GLOO_TAG} &&patch -Nd
+        ${SOURCE_DIR}/gloo/transport/tcp < ${native_dst})
+  endif()
 endif()
 
+if(CMAKE_COMPILER_IS_GNUCC)
+  execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpfullversion -dumpversion
+                  OUTPUT_VARIABLE GCC_VERSION)
+  string(REGEX MATCHALL "[0-9]+" GCC_VERSION_COMPONENTS ${GCC_VERSION})
+  list(GET GCC_VERSION_COMPONENTS 0 GCC_MAJOR)
+  list(GET GCC_VERSION_COMPONENTS 1 GCC_MINOR)
+  set(GCC_VERSION "${GCC_MAJOR}.${GCC_MINOR}")
+  if(GCC_VERSION GREATER_EQUAL "12.0")
+    file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/gloo/device.cc.patch
+         native_dst)
+    file(TO_NATIVE_PATH ${PADDLE_SOURCE_DIR}/patches/gloo/types.h.patch
+         types_header)
+    # See: [Why calling some `git` commands before `patch`?]
+    set(GLOO_PATCH_COMMAND
+        git checkout -- . && git checkout ${GLOO_TAG} && patch -Nd
+        ${SOURCE_DIR}/gloo/transport/tcp < ${native_dst} && patch -Nd
+        ${SOURCE_DIR}/gloo/ < ${types_header})
+  endif()
+endif()
+include_directories(${GLOO_INCLUDE_DIR})
 
-ADD_LIBRARY(gloo STATIC IMPORTED GLOBAL)
-SET_PROPERTY(TARGET gloo PROPERTY IMPORTED_LOCATION ${GLOO_LIBRARIES})
-ADD_DEPENDENCIES(gloo ${GLOO_PROJECT})
+ExternalProject_Add(
+  ${GLOO_PROJECT}
+  ${EXTERNAL_PROJECT_LOG_ARGS}
+  SOURCE_DIR ${SOURCE_DIR}
+  PREFIX "${GLOO_PREFIX_DIR}"
+  UPDATE_COMMAND ""
+  PATCH_COMMAND ${GLOO_PATCH_COMMAND}
+  CONFIGURE_COMMAND ""
+  BUILD_COMMAND
+    mkdir -p ${GLOO_SOURCE_DIR}/build && cd ${GLOO_SOURCE_DIR}/build && cmake
+    ${SOURCE_DIR} -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS} && ${CMAKE_COMMAND}
+    --build . && mkdir -p ${GLOO_LIBRARY_DIR} ${GLOO_INCLUDE_DIR}/glo
+  INSTALL_COMMAND ${CMAKE_COMMAND} -E copy
+                  ${GLOO_SOURCE_DIR}/build/gloo/libgloo.a ${GLOO_LIBRARY_DIR}
+  COMMAND ${CMAKE_COMMAND} -E copy_directory "${SOURCE_DIR}/gloo/"
+          "${GLOO_INCLUDE_DIR}/gloo"
+  BUILD_BYPRODUCTS ${GLOO_LIBRARIES})
+
+add_library(gloo STATIC IMPORTED GLOBAL)
+set_property(TARGET gloo PROPERTY IMPORTED_LOCATION ${GLOO_LIBRARIES})
+add_dependencies(gloo ${GLOO_PROJECT})

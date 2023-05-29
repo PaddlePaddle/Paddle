@@ -13,10 +13,8 @@
 # limitations under the License.
 """Test fleet."""
 
-from __future__ import print_function
 import os
 import unittest
-import paddle.fluid.incubate.fleet.base.role_maker as role_maker
 
 
 class TestFleet1(unittest.TestCase):
@@ -29,14 +27,19 @@ class TestFleet1(unittest.TestCase):
         """Set up, set envs."""
         os.environ["PADDLE_TRAINERS_NUM"] = "2"
         os.environ[
-            "PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:36001,127.0.0.2:36001"
+            "PADDLE_PSERVERS_IP_PORT_LIST"
+        ] = "127.0.0.1:36001,127.0.0.2:36001"
 
     def test_pslib_1(self):
         """Test cases for pslib."""
-        import paddle.fluid as fluid
-        from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
-        from paddle.fluid.incubate.fleet.parameter_server.pslib import PSLib
-        from paddle.fluid.incubate.fleet.base.role_maker import GeneralRoleMaker
+        import paddle
+        from paddle import fluid
+        from paddle.incubate.distributed.fleet.parameter_server.pslib import (
+            fleet,
+        )
+        from paddle.incubate.distributed.fleet.role_maker import (
+            GeneralRoleMaker,
+        )
 
         os.environ["POD_IP"] = "127.0.0.1"
         os.environ["PADDLE_PORT"] = "36001"
@@ -45,26 +48,42 @@ class TestFleet1(unittest.TestCase):
         os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:36002"
         os.environ["PADDLE_TRAINER_ID"] = "0"
         role_maker = GeneralRoleMaker()
-        #role_maker.generate_role()
+        # role_maker.generate_role()
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
-        #fleet.init(role_maker)
+        # fleet.init(role_maker)
         train_program = fluid.Program()
         startup_program = fluid.Program()
         scope = fluid.Scope()
         with fluid.program_guard(train_program, startup_program):
-            show = fluid.layers.data(name="show", shape=[-1, 1], \
-                dtype="int64", lod_level=1, append_batch_size=False)
-            emb = fluid.layers.embedding(input=show, size=[1, 1], \
-                is_sparse=True, is_distributed=True, \
-                param_attr=fluid.ParamAttr(name="embedding"))
-            bow = fluid.layers.sequence_pool(input=emb, pool_type='sum')
-            bow = fluid.layers.data_norm(input=bow, epsilon=1e-4, name="norm")
-            fc = fluid.layers.fc(input=bow, size=1, act=None)
-            label = fluid.layers.data(name="click", shape=[-1, 1], \
-                dtype="int64", lod_level=1, append_batch_size=False)
-            label_cast = fluid.layers.cast(label, dtype='float32')
-            cost = fluid.layers.log_loss(fc, label_cast)
+            show = paddle.static.data(
+                name="show",
+                shape=[-1, 1],
+                dtype="int64",
+                lod_level=1,
+            )
+            emb = fluid.layers.embedding(
+                input=show,
+                size=[1, 1],
+                is_sparse=True,
+                is_distributed=True,
+                param_attr=fluid.ParamAttr(name="embedding"),
+            )
+            bow = paddle.static.nn.sequence_lod.sequence_pool(
+                input=emb, pool_type='sum'
+            )
+            bow = paddle.static.nn.data_norm(
+                input=bow, epsilon=1e-4, name="norm"
+            )
+            fc = paddle.static.nn.fc(x=bow, size=1, activation=None)
+            label = paddle.static.data(
+                name="click",
+                shape=[-1, 1],
+                dtype="int64",
+                lod_level=1,
+            )
+            label_cast = paddle.cast(label, dtype='float32')
+            cost = paddle.nn.functional.log_loss(fc, label_cast)
         try:
             adam = fluid.optimizer.Adam(learning_rate=0.000005)
             adam = fleet.distributed_optimizer(
@@ -73,7 +92,8 @@ class TestFleet1(unittest.TestCase):
                     "embedding": {
                         "sparse_accessor_class": "DownpourSparseValueAccessor"
                     }
-                })
+                },
+            )
             adam.minimize([cost], [scope])
             fleet.run_server()
         except:

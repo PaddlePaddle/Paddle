@@ -13,11 +13,12 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/layer_norm_kernel.h"
+
 #include "paddle/phi/kernels/cpu/elementwise.h"
 #include "paddle/phi/kernels/funcs/layer_norm_util.h"
 #if !defined(PADDLE_WITH_CUDA) && !defined(_WIN32) && !defined(__APPLE__) && \
     !defined(__OSX__)
-#include "paddle/fluid/operators/jit/kernels.h"
+#include "paddle/phi/kernels/funcs/jit/kernels.h"
 #endif
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -30,11 +31,10 @@ namespace phi {
 template <typename T, typename Context>
 void LayerNormKernel(const Context& dev_ctx,
                      const DenseTensor& x,
-                     paddle::optional<const DenseTensor&> scale_opt,
-                     paddle::optional<const DenseTensor&> bias_opt,
+                     const paddle::optional<DenseTensor>& scale_opt,
+                     const paddle::optional<DenseTensor>& bias_opt,
                      float epsilon,
                      int begin_norm_axis,
-                     bool is_test,
                      DenseTensor* y,
                      DenseTensor* mean,
                      DenseTensor* var) {
@@ -67,30 +67,30 @@ void LayerNormKernel(const Context& dev_ctx,
 
   // get variance
 
-  phi::funcs::ElementwiseCompute<funcs::SubAndSquareFunctor<T>, T, T>(
-      dev_ctx, x_tmp, *mean, 0, funcs::SubAndSquareFunctor<T>(), &out);
+  phi::funcs::ElementwiseCompute<funcs::SubAndSquareFunctor<T>, T>(
+      dev_ctx, x_tmp, *mean, funcs::SubAndSquareFunctor<T>(), &out, 0);
 
   row_mean(dev_ctx, out, var);
 
   // get x_norm
-  phi::funcs::ElementwiseCompute<funcs::SubtractFunctor<T>, T, T>(
-      dev_ctx, x_tmp, *mean, 0, funcs::SubtractFunctor<T>(), &out);
+  phi::funcs::ElementwiseCompute<funcs::SubtractFunctor<T>, T>(
+      dev_ctx, x_tmp, *mean, funcs::SubtractFunctor<T>(), &out, 0);
 
-  phi::funcs::ElementwiseCompute<funcs::DivAndSqrtFunctor<T>, T, T>(
+  phi::funcs::ElementwiseCompute<funcs::DivAndSqrtFunctor<T>, T>(
       dev_ctx,
       out,
       *var,
-      0,
       funcs::DivAndSqrtFunctor<T>(static_cast<T>(epsilon)),
-      &out);
+      &out,
+      0);
 
   if (scale) {
-    phi::funcs::ElementwiseCompute<funcs::MultiplyFunctor<T>, T, T>(
-        dev_ctx, out, *scale, 1, funcs::MultiplyFunctor<T>(), &out);
+    phi::funcs::ElementwiseCompute<funcs::MultiplyFunctor<T>, T>(
+        dev_ctx, out, *scale, funcs::MultiplyFunctor<T>(), &out, 1);
   }
   if (bias) {
-    phi::funcs::ElementwiseCompute<funcs::AddFunctor<T>, T, T>(
-        dev_ctx, out, *bias, 1, funcs::AddFunctor<T>(), &out);
+    phi::funcs::ElementwiseCompute<funcs::AddFunctor<T>, T>(
+        dev_ctx, out, *bias, funcs::AddFunctor<T>(), &out, 1);
   }
 #else
   PADDLE_ENFORCE_EQ(mean->numel(),
@@ -123,10 +123,9 @@ void LayerNormKernel(const Context& dev_ctx,
                           right));
   }
 
-  auto ker = paddle::operators::jit::KernelFuncs<
-                 paddle::operators::jit::LayerNormTuple<T>,
-                 phi::CPUPlace>::Cache()
-                 .At(right);
+  auto ker =
+      phi::jit::KernelFuncs<phi::jit::LayerNormTuple<T>, phi::CPUPlace>::Cache()
+          .At(right);
   ker(x_tmp.data<T>(),
       out.data<T>(),
       mean->data<T>(),
@@ -134,7 +133,7 @@ void LayerNormKernel(const Context& dev_ctx,
       scale ? scale->data<T>() : nullptr,
       bias ? bias->data<T>() : nullptr,
       static_cast<int>(left),
-      static_cast<const float>(epsilon),
+      static_cast<float>(epsilon),
       right);
 #endif
 }
@@ -142,4 +141,7 @@ void LayerNormKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    layer_norm, CPU, ALL_LAYOUT, phi::LayerNormKernel, float, double) {}
+    layer_norm, CPU, ALL_LAYOUT, phi::LayerNormKernel, float, double) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::UNDEFINED);
+  kernel->OutputAt(2).SetDataType(phi::DataType::UNDEFINED);
+}

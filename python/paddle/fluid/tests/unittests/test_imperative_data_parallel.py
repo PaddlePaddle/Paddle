@@ -12,24 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
+import unittest
 
-import contextlib
-import unittest
 import numpy as np
-import six
-import unittest
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.dygraph as dygraph
-from paddle.fluid.dygraph.nn import Linear
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
+from paddle.nn import Linear
 
 
-class MLP(fluid.Layer):
+class MLP(paddle.nn.Layer):
     def __init__(self, param_attr=None, bias_attr=None):
-        super(MLP, self).__init__()
+        super().__init__()
 
         self._linear1 = Linear(784, 10)
         self._linear2 = Linear(10, 10)
@@ -43,21 +38,25 @@ class MLP(fluid.Layer):
 class TestDataParallelStateDict(unittest.TestCase):
     def test_data_parallel_state_dict(self):
         with fluid.dygraph.guard():
-            strategy = dygraph.parallel.prepare_context()
+            paddle.distributed.init_parallel_env()
             mlp = MLP()
-            parallel_mlp = dygraph.parallel.DataParallel(mlp, strategy)
+            parallel_mlp = paddle.DataParallel(mlp)
 
             single_state = mlp.state_dict()
             parallel_state = parallel_mlp.state_dict()
 
             base_para = {}
-            place = fluid.CPUPlace() if not core.is_compiled_with_cuda(
-            ) else fluid.CUDAPlace(0)
+            place = (
+                fluid.CPUPlace()
+                if not core.is_compiled_with_cuda()
+                else fluid.CUDAPlace(0)
+            )
             for k, v in single_state.items():
                 self.assertTrue(k in parallel_state)
 
-                self.assertTrue(
-                    np.array_equal(v.numpy(), parallel_state[k].numpy()))
+                np.testing.assert_array_equal(
+                    v.numpy(), parallel_state[k].numpy()
+                )
 
                 base_para[k] = v.numpy()
 
@@ -73,7 +72,7 @@ class TestDataParallelStateDict(unittest.TestCase):
             parallel_state = parallel_mlp.state_dict()
 
             for k, v in parallel_state.items():
-                self.assertTrue(np.array_equal(v.numpy(), base_para[k]))
+                np.testing.assert_array_equal(v.numpy(), base_para[k])
 
             parallel_mlp.load_dict(base_para)
 

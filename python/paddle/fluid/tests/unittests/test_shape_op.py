@@ -12,39 +12,61 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest, convert_float_to_uint16
+from op import Operator
+
+import paddle
 from paddle.fluid import core
-from paddle.fluid.op import Operator
 
 
 class TestShapeOp(OpTest):
     def setUp(self):
         self.op_type = "shape"
+        self.python_api = paddle.shape
         self.config()
-        self.shape = [2, 3]
-        input = np.zeros(self.shape)
+        input = np.zeros(self.shape, dtype=self.dtype)
         self.inputs = {'Input': input}
         self.outputs = {'Out': np.array(self.shape)}
 
     def config(self):
         self.shape = [2, 3]
+        self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_cinn=True)
 
 
 class case1(TestShapeOp):
     def config(self):
         self.shape = [2]
+        self.dtype = np.float32
 
 
 class case2(TestShapeOp):
     def config(self):
         self.shape = [1, 2, 3]
+        self.dtype = np.float32
+
+
+class TestShapeOpFp16(TestShapeOp):
+    def config(self):
+        self.shape = [2, 3]
+        self.dtype = np.float16
+
+
+class case1Fp16(TestShapeOp):
+    def config(self):
+        self.shape = [2]
+        self.dtype = np.float16
+
+
+class case2Fp16(TestShapeOp):
+    def config(self):
+        self.shape = [1, 2, 3]
+        self.dtype = np.float16
 
 
 class TestShapeWithSelectedRows(unittest.TestCase):
@@ -81,6 +103,39 @@ class TestShapeWithSelectedRows(unittest.TestCase):
     def test_check_output(self):
         for place in self.get_places():
             self.check_with_place(place)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or not core.supports_bfloat16(),
+    "core is not compiled with CUDA or place do not support bfloat16",
+)
+class TestShapeOpBf16(OpTest):
+    def setUp(self):
+        self.op_type = "shape"
+        self.dtype = 'bfloat16'
+        self.python_api = paddle.shape
+        self.config()
+        input = np.zeros(self.shape)
+        input = convert_float_to_uint16(input.astype('float32'))
+        self.inputs = {'Input': input}
+        self.outputs = {'Out': np.array(self.shape)}
+
+    def config(self):
+        self.shape = [2, 3]
+
+    def test_check_output(self):
+        place = core.CUDAPlace(0)
+        self.check_output_with_place(place, check_cinn=True)
+
+
+class case1Bf16(TestShapeOpBf16):
+    def config(self):
+        self.shape = [2]
+
+
+class case2Bf16(TestShapeOpBf16):
+    def config(self):
+        self.shape = [1, 2, 3]
 
 
 if __name__ == '__main__':

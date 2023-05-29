@@ -1,1 +1,1 @@
-cc_library(blas SRCS blas.cc DEPS cblas framework_proto device_context)
+collect_srcs(kernels_srcs SRCS blas.cc)

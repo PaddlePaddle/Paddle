@@ -27,14 +27,16 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
 using SelectedRows = phi::SelectedRows;
 using DDim = framework::DDim;
 
 template <typename T>
-void dequant(const unsigned char *in, T *out, float min, float max,
-             int emb_size, int pow_2_bits) {
+void dequant(const unsigned char *in,
+             T *out,
+             float min,
+             float max,
+             int emb_size,
+             int pow_2_bits) {
   float scale = (max - min) / pow_2_bits;
   for (int i = 0; i < emb_size; ++i) {
     T x = scale * static_cast<int>(in[i]) + min;
@@ -44,12 +46,12 @@ void dequant(const unsigned char *in, T *out, float min, float max,
 
 constexpr int64_t kNoPadding = -1;
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class LookupTableDequantKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *ids_t = context.Input<LoDTensor>("Ids");      // int tensor
-    auto *output_t = context.Output<LoDTensor>("Out");  // float tensor
+    auto *ids_t = context.Input<phi::DenseTensor>("Ids");      // int tensor
+    auto *output_t = context.Output<phi::DenseTensor>("Out");  // float tensor
     auto *table_var = context.InputVar("W");
 
     auto id_name = context.InputNames("Ids").front();
@@ -61,9 +63,10 @@ class LookupTableDequantKernel : public framework::OpKernel<T> {
     int64_t ids_numel = ids_t->numel();
 
     PADDLE_ENFORCE_GE(
-        table_var->Type(), framework::VarTypeTrait<LoDTensor>::kId,
+        table_var->Type(),
+        framework::VarTypeTrait<phi::DenseTensor>::kId,
         platform::errors::InvalidArgument("lookup table must be LodTensor"));
-    auto *table_t = context.Input<LoDTensor>("W");
+    auto *table_t = context.Input<phi::DenseTensor>("W");
     int64_t row_number = table_t->dims()[0];
     int64_t quant_number = table_t->dims()[1];
     int64_t row_width = (quant_number - 2) * 4;
@@ -76,25 +79,33 @@ class LookupTableDequantKernel : public framework::OpKernel<T> {
         memset(output + i * row_width, 0, row_width * sizeof(T));
       } else {
         PADDLE_ENFORCE_LT(
-            ids[i], row_number,
+            ids[i],
+            row_number,
             platform::errors::InvalidArgument(
                 "Variable value (input) of OP(fluid.layers.embedding) "
                 "expected >= 0 and < %ld, but got %ld. Please check input "
                 "value.",
-                row_number, ids[i]));
+                row_number,
+                ids[i]));
         PADDLE_ENFORCE_GE(
-            ids[i], 0,
+            ids[i],
+            0,
             platform::errors::InvalidArgument(
                 "Variable value (input) of OP(fluid.layers.embedding) "
                 "expected >= 0 and < %ld, but got %ld. Please check input "
                 "value.",
-                row_number, ids[i]));
+                row_number,
+                ids[i]));
         float min = *(table + ids[i] * quant_number);
         float max = *(table + ids[i] * quant_number + 1);
         int offset = ids[i] * quant_number + 2;
         const unsigned char *tensor_buf =
             reinterpret_cast<const unsigned char *>(table + offset);
-        dequant(tensor_buf, output + i * row_width, min, max, row_width,
+        dequant(tensor_buf,
+                output + i * row_width,
+                min,
+                max,
+                row_width,
                 pow_2_bits);
       }
     }

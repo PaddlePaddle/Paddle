@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <mutex>
 
+#include "paddle/phi/api/include/dll_decl.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/macros.h"
 #include "paddle/utils/flat_hash_map.h"
@@ -24,6 +25,8 @@ namespace phi {
 class DeviceContext;
 class CPUContext;
 class GPUContext;
+class Allocator;
+class CUDAStream;
 }  // namespace phi
 
 namespace paddle {
@@ -55,8 +58,12 @@ struct DefaultDeviceContextType<AllocationType::GPU> {
  * In order not to depend on the fluid's DeviceContextPool,
  * the DeviceContextPool here needs to be initialized in the fluid, and cannot
  * be initialized by itself.
+ *
+ * Note: DeviceContextPool is an experimental API and may be removed in the
+ * future. From 2.3, we recommend directly using the C++ API to combine new
+ * operators.
  */
-class DeviceContextPool {
+class PADDLE_API DeviceContextPool {
  public:
   static DeviceContextPool& Instance();
 
@@ -81,4 +88,20 @@ class DeviceContextPool {
 };
 
 }  // namespace experimental
+}  // namespace paddle
+
+namespace paddle {
+
+/**
+ * Get the Allocator for the passed place.
+ */
+PADDLE_API phi::Allocator* GetAllocator(const phi::Place& place);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+/**
+ * Get the current CUDA stream for the passed CUDA device.
+ */
+PADDLE_API phi::CUDAStream* GetCurrentCUDAStream(const phi::Place& place);
+#endif
+
 }  // namespace paddle

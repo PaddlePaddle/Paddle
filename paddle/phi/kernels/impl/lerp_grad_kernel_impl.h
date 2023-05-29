@@ -21,8 +21,8 @@ namespace phi {
 
 template <typename Context, typename T, size_t D>
 static void LerpGradFunction(const Context& ctx,
-                             const DenseTensor& x,
-                             const DenseTensor& y,
+                             const DenseTensor& x UNUSED,
+                             const DenseTensor& y UNUSED,
                              const DenseTensor& weight,
                              const DenseTensor& out,
                              const DenseTensor& out_grad,
@@ -33,28 +33,44 @@ static void LerpGradFunction(const Context& ctx,
   auto* dx = x_grad;
   auto* dy = y_grad;
 
-  auto dout_dims = dout.dims();
-  auto dx_dims = phi::funcs::ExtendDims2Rank(dx->dims(), D);
-  auto dy_dims = phi::funcs::ExtendDims2Rank(dy->dims(), D);
+  auto& out_dims = out.dims();
+  DDim dx_dims;
+  DDim dy_dims;
+
   auto w_dims = phi::funcs::ExtendDims2Rank(w.dims(), D);
+  auto g_dims = phi::funcs::ExtendDims2Rank(out_grad.dims(), D);
   Eigen::DSizes<int, D> dx_bcast_dims;
   Eigen::DSizes<int, D> dy_bcast_dims;
   Eigen::DSizes<int, D> w_bcast_dims;
-  phi::funcs::GetBroadcastDims<D>(dx_dims, dout_dims, &dx_bcast_dims);
-  phi::funcs::GetBroadcastDims<D>(dy_dims, dout_dims, &dy_bcast_dims);
-  phi::funcs::GetBroadcastDims<D>(w_dims, dout_dims, &w_bcast_dims);
+  Eigen::DSizes<int, D> g_bcast_dims;
+
+  if (dx) {
+    dx_dims = phi::funcs::ExtendDims2Rank(dx->dims(), D);
+    phi::funcs::GetBroadcastDims<D>(dx_dims, out_dims, &dx_bcast_dims);
+  }
+  if (dy) {
+    dy_dims = phi::funcs::ExtendDims2Rank(dy->dims(), D);
+    phi::funcs::GetBroadcastDims<D>(dy_dims, out_dims, &dy_bcast_dims);
+  }
+  phi::funcs::GetBroadcastDims<D>(w_dims, out_dims, &w_bcast_dims);
+  phi::funcs::GetBroadcastDims<D>(g_dims, out_dims, &g_bcast_dims);
 
   auto eigen_w = phi::EigenTensor<T, D>::From(w, w_dims);
-  auto eigen_dout = phi::EigenTensor<T, D>::From(dout);
+  auto eigen_dout = phi::EigenTensor<T, D>::From(dout, g_dims);
 
   Eigen::DSizes<int, D * 2> dx_reshape_dims;
   Eigen::DSizes<int, D * 2> dy_reshape_dims;
   Eigen::DSizes<int, D> reduce_dims;
-  for (int i = 0; i < dout_dims.size(); ++i) {
-    dx_reshape_dims[2 * i] = dx_bcast_dims[i];
-    dx_reshape_dims[2 * i + 1] = dx_dims[i];
-    dy_reshape_dims[2 * i] = dy_bcast_dims[i];
-    dy_reshape_dims[2 * i + 1] = dy_dims[i];
+
+  for (int i = 0; i < out_dims.size(); ++i) {
+    if (dx) {
+      dx_reshape_dims[2 * i] = dx_bcast_dims[i];
+      dx_reshape_dims[2 * i + 1] = dx_dims[i];
+    }
+    if (dy) {
+      dy_reshape_dims[2 * i] = dy_bcast_dims[i];
+      dy_reshape_dims[2 * i + 1] = dy_dims[i];
+    }
     reduce_dims[i] = 2 * i;
   }
 
@@ -63,7 +79,8 @@ static void LerpGradFunction(const Context& ctx,
   if (dx) {
     ctx.template Alloc<T>(dx);
     auto eigen_dx = phi::EigenTensor<T, D>::From(*dx, dx_dims);
-    auto eigen_expr = (1 - eigen_w.broadcast(w_bcast_dims)) * eigen_dout;
+    auto eigen_expr = (1 - eigen_w.broadcast(w_bcast_dims)) *
+                      eigen_dout.broadcast(g_bcast_dims);
     eigen_dx.device(place) = eigen_expr.reshape(dx_reshape_dims)
                                  .sum(reduce_dims)
                                  .reshape(eigen_dx.dimensions());
@@ -71,10 +88,37 @@ static void LerpGradFunction(const Context& ctx,
   if (dy) {
     ctx.template Alloc<T>(dy);
     auto eigen_dy = phi::EigenTensor<T, D>::From(*dy, dy_dims);
-    auto eigen_expr = eigen_w.broadcast(w_bcast_dims) * eigen_dout;
+    auto eigen_expr =
+        eigen_w.broadcast(w_bcast_dims) * eigen_dout.broadcast(g_bcast_dims);
     eigen_dy.device(place) = eigen_expr.reshape(dy_reshape_dims)
                                  .sum(reduce_dims)
                                  .reshape(eigen_dy.dimensions());
+  }
+}
+
+template <typename Context, typename T>
+static void LerpGradFunctionZero(const Context& ctx,
+                                 const DenseTensor& x UNUSED,
+                                 const DenseTensor& y UNUSED,
+                                 const DenseTensor& weight,
+                                 const DenseTensor& out UNUSED,
+                                 const DenseTensor& out_grad,
+                                 DenseTensor* x_grad,
+                                 DenseTensor* y_grad) {
+  auto dim = make_ddim(std::vector<int64_t>(1, 1));
+  auto eigen_w = phi::EigenTensor<T, 1>::From(weight, dim);
+  auto eigen_dout = phi::EigenTensor<T, 1>::From(out_grad, dim);
+
+  auto& place = *ctx.eigen_device();
+  if (x_grad) {
+    ctx.template Alloc<T>(x_grad);
+    auto eigen_dx = phi::EigenTensor<T, 1>::From(*x_grad, dim);
+    eigen_dx.device(place) = (1 - eigen_w) * eigen_dout;
+  }
+  if (y_grad) {
+    ctx.template Alloc<T>(y_grad);
+    auto eigen_dy = phi::EigenTensor<T, 1>::From(*y_grad, dim);
+    eigen_dy.device(place) = eigen_w * eigen_dout;
   }
 }
 
@@ -90,10 +134,10 @@ void LerpGradKernel(const Context& ctx,
   int rank = out.dims().size();
   PADDLE_ENFORCE_GE(
       rank,
-      1,
+      0,
       phi::errors::InvalidArgument(
           "The number of dimensions for LerpGradOp must be "
-          "greater than or equal to 1, but the value received is %d.",
+          "greater than or equal to 0, but the value received is %d.",
           rank));
   PADDLE_ENFORCE_LE(
       rank,
@@ -103,6 +147,10 @@ void LerpGradKernel(const Context& ctx,
           "less than or equal to 6, but the value received is %d.",
           rank));
   switch (rank) {
+    case 0:
+      LerpGradFunctionZero<Context, T>(
+          ctx, x, y, weight, out, out_grad, x_grad, y_grad);
+      break;
     case 1:
       LerpGradFunction<Context, T, 1>(
           ctx, x, y, weight, out, out_grad, x_grad, y_grad);

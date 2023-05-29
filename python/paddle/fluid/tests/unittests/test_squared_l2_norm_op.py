@@ -12,21 +12,69 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
+import unittest
 
 import numpy as np
-import unittest
+from eager_op_test import OpTest
 from numpy import linalg as LA
-from op_test import OpTest
+
 import paddle
-from paddle import _C_ops
+from paddle import _C_ops, _legacy_C_ops
+from paddle.framework import in_dynamic_mode
+
+
+def test_squared_l2_norm(x):
+    if in_dynamic_mode():
+        return _C_ops.squared_l2_norm(x)
+    else:
+        return _legacy_C_ops.squared_l2_norm(x)
+
+
+class TestSquaredL2NormF16Op(unittest.TestCase):
+    def init_test_case(self):
+        X = np.random.uniform(-0.1, 0.1, (8, 5, 10)).astype('float32')
+        return X
+
+    def check_main(self, x_np, dtype):
+        paddle.disable_static()
+        x = paddle.to_tensor(x_np)
+
+        x.stop_gradient = False
+        y = test_squared_l2_norm(x)
+        x_g = paddle.grad(y, [x])
+
+        paddle.enable_static()
+        return y, x_g
+
+    def test_main(self):
+        x_np = self.init_test_case()
+        y_np_1, x_g_np_1 = self.check_main(x_np, 'float32')
+        y_np_2, x_g_np_2 = self.check_main(x_np, 'float16')
+
+        def assert_equal(x, y):
+            np.testing.assert_allclose(x, y, rtol=1e-05, atol=0.0)
+
+        assert_equal(y_np_1, y_np_2)
+        assert_equal(x_g_np_1, x_g_np_2)
+
+
+class TestSquaredL2NormF16Op1(TestSquaredL2NormF16Op):
+    def init_test_case(self):
+        X = np.random.uniform(-2.0, 2.0, (30, 10)).astype('float32')
+        return X
+
+
+class TestSquaredL2NormF16Op2(TestSquaredL2NormF16Op):
+    def init_test_case(self):
+        X = np.random.uniform(-5.0, 5.0, (20, 10, 20)).astype('float32')
+        return X
 
 
 class TestL2LossOp(OpTest):
-    """Test squared_l2_norm
-    """
+    """Test squared_l2_norm"""
 
     def setUp(self):
+        self.python_api = test_squared_l2_norm
         self.op_type = "squared_l2_norm"
         self.max_relative_error = 0.05
 
@@ -40,7 +88,10 @@ class TestL2LossOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(
-            ['X'], 'Out', max_relative_error=self.max_relative_error)
+            ['X'],
+            'Out',
+            max_relative_error=self.max_relative_error,
+        )
 
 
 class TestL2LossDeterministic(unittest.TestCase):
@@ -48,9 +99,9 @@ class TestL2LossDeterministic(unittest.TestCase):
         with paddle.fluid.dygraph.guard(place):
             x_np = np.random.rand(5, 11, 13).astype('float32')
             x = paddle.to_tensor(x_np)
-            y1 = _C_ops.squared_l2_norm(x)
-            y2 = _C_ops.squared_l2_norm(x)
-            self.assertTrue(np.array_equal(y1.numpy(), y2.numpy()))
+            y1 = _legacy_C_ops.squared_l2_norm(x)
+            y2 = _legacy_C_ops.squared_l2_norm(x)
+            np.testing.assert_array_equal(y1.numpy(), y2.numpy())
 
     def test_main(self):
         self.check_place(paddle.CPUPlace())

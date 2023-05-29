@@ -1,4 +1,4 @@
-# copyright (c) 2021 PaddlePaddle Authors. All Rights Reserve.
+# copyright (c) 2022 PaddlePaddle Authors. All Rights Reserve.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,41 +12,39 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import math
-import paddle
-import paddle.nn as nn
-import paddle.nn.functional as F
 
-from paddle.nn import Linear, Dropout, ReLU
-from paddle.nn import Conv2D, MaxPool2D
-from paddle.nn.initializer import Uniform
+import paddle
+import paddle.nn.functional as F
+from paddle import nn
 from paddle.fluid.param_attr import ParamAttr
+from paddle.nn import Conv2D, Dropout, Linear, MaxPool2D, ReLU
+from paddle.nn.initializer import Uniform
 from paddle.utils.download import get_weights_path_from_url
 
 model_urls = {
     "alexnet": (
         "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/AlexNet_pretrained.pdparams",
-        "7f0f9f737132e02732d75a1459d98a43", )
+        "7f0f9f737132e02732d75a1459d98a43",
+    )
 }
 
 __all__ = []
 
 
 class ConvPoolLayer(nn.Layer):
-    def __init__(self,
-                 input_channels,
-                 output_channels,
-                 filter_size,
-                 stride,
-                 padding,
-                 stdv,
-                 groups=1,
-                 act=None):
-        super(ConvPoolLayer, self).__init__()
+    def __init__(
+        self,
+        input_channels,
+        output_channels,
+        filter_size,
+        stride,
+        padding,
+        stdv,
+        groups=1,
+        act=None,
+    ):
+        super().__init__()
 
         self.relu = ReLU() if act == "relu" else None
 
@@ -58,7 +56,8 @@ class ConvPoolLayer(nn.Layer):
             padding=padding,
             groups=groups,
             weight_attr=ParamAttr(initializer=Uniform(-stdv, stdv)),
-            bias_attr=ParamAttr(initializer=Uniform(-stdv, stdv)))
+            bias_attr=ParamAttr(initializer=Uniform(-stdv, stdv)),
+        )
         self._pool = MaxPool2D(kernel_size=3, stride=2, padding=0)
 
     def forward(self, inputs):
@@ -72,22 +71,32 @@ class ConvPoolLayer(nn.Layer):
 class AlexNet(nn.Layer):
     """AlexNet model from
     `"ImageNet Classification with Deep Convolutional Neural Networks"
-    <https://proceedings.neurips.cc/paper/2012/file/c399862d3b9d6b76c8436e924a68c45b-Paper.pdf>`_
+    <https://proceedings.neurips.cc/paper/2012/file/c399862d3b9d6b76c8436e924a68c45b-Paper.pdf>`_.
 
     Args:
-        num_classes (int): Output dim of last fc layer. Default: 1000.
+        num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer
+                            will not be defined. Default: 1000.
+
+    Returns:
+        :ref:`api_paddle_nn_Layer`. An instance of AlexNet model.
 
     Examples:
         .. code-block:: python
 
+            import paddle
             from paddle.vision.models import AlexNet
 
             alexnet = AlexNet()
 
+            x = paddle.rand([1, 3, 224, 224])
+            out = alexnet(x)
+
+            print(out.shape)
+            # [1, 1000]
     """
 
     def __init__(self, num_classes=1000):
-        super(AlexNet, self).__init__()
+        super().__init__()
         self.num_classes = num_classes
         stdv = 1.0 / math.sqrt(3 * 11 * 11)
         self._conv1 = ConvPoolLayer(3, 64, 11, 4, 2, stdv, act="relu")
@@ -101,7 +110,8 @@ class AlexNet(nn.Layer):
             stride=1,
             padding=1,
             weight_attr=ParamAttr(initializer=Uniform(-stdv, stdv)),
-            bias_attr=ParamAttr(initializer=Uniform(-stdv, stdv)))
+            bias_attr=ParamAttr(initializer=Uniform(-stdv, stdv)),
+        )
         stdv = 1.0 / math.sqrt(384 * 3 * 3)
         self._conv4 = Conv2D(
             384,
@@ -110,7 +120,8 @@ class AlexNet(nn.Layer):
             stride=1,
             padding=1,
             weight_attr=ParamAttr(initializer=Uniform(-stdv, stdv)),
-            bias_attr=ParamAttr(initializer=Uniform(-stdv, stdv)))
+            bias_attr=ParamAttr(initializer=Uniform(-stdv, stdv)),
+        )
         stdv = 1.0 / math.sqrt(256 * 3 * 3)
         self._conv5 = ConvPoolLayer(256, 256, 3, 1, 1, stdv, act="relu")
 
@@ -121,19 +132,22 @@ class AlexNet(nn.Layer):
                 in_features=256 * 6 * 6,
                 out_features=4096,
                 weight_attr=ParamAttr(initializer=Uniform(-stdv, stdv)),
-                bias_attr=ParamAttr(initializer=Uniform(-stdv, stdv)))
+                bias_attr=ParamAttr(initializer=Uniform(-stdv, stdv)),
+            )
 
             self._drop2 = Dropout(p=0.5, mode="downscale_in_infer")
             self._fc7 = Linear(
                 in_features=4096,
                 out_features=4096,
                 weight_attr=ParamAttr(initializer=Uniform(-stdv, stdv)),
-                bias_attr=ParamAttr(initializer=Uniform(-stdv, stdv)))
+                bias_attr=ParamAttr(initializer=Uniform(-stdv, stdv)),
+            )
             self._fc8 = Linear(
                 in_features=4096,
                 out_features=num_classes,
                 weight_attr=ParamAttr(initializer=Uniform(-stdv, stdv)),
-                bias_attr=ParamAttr(initializer=Uniform(-stdv, stdv)))
+                bias_attr=ParamAttr(initializer=Uniform(-stdv, stdv)),
+            )
 
     def forward(self, inputs):
         x = self._conv1(inputs)
@@ -161,10 +175,14 @@ def _alexnet(arch, pretrained, **kwargs):
     model = AlexNet(**kwargs)
 
     if pretrained:
-        assert arch in model_urls, "{} model do not have a pretrained model now, you should set pretrained=False".format(
-            arch)
-        weight_path = get_weights_path_from_url(model_urls[arch][0],
-                                                model_urls[arch][1])
+        assert (
+            arch in model_urls
+        ), "{} model do not have a pretrained model now, you should set pretrained=False".format(
+            arch
+        )
+        weight_path = get_weights_path_from_url(
+            model_urls[arch][0], model_urls[arch][1]
+        )
 
         param = paddle.load(weight_path)
         model.load_dict(param)
@@ -173,14 +191,22 @@ def _alexnet(arch, pretrained, **kwargs):
 
 
 def alexnet(pretrained=False, **kwargs):
-    """AlexNet model
+    """AlexNet model from
+    `"ImageNet Classification with Deep Convolutional Neural Networks"
+    <https://proceedings.neurips.cc/paper/2012/file/c399862d3b9d6b76c8436e924a68c45b-Paper.pdf>`_.
 
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.
+        pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
+                            on ImageNet. Default: False.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`AlexNet <api_paddle_vision_AlexNet>`.
+
+    Returns:
+        :ref:`api_paddle_nn_Layer`. An instance of AlexNet model.
 
     Examples:
         .. code-block:: python
 
+            import paddle
             from paddle.vision.models import alexnet
 
             # build model
@@ -188,5 +214,11 @@ def alexnet(pretrained=False, **kwargs):
 
             # build model and load imagenet pretrained weight
             # model = alexnet(pretrained=True)
+
+            x = paddle.rand([1, 3, 224, 224])
+            out = model(x)
+
+            print(out.shape)
+            # [1, 1000]
     """
     return _alexnet('alexnet', pretrained, **kwargs)

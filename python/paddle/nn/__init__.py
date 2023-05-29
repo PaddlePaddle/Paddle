@@ -14,10 +14,9 @@
 
 # TODO: import all neural network related api under this directory,
 # including layers, linear, conv, rnn etc.
-from ..fluid.dygraph.layers import Layer  # noqa: F401
-from ..fluid.dygraph.container import LayerList  # noqa: F401
-from ..fluid.dygraph.container import ParameterList  # noqa: F401
-from ..fluid.dygraph.container import Sequential  # noqa: F401
+from .layer.container import LayerList  # noqa: F401
+from .layer.container import ParameterList  # noqa: F401
+from .layer.container import Sequential  # noqa: F401
 
 from .clip import ClipGradByGlobalNorm  # noqa: F401
 from .clip import ClipGradByNorm  # noqa: F401
@@ -41,6 +40,7 @@ from .layer.activation import Sigmoid  # noqa: F401
 from .layer.activation import Hardsigmoid  # noqa: F401
 from .layer.activation import LogSigmoid  # noqa: F401
 from .layer.activation import Softmax  # noqa: F401
+from .layer.activation import Softmax2D  # noqa: F401
 from .layer.activation import Softplus  # noqa: F401
 from .layer.activation import Softshrink  # noqa: F401
 from .layer.activation import Softsign  # noqa: F401
@@ -50,6 +50,7 @@ from .layer.activation import Tanhshrink  # noqa: F401
 from .layer.activation import ThresholdedReLU  # noqa: F401
 from .layer.activation import LogSoftmax  # noqa: F401
 from .layer.activation import Maxout  # noqa: F401
+from .layer.activation import RReLU  # noqa: F401
 from .layer.common import Pad1D  # noqa: F401
 from .layer.common import Pad2D  # noqa: F401
 from .layer.common import ZeroPad2D  # noqa: F401
@@ -69,6 +70,7 @@ from .layer.common import Dropout3D  # noqa: F401
 from .layer.common import AlphaDropout  # noqa: F401
 from .layer.common import Unfold  # noqa: F401
 from .layer.common import Fold  # noqa: F401
+from .layer.common import Unflatten  # noqa: F401
 
 from .layer.pooling import AvgPool1D  # noqa: F401
 from .layer.pooling import AvgPool2D  # noqa: F401
@@ -99,12 +101,22 @@ from .layer.loss import HSigmoidLoss  # noqa: F401
 from .layer.loss import MSELoss  # noqa: F401
 from .layer.loss import L1Loss  # noqa: F401
 from .layer.loss import NLLLoss  # noqa: F401
+from .layer.loss import PoissonNLLLoss  # noqa: F401
 from .layer.loss import BCELoss  # noqa: F401
 from .layer.loss import KLDivLoss  # noqa: F401
 from .layer.loss import MarginRankingLoss  # noqa: F401
+from .layer.loss import MultiLabelSoftMarginLoss
 from .layer.loss import CTCLoss  # noqa: F401
+from .layer.loss import RNNTLoss  # noqa: F401
 from .layer.loss import SmoothL1Loss  # noqa: F401
 from .layer.loss import HingeEmbeddingLoss  # noqa: F401
+from .layer.loss import CosineEmbeddingLoss  # noqa: F401
+from .layer.loss import MultiMarginLoss
+from .layer.loss import TripletMarginWithDistanceLoss
+from .layer.loss import TripletMarginLoss
+from .layer.loss import SoftMarginLoss
+from .layer.loss import GaussianNLLLoss
+
 from .layer.norm import BatchNorm  # noqa: F401
 from .layer.norm import SyncBatchNorm  # noqa: F401
 from .layer.norm import GroupNorm  # noqa: F401
@@ -137,11 +149,15 @@ from .layer.transformer import Transformer  # noqa: F401
 from .layer.distance import PairwiseDistance  # noqa: F401
 
 from .layer.vision import PixelShuffle  # noqa: F401
+from .layer.vision import PixelUnshuffle  # noqa: F401
+from .layer.vision import ChannelShuffle  # noqa: F401
 from .layer.container import LayerDict  # noqa: F401
+
+from .layer.layers import Layer  # noqa: F401
 
 from .utils.spectral_norm_hook import spectral_norm
 
-# TODO: remove loss, keep it for too many used in unitests
+# TODO: remove loss, keep it for too many used in unittests
 from .layer import loss  # noqa: F401
 
 from . import utils  # noqa: F401
@@ -149,18 +165,19 @@ from . import functional  # noqa: F401
 from . import initializer  # noqa: F401
 from . import quant  # noqa: F401
 
-#TODO: remove 'diag_embed', 'remove_weight_norm', 'weight_norm' months later.
-import paddle.utils.deprecated as deprecated
+# TODO: remove 'diag_embed', 'remove_weight_norm', 'weight_norm' months later.
+from paddle.utils import deprecated
 
 
 @deprecated(
     since="2.0.0",
-    update_to="paddle.nn.funcitional.diag_embed",
+    update_to="paddle.nn.functional.diag_embed",
     level=1,
-    reason="diag_embed in paddle.nn will be removed in future")
+    reason="diag_embed in paddle.nn will be removed in future",
+)
 def diag_embed(*args):
     '''
-        alias name of paddle.nn.functional.diag_embed
+    alias name of paddle.nn.functional.diag_embed
     '''
     return functional.diag_embed(*args)
 
@@ -169,10 +186,11 @@ def diag_embed(*args):
     since="2.0.0",
     update_to="paddle.nn.utils.remove_weight_norm",
     level=1,
-    reason="remove_weight_norm in paddle.nn will be removed in future")
+    reason="remove_weight_norm in paddle.nn will be removed in future",
+)
 def remove_weight_norm(*args):
     '''
-        alias name of paddle.nn.utils.remove_weight_norm
+    alias name of paddle.nn.utils.remove_weight_norm
     '''
     return utils.remove_weight_norm(*args)
 
@@ -181,129 +199,145 @@ def remove_weight_norm(*args):
     since="2.0.0",
     update_to="paddle.nn.utils.weight_norm",
     level=1,
-    reason="weight_norm in paddle.nn will be removed in future")
+    reason="weight_norm in paddle.nn will be removed in future",
+)
 def weight_norm(*args):
     '''
-        alias name of paddle.nn.utils.weight_norm
+    alias name of paddle.nn.utils.weight_norm
     '''
     return utils.weight_norm(*args)
 
 
-__all__ = [     #noqa
-           'BatchNorm',
-           'CELU',
-           'GroupNorm',
-           'LayerNorm',
-           'SpectralNorm',
-           'BatchNorm1D',
-           'BatchNorm2D',
-           'BatchNorm3D',
-           'InstanceNorm1D',
-           'InstanceNorm2D',
-           'InstanceNorm3D',
-           'SyncBatchNorm',
-           'LocalResponseNorm',
-           'Embedding',
-           'Linear',
-           'Upsample',
-           'UpsamplingNearest2D',
-           'UpsamplingBilinear2D',
-           'Pad1D',
-           'Pad2D',
-           'Pad3D',
-           'CosineSimilarity',
-           'Dropout',
-           'Dropout2D',
-           'Dropout3D',
-           'Bilinear',
-           'AlphaDropout',
-           'Unfold',
-           'Fold',
-           'RNNCellBase',
-           'SimpleRNNCell',
-           'LSTMCell',
-           'GRUCell',
-           'RNN',
-           'BiRNN',
-           'SimpleRNN',
-           'LSTM',
-           'GRU',
-           'dynamic_decode',
-           'MultiHeadAttention',
-           'Maxout',
-           'Softsign',
-           'Transformer',
-           'MSELoss',
-           'LogSigmoid',
-           'BeamSearchDecoder',
-           'ClipGradByNorm',
-           'ReLU',
-           'PairwiseDistance',
-           'BCEWithLogitsLoss',
-           'SmoothL1Loss',
-           'MaxPool3D',
-           'AdaptiveMaxPool2D',
-           'Hardshrink',
-           'Softplus',
-           'KLDivLoss',
-           'AvgPool2D',
-           'L1Loss',
-           'LeakyReLU',
-           'AvgPool1D',
-           'AdaptiveAvgPool3D',
-           'AdaptiveMaxPool3D',
-           'NLLLoss',
-           'Conv1D',
-           'Sequential',
-           'Hardswish',
-           'Conv1DTranspose',
-           'AdaptiveMaxPool1D',
-           'TransformerEncoder',
-           'Softmax',
-           'ParameterList',
-           'Conv2D',
-           'Softshrink',
-           'Hardtanh',
-           'TransformerDecoderLayer',
-           'CrossEntropyLoss',
-           'GELU',
-           'SELU',
-           'Silu',
-           'Conv2DTranspose',
-           'CTCLoss',
-           'ThresholdedReLU',
-           'AdaptiveAvgPool2D',
-           'MaxPool1D',
-           'Layer',
-           'TransformerDecoder',
-           'Conv3D',
-           'Tanh',
-           'Conv3DTranspose',
-           'Flatten',
-           'AdaptiveAvgPool1D',
-           'Tanhshrink',
-           'HSigmoidLoss',
-           'PReLU',
-           'TransformerEncoderLayer',
-           'AvgPool3D',
-           'MaxPool2D',
-           'MarginRankingLoss',
-           'LayerList',
-           'ClipGradByValue',
-           'BCELoss',
-           'Hardsigmoid',
-           'ClipGradByGlobalNorm',
-           'LogSoftmax',
-           'Sigmoid',
-           'Swish',
-           'Mish',
-           'PixelShuffle',
-           'ELU',
-           'ReLU6',
-           'LayerDict',
-           'ZeroPad2D',
-           'MaxUnPool1D',
-           'MaxUnPool2D',
-           'MaxUnPool3D',
-           'HingeEmbeddingLoss',
+__all__ = [  # noqa
+    'BatchNorm',
+    'CELU',
+    'GroupNorm',
+    'LayerNorm',
+    'SpectralNorm',
+    'BatchNorm1D',
+    'BatchNorm2D',
+    'BatchNorm3D',
+    'InstanceNorm1D',
+    'InstanceNorm2D',
+    'InstanceNorm3D',
+    'SyncBatchNorm',
+    'LocalResponseNorm',
+    'Embedding',
+    'Linear',
+    'Upsample',
+    'UpsamplingNearest2D',
+    'UpsamplingBilinear2D',
+    'Pad1D',
+    'Pad2D',
+    'Pad3D',
+    'CosineSimilarity',
+    'Dropout',
+    'Dropout2D',
+    'Dropout3D',
+    'Bilinear',
+    'AlphaDropout',
+    'Unfold',
+    'Fold',
+    'RNNCellBase',
+    'SimpleRNNCell',
+    'LSTMCell',
+    'GRUCell',
+    'RNN',
+    'BiRNN',
+    'SimpleRNN',
+    'LSTM',
+    'GRU',
+    'dynamic_decode',
+    'MultiHeadAttention',
+    'Maxout',
+    'Softsign',
+    'Transformer',
+    'MSELoss',
+    'LogSigmoid',
+    'BeamSearchDecoder',
+    'ClipGradByNorm',
+    'ReLU',
+    'PairwiseDistance',
+    'BCEWithLogitsLoss',
+    'SmoothL1Loss',
+    'MaxPool3D',
+    'AdaptiveMaxPool2D',
+    'Hardshrink',
+    'Softplus',
+    'KLDivLoss',
+    'AvgPool2D',
+    'L1Loss',
+    'LeakyReLU',
+    'AvgPool1D',
+    'AdaptiveAvgPool3D',
+    'AdaptiveMaxPool3D',
+    'NLLLoss',
+    'PoissonNLLLoss',
+    'Conv1D',
+    'Sequential',
+    'Hardswish',
+    'Conv1DTranspose',
+    'AdaptiveMaxPool1D',
+    'TransformerEncoder',
+    'Softmax',
+    'Softmax2D',
+    'ParameterList',
+    'Conv2D',
+    'Softshrink',
+    'Hardtanh',
+    'TransformerDecoderLayer',
+    'CrossEntropyLoss',
+    'GELU',
+    'SELU',
+    'Silu',
+    'Conv2DTranspose',
+    'CTCLoss',
+    'RNNTLoss',
+    'ThresholdedReLU',
+    'AdaptiveAvgPool2D',
+    'MaxPool1D',
+    'Layer',
+    'TransformerDecoder',
+    'Conv3D',
+    'Tanh',
+    'Conv3DTranspose',
+    'Flatten',
+    'AdaptiveAvgPool1D',
+    'Tanhshrink',
+    'HSigmoidLoss',
+    'PReLU',
+    'TransformerEncoderLayer',
+    'AvgPool3D',
+    'MaxPool2D',
+    'MarginRankingLoss',
+    'LayerList',
+    'ClipGradByValue',
+    'BCELoss',
+    'Hardsigmoid',
+    'ClipGradByGlobalNorm',
+    'LogSoftmax',
+    'Sigmoid',
+    'Swish',
+    'Mish',
+    'PixelShuffle',
+    'PixelUnshuffle',
+    'ChannelShuffle',
+    'ELU',
+    'ReLU6',
+    'LayerDict',
+    'ZeroPad2D',
+    'MaxUnPool1D',
+    'MaxUnPool2D',
+    'MaxUnPool3D',
+    'MultiLabelSoftMarginLoss',
+    'HingeEmbeddingLoss',
+    'Identity',
+    'CosineEmbeddingLoss',
+    'RReLU',
+    'MultiMarginLoss',
+    'TripletMarginWithDistanceLoss',
+    'TripletMarginLoss',
+    'SoftMarginLoss',
+    'GaussianNLLLoss',
+    'Unflatten',
 ]

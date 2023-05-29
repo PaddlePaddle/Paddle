@@ -25,6 +25,7 @@
 #include "paddle/fluid/distributed/fleet_executor/interceptor.h"
 #include "paddle/fluid/distributed/fleet_executor/interceptor_message.pb.h"
 #include "paddle/fluid/distributed/fleet_executor/task_loop_thread_pool.h"
+#include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
@@ -35,7 +36,7 @@ namespace paddle {
 namespace framework {
 class Scope;
 class ProgramDesc;
-}
+}  // namespace framework
 
 namespace distributed {
 
@@ -56,12 +57,16 @@ class Carrier final {
       int64_t rank,
       const std::unordered_map<int64_t, int64_t>& interceptor_id_to_rank,
       const std::unordered_map<int64_t, TaskNode*>& interceptor_id_to_node,
-      const framework::ProgramDesc& program, framework::Scope* scope,
-      int64_t num_micro_batches, const platform::Place& place,
-      const std::vector<std::string>& inference_root_scope_vars = {});
+      const framework::ProgramDesc& program,
+      framework::Scope* scope,
+      int64_t num_micro_batches,
+      const platform::Place& place,
+      const std::vector<std::string>& inference_root_scope_vars = {},
+      const std::vector<framework::Scope*>& micro_scope_list = {});
 
   void CopyParameters(
-      int microbatch_id, const framework::ProgramDesc& program,
+      int microbatch_id,
+      const framework::ProgramDesc& program,
       const std::vector<std::string>& inference_root_scope_vars);
 
   void Release();
@@ -89,15 +94,14 @@ class Carrier final {
   Carrier() = delete;
 
   // create each Interceptor
-  void CreateInterceptors();
+  void CreateInterceptors(
+      const std::vector<std::string>& inference_root_scope_vars = {});
 
   int64_t GetRank(int64_t interceptor_id) const;
 
   // interceptor logic id to actually interceptor
   std::unordered_map<int64_t, std::unique_ptr<Interceptor>>
       interceptor_idx_to_interceptor_;
-
-  std::vector<int64_t> source_interceptor_ids_;
 
   bool is_init_{false};
 

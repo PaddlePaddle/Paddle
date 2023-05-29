@@ -21,31 +21,30 @@
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "glog/logging.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/timer.h"
+#include "paddle/phi/core/mixed_vector.h"
 
 namespace paddle {
 namespace operators {
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
 
 template <typename T>
-using Vector = framework::Vector<T>;
+using Vector = phi::Vector<T>;
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class ShuffleBatchKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *x = context.Input<LoDTensor>("X");
-    auto *seed = context.Input<LoDTensor>("Seed");
-    auto *out = context.Output<LoDTensor>("Out");
-    auto *shuffleidx = context.Output<LoDTensor>("ShuffleIdx");
-    auto *seed_out = context.Output<LoDTensor>("SeedOut");
+    auto *x = context.Input<phi::DenseTensor>("X");
+    auto *seed = context.Input<phi::DenseTensor>("Seed");
+    auto *out = context.Output<phi::DenseTensor>("Out");
+    auto *shuffleidx = context.Output<phi::DenseTensor>("ShuffleIdx");
+    auto *seed_out = context.Output<phi::DenseTensor>("SeedOut");
 
     auto x_embed_size = x->dims()[x->dims().size() - 1];
     auto elem_size = 1;
@@ -113,7 +112,8 @@ class ShuffleBatchKernel : public framework::OpKernel<T> {
     auto *x_data = x->data<T>();
     auto *out_data = out->mutable_data<T>(context.GetPlace());
     for (auto i = 0; i < elem_size; i++) {
-      memcpy(out_data + idx_vec[i] * x_embed_size, x_data + i * x_embed_size,
+      memcpy(out_data + idx_vec[i] * x_embed_size,
+             x_data + i * x_embed_size,
              x_embed_size * sizeof(T));
     }
     // set new seed
@@ -122,13 +122,15 @@ class ShuffleBatchKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class ShuffleBatchGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto *out_grad = context.Input<LoDTensor>(framework::GradVarName("Out"));
-    auto *shuffleidx = context.Input<LoDTensor>("ShuffleIdx");
-    auto *x_grad = context.Output<LoDTensor>(framework::GradVarName("X"));
+    auto *out_grad =
+        context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto *shuffleidx = context.Input<phi::DenseTensor>("ShuffleIdx");
+    auto *x_grad =
+        context.Output<phi::DenseTensor>(framework::GradVarName("X"));
 
     auto embed_size = out_grad->dims()[out_grad->dims().size() - 1];
     auto elem_size = 1;
@@ -146,7 +148,8 @@ class ShuffleBatchGradKernel : public framework::OpKernel<T> {
     auto *x_grad_data = x_grad->mutable_data<T>(context.GetPlace());
     for (auto i = 0; i < elem_size; i++) {
       memcpy(x_grad_data + idx_vec_grad[i] * embed_size,
-             out_grad_data + i * embed_size, embed_size * sizeof(T));
+             out_grad_data + i * embed_size,
+             embed_size * sizeof(T));
     }
   }
 };

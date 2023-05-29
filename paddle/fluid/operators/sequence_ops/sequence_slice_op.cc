@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/sequence_ops/sequence_slice_op.h"
+
 #include <memory>
 
 namespace paddle {
@@ -33,14 +34,16 @@ class SequenceSliceOp : public framework::OperatorWithKernel {
     auto length_dim = ctx->GetInputDim("Length");
 
     PADDLE_ENFORCE_EQ(
-        offset_dim.size(), 2UL,
+        offset_dim.size(),
+        2UL,
         platform::errors::InvalidArgument(
             "Input Offset dimension error. SequenceSlice operator only support "
             "one level sequence now, the dimension of input Offset must be 2, "
             "but received dimension is %d.",
             offset_dim.size()));
     PADDLE_ENFORCE_EQ(
-        length_dim.size(), 2UL,
+        length_dim.size(),
+        2UL,
         platform::errors::InvalidArgument(
             "Input Length dimension error. SequenceSlice operator only support "
             "one level sequence now, the dimension of input Length must be 2, "
@@ -53,11 +56,10 @@ class SequenceSliceOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 
@@ -66,19 +68,23 @@ class SequenceSliceGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   framework::GradVarName("Out"), "SequenceSliceGrad");
-    OP_INOUT_CHECK(ctx->HasOutputs(framework::GradVarName("X")), "Output",
-                   framework::GradVarName("X"), "SequenceSliceGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input",
+                   framework::GradVarName("Out"),
+                   "SequenceSliceGrad");
+    OP_INOUT_CHECK(ctx->HasOutputs(framework::GradVarName("X")),
+                   "Output",
+                   framework::GradVarName("X"),
+                   "SequenceSliceGrad");
     ctx->SetOutputsDim(framework::GradVarName("X"), ctx->GetInputsDim("X"));
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(
+                              ctx, framework::GradVarName("Out")),
+                          ctx.GetPlace());
   }
 };
 
@@ -144,22 +150,27 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(SequenceSliceGradNoNeedBufferVarsInferer,
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(sequence_slice, ops::SequenceSliceOp,
+REGISTER_OPERATOR(sequence_slice,
+                  ops::SequenceSliceOp,
                   ops::SequenceSliceOpMaker,
                   ops::SequenceSliceGradOpMaker<paddle::framework::OpDesc>,
                   ops::SequenceSliceGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(sequence_slice_grad, ops::SequenceSliceGradOp,
+REGISTER_OPERATOR(sequence_slice_grad,
+                  ops::SequenceSliceGradOp,
                   ops::SequenceSliceGradNoNeedBufferVarsInferer);
-REGISTER_OP_CPU_KERNEL(
-    sequence_slice,
-    ops::SequenceSliceOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SequenceSliceOpKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SequenceSliceOpKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SequenceSliceOpKernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
-    sequence_slice_grad,
-    ops::SequenceSliceGradOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SequenceSliceGradOpKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SequenceSliceGradOpKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SequenceSliceGradOpKernel<paddle::platform::CPUDeviceContext,
-                                   int64_t>);
+PD_REGISTER_STRUCT_KERNEL(sequence_slice,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::SequenceSliceOpKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}
+PD_REGISTER_STRUCT_KERNEL(sequence_slice_grad,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::SequenceSliceGradOpKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}

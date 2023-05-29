@@ -51,21 +51,26 @@ static void FullTopKAssign(const Type& input_height,
 
 template <typename T, typename Context>
 void TopkGradKernel(const Context& dev_ctx,
-                    const DenseTensor& out_grad,
                     const DenseTensor& x,
                     const DenseTensor& indices,
-                    int k,
+                    const DenseTensor& out_grad,
+                    const Scalar& k_scalar,
                     int axis,
-                    bool largest,
-                    bool sorted,
+                    bool largest UNUSED,
+                    bool sorted UNUSED,
                     DenseTensor* x_grad) {
   const auto& in_dims = x.dims();
   const auto& out_dims = indices.dims();
-
+  int k = k_scalar.to<int>();
   // axis < 0, get the real axis
   axis = (axis < 0) ? (in_dims.size() + axis) : axis;
 
   T* x_grad_data = dev_ctx.template Alloc<T>(x_grad);
+  if (in_dims.size() == 0) {
+    phi::Copy<Context>(dev_ctx, out_grad, dev_ctx.GetPlace(), false, x_grad);
+    return;
+  }
+
   if (axis + 1 == in_dims.size()) {
     // allocate the memory for the input_grad
 
@@ -141,7 +146,7 @@ void TopkGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(top_k_grad,
+PD_REGISTER_KERNEL(topk_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::TopkGradKernel,

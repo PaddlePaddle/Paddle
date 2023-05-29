@@ -12,23 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
+from functools import reduce
 
-import numpy as np
-import argparse
-import time
-import math
+from test_dist_base import TestDistRunnerBase, runtime_main
 
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.profiler as profiler
-from paddle.fluid import core
-import unittest
-from multiprocessing import Process
-import os
-import signal
-from functools import reduce
-from test_dist_base import TestDistRunnerBase, runtime_main
+from paddle import fluid
+from paddle.distributed import fleet
 
 paddle.enable_static()
 
@@ -48,8 +38,10 @@ def cnn_model(data):
         pool_size=2,
         pool_stride=2,
         act="relu",
-        param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.01)))
+        param_attr=fluid.ParamAttr(
+            initializer=paddle.nn.initializer.Constant(value=0.01)
+        ),
+    )
     conv_pool_2 = fluid.nets.simple_img_conv_pool(
         input=conv_pool_1,
         filter_size=5,
@@ -57,46 +49,57 @@ def cnn_model(data):
         pool_size=2,
         pool_stride=2,
         act="relu",
-        param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
-            value=0.01)))
+        param_attr=fluid.ParamAttr(
+            initializer=paddle.nn.initializer.Constant(value=0.01)
+        ),
+    )
 
     SIZE = 10
     input_shape = conv_pool_2.shape
     param_shape = [reduce(lambda a, b: a * b, input_shape[1:], 1)] + [SIZE]
-    scale = (2.0 / (param_shape[0]**2 * SIZE))**0.5
+    scale = (2.0 / (param_shape[0] ** 2 * SIZE)) ** 0.5
 
-    predict = fluid.layers.fc(
-        input=conv_pool_2,
+    predict = paddle.static.nn.fc(
+        x=conv_pool_2,
         size=SIZE,
-        act="softmax",
-        param_attr=fluid.param_attr.ParamAttr(
-            initializer=fluid.initializer.Constant(value=0.01)))
+        activation="softmax",
+        weight_attr=fluid.param_attr.ParamAttr(
+            initializer=paddle.nn.initializer.Constant(value=0.01)
+        ),
+    )
     return predict
 
 
 class TestDistMnist2x2(TestDistRunnerBase):
     def get_model(self, batch_size=2, single_device=False):
         # Input data
-        images = fluid.layers.data(name='pixel', shape=[1, 28, 28], dtype=DTYPE)
-        label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+        images = paddle.static.data(
+            name='pixel', shape=[-1, 1, 28, 28], dtype=DTYPE
+        )
+        label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
 
         # Train program
         predict = cnn_model(images)
-        cost = fluid.layers.cross_entropy(input=predict, label=label)
-        avg_cost = fluid.layers.mean(x=cost)
+        cost = paddle.nn.functional.cross_entropy(
+            input=predict, label=label, reduction='none', use_softmax=False
+        )
+        avg_cost = paddle.mean(x=cost)
 
         # Evaluator
-        batch_size_tensor = fluid.layers.create_tensor(dtype='int64')
-        batch_acc = fluid.layers.accuracy(
-            input=predict, label=label, total=batch_size_tensor)
+        batch_size_tensor = paddle.tensor.create_tensor(dtype='int64')
+        batch_acc = paddle.static.accuracy(
+            input=predict, label=label, total=batch_size_tensor
+        )
 
         inference_program = fluid.default_main_program().clone()
 
         # Reader
         train_reader = paddle.batch(
-            paddle.dataset.mnist.test(), batch_size=batch_size)
+            paddle.dataset.mnist.test(), batch_size=batch_size
+        )
         test_reader = paddle.batch(
-            paddle.dataset.mnist.test(), batch_size=batch_size)
+            paddle.dataset.mnist.test(), batch_size=batch_size
+        )
 
         # Optimization
         # TODO(typhoonzero): fix distributed adam optimizer
@@ -107,16 +110,22 @@ class TestDistMnist2x2(TestDistRunnerBase):
             opt.minimize(avg_cost)
         else:
             # multi device or distributed multi device
-            params_grads = opt.backward(avg_cost)
-            data_parallel_param_grads = []
-            for p, g in params_grads:
-                # NOTE: scale will be done on loss scale in multi_devices_graph_pass using nranks.
-                grad_reduce = fluid.layers.collective._allreduce(g)
-                data_parallel_param_grads.append([p, grad_reduce])
-            opt.apply_gradients(data_parallel_param_grads)
+            strategy = fleet.DistributedStrategy()
+            strategy.without_graph_optimization = True
+            fleet.init(strategy=strategy)
+            optimizer = fleet.distributed_optimizer(opt)
+            optimizer.minimize(avg_cost)
 
-        return inference_program, avg_cost, train_reader, test_reader, batch_acc, predict
+        return (
+            inference_program,
+            avg_cost,
+            train_reader,
+            test_reader,
+            batch_acc,
+            predict,
+        )
 
 
 if __name__ == "__main__":
+
     runtime_main(TestDistMnist2x2)

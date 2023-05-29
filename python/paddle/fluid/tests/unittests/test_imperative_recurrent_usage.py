@@ -12,29 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
-import paddle.fluid as fluid
-import paddle
-import paddle.fluid.core as core
-from paddle.fluid.dygraph.nn import Embedding
-import paddle.fluid.framework as framework
-from paddle.fluid.framework import _test_eager_guard
-from paddle.fluid.optimizer import SGDOptimizer
-from paddle.fluid.dygraph.base import to_variable
-from test_imperative_base import new_program_scope
+
 import numpy as np
-import six
+from test_imperative_base import new_program_scope
+
+import paddle
+from paddle import fluid
+from paddle.fluid import core
+from paddle.fluid.dygraph.base import to_variable
 
 
-class RecurrentTest(fluid.Layer):
+class RecurrentTest(paddle.nn.Layer):
     def __init__(self, name_scope):
-        super(RecurrentTest, self).__init__(name_scope)
+        super().__init__(name_scope)
 
     def forward(self, in1, in2):
-        out = fluid.layers.mul(in1, in2)
-        sum_out = fluid.layers.reduce_sum(out)
+        out = paddle.matmul(in1, in2)
+        sum_out = paddle.sum(out)
         return sum_out, out
 
 
@@ -55,6 +50,7 @@ class TestRecurrentFeed(unittest.TestCase):
 
             for i in range(3):
                 sum_out, out = rt(original_in1, original_in2)
+                out.retain_grads()
                 original_in1 = out
                 sum_out_value = sum_out.numpy()
                 sum_out.backward()
@@ -63,55 +59,61 @@ class TestRecurrentFeed(unittest.TestCase):
                 rt.clear_gradients()
 
         with fluid.dygraph.guard():
-            with _test_eager_guard():
-                fluid.default_startup_program().random_seed = seed
-                fluid.default_main_program().random_seed = seed
-                original_in1 = to_variable(original_np1)
-                original_in2 = to_variable(original_np2)
-                original_in1.stop_gradient = False
-                original_in2.stop_gradient = False
-                rt = RecurrentTest("RecurrentTest")
+            fluid.default_startup_program().random_seed = seed
+            fluid.default_main_program().random_seed = seed
+            original_in1 = to_variable(original_np1)
+            original_in2 = to_variable(original_np2)
+            original_in1.stop_gradient = False
+            original_in2.stop_gradient = False
+            rt = RecurrentTest("RecurrentTest")
 
-                for i in range(3):
-                    sum_out, out = rt(original_in1, original_in2)
-                    original_in1 = out
-                    eager_sum_out_value = sum_out.numpy()
-                    sum_out.backward()
-                    eager_dyout = out.gradient()
-                    original_in1.stop_gradient = True
-                    rt.clear_gradients()
+            for i in range(3):
+                sum_out, out = rt(original_in1, original_in2)
+                out.retain_grads()
+                original_in1 = out
+                eager_sum_out_value = sum_out.numpy()
+                sum_out.backward()
+                eager_dyout = out.gradient()
+                original_in1.stop_gradient = True
+                rt.clear_gradients()
 
         with new_program_scope():
             fluid.default_startup_program().random_seed = seed
             fluid.default_main_program().random_seed = seed
-            in1 = fluid.layers.data(
-                name="inp1", shape=[2, 2], append_batch_size=False)
-            in2 = fluid.layers.data(
-                name="inp2", shape=[2, 2], append_batch_size=False)
+            in1 = paddle.static.data(name="inp1", shape=[2, 2])
+            in1.stop_gradient = False
+            in2 = paddle.static.data(name="inp2", shape=[2, 2])
+            in2.stop_gradient = False
             rt1 = RecurrentTest("RecurrentTest")
             static_sum_out, static_out = rt1(in1, in2)
             fluid.backward.append_backward(static_sum_out)
-            exe = fluid.Executor(fluid.CPUPlace(
-            ) if not core.is_compiled_with_cuda() else fluid.CUDAPlace(0))
+            exe = fluid.Executor(
+                fluid.CPUPlace()
+                if not core.is_compiled_with_cuda()
+                else fluid.CUDAPlace(0)
+            )
 
-            static_dout = fluid.default_main_program().block(
-                0)._find_var_recursive(static_out.name + "@GRAD")
+            static_dout = (
+                fluid.default_main_program()
+                .block(0)
+                ._find_var_recursive(static_out.name + "@GRAD")
+            )
             fetch_list = [static_sum_out, static_out, static_dout]
             for i in range(3):
                 out = exe.run(
                     fluid.default_main_program(),
-                    feed={"inp1": original_np1,
-                          "inp2": original_np2},
-                    fetch_list=fetch_list)
+                    feed={"inp1": original_np1, "inp2": original_np2},
+                    fetch_list=fetch_list,
+                )
                 static_out_value = out[1]
                 static_sum_out = out[0]
                 static_dout = out[2]
                 original_np1 = static_out_value
 
-        self.assertTrue(np.array_equal(static_sum_out, sum_out_value))
-        self.assertTrue(np.array_equal(static_sum_out, eager_sum_out_value))
-        self.assertTrue(np.array_equal(static_dout, dyout))
-        self.assertTrue(np.array_equal(static_dout, eager_dyout))
+        np.testing.assert_array_equal(static_sum_out, sum_out_value)
+        np.testing.assert_array_equal(static_sum_out, eager_sum_out_value)
+        np.testing.assert_array_equal(static_dout, dyout)
+        np.testing.assert_array_equal(static_dout, eager_dyout)
 
 
 if __name__ == '__main__':

@@ -15,7 +15,9 @@
 
 #pragma once
 
+#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/device_context.h"
 
 namespace phi {
 
@@ -23,6 +25,6 @@ template <typename T, typename Context>
 void PadKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const std::vector<int>& paddings,
-               float pad_value,
+               const Scalar& pad_value,
                DenseTensor* out);
 }  // namespace phi

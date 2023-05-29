@@ -14,10 +14,11 @@
 
 #pragma once
 
-#include "paddle/phi/common/scalar.h"
-#include "paddle/phi/common/scalar_array.h"
-#include "paddle/phi/core/dense_tensor.h"
+#include <vector>
 
+#include "paddle/phi/common/int_array.h"
+#include "paddle/phi/common/scalar.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/infermeta/nullary.h"
 #include "paddle/phi/kernels/empty_kernel.h"
 
@@ -25,7 +26,7 @@ namespace phi {
 
 template <typename T, typename Context>
 void FullKernel(const Context& dev_ctx,
-                const ScalarArray& shape,
+                const IntArray& shape,
                 const Scalar& val,
                 DataType dtype,
                 DenseTensor* out);
@@ -37,25 +38,34 @@ void FullLikeKernel(const Context& dev_ctx,
                     DataType dtype,
                     DenseTensor* out);
 
+// In order to be compatible with fill_constant_batch_size_like op
+// that are still used in the 2.x APIs
+template <typename T, typename Context>
+void FullBatchSizeLikeKernel(const Context& dev_ctx,
+                             const DenseTensor& x,
+                             const std::vector<int>& shape,
+                             const Scalar& val,
+                             DataType dtype,
+                             int x_batch_size_dim,
+                             int out_batch_size_dim,
+                             DenseTensor* out);
+
 template <typename T, typename Context>
 void Full(const Context& dev_ctx,
-          const ScalarArray& shape,
+          const IntArray& shape,
           const Scalar& val,
           DenseTensor* out) {
-  FullKernel<T, Context>(dev_ctx,
-                         shape,
-                         val,
-                         paddle::experimental::CppTypeToDataType<T>::Type(),
-                         out);
+  FullKernel<T, Context>(
+      dev_ctx, shape, val, phi::CppTypeToDataType<T>::Type(), out);
 }
 
 template <typename T, typename Context>
 DenseTensor Full(const Context& dev_ctx,
-                 const ScalarArray& shape,
+                 const IntArray& shape,
                  const Scalar& val) {
   DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
-  DataType dtype = paddle::experimental::CppTypeToDataType<T>::Type();
+  DataType dtype = phi::CppTypeToDataType<T>::Type();
   CreateInferMeta(shape, dtype, &meta_out);
   FullKernel<T, Context>(dev_ctx, shape, val, dtype, &dense_out);
   return dense_out;
@@ -67,7 +77,7 @@ DenseTensor FullLike(const Context& dev_ctx,
                      const Scalar& val) {
   DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
-  DataType dtype = paddle::experimental::CppTypeToDataType<T>::Type();
+  DataType dtype = phi::CppTypeToDataType<T>::Type();
   CreateLikeInferMeta(x, dtype, &meta_out);
   FullLikeKernel<T, Context>(dev_ctx, x, val, dtype, &dense_out);
   return dense_out;

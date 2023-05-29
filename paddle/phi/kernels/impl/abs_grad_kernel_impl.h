@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/kernels/abs_grad_kernel.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
@@ -22,6 +23,70 @@
 namespace phi {
 
 #if defined(__NVCC__)
+
+template <typename T>
+struct AbsGradCUDAFunctor {
+  HOSTDEVICE inline AbsGradCUDAFunctor() {}
+
+  HOSTDEVICE inline T operator()(const T x, const T dout) const {
+    T output;
+    if (x == T(0)) {
+      output = T(0);
+    } else {
+      output = T(dout) * (x / T(std::abs(x)));
+    }
+    return output;
+  }
+};
+
+template <>
+struct AbsGradCUDAFunctor<phi::dtype::bfloat16> {
+  HOSTDEVICE inline AbsGradCUDAFunctor() {}
+
+  HOSTDEVICE inline phi::dtype::bfloat16 operator()(
+      const phi::dtype::bfloat16 x, const phi::dtype::bfloat16 dout) const {
+    phi::dtype::bfloat16 output;
+    if (x == phi::dtype::bfloat16(0)) {
+      output = static_cast<phi::dtype::bfloat16>(0);
+    } else {
+      output = (dout) * (x / abs(x));
+    }
+    return output;
+  }
+};
+
+template <>
+struct AbsGradCUDAFunctor<phi::dtype::complex<float>> {
+  HOSTDEVICE inline AbsGradCUDAFunctor() {}
+  HOSTDEVICE inline phi::dtype::complex<float> operator()(
+      const phi::dtype::complex<float> x, const float dout) const {
+    phi::dtype::complex<float> output;
+    if (x == phi::dtype::complex<float>(0)) {
+      output = phi::dtype::complex<float>(0);
+    } else {
+      output = phi::dtype::complex<float>(dout) *
+               (x / phi::dtype::complex<float>(abs(x)));
+    }
+    return output;
+  }
+};
+
+template <>
+struct AbsGradCUDAFunctor<phi::dtype::complex<double>> {
+  HOSTDEVICE inline AbsGradCUDAFunctor() {}
+  HOSTDEVICE inline phi::dtype::complex<double> operator()(
+      const phi::dtype::complex<double> x, const double dout) const {
+    phi::dtype::complex<double> output;
+    if (x == phi::dtype::complex<double>(0)) {
+      output = phi::dtype::complex<double>(0);
+    } else {
+      output = phi::dtype::complex<double>(dout) *
+               (x / phi::dtype::complex<double>(abs(x)));
+    }
+    return output;
+  }
+};
+
 template <typename T>
 void AbsGradKernelImpl(const GPUContext& dev_ctx,
                        const DenseTensor& x,
@@ -30,9 +95,10 @@ void AbsGradKernelImpl(const GPUContext& dev_ctx,
   std::vector<const DenseTensor*> ins = {&x, &dout};
   std::vector<DenseTensor*> outs = {dx};
   dev_ctx.Alloc<T>(dx);
-  phi::funcs::AbsGradCUDAFunctor<T> abs_grad_cuda_functor;
+  AbsGradCUDAFunctor<T> abs_grad_cuda_functor;
   phi::funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, abs_grad_cuda_functor);
 }
+
 template <typename T, typename Context>
 void AbsGradKernel(const Context& dev_ctx,
                    const DenseTensor& x,

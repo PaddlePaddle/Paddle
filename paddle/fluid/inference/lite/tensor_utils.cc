@@ -13,9 +13,11 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/lite/tensor_utils.h"
+
 #include <functional>
 #include <map>
 #include <memory>
+
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/inference/lite/engine.h"
@@ -26,9 +28,9 @@ namespace inference {
 namespace lite {
 namespace utils {
 
-using paddle::lite_api::TargetType;
-using paddle::lite_api::PrecisionType;
 using paddle::lite_api::DataLayoutType;
+using paddle::lite_api::PrecisionType;
+using paddle::lite_api::TargetType;
 
 template <typename DstLoD, typename SrcLoD>
 void SetLoD(DstLoD* dst, const SrcLoD& src) {
@@ -38,8 +40,8 @@ void SetLoD(DstLoD* dst, const SrcLoD& src) {
     dst->emplace_back(v);
   }
 }
-template void SetLoD<framework::LoD, paddle::lite::LoD>(
-    framework::LoD* dst, const paddle::lite::LoD& src);
+template void SetLoD<framework::LoD, paddle::lite_api::lod_t>(
+    framework::LoD* dst, const paddle::lite_api::lod_t& src);
 
 platform::Place GetNativePlace(const TargetType& type, int id = 0) {
   switch (type) {
@@ -104,20 +106,23 @@ framework::proto::VarType::Type GetNativePrecisionType(
   }
 }
 
-framework::DataLayout GetNativeLayoutType(const DataLayoutType& type) {
+phi::DataLayout GetNativeLayoutType(const DataLayoutType& type) {
   switch (type) {
     case DataLayoutType::kNCHW:
-      return framework::DataLayout::kNCHW;
+      return phi::DataLayout::kNCHW;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(
           "Unsupported layout type. Now only supports NCHW."));
-      return static_cast<framework::DataLayout>(-1);
+      return static_cast<phi::DataLayout>(-1);
   }
 }
 
-void MemoryCopyAsync(const platform::Place& dst_place, void* dst_data,
-                     const platform::Place& src_place, const void* src_data,
-                     const size_t size, const platform::DeviceContext& ctx) {
+void MemoryCopyAsync(const platform::Place& dst_place,
+                     void* dst_data,
+                     const platform::Place& src_place,
+                     const void* src_data,
+                     const size_t size,
+                     const platform::DeviceContext& ctx) {
   const platform::CPUPlace cpu_place;
   if (platform::is_cpu_place(dst_place) && platform::is_cpu_place(src_place)) {
     memory::Copy(cpu_place, dst_data, cpu_place, src_data, size);
@@ -134,9 +139,12 @@ void MemoryCopyAsync(const platform::Place& dst_place, void* dst_data,
     } else if (platform::is_gpu_place(dst_place) &&
                platform::is_gpu_place(src_place)) {
       auto gpu_place = src_place;
-      memory::Copy(
-          gpu_place, dst_data, gpu_place, src_data, size,
-          static_cast<const platform::CUDADeviceContext&>(ctx).stream());
+      memory::Copy(gpu_place,
+                   dst_data,
+                   gpu_place,
+                   src_data,
+                   size,
+                   static_cast<const phi::GPUContext&>(ctx).stream());
     }
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
@@ -173,29 +181,28 @@ void* GetLiteTensorDataPtr(paddle::lite_api::Tensor* src,
 
 int64_t GetLiteTensorNumel(const paddle::lite_api::Tensor& tensor) {
   auto shape = tensor.shape();
-  int64_t numel = std::accumulate(shape.begin(), shape.end(), 1,
-                                  std::multiplies<int64_t>());
+  int64_t numel = std::accumulate(
+      shape.begin(), shape.end(), 1, std::multiplies<int64_t>());
   return numel;
 }
 
-void InitDstTensor(paddle::lite_api::Tensor* dst,
-                   const framework::LoDTensor& src) {
+void InitDstTensor(paddle::lite_api::Tensor* dst, const phi::DenseTensor& src) {
   // Currently, Lite needs to explicitly specify the target type of
   // the input tensor.
   constexpr int empty_size = 0;
   dst->Resize({empty_size});
   GetLiteTensorDataPtr(
-      dst, GetLitePrecisionType(framework::TransToProtoVarType(src.dtype())),
+      dst,
+      GetLitePrecisionType(framework::TransToProtoVarType(src.dtype())),
       GetLiteTargetType(src.place()));
   dst->SetPrecision(
       GetLitePrecisionType(framework::TransToProtoVarType(src.dtype())));
-  paddle::lite::LoD lite_lod;
+  paddle::lite_api::lod_t lite_lod;
   SetLoD(&lite_lod, src.lod());
   dst->SetLoD(lite_lod);
 }
 
-void InitDstTensor(framework::LoDTensor* dst,
-                   const paddle::lite_api::Tensor& src) {
+void InitDstTensor(phi::DenseTensor* dst, const paddle::lite_api::Tensor& src) {
   dst->mutable_data(
       inference::lite::utils::GetNativePlace(src.target()),
       framework::TransToPhiDataType(GetNativePrecisionType(src.precision())));
@@ -204,18 +211,19 @@ void InitDstTensor(framework::LoDTensor* dst,
 
 template <>
 void TensorCopyAsync(paddle::lite_api::Tensor* dst,
-                     const framework::LoDTensor& src,
+                     const phi::DenseTensor& src,
                      const platform::DeviceContext& ctx) {
   InitDstTensor(dst, src);
   const platform::Place& src_place = src.place();
   const platform::Place& dst_place = GetNativePlace(dst->target());
   const size_t bytes =
-      static_cast<size_t>(src.numel()) * framework::DataTypeSize(src.dtype());
+      static_cast<size_t>(src.numel()) * phi::SizeOf(src.dtype());
   dst->Resize(phi::vectorize(src.dims()));
   const void* src_data = src.data();
   void* dst_data{nullptr};
   dst_data = GetLiteTensorDataPtr(
-      dst, GetLitePrecisionType(framework::TransToProtoVarType(src.dtype())),
+      dst,
+      GetLitePrecisionType(framework::TransToProtoVarType(src.dtype())),
       GetLiteTargetType(src.place()));
   VLOG(3) << "[CopyAsync fluid -> lite] Bytes = " << bytes << ", src = " << &src
           << ", dst = " << dst
@@ -225,7 +233,7 @@ void TensorCopyAsync(paddle::lite_api::Tensor* dst,
 }
 
 template <>
-void TensorCopyAsync(framework::LoDTensor* dst,
+void TensorCopyAsync(phi::DenseTensor* dst,
                      const paddle::lite_api::Tensor& src,
                      const platform::DeviceContext& ctx) {
   dst->Resize(phi::make_ddim(src.shape()));
@@ -233,7 +241,7 @@ void TensorCopyAsync(framework::LoDTensor* dst,
   const platform::Place& src_place = GetNativePlace(src.target());
   const platform::Place& dst_place = dst->place();
   int64_t src_numel = GetLiteTensorNumel(src);
-  const size_t bytes = src_numel * framework::DataTypeSize(dst->dtype());
+  const size_t bytes = src_numel * phi::SizeOf(dst->dtype());
   const void* src_data = src.data<void>();
   // When Lite is ready, the source type needs to be modified here.
   void* dst_data = dst->mutable_data(dst_place, dst->dtype());
@@ -245,19 +253,19 @@ void TensorCopyAsync(framework::LoDTensor* dst,
 }
 
 template <>
-void TensorDataShare(paddle::lite_api::Tensor* dst, framework::LoDTensor* src) {
+void TensorDataShare(paddle::lite_api::Tensor* dst, phi::DenseTensor* src) {
   dst->Resize(phi::vectorize(src->dims()));
-  dst->ShareExternalMemory(src->data(), src->memory_size(),
-                           GetLiteTargetType(src->place()));
+  dst->ShareExternalMemory(
+      src->data(), src->memory_size(), GetLiteTargetType(src->place()));
   dst->SetPrecision(
       GetLitePrecisionType(framework::TransToProtoVarType(src->dtype())));
-  paddle::lite::LoD lite_lod;
+  paddle::lite_api::lod_t lite_lod;
   SetLoD(&lite_lod, src->lod());
   dst->SetLoD(lite_lod);
 }
 
 template <>
-void TensorDataShare(framework::LoDTensor* dst, paddle::lite_api::Tensor* src) {
+void TensorDataShare(phi::DenseTensor* dst, paddle::lite_api::Tensor* src) {
   void* src_raw_data =
       GetLiteTensorDataPtr(src, src->precision(), src->target());
   size_t memory_size =

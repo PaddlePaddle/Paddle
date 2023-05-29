@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import unittest
 import re
+import unittest
 
 import paddle.version as fluid_version
 
@@ -36,15 +34,20 @@ class VersionTest(unittest.TestCase):
 
         # check version format
         if fluid_version.istaged:
-            self.assertEqual(fluid_version.major, 0)
-            self.assertEqual(fluid_version.minor, 0)
-            self.assertEqual(fluid_version.patch, "0")
-            self.assertEqual(fluid_version.rc, 0)
-            self.assertEqual(fluid_version.full_version, "0.0.0")
-        else:
             self.assertTrue(re.match(self._major_regex, fluid_version.major))
             self.assertTrue(re.match(self._minor_regex, fluid_version.minor))
             self.assertTrue(re.match(self._patch_regex, fluid_version.patch))
             self.assertTrue(re.match(self._rc_regex, fluid_version.rc))
             self.assertTrue(
-                re.match(self._version_regex, fluid_version.full_version))
+                re.match(self._version_regex, fluid_version.full_version)
+            )
+        else:
+            self.assertEqual(fluid_version.major, "0")
+            self.assertEqual(fluid_version.minor, "0")
+            self.assertEqual(fluid_version.patch, "0")
+            self.assertEqual(fluid_version.rc, "0")
+            self.assertEqual(fluid_version.full_version, "0.0.0")
+
+
+if __name__ == '__main__':
+    unittest.main()

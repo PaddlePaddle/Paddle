@@ -21,8 +21,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-template <typename T, int MajorType = Eigen::RowMajor,
+template <typename T,
+          int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
@@ -30,7 +30,8 @@ template <typename T>
 struct CheckLabelValue {
   HOSTDEVICE T operator()(const T& val) const {
     PADDLE_ENFORCE_EQ(
-        val == static_cast<T>(0) || val == static_cast<T>(1), true,
+        val == static_cast<T>(0) || val == static_cast<T>(1),
+        true,
         platform::errors::InvalidArgument(
             "Input(label) value of modified_huber_loss_op expected to be 0 "
             "or 1, but got %ld. Please check label value.",
@@ -51,14 +52,14 @@ struct ModifiedHuberLossForward {
   }
 };
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class ModifiedHuberLossKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* in0 = context.Input<Tensor>("X");
-    auto* in1 = context.Input<Tensor>("Y");
-    auto* out0 = context.Output<framework::Tensor>("IntermediateVal");
-    auto* out1 = context.Output<framework::Tensor>("Out");
+    auto* in0 = context.Input<phi::DenseTensor>("X");
+    auto* in1 = context.Input<phi::DenseTensor>("Y");
+    auto* out0 = context.Output<phi::DenseTensor>("IntermediateVal");
+    auto* out1 = context.Output<phi::DenseTensor>("Out");
 
     out0->mutable_data<T>(context.GetPlace());
     out1->mutable_data<T>(context.GetPlace());
@@ -78,14 +79,14 @@ class ModifiedHuberLossKernel : public framework::OpKernel<T> {
 };
 
 // CPU backward kernel
-template <typename T>
+template <typename T, typename DeviceContext>
 class ModifiedHuberLossGradCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* in0 = context.Input<Tensor>("Y");
-    auto* in1 = context.Input<framework::Tensor>("IntermediateVal");
-    auto* in2 = context.Input<framework::Tensor>(framework::GradVarName("Out"));
-    auto* out0 = context.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto* in0 = context.Input<phi::DenseTensor>("Y");
+    auto* in1 = context.Input<phi::DenseTensor>("IntermediateVal");
+    auto* in2 = context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto* out0 = context.Output<phi::DenseTensor>(framework::GradVarName("X"));
 
     if (out0) {
       const T* y_ptr = in0->data<T>();

@@ -12,15 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
-import numpy as np
+
 import paddle
-import paddle.fluid.core as core
-from paddle.fluid.op import Operator
-from op_test import OpTest
-import math
 
 
 class TestAdagradOpV2(unittest.TestCase):
@@ -31,7 +25,8 @@ class TestAdagradOpV2(unittest.TestCase):
         out = linear(inp)
         loss = paddle.mean(out)
         adagrad = paddle.optimizer.Adagrad(
-            learning_rate=0.1, parameters=linear.parameters())
+            learning_rate=0.1, parameters=linear.parameters()
+        )
         out.backward()
         adagrad.step()
         adagrad.clear_grad()
@@ -48,13 +43,15 @@ class TestAdagradOpV2Group(TestAdagradOpV2):
         loss = paddle.mean(out)
         adagrad = paddle.optimizer.Adagrad(
             learning_rate=0.01,
-            parameters=[{
-                'params': linear_1.parameters()
-            }, {
-                'params': linear_2.parameters(),
-                'weight_decay': 0.001,
-            }],
-            weight_decay=0.1)
+            parameters=[
+                {'params': linear_1.parameters()},
+                {
+                    'params': linear_2.parameters(),
+                    'weight_decay': 0.001,
+                },
+            ],
+            weight_decay=0.1,
+        )
         out.backward()
         adagrad.step()
         adagrad.clear_grad()

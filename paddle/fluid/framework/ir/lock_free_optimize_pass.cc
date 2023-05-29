@@ -41,7 +41,8 @@ void LockFreeOptimizePass::ApplyImpl(ir::Graph* graph) const {
     if (IsOpNamed(node, kOptimizerType)) {
       auto& param_out_vars = node->Op()->Output("ParamOut");
       PADDLE_ENFORCE_EQ(
-          param_out_vars.size(), 1u,
+          param_out_vars.size(),
+          1u,
           platform::errors::InvalidArgument(
               "In op(%s), find output(ParamOut) failed.", node->Name()));
       weight_var_set.insert(param_out_vars[0]);
@@ -98,9 +99,10 @@ void LockFreeOptimizePass::ApplyImpl(ir::Graph* graph) const {
             VLOG(3) << "Found forward_op " << forward_op->Name();
 
             PADDLE_ENFORCE_NOT_NULL(
-                forward_op, platform::errors::NotFound(
-                                "Can not find forward op for backword op(%s).",
-                                backward_op->Name()));
+                forward_op,
+                platform::errors::NotFound(
+                    "Can not find forward op for backword op(%s).",
+                    backward_op->Name()));
 
             Node* new_optimizer_node = CreateNewSGDNode(
                 graph, forward_op, backward_op, node, opt_node);
@@ -151,23 +153,30 @@ void LockFreeOptimizePass::ApplyImpl(ir::Graph* graph) const {
 }
 
 ir::Node* LockFreeOptimizePass::CreateNewSGDNode(
-    ir::Graph* graph, ir::Node* forward_node, ir::Node* backward_node,
-    ir::Node* grad_sum_node, ir::Node* optimize_node) const {
+    ir::Graph* graph,
+    ir::Node* forward_node,
+    ir::Node* backward_node,
+    ir::Node* grad_sum_node,
+    ir::Node* optimize_node) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
                           platform::errors::InvalidArgument(
                               "Input argument graph cannot be nullptr."));
   PADDLE_ENFORCE_NOT_NULL(
-      forward_node, platform::errors::InvalidArgument(
-                        "Input argument forward_node cannot be nullptr."));
+      forward_node,
+      platform::errors::InvalidArgument(
+          "Input argument forward_node cannot be nullptr."));
   PADDLE_ENFORCE_NOT_NULL(
-      backward_node, platform::errors::InvalidArgument(
-                         "Input argument backward_node cannot be nullptr."));
+      backward_node,
+      platform::errors::InvalidArgument(
+          "Input argument backward_node cannot be nullptr."));
   PADDLE_ENFORCE_NOT_NULL(
-      grad_sum_node, platform::errors::InvalidArgument(
-                         "Input argument grad_sum_node cannot be nullptr."));
+      grad_sum_node,
+      platform::errors::InvalidArgument(
+          "Input argument grad_sum_node cannot be nullptr."));
   PADDLE_ENFORCE_NOT_NULL(
-      optimize_node, platform::errors::InvalidArgument(
-                         "Input argument optimize_node cannot be nullptr."));
+      optimize_node,
+      platform::errors::InvalidArgument(
+          "Input argument optimize_node cannot be nullptr."));
 
   // find the grad var node between the grad sum node and backward_node
   std::vector<ir::Node*> grad_vars =
@@ -178,8 +187,9 @@ ir::Node* LockFreeOptimizePass::CreateNewSGDNode(
       grad_node = node;
     }
   }
-  PADDLE_ENFORCE_NOT_NULL(grad_node, platform::errors::NotFound(
-                                         "Can not find control dep variable."));
+  PADDLE_ENFORCE_NOT_NULL(
+      grad_node,
+      platform::errors::NotFound("Can not find control dep variable."));
 
   // create a new SGD node
   OpDesc* old_desc = optimize_node->Op();
@@ -190,7 +200,7 @@ ir::Node* LockFreeOptimizePass::CreateNewSGDNode(
   new_desc.SetInput("Grad", std::vector<std::string>({grad_node->Name()}));
   new_desc.SetOutput("ParamOut", old_desc->Output("ParamOut"));
 
-  std::vector<std::string> op_role_vars = BOOST_GET_CONST(
+  std::vector<std::string> op_role_vars = PADDLE_GET_CONST(
       std::vector<std::string>,
       new_desc.GetAttr(framework::OpProtoAndCheckerMaker::OpRoleVarAttrName()));
   // replace the second op role var, because the grad name was
@@ -233,11 +243,13 @@ ir::Node* LockFreeOptimizePass::CreateNewSGDNode(
 
   // SGD must have only one param and LR in
   PADDLE_ENFORCE_EQ(
-      old_desc->Input("LearningRate").size(), 1u,
+      old_desc->Input("LearningRate").size(),
+      1u,
       platform::errors::InvalidArgument(
           "In op(%s), find input(LearningRate) failed.", old_desc->Type()));
   PADDLE_ENFORCE_EQ(
-      old_desc->Input("Param").size(), 1u,
+      old_desc->Input("Param").size(),
+      1u,
       platform::errors::InvalidArgument("In op(%s), find input(Param) failed.",
                                         old_desc->Type()));
 
@@ -269,11 +281,13 @@ std::vector<ir::Node*> LockFreeOptimizePass::FindConnectedNode(
 }
 
 void LockFreeOptimizePass::ReplaceUpstreamNode(
-    ir::Node* upstream_node, ir::Node* old_optimizer_node,
+    ir::Node* upstream_node,
+    ir::Node* old_optimizer_node,
     ir::Node* new_optimizer_node) const {
   PADDLE_ENFORCE_NOT_NULL(
-      upstream_node, platform::errors::InvalidArgument(
-                         "Input argument upstream_node cannot be nullptr."));
+      upstream_node,
+      platform::errors::InvalidArgument(
+          "Input argument upstream_node cannot be nullptr."));
   PADDLE_ENFORCE_NOT_NULL(
       old_optimizer_node,
       platform::errors::InvalidArgument(
@@ -336,8 +350,9 @@ ir::Node* LockFreeOptimizePass::FindForwardOpViaBackwardOp(
                           platform::errors::InvalidArgument(
                               "Input argument graph cannot be nullptr."));
   PADDLE_ENFORCE_NOT_NULL(
-      backward_node, platform::errors::InvalidArgument(
-                         "Input argument backward_node cannot be nullptr."));
+      backward_node,
+      platform::errors::InvalidArgument(
+          "Input argument backward_node cannot be nullptr."));
 
   // strip the suffix _grad of backward_node's name
   std::string forward_op_name = backward_node->Name();

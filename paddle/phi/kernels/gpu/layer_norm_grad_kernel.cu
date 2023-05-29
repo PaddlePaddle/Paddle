@@ -14,9 +14,9 @@
 
 #include "paddle/phi/kernels/layer_norm_grad_kernel.h"
 
-#include "paddle/fluid/operators/layer_norm_kernel.cu.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/layer_norm_impl.cu.h"
 #include "paddle/phi/kernels/funcs/layer_norm_util.h"
 
 namespace phi {
@@ -24,18 +24,17 @@ namespace phi {
 template <typename T, typename Context>
 void LayerNormGradKernel(const Context &dev_ctx,
                          const DenseTensor &x,
+                         const paddle::optional<DenseTensor> &scale_opt,
+                         const paddle::optional<DenseTensor> &bias_opt,
                          const DenseTensor &mean,
                          const DenseTensor &variance,
-                         paddle::optional<const DenseTensor &> scale_opt,
-                         paddle::optional<const DenseTensor &> bias_opt,
                          const DenseTensor &out_grad,
                          float epsilon,
                          int begin_norm_axis,
-                         bool is_test,
                          DenseTensor *x_grad,
                          DenseTensor *scale_grad,
                          DenseTensor *bias_grad) {
-  using U = paddle::operators::LayerNormParamType<T>;
+  using U = phi::funcs::LayerNormParamType<T>;
   // d_x, d_scale, d_bias may be nullptr
   auto *d_x = x_grad;
   auto *d_scale = scale_grad;
@@ -85,7 +84,7 @@ void LayerNormGradKernel(const Context &dev_ctx,
                            : dev_ctx.template Alloc<ScaleBiasT>(d_bias));   \
     auto *d_x_data =                                                        \
         (d_x == nullptr ? nullptr : dev_ctx.template Alloc<T>(d_x));        \
-    paddle::operators::LayerNormBackward<T, U, IsScaleBiasSameDTypeWithX>(  \
+    phi::funcs::LayerNormBackward<T, U, IsScaleBiasSameDTypeWithX>(         \
         x_data,                                                             \
         d_y_data,                                                           \
         scale_data,                                                         \
@@ -118,7 +117,12 @@ PD_REGISTER_KERNEL(layer_norm_grad,
                    ALL_LAYOUT,
                    phi::LayerNormGradKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16) {
+  if (kernel_key.dtype() == phi::DataType::FLOAT16) {
+    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
+  }
+}
 #elif CUDNN_VERSION_MIN(8, 1, 0)
 PD_REGISTER_KERNEL(layer_norm_grad,
                    GPU,
@@ -127,7 +131,12 @@ PD_REGISTER_KERNEL(layer_norm_grad,
                    float,
                    double,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16) {
+  if (kernel_key.dtype() == phi::DataType::FLOAT16) {
+    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
+  }
+}
 #else
 PD_REGISTER_KERNEL(layer_norm_grad,
                    GPU,
@@ -135,5 +144,10 @@ PD_REGISTER_KERNEL(layer_norm_grad,
                    phi::LayerNormGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16) {
+  if (kernel_key.dtype() == phi::DataType::FLOAT16) {
+    kernel->OutputAt(1).SetDataType(phi::DataType::FLOAT32);
+    kernel->OutputAt(2).SetDataType(phi::DataType::FLOAT32);
+  }
+}
 #endif

@@ -32,9 +32,9 @@ class PSROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
              "H is the height of the input feature map, and "
              "W is the width. The data type can be float32 or float64");
     AddInput("ROIs",
-             "(LoDTensor), "
+             "(phi::DenseTensor), "
              "ROIs (Regions of Interest) to pool over. "
-             "should be a 2-D LoDTensor of shape (num_rois, 4) "
+             "should be a 2-D phi::DenseTensor of shape (num_rois, 4) "
              "given as [(x1, y1, x2, y2), ...]. "
              "where (x1, y1) is the top left coordinates, and "
              "(x2, y2) is the bottom right coordinates. "
@@ -70,8 +70,8 @@ class PSROIPoolOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(1);
     AddComment(R"Doc(
 Position sensitive region of interest pooling (also known as PSROIPooling) is to perform
-position-sensitive average pooling on regions of interest specified by input, takes as 
-input N position-sensitive score maps and a list of num_rois regions of interest. 
+position-sensitive average pooling on regions of interest specified by input, takes as
+input N position-sensitive score maps and a list of num_rois regions of interest.
 
 PSROIPooling for R-FCN. Please refer to https://arxiv.org/abs/1605.06409 for more details.
     )Doc");
@@ -83,11 +83,10 @@ class PSROIPoolOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 
@@ -96,11 +95,10 @@ class PSROIPoolGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 
@@ -125,13 +123,18 @@ class PSROIPoolGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(psroi_pool, PsroiPoolInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(psroi_pool,
+                            PsroiPoolInferShapeFunctor,
                             PD_INFER_META(phi::PsroiPoolInferMeta));
-DECLARE_INFER_SHAPE_FUNCTOR(psroi_pool_grad, PsroiPoolGradInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(psroi_pool_grad,
+                            PsroiPoolGradInferShapeFunctor,
                             PD_INFER_META(phi::PsroiPoolGradInferMeta));
-REGISTER_OPERATOR(psroi_pool, ops::PSROIPoolOp, ops::PSROIPoolOpMaker,
+REGISTER_OPERATOR(psroi_pool,
+                  ops::PSROIPoolOp,
+                  ops::PSROIPoolOpMaker,
                   ops::PSROIPoolGradMaker<paddle::framework::OpDesc>,
                   ops::PSROIPoolGradMaker<paddle::imperative::OpBase>,
                   PsroiPoolInferShapeFunctor);
-REGISTER_OPERATOR(psroi_pool_grad, ops::PSROIPoolGradOp,
+REGISTER_OPERATOR(psroi_pool_grad,
+                  ops::PSROIPoolGradOp,
                   PsroiPoolGradInferShapeFunctor);

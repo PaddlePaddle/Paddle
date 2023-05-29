@@ -1,0 +1,16 @@
+collect_srcs(kernels_srcs SRCS mkl.cc)
+
+# use mkl kernels by name and type
+use_jitkernel_more(kMatMul, mkl)
+use_jitkernel_more(kVMul, mkl)
+use_jitkernel_more(kVAdd, mkl)
+use_jitkernel_more(kVScal, mkl)
+use_jitkernel_more(kVExp, mkl)
+use_jitkernel_more(kVSquare, mkl)
+use_jitkernel_more(kVCopy, mkl)
+use_jitkernel_more(kVSigmoid, mkl)
+use_jitkernel_more(kVTanh, mkl)
+use_jitkernel_more(kSeqPool, mkl)
+use_jitkernel_more(kEmbSeqPool, mkl)
+use_jitkernel_more(kSgd, mkl)
+use_jitkernel_more(kVBroadcast, mkl)

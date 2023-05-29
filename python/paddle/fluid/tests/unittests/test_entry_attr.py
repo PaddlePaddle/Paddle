@@ -12,20 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import paddle
+
 paddle.enable_static()
 
 import unittest
-import paddle.fluid as fluid
-from paddle.distributed import ProbabilityEntry, CountFilterEntry, ShowClickEntry
+
+from paddle import fluid
+from paddle.distributed import (
+    CountFilterEntry,
+    ProbabilityEntry,
+    ShowClickEntry,
+)
 
 
 class EntryAttrChecks(unittest.TestCase):
     def base(self):
         with self.assertRaises(NotImplementedError):
             from paddle.distributed.entry_attr import EntryAttr
+
             base = EntryAttr()
             base._to_attr()
 
@@ -62,21 +67,24 @@ class EntryAttrChecks(unittest.TestCase):
 
         with fluid.scope_guard(scope):
             with fluid.program_guard(prog):
-                input = fluid.layers.data(
-                    name="dnn_data",
-                    shape=[-1, 1],
-                    dtype="int64",
-                    lod_level=1,
-                    append_batch_size=False)
+                input = paddle.static.data(
+                    name="dnn_data", shape=[-1, 1], dtype="int64", lod_level=1
+                )
                 prob = ProbabilityEntry(0.5)
                 emb = paddle.static.nn.sparse_embedding(
                     input=input,
                     size=[100, 10],
                     is_test=False,
                     entry=prob,
-                    param_attr=fluid.ParamAttr(name="deep_embedding"))
-                pool = fluid.layers.sequence_pool(input=emb, pool_type="sum")
-                predict = fluid.layers.fc(input=pool, size=2, act='softmax')
+                    param_attr=fluid.ParamAttr(name="deep_embedding"),
+                )
+
+                pool = paddle.static.nn.sequence_lod.sequence_pool(
+                    input=emb, pool_type="sum"
+                )
+                predict = paddle.static.nn.fc(
+                    x=pool, size=2, activation='softmax'
+                )
 
         block = prog.global_block()
         for op in block.ops:

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/transpose_grad_kernel.h"
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -22,6 +23,19 @@ PD_REGISTER_KERNEL(transpose_grad,
                    CPU,
                    ALL_LAYOUT,
                    phi::TransposeGradKernel,
+                   bool,
+                   float,
+                   double,
+                   int32_t,
+                   int64_t,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
+
+PD_REGISTER_KERNEL(trans_layout_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::TransLayoutGradKernel,
                    bool,
                    float,
                    double,

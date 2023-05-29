@@ -15,18 +15,18 @@ limitations under the License. */
 #pragma once
 
 #include <stdlib.h>
+
 #include <numeric>
 #include <random>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace operators {
-
-using Tensor = framework::Tensor;
 
 template <class bidiiter>
 void SampleUniqueNeighbors(bidiiter begin, bidiiter end, int num_samples) {
@@ -46,8 +46,10 @@ void SampleUniqueNeighbors(bidiiter begin, bidiiter end, int num_samples) {
 }
 
 template <class bidiiter>
-void SampleUniqueNeighborsWithEids(bidiiter src_begin, bidiiter src_end,
-                                   bidiiter eid_begin, bidiiter eid_end,
+void SampleUniqueNeighborsWithEids(bidiiter src_begin,
+                                   bidiiter src_end,
+                                   bidiiter eid_begin,
+                                   bidiiter eid_end,
                                    int num_samples) {
   int left_num = std::distance(src_begin, src_end);
   std::random_device rd;
@@ -68,11 +70,17 @@ void SampleUniqueNeighborsWithEids(bidiiter src_begin, bidiiter src_end,
 }
 
 template <typename T>
-void SampleNeighbors(const T* src, const T* dst_count, const T* src_eids,
-                     std::vector<T>* inputs, std::vector<T>* outputs,
+void SampleNeighbors(const T* src,
+                     const T* dst_count,
+                     const T* src_eids,
+                     std::vector<T>* inputs,
+                     std::vector<T>* outputs,
                      std::vector<T>* output_counts,
-                     std::vector<T>* outputs_eids, int k, bool is_first_layer,
-                     bool is_last_layer, bool return_eids) {
+                     std::vector<T>* outputs_eids,
+                     int k,
+                     bool is_first_layer,
+                     bool is_last_layer,
+                     bool return_eids) {
   const size_t bs = inputs->size();
   // Allocate the memory of outputs
   // Collect the neighbors size
@@ -102,7 +110,8 @@ void SampleNeighbors(const T* src, const T* dst_count, const T* src_eids,
     }
   }
   if (is_first_layer) {
-    PADDLE_ENFORCE_GT(total_neighbors, 0,
+    PADDLE_ENFORCE_GT(total_neighbors,
+                      0,
                       platform::errors::InvalidArgument(
                           "The input nodes `X` should have at "
                           "least one neighbors, but none of the "
@@ -127,9 +136,11 @@ void SampleNeighbors(const T* src, const T* dst_count, const T* src_eids,
       std::copy(src + begin, src + end, out_src_vec[i].begin());
       if (return_eids) {
         std::copy(src_eids + begin, src_eids + end, out_eids_vec[i].begin());
-        SampleUniqueNeighborsWithEids(
-            out_src_vec[i].begin(), out_src_vec[i].end(),
-            out_eids_vec[i].begin(), out_eids_vec[i].end(), k);
+        SampleUniqueNeighborsWithEids(out_src_vec[i].begin(),
+                                      out_src_vec[i].end(),
+                                      out_eids_vec[i].begin(),
+                                      out_eids_vec[i].end(),
+                                      k);
       } else {
         SampleUniqueNeighbors(out_src_vec[i].begin(), out_src_vec[i].end(), k);
       }
@@ -149,10 +160,12 @@ void SampleNeighbors(const T* src, const T* dst_count, const T* src_eids,
   // Copy the results parallelism
   for (size_t i = 0; i < bs; i++) {
     int sample_size = sample_cumsum_sizes[i + 1] - sample_cumsum_sizes[i];
-    std::copy(out_src_vec[i].begin(), out_src_vec[i].begin() + sample_size,
+    std::copy(out_src_vec[i].begin(),
+              out_src_vec[i].begin() + sample_size,
               outputs->data() + sample_cumsum_sizes[i]);
     if (return_eids) {
-      std::copy(out_eids_vec[i].begin(), out_eids_vec[i].begin() + sample_size,
+      std::copy(out_eids_vec[i].begin(),
+                out_eids_vec[i].begin() + sample_size,
                 outputs_eids->data() + sample_cumsum_sizes[i]);
     }
   }
@@ -167,23 +180,50 @@ void SampleNeighbors(const T* src, const T* dst_count, const T* src_eids,
     outputs_sort.resize(std::distance(outputs_sort.begin(), outputs_sort_end));
     std::vector<T> unique_outputs(outputs_sort.size());
 
-    auto unique_outputs_end = std::set_difference(
-        outputs_sort.begin(), outputs_sort.end(), inputs->begin(),
-        inputs->end(), unique_outputs.begin());
+    auto unique_outputs_end = std::set_difference(outputs_sort.begin(),
+                                                  outputs_sort.end(),
+                                                  inputs->begin(),
+                                                  inputs->end(),
+                                                  unique_outputs.begin());
 
     inputs->resize(std::distance(unique_outputs.begin(), unique_outputs_end));
     std::copy(unique_outputs.begin(), unique_outputs_end, inputs->begin());
   }
 }
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class GraphKhopSamplerOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     // 1. Get sample neighbors operators' inputs.
-    auto* src = ctx.Input<Tensor>("Row");
-    auto* dst_count = ctx.Input<Tensor>("Col_Ptr");
-    auto* vertices = ctx.Input<Tensor>("X");
+    auto* src = ctx.Input<phi::DenseTensor>("Row");
+    auto* dst_count = ctx.Input<phi::DenseTensor>("Col_Ptr");
+    auto* vertices = ctx.Input<phi::DenseTensor>("X");
+    auto row_dims = src->dims();
+    auto row_dims_lens = row_dims.size();
+    auto col_dims = dst_count->dims();
+    auto col_dims_lens = col_dims.size();
+    auto x_dims = vertices->dims();
+    auto x_dims_lens = x_dims.size();
+    for (int i = 0; i < row_dims_lens; i++) {
+      PADDLE_ENFORCE_NE(
+          row_dims[i],
+          0,
+          phi::errors::InvalidArgument("The size of Row(X) should not be 0."));
+    }
+    for (int i = 0; i < col_dims_lens; i++) {
+      PADDLE_ENFORCE_NE(col_dims[i],
+                        0,
+                        phi::errors::InvalidArgument(
+                            "The size of Col_Ptr(X) should not be 0."));
+    }
+    for (int i = 0; i < x_dims_lens; i++) {
+      PADDLE_ENFORCE_NE(x_dims[i],
+                        0,
+                        phi::errors::InvalidArgument(
+                            "The size of Input_Node(X) should not be 0."));
+    }
+
     std::vector<int> sample_sizes = ctx.Attr<std::vector<int>>("sample_sizes");
     bool return_eids = ctx.Attr<bool>("return_eids");
 
@@ -212,7 +252,7 @@ class GraphKhopSamplerOpKernel : public framework::OpKernel<T> {
     bool is_last_layer = false, is_first_layer = true;
 
     if (return_eids) {
-      auto* src_eids = ctx.Input<Tensor>("Eids");
+      auto* src_eids = ctx.Input<phi::DenseTensor>("Eids");
       const T* src_eids_data = src_eids->data<T>();
       for (size_t i = 0; i < num_layers; i++) {
         if (i == num_layers - 1) {
@@ -225,9 +265,16 @@ class GraphKhopSamplerOpKernel : public framework::OpKernel<T> {
           dst_vec.emplace_back(inputs);
           is_first_layer = false;
         }
-        SampleNeighbors<T>(src_data, dst_count_data, src_eids_data, &inputs,
-                           &outputs, &output_counts, &outputs_eids,
-                           sample_sizes[i], is_first_layer, is_last_layer,
+        SampleNeighbors<T>(src_data,
+                           dst_count_data,
+                           src_eids_data,
+                           &inputs,
+                           &outputs,
+                           &output_counts,
+                           &outputs_eids,
+                           sample_sizes[i],
+                           is_first_layer,
+                           is_last_layer,
                            return_eids);
         outputs_vec.emplace_back(outputs);
         output_counts_vec.emplace_back(output_counts);
@@ -245,9 +292,17 @@ class GraphKhopSamplerOpKernel : public framework::OpKernel<T> {
           is_first_layer = false;
           dst_vec.emplace_back(inputs);
         }
-        SampleNeighbors<T>(src_data, dst_count_data, nullptr, &inputs, &outputs,
-                           &output_counts, &outputs_eids, sample_sizes[i],
-                           is_first_layer, is_last_layer, return_eids);
+        SampleNeighbors<T>(src_data,
+                           dst_count_data,
+                           nullptr,
+                           &inputs,
+                           &outputs,
+                           &output_counts,
+                           &outputs_eids,
+                           sample_sizes[i],
+                           is_first_layer,
+                           is_last_layer,
+                           return_eids);
         outputs_vec.emplace_back(outputs);
         output_counts_vec.emplace_back(output_counts);
         outputs_eids_vec.emplace_back(outputs_eids);
@@ -270,21 +325,22 @@ class GraphKhopSamplerOpKernel : public framework::OpKernel<T> {
     // TODO(daisiming): We may try to use std::move in the future.
     for (size_t i = 0; i < num_layers; i++) {
       if (i == 0) {
-        unique_dst_merge_ptr = std::copy(dst_vec[i].begin(), dst_vec[i].end(),
-                                         unique_dst_merge.begin());
-        src_merge_ptr = std::copy(outputs_vec[i].begin(), outputs_vec[i].end(),
-                                  src_merge.begin());
+        unique_dst_merge_ptr = std::copy(
+            dst_vec[i].begin(), dst_vec[i].end(), unique_dst_merge.begin());
+        src_merge_ptr = std::copy(
+            outputs_vec[i].begin(), outputs_vec[i].end(), src_merge.begin());
         dst_sample_counts_merge_ptr =
-            std::copy(output_counts_vec[i].begin(), output_counts_vec[i].end(),
+            std::copy(output_counts_vec[i].begin(),
+                      output_counts_vec[i].end(),
                       dst_sample_counts_merge.begin());
       } else {
-        unique_dst_merge_ptr = std::copy(dst_vec[i].begin(), dst_vec[i].end(),
-                                         unique_dst_merge_ptr);
-        src_merge_ptr = std::copy(outputs_vec[i].begin(), outputs_vec[i].end(),
-                                  src_merge_ptr);
-        dst_sample_counts_merge_ptr =
-            std::copy(output_counts_vec[i].begin(), output_counts_vec[i].end(),
-                      dst_sample_counts_merge_ptr);
+        unique_dst_merge_ptr = std::copy(
+            dst_vec[i].begin(), dst_vec[i].end(), unique_dst_merge_ptr);
+        src_merge_ptr = std::copy(
+            outputs_vec[i].begin(), outputs_vec[i].end(), src_merge_ptr);
+        dst_sample_counts_merge_ptr = std::copy(output_counts_vec[i].begin(),
+                                                output_counts_vec[i].end(),
+                                                dst_sample_counts_merge_ptr);
       }
     }
 
@@ -294,15 +350,16 @@ class GraphKhopSamplerOpKernel : public framework::OpKernel<T> {
       auto eids_merge_ptr = eids_merge.begin();
       for (size_t i = 0; i < num_layers; i++) {
         if (i == 0) {
-          eids_merge_ptr =
-              std::copy(outputs_eids_vec[i].begin(), outputs_eids_vec[i].end(),
-                        eids_merge.begin());
+          eids_merge_ptr = std::copy(outputs_eids_vec[i].begin(),
+                                     outputs_eids_vec[i].end(),
+                                     eids_merge.begin());
         } else {
           eids_merge_ptr = std::copy(outputs_eids_vec[i].begin(),
-                                     outputs_eids_vec[i].end(), eids_merge_ptr);
+                                     outputs_eids_vec[i].end(),
+                                     eids_merge_ptr);
         }
       }
-      auto* out_eids = ctx.Output<Tensor>("Out_Eids");
+      auto* out_eids = ctx.Output<phi::DenseTensor>("Out_Eids");
       out_eids->Resize({static_cast<int>(eids_merge.size())});
       T* p_out_eids = out_eids->mutable_data<T>(ctx.GetPlace());
       std::copy(eids_merge.begin(), eids_merge.end(), p_out_eids);
@@ -311,7 +368,8 @@ class GraphKhopSamplerOpKernel : public framework::OpKernel<T> {
     int64_t num_sample_edges = std::accumulate(
         dst_sample_counts_merge.begin(), dst_sample_counts_merge.end(), 0);
     PADDLE_ENFORCE_EQ(
-        src_merge.size(), num_sample_edges,
+        src_merge.size(),
+        num_sample_edges,
         platform::errors::PreconditionNotMet(
             "Number of sample edges dismatch, the sample kernel has error."));
 
@@ -342,16 +400,16 @@ class GraphKhopSamplerOpKernel : public framework::OpKernel<T> {
     }
 
     // 7. Get Reindex_X for input nodes.
-    auto* reindex_x = ctx.Output<Tensor>("Reindex_X");
+    auto* reindex_x = ctx.Output<phi::DenseTensor>("Reindex_X");
     T* p_reindex_x = reindex_x->mutable_data<T>(ctx.GetPlace());
     for (size_t i = 0; i < bs; i++) {
       p_reindex_x[i] = node_map[p_vertices[i]];
     }
 
     // 8. Get operator's outputs.
-    auto* sample_index = ctx.Output<Tensor>("Sample_Index");
-    auto* out_src = ctx.Output<Tensor>("Out_Src");
-    auto* out_dst = ctx.Output<Tensor>("Out_Dst");
+    auto* sample_index = ctx.Output<phi::DenseTensor>("Sample_Index");
+    auto* out_src = ctx.Output<phi::DenseTensor>("Out_Src");
+    auto* out_dst = ctx.Output<phi::DenseTensor>("Out_Dst");
     sample_index->Resize({static_cast<int>(unique_nodes.size())});
     out_src->Resize({static_cast<int>(src_merge.size()), 1});
     out_dst->Resize({static_cast<int>(src_merge.size()), 1});

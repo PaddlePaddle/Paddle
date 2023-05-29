@@ -1,4 +1,4 @@
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,51 +13,27 @@
 # limitations under the License.
 
 import paddle
-import paddle.nn as nn
+from paddle import nn
 from paddle.utils.download import get_weights_path_from_url
 
-from .utils import _make_divisible
+from ..ops import ConvNormActivation
+from ._utils import _make_divisible
 
 __all__ = []
 
 model_urls = {
-    'mobilenetv2_1.0':
-    ('https://paddle-hapi.bj.bcebos.com/models/mobilenet_v2_x1.0.pdparams',
-     '0340af0a901346c8d46f4529882fb63d')
+    'mobilenetv2_1.0': (
+        'https://paddle-hapi.bj.bcebos.com/models/mobilenet_v2_x1.0.pdparams',
+        '0340af0a901346c8d46f4529882fb63d',
+    )
 }
 
 
-class ConvBNReLU(nn.Sequential):
-    def __init__(self,
-                 in_planes,
-                 out_planes,
-                 kernel_size=3,
-                 stride=1,
-                 groups=1,
-                 norm_layer=nn.BatchNorm2D):
-        padding = (kernel_size - 1) // 2
-
-        super(ConvBNReLU, self).__init__(
-            nn.Conv2D(
-                in_planes,
-                out_planes,
-                kernel_size,
-                stride,
-                padding,
-                groups=groups,
-                bias_attr=False),
-            norm_layer(out_planes),
-            nn.ReLU6())
-
-
 class InvertedResidual(nn.Layer):
-    def __init__(self,
-                 inp,
-                 oup,
-                 stride,
-                 expand_ratio,
-                 norm_layer=nn.BatchNorm2D):
-        super(InvertedResidual, self).__init__()
+    def __init__(
+        self, inp, oup, stride, expand_ratio, norm_layer=nn.BatchNorm2D
+    ):
+        super().__init__()
         self.stride = stride
         assert stride in [1, 2]
 
@@ -67,19 +43,28 @@ class InvertedResidual(nn.Layer):
         layers = []
         if expand_ratio != 1:
             layers.append(
-                ConvBNReLU(
-                    inp, hidden_dim, kernel_size=1, norm_layer=norm_layer))
-        layers.extend([
-            ConvBNReLU(
-                hidden_dim,
-                hidden_dim,
-                stride=stride,
-                groups=hidden_dim,
-                norm_layer=norm_layer),
-            nn.Conv2D(
-                hidden_dim, oup, 1, 1, 0, bias_attr=False),
-            norm_layer(oup),
-        ])
+                ConvNormActivation(
+                    inp,
+                    hidden_dim,
+                    kernel_size=1,
+                    norm_layer=norm_layer,
+                    activation_layer=nn.ReLU6,
+                )
+            )
+        layers.extend(
+            [
+                ConvNormActivation(
+                    hidden_dim,
+                    hidden_dim,
+                    stride=stride,
+                    groups=hidden_dim,
+                    norm_layer=norm_layer,
+                    activation_layer=nn.ReLU6,
+                ),
+                nn.Conv2D(hidden_dim, oup, 1, 1, 0, bias_attr=False),
+                norm_layer(oup),
+            ]
+        )
         self.conv = nn.Sequential(*layers)
 
     def forward(self, x):
@@ -90,24 +75,35 @@ class InvertedResidual(nn.Layer):
 
 
 class MobileNetV2(nn.Layer):
+    """MobileNetV2 model from
+    `"MobileNetV2: Inverted Residuals and Linear Bottlenecks" <https://arxiv.org/abs/1801.04381>`_.
+
+    Args:
+        scale (float, optional): Scale of channels in each layer. Default: 1.0.
+        num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer
+                            will not be defined. Default: 1000.
+        with_pool (bool, optional): Use pool before the last fc layer or not. Default: True.
+
+    Returns:
+        :ref:`api_paddle_nn_Layer`. An instance of MobileNetV2 model.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            from paddle.vision.models import MobileNetV2
+
+            model = MobileNetV2()
+
+            x = paddle.rand([1, 3, 224, 224])
+            out = model(x)
+
+            print(out.shape)
+            # [1, 1000]
+    """
+
     def __init__(self, scale=1.0, num_classes=1000, with_pool=True):
-        """MobileNetV2 model from
-        `"MobileNetV2: Inverted Residuals and Linear Bottlenecks" <https://arxiv.org/abs/1801.04381>`_.
-
-        Args:
-            scale (float): scale of channels in each layer. Default: 1.0.
-            num_classes (int): output dim of last fc layer. If num_classes <=0, last fc layer 
-                                will not be defined. Default: 1000.
-            with_pool (bool): use pool before the last fc layer or not. Default: True.
-
-        Examples:
-            .. code-block:: python
-
-                from paddle.vision.models import MobileNetV2
-
-                model = MobileNetV2()
-        """
-        super(MobileNetV2, self).__init__()
+        super().__init__()
         self.num_classes = num_classes
         self.with_pool = with_pool
         input_channel = 32
@@ -127,11 +123,17 @@ class MobileNetV2(nn.Layer):
         ]
 
         input_channel = _make_divisible(input_channel * scale, round_nearest)
-        self.last_channel = _make_divisible(last_channel * max(1.0, scale),
-                                            round_nearest)
+        self.last_channel = _make_divisible(
+            last_channel * max(1.0, scale), round_nearest
+        )
         features = [
-            ConvBNReLU(
-                3, input_channel, stride=2, norm_layer=norm_layer)
+            ConvNormActivation(
+                3,
+                input_channel,
+                stride=2,
+                norm_layer=norm_layer,
+                activation_layer=nn.ReLU6,
+            )
         ]
 
         for t, c, n, s in inverted_residual_setting:
@@ -144,15 +146,20 @@ class MobileNetV2(nn.Layer):
                         output_channel,
                         stride,
                         expand_ratio=t,
-                        norm_layer=norm_layer))
+                        norm_layer=norm_layer,
+                    )
+                )
                 input_channel = output_channel
 
         features.append(
-            ConvBNReLU(
+            ConvNormActivation(
                 input_channel,
                 self.last_channel,
                 kernel_size=1,
-                norm_layer=norm_layer))
+                norm_layer=norm_layer,
+                activation_layer=nn.ReLU6,
+            )
+        )
 
         self.features = nn.Sequential(*features)
 
@@ -161,7 +168,8 @@ class MobileNetV2(nn.Layer):
 
         if self.num_classes > 0:
             self.classifier = nn.Sequential(
-                nn.Dropout(0.2), nn.Linear(self.last_channel, num_classes))
+                nn.Dropout(0.2), nn.Linear(self.last_channel, num_classes)
+            )
 
     def forward(self, x):
         x = self.features(x)
@@ -178,10 +186,14 @@ class MobileNetV2(nn.Layer):
 def _mobilenet(arch, pretrained=False, **kwargs):
     model = MobileNetV2(**kwargs)
     if pretrained:
-        assert arch in model_urls, "{} model do not have a pretrained model now, you should set pretrained=False".format(
-            arch)
-        weight_path = get_weights_path_from_url(model_urls[arch][0],
-                                                model_urls[arch][1])
+        assert (
+            arch in model_urls
+        ), "{} model do not have a pretrained model now, you should set pretrained=False".format(
+            arch
+        )
+        weight_path = get_weights_path_from_url(
+            model_urls[arch][0], model_urls[arch][1]
+        )
 
         param = paddle.load(weight_path)
         model.load_dict(param)
@@ -190,15 +202,22 @@ def _mobilenet(arch, pretrained=False, **kwargs):
 
 
 def mobilenet_v2(pretrained=False, scale=1.0, **kwargs):
-    """MobileNetV2
-    
+    """MobileNetV2 from
+    `"MobileNetV2: Inverted Residuals and Linear Bottlenecks" <https://arxiv.org/abs/1801.04381>`_.
+
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.
-        scale: (float): scale of channels in each layer. Default: 1.0.
+        pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
+                            on ImageNet. Default: False.
+        scale (float, optional): Scale of channels in each layer. Default: 1.0.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`MobileNetV2 <api_paddle_vision_MobileNetV2>`.
+
+    Returns:
+        :ref:`api_paddle_nn_Layer`. An instance of MobileNetV2 model.
 
     Examples:
         .. code-block:: python
 
+            import paddle
             from paddle.vision.models import mobilenet_v2
 
             # build model
@@ -209,7 +228,14 @@ def mobilenet_v2(pretrained=False, scale=1.0, **kwargs):
 
             # build mobilenet v2 with scale=0.5
             model = mobilenet_v2(scale=0.5)
+
+            x = paddle.rand([1, 3, 224, 224])
+            out = model(x)
+
+            print(out.shape)
+            # [1, 1000]
     """
     model = _mobilenet(
-        'mobilenetv2_' + str(scale), pretrained, scale=scale, **kwargs)
+        'mobilenetv2_' + str(scale), pretrained, scale=scale, **kwargs
+    )
     return model

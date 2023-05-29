@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
+import sys
 import unittest
+
 import numpy as np
-import random
-from op_test import OpTest
-from sequence.test_sequence_conv import seqconv
+from eager_op_test import OpTest
+
+sys.path.append("../../../../../test/sequence")
+from test_sequence_conv import seqconv
 
 
 class TestSeqConvEltAddRelu(OpTest):
@@ -40,8 +41,8 @@ class TestSeqConvEltAddRelu(OpTest):
         T = sum(self.lod[0])
         x = np.random.uniform(-1, 1, [T, self.in_fea_size]).astype('float32')
         w = np.random.uniform(
-            -1, 1, [self.in_fea_size * self.context_length,
-                    self.out_fea_size]).astype('float32')
+            -1, 1, [self.in_fea_size * self.context_length, self.out_fea_size]
+        ).astype('float32')
         b = np.random.uniform(-2, 1, [1, self.out_fea_size]).astype('float32')
         out = seqconv(x, self.lod, w, self.context_length, self.context_start)
         out = np.maximum(out + b, 0)
@@ -50,7 +51,7 @@ class TestSeqConvEltAddRelu(OpTest):
         self.attrs = {
             'contextStart': self.context_start,
             'contextLength': self.context_length,
-            'contextStride': self.context_stride
+            'contextStride': self.context_stride,
         }
         self.outputs = {'Out': out}
 

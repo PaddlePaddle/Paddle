@@ -13,41 +13,42 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/phi_utils.h"
+
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
 #include "paddle/fluid/framework/variable.h"
 
 TEST(PhiUtils, TransPhiKernelKeyToOpKernelType) {
-  phi::KernelKey kernel_key(phi::Backend::CPU, phi::DataLayout::NCHW,
-                            phi::DataType::FLOAT32);
+  phi::KernelKey kernel_key(
+      phi::Backend::CPU, phi::DataLayout::NCHW, phi::DataType::FLOAT32);
   auto op_kernel_type =
       paddle::framework::TransPhiKernelKeyToOpKernelType(kernel_key);
   ASSERT_EQ(op_kernel_type.data_type_, paddle::framework::proto::VarType::FP32);
-  ASSERT_EQ(op_kernel_type.data_layout_, paddle::framework::DataLayout::kNCHW);
+  ASSERT_EQ(op_kernel_type.data_layout_, phi::DataLayout::kNCHW);
   ASSERT_TRUE(paddle::platform::is_cpu_place(op_kernel_type.place_));
   ASSERT_EQ(op_kernel_type.library_type_,
             paddle::framework::LibraryType::kPlain);
 
 #ifdef PADDLE_WITH_MKLDNN
-  phi::KernelKey kernel_key_mkldnn(phi::Backend::MKLDNN, phi::DataLayout::NCHW,
-                                   phi::DataType::FLOAT32);
+  phi::KernelKey kernel_key_mkldnn(
+      phi::Backend::ONEDNN, phi::DataLayout::NCHW, phi::DataType::FLOAT32);
   op_kernel_type =
       paddle::framework::TransPhiKernelKeyToOpKernelType(kernel_key_mkldnn);
   ASSERT_EQ(op_kernel_type.data_type_, paddle::framework::proto::VarType::FP32);
-  ASSERT_EQ(op_kernel_type.data_layout_, paddle::framework::DataLayout::kNCHW);
+  ASSERT_EQ(op_kernel_type.data_layout_, phi::DataLayout::kNCHW);
   ASSERT_TRUE(paddle::platform::is_cpu_place(op_kernel_type.place_));
   ASSERT_EQ(op_kernel_type.library_type_,
             paddle::framework::LibraryType::kMKLDNN);
 #endif
 
 #ifdef PADDLE_WITH_CUDA
-  phi::KernelKey kernel_key_cudnn(phi::Backend::GPUDNN, phi::DataLayout::NCHW,
-                                  phi::DataType::FLOAT32);
+  phi::KernelKey kernel_key_cudnn(
+      phi::Backend::GPUDNN, phi::DataLayout::NCHW, phi::DataType::FLOAT32);
   op_kernel_type =
       paddle::framework::TransPhiKernelKeyToOpKernelType(kernel_key_cudnn);
   ASSERT_EQ(op_kernel_type.data_type_, paddle::framework::proto::VarType::FP32);
-  ASSERT_EQ(op_kernel_type.data_layout_, paddle::framework::DataLayout::kNCHW);
+  ASSERT_EQ(op_kernel_type.data_layout_, phi::DataLayout::kNCHW);
   ASSERT_TRUE(paddle::platform::is_gpu_place(op_kernel_type.place_));
   ASSERT_EQ(op_kernel_type.library_type_,
             paddle::framework::LibraryType::kCUDNN);
@@ -56,8 +57,9 @@ TEST(PhiUtils, TransPhiKernelKeyToOpKernelType) {
 
 TEST(PhiUtils, TransOpKernelTypeToPhiKernelKey) {
   paddle::framework::OpKernelType op_kernel_type(
-      paddle::framework::proto::VarType::FP32, paddle::platform::CPUPlace(),
-      paddle::framework::DataLayout::kNCHW);
+      paddle::framework::proto::VarType::FP32,
+      paddle::platform::CPUPlace(),
+      phi::DataLayout::kNCHW);
   auto kernel_key =
       paddle::framework::TransOpKernelTypeToPhiKernelKey(op_kernel_type);
   ASSERT_EQ(kernel_key.dtype(), phi::DataType::FLOAT32);
@@ -66,20 +68,22 @@ TEST(PhiUtils, TransOpKernelTypeToPhiKernelKey) {
 
 #ifdef PADDLE_WITH_MKLDNN
   paddle::framework::OpKernelType op_kernel_type_mkldnn(
-      paddle::framework::proto::VarType::FP32, paddle::platform::CPUPlace(),
-      paddle::framework::DataLayout::kMKLDNN,
+      paddle::framework::proto::VarType::FP32,
+      paddle::platform::CPUPlace(),
+      phi::DataLayout::ONEDNN,
       paddle::framework::LibraryType::kMKLDNN);
   auto kernel_key_mkldnn =
       paddle::framework::TransOpKernelTypeToPhiKernelKey(op_kernel_type_mkldnn);
   ASSERT_EQ(kernel_key_mkldnn.dtype(), phi::DataType::FLOAT32);
-  ASSERT_EQ(kernel_key_mkldnn.layout(), phi::DataLayout::MKLDNN);
-  ASSERT_EQ(kernel_key_mkldnn.backend(), phi::Backend::MKLDNN);
+  ASSERT_EQ(kernel_key_mkldnn.layout(), phi::DataLayout::ONEDNN);
+  ASSERT_EQ(kernel_key_mkldnn.backend(), phi::Backend::ONEDNN);
 #endif
 
 #ifdef PADDLE_WITH_CUDA
   paddle::framework::OpKernelType op_kernel_type_cudnn(
-      paddle::framework::proto::VarType::FP32, paddle::platform::CPUPlace(),
-      paddle::framework::DataLayout::kNCHW,
+      paddle::framework::proto::VarType::FP32,
+      paddle::platform::CPUPlace(),
+      phi::DataLayout::kNCHW,
       paddle::framework::LibraryType::kCUDNN);
   auto kernel_key_cudnn =
       paddle::framework::TransOpKernelTypeToPhiKernelKey(op_kernel_type_cudnn);

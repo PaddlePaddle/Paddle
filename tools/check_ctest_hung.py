@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import sys
 import re
+import sys
 
 
 def escape(input):
@@ -33,15 +31,14 @@ Diff:  set(['test_parallel_executor_crf'])
     """
     if len(sys.argv) < 2:
         print(usage)
-        exit(0)
+        sys.exit(0)
 
     logfile = sys.argv[1]
     started = set()
     passed = set()
     with open(logfile, "r") as fn:
         for l in fn.readlines():
-            if l.find("Test ") != -1 and \
-                l.find("Passed") != -1:
+            if l.find("Test ") != -1 and l.find("Passed") != -1:
                 m = re.search(r"Test\s+#[0-9]*\:\s([a-z0-9_]+)", escape(l))
                 passed.add(m.group(1))
             if l.find("Start ") != -1:

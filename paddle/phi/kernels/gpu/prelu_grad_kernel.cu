@@ -77,23 +77,33 @@ class PreluOpGradFunctor {
     for (size_t i = 0; i < input_dims.size(); ++i) {
       numel *= input_dims[i];
     }
-    size_t plane_size = numel / input_dims[0] / input_dims[1];
-    size_t spatial_size = numel / input_dims[0];
-    size_t channel =
-        mode == ChannelLast ? input_dims[input_dims.size() - 1] : input_dims[1];
 
-    PReluOpGradKernel<
-        T><<<PADDLE_GET_BLOCKS(numel), CUDA_NUM_THREADS, 0, stream>>>(
-        x,
-        alpha,
-        out_grad,
-        x_grad,
-        alpha_grad,
-        channel,
-        plane_size,
-        spatial_size,
-        numel,
-        mode);
+    size_t plane_size;
+    size_t spatial_size;
+    size_t channel;
+    if (mode == PRELU_Scalar) {
+      plane_size = 1;
+      spatial_size = 1;
+      channel = 1;
+    } else {
+      plane_size = numel / input_dims[0] / input_dims[1];
+      spatial_size = numel / input_dims[0];
+      channel = mode == ChannelLast ? input_dims[input_dims.size() - 1]
+                                    : input_dims[1];
+    }
+
+    PReluOpGradKernel<T>
+        <<<PADDLE_GET_BLOCKS(numel), CUDA_NUM_THREADS, 0, stream>>>(
+            x,
+            alpha,
+            out_grad,
+            x_grad,
+            alpha_grad,
+            channel,
+            plane_size,
+            spatial_size,
+            numel,
+            mode);
   }
 };
 
@@ -102,8 +112,8 @@ void PReluGradKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& alpha,
                      const DenseTensor& out_grad,
-                     const std::string& mode,
                      const std::string& data_format,
+                     const std::string& mode,
                      DenseTensor* x_grad,
                      DenseTensor* alpha_grad) {
   dev_ctx.template Alloc<T>(x_grad);
@@ -120,7 +130,6 @@ void PReluGradKernel(const Context& dev_ctx,
   int numel = x.numel();
   auto dim = x.dims();
   auto x_rank = dim.size();
-  std::vector<int> input_shape = phi::vectorize<int>(dim);
   auto stream = dev_ctx.stream();
 
   T* alpha_grad_tmp_ptr;
@@ -180,4 +189,5 @@ PD_REGISTER_KERNEL(prelu_grad,
                    phi::PReluGradKernel,
                    float,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    double) {}

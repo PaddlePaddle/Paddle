@@ -12,14 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
+
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid import Program, program_guard
+from paddle import fluid
 
 
 class TestRot90_API(unittest.TestCase):
@@ -30,7 +28,9 @@ class TestRot90_API(unittest.TestCase):
         startup_program = fluid.Program()
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
-            input = fluid.data(name='input', dtype='float32', shape=[2, 3])
+            input = paddle.static.data(
+                name='input', dtype='float32', shape=[2, 3]
+            )
             output = paddle.rot90(input, k=1, axes=[0, 1])
             output = paddle.rot90(output, k=1, axes=[0, 1])
             output = output.rot90(k=1, axes=[0, 1])
@@ -41,24 +41,27 @@ class TestRot90_API(unittest.TestCase):
             exe.run(startup_program)
 
             img = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
-            res = exe.run(train_program,
-                          feed={'input': img},
-                          fetch_list=[output])
+            res = exe.run(
+                train_program, feed={'input': img}, fetch_list=[output]
+            )
 
             out_np = np.array(res[0])
             out_ref = np.array([[4, 1], [5, 2], [6, 3]]).astype(np.float32)
 
             self.assertTrue(
                 (out_np == out_ref).all(),
-                msg='rot90 output is wrong, out =' + str(out_np))
+                msg='rot90 output is wrong, out =' + str(out_np),
+            )
 
     def test_static_k_0(self):
         paddle.enable_static()
-        input = fluid.data(name='input', dtype='float32', shape=[2, 3])
+        input = paddle.static.data(name='input', dtype='float32', shape=[2, 3])
         startup_program = fluid.Program()
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
-            input = fluid.data(name='input', dtype='float32', shape=[2, 3])
+            input = paddle.static.data(
+                name='input', dtype='float32', shape=[2, 3]
+            )
             output = paddle.rot90(input, k=0, axes=[0, 1])
             place = fluid.CPUPlace()
             if fluid.core.is_compiled_with_cuda():
@@ -67,24 +70,27 @@ class TestRot90_API(unittest.TestCase):
             exe.run(startup_program)
 
             img = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
-            res = exe.run(train_program,
-                          feed={'input': img},
-                          fetch_list=[output])
+            res = exe.run(
+                train_program, feed={'input': img}, fetch_list=[output]
+            )
 
             out_np = np.array(res[0])
             out_ref = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
 
             self.assertTrue(
                 (out_np == out_ref).all(),
-                msg='rot90 output is wrong, out =' + str(out_np))
+                msg='rot90 output is wrong, out =' + str(out_np),
+            )
 
     def test_static_k_2(self):
         paddle.enable_static()
-        input = fluid.data(name='input', dtype='float32', shape=[2, 3])
+        input = paddle.static.data(name='input', dtype='float32', shape=[2, 3])
         startup_program = fluid.Program()
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
-            input = fluid.data(name='input', dtype='float32', shape=[2, 3])
+            input = paddle.static.data(
+                name='input', dtype='float32', shape=[2, 3]
+            )
             output = paddle.rot90(input, k=2, axes=[0, 1])
             place = fluid.CPUPlace()
             if fluid.core.is_compiled_with_cuda():
@@ -93,24 +99,27 @@ class TestRot90_API(unittest.TestCase):
             exe.run(startup_program)
 
             img = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
-            res = exe.run(train_program,
-                          feed={'input': img},
-                          fetch_list=[output])
+            res = exe.run(
+                train_program, feed={'input': img}, fetch_list=[output]
+            )
 
             out_np = np.array(res[0])
             out_ref = np.array([[6, 5, 4], [3, 2, 1]]).astype(np.float32)
 
             self.assertTrue(
                 (out_np == out_ref).all(),
-                msg='rot90 output is wrong, out =' + str(out_np))
+                msg='rot90 output is wrong, out =' + str(out_np),
+            )
 
     def test_static_k_3(self):
         paddle.enable_static()
-        input = fluid.data(name='input', dtype='float32', shape=[2, 3])
+        input = paddle.static.data(name='input', dtype='float32', shape=[2, 3])
         startup_program = fluid.Program()
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
-            input = fluid.data(name='input', dtype='float32', shape=[2, 3])
+            input = paddle.static.data(
+                name='input', dtype='float32', shape=[2, 3]
+            )
             output = paddle.rot90(input, k=3, axes=[0, 1])
             place = fluid.CPUPlace()
             if fluid.core.is_compiled_with_cuda():
@@ -119,24 +128,27 @@ class TestRot90_API(unittest.TestCase):
             exe.run(startup_program)
 
             img = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
-            res = exe.run(train_program,
-                          feed={'input': img},
-                          fetch_list=[output])
+            res = exe.run(
+                train_program, feed={'input': img}, fetch_list=[output]
+            )
 
             out_np = np.array(res[0])
             out_ref = np.array([[4, 1], [5, 2], [6, 3]]).astype(np.float32)
 
             self.assertTrue(
                 (out_np == out_ref).all(),
-                msg='rot90 output is wrong, out =' + str(out_np))
+                msg='rot90 output is wrong, out =' + str(out_np),
+            )
 
     def test_static_neg_k_1(self):
         paddle.enable_static()
-        input = fluid.data(name='input', dtype='float32', shape=[2, 3])
+        input = paddle.static.data(name='input', dtype='float32', shape=[2, 3])
         startup_program = fluid.Program()
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
-            input = fluid.data(name='input', dtype='float32', shape=[2, 3])
+            input = paddle.static.data(
+                name='input', dtype='float32', shape=[2, 3]
+            )
             output = paddle.rot90(input, k=-1, axes=[0, 1])
             place = fluid.CPUPlace()
             if fluid.core.is_compiled_with_cuda():
@@ -145,24 +157,27 @@ class TestRot90_API(unittest.TestCase):
             exe.run(startup_program)
 
             img = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
-            res = exe.run(train_program,
-                          feed={'input': img},
-                          fetch_list=[output])
+            res = exe.run(
+                train_program, feed={'input': img}, fetch_list=[output]
+            )
 
             out_np = np.array(res[0])
             out_ref = np.array([[4, 1], [5, 2], [6, 3]]).astype(np.float32)
 
             self.assertTrue(
                 (out_np == out_ref).all(),
-                msg='rot90 output is wrong, out =' + str(out_np))
+                msg='rot90 output is wrong, out =' + str(out_np),
+            )
 
     def test_static_neg_k_2(self):
         paddle.enable_static()
-        input = fluid.data(name='input', dtype='float32', shape=[2, 3])
+        input = paddle.static.data(name='input', dtype='float32', shape=[2, 3])
         startup_program = fluid.Program()
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
-            input = fluid.data(name='input', dtype='float32', shape=[2, 3])
+            input = paddle.static.data(
+                name='input', dtype='float32', shape=[2, 3]
+            )
             output = paddle.rot90(input, k=-2, axes=[0, 1])
             place = fluid.CPUPlace()
             if fluid.core.is_compiled_with_cuda():
@@ -171,24 +186,27 @@ class TestRot90_API(unittest.TestCase):
             exe.run(startup_program)
 
             img = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
-            res = exe.run(train_program,
-                          feed={'input': img},
-                          fetch_list=[output])
+            res = exe.run(
+                train_program, feed={'input': img}, fetch_list=[output]
+            )
 
             out_np = np.array(res[0])
             out_ref = np.array([[6, 5, 4], [3, 2, 1]]).astype(np.float32)
 
             self.assertTrue(
                 (out_np == out_ref).all(),
-                msg='rot90 output is wrong, out =' + str(out_np))
+                msg='rot90 output is wrong, out =' + str(out_np),
+            )
 
     def test_static_neg_k_3(self):
         paddle.enable_static()
-        input = fluid.data(name='input', dtype='float32', shape=[2, 3])
+        input = paddle.static.data(name='input', dtype='float32', shape=[2, 3])
         startup_program = fluid.Program()
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
-            input = fluid.data(name='input', dtype='float32', shape=[2, 3])
+            input = paddle.static.data(
+                name='input', dtype='float32', shape=[2, 3]
+            )
             output = paddle.rot90(input, k=-3, axes=[0, 1])
             place = fluid.CPUPlace()
             if fluid.core.is_compiled_with_cuda():
@@ -197,24 +215,27 @@ class TestRot90_API(unittest.TestCase):
             exe.run(startup_program)
 
             img = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
-            res = exe.run(train_program,
-                          feed={'input': img},
-                          fetch_list=[output])
+            res = exe.run(
+                train_program, feed={'input': img}, fetch_list=[output]
+            )
 
             out_np = np.array(res[0])
             out_ref = np.array([[3, 6], [2, 5], [1, 4]]).astype(np.float32)
 
             self.assertTrue(
                 (out_np == out_ref).all(),
-                msg='rot90 output is wrong, out =' + str(out_np))
+                msg='rot90 output is wrong, out =' + str(out_np),
+            )
 
     def test_static_neg_k_4(self):
         paddle.enable_static()
-        input = fluid.data(name='input', dtype='float32', shape=[2, 3])
+        input = paddle.static.data(name='input', dtype='float32', shape=[2, 3])
         startup_program = fluid.Program()
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
-            input = fluid.data(name='input', dtype='float32', shape=[2, 3])
+            input = paddle.static.data(
+                name='input', dtype='float32', shape=[2, 3]
+            )
             output = paddle.rot90(input, k=-4, axes=[0, 1])
             place = fluid.CPUPlace()
             if fluid.core.is_compiled_with_cuda():
@@ -223,48 +244,57 @@ class TestRot90_API(unittest.TestCase):
             exe.run(startup_program)
 
             img = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
-            res = exe.run(train_program,
-                          feed={'input': img},
-                          fetch_list=[output])
+            res = exe.run(
+                train_program, feed={'input': img}, fetch_list=[output]
+            )
 
             out_np = np.array(res[0])
             out_ref = np.array([[1, 2, 3], [4, 5, 6]]).astype(np.float32)
 
             self.assertTrue(
                 (out_np == out_ref).all(),
-                msg='rot90 output is wrong, out =' + str(out_np))
+                msg='rot90 output is wrong, out =' + str(out_np),
+            )
 
     def test_error_api(self):
         paddle.enable_static()
 
-        ## dims error
+        # dims error
         def run1():
-            input = fluid.data(name='input', dtype='float32', shape=[2, 3])
+            input = paddle.static.data(
+                name='input', dtype='float32', shape=[2, 3]
+            )
             output = paddle.rot90(input, k=1, axes=[0])
 
         self.assertRaises(ValueError, run1)
 
-        ## input dims error
+        # input dims error
         def run2():
-            input = fluid.data(name='input', dtype='float32', shape=[2])
+            input = paddle.static.data(name='input', dtype='float32', shape=[2])
             output = paddle.rot90(input, k=1, axes=[0, 1])
 
         self.assertRaises(ValueError, run2)
 
         def run3():
-            input = fluid.data(name='input', dtype='float32', shape=[2, 3])
+            input = paddle.static.data(
+                name='input', dtype='float32', shape=[2, 3]
+            )
             output = paddle.rot90(input, k=1, axes=[0, 0])
 
         self.assertRaises(ValueError, run3)
 
         def run4():
-            input = fluid.data(name='input', dtype='float32', shape=[2, 3])
+            input = paddle.static.data(
+                name='input', dtype='float32', shape=[2, 3]
+            )
             output = paddle.rot90(input, k=1, axes=[3, 1])
 
         self.assertRaises(ValueError, run4)
 
         def run5():
-            input = fluid.data(name='input', dtype='float32', shape=[2, 3])
+            input = paddle.static.data(
+                name='input', dtype='float32', shape=[2, 3]
+            )
             output = paddle.rot90(input, k=1, axes=[0, 3])
 
         self.assertRaises(ValueError, run5)
@@ -281,7 +311,8 @@ class TestRot90_API(unittest.TestCase):
 
             self.assertTrue(
                 (ret.numpy() == out_ref).all(),
-                msg='rot90 output is wrong, out =' + str(ret.numpy()))
+                msg='rot90 output is wrong, out =' + str(ret.numpy()),
+            )
 
 
 if __name__ == "__main__":

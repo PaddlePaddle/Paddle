@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/phi/backends/event.h"
-#include "paddle/fluid/platform/device/device_wrapper.h"
+
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/device_guard.h"
 #include "paddle/phi/backends/stream.h"
 
@@ -34,7 +36,11 @@ Event::~Event() { Destroy(); }
 
 bool Event::Init(const Place& place, Flag flags) {
   place_ = place;
-  DeviceGuard guard(place_);
+  device_ = phi::DeviceManager::GetDeviceWithPlace(place);
+
+  // note(wangran16): bind device to the current thread. fix npu plugin null
+  // context bug.
+  phi::DeviceManager::SetDevice(place_);
   device_->CreateEvent(this, flags);
   VLOG(3) << "Init Event: " << event_ << ", place: " << place_
           << ", flag:" << static_cast<int>(flags);
@@ -44,7 +50,7 @@ bool Event::Init(const Place& place, Flag flags) {
 
 void Event::Destroy() {
   if (own_data_) {
-    DeviceGuard guard(place_);
+    phi::DeviceManager::SetDevice(place_);
     device_->DestroyEvent(this);
     own_data_ = false;
   }
@@ -54,7 +60,7 @@ void Event::Record(const stream::Stream* stream) { stream->RecordEvent(this); }
 
 bool Event::Query() const { return device_->QueryEvent(this); }
 
-void Event::Synchonrize() const { device_->SynchronizeEvent(this); }
+void Event::Synchronize() const { device_->SynchronizeEvent(this); }
 
 const Place& Event::GetPlace() const { return place_; }
 

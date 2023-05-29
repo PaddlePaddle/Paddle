@@ -12,34 +12,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
-import paddle
-import paddle.nn as nn
-from paddle.utils.download import get_weights_path_from_url
 from functools import partial
 
-from .utils import _make_divisible
+import paddle
+from paddle import nn
+from paddle.utils.download import get_weights_path_from_url
+
 from ..ops import ConvNormActivation
+from ._utils import _make_divisible
 
 __all__ = []
 
 model_urls = {
-    "mobilenet_v3_small_x1.0":
-    ("https://paddle-hapi.bj.bcebos.com/models/mobilenet_v3_small_x1.0.pdparams",
-     "34fe0e7c1f8b00b2b056ad6788d0590c"),
-    "mobilenet_v3_large_x1.0":
-    ("https://paddle-hapi.bj.bcebos.com/models/mobilenet_v3_large_x1.0.pdparams",
-     "118db5792b4e183b925d8e8e334db3df"),
+    "mobilenet_v3_small_x1.0": (
+        "https://paddle-hapi.bj.bcebos.com/models/mobilenet_v3_small_x1.0.pdparams",
+        "34fe0e7c1f8b00b2b056ad6788d0590c",
+    ),
+    "mobilenet_v3_large_x1.0": (
+        "https://paddle-hapi.bj.bcebos.com/models/mobilenet_v3_large_x1.0.pdparams",
+        "118db5792b4e183b925d8e8e334db3df",
+    ),
 }
 
 
 class SqueezeExcitation(nn.Layer):
     """
     This block implements the Squeeze-and-Excitation block from https://arxiv.org/abs/1709.01507 (see Fig. 1).
-    Parameters ``activation``, and ``scale_activation`` correspond to ``delta`` and ``sigma`` in in eq. 3.
+    Parameters ``activation``, and ``scale_activation`` correspond to ``delta`` and ``sigma`` in eq. 3.
     This code is based on the torchvision code with modifications.
     You can also see at https://github.com/pytorch/vision/blob/main/torchvision/ops/misc.py#L127
     Args:
@@ -49,11 +48,13 @@ class SqueezeExcitation(nn.Layer):
         scale_activation (Callable[..., paddle.nn.Layer]): ``sigma`` activation. Default: ``paddle.nn.Sigmoid``
     """
 
-    def __init__(self,
-                 input_channels,
-                 squeeze_channels,
-                 activation=nn.ReLU,
-                 scale_activation=nn.Sigmoid):
+    def __init__(
+        self,
+        input_channels,
+        squeeze_channels,
+        activation=nn.ReLU,
+        scale_activation=nn.Sigmoid,
+    ):
         super().__init__()
         self.avgpool = nn.AdaptiveAvgPool2D(1)
         self.fc1 = nn.Conv2D(input_channels, squeeze_channels, 1)
@@ -74,19 +75,22 @@ class SqueezeExcitation(nn.Layer):
 
 
 class InvertedResidualConfig:
-    def __init__(self,
-                 in_channels,
-                 kernel,
-                 expanded_channels,
-                 out_channels,
-                 use_se,
-                 activation,
-                 stride,
-                 scale=1.0):
+    def __init__(
+        self,
+        in_channels,
+        kernel,
+        expanded_channels,
+        out_channels,
+        use_se,
+        activation,
+        stride,
+        scale=1.0,
+    ):
         self.in_channels = self.adjust_channels(in_channels, scale=scale)
         self.kernel = kernel
         self.expanded_channels = self.adjust_channels(
-            expanded_channels, scale=scale)
+            expanded_channels, scale=scale
+        )
         self.out_channels = self.adjust_channels(out_channels, scale=scale)
         self.use_se = use_se
         if activation is None:
@@ -96,8 +100,11 @@ class InvertedResidualConfig:
         elif activation == "hardswish":
             self.activation_layer = nn.Hardswish
         else:
-            raise RuntimeError("The activation function is not supported: {}".
-                               format(activation))
+            raise RuntimeError(
+                "The activation function is not supported: {}".format(
+                    activation
+                )
+            )
         self.stride = stride
 
     @staticmethod
@@ -106,8 +113,17 @@ class InvertedResidualConfig:
 
 
 class InvertedResidual(nn.Layer):
-    def __init__(self, in_channels, expanded_channels, out_channels,
-                 filter_size, stride, use_se, activation_layer, norm_layer):
+    def __init__(
+        self,
+        in_channels,
+        expanded_channels,
+        out_channels,
+        filter_size,
+        stride,
+        use_se,
+        activation_layer,
+        norm_layer,
+    ):
         super().__init__()
         self.use_res_connect = stride == 1 and in_channels == out_channels
         self.use_se = use_se
@@ -121,7 +137,8 @@ class InvertedResidual(nn.Layer):
                 stride=1,
                 padding=0,
                 norm_layer=norm_layer,
-                activation_layer=activation_layer)
+                activation_layer=activation_layer,
+            )
 
         self.bottleneck_conv = ConvNormActivation(
             in_channels=expanded_channels,
@@ -131,13 +148,15 @@ class InvertedResidual(nn.Layer):
             padding=int((filter_size - 1) // 2),
             groups=expanded_channels,
             norm_layer=norm_layer,
-            activation_layer=activation_layer)
+            activation_layer=activation_layer,
+        )
 
         if self.use_se:
             self.mid_se = SqueezeExcitation(
                 expanded_channels,
                 _make_divisible(expanded_channels // 4),
-                scale_activation=nn.Hardsigmoid)
+                scale_activation=nn.Hardsigmoid,
+            )
 
         self.linear_conv = ConvNormActivation(
             in_channels=expanded_channels,
@@ -146,7 +165,8 @@ class InvertedResidual(nn.Layer):
             stride=1,
             padding=0,
             norm_layer=norm_layer,
-            activation_layer=None)
+            activation_layer=None,
+        )
 
     def forward(self, x):
         identity = x
@@ -174,12 +194,9 @@ class MobileNetV3(nn.Layer):
         with_pool (bool, optional): Use pool before the last fc layer or not. Default: True.
     """
 
-    def __init__(self,
-                 config,
-                 last_channel,
-                 scale=1.0,
-                 num_classes=1000,
-                 with_pool=True):
+    def __init__(
+        self, config, last_channel, scale=1.0, num_classes=1000, with_pool=True
+    ):
         super().__init__()
 
         self.config = config
@@ -200,19 +217,24 @@ class MobileNetV3(nn.Layer):
             padding=1,
             groups=1,
             activation_layer=nn.Hardswish,
-            norm_layer=norm_layer)
+            norm_layer=norm_layer,
+        )
 
-        self.blocks = nn.Sequential(*[
-            InvertedResidual(
-                in_channels=cfg.in_channels,
-                expanded_channels=cfg.expanded_channels,
-                out_channels=cfg.out_channels,
-                filter_size=cfg.kernel,
-                stride=cfg.stride,
-                use_se=cfg.use_se,
-                activation_layer=cfg.activation_layer,
-                norm_layer=norm_layer) for cfg in self.config
-        ])
+        self.blocks = nn.Sequential(
+            *[
+                InvertedResidual(
+                    in_channels=cfg.in_channels,
+                    expanded_channels=cfg.expanded_channels,
+                    out_channels=cfg.out_channels,
+                    filter_size=cfg.kernel,
+                    stride=cfg.stride,
+                    use_se=cfg.use_se,
+                    activation_layer=cfg.activation_layer,
+                    norm_layer=norm_layer,
+                )
+                for cfg in self.config
+            ]
+        )
 
         self.lastconv = ConvNormActivation(
             in_channels=self.lastconv_in_channels,
@@ -222,7 +244,8 @@ class MobileNetV3(nn.Layer):
             padding=0,
             groups=1,
             norm_layer=norm_layer,
-            activation_layer=nn.Hardswish)
+            activation_layer=nn.Hardswish,
+        )
 
         if with_pool:
             self.avgpool = nn.AdaptiveAvgPool2D(1)
@@ -232,7 +255,8 @@ class MobileNetV3(nn.Layer):
                 nn.Linear(self.lastconv_out_channels, self.last_channel),
                 nn.Hardswish(),
                 nn.Dropout(p=0.2),
-                nn.Linear(self.last_channel, num_classes))
+                nn.Linear(self.last_channel, num_classes),
+            )
 
     def forward(self, x):
         x = self.conv(x)
@@ -255,9 +279,12 @@ class MobileNetV3Small(MobileNetV3):
 
     Args:
         scale (float, optional): Scale of channels in each layer. Default: 1.0.
-        num_classes (int, optional): Output dim of last fc layer. If num_classes <=0, last fc layer
+        num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer
                             will not be defined. Default: 1000.
         with_pool (bool, optional): Use pool before the last fc layer or not. Default: True.
+
+    Returns:
+        :ref:`api_paddle_nn_Layer`. An instance of MobileNetV3 Small architecture model.
 
     Examples:
         .. code-block:: python
@@ -272,6 +299,7 @@ class MobileNetV3Small(MobileNetV3):
             out = model(x)
 
             print(out.shape)
+            # [1, 1000]
     """
 
     def __init__(self, scale=1.0, num_classes=1000, with_pool=True):
@@ -294,7 +322,8 @@ class MobileNetV3Small(MobileNetV3):
             last_channel=last_channel,
             scale=scale,
             with_pool=with_pool,
-            num_classes=num_classes)
+            num_classes=num_classes,
+        )
 
 
 class MobileNetV3Large(MobileNetV3):
@@ -303,9 +332,12 @@ class MobileNetV3Large(MobileNetV3):
 
     Args:
         scale (float, optional): Scale of channels in each layer. Default: 1.0.
-        num_classes (int, optional): Output dim of last fc layer. If num_classes <=0, last fc layer
+        num_classes (int, optional): Output dim of last fc layer. If num_classes <= 0, last fc layer
                             will not be defined. Default: 1000.
         with_pool (bool, optional): Use pool before the last fc layer or not. Default: True.
+
+    Returns:
+        :ref:`api_paddle_nn_Layer`. An instance of MobileNetV3 Large architecture model.
 
     Examples:
         .. code-block:: python
@@ -320,6 +352,7 @@ class MobileNetV3Large(MobileNetV3):
             out = model(x)
 
             print(out.shape)
+            # [1, 1000]
     """
 
     def __init__(self, scale=1.0, num_classes=1000, with_pool=True):
@@ -330,24 +363,33 @@ class MobileNetV3Large(MobileNetV3):
             InvertedResidualConfig(24, 5, 72, 40, True, "relu", 2, scale),
             InvertedResidualConfig(40, 5, 120, 40, True, "relu", 1, scale),
             InvertedResidualConfig(40, 5, 120, 40, True, "relu", 1, scale),
-            InvertedResidualConfig(40, 3, 240, 80, False, "hardswish", 2,
-                                   scale),
-            InvertedResidualConfig(80, 3, 200, 80, False, "hardswish", 1,
-                                   scale),
-            InvertedResidualConfig(80, 3, 184, 80, False, "hardswish", 1,
-                                   scale),
-            InvertedResidualConfig(80, 3, 184, 80, False, "hardswish", 1,
-                                   scale),
-            InvertedResidualConfig(80, 3, 480, 112, True, "hardswish", 1,
-                                   scale),
-            InvertedResidualConfig(112, 3, 672, 112, True, "hardswish", 1,
-                                   scale),
-            InvertedResidualConfig(112, 5, 672, 160, True, "hardswish", 2,
-                                   scale),
-            InvertedResidualConfig(160, 5, 960, 160, True, "hardswish", 1,
-                                   scale),
-            InvertedResidualConfig(160, 5, 960, 160, True, "hardswish", 1,
-                                   scale),
+            InvertedResidualConfig(
+                40, 3, 240, 80, False, "hardswish", 2, scale
+            ),
+            InvertedResidualConfig(
+                80, 3, 200, 80, False, "hardswish", 1, scale
+            ),
+            InvertedResidualConfig(
+                80, 3, 184, 80, False, "hardswish", 1, scale
+            ),
+            InvertedResidualConfig(
+                80, 3, 184, 80, False, "hardswish", 1, scale
+            ),
+            InvertedResidualConfig(
+                80, 3, 480, 112, True, "hardswish", 1, scale
+            ),
+            InvertedResidualConfig(
+                112, 3, 672, 112, True, "hardswish", 1, scale
+            ),
+            InvertedResidualConfig(
+                112, 5, 672, 160, True, "hardswish", 2, scale
+            ),
+            InvertedResidualConfig(
+                160, 5, 960, 160, True, "hardswish", 1, scale
+            ),
+            InvertedResidualConfig(
+                160, 5, 960, 160, True, "hardswish", 1, scale
+            ),
         ]
         last_channel = _make_divisible(1280 * scale, 8)
         super().__init__(
@@ -355,7 +397,8 @@ class MobileNetV3Large(MobileNetV3):
             last_channel=last_channel,
             scale=scale,
             with_pool=with_pool,
-            num_classes=num_classes)
+            num_classes=num_classes,
+        )
 
 
 def _mobilenet_v3(arch, pretrained=False, scale=1.0, **kwargs):
@@ -364,13 +407,15 @@ def _mobilenet_v3(arch, pretrained=False, scale=1.0, **kwargs):
     else:
         model = MobileNetV3Small(scale=scale, **kwargs)
     if pretrained:
-        arch = "{}_x{}".format(arch, scale)
+        arch = f"{arch}_x{scale}"
         assert (
             arch in model_urls
         ), "{} model do not have a pretrained model now, you should set pretrained=False".format(
-            arch)
-        weight_path = get_weights_path_from_url(model_urls[arch][0],
-                                                model_urls[arch][1])
+            arch
+        )
+        weight_path = get_weights_path_from_url(
+            model_urls[arch][0], model_urls[arch][1]
+        )
 
         param = paddle.load(weight_path)
         model.set_dict(param)
@@ -382,8 +427,13 @@ def mobilenet_v3_small(pretrained=False, scale=1.0, **kwargs):
     `"Searching for MobileNetV3" <https://arxiv.org/abs/1905.02244>`_.
 
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.
+        pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
+                            on ImageNet. Default: False.
         scale (float, optional): Scale of channels in each layer. Default: 1.0.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`MobileNetV3Small <api_paddle_vision_MobileNetV3Small>`.
+
+    Returns:
+        :ref:`api_paddle_nn_Layer`. An instance of MobileNetV3 Small architecture model.
 
     Examples:
         .. code-block:: python
@@ -404,10 +454,11 @@ def mobilenet_v3_small(pretrained=False, scale=1.0, **kwargs):
             out = model(x)
 
             print(out.shape)
-
+            # [1, 1000]
     """
     model = _mobilenet_v3(
-        "mobilenet_v3_small", scale=scale, pretrained=pretrained, **kwargs)
+        "mobilenet_v3_small", scale=scale, pretrained=pretrained, **kwargs
+    )
     return model
 
 
@@ -416,8 +467,13 @@ def mobilenet_v3_large(pretrained=False, scale=1.0, **kwargs):
     `"Searching for MobileNetV3" <https://arxiv.org/abs/1905.02244>`_.
 
     Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.
+        pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
+                            on ImageNet. Default: False.
         scale (float, optional): Scale of channels in each layer. Default: 1.0.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`MobileNetV3Large <api_paddle_vision_MobileNetV3Large>`.
+
+    Returns:
+        :ref:`api_paddle_nn_Layer`. An instance of MobileNetV3 Large architecture model.
 
     Examples:
         .. code-block:: python
@@ -438,8 +494,9 @@ def mobilenet_v3_large(pretrained=False, scale=1.0, **kwargs):
             out = model(x)
 
             print(out.shape)
-
+            # [1, 1000]
     """
     model = _mobilenet_v3(
-        "mobilenet_v3_large", scale=scale, pretrained=pretrained, **kwargs)
+        "mobilenet_v3_large", scale=scale, pretrained=pretrained, **kwargs
+    )
     return model

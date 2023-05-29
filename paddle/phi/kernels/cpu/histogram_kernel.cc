@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/histogram_kernel.h"
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -33,7 +34,7 @@ void HistogramKernel(const Context& dev_ctx,
   const T* input_data = input.data<T>();
   auto input_numel = input.numel();
 
-  int64_t* out_data = output->mutable_data<int64_t>(dev_ctx.GetPlace());
+  int64_t* out_data = dev_ctx.template Alloc<int64_t>(output);
   phi::funcs::SetConstant<Context, int64_t>()(
       dev_ctx, output, static_cast<int64_t>(0));
 
@@ -84,4 +85,6 @@ PD_REGISTER_KERNEL(histogram,
                    float,
                    double,
                    int,
-                   int64_t) {}
+                   int64_t) {
+  kernel->OutputAt(0).SetDataType(paddle::DataType::INT64);
+}

@@ -27,6 +27,7 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/phi/core/macros.h"
 #include "pybind11/stl.h"
 
 // FIXME(zengjinle): these 2 flags may be removed by the linker when compiling
@@ -64,20 +65,34 @@ class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
   }
 
   template <typename T>
+  static Getter CreateDefaultValueGetter(const T &var) {
+    return [=]() -> py::object { return py::cast(var); };
+  }
+
+  template <typename T>
   static Setter CreateSetter(T *var) {
     return [var](const py::object &obj) { *var = py::cast<T>(obj); };
   }
 
  private:
   struct VarInfo {
-    VarInfo(bool is_public, const Getter &getter)
-        : is_public(is_public), getter(getter) {}
+    VarInfo(bool is_public, const Getter &getter, const Getter &default_getter)
+        : is_public(is_public),
+          getter(getter),
+          default_getter(default_getter) {}
 
-    VarInfo(bool is_public, const Getter &getter, const Setter &setter)
-        : is_public(is_public), getter(getter), setter(setter) {}
+    VarInfo(bool is_public,
+            const Getter &getter,
+            const Getter &default_getter,
+            const Setter &setter)
+        : is_public(is_public),
+          getter(getter),
+          default_getter(default_getter),
+          setter(setter) {}
 
     const bool is_public;
     const Getter getter;
+    const Getter default_getter;
     const Setter setter;
   };
 
@@ -86,26 +101,35 @@ class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
 
   static GlobalVarGetterSetterRegistry *MutableInstance() { return &instance_; }
 
-  void Register(const std::string &name, bool is_public, const Getter &getter) {
+  void Register(const std::string &name,
+                bool is_public,
+                const Getter &getter,
+                const Getter &default_getter) {
     PADDLE_ENFORCE_EQ(
-        HasGetterMethod(name), false,
+        HasGetterMethod(name),
+        false,
         platform::errors::AlreadyExists(
             "Getter of global variable %s has been registered", name));
     PADDLE_ENFORCE_NOT_NULL(getter,
                             platform::errors::InvalidArgument(
                                 "Getter of %s should not be null", name));
-    var_infos_.insert({name, VarInfo(is_public, getter)});
+    var_infos_.insert({name, VarInfo(is_public, getter, default_getter)});
   }
 
-  void Register(const std::string &name, bool is_public, const Getter &getter,
+  void Register(const std::string &name,
+                bool is_public,
+                const Getter &getter,
+                const Getter &default_getter,
                 const Setter &setter) {
     PADDLE_ENFORCE_EQ(
-        HasGetterMethod(name), false,
+        HasGetterMethod(name),
+        false,
         platform::errors::AlreadyExists(
             "Getter of global variable %s has been registered", name));
 
     PADDLE_ENFORCE_EQ(
-        HasSetterMethod(name), false,
+        HasSetterMethod(name),
+        false,
         platform::errors::AlreadyExists(
             "Setter of global variable %s has been registered", name));
 
@@ -116,14 +140,24 @@ class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
     PADDLE_ENFORCE_NOT_NULL(setter,
                             platform::errors::InvalidArgument(
                                 "Setter of %s should not be null", name));
-    var_infos_.insert({name, VarInfo(is_public, getter, setter)});
+    var_infos_.insert(
+        {name, VarInfo(is_public, getter, default_getter, setter)});
   }
 
   const Getter &GetterMethod(const std::string &name) const {
     PADDLE_ENFORCE_EQ(
-        HasGetterMethod(name), true,
+        HasGetterMethod(name),
+        true,
         platform::errors::NotFound("Cannot find global variable %s", name));
     return var_infos_.at(name).getter;
+  }
+
+  const Getter &DefaultGetterMethod(const std::string &name) const {
+    PADDLE_ENFORCE_EQ(
+        HasGetterMethod(name),
+        true,
+        platform::errors::NotFound("Cannot find global variable %s", name));
+    return var_infos_.at(name).default_getter;
   }
 
   py::object GetOrReturnDefaultValue(const std::string &name,
@@ -135,11 +169,20 @@ class PYBIND11_HIDDEN GlobalVarGetterSetterRegistry {
     }
   }
 
+  py::object GetDefaultValue(const std::string &name) const {
+    if (HasGetterMethod(name)) {
+      return DefaultGetterMethod(name)();
+    } else {
+      return py::cast(Py_None);
+    }
+  }
+
   py::object Get(const std::string &name) const { return GetterMethod(name)(); }
 
   const Setter &SetterMethod(const std::string &name) const {
     PADDLE_ENFORCE_EQ(
-        HasSetterMethod(name), true,
+        HasSetterMethod(name),
+        true,
         platform::errors::NotFound("Global variable %s is not writable", name));
     return var_infos_.at(name).setter;
   }
@@ -190,39 +233,57 @@ void BindGlobalValueGetterSetter(pybind11::module *module) {
       .def("__contains__", &GlobalVarGetterSetterRegistry::HasGetterMethod)
       .def("keys", &GlobalVarGetterSetterRegistry::Keys)
       .def("is_public", &GlobalVarGetterSetterRegistry::IsPublic)
-      .def("get", &GlobalVarGetterSetterRegistry::GetOrReturnDefaultValue,
-           py::arg("key"), py::arg("default") = py::cast<py::none>(Py_None));
+      .def("get_default",
+           &GlobalVarGetterSetterRegistry::GetDefaultValue,
+           py::arg("key"))
+      .def("get",
+           &GlobalVarGetterSetterRegistry::GetOrReturnDefaultValue,
+           py::arg("key"),
+           py::arg("default") = py::cast<py::none>(Py_None));
 
-  module->def("globals", &GlobalVarGetterSetterRegistry::Instance,
+  module->def("globals",
+              &GlobalVarGetterSetterRegistry::Instance,
               py::return_value_policy::reference);
 }
 
 /* Public vars are designed to be writable. */
-#define REGISTER_PUBLIC_GLOBAL_VAR(var)                                    \
-  do {                                                                     \
-    auto *instance = GlobalVarGetterSetterRegistry::MutableInstance();     \
-    instance->Register(#var, /*is_public=*/true,                           \
-                       GlobalVarGetterSetterRegistry::CreateGetter(var),   \
-                       GlobalVarGetterSetterRegistry::CreateSetter(&var)); \
+#define REGISTER_PUBLIC_GLOBAL_VAR(var)                                \
+  do {                                                                 \
+    auto *instance = GlobalVarGetterSetterRegistry::MutableInstance(); \
+    instance->Register(                                                \
+        #var,                                                          \
+        /*is_public=*/true,                                            \
+        GlobalVarGetterSetterRegistry::CreateGetter(var),              \
+        GlobalVarGetterSetterRegistry::CreateDefaultValueGetter(var),  \
+        GlobalVarGetterSetterRegistry::CreateSetter(&var));            \
   } while (0)
 
-struct RegisterGetterSetterVisitor : public boost::static_visitor<void> {
-  RegisterGetterSetterVisitor(const std::string &name, bool is_writable,
+struct RegisterGetterSetterVisitor {
+  RegisterGetterSetterVisitor(const std::string &name,
+                              bool is_writable,
                               void *value_ptr)
       : name_(name), is_writable_(is_writable), value_ptr_(value_ptr) {}
 
   template <typename T>
-  void operator()(const T &) const {
+  void operator()(const T &default_value) const {
     auto &value = *static_cast<T *>(value_ptr_);
     auto *instance = GlobalVarGetterSetterRegistry::MutableInstance();
     bool is_public = is_writable_;  // currently, all writable vars are public
     if (is_writable_) {
-      instance->Register(name_, is_public,
-                         GlobalVarGetterSetterRegistry::CreateGetter(value),
-                         GlobalVarGetterSetterRegistry::CreateSetter(&value));
+      instance->Register(
+          name_,
+          is_public,
+          GlobalVarGetterSetterRegistry::CreateGetter(value),
+          GlobalVarGetterSetterRegistry::CreateDefaultValueGetter(
+              default_value),
+          GlobalVarGetterSetterRegistry::CreateSetter(&value));
     } else {
-      instance->Register(name_, is_public,
-                         GlobalVarGetterSetterRegistry::CreateGetter(value));
+      instance->Register(
+          name_,
+          is_public,
+          GlobalVarGetterSetterRegistry::CreateGetter(value),
+          GlobalVarGetterSetterRegistry::CreateDefaultValueGetter(
+              default_value));
     }
   }
 
@@ -238,15 +299,15 @@ static void RegisterGlobalVarGetterSetter() {
   REGISTER_PUBLIC_GLOBAL_VAR(FLAGS_rpc_prefetch_thread_num);
 #endif
 
-  const auto &flag_map = platform::GetExportedFlagInfoMap();
+  const auto &flag_map = phi::GetExportedFlagInfoMap();
   for (const auto &pair : flag_map) {
     const std::string &name = pair.second.name;
     bool is_writable = pair.second.is_writable;
     void *value_ptr = pair.second.value_ptr;
     const auto &default_value = pair.second.default_value;
-    RegisterGetterSetterVisitor visitor("FLAGS_" + name, is_writable,
-                                        value_ptr);
-    boost::apply_visitor(visitor, default_value);
+    RegisterGetterSetterVisitor visitor(
+        "FLAGS_" + name, is_writable, value_ptr);
+    paddle::visit(visitor, default_value);
   }
 }
 

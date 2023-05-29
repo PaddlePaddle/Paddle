@@ -15,22 +15,22 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/core/allocator.h"
-#include "paddle/phi/core/storage.h"
+#include "paddle/phi/core/storage_properties.h"
 #include "paddle/phi/core/stream.h"
 #include "paddle/phi/core/tensor_base.h"
 #include "paddle/phi/core/tensor_meta.h"
 
 /* @jim19930609: Move to MKLDNN_Tensor in the future
-    */
+ */
 #ifdef PADDLE_WITH_MKLDNN
-#include "dnnl.hpp"
+#include "dnnl.hpp"  // NOLINT
 #endif
 
 namespace phi {
 
 class DenseTensorUtils;
 
-/// \brief The Dense tensor store values in a contiguous sequential block
+/// \brief The Dense tensor stores values in a contiguous sequential block
 /// of memory where all values are represented. Tensors or multi-dimensional
 /// arrays are used in math operators.
 /// During the entire life cycle of a DenseTensor, its device type and key
@@ -125,7 +125,8 @@ class DenseTensor : public TensorBase,
   /// \return The mutable data pointer value of type T.
   void* AllocateFrom(Allocator* allocator,
                      DataType dtype,
-                     size_t requested_size = 0) override;
+                     size_t requested_size = 0,
+                     bool fake_alloc = false) override;
 
   /// \brief Check if allocation is shared with other objects.
   /// \return Whether the allocation is shared with other objects.
@@ -164,12 +165,123 @@ class DenseTensor : public TensorBase,
 
   void* data();
 
+  /// \brief Get whether the storage_properties is inited.
+  /// \return The init status of storage_properties.
+  bool storage_properties_initialized() const;
+
+  /// \brief Returns the storage_properties of the tensor.
+  /// \return The storage_properties of the tensor.
+  template <typename DeviceT>
+  const DeviceT& storage_properties() const;
+
+  /// \brief Sets the storage_properties of the tensor.
+  /// \param storage_properties The storage_properties of the tensor.
+  void set_storage_properties(
+      std::unique_ptr<StorageProperties>&& storage_properties);
+
  private:
   friend class DenseTensorUtils;
 
  protected:
   DenseTensorMeta meta_;
   std::shared_ptr<phi::Allocation> holder_;
+
+  /** [ Why need StorageProperties? ]
+   *
+   * 1. Some hardware or third-party libraries add some additional storage
+   * properties on top of the description of the basic DenseTensor, such as
+   * memory desc of MKLDNN, storage_format and storage_layout of NPU,
+   * these members are necessary for optimal performance, but if the properties
+   * of each device are added to the DenseTensor with different macro isolation,
+   * the memory layout of the DenseTensor will become more fragmented.
+   * Under different compilation conditions, the member layout of the
+   * DenseTensor is very unstable, which may introduce bugs that are difficult
+   * to debug.
+   *
+   * 2. If the layout of DenseTensor is very different from the framework
+   * itself, it is recommended to directly inherit TensorBase to implement
+   * SpatialTensor.
+   *
+   * TODO(chenweihang): merge the dnnl::memory::desc and
+   * dnnl::memory::format_tag into StorageProperties, dnnl::memory::desc is a
+   * type that takes up a lot of space, original tensor members' size:
+   *
+   * DenseTensor size: 880
+   * -------- ordered members --------:
+   * DenseTensorMeta size: 128
+   *  - is_scalar_ size: 1
+   *  - DDim size: 80
+   *  - DataType size: 4
+   *  - DataLayout size: 4
+   *  - LoD size: 24
+   *  - offset size: 8
+   *  std::shared_ptr<phi::Allocation> size: 16
+   *  std::shared_ptr<InplaceVersion> size: 16 // need to be moved
+   *  dnnl::memory::format_tag size: 4 // need to be moved
+   *  dnnl::memory::desc size: 696 // need to be moved
+   */
+  std::unique_ptr<StorageProperties> storage_properties_{nullptr};
+
+ public:
+  /* Temporarily put InplaceVersion inside DenseTensor.
+  Will move to AutogradMeta as soon as we switch to Eager Dygraph.
+  */
+  /*
+  NOTE(liym27): [ What is TensorInplaceVersion used for? ]
+
+  TensorInplaceVersion is a version counter and every Tensor has a version
+  counter. It's used to check whether an inplace operation will result in an
+  incorrect gradient calculation. Version is incremented when the data of the
+  Variable is modified in place.
+
+  - Question: In what scenarios will version counters be shared?
+  - Answer: When two Variables/VarBases share the same C++ Tensor(its Allocation
+  may change), both of them share the same version counter. For examples:
+   1. `z = paddle.assign(input=x, output=y)`, `z` shares the same version
+  counter of `y` because z and y is the same VarBase;
+   2. `y = x.detach()`, `y` shares the same version counter of `x`.
+
+  - Question: In what scenarios will version counters NOT be shared?
+  - Answer: Replacing a `Variable`'s data by calling
+  `Tensor::ShareDataWith(...)` or `Tensor::ShareBufferWith(...)`. Because they
+  share the same Allocation but not phi::DenseTensor.
+
+  - Question: Why put the inplace_version_counter_ in phi::DenseTensor instead
+  of Allocation or Variable?
+  - Answer:
+   1. Tensor can call ResetHolder() to reset the corresponding Allocation so
+  that the inplace_version_counter_ changes if it's in Allocation, which will
+  lead to confusing information about inplace version.
+   2. If inplace_version_counter_ is in Variable, different VariableWrappers
+   should be able to share the same Variable. However, a VariableWrapper hold a
+   Variable object but not a pointer.
+ */
+  class InplaceVersion {
+   public:
+    bool IsUnique() const { return inplace_version_ == 0; }
+    void Bump() { ++inplace_version_; }
+    uint32_t CurrentVersion() const { return inplace_version_; }
+    void SetInplaceVersionToZero() { inplace_version_ = 0; }
+
+   private:
+    uint32_t inplace_version_{0};
+  };
+
+ protected:
+  std::shared_ptr<InplaceVersion> inplace_version_counter_{
+      std::make_shared<InplaceVersion>()};
+
+/* @jim19930609: This is a hack
+In general, it is badly designed to fuse MKLDNN-specific objects into a
+generic Tensor.
+We temporarily leave them here to unblock Tensor Unification progress.
+In the final state, we should come up with a MKLDNN_Tensor and move the
+following codes there.
+*/
+#ifdef PADDLE_WITH_MKLDNN
+  /// \brief memory descriptor of tensor which have layout set as kMKLDNN
+  dnnl::memory::desc mem_desc_;
+#endif
 
 #ifndef PADDLE_WITH_CUSTOM_KERNEL
 #include "paddle/phi/core/dense_tensor.inl"

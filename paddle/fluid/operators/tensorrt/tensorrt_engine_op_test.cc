@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/tensorrt/tensorrt_engine_op.h"
+
 #include <gtest/gtest.h>
+
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_desc.h"
@@ -23,20 +25,22 @@ limitations under the License. */
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/convert/ut_helper.h"
+#include "paddle/phi/common/data_type.h"
 
 USE_NO_KERNEL_OP(tensorrt_engine);
 namespace paddle {
 namespace operators {
 
 namespace {
-void CreateCUDATensor(framework::Scope* scope, const std::string& name,
+void CreateCUDATensor(framework::Scope* scope,
+                      const std::string& name,
                       const std::vector<int64_t>& shape) {
   auto* var = scope->Var(name);
-  auto* tensor = var->GetMutable<framework::LoDTensor>();
+  auto* tensor = var->GetMutable<phi::DenseTensor>();
   auto dims = phi::make_ddim(shape);
   tensor->Resize(dims);
   platform::CUDAPlace place;
-  platform::CUDADeviceContext ctx(place);
+  phi::GPUContext ctx(place);
   ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                        .GetAllocator(place, ctx.stream())
                        .get());
@@ -68,30 +72,44 @@ void DynamicShapeTest(bool allow_build_at_runtime) {
 
   LOG(INFO) << "create block desc";
   framework::BlockDesc block_desc(&program, block_);
-  LOG(INFO) << "create fc op";
-  auto* fc0 = block_desc.AppendOp();
-  fc0->SetType("fc");
-  fc0->SetInput("X", std::vector<std::string>({"x"}));     // 4 x 1 x 1
-  fc0->SetInput("Y", std::vector<std::string>({"y"}));     // 4 x 6
-  fc0->SetOutput("Out", std::vector<std::string>({"z"}));  // 6 x 1 x 1
+  LOG(INFO) << "create elementwise_add op";
+  auto* elementwise_add0 = block_desc.AppendOp();
+  elementwise_add0->SetType("elementwise_add");
+  elementwise_add0->SetInput("X",
+                             std::vector<std::string>({"x"}));  // 2 x 4 x 4 x 4
+  elementwise_add0->SetInput("Y",
+                             std::vector<std::string>({"y"}));  // 1 x 4 x 1 x 1
+  elementwise_add0->SetOutput(
+      "Out", std::vector<std::string>({"z"}));  // 2 x 4 x 4 x 4
+  elementwise_add0->SetAttr("axis", static_cast<int32_t>(0));
 
-  LOG(INFO) << "create fc op";
-  auto* fc1 = block_desc.AppendOp();
-  fc1->SetType("fc");
-  fc1->SetInput("X", std::vector<std::string>({"z"}));
-  fc1->SetInput("Y", std::vector<std::string>({"y0"}));     // 6 x 8
-  fc1->SetOutput("Out", std::vector<std::string>({"z0"}));  // 8 x 1 x 1
+  LOG(INFO) << "create elementwise_add op";
+  auto* elementwise_add1 = block_desc.AppendOp();
+  elementwise_add1->SetType("elementwise_add");
+  elementwise_add1->SetInput("X",
+                             std::vector<std::string>({"z"}));  // 2 x 4 x 4 x 4
+  elementwise_add1->SetInput(
+      "Y", std::vector<std::string>({"y0"}));  // 1 x 4 x 4 x 4
+  elementwise_add1->SetOutput(
+      "Out", std::vector<std::string>({"z0"}));  // 2 x 4 x 4 x 4
+  elementwise_add1->SetAttr("axis", static_cast<int32_t>(0));
+
+  inference::tensorrt::OpTeller::Global().SetOpConverterType(
+      elementwise_add0, inference::tensorrt::OpConverterType::Default);
+  inference::tensorrt::OpTeller::Global().SetOpConverterType(
+      elementwise_add1, inference::tensorrt::OpConverterType::Default);
 
   // Set inputs' variable shape in BlockDesc
-  // the batch size is 2, so the dims of 'x' is {2, 4, 1, 1}
-  AddTensorToBlockDesc(block_, "x", std::vector<int64_t>({2, 4, 1, 1}));
-  AddTensorToBlockDesc(block_, "y", std::vector<int64_t>({4, 6}));
-  AddTensorToBlockDesc(block_, "y0", std::vector<int64_t>({6, 8}));
-  AddTensorToBlockDesc(block_, "z", std::vector<int64_t>({2, 6}));
+  // the batch size is 2, so the dims of 'x' is {2, 4}
+  AddTensorToBlockDesc(block_, "x", std::vector<int64_t>({2, 4, 4, 4}));
+  AddTensorToBlockDesc(block_, "y", std::vector<int64_t>({1, 4, 1, 1}));
+  AddTensorToBlockDesc(block_, "y0", std::vector<int64_t>({1, 4, 4, 4}));
+  AddTensorToBlockDesc(block_, "z", std::vector<int64_t>({2, 4, 4, 4}));
+  AddTensorToBlockDesc(block_, "z0", std::vector<int64_t>({2, 4, 4, 4}));
 
   // It is wired, need to copy manually.
-  *block_->add_ops() = *fc0->Proto();
-  *block_->add_ops() = *fc1->Proto();
+  *block_->add_ops() = *elementwise_add0->Proto();
+  *block_->add_ops() = *elementwise_add1->Proto();
 
   ASSERT_EQ(block_->ops_size(), 2);
 
@@ -100,10 +118,11 @@ void DynamicShapeTest(bool allow_build_at_runtime) {
   engine_op_desc.SetType("tensorrt_engine");
   engine_op_desc.SetInput("Xs", std::vector<std::string>({"x"}));
   engine_op_desc.SetOutput("Ys", std::vector<std::string>({"z0"}));
+  engine_op_desc.SetAttr("origin_outputs_dtype", std::vector<int>{5});
 
   engine_op_desc.SetBlockAttr("sub_block", &block_desc);
   engine_op_desc.SetAttr("max_batch_size", static_cast<int>(2));
-  engine_op_desc.SetAttr("workspace_size", static_cast<int>(1 << 20));
+  engine_op_desc.SetAttr("workspace_size", static_cast<int64_t>(1 << 20));
   engine_op_desc.SetAttr("parameters", std::vector<std::string>({}));
   engine_op_desc.SetAttr("engine_key", std::string("a_engine"));
   engine_op_desc.SetAttr("calibration_engine_key",
@@ -115,7 +134,7 @@ void DynamicShapeTest(bool allow_build_at_runtime) {
   engine_op_desc.SetAttr("use_calib_mode", static_cast<bool>(false));
   engine_op_desc.SetAttr("output_name_mapping",
                          std::vector<std::string>({"z0"}));
-  engine_op_desc.SetAttr("origin_output_dims", std::vector<int>({2}));
+  engine_op_desc.SetAttr("origin_output_rank", std::vector<int>({2}));
   engine_op_desc.SetAttr("subgraph", std::string(block_->SerializeAsString()));
   engine_op_desc.SetAttr("engine_serialized_data", std::string(""));
   int device_id = 0;
@@ -126,9 +145,12 @@ void DynamicShapeTest(bool allow_build_at_runtime) {
   engine_op_desc.SetAttr("use_static_engine", true);
   engine_op_desc.SetAttr("dynamic_shape_names", std::vector<std::string>{"x"});
   engine_op_desc.SetAttr("dynamic_shape_lens", std::vector<int>{4});
-  engine_op_desc.SetAttr("min_input_shape", std::vector<int>{1, 4, 1, 1});
-  engine_op_desc.SetAttr("max_input_shape", std::vector<int>{2, 4, 1, 1});
-  engine_op_desc.SetAttr("opt_input_shape", std::vector<int>{2, 4, 1, 1});
+  engine_op_desc.SetAttr("with_dynamic_shape", true);
+  engine_op_desc.SetAttr("min_input_shape", std::vector<int>{1, 1, 1, 1});
+  engine_op_desc.SetAttr("max_input_shape", std::vector<int>{16, 16, 16, 16});
+  engine_op_desc.SetAttr("opt_input_shape", std::vector<int>{2, 4, 4, 4});
+  engine_op_desc.SetAttr("model_precision",
+                         static_cast<int>(phi::DataType::FLOAT32));
 
   LOG(INFO) << "create engine op";
   auto engine_op = framework::OpRegistry::CreateOp(engine_op_desc);
@@ -136,37 +158,32 @@ void DynamicShapeTest(bool allow_build_at_runtime) {
 
   framework::Scope scope;
   platform::CUDAPlace place;
-  platform::CUDADeviceContext ctx(place);
+  phi::GPUContext ctx(place);
   ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                        .GetAllocator(place, ctx.stream())
                        .get());
   ctx.PartialInitWithAllocator();
   // Prepare variables.
   if (allow_build_at_runtime)
-    CreateCUDATensor(&scope, "x", std::vector<int64_t>({3, 4, 1, 1}));
+    CreateCUDATensor(&scope, "x", std::vector<int64_t>({32, 4, 4, 4}));
   else
-    CreateCUDATensor(&scope, "x", std::vector<int64_t>({2, 4, 1, 1}));
-  CreateCUDATensor(&scope, "y", std::vector<int64_t>({4, 6}));
-  CreateCUDATensor(&scope, "z", std::vector<int64_t>({2, 6}));
+    CreateCUDATensor(&scope, "x", std::vector<int64_t>({2, 4, 4, 4}));
+  CreateCUDATensor(&scope, "y", std::vector<int64_t>({1, 4, 1, 1}));
 
-  CreateCUDATensor(&scope, "y0", std::vector<int64_t>({6, 8}));
-  CreateCUDATensor(&scope, "z0", std::vector<int64_t>({2, 8}));
+  CreateCUDATensor(&scope, "y0", std::vector<int64_t>({1, 4, 4, 4}));
+  CreateCUDATensor(&scope, "z0", std::vector<int64_t>({2, 4, 4, 4}));
 
   // Execute them.
   LOG(INFO) << "engine_op run";
   engine_op->Run(scope, place);
 }
 
-TEST(TensorRTEngineOp, manual) {
-  DynamicShapeTest(false);
-  DynamicShapeTest(true);
-}
-
+TEST(TensorRTEngineOp, manual) { DynamicShapeTest(false); }
 void Execute(int batch_size, int input_dim, int output_dim, int nlayers = 1) {
   framework::ProgramDesc program;
   framework::Scope scope;
   platform::CUDAPlace place;
-  platform::CUDADeviceContext ctx(place);
+  phi::GPUContext ctx(place);
   ctx.SetAllocator(paddle::memory::allocation::AllocatorFacade::Instance()
                        .GetAllocator(place, ctx.stream())
                        .get());
@@ -181,26 +198,29 @@ void Execute(int batch_size, int input_dim, int output_dim, int nlayers = 1) {
   LOG(INFO) << "create block desc";
   framework::BlockDesc block_desc(&program, block_);
 
-  auto AddFCLayer = [&](const std::string& x_name, const std::string& y_name,
-                        const std::string& z_name, bool x_created,
-                        const shape_t& x_shape, const shape_t& y_shape,
+  auto AddFCLayer = [&](const std::string& x_name,
+                        const std::string& y_name,
+                        const std::string& z_name,
+                        bool x_created,
+                        const shape_t& x_shape,
+                        const shape_t& y_shape,
                         const shape_t& z_shape) {
-    LOG(INFO) << "create fc op";
-    auto* fc = block_desc.AppendOp();
-    fc->SetType("mul");
-    fc->SetInput("X", std::vector<std::string>({x_name}));
-    fc->SetInput("Y", std::vector<std::string>({y_name}));
-    fc->SetOutput("Out", std::vector<std::string>({z_name}));
+    LOG(INFO) << "create matrix_multiply op";
+    auto* matrix_multiply = block_desc.AppendOp();
+    matrix_multiply->SetType("matrix_multiply");
+    matrix_multiply->SetInput("X", std::vector<std::string>({x_name}));
+    matrix_multiply->SetInput("Y", std::vector<std::string>({y_name}));
+    matrix_multiply->SetOutput("Out", std::vector<std::string>({z_name}));
 
     // Set inputs' variable shape in BlockDesc
     if (!x_created) {
-      AddTensorToBlockDesc(block_, x_name,
-                           std::vector<int64_t>({batch_size, input_dim, 1, 1}));
+      AddTensorToBlockDesc(
+          block_, x_name, std::vector<int64_t>({batch_size, input_dim, 1, 1}));
     }
-    AddTensorToBlockDesc(block_, y_name,
-                         std::vector<int64_t>({input_dim, output_dim}));
-    AddTensorToBlockDesc(block_, z_name,
-                         std::vector<int64_t>({batch_size, output_dim}));
+    AddTensorToBlockDesc(
+        block_, y_name, std::vector<int64_t>({input_dim, output_dim}));
+    AddTensorToBlockDesc(
+        block_, z_name, std::vector<int64_t>({batch_size, output_dim}));
 
     // Prepare variables.
     if (!x_created) {
@@ -210,17 +230,37 @@ void Execute(int batch_size, int input_dim, int output_dim, int nlayers = 1) {
     CreateCUDATensor(&scope, z_name, std::vector<int64_t>(z_shape));
 
     // It is wired, need to copy manually.
-    *block_->add_ops() = *fc->Proto();
+    *block_->add_ops() = *matrix_multiply->Proto();
   };
 
   // Test with 4 layer FC
-  AddFCLayer("x0", "y0", "z0", false, {batch_size, input_dim},
-             {input_dim, output_dim}, {batch_size, output_dim});
-  AddFCLayer("z0", "y1", "z1", true, {}, {output_dim, output_dim},
+  AddFCLayer("x0",
+             "y0",
+             "z0",
+             false,
+             {batch_size, input_dim},
+             {input_dim, output_dim},
              {batch_size, output_dim});
-  AddFCLayer("z1", "y2", "z2", true, {}, {output_dim, output_dim},
+  AddFCLayer("z0",
+             "y1",
+             "z1",
+             true,
+             {},
+             {output_dim, output_dim},
              {batch_size, output_dim});
-  AddFCLayer("z2", "y3", "z3", true, {}, {output_dim, output_dim},
+  AddFCLayer("z1",
+             "y2",
+             "z2",
+             true,
+             {},
+             {output_dim, output_dim},
+             {batch_size, output_dim});
+  AddFCLayer("z2",
+             "y3",
+             "z3",
+             true,
+             {},
+             {output_dim, output_dim},
              {batch_size, output_dim});
 
   LOG(INFO) << "create tensorrt desc";
@@ -231,7 +271,7 @@ void Execute(int batch_size, int input_dim, int output_dim, int nlayers = 1) {
 
   engine_op_desc.SetBlockAttr("sub_block", &block_desc);
   engine_op_desc.SetAttr("max_batch_size", static_cast<int>(batch_size));
-  engine_op_desc.SetAttr("workspace_size", static_cast<int>(1 << 20));
+  engine_op_desc.SetAttr("workspace_size", static_cast<int64_t>(1 << 20));
   engine_op_desc.SetAttr("parameters",
                          std::vector<std::string>({"y0", "y1", "y2", "y3"}));
   engine_op_desc.SetAttr("engine_key", std::string("b_engine"));
@@ -244,7 +284,7 @@ void Execute(int batch_size, int input_dim, int output_dim, int nlayers = 1) {
   engine_op_desc.SetAttr("use_calib_mode", static_cast<bool>(false));
   engine_op_desc.SetAttr("output_name_mapping",
                          std::vector<std::string>({"z3"}));
-  engine_op_desc.SetAttr("origin_output_dims", std::vector<int>({2}));
+  engine_op_desc.SetAttr("origin_output_rank", std::vector<int>({2}));
   engine_op_desc.SetAttr("subgraph", std::string(block_->SerializeAsString()));
   engine_op_desc.SetAttr("engine_serialized_data", std::string(""));
   int device_id = 0;
@@ -261,9 +301,9 @@ void Execute(int batch_size, int input_dim, int output_dim, int nlayers = 1) {
 }
 
 // Test with a larger FC layer.
-// TEST(TensorRTEngineOp, fc) { Execute(40, 28, 28); }
+// TEST(TensorRTEngineOp, matrix_multiply) { Execute(40, 28, 28); }
 
 }  // namespace operators
 }  // namespace paddle
 
-USE_TRT_CONVERTER(fc)
+USE_TRT_CONVERTER(elementwise_add_weight)

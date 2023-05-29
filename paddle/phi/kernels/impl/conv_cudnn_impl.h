@@ -14,29 +14,24 @@
 
 #pragma once
 
-#include "paddle/phi/core/dense_tensor.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
-
-#include "paddle/fluid/framework/eigen.h"
 #ifdef PADDLE_WITH_HIP
-#include "paddle/fluid/operators/conv_miopen_helper.h"
+#include "paddle/phi/kernels/gpudnn/conv_miopen_helper.h"
 #else
-#include "paddle/fluid/operators/conv_cudnn_helper.h"
+#include "paddle/phi/kernels/gpudnn/conv_cudnn_v7.h"
 #endif
 
-#include "paddle/fluid/platform/cudnn_workspace_helper.h"
-#include "paddle/fluid/platform/float16.h"
-#include "paddle/fluid/platform/profiler.h"
-#include "paddle/phi/kernels/funcs/padding.h"
-
-#include "paddle/fluid/platform/dynload/cudnn.h"
+#include "paddle/phi/backends/dynload/cudnn.h"
+#include "paddle/phi/backends/gpu/cuda/cudnn_workspace_helper.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/funcs/batch_norm_utils.h"
+#include "paddle/phi/kernels/funcs/padding.h"
 
 DECLARE_bool(cudnn_deterministic);
-DECLARE_uint64(conv_workspace_size_limit);
+DECLARE_int64(conv_workspace_size_limit);
 DECLARE_bool(cudnn_exhaustive_search);
 
 namespace phi {

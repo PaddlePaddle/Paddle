@@ -12,15 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numbers
 import os
 import time
-import numbers
 import warnings
 
 import numpy as np
 
 import paddle
-from paddle.distributed import ParallelEnv
 from paddle.utils import try_import
 
 from .progressbar import ProgressBar
@@ -28,17 +27,19 @@ from .progressbar import ProgressBar
 __all__ = []
 
 
-def config_callbacks(callbacks=None,
-                     model=None,
-                     batch_size=None,
-                     epochs=None,
-                     steps=None,
-                     log_freq=2,
-                     verbose=2,
-                     save_freq=1,
-                     save_dir=None,
-                     metrics=None,
-                     mode='train'):
+def config_callbacks(
+    callbacks=None,
+    model=None,
+    batch_size=None,
+    epochs=None,
+    steps=None,
+    log_freq=2,
+    verbose=2,
+    save_freq=1,
+    save_dir=None,
+    metrics=None,
+    mode='train',
+):
     cbks = callbacks or []
     cbks = cbks if isinstance(cbks, (list, tuple)) else [cbks]
     if not any(isinstance(k, ProgBarLogger) for k in cbks) and verbose:
@@ -67,10 +68,10 @@ def config_callbacks(callbacks=None,
     return cbk_list
 
 
-class CallbackList(object):
+class CallbackList:
     def __init__(self, callbacks=None):
         # copy
-        self.callbacks = [c for c in callbacks]
+        self.callbacks = list(callbacks)
         self.params = {}
         self.model = None
 
@@ -94,17 +95,20 @@ class CallbackList(object):
             func(*args)
 
     def _check_mode(self, mode):
-        assert mode in ['train', 'eval', 'predict'], \
-            'mode should be train, eval or predict'
+        assert mode in [
+            'train',
+            'eval',
+            'predict',
+        ], 'mode should be train, eval or predict'
 
     def on_begin(self, mode, logs=None):
         self._check_mode(mode)
-        name = 'on_{}_begin'.format(mode)
+        name = f'on_{mode}_begin'
         self._call(name, logs)
 
     def on_end(self, mode, logs=None):
         self._check_mode(mode)
-        name = 'on_{}_end'.format(mode)
+        name = f'on_{mode}_end'
         self._call(name, logs)
 
     def on_epoch_begin(self, epoch=None, logs=None):
@@ -115,16 +119,16 @@ class CallbackList(object):
 
     def on_batch_begin(self, mode, step=None, logs=None):
         self._check_mode(mode)
-        name = 'on_{}_batch_begin'.format(mode)
+        name = f'on_{mode}_batch_begin'
         self._call(name, step, logs)
 
     def on_batch_end(self, mode, step=None, logs=None):
         self._check_mode(mode)
-        name = 'on_{}_batch_end'.format(mode)
+        name = f'on_{mode}_batch_end'
         self._call(name, step, logs)
 
 
-class Callback(object):
+class Callback:
     """
     Base class used to build new callbacks. And new callbacks could also
     terminate training by setting `model.stop_training=True`.
@@ -132,7 +136,7 @@ class Callback(object):
     Examples:
 
         .. code-block:: python
-            
+
             import paddle
 
             # build a simple model checkpoint callback
@@ -166,8 +170,7 @@ class Callback(object):
         self.params = params
 
     def set_model(self, model):
-        """model is instance of paddle.Model.
-        """
+        """model is instance of paddle.Model."""
         self.model = model
 
     def on_train_begin(self, logs=None):
@@ -305,7 +308,7 @@ class ProgBarLogger(Callback):
             the logs such as loss, metrics are printed. Default: 1.
         verbose (int): The verbosity mode, should be 0, 1, or 2.
             0 = silent, 1 = progress bar, 2 = one line each printing, 3 = 2 +
-            time counter, such as average reader cost, samples per second. 
+            time counter, such as average reader cost, samples per second.
             Default: 2.
 
     Examples:
@@ -346,7 +349,7 @@ class ProgBarLogger(Callback):
         self.log_freq = log_freq
 
     def _is_print(self):
-        return self.verbose and ParallelEnv().local_rank == 0
+        return self.verbose and paddle.distributed.ParallelEnv().local_rank == 0
 
     def on_train_begin(self, logs=None):
         self.epochs = self.params['epochs']
@@ -390,31 +393,39 @@ class ProgBarLogger(Callback):
             cnt = timer['count'] if timer['count'] > 0 else 1.0
             samples = timer['samples'] if timer['samples'] > 0 else 1.0
             values.append(
-                ('avg_reader_cost', "%.5f sec" % (timer['data_time'] / cnt)))
+                ('avg_reader_cost', "%.5f sec" % (timer['data_time'] / cnt))
+            )
             values.append(
-                ('avg_batch_cost', "%.5f sec" % (timer['batch_time'] / cnt)))
+                ('avg_batch_cost', "%.5f sec" % (timer['batch_time'] / cnt))
+            )
             values.append(
-                ('ips', "%.5f samples/sec" %
-                 (samples / (timer['data_time'] + timer['batch_time']))))
+                (
+                    'ips',
+                    "%.5f samples/sec"
+                    % (samples / (timer['data_time'] + timer['batch_time'])),
+                )
+            )
             timer['count'] = 0
             timer['samples'] = 0
-            timer['data_time'] = 0.
-            timer['batch_time'] = 0.
+            timer['data_time'] = 0.0
+            timer['batch_time'] = 0.0
 
         progbar.update(steps, values)
 
     def on_train_batch_begin(self, step, logs=None):
         self._train_timer['batch_data_end_time'] = time.time()
         self._train_timer['data_time'] += (
-            self._train_timer['batch_data_end_time'] -
-            self._train_timer['batch_start_time'])
+            self._train_timer['batch_data_end_time']
+            - self._train_timer['batch_start_time']
+        )
 
     def on_train_batch_end(self, step, logs=None):
         logs = logs or {}
         self.train_step += 1
 
         self._train_timer['batch_time'] += (
-            time.time() - self._train_timer['batch_data_end_time'])
+            time.time() - self._train_timer['batch_data_end_time']
+        )
         self._train_timer['count'] += 1
         samples = logs.get('batch_size', 1)
         self._train_timer['samples'] += samples
@@ -442,7 +453,8 @@ class ProgBarLogger(Callback):
         }
 
         self.eval_progbar = ProgressBar(
-            num=self.eval_steps, verbose=self.verbose)
+            num=self.eval_steps, verbose=self.verbose
+        )
         if self._is_print():
             print('Eval begin...')
 
@@ -451,8 +463,9 @@ class ProgBarLogger(Callback):
     def on_eval_batch_begin(self, step, logs=None):
         self._eval_timer['batch_data_end_time'] = time.time()
         self._eval_timer['data_time'] += (
-            self._eval_timer['batch_data_end_time'] -
-            self._eval_timer['batch_start_time'])
+            self._eval_timer['batch_data_end_time']
+            - self._eval_timer['batch_start_time']
+        )
 
     def on_eval_batch_end(self, step, logs=None):
         logs = logs or {}
@@ -461,7 +474,8 @@ class ProgBarLogger(Callback):
         self.evaled_samples += samples
 
         self._eval_timer['batch_time'] += (
-            time.time() - self._eval_timer['batch_data_end_time'])
+            time.time() - self._eval_timer['batch_data_end_time']
+        )
         self._eval_timer['count'] += 1
         samples = logs.get('batch_size', 1)
         self._eval_timer['samples'] += samples
@@ -486,7 +500,8 @@ class ProgBarLogger(Callback):
         }
 
         self.test_progbar = ProgressBar(
-            num=self.test_steps, verbose=self.verbose)
+            num=self.test_steps, verbose=self.verbose
+        )
         if self._is_print():
             print('Predict begin...')
 
@@ -495,8 +510,9 @@ class ProgBarLogger(Callback):
     def on_predict_batch_begin(self, step, logs=None):
         self._test_timer['batch_data_end_time'] = time.time()
         self._test_timer['data_time'] += (
-            self._test_timer['batch_data_end_time'] -
-            self._test_timer['batch_start_time'])
+            self._test_timer['batch_data_end_time']
+            - self._test_timer['batch_start_time']
+        )
 
     def on_predict_batch_end(self, step, logs=None):
         logs = logs or {}
@@ -505,7 +521,8 @@ class ProgBarLogger(Callback):
         self.tested_samples += samples
 
         self._test_timer['batch_time'] += (
-            time.time() - self._test_timer['batch_data_end_time'])
+            time.time() - self._test_timer['batch_data_end_time']
+        )
         self._test_timer['count'] += 1
         samples = logs.get('batch_size', 1)
         self._test_timer['samples'] += samples
@@ -580,24 +597,28 @@ class ModelCheckpoint(Callback):
         self.epoch = epoch
 
     def _is_save(self):
-        return self.model and self.save_dir and ParallelEnv().local_rank == 0
+        return (
+            self.model
+            and self.save_dir
+            and paddle.distributed.ParallelEnv().local_rank == 0
+        )
 
     def on_epoch_end(self, epoch, logs=None):
         if self._is_save() and self.epoch % self.save_freq == 0:
-            path = '{}/{}'.format(self.save_dir, epoch)
-            print('save checkpoint at {}'.format(os.path.abspath(path)))
+            path = f'{self.save_dir}/{epoch}'
+            print(f'save checkpoint at {os.path.abspath(path)}')
             self.model.save(path)
 
     def on_train_end(self, logs=None):
         if self._is_save():
-            path = '{}/final'.format(self.save_dir)
-            print('save checkpoint at {}'.format(os.path.abspath(path)))
+            path = f'{self.save_dir}/final'
+            print(f'save checkpoint at {os.path.abspath(path)}')
             self.model.save(path)
 
 
 class LRScheduler(Callback):
     """Lr scheduler callback function
-    
+
     Args:
         by_step(bool, optional): whether to update learning rate scheduler
             by step. Default: True.
@@ -627,7 +648,7 @@ class LRScheduler(Callback):
             base_lr = 1e-3
             boundaries = [5, 8]
             wamup_steps = 4
-            
+
             def make_optimizer(parameters=None):
                 momentum = 0.9
                 weight_decay = 5e-4
@@ -646,13 +667,13 @@ class LRScheduler(Callback):
                     momentum=momentum,
                     parameters=parameters)
                 return optimizer
-                
+
             optim = make_optimizer(parameters=lenet.parameters())
             model.prepare(optimizer=optim,
                         loss=paddle.nn.CrossEntropyLoss(),
                         metrics=paddle.metric.Accuracy())
 
-            # if LRScheduler callback not set, an instance LRScheduler update by step 
+            # if LRScheduler callback not set, an instance LRScheduler update by step
             # will be created auto.
             model.fit(train_dataset, batch_size=64)
 
@@ -664,32 +685,41 @@ class LRScheduler(Callback):
     def __init__(self, by_step=True, by_epoch=False):
         if by_step and by_epoch:
             raise ValueError(
-                "by_step option is mutually exclusive with by_epoch")
+                "by_step option is mutually exclusive with by_epoch"
+            )
 
         self.by_step = by_step
         self.by_epoch = by_epoch
 
     def on_epoch_end(self, epoch, logs=None):
         if self.by_epoch:
-            if self.model._optimizer and \
-                hasattr(self.model._optimizer, '_learning_rate') and \
-                isinstance(self.model._optimizer._learning_rate,
-                           paddle.optimizer.lr.LRScheduler):
+            if (
+                self.model._optimizer
+                and hasattr(self.model._optimizer, '_learning_rate')
+                and isinstance(
+                    self.model._optimizer._learning_rate,
+                    paddle.optimizer.lr.LRScheduler,
+                )
+            ):
                 self.model._optimizer._learning_rate.step()
 
     def on_train_batch_end(self, step, logs=None):
         if self.by_step:
-            if self.model._optimizer and \
-                hasattr(self.model._optimizer, '_learning_rate') and \
-                isinstance(self.model._optimizer._learning_rate,
-                           paddle.optimizer.lr.LRScheduler):
+            if (
+                self.model._optimizer
+                and hasattr(self.model._optimizer, '_learning_rate')
+                and isinstance(
+                    self.model._optimizer._learning_rate,
+                    paddle.optimizer.lr.LRScheduler,
+                )
+            ):
                 self.model._optimizer._learning_rate.step()
 
 
 class EarlyStopping(Callback):
     """Stop training when the given monitor stopped improving during evaluation
     by setting `model.stop_training=True`.
-    
+
     Args:
         monitor(str): Quantity to be monitored. Default: 'loss'.
         mode(str|None): Mode should be one of 'auto', 'min' or 'max'. In 'min'
@@ -710,7 +740,7 @@ class EarlyStopping(Callback):
             Training will stop if the model doesn't show improvement over the
             baseline. Default: None.
         save_best_model(bool): Whether to save best model. Default: True.
-        
+
     Examples:
         .. code-block:: python
 
@@ -760,15 +790,17 @@ class EarlyStopping(Callback):
                       callbacks=[callbacks])
     """
 
-    def __init__(self,
-                 monitor='loss',
-                 mode='auto',
-                 patience=0,
-                 verbose=1,
-                 min_delta=0,
-                 baseline=None,
-                 save_best_model=True):
-        super(EarlyStopping, self).__init__()
+    def __init__(
+        self,
+        monitor='loss',
+        mode='auto',
+        patience=0,
+        verbose=1,
+        min_delta=0,
+        baseline=None,
+        save_best_model=True,
+    ):
+        super().__init__()
         self.monitor = monitor
         self.patience = patience
         self.verbose = verbose
@@ -781,8 +813,10 @@ class EarlyStopping(Callback):
         # The value of `save_dir` is set in function `config_callbacks`
         self.save_dir = None
         if mode not in ['auto', 'min', 'max']:
-            warnings.warn('EarlyStopping mode %s is unknown, '
-                          'fallback to auto mode.' % mode)
+            warnings.warn(
+                'EarlyStopping mode %s is unknown, '
+                'fallback to auto mode.' % mode
+            )
             mode = 'auto'
         if mode == 'min':
             self.monitor_op = np.less
@@ -811,7 +845,8 @@ class EarlyStopping(Callback):
     def on_eval_end(self, logs=None):
         if logs is None or self.monitor not in logs:
             warnings.warn(
-                'Monitor of EarlyStopping should be loss or metric name.')
+                'Monitor of EarlyStopping should be loss or metric name.'
+            )
             return
         current = logs[self.monitor]
         if isinstance(current, (list, tuple)):
@@ -834,9 +869,14 @@ class EarlyStopping(Callback):
             if self.verbose > 0:
                 print('Epoch %d: Early stopping.' % (self.stopped_epoch + 1))
                 if self.save_best_model and self.save_dir is not None:
-                    print('Best checkpoint has been saved at %s' %
-                          (os.path.abspath(
-                              os.path.join(self.save_dir, 'best_model'))))
+                    print(
+                        'Best checkpoint has been saved at %s'
+                        % (
+                            os.path.abspath(
+                                os.path.join(self.save_dir, 'best_model')
+                            )
+                        )
+                    )
         self.stopped_epoch += 1
 
 
@@ -871,7 +911,7 @@ class VisualDL(Callback):
             model.prepare(optimizer=optim,
                         loss=paddle.nn.CrossEntropyLoss(),
                         metrics=paddle.metric.Accuracy())
-            
+
             ## uncomment following lines to fit model with visualdl callback function
             # callback = paddle.callbacks.VisualDL(log_dir='visualdl_log_dir')
             # model.fit(train_dataset, eval_dataset, batch_size=64, callbacks=callback)
@@ -885,7 +925,7 @@ class VisualDL(Callback):
         self.epoch = 0
 
     def _is_write(self):
-        return ParallelEnv().local_rank == 0
+        return paddle.distributed.ParallelEnv().local_rank == 0
 
     def on_train_begin(self, logs=None):
         self.epochs = self.params['epochs']
@@ -926,7 +966,8 @@ class VisualDL(Callback):
                     continue
 
                 self.writer.add_scalar(
-                    tag=temp_tag, step=total_step, value=temp_value)
+                    tag=temp_tag, step=total_step, value=temp_value
+                )
 
     def on_train_batch_end(self, step, logs=None):
         logs = logs or {}
@@ -955,13 +996,186 @@ class VisualDL(Callback):
                 delattr(self, 'writer')
 
 
+class WandbCallback(Callback):
+    """Track your training and system metrics using `Weights and Biases <https://docs.wandb.ai>`_.
+
+    **Installation and set-up**
+
+    Install with pip and log in to your W&B account:
+
+    .. code-block:: bash
+
+        pip install wandb
+        wandb login
+
+    Args:
+        project(str, optional): Name of the project. Default: uncategorized
+        entity(str, optional): Name of the team/user creating the run. Default: Logged in user
+        name(str, optional): Name of the run. Default: randomly generated by wandb
+        dir(str, optional): Directory in which all the metadata is stored. Default: `wandb`
+        mode(str, optional): Can be "online", "offline" or "disabled". Default: "online".
+        job_type(str, optional): the type of run, for grouping runs together. Default: None
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.vision.transforms as T
+            from paddle.static import InputSpec
+
+            inputs = [InputSpec([-1, 1, 28, 28], 'float32', 'image')]
+            labels = [InputSpec([None, 1], 'int64', 'label')]
+
+            transform = T.Compose([
+                T.Transpose(),
+                T.Normalize([127.5], [127.5])
+            ])
+            train_dataset = paddle.vision.datasets.MNIST(mode='train', transform=transform)
+            eval_dataset = paddle.vision.datasets.MNIST(mode='test', transform=transform)
+
+            net = paddle.vision.models.LeNet()
+            model = paddle.Model(net, inputs, labels)
+
+            optim = paddle.optimizer.Adam(0.001, parameters=net.parameters())
+            model.prepare(optimizer=optim,
+                        loss=paddle.nn.CrossEntropyLoss(),
+                        metrics=paddle.metric.Accuracy())
+
+            ## uncomment following lines to fit model with wandb callback function
+            # callback = paddle.callbacks.WandbCallback(project='paddle_mnist')
+            # model.fit(train_dataset, eval_dataset, batch_size=64, callbacks=callback)
+
+    """
+
+    def __init__(
+        self,
+        project=None,
+        entity=None,
+        name=None,
+        dir=None,
+        mode=None,
+        job_type=None,
+        **kwargs,
+    ):
+        self.wandb = try_import(
+            "wandb",
+            "You want to use `wandb` which is not installed yet install it with `pip install wandb`",
+        )
+
+        self.wandb_args = {
+            'project': project,
+            'name': name,
+            'entity': entity,
+            'dir': dir,
+            'mode': mode,
+            'job_type': job_type,
+        }
+
+        self._run = None
+        self.wandb_args.update(**kwargs)
+
+        _ = self.run
+
+    def _is_write(self):
+        return paddle.distributed.ParallelEnv().local_rank == 0
+
+    @property
+    def run(self):
+        if self._is_write():
+            if self._run is None:
+                if self.wandb.run is not None:
+                    warnings.warn(
+                        "There is a wandb run already in progress and newly created instances"
+                        " of `WandbCallback` will reuse this run. If this is not desired"
+                        " , call `wandb.finish()` before instantiating `WandbCallback`."
+                    )
+                    self._run = self.wandb.run
+                else:
+                    self._run = self.wandb.init(**self.wandb_args)
+
+        return self._run
+
+    def on_train_begin(self, logs=None):
+        self.epochs = self.params['epochs']
+        assert self.epochs
+        self.train_metrics = self.params['metrics']
+        assert self.train_metrics
+        self._is_fit = True
+        self.train_step = 0
+
+        if self._is_write():
+            self.run.define_metric("train/step")
+            self.run.define_metric("train/*", step_metric="train/step")
+
+            self.run.define_metric("epoch")
+            self.run.define_metric("eval/*", step_metric="epoch")
+
+    def on_epoch_begin(self, epoch, logs=None):
+        self.steps = self.params['steps']
+        self.epoch = epoch
+
+    def _updates(self, logs, mode):
+        if not self._is_write():
+            return
+
+        metrics = getattr(self, '%s_metrics' % (mode))
+        current_step = getattr(self, '%s_step' % (mode))
+
+        _metrics = {}
+
+        if mode == 'train':
+            total_step = current_step
+            _metrics.update({'train/step': total_step})
+        else:
+            total_step = self.epoch
+            _metrics.update({'epoch': total_step})
+
+        for k in metrics:
+            if k in logs:
+                temp_tag = mode + '/' + k
+
+                if isinstance(logs[k], (list, tuple)):
+                    _metrics.update({temp_tag: logs[k][0]})
+                elif isinstance(logs[k], numbers.Number):
+                    _metrics.update({temp_tag: logs[k]})
+                else:
+                    continue
+
+        self.run.log(_metrics)
+
+    def on_train_batch_end(self, step, logs=None):
+        logs = logs or {}
+        self.train_step += 1
+
+        if self._is_write():
+            self._updates(logs, 'train')
+
+    def on_eval_begin(self, logs=None):
+        self.eval_steps = logs.get('steps', None)
+        self.eval_metrics = logs.get('metrics', [])
+        self.eval_step = 0
+        self.evaled_samples = 0
+
+    def on_train_end(self, logs=None):
+        if self._is_write():
+            self.run.finish()
+
+    def on_eval_end(self, logs=None):
+        if self._is_write():
+            self._updates(logs, 'eval')
+
+            if (not hasattr(self, '_is_fit')) and hasattr(self, 'run'):
+                self.run.finish()
+                delattr(self, 'run')
+
+
 class ReduceLROnPlateau(Callback):
     """Reduce learning rate when a metric of evaluation has stopped improving.
     Models often benefit from reducing the learning rate by a factor
     of 2-10 once learning stagnates. This callback monitors a
     quantity and if no improvement is seen for a 'patience' number
     of epochs, the learning rate is reduced.
-    
+
     Args:
         monitor(str, optional): Quantity to be monitored. Default: 'loss'.
         factor(float, optional): factor by which the learning rate will be reduced.
@@ -971,21 +1185,21 @@ class ReduceLROnPlateau(Callback):
         verbose(int, optional): The verbosity mode. 0: quiet, 1: update messages.
             Default: 1.
         mode(str, optional): one of `{'auto', 'min', 'max'}`. In `'min'` mode,
-            the learning rate will be reduced when the quantity monitored has 
-            stopped decreasing. In 'max' mode, learning rate will reduce until 
-            monitored quantity stops increasing. In 'auto' mode, exact mode 
-            can be inferred by the name of monitor. If 'acc' in monitor, the 
-            mode will be considered as 'max', otherwise the mode will be set 
+            the learning rate will be reduced when the quantity monitored has
+            stopped decreasing. In 'max' mode, learning rate will reduce until
+            monitored quantity stops increasing. In 'auto' mode, exact mode
+            can be inferred by the name of monitor. If 'acc' in monitor, the
+            mode will be considered as 'max', otherwise the mode will be set
             to 'min'. Default: 'auto'.
-        min_delta(int|float, optional): threshold for measuring the new optimum, 
+        min_delta(int|float, optional): threshold for measuring the new optimum,
             to only focus on significant changes. Default: 0.
         cooldown(int, optional): number of epochs to wait before resuming normal operation after
             lr has been reduced. Default: 0.
         min_lr(float, optional): lower bound on the learning rate. Default: 0.
-  
+
     Examples:
           .. code-block:: python
-  
+
               import paddle
               from paddle import Model
               from paddle.static import InputSpec
@@ -993,7 +1207,7 @@ class ReduceLROnPlateau(Callback):
               from paddle.vision.datasets import MNIST
               from paddle.metric import Accuracy
               from paddle.nn.layer.loss import CrossEntropyLoss
-              import paddle.vision.transforms as T  
+              import paddle.vision.transforms as T
               sample_num = 200
               transform = T.Compose(
                   [T.Transpose(), T.Normalize([127.5], [127.5])])
@@ -1001,14 +1215,14 @@ class ReduceLROnPlateau(Callback):
               val_dataset = MNIST(mode='test', transform=transform)
               net = LeNet()
               optim = paddle.optimizer.Adam(
-                  learning_rate=0.001, parameters=net.parameters())  
+                  learning_rate=0.001, parameters=net.parameters())
               inputs = [InputSpec([None, 1, 28, 28], 'float32', 'x')]
-              labels = [InputSpec([None, 1], 'int64', 'label')]  
+              labels = [InputSpec([None, 1], 'int64', 'label')]
               model = Model(net, inputs=inputs, labels=labels)
               model.prepare(
                   optim,
                   loss=CrossEntropyLoss(),
-                  metrics=[Accuracy()])  
+                  metrics=[Accuracy()])
               callbacks = paddle.callbacks.ReduceLROnPlateau(patience=3, verbose=1)
               model.fit(train_dataset,
                           val_dataset,
@@ -1017,24 +1231,27 @@ class ReduceLROnPlateau(Callback):
                           save_freq=10,
                           epochs=20,
                           callbacks=[callbacks])
-  
+
     """
 
-    def __init__(self,
-                 monitor='loss',
-                 factor=0.1,
-                 patience=10,
-                 verbose=1,
-                 mode='auto',
-                 min_delta=1e-4,
-                 cooldown=0,
-                 min_lr=0):
-        super(ReduceLROnPlateau, self).__init__()
+    def __init__(
+        self,
+        monitor='loss',
+        factor=0.1,
+        patience=10,
+        verbose=1,
+        mode='auto',
+        min_delta=1e-4,
+        cooldown=0,
+        min_lr=0,
+    ):
+        super().__init__()
 
         self.monitor = monitor
         if factor >= 1.0:
-            raise ValueError('ReduceLROnPlateau '
-                             'does not support a factor >= 1.0.')
+            raise ValueError(
+                'ReduceLROnPlateau ' 'does not support a factor >= 1.0.'
+            )
 
         self.factor = factor
         self.min_lr = min_lr
@@ -1051,14 +1268,16 @@ class ReduceLROnPlateau(Callback):
         self._reset()
 
     def _reset(self):
-        """Resets wait counter and cooldown counter.
-        """
+        """Resets wait counter and cooldown counter."""
         if self.mode not in ['auto', 'min', 'max']:
-            warnings.warn('Learning rate reduction mode %s is unknown, '
-                          'fallback to auto mode.' % self.mode)
+            warnings.warn(
+                'Learning rate reduction mode %s is unknown, '
+                'fallback to auto mode.' % self.mode
+            )
             self.mode = 'auto'
-        if (self.mode == 'min' or
-            (self.mode == 'auto' and 'acc' not in self.monitor)):
+        if self.mode == 'min' or (
+            self.mode == 'auto' and 'acc' not in self.monitor
+        ):
             self.monitor_op = lambda a, b: np.less(a, b - self.min_delta)
             self.best = np.Inf
         else:
@@ -1073,7 +1292,8 @@ class ReduceLROnPlateau(Callback):
     def on_eval_end(self, logs=None):
         if logs is None or self.monitor not in logs:
             warnings.warn(
-                'Monitor of ReduceLROnPlateau should be loss or metric name.')
+                'Monitor of ReduceLROnPlateau should be loss or metric name.'
+            )
             return
         else:
             try:
@@ -1081,12 +1301,16 @@ class ReduceLROnPlateau(Callback):
                 if not isinstance(lr, float):
                     warnings.warn(
                         'Expected learning_rate be float, bug got {}.'.format(
-                            type(lr)))
+                            type(lr)
+                        )
+                    )
                     return
             except Exception as e:
                 warnings.warn(
-                    'There are something wrong when get learning_rate from optimizer: {}.'.
-                    format(e))
+                    'There are something wrong when get learning_rate from optimizer: {}.'.format(
+                        e
+                    )
+                )
                 return
 
         current = logs[self.monitor]
@@ -1112,9 +1336,14 @@ class ReduceLROnPlateau(Callback):
                     new_lr = old_lr * self.factor
                     new_lr = max(new_lr, self.min_lr)
                     self.model._optimizer._learning_rate = new_lr
-                    if self.verbose > 0 and ParallelEnv().local_rank == 0:
-                        print('\nEpoch %d: ReduceLROnPlateau reducing learning '
-                              'rate to %s.' % (self.epoch + 1, new_lr))
+                    if (
+                        self.verbose > 0
+                        and paddle.distributed.ParallelEnv().local_rank == 0
+                    ):
+                        print(
+                            '\nEpoch %d: ReduceLROnPlateau reducing learning '
+                            'rate to %s.' % (self.epoch + 1, new_lr)
+                        )
                     self.cooldown_counter = self.cooldown
                     self.wait = 0
         self.epoch += 1

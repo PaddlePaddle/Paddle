@@ -9,11 +9,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/elementwise/elementwise_pow_op.h"
-
 #include <string>
 
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
+#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
+#include "paddle/fluid/prim/utils/static/desc_tensor.h"
 
 namespace paddle {
 namespace framework {
@@ -22,9 +23,6 @@ class OpDesc;
 namespace imperative {
 class OpBase;
 }  // namespace imperative
-namespace platform {
-class CPUDeviceContext;
-}  // namespace platform
 }  // namespace paddle
 
 namespace paddle {
@@ -46,6 +44,29 @@ class ElementwisePowOpGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
   }
 };
+
+class ElementwisePowCompositeGradOpMaker
+    : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
+ public:
+  void Apply() override {
+    paddle::Tensor x = this->GetSingleForwardInput("X");
+    paddle::Tensor y = this->GetSingleForwardInput("Y");
+    paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
+    paddle::Tensor dx = this->GetSingleInputGrad("X");
+    auto dx_ptr = this->GetOutputPtr(&dx);
+    std::string dx_name = this->GetOutputName(dx);
+    paddle::Tensor dy = this->GetSingleInputGrad("Y");
+    auto dy_ptr = this->GetOutputPtr(&dy);
+    std::string dy_name = this->GetOutputName(dy);
+    prim::elementwise_pow_grad<prim::DescTensor>(
+        x, y, out_grad, dx_ptr, dy_ptr);
+    this->RecoverOutputName(dx, dx_name);
+    this->RecoverOutputName(dy, dy_name);
+  }
+};
+
 class ElementwisePowOpMaker : public ElementwiseOpMaker {
  protected:
   std::string GetName() const override { return "Pow"; }
@@ -55,7 +76,7 @@ class ElementwisePowOpMaker : public ElementwiseOpMaker {
 
   void AddInputY() override { AddInput("Y", "(Variable), The exponents."); }
 
-  std::string GetOpFuntionality() const override {
+  std::string GetOpFunctionality() const override {
     return "First tensor elements raised to powers from the second tensor, "
            "element-wise.";
   }
@@ -64,24 +85,14 @@ class ElementwisePowOpMaker : public ElementwiseOpMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(elementwise_pow, ops::ElementwiseOp,
-                  ops::ElementwisePowOpMaker, ops::ElementwiseOpInferVarType,
+REGISTER_OPERATOR(elementwise_pow,
+                  ops::ElementwiseOp,
+                  ops::ElementwisePowOpMaker,
+                  ops::ElementwiseOpInferVarType,
                   ops::ElementwisePowOpGradMaker<paddle::framework::OpDesc>,
-                  ops::ElementwisePowOpGradMaker<paddle::imperative::OpBase>);
+                  ops::ElementwisePowOpGradMaker<paddle::imperative::OpBase>,
+                  ops::ElementwisePowCompositeGradOpMaker);
 REGISTER_OPERATOR(elementwise_pow_grad, ops::ElementwiseOpGrad);
-
-REGISTER_OP_CPU_KERNEL(
-    elementwise_pow,
-    ops::ElementwisePowKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ElementwisePowKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ElementwisePowKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwisePowKernel<paddle::platform::CPUDeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
-    elementwise_pow_grad,
-    ops::ElementwisePowGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ElementwisePowGradKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ElementwisePowGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwisePowGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
 
 REGISTER_OP_VERSION(elementwise_pow)
     .AddCheckpoint(

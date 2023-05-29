@@ -12,15 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import warnings
 import inspect
 
 from .. import core
 from ..framework import Variable, unique_name, static_only
 from .layer_function_generator import OpProtoHolder
-from .control_flow import array_write, array_length
+from paddle.fluid.dygraph.base import in_declarative_mode
 
 _supported_int_dtype_ = [
     core.VarDesc.VarType.BOOL,
@@ -54,7 +52,7 @@ EXPRESSION_MAP = {
     "__lt__": "A < B",
     "__le__": "A <= B",
     "__gt__": "A > B",
-    "__ge__": "A >= B"
+    "__ge__": "A >= B",
 }
 
 _already_patch_variable = False
@@ -78,6 +76,10 @@ def monkey_patch_variable():
         tmp_name = unique_tmp_name()
         return block.create_var(name=tmp_name, dtype=dtype)
 
+    def create_new_tmp_sparse_var(block, dtype, type):
+        tmp_name = unique_tmp_name()
+        return block.create_var(name=tmp_name, dtype=dtype, type=type)
+
     def create_tensor(block, value, dtype, shape):
         value = float(value)
         var = create_new_tmp_var(block, dtype)
@@ -88,14 +90,15 @@ def monkey_patch_variable():
                 'dtype': var.dtype,
                 'shape': shape,
                 'value': value,
-                'force_cpu': False
+                'force_cpu': False,
             },
-            stop_gradient=True)
+            stop_gradient=True,
+        )
         var.stop_gradient = True
         return var
 
     def create_scalar(block, value, dtype):
-        return create_tensor(block, value, dtype, shape=[1])
+        return create_tensor(block, value, dtype, shape=[])
 
     def create_tensor_with_batchsize(ref_var, value, dtype):
         assert isinstance(ref_var, Variable)
@@ -122,12 +125,43 @@ def monkey_patch_variable():
                 'shape': out_shape,
                 'value': value,
                 'input_dim_idx': batch_dim,
-                'output_dim_idx': batch_dim
+                'output_dim_idx': batch_dim,
             },
-            stop_gradient=True)
+            stop_gradient=True,
+        )
 
         var.stop_gradient = True
         return var
+
+    @static_only
+    def cpu(self):
+        """
+        Variable should not have cpu() and cuda() interface.
+        But this interface can greatly facilitate dy2static.
+        We do nothing here.
+        """
+        return self
+
+    @static_only
+    def cuda(self):
+        """
+        Variable should not have cpu() and cuda() interface.
+        But this interface can greatly facilitate dy2static.
+        We do nothing here.
+        """
+        return self
+
+    @static_only
+    def place(self):
+        """
+        Variable don't have 'place' interface in static graph mode
+        But this interface can greatly facilitate dy2static.
+        So we give a warnning here and return None.
+        """
+        warnings.warn(
+            "Variable do not have 'place' interface for static graph mode, try not to use it. None will be returned."
+        )
+        return None
 
     def astype(self, dtype):
         """
@@ -149,13 +183,13 @@ def monkey_patch_variable():
             In Static Graph Mode:
 
             .. code-block:: python
-
+                import paddle
                 import paddle.fluid as fluid
-
+                paddle.enable_static()
                 startup_prog = fluid.Program()
                 main_prog = fluid.Program()
                 with fluid.program_guard(startup_prog, main_prog):
-                    original_variable = fluid.data(name = "new_variable", shape=[2,2], dtype='float32')
+                    original_variable = paddle.static.data(name = "new_variable", shape=[2,2], dtype='float32')
                     new_variable = original_variable.astype('int64')
                     print("new var's dtype is: {}".format(new_variable.dtype))
 
@@ -180,28 +214,78 @@ def monkey_patch_variable():
             type="cast",
             inputs={"X": [self]},
             outputs={"Out": [out]},
-            attrs={"in_dtype": self.dtype,
-                   "out_dtype": out.dtype})
+            attrs={"in_dtype": self.dtype, "out_dtype": out.dtype},
+        )
         out.stop_gradient = self.stop_gradient
         return out
 
     @static_only
     def append(self, var):
         """
-         **Notes**:
-            **The type variable must be LoD Tensor Array.
-        
+        **Notes**:
+           **The type variable must be LoD Tensor Array.
+
         """
         if not isinstance(var, Variable):
-            raise TypeError(
-                "Required input var should be Variable, but received {}".format(
-                    type(var)))
+            if in_declarative_mode():
+                """in dy2static mode, x may be tensorable values such as int, float, np.array"""
+                from paddle.tensor.creation import to_tensor
+
+                var = to_tensor(var)
+            else:
+                raise TypeError(
+                    "Required input var should be Variable, but received {}".format(
+                        type(var)
+                    )
+                )
         if self.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
             raise TypeError(
-                "Only Variable with VarType.LOD_TENSOR_ARRAY support `append` method, but received type: {}".
-                format(self.type))
+                "Only Variable with VarType.LOD_TENSOR_ARRAY support `append` method, but received type: {}".format(
+                    self.type
+                )
+            )
+        from paddle.tensor.array import array_length, array_write
 
         array_write(x=var, i=array_length(self), array=self)
+
+    @static_only
+    def _item(self):
+        """
+        In order to be compatible with the item interface introduced by the dynamic graph, it does nothing but returns self.
+        It will check that the shape must be a 1-D tensor
+        """
+        if len(self.shape) > 1:
+            raise TypeError(
+                "Required input var should be 1-D Variable, but received {}".format(
+                    self.shape
+                )
+            )
+        return self
+
+    @static_only
+    def pop(self, *args):
+        """
+        The type variable must be LoD Tensor Array.
+        When self is LoDTensorArray, calling pop is similar to Python's pop on list.
+        This interface is used to simplify dygraph to static graph operations.
+
+        Args:
+            self(Variable): The source variable, which must be LOD_TENSOR_ARRAY
+            *args: optional, a int means index.
+        Returns:
+            Variable: self[index]
+        """
+        from paddle.jit.dy2static.convert_operators import (
+            _run_paddle_pop,
+        )
+
+        if self.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+            raise TypeError(
+                "Only Variable with VarType.LOD_TENSOR_ARRAY support `append` method, but received type: {}".format(
+                    self.type
+                )
+            )
+        return _run_paddle_pop(self, *args)
 
     def _scalar_op_(var, scale, bias):
         block = current_block(var)
@@ -210,8 +294,8 @@ def monkey_patch_variable():
             type="scale",
             inputs={"X": [var]},
             outputs={"Out": [out]},
-            attrs={"scale": scale,
-                   "bias": bias})
+            attrs={"scale": scale, "bias": bias},
+        )
         return out
 
     def _neg_(var):
@@ -254,10 +338,9 @@ def monkey_patch_variable():
     def _scalar_div_(var, value):
         return _scalar_op_(var, 1.0 / value, 0.0)
 
-    def _binary_creator_(method_name,
-                         op_type,
-                         reverse=False,
-                         scalar_method=None):
+    def _binary_creator_(
+        method_name, op_type, reverse=False, scalar_method=None
+    ):
         def __impl__(self, other_var):
             # 1. scalar exists cases
             # we need combine the tensor.dtype and scalar.dtype, cast correct object
@@ -280,7 +363,10 @@ def monkey_patch_variable():
                 # so the calculation result here and the calculation result of numpy are
                 # different after 6 decimal point. If necessary, we can also use float64 here.
                 # torch's behavior here is consistent with ours
-                if op_type == 'elementwise_div' and self.dtype in _supported_int_dtype_:
+                if (
+                    op_type == 'elementwise_div'
+                    and self.dtype in _supported_int_dtype_
+                ):
                     self = astype(self, 'float32')
                 # here use `scale` replace `elementwise` to get better performance
                 # but only +, -, *, / can use this method
@@ -294,24 +380,25 @@ def monkey_patch_variable():
             lhs_dtype = safe_get_dtype(self)
             if not isinstance(other_var, Variable):
                 if reverse:
-                    has_batch_size = False
                     for elem in self.shape:
                         if elem < 0:
-                            has_batch_size = True
+                            other_var = create_tensor_with_batchsize(
+                                self, other_var, lhs_dtype
+                            )
                             break
-                    if not has_batch_size:
+                    else:
+                        # when break is not triggered, enter the else branch
                         other_var = create_tensor(
                             current_block(self),
                             other_var,
                             dtype=lhs_dtype,
-                            shape=self.shape)
-                    else:
-                        other_var = create_tensor_with_batchsize(
-                            self, other_var, lhs_dtype)
+                            shape=self.shape,
+                        )
                 else:
                     # add fill_op to current_block
                     other_var = create_scalar(
-                        current_block(self), value=other_var, dtype=lhs_dtype)
+                        current_block(self), value=other_var, dtype=lhs_dtype
+                    )
 
             # 3. unify right var type to left var
             rhs_dtype = safe_get_dtype(other_var)
@@ -322,14 +409,22 @@ def monkey_patch_variable():
                 self = other_var
                 other_var = tmp
 
+            if (
+                op_type == "divide" or op_type == "elementwise_div"
+            ) and self.dtype in _supported_int_dtype_:
+                self = astype(self, 'float32')
+                other_var = astype(other_var, 'float32')
+
             # NOTE(zhiqiu): the output of compare operator should be bool.
             if method_name in compare_ops:
                 out = create_new_tmp_var(current_block(self), dtype="bool")
             else:
-                out = create_new_tmp_var(current_block(self), dtype=lhs_dtype)
+                out = create_new_tmp_var(
+                    current_block(self), dtype=safe_get_dtype(self)
+                )
 
             axis = -1
-            if other_var.shape[0] == -1:
+            if other_var.ndim > 0 and other_var.shape[0] == -1:
                 stack = inspect.stack()[1]
                 file_name = stack[1]
                 line_num = stack[2]
@@ -337,14 +432,22 @@ def monkey_patch_variable():
                     "%s:%s\nThe behavior of expression %s has been unified with %s(X, Y, axis=-1) from Paddle 2.0. "
                     "If your code works well in the older versions but crashes in this version, try to use "
                     "%s(X, Y, axis=0) instead of %s. This transitional warning will be dropped in the future."
-                    % (file_name, line_num, EXPRESSION_MAP[method_name],
-                       op_type, op_type, EXPRESSION_MAP[method_name]))
+                    % (
+                        file_name,
+                        line_num,
+                        EXPRESSION_MAP[method_name],
+                        op_type,
+                        op_type,
+                        EXPRESSION_MAP[method_name],
+                    ),
+                    category=DeprecationWarning,
+                )
             current_block(self).append_op(
                 type=op_type,
-                inputs={'X': [self],
-                        'Y': [other_var]},
+                inputs={'X': [self], 'Y': [other_var]},
                 outputs={'Out': out},
-                attrs={'axis': axis})
+                attrs={'axis': axis},
+            )
             return out
 
         comment = OpProtoHolder.instance().get_op_proto(op_type).comment
@@ -357,57 +460,140 @@ def monkey_patch_variable():
 
         Returns:
             Variable
-        """.format(comment)
+        """.format(
+            comment
+        )
         __impl__.__name__ = method_name
         return __impl__
+
+    def values(var):
+        block = current_block(var)
+        out = create_new_tmp_var(block, var.dtype)
+        block.append_op(
+            type="sparse_values",
+            inputs={"x": [var]},
+            outputs={"out": [out]},
+            attrs={},
+        )
+        return out
+
+    def indices(var):
+        block = current_block(var)
+        out = create_new_tmp_var(block, var.dtype)
+        block.append_op(
+            type="sparse_indices",
+            inputs={"x": [var]},
+            outputs={"out": [out]},
+            attrs={},
+        )
+        return out
+
+    def to_dense(var):
+        block = current_block(var)
+        out = create_new_tmp_var(block, var.dtype)
+        block.append_op(
+            type="sparse_to_dense",
+            inputs={"x": [var]},
+            outputs={"out": [out]},
+            attrs={},
+        )
+        return out
 
     variable_methods = [
         #   b=-a
         ('__neg__', _neg_),
         ('astype', astype),
+        ('cpu', cpu),
+        ('cuda', cuda),
+        ('place', place),
         ('append', append),
+        ('item', _item),
+        ('pop', pop),
         ('dim', lambda x: len(x.shape)),
         ('ndimension', lambda x: len(x.shape)),
         ('ndim', _ndim_),
-        ('__add__', _binary_creator_('__add__', 'elementwise_add', False,
-                                     _scalar_add_)),
+        (
+            '__add__',
+            _binary_creator_('__add__', 'elementwise_add', False, _scalar_add_),
+        ),
         #  a+b == b+a. Do not need to reverse explicitly
-        ('__radd__',
-         _binary_creator_('__radd__', 'elementwise_add', False, _scalar_add_)),
-        ('__sub__', _binary_creator_('__sub__', 'elementwise_sub', False,
-                                     _scalar_sub_)),
-        ('__rsub__', _binary_creator_('__rsub__', 'elementwise_sub', True,
-                                      _scalar_rsub_)),
-        ('__mul__', _binary_creator_('__mul__', 'elementwise_mul', False,
-                                     _scalar_mul_)),
+        (
+            '__radd__',
+            _binary_creator_(
+                '__radd__', 'elementwise_add', False, _scalar_add_
+            ),
+        ),
+        (
+            '__sub__',
+            _binary_creator_('__sub__', 'elementwise_sub', False, _scalar_sub_),
+        ),
+        (
+            '__rsub__',
+            _binary_creator_(
+                '__rsub__', 'elementwise_sub', True, _scalar_rsub_
+            ),
+        ),
+        (
+            '__mul__',
+            _binary_creator_('__mul__', 'elementwise_mul', False, _scalar_mul_),
+        ),
         #  a*b == b*a. Do not need to reverse explicitly
-        ('__rmul__',
-         _binary_creator_('__rmul__', 'elementwise_mul', False, _scalar_mul_)),
-        ('__div__', _binary_creator_('__div__', 'elementwise_div', False,
-                                     _scalar_div_)),
-        ('__truediv__', _binary_creator_('__truediv__', 'elementwise_div',
-                                         False, _scalar_div_)),
-        ('__rdiv__', _binary_creator_('__rdiv__', 'elementwise_div', True,
-                                      None)),
-        ('__rtruediv__', _binary_creator_('__rtruediv__', 'elementwise_div',
-                                          True, None)),
-        ('__pow__', _binary_creator_('__pow__', 'elementwise_pow', False,
-                                     None)),
-        ('__rpow__', _binary_creator_('__rpow__', 'elementwise_pow', True,
-                                      None)),
-        ('__floordiv__', _binary_creator_('__floordiv__',
-                                          'elementwise_floordiv', False, None)),
-        ('__mod__', _binary_creator_('__mod__', 'elementwise_mod', False,
-                                     None)),
-        ('__matmul__', _binary_creator_('__matmul__', "matmul_v2", False,
-                                        None)),
+        (
+            '__rmul__',
+            _binary_creator_(
+                '__rmul__', 'elementwise_mul', False, _scalar_mul_
+            ),
+        ),
+        (
+            '__div__',
+            _binary_creator_('__div__', 'elementwise_div', False, _scalar_div_),
+        ),
+        (
+            '__truediv__',
+            _binary_creator_(
+                '__truediv__', 'elementwise_div', False, _scalar_div_
+            ),
+        ),
+        (
+            '__rdiv__',
+            _binary_creator_('__rdiv__', 'elementwise_div', True, None),
+        ),
+        (
+            '__rtruediv__',
+            _binary_creator_('__rtruediv__', 'elementwise_div', True, None),
+        ),
+        (
+            '__pow__',
+            _binary_creator_('__pow__', 'elementwise_pow', False, None),
+        ),
+        (
+            '__rpow__',
+            _binary_creator_('__rpow__', 'elementwise_pow', True, None),
+        ),
+        (
+            '__floordiv__',
+            _binary_creator_(
+                '__floordiv__', 'elementwise_floordiv', False, None
+            ),
+        ),
+        (
+            '__mod__',
+            _binary_creator_('__mod__', 'elementwise_mod', False, None),
+        ),
+        (
+            '__matmul__',
+            _binary_creator_('__matmul__', "matmul_v2", False, None),
+        ),
         #  for logical compare
         ('__eq__', _binary_creator_('__eq__', 'equal', False, None)),
         ('__ne__', _binary_creator_('__ne__', 'not_equal', False, None)),
         ('__lt__', _binary_creator_('__lt__', 'less_than', False, None)),
         ('__le__', _binary_creator_('__le__', 'less_equal', False, None)),
         ('__gt__', _binary_creator_('__gt__', 'greater_than', False, None)),
-        ('__ge__', _binary_creator_('__ge__', 'greater_equal', False, None))
+        ('__ge__', _binary_creator_('__ge__', 'greater_equal', False, None)),
+        ('values', values),
+        ('indices', indices),
+        ('to_dense', to_dense),
     ]
 
     global _already_patch_variable
@@ -418,13 +604,17 @@ def monkey_patch_variable():
             setattr(Variable, method_name, method_impl)
     else:
         import paddle.tensor
+
         for method_name in paddle.tensor.tensor_method_func:
-            if hasattr(Variable, method_name): continue
+            if hasattr(Variable, method_name):
+                continue
             method_impl = getattr(paddle.tensor, method_name, None)
-            if method_impl: setattr(Variable, method_name, method_impl)
+            if method_impl:
+                setattr(Variable, method_name, method_impl)
 
         for magic_method, origin_method in paddle.tensor.magic_method_func:
             impl = getattr(paddle.tensor, origin_method, None)
-            if impl: setattr(Variable, magic_method, impl)
+            if impl:
+                setattr(Variable, magic_method, impl)
 
     _already_patch_variable = True

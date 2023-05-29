@@ -12,22 +12,16 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
-
 #include <string>
 
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
-
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
+#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
+#include "paddle/fluid/prim/utils/static/desc_tensor.h"
 namespace paddle {
 namespace framework {
 class OpDesc;
 }  // namespace framework
-namespace imperative {
-class OpBase;
-}  // namespace imperative
-namespace platform {
-class CPUDeviceContext;
-}  // namespace platform
 }  // namespace paddle
 
 namespace paddle {
@@ -39,19 +33,50 @@ class ElementwiseAddOpMaker : public ElementwiseOpMaker {
   std::string GetEquation() const override { return "Out = X + Y"; }
 
   void AddInputX() override {
-    AddInput("X",
-             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
-             "should be int32, int64, float32, float64.");
+    AddInput(
+        "X",
+        "(Variable), Tensor or phi::DenseTensor of any dimensions. Its dtype "
+        "should be int32, int64, float32, float64.");
   }
 
   void AddInputY() override {
-    AddInput("Y",
-             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
-             "should be int32, int64, float32, float64.");
+    AddInput(
+        "Y",
+        "(Variable), Tensor or phi::DenseTensor of any dimensions. Its dtype "
+        "should be int32, int64, float32, float64.");
   }
 
-  std::string GetOpFuntionality() const override {
+  std::string GetOpFunctionality() const override {
     return "Add two tensors element-wise";
+  }
+};
+
+class ElementwiseAddCompositeGradOpMaker
+    : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
+ public:
+  void Apply() override {
+    paddle::Tensor x = this->GetSingleForwardInput("X");
+    paddle::Tensor y = this->GetSingleForwardInput("Y");
+    paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
+    paddle::Tensor dx = this->GetSingleInputGrad("X");
+    auto* dx_ptr = this->GetOutputPtr(&dx);
+    std::string dx_name = this->GetOutputName(dx);
+    paddle::Tensor dy = this->GetSingleInputGrad("Y");
+    auto* dy_ptr = this->GetOutputPtr(&dy);
+    std::string dy_name = this->GetOutputName(dy);
+    int axis = static_cast<int>(this->Attr<int>("axis"));
+    PADDLE_ENFORCE_EQ(
+        axis,
+        -1,
+        phi::errors::InvalidArgument(
+            "We only support axis = -1 in composite add_grad but we got: ",
+            axis));
+    VLOG(6) << "Runing add_grad composite func";
+    prim::add_grad<prim::DescTensor>(x, y, out_grad, axis, dx_ptr, dy_ptr);
+    this->RecoverOutputName(dx, dx_name);
+    this->RecoverOutputName(dy, dy_name);
   }
 };
 
@@ -71,6 +96,42 @@ class ElementwiseAddDoubleGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetAttrMap(this->Attrs());
 
     op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
+  }
+};
+
+class ElementwiseAddCompositeDoubleGradOpMaker
+    : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
+ public:
+  void Apply() override {
+    // get input
+    paddle::Tensor y = this->GetSingleForwardInput("Y");
+    paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
+    paddle::optional<paddle::Tensor> ddx =
+        this->GetOptionalSingleOutputGrad(framework::GradVarName("X"));
+    paddle::optional<paddle::Tensor> ddy =
+        this->GetOptionalSingleOutputGrad(framework::GradVarName("Y"));
+    // get output
+    paddle::Tensor grad_out_grad_t =
+        this->GetSingleInputGrad(framework::GradVarName("Out"));
+
+    // get attr
+    int axis = static_cast<int>(this->Attr<int>("axis"));
+    PADDLE_ENFORCE_EQ(
+        axis,
+        -1,
+        phi::errors::InvalidArgument("We only support axis = -1 in composite "
+                                     "add_doubel_grad but we got: ",
+                                     axis));
+
+    paddle::Tensor* grad_out_grad = this->GetOutputPtr(&grad_out_grad_t);
+    std::string grad_out_grad_name = this->GetOutputName(grad_out_grad_t);
+
+    VLOG(6) << "Runing add_double_grad composite func";
+    prim::add_double_grad<prim::DescTensor>(
+        y, out_grad, ddx, ddy, axis, grad_out_grad);
+    this->RecoverOutputName(grad_out_grad_t, grad_out_grad_name);
   }
 };
 
@@ -97,44 +158,47 @@ class ElementwiseAddTripleGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 REGISTER_ELEMWISE_GRAD_MAKER(elementwise_add, Add);
-REGISTER_ELEMWISE_EXPLICIT_OP_WITHOUT_GRAD(elementwise_add, Add);
+REGISTER_OPERATOR(elementwise_add,
+                  ::paddle::operators::ElementwiseOp,
+                  ::paddle::operators::ElementwiseAddOpMaker,
+                  ::paddle::operators::ElementwiseOpInferVarType,
+                  elementwise_addGradMaker<::paddle::framework::OpDesc>,
+                  elementwise_addGradMaker<::paddle::imperative::OpBase>,
+                  ::paddle::operators::ElementwiseAddCompositeGradOpMaker,
+                  ::paddle::operators::ElementwiseOpInplaceInferer);
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(
-    elementwise_add_grad, ops::ElementwiseOpGrad,
-    ops::ElementwiseGradOpInplaceInferer, ops::ElementwiseGradNoBufVarsInferer,
-    ops::ElementwiseAddDoubleGradMaker<paddle::framework::OpDesc>,
-    ops::ElementwiseAddDoubleGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(
-    elementwise_add_grad_grad, ops::ElementwiseOpDoubleGradWithoutDXDY,
+    elementwise_add_grad,
+    ops::ElementwiseOpGrad,
+    ops::ElementwiseGradOpInplaceInferer,
+    ops::ElementwiseGradNoBufVarsInferer,
+    ops::ElementwiseAddDoubleGradMaker<paddle::framework::OpDesc>,
+    ops::ElementwiseAddDoubleGradMaker<paddle::imperative::OpBase>,
+    ops::ElementwiseAddCompositeDoubleGradOpMaker);
+
+REGISTER_OPERATOR(
+    elementwise_add_grad_grad,
+    ops::ElementwiseOpDoubleGradWithoutDXDY,
     ops::ElementwiseDoubleGradOpInplaceInferer,
     ops::ElementwiseDoubleGradNoBufVarsInferer,
     ops::ElementwiseAddTripleGradMaker<paddle::framework::OpDesc>,
     ops::ElementwiseAddTripleGradMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(elementwise_add_triple_grad, ops::ElementwiseOpTripleGrad,
+REGISTER_OPERATOR(elementwise_add_triple_grad,
+                  ops::ElementwiseOpTripleGrad,
                   ops::ElementwiseTripleGradOpInplaceInferer,
                   ops::ElementwiseTripleGradNoBufVarsInferer);
 
 // A specialization elementwise_add operator, used in gradient accumulation with
 // inplace addto.
 REGISTER_OPERATOR(
-    grad_add, paddle::operators::ElementwiseOp,
+    grad_add,
+    paddle::operators::ElementwiseOp,
     paddle::operators::ElementwiseAddOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-
-REGISTER_OP_CPU_KERNEL(
-    grad_add,
-    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext,
-                              paddle::platform::complex<float>>,
-    ops::ElementwiseAddKernel<paddle::platform::CPUDeviceContext,
-                              paddle::platform::complex<double>>);
 
 REGISTER_OP_VERSION(elementwise_add)
     .AddCheckpoint(

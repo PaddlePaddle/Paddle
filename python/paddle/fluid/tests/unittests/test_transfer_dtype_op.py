@@ -1,26 +1,28 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
+from eager_op_test import (
+    OpTest,
+    convert_float_to_uint16,
+    convert_uint16_to_float,
+)
 
 import paddle
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-from op_test import OpTest, convert_uint16_to_float, convert_float_to_uint16
+from paddle.fluid import core
 
 
 class TestTransferDtypeOpFp32ToFp64(OpTest):
@@ -30,12 +32,12 @@ class TestTransferDtypeOpFp32ToFp64(OpTest):
         self.outputs = {'Out': ipt.astype('float64')}
         self.attrs = {
             'out_dtype': int(core.VarDesc.VarType.FP64),
-            'in_dtype': int(core.VarDesc.VarType.FP32)
+            'in_dtype': int(core.VarDesc.VarType.FP32),
         }
         self.op_type = 'transfer_dtype'
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestTransferDtypeOpFp16ToFp32(OpTest):
@@ -45,12 +47,12 @@ class TestTransferDtypeOpFp16ToFp32(OpTest):
         self.outputs = {'Out': ipt.astype('float32')}
         self.attrs = {
             'out_dtype': int(core.VarDesc.VarType.FP32),
-            'in_dtype': int(core.VarDesc.VarType.FP16)
+            'in_dtype': int(core.VarDesc.VarType.FP16),
         }
         self.op_type = 'transfer_dtype'
 
     def test_check_output(self):
-        self.check_output(atol=1e-3)
+        self.check_output(atol=1e-3, check_dygraph=False)
 
 
 class TestTransferDtypeOpFp32ToFp16(OpTest):
@@ -60,12 +62,12 @@ class TestTransferDtypeOpFp32ToFp16(OpTest):
         self.outputs = {'Out': ipt.astype('float16')}
         self.attrs = {
             'out_dtype': int(core.VarDesc.VarType.FP16),
-            'in_dtype': int(core.VarDesc.VarType.FP32)
+            'in_dtype': int(core.VarDesc.VarType.FP32),
         }
         self.op_type = 'transfer_dtype'
 
     def test_check_output(self):
-        self.check_output(atol=1e-3)
+        self.check_output(atol=1e-3, check_dygraph=False)
 
 
 class TestTransferDtypeOpBf16ToFp32(OpTest):
@@ -75,12 +77,12 @@ class TestTransferDtypeOpBf16ToFp32(OpTest):
         self.outputs = {'Out': convert_uint16_to_float(ipt)}
         self.attrs = {
             'out_dtype': int(core.VarDesc.VarType.FP32),
-            'in_dtype': int(core.VarDesc.VarType.BF16)
+            'in_dtype': int(core.VarDesc.VarType.BF16),
         }
         self.op_type = 'transfer_dtype'
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestTransferDtypeFp32ToBf16(OpTest):
@@ -90,12 +92,12 @@ class TestTransferDtypeFp32ToBf16(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(ipt)}
         self.attrs = {
             'out_dtype': int(core.VarDesc.VarType.BF16),
-            'in_dtype': int(core.VarDesc.VarType.FP32)
+            'in_dtype': int(core.VarDesc.VarType.FP32),
         }
         self.op_type = 'transfer_dtype'
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 if __name__ == '__main__':

@@ -15,6 +15,7 @@
 #include "paddle/fluid/operators/tensor_formatter.h"
 
 #include <string>
+
 #include "paddle/fluid/framework/convert_utils.h"
 
 namespace paddle {
@@ -40,7 +41,7 @@ void TensorFormatter::SetSummarize(int64_t summarize) {
   summarize_ = summarize;
 }
 
-void TensorFormatter::Print(const framework::LoDTensor& print_tensor,
+void TensorFormatter::Print(const phi::DenseTensor& print_tensor,
                             const std::string& tensor_name,
                             const std::string& message) {
   static std::mutex mutex;
@@ -48,7 +49,7 @@ void TensorFormatter::Print(const framework::LoDTensor& print_tensor,
   std::cout << Format(print_tensor, tensor_name, message);
 }
 
-std::string TensorFormatter::Format(const framework::LoDTensor& print_tensor,
+std::string TensorFormatter::Format(const phi::DenseTensor& print_tensor,
                                     const std::string& tensor_name,
                                     const std::string& message) {
   std::stringstream log_stream;
@@ -87,8 +88,7 @@ std::string TensorFormatter::Format(const framework::LoDTensor& print_tensor,
 
   if (print_tensor_layout_) {
     log_stream << "  - layout: "
-               << framework::DataLayoutToString(print_tensor.layout())
-               << std::endl;
+               << phi::DataLayoutToString(print_tensor.layout()) << std::endl;
   }
 
   std::type_index dtype = framework::ToTypeIndex(
@@ -115,23 +115,18 @@ std::string TensorFormatter::Format(const framework::LoDTensor& print_tensor,
 }
 
 template <typename T>
-void TensorFormatter::FormatData(const framework::LoDTensor& print_tensor,
+void TensorFormatter::FormatData(const phi::DenseTensor& print_tensor,
                                  std::stringstream& log_stream) {
   int64_t print_size = summarize_ == -1
                            ? print_tensor.numel()
                            : std::min(summarize_, print_tensor.numel());
   const T* data = nullptr;
-  framework::LoDTensor cpu_tensor;
+  phi::DenseTensor cpu_tensor;
   if (paddle::platform::is_cpu_place(print_tensor.place())) {
     data = print_tensor.data<T>();
   } else {
     platform::CPUPlace cpu_place;
     paddle::framework::TensorCopy(print_tensor, cpu_place, &cpu_tensor);
-#ifdef PADDLE_WITH_ASCEND_CL
-    if (platform::is_npu_place(print_tensor.place())) {
-      platform::DeviceContextPool::Instance().Get(print_tensor.place())->Wait();
-    }
-#endif
     data = cpu_tensor.data<T>();
   }
 
@@ -146,15 +141,15 @@ void TensorFormatter::FormatData(const framework::LoDTensor& print_tensor,
 }
 
 template void TensorFormatter::FormatData<bool>(
-    const framework::LoDTensor& print_tensor, std::stringstream& log_stream);
+    const phi::DenseTensor& print_tensor, std::stringstream& log_stream);
 template void TensorFormatter::FormatData<float>(
-    const framework::LoDTensor& print_tensor, std::stringstream& log_stream);
+    const phi::DenseTensor& print_tensor, std::stringstream& log_stream);
 template void TensorFormatter::FormatData<double>(
-    const framework::LoDTensor& print_tensor, std::stringstream& log_stream);
+    const phi::DenseTensor& print_tensor, std::stringstream& log_stream);
 template void TensorFormatter::FormatData<int>(
-    const framework::LoDTensor& print_tensor, std::stringstream& log_stream);
+    const phi::DenseTensor& print_tensor, std::stringstream& log_stream);
 template void TensorFormatter::FormatData<int64_t>(
-    const framework::LoDTensor& print_tensor, std::stringstream& log_stream);
+    const phi::DenseTensor& print_tensor, std::stringstream& log_stream);
 
 }  // namespace operators
 }  // namespace paddle

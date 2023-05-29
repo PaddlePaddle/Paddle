@@ -21,7 +21,7 @@
 #include "gtest/gtest.h"
 
 template <typename T, unsigned N>
-static std::vector<T> ToStdVector(const paddle::SmallVector<T, N> &vec) {
+static std::vector<T> ToStdVector(const paddle::small_vector<T, N> &vec) {
   std::vector<T> std_vec;
   std_vec.reserve(vec.size());
   for (size_t i = 0; i < vec.size(); ++i) {
@@ -35,7 +35,7 @@ void SmallVectorCheck(size_t n) {
   std::srand(std::time(nullptr));
 
   std::vector<int> std_vec;
-  paddle::SmallVector<int, N> vec;
+  paddle::small_vector<int, N> vec;
 
   for (size_t i = 0; i < n; ++i) {
     int value = rand();  // NOLINT

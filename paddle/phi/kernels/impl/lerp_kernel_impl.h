@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/funcs/common_shape.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 
@@ -27,8 +28,7 @@ static void LerpFunction(const Context& ctx,
                          const DenseTensor& weight,
                          DenseTensor* out) {
   ctx.template Alloc<T>(out);
-
-  auto out_dims = out->dims();
+  const auto& out_dims = out->dims();
   auto x_dims = phi::funcs::ExtendDims2Rank(x.dims(), D);
   auto y_dims = phi::funcs::ExtendDims2Rank(y.dims(), D);
   auto w_dims = phi::funcs::ExtendDims2Rank(weight.dims(), D);
@@ -44,11 +44,37 @@ static void LerpFunction(const Context& ctx,
   auto eigen_w = phi::EigenTensor<T, D>::From(weight, w_dims);
   auto eigen_out = phi::EigenTensor<T, D>::From(*out);
 
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   auto& place = *ctx.eigen_device();
   eigen_out.device(place) =
-      eigen_x.broadcast(x_bcast_dims) +
-      eigen_w.broadcast(w_bcast_dims) *
-          (eigen_y.broadcast(y_bcast_dims) - eigen_x.broadcast(x_bcast_dims));
+      (eigen_x.broadcast(x_bcast_dims).template cast<MPType>() +
+       eigen_w.broadcast(w_bcast_dims).template cast<MPType>() *
+           (eigen_y.broadcast(y_bcast_dims).template cast<MPType>() -
+            eigen_x.broadcast(x_bcast_dims).template cast<MPType>()))
+          .template cast<T>();
+}
+
+template <typename Context, typename T>
+static void LerpFunctionZero(const Context& ctx,
+                             const DenseTensor& x,
+                             const DenseTensor& y,
+                             const DenseTensor& weight,
+                             DenseTensor* out) {
+  ctx.template Alloc<T>(out);
+
+  auto dim = make_ddim(std::vector<int64_t>(1, 1));
+  auto eigen_x = phi::EigenTensor<T, 1>::From(x, dim);
+  auto eigen_y = phi::EigenTensor<T, 1>::From(y, dim);
+  auto eigen_w = phi::EigenTensor<T, 1>::From(weight, dim);
+  auto eigen_out = phi::EigenTensor<T, 1>::From(*out, dim);
+
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  auto& place = *ctx.eigen_device();
+  eigen_out.device(place) =
+      (eigen_x.template cast<MPType>() +
+       eigen_w.template cast<MPType>() *
+           (eigen_y.template cast<MPType>() - eigen_x.template cast<MPType>()))
+          .template cast<T>();
 }
 
 template <typename T, typename Context>
@@ -60,10 +86,10 @@ void LerpKernel(const Context& ctx,
   int rank = out->dims().size();
   PADDLE_ENFORCE_GE(
       rank,
-      1,
+      0,
       phi::errors::InvalidArgument(
           "The number of dimensions for LerpOp must be "
-          "greater than or equal to 1, but the value received is %d.",
+          "greater than or equal to 0, but the value received is %d.",
           rank));
   PADDLE_ENFORCE_LE(
       rank,
@@ -73,6 +99,9 @@ void LerpKernel(const Context& ctx,
           "less than or equal to 6, but the value received is %d.",
           rank));
   switch (rank) {
+    case 0:
+      LerpFunctionZero<Context, T>(ctx, x, y, weight, out);
+      break;
     case 1:
       LerpFunction<Context, T, 1>(ctx, x, y, weight, out);
       break;

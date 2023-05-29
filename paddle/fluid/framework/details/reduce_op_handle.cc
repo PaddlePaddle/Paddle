@@ -18,11 +18,12 @@
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
+#include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
-
 PADDLE_DEFINE_EXPORTED_bool(
-    cpu_deterministic, false,
+    cpu_deterministic,
+    false,
     "Whether to make the result of computation deterministic in CPU side.");
 
 namespace paddle {
@@ -54,17 +55,20 @@ void ReduceOpHandle::RunImpl() {
   auto in_var_handles = DynamicCast<VarHandle>(inputs_);
 
   PADDLE_ENFORCE_EQ(
-      in_var_handles.size(), places_.size(),
+      in_var_handles.size(),
+      places_.size(),
       platform::errors::InvalidArgument(
           "The number of inputs should equal to the number of places, but got "
           "the number of inputs is %d and the number of places is %d.",
-          in_var_handles.size(), places_.size()));
+          in_var_handles.size(),
+          places_.size()));
 
   VarHandle *out_var_handle;
   {
     auto out_var_handles = DynamicCast<VarHandle>(outputs_);
 
-    PADDLE_ENFORCE_EQ(out_var_handles.size(), 1UL,
+    PADDLE_ENFORCE_EQ(out_var_handles.size(),
+                      1UL,
                       platform::errors::InvalidArgument(
                           "The number of output should be one, but got %d.",
                           out_var_handles.size()));
@@ -78,9 +82,10 @@ void ReduceOpHandle::RunImpl() {
   auto pre_in_var =
       var_scopes.at(in_0_handle->scope_idx())->FindVar(in_0_handle->name());
 
-  PADDLE_ENFORCE_NOT_NULL(pre_in_var, platform::errors::NotFound(
-                                          "Variable %s is not found in scope.",
-                                          in_0_handle->name()));
+  PADDLE_ENFORCE_NOT_NULL(
+      pre_in_var,
+      platform::errors::NotFound("Variable %s is not found in scope.",
+                                 in_0_handle->name()));
 
   // NOTE: The Places of all input tensor must be all on CPU or all on GPU.
   std::vector<platform::Place> in_places;  // used to get dev_ctx
@@ -90,8 +95,9 @@ void ReduceOpHandle::RunImpl() {
         var_scopes.at(in_handle->scope_idx())->FindVar(in_handle->name());
 
     PADDLE_ENFORCE_NOT_NULL(
-        in_var, platform::errors::NotFound("Variable %s is not found in scope.",
-                                           in_handle->name()));
+        in_var,
+        platform::errors::NotFound("Variable %s is not found in scope.",
+                                   in_handle->name()));
 
     VariableVisitor::EnforceShapeAndDTypeEQ(*pre_in_var, *in_var);
   }
@@ -100,15 +106,17 @@ void ReduceOpHandle::RunImpl() {
                      ->FindVar(out_var_handle->name());
 
   PADDLE_ENFORCE_NOT_NULL(
-      out_var, platform::errors::NotFound("Variable %s is not found in scope.",
-                                          out_var_handle->name()));
+      out_var,
+      platform::errors::NotFound("Variable %s is not found in scope.",
+                                 out_var_handle->name()));
 
   // NOTE: The tensors' Place of input and output must be all on GPU or all on
   // CPU.
   auto in_p = VariableVisitor::GetMutableTensor(pre_in_var).place();
   platform::Place t_out_p;
   if (platform::is_gpu_place(in_p)) {
-    PADDLE_ENFORCE_EQ(platform::is_gpu_place(out_var_handle->place()), true,
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(out_var_handle->place()),
+                      true,
                       platform::errors::PreconditionNotMet(
                           "Places of input and output must be all on GPU."));
     t_out_p = out_var_handle->place();
@@ -131,7 +139,10 @@ void ReduceOpHandle::RunImpl() {
           platform::is_cpu_place(in_places[0]) ||
           platform::is_cpu_place(t_out_p)) {
         GatherLocalSelectedRowsFunctor functor(
-            in_selected_rows, in_places, dev_ctxes_, t_out_p,
+            in_selected_rows,
+            in_places,
+            dev_ctxes_,
+            t_out_p,
             out_var->GetMutable<phi::SelectedRows>());
         WaitInputVarGenerated();
         functor();
@@ -139,8 +150,8 @@ void ReduceOpHandle::RunImpl() {
       }
     });
   } else {
-    std::vector<const LoDTensor *> lod_tensors =
-        GetInputValues<LoDTensor>(in_var_handles, var_scopes);
+    std::vector<const phi::DenseTensor *> lod_tensors =
+        GetInputValues<phi::DenseTensor>(in_var_handles, var_scopes);
 
     if (paddle::platform::is_cpu_place(lod_tensors[0]->place())) {
       WaitInputVarGenerated();
@@ -151,7 +162,7 @@ void ReduceOpHandle::RunImpl() {
         // with the result of `c+a+b+d`, so the summing order should be fixed.
         if (!FLAGS_cpu_deterministic) {
           ReduceLoDTensor func(lod_tensors,
-                               out_var->GetMutable<framework::LoDTensor>());
+                               out_var->GetMutable<phi::DenseTensor>());
           VisitDataType(framework::TransToProtoVarType(lod_tensors[0]->dtype()),
                         func);
         } else {
@@ -159,12 +170,12 @@ void ReduceOpHandle::RunImpl() {
           // here, but it doesn't mean reduce_sum_trg must be in local_scopes_0.
           auto &reduce_sum_trg = *this->local_exec_scopes_[0]
                                       ->FindVar(out_var_handle->name())
-                                      ->GetMutable<framework::LoDTensor>();
+                                      ->GetMutable<phi::DenseTensor>();
           ReduceLoDTensor func(lod_tensors, &reduce_sum_trg);
           VisitDataType(framework::TransToProtoVarType(lod_tensors[0]->dtype()),
                         func);
 
-          auto trg = out_var->GetMutable<framework::LoDTensor>();
+          auto trg = out_var->GetMutable<phi::DenseTensor>();
           if (reduce_sum_trg.data() != trg->data()) {
             TensorCopy(reduce_sum_trg, platform::CPUPlace(), trg);
           }
@@ -172,7 +183,7 @@ void ReduceOpHandle::RunImpl() {
       });
     } else if (paddle::platform::is_gpu_place(lod_tensors[0]->place())) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-      auto pre_in = pre_in_var->Get<framework::LoDTensor>();
+      auto pre_in = pre_in_var->Get<phi::DenseTensor>();
       VariableVisitor::ShareDimsAndLoD(*pre_in_var, out_var);
       VariableVisitor::GetMutableTensor(out_var).mutable_data(
           out_var_handle->place(), pre_in.dtype());
@@ -190,9 +201,8 @@ void ReduceOpHandle::RunImpl() {
         void *buffer = const_cast<void *>(lod_tensor.data());
         void *recvbuffer = nullptr;
         if (root_id == dev_id) {
-          recvbuffer =
-              out_var->GetMutable<framework::LoDTensor>()->mutable_data(
-                  out_var_handle->place());
+          recvbuffer = out_var->GetMutable<phi::DenseTensor>()->mutable_data(
+              out_var_handle->place());
         }
 
         int type = platform::ToNCCLDataType(
@@ -201,8 +211,14 @@ void ReduceOpHandle::RunImpl() {
         all_reduce_calls.emplace_back(
             [buffer, recvbuffer, type, numel, root_id, &nccl_ctx] {
               PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclReduce(
-                  buffer, recvbuffer, numel, static_cast<ncclDataType_t>(type),
-                  ncclSum, root_id, nccl_ctx.comm_, nccl_ctx.stream()));
+                  buffer,
+                  recvbuffer,
+                  numel,
+                  static_cast<ncclDataType_t>(type),
+                  ncclSum,
+                  root_id,
+                  nccl_ctx.comm_,
+                  nccl_ctx.stream()));
             });
       }
 
@@ -219,7 +235,7 @@ void ReduceOpHandle::RunImpl() {
 #endif
     } else if (paddle::platform::is_xpu_place(lod_tensors[0]->place())) {
 #if defined(PADDLE_WITH_XPU_BKCL)
-      auto pre_in = pre_in_var->Get<framework::LoDTensor>();
+      auto pre_in = pre_in_var->Get<phi::DenseTensor>();
       VariableVisitor::ShareDimsAndLoD(*pre_in_var, out_var);
       VariableVisitor::GetMutableTensor(out_var).mutable_data(
           out_var_handle->place(), pre_in.dtype());
@@ -237,34 +253,41 @@ void ReduceOpHandle::RunImpl() {
         void *buffer = const_cast<void *>(lod_tensor.data());
         void *recvbuffer = nullptr;
         if (root_id == dev_id) {
-          recvbuffer =
-              out_var->GetMutable<framework::LoDTensor>()->mutable_data(
-                  out_var_handle->place());
+          recvbuffer = out_var->GetMutable<phi::DenseTensor>()->mutable_data(
+              out_var_handle->place());
         }
 
         int type = platform::ToBKCLDataType(
             framework::TransToProtoVarType(lod_tensor.dtype()));
         size_t numel = static_cast<size_t>(lod_tensor.numel());
-        all_reduce_calls.emplace_back([buffer, recvbuffer, type, numel, root_id,
-                                       &bkcl_ctx] {
-          PADDLE_ENFORCE_EQ(bkcl_reduce(bkcl_ctx.comm(), buffer, recvbuffer,
-                                        numel, static_cast<BKCLDataType>(type),
-                                        BKCL_ADD, root_id, nullptr),
-                            BKCL_SUCCESS, platform::errors::Unavailable(
-                                              "bkcl_all_reduce failed"));
-        });
+        all_reduce_calls.emplace_back(
+            [buffer, recvbuffer, type, numel, root_id, &bkcl_ctx] {
+              PADDLE_ENFORCE_EQ(
+                  bkcl_reduce(bkcl_ctx.comm(),
+                              buffer,
+                              recvbuffer,
+                              numel,
+                              static_cast<BKCLDataType>(type),
+                              BKCL_ADD,
+                              root_id,
+                              nullptr),
+                  BKCL_SUCCESS,
+                  platform::errors::Unavailable("bkcl_all_reduce failed"));
+            });
       }
 
       WaitInputVarGenerated();
       this->RunAndRecordEvent([&] {
         PADDLE_ENFORCE_EQ(
-            bkcl_group_start(), BKCL_SUCCESS,
+            bkcl_group_start(),
+            BKCL_SUCCESS,
             platform::errors::Unavailable("bkcl_group_start failed"));
         for (auto &call : all_reduce_calls) {
           call();
         }
         PADDLE_ENFORCE_EQ(
-            bkcl_group_end(), BKCL_SUCCESS,
+            bkcl_group_end(),
+            BKCL_SUCCESS,
             platform::errors::Unavailable("bkcl_group_end failed"));
       });
 #else

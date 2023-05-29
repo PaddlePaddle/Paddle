@@ -33,7 +33,7 @@ class BarrierOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("ring_id", "(int default 0) communication ring id.")
         .SetDefault(0);
     AddComment(R"DOC(
-Barrier Operator - Barrier among all pariticapitors.)DOC");
+Barrier Operator - Barrier among all participators.)DOC");
   }
 };
 
@@ -44,4 +44,6 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_WITHOUT_GRADIENT(barrier, ops::BarrierOp, ops::BarrierOpMaker);
-REGISTER_OP_CPU_KERNEL(barrier, ops::BarrierOpCPUKernel<int>);
+
+PD_REGISTER_STRUCT_KERNEL(
+    barrier, CPU, ALL_LAYOUT, ops::BarrierOpCPUKernel, int) {}

@@ -11,25 +11,28 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from ...ps.the_one_ps import TheOnePSRuntime
 from ..runtime.collective_runtime import CollectiveRuntime
-from ..runtime.parameter_server_runtime import ParameterServerRuntime
-from ..runtime.the_one_ps import TheOnePSRuntime
 
 __all__ = []
 
 
-class RuntimeFactory(object):
+class RuntimeFactory:
     def __init__(self):
         pass
 
     def _create_runtime(self, context):
+        # add collective && pslib mode
+        if "use_fleet_ps" in context and context["use_fleet_ps"]:
+            ps_runtime = TheOnePSRuntime()
+            ps_runtime._set_basic_info(context)
+            return ps_runtime
         if context["role_maker"]._is_collective:
             collective_runtime = CollectiveRuntime()
             collective_runtime._set_basic_info(context)
             return collective_runtime
 
         k_steps = context["valid_strategy"].a_sync_configs["k_steps"]
-
         if not context["role_maker"]._is_collective and k_steps >= 0:
             ps_runtime = TheOnePSRuntime()
             ps_runtime._set_basic_info(context)

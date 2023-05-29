@@ -12,12 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/phi/kernels/abs_kernel.h"
+
 #include <algorithm>
 #include <vector>
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/abs_kernel.h"
 #include "paddle/phi/kernels/funcs/complex_functors.h"
 #include "paddle/phi/kernels/funcs/elementwise_base.h"
 
@@ -34,7 +36,18 @@ struct CudaAbsFunctor<T, phi::funcs::Complex<T, phi::dtype::Real<T>>> {
 };
 
 template <typename T>
-struct CudaAbsFunctor<T, phi::funcs::NoComplex<T, phi::dtype::Real<T>>> {
+struct CudaAbsFunctor<
+    T,
+    std::enable_if_t<std::is_same<T, phi::dtype::Real<T>>::value &&
+                     std::is_same<T, phi::dtype::bfloat16>::value>> {
+  __device__ __forceinline__ T operator()(const T x) const { return abs(x); }
+};
+
+template <typename T>
+struct CudaAbsFunctor<
+    T,
+    std::enable_if_t<std::is_same<T, phi::dtype::Real<T>>::value &&
+                     !std::is_same<T, phi::dtype::bfloat16>::value>> {
   __device__ __forceinline__ T operator()(const T x) const {
     return std::abs(x);
   }
@@ -61,5 +74,8 @@ PD_REGISTER_KERNEL(abs,
                    int,
                    int64_t,
                    phi::dtype::float16,
+                   phi::dtype::bfloat16,
                    phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::dtype::complex<double>) {
+  kernel->InputAt(0).SetDataType(phi::dtype::ToReal(kernel_key.dtype()));
+}

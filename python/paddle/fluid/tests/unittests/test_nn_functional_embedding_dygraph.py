@@ -12,13 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
-import paddle
-import paddle.nn as nn
 import numpy as np
+
+import paddle
 
 paddle.disable_static()
 
@@ -35,7 +33,8 @@ class EmbeddingDygraph(unittest.TestCase):
         embedding.weight.set_value(w0)
 
         adam = paddle.optimizer.Adam(
-            parameters=[embedding.weight], learning_rate=0.01)
+            parameters=[embedding.weight], learning_rate=0.01
+        )
         adam.clear_grad()
 
         out = embedding(x)

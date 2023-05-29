@@ -18,16 +18,16 @@ namespace phi {
 namespace funcs {
 
 template <typename T>
-class CopyMatrixRowsFunctor<paddle::platform::CPUDeviceContext, T> {
+class CopyMatrixRowsFunctor<phi::CPUContext, T> {
  public:
-  void operator()(const paddle::platform::CPUDeviceContext& context,
-                  const paddle::framework::Tensor& src,
-                  paddle::framework::Vector<size_t> index_lod,
-                  paddle::framework::Tensor* dst,
+  void operator()(const phi::CPUContext& context UNUSED,
+                  const phi::DenseTensor& src,
+                  phi::Vector<size_t> index_lod,
+                  phi::DenseTensor* dst,
                   bool is_src_index) {
     size_t* index = index_lod.data();
-    auto src_dims = src.dims();
-    auto dst_dims = dst->dims();
+    const auto& src_dims = vectorize<int>(src.dims());
+    const auto& dst_dims = vectorize<int>(dst->dims());
     PADDLE_ENFORCE_EQ(src_dims.size(),
                       2UL,
                       phi::errors::InvalidArgument(
@@ -68,18 +68,13 @@ class CopyMatrixRowsFunctor<paddle::platform::CPUDeviceContext, T> {
   }
 };
 
-template class CopyMatrixRowsFunctor<paddle::platform::CPUDeviceContext, float>;
-template class CopyMatrixRowsFunctor<paddle::platform::CPUDeviceContext,
-                                     double>;
+template class CopyMatrixRowsFunctor<phi::CPUContext, float>;
+template class CopyMatrixRowsFunctor<phi::CPUContext, double>;
 
-template class LoDTensor2BatchFunctor<paddle::platform::CPUDeviceContext,
-                                      float>;
-template class LoDTensor2BatchFunctor<paddle::platform::CPUDeviceContext,
-                                      double>;
-template class Batch2LoDTensorFunctor<paddle::platform::CPUDeviceContext,
-                                      float>;
-template class Batch2LoDTensorFunctor<paddle::platform::CPUDeviceContext,
-                                      double>;
+template class LoDTensor2BatchFunctor<phi::CPUContext, float>;
+template class LoDTensor2BatchFunctor<phi::CPUContext, double>;
+template class Batch2LoDTensorFunctor<phi::CPUContext, float>;
+template class Batch2LoDTensorFunctor<phi::CPUContext, double>;
 
 }  // namespace funcs
 }  // namespace phi

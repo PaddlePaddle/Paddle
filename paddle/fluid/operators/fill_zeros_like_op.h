@@ -19,18 +19,22 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class FillZerosLikeKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* out = context.Output<framework::Tensor>("Out");
+    auto* out = context.Output<phi::DenseTensor>("Out");
     out->mutable_data<T>(context.GetPlace());
 
     phi::funcs::SetConstant<DeviceContext, T> setter;
-    setter(context.template device_context<DeviceContext>(), out,
+    setter(context.template device_context<DeviceContext>(),
+           out,
            static_cast<T>(0));
   }
 };
+
+template <typename T, typename DeviceContext>
+class FillZerosLikeKernel2 : public FillZerosLikeKernel<T, DeviceContext> {};
 
 }  // namespace operators
 }  // namespace paddle

@@ -33,7 +33,7 @@ void AmplifierInterceptor::RunOps() {
   // run_per_steps_, run_at_offset_
   // 4, 0 --> run at step 0, 4, 8, 12
   // 4, 3 --> run at step 3, 7, 11, 15
-  if ((step_ % run_per_steps_) == run_at_offset_) {
+  if ((cur_scope_id_ % run_per_steps_) == run_at_offset_) {
     ComputeInterceptor::RunOps();
   }
 }
@@ -41,7 +41,7 @@ void AmplifierInterceptor::RunOps() {
 void AmplifierInterceptor::SendDataReadyToDownStream() {
   // run multi times, send ready one times to downstream, that is
   // input multi times, output one times
-  if (step_ % send_down_per_steps_ == 0) {
+  if (cur_scope_id_ % send_down_per_steps_ == 0) {
     ComputeInterceptor::SendDataReadyToDownStream();
   }
 }
@@ -49,7 +49,7 @@ void AmplifierInterceptor::SendDataReadyToDownStream() {
 void AmplifierInterceptor::ReplyCompletedToUpStream() {
   // run multi times, reply one times to upstream, that is
   // input one times, output multi times
-  if (step_ % reply_up_per_steps_ == 0) {
+  if (cur_scope_id_ % reply_up_per_steps_ == 0) {
     ComputeInterceptor::ReplyCompletedToUpStream();
   }
 }

@@ -18,5 +18,11 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/impl/selu_grad_kernel_impl.h"
 
-PD_REGISTER_KERNEL(
-    selu_grad, GPU, ALL_LAYOUT, phi::SeluGradKernel, float, double) {}
+PD_REGISTER_KERNEL(selu_grad,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::SeluGradKernel,
+                   float,
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

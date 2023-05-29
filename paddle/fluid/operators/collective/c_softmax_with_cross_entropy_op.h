@@ -18,22 +18,34 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/cross_entropy.h"
-#include "paddle/fluid/operators/math/softmax.h"
+#include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/kernels/funcs/cross_entropy.h"
+#include "paddle/phi/kernels/funcs/softmax.h"
 
 namespace paddle {
 namespace operators {
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class CSoftmaxWithCrossEntropyOpCPUKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
+  void Compute(const framework::ExecutionContext& ctx UNUSED) const override {
     PADDLE_THROW(platform::errors::Unavailable(
         "Do not support c_embedding for cpu kernel now."));
   }
+};
+
+template <typename Context, typename T>
+struct CSoftmaxWithCrossEntropyFunctor {
+  void operator()(const framework::ExecutionContext& ctx);
+};
+
+template <typename Context, typename T>
+struct CSoftmaxWithCrossEntropyProcessGroupFunctor {
+  void operator()(const framework::ExecutionContext& ctx);
 };
 
 }  // namespace operators

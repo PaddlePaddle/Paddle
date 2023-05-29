@@ -12,69 +12,79 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
-from op_test import OpTest
+from eager_op_test import OpTest
+
 import paddle
-import paddle.fluid as fluid
+from paddle import fluid
 from paddle.fluid import Program, program_guard
+from paddle.fluid.tests.unittests.eager_op_test import convert_float_to_uint16
+
+
+def call_nonzero(x):
+    input = paddle.to_tensor(x)
+    return paddle.nonzero(x=input)
 
 
 class TestNonZeroAPI(unittest.TestCase):
     def test_nonzero_api_as_tuple(self):
         data = np.array([[True, False], [False, True]])
         with program_guard(Program(), Program()):
-            x = fluid.layers.data(name='x', shape=[-1, 2])
+            x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
+            x.desc.set_need_check_feed(False)
             y = paddle.nonzero(x, as_tuple=True)
             self.assertEqual(type(y), tuple)
             self.assertEqual(len(y), 2)
-            z = fluid.layers.concat(list(y), axis=1)
+            z = paddle.concat(list(y), axis=1)
             exe = fluid.Executor(fluid.CPUPlace())
 
-            res, = exe.run(feed={'x': data},
-                           fetch_list=[z.name],
-                           return_numpy=False)
+            (res,) = exe.run(
+                feed={'x': data}, fetch_list=[z.name], return_numpy=False
+            )
         expect_out = np.array([[0, 0], [1, 1]])
-        self.assertTrue(np.allclose(expect_out, np.array(res)))
+        np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
         data = np.array([True, True, False])
         with program_guard(Program(), Program()):
-            x = fluid.layers.data(name='x', shape=[-1])
+            x = paddle.static.data(name='x', shape=[-1], dtype='float32')
+            x.desc.set_need_check_feed(False)
             y = paddle.nonzero(x, as_tuple=True)
             self.assertEqual(type(y), tuple)
             self.assertEqual(len(y), 1)
-            z = fluid.layers.concat(list(y), axis=1)
+            z = paddle.concat(list(y), axis=1)
             exe = fluid.Executor(fluid.CPUPlace())
-            res, = exe.run(feed={'x': data},
-                           fetch_list=[z.name],
-                           return_numpy=False)
+            (res,) = exe.run(
+                feed={'x': data}, fetch_list=[z.name], return_numpy=False
+            )
         expect_out = np.array([[0], [1]])
-        self.assertTrue(np.allclose(expect_out, np.array(res)))
+        np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
     def test_nonzero_api(self):
         data = np.array([[True, False], [False, True]])
         with program_guard(Program(), Program()):
-            x = fluid.layers.data(name='x', shape=[-1, 2])
+            x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
+            x.desc.set_need_check_feed(False)
             y = paddle.nonzero(x)
             exe = fluid.Executor(fluid.CPUPlace())
-            res, = exe.run(feed={'x': data},
-                           fetch_list=[y.name],
-                           return_numpy=False)
+            (res,) = exe.run(
+                feed={'x': data}, fetch_list=[y.name], return_numpy=False
+            )
         expect_out = np.array([[0, 0], [1, 1]])
-        self.assertTrue(np.allclose(expect_out, np.array(res)))
+        np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
         data = np.array([True, True, False])
         with program_guard(Program(), Program()):
-            x = fluid.layers.data(name='x', shape=[-1])
+            x = paddle.static.data(name='x', shape=[-1], dtype='float32')
+            x.desc.set_need_check_feed(False)
             y = paddle.nonzero(x)
             exe = fluid.Executor(fluid.CPUPlace())
-            res, = exe.run(feed={'x': data},
-                           fetch_list=[y.name],
-                           return_numpy=False)
+            (res,) = exe.run(
+                feed={'x': data}, fetch_list=[y.name], return_numpy=False
+            )
         expect_out = np.array([[0], [1]])
-        self.assertTrue(np.allclose(expect_out, np.array(res)))
+        np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
     def test_dygraph_api(self):
         data_x = np.array([[True, False], [False, True]])
@@ -83,6 +93,87 @@ class TestNonZeroAPI(unittest.TestCase):
             z = paddle.nonzero(x)
             np_z = z.numpy()
         expect_out = np.array([[0, 0], [1, 1]])
+
+
+# Base case
+class TestNonzeroOp(OpTest):
+    def setUp(self):
+        '''Test where_index op with random value'''
+        np.random.seed(2023)
+        self.op_type = "where_index"
+        self.python_api = call_nonzero
+        self.init_shape()
+        self.init_dtype()
+
+        self.inputs = self.create_inputs()
+        self.outputs = self.return_outputs()
+
+    def test_check_output(self):
+        self.check_output()
+
+    def init_shape(self):
+        self.shape = [8, 8]
+
+    def init_dtype(self):
+        self.dtype = np.float64
+
+    def create_inputs(self):
+        return {
+            'Condition': np.random.randint(5, size=self.shape).astype(
+                self.dtype
+            )
+        }
+
+    def return_outputs(self):
+        return {'Out': np.transpose(np.nonzero(self.inputs['Condition']))}
+
+
+class TestNonzeroFP32Op(TestNonzeroOp):
+    def init_shape(self):
+        self.shape = [2, 10, 2]
+
+    def init_dtype(self):
+        self.dtype = np.float32
+
+
+class TestNonzeroFP16Op(TestNonzeroOp):
+    def init_shape(self):
+        self.shape = [3, 4, 7]
+
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+class TestNonzeroBF16(OpTest):
+    def setUp(self):
+        '''Test where_index op with bfloat16 dtype'''
+        np.random.seed(2023)
+        self.op_type = "where_index"
+        self.python_api = call_nonzero
+        self.init_shape()
+        self.init_dtype()
+
+        self.inputs = self.create_inputs()
+        self.outputs = self.return_outputs()
+
+    def test_check_output(self):
+        self.check_output()
+
+    def init_shape(self):
+        self.shape = [12, 9]
+
+    def init_dtype(self):
+        self.dtype = np.uint16
+
+    def create_inputs(self):
+        return {
+            'Condition': convert_float_to_uint16(
+                np.random.randint(5, size=self.shape).astype(np.float32)
+            )
+        }
+
+    def return_outputs(self):
+        return {'Out': np.transpose(np.nonzero(self.inputs['Condition']))}
 
 
 if __name__ == "__main__":

@@ -12,10 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/ir/simplify_with_basic_ops_pass.h"
-
 #include <gtest/gtest.h>
+
 #include "paddle/fluid/framework/ir/pass_tester_helper.h"
+#include "paddle/fluid/framework/ir/simplify_with_basic_ops_pass.h"
 
 namespace paddle {
 namespace framework {
@@ -60,7 +60,8 @@ TEST(SimplifyWithBasicOpsPass, dropout) {
       VLOG(3) << DebugString(graph);
 
       PADDLE_ENFORCE_EQ(
-          num_dropout_nodes_after, 0,
+          num_dropout_nodes_after,
+          0,
           platform::errors::InvalidArgument("num_dropout_nodes_after = %d.",
                                             num_dropout_nodes_after));
       if (dropout_implementation == "downgrade_in_infer") {
@@ -70,14 +71,17 @@ TEST(SimplifyWithBasicOpsPass, dropout) {
             platform::errors::InvalidArgument(
                 "num_dropout_nodes_before = %d, num_scale_nodes_after = %d, "
                 "num_scale_nodes_before = %d.",
-                num_dropout_nodes_before, num_scale_nodes_after,
+                num_dropout_nodes_before,
+                num_scale_nodes_after,
                 num_scale_nodes_before));
       } else {
         PADDLE_ENFORCE_EQ(
-            num_scale_nodes_after - num_scale_nodes_before, 0,
+            num_scale_nodes_after - num_scale_nodes_before,
+            0,
             platform::errors::InvalidArgument(
                 "num_scale_nodes_after = %d, num_scale_nodes_before = %d.",
-                num_scale_nodes_after, num_scale_nodes_before));
+                num_scale_nodes_after,
+                num_scale_nodes_before));
       }
     }
   }

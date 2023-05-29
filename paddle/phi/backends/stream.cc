@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/phi/backends/stream.h"
-#include "paddle/fluid/platform/device/device_wrapper.h"
+
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/device_guard.h"
 #include "paddle/phi/backends/event.h"
 
@@ -39,7 +41,10 @@ bool Stream::Init(const Place& place,
                   const Flag& flag) {
   place_ = place;
   device_ = phi::DeviceManager::GetDeviceWithPlace(place);
-  DeviceGuard guard(place_);
+
+  // note(wangran16): bind device to the current thread. fix npu plugin null
+  // context bug.
+  phi::DeviceManager::SetDevice(place_);
   device_->CreateStream(this, priority, flag);
 
   callback_manager_.reset(new CallbackManager(this));
@@ -78,10 +83,11 @@ void Stream::Wait() const {
 void Stream::WaitCallback() const { callback_manager_->Wait(); }
 
 void Stream::Destroy() {
-  if (own_data_) {
-    DeviceGuard guard(place_);
+  if (own_data_ && stream_ != nullptr) {
+    phi::DeviceManager::SetDevice(place_);
     device_->DestroyStream(this);
     own_data_ = false;
+    stream_ = nullptr;
   }
 }
 

@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,132 +14,50 @@
 
 #include "paddle/phi/kernels/reduce_kernel.h"
 
-#include "paddle/phi/backends/cpu/cpu_context.h"
+#include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/cpu/reduce.h"
-#include "paddle/phi/kernels/funcs/reduce_functor.h"
+
+#if defined(PADDLE_WITH_GLOO)
+#include "paddle/phi/core/distributed/gloo_comm_context.h"
+#endif
 
 namespace phi {
 
 template <typename T, typename Context>
-void MeanRawKernel(const Context& dev_ctx,
-                   const DenseTensor& x,
-                   const std::vector<int64_t>& dims,
-                   bool keep_dim,
-                   bool reduce_all,
-                   DenseTensor* out) {
-  auto out_dtype = x.dtype();
-  phi::Reduce<CPUContext, T, phi::funcs::MeanFunctor>(
-      dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
-}
-
-template <typename T, typename Context>
-void SumRawKernel(const Context& dev_ctx,
+void ReduceKernel(const Context& dev_ctx,
                   const DenseTensor& x,
-                  const std::vector<int64_t>& dims,
-                  bool keep_dim,
-                  bool reduce_all,
-                  DataType out_dtype,
+                  int root,
+                  int reduce_type,
                   DenseTensor* out) {
-  phi::Reduce<CPUContext, T, phi::funcs::SumFunctor>(
-      dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
-}
+#if defined(PADDLE_WITH_GLOO)
+  out->Resize(x.dims());
+  dev_ctx.template Alloc<T>(out);
 
-template <typename T, typename Context>
-void ProdRawKernel(const Context& dev_ctx,
-                   const DenseTensor& x,
-                   const std::vector<int64_t>& dims,
-                   bool keep_dim,
-                   bool reduce_all,
-                   DenseTensor* out) {
-  auto out_dtype = x.dtype();
-  phi::Reduce<CPUContext, T, phi::funcs::ProdFunctor>(
-      dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
-}
-
-template <typename T, typename Context>
-void MaxRawKernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  const std::vector<int64_t>& dims,
-                  bool keep_dim,
-                  bool reduce_all,
-                  DenseTensor* out) {
-  auto out_dtype = x.dtype();
-  phi::Reduce<CPUContext, T, phi::funcs::MaxFunctor>(
-      dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
-}
-
-template <typename T, typename Context>
-void MinRawKernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  const std::vector<int64_t>& dims,
-                  bool keep_dim,
-                  bool reduce_all,
-                  DenseTensor* out) {
-  auto out_dtype = x.dtype();
-  phi::Reduce<CPUContext, T, phi::funcs::MinFunctor>(
-      dev_ctx, x, reduce_all, dims, keep_dim, out_dtype, out);
-}
-
-template <typename T, typename Context>
-void AllRawKernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  const std::vector<int64_t>& dims,
-                  bool keep_dim,
-                  bool reduce_all,
-                  DenseTensor* out) {
-  phi::BoolReduceKernel<CPUContext, T, phi::funcs::AllFunctor>(
-      dev_ctx, x, dims, keep_dim, reduce_all, out);
-}
-
-template <typename T, typename Context>
-void AnyRawKernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  const std::vector<int64_t>& dims,
-                  bool keep_dim,
-                  bool reduce_all,
-                  DenseTensor* out) {
-  phi::BoolReduceKernel<CPUContext, T, phi::funcs::AnyFunctor>(
-      dev_ctx, x, dims, keep_dim, reduce_all, out);
+  auto comm_ctx =
+      static_cast<distributed::GlooCommContext*>(dev_ctx.GetCommContext());
+  PADDLE_ENFORCE_NE(
+      comm_ctx,
+      nullptr,
+      errors::Unavailable("NCCLCommContext is nullptr, collective op should "
+                          "has ring_id attr."));
+  comm_ctx->Reduce(out, x, reduce_type, root);
+#else
+  PADDLE_THROW(
+      errors::PreconditionNotMet("PaddlePaddle should compile with GPU."));
+#endif
 }
 
 }  // namespace phi
 
-using complex64 = ::phi::dtype::complex<float>;
-using complex128 = ::phi::dtype::complex<double>;
-
-PD_REGISTER_KERNEL(sum_raw,
+PD_REGISTER_KERNEL(reduce,
                    CPU,
                    ALL_LAYOUT,
-                   phi::SumRawKernel,
+                   phi::ReduceKernel,
+                   float,
+                   double,
+                   int,
                    bool,
-                   float,
-                   double,
-                   phi::dtype::float16,
-                   int16_t,
-                   int,
+                   int8_t,
+                   uint8_t,
                    int64_t,
-                   complex64,
-                   complex128) {
-  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
-}
-PD_REGISTER_KERNEL(
-    mean_raw, CPU, ALL_LAYOUT, phi::MeanRawKernel, float, double, bool) {}
-
-PD_REGISTER_KERNEL(prod_raw,
-                   CPU,
-                   ALL_LAYOUT,
-                   phi::ProdRawKernel,
-                   float,
-                   double,
-                   int,
-                   int64_t) {}
-
-PD_REGISTER_KERNEL(
-    max_raw, CPU, ALL_LAYOUT, phi::MaxRawKernel, float, double, int, int64_t) {}
-
-PD_REGISTER_KERNEL(
-    min_raw, CPU, ALL_LAYOUT, phi::MinRawKernel, float, double, int, int64_t) {}
-
-PD_REGISTER_KERNEL(all_raw, CPU, ALL_LAYOUT, phi::AllRawKernel, bool) {}
-PD_REGISTER_KERNEL(any_raw, CPU, ALL_LAYOUT, phi::AnyRawKernel, bool) {}
+                   phi::dtype::float16) {}

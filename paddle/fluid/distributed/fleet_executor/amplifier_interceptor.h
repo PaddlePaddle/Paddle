@@ -21,7 +21,7 @@
 namespace paddle {
 namespace distributed {
 
-class AmplifierInterceptor : public ComputeInterceptor {
+class AmplifierInterceptor final : public ComputeInterceptor {
  public:
   AmplifierInterceptor(int64_t interceptor_id, TaskNode* node);
 

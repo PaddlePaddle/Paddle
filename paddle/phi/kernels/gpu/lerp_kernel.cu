@@ -12,9 +12,120 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/impl/lerp_kernel_impl.h"
 #include "paddle/phi/kernels/lerp_kernel.h"
 
-PD_REGISTER_KERNEL(lerp, GPU, ALL_LAYOUT, phi::LerpKernel, float, double) {}
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/funcs/broadcast_function.h"
+
+namespace phi {
+
+template <typename T>
+struct BroadcastMinElementWiseDirectCUDAFunctor {
+  HOSTDEVICE inline T operator()(const T min) const { return min; }
+};
+
+template <typename T>
+struct LerpElementWiseDirectCUDAFunctor {
+  HOSTDEVICE inline T operator()(const T x, const T y, const T weight) const {
+    return x + weight * (y - x);
+  }
+};
+
+template <typename T>
+struct LerpScalarDirectCUDAFunctor {
+  const T *weight_;
+
+  HOSTDEVICE inline LerpScalarDirectCUDAFunctor(const T *weight)
+      : weight_(weight) {}
+
+  HOSTDEVICE inline T operator()(const T x, const T y) const {
+    return x + weight_[0] * (y - x);
+  }
+};
+
+template <typename T, typename Context>
+void LerpKernel(const Context &ctx,
+                const DenseTensor &x,
+                const DenseTensor &y,
+                const DenseTensor &weight,
+                DenseTensor *out) {
+  int rank = out->dims().size();
+  PADDLE_ENFORCE_GE(
+      rank,
+      0,
+      phi::errors::InvalidArgument(
+          "The number of dimensions for LerpOp must be "
+          "greater than or equal to 0, but the value received is %d.",
+          rank));
+
+  ctx.template Alloc<T>(out);
+  std::vector<DenseTensor *> outputs = {out};
+
+  std::vector<const DenseTensor *> inputs;
+  if (weight.numel() == 1) {
+    const T *weight_ptr = weight.data<T>();
+    inputs.reserve(2);
+    inputs.emplace_back(&x);
+    inputs.emplace_back(&y);
+    auto functor = LerpScalarDirectCUDAFunctor<T>(weight_ptr);
+    phi::funcs::BroadcastKernel<T>(ctx, inputs, &outputs, functor);
+  } else {
+    inputs.reserve(3);
+    auto functor = LerpElementWiseDirectCUDAFunctor<T>();
+    DenseTensor b_min = phi::EmptyLike<T>(ctx, *out);
+    if (x.dims().size() != y.dims().size() &&
+        weight.dims().size() != y.dims().size()) {
+      std::vector<const DenseTensor *> broadcast_min_inputs;
+      broadcast_min_inputs.reserve(1);
+      std::vector<DenseTensor *> broadcast_min_outputs = {&b_min};
+      auto broadcast_min_functor =
+          BroadcastMinElementWiseDirectCUDAFunctor<T>();
+      if (x.dims().size() < y.dims().size() &&
+          x.dims().size() < weight.dims().size()) {
+        broadcast_min_inputs.emplace_back(&x);
+        phi::funcs::BroadcastKernel<T>(ctx,
+                                       broadcast_min_inputs,
+                                       &broadcast_min_outputs,
+                                       broadcast_min_functor);
+        inputs.emplace_back(&b_min);
+        inputs.emplace_back(&y);
+        inputs.emplace_back(&weight);
+      } else if (y.dims().size() < weight.dims().size()) {
+        broadcast_min_inputs.emplace_back(&y);
+        phi::funcs::BroadcastKernel<T>(ctx,
+                                       broadcast_min_inputs,
+                                       &broadcast_min_outputs,
+                                       broadcast_min_functor);
+        inputs.emplace_back(&x);
+        inputs.emplace_back(&b_min);
+        inputs.emplace_back(&weight);
+      } else {
+        broadcast_min_inputs.emplace_back(&weight);
+        phi::funcs::BroadcastKernel<T>(ctx,
+                                       broadcast_min_inputs,
+                                       &broadcast_min_outputs,
+                                       broadcast_min_functor);
+        inputs.emplace_back(&x);
+        inputs.emplace_back(&y);
+        inputs.emplace_back(&b_min);
+      }
+    } else {
+      inputs.emplace_back(&x);
+      inputs.emplace_back(&y);
+      inputs.emplace_back(&weight);
+    }
+    phi::funcs::BroadcastKernel<T>(ctx, inputs, &outputs, functor);
+  }
+}
+
+}  // namespace phi
+
+PD_REGISTER_KERNEL(lerp,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::LerpKernel,
+                   phi::dtype::float16,
+                   float,
+                   double) {}

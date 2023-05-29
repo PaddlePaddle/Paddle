@@ -15,10 +15,13 @@
 #include "paddle/fluid/inference/analysis/passes/memory_optimize_pass.h"
 
 #include <string>
+#include <unordered_set>
 #include <utility>
+#include <vector>
 
 #include "glog/logging.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
+#include "paddle/fluid/inference/analysis/pass_result_info.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -52,7 +55,8 @@ typedef struct {
 // The traversal order also affect the lifecycles, so different sort_kind is
 // used.
 void MemoryOptimizePass::CollectLifeCycle(
-    Graph* graph, std::unordered_map<std::string, lifecycle_t>* lifecycles,
+    Graph* graph,
+    std::unordered_map<std::string, lifecycle_t>* lifecycles,
     int sort_kind) const {
   int max_lifecycle = 0;
   for (auto* op_node : framework::ir::TopologyVarientSort(
@@ -61,7 +65,8 @@ void MemoryOptimizePass::CollectLifeCycle(
     auto reads = op_node->inputs;
     auto writes = op_node->outputs;
 
-    std::vector<Node*> requires(reads.begin(), reads.end());
+    std::vector<Node*>
+    requires(reads.begin(), reads.end());
     requires.insert(requires.end(), writes.begin(), writes.end());
 
     // Disable reuse of feed variables.
@@ -74,6 +79,7 @@ void MemoryOptimizePass::CollectLifeCycle(
     } else {
       // Normal operators.
       for (const Node* node : requires) {
+        if (!node->Var()) continue;
         if (node->Var()->Persistable()) continue;
         std::string var = node->Name();
         if (!lifecycles->count(var)) {
@@ -131,7 +137,7 @@ void MemoryOptimizePass::CollectVarMemorySize(
   // between performance and underlying principle.
   std::unordered_set<std::string> black_list;
   for (auto* node : graph->Nodes()) {
-    if (node->IsVar() &&
+    if (node->IsVar() && node->Var() &&
         node->Var()->GetType() ==
             framework::proto::VarType::Type::VarType_Type_LOD_TENSOR) {
       if (!valid_var(node)) {
@@ -142,7 +148,7 @@ void MemoryOptimizePass::CollectVarMemorySize(
 
   // Collect tensors from graph.
   for (auto* node : graph->Nodes()) {
-    if (node->IsVar() &&
+    if (node->IsVar() && node->Var() &&
         node->Var()->GetType() ==
             framework::proto::VarType::Type::VarType_Type_LOD_TENSOR &&
         !black_list.count(node->Var()->Name())) {
@@ -153,8 +159,8 @@ void MemoryOptimizePass::CollectVarMemorySize(
         if (v < 0) v = fake_batch_size;
       }
 
-      int size = std::accumulate(shape.begin(), shape.end(), 1,
-                                 std::multiplies<int>());
+      int size = std::accumulate(
+          shape.begin(), shape.end(), 1, std::multiplies<int>());
       (*space_table)[node->Var()->Name()] =
           size * paddle::framework::SizeOfType(node->Var()->GetDataType());
     }
@@ -218,6 +224,51 @@ void MakeSimpleReusePlan(
   }
 }
 
+// Remove the inplace operation from the plan because it does not support memory
+// reuse
+void DelInplaceOpFromPlan(
+    Graph* graph,
+    std::unordered_map<std::string, std::string>* node2cluster,
+    int sort_kind) {
+  auto topo_nodes = TopologyVarientSort(
+      *graph, static_cast<framework::ir::SortKind>(sort_kind));
+  for (auto* op_node : topo_nodes) {
+    if (!op_node->IsOp()) continue;
+    auto input_tensors = op_node->inputs;
+    auto output_tensors = op_node->outputs;
+
+    std::unordered_set<std::string> in_names;
+    for (const Node* node : input_tensors) {
+      if (!node->Var()) continue;
+      if (node->Var()->Persistable()) continue;
+      std::string var = node->Name();
+      in_names.insert(var);
+    }
+
+    for (const Node* node : output_tensors) {
+      if (!node->Var()) continue;
+      if (node->Var()->Persistable()) continue;
+      std::string var = node->Name();
+      if (in_names.find(var) != in_names.end()) {
+        // delete key
+        if (node2cluster->count(var)) {
+          node2cluster->erase(var);
+        }
+        // delete value
+        std::string tmp_name = "";
+        for (auto it = node2cluster->begin(); it != node2cluster->end(); ++it) {
+          if (it->second == var) {
+            if (tmp_name == "") {
+              tmp_name = it->first;
+            }
+            it->second = tmp_name;
+          }
+        }
+      }
+    }
+  }
+}
+
 // NOTE The optimized opdesc doesn't match ir::Graph.
 void UpdateOpDescsByReuse(
     Graph* graph,
@@ -243,7 +294,8 @@ void UpdateOpDescsByReuse(
 
       // modify the graph
       for (auto input_node : node->inputs) {
-        PADDLE_ENFORCE_EQ(input_node->IsVar(), true,
+        PADDLE_ENFORCE_EQ(input_node->IsVar(),
+                          true,
                           platform::errors::PreconditionNotMet(
                               "The input node should be a variable."));
         std::string input_node_name = input_node->Name();
@@ -267,7 +319,8 @@ void UpdateOpDescsByReuse(
 
       // modify the graph
       for (auto out_node : node->outputs) {
-        PADDLE_ENFORCE_EQ(out_node->IsVar(), true,
+        PADDLE_ENFORCE_EQ(out_node->IsVar(),
+                          true,
                           platform::errors::PreconditionNotMet(
                               "The output node should be a variable."));
         std::string out_node_name = out_node->Name();
@@ -290,7 +343,7 @@ void UpdateOpDescsByReuse(
   }
 }
 
-std::string MemoryOptimizePass::repr() const { return "memory optimize pass"; }
+std::string MemoryOptimizePass::repr() const { return "memory_optimize_pass"; }
 
 void MemoryOptimizePass::RunImpl(Argument* argument) {
   // Memory optimization.
@@ -305,7 +358,7 @@ void MemoryOptimizePass::RunImpl(Argument* argument) {
   // mapping table.
   if (!argument->enable_memory_optim()) return;
   // Because of pass is a singleton, graph can not be member
-  // variables，otherwise，errors will be caused under multithreading
+  // variables, otherwise, errors will be caused under multithreading
   // conditions.
   auto graph = argument->main_graph_ptr();
 
@@ -318,7 +371,12 @@ void MemoryOptimizePass::RunImpl(Argument* argument) {
   CollectLifeCycle(graph, &lifecycles, sort_kind);
   CollectVarMemorySize(graph, &space_table);
   MakeSimpleReusePlan(lifecycles, space_table, &node2cluster, &cluster_size);
-  UpdateOpDescsByReuse(graph, node2cluster, sort_kind);
+  DelInplaceOpFromPlan(graph, &node2cluster, sort_kind);
+
+  auto* pass_res_info = PassResultInfoForRuntime::Instance();
+  pass_res_info->Set(
+      argument->root_predictor_id(), "memory_optimize_pass", node2cluster);
+
   return;
 }
 

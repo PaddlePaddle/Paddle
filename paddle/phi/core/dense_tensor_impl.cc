@@ -12,25 +12,23 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/phi/core/dense_tensor.h"
-
 #include "paddle/phi/common/bfloat16.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/common/float16.h"
-
-#include "paddle/phi/api/lib/utils/storage.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
 /* --------------------------- */
-/*   From framework::Tensor    */
+/*   From phi::DenseTensor     */
 /* --------------------------- */
 DenseTensor::DenseTensor() {
-  meta_.dtype = paddle::experimental::DataType::FLOAT32;
+  meta_.dtype = phi::DataType::FLOAT32;
   meta_.offset = 0;
 }
 
-DenseTensor::DenseTensor(paddle::experimental::DataType dtype) {
+DenseTensor::DenseTensor(phi::DataType dtype) {
   meta_.dtype = dtype;
   meta_.offset = 0;
 }
@@ -51,7 +49,7 @@ void DenseTensor::check_memory_size() const {
           "Tensor's dimension is out of bound."
           "Tensor's dimension must be equal or less than the size of its "
           "memory."
-          "But received Tensor's dimension is d%, memory's size is %d.",
+          "But received Tensor's dimension is %d, memory's size is %d.",
           numel() * SizeOf(dtype()),
           memory_size()));
 }
@@ -64,11 +62,9 @@ const Place& DenseTensor::place() const {
   return holder_->place();
 }
 
-paddle::experimental::DataType DenseTensor::type() const { return meta_.dtype; }
+phi::DataType DenseTensor::type() const { return meta_.dtype; }
 
-void DenseTensor::set_layout(const paddle::framework::DataLayout layout) {
-  meta_.layout = layout;
-}
+void DenseTensor::set_layout(const DataLayout layout) { meta_.layout = layout; }
 
 // Note: When you reset holder, you need to ensure the offset is correct
 void DenseTensor::ResetHolder(const std::shared_ptr<phi::Allocation>& holder) {
@@ -84,18 +80,15 @@ void DenseTensor::ResetHolder(const std::shared_ptr<phi::Allocation>& holder) {
 }
 
 void DenseTensor::ResetHolderWithType(
-    const std::shared_ptr<phi::Allocation>& holder,
-    paddle::experimental::DataType type) {
+    const std::shared_ptr<phi::Allocation>& holder, phi::DataType type) {
   set_type(type);
   ResetHolder(holder);
 }
 
-void DenseTensor::set_type(paddle::experimental::DataType type) {
-  meta_.dtype = type;
-}
+void DenseTensor::set_type(phi::DataType type) { meta_.dtype = type; }
 
 void* DenseTensor::mutable_data(const Place& place,
-                                paddle::experimental::DataType type,
+                                phi::DataType type,
                                 size_t requested_size) {
   set_type(type);
   PADDLE_ENFORCE_GE(
@@ -111,11 +104,11 @@ void* DenseTensor::mutable_data(const Place& place,
     size = requested_size;
   }
 
-  /* some versions of boost::variant don't have operator!= */
+  /* some versions of paddle::variant don't have operator!= */
   if (holder_ == nullptr || !(holder_->place() == place) ||
       holder_->size() < size + meta_.offset) {
     holder_.reset();
-    holder_ = paddle::memory::AllocShared(place, size);
+    holder_ = memory_utils::AllocShared(place, size);
     meta_.offset = 0;
   }
   return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
@@ -127,7 +120,7 @@ void* DenseTensor::mutable_data(const Place& place, size_t requested_size) {
 }
 
 void* DenseTensor::mutable_data(const Place& place,
-                                paddle::experimental::DataType type,
+                                phi::DataType type,
                                 const phi::Stream& stream) {
   set_type(type);
   PADDLE_ENFORCE_GE(
@@ -140,13 +133,13 @@ void* DenseTensor::mutable_data(const Place& place,
           "] now"));
   size_t size = numel() * SizeOf(dtype());
 
-  /* some versions of boost::variant don't have operator!= */
+  /* some versions of paddle::variant don't have operator!= */
   if (holder_ == nullptr || !(holder_->place() == place) ||
       holder_->size() < size + meta_.offset ||
       !(place.GetType() == phi::AllocationType::GPU &&
-        paddle::memory::InSameStream(holder_, stream))) {
+        memory_utils::InSameStream(holder_, stream))) {
     holder_.reset();
-    holder_ = paddle::memory::AllocShared(place, size, stream);
+    holder_ = memory_utils::AllocShared(place, size, stream);
     meta_.offset = 0;
   }
   return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
@@ -171,15 +164,15 @@ template <typename T>
 inline T* DenseTensor::mutable_data(const Place& place, size_t requested_size) {
   static_assert(std::is_pod<T>::value, "T must be POD");
   return reinterpret_cast<T*>(
-      mutable_data(place,
-                   paddle::experimental::CppTypeToDataType<T>::Type(),
-                   requested_size));
+      mutable_data(place, phi::CppTypeToDataType<T>::Type(), requested_size));
 }
 
-void DenseTensor::ShareBufferWith(const DenseTensor& tensor) {
+void DenseTensor::ShareBufferWith(const DenseTensor& tensor, bool only_buffer) {
   holder_ = tensor.holder_;
-  meta_.offset = tensor.meta().offset;
-  meta_.dtype = tensor.dtype();
+  if (!only_buffer) {
+    meta_.offset = tensor.meta().offset;
+    meta_.dtype = tensor.dtype();
+  }
 }
 
 #define LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(dtype)                \
@@ -192,27 +185,23 @@ LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(bool)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(int8_t)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(uint8_t)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(int16_t)
+LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(uint16_t)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(int32_t)
+LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(uint32_t)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(int64_t)
-LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(float)
-LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(double)
+LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(uint64_t)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::bfloat16)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::float16)
+LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(float)
+LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(double)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::complex<float>)
 LEGACY_DATA_MEMBER_FUNC_INSTANTIATION(::phi::dtype::complex<double>)
 
 #undef LEGACY_DATA_MEMBER_FUNC_INSTANTIATION
 
 /* ------------------------------ */
-/*   From framework::LoDTensor    */
+/*   From phi::DenseTensor    */
 /* ------------------------------ */
-
-DenseTensor::DenseTensor(intrusive_ptr<Storage> storage,
-                         const DenseTensorMeta& meta)
-    : meta_(meta), holder_(storage->move_data_shared()) {}
-
-DenseTensor::DenseTensor(intrusive_ptr<Storage> storage, DenseTensorMeta&& meta)
-    : meta_(std::move(meta)), holder_(storage->move_data_shared()) {}
 
 DenseTensor::DenseTensor(const LoD& lod) : DenseTensor() { meta_.lod = lod; }
 
@@ -354,12 +343,26 @@ std::vector<DenseTensor> DenseTensor::Chunk(int64_t chunks,
   return Split(split_size, axis);
 }
 
+#ifdef PADDLE_WITH_MKLDNN
+const dnnl::memory::desc& DenseTensor::mem_desc() const { return mem_desc_; }
+#endif
+
+// NOTE: For historical reasons, this interface has a special behavior,
+// sharing other tensor members except lod
 DenseTensor& DenseTensor::ShareDataWith(const DenseTensor& src) {
   src.check_memory_size();
-  // Preserve LoD
-  auto lod = meta_.lod;
-  *this = src;
-  meta_.lod = lod;
+  holder_ = src.holder_;
+  meta_.is_scalar = src.meta_.is_scalar;
+  meta_.dims = src.meta_.dims;
+  meta_.dtype = src.meta_.dtype;
+  meta_.layout = src.meta_.layout;
+  meta_.offset = src.meta_.offset;
+  meta_.use_gpudnn = src.meta_.use_gpudnn;
+  storage_properties_ =
+      std::move(CopyStorageProperties(src.storage_properties_));
+#ifdef PADDLE_WITH_MKLDNN
+  mem_desc_ = src.mem_desc_;
+#endif
   return *this;
 }
 

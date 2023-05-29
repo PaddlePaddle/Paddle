@@ -12,14 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
-import sys
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-import paddle.fluid.layers as layers
+
+import paddle
+from paddle import fluid
+from paddle.fluid import core
 from paddle.fluid.executor import Executor
 
 
@@ -31,36 +30,44 @@ class TestSquareErrorCost(unittest.TestCase):
         sub = input_val - label_val
         np_result = sub * sub
 
-        input_var = layers.create_tensor(dtype="float32", name="input")
-        label_var = layers.create_tensor(dtype="float32", name="label")
-        output = layers.square_error_cost(input=input_var, label=label_var)
+        input_var = paddle.tensor.create_tensor(dtype="float32", name="input")
+        label_var = paddle.tensor.create_tensor(dtype="float32", name="label")
+        output = paddle.nn.functional.square_error_cost(
+            input=input_var, label=label_var
+        )
 
-        for use_cuda in ([False, True]
-                         if core.is_compiled_with_cuda() else [False]):
+        for use_cuda in (
+            [False, True] if core.is_compiled_with_cuda() else [False]
+        ):
 
             place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
             exe = Executor(place)
-            result = exe.run(fluid.default_main_program(),
-                             feed={"input": input_val,
-                                   "label": label_val},
-                             fetch_list=[output])
+            (result,) = exe.run(
+                fluid.default_main_program(),
+                feed={"input": input_val, "label": label_val},
+                fetch_list=[output],
+            )
 
-            self.assertTrue(np.isclose(np_result, result).all())
+            np.testing.assert_allclose(np_result, result, rtol=1e-05)
 
 
 class TestSquareErrorInvalidInput(unittest.TestCase):
     def test_error(self):
         def test_invalid_input():
             input = [256, 3]
-            label = fluid.data(name='label1', shape=[None, 3], dtype='float32')
-            loss = fluid.layers.square_error_cost(input, label)
+            label = paddle.static.data(
+                name='label1', shape=[None, 3], dtype='float32'
+            )
+            loss = paddle.nn.functional.square_error_cost(input, label)
 
         self.assertRaises(TypeError, test_invalid_input)
 
         def test_invalid_label():
-            input = fluid.data(name='input2', shape=[None, 3], dtype='float32')
+            input = paddle.static.data(
+                name='input2', shape=[None, 3], dtype='float32'
+            )
             label = [256, 3]
-            loss = fluid.layers.square_error_cost(input, label)
+            loss = paddle.nn.functional.square_error_cost(input, label)
 
         self.assertRaises(TypeError, test_invalid_label)
 

@@ -19,10 +19,11 @@
 #include "gflags/gflags.h"
 #include "paddle/fluid/framework/garbage_collector.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
+#include "paddle/phi/core/flags.h"
 
-DECLARE_double(eager_delete_tensor_gb);
-DECLARE_double(memory_fraction_of_eager_deletion);
-DECLARE_bool(fast_eager_deletion_mode);
+PHI_DECLARE_double(eager_delete_tensor_gb);
+PHI_DECLARE_double(memory_fraction_of_eager_deletion);
+PHI_DECLARE_bool(fast_eager_deletion_mode);
 
 namespace paddle {
 namespace framework {
@@ -78,14 +79,12 @@ DefaultStreamGarbageCollector::DefaultStreamGarbageCollector(
     : GarbageCollector(place, max_memory_size) {}
 
 void DefaultStreamGarbageCollector::Wait() const {
-  static_cast<platform::CUDADeviceContext *>(this->dev_ctx_)
-      ->WaitStreamCallback();
+  static_cast<phi::GPUContext *>(this->dev_ctx_)->WaitStreamCallback();
 }
 
 void DefaultStreamGarbageCollector::ClearCallback(
     const std::function<void()> &callback) {
-  static_cast<platform::CUDADeviceContext *>(this->dev_ctx_)
-      ->AddStreamCallback(callback);
+  static_cast<phi::GPUContext *>(this->dev_ctx_)->AddStreamCallback(callback);
 }
 
 StreamGarbageCollector::StreamGarbageCollector(const platform::CUDAPlace &place,
@@ -124,82 +123,6 @@ CUDAPinnedGarbageCollector::CUDAPinnedGarbageCollector(
 void CUDAPinnedGarbageCollector::ClearCallback(
     const std::function<void()> &callback) {
   callback();
-}
-#endif
-
-#ifdef PADDLE_WITH_ASCEND_CL
-NPUDefaultStreamGarbageCollector::NPUDefaultStreamGarbageCollector(
-    const platform::NPUPlace &place, size_t max_memory_size)
-    : GarbageCollector(place, max_memory_size) {}
-
-void NPUDefaultStreamGarbageCollector::Wait() const {
-  static_cast<platform::NPUDeviceContext *>(this->dev_ctx_)
-      ->WaitStreamCallback();
-}
-
-void NPUDefaultStreamGarbageCollector::ClearCallback(
-    const std::function<void()> &callback) {
-  static_cast<platform::NPUDeviceContext *>(this->dev_ctx_)
-      ->AddStreamCallback(callback);
-}
-NPUUnsafeFastGarbageCollector::NPUUnsafeFastGarbageCollector(
-    const platform::NPUPlace &place, size_t max_memory_size)
-    : GarbageCollector(place, max_memory_size) {}
-
-void NPUUnsafeFastGarbageCollector::ClearCallback(
-    const std::function<void()> &callback) {
-  callback();
-}
-
-#endif
-
-#ifdef PADDLE_WITH_MLU
-MLUDefaultStreamGarbageCollector::MLUDefaultStreamGarbageCollector(
-    const platform::MLUPlace &place, size_t max_memory_size)
-    : GarbageCollector(place, max_memory_size) {}
-
-void MLUDefaultStreamGarbageCollector::Wait() const {
-  static_cast<platform::MLUDeviceContext *>(this->dev_ctx_)
-      ->WaitStreamCallback();
-}
-
-void MLUDefaultStreamGarbageCollector::ClearCallback(
-    const std::function<void()> &callback) {
-  static_cast<platform::MLUDeviceContext *>(this->dev_ctx_)
-      ->AddStreamCallback(callback);
-}
-MLUUnsafeFastGarbageCollector::MLUUnsafeFastGarbageCollector(
-    const platform::MLUPlace &place, size_t max_memory_size)
-    : GarbageCollector(place, max_memory_size) {}
-
-void MLUUnsafeFastGarbageCollector::ClearCallback(
-    const std::function<void()> &callback) {
-  callback();
-}
-
-MLUStreamGarbageCollector::MLUStreamGarbageCollector(
-    const platform::MLUPlace &place, size_t max_memory_size)
-    : GarbageCollector(place, max_memory_size) {
-  platform::MLUDeviceGuard guard(place.device);
-  PADDLE_ENFORCE_MLU_SUCCESS(cnrtQueueCreate(&stream_));
-  callback_manager_.reset(
-      new platform::StreamCallbackManager<mluStream>(stream_));
-}
-
-MLUStreamGarbageCollector::~MLUStreamGarbageCollector() {
-  auto place = this->dev_ctx_->GetPlace();
-  platform::MLUDeviceGuard guard(place.device);
-  PADDLE_ENFORCE_MLU_SUCCESS(cnrtQueueSync(stream_));
-  PADDLE_ENFORCE_MLU_SUCCESS(cnrtQueueDestroy(stream_));
-}
-
-mluStream MLUStreamGarbageCollector::stream() const { return stream_; }
-
-void MLUStreamGarbageCollector::Wait() const { callback_manager_->Wait(); }
-
-void MLUStreamGarbageCollector::ClearCallback(
-    const std::function<void()> &callback) {
-  callback_manager_->AddCallback(callback);
 }
 #endif
 

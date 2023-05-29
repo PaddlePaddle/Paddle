@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/dynload/rocm_driver.h"
+
 #include "paddle/phi/backends/dynload/rocm_driver.h"
 
 namespace paddle {

@@ -14,6 +14,12 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/controlflow/conditional_block_op.h"
 
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
+#include "paddle/phi/core/flags.h"
+
+PHI_DECLARE_bool(use_mkldnn);
 namespace paddle {
 namespace framework {
 class OpDesc;
@@ -56,29 +62,50 @@ class ConditionalBlockInferOp : public ConditionalOp {
       // vector or tensor, whether need to execute the operators in sub-block
       // depends on the input variables (Input).
       auto xs = InputTensors(scope, "Input");
-      need_run = std::all_of(
-          xs.begin(), xs.end(),
-          [](const framework::LoDTensor *t) { return t->numel() != 0; });
+      need_run =
+          std::all_of(xs.begin(), xs.end(), [](const phi::DenseTensor *t) {
+            return t->numel() != 0;
+          });
     }
 
     if (need_run) {
       auto *scope_var = scope.FindVar(Output("Scope"));
       PADDLE_ENFORCE_NOT_NULL(
-          scope_var, platform::errors::PreconditionNotMet(
-                         "Scope must be set in ConditionalBlockInferOp."));
+          scope_var,
+          platform::errors::PreconditionNotMet(
+              "Scope must be set in ConditionalBlockInferOp."));
       auto *scopes = scope_var->GetMutable<std::vector<framework::Scope *>>();
       scopes->resize(1);
       scopes->front() = &scope.NewScope();
       auto &cur_scope = *scopes->front();
 
-      framework::Executor exec(dev_place);
       auto *block = Attr<framework::BlockDesc *>("sub_block");
       VLOG(3) << "Conditional block.idx = " << block->ID()
               << ", scope = " << &cur_scope;
-      exec.Run(*block->Program(), &cur_scope, block->ID(), false);
+
+      if (!exec_ || !platform::is_same_place(exec_->GetPlace(), dev_place)) {
+        auto &pdesc = *block->Program();
+        exec_.reset(new framework::Executor(dev_place));
+#ifdef PADDLE_WITH_MKLDNN
+        if (FLAGS_use_mkldnn) exec_->EnableMKLDNN(pdesc);
+#endif
+        ctx_ = exec_->Prepare(
+            pdesc, block->ID(), std::vector<std::string>(), false);
+#ifdef PADDLE_WITH_MKLDNN
+        if (FLAGS_use_mkldnn) {
+          platform::AttachPointerHashToMKLDNNKey(exec_.get(), dev_place);
+          platform::RegisterModelLayout(ctx_->ops_, dev_place);
+        }
+#endif
+      }
+      exec_->RunPreparedContext(ctx_.get(), &cur_scope, false, true, false);
       scope.DeleteScope(scopes->front());
     }
   }
+
+ private:
+  mutable std::shared_ptr<framework::Executor> exec_{nullptr};
+  mutable std::unique_ptr<framework::ExecutorPrepareContext> ctx_{nullptr};
 };
 
 }  // namespace operators
@@ -86,7 +113,8 @@ class ConditionalBlockInferOp : public ConditionalOp {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    conditional_block_infer, ops::ConditionalBlockInferOp,
+    conditional_block_infer,
+    ops::ConditionalBlockInferOp,
     ops::ConditionalBlockOpProtoMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);

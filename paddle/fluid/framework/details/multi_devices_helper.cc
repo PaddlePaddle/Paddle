@@ -42,6 +42,8 @@ static std::unordered_set<std::string> kMultiDeviceOps{
     "c_comm_init_all",
     "c_comm_init_multitrainer",
     "c_gen_nccl_id",
+    "c_gen_bkcl_id",
+    "c_gen_xccl_id",
     "c_sync_comm_stream",
     "send",
     "recv",
@@ -162,7 +164,8 @@ static bool IsDataParallelInferenceGraphImpl(
   }
 
   PADDLE_ENFORCE_GE(
-      place_num, 1,
+      place_num,
+      1,
       platform::errors::NotFound(
           "No place found, this may be a bug.\nIt would be helpful if you "
           "could inform us of how this conversion went by opening a github "

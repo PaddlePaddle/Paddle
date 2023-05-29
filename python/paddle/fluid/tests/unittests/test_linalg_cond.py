@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
+
 import paddle
-import paddle.static as static
+from paddle import static
 
 p_list_n_n = ("fro", "nuc", 1, -1, np.inf, -np.inf)
 p_list_m_n = (None, 2, -2)
@@ -33,7 +33,8 @@ def test_static_assert_true(self, x_list, p_list):
                 result = exe.run(feed={"X": x}, fetch_list=[output])
                 expected_output = np.linalg.cond(x, p)
                 np.testing.assert_allclose(
-                    result[0], expected_output, rtol=5e-5)
+                    result[0], expected_output, rtol=5e-5
+                )
 
 
 def test_dygraph_assert_true(self, x_list, p_list):
@@ -43,7 +44,8 @@ def test_dygraph_assert_true(self, x_list, p_list):
             output = paddle.linalg.cond(input_tensor, p)
             expected_output = np.linalg.cond(x, p)
             np.testing.assert_allclose(
-                output.numpy(), expected_output, rtol=5e-5)
+                output.numpy(), expected_output, rtol=5e-5
+            )
 
 
 def gen_input():
@@ -82,7 +84,7 @@ def gen_empty_input():
 class API_TestStaticCond(unittest.TestCase):
     def test_out(self):
         paddle.enable_static()
-        # test calling results of 'cond' in static mode
+        # test calling results of 'cond' in static graph mode
         x_list_n_n, x_list_m_n = gen_input()
         test_static_assert_true(self, x_list_n_n, p_list_n_n + p_list_m_n)
         test_static_assert_true(self, x_list_m_n, p_list_m_n)
@@ -104,7 +106,7 @@ class TestCondAPIError(unittest.TestCase):
         p_list_error = ('fro_', '_nuc', -0.7, 0, 1.5, 3)
         x_list_n_n, x_list_m_n = gen_input()
         for p in p_list_error:
-            for x in (x_list_n_n + x_list_m_n):
+            for x in x_list_n_n + x_list_m_n:
                 x_tensor = paddle.to_tensor(x)
                 self.assertRaises(ValueError, paddle.linalg.cond, x_tensor, p)
 
@@ -115,11 +117,11 @@ class TestCondAPIError(unittest.TestCase):
 
     def test_static_api_error(self):
         paddle.enable_static()
-        # test raising errors when 'cond' is called in static mode
+        # test raising errors when 'cond' is called in static graph mode
         p_list_error = ('f ro', 'fre', 'NUC', -1.6, 0, 5)
         x_list_n_n, x_list_m_n = gen_input()
         for p in p_list_error:
-            for x in (x_list_n_n + x_list_m_n):
+            for x in x_list_n_n + x_list_m_n:
                 with static.program_guard(static.Program(), static.Program()):
                     x_data = static.data("X", shape=x.shape, dtype=x.dtype)
                     self.assertRaises(ValueError, paddle.linalg.cond, x_data, p)
@@ -130,18 +132,18 @@ class TestCondAPIError(unittest.TestCase):
                     x_data = static.data("X", shape=x.shape, dtype=x.dtype)
                     self.assertRaises(ValueError, paddle.linalg.cond, x_data, p)
 
-    # it's not supported when input is an empty tensor in static mode
+    # it's not supported when input is an empty tensor in static graph mode
     def test_static_empty_input_error(self):
         paddle.enable_static()
 
         x_list_n_n, x_list_m_n = gen_empty_input()
-        for p in (p_list_n_n + p_list_m_n):
+        for p in p_list_n_n + p_list_m_n:
             for x in x_list_n_n:
                 with static.program_guard(static.Program(), static.Program()):
                     x_data = static.data("X", shape=x.shape, dtype=x.dtype)
                     self.assertRaises(ValueError, paddle.linalg.cond, x_data, p)
 
-        for p in (p_list_n_n + p_list_m_n):
+        for p in p_list_n_n + p_list_m_n:
             for x in x_list_n_n:
                 with static.program_guard(static.Program(), static.Program()):
                     x_data = static.data("X", shape=x.shape, dtype=x.dtype)

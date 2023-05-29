@@ -13,98 +13,113 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/fused/fusion_seqconv_eltadd_relu_op.h"
+
 #include <algorithm>  // for min, max
 #include <string>
-#include "paddle/fluid/operators/math/fc.h"
+
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "paddle/phi/kernels/funcs/fc_functor.h"
 
 namespace paddle {
 namespace operators {
 
 void FusionSeqConvEltAddReluOp::InferShape(
     framework::InferShapeContext* ctx) const {
-  OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X",
-                 "fusion_seqconv_eltadd_relu");
-  OP_INOUT_CHECK(ctx->HasInput("Filter"), "Input", "Filter",
-                 "fusion_seqconv_eltadd_relu");
-  OP_INOUT_CHECK(ctx->HasInput("Bias"), "Input", "Bias",
-                 "fusion_seqconv_eltadd_relu");
+  OP_INOUT_CHECK(
+      ctx->HasInput("X"), "Input", "X", "fusion_seqconv_eltadd_relu");
+  OP_INOUT_CHECK(
+      ctx->HasInput("Filter"), "Input", "Filter", "fusion_seqconv_eltadd_relu");
+  OP_INOUT_CHECK(
+      ctx->HasInput("Bias"), "Input", "Bias", "fusion_seqconv_eltadd_relu");
 
-  OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out",
-                 "fusion_seqconv_eltadd_relu");
-  OP_INOUT_CHECK(ctx->HasOutput("ColMat"), "Output", "ColMat",
+  OP_INOUT_CHECK(
+      ctx->HasOutput("Out"), "Output", "Out", "fusion_seqconv_eltadd_relu");
+  OP_INOUT_CHECK(ctx->HasOutput("ColMat"),
+                 "Output",
+                 "ColMat",
                  "fusion_seqconv_eltadd_relu");
 
   auto x_dims = ctx->GetInputDim("X");
   auto w_dims = ctx->GetInputDim("Filter");
   int context_length = ctx->Attrs().Get<int>("contextLength");
-  PADDLE_ENFORCE_EQ(ctx->Attrs().Get<int>("contextStride"), 1,
+  PADDLE_ENFORCE_EQ(ctx->Attrs().Get<int>("contextStride"),
+                    1,
                     platform::errors::InvalidArgument(
                         "Currently, FusionSeqConvEltAddReluOp only supports "
                         "contextStride=1, but received value is: %d.",
                         ctx->Attrs().Get<int>("contextStride")));
 
   PADDLE_ENFORCE_EQ(
-      x_dims.size(), 2,
+      x_dims.size(),
+      2,
       platform::errors::InvalidArgument(
           "Input(X) should be 2-D tensor, but reveiced value is: %d.",
           x_dims.size()));
 
   PADDLE_ENFORCE_EQ(
-      w_dims.size(), 2,
+      w_dims.size(),
+      2,
       platform::errors::InvalidArgument(
           "Filter should be 2-D tensor, but reveiced value is: %d.",
           w_dims.size()));
 
-  PADDLE_ENFORCE_EQ(w_dims[0], context_length * x_dims[1],
+  PADDLE_ENFORCE_EQ(w_dims[0],
+                    context_length * x_dims[1],
                     platform::errors::InvalidArgument(
                         "Filter's height should be equal to context_length * "
                         "input_hidden_size, but received Filter height is: %d,"
                         "context_length is: %d, input_hidden_size is: %d.",
-                        w_dims[0], context_length, x_dims[1]));
+                        w_dims[0],
+                        context_length,
+                        x_dims[1]));
 
   PADDLE_ENFORCE_GT(
-      context_length + ctx->Attrs().Get<int>("contextStart"), 0,
+      context_length + ctx->Attrs().Get<int>("contextStart"),
+      0,
       platform::errors::InvalidArgument(
           "contextStart size should be smaller than contextLength, "
           "but received context_length is: %d, contextStart is: "
           "%d.",
-          context_length, ctx->Attrs().Get<int>("contextStart")));
+          context_length,
+          ctx->Attrs().Get<int>("contextStart")));
 
   ctx->SetOutputDim("Out", {x_dims[0], w_dims[1]});
   ctx->SetOutputDim("ColMat", {x_dims[0], w_dims[0]});
   ctx->ShareLoD("X", "Out");
 }
 
-framework::OpKernelType FusionSeqConvEltAddReluOp::GetExpectedKernelType(
+phi::KernelKey FusionSeqConvEltAddReluOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  return framework::OpKernelType(
-      OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.device_context());
+  return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                        ctx.GetPlace());
 }
 
 void FusionSeqConvEltAddReluOpMaker::Make() {
-  AddInput("X",
-           "(LoDTensor) the input is a LodTensor, which support "
-           "variable-time length input sequence. The underlying tensor in "
-           "this LoDTensor is a matrix with shape (T X M), where T is the "
-           "total time steps in this mini-batch, M is the dim size of x.");
+  AddInput(
+      "X",
+      "(phi::DenseTensor) the input is a LodTensor, which support "
+      "variable-time length input sequence. The underlying tensor in "
+      "this phi::DenseTensor is a matrix with shape (T X M), where T is the "
+      "total time steps in this mini-batch, M is the dim size of x.");
   // PaddingData only support false yet, should be ensured at pass.
-  AddInput("Filter",
-           "(Tensor) same as the input(Filter) of sequence conv op is an "
-           "learnable parameter."
-           "This is a tensor with shape (K, N), where K is the "
-           "context_length * dim size of x, N is the output feature size.");
-  AddInput("Bias",
-           "(Tensor) the learnable weights. shape (1, N), where N is the "
-           "output feature size");
+  AddInput(
+      "Filter",
+      "(phi::DenseTensor) same as the input(Filter) of sequence conv op is an "
+      "learnable parameter."
+      "This is a tensor with shape (K, N), where K is the "
+      "context_length * dim size of x, N is the output feature size.");
+  AddInput(
+      "Bias",
+      "(phi::DenseTensor) the learnable weights. shape (1, N), where N is the "
+      "output feature size");
   AddOutput(
       "Out",
-      "(LoDTensor) the output(Out) is a LodTensor, which support "
+      "(phi::DenseTensor) the output(Out) is a LodTensor, which support "
       "variable-time length output sequence. The underlying tensor in "
-      "this LoDTensor is a matrix with shape (T, N), where, T is the "
+      "this phi::DenseTensor is a matrix with shape (T, N), where, T is the "
       "total time steps in this mini-batch, N is the output feature size.");
   AddOutput("ColMat",
-            "(Tensor) (T, K), where T is where T is the "
+            "(phi::DenseTensor) (T, K), where T is where T is the "
             "total time steps in this mini-batch, K is height of Filter")
       .AsIntermediate();
   AddAttr<int>("contextLength",
@@ -133,28 +148,30 @@ Fusion Sequence Conv and ElementwiseAdd Operator.
 )DOC");
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class FusionSeqConvEltAddReluKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    using DeviceContext = paddle::platform::CPUDeviceContext;
-    auto* x = ctx.Input<LoDTensor>("X");
-    auto* w = ctx.Input<Tensor>("Filter");
-    auto* b = ctx.Input<Tensor>("Bias");
-    auto* y = ctx.Output<LoDTensor>("Out");
-    auto* col = ctx.Output<Tensor>("ColMat");
+    auto* x = ctx.Input<phi::DenseTensor>("X");
+    auto* w = ctx.Input<phi::DenseTensor>("Filter");
+    auto* b = ctx.Input<phi::DenseTensor>("Bias");
+    auto* y = ctx.Output<phi::DenseTensor>("Out");
+    auto* col = ctx.Output<phi::DenseTensor>("ColMat");
 
     auto x_lod = x->lod();
-    auto x_dims = x->dims();
-    auto w_dims = w->dims();
+    auto x_dims = phi::vectorize<int64_t>(x->dims());
+    auto w_dims = phi::vectorize<int64_t>(w->dims());
     PADDLE_ENFORCE_EQ(
-        b->numel(), w_dims[1],
+        b->numel(),
+        w_dims[1],
         platform::errors::InvalidArgument(
             "bias size should be equal to weights feature size, but received "
             "bias size is: %d, weights feature size is: %d.",
-            b->numel(), w_dims[1]));
+            b->numel(),
+            w_dims[1]));
     PADDLE_ENFORCE_EQ(
-        x_lod.size(), 1UL,
+        x_lod.size(),
+        1UL,
         platform::errors::InvalidArgument(
             "Only support one level sequence now, but received value is: %d.",
             x_lod.size()));
@@ -244,9 +261,16 @@ class FusionSeqConvEltAddReluKernel : public framework::OpKernel<T> {
       }
     }
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    math::FCFunctor<DeviceContext, T> fc;
-    fc(dev_ctx, x_dims[0], w_dims[1], w_dims[0], col_data, w_data, y_data,
-       b_data, true);
+    phi::funcs::FCFunctor<DeviceContext, T> fc;
+    fc(dev_ctx,
+       x_dims[0],
+       w_dims[1],
+       w_dims[0],
+       col_data,
+       w_data,
+       y_data,
+       b_data,
+       true);
   }
 };
 
@@ -254,9 +278,13 @@ class FusionSeqConvEltAddReluKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(fusion_seqconv_eltadd_relu, ops::FusionSeqConvEltAddReluOp,
+REGISTER_OPERATOR(fusion_seqconv_eltadd_relu,
+                  ops::FusionSeqConvEltAddReluOp,
                   ops::FusionSeqConvEltAddReluOpMaker);
 
-REGISTER_OP_CPU_KERNEL(fusion_seqconv_eltadd_relu,
-                       ops::FusionSeqConvEltAddReluKernel<float>,
-                       ops::FusionSeqConvEltAddReluKernel<double>);
+PD_REGISTER_STRUCT_KERNEL(fusion_seqconv_eltadd_relu,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::FusionSeqConvEltAddReluKernel,
+                          float,
+                          double) {}

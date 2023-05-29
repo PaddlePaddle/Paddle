@@ -42,6 +42,8 @@ function ref_whl(){
       ref_version=.post110
   elif [[ ${ref_CUDA_MAJOR} == "11.2" ]];then
       ref_version=.post112
+  elif [[ ${ref_CUDA_MAJOR} == "11.4" ]];then
+      ref_version=.post114
   elif [[ ${ref_CUDA_MAJOR} == "10" ]];then
       ref_version=.post100
   elif [[ ${ref_CUDA_MAJOR} == "10.1" ]];then
@@ -59,27 +61,15 @@ function ref_whl(){
   ref_web="https://paddle-wheel.bj.bcebos.com/${PADDLE_BRANCH}-${ref_gpu}-${ref_mkl}${ref_gcc}"
   
   if [[ ${PADDLE_VERSION} == "develop" && ${WITH_GPU} == "ON" ]]; then
-    ref_paddle_whl=paddlepaddle${install_gpu}-${ref_dev}${ref_version}-cp27-cp27mu-linux_x86_64.whl
-    ref_paddle3_whl=paddlepaddle${install_gpu}-${ref_dev}${ref_version}-cp35-cp35m-linux_x86_64.whl
-    ref_paddle36_whl=paddlepaddle${install_gpu}-${ref_dev}${ref_version}-cp36-cp36m-linux_x86_64.whl
     ref_paddle37_whl=paddlepaddle${install_gpu}-${ref_dev}${ref_version}-cp37-cp37m-linux_x86_64.whl
     ref_paddle38_whl=paddlepaddle${install_gpu}-${ref_dev}${ref_version}-cp38-cp38-linux_x86_64.whl
   elif [[ ${PADDLE_VERSION} == "develop" && ${WITH_GPU} != "ON" ]]; then
-    ref_paddle_whl=paddlepaddle${install_gpu}-${ref_dev}-cp27-cp27mu-linux_x86_64.whl
-    ref_paddle3_whl=paddlepaddle${install_gpu}-${ref_dev}-cp35-cp35m-linux_x86_64.whl
-    ref_paddle36_whl=paddlepaddle${install_gpu}-${ref_dev}-cp36-cp36m-linux_x86_64.whl
     ref_paddle37_whl=paddlepaddle${install_gpu}-${ref_dev}-cp37-cp37m-linux_x86_64.whl
     ref_paddle38_whl=paddlepaddle${install_gpu}-${ref_dev}-cp38-cp38-linux_x86_64.whl
   elif [[ ${PADDLE_VERSION} != "develop" && ${WITH_GPU} == "ON" ]]; then
-    ref_paddle_whl=paddlepaddle${install_gpu}-${PADDLE_VERSION}${ref_version}-cp27-cp27mu-linux_x86_64.whl
-    ref_paddle3_whl=paddlepaddle${install_gpu}-${PADDLE_VERSION}${ref_version}-cp35-cp35m-linux_x86_64.whl
-    ref_paddle36_whl=paddlepaddle${install_gpu}-${PADDLE_VERSION}${ref_version}-cp36-cp36m-linux_x86_64.whl
     ref_paddle37_whl=paddlepaddle${install_gpu}-${PADDLE_VERSION}${ref_version}-cp37-cp37m-linux_x86_64.whl
     ref_paddle38_whl=paddlepaddle${install_gpu}-${PADDLE_VERSION}${ref_version}-cp38-cp38-linux_x86_64.whl
   else
-    ref_paddle_whl=paddlepaddle${install_gpu}-${PADDLE_VERSION}-cp27-cp27mu-linux_x86_64.whl
-    ref_paddle3_whl=paddlepaddle${install_gpu}-${PADDLE_VERSION}-cp35-cp35m-linux_x86_64.whl
-    ref_paddle36_whl=paddlepaddle${install_gpu}-${PADDLE_VERSION}-cp36-cp36m-linux_x86_64.whl
     ref_paddle37_whl=paddlepaddle${install_gpu}-${PADDLE_VERSION}-cp37-cp37m-linux_x86_64.whl
     ref_paddle38_whl=paddlepaddle${install_gpu}-${PADDLE_VERSION}-cp38-cp38-linux_x86_64.whl
   fi
@@ -88,11 +78,27 @@ function ref_whl(){
 
 function install_whl(){
   dockerfile_line=`wc -l Dockerfile.tmp|awk '{print $1}'`
-  sed -i "${dockerfile_line}i RUN wget -q ${ref_web}/${ref_paddle_whl} && pip install ${ref_paddle_whl} && rm -f  ${ref_paddle_whl}" Dockerfile.tmp
-  sed -i "${dockerfile_line}i RUN wget -q ${ref_web}/${ref_paddle3_whl} && pip3.5 install ${ref_paddle3_whl} && rm  -f ${ref_paddle3_whl}" Dockerfile.tmp
-  sed -i "${dockerfile_line}i RUN wget -q ${ref_web}/${ref_paddle36_whl} && pip3.6 install ${ref_paddle36_whl} && rm -f ${ref_paddle36_whl}" Dockerfile.tmp
   sed -i "${dockerfile_line}i RUN wget -q ${ref_web}/${ref_paddle37_whl} && pip3.7 install ${ref_paddle37_whl} && rm -f ${ref_paddle37_whl}" Dockerfile.tmp
   sed -i "${dockerfile_line}i RUN wget -q ${ref_web}/${ref_paddle38_whl} && pip3.8 install ${ref_paddle38_whl} && rm -f ${ref_paddle38_whl}" Dockerfile.tmp
+}
+
+
+function set_cuda_env(){
+  if [[ ${WITH_GPU} == "ON" ]]; then
+      sed -i "s#<setcuda>#ENV LD_LIBRARY_PATH=/usr/local/cuda-${ref_CUDA_MAJOR}/targets/x86_64-linux/lib:\$LD_LIBRARY_PATH #g" Dockerfile.tmp
+  else
+      sed -i 's#<setcuda>##g' Dockerfile.tmp
+  fi
+}
+
+
+function install_package_for_cpu(){
+  if [[ ${WITH_GPU} != "ON" ]]; then
+    sed -i 's#<install_cpu_package>#RUN apt-get update \
+      RUN apt install -y make gcc g++ #g' Dockerfile.tmp
+  else
+    sed -i 's#<install_cpu_package>##g' Dockerfile.tmp
+  fi
 }
 
 
@@ -118,12 +124,18 @@ function install_gcc(){
 
 
 function make_dockerfile(){
-  sed "s/<baseimg>/${docker_name}/g" tools/dockerfile/Dockerfile.ubuntu18 >Dockerfile.tmp
+  if [[ ${WITH_GPU} == "ON" ]]; then
+      sed "s#<baseimg>#nvidia/cuda:${docker_name}#g" tools/dockerfile/Dockerfile.ubuntu18 >Dockerfile.tmp
+  else
+      sed "s#<baseimg>#${docker_name}#g" tools/dockerfile/Dockerfile.ubuntu18 >Dockerfile.tmp
+  fi
 }
 
 
 function main(){
   make_dockerfile
+  set_cuda_env
+  install_package_for_cpu
   install_gcc
   ref_whl
   install_whl

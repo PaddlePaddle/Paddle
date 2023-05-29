@@ -12,14 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
+from eager_op_test import OpTest
 from scipy.special import erfinv
-from op_test import OpTest
+
 import paddle
-import paddle.fluid.core as core
+from paddle.fluid import core
 
 paddle.enable_static()
 np.random.seed(0)
@@ -28,13 +28,15 @@ np.random.seed(0)
 class TestErfinv(OpTest):
     def setUp(self):
         self.op_type = "erfinv"
+        self.python_api = paddle.erfinv
         self.init_dtype()
         self.shape = [11, 17]
         self.x = np.random.uniform(-1, 1, size=self.shape).astype(self.dtype)
         self.res_ref = erfinv(self.x).astype(self.dtype)
         self.grad_out = np.ones(self.shape, self.dtype)
-        self.gradient = np.sqrt(np.pi) / 2 * np.exp(np.square(
-            self.res_ref)) * self.grad_out
+        self.gradient = (
+            np.sqrt(np.pi) / 2 * np.exp(np.square(self.res_ref)) * self.grad_out
+        )
         self.inputs = {'X': self.x}
         self.outputs = {'Out': self.res_ref}
 
@@ -49,7 +51,8 @@ class TestErfinv(OpTest):
             ['X'],
             'Out',
             user_defined_grads=[self.gradient],
-            user_defined_grad_outputs=self.grad_out)
+            user_defined_grad_outputs=self.grad_out,
+        )
 
 
 class TestErfinvFP32(TestErfinv):
@@ -74,12 +77,12 @@ class TestErfinvAPI(unittest.TestCase):
 
         def run(place):
             with paddle.static.program_guard(paddle.static.Program()):
-                x = paddle.fluid.data('x', [1, 5], dtype=self.dtype)
+                x = paddle.static.data('x', [1, 5], dtype=self.dtype)
                 out = paddle.erfinv(x)
                 exe = paddle.static.Executor(place)
                 res = exe.run(feed={'x': self.x.reshape([1, 5])})
             for r in res:
-                self.assertEqual(np.allclose(self.res_ref, r), True)
+                np.testing.assert_allclose(self.res_ref, r, rtol=1e-05)
 
         for place in self.place:
             run(place)
@@ -89,7 +92,7 @@ class TestErfinvAPI(unittest.TestCase):
             paddle.disable_static(place)
             x = paddle.to_tensor(self.x)
             out = paddle.erfinv(x)
-            self.assertEqual(np.allclose(self.res_ref, out.numpy()), True)
+            np.testing.assert_allclose(self.res_ref, out.numpy(), rtol=1e-05)
             paddle.enable_static()
 
         for place in self.place:
@@ -100,7 +103,7 @@ class TestErfinvAPI(unittest.TestCase):
             paddle.disable_static(place)
             x = paddle.to_tensor(self.x)
             x.erfinv_()
-            self.assertEqual(np.allclose(self.res_ref, x.numpy()), True)
+            np.testing.assert_allclose(self.res_ref, x.numpy(), rtol=1e-05)
             paddle.enable_static()
 
         for place in self.place:

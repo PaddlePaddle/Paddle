@@ -12,19 +12,20 @@ limitations under the License. */
 #pragma once
 #include <algorithm>
 #include <vector>
+
 #include "paddle/fluid/operators/detection/prior_box_op.h"
 
 namespace paddle {
 namespace operators {
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class DensityPriorBoxOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<paddle::framework::Tensor>("Input");
-    auto* image = ctx.Input<paddle::framework::Tensor>("Image");
-    auto* boxes = ctx.Output<paddle::framework::Tensor>("Boxes");
-    auto* vars = ctx.Output<paddle::framework::Tensor>("Variances");
+    auto* input = ctx.Input<phi::DenseTensor>("Input");
+    auto* image = ctx.Input<phi::DenseTensor>("Image");
+    auto* boxes = ctx.Output<phi::DenseTensor>("Boxes");
+    auto* vars = ctx.Output<phi::DenseTensor>("Variances");
 
     auto variances = ctx.Attr<std::vector<float>>("variances");
     auto clip = ctx.Attr<bool>("clip");
@@ -65,7 +66,7 @@ class DensityPriorBoxOpKernel : public framework::OpKernel<T> {
 
     auto box_dim = vars->dims();
     boxes->Resize({feature_height, feature_width, num_priors, 4});
-    auto e_boxes = framework::EigenTensor<T, 4>::From(*boxes).setConstant(0.0);
+    auto e_boxes = phi::EigenTensor<T, 4>::From(*boxes).setConstant(0.0);
     int step_average = static_cast<int>((step_width + step_height) * 0.5);
 
     std::vector<float> sqrt_fixed_ratios;
@@ -120,12 +121,12 @@ class DensityPriorBoxOpKernel : public framework::OpKernel<T> {
         return std::min<T>(std::max<T>(v, 0.), 1.);
       });
     }
-    framework::Tensor var_t;
+    phi::DenseTensor var_t;
     var_t.mutable_data<T>(
         phi::make_ddim({1, static_cast<int>(variances.size())}),
         ctx.GetPlace());
 
-    auto var_et = framework::EigenTensor<T, 2>::From(var_t);
+    auto var_et = phi::EigenTensor<T, 2>::From(var_t);
 
     for (size_t i = 0; i < variances.size(); ++i) {
       var_et(0, i) = variances[i];
@@ -135,7 +136,7 @@ class DensityPriorBoxOpKernel : public framework::OpKernel<T> {
     auto var_dim = vars->dims();
     vars->Resize({box_num, static_cast<int>(variances.size())});
 
-    auto e_vars = framework::EigenMatrix<T, Eigen::RowMajor>::From(*vars);
+    auto e_vars = phi::EigenMatrix<T, Eigen::RowMajor>::From(*vars);
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for collapse(2)
 #endif

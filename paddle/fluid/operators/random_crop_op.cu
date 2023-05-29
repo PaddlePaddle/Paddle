@@ -15,7 +15,13 @@
 #include "paddle/fluid/operators/random_crop_op.h"
 
 namespace ops = paddle::operators;
-template <typename T>
-using Kernel = ops::RandomCropKernel<paddle::platform::CUDADeviceContext, T>;
-REGISTER_OP_CUDA_KERNEL(random_crop, Kernel<float>, Kernel<int>, Kernel<double>,
-                        Kernel<uint8_t>, Kernel<int16_t>);
+
+PD_REGISTER_STRUCT_KERNEL(random_crop,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::RandomCropKernel,
+                          float,
+                          int,
+                          double,
+                          uint8_t,
+                          int16_t) {}

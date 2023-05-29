@@ -13,17 +13,21 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/index_sample_kernel.h"
+
 #include <cmath>
 #include <fstream>
 #include <set>
 #include <string>
 #include <utility>
 #include <vector>
-#include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/framework/tensor_util.h"
+
+#include "glog/logging.h"
+
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/core/utils/data_type.h"
 namespace phi {
 template <typename T, typename Context, typename IndexT = int>
 void IndexSampleInner(const Context &context,
@@ -40,8 +44,8 @@ void IndexSampleInner(const Context &context,
 
   std::vector<T> input_vec;
   std::vector<IndexT> index_vec;
-  paddle::framework::TensorToVector(input, context, &input_vec);
-  paddle::framework::TensorToVector<IndexT>(index, context, &index_vec);
+  phi::TensorToVector(input, context, &input_vec);
+  phi::TensorToVector<IndexT>(index, context, &index_vec);
 
   std::vector<T> res(index_ids_num);
   for (int i = 0; i < index_ids_num; i++) {
@@ -74,7 +78,7 @@ void IndexSampleInner(const Context &context,
 
   auto ddim = phi::make_ddim({batch_size, index_length});
   context.template Alloc<T>(output);
-  paddle::framework::TensorFromVector(res, context, output);
+  phi::TensorFromVector(res, context, output);
   output->Resize(ddim);
 }
 
@@ -87,18 +91,14 @@ void IndexSampleKernel(const Context &ctx,
   auto index_type = index.dtype();
   bool index_type_match =
       index_type == DataType::INT32 || index_type == DataType::INT64;
-  PADDLE_ENFORCE_EQ(
-      index_type_match,
-      true,
-      errors::InvalidArgument(
-          "Input(Index) holds the wrong type, it holds %s, but "
-          "desires to be %s or %s",
-          paddle::framework::DataTypeToString(
-              paddle::framework::TransToProtoVarType(index_type)),
-          paddle::framework::DataTypeToString(
-              paddle::framework::TransToProtoVarType(DataType::INT32)),
-          paddle::framework::DataTypeToString(
-              paddle::framework::TransToProtoVarType((DataType::INT64)))));
+  PADDLE_ENFORCE_EQ(index_type_match,
+                    true,
+                    errors::InvalidArgument(
+                        "Input(Index) holds the wrong type, it holds %s, but "
+                        "desires to be %s or %s",
+                        DataTypeToString(index_type),
+                        DataTypeToString(DataType::INT32),
+                        DataTypeToString(DataType::INT64)));
   if (index_type == DataType::INT32) {
     IndexSampleInner<T, Context, int>(ctx, x, index, out);
   } else if (index_type == DataType::INT64) {

@@ -12,22 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-from paddle.fluid.dygraph import base as imperative_base
-from paddle.fluid import framework
+import paddle.autograd as imperative_base
+from paddle import framework
 
 __all__ = []
 
 
 def _obtain_optimizer_parameters_list(optimizer):
     if getattr(optimizer, '_param_groups', None) and isinstance(
-            optimizer._param_groups[0], dict):
+        optimizer._param_groups[0], dict
+    ):
         parameters_list = []
         for group in optimizer._param_groups:
             for param in group['params']:
                 parameters_list.append(param)
     else:
-        parameters_list = [param for param in optimizer._parameter_list]
+        parameters_list = list(optimizer._parameter_list)
 
     return parameters_list
 
@@ -41,26 +41,26 @@ class HeterParallelOptimizer:
         # NOTE(liubo48): In pure DataParallel mode,
         # the gradient synchronization is achieved through reducer.
 
-    @imperative_base.no_grad
+    @imperative_base.no_grad()
     @framework.dygraph_only
     def step(self):
         parameters_list = _obtain_optimizer_parameters_list(self._inner_opt)
         self._inner_opt.step()
 
-    @imperative_base.no_grad
-    def minimize(self,
-                 loss,
-                 startup_program=None,
-                 parameters=None,
-                 no_grad_set=None):
+    @imperative_base.no_grad()
+    def minimize(
+        self, loss, startup_program=None, parameters=None, no_grad_set=None
+    ):
 
         # minimize does not support parameters in the form of param_group,
         # so no need use _obtain_optimizer_parameters_list
-        parameter_list = parameters if parameters \
-            else self._inner_opt._parameter_list
+        parameter_list = (
+            parameters if parameters else self._inner_opt._parameter_list
+        )
 
-        return self._inner_opt.minimize(loss, startup_program, parameter_list,
-                                        no_grad_set)
+        return self._inner_opt.minimize(
+            loss, startup_program, parameter_list, no_grad_set
+        )
 
     def __getattr__(self, item):
         return getattr(self._inner_opt, item)

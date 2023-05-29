@@ -27,7 +27,8 @@ TaskLoop* TaskLoop::GetTaskLoopOfCurrentThread() { return thread_local_loop_; }
 TaskLoop::TaskLoop()
     : looping_(false), quit_(false), thread_id_(std::this_thread::get_id()) {
   PADDLE_ENFORCE_EQ(
-      thread_local_loop_, nullptr,
+      thread_local_loop_,
+      nullptr,
       platform::errors::AlreadyExists("Another TaskLoop is already init."));
   thread_local_loop_ = this;
 }
@@ -35,7 +36,8 @@ TaskLoop::TaskLoop()
 TaskLoop::~TaskLoop() { thread_local_loop_ = nullptr; }
 
 void TaskLoop::Loop() {
-  PADDLE_ENFORCE_EQ(looping_, false,
+  PADDLE_ENFORCE_EQ(looping_,
+                    false,
                     platform::errors::PreconditionNotMet(
                         "Loop can only execute in one loop thread"));
   AssertInLoopThread();
@@ -75,7 +77,8 @@ void TaskLoop::WakeUp() {
 void TaskLoop::AbortNotInLoopThread() {
   PADDLE_THROW(platform::errors::PreconditionNotMet(
       "This TaskLoop was created in thread %d, but current thread is %d",
-      thread_id_, std::this_thread::get_id()));
+      thread_id_,
+      std::this_thread::get_id()));
 }
 
 }  // namespace distributed

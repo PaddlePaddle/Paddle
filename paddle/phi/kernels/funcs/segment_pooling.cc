@@ -31,7 +31,7 @@ class SegmentPoolFunctor<phi::CPUContext, T, IndexT> {
                   const DenseTensor& input,
                   const DenseTensor& segments,
                   DenseTensor* output,
-                  DenseTensor* index,
+                  DenseTensor* index UNUSED,
                   const std::string pooltype = "SUM") {
     const IndexT* segment_ids = segments.data<IndexT>();
     auto curent_id = segment_ids[0];
@@ -90,7 +90,7 @@ class SegmentPoolGradFunctor<phi::CPUContext, T, IndexT> {
                   const DenseTensor& out_grad,
                   const DenseTensor& segments,
                   DenseTensor* in_grad,
-                  paddle::optional<const DenseTensor&> index,
+                  const paddle::optional<DenseTensor>& index UNUSED,
                   const std::string pooltype = "SUM") {
     const IndexT* segment_ids = segments.data<IndexT>();
     auto& place = *dev_ctx.eigen_device();
@@ -145,6 +145,7 @@ class SegmentPoolGradFunctor<phi::CPUContext, T, IndexT> {
 };
 
 using CPU = phi::CPUContext;
+using float16 = phi::dtype::float16;
 template class SegmentPoolFunctor<CPU, float, int>;
 template class SegmentPoolFunctor<CPU, float, int64_t>;
 template class SegmentPoolFunctor<CPU, double, int>;
@@ -153,6 +154,8 @@ template class SegmentPoolFunctor<CPU, int, int>;
 template class SegmentPoolFunctor<CPU, int, int64_t>;
 template class SegmentPoolFunctor<CPU, int64_t, int>;
 template class SegmentPoolFunctor<CPU, int64_t, int64_t>;
+template class SegmentPoolFunctor<CPU, float16, int>;
+template class SegmentPoolFunctor<CPU, float16, int64_t>;
 
 template class SegmentPoolGradFunctor<CPU, float, int>;
 template class SegmentPoolGradFunctor<CPU, float, int64_t>;
@@ -162,6 +165,8 @@ template class SegmentPoolGradFunctor<CPU, int, int>;
 template class SegmentPoolGradFunctor<CPU, int, int64_t>;
 template class SegmentPoolGradFunctor<CPU, int64_t, int>;
 template class SegmentPoolGradFunctor<CPU, int64_t, int64_t>;
+template class SegmentPoolGradFunctor<CPU, float16, int>;
+template class SegmentPoolGradFunctor<CPU, float16, int64_t>;
 
 }  // namespace funcs
 }  // namespace phi

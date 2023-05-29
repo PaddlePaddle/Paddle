@@ -13,6 +13,11 @@ limitations under the License. */
 
 #include <string>
 
+#include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/infermeta/unary.h"
+
 namespace paddle {
 namespace framework {
 class OpDesc;
@@ -32,31 +37,20 @@ class MemcpyH2DOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    auto type = ctx->GetInputsVarType("X")[0];
-    if (type == framework::proto::VarType::SELECTED_ROWS ||
-        type == framework::proto::VarType::LOD_TENSOR) {
-      ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
-      if (type == framework::proto::VarType::LOD_TENSOR) {
-        ctx->ShareLoD("X", /*->*/ "Out");
-      }
-    }
-  }
-
  protected:
-  framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const framework::Tensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const override {
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   expected_kernel_type.place_,
-                                   tensor.layout());
+  phi::KernelKey GetKernelTypeForVar(
+      const std::string &var_name,
+      const phi::DenseTensor &tensor,
+      const phi::KernelKey &expected_kernel_type) const override {
+    return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                          tensor.layout(),
+                          expected_kernel_type.dtype());
   }
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 
@@ -74,7 +68,8 @@ class MemcpyH2DKernel {
     if (x == nullptr) {
       return;
     }
-    PADDLE_ENFORCE_EQ(ctx.HasOutput("Out"), true,
+    PADDLE_ENFORCE_EQ(ctx.HasOutput("Out"),
+                      true,
                       platform::errors::NotFound(
                           "Output(Out) of memcpy_d2h_op is not found."));
     auto *out = ctx.OutputVar("Out");
@@ -88,22 +83,22 @@ class MemcpyH2DKernel {
 class MemcpyH2DOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(LoDTensor) The input variable ");
+    AddInput("X", "(phi::DenseTensor) The input variable ");
     AddOutput("Out",
-              "(LoDTensor) The type of output "
+              "(phi::DenseTensor) The type of output "
               "is the same as input X.");
-    AddAttr<int>(
-        "dst_place_type",
-        "Determine the dst place of tensor copy. "
-        "By Now it ONLY support CUDAPinnedPlace/CPU <-> NPUPlace/CUDAPlace "
-        "Other place type is Unimplemented and will cause ERROR."
-        "0: dst is on CUDAPlace. "
-        "1: dst is on NPUPlace. ");
+    AddAttr<int>("dst_place_type",
+                 "Determine the dst place of tensor copy. "
+                 "By Now it support:"
+                 "0. CUDAPinnedPlace/CPU <->CUDAPlace"
+                 "1. CPU <->XPUPlace"
+                 "2. CPU <->IPUPlace"
+                 "Other place type is Unimplemented and will cause ERROR.");
     AddComment(R"DOC(
     MemcpyD2H Operator.
-    By now, it ONLY supports the memcopy between CUDAPinnedPlace/CPU <-> NPUPlace/CUDAPlace.
+    By now, it ONLY supports the memcopy between CUDAPinnedPlace/CPU <-> CUDAPlace.
     You would have to update it if you want other more capacities.
-Out = X,  when type in [LoDTensor]
+Out = X,  when type in [phi::DenseTensor]
 raise error if the type is not listed above.
 )DOC");
   }
@@ -114,39 +109,43 @@ raise error if the type is not listed above.
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
+
+DECLARE_INFER_SHAPE_FUNCTOR(memcpy_h2d,
+                            MemcpyH2DInferShapeFunctor,
+                            PD_INFER_META(phi::UnchangedInferMeta));
 REGISTER_OPERATOR(
-    memcpy_h2d, ops::MemcpyH2DOp, ops::MemcpyH2DOpProtoMaker,
+    memcpy_h2d,
+    ops::MemcpyH2DOp,
+    ops::MemcpyH2DOpProtoMaker,
     ops::MemcpyH2DInferVarType,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
-    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
+    paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
+    MemcpyH2DInferShapeFunctor);
 
-REGISTER_OP_CPU_KERNEL_FUNCTOR(
-    memcpy_h2d, float, ops::MemcpyH2DKernel, double, ops::MemcpyH2DKernel,
-    int8_t, ops::MemcpyH2DKernel, uint8_t, ops::MemcpyH2DKernel, int,
-    ops::MemcpyH2DKernel, int64_t, ops::MemcpyH2DKernel, bool,
-    ops::MemcpyH2DKernel, paddle::platform::bfloat16, ops::MemcpyH2DKernel,
-    paddle::platform::complex<float>, ops::MemcpyH2DKernel,
-    paddle::platform::complex<double>, ops::MemcpyH2DKernel, plat::float16,
-    ops::MemcpyH2DKernel, int16_t, ops::MemcpyH2DKernel);
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-REGISTER_OP_CUDA_KERNEL_FUNCTOR(
-    memcpy_h2d, float, ops::MemcpyH2DKernel, double, ops::MemcpyH2DKernel,
-    int8_t, ops::MemcpyH2DKernel, uint8_t, ops::MemcpyH2DKernel, int,
-    ops::MemcpyH2DKernel, int64_t, ops::MemcpyH2DKernel, bool,
-    ops::MemcpyH2DKernel, paddle::platform::bfloat16, ops::MemcpyH2DKernel,
-    paddle::platform::complex<float>, ops::MemcpyH2DKernel,
-    paddle::platform::complex<double>, ops::MemcpyH2DKernel, plat::float16,
-    ops::MemcpyH2DKernel, int16_t, ops::MemcpyH2DKernel);
-#endif
-
-#ifdef PADDLE_WITH_ASCEND_CL
-REGISTER_OP_NPU_KERNEL_FUNCTOR(
-    memcpy_h2d, float, ops::MemcpyH2DKernel, double, ops::MemcpyH2DKernel,
-    int8_t, ops::MemcpyH2DKernel, uint8_t, ops::MemcpyH2DKernel, int,
-    ops::MemcpyH2DKernel, int64_t, ops::MemcpyH2DKernel, bool,
-    ops::MemcpyH2DKernel, paddle::platform::bfloat16, ops::MemcpyH2DKernel,
-    paddle::platform::complex<float>, ops::MemcpyH2DKernel,
-    paddle::platform::complex<double>, ops::MemcpyH2DKernel, plat::float16,
-    ops::MemcpyH2DKernel, int16_t, ops::MemcpyH2DKernel);
+#ifdef PADDLE_WITH_IPU
+REGISTER_OP_IPU_KERNEL_FUNCTOR(memcpy_h2d,
+                               float,
+                               ops::MemcpyH2DKernel,
+                               double,
+                               ops::MemcpyH2DKernel,
+                               int8_t,
+                               ops::MemcpyH2DKernel,
+                               uint8_t,
+                               ops::MemcpyH2DKernel,
+                               int,
+                               ops::MemcpyH2DKernel,
+                               int64_t,
+                               ops::MemcpyH2DKernel,
+                               bool,
+                               ops::MemcpyH2DKernel,
+                               paddle::platform::bfloat16,
+                               ops::MemcpyH2DKernel,
+                               paddle::platform::complex<float>,
+                               ops::MemcpyH2DKernel,
+                               paddle::platform::complex<double>,
+                               ops::MemcpyH2DKernel,
+                               plat::float16,
+                               ops::MemcpyH2DKernel,
+                               int16_t,
+                               ops::MemcpyH2DKernel);
 #endif

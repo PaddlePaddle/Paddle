@@ -12,34 +12,54 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import atexit
+from . import io
 from .spawn import spawn  # noqa: F401
-from .fleet.launch import launch  # noqa: F401
-
+from .launch.main import launch  # noqa: F401
 from .parallel import init_parallel_env  # noqa: F401
 from .parallel import get_rank  # noqa: F401
 from .parallel import get_world_size  # noqa: F401
-
+from .parallel import ParallelEnv  # noqa: F401
+from .parallel import DataParallel
 from .parallel_with_gloo import gloo_init_parallel_env
 from .parallel_with_gloo import gloo_barrier
 from .parallel_with_gloo import gloo_release
 
 from paddle.distributed.fleet.dataset import InMemoryDataset  # noqa: F401
 from paddle.distributed.fleet.dataset import QueueDataset  # noqa: F401
+from paddle.distributed.fleet.base.topology import ParallelMode  # noqa: F401
 
-from .collective import broadcast  # noqa: F401
-from .collective import all_reduce  # noqa: F401
-from .collective import reduce  # noqa: F401
-from .collective import all_gather  # noqa: F401
-from .collective import scatter  # noqa: F401
-from .collective import barrier  # noqa: F401
-from .collective import ReduceOp  # noqa: F401
 from .collective import split  # noqa: F401
 from .collective import new_group  # noqa: F401
-from .collective import alltoall  # noqa: F401
-from .collective import recv  # noqa: F401
-from .collective import get_group  # noqa: F401
-from .collective import send  # noqa: F401
-from .collective import wait  # noqa: F401
+from .collective import is_available
+from .communication import (
+    stream,
+    ReduceOp,
+    all_gather,
+    all_gather_object,
+    all_reduce,
+    alltoall,
+    alltoall_single,
+    broadcast,
+    broadcast_object_list,
+    reduce,
+    send,
+    scatter,
+    gather,
+    scatter_object_list,
+    isend,
+    recv,
+    irecv,
+    batch_isend_irecv,
+    P2POp,
+    reduce_scatter,
+    is_initialized,
+    destroy_process_group,
+    get_group,
+    wait,
+    barrier,
+    get_backend,
+)  # noqa: F401
 
 from .auto_parallel import shard_op  # noqa: F401
 from .auto_parallel import shard_tensor  # noqa: F401
@@ -50,40 +70,54 @@ from .entry_attr import ProbabilityEntry  # noqa: F401
 from .entry_attr import CountFilterEntry  # noqa: F401
 from .entry_attr import ShowClickEntry  # noqa: F401
 
-from paddle.fluid.dygraph.parallel import ParallelEnv  # noqa: F401
-
 from . import cloud_utils  # noqa: F401
-from . import utils  # noqa: F401
 
-from .sharding import *  # noqa: F401
+from .sharding import group_sharded_parallel  # noqa: F401
+from .sharding import save_group_sharded_model  # noqa: F401
+
+from . import rpc
 
 __all__ = [  # noqa
-      "spawn",
-      "launch",
-      "scatter",
-      "broadcast",
-      "ParallelEnv",
-      "new_group",
-      "init_parallel_env",
-      "gloo_init_parallel_env",
-      "gloo_barrier",
-      "gloo_release",
-      "QueueDataset",
-      "split",
-      "CountFilterEntry",
-      "ShowClickEntry",
-      "get_world_size",
-      "get_group",
-      "all_gather",
-      "InMemoryDataset",
-      "barrier",
-      "all_reduce",
-      "alltoall",
-      "send",
-      "reduce",
-      "recv",
-      "ReduceOp",
-      "wait",
-      "get_rank",
-      "ProbabilityEntry",
+    "io",
+    "spawn",
+    "launch",
+    "scatter",
+    "gather",
+    "scatter_object_list",
+    "broadcast",
+    "broadcast_object_list",
+    "ParallelEnv",
+    "new_group",
+    "init_parallel_env",
+    "gloo_init_parallel_env",
+    "gloo_barrier",
+    "gloo_release",
+    "QueueDataset",
+    "split",
+    "CountFilterEntry",
+    "ShowClickEntry",
+    "get_world_size",
+    "get_group",
+    "all_gather",
+    "all_gather_object",
+    "InMemoryDataset",
+    "barrier",
+    "all_reduce",
+    "alltoall",
+    "alltoall_single",
+    "send",
+    "reduce",
+    "recv",
+    "ReduceOp",
+    "wait",
+    "get_rank",
+    "ProbabilityEntry",
+    "ParallelMode",
+    "is_initialized",
+    "destroy_process_group",
+    "isend",
+    "irecv",
+    "reduce_scatter",
+    "is_available",
+    "get_backend",
 ]

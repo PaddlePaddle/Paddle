@@ -11,42 +11,41 @@ limitations under the License. */
 #ifdef PADDLE_WITH_XPU
 
 #include <memory>
+
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/device/device_wrapper.h"
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-
-template <typename DeviceContext, typename T, typename AttrType = T>
+template <typename T, typename DeviceContext, typename AttrType = T>
 class LogLossXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* predict = ctx.Input<Tensor>("Predicted");
-    auto* labels = ctx.Input<Tensor>("Labels");
-    auto* loss = ctx.Output<Tensor>("Loss");
+    auto* predict = ctx.Input<phi::DenseTensor>("Predicted");
+    auto* labels = ctx.Input<phi::DenseTensor>("Labels");
+    auto* loss = ctx.Output<phi::DenseTensor>("Loss");
     auto epsilon = static_cast<T>(ctx.Attr<AttrType>("epsilon"));
     loss->mutable_data<T>(ctx.GetPlace());
     int n = predict->numel();
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    int r =
-        xpu::log_loss_fwd(dev_ctx.x_context(), n, epsilon, predict->data<T>(),
-                          labels->data<T>(), loss->data<T>());
-    PADDLE_ENFORCE_EQ(
-        r, xpu::Error_t::SUCCESS,
-        platform::errors::External(
-            "XPU log_loss kernel return wrong value[%d], please check whether "
-            "Baidu Kunlun Card is properly installed.",
-            r));
+    int r = xpu::log_loss(dev_ctx.x_context(),
+                          predict->data<T>(),
+                          labels->data<T>(),
+                          loss->data<T>(),
+                          n,
+                          epsilon);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "log_loss");
   }
 };
-template <typename DeviceContext, typename T, typename AttrType = T>
+template <typename T, typename DeviceContext, typename AttrType = T>
 class LogLossGradXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* predict = ctx.Input<Tensor>("Predicted");
-    auto* labels = ctx.Input<Tensor>("Labels");
-    auto* dloss = ctx.Input<Tensor>(framework::GradVarName("Loss"));
-    auto* dpred = ctx.Output<Tensor>(framework::GradVarName("Predicted"));
+    auto* predict = ctx.Input<phi::DenseTensor>("Predicted");
+    auto* labels = ctx.Input<phi::DenseTensor>("Labels");
+    auto* dloss = ctx.Input<phi::DenseTensor>(framework::GradVarName("Loss"));
+    auto* dpred =
+        ctx.Output<phi::DenseTensor>(framework::GradVarName("Predicted"));
     if (!dpred) {
       return;
     }
@@ -54,25 +53,23 @@ class LogLossGradXPUKernel : public framework::OpKernel<T> {
     dpred->mutable_data<T>(ctx.GetPlace());
     int n = predict->numel();
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    int r = xpu::log_loss_bwd(dev_ctx.x_context(), n, epsilon,
-                              predict->data<T>(), labels->data<T>(),
-                              dloss->data<T>(), dpred->data<T>());
-    PADDLE_ENFORCE_EQ(
-        r, xpu::Error_t::SUCCESS,
-        platform::errors::External(
-            "XPU log_loss kernel return wrong value[%d], please check whether "
-            "Baidu Kunlun Card is properly installed.",
-            r));
+    int r = xpu::log_loss_grad(dev_ctx.x_context(),
+                               predict->data<T>(),
+                               labels->data<T>(),
+                               dloss->data<T>(),
+                               dpred->data<T>(),
+                               n,
+                               epsilon);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "log_loss_grad");
   }
 };
 
 }  // namespace operators
 }  // namespace paddle
 namespace ops = paddle::operators;
-REGISTER_OP_XPU_KERNEL(
-    log_loss, ops::LogLossXPUKernel<paddle::platform::XPUDeviceContext, float>);
-REGISTER_OP_XPU_KERNEL(
-    log_loss_grad,
-    ops::LogLossGradXPUKernel<paddle::platform::XPUDeviceContext, float>);
 
+PD_REGISTER_STRUCT_KERNEL(
+    log_loss, XPU, ALL_LAYOUT, ops::LogLossXPUKernel, float) {}
+PD_REGISTER_STRUCT_KERNEL(
+    log_loss_grad, XPU, ALL_LAYOUT, ops::LogLossGradXPUKernel, float) {}
 #endif

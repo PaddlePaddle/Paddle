@@ -23,4 +23,4 @@ void CumprodKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    int dim,
                    DenseTensor* out);
-}  // phi
+}  // namespace phi

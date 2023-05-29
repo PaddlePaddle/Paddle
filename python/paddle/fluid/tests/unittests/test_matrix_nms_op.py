@@ -12,19 +12,55 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-import unittest
-import numpy as np
 import copy
-from op_test import OpTest
-import paddle.fluid as fluid
+import unittest
+
+import numpy as np
+from eager_op_test import OpTest
+
+import paddle
 from paddle.fluid import Program, program_guard
+
+
+def python_matrix_nms(
+    bboxes,
+    scores,
+    score_threshold,
+    nms_top_k,
+    keep_top_k,
+    post_threshold,
+    use_gaussian=False,
+    gaussian_sigma=2.0,
+    background_label=0,
+    normalized=True,
+    return_index=True,
+    return_rois_num=True,
+):
+    out, rois_num, index = paddle.vision.ops.matrix_nms(
+        bboxes,
+        scores,
+        score_threshold,
+        post_threshold,
+        nms_top_k,
+        keep_top_k,
+        use_gaussian,
+        gaussian_sigma,
+        background_label,
+        normalized,
+        return_index,
+        return_rois_num,
+    )
+    if not return_index:
+        index = None
+    if not return_rois_num:
+        rois_num = None
+    return out, index, rois_num
 
 
 def softmax(x):
     # clip to shiftx, otherwise, when calc loss with
     # log(exp(shiftx)), may get log(0)=INF
-    shiftx = (x - np.max(x)).clip(-64.)
+    shiftx = (x - np.max(x)).clip(-64.0)
     exps = np.exp(shiftx)
     return exps / np.sum(exps)
 
@@ -38,18 +74,20 @@ def iou_matrix(a, b, norm=True):
     area_i = np.prod(br_i - tl_i + pad, axis=2) * (tl_i < br_i).all(axis=2)
     area_a = np.prod(a[:, 2:] - a[:, :2] + pad, axis=1)
     area_b = np.prod(b[:, 2:] - b[:, :2] + pad, axis=1)
-    area_o = (area_a[:, np.newaxis] + area_b - area_i)
+    area_o = area_a[:, np.newaxis] + area_b - area_i
     return area_i / (area_o + 1e-10)
 
 
-def matrix_nms(boxes,
-               scores,
-               score_threshold,
-               post_threshold=0.,
-               nms_top_k=400,
-               normalized=True,
-               use_gaussian=False,
-               gaussian_sigma=2.):
+def matrix_nms(
+    boxes,
+    scores,
+    score_threshold,
+    post_threshold=0.0,
+    nms_top_k=400,
+    normalized=True,
+    use_gaussian=False,
+    gaussian_sigma=2.0,
+):
     all_scores = copy.deepcopy(scores)
     all_scores = all_scores.flatten()
     selected_indices = np.where(all_scores > score_threshold)[0]
@@ -76,7 +114,7 @@ def matrix_nms(boxes,
     decay = decay.min(0)
     decayed_scores = sorted_scores * decay
 
-    if post_threshold > 0.:
+    if post_threshold > 0.0:
         inds = np.where(decayed_scores > post_threshold)[0]
         selected_boxes = selected_boxes[inds, :]
         decayed_scores = decayed_scores[inds]
@@ -85,9 +123,18 @@ def matrix_nms(boxes,
     return decayed_scores, selected_boxes, sorted_indices
 
 
-def multiclass_nms(boxes, scores, background, score_threshold, post_threshold,
-                   nms_top_k, keep_top_k, normalized, use_gaussian,
-                   gaussian_sigma):
+def multiclass_nms(
+    boxes,
+    scores,
+    background,
+    score_threshold,
+    post_threshold,
+    nms_top_k,
+    keep_top_k,
+    normalized,
+    use_gaussian,
+    gaussian_sigma,
+):
     all_boxes = []
     all_cls = []
     all_scores = []
@@ -96,8 +143,15 @@ def multiclass_nms(boxes, scores, background, score_threshold, post_threshold,
         if c == background:
             continue
         decayed_scores, selected_boxes, indices = matrix_nms(
-            boxes, scores[c], score_threshold, post_threshold, nms_top_k,
-            normalized, use_gaussian, gaussian_sigma)
+            boxes,
+            scores[c],
+            score_threshold,
+            post_threshold,
+            nms_top_k,
+            normalized,
+            use_gaussian,
+            gaussian_sigma,
+        )
         all_cls.append(np.full(len(decayed_scores), c, decayed_scores.dtype))
         all_boxes.append(selected_boxes)
         all_scores.append(decayed_scores)
@@ -108,7 +162,8 @@ def multiclass_nms(boxes, scores, background, score_threshold, post_threshold,
     all_scores = np.concatenate(all_scores)
     all_indices = np.concatenate(all_indices)
     all_pred = np.concatenate(
-        (all_cls[:, np.newaxis], all_scores[:, np.newaxis], all_boxes), axis=1)
+        (all_cls[:, np.newaxis], all_scores[:, np.newaxis], all_boxes), axis=1
+    )
 
     num_det = len(all_pred)
     if num_det == 0:
@@ -126,24 +181,35 @@ def multiclass_nms(boxes, scores, background, score_threshold, post_threshold,
     return all_pred, all_indices
 
 
-def batched_multiclass_nms(boxes,
-                           scores,
-                           background,
-                           score_threshold,
-                           post_threshold,
-                           nms_top_k,
-                           keep_top_k,
-                           normalized=True,
-                           use_gaussian=False,
-                           gaussian_sigma=2.):
+def batched_multiclass_nms(
+    boxes,
+    scores,
+    background,
+    score_threshold,
+    post_threshold,
+    nms_top_k,
+    keep_top_k,
+    normalized=True,
+    use_gaussian=False,
+    gaussian_sigma=2.0,
+):
     batch_size = scores.shape[0]
     det_outs = []
     index_outs = []
     lod = []
     for n in range(batch_size):
         nmsed_outs, indices = multiclass_nms(
-            boxes[n], scores[n], background, score_threshold, post_threshold,
-            nms_top_k, keep_top_k, normalized, use_gaussian, gaussian_sigma)
+            boxes[n],
+            scores[n],
+            background,
+            score_threshold,
+            post_threshold,
+            nms_top_k,
+            keep_top_k,
+            normalized,
+            use_gaussian,
+            gaussian_sigma,
+        )
         nmsed_num = len(nmsed_outs)
         lod.append(nmsed_num)
         if nmsed_num == 0:
@@ -159,11 +225,12 @@ def batched_multiclass_nms(boxes,
 
 class TestMatrixNMSOp(OpTest):
     def set_argument(self):
-        self.post_threshold = 0.
+        self.post_threshold = 0.0
         self.use_gaussian = False
 
     def setUp(self):
         self.set_argument()
+        self.python_api = python_matrix_nms
         N = 7
         M = 1200
         C = 21
@@ -176,7 +243,7 @@ class TestMatrixNMSOp(OpTest):
         use_gaussian = False
         if hasattr(self, 'use_gaussian'):
             use_gaussian = self.use_gaussian
-        gaussian_sigma = 2.
+        gaussian_sigma = 2.0
 
         scores = np.random.random((N * M, C)).astype('float32')
 
@@ -189,29 +256,42 @@ class TestMatrixNMSOp(OpTest):
         boxes[:, :, 2:4] = boxes[:, :, 2:4] * 0.5 + 0.5
 
         det_outs, index_outs, lod = batched_multiclass_nms(
-            boxes, scores, background, score_threshold, post_threshold,
-            nms_top_k, keep_top_k, True, use_gaussian, gaussian_sigma)
+            boxes,
+            scores,
+            background,
+            score_threshold,
+            post_threshold,
+            nms_top_k,
+            keep_top_k,
+            True,
+            use_gaussian,
+            gaussian_sigma,
+        )
 
         empty = len(det_outs) == 0
-        det_outs = np.array([], dtype=np.float32) if empty else det_outs
+        det_outs = (
+            np.array([], dtype=np.float32).reshape([0, BOX_SIZE + 2])
+            if empty
+            else det_outs
+        )
         index_outs = np.array([], dtype=np.float32) if empty else index_outs
         nmsed_outs = det_outs.astype('float32')
 
         self.op_type = 'matrix_nms'
         self.inputs = {'BBoxes': boxes, 'Scores': scores}
         self.outputs = {
-            'Out': (nmsed_outs, [lod]),
-            'Index': (index_outs[:, None], [lod]),
-            'RoisNum': np.array(lod).astype('int32')
+            'Out': nmsed_outs,
+            'Index': index_outs[:, None],
+            'RoisNum': np.array(lod).astype('int32'),
         }
         self.attrs = {
-            'background_label': 0,
+            'score_threshold': score_threshold,
             'nms_top_k': nms_top_k,
             'keep_top_k': keep_top_k,
-            'score_threshold': score_threshold,
             'post_threshold': post_threshold,
             'use_gaussian': use_gaussian,
             'gaussian_sigma': gaussian_sigma,
+            'background_label': 0,
             'normalized': True,
         }
 
@@ -226,76 +306,82 @@ class TestMatrixNMSOpNoOutput(TestMatrixNMSOp):
 
 class TestMatrixNMSOpGaussian(TestMatrixNMSOp):
     def set_argument(self):
-        self.post_threshold = 0.
+        self.post_threshold = 0.0
         self.use_gaussian = True
 
 
 class TestMatrixNMSError(unittest.TestCase):
     def test_errors(self):
+        M = 1200
+        N = 7
+        C = 21
+        BOX_SIZE = 4
+        nms_top_k = 400
+        keep_top_k = 200
+        score_threshold = 0.01
+        post_threshold = 0.0
+
+        boxes_np = np.random.random((M, C, BOX_SIZE)).astype('float32')
+        scores = np.random.random((N * M, C)).astype('float32')
+        scores = np.apply_along_axis(softmax, 1, scores)
+        scores = np.reshape(scores, (N, M, C))
+        scores_np = np.transpose(scores, (0, 2, 1))
+
         with program_guard(Program(), Program()):
-            M = 1200
-            N = 7
-            C = 21
-            BOX_SIZE = 4
-            nms_top_k = 400
-            keep_top_k = 200
-            score_threshold = 0.01
-            post_threshold = 0.
-
-            boxes_np = np.random.random((M, C, BOX_SIZE)).astype('float32')
-            scores = np.random.random((N * M, C)).astype('float32')
-            scores = np.apply_along_axis(softmax, 1, scores)
-            scores = np.reshape(scores, (N, M, C))
-            scores_np = np.transpose(scores, (0, 2, 1))
-
-            boxes_data = fluid.data(
-                name='bboxes', shape=[M, C, BOX_SIZE], dtype='float32')
-            scores_data = fluid.data(
-                name='scores', shape=[N, C, M], dtype='float32')
+            boxes_data = paddle.static.data(
+                name='bboxes', shape=[M, C, BOX_SIZE], dtype='float32'
+            )
+            scores_data = paddle.static.data(
+                name='scores', shape=[N, C, M], dtype='float32'
+            )
 
             def test_bboxes_Variable():
                 # the bboxes type must be Variable
-                fluid.layers.matrix_nms(
+                paddle.vision.ops.matrix_nms(
                     bboxes=boxes_np,
                     scores=scores_data,
+                    score_threshold=score_threshold,
+                    post_threshold=post_threshold,
                     nms_top_k=nms_top_k,
                     keep_top_k=keep_top_k,
-                    score_threshold=score_threshold,
-                    post_threshold=post_threshold)
+                )
 
             def test_scores_Variable():
                 # the scores type must be Variable
-                fluid.layers.matrix_nms(
+                paddle.vision.ops.matrix_nms(
                     bboxes=boxes_data,
                     scores=scores_np,
+                    score_threshold=score_threshold,
+                    post_threshold=post_threshold,
                     nms_top_k=nms_top_k,
                     keep_top_k=keep_top_k,
-                    score_threshold=score_threshold,
-                    post_threshold=post_threshold)
+                )
 
             def test_empty():
                 # when all score are lower than threshold
                 try:
-                    fluid.layers.matrix_nms(
+                    paddle.vision.ops.matrix_nms(
                         bboxes=boxes_data,
                         scores=scores_data,
+                        score_threshold=score_threshold,
+                        post_threshold=post_threshold,
                         nms_top_k=nms_top_k,
                         keep_top_k=keep_top_k,
-                        score_threshold=10.,
-                        post_threshold=post_threshold)
+                    )
                 except Exception as e:
                     self.fail(e)
 
             def test_coverage():
                 # cover correct workflow
                 try:
-                    fluid.layers.matrix_nms(
+                    paddle.vision.ops.matrix_nms(
                         bboxes=boxes_data,
                         scores=scores_data,
+                        score_threshold=score_threshold,
+                        post_threshold=post_threshold,
                         nms_top_k=nms_top_k,
                         keep_top_k=keep_top_k,
-                        score_threshold=score_threshold,
-                        post_threshold=post_threshold)
+                    )
                 except Exception as e:
                     self.fail(e)
 
@@ -305,4 +391,5 @@ class TestMatrixNMSError(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

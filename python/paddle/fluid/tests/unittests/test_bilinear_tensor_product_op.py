@@ -12,32 +12,50 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
-import paddle.fluid as fluid
-from op_test import OpTest
+from eager_op_test import OpTest, paddle_static_guard
+
+import paddle
+from paddle import fluid
 
 
 class TestDygraphBilinearTensorProductAPIError(unittest.TestCase):
     def test_errors(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            layer = fluid.dygraph.nn.BilinearTensorProduct(
-                input1_dim=5, input2_dim=4, output_dim=1000)
-            # the input must be Variable.
-            x0 = fluid.create_lod_tensor(
-                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
-            self.assertRaises(TypeError, layer, x0)
-            # the input dtype must be float32 or float64
-            x1 = fluid.data(name='x1', shape=[-1, 5], dtype="float16")
-            x2 = fluid.data(name='x2', shape=[-1, 4], dtype="float32")
-            self.assertRaises(TypeError, layer, x1, x2)
+        with paddle_static_guard():
+            with fluid.program_guard(fluid.Program(), fluid.Program()):
+                layer = paddle.nn.Bilinear(5, 4, 1000)
+                # the input must be Variable.
+                x0 = fluid.create_lod_tensor(
+                    np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace()
+                )
+                self.assertRaises(TypeError, layer, x0)
+                # the input dtype must be float32 or float64
+                x1 = paddle.static.data(
+                    name='x1', shape=[-1, 5], dtype="float16"
+                )
+                x2 = paddle.static.data(
+                    name='x2', shape=[-1, 4], dtype="float32"
+                )
+                self.assertRaises(TypeError, layer, x1, x2)
+                # the dimensions of x and y must be 2
+                paddle.enable_static()
+                x3 = paddle.static.data("", shape=[0], dtype="float32")
+                x4 = paddle.static.data("", shape=[0], dtype="float32")
+                self.assertRaises(
+                    ValueError,
+                    paddle.static.nn.bilinear_tensor_product,
+                    x3,
+                    x4,
+                    1000,
+                )
 
 
 class TestBilinearTensorProductOp(OpTest):
     def setUp(self):
         self.op_type = "bilinear_tensor_product"
+        self.python_api = paddle.nn.functional.bilinear
         batch_size = 6
         size0 = 5
         size1 = 4

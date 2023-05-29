@@ -34,6 +34,13 @@ limitations under the License. */
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
 #endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+#include "paddle/phi/backends/device_manager.h"
+#endif
+
+#include "paddle/fluid/memory/memory.h"
+#include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/phi/api/profiler/profiler_helper.h"
 
 namespace paddle {
 namespace platform {
@@ -43,26 +50,7 @@ static bool should_send_profile_state = false;
 std::mutex profiler_mu;
 
 static TracerOption g_tracer_option = TracerOption::kDefault;
-// The profiler state, the initial value is ProfilerState::kDisabled
-static ProfilerState g_state = ProfilerState::kDisabled;
-// To hook RecordEvent's events, use it to nvtx timeline
-static bool g_enable_nvprof_hook = false;
-// The thread local event list only can be accessed by the specific thread
-// The thread index of each thread
-static thread_local uint64_t g_thread_id;
-// The g_next_thread_id is a global counter for threads, by the g_thread_id and
-// g_next_thread_id, we can know how many threads have created EventList.
-static uint32_t g_next_thread_id = 0;
-// The global mutex
-static std::mutex g_all_event_lists_mutex;
-// The total event lists of all threads
-static std::list<std::shared_ptr<EventList<Event>>> g_all_event_lists;
-// The thread local event list only can be accessed by the specific thread
-static thread_local std::shared_ptr<EventList<Event>> g_event_list;
 
-static std::list<std::shared_ptr<EventList<MemEvent>>> g_all_mem_event_lists;
-static thread_local std::shared_ptr<EventList<MemEvent>> g_mem_event_list;
-static std::mutex g_all_mem_event_lists_mutex;
 static thread_local int32_t g_mem_thread_id;
 static uint32_t g_mem_next_thread_id = 0;
 
@@ -78,40 +66,28 @@ static int FindNthReversePos(const std::string &s, const char ch, const int N) {
   return found_pos;
 }
 
-inline uint64_t GetTimeInNsec() {
-  using clock = std::conditional<std::chrono::high_resolution_clock::is_steady,
-                                 std::chrono::high_resolution_clock,
-                                 std::chrono::steady_clock>::type;
-  return std::chrono::duration_cast<std::chrono::nanoseconds>(
-             clock::now().time_since_epoch())
-      .count();
-}
+using phi::GetTimeInNsec;
 
-inline EventList<Event> &GetEventList() {
-  if (!g_event_list) {
-    std::lock_guard<std::mutex> guard(g_all_event_lists_mutex);
-    g_event_list = std::make_shared<EventList<Event>>();
-    g_thread_id = g_next_thread_id++;
-    g_all_event_lists.emplace_front(g_event_list);
-    RecoreCurThreadId(g_thread_id);
-  }
-  return *g_event_list;
-}
+using phi::GetEventList;
 
 inline EventList<MemEvent> &GetMemEventList() {
-  if (!g_mem_event_list) {
-    g_mem_event_list = std::make_shared<EventList<MemEvent>>();
-    std::lock_guard<std::mutex> guard(g_all_mem_event_lists_mutex);
+  if (!phi::ProfilerHelper::g_mem_event_list) {
+    phi::ProfilerHelper::g_mem_event_list =
+        std::make_shared<EventList<MemEvent>>();
+    std::lock_guard<std::mutex> guard(
+        phi::ProfilerHelper::g_all_mem_event_lists_mutex);
     g_mem_thread_id = g_mem_next_thread_id++;
-    g_all_mem_event_lists.emplace_front(g_mem_event_list);
+    phi::ProfilerHelper::g_all_mem_event_lists.emplace_front(
+        phi::ProfilerHelper::g_mem_event_list);
   }
-  return *g_mem_event_list;
+  return *phi::ProfilerHelper::g_mem_event_list;
 }
 
 std::vector<std::vector<MemEvent>> GetMemEvents() {
-  std::lock_guard<std::mutex> guard(g_all_mem_event_lists_mutex);
+  std::lock_guard<std::mutex> guard(
+      phi::ProfilerHelper::g_all_mem_event_lists_mutex);
   std::vector<std::vector<MemEvent>> result;
-  for (auto &it : g_all_mem_event_lists) {
+  for (auto &it : phi::ProfilerHelper::g_all_mem_event_lists) {
     result.emplace_back((*it).Reduce());
   }
   return result;
@@ -119,30 +95,85 @@ std::vector<std::vector<MemEvent>> GetMemEvents() {
 
 void SynchronizeAllDevice() {
 #ifdef PADDLE_WITH_CUDA
+  int pre_device_id = GetCurrentDeviceId();
   int count = GetGPUDeviceCount();
   for (int i = 0; i < count; i++) {
     SetDeviceId(i);
     PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
   }
+  SetDeviceId(pre_device_id);
 #endif
 #ifdef PADDLE_WITH_HIP
+  int pre_device_id = GetCurrentDeviceId();
   int count = GetGPUDeviceCount();
   for (int i = 0; i < count; i++) {
     SetDeviceId(i);
     PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize());
   }
+  SetDeviceId(pre_device_id);
 #endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  auto dev_types = phi::DeviceManager::GetAllCustomDeviceTypes();
+  for (const auto &dev_type : dev_types) {
+    int pre_device_id = phi::DeviceManager::GetDevice(dev_type);
+    auto dev_cnt = phi::DeviceManager::GetDeviceCount(dev_type);
+    for (size_t i = 0; i < dev_cnt; i++) {
+      auto place = paddle::platform::CustomPlace(dev_type, i);
+      phi::DeviceManager::SetDevice(place);
+      phi::DeviceManager::SynchronizeDevice(place);
+    }
+    phi::DeviceManager::SetDevice(dev_type, pre_device_id);
+  }
+#endif
+}
+
+static double ToMegaBytes(size_t bytes) {
+  return static_cast<double>(bytes) / (1 << 20);
 }
 
 // Print results
 void PrintMemProfiler(
     const std::map<Place, std::unordered_map<std::string, MemoryProfierReport>>
         &annotation_report,
-    const size_t name_width, const size_t data_width) {
+    const size_t name_width,
+    const size_t data_width) {
   // Output header information
   std::cout << "\n------------------------->"
             << "    Memory Profiling Report     "
             << "<-------------------------\n\n";
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  int num_gpus = GetGPUDeviceCount();
+  std::cout.setf(std::ios::left);
+  if (num_gpus > 0) {
+    std::cout << "GPU Memory Usage (MB):\n";
+    for (int dev_id = 0; dev_id < num_gpus; ++dev_id) {
+      int64_t allocated =
+          memory::DeviceMemoryStatCurrentValue("Allocated", dev_id);
+      int64_t reserved =
+          memory::DeviceMemoryStatCurrentValue("Reserved", dev_id);
+      size_t available = 0, total = 0, actual_available = 0, actual_total = 0;
+      RecordedGpuMemGetInfo(
+          &available, &total, &actual_available, &actual_total, dev_id);
+
+      std::ostringstream system_gpu_memory;
+      system_gpu_memory << "System GPU Memory (gpu:" << dev_id << ")";
+      std::cout << "  " << std::setw(30) << system_gpu_memory.str()
+                << "Total: " << std::setw(12) << ToMegaBytes(total)
+                << "Allocated: " << std::setw(12)
+                << ToMegaBytes(total - available) << "Free: " << std::setw(12)
+                << ToMegaBytes(available) << "\n";
+      std::ostringstream software_memory_pool;
+      software_memory_pool << "Software Memory Pool (gpu:" << dev_id << ")";
+      std::cout << "  " << std::setw(30) << software_memory_pool.str()
+                << "Total: " << std::setw(12) << ToMegaBytes(reserved)
+                << "Allocated: " << std::setw(12)
+                << ToMegaBytes(reserved - allocated)
+                << "Free: " << std::setw(12) << ToMegaBytes(allocated) << "\n";
+    }
+    std::cout << "\n";
+  }
+#endif
 
   // Output events table
   std::cout.setf(std::ios::left);
@@ -168,7 +199,7 @@ void PrintMemProfiler(
 
 // parse memory events
 void ParseMemEvents(const std::vector<std::vector<MemEvent>> &events) {
-  if (g_state == ProfilerState::kDisabled) return;
+  if (phi::ProfilerHelper::g_state == ProfilerState::kDisabled) return;
   // place, annotation, alloc times,  alloc size
   std::map<Place, std::unordered_map<std::string, MemoryProfierReport>>
       annotation_report;
@@ -189,7 +220,8 @@ void ParseMemEvents(const std::vector<std::vector<MemEvent>> &events) {
 
 void DealWithShowName() {
   std::unordered_map<std::string, std::vector<std::string>> profiler_name_info;
-  for (auto it = g_all_event_lists.begin(); it != g_all_event_lists.end();
+  for (auto it = phi::ProfilerHelper::g_all_event_lists.begin();
+       it != phi::ProfilerHelper::g_all_event_lists.end();
        ++it) {
     for (auto &block : (*it)->event_blocks) {
       for (auto &r : block) {
@@ -223,8 +255,8 @@ void DealWithShowName() {
             }
           }
           replace_str = std::to_string(replace_index);
-          event_name.replace(start_replace, end_replace - start_replace + 1,
-                             replace_str);
+          event_name.replace(
+              start_replace, end_replace - start_replace + 1, replace_str);
           start = start + 1;
           start = origin_event_name.find('%', start);
           end = origin_event_name.find('%', start + 1);
@@ -292,8 +324,10 @@ std::function<bool(const EventItem &, const EventItem &)> SetSortedFunc(
   return sorted_func;
 }
 
-void SetEvent(bool merge_thread, const Event &analyze_event,
-              size_t *max_name_width, std::list<Event> *pushed_events,
+void SetEvent(bool merge_thread,
+              const Event &analyze_event,
+              size_t *max_name_width,
+              std::list<Event> *pushed_events,
               std::vector<EventItem> *event_items,
               std::unordered_map<std::string, int> *event_idx,
               const std::set<std::string> &main_thread_event_name) {
@@ -314,9 +348,9 @@ void SetEvent(bool merge_thread, const Event &analyze_event,
       gpu_time = rit->CudaElapsedMs(analyze_event);
 #endif
       double cpu_time = rit->CpuElapsedMs(analyze_event);
-      if (g_state == ProfilerState::kCUDA) {
+      if (phi::ProfilerHelper::g_state == ProfilerState::kCUDA) {
         event_time = gpu_time;
-      } else if (g_state == ProfilerState::kCPU) {
+      } else if (phi::ProfilerHelper::g_state == ProfilerState::kCPU) {
         event_time = cpu_time;
       } else {
         event_time = gpu_time + cpu_time;
@@ -339,8 +373,8 @@ void SetEvent(bool merge_thread, const Event &analyze_event,
             index++;
           }
           if (split_pos == -1 && !main_thread_event_name.count(rit->name())) {
-            event_name = "thread" + std::to_string(rit->thread_id()) + "::" +
-                         rit->name();
+            event_name = "thread" + std::to_string(rit->thread_id()) +
+                         "::" + rit->name();
           } else {
             if (!main_thread_event_name.count(rit->name())) {
               event_name =
@@ -371,9 +405,16 @@ void SetEvent(bool merge_thread, const Event &analyze_event,
 
       if (event_idx->find(event_name) == event_idx->end()) {
         event_idx->insert({event_name, event_items->size()});
-        EventItem event_item = {event_name, 1,          event_time, event_time,
-                                event_time, event_time, cpu_time,   gpu_time,
-                                0.,         rit->role()};
+        EventItem event_item = {event_name,
+                                1,
+                                event_time,
+                                event_time,
+                                event_time,
+                                event_time,
+                                cpu_time,
+                                gpu_time,
+                                0.,
+                                rit->role()};
         event_items->push_back(event_item);
       } else {
         int index = event_idx->at(event_name);
@@ -400,7 +441,8 @@ void SetEvent(bool merge_thread, const Event &analyze_event,
   }
 }
 
-void UpdateGpuMemcpy(const EventItem &item, EventItem *memcpy_async,
+void UpdateGpuMemcpy(const EventItem &item,
+                     EventItem *memcpy_async,
                      EventItem *memcpy_sync) {
   if (item.name.find("GpuMemcpyAsync") != std::string::npos) {
     memcpy_async->calls += item.calls;
@@ -418,8 +460,8 @@ void ComputeOverhead(const std::vector<EventItem> &main_event_items,
                      OverHead *overhead) {
   EventItem memcpy_async = {
       "GpuMemcpyAsync", 0, 0., 0., 0., 0., 0., 0., 0.0f, EventRole::kOrdinary};
-  EventItem memcpy_sync = {"GpuMemcpySync",     0, 0., 0., 0., 0., 0., 0., 0.0f,
-                           EventRole::kOrdinary};
+  EventItem memcpy_sync = {
+      "GpuMemcpySync", 0, 0., 0., 0., 0., 0., 0., 0.0f, EventRole::kOrdinary};
   // GpuMemcpy may be in main_event_items
   for (auto &item : main_event_items) {
     if (item.role != EventRole::kSpecial) {
@@ -564,20 +606,24 @@ void PrintProfiler(
     const std::vector<std::vector<EventItem>> &events_table,
     const std::multimap<std::string, EventItem> &child_map,
     std::function<bool(const EventItem &, const EventItem &)> sorted_func,
-    EventSortingKey sorted_by, const OverHead &overhead,
-    const std::string &sorted_domain, const size_t name_width,
-    const size_t data_width, bool merge_thread, int print_depth) {
+    EventSortingKey sorted_by,
+    const OverHead &overhead,
+    const std::string &sorted_domain,
+    const size_t name_width,
+    const size_t data_width,
+    bool merge_thread,
+    int print_depth) {
   if (print_depth == 0) {
     // Output header information
     std::cout << "\n------------------------->"
               << "     Profiling Report     "
               << "<-------------------------\n\n";
     std::string place;
-    if (g_state == ProfilerState::kCPU) {
+    if (phi::ProfilerHelper::g_state == ProfilerState::kCPU) {
       place = "CPU";
-    } else if (g_state == ProfilerState::kCUDA) {
+    } else if (phi::ProfilerHelper::g_state == ProfilerState::kCUDA) {
       place = "CUDA";
-    } else if (g_state == ProfilerState::kAll) {
+    } else if (phi::ProfilerHelper::g_state == ProfilerState::kAll) {
       place = "All";
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
@@ -604,7 +650,7 @@ void PrintProfiler(
     std::cout.setf(std::ios::left);
     std::cout << std::setw(name_width) << "Event" << std::setw(data_width)
               << "Calls" << std::setw(data_width) << "Total";
-    if (g_state == ProfilerState::kAll) {
+    if (phi::ProfilerHelper::g_state == ProfilerState::kAll) {
       std::cout << std::setw(data_width * 2) << "CPU Time (Ratio)"
                 << std::setw(data_width * 2) << "GPU Time (Ratio)";
     }
@@ -649,14 +695,16 @@ void PrintProfiler(
       std::cout << std::setw(name_width) << print_name << std::setw(data_width)
                 << event_item.calls << std::setw(data_width)
                 << event_item.total_time;
-      if (g_state == ProfilerState::kAll) {
+      if (phi::ProfilerHelper::g_state == ProfilerState::kAll) {
         std::cout << std::setw(data_width * 2)
                   << string::Sprintf(
-                         "%f (%f)", event_item.cpu_time,
+                         "%f (%f)",
+                         event_item.cpu_time,
                          (event_item.cpu_time / event_item.total_time))
                   << std::setw(data_width * 2)
                   << string::Sprintf(
-                         "%f (%f)", event_item.gpu_time,
+                         "%f (%f)",
+                         event_item.gpu_time,
                          (event_item.gpu_time / event_item.total_time));
       }
       std::cout << std::setw(data_width) << event_item.min_time
@@ -670,8 +718,15 @@ void PrintProfiler(
       }
       std::cout << std::endl;
 
-      PrintProfiler(child_table, child_map, sorted_func, sorted_by, overhead,
-                    sorted_domain, name_width, data_width, merge_thread,
+      PrintProfiler(child_table,
+                    child_map,
+                    sorted_func,
+                    sorted_by,
+                    overhead,
+                    sorted_domain,
+                    name_width,
+                    data_width,
+                    merge_thread,
                     print_depth + 1);
     }
   }
@@ -682,7 +737,9 @@ void AnalyzeEvent(
     std::vector<std::vector<EventItem>> *events_table,
     std::multimap<std::string, EventItem> *child_map,
     std::function<bool(const EventItem &, const EventItem &)> sorted_func,
-    EventSortingKey sorted_by, size_t *max_name_width, OverHead *overhead,
+    EventSortingKey sorted_by,
+    size_t *max_name_width,
+    OverHead *overhead,
     bool merge_thread) {
   // In oreder to deal with special event in main thread
   std::set<std::string> main_thread_event_name;
@@ -705,8 +762,13 @@ void AnalyzeEvent(
     for (size_t j = 0; j < (*analyze_events)[i].size(); j++) {
       Event analyze_event = (*analyze_events)[i][j];
       if (!(analyze_event.role() == EventRole::kSpecial && !merge_thread)) {
-        SetEvent(merge_thread, analyze_event, max_name_width, &pushed_events,
-                 &event_items, &event_idx, main_thread_event_name);
+        SetEvent(merge_thread,
+                 analyze_event,
+                 max_name_width,
+                 &pushed_events,
+                 &event_items,
+                 &event_idx,
+                 main_thread_event_name);
       }
     }
 
@@ -794,7 +856,7 @@ void AnalyzeEvent(
 void ParseEvents(const std::vector<std::vector<Event>> &events,
                  bool merge_thread,
                  EventSortingKey sorted_by = EventSortingKey::kDefault) {
-  if (g_state == ProfilerState::kDisabled) return;
+  if (phi::ProfilerHelper::g_state == ProfilerState::kDisabled) return;
   if (merge_thread && events.size() < 2) return;
 
   std::string sorted_domain;
@@ -820,12 +882,26 @@ void ParseEvents(const std::vector<std::vector<Event>> &events,
   std::multimap<std::string, EventItem> child_map;
   size_t max_name_width = 0;
   OverHead overhead;
-  AnalyzeEvent(analyze_events, &events_table, &child_map, sorted_func,
-               sorted_by, &max_name_width, &overhead, merge_thread);
+  AnalyzeEvent(analyze_events,
+               &events_table,
+               &child_map,
+               sorted_func,
+               sorted_by,
+               &max_name_width,
+               &overhead,
+               merge_thread);
 
   // Print report
-  PrintProfiler(events_table, child_map, sorted_func, sorted_by, overhead,
-                sorted_domain, max_name_width + 8, 12, merge_thread, 0);
+  PrintProfiler(events_table,
+                child_map,
+                sorted_func,
+                sorted_by,
+                overhead,
+                sorted_domain,
+                max_name_width + 8,
+                12,
+                merge_thread,
+                0);
 }
 
 }  // namespace platform

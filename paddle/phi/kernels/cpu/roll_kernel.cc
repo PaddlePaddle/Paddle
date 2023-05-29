@@ -14,10 +14,10 @@
 
 #include "paddle/phi/kernels/roll_kernel.h"
 
-#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/phi/common/complex.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/cpu/roll_kernel_impl.h"
 
 namespace phi {
@@ -25,11 +25,11 @@ namespace phi {
 template <typename T, typename Context>
 void RollKernel(const Context& dev_ctx,
                 const DenseTensor& x,
-                const ScalarArray& shifts,
+                const IntArray& shifts,
                 const std::vector<int64_t>& axis,
                 DenseTensor* out) {
   std::vector<T> out_vec;
-  paddle::framework::TensorToVector(x, dev_ctx, &out_vec);
+  phi::TensorToVector(x, dev_ctx, &out_vec);
 
   auto shifts_data = shifts.GetData();
   size_t nums = shifts_data.size();
@@ -57,7 +57,7 @@ void RollKernel(const Context& dev_ctx,
     ShiftAlongDim(out_vec.data(), input_dim, dims[i], shifts_data[i]);
   }
   dev_ctx.template Alloc<T>(out);
-  paddle::framework::TensorFromVector(out_vec, dev_ctx, out);
+  phi::TensorFromVector(out_vec, dev_ctx, out);
   out->Resize(x.dims());
 }
 

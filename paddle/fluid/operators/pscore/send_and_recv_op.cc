@@ -26,7 +26,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class SendAndRecvKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -45,12 +45,12 @@ class SendAndRecvKernel : public framework::OpKernel<T> {
     auto& context = *pool.Get(place);
 
     distributed::HeterClient* rpc_client =
-        distributed::HeterClient::GetInstance(next_epmap, previous_epmap,
-                                              trainer_id)
+        distributed::HeterClient::GetInstance(
+            next_epmap, previous_epmap, trainer_id)
             .get();
     VLOG(3) << "SendAndRecvOp message_name: " << message_name;
-    rpc_client->SendAndRecvAsync(context, scope, message_name, send_var_name,
-                                 recv_var_name, mode);
+    rpc_client->SendAndRecvAsync(
+        context, scope, message_name, send_var_name, recv_var_name, mode);
   }
 };
 
@@ -60,10 +60,10 @@ class SendAndRecvOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {}
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return framework::OpKernelType(data_type, platform::CPUPlace());
+    return phi::KernelKey(data_type, platform::CPUPlace());
   }
 };
 
@@ -98,25 +98,33 @@ class SendAndRecvOpMaker : public framework::OpProtoAndCheckerMaker {
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(send_and_recv, ops::SendAndRecvOp, ops::SendAndRecvOpMaker);
-REGISTER_OP_CUDA_KERNEL(
-    send_and_recv,
-    ops::SendAndRecvKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::SendAndRecvKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::SendAndRecvKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::SendAndRecvKernel<paddle::platform::CUDADeviceContext, int64_t>);
-REGISTER_OP_CPU_KERNEL(
-    send_and_recv,
-    ops::SendAndRecvKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::SendAndRecvKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::SendAndRecvKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::SendAndRecvKernel<paddle::platform::CPUDeviceContext, int64_t>);
 
+PD_REGISTER_STRUCT_KERNEL(send_and_recv,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::SendAndRecvKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PD_REGISTER_STRUCT_KERNEL(send_and_recv,
+                          GPU,
+                          ALL_LAYOUT,
+                          ops::SendAndRecvKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t) {}
+#endif
 REGISTER_OP_VERSION(send_and_recv)
     .AddCheckpoint(
         R"ROC(add new attributes [next_endpoints] [previous_endpoints] and [mode])ROC",
         paddle::framework::compatible::OpVersionDesc()
-            .NewAttr("next_endpoints", "Server endpoint",
+            .NewAttr("next_endpoints",
+                     "Server endpoint",
                      std::vector<std::string>({"127.0.0.1:6164"}))
-            .NewAttr("previous_endpoints", "Server endpoint",
+            .NewAttr("previous_endpoints",
+                     "Server endpoint",
                      std::vector<std::string>({"127.0.0.1:6164"}))
             .NewAttr("mode", "forward or backward", "forward"));

@@ -31,6 +31,14 @@ static void FullTopK(Type input_height,
                      const int& k,
                      const bool& largest,
                      const bool& sorted) {
+  PADDLE_ENFORCE_LE(
+      k,
+      input_width,
+      errors::InvalidArgument("The rank (%d) of the input 'k' for "
+                              "topk op must be less than or equal to %d.",
+                              k,
+                              input_width));
+
   // when the k is small, will the partial sort
   bool partial_sort_flag = (k * 64) < input_width;
 
@@ -132,7 +140,13 @@ void TopkKernel(const Context& dev_ctx,
   const auto* input = &x;
   // Get the top k elements of each row of input tensor
   const auto& in_dims = input->dims();
-
+  // 0d input x
+  if (in_dims.size() == 0) {
+    phi::Copy<Context>(dev_ctx, x, dev_ctx.GetPlace(), false, out);
+    dev_ctx.template Alloc<int64_t>(indices);
+    phi::funcs::set_constant(dev_ctx, indices, 0.0);
+    return;
+  }
   // axis < 0, cacluate the real axis
   if (axis < 0) {
     axis += in_dims.size();
@@ -227,4 +241,6 @@ void TopkKernel(const Context& dev_ctx,
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
-    top_k, CPU, ALL_LAYOUT, phi::TopkKernel, float, double, int32_t, int64_t) {}
+    topk, CPU, ALL_LAYOUT, phi::TopkKernel, float, double, int32_t, int64_t) {
+  kernel->OutputAt(1).SetDataType(phi::DataType::INT64);
+}

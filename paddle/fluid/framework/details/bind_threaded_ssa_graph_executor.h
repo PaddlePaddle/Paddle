@@ -14,12 +14,14 @@
 
 #pragma once
 #include <ThreadPool.h>
+
 #include <condition_variable>  // NOLINT
 #include <memory>
 #include <mutex>  // NOLINT
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/details/exception_holder.h"
 #include "paddle/fluid/framework/details/execution_strategy.h"
@@ -86,7 +88,8 @@ class BindThreadedSSAGraphExecutor : public SSAGraphExecutor {
   void RunOpAsyncMainStream(
       OpHandleBase *op,
       std::unordered_map<OpHandleBase *, struct RunningItem> *op_deps,
-      std::shared_ptr<BlockingQueue<OpHandleBase *>> ready_ops, int index);
+      std::shared_ptr<BlockingQueue<OpHandleBase *>> ready_ops,
+      int index);
 
   void RunMultiDeviceOpAsync(
       OpHandleBase *op,
@@ -100,12 +103,14 @@ class BindThreadedSSAGraphExecutor : public SSAGraphExecutor {
   inline void ExecutionFinal(std::vector<OpHandleBase *> *fetch_ops);
 
   void InsertFetchOps(
-      const std::vector<std::string> &fetch_tensors, FetchResultType *fetches,
+      const std::vector<std::string> &fetch_tensors,
+      FetchResultType *fetches,
       std::unordered_map<std::string, std::vector<VarHandleBase *>>
           *fetched_vars,
       std::unordered_map<OpHandleBase *, struct RunningItem> *op_deps,
       std::vector<OpHandleBase *> *fetch_ops,
-      std::vector<OpHandleBase *> *ready_fetch_ops, bool return_merged);
+      std::vector<OpHandleBase *> *ready_fetch_ops,
+      bool return_merged);
 };
 }  // namespace details
 }  // namespace framework

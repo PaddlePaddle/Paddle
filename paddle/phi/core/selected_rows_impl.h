@@ -109,7 +109,8 @@ class SelectedRowsImpl {
 
   void* AllocateFrom(Allocator* allocator,
                      DataType dtype,
-                     size_t requested_size = 0);
+                     size_t requested_size = 0,
+                     bool fake_alloc = false);
 
   /*
    * @brief Get the index of the key from id_to_index_ map. If the key not
@@ -158,9 +159,17 @@ class SelectedRowsImpl {
   /// \return The data type of the tensor.
   DataType dtype() const noexcept { return value_->dtype(); }
 
+#ifndef PADDLE_WITH_CUSTOM_KERNEL
+  void set_type(const DataType dtype);
+#endif
+
   /// \brief Returns the data layout of the tensor.
   /// \return The data layout of the tensor.
   DataLayout layout() const noexcept { return value_->layout(); }
+
+#ifndef PADDLE_WITH_CUSTOM_KERNEL
+  void set_layout(const DataLayout layout);
+#endif
 
   /// \brief Returns the data place of the tensor.
   /// \return The data place of the tensor.

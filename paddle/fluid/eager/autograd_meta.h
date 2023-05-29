@@ -18,17 +18,14 @@
 #include "paddle/fluid/eager/grad_node_info.h"
 namespace egr {
 
-using AbstractAutogradMeta = paddle::experimental::AbstractAutogradMeta;
+using AbstractAutogradMeta = paddle::AbstractAutogradMeta;
 /**
  *
  * AutogradMeta is what record the backward info for tensor. When we run
- * computation
- * graph eagerly, we can not build a static paddle program like static mode do,
- * so we
- * need a new method to record forward info to trace backward when we finish all
- * forward
- * computation. This require our AutogradMeta class record following main
- * members
+ * computation graph eagerly, we can not build a static paddle program like
+ * static graph mode do, so we need a new method to record forward info to trace
+ * backward when we finish all forward computation. This require our
+ * AutogradMeta class record following main members
  *
  * 1. grad_op:
  * Grad_op indicate the grad operation of the forward op
@@ -38,28 +35,24 @@ using AbstractAutogradMeta = paddle::experimental::AbstractAutogradMeta;
  * backward computation
  *
  * NOTE: grad should only be available when current tensor is a leaf tensor, and
- * for non-leaf
- * tensor grad is only available while user set `retain_grad` option as `true`.
+ * for non-leaf tensor grad is only available while user set `retain_grad`
+ * option as `true`.
  *
  * TODO(jiabin) : support hooks
  * 3. hooks:
  * Hooks are some computation logic which only attached with backward operation,
- * it registered
- * by user and run before accumulator.
+ * it registered by user and run before accumulator.
  *
- * 4.overrided_stop_gradient_
+ * 4. overrided_stop_gradient_
  * This member is used to finish some auto-prune related work, which indicate
- * user set stop_gradient
- * should overrided the result indicated by framework. All non-parameter
- * tensor's stop_gradient
- * properties should be true. We will pass stop_gradient when we find one who
- * need it.
+ * user set stop_gradient should overrided the result indicated by framework.
+ * All non-parameter tensor's stop_gradient properties should be true. We will
+ * pass stop_gradient when we find one who need it.
  *
  * NOTE: AutogradMeta is inherited from AbstractAutogradMeta which is defined
- * in tensor's deps,
- * we did this to avoid additional dependency on Autograd. In eager execution,
- * we will cast
- * AbstractAutogradMeta as AutogradMeta to use it.
+ * in tensor's deps, we did this to avoid additional dependency on Autograd.
+ * In eager execution, we will cast AbstractAutogradMeta as AutogradMeta to use
+ * it.
  *
  * **/
 
@@ -75,7 +68,7 @@ class AutogradMeta : public AbstractAutogradMeta {
 
   ~AutogradMeta() override = default;
 
-  const paddle::experimental::Tensor& Grad() const {
+  const paddle::Tensor& Grad() const {
     PADDLE_ENFORCE_NOT_NULL(
         grad_.get(),
         paddle::platform::errors::InvalidArgument(
@@ -86,9 +79,9 @@ class AutogradMeta : public AbstractAutogradMeta {
     return *(grad_.get());
   }
 
-  paddle::experimental::Tensor* MutableGrad() { return grad_.get(); }
+  paddle::Tensor* MutableGrad() { return grad_.get(); }
 
-  std::weak_ptr<paddle::experimental::Tensor> WeakGrad() { return grad_; }
+  std::weak_ptr<paddle::Tensor> WeakGrad() { return grad_; }
 
   void SetGradNode(const std::shared_ptr<GradNodeBase>& grad_node) {
     PADDLE_ENFORCE_NOT_NULL(
@@ -107,6 +100,8 @@ class AutogradMeta : public AbstractAutogradMeta {
 
   GradNodeBase* GradNode() const { return grad_node_.get(); }
 
+  void ResetGradNode() { grad_node_.reset(); }
+
   void SetSingleOutRankWithSlot(size_t slot_id, size_t rank) {
     out_slot_id_ = slot_id;
     out_rank_ = rank;
@@ -117,7 +112,7 @@ class AutogradMeta : public AbstractAutogradMeta {
     return std::make_pair(out_slot_id_, out_rank_);
   }
 
-  bool IsInitialized() { return grad_node_.get(); }
+  bool IsInitialized() const { return grad_node_.get(); }
 
   // TODO(jiabin): This may cause error, since -1 still can indication true;
   bool StopGradient() const { return stop_gradient_ != 0; }
@@ -128,24 +123,17 @@ class AutogradMeta : public AbstractAutogradMeta {
     stop_gradient_ = static_cast<int>(stop_gradient);
   }
 
-  void WeakSetStopGradient(bool stop_gradient) {
-    if (stop_gradient_ == -1) {
-      stop_gradient_ = static_cast<int>(stop_gradient);
-    }
-  }
-
   bool Persistable() const { return persistable_; }
 
   void SetPersistable(bool persistable) { persistable_ = persistable; }
 
-  bool RetainGrads() { return retain_grads_; }
+  bool RetainGrads() const { return retain_grads_; }
 
   void SetRetainGrads(bool value) { retain_grads_ = value; }
 
  private:
   // TODO(jiabin) :Should we use pointer instead of object?
-  std::shared_ptr<paddle::experimental::Tensor> grad_{
-      std::make_shared<paddle::experimental::Tensor>()};
+  std::shared_ptr<paddle::Tensor> grad_{std::make_shared<paddle::Tensor>()};
 
   // GradNodeBase is base class of all grad op which is a
   // wrapper for grad op. This class will make grad op easy
@@ -154,7 +142,7 @@ class AutogradMeta : public AbstractAutogradMeta {
 
   /**
    * Why we need slot id here?
-   * Because in paddle most of our operators inputs and outputs
+   * Because in paddle most of operators, inputs and outputs
    * are assemble in form of {"slot name", vector<tensor>}.
    * So its better for us to set a slot id to fit this format. **/
   size_t out_slot_id_;

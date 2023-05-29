@@ -12,14 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import division
-
 import math
 import unittest
+
 import numpy as np
 
-import paddle.fluid as fluid
-from paddle.io import IterableDataset, BatchSampler, DataLoader, get_worker_info
+from paddle import fluid
+from paddle.io import DataLoader, IterableDataset, get_worker_info
 
 
 class RangeIterableDatasetSplit(IterableDataset):
@@ -34,8 +33,10 @@ class RangeIterableDatasetSplit(IterableDataset):
             iter_end = self.end
         else:
             per_worker = int(
-                math.ceil((self.end - self.start) / float(
-                    worker_info.num_workers)))
+                math.ceil(
+                    (self.end - self.start) / float(worker_info.num_workers)
+                )
+            )
             worker_id = worker_info.id
             iter_start = self.start + worker_id * per_worker
             iter_end = min(iter_start + per_worker, self.end)
@@ -54,7 +55,8 @@ class TestDynamicDataLoaderIterSplit(unittest.TestCase):
                 places=place,
                 num_workers=2,
                 batch_size=1,
-                drop_last=True)
+                drop_last=True,
+            )
 
             rets = []
             for d in dataloader:
@@ -86,7 +88,8 @@ class TestDynamicDataLoaderIterInitFuncSplit(unittest.TestCase):
                 start = dataset.start
                 end = dataset.end
                 num_per_worker = int(
-                    math.ceil((end - start) / float(worker_info.num_workers)))
+                    math.ceil((end - start) / float(worker_info.num_workers))
+                )
 
                 worker_id = worker_info.id
                 dataset.start = start + worker_id * num_per_worker
@@ -98,7 +101,8 @@ class TestDynamicDataLoaderIterInitFuncSplit(unittest.TestCase):
                 num_workers=1,
                 batch_size=1,
                 drop_last=True,
-                worker_init_fn=worker_spliter)
+                worker_init_fn=worker_spliter,
+            )
 
             rets = []
             for d in dataloader:

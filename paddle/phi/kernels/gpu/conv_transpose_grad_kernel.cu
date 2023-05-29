@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/conv_transpose_grad_kernel.h"
-#include "paddle/phi/kernels/impl/conv_transpose_grad_kernel_impl.h"
 
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/core/ddim.h"
@@ -21,6 +20,7 @@
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/gpu/depthwise_conv.h"
+#include "paddle/phi/kernels/impl/conv_transpose_grad_kernel_impl.h"
 
 namespace phi {
 
@@ -34,7 +34,7 @@ void Conv2dTransposeDoubleGradKernel(const Context& ctx,
                                      const std::vector<int>& strides,
                                      const std::vector<int>& paddings,
                                      const std::vector<int>& output_padding,
-                                     const std::vector<int>& output_size,
+                                     const IntArray& output_size,
                                      const std::string& padding_algorithm,
                                      int groups,
                                      const std::vector<int>& dilations,
@@ -64,15 +64,14 @@ void DepthwiseConv2dTransposeGradKernel(const Context& ctx,
                                         const std::vector<int>& strides,
                                         const std::vector<int>& paddings,
                                         const std::vector<int>& output_padding,
-                                        const std::vector<int>& output_size,
+                                        const IntArray& output_size,
                                         const std::string& padding_algorithm,
                                         int groups,
                                         const std::vector<int>& dilations,
                                         const std::string& data_format,
                                         DenseTensor* dx,
                                         DenseTensor* dfilter) {
-  const DataLayout data_layout =
-      paddle::framework::StringToDataLayout(data_format);
+  const DataLayout data_layout = phi::StringToDataLayout(data_format);
   DenseTensor filter_ = filter;
 
   if (!dx && !dfilter) {
@@ -137,7 +136,7 @@ PD_REGISTER_KERNEL(conv2d_transpose_grad,
                    phi::Conv2dTransposeGradKernel,
                    float,
                    double) {}
-PD_REGISTER_KERNEL(conv2d_transpose_grad_grad,
+PD_REGISTER_KERNEL(conv2d_transpose_double_grad,
                    GPU,
                    ALL_LAYOUT,
                    phi::Conv2dTransposeDoubleGradKernel,

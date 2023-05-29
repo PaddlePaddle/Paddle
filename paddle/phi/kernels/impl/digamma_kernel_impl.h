@@ -15,6 +15,8 @@
 #pragma once
 
 #include <unsupported/Eigen/SpecialFunctions>
+
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 
@@ -26,7 +28,9 @@ struct DigammaFunctor {
       : input_(input), output_(output), numel_(numel) {}
 
   HOSTDEVICE void operator()(int64_t idx) const {
-    output_[idx] = Eigen::numext::digamma(input_[idx]);
+    using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+    const MPType mp_input = static_cast<MPType>(input_[idx]);
+    output_[idx] = static_cast<T>(Eigen::numext::digamma(mp_input));
   }
 
  private:
@@ -37,7 +41,7 @@ struct DigammaFunctor {
 
 template <typename T, typename Context>
 void DigammaKernel(const Context& ctx, const DenseTensor& x, DenseTensor* out) {
-  out->mutable_data<T>(ctx.GetPlace());
+  ctx.template Alloc<T>(out);
   auto* x_data = x.data<T>();
   auto* out_data = out->data<T>();
   auto numel = x.numel();

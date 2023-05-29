@@ -14,8 +14,8 @@
 
 import os
 import sys
-import time
-import paddle.fluid as fluid
+
+from paddle import fluid
 
 
 def train(prefix):
@@ -29,11 +29,16 @@ def train(prefix):
     worker_endpoints = worker_endpoints_env
     trainers_num = len(worker_endpoints.split(','))
 
-    name = "selected_devices:{} worker_endpoints:{} trainers_num:{} current_endpoint:{} trainer_id:{}"\
-        .format(selected_devices, worker_endpoints, trainers_num, current_endpoint,trainer_id)
+    name = "selected_devices:{} worker_endpoints:{} trainers_num:{} current_endpoint:{} trainer_id:{}".format(
+        selected_devices,
+        worker_endpoints,
+        trainers_num,
+        current_endpoint,
+        trainer_id,
+    )
 
     print(name)
-    with open("{}.check_{}.log".format(prefix, trainer_id), "w") as f:
+    with open(f"{prefix}.check_{trainer_id}.log", "w") as f:
         f.write(name)
 
 

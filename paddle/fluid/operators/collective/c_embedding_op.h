@@ -25,13 +25,15 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using LoDTensor = framework::LoDTensor;
-
 inline void CheckTableValid() {}
 
 template <typename TIds, typename TData>
-void GetIdsEmbedding(const TIds* ids, size_t ids_len, int64_t start_idx,
-                     const TData* table, int64_t height, int64_t width,
+void GetIdsEmbedding(const TIds* ids,
+                     size_t ids_len,
+                     int64_t start_idx,
+                     const TData* table,
+                     int64_t height,
+                     int64_t width,
                      TData* out) {
   for (size_t i = 0; i < ids_len; i++) {
     TIds id = ids[i];
@@ -49,13 +51,13 @@ void GetIdsEmbedding(const TIds* ids, size_t ids_len, int64_t start_idx,
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class CEmbeddingOpCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* table_t = ctx.Input<LoDTensor>("W");
-    auto* ids_t = ctx.Input<LoDTensor>("Ids");
-    auto* output_t = ctx.Output<LoDTensor>("Out");
+    auto* table_t = ctx.Input<phi::DenseTensor>("W");
+    auto* ids_t = ctx.Input<phi::DenseTensor>("Ids");
+    auto* output_t = ctx.Output<phi::DenseTensor>("Out");
     const int64_t start_idx = ctx.Attr<int64_t>("start_index");
 
     VLOG(10) << "table_dims:" << table_t->dims();
@@ -68,11 +70,21 @@ class CEmbeddingOpCPUKernel : public framework::OpKernel<T> {
 
     const auto& index_type = framework::TransToProtoVarType(ids_t->dtype());
     if (index_type == framework::proto::VarType::INT32) {
-      GetIdsEmbedding(ids_t->data<int32_t>(), ids_t->numel(), start_idx,
-                      table_data, height, width, output_data);
+      GetIdsEmbedding(ids_t->data<int32_t>(),
+                      ids_t->numel(),
+                      start_idx,
+                      table_data,
+                      height,
+                      width,
+                      output_data);
     } else if (index_type == framework::proto::VarType::INT64) {
-      GetIdsEmbedding(ids_t->data<int64_t>(), ids_t->numel(), start_idx,
-                      table_data, height, width, output_data);
+      GetIdsEmbedding(ids_t->data<int64_t>(),
+                      ids_t->numel(),
+                      start_idx,
+                      table_data,
+                      height,
+                      width,
+                      output_data);
     } else {
       PADDLE_THROW(platform::errors::Unavailable(
           "CPU c_embedding ids only support int32 or int64."));
@@ -81,8 +93,12 @@ class CEmbeddingOpCPUKernel : public framework::OpKernel<T> {
 };
 
 template <typename TIds, typename TData>
-void UpdateEmbedding(const TIds* ids, size_t ids_len, int64_t start_idx,
-                     TData* table, int64_t height, int64_t width,
+void UpdateEmbedding(const TIds* ids,
+                     size_t ids_len,
+                     int64_t start_idx,
+                     TData* table,
+                     int64_t height,
+                     int64_t width,
                      const TData* out) {
   for (size_t i = 0; i < ids_len; i++) {
     TIds id = ids[i];
@@ -96,21 +112,23 @@ void UpdateEmbedding(const TIds* ids, size_t ids_len, int64_t start_idx,
   }
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class CEmbeddingGradOpCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     const int64_t start_idx = context.Attr<int64_t>("start_index");
-    auto ids_t = context.Input<LoDTensor>("Ids");
-    auto d_output_t = context.Input<LoDTensor>(framework::GradVarName("Out"));
-    auto table_t = context.Input<LoDTensor>("W");
-    auto table_grad_t = context.Output<LoDTensor>(framework::GradVarName("W"));
+    auto ids_t = context.Input<phi::DenseTensor>("Ids");
+    auto d_output_t =
+        context.Input<phi::DenseTensor>(framework::GradVarName("Out"));
+    auto table_t = context.Input<phi::DenseTensor>("W");
+    auto table_grad_t =
+        context.Output<phi::DenseTensor>(framework::GradVarName("W"));
 
     T* table_grad_data =
         table_grad_t->mutable_data<T>(table_t->dims(), context.GetPlace());
 
     size_t table_t_mem_size =
-        table_t->numel() * framework::DataTypeSize(table_grad_t->dtype());
+        table_t->numel() * phi::SizeOf(table_grad_t->dtype());
     size_t table_grad_t_mem_size =
         table_grad_t->numel() *
         framework::SizeOfType(
@@ -129,11 +147,21 @@ class CEmbeddingGradOpCPUKernel : public framework::OpKernel<T> {
 
     const auto& index_type = framework::TransToProtoVarType(ids_t->dtype());
     if (index_type == framework::proto::VarType::INT32) {
-      UpdateEmbedding(ids_t->data<int32_t>(), ids_t->numel(), start_idx,
-                      table_grad_data, height, width, d_output_data);
+      UpdateEmbedding(ids_t->data<int32_t>(),
+                      ids_t->numel(),
+                      start_idx,
+                      table_grad_data,
+                      height,
+                      width,
+                      d_output_data);
     } else if (index_type == framework::proto::VarType::INT64) {
-      UpdateEmbedding(ids_t->data<int64_t>(), ids_t->numel(), start_idx,
-                      table_grad_data, height, width, d_output_data);
+      UpdateEmbedding(ids_t->data<int64_t>(),
+                      ids_t->numel(),
+                      start_idx,
+                      table_grad_data,
+                      height,
+                      width,
+                      d_output_data);
     } else {
       PADDLE_THROW(platform::errors::Unavailable(
           "CPU c_embedding ids only support int32 or int64."));

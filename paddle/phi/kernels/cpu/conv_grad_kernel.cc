@@ -13,78 +13,99 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/conv_grad_kernel.h"
-#include "paddle/phi/kernels/impl/conv_grad_kernel_impl.h"
 
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/kernels/impl/conv_grad_kernel_impl.h"
 
 namespace phi {
 
 template <typename T, typename Context>
 void DepthwiseConvGradKernel(const Context& dev_ctx,
-                             const DenseTensor& out_grad,
                              const DenseTensor& input,
                              const DenseTensor& filter,
+                             const DenseTensor& out_grad,
                              const std::vector<int>& strides,
                              const std::vector<int>& paddings,
-                             const std::string& paddding_algorithm,
+                             const std::string& padding_algorithm,
                              int groups,
                              const std::vector<int>& dilations,
                              const std::string& data_format,
-                             bool use_addto,
-                             int workspace_size_MB,
-                             bool exhaustive_search,
-                             bool fuse_relu,
                              DenseTensor* input_grad,
                              DenseTensor* filter_grad) {
   ConvGradKernel<T>(dev_ctx,
-                    out_grad,
                     input,
                     filter,
+                    out_grad,
                     strides,
                     paddings,
-                    paddding_algorithm,
-                    groups,
+                    padding_algorithm,
                     dilations,
+                    groups,
                     data_format,
-                    use_addto,
-                    workspace_size_MB,
-                    exhaustive_search,
                     input_grad,
                     filter_grad);
 }
 
 template <typename T, typename Context>
 void Conv3DGradKernel(const Context& dev_ctx,
-                      const DenseTensor& out_grad,
                       const DenseTensor& input,
                       const DenseTensor& filter,
+                      const DenseTensor& out_grad,
                       const std::vector<int>& strides,
                       const std::vector<int>& paddings,
-                      const std::string& paddding_algorithm,
+                      const std::string& padding_algorithm,
                       int groups,
                       const std::vector<int>& dilations,
                       const std::string& data_format,
-                      bool use_addto,
-                      int workspace_size_MB,
-                      bool exhaustive_search,
                       DenseTensor* input_grad,
                       DenseTensor* filter_grad) {
   ConvGradKernel<T>(dev_ctx,
-                    out_grad,
                     input,
                     filter,
+                    out_grad,
                     strides,
                     paddings,
-                    paddding_algorithm,
-                    groups,
+                    padding_algorithm,
                     dilations,
+                    groups,
                     data_format,
-                    use_addto,
-                    workspace_size_MB,
-                    exhaustive_search,
                     input_grad,
                     filter_grad);
+}
+
+template <typename T, typename Context>
+void Conv3DDoubleGradKernel(
+    const Context& ctx,
+    const DenseTensor& input,
+    const DenseTensor& filter,
+    const DenseTensor& out_grad,
+    const paddle::optional<DenseTensor>& input_grad_grad,
+    const paddle::optional<DenseTensor>& filter_grad_grad,
+    const std::vector<int>& strides,
+    const std::vector<int>& paddings_t,
+    const std::string& padding_algorithm,
+    int groups,
+    const std::vector<int>& dilations_t,
+    const std::string& data_format,
+    DenseTensor* input_grad,
+    DenseTensor* filter_grad,
+    DenseTensor* out_grad_grad) {
+  ConvGradGradKernel<T>(ctx,
+                        input,
+                        filter,
+                        out_grad,
+                        input_grad_grad,
+                        filter_grad_grad,
+                        strides,
+                        paddings_t,
+                        padding_algorithm,
+                        dilations_t,
+                        groups,
+                        data_format,
+                        input_grad,
+                        filter_grad,
+                        out_grad_grad);
 }
 
 }  // namespace phi
@@ -101,3 +122,17 @@ PD_REGISTER_KERNEL(depthwise_conv2d_grad,
 
 PD_REGISTER_KERNEL(
     conv3d_grad, CPU, ALL_LAYOUT, phi::Conv3DGradKernel, float, double) {}
+
+PD_REGISTER_KERNEL(conv2d_double_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::ConvGradGradKernel,
+                   float,
+                   double) {}
+
+PD_REGISTER_KERNEL(conv3d_double_grad,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::Conv3DDoubleGradKernel,
+                   float,
+                   double) {}

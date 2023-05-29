@@ -15,6 +15,7 @@
 #pragma once
 
 #include <string>
+
 #include "paddle/fluid/framework/operator.h"
 
 // We define some common names or utility functions
@@ -39,8 +40,7 @@ void* GetStream(const framework::ExecutionContext& ctx) {
 
 #ifdef PADDLE_WITH_CUDA
 template <>
-void* GetStream<platform::CUDADeviceContext>(
-    const framework::ExecutionContext& ctx);
+void* GetStream<phi::GPUContext>(const framework::ExecutionContext& ctx);
 #endif
 
 }  // namespace details

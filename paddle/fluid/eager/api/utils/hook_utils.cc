@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/eager/api/utils/hook_utils.h"
+
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/utils/tensor_utils.h"
 #include "paddle/fluid/eager/autograd_meta.h"
@@ -23,18 +24,20 @@ namespace egr {
 namespace egr_utils_api {
 
 int64_t RegisterGradientHookForTensor(
-    const paddle::experimental::Tensor& tensor,
-    std::shared_ptr<egr::TensorHook>&& hook) {
+    const paddle::Tensor& tensor,
+    const std::function<paddle::Tensor(const paddle::Tensor&)>& hook) {
   // Find grad_node and out_rank from AutogradMeta
   std::shared_ptr<GradNodeBase> grad_node = EagerUtils::grad_node(tensor);
   auto rank_info = EagerUtils::unsafe_autograd_meta(tensor)->OutRankInfo();
 
-  return grad_node->RegisterGradientHook(rank_info.first, rank_info.second,
-                                         std::move(hook));
+  return grad_node->RegisterGradientHook(
+      rank_info.first,
+      rank_info.second,
+      std::move(std::make_shared<CppTensorHook>(hook)));
 }
 
-void RegisterReduceHookForTensor(const paddle::experimental::Tensor& tensor,
-                                 std::shared_ptr<egr::TensorVoidHook>&& hook) {
+void RegisterReduceHookForTensor(const paddle::Tensor& tensor,
+                                 const std::function<void()>& hook) {
   if (IsLeafTensor(tensor)) {
     VLOG(6) << "Register ReduceHook for leaf tensor";
     std::shared_ptr<GradNodeBase> grad_node = EagerUtils::grad_node(tensor);
@@ -45,14 +48,15 @@ void RegisterReduceHookForTensor(const paddle::experimental::Tensor& tensor,
                                         "with type: GradNodeAccumulation"));
     auto accumulation_grad_node =
         std::dynamic_pointer_cast<GradNodeAccumulation>(grad_node);
-    accumulation_grad_node->RegisterReduceHook(std::move(hook));
+    accumulation_grad_node->RegisterReduceHook(
+        std::move(std::make_shared<CppVoidHook>(hook)));
   } else {
     PADDLE_THROW(paddle::platform::errors::Fatal(
         "Only can register reduce hook for leaf Tensor."));
   }
 }
 
-void RetainGradForTensor(const paddle::experimental::Tensor& tensor) {
+void RetainGradForTensor(const paddle::Tensor& tensor) {
   if (IsLeafTensor(tensor)) {
     // Leaf tensor's grad will always be retained
     // Refer to implementation of AccumulationNode for more details
@@ -65,33 +69,35 @@ void RetainGradForTensor(const paddle::experimental::Tensor& tensor) {
       meta->SetRetainGrads(true);
     }
 
-    std::weak_ptr<paddle::experimental::Tensor> weak_grad_tensor =
-        meta->WeakGrad();
+    std::weak_ptr<paddle::Tensor> weak_grad_tensor = meta->WeakGrad();
 
     // Define Hook
-    auto hook = [weak_grad_tensor](const paddle::experimental::Tensor& t) {
+    auto hook = [weak_grad_tensor](const paddle::Tensor& t) {
       if (!weak_grad_tensor.expired()) {
         auto grad_tensor = weak_grad_tensor.lock();
         if (t.defined()) {
           VLOG(7) << "Set impl for RetainGrad Hook for tensor: " << t.name();
           // Simply Copy impl() to grad_tensor
           grad_tensor->set_impl(t.impl());
+          grad_tensor->set_autograd_meta(t.mutable_autograd_meta());
           return *grad_tensor.get();
         } else {
-          VLOG(7) << "Retain NULL paddle::experimental::Tensor in Grad Hook";
-          return paddle::experimental::Tensor();
+          VLOG(7) << "Retain NULL paddle::Tensor in Grad Hook";
+          return paddle::Tensor();
         }
       } else {
-        VLOG(7) << "Retain NULL paddle::experimental::Tensor in Grad Hook";
-        return paddle::experimental::Tensor();
+        VLOG(7) << "Retain NULL paddle::Tensor in Grad Hook";
+        return paddle::Tensor();
       }
     };
 
     // Append to GradientHooks
-    RegisterGradientHookForTensor(tensor,
-                                  std::make_shared<egr::CppTensorHook>(hook));
+    RegisterGradientHookForTensor(tensor, hook);
   }
 }
 
+void RegisterBackwardFinalHook(const std::function<void()>& hook) {
+  Controller::Instance().RegisterBackwardFinalHook(hook);
+}
 }  // namespace egr_utils_api
 }  // namespace egr

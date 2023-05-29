@@ -17,7 +17,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
 class FTRLOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -25,35 +24,43 @@ class FTRLOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Param"), "Input", "Param", "FTRL");
-    OP_INOUT_CHECK(ctx->HasInput("SquaredAccumulator"), "Input",
-                   "SquaredAccumulator", "FTRL");
-    OP_INOUT_CHECK(ctx->HasInput("LinearAccumulator"), "Input",
-                   "LinearAccumulator", "FTRL");
-    OP_INOUT_CHECK(ctx->HasInput("Grad"), "Input", "Grad", "FTRL");
-    OP_INOUT_CHECK(ctx->HasInput("LearningRate"), "Input", "LearningRate",
+    OP_INOUT_CHECK(ctx->HasInput("SquaredAccumulator"),
+                   "Input",
+                   "SquaredAccumulator",
                    "FTRL");
+    OP_INOUT_CHECK(ctx->HasInput("LinearAccumulator"),
+                   "Input",
+                   "LinearAccumulator",
+                   "FTRL");
+    OP_INOUT_CHECK(ctx->HasInput("Grad"), "Input", "Grad", "FTRL");
+    OP_INOUT_CHECK(
+        ctx->HasInput("LearningRate"), "Input", "LearningRate", "FTRL");
 
     OP_INOUT_CHECK(ctx->HasOutput("ParamOut"), "Output", "ParamOut", "FTRL");
-    OP_INOUT_CHECK(ctx->HasOutput("SquaredAccumOut"), "Output",
-                   "SquaredAccumOut", "FTRL");
-    OP_INOUT_CHECK(ctx->HasOutput("LinearAccumOut"), "Output", "LinearAccumOut",
-                   "FTRL");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("SquaredAccumOut"), "Output", "SquaredAccumOut", "FTRL");
+    OP_INOUT_CHECK(
+        ctx->HasOutput("LinearAccumOut"), "Output", "LinearAccumOut", "FTRL");
 
     auto param_dim = ctx->GetInputDim("Param");
-    PADDLE_ENFORCE_EQ(param_dim, ctx->GetInputDim("Grad"),
+    PADDLE_ENFORCE_EQ(param_dim,
+                      ctx->GetInputDim("Grad"),
                       platform::errors::InvalidArgument(
                           "Two input of FTRL Op's dimension must be same, but "
                           "param_dim is %d, Grad is %d",
-                          param_dim, ctx->GetInputDim("Grad")));
+                          param_dim,
+                          ctx->GetInputDim("Grad")));
 
     auto lr_dim = ctx->GetInputDim("LearningRate");
-    PADDLE_ENFORCE_NE(phi::product(lr_dim), 0,
+    PADDLE_ENFORCE_NE(phi::product(lr_dim),
+                      0,
                       platform::errors::InvalidArgument(
                           "Maybe the Input variable LearningRate has not "
                           "been initialized. You may need to confirm "
                           "if you put exe.run(startup_program) "
                           "after optimizer.minimize function."));
-    PADDLE_ENFORCE_EQ(phi::product(lr_dim), 1,
+    PADDLE_ENFORCE_EQ(phi::product(lr_dim),
+                      1,
                       platform::errors::InvalidArgument(
                           "Learning Rate should be a scalar, but got %d",
                           phi::product(lr_dim)));
@@ -62,11 +69,11 @@ class FTRLOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("SquaredAccumOut", param_dim);
     ctx->SetOutputDim("LinearAccumOut", param_dim);
   }
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto input_data_type =
         OperatorWithKernel::IndicateVarDataType(ctx, "Param");
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return phi::KernelKey(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -149,5 +156,5 @@ The paper that proposed Follow The Regularized Leader (FTRL):
 
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(ftrl, ops::FTRLOp, ops::FTRLOpMaker);
-REGISTER_OP_CPU_KERNEL(
-    ftrl, ops::FTRLOpKernel<paddle::platform::CPUDeviceContext, float>);
+
+PD_REGISTER_STRUCT_KERNEL(ftrl, CPU, ALL_LAYOUT, ops::FTRLOpKernel, float) {}

@@ -1,24 +1,25 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import unittest
+
+import numpy as np
+
+import paddle
+from paddle import nn
 from paddle.distributed.passes.pass_utils import split_program
 from paddle.vision.models import resnet18 as resnet
-import paddle
-import paddle.nn as nn
-import unittest
-import json
-import numpy as np
 
 
 class TestSplitProgram(unittest.TestCase):
@@ -32,9 +33,11 @@ class TestSplitProgram(unittest.TestCase):
         startup = paddle.static.Program()
         with paddle.static.program_guard(main, startup):
             image = paddle.static.data(
-                shape=[batch_size, 3, 224, 224], dtype='float32', name='image')
+                shape=[batch_size, 3, 224, 224], dtype='float32', name='image'
+            )
             label = paddle.static.data(
-                shape=[batch_size, 1], dtype='int64', name='label')
+                shape=[batch_size, 1], dtype='int64', name='label'
+            )
 
             model = resnet(pretrained=False)
             loss_fn = nn.loss.CrossEntropyLoss()
@@ -63,9 +66,11 @@ class TestSplitProgram(unittest.TestCase):
             self.assertEqual(len(vars_actual), len(vars_expected))
             for actual, expected in zip(vars_actual, vars_expected):
                 self.assertEqual(actual.shape, expected.shape)
-                self.assertTrue(
-                    np.array_equal(actual, expected),
-                    '{}\n{}\n'.format(actual, expected))
+                np.testing.assert_array_equal(
+                    actual,
+                    expected,
+                    err_msg=f'{actual}\n{expected}\n',
+                )
 
     def get_places(self):
         places = [paddle.CPUPlace()]
@@ -91,22 +96,25 @@ class TestSplitProgram(unittest.TestCase):
 
         image_np = np.random.random(size=image.shape).astype('float32')
         label_np = np.random.randint(
-            low=0, high=1000, dtype='int64', size=label.shape)
+            low=0, high=1000, dtype='int64', size=label.shape
+        )
 
         scope = paddle.static.Scope()
         if not use_split:
             with paddle.static.scope_guard(scope):
                 exe.run(startup_prog)
                 for _ in range(batch_num):
-                    exe.run(main_prog,
-                            feed={image.name: image_np,
-                                  label.name: label_np})
+                    exe.run(
+                        main_prog,
+                        feed={image.name: image_np, label.name: label_np},
+                    )
             return self.get_var_values(scope, startup_vars)
 
         op_num = len(main_prog.global_block().ops)
         split_op_indices = [int(op_num / 3.0), int(op_num * 3 / 4.0)]
-        programs, input_vars, output_vars = split_program(main_prog,
-                                                          split_op_indices)
+        programs, input_vars, output_vars = split_program(
+            main_prog, split_op_indices
+        )
         op_nums = [0] + split_op_indices + [op_num]
         op_nums = [op_nums[i + 1] - op_nums[i] for i in range(len(op_nums) - 1)]
         num_split = len(split_op_indices) + 1
@@ -130,15 +138,19 @@ class TestSplitProgram(unittest.TestCase):
                         if tmp_vars[in_name] is not None:
                             feed_dict[in_name] = tmp_vars[in_name]
 
-                    output_var_values = exe.run(program,
-                                                feed=feed_dict,
-                                                fetch_list=output_vars[i],
-                                                return_numpy=False)
-                    for out_name, out_value in zip(output_vars[i],
-                                                   output_var_values):
+                    output_var_values = exe.run(
+                        program,
+                        feed=feed_dict,
+                        fetch_list=output_vars[i],
+                        return_numpy=False,
+                    )
+                    for out_name, out_value in zip(
+                        output_vars[i], output_var_values
+                    ):
                         if not out_value._is_initialized():
-                            tmp_vars[out_name] = np.ndarray(out_value._get_dims(
-                            )).astype('float32')
+                            tmp_vars[out_name] = np.ndarray(
+                                out_value._get_dims()
+                            ).astype('float32')
                         else:
                             tmp_vars[out_name] = np.array(out_value)
 

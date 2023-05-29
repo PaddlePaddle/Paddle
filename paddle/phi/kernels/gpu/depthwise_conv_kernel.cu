@@ -13,14 +13,12 @@
 // limitations under the License.
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/common/bfloat16.h"
+#include "paddle/phi/common/float16.h"
 #include "paddle/phi/core/kernel_registry.h"
-
-#include "paddle/fluid/operators/conv_op.h"
-
-#include "paddle/phi/kernels/gpu/depthwise_conv.h"
-
 #include "paddle/phi/kernels/cpu/conv_util.h"
 #include "paddle/phi/kernels/funcs/batch_norm_utils.h"
+#include "paddle/phi/kernels/gpu/depthwise_conv.h"
 
 namespace phi {
 
@@ -34,19 +32,23 @@ void DepthwiseConvKernel(const Context& dev_ctx,
                          int groups,
                          const std::vector<int>& dilations_t,
                          const std::string& data_format,
-                         bool use_addto,
-                         int workspace_size_MB,
-                         bool exhaustive_search,
-                         bool fuse_relu,
                          DenseTensor* out) {
   DenseTensor* output = out;
-  output->mutable_data<T>(dev_ctx.GetPlace());
+  dev_ctx.template Alloc<T>(output);
 
   const std::vector<int> strides = strides_t;
   std::vector<int> dilations = dilations_t;
   std::vector<int> paddings = paddings_t;
 
   const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
+
+  bool has_fuse_relu = dev_ctx.HasDnnAttr("fuse_relu_before_depthwise_conv");
+  bool fuse_relu =
+      has_fuse_relu
+          ? PADDLE_GET_CONST(
+                bool, dev_ctx.GetDnnAttr("fuse_relu_before_depthwise_conv"))
+          : false;
+
   if (channel_last) {
     PADDLE_ENFORCE_EQ(
         output->dims()[output->dims().size() - 1] %
@@ -75,9 +77,8 @@ void DepthwiseConvKernel(const Context& dev_ctx,
   auto filter_dims = filter.dims();
 
   DDim in_data_dims;
-  const paddle::framework::DataLayout data_layout =
-      paddle::framework::StringToDataLayout(data_format);
-  if (data_layout != paddle::framework::DataLayout::kNHWC) {
+  const phi::DataLayout data_layout = phi::StringToDataLayout(data_format);
+  if (data_layout != phi::DataLayout::kNHWC) {
     in_data_dims = slice_ddim(in_dims, 2, in_dims.size());
   } else {
     in_data_dims = slice_ddim(in_dims, 1, in_dims.size() - 1);
@@ -127,4 +128,6 @@ PD_REGISTER_KERNEL(depthwise_conv2d,
                    ALL_LAYOUT,
                    phi::DepthwiseConvKernel,
                    float,
-                   double) {}
+                   double,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

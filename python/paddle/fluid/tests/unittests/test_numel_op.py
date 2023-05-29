@@ -11,24 +11,26 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import print_function
 
 import unittest
+
 import numpy as np
-from op_test import OpTest
-import paddle.fluid.core as core
-import paddle.fluid as fluid
-from paddle.fluid import Program, program_guard
-import functools
+from eager_op_test import OpTest, convert_float_to_uint16
+
 import paddle
+from paddle import fluid
+from paddle.fluid import core
 
 
 class TestNumelOp(OpTest):
     def setUp(self):
         self.op_type = "size"
+        self.python_api = paddle.numel
         self.init()
-        x = np.random.random((self.shape)).astype("float64")
-        self.inputs = {'Input': x, }
+        x = np.random.random(self.shape).astype(self.dtype)
+        self.inputs = {
+            'Input': x,
+        }
         self.outputs = {'Out': np.array([np.size(x)])}
 
     def test_check_output(self):
@@ -36,16 +38,65 @@ class TestNumelOp(OpTest):
 
     def init(self):
         self.shape = (6, 56, 8, 55)
+        self.dtype = np.float64
 
 
 class TestNumelOp1(TestNumelOp):
     def init(self):
         self.shape = (11, 66)
+        self.dtype = np.float64
 
 
 class TestNumelOp2(TestNumelOp):
     def init(self):
-        self.shape = (0, )
+        self.shape = (0,)
+        self.dtype = np.float64
+
+
+class TestNumelOpFP16(TestNumelOp):
+    def init(self):
+        self.dtype = np.float16
+        self.shape = (6, 56, 8, 55)
+
+
+class TestNumelOp1FP16(TestNumelOp):
+    def init(self):
+        self.dtype = np.float16
+        self.shape = (11, 66)
+
+
+class TestNumelOp2FP16(TestNumelOp):
+    def init(self):
+        self.dtype = np.float16
+        self.shape = (0,)
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda()
+    or not core.is_bfloat16_supported(core.CUDAPlace(0)),
+    "core is not compiled with CUDA and do not support bfloat16",
+)
+class TestNumelOpBF16(OpTest):
+    def setUp(self):
+        self.op_type = "size"
+        self.python_api = paddle.numel
+        self.dtype = np.uint16
+        self.init()
+        x = np.random.random(self.shape).astype(np.float32)
+        self.inputs = {'Input': convert_float_to_uint16(x)}
+        self.outputs = {'Out': np.array([np.size(x)])}
+
+    def test_check_output(self):
+        place = paddle.CUDAPlace(0)
+        self.check_output_with_place(place)
+
+    def init(self):
+        self.shape = (6, 56, 8, 55)
+
+
+class TestNumelOp1BF16(TestNumelOpBF16):
+    def init(self):
+        self.shape = (11, 66)
 
 
 class TestNumelAPI(unittest.TestCase):
@@ -55,22 +106,26 @@ class TestNumelAPI(unittest.TestCase):
         with fluid.program_guard(main_program, startup_program):
             shape1 = [2, 1, 4, 5]
             shape2 = [1, 4, 5]
-            x_1 = paddle.fluid.data(shape=shape1, dtype='int32', name='x_1')
-            x_2 = paddle.fluid.data(shape=shape2, dtype='int32', name='x_2')
+            x_1 = paddle.static.data(shape=shape1, dtype='int32', name='x_1')
+            x_2 = paddle.static.data(shape=shape2, dtype='int32', name='x_2')
             input_1 = np.random.random(shape1).astype("int32")
             input_2 = np.random.random(shape2).astype("int32")
             out_1 = paddle.numel(x_1)
             out_2 = paddle.numel(x_2)
             exe = paddle.static.Executor(place=paddle.CPUPlace())
-            res_1, res_2 = exe.run(feed={
-                "x_1": input_1,
-                "x_2": input_2,
-            },
-                                   fetch_list=[out_1, out_2])
-            assert (np.array_equal(
-                res_1, np.array([np.size(input_1)]).astype("int64")))
-            assert (np.array_equal(
-                res_2, np.array([np.size(input_2)]).astype("int64")))
+            res_1, res_2 = exe.run(
+                feed={
+                    "x_1": input_1,
+                    "x_2": input_2,
+                },
+                fetch_list=[out_1, out_2],
+            )
+            assert np.array_equal(
+                res_1, np.array(np.size(input_1)).astype("int64")
+            )
+            assert np.array_equal(
+                res_2, np.array(np.size(input_2)).astype("int64")
+            )
 
     def test_numel_imperative(self):
         paddle.disable_static(paddle.CPUPlace())
@@ -80,8 +135,8 @@ class TestNumelAPI(unittest.TestCase):
         x_2 = paddle.to_tensor(input_2)
         out_1 = paddle.numel(x_1)
         out_2 = paddle.numel(x_2)
-        assert (np.array_equal(out_1.numpy().item(0), np.size(input_1)))
-        assert (np.array_equal(out_2.numpy().item(0), np.size(input_2)))
+        assert np.array_equal(out_1.numpy().item(0), np.size(input_1))
+        assert np.array_equal(out_2.numpy().item(0), np.size(input_2))
         paddle.enable_static()
 
     def test_error(self):

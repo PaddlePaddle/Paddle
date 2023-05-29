@@ -16,19 +16,22 @@
 
 #include <algorithm>
 #include <mutex>  // NOLINT
+
 #include "paddle/fluid/memory/allocation/aligned_allocator.h"
 #include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
 PADDLE_DEFINE_EXPORTED_READONLY_bool(
-    free_idle_chunk, false,
+    free_idle_chunk,
+    false,
     "Whether to free idle chunk when each allocation is freed. "
     "If false, all freed allocation would be cached to speed up next "
     "allocation request. If true, no allocation would be cached. This "
     "flag only works when FLAGS_allocator_strategy=auto_growth.");
 
 PADDLE_DEFINE_EXPORTED_READONLY_bool(
-    free_when_no_cache_hit, false,
+    free_when_no_cache_hit,
+    false,
     "Whether to free idle chunks when no cache hit. If true, idle "
     "chunk would be freed when no cache hit; if false, idle "
     "chunk would be freed when out of memory occurs. This flag "
@@ -39,17 +42,26 @@ namespace memory {
 namespace allocation {
 
 AutoGrowthBestFitAllocator::AutoGrowthBestFitAllocator(
-    const std::shared_ptr<Allocator> &underlying_allocator, size_t alignment,
-    size_t chunk_size, bool allow_free_idle_chunk)
+    const std::shared_ptr<Allocator> &underlying_allocator,
+    size_t alignment,
+    size_t chunk_size,
+    bool allow_free_idle_chunk)
     : underlying_allocator_(underlying_allocator),
       alignment_(alignment),
       chunk_size_(std::max(AlignedSize(chunk_size, alignment), alignment)),
-      allow_free_idle_chunk_(allow_free_idle_chunk) {}
+      allow_free_idle_chunk_(allow_free_idle_chunk) {
+  total_alloc_times_ = 0;
+  total_alloc_size_ = 0;
+  total_free_times_ = 0;
+  total_free_size_ = 0;
+  VLOG(4) << "chunk_size_:" << chunk_size_;
+}
 
 phi::Allocation *AutoGrowthBestFitAllocator::AllocateImpl(
     size_t unaligned_size) {
-  platform::RecordEvent("AutoGrowthBestFitAllocator::Allocate",
-                        platform::TracerEventType::UserDefined, 9 /*level*/);
+  platform::RecordEvent record("AutoGrowthBestFitAllocator::Allocate",
+                               platform::TracerEventType::UserDefined,
+                               9 /*level*/);
   size_t size = AlignedSize(unaligned_size, alignment_);
   VLOG(10) << "Allocate " << unaligned_size << " bytes, aligned to " << size;
 
@@ -106,18 +118,24 @@ phi::Allocation *AutoGrowthBestFitAllocator::AllocateImpl(
     VLOG(2) << "Not found and reallocate " << realloc_size << "("
             << static_cast<void *>(p) << "), and remaining " << remaining_size;
   }
+  ++total_alloc_times_;
+  total_alloc_size_ += size;
   VLOG(10) << "Alloc " << block_it->size_ << " bytes, ptr = " << block_it->ptr_;
   return new BlockAllocation(block_it);
 }
 
 void AutoGrowthBestFitAllocator::FreeImpl(phi::Allocation *allocation) {
-  platform::RecordEvent("AutoGrowthBestFitAllocator::Free",
-                        platform::TracerEventType::UserDefined, 9 /*level*/);
+  platform::RecordEvent record("AutoGrowthBestFitAllocator::Free",
+                               platform::TracerEventType::UserDefined,
+                               9 /*level*/);
   VLOG(10) << "Free " << allocation->size()
            << " bytes, ptr = " << allocation->ptr();
   std::lock_guard<SpinLock> guard(spinlock_);
   auto block_it = static_cast<BlockAllocation *>(allocation)->block_it_;
   auto &blocks = block_it->chunk_->blocks_;
+
+  total_free_times_ += 1;
+  total_free_size_ += block_it->size_;
 
   block_it->is_free_ = true;
 
@@ -169,7 +187,28 @@ uint64_t AutoGrowthBestFitAllocator::FreeIdleChunks() {
       ++chunk_it;
     }
   }
+
+  Trace();
   return bytes;
+}
+
+void AutoGrowthBestFitAllocator::Trace() const {
+  size_t cur_idle_bytes = 0;
+  auto it = free_blocks_.begin();
+  for (; it != free_blocks_.end(); ++it) {
+    cur_idle_bytes += it->second->size_;
+  }
+
+  VLOG(1) << "alloc:" << total_alloc_size_ / static_cast<double>(1024 * 1024)
+          << "m free:" << total_free_size_ / static_cast<double>(1024 * 1024)
+          << "m busy:"
+          << (total_alloc_size_ - total_free_size_) /
+                 static_cast<double>(1024 * 1024)
+          << "m idle:" << cur_idle_bytes / static_cast<double>(1024 * 1024)
+          << "m alloc_times:" << total_alloc_times_
+          << " free_times:" << total_free_times_
+          << " free_blocks_num:" << free_blocks_.size()
+          << " curr_chunks_num:" << chunks_.size();
 }
 
 }  // namespace allocation

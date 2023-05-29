@@ -13,16 +13,21 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/embedding_grad_kernel.h"
+#include "paddle/phi/kernels/funcs/embedding_grad.h"
+
+#include "gflags/gflags.h"
+#include "glog/logging.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/common/amp_type_traits.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/core/kernel_registry.h"
+#include "paddle/phi/core/mixed_vector.h"
+#include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/embedding_util.h"
 
-#include "paddle/fluid/memory/memcpy.h"
-#include "paddle/phi/backends/gpu/gpu_context.h"
-#include "paddle/phi/common/data_type.h"
-#include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/funcs/eigen/common.h"
-
-#include "paddle/fluid/framework/mixed_vector.h"
-#include "paddle/fluid/platform/device/gpu/gpu_primitives.h"
+DECLARE_int64(embedding_deterministic);
 
 namespace phi {
 
@@ -50,10 +55,10 @@ __global__ void EmbeddingGrad(T* table,
     const T* out = output + idy * D;
     T* tab = table + id * D;
 #ifdef PADDLE_WITH_CUDA
-    paddle::platform::VectorizedAtomicAddPerBlock(D, idx, blockDim.x, out, tab);
+    phi::VectorizedAtomicAddPerBlock(D, idx, blockDim.x, out, tab);
 #else
     for (int i = idx; i < D; i += blockDim.x) {
-      paddle::platform::CudaAtomicAdd(&tab[i], out[i]);
+      phi::CudaAtomicAdd(&tab[i], out[i]);
     }
 #endif
     idy += blockDim.y * gridDim.x;
@@ -99,11 +104,21 @@ struct EmbeddingGradCUDAFunctor {
           cudaMemsetAsync(d_table, 0, N * D * sizeof(T), dev_ctx_.stream()));
 #endif
 
-      const int gridx = 2 * dev_ctx_.GetSMCount();
-      dim3 threads(128, 8);
-      dim3 grids(gridx, 1);
-      EmbeddingGrad<T, IdT><<<grids, threads, 0, dev_ctx_.stream()>>>(
-          d_table, d_output, ids, N, K, D);
+      if (FLAGS_embedding_deterministic == 1) {
+        phi::funcs::LaunchEmbeddingGradDeterministicKernel<T, IdT>(
+            dev_ctx_, ids, d_output, d_table, N, D, K);
+      } else {
+        const int gridx = 2 * dev_ctx_.GetSMCount();
+        dim3 threads(128, 8);
+        dim3 grids(gridx, 1);
+        if (FLAGS_embedding_deterministic > 1) {
+          VLOG(2) << "Run grad kernel of embedding with single thread.";
+          grids.x = 1;
+          threads.y = 1;
+        }
+        EmbeddingGrad<T, IdT><<<grids, threads, 0, dev_ctx_.stream()>>>(
+            d_table, d_output, ids, N, K, D);
+      }
     }
   }
 
@@ -130,9 +145,11 @@ void EmbeddingGradKernel(const Context& ctx,
     functor.template apply<int>();
   } else if (input.dtype() == phi::DataType::INT64) {
     functor.template apply<int64_t>();
+  } else if (input.dtype() == phi::DataType::INT16) {
+    functor.template apply<int16_t>();
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
-        "emebdding input only support int32 and int64"));
+        "emebdding input only support int16, int32 and int64"));
   }
 }
 
@@ -164,21 +181,21 @@ struct EmbeddingSparseGradCUDAFunctor {
     dim3 threads(128, 8);
     dim3 grids(8, 1);
     auto stream = dev_ctx_.stream();
-    paddle::framework::Vector<int64_t> new_rows;
+    phi::Vector<int64_t> new_rows;
     new_rows.resize(ids_num);
     auto gpu_place = dev_ctx_.GetPlace();
 
-    paddle::framework::MixVector<int64_t> mixv_new_rows(&new_rows);
+    phi::MixVector<int64_t> mixv_new_rows(&new_rows);
     if (!std::is_same<IdT, int64_t>::value) {
       InputTypeConvert<<<grids, threads, 0, stream>>>(
           ids_data, ids_num, mixv_new_rows.MutableData(gpu_place));
     } else {
-      paddle::memory::Copy(gpu_place,
-                           mixv_new_rows.CUDAMutableData(gpu_place),
-                           gpu_place,
-                           ids_data,
-                           ids_num * sizeof(int64_t),
-                           stream);
+      memory_utils::Copy(gpu_place,
+                         mixv_new_rows.CUDAMutableData(gpu_place),
+                         gpu_place,
+                         ids_data,
+                         ids_num * sizeof(int64_t),
+                         stream);
     }
 
     mixv_new_rows.CopyToCPU();
@@ -202,12 +219,12 @@ struct EmbeddingSparseGradCUDAFunctor {
                           "output@Grad's shape = [%s].",
                           d_table_value->dims(),
                           d_output_dims_2d));
-    paddle::memory::Copy(gpu_place,
-                         d_table_data,
-                         gpu_place,
-                         d_output_data,
-                         d_output->numel() * sizeof(T),
-                         stream);
+    memory_utils::Copy(gpu_place,
+                       d_table_data,
+                       gpu_place,
+                       d_output_data,
+                       d_output->numel() * sizeof(T),
+                       stream);
   }
 
  private:
@@ -233,9 +250,10 @@ void EmbeddingSparseGradKernel(const Context& ctx,
     functor.template apply<int>();
   } else if (input.dtype() == phi::DataType::INT64) {
     functor.template apply<int64_t>();
-  } else {
+  } else if (input.dtype() == phi::DataType::INT16) {
+    functor.template apply<int16_t>();
     PADDLE_THROW(phi::errors::Unimplemented(
-        "emebdding input only support int32 and int64"));
+        "emebdding input only support int16, int32 and int64"));
   }
 }
 
@@ -247,7 +265,8 @@ PD_REGISTER_KERNEL(embedding_grad,
                    phi::EmbeddingGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 
 PD_REGISTER_KERNEL(embedding_sparse_grad,
                    GPU,
@@ -255,4 +274,5 @@ PD_REGISTER_KERNEL(embedding_sparse_grad,
                    phi::EmbeddingSparseGradKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

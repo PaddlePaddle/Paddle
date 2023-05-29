@@ -34,15 +34,20 @@ function LOG {
   echo "[$0:${BASH_LINENO[0]}] $*" >&2
 }
 
+function collect_kernel_registry_info {
+  LOG "[INFO] Collect kernel registry info ..."
+  python ${PADDLE_ROOT}/tools/parse_kernel_info.py
+  [ $? -ne 0 ] && LOG "[FATAL] Collect kernel registry info fail."
+}
+
 # Limit cu file directory
 function match_cu_file_directory {
   LOG "[INFO] run function match_cu_file_directory"
   local sub_dir cu_file_dir
   cu_file_dir=$(dirname ${1})
-  for sub_dir in "" "/elementwise" "/reduce_ops"
-  do
-    [ "${cu_file_dir}" == "paddle/fluid/operators${sub_dir}" ] && return 0
-  done
+  # the operators under paddle/fluid/operators directory
+  [ "${cu_file_dir}" == "paddle/fluid/operators" ] && return 0
+  # the operators under paddle/phi/kernels directory
   for sub_dir in "" "/gpu" "/gpudnn" "/sparse/gpu"
   do
     [ "${cu_file_dir}" == "paddle/phi/kernels${sub_dir}" ] && return 0
@@ -110,18 +115,24 @@ function load_CHANGE_OP_FILES {
       load_CHANGE_OP_FILES_by_header_file $change_file
     fi
   done
-  [ ${#CHANGE_OP_FILES[@]} -eq 0 ] && LOG "[INFO] No op to test, skip this ci." && \
-  exit 0
+  if [ ${#CHANGE_OP_FILES[@]} -eq 0 ]; then
+    LOG "[INFO] Uninstall PaddlePaddle ..."
+    pip uninstall -y paddlepaddle paddlepaddle_gpu
+    LOG "[INFO] Install PaddlePaddle ..."
+    pip install build/pr_whl/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl
+    collect_kernel_registry_info
+    LOG "[INFO] No op to test, skip this ci." && exit 0
+  fi
 }
 
 # Clone benchmark repo
-function prepare_benchmark_environment {
+function clone_and_collect_op_info {
   LOG "[INFO] Clone benchmark repo ..."
   git clone https://github.com/PaddlePaddle/benchmark.git
   [ $? -ne 0 ] && LOG "[FATAL] Clone benchmark repo fail." && exit -1
   LOG "[INFO] Collect api info ..."
   python benchmark/api/deploy/collect_api_info.py \
-      --test_module_name dynamic_tests_v2         \
+      --test_module_name tests                    \
       --info_file api_info.txt >& 2
   [ $? -ne 0 ] && LOG "[FATAL] Collect api info fail." && exit -1
   [ ! -f benchmark/ci/scripts/op_benchmark.config ] && LOG "[FATAL] Missing op_benchmark.config!" && exit -1
@@ -135,6 +146,8 @@ function load_CHANGE_OP_MAP {
   for change_file in ${CHANGE_OP_FILES[@]}
   do
     change_file_name=${change_file#*paddle/fluid/operators/}
+    change_file_name=${change_file_name#*paddle/phi/kernels/gpu/}
+    change_file_name=${change_file_name#*paddle/phi/kernels/gpudnn/}
     if [ -n "${PADDLE_FILENAME_OP_MAP[$change_file_name]}" ]
     then
       for op_name in ${PADDLE_FILENAME_OP_MAP[$change_file_name]}
@@ -195,14 +208,14 @@ function run_op_benchmark_test {
   # pip install tensorflow==2.3.0 tensorflow-probability
   for branch_name in "dev_whl" "pr_whl"
   do
-    LOG "[INFO] Uninstall Paddle ..."
+    LOG "[INFO] Uninstall PaddlePaddle ..."
     pip uninstall -y paddlepaddle paddlepaddle_gpu
-    LOG "[INFO] Install Paddle ..."
+    LOG "[INFO] Install PaddlePaddle ..."
     pip install build/${branch_name}/paddlepaddle_gpu-0.0.0-cp37-cp37m-linux_x86_64.whl
     logs_dir="$(pwd)/logs-${branch_name}"
     [ -d $logs_dir ] && rm -rf $logs_dir/* || mkdir -p $logs_dir
     pushd benchmark/api > /dev/null
-    bash deploy/main_control.sh dynamic_tests_v2 \
+    bash deploy/main_control.sh tests \
                                 tests_v2/configs \
                                 $logs_dir \
                                 $VISIBLE_DEVICES \
@@ -229,7 +242,7 @@ function check_op_benchmark_result {
       # there is no need to recompile and install paddle
       LOG "[INFO] retry ${retry_time} times ..."
       pushd benchmark/api > /dev/null
-      bash deploy/main_control.sh dynamic_tests_v2 \
+      bash deploy/main_control.sh tests \
                                   tests_v2/configs \
                                   ${logs_dir} \
                                   $VISIBLE_DEVICES \
@@ -264,7 +277,7 @@ function check_CHANGE_OP_MAP {
   done
   if [ $exit_code -ne 0 ]; then
     LOG "[INFO] See https://github.com/PaddlePaddle/Paddle/wiki/PR-CI-OP-benchmark-Manual for details."
-    LOG "[INFO] Or you can apply for one RD (Avin0323(Recommend), Xreki, luotao1) approval to pass this PR."
+    LOG "[INFO] Or you can apply for one RD (ZzSean(Recommend), JamesLim-sy, Xreki, luotao1) approval to pass this PR."
     exit ${exit_code}
   fi
 }
@@ -283,13 +296,13 @@ function summary_problems {
 }
 
 
-function cpu_op_benchmark {
-  LOG "[INFO] Start run op benchmark cpu test ..."
+function prepare_env {
+  LOG "[INFO] Start preparing op benchmark environment ..."
   load_CHANGE_OP_FILES
-  prepare_benchmark_environment
+  clone_and_collect_op_info
   load_CHANGE_OP_MAP
   load_BENCHMARK_OP_MAP
-  LOG "[INFO] Op benchmark run success and no error!"
+  LOG "[INFO] Op benchmark environment is prepared success!"
 }
 
 
@@ -298,16 +311,17 @@ function gpu_op_benchmark {
   run_op_benchmark_test
   summary_problems
   LOG "[INFO] Op benchmark run success and no error!"
+  collect_kernel_registry_info
   exit 0
 }
 
 
 # The PR will pass quickly when get approval from specific person.
-# Xreki 12538138, luotao1 6836917, ZzSean 32410583
+# Xreki 12538138, luotao1 6836917, ZzSean 32410583, JamesLim-sy 61349199
 set +x
 approval_line=$(curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000)
 if [ -n "${approval_line}" ]; then
-  APPROVALS=$(echo ${approval_line} | python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 32410583 12538138 6836917)
+  APPROVALS=$(echo ${approval_line} | python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 32410583 12538138 6836917 61349199)
   LOG "[INFO] current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
   if [ "${APPROVALS}" == "TRUE" ]; then
     LOG "[INFO] ==================================="
@@ -319,7 +333,7 @@ fi
 
 case $1 in
   run_op_benchmark)
-    cpu_op_benchmark
+    prepare_env
     gpu_op_benchmark 
   ;;
 esac

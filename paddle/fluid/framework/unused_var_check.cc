@@ -15,16 +15,17 @@ limitations under the License. */
 #include "paddle/fluid/framework/unused_var_check.h"
 
 #include <glog/logging.h>
+
 #include <string>
 
-#include "gflags/gflags.h"
 #include "paddle/fluid/framework/no_need_buffer_vars_inference.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
-
+#include "paddle/fluid/platform/flags.h"
 PADDLE_DEFINE_EXPORTED_bool(
-    enable_unused_var_check, false,
+    enable_unused_var_check,
+    false,
     "Checking whether operator contains unused inputs, "
     "especially for grad operator. It should be in unittest.");
 
@@ -104,7 +105,7 @@ void CheckUnusedVar(const OperatorBase &op, const Scope &scope) {
       for (auto &in_var_name : pair.second) {
         auto *in_var = scope.FindVar(in_var_name);
         if (in_var != nullptr && in_var->IsInitialized()) {
-          auto *tensor = &in_var->Get<LoDTensor>();
+          auto *tensor = &in_var->Get<phi::DenseTensor>();
           if (tensor != nullptr && tensor->IsInitialized()) {
             unsed_input_var_names.emplace_back(pair.first);
             break;
@@ -127,7 +128,8 @@ void CheckUnusedVar(const OperatorBase &op, const Scope &scope) {
         "allow list in unused_var_check.cc. See more details at "
         "[https://github.com/PaddlePaddle/Paddle/wiki/"
         "OP-Should-Not-Have-Unused-Input]";
-    PADDLE_ENFORCE_EQ(unsed_input_var_names.size(), 0,
+    PADDLE_ENFORCE_EQ(unsed_input_var_names.size(),
+                      0,
                       platform::errors::PermissionDenied(
                           "Unused input variables check failed: %s", err_msg));
   }

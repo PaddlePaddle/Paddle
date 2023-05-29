@@ -20,16 +20,14 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-
 class AdadeltaOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "Param"), ctx.GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Param"),
+                          ctx.GetPlace());
   }
 };
 
@@ -41,12 +39,18 @@ class AdadeltaOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("AvgSquaredGrad", "(Tensor) Input average of squared gradient");
     AddInput("AvgSquaredUpdate",
              "(Tensor) Input average of squared parameter updates");
+    AddInput("LearningRate", "(Tensor) Learning rate");
+    AddInput("MasterParam", "FP32 master weight for AMP.").AsDispensable();
 
     AddOutput("ParamOut", "(Tensor) Output parameter");
     AddOutput("AvgSquaredGradOut",
               "(Tensor) Output average of squared gradient");
     AddOutput("AvgSquaredUpdateOut",
               "(Tensor) Output average of squared parameter updates");
+    AddOutput("MasterParamOut",
+              "The updated FP32 master weight for AMP. "
+              "It shared memory with Input(MasterParam).")
+        .AsDispensable();
 
     AddAttr<float>("rho",
                    "(float, default 0.95) Exponential decay rate "
@@ -56,6 +60,10 @@ class AdadeltaOpMaker : public framework::OpProtoAndCheckerMaker {
                    "(float, default 1.0e-6) Constant for "
                    "numerical stability")
         .SetDefault(1.0e-6f);
+    AddAttr<bool>("multi_precision",
+                  "(bool, default false) "
+                  "Whether to use multi-precision during weight updating.")
+        .SetDefault(false);
     AddComment(R"DOC(
 Adadelta Optimizer.
 
@@ -82,10 +90,13 @@ $$
 
 namespace ops = paddle::operators;
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(adadelta, AdadeltaInferMetaFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(adadelta,
+                            AdadeltaInferMetaFunctor,
                             PD_INFER_META(phi::AdadeltaInferMeta));
 REGISTER_OPERATOR(
-    adadelta, ops::AdadeltaOp, ops::AdadeltaOpMaker,
+    adadelta,
+    ops::AdadeltaOp,
+    ops::AdadeltaOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     AdadeltaInferMetaFunctor);

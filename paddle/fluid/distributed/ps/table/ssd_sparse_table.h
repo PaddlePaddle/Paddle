@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,52 +13,122 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/distributed/ps/table/common_sparse_table.h"
+
+#include "gflags/gflags.h"
 #include "paddle/fluid/distributed/ps/table/depends/rocksdb_warpper.h"
-#ifdef PADDLE_WITH_HETERPS
+#include "paddle/fluid/distributed/ps/table/memory_sparse_table.h"
+
 namespace paddle {
 namespace distributed {
-class SSDSparseTable : public CommonSparseTable {
+
+class MemRegion {
  public:
+  MemRegion() {
+    _cap = 2 * 1024 * 1024;
+    _buf = reinterpret_cast<char*>(malloc(_cap));
+    _cur = 0;
+    _file_idx = -1;
+  }
+  virtual ~MemRegion() { free(_buf); }
+  bool buff_remain(int len) {
+    if (_cap - _cur < len) {
+      return false;
+    } else {
+      return true;
+    }
+  }
+  char* acquire(int len) {
+    if (_cap - _cur < len) {
+      return nullptr;
+    } else {
+      char* ret = _buf + _cur;
+      _cur += len;
+      return ret;
+    }
+  }
+  void reset() {
+    _cur = 0;
+    _file_idx = -1;
+  }
+  int _cap;
+  int _cur;
+  int _file_idx;
+  char* _buf;
+};
+
+class SSDSparseTable : public MemorySparseTable {
+ public:
+  typedef SparseTableShard<uint64_t, FixedFeatureValue> shard_type;
   SSDSparseTable() {}
   virtual ~SSDSparseTable() {}
 
-  virtual int32_t initialize() override;
-
-  void SaveMetaToText(std::ostream* os, const CommonAccessorParameter& common,
-                      const size_t shard_idx, const int64_t total);
-
-  int64_t SaveValueToText(std::ostream* os, std::shared_ptr<ValueBlock> block,
-                          std::shared_ptr<::ThreadPool> pool, const int mode,
-                          int shard_id);
-
-  virtual int64_t LoadFromText(
-      const std::string& valuepath, const std::string& metapath,
-      const int pserver_id, const int pserver_num, const int local_shard_num,
-      std::vector<std::shared_ptr<ValueBlock>>* blocks);
-
-  virtual int32_t load(const std::string& path, const std::string& param);
+  int32_t Initialize() override;
+  int32_t InitializeShard() override;
 
   // exchange data
-  virtual int32_t update_table();
+  int32_t UpdateTable();
 
-  virtual int32_t Pull(TableContext& context);
-  virtual int32_t Push(TableContext& context);
+  int32_t Pull(TableContext& context) override;
 
-  virtual int32_t pull_sparse(float* values, const PullSparseValue& pull_value);
+  int32_t Push(TableContext& context) override;
 
-  virtual int32_t pull_sparse_ptr(char** pull_values, const uint64_t* keys,
-                                  size_t num);
+  int32_t PullSparse(float* pull_values, const uint64_t* keys, size_t num);
+  int32_t PullSparsePtr(int shard_id,
+                        char** pull_values,
+                        const uint64_t* keys,
+                        size_t num,
+                        uint16_t pass_id);
+  int32_t PushSparse(const uint64_t* keys, const float* values, size_t num);
+  int32_t PushSparse(const uint64_t* keys, const float** values, size_t num);
 
-  virtual int32_t flush() override { return 0; }
-  virtual int32_t shrink(const std::string& param) override;
-  virtual void clear() override {}
+  int32_t Flush() override { return 0; }
+  int32_t Shrink(const std::string& param) override;
+  void Clear() override {
+    for (int i = 0; i < _real_local_shard_num; ++i) {
+      _local_shards[i].clear();
+    }
+  }
+
+  int32_t Save(const std::string& path, const std::string& param) override;
+  int32_t SaveWithString(const std::string& path, const std::string& param);
+  int32_t SaveWithStringMultiOutput(const std::string& path,
+                                    const std::string& param);
+  int32_t SaveWithBinary(const std::string& path, const std::string& param);
+  int32_t SaveCache(
+      const std::string& path,
+      const std::string& param,
+      paddle::framework::Channel<std::pair<uint64_t, std::string>>&
+          shuffled_channel) override;
+  double GetCacheThreshold() override { return _local_show_threshold; }
+  int64_t CacheShuffle(
+      const std::string& path,
+      const std::string& param,
+      double cache_threshold,
+      std::function<std::future<int32_t>(
+          int msg_type, int to_pserver_id, std::string& msg)> send_msg_func,
+      paddle::framework::Channel<std::pair<uint64_t, std::string>>&
+          shuffled_channel,
+      const std::vector<Table*>& table_ptrs) override;
+  // 加载path目录下数据
+  int32_t Load(const std::string& path, const std::string& param) override;
+  int32_t LoadWithString(size_t file_start_idx,
+                         size_t end_idx,
+                         const std::vector<std::string>& file_list,
+                         const std::string& param);
+  int32_t LoadWithBinary(const std::string& path, int param);
+  int64_t LocalSize();
+
+  std::pair<int64_t, int64_t> PrintTableStat() override;
+
+  int32_t CacheTable(uint16_t pass_id) override;
 
  private:
   RocksDBHandler* _db;
   int64_t _cache_tk_size;
+  double _local_show_threshold{0.0};
+  std::vector<paddle::framework::Channel<std::string>> _fs_channel;
+  std::mutex _table_mutex;
 };
 
-}  // namespace ps
+}  // namespace distributed
 }  // namespace paddle
-#endif

@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <vector>
+
 #include "paddle/fluid/framework/operator_kernel_configs.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -49,7 +50,8 @@ class CudnnFusionOp {
   // Execute fused op
   void Execute(cudnnHandle_t cudnn_handle) {
     PADDLE_ENFORCE_EQ(
-        plan_created_, true,
+        plan_created_,
+        true,
         platform::errors::Fatal(
             "CudnnFusionOp exec requested without a valid 'plan', need: "
             "<set const params>, GetWorkspaceSizeBytes(), Execute()."));

@@ -14,11 +14,11 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/phi/kernels/pool_kernel.h"
-
 #include <algorithm>
+
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/kernels/funcs/pooling.h"
+#include "paddle/phi/kernels/pool_kernel.h"
 
 #if defined(__HIPCC__) || defined(__NVCC__)
 #include "paddle/phi/kernels/funcs/reduce_function.h"
@@ -29,20 +29,22 @@ namespace phi {
 
 inline int GetReduceNum(const DenseTensor& input,
                         const DenseTensor* output,
-                        const std::string data_format,
+                        const bool channel_last,
                         std::vector<int>* reduce_dim) {
-  // data_format only can be NCHW
-  bool channel_last = (data_format == "NHWC");
-  if (channel_last) {
-    return 0;
-  }
   int reduce_num = 0;
-  const int output_height = output->dims()[2];
-  const int output_width = output->dims()[3];
+  const int output_height =
+      channel_last ? output->dims()[1] : output->dims()[2];
+  const int output_width = channel_last ? output->dims()[2] : output->dims()[3];
   if ((output_height == 1) && (output_width == 1)) {
-    reduce_dim->push_back(2);
-    reduce_dim->push_back(3);
-    reduce_num = input.dims()[2] * input.dims()[3];
+    if (channel_last) {
+      reduce_dim->push_back(1);
+      reduce_dim->push_back(2);
+      reduce_num = input.dims()[1] * input.dims()[2];
+    } else {
+      reduce_dim->push_back(2);
+      reduce_dim->push_back(3);
+      reduce_num = input.dims()[2] * input.dims()[3];
+    }
   }
   return reduce_num;
 }
@@ -109,7 +111,7 @@ void PoolRawKernel(const Context& ctx,
 
       } else if (pooling_type == "avg") {
         std::vector<int> reduce_dim;
-        int reduce_num = GetReduceNum(x, out, data_format, &reduce_dim);
+        int reduce_num = GetReduceNum(x, out, channel_last, &reduce_dim);
         if (reduce_num > 0 &&
             adaptive) {  // for adaptive_avg_pool2d && output_size == 1
 #if defined(__HIPCC__) || defined(__NVCC__)
@@ -223,10 +225,10 @@ void MaxPoolWithIndexRawKernel(const Context& ctx,
 template <typename T, typename Context>
 void Pool2dKernel(const Context& ctx,
                   const DenseTensor& x,
-                  const std::vector<int>& kernel_size,
+                  const IntArray& kernel_size,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
-                  bool ceil_mode,
+                  bool ceil_mode UNUSED,
                   bool exclusive,
                   const std::string& data_format,
                   const std::string& pooling_type,
@@ -234,9 +236,11 @@ void Pool2dKernel(const Context& ctx,
                   bool adaptive,
                   const std::string& padding_algorithm,
                   DenseTensor* out) {
+  std::vector<int> kernel_size_val(kernel_size.GetData().begin(),
+                                   kernel_size.GetData().end());
   PoolRawKernel<T, Context>(ctx,
                             x,
-                            kernel_size,
+                            kernel_size_val,
                             strides,
                             paddings,
                             exclusive,
@@ -275,7 +279,7 @@ void Pool3dKernel(const Context& ctx,
                   const std::vector<int>& kernel_size,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
-                  bool ceil_mode,
+                  bool ceil_mode UNUSED,
                   bool exclusive,
                   const std::string& data_format,
                   const std::string& pooling_type,

@@ -25,7 +25,7 @@ TEST(CC, IMPORT_PY) {
   ASSERT_FALSE(PyRun_SimpleString("import paddle"));
   ASSERT_FALSE(PyRun_SimpleString("print(paddle.to_tensor(1))"));
 
-  // 2. C/C++ Run Python funciton
+  // 2. C/C++ Run Python function
   PyRun_SimpleString("import sys");
   PyRun_SimpleString("import os");
   PyRun_SimpleString("sys.path.append(os.getcwd())");
@@ -50,7 +50,8 @@ TEST(CC, IMPORT_PY) {
   // 3. C/C++ Run Python file
   std::string file_name(cwd);
   file_name.append("/test_install_check.py");
-  FILE* fp = _Py_fopen(file_name.c_str(), "r+");
+  PyObject* obj = Py_BuildValue("s", file_name.c_str());
+  FILE* fp = _Py_fopen_obj(obj, "r+");
   ASSERT_TRUE(fp != NULL);
   ASSERT_FALSE(PyRun_SimpleFile(fp, file_name.c_str()));
 

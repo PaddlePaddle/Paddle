@@ -12,14 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
+import numpy as np
+
 import paddle
 import paddle.nn.functional as F
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-import numpy as np
+from paddle import fluid
 
 
 def p_normalize(x, axis=1, p=2, epsilon=1e-12, keepdims=True):
@@ -41,23 +40,23 @@ class TestNNFunctionalNormalize(unittest.TestCase):
     def run_imperative(self):
         x = paddle.to_tensor(self.input_np)
         y = F.normalize(x)
-        self.assertTrue(np.allclose(y.numpy(), self.expected0))
+        np.testing.assert_allclose(y.numpy(), self.expected0, rtol=1e-05)
 
         y = F.normalize(x, p=1.5)
-        self.assertTrue(np.allclose(y.numpy(), self.expected1))
+        np.testing.assert_allclose(y.numpy(), self.expected1, rtol=1e-05)
 
         y = F.normalize(x, axis=0)
-        self.assertTrue(np.allclose(y.numpy(), self.expected2))
+        np.testing.assert_allclose(y.numpy(), self.expected2, rtol=1e-05)
 
         x = paddle.to_tensor(self.input_np2)
         y = F.normalize(x, axis=0)
-        self.assertTrue(np.allclose(y.numpy(), self.expected3))
+        np.testing.assert_allclose(y.numpy(), self.expected3, rtol=1e-05)
 
         self.assertRaises(BaseException, F.normalize, x)
 
     def run_static(self, use_gpu=False):
-        x = paddle.fluid.data(name='input', shape=[10, 10], dtype='float32')
-        x2 = paddle.fluid.data(name='input2', shape=[2], dtype='float32')
+        x = paddle.static.data(name='input', shape=[10, 10], dtype='float32')
+        x2 = paddle.static.data(name='input2', shape=[2], dtype='float32')
         result0 = F.normalize(x)
         result1 = F.normalize(x, p=1.5)
         result2 = F.normalize(x, axis=0)
@@ -68,15 +67,15 @@ class TestNNFunctionalNormalize(unittest.TestCase):
         exe = fluid.Executor(place)
         exe.run(fluid.default_startup_program())
         static_result = exe.run(
-            feed={"input": self.input_np,
-                  "input2": self.input_np2},
-            fetch_list=[result0, result1, result2, result4])
+            feed={"input": self.input_np, "input2": self.input_np2},
+            fetch_list=[result0, result1, result2, result4],
+        )
 
-        self.assertTrue(np.allclose(static_result[0], self.expected0))
-        self.assertTrue(np.allclose(static_result[1], self.expected1))
-        self.assertTrue(np.allclose(static_result[2], self.expected2))
+        np.testing.assert_allclose(static_result[0], self.expected0, rtol=1e-05)
+        np.testing.assert_allclose(static_result[1], self.expected1, rtol=1e-05)
+        np.testing.assert_allclose(static_result[2], self.expected2, rtol=1e-05)
         self.assertTrue('aaa' in result3.name)
-        self.assertTrue(np.allclose(static_result[3], self.expected3))
+        np.testing.assert_allclose(static_result[3], self.expected3, rtol=1e-05)
         self.assertRaises(ValueError, F.normalize, x2)
 
     def test_cpu(self):
@@ -97,6 +96,18 @@ class TestNNFunctionalNormalize(unittest.TestCase):
 
         with fluid.program_guard(fluid.Program()):
             self.run_static(use_gpu=True)
+
+    def test_errors(self):
+        with fluid.dygraph.guard():
+            # The size of input in Normalize should not be 0.
+            def test_0_size():
+                array = np.array([], dtype=np.float32)
+                x = paddle.to_tensor(
+                    np.reshape(array, [1, 1, 0]), dtype='float32'
+                )
+                paddle.nn.functional.normalize(x)
+
+            self.assertRaises(ValueError, test_0_size)
 
 
 if __name__ == "__main__":

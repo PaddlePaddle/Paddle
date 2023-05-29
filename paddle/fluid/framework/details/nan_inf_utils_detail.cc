@@ -12,18 +12,47 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/details/nan_inf_utils_detail.h"
-#include "paddle/fluid/framework/op_proto_maker.h"
 
-#ifdef PADDLE_WITH_ASCEND_CL
-#include "paddle/fluid/platform/device/npu/npu_op_runner.h"
-#endif
+#include "paddle/fluid/framework/details/nan_inf_utils.h"
+#include "paddle/fluid/framework/op_proto_maker.h"
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/phi/common/amp_type_traits.h"
+
 #include "paddle/fluid/framework/convert_utils.h"
+#include "paddle/phi/core/flags.h"
+#include "paddle/phi/kernels/funcs/eigen/extensions.h"
+
+PHI_DECLARE_int32(check_nan_inf_level);
 
 namespace paddle {
 namespace framework {
 namespace details {
+struct DebugTools {
+  DebugTools() {}
+  std::string path = "";
+  int stack_limit = 1;
+};
+static DebugTools debug_nan_inf;
+
+void SetNanInfDebugPath(const std::string& nan_inf_path) {
+  debug_nan_inf.path = nan_inf_path;
+  VLOG(4) << "Set the log's path of debug tools : " << nan_inf_path;
+}
+
+std::string GetNanPath() {
+  if (debug_nan_inf.path.empty()) {
+    return "";
+  }
+  return debug_nan_inf.path + "/";
+}
+
+void SetNanInfStackLimit(const int& stack_limit) {
+  debug_nan_inf.stack_limit = stack_limit;
+  VLOG(4) << "Set the stack limit of debug tools : " << stack_limit;
+}
+
+int GetNanInfStackLimit() { return debug_nan_inf.stack_limit; }
 
 static std::once_flag white_list_init_flag;
 
@@ -87,7 +116,7 @@ static void InitWhiteListFormEnv() {
   const char* op_role_skip = std::getenv("PADDLE_INF_NAN_SKIP_ROLE");
   const char* op_var_skip = std::getenv("PADDLE_INF_NAN_SKIP_VAR");
 
-  if (op_type_skip != NULL) {
+  if (op_type_skip) {
     std::stringstream ss(op_type_skip);
     std::string op_type;
     while (std::getline(ss, op_type, ',')) {
@@ -95,7 +124,7 @@ static void InitWhiteListFormEnv() {
     }
   }
 
-  if (op_role_skip != NULL) {
+  if (op_role_skip) {
     std::stringstream ss(op_role_skip);
     std::string op_role;
     while (std::getline(ss, op_role, ',')) {
@@ -110,13 +139,14 @@ static void InitWhiteListFormEnv() {
     }
   }
 
-  if (op_var_skip != NULL) {
+  if (op_var_skip) {
     std::stringstream ss(op_var_skip);
     std::string op_var;
     while (std::getline(ss, op_var, ',')) {
       auto pos = op_var.find(":");
       PADDLE_ENFORCE_EQ(
-          pos != std::string::npos, true,
+          pos != std::string::npos,
+          true,
           platform::errors::InvalidArgument(
               "Skip var format must be op:var, instead of %s", op_var));
       std::string op = op_var.substr(0, pos);
@@ -127,187 +157,26 @@ static void InitWhiteListFormEnv() {
   }
 }
 
-template <typename T>
-static void PrintNanInf(const T* value, const size_t numel, int print_num,
-                        const std::string& op_type, const std::string& var_name,
-                        bool abort = true) {
-  T min_value = std::numeric_limits<T>::max();
-  T max_value = std::numeric_limits<T>::min();
-  size_t nan_count, inf_count, num_count;
-  nan_count = inf_count = num_count = 0;
-
-  // CPU print num value
-  for (size_t i = 0; i < numel; ++i) {
-    size_t count = 0;
-    if (std::isnan(value[i])) {
-      count = nan_count++;
-    } else if (std::isinf(value[i])) {
-      count = inf_count++;
-    } else {
-      count = num_count++;
-      min_value = std::min(min_value, value[i]);
-      max_value = std::max(max_value, value[i]);
-    }
-
-    if (count < static_cast<size_t>(print_num)) {
-      printf("numel:%lu index:%lu value:%f\n", static_cast<uint64_t>(numel),
-             static_cast<uint64_t>(i), static_cast<float>(value[i]));
-    }
-  }
-  printf(
-      "In cpu, there has %lu,%lu,%lu nan,inf,num. "
-      "And in num, min_value is %f, max_value is %f\n",
-      static_cast<uint64_t>(nan_count), static_cast<uint64_t>(inf_count),
-      static_cast<uint64_t>(num_count), static_cast<double>(min_value),
-      static_cast<double>(max_value));
-  if (abort) {
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "There are `nan` or `inf` in tensor (%s) of operator (%s).", var_name,
-        op_type));
-  }
-}
-
-// openmp 4.0, reduction with fp16
-#if defined _OPENMP && _OPENMP >= 201307
-// more detail see: 180 page of
-// https://www.openmp.org/wp-content/uploads/OpenMP4.0.0.pdf
-#pragma omp declare reduction(+ : paddle::platform::float16 : omp_out += omp_in)
-#pragma omp declare reduction(+ : paddle::platform::bfloat16 : omp_out += \
-                              omp_in)
-#pragma omp declare reduction(+ : paddle::platform::complex < \
-                                  float > : omp_out += omp_in)
-#pragma omp declare reduction(+ : paddle::platform::complex < \
-                                  double > : omp_out += omp_in)
-
-#endif
-
-template <typename T>
-static void CheckNanInf(const T* value, const size_t numel, int print_num,
-                        const std::string& op_type,
-                        const std::string& var_name) {
-  T sum = static_cast<T>(0.0);
-#if defined _OPENMP && _OPENMP >= 201307
-#pragma omp parallel for simd reduction(+ : sum)
-#elif defined _OPENMP
-#pragma omp parallel for reduction(+ : sum)
-#endif
-  for (size_t i = 0; i < numel; ++i) {
-    sum += (value[i] - value[i]);
-  }
-
-  if (std::isnan(sum) || std::isinf(sum)) {
-    PrintNanInf(value, numel, print_num, op_type, var_name);
-  }
-}
-
-#if defined _OPENMP && _OPENMP >= 201307
-// openmp4.0 not need to specialization fp16
-#elif defined _OPENMP
-template <>
-void CheckNanInf<paddle::platform::float16>(
-    const paddle::platform::float16* value, const size_t numel, int print_num,
-    const std::string& op_type, const std::string& var_name) {
-  float sum = 0.0f;
-#pragma omp parallel for reduction(+ : sum)
-  for (size_t i = 0; i < numel; ++i) {
-    sum += static_cast<float>(value[i] - value[i]);
-  }
-
-  if (std::isnan(sum) || std::isinf(sum)) {
-    PrintNanInf(value, numel, print_num, op_type, var_name);
-  }
-}
-
-template <>
-void CheckNanInf<paddle::platform::bfloat16>(
-    const paddle::platform::bfloat16* value, const size_t numel, int print_num,
-    const std::string& op_type, const std::string& var_name) {
-  float sum = 0.0f;
-#pragma omp parallel for reduction(+ : sum)
-  for (size_t i = 0; i < numel; ++i) {
-    sum += static_cast<float>(value[i] - value[i]);
-  }
-
-  if (std::isnan(sum) || std::isinf(sum)) {
-    PrintNanInf(value, numel, print_num, op_type, var_name);
-  }
-}
-
-template <>
-void CheckNanInf<paddle::platform::complex<float>>(
-    const paddle::platform::complex<float>* value, const size_t numel,
-    int print_num, const std::string& op_type, const std::string& var_name) {
-  float real_sum = 0.0f;
-#pragma omp parallel for reduction(+ : real_sum)
-  for (size_t i = 0; i < numel; ++i) {
-    real_sum += (value[i].real - value[i].real);
-  }
-
-  float imag_sum = 0.0f;
-#pragma omp parallel for reduction(+ : imag_sum)
-  for (size_t i = 0; i < numel; ++i) {
-    imag_sum += (value[i].imag - value[i].imag);
-  }
-
-  if (std::isnan(real_sum) || std::isinf(real_sum) || std::isnan(imag_sum) ||
-      std::isinf(imag_sum)) {
-    // hot fix for compile failed in gcc4.8
-    // here also need print detail info of nan or inf later
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "There are `nan` or `inf` in tensor (%s) of operator (%s).", var_name,
-        op_type));
-  }
-}
-
-template <>
-    void CheckNanInf<paddle::platform::complex<double>>>
-    (const paddle::platform::complex<double>* value, const size_t numel,
-     int print_num, const std::string& op_type, const std::string& var_name) {
-  double real_sum = 0.0;
-#pragma omp parallel for reduction(+ : real_sum)
-  for (size_t i = 0; i < numel; ++i) {
-    real_sum += (value[i].real - value[i].real);
-  }
-
-  double imag_sum = 0.0;
-#pragma omp parallel for reduction(+ : imag_sum)
-  for (size_t i = 0; i < numel; ++i) {
-    imag_sum += (value[i].imag - value[i].imag);
-  }
-
-  if (std::isnan(real_sum) || std::isinf(real_sum) || std::isnan(imag_sum) ||
-      std::isinf(imag_sum)) {
-    // hot fix for compile failed in gcc4.8
-    // here also need print detail info of nan or inf later
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "There are `nan` or `inf` in tensor (%s) of operator (%s).", var_name,
-        op_type));
-  }
-}
-
-#endif
-
 template <>
 template <typename T>
-void TensorCheckerVisitor<platform::CPUDeviceContext>::apply(
+void TensorCheckerVisitor<phi::CPUContext>::apply(
     typename std::enable_if<
         std::is_floating_point<T>::value ||
         std::is_same<T, ::paddle::platform::complex<float>>::value ||
         std::is_same<T, ::paddle::platform::complex<double>>::value>::type*)
     const {
-  // use env strategy control in future, -1=print_all.
-  int print_num = 3;
-  CheckNanInf(tensor_.data<T>(), tensor_.numel(), print_num, op_type_,
-              var_name_);
+  std::string cpu_hint_str =
+      GetCpuHintString<T>(op_type, var_name, tensor.place());
+  CheckNanInfCpuImpl(tensor.data<T>(), tensor.numel(), cpu_hint_str);
 }
 
 template <>
-void tensor_check<platform::CPUDeviceContext>(const std::string& op_type,
-                                              const std::string& var_name,
-                                              const framework::Tensor& tensor,
-                                              const platform::Place& place) {
-  TensorCheckerVisitor<platform::CPUDeviceContext> vistor(op_type, var_name,
-                                                          tensor, place);
+void tensor_check<phi::CPUContext>(const std::string& op_type,
+                                   const std::string& var_name,
+                                   const phi::DenseTensor& tensor,
+                                   const platform::Place& place) {
+  TensorCheckerVisitor<phi::CPUContext> vistor(
+      op_type, var_name, tensor, place);
   VisitDataType(framework::TransToProtoVarType(tensor.dtype()), vistor);
 }
 
@@ -316,12 +185,13 @@ void CheckVarHasNanOrInf(const std::string& op_type,
                          const framework::Variable* var,
                          const platform::Place& place) {
   PADDLE_ENFORCE_NOT_NULL(
-      var, platform::errors::NotFound("Cannot find var: `%s` in op `%s`.",
-                                      var_name, op_type));
+      var,
+      platform::errors::NotFound(
+          "Cannot find var: `%s` in op `%s`.", var_name, op_type));
 
-  const Tensor* tensor{nullptr};
-  if (var->IsType<framework::LoDTensor>()) {
-    tensor = &var->Get<framework::LoDTensor>();
+  const phi::DenseTensor* tensor{nullptr};
+  if (var->IsType<phi::DenseTensor>()) {
+    tensor = &var->Get<phi::DenseTensor>();
   } else if (var->IsType<phi::SelectedRows>()) {
     tensor = &var->Get<phi::SelectedRows>().value();
   } else {
@@ -339,11 +209,11 @@ void CheckVarHasNanOrInf(const std::string& op_type,
 
   if (platform::is_gpu_place(tensor->place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    tensor_check<platform::CUDADeviceContext>(op_type, var_name, *tensor,
-                                              place);
+    tensor_check<phi::GPUContext>(op_type, var_name, *tensor, place);
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "Tensor[%s] use gpu place. PaddlePaddle must compile with GPU.",
+        "phi::DenseTensor[%s] use gpu place. PaddlePaddle must compile "
+        "with GPU.",
         var_name));
 #endif
     return;
@@ -355,7 +225,8 @@ void CheckVarHasNanOrInf(const std::string& op_type,
     }
 
     float* cpu_data = new float[tensor->numel()];
-    memory::Copy(platform::CPUPlace(), static_cast<void*>(cpu_data),
+    memory::Copy(platform::CPUPlace(),
+                 static_cast<void*>(cpu_data),
                  tensor->place(),
                  static_cast<const void*>(tensor->data<float>()),
                  tensor->numel() * sizeof(float));
@@ -368,51 +239,25 @@ void CheckVarHasNanOrInf(const std::string& op_type,
     }
     delete[] cpu_data;
     PADDLE_ENFORCE_NE(
-        flag, true,
-        platform::errors::Fatal("Operator %s output Tensor %s contains Inf.",
-                                op_type, var_name));
+        flag,
+        true,
+        platform::errors::Fatal(
+            "Operator %s output phi::DenseTensor %s contains Inf.",
+            op_type,
+            var_name));
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "Tensor[%s] use xpu place. PaddlePaddle must compile with XPU.",
-        var_name));
-#endif
-    return;
-  } else if (platform::is_npu_place(tensor->place())) {
-#ifdef PADDLE_WITH_ASCEND_CL
-    if (framework::TransToProtoVarType(tensor->dtype()) !=
-        proto::VarType::FP32) {
-      return;
-    }
-
-    framework::LoDTensor cpu_tensor;
-    cpu_tensor.Resize(tensor->dims());
-    float* cpu_data = static_cast<float*>(
-        cpu_tensor.mutable_data(platform::CPUPlace(), tensor->dtype()));
-
-    framework::TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
-    bool flag = false;
-    for (int i = 0; i < cpu_tensor.numel(); i++) {
-      if (isnan(cpu_data[i]) || isinf(cpu_data[i])) {
-        flag = true;
-        break;
-      }
-    }
-    PADDLE_ENFORCE_NE(
-        flag, true,
-        platform::errors::Fatal("Operator %s output Tensor %s contains Inf.",
-                                op_type, var_name));
-#else
-    PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "Tensor[%s] use npu place. PaddlePaddle must compile with NPU.",
+        "phi::DenseTensor[%s] use xpu place. PaddlePaddle must compile "
+        "with XPU.",
         var_name));
 #endif
     return;
   }
-  tensor_check<platform::CPUDeviceContext>(op_type, var_name, *tensor, place);
+  tensor_check<phi::CPUContext>(op_type, var_name, *tensor, place);
 }
 
 void CheckVarHasNanOrInf(const std::string& op_type,
-                         const framework::ScopeBase& scope,
+                         const framework::Scope& scope,
                          const std::string& var_name,
                          const platform::Place& place) {
   auto* var = scope.FindVar(var_name);
@@ -422,8 +267,11 @@ void CheckVarHasNanOrInf(const std::string& op_type,
 bool IsSkipOp(const framework::OperatorBase& op) {
   if (op_type_nan_inf_white_list().count(op.Type()) != 0) return true;
 
-  int op_role = op.template Attr<int>(
-      framework::OpProtoAndCheckerMaker::OpRoleAttrName());
+  int op_role = 0;
+  if (op.HasAttr(framework::OpProtoAndCheckerMaker::OpRoleAttrName())) {
+    op_role = op.template Attr<int>(
+        framework::OpProtoAndCheckerMaker::OpRoleAttrName());
+  }
 
   // kForward=0, can't filter
   if (op_role == static_cast<int>(framework::OpRole::kForward)) {
@@ -434,149 +282,12 @@ bool IsSkipOp(const framework::OperatorBase& op) {
   return false;
 }
 
-#ifdef PADDLE_WITH_ASCEND_CL
-using NpuOpRunner = paddle::operators::NpuOpRunner;
-
-constexpr int FLOAT_STATUS_SIZE = 8;
-
-static framework::Tensor& npu_float_status() {
-  static framework::Tensor float_status;
-  return float_status;
-}
-
-void NPUAllocAndClearFloatStatus(const framework::OperatorBase& op,
-                                 const framework::ScopeBase& scope,
-                                 const platform::Place& place) {
-  if (!platform::is_npu_place(place)) return;
-
-  std::call_once(white_list_init_flag, InitWhiteListFormEnv);
-  if (IsSkipOp(op)) return;
-
-  auto* dev_ctx = reinterpret_cast<platform::NPUDeviceContext*>(
-      platform::DeviceContextPool::Instance().Get(place));
-  auto stream = dev_ctx->stream();
-
-  auto& flag = npu_float_status();
-  flag.mutable_data<float>({FLOAT_STATUS_SIZE}, place);
-  NpuOpRunner("NPUAllocFloatStatus", {}, {flag}).Run(stream);
-
-  framework::Tensor tmp;
-  tmp.mutable_data<float>({FLOAT_STATUS_SIZE}, place);
-  NpuOpRunner("NPUClearFloatStatus", {tmp}, {flag}).Run(stream);
-}
-
-void PrintNpuVarInfo(const std::string& op_type, const std::string& var_name,
-                     const framework::Variable* var,
-                     const platform::Place& place) {
-  const Tensor* tensor{nullptr};
-  if (var->IsType<framework::LoDTensor>()) {
-    tensor = &var->Get<framework::LoDTensor>();
-  } else if (var->IsType<phi::SelectedRows>()) {
-    tensor = &var->Get<phi::SelectedRows>().value();
-  } else {
-    VLOG(10) << var_name << " var_name need not to check";
-    return;
-  }
-
-  if ((framework::TransToProtoVarType(tensor->dtype()) !=
-       proto::VarType::FP32) &&
-      (framework::TransToProtoVarType(tensor->dtype()) !=
-       proto::VarType::FP16)) {
-    return;
-  }
-
-  if (tensor->memory_size() == 0) {
-    VLOG(10) << var_name << " var_name need not to check, size == 0";
-    return;
-  }
-
-  VLOG(10) << "begin check " << op_type << " var_name:" << var_name
-           << ", place:" << tensor->place() << ", numel:" << tensor->numel();
-
-  framework::Tensor cpu_tensor;
-  cpu_tensor.Resize(tensor->dims());
-  cpu_tensor.mutable_data(platform::CPUPlace(), tensor->dtype());
-  framework::TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
-
-  LOG(WARNING) << "print [" << var_name << "] tensor info:";
-  // use env strategy control in future, -1=print_all.
-  int print_num = 3;
-  if (framework::TransToProtoVarType(tensor->dtype()) == proto::VarType::FP32) {
-    const float* value = cpu_tensor.data<float>();
-    PrintNanInf(value, tensor->numel(), print_num, op_type, var_name, false);
-  } else if (framework::TransToProtoVarType(tensor->dtype()) ==
-             proto::VarType::FP16) {
-    const paddle::platform::float16* value =
-        cpu_tensor.data<paddle::platform::float16>();
-    PrintNanInf(value, tensor->numel(), print_num, op_type, var_name, false);
-  }
-}
-
-void PrintNPUOpValueInfo(const framework::OperatorBase& op,
-                         const framework::ScopeBase& scope,
-                         const platform::Place& place) {
-  LOG(WARNING) << "There are `nan` or `inf` in operator (" << op.Type()
-               << "), here we print some tensor value info of this op.";
-  for (auto& vname : op.InputVars()) {
-    auto* var = scope.FindVar(vname);
-    if (var == nullptr) continue;
-    PrintNpuVarInfo(op.Type(), vname, var, place);
-  }
-
-  for (auto& vname : op.OutputVars(true)) {
-    auto* var = scope.FindVar(vname);
-    if (var == nullptr) continue;
-    PrintNpuVarInfo(op.Type(), vname, var, place);
-  }
-}
-
-static void NPUCheckOpHasNanOrInf(const framework::OperatorBase& op,
-                                  const framework::ScopeBase& scope,
-                                  const platform::Place& place) {
-  if (!platform::is_npu_place(place)) return;
-
-  auto* dev_ctx = reinterpret_cast<platform::NPUDeviceContext*>(
-      platform::DeviceContextPool::Instance().Get(place));
-  auto stream = dev_ctx->stream();
-
-  auto& flag = npu_float_status();
-  Tensor tmp;
-  tmp.mutable_data<float>({FLOAT_STATUS_SIZE}, place);
-  // NPUGetFloatStatus updates data on input in-place.
-  // tmp is only placeholder.
-  NpuOpRunner("NPUGetFloatStatus", {flag}, {tmp}).Run(stream);
-
-  framework::Tensor cpu_tensor;
-  auto cpu_place = platform::CPUPlace();
-  float* cpu_data = static_cast<float*>(
-      cpu_tensor.mutable_data<float>({FLOAT_STATUS_SIZE}, cpu_place));
-
-  framework::TensorCopySync(flag, cpu_place, &cpu_tensor);
-  float sum = 0.0;
-  for (int i = 0; i < FLOAT_STATUS_SIZE; ++i) {
-    sum += cpu_data[i];
-  }
-
-  if (sum >= 1.0) PrintNPUOpValueInfo(op, scope, place);
-
-  PADDLE_ENFORCE_LT(sum, 1.0, platform::errors::PreconditionNotMet(
-                                  "Operator %s contains Nan/Inf.", op.Type()));
-}
-#endif
-
 void CheckOpHasNanOrInf(const framework::OperatorBase& op,
-                        const framework::ScopeBase& exec_scope,
+                        const framework::Scope& exec_scope,
                         const platform::Place& place) {
   std::call_once(white_list_init_flag, InitWhiteListFormEnv);
 
   if (IsSkipOp(op)) return;
-
-#ifdef PADDLE_WITH_ASCEND_CL
-  if (platform::is_npu_place(place)) {
-    NPUCheckOpHasNanOrInf(op, exec_scope, place);
-    return;
-  }
-#endif
 
   if (op_var_nan_inf_white_list().count(op.Type()) == 0) {
     // NOTE. vname may destruct in the end of this func.

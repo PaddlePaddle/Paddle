@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/phi/common/scalar_array.h"
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/infermeta/nullary.h"
@@ -24,7 +24,7 @@ namespace phi {
 
 template <typename T, typename Context>
 void EmptyKernel(const Context& dev_ctx,
-                 const ScalarArray& shape,
+                 const IntArray& shape,
                  DataType dtype,
                  DenseTensor* out);
 
@@ -43,10 +43,10 @@ DenseTensor Empty(const Context& dev_ctx, DenseTensorMeta&& meta) {
 }
 
 template <typename T, typename Context>
-DenseTensor Empty(const Context& dev_ctx, const ScalarArray& shape) {
+DenseTensor Empty(const Context& dev_ctx, const IntArray& shape) {
   DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
-  DataType dtype = paddle::experimental::CppTypeToDataType<T>::Type();
+  DataType dtype = phi::CppTypeToDataType<T>::Type();
   CreateInferMeta(shape, dtype, &meta_out);
   EmptyKernel<T, Context>(dev_ctx, shape, dtype, &dense_out);
   return dense_out;
@@ -56,7 +56,7 @@ template <typename T, typename Context>
 DenseTensor EmptyLike(const Context& dev_ctx, const DenseTensor& x) {
   DenseTensor dense_out;
   MetaTensor meta_out(&dense_out);
-  DataType dtype = paddle::experimental::CppTypeToDataType<T>::Type();
+  DataType dtype = phi::CppTypeToDataType<T>::Type();
   CreateLikeInferMeta(x, dtype, &meta_out);
   EmptyLikeKernel<T, Context>(dev_ctx, x, dtype, &dense_out);
   return dense_out;

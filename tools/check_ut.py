@@ -15,39 +15,40 @@
 """ Get pull requests. """
 
 import os
-import time
 import os.path
+import sys
+
 from github import Github
 
 
-class PRChecker(object):
-    """ PR Checker. """
+class PRChecker:
+    """PR Checker."""
 
     def __init__(self):
         self.github = Github(os.getenv('GITHUB_API_TOKEN'), timeout=60)
         self.repo = None
 
     def check(self, filename, msg):
-        """ 
+        """
         Args:
-            filename (str): File to get block names.  
-            msg (str): Error message.  
+            filename (str): File to get block names.
+            msg (str): Error message.
         """
         pr_id = os.getenv('GIT_PR_ID')
         if not pr_id:
             print('No PR ID')
-            exit(0)
+            sys.exit(0)
         print(pr_id)
         if not os.path.isfile(filename):
             print('No author to check')
-            exit(0)
+            sys.exit(0)
         self.repo = self.github.get_repo('PaddlePaddle/Paddle')
         pr = self.repo.get_pull(int(pr_id))
         user = pr.user.login
         with open(filename) as f:
             for l in f:
                 if l.rstrip('\r\n') == user:
-                    print('{} {}'.format(user, msg))
+                    print(f'{user} {msg}')
 
 
 if __name__ == '__main__':

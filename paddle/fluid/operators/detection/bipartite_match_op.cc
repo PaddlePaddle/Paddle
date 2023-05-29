@@ -18,29 +18,30 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
-
 class BipartiteMatchOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(
-        ctx->HasInput("DistMat"), true,
+        ctx->HasInput("DistMat"),
+        true,
         platform::errors::InvalidArgument(
             "Input(DistMat) of BipartiteMatch should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("ColToRowMatchIndices"), true,
+    PADDLE_ENFORCE_EQ(ctx->HasOutput("ColToRowMatchIndices"),
+                      true,
                       platform::errors::InvalidArgument(
                           "Output(ColToRowMatchIndices) of BipartiteMatch "
                           "should not be null."));
     PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("ColToRowMatchDist"), true,
+        ctx->HasOutput("ColToRowMatchDist"),
+        true,
         platform::errors::InvalidArgument(
             "Output(ColToRowMatchDist) of BipartiteMatch should not be null."));
 
     auto dims = ctx->GetInputDim("DistMat");
-    PADDLE_ENFORCE_EQ(dims.size(), 2,
+    PADDLE_ENFORCE_EQ(dims.size(),
+                      2,
                       platform::errors::InvalidArgument(
                           "The rank of Input(DistMat) must be 2."));
 
@@ -49,9 +50,9 @@ class BipartiteMatchOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
+    return phi::KernelKey(
         OperatorWithKernel::IndicateVarDataType(ctx, "DistMat"),
         platform::CPUPlace());
   }
@@ -63,15 +64,17 @@ bool DistPairDescend(std::tuple<int, int, T> pair1,
   return std::get<2>(pair1) > std::get<2>(pair2);
 }
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class BipartiteMatchKernel : public framework::OpKernel<T> {
  public:
   // The match_indices must be initialized to -1 at first.
   // The match_dist must be initialized to 0 at first.
-  void BipartiteMatch(const Tensor& dist, int* match_indices,
+  void BipartiteMatch(const phi::DenseTensor& dist,
+                      int* match_indices,
                       T* match_dist) const {
     PADDLE_ENFORCE_EQ(
-        dist.dims().size(), 2,
+        dist.dims().size(),
+        2,
         platform::errors::InvalidArgument("The rank of dist must be 2."));
     int64_t row = dist.dims()[0];
     int64_t col = dist.dims()[1];
@@ -136,7 +139,8 @@ class BipartiteMatchKernel : public framework::OpKernel<T> {
           break;
         } else {
           PADDLE_ENFORCE_EQ(
-              match_indices[max_idx], -1,
+              match_indices[max_idx],
+              -1,
               platform::errors::InvalidArgument(
                   "The match_indices must be initialized to -1 at [%d].",
                   max_idx));
@@ -150,7 +154,9 @@ class BipartiteMatchKernel : public framework::OpKernel<T> {
     }
   }
 
-  void ArgMaxMatch(const Tensor& dist, int* match_indices, T* match_dist,
+  void ArgMaxMatch(const phi::DenseTensor& dist,
+                   int* match_indices,
+                   T* match_dist,
                    T overlap_threshold) const {
     constexpr T kEPS = static_cast<T>(1e-6);
     int64_t row = dist.dims()[0];
@@ -176,7 +182,8 @@ class BipartiteMatchKernel : public framework::OpKernel<T> {
       }
       if (max_row_idx != -1) {
         PADDLE_ENFORCE_EQ(
-            match_indices[j], -1,
+            match_indices[j],
+            -1,
             platform::errors::InvalidArgument(
                 "The match_indices must be initialized to -1 at [%d].", j));
         match_indices[j] = max_row_idx;
@@ -186,11 +193,12 @@ class BipartiteMatchKernel : public framework::OpKernel<T> {
   }
 
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* dist_mat = context.Input<LoDTensor>("DistMat");
-    auto* match_indices = context.Output<Tensor>("ColToRowMatchIndices");
-    auto* match_dist = context.Output<Tensor>("ColToRowMatchDist");
+    auto* dist_mat = context.Input<phi::DenseTensor>("DistMat");
+    auto* match_indices =
+        context.Output<phi::DenseTensor>("ColToRowMatchIndices");
+    auto* match_dist = context.Output<phi::DenseTensor>("ColToRowMatchDist");
 
-    auto& dev_ctx = context.device_context<platform::CPUDeviceContext>();
+    auto& dev_ctx = context.device_context<phi::CPUContext>();
 
     auto col = dist_mat->dims()[1];
 
@@ -199,15 +207,16 @@ class BipartiteMatchKernel : public framework::OpKernel<T> {
                     : static_cast<int64_t>(dist_mat->lod().back().size() - 1);
     if (dist_mat->lod().size()) {
       PADDLE_ENFORCE_EQ(
-          dist_mat->lod().size(), 1UL,
+          dist_mat->lod().size(),
+          1UL,
           platform::errors::InvalidArgument("Only support 1 level of LoD."));
     }
     match_indices->mutable_data<int>({n, col}, context.GetPlace());
     match_dist->mutable_data<T>({n, col}, context.GetPlace());
 
-    phi::funcs::SetConstant<platform::CPUDeviceContext, int> iset;
+    phi::funcs::SetConstant<phi::CPUContext, int> iset;
     iset(dev_ctx, match_indices, static_cast<int>(-1));
-    phi::funcs::SetConstant<platform::CPUDeviceContext, T> tset;
+    phi::funcs::SetConstant<phi::CPUContext, T> tset;
     tset(dev_ctx, match_dist, static_cast<T>(0));
 
     int* indices = match_indices->data<int>();
@@ -223,7 +232,7 @@ class BipartiteMatchKernel : public framework::OpKernel<T> {
       auto lod = dist_mat->lod().back();
       for (size_t i = 0; i < lod.size() - 1; ++i) {
         if (lod[i + 1] > lod[i]) {
-          Tensor one_ins = dist_mat->Slice(lod[i], lod[i + 1]);
+          phi::DenseTensor one_ins = dist_mat->Slice(lod[i], lod[i + 1]);
           BipartiteMatch(one_ins, indices + i * col, dist + i * col);
           if (type == "per_prediction") {
             ArgMaxMatch(one_ins, indices + i * col, dist + i * col, threshold);
@@ -239,7 +248,8 @@ class BipartiteMatchOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput(
         "DistMat",
-        "(LoDTensor or Tensor) this input is a 2-D LoDTensor with shape "
+        "(phi::DenseTensor or Tensor) this input is a 2-D phi::DenseTensor "
+        "with shape "
         "[K, M]. It is pair-wise distance matrix between the entities "
         "represented by each row and each column. For example, assumed one "
         "entity is A with shape [K], another entity is B with shape [M]. The "
@@ -290,8 +300,8 @@ row entity to the column entity and the matched indices are not duplicated
 in each row of ColToRowMatchIndices. If the column entity is not matched
 any row entity, set -1 in ColToRowMatchIndices.
 
-Please note that the input DistMat can be LoDTensor (with LoD) or Tensor.
-If LoDTensor with LoD, the height of ColToRowMatchIndices is batch size.
+Please note that the input DistMat can be phi::DenseTensor (with LoD) or Tensor.
+If phi::DenseTensor with LoD, the height of ColToRowMatchIndices is batch size.
 If Tensor, the height of ColToRowMatchIndices is 1.
 
 )DOC");
@@ -303,8 +313,15 @@ If Tensor, the height of ColToRowMatchIndices is 1.
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(
-    bipartite_match, ops::BipartiteMatchOp, ops::BipartiteMatchOpMaker,
+    bipartite_match,
+    ops::BipartiteMatchOp,
+    ops::BipartiteMatchOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OP_CPU_KERNEL(bipartite_match, ops::BipartiteMatchKernel<float>,
-                       ops::BipartiteMatchKernel<double>);
+
+PD_REGISTER_STRUCT_KERNEL(bipartite_match,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::BipartiteMatchKernel,
+                          float,
+                          double) {}

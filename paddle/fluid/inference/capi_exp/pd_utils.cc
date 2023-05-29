@@ -11,7 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #include <string>
 
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
@@ -61,6 +60,7 @@
 
 ONE_DIM_ARRAY_UTILS_FUNC_IMPL(int32_t, Int32, int)
 ONE_DIM_ARRAY_UTILS_FUNC_IMPL(size_t, Size, size_t)
+ONE_DIM_ARRAY_UTILS_FUNC_IMPL(int64_t, Int64, int64_t)
 
 #undef ONE_DIM_ARRAY_UTILS_FUNC_IMPL
 #undef CONVERT_ONE_DIM_ARRAY_TO_VEC
@@ -177,6 +177,38 @@ TWO_DIM_ARRAY_UTILS_FUNC_IMPL(size_t, Size, size_t)
 #undef CONVERT_VEC_TO_TWO_DIM_ARRAY
 #undef DESTROY_TWO_DIM_ARRAY
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void PD_IOInfoDestroy(__pd_take PD_IOInfo* io_info) {
+  if (io_info != NULL) {
+    PD_CstrDestroy(io_info->name);
+    io_info->name = NULL;
+    PD_OneDimArrayInt64Destroy(io_info->shape);
+    io_info->shape = NULL;
+    delete io_info;
+  }
+}
+
+void PD_IOInfosDestroy(__pd_take PD_IOInfos* io_infos) {
+  if (io_infos != NULL) {
+    if (io_infos->size != 0) {
+      for (size_t index = 0; index < io_infos->size; ++index) {
+        PD_IOInfoDestroy(io_infos->io_info[index]);
+      }
+      io_infos->size = 0;
+    }
+    delete[] io_infos->io_info;
+    io_infos->io_info = NULL;
+    delete io_infos;
+  }
+}
+
+#ifdef __cplusplus
+}  // extern "C"
+#endif
+
 namespace paddle_infer {
 
 PlaceType CvtToCxxPlaceType(PD_PlaceType place_type) {
@@ -189,6 +221,8 @@ PlaceType CvtToCxxPlaceType(PD_PlaceType place_type) {
       return PlaceType::kGPU;
     case PD_PLACE_XPU:
       return PlaceType::kXPU;
+    case PD_PLACE_CUSTOM:
+      return PlaceType::kCUSTOM;
     default:
       PADDLE_THROW(paddle::platform::errors::InvalidArgument(
           "Unsupport paddle place type %d.", place_type));
@@ -204,6 +238,8 @@ PD_PlaceType CvtFromCxxPlaceType(PlaceType place_type) {
       return PD_PLACE_GPU;
     case PlaceType::kXPU:
       return PD_PLACE_XPU;
+    case PlaceType::kCUSTOM:
+      return PD_PLACE_CUSTOM;
     default:
       return PD_PLACE_UNK;
   }

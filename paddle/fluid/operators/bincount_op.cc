@@ -24,20 +24,17 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using framework::OpKernelType;
-using framework::Tensor;
-
 class BincountOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const {
     auto data_type =
         ctx.HasInput("Weights")
             ? OperatorWithKernel::IndicateVarDataType(ctx, "Weights")
             : OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return framework::OpKernelType(data_type, ctx.device_context());
+    return phi::KernelKey(data_type, ctx.device_context().GetPlace());
   }
 };
 
@@ -50,7 +47,8 @@ class BincountOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "(Tensor) The output tensor of Bincount op,");
     AddAttr<int>("minlength", "(int) The minimal numbers of bins")
         .SetDefault(0)
-        .EqualGreaterThan(0);
+        .EqualGreaterThan(0)
+        .SupportTensor();
     AddComment(R"DOC(
           Bincount Operator.
           Computes frequency of each value in the input tensor.
@@ -63,10 +61,13 @@ class BincountOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-DECLARE_INFER_SHAPE_FUNCTOR(bincount, BincountInferShapeFunctor,
+DECLARE_INFER_SHAPE_FUNCTOR(bincount,
+                            BincountInferShapeFunctor,
                             PD_INFER_META(phi::BincountInferMeta));
 REGISTER_OPERATOR(
-    bincount, ops::BincountOp, ops::BincountOpMaker,
+    bincount,
+    ops::BincountOp,
+    ops::BincountOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>,
     BincountInferShapeFunctor);

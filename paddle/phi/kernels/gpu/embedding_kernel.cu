@@ -13,13 +13,12 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/embedding_kernel.h"
-#include "paddle/phi/kernels/funcs/embedding_util.h"
-
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/eigen_function.h"
-
+#include "paddle/phi/kernels/funcs/embedding_util.h"
 namespace phi {
 
 template <typename T, typename IdT, bool PaddingFlag>
@@ -35,6 +34,16 @@ __global__ void EmbeddingFW(T *output,
 
   while (idy < K) {
     auto id = static_cast<int64_t>(ids[idy]);
+    if (PaddingFlag == false || id != padding_idx) {
+      PADDLE_ENFORCE(id >= 0,
+                     "Id should no less than 0 but received an id value: %lld.",
+                     id);
+      PADDLE_ENFORCE(
+          id < N,
+          "Id should smaller than %lld but received an id value: %lld.",
+          N,
+          id);
+    }
     T *out = output + idy * D;
     const T *tab = table + id * D;
     for (int i = idx; i < D; i += blockDim.x) {
@@ -109,9 +118,11 @@ void EmbeddingKernel(const Context &ctx,
     functor.template apply<int32_t>();
   } else if (input.dtype() == phi::DataType::INT64) {
     functor.template apply<int64_t>();
+  } else if (input.dtype() == phi::DataType::INT16) {
+    functor.template apply<int16_t>();
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
-        "emebdding input only support int32 and int64"));
+        "emebdding input only support int16, int32 and int64"));
   }
 }
 
@@ -123,4 +134,6 @@ PD_REGISTER_KERNEL(embedding,
                    phi::EmbeddingKernel,
                    float,
                    double,
-                   phi::dtype::float16) {}
+                   int8_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

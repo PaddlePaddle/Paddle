@@ -15,20 +15,22 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/operators/clip_by_norm_op.h"
+#include "paddle/phi/kernels/clip_by_norm_kernel.h"
+#include "paddle/phi/kernels/selected_rows/clip_by_norm_kernel.h"
 
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
-class DGCClipByNormKernel : public ClipByNormKernel<DeviceContext, T> {
+template <typename T, typename DeviceContext>
+class DGCClipByNormKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto rampup_begin_step = context.Attr<float>("rampup_begin_step");
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto rampup_begin_step = ctx.Attr<float>("rampup_begin_step");
     if (static_cast<int>(rampup_begin_step) < 0) {
       return;
     }
 
-    auto current_step_tensor = context.Input<framework::Tensor>("current_step");
+    auto current_step_tensor = ctx.Input<phi::DenseTensor>("current_step");
     auto* current_step = current_step_tensor->data<T>();
 
     VLOG(10) << "current_step:" << *current_step
@@ -41,7 +43,30 @@ class DGCClipByNormKernel : public ClipByNormKernel<DeviceContext, T> {
       return;
     }
 
-    return ClipByNormKernel<DeviceContext, T>::Compute(context);
+    auto in_var = ctx.InputVar("X");
+    auto max_norm = ctx.Attr<float>("max_norm");
+    auto& dev_ctx = ctx.device_context<DeviceContext>();
+
+    if (in_var->IsType<phi::DenseTensor>()) {
+      auto* x = ctx.Input<phi::DenseTensor>("X");
+      auto* y = ctx.Output<phi::DenseTensor>("Out");
+      return phi::ClipByNormKernel<T>(
+          static_cast<const typename framework::ConvertToPhiContext<
+              DeviceContext>::TYPE&>(dev_ctx),
+          *x,
+          max_norm,
+          y);
+    } else if (in_var->IsType<phi::SelectedRows>()) {
+      auto* x = ctx.Input<phi::SelectedRows>("X");
+      phi::SelectedRows* output_selected_rows =
+          ctx.Output<phi::SelectedRows>("Out");
+      return phi::sr::ClipByNormKernel<T>(
+          static_cast<const typename framework::ConvertToPhiContext<
+              DeviceContext>::TYPE&>(dev_ctx),
+          *x,
+          max_norm,
+          output_selected_rows);
+    }
   };
 };
 

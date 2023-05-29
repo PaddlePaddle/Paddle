@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
-import paddle
-import numpy as np
 import unittest
+
+import numpy as np
+
+import paddle
+from paddle import fluid
 
 
 def infinite_reader():
@@ -31,8 +33,8 @@ class TestDataLoaderEarlyReset(unittest.TestCase):
         self.iterable = True
 
     def build_network(self):
-        y = fluid.layers.fc(self.x, size=10)
-        loss = fluid.layers.reduce_mean(y)
+        y = paddle.static.nn.fc(self.x, size=10)
+        loss = paddle.mean(y)
 
         optimizer = fluid.optimizer.SGD(learning_rate=1e-3)
         optimizer.minimize(loss)
@@ -44,9 +46,10 @@ class TestDataLoaderEarlyReset(unittest.TestCase):
             return fluid.CPUPlace()
 
     def create_data_loader(self):
-        self.x = fluid.data(name='x', shape=[None, 32], dtype='float32')
+        self.x = paddle.static.data(name='x', shape=[None, 32], dtype='float32')
         return fluid.io.DataLoader.from_generator(
-            feed_list=[self.x], capacity=10, iterable=self.iterable)
+            feed_list=[self.x], capacity=10, iterable=self.iterable
+        )
 
     def test_main(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
@@ -67,7 +70,7 @@ class TestDataLoaderEarlyReset(unittest.TestCase):
             batch_id = 0
             if loader.iterable:
                 for data in loader():
-                    x_val, = exe.run(prog, feed=data, fetch_list=[self.x])
+                    (x_val,) = exe.run(prog, feed=data, fetch_list=[self.x])
                     self.assertTrue(np.all(x_val == batch_id))
                     batch_id += 1
                     if batch_id >= self.stop_batch:

@@ -14,75 +14,67 @@
 
 #include "paddle/phi/kernels/cast_kernel.h"
 
-#include "paddle/phi/backends/xpu/xpu_context.h"
-#include "paddle/phi/common/float16.h"
-#include "paddle/phi/core/enforce.h"
+#include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/core/kernel_registry.h"
 
-// See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/platform/device/xpu/xpu_header.h"
-
 namespace phi {
+template <typename InT, typename OutT, typename Context>
+void CastXPUKernelImpl(const Context& dev_ctx,
+                       const DenseTensor& x,
+                       DenseTensor* out) {
+  using XPUInT = typename XPUTypeTrait<InT>::Type;
+  using XPUOutT = typename XPUTypeTrait<OutT>::Type;
+
+  const auto* in_data = x.data<InT>();
+  auto* out_data = dev_ctx.template Alloc<OutT>(out);
+  auto numel = x.numel();
+
+  if (numel == 0) {
+    return;
+  }
+
+  int r = xpu::cast<XPUInT, XPUOutT>(dev_ctx.x_context(),
+                                     reinterpret_cast<const XPUInT*>(in_data),
+                                     reinterpret_cast<XPUOutT*>(out_data),
+                                     numel);
+
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "cast");
+}
 
 template <typename T, typename Context>
 void CastKernel(const Context& dev_ctx,
                 const DenseTensor& x,
                 DataType out_dtype,
                 DenseTensor* out) {
-  using XPUInTDType = typename XPUTypeTrait<T>::Type;
-  using float16 = typename XPUTypeTrait<phi::dtype::float16>::Type;
-
-  auto* in_data = x.data<T>();
-  auto numel = x.numel();
-
-  int r = -1;
   switch (out_dtype) {
-    case phi::DataType::FLOAT32:
-      r = xpu::cast_v2<XPUInTDType, float>(
-          dev_ctx.x_context(),
-          reinterpret_cast<const XPUInTDType*>(in_data),
-          out->mutable_data<float>(dev_ctx.GetPlace()),
-          numel);
+    case DataType::INT32:
+      CastXPUKernelImpl<T, int, Context>(dev_ctx, x, out);
       break;
-    case phi::DataType::FLOAT16:
-      r = xpu::cast_v2<XPUInTDType, float16>(
-          dev_ctx.x_context(),
-          reinterpret_cast<const XPUInTDType*>(in_data),
-          reinterpret_cast<float16*>(
-              out->mutable_data<phi::dtype::float16>(dev_ctx.GetPlace())),
-          numel);
+    case DataType::FLOAT32:
+      CastXPUKernelImpl<T, float, Context>(dev_ctx, x, out);
       break;
-    case phi::DataType::INT64:
-      r = xpu::cast_v2<XPUInTDType, int64_t>(
-          dev_ctx.x_context(),
-          reinterpret_cast<const XPUInTDType*>(in_data),
-          out->mutable_data<int64_t>(dev_ctx.GetPlace()),
-          numel);
+    case DataType::FLOAT16:
+      CastXPUKernelImpl<T, dtype::float16, Context>(dev_ctx, x, out);
       break;
-    case phi::DataType::INT32:
-      r = xpu::cast_v2<XPUInTDType, int32_t>(
-          dev_ctx.x_context(),
-          reinterpret_cast<const XPUInTDType*>(in_data),
-          out->mutable_data<int>(dev_ctx.GetPlace()),
-          numel);
+    case DataType::INT64:
+      CastXPUKernelImpl<T, int64_t, Context>(dev_ctx, x, out);
       break;
-    case phi::DataType::BOOL:
-      r = xpu::cast_v2<XPUInTDType, bool>(
-          dev_ctx.x_context(),
-          reinterpret_cast<const XPUInTDType*>(in_data),
-          out->mutable_data<bool>(dev_ctx.GetPlace()),
-          numel);
+    case DataType::BOOL:
+      CastXPUKernelImpl<T, bool, Context>(dev_ctx, x, out);
+      break;
+    case DataType::INT8:
+      CastXPUKernelImpl<T, int8_t, Context>(dev_ctx, x, out);
+      break;
+    case DataType::UINT8:
+      CastXPUKernelImpl<T, uint8_t, Context>(dev_ctx, x, out);
+      break;
+    case DataType::FLOAT64:
+      CastXPUKernelImpl<T, double, Context>(dev_ctx, x, out);
       break;
     default:
       PADDLE_THROW(phi::errors::Unavailable(
           "Not supported cast %d -> %d", x.dtype(), out_dtype));
   }
-
-  PADDLE_ENFORCE_EQ(
-      r,
-      XPU_SUCCESS,
-      phi::errors::External(
-          "XPU CAST API return wrong value[%d %s].", r, XPUAPIErrorMsg[r]));
 }
 }  // namespace phi
 
@@ -94,6 +86,9 @@ PD_REGISTER_KERNEL(cast,
                    float,
                    phi::dtype::float16,
                    int64_t,
-                   bool) {
-  kernel->OutputAt(0).SetDataType(paddle::experimental::DataType::UNDEFINED);
+                   bool,
+                   int8_t,
+                   uint8_t,
+                   double) {
+  kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }

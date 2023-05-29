@@ -49,96 +49,33 @@ using DivFunctor = phi::funcs::DivideFunctor<T>;
 template <typename T>
 using InverseDivFunctor = phi::funcs::InverseDivideFunctor<T>;
 
-// Floor Divide
-template <typename T>
-struct FloorDivFunctor {
-  inline HOSTDEVICE T operator()(const T a, const T b) const {
-    PADDLE_ENFORCE(b != 0, DIV_ERROR_INFO);
-    return static_cast<T>(std::trunc(a / b));
-  }
-};
-
-template <typename T>
-struct InverseFloorDivFunctor {
-  inline HOSTDEVICE T operator()(const T a, const T b) const {
-    PADDLE_ENFORCE(a != 0, DIV_ERROR_INFO);
-    return static_cast<T>(std::trunc(b / a));
-  }
-};
-
 #undef DIV_ERROR_INFO
 
 // Maximum
 template <typename T>
-struct MaxFunctor {
-  inline HOSTDEVICE T operator()(const T a, const T b) const {
-    return a > b ? a : b;
-  }
-};
+using MaxFunctor = phi::funcs::MaximumFunctor<T>;
 
 // Minmum
 template <typename T>
-struct MinFunctor {
-  inline HOSTDEVICE T operator()(const T a, const T b) const {
-    return a < b ? a : b;
-  }
-};
+using MinFunctor = phi::funcs::MinimumFunctor<T>;
 
 template <typename T>
 using Complex = paddle::platform::complex<T>;
 
-template <typename T>
-struct MinGradXFunctor {
-  inline HOSTDEVICE T operator()(const T x, const T y, const T dout) const {
-    return dout * static_cast<T>(x < y);
-  }
-};
-template <typename T>
-struct MinGradYFunctor {
-  inline HOSTDEVICE T operator()(const T x, const T y, const T dout) const {
-    return dout * static_cast<T>(x >= y);
-  }
-};
-
-template <typename InT, typename OutT>
-struct MinGradXYFunctor {
-  inline HOSTDEVICE phi::Array<OutT, 2> operator()(const InT x, const InT y,
-                                                   const InT dout) {
-    phi::Array<OutT, 2> outs;
-    // dx = dout * (x < y)
-    outs[0] = static_cast<OutT>(dout * static_cast<InT>(x < y));
-    // dy = dout * (x >= y)
-    outs[1] = static_cast<OutT>(dout * static_cast<InT>(x >= y));
-    return outs;
-  }
-};
-
 // Ternary compare
 template <typename T>
-struct MaxGradXFunctor {
-  inline HOSTDEVICE T operator()(const T x, const T y, const T dout) const {
-    return dout * static_cast<T>(x > y);
-  }
-};
+using MaxGradXFunctor = phi::funcs::MaxGradXFunctor<T>;
 template <typename T>
-struct MaxGradYFunctor {
-  inline HOSTDEVICE T operator()(const T x, const T y, const T dout) const {
-    return dout * static_cast<T>(x <= y);
-  }
-};
-
+using MaxGradYFunctor = phi::funcs::MaxGradYFunctor<T>;
 template <typename InT, typename OutT>
-struct MaxGradXYFunctor {
-  inline HOSTDEVICE phi::Array<OutT, 2> operator()(const InT x, const InT y,
-                                                   const InT dout) {
-    phi::Array<OutT, 2> outs;
-    // dx = dout * (x > y)
-    outs[0] = static_cast<OutT>(dout * static_cast<InT>(x > y));
-    // dy = dout * (x <= y)
-    outs[1] = static_cast<OutT>(dout * static_cast<InT>(x <= y));
-    return outs;
-  }
-};
+using MaxGradXYFunctor = phi::funcs::MaxGradXYFunctor<InT, OutT>;
+
+template <typename T>
+using MinGradXFunctor = phi::funcs::MinGradXFunctor<T>;
+template <typename T>
+using MinGradYFunctor = phi::funcs::MinGradYFunctor<T>;
+template <typename InT, typename OutT>
+using MinGradXYFunctor = phi::funcs::MinGradXYFunctor<InT, OutT>;
 
 }  // namespace operators
 }  // namespace paddle

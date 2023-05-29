@@ -1,11 +1,11 @@
 # Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -14,9 +14,11 @@
 
 import os
 import shlex
-import sys
 import shutil
+import sys
+import tempfile
 import unittest
+
 import paddle
 
 
@@ -34,13 +36,19 @@ def remove_file_if_exists(file_name):
         shutil.rmtree(file_name)
 
 
-def run_test(clip_after_allreduce=True, max_global_norm=-1.0):
+def run_test(
+    clip_after_allreduce=True,
+    max_global_norm=-1.0,
+    gradient_merge_steps=1,
+    use_master_acc_grad=True,
+):
+    temp_dir = tempfile.TemporaryDirectory()
     if not paddle.is_compiled_with_cuda():
         return
     if os.name == 'nt':
         return
     args = locals()
-    log_dir = 'log_{}'.format(os.getpid())
+    log_dir = os.path.join(temp_dir.name, f'log_{os.getpid()}')
     cmd = [
         sys.executable,
         '-u',
@@ -55,17 +63,21 @@ def run_test(clip_after_allreduce=True, max_global_norm=-1.0):
 
     os.environ['CLIP_AFTER_ALLREDUCE'] = str(clip_after_allreduce)
     os.environ['MAX_GLOBAL_NORM'] = str(max_global_norm)
+    os.environ['GRADIENT_MERGE_STEPS'] = str(gradient_merge_steps)
+    os.environ['USE_MASTER_ACC_GRAD'] = str(1 if use_master_acc_grad else 0)
 
     touch_file_env = 'SUCCESS_TOUCH_FILE'
-    touch_file_name = 'distributed_fused_lamb_touch_file_{}'.format(os.getpid())
+    touch_file_name = os.path.join(
+        temp_dir.name,
+        f'distributed_fused_lamb_touch_file_{os.getpid()}',
+    )
     os.environ[touch_file_env] = touch_file_name
-    remove_file_if_exists(touch_file_name)
     try:
         assert os.system(cmd) == 0 and os.path.exists(
-            touch_file_name), 'Test failed when {}'.format(args)
+            touch_file_name
+        ), f'Test failed when {args}'
     finally:
-        remove_file_if_exists(touch_file_name)
-        remove_file_if_exists(log_dir)
+        temp_dir.cleanup()
 
 
 class TestDistributedFusedLambWithClip(unittest.TestCase):

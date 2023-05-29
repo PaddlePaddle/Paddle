@@ -18,6 +18,12 @@ namespace phi {
 
 // we have to return every specific KernelSignature for infrt now
 KernelSignature MatrixRankOpArgumentMapping(const ArgumentMappingContext& ctx) {
+  if (ctx.IsForInferShape()) {
+    return KernelSignature("matrix_rank_tol",
+                           {"X", "TolTensor"},
+                           {"use_default_tol", "hermitian"},
+                           {"Out"});
+  }
   if (ctx.HasInput("TolTensor")) {
     return KernelSignature("matrix_rank_tol",
                            {"X", "TolTensor"},
@@ -27,7 +33,9 @@ KernelSignature MatrixRankOpArgumentMapping(const ArgumentMappingContext& ctx) {
     return KernelSignature("matrix_rank",
                            {"X"},
                            {
-                               "tol", "use_default_tol", "hermitian",
+                               "tol",
+                               "use_default_tol",
+                               "hermitian",
                            },
                            {"Out"});
   }

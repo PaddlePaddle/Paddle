@@ -22,7 +22,7 @@ namespace phi {
 
 template <typename T, typename Context>
 void IndexSelectGradKernel(const Context& ctx,
-                           const DenseTensor& x,
+                           const DenseTensor& x UNUSED,
                            const DenseTensor& index,
                            const DenseTensor& out_grad,
                            int dim,
@@ -59,5 +59,6 @@ PD_REGISTER_KERNEL(index_select_grad,
                    phi::IndexSelectGradKernel,
                    float,
                    double,
+                   phi::dtype::bfloat16,
                    int,
                    int64_t) {}

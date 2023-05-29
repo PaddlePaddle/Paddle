@@ -29,28 +29,32 @@ class PartialSendOp : public framework::OperatorWithKernel {
     int id = ctx->Attrs().Get<int>("id");
 
     PADDLE_ENFORCE_GE(
-        peer, 0,
+        peer,
+        0,
         platform::errors::InvalidArgument(
             "The peer (%d) for partial_send op must be non-negative.", peer));
     PADDLE_ENFORCE_GE(
-        ring_id, 0,
+        ring_id,
+        0,
         platform::errors::InvalidArgument(
             "The ring_id (%d) for partial_send op must be non-negative.",
             ring_id));
-    PADDLE_ENFORCE_GE(num, 1,
+    PADDLE_ENFORCE_GE(num,
+                      1,
                       platform::errors::InvalidArgument(
                           "The num (%d) for partial_send op must >=1", num));
     PADDLE_ENFORCE_EQ(
-        (id >= 0 && id < num), true,
+        (id >= 0 && id < num),
+        true,
         platform::errors::InvalidArgument(
             "The id (%d) for partial_send op must >=0 and <num (%d)", id, num));
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 
@@ -61,12 +65,7 @@ class PartialSendMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("ring_id", "(int default 0) nccl communication ring id.")
         .SetDefault(0);
     AddAttr<int>("peer", "(int default 0) rank id for receiver.").SetDefault(0);
-#if defined(PADDLE_WITH_ASCEND_CL)
-    AddAttr<std::string>("tag", "(string default tag) tag for broadcasting.")
-        .SetDefault("tag");
-    AddAttr<int>("srTag", "(string default tag) tag for broadcasting.")
-        .SetDefault(0);
-#endif
+
     AddAttr<bool>(
         "use_calc_stream",
         "(bool default false) eject CUDA operations to calculation stream.")
@@ -91,11 +90,16 @@ Reference: https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/p2p.h
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_WITHOUT_GRADIENT(partial_send, ops::PartialSendOp,
+REGISTER_OP_WITHOUT_GRADIENT(partial_send,
+                             ops::PartialSendOp,
                              ops::PartialSendMaker);
 
-REGISTER_OP_CPU_KERNEL(partial_send, ops::PartialSendOpCPUKernel<float>,
-                       ops::PartialSendOpCPUKernel<double>,
-                       ops::PartialSendOpCPUKernel<int>,
-                       ops::PartialSendOpCPUKernel<int64_t>,
-                       ops::PartialSendOpCPUKernel<plat::float16>);
+PD_REGISTER_STRUCT_KERNEL(partial_send,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::PartialSendOpCPUKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t,
+                          plat::float16) {}

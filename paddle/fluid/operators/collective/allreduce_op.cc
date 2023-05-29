@@ -12,34 +12,34 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/collective/allreduce_op.h"
+
 #include <future>  // NOLINT
 #include <ostream>
-
-#include "paddle/fluid/operators/collective/allreduce_op.h"
 
 namespace paddle {
 namespace operators {
 
-class AllReduceOp : public framework::OperatorWithKernel {
+class AllReduceDelOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {}
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "X"),
+                          ctx.GetPlace());
   }
 };
 
-class AllReduceOpMaker : public framework::OpProtoAndCheckerMaker {
+class AllReduceDelOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
     AddInput("X", "(Tensor), tensor to be allreduced.");
     AddOutput("Out", "(Tensor) the result of allreduced.");
-    AddAttr<int>("reduce_type", "(int) determin the reduce type.")
+    AddAttr<int>("reduce_type", "(int) determine the reduce type.")
         .SetDefault(0);
     AddAttr<bool>(
         "sync_mode",
@@ -69,12 +69,16 @@ If input and output are the same variable, in-place allreduce will be used.
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_WITHOUT_GRADIENT(allreduce, ops::AllReduceOp,
-                             ops::AllReduceOpMaker);
+REGISTER_OP_WITHOUT_GRADIENT(allreduce,
+                             ops::AllReduceDelOp,
+                             ops::AllReduceDelOpMaker);
 
-REGISTER_OP_CPU_KERNEL(
-    allreduce, ops::AllReduceOpKernel<plat::CPUDeviceContext, float>,
-    ops::AllReduceOpKernel<plat::CPUDeviceContext, double>,
-    ops::AllReduceOpKernel<plat::CPUDeviceContext, int>,
-    ops::AllReduceOpKernel<plat::CPUDeviceContext, int64_t>,
-    ops::AllReduceOpKernel<plat::CPUDeviceContext, plat::float16>);
+PD_REGISTER_STRUCT_KERNEL(allreduce,
+                          CPU,
+                          ALL_LAYOUT,
+                          ops::AllReduceOpKernel,
+                          float,
+                          double,
+                          int,
+                          int64_t,
+                          plat::float16) {}

@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
+
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci, check_out_dtype
+from eager_op_test import check_out_dtype
+from test_sum_op import TestReduceOPTensorAxisBase
+
 import paddle
-import paddle.fluid.core as core
+from paddle import fluid
+from paddle.fluid import core
 
 
 class ApiMinTest(unittest.TestCase):
@@ -30,52 +32,47 @@ class ApiMinTest(unittest.TestCase):
 
     def test_api(self):
         paddle.enable_static()
-        with paddle.static.program_guard(paddle.static.Program(),
-                                         paddle.static.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             data = paddle.static.data("data", shape=[10, 10], dtype="float32")
             result_min = paddle.min(x=data, axis=1)
             exe = paddle.static.Executor(self.place)
             input_data = np.random.rand(10, 10).astype(np.float32)
-            res, = exe.run(feed={"data": input_data}, fetch_list=[result_min])
+            (res,) = exe.run(feed={"data": input_data}, fetch_list=[result_min])
         self.assertEqual((res == np.min(input_data, axis=1)).all(), True)
 
-        with paddle.static.program_guard(paddle.static.Program(),
-                                         paddle.static.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             data = paddle.static.data("data", shape=[10, 10], dtype="int64")
             result_min = paddle.min(x=data, axis=0)
             exe = paddle.static.Executor(self.place)
             input_data = np.random.randint(10, size=(10, 10)).astype(np.int64)
-            res, = exe.run(feed={"data": input_data}, fetch_list=[result_min])
+            (res,) = exe.run(feed={"data": input_data}, fetch_list=[result_min])
         self.assertEqual((res == np.min(input_data, axis=0)).all(), True)
 
-        with paddle.static.program_guard(paddle.static.Program(),
-                                         paddle.static.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             data = paddle.static.data("data", shape=[10, 10], dtype="int64")
             result_min = paddle.min(x=data, axis=(0, 1))
             exe = paddle.static.Executor(self.place)
             input_data = np.random.randint(10, size=(10, 10)).astype(np.int64)
-            res, = exe.run(feed={"data": input_data}, fetch_list=[result_min])
+            (res,) = exe.run(feed={"data": input_data}, fetch_list=[result_min])
         self.assertEqual((res == np.min(input_data, axis=(0, 1))).all(), True)
 
     def test_errors(self):
         paddle.enable_static()
 
         def test_input_type():
-            with paddle.static.program_guard(paddle.static.Program(),
-                                             paddle.static.Program()):
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 data = np.random.rand(10, 10)
                 result_min = paddle.min(x=data, axis=0)
 
         self.assertRaises(TypeError, test_input_type)
-
-        def test_axis_type():
-            with paddle.static.program_guard(paddle.static.Program(),
-                                             paddle.static.Program()):
-                data = paddle.static.data("data", shape=[10, 10], dtype="int64")
-                axis = paddle.static.data("axis", shape=[10, 10], dtype="int64")
-                result_min = paddle.min(data, axis)
-
-        self.assertRaises(TypeError, test_axis_type)
 
     def test_imperative_api(self):
         paddle.disable_static()
@@ -93,8 +90,45 @@ class TestOutDtype(unittest.TestCase):
         shape = [10, 16]
         check_out_dtype(
             api_fn,
-            in_specs=[(shape, )],
-            expect_dtypes=['float32', 'float64', 'int32', 'int64'])
+            in_specs=[(shape,)],
+            expect_dtypes=['float32', 'float64', 'int32', 'int64'],
+        )
+
+
+class TestMinWithTensorAxis1(TestReduceOPTensorAxisBase):
+    def init_data(self):
+        self.pd_api = paddle.min
+        self.np_api = np.min
+        self.x = paddle.randn([10, 5, 9, 9], dtype='float64')
+        self.np_axis = np.array([1, 2], dtype='int64')
+        self.tensor_axis = paddle.to_tensor([1, 2], dtype='int64')
+
+
+class TestMinWithTensorAxis2(TestReduceOPTensorAxisBase):
+    def init_data(self):
+        self.pd_api = paddle.min
+        self.np_api = np.min
+        self.x = paddle.randn([10, 10, 9, 9], dtype='float64')
+        self.np_axis = np.array([0, 1, 2], dtype='int64')
+        self.tensor_axis = [
+            0,
+            paddle.to_tensor([1], 'int64'),
+            paddle.to_tensor([2], 'int64'),
+        ]
+        self.keepdim = True
+
+
+class TestMinAPIWithEmptyTensor(unittest.TestCase):
+    def test_empty_tensor(self):
+        with fluid.dygraph.guard():
+            with self.assertRaises(ValueError):
+                data = np.array([], dtype=np.float32)
+                data = np.reshape(data, [0, 0, 0, 0, 0, 0, 0])
+                x = paddle.to_tensor(data, dtype='float64')
+                np_axis = np.array([0], dtype='int64')
+                tensor_axis = paddle.to_tensor(np_axis, dtype='int64')
+
+                out = paddle.min(x, tensor_axis)
 
 
 if __name__ == '__main__':

@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
 import unittest
+
 import numpy as np
-import six
+
 import paddle
+from paddle import fluid
 
 
 class TensorFill_Test(unittest.TestCase):
@@ -36,14 +37,15 @@ class TensorFill_Test(unittest.TestCase):
             else:
                 paddle.set_device('gpu')
             np_arr = np.reshape(
-                np.array(six.moves.range(np.prod(self.shape))), self.shape)
+                np.array(range(np.prod(self.shape))), self.shape
+            )
             for dtype in typelist:
-                var = 1.
+                var = 1.0
                 tensor = paddle.to_tensor(np_arr, place=p, dtype=dtype)
                 target = tensor.numpy()
                 target[...] = var
 
-                tensor.fill_(var)  #var type is basic type in typelist
+                tensor.fill_(var)  # var type is basic type in typelist
                 self.assertEqual((tensor.numpy() == target).all(), True)
 
     def test_tensor_fill_backward(self):
@@ -59,12 +61,14 @@ class TensorFill_Test(unittest.TestCase):
             else:
                 paddle.set_device('gpu')
             np_arr = np.reshape(
-                np.array(six.moves.range(np.prod(self.shape))), self.shape)
+                np.array(range(np.prod(self.shape))), self.shape
+            )
             for dtype in typelist:
                 var = int(1)
                 tensor = paddle.to_tensor(np_arr, place=p, dtype=dtype)
                 tensor.stop_gradient = False
                 y = tensor * 2
+                y.retain_grads()
                 y.fill_(var)
                 loss = y.sum()
                 loss.backward()

@@ -12,19 +12,20 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/phi_utils.h"
+
 #include <sstream>
 
 #include "paddle/fluid/framework/convert_utils.h"
-#include "paddle/fluid/framework/phi_utils.h"
-
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/selected_rows_utils.h"
-#include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/compat/op_utils.h"
 #include "paddle/phi/core/kernel_factory.h"
+#include "paddle/phi/core/tensor_utils.h"
+#include "paddle/phi/core/type_defs.h"
 
 namespace paddle {
 namespace framework {
@@ -34,17 +35,18 @@ class KernelArgsNameMakerByOpProto : public KernelArgsNameMaker {
   explicit KernelArgsNameMakerByOpProto(
       const framework::proto::OpProto* op_proto)
       : op_proto_(op_proto) {
-    PADDLE_ENFORCE_NOT_NULL(op_proto_, platform::errors::InvalidArgument(
-                                           "Op proto cannot be nullptr."));
+    PADDLE_ENFORCE_NOT_NULL(
+        op_proto_,
+        platform::errors::InvalidArgument("Op proto cannot be nullptr."));
   }
 
   ~KernelArgsNameMakerByOpProto() {}
 
-  const paddle::SmallVector<std::string>& GetInputArgsNames() override;
-  const paddle::SmallVector<std::string>& GetOutputArgsNames() override;
-  const paddle::SmallVector<std::string>& GetAttrsArgsNames() override;
+  const paddle::small_vector<const char*>& GetInputArgsNames() override;
+  const paddle::small_vector<const char*>& GetOutputArgsNames() override;
+  const paddle::small_vector<const char*>& GetAttrsArgsNames() override;
 
-  KernelSignature GetKernelSignature();
+  phi::KernelSignature GetKernelSignature();
 
  private:
   DISABLE_COPY_AND_ASSIGN(KernelArgsNameMakerByOpProto);
@@ -52,9 +54,9 @@ class KernelArgsNameMakerByOpProto : public KernelArgsNameMaker {
  private:
   const framework::proto::OpProto* op_proto_;
 
-  paddle::SmallVector<std::string> input_names_;
-  paddle::SmallVector<std::string> output_names_;
-  paddle::SmallVector<std::string> attr_names_;
+  paddle::small_vector<const char*> input_names_;
+  paddle::small_vector<const char*> output_names_;
+  paddle::small_vector<const char*> attr_names_;
 };
 
 OpKernelType TransPhiKernelKeyToOpKernelType(const phi::KernelKey& kernel_key) {
@@ -64,7 +66,7 @@ OpKernelType TransPhiKernelKeyToOpKernelType(const phi::KernelKey& kernel_key) {
   platform::Place place = phi::TransToPhiPlace(kernel_key.backend(), false);
   DataLayout data_layout = kernel_key.layout();
   LibraryType library_type = LibraryType::kPlain;
-  if (kernel_key.backend() == phi::Backend::MKLDNN) {
+  if (kernel_key.backend() == phi::Backend::ONEDNN) {
     library_type = LibraryType::kMKLDNN;
   } else if (kernel_key.backend() == phi::Backend::GPUDNN) {
     library_type = LibraryType::kCUDNN;
@@ -80,103 +82,120 @@ OpKernelType TransPhiKernelKeyToOpKernelType(const phi::KernelKey& kernel_key) {
 phi::KernelKey TransOpKernelTypeToPhiKernelKey(
     const OpKernelType& kernel_type) {
   phi::Backend backend = phi::TransToPhiBackend(kernel_type.place_);
-  if (kernel_type.library_type_ == LibraryType::kMKLDNN) {
-    backend = phi::Backend::MKLDNN;
-  } else if (kernel_type.library_type_ == LibraryType::kCUDNN) {
-    backend = phi::Backend::GPUDNN;
-  } else if (kernel_type.library_type_ == LibraryType::kKP) {
-    backend = phi::Backend::KPS;
-  } else {
-    // do
+  switch (kernel_type.library_type_) {
+    case LibraryType::kCUDNN:
+      backend = phi::Backend::GPUDNN;
+      break;
+    case LibraryType::kMKLDNN:
+      backend = phi::Backend::ONEDNN;
+      break;
+    case LibraryType::kKP:
+      backend = phi::Backend::KPS;
+      break;
+    default:
+      break;
   }
-  paddle::experimental::DataLayout layout = kernel_type.data_layout_;
-  paddle::experimental::DataType dtype =
-      paddle::framework::TransToPhiDataType(kernel_type.data_type_);
-  return phi::KernelKey(backend, layout, dtype);
+  return phi::KernelKey(backend,
+                        kernel_type.data_layout_,
+                        framework::TransToPhiDataType(kernel_type.data_type_));
 }
 
-phi::KernelKey FallBackToCpu(const OpKernelType& expected_kernel_key,
-                             const phi::KernelKey& kernel_key,
+phi::KernelKey FallBackToCpu(const phi::KernelKey& kernel_key,
                              const framework::OperatorBase& op) {
 #ifdef PADDLE_WITH_XPU
-  if (platform::is_xpu_place(expected_kernel_key.place_) ||
+  if (kernel_key.backend() == phi::Backend::XPU ||
       paddle::platform::is_in_xpu_black_list(op.Type())) {
     VLOG(3) << "phi missing XPU kernel: " << op.Type()
-            << "phipected_kernel_key:" << expected_kernel_key
-            << ", fallbacking to CPU one!";
-    return phi::KernelKey(phi::Backend::CPU, kernel_key.layout(),
-                          kernel_key.dtype());
-  }
-#endif
-#ifdef PADDLE_WITH_ASCEND_CL
-  if (platform::is_npu_place(expected_kernel_key.place_)) {
-    VLOG(3) << "phi missing NPU kernel: " << op.Type()
-            << "phipected_kernel_key:" << expected_kernel_key
-            << ", fallbacking to CPU one!";
-    return phi::KernelKey(phi::Backend::CPU, kernel_key.layout(),
-                          kernel_key.dtype());
-  }
-#endif
-#ifdef PADDLE_WITH_MLU
-  if (platform::is_mlu_place(expected_kernel_key.place_)) {
-    VLOG(3) << "phi missing MLU kernel: " << op.Type()
-            << "phipected_kernel_key:" << expected_kernel_key
-            << ", fallbacking to CPU one!";
-    return phi::KernelKey(phi::Backend::CPU, kernel_key.layout(),
-                          kernel_key.dtype());
+            << ", expected_kernel_key:" << kernel_key
+            << ", fallback to CPU one!";
+    return phi::KernelKey(
+        phi::Backend::CPU, kernel_key.layout(), kernel_key.dtype());
   }
 #endif
 #ifdef PADDLE_WITH_IPU
-  if (platform::is_ipu_place(expected_kernel_key.place_)) {
-    VLOG(3) << "pten missing IPU kernel: " << op.Type()
-            << ", expected_kernel_key:" << expected_kernel_key
-            << ", fallbacking to CPU one!";
-    return phi::KernelKey(phi::Backend::CPU, kernel_key.layout(),
-                          kernel_key.dtype());
+  if (kernel_key.backend() == phi::Backend::IPU) {
+    VLOG(3) << "phi missing IPU kernel: " << op.Type()
+            << ", expected_kernel_key:" << kernel_key
+            << ", fallback to CPU one!";
+    return phi::KernelKey(
+        phi::Backend::CPU, kernel_key.layout(), kernel_key.dtype());
   }
 #endif
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  auto place = phi::TransToPhiPlace(kernel_key.backend());
+  bool is_custom_place = platform::is_custom_place(place);
+  if (is_custom_place ||
+      phi::backends::custom_device::is_in_custom_black_list(op.Type())) {
+    std::string info = is_custom_place ? "phi missing " : "phi in black list ";
+    VLOG(3) << info << place.GetDeviceType() << " kernel: " << op.Type()
+            << ", expected_kernel_key:" << kernel_key
+            << ", fallback to CPU one!";
+    return phi::KernelKey(
+        phi::Backend::CPU, kernel_key.layout(), kernel_key.dtype());
+  }
+#endif
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (kernel_key.backend() == phi::Backend::GPU ||
+      kernel_key.backend() == phi::Backend::GPUDNN) {
+    PADDLE_THROW(
+        phi::errors::NotFound("The kernel (%s) with key %s is not found and "
+                              "GPU kernel cannot fallback to CPU one.",
+                              op.Type(),
+                              kernel_key));
+  }
+#endif
+
   return phi::KernelKey();
 }
 
-const paddle::SmallVector<std::string>&
+const paddle::small_vector<const char*>&
 KernelArgsNameMakerByOpProto::GetInputArgsNames() {
   for (int i = 0; i < op_proto_->inputs_size(); ++i) {
     auto& in = op_proto_->inputs()[i];
     auto& in_name = in.name();
     if ((in.has_extra() && in.extra()) || (in.has_quant() && in.quant())) {
-      VLOG(6) << "Parse PhiKernel input: skip extra & quant input - "
-              << in_name;
       continue;
     }
     // If contains dispensable input, we should override the
     // OpArgumentMapping method self in phi/ops/compat dir
     if (in.has_dispensable() && in.dispensable()) {
-      VLOG(6) << "Parse PhiKernel input: skip dispensable input - " << in_name;
       continue;
     }
-    VLOG(6) << "Parse PhiKernel input: " << in_name;
-    input_names_.emplace_back(in_name);
+    input_names_.emplace_back(in_name.c_str());
+  }
+  if (VLOG_IS_ON(10)) {
+    std::ostringstream sout;
+    sout << "PhiKernel inputs: ";
+    std::copy(input_names_.begin(),
+              input_names_.end(),
+              std::ostream_iterator<const char*>(sout, ", "));
+    VLOG(10) << sout.str();
   }
   return input_names_;
 }
 
-const paddle::SmallVector<std::string>&
+const paddle::small_vector<const char*>&
 KernelArgsNameMakerByOpProto::GetOutputArgsNames() {
   for (int i = 0; i < op_proto_->outputs_size(); ++i) {
     auto& out = op_proto_->outputs()[i];
     auto& out_name = out.name();
     if ((out.has_extra() && out.extra()) || (out.has_quant() && out.quant())) {
-      VLOG(6) << "Parse PhiKernel output: skip extra & quant output - "
-              << out_name;
       continue;
     }
-    VLOG(6) << "Parse PhiKernel output: " << out_name;
-    output_names_.emplace_back(out_name);
+    output_names_.emplace_back(out_name.c_str());
+  }
+  if (VLOG_IS_ON(10)) {
+    std::ostringstream sout;
+    sout << "PhiKernel outputs: ";
+    std::copy(output_names_.begin(),
+              output_names_.end(),
+              std::ostream_iterator<const char*>(sout, ", "));
+    VLOG(10) << sout.str();
   }
   return output_names_;
 }
 
-const paddle::SmallVector<std::string>&
+const paddle::small_vector<const char*>&
 KernelArgsNameMakerByOpProto::GetAttrsArgsNames() {
   for (int i = 0; i < op_proto_->attrs_size(); ++i) {
     auto& attr = op_proto_->attrs()[i];
@@ -185,27 +204,31 @@ KernelArgsNameMakerByOpProto::GetAttrsArgsNames() {
         attr_name == "op_role" || attr_name == "op_role_var" ||
         attr_name == "op_namescope" || attr_name == "op_callstack" ||
         attr_name == "op_device") {
-      VLOG(6) << "Parse PhiKernel attribute: skip needless attr - "
-              << attr_name;
       continue;
     }
     if ((attr.has_extra() && attr.extra()) ||
         (attr.has_quant() && attr.quant())) {
-      VLOG(6) << "Parse PhiKernel attribute: skip extra & quant attr - "
-              << attr_name;
       continue;
     }
-    VLOG(6) << "Parse PhiKernel attribute: " << attr_name;
-    attr_names_.emplace_back(attr_name);
+    attr_names_.emplace_back(attr_name.c_str());
   }
-
+  if (VLOG_IS_ON(10)) {
+    std::ostringstream sout;
+    sout << "PhiKernel attributes: ";
+    std::copy(attr_names_.begin(),
+              attr_names_.end(),
+              std::ostream_iterator<const char*>(sout, ", "));
+    VLOG(10) << sout.str();
+  }
   return attr_names_;
 }
 
-KernelSignature KernelArgsNameMakerByOpProto::GetKernelSignature() {
-  return KernelSignature(phi::TransToPhiKernelName(op_proto_->type()),
-                         GetInputArgsNames(), GetAttrsArgsNames(),
-                         GetOutputArgsNames());
+phi::KernelSignature KernelArgsNameMakerByOpProto::GetKernelSignature() {
+  return phi::KernelSignature(
+      phi::TransToPhiKernelName(op_proto_->type()).c_str(),
+      GetInputArgsNames(),
+      GetAttrsArgsNames(),
+      GetOutputArgsNames());
 }
 
 std::once_flag kernel_sig_map_init_flag;
@@ -218,7 +241,7 @@ void InitDefaultKernelSignatureMap() {
       if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(op_type) &&
           op_proto) {
         paddle::framework::KernelArgsNameMakerByOpProto maker(op_proto);
-        VLOG(10) << "Register kernel signature for " << op_type;
+        VLOG(10) << "Register `" << op_type << "` kernel signature:";
         phi::DefaultKernelSignatureMap::Instance().Insert(
             op_type, std::move(maker.GetKernelSignature()));
       }
@@ -230,7 +253,7 @@ static void SetAllocationForUninitializedDenseTensor(
     phi::DenseTensor* dense_tensor, const platform::Place& place) {
   int dtype_size = dense_tensor->dtype() == DataType::UNDEFINED
                        ? 0
-                       : experimental::SizeOf(dense_tensor->dtype());
+                       : phi::SizeOf(dense_tensor->dtype());
   int64_t numels = product(dense_tensor->dims());
   numels = numels < 0 ? 0 : numels;
   auto tmp_allocation_ptr = memory::Alloc(place, numels * dtype_size);
@@ -240,6 +263,101 @@ static void SetAllocationForUninitializedDenseTensor(
       std::shared_ptr<phi::Allocation>(allocation_ptr, deleter);
 
   dense_tensor->ResetHolder(shared_allocation);
+}
+
+phi::Scalar MakePhiScalarFromVar(const framework::Variable& variable) {
+  auto expected_place = phi::TransToPhiPlace(phi::Backend::CPU);
+  if (variable.IsType<phi::DenseTensor>()) {
+    const auto& tensor = variable.Get<phi::DenseTensor>();
+    PADDLE_ENFORCE_EQ(
+        tensor.numel(),
+        1UL,
+        platform::errors::InvalidArgument("The DenseTensor used to construct "
+                                          "the Scalar contains more than 1 "
+                                          "value, it contains `%d` values.",
+                                          tensor.numel()));
+    if (!platform::is_same_place(tensor.place(), expected_place)) {
+      phi::DenseTensor tmp_tensor;
+      framework::TensorCopySync(tensor, expected_place, &tmp_tensor);
+      return {tmp_tensor};
+    } else {
+      return {tensor};
+    }
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Unsupport casting input `%s` type to Scalar when call pt "
+        "kernel.",
+        framework::ToTypeName(variable.Type())));
+  }
+}
+
+phi::IntArray MakePhiIntArrayFromVar(const framework::Variable& variable) {
+  if (variable.IsType<phi::DenseTensor>()) {
+    const auto& tensor = variable.Get<phi::DenseTensor>();
+    return phi::IntArray(tensor);
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Unsupport casting input `%s` type to IntArray when call pt "
+        "kernel.",
+        framework::ToTypeName(variable.Type())));
+  }
+}
+
+// TODO(chentianyu03): Inplace with IntArray constructor
+phi::IntArray MakePhiIntArrayFromVarList(
+    const std::vector<framework::Variable*>& variable_list) {
+  if (variable_list.size() == 0) {
+    return phi::IntArray();
+  }
+  auto expected_place = phi::TransToPhiPlace(phi::Backend::CPU);
+
+  std::vector<int64_t> vector_data;
+  vector_data.reserve(variable_list.size());
+
+  for (auto* var : variable_list) {
+    phi::DataType data_type;
+    if (var->IsType<phi::DenseTensor>()) {
+      const auto& tensor = var->Get<phi::DenseTensor>();
+      data_type = tensor.dtype();
+      if (data_type == phi::DataType::INT64) {
+        const auto& tensor = var->Get<phi::DenseTensor>();
+        if (tensor.IsInitialized() &&
+            !platform::is_same_place(tensor.place(), expected_place)) {
+          phi::DenseTensor tmp_tensor;
+          framework::TensorCopySync(tensor, expected_place, &tmp_tensor);
+          vector_data.push_back(*tmp_tensor.data<int64_t>());
+        } else {
+          vector_data.push_back(*tensor.data<int64_t>());
+        }
+      } else if (data_type == phi::DataType::INT32) {
+        const auto& tensor = var->Get<phi::DenseTensor>();
+        if (tensor.IsInitialized() &&
+            !platform::is_same_place(tensor.place(), expected_place)) {
+          phi::DenseTensor tmp_tensor;
+          framework::TensorCopySync(tensor, expected_place, &tmp_tensor);
+          vector_data.push_back(*tmp_tensor.data<int32_t>());
+        } else {
+          vector_data.push_back(*tensor.data<int32_t>());
+        }
+      } else {
+        PADDLE_THROW(phi::errors::InvalidArgument(
+            "Data type error. When cast a LoDTensor to VectorTensor, "
+            "the data type of LoDTensor must be int32 or int64, "
+            "but now data type is %s.",
+            data_type));
+      }
+    } else {
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "Unsupport casting input `%s` type to VectorTensor when call pt "
+          "kernel.",
+          framework::ToTypeName(var->Type())));
+    }
+  }
+
+  phi::IntArray result{vector_data};
+  result.SetFromTensor(true);
+
+  return result;
 }
 
 }  // namespace framework

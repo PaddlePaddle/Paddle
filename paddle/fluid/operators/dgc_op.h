@@ -14,17 +14,21 @@ limitations under the License. */
 
 #pragma once
 #include <vector>
+
 #include "dgc/dgc.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
+#include "paddle/phi/kernels/funcs/elementwise_functor.h"
 
 namespace paddle {
 namespace operators {
 
 inline float get_period_sparcity(const std::vector<float>& sparsity,
-                                 float cur_step, float rampup_steps) {
-  PADDLE_ENFORCE_GE(static_cast<int>(cur_step), 0,
+                                 float cur_step,
+                                 float rampup_steps) {
+  PADDLE_ENFORCE_GE(static_cast<int>(cur_step),
+                    0,
                     platform::errors::InvalidArgument(
                         "DGC current step=%d, but it must >= 0, "
                         "please submit issue in github",
@@ -36,22 +40,24 @@ inline float get_period_sparcity(const std::vector<float>& sparsity,
   }
 
   PADDLE_ENFORCE_LT(
-      idx, sparsity.size(),
+      idx,
+      sparsity.size(),
       platform::errors::OutOfRange(
-          "sparsity index out of bounds. idx=%d >= sparsity.size=%d", idx,
+          "sparsity index out of bounds. idx=%d >= sparsity.size=%d",
+          idx,
           sparsity.size()));
   return sparsity[idx];
 }
 
-template <typename DeviceContext, typename T>
+template <typename T, typename DeviceContext>
 class DGCOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto u = ctx.Input<framework::Tensor>("U");
-    auto v = ctx.Input<framework::Tensor>("V");
-    auto g = ctx.Input<framework::Tensor>("Grad");
+    auto u = ctx.Input<phi::DenseTensor>("U");
+    auto v = ctx.Input<phi::DenseTensor>("V");
+    auto g = ctx.Input<phi::DenseTensor>("Grad");
 
-    auto grad_out = ctx.Output<framework::Tensor>("Grad_out");
+    auto grad_out = ctx.Output<phi::DenseTensor>("Grad_out");
 
     // attrs
     float m = ctx.Attr<float>("m");
@@ -61,15 +67,16 @@ class DGCOpKernel : public framework::OpKernel<T> {
     auto rampup_step = ctx.Attr<float>("rampup_step");
 
     // nranks
-    auto nranks_tensor = ctx.Input<framework::Tensor>("nranks");
-    const int nranks = static_cast<const int>(*nranks_tensor->data<float>());
-    PADDLE_ENFORCE_GT(nranks, 1,
+    auto nranks_tensor = ctx.Input<phi::DenseTensor>("nranks");
+    const int nranks = static_cast<int>(*nranks_tensor->data<float>());
+    PADDLE_ENFORCE_GT(nranks,
+                      1,
                       platform::errors::PreconditionNotMet(
                           "DGC is not useful when num_trainers <= 1. Please "
                           "use multi card or multi machine GPU"));
 
     // regularization
-    auto p = ctx.Input<framework::Tensor>("Param");
+    auto p = ctx.Input<phi::DenseTensor>("Param");
     float regular_coeff = ctx.Attr<float>("regular_coeff");
     int regular_type = ctx.Attr<int>("regular_type");
 
@@ -86,7 +93,8 @@ class DGCOpKernel : public framework::OpKernel<T> {
     // need to /nranks, can prevent precision loss. For coeff often equal
     // with 1e-4, if nranks=32, coeff/nranks will be 3.125e-6, the numerical
     // accuracy of coeff/nranks will be too low.
-    PADDLE_ENFORCE_EQ(regular_type >= 0 && regular_type <= 2, true,
+    PADDLE_ENFORCE_EQ(regular_type >= 0 && regular_type <= 2,
+                      true,
                       platform::errors::InvalidArgument(
                           "DGC only support one of None|L1Decay|L2Decay "
                           "Regularization for now."));
@@ -102,7 +110,7 @@ class DGCOpKernel : public framework::OpKernel<T> {
     }
 
     // current step
-    auto current_step_tensor = ctx.Input<framework::Tensor>("current_step");
+    auto current_step_tensor = ctx.Input<phi::DenseTensor>("current_step");
     const float* current_step = current_step_tensor->data<float>();
 
     if (static_cast<int>(*current_step) < static_cast<int>(rampup_begin_step)) {
@@ -112,14 +120,18 @@ class DGCOpKernel : public framework::OpKernel<T> {
       return;
     }
 
-    float ratio =
-        1 - get_period_sparcity(
-                sparsity, static_cast<float>(*current_step - rampup_begin_step),
-                rampup_step);
-    PADDLE_ENFORCE_GE(ratio, 0.0, platform::errors::InvalidArgument(
-                                      "DGC sparsity ratio must >= 0"));
-    PADDLE_ENFORCE_LT(ratio, 1.0, platform::errors::InvalidArgument(
-                                      "DGC sparsity ratio must < 1"));
+    float ratio = 1 - get_period_sparcity(
+                          sparsity,
+                          static_cast<float>(*current_step - rampup_begin_step),
+                          rampup_step);
+    PADDLE_ENFORCE_GE(
+        ratio,
+        0.0,
+        platform::errors::InvalidArgument("DGC sparsity ratio must >= 0"));
+    PADDLE_ENFORCE_LT(
+        ratio,
+        1.0,
+        platform::errors::InvalidArgument("DGC sparsity ratio must < 1"));
     int k = static_cast<int>(g->numel() * ratio);
 
     VLOG(10) << "m:" << m << ", use_nesterov:" << use_nesterov
@@ -128,14 +140,14 @@ class DGCOpKernel : public framework::OpKernel<T> {
              << ",  current_step:" << *current_step << ", ratio:" << ratio
              << ", k:" << k << ", nranks:" << nranks;
 
-    auto k_out = ctx.Output<framework::Tensor>("k");
+    auto k_out = ctx.Output<phi::DenseTensor>("k");
     T* k_out_data = k_out->data<T>();
     *k_out_data = k;
 
-    auto u_out = ctx.Output<framework::Tensor>("U_out");
-    auto v_out = ctx.Output<framework::Tensor>("V_out");
-    auto encode_grad_out = ctx.Output<framework::Tensor>("EncodeGrad");
-    auto gather_buff = ctx.Output<framework::Tensor>("GatherBuff");
+    auto u_out = ctx.Output<phi::DenseTensor>("U_out");
+    auto v_out = ctx.Output<phi::DenseTensor>("V_out");
+    auto encode_grad_out = ctx.Output<phi::DenseTensor>("EncodeGrad");
+    auto gather_buff = ctx.Output<phi::DenseTensor>("GatherBuff");
 
     // FIXME(gongwb): use cublas.
     auto u_out_e = framework::EigenVector<T>::Flatten(*u_out);
@@ -153,18 +165,18 @@ class DGCOpKernel : public framework::OpKernel<T> {
       u_out_e.device(eigen_ctx) = m * (u_e + grad_out_e);
 
       // v = u + v + g
-      ElementwiseComputeEx<AddFunctor<T>, DeviceContext, T>(
-          ctx, u, v, 0, AddFunctor<T>(), v_out);
+      ElementwiseComputeEx<phi::funcs::AddFunctor<T>, DeviceContext, T>(
+          ctx, u, v, 0, phi::funcs::AddFunctor<T>(), v_out);
 
-      ElementwiseComputeEx<AddFunctor<T>, DeviceContext, T>(
-          ctx, g, v, 0, AddFunctor<T>(), v_out);
+      ElementwiseComputeEx<phi::funcs::AddFunctor<T>, DeviceContext, T>(
+          ctx, g, v, 0, phi::funcs::AddFunctor<T>(), v_out);
     } else {
       // u = m * u + g
       u_out_e.device(eigen_ctx) = m * u_e + grad_out_e;
 
       // v = u + v
-      ElementwiseComputeEx<AddFunctor<T>, DeviceContext, T>(
-          ctx, u, v, 0, AddFunctor<T>(), v_out);
+      ElementwiseComputeEx<phi::funcs::AddFunctor<T>, DeviceContext, T>(
+          ctx, u, v, 0, phi::funcs::AddFunctor<T>(), v_out);
     }
 
     T* v_out_data = v_out->mutable_data<T>(ctx.GetPlace());
@@ -175,12 +187,28 @@ class DGCOpKernel : public framework::OpKernel<T> {
                                  ctx.GetPlace());
 
     int buf_size = paddle::communication::dgc::get_buffer_size(k);
-    auto tmp_ious_data = memory::Alloc(dev_ctx, buf_size);
+    paddle::memory::allocation::AllocationPtr tmp_ious_data;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    if (platform::is_gpu_place(dev_ctx.GetPlace())) {
+      tmp_ious_data = memory::Alloc(
+          dev_ctx.GetPlace(),
+          buf_size,
+          phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
+    }
+#endif
+    if (platform::is_cpu_place(dev_ctx.GetPlace())) {
+      tmp_ious_data = memory::Alloc(dev_ctx.GetPlace(), buf_size);
+    }
+
     void* buf = reinterpret_cast<void*>(tmp_ious_data->ptr());
 
     if (!paddle::communication::dgc::k_select(
-            static_cast<void*>(encode_grad_out_data), k, v_out_data,
-            static_cast<int>(v_out->numel()), buf, dev_ctx.stream(),
+            static_cast<void*>(encode_grad_out_data),
+            k,
+            v_out_data,
+            static_cast<int>(v_out->numel()),
+            buf,
+            dev_ctx.stream(),
             u_out_data)) {
       // TODO(weihang): owner should polish this error message
       PADDLE_THROW(platform::errors::InvalidArgument(

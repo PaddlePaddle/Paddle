@@ -12,13 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/framework/infershape_utils.h"
+
 #include <string>
 #include <vector>
 
 #include "gtest/gtest.h"
-
 #include "paddle/fluid/framework/attribute.h"
-#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -32,8 +32,11 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-void TestInferMeta(bool bool_attr, int int_attr, int64_t int64_attr,
-                   float float_attr, const std::string& str_attr,
+void TestInferMeta(bool bool_attr,
+                   int int_attr,
+                   int64_t int64_attr,
+                   float float_attr,
+                   const std::string& str_attr,
                    const std::vector<bool>& vec_bool_attr,
                    const std::vector<int>& vec_int_attr,
                    const std::vector<int64_t>& vec_int64_attr,
@@ -81,30 +84,85 @@ class InferShapeUtilsTestOp : public OperatorWithKernel {
  public:
   using OperatorWithKernel::OperatorWithKernel;
 
-  OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const ExecutionContext& ctx) const override {
-    return OpKernelType(proto::VarType::FP32, ctx.GetPlace());
+    return phi::KernelKey(proto::VarType::FP32, ctx.GetPlace());
   }
 };
 
 phi::KernelSignature InferShapeUtilsTestOpArgumentMapping(
     const phi::ArgumentMappingContext& ctx) {
-  return phi::KernelSignature(
-      "infer_shape_utils_test", {},
-      {"bool", "int", "int64", "float", "string", "vec_bool", "vec_int",
-       "vec_int64", "vec_float", "vec_double", "vec_str"},
-      {});
+  return phi::KernelSignature("infer_shape_utils_test",
+                              {},
+                              {"bool",
+                               "int",
+                               "int64",
+                               "float",
+                               "string",
+                               "vec_bool",
+                               "vec_int",
+                               "vec_int64",
+                               "vec_float",
+                               "vec_double",
+                               "vec_str"},
+                              {});
 }
 
 template <typename T, typename Context>
-void InferShapeUtilsTestKernel(
-    const Context& dev_ctx, const phi::DenseTensor& x, bool attr1, int attr2,
-    int64_t attr3, float attr4, const std::string& attr5,
-    const std::vector<bool>& attr6, const std::vector<int>& attr7,
-    const std::vector<int64_t>& attr8, const std::vector<float>& attr9,
-    const std::vector<double>& attr10, const std::vector<std::string>& attr11,
-    phi::DenseTensor* out) {
+void InferShapeUtilsTestKernel(const Context& dev_ctx,
+                               const phi::DenseTensor& x,
+                               bool attr1,
+                               int attr2,
+                               int64_t attr3,
+                               float attr4,
+                               const std::string& attr5,
+                               const std::vector<bool>& attr6,
+                               const std::vector<int>& attr7,
+                               const std::vector<int64_t>& attr8,
+                               const std::vector<float>& attr9,
+                               const std::vector<double>& attr10,
+                               const std::vector<std::string>& attr11,
+                               phi::DenseTensor* out) {
   VLOG(6) << "Come into InferShapeUtilsTestKernel";
+}
+
+void TestOutputInferMeta(const phi::MetaTensor& x, phi::MetaTensor* out) {
+  ASSERT_EQ(x.dtype(), phi::DataType::FLOAT32);
+}
+
+class InferShapeUtilsTestOutputOpMaker : public OpProtoAndCheckerMaker {
+ public:
+  void Make() {
+    AddInput("X", "input of test op");
+    AddOutput("Out", "output of test op");
+    AddComment("This is test op");
+  }
+};
+
+class InferShapeUtilsTestOutputOp : public OperatorWithKernel {
+ public:
+  using OperatorWithKernel::OperatorWithKernel;
+
+  phi::KernelKey GetExpectedKernelType(
+      const ExecutionContext& ctx) const override {
+    return phi::KernelKey(proto::VarType::FP32, ctx.GetPlace());
+  }
+};
+
+phi::KernelSignature TestSparseOutputOpArgumentMapping(
+    const phi::ArgumentMappingContext& ctx) {
+  if (ctx.IsSparseCooTensorOutput("Out")) {
+    return phi::KernelSignature(
+        "test_sparse_coo_tensor_output", {"X"}, {}, {"Out"});
+  }
+  return phi::KernelSignature("test_output", {"X"}, {}, {"Out"});
+}
+
+template <typename T, typename Context>
+void InferShapeUtilsTestOutputKernel(const Context& dev_ctx,
+                                     const phi::DenseTensor& x,
+                                     phi::SparseCooTensor* out) {
+  VLOG(6) << "Come into InferShapeUtilsTestOutputKernel";
 }
 
 }  // namespace framework
@@ -118,8 +176,26 @@ REGISTER_OPERATOR(infer_shape_utils_test,
                   paddle::framework::InferShapeUtilsTestOpMaker,
                   InferShapeUtilsTestInferShapeFunctor);
 
-PD_REGISTER_KERNEL(infer_shape_utils_test, CPU, ALL_LAYOUT,
-                   paddle::framework::InferShapeUtilsTestKernel, int) {}
+PD_REGISTER_KERNEL(infer_shape_utils_test,
+                   CPU,
+                   ALL_LAYOUT,
+                   paddle::framework::InferShapeUtilsTestKernel,
+                   int) {}
+
+DECLARE_INFER_SHAPE_FUNCTOR(
+    infer_shape_utils_test_output,
+    InferShapeUtilsTestOutputInferShapeFunctor,
+    PD_INFER_META(paddle::framework::TestOutputInferMeta));
+REGISTER_OPERATOR(infer_shape_utils_test_output,
+                  paddle::framework::InferShapeUtilsTestOutputOp,
+                  paddle::framework::InferShapeUtilsTestOutputOpMaker,
+                  InferShapeUtilsTestOutputInferShapeFunctor);
+
+PD_REGISTER_KERNEL(test_sparse_coo_tensor_output,
+                   CPU,
+                   ALL_LAYOUT,
+                   paddle::framework::InferShapeUtilsTestOutputKernel,
+                   int) {}
 
 TEST(InferShapeUtilsTest, ALL) {
   paddle::framework::ProgramDesc prog;
@@ -175,6 +251,30 @@ TEST(InferShapeUtilsTest, ALL) {
   phi::OpUtilsMap::Instance().InsertArgumentMappingFn(
       "infer_shape_utils_test",
       paddle::framework::InferShapeUtilsTestOpArgumentMapping);
+
+  op->InferShape(block_desc);
+}
+
+TEST(InferShapeUtilsTestOutput, ALL) {
+  paddle::framework::ProgramDesc prog;
+  paddle::framework::proto::BlockDesc proto_block;
+  paddle::framework::BlockDesc block_desc(&prog, &proto_block);
+
+  auto* op = block_desc.AppendOp();
+  op->SetType("infer_shape_utils_test_output");
+
+  auto* x = block_desc.Var("x");
+  x->SetType(paddle::framework::proto::VarType::LOD_TENSOR);
+  x->SetDataType(paddle::framework::proto::VarType::FP32);
+  op->SetInput("X", {"x"});
+
+  auto* out = block_desc.Var("out");
+  out->SetType(paddle::framework::proto::VarType::SPARSE_COO);
+  op->SetOutput("Out", {"out"});
+
+  phi::OpUtilsMap::Instance().InsertArgumentMappingFn(
+      "infer_shape_utils_test_output",
+      paddle::framework::TestSparseOutputOpArgumentMapping);
 
   op->InferShape(block_desc);
 }

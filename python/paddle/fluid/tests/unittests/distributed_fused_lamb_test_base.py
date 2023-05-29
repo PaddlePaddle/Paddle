@@ -1,33 +1,30 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import argparse
-import os
-import paddle
-import paddle.fluid.core as core
-import paddle.distributed.fleet as fleet
-from paddle.incubate import DistributedFusedLamb
-from paddle.vision.models import resnet18 as resnet
-from paddle.distributed.fleet.meta_optimizers.common import CollectiveHelper
-from paddle.fluid.clip import ClipGradBase
-import paddle.nn as nn
-import numpy as np
+import distutils
 import os
 import unittest
-from paddle.distributed.fleet.meta_optimizers.common import is_optimizer_op, is_backward_op
-from paddle.fluid.clip import _clip_by_global_norm_using_mp_type
-import distutils
+
+import numpy as np
+
+import paddle
+from paddle.distributed import fleet
+from paddle.distributed.fleet.meta_optimizers.common import CollectiveHelper
+from paddle.fluid import core
+from paddle.incubate import DistributedFusedLamb
+from paddle.nn.clip import ClipGradBase, _clip_by_global_norm_using_mp_type
+from paddle.vision.models import resnet18 as resnet
 
 
 def get_role_maker():
@@ -95,13 +92,14 @@ class GradClipDecorator(ClipGradBase):
                 type='c_allreduce_sum',
                 inputs={'X': [g]},
                 outputs={'Out': [g]},
-                attrs={'ring_id': 0,
-                       'use_calc_stream': True})
+                attrs={'ring_id': 0, 'use_calc_stream': True},
+            )
             block.append_op(
                 type='scale',
                 inputs={'X': [g]},
                 outputs={'Out': [g]},
-                attrs={'scale': scale})
+                attrs={'scale': scale},
+            )
 
     def _static_clip(self, params_grads):
         if self.clip_after_allreduce:
@@ -133,9 +131,11 @@ def run_model(use_distributed_lamb, use_fp16, use_master_param_norm, **kwargs):
                 image = paddle.static.data(
                     name='image',
                     shape=[None, 3, 224, 224],
-                    dtype=paddle.float32)
+                    dtype=paddle.float32,
+                )
                 label = paddle.static.data(
-                    name='label', shape=[None, 1], dtype=paddle.int64)
+                    name='label', shape=[None, 1], dtype=paddle.int64
+                )
                 model = resnet()
                 pred = model(image)
                 loss_fn = paddle.nn.loss.CrossEntropyLoss()
@@ -149,6 +149,7 @@ def run_model(use_distributed_lamb, use_fp16, use_master_param_norm, **kwargs):
             kwargs['exclude_from_weight_decay_fn'] = exclude_fn
             kwargs['lamb_weight_decay'] = 0.1
 
+            gm_steps = kwargs['gradient_accumulation_steps']
             if use_distributed_lamb:
                 optimizer_class = DistributedFusedLamb
                 kwargs = dict(kwargs)
@@ -159,27 +160,45 @@ def run_model(use_distributed_lamb, use_fp16, use_master_param_norm, **kwargs):
                 kwargs = dict(kwargs)
                 kwargs.pop('clip_after_allreduce', None)
                 kwargs.pop('alignment', None)
-                base_clip = grad_clip if grad_clip is not None else IdentityGradClip(
+                kwargs.pop('use_master_acc_grad', None)
+                base_clip = (
+                    grad_clip if grad_clip is not None else IdentityGradClip()
                 )
-                kwargs['grad_clip'] = GradClipDecorator(base_clip,
-                                                        clip_after_allreduce)
+                kwargs['grad_clip'] = GradClipDecorator(
+                    base_clip, clip_after_allreduce
+                )
+                kwargs.pop('gradient_accumulation_steps', None)
 
             optimizer = optimizer_class(**kwargs)
             get_parameter = optimizer._get_parameter
             amp_list = paddle.static.amp.AutoMixedPrecisionLists(
                 custom_white_list=[
-                    'batch_norm', 'batch_norm_grad', 'conv2d', 'conv2d_grad'
-                ])
+                    'batch_norm',
+                    'batch_norm_grad',
+                    'conv2d',
+                    'conv2d_grad',
+                ]
+            )
             if use_fp16:
                 if not use_distributed_lamb:
                     optimizer._multi_precision = True
+
                 optimizer = paddle.static.amp.decorate(
                     optimizer,
                     amp_list,
                     init_loss_scaling=1.0,
                     use_dynamic_loss_scaling=False,
                     use_pure_fp16=use_fp16,
-                    use_fp16_guard=use_fp16)
+                    use_fp16_guard=use_fp16,
+                )
+                amp_init = optimizer.amp_init
+            else:
+                amp_init = None
+
+            if gm_steps > 1 and not use_distributed_lamb:
+                optimizer = paddle.fluid.optimizer.GradientMergeOptimizer(
+                    optimizer, k_steps=gm_steps, avg=False
+                )
 
             params_grads = optimizer.backward(loss, startup)
             op_num = len(main.global_block().ops)
@@ -201,7 +220,7 @@ def run_model(use_distributed_lamb, use_fp16, use_master_param_norm, **kwargs):
         elif pd_dtype == paddle.float16:
             return np.float16
         else:
-            raise ValueError("supported dtype {}".format(pd_dtype))
+            raise ValueError(f"supported dtype {pd_dtype}")
 
     def gen_random_grad_tensor(grad):
         np_dtype = pd_dtype_to_np_dtype(grad.dtype)
@@ -211,9 +230,8 @@ def run_model(use_distributed_lamb, use_fp16, use_master_param_norm, **kwargs):
         return grad_t
 
     def reader():
-        for _ in range(5):
-            yield dict(
-                [(grad.name, gen_random_grad_tensor(grad)) for grad in grads])
+        for _ in range(6):
+            yield {grad.name: gen_random_grad_tensor(grad) for grad in grads}
 
     scope = paddle.static.Scope()
     fetch_list = params
@@ -223,8 +241,8 @@ def run_model(use_distributed_lamb, use_fp16, use_master_param_norm, **kwargs):
         place = paddle.CUDAPlace(dev_id)
         exe = paddle.static.Executor(place)
         exe.run(startup)
-        if use_fp16:
-            optimizer.amp_init(place)
+        if amp_init is not None:
+            amp_init(place)
 
         master_p_ts = []
         for p in params:
@@ -255,18 +273,28 @@ class TestDistributedFusedLamb(unittest.TestCase):
 
     def config(self):
         clip_after_allreduce = bool(
-            distutils.util.strtobool(
-                os.getenv('CLIP_AFTER_ALLREDUCE', 'True')))
+            distutils.util.strtobool(os.getenv('CLIP_AFTER_ALLREDUCE', 'True'))
+        )
         max_global_norm = float(os.getenv('MAX_GLOBAL_NORM', -1.0))
-        print('clip_after_allreduce = {}, max_global_norm = {}'.format(
-            clip_after_allreduce, max_global_norm))
+        gm_steps = int(os.getenv('GRADIENT_MERGE_STEPS', 1))
+        use_master_acc_grad = bool(int(os.getenv('USE_MASTER_ACC_GRAD', '1')))
+        print(
+            'clip_after_allreduce = {}, max_global_norm = {}'.format(
+                clip_after_allreduce, max_global_norm
+            )
+        )
         return {
             'clip_after_allreduce': clip_after_allreduce,
+            'gradient_accumulation_steps': gm_steps,
             'grad_clip': paddle.nn.ClipGradByGlobalNorm(max_global_norm)
-            if max_global_norm > 0 else None,
+            if max_global_norm > 0
+            else None,
+            'use_master_acc_grad': use_master_acc_grad,
         }
 
-    def run_main(self, use_fp16, use_master_param_norm=True):
+    def run_main(
+        self, use_fp16, use_master_param_norm=True, use_master_acc_grad=True
+    ):
         if not paddle.is_compiled_with_cuda():
             return
 
@@ -291,11 +319,12 @@ class TestDistributedFusedLamb(unittest.TestCase):
         if use_fp16:
             atol = 8e-4 if use_master_param_norm else 1e-3
         else:
-            atol = 1e-7
+            atol = 1.5e-7
         for ret1, ret2 in zip(result1, result2):
             max_diff = np.max(np.abs(ret1 - ret2))
             msg = 'max_diff = {} atol = {} when use_fp16 = {} , use_master_param_norm = {}'.format(
-                max_diff, atol, use_fp16, use_master_param_norm)
+                max_diff, atol, use_fp16, use_master_param_norm
+            )
             self.assertTrue(max_diff < atol, msg)
             print(msg)
 

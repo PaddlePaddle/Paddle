@@ -12,16 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import unittest
-import time
-import paddle.fluid as fluid
 import copy
 import os
 import subprocess
+import time
+import unittest
 
-from paddle.distributed.utils import find_free_ports, watch_local_trainers, get_cluster, TrainerProc
+from paddle import fluid
+from paddle.distributed.utils.launch_utils import (
+    TrainerProc,
+    find_free_ports,
+    get_cluster,
+    watch_local_trainers,
+)
 
 
 def get_cluster_from_args(selected_gpus):
@@ -49,10 +52,9 @@ def get_gpus(selected_gpus):
     return selected_gpus
 
 
-def start_local_trainers_cpu(trainer_endpoints,
-                             training_script,
-                             training_script_args,
-                             log_dir=None):
+def start_local_trainers_cpu(
+    trainer_endpoints, training_script, training_script_args, log_dir=None
+):
     current_env = copy.copy(os.environ.copy())
     current_env.pop("http_proxy", None)
     current_env.pop("https_proxy", None)
@@ -66,18 +68,19 @@ def start_local_trainers_cpu(trainer_endpoints,
             "PADDLE_TRAINER_ID": "%d" % rank_id,
             "PADDLE_CURRENT_ENDPOINT": "%s" % endpoint,
             "PADDLE_TRAINERS_NUM": "%d" % n_rank,
-            "PADDLE_TRAINER_ENDPOINTS": ",".join(trainer_endpoints)
+            "PADDLE_TRAINER_ENDPOINTS": ",".join(trainer_endpoints),
         }
 
         current_env.update(proc_env)
 
-        print("trainer proc env:{}".format(current_env))
+        print(f"trainer proc env:{current_env}")
 
-        assert os.getenv('WITH_COVERAGE',
-                         'OFF') == 'OFF', "Gloo don't support WITH_COVERAGE."
+        assert (
+            os.getenv('WITH_COVERAGE', 'OFF') == 'OFF'
+        ), "Gloo don't support WITH_COVERAGE."
         cmd = "python -u " + training_script
 
-        print("start trainer proc:{} env:{}".format(cmd, proc_env))
+        print(f"start trainer proc:{cmd} env:{proc_env}")
 
         fn = None
 
@@ -94,16 +97,19 @@ def start_local_trainers_cpu(trainer_endpoints,
     return procs
 
 
-def start_local_trainers(cluster,
-                         pod,
-                         training_script,
-                         training_script_args,
-                         log_dir=None):
+def start_local_trainers(
+    cluster,
+    pod,
+    training_script,
+    training_script_args,
+    allocator_strategy="auto_growth",
+    log_dir=None,
+):
     current_env = copy.copy(os.environ.copy())
-    #paddle broadcast ncclUniqueId use socket, and
-    #proxy maybe make trainers unreachable, so delete them.
-    #if we set them to "", grpc will log error message "bad uri"
-    #so just delete them.
+    # paddle broadcast ncclUniqueId use socket, and
+    # proxy maybe make trainers unreachable, so delete them.
+    # if we set them to "", grpc will log error message "bad uri"
+    # so just delete them.
     current_env.pop("http_proxy", None)
     current_env.pop("https_proxy", None)
 
@@ -114,19 +120,23 @@ def start_local_trainers(cluster,
             "PADDLE_TRAINER_ID": "%d" % t.rank,
             "PADDLE_CURRENT_ENDPOINT": "%s" % t.endpoint,
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
-            "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints())
+            "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
         }
+
+        proc_env["FLAGS_allocator_strategy"] = allocator_strategy
+        if allocator_strategy == "auto_growth":
+            proc_env["FLAGS_fraction_of_gpu_memory_to_use"] = "0.1"
 
         current_env.update(proc_env)
 
-        print("trainer proc env:{}".format(current_env))
+        print(f"trainer proc env:{current_env}")
 
         if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
             cmd = "python -m coverage run --branch -p " + training_script
         else:
             cmd = "python -u " + training_script
 
-        print("start trainer proc:{} env:{}".format(cmd, proc_env))
+        print(f"start trainer proc:{cmd} env:{proc_env}")
 
         fn = None
 
@@ -144,9 +154,15 @@ def start_local_trainers(cluster,
 
 
 class TestMultipleGpus(unittest.TestCase):
-    def run_mnist_2gpu(self, target_file_name):
-        if not fluid.core.is_compiled_with_cuda(
-        ) or fluid.core.get_cuda_device_count() == 0:
+    def run_mnist_2gpu(
+        self,
+        target_file_name,
+        allocator_strategy="auto_growth",
+    ):
+        if (
+            not fluid.core.is_compiled_with_cuda()
+            or fluid.core.get_cuda_device_count() == 0
+        ):
             return
 
         selected_gpus = get_gpus('0,1')
@@ -158,14 +174,16 @@ class TestMultipleGpus(unittest.TestCase):
         procs = start_local_trainers(
             cluster,
             pod,
+            allocator_strategy=allocator_strategy,
             training_script=target_file_name,
-            training_script_args=[])
+            training_script_args=[],
+        )
 
         while True:
             alive = watch_local_trainers(procs, cluster.trainers_endpoints())
 
             if not alive:
-                print("Local procs complete, POD info:{}".format(pod))
+                print(f"Local procs complete, POD info:{pod}")
                 break
             time.sleep(3)
 
@@ -174,35 +192,31 @@ class TestMultipleWithGloo(unittest.TestCase):
     def run_mnist_2cpu(self, target_file_name):
 
         cluster, pod = get_cluster_from_args(
-            [0, 1])  #tmp use. for getting trainer_nranks()
+            [0, 1]
+        )  # tmp use. for getting trainer_nranks()
 
         procs = start_local_trainers_cpu(
             cluster.trainers_endpoints(),
             training_script=target_file_name,
-            training_script_args=[])
+            training_script_args=[],
+        )
 
         while True:
             alive = watch_local_trainers(procs, cluster.trainers_nranks())
 
             if not alive:
-                print("Local procs complete, POD info:{}".format(pod))
+                print(f"Local procs complete, POD info:{pod}")
                 break
             time.sleep(3)
-
-
-class TestDataParallelGradientCheck(TestMultipleGpus):
-    def test_multiple_gpus_dynamic(self):
-        self.run_mnist_2gpu('parallel_dygraph_gradient_check.py')
 
 
 class TestDataParallelWithPyLayer(TestMultipleGpus):
     def test_parallel_dygraph_dataparallel_with_pylayer(self):
         self.run_mnist_2gpu('parallel_dygraph_dataparallel_with_pylayer.py')
-
-
-class TestDataParallelInEagerMode(TestMultipleGpus):
-    def test_multiple_gpus_dynamic(self):
-        self.run_mnist_2gpu('parallel_dygraph_dataparallel_in_eager_mode.py')
+        self.run_mnist_2gpu(
+            'parallel_dygraph_dataparallel_with_pylayer.py',
+            allocator_strategy="naive_best_fit",
+        )
 
 
 class TestGradientCheckInEagerMode(TestMultipleGpus):

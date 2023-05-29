@@ -12,23 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 
-import paddle.fluid as fluid
-import paddle.fluid.framework as framework
-import paddle.compat as cpt
-import paddle.fluid.core as core
+import paddle
+from paddle import fluid
+from paddle.fluid import core, framework
 
 
 class TestInferNoNeedBufferSlots(unittest.TestCase):
     def net(self):
-        x1 = fluid.default_main_program().global_block().create_var(
-            dtype="float32", shape=[1], lod_level=0, name="x1")
-        x2 = fluid.default_main_program().global_block().create_var(
-            dtype="float32", shape=[1], lod_level=0, name="x2")
-        x = fluid.layers.elementwise_add(x1, x2)
+        x1 = (
+            fluid.default_main_program()
+            .global_block()
+            .create_var(dtype="float32", shape=[1], lod_level=0, name="x1")
+        )
+        x2 = (
+            fluid.default_main_program()
+            .global_block()
+            .create_var(dtype="float32", shape=[1], lod_level=0, name="x2")
+        )
+        x = paddle.add(x1, x2)
         return x
 
     def test_infer_no_need_buffer_slots(self):
@@ -54,18 +57,27 @@ class TestInferNoNeedBufferSlots(unittest.TestCase):
             if idx == 0:
                 # elementwise_add op
                 self.assertEqual(
-                    core.infer_no_need_buffer_slots(op.type, inputs, outputs,
-                                                    attrs), set([]))
+                    core.infer_no_need_buffer_slots(
+                        op.type, inputs, outputs, attrs
+                    ),
+                    set(),
+                )
             elif idx == 1:
                 # fill constant op
                 self.assertEqual(
-                    core.infer_no_need_buffer_slots(op.type, inputs, outputs,
-                                                    attrs), set([]))
+                    core.infer_no_need_buffer_slots(
+                        op.type, inputs, outputs, attrs
+                    ),
+                    set(),
+                )
             else:
                 # elementwise_add_grad op
                 self.assertEqual(
-                    core.infer_no_need_buffer_slots(op.type, inputs, outputs,
-                                                    attrs), set(['Y', 'X']))
+                    core.infer_no_need_buffer_slots(
+                        op.type, inputs, outputs, attrs
+                    ),
+                    {'Y', 'X'},
+                )
 
 
 if __name__ == '__main__':

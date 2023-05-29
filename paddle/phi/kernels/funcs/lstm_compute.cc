@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/kernels/funcs/lstm_compute.h"
+
+#include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/kernels/funcs/detail/lstm_cpu_kernel.h"
 #include "paddle/phi/kernels/funcs/detail/lstm_kernel.h"
 
@@ -20,8 +22,8 @@ namespace phi {
 namespace funcs {
 
 template <class T>
-struct LstmUnitFunctor<paddle::platform::CPUDeviceContext, T> {
-  static void compute(const paddle::platform::CPUDeviceContext& context,
+struct LstmUnitFunctor<CPUContext, T> {
+  static void compute(const CPUContext& context,
                       LstmMetaValue<T> value,
                       int frame_size,
                       int batch_size,
@@ -52,8 +54,8 @@ struct LstmUnitFunctor<paddle::platform::CPUDeviceContext, T> {
 };
 
 template <class T>
-struct LstmUnitGradFunctor<paddle::platform::CPUDeviceContext, T> {
-  static void compute(const paddle::platform::CPUDeviceContext& context,
+struct LstmUnitGradFunctor<CPUContext, T> {
+  static void compute(const CPUContext& context,
                       LstmMetaValue<T> value,
                       LstmMetaGrad<T> grad,
                       int frame_size,
@@ -94,10 +96,10 @@ struct LstmUnitGradFunctor<paddle::platform::CPUDeviceContext, T> {
   }
 };
 
-template class LstmUnitFunctor<paddle::platform::CPUDeviceContext, float>;
-template class LstmUnitFunctor<paddle::platform::CPUDeviceContext, double>;
-template class LstmUnitGradFunctor<paddle::platform::CPUDeviceContext, float>;
-template class LstmUnitGradFunctor<paddle::platform::CPUDeviceContext, double>;
+template class LstmUnitFunctor<CPUContext, float>;
+template class LstmUnitFunctor<CPUContext, double>;
+template class LstmUnitGradFunctor<CPUContext, float>;
+template class LstmUnitGradFunctor<CPUContext, double>;
 
 }  // namespace funcs
 }  // namespace phi

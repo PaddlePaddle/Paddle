@@ -16,7 +16,8 @@
 
 #include <map>
 #include <vector>
-#include "paddle/fluid/distributed/collective/ProcessGroup.h"
+
+#include "paddle/fluid/distributed/collective/process_group.h"
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/utils/hook_utils.h"
 #include "paddle/fluid/eager/api/utils/tensor_utils.h"
@@ -25,34 +26,36 @@
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/phi/api/include/api.h"
+#include "paddle/phi/api/include/fused_api.h"
 #include "paddle/phi/api/include/tensor.h"
-#include "paddle/phi/api/lib/ext_compat_utils.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/utils/string/string_helper.h"
 
 namespace paddle {
 namespace distributed {
-using Tensor = paddle::experimental::Tensor;
-using Scalar = paddle::experimental::ScalarBase<paddle::experimental::Tensor>;
-using ScalarArray =
-    paddle::experimental::ScalarArrayBase<paddle::experimental::Tensor>;
+using Tensor = paddle::Tensor;
+using Scalar = paddle::experimental::ScalarBase<paddle::Tensor>;
+using IntArray = paddle::experimental::IntArrayBase<paddle::Tensor>;
 using Backend = paddle::experimental::Backend;
 
 std::vector<std::vector<size_t>> Eager_AssignGroupBySize(
-    const std::vector<Tensor>, const std::vector<bool> &is_sparse_gradient,
+    const std::vector<Tensor>,
+    const std::vector<bool> &is_sparse_gradient,
     const std::vector<size_t> &group_size_limits,
     const std::vector<int64_t> &tensor_indices = {});
 
 class EagerGroup {
  public:
   Tensor dense_contents_;
+  Tensor sparse_contents_;
+  bool is_sparse_ = false;
 
   // for concat kernel
   std::vector<phi::DenseTensor> dense_tensors_;
   std::vector<int64_t> length_;
   int64_t all_length_{0};
-  std::vector<ScalarArray> origin_shapes_;
+  std::vector<IntArray> origin_shapes_;
 
   // Global indices of participating tensors in the group
   std::vector<size_t> tensor_indices_;
@@ -71,7 +74,8 @@ class EagerGroup {
   void ConcatTensors(const platform::Place &);
 
   // context is used to select the stream for split
-  void SplitTensors(const platform::Place &);
+
+  void SplitTensors(const platform::DeviceContext &);
 
   friend std::ostream &operator<<(std::ostream &, const EagerGroup &);
 };
@@ -104,6 +108,7 @@ class EagerReducer {
   void MarkVarReady(const size_t var_index, const bool is_used_var);
   void MarkGroupReady(const size_t group_index);
   void FusedAllReduceSchedule(EagerGroup *group, const int curr_group_index);
+  void AllReduceSparse(EagerGroup *group, const int curr_group_index);
   void FinalizeBackward();
   void TraverseBackwardGraph(const std::vector<Tensor> &outputs);
   void ProcessUnusedDenseVars();
@@ -118,7 +123,6 @@ class EagerReducer {
 
   std::vector<EagerGroup> groups_;
   std::vector<TensorLocator> variable_locators_;
-  PlaceType place_;
   platform::Place inner_place_;
   size_t next_group_ = 0;
   int64_t nranks_ = -1;

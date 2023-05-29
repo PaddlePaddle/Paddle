@@ -14,10 +14,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/gru_unit_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    gru_unit, ops::GRUUnitKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::GRUUnitKernel<paddle::platform::CUDADeviceContext, double>);
-REGISTER_OP_CUDA_KERNEL(
-    gru_unit_grad,
-    ops::GRUUnitGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::GRUUnitGradKernel<paddle::platform::CUDADeviceContext, double>);
+
+PD_REGISTER_STRUCT_KERNEL(
+    gru_unit, GPU, ALL_LAYOUT, ops::GRUUnitKernel, float, double) {}
+PD_REGISTER_STRUCT_KERNEL(
+    gru_unit_grad, GPU, ALL_LAYOUT, ops::GRUUnitGradKernel, float, double) {}

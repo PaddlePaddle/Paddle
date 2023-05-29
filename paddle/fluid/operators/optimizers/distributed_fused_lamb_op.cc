@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/optimizers/distributed_fused_lamb_op.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/phi/core/kernel_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -24,16 +25,19 @@ class DistributedFusedLambOp : public framework::OperatorWithKernel {
  protected:
   void InferShape(framework::InferShapeContext *ctx) const override {}
 
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     auto dtype = framework::proto::VarType::FP32;  // dtype is not important
-    return framework::OpKernelType(dtype, ctx.GetPlace());
+    return phi::KernelKey(dtype, ctx.GetPlace());
   }
 
-  framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const framework::Tensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const override {
-    return expected_kernel_type;
+  phi::KernelKey GetKernelTypeForVar(
+      const std::string &var_name,
+      const phi::DenseTensor &tensor,
+      const phi::KernelKey &expected_kernel_type) const override {
+    return phi::KernelKey(phi::Backend::ALL_BACKEND,
+                          expected_kernel_type.layout(),
+                          expected_kernel_type.dtype());
   }
 };
 
@@ -100,6 +104,10 @@ class DistributedFusedLambOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDispensable();
     AddOutput("FP16FusedParamOut", "The updated FP16FusedParam.")
         .AsDispensable();
+    AddOutput("FP32AccFusedGrad", "The accumulated FP32 gradients.")
+        .AsDispensable();
+    AddOutput("FP16AccFusedGrad", "The accumulated FP16 gradients.")
+        .AsDispensable();
 
     AddOutput("Moment1Out", "The updated Moment1.");
     AddOutput("Moment2Out", "The updated Moment2.");
@@ -110,7 +118,14 @@ class DistributedFusedLambOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDuplicable();
 
     AddOutput("FoundInf", "Whether there is NaN/Inf");
+    AddOutput("AccStep", "The training steps.").AsDispensable();
+    AddOutput("StopUpdate",
+              "Whether the parameter updating is stopped when the gradient "
+              "accumulated steps is less than Attr(acc_steps).")
+        .AsDispensable();
+    AddOutput("Step", "The global step which excludes the NaN/Inf step.");
 
+    AddAttr<int>("acc_steps", "The gradient accumulation steps.").SetDefault(1);
     AddAttr<float>("beta1", "The initial Beta1Pow value.");
     AddAttr<float>("beta2", "The initial Beta2Pow value.");
     AddAttr<float>("epsilon",
@@ -130,11 +145,19 @@ class DistributedFusedLambOpMaker : public framework::OpProtoAndCheckerMaker {
         "NCCL communication data. If it is false, it would be less accurate "
         "and be less NCCL communication data.")
         .SetDefault(true);
+    AddAttr<bool>("use_master_acc_grad",
+                  "Whether to use master gradient when acc_steps > 1.")
+        .SetDefault(true);
     AddAttr<bool>("is_grad_scaled_by_nranks",
                   "Whether the input gradient has been scaled by nranks.")
         .SetDefault(true);
-    AddAttr<int>("ring_id", "The ring id of the NCCL communicator.")
-        .SetDefault(0);
+    AddAttr<int64_t>("nranks", "The world size.").SetDefault(1);
+    AddAttr<std::vector<int>>("ring_ids",
+                              "The ring ids of the NCCL communicator.")
+        .SetDefault({0});
+    AddAttr<bool>("use_hierarchical_allreduce",
+                  "Whether to use hierarchical allreduce")
+        .SetDefault(false);
     AddComment("The DistributedFusedLamb optimizer.");
   }
 };
@@ -148,6 +171,63 @@ REGISTER_OP_WITHOUT_GRADIENT(distributed_fused_lamb,
                              ops::DistributedFusedLambOp,
                              ops::DistributedFusedLambOpMaker);
 
-REGISTER_OP_CPU_KERNEL(
-    distributed_fused_lamb,
-    ops::DistributedFusedLambOpKernel<plat::CPUDeviceContext, float>);
+namespace phi {
+namespace fusion {
+
+template <typename T, typename Context>
+void DistributedFusedLambKernel(const Context &dev_ctx,
+                                const std::vector<const DenseTensor *> &param,
+                                const std::vector<const DenseTensor *> &grad,
+                                const paddle::optional<DenseTensor> &fp32_param,
+                                const paddle::optional<DenseTensor> &fp32_grad,
+                                const paddle::optional<DenseTensor> &fp16_param,
+                                const paddle::optional<DenseTensor> &fp16_grad,
+                                const DenseTensor &moment1,
+                                const DenseTensor &moment2,
+                                const DenseTensor &beta1_pow,
+                                const DenseTensor &beta2_pow,
+                                const DenseTensor &param_offsets,
+                                const DenseTensor &fp32_partial_offsets,
+                                const DenseTensor &fp16_partial_offsets,
+                                const DenseTensor &param_info,
+                                const DenseTensor &param_order,
+                                const DenseTensor &learning_rate,
+                                const DenseTensor &global_scale,
+                                int acc_steps,
+                                float beta1,
+                                float beta2,
+                                float epsilon,
+                                float max_global_grad_norm,
+                                float weight_decay,
+                                bool clip_after_allreduce,
+                                bool use_master_param_norm,
+                                bool use_master_acc_grad,
+                                bool is_grad_scaled_by_nranks,
+                                bool use_hierarchical_allreduce,
+                                int64_t nranks,
+                                const std::vector<int> &ring_ids,
+                                DenseTensor *fp32_param_out,
+                                DenseTensor *fp16_param_out,
+                                DenseTensor *fp32_acc_grad,
+                                DenseTensor *fp16_acc_grad,
+                                DenseTensor *moment1_out,
+                                DenseTensor *moment2_out,
+                                DenseTensor *beta1_pow_out,
+                                DenseTensor *beta2_pow_out,
+                                DenseTensor *param_out,
+                                DenseTensor *found_inf,
+                                DenseTensor *acc_step,
+                                DenseTensor *stop_update,
+                                DenseTensor *step) {
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "The distributed_fused_lamb operator does not support CPU yet."));
+}
+
+}  // namespace fusion
+}  // namespace phi
+
+PD_REGISTER_KERNEL(distributed_fused_lamb,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::fusion::DistributedFusedLambKernel,
+                   float) {}

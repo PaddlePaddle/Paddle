@@ -13,60 +13,38 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_mul_op.h"
+
 #include <memory>
 #include <string>
+
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/platform/complex.h"
+#include "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
+#include "paddle/fluid/prim/utils/static/composite_grad_desc_maker.h"
+#include "paddle/fluid/prim/utils/static/desc_tensor.h"
 
 namespace paddle {
 namespace operators {
-
-template <typename T>
-struct SameDimsElemwiseMul<
-    platform::CPUDeviceContext, T,
-    typename std::enable_if<std::is_floating_point<T>::value>::type> {
-  void operator()(const framework::ExecutionContext &ctx,
-                  const framework::Tensor *x, const framework::Tensor *y,
-                  framework::Tensor *z) {
-    auto blas = phi::funcs::GetBlas<platform::CPUDeviceContext, T>(ctx);
-    blas.VMUL(x->numel(), x->data<T>(), y->data<T>(), z->data<T>());
-  }
-};
-
-template <typename T>
-struct SameDimsElemwiseMul<
-    platform::CPUDeviceContext, T,
-    typename std::enable_if<!std::is_floating_point<T>::value>::type> {
-  void operator()(const framework::ExecutionContext &ctx,
-                  const framework::Tensor *x, const framework::Tensor *y,
-                  framework::Tensor *z) {
-    auto eigen_x = framework::EigenVector<T>::Flatten(*x);
-    auto eigen_y = framework::EigenVector<T>::Flatten(*y);
-    auto eigen_z = framework::EigenVector<T>::Flatten(*z);
-    auto &place = *ctx.template device_context<platform::CPUDeviceContext>()
-                       .eigen_device();
-    eigen_z.device(place) = eigen_x * eigen_y;
-  }
-};
-
 class ElementwiseMulOpMaker : public ElementwiseOpMaker {
  protected:
   std::string GetName() const override { return "Mul"; }
   std::string GetEquation() const override { return "Out = X \\\\odot Y"; }
 
   void AddInputX() override {
-    AddInput("X",
-             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
-             "should be int32, int64, float32, float64.");
+    AddInput(
+        "X",
+        "(Variable), Tensor or phi::DenseTensor of any dimensions. Its dtype "
+        "should be int32, int64, float32, float64.");
   }
 
   void AddInputY() override {
-    AddInput("Y",
-             "(Variable), Tensor or LoDTensor of any dimensions. Its dtype "
-             "should be int32, int64, float32, float64.");
+    AddInput(
+        "Y",
+        "(Variable), Tensor or phi::DenseTensor of any dimensions. Its dtype "
+        "should be int32, int64, float32, float64.");
   }
 
-  std::string GetOpFuntionality() const override {
+  std::string GetOpFunctionality() const override {
     return "Multiply two tensors element-wise";
   }
 };
@@ -85,6 +63,36 @@ class ElementwiseMulOpGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetAttrMap(this->Attrs());
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
+  }
+};
+
+class ElementwiseMulCompositeGradOpMaker
+    : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
+ public:
+  void Apply() override {
+    auto x = this->GetSingleForwardInput("X");
+    auto y = this->GetSingleForwardInput("Y");
+    auto out_grad = this->GetSingleOutputGrad("Out");
+    auto x_grad = this->GetSingleInputGrad("X");
+    auto x_grad_p = this->GetOutputPtr(&x_grad);
+    auto x_grad_name = this->GetOutputName(x_grad);
+    auto y_grad = this->GetSingleInputGrad("Y");
+    auto y_grad_p = this->GetOutputPtr(&y_grad);
+    auto y_grad_name = this->GetOutputName(y_grad);
+    int axis = static_cast<int>(this->Attr<int>("axis"));
+    PADDLE_ENFORCE_EQ(
+        axis,
+        -1,
+        phi::errors::InvalidArgument(
+            "We only support axis = -1 in composite mul_grad but we got: ",
+            axis));
+    prim::multiply_grad<prim::DescTensor>(
+        x, y, out_grad, axis, x_grad_p, y_grad_p);
+    VLOG(6) << "Runing mul_grad composite func";
+    this->RecoverOutputName(x_grad, x_grad_name);
+    this->RecoverOutputName(y_grad, y_grad_name);
   }
 };
 
@@ -107,6 +115,56 @@ class ElementwiseMulDoubleGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));
+  }
+};
+
+class ElementwiseMulCompositeDoubleGradOpMaker
+    : public prim::CompositeGradOpMakerBase {
+  using prim::CompositeGradOpMakerBase::CompositeGradOpMakerBase;
+
+ public:
+  void Apply() override {
+    // get input
+    paddle::Tensor x = this->GetSingleForwardInput("X");
+    paddle::Tensor y = this->GetSingleForwardInput("Y");
+    paddle::Tensor out_grad = this->GetSingleOutputGrad("Out");
+    paddle::optional<paddle::Tensor> ddx =
+        this->GetOptionalSingleOutputGrad(framework::GradVarName("X"));
+    paddle::optional<paddle::Tensor> ddy =
+        this->GetOptionalSingleOutputGrad(framework::GradVarName("Y"));
+
+    // get attr
+    int axis = static_cast<int>(this->Attr<int>("axis"));
+    PADDLE_ENFORCE_EQ(
+        axis,
+        -1,
+        phi::errors::InvalidArgument("We only support axis = -1 in composite "
+                                     "add_doubel_grad but we got: ",
+                                     axis));
+
+    // get output
+    paddle::Tensor x_grad_t = this->GetSingleInputGrad("X");
+    paddle::Tensor y_grad_t = this->GetSingleInputGrad("Y");
+    paddle::Tensor grad_out_grad_t =
+        this->GetSingleInputGrad(framework::GradVarName("Out"));
+
+    // get output ptr
+    paddle::Tensor* x_grad = this->GetOutputPtr(&x_grad_t);
+    paddle::Tensor* y_grad = this->GetOutputPtr(&y_grad_t);
+    paddle::Tensor* grad_out_grad = this->GetOutputPtr(&grad_out_grad_t);
+    // get output orginal name
+    std::string x_grad_name = this->GetOutputName(x_grad_t);
+    std::string y_grad_name = this->GetOutputName(y_grad_t);
+    std::string grad_out_grad_name = this->GetOutputName(grad_out_grad_t);
+
+    VLOG(6) << "Runing multiply_double_grad composite func";
+    prim::multiply_double_grad<prim::DescTensor>(
+        x, y, out_grad, ddx, ddy, axis, x_grad, y_grad, grad_out_grad);
+
+    // recover output name
+    this->RecoverOutputName(x_grad_t, x_grad_name);
+    this->RecoverOutputName(y_grad_t, y_grad_name);
+    this->RecoverOutputName(grad_out_grad_t, grad_out_grad_name);
   }
 };
 
@@ -143,36 +201,28 @@ class ElementwiseMulTripleGradMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(elementwise_mul, ops::ElementwiseMulOp,
-                  ops::ElementwiseMulOpMaker, ops::ElementwiseOpInferVarType,
+REGISTER_OPERATOR(elementwise_mul,
+                  ops::ElementwiseMulOp,
+                  ops::ElementwiseMulOpMaker,
+                  ops::ElementwiseOpInferVarType,
                   ops::ElementwiseMulOpGradMaker<paddle::framework::OpDesc>,
-                  ops::ElementwiseMulOpGradMaker<paddle::imperative::OpBase>);
+                  ops::ElementwiseMulOpGradMaker<paddle::imperative::OpBase>,
+                  ops::ElementwiseMulCompositeGradOpMaker);
 REGISTER_OPERATOR(
-    elementwise_mul_grad, ops::ElementwiseOpGrad,
+    elementwise_mul_grad,
+    ops::ElementwiseOpGrad,
     ops::ElementwiseMulDoubleGradMaker<paddle::framework::OpDesc>,
-    ops::ElementwiseMulDoubleGradMaker<paddle::imperative::OpBase>);
+    ops::ElementwiseMulDoubleGradMaker<paddle::imperative::OpBase>,
+    ops::ElementwiseMulCompositeDoubleGradOpMaker);
 
 REGISTER_OPERATOR(
-    elementwise_mul_grad_grad, ops::ElementwiseOpDoubleGrad,
+    elementwise_mul_grad_grad,
+    ops::ElementwiseOpDoubleGrad,
     ops::ElementwiseDoubleGradOpInplaceInferer,
     ops::ElementwiseMulTripleGradMaker<paddle::framework::OpDesc>,
     ops::ElementwiseMulTripleGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(elementwise_mul_triple_grad, ops::ElementwiseOpTripleGrad);
-
-REGISTER_OP_CPU_KERNEL(
-    elementwise_mul,
-    ops::ElementwiseMulKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ElementwiseMulKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ElementwiseMulKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ElementwiseMulKernel<paddle::platform::CPUDeviceContext, int64_t>,
-    ops::ElementwiseMulKernel<paddle::platform::CPUDeviceContext, bool>,
-    ops::ElementwiseMulKernel<paddle::platform::CPUDeviceContext,
-                              paddle::platform::bfloat16>,
-    ops::ElementwiseMulKernel<paddle::platform::CPUDeviceContext,
-                              paddle::platform::complex<float>>,
-    ops::ElementwiseMulKernel<paddle::platform::CPUDeviceContext,
-                              paddle::platform::complex<double>>);
 
 REGISTER_OP_VERSION(elementwise_mul)
     .AddCheckpoint(

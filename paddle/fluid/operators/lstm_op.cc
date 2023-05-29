@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/lstm_op.h"
+
 #include <memory>
 #include <string>
 
@@ -34,75 +35,92 @@ class LSTMOp : public framework::OperatorWithKernel {
     bool is_test = ctx->Attrs().Get<bool>("is_test");
 
     if (!is_test) {
-      OP_INOUT_CHECK(ctx->HasOutput("BatchGate"), "Output", "BatchGate",
+      OP_INOUT_CHECK(
+          ctx->HasOutput("BatchGate"), "Output", "BatchGate", "LSTM");
+      OP_INOUT_CHECK(ctx->HasOutput("BatchCellPreAct"),
+                     "Output",
+                     "BatchCellPreAct",
                      "LSTM");
-      OP_INOUT_CHECK(ctx->HasOutput("BatchCellPreAct"), "Output",
-                     "BatchCellPreAct", "LSTM");
     }
     auto in_dims = ctx->GetInputDim("Input");
     PADDLE_ENFORCE_EQ(
-        in_dims.size(), 2,
+        in_dims.size(),
+        2,
         platform::errors::InvalidArgument(
             "Input(X)'s rank must be 2, but received %d.", in_dims.size()));
 
     if (ctx->HasInput("H0")) {
       PADDLE_ENFORCE_EQ(
-          ctx->HasInput("C0"), true,
+          ctx->HasInput("C0"),
+          true,
           platform::errors::NotFound("Input(Cell) and Input(Hidden) of LSTM "
                                      "should not be null at the same time."));
       auto h_dims = ctx->GetInputDim("H0");
       auto c_dims = ctx->GetInputDim("C0");
-      PADDLE_ENFORCE_EQ(h_dims, c_dims,
+      PADDLE_ENFORCE_EQ(h_dims,
+                        c_dims,
                         platform::errors::InvalidArgument(
                             "The dimension of Input(H0) and Input(C0) should "
                             "be the same, but received [%s] (H0) vs [%s] (C0).",
-                            h_dims, c_dims));
+                            h_dims,
+                            c_dims));
     }
 
     int frame_size = in_dims[1] / 4;
     auto w_dims = ctx->GetInputDim("Weight");
     PADDLE_ENFORCE_EQ(
-        w_dims.size(), 2,
+        w_dims.size(),
+        2,
         platform::errors::InvalidArgument(
             "The rank of Input(Weight) should be 2, but received %d.",
             w_dims.size()));
-    PADDLE_ENFORCE_EQ(w_dims[0], frame_size,
+    PADDLE_ENFORCE_EQ(w_dims[0],
+                      frame_size,
                       platform::errors::InvalidArgument(
                           "The first dimension of Input(Weight) should be %d, "
                           "but received %d.",
-                          frame_size, w_dims[0]));
-    PADDLE_ENFORCE_EQ(w_dims[1], 4 * frame_size,
+                          frame_size,
+                          w_dims[0]));
+    PADDLE_ENFORCE_EQ(w_dims[1],
+                      4 * frame_size,
                       platform::errors::InvalidArgument(
                           "The second dimension of Input(Weight) should be 4 * "
                           "%d, but received %d.",
-                          frame_size, w_dims[1]));
+                          frame_size,
+                          w_dims[1]));
 
     auto b_dims = ctx->GetInputDim("Bias");
     PADDLE_ENFORCE_EQ(
-        b_dims.size(), 2,
+        b_dims.size(),
+        2,
         platform::errors::InvalidArgument(
             "The rank of Input(Bias) should be 2, but received %d.",
             b_dims.size()));
     PADDLE_ENFORCE_EQ(
-        b_dims[0], 1,
+        b_dims[0],
+        1,
         platform::errors::InvalidArgument(
             "The first dimension of Input(Bias) should be 1, but received %d.",
             b_dims[0]));
 
     if (ctx->Attrs().Get<bool>("use_peepholes")) {
       PADDLE_ENFORCE_EQ(
-          b_dims[1], 7 * frame_size,
+          b_dims[1],
+          7 * frame_size,
           platform::errors::InvalidArgument(
               "The second dimension of Input(Bias) should be 7 * %d if enable "
               "peepholes connection, but received %d.",
-              frame_size, b_dims[1]));
+              frame_size,
+              b_dims[1]));
     } else {
       PADDLE_ENFORCE_EQ(
-          b_dims[1], 4 * frame_size,
+          b_dims[1],
+          4 * frame_size,
           platform::errors::InvalidArgument(
               "The second dimension of Input(Bias) should be 4 * %d if disable "
               "peepholes connection, but received %d.",
-              frame_size, b_dims[1]));
+              frame_size,
+              b_dims[1]));
     }
 
     framework::DDim out_dims({in_dims[0], frame_size});
@@ -117,22 +135,22 @@ class LSTMOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+                          ctx.device_context().GetPlace());
   }
 };
 
 class LSTMOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Input",
-             "(LoDTensor) the first input is a LodTensor, which support "
-             "variable-time length input sequence. The underlying tensor in "
-             "this LoDTensor is a matrix with shape (T X 4D), where T is the "
-             "total time steps in this mini-batch, D is the hidden size.");
+    AddInput(
+        "Input",
+        "(phi::DenseTensor) the first input is a phi::DenseTensor, which "
+        "support variable-time length input sequence. The underlying tensor in "
+        "this phi::DenseTensor is a matrix with shape (T X 4D), where T is the "
+        "total time steps in this mini-batch, D is the hidden size.");
     AddInput("H0",
              "(Tensor, optional) the initial hidden state is an optional "
              "input. This is a tensor with shape (N x D), where N is the "
@@ -158,23 +176,26 @@ class LSTMOpMaker : public framework::OpProtoAndCheckerMaker {
              " - The shape is (1 x 7D). "
              " - Bias = {b_c, b_i, b_f, b_o, W_ic, W_fc, W_oc}.");
     AddOutput("Hidden",
-              "(LoDTensor) the hidden state of LSTM operator. "
+              "(phi::DenseTensor) the hidden state of LSTM operator. "
               "The shape is (T x D), and lod is the same with the `Input`.");
     AddOutput("Cell",
-              "(LoDTensor) the cell state of LSTM operator. "
+              "(phi::DenseTensor) the cell state of LSTM operator. "
               "The shape is (T x D), and lod is the same with the `Input`.");
-    AddOutput("BatchGate",
-              "(LoDTensor) This LoDTensor contains input gate, forget gate "
-              "and output gate after the nonlinear computation. This "
-              "LoDTensor has the same shape as the reorganized input, which "
-              "is also be called batch input. The LoD size is 2. The first "
-              "LoD is the batch offsets and the second LoD contains the "
-              "indexes, which denote the position of reorganized sequence "
-              "in the raw input.")
+    AddOutput(
+        "BatchGate",
+        "(phi::DenseTensor) This phi::DenseTensor contains input gate, forget "
+        "gate "
+        "and output gate after the nonlinear computation. This "
+        "phi::DenseTensor has the same shape as the reorganized input, which "
+        "is also be called batch input. The LoD size is 2. The first "
+        "LoD is the batch offsets and the second LoD contains the "
+        "indexes, which denote the position of reorganized sequence "
+        "in the raw input.")
         .AsIntermediate()
         .AsExtra();
     AddOutput("BatchCellPreAct",
-              "(LoDTensor) This LoDTensor is obtained in the forward and used "
+              "(phi::DenseTensor) This phi::DenseTensor is obtained in the "
+              "forward and used "
               "in the backward.")
         .AsIntermediate()
         .AsExtra();
@@ -261,9 +282,11 @@ class LSTMGradOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("Weight"), "Input", "Weight", "LSTM@Grad");
     OP_INOUT_CHECK(ctx->HasInput("Bias"), "Input", "Bias", "LSTM@Grad");
 
-    OP_INOUT_CHECK(ctx->HasInput("BatchGate"), "Input", "BatchGate",
-                   "LSTM@Grad");
-    OP_INOUT_CHECK(ctx->HasInput("BatchCellPreAct"), "Input", "BatchCellPreAct",
+    OP_INOUT_CHECK(
+        ctx->HasInput("BatchGate"), "Input", "BatchGate", "LSTM@Grad");
+    OP_INOUT_CHECK(ctx->HasInput("BatchCellPreAct"),
+                   "Input",
+                   "BatchCellPreAct",
                    "LSTM@Grad");
 
     auto SetOutGradDim = [&ctx](const std::string& name) {
@@ -280,11 +303,10 @@ class LSTMGradOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  framework::OpKernelType GetExpectedKernelType(
+  phi::KernelKey GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
-        ctx.device_context());
+    return phi::KernelKey(OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
+                          ctx.device_context().GetPlace());
   }
 };
 
@@ -330,13 +352,14 @@ class LSTMGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(lstm, ops::LSTMOp, ops::LSTMOpMaker,
+REGISTER_OPERATOR(lstm,
+                  ops::LSTMOp,
+                  ops::LSTMOpMaker,
                   ops::LSTMGradOpMaker<paddle::framework::OpDesc>,
                   ops::LSTMGradOpMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(lstm_grad, ops::LSTMGradOp);
-REGISTER_OP_CPU_KERNEL(
-    lstm, ops::LSTMKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::LSTMKernel<paddle::platform::CPUDeviceContext, double>);
-REGISTER_OP_CPU_KERNEL(
-    lstm_grad, ops::LSTMGradKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::LSTMGradKernel<paddle::platform::CPUDeviceContext, double>);
+
+PD_REGISTER_STRUCT_KERNEL(
+    lstm, CPU, ALL_LAYOUT, ops::LSTMKernel, float, double) {}
+PD_REGISTER_STRUCT_KERNEL(
+    lstm_grad, CPU, ALL_LAYOUT, ops::LSTMGradKernel, float, double) {}
