@@ -51,7 +51,7 @@ class CumsumOpConverter : public OpConverter {
             return Add1DConstantLayer(d, "", scalar);
           } else {
             nvinfer1::ITensor* inpShape = Shape(inpTensor);
-            return GetEleTensorOfShape(inpShape, d, scalar);
+            return GetEleTensorOfShape(inpShape, axis, scalar);
           }
         };
 
@@ -92,12 +92,12 @@ class CumsumOpConverter : public OpConverter {
       }
     }
 
-    auto inputSliced = TRT_ENGINE_ADD_LAYER(
+    auto input_sliced_layer = TRT_ENGINE_ADD_LAYER(
         engine_, Slice, *input_x_tensor, start, size, stride);
-    inputSliced->setInput(1, *starts_tensor);
-    inputSliced->setInput(2, *sizes_tensor);
-    inputSliced->setInput(3, *strides_tensor);
-    auto inputSliced_output = inputSliced->getOutput(0);
+    input_sliced_layer->setInput(1, *starts_tensor);
+    input_sliced_layer->setInput(2, *sizes_tensor);
+    input_sliced_layer->setInput(3, *strides_tensor);
+    auto inputSliced_output = input_sliced_layer->getOutput(0);
 
     // Scan through each slice across axis and add it to the running sum
     auto loop = TRT_ENGINE_ADD_LAYER(engine_, Loop);
