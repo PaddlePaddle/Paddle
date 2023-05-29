@@ -14,6 +14,10 @@
 #   extra :
 #     attrs : [bool is_test = false]
 
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_quantizer = false,
+              str mkldnn_data_type = "float32", bool is_test = false]
+
 - op : abs
   backward : abs_grad
   inputs :
@@ -1532,7 +1536,7 @@
     out : Out
 
 - op : mean (reduce_mean)
-  backward : reduce_mean_grad
+  backward : mean_grad (reduce_mean_grad)
   inputs :
     x : X
   outputs :
@@ -1775,9 +1779,8 @@
 
 - op : pool2d
   backward : pool2d_grad
-  extra :
-    attrs : [bool use_mkldnn = false, bool use_quantizer = false,
-              str mkldnn_data_type = "float32", bool is_test = false]
+  attrs:
+    kernel_size: ksize
 
 - op : pool3d
   backward : pool3d_grad

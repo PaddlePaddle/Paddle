@@ -47,8 +47,15 @@ using OpOutputMapping = std::unordered_map<std::string, ResultIdx>;
 
 static const char kTargetDialectPrefix[] = "pd.";
 
+static const std::unordered_set<std::string> special_inplace_ops = {
+    "batch_norm",
+};
+
 inline bool IsInplace(const OpDesc& op_desc) {
   bool inplace = false;
+  if (special_inplace_ops.count(op_desc.Type())) {
+    return inplace;
+  }
   auto input_names = op_desc.InputArgumentNames();
   auto output_names = op_desc.OutputArgumentNames();
 
@@ -319,10 +326,14 @@ ir::Operation* GeneralOpHandler(ir::IrContext* ctx,
   std::tie(op_output_types, arg_to_idx) = GenerateOperationOutput(ctx, op_desc);
   auto op_info = LoopkUpOpInfo(ctx, op_desc);
   auto attribute_map = TranslateOpAttribute(op_desc);
+  VLOG(4) << "[general op][" << op_desc.Type() << "] preparation end.";
 
   ir::Operation* operation =
       ir::Operation::create(op_inputs, op_output_types, attribute_map, op_info);
+  VLOG(4) << "[general op][" << op_desc.Type() << "] opearation creation end.";
   program->InsertOp(operation);
+
+  VLOG(4) << "[general op][" << op_desc.Type() << "] opearation insertion end.";
   RecordOpResultMapping(param_map, op_desc, operation, arg_to_idx);
 
   return operation;
@@ -338,7 +349,9 @@ ir::Operation* FeedOpHandler(ir::IrContext* ctx,
   OpOutputTypeList op_output_types;
   std::tie(op_output_types, arg_to_idx) = GenerateOperationOutput(ctx, op_desc);
   auto op_info = LoopkUpOpInfo(ctx, op_desc);
-  auto attribute_map = TranslateOpAttribute(op_desc);
+  ir::AttributeMap attribute_map = {
+      {"name", ir::StrAttribute::get(ctx, op_desc.OutputArgumentNames()[0])},
+  };
 
   ir::Operation* operation =
       ir::Operation::create(op_inputs, op_output_types, attribute_map, op_info);
@@ -356,7 +369,9 @@ ir::Operation* FetchOpHandler(ir::IrContext* ctx,
 
   OpOutputTypeList op_output_types;
   auto op_info = LoopkUpOpInfo(ctx, op_desc);
-  auto attribute_map = TranslateOpAttribute(op_desc);
+  ir::AttributeMap attribute_map = {
+      {"name", ir::StrAttribute::get(ctx, op_desc.InputArgumentNames()[0])},
+  };
 
   ir::Operation* operation =
       ir::Operation::create(op_inputs, op_output_types, attribute_map, op_info);
