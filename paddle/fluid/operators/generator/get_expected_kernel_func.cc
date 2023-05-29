@@ -198,9 +198,8 @@ phi::KernelKey GetStridedSliceExpectedKernelType(
                 string::to_string(tensor.place())));
       }
     }
-    return phi::KernelKey(
-        framework::OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
-        ctx.GetPlace());
+    return phi::KernelKey(op_ptr->IndicateVarDataType(ctx, "Input"),
+                          ctx.GetPlace());
   }
   // NOTE: cuda pinned tensor need to copy its data to target place
   auto in_tensor = ctx.Input<phi::DenseTensor>("Input");
@@ -208,9 +207,8 @@ phi::KernelKey GetStridedSliceExpectedKernelType(
     return phi::KernelKey(framework::TransToProtoVarType(in_tensor->dtype()),
                           ctx.GetPlace());
   }
-  return phi::KernelKey(
-      framework::OperatorWithKernel::IndicateVarDataType(ctx, "Input"),
-      in_tensor->place());
+  return phi::KernelKey(op_ptr->IndicateVarDataType(ctx, "Input"),
+                        in_tensor->place());
 }
 
 phi::KernelKey GetUpdateLossScalingExpectedKernelType(
