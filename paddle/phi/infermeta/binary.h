@@ -399,6 +399,12 @@ void SearchsortedInferMeta(const MetaTensor& sorted_sequence,
                            bool right,
                            MetaTensor* out);
 
+void SequenceMaskInferMeta(const MetaTensor& x,
+                           const MetaTensor& max_len_tensor,
+                           int maxlen,
+                           int out_dtype,
+                           MetaTensor* y);
+
 void SoftmaxMaskFuseInferMeta(const MetaTensor& x,
                               const MetaTensor& mask,
                               MetaTensor* out);

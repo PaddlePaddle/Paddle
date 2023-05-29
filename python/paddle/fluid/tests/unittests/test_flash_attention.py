@@ -68,6 +68,7 @@ class TestFlashAttentionAPI(unittest.TestCase):
         self.dropout = 0.0
         self.causal = False
         self.return_softmax = False
+        self.use_sdp_kernel = False
 
     def test_unpadded(self):
         print(
@@ -189,9 +190,19 @@ class TestFlashAttentionAPI(unittest.TestCase):
             value, place=self.place, dtype=self.dtype, stop_gradient=False
         )
 
-        out, _ = flash_attention(
-            q, k, v, self.dropout, self.causal, self.return_softmax
-        )
+        if self.use_sdp_kernel:
+            with paddle.nn.functional.sdp_kernel(
+                enable_math=self.enable_math,
+                enable_flash=self.enable_flash,
+                enable_mem_efficient=self.enable_mem_efficient,
+            ):
+                out, _ = flash_attention(
+                    q, k, v, self.dropout, self.causal, self.return_softmax
+                )
+        else:
+            out, _ = flash_attention(
+                q, k, v, self.dropout, self.causal, self.return_softmax
+            )
         out_ = attention_naive(q_, k_, v_, self.causal)
 
         out.backward()
@@ -220,9 +231,24 @@ class TestFlashAttentionAPI(unittest.TestCase):
                 name="v", shape=self.shape, dtype=self.dtype
             )
 
-            outs, softmax = flash_attention(
-                qs, ks, vs, self.dropout, self.causal, self.return_softmax
-            )
+            if self.use_sdp_kernel:
+                with paddle.nn.functional.sdp_kernel(
+                    enable_math=self.enable_math,
+                    enable_flash=self.enable_flash,
+                    enable_mem_efficient=self.enable_mem_efficient,
+                ):
+                    outs, softmax = flash_attention(
+                        qs,
+                        ks,
+                        vs,
+                        self.dropout,
+                        self.causal,
+                        self.return_softmax,
+                    )
+            else:
+                outs, softmax = flash_attention(
+                    qs, ks, vs, self.dropout, self.causal, self.return_softmax
+                )
 
             exe = fluid.Executor(self.place)
             fetches_result = exe.run(
@@ -247,6 +273,7 @@ class TestFlashAttentionAPITest1(TestFlashAttentionAPI):
         self.dropout = 0.0
         self.causal = False
         self.return_softmax = False
+        self.use_sdp_kernel = False
 
 
 class TestFlashAttentionAPITest2(TestFlashAttentionAPI):
@@ -257,6 +284,7 @@ class TestFlashAttentionAPITest2(TestFlashAttentionAPI):
         self.dropout = 0.0
         self.causal = False
         self.return_softmax = True
+        self.use_sdp_kernel = False
 
 
 class TestFlashAttentionAPITest3(TestFlashAttentionAPI):
@@ -267,6 +295,7 @@ class TestFlashAttentionAPITest3(TestFlashAttentionAPI):
         self.dropout = 0.0
         self.causal = True
         self.return_softmax = False
+        self.use_sdp_kernel = False
 
 
 class TestFlashAttentionAPITest4(TestFlashAttentionAPI):
@@ -277,6 +306,21 @@ class TestFlashAttentionAPITest4(TestFlashAttentionAPI):
         self.dropout = 0.0
         self.causal = False
         self.return_softmax = False
+        self.use_sdp_kernel = False
+
+
+class TestMathAttentionAPITest(TestFlashAttentionAPI):
+    def setUp(self):
+        self.place = paddle.CUDAPlace(0)
+        self.shape = (8, 1024, 16, 128)
+        self.dtype = paddle.float16
+        self.dropout = 0.0
+        self.causal = False
+        self.return_softmax = False
+        self.use_sdp_kernel = True
+        self.enable_math = True
+        self.enable_flash = False
+        self.enable_mem_efficient = False
 
 
 if __name__ == '__main__':

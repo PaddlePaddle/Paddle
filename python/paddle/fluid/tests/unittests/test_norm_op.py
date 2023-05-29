@@ -48,10 +48,10 @@ class TestNormOp(OpTest):
         self.python_out_sig = ['Out']
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_cinn=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_cinn=True)
 
     def init_test_case(self):
         self.shape = [2, 3, 4, 5]
@@ -109,7 +109,7 @@ class TestNormOp6(TestNormOp):
         self.dtype = "float32"
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', max_relative_error=0.008)
+        self.check_grad(['X'], 'Out', max_relative_error=0.008, check_cinn=True)
 
 
 @unittest.skipIf(
@@ -120,11 +120,17 @@ class TestNormOp7(TestNormOp):
         self.dtype = "float16"
 
     def test_check_output(self):
-        self.check_output_with_place(fluid.core.CUDAPlace(0), atol=5e-2)
+        self.check_output_with_place(
+            fluid.core.CUDAPlace(0), atol=5e-2, check_cinn=True
+        )
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            fluid.core.CUDAPlace(0), ['X'], 'Out', max_relative_error=0.05
+            fluid.core.CUDAPlace(0),
+            ['X'],
+            'Out',
+            max_relative_error=0.05,
+            check_cinn=True,
         )
 
 
@@ -147,7 +153,7 @@ class TestNormTestOp(OpTest):
 
     def test_check_output(self):
         # dynamic graph just supports float tensor
-        self.check_output(check_dygraph=True)
+        self.check_output(check_dygraph=True, check_cinn=True)
 
     def test_check_grad(self):
         pass
@@ -176,11 +182,17 @@ class TestNormBF16Op(OpTest):
         self.python_out_sig = ['Out']
 
     def test_check_output(self):
-        self.check_output_with_place(core.CUDAPlace(0), atol=1e-1)
+        self.check_output_with_place(
+            core.CUDAPlace(0), atol=1e-1, check_cinn=True
+        )
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            core.CUDAPlace(0), ['X'], 'Out', max_relative_error=1e-2
+            core.CUDAPlace(0),
+            ['X'],
+            'Out',
+            max_relative_error=1e-2,
+            check_cinn=True,
         )
 
     def init_test_case(self):

@@ -1,4 +1,4 @@
-/* Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -113,13 +113,6 @@ void CsrToCooCPUKernel(const CPUContext& dev_ctx,
                        SparseCooTensor* out) {
   const DDim& x_dims = x.dims();
   const int64_t non_zero_num = x.cols().numel();
-  const auto& csr_crows = x.crows();
-  const auto& csr_cols = x.cols();
-  const auto& csr_values = x.values();
-  const IntT* csr_crows_data = csr_crows.data<IntT>();
-  const IntT* csr_cols_data = csr_cols.data<IntT>();
-  const T* csr_values_data = csr_values.data<T>();
-
   int64_t sparse_dim = 2;
   if (x_dims.size() == 3) {
     sparse_dim = 3;
@@ -127,6 +120,17 @@ void CsrToCooCPUKernel(const CPUContext& dev_ctx,
   phi::DenseTensor indices =
       phi::Empty<IntT>(dev_ctx, {sparse_dim, non_zero_num});
   phi::DenseTensor values = phi::Empty<T>(dev_ctx, {non_zero_num});
+  if (x.nnz() <= 0) {
+    out->SetMember(indices, values, x_dims, true);
+    return;
+  }
+  const auto& csr_crows = x.crows();
+  const auto& csr_cols = x.cols();
+  const auto& csr_values = x.values();
+  const IntT* csr_crows_data = csr_crows.data<IntT>();
+  const IntT* csr_cols_data = csr_cols.data<IntT>();
+  const T* csr_values_data = csr_values.data<T>();
+
   IntT* coo_indices = indices.data<IntT>();
   IntT* batch_ptr = x_dims.size() == 2 ? nullptr : coo_indices;
   IntT* coo_rows_data =
@@ -177,7 +181,6 @@ void CooToCsrCPUKernel(const CPUContext& dev_ctx,
                     phi::errors::InvalidArgument(
                         "SparseCsrTensor only support 2-D or 3-D matrix"));
   const int64_t non_zero_num = x.nnz();
-  if (non_zero_num <= 0) return;
 
   int batchs = x_dims.size() == 2 ? 1 : x_dims[0];
   int rows = x_dims.size() == 2 ? x_dims[0] : x_dims[1];
@@ -185,6 +188,10 @@ void CooToCsrCPUKernel(const CPUContext& dev_ctx,
   phi::DenseTensor crows = phi::Empty<IntT>(dev_ctx, {batchs * (rows + 1)});
   phi::DenseTensor cols = phi::Empty<IntT>(dev_ctx, {non_zero_num});
   phi::DenseTensor values = phi::EmptyLike<T, CPUContext>(dev_ctx, x.values());
+  if (non_zero_num <= 0) {
+    out->SetMember(crows, cols, values, x_dims);
+    return;
+  }
   IntT* csr_crows_data = crows.data<IntT>();
   IntT* csr_cols_data = cols.data<IntT>();
   T* csr_values_data = values.data<T>();
@@ -268,6 +275,12 @@ void CooToDenseCPUKernel(const CPUContext& dev_ctx,
   const T* x_data = values.data<T>();
   dev_ctx.template Alloc<T>(out);
   T* out_data = out->data<T>();
+  memset(out_data, 0, sizeof(T) * out->numel());
+
+  if (x.nnz() <= 0) {
+    return;
+  }
+
   int64_t base_offset = 1;
   for (int64_t i = 0; i < dense_dim; i++) {
     base_offset *= dense_dims[sparse_dim + i];
@@ -279,7 +292,6 @@ void CooToDenseCPUKernel(const CPUContext& dev_ctx,
     offset *= dense_dims[i];
   }
 
-  memset(out_data, 0, sizeof(T) * out->numel());
   for (auto i = 0; i < non_zero_num; i++) {
     int64_t index = 0;
     for (int j = 0; j < sparse_dim; j++) {

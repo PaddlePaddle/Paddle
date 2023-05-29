@@ -205,6 +205,7 @@ class Controller(ControllerBase):
         c = Container(
             entrypoint=(entrypoint or self._get_entrypoint()),
             env=(self.ctx.get_envs() if use_ctx_env else {}),
+            overwrite_log=self.ctx.args.log_overwrite,
         )
         c.outfile, c.errfile = self._get_out_err_file(out, err)
         c.update_env(envs)
@@ -286,7 +287,7 @@ class Controller(ControllerBase):
         )
         try:
             os.makedirs(os.path.dirname(f), exist_ok=True)
-            with open(f, 'w') as fd:
+            with open(f, container.log_mode) as fd:
                 for k, v in sorted(container.env.items()):
                     fd.write(str(f"{k}={v}\n"))
         except Exception as e:

@@ -445,7 +445,6 @@ packages=['paddle',
           'paddle.fluid.proto',
           'paddle.fluid.proto.profiler',
           'paddle.fluid.layers',
-          'paddle.fluid.dataloader',
           'paddle.fluid.contrib',
           'paddle.fluid.contrib.extend_optimizer',
           'paddle.fluid.incubate',
@@ -492,6 +491,7 @@ packages=['paddle',
           'paddle.sparse.nn.functional',
           'paddle.incubate.xpu',
           'paddle.io',
+          'paddle.io.dataloader',
           'paddle.optimizer',
           'paddle.nn',
           'paddle.nn.functional',
@@ -561,7 +561,11 @@ package_dir={
 libs_path='${PADDLE_BINARY_DIR}/python/paddle/libs'
 
 package_data['paddle.libs']= []
-package_data['paddle.libs']=[
+if('${WITH_PHI_SHARED}' == 'ON'):
+    package_data['paddle.libs'] = [('libphi' if os.name != 'nt' else 'phi') + ext_name]
+    shutil.copy('${PHI_LIB}', libs_path)
+
+package_data['paddle.libs']+=[
     ('libwarpctc' if os.name != 'nt' else 'warpctc') + ext_name,
     ('libwarprnnt' if os.name != 'nt' else 'warprnnt') + ext_name,
 ]
@@ -634,6 +638,11 @@ if '${WITH_CINN}' == 'ON':
     if os.path.exists(cinn_fp16_file):
         shutil.copy(cinn_fp16_file, libs_path)
         package_data['paddle.libs']+=['float16.h']
+
+    cinn_bf16_file = '${CINN_INCLUDE_DIR}/cinn/runtime/cuda/bfloat16.h'
+    if os.path.exists(cinn_bf16_file):
+        shutil.copy(cinn_bf16_file, libs_path)
+        package_data['paddle.libs']+=['bfloat16.h']
 
     if '${CMAKE_BUILD_TYPE}' == 'Release' and os.name != 'nt':
         command = "patchelf --set-rpath '$ORIGIN/' %s/${CINN_LIB_NAME}" % libs_path
@@ -717,8 +726,14 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
         if "@APPLE@" == "1":
             commands = ["install_name_tool -id '@loader_path/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so']
             commands.append("install_name_tool -add_rpath '@loader_path/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so')
+            if('${WITH_PHI_SHARED}' == 'ON'):
+                # change rpath of phi.ext for loading 3rd party libb
+                commands.append("install_name_tool -add_rpath '@loader_path' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_NAME}")
         else:
             commands = ["patchelf --set-rpath '$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so']
+            if('${WITH_PHI_SHARED}' == 'ON'):
+                # change rpath of phi.ext for loading 3rd party lib
+                commands.append("patchelf --set-rpath '$ORIGIN' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_NAME}")
         # The sw_64 not suppot patchelf, so we just disable that.
         if platform.machine() != 'sw_64' and platform.machine() != 'mips64':
             for command in commands:
