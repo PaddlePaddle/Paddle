@@ -41,17 +41,17 @@ def apply_pass(use_1f1b=False):
         gradient_merge.k_steps = 2
         gradient_merge.avg = True
 
-    # amp = strategy.amp
-    # amp.enable = True
-    # amp.custom_white_list = ['softmax', 'layer_norm', 'gelu']
-    # amp.custom_black_list = [
-    #     'c_softmax_with_cross_entropy',
-    #     'elementwise_div',
-    #     'reduce_sum',
-    # ]
-    # amp.init_loss_scaling = 32768
-    # amp.use_fp16_guard = False
-    # amp.use_pure_fp16 = True
+    amp = strategy.amp
+    amp.enable = True
+    amp.dtype = "float16"
+    amp.level = "o2"
+    amp.custom_white_list = ['softmax', 'layer_norm', 'gelu']
+    amp.custom_black_list = [
+        'c_softmax_with_cross_entropy',
+        'elementwise_div',
+        'reduce_sum',
+    ]
+    amp.init_loss_scaling = 32768
 
     return strategy
 
