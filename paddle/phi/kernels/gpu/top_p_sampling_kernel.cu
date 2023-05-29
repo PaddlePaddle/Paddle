@@ -41,6 +41,11 @@ struct DataTypeTraits<phi::dtype::float16> {
   using DataType = half;
 };
 
+// template <>
+// struct DataTypeTraits<phi::dtype::bfloat16> {
+//   using DataType = __nv_bfloat16;
+// };
+
 #define FINAL_MASK 0xFFFFFFFF
 
 #define FIXED_BLOCK_DIM_BASE(dim, ...) \
