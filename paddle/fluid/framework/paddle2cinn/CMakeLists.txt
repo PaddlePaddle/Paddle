@@ -40,6 +40,7 @@ cc_library(
        cinn_graph_symbolization
        cinn
        cinn_launch_context
+       python
        pybind)
 
 if(WITH_TESTING)

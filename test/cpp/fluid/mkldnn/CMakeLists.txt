@@ -38,9 +38,9 @@ cc_test_old(
   DEPS
   conditional_block_op
   standalone_executor
+  executor
   recurrent_op_helper
   recurrent_op
-  executor
   op_registry
   pool_op
   shape_op
