@@ -21,10 +21,10 @@
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/translator/op_translator.h"
 #include "paddle/fluid/translator/type_translator.h"
-#include "paddle/ir/attribute.h"
-#include "paddle/ir/builtin_op.h"
-#include "paddle/ir/builtin_type.h"
-#include "paddle/ir/operation.h"
+#include "paddle/ir/core/attribute.h"
+#include "paddle/ir/core/builtin_op.h"
+#include "paddle/ir/core/builtin_type.h"
+#include "paddle/ir/core/operation.h"
 #include "paddle/phi/core/enforce.h"
 
 namespace paddle {

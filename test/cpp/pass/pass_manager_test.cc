@@ -18,11 +18,11 @@
 
 #include "glog/logging.h"
 
-#include "paddle/ir/builtin_type.h"
-#include "paddle/ir/dialect.h"
-#include "paddle/ir/ir_context.h"
-#include "paddle/ir/op_base.h"
-#include "paddle/ir/operation.h"
+#include "paddle/ir/core/builtin_type.h"
+#include "paddle/ir/core/dialect.h"
+#include "paddle/ir/core/ir_context.h"
+#include "paddle/ir/core/op_base.h"
+#include "paddle/ir/core/operation.h"
 #include "paddle/pass/pass.h"
 #include "paddle/pass/pass_manager.h"
 

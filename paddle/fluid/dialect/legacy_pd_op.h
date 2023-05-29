@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/ir/op_base.h"
+#include "paddle/ir/core/op_base.h"
 
 namespace paddle {
 namespace dialect {
