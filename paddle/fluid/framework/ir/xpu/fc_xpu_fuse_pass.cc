@@ -338,16 +338,11 @@ int FcXPUFusePass::ApplyImpl(ir::Graph* graph,
             scope->Var(bn_mean->Name())->GetMutable<phi::DenseTensor>();
         auto bn_var_t =
             scope->Var(bn_var->Name())->GetMutable<phi::DenseTensor>();
-        float* mul_w_ptr =
-            filter_t->mutable_data<float>(paddle::platform::CPUPlace());
-        float* bn_scale_ptr =
-            bn_scale_t->mutable_data<float>(paddle::platform::CPUPlace());
-        float* bn_bias_ptr =
-            bn_bias_t->mutable_data<float>(paddle::platform::CPUPlace());
-        float* bn_mean_ptr =
-            bn_mean_t->mutable_data<float>(paddle::platform::CPUPlace());
-        float* bn_var_ptr =
-            bn_var_t->mutable_data<float>(paddle::platform::CPUPlace());
+        float* mul_w_ptr = filter_t->data<float>();
+        float* bn_scale_ptr = bn_scale_t->data<float>();
+        float* bn_bias_ptr = bn_bias_t->data<float>();
+        float* bn_mean_ptr = bn_mean_t->data<float>();
+        float* bn_var_ptr = bn_var_t->data<float>();
         auto mean_len = bn_mean_t->numel();
         auto filter_h = filter_dims[0];
         auto filter_w = filter_dims[1];
@@ -357,8 +352,7 @@ int FcXPUFusePass::ApplyImpl(ir::Graph* graph,
         }
         auto fusion_bias_t = scope->Var(fusion_bias_node->Name())
                                  ->GetMutable<phi::DenseTensor>();
-        float* fusion_bias_ptr =
-            fusion_bias_t->mutable_data<float>(paddle::platform::CPUPlace());
+        float* fusion_bias_ptr = fusion_bias_t->data<float>();
         // recompute bias and weights
         if (bias == nullptr) {
           for (int i = 0; i < mean_len; ++i) {
