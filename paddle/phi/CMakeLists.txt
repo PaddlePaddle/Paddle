@@ -105,8 +105,10 @@ else()
 endif()
 
 if(WITH_GPU)
-  add_definitions(-DCUDA_REAL_ARCHS=${NVCC_FLAGS_EXTRA_real_archs}
-  )# for backends/gpu/gpu_resources.cc
+  set_source_files_properties(
+    backends/gpu/gpu_resources.cc
+    PROPERTIES COMPILE_FLAGS
+               "-DCUDA_REAL_ARCHS=\"${NVCC_FLAGS_EXTRA_real_archs}\"")
   nv_library(
     phi ${PHI_BUILD_TYPE}
     SRCS ${PHI_SRCS}
@@ -180,6 +182,9 @@ endif()
 if(WITH_FLASHATTN)
   add_dependencies(phi flashattn)
 endif()
+
+set(LINK_FLAGS "-Wl,--version-script ${CMAKE_CURRENT_SOURCE_DIR}/phi.map")
+set_target_properties(phi PROPERTIES LINK_FLAGS "${LINK_FLAGS}")
 
 set(phi_extension_header_file
     ${CMAKE_CURRENT_SOURCE_DIR}/extension.h
