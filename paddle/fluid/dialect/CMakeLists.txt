@@ -8,16 +8,17 @@ set(op_forward_yaml_file1
     ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/ops.parsed.yaml
 )
 set(op_forward_yaml_file2
-    ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/static_ops.parsed.yaml
+    ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/legacy_ops.parsed.yaml
 )
 set(op_backward_yaml_file1
     ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/backward_ops.parsed.yaml
 )
 set(op_backward_yaml_file2
-    ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/static_backward.parsed.yaml
+    ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/legacy_backward_ops.parsed.yaml
 )
+set(op_yaml_file3 ${PADDLE_SOURCE_DIR}/paddle/fluid/dialect/pd_op.yaml)
 set(op_yaml_files
-    ${op_forward_yaml_file1},${op_forward_yaml_file2},${op_backward_yaml_file1},${op_backward_yaml_file2}
+    ${op_forward_yaml_file1},${op_forward_yaml_file2},${op_backward_yaml_file1},${op_backward_yaml_file2},${op_yaml_file3}
 )
 set(op_namespace paddle,dialect)
 set(dialect_name pd)

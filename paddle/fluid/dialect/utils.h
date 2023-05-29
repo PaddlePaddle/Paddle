@@ -132,5 +132,45 @@ inline DenseTensorTypeStorage::DataLayout TransToIrDataLayout(
   }
 }
 
+struct OpInputInfo {
+  std::string name_ = "";
+  std::string typename_ = "";
+  bool optional_ = false;
+  bool no_need_buffer_ = false;
+  OpInputInfo(std::string name,
+              std::string type_name,
+              bool optional,
+              bool no_need_buffer)
+      : name_(name),
+        typename_(type_name),
+        optional_(optional),
+        no_need_buffer_(no_need_buffer) {}
+};
+
+struct OpOutputInfo {
+  std::string name_ = "";
+  std::string typename_ = "";
+  bool optional_ = false;
+  bool intermediate_ = false;
+  OpOutputInfo(std::string name,
+               std::string type_name,
+               bool optional,
+               bool intermediate)
+      : name_(name),
+        typename_(type_name),
+        optional_(optional),
+        intermediate_(intermediate) {}
+};
+
+struct OpAttributeInfo {
+  std::string name_ = "";
+  std::string typename_ = "";
+  std::string data_type_ = "";
+  OpAttributeInfo(std::string name,
+                  std::string type_name,
+                  std::string data_type)
+      : name_(name), typename_(type_name), data_type_(data_type) {}
+};
+
 }  // namespace dialect
 }  // namespace paddle

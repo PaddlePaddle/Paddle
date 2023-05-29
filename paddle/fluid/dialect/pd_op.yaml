@@ -1,0 +1,52 @@
+name: feed
+  inputs:
+  - typename: Tensor[]
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: int, name: col}
+  outputs:
+  - {typename: Tensor, name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: null
+    param: null
+  kernel:
+    func: null
+    param: null
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: null
+    force_backend: null
+  inplace: null
+  backward: null
+- name: fetch
+  inputs:
+  - typename: Tensor
+    name: x
+    optional: false
+    no_need_buffer: false
+    data_transform: {}
+  attrs:
+  - {typename: int, name: col}
+  outputs:
+  - {typename: 'Tensor[]', name: out, optional: false, intermediate: false}
+  no_need_buffer: null
+  data_transform: null
+  infer_meta:
+    func: null
+    param: null
+  kernel:
+    func: null
+    param: null
+    backend: null
+    layout: null
+    data_type: null
+    dispatch: null
+    force_backend: null
+  inplace: null
+  backward: null
