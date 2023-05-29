@@ -133,7 +133,20 @@ void PaddleDialect::initialize() {
               BatchNormGradOp,
               Conv2DGradOp,
               SumOp,
-              FetchV2Op>();
+              FetchV2Op,
+              AddOp,
+              MatMulOp,
+              ReshapeOp,
+              CrossEntropyOp,
+              TopKOp,
+              FullOp,
+              MeanOp,
+              AddNOp,
+              AddGradOp,
+              MatMulGradOp,
+              ReshapeGradOp,
+              CrossEntropyGradOp,
+              TopKGradOp>();
 }
 
 void PaddleDialect::PrintType(ir::Type type, std::ostream &os) {

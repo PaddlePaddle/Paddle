@@ -123,9 +123,9 @@ class TestParallelExecutorRunCinn(unittest.TestCase):
         shutil.rmtree(self.tmpdir)
 
     def test_run_with_cinn(self):
-        cinn_losses = train(self.tmpdir, "paddle")
+        cinn_losses = np.array(train(self.tmpdir, "paddle")).flatten()
         set_cinn_flag(False)
-        pd_losses = train(self.tmpdir, "cinn")
+        pd_losses = np.array(train(self.tmpdir, "cinn")).flatten()
         np.testing.assert_allclose(
             cinn_losses, pd_losses, rtol=1e-05, atol=1e-05
         )
