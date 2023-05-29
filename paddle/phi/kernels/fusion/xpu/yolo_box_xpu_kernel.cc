@@ -21,19 +21,20 @@ namespace fusion {
 template <typename T, typename Context>
 void YoloBoxXPUKernel(const Context& ctx,
                       const DenseTensor& x,
+                      const paddle::optional<DenseTensor>& x_max,
                       const DenseTensor& grid,
                       const DenseTensor& stride,
                       const DenseTensor& anchor_grid,
                       float offset,
-                      const paddle::optional<DenseTensor>& x_max,
                       DenseTensor* out,
                       DenseTensor* out_max) {
   using XPUType = typename XPUTypeTrait<T>::Type;
 
   auto* x_data = reinterpret_cast<const XPUType*>(x.data<T>());
   auto* out_data = reinterpret_cast<XPUType*>(ctx.template Alloc<T>(out));
-  const float* x_max_data =
-      x_max.get_ptr() == nullptr ? nullptr : x_max.get_ptr()->data<float>();
+  //   float* x_max_data =
+  //       x_max.get_ptr() == nullptr ? nullptr :
+  //       x_max.get_ptr()->data<float>();
   const float* grid_data = reinterpret_cast<const float*>(grid.data<T>());
   const float* stride_data = reinterpret_cast<const float*>(stride.data<T>());
   const float* anchor_grid_data =
@@ -52,9 +53,10 @@ void YoloBoxXPUKernel(const Context& ctx,
       /* const float* stride */ stride_data,
       /* const float* anchor_grid */ anchor_grid_data,
       /* const std::vector<int64_t>& grid_shape */ grid_shape,
+      /* const std::vector<int64_t>& stride_shape */ stride_shape,
       /* const std::vector<int64_t>& anchor_grid */ anchor_grid_shape,
       /* float offset */ offset,
-      /* float* x_max */ x_max_data,
+      /* float* x_max */ nullptr,
       /* float* y_max */ ctx.template Alloc<float>(out_max));
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "yolo_box_xpu");
 }

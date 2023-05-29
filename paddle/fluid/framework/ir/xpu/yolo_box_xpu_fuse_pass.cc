@@ -121,21 +121,70 @@ YoloBoxXPUPattern::YoloBoxXPUPattern(PDPattern* pattern,
     : PatternBase(pattern, name_scope, name_scope),
       with_left_ew_sub_(with_left_ew_sub) {
   auto x = pattern->NewNode(x_repr())
-               ->assert_is_op_input("strided_slice", "Input")
-               ->assert_has_n_outputs(3)
-               ->assert_more([](Node* node) {
-                 auto dim_size = node->Var()->GetShape().size();
-                 return node->Var()->GetShape()[dim_size - 1] > 4;
-               });
-  // left silce pattern
+               ->assert_is_op_output("sigmoid", "Out")
+               ->assert_has_n_outputs(3);
+  //  ->assert_more([](Node* node) {
+  //    auto dim_size = node->Var()->GetShape().size();
+  //    return node->Var()->GetShape()[dim_size - 1] > 4;
+  //  });
   auto* left_slice =
-      pattern->NewNode(left_slice_repr())->assert_is_op("strided_slice");
+      pattern->NewNode(left_slice_repr())
+          ->assert_is_op("strided_slice")
+          ->assert_more([&](Node* node) {
+            auto* op_desc = node->Op();
+            return op_desc->GetAttrIfExists<std::vector<int>>("axes") ==
+                       std::vector<int>{4} &&
+                   op_desc->GetAttrIfExists<std::vector<int>>("starts") ==
+                       std::vector<int>{0} &&
+                   op_desc->GetAttrIfExists<std::vector<int>>("ends") ==
+                       std::vector<int>{2};
+          });
   auto* left_slice_out = pattern->NewNode(left_slice_out_repr())
                              ->assert_is_op_output("strided_slice", "Out")
                              ->assert_is_op_input("elementwise_mul", "X");
   left_slice->LinksFrom({x}).LinksTo({left_slice_out});
+  auto* mid_slice =
+      pattern->NewNode(mid_slice_repr())
+          ->assert_is_op("strided_slice")
+          ->assert_more([&](Node* node) {
+            auto* op_desc = node->Op();
+            return op_desc->GetAttrIfExists<std::vector<int>>("axes") ==
+                       std::vector<int>{4} &&
+                   op_desc->GetAttrIfExists<std::vector<int>>("starts") ==
+                       std::vector<int>{2} &&
+                   op_desc->GetAttrIfExists<std::vector<int>>("ends") ==
+                       std::vector<int>{4};
+          });
+  auto* mid_slice_out = pattern->NewNode(mid_slice_out_repr())
+                            ->assert_is_op_output("strided_slice", "Out")
+                            ->assert_is_op_input("elementwise_mul", "X");
+  mid_slice->LinksFrom({x}).LinksTo({mid_slice_out});
+  auto* right_slice =
+      pattern->NewNode(right_slice_repr())
+          ->assert_is_op("strided_slice")
+          ->assert_more([&](Node* node) {
+            auto* op_desc = node->Op();
+            return op_desc->GetAttrIfExists<std::vector<int>>("axes") ==
+                       std::vector<int>{4} &&
+                   op_desc->GetAttrIfExists<std::vector<int>>("starts") ==
+                       std::vector<int>{4} &&
+                   op_desc->GetAttrIfExists<std::vector<int>>("ends") ==
+                       std::vector<int>{2147483647};
+          });
+  auto* right_slice_out = pattern->NewNode(right_slice_out_repr())
+                              ->assert_is_op_output("strided_slice", "Out")
+                              ->assert_is_op_nth_input("concat", "X", 2);
+  right_slice->LinksFrom({x}).LinksTo({right_slice_out});
+  // left silce pattern
   auto* left_ew_mul =
-      pattern->NewNode(left_ew_mul_repr())->assert_is_op("elementwise_mul");
+      pattern->NewNode(left_ew_mul_repr())
+          ->assert_is_op("elementwise_mul")
+          ->assert_more([&](Node* node) {
+            auto next_op_nodes = node->outputs[0]->outputs;
+            return next_op_nodes.size() == 1 &&
+                   (next_op_nodes[0]->Op()->Type() == "elementwise_sub" ||
+                    next_op_nodes[0]->Op()->Type() == "elementwise_add");
+          });
   auto* left_ew_mul_out = pattern->NewNode(left_ew_mul_out_repr())
                               ->assert_is_op_output("elementwise_mul", "Out");
   left_ew_mul->LinksFrom({left_slice_out}).LinksTo({left_ew_mul_out});
@@ -151,7 +200,8 @@ YoloBoxXPUPattern::YoloBoxXPUPattern(PDPattern* pattern,
                         ->assert_is_persistable_var();
     left_ew_sub_out = pattern->NewNode(left_ew_sub_out_repr())
                           ->assert_is_op_output("elementwise_sub", "Out");
-    left_ew_sub->LinksFrom({left_ew_mul_out}).LinksTo({left_ew_sub_out});
+    left_ew_sub->LinksFrom({left_ew_mul_out, left_ew_sub_y})
+        .LinksTo({left_ew_sub_out});
   } else {
     left_ew_sub_out = left_ew_mul_out;
   }
@@ -163,24 +213,32 @@ YoloBoxXPUPattern::YoloBoxXPUPattern(PDPattern* pattern,
   auto* left_ew_add_out = pattern->NewNode(left_ew_add_out_repr())
                               ->assert_is_op_output("elementwise_add", "Out")
                               ->assert_is_op_input("elementwise_mul", "X");
-  left_ew_add->LinksFrom({left_ew_sub_out}).LinksTo({left_ew_add_out});
+  left_ew_add->LinksFrom({left_ew_sub_out, left_ew_add_y})
+      .LinksTo({left_ew_add_out});
   auto* left_ew_mul_2 =
-      pattern->NewNode(left_ew_mul_2_repr())->assert_is_op("elementwise_mul");
+      pattern->NewNode(left_ew_mul_2_repr())
+          ->assert_is_op("elementwise_mul")
+          ->assert_more([&](Node* node) {
+            auto pre_op_nodes = node->inputs[0]->inputs;
+            return pre_op_nodes.size() == 1 &&
+                   pre_op_nodes[0]->Op()->Type() == "elementwise_add";
+          });
   auto* left_ew_mul_2_y = pattern->NewNode(left_ew_mul_2_y_repr())
                               ->assert_is_op_input("elementwise_mul", "Y");
   auto* left_ew_mul_2_out = pattern->NewNode(left_ew_mul_2_out_repr())
                                 ->assert_is_op_output("elementwise_mul", "Out")
-                                ->assert_is_op_input("concat", "X");
-  left_ew_mul_2->LinksFrom({left_ew_add_out}).LinksTo({left_ew_mul_2_out});
+                                ->assert_is_op_nth_input("concat", "X", 0);
+  left_ew_mul_2->LinksFrom({left_ew_add_out, left_ew_mul_2_y})
+      .LinksTo({left_ew_mul_2_out});
   // mid slice pattern
-  auto* mid_slice =
-      pattern->NewNode(mid_slice_repr())->assert_is_op("strided_slice");
-  auto* mid_slice_out = pattern->NewNode(mid_slice_out_repr())
-                            ->assert_is_op_output("strided_slice", "Out")
-                            ->assert_is_op_input("elementwise_mul", "X");
-  mid_slice->LinksFrom({x}).LinksTo({mid_slice_out});
   auto* mid_ew_mul =
-      pattern->NewNode(mid_ew_mul_repr())->assert_is_op("elementwise_mul");
+      pattern->NewNode(mid_ew_mul_repr())
+          ->assert_is_op("elementwise_mul")
+          ->assert_more([&](Node* node) {
+            auto next_op_nodes = node->outputs[0]->outputs;
+            return next_op_nodes.size() == 1 &&
+                   next_op_nodes[0]->Op()->Type() == "elementwise_pow";
+          });
   auto* mid_ew_mul_out = pattern->NewNode(mid_ew_mul_out_repr())
                              ->assert_is_op_output("elementwise_mul", "Out")
                              ->assert_is_op_input("elementwise_pow", "X");
@@ -192,20 +250,20 @@ YoloBoxXPUPattern::YoloBoxXPUPattern(PDPattern* pattern,
                              ->assert_is_op_input("elementwise_mul", "X");
   mid_ew_pow->LinksFrom({mid_ew_mul_out}).LinksTo({mid_ew_pow_out});
   auto* mid_ew_mul_2 =
-      pattern->NewNode(mid_ew_mul_2_repr())->assert_is_op("elementwise_mul");
+      pattern->NewNode(mid_ew_mul_2_repr())
+          ->assert_is_op("elementwise_mul")
+          ->assert_more([&](Node* node) {
+            auto pre_op_nodes = node->inputs[0]->inputs;
+            return pre_op_nodes.size() == 1 &&
+                   pre_op_nodes[0]->Op()->Type() == "elementwise_pow";
+          });
   auto* mid_ew_mul_2_y = pattern->NewNode(mid_ew_mul_2_y_repr())
                              ->assert_is_op_input("elementwise_mul", "Y");
   auto* mid_ew_mul_2_out = pattern->NewNode(mid_ew_mul_2_out_repr())
                                ->assert_is_op_output("elementwise_mul", "Out")
-                               ->assert_is_op_input("concat", "X");
-  mid_ew_mul_2->LinksFrom({mid_ew_pow_out}).LinksTo({mid_ew_mul_2_out});
-  // right slice pattern
-  auto* right_slice =
-      pattern->NewNode(right_slice_repr())->assert_is_op("strided_slice");
-  auto* right_slice_out = pattern->NewNode(right_slice_out_repr())
-                              ->assert_is_op_output("strided_slice", "Out")
-                              ->assert_is_op_input("concat", "X");
-  right_slice->LinksFrom({x}).LinksTo({right_slice_out});
+                               ->assert_is_op_nth_input("concat", "X", 1);
+  mid_ew_mul_2->LinksFrom({mid_ew_pow_out, mid_ew_mul_2_y})
+      .LinksTo({mid_ew_mul_2_out});
   // concat
   auto* concat = pattern->NewNode(concat_repr())->assert_is_op("concat");
   auto* concat_out = pattern->NewNode(concat_out_repr())
@@ -307,25 +365,22 @@ int YoloBoxXPUFusePass::ApplyImpl(ir::Graph* graph,
                             "the size(%d) of left elementwise sub tensor "
                             "must equal 1",
                             left_ew_sub_y_dims.size()));
-      switch (left_ew_sub_y_t.dtype()) {
-        case phi::DataType::FLOAT16:
-          auto* sub_t_ptr = left_ew_sub_y_t.data<platform::float16>();
-          offset_ = static_cast<float>(sub_t_ptr[0]);
-          break;
-        case phi::DataType::FLOAT32:
-          auto* sub_t_ptr = left_ew_sub_y_t.data<float>();
-          offset_ = sub_t_ptr[0];
-          break;
-        default:
-          PADDLE_THROW(platform::errors::Unavailable(
-              "yolo_box_fuse_xpu_pass not supported weight dtype. "
-              "we now only support fp32/fp16."));
-          break;
+      auto tensor_type = left_ew_sub_y_t.dtype();
+      if (tensor_type == phi::DataType::FLOAT16) {
+        auto* sub_t_fp16_ptr = left_ew_sub_y_t.data<platform::float16>();
+        offset_ = static_cast<float>(sub_t_fp16_ptr[0]);
+      } else if (tensor_type == phi::DataType::FLOAT32) {
+        auto* sub_t_fp32_ptr = left_ew_sub_y_t.data<float>();
+        offset_ = sub_t_fp32_ptr[0];
+      } else {
+        PADDLE_THROW(platform::errors::Unavailable(
+            "yolo_box_fuse_xpu_pass not supported weight dtype. "
+            "we now only support fp32/fp16."));
       }
     }
     fused_op_desc.SetAttr("offset", offset_);
-    fused_op_desc.SetOutput("y", {concat_out->Name()});
-    fused_op_desc.SetOutput("y_max", {fused_op_out_max_name});
+    fused_op_desc.SetOutput("out", {concat_out->Name()});
+    fused_op_desc.SetOutput("out_max", {fused_op_out_max_name});
     // relink fused op
     auto* fused_op = graph->CreateOpNode(&fused_op_desc);
     IR_NODE_LINK_TO(x, fused_op);
@@ -355,7 +410,8 @@ int YoloBoxXPUFusePass::ApplyImpl(ir::Graph* graph,
                                                     right_slice_out,
                                                     concat};
     if (with_left_ew_sub) {
-      delete_nodes.insert(left_ew_sub, left_ew_sub_out);
+      delete_nodes.insert(left_ew_sub);
+      delete_nodes.insert(left_ew_sub_out);
     }
     GraphSafeRemoveNodes(graph, delete_nodes);
     found_subgraph_count++;

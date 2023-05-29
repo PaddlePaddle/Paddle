@@ -507,7 +507,8 @@ void YoloBoxXPUInferMeta(const MetaTensor& x,
   in_dims.emplace_back(left_mul_out_dims);
   in_dims.emplace_back(mid_mul_out_dims);
   in_dims.emplace_back(right_slice_out_dims);
-  phi::DDim out_dim = phi::funcs::ComputeAndCheckShape(false, in_dims, -1);
+  phi::DDim out_dim =
+      phi::funcs::ComputeAndCheckShape(false, in_dims, x_dims_size - 1);
 
   out->set_dims(out_dim);
   out->set_dtype(x.dtype());
