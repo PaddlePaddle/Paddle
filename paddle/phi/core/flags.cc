@@ -1044,6 +1044,18 @@ PHI_DEFINE_EXPORTED_bool(new_executor_use_cuda_graph,
                          false,
                          "Use CUDA Graph in new executor");
 
+/*
+ * Executor related FLAG
+ * Name: FLAGS_executor_log_deps_every_microsecond
+ * Since Version: 2.5
+ * Value Range: uint64, default=0
+ * Example: FLAGS_executor_log_deps_every_microsecond=n (n>0) would
+ * allow new executor log deps every n microseconds.
+ */
+PHI_DEFINE_EXPORTED_uint64(executor_log_deps_every_microsecond,
+                           0,
+                           "Enable new executor log deps every n microseconds");
+
 DEFINE_int32(record_pool_max_size,
              2000000,
              "SlotRecordDataset slot record pool max size");
