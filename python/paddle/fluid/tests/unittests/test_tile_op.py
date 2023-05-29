@@ -44,7 +44,7 @@ class TestTileOpRank1(OpTest):
         self.repeat_times = [2]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_cinn=self.enable_cinn)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_prim=True)
@@ -109,6 +109,7 @@ class TestTileOpRank4(TestTileOpRank1):
 
 
 # Situation 2: repeat_times is a list (with tensor)
+# CINN not support repeat_times is a tensor now
 class TestTileOpRank1_tensor_attr(OpTest):
     def setUp(self):
         self.op_type = "tile"
@@ -155,6 +156,7 @@ class TestTileOpRank2_attr_tensor(TestTileOpRank1_tensor_attr):
 
 
 # Situation 3: repeat_times is a tensor
+# CINN not support repeat_times is a tensor now
 class TestTileOpRank1_tensor(OpTest):
     def setUp(self):
         self.op_type = "tile"
@@ -191,6 +193,7 @@ class TestTileOpInteger(OpTest):
     def setUp(self):
         self.op_type = "tile"
         self.python_api = paddle.tile
+        self.enable_cinn = True
         self.inputs = {
             'X': np.random.randint(10, size=(4, 4, 5)).astype("int32")
         }
@@ -199,7 +202,7 @@ class TestTileOpInteger(OpTest):
         self.outputs = {'Out': output}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_cinn=self.enable_cinn)
 
 
 class TestTileFP16OP(OpTest):
@@ -223,7 +226,7 @@ class TestTileFP16OP(OpTest):
         self.repeat_times = [2, 1, 4]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_cinn=self.enable_cinn)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_prim=True)
@@ -251,7 +254,7 @@ class TestTileBF16OP(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, check_cinn=self.enable_cinn)
 
     def init_data(self):
         self.dtype = np.uint16
@@ -268,13 +271,14 @@ class TestTileOpBoolean(OpTest):
     def setUp(self):
         self.op_type = "tile"
         self.python_api = paddle.tile
+        self.enable_cinn = True
         self.inputs = {'X': np.random.randint(2, size=(2, 4, 5)).astype("bool")}
         self.attrs = {'repeat_times': [2, 1, 4]}
         output = np.tile(self.inputs['X'], (2, 1, 4))
         self.outputs = {'Out': output}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_cinn=self.enable_cinn)
 
 
 # Situation 56: input x is Integer
@@ -282,6 +286,7 @@ class TestTileOpInt64_t(OpTest):
     def setUp(self):
         self.op_type = "tile"
         self.python_api = paddle.tile
+        self.enable_cinn = True
         self.inputs = {
             'X': np.random.randint(10, size=(2, 4, 5)).astype("int64")
         }
@@ -290,7 +295,7 @@ class TestTileOpInt64_t(OpTest):
         self.outputs = {'Out': output}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_cinn=self.enable_cinn)
 
 
 class TestTileError(unittest.TestCase):

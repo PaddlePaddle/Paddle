@@ -34,6 +34,7 @@ class TestAtan2(OpTest):
     def setUp(self):
         self.op_type = "atan2"
         self.python_api = paddle.atan2
+        self.enable_cinn = True
         self.init_dtype()
 
         x1 = np.random.uniform(-1, -0.1, [15, 17]).astype(self.dtype)
@@ -44,10 +45,10 @@ class TestAtan2(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_grad(self):
-        self.check_grad(['X1', 'X2'], 'Out')
+        self.check_grad(['X1', 'X2'], 'Out', check_cinn=self.enable_cinn)
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_cinn=self.enable_cinn)
 
     def init_dtype(self):
         self.dtype = np.float64
@@ -67,6 +68,7 @@ class TestAtan2_float(TestAtan2):
                     self.inputs['X2'],
                     1 / self.inputs['X1'].size,
                 ),
+                check_cinn=self.enable_cinn,
             )
 
 
@@ -139,6 +141,7 @@ class TestAtan2BF16OP(OpTest):
         self.op_type = 'atan2'
         self.python_api = paddle.atan2
         self.dtype = np.uint16
+        self.enable_cinn = True
         x1 = np.random.uniform(-1, -0.1, [15, 17]).astype('float32')
         x2 = np.random.uniform(0.1, 1, [15, 17]).astype('float32')
         out = np.arctan2(x1, x2)
@@ -151,11 +154,13 @@ class TestAtan2BF16OP(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, check_cinn=self.enable_cinn)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X1', 'X2'], 'Out')
+        self.check_grad_with_place(
+            place, ['X1', 'X2'], 'Out', check_cinn=self.enable_cinn
+        )
 
 
 class TestAtan2Error(unittest.TestCase):
