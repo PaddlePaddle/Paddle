@@ -134,6 +134,57 @@ class TestCdistAPICase12(TestCdistAPI):
         self.p = 3.0
 
 
+# test for different compute mode output same result
+class TestCdistAPICase13(TestCdistAPI):
+    def init_input(self):
+        self.x = np.random.rand(3, 4, 500, 100).astype('float64')
+        self.y = np.random.rand(3, 4, 400, 100).astype('float64')
+
+    def test_static_api(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data('x', self.x.shape, dtype=self.x.dtype)
+            y = paddle.static.data('y', self.y.shape, dtype=self.y.dtype)
+            out0 = paddle.cdist(x, y, self.p, self.compute_mode)
+            out1 = paddle.cdist(x, y, self.p, "donot_use_mm_for_euclid_dist")
+            out2 = paddle.cdist(x, y, self.p, "use_mm_for_euclid_dist")
+            exe = paddle.static.Executor(self.place)
+            res = exe.run(
+                feed={'x': self.x, 'y': self.y}, fetch_list=[out0, out1, out2]
+            )
+            out_ref = ref_cdist(self.x, self.y, self.p)
+            self.assertEqual(np.allclose(out_ref, res[0]), True)
+            self.assertEqual(np.allclose(out_ref, res[1]), True)
+            self.assertEqual(np.allclose(out_ref, res[2]), True)
+
+    def test_dygraph_api(self):
+        paddle.disable_static(self.place)
+        x = paddle.to_tensor(self.x)
+        y = paddle.to_tensor(self.y)
+        out0 = paddle.cdist(x, y, self.p, self.compute_mode)
+        out1 = paddle.cdist(x, y, self.p, "donot_use_mm_for_euclid_dist")
+        out2 = paddle.cdist(x, y, self.p, "use_mm_for_euclid_dist")
+        out_ref = ref_cdist(self.x, self.y, self.p)
+        self.assertEqual(np.allclose(out_ref, out0.numpy()), True)
+        self.assertEqual(np.allclose(out_ref, out1.numpy()), True)
+        self.assertEqual(np.allclose(out_ref, out2.numpy()), True)
+        paddle.enable_static()
+
+
+# test for broadcast
+class TestCdistAPICase14(TestCdistAPI):
+    def init_input(self):
+        self.x = np.random.rand(3, 4, 500, 100).astype('float64')
+        self.y = np.random.rand(1, 4, 400, 100).astype('float64')
+
+
+# test for broadcast
+class TestCdistAPICase15(TestCdistAPI):
+    def init_input(self):
+        self.x = np.random.rand(3, 4, 500, 100).astype('float64')
+        self.y = np.random.rand(4, 400, 100).astype('float64')
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

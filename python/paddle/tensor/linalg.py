@@ -3395,7 +3395,7 @@ def cdist(
 
     check_variable_and_dtype(x, 'x', ('float32', 'float64'), 'cdist')
     check_variable_and_dtype(y, 'y', ('float32', 'float64'), 'cdist')
-    check_type(p, 'p', (float, int), 'dist')
+    check_type(p, 'p', (float, int), 'cdist')
 
     if compute_mode not in [
         'use_mm_for_euclid_dist_if_necessary',
@@ -3425,11 +3425,6 @@ def cdist(
     assert len(y_shape) >= 2, (
         "The y must be at least 2-dimensional, "
         "But received Input y's dimensional is %s.\n" % len(y_shape)
-    )
-    assert x_shape[:-2] == y_shape[:-2], (
-        "For batched compute, the x and y must have same first {} dimensions, "
-        "But received Input x's shape is {}, "
-        "Input y's shape is {}.\n".format(len(x_shape[:-2]), x_shape, y_shape)
     )
     assert x_shape[-1] == y_shape[-1], (
         "The x and y must have same last dimension, "
