@@ -49,6 +49,12 @@ def clear_all_process_groups():
     _g_process_group_map[0] = ProcessGroup(0, [])
 
 
+def remove_process_group(ring_id):
+    global _g_process_group_map
+    if ring_id in _g_process_group_map:
+        _g_process_group_map.pop(ring_id)
+
+
 def new_process_group(ranks, group_id=None, force_new_group=False):
 
     global _g_process_group_map

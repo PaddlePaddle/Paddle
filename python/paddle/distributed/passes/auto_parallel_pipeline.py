@@ -14,6 +14,7 @@
 
 import os
 
+from paddle.distributed.auto_parallel.process_group import remove_process_group
 from paddle.distributed.auto_parallel.utils import (
     is_backward_op,
     is_forward_op,
@@ -554,8 +555,11 @@ class PipelinePass(PassBase):
                                     send_vars_name.add(
                                         op.desc.input_arg_names()[0]
                                     )
+                                    if op.type == "send_v2":
+                                        remove_process_group(op.attr("ring_id"))
                                     continue
                                 if op.type == "send_v2":
+                                    remove_process_group(op.attr("ring_id"))
                                     continue
                         self._create_program(
                             src_block, send_block, op, force_create=True
@@ -569,6 +573,8 @@ class PipelinePass(PassBase):
                         ) and "/auto_parallel/reshard" in op.attr(
                             'op_namescope'
                         ):
+                            if op.type in ["send_v2", "recv_v2"]:
+                                remove_process_group(op.attr("ring_id"))
                             # remove the suffix of "@RESHARD"
                             var_name = op.desc.output_arg_names()[0]
                             index = var_name.find("@")
