@@ -112,6 +112,7 @@ void TransferLayoutGeneral(const Context& dev_ctx,
     }
   }
 #endif
+
   PD_VISIT_ALL_TYPES(x.dtype(), "CastDataLayout", ([&] {
                        CastDataLayout<data_t, Context>(dev_ctx, x, axis, out);
                      }));

@@ -41,7 +41,7 @@ if(WITH_CRYPTO)
   list(APPEND paddle_inference_api_deps paddle_crypto)
 endif()
 if(WITH_CUSTOM_DEVICE)
-  set(paddle_inference_api_deps ${paddle_inference_api_deps} phi_capi)
+  set(paddle_inference_api_deps ${paddle_inference_api_deps} phi)
 endif()
 
 cc_library(
@@ -50,7 +50,7 @@ cc_library(
   DEPS ${paddle_inference_api_deps})
 
 if(WIN32)
-  target_link_libraries(paddle_inference_api gflags)
+  target_link_libraries(paddle_inference_api phi)
 endif()
 
 set(inference_deps ${analysis_deps} paddle_inference_api analysis

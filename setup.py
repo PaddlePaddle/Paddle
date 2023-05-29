@@ -966,7 +966,14 @@ def get_package_data_and_package_dir():
     # put all thirdparty libraries in paddle.libs
     libs_path = paddle_binary_dir + '/python/paddle/libs'
     package_data['paddle.libs'] = []
-    package_data['paddle.libs'] = [
+
+    if env_dict.get("WITH_PHI_SHARED") == "ON":
+        package_data['paddle.libs'] = [
+            ('libphi' if os.name != 'nt' else 'phi') + ext_suffix
+        ]
+        shutil.copy(env_dict.get("PHI_LIB"), libs_path)
+
+    package_data['paddle.libs'] += [
         ('libwarpctc' if os.name != 'nt' else 'warpctc') + ext_suffix,
         ('libwarprnnt' if os.name != 'nt' else 'warprnnt') + ext_suffix,
     ]
@@ -1204,6 +1211,13 @@ def get_package_data_and_package_dir():
                     + env_dict.get("FLUID_CORE_NAME")
                     + '.so'
                 )
+                if env_dict.get("WITH_PHI_SHARED") == "ON":
+                    commands.append(
+                        "install_name_tool -add_rpath '@loader_path' "
+                        + env_dict.get("PADDLE_BINARY_DIR")
+                        + '/python/paddle/libs/'
+                        + env_dict.get("PHI_NAME")
+                    )
             else:
                 commands = [
                     "patchelf --set-rpath '$ORIGIN/../libs/' "
@@ -1212,6 +1226,13 @@ def get_package_data_and_package_dir():
                     + env_dict.get("FLUID_CORE_NAME")
                     + '.so'
                 ]
+                if env_dict.get("WITH_PHI_SHARED") == "ON":
+                    commands.append(
+                        "patchelf --set-rpath '$ORIGIN' "
+                        + env_dict.get("PADDLE_BINARY_DIR")
+                        + '/python/paddle/libs/'
+                        + env_dict.get("PHI_NAME")
+                    )
             # The sw_64 not suppot patchelf, so we just disable that.
             if platform.machine() != 'sw_64' and platform.machine() != 'mips64':
                 for command in commands:

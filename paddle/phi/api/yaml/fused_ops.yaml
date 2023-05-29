@@ -4,6 +4,16 @@
 # if one operator have "support_dygraph_mode : true", it supports dygraph mode,
 # otherwise the operator only could be used in static mode.
 
+- op : add_act_xpu
+  args : (Tensor x, Tensor x_max, Tensor y, Tensor y_max, int act_type)
+  output : Tensor(out), Tensor(out_max)
+  infer_meta :
+    func : AddActXPUInferMeta
+  kernel :
+    func : add_act_xpu
+    data_type : x
+  optional : x_max, y_max
+
 - op : conv2d_xpu
   args : (Tensor x, Tensor x_max, Tensor filter, Tensor filter_max, Tensor bias, Tensor branch, Tensor branch_max, int[] paddings, int[] dilations, int[] strides, str padding_algorithm, int groups, bool has_bias, bool has_branch, int act_type, float act_param)
   output : Tensor(out), Tensor(out_max)

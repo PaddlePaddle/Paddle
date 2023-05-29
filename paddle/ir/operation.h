@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/ir/builtin_attribute.h"
+#include <iostream>
 #include "paddle/ir/op_info.h"
 #include "paddle/ir/operation_utils.h"
 #include "paddle/ir/type.h"
@@ -45,9 +45,9 @@ class alignas(8) Operation final {
 
   IrContext *ir_context() const;
 
-  ir::OpResult GetResultByIndex(uint32_t index);
+  ir::OpResult GetResultByIndex(uint32_t index) const;
 
-  ir::OpOperand GetOperandByIndex(uint32_t index);
+  ir::OpOperand GetOperandByIndex(uint32_t index) const;
 
   std::string print();
 
@@ -62,7 +62,7 @@ class alignas(8) Operation final {
   std::string op_name() const;
 
   template <typename T>
-  T dyn_cast() const {
+  T dyn_cast() {
     return CastUtil<T>::call(this);
   }
 
@@ -90,7 +90,7 @@ class alignas(8) Operation final {
 
   template <typename T, typename Enabler = void>
   struct CastUtil {
-    static T call(const Operation *op) {
+    static T call(Operation *op) {
       throw("Can't dyn_cast to T, T should be a Op or Trait or Interface");
     }
   };
@@ -99,7 +99,7 @@ class alignas(8) Operation final {
   struct CastUtil<
       T,
       typename std::enable_if<std::is_base_of<OpBase, T>::value>::type> {
-    static T call(const Operation *op) { return T::dyn_cast(op); }
+    static T call(Operation *op) { return T::dyn_cast(op); }
   };
 
   AttributeMap attribute_;

@@ -28,6 +28,21 @@ namespace ir {
 
 namespace {
 constexpr char newline[] = "\n";
+
+template <typename ForwardIterator, typename UnaryFunctor, typename NullFunctor>
+void PrintInterleave(ForwardIterator begin,
+                     ForwardIterator end,
+                     UnaryFunctor print_func,
+                     NullFunctor between_func) {
+  if (begin == end) return;
+  print_func(*begin);
+  begin++;
+  for (; begin != end; begin++) {
+    between_func();
+    print_func(*begin);
+  }
+}
+
 }  // namespace
 
 class Printer {
@@ -47,6 +62,15 @@ class Printer {
       os << "i32";
     } else if (type.isa<ir::Int64Type>()) {
       os << "i64";
+    } else if (type.isa<ir::VectorType>()) {
+      os << "vec<";
+      auto inner_types = type.dyn_cast<ir::VectorType>().data();
+      PrintInterleave(
+          inner_types.begin(),
+          inner_types.end(),
+          [this](ir::Type v) { this->PrintType(v); },
+          [this]() { this->os << ","; });
+      os << ">";
     } else {
       auto& dialect = type.dialect();
       dialect.PrintType(type, os);
@@ -71,25 +95,11 @@ class ProgramPrinter : public Printer {
   explicit ProgramPrinter(std::ostream& os) : Printer(os), cur_var_number(0) {}
 
   void Print(ir::Program& program) {
-    for (auto* op : program.ops()) {
-      PrintOperation(op);
+    auto iterator = program.block()->begin();
+    while (iterator != program.block()->end()) {
+      PrintOperation(*iterator);
       os << newline;
-    }
-  }
-
-  template <typename ForwardIterator,
-            typename UnaryFunctor,
-            typename NullFunctor>
-  void PrintInterleave(ForwardIterator begin,
-                       ForwardIterator end,
-                       UnaryFunctor print_func,
-                       NullFunctor between_func) {
-    if (begin == end) return;
-    print_func(*begin);
-    begin++;
-    for (; begin != end; begin++) {
-      between_func();
-      print_func(*begin);
+      iterator++;
     }
   }
 

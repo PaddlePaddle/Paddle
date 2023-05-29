@@ -17,10 +17,7 @@
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
-#include "paddle/phi/kernels/funcs/common_shape.h"
-#include "paddle/phi/kernels/funcs/math_function.h"
 
 namespace phi {
 
