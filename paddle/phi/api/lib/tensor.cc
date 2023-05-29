@@ -363,6 +363,10 @@ gpuStream_t Tensor::stream() const {
 }
 #endif
 
+const std::string &Tensor::name() const { return name_; }
+
+void Tensor::set_name(const std::string &name) { name_ = name; }
+
 /* Part 5: Status utils methods */
 
 bool Tensor::defined() const { return impl_ != nullptr; }
