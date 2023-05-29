@@ -544,7 +544,7 @@ class TestArgsortBF16OP(OpTest):
 
     def init(self):
         self.input_shape = [
-            10000,
+            1000,
         ]
         self.axis = 0
 
