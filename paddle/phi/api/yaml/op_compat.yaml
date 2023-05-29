@@ -14,10 +14,6 @@
 #   extra :
 #     attrs : [bool is_test = false]
 
-  extra :
-    attrs : [bool use_mkldnn = false, bool use_quantizer = false,
-              str mkldnn_data_type = "float32", bool is_test = false]
-
 - op : abs
   backward : abs_grad
   inputs :
