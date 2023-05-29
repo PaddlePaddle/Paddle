@@ -36,6 +36,7 @@
   kernel :
     func : add_triple_grad
   inplace : (grad_grad_out_grad -> grad_grad_x_grad)
+  composite : add_triple_grad (grad_grad_x, grad_grad_y, grad_grad_out_grad, axis, grad_grad_x_grad, grad_grad_y_grad )
 
 - backward_op : amax_grad
   forward: amax (Tensor x,  int64_t[] axis={},  bool keepdim=false) -> Tensor(out)
