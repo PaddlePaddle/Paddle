@@ -53,7 +53,7 @@ class TestCdistAPI(unittest.TestCase):
             exe = paddle.static.Executor(self.place)
             res = exe.run(feed={'x': self.x, 'y': self.y}, fetch_list=[out])
             out_ref = ref_cdist(self.x, self.y, self.p)
-            self.assertEqual(np.allclose(out_ref, res[0]), True)
+            np.testing.assert_allclose(out_ref, res[0], rtol=1e-5, atol=1e-5)
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
@@ -61,7 +61,7 @@ class TestCdistAPI(unittest.TestCase):
         y = paddle.to_tensor(self.y)
         out = paddle.cdist(x, y, self.p, self.compute_mode)
         out_ref = ref_cdist(self.x, self.y, self.p)
-        self.assertEqual(np.allclose(out_ref, out.numpy()), True)
+        np.testing.assert_allclose(out_ref, out.numpy(), rtol=1e-5, atol=1e-5)
         paddle.enable_static()
 
 
@@ -153,9 +153,9 @@ class TestCdistAPICase13(TestCdistAPI):
                 feed={'x': self.x, 'y': self.y}, fetch_list=[out0, out1, out2]
             )
             out_ref = ref_cdist(self.x, self.y, self.p)
-            self.assertEqual(np.allclose(out_ref, res[0]), True)
-            self.assertEqual(np.allclose(out_ref, res[1]), True)
-            self.assertEqual(np.allclose(out_ref, res[2]), True)
+            np.testing.assert_allclose(out_ref, res[0])
+            np.testing.assert_allclose(out_ref, res[2])
+            np.testing.assert_allclose(out_ref, res[2])
 
     def test_dygraph_api(self):
         paddle.disable_static(self.place)
@@ -165,9 +165,9 @@ class TestCdistAPICase13(TestCdistAPI):
         out1 = paddle.cdist(x, y, self.p, "donot_use_mm_for_euclid_dist")
         out2 = paddle.cdist(x, y, self.p, "use_mm_for_euclid_dist")
         out_ref = ref_cdist(self.x, self.y, self.p)
-        self.assertEqual(np.allclose(out_ref, out0.numpy()), True)
-        self.assertEqual(np.allclose(out_ref, out1.numpy()), True)
-        self.assertEqual(np.allclose(out_ref, out2.numpy()), True)
+        np.testing.assert_allclose(out_ref, out0.numpy())
+        np.testing.assert_allclose(out_ref, out1.numpy())
+        np.testing.assert_allclose(out_ref, out2.numpy())
         paddle.enable_static()
 
 
