@@ -28,9 +28,11 @@ np.random.seed(42)
 
 data_5d = [
     [[2, 3, 4, 5, 6], [0, 1, 2, 4], [0, 1, 2, -4], [3, 3, 4, -2]],
+    [[2, 64, 256, 256, 10], [0, 1, 2, 4], [0, 1, 2, -4], [3, 3, 4, -2]],
 ]
 data_4d = [
     [[2, 3, 4, 5], [0, 1, 2, 3], [0, 1, 2, -4], [3, 3, 4, -2]],
+    [[64, 256, 256, 10], [0, 1, 2, 3], [0, 1, 2, -4], [3, 3, 4, -2]],
 ]
 
 data_3d = [
@@ -41,6 +43,7 @@ data_3d = [
     [[4, 4, 5], [1], [2], [3]],
     [[4, 4, 5], [1, 2], [2, 2], [3, 4]],
     [[4, 4, 5], [0, 2], [2, 2], [3, 4]],
+    [[256, 256, 10], [0, 2], [2, 2], [3, 4]],
 ]
 
 data_2d = [
@@ -115,6 +118,8 @@ class TestSparseSlice(unittest.TestCase):
             self.check_result_with_shape(*item, format='coo')
 
     def test_coo_2d(self):
+        x = [[1, 2, 3, 4], [0, 1, 2, 0]]
+        self.check_result_with_list(x, [0, 1], [0, 1], [2, 3], format='coo')
         for item in data_2d:
             self.check_result_with_shape(*item, format='coo')
 

@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <thrust/device_vector.h>
+#include <thrust/sort.h>
+
 #include "paddle/phi/kernels/sparse/unary_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
@@ -32,7 +35,8 @@ __global__ void GetCooNonZeroNumberCudaKernel(const int64_t* x_indices_data,
                                               const int64_t* ends,
                                               const int64_t axes_size,
                                               const int64_t x_nnz,
-                                              int* out_nnz) {
+                                              int* out_nnz,
+                                              int64_t* out_nnz_indices) {
   CUDA_KERNEL_LOOP_TYPE(j, x_nnz, int64_t) {
     bool hit = true;
     for (size_t ii = 0; ii < axes_size; ++ii) {
@@ -43,7 +47,8 @@ __global__ void GetCooNonZeroNumberCudaKernel(const int64_t* x_indices_data,
       }
     }
     if (!hit) continue;
-    atomicAdd(out_nnz, 1);
+    int old_value = atomicAdd(out_nnz, 1);
+    out_nnz_indices[old_value] = j;
   }
 }
 
@@ -52,37 +57,27 @@ __global__ void GetCooOutCudaKernel(const int64_t* x_indices_data,
                                     const T* x_values_data,
                                     const int64_t* axes,
                                     const int64_t* starts,
-                                    const int64_t* ends,
                                     const int64_t axes_size,
                                     const int64_t sparse_dim,
                                     const int64_t x_nnz,
                                     const int64_t out_nnz,
+                                    const int64_t* out_nnz_indices,
                                     int64_t* out_indices_data,
                                     T* out_values_data) {
-  int64_t tid = static_cast<int64_t>(blockIdx.x) * blockDim.x + threadIdx.x;
-  if (tid == 0) {
-    int64_t index = 0;
-    for (int64_t j = 0; j < x_nnz && index < out_nnz; ++j) {
-      bool hit = true;
-      for (size_t ii = 0; ii < axes_size; ++ii) {
-        auto item = x_indices_data[axes[ii] * x_nnz + j];
-        if (!(starts[ii] <= item && item < ends[ii])) {
-          hit = false;
-          break;
-        }
-      }
-      if (!hit) continue;
-      // set value
-      out_values_data[index] = x_values_data[j];
-      // set coordinate
-      for (int64_t i = 0; i < sparse_dim; ++i) {
-        out_indices_data[i * out_nnz + index] = x_indices_data[i * x_nnz + j];
-      }
-      for (size_t ii = 0; ii < axes_size; ++ii) {
-        auto i = axes[ii];
-        out_indices_data[i * out_nnz + index] -= starts[ii];
-      }
-      index++;
+  CUDA_KERNEL_LOOP_TYPE(index, out_nnz, int64_t) {
+    // index is in the order of the non-zero elements in out
+    // out_nnz_indices[index] is the valid index in x's non-zero elements, where
+    // the `hit` is true.
+    int64_t j = out_nnz_indices[index];
+    // set value
+    out_values_data[index] = x_values_data[j];
+    // set coordinate
+    for (int64_t i = 0; i < sparse_dim; ++i) {
+      out_indices_data[i * out_nnz + index] = x_indices_data[i * x_nnz + j];
+    }
+    for (size_t ii = 0; ii < axes_size; ++ii) {
+      auto i = axes[ii];
+      out_indices_data[i * out_nnz + index] -= starts[ii];
     }
   }
 }
@@ -112,6 +107,13 @@ void SliceCooKernel(const Context& dev_ctx,
   int* d_out_nnz_ptr = d_out_nnz.data<int32_t>();
   phi::backends::gpu::GpuMemsetAsync(
       d_out_nnz_ptr, 0, sizeof(int32_t), dev_ctx.stream());
+
+  // out_nnz_indices is the indices where the data is valid in out
+  // the length of the out_nnz_indices must be less than x.nnz()
+  DenseTensor d_out_nnz_indices = phi::Empty<int64_t>(dev_ctx, {x.nnz()});
+  int64_t* d_out_nnz_indices_ptr = d_out_nnz_indices.data<int64_t>();
+  phi::backends::gpu::GpuMemsetAsync(
+      d_out_nnz_indices_ptr, 0, sizeof(int64_t), dev_ctx.stream());
 
   // copy axes to device
   auto d_axes_tensor = memory_utils::Alloc(
@@ -164,14 +166,27 @@ void SliceCooKernel(const Context& dev_ctx,
                                                       d_ends,
                                                       axes.size(),
                                                       x.nnz(),
-                                                      d_out_nnz_ptr);
+                                                      d_out_nnz_ptr,
+                                                      d_out_nnz_indices_ptr);
 
+  // copy d_out_nnz from device to host (out_nnz)
   int32_t out_nnz = 0;
   phi::backends::gpu::GpuMemcpyAsync(&out_nnz,
                                      d_out_nnz_ptr,
                                      sizeof(int32_t),
                                      gpuMemcpyDeviceToHost,
                                      dev_ctx.stream());
+  // sort `d_out_nnz_indices_ptr`
+  d_out_nnz_indices.Resize({out_nnz});
+  thrust::device_vector<int64_t> d_out_nnz_indices_vec(
+      d_out_nnz_indices_ptr, d_out_nnz_indices_ptr + out_nnz);
+  thrust::sort(d_out_nnz_indices_vec.begin(), d_out_nnz_indices_vec.end());
+  phi::backends::gpu::GpuMemcpyAsync(
+      d_out_nnz_indices_ptr,
+      thrust::raw_pointer_cast(d_out_nnz_indices_vec.data()),
+      out_nnz * sizeof(int64_t),
+      gpuMemcpyDeviceToDevice,
+      dev_ctx.stream());
 
   // Step4: Get the values and indices of output
   auto sparse_dim = static_cast<int64_t>(x.sparse_dim());
@@ -184,18 +199,21 @@ void SliceCooKernel(const Context& dev_ctx,
   auto* out_values_data = out_values.data<T>();
   const auto* x_values_data = x.values().data<T>();
 
-  GetCooOutCudaKernel<T>
-      <<<1, 1, 0, dev_ctx.stream()>>>(x_indices_data,
-                                      x_values_data,
-                                      d_axes,
-                                      d_starts,
-                                      d_ends,
-                                      axes.size(),
-                                      sparse_dim,
-                                      x.nnz(),
-                                      static_cast<int64_t>(out_nnz),
-                                      out_indices_data,
-                                      out_values_data);
+  config = phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_nnz, 1);
+  GetCooOutCudaKernel<T><<<config.block_per_grid.x,
+                           config.thread_per_block.x,
+                           0,
+                           dev_ctx.stream()>>>(x_indices_data,
+                                               x_values_data,
+                                               d_axes,
+                                               d_starts,
+                                               axes.size(),
+                                               sparse_dim,
+                                               x.nnz(),
+                                               static_cast<int64_t>(out_nnz),
+                                               d_out_nnz_indices_ptr,
+                                               out_indices_data,
+                                               out_values_data);
 }
 
 __global__ void GetCsrNonZeroNumberCudaKernel(const int64_t* x_crows_data,
