@@ -19,13 +19,17 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/distributed/auto_parallel/spmd_rules/dist_tensor_spec.h"
 #include "paddle/fluid/framework/type_defs.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
+
+#include "paddle/fluid/distributed/auto_parallel/spmd_rules/dist_tensor_spec.h"
 
 namespace paddle {
 namespace distributed {
 namespace auto_parallel {
+
+using paddle::framework::Attribute;
 
 class SPMDRuleBase {
  public:
@@ -64,10 +68,10 @@ class SPMDRuleBase {
   const Attribute& GetAttr(const std::string& name,
                            const paddle::framework::AttributeMap& attrs) const {
     auto iter = attrs.find(name);
-    PADDLE_ENFORCE_NE(
-        iter,
-        attrs.end(),
-        platform::errors::NotFound("(%s) is not found in AttributeMap."));
+    PADDLE_ENFORCE_NE(iter,
+                      attrs.end(),
+                      paddle::platform::errors::NotFound(
+                          "(%s) is not found in AttributeMap."));
     return iter->second;
   }
 };
@@ -95,6 +99,15 @@ TensorDistAttr CopyTensorDistAttrForOutput(const TensorDistAttr& src_dist_attr);
 std::vector<int64_t> ResoluteOutputPartialDimension(
     const std::unordered_map<std::string, int64_t>& axis_to_dim_map,
     const std::string& tensor_axes);
+
+// Generate the axis notation of tensor for the einsum notation of a broadcast
+// operation(alignment star from the rightmost axis). tenosr_ndim: the size of
+// the tensor. broadcast_ndim: the maxium size of tensors in this broadcast
+// operation. alphabet: the characters used to represent the axes of tensor.
+// length of alphabet should >= broadcast_ndim.
+std::string GetBroadcastAxes(const int64_t& tenosr_ndim,
+                             const int64_t& broadcast_ndim,
+                             const std::string& alphabet);
 
 }  // namespace auto_parallel
 }  // namespace distributed
