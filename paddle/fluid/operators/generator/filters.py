@@ -64,7 +64,7 @@ class {to_pascal_case(op_name)}InferVarType : public framework::VarTypeInference
 """
     elif op_name == "merge_selected_rows":
         return f"""
-class {to_pascal_case(op_name)}InferVarType: public framework::PassInDtypeAndVarTypeToOutput {{
+class {to_pascal_case(op_name)}InferVarType : public framework::PassInDtypeAndVarTypeToOutput {{
  protected:
   std::unordered_map<std::string, std::string>& GetInputOutputWithSameType() const override {{
       static std::unordered_map<std::string, std::string> m{{{{"X", /*->*/ "Out"}}}};
@@ -79,6 +79,19 @@ class {to_pascal_case(op_name)}InferVarType : public framework::VarTypeInference
   void operator()(framework::InferVarTypeContext *ctx) const override {{
     ctx->SetOutputType("Out", ctx->GetInputType("Input"));
     ctx->SetOutputDataType("Out", ctx->GetInputDataType("Input"));
+  }}
+}};
+"""
+    elif op_name == "strided_slice_grad":
+        return f"""
+class {to_pascal_case(op_name)}InferVarType : public framework::VarTypeInference {{
+ public:
+  void operator()(framework::InferVarTypeContext *ctx) const override {{
+    ctx->SetOutputType(framework::GradVarName("Input"),
+                       ctx->GetInputType(framework::GradVarName("Out")));
+    ctx->SetOutputDataType(
+        framework::GradVarName("Input"),
+        ctx->GetInputDataType(framework::GradVarName("Out")));
   }}
 }};
 """

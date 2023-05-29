@@ -48,6 +48,10 @@ phi::KernelKey GetStridedSliceExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr);
 
+phi::KernelKey GetStridedSliceGradExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr);
+
 phi::KernelKey GetUpdateLossScalingExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr);

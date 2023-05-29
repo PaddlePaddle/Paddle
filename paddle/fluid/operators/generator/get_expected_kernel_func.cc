@@ -211,6 +211,14 @@ phi::KernelKey GetStridedSliceExpectedKernelType(
                         in_tensor->place());
 }
 
+phi::KernelKey GetStridedSliceGradExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr) {
+  return phi::KernelKey(
+      op_ptr->IndicateVarDataType(ctx, framework::GradVarName("Out")),
+      ctx.GetPlace());
+}
+
 phi::KernelKey GetUpdateLossScalingExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr) {
