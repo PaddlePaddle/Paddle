@@ -243,7 +243,8 @@ struct EmbeddingGradCUDAFunctor {
           threads.y = 1;
         }
         if (std::is_same<T, phi::dtype::float16>::value) {
-          if (1.0 * K / N >= 0.5) {
+          const double para = 1.0 * K / N;
+          if (para >= 0.5) {
             LaunchEmbeddingGradHalf2Float<T, IdT>(
                 dev_ctx_, ids, d_output, d_table, N, D, K);
           } else {
