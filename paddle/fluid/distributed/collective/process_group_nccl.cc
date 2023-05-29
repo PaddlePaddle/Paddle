@@ -356,27 +356,18 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::ReduceScatter(
     const ReduceScatterOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
-  phi::distributed::CommStaticCheck::ScatterLikeShape(*out_tensor,
-                                                      in_tensor,
-                                                      /*dst_rank*/ rank_,
-                                                      /*cur_rank*/ rank_,
-                                                      size_);
   return RunFnInNCCLEnv(
       [&](ncclComm_t comm, gpuStream_t stream) {
-        if (FLAGS_enable_nccl_dynamic_check) {
-          phi::distributed::NCCLDynamicCheck::CheckShape(*out_tensor,
-                                                         /*root_rank*/ 0,
-                                                         rank_,
-                                                         comm);
-        }
-        NCCL_CHECK(phi::dynload::ncclReduceScatter(
-            in_tensor.data(),
-            out_tensor->data(),
-            out_tensor->numel(),
-            phi::ToNCCLDataType(in_tensor.dtype()),
-            ToNCCLRedType(opts.reduce_op),
-            comm,
-            stream));
+        const auto& comm_context_manager =
+            phi::distributed::CommContextManager::GetInstance();
+        auto comm_context = static_cast<phi::distributed::NCCLCommContext*>(
+            comm_context_manager.Get(this->gid_));
+        PADDLE_ENFORCE_NE(
+            comm_context,
+            nullptr,
+            phi::errors::Unavailable("NCCLCommContext is nullptr"));
+        comm_context->ReduceScatter(
+            out_tensor, in_tensor, ToNCCLRedType(opts.reduce_op), stream);
       },
       in_tensor,
       CommType::REDUCE_SCATTER,

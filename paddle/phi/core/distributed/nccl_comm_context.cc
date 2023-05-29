@@ -82,7 +82,19 @@ void NCCLCommContext::AllGather(phi::DenseTensor* out_tensor,
 }
 void NCCLCommContext::ReduceScatter(phi::DenseTensor* out_tensor,
                                     const phi::DenseTensor& in_tensor,
+                                    ncclRedOp_t reduce_type,
                                     gpuStream_t stream) {
+  phi::distributed::CommStaticCheck::ScatterLikeShape(*out_tensor,
+                                                      in_tensor,
+                                                      /*dst_rank*/ rank_,
+                                                      /*cur_rank*/ rank_,
+                                                      size_);
+  if (FLAGS_enable_nccl_dynamic_check) {
+    phi::distributed::NCCLDynamicCheck::CheckShape(*out_tensor,
+                                                   /*root_rank*/ 0,
+                                                   rank_,
+                                                   nccl_comm_);
+  }
   int64_t out_size = in_tensor.numel() / GetSize();
   PADDLE_ENFORCE_GPU_SUCCESS(
       phi::dynload::ncclReduceScatter(in_tensor.data(),
