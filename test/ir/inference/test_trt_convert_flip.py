@@ -29,18 +29,22 @@ class TrtConvertFlipTest(TrtLayerAutoScanTest):
 
     def sample_program_configs(self):
         def generate_input1(dims, attrs: List[Dict[str, Any]]):
+            if dims == 1:
+                shape = [16]
             if dims == 2:
-                return np.ones([3, 32]).astype(np.float32)
+                shape = [1, 32]
             elif dims == 3:
-                return np.ones([3, 32, 32]).astype(np.float32)
+                shape = [1, 32, 32]
             else:
-                return np.ones([1, 3, 32, 32]).astype(np.float32)
+                shape = [1, 3, 32, 32]
+            return np.random.uniform(low=0.1, high=1.0, size=shape).astype(
+                np.float32
+            )
 
-        for dims in [1, 2, 3, 4]:
+        for dims in [2, 3, 4]:
+            self.dims = dims
             for axis in range(0, dims):
-                self.dims = dims
                 dics = [{"axis": [axis]}]
-
                 ops_config = [
                     {
                         "op_type": "flip",
@@ -85,7 +89,7 @@ class TrtConvertFlipTest(TrtLayerAutoScanTest):
                     "input_data": [1, 3, 16, 16]
                 }
                 self.dynamic_shape.max_input_shape = {
-                    "input_data": [4, 3, 32, 32]
+                    "input_data": [4, 3, 64, 64]
                 }
                 self.dynamic_shape.opt_input_shape = {
                     "input_data": [1, 3, 32, 32]

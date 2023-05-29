@@ -23,50 +23,74 @@ class FlipOpConverter : public OpConverter {
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {
-#if IS_TRT_VERSION_GE(8600)
     VLOG(3) << "convert a flip op to tensorrt layer";
     framework::OpDesc op_desc(op, nullptr);
 
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
     auto input_dims = input->getDimensions();
-
     int rank = input_dims.nbDims;
-    int axis = PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("axis"))[0];
-    if (axis < 0) {
-      axis += rank;
-    }
+    std::cout << "<<< rank:" << rank << std::endl;
 
-    // expand the batch dimension for dynamic shape
     auto* input_shape = Shape(input);
+    std::vector<int> axis_ =
+        PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("axis"));
+    std::cout << "<<< axis: " << axis_.back() << std::endl;
+    nvinfer1::Dims dummy;
+    dummy.nbDims = rank;
+    nvinfer1::ITensor* sizes{};
+    nvinfer1::ITensor* steps{};
+    nvinfer1::ITensor* starts{};
 
-    auto* batch_dim = Add1DConstantLayer(std::vector<int>{1});
-    std::vector<nvinfer1::ITensor*> concat_inputs{batch_dim, input_shape};
-    auto* new_shape_tensor = Concat(concat_inputs);
+    // for (int i = 0; i < (int)axis_.size() - 1; i++) {
+    //   int axis = axis_[i];
+    //   if (axis < 0) {
+    //     axis += rank;
+    //   }
 
-    auto* reshape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
-    reshape_layer->setInput(1, *new_shape_tensor);
+    //   // use Slice to filp one dimension
+    //   sizes = input_shape;
+    //   std::vector<int> steps_vector{rank, 1};
+    //   steps_vector[axis] = -1;
+    //   steps = Add1DConstantLayer(steps_vector);
 
-    auto* reshape_input = reshape_layer->getOutput(0);
+    //   std::vector<int> starts_vector{rank, 0};
+    //   starts_vector[axis] = 1;
+    //   auto* starts = Add1DConstantLayer(starts_vector);
+    //   starts = Prod(input_shape, starts);
+    //   starts = Sum(starts, steps);
 
-    // get the sequence length at the axis dimension
-    auto* sequence_lens = GetEleTensorOfShape(input_shape, axis);
+    //   auto* layer =
+    //       TRT_ENGINE_ADD_LAYER(engine_, Slice, *input, dummy, dummy, dummy);
 
-    std::cout << "axis <<<" << axis << std::endl;
-    auto* reverse_layer = TRT_ENGINE_ADD_LAYER(
-        engine_, ReverseSequence, *reshape_input, *sequence_lens);
+    //   layer->setInput(1, *starts);
+    //   layer->setInput(2, *sizes);
+    //   layer->setInput(2, *steps);
 
-    reverse_layer->setBatchAxis(0);
-    reverse_layer->setSequenceAxis(axis + 1);
+    //   input = layer->getOutput(0);
+    // }
 
-    auto* reshape_layer2 =
-        TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *reverse_layer->getOutput(0));
-    reshape_layer2->setInput(1, *input_shape);
+    // use Slice to filp one dimension
+    sizes = input_shape;
+    std::vector<int> steps_vector(rank, 1);
+    steps_vector[axis_.back()] = -1;
+    steps = Add1DConstantLayer(steps_vector);
 
+    std::vector<int> starts_vector(rank, 0);
+    starts_vector[axis_.back()] = 1;
+    starts = Add1DConstantLayer(starts_vector);
+    starts = Prod(input_shape, starts);
+    starts = Sum(starts, steps);
+
+    auto* slice_layer =
+        TRT_ENGINE_ADD_LAYER(engine_, Slice, *input, dummy, dummy, dummy);
+    slice_layer->setInput(1, *starts);
+    slice_layer->setInput(2, *sizes);
+    slice_layer->setInput(3, *steps);
+
+    std::cout << "<<<" << slice_layer->getOutput(0)->getDimensions().nbDims
+              << std::endl;
     auto output_name = op_desc.Output("Out")[0];
-    RreplenishLayerAndOutput(reshape_layer2, "flip", {output_name}, test_mode);
-#else
-    VLOG(3) << "Flip is not supported when TensorRT < 8.6";
-#endif
+    RreplenishLayerAndOutput(slice_layer, "flip", {output_name}, test_mode);
   }
 };
 

@@ -2709,9 +2709,7 @@ USE_TRT_CONVERTER(pad);
 #if IS_TRT_VERSION_GE(8200)
 USE_TRT_CONVERTER(pad3d);
 #endif
-#if IS_TRT_VERSION_GE(8600)
 USE_TRT_CONVERTER(flip);
-#endif
 USE_TRT_CONVERTER(hard_sigmoid);
 USE_TRT_CONVERTER(hard_swish);
 USE_TRT_CONVERTER(split);
@@ -2844,7 +2842,7 @@ USE_TRT_CONVERTER(qk_multihead_matmul)
 USE_TRT_CONVERTER(grid_sampler)
 #endif
 #if IS_TRT_VERSION_GE(8200)
-USE_TRT_CONVERTER(set_value)
+// USE_TRT_CONVERTER(set_value)
 USE_TRT_CONVERTER(index_select);
 USE_TRT_CONVERTER(temporal_shift)
 #endif
