@@ -137,7 +137,7 @@ class DistributedDataLoaderFromGenerator(DistributedDataLoaderBase):
             raise StopIteration
 
     def _infer_steps(self):
-        if self.steps_per_epoch is not None:
+        if isinstance(self.steps_per_epoch, int) and self.steps_per_epoch > 0:
             return self.steps_per_epoch
         try:
             if isinstance(self.dataset, IterableDataset):
@@ -150,7 +150,7 @@ class DistributedDataLoaderFromGenerator(DistributedDataLoaderBase):
                 )
         except:
             raise ValueError(
-                "Pleace set `steps_per_epoch` or implement `__len__` methond in dataset class."
+                "Please set `steps_per_epoch` or implement `__len__` method in dataset class."
             )
         return steps_per_epoch
 

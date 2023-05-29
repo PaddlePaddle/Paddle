@@ -80,7 +80,7 @@ def _remove_and_get_ops(main_program, dist_context):
     return optimize_ops_desc, allreduce_sum_desc
 
 
-def _create_gm_cond_var(main_program, k_steps, dist_context):
+def _get_gm_cond_var(main_program, k_steps, dist_context):
     main_block = main_program.global_block()
     # Add const var
     k_step_var = paddle.static.create_global_var(
@@ -334,6 +334,9 @@ def _create_cond_block_and_update_optimizer(
         # append optimizer ops
         for op_desc in optimize_ops_desc:
             if master_grad and is_gradient_clip_op(op_desc):
+                # the passes' order is amp --> gradient_clip --> gradient_merge,
+                # When master_grad is True, the gradient_clip ops' vars dtype must be fp32.
+                # Then the cast_ops should be removed, and the relevant ops' varname need to be renamed.
                 if op_desc.type() == "cast":
                     if (
                         op_desc.attr('out_dtype') in [4, 22]
@@ -366,13 +369,6 @@ def _create_cond_block_and_update_optimizer(
             # remove op_role_var
             if new_op_desc.has_attr(OP_ROLE_VAR_KEY):
                 new_op_desc.remove_attr(OP_ROLE_VAR_KEY)
-
-            # op's update Grad
-            if core.grad_var_suffix() in new_op_desc.input_arg_names():
-                grad_value = new_op_desc.input("Grad")[0]
-                # TODO FIXME(xym) support fp16
-                grad_merge_value = grad_value + '@MERGED'
-                new_op_desc.set_input("Grad", [grad_merge_value])
 
         cur_block._sync_with_cpp()
 
@@ -417,7 +413,7 @@ def parse_program(
     )
 
     # 3 create gradient_merge_cond
-    cond_var = _create_gm_cond_var(main_program, k_steps, dist_context)
+    cond_var = _get_gm_cond_var(main_program, k_steps, dist_context)
 
     # 4 create ConditionalBlock and append gradient merge optimizer ops
     _create_cond_block_and_update_optimizer(
