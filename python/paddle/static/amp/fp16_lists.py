@@ -15,13 +15,21 @@
 import copy
 import logging
 
-from paddle.amp import FP16_BLACK_LIST, FP16_EXTRA_BLACK_LIST, FP16_WHITE_LIST
+from paddle.amp.amp_lists import (
+    FP16_BLACK_LIST,
+    FP16_EXTRA_BLACK_LIST,
+    FP16_WHITE_LIST,
+)
 from paddle.fluid import core
 from paddle.fluid.log_helper import get_logger
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
+
+black_list = FP16_BLACK_LIST
+_extra_black_list = FP16_EXTRA_BLACK_LIST
+white_list = FP16_WHITE_LIST
 
 
 def check_amp_dtype(dtype):
