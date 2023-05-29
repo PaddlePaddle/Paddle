@@ -432,7 +432,6 @@ __global__ void topp_sampling(T* sorted_probs,
     rand_p = p_t;
 #ifdef DEBUG_TOPP
     VLOG(0) << "bi: " << bid << ", p: " << rand_p;
-
 #endif
   }
   if (count_iter_begin[bid] == count_iter[bid + 1]) {
