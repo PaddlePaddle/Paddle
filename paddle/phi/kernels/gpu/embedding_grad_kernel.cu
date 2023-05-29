@@ -11,6 +11,16 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#include <thrust/copy.h>
+#include <thrust/device_vector.h>
+#include <thrust/fill.h>
+#include <thrust/reduce.h>
+#include <thrust/scan.h>
+#include <thrust/sequence.h>
+#include <thrust/set_operations.h>
+#include <thrust/sort.h>
+#include <thrust/transform.h>
+#include <thrust/unique.h>
 
 #include "paddle/phi/kernels/embedding_grad_kernel.h"
 #include "paddle/phi/kernels/funcs/embedding_grad.h"
