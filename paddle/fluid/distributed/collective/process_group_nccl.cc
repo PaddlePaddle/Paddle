@@ -27,7 +27,6 @@
 #include "paddle/phi/core/utils/data_type.h"
 
 #include "paddle/phi/core/distributed/comm_context_manager.h"
-#include "paddle/phi/core/distributed/nccl_comm_context.h"
 
 PHI_DECLARE_bool(nccl_blocking_wait);
 DECLARE_bool(use_stream_safe_cuda_allocator);
@@ -149,14 +148,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllGather(
       numel > 0 ? GetPartialTensor(in_tensor, offset, numel) : in_tensor;
   return RunFnInNCCLEnv(
       [&](ncclComm_t comm, gpuStream_t stream) {
-        const auto& comm_context_manager =
-            phi::distributed::CommContextManager::GetInstance();
-        auto comm_context = static_cast<phi::distributed::NCCLCommContext*>(
-            comm_context_manager.Get(this->gid_));
-        PADDLE_ENFORCE_NE(
-            comm_context,
-            nullptr,
-            phi::errors::Unavailable("NCCLCommContext is nullptr"));
+        auto comm_context = this->GetCommContext();
         comm_context->AllGather(out_tensor, in_tensor_maybe_partial, stream);
       },
       in_tensor_maybe_partial,
@@ -173,15 +165,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllReduce(
     bool use_calc_stream) {
   return RunFnInNCCLEnv(
       [&](ncclComm_t comm, gpuStream_t stream) {
-        const auto& comm_context_manager =
-            phi::distributed::CommContextManager::GetInstance();
-        auto comm_context = static_cast<phi::distributed::NCCLCommContext*>(
-            comm_context_manager.Get(this->gid_));
-        PADDLE_ENFORCE_NE(
-            comm_context,
-            nullptr,
-            phi::errors::Unavailable("NCCLCommContext is nullptr"));
-        comm_ctx->AllReduce(
+        auto comm_context = this->GetCommContext();
+        comm_context->AllReduce(
             out_tensor, in_tensor, ToNCCLRedType(opts.reduce_op), stream);
       },
       in_tensor,
@@ -225,49 +210,32 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
   // simply be covered by static checks. Factors are set to 0 here to skip the
   // shape check. Its shape check will be done by dynamic checks with
   // FLAGS_enable_nccl_dynamic_check.
-  phi::distributed::CommStaticCheck::CheckShape(*out_tensor,
-                                                in_tensor,
-                                                /*dst_rank*/ rank_,
-                                                /*cur_rank*/ rank_,
-                                                size_,
-                                                /*out_size_factor*/ 0,
-                                                /*in_size_factor*/ 0);
   return RunFnInNCCLEnv(
       [&](ncclComm_t comm, gpuStream_t stream) {
         if (FLAGS_enable_nccl_dynamic_check) {
           phi::distributed::NCCLDynamicCheck::CheckShape(
               *out_tensor, in_tensor, in_size_each_rank, rank_, size_, comm);
         }
+        auto comm_context = this->GetCommContext();
+
         int64_t in_row_size = in_tensor.numel() / in_dim[0],
                 out_row_size = out_tensor->numel() / out_dim[0];
         int64_t in_offset = 0, in_numel = 0, out_offset = 0, out_numel = 0;
         phi::DenseTensor input_partial, output_partial;
 
-        GroupStart();
+        comm_context->GroupStart();
         for (auto i = 0; i < size_; i++) {
           in_numel = in_size_each_rank[i] * in_row_size;
           input_partial = GetPartialTensor(in_tensor, in_offset, in_numel);
-          NCCL_CHECK(
-              phi::dynload::ncclSend(input_partial.data(),
-                                     in_numel,
-                                     phi::ToNCCLDataType(input_partial.dtype()),
-                                     i,
-                                     comm,
-                                     stream));
+          comm_context->Send(input_partial, i, stream);
           in_offset += in_numel;
 
           out_numel = out_size_each_rank[i] * out_row_size;
           output_partial = GetPartialTensor(*out_tensor, out_offset, out_numel);
-          NCCL_CHECK(phi::dynload::ncclRecv(
-              output_partial.data(),
-              out_numel,
-              phi::ToNCCLDataType(output_partial.dtype()),
-              i,
-              comm,
-              stream));
+          comm_context->Recv(&output_partial, i, stream);
           out_offset += out_numel;
         }
-        GroupEnd();
+        comm_context->GroupEnd();
       },
       in_tensor,
       CommType::ALLTOALL,
@@ -306,14 +274,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Broadcast(
   return RunFnInNCCLEnv(
       [&](ncclComm_t comm, gpuStream_t stream) {
         int root = opts.source_rank + opts.source_root;
-        const auto& comm_context_manager =
-            phi::distributed::CommContextManager::GetInstance();
-        auto comm_context = static_cast<phi::distributed::NCCLCommContext*>(
-            comm_context_manager.Get(this->gid_));
-        PADDLE_ENFORCE_NE(
-            comm_context,
-            nullptr,
-            phi::errors::Unavailable("NCCLCommContext is nullptr"));
+        auto comm_context = this->GetCommContext();
         comm_context->Broadcast(out_tensor, in_tensor, root, stream);
       },
       in_tensor,
@@ -330,14 +291,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Reduce(
     bool use_calc_stream) {
   return RunFnInNCCLEnv(
       [&](ncclComm_t comm, gpuStream_t stream) {
-        const auto& comm_context_manager =
-            phi::distributed::CommContextManager::GetInstance();
-        auto comm_context = static_cast<phi::distributed::NCCLCommContext*>(
-            comm_context_manager.Get(this->gid_));
-        PADDLE_ENFORCE_NE(
-            comm_context,
-            nullptr,
-            phi::errors::Unavailable("NCCLCommContext is nullptr"));
+        auto comm_context = this->GetCommContext();
         comm_context->Reduce(out_tensor,
                              in_tensor,
                              ToNCCLRedType(opts.reduce_op),
@@ -358,14 +312,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::ReduceScatter(
     bool use_calc_stream) {
   return RunFnInNCCLEnv(
       [&](ncclComm_t comm, gpuStream_t stream) {
-        const auto& comm_context_manager =
-            phi::distributed::CommContextManager::GetInstance();
-        auto comm_context = static_cast<phi::distributed::NCCLCommContext*>(
-            comm_context_manager.Get(this->gid_));
-        PADDLE_ENFORCE_NE(
-            comm_context,
-            nullptr,
-            phi::errors::Unavailable("NCCLCommContext is nullptr"));
+        auto comm_context = this->GetCommContext();
         comm_context->ReduceScatter(
             out_tensor, in_tensor, ToNCCLRedType(opts.reduce_op), stream);
       },
@@ -396,38 +343,22 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Scatter(
               rank_,
               comm);
         }
+
+        auto comm_context = this->GetCommContext();
         int64_t numel = in_tensor.numel() / size_;
         if (rank_ == opts.root_rank) {
           int64_t offset = 0;
           phi::DenseTensor partial_tensor;
-          GroupStart();
+          comm_context->GroupStart();
           for (auto i = 0; i < size_; i++) {
             partial_tensor = GetPartialTensor(in_tensor, offset, numel);
-            NCCL_CHECK(phi::dynload::ncclSend(
-                partial_tensor.data(),
-                numel,
-                phi::ToNCCLDataType(partial_tensor.dtype()),
-                i,
-                comm,
-                stream));
+            comm_context->Send(partial_tensor, i, stream);
             offset += numel;
           }
-          NCCL_CHECK(
-              phi::dynload::ncclRecv(out_tensor->data(),
-                                     numel,
-                                     phi::ToNCCLDataType(out_tensor->dtype()),
-                                     opts.root_rank,
-                                     comm,
-                                     stream));
-          GroupEnd();
+          comm_context->Recv(out_tensor, opts.root_rank, stream);
+          comm_context->GroupEnd();
         } else {
-          NCCL_CHECK(
-              phi::dynload::ncclRecv(out_tensor->data(),
-                                     numel,
-                                     phi::ToNCCLDataType(out_tensor->dtype()),
-                                     opts.root_rank,
-                                     comm,
-                                     stream));
+          comm_context->Recv(out_tensor, opts.root_rank, stream);
         }
       },
       in_tensor,
@@ -474,28 +405,18 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Gather(
       phi::distributed::NCCLDynamicCheck::CheckGatherShape(
           in_tensor, gather_tensors, opts.root_rank, rank_, size_, comm);
     }
-    GroupStart();
+    auto comm_context = this->GetCommContext();
+    comm_context->GroupStart();
     // root receive from all devices
     if (rank_ == opts.root_rank) {
       for (auto i = 0; i < size_; i++) {
         auto& gather_tensor = gather_tensors[i];
-        NCCL_CHECK(
-            phi::dynload::ncclRecv(gather_tensor.data(),
-                                   gather_tensor.numel(),
-                                   phi::ToNCCLDataType(gather_tensor.dtype()),
-                                   i,
-                                   comm,
-                                   stream));
+        comm_context->Recv(&gather_tensor, i, stream);
       }
     }
     // send to root
-    NCCL_CHECK(phi::dynload::ncclSend(in_tensor.data(),
-                                      in_tensor.numel(),
-                                      phi::ToNCCLDataType(in_tensor.dtype()),
-                                      opts.root_rank,
-                                      comm,
-                                      stream));
-    GroupEnd();
+    comm_context->Send(in_tensor, opts.root_rank, stream);
+    comm_context->GroupEnd();
   };
   return RunFnInNCCLEnv(
       gather_func, in_tensor, CommType::GATHER, sync_op, use_calc_stream);
@@ -517,15 +438,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Recv(
 
   return RunFnInNCCLEnv(
       [&](ncclComm_t comm, gpuStream_t stream) {
-        const auto& comm_context_manager =
-            phi::distributed::CommContextManager::GetInstance();
-        auto comm_context = static_cast<phi::distributed::NCCLCommContext*>(
-            comm_context_manager.Get(this->gid_));
-        PADDLE_ENFORCE_NE(
-            comm_context,
-            nullptr,
-            phi::errors::Unavailable("NCCLCommContext is nullptr"));
-        comm_ctx->Recv(tensor, peer, stream);
+        auto comm_context = this->GetCommContext();
+        comm_context->Recv(tensor, src_rank, stream);
       },
       *tensor,
       CommType::RECV,
@@ -546,15 +460,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Send(
 
   return RunFnInNCCLEnv(
       [&](ncclComm_t comm, gpuStream_t stream) {
-        const auto& comm_context_manager =
-            phi::distributed::CommContextManager::GetInstance();
-        auto comm_context = static_cast<phi::distributed::NCCLCommContext*>(
-            comm_context_manager.Get(this->gid_));
-        PADDLE_ENFORCE_NE(
-            comm_context,
-            nullptr,
-            phi::errors::Unavailable("NCCLCommContext is nullptr"));
-        comm_ctx->Send(tensor_maybe_partial, dst_rank, stream);
+        auto comm_context = this->GetCommContext();
+        comm_context->Send(tensor_maybe_partial, dst_rank, stream);
       },
       tensor_maybe_partial,
       CommType::SEND,
@@ -869,13 +776,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllReduce(
           phi::DenseTensor& output,
           ncclComm_t comm,
           const gpuStream_t& stream) {
-        return phi::dynload::ncclAllReduce(input.data(),
-                                           output.data(),
-                                           input.numel(),
-                                           phi::ToNCCLDataType(input.type()),
-                                           ToNCCLRedType(opts.reduce_op),
-                                           comm,
-                                           stream);
+        auto comm_context = this->GetCommContext();
+        comm_context->AllReduce(
+            &output, input, ToNCCLRedType(opts.reduce_op), stream);
       },
       CommType::ALLREDUCE);
 }
@@ -898,13 +801,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Broadcast(
           const gpuStream_t& stream) {
         const auto root =
             opts.source_rank * in_tensors.size() + opts.source_root;
-        return phi::dynload::ncclBroadcast(input.data(),
-                                           output.data(),
-                                           input.numel(),
-                                           phi::ToNCCLDataType(input.type()),
-                                           root,
-                                           comm,
-                                           stream);
+        auto comm_context = this->GetCommContext();
+        comm_context->Broadcast(&output, input, root, stream);
       },
       CommType::BROADCAST);
 }
@@ -947,12 +845,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Send(
           ncclComm_t comm,
           const gpuStream_t& stream,
           int dst_rank) {
-        return phi::dynload::ncclSend(input.data(),
-                                      input.numel(),
-                                      phi::ToNCCLDataType(input.dtype()),
-                                      dst_rank,
-                                      comm,
-                                      stream);
+        auto comm_context = this->GetCommContext();
+        comm_context->Send(input, dst_rank, stream);
       },
       dst_rank,
       CommType::SEND);
@@ -969,12 +863,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Recv(
           ncclComm_t comm,
           const gpuStream_t& stream,
           int src_rank) {
-        return phi::dynload::ncclRecv(output.data(),
-                                      output.numel(),
-                                      phi::ToNCCLDataType(output.dtype()),
-                                      src_rank,
-                                      comm,
-                                      stream);
+        auto comm_context = this->GetCommContext();
+        comm_context->Recv(&output, src_rank, stream);
       },
       src_rank,
       CommType::RECV);
@@ -999,12 +889,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllGather(
           phi::DenseTensor& output,
           ncclComm_t comm,
           const gpuStream_t& stream) {
-        return phi::dynload::ncclAllGather(input.data(),
-                                           output.data(),
-                                           input.numel(),
-                                           phi::ToNCCLDataType(input.dtype()),
-                                           comm,
-                                           stream);
+        auto comm_context = this->GetCommContext();
+        comm_context->AllGather(&output, input, stream);
       },
       CommType::ALLGATHER);
 }
@@ -1062,23 +948,16 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllToAll(
           phi::DenseTensor& output,
           ncclComm_t comm,
           const gpuStream_t& stream) {
+        auto comm_context = this->GetCommContext();
         size_t offset = 0;
-        GroupStart();
+        comm_context->GroupStart();
         for (auto i = 0; i < size_; i++) {
-          PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclSend(
-              GetPointerByOffset(input.data(), offset, input.dtype()),
-              input.numel() / size_,
-              phi::ToNCCLDataType(input.dtype()),
-              i,
-              comm,
-              stream));
-          PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclRecv(
-              GetPointerByOffset(output.data(), offset, input.dtype()),
-              input.numel() / size_,
-              phi::ToNCCLDataType(input.dtype()),
-              i,
-              comm,
-              stream));
+          auto input_data = reinterpret_cast<phi::DenseTensor*>(
+              GetPointerByOffset(input.data(), offset, input.dtype()));
+          comm_context->Send(*input_data, i, stream);
+          auto output_data = reinterpret_cast<phi::DenseTensor*>(
+              GetPointerByOffset(output.data(), offset, input.dtype()));
+          comm_context->Recv(output_data, i, stream);
           offset += input.numel() / size_;
         }
         GroupEnd();
@@ -1101,15 +980,12 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Reduce(
           phi::DenseTensor& output,
           ncclComm_t comm,
           const gpuStream_t& stream) {
-        PADDLE_ENFORCE_GPU_SUCCESS(
-            phi::dynload::ncclReduce(input.data(),
-                                     output.data(),
-                                     input.numel(),
-                                     phi::ToNCCLDataType(input.dtype()),
-                                     ToNCCLRedType(opts.reduce_op),
-                                     opts.root_rank,
-                                     comm,
-                                     stream));
+        auto comm_context = this->GetCommContext();
+        comm_context->Reduce(&output,
+                             input,
+                             ToNCCLRedType(opts.reduce_op),
+                             opts.root_rank,
+                             stream);
       },
       CommType::REDUCE);
 }
@@ -1133,35 +1009,20 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Scatter(
           phi::DenseTensor& output,
           ncclComm_t comm,
           const gpuStream_t& stream) {
+        auto comm_context = this->GetCommContext();
         size_t offset = 0;
         if (rank_ == opts.root_rank) {
-          GroupStart();
+          comm_context->GroupStart();
           for (auto i = 0; i < size_; i++) {
-            PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclSend(
-                GetPointerByOffset(input.data(), offset, input.dtype()),
-                input.numel() / size_,
-                phi::ToNCCLDataType(input.dtype()),
-                i,
-                comm,
-                stream));
+            auto input_data = reinterpret_cast<phi::DenseTensor*>(
+                GetPointerByOffset(input.data(), offset, input.dtype()));
+            comm_context->Send(*input_data, i, stream);
             offset += input.numel() / size_;
           }
-          PADDLE_ENFORCE_GPU_SUCCESS(
-              phi::dynload::ncclRecv(output.data(),
-                                     input.numel() / size_,
-                                     phi::ToNCCLDataType(input.dtype()),
-                                     opts.root_rank,
-                                     comm,
-                                     stream));
-          GroupEnd();
+          comm_context->Recv(&output, opts.root_rank, stream);
+          comm_context->GroupEnd();
         } else {
-          PADDLE_ENFORCE_GPU_SUCCESS(
-              phi::dynload::ncclRecv(output.data(),
-                                     input.numel() / size_,
-                                     phi::ToNCCLDataType(input.dtype()),
-                                     opts.root_rank,
-                                     comm,
-                                     stream));
+          comm_context->Recv(&output, opts.root_rank, stream);
         }
       },
       CommType::SCATTER);
@@ -1179,6 +1040,17 @@ std::shared_ptr<ProcessGroupNCCL> ProcessGroupNCCL::CreateProcessGroupNCCL(
       std::make_shared<ProcessGroupNCCL>(store, rank, size, gid);
   ProcessGroupIdMap::GetInstance().emplace(gid, process_group);
   return process_group;
+}
+
+phi::distributed::NCCLCommContext* ProcessGroupNCCL::GetCommContext() {
+  const auto& comm_context_manager =
+      phi::distributed::CommContextManager::GetInstance();
+  auto comm_context = static_cast<phi::distributed::NCCLCommContext*>(
+      comm_context_manager.Get(this->gid_));
+  PADDLE_ENFORCE_NE(comm_context,
+                    nullptr,
+                    phi::errors::Unavailable("NCCLCommContext is nullptr"));
+  return comm_context;
 }
 
 }  //  namespace distributed

@@ -129,7 +129,7 @@ void NCCLCommContext::Send(const phi::DenseTensor& in_tensor,
 void NCCLCommContext::Recv(phi::DenseTensor* out_tensor,
                            const int& peer,
                            gpuStream_t stream) {
-  phi::distributed::CommStaticCheck::CheckShape(*tensor, rank_, size_);
+  phi::distributed::CommStaticCheck::CheckShape(*out_tensor, rank_, size_);
   if (FLAGS_enable_nccl_dynamic_check) {
     NCCLDynamicCheck::CheckShape(*out_tensor, peer, rank_, nccl_comm_);
   }
@@ -195,6 +195,13 @@ void NCCLCommContext::Reduce(phi::DenseTensor* out_tensor,
                                root,
                                nccl_comm_,
                                stream));
+}
+
+void NCCLCommContext::GroupStart() {
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGroupStart());
+}
+void NCCLCommContext::GroupEnd() {
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGroupStart());
 }
 
 }  // namespace distributed
