@@ -75,6 +75,9 @@ class DygraphShardingOptimizer:
         self._set_inner_opt_attr(
             '_parameter_list', self._rank2params[self._sharding_rank]
         )
+        self._set_inner_opt_attr(
+            '_param_groups', self._rank2params[self._sharding_rank]
+        )
         print(
             "after parameters update, params len:%d"
             % (len(self._inner_opt._parameter_list))
