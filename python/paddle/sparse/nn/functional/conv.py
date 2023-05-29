@@ -440,7 +440,84 @@ def conv2d(
     data_format="NHWC",
     name=None,
 ):
+    r"""
 
+    The sparse convolution2d functional calculates the output based on the input, filter
+    and strides, paddings, dilations, groups parameters. Input(Input) and
+    Output(Output) are multidimensional SparseCooTensors with a shape of
+    :math:`[N, H, W, C]` . Where N is batch size, C is the number of
+    channels, H is the height of the feature,
+    and W is the width of the feature. If bias attribution is provided,
+    bias is added to the output of the convolution.
+
+    For each input :math:`X`, the equation is:
+
+    ..  math::
+
+        Out = \sigma (W \ast X + b)
+
+    In the above equation:
+
+    * :math:`X`: Input value, a tensor with NHWC format.
+    * :math:`W`: Filter value, a tensor with HWCM format.
+    * :math:`\\ast`: Convolution operation.
+    * :math:`b`: Bias value, a 1-D tensor with shape [M].
+    * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
+
+    Args:
+        x (Tensor): The input is 4-D SparseCooTensor with shape [N, H, W, C], the data
+            type of input is float16 or float32 or float64.
+        weight (Tensor): The convolution kernel, a Tensor with shape [kH, kW, C/g, M],
+            where M is the number of filters(output channels), g is the number of groups,
+            kD, kH, kW are the filter's height and width respectively.
+        bias (Tensor, optional): The bias, a Tensor of shape [M].
+        stride (int|list|tuple, optional): The stride size. It means the stride in convolution. If stride is a
+            list/tuple, it must contain two integers, (stride_height, stride_width).
+            Otherwise, stride_height = stride_width = stride. Default: stride = 1.
+        padding (string|int|list|tuple, optional): The padding size. It means the number of zero-paddings
+            on both sides for each dimension. If `padding` is a string, either 'VALID' or
+            'SAME' which is the padding algorithm. If padding size is a tuple or list,
+            it could be in three forms: `[pad_height, pad_width]` or
+            `[pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`,
+            when `data_format` is `"NHWC"`, `padding` can be in the form
+            `[[0,0], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
+            Default: padding = 0.
+        dilation (int|list|tuple, optional): The dilation size. It means the spacing between the kernel points.
+            If dilation is a list/tuple, it must contain two integers, (dilation_height,
+            dilation_width). Otherwise, dilation_height = dilation_width = dilation.
+            Default: dilation = 1.
+        groups (int, optional): The groups number of the Conv2D Layer. According to grouped
+            convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
+            the first half of the filters is only connected to the first half
+            of the input channels, while the second half of the filters is only
+            connected to the second half of the input channels. Default: groups=1. Currently, only support groups=1.
+        data_format (str, optional): Specify the data format of the input, and the data format of the output
+            will be consistent with that of the input. An optional string from: `"NHWC"`.
+            The default is `"NHWC"`. When it is `"NHWC"`, the data is stored in the order of:
+            `[batch_size, input_height, input_width, input_channels]`.
+        name(str, optional): For detailed information, please refer
+           to :ref:`api_guide_Name`. Usually name is no need to set and
+           None by default.
+
+    Returns:
+        A SparseCooTensor representing the conv2d, whose data type is the same with input.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            indices = [[0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
+            values = [[1], [2], [3], [4]]
+            indices = paddle.to_tensor(indices, dtype='int32')
+            values = paddle.to_tensor(values, dtype='float32')
+            dense_shape = [1, 3, 4, 1]
+            sparse_x = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape, stop_gradient=True)
+            weight = paddle.randn((3, 3, 1, 1), dtype='float32')
+            y = paddle.sparse.nn.functional.conv2d(sparse_x, weight)
+            print(y.shape)
+            # (1, 1, 2, 1)
+    """
     return _conv2d(
         x,
         weight,
@@ -468,6 +545,88 @@ def subm_conv2d(
     key=None,
     name=None,
 ):
+    r"""
+
+    The sparse submanifold convolution2d functional calculates the output based on the input, filter
+    and strides, paddings, dilations, groups parameters. Input(Input) and
+    Output(Output) are multidimensional SparseCooTensors with a shape of
+    :math:`[N, H, W, C]` . Where N is batch size, C is the number of
+    channels, H is the height of the feature,
+    and W is the width of the feature. If bias attribution is provided,
+    bias is added to the output of the convolution.
+
+    For each input :math:`X`, the equation is:
+
+    ..  math::
+
+        Out = \sigma (W \ast X + b)
+
+    In the above equation:
+
+    * :math:`X`: Input value, a tensor with NHWC format.
+    * :math:`W`: Filter value, a tensor with HWCM format.
+    * :math:`\\ast`: Submanifold Convolution operation, refer to the paper: https://arxiv.org/abs/1706.01307.
+    * :math:`b`: Bias value, a 1-D tensor with shape [M].
+    * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
+
+    Args:
+        x (Tensor): The input is 4-D SparseCooTensor with shape [N, H, W, C], the data
+            type of input is float16 or float32 or float64.
+        weight (Tensor): The convolution kernel, a Tensor with shape [kH, kW, C/g, M],
+            where M is the number of filters(output channels), g is the number of groups,
+            kD, kH, kW are the filter's height and width respectively.
+        bias (Tensor, optional): The bias, a Tensor of shape [M].
+        stride (int|list|tuple, optional): The stride size. It means the stride in convolution. If stride is a
+            list/tuple, it must contain two integers, (stride_height, stride_width).
+            Otherwise, stride_height = stride_width = stride. Default: stride = 1.
+        padding (string|int|list|tuple, optional): The padding size. It means the number of zero-paddings
+            on both sides for each dimension. If `padding` is a string, either 'VALID' or
+            'SAME' which is the padding algorithm. If padding size is a tuple or list,
+            it could be in three forms: `[pad_height, pad_width]` or
+            `[pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`,
+            when `data_format` is `"NHWC"`, `padding` can be in the form
+            `[[0,0], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right], [0,0]]`.
+            Default: padding = 0.
+        dilation (int|list|tuple, optional): The dilation size. It means the spacing between the kernel points.
+            If dilation is a list/tuple, it must contain two integers, (dilation_height,
+            dilation_width). Otherwise, dilation_height = dilation_width = dilation.
+            Default: dilation = 1.
+        groups (int, optional): The groups number of the Conv2D Layer. According to grouped
+            convolution in Alex Krizhevsky's Deep CNN paper: when group=2,
+            the first half of the filters is only connected to the first half
+            of the input channels, while the second half of the filters is only
+            connected to the second half of the input channels. Default: groups=1. Currently, only support groups=1.
+        data_format (str, optional): Specify the data format of the input, and the data format of the output
+            will be consistent with that of the input. An optional string from: `"NHWC"`.
+            The default is `"NHWC"`. When it is `"NHWC"`, the data is stored in the order of:
+            `[batch_size, input_height, input_width, input_channels]`.
+        key(str, optional): the key is used to save or use the same rulebook,
+            the definition and role of rulebook refers to
+            https://pdfs.semanticscholar.org/5125/a16039cabc6320c908a4764f32596e018ad3.pdf. The
+            default value is None.
+        name(str, optional): For detailed information, please refer
+           to :ref:`api_guide_Name`. Usually name is no need to set and
+           None by default.
+
+    Returns:
+        A SparseCooTensor representing the conv2d, whose data type is the same with input.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            indices = [[0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
+            values = [[1], [2], [3], [4]]
+            indices = paddle.to_tensor(indices, dtype='int32')
+            values = paddle.to_tensor(values, dtype='float32')
+            dense_shape = [1, 3, 4, 1]
+            sparse_x = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape, stop_gradient=True)
+            weight = paddle.randn((3, 3, 1, 1), dtype='float32')
+            y = paddle.sparse.nn.functional.subm_conv2d(sparse_x, weight)
+            print(y.shape)
+            # (1, 3, 4, 1)
+    """
     return _conv2d(
         x,
         weight,
