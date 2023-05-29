@@ -893,7 +893,7 @@ def slice(x, axes, starts, ends, name=None):
             #        values=[-4,  2])
 
     """
-    if in_dygraph_mode():
+    if in_dynamic_mode():
         return _C_ops.sparse_slice(x, axes, starts, ends)
     else:
         attrs = {'axes': axes, 'starts': starts, 'ends': ends}
