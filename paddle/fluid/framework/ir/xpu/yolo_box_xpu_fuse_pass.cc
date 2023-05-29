@@ -147,7 +147,8 @@ YoloBoxXPUPattern::YoloBoxXPUPattern(PDPattern* pattern,
     left_ew_sub =
         pattern->NewNode(left_ew_sub_repr())->assert_is_op("elementwise_sub");
     left_ew_sub_y = pattern->NewNode(left_ew_sub_y_repr())
-                        ->assert_is_op_input("elementwise_sub", "Y");
+                        ->assert_is_op_input("elementwise_sub", "Y")
+                        ->assert_is_persistable_var();
     left_ew_sub_out = pattern->NewNode(left_ew_sub_out_repr())
                           ->assert_is_op_output("elementwise_sub", "Out");
     left_ew_sub->LinksFrom({left_ew_mul_out}).LinksTo({left_ew_sub_out});
@@ -185,11 +186,11 @@ YoloBoxXPUPattern::YoloBoxXPUPattern(PDPattern* pattern,
                              ->assert_is_op_input("elementwise_pow", "X");
   mid_ew_mul->LinksFrom({mid_slice_out}).LinksTo({mid_ew_mul_out});
   auto* mid_ew_pow =
-      pattern->NewNode(mid_ew_pow_repr())->assert_is_op("elementwise_mul");
+      pattern->NewNode(mid_ew_pow_repr())->assert_is_op("elementwise_pow");
   auto* mid_ew_pow_out = pattern->NewNode(mid_ew_pow_out_repr())
                              ->assert_is_op_output("elementwise_pow", "Out")
                              ->assert_is_op_input("elementwise_mul", "X");
-  mid_ew_mul->LinksFrom({mid_ew_mul_out}).LinksTo({mid_ew_pow_out});
+  mid_ew_pow->LinksFrom({mid_ew_mul_out}).LinksTo({mid_ew_pow_out});
   auto* mid_ew_mul_2 =
       pattern->NewNode(mid_ew_mul_2_repr())->assert_is_op("elementwise_mul");
   auto* mid_ew_mul_2_y = pattern->NewNode(mid_ew_mul_2_y_repr())
@@ -250,15 +251,15 @@ int YoloBoxXPUFusePass::ApplyImpl(ir::Graph* graph,
     /* declare operator node's name */
     // declare operator node's name
     GET_IR_NODE(left_slice);
-    GET_IR_NODE(mid_slice);
-    GET_IR_NODE(right_slice);
     GET_IR_NODE(left_ew_mul);
     GET_IR_NODE(left_ew_sub);
     GET_IR_NODE(left_ew_add);
     GET_IR_NODE(left_ew_mul_2);
+    GET_IR_NODE(mid_slice);
     GET_IR_NODE(mid_ew_mul);
     GET_IR_NODE(mid_ew_pow);
     GET_IR_NODE(mid_ew_mul_2);
+    GET_IR_NODE(right_slice);
     GET_IR_NODE(concat);
     // declare variable node's name
     GET_IR_NODE(x);
@@ -294,10 +295,35 @@ int YoloBoxXPUFusePass::ApplyImpl(ir::Graph* graph,
     fused_op_desc.SetInput("x", {x->Name()});
     fused_op_desc.SetInput("grid", {left_ew_add_y->Name()});
     fused_op_desc.SetInput("stride", {left_ew_mul_2_y->Name()});
-    if (with_left_ew_sub) {
-      fused_op_desc.SetInput("offset", {left_ew_sub_y->Name()});
-    }
     fused_op_desc.SetInput("anchor_grid", {mid_ew_mul_2_y->Name()});
+    float offset_ = 0.f;
+    if (with_left_ew_sub) {
+      const auto& left_ew_sub_y_t =
+          scope->FindVar(left_ew_sub_y->Name())->Get<phi::DenseTensor>();
+      auto left_ew_sub_y_dims = left_ew_sub_y_t.dims();
+      PADDLE_ENFORCE_EQ(left_ew_sub_y_dims.size(),
+                        1,
+                        platform::errors::InvalidArgument(
+                            "the size(%d) of left elementwise sub tensor "
+                            "must equal 1",
+                            left_ew_sub_y_dims.size()));
+      switch (left_ew_sub_y_t.dtype()) {
+        case phi::DataType::FLOAT16:
+          auto* sub_t_ptr = left_ew_sub_y_t.data<platform::float16>();
+          offset_ = static_cast<float>(sub_t_ptr[0]);
+          break;
+        case phi::DataType::FLOAT32:
+          auto* sub_t_ptr = left_ew_sub_y_t.data<float>();
+          offset_ = sub_t_ptr[0];
+          break;
+        default:
+          PADDLE_THROW(platform::errors::Unavailable(
+              "yolo_box_fuse_xpu_pass not supported weight dtype. "
+              "we now only support fp32/fp16."));
+          break;
+      }
+    }
+    fused_op_desc.SetAttr("offset", offset_);
     fused_op_desc.SetOutput("y", {concat_out->Name()});
     fused_op_desc.SetOutput("y_max", {fused_op_out_max_name});
     // relink fused op
@@ -305,32 +331,29 @@ int YoloBoxXPUFusePass::ApplyImpl(ir::Graph* graph,
     IR_NODE_LINK_TO(x, fused_op);
     IR_NODE_LINK_TO(left_ew_add_y, fused_op);
     IR_NODE_LINK_TO(left_ew_mul_2_y, fused_op);
-    if (with_left_ew_sub) {
-      IR_NODE_LINK_TO(left_ew_sub_y, fused_op);
-    }
     IR_NODE_LINK_TO(mid_ew_mul_2_y, fused_op);
     IR_NODE_LINK_TO(fused_op, concat_out);
     IR_NODE_LINK_TO(fused_op, fused_op_out_max);
     // delete useless node
     std::unordered_set<const Node*> delete_nodes = {left_slice,
-                                                    mid_slice,
-                                                    right_slice,
-                                                    left_ew_mul,
-                                                    left_ew_add,
-                                                    left_ew_mul_2,
-                                                    mid_ew_mul,
-                                                    mid_ew_pow,
-                                                    mid_ew_mul_2,
-                                                    concat,
                                                     left_slice_out,
+                                                    left_ew_mul,
                                                     left_ew_mul_out,
+                                                    left_ew_add,
                                                     left_ew_add_out,
+                                                    left_ew_mul_2,
                                                     left_ew_mul_2_out,
+                                                    mid_slice,
                                                     mid_slice_out,
+                                                    mid_ew_mul,
                                                     mid_ew_mul_out,
+                                                    mid_ew_pow,
                                                     mid_ew_pow_out,
+                                                    mid_ew_mul_2,
                                                     mid_ew_mul_2_out,
-                                                    right_slice_out};
+                                                    right_slice,
+                                                    right_slice_out,
+                                                    concat};
     if (with_left_ew_sub) {
       delete_nodes.insert(left_ew_sub, left_ew_sub_out);
     }

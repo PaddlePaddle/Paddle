@@ -98,11 +98,11 @@
   optional : mask, seq_lod, max_seq_len, x_fp16, out_fp16
 
 - op : yolo_box_xpu
-  args : (Tensor x, Tensor x_max, Tensor grid, Tensor stride, Tensor anchor_grid, Tensor offset)
+  args : (Tensor x, Tensor x_max, Tensor grid, Tensor stride, Tensor anchor_grid, float offset)
   output : Tensor(out), Tensor(out_max)
   infer_meta :
     func : YoloBoxXPUInferMeta
   kernel :
     func : yolo_box_xpu
     data_type : x
-  optional : offset, x_max
+  optional : x_max

@@ -25,10 +25,10 @@ limitations under the License. */
 
 namespace phi {
 
-static void BroadCastInferShape(const DDim x_dims,
-                                const DDim y_dims,
-                                int axis,
-                                std::vector<int>* out_dims_array) {
+static phi::DDim BroadCastInferShape(const DDim x_dims,
+                                     const DDim y_dims,
+                                     int axis) {
+  std::vector<int> out_dims_array(x_dims.size(), -1);
   if (x_dims != y_dims) {
     int max_dim = std::max(x_dims.size(), y_dims.size());
     if (x_dims.size() == y_dims.size()) {
@@ -54,16 +54,18 @@ static void BroadCastInferShape(const DDim x_dims,
                      : axis);
     std::vector<int> x_dims_array(max_dim);
     std::vector<int> y_dims_array(max_dim);
-    out_dims_array->resize(max_dim);
+    out_dims_array.resize(max_dim);
     funcs::GetBroadcastDimsArrays(x_dims,
                                   y_dims,
                                   x_dims_array.data(),
                                   y_dims_array.data(),
-                                  out_dims_array->data(),
+                                  out_dims_array.data(),
                                   max_dim,
                                   axis);
+
+    return phi::make_ddim(out_dims_array);
   }
-  return;
+  return x_dims;
 }
 
 void AddActXPUInferMeta(const MetaTensor& x,
@@ -77,9 +79,7 @@ void AddActXPUInferMeta(const MetaTensor& x,
   auto x_dims = x.dims();
   auto y_dims = y.dims();
   if (x_dims != y_dims) {
-    std::vector<int> out_dims_array(x_dims.size(), -1);
-    BroadCastInferShape(x_dims, y_dims, axis, &out_dims_array);
-    auto out_dims = phi::make_ddim(out_dims_array);
+    auto out_dims = BroadCastInferShape(x_dims, y_dims, axis);
     out->set_dims(out_dims);
   } else {
     out->set_dims(x_dims);
@@ -429,7 +429,7 @@ void YoloBoxXPUInferMeta(const MetaTensor& x,
                          const MetaTensor& grid,
                          const MetaTensor& stride,
                          const MetaTensor& anchor_grid,
-                         const MetaTensor& offset,
+                         float offset,
                          MetaTensor* out,
                          MetaTensor* out_max) {
   auto x_dims = x.dims();
@@ -445,7 +445,7 @@ void YoloBoxXPUInferMeta(const MetaTensor& x,
   // y[..., 0:2] = (x[..., 0:2] * 2 + self.grid[i]) * self.stride[i]  # xy
   std::vector<int> axes_ = {x_dims_size - 1};
   std::vector<int> infer_flags_ = {1};
-  std::vector<int> decrease_axis_;
+  std::vector<int> decrease_axis_ = {-1};
   std::vector<int64_t> strides_ = {1};
   std::vector<int64_t> starts_l = {0};
   std::vector<int64_t> ends_l = {2};
@@ -462,13 +462,11 @@ void YoloBoxXPUInferMeta(const MetaTensor& x,
                                   true);
   auto left_slice_out_dims = phi::make_ddim(left_slice_out_dims_vector);
   auto grid_dims = grid.dims();
-  std::vector<int> add_out_dims_vector(left_slice_out_dims.size(), -1);
-  BroadCastInferShape(left_slice_out_dims, grid_dims, -1, &add_out_dims_vector);
-  auto left_add_out_dims = phi::make_ddim(add_out_dims_vector);
+  auto left_add_out_dims =
+      BroadCastInferShape(left_slice_out_dims, grid_dims, -1);
   auto stride_dims = stride.dims();
-  std::vector<int> mul_out_dims_vector(left_add_out_dims.size(), -1);
-  BroadCastInferShape(left_add_out_dims, grid_dims, -1, &mul_out_dims_vector);
-  auto left_mul_out_dims = phi::make_ddim(mul_out_dims_vector);
+  auto left_mul_out_dims =
+      BroadCastInferShape(left_add_out_dims, grid_dims, -1);
   // compute mid out_dims
   // wh = (y[..., 2:4] * 2) ** 2 * self.anchor_grid[i]             # wh
   std::vector<int64_t> starts_m = {2};
@@ -486,10 +484,8 @@ void YoloBoxXPUInferMeta(const MetaTensor& x,
                                   true);
   auto mid_slice_out_dims = phi::make_ddim(mid_slice_out_dims_vector);
   auto anchor_grid_dims = anchor_grid.dims();
-  std::vector<int> mid_mul_out_dims_vector(mid_slice_out_dims.size(), -1);
-  BroadCastInferShape(
-      mid_slice_out_dims, anchor_grid_dims, -1, &mid_mul_out_dims_vector);
-  auto mid_mul_out_dims = phi::make_ddim(mid_mul_out_dims_vector);
+  auto mid_mul_out_dims =
+      BroadCastInferShape(mid_slice_out_dims, anchor_grid_dims, -1);
   // compute right out_dims
   std::vector<int64_t> starts_r = {4};
   std::vector<int64_t> ends_r = {2147483647};
