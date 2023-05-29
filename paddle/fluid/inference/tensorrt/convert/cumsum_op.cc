@@ -51,7 +51,7 @@ class CumsumOpConverter : public OpConverter {
             return Add1DConstantLayer(d, "", scalar);
           } else {
             nvinfer1::ITensor* inpShape = Shape(inpTensor);
-            return GetEleTensorOfShape(inpShape, d, scalar);
+            return GetEleTensorOfShape(inpShape, axis, scalar);
           }
         };
 
