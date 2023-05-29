@@ -346,7 +346,7 @@
   backward : softmax_grad
 
 - op : strided_slice
-  args : (Tensor x, int[] axes, IntArray starts, IntArray ends, IntArray strides, int[] infer_flags={}, int[] decrease_axis={})
+  args : (Tensor x, int[] axes, IntArray starts={}, IntArray ends={}, IntArray strides={}, int[] infer_flags={}, int[] decrease_axis={})
   output : Tensor
   infer_meta :
     func : StridedSliceInferMeta
@@ -354,7 +354,6 @@
   kernel :
     func : strided_slice
     param : [x, axes, starts, ends, strides]
-    data_type : x
   backward : strided_slice_grad
 
 - op : tril_indices

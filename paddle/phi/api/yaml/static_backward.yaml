@@ -66,8 +66,8 @@
   composite : softmax_grad(out, out_grad, axis, x_grad)
 
 - backward_op : strided_slice_grad
-  forward : strided_slice (Tensor x, int[] axes, IntArray starts, IntArray ends, IntArray strides, int[] infer_flags={}, int[] decrease_axis={}) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, int[] axes, IntArray starts, IntArray ends, IntArray strides, int[] infer_flags={}, int[] decrease_axis={})
+  forward : strided_slice (Tensor x, int[] axes, IntArray starts={}, IntArray ends={}, IntArray strides={}, int[] infer_flags={}, int[] decrease_axis={}) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, int[] axes, IntArray starts, IntArray ends, IntArray strides, int[] infer_flags, int[] decrease_axis)
   output : Tensor(x_grad)
   infer_meta :
     func : GeneralUnaryGradInferMeta
@@ -75,7 +75,7 @@
   kernel :
     func : strided_slice_grad
     param : [x, axes, starts, ends, strides]
-    data_type : x
+    data_type : out_grad
   no_need_buffer : x
 
 - backward_op : tril_triu_grad

@@ -44,6 +44,10 @@ phi::KernelKey GetSoftmaxGradExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr);
 
+phi::KernelKey GetStridedSliceExpectedKernelType(
+    const framework::ExecutionContext& ctx,
+    const framework::OperatorWithKernel* op_ptr);
+
 phi::KernelKey GetUpdateLossScalingExpectedKernelType(
     const framework::ExecutionContext& ctx,
     const framework::OperatorWithKernel* op_ptr);

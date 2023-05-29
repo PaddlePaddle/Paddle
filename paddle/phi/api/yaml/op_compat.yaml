@@ -2283,6 +2283,8 @@
       tensor_name : StridesTensor
       tensors_name : StridesTensorList
   manual_signature : [strided_slice, strided_slice_grad]
+  get_expected_kernel_type :
+    strided_slice : GetStridedSliceExpectedKernelType
 
 - op : subtract (elementwise_sub)
   backward : subtract_grad (elementwise_sub_grad)
