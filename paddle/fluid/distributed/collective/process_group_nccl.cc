@@ -147,26 +147,17 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::AllGather(
   // numel > 0 indicates the tensor need to be sliced
   const phi::DenseTensor& in_tensor_maybe_partial =
       numel > 0 ? GetPartialTensor(in_tensor, offset, numel) : in_tensor;
-  phi::distributed::CommStaticCheck::GatherLikeShape(*out_tensor,
-                                                     in_tensor_maybe_partial,
-                                                     /*dst_rank*/ rank_,
-                                                     /*cur_rank*/ rank_,
-                                                     size_);
   return RunFnInNCCLEnv(
       [&](ncclComm_t comm, gpuStream_t stream) {
-        if (FLAGS_enable_nccl_dynamic_check) {
-          phi::distributed::NCCLDynamicCheck::CheckShape(*out_tensor,
-                                                         /*root_rank*/ 0,
-                                                         rank_,
-                                                         comm);
-        }
-        NCCL_CHECK(phi::dynload::ncclAllGather(
-            in_tensor_maybe_partial.data(),
-            out_tensor->data(),
-            in_tensor_maybe_partial.numel(),
-            phi::ToNCCLDataType(in_tensor_maybe_partial.dtype()),
-            comm,
-            stream));
+        const auto& comm_context_manager =
+            phi::distributed::CommContextManager::GetInstance();
+        auto comm_context = static_cast<phi::distributed::NCCLCommContext*>(
+            comm_context_manager.Get(this->gid_));
+        PADDLE_ENFORCE_NE(
+            comm_context,
+            nullptr,
+            phi::errors::Unavailable("NCCLCommContext is nullptr"));
+        comm_context->AllGather(out_tensor, in_tensor_maybe_partial, stream);
       },
       in_tensor_maybe_partial,
       CommType::ALLGATHER,
@@ -321,11 +312,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Broadcast(
     const BroadcastOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
-  phi::distributed::CommStaticCheck::SameShape(*out_tensor,
-                                               in_tensor,
-                                               /*dst_rank*/ rank_,
-                                               /*cur_rank*/ rank_,
-                                               size_);
   return RunFnInNCCLEnv(
       [&](ncclComm_t comm, gpuStream_t stream) {
         int root = opts.source_rank + opts.source_root;
@@ -1219,9 +1205,12 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Scatter(
 
 std::shared_ptr<ProcessGroupNCCL> ProcessGroupNCCL::CreateProcessGroupNCCL(
     const std::shared_ptr<phi::distributed::Store>& store,
+    int device_id,
     int rank,
     int size,
     int gid) {
+  phi::distributed::CommContextManager::CreateNCCLCommContext(
+      store, device_id, gid, rank, size);
   auto process_group =
       std::make_shared<ProcessGroupNCCL>(store, rank, size, gid);
   ProcessGroupIdMap::GetInstance().emplace(gid, process_group);
