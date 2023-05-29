@@ -36,9 +36,11 @@ cc_test_old(
   SRCS
   test_mkldnn_op_nhwc.cc
   DEPS
-  executor
+  conditional_block_op
+  standalone_executor
   recurrent_op_helper
   recurrent_op
+  executor
   op_registry
   pool_op
   shape_op
