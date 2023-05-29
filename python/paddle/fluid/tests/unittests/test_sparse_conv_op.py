@@ -22,6 +22,40 @@ from paddle.fluid import core
 
 
 class TestSparseConv(unittest.TestCase):
+    def test_conv2d(self):
+        kernel = [[[[1], [1], [1]], [[1], [1], [1]], [[1], [1], [1]]]]
+        dense_kernel = paddle.to_tensor(
+            kernel, dtype='float32', stop_gradient=False
+        )
+        dense_kernel = paddle.reshape(dense_kernel, [3, 3, 1, 1])
+        paddings = [0, 0]
+        strides = [1, 1]
+        dilations = [1, 1]
+        bias = [1]
+
+        indices = [[0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
+        values = [1, 2, 3, 4]
+        indices = paddle.to_tensor(indices, dtype='int32')
+        values = paddle.to_tensor(values, dtype='float32')
+        dense_shape = [1, 3, 4, 1]
+        correct_out_values = [[5], [11]]
+        sparse_input = core.eager.sparse_coo_tensor(
+            indices, values, dense_shape, False
+        )
+        out = paddle.sparse.nn.functional.conv2d(
+            sparse_input,
+            dense_kernel,
+            bias=paddle.to_tensor(bias, dtype='float32'),
+            stride=strides,
+            padding=paddings,
+            dilation=dilations,
+            groups=1,
+            data_format="NHWC",
+        )
+        out.backward(out)
+        out = paddle.sparse.coalesce(out)
+        assert np.array_equal(correct_out_values, out.values().numpy())
+
     def test_conv3d(self):
         kernel = [[[[[1], [1], [1]], [[1], [1], [1]], [[1], [1], [1]]]]]
         dense_kernel = paddle.to_tensor(
@@ -56,6 +90,21 @@ class TestSparseConv(unittest.TestCase):
         out = paddle.sparse.coalesce(out)
         assert np.array_equal(correct_out_values, out.values().numpy())
 
+    def test_subm_conv2d(self):
+        indices = [[0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
+        values = [[1], [2], [3], [4]]
+        indices = paddle.to_tensor(indices, dtype='int32')
+        values = paddle.to_tensor(values, dtype='float32')
+        dense_shape = [1, 3, 4, 1]
+        sparse_x = paddle.sparse.sparse_coo_tensor(
+            indices, values, dense_shape, stop_gradient=True
+        )
+        weight = paddle.randn((1, 3, 3, 1), dtype='float32')
+        y = paddle.sparse.nn.functional.subm_conv2d(
+            sparse_x, weight, key='subm_conv'
+        )
+        assert np.array_equal(sparse_x.indices().numpy(), y.indices().numpy())
+
     def test_subm_conv3d(self):
         indices = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
         values = [[1], [2], [3], [4]]
@@ -70,6 +119,30 @@ class TestSparseConv(unittest.TestCase):
             sparse_x, weight, key='subm_conv'
         )
         assert np.array_equal(sparse_x.indices().numpy(), y.indices().numpy())
+
+    def test_Conv2D(self):
+        # (3, non_zero_num), 3-D:(N, H, W)
+        indices = [[0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
+        # (non_zero_num, C)
+        values = [[1], [2], [3], [4]]
+        indices = paddle.to_tensor(indices, dtype='int32')
+        values = paddle.to_tensor(values, dtype='float32')
+        dense_shape = [1, 3, 4, 1]
+        correct_out_values = [[4], [10]]
+        sparse_input = paddle.sparse.sparse_coo_tensor(
+            indices, values, dense_shape, False
+        )
+
+        sparse_conv2d = paddle.sparse.nn.Conv2D(
+            1, 1, (3, 3), data_format='NHWC'
+        )
+        sparse_out = sparse_conv2d(sparse_input)
+        # test errors
+        with self.assertRaises(ValueError):
+            # Currently, only support data_format='NDHWC'
+            conv2d = paddle.sparse.nn.SubmConv2D(
+                1, 1, (3, 3), data_format='NCHW', key='subm_conv'
+            )
 
     def test_Conv3D(self):
         # (4, non_zero_num), 4-D:(N, D, H, W)
@@ -93,6 +166,34 @@ class TestSparseConv(unittest.TestCase):
             # Currently, only support data_format='NDHWC'
             conv3d = paddle.sparse.nn.SubmConv3D(
                 1, 1, (1, 3, 3), data_format='NCDHW', key='subm_conv'
+            )
+
+    def test_SubmConv2D(self):
+        indices = [[0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
+        values = [[1], [2], [3], [4]]
+        indices = paddle.to_tensor(indices, dtype='int32')
+        values = paddle.to_tensor(values, dtype='float32')
+        dense_shape = [1, 3, 4, 1]
+        correct_out_values = [[4], [10]]
+        sparse_input = paddle.sparse.sparse_coo_tensor(
+            indices, values, dense_shape, False
+        )
+
+        subm_conv2d = paddle.sparse.nn.SubmConv2D(
+            1, 1, (3, 3), data_format='NHWC', key='subm_conv'
+        )
+        # test extra_repr
+        print(subm_conv2d.extra_repr())
+
+        sparse_out = subm_conv2d(sparse_input)
+        # the output shape of subm_conv is same as input shape
+        assert np.array_equal(indices, sparse_out.indices().numpy())
+
+        # test errors
+        with self.assertRaises(ValueError):
+            # Currently, only support data_format='NHWC'
+            conv2d = paddle.sparse.nn.SubmConv2D(
+                1, 1, (3, 3), data_format='NCHW', key='subm_conv'
             )
 
     def test_SubmConv3D(self):
@@ -122,6 +223,43 @@ class TestSparseConv(unittest.TestCase):
             conv3d = paddle.sparse.nn.SubmConv3D(
                 1, 1, (1, 3, 3), data_format='NCDHW', key='subm_conv'
             )
+
+    def test_Conv2D_bias(self):
+        paddle.seed(0)
+        shape = [1, 4, 4, 3]
+        x = paddle.randn(shape)
+        sp_x = x.to_sparse_coo(3)
+        conv2d = paddle.nn.Conv2D(3, 2, 3, data_format='NHWC')
+
+        sp_conv2d = paddle.sparse.nn.Conv2D(3, 2, 3, data_format='NHWC')
+        sp_conv2d.weight.set_value(
+            paddle.to_tensor(conv2d.weight.numpy().transpose(2, 3, 1, 0))
+        )
+        sp_conv2d.bias.set_value(paddle.to_tensor(conv2d.bias.numpy()))
+
+        x.stop_gradient = False
+        out = conv2d(x)
+        loss = out.mean()
+        loss.backward()
+
+        sp_x.stop_gradient = False
+        sp_out = sp_conv2d(sp_x)
+        dense_out = sp_out.to_dense()
+        sp_loss = dense_out.mean()
+        sp_loss.backward()
+        assert np.allclose(out.numpy(), dense_out.numpy(), atol=1e-3, rtol=1e-3)
+        assert np.allclose(
+            conv2d.weight.grad.numpy().transpose(2, 3, 1, 0),
+            sp_conv2d.weight.grad.numpy(),
+            atol=1e-3,
+            rtol=1e-3,
+        )
+        assert np.allclose(
+            conv2d.bias.grad.numpy(),
+            sp_conv2d.bias.grad.numpy(),
+            atol=1e-5,
+            rtol=1e-5,
+        )
 
     def test_Conv3D_bias(self):
         paddle.seed(0)

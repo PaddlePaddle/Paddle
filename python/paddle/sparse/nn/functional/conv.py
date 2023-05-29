@@ -204,8 +204,6 @@ def _conv2d(
         channels_out = pre_bias.shape[4]
         pre_bias = reshape(pre_bias, [n_out, h_out, w_out, channels_out])
         if bias is not None:
-            print(pre_bias.shape)
-            print(bias.shape)
             return add(pre_bias, bias)
         else:
             return pre_bias

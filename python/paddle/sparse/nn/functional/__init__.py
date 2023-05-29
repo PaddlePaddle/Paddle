@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .conv import conv2d  # noqa: F401
 from .conv import conv3d  # noqa: F401
+from .conv import subm_conv2d  # noqa: F401
 from .conv import subm_conv3d  # noqa: F401
 from .transformer import attention  # noqa: F401
 from .pooling import max_pool3d  # noqa: F401
