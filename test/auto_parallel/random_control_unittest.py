@@ -56,7 +56,7 @@ class TestRandomControl(unittest.TestCase):
         self.batch_num = 10
         self.clip_norm = 0.2
         self.dataset = FakeDataset(self.batch_size * self.batch_num)
-        paddle.distributed.auto_parallel.static.parallel_manual_seed(100)
+        paddle.distributed.auto_parallel.parallel_manual_seed(100)
 
     def init(self, engine):
         paddle.seed(2022)
