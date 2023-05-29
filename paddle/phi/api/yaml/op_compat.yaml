@@ -1789,7 +1789,7 @@
     pool2d : GetPoolExpectedKernelType
     pool2d_grad : GetPoolGradExpectedKernelType
     pool2d_double_grad : GetPoolExpectedKernelType
-  keep_signature : [pool2d, pool2d_grad, pool2d_double_grad]
+  manual_signature : [pool2d, pool2d_grad, pool2d_double_grad]
   extra :
     attrs : [bool use_mkldnn = false, bool use_quantizer = false,
               str mkldnn_data_type = "float32", bool is_test = false]
@@ -1805,7 +1805,7 @@
   get_expected_kernel_type :
     pool3d : GetPoolExpectedKernelType
     pool3d_grad : GetPoolGradExpectedKernelType
-  keep_signature : [pool3d, pool3d_grad]
+  manual_signature : [pool3d, pool3d_grad]
   extra :
     attrs : [bool use_mkldnn = false]
 
