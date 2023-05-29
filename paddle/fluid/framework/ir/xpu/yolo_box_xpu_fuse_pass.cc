@@ -123,10 +123,6 @@ YoloBoxXPUPattern::YoloBoxXPUPattern(PDPattern* pattern,
   auto x = pattern->NewNode(x_repr())
                ->assert_is_op_output("sigmoid", "Out")
                ->assert_has_n_outputs(3);
-  //  ->assert_more([](Node* node) {
-  //    auto dim_size = node->Var()->GetShape().size();
-  //    return node->Var()->GetShape()[dim_size - 1] > 4;
-  //  });
   auto* left_slice =
       pattern->NewNode(left_slice_repr())
           ->assert_is_op("strided_slice")
