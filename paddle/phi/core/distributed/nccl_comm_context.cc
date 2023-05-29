@@ -129,8 +129,9 @@ void NCCLCommContext::Send(const phi::DenseTensor& in_tensor,
 void NCCLCommContext::Recv(phi::DenseTensor* out_tensor,
                            const int& peer,
                            gpuStream_t stream) {
+  phi::distributed::CommStaticCheck::CheckShape(*tensor, rank_, size_);
   if (FLAGS_enable_nccl_dynamic_check) {
-    NCCLDynamicCheck::CheckShape(*out_tensor, rank_, rank_, nccl_comm_);
+    NCCLDynamicCheck::CheckShape(*out_tensor, peer, rank_, nccl_comm_);
   }
 
   PADDLE_ENFORCE_GPU_SUCCESS(

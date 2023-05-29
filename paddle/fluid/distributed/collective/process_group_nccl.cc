@@ -515,21 +515,17 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Recv(
     tensor = &partial_tensor;
   }
 
-  phi::distributed::CommStaticCheck::CheckShape(*tensor, rank_, size_);
   return RunFnInNCCLEnv(
       [&](ncclComm_t comm, gpuStream_t stream) {
-        if (FLAGS_enable_nccl_dynamic_check) {
-          phi::distributed::NCCLDynamicCheck::CheckShape(*tensor,
-                                                         /*root_rank*/ src_rank,
-                                                         rank_,
-                                                         comm);
-        }
-        NCCL_CHECK(phi::dynload::ncclRecv(tensor->data(),
-                                          tensor->numel(),
-                                          phi::ToNCCLDataType(tensor->dtype()),
-                                          src_rank,
-                                          comm,
-                                          stream));
+        const auto& comm_context_manager =
+            phi::distributed::CommContextManager::GetInstance();
+        auto comm_context = static_cast<phi::distributed::NCCLCommContext*>(
+            comm_context_manager.Get(this->gid_));
+        PADDLE_ENFORCE_NE(
+            comm_context,
+            nullptr,
+            phi::errors::Unavailable("NCCLCommContext is nullptr"));
+        comm_ctx->Recv(tensor, peer, stream);
       },
       *tensor,
       CommType::RECV,
@@ -558,7 +554,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Send(
             comm_context,
             nullptr,
             phi::errors::Unavailable("NCCLCommContext is nullptr"));
-        comm_context->AllGather(out_tensor, in_tensor_maybe_partial, stream);
         comm_ctx->Send(tensor_maybe_partial, dst_rank, stream);
       },
       tensor_maybe_partial,
