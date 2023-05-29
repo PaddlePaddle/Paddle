@@ -289,6 +289,9 @@ void SumCooKernel(const Context& dev_ctx,
                                        dev_ctx, x, axis, dtype, keep_dim, out);
                                  }));
   }
+  DenseTensor* out_dense;
+  CooToDenseKernel(dev_ctx, *out, out_dense);
+  DenseToCooKernel(dev_ctx, *out_dense, out);
 }
 
 template <typename T, typename Context>
