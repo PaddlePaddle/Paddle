@@ -548,23 +548,18 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Send(
   const phi::DenseTensor& tensor_maybe_partial =
       numel > 0 ? GetPartialTensor(tensor, offset, numel) : tensor;
 
-  phi::distributed::CommStaticCheck::CheckShape(
-      tensor_maybe_partial, rank_, size_);
   return RunFnInNCCLEnv(
       [&](ncclComm_t comm, gpuStream_t stream) {
-        if (FLAGS_enable_nccl_dynamic_check) {
-          phi::distributed::NCCLDynamicCheck::CheckShape(tensor_maybe_partial,
-                                                         /*root_rank*/ rank_,
-                                                         rank_,
-                                                         comm);
-        }
-        NCCL_CHECK(phi::dynload::ncclSend(
-            tensor_maybe_partial.data(),
-            tensor_maybe_partial.numel(),
-            phi::ToNCCLDataType(tensor_maybe_partial.dtype()),
-            dst_rank,
-            comm,
-            stream));
+        const auto& comm_context_manager =
+            phi::distributed::CommContextManager::GetInstance();
+        auto comm_context = static_cast<phi::distributed::NCCLCommContext*>(
+            comm_context_manager.Get(this->gid_));
+        PADDLE_ENFORCE_NE(
+            comm_context,
+            nullptr,
+            phi::errors::Unavailable("NCCLCommContext is nullptr"));
+        comm_context->AllGather(out_tensor, in_tensor_maybe_partial, stream);
+        comm_ctx->Send(tensor_maybe_partial, dst_rank, stream);
       },
       tensor_maybe_partial,
       CommType::SEND,
