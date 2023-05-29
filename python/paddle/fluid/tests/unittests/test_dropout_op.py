@@ -74,10 +74,6 @@ class TestDropoutOp(OpTest):
             'Out': self.inputs['X'],
             'Mask': np.ones((32, 64)).astype('uint8'),
         }
-        # Because prim op compare res with dygraph
-        # when p = 0 dropout api return x,in dygraph mode x_grad = out_grad,
-        # but in static mode x_grad = []
-        self.enable_check_static_comp = False
 
     def test_check_output(self):
         self.check_output(check_prim=True)
@@ -99,10 +95,6 @@ class TestDropoutOpInput1d(OpTest):
             'Out': self.inputs['X'],
             'Mask': np.ones(2000).astype('uint8'),
         }
-        # Because prim op compare res with dygraph
-        # when p = 0 dropout api return x,in dygraph mode x_grad = out_grad,
-        # but in static mode x_grad = []
-        self.enable_check_static_comp = False
 
     def test_check_output(self):
         self.check_output(check_prim=True)
@@ -138,10 +130,6 @@ class TestDropoutOp3(TestDropoutOp):
             'Out': self.inputs['X'],
             'Mask': np.ones((32, 64, 2)).astype('uint8'),
         }
-        # Because prim op compare res with dygraph
-        # when p = 0 dropout api return x,in dygraph mode x_grad = out_grad,
-        # but in static mode x_grad = []
-        self.enable_check_static_comp = False
 
 
 @skip_check_grad_ci(reason="For inference, check_grad is not required.")
@@ -214,10 +202,6 @@ class TestDropoutOp7(TestDropoutOp):
             'Out': self.inputs['X'],
             'Mask': np.ones((32, 64, 2)).astype('uint8'),
         }
-        # Because prim op compare res with dygraph
-        # when p = 0 dropout api return x,in dygraph mode x_grad = out_grad,
-        # but in static mode x_grad = []
-        self.enable_check_static_comp = False
 
 
 @skip_check_grad_ci(reason="For inference, check_grad is not required.")
@@ -276,10 +260,6 @@ class TestDropoutOpWithSeed(OpTest):
             'Out': self.inputs['X'],
             'Mask': np.ones((32, 64)).astype('uint8'),
         }
-        # Because prim op compare res with dygraph
-        # when p = 0 dropout api return x,in dygraph mode x_grad = out_grad,
-        # but in static mode x_grad = []
-        self.enable_check_static_comp = False
 
     def test_check_output(self):
         self.check_output(check_prim=True)
@@ -311,10 +291,6 @@ class TestFP16DropoutOp(OpTest):
             'is_test': True,
         }
         self.outputs = {'Out': out}
-        # Because prim op compare res with dygraph
-        # when p = 0 dropout api return x,in dygraph mode x_grad = out_grad,
-        # but in static mode x_grad = []
-        self.enable_check_static_comp = False
 
     def init_test_case(self):
         self.input_size = [32, 64]
@@ -362,22 +338,10 @@ class TestBF16DropoutOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_prim=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out')
-
-    def test_check_output_for_prim(self):
-        # greater_equal does't support bfloat16 in cpu
-        if core.is_compiled_with_cuda():
-            self.check_output_with_place(core.CUDAPlace(0))
-
-    def test_check_grad_for_prim(self):
-        # greater_equal does't support bfloat16 in cpu
-        if core.is_compiled_with_cuda():
-            self.check_grad_with_place(
-                core.CUDAPlace(0), ['X'], 'Out', only_check_prim=True
-            )
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestDropoutOpWithSeedOnCPUPlace(unittest.TestCase):
@@ -1477,6 +1441,16 @@ def apply_to_static(net, use_cinn):
             places,
         ),
         (
+            'bfp16',
+            np.random.rand(100000),
+            0.3,
+            False,
+            'upscale_in_train',
+            1002,
+            'bfloat16',
+            places,
+        ),
+        (
             'fp64',
             np.random.rand(100000),
             0.7,
@@ -1507,6 +1481,16 @@ def apply_to_static(net, use_cinn):
             places,
         ),
         (
+            'p=1.0,dtype=bfp16',
+            np.random.rand(100000),
+            1.0,
+            True,
+            'upscale_in_train',
+            1002,
+            'bfloat16',
+            places,
+        ),
+        (
             'p=1.0,test=False',
             np.random.rand(100000),
             1.0,
@@ -1517,13 +1501,33 @@ def apply_to_static(net, use_cinn):
             places,
         ),
         (
-            'p=0.0',
+            'p=1.0,test=False,dtype=bfp16',
             np.random.rand(100000),
             1.0,
+            False,
+            'upscale_in_train',
+            1002,
+            'bfloat16',
+            places,
+        ),
+        (
+            'p=0.0',
+            np.random.rand(100000),
+            0,
             True,
             'upscale_in_train',
             1002,
             'float32',
+            places,
+        ),
+        (
+            'p=0.0,dtype=bfp16',
+            np.random.rand(100000),
+            0,
+            True,
+            'upscale_in_train',
+            1002,
+            'bfloat16',
             places,
         ),
         (
@@ -1534,6 +1538,16 @@ def apply_to_static(net, use_cinn):
             'downscale_in_infer',
             1002,
             'float32',
+            places,
+        ),
+        (
+            'downgrade_train,dtype=bfp16',
+            np.random.rand(100000),
+            0.5,
+            False,
+            'downscale_in_infer',
+            1002,
+            'bfloat16',
             places,
         ),
         (
@@ -1571,7 +1585,7 @@ def apply_to_static(net, use_cinn):
 class TestCompositeDropout(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.x = cls.x.astype(cls.dtype)
+        cls.x = cls.x.astype(cls.dtype) if cls.dtype != "bfloat16" else cls.x.astype("float32")
         core._set_prim_all_enabled(True)
 
     @classmethod
@@ -1596,12 +1610,15 @@ class TestCompositeDropout(unittest.TestCase):
             paddle.set_device("gpu")
         core.set_prim_eager_enabled(False)
         input_ = paddle.to_tensor(
-            data=self.x, dtype=self.dtype, place=place, stop_gradient=False
+            data=self.x, dtype=self.dtype if self.dtype != "bfloat16" else "float32", place=place, stop_gradient=False
         )
         output = paddle.nn.functional.dropout(
             input_, self.p, training=(not self.is_test), mode=self.mode
         )
         grad = paddle.grad(output, input_)
+        if self.dtype == "bfloat16":
+            output = paddle.cast(output, "float32")
+            grad[0] = paddle.cast(grad[0], "float32")
         return output, grad[0]
 
     def test_static_comp(self):
@@ -1614,7 +1631,7 @@ class TestCompositeDropout(unittest.TestCase):
                 mp, sp = paddle.static.Program(), paddle.static.Program()
                 with paddle.static.program_guard(mp, sp):
                     input_ = paddle.static.data(
-                        'x', shape=self.x.shape, dtype=self.x.dtype
+                        'x', shape=self.x.shape, dtype=self.x.dtype if self.dtype != "bfloat16" else "float32"
                     )
                     input_.stop_gradient = False
                     output = paddle.nn.functional.dropout(
@@ -1626,6 +1643,9 @@ class TestCompositeDropout(unittest.TestCase):
                     if core._is_fwd_prim_enabled():
                         primapi.to_prim(mp.blocks)
                     grad = paddle.static.gradients(output, input_)[0]
+                    if self.dtype == "bfloat16":
+                        output = paddle.cast(output, "float32")
+                        grad = paddle.cast(grad, "float32")
                 exe = paddle.static.Executor(place)
                 exe.run(sp)
                 fwd, rev = exe.run(
@@ -1662,7 +1682,7 @@ class TestCompositeDropout(unittest.TestCase):
                 paddle.set_device("gpu")
             paddle.seed(self.seed)
             input_ = paddle.to_tensor(
-                data=self.x, dtype=self.dtype, place=place, stop_gradient=False
+                data=self.x, dtype=self.dtype if self.dtype != "bfloat16" else "float32", place=place, stop_gradient=False
             )
             net = PrimNet()
             net = apply_to_static(net, False)
@@ -1670,6 +1690,9 @@ class TestCompositeDropout(unittest.TestCase):
                 input_, self.p, training=(not self.is_test), mode=self.mode
             )
             grad = paddle.grad(output, input_)
+            if self.dtype == "bfloat16":
+                output = paddle.cast(output, "float32")
+                grad[0] = paddle.cast(grad[0], "float32")
             fwd_actual.append(output.numpy())
             rev_actual.append(grad[0].numpy())
         for i in range(len(self.places)):
@@ -1696,7 +1719,7 @@ class TestCompositeDropout(unittest.TestCase):
             paddle.set_device("gpu")
             paddle.seed(self.seed)
             input_ = paddle.to_tensor(
-                data=self.x, dtype=self.dtype, place=place, stop_gradient=False
+                data=self.x, dtype=self.dtype if self.dtype != "bfloat16" else "float32", place=place, stop_gradient=False
             )
             net = PrimNet()
             net = apply_to_static(net, True)
@@ -1704,6 +1727,9 @@ class TestCompositeDropout(unittest.TestCase):
                 input_, self.p, training=(not self.is_test), mode=self.mode
             )
             grad = paddle.grad(output, input_)
+            if self.dtype == "bfloat16":
+                output = paddle.cast(output, "float32")
+                grad[0] = paddle.cast(grad[0], "float32")
             fwd_actual.append(output.numpy())
             rev_actual.append(grad[0].numpy())
         i = 0

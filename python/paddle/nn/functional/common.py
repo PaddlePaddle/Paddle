@@ -1100,7 +1100,7 @@ def dropout(
     if isinstance(p, (int, float)):
         # fast return for p == 0
         if p == 0:
-            return x
+            return paddle.assign(x)
         elif p < 0 or p > 1:
             raise ValueError("p argument should between 0 and 1")
     if mode not in ('downscale_in_infer', 'upscale_in_train'):
