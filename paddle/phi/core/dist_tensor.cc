@@ -17,6 +17,11 @@ limitations under the License. */
 
 namespace phi {
 
+template <>
+const TypeInfo<phi::TensorBase>
+    TypeInfoTraits<phi::TensorBase, DistTensor>::kType =
+        RegisterStaticType<phi::TensorBase>(DistTensor::name());
+
 DistTensor::DistTensor() { local_tensor_ = std::make_shared<DenseTensor>(); }
 
 /// \brief Construct a dist tensor and allocate space.
