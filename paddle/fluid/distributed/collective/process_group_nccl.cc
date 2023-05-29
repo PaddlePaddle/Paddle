@@ -328,29 +328,21 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Reduce(
     const ReduceOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
-  phi::distributed::CommStaticCheck::SameShape(*out_tensor,
-                                               in_tensor,
-                                               /*dst_rank*/ opts.root_rank,
-                                               /*cur_rank*/ rank_,
-                                               size_);
   return RunFnInNCCLEnv(
       [&](ncclComm_t comm, gpuStream_t stream) {
-        if (FLAGS_enable_nccl_dynamic_check) {
-          phi::distributed::NCCLDynamicCheck::CheckShape(
-              *out_tensor,
-              /*root_rank*/ opts.root_rank,
-              rank_,
-              comm);
-        }
-        NCCL_CHECK(
-            phi::dynload::ncclReduce(in_tensor.data(),
-                                     out_tensor->data(),
-                                     in_tensor.numel(),
-                                     phi::ToNCCLDataType(in_tensor.dtype()),
-                                     ToNCCLRedType(opts.reduce_op),
-                                     opts.root_rank,
-                                     comm,
-                                     stream));
+        const auto& comm_context_manager =
+            phi::distributed::CommContextManager::GetInstance();
+        auto comm_context = static_cast<phi::distributed::NCCLCommContext*>(
+            comm_context_manager.Get(this->gid_));
+        PADDLE_ENFORCE_NE(
+            comm_context,
+            nullptr,
+            phi::errors::Unavailable("NCCLCommContext is nullptr"));
+        comm_context->Reduce(out_tensor,
+                             in_tensor,
+                             ToNCCLRedType(opts.reduce_op),
+                             opts.root_rank,
+                             stream);
       },
       in_tensor,
       CommType::REDUCE,

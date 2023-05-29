@@ -160,6 +160,17 @@ void NCCLCommContext::Reduce(phi::DenseTensor* out_tensor,
                              ncclRedOp_t reduce_type,
                              int root,
                              gpuStream_t stream) {
+  phi::distributed::CommStaticCheck::SameShape(*out_tensor,
+                                               in_tensor,
+                                               /*dst_rank*/ root,
+                                               /*cur_rank*/ rank_,
+                                               size_);
+  if (FLAGS_enable_nccl_dynamic_check) {
+    phi::distributed::NCCLDynamicCheck::CheckShape(*out_tensor,
+                                                   /*root_rank*/ root,
+                                                   rank_,
+                                                   nccl_comm_);
+  }
   PADDLE_ENFORCE_GPU_SUCCESS(
       phi::dynload::ncclReduce(in_tensor.data(),
                                out_tensor->data(),
