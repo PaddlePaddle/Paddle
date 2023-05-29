@@ -61,6 +61,17 @@ void NCCLCommContext::Broadcast(phi::DenseTensor* out_tensor,
 void NCCLCommContext::AllGather(phi::DenseTensor* out_tensor,
                                 const phi::DenseTensor& in_tensor,
                                 gpuStream_t stream) {
+  phi::distributed::CommStaticCheck::GatherLikeShape(*out_tensor,
+                                                     in_tensor,
+                                                     /*dst_rank*/ rank_,
+                                                     /*cur_rank*/ rank_,
+                                                     size_);
+  if (FLAGS_enable_nccl_dynamic_check) {
+    phi::distributed::NCCLDynamicCheck::CheckShape(*out_tensor,
+                                                   /*root_rank*/ 0,
+                                                   rank_,
+                                                   nccl_comm_);
+  }
   PADDLE_ENFORCE_GPU_SUCCESS(
       phi::dynload::ncclAllGather(in_tensor.data(),
                                   out_tensor->data(),
