@@ -33,7 +33,7 @@ from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage3 import
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_utils import (
     GroupShardedScaler,
 )
-from paddle.distributed.utils.nccl_utils import get_nccl_version_str
+from paddle.fluid import core
 from paddle.nn import Linear
 
 epoch = 10
@@ -119,7 +119,7 @@ class RandomDataset(paddle.io.Dataset):
 
 def optimizer_setting(model, use_pure_fp16, opt_group=False):
     clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
-    optimizer = paddle.optimizer.Momentum(
+    optimizer = paddle.optimizer.AdamW(
         parameters=[{"params": list(model.parameters())}]
         if opt_group
         else list(model.parameters()),
@@ -364,14 +364,9 @@ def test_stage2_stage3():
         )
 
     # bfp16
-    # NOTE: this is a hack to get int format nccl version, like 2134
-    # if current platform is not linux, version number will be 0
-    nccl_version_str = get_nccl_version_str()
-    nccl_version = (
-        int("".join(nccl_version_str.split("."))) if nccl_version_str else 0
-    )
+    nccl_version = core.nccl_version()
 
-    if nccl_version >= 2100:
+    if nccl_version >= 21000:
         stage2_params = train_mlp(
             mlp11,
             sharding_stage=2,
@@ -388,8 +383,8 @@ def test_stage2_stage3():
         )
         for i in range(len(stage2_params)):
             np.testing.assert_allclose(
-                stage2_params[i].numpy(),
-                stage3_params[i].numpy(),
+                stage2_params[i].astype("float32").numpy(),
+                stage3_params[i].astype("float32").numpy(),
                 rtol=1e-4,
                 atol=1e-3,
             )

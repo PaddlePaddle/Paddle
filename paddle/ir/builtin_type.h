@@ -19,15 +19,6 @@
 
 namespace ir {
 ///
-/// \brief This macro is used to get a list of all built-in types in this file.
-/// The built-in Dialect will use this macro to quickly register all built-in
-/// types.
-///
-#define GET_BUILT_IN_TYPE_LIST                                      \
-  ir::Float16Type, ir::Float32Type, ir::Float64Type, ir::Int16Type, \
-      ir::Int32Type, ir::Int64Type, ir::DenseTensorType
-
-///
 /// \brief Define built-in parameterless types. Please add the necessary
 /// interface functions for built-in types through the macro
 /// DECLARE_TYPE_UTILITY_FUNCTOR.
@@ -43,78 +34,96 @@ namespace ir {
 ///   Type fp32 = Float32Type::get(ctx);
 /// \endcode
 ///
-class Float16Type : public ir::Type {
+class BFloat16Type : public Type {
  public:
   using Type::Type;
 
-  DECLARE_TYPE_UTILITY_FUNCTOR(Float16Type, ir::TypeStorage);
-
-  static Float16Type get(ir::IrContext *context);
+  DECLARE_TYPE_UTILITY_FUNCTOR(BFloat16Type, TypeStorage);
 };
 
-class Float32Type : public ir::Type {
+class Float16Type : public Type {
  public:
   using Type::Type;
 
-  DECLARE_TYPE_UTILITY_FUNCTOR(Float32Type, ir::TypeStorage);
+  DECLARE_TYPE_UTILITY_FUNCTOR(Float16Type, TypeStorage);
 
-  static Float32Type get(ir::IrContext *context);
+  static Float16Type get(IrContext *context);
 };
 
-class Float64Type : public ir::Type {
+class Float32Type : public Type {
  public:
   using Type::Type;
 
-  DECLARE_TYPE_UTILITY_FUNCTOR(Float64Type, ir::TypeStorage);
+  DECLARE_TYPE_UTILITY_FUNCTOR(Float32Type, TypeStorage);
 
-  static Float64Type get(ir::IrContext *context);
+  static Float32Type get(IrContext *context);
 };
 
-class Int16Type : public ir::Type {
+class Float64Type : public Type {
  public:
   using Type::Type;
 
-  DECLARE_TYPE_UTILITY_FUNCTOR(Int16Type, ir::TypeStorage);
+  DECLARE_TYPE_UTILITY_FUNCTOR(Float64Type, TypeStorage);
 
-  static Int16Type get(ir::IrContext *context);
+  static Float64Type get(IrContext *context);
 };
 
-class Int32Type : public ir::Type {
+class Int8Type : public Type {
  public:
   using Type::Type;
 
-  DECLARE_TYPE_UTILITY_FUNCTOR(Int32Type, ir::TypeStorage);
-
-  static Int32Type get(ir::IrContext *context);
+  DECLARE_TYPE_UTILITY_FUNCTOR(Int8Type, TypeStorage);
 };
 
-class Int64Type : public ir::Type {
+class Int16Type : public Type {
  public:
   using Type::Type;
 
-  DECLARE_TYPE_UTILITY_FUNCTOR(Int64Type, ir::TypeStorage);
+  DECLARE_TYPE_UTILITY_FUNCTOR(Int16Type, TypeStorage);
 
-  static Int64Type get(ir::IrContext *context);
+  static Int16Type get(IrContext *context);
 };
 
-///
-/// \brief Define built-in parameteric types.
-///
-class DenseTensorType : public ir::Type {
+class Int32Type : public Type {
  public:
   using Type::Type;
 
-  DECLARE_TYPE_UTILITY_FUNCTOR(DenseTensorType, DenseTensorTypeStorage);
+  DECLARE_TYPE_UTILITY_FUNCTOR(Int32Type, TypeStorage);
 
-  const ir::Type &dtype() const;
+  static Int32Type get(IrContext *context);
+};
 
-  const ir::DenseTensorTypeStorage::Dim &dim() const;
+class Int64Type : public Type {
+ public:
+  using Type::Type;
 
-  const ir::DenseTensorTypeStorage::DataLayout &data_layout() const;
+  DECLARE_TYPE_UTILITY_FUNCTOR(Int64Type, TypeStorage);
 
-  const ir::DenseTensorTypeStorage::LoD &lod() const;
+  static Int64Type get(IrContext *context);
+};
 
-  const size_t &offset() const;
+class BoolType : public Type {
+ public:
+  using Type::Type;
+
+  DECLARE_TYPE_UTILITY_FUNCTOR(BoolType, TypeStorage);
+
+  static BoolType get(IrContext *context);
+};
+
+class VectorType : public Type {
+ public:
+  using Type::Type;
+
+  DECLARE_TYPE_UTILITY_FUNCTOR(VectorType, VectorTypeStorage);
+
+  std::vector<Type> data() const;
+
+  size_t size() const { return data().size(); }
+
+  bool empty() const { return data().empty(); }
+
+  Type operator[](size_t index) const { return data()[index]; }
 };
 
 }  // namespace ir

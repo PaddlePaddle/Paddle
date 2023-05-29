@@ -22,24 +22,24 @@ namespace sparse {
 
 // TODO(zhouwei25): implement CPU backward kernel of " CSR @ DENSE -> DENSE"
 template <typename T, typename Context>
-void MatmulCsrDenseGradKernel(const Context& dev_ctx,
-                              const SparseCsrTensor& x,
-                              const DenseTensor& y,
-                              const DenseTensor& dout,
-                              SparseCsrTensor* dx,
-                              DenseTensor* dy) {
+void MatmulCsrDenseGradKernel(const Context& dev_ctx UNUSED,
+                              const SparseCsrTensor& x UNUSED,
+                              const DenseTensor& y UNUSED,
+                              const DenseTensor& dout UNUSED,
+                              SparseCsrTensor* dx UNUSED,
+                              DenseTensor* dy UNUSED) {
   PADDLE_THROW(phi::errors::Unimplemented(
       "Not support CPU backward kernel of 'sparse.matmul' now."));
 }
 
 // TODO(zhouwei25): implement CPU kernel of " DENSE @ DENSE * CSR_MASK -> CSR"
 template <typename T, typename Context>
-void MaskedMatmulCsrGradKernel(const Context& dev_ctx,
-                               const DenseTensor& x,
-                               const DenseTensor& y,
-                               const SparseCsrTensor& dout,
-                               DenseTensor* dx,
-                               DenseTensor* dy) {
+void MaskedMatmulCsrGradKernel(const Context& dev_ctx UNUSED,
+                               const DenseTensor& x UNUSED,
+                               const DenseTensor& y UNUSED,
+                               const SparseCsrTensor& dout UNUSED,
+                               DenseTensor* dx UNUSED,
+                               DenseTensor* dy UNUSED) {
   PADDLE_THROW(phi::errors::Unimplemented(
       "Not support CPU backward kernel of 'sparse.masked_matmul' now."));
 }

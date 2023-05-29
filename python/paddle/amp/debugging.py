@@ -315,7 +315,7 @@ def enable_operator_stats_collection():
     """
     Enable to collect the number of operators for different data types.
     The statistical data are categorized according to four data types, namely
-    float32, float16, bfloat16 and others. This funciton is used in pair with
+    float32, float16, bfloat16 and others. This function is used in pair with
     the corresponding disable function.
 
     Examples:
@@ -351,7 +351,7 @@ def enable_operator_stats_collection():
 def disable_operator_stats_collection():
     """
     Disable the collection the number of operators for different data types.
-    This funciton is used in pair with the corresponding enable function.
+    This function is used in pair with the corresponding enable function.
     The statistical data are categorized according to four data types, namely
     float32, float16, bfloat16 and others, and will be printed after the
     function call.

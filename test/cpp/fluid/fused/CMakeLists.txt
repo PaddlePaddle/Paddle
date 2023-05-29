@@ -13,9 +13,9 @@ if(WITH_GPU OR WITH_ROCM)
       DEPS tensor
            op_registry
            dropout_op
-           layer_norm_op
+           generated_op
            device_context
-           generator
+           phi
            memory)
     nv_test(
       test_fused_dropout_act_bias
@@ -23,9 +23,9 @@ if(WITH_GPU OR WITH_ROCM)
       DEPS tensor
            op_registry
            dropout_op
-           layer_norm_op
+           generated_op
            device_context
-           generator
+           phi
            memory)
     nv_test(
       test_fused_layernorm_residual_dropout_bias
@@ -33,9 +33,9 @@ if(WITH_GPU OR WITH_ROCM)
       DEPS tensor
            op_registry
            dropout_op
-           layer_norm_op
+           generated_op
            device_context
-           generator
+           phi
            memory)
   endif()
   # resnet_unit needs cudnn 8.0 above
@@ -44,15 +44,11 @@ if(WITH_GPU OR WITH_ROCM)
       test_cudnn_norm_conv
       SRCS cudnn_norm_conv_test.cc
       DEPS conv_op
-           blas
-           im2col
-           vol2col
            depthwise_conv
-           eigen_function
            tensor
            op_registry
            device_context
-           generator
+           phi
            memory)
     cc_test(
       test_cudnn_bn_add_relu
@@ -62,7 +58,7 @@ if(WITH_GPU OR WITH_ROCM)
            tensor
            op_registry
            device_context
-           generator
+           phi
            memory)
   endif()
 endif()

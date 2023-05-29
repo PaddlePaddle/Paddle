@@ -2221,7 +2221,6 @@ CPU_PARALLEL_JOB = [
     'test_egr_ds_grad_tensor_holder',
     'test_egr_ds_auotgrad_meta',
     'test_egr_ds_accumulation_node',
-    'test_resnet50_with_cinn',
     'test_parallel_dygraph_sync_batch_norm',
     'test_monitor',
     'test_mkldnn_quantizer',

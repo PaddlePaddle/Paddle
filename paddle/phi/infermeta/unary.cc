@@ -2088,10 +2088,12 @@ void MaxPoolWithIndexInferMeta(const MetaTensor& x,
 
   auto x_dims = x.dims();
 
-  PADDLE_ENFORCE(x_dims.size() == 4 || x_dims.size() == 5,
-                 errors::InvalidArgument("Pooling intput should be 4-D or "
-                                         "5-D tensor but received %dD-Tensor",
-                                         x_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      (x_dims.size() == 4 || x_dims.size() == 5),
+      true,
+      errors::InvalidArgument("Pooling intput should be 4-D or "
+                              "5-D tensor but received %dD-Tensor",
+                              x_dims.size()));
 
   if (global_pooling) {
     kernel_size_.resize(static_cast<size_t>(x_dims.size()) - 2);
@@ -4430,15 +4432,15 @@ void TransposeInferMeta(const MetaTensor& x,
 
   // Note: x_rank > axis_size when fuse squeeze2 + transpose2, else x_rank ==
   // axis_size
-  PADDLE_ENFORCE_GE(
-      x_rank,
-      axis_size,
-      errors::InvalidArgument("The input tensor's dimension "
-                              "should be equal to the axis's size. "
-                              "But received input tensor's dimension is %d, "
-                              "axis's size is %d",
-                              x_rank,
-                              axis_size));
+  PADDLE_ENFORCE_GE(x_rank,
+                    axis_size,
+                    errors::InvalidArgument(
+                        "The input tensor's dimension "
+                        "should be equal to or greater than the axis's size. "
+                        "But received input tensor's dimension is %d, "
+                        "axis's size is %d",
+                        x_rank,
+                        axis_size));
 
   std::vector<int> formated_axis = axis;
   std::vector<int> count(axis_size, 0);
@@ -4481,25 +4483,6 @@ void TransposeInferMeta(const MetaTensor& x,
 
   out->set_dims(out_dims);
   out->set_dtype(x.dtype());
-}
-
-void TransposeGradInferMeta(const MetaTensor& x,
-                            const std::vector<int>& axis,
-                            MetaTensor* out) {
-  size_t x_rank = x.dims().size();
-  std::vector<int> formated_axis = axis;
-  for (size_t i = 0; i < axis.size(); i++) {
-    if (axis[i] < 0) {
-      formated_axis[i] = axis[i] + x_rank;
-    }
-  }
-
-  std::vector<int> reversed_axis(axis);
-  for (size_t i = 0; i < formated_axis.size(); i++) {
-    reversed_axis[formated_axis[i]] = i;
-  }
-
-  TransposeInferMeta(x, reversed_axis, out);
 }
 
 void UnbindInferMeta(const MetaTensor& x,

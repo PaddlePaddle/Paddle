@@ -42,7 +42,7 @@ cc_test(
   test_common_infer_shape_functions
   SRCS test_common_infer_shape_functions.cc
   DEPS common_infer_shape_functions ${COMMON_OP_DEPS} activation_op
-       elementwise_add_op softmax_op softmax)
+       elementwise_add_op phi generated_static_op)
 cc_test(
   gather_test
   SRCS gather_test.cc
@@ -54,7 +54,7 @@ cc_test(
 cc_test(
   scatter_test
   SRCS scatter_test.cc
-  DEPS tensor math_function)
+  DEPS tensor phi)
 cc_test(
   beam_search_decode_op_test
   SRCS beam_search_decode_op_test.cc
@@ -72,7 +72,7 @@ if(WITH_GPU)
   nv_test(
     dropout_op_test
     SRCS dropout_op_test.cc
-    DEPS dropout_op tensor generator)
+    DEPS dropout_op tensor phi)
   nv_test(
     test_leaky_relu_grad_grad_functor
     SRCS test_leaky_relu_grad_grad_functor.cc
@@ -81,12 +81,12 @@ if(WITH_GPU)
   nv_test(
     feed_forward_test
     SRCS feed_forward_test.cu
-    DEPS elementwise_add_op matmul_op tensor generator)
+    DEPS elementwise_add_op matmul_op tensor phi)
 elseif(WITH_ROCM)
   hip_test(
     dropout_op_test
     SRCS dropout_op_test.cc
-    DEPS dropout_op tensor generator)
+    DEPS dropout_op tensor phi)
   hip_test(
     test_leaky_relu_grad_grad_functor
     SRCS test_leaky_relu_grad_grad_functor.cc
