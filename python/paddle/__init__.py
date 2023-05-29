@@ -438,6 +438,7 @@ from .tensor.search import (
     sort,
     kthvalue,
     mode,
+    top_p_sampling,
 )
 
 from .tensor.to_string import set_printoptions
@@ -718,6 +719,7 @@ __all__ = [
     'zeros_like',
     'maximum',
     'topk',
+    'top_p_sampling',
     'index_select',
     'CPUPlace',
     'matmul',
