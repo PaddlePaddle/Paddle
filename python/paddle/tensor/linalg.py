@@ -2148,7 +2148,7 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
             indices, c.values(), (n, 1), dtype=dtype, place=x.place)
 
         ones_m1_t = paddle.ones(x.shape[:-2] + [1, m], dtype=dtype)
-        M = transpose(paddle.sparse.matmul(C_t, ones_m1_t))
+        M = transpose(paddle.matmul(C_t.to_dense(), ones_m1_t))
         return svd_lowrank(x, q, niter=niter, M=M)
     else:
         C = x.mean(axis=-2, keepdim=True)

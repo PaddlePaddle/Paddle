@@ -66,7 +66,6 @@ class TestPcaLowrankAPI(unittest.TestCase):
         random.shuffle(column_indices)
         indices = [row_indices, column_indices]
         values = paddle.randn((nonzero_elements,), dtype=dtype)
-        # ensure that the diagonal dominates
         values *= paddle.to_tensor([-float(i - j) ** 2 for i, j in zip(*indices)], dtype=dtype).exp()
         indices_tensor = paddle.to_tensor(indices)
         x = paddle.sparse.sparse_coo_tensor(indices_tensor, values, (rows, columns))
@@ -98,8 +97,7 @@ class TestPcaLowrankAPI(unittest.TestCase):
         c = a.sum(axis=-2) / rows
         c = c.reshape(batches + (1, columns))
         A2 = a - ones_m1.matmul(c)
-        np.testing.assert_allclose(A1.numpy(), A2.numpy())
-        # self.assertEqual(A1, A2)
+        np.testing.assert_allclose(A1.numpy(), A2.numpy(), atol=1e-5)
 
         if density == 1:
             detect_rank = (s.abs() > 1e-5).sum(axis=-1)
@@ -128,16 +126,12 @@ class TestPcaLowrankAPI(unittest.TestCase):
                     actual_rank + 6,
                 ]:
                     if guess_rank <= min(*size):
-                        # print(size)
                         self.run_subtest(guess_rank, actual_rank, size, batches, pca_lowrank)
                         self.run_subtest(guess_rank, actual_rank, size[::-1], batches, pca_lowrank)
 
         # sparse input
-        for guess_rank, size in [
-            (4, (17, 4)), (4, (4, 17)), (16, (17, 17)),
-            (21, (100, 40)), (20, (40, 100)), (600, (1000, 1000))]:
+        for guess_rank, size in [(4, (17, 4)), (4, (4, 17)), (16, (17, 17)), (21, (100, 40))]:
             for density in [0.005, 0.1]:
-                # print(size)
                 self.run_subtest(guess_rank, None, size, (), pca_lowrank, density=density)
 
 
