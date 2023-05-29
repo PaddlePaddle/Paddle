@@ -1,4 +1,6 @@
+file(GLOB spmd_srcs *.cc)
+
 cc_library(
-  dist_tensor_spec
-  SRCS dist_tensor_spec.cc
-  DEPS dist_attr)
+  spmd_rules
+  SRCS ${spmd_srcs}
+  DEPS phi)

@@ -28,7 +28,6 @@ from paddle.framework.io_utils import is_belong_to_optimizer, is_parameter
 from paddle.static import Variable
 
 from .dist_attribute import DistTensorSpec, OperatorDistAttr, TensorDistAttr
-from .process_group import get_all_process_groups
 from .process_mesh import ProcessMesh
 
 OpRole = core.op_proto_and_checker_maker.OpRole

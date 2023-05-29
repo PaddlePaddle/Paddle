@@ -39,6 +39,7 @@ set(PYBIND_DEPS
     phi_utils
     phi
     new_profiler
+    auto_parallel
     jit_layer
     jit_property
     prim_utils
