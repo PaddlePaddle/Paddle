@@ -183,9 +183,6 @@ if(WITH_FLASHATTN)
   add_dependencies(phi flashattn)
 endif()
 
-set(LINK_FLAGS "-Wl,--version-script ${CMAKE_CURRENT_SOURCE_DIR}/phi.map")
-set_target_properties(phi PROPERTIES LINK_FLAGS "${LINK_FLAGS}")
-
 set(phi_extension_header_file
     ${CMAKE_CURRENT_SOURCE_DIR}/extension.h
     CACHE INTERNAL "phi/extension.h file")
