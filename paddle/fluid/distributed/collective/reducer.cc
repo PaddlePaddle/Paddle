@@ -215,7 +215,11 @@ struct ConcatTensorsForAllReduce<platform::CustomDeviceContext, T> {
       const uint8_t *in_data =
           reinterpret_cast<const uint8_t *>(tensor.data<T>());
       auto sz = tensor.numel() * sizeof(T);
-      device->MemoryCopyD2D(out_data + offset, in_data, sz, &stream);
+      if (tensor.place().GetType() == phi::AllocationType::CPU) {
+        device->MemoryCopyH2D(out_data + offset, in_data, sz, &stream);
+      } else {
+        device->MemoryCopyD2D(out_data + offset, in_data, sz, &stream);
+      }
       offset += sz;
     }
   }
@@ -237,7 +241,11 @@ struct SplitTensorsForAllReduce<platform::CustomDeviceContext, T> {
     for (auto &tensor : *p_dense_tensors) {
       uint8_t *out_data = reinterpret_cast<uint8_t *>(tensor.data<T>());
       auto sz = tensor.numel() * sizeof(T);
-      device->MemoryCopyD2D(out_data, in_data + offset, sz, &stream);
+      if (tensor.place().GetType() == phi::AllocationType::CPU) {
+        device->MemoryCopyD2H(out_data, in_data + offset, sz, &stream);
+      } else {
+        device->MemoryCopyD2D(out_data, in_data + offset, sz, &stream);
+      }
       offset += sz;
     }
   }
@@ -821,9 +829,9 @@ void EagerReducer::MarkVarReady(const size_t var_index,
   const auto inside_group_index = var_locator.inside_group_index;
 
   auto &group = groups_[group_index];
-  auto &group_tensor = group.dense_tensors_[inside_group_index];
 
   if (!group.is_sparse_) {
+    auto &group_tensor = group.dense_tensors_[inside_group_index];
     const auto length = group.length_[inside_group_index];
     if (is_used_var) {
       auto *autograd_meta = tensors_[var_index].get_autograd_meta();

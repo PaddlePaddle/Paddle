@@ -58,6 +58,9 @@ void SetCinnRuntimeFlags();
 template <typename DeviceContext>
 void SetCinnRandomSeed();
 
+// set CINN compile target
+void SetCinnTarget(const ::cinn::common::Target& target);
+
 }  // namespace details
 
 template <typename T, typename DeviceContext>
@@ -115,6 +118,7 @@ class CinnLaunchOpKernel : public framework::OpKernel<T> {
         "Step 2. Get compilation result of the graph");
     // Step 2. Get compilation result of the graph
     auto target = details::PlaceToCinnTarget(place);
+    details::SetCinnTarget(target);
     using ClockType = std::chrono::steady_clock;
     std::chrono::time_point<ClockType> start_t, end_t;
     if (VLOG_IS_ON(1)) {

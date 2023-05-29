@@ -373,7 +373,7 @@ class DownpourWorker : public HogwildWorker {
   // std::vector<std::pair<uint64_t, uint64_t>> copy_dense_tables_;
 };
 
-// Based on DownpourWorker，remove push pull code into operator
+// Based on DownpourWorker, remove push pull code into operator
 #if defined(PADDLE_WITH_PSCORE)
 class DownpourLiteWorker : public HogwildWorker {
  public:

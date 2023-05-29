@@ -77,6 +77,13 @@ bool CondInterceptor::GetCondResult() {
     platform::DeviceContextPool::Instance().Get(cond_tensor.place())->Wait();
     res = cpu_tensor.data<bool>()[0];
 #endif
+  } else if (platform::is_custom_place(cond_tensor.place())) {
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+    phi::DenseTensor cpu_tensor;
+    framework::TensorCopy(cond_tensor, platform::CPUPlace(), &cpu_tensor);
+    platform::DeviceContextPool::Instance().Get(cond_tensor.place())->Wait();
+    res = cpu_tensor.data<bool>()[0];
+#endif
   } else if (platform::is_cpu_place(cond_tensor.place())) {
     res = cond_tensor.data<bool>()[0];
   } else {

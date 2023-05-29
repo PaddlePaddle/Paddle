@@ -121,11 +121,11 @@ void SaveCombineTensorKernel(const Context& dev_ctx,
 
 template <typename T, typename Context>
 void SaveCombineVocabKernel(
-    const Context& dev_ctx,
+    const Context& dev_ctx UNUSED,
     const std::vector<const phi::ExtendedTensor*>& inputs,
     const std::string& file_path,
     bool overwrite,
-    bool save_as_fp16,
+    bool save_as_fp16 UNUSED,
     bool save_to_memory,
     phi::ExtendedTensor* out) {
   std::string* y = nullptr;

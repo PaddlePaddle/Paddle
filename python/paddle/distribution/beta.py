@@ -61,13 +61,13 @@ class Beta(exponential_family.ExponentialFamily):
             beta = paddle.distribution.Beta(alpha=0.5, beta=0.5)
             print(beta.mean)
             # Tensor(shape=[], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #        [0.50000000])
+            #        0.50000000)
             print(beta.variance)
             # Tensor(shape=[], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #        [0.12500000])
+            #        0.12500000)
             print(beta.entropy())
             # Tensor(shape=[], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #        [0.12500000])
+            #        0.12500000)
 
             # tensor input with broadcast
             beta = paddle.distribution.Beta(alpha=paddle.to_tensor([0.2, 0.4]), beta=0.6)
@@ -120,7 +120,7 @@ class Beta(exponential_family.ExponentialFamily):
         return paddle.exp(self.log_prob(value))
 
     def log_prob(self, value):
-        """Log probability density funciton evaluated at value
+        """Log probability density function evaluated at value
 
         Args:
             value (Tensor): Value to be evaluated
