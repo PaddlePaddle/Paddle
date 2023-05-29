@@ -127,10 +127,10 @@ void ReshapeCooKernel(const Context& dev_ctx,
                       const SparseCooTensor& x,
                       const phi::IntArray& shape,
                       SparseCooTensor* out) {
-  PD_VISIT_BASE_INTEGRAL_TYPES(x.indices().dtype(), "Conv3dCooGPUKernel", ([&] {
-                                 ReshapeCooGPUKernel<T, data_t, Context>(
-                                     dev_ctx, x, shape, out);
-                               }));
+  PD_VISIT_BASE_INTEGRAL_TYPES(
+      x.indices().dtype(), "ReshapeCooGPUKernel", ([&] {
+        ReshapeCooGPUKernel<T, data_t, Context>(dev_ctx, x, shape, out);
+      }));
 }
 
 // just copy from paddle\phi\kernels\sparse\cpu\reshape_kernel.cc

@@ -80,10 +80,10 @@ void ReshapeCooKernel(const Context& dev_ctx,
                       const SparseCooTensor& x,
                       const phi::IntArray& shape,
                       SparseCooTensor* out) {
-  PD_VISIT_BASE_INTEGRAL_TYPES(x.indices().dtype(), "Conv3dCooCPUKernel", ([&] {
-                                 ReshapeCooCPUKernel<T, data_t, Context>(
-                                     dev_ctx, x, shape, out);
-                               }));
+  PD_VISIT_BASE_INTEGRAL_TYPES(
+      x.indices().dtype(), "ReshapeCooCPUKernel", ([&] {
+        ReshapeCooCPUKernel<T, data_t, Context>(dev_ctx, x, shape, out);
+      }));
 }
 
 template <typename T, typename Context>

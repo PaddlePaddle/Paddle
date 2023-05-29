@@ -467,7 +467,7 @@ class Conv2D(_Conv2D):
           values = paddle.to_tensor(values, dtype='float32')
           dense_shape = [1, 3, 4, 1]
           sparse_x = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape, stop_gradient=True)
-          conv = paddle.sparse.nn.Conv3D(1, 1, (3, 3))
+          conv = paddle.sparse.nn.Conv2D(1, 1, (3, 3))
           y = conv(sparse_x)
           print(y.shape)
           # (1, 1, 2, 1)
