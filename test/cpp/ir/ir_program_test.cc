@@ -15,6 +15,7 @@
 #include <gtest/gtest.h>
 
 #include "paddle/fluid/dialect/pd_dialect.h"
+#include "paddle/fluid/dialect/pd_interface.h"
 #include "paddle/fluid/dialect/pd_type.h"
 #include "paddle/fluid/dialect/utils.h"
 #include "paddle/ir/builtin_attribute.h"
@@ -177,7 +178,18 @@ TEST(program_test, program) {
     EXPECT_EQ(*(dst_tensor->data<float>() + i), data_a[i] + data_b[i]);
   }
 
-  // (7) Def SetParameterOp(c, "c")
+  // (7) Def AbsOp(b)
+  ir::OpInfo abs_info = ctx->GetRegisteredOpInfo("pd.abs");
+  std::unordered_map<std::string, ir::Attribute> abs_op_attribute;
+  ir::Operation *abs_op = ir::Operation::create({op1->GetResultByIndex(0)},
+                                                {dense_tensor_dtype},
+                                                abs_op_attribute,
+                                                abs_info);
+  paddle::dialect::GetOpInfoInterface interface =
+      abs_op->dyn_cast<paddle::dialect::GetOpInfoInterface>();
+  EXPECT_EQ(std::get<0>(interface.GetOpInfo())[0].name_ == "x", true);
+
+  // (8) Def SetParameterOp(c, "c")
   std::string op4_name =
       builtin_dialect->name() + "." + std::string(ir::SetParameterOp::name());
   ir::OpInfo op4_info = ctx->GetRegisteredOpInfo(op4_name);
