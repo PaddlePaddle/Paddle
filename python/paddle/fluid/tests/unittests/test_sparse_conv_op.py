@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 import unittest
 
 import numpy as np
@@ -19,6 +20,11 @@ import numpy as np
 import paddle
 from paddle import sparse
 from paddle.fluid import core
+
+logging.basicConfig(
+    format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO
+)
+logger = logging.getLogger(__name__)
 
 
 class TestSparseConv(unittest.TestCase):
@@ -183,7 +189,7 @@ class TestSparseConv(unittest.TestCase):
             1, 1, (3, 3), data_format='NHWC', key='subm_conv'
         )
         # test extra_repr
-        print(subm_conv2d.extra_repr())
+        logger.info(subm_conv2d.extra_repr())
 
         sparse_out = subm_conv2d(sparse_input)
         # the output shape of subm_conv is same as input shape
