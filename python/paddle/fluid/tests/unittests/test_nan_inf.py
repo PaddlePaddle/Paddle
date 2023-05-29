@@ -23,7 +23,7 @@ import numpy as np
 import paddle
 
 
-class TestNanInf(unittest.TestCase):
+class TestNanInfBase(unittest.TestCase):
     def setUp(self):
         self._python_interp = sys.executable
         if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
@@ -31,6 +31,23 @@ class TestNanInf(unittest.TestCase):
 
         self.env = os.environ.copy()
 
+    def run_command(self, cmd):
+        print(f"Run command: {cmd}")
+        proc = subprocess.Popen(
+            cmd.split(" "),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env=self.env,
+        )
+
+        out, err = proc.communicate()
+        returncode = proc.returncode
+        return returncode, out, err
+
+
+class TestNanInf(TestNanInfBase):
+    def setUp(self):
+        super().setUp()
         self.check_static = True
         self.check_dygraph = True
         self.check_nan_inf_level = 0
@@ -44,7 +61,7 @@ class TestNanInf(unittest.TestCase):
         actual_op_count = {}
         tensor_info_list = paddle.amp.accuracy_compare.parse_lines(lines)
         for tensor_info in tensor_info_list:
-            # print(tensor_info)
+            print(tensor_info)
             if actual_op_count.get(tensor_info.op_type, None) is None:
                 actual_op_count[tensor_info.op_type] = 1
             else:
@@ -61,16 +78,7 @@ class TestNanInf(unittest.TestCase):
         print("")
 
     def run_check_nan_inf(self, cmd, expected_op_count=None):
-        print(f"Run command: {cmd}")
-        proc = subprocess.Popen(
-            cmd.split(" "),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            env=self.env,
-        )
-
-        out, err = proc.communicate()
-        returncode = proc.returncode
+        returncode, out, err = self.run_command(cmd)
         self.check_op_count(out, expected_op_count)
         if self.check_nan_inf_level == 0:
             # in python3, type(out+err) is 'bytes', need use encode
@@ -85,9 +93,7 @@ class TestNanInf(unittest.TestCase):
             return
 
         filepath = os.path.dirname(__file__) + "/check_nan_inf_base.py"
-
-        # Test on CPU.
-        cmd = f"{self._python_interp} + {filepath}"
+        cmd = f"{self._python_interp} {filepath}"
         self.run_check_nan_inf(cmd, None)
 
     def test_nan_inf_dynamic(self):
@@ -147,14 +153,25 @@ class TestNanInfEnv(TestNanInf):
         self.dygraph_expected_op_count = None
 
 
-class TestNanInfCheckResult(unittest.TestCase):
-    def setUp(self):
-        self._python_interp = sys.executable
-        if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
-            self._python_interp += " -m coverage run --branch -p"
+class TestNanInfStack(TestNanInfBase):
+    def check_stack(self, file_name):
+        cmd = self._python_interp + file_name
+        returncode, out, err = self.run_command(cmd)
 
-        self.env = os.environ.copy()
+        print(out)
+        print(err)
 
+        # in python3, type(out+err) is 'bytes', need use encode
+        assert (out + err).find(b' z = paddle.pow(x, y)') != -1
+
+    def test_check_stack(self):
+        self.check_stack(" check_nan_inf_backward_stack.py")
+
+    def test_statck_check_stack(self):
+        self.check_stack(" check_nan_inf_backward_static_stack.py")
+
+
+class TestNanInfCheckResult(TestNanInfBase):
     def generate_inputs(self, shape, dtype="float32"):
         data = np.random.random(size=shape).astype(dtype)
         # [-10, 10)
@@ -218,32 +235,11 @@ class TestNanInfCheckResult(unittest.TestCase):
         if paddle.fluid.core.is_compiled_with_cuda():
             _check_num_nan_inf(use_cuda=True)
 
-    def check_stack(self, file_name):
-        self._python_interp += file_name
-        cmd = self._python_interp
-        proc = subprocess.Popen(
-            cmd.split(" "),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            env=self.env,
+    def run_check_nan_inf_level(self, use_cuda, dtype, level):
+        paddle.set_flags(
+            {"FLAGS_check_nan_inf": 1, "FLAGS_check_nan_inf_level": level}
         )
 
-        out, err = proc.communicate()
-        returncode = proc.returncode
-
-        print(out)
-        print(err)
-
-        # in python3, type(out+err) is 'bytes', need use encode
-        assert (out + err).find(b' z = paddle.pow(x, y)') != -1
-
-    def test_check_stack(self):
-        self.check_stack(" check_nan_inf_backward_stack.py")
-
-    def test_statck_check_stack(self):
-        self.check_stack(" check_nan_inf_backward_static_stack.py")
-
-    def check_nan_inf_level(self, use_cuda, dtype):
         shape = [8, 8]
         x_np, y_np = self.generate_inputs(shape, dtype)
 
@@ -256,33 +252,36 @@ class TestNanInfCheckResult(unittest.TestCase):
         out = paddle.log(x * 1e6) / y
 
     def test_check_nan_inf_level_float32(self):
-        paddle.set_flags(
-            {"FLAGS_check_nan_inf": 1, "FLAGS_check_nan_inf_level": 2}
+        level = 2
+        self.run_check_nan_inf_level(
+            use_cuda=False, dtype="float32", level=level
         )
-        self.check_nan_inf_level(use_cuda=False, dtype="float32")
         if paddle.fluid.core.is_compiled_with_cuda():
-            self.check_nan_inf_level(use_cuda=True, dtype="float32")
+            self.run_check_nan_inf_level(
+                use_cuda=True, dtype="float32", level=level
+            )
 
     def test_check_nan_inf_level_float16(self):
-        paddle.set_flags(
-            {"FLAGS_check_nan_inf": 1, "FLAGS_check_nan_inf_level": 3}
+        level = 3
+        self.run_check_nan_inf_level(
+            use_cuda=False, dtype="float32", level=level
         )
         if paddle.fluid.core.is_compiled_with_cuda():
-            self.check_nan_inf_level(use_cuda=True, dtype="float16")
+            self.run_check_nan_inf_level(
+                use_cuda=True, dtype="float16", level=level
+            )
 
     def test_check_numerics(self):
         paddle.set_flags(
             {"FLAGS_check_nan_inf": 1, "FLAGS_check_nan_inf_level": 3}
         )
-        if paddle.fluid.core.is_compiled_with_cuda():
-            self.check_nan_inf_level(use_cuda=True, dtype="float16")
 
         shape = [8, 8]
         x_np, y_np = self.generate_inputs(shape, "float16")
         x = paddle.to_tensor(x_np)
         y = paddle.to_tensor(y_np)
-        paddle.fluid.core.check_numerics("check_numerics", x)
-        paddle.fluid.core.check_numerics("check_numerics", y)
+        paddle.fluid.core.check_numerics("check_tensor", x)
+        paddle.fluid.core.check_numerics("check_tensor", y)
 
 
 if __name__ == '__main__':

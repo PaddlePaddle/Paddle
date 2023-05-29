@@ -141,6 +141,7 @@ void PrintForDifferentLevelFile(const char* debug_info,
             << ", num_nan=" << static_cast<long long>(num_nan)    // NOLINT
             << ", num_inf=" << static_cast<long long>(num_inf)    // NOLINT
             << ", num_zero=" << static_cast<long long>(num_zero)  // NOLINT
+            << std::scientific << std::setprecision(6)
             << ", max=" << static_cast<float>(max_value)
             << ", min=" << static_cast<float>(min_value)
             << ", mean=" << static_cast<float>(mean_value) << std::endl;
@@ -149,6 +150,7 @@ void PrintForDifferentLevelFile(const char* debug_info,
     outfile << "[PRECISION] in " << debug_info
             << ", numel=" << static_cast<long long>(numel)        // NOLINT
             << ", num_zero=" << static_cast<long long>(num_zero)  // NOLINT
+            << std::scientific << std::setprecision(6)
             << ", max=" << static_cast<float>(max_value)
             << ", min=" << static_cast<float>(min_value)
             << ", mean=" << static_cast<float>(mean_value) << std::endl;
