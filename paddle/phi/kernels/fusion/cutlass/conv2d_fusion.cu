@@ -98,6 +98,20 @@ void Conv2dFusionKernel(const Context& ctx,
     }
     return "";
   };
+
+  auto cutlass_sm_version = [&](int device_sm_version) -> int {
+    if (device_sm_version < 75) {
+      PADDLE_ENFORCE_GE(device_sm_version,
+                        75,
+                        phi::errors::PreconditionNotMet(
+                            "conv2d_fuison_cutlass only supports sm >= 75"));
+    } else if (device_sm_version > 80) {
+      return 80;
+    } else {
+      return device_sm_version;
+    }
+  };
+
   ConvAllParams params = {reinterpret_cast<const void*>(x.data<T>()),
                           reinterpret_cast<const void*>(filter.data<T>()),
                           reinterpret_cast<const void*>(bias.data<T>()),
@@ -122,8 +136,8 @@ void Conv2dFusionKernel(const Context& ctx,
                           ow,
                           groups,
                           &ctx,
-                          0,           // alpha
-                          sm_version,  // sm_version
+                          0,                               // alpha
+                          cutlass_sm_version(sm_version),  // sm_version
                           dtype2string(x.dtype())};
 
   // conv2d_depthwise
