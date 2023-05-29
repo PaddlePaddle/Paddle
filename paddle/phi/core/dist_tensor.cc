@@ -81,7 +81,9 @@ const DenseTensorMeta& DistTensor::meta() const noexcept {
   return local_tensor_->meta();
 }
 
-const DistAttr& DistTensor::get_dist_attr() { return dist_attr_; }
+const std::shared_ptr<DistTensor::DistAttr>& DistTensor::get_dist_attr() {
+  return dist_attr_;
+}
 
 const std::shared_ptr<DenseTensor>& DistTensor::local_tensor() const {
   return local_tensor_;

@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/core/allocator.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/storage_properties.h"
 #include "paddle/phi/core/stream.h"
 #include "paddle/phi/core/tensor_base.h"
@@ -22,14 +23,13 @@ limitations under the License. */
 
 namespace phi {
 
-class DistAttr {};
-
 class DenseTensor;
 
 class DistTensor : public TensorBase,
                    public TypeInfoTraits<TensorBase, DistTensor> {
  public:
   using DDim = phi::DDim;
+  using DistAttr = phi::distributed::auto_parallel::TensorDistAttr;
 
   static const char* name() { return "DistTensor"; }
 
@@ -93,13 +93,13 @@ class DistTensor : public TensorBase,
 
   void set_meta(const DenseTensorMeta& meta);
 
-  const DistAttr& get_dist_attr();
+  const std::shared_ptr<DistTensor::DistAttr>& get_dist_attr();
 
   const std::shared_ptr<DenseTensor>& local_tensor() const;
 
  private:
   // dist attribute
-  DistAttr dist_attr_;
+  std::shared_ptr<DistAttr> dist_attr_;
   // local shard of the tensor
   std::shared_ptr<DenseTensor> local_tensor_;
 };

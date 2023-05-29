@@ -6,6 +6,12 @@ cc_test(
   test_dense_tensor
   SRCS test_dense_tensor.cc
   DEPS dense_tensor)
+
+cc_test(
+  test_dist_tensor_cpp
+  SRCS test_dist_tensor.cc
+  DEPS dist_tensor)
+
 cc_test(test_intrusive_ptr SRCS test_intrusive_ptr.cc)
 cc_test(test_type_info SRCS test_type_info.cc)
 cc_test(
