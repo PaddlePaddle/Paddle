@@ -67,6 +67,9 @@ class DataParallelOptimizationPass(PassBase):
         self.set_attr("dist_context", None)
         self.set_attr("global_rank", -1)
         self.set_attr("use_sharding", False)
+        self.set_attr("fuse_all_reduce_ops", False)
+        self.set_attr("fuse_grad_size_in_MB", 32)
+        self.set_attr("overlap_comm_cacl", False)
         # {grad1: group1, grad2: group1, grad3: group2}
         # record the order for fuse grad data memory
         self._grad_name_to_group_map = OrderedDict()
@@ -95,6 +98,8 @@ class DataParallelOptimizationPass(PassBase):
         self.dist_context = self.get_attr("dist_context")
         self.global_rank = int(self.get_attr("global_rank"))
         self.use_sharding = self.get_attr("use_sharding")
+        overlap_comm_cacl = self.get_attr("overlap_comm_cacl")
+        fuse_all_reduce_ops = self.get_attr("fuse_all_reduce_ops")
         self.coalesce_prefix = 'coalesce_grad'
         self.gradient_sync_stream = "gradient_sync_stream"
 
@@ -103,9 +108,11 @@ class DataParallelOptimizationPass(PassBase):
 
             # TODO refactor here to first fuse then overlap
             if self.is_data_parallel_applied():
-                self._prune_grad_scaling()
-                self._calc_comm_overlap()
-                grad_group = self._fuse_allreduce()
+                if overlap_comm_cacl:
+                    self._prune_grad_scaling()
+                    self._calc_comm_overlap()
+                if fuse_all_reduce_ops:
+                    grad_group = self._fuse_allreduce()
                 self._add_dependencies(grad_group)
                 self.summary(grad_group)
 

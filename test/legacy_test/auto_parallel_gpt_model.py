@@ -376,6 +376,16 @@ class TransformerDecoder(nn.Layer):
             )
 
         for i, mod in enumerate(self.layers):
+
+            if _global_parallel_strategy == "pp":
+                mod = auto.shard_op(mod, PP_MESH_LIST[mod.mesh_idx])
+            elif _global_parallel_strategy == "dp_pp":
+                mod = auto.shard_op(mod, DPPP_MESH_LIST[mod.mesh_idx])
+            elif _global_parallel_strategy == "mp_pp":
+                mod = auto.shard_op(mod, MPPP_MESH_LIST[mod.mesh_idx])
+            elif _global_parallel_strategy == "dp_mp_pp":
+                mod = auto.shard_op(mod, DPMPPP_MESH_LIST[mod.mesh_idx])
+
             if self.use_new_recompute and self.recompute_granularity == "full":
                 mod = auto.recompute(mod)
 
