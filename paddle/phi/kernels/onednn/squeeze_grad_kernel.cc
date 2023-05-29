@@ -23,7 +23,7 @@ template <typename T, typename Context>
 void SqueezeGradKernel(const Context& dev_ctx,
                        const DenseTensor& xshape,
                        const DenseTensor& dout,
-                       const IntArray& axes,
+                       const IntArray& axes UNUSED,
                        DenseTensor* dx) {
   auto dout_vec_dims = dout.dims().size() != 0 ? vectorize(dout.dims())
                                                : std::vector<int64_t>{1};

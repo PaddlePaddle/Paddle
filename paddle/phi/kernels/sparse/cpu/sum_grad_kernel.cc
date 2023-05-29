@@ -112,7 +112,7 @@ void SumCsrGradKernel(const Context& dev_ctx,
                       const SparseCsrTensor& x,
                       const SparseCsrTensor& dout,
                       const IntArray& axis,
-                      bool keep_dim,
+                      bool keep_dim UNUSED,
                       SparseCsrTensor* dx) {
   EmptyLikeCsrKernel<T, Context>(dev_ctx, x, dx);
   unsigned int n_dim = axis.size();

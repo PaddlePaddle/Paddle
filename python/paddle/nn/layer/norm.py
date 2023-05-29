@@ -32,9 +32,8 @@ import warnings
 
 import numpy as np
 
-from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
+from paddle import _C_ops, in_dynamic_mode
 from paddle.device import get_all_custom_device_type
-from paddle.fluid.framework import in_dygraph_mode
 
 from ...fluid import dygraph_utils
 from ...fluid.data_feeder import check_variable_and_dtype
@@ -476,7 +475,7 @@ class GroupNorm(Layer):
             )
 
     def forward(self, input):
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             return _C_ops.group_norm(
                 input,
                 self.weight,
@@ -1015,7 +1014,7 @@ class BatchNorm(Layer):
         self._trainable_statistics = trainable_statistics
 
     def forward(self, input):
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             batch_norm_out, t1, t2, t3, t4, _ = _C_ops.batch_norm(
                 input,
                 self._mean,
@@ -1543,7 +1542,7 @@ class SyncBatchNorm(_BatchNormBase):
 
         # train mode: use mini-batch stats, eval mode: use global stats
         # use_global_stats only support False in sync_batch_norm
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             sync_batch_norm_out, _, _, _, _, _ = _C_ops.sync_batch_norm_(
                 x,
                 self._mean,
@@ -1556,37 +1555,6 @@ class SyncBatchNorm(_BatchNormBase):
                 self._data_format,
                 False,
                 False,
-            )
-            return sync_batch_norm_out
-
-        elif in_dynamic_mode():
-            attrs = (
-                "momentum",
-                self._momentum,
-                "epsilon",
-                self._epsilon,
-                "is_test",
-                not self.training,
-                "data_layout",
-                self._data_format,
-                "use_mkldnn",
-                False,
-                "fuse_with_relu",
-                False,
-                "use_global_stats",
-                False,
-                'trainable_statistics',
-                False,
-            )
-            sync_batch_norm_out, _, _, _, _, _ = _legacy_C_ops.sync_batch_norm(
-                x,
-                self.weight,
-                self.bias,
-                self._mean,
-                self._variance,
-                mean_out,
-                variance_out,
-                *attrs,
             )
             return sync_batch_norm_out
 
@@ -1885,7 +1853,7 @@ class SpectralNorm(Layer):
 
     def forward(self, x):
         weight = x
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             return _C_ops.spectral_norm(
                 weight,
                 self.weight_u,

@@ -24,7 +24,7 @@
 
 #include "paddle/utils/variant.h"
 
-#if defined(_WIN32) && defined(BUILD_PHI_SHARED)
+#if defined(_WIN32)
 #define PHI_EXPORT_FLAG __declspec(dllexport)
 #define PHI_IMPORT_FLAG __declspec(dllimport)
 #else
