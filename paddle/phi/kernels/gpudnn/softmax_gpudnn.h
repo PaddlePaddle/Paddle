@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "glog/logging.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/bfloat16.h"
@@ -493,7 +494,7 @@ __global__ void WarpSoftmaxForward(T* softmax,
                                    const IndexType stride,
                                    const IndexType element_count) {
   using VecT = phi::AlignedVector<T, VecSize>;
-  using kMode = kps::details::ReduceMode;
+  using ReduceMode = kps::details::ReduceMode;
 
   constexpr IndexType kDimCeil = 1 << Log2Elements;
   constexpr IndexType kWarpSize = (kDimCeil < 32) ? kDimCeil : 32;
@@ -552,7 +553,7 @@ __global__ void WarpSoftmaxForward(T* softmax,
               kVItem,
               kBatchSize,
               ReduceMaxFunctor<AccT>,
-              kMode::kLocalMode>(
+              ReduceMode::kLocalMode>(
       &max[0], &sub_data[0][0][0], ReduceMaxFunctor<AccT>(), true);
   WarpReduceMax<AccT, kBatchSize, kWarpSize>(max);
 
@@ -568,7 +569,7 @@ __global__ void WarpSoftmaxForward(T* softmax,
               kVItem,
               kBatchSize,
               kps::AddFunctor<AccT>,
-              kMode::kLocalMode>(
+              ReduceMode::kLocalMode>(
       &sum[0], &exp_data[0][0][0], kps::AddFunctor<AccT>(), true);
   WarpReduceSum<AccT, kBatchSize, kWarpSize>(sum);
 
@@ -656,8 +657,8 @@ __global__ void WarpSoftmaxBackward(T* dst,
   AccT grad_tmp[kBatchSize][kLoopsV][VecSize];
   const T* src_ptr = reinterpret_cast<const T*>(&src_reg[0][0]);
   const T* grad_ptr = reinterpret_cast<const T*>(&grad_reg[0][0]);
-  constexpr int kStep = kBatchSize * kLoopsV * kVSize;
-  constexpr int kVItem = kLoopsV * kVSize;
+  constexpr int kStep = kBatchSize * kLoopsV * VecSize;
+  constexpr int kVItem = kLoopsV * VecSize;
   kps::ElementwiseUnary<T, AccT, kStep, 1, DataTransFunctor<T, AccT>>(
       &src_tmp[0][0][0], &src_ptr[0], DataTransFunctor<T, AccT>());
   kps::ElementwiseUnary<T, AccT, kStep, 1, DataTransFunctor<T, AccT>>(
@@ -845,7 +846,8 @@ template <typename T,
           class Functor>
 __global__ void NormalSoftmaxForward(
     T* output, const T* input, int high_dim, int mid_dim, int low_dim) {
-  using kMode = kps::details::ReduceMode;
+  using ReduceMode = kps::details::ReduceMode;
+
   const int high_stride = mid_dim * low_dim;
   const int mid_stride = low_dim;
   for (int high_id = blockIdx.y; high_id < high_dim; high_id += gridDim.y) {
@@ -862,7 +864,7 @@ __global__ void NormalSoftmaxForward(
       }
 
       if (blockDim.y > 1) {
-        kps::Reduce<AccT, 1, 1, kps::MaxFunctor<AccT>, kMode::kGlobalMode>(
+        kps::Reduce<AccT, 1, 1, kps::MaxFunctor<AccT>, ReduceMode::kGlobalMode>(
             &max_value, &max_value, kps::MaxFunctor<AccT>(), false);
       }
 
@@ -873,7 +875,7 @@ __global__ void NormalSoftmaxForward(
         sum += std::exp(value - max_value);
       }
       if (blockDim.y > 1) {
-        kps::Reduce<AccT, 1, 1, kps::AddFunctor<AccT>, kMode::kGlobalMode>(
+        kps::Reduce<AccT, 1, 1, kps::AddFunctor<AccT>, ReduceMode::kGlobalMode>(
             &sum, &sum, kps::AddFunctor<AccT>(), false);
       }
 
@@ -898,7 +900,8 @@ __global__ void NormalSoftmaxBackward(T* input_grad,
                                       int high_dim,
                                       int mid_dim,
                                       int low_dim) {
-  using kMode = kps::details::ReduceMode;
+  using ReduceMode = kps::details::ReduceMode;
+
   const int high_stride = mid_dim * low_dim;
   const int mid_stride = low_dim;
   for (int high_id = blockIdx.y; high_id < high_dim; high_id += gridDim.y) {
@@ -921,7 +924,7 @@ __global__ void NormalSoftmaxBackward(T* input_grad,
         }
       }
       if (blockDim.y > 1) {
-        kps::Reduce<AccT, 1, 1, kps::AddFunctor<AccT>, kMode::kGlobalMode>(
+        kps::Reduce<AccT, 1, 1, kps::AddFunctor<AccT>, ReduceMode::kGlobalMode>(
             &sum, &sum, kps::AddFunctor<AccT>(), false);
       }
 
@@ -1215,6 +1218,7 @@ bool UseCudnnSoftmax(const GPUContext& ctx,
 #endif
     }
   }
+  return cudnn_available;
   constexpr int max_dim = 512;
   if (!cudnn_available || !last_dim ||
       (softmax_dim <= max_dim && sizeof(T) <= 4) ||
@@ -1251,6 +1255,10 @@ void SoftmaxForwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
       IndexType dim_ceil = 1 << dim_log2;
       int warp_size = (dim_ceil < 32) ? dim_ceil : 32;
       int batches_per_warp = (dim_ceil <= 32) ? 2 : 1;
+      VLOG(7) << "[WarpSoftmaxForward] N=" << N << ", dim=" << dim
+              << ", D=" << D << ", dim_log2=" << dim_log2
+              << ", dim_ceil=" << dim_ceil << ", warp_size=" << warp_size
+              << ", batches_per_warp=" << batches_per_warp;
 
       // use 128 threads per block to maximimize gpu utilization
       constexpr int threads_per_block = 128;
@@ -1258,9 +1266,16 @@ void SoftmaxForwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
       int warps_per_block = (threads_per_block / warp_size);
       int batches_per_block = warps_per_block * batches_per_warp;
       IndexType blocks = (N + batches_per_block - 1) / batches_per_block;
+      VLOG(7) << "[WarpSoftmaxForward] blocks=" << blocks
+              << ", warp_size=" << warp_size
+              << ", warps_per_block=" << warps_per_block
+              << ", batches_per_block=" << batches_per_block;
+
       dim3 threads(warp_size, warps_per_block, 1);
 
       if (dim % 4 == 0) {
+        VLOG(7) << "[WarpSoftmaxForward] vec_size=4, x_ptr=" << x.data<T>()
+                << ", out_ptr=" << out_data;
         SwitchWarpSoftmaxForward<T, IndexType, 4, LogMode>(blocks,
                                                            threads,
                                                            dev_ctx,
@@ -1271,6 +1286,8 @@ void SoftmaxForwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
                                                            dim,
                                                            dim_log2);
       } else if (dim % 2 == 0) {
+        VLOG(7) << "[WarpSoftmaxForward] vec_size=2, x_ptr=" << x.data<T>()
+                << ", out_ptr=" << out_data;
         SwitchWarpSoftmaxForward<T, IndexType, 2, LogMode>(blocks,
                                                            threads,
                                                            dev_ctx,
@@ -1281,6 +1298,8 @@ void SoftmaxForwardCUDAKernelDriverImpl(const GPUContext& dev_ctx,
                                                            dim,
                                                            dim_log2);
       } else {
+        VLOG(7) << "[WarpSoftmaxForward] vec_size=1, x_ptr=" << x.data<T>()
+                << ", out_ptr=" << out_data;
         SwitchWarpSoftmaxForward<T, IndexType, 1, LogMode>(blocks,
                                                            threads,
                                                            dev_ctx,
@@ -1341,6 +1360,7 @@ void SoftmaxBackwardCUDAKernelDriver(const GPUContext& dev_ctx,
       int warps_per_block = (threads_per_block / warp_size);
       int batches_per_block = warps_per_block * batches_per_warp;
       int blocks = (N + batches_per_block - 1) / batches_per_block;
+
       dim3 threads(warp_size, warps_per_block, 1);
 
       if (dim % 4 == 0) {
