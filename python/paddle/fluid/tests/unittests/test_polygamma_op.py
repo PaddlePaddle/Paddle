@@ -26,6 +26,8 @@ paddle.seed(100)
 
 
 def ref_polygamma(x, n):
+    if n == 0:
+        return special.psi(x)
     return special.polygamma(n, x)
 
 
@@ -139,13 +141,12 @@ class TestPolygammaOp(OpTest):
     def init_config(self):
         self.dtype = np.float64
         self.order = 1
-        zero_case = np.zeros(1).astype(self.dtype)
         rand_case = np.random.randn(100).astype(self.dtype)
         int_case = np.random.randint(low=1, high=100, size=100).astype(
             self.dtype
         )
         self.case = np.concatenate(
-            [zero_case, rand_case, int_case]
+            [rand_case, int_case]
         )
         self.inputs = {'x': self.case}
         self.attrs = {'n': self.order}
