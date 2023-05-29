@@ -489,7 +489,7 @@ class TestPrimEvalBranch(unittest.TestCase):
     def train(self, use_prim):
         core._set_prim_all_enabled(use_prim)
         paddle.seed(2022)
-        net = BatchNorm(2, is_test=True)
+        net = BatchNorm(2, act="relu", is_test=True)
         net = apply_to_static(net, False)
         out = net(self.x)
         loss = paddle.mean(out)

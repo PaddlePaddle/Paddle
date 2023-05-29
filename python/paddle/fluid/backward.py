@@ -1353,6 +1353,9 @@ def _append_backward_ops_(
 
     if core._is_bwd_prim_enabled():
         grad_name_set = set()
+        for target in target_vars:
+            grad_name_set.add(_append_grad_suffix_(target.name))
+
         for op in reversed(block.ops):
             if op.type == "fill_any_like":
                 for out_name in op.desc.output_arg_names():
@@ -1365,7 +1368,7 @@ def _append_backward_ops_(
                         "fill_any_like",
                         {"X": [var_name]},
                         {"Out": [grad_var_name]},
-                        {'value': 0, 'dtype': -1},
+                        {'value': 0, 'dtype': target_vars[0].dtype},
                     )
                     block.desc.append_op().copy_from(op_desc)
             break
