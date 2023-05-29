@@ -60,7 +60,7 @@ class TestSparseConv(unittest.TestCase):
         )
         out.backward(out)
         out = paddle.sparse.coalesce(out)
-        assert np.array_equal(correct_out_values, out.values().numpy())
+        np.testing.assert_array_equal(correct_out_values, out.values().numpy())
 
     def test_conv3d(self):
         kernel = [[[[[1], [1], [1]], [[1], [1], [1]], [[1], [1], [1]]]]]
@@ -109,7 +109,9 @@ class TestSparseConv(unittest.TestCase):
         y = paddle.sparse.nn.functional.subm_conv2d(
             sparse_x, weight, key='subm_conv'
         )
-        assert np.array_equal(sparse_x.indices().numpy(), y.indices().numpy())
+        np.testing.assert_array_equal(
+            sparse_x.indices().numpy(), y.indices().numpy()
+        )
 
     def test_subm_conv3d(self):
         indices = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 2], [1, 3, 2, 3]]
@@ -193,7 +195,7 @@ class TestSparseConv(unittest.TestCase):
 
         sparse_out = subm_conv2d(sparse_input)
         # the output shape of subm_conv is same as input shape
-        assert np.array_equal(indices, sparse_out.indices().numpy())
+        np.testing.assert_array_equal(indices, sparse_out.indices().numpy())
 
         # test errors
         with self.assertRaises(ValueError):
@@ -253,14 +255,16 @@ class TestSparseConv(unittest.TestCase):
         dense_out = sp_out.to_dense()
         sp_loss = dense_out.mean()
         sp_loss.backward()
-        assert np.allclose(out.numpy(), dense_out.numpy(), atol=1e-3, rtol=1e-3)
-        assert np.allclose(
+        np.testing.assert_allclose(
+            out.numpy(), dense_out.numpy(), atol=1e-3, rtol=1e-3
+        )
+        np.testing.assert_allclose(
             conv2d.weight.grad.numpy().transpose(2, 3, 1, 0),
             sp_conv2d.weight.grad.numpy(),
             atol=1e-3,
             rtol=1e-3,
         )
-        assert np.allclose(
+        np.testing.assert_allclose(
             conv2d.bias.grad.numpy(),
             sp_conv2d.bias.grad.numpy(),
             atol=1e-5,
