@@ -200,9 +200,11 @@ void NCCLCommContext::Reduce(phi::DenseTensor* out_tensor,
 }
 
 void NCCLCommContext::GroupStart() {
-  NCCL_CHECK(phi::dynload::ncclGroupStart());
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGroupStart());
 }
-void NCCLCommContext::GroupEnd() { NCCL_CHECK(phi::dynload::ncclGroupEnd()); }
+void NCCLCommContext::GroupEnd() {
+  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGroupStart());
+}
 
 }  // namespace distributed
 }  // namespace phi
