@@ -98,9 +98,7 @@ class GEN(nn.Layer):
         while cur_step < total_step:
 
             out = self.mlp(model_kwargs['input'])
-            model_kwargs['res'] = out
             paddle.increment(cur_step)
-
             auto.shard_op(paddle.assign, _g_mesh)(model_kwargs['input'], out)
 
         output = F.gelu(model_kwargs['input'], approximate=True)
@@ -125,35 +123,34 @@ class TestGenerationPipeline(unittest.TestCase):
         pipeline = strategy.pipeline
         pipeline.enable = True
         pipeline.schedule_mode = "stream"
-        pipeline.generation_batch_size = 4
-        pipeline.accumulate_steps = 4
+        pipeline.generation_batch_size = 2  # equal to the number of pp stages
+        pipeline.accumulate_steps = 20  # the number of all sample
         engine = auto.Engine(model, strategy=strategy)
 
         engine.prepare(
             inputs_spec=paddle.static.InputSpec(
-                shape=[2, 1024], name='input', dtype='float32'
+                shape=[20, 1024], name='input', dtype='float32'
             ),
             labels_spec=paddle.static.InputSpec(
-                shape=[2, 1024], name='label', dtype='float32'
+                shape=[20, 1024], name='label', dtype='float32'
             ),
             mode="eval",
         )
 
-        train_data = MyDataset(50 * 2)
+        train_data = MyDataset(20)
         train_dataloader = engine._prepare_dataloader_from_generator(
             dataset=train_data,
-            capacity=70,
+            capacity=20,
             iterable=False,
-            batch_size=2,
+            batch_size=1,  # micro_batch_size
             epochs=1,
-            steps_per_epoch=100,
         )
         engine._prepare_reader()
 
         fleet_opt = engine.main_program._pipeline_opt['fleet_opt']
         assert len(fleet_opt['tasks']) == 5
         assert fleet_opt['inference_generation']
-        assert fleet_opt['num_micro_batches'] == 4
+        assert fleet_opt['num_micro_batches'] == 20
         num_task_in_rank = 5
         for idx, (task_id, rank_id) in enumerate(
             fleet_opt['task_id_to_rank'].items()
@@ -170,7 +167,6 @@ class TestGenerationPipeline(unittest.TestCase):
         except paddle.fluid.core.EOFException:
             print("test done")
             train_dataloader._inner_dataloader.reset()
-            train_dataloader._inner_dataloader.start()
 
 
 if __name__ == "__main__":
