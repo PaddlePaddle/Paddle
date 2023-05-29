@@ -236,9 +236,8 @@ class DygraphShardingOptimizer:
             inner_state["master_weights"] = {}
             for p in parameters:
                 for k, v in master.items():
-                    if p.name in k:
-                        var_name = p.name + "_fp32_master"
-                        v.name = paddle.fluid.unique_name.generate(var_name)
+                    if p.name == k:
+                        v.name = self._inner_opt._gen_master_weight_var_name(p)
                         inner_state["master_weights"][k] = v
 
         for p in parameters:
@@ -246,7 +245,7 @@ class DygraphShardingOptimizer:
                 if p.name in k:
                     inner_state[k] = v
 
-        self._inner_optimizer.set_state_dict(inner_state)
+        self._inner_opt.set_state_dict(inner_state)
 
     def _set_inner_opt_attr(self, attr_name, value):
         inner_opt = self._inner_opt
