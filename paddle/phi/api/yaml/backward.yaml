@@ -1974,18 +1974,6 @@
   kernel :
     func : stanh_grad
 
-- backward_op : strided_slice_grad
-  forward : strided_slice (Tensor x, int[] axes, IntArray starts, IntArray ends, IntArray strides) -> Tensor(out)
-  args : (Tensor x, Tensor out_grad, int[] axes, IntArray starts, IntArray ends, IntArray strides)
-  output : Tensor(x_grad)
-  infer_meta :
-    func : GeneralUnaryGradInferMeta
-    param : [x]
-  kernel :
-    func : strided_slice_grad
-    data_type : x
-  no_need_buffer : x
-
 - backward_op : svd_grad
   forward : svd (Tensor x, bool full_matrices = false) -> Tensor(u), Tensor(s), Tensor(vh)
   args : (Tensor x, Tensor u, Tensor vh, Tensor s, Tensor u_grad, Tensor vh_grad, Tensor s_grad, bool full_matrices)
