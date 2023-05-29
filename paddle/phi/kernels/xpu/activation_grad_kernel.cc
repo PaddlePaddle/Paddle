@@ -378,9 +378,15 @@ struct XPUSiluGradFunctor : public funcs::BaseActivationFunctor<T> {
     const XPUType* y_grad = reinterpret_cast<const XPUType*>(dout->data<T>());
     XPUType* x_grad = reinterpret_cast<XPUType*>(dx->data<T>());
 
-    int r = xpu::swish_grad(
-        dev_ctx.x_context(), x_data, y_grad, x_grad, dx->numel());
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "swish_grad");
+    if (std::getenv("XPU_PADDLE_ACT_LUT") != nullptr) {
+      int r = xpu::fast_swish_grad(
+          dev_ctx.x_context(), x_data, y_grad, x_grad, dx->numel());
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "fast_swish_grad");
+    } else {
+      int r = xpu::swish_grad(
+          dev_ctx.x_context(), x_data, y_grad, x_grad, dx->numel());
+      PADDLE_ENFORCE_XDNN_SUCCESS(r, "swish_grad");
+    }
   }
 };
 
@@ -567,7 +573,6 @@ DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Tanh, XPUTanhGradFunctor);
 DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Relu, XPUReluGradFunctor);
 DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPOUT(Relu6, XPURelu6GradFunctor);
 
-DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPX(Silu, XPUSiluGradFunctor);
 DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPX(Log, XPULogGradFunctor);
 DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPX(Square, XPUSquareGradFunctor);
 DEFINE_XPU_ACTIVATION_GRAD_KERNEL_DEPX(Swish, XPUSwishGradFunctor);
@@ -605,6 +610,16 @@ void HardSwishGradKernel(const Context& dev_ctx,
       dev_ctx, &x, nullptr, &dout, dx, functor);
 }
 
+template <typename T, typename Context>
+void SiluGradKernel(const Context& dev_ctx,
+                    const DenseTensor& x,
+                    const DenseTensor& out,
+                    const DenseTensor& dout,
+                    DenseTensor* dx) {
+  XPUSiluGradFunctor<T> functor;
+  ActivationGradXPUImpl<T, Context, XPUSiluGradFunctor<T>>(
+      dev_ctx, &x, &out, &dout, dx, functor);
+}
 }  // namespace phi
 
 PD_REGISTER_KERNEL(relu_grad,

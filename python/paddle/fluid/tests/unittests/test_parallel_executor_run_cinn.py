@@ -110,7 +110,7 @@ def train(dot_save_dir, prefix, seed=1234):
     loss_values = []
     for step in range(iters):
         loss_v = exe.run(compiled_program, feed=feed[step], fetch_list=[loss])
-        loss_values.append(loss_v[0][0])
+        loss_values.append(loss_v[0])
     return loss_values
 
 
@@ -123,9 +123,9 @@ class TestParallelExecutorRunCinn(unittest.TestCase):
         shutil.rmtree(self.tmpdir)
 
     def test_run_with_cinn(self):
-        cinn_losses = train(self.tmpdir, "paddle")
+        cinn_losses = np.array(train(self.tmpdir, "paddle")).flatten()
         set_cinn_flag(False)
-        pd_losses = train(self.tmpdir, "cinn")
+        pd_losses = np.array(train(self.tmpdir, "cinn")).flatten()
         np.testing.assert_allclose(
             cinn_losses, pd_losses, rtol=1e-05, atol=1e-05
         )

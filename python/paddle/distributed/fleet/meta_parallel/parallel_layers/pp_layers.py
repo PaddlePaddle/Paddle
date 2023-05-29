@@ -109,7 +109,37 @@ class SegmentLayers:
         ), "layer number should be greater than number of segments"
 
     def do_segment(self):
-        if self.method == "uniform":
+
+        if isinstance(self.method, list):
+            seg_method = self.method[:]
+            source_num_parts = len(seg_method) - 1
+
+            def check_sanity():
+                assert seg_method[0] == 0, "seg_method[0] should be 0"
+                for part in seg_method:
+                    assert isinstance(part, int), "part should be int"
+                    assert part >= 0, f"part[{part}] should be greater than 0"
+                    assert (
+                        part <= self.num_items
+                    ), "part[{}] should be less than num_items[{}]".format(
+                        part, self.num_items
+                    )
+
+            check_sanity()
+
+            if self.num_parts == source_num_parts + 1:
+                seg_method.append(self.num_items)
+                return seg_method
+            elif self.num_parts == source_num_parts:
+                return seg_method
+            else:
+                raise ValueError(
+                    "We set seg_method as {}, this length is {}, but the number of stages is {}".format(
+                        seg_method, len(seg_method), self.num_parts
+                    )
+                )
+
+        elif self.method == "uniform":
             return self.uniform(self.num_items, self.num_parts)
 
         elif self.method.startswith('layer:'):
@@ -144,6 +174,8 @@ class SegmentLayers:
                     memory_counter = 0
             result[actual_num_parts] = len(weights)
             return result
+        else:
+            raise ValueError(f"method {self.method} is not supported")
 
     def _gen_layer_weight(self, layername):
         weight_idxs = []
@@ -501,7 +533,7 @@ class PipelineLayer(nn.Layer):
         for key, comm in self.shared_comm.items():
             param = getattr(self.shared_layers[key], comm['weight_attr'])
             # need use trace_op to allreduce weight
-            if framework.in_dygraph_mode():
+            if framework.in_dynamic_mode():
                 with paddle.framework.no_grad():
                     paddle.distributed.all_reduce(
                         param.grad
@@ -532,7 +564,7 @@ class PipelineLayer(nn.Layer):
         self.segment_parts = seg.do_segment()
 
         logger.info(
-            "segment result:"
+            f"segment with method: {seg_method}; result: "
             + ", ".join(str(arg) for arg in self.segment_parts)
         )
 
@@ -562,7 +594,7 @@ class PipelineLayer(nn.Layer):
         self.segment_parts = seg.do_segment()
 
         logger.info(
-            "segment result:"
+            f"segment with method: {seg_method}; result: "
             + ", ".join(str(arg) for arg in self.segment_parts)
         )
 

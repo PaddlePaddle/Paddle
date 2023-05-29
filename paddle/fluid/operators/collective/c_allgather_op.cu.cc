@@ -57,13 +57,9 @@ class CAllGatherOpCUDAKernel : public framework::OpKernel<T> {
         platform::errors::InvalidArgument(
             "nranks: %s should equal to %s", nranks, comm->nranks()));
 
-    framework::DDim out_dims = in->dims();
-    out_dims[0] *= nranks;
-    out->mutable_data<T>(out_dims, place);
-
     int64_t send_numel = in->numel();
     const T* send_buff = in->data<T>();
-    T* recv_buff = out->data<T>();
+    T* recv_buff = out->mutable_data<T>(place);
 
     gpuStream_t stream = nullptr;
     if (ctx.Attr<bool>("use_calc_stream")) {
@@ -99,7 +95,7 @@ PD_REGISTER_STRUCT_KERNEL(c_allgather,
                           ops::CAllGatherOpCUDAKernel,
                           float,
                           double,
-#if NCCL_VERSION_CODE >= 21000
+#if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
                           plat::bfloat16,
 #endif
                           int,

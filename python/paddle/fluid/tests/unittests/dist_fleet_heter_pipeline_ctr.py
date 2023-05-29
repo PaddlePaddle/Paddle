@@ -88,7 +88,7 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
             dnn_out = dnn_pool
 
             # build lr model
-            lr_embbding = fluid.layers.embedding(
+            lr_embedding = fluid.layers.embedding(
                 is_distributed=False,
                 input=lr_data,
                 size=[lr_input_dim, 1],
@@ -99,7 +99,7 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
                 is_sparse=True,
             )
             lr_pool = paddle.static.nn.sequence_lod.sequence_pool(
-                input=lr_embbding, pool_type="sum"
+                input=lr_embedding, pool_type="sum"
             )
 
         with fluid.device_guard("gpu"):
@@ -126,7 +126,7 @@ class TestHeterPipelinePsCTR2x2(FleetDistHeterRunnerBase):
                 input=predict, label=label, reduction='none', use_softmax=False
             )
             avg_cost = paddle.mean(x=cost)
-            fluid.layers.Print(avg_cost, message="avg_cost")
+            paddle.static.Print(avg_cost, message="avg_cost")
 
         self.feeds = datas
         self.train_file_path = ["fake1", "fake2"]

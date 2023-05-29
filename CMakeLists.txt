@@ -92,6 +92,11 @@ message(STATUS "C compiler: ${CMAKE_C_COMPILER}, version: "
                "${CMAKE_C_COMPILER_ID} ${CMAKE_C_COMPILER_VERSION}")
 message(STATUS "AR tools: ${CMAKE_AR}")
 
+if((CMAKE_CXX_COMPILER_ID STREQUAL "GNU") AND CMAKE_CXX_COMPILER_VERSION
+                                              VERSION_GREATER 10.4)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=uninitialized")
+endif()
+
 # MUSL build turn off warnings
 if(WITH_MUSL)
   set(CMAKE_CXX_FLAGS
@@ -246,6 +251,7 @@ option(WITH_DISTRIBUTE "Compile with distributed support" OFF)
 option(WITH_BRPC_RDMA "Use brpc rdma as the rpc protocal" OFF)
 option(ON_INFER "Turn on inference optimization and inference-lib generation"
        ON)
+option(WITH_CPP_DIST "Install PaddlePaddle C++ distribution" OFF)
 ################################ Internal Configurations #######################################
 option(WITH_NV_JETSON "Compile PaddlePaddle with NV JETSON" OFF)
 option(WITH_PROFILER "Compile PaddlePaddle with GPU profiler and gperftools"
@@ -301,7 +307,7 @@ option(WITH_CUDNN_FRONTEND
        "Compile with CUDNN Frontend API support (experimental)" OFF)
 option(WITH_CUDNN_DSO "Compile PaddlePaddle with cuDNN dynamic-link libraries"
        OFF)
-option(WITH_NEWIR "Compile PaddlePaddle with NEWIR" OFF)
+option(WITH_NEWIR "Compile PaddlePaddle with NEWIR" ON)
 
 if(WITH_RECORD_BUILDTIME)
   set_property(
@@ -337,6 +343,11 @@ endif()
 
 if(LINUX
    AND NOT WITH_CUSTOM_DEVICE
+   AND NOT WITH_GPU
+   AND NOT WITH_ROCM
+   AND NOT WITH_XPU
+   AND NOT WITH_XPU_KP
+   AND NOT WITH_XPU_XFT
    AND WITH_PYTHON)
   set(WITH_CUSTOM_DEVICE
       ON
@@ -659,6 +670,21 @@ if(WITH_STRIP)
         OFF
         CACHE STRING "Command strip is only used on Linux when it exists."
               FORCE)
+  endif()
+endif()
+
+if(WITH_CPP_DIST)
+  # TODO(huangjiyi): Separate installing C++ distribution from python package
+  # installation and support for installing C++ distribution on more platforms.
+  if(NOT LINUX OR NOT WITH_PYTHON)
+    set(WITH_CPP_DIST
+        OFF
+        CACHE
+          STRING
+          "Currently C++ Distribution Generation is only available on Linux and compiling WITH_PYTHON=ON."
+          FORCE)
+  else()
+    include(paddle_lib)
   endif()
 endif()
 

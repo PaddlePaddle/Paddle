@@ -19,7 +19,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class ResNetUnitXPUKernel : public framework::OpKernel<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
 
@@ -181,7 +181,7 @@ class ResNetUnitXPUKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
+template <typename T, typename DeviceContext>
 class ResNetUnitGradXPUKernel : public framework::OpKernel<T> {
   using XPUType = typename XPUTypeTrait<T>::Type;
 
@@ -361,9 +361,15 @@ class ResNetUnitGradXPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_XPU_KERNEL(resnet_unit,
-                       ops::ResNetUnitXPUKernel<plat::float16>,
-                       ops::ResNetUnitXPUKernel<float>);
-REGISTER_OP_XPU_KERNEL(resnet_unit_grad,
-                       ops::ResNetUnitGradXPUKernel<plat::float16>,
-                       ops::ResNetUnitGradXPUKernel<float>);
+PD_REGISTER_STRUCT_KERNEL(resnet_unit,
+                          XPU,
+                          ALL_LAYOUT,
+                          ops::ResNetUnitXPUKernel,
+                          plat::float16,
+                          float) {}
+PD_REGISTER_STRUCT_KERNEL(resnet_unit_grad,
+                          XPU,
+                          ALL_LAYOUT,
+                          ops::ResNetUnitGradXPUKernel,
+                          plat::float16,
+                          float) {}

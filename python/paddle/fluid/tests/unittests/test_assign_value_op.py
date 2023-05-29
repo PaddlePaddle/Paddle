@@ -49,7 +49,7 @@ class TestAssignValueOp(eager_op_test.OpTest):
         self.attrs["fp32_values"] = [float(v) for v in self.value.flat]
 
     def test_forward(self):
-        self.check_output()
+        self.check_output(check_cinn=True)
 
 
 class TestAssignValueOp2(TestAssignValueOp):

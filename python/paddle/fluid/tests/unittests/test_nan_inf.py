@@ -42,10 +42,6 @@ class TestNanInf(unittest.TestCase):
 
         out, err = proc.communicate()
         returncode = proc.returncode
-
-        print(out)
-        print(err)
-
         # in python3, type(out+err) is 'bytes', need use encode
         assert (out + err).find(b'There are NAN or INF') != -1
 
@@ -152,8 +148,8 @@ class TestNanInfCheckResult(unittest.TestCase):
         if paddle.fluid.core.is_compiled_with_cuda():
             _check_num_nan_inf(use_cuda=True)
 
-    def test_check_stack(self):
-        self._python_interp += " check_nan_inf_backward_stack.py"
+    def check_stack(self, file_name):
+        self._python_interp += file_name
         cmd = self._python_interp
         proc = subprocess.Popen(
             cmd.split(" "),
@@ -170,6 +166,12 @@ class TestNanInfCheckResult(unittest.TestCase):
 
         # in python3, type(out+err) is 'bytes', need use encode
         assert (out + err).find(b' z = paddle.pow(x, y)') != -1
+
+    def test_check_stack(self):
+        self.check_stack(" check_nan_inf_backward_stack.py")
+
+    def test_statck_check_stack(self):
+        self.check_stack(" check_nan_inf_backward_static_stack.py")
 
     def check_nan_inf_level(self, use_cuda, dtype):
         shape = [8, 8]

@@ -81,10 +81,11 @@ API_FILES=("CMakeLists.txt"
            "paddle/phi/core/kernel_context.h"
            "paddle/phi/core/infermeta_utils.h"
            "paddle/fluid/prim/api/composite_backward/composite_backward_api.h"
+           "paddle/fluid/prim/api/composite_backward/composite_double_backward_api.h"
            "paddle/fluid/prim/api/manual_prim/prim_manual_api.h"
+           "paddle/fluid/prim/api/api.yaml"
            "python/paddle/incubate/autograd/composite_rules.py"
 	   "python/paddle/incubate/autograd/primitives.py"
-       "paddle/fluid/prim/api/api.yaml"
            )
 
 approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
@@ -207,7 +208,7 @@ for API_FILE in ${API_FILES[*]}; do
       elif [ "${API_FILE}" == "paddle/phi/api/include/tensor.h" ] || [ "${API_FILE}" == "paddle/phi/core/tensor_base.h" ] || [ "${API_FILE}" == "paddle/phi/core/dense_tensor.h" ] || [ "${API_FILE}" == "paddle/phi/core/meta_tensor.h" ] || [ "${API_FILE}" == "paddle/phi/core/tensor_meta.h" ] || [ "${API_FILE}" == "paddle/phi/core/attribute.h" ] || [ "${API_FILE}" == "paddle/phi/core/device_context.h" ] || [ "${API_FILE}" == "paddle/phi/core/kernel_utils.h" ] || [ "${API_FILE}" == "paddle/phi/core/kernel_registry.h" ] || [ "${API_FILE}" == "paddle/phi/core/kernel_factory.h" ] || [ "${API_FILE}" == "paddle/phi/core/kernel_context.h" ] || [ "${API_FILE}" == "paddle/phi/core/infermeta_utils.h" ]; then
             echo_line="You must have one RD (chenwhql, phlrain, zyfncg, YuanRisheng) approval for changing ${API_FILE} , which manages the underlying code for PaddlePaddle PHI Library.\n"
             check_approval chenwhql phlrain zyfncg YuanRisheng
-      elif [ "${API_FILE}" == "paddle/fluid/prim/api/composite_backward/composite_backward_api.h" ] || [ "${API_FILE}" == "paddle/fluid/prim/api/manual_prim/prim_manual_api.h" ] || ["${API_FILE}" == "paddle/fluid/prim/api/api.yaml"]; then
+      elif [ "${API_FILE}" == "paddle/fluid/prim/api/composite_backward/composite_backward_api.h" ] || [ "${API_FILE}" == "paddle/fluid/prim/api/manual_prim/prim_manual_api.h" ] || [ "${API_FILE}" == "paddle/fluid/prim/api/api.yaml" ] || [ "${API_FILE}" == "paddle/fluid/prim/api/composite_backward/composite_double_backward_api.h" ]; then
             echo_line="You must have one RD (JiabinYang, cxxly(chenxiaoxu) , xiaoguoguo626807(wangruting)) approval for changing ${API_FILE} , which manages the code for PaddlePaddle Composite Bacward Prim API.\n"
             check_approval 1 JiabinYang cxxly xiaoguoguo626807
       elif [ "${API_FILE}" == "python/paddle/incubate/autograd/primitives.py" ] || [ "${API_FILE}" == "python/paddle/incubate/autograd/composite_rules.py" ]; then
@@ -340,6 +341,12 @@ if [ "${INVALID_UNITTEST_ASSERT_CHECK}" != "" ] && [ "${GIT_PR_ID}" != "" ]; the
     check_approval 1 16605440 6836917
 fi
 
+OUTPUT_LOG=`echo "$ALL_ADDED_LINES" | grep -Ew "print|printf|fprintf|std::cout" || true`
+if [ "$OUTPUT_LOG" != "" ];then
+    echo_line="print or std::cout is not recommended for direct use, please use loggin or glog. If it is necessary to use, please contact tianshuo78520a (Recommend) or zhangbo9674 review and approve.\n"
+    check_approval 1 tianshuo78520a zhangbo9674
+fi
+
 HAS_MODIFIED_PHI_FILES=`git diff --name-only upstream/$BRANCH | grep "paddle/phi/" || true`
 PHI_INCLUDE_FLUID_FILES=""
 for CHANGE_FILE in ${HAS_MODIFIED_PHI_FILES}; do
@@ -364,6 +371,19 @@ done
 if [ "${PHI_INCLUDE_THIRD_PARTY_FILES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     echo_line="You must have one RD (jiahy0825, zyfncg, chenwhql, YuanRisheng or heavyrain-lzy) approval for including \"gflags/gflags.h\" or \"glog/logging.h\" headerfile in paddle/phi headerfiles(${PHI_INCLUDE_THIRD_PARTY_FILES}). Recommend including third party headers in phi source files(*.cc) instead of phi headerfiles(*.h). Because if phi headerfiles include third party headers like \"gflags.h\" or \"logging.h\", error might occur when outside developers use phi headerfiles directly.\n"
     check_approval 1 jiahy0825 zyfncg chenwhql YuanRisheng heavyrain-lzy
+fi
+
+HAS_MODIFIED_PADDLE_API_FILES=`git diff --name-only upstream/$BRANCH | grep "paddle/.*\.h" || true`
+INCLUDE_PADDLE_API_FILES=""
+for CHANGE_FILE in ${HAS_MODIFIED_PHI_HEADER_FILES}; do
+    PADDLE_API_ADDED_LINES=`git diff -U0 upstream/$BRANCH -- ${PADDLE_ROOT}/${CHANGE_FILE} | grep -w "PADDLE_API" || true`
+    if [ "${PADDLE_API_ADDED_LINES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+        INCLUDE_PADDLE_API_FILES="${INCLUDE_PADDLE_API_FILES} ${CHANGE_FILE}"
+    fi
+done
+if [ "${INCLUDE_PADDLE_API_FILES}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+    echo_line="You must have one RD (jiahy0825, zyfncg, chenwhql) or PM (sunzhongkai588, Ligoml) approval for code changes about PADDLE_API. If you add a new PADDLE_API, please make sure you have written detailed comments about the parameter and usage of this PADDLE_API .\n"
+    check_approval 1 jiahy0825 zyfncg chenwhql sunzhongkai588 Ligoml
 fi
 
 HAS_MODIFIED_PHI_OR_FLUID_FILES=`git diff --name-only upstream/$BRANCH | grep -E "paddle/phi|paddle/fluid" || true`

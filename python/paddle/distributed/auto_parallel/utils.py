@@ -22,12 +22,12 @@ from functools import reduce
 import numpy as np
 
 import paddle
+from paddle.fluid.wrapped_decorator import wrap_decorator
 from paddle.framework import core
 from paddle.framework.io_utils import is_belong_to_optimizer, is_parameter
 from paddle.static import Variable
 
 from .dist_attribute import OperatorDistAttr, TensorDistAttr
-from .process_group import get_all_process_groups
 from .process_mesh import ProcessMesh
 
 OpRole = core.op_proto_and_checker_maker.OpRole
@@ -55,6 +55,8 @@ def get_logger(log_level, name="auto_parallel"):
         )
         log_handler.setFormatter(log_format)
         logger.addHandler(log_handler)
+    else:
+        logger.setLevel(log_level)
     return logger
 
 
@@ -1466,7 +1468,8 @@ def update_op_dims_mapping_by_default_dist_impl(dist_op):
                 ), "{} only the batch dimension (0-dim) can be sharded, but the dimension {} is sharded by {} part.".format(
                     op_desc.type(), idx, mapping
                 )
-        batch_dim_mappings.append(dims_mapping[0])
+        if len(dims_mapping) >= 1:
+            batch_dim_mappings.append(dims_mapping[0])
     for arg_name in op_desc.output_arg_names():
         serial_tensor = dist_op.get_serial_output(arg_name)
         if serial_tensor.is_parameter:
@@ -1480,7 +1483,8 @@ def update_op_dims_mapping_by_default_dist_impl(dist_op):
                     ), "{} only the batch dimension (0-dim) can be sharded, but the dimension {} is sharded by {} part.".format(
                         op_desc.type(), idx, mapping
                     )
-            batch_dim_mappings.append(dims_mapping[0])
+            if len(dims_mapping) >= 1:
+                batch_dim_mappings.append(dims_mapping[0])
         else:
             assert (
                 dims_mapping[0] == -1
@@ -1505,7 +1509,7 @@ def update_op_dims_mapping_by_default_dist_impl(dist_op):
         if serial_tensor.is_parameter:
             continue
         dims_mapping = op_dist_attr.get_input_dims_mapping(arg_name)
-        if compatible_dim_mapping != dims_mapping[0]:
+        if len(dims_mapping) >= 1 and compatible_dim_mapping != dims_mapping[0]:
             dims_mapping[0] = compatible_dim_mapping
             changed = True
     for arg_name in op_desc.output_arg_names():
@@ -1514,7 +1518,10 @@ def update_op_dims_mapping_by_default_dist_impl(dist_op):
             continue
         dims_mapping = op_dist_attr.get_output_dims_mapping(arg_name)
         if arg_name not in xshape_arg_names:
-            if compatible_dim_mapping != dims_mapping[0]:
+            if (
+                len(dims_mapping) >= 1
+                and compatible_dim_mapping != dims_mapping[0]
+            ):
                 dims_mapping[0] = compatible_dim_mapping
                 changed = True
         else:
@@ -1811,6 +1818,8 @@ def debug_program(program, path, name):
 
 
 def ring_id_to_process_group(ring_id):
+    from .process_group import get_all_process_groups
+
     for g in get_all_process_groups():
         if g.id == ring_id:
             return g
@@ -2350,3 +2359,17 @@ def is_dep_skip_op(op):
         return True
 
     return False
+
+
+def _dygraph_guard_(func):
+    def __impl__(*args, **kwargs):
+        if paddle.framework.in_dynamic_mode():
+            return func(*args, **kwargs)
+        else:
+            with paddle.fluid.dygraph.guard():
+                return func(*args, **kwargs)
+
+    return __impl__
+
+
+dygraph_guard = wrap_decorator(_dygraph_guard_)

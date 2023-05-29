@@ -18,8 +18,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
+#include "paddle/phi/kernels/funcs/embedding_grad.h"
 
-DECLARE_bool(cudnn_deterministic);
+DECLARE_int64(embedding_deterministic);
 
 namespace paddle {
 namespace operators {
@@ -154,7 +155,6 @@ class CEmbeddingGradCUDAKernel : public framework::OpKernel<T> {
     int D = d_table_t->dims()[1];
     int K = ids_t->numel();
 
-    const int64_t end_idx = start_idx + N;
     auto limit = K * D;
     int blocks = NumBlocks(limit);
     int threads = kNumCUDAThreads;
@@ -166,33 +166,64 @@ class CEmbeddingGradCUDAKernel : public framework::OpKernel<T> {
     t.device(*dev_ctx.eigen_device()) = t.constant(static_cast<T>(0));
 
     const auto &index_type = framework::TransToProtoVarType(ids_t->dtype());
-    if (FLAGS_cudnn_deterministic) {
-      VLOG(2) << "Run grad kernel of embedding with single thread.";
-      blocks = 1;
+    if (FLAGS_embedding_deterministic == 1) {
+      if (index_type == framework::proto::VarType::INT32) {
+        phi::funcs::LaunchEmbeddingGradDeterministicKernel<T, int32_t>(
+            dev_ctx,
+            ids_t->data<int32_t>(),
+            d_output,
+            d_table,
+            N,
+            D,
+            K,
+            start_idx);
+        return;
+      } else if (index_type == framework::proto::VarType::INT64) {
+        phi::funcs::LaunchEmbeddingGradDeterministicKernel<T, int64_t>(
+            dev_ctx,
+            ids_t->data<int64_t>(),
+            d_output,
+            d_table,
+            N,
+            D,
+            K,
+            start_idx);
+        return;
+      }
+    } else {
+      if (FLAGS_embedding_deterministic > 1) {
+        VLOG(2) << "Run grad kernel of embedding with single thread.";
+        blocks = 1;
+      }
+      const int64_t end_idx = start_idx + N;
+      if (index_type == framework::proto::VarType::INT32) {
+        CEmbeddingGrad<T, int32_t>
+            <<<blocks, threads, 0, dev_ctx.stream()>>>(d_table,
+                                                       d_output,
+                                                       ids_t->data<int32_t>(),
+                                                       K,
+                                                       D,
+                                                       N,
+                                                       start_idx,
+                                                       end_idx,
+                                                       limit);
+        return;
+      } else if (index_type == framework::proto::VarType::INT64) {
+        CEmbeddingGrad<T, int64_t>
+            <<<blocks, threads, 0, dev_ctx.stream()>>>(d_table,
+                                                       d_output,
+                                                       ids_t->data<int64_t>(),
+                                                       K,
+                                                       D,
+                                                       N,
+                                                       start_idx,
+                                                       end_idx,
+                                                       limit);
+        return;
+      }
     }
-    if (index_type == framework::proto::VarType::INT32) {
-      CEmbeddingGrad<T, int32_t>
-          <<<blocks, threads, 0, dev_ctx.stream()>>>(d_table,
-                                                     d_output,
-                                                     ids_t->data<int32_t>(),
-                                                     K,
-                                                     D,
-                                                     N,
-                                                     start_idx,
-                                                     end_idx,
-                                                     limit);
-    } else if (index_type == framework::proto::VarType::INT64) {
-      CEmbeddingGrad<T, int64_t>
-          <<<blocks, threads, 0, dev_ctx.stream()>>>(d_table,
-                                                     d_output,
-                                                     ids_t->data<int64_t>(),
-                                                     K,
-                                                     D,
-                                                     N,
-                                                     start_idx,
-                                                     end_idx,
-                                                     limit);
-    }
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "The data type of Input(Ids) must be int32 or int64."));
   }
 };
 
@@ -208,7 +239,7 @@ PD_REGISTER_STRUCT_KERNEL(c_embedding,
                           ops::CEmbeddingCUDAKernel,
                           float,
                           double,
-#if NCCL_VERSION_CODE >= 21000
+#if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
                           plat::bfloat16,
 #endif
                           plat::float16) {
@@ -220,7 +251,7 @@ PD_REGISTER_STRUCT_KERNEL(c_embedding_grad,
                           ops::CEmbeddingGradCUDAKernel,
                           float,
                           double,
-#if NCCL_VERSION_CODE >= 21000
+#if NCCL_VERSION_CODE >= 21000 && CUDA_VERSION >= 11000
                           plat::bfloat16,
 #endif
                           plat::float16) {

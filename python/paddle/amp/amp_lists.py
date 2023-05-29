@@ -16,6 +16,7 @@
 # safe and performance-critical. These ops are always converted to fp16.
 FP16_WHITE_LIST = {
     'conv2d',
+    'einsum',
     'matmul',
     'matmul_v2',
     'max_pool2d_with_index',
@@ -84,17 +85,25 @@ FP16_EXTRA_BLACK_LIST = {
     'lookup_table',
     'lookup_table_v2',
     'scatter',
-    'depthwise_conv2d',
 }
 
-BF16_WHITE_LIST = {'conv2d', 'matmul_v2'}
+BF16_WHITE_LIST = {'conv2d', 'einsum', 'matmul_v2'}
 BF16_BLACK_LIST = set()
 
 
+# At OD level, ops in WHITE_LIST will use FP16/BF16 and the others will use FP32.
 def white_list():
     white_list = {
-        "float16": {"O1": FP16_WHITE_LIST, "O2": FP16_WHITE_LIST},
-        "bfloat16": {"O1": BF16_WHITE_LIST, "O2": BF16_WHITE_LIST},
+        "float16": {
+            "OD": FP16_WHITE_LIST,
+            "O1": FP16_WHITE_LIST,
+            "O2": FP16_WHITE_LIST,
+        },
+        "bfloat16": {
+            "OD": BF16_WHITE_LIST,
+            "O1": BF16_WHITE_LIST,
+            "O2": BF16_WHITE_LIST,
+        },
     }
     return white_list
 
@@ -102,9 +111,10 @@ def white_list():
 def black_list():
     black_list = {
         "float16": {
+            "OD": set(),
             "O1": FP16_BLACK_LIST | FP16_EXTRA_BLACK_LIST,
             "O2": FP16_EXTRA_BLACK_LIST,
         },
-        "bfloat16": {"O1": BF16_BLACK_LIST, "O2": set()},
+        "bfloat16": {"OD": set(), "O1": BF16_BLACK_LIST, "O2": set()},
     }
     return black_list

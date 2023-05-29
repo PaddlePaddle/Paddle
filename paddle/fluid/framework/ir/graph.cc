@@ -17,7 +17,7 @@ limitations under the License. */
 #include <memory>
 
 #include "paddle/fluid/framework/operator.h"
-
+#include "paddle/fluid/platform/flags.h"
 PADDLE_DEFINE_EXPORTED_bool(convert_all_blocks,
                             true,
                             "Convert all blocks in program into SSAgraphs");

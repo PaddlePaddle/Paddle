@@ -143,9 +143,6 @@ class TestElementwiseDivOp_ZeroDim1(ElementwiseDivOp):
         self.x_shape = []
         self.y_shape = []
 
-    def if_enable_cinn(self):
-        self.enable_cinn = False
-
 
 class TestElementwiseDivOp_ZeroDim2(ElementwiseDivOp):
     def init_shape(self):
@@ -161,9 +158,6 @@ class TestElementwiseDivOp_ZeroDim2(ElementwiseDivOp):
     def compute_gradient_y(self, grad_out, out, y):
         return np.sum(-1 * grad_out * out / y.reshape([1, 1]))
 
-    def if_enable_cinn(self):
-        self.enable_cinn = False
-
 
 class TestElementwiseDivOp_ZeroDim3(ElementwiseDivOp):
     def init_shape(self):
@@ -178,9 +172,6 @@ class TestElementwiseDivOp_ZeroDim3(ElementwiseDivOp):
 
     def compute_gradient_y(self, grad_out, out, y):
         return -1 * grad_out * out / y
-
-    def if_enable_cinn(self):
-        self.enable_cinn = False
 
 
 @unittest.skipIf(

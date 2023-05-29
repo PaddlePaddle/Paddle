@@ -90,7 +90,7 @@ if(WITH_UNITY_BUILD)
     include(unity_build_rule.cmake)
 endif()
 
-set(OP_HEADER_DEPS ${OP_HEADER_DEPS} phi phi_utils backward_infermeta sparse_backward_infermeta static_prim_api get_expected_kernel_func)
+set(OP_HEADER_DEPS ${OP_HEADER_DEPS} phi phi_utils static_prim_api get_expected_kernel_func)
 
 register_operators(EXCLUDES py_func_op dgc_op generated_op1 generated_op2 generated_op3 generated_op4 load_combine_op lstm_op run_program_op quantize_linear_op
         recurrent_op save_combine_op sparse_attention_op sync_batch_norm_op activation_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS})
@@ -101,6 +101,14 @@ target_link_libraries(run_program_op cuda_graph_with_memory_pool)
 op_library(quantize_linear_op DEPS phi)
 op_library(save_combine_op DEPS string_array phi)
 op_library(load_combine_op DEPS string_array)
+
+if (WITH_GPU OR WITH_ROCM)
+    register_cu_kernel(class_center_sample_op SRCS class_center_sample_op.cu DEPS ${OP_HEADER_DEPS})
+endif()
+
+if (WITH_MKLDNN)
+    register_mkldnn_kernel(layer_norm_op SRCS layer_norm_mkldnn_op.cc DEPS ${OP_HEADER_DEPS})
+endif()
 
 if (WITH_GPU OR WITH_ROCM)
     op_library(activation_op SRCS activation_op.cc activation_op.kps soft_relu_op.cu DEPS ${OP_HEADER_DEPS})
@@ -117,7 +125,7 @@ if (WITH_GPU OR WITH_ROCM)
     endif()
 endif()
 
-op_library(lstm_op DEPS ${OP_HEADER_DEPS}  lstm_compute)
+op_library(lstm_op DEPS ${OP_HEADER_DEPS})
 op_library(recurrent_op DEPS ${OP_HEADER_DEPS})
 
 set(COMMON_OP_DEPS ${OP_HEADER_DEPS})
@@ -128,17 +136,16 @@ if (WITH_DGC)
 endif()
 
 cc_library(common_infer_shape_functions SRCS common_infer_shape_functions.cc DEPS operator)
-cc_library(ops_extra_info SRCS ops_extra_info.cc DEPS attribute cudnn_workspace_helper)
+cc_library(ops_extra_info SRCS ops_extra_info.cc DEPS attribute phi)
 
-set(COMMON_OP_DEPS ${COMMON_OP_DEPS} selected_rows_functor selected_rows_utils lapack_function
-lod_tensor maxouting unpooling pooling lod_rank_table context_project
-sequence_pooling executor generator static_prim_api)
+set(COMMON_OP_DEPS ${COMMON_OP_DEPS} phi)
+set(COMMON_OP_DEPS ${COMMON_OP_DEPS} selected_rows_utils
+lod_tensor unpooling lod_rank_table context_project executor static_prim_api)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} dynload_warpctc static_prim_api static_utils static_global_utils prim_utils)
-set(COMMON_OP_DEPS ${COMMON_OP_DEPS} sequence_padding sequence_scale cos_sim_functor memory jit_kernel_helper concat_and_split cross_entropy softmax vol2col im2col sampler sample_prob tree2col)
-set(COMMON_OP_DEPS ${COMMON_OP_DEPS} sequence2batch lstm_compute matrix_bit_code gru_compute activation_functions beam_search fc_functor matrix_inverse matrix_solve)
+set(COMMON_OP_DEPS ${COMMON_OP_DEPS} cos_sim_functor memory concat_and_split sampler sample_prob tree2col)
+set(COMMON_OP_DEPS ${COMMON_OP_DEPS} beam_search)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} box_wrapper ps_gpu_wrapper)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} common_infer_shape_functions)
-set(COMMON_OP_DEPS ${COMMON_OP_DEPS} eigen_function)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} processgroup_comm_utils)
 if(WITH_NCCL OR WITH_RCCL)
   set(COMMON_OP_DEPS ${COMMON_OP_DEPS} process_group_nccl)
@@ -147,7 +154,6 @@ if (WITH_GPU OR WITH_ROCM)
   set(COMMON_OP_DEPS ${COMMON_OP_DEPS} depthwise_conv prelu bert_encoder_functor)
 endif()
 if(WITH_XPU)
-  cc_test(beam_search_decode_op_xpu_test SRCS beam_search_decode_op_xpu_test.cc DEPS lod_tensor)
   set(COMMON_OP_DEPS ${COMMON_OP_DEPS} xpulib)
 endif()
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} layer)
@@ -165,41 +171,12 @@ set(COMMON_OP_DEPS ${COMMON_OP_DEPS} op_version_registry)
 set(OPERATOR_DEPS ${OPERATOR_DEPS} ${COMMON_OP_DEPS})
 set(GLOB_OPERATOR_DEPS ${OPERATOR_DEPS} CACHE INTERNAL "Global Op dependencies")
 
-cc_test(test_common_infer_shape_functions SRCS test_common_infer_shape_functions.cc DEPS common_infer_shape_functions ${COMMON_OP_DEPS} activation_op elementwise_add_op softmax_op softmax)
-cc_test(gather_test SRCS gather_test.cc DEPS tensor)
-cc_test(assign_op_test SRCS assign_op_test.cc DEPS generated_static_op)
-cc_test(scatter_test SRCS scatter_test.cc DEPS tensor math_function)
-cc_test(beam_search_decode_op_test SRCS beam_search_decode_op_test.cc DEPS lod_tensor)
-cc_test(save_load_op_test SRCS save_load_op_test.cc DEPS save_op load_op)
-cc_test(save_load_combine_op_test SRCS save_load_combine_op_test.cc DEPS save_combine_op load_combine_op)
-if (WITH_GPU)
-    nv_test(dropout_op_test SRCS dropout_op_test.cc DEPS dropout_op tensor generator)
-    nv_test(test_leaky_relu_grad_grad_functor SRCS test_leaky_relu_grad_grad_functor.cc test_leaky_relu_grad_grad_functor.cu DEPS tensor device_context eigen3)
-    nv_test(feed_forward_test SRCS feed_forward_test.cu DEPS elementwise_add_op matmul_op tensor generator)
-elseif(WITH_ROCM)
-    hip_test(dropout_op_test SRCS dropout_op_test.cc DEPS dropout_op tensor generator)
-    hip_test(test_leaky_relu_grad_grad_functor SRCS test_leaky_relu_grad_grad_functor.cc test_leaky_relu_grad_grad_functor.cu DEPS tensor device_context eigen3)
-else()
-    cc_test(test_leaky_relu_grad_grad_functor SRCS test_leaky_relu_grad_grad_functor.cc DEPS tensor device_context eigen3)
-endif()
-cc_test(share_buffer_op_cpp_test SRCS share_buffer_op_test.cc DEPS lod_tensor device_context generated_static_op)
-
 cc_library(tensor_formatter SRCS tensor_formatter.cc DEPS ${OP_HEADER_DEPS})
 if (WITH_PYTHON)
   cc_library(py_func_op SRCS py_func_op.cc DEPS op_registry python pybind)
 endif()
 
 set(GLOB_OP_LIB ${OP_LIBRARY} CACHE INTERNAL "Global OP library")
-add_subdirectory(benchmark)
-
-cc_test_old(op_debug_string_test SRCS op_debug_string_test.cc DEPS elementwise_add_op ${COMMON_OP_DEPS})
-
-
-if(WITH_MKLDNN)
-include(mkldnn/inplace_op_tests.cmake)
-include(mkldnn/caching_tests.cmake)
-include(mkldnn/nhwc_op_tests.cmake)
-endif()
 
 if(WITH_UNITY_BUILD)
     # Using Unity Build to compile operators, `register_operator` will cause
@@ -208,14 +185,10 @@ if(WITH_UNITY_BUILD)
     target_link_libraries(paddle_operators_unity ${OP_HEADER_DEPS} ${COMMON_OP_DEPS})
 endif()
 
-if (WITH_GPU)
-cc_test(copy_cross_scope_test SRCS copy_cross_scope_test.cc DEPS op_registry copy_cross_scope_op scope device_context enforce executor)
-endif()
-
 copy_if_different(${pybind_file} ${pybind_file_final})
 
 if (WITH_CUSTOM_DEVICE)
-cc_library(custom_device_common_op_registry SRCS custom_device_common_op_registry.cc DEPS operator phi_api)
+cc_library(custom_device_common_op_registry SRCS custom_device_common_op_registry.cc DEPS operator phi type_info)
 endif()
 
 if(NOT "${OP_LIST}" STREQUAL "")

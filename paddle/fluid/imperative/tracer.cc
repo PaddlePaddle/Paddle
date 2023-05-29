@@ -30,10 +30,11 @@
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/fluid/string/string_helper.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/core/flags.h"
 
-DECLARE_bool(use_mkldnn);
-DECLARE_string(tracer_mkldnn_ops_on);
-DECLARE_string(tracer_mkldnn_ops_off);
+PHI_DECLARE_bool(use_mkldnn);
+PHI_DECLARE_string(tracer_mkldnn_ops_on);
+PHI_DECLARE_string(tracer_mkldnn_ops_off);
 
 namespace paddle {
 namespace imperative {
@@ -42,6 +43,8 @@ thread_local std::string Tracer::python_stack_ = "";
 thread_local bool Tracer::enable_program_desc_tracing_ = false;
 
 thread_local bool Tracer::has_grad_ = true;
+
+thread_local bool Tracer::use_promote_ = true;
 
 thread_local bool Tracer::use_layout_autotune_ = false;
 

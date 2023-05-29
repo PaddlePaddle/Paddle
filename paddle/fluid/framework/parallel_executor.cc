@@ -44,11 +44,12 @@ limitations under the License. */
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
+#include "paddle/fluid/platform/flags.h"
 
-DECLARE_double(eager_delete_tensor_gb);
+PHI_DECLARE_double(eager_delete_tensor_gb);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-DECLARE_bool(sync_nccl_allreduce);
+PHI_DECLARE_bool(sync_nccl_allreduce);
 #endif
 
 #ifdef WITH_GPERFTOOLS
@@ -1326,14 +1327,12 @@ void ParallelExecutor::InitExecutorPrivateMemberInfo(
     device_name = "CPU";
   } else if (member_->use_device_ == p::kCUDA) {
     device_name = "CUDA";
-  } else if (member_->use_device_ == p::kNPU) {
-    device_name = "NPU";
   } else if (member_->use_device_ == p::kXPU) {
     device_name = "XPU";
   } else {
     PADDLE_THROW(
-        platform::errors::Unavailable("Only CPU/CUDA/NPU/XPU is supportted. "
-                                      "please use CPU/CUDA/NPU/XPU backend."));
+        platform::errors::Unavailable("Only CPU/CUDA/XPU is supportted. "
+                                      "please use CPU/CUDA/XPU backend."));
   }
 
   VLOG(1) << string::Sprintf(

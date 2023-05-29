@@ -19,12 +19,7 @@
 #include "paddle/ir/utils.h"
 
 namespace ir {
-///
-/// \brief All built-in attributes.
-///
-#define GET_BUILT_IN_ATTRIBUTE_LIST ir::StrAttribute, ir::DictionaryAttribute
-
-class StrAttribute : public ir::Attribute {
+class StrAttribute : public Attribute {
  public:
   using Attribute::Attribute;
 
@@ -39,55 +34,64 @@ class StrAttribute : public ir::Attribute {
   uint32_t size() const;
 };
 
-class NamedAttribute {
- public:
-  NamedAttribute(StrAttribute name, Attribute value);
-
-  StrAttribute name() const { return name_; }
-
-  Attribute value() const { return value_; }
-
-  void SetName(StrAttribute name) { name_ = name; }
-
-  void SetValue(Attribute value) { value_ = value; }
-
-  bool operator<(const NamedAttribute &right) const;
-
-  bool operator==(const NamedAttribute &right) const;
-
-  bool operator!=(const NamedAttribute &right) const;
-
-  friend struct std::hash<NamedAttribute>;
-
-  operator std::pair<const StrAttribute, Attribute>() const {
-    return std::make_pair(name_, value_);
-  }
-
- private:
-  StrAttribute name_;
-  Attribute value_;
-};
-
-class DictionaryAttribute : public ir::Attribute {
+class BoolAttribute : public Attribute {
  public:
   using Attribute::Attribute;
 
-  DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(DictionaryAttribute,
-                                    DictionaryAttributeStorage);
+  DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(BoolAttribute, BoolAttributeStorage);
 
-  Attribute GetValue(const StrAttribute &name);
+  bool data() const;
+};
 
-  uint32_t size() const;
+class FloatAttribute : public Attribute {
+ public:
+  using Attribute::Attribute;
+
+  DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(FloatAttribute, FloatAttributeStorage);
+
+  float data() const;
+};
+
+class DoubleAttribute : public Attribute {
+ public:
+  using Attribute::Attribute;
+
+  DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(DoubleAttribute, DoubleAttributeStorage);
+
+  double data() const;
+};
+
+class Int32_tAttribute : public Attribute {
+ public:
+  using Attribute::Attribute;
+
+  DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(Int32_tAttribute, Int32_tAttributeStorage);
+
+  int32_t data() const;
+};
+
+class Int64_tAttribute : public Attribute {
+ public:
+  using Attribute::Attribute;
+
+  DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(Int64_tAttribute, Int64_tAttributeStorage);
+
+  int64_t data() const;
+};
+
+class ArrayAttribute : public Attribute {
+ public:
+  using Attribute::Attribute;
+
+  DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(ArrayAttribute, ArrayAttributeStorage);
+
+  std::vector<Attribute> data() const;
+
+  size_t size() const { return data().size(); }
+
+  bool empty() const { return data().empty(); }
+
+  Attribute operator[](size_t index) const { return data()[index]; }
 };
 
 }  // namespace ir
-
-namespace std {
-template <>
-struct hash<ir::NamedAttribute> {
-  std::size_t operator()(const ir::NamedAttribute &obj) const {
-    return ir::hash_combine(std::hash<ir::Attribute>()(obj.name_),
-                            std::hash<ir::Attribute>()(obj.value_));
-  }
-};
-}  // namespace std

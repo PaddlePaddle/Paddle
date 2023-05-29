@@ -181,12 +181,12 @@ void FusedAttentionKernel(const Context &dev_ctx,
   float *ln_mean_ptr =
       (ln_mean == nullptr)
           ? (nullptr)
-          : reinterpret_cast<float *>(dev_ctx.template Alloc<T>(ln_mean));
+          : reinterpret_cast<float *>(dev_ctx.template Alloc<float>(ln_mean));
 
   float *ln_var_ptr =
       (ln_var == nullptr)
           ? (nullptr)
-          : reinterpret_cast<float *>(dev_ctx.template Alloc<T>(ln_var));
+          : reinterpret_cast<float *>(dev_ctx.template Alloc<float>(ln_var));
 
   XPUTypeT *ln_out_ptr =
       (ln_out == nullptr)

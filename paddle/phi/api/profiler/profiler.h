@@ -23,12 +23,12 @@ limitations under the License. */
 #include <unordered_set>
 #include <utility>
 #include <vector>
-#include "gflags/gflags.h"
 
 #include "paddle/phi/api/profiler/event_tracing.h"
 #include "paddle/phi/api/profiler/supplement_tracing.h"
+#include "paddle/phi/core/flags.h"
 
-DECLARE_bool(enable_host_event_recorder_hook);
+PHI_DECLARE_bool(enable_host_event_recorder_hook);
 
 namespace phi {
 

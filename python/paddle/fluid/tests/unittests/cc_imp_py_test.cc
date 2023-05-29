@@ -25,7 +25,7 @@ TEST(CC, IMPORT_PY) {
   ASSERT_FALSE(PyRun_SimpleString("import paddle"));
   ASSERT_FALSE(PyRun_SimpleString("print(paddle.to_tensor(1))"));
 
-  // 2. C/C++ Run Python funciton
+  // 2. C/C++ Run Python function
   PyRun_SimpleString("import sys");
   PyRun_SimpleString("import os");
   PyRun_SimpleString("sys.path.append(os.getcwd())");

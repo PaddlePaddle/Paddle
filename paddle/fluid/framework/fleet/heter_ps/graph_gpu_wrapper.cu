@@ -18,8 +18,9 @@
 #include "paddle/fluid/framework/fleet/heter_ps/gpu_graph_utils.h"
 #include "paddle/fluid/framework/fleet/heter_ps/graph_gpu_ps_table.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_resource.h"
-DECLARE_int32(gpugraph_storage_mode);
-DECLARE_bool(graph_metapath_split_opt);
+#include "paddle/phi/core/flags.h"
+PHI_DECLARE_int32(gpugraph_storage_mode);
+PHI_DECLARE_bool(graph_metapath_split_opt);
 namespace paddle {
 namespace framework {
 #ifdef PADDLE_WITH_HETERPS

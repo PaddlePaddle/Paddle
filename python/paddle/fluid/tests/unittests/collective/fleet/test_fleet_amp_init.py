@@ -66,7 +66,7 @@ class TestFleetAMPInit(unittest.TestCase):
             optimizer = paddle.optimizer.Momentum(
                 learning_rate=0.001,
                 momentum=0.9,
-                weight_decay=fluid.regularizer.L2Decay(1e-4),
+                weight_decay=paddle.regularizer.L2Decay(1e-4),
                 multi_precision=True,
             )
 
@@ -110,7 +110,7 @@ class TestFleetAMPInit(unittest.TestCase):
             optimizer = paddle.optimizer.Momentum(
                 learning_rate=0.001,
                 momentum=0.9,
-                weight_decay=fluid.regularizer.L2Decay(1e-4),
+                weight_decay=paddle.regularizer.L2Decay(1e-4),
                 multi_precision=True,
             )
 

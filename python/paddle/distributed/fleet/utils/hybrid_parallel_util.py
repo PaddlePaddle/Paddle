@@ -17,7 +17,7 @@ from paddle import framework
 from paddle.distributed.parallel import (
     _split_tensors,
     build_groups,
-    in_dygraph_mode,
+    in_dynamic_mode,
     sync_params_buffers,
 )
 
@@ -131,7 +131,7 @@ def _broadcast_data_help(data, shape, dtype, hcg):
     )
 
     if mp_rank != 0:
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             data._clear_data()
             input_data._share_buffer_to(data)
         else:
@@ -167,13 +167,14 @@ def broadcast_input_data(hcg, *inputs, **kwargs):
         place = paddle.CUDAPlace(dev_idx)
     elif dev in paddle.device.get_all_custom_device_type():
         place = paddle.CustomPlace(dev, dev_idx)
+        dev = 'custom'
     else:
         place = eval(f"paddle.{dev.upper()}Place")(dev_idx)
 
     for v in inputs:
         if isinstance(v, core.eager.Tensor):
             with framework.no_grad():
-                if in_dygraph_mode() and not eval(f"v.place.is_{dev}_place")():
+                if in_dynamic_mode() and not eval(f"v.place.is_{dev}_place")():
                     v_gpu = v._copy_to(place, True)
                     v._clear_data()
                     v_gpu._share_buffer_to(v)
@@ -184,7 +185,7 @@ def broadcast_input_data(hcg, *inputs, **kwargs):
     for k, v in kwargs.items():
         if isinstance(v, core.eager.Tensor):
             with framework.no_grad():
-                if in_dygraph_mode() and not eval(f"v.place.is_{dev}_place")():
+                if in_dynamic_mode() and not eval(f"v.place.is_{dev}_place")():
                     v_gpu = v._copy_to(place, True)
                     v._clear_data()
                     v_gpu._share_buffer_to(v)
@@ -216,7 +217,7 @@ def fused_allreduce_gradients_with_group(
 ):
     apply_func = (
         _apply_collective_grads_eager
-        if in_dygraph_mode()
+        if in_dynamic_mode()
         else _apply_collective_grads
     )
     with framework.no_grad():
