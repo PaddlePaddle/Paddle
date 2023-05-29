@@ -59,6 +59,15 @@ limitations under the License. */
 
 namespace phi {
 
+template <>
+const TypeInfo<DeviceContext> TypeInfoTraits<DeviceContext, GPUContext>::kType =
+    RegisterStaticType<DeviceContext>(GPUContext::name());
+
+template <>
+const TypeInfo<DeviceContext>
+    TypeInfoTraits<DeviceContext, GPUPinnedContext>::kType =
+        RegisterStaticType<DeviceContext>(GPUPinnedContext::name());
+
 namespace internal {
 
 class EigenGpuStreamDevice : public Eigen::StreamInterface {

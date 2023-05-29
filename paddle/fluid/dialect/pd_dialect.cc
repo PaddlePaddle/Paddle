@@ -23,18 +23,18 @@
 #include "paddle/fluid/dialect/utils.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_type.h"
-#include "paddle/ir/dialect_interface.h"
+#include "paddle/ir/core/dialect_interface.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace paddle {
 namespace dialect {
 std::shared_ptr<paddle::framework::Variable>
-ParameterConvertInterface::ParameterToVariable(ir::Parameter* parameter) {
+ParameterConvertInterface::ParameterToVariable(ir::Parameter *parameter) {
   if (parameter->type().isa<DenseTensorType>()) {
     VLOG(4) << "Convert a DenseTensor Parameter to a variable.";
     std::shared_ptr<paddle::framework::Variable> var =
         std::make_shared<paddle::framework::Variable>();
-    phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+    phi::DenseTensor *tensor = var->GetMutable<phi::DenseTensor>();
     // Init DenseTensor
     auto dim = parameter->type().dyn_cast<DenseTensorType>().dim();
     phi::DenseTensorMeta meta(
@@ -46,7 +46,7 @@ ParameterConvertInterface::ParameterToVariable(ir::Parameter* parameter) {
         parameter->type().dyn_cast<DenseTensorType>().lod(),
         parameter->type().dyn_cast<DenseTensorType>().offset());
     tensor->set_meta(meta);
-    paddle::platform::DeviceContext* dev_ctx =
+    paddle::platform::DeviceContext *dev_ctx =
         paddle::platform::DeviceContextPool::Instance().Get(
             paddle::platform::CPUPlace());
     dev_ctx->Alloc(tensor,
@@ -62,11 +62,11 @@ ParameterConvertInterface::ParameterToVariable(ir::Parameter* parameter) {
 }
 
 std::unique_ptr<ir::Parameter> ParameterConvertInterface::VariableToParameter(
-    paddle::framework::Variable* var) {
+    paddle::framework::Variable *var) {
   if (var->IsType<phi::DenseTensor>()) {
-    phi::DenseTensor* tensor = var->GetMutable<phi::DenseTensor>();
+    phi::DenseTensor *tensor = var->GetMutable<phi::DenseTensor>();
     // Get Meta
-    ir::IrContext* ctx = ir::IrContext::Instance();
+    ir::IrContext *ctx = ir::IrContext::Instance();
     ir::Type data_type = TransToIrDataType(tensor->dtype(), ctx);
     DenseTensorTypeStorage::Dim dims(tensor->dims().size());
     std::copy(tensor->dims().Get(),
@@ -76,7 +76,7 @@ std::unique_ptr<ir::Parameter> ParameterConvertInterface::VariableToParameter(
         TransToIrDataLayout(tensor->layout());
     DenseTensorTypeStorage::LoD lod = tensor->lod();
     size_t offset = tensor->meta().offset;
-    void* data = tensor->data();
+    void *data = tensor->data();
     ir::Type dense_tensor_type =
         DenseTensorType::get(ctx, data_type, dims, data_layout, lod, offset);
     return std::make_unique<ir::Parameter>(
@@ -88,7 +88,7 @@ std::unique_ptr<ir::Parameter> ParameterConvertInterface::VariableToParameter(
   }
 }
 
-PaddleDialect::PaddleDialect(ir::IrContext* context)
+PaddleDialect::PaddleDialect(ir::IrContext *context)
     : ir::Dialect(name(), context, ir::TypeId::get<PaddleDialect>()) {
   initialize();
 }
@@ -133,14 +133,27 @@ void PaddleDialect::initialize() {
               BatchNormGradOp,
               Conv2DGradOp,
               SumOp,
-              FetchV2Op>();
+              FetchV2Op,
+              AddOp,
+              MatMulOp,
+              ReshapeOp,
+              CrossEntropyOp,
+              TopKOp,
+              FullOp,
+              MeanOp,
+              AddNOp,
+              AddGradOp,
+              MatMulGradOp,
+              ReshapeGradOp,
+              CrossEntropyGradOp,
+              TopKGradOp>();
 }
 
-void PaddleDialect::PrintType(ir::Type type, std::ostream& os) {
+void PaddleDialect::PrintType(ir::Type type, std::ostream &os) {
   DenseTensorType tensor_type = type.dyn_cast<DenseTensorType>();
 
   os << "tensor<";
-  auto& dims = tensor_type.dim();
+  auto &dims = tensor_type.dim();
   for (auto d : dims) {
     os << d;
     os << "x";

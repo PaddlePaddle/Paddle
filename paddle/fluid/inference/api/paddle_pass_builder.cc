@@ -264,8 +264,9 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
 #endif                                         //
         "transpose_flatten_concat_fuse_pass",  //
         "conv2d_fusion_layout_transfer_pass",  //
-        "auto_mixed_precision_pass",           //
-        "inplace_op_var_pass",                 // should be the last pass.
+        "transfer_layout_elim_pass",
+        "auto_mixed_precision_pass",  //
+        "inplace_op_var_pass",        // should be the last pass.
   });
 
   use_gpu_ = true;

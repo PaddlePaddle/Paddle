@@ -135,7 +135,6 @@ class TestElementwiseSubOp_ZeroDim1(TestElementwiseOp):
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
         self.if_check_prim()
-        self.if_enable_cinn()
 
 
 class TestElementwiseSubFP16OP_ZeroDim1(TestElementwiseSubOp_ZeroDim1):
@@ -182,7 +181,6 @@ class TestElementwiseSubOp_ZeroDim2(TestElementwiseOp):
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
         self.if_check_prim()
-        self.if_enable_cinn()
 
 
 class TestElementwiseSubFP16OP_ZeroDim2(TestElementwiseSubOp_ZeroDim2):
@@ -229,7 +227,6 @@ class TestElementwiseSubOp_ZeroDim3(TestElementwiseOp):
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
         self.if_check_prim()
-        self.if_enable_cinn()
 
 
 class TestElementwiseSubFP16OP_ZeroDim3(TestElementwiseSubOp_ZeroDim3):
