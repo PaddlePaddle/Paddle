@@ -109,6 +109,8 @@ void NCCLCommContext::ReduceScatter(phi::DenseTensor* out_tensor,
 void NCCLCommContext::Send(const phi::DenseTensor& in_tensor,
                            const int& peer,
                            gpuStream_t stream) {
+  phi::distributed::CommStaticCheck::CheckShape(in_tensor, rank_, size_);
+
   if (FLAGS_enable_nccl_dynamic_check) {
     NCCLDynamicCheck::CheckShape(in_tensor, rank_, rank_, nccl_comm_);
   }
