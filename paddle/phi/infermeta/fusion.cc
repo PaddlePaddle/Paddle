@@ -466,7 +466,7 @@ void YoloBoxXPUInferMeta(const MetaTensor& x,
       BroadCastInferShape(left_slice_out_dims, grid_dims, -1);
   auto stride_dims = stride.dims();
   auto left_mul_out_dims =
-      BroadCastInferShape(left_add_out_dims, grid_dims, -1);
+      BroadCastInferShape(left_add_out_dims, stride_dims, -1);
   // compute mid out_dims
   // wh = (y[..., 2:4] * 2) ** 2 * self.anchor_grid[i]             # wh
   std::vector<int64_t> starts_m = {2};
