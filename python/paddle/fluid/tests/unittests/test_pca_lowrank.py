@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import os
+import random
 import re
 import unittest
 
 import numpy as np
-import random
 
 import paddle
 
@@ -43,12 +43,12 @@ class TestPcaLowrankAPI(unittest.TestCase):
             except:
                 return False
 
-        error_str = "expected Tensor" + " but got {}".format(type(x))
+        error_str = "expected Tensor" + f" but got {type(x)}"
         raise TypeError(error_str)
 
     def transpose(self, x):
         shape = x.shape
-        perm = [i for i in range(0, len(shape))]
+        perm = list(range(0, len(shape)))
         perm = perm[:-2] + [perm[-1]] + [perm[-2]]
         if self.is_sparse(x):
             return paddle.sparse.transpose(x, perm)
@@ -73,26 +73,36 @@ class TestPcaLowrankAPI(unittest.TestCase):
     def random_sparse_matrix(self, rows, columns, density=0.01, **kwargs):
         dtype = kwargs.get('dtype', paddle.float64)
 
-        nonzero_elements = max(min(rows, columns), int(rows * columns * density))
+        nonzero_elements = max(
+            min(rows, columns), int(rows * columns * density)
+        )
 
         row_indices = [i % rows for i in range(nonzero_elements)]
         column_indices = [i % columns for i in range(nonzero_elements)]
         random.shuffle(column_indices)
         indices = [row_indices, column_indices]
         values = paddle.randn((nonzero_elements,), dtype=dtype)
-        values *= paddle.to_tensor([-float(i - j) ** 2 for i, j in zip(*indices)], dtype=dtype).exp()
+        values *= paddle.to_tensor(
+            [-float(i - j) ** 2 for i, j in zip(*indices)], dtype=dtype
+        ).exp()
         indices_tensor = paddle.to_tensor(indices)
-        x = paddle.sparse.sparse_coo_tensor(indices_tensor, values, (rows, columns))
+        x = paddle.sparse.sparse_coo_tensor(
+            indices_tensor, values, (rows, columns)
+        )
         return paddle.sparse.coalesce(x)
 
-    def run_subtest(self, guess_rank, actual_rank, matrix_size, batches, pca, **options):
+    def run_subtest(
+        self, guess_rank, actual_rank, matrix_size, batches, pca, **options
+    ):
         density = options.pop('density', 1)
         if isinstance(matrix_size, int):
             rows = columns = matrix_size
         else:
             rows, columns = matrix_size
         if density == 1:
-            a_input = self.random_lowrank_matrix(actual_rank, rows, columns, *batches)
+            a_input = self.random_lowrank_matrix(
+                actual_rank, rows, columns, *batches
+            )
             a = a_input
         else:
             a_input = self.random_sparse_matrix(rows, columns, density)
@@ -106,7 +116,9 @@ class TestPcaLowrankAPI(unittest.TestCase):
         self.assertEqual(v.shape[-1], guess_rank)
         self.assertEqual(v.shape[-2], columns)
 
-        A1 = u.matmul(paddle.nn.functional.diag_embed(s)).matmul(self.transpose(v))
+        A1 = u.matmul(paddle.nn.functional.diag_embed(s)).matmul(
+            self.transpose(v)
+        )
         ones_m1 = paddle.ones(batches + (rows, 1), dtype=a.dtype)
         c = a.sum(axis=-2) / rows
         c = c.reshape(batches + (1, columns))
@@ -140,8 +152,16 @@ class TestPcaLowrankAPI(unittest.TestCase):
                     actual_rank + 6,
                 ]:
                     if guess_rank <= min(*size):
-                        self.run_subtest(guess_rank, actual_rank, size, batches, pca_lowrank)
-                        self.run_subtest(guess_rank, actual_rank, size[::-1], batches, pca_lowrank)
+                        self.run_subtest(
+                            guess_rank, actual_rank, size, batches, pca_lowrank
+                        )
+                        self.run_subtest(
+                            guess_rank,
+                            actual_rank,
+                            size[::-1],
+                            batches,
+                            pca_lowrank,
+                        )
 
     @unittest.skipIf(
         not paddle.is_compiled_with_cuda() or get_cuda_version() < 11000,
@@ -150,10 +170,16 @@ class TestPcaLowrankAPI(unittest.TestCase):
     def test_sparse(self):
         # sparse input
         pca_lowrank = paddle.linalg.pca_lowrank
-        for guess_rank, size in [(4, (17, 4)), (4, (4, 17)), (16, (17, 17)), (21, (100, 40))]:
+        for guess_rank, size in [
+            (4, (17, 4)),
+            (4, (4, 17)),
+            (16, (17, 17)),
+            (21, (100, 40)),
+        ]:
             for density in [0.005, 0.1]:
-                self.run_subtest(guess_rank, None, size, (), pca_lowrank, density=density)
-
+                self.run_subtest(
+                    guess_rank, None, size, (), pca_lowrank, density=density
+                )
 
     def test_errors(self):
         pca_lowrank = paddle.linalg.pca_lowrank
