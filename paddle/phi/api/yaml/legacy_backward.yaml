@@ -118,25 +118,6 @@
   kernel :
     func : channel_shuffle_grad
 
-- backward_op : concat_double_grad
-  forward : concat_grad (Tensor[] x, Tensor grad_out, Scalar axis) -> Tensor[](grad_x)
-  args : (Tensor[] grad_x_grad, Scalar axis = 0)
-  output : Tensor(grad_out_grad)
-  invoke : concat(grad_x_grad, axis)
-
-- backward_op : concat_grad
-  forward : concat (Tensor[] x, Scalar axis) -> Tensor(out)
-  args : (Tensor[] x, Tensor out_grad, Scalar axis = 0)
-  output : Tensor[](x_grad){x.size()}
-  infer_meta :
-    func : UnchangedMultiInferMeta
-    param : [x]
-  kernel :
-    func : concat_grad
-  composite : concat_grad(x, out_grad, axis, x_grad)
-  no_need_buffer : x
-  backward : concat_double_grad
-
 - backward_op : conv2d_grad
   forward : conv2d (Tensor input, Tensor filter, int[] strides, int[] paddings, str padding_algorithm, int[] dilations, int groups, str data_format) -> Tensor(out)
   args : (Tensor input, Tensor filter, Tensor out_grad,  int[] strides, int[] paddings, str padding_algorithm, int[] dilations, int groups, str data_format)
