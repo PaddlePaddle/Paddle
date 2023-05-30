@@ -109,7 +109,6 @@ class TestExpFp32_Prim(OpTest):
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
-        self.if_enable_cinn()
 
     def test_check_output(self):
         self.check_output()
@@ -123,9 +122,6 @@ class TestExpFp32_Prim(OpTest):
     def init_shape(self):
         self.shape = [12, 17]
 
-    def if_enable_cinn(self):
-        self.enable_cinn = True
-
 
 class TestExpFp64_Prim(TestExpFp32_Prim):
     def init_dtype(self):
@@ -135,9 +131,6 @@ class TestExpFp64_Prim(TestExpFp32_Prim):
 class TestExpPrim_ZeroDim(TestExpFp32_Prim):
     def init_shape(self):
         self.shape = []
-
-    def if_enable_cinn(self):
-        self.enable_cinn = False
 
 
 class TestExpm1(TestActivation):
@@ -240,7 +233,6 @@ class TestSigmoid(TestActivation):
     def setUp(self):
         self.op_type = "sigmoid"
         self.prim_op_type = "comp"
-        self.enable_cinn = False
         self.python_api = paddle.nn.functional.sigmoid
         self.public_python_api = paddle.nn.functional.sigmoid
         self.init_dtype()
@@ -323,7 +315,6 @@ class TestSilu(TestActivation):
         self.public_python_api = paddle.nn.functional.silu
         self.init_dtype()
         self.init_shape()
-        self.if_enable_cinn()
 
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
@@ -336,9 +327,6 @@ class TestSilu(TestActivation):
     def init_dtype(self):
         self.dtype = np.float32
 
-    def if_enable_cinn(self):
-        pass
-
     def test_check_grad(self):
         self.check_grad(['X'], 'Out', check_prim=True)
 
@@ -346,9 +334,6 @@ class TestSilu(TestActivation):
 class TestSilu_ZeroDim(TestSilu):
     def init_shape(self):
         self.shape = []
-
-    def if_enable_cinn(self):
-        self.enable_cinn = False
 
 
 class TestSiluAPI(unittest.TestCase):
@@ -484,7 +469,6 @@ class TestTanh(TestActivation, TestParameter):
         self.public_python_api = paddle.tanh
         self.init_dtype()
         self.init_shape()
-        self.if_enable_cinn()
 
         np.random.seed(1024)
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
@@ -504,16 +488,10 @@ class TestTanh(TestActivation, TestParameter):
         # for now.
         self.dtype = np.float32
 
-    def if_enable_cinn(self):
-        pass
-
 
 class TestTanh_ZeroDim(TestTanh):
     def init_shape(self):
         self.shape = []
-
-    def if_enable_cinn(self):
-        self.enable_cinn = False
 
 
 class TestTanhAPI(unittest.TestCase):
@@ -1173,7 +1151,6 @@ class TestSqrt(TestActivation, TestParameter):
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
         self.convert_input_output()
-        self.enable_cinn = False
 
     # TODO(wanghao107) add prim test
     def test_check_grad(self):
@@ -1222,7 +1199,6 @@ class TestSqrt_ZeroDim(TestSqrt):
 class TestSqrtPrim_ZeroDim(TestSqrt):
     def init_shape(self):
         self.shape = []
-        self.enable_cinn = False
 
     def init_dtype(self):
         self.dtype = np.float32
@@ -1374,7 +1350,6 @@ class TestAbs(TestActivation):
         self.prim_op_type = "prim"
         self.python_api = paddle.abs
         self.public_python_api = paddle.abs
-        self.enable_cinn = False
         self.init_dtype()
         self.init_shape()
 
@@ -1474,10 +1449,6 @@ class TestFloor_Prim(TestActivation):
         self.init_dtype()
         self.init_shape()
 
-        if len(self.shape) == 0:
-            # for 0-D tensor, skip cinn testing
-            self.enable_cinn = False
-
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
         out = np.floor(x)
@@ -1514,8 +1485,6 @@ class TestCos(TestActivation):
         self.prim_op_type = "prim"
         self.init_dtype()
         self.init_shape()
-        # prim not support now
-        self.enable_cinn = False
 
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
@@ -1652,8 +1621,6 @@ class TestSin(TestActivation, TestParameter):
         self.prim_op_type = "prim"
         self.init_dtype()
         self.init_shape()
-        # prim not support now
-        self.enable_cinn = False
 
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
@@ -1827,7 +1794,6 @@ class TestRelu(TestActivation):
         self.public_python_api = paddle.nn.functional.relu
         self.init_dtype()
         self.init_shape()
-        self.skip_cinn()
 
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
@@ -1847,16 +1813,10 @@ class TestRelu(TestActivation):
     def test_check_output(self):
         self.check_output(check_prim=True)
 
-    def skip_cinn(self):
-        self.enable_cinn = False
-
 
 class TestRelu_ZeroDim(TestRelu):
     def init_shape(self):
         self.shape = []
-
-    def skip_cinn(self):
-        self.enable_cinn = False
 
 
 class TestReluAPI(unittest.TestCase):
@@ -2117,7 +2077,6 @@ class TestGelu(TestActivation):
         np.random.seed(2048)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
         out = gelu(x, approximate)
-        self.if_enable_cinn()
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
         self.outputs = {'Out': out}
@@ -2131,9 +2090,6 @@ class TestGelu(TestActivation):
         self.cinn_rtol = 1e-8
         self.cinn_atol = 1e-8
 
-    def if_enable_cinn(self):
-        pass
-
     def test_check_output(self):
         self.check_output(check_prim=True)
 
@@ -2146,9 +2102,6 @@ class TestGelu(TestActivation):
 class TestGelu_ZeroDim(TestGelu):
     def init_shape(self):
         self.shape = []
-
-    def if_enable_cinn(self):
-        self.enable_cinn = False
 
 
 class TestGELUAPI(unittest.TestCase):
@@ -2402,7 +2355,6 @@ class TestHardSwish(TestActivation):
         self.outputs = {'Out': out}
         self.convert_input_output()
         self.attrs = {'threshold': threshold, 'scale': scale, 'offset': offset}
-        self.enable_cinn = False
 
     def init_shape(self):
         self.shape = [10, 12]
@@ -2423,10 +2375,6 @@ class TestHardSwish(TestActivation):
 
 
 class TestHardSwish_ZeroDim(TestHardSwish):
-    def setUp(self):
-        super().setUp()
-        self.enable_cinn = False
-
     def init_shape(self):
         self.shape = []
 
@@ -2787,10 +2735,6 @@ class TestLog(TestActivation):
         self.init_dtype()
         self.init_shape()
 
-        if len(self.shape) == 0:
-            # for 0-D tensor, skip cinn testing
-            self.enable_cinn = False
-
         np.random.seed(1024)
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
         out = np.log(x)
@@ -3128,10 +3072,6 @@ class TestPow(TestActivation):
 class TestPow_ZeroDim(TestPow):
     def init_shape(self):
         self.shape = []
-
-    def setUp(self):
-        super().setUp()
-        self.enable_cinn = False
 
 
 class TestPow_factor_tensor(TestActivation):
@@ -4033,7 +3973,6 @@ create_test_act_fp16_class(TestRelu, check_prim=True)
 create_test_act_fp16_class(
     TestGelu,
     check_prim=True,
-    enable_cinn=True,
     rev_comp_rtol=1e-3,
     rev_comp_atol=1e-3,
     cinn_rtol=1e-3,
@@ -4148,7 +4087,6 @@ create_test_act_bf16_class(TestRelu, check_prim=True)
 create_test_act_bf16_class(
     TestGelu,
     check_prim=True,
-    enable_cinn=True,
     rev_comp_rtol=1e-2,
     rev_comp_atol=1e-2,
     cinn_rtol=1e-2,
