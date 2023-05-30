@@ -1349,9 +1349,6 @@ class TestRsqrt(TestActivation):
 
         np.random.seed(1024)
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
-        print(x)
-        print(type(x))
-        print(x.shape)
         out = 1.0 / np.sqrt(x)
 
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
