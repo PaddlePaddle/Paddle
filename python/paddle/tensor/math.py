@@ -3418,7 +3418,7 @@ def cummax(x, axis=None, dtype='int64', name=None):
     if axis is None:
         axis = -1
         x = x.flatten(0, len(x.shape) - 1)
-    
+
     check_dtype(dtype, 'dtype', ['int32', 'int64'], 'cummax')
     dtype = convert_np_dtype_to_dtype_(dtype)
 
@@ -3481,7 +3481,7 @@ def cummin(x, axis=None, dtype='int64', name=None):
     if axis is None:
         axis = -1
         x = x.flatten(0, len(x.shape) - 1)
-    
+
     check_dtype(dtype, 'dtype', ['int32', 'int64'], 'cummin')
     dtype = convert_np_dtype_to_dtype_(dtype)
 

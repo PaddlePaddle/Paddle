@@ -23,26 +23,51 @@
 
 namespace phi {
 
-template<typename T1, typename T2, int num_threads_x, int num_threads_y, class BinaryFunction>
-__global__ void KernelScanInnerWithIndices(const T1 *x_data, T1 *values_data, T2 *indices_data,
-                                           int num_rows, int row_size, T1 init, BinaryFunction binary_op) {
+#ifdef _MSC_VER
+template<typename T>
+typename std::enable_if<std::is_integral<T>::value, bool>::type isnan_(T x) {
+  return false;
+}
+template<typename T>
+typename std::enable_if<!std::is_integral<T>::value, bool>::type isnan_(T x) {
+  return std::isnan(x);
+}
+#else
+template<typename T>
+bool isnan_(T x) {
+  return std::isnan(x);
+}
+#endif
+
+template <typename T1,
+          typename T2,
+          int num_threads_x,
+          int num_threads_y,
+          class BinaryFunction>
+__global__ void KernelScanInnerWithIndices(const T1* x_data,
+                                           T1* values_data,
+                                           T2* indices_data,
+                                           int num_rows,
+                                           int row_size,
+                                           T1 init,
+                                           BinaryFunction binary_op) {
   __shared__ T1 vbuf[num_threads_y][2 * num_threads_x];
   __shared__ T2 ibuf[num_threads_y][2 * num_threads_x];
   T1* row_buf = vbuf[threadIdx.y];
   T2* row_idx_buf = ibuf[threadIdx.y];
 
-  for (int block_row = blockIdx.x * blockDim.y;
-       block_row < num_rows;
+  for (int block_row = blockIdx.x * blockDim.y; block_row < num_rows;
        block_row += blockDim.y * gridDim.x) {
     int row = block_row + threadIdx.y;
-    const T1 *row_self = x_data + row * row_size;
-    T1 *row_values = values_data + row * row_size;
-    T2 *row_indices = indices_data + row * row_size;
+    const T1* row_self = x_data + row * row_size;
+    T1* row_values = values_data + row * row_size;
+    T2* row_indices = indices_data + row * row_size;
     T1 block_total = init;
     T2 block_idx_final = 0;
     // Perform scan on one block at a time, keeping track of the total value of
     // all blocks processed so far.
-    for (int block_col = 0; block_col < row_size; block_col += 2 * num_threads_x) {
+    for (int block_col = 0; block_col < row_size;
+         block_col += 2 * num_threads_x) {
       // Load data into shared memory (two values per thread).
       int col1 = block_col + threadIdx.x;
       int col2 = block_col + num_threads_x + threadIdx.x;
@@ -55,15 +80,15 @@ __global__ void KernelScanInnerWithIndices(const T1 *x_data, T1 *values_data, T2
         }
 
         if (col2 < row_size) {
-          row_buf[num_threads_x + threadIdx.x] = *reinterpret_cast<const T1*>(&row_self[col2]);
+          row_buf[num_threads_x + threadIdx.x] =
+              *reinterpret_cast<const T1*>(&row_self[col2]);
           row_idx_buf[num_threads_x + threadIdx.x] = col2;
         } else {
           row_buf[num_threads_x + threadIdx.x] = init;
         }
 
-        // Add the total value of all previous blocks to the first value of this block.
         if (threadIdx.x == 0) {
-          if(!std::isnan(row_buf[0]) && (std::isnan(block_total) || !binary_op(row_buf[0], block_total))) {
+          if (!isnan_(row_buf[0]) && (isnan_(block_total) || !binary_op(row_buf[0], block_total))) {
             row_buf[0] = block_total;
             row_idx_buf[0] = block_idx_final;
           }
@@ -75,7 +100,7 @@ __global__ void KernelScanInnerWithIndices(const T1 *x_data, T1 *values_data, T2
       for (int s = num_threads_x, d = 1; s >= 1; s >>= 1, d <<= 1) {
         if (row < num_rows && threadIdx.x < s) {
           int offset = (2 * threadIdx.x + 1) * d - 1;
-          if(!std::isnan(row_buf[offset + d]) && (std::isnan(row_buf[offset]) || !binary_op(row_buf[offset + d], row_buf[offset]))) {
+          if (!isnan_(row_buf[offset + d]) && (isnan_(row_buf[offset]) || !binary_op(row_buf[offset + d], row_buf[offset]))) {
             row_buf[offset + d] = row_buf[offset];
             row_idx_buf[offset + d] = row_idx_buf[offset];
           }
@@ -87,7 +112,7 @@ __global__ void KernelScanInnerWithIndices(const T1 *x_data, T1 *values_data, T2
       for (int s = 2, d = num_threads_x / 2; d >= 1; s <<= 1, d >>= 1) {
         if (row < num_rows && threadIdx.x < s - 1) {
           int offset = 2 * (threadIdx.x + 1) * d - 1;
-          if(!std::isnan(row_buf[offset + d]) && (std::isnan(row_buf[offset]) || !binary_op(row_buf[offset + d], row_buf[offset]))) {
+          if (!isnan_(row_buf[offset + d]) && (isnan_(row_buf[offset]) || !binary_op(row_buf[offset + d], row_buf[offset]))) {
             row_buf[offset + d] = row_buf[offset];
             row_idx_buf[offset + d] = row_idx_buf[offset];
           }
@@ -97,7 +122,7 @@ __global__ void KernelScanInnerWithIndices(const T1 *x_data, T1 *values_data, T2
 
       // Write back to output.
       if (row < num_rows) {
-        if (col1 < row_size){
+        if (col1 < row_size) {
           row_values[col1] = row_buf[threadIdx.x];
           row_indices[col1] = row_idx_buf[threadIdx.x];
         }
@@ -113,21 +138,28 @@ __global__ void KernelScanInnerWithIndices(const T1 *x_data, T1 *values_data, T2
   }
 }
 
-template<typename T1, typename T2, class BinaryFunction>
-__global__ void KernelScanOuterWithIndices(const T1 *x_data, T1 *values_data, T2 *indices_data,
-                                           const uint32_t num_orows, const uint32_t num_irows, 
-                                           const uint32_t row_size, T1 init, BinaryFunction binary_op) {
+template <typename T1, typename T2, class BinaryFunction>
+__global__ void KernelScanOuterWithIndices(const T1* x_data,
+                                           T1* values_data,
+                                           T2* indices_data,
+                                           const uint32_t num_orows,
+                                           const uint32_t num_irows,
+                                           const uint32_t row_size,
+                                           T1 init,
+                                           BinaryFunction binary_op) {
   for (uint32_t orow = blockIdx.x; orow < num_orows; orow += gridDim.x) {
-    for (uint32_t irow = blockIdx.y * blockDim.x + threadIdx.x; irow < num_irows; irow += gridDim.y * blockDim.x) {
-      const T1 *x = x_data + orow * row_size * num_irows + irow;
-      T1 *values = values_data + orow * row_size * num_irows + irow;
-      T2 *indices = indices_data + orow * row_size * num_irows + irow;
+    for (uint32_t irow = blockIdx.y * blockDim.x + threadIdx.x;
+         irow < num_irows;
+         irow += gridDim.y * blockDim.x) {
+      const T1* x = x_data + orow * row_size * num_irows + irow;
+      T1* values = values_data + orow * row_size * num_irows + irow;
+      T2* indices = indices_data + orow * row_size * num_irows + irow;
       T1 out = init;
       T2 out_idx = 0;
 
       for (auto col = decltype(row_size){0}; col < row_size; ++col) {
         const auto val = *reinterpret_cast<const T1*>(x);
-        if(std::isnan(val) || (!std::isnan(out) && binary_op(val, out))) {
+        if (isnan_(val) || (!isnan_(out) && binary_op(val, out))) {
           out = val;
           out_idx = col;
         }
@@ -177,7 +209,7 @@ void ScanWithIndicesKernel(const Context& dev_ctx,
   if (axis < 0) {
     axis += out_dims.size();
   }
-  
+
   const T1* x_data = x.data<T1>();
   T1* values_data = out->data<T1>();
   T2* indices_data = indices->data<T2>();
@@ -187,23 +219,44 @@ void ScanWithIndicesKernel(const Context& dev_ctx,
     int num_rows = x.numel() / row_size;
 
     dim3 threads(16, 32);
-    dim3 grid(std::min(dev_ctx.GetCUDAMaxGridDimSize()[0], static_cast<int>(std::ceil(float(num_rows)/float(threads.y)))));
+    dim3 grid(std::min(
+        dev_ctx.GetCUDAMaxGridDimSize()[0],
+        static_cast<int>(std::ceil(float(num_rows) / float(threads.y)))));
 
-    KernelScanInnerWithIndices<T1, T2, 16, 32><<<grid, threads, 0, dev_ctx.stream()>>>(
-      x_data, values_data, indices_data, num_rows, row_size, init, op);
+    KernelScanInnerWithIndices<T1, T2, 16, 32>
+        <<<grid, threads, 0, dev_ctx.stream()>>>(
+            x_data, values_data, indices_data, num_rows, row_size, init, op);
   } else {
     int64_t row_size = x.dims()[axis];
     auto sizes = phi::vectorize(x.dims());
 
-    const int64_t num_orows = std::accumulate(sizes.begin(), sizes.begin() + axis, int64_t(1), [](int64_t &a, int64_t &b) { return a * b; });
-    const int64_t num_irows = std::accumulate(sizes.begin() + axis + 1, sizes.end(), int64_t(1), [](int64_t &a, int64_t &b) { return a * b; });
+    const int64_t num_orows =
+        std::accumulate(sizes.begin(),
+                        sizes.begin() + axis,
+                        int64_t(1),
+                        [](int64_t& a, int64_t& b) { return a * b; });
+    const int64_t num_irows =
+        std::accumulate(sizes.begin() + axis + 1,
+                        sizes.end(),
+                        int64_t(1),
+                        [](int64_t& a, int64_t& b) { return a * b; });
 
     dim3 threads(std::min(512, int(num_irows)));
     int64_t maxGridDim = dev_ctx.GetCUDAMaxGridDimSize()[1];
-    dim3 grid(std::min(maxGridDim, num_orows), std::min(maxGridDim, static_cast<int64_t>(std::ceil(double{num_irows}/double{threads.x}))));
-    
-    KernelScanOuterWithIndices<T1, T2><<<grid, threads, 0, dev_ctx.stream()>>>(
-      x_data, values_data, indices_data, num_orows, num_irows, row_size, init, op);
+    dim3 grid(std::min(maxGridDim, num_orows),
+              std::min(maxGridDim,
+                       static_cast<int64_t>(
+                           std::ceil(double{num_irows} / double{threads.x}))));
+
+    KernelScanOuterWithIndices<T1, T2>
+        <<<grid, threads, 0, dev_ctx.stream()>>>(x_data,
+                                                 values_data,
+                                                 indices_data,
+                                                 num_orows,
+                                                 num_irows,
+                                                 row_size,
+                                                 init,
+                                                 op);
   }
 }
 
@@ -215,11 +268,15 @@ void CummaxKernel(const Context& dev_ctx,
                   DenseTensor* out,
                   DenseTensor* indices) {
   auto indices_type = phi::TransToPhiDataType(dtype);
-  T init = std::is_floating_point<T>::value ? (-1*std::numeric_limits<T>::infinity()) : std::numeric_limits<T>::lowest();
+  T init = std::is_floating_point<T>::value
+               ? (-1 * std::numeric_limits<T>::infinity())
+               : std::numeric_limits<T>::lowest();
   if (indices_type == DataType::INT32) {
-    ScanWithIndicesKernel<T, int32_t, std::greater_equal<T>, Context>(dev_ctx, x, axis, init, out, indices);
+    ScanWithIndicesKernel<T, int32_t, std::greater_equal<T>, Context>(
+        dev_ctx, x, axis, init, out, indices);
   } else if (indices_type == DataType::INT64) {
-    ScanWithIndicesKernel<T, int64_t, std::greater_equal<T>, Context>(dev_ctx, x, axis, init, out, indices);
+    ScanWithIndicesKernel<T, int64_t, std::greater_equal<T>, Context>(
+        dev_ctx, x, axis, init, out, indices);
   }
 }
 
@@ -231,11 +288,14 @@ void CumminKernel(const Context& dev_ctx,
                   DenseTensor* out,
                   DenseTensor* indices) {
   auto indices_type = phi::TransToPhiDataType(dtype);
-  T init = std::is_floating_point<T>::value ? std::numeric_limits<T>::infinity() : std::numeric_limits<T>::max();
+  T init = std::is_floating_point<T>::value ? std::numeric_limits<T>::infinity()
+                                            : std::numeric_limits<T>::max();
   if (indices_type == DataType::INT32) {
-    ScanWithIndicesKernel<T, int32_t, std::less_equal<T>, Context>(dev_ctx, x, axis, init, out, indices);
+    ScanWithIndicesKernel<T, int32_t, std::less_equal<T>, Context>(
+        dev_ctx, x, axis, init, out, indices);
   } else if (indices_type == DataType::INT64) {
-    ScanWithIndicesKernel<T, int64_t, std::less_equal<T>, Context>(dev_ctx, x, axis, init, out, indices);
+    ScanWithIndicesKernel<T, int64_t, std::less_equal<T>, Context>(
+        dev_ctx, x, axis, init, out, indices);
   }
 }
 

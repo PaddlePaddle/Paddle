@@ -20,6 +20,22 @@
 
 namespace phi {
 
+#ifdef _MSC_VER
+template<typename T>
+typename std::enable_if<std::is_integral<T>::value, bool>::type isnan_(T x) {
+  return false;
+}
+template<typename T>
+typename std::enable_if<!std::is_integral<T>::value, bool>::type isnan_(T x) {
+  return std::isnan(x);
+}
+#else
+template<typename T>
+bool isnan_(T x) {
+  return std::isnan(x);
+}
+#endif
+
 std::vector<int> build_range(int stop) {
   std::vector<int> result(stop);
   for (int i = 0; i < stop; i++) {
@@ -55,7 +71,7 @@ void ComputeImp(const DenseTensor& x,
   int x_dim_size = x_dim_vec[axis];
   BinaryFunction op;
 
-  while (!finished) { 
+  while (!finished) {
     T1 max = *reinterpret_cast<const T1*>(x_data);
     int idx = 0;
     for (const auto i : build_range(x_dim_size)) {
@@ -63,14 +79,14 @@ void ComputeImp(const DenseTensor& x,
         std::cout << "stop point 1" << std::endl;
       }
       T1 curr_elem = *reinterpret_cast<const T1*>(&x_data[i * x_stride]);
-      if (std::isnan(curr_elem) || (!std::isnan(max) && op(curr_elem, max))) {
+      if (isnan_(curr_elem) || (!isnan_(max) && op(curr_elem, max))) {
         max = curr_elem;
         idx = i;
       }
       values_data[i * values_stride] = max;
       indices_data[i * indices_stride] = idx;
     }
-    if(ndims == 1) break;
+    if (ndims == 1) break;
     for (const auto dim_i : build_range(ndims)) {
       if (axis == -2) {
         std::cout << "stop point 2" << std::endl;

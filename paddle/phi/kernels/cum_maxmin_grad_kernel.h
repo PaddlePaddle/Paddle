@@ -36,4 +36,4 @@ void CumminGradKernel(const Context& dev_ctx,
                       int dtype,
                       DenseTensor* x_grad);
 
-} // namespace phi
+}  // namespace phi

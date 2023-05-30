@@ -16,7 +16,7 @@
 
 #include "paddle/phi/core/dense_tensor.h"
 
-namespace phi{
+namespace phi {
 
 template <typename T, typename Context>
 void CummaxKernel(const Context& dev_ctx,
@@ -34,4 +34,4 @@ void CumminKernel(const Context& dev_ctx,
                   DenseTensor* out,
                   DenseTensor* indices);
 
-} // namespace phi
+}  // namespace phi

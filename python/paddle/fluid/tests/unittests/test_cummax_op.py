@@ -222,9 +222,11 @@ class TestCummaxAPI(unittest.TestCase):
     def test_errors(self):
         paddle.enable_static()
         with fluid.program_guard(fluid.Program()):
+
             def test_x_type():
                 data = [1, 2, 3]
                 y, indices = paddle.cummax(data, axis=0)
+
             self.assertRaises(TypeError, test_x_type)
         paddle.disable_static()
 
@@ -232,12 +234,14 @@ class TestCummaxAPI(unittest.TestCase):
             data_np = np.random.random((10, 10)).astype(np.float32)
             data = paddle.to_tensor(data_np)
             y, indices = paddle.cummax(data, dtype='float32')
+
         self.assertRaises(ValueError, test_indices_type)
 
         def test_axis_outrange():
-            data_np = np.random.random((100)).astype(np.float32)
+            data_np = np.random.random(100).astype(np.float32)
             data = paddle.to_tensor(data_np)
             y, indices = paddle.cummax(data, axis=-2)
+
         self.assertRaises(ValueError, test_indices_type)
 
 
