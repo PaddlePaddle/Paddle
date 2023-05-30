@@ -22,11 +22,14 @@
 namespace phi {
 
 template <typename T, typename Context>
-void PolygammaKernel(const Context& ctx, const DenseTensor& x, const int n, DenseTensor* out) {
+void PolygammaKernel(const Context& ctx,
+                     const DenseTensor& x,
+                     const int n,
+                     DenseTensor* out) {
   const int64_t size = x.numel();
   const T* x_data = x.data<T>();
   T* out_data = ctx.template Alloc<T>(out);
-  
+
   phi::funcs::ForRange<Context> for_range(ctx, size);
   PolygammaFunctor<T> functor(x_data, n, out_data, size);
   for_range(functor);

@@ -23,20 +23,22 @@ namespace phi {
 
 template <typename T, typename Context>
 void PolygammaGradKernel(const Context& ctx,
-                       const DenseTensor& x,
-                       const DenseTensor& out_grad,
-                       const int n,
-                       DenseTensor* x_grad) {
+                         const DenseTensor& x,
+                         const DenseTensor& out_grad,
+                         const int n,
+                         DenseTensor* x_grad) {
   auto size = x.numel();
   auto* x_data = x.data<T>();
   auto* out_grad_data = out_grad.data<T>();
   auto* x_gard_data = ctx.template Alloc<T>(x_grad);
 
   phi::funcs::ForRange<Context> for_range(ctx, size);
-  PolygammaGradFunctor<T> functor(x_data, n + 1, out_grad_data, x_gard_data, size);
+  PolygammaGradFunctor<T> functor(
+      x_data, n + 1, out_grad_data, x_gard_data, size);
   for_range(functor);
 }
 
-} // namespace phi
+}  // namespace phi
 
-PD_REGISTER_KERNEL(polygamma_grad, CPU, ALL_LAYOUT, phi::PolygammaGradKernel, float, double) {}
+PD_REGISTER_KERNEL(
+    polygamma_grad, CPU, ALL_LAYOUT, phi::PolygammaGradKernel, float, double) {}

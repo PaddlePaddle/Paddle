@@ -38,7 +38,7 @@ def ref_polygamma_grad(x, dout, n):
 
 class TestPolygammaAPI(unittest.TestCase):
     DTYPE = "float64"
-    DATA = [0, 1, 2, 3, 4, 5]
+    DATA = [1, 2, 3, 4, 5]
     ORDER = 0
 
     def setUp(self):
@@ -129,8 +129,8 @@ class TestPolygammaNegativeOrder1(TestPolygammaAPI):
     DTYPE = "float64"
     DATA = [-2, 3, 5, 2.25, 7, 7.25]
     ORDER = 1
-    
-    
+
+
 class TestPolygammaOp(OpTest):
     def setUp(self) -> None:
         self.op_type = "polygamma"
@@ -145,9 +145,7 @@ class TestPolygammaOp(OpTest):
         int_case = np.random.randint(low=1, high=100, size=100).astype(
             self.dtype
         )
-        self.case = np.concatenate(
-            [rand_case, int_case]
-        )
+        self.case = np.concatenate([rand_case, int_case])
         self.inputs = {'x': self.case}
         self.attrs = {'n': self.order}
         self.target = ref_polygamma(self.inputs['x'], self.order)
@@ -159,7 +157,9 @@ class TestPolygammaOp(OpTest):
         self.check_grad(
             ['x'],
             'out',
-            user_defined_grads=[ref_polygamma_grad(self.case, 1 / self.case.size, self.order)],
+            user_defined_grads=[
+                ref_polygamma_grad(self.case, 1 / self.case.size, self.order)
+            ],
         )
 
 

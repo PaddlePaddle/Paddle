@@ -23,10 +23,10 @@ namespace phi {
 
 template <typename T, typename Context>
 void PolygammaGradKernel(const Context& ctx,
-                       const DenseTensor& x,
-                       const DenseTensor& out_grad,
-                       const int n,
-                       DenseTensor* x_grad) {
+                         const DenseTensor& x,
+                         const DenseTensor& out_grad,
+                         const int n,
+                         DenseTensor* x_grad) {
   ctx.template Alloc<T>(x_grad);
   std::vector<const DenseTensor*> ins = {&x, &out_grad};
   std::vector<DenseTensor*> outs = {x_grad};
@@ -34,6 +34,7 @@ void PolygammaGradKernel(const Context& ctx,
   phi::funcs::ElementwiseKernel<T>(ctx, ins, &outs, functor);
 }
 
-} // namespace phi
+}  // namespace phi
 
-PD_REGISTER_KERNEL(polygamma_grad, GPU, ALL_LAYOUT, phi::PolygammaGradKernel, float, double) {}
+PD_REGISTER_KERNEL(
+    polygamma_grad, GPU, ALL_LAYOUT, phi::PolygammaGradKernel, float, double) {}
