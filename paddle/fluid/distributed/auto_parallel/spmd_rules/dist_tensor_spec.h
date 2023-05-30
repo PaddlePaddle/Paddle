@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/fluid/framework/type_defs.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 
@@ -21,6 +22,8 @@ namespace paddle {
 namespace distributed {
 namespace auto_parallel {
 
+using paddle::framework::Attribute;
+using paddle::framework::AttributeMap;
 using phi::distributed::auto_parallel::ProcessMesh;
 using phi::distributed::auto_parallel::TensorDistAttr;
 
@@ -64,10 +67,20 @@ class DistTensorSpec {
 
   std::string to_string() const;
 
+  // only for testing AttributeMap
+  void test_attr_map(const AttributeMap& attr_map);
+
+  // only for testing AttributeMap
+  const AttributeMap& get_attr_map() const;
+
+  // only for testing AttributeMap
+  void validate_attr_map();
+
  private:
   std::vector<int64_t> shape_;
   // distributed attributes of the corresponding tensor
   TensorDistAttr dist_attr_;
+  AttributeMap attrs_;
 };
 }  // namespace auto_parallel
 }  // namespace distributed

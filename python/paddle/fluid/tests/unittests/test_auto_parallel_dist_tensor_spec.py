@@ -81,7 +81,7 @@ class TestDistTensorSpec(unittest.TestCase):
                 dist_op = DistributedOperator(op, op_dist_attr)
                 input_names = [X, Y]
                 output_names = [out]
-                attr_names = {}
+                attr_names = []
                 input_spec, output_spec, attrs = wrap_data_for_completion(
                     dist_op, input_names, output_names, attr_names
                 )

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/dist_tensor_spec.h"
+#include <utility>
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
 
 namespace paddle {
@@ -94,6 +95,17 @@ std::string DistTensorSpec::to_string() const {
   spec_str += "dist_attr:" + dist_attr_.to_string() + "}";
   return spec_str;
 }
+
+void DistTensorSpec::test_attr_map(const AttributeMap& attr_map) {
+  for (const std::pair<std::string, Attribute>& kv : attr_map) {
+    std::cout << kv.first << std::endl;
+  }
+  attrs_ = attr_map;
+}
+
+const AttributeMap& DistTensorSpec::get_attr_map() const { return attrs_; }
+
+void DistTensorSpec::validate_attr_map() {}
 
 }  // namespace auto_parallel
 }  // namespace distributed

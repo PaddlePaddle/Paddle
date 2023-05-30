@@ -287,6 +287,9 @@ void BindAutoParallel(py::module *m) {
       .def("get_process_mesh", &DistTensorSpec::get_process_mesh)
       .def("set_process_mesh", &DistTensorSpec::set_process_mesh)
       .def_property_readonly("shape", &DistTensorSpec::get_shape)
+      .def("test_attr_map", &DistTensorSpec::test_attr_map)
+      .def("get_attr_map", &DistTensorSpec::get_attr_map)
+      .def("validate_attr_map", &DistTensorSpec::validate_attr_map)
       .def("__str__", &DistTensorSpec::to_string)
       .def("__copy__",
            [](const DistTensorSpec &self) { return DistTensorSpec(self); })
