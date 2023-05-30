@@ -58,7 +58,21 @@ class OpNameNormalizer {
     if (arg_mappings.find(arg_name) == arg_mappings.end()) {
       return UnderscoreToCamelCase(arg_name);
     }
-    return arg_mappings.at(op_type);
+    return arg_mappings.at(arg_name);
+  }
+
+  std::string GetLegacyAttrName(const std::string& op_type,
+                                const std::string& arg_name) {
+    if (op_arg_name_mappings.find(op_type) == op_arg_name_mappings.end()) {
+      VLOG(10) << "[" << op_type << "] not found";
+      return arg_name;
+    }
+    auto& arg_mappings = op_arg_name_mappings[op_type];
+    if (arg_mappings.find(arg_name) == arg_mappings.end()) {
+      VLOG(10) << "[" << op_type << "][" << arg_name << "] not found";
+      return arg_name;
+    }
+    return arg_mappings.at(arg_name);
   }
 };
 

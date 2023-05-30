@@ -205,7 +205,7 @@ inline std::vector<ir::OpResult> GenerateOperationInput(
 
   for (const auto& info : input_infos) {
     std::string legacy_input_name =
-        op_normalizer.GetLegacyArgName(normalized_op_name, info.name);
+        op_normalizer.GetLegacyArgName(op_desc.Type(), info.name);
 
     // return empty type if this arg is optional and not shown in OpDesc
     // TODO(lyk): HasInput doesnot consider variadic attribute
@@ -289,38 +289,61 @@ inline std::tuple<OpOutputTypeList, OpOutputMapping> GenerateOperationOutput(
   return {op_output_types, arg_to_idx};
 }
 
-inline ir::AttributeMap TranslateOpAttribute(const OpDesc& op_desc) {
+inline ir::AttributeMap TranslateOpAttribute(
+    std::string normalized_op_name,
+    const OpAttributeInfoList& op_attr_infos,
+    const OpDesc& op_desc) {
   auto& attribute_translator = AttributeTranslator::instance();
+  auto& op_normalizer = OpNameNormalizer::instance();
   ir::AttributeMap attribute_map = {};
-  for (auto attr_in_op_desc : op_desc.GetAttrMap()) {
-    const auto& attr_name = attr_in_op_desc.first;
-    const auto& attr_value = attr_in_op_desc.second;
-    VLOG(0) << "attribute in " << op_desc.Type() << " name: " << attr_name
-            << " " << attr_value.index();
-    ir::Attribute new_attr = attribute_translator[attr_value];
-    attribute_map[attr_name] = new_attr;
+
+  for (const auto& info : op_attr_infos) {
+    auto legacy_attr_name =
+        op_normalizer.GetLegacyAttrName(op_desc.Type(), info.name);
+    paddle::framework::Attribute legacy_attr =
+        op_desc.GetAttr(legacy_attr_name);
+    VLOG(10) << "attribute in " << op_desc.Type()
+             << " name: " << legacy_attr_name << " " << legacy_attr.index();
+    ir::Attribute new_attr = attribute_translator[legacy_attr];
+    attribute_map[info.name] = new_attr;
     if (!new_attr) {
       VLOG(0) << "empty attribute in " << op_desc.Type()
-              << " name: " << attr_name;
+              << " name: " << info.name;
     } else {
       VLOG(10) << "new attribute in " << op_desc.Type()
-               << " name: " << attr_name << " " << new_attr.storage();
+               << " name: " << info.name << " " << new_attr.storage();
     }
   }
 
-  for (auto attr_in_op_desc : op_desc.GetRuntimeAttrMap()) {
-    const auto& attr_name = attr_in_op_desc.first;
-    const auto& attr_value = attr_in_op_desc.second;
-    ir::Attribute new_attr = attribute_translator[attr_value];
-    attribute_map[attr_name] = new_attr;
-    if (!new_attr) {
-      VLOG(0) << "empty runtime attribute in " << op_desc.Type()
-              << " name: " << attr_name;
-    } else {
-      VLOG(10) << "new runtime attribute in " << op_desc.Type()
-               << " name: " << attr_name << " " << new_attr.storage();
-    }
-  }
+  // for (auto attr_in_op_desc : op_desc.GetAttrMap()) {
+  //   const auto& attr_name = attr_in_op_desc.first;
+  //   const auto& attr_value = attr_in_op_desc.second;
+  //   VLOG(0) << "attribute in " << op_desc.Type() << " name: " << attr_name
+  //           << " " << attr_value.index();
+  //   ir::Attribute new_attr = attribute_translator[attr_value];
+  //   attribute_map[attr_name] = new_attr;
+  //   if (!new_attr) {
+  //     VLOG(0) << "empty attribute in " << op_desc.Type()
+  //             << " name: " << attr_name;
+  //   } else {
+  //     VLOG(10) << "new attribute in " << op_desc.Type()
+  //              << " name: " << attr_name << " " << new_attr.storage();
+  //   }
+  // }
+
+  // for (auto attr_in_op_desc : op_desc.GetRuntimeAttrMap()) {
+  //   const auto& attr_name = attr_in_op_desc.first;
+  //   const auto& attr_value = attr_in_op_desc.second;
+  //   ir::Attribute new_attr = attribute_translator[attr_value];
+  //   attribute_map[attr_name] = new_attr;
+  //   if (!new_attr) {
+  //     VLOG(0) << "empty runtime attribute in " << op_desc.Type()
+  //             << " name: " << attr_name;
+  //   } else {
+  //     VLOG(10) << "new runtime attribute in " << op_desc.Type()
+  //              << " name: " << attr_name << " " << new_attr.storage();
+  //   }
+  // }
 
   return std::move(attribute_map);
 }
@@ -370,7 +393,8 @@ ir::Operation* GeneralOpHandler(ir::IrContext* ctx,
   OpOutputTypeList op_output_types;
   std::tie(op_output_types, arg_to_idx) = GenerateOperationOutput(ctx, op_desc);
 
-  auto attribute_map = TranslateOpAttribute(op_desc);
+  auto attribute_map =
+      TranslateOpAttribute(op_info.name(), attr_infos, op_desc);
   VLOG(4) << "[general op][" << op_desc.Type() << "] preparation end.";
 
   ir::Operation* operation =
