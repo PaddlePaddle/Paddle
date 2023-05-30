@@ -1,4 +1,4 @@
-name: feed
+- name: feed
   inputs:
   - typename: Tensor[]
     name: x
