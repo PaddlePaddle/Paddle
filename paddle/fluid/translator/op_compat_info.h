@@ -17,6 +17,8 @@
 
 #include "glog/logging.h"
 
+#include "paddle/fluid/translator/utils.h"
+
 #pragma once
 
 namespace paddle {
@@ -26,6 +28,8 @@ class OpNameNormalizer {
  private:
   OpNameNormalizer();  // Disallow instantiation outside of the class.
   std::unordered_map<std::string, std::string> op_name_mappings;
+  std::unordered_map<std::string, std::unordered_map<std::string, std::string>>
+      op_arg_name_mappings;
 
  public:
   OpNameNormalizer(const OpNameNormalizer&) = delete;
@@ -43,6 +47,18 @@ class OpNameNormalizer {
       return op_type;
     }
     return op_name_mappings.at(op_type);
+  }
+
+  std::string GetLegacyArgName(const std::string& op_type,
+                               const std::string& arg_name) {
+    if (op_arg_name_mappings.find(op_type) == op_arg_name_mappings.end()) {
+      return UnderscoreToCamelCase(arg_name);
+    }
+    auto& arg_mappings = op_arg_name_mappings[op_type];
+    if (arg_mappings.find(arg_name) == arg_mappings.end()) {
+      return UnderscoreToCamelCase(arg_name);
+    }
+    return arg_mappings.at(op_type);
   }
 };
 

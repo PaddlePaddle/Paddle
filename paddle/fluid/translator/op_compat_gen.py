@@ -14,6 +14,7 @@
 
 import argparse
 from pathlib import Path
+from typing import Dict
 
 import yaml
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
@@ -46,17 +47,48 @@ def OpNameNormalizerInitialization(
     with open(op_compat_yaml_file, "r") as f:
         op_compat_infos = yaml.safe_load(f)
     op_name_mappings = {}
+    op_arg_name_mappings = {}
     for op_compat_item in op_compat_infos:
 
-        def insert_new_mappings(op_name_str):
+        def insert_new_mappings(op_name_str: str) -> str:
             normalized_name, legacy_name = to_phi_and_fluid_op_name(op_name_str)
             if normalized_name == legacy_name:
-                return
+                return normalized_name
             op_name_mappings[legacy_name] = normalized_name
+            return normalized_name
 
-        insert_new_mappings(op_compat_item["op"])
+        def insert_new_arg_mappings(op_name: str, arg_mapping: Dict[str, str]):
+            if op_name is None:
+                return
+            if op_name not in op_arg_name_mappings:
+                op_arg_name_mappings[op_name] = {}
+            op_arg_name_mappings[op_name].update(arg_mapping)
+
+        normalized_op_name = insert_new_mappings(op_compat_item["op"])
+        normailized_backward_op_name = None
         if "backward" in op_compat_item:
-            insert_new_mappings(op_compat_item["backward"])
+            normailized_backward_op_name = insert_new_mappings(
+                op_compat_item["backward"]
+            )
+        if "inputs" in op_compat_item:
+            insert_new_arg_mappings(
+                normalized_op_name, op_compat_item["inputs"]
+            )
+            insert_new_arg_mappings(
+                normailized_backward_op_name, op_compat_item["inputs"]
+            )
+        if "attrs" in op_compat_item:
+            insert_new_arg_mappings(normalized_op_name, op_compat_item["attrs"])
+            insert_new_arg_mappings(
+                normailized_backward_op_name, op_compat_item["attrs"]
+            )
+        if "outputs" in op_compat_item:
+            insert_new_arg_mappings(
+                normalized_op_name, op_compat_item["outputs"]
+            )
+            insert_new_arg_mappings(
+                normailized_backward_op_name, op_compat_item["outputs"]
+            )
 
     # special op mappings
     op_name_mappings["fetch_v2"] = "fetch"
@@ -64,7 +96,8 @@ def OpNameNormalizerInitialization(
     op_name_normailzer_template = env.get_template("op_compat_info.cc.j2")
     with open(output_source_file, 'wt') as f:
         op_compat_definition = op_name_normailzer_template.render(
-            op_name_paris=op_name_mappings
+            op_name_pairs=op_name_mappings,
+            op_arg_name_pairs=op_arg_name_mappings,
         )
         f.write(op_compat_definition)
 

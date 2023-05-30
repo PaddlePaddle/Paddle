@@ -15,12 +15,14 @@
 #include "paddle/fluid/translator/op_translator.h"
 
 #include <algorithm>
+#include <cctype>
 #include <numeric>
 #include <string>
 #include <tuple>
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/dialect/pd_interface.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/translator/attribute_translator.h"
 #include "paddle/fluid/translator/op_compat_info.h"
@@ -44,6 +46,12 @@ using BlockDesc = paddle::framework::BlockDesc;
 using VarDesc = paddle::framework::VarDesc;
 using OpOutputTypeList = std::vector<ir::Type>;
 using OpOutputMapping = std::unordered_map<std::string, ResultIdx>;
+using OpInputInfo = paddle::dialect::OpInputInfo;
+using OpInputInfoList = std::vector<paddle::dialect::OpInputInfo>;
+using OpAttributeInfo = paddle::dialect::OpAttributeInfo;
+using OpAttributeInfoList = std::vector<paddle::dialect::OpAttributeInfo>;
+using OpOutputInfo = paddle::dialect::OpOutputInfo;
+using OpOutputInfoList = std::vector<paddle::dialect::OpOutputInfo>;
 
 static const char kTargetDialectPrefix[] = "pd.";
 
@@ -150,13 +158,25 @@ inline ir::Operation* InsertCombineOperationForTarget(
   return operation;
 }
 
+inline ir::Operation* InsertConstantOperationForOptionalArg(
+    ir::IrContext* ctx, ir::Program* program) {
+  std::string constant_op_name(ir::ConstantOp::name());
+  ir::OpInfo op_info = ctx->GetRegisteredOpInfo(constant_op_name);
+
+  ir::Type null_type = ir::Type(nullptr);
+  ir::Operation* operation =
+      ir::Operation::create({}, {null_type}, {}, op_info);
+  program->InsertOp(operation);
+  return operation;
+}
+
 inline std::vector<ir::OpResult> GenerateOperationInput(
     ir::IrContext* ctx,
     TranslationContext* param_map,
     ir::Program* program,
-    const OpDesc& op_desc) {
-  std::vector<ir::OpResult> op_inputs;
-
+    const OpDesc& op_desc,
+    const std::string& normalized_op_name,
+    const OpInputInfoList& input_infos) {
   // scan all inputs to see if any of them is generated as a vector<Tensor>
   // so need an additional `SliceOp` to take it out.
   for (const auto& n : op_desc.Inputs()) {
@@ -168,7 +188,7 @@ inline std::vector<ir::OpResult> GenerateOperationInput(
           param_map->count(arg_name),
           0,
           platform::errors::PreconditionNotMet(
-              "arg %s.%s as input should be exists before prasing %d",
+              "arg %s.%s as input should be exists before prasing %s",
               name,
               arg_name,
               op_desc.Type()));
@@ -180,27 +200,41 @@ inline std::vector<ir::OpResult> GenerateOperationInput(
     }
   }
 
-  for (const auto& n : op_desc.Inputs()) {
-    auto& name = n.first;
-    VLOG(10) << "[input retriving]"
-             << "[" << op_desc.Type() << "]" << name;
-    auto& args = n.second;
+  std::vector<ir::OpResult> op_inputs;
+  auto& op_normalizer = OpNameNormalizer::instance();
 
-    // if src type is Tensor or a Vector<Tensor> with size <= 1
-    if (args.size() <= 1) {
-      for (const auto& arg_name : args) {
-        auto defining_info = (*param_map)[arg_name];
-        op_inputs.push_back(defining_info.value);
-      }
+  for (const auto& info : input_infos) {
+    std::string legacy_input_name =
+        op_normalizer.GetLegacyArgName(normalized_op_name, info.name_);
 
+    // return empty type if this arg is optional and not shown in OpDesc
+    // TODO(lyk): HasInput doesnot consider variadic attribute
+    if (!op_desc.HasInput(legacy_input_name)) {
+      PADDLE_ENFORCE(info.optional_,
+                     "Op %s arg %s should be optional if it can be empty",
+                     op_desc.Type(),
+                     legacy_input_name);
+      auto* constant_op = InsertConstantOperationForOptionalArg(ctx, program);
+      op_inputs.push_back(constant_op->GetResultByIndex(0));
+      continue;
+    }
+
+    const auto& legacy_input_vars = op_desc.Input(legacy_input_name, true);
+    bool is_vector = (info.typename_.find("VectorType") != std::string::npos);
+
+    // if src type is Tensor
+    if (!is_vector) {
+      auto defining_info = (*param_map)[legacy_input_vars[0]];
+      op_inputs.push_back(defining_info.value);
       // if src type is Vector<Tesnor> , need an additional `CombineOp` to
       // assemble them.
     } else {
-      auto* combine_op =
-          InsertCombineOperationForTarget(ctx, param_map, program, args);
+      auto* combine_op = InsertCombineOperationForTarget(
+          ctx, param_map, program, legacy_input_vars);
       op_inputs.push_back(combine_op->GetResultByIndex(0));
     }
   }
+
   return op_inputs;
 }
 
@@ -319,12 +353,23 @@ ir::Operation* GeneralOpHandler(ir::IrContext* ctx,
                                 TranslationContext* param_map,
                                 ir::Program* program,
                                 const OpDesc& op_desc) {
-  auto op_inputs = GenerateOperationInput(ctx, param_map, program, op_desc);
+  auto op_info = LoopkUpOpInfo(ctx, op_desc);
+  auto* op_info_concept =
+      op_info.GetInterfaceImpl<paddle::dialect::GetOpInfoInterface>();
+
+  OpInputInfoList input_infos;
+  OpAttributeInfoList attr_infos;
+  OpOutputInfoList output_infos;
+  std::tie(input_infos, attr_infos, output_infos) =
+      op_info_concept->get_op_info_();
+
+  auto op_inputs = GenerateOperationInput(
+      ctx, param_map, program, op_desc, op_info.name(), input_infos);
 
   OpOutputMapping arg_to_idx;
   OpOutputTypeList op_output_types;
   std::tie(op_output_types, arg_to_idx) = GenerateOperationOutput(ctx, op_desc);
-  auto op_info = LoopkUpOpInfo(ctx, op_desc);
+
   auto attribute_map = TranslateOpAttribute(op_desc);
   VLOG(4) << "[general op][" << op_desc.Type() << "] preparation end.";
 
@@ -343,12 +388,12 @@ ir::Operation* FeedOpHandler(ir::IrContext* ctx,
                              TranslationContext* param_map,
                              ir::Program* program,
                              const OpDesc& op_desc) {
+  auto op_info = LoopkUpOpInfo(ctx, op_desc);
   std::vector<ir::OpResult> op_inputs;
 
   OpOutputMapping arg_to_idx;
   OpOutputTypeList op_output_types;
   std::tie(op_output_types, arg_to_idx) = GenerateOperationOutput(ctx, op_desc);
-  auto op_info = LoopkUpOpInfo(ctx, op_desc);
   ir::AttributeMap attribute_map = {
       {"name", ir::StrAttribute::get(ctx, op_desc.OutputArgumentNames()[0])},
   };
@@ -365,10 +410,20 @@ ir::Operation* FetchOpHandler(ir::IrContext* ctx,
                               TranslationContext* param_map,
                               ir::Program* program,
                               const OpDesc& op_desc) {
-  auto op_inputs = GenerateOperationInput(ctx, param_map, program, op_desc);
+  auto op_info = LoopkUpOpInfo(ctx, op_desc);
+
+  auto* op_info_concept =
+      op_info.GetInterfaceImpl<paddle::dialect::GetOpInfoInterface>();
+  OpInputInfoList input_infos;
+  OpAttributeInfoList attr_infos;
+  OpOutputInfoList output_infos;
+  std::tie(input_infos, attr_infos, output_infos) =
+      op_info_concept->get_op_info_();
+
+  auto op_inputs = GenerateOperationInput(
+      ctx, param_map, program, op_desc, op_info.name(), input_infos);
 
   OpOutputTypeList op_output_types;
-  auto op_info = LoopkUpOpInfo(ctx, op_desc);
   ir::AttributeMap attribute_map = {
       {"name", ir::StrAttribute::get(ctx, op_desc.InputArgumentNames()[0])},
   };
