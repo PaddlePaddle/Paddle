@@ -1598,6 +1598,11 @@ class Resharder:
                         Resharder.concat_partitions(
                             partition_index_list, source_partition_index
                         )
+                        # TODO(zhaoyingli): Remove the method to a pass.
+                        # Current method to get all pp_ranks' relationship must rely on reshard.
+                        # When reshard insert send/recv pair, the process_group has the pp relationship.
+                        # But the mothod to obtain pp_ranks' relationship is only supported in 'reshard_input',
+                        # casue 'reshard_output' only has current process_group view instead of global view.
                         if int(op_role) == int(OpRole.Forward):
                             self.dist_context.up_down_streams.add_pair_stream(
                                 to_send_process, target_process
@@ -2472,7 +2477,7 @@ class Resharder:
             else:
                 idx += 1
 
-    def _hadnle_recv(self, block, idx, var, op, send_rank, recv_rank):
+    def _handle_recv(self, block, idx, var, op, send_rank, recv_rank):
         if self.rank_id == recv_rank:
             # if recv bool data, recv then cast
             if var.dtype == paddle.bool:
@@ -2704,7 +2709,7 @@ class Resharder:
                                             )
                                         elif self.rank_id == recv_rank:
                                             # if recv bool data, recv then cast
-                                            self._hadnle_recv(
+                                            self._handle_recv(
                                                 block,
                                                 idx,
                                                 var,
@@ -2736,7 +2741,7 @@ class Resharder:
                                         )
                                     elif self.rank_id == recv_rank:
                                         # if recv bool data, recv then cast
-                                        self._hadnle_recv(
+                                        self._handle_recv(
                                             block, idx, var, op, item, recv_rank
                                         )
                                     else:
