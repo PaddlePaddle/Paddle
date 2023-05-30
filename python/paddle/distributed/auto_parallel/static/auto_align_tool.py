@@ -21,11 +21,11 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
-from paddle.distributed.auto_parallel.converter import Converter
-from paddle.distributed.auto_parallel.dist_context import (
+from paddle.distributed.auto_parallel.static.converter import Converter
+from paddle.distributed.auto_parallel.static.dist_context import (
     get_default_distributed_context,
 )
-from paddle.distributed.auto_parallel.utils import (
+from paddle.distributed.auto_parallel.static.utils import (
     is_backward_op,
     is_forward_op,
     is_loss_op,

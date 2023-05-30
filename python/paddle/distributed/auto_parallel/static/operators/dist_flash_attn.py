@@ -14,10 +14,10 @@
 
 import logging
 
-from ...utils.log_utils import get_logger
+from ....utils.log_utils import get_logger
 
 _logger = get_logger(logging.INFO)
-from ..random import determinate_rng, is_enable_auto_rand_ctrl
+from ...random import determinate_rng, is_enable_auto_rand_ctrl
 from .common import (
     DistributedOperatorImplContainer,
     register_distributed_operator_impl,

@@ -26,20 +26,24 @@ from functools import reduce
 import numpy as np
 
 import paddle
-from paddle.distributed.auto_parallel.cluster_v2 import DeviceMesh
-from paddle.distributed.auto_parallel.completion import Completer
-from paddle.distributed.auto_parallel.cost import CostEstimator
-from paddle.distributed.auto_parallel.dist_attribute import (
+from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
+from paddle.distributed.auto_parallel.static.cluster_v2 import DeviceMesh
+from paddle.distributed.auto_parallel.static.completion import Completer
+from paddle.distributed.auto_parallel.static.cost import CostEstimator
+from paddle.distributed.auto_parallel.static.dist_attribute import (
     OperatorDistAttr,
     TensorDistAttr,
 )
-from paddle.distributed.auto_parallel.dist_context import DistributedContext
-from paddle.distributed.auto_parallel.dist_tensor import DistributedTensor
-from paddle.distributed.auto_parallel.process_group import (
+from paddle.distributed.auto_parallel.static.dist_context import (
+    DistributedContext,
+)
+from paddle.distributed.auto_parallel.static.dist_tensor import (
+    DistributedTensor,
+)
+from paddle.distributed.auto_parallel.static.process_group import (
     get_world_process_group,
 )
-from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
-from paddle.distributed.auto_parallel.utils import (
+from paddle.distributed.auto_parallel.static.utils import (
     is_gradient_clip_op,
     print_program_with_dist_attr,
 )
@@ -48,7 +52,7 @@ from paddle.fluid import program_guard
 from paddle.fluid.backward import append_backward
 from paddle.fluid.framework import Parameter, unique_name
 
-from ...utils.log_utils import get_logger
+from ....utils.log_utils import get_logger
 from ..graph import Graph
 
 _PATTERNS = {}

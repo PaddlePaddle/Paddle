@@ -21,13 +21,13 @@ from collections import defaultdict
 
 import numpy as np
 
+from ...process_mesh import ProcessMesh
 from ..completion import Completer
 from ..cost import CostEstimator
 from ..dist_context import _node_id
 from ..dist_op import DistributedOperator
 from ..operators.common import find_compatible_distributed_operator_impls
 from ..parallelizer_v2 import Parallelizer
-from ..process_mesh import ProcessMesh
 from .trial import Trial, TrialStatus
 from .tunable_space import TunableSpace
 from .tunable_variable import Boolean, IntRange

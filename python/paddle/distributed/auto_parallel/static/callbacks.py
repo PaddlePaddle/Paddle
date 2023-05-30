@@ -24,7 +24,7 @@ from paddle.hapi.callbacks import (
     ProgBarLogger,
 )
 
-from .interface import CollectionNames, get_collection
+from ..interface import CollectionNames, get_collection
 
 
 def config_callbacks(

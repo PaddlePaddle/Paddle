@@ -20,7 +20,7 @@ from enum import IntEnum, unique
 
 import paddle
 
-from ..utils.log_utils import get_logger
+from ...utils.log_utils import get_logger
 
 
 @unique

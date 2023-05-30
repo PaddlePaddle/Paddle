@@ -15,8 +15,10 @@
 import copy
 
 import paddle
-from paddle.distributed.auto_parallel.dist_context import DistributedContext
-from paddle.distributed.auto_parallel.operators.common import (
+from paddle.distributed.auto_parallel.static.dist_context import (
+    DistributedContext,
+)
+from paddle.distributed.auto_parallel.static.operators.common import (
     get_distributed_operator_impl_container,
 )
 from paddle.framework import Program, core

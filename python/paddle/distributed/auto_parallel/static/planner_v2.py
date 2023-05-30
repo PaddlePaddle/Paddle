@@ -18,15 +18,17 @@ import pickle
 
 import numpy as np
 
-from paddle.distributed.auto_parallel.dist_attribute import (
+from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
+from paddle.distributed.auto_parallel.static.dist_attribute import (
     OperatorDistAttr,
     TensorDistAttr,
 )
-from paddle.distributed.auto_parallel.dist_op import DistributedOperator
-from paddle.distributed.auto_parallel.dist_tensor import DistributedTensor
-from paddle.distributed.auto_parallel.process_mesh import ProcessMesh
+from paddle.distributed.auto_parallel.static.dist_op import DistributedOperator
+from paddle.distributed.auto_parallel.static.dist_tensor import (
+    DistributedTensor,
+)
 
-from ..utils.log_utils import get_logger
+from ...utils.log_utils import get_logger
 from .completion import Completer
 from .dist_context import get_default_distributed_context
 from .tuner.parallel_tuner import ParallelTuner

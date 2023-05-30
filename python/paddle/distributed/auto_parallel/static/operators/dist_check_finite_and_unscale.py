@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
-from paddle.distributed.auto_parallel.process_group import (
+from paddle.distributed.auto_parallel.static.process_group import (
     get_world_process_group,
 )
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole

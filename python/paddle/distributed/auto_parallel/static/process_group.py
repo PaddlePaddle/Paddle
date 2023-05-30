@@ -17,8 +17,8 @@ from collections import OrderedDict
 import paddle
 from paddle.framework import core
 
-from ..collective import _get_global_env, _new_ring_id
-from ..utils.log_utils import get_logger
+from ...collective import _get_global_env, _new_ring_id
+from ...utils.log_utils import get_logger
 from .utils import dygraph_guard
 
 logger = get_logger("INFO", __name__)

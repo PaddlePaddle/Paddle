@@ -25,7 +25,7 @@ import numpy as np
 import paddle
 from paddle import distributed as dist
 from paddle.distributed import fleet
-from paddle.distributed.auto_parallel import engine
+from paddle.distributed.auto_parallel.static import engine
 from paddle.distributed.fleet.layers.mpu.mp_layers import (
     ColumnParallelLinear,
     RowParallelLinear,
