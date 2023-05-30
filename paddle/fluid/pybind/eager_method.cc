@@ -1970,9 +1970,9 @@ static PyObject* tensor__grad_ivar(TensorObject* self,
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-static PyObject* tensor_method_get_strides(TensorObject* self,
-                                           PyObject* args,
-                                           PyObject* kwargs) {
+static PyObject* tensor_method_stride(TensorObject* self,
+                                      PyObject* args,
+                                      PyObject* kwargs) {
   EAGER_TRY
   std::vector<int64_t> value;
   if (!self->tensor.defined() || !self->tensor.is_dense_tensor()) {
@@ -2311,8 +2311,8 @@ PyMethodDef variable_methods[] = {
      (PyCFunction)(void (*)(void))tensor_is_contiguous,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
-    {"get_strides",
-     (PyCFunction)(void (*)(void))tensor_method_get_strides,
+    {"stride",
+     (PyCFunction)(void (*)(void))tensor_method_stride,
      METH_VARARGS | METH_KEYWORDS,
      NULL},
 #if defined(PADDLE_WITH_CUDA)
