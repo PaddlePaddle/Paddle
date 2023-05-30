@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "paddle/pass/pass.h"
-#include "paddle/ir/ir_context.h"
-#include "paddle/ir/operation.h"
+#include "paddle/ir/core/ir_context.h"
+#include "paddle/ir/core/operation.h"
 #include "paddle/pass/pass_adaptor.h"
 #include "paddle/pass/pass_manager.h"
 
