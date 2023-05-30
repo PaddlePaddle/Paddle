@@ -93,6 +93,9 @@ class PipelinePass(PassBase):
             send_vars = []
             # insert sync ops
             for index, op in enumerate(list(block.ops)):
+                if op.type in ['send_v2', 'recv_v2']:
+                    # NOTE: pipeline might hang when dynamic_shape is True
+                    op._set_attr("dynamic_shape", False)
                 if op.type == 'send_v2':
                     # step1: set 'use_calc_stream' False
                     op._set_attr("use_calc_stream", False)
@@ -134,6 +137,9 @@ class PipelinePass(PassBase):
 
             # insert sync ops
             for index, op in enumerate(list(block.ops)):
+                if op.type in ['send_v2', 'recv_v2']:
+                    # NOTE: pipeline might hang when dynamic_shape is True
+                    op._set_attr("dynamic_shape", False)
                 if op.type == 'send_v2':
                     # step1: set 'use_calc_stream' False
                     op._set_attr("use_calc_stream", False)
