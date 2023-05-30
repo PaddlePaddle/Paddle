@@ -153,6 +153,20 @@
       data_type : std::string
       tensor_name : Atol
 
+- op : amax (reduce_amax)
+  backward : amax_grad (reduce_amax_grad)
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  attrs:
+    { axis : dim,  keepdim : keep_dim }
+  extra :
+    attrs : [bool use_mkldnn = false]
+  get_expected_kernel_type :
+    amax_grad : GetReduceGradExpectedKernelType
+  manual_signature : [amax]
+
 - op : angle
   backward : angle_grad
   inputs :
@@ -1871,11 +1885,6 @@
     out : Out
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
-
-- op : reduce_amax
-  backward : reduce_amax_grad
-  extra :
-    attrs : [bool use_mkldnn = false]
 
 - op : reduce_amin
   backward : reduce_amin_grad
