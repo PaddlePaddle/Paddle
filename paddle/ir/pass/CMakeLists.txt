@@ -1,7 +1,3 @@
-if(NOT WITH_NEWIR)
-  return()
-endif()
-
 file(GLOB NEW_PASS_SRCS "*.cc")
 
 cc_library(

@@ -14,14 +14,20 @@
 
 #pragma once
 
+#include <cstdint>
 #include <memory>
 #include <vector>
+
+#include "paddle/ir/core/program.h"
 
 namespace ir {
 
 class IrContext;
 class Operation;
+class Program;
 class Pass;
+class PassInstrumentation;
+class PassInstrumentor;
 
 namespace detail {
 class PassAdaptor;
@@ -33,33 +39,36 @@ class PassManager {
 
   ~PassManager() = default;
 
-  const std::vector<std::unique_ptr<Pass>> &GetPasses() const {
-    return passes_;
-  }
+  const std::vector<std::unique_ptr<Pass>> &passes() const { return passes_; }
 
-  bool Empty() const { return passes_.empty(); }
+  bool empty() const { return passes_.empty(); }
 
-  ir::IrContext *GetContext() const { return context_; }
+  ir::IrContext *context() const { return context_; }
 
-  bool Run(ir::Operation *op);
+  // bool Run(ir::Program *program) const;
+  bool Run(ir::Operation *op) const;
 
   void AddPass(std::unique_ptr<Pass> pass) {
     passes_.emplace_back(std::move(pass));
   }
 
- private:
-  bool RunPasses(ir::Operation *op);
+  void AddInstrumentation(std::unique_ptr<PassInstrumentation> pi);
 
-  bool Initialize(ir::IrContext *context);
+ private:
+  bool Initialize(ir::IrContext *context) const;
 
  private:
   ir::IrContext *context_;
 
   uint8_t opt_level_;
 
+  bool verify_{true};
+
   std::vector<std::unique_ptr<Pass>> passes_;
 
   std::unique_ptr<Pass> pass_adaptor_;
+
+  std::unique_ptr<PassInstrumentor> instrumentor_;
 
   friend class detail::PassAdaptor;
 };
