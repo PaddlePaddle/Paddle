@@ -104,6 +104,13 @@ class TestPipeLayerAPI(unittest.TestCase):
         }
         fleet.init(is_collective=True, strategy=strategy)
         self.hcg = fleet.get_hybrid_communicate_group()
+        # for test coverage
+        assert self.hcg.get_sep_parallel_rank() == 0
+        assert self.hcg.get_sep_parallel_world_size() == 1
+        assert self.hcg.get_sep_parallel_group_src_rank() == 0
+        assert self.hcg.get_sep_parallel_group() is not None
+        assert self.hcg.get_dp_sep_parallel_group() is not None
+        assert self.hcg.get_pp_mp_parallel_group() is not None
 
     def test_pipelayer_desc(self):
         pipe_model = AlexNetPipeDesc(num_stages=self.pipeline_parallel_size)
