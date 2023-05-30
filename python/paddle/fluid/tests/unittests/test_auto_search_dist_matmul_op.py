@@ -16,9 +16,11 @@ import unittest
 import paddle
 import paddle.nn.functional as F
 from paddle import nn, static, utils
-from paddle.distributed.auto_parallel.dist_attribute import OperatorDistAttr
-from paddle.distributed.auto_parallel.dist_op import DistributedOperator
-from paddle.distributed.auto_parallel.operators.common import (
+from paddle.distributed.auto_parallel.static.dist_attribute import (
+    OperatorDistAttr,
+)
+from paddle.distributed.auto_parallel.static.dist_op import DistributedOperator
+from paddle.distributed.auto_parallel.static.operators.common import (
     get_distributed_operator_impl_container,
 )
 from paddle.framework import core

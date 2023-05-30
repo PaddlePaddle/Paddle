@@ -17,6 +17,7 @@
 #include "paddle/ir/core/op_base.h"
 
 namespace ir {
+
 ///
 /// \brief GetParameterOp: OpResult = GetParameterOp({StrAttribute,
 /// StrAttribute})

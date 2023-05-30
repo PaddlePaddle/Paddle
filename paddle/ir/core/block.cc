@@ -16,6 +16,20 @@
 
 namespace ir {
 Block::~Block() { clear(); }
+void Block::push_back(Operation *op) {
+  op->set_parent(this);
+  ops_.push_back(op);
+}
+
+void Block::push_front(Operation *op) {
+  op->set_parent(this);
+  ops_.push_front(op);
+}
+
+Block::iterator Block::insert(const_iterator iterator, Operation *op) {
+  op->set_parent(this);
+  return ops_.insert(iterator, op);
+}
 
 void Block::clear() {
   while (!empty()) {

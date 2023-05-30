@@ -14,7 +14,7 @@
 
 import unittest
 
-from paddle.distributed.auto_parallel.graph import Graph
+from paddle.distributed.auto_parallel.static.graph import Graph
 
 
 class TestAutoParallelGraph(unittest.TestCase):
