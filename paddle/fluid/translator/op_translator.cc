@@ -300,11 +300,14 @@ inline ir::AttributeMap TranslateOpAttribute(
   for (const auto& info : op_attr_infos) {
     auto legacy_attr_name =
         op_normalizer.GetLegacyAttrName(op_desc.Type(), info.name);
-    paddle::framework::Attribute legacy_attr =
-        op_desc.GetAttr(legacy_attr_name);
+
+    paddle::framework::Attribute legacy_attr;
+    if (op_desc.HasAttr(legacy_attr_name)) {
+      legacy_attr = op_desc.GetAttr(legacy_attr_name);
+    }
     VLOG(10) << "attribute in " << op_desc.Type()
              << " name: " << legacy_attr_name << " " << legacy_attr.index();
-    ir::Attribute new_attr = attribute_translator[legacy_attr];
+    ir::Attribute new_attr = attribute_translator(info.type_name, legacy_attr);
     attribute_map[info.name] = new_attr;
     if (!new_attr) {
       VLOG(0) << "empty attribute in " << op_desc.Type()

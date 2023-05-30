@@ -18,6 +18,10 @@
 #include <vector>
 
 #include "paddle/fluid/dialect/pd_attribute.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/int_array.h"
+#include "paddle/phi/common/layout.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/common/scalar.h"
 #include "paddle/utils/variant.h"
 
@@ -31,25 +35,38 @@ class AttributeVisitor {
   ~AttributeVisitor() {}
 
  public:
-  ir::Attribute operator()(int i) { return ir::Int32_tAttribute::get(ctx, i); }
+  virtual ir::Attribute operator()(int i) {
+    VLOG(10) << "translating int";
+    return ir::Int32_tAttribute::get(ctx, i);
+  }
 
-  ir::Attribute operator()(float f) { return ir::FloatAttribute::get(ctx, f); }
+  virtual ir::Attribute operator()(float f) {
+    VLOG(10) << "translating float";
+    return ir::FloatAttribute::get(ctx, f);
+  }
 
-  ir::Attribute operator()(bool b) { return ir::BoolAttribute::get(ctx, b); }
+  virtual ir::Attribute operator()(bool b) {
+    VLOG(10) << "translating bool";
+    return ir::BoolAttribute::get(ctx, b);
+  }
 
-  ir::Attribute operator()(double d) {
+  virtual ir::Attribute operator()(double d) {
+    VLOG(10) << "translating double";
     return ir::DoubleAttribute::get(ctx, d);
   }
 
-  ir::Attribute operator()(std::string str) {
+  virtual ir::Attribute operator()(std::string str) {
+    VLOG(10) << "translating string";
     return ir::StrAttribute::get(ctx, str);
   }
 
-  ir::Attribute operator()(const paddle::experimental::Scalar& scalar) {
+  virtual ir::Attribute operator()(const paddle::experimental::Scalar& scalar) {
+    VLOG(10) << "translating scalar";
     return paddle::dialect::ScalarAttribute::get(ctx, scalar);
   }
 
-  ir::Attribute operator()(const std::vector<std::string>& strs) {
+  virtual ir::Attribute operator()(const std::vector<std::string>& strs) {
+    VLOG(10) << "translating vector<string>";
     std::vector<ir::Attribute> attrs;
     attrs.reserve(strs.size());
     for (const auto& v : strs) {
@@ -58,7 +75,8 @@ class AttributeVisitor {
     return ir::ArrayAttribute::get(ctx, attrs);
   }
 
-  ir::Attribute operator()(const std::vector<float>& fs) {
+  virtual ir::Attribute operator()(const std::vector<float>& fs) {
+    VLOG(10) << "translating vector<float>";
     std::vector<ir::Attribute> attrs;
     attrs.reserve(fs.size());
     for (const auto& v : fs) {
@@ -67,7 +85,8 @@ class AttributeVisitor {
     return ir::ArrayAttribute::get(ctx, attrs);
   }
 
-  ir::Attribute operator()(const std::vector<int>& is) {
+  virtual ir::Attribute operator()(const std::vector<int>& is) {
+    VLOG(10) << "translating vector<int>";
     std::vector<ir::Attribute> attrs;
     attrs.reserve(is.size());
     for (const auto& v : is) {
@@ -76,7 +95,8 @@ class AttributeVisitor {
     return ir::ArrayAttribute::get(ctx, attrs);
   }
 
-  ir::Attribute operator()(const std::vector<bool>& bs) {
+  virtual ir::Attribute operator()(const std::vector<bool>& bs) {
+    VLOG(10) << "translating vector<bool>";
     std::vector<ir::Attribute> attrs;
     attrs.reserve(bs.size());
     for (const auto& v : bs) {
@@ -85,7 +105,8 @@ class AttributeVisitor {
     return ir::ArrayAttribute::get(ctx, attrs);
   }
 
-  ir::Attribute operator()(const std::vector<int64_t>& i64s) {
+  virtual ir::Attribute operator()(const std::vector<int64_t>& i64s) {
+    VLOG(10) << "translating vector<int64>";
     std::vector<ir::Attribute> attrs;
     attrs.reserve(i64s.size());
     for (const auto& v : i64s) {
@@ -94,7 +115,8 @@ class AttributeVisitor {
     return ir::ArrayAttribute::get(ctx, attrs);
   }
 
-  ir::Attribute operator()(const std::vector<double>& ds) {
+  virtual ir::Attribute operator()(const std::vector<double>& ds) {
+    VLOG(10) << "translating vector<double>";
     std::vector<ir::Attribute> attrs;
     attrs.reserve(ds.size());
     for (const auto& v : ds) {
@@ -103,8 +125,9 @@ class AttributeVisitor {
     return ir::ArrayAttribute::get(ctx, attrs);
   }
 
-  ir::Attribute operator()(
+  virtual ir::Attribute operator()(
       const std::vector<paddle::experimental::Scalar>& ss) {
+    VLOG(10) << "translating vector<scalar>";
     std::vector<ir::Attribute> attrs;
     attrs.reserve(ss.size());
     for (const auto& v : ss) {
@@ -113,17 +136,95 @@ class AttributeVisitor {
     return ir::ArrayAttribute::get(ctx, attrs);
   }
 
+  virtual ir::Attribute operator()(const paddle::blank& blank) {
+    VLOG(10) << "translating paddle::blank";
+    return ir::Attribute(nullptr);
+  }
+
   template <typename T>
   ir::Attribute operator()(T attr) {
+    VLOG(10) << "translating null type";
     return ir::Attribute(nullptr);
   }
 };
 
-AttributeTranslator::AttributeTranslator() { visitor = new AttributeVisitor(); }
+class IntArrayAttributeVisitor : public AttributeVisitor {
+ public:
+  using AttributeVisitor::AttributeVisitor;
+  ir::Attribute operator()(const std::vector<int>& is) override {
+    VLOG(10) << "translating vector<int> to IntArray";
+    phi::IntArray data(is);
+    return paddle::dialect::IntArrayAttribute::get(ctx, data);
+  }
 
-ir::Attribute AttributeTranslator::operator[](
+  ir::Attribute operator()(const std::vector<int64_t>& is) override {
+    VLOG(10) << "translating vector<int> to IntArray";
+    phi::IntArray data(is);
+    return paddle::dialect::IntArrayAttribute::get(ctx, data);
+  }
+};
+
+class ScalarAttributeVisitor : public AttributeVisitor {
+ public:
+  using AttributeVisitor::AttributeVisitor;
+  ir::Attribute operator()(int i) override {
+    VLOG(10) << "translating int to Scalar";
+    phi::Scalar data(i);
+    return paddle::dialect::ScalarAttribute::get(ctx, data);
+  }
+
+  ir::Attribute operator()(float f) override {
+    VLOG(10) << "translating float to Scalar";
+    phi::Scalar data(f);
+    return paddle::dialect::ScalarAttribute::get(ctx, data);
+  }
+};
+
+class DataTypeAttributeVisitor : public AttributeVisitor {
+ public:
+  using AttributeVisitor::AttributeVisitor;
+  ir::Attribute operator()(int i) override {
+    VLOG(10) << "translating int to DataType: " << i;
+    phi::DataType data = static_cast<phi::DataType>(i);
+    return paddle::dialect::DataTypeAttribute::get(ctx, data);
+  }
+};
+
+class PlaceAttributeVisitor : public AttributeVisitor {
+ public:
+  using AttributeVisitor::AttributeVisitor;
+
+  ir::Attribute operator()(const paddle::blank& blank) override {
+    VLOG(10) << "translating paddle::blank";
+    phi::Place data(phi::AllocationType::CPU);
+    return paddle::dialect::PlaceAttribute::get(ctx, data);
+  }
+};
+
+AttributeTranslator::AttributeTranslator() {
+  general_visitor = new AttributeVisitor();
+  special_visitors["paddle::dialect::IntArrayAttribute"] =
+      new IntArrayAttributeVisitor();
+  special_visitors["paddle::dialect::ScalarAttribute"] =
+      new ScalarAttributeVisitor();
+  special_visitors["paddle::dialect::DataTypeAttribute"] =
+      new DataTypeAttributeVisitor();
+  special_visitors["paddle::dialect::PlaceAttribute"] =
+      new PlaceAttributeVisitor();
+}
+
+ir::Attribute AttributeTranslator::operator()(
     const framework::Attribute& attr) {
-  return paddle::visit(*visitor, attr);
+  return paddle::visit(*general_visitor, attr);
+}
+
+ir::Attribute AttributeTranslator::operator()(
+    const std::string& target_type, const framework::Attribute& attr) {
+  if (special_visitors.find(target_type) == special_visitors.end()) {
+    VLOG(10) << "[" << target_type << "] not found";
+    return paddle::visit(*general_visitor, attr);
+  }
+  return paddle::visit(*(special_visitors.at(target_type)), attr);
 }
 
 }  // namespace translator

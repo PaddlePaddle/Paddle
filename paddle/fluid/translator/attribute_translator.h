@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <string>
+#include <unordered_map>
+
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/ir/core/attribute.h"
@@ -28,7 +31,8 @@ class AttributeVisitor;
 class AttributeTranslator {
  private:
   AttributeTranslator();
-  AttributeVisitor* visitor;
+  AttributeVisitor* general_visitor;
+  std::unordered_map<std::string, AttributeVisitor*> special_visitors;
 
  public:
   AttributeTranslator(const AttributeTranslator&) = delete;
@@ -41,7 +45,9 @@ class AttributeTranslator {
     return attribute_translator;
   }
 
-  ir::Attribute operator[](const framework::Attribute& attr);
+  ir::Attribute operator()(const framework::Attribute& attr);
+  ir::Attribute operator()(const std::string& target_type,
+                           const framework::Attribute& attr);
 };
 
 }  // namespace translator
