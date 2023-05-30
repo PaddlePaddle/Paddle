@@ -1984,9 +1984,9 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        - U (Tensor), is N x q matrix.
-        - S (Tensor), is a vector with length q.
-        - V (Tensor), is M x q matrix.
+        - Tensor U, is N x q matrix.
+        - Tensor S, is a vector with length q.
+        - Tensor V, is M x q matrix.
 
         tuple (U, S, V): which is the nearly optimal approximation of a singular value decomposition of a centered matrix :math:`X`.
 
