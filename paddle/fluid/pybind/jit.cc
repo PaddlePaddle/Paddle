@@ -138,6 +138,7 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
 
   PyObject *args = Py_BuildValue("(O)", frame);
   PyObject *result = PyObject_CallObject(callback, args);
+  Py_DECREF(args);
   // result: GuardedCode
   if (result == NULL) {
     // internal exception
@@ -152,11 +153,15 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
       // Re-enable custom behavior
       eval_frame_callback_set(callback);
       auto out = eval_custom_code(tstate, frame, code, throw_flag);
+      Py_DECREF(result);
+      Py_DECREF(code);
       return out;
     } else {
       auto out = eval_custom_code(tstate, frame, code, throw_flag);
       // Re-enable custom behavior
       eval_frame_callback_set(callback);
+      Py_DECREF(result);
+      Py_DECREF(code);
       return out;
     }
   } else {

@@ -230,55 +230,13 @@ def _check_and_set_backend(backend, build_strategy):
         build_strategy.build_cinn_pass = True
 
 
-def to_static(
+def _ast_to_static(
     function=None,
     input_spec=None,
     build_strategy=None,
     backend=None,
     **kwargs,
 ):
-    """
-    Converts imperative dygraph APIs into declarative function APIs. Decorator
-    @to_static handles the Program and Executor of static graph mode and returns
-    the result as dygraph Tensor(s). Users could use the returned dygraph
-    Tensor(s) to do imperative training, inference, or other operations. If the
-    decorated function calls other imperative function, the called one will be
-    converted into declarative function as well.
-    Args:
-        function (callable): callable imperative function.
-        input_spec(list[InputSpec]|tuple[InputSpec]): list/tuple of InputSpec to specific the shape/dtype/name
-            information of each input Tensor.
-        build_strategy(BuildStrategy|None): This argument is used to compile the
-            converted program with the specified options, such as operators' fusion
-            in the computational graph and memory optimization during the execution
-            of the computational graph. For more information about build_strategy,
-            please refer to :code:`paddle.static.BuildStrategy`. The default is None.
-        backend(str, Optional): Specifies compilation backend, which can be `CINN` or None. When backend is `CINN`, CINN compiler will be used to speed up training and inference.
-        kwargs: Support keys including `property`, set `property` to True if the fucntion is python property.
-
-
-    Returns:
-        Tensor(s): containing the numerical result.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            from paddle.jit import to_static
-
-            @to_static
-            def func(x):
-                if paddle.mean(x) < 0:
-                    x_v = x - 1
-                else:
-                    x_v = x + 1
-                return x_v
-
-            x = paddle.ones([1, 2], dtype='float32')
-            x_v = func(x)
-            print(x_v) # [[2. 2.]]
-
-    """
     property = kwargs.get("property", False)
 
     def decorated(python_func):
@@ -328,6 +286,70 @@ def to_static(
 
     # for usage: `@to_static`
     return decorated
+
+
+def to_static(
+    function=None,
+    input_spec=None,
+    build_strategy=None,
+    backend=None,
+    enable_fallback=True,
+    **kwargs,
+):
+    """
+    Converts imperative dygraph APIs into declarative function APIs. Decorator
+    @to_static handles the Program and Executor of static graph mode and returns
+    the result as dygraph Tensor(s). Users could use the returned dygraph
+    Tensor(s) to do imperative training, inference, or other operations. If the
+    decorated function calls other imperative function, the called one will be
+    converted into declarative function as well.
+    Args:
+        function (callable): callable imperative function.
+        input_spec(list[InputSpec]|tuple[InputSpec]): list/tuple of InputSpec to specific the shape/dtype/name
+            information of each input Tensor.
+        build_strategy(BuildStrategy|None): This argument is used to compile the
+            converted program with the specified options, such as operators' fusion
+            in the computational graph and memory optimization during the execution
+            of the computational graph. For more information about build_strategy,
+            please refer to :code:`paddle.static.BuildStrategy`. The default is None.
+        backend(str, Optional): Specifies compilation backend, which can be `CINN` or None. When backend is `CINN`, CINN compiler will be used to speed up training and inference.
+        kwargs: Support keys including `property`, set `property` to True if the fucntion is python property.
+
+
+    Returns:
+        Tensor(s): containing the numerical result.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            from paddle.jit import to_static
+
+            @to_static
+            def func(x):
+                if paddle.mean(x) < 0:
+                    x_v = x - 1
+                else:
+                    x_v = x + 1
+                return x_v
+
+            x = paddle.ones([1, 2], dtype='float32')
+            x_v = func(x)
+            print(x_v) # [[2. 2.]]
+
+    """
+    if not enable_fallback:
+        return _ast_to_static(
+            function, input_spec, build_strategy, backend, **kwargs
+        )
+    else:
+        # TODO: pass auguments to CompileSIRCache, like backend and build_strategy.
+        # We need to properly align which parameters are worth passing.
+        # such as, input_spec is useless here.
+
+        from .symbolic_trace import symbolic_trace
+
+        return symbolic_trace(function)
 
 
 def not_to_static(func=None):
