@@ -1998,9 +1998,7 @@ struct HardSigmoidGradFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct Log {
-  HOSTDEVICE T operator()(const T& val) const {
-    return std::log(val);
-  }
+  HOSTDEVICE T operator()(const T& val) const { return std::log(val); }
 };
 
 template <>
@@ -2044,9 +2042,7 @@ struct LogGradFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct Log2 {
-  HOSTDEVICE T operator()(const T& val) const {
-    return std::log2(val);
-  }
+  HOSTDEVICE T operator()(const T& val) const { return std::log2(val); }
 };
 
 template <>
@@ -2091,9 +2087,7 @@ struct Log2GradFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct Log10 {
-  HOSTDEVICE T operator()(const T& val) const {
-    return std::log10(val);
-  }
+  HOSTDEVICE T operator()(const T& val) const { return std::log10(val); }
 };
 
 template <>
@@ -2138,9 +2132,7 @@ struct Log10GradFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct Log1p {
-  HOSTDEVICE T operator()(const T& val) const {
-    return std::log1p(val);
-  }
+  HOSTDEVICE T operator()(const T& val) const { return std::log1p(val); }
 };
 
 template <>
