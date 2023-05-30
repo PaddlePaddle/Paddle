@@ -1998,10 +1998,8 @@ struct HardSigmoidGradFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct Log {
-  using U = typename std::conditional_t<std::is_integral<T>::value, float, T>;
-
-  HOSTDEVICE U operator()(const T& val) const {
-    return static_cast<U>(std::log(static_cast<U>(val)));
+  HOSTDEVICE T operator()(const T& val) const {
+    return std::log(val);
   }
 };
 
@@ -2022,9 +2020,11 @@ struct Log<dtype::bfloat16> {
 // log(x) = natural logarithm of x
 template <typename T>
 struct LogFunctor : public BaseActivationFunctor<T> {
+  using U = typename std::conditional_t<std::is_integral<T>::value, float, T>;
+
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.unaryExpr(Log<T>());
+    out.device(d) = x.template cast<U>().unaryExpr(Log<U>());
   }
 };
 
@@ -2044,10 +2044,8 @@ struct LogGradFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct Log2 {
-  using U = typename std::conditional_t<std::is_integral<T>::value, float, T>;
-
-  HOSTDEVICE U operator()(const T& val) const {
-    return static_cast<U>(std::log2(static_cast<U>(val)));
+  HOSTDEVICE T operator()(const T& val) const {
+    return std::log2(val);
   }
 };
 
@@ -2068,9 +2066,11 @@ struct Log2<dtype::bfloat16> {
 // log2(x) = logarithm to the base 2 of the elements of x
 template <typename T>
 struct Log2Functor : public BaseActivationFunctor<T> {
+  using U = typename std::conditional_t<std::is_integral<T>::value, float, T>;
+
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.unaryExpr(Log2<T>());
+    out.device(d) = x.template cast<U>().unaryExpr(Log2<U>());
   }
 };
 
@@ -2091,10 +2091,8 @@ struct Log2GradFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct Log10 {
-  using U = typename std::conditional_t<std::is_integral<T>::value, float, T>;
-
-  HOSTDEVICE U operator()(const T& val) const {
-    return static_cast<U>(std::log10(static_cast<U>(val)));
+  HOSTDEVICE T operator()(const T& val) const {
+    return std::log10(val);
   }
 };
 
@@ -2115,13 +2113,11 @@ struct Log10<dtype::bfloat16> {
 // log10(x) = logarithm to the base 10 of the elements of x
 template <typename T>
 struct Log10Functor : public BaseActivationFunctor<T> {
+  using U = typename std::conditional_t<std::is_integral<T>::value, float, T>;
+
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.unaryExpr(Log10<T>());
-
-    // out.device(d) = x.unaryExpr([] HOSTDEVICE (T v) {
-    //   return v > static_cast<T>(0) ? v : static_cast<T>(0);
-    // });
+    out.device(d) = x.template cast<U>().unaryExpr(Log10<U>());
   }
 };
 
@@ -2142,10 +2138,8 @@ struct Log10GradFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct Log1p {
-  using U = typename std::conditional_t<std::is_integral<T>::value, float, T>;
-
-  HOSTDEVICE U operator()(const T& val) const {
-    return static_cast<U>(std::log1p(static_cast<U>(val)));
+  HOSTDEVICE T operator()(const T& val) const {
+    return std::log1p(val);
   }
 };
 
@@ -2166,9 +2160,11 @@ struct Log1p<dtype::bfloat16> {
 // log1p(x) = natural logarithm of x+1
 template <typename T>
 struct Log1pFunctor : public BaseActivationFunctor<T> {
+  using U = typename std::conditional_t<std::is_integral<T>::value, float, T>;
+
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.unaryExpr(Log1p<T>());
+    out.device(d) = x.template cast<U>().unaryExpr(Log1p<U>());
   }
 };
 
