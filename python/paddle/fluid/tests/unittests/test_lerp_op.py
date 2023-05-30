@@ -255,8 +255,16 @@ class TestLerpBF16(TestLerp):
         self.wshape = [1]
 
     def init_grad(self, w):
-        self.x_grad = np.ones(self.xshape) * (1 - w)
-        self.y_grad = np.ones(self.xshape) * w
+        self.x_grad = (
+            np.ones(self.xshape)
+            * (1 - w)
+            / (np.prod(self.xshape) / np.prod(self.wshape))
+        )
+        self.y_grad = (
+            np.ones(self.yshape)
+            * w
+            / (np.prod(self.yshape) / np.prod(self.wshape))
+        )
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
