@@ -12,29 +12,37 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/ir/core/region.h"
 #include "paddle/ir/core/block.h"
 
 namespace ir {
-Block::~Block() { clear(); }
-void Block::push_back(Operation *op) {
-  op->set_parent(this);
-  ops_.push_back(op);
+Region::~Region() { clear(); }
+
+void Region::push_back(Block *block) {
+  block->set_parent(this);
+  blocks_.push_back(block);
+}
+void Region::push_front(Block *block) {
+  block->set_parent(this);
+  blocks_.push_front(block);
 }
 
-void Block::push_front(Operation *op) {
-  op->set_parent(this);
-  ops_.push_front(op);
+Region::iterator Region::insert(const_iterator position, Block *block) {
+  block->set_parent(this);
+  return blocks_.insert(position, block);
+}
+void Region::TakeBody(Region &&other) {
+  clear();
+  blocks_.swap(other.blocks_);
+  for (auto &block : blocks_) {
+    block->set_parent(this);
+  }
 }
 
-Block::iterator Block::insert(const_iterator iterator, Operation *op) {
-  op->set_parent(this);
-  return ops_.insert(iterator, op);
-}
-
-void Block::clear() {
+void Region::clear() {
   while (!empty()) {
-    ops_.back()->destroy();
-    ops_.pop_back();
+    delete blocks_.back();
+    blocks_.pop_back();
   }
 }
 }  // namespace ir

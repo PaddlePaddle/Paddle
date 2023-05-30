@@ -96,8 +96,8 @@ TEST(pass_manager_test, pass_manager_test) {
   std::vector<ir::Type> op_output_types = {ir::Float32Type::get(ctx)};
   ir::Operation *op =
       ir::Operation::create(op_inputs,
-                            op_output_types,
                             CreateAttributeMap(ctx, "op1_attr1", "op1_attr1"),
+                            op_output_types,
                             op_info);
 
   // (4) Test pass manager for op.

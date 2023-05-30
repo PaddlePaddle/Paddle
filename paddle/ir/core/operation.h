@@ -15,7 +15,6 @@
 #pragma once
 
 #include <iostream>
-#include <vector>
 #include "paddle/ir/core/op_info.h"
 #include "paddle/ir/core/operation_utils.h"
 #include "paddle/ir/core/type.h"
@@ -24,6 +23,7 @@
 namespace ir {
 class OpBase;
 class Program;
+class Block;
 
 class alignas(8) Operation final {
  public:
@@ -34,15 +34,18 @@ class alignas(8) Operation final {
   /// used in conjunction.
   ///
   static Operation *create(const std::vector<ir::OpResult> &inputs,
-                           const std::vector<ir::Type> &output_types,
                            const AttributeMap &attribute,
-                           ir::OpInfo op_info);
-  static Operation *create(const OperationArgument &op_argument);
+                           const std::vector<ir::Type> &output_types,
+                           ir::OpInfo op_info,
+                           size_t num_regions = 0);
+  static Operation *create(OperationArgument &&op_argument);
 
   ///
   /// \brief Destroy the operation objects and free memory by create().
   ///
   void destroy();
+
+  Block *parent() const { return parent_; }
 
   IrContext *ir_context() const;
 
@@ -59,6 +62,8 @@ class alignas(8) Operation final {
   uint32_t num_results() const { return num_results_; }
 
   uint32_t num_operands() const { return num_operands_; }
+
+  uint32_t num_regions() const { return num_regions_; }
 
   std::string op_name() const;
 
@@ -83,11 +88,15 @@ class alignas(8) Operation final {
     parent_program_ = parent_program;
   }
 
+  /// Returns the region held by this operation at position 'index'.
+  Region &GetRegion(unsigned index);
+
  private:
-  Operation(uint32_t num_results,
+  Operation(const AttributeMap &attribute,
+            ir::OpInfo op_info,
+            uint32_t num_results,
             uint32_t num_operands,
-            const AttributeMap &attribute,
-            ir::OpInfo op_info);
+            uint32_t num_regions);
 
   template <typename T, typename Enabler = void>
   struct CastUtil {
@@ -95,6 +104,9 @@ class alignas(8) Operation final {
       throw("Can't dyn_cast to T, T should be a Op or Trait or Interface");
     }
   };
+
+  friend class Block;
+  void set_parent(Block *parent) { parent_ = parent; }
 
   template <typename T>
   struct CastUtil<
@@ -107,11 +119,13 @@ class alignas(8) Operation final {
 
   OpInfo op_info_;
 
-  uint32_t num_results_ = 0;
+  const uint32_t num_results_ = 0;
+  const uint32_t num_operands_ = 0;
+  const uint32_t num_regions_ = 0;
 
-  uint32_t num_operands_ = 0;
-
+  Region *regions_{nullptr};
   Program *parent_program_{nullptr};
+  Block *parent_{nullptr};
 };
 
 }  // namespace ir

@@ -91,7 +91,7 @@ TEST(program_test, program) {
   std::unordered_map<std::string, ir::Attribute> op1_attribute{
       {"parameter_name", ir::StrAttribute::get(ctx, "a")}};
   ir::Operation *op1 =
-      ir::Operation::create({}, {dense_tensor_dtype}, op1_attribute, op1_info);
+      ir::Operation::create({}, op1_attribute, {dense_tensor_dtype}, op1_info);
 
   program.InsertOp(op1);
 
@@ -123,7 +123,7 @@ TEST(program_test, program) {
   std::unordered_map<std::string, ir::Attribute> op2_attribute{
       {"parameter_name", ir::StrAttribute::get(ctx, "b")}};
   ir::Operation *op2 =
-      ir::Operation::create({}, {dense_tensor_dtype}, op2_attribute, op2_info);
+      ir::Operation::create({}, op2_attribute, {dense_tensor_dtype}, op2_info);
   program.InsertOp(op2);
 
   EXPECT_EQ(op2->GetResultByIndex(0).type().dialect().id(),
@@ -153,8 +153,8 @@ TEST(program_test, program) {
   std::unordered_map<std::string, ir::Attribute> op3_attribute;
   ir::Operation *op3 = ir::Operation::create(
       {op1->GetResultByIndex(0), op2->GetResultByIndex(0)},
-      {dense_tensor_dtype},
       op3_attribute,
+      {dense_tensor_dtype},
       op3_info);
   program.InsertOp(op3);
 
@@ -184,7 +184,7 @@ TEST(program_test, program) {
   std::unordered_map<std::string, ir::Attribute> op4_attribute{
       {"parameter_name", ir::StrAttribute::get(ctx, "c")}};
   ir::Operation *op4 = ir::Operation::create(
-      {op3->GetResultByIndex(0)}, {}, op4_attribute, op4_info);
+      {op3->GetResultByIndex(0)}, op4_attribute, {}, op4_info);
   program.InsertOp(op4);
 
   EXPECT_EQ(op4->GetOperandByIndex(0).impl()->source().type().dialect().id(),
@@ -230,7 +230,7 @@ TEST(program_test, slice_combine_test) {
   std::unordered_map<std::string, ir::Attribute> op1_attribute{
       {"parameter_name", ir::StrAttribute::get(ctx, "a")}};
   ir::Operation *op1 =
-      ir::Operation::create({}, {fp32_dtype}, op1_attribute, op1_info);
+      ir::Operation::create({}, op1_attribute, {fp32_dtype}, op1_info);
   program.InsertOp(op1);
 
   // (5) Def b = GetParameterOp("b")
@@ -239,7 +239,7 @@ TEST(program_test, slice_combine_test) {
   std::unordered_map<std::string, ir::Attribute> op2_attribute{
       {"parameter_name", ir::StrAttribute::get(ctx, "b")}};
   ir::Operation *op2 =
-      ir::Operation::create({}, {fp32_dtype}, op2_attribute, op2_info);
+      ir::Operation::create({}, op2_attribute, {fp32_dtype}, op2_info);
   program.InsertOp(op2);
 
   // (6) Def combine_op = CombineOp("a", "b")
@@ -249,8 +249,8 @@ TEST(program_test, slice_combine_test) {
       ir::VectorType::get(ctx, std::vector<ir::Type>({fp32_dtype, fp32_dtype}));
   ir::Operation *combine_op = ir::Operation::create(
       {op1->GetResultByIndex(0), op2->GetResultByIndex(0)},
-      {output_type},
       {},
+      {output_type},
       combine_op_info);
   program.InsertOp(combine_op);
 
@@ -260,8 +260,8 @@ TEST(program_test, slice_combine_test) {
   ir::Attribute index_attr = ir::Int32_tAttribute::get(ctx, 0);
   ir::Operation *slice_op =
       ir::Operation::create({combine_op->GetResultByIndex(0)},
-                            {fp32_dtype},
                             {{"index", index_attr}},
+                            {fp32_dtype},
                             slice_op_info);
   program.InsertOp(slice_op);
 
