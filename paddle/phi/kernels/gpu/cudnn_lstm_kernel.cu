@@ -176,7 +176,7 @@ void CudnnLSTMKernel(
   int seq_length = x.dims()[0];
   int batch_size = x.dims()[1];
   int input_size = x.dims()[2];
-  bool state_initialized = state_out->IsInitialized() ? true : false;
+  bool state_initialized = state_out->initialized() ? true : false;
 
   size_t workspace_size;
   size_t reserve_size;
