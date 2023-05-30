@@ -981,9 +981,9 @@ void CudnnLSTMInferMeta(
     const MetaTensor& x,
     const MetaTensor& init_h,
     const MetaTensor& init_c,
-    const paddle::optional<MetaTensor>& w,
+    const MetaTensor& w,
     const paddle::optional<std::vector<const MetaTensor*>>& weight_list,
-    const paddle::optional<MetaTensor>& sequence_length,
+    const MetaTensor& sequence_length,
     float dropout_prob,
     bool is_bidirec,
     int hidden_size,
@@ -1013,9 +1013,8 @@ void CudnnLSTMInferMeta(
                         "received InitH's rank is %d.",
                         init_h_dims.size()));
 
-  auto* sequence_length_ptr = sequence_length.get_ptr();
-  if (sequence_length_ptr != nullptr) {
-    auto seq_dims = sequence_length_ptr->dims();
+  if (sequence_length) {
+    auto seq_dims = sequence_length.dims();
     PADDLE_ENFORCE_EQ(
         in_dims[1],
         seq_dims[0],
