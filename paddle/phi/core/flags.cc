@@ -1046,13 +1046,13 @@ PHI_DEFINE_EXPORTED_bool(new_executor_use_cuda_graph,
 
 /*
  * Executor related FLAG
- * Name: FLAGS_executor_log_deps_every_microsecond
+ * Name: FLAGS_executor_log_deps_every_microseconds
  * Since Version: 2.5
  * Value Range: uint64, default=0
- * Example: FLAGS_executor_log_deps_every_microsecond=n (n>0) would
+ * Example: FLAGS_executor_log_deps_every_microseconds=n (n>0) would
  * allow new executor log deps every n microseconds.
  */
-PHI_DEFINE_EXPORTED_uint64(executor_log_deps_every_microsecond,
+PHI_DEFINE_EXPORTED_uint64(executor_log_deps_every_microseconds,
                            0,
                            "Enable new executor log deps every n microseconds");
 

@@ -54,7 +54,7 @@ PADDLE_DEFINE_EXPORTED_bool(new_executor_use_local_scope,
 
 PHI_DECLARE_bool(check_nan_inf);
 DECLARE_bool(benchmark);
-DECLARE_uint64(executor_log_deps_every_microsecond);
+DECLARE_uint64(executor_log_deps_every_microseconds);
 PHI_DECLARE_bool(new_executor_use_cuda_graph);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PHI_DECLARE_bool(sync_nccl_allreduce);
@@ -1100,35 +1100,42 @@ void InterpreterCore::ExecuteInstructionList(
 
   // For debug hang in main_thread_blocker_.WaitEvent(),
   // launch async task to log deps every
-  // FLAGS_executor_log_deps_every_microsecond, then cancel the std::async when
+  // FLAGS_executor_log_deps_every_microseconds, then cancel the std::async when
   // main_thread_blocker_.WaitEvent() executed. Why not use std::async instead
   // of workqueue? To make sure that the logging thread itself will not affect
   // the workqueue
   //  used in interpretercore.
 
-  std::future<int> res;
-  std::atomic_bool cancel = ATOMIC_VAR_INIT(false);
-  if (FLAGS_executor_log_deps_every_microsecond) {
-    res = std::async(
+  std::future<int> logged_times;
+  std::atomic_bool cancel_log = ATOMIC_VAR_INIT(false);
+  if (FLAGS_executor_log_deps_every_microseconds) {
+    logged_times = std::async(
         std::launch::async,
         [this](const std::atomic_bool& cancel) {
           int times = 0;
           while (!cancel) {
             std::this_thread::sleep_for(std::chrono::microseconds(
-                FLAGS_executor_log_deps_every_microsecond));
+                FLAGS_executor_log_deps_every_microseconds));
+            // check again, since cancel may be changed during sleep
+            if (cancel) {
+              break;
+            }
             VLOG(0) << "deps:\n" << GetDepsString();
             times++;
           }
           return times;
         },
-        std::ref(cancel));
+        std::ref(cancel_log));
   }
 
   auto event_name = main_thread_blocker_.WaitEvent();
-  cancel = true;
-
   VLOG(1) << "main_thread_blocker_(" << &main_thread_blocker_
           << ") got event_name: " << event_name;
+
+  cancel_log = true;
+  if (logged_times.valid()) {
+    VLOG(1) << "Logged deps for " << logged_times.get() << " times";
+  }
 
   if (UNLIKELY(exception_holder_.IsCaught())) {
     VLOG(1) << "Exception caught " << exception_holder_.Type();
