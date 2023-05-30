@@ -109,5 +109,47 @@ inline void UpdatePaddingAndDilation(std::vector<T>* paddings,
   }
 }
 
+class Conv2DOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() final;
+
+ protected:
+  virtual void Apply() {}
+};
+
+class ConvOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
+ protected:
+  std::unordered_map<std::string, std::string>& GetInputOutputWithSameType()
+      const override {
+    static std::unordered_map<std::string, std::string> m{
+        {"Input", /*->*/ "Output"}};
+    return m;
+  }
+};
+
+class ConvOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    std::vector<int64_t> output_shape = ComputeOutputShape(ctx);
+
+    OP_INOUT_CHECK(ctx->HasOutput("Output"), "Output", "Output", "Conv");
+    ctx->SetOutputDim("Output", phi::make_ddim(output_shape));
+    ctx->ShareLoD("Input", "Output");
+  }
+
+ protected:
+  std::vector<int64_t> ComputeOutputShape(
+      framework::InferShapeContext* ctx) const;
+
+  phi::KernelKey GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override;
+
+  phi::KernelKey GetKernelTypeForVar(
+      const std::string& var_name,
+      const phi::DenseTensor& tensor,
+      const phi::KernelKey& expected_kernel_type) const override;
+};
+
 }  // namespace operators
 }  // namespace paddle
