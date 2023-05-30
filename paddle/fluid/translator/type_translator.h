@@ -20,9 +20,9 @@
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/translator/program_translator.h"
-#include "paddle/ir/builtin_type.h"
-#include "paddle/ir/dialect.h"
-#include "paddle/ir/ir_context.h"
+#include "paddle/ir/core/builtin_type.h"
+#include "paddle/ir/core/dialect.h"
+#include "paddle/ir/core/ir_context.h"
 
 namespace paddle {
 namespace translator {

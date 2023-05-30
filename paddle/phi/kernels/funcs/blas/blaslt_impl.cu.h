@@ -25,8 +25,11 @@ limitations under the License. */
 
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/memory_utils.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/autotune/gpu_timer.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
+
+PHI_DECLARE_int64(cublaslt_exhaustive_search_times);
 #endif
 
 namespace phi {
@@ -41,20 +44,41 @@ namespace funcs {
 // no matter forward or backward, they could share the same descriptor
 // cache, in that the descriptor is for description of matmul operation.
 enum MatmulFusedType {
-  kMatmul = CUBLASLT_EPILOGUE_DEFAULT,
-  kMatmulGrad = CUBLASLT_EPILOGUE_DEFAULT,
-  kMatmulGradWithoutBias = CUBLASLT_EPILOGUE_DEFAULT,
-  kMatmulBias = CUBLASLT_EPILOGUE_BIAS,
-  kMatmulRelu = CUBLASLT_EPILOGUE_RELU,
-  kMatmulBiasRelu = CUBLASLT_EPILOGUE_RELU_BIAS,
-  kMatmulBiasGelu = CUBLASLT_EPILOGUE_GELU_BIAS,
-  kMatmulBiasReluWithReservedData = CUBLASLT_EPILOGUE_RELU_AUX_BIAS,
-  kMatmulBiasGeluWithReservedData = CUBLASLT_EPILOGUE_GELU_AUX_BIAS,
-  kMatmulReluGrad = CUBLASLT_EPILOGUE_DRELU,
-  kMatmulGeluGrad = CUBLASLT_EPILOGUE_DGELU,
-  kMatmulBiasGradToA = CUBLASLT_EPILOGUE_BGRADA,
-  kMatmulBiasGradToB = CUBLASLT_EPILOGUE_BGRADB
+  kMatmul = 0,
+  kMatmulGrad = 1,
+  kMatmulGradWithoutBias = 2,
+  kMatmulBias = 3,
+  kMatmulRelu = 4,
+  kMatmulBiasRelu = 5,
+  kMatmulBiasGelu = 6,
+  kMatmulBiasReluWithReservedData = 7,
+  kMatmulBiasGeluWithReservedData = 8,
+  kMatmulReluGrad = 9,
+  kMatmulGeluGrad = 10,
+  kMatmulBiasGradToA = 11,
+  kMatmulBiasGradToB = 12
 };
+
+static cublasLtEpilogue_t ConvertFusedType(MatmulFusedType fused_type) {
+  static std::map<MatmulFusedType, cublasLtEpilogue_t> fused_type_map = {
+      {MatmulFusedType::kMatmul, CUBLASLT_EPILOGUE_DEFAULT},
+      {MatmulFusedType::kMatmulGrad, CUBLASLT_EPILOGUE_DEFAULT},
+      {MatmulFusedType::kMatmulGradWithoutBias, CUBLASLT_EPILOGUE_DEFAULT},
+      {MatmulFusedType::kMatmulBias, CUBLASLT_EPILOGUE_BIAS},
+      {MatmulFusedType::kMatmulRelu, CUBLASLT_EPILOGUE_RELU},
+      {MatmulFusedType::kMatmulBiasRelu, CUBLASLT_EPILOGUE_RELU_BIAS},
+      {MatmulFusedType::kMatmulBiasGelu, CUBLASLT_EPILOGUE_GELU_BIAS},
+      {MatmulFusedType::kMatmulBiasReluWithReservedData,
+       CUBLASLT_EPILOGUE_RELU_AUX_BIAS},
+      {MatmulFusedType::kMatmulBiasGeluWithReservedData,
+       CUBLASLT_EPILOGUE_GELU_AUX_BIAS},
+      {MatmulFusedType::kMatmulReluGrad, CUBLASLT_EPILOGUE_DRELU},
+      {MatmulFusedType::kMatmulGeluGrad, CUBLASLT_EPILOGUE_DGELU},
+      {MatmulFusedType::kMatmulBiasGradToA, CUBLASLT_EPILOGUE_BGRADA},
+      {MatmulFusedType::kMatmulBiasGradToB, CUBLASLT_EPILOGUE_BGRADB}};
+
+  return fused_type_map[fused_type];
+}
 
 enum FusedGEMMGradInType { kDX = 0, kDY = 1, kDZ = 2 };
 
@@ -125,31 +149,31 @@ struct MatmulPlanner {
                 const bool trans_x,
                 const bool trans_y,
                 phi::DataType dtype,
-                MatmulFusedType impl_type,
+                MatmulFusedType fused_type,
                 const void* bias_data = nullptr,
                 void* reserve_data = nullptr,  // Commonly for ReLu bit-mask.
                 bool use_addto = false,
                 bool no_exchange = true)
-      : bias(bias_data), aux_data(reserve_data), impl_type_(impl_type) {
+      : bias(bias_data), aux_data(reserve_data), fused_type_(fused_type) {
     use_addto_ = use_addto;
     key_ = phi::autotune::GenKey(x_dims,
                                  y_dims,
                                  static_cast<int>(trans_x),
                                  static_cast<int>(trans_y),
                                  static_cast<int>(dtype),
+                                 static_cast<int>(fused_type_),
+                                 static_cast<int>(use_addto_),
                                  static_cast<int>(no_exchange));
   }
 
   bool UseAddTo() const { return use_addto_; }
   size_t GetKey() const { return key_; }
-  MatmulFusedType ImplType() const { return impl_type_; }
+  MatmulFusedType GetFusedType() const { return fused_type_; }
 
-  size_t GenSubKey(int idx) const {
-    return phi::autotune::GenKey(key_, static_cast<int>(use_addto_), idx);
-  }
+  size_t GenSubKey() const { return key_; }
 
  private:
-  MatmulFusedType impl_type_;
+  MatmulFusedType fused_type_;
   bool use_addto_;
   size_t key_;
 };
@@ -265,23 +289,28 @@ struct MatmulDescriptor {
                                   bool has_algo = true) const {
     std::ostringstream out;
     out << prefix << " \n";
-#define GET_DESC_DATA_INFO(src)                      \
+#define GET_DESC_DATA_STRING(src)                    \
   do {                                               \
-    out << #src << "= [";                            \
+    out << "  " << #src << " = [";                   \
     int num = sizeof((*src)) / sizeof(src->data[0]); \
     for (int i = 0; i < num; ++i) {                  \
-      out << src->data[i] << ", ";                   \
+      if (i == 0) {                                  \
+        out << src->data[i];                         \
+      } else {                                       \
+        out << ", " << src->data[i];                 \
+      }                                              \
     }                                                \
     out << "]\n";                                    \
   } while (0);
 
     if (has_algo) {
-      GET_DESC_DATA_INFO(&algo);
+      GET_DESC_DATA_STRING(algo);
     }
-    GET_DESC_DATA_INFO(x_desc);
-    GET_DESC_DATA_INFO(y_desc);
-    GET_DESC_DATA_INFO(out_desc);
-    GET_DESC_DATA_INFO(op_desc);
+    GET_DESC_DATA_STRING(x_desc);
+    GET_DESC_DATA_STRING(y_desc);
+    GET_DESC_DATA_STRING(out_desc);
+    GET_DESC_DATA_STRING(op_desc);
+#undef GET_DESC_DATA_STRING
     return out.str();
   }
 
@@ -304,12 +333,13 @@ struct MatmulDescriptor {
                                                 CUBLASLT_MATMUL_DESC_TRANSA,
                                                 &cublas_trans_y,
                                                 sizeof(cublas_trans_y)));
-    if (planner->ImplType() != kMatmul) {
-      auto fused_type = static_cast<cublasLtEpilogue_t>(planner->ImplType());
+    MatmulFusedType fused_type = planner->GetFusedType();
+    if (fused_type != MatmulFusedType::kMatmul) {
+      cublasLtEpilogue_t cublaslt_fused_type = ConvertFusedType(fused_type);
       PADDLE_ENFORCE_GPU_SUCCESS(
           dynload::cublasLtMatmulDescSetAttribute(op_desc,
                                                   CUBLASLT_MATMUL_DESC_EPILOGUE,
-                                                  &fused_type,
+                                                  &cublaslt_fused_type,
                                                   sizeof(fused_type)));
     }
     if (planner->aux_data) {
@@ -452,7 +482,7 @@ struct CublasLtBase {
       }
     }
 
-    VLOG(6) << desc->GetDescResultString("[Impl CublasltDescriptor] ");
+    VLOG(7) << desc->GetDescResultString("[Impl CublasltDescriptor] ");
     PADDLE_ENFORCE_GPU_SUCCESS(
         dynload::cublasLtMatmul(cublaslt_handle,
                                 desc->op_desc,
@@ -482,10 +512,6 @@ struct CublasLtBase {
                              void* out_data,
                              void* workspace_ptr,
                              size_t workspace_size) {
-    cublasLtMatmulAlgo_t* best_algo = desc->SetAlgo();
-    const auto& stream = ctx.stream();
-    int returned_results = 0;
-    constexpr int requested_algo_count = 10;
     cublasLtMatmulPreference_t preference;
     PADDLE_ENFORCE_GPU_SUCCESS(
         dynload::cublasLtMatmulPreferenceCreate(&preference));
@@ -494,6 +520,9 @@ struct CublasLtBase {
         CUBLASLT_MATMUL_PREF_MAX_WORKSPACE_BYTES,
         &workspace_size,
         sizeof(workspace_size)));
+
+    int returned_results = 0;
+    constexpr int requested_algo_count = 10;
     std::vector<cublasLtMatmulHeuristicResult_t> heuristic_results(
         requested_algo_count);
     PADDLE_ENFORCE_GPU_SUCCESS(
@@ -510,51 +539,89 @@ struct CublasLtBase {
     PADDLE_ENFORCE_GT(returned_results,
                       0,
                       phi::errors::Unavailable("No GEMM algorithm avaliable."));
-    phi::GpuTimer timer;
     int best_algo_idx = -1;
-    constexpr int repeats = 6;
-    float min_time_cost = std::numeric_limits<float>::max();
-    for (int algo_idx = 0; algo_idx < returned_results; ++algo_idx) {
-      ctx.Wait();
-      float cur_time = 0.f;
-      for (int i = 0; i < repeats; ++i) {
-        timer.Start(stream);
-        PADDLE_ENFORCE_GPU_SUCCESS(
-            dynload::cublasLtMatmul(lt_handle,
-                                    desc->op_desc,
-                                    alpha,
-                                    y_data,
-                                    desc->y_desc,
-                                    x_data,
-                                    desc->x_desc,
-                                    beta,
-                                    out_data,
-                                    desc->out_desc,
-                                    out_data,
-                                    desc->out_desc,
-                                    &(heuristic_results[algo_idx].algo),
-                                    workspace_ptr,
-                                    workspace_size,
-                                    stream));
-        timer.Stop(stream);
-        auto time = timer.ElapsedTime();
-        if (i > 0) {
-          cur_time += time;
+    if (returned_results == 1 || FLAGS_cublaslt_exhaustive_search_times <= 0) {
+      best_algo_idx = 0;
+    } else {
+      float min_time_cost = std::numeric_limits<float>::max();
+      for (int algo_idx = 0; algo_idx < returned_results; ++algo_idx) {
+        float cur_time_cost =
+            RunAndMeasureAlgo(ctx,
+                              lt_handle,
+                              desc,
+                              alpha,
+                              beta,
+                              y_data,
+                              x_data,
+                              out_data,
+                              workspace_ptr,
+                              workspace_size,
+                              &(heuristic_results[algo_idx].algo));
+        VLOG(6) << "[MatmulWithCublaslt] algo[" << algo_idx
+                << "] time: " << cur_time_cost << " s";
+
+        if ((best_algo_idx == 0 && (1.05 * cur_time_cost < min_time_cost)) ||
+            (cur_time_cost < min_time_cost)) {
+          best_algo_idx = algo_idx;
+          min_time_cost = cur_time_cost;
         }
       }
-      float time_cnt = (cur_time / (repeats - 1));
-      VLOG(6) << "Time cost in MatmulWithCublaslt algo[" << algo_idx << "]"
-              << "is : " << time_cnt << " s";
-
-      if (cur_time < min_time_cost) {
-        best_algo_idx = algo_idx;
-        min_time_cost = cur_time;
-      }
     }
-    VLOG(6) << "Best_algo_idx in MatmulWithCublaslt is : " << best_algo_idx;
+    VLOG(6) << "[MatmulWithCublaslt] best_algo_idx: " << best_algo_idx;
+
+    cublasLtMatmulAlgo_t* best_algo = desc->SetAlgo();
     *best_algo = heuristic_results[best_algo_idx].algo;
     PADDLE_ENFORCE_GPU_SUCCESS(
         dynload::cublasLtMatmulPreferenceDestroy(preference));
+  }
+
+  static float RunAndMeasureAlgo(const phi::GPUContext& ctx,
+                                 const cublasLtHandle_t& lt_handle,
+                                 MatmulDescT* desc,
+                                 const void* alpha,
+                                 const void* beta,
+                                 const void* y_data,
+                                 const void* x_data,
+                                 void* out_data,
+                                 void* workspace_ptr,
+                                 size_t workspace_size,
+                                 cublasLtMatmulAlgo_t* algo) {
+    int repeats = FLAGS_cublaslt_exhaustive_search_times;
+    if (repeats <= 0) {
+      return std::numeric_limits<float>::max();
+    }
+
+    phi::GpuTimer timer;
+    float time_cost = 0.f;
+    const auto& stream = ctx.stream();
+
+    for (int i = 0; i < repeats; ++i) {
+      timer.Start(stream);
+      PADDLE_ENFORCE_GPU_SUCCESS(dynload::cublasLtMatmul(lt_handle,
+                                                         desc->op_desc,
+                                                         alpha,
+                                                         y_data,
+                                                         desc->y_desc,
+                                                         x_data,
+                                                         desc->x_desc,
+                                                         beta,
+                                                         out_data,
+                                                         desc->out_desc,
+                                                         out_data,
+                                                         desc->out_desc,
+                                                         algo,
+                                                         workspace_ptr,
+                                                         workspace_size,
+                                                         stream));
+      timer.Stop(stream);
+      ctx.Wait();
+      auto time = timer.ElapsedTime();
+      if (i > 0) {
+        // Exclude the warmup runtime.
+        time_cost += time;
+      }
+    }
+    return (time_cost / (repeats - 1));
   }
 };
 
@@ -583,14 +650,14 @@ struct DescriptorSetter {
                    const bool no_exchange = true,
                    bool grad_for_dx = true) {
     if (planner != nullptr) {
-      sub_key = planner->GenSubKey(static_cast<size_t>(planner->ImplType()));
+      sub_key = planner->GenSubKey();
     }
 
     auto& mamtul_cache = phi::autotune::AutoTuneCache::Instance().GetMatmul();
     if (mamtul_cache.FindSubKey(sub_key)) {
       desc = *(reinterpret_cast<DescT*>(mamtul_cache.GetSubKey(sub_key)));
       desc.template SetFusedEpiloguePtr<DYT>(planner);
-      VLOG(6) << desc.GetDescResultString("[Heap CublasltDescriptor] ");
+      VLOG(7) << desc.GetDescResultString("[Heap CublasltDescriptor] ");
     } else {
       desc.template Create<T, DXT, DYT, TransX, TransY>(M,
                                                         N,
@@ -607,7 +674,7 @@ struct DescriptorSetter {
       if (planner != nullptr) {
         desc.template SetFusedEpiloguePtr<DYT>(planner);
       }
-      VLOG(6) << desc.GetDescResultString("[Stack CublasltDescriptor] ", false);
+      VLOG(7) << desc.GetDescResultString("[Stack CublasltDescriptor] ", false);
     }
   }
 };

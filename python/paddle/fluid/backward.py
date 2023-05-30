@@ -1439,7 +1439,7 @@ def _append_backward_ops_(
             )
         else:
             default_ctx = getattr(
-                paddle.distributed.auto_parallel.dist_context,
+                paddle.distributed.auto_parallel.static.dist_context,
                 '_g_default_distributed_context',
                 None,
             )
