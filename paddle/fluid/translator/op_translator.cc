@@ -25,10 +25,10 @@
 #include "paddle/fluid/translator/op_compat_info.h"
 #include "paddle/fluid/translator/program_translator.h"
 #include "paddle/fluid/translator/type_translator.h"
-#include "paddle/ir/builtin_op.h"
-#include "paddle/ir/builtin_type.h"
-#include "paddle/ir/ir_context.h"
-#include "paddle/ir/value.h"
+#include "paddle/ir/core/builtin_op.h"
+#include "paddle/ir/core/builtin_type.h"
+#include "paddle/ir/core/ir_context.h"
+#include "paddle/ir/core/value.h"
 #include "paddle/phi/core/enforce.h"
 
 namespace paddle {
