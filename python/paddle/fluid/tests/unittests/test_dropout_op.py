@@ -74,6 +74,10 @@ class TestDropoutOp(OpTest):
             'Out': self.inputs['X'],
             'Mask': np.ones((32, 64)).astype('uint8'),
         }
+        # Because prim op compare res with dygraph
+        # when p = 0 dropout api return x,in dygraph mode x_grad = out_grad,
+        # but in static mode x_grad = []
+        self.enable_check_static_comp = False
 
     def test_check_output(self):
         self.check_output(check_prim=True)
@@ -95,6 +99,10 @@ class TestDropoutOpInput1d(OpTest):
             'Out': self.inputs['X'],
             'Mask': np.ones(2000).astype('uint8'),
         }
+        # Because prim op compare res with dygraph
+        # when p = 0 dropout api return x,in dygraph mode x_grad = out_grad,
+        # but in static mode x_grad = []
+        self.enable_check_static_comp = False
 
     def test_check_output(self):
         self.check_output(check_prim=True)
@@ -130,6 +138,10 @@ class TestDropoutOp3(TestDropoutOp):
             'Out': self.inputs['X'],
             'Mask': np.ones((32, 64, 2)).astype('uint8'),
         }
+        # Because prim op compare res with dygraph
+        # when p = 0 dropout api return x,in dygraph mode x_grad = out_grad,
+        # but in static mode x_grad = []
+        self.enable_check_static_comp = False
 
 
 @skip_check_grad_ci(reason="For inference, check_grad is not required.")
@@ -202,6 +214,10 @@ class TestDropoutOp7(TestDropoutOp):
             'Out': self.inputs['X'],
             'Mask': np.ones((32, 64, 2)).astype('uint8'),
         }
+        # Because prim op compare res with dygraph
+        # when p = 0 dropout api return x,in dygraph mode x_grad = out_grad,
+        # but in static mode x_grad = []
+        self.enable_check_static_comp = False
 
 
 @skip_check_grad_ci(reason="For inference, check_grad is not required.")
@@ -260,6 +276,10 @@ class TestDropoutOpWithSeed(OpTest):
             'Out': self.inputs['X'],
             'Mask': np.ones((32, 64)).astype('uint8'),
         }
+        # Because prim op compare res with dygraph
+        # when p = 0 dropout api return x,in dygraph mode x_grad = out_grad,
+        # but in static mode x_grad = []
+        self.enable_check_static_comp = False
 
     def test_check_output(self):
         self.check_output(check_prim=True)
