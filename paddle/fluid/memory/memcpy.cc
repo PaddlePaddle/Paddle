@@ -748,7 +748,34 @@ void Copy<phi::Place, phi::Place>(phi::Place dst_place,
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   else if (src_place.GetType() == phi::AllocationType::CPU &&  // NOLINT
-           dst_place.GetType() == phi::AllocationType::GPUPINNED) {
+           dst_place.GetType() == phi::AllocationType::GPU) {
+#ifdef PADDLE_WITH_HIP
+    paddle::platform::GpuMemcpySync(
+        dst, src, num, paddle::gpuMemcpyKind::hipMemcpyHostToDevice);
+#else
+    paddle::platform::GpuMemcpySync(
+        dst, src, num, paddle::gpuMemcpyKind::cudaMemcpyHostToDevice);
+#endif
+  } else if (src_place.GetType() == phi::AllocationType::GPU &&
+             dst_place.GetType() == phi::AllocationType::CPU) {
+#ifdef PADDLE_WITH_HIP
+    paddle::platform::GpuMemcpySync(
+        dst, src, num, paddle::gpuMemcpyKind::hipMemcpyDeviceToHost);
+#else
+    paddle::platform::GpuMemcpySync(
+        dst, src, num, paddle::gpuMemcpyKind::cudaMemcpyDeviceToHost);
+#endif
+  } else if (src_place.GetType() == phi::AllocationType::GPU &&
+             dst_place.GetType() == phi::AllocationType::GPU) {
+#ifdef PADDLE_WITH_HIP
+    paddle::platform::GpuMemcpySync(
+        dst, src, num, paddle::gpuMemcpyKind::hipMemcpyDeviceToDevice);
+#else
+    paddle::platform::GpuMemcpySync(
+        dst, src, num, paddle::gpuMemcpyKind::cudaMemcpyDeviceToDevice);
+#endif
+  } else if (src_place.GetType() == phi::AllocationType::CPU &&  // NOLINT
+             dst_place.GetType() == phi::AllocationType::GPUPINNED) {
     std::memcpy(dst, src, num);
   } else if (src_place.GetType() == phi::AllocationType::GPUPINNED &&
              dst_place.GetType() == phi::AllocationType::CPU) {
