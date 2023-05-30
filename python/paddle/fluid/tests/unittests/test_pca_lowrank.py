@@ -12,12 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import re
 import unittest
 
 import numpy as np
 import random
 
 import paddle
+
+
+def get_cuda_version():
+    result = os.popen("nvcc --version").read()
+    regex = r'release (\S+),'
+    match = re.search(regex, result)
+    if match:
+        num = str(match.group(1))
+        integer, decimal = num.split('.')
+        return int(integer) * 1000 + int(float(decimal) * 10)
+    else:
+        return -1
 
 
 class TestPcaLowrankAPI(unittest.TestCase):
@@ -129,7 +143,13 @@ class TestPcaLowrankAPI(unittest.TestCase):
                         self.run_subtest(guess_rank, actual_rank, size, batches, pca_lowrank)
                         self.run_subtest(guess_rank, actual_rank, size[::-1], batches, pca_lowrank)
 
+    @unittest.skipIf(
+        not paddle.is_compiled_with_cuda() or get_cuda_version() < 11000,
+        "only support cuda>=11.0",
+    )
+    def test_sparse(self):
         # sparse input
+        pca_lowrank = paddle.linalg.pca_lowrank
         for guess_rank, size in [(4, (17, 4)), (4, (4, 17)), (16, (17, 17)), (21, (100, 40))]:
             for density in [0.005, 0.1]:
                 self.run_subtest(guess_rank, None, size, (), pca_lowrank, density=density)
