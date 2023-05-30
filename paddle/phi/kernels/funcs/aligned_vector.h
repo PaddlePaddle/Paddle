@@ -27,13 +27,6 @@ template <typename T, int Size>
 struct alignas(sizeof(T) * Size) AlignedVector {
   T val[Size];
 
-  HOSTDEVICE inline void Fill(const T& value) {
-#pragma unroll
-    for (int i = 0; i < Size; ++i) {
-      val[i] = value;
-    }
-  }
-
   HOSTDEVICE inline const T& operator[](int i) const { return val[i]; }
   HOSTDEVICE inline T& operator[](int i) { return val[i]; }
 };

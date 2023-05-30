@@ -158,10 +158,17 @@ struct MaxFunctor {
 };
 
 template <typename Tx, typename Ty = Tx>
-struct ExpFunctor {
+struct SubExpFunctor {
+  using MT = typename phi::dtype::MPTypeTrait<Tx>::Type;
+
+  HOSTDEVICE explicit SubExpFunctor(MT max) : max(max) {}
+
   HOSTDEVICE inline Ty operator()(const Tx& x) const {
-    return static_cast<Ty>(std::exp(x));
+    return static_cast<Ty>(std::exp(static_cast<MT>(x) - max));
   }
+
+ private:
+  MT max;
 };
 
 template <typename Tx, typename Ty = Tx>
@@ -216,18 +223,14 @@ struct DataTransFunctor {
   }
 };
 
-template <typename Tx, typename Ty = Tx>
-struct UnaryDivFunctor {
-  HOSTDEVICE inline UnaryDivFunctor() { n_inv = static_cast<Tx>(1.0f); }
+template <typename T>
+struct DivSumFunctor {
+  HOSTDEVICE explicit DivSumFunctor(T sum) : sum(sum) {}
 
-  HOSTDEVICE explicit inline UnaryDivFunctor(Tx n) : n_inv((Tx)(1.0 / n)) {}
-
-  HOSTDEVICE inline Ty operator()(const Tx& x) const {
-    return static_cast<Ty>(x * n_inv);
-  }
+  HOSTDEVICE inline T operator()(const T& x) const { return x / sum; }
 
  private:
-  Tx n_inv;
+  T sum;
 };
 
 template <typename Tx, typename Ty = Tx>
@@ -258,16 +261,18 @@ struct SoftmaxBackwardFunctor {
 
 template <typename Tx, typename Ty = Tx>
 struct LogSoftmaxForwardFunctor {
-  HOSTDEVICE inline LogSoftmaxForwardFunctor(Tx max, Tx sum)
+  using MT = typename phi::dtype::MPTypeTrait<Tx>::Type;
+
+  HOSTDEVICE inline LogSoftmaxForwardFunctor(MT max, MT sum)
       : max(max), log_sum(std::log(sum)) {}
 
   HOSTDEVICE inline Ty operator()(const Tx& x) const {
-    return static_cast<Ty>(x - max - log_sum);
+    return static_cast<Ty>(static_cast<MT>(x) - max - log_sum);
   }
 
  private:
-  Tx max;
-  Tx log_sum;
+  MT max;
+  MT log_sum;
 };
 
 template <typename Tx, typename Ty = Tx>
@@ -472,16 +477,15 @@ __global__ void KeMatrixSoftmaxForward(T* softmax, const T* src, int dim_size) {
   }
 }
 
-/*
-Core function of computing softmax forward for axis=-1.
-The computation includes
-  - Compute maximum of batch: maxvalue_{i} = max_j src_{i,j}
-  - Compute sum of exp batch: s_{i} = sum_{j}{ exp(src_{i,j} - maxvalue_{i} }
-  - Compute: (a_{i,j} - maxvalue_{i}) / s_{i}
-One warp (32 threads) is used to compute 1 or 2 batch (kBatchSize).
-For reduction max (sum), firstly compute max (sum) to one warp, then use shuffle
-api to compute max (sum) in one warp.
-*/
+// Core function of computing softmax forward for axis=-1.
+// The computation includes
+//   - Compute maximum of batch: maxvalue_{i} = max_j src_{i,j}
+//   - Compute sum of exp batch: s_{i} = sum_{j}{ exp(src_{i,j} - maxvalue_{i} }
+//   - Compute: (a_{i,j} - maxvalue_{i}) / s_{i}
+// This implementation is for softmax on the last dim, with small dimension,
+// which using a warp (32 threads) to compute 1 or 2 batch (kBatchSize).
+// For reduction max (sum), firstly compute max (sum) to one warp, then use
+// shuffle api to compute max (sum) in one warp.
 template <typename T,
           typename AccT,
           typename IndexType,
@@ -498,95 +502,96 @@ __global__ void WarpSoftmaxForward(T* softmax,
 
   constexpr IndexType kDimCeil = 1 << Log2Elements;
   constexpr IndexType kWarpSize = (kDimCeil < 32) ? kDimCeil : 32;
+  // The local elements hold by each thread.
   constexpr IndexType kLoops = kDimCeil / kWarpSize;
   constexpr IndexType kLoopsV = (kLoops >= VecSize) ? (kLoops / VecSize) : 1;
   constexpr IndexType kBatchSize = (kDimCeil <= 32) ? 2 : 1;
-  IndexType first_batch =
+  constexpr IndexType kNumElems = kLoopsV * VecSize;
+
+  // The first batch_id computed by this thread.
+  // Totally threadDim.y * kBatchSize batches computed by a thread block.
+  IndexType first_batch_id =
       (static_cast<IndexType>(blockDim.y) * blockIdx.x + threadIdx.y) *
       kBatchSize;
   constexpr IndexType kStep = kBatchSize * kLoopsV * VecSize;
-  constexpr IndexType kVItem = kLoopsV * VecSize;
-  constexpr AccT kLowInf = -std::numeric_limits<AccT>::infinity();
 
   // max index to read
   IndexType idx_max_v[kBatchSize];
 #pragma unroll
   for (IndexType i = 0; i < kBatchSize; i++) {
-    IndexType idx_max = ((i + first_batch) < batch_size) ? element_count : 0;
+    IndexType idx_max = ((i + first_batch_id) < batch_size) ? element_count : 0;
     idx_max_v[i] = idx_max / VecSize;
   }
 
-  // data src
-  // src_data: the raw data form global memory
-  // sub_data: store the data obtained by (src_data - max), used by log_softmax
-  // exp_data: store the data obtained by (exp(sub_data)), used by softmax
-  T src_data[kBatchSize][kLoopsV][VecSize];
-  AccT sub_data[kBatchSize][kLoopsV][VecSize];
-  AccT exp_data[kBatchSize][kLoopsV][VecSize];
-  kps::Init<AccT, kStep>(&sub_data[0][0][0], kLowInf);
-  kps::Init<T, kStep>(&src_data[0][0][0], -std::numeric_limits<T>::infinity());
+  // inout_data:
+  // 1. the raw data to read from global memory
+  // 2. the final data to write to global memory
+  T inout_data[kBatchSize][kNumElems];
+  kps::Init<T, kStep>(&inout_data[0][0], -std::numeric_limits<T>::infinity());
 
-  // data dst
-  T out_tmp[kBatchSize][kLoopsV][VecSize];
-
-  // max value
-  AccT max[kBatchSize];
-  kps::Init<AccT, kBatchSize>(&max[0], kLowInf);
-
-  // sum value
-  AccT sum[kBatchSize] = {0};
+  // tmp_data:
+  // 1. store the src_data casted to AccT type
+  // 2. store the data obtained by exp(src_data - max)
+  AccT tmp_data[kBatchSize][kNumElems];
+  kps::Init<AccT, kStep>(&tmp_data[0][0],
+                         -std::numeric_limits<AccT>::infinity());
 
 // read data from global memory
 #pragma unroll
   for (IndexType i = 0; i < kBatchSize; ++i) {
     const VecT* src_v =
-        reinterpret_cast<const VecT*>(&src[(first_batch + i) * stride]);
-    VecT* reg_v = reinterpret_cast<VecT*>(&src_data[i][0][0]);
+        reinterpret_cast<const VecT*>(&src[(first_batch_id + i) * stride]);
+    VecT* reg_v = reinterpret_cast<VecT*>(&inout_data[i][0]);
     kps::ReadData<VecT, VecT, kLoopsV, 1, true>(
         &reg_v[0], &src_v[0], idx_max_v[i], 0, kWarpSize, 1);
-    kps::ElementwiseUnary<T, AccT, kVItem, 1, DataTransFunctor<T, AccT>>(
-        &sub_data[i][0][0], &src_data[i][0][0], DataTransFunctor<T, AccT>());
+    // Cast the input data from T to AccT.
+    // tmp_data stores the src_data casted to AccT type
+    kps::ElementwiseUnary<T, AccT, kNumElems, 1, DataTransFunctor<T, AccT>>(
+        &tmp_data[i][0], &inout_data[i][0], DataTransFunctor<T, AccT>());
   }
 
   // compute max
+  AccT max[kBatchSize];
+  kps::Init<AccT, kBatchSize>(&max[0], -std::numeric_limits<AccT>::infinity());
   kps::Reduce<AccT,
-              kVItem,
+              kNumElems,
               kBatchSize,
               ReduceMaxFunctor<AccT>,
               ReduceMode::kLocalMode>(
-      &max[0], &sub_data[0][0][0], ReduceMaxFunctor<AccT>(), true);
+      &max[0], &tmp_data[0][0], ReduceMaxFunctor<AccT>(), true);
   WarpReduceMax<AccT, kBatchSize, kWarpSize>(max);
 
-// compute sum
 #pragma unroll
   for (IndexType i = 0; i < kBatchSize; ++i) {
-    kps::ElementwiseUnary<AccT, AccT, kVItem, 1, UnarySubFunctor<AccT>>(
-        &sub_data[i][0][0], &sub_data[i][0][0], UnarySubFunctor<AccT>(max[i]));
-    kps::ElementwiseUnary<AccT, AccT, kVItem, 1, ExpFunctor<AccT>>(
-        &exp_data[i][0][0], &sub_data[i][0][0], ExpFunctor<AccT>());
+    // tmp_data stores the data obtained by exp(src_data - max)
+    kps::ElementwiseUnary<AccT, AccT, kNumElems, 1, SubExpFunctor<AccT>>(
+        &tmp_data[i][0], &tmp_data[i][0], SubExpFunctor<AccT>(max[i]));
   }
+
+  // compute sum
+  AccT sum[kBatchSize] = {0};
   kps::Reduce<AccT,
-              kVItem,
+              kNumElems,
               kBatchSize,
               kps::AddFunctor<AccT>,
               ReduceMode::kLocalMode>(
-      &sum[0], &exp_data[0][0][0], kps::AddFunctor<AccT>(), true);
+      &sum[0], &tmp_data[0][0], kps::AddFunctor<AccT>(), true);
   WarpReduceSum<AccT, kBatchSize, kWarpSize>(sum);
 
 // write data to global memory
 #pragma unroll
   for (IndexType i = 0; i < kBatchSize; ++i) {
     VecT* softmax_v =
-        reinterpret_cast<VecT*>(&softmax[(first_batch + i) * stride]);
-    VecT* reg_v = reinterpret_cast<VecT*>(&out_tmp[i][0][0]);
+        reinterpret_cast<VecT*>(&softmax[(first_batch_id + i) * stride]);
+    VecT* reg_v = reinterpret_cast<VecT*>(&inout_data[i][0]);
     if (LogMode) {
-      kps::ElementwiseUnary<AccT, T, kVItem, 1, UnarySubFunctor<AccT>>(
-          &out_tmp[i][0][0],
-          &sub_data[i][0][0],
-          UnarySubFunctor<AccT>(std::log(sum[i])));
+      kps::ElementwiseUnary<T, T, kNumElems, 1, LogSoftmaxForwardFunctor<T>>(
+          &inout_data[i][0],
+          &inout_data[i][0],
+          LogSoftmaxForwardFunctor<T>(max[i], sum[i]));
     } else {
-      kps::ElementwiseUnary<AccT, T, kVItem, 1, UnaryDivFunctor<AccT>>(
-          &out_tmp[i][0][0], &exp_data[i][0][0], UnaryDivFunctor<AccT>(sum[i]));
+      kps::ElementwiseUnary<AccT, T, kNumElems, 1, DivSumFunctor<AccT>>(
+          &inout_data[i][0], &tmp_data[i][0], DivSumFunctor<AccT>(sum[i]));
     }
     kps::WriteData<VecT, VecT, kLoopsV, 1, true>(
         &softmax_v[0], &reg_v[0], idx_max_v[i], 0, kWarpSize, 1);
@@ -1218,7 +1223,6 @@ bool UseCudnnSoftmax(const GPUContext& ctx,
 #endif
     }
   }
-  return cudnn_available;
   constexpr int max_dim = 512;
   if (!cudnn_available || !last_dim ||
       (softmax_dim <= max_dim && sizeof(T) <= 4) ||
