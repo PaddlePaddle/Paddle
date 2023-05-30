@@ -1100,9 +1100,10 @@
     x : X
   outputs :
     out : Out
-  backward : hard_swish_grad
+  backward : hardswish_grad (hard_swish_grad)
   extra :
     attrs : [bool use_mkldnn = false]
+  manual_signature : [hardswish]
 
 - op : hardtanh (brelu)
   backward : hardtanh_grad (brelu_grad)
