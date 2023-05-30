@@ -180,11 +180,14 @@ TEST(program_test, program) {
 
   // (7) Def AbsOp(b)
   ir::OpInfo abs_info = ctx->GetRegisteredOpInfo("pd.abs");
+  std::vector<ir::OpResult> operands = {op1->GetResultByIndex(0)};
   std::unordered_map<std::string, ir::Attribute> abs_op_attribute;
-  ir::Operation *abs_op = ir::Operation::create({op1->GetResultByIndex(0)},
-                                                {dense_tensor_dtype},
-                                                abs_op_attribute,
-                                                abs_info);
+  std::vector<ir::Type> output_types = {dense_tensor_dtype};
+  ir::OperationArgument abs_argument(abs_info);
+  abs_argument.addOperands(operands.begin(), operands.end());
+  abs_argument.addAttributes(abs_op_attribute.begin(), abs_op_attribute.end());
+  abs_argument.addTypes(output_types.begin(), output_types.end());
+  ir::Operation *abs_op = ir::Operation::create(std::move(abs_argument));
   paddle::dialect::GetOpInfoInterface interface =
       abs_op->dyn_cast<paddle::dialect::GetOpInfoInterface>();
   EXPECT_EQ(std::get<0>(interface.GetOpInfo())[0].name == "x", true);
