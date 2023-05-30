@@ -113,11 +113,6 @@ class TestCumminOpIndexType(TestCumminOp):
         self.indices_type = 2
 
 
-# class TestCumminOpFP16(TestCumminOp):
-#     def set_attrs(self):
-#         self.input_data = np.random.random((10, 10)).astype(np.float16)
-
-
 class TestCumminAPI(unittest.TestCase):
     def run_cases(self):
         data_np = np.random.random((100, 100)).astype(np.float32)

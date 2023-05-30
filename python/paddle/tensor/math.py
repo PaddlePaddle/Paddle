@@ -3385,7 +3385,7 @@ def cummax(x, axis=None, dtype='int64', name=None):
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        out (tuple), Return the result of cummin operation and the corresponding index results. The dtype of cummin result is same with input x.
+        out (tuple), Return the result of cummax operation and the corresponding index results. The dtype of cummax result is same with input x.
 
     Examples:
         .. code-block:: python
@@ -3411,9 +3411,9 @@ def cummax(x, axis=None, dtype='int64', name=None):
             # indcies: [[0, 1, 1]
             #           [0, 0, 2]]
 
-            y = paddle.cummax(data, dtype='float64')
+            y = paddle.cummax(data, dtype='int64')
             print(y[1].dtype)
-            # indcies type: paddle.float64
+            # indcies type: paddle.int64
     """
     if axis is None:
         axis = -1
@@ -3474,9 +3474,9 @@ def cummin(x, axis=None, dtype='int64', name=None):
             #         [-2, -3, -3]]
             # indcies: [[0, 0, 0]
             #           [0, 1, 1]]
-            y = paddle.cummin(data, dtype='float64')
+            y = paddle.cummin(data, dtype='int64')
             print(y[1].dtype)
-            # indcies type: paddle.float64
+            # indcies type: paddle.int64
     """
     if axis is None:
         axis = -1
