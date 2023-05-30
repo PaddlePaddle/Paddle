@@ -26,16 +26,4 @@ if(WITH_PYTHON AND EXISTS ${PADDLE_BINARY_DIR})
   endif()
 endif()
 
-if(WITH_GPU OR WITH_ROCM)
-  set(GPU_CTX_DEPS dynload_cuda dynamic_loader)
-endif()
-
-cc_library(
-  phi_device_tracer
-  SRCS device_tracer.cc
-  DEPS phi_profiler_proto ${GPU_CTX_DEPS})
-
-cc_library(
-  phi_profiler
-  SRCS profiler.cc
-  DEPS phi_os_info phi_device_tracer phi_enforce)
+collect_srcs(api_srcs SRCS device_tracer.cc profiler.cc)

@@ -20,15 +20,14 @@
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
-#include "paddle/ir/ir_context.h"
-#include "paddle/ir/operation.h"
-#include "paddle/ir/program.h"
-#include "paddle/ir/value.h"
+#include "paddle/fluid/translator/program_translator.h"
+#include "paddle/ir/core/ir_context.h"
+#include "paddle/ir/core/operation.h"
+#include "paddle/ir/core/program.h"
+#include "paddle/ir/core/value.h"
 
 namespace paddle {
 namespace translator {
-
-using TranslationContext = std::unordered_map<std::string, ir::OpResult>;
 
 class OpTranslator {
  public:

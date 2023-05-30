@@ -13,6 +13,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 
 namespace phi {
@@ -98,17 +99,17 @@ void StridedCopyKernel(const Context& dev_ctx,
               output_strides,
               sizeof(int64_t) * output_rank);
 
-  auto dims_strides = paddle::memory::Alloc(
+  auto dims_strides = memory_utils::Alloc(
       dev_ctx.GetPlace(),
       sizeof(int64_t) * (input_rank * 2 + output_rank * 2),
       phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx.stream())));
   int64_t* dims_strides_data = reinterpret_cast<int64_t*>(dims_strides->ptr());
-  paddle::memory::Copy(dev_ctx.GetPlace(),
-                       dims_strides_data,
-                       phi::CPUPlace(),
-                       tmp_data,
-                       sizeof(int64_t) * (input_rank * 2 + output_rank * 2),
-                       dev_ctx.stream());
+  memory_utils::Copy(dev_ctx.GetPlace(),
+                     dims_strides_data,
+                     phi::CPUPlace(),
+                     tmp_data,
+                     sizeof(int64_t) * (input_rank * 2 + output_rank * 2),
+                     dev_ctx.stream());
 
   cudaStreamCallback_t free_when_cb = [](cudaStream_t stream,
                                          cudaError_t status,

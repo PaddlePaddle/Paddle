@@ -20,20 +20,20 @@
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/translator/program_translator.h"
-#include "paddle/ir/builtin_type.h"
-#include "paddle/ir/dialect.h"
-#include "paddle/ir/ir_context.h"
+#include "paddle/ir/core/builtin_type.h"
+#include "paddle/ir/core/dialect.h"
+#include "paddle/ir/core/ir_context.h"
 
 namespace paddle {
 namespace translator {
 
-using OpDesc = paddle::framework::OpDesc;
-using BlockDesc = paddle::framework::BlockDesc;
-using VarDesc = paddle::framework::VarDesc;
-using VarType = paddle::framework::proto::VarType;
-using TypeTranslateFn = std::function<ir::Type(ir::IrContext*, const VarDesc&)>;
+using TypeTranslateFn =
+    std::function<ir::Type(ir::IrContext*, const framework::VarDesc&)>;
 
 class TypeTranslator {
+ public:
+  using VarType = paddle::framework::proto::VarType;
+
  private:
   TypeTranslator();  // Disallow instantiation outside of the class.
   std::unordered_map<VarType::Type, TypeTranslateFn> handlers;

@@ -14,7 +14,7 @@
 
 import unittest
 
-from paddle.distributed.auto_parallel.process_mesh_v2 import (
+from paddle.distributed.auto_parallel.static.process_mesh_v2 import (
     ProcessMesh,
     compute_compatible_process_mesh,
     merge_process_mesh,
