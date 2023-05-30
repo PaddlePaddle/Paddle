@@ -462,6 +462,8 @@
 
 - op : conv2d
   backward : conv2d_grad
+  inputs :
+    out : Output
   extra :
     attrs : [bool is_test = false, bool use_cudnn = true, bool use_mkldnn = false, bool use_addto = false,
              bool force_fp32_output = false,

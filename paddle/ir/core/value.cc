@@ -112,6 +112,9 @@ void OpOperandImpl::release_source() { source_ = nullptr; }
 
 OpOperandImpl::OpOperandImpl(ir::Value source, ir::Operation *owner)
     : source_(source), owner_(owner) {
+  if (!source) {
+    return;
+  }
   prev_use_addr_ = source.impl()->first_use_addr();
   next_use_ = source.impl()->first_use();
   if (next_use_) {

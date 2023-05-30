@@ -64,6 +64,7 @@ Operation *Operation::create(const std::vector<ir::OpResult> &inputs,
   // 2. Malloc memory.
   char *base_ptr = reinterpret_cast<char *>(aligned_malloc(base_size, 8));
   // 3.1. Construct OpResults.
+  VLOG(10) << "debug";
   for (size_t idx = num_results; idx > 0; idx--) {
     if (idx > max_inline_result_num) {
       new (base_ptr)
@@ -73,7 +74,9 @@ Operation *Operation::create(const std::vector<ir::OpResult> &inputs,
       new (base_ptr) detail::OpInlineResultImpl(output_types[idx - 1], idx - 1);
       base_ptr += sizeof(detail::OpInlineResultImpl);
     }
+    VLOG(10) << "debug " << idx;
   }
+  VLOG(10) << "debug";
   // 3.2. Construct Operation.
   Operation *op = new (base_ptr)
       Operation(attribute, op_info, num_results, num_operands, num_regions);
@@ -82,10 +85,13 @@ Operation *Operation::create(const std::vector<ir::OpResult> &inputs,
   if ((reinterpret_cast<uintptr_t>(base_ptr) & 0x7) != 0) {
     throw("The address of OpOperandImpl must be divisible by 8.");
   }
+  VLOG(10) << "debug";
   for (size_t idx = 0; idx < num_operands; idx++) {
     new (base_ptr) detail::OpOperandImpl(inputs[idx].impl_, op);
+    VLOG(10) << "debug " << idx;
     base_ptr += sizeof(detail::OpOperandImpl);
   }
+  VLOG(10) << "debug";
   // 3.4. Construct Regions
   if (num_regions > 0) {
     op->regions_ = reinterpret_cast<Region *>(base_ptr);

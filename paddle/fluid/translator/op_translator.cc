@@ -214,8 +214,7 @@ inline std::vector<ir::OpResult> GenerateOperationInput(
                      "Op %s arg %s should be optional if it can be empty",
                      op_desc.Type(),
                      legacy_input_name);
-      auto* constant_op = InsertConstantOperationForOptionalArg(ctx, program);
-      op_inputs.push_back(constant_op->GetResultByIndex(0));
+      op_inputs.push_back(ir::OpResult(nullptr));
       continue;
     }
 
@@ -317,36 +316,6 @@ inline ir::AttributeMap TranslateOpAttribute(
                << " name: " << info.name << " " << new_attr.storage();
     }
   }
-
-  // for (auto attr_in_op_desc : op_desc.GetAttrMap()) {
-  //   const auto& attr_name = attr_in_op_desc.first;
-  //   const auto& attr_value = attr_in_op_desc.second;
-  //   VLOG(0) << "attribute in " << op_desc.Type() << " name: " << attr_name
-  //           << " " << attr_value.index();
-  //   ir::Attribute new_attr = attribute_translator[attr_value];
-  //   attribute_map[attr_name] = new_attr;
-  //   if (!new_attr) {
-  //     VLOG(0) << "empty attribute in " << op_desc.Type()
-  //             << " name: " << attr_name;
-  //   } else {
-  //     VLOG(10) << "new attribute in " << op_desc.Type()
-  //              << " name: " << attr_name << " " << new_attr.storage();
-  //   }
-  // }
-
-  // for (auto attr_in_op_desc : op_desc.GetRuntimeAttrMap()) {
-  //   const auto& attr_name = attr_in_op_desc.first;
-  //   const auto& attr_value = attr_in_op_desc.second;
-  //   ir::Attribute new_attr = attribute_translator[attr_value];
-  //   attribute_map[attr_name] = new_attr;
-  //   if (!new_attr) {
-  //     VLOG(0) << "empty runtime attribute in " << op_desc.Type()
-  //             << " name: " << attr_name;
-  //   } else {
-  //     VLOG(10) << "new runtime attribute in " << op_desc.Type()
-  //              << " name: " << attr_name << " " << new_attr.storage();
-  //   }
-  // }
 
   return std::move(attribute_map);
 }
