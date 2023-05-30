@@ -7,6 +7,7 @@ register_operators(
   EXCLUDES
   fused_bn_activation_op
   conv_fusion_op
+  fused_conv2d_op
   fusion_transpose_flatten_concat_op
   fusion_conv_inception_op
   fused_fc_elementwise_layernorm_op
@@ -29,6 +30,8 @@ register_operators(
   fused_gemm_epilogue_op
   fused_gate_attention_op
   resnet_basic_block_op)
+
+op_library(fused_conv2d_op DEPS conv_op)
 
 # fusion_gru_op does not have CUDA kernel
 op_library(fusion_gru_op)
