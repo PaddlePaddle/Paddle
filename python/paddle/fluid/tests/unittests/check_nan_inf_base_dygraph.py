@@ -12,105 +12,114 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
+import argparse
 
 import numpy as np
-
-os.environ["FLAGS_check_nan_inf"] = "1"
-os.environ["GLOG_vmodule"] = "nan_inf_utils_detail=10"
 
 import paddle
 from paddle import nn
 
+# os.environ["GLOG_vmodule"] = "nan_inf_utils_detail=10"
+
+
+paddle.seed(0)
 np.random.seed(0)
-
-
-def generator():
-    batch_size = 5
-    for i in range(5):
-        curr_train_x = np.random.randint(
-            batch_size, size=(batch_size, 3)
-        ).astype("float32")
-        if i >= 2:
-            curr_train_x[0, :] = np.nan
-            curr_train_x[-1, :] = np.inf
-        res = []
-        for i in range(batch_size):
-            y = i % 3
-            res.append([y])
-        y_label = np.array(res).astype('int64')
-        yield [curr_train_x, y_label]
 
 
 class TestLayer(nn.Layer):
     def __init__(self):
         super().__init__()
-        self.linear1 = nn.Linear(3, 400)
-        self.linear2 = nn.Linear(400, 400)
-        self.linear3 = nn.Linear(400, 3)
-
-    def forward(self, x):
-        x = self.linear1(x)
-        x = nn.functional.sigmoid(x)
-        x = self.linear2(x)
-        x = nn.functional.sigmoid(x)
-        x = self.linear3(x)
-        x = nn.functional.softmax(x)
-
-        return x
-
-
-def check(use_cuda):
-    paddle.set_device('gpu' if use_cuda else 'cpu')
-
-    net = TestLayer()
-    sgd = paddle.optimizer.SGD(learning_rate=0.05, parameters=net.parameters())
-
-    for step, (x, y) in enumerate(generator()):
-        x = paddle.to_tensor(x)
-        y = paddle.to_tensor(y)
-
-        zero = paddle.zeros(shape=[1], dtype='int64')
-        fp16_zero = paddle.cast(zero, dtype='float16')
-
-        y = y + zero
-
-        y_pred = net(x)
-
-        cost = nn.functional.cross_entropy(y_pred, y, use_softmax=False)
-        avg_cost = paddle.mean(cost)
-
-        acc_top1 = paddle.metric.accuracy(input=y_pred, label=y, k=1)
-
-        print(
-            'iter={:.0f}, cost={}, acc1={}'.format(
-                step, avg_cost.numpy(), acc_top1.numpy()
-            )
+        w_1_np = np.random.random([32, 400]).astype("float32")
+        self.linear1 = nn.Linear(
+            in_features=32,
+            out_features=400,
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Assign(w_1_np)
+            ),
+        )
+        w_2_np = np.random.random([400, 10]).astype("float32")
+        self.linear2 = nn.Linear(
+            in_features=400,
+            out_features=10,
+            weight_attr=paddle.ParamAttr(
+                initializer=paddle.nn.initializer.Assign(w_2_np)
+            ),
         )
 
-        sgd.step()
-        sgd.clear_grad()
+    def forward(self, x):
+        out = self.linear1(x)
+        out = nn.functional.sigmoid(out)
+        out = self.linear2(out)
+        mask = paddle.randint(low=0, high=2, shape=out.shape).astype("float32")
+        out = paddle.divide(out, mask)
+        out = nn.functional.softmax(out)
+        return out
 
 
-def run_check():
-    if paddle.is_compiled_with_cuda():
-        try:
-            check(use_cuda=True)
-            raise AssertionError()
-        except Exception as e:
-            print(e)
-            print(type(e))
-            # Note. Enforce in cuda kernel may not catch in paddle, and
-            # Exception type will be RuntimeError
-            assert type(e) == OSError or type(e) == RuntimeError
-    try:
-        check(use_cuda=False)
-        raise AssertionError()
-    except Exception as e:
-        print(e)
-        print(type(e))
-        assert type(e) == RuntimeError
+def check_main(use_cuda, use_amp=False):
+    paddle.set_device('gpu' if use_cuda else 'cpu')
+
+    model = TestLayer()
+    sgd = paddle.optimizer.SGD(
+        learning_rate=0.05, parameters=model.parameters()
+    )
+
+    if use_cuda and use_amp:
+        scaler = paddle.amp.GradScaler()
+
+    x_np = 10000 * np.random.random([128, 32]).astype("float32")
+
+    x = paddle.to_tensor(x_np)
+    if use_cuda and use_amp:
+        with paddle.amp.auto_cast(enable=True, dtype="float16", level="O1"):
+            out = model(x)
+            loss = paddle.mean(out)
+        scaled = scaler.scale(loss)
+        scaled.backward()
+        scaler.minimize(sgd, scaled)
+    else:
+        out = model(x)
+        loss = paddle.mean(out)
+        loss.backward()
+    sgd.step()
+    sgd.clear_grad()
+
+
+def run_check(args):
+    paddle.set_flags(
+        {
+            "FLAGS_check_nan_inf": 1,
+            "FLAGS_check_nan_inf_level": args.check_nan_inf_level,
+        }
+    )
+    use_cuda = args.use_cuda and paddle.is_compiled_with_cuda()
+    if args.check_nan_inf_level == 0:
+        if use_cuda:
+            try:
+                check_main(use_cuda=True, use_amp=args.use_amp)
+                raise AssertionError()
+            except Exception as e:
+                print(e)
+                print(type(e))
+                # Note. Enforce in cuda kernel may not catch in paddle, and
+                # Exception type will be RuntimeError
+                assert type(e) == OSError or type(e) == RuntimeError
+        else:
+            try:
+                check_main(use_cuda=False, use_amp=False)
+                raise AssertionError()
+            except Exception as e:
+                print(e)
+                print(type(e))
+                assert type(e) == RuntimeError
+    else:
+        check_main(use_cuda=use_cuda, use_amp=args.use_amp)
 
 
 if __name__ == '__main__':
-    run_check()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--use_cuda', action='store_true', default=False)
+    parser.add_argument('--use_amp', action='store_true', default=False)
+    parser.add_argument('--check_nan_inf_level', type=int, default=0)
+    args = parser.parse_args()
+    run_check(args)
