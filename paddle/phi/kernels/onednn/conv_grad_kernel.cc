@@ -235,6 +235,30 @@ void Conv3DGradKernel(const Context& dev_ctx,
                              filter_grad);
 }
 
+KernelKey ConvGradGetKernelTypeForVar(const GetKernelTypeForVarContext* ctx) {
+  const std::string& var_name = ctx->GetVarName();
+  const DenseTensor& tensor = ctx->GetTensor();
+  const KernelKey& expected_kernel_type = ctx->GetKernelKey();
+  const AttributeMap& attrs = ctx->GetAttrs();
+  // Only input require reshaping, weights and
+  // bias are having shape in NCHW order
+  if (((var_name == "Input") ||
+       (var_name == framework::GradVarName("Output"))) &&
+      (expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
+      (tensor.layout() != phi::DataLayout::ONEDNN)) {
+    auto it = attrs.find("data_layout");
+    const std::string data_layout = PADDLE_GET_CONST(std::string, it->second);
+    auto dl = phi::StringToDataLayout(data_format);
+    // Some models may have intentionally set "AnyLayout" for pool
+    // op. Treat this as NCHW (default data_format value)
+    if (dl != phi::DataLayout::kAnyLayout) {
+      return phi::KernelKey(tensor.place(), dl, expected_kernel_type.dtype());
+    }
+  }
+  return phi::KernelKey(
+      tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(conv2d_grad,
@@ -242,13 +266,19 @@ PD_REGISTER_KERNEL(conv2d_grad,
                    ONEDNN,
                    phi::ConvGradKernel,
                    float,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16) {
+  kernel->get_kerneltype_forvar_fn_ = phi::ConvGradGetKernelTypeForVar;
+}
 
 PD_REGISTER_KERNEL(depthwise_conv2d_grad,
                    OneDNN,
                    ONEDNN,
                    phi::DepthwiseConvGradKernel,
                    float,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16) {
+  kernel->get_kerneltype_forvar_fn_ = phi::ConvGradGetKernelTypeForVar;
+}
 
-PD_REGISTER_KERNEL(conv3d_grad, OneDNN, ONEDNN, phi::Conv3DGradKernel, float) {}
+PD_REGISTER_KERNEL(conv3d_grad, OneDNN, ONEDNN, phi::Conv3DGradKernel, float) {
+  kernel->get_kerneltype_forvar_fn_ = phi::ConvGradGetKernelTypeForVar;
+}

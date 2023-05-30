@@ -29,31 +29,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-// Base convolution operator definitions for other conv
-// like operators to reuse the implementation.
-inline int ConvOutputSize(
-    int input_size, int filter_size, int dilation, int padding, int stride) {
-  const int dkernel = dilation * (filter_size - 1) + 1;
-  int output_size = (input_size + 2 * padding - dkernel) / stride + 1;
-  PADDLE_ENFORCE_GT(
-      output_size,
-      0,
-      platform::errors::InvalidArgument(
-          "The output's size is expected to be greater than 0. "
-          "But received: output's size is %d. The output's size is computed by "
-          "((input_size + 2 * padding - (dilation * (filter_size - 1) + 1)) / "
-          "stride + 1), where input_size is %d, padding is %d, "
-          "filter_size is %d, dilation is %d, stride is %d.",
-          output_size,
-          input_size,
-          padding,
-          filter_size,
-          dilation,
-          stride));
-
-  return output_size;
-}
-
 inline int ConvOutputSize(int input_size,
                           int filter_size,
                           int dilation,
@@ -133,102 +108,6 @@ inline void UpdatePaddingAndDilation(std::vector<T>* paddings,
     }
   }
 }
-
-inline bool IsExpand(const std::vector<int64_t>& filter_dim,
-                     const std::vector<int>& strides,
-                     const std::vector<int>& paddings,
-                     const std::vector<int>& dilations) {
-  bool filter_1 = true, strides_1 = true, padding_0 = true, dilation_1 = true;
-  for (size_t j = 0; j < strides.size(); ++j) {
-    filter_1 = filter_1 && (static_cast<int>(filter_dim[j + 2]) == 1);
-    strides_1 = strides_1 && (strides[j] == 1);
-    padding_0 = padding_0 && (paddings[j] == 0);
-    dilation_1 = dilation_1 && (dilations[j] == 1);
-  }
-  if (paddings.size() != strides.size()) {
-    for (size_t j = 0; j < paddings.size(); ++j) {
-      padding_0 = padding_0 && (paddings[j] == 0);
-    }
-  }
-  return !(filter_1 && strides_1 && padding_0 && dilation_1);
-}
-
-// Define Op classes in .h file so that other conv
-// operator implementations can reuse the code.
-class Conv2DOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() final;
-
- protected:
-  virtual void Apply() {}
-};
-
-class Conv3DOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() final;
-
- protected:
-  virtual void Apply() {}
-};
-
-class ConvOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
- protected:
-  std::unordered_map<std::string, std::string>& GetInputOutputWithSameType()
-      const override {
-    static std::unordered_map<std::string, std::string> m{
-        {"Input", /*->*/ "Output"}};
-    return m;
-  }
-};
-
-class ConvOp : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    std::vector<int64_t> output_shape = ComputeOutputShape(ctx);
-
-    OP_INOUT_CHECK(ctx->HasOutput("Output"), "Output", "Output", "Conv");
-    ctx->SetOutputDim("Output", phi::make_ddim(output_shape));
-    ctx->ShareLoD("Input", "Output");
-  }
-
- protected:
-  std::vector<int64_t> ComputeOutputShape(
-      framework::InferShapeContext* ctx) const;
-
-  phi::KernelKey GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override;
-
-  phi::KernelKey GetKernelTypeForVar(
-      const std::string& var_name,
-      const phi::DenseTensor& tensor,
-      const phi::KernelKey& expected_kernel_type) const override;
-};
-
-class ConvOpGrad : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext* ctx) const override;
-
- protected:
-  phi::KernelKey GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override;
-
-  phi::KernelKey GetKernelTypeForVar(
-      const std::string& var_name,
-      const phi::DenseTensor& tensor,
-      const phi::KernelKey& expected_kernel_type) const override;
-};
-
-class ConvOpDoubleGrad : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext* ctx) const override;
-
- protected:
-  phi::KernelKey GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override;
-};
 
 }  // namespace operators
 }  // namespace paddle
