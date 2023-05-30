@@ -52,9 +52,9 @@ KernelSignature HardSwishOpArgumentMapping(
   return KernelSignature("hardswish", {"X"}, {}, {"Out"});
 }
 
-KernelSignature SwishOpArgumentMapping(const ArgumentMappingContext& ctx) {
-  return KernelSignature("swish", {"X"}, {}, {"Out"});
-}
+KernelSignature SwishOpArgumentMapping(
+    const ArgumentMappingContext& ctx UNUSED) {
+  return KernelSignature("swish", {"X"}, {"beta"}, {"Out"});
 
 }  // namespace phi
 
