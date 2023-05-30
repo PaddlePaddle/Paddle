@@ -644,71 +644,31 @@ void LayerNormKernel(const Context &dev_ctx,
             y_data);                                                         \
   } break
 
-#define PADDLE_LAUNCH_FAST_LAYERNORM_FWD(ScaleT)       \
-  PADDLE_LAUNCH_FAST_LAYERNORM_FWD_BASE(ScaleT, 768);  \
-  PADDLE_LAUNCH_FAST_LAYERNORM_FWD_BASE(ScaleT, 1024); \
-  PADDLE_LAUNCH_FAST_LAYERNORM_FWD_BASE(ScaleT, 1280); \
-  PADDLE_LAUNCH_FAST_LAYERNORM_FWD_BASE(ScaleT, 1536); \
-  PADDLE_LAUNCH_FAST_LAYERNORM_FWD_BASE(ScaleT, 1792); \
-  PADDLE_LAUNCH_FAST_LAYERNORM_FWD_BASE(ScaleT, 2048); \
-  PADDLE_LAUNCH_FAST_LAYERNORM_FWD_BASE(ScaleT, 4096)
-
 #ifdef PADDLE_WITH_CUDA
-  bool can_call_fast_kernel = false;
-  if ((feature_size >= 768 && feature_size <= 2048 && feature_size % 256 == 0 ||
-       feature_size == 4096) &&
-      scale != nullptr && bias != nullptr) {
-    // can_call_fast_kernel = true;
-    can_call_fast_kernel = false;
-  }
 
-  if (can_call_fast_kernel) {
-    if (is_scale_bias_same_dtype_with_x) {
-      switch (feature_size) {
-        PADDLE_LAUNCH_FAST_LAYERNORM_FWD(T);
-        default:
-          PADDLE_THROW(phi::errors::InvalidArgument(
-              "Only when feature_size is from 256 to 4096 and is diviaible by "
-              "256 is supported "
-              "now"));
-          break;
-      }
-    } else {
-      switch (feature_size) {
-        PADDLE_LAUNCH_FAST_LAYERNORM_FWD(U);
-        default:
-          PADDLE_THROW(phi::errors::InvalidArgument(
-              "Only when feature_size is from 256 to 4096 and is diviaible by "
-              "is supported "
-              "now"));
-          break;
-      }
-    }
+  // WarpShuffle intrinsics is involved in LaunchLayerNormKernel.
+  if (feature_size <= 1024 && (!std::is_same<T, int8_t>::value)) {
+    LaunchLayerNormKernel<Context, T, U>(dev_ctx,
+                                         x_data,
+                                         y_data,
+                                         void_scale_data,
+                                         void_bias_data,
+                                         mean_data,
+                                         var_data,
+                                         epsilon,
+                                         batch_size,
+                                         feature_size,
+                                         valid_scale,
+                                         valid_bias,
+                                         is_scale_bias_same_dtype_with_x);
   } else {
-    // WarpShuffle intrinsics is involved in LaunchLayerNormKernel.
-    if (feature_size <= 1024 && (!std::is_same<T, int8_t>::value)) {
-      LaunchLayerNormKernel<Context, T, U>(dev_ctx,
-                                           x_data,
-                                           y_data,
-                                           void_scale_data,
-                                           void_bias_data,
-                                           mean_data,
-                                           var_data,
-                                           epsilon,
-                                           batch_size,
-                                           feature_size,
-                                           valid_scale,
-                                           valid_bias,
-                                           is_scale_bias_same_dtype_with_x);
-    } else {
 #endif
-      if (is_scale_bias_same_dtype_with_x) {
-        PADDLE_LAUNCH_LAYERNORM_FWD(T, true);
-      } else {
-        PADDLE_LAUNCH_LAYERNORM_FWD(U, false);
-      }
-#ifdef PADDLE_WITH_CUDA
+    if (is_scale_bias_same_dtype_with_x) {
+      PADDLE_LAUNCH_LAYERNORM_FWD(T, true);
+    } else {
+      PADDLE_LAUNCH_LAYERNORM_FWD(U, false);
     }
+#ifdef PADDLE_WITH_CUDA
   }
 #endif
 
