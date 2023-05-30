@@ -25,16 +25,16 @@ namespace phi {
 
 #ifdef _MSC_VER
 template<typename T>
-__global__ typename std::enable_if<std::is_integral<T>::value, bool>::type isnan_(T x) {
+__host__ __device__ typename std::enable_if<std::is_integral<T>::value, bool>::type isnan_(T x) {
   return false;
 }
 template<typename T>
-__global__ typename std::enable_if<!std::is_integral<T>::value, bool>::type isnan_(T x) {
+__host__ __device__ typename std::enable_if<!std::is_integral<T>::value, bool>::type isnan_(T x) {
   return std::isnan(x);
 }
 #else
 template<typename T>
-__global__ bool isnan_(T x) {
+__host__ __device__ bool isnan_(T x) {
   return std::isnan(x);
 }
 #endif
