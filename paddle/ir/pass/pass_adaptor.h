@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/pass/pass.h"
+#include "paddle/ir/pass/pass.h"
 
 namespace ir {
 
@@ -30,16 +30,22 @@ class PassAdaptor final : public Pass {
 
   void Run(ir::Operation*) override {}
 
-  void Run(ir::Operation*, uint8_t opt_level);
+  void Run(ir::Operation*, uint8_t opt_level, bool verify);
 
  private:
-  void RunImpl(ir::Operation* op, uint8_t opt_level);
+  void RunImpl(ir::Operation* op, uint8_t opt_level, bool verify);
 
-  static bool RunPass(Pass* pass, ir::Operation* op, uint8_t opt_level);
+  static bool RunPass(Pass* pass,
+                      ir::Operation* op,
+                      AnalysisManager am,
+                      uint8_t opt_level,
+                      bool verify);
 
   static bool RunPipeline(const PassManager& pm,
                           ir::Operation* op,
-                          uint8_t opt_level);
+                          AnalysisManager am,
+                          uint8_t opt_level,
+                          bool verify);
 
   // Use for RunImpl later.
   PassManager* pm_;
