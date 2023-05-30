@@ -2001,7 +2001,7 @@ struct Log {
   using U = typename std::conditional_t<std::is_integral<T>::value, float, T>;
 
   HOSTDEVICE U operator()(const T& val) const {
-    return static_cast<U>(std::log(val));
+    return static_cast<U>(std::log(static_cast<U>(val)));
   }
 };
 
@@ -2047,7 +2047,7 @@ struct Log2 {
   using U = typename std::conditional_t<std::is_integral<T>::value, float, T>;
 
   HOSTDEVICE U operator()(const T& val) const {
-    return static_cast<U>(std::log2(val));
+    return static_cast<U>(std::log2(static_cast<U>(val)));
   }
 };
 
@@ -2094,7 +2094,7 @@ struct Log10 {
   using U = typename std::conditional_t<std::is_integral<T>::value, float, T>;
 
   HOSTDEVICE U operator()(const T& val) const {
-    return static_cast<U>(std::log10(val));
+    return static_cast<U>(std::log10(static_cast<U>(val)));
   }
 };
 
@@ -2145,7 +2145,7 @@ struct Log1p {
   using U = typename std::conditional_t<std::is_integral<T>::value, float, T>;
 
   HOSTDEVICE U operator()(const T& val) const {
-    return static_cast<U>(std::log1p(val));
+    return static_cast<U>(std::log1p(static_cast<U>(val)));
   }
 };
 
