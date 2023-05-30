@@ -311,11 +311,44 @@ int TrtEmbeddingEltwiseLayerNormFusePass::BuildFusion(
 
     std::vector<std::string> ids;
     std::vector<std::string> embs;
+
+    auto ids0_shape = start_pattern_in_nodes[i][0].first->Var()->GetShape();
+
     for (size_t iter = 0; iter < start_pattern_in_nodes[i].size(); ++iter) {
+      auto ids_shape = start_pattern_in_nodes[i][iter].first->Var()->GetShape();
+      if (ids_shape.size() != ids0_shape.size()) {
+        VLOG(3) << "Shape check failed, ids'rank are not all equal, stop "
+                   "trt_embedding_eltwise_layernorm_fuse_pass.";
+        return fusion_count;
+      } else {
+        for (size_t j = 0; j < ids_shape.size(); ++j) {
+          if (ids_shape[j] != ids0_shape[j]) {
+            VLOG(3)
+                << "Shape check failed, ids.shape[i] are not all equal, stop "
+                   "trt_embedding_eltwise_layernorm_fuse_pass.";
+            return fusion_count;
+          }
+        }
+      }
       ids.push_back(start_pattern_in_nodes[i][iter].first->Name());
       embs.push_back(start_pattern_in_nodes[i][iter].second->Name());
     }
     for (size_t iter = 0; iter < js.size(); ++iter) {
+      auto ids_shape = inner_pattern_ins[js[iter]].first->Var()->GetShape();
+      if (ids_shape.size() != ids0_shape.size()) {
+        VLOG(3) << "Shape check failed, ids'rank are not all equal, stop "
+                   "trt_embedding_eltwise_layernorm_fuse_pass.";
+        return fusion_count;
+      } else {
+        for (size_t j = 0; j < ids_shape.size(); ++j) {
+          if (ids_shape[j] != ids0_shape[j]) {
+            VLOG(3)
+                << "Shape check failed, ids.shape[i] are not all equal, stop "
+                   "trt_embedding_eltwise_layernorm_fuse_pass.";
+            return fusion_count;
+          }
+        }
+      }
       ids.push_back(inner_pattern_ins[js[iter]].first->Name());
       embs.push_back(inner_pattern_ins[js[iter]].second->Name());
     }
