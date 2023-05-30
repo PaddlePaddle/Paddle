@@ -80,31 +80,40 @@ double host_pow(double base, double exponent) { return pow(base, exponent); }
 
 template <typename T>
 struct PNormGradScalarDirectCUDAFunctor {
-  const T scalar_;
+  const T* y_;
+  const T* dy_;
+  const T epsilon_;
   const T porder_;
 
-  HOSTDEVICE inline PNormGradScalarDirectCUDAFunctor(const T scalar,
+  HOSTDEVICE inline PNormGradScalarDirectCUDAFunctor(const T* y,
+                                                     const T* dy,
+                                                     const T epsilon,
                                                      const T porder)
-      : scalar_(scalar), porder_(porder) {}
+      : y_(y),
+        dy_(dy),
+        epsilon_(epsilon),
+        porder_(porder - static_cast<T>(1.)) {}
 
   HOSTDEVICE inline T operator()(const T x) const {
+    const T scalar =
+        dy_[0] * inline_pow(y_[0] + epsilon_, static_cast<T>(-1) * porder_);
     return static_cast<T>(static_cast<T>(inline_sign(x)) *
-                          inline_pow(inline_abs(x), porder_) * scalar_);
+                          inline_pow(inline_abs(x), porder_) * scalar);
   }
 };
 
 template <typename T>
 struct InfinityNormGradScalarDirectCUDAFunctor {
-  const T y_;
-  const T dy_;
+  const T* y_;
+  const T* dy_;
 
-  HOSTDEVICE inline InfinityNormGradScalarDirectCUDAFunctor(const T y,
-                                                            const T dy)
+  HOSTDEVICE inline InfinityNormGradScalarDirectCUDAFunctor(const T* y,
+                                                            const T* dy)
       : y_(y), dy_(dy) {}
 
   HOSTDEVICE inline T operator()(const T x) const {
-    return static_cast<T>(dy_ * static_cast<T>(inline_sign(x)) *
-                          static_cast<T>((inline_abs(x) == y_)));
+    return static_cast<T>(dy_[0] * static_cast<T>(inline_sign(x)) *
+                          static_cast<T>((inline_abs(x) == y_[0])));
   }
 };
 
@@ -123,7 +132,7 @@ struct PNormGradTensorDirectCUDAFunctor {
 
   HOSTDEVICE inline PNormGradTensorDirectCUDAFunctor(const T epsilon,
                                                      const T porder)
-      : epsilon_(epsilon), porder_(porder) {}
+      : epsilon_(epsilon), porder_(porder - static_cast<T>(1.)) {}
 
   HOSTDEVICE inline T operator()(const T x, const T y, const T dy) const {
     return static_cast<T>(
@@ -152,32 +161,78 @@ void PNormGradKernel(const Context& dev_ctx,
     std::vector<DenseTensor*> outputs = {x_grad};
     if (reduce_all) {
       std::vector<const DenseTensor*> inputs = {&x};
+
+      const T* out_ptr = out.data<T>();
+      const T* out_grad_ptr = out_grad.data<T>();
       if (porder == INFINITY || porder == -INFINITY) {
-        auto functor = InfinityNormGradScalarDirectCUDAFunctor<T>(
-            static_cast<T>((*out.data<T>())),
-            static_cast<T>((*out_grad.data<T>())));
+        auto functor =
+            InfinityNormGradScalarDirectCUDAFunctor<T>(out_ptr, out_grad_ptr);
         funcs::ElementwiseKernel<T>(dev_ctx, inputs, &outputs, functor);
       } else {
-        auto functor = PNormGradScalarDirectCUDAFunctor<T>(
-            static_cast<T>(static_cast<T>((*out_grad.data<T>())) *
-                           host_pow(static_cast<T>((*out.data<T>())) +
-                                        static_cast<T>(epsilon),
-                                    static_cast<T>(-1.0 * porder))),
-            static_cast<T>(porder));
+        auto functor =
+            PNormGradScalarDirectCUDAFunctor<T>(out_ptr,
+                                                out_grad_ptr,
+                                                static_cast<T>(epsilon),
+                                                static_cast<T>(porder));
         funcs::ElementwiseKernel<T>(dev_ctx, inputs, &outputs, functor);
       }
     } else {
-      std::vector<const DenseTensor*> inputs = {&x, &out, &out_grad};
+      if (axis < 0) axis += x.dims().size();
+      std::vector<int> shape;
+      for (int i = 0; i < x.dims().size(); i++) {
+        if (i < axis) {
+          shape.push_back(out.dims()[i]);
+        } else if (i == axis) {
+          shape.push_back(1);
+        } else {
+          shape.push_back(out.dims()[i - 1]);
+        }
+      }
+      DenseTensor out_copy(out);
+      DenseTensor out_grad_copy(out_grad);
+      if (!keepdim) {
+        DDim dims = phi::make_ddim(shape);
+        out_copy.Resize(dims);
+        out_grad_copy.Resize(dims);
+      }
+      std::vector<const DenseTensor*> inputs = {&x, &out_copy, &out_grad_copy};
       if (porder == INFINITY || porder == -INFINITY) {
         auto functor = InfinityNormGradTensorDirectCUDAFunctor<T>();
-        funcs::BroadcastKernel<T>(dev_ctx, inputs, &outputs, functor, 0);
+        funcs::BroadcastKernel<T>(dev_ctx, inputs, &outputs, functor);
       } else {
         auto functor = PNormGradTensorDirectCUDAFunctor<T>(
             static_cast<T>(epsilon), static_cast<T>(porder));
-        funcs::BroadcastKernel<T>(dev_ctx, inputs, &outputs, functor, 0);
+        funcs::BroadcastKernel<T>(dev_ctx, inputs, &outputs, functor);
       }
     }
   }
+  // TODO(zbt):
+  //     Solve the problem:"AssertionError: This test of p_norm op needs
+  //     check_grad." ;
+  // Solve the problem:"For Tensor contain only one element,
+  //     Please modify  'Tensor.numpy()[0]' to 'float(Tensor)' as soon as
+  //     possible"
+
+  // bool bool_sign = false;
+  // std::vector<int> shape;
+  // for (int i = 0; i < x_grad->dims().size(); i++) {
+  //   if (!bool_sign && x_grad->dims()[i] == 1) {
+  //   } else {
+  //     bool_sign = true;
+  //     shape.push_back(x_grad->dims()[i]);
+  //   }
+  // }
+  // DDim dims = phi::make_ddim(shape);
+  // x_grad->Resize(dims);
+
+  // if (x_grad->dims()[0] == 1) {
+  //   std::vector<int> shape;
+  //   for (int i = 1; i < x_grad->dims().size(); i++) {
+  //     shape.push_back(x_grad->dims()[i]);
+  //   }
+  //   DDim dims = phi::make_ddim(shape);
+  //   x_grad->Resize(dims);
+  // }
 }
 }  // namespace phi
 PD_REGISTER_KERNEL(p_norm_grad,
