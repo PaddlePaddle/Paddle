@@ -115,25 +115,27 @@ HOSTDEVICE void PrintForDifferentLevel(const char* debug_info,
 }
 
 template <typename T, typename MT>
-void PrintForDifferentLevelFile(const char* debug_info,
-                                int64_t numel,
-                                int64_t num_nan,
-                                int64_t num_inf,
-                                int64_t num_zero,
-                                MT max_value,
-                                MT min_value,
-                                MT mean_value,
-                                int check_nan_inf_level,
-                                const std::string& log_name,
-                                const std::string output_filepath) {
-  int dev_id = 0;
-
-  MKDIR(output_filepath.c_str());
-  std::string filename = "worker_" + log_name + "." + std::to_string(dev_id);
-  std::ofstream outfile(output_filepath + filename, std::ios::app);
-  if (!outfile.is_open()) {
-    return;
-  }
+void WriteToFileForDifferentLevel(const char* debug_info,
+                                  int64_t numel,
+                                  int64_t num_nan,
+                                  int64_t num_inf,
+                                  int64_t num_zero,
+                                  MT max_value,
+                                  MT min_value,
+                                  MT mean_value,
+                                  int check_nan_inf_level,
+                                  const std::string& log_name,
+                                  const std::string output_dir) {
+  MKDIR(output_dir.c_str());
+  std::string filename = output_dir + "worker_" + log_name;
+  std::ofstream outfile(filename, std::ios::app);
+  PADDLE_ENFORCE_EQ(
+      outfile.is_open(),
+      true,
+      phi::errors::Unavailable("Fail to open output file %s, please check the "
+                               "specified output_dir (%s).",
+                               filename,
+                               output_dir));
 
   if (num_nan > 0 || num_inf > 0) {
     outfile << "[PRECISION] [ERROR] in " << debug_info
@@ -196,7 +198,7 @@ static void CheckNumericsCpuImpl(const T* value_ptr,
                                  const std::string& cpu_hint_str,
                                  const int check_nan_inf_level,
                                  const std::string log_name = "cpu",
-                                 const std::string output_filepath = "") {
+                                 const std::string output_dir = "") {
   using MT = typename phi::dtype::template MPTypeTrait<T>::Type;
 
 #ifdef _OPENMP
@@ -262,30 +264,29 @@ static void CheckNumericsCpuImpl(const T* value_ptr,
   }
 
   // Write log to file
-  if (output_filepath.size() > 0) {
-    PrintForDifferentLevelFile<T, MT>(cpu_hint_str.c_str(),
-                                      numel,
-                                      num_nan,
-                                      num_inf,
-                                      num_zero,
-                                      max_value,
-                                      min_value,
-                                      mean_value,
-                                      check_nan_inf_level,
-                                      log_name,
-                                      output_filepath);
-    return;
+  if (output_dir.size() > 0) {
+    WriteToFileForDifferentLevel<T, MT>(cpu_hint_str.c_str(),
+                                        numel,
+                                        num_nan,
+                                        num_inf,
+                                        num_zero,
+                                        max_value,
+                                        min_value,
+                                        mean_value,
+                                        check_nan_inf_level,
+                                        log_name,
+                                        output_dir);
+  } else {
+    PrintForDifferentLevel<T, MT>(cpu_hint_str.c_str(),
+                                  numel,
+                                  num_nan,
+                                  num_inf,
+                                  num_zero,
+                                  max_value,
+                                  min_value,
+                                  mean_value,
+                                  check_nan_inf_level);
   }
-
-  PrintForDifferentLevel<T, MT>(cpu_hint_str.c_str(),
-                                numel,
-                                num_nan,
-                                num_inf,
-                                num_zero,
-                                max_value,
-                                min_value,
-                                mean_value,
-                                check_nan_inf_level);
 }
 
 template <
@@ -298,7 +299,7 @@ void CheckNumericsCpuImpl(const T* value_ptr,
                           const std::string& cpu_hint_str,
                           const int check_nan_inf_level,
                           const std::string log_name = "cpu",
-                          const std::string output_filepath = "") {
+                          const std::string output_dir = "") {
   using RealType = typename T::value_type;
 
   RealType real_sum = 0.0f, imag_sum = 0.0f;

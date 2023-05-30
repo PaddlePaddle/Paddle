@@ -28,14 +28,12 @@ class TestNanInfDirCheckResult(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    def generate_inputs(self, shape, dtype="float32"):
+    def generate_inputs(self, shape, low=0, high=1, dtype="float32"):
         data = np.random.random(size=shape).astype(dtype)
-        # [-10, 10)
-        x = (data * 20 - 10) * np.random.randint(
+        x = (data * (high - low) + low) * np.random.randint(
             low=0, high=2, size=shape
         ).astype(dtype)
-        y = np.random.randint(low=0, high=2, size=shape).astype(dtype)
-        return x, y
+        return x
 
     def get_reference_num_nan_inf(self, x):
         out = np.log(x)
@@ -50,6 +48,7 @@ class TestNanInfDirCheckResult(unittest.TestCase):
         else:
             paddle.device.set_device("cpu")
         x = paddle.to_tensor(x_np)
+        x = x * 0.5
         out = paddle.log(x)
         if use_cuda:
             paddle.device.cuda.synchronize()
@@ -84,7 +83,7 @@ class TestNanInfDirCheckResult(unittest.TestCase):
         )
         return num_nan, num_inf
 
-    def check_num_nan_inf(self, use_cuda, subdir):
+    def check_num_nan_inf(self, x_np, use_cuda, subdir):
         output_dir = self.temp_dir.name + "/" + subdir
         print(f"-- output_dir: {output_dir}")
         checker_config = paddle.amp.debugging.TensorCheckerConfig(
@@ -94,10 +93,7 @@ class TestNanInfDirCheckResult(unittest.TestCase):
         )
         paddle.amp.debugging.enable_tensor_checker(checker_config)
 
-        shape = [32, 32]
-        x_np, _ = self.generate_inputs(shape)
         num_nan_np, num_inf_np = self.get_reference_num_nan_inf(x_np)
-
         num_nan, num_inf = self.get_num_nan_inf(
             x_np,
             use_cuda,
@@ -109,10 +105,14 @@ class TestNanInfDirCheckResult(unittest.TestCase):
         paddle.amp.debugging.disable_tensor_checker()
 
     def test_num_nan_inf(self):
-        self.check_num_nan_inf(use_cuda=False, subdir="check_nan_inf_dir_cpu")
+        shape = [32, 32]
+        x_np = self.generate_inputs(shape, -10, 10)
+        self.check_num_nan_inf(
+            x_np, use_cuda=False, subdir="check_nan_inf_dir_cpu"
+        )
         if paddle.fluid.core.is_compiled_with_cuda():
             self.check_num_nan_inf(
-                use_cuda=True, subdir="check_nan_inf_dir_gpu"
+                x_np, use_cuda=True, subdir="check_nan_inf_dir_gpu"
             )
 
 

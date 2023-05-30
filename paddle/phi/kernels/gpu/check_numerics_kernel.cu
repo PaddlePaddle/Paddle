@@ -423,29 +423,30 @@ void CheckNumericsKernel(const Context& ctx,
                          const std::string& op_type,
                          const std::string& var_name,
                          const int stack_height_limit,
-                         const std::string& output_filepath) {
+                         const std::string& output_dir) {
   std::call_once(init_multi_gpu_op_var_map_flag, InitMultiGPUOpVarMap);
 
   int dev_id = tensor.place().device;
-  VLOG(6) << "check op_type=" << op_type << ", var_name=" << var_name
+  VLOG(6) << "op_type=" << op_type << ", var_name=" << var_name
           << ", dev_id=gpu:" << dev_id
           << ", stack_height_limit=" << stack_height_limit
-          << ", output_filepath=" << output_filepath;
+          << ", output_dir=" << output_dir;
 
-  // Write log to output_filepath.
-  if (output_filepath.size() > 0) {
+  // Write log to output_dir.
+  if (output_dir.size() > 0) {
     phi::DenseTensor cpu_tensor;
     cpu_tensor.Resize(tensor.dims());
     // Copy tensor from GPU to CPU.
     phi::Copy(ctx, tensor, CPUPlace(), true, &cpu_tensor);
     const std::string debug_info =
         GetHintString<T>(op_type, var_name, tensor.place(), dev_id);
+    std::string log_name = "gpu." + std::to_string(dev_id);
     phi::funcs::CheckNumericsCpuImpl(cpu_tensor.data<T>(),
                                      tensor.numel(),
                                      debug_info,
                                      FLAGS_check_nan_inf_level,
-                                     "gpu",
-                                     output_filepath);
+                                     log_name,
+                                     output_dir);
     return;
   }
 

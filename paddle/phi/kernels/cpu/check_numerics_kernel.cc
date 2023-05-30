@@ -29,7 +29,7 @@ void CheckNumericsKernel(const Context& ctx,
                          const std::string& op_type,
                          const std::string& var_name,
                          const int stack_height_limit,
-                         const std::string& output_filepath) {
+                         const std::string& output_dir) {
   std::string cpu_hint_str =
       phi::funcs::GetCpuHintString<T>(op_type, var_name, tensor.place());
   phi::funcs::CheckNumericsCpuImpl(tensor.data<T>(),
@@ -37,7 +37,7 @@ void CheckNumericsKernel(const Context& ctx,
                                    cpu_hint_str,
                                    FLAGS_check_nan_inf_level,
                                    "cpu",
-                                   output_filepath);
+                                   output_dir);
 }
 
 }  // namespace phi
