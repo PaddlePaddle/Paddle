@@ -355,6 +355,16 @@
   inplace : (x -> out)
   backward : softmax_grad
 
+- op : strided_slice
+  args : (Tensor x, int[] axes, IntArray starts={}, IntArray ends={}, IntArray strides={}, int[] infer_flags={}, int[] decrease_axis={})
+  output : Tensor
+  infer_meta :
+    func : StridedSliceRawInferMeta
+  kernel :
+    func : strided_slice
+    param : [x, axes, starts, ends, strides]
+  backward : strided_slice_grad
+
 - op : tril_indices
   args : (int rows = 0, int cols = 0, int offset = 0, DataType dtype = DataType::INT64)
   output : Tensor(out)
