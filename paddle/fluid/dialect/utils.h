@@ -132,6 +132,15 @@ inline DenseTensorTypeStorage::DataLayout TransToIrDataLayout(
   }
 }
 
+inline phi::DenseTensorMeta TransToDenseTensorMeta(
+    paddle::dialect::DenseTensorType type) {
+  return phi::DenseTensorMeta(TransToPhiDataType(type.dtype()),
+                              phi::make_ddim(type.dim()),
+                              TransToPhiDataLayout(type.data_layout()),
+                              type.lod(),
+                              type.offset());
+}
+
 struct OpInputInfo {
   std::string name;
   std::string type_name;

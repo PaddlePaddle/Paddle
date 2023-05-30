@@ -31,6 +31,8 @@ H_FILE_TEMPLATE = """#ifdef GET_OP_LIST
 
 #include <vector>
 
+#inlcude "paddle/ir/core/builder.h"
+#include "paddle/ir/core/operation_utils.h"
 #include "paddle/ir/core/op_base.h"
 #include "paddle/fluid/dialect/utils.h"
 #include "paddle/fluid/dialect/pd_interface.h"
@@ -50,6 +52,7 @@ class {op_name} : public ir::Op<{op_name}{interfaces}{traits}> {{
   {attribute_declare}
   static constexpr uint32_t attributes_num = {attribute_num};
   static OpInfoTuple GetOpInfo();
+  static void build({build_args});
   static void verify(const std::vector<ir::OpResult> &inputs, const std::vector<ir::Type> &outputs, const ir::AttributeMap &attributes);
 {get_inputs_and_outputs}
 }};
@@ -84,7 +87,7 @@ OP_N_ATTRIBUTE_DEFINED_TEMPLATE = """
 const char *{op_name}::attributes_name[{attribute_num}] = {{ {attribute_names} }};
 """
 
-# get op input info
+# get op info
 OP_INFO_TEMPLATE = """
 OpInfoTuple {op_name}::GetOpInfo() {{
     std::vector<paddle::dialect::OpInputInfo> inputs = {{ {inputs} }};
@@ -93,35 +96,24 @@ OpInfoTuple {op_name}::GetOpInfo() {{
     return std::make_tuple(inputs, attributes, outputs);
 }}
 """
-
-OP_INPUT_INFO_TEMPLATE = """
-std::vector<paddle::dialect::OpInputInfo> {op_name}::inputs_info() {{
-  return {{ {impl} }};
-}}
-"""
 CONSTRUCT_INPUT_INFO_TEMPLATE = (
     """OpInputInfo("{name}", "{typename}", {optional}, {no_need_buffer})"""
 )
-
-# get op output info
-OP_OUTPUT_INFO_TEMPLATE = """
-std::vector<paddle::dialect::OpOutputInfo> {op_name}::outputs_info() {{
-  return {{ {impl} }};
-}}
-"""
 CONSTRUCT_OUTPUT_INFO_TEMPLATE = (
     """OpOutputInfo("{name}", "{typename}", {optional}, {intermediate})"""
 )
-
-# get op attribute info
-OP_ATTRIBUTE_INFO_TEMPLATE = """
-std::vector<paddle::dialect::OpAttributeInfo> {op_name}::attributes_info() {{
-  return {{ {impl} }};
-}}
-"""
 CONSTRUCT_ATTRIBUTE_INFO_TEMPLATE = (
     """OpAttributeInfo("{name}", "{typename}", "{data_type}")"""
 )
+
+# build
+OP_BUILD_TEMPLATE = """
+static void build({build_args}) {{
+  {build_inputs}
+  {build_attributes}
+  {build_outputs}
+}}
+"""
 
 # verify
 OP_VERIFY_TEMPLATE = """
@@ -203,14 +195,10 @@ OUTPUT_OPTIONAL_VECTORTYPE_CHECK_TEMPLATE = """if (outputs[{index}]) {{
   }}
   """
 
-ATTRIBUTE_CHECK_TEMPLATE = """PADDLE_ENFORCE_EQ(attributes.count("{attribute_name}")>0, true,
-                    phi::errors::PreconditionNotMet("The AttributeMap miss mandatory attributes of: {attribute_name}."));
-  PADDLE_ENFORCE_EQ(attributes.at("{attribute_name}").isa<{standard}>(), true,
+ATTRIBUTE_CHECK_TEMPLATE = """PADDLE_ENFORCE_EQ(attributes.count("{attribute_name}")>0 && attributes.at("{attribute_name}").isa<{standard}>(), true,
                     phi::errors::PreconditionNotMet("Type of attribute: {attribute_name} is not right."));
   """
-ATTRIBUTE_VECTOR_CHECK_TEMPLATE = """PADDLE_ENFORCE_EQ(attributes.count("{attribute_name}")>0, true,
-                    phi::errors::PreconditionNotMet("The AttributeMap miss mandatory attributes of: {attribute_name}."));
-  PADDLE_ENFORCE_EQ(attributes.at("{attribute_name}").isa<ir::ArrayAttribute>(), true,
+ATTRIBUTE_VECTOR_CHECK_TEMPLATE = """PADDLE_ENFORCE_EQ(attributes.count("{attribute_name}")>0 && attributes.at("{attribute_name}").isa<ir::ArrayAttribute>(), true,
                     phi::errors::PreconditionNotMet("Type of attribute: {attribute_name} is not right."));
   for (size_t i = 0; i < attributes.at("{attribute_name}").dyn_cast<ir::ArrayAttribute>().size(); i++) {{
     PADDLE_ENFORCE_EQ(attributes.at("{attribute_name}").dyn_cast<ir::ArrayAttribute>()[i].isa<{standard}>(), true,
@@ -267,6 +255,7 @@ class OpInfoParser:
         # parse outputs
         self.output_name_list = self.parse_output_name_list()
         self.output_type_list = self.parse_output_type_list()
+        self.output_size_list = self.parse_output_size_list()
         self.output_optional_list = self.parse_output_optional_list()
         self.output_intermediate_list = self.parse_output_intermediate_list()
         self.cross_check(
@@ -275,10 +264,63 @@ class OpInfoParser:
             self.output_optional_list,
         )
         # parse attributes
+        self.attr_types_map = {
+            'IntArray': ['paddle::dialect::IntArrayAttribute', 'IntArray'],
+            'Scalar': ['paddle::dialect::ScalarAttribute', 'Scalar'],
+            'Scalar(int)': ['paddle::dialect::ScalarAttribute', 'int'],
+            'Scalar(int64_t)': ['paddle::dialect::ScalarAttribute', 'int64_t'],
+            'Scalar(float)': ['paddle::dialect::ScalarAttribute', 'float'],
+            'Scalar(dobule)': ['paddle::dialect::ScalarAttribute', 'dobule'],
+            'Scalar[]': [
+                'ir::ArrayAttribute<paddle::dialect::ScalarAttribute>',
+                'std::vector<Scalar>',
+            ],
+            'int': ['ir::Int32_tAttribute', 'int'],
+            'int32_t': ['ir::Int32_tAttribute', 'int32_t'],
+            'int64_t': ['ir::Int64_tAttribute', 'int64_t'],
+            'long': ['ir::LongAttribute', 'long'],
+            'size_t': ['ir::Size_tAttribute', 'size_t'],
+            'float': ['ir::FloatAttribute', 'float'],
+            'float[]': [
+                'ir::ArrayAttribute<ir::FloatAttribute>',
+                'std::vector<float>',
+            ],
+            'double': ['ir::DoubleAttribute', 'double'],
+            'bool': ['ir::BoolAttribute', 'bool'],
+            'bool[]': [
+                'ir::ArrayAttribute<ir::BoolAttribute>',
+                'std::vecot<bool>',
+            ],
+            'str': ['ir::StrAttribute', 'std::string'],
+            'str[]': ['ir::ArrayAttribute<ir::StrAttribute>', 'std::string'],
+            'Place': ['paddle::dialect::PlaceAttribute', 'Place'],
+            'DataLayout': [
+                'paddle::dialect::DataLayoutAttribute',
+                'DataLayout',
+            ],
+            'DataType': ['paddle::dialect::DataTypeAttribute', 'DataType'],
+            'int64_t[]': [
+                'ir::ArrayAttribute<ir::Int64_tAttribute>',
+                'std::vector<int64_t>',
+            ],
+            'int[]': [
+                'ir::ArrayAttribute<ir::Int32_tAttribute>',
+                'std::vector<int>',
+            ],
+        }
         self.attribute_name_list = self.parse_attribute_name_list()
         self.attribute_type_list = self.parse_attribute_type_list()
+        self.attribute_build_arg_type_list = (
+            self.parse_attribute_build_arg_type_list()
+        )
         self.attribute_data_type_list = self.parse_attribute_data_type_list()
+        self.attribute_default_value_list = (
+            self.parse_attribute_default_value_list()
+        )
         self.cross_check(self.attribute_name_list, self.attribute_type_list)
+
+        # parse infermeta
+        self.infer_meta_map = self.parse_infer_meta_map()
 
     def cross_check(self, name_list, type_list, optional_list=None):
         assert len(name_list) == len(
@@ -288,6 +330,23 @@ class OpInfoParser:
             assert len(type_list) == len(
                 optional_list
             ), "type list size != optional list size."
+
+    def parse_op_phi_name(self):
+        if self.parse_op_inplace_info() is None:
+            return [self.op_yaml_item['name']]
+        else:
+            if self.op_yaml_item['name'][-1] == "_":
+                return [self.op_yaml_item['name']]
+            else:
+                return [
+                    self.op_yaml_item['name'],
+                    self.op_yaml_item['name'] + "_",
+                ]
+
+    def parse_op_inplace_info(self):
+        if 'inplace' in self.op_yaml_item:
+            return self.op_yaml_item['inplace']
+        return None
 
     def parse_input_name_list(self):
         name_list = []
@@ -345,6 +404,15 @@ class OpInfoParser:
             type_list.append(output_type_map[output_info['typename']])
         return type_list
 
+    def parse_output_size_list(self):
+        size_list = []
+        for output_info in self.op_yaml_item['outputs']:
+            if 'size' in output_info:
+                size_list.append(output_info['size'])
+            else:
+                size_list.append(None)
+        return size_list
+
     def parse_output_optional_list(self):
         optional_list = []
         for output_info in self.op_yaml_item['outputs']:
@@ -375,39 +443,36 @@ class OpInfoParser:
             name_list.append(attribute_info['name'])
         return name_list
 
-    def parse_attribute_type_list(self):
-        attr_types_map = {
-            'IntArray': 'paddle::dialect::IntArrayAttribute',
-            'Scalar': 'paddle::dialect::ScalarAttribute',
-            'Scalar(int)': 'paddle::dialect::ScalarAttribute',
-            'Scalar(int64_t)': 'paddle::dialect::ScalarAttribute',
-            'Scalar(float)': 'paddle::dialect::ScalarAttribute',
-            'Scalar(dobule)': 'paddle::dialect::ScalarAttribute',
-            'Scalar[]': 'ir::ArrayAttribute<paddle::dialect::ScalarAttribute>',
-            'int': 'ir::Int32_tAttribute',
-            'int32_t': 'ir::Int32_tAttribute',
-            'int64_t': 'ir::Int64_tAttribute',
-            'long': 'ir::LongAttribute',
-            'size_t': 'ir::Size_tAttribute',
-            'float': 'ir::FloatAttribute',
-            'float[]': 'ir::ArrayAttribute<ir::FloatAttribute>',
-            'double': 'ir::DoubleAttribute',
-            'bool': 'ir::BoolAttribute',
-            'bool[]': 'ir::ArrayAttribute<ir::BoolAttribute>',
-            'str': 'ir::StrAttribute',
-            'str[]': 'ir::ArrayAttribute<ir::StrAttribute>',
-            'Place': 'paddle::dialect::PlaceAttribute',
-            'DataLayout': 'paddle::dialect::DataLayoutAttribute',
-            'DataType': 'paddle::dialect::DataTypeAttribute',
-            'int64_t[]': 'ir::ArrayAttribute<ir::Int64_tAttribute>',
-            'int[]': 'ir::ArrayAttribute<ir::Int32_tAttribute>',
-        }
+    def parse_attribute_build_arg_type_list(self):
         type_list = []
         for attribute_info in self.op_yaml_item['attrs']:
             assert (
-                attribute_info['typename'] in attr_types_map
+                attribute_info['typename'] in self.attr_types_map
             ), f"{self.op_phi_name} : Attr type error."
-            type_list.append(attr_types_map[attribute_info['typename']])
+
+            # Scalar & IntArray has data_type
+            temp_type = self.attr_types_map[attribute_info['typename']][1]
+            if 'Scalar' in temp_type:
+                if 'default_value' in attribute_info:
+                    temp_type = attribute_info['default_value']
+            if 'IntArray' in temp_type:
+                if 'default_value' in attribute_info:
+                    temp_type = attribute_info['default_value']
+            temp_type.replace('Scalar', 'phi::Scalar')
+            temp_type.replace('IntArray', 'phi::IntArray')
+            temp_type.replace('Place', 'phi::Place')
+            temp_type.replace('DataLayout', 'phi::DataLayout')
+            temp_type.replace('DataType', 'phi::DataType')
+            type_list.append(temp_type)
+        return type_list
+
+    def parse_attribute_type_list(self):
+        type_list = []
+        for attribute_info in self.op_yaml_item['attrs']:
+            assert (
+                attribute_info['typename'] in self.attr_types_map
+            ), f"{self.op_phi_name} : Attr type error."
+            type_list.append(self.attr_types_map[attribute_info['typename']])
         return type_list
 
     def parse_attribute_data_type_list(self):
@@ -419,22 +484,20 @@ class OpInfoParser:
                 data_type_list.append("")
         return data_type_list
 
-    def parse_op_phi_name(self):
-        if self.parse_op_inplace_info() is None:
-            return [self.op_yaml_item['name']]
-        else:
-            if self.op_yaml_item['name'][-1] == "_":
-                return [self.op_yaml_item['name']]
+    def parse_attribute_default_value_list(self):
+        default_value_list = []
+        for attribute_info in self.op_yaml_item['attrs']:
+            if 'default_value' in attribute_info:
+                default_value_list.append(attribute_info['default_value'])
             else:
-                return [
-                    self.op_yaml_item['name'],
-                    self.op_yaml_item['name'] + "_",
-                ]
+                default_value_list.append(None)
+        return default_value_list
 
-    def parse_op_inplace_info(self):
-        if 'inplace' in self.op_yaml_item:
-            return self.op_yaml_item['inplace']
-        return None
+    def parse_infer_meta_map(self):
+        if 'infer_meta' in self.op_yaml_item:
+            return self.op_yaml_item['infer_meta']
+        else:
+            return None
 
 
 def to_pascal_case(s):
