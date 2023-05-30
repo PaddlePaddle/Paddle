@@ -105,7 +105,9 @@ class TestUnbindOp(OpTest):
         pass
 
     def outReshape(self):
-        pass
+        self.out[0] = self.out[0].reshape((2, 2))
+        self.out[1] = self.out[1].reshape((2, 2))
+        self.out[2] = self.out[2].reshape((2, 2))
 
     def setAxis(self):
         pass
@@ -209,12 +211,18 @@ class TestUnbindFP16Op(OpTest):
         self.num = 3
         x = np.arange(12).reshape(3, 2, 2).astype(self.dtype)
         self.out = np.split(x, self.num, self.axis)
+        self.outReshape()
         self.inputs = {'X': x}
         self.attrs = {'axis': self.axis}
         self.outputs = {
             'Out': [('out%d' % i, self.out[i]) for i in range(len(self.out))]
         }
         self.python_out_sig = ['out%d' % i for i in range(len(self.out))]
+
+    def outReshape(self):
+        self.out[0] = self.out[0].reshape((2, 2))
+        self.out[1] = self.out[1].reshape((2, 2))
+        self.out[2] = self.out[2].reshape((2, 2))
 
     def get_dtype(self):
         return np.float16
@@ -233,6 +241,7 @@ class TestUnbindBF16Op(OpTest):
         self.num = 3
         x = np.arange(12).reshape(3, 2, 2).astype(self.dtype)
         self.out = np.split(x, self.num, self.axis)
+        self.outReshape()
         self.inputs = {'X': convert_float_to_uint16(x)}
         self.attrs = {'axis': self.axis}
         self.outputs = {
@@ -242,6 +251,11 @@ class TestUnbindBF16Op(OpTest):
             ]
         }
         self.python_out_sig = ['out%d' % i for i in range(len(self.out))]
+
+    def outReshape(self):
+        self.out[0] = self.out[0].reshape((2, 2))
+        self.out[1] = self.out[1].reshape((2, 2))
+        self.out[2] = self.out[2].reshape((2, 2))
 
     def get_dtype(self):
         return np.uint16

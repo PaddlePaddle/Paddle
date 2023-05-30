@@ -411,6 +411,9 @@ void divide_grad(const Tensor& x,
         auto dx_reduce_res =
             dx_res.sum(phi::vectorize(reduce_dim), x.dtype(), false);
         auto dx_tmp = reshape<T>(dx_reduce_res, phi::vectorize(x.dims()));
+        VLOG(0) << "dx_res.dims(): " << dx_res.dims();
+        VLOG(0) << "dx_reduce_res.dims(): " << dx_reduce_res.dims();
+        VLOG(0) << "dx_tmp.dims(): " << dx_tmp.dims();
         set_output<T>(dx_tmp, dx);
       }
 
