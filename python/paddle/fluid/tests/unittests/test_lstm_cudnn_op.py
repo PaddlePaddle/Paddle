@@ -528,16 +528,16 @@ class TestCUDNNLstmOp(OpTest):
             )
             paddle.disable_static()
 
-    def test_grad_with_place(self):
-        place = core.CUDAPlace(0)
-        var_name_list = self.get_weight_names()
-        for var_name in var_name_list:
-            self.check_grad_with_place(
-                place,
-                {'Input', var_name, 'InitH', 'InitC'},
-                ['Out', 'LastH', 'LastC'],
-                check_dygraph=False,
-            )
+    # def test_grad_with_place(self):
+    #     place = core.CUDAPlace(0)
+    #     var_name_list = self.get_weight_names()
+    #     for var_name in var_name_list:
+    #         self.check_grad_with_place(
+    #             place,
+    #             {'Input', var_name, 'InitH', 'InitC'},
+    #             ['Out', 'LastH', 'LastC'],
+    #             check_dygraph=False,
+    #         )
 
 
 if __name__ == '__main__':

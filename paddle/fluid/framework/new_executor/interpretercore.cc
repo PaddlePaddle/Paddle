@@ -42,7 +42,7 @@ PADDLE_DEFINE_EXPORTED_bool(
     "Enable serial execution for standalone executor, used for debug.");
 PADDLE_DEFINE_EXPORTED_bool(
     new_executor_static_build,
-    true,
+    false,
     "Build the interpreterCore statically without running kernels.");
 PADDLE_DEFINE_EXPORTED_bool(new_executor_use_inplace,
                             false,
