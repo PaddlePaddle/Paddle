@@ -31,7 +31,7 @@ H_FILE_TEMPLATE = """#ifdef GET_OP_LIST
 
 #include <vector>
 
-#inlcude "paddle/ir/core/builder.h"
+#include "paddle/ir/core/builder.h"
 #include "paddle/ir/core/operation_utils.h"
 #include "paddle/ir/core/op_base.h"
 #include "paddle/fluid/dialect/utils.h"
@@ -458,11 +458,11 @@ class OpInfoParser:
             # Scalar & IntArray has data_type
             temp_type = self.attr_types_map[attribute_info['typename']][1]
             if 'Scalar' in temp_type:
-                if 'default_value' in attribute_info:
-                    temp_type = attribute_info['default_value']
+                if 'data_type' in attribute_info:
+                    temp_type = attribute_info['data_type']
             if 'IntArray' in temp_type:
-                if 'default_value' in attribute_info:
-                    temp_type = attribute_info['default_value']
+                if 'data_type' in attribute_info:
+                    temp_type = attribute_info['data_type']
             temp_type = temp_type.replace('Scalar', 'phi::Scalar')
             temp_type = temp_type.replace('IntArray', 'phi::IntArray')
             temp_type = temp_type.replace('Place', 'phi::Place')
@@ -555,15 +555,34 @@ def GenBuildInputs(op_input_name_list):
 
 
 def GenBuildAttributes(op_attribute_name_list, op_attribute_type_list):
+    INTARRAY_STR_TEMPLATE = """  ir::Attribute attr_{attr_name} = {op_attribute_type}::get(ir::IrContext::Instance(), phi::IntArray({attr_name}));
+  argument.addAttribute("{attr_name}", attribute);
+"""
+    SCALAR_STR_TEMPLATE = """  ir::Attribute attr_{attr_name} = {op_attribute_type}::get(ir::IrContext::Instance(), phi::Scalar({attr_name}));
+  argument.addAttribute("{attr_name}", attribute);
+"""
     STR_TEMPLATE = """  ir::Attribute attr_{attr_name} = {op_attribute_type}::get(ir::IrContext::Instance(), {attr_name});
   argument.addAttribute("{attr_name}", attribute);
 """
     attr_str = ""
     for idx in range(len(op_attribute_name_list)):
-        attr_str += STR_TEMPLATE.format(
-            attr_name=op_attribute_name_list[idx],
-            op_attribute_type=op_attribute_type_list[idx],
-        )
+        if op_attribute_type_list[idx] == "paddle::dialect::IntArrayAttribute":
+            attr_str += INTARRAY_STR_TEMPLATE.format(
+                attr_name=op_attribute_name_list[idx],
+                op_attribute_type=op_attribute_type_list[idx],
+            )
+
+        elif op_attribute_type_list[idx] == "paddle::dialect::ScalarAttribute":
+            attr_str += SCALAR_STR_TEMPLATE.format(
+                attr_name=op_attribute_name_list[idx],
+                op_attribute_type=op_attribute_type_list[idx],
+            )
+        else:
+            attr_str += STR_TEMPLATE.format(
+                attr_name=op_attribute_name_list[idx],
+                op_attribute_type=op_attribute_type_list[idx],
+            )
+
     return attr_str
 
 
@@ -677,13 +696,13 @@ def GenBuildOutputs(
     build_output_str += "\n  std::vector<ir::Type> outputs;"
 
     CREATE_OUTPUT_DENSE_TENSOR_TEMPLATE = """
-  ir::Type {name}_dense_tensor_type = paddle::dialect::DenseTensorType::get(ir::IrContext::Instance(), dense_{name}.dtype(), dense_{name}.dims(), dense_{name}.layout(), dense_{name}.lod(), dense_{name}.offset());
+  ir::Type {name}_dense_tensor_type = paddle::dialect::DenseTensorType::get(ir::IrContext::Instance(), TransToIrDataType(dense_{name}.dtype()), dense_{name}.dims(), dense_{name}.layout(), dense_{name}.lod(), dense_{name}.offset());
   outputs.append({name}_dense_tensor_type);
 """
     CREATE_OUTPUT_VEC_DENSE_TENSOR_TEMPLATE = """
   std::vector<ir::Type> {name}_types;
   for (size_t i=0; i < ({output_size}); i++) {{
-    {name}_types.push_back(paddle::dialect::DenseTensorType::get(ir::IrContext::Instance(), vec_dense_{name}[i].dtype(), vec_dense_{name}[i].dims(), vec_dense_{name}[i].layout(), vec_dense_{name}[i].lod(), vec_dense_{name}[i].offset()));
+    {name}_types.push_back(paddle::dialect::DenseTensorType::get(ir::IrContext::Instance(), TransToIrDataType(vec_dense_{name}[i].dtype()), vec_dense_{name}[i].dims(), vec_dense_{name}[i].layout(), vec_dense_{name}[i].lod(), vec_dense_{name}[i].offset()));
   }}
   ir::Type {name}_vector_type = ir::VectorType::get(ir::IrContext::Instance(), {name}_types);
   outputs.append({name}_vector_type);
@@ -760,7 +779,7 @@ def OpGenerator(
 
         # If op has inplace info, we will generate inplace op and non-inplace op.
         for op_name in op_info.op_phi_name:
-            # print("====>create op: ", op_name)
+            print("====>create op: ", op_name)
             op_class_name = to_pascal_case(op_name) + "Op"
             op_dialect_name = dialect_name + "." + op_name
 
@@ -1072,6 +1091,7 @@ def ParseArguments():
 # =====================================
 if __name__ == "__main__":
     # parse arguments
+    print("auto gen op")
     args = ParseArguments()
     op_yaml_files = args.op_yaml_files.split(",")
     op_compat_yaml_file = args.op_compat_yaml_file

@@ -39,9 +39,9 @@ ParameterConvertInterface::ParameterToVariable(ir::Parameter *parameter) {
     phi::DenseTensorMeta meta(
         TransToPhiDataType(
             parameter->type().dyn_cast<DenseTensorType>().dtype()),
-        phi::DDim(dim.data(), dim.size()),
-        TransToPhiDataLayout(
-            parameter->type().dyn_cast<DenseTensorType>().data_layout()),
+        dim,
+
+        parameter->type().dyn_cast<DenseTensorType>().data_layout(),
         parameter->type().dyn_cast<DenseTensorType>().lod(),
         parameter->type().dyn_cast<DenseTensorType>().offset());
     tensor->set_meta(meta);
@@ -67,17 +67,13 @@ std::unique_ptr<ir::Parameter> ParameterConvertInterface::VariableToParameter(
     // Get Meta
     ir::IrContext *ctx = ir::IrContext::Instance();
     ir::Type data_type = TransToIrDataType(tensor->dtype(), ctx);
-    DenseTensorTypeStorage::Dim dims(tensor->dims().size());
-    std::copy(tensor->dims().Get(),
-              tensor->dims().Get() + tensor->dims().size(),
-              dims.data());
-    DenseTensorTypeStorage::DataLayout data_layout =
-        TransToIrDataLayout(tensor->layout());
-    DenseTensorTypeStorage::LoD lod = tensor->lod();
-    size_t offset = tensor->meta().offset;
     void *data = tensor->data();
-    ir::Type dense_tensor_type =
-        DenseTensorType::get(ctx, data_type, dims, data_layout, lod, offset);
+    ir::Type dense_tensor_type = DenseTensorType::get(ctx,
+                                                      data_type,
+                                                      tensor->dims(),
+                                                      tensor->layout(),
+                                                      tensor->lod(),
+                                                      tensor->meta().offset);
     return std::make_unique<ir::Parameter>(
         data,
         tensor->numel() * phi::SizeOf(tensor->dtype()),

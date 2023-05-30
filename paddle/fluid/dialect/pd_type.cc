@@ -18,20 +18,13 @@ namespace paddle {
 namespace dialect {
 const ir::Type& DenseTensorType::dtype() const { return storage()->dtype_; }
 
-const paddle::dialect::DenseTensorTypeStorage::Dim& DenseTensorType::dim()
-    const {
-  return storage()->dims_;
-}
+const phi::DDim& DenseTensorType::dim() const { return storage()->dims_; }
 
-const paddle::dialect::DenseTensorTypeStorage::DataLayout&
-DenseTensorType::data_layout() const {
+const phi::DataLayout& DenseTensorType::data_layout() const {
   return storage()->layout_;
 }
 
-const paddle::dialect::DenseTensorTypeStorage::LoD& DenseTensorType::lod()
-    const {
-  return storage()->lod_;
-}
+const phi::LoD& DenseTensorType::lod() const { return storage()->lod_; }
 
 const size_t& DenseTensorType::offset() const { return storage()->offset_; }
 
