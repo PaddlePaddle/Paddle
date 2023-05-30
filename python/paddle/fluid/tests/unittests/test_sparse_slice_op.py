@@ -12,19 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import random
 import unittest
 
 import numpy as np
 
 import paddle
-
-# To ensure that the result after slicing is not a sparse tensor with all zeros.
-# In GPU device, when run mulitple tests, once the sliced tensor is all zeros,
-#   `paddle::pybind::ThrowExceptionToPython(std::__exception_ptr::exception_ptr)` occurs.
-# But we will successfully run a single test in GPU, even if the sliced tensor is all zeros.
-random.seed(42)
-np.random.seed(42)
 
 data_5d = [
     [[2, 3, 4, 5, 6], [0, 1, 2, 4], [0, 1, 2, -4], [3, 3, 4, -2]],
@@ -124,17 +116,25 @@ class TestSparseSlice(unittest.TestCase):
         x = [-49, 55, -5, 0, 3, 0, 0, -60, -21, 0, 0, 0]
         self.check_result_with_list(x, [0], [3], [5], format='coo')
 
-    # def test_coo_1d_zero(self):
-    #     x = [-49, 55, -5, 0, 3, 0, 0, -60, -21, 0, 0, 0]
-    #     self.check_result_with_list(x, [0], [-3], [-1], format='coo')
+    def test_coo_1d_zero(self):
+        x = [-49, 55, -5, 0, 3, 0, 0, -60, -21, 0, 0, 0]
+        self.check_result_with_list(x, [0], [-3], [-1], format='coo')
 
     def test_csr_3d(self):
         for item in data_3d:
             self.check_result_with_shape(*item, format='csr')
 
+    def test_csr_3d_zero(self):
+        x = [[[0, 0, 1, 2], [0, 0, 0, 2]]]
+        self.check_result_with_list(x, [1, 2], [0, 0], [2, 2], format='csr')
+
     def test_csr_2d(self):
         for item in data_2d:
             self.check_result_with_shape(*item, format='csr')
+
+    def test_csr_2d_zero(self):
+        x = [[0, 0, 1, 2], [0, 0, 0, 1]]
+        self.check_result_with_list(x, [0, 1], [0, 0], [2, 2], format='csr')
 
 
 class TestSparseCooSliceStatic(unittest.TestCase):
@@ -226,9 +226,9 @@ class TestSparseCooSliceStatic(unittest.TestCase):
         x = [-49, 55, -5, 0, 3, 0, 0, -60, -21, 0, 0, 0]
         self.check_result_with_list(x, [0], [3], [5], format='coo')
 
-    # def test_coo_1d_zero(self):
-    #     x = [-49, 55, -5, 0, 3, 0, 0, -60, -21, 0, 0, 0]
-    #     self.check_result_with_list(x, [0], [-3], [-1], format='coo')
+    def test_coo_1d_zero(self):
+        x = [-49, 55, -5, 0, 3, 0, 0, -60, -21, 0, 0, 0]
+        self.check_result_with_list(x, [0], [-3], [-1], format='coo')
 
 
 if __name__ == "__main__":

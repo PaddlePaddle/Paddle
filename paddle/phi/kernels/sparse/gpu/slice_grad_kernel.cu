@@ -108,7 +108,7 @@ void SliceCooGradKernel(const Context& dev_ctx,
   x_grad->SetMember(dx_indices, dx_values, x.dims(), x.coalesced());
 
   auto config =
-      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_grad_nnz, 1);
+      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_grad_nnz + 1, 1);
   GetCooInputGradCudaKernel<T><<<config.block_per_grid.x,
                                  config.thread_per_block.x,
                                  0,
@@ -185,7 +185,7 @@ void SliceCsrGrad2D(const Context& dev_ctx,
 
   // set cols and values
   auto config =
-      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_grad_nnz, 1);
+      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_grad_nnz + 1, 1);
   GetCsrInputColsValuesCudaKernel<T><<<config.block_per_grid.x,
                                        config.thread_per_block.x,
                                        0,
@@ -242,7 +242,7 @@ void SliceCsrGrad3D(const Context& dev_ctx,
 
   // set cols and values
   auto config =
-      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_grad_nnz, 1);
+      phi::backends::gpu::GetGpuLaunchConfig1D(dev_ctx, out_grad_nnz + 1, 1);
   GetCsrInputColsValuesCudaKernel<T><<<config.block_per_grid.x,
                                        config.thread_per_block.x,
                                        0,
